@@ -89,3 +89,35 @@ lag", which is true and anonymous. Three tiers, in order:
    component is app-local; doing this properly means lifting a small
    schematic renderer into packages/ui (the packages agent's territory - file
    back what you need). Do not block tiers 1-2 on this.
+
+
+## FROM REED: say why plant comes first, and define both terms at their headers
+
+Reed asked whether plant-above-controller is the right sidebar order. It is —
+but for a reason the UI keeps to itself, so state it. Two orders exist:
+signal-flow order (r → controller → plant → y, what the diagram draws) and
+DECISION order (the plant is given, the controller is chosen in response —
+what the sidebar walks). The sidebar rightly follows decision order; one line
+under each section header makes the choice legible instead of accidental.
+
+Definitions on contact, at the section headers (not only in lesson terms),
+each one or two sentences in the house style. The load-bearing content is the
+INPUT/OUTPUT identity, because it is exactly what confused Reed after the
+hand-over:
+
+- PLANT: the system you are stuck with — a motor, a tank, a circuit. Its
+  input is the DRIVE u (whatever the controller sends); its output is the
+  measured y that gets fed back. When a circuit arrives from Circuit Lab,
+  the circuit IS the plant: its input port becomes u — driven by the
+  controller, not by your reference — and its output node becomes y. (This
+  is the other half of the arrival-orientation notice already specced.)
+- CONTROLLER: the block you get to design. Its input is the error r − y;
+  its output is the drive u. It never sees the reference or the plant
+  directly — only how far apart they are.
+
+Add matching entries to the terms registry (plant, controller, drive u,
+error e = r−y, reference r) so lessons can reference them, with the usual
+tests: referenced ⇒ defined, defined ⇒ surfaced. Claims stay prose here —
+these are definitions, not measurements — but the u-not-r fact is the same
+one tier 2 of the diagram task annotates on the wire; keep the wording
+consistent between the two.
