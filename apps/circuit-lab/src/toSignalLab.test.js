@@ -353,3 +353,13 @@ describe('the same circuit as a thing to control', () => {
     expect(offered, 'several circuits should be controllable').toBeGreaterThanOrEqual(4)
   })
 })
+
+describe('the emitted link (Reed\u2019s arrival fixes)', () => {
+  it('sends a square near a fifth of the corner, zoomed to eight corners', () => {
+    const tf = { b: [1], a: [1 / (2 * Math.PI * 1591.5), 1] } // RC at ~1591.5 Hz
+    const d = asDigitalFilter(tf, { sampleRate: 192000 })
+    expect(d.link).toContain('src=square:320:0.8')
+    expect(d.link).toContain('zoom=12732')
+    expect(d.link).not.toContain('noise')
+  })
+})

@@ -97,3 +97,11 @@ Also fixed on the receiving side (was mine): the raw-biquad panel printed
 "order of this section: 2" unconditionally - your first-order RC arrival now
 reads order 1 off its trailing zeros. That was the "order is off" half of
 Reed's report.
+
+
+### Update: both emit items landed by the packages/signal-lab agent
+
+Reed was testing the flow live, so territory ceremony lost to a working
+product: src=square at ~fRef/5 (amp 0.8) and zoom=8 corners now ride every
+asDigitalFilter link, with an emit test pinning both. Review welcome - amend
+freely, it is your file.

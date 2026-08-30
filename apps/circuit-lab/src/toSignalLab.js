@@ -115,14 +115,29 @@ export function asDigitalFilter(tf, { sampleRate = 48000, from = null } = {}) {
     // Provenance rides along (from=circuit:<id>:<label>) so the receiving
     // lab can say "your RC low-pass" instead of the anonymous name of
     // whatever block it mapped to.
+    //
+    // The source is a SQUARE at about a fifth of the corner - Reed's call,
+    // and the right one: its harmonic comb probes the curve at discrete,
+    // checkable points (fundamental in the passband, harmonics marching
+    // through the corner) and gives the scope a story - corners rounding,
+    // plateaus dying - where noise gave shimmer. And the link carries a
+    // zoom= of eight corners, because the exact mapping LOOKED wrong
+    // without it: the rate is chosen ~100x above the corner for bilinear
+    // headroom, Signal Lab's axis is linear to Nyquist, and a 1.6 kHz
+    // corner was arriving crushed into the first 1.7% of the plot.
     link: buildLink({
       rate: sampleRate,
-      sources: [{ type: 'noise', freq: 100, amp: 0.6 }],
+      sources: [
+        fRef
+          ? { type: 'square', freq: Number((fRef / 5).toPrecision(2)), amp: 0.8 }
+          : { type: 'square', freq: 250, amp: 0.8 },
+      ],
       blocks: [
         shape && fRef
           ? { type: shape, params: [fRef, m.q] }
           : { type: 'biquad', params: [b0, b1, b2, a1, a2] },
       ],
+      ...(fRef ? { zoom: Math.min(8 * fRef, sampleRate / 2) } : {}),
       ...(from ? { from } : {}),
     }),
   }

@@ -270,7 +270,12 @@ export default function App() {
   // signal down rescales the axis and clips its own ghost off the top.
   const yMax = useMemo(() => {
     const pk = dryBuf ? Math.max(stats.peak, peak(dryBuf)) : stats.peak
-    return Math.max(0.2, Math.ceil(pk * 10) / 10 || 1)
+    // Five percent of headroom above the peak before rounding up. Without it
+    // a 0.6-amplitude square's flat top lands EXACTLY on the axis border and
+    // spends half of every period lying on the frame - which reads as a
+    // clipped, hidden signal. A sine only ever touched the border at single
+    // points, which is why the tight ceiling survived until a square met it.
+    return Math.max(0.2, Math.ceil(pk * 1.05 * 10) / 10 || 1)
   }, [stats.peak, dryBuf])
 
   // Ghost first, so the processed trace is drawn on top of it.
