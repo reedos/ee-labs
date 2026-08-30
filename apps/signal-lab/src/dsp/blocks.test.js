@@ -524,3 +524,37 @@ describe('filter order', () => {
     }
   })
 })
+
+describe('phase at the cutoff', () => {
+  // The hint's claim: the lag at the cutoff is EXACTLY 45 degrees per order,
+  // not approximately. The bilinear transform preserves the analog value at
+  // the pre-warped frequency, so this survives sampling untouched.
+  it('low-pass lags exactly 45 degrees x order at fc', () => {
+    for (const [order, want] of [
+      ['1', -45],
+      ['2', -90],
+      ['4', -180],
+    ]) {
+      const ph = BLOCK_TYPES.lowpass.phase(
+        { freq: 500, q: Math.SQRT1_2, gainDb: 0, order },
+        500,
+        8000,
+      )
+      expect((ph * 180) / Math.PI, `order ${order}`).toBeCloseTo(want, 9)
+    }
+  })
+
+  it('high-pass leads exactly 45 degrees x order at fc', () => {
+    for (const [order, want] of [
+      ['1', 45],
+      ['2', 90],
+    ]) {
+      const ph = BLOCK_TYPES.highpass.phase(
+        { freq: 500, q: Math.SQRT1_2, gainDb: 0, order },
+        500,
+        8000,
+      )
+      expect((ph * 180) / Math.PI, `order ${order}`).toBeCloseTo(want, 9)
+    }
+  })
+})

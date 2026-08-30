@@ -106,10 +106,6 @@ export default function BlockCard({
               {typeof def.hint === 'function' ? def.hint(block.params) : def.hint}
             </p>
           ) : null}
-          <MathPanel
-            label="The math for this block"
-            getEntry={() => blockMath(block, ctx)}
-          />
           {def.params.map((p) => {
             if (p.when && !p.when(block.params)) return null
             if (p.kind === 'select') {
@@ -161,6 +157,12 @@ export default function BlockCard({
             )
           })}
 
+          {/* Below the parameters, not above: set fc, order and Q first,
+              THEN unfold what those choices mean. The flow is the lesson. */}
+          <MathPanel
+            label="The math for this block"
+            getEntry={() => blockMath(block, ctx)}
+          />
           <div className="block-foot">
             <button
               type="button"

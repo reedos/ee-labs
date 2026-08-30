@@ -166,14 +166,16 @@ export const BLOCK_TYPES = {
   lowpass: biquadType(
     'lowpass',
     'Low-pass',
-    // The rolloff follows the ORDER control, so the sentence must too - it
-    // sat frozen at "12 dB per octave" while the select said 1st or 4th.
+    // Lead with the first-order rule, then multiply — and say what happens to
+    // phase, which a magnitude-only hint leaves out. The 45°-per-order figure
+    // at the cutoff is exact for these sections, not a rule of thumb (see the
+    // phase-at-cutoff test).
     (p) => {
       const n = Number(p?.order ?? 2)
       return (
-        `Passes what is below the cutoff and rolls off above it at ${6 * n} dB per octave ` +
-        `(${20 * n} dB per decade) - that is 6 dB/octave, 20 dB/decade, times the filter ` +
-        `order, which is ${n} here.`
+        `A 1st-order low-pass rolls off at 6 dB per octave (20 dB per decade). ` +
+        `This one is order ${n}: ${6 * n} dB per octave (${20 * n} dB per decade). ` +
+        `Phase lags too — exactly ${45 * n}° at the cutoff, heading toward ${90 * n}° far above it.`
       )
     },
   ),
@@ -183,9 +185,10 @@ export const BLOCK_TYPES = {
     (p) => {
       const n = Number(p?.order ?? 2)
       return (
-        `The mirror image of the low-pass: everything below the cutoff is removed, rising at ` +
-        `${6 * n} dB per octave (${20 * n} dB per decade) - 6 dB/octave, 20 dB/decade, times ` +
-        `the filter order, which is ${n} here.`
+        `The low-pass mirrored: everything below the cutoff is removed. A 1st-order slope is ` +
+        `6 dB per octave (20 dB per decade); this one is order ${n}: ${6 * n} dB per octave ` +
+        `(${20 * n} dB per decade). Phase LEADS here — exactly +${45 * n}° at the cutoff, from ` +
+        `+${90 * n}° at DC down to 0° far above.`
       )
     },
   ),
