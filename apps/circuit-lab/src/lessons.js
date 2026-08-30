@@ -105,6 +105,20 @@ export const LESSONS = [
     patch: { circuit: 'rlcSeries', params: p('rlcSeries', { r: 200 }), output: 'c', view: 'step' },
     claim: { overshootMatchesZeta: true },
   },
+  {
+    group: 'Resonance',
+    name: 'A zero on the axis is silence',
+    note:
+      'The twin-T’s two tees deliver equal and opposite signals at exactly one frequency, so ' +
+      'the zeros of H(s) sit ON the imaginary axis — the poles view shows them riding the ' +
+      'boundary. That frequency is not attenuated but removed: the notch has no bottom, and ' +
+      'the phase snaps 180° across it. Deep but blunt — Q is fixed at 1/4 by the matched ' +
+      'topology, so the notch is always 4f₀ wide and no component choice sharpens it. The ' +
+      'integrator’s pole on this same boundary is the mirror image: one frequency the circuit ' +
+      'cannot stop, instead of one it cannot pass.',
+    patch: { circuit: 'twinT', view: 'pz' },
+    claim: { zeroOnAxis: true, qFixed: 0.25 },
+  },
 
   // ------------------------------------------------------- Active circuits
   {

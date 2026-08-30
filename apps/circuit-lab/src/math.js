@@ -316,6 +316,79 @@ const ENTRIES = {
     }
   },
 
+  twinT: (tf, p) => {
+    const m = CIRCUITS.twinT.metrics(p)
+    const f0 = m.w0 / TAU
+    const so = secondOrderMetrics(tf)
+    const { zeros } = polesZeros(tf)
+    return {
+      blocks: [
+        T(
+          'Two complete filters share the input and the output: R–R with 2C to ground is a ' +
+            'low-frequency route, C–C with R/2 to ground a high-frequency one. At ω₀ = 1/RC ' +
+            'the two arrivals are equal in size and opposite in phase, and what reaches the ' +
+            'output is their sum:',
+        ),
+        F('H(s) = \\frac{s^2R^2C^2 + 1}{s^2R^2C^2 + 4sRC + 1}'),
+        T(
+          'The numerator has no s term, so its roots sit at ±j/RC — ON the imaginary axis, ' +
+            'not merely near it. A zero on the axis means one frequency is removed rather ' +
+            'than attenuated: the notch has no bottom. Crossing it, the phase snaps 180° in ' +
+            'an instant, from −90° just below to +90° just above, which no finite stack of ' +
+            'ordinary corners can do.',
+        ),
+        C([
+          {
+            label: `|H| at f₀ = ${f0.toPrecision(5)} Hz`,
+            predicted: 0,
+            measured: magnitudeAt(tf, f0),
+            abs: 1e-9,
+          },
+          { label: 'zero, real part (on the axis)', predicted: 0, measured: zeros.length ? zeros[0][0] : NaN, abs: 1e-9 },
+          { label: 'zero, |imag| = ω₀', predicted: m.w0, measured: zeros.length ? Math.abs(zeros[0][1]) : NaN, tol: 1e-6, unit: '1/s' },
+          { label: 'DC gain', predicted: 1, measured: magnitudeAt(tf, 1e-9), tol: 1e-9 },
+          {
+            label: 'phase just below the notch',
+            predicted: -90,
+            measured: (phaseAt(tf, f0 * (1 - 1e-6)) * 180) / Math.PI,
+            abs: 1e-3,
+            unit: '°',
+          },
+          {
+            label: 'phase just above the notch',
+            predicted: 90,
+            measured: (phaseAt(tf, f0 * (1 + 1e-6)) * 180) / Math.PI,
+            abs: 1e-3,
+            unit: '°',
+          },
+          { label: 'Q', predicted: 0.25, measured: so ? so.q : NaN, tol: 1e-6 },
+        ]),
+        F('\\omega_0 = \\frac{1}{RC}, \\qquad ' + m.qTex),
+        T(
+          'Deep but blunt: Q = 1/4 is structural, written into the matched topology, and no ' +
+            'choice of R or C moves it — the checks above hold at any values you set. The ' +
+            'bandwidth is therefore always 4f₀ wide. Sharpening a twin-T means feedback: ' +
+            'bootstrap the shunt legs from an op-amp follower and the notch narrows, which is ' +
+            'the same story as the Sallen–Key — passive parts set the frequency, an amplifier ' +
+            'buys the Q.',
+        ),
+        T(
+          'One honesty note: this model keeps the network matched — the two Rs, the two Cs ' +
+            'and the shunt legs track together as one R and one C. Part tolerance therefore ' +
+            'moves the notch without filling it in. A real drawer errs each of the six parts ' +
+            'independently, which also lifts the notch floor off zero; a two-parameter model ' +
+            'cannot show that, so the tolerance cloud here understates a real twin-T’s troubles.',
+        ),
+        V([
+          { label: 'notch frequency', value: f0, unit: 'Hz' },
+          { label: 'Q', value: 0.25, note: 'fixed by the topology' },
+          { label: 'bandwidth f₀/Q', value: 4 * f0, unit: 'Hz' },
+        ]),
+        ...common(tf, p, 'twinT'),
+      ],
+    }
+  },
+
   sallenKey: (tf, p) => {
     const m = CIRCUITS.sallenKey.metrics(p)
     const f0 = m.w0 / TAU

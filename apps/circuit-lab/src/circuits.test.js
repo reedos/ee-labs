@@ -349,3 +349,62 @@ describe('phase, wherever magnitude is claimed', () => {
     expect(db(magnitudeAt(tf, 10000)) - db(magnitudeAt(tf, 1000))).toBeCloseTo(-20, 6)
   })
 })
+
+// The twin-T's whole story is where its zeros are, so every sentence about it
+// is pinned here: zeros exactly ON the axis (the notch is removal, not
+// attenuation), poles safely real and inside, Q refusing to follow any
+// component, and the 180-degree phase snap that only an axis zero produces.
+describe('twin-T notch', () => {
+  const deg = (tf, f) => (phaseAt(tf, f) * 180) / Math.PI
+  const p = defaultsOf('twinT')
+  const tau = p.r * p.c
+  const f0 = 1 / (2 * Math.PI * tau)
+
+  it('has both zeros exactly on the jω axis, at ±j/RC', () => {
+    const { zeros } = polesZeros(tfOf('twinT'))
+    expect(zeros).toHaveLength(2)
+    for (const [re, im] of zeros) {
+      expect(re).toBeCloseTo(0, 12)
+      expect(Math.abs(im)).toBeCloseTo(1 / tau, 6)
+    }
+  })
+
+  it('removes the notch frequency rather than attenuating it', () => {
+    const tf = tfOf('twinT')
+    // Not "very small" - zero, to numerical precision, because the zero is on
+    // the axis rather than merely near it.
+    expect(magnitudeAt(tf, f0)).toBeLessThan(1e-12)
+    // Either side of the hole, life goes on: unity at DC, unity far above.
+    expect(dcGain(tf)).toBeCloseTo(1, 12)
+    expect(magnitudeAt(tf, f0 * 1e4)).toBeCloseTo(1, 6)
+    expect(magnitudeAt(tf, f0 / 1e4)).toBeCloseTo(1, 6)
+  })
+
+  it('keeps its poles real, at (−2±√3)/RC', () => {
+    const { poles } = polesZeros(tfOf('twinT'))
+    expect(poles).toHaveLength(2)
+    const res = poles.map(([re]) => re).sort((a, b) => a - b)
+    for (const [, im] of poles) expect(Math.abs(im)).toBeLessThan(1e-9)
+    expect(res[0]).toBeCloseTo((-2 - Math.sqrt(3)) / tau, 3)
+    expect(res[1]).toBeCloseTo((-2 + Math.sqrt(3)) / tau, 3)
+  })
+
+  it('has Q fixed at exactly 1/4, whatever R and C are chosen', () => {
+    for (const [r, c] of [[10000, 10e-9], [1000, 100e-9], [220000, 1e-9]]) {
+      const m = secondOrderMetrics(transferOf('twinT', { r, c }, 'out'))
+      expect(m.q, `R=${r} C=${c}`).toBeCloseTo(0.25, 9)
+      expect(CIRCUITS.twinT.metrics({ r, c }).q).toBe(0.25)
+      // ...while the notch itself follows 1/(2πRC).
+      expect(m.f0, `R=${r} C=${c}`).toBeCloseTo(1 / (2 * Math.PI * r * c), 6)
+    }
+  })
+
+  it('snaps 180 degrees of phase across the notch: −90 just below, +90 just above', () => {
+    const tf = tfOf('twinT')
+    expect(deg(tf, f0 * (1 - 1e-6))).toBeCloseTo(-90, 2)
+    expect(deg(tf, f0 * (1 + 1e-6))).toBeCloseTo(90, 2)
+    // ...and both tails are quiet: no phase to speak of far from the notch.
+    expect(deg(tf, f0 / 1e4)).toBeCloseTo(0, 1)
+    expect(deg(tf, f0 * 1e4)).toBeCloseTo(0, 1)
+  })
+})

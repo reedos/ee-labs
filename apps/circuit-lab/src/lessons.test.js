@@ -227,6 +227,27 @@ describe('the claims each lesson makes', () => {
     expect(Math.abs(y[y.length - 1])).toBeGreaterThan(Math.abs(y[Math.floor(y.length / 2)]) * 1.8)
   })
 
+  it('the twin-T’s zeros really ride the axis, and its Q really is stuck', () => {
+    const l = byName('A zero on the axis is silence')
+    const s = applyLesson(l)
+    const tf = tfOf(l)
+    // "ON the imaginary axis": zero real part, to precision, not merely small.
+    const { zeros } = polesZeros(tf)
+    expect(zeros).toHaveLength(2)
+    for (const [re] of zeros) expect(re).toBeCloseTo(0, 12)
+    // "removed, not attenuated": nothing left at the notch.
+    const f0 = 1 / (2 * Math.PI * s.params.r * s.params.c)
+    expect(magnitudeAt(tf, f0)).toBeLessThan(1e-12)
+    // "the phase snaps 180° across it".
+    const deg2 = (f) => deg(phaseAt(tf, f))
+    expect(deg2(f0 * (1 + 1e-6)) - deg2(f0 * (1 - 1e-6))).toBeCloseTo(180, 2)
+    // "no component choice sharpens it": Q pinned at the claim's value.
+    for (const [r, c] of [[1000, 1e-9], [47000, 33e-9]]) {
+      const m = secondOrderMetrics(transferOf('twinT', { r, c }, 'out'))
+      expect(m.q, `R=${r} C=${c}`).toBeCloseTo(l.claim.qFixed, 9)
+    }
+  })
+
   it('the bridge lesson really does hand over a low-pass biquad', () => {
     const l = byName('This circuit is a biquad')
     const d = asDigitalFilter(tfOf(l), { sampleRate: 192000 })

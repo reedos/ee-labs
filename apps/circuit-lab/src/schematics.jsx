@@ -236,6 +236,43 @@ const DRAW = {
       {out === 'c' && <rect className="sch-probe" x={184} y={24} width={48} height={26} rx="4" />}
     </>
   ),
+  // Two complete tees between the same three nodes. Drawn with both shunt legs
+  // dropping to their own ground symbol — one node electrically, two symbols
+  // visually, because a shared ground bus would force a wire crossing and this
+  // style has no crossings anywhere else to teach a reader how to read one.
+  twinT: (p) => (
+    <>
+      <Port x={20} y={60} label="in" />
+      <Wire x1={20} y1={60} x2={36} y2={60} />
+      <Wire x1={36} y1={30} x2={36} y2={110} />
+
+      {/* The low-pass tee: R — R with 2C to ground from the midpoint */}
+      <Wire x1={36} y1={30} x2={50} y2={30} />
+      <Res x={70} y={30} label={`R ${ohms(p.r)}`} />
+      <Wire x1={90} y1={30} x2={150} y2={30} />
+      <Res x={170} y={30} label={`R ${ohms(p.r)}`} />
+      <Wire x1={190} y1={30} x2={248} y2={30} />
+      <Wire x1={120} y1={30} x2={120} y2={34} />
+      <Cap x={120} y={54} vertical label={`2C ${farads(2 * p.c)}`} />
+      <Wire x1={120} y1={74} x2={120} y2={76} />
+      <Gnd x={120} y={76} />
+
+      {/* The high-pass tee: C — C with R/2 to ground from the midpoint */}
+      <Wire x1={36} y1={110} x2={52} y2={110} />
+      <Cap x={72} y={110} label={`C ${farads(p.c)}`} />
+      <Wire x1={92} y1={110} x2={150} y2={110} />
+      <Cap x={170} y={110} label={`C ${farads(p.c)}`} />
+      <Wire x1={190} y1={110} x2={248} y2={110} />
+      <Wire x1={120} y1={110} x2={120} y2={116} />
+      <Res x={120} y={136} vertical label={`R/2 ${ohms(p.r / 2)}`} />
+      <Wire x1={120} y1={156} x2={120} y2={158} />
+      <Gnd x={120} y={158} />
+
+      <Wire x1={248} y1={30} x2={248} y2={110} />
+      <Wire x1={248} y1={60} x2={268} y2={60} />
+      <Port x={272} y={60} label="out" anchor="start" />
+    </>
+  ),
   rlcParallel: (p) => (
     <>
       <Port x={20} y={30} label="i(t)" />
@@ -344,13 +381,18 @@ const DRAW = {
   ),
 }
 
+// The twin-T stacks two complete tees, which no honest drawing fits into the
+// standard frame; it gets a taller one of its own.
+const TALL = { twinT: { w: 300, h: 185 } }
+
 export default function Schematic({ id, params, output }) {
   const draw = DRAW[id]
   if (!draw) return null
+  const size = TALL[id] || S
   return (
     <svg
       className="schematic"
-      viewBox={`0 0 ${S.w} ${S.h}`}
+      viewBox={`0 0 ${size.w} ${size.h}`}
       role="img"
       aria-label={`Schematic for ${id}`}
     >

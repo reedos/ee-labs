@@ -179,6 +179,40 @@ export const CIRCUITS = {
     }),
   },
 
+  twinT: {
+    name: 'Twin-T notch',
+    group: 'Second order',
+    hint:
+      'Two T networks in parallel: R–R with 2C to ground, and C–C with R/2 to ground. At ' +
+      'exactly one frequency the two paths deliver equal and opposite signals, so the zeros of ' +
+      'H(s) sit ON the jω axis and that frequency is removed, not attenuated. The phase snaps ' +
+      'a full 180° across the notch — from −90° just below to +90° just above — which is the ' +
+      'signature of a zero on the boundary.',
+    // The matched network: both series resistors are R, both series capacitors
+    // are C, the shunt legs are 2C and R/2. One R and one C parameterise the
+    // whole thing, which is also what keeps its H(s) this small.
+    params: [R('r', 'R (series, both)', 10000), C('c', 'C (series, both)', 10e-9)],
+    outputs: [{ key: 'out', label: 'notch output' }],
+    tf: (p) => {
+      const tau = p.r * p.c
+      return { b: [tau * tau, 0, 1], a: [tau * tau, 4 * tau, 1] }
+    },
+    derive: {
+      tex: 'H(s) = \\frac{s^2R^2C^2 + 1}{s^2R^2C^2 + 4sRC + 1}',
+      note:
+        'For the matched network (R, R, 2C and C, C, R/2), superposing the two tees gives a ' +
+        'numerator with no s term — so its roots are ±j/RC, exactly on the axis. The ' +
+        'denominator keeps its s term, which is why the poles are safely real and inside.',
+    },
+    metrics: (p) => ({
+      w0: 1 / (p.r * p.c),
+      // 2ζω₀ = 4/RC while ω₀ = 1/RC, so ζ = 2 and Q = 1/4 — no component
+      // choice enters. The matched passive twin-T's bluntness is structural.
+      q: 0.25,
+      qTex: 'Q = \\frac{1}{4}',
+    }),
+  },
+
   sallenKey: {
     name: 'Sallen–Key low-pass',
     group: 'Active',

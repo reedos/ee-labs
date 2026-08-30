@@ -349,6 +349,51 @@ for (const [r1T, r1, r2T, r2, c1T, c1, c2T, c2] of [
   for (const b of bad) fail(`Sallen–Key ${c1T}/${c2T}: ✗ ${b.label}`)
 }
 
+// ------------------ 4c. Twin-T: the notch follows RC, and Q refuses to follow
+
+console.log('\n4c. Twin-T notch: f₀ follows 1/(2πRC), Q is pinned at 0.25\n')
+await pick('Twin-T notch')
+await openAllMath()
+for (const [rT, r, cT, c] of [
+  ['10k', 1e4, '10n', 10e-9],
+  ['47k', 4.7e4, '3.3n', 3.3e-9],
+  ['1k', 1e3, '100n', 100e-9],
+]) {
+  await setField('R (series, both)', rT)
+  await setField('C (series, both)', cT)
+  const wantF0 = 1 / (2 * Math.PI * r * c)
+  const t = await topbar()
+  const gotF0 = si(t['f₀'])
+  const gotQ = parseFloat(t.Q)
+  const okF = Math.abs(gotF0 - wantF0) / wantF0 < 0.01
+  // The whole point of the circuit's Q story: it must read 0.250 whatever
+  // the components say.
+  const okQ = Math.abs(gotQ - 0.25) < 1e-9
+  const bad = (await readChecks()).filter((x) => x.mark === '✗')
+  console.log(
+    `   R=${rT.padStart(4)} C=${cT.padEnd(5)} -> f₀ ${gotF0.toFixed(0).padStart(7)} ` +
+      `(want ${wantF0.toFixed(0).padStart(7)})  Q ${gotQ.toFixed(3)}  ` +
+      `${okF && okQ ? 'ok' : 'MISMATCH'}  ${bad.length} ✗`,
+  )
+  if (!okF) fail(`twin-T R=${rT} C=${cT}: f₀ ${gotF0} vs ${wantF0}`)
+  if (!okQ) fail(`twin-T R=${rT} C=${cT}: Q ${gotQ} should be exactly 0.250`)
+  for (const b of bad) fail(`twin-T R=${rT} C=${cT}: ✗ ${b.label} (theory ${b.theory}, measured ${b.measured})`)
+}
+// The hand-over must decline, in words, not break: no biquad shape fits a
+// notch, and Control Lab's plant has no zeros.
+{
+  const ho = await page.evaluate(
+    () => [...document.querySelectorAll('.controls section')].map((s) => s.textContent).join(' '),
+  )
+  if (!/not a second-order section of a shape a biquad can express/.test(ho)) {
+    fail('twin-T: the hand-over section should decline with its explanation')
+  }
+  if (/as something to control/.test(ho)) {
+    fail('twin-T: Control Lab hand-over should be declined (numerator has zeros)')
+  }
+  console.log('   hand-over declines honestly: no biquad shape, no plant offered')
+}
+
 // ------------------------------------------------- 5. the views, and stability
 
 console.log('\n5. Views, and the circuit that is deliberately not stable\n')

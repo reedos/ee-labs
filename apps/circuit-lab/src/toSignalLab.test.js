@@ -97,6 +97,20 @@ describe('recognising which filter a circuit is', () => {
       }
     }
   })
+
+  it('declines the twin-T rather than claiming a shape the biquads lack', () => {
+    // The twin-T IS a second-order section — but its zeros sit on the axis,
+    // a notch, and Signal Lab's biquad registry has lowpass, bandpass and
+    // highpass only. A band-pass "close enough" would be confidently wrong at
+    // exactly the frequency the circuit exists to remove, so it declines: no
+    // shape, no link. Control Lab is declined too — its second-order plant
+    // has no zeros at all.
+    const tf = transferOf('twinT', defaultsOf('twinT'), 'out')
+    const d = asDigitalFilter(tf)
+    expect(d.shape).toBeNull()
+    expect(d.link).toBeNull()
+    expect(asControlPlant(tf)).toBeNull()
+  })
 })
 
 describe('the whole way across', () => {
