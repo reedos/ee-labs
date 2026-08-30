@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "verify": "node scripts/verify.mjs",
+    "shots": "node scripts/shoot.mjs --all"
   },
   "dependencies": {
     "katex": "^0.18.4",

@@ -510,6 +510,9 @@ const ENTRIES = {
           predicted: 2 / ctx.fftSize,
           measured: ctx.dryAt ? ctx.dryAt(ctx.sampleRate / 4) : NaN,
           tol: 0.1,
+          unchecked: ctx.dryAt
+            ? null
+            : 'Turn on "show pre-chain spectrum" to measure the input level.',
         },
       ]),
     ],

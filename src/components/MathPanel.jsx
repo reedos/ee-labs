@@ -42,6 +42,9 @@ export function agrees({ predicted, measured, tol = 0.02, abs = 0 }) {
 }
 
 function Row({ label, predicted, measured, unit = '', tol = 0.02, abs = 0, unchecked = null, mark = '' }) {
+  // A missing measurement is not a failed comparison. Without this, a value the
+  // current settings never produced renders as a cross against correct physics.
+  const why = unchecked || (Number.isFinite(measured) ? null : 'Not measurable with these settings.')
   const ok = agrees({ predicted, measured, tol, abs })
   const fmt = (v) =>
     !Number.isFinite(v)
@@ -53,9 +56,9 @@ function Row({ label, predicted, measured, unit = '', tol = 0.02, abs = 0, unche
     <tr>
       <th scope="row">{label}</th>
       <td>{fmt(predicted)}</td>
-      <td>{unchecked ? '—' : fmt(measured)}</td>
-      {unchecked ? (
-        <td className="unchecked" title={unchecked}>
+      <td>{why ? '—' : fmt(measured)}</td>
+      {why ? (
+        <td className="unchecked" title={why}>
           {mark}
         </td>
       ) : (

@@ -17,9 +17,19 @@ the tool just measured.
 ```
 npm install
 npm run dev        # http://localhost:1421
-npm test           # 152 tests
+npm test           # 152 unit tests
 npm run build
+npm run preview    # then, against that server:
+npm run verify     # drives the real UI in a browser
 ```
+
+`npm test` exercises the DSP and the math directly. `npm run verify` is the one that
+catches wiring: it drives the actual page in Chromium, loads every preset, opens every
+math panel, changes parameters, and checks that the numbers on screen and the pixels in
+the canvases both follow. It found three bugs the unit tests could not — a claim that
+went unmeasurable at exactly two samples per cycle, a row showing a cross for a value
+that was never measured at all, and a preset missing the ghost trace its own lesson
+depended on.
 
 ## Where to start
 

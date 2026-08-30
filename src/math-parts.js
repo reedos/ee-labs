@@ -118,10 +118,16 @@ export function sourceMath(source, ctx) {
   // extremes — and converge only as the grid gets finer: 6% out at eight
   // samples per period, 1.6% at sixteen.
   const slowConverging = source.type === 'triangle' || source.type === 'sawtooth'
+  // ...and at exactly two samples per cycle every shape is degenerate: the
+  // samples only ever land on two phases, so the RMS becomes A|sin(phase)| and
+  // the crest factor collapses to 1. That is the same failure the sampling
+  // theorem warns about for amplitude, showing up in the power instead.
   const coarse =
-    slowConverging && N < 16
-      ? `Only ${Number(N.toFixed(2))} samples per period: the sampled values do not yet match the continuous integral for this shape.`
-      : null
+    N <= 2
+      ? 'Exactly two samples per cycle: the samples only ever land on two phases, so RMS depends on phase — A·|sin φ| — rather than on the shape. The continuous value does not apply.'
+      : slowConverging && N < 16
+        ? `Only ${Number(N.toFixed(2))} samples per period: the sampled values do not yet match the continuous integral for this shape.`
+        : null
 
   const blocks = [F(w.tex), T(w.harmonics)]
 
@@ -171,6 +177,37 @@ export function sourceMath(source, ctx) {
           value: Math.max(0, Math.floor((sampleRate / 2 - 1e-9) / f0)),
         },
       ]),
+    )
+  }
+
+  if (source.type === 'impulse' || source.type === 'step') {
+    // These two have no period, so RMS and crest say nothing about them. What
+    // does characterise them is how their energy is spread across the spectrum.
+    const flat = (2 * A) / fftSize
+    blocks.push(
+      V(
+        source.type === 'impulse'
+          ? [
+              { label: 'total energy A²', value: A * A },
+              { label: 'flat spectrum level 2A/N', value: flat, note: 'every bin, equally' },
+              { label: 'in dB', value: 20 * Math.log10(flat), unit: 'dB' },
+              { label: 'frame length N', value: fftSize, unit: 'samples' },
+            ]
+          : [
+              { label: 'final value', value: A },
+              { label: 'mean over the frame', value: A, note: 'the step is held' },
+              { label: 'bin width', value: binHz, unit: 'Hz' },
+            ],
+      ),
+      T(
+        source.type === 'impulse'
+          ? 'One sample of energy shared across every bin, so the flat level sits low on the dB ' +
+              'axis — 2A/N for an N-point frame. It is the SHAPE the chain gives that spectrum ' +
+              'that matters here, not its height.'
+          : 'Almost all of a step’s energy is at low frequency, falling as 1/f, so it drives a ' +
+              'filter hard where the filter is doing most of its work. That is what makes ' +
+              'overshoot and ringing visible.',
+      ),
     )
   }
 

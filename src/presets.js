@@ -250,6 +250,9 @@ export const PRESETS = [
       sampleRate: 8000,
       window: 'none',
       timeSpanMs: 15,
+      // The flat pre-chain spectrum is half the lesson: the gap between it and
+      // the shaped trace IS |H(f)|.
+      showGhost: true,
     },
   },
   {
