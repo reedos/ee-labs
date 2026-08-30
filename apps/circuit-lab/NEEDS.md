@@ -31,6 +31,14 @@ House discipline: "convolution in time = multiplication in frequency" is a
 measurable claim. Test it as FFT(x ∗ h) = FFT(x)·FFT(h) with zero-padding
 (linear vs circular convolution is the trap) before the sentence prints.
 
+## RESOLVED (0da675d): control-lab says the names and prints the multiplication
+
+Loop diagram states "in cascade: transfer functions multiply — L = C·P",
+the root locus names whose poles it draws, and their math panel prints the
+theorem in all three dialects with a measured |C|·|P| vs |L| row at the
+crossover. All three labs now print their vocabulary of the one theorem.
+Original request kept below for the record.
+
 ## FROM REED, generalized — for control-lab too (and done in circuit-lab)
 
 The same review generalizes to two rules worth auditing your app against:
