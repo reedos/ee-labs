@@ -13,6 +13,13 @@ import {
   simulate,
   secondOrderMetrics,
   bilinear,
+  polyMul,
+  polyAdd,
+  series,
+  closeLoop,
+  errorLoop,
+  margins,
+  rootLocus,
 } from './tf.js'
 
 // Checked against closed forms wherever one exists, because this package is
@@ -278,5 +285,123 @@ describe('systems with no state at all', () => {
     expect(magnitudeAt(divider, 1)).toBeCloseTo(1 / 3, 12)
     expect(magnitudeAt(divider, 1e9)).toBeCloseTo(1 / 3, 12)
     expect(polesZeros(divider).poles).toHaveLength(0)
+  })
+})
+
+describe('loops', () => {
+  // The textbook loop: a plant of 1/(s(s+1)) with proportional gain k, whose
+  // closed form is known exactly, so every number below has something to be
+  // wrong against.
+  const plant = { b: [1], a: [1, 1, 0] }
+  const openLoop = (k) => series({ b: [k], a: [1] }, plant)
+  const grid = Float64Array.from({ length: 6000 }, (_, i) => Math.pow(10, -3 + 6 * (i / 5999)))
+
+  it('multiplies and adds polynomials', () => {
+    expect(polyMul([1, 2], [1, 3])).toEqual([1, 5, 6])
+    expect(polyAdd([1, 0], [5])).toEqual([1, 5])
+    expect(polyAdd([1, 2, 3], [4, 5])).toEqual([1, 6, 8])
+  })
+
+  it('puts blocks in series by multiplying numerators and denominators', () => {
+    const L = series({ b: [2], a: [1, 1] }, { b: [3], a: [1, 2] })
+    expect(L.b).toEqual([6])
+    expect(L.a).toEqual([1, 3, 2])
+    expect(dcGain(L)).toBeCloseTo(3, 12)
+  })
+
+  it('closes the loop as L/(1+L), which is where feedback moves the poles', () => {
+    for (const k of [0.25, 1, 4, 9]) {
+      const T = closeLoop(openLoop(k))
+      const m = secondOrderMetrics(T)
+      // wn = sqrt(k) and zeta = 1/(2 sqrt(k)) for this loop, exactly.
+      expect(m.wn, `k=${k}`).toBeCloseTo(Math.sqrt(k), 9)
+      expect(m.zeta, `k=${k}`).toBeCloseTo(1 / (2 * Math.sqrt(k)), 9)
+      // Unity feedback drives the steady-state error to zero: there is an
+      // integrator in the loop, so DC gain is exactly 1.
+      expect(dcGain(T), `k=${k}`).toBeCloseTo(1, 9)
+    }
+  })
+
+  it('the error loop is what feedback fails to reject', () => {
+    const L = openLoop(1)
+    const E = errorLoop(L)
+    // An integrator in the loop means zero steady-state error to a step.
+    expect(dcGain(E)).toBeCloseTo(0, 9)
+    // ...and T + E = 1 at every frequency, since one is what got through and
+    // the other is what did not.
+    for (const f of [0.01, 0.1, 1, 10]) {
+      const t = evalAtFreq(closeLoop(L), f)
+      const e = evalAtFreq(E, f)
+      expect(t[0] + e[0], `re at ${f}`).toBeCloseTo(1, 9)
+      expect(t[1] + e[1], `im at ${f}`).toBeCloseTo(1e-30, 9)
+    }
+  })
+
+  it('measures phase margin where the gain passes through one', () => {
+    // For k = 1 the gain crossover solves w^4 + w^2 - 1 = 0.
+    const wExact = Math.sqrt((Math.sqrt(5) - 1) / 2)
+    const pmExact = 180 - 90 - (Math.atan(wExact) * 180) / Math.PI
+    const m = margins(openLoop(1), grid)
+
+    // Reported in hertz, like every other frequency in this suite.
+    expect(m.gainCrossover * 2 * Math.PI).toBeCloseTo(wExact, 3)
+    expect(m.phaseMargin).toBeCloseTo(pmExact, 1)
+    // Two poles and no more: the phase approaches -180 but never reaches it,
+    // so there is no gain margin to report and none should be invented.
+    expect(m.phaseCrossover).toBeNull()
+    expect(m.gainMargin).toBeNull()
+  })
+
+  it('more gain buys speed and spends phase margin', () => {
+    let lastPm = Infinity
+    for (const k of [0.25, 1, 4, 16]) {
+      const m = margins(openLoop(k), grid)
+      expect(m.phaseMargin, `k=${k}`).toBeLessThan(lastPm)
+      lastPm = m.phaseMargin
+    }
+  })
+
+  it('finds the gain margin of a loop that actually has one', () => {
+    // Three poles: 1/(s(s+1)(s+2)) goes unstable at k = 6, by Routh.
+    const p3 = { b: [1], a: [1, 3, 2, 0] }
+    const L = series({ b: [1], a: [1] }, p3)
+    const m = margins(L, grid)
+    // Phase crossover at w = sqrt(2) rad/s, where |L| = 1/6, so the gain margin
+    // is exactly 6 — the factor by which k may rise before it sings.
+    expect(m.phaseCrossover * 2 * Math.PI).toBeCloseTo(Math.SQRT2, 2)
+    expect(m.gainMargin).toBeCloseTo(6, 1)
+    expect(m.gainMarginDb).toBeCloseTo(20 * Math.log10(6), 1)
+  })
+
+  it('root locus crosses into the right half plane exactly where it should', () => {
+    const p3 = { b: [1], a: [1, 3, 2, 0] }
+    const L = series({ b: [1], a: [1] }, p3)
+    const locus = rootLocus(L, [1, 3, 5, 5.9, 6.1, 10, 20])
+    const worst = (entry) => Math.max(...entry.poles.map(([re]) => re))
+
+    for (const e of locus.filter((x) => x.k < 6)) {
+      expect(worst(e), `k=${e.k} should be stable`).toBeLessThan(0)
+    }
+    for (const e of locus.filter((x) => x.k > 6)) {
+      expect(worst(e), `k=${e.k} should be unstable`).toBeGreaterThan(0)
+    }
+    // And at the crossing the pair sits on the imaginary axis at sqrt(2).
+    const at6 = rootLocus(L, [6])[0]
+    const onAxis = at6.poles.filter(([re]) => Math.abs(re) < 1e-6)
+    expect(onAxis).toHaveLength(2)
+    expect(Math.abs(onAxis[0][1])).toBeCloseTo(Math.SQRT2, 4)
+  })
+
+  it('agrees with closeLoop about where the closed-loop poles are', () => {
+    // Two routes to the same characteristic equation; they must not disagree.
+    const L = series({ b: [4], a: [1] }, plant)
+    const viaClose = polesZeros(closeLoop(L)).poles.map(([re, im]) => [re, Math.abs(im)])
+    const viaLocus = rootLocus(plant, [4])[0].poles.map(([re, im]) => [re, Math.abs(im)])
+    viaClose.sort((a, b) => a[0] - b[0] || a[1] - b[1])
+    viaLocus.sort((a, b) => a[0] - b[0] || a[1] - b[1])
+    for (let i = 0; i < viaClose.length; i++) {
+      expect(viaClose[i][0]).toBeCloseTo(viaLocus[i][0], 9)
+      expect(viaClose[i][1]).toBeCloseTo(viaLocus[i][1], 9)
+    }
   })
 })

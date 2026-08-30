@@ -20,4 +20,11 @@ export {
   stepResponse,
   secondOrderMetrics,
   bilinear,
+  polyMul,
+  polyAdd,
+  series,
+  closeLoop,
+  errorLoop,
+  margins,
+  rootLocus,
 } from './src/tf.js'

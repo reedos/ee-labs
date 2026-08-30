@@ -331,3 +331,126 @@ export function bilinear(tf, sampleRate, prewarpHz = null) {
   const g = den[0]
   return { b: num.map((v) => v / g), a: den.map((v) => v / g) }
 }
+
+// --------------------------------------------------------- composing loops
+//
+// A control loop is built from transfer functions rather than being one, so the
+// algebra below is what turns a plant and a controller into something the rest
+// of this file can analyse.
+
+/** Multiply two polynomials. */
+export function polyMul(p, q) {
+  const r = new Array(p.length + q.length - 1).fill(0)
+  for (let i = 0; i < p.length; i++) {
+    for (let j = 0; j < q.length; j++) r[i + j] += p[i] * q[j]
+  }
+  return r
+}
+
+/** Add two polynomials, aligning them on the constant term. */
+export function polyAdd(p, q) {
+  const n = Math.max(p.length, q.length)
+  const r = new Array(n).fill(0)
+  for (let i = 0; i < p.length; i++) r[n - p.length + i] += p[i]
+  for (let i = 0; i < q.length; i++) r[n - q.length + i] += q[i]
+  return r
+}
+
+/** Series connection: the output of one drives the input of the next. */
+export function series(...tfs) {
+  return tfs.reduce((acc, t) => ({ b: polyMul(acc.b, t.b), a: polyMul(acc.a, t.a) }), {
+    b: [1],
+    a: [1],
+  })
+}
+
+/**
+ * Close a unity-feedback loop around L: T = L / (1 + L).
+ *
+ * The denominator is the sum of L's numerator and denominator, which is the
+ * whole reason feedback changes the poles: 1 + L = 0 is the characteristic
+ * equation, and its roots are where the closed loop actually lives.
+ */
+export function closeLoop(L) {
+  return { b: L.b, a: polyAdd(L.b, L.a) }
+}
+
+/** Error transfer function: E/R = 1 / (1 + L). What feedback fails to reject. */
+export function errorLoop(L) {
+  return { b: L.a, a: polyAdd(L.b, L.a) }
+}
+
+/**
+ * Gain and phase margin of an open loop, and where they are measured.
+ *
+ * Both answer the same question from different sides: how far is this loop from
+ * having 1 + L = 0 at some real frequency, which is the point at which negative
+ * feedback becomes positive and the thing sings.
+ *
+ *   phase margin  how much extra lag it would take, at the frequency where the
+ *                 gain is already 1
+ *   gain margin   how much extra gain it would take, at the frequency where the
+ *                 phase has already reached -180 degrees
+ *
+ * Either can be absent. A loop whose gain never reaches 1 has no phase-crossover
+ * to measure, and saying so is more use than reporting a number for a frequency
+ * that does not exist.
+ *
+ * The crossover frequencies come back in whatever unit `freqs` was given in,
+ * which everywhere in this suite means hertz — not the radians per second a
+ * controls textbook would print. A loop crossing at 0.786 rad/s reports 0.125.
+ */
+export function margins(L, freqs) {
+  const { mag, phase } = bode(L, freqs)
+  const deg = (r) => (r * 180) / Math.PI
+
+  // Gain crossover: |L| passes through 1.
+  let wGc = null
+  let pm = null
+  for (let i = 1; i < mag.length; i++) {
+    if ((mag[i - 1] - 1) * (mag[i] - 1) < 0) {
+      const t = (1 - mag[i - 1]) / (mag[i] - mag[i - 1])
+      wGc = freqs[i - 1] + t * (freqs[i] - freqs[i - 1])
+      pm = 180 + deg(phase[i - 1] + t * (phase[i] - phase[i - 1]))
+      break
+    }
+  }
+
+  // Phase crossover: the angle passes through -180 degrees.
+  let wPc = null
+  let gm = null
+  for (let i = 1; i < phase.length; i++) {
+    const a = deg(phase[i - 1]) + 180
+    const b = deg(phase[i]) + 180
+    if (a * b < 0) {
+      const t = a / (a - b)
+      wPc = freqs[i - 1] + t * (freqs[i] - freqs[i - 1])
+      const m = mag[i - 1] + t * (mag[i] - mag[i - 1])
+      gm = m > 0 ? 1 / m : Infinity
+      break
+    }
+  }
+
+  return {
+    gainCrossover: wGc,
+    phaseMargin: pm,
+    phaseCrossover: wPc,
+    gainMargin: gm,
+    gainMarginDb: gm == null ? null : 20 * Math.log10(gm),
+  }
+}
+
+/**
+ * Root locus: where the closed-loop poles go as a gain k is swept.
+ *
+ * The roots of 1 + k*L(s) = 0, which is the same characteristic equation as
+ * closeLoop, with the gain left as a parameter. Watching a branch cross into
+ * the right half plane is what "turn it up until it oscillates" looks like
+ * before it happens.
+ */
+export function rootLocus(L, gains) {
+  return gains.map((k) => ({
+    k,
+    poles: roots(polyAdd(L.a, L.b.map((v) => v * k))),
+  }))
+}
