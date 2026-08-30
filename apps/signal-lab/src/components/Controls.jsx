@@ -1,5 +1,5 @@
 import React from 'react'
-import { NumField } from '@ee-labs/ui'
+import { LabNav, NumField } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { sourceMath } from '../math-parts.js'
 import { PRESET_GROUPS } from '../presets.js'
@@ -189,6 +189,7 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
   return (
     <aside className="controls">
       <header>
+        <LabNav current="signal-lab" />
         <h1>Signal Lab</h1>
         <p className="sub">
           A signal, its frequency content, and what happens when you put things in the way.

@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
-import { COLORS, NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
+import { COLORS, LabNav, NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import {
   bode,
@@ -243,6 +243,7 @@ export default function App() {
     <div className="app">
       <aside className="controls">
         <header>
+          <LabNav current="circuit-lab" />
           <h1>Circuit Lab</h1>
           <p className="sub">
             A circuit, the transfer function it has, and the same thing seen in frequency, in

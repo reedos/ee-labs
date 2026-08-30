@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildLink, parseLink, siblingUrl } from './deeplink.js'
+import { buildLink, parseLink, siblingUrl, homeUrl } from './deeplink.js'
 
 // Both ends of the bridge have to agree, so the round trip is the contract.
 
@@ -124,6 +124,22 @@ describe('siblingUrl', () => {
 
   it('does not match a segment that merely contains an app name', () => {
     expect(siblingUrl('signal-lab', 'x=1', at('/my-circuit-lab-notes/'))).toBeNull()
+  })
+})
+
+describe('homeUrl', () => {
+  const at = (pathname, origin = 'https://reedos.github.io') => ({ origin, pathname })
+
+  it('points at the directory the lab folders sit in', () => {
+    expect(homeUrl(at('/ee-labs/signal-lab/'))).toBe('https://reedos.github.io/ee-labs/')
+    expect(homeUrl(at('/ee-labs/control-lab/index.html'))).toBe('https://reedos.github.io/ee-labs/')
+    expect(homeUrl(at('/circuit-lab/'))).toBe('https://reedos.github.io/')
+  })
+
+  it('returns null in dev and with no location, like siblingUrl', () => {
+    expect(homeUrl(at('/', 'http://localhost:1422'))).toBeNull()
+    expect(homeUrl(null)).toBeNull()
+    expect(homeUrl(at('/my-circuit-lab-notes/'))).toBeNull()
   })
 })
 

@@ -174,3 +174,15 @@ export function siblingUrl(app, fragment, loc = typeof window === 'undefined' ? 
   if (!m || m[2] === app) return null
   return `${loc.origin}${m[1]}${app}/${fragment ? '#' + fragment : ''}`
 }
+
+/**
+ * The splash page's URL: the directory the lab folders sit in. Same layout
+ * assumption and same dev behaviour as siblingUrl — null on a bare dev port,
+ * where there is no splash page to point at.
+ */
+export function homeUrl(loc = typeof window === 'undefined' ? null : window.location) {
+  if (!loc) return null
+  const m = loc.pathname.match(/^(.*\/)(signal-lab|circuit-lab|control-lab)(\/[^/]*)?$/)
+  if (!m) return null
+  return `${loc.origin}${m[1]}`
+}

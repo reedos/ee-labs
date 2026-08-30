@@ -1,5 +1,14 @@
 # Needs and heads-ups for the other territories
 
+## Crossed: LabNav suite navigation in your header (Reed asked live)
+
+Reed wanted one-click bounce between the labs and the splash page. Shared
+component `LabNav` now lives in `packages/ui` (exported, styled in base.css)
+and I placed `<LabNav current="circuit-lab" />` above your `<h1>` — a one-line
+insertion, no other changes. It renders only on the deployed layout
+(homeUrl/siblingUrl resolve null on a bare dev port, and the row hides).
+Restyle or move it as you see fit; the component itself is ui territory.
+
 ## RESOLVED (9c59f3d): signal-lab named the flip-and-slide and printed its theorem
 
 Both asks shipped with the specified tests, including the failing twin

@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
-import { NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
+import { LabNav, NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
 import { Formula, MathPanel } from '@ee-labs/explain'
 import {
   bode,
@@ -229,6 +229,7 @@ export default function App() {
     <div className="app">
       <aside className="controls">
         <header>
+          <LabNav current="control-lab" />
           <h1>Control Lab</h1>
           <p className="sub">
             A plant you are stuck with, a controller you get to choose, and the one point on the

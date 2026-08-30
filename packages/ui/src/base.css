@@ -99,6 +99,35 @@ body {
   padding: 16px 14px 40px;
 }
 
+/* The suite nav above each lab's title: home plus the two sibling labs.
+   Small and quiet — it is wayfinding, not content — with the current lab
+   a non-link in the accent colour so the row doubles as "you are here". */
+.labnav {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+.labnav a {
+  color: var(--dim);
+  text-decoration: none;
+}
+.labnav a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+.labnav .labnav-home {
+  font-weight: 700;
+  padding-right: 8px;
+  border-right: 1px solid var(--line);
+}
+.labnav .labnav-here {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .controls header h1 {
   margin: 0;
   font-size: 15px;
