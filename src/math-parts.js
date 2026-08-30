@@ -315,7 +315,31 @@ export function blockMath(block, ctx) {
             unit: 'samples',
           },
           { label: 'cutoff as a fraction of Nyquist', value: p.freq / (sampleRate / 2) },
+          { label: 'order of this section', value: 2 },
+          { label: 'rolloff', value: 12, unit: 'dB/octave', note: 'asymptotic' },
         ]),
+        T(
+          'Second order is this block, not filters in general. A filter can be any order, and ' +
+            'order is what sets how fast it rolls off: about 6 dB per octave for each order, so ' +
+            '12 for this one. Nothing here is limited to second order — you raise the order by ' +
+            'putting sections in series, and two of these in a row is a fourth-order filter.',
+        ),
+        F('\\text{rolloff} \\to 6N\\ \\text{dB/octave} \\quad (N = \\text{order})'),
+        T(
+          'The catch is that cascading identical sections does NOT give a named filter. A ' +
+            'Butterworth — the maximally flat one — needs a specific Q for each section, and ' +
+            'only the second-order case is 0.707:',
+        ),
+        F(
+          'Q_k = \\frac{1}{2\\cos\\!\\left(\\frac{(2k+1)\\pi}{2N}\\right)}, ' +
+            '\\qquad k = 0 \\ldots \\tfrac{N}{2}-1',
+        ),
+        T(
+          'Order 4 wants Q = 0.541 and 1.307; order 6 wants 0.518, 0.707 and 1.932. Use 0.707 ' +
+            'twice instead and the order is still 4 and the far slope is unchanged, but the ' +
+            'corner sags to −6 dB where a Butterworth holds −3. The preset "Order is a choice" ' +
+            'has both side by side.',
+        ),
         T(`At the corner frequency this mode has a defining value, ${BIQUAD_NAMES[block.type]}:`),
         F(ident.tex),
         T(

@@ -205,12 +205,32 @@ export const PRESETS = [
       'one squares the response and doubles the attenuation in dB at every frequency. Bypass ' +
       'one with its power button and watch the curve halve its slope. (It also steepens near ' +
       '4 kHz for a separate reason: a digital filter has a zero at Nyquist that the textbook ' +
-      'analogue prototype does not.)',
+      'analogue prototype does not.) Two sections is a 4th-order filter — but not a 4th-order ' +
+      'Butterworth, which needs a different Q in each. See "Order is a choice".',
     patch: {
       sources: [mk(1, 'noise', 100, 0.6)],
       blocks: [
         bk(1, 'lowpass', { freq: 800, q: Math.SQRT1_2 }),
         bk(2, 'lowpass', { freq: 800, q: Math.SQRT1_2 }),
+      ],
+      sampleRate: 8000,
+      timeSpanMs: 20,
+    },
+  },
+  {
+    group: 'Filters',
+    name: 'Order is a choice',
+    note:
+      'Every filter block here is second order — a biquad — but that is this tool\'s choice, not ' +
+      'a law. Order is set by how many sections you cascade, and each order adds about 6 dB per ' +
+      'octave. These two make a real 4th-order Butterworth, and the Qs are 0.541 and 1.307, NOT ' +
+      '0.707 twice. Set them both to 0.707: still 4th order, still the same far slope, but the ' +
+      'corner sags from −3 dB to −6, because a Butterworth needs a particular Q per section.',
+    patch: {
+      sources: [mk(1, 'noise', 100, 0.6)],
+      blocks: [
+        bk(1, 'lowpass', { freq: 800, q: 0.5412 }),
+        bk(2, 'lowpass', { freq: 800, q: 1.3066 }),
       ],
       sampleRate: 8000,
       timeSpanMs: 20,

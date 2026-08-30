@@ -17,7 +17,7 @@ the tool just measured.
 ```
 npm install
 npm run dev        # http://localhost:1421
-npm test           # 146 tests
+npm test           # 152 tests
 npm run build
 ```
 
@@ -51,6 +51,7 @@ what breaks.
 | Resonance is Q | Q, in a way you can see: the peak height *is* Q. |
 | Phase is invisible here | A filter that changes everything and nothing. Turn on the phase curve. |
 | Two filters are steeper | Cascading squares the response and doubles the dB. |
+| Order is a choice | Every block here is 2nd order — but filters are not, and cascading is how you climb. |
 | Impulse response | h(t) and H(f) side by side — the same object from two sides. |
 | Step response and ringing | What Q feels like in time: overshoot and settling. |
 
@@ -89,6 +90,19 @@ sources → sum → [ordered block chain] → scope + FFT
 The scope's horizontal axis counts cycles of the signal rather than milliseconds, so
 "show me five periods" stays five periods when you move a source from 250 Hz to 2 kHz.
 Aperiodic sources fall back to a span in milliseconds.
+
+### Order
+
+Every filter block here is a second-order section — a biquad. That is what this tool
+ships, not a fact about filters. Order is set by how many sections you put in series, and
+each order adds roughly 6 dB per octave of rolloff, approached as an asymptote from above.
+
+Cascading is not the whole story, though, and the block panel says so. Two identical
+Q = 0.707 sections *is* a fourth-order filter with the right far-field slope, but it is
+not a fourth-order **Butterworth** — that needs Q = 0.541 and 1.307, and only the
+second-order case is 0.707. The giveaway is at the cutoff: every true Butterworth passes
+exactly −3.01 dB there whatever its order, while two identical sections give −6.02 dB and
+sag well before the corner. The "Order is a choice" preset puts both side by side.
 
 ### Phase, and what is deliberately not offered
 

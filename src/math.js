@@ -424,6 +424,68 @@ const ENTRIES = {
     }
   },
 
+  'Order is a choice': (ctx) => {
+    const qs = ctx.blocks.map((b) => b.params.q)
+    const fc = ctx.blocks.length ? ctx.blocks[0].params.freq : 0
+    // Read the cascade off the response curve the app draws, rather than
+    // multiplying biquadResponse here — that would be the same formula twice.
+    const prod = ctx.respAt(fc)
+    // Butterworth section Qs for order N, from the pole angles.
+    const bw = (N) =>
+      Array.from({ length: N / 2 }, (_, k) => 1 / (2 * Math.cos(((2 * k + 1) * Math.PI) / (2 * N))))
+    const isBw =
+      qs.length === 2 &&
+      bw(4).every((q, i) => Math.abs(qs[i] - q) < 0.01)
+
+    return {
+      blocks: [
+        T(
+          'Order counts the sections. Each biquad is second order, so two in series is fourth ' +
+            'order, three is sixth, and the rolloff far above the cutoff approaches 6 dB per ' +
+            'octave for every order:',
+        ),
+        F('\\text{rolloff} \\to 6N\\ \\text{dB/octave}'),
+        T(
+          'But order alone does not name a filter. A Butterworth is the one that is maximally ' +
+            'flat in the passband, and getting it requires a specific Q for each section — the ' +
+            'poles have to sit evenly around a semicircle:',
+        ),
+        F(
+          'Q_k = \\frac{1}{2\\cos\\!\\left(\\frac{(2k+1)\\pi}{2N}\\right)}, ' +
+            '\\qquad k = 0 \\ldots \\tfrac{N}{2}-1',
+        ),
+        V([
+          { label: 'order 2 wants Q', value: bw(2)[0] },
+          { label: 'order 4 wants Q', value: bw(4)[0], note: `and ${bw(4)[1].toFixed(4)}` },
+          {
+            label: 'order 6 wants Q',
+            value: bw(6)[0],
+            note: `and ${bw(6)[1].toFixed(4)}, ${bw(6)[2].toFixed(4)}`,
+          },
+        ]),
+        T(
+          'Only the second-order case is 0.707, which is why that value is famous and why ' +
+            'cascading two of them is a common mistake. The giveaway is at the cutoff: every ' +
+            'true Butterworth passes exactly −3.01 dB there, whatever its order, because that ' +
+            'is where the definition pins it. Two identical 0.707 sections give −6.02 dB — each ' +
+            'contributing its own −3.01 — and sag well before the corner.',
+        ),
+        F('|H(f_c)| = \\tfrac{1}{\\sqrt{2}} \\quad\\text{for a Butterworth of any order}'),
+        C([
+          {
+            label: `|H| at f_c = ${fc} Hz`,
+            predicted: Math.SQRT1_2,
+            measured: prod,
+            tol: 0.02,
+            unchecked: isBw
+              ? null
+              : 'The two Q values are no longer the Butterworth pair, so −3.01 dB is not what this cascade is aiming for.',
+          },
+        ]),
+      ],
+    }
+  },
+
   'Impulse response': (ctx) => ({
     blocks: [
       T(
