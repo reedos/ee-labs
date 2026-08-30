@@ -1,5 +1,6 @@
 import { designBiquad, biquadResponse, render } from '@ee-labs/dsp'
 import { applyChain, chainImpulse } from './dsp/chain.js'
+import { BLOCK_TYPES } from './dsp/blocks.js'
 
 // What is actually happening, for the preset currently loaded.
 //
@@ -59,6 +60,29 @@ function harmonicCheck(ctx, k) {
   if (Math.abs(f / binHz - Math.round(f / binHz)) > 1e-6) return NOTE_OFF_BIN
   return null
 }
+
+// |H| at the first odd harmonics, measured as the RATIO of the two traces.
+// Predicted through the block's own response() — which follows the ORDER
+// select — not through designBiquad directly, which is order-2 only and
+// would mark a 4th-order filter's correct physics wrong.
+const harmonicRatioRows = (ctx) => {
+  const b = ctx.blocks[0]
+  if (!b) return []
+  const def = BLOCK_TYPES[b.type]
+  return [1, 3, 5].map((k) => {
+    const f = (ctx.sourceFreq || 250) * k
+    return {
+      label: `|H| at ${f} Hz`,
+      // Numerator and denominator are the same bin of the same window, so
+      // scalloping divides straight out and only Nyquist can spoil this.
+      unchecked: f >= ctx.sampleRate / 2 ? NOTE_ALIASED : null,
+      predicted: def.response(b.params, f, ctx.sampleRate),
+      measured: ctx.dryAt ? ctx.at(f) / (ctx.dryAt(f) || 1e-12) : NaN,
+      tol: 0.08,
+    }
+  })
+}
+
 
 const ENTRIES = {
   'Single tone': () => ({
@@ -489,24 +513,30 @@ const ENTRIES = {
     ],
   }),
 
-  'Low-pass a square': (ctx) => {
-    const b = ctx.blocks[0]
-    const rows = []
-    if (b) {
-      const co = designBiquad({ mode: b.type, ...b.params }, ctx.sampleRate)
-      for (const k of [1, 3, 5]) {
-        const f = (ctx.sourceFreq || 250) * k
-        rows.push({
-          label: `|H| at ${f} Hz`,
-          // Numerator and denominator are the same bin of the same window, so
-          // scalloping divides straight out and only Nyquist can spoil this.
-          unchecked: f >= ctx.sampleRate / 2 ? NOTE_ALIASED : null,
-          predicted: biquadResponse(co, f, ctx.sampleRate),
-          measured: ctx.dryAt ? ctx.at(f) / (ctx.dryAt(f) || 1e-12) : NaN,
-          tol: 0.08,
-        })
-      }
+  'High-pass a square': (ctx) => {
+    const rows = harmonicRatioRows(ctx)
+    return {
+      blocks: [
+        T(
+          'The same multiplication as the low-pass lesson, mirrored: the output spectrum is ' +
+            'the input spectrum times the filter, bin by bin — and this filter keeps the TOP ' +
+            'of the series instead of the bottom.',
+        ),
+        F('Y(f) = H(f)\,X(f)'),
+        T(
+          'The time view is the real lesson. A plateau is a stretch of not-changing — low ' +
+            'frequency — so the flat tops die toward zero. An edge is the fastest change the ' +
+            'signal has — built from the high harmonics — so the transitions survive as ' +
+            'alternating spikes. A high-pass answers “where does the signal CHANGE?”, which ' +
+            'is why its cousins live in edge detectors.',
+        ),
+        C(rows),
+      ],
     }
+  },
+
+  'Low-pass a square': (ctx) => {
+    const rows = harmonicRatioRows(ctx)
     return {
       blocks: [
         T('The output spectrum is the input spectrum multiplied by the filter, bin by bin:'),

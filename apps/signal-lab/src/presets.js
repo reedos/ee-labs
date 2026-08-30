@@ -233,6 +233,29 @@ export const PRESETS = [
   },
   {
     group: 'Filters',
+    name: 'High-pass a square',
+    terms: ['harmonic'],
+    note:
+      'The mirror of “Low-pass a square”: same square, same 700 Hz corner, opposite ' +
+      'survivor list. The fundamental is cut, the upper harmonics pass — and the scope shows ' +
+      'what that MEANS: the flat tops sag away toward zero (a plateau is low frequency — a ' +
+      'stretch of not-changing), while each edge survives as a sharp alternating spike (an ' +
+      'edge is the fastest change the signal has, built from the harmonics this filter ' +
+      'keeps). A high-pass answers “where does the signal change?”. Compare the ghost: ' +
+      'the square is still there in dim, and the gap between the traces at each harmonic IS ' +
+      'the response curve.',
+    patch: {
+      sources: [mk(1, 'square', 250, 1)],
+      blocks: [bk(1, 'highpass', { freq: 700, q: Math.SQRT1_2 })],
+      sampleRate: 8000,
+      timeSpanMs: 20,
+      spanCycles: 3,
+      showHarmonics: true,
+      showGhost: true,
+    },
+  },
+  {
+    group: 'Filters',
     name: 'Resonance is Q',
     terms: ['q'],
     note:

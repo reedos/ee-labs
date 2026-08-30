@@ -623,3 +623,35 @@ describe('preset: Sines in, sines out', () => {
     expect(worst / amps[iMax]).toBeLessThan(0.006)
   })
 })
+
+describe('preset: High-pass a square', () => {
+  it('cuts the fundamental and passes the upper harmonics by exactly |H|', () => {
+    const p = byName('High-pass a square').patch
+    const { at } = run('High-pass a square')
+    const dry = run('High-pass a square', { blocks: [] })
+    const { mag } = chainResponse(p.blocks, Float64Array.of(250, 750, 1250), 8000)
+    expect(at(250) / dry.at(250)).toBeCloseTo(mag[0], 1)
+    expect(at(750) / dry.at(750)).toBeCloseTo(mag[1], 1)
+    expect(at(1250) / dry.at(1250)).toBeCloseTo(mag[2], 1)
+    // The mirror fact: the fundamental is well down, the 5th essentially passes.
+    expect(mag[0]).toBeLessThan(0.2)
+    expect(mag[2]).toBeGreaterThan(0.85)
+  })
+
+  it('the plateaus die and the edges survive as spikes — the note\u2019s scope claim', () => {
+    const p = byName('High-pass a square').patch
+    const r = renderChain(p.sources, p.blocks, 512, 8000)
+    const y = r.buf
+    // Square at 250 Hz / 8 kHz: 32-sample period, edges at multiples of 16.
+    // Plateau centres sit 8 samples after each edge.
+    let plateau = 0
+    let edge = 0
+    for (let e = 64; e + 16 < 512; e += 16) {
+      edge = Math.max(edge, Math.abs(y[e]), Math.abs(y[e + 1]))
+      plateau = Math.max(plateau, Math.abs(y[e + 8]))
+    }
+    // Edges ring near full scale; mid-plateau the output has decayed hard.
+    expect(edge).toBeGreaterThan(0.8)
+    expect(plateau).toBeLessThan(edge * 0.25)
+  })
+})
