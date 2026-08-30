@@ -162,6 +162,13 @@ console.log('\n1b. Loading every lesson through the folded groups\n')
     })
     if (!state.active) fail(`${name}: no lesson button marked active after loading`)
     if (!state.open) fail(`${name}: the active lesson's group is folded shut`)
+    // A phase margin is an angle to −1 and lives on a circle. The unstable
+    // plant once read 438.5° here — the raw 180° + ∠L off an anchor a full
+    // turn up — so every lesson's displayed margin is range-checked.
+    const pmText = (await topbar())['phase margin']
+    if (pmText !== '—' && !(Math.abs(parseFloat(pmText)) <= 180)) {
+      fail(`${name}: phase margin reads ${pmText} — off the circle`)
+    }
     console.log(`   ${name.padEnd(34)} ${bad.length ? bad.length + '✗' : 'ok'}`)
   }
 

@@ -1,4 +1,4 @@
-import { series, closeLoop, polyAdd, polyMul } from '@ee-labs/systems'
+import { series, closeLoop, margins, polyAdd, polyMul } from '@ee-labs/systems'
 
 // The things being controlled, and the things doing the controlling.
 //
@@ -197,6 +197,27 @@ export function buildLoop(plantId, plantParams, ctrlId, ctrlParams) {
     a: polyAdd(polyMul(P0.a, C0.a), polyMul(P0.b, C0.b)),
   }
   return { plant: P0, controller: C0, open: L, closed: closeLoop(L), disturbance }
+}
+
+/**
+ * margins(), with the phase margin folded into (−180°, 180°].
+ *
+ * A phase margin is the ANGLE between L at its crossover and the point −1,
+ * and an angle lives on a circle. The raw 180° + ∠L does not: bode() anchors
+ * the unstable plant's phase at +180° (its DC gain is negative), and the top
+ * bar then printed "phase margin 438.5°" for the unstable plant under Kp 5 —
+ * a number with no meaning to a reader. Folded, it is the 78.5° a bench
+ * analyzer or MATLAB's margin() would print: how much extra lag this loop
+ * really tolerates. Flagged in NEEDS.md for a fix at the source.
+ */
+export function loopMargins(L, freqs) {
+  const m = margins(L, freqs)
+  if (m.phaseMargin != null) {
+    let pm = ((m.phaseMargin % 360) + 360) % 360
+    if (pm > 180) pm -= 360
+    m.phaseMargin = pm
+  }
+  return m
 }
 
 export const defaultsOf = (defs) => {

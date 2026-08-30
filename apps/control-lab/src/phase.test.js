@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { bode, margins, phaseAt, series, closeLoop, isStable } from '@ee-labs/systems'
 import { checkFailures, texFailures, valueRowsPretendingToCheck, rowsOf, inertRows } from '@ee-labs/explain/testing'
-import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
+import { PLANTS, CONTROLLERS, buildLoop, defaultsOf, loopMargins } from './systems.js'
 import { loopMath } from './math.js'
 
 // The phase rules the app prints, measured.
@@ -100,6 +100,38 @@ describe('the phase rules the hints print', () => {
     // "the lighter the damping, the more abruptly": the slope at ωₙ.
     const slope = (ph) => Math.abs(ph[1001] - ph[999])
     expect(slope(light)).toBeGreaterThan(slope(heavy))
+  })
+})
+
+describe('the phase margin stays on the circle', () => {
+  const GRID = logspace(1e-6, 1e6, 6000)
+
+  it('the unstable plant under Kp 5 reads 78.5°, not 438.5°', () => {
+    // bode() anchors this plant at +180° (negative DC gain), so the raw
+    // 180 + ∠L is a full turn high. The raw value is pinned too, so if the
+    // package ever folds it at the source this workaround shows up as the
+    // dead code it will have become.
+    const L = series(CONTROLLERS.p.tf({ kp: 5 }), PLANTS.unstable.tf({ k: 1, p: 1 }))
+    expect(margins(L, GRID).phaseMargin).toBeCloseTo(438.5, 0)
+    expect(loopMargins(L, GRID).phaseMargin).toBeCloseTo(78.5, 0)
+  })
+
+  it('ordinary loops pass through untouched, and nothing shown leaves (−180°, 180°]', () => {
+    for (const plantId of Object.keys(PLANTS)) {
+      for (const ctrlId of Object.keys(CONTROLLERS)) {
+        const loop = buildLoop(plantId, defaultsOf(PLANTS[plantId]), ctrlId, defaultsOf(CONTROLLERS[ctrlId]))
+        const raw = margins(loop.open, GRID).phaseMargin
+        const shown = loopMargins(loop.open, GRID).phaseMargin
+        const label = `${plantId} + ${ctrlId}`
+        if (raw == null) {
+          expect(shown, label).toBeNull()
+        } else {
+          expect(Math.abs(shown) <= 180, `${label}: ${shown}`).toBe(true)
+          // toBeCloseTo, not toBe: the modulo fold costs a few ulps.
+          if (raw > -180 && raw <= 180) expect(shown, label).toBeCloseTo(raw, 9)
+        }
+      }
+    }
   })
 })
 

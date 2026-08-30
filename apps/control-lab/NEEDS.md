@@ -1,6 +1,19 @@
 # Needs and findings for the other territories
 
-Nothing needed from `packages/*` right now. One finding that crosses territory:
+## For packages: margins() can report a phase margin a full turn high
+
+`margins()` computes the phase margin as `180 + ∠L` on the unwrapped, anchored
+curve, and `bode()` anchors a negative-DC-gain system at +180° — so the
+unstable plant `1/(s−1)` under `Kp 5` reports **438.5°**, which Control Lab's
+top bar printed verbatim. A phase margin is an angle to −1 and lives on a
+circle; the value belongs in (−180°, 180°] (78.5° here — what MATLAB's
+`margin()` prints). Control Lab folds it locally in `loopMargins()`
+(`apps/control-lab/src/systems.js`) and pins both numbers in `phase.test.js`,
+so if the fold ever moves into `margins()` itself the pinned raw value will
+flag the local workaround as deletable. Not urgent for me — but the other
+apps read `margins()` too.
+
+Other findings that cross territory:
 
 ## FYI for signal-lab: the active preset group CAN be folded away
 

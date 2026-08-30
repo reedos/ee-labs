@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
-import { PLANTS, CONTROLLERS, buildLoop } from './systems.js'
+import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
 import {
   dcGain,
   isStable,
@@ -49,6 +49,13 @@ describe('the lesson list itself', () => {
       const { open, closed } = loopOf(l)
       expect(Number.isFinite(dcGain(closed)) || dcGain(closed) === Infinity, l.name).toBe(true)
       expect(open.a.length, l.name).toBeGreaterThan(1)
+      // And a loop that BEHAVES. Every note describes a response that settles
+      // (the ones about losing stability say "drag the gain up" — from a
+      // stable start), so the loaded state itself must be stable. "...and
+      // what it costs" shipped with poles exactly on the imaginary axis: an
+      // UNSTABLE badge and a step ringing forever under a note calmly
+      // discussing margins, and nothing here looked.
+      expect(isStable(closed), `${l.name} should load a stable loop`).toBe(true)
     }
   })
 })
@@ -82,6 +89,14 @@ describe('what each lesson claims', () => {
     // Same proportional gain, no integral term: strictly more margin.
     const withP = margins(buildLoop(s.plantId, s.plantP, 'p', { kp: s.ctrlP.kp }).open, GRID)
     expect(withPi.phaseMargin).toBeLessThan(withP.phaseMargin)
+    // The note says to SWITCH controllers and watch the number fall — and the
+    // controller buttons reset the gains to their defaults, so the claim has
+    // to hold for the clicks the reader can actually make, not just at
+    // matched gains: the lesson, then P at its default, then PI at its.
+    const pDefault = margins(buildLoop(s.plantId, s.plantP, 'p', defaultsOf(CONTROLLERS.p)).open, GRID)
+    const piDefault = margins(buildLoop(s.plantId, s.plantP, 'pi', defaultsOf(CONTROLLERS.pi)).open, GRID)
+    expect(withPi.phaseMargin, 'the lesson against the P click').toBeLessThan(pDefault.phaseMargin - 20)
+    expect(piDefault.phaseMargin, 'the PI click against the P click').toBeLessThan(pDefault.phaseMargin - 20)
   })
 
   it('three lags go from stable to divergent as the gain rises', () => {

@@ -63,7 +63,10 @@ export const LESSONS = [
       'Nothing is free. An integrator contributes −90° of phase at every frequency, so the loop ' +
       'now reaches −180° sooner and has less margin before it oscillates. Switch between ' +
       'Proportional and PI and watch the phase margin in the top bar fall.',
-    patch: { plant: 'motor', plantP: pp('motor'), ctrl: 'pi', ctrlP: cp('pi', { kp: 2, ki: 4 }), view: 'step' },
+    // ki 2, not 4: at ki 4 this exact loop has poles AT ±2j — a 0.0° margin,
+    // an UNSTABLE badge, and a step that rings forever under a note calmly
+    // discussing margins. ki 2 leaves 19° — thin enough to feel, still a loop.
+    patch: { plant: 'motor', plantP: pp('motor'), ctrl: 'pi', ctrlP: cp('pi', { kp: 2, ki: 2 }), view: 'step' },
   },
 
   // --------------------------------------------------- Losing stability
