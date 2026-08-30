@@ -281,7 +281,12 @@ export default function App() {
               </FoldGroup>
             )
           })}
-          {active ? <p className="hint">{active.note}</p> : null}
+          {active ? (
+            <>
+              <h3 className="note-title">{active.name}</h3>
+              <p className="hint">{active.note}</p>
+            </>
+          ) : null}
           {/* The vocabulary this lesson leans on, defined where it is used —
               Signal Lab's pattern. A student meeting "Q" or "pole" mid-note
               should not need a second tab, and folded, the definitions cost
@@ -328,7 +333,12 @@ export default function App() {
               </FoldGroup>
             )
           })}
-          {active ? null : <p className="hint">{circuit.hint}</p>}
+          {active ? null : (
+            <>
+              <h3 className="note-title">{circuit.name}</h3>
+              <p className="hint">{circuit.hint}</p>
+            </>
+          )}
         </section>
 
         <section>

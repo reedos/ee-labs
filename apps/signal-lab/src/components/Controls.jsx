@@ -260,7 +260,15 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
             </details>
           )
         })}
-        {activePreset ? <p className="hint">{activePreset.note}</p> : null}
+        {activePreset ? (
+          <>
+            {/* The note gets its title. Once the groups fold, the paragraph
+                below was the only place the selection was legible at all —
+                and it opened mid-thought, anonymous. */}
+            <h3 className="note-title">{activePreset.name}</h3>
+            <p className="hint">{activePreset.note}</p>
+          </>
+        ) : null}
         {/* The vocabulary this lesson leans on, defined where it is used. A
             student meeting "bin" or "Q" mid-note should not need a second
             tab — and folded, the definitions cost nothing to someone who

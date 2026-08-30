@@ -72,6 +72,12 @@ const qParam = {
   // and at fourth order the mathematics chooses the section Qs (Butterworth),
   // not the knob — so the knob leaves rather than sitting there ignored.
   when: (p) => Number(p.order ?? 2) === 2,
+  // ...but a control that vanishes silently reads as a bug (Reed: "why is
+  // there no Q control?"). When hidden, this line stands in its place.
+  whenHint: (p) =>
+    Number(p.order ?? 2) === 1
+      ? 'No Q at 1st order: resonance takes two poles trading energy, and this section has one.'
+      : 'No Q knob at 4th order: a Butterworth’s section Qs are dictated by the math — 0.541 and 1.307 here.',
 }
 
 const orderParam = {

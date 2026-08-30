@@ -107,7 +107,15 @@ export default function BlockCard({
             </p>
           ) : null}
           {def.params.map((p) => {
-            if (p.when && !p.when(block.params)) return null
+            if (p.when && !p.when(block.params)) {
+              // A hidden control explains its absence where it used to stand,
+              // or its disappearance reads as a bug rather than physics.
+              return p.whenHint ? (
+                <p className="param-absent" key={p.key}>
+                  {p.whenHint(block.params)}
+                </p>
+              ) : null
+            }
             if (p.kind === 'select') {
               return (
                 <label className="field" key={p.key}>

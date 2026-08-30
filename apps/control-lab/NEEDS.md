@@ -145,3 +145,11 @@ contain tracks the peak and the trace hugs the top at a constant pixel.
 The probe and the ladder are both in the commit. Amend freely - your file,
 your app. The Bode frequency axis may deserve the same treatment; Reed has
 not asked yet.
+
+
+## Small crossing: lesson titles above their notes (Reed, uniform across apps)
+
+The selected lesson's name now renders as an h3.note-title above its note
+paragraph (and, in circuit-lab, the circuit's name above its hint) - Reed
+asked for it in every module, so all three landed together. Style is shared
+from packages/ui base.css. Amend freely.

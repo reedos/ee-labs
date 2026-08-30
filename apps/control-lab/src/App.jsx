@@ -310,7 +310,12 @@ export default function App() {
               </details>
             )
           })}
-          {active ? <p className="hint">{active.note}</p> : null}
+          {active ? (
+            <>
+              <h3 className="note-title">{active.name}</h3>
+              <p className="hint">{active.note}</p>
+            </>
+          ) : null}
           {/* Definitions on contact: the terms this lesson leans on, defined
               right under the note rather than in a second tab — and folded,
               so they cost nothing to someone who already has them. */}
