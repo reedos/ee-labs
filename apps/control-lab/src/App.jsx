@@ -158,7 +158,11 @@ export default function App() {
   // The locus of closed-loop poles as the loop gain is swept, with the poles at
   // the CURRENT gain marked on it.
   const locus = useMemo(() => {
-    const gains = Array.from({ length: 160 }, (_, i) => Math.pow(10, -2 + (5 * i) / 159))
+    // Sweep to 100x, not 1000x: the far branches only stretch the frame, and
+    // at 1000x the fan the lesson exists to show was a sliver around the
+    // origin. Every plant here crosses (or provably never crosses) the axis
+    // well inside two decades of extra gain.
+    const gains = Array.from({ length: 160 }, (_, i) => Math.pow(10, -2 + (4 * i) / 159))
     const sweep = rootLocus(loop.open, gains)
     const n = Math.max(...sweep.map((s) => s.poles.length))
     const branches = Array.from({ length: n }, () => [])

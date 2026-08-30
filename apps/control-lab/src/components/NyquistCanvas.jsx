@@ -19,23 +19,41 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
       const area = plotArea(w, h)
       const k = area.k || 1
 
-      // Frame the interesting region rather than the whole excursion: a loop
-      // with an integrator runs off to infinity, and zooming to fit that would
-      // shrink the −1 point to nothing.
-      let span = 2
+      // Frame the CONTENT, at true 1:1 scale. Two rules fight here: a loop
+      // with an integrator runs off to infinity (so only the near-origin part
+      // of the curve counts, or the −1 point shrinks to nothing), and the old
+      // frame was symmetric about zero — which, in a panel three times wider
+      // than tall, parked the curve, the unit circle and both margin
+      // annotations in a thin sliver at the centre. Frame the curve's bounds
+      // plus the two things that must never leave the picture (−1 and the
+      // unit circle), pick the one scale that fits both axes so the unit
+      // circle stays a circle, and centre the spare room.
+      let xLo = -1.6
+      let xHi = 1.1
+      let yAmp = 1.3
       for (let i = 0; i < re.length; i++) {
         const m = Math.hypot(re[i], im[i])
-        if (m < 6) span = Math.max(span, Math.abs(re[i]) * 1.25, Math.abs(im[i]) * 1.25)
+        if (m < 6) {
+          if (re[i] < xLo) xLo = re[i]
+          if (re[i] > xHi) xHi = re[i]
+          const a = Math.abs(im[i])
+          if (a > yAmp) yAmp = a
+        }
       }
-      span = Math.min(span, 6)
-      const aspect = area.w / area.h
+      xLo -= 0.4
+      xHi += 0.4
+      yAmp += 0.35
+      const scale = Math.min(area.w / (xHi - xLo), area.h / (2 * yAmp))
+      const xMid = (xLo + xHi) / 2
+      const xHalf = area.w / scale / 2
+      const yHalf = area.h / scale / 2
       const { sx, sy } = drawFrame(
         ctx,
         area,
-        -span * aspect,
-        span * aspect,
-        -span,
-        span,
+        xMid - xHalf,
+        xMid + xHalf,
+        -yHalf,
+        yHalf,
         (v) => fmt(v, '', 2),
         (v) => fmt(v, '', 2),
         { zeroLine: true, xTitle: 'Real', yTitle: 'Imaginary' },
@@ -129,10 +147,13 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
         ctx.fillStyle = COLORS.phase
         ctx.textAlign = 'left'
         ctx.textBaseline = 'middle'
+        // The label sits outside the unit circle along the ray, not at its
+        // tip: at the tip it landed on top of the GM label whenever both
+        // margins lived near −1, which is exactly when a reader needs them.
         ctx.fillText(
           `PM ${phaseMargin.toFixed(1)}°`,
-          sx(-Math.cos(Math.PI - a)) + 8 * k,
-          sy(-Math.sin(Math.PI - a)),
+          sx(-1.3 * Math.cos(Math.PI - a)) + 4 * k,
+          sy(-1.3 * Math.sin(Math.PI - a)),
         )
       }
 

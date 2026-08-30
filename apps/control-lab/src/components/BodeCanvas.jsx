@@ -96,6 +96,9 @@ export default function BodeCanvas({
       const named = [...markers]
       if (crossover) named.push({ f: crossover, label: 'gain = 1' })
       if (phaseCrossover) named.push({ f: phaseCrossover, label: 'phase = −180°' })
+      // Each label on its own row: the two crossovers sit close on a
+      // three-lag loop, and side-by-side labels ran into each other.
+      let row = 0
       for (const m of named) {
         if (!(m.f > 0)) continue
         const x = sx(lx(m.f))
@@ -113,7 +116,8 @@ export default function BodeCanvas({
           ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
           ctx.textAlign = 'left'
           ctx.textBaseline = 'top'
-          ctx.fillText(m.label, x + 4 * k, area.y + 4 * k)
+          ctx.fillText(m.label, x + 4 * k, area.y + (4 + 14 * row) * k)
+          row++
         }
       }
 
