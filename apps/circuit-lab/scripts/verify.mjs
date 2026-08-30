@@ -482,13 +482,33 @@ await page.getByRole('button', { name: 'Step response' }).click()
 await settle()
 
 const withPhase = await canvasHashes()
-await page.getByRole('checkbox', { name: 'Show phase' }).uncheck()
+await page.getByRole('button', { name: 'magnitude', exact: true }).click()
 await settle()
 const withoutPhase = await canvasHashes()
 if (withPhase[0] === withoutPhase[0]) fail('toggling phase did not redraw the Bode plot')
 console.log('   phase toggle redraws')
-await page.getByRole('checkbox', { name: 'Show phase' }).check()
+await page.getByRole('button', { name: '+ phase', exact: true }).click()
 await settle()
+
+// The proximity rule: a control that governs one plot lives in THAT plot's
+// header — the phase overlay with the frequency response, the step/poles
+// switch with the lower pane. The sidebar's View section is gone.
+{
+  const placed = await page.evaluate(() => {
+    const btn = (t) =>
+      [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === t)
+    const heads = [...document.querySelectorAll('.view .view-head')]
+    return {
+      phase: heads.indexOf(btn('+ phase')?.closest('.view-head')),
+      lower: heads.indexOf(btn('Poles & zeros')?.closest('.view-head')),
+    }
+  })
+  if (placed.phase !== 0) fail('the phase overlay control must sit in the frequency pane header')
+  if (placed.lower !== 1) fail('the step/poles switch must sit in the lower pane header')
+  if (placed.phase === 0 && placed.lower === 1) {
+    console.log('   view controls sit in the headers of the panes they govern')
+  }
+}
 
 // ---------------------------- 5b. groups fold, and the active ones cannot hide
 

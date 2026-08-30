@@ -376,33 +376,6 @@ export default function App() {
           <HandOver tf={tf} circuitName={circuit.name.toLowerCase()} />
         </section>
 
-        <section>
-          <h2>View</h2>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={showPhase}
-              onChange={(e) => setShowPhase(e.target.checked)}
-            />
-            Show phase
-          </label>
-          <div className="segmented">
-            <button
-              type="button"
-              className={lower === 'step' ? 'on' : ''}
-              onClick={() => setLower('step')}
-            >
-              Step response
-            </button>
-            <button
-              type="button"
-              className={lower === 'pz' ? 'on' : ''}
-              onClick={() => setLower('pz')}
-            >
-              Poles &amp; zeros
-            </button>
-          </div>
-        </section>
       </aside>
 
       <div className="topbar">
@@ -459,6 +432,30 @@ export default function App() {
         <section className="view">
           <div className="view-head">
             <h2>Frequency response</h2>
+            {/* Governs THIS plot, so it lives here — the sidebar's View
+                section is gone. Reed's proximity rule from Signal Lab: a
+                control that changes one pane sits in that pane's header,
+                not a screen-width (or on a phone, a screenful) away. */}
+            <div className="segmented sm" role="group" aria-label="Overlay on the response">
+              <button
+                type="button"
+                className={showPhase ? '' : 'on'}
+                aria-pressed={!showPhase}
+                title="Magnitude only"
+                onClick={() => setShowPhase(false)}
+              >
+                magnitude
+              </button>
+              <button
+                type="button"
+                className={showPhase ? 'on' : ''}
+                aria-pressed={showPhase}
+                title="Magnitude with the phase curve on its own right-hand axis"
+                onClick={() => setShowPhase(true)}
+              >
+                + phase
+              </button>
+            </div>
             <div className="readout">
               <span>
                 span <b>{fmtHz(freqs[0])}Hz – {fmtHz(freqs[freqs.length - 1])}Hz</b>
@@ -484,7 +481,23 @@ export default function App() {
 
         <section className="view">
           <div className="view-head">
-            <h2>{lower === 'step' ? 'Step response' : 'Poles and zeros'}</h2>
+            <h2>In time, and as poles</h2>
+            <ViewSwitch
+              value={lower}
+              onChange={setLower}
+              options={[
+                {
+                  id: 'step',
+                  label: 'Step response',
+                  title: 'What the circuit does to a sudden change',
+                },
+                {
+                  id: 'pz',
+                  label: 'Poles & zeros',
+                  title: 'The same dynamics as roots on the s-plane',
+                },
+              ]}
+            />
             <div className="readout">
               {lower === 'step' ? (
                 <>
@@ -529,6 +542,32 @@ export default function App() {
           )}
         </section>
       </main>
+    </div>
+  )
+}
+
+/**
+ * Which view a pane is showing — Signal Lab's ViewSwitch, copied.
+ *
+ * Sits in the pane's own header rather than in the sidebar because it changes
+ * that pane and nothing else — and because the two panes stay two panes, which
+ * is the constraint the whole layout is built around.
+ */
+function ViewSwitch({ value, onChange, options }) {
+  return (
+    <div className="segmented sm view-switch" role="group" aria-label="View shown in this pane">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          className={value === o.id ? 'on' : ''}
+          aria-pressed={value === o.id}
+          title={o.title}
+          onClick={() => onChange(o.id)}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   )
 }

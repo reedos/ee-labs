@@ -59,6 +59,19 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   opacity: 0.7;
 }
 
+/* Pane-header controls — the proximity rule from Signal Lab: a control that
+   governs one plot sits in that plot's header, sized to the header row so
+   moving it there costs almost no plot height. */
+.view-head .segmented { flex: 0 0 auto; }
+.view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
+
+/* Phone: pane-header control groups wrap under the title without crowding
+   the readouts off the edge. */
+@media (max-width: 900px) {
+  .view-head { row-gap: 6px; }
+  .view-head .readout { flex-basis: 100%; }
+}
+
 /* Definitions on contact, folded under the lesson note — Signal Lab's pattern. */
 details.terms { margin: 6px 0 2px; }
 

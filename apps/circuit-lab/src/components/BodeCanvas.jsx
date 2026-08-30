@@ -151,7 +151,7 @@ export default function BodeCanvas({
           ctx.stroke()
         }
         ctx.fillStyle = COLORS.trace
-        ctx.globalAlpha = 0.14
+        ctx.globalAlpha = 0.22
         ctx.beginPath()
         for (let i = 0; i < mag.length; i++) {
           const x = sx(lx(freqs[i]))
@@ -166,7 +166,7 @@ export default function BodeCanvas({
         ctx.fill()
         ctx.strokeStyle = COLORS.trace
         ctx.lineWidth = 1 * k
-        ctx.globalAlpha = 0.4
+        ctx.globalAlpha = 0.6
         edge(band.magHi)
         edge(band.magLo)
         ctx.globalAlpha = 1
@@ -215,7 +215,7 @@ export default function BodeCanvas({
             ctx.stroke()
           }
           ctx.fillStyle = COLORS.phase
-          ctx.globalAlpha = 0.1
+          ctx.globalAlpha = 0.16
           ctx.beginPath()
           for (let i = 0; i < phase.length; i++) {
             const x = sx(lx(freqs[i]))
@@ -230,7 +230,7 @@ export default function BodeCanvas({
           ctx.fill()
           ctx.strokeStyle = COLORS.phase
           ctx.lineWidth = 1 * k
-          ctx.globalAlpha = 0.3
+          ctx.globalAlpha = 0.5
           pedge(band.phaseHi)
           pedge(band.phaseLo)
           ctx.globalAlpha = 1
