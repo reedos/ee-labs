@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { bode, errorLoop, magnitudeAt, margins, phaseAt, series, closeLoop, isStable } from '@ee-labs/systems'
 import { checkFailures, texFailures, valueRowsPretendingToCheck, rowsOf, inertRows } from '@ee-labs/explain/testing'
-import { PLANTS, CONTROLLERS, buildLoop, defaultsOf, loopMargins } from './systems.js'
+import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
 import { loopMath } from './math.js'
 
 // The phase rules the app prints, measured.
@@ -109,27 +109,20 @@ describe('the phase margin stays on the circle', () => {
   it('the unstable plant under Kp 5 reads 78.5°, not 438.5°', () => {
     // bode() anchors this plant at +180° (negative DC gain), so the raw
     // 180 + ∠L was a full turn high — 438.5°, printed verbatim in the topbar
-    // until this test pinned it. The fold now lives in margins() itself: the
+    // until a test pinned it. The fold now lives in margins() itself: the
     // NEEDS.md handshake worked as designed — the pinned raw value flagged
-    // the local workaround as dead code, and both moved in the same commit.
+    // the app-local workaround as dead code, and that workaround is gone.
     const L = series(CONTROLLERS.p.tf({ kp: 5 }), PLANTS.unstable.tf({ k: 1, p: 1 }))
     expect(margins(L, GRID).phaseMargin).toBeCloseTo(78.5, 0)
-    expect(loopMargins(L, GRID).phaseMargin).toBeCloseTo(78.5, 0)
   })
 
-  it('ordinary loops pass through untouched, and nothing shown leaves (−180°, 180°]', () => {
+  it('no default pairing shows a margin outside (−180°, 180°]', () => {
     for (const plantId of Object.keys(PLANTS)) {
       for (const ctrlId of Object.keys(CONTROLLERS)) {
         const loop = buildLoop(plantId, defaultsOf(PLANTS[plantId]), ctrlId, defaultsOf(CONTROLLERS[ctrlId]))
-        const raw = margins(loop.open, GRID).phaseMargin
-        const shown = loopMargins(loop.open, GRID).phaseMargin
-        const label = `${plantId} + ${ctrlId}`
-        if (raw == null) {
-          expect(shown, label).toBeNull()
-        } else {
-          expect(Math.abs(shown) <= 180, `${label}: ${shown}`).toBe(true)
-          // toBeCloseTo, not toBe: the modulo fold costs a few ulps.
-          if (raw > -180 && raw <= 180) expect(shown, label).toBeCloseTo(raw, 9)
+        const pm = margins(loop.open, GRID).phaseMargin
+        if (pm != null) {
+          expect(Math.abs(pm) <= 180, `${plantId} + ${ctrlId}: ${pm}`).toBe(true)
         }
       }
     }
@@ -142,10 +135,10 @@ describe("the math panel's phase accounting", () => {
     const plantP = { ...defaultsOf(PLANTS[plantId]), ...plantOver }
     const ctrlP = { ...defaultsOf(CONTROLLERS[ctrlId]), ...ctrlOver }
     const loop = buildLoop(plantId, plantP, ctrlId, ctrlP)
-    // loopMargins, not raw margins: it is what the app feeds the panel, and
-    // the difference matters — unstable + PI reads PM ≈ 360.0002° raw, which
-    // slips past the near-boundary footnote that 0.0002° rightly triggers.
-    const marg = loopMargins(loop.open, GRID)
+    // margins() folds onto the circle at the source now, so unstable + PI
+    // reads PM ≈ 0.0002° and rightly triggers the near-boundary footnote —
+    // the case that once slipped past as 360.0002°.
+    const marg = margins(loop.open, GRID)
     return loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, GRID)
   }
 

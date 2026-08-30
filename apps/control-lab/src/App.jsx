@@ -6,6 +6,7 @@ import {
   evalAtFreq,
   polesZeros,
   isStable,
+  margins,
   rootLocus,
   secondOrderMetrics,
   stepResponse,
@@ -13,7 +14,7 @@ import {
   series,
   closeLoop,
 } from '@ee-labs/systems'
-import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, loopMargins, settlesOnScreen } from './systems.js'
+import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, settlesOnScreen } from './systems.js'
 import { loopMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { termsFor } from './terms.js'
@@ -134,7 +135,7 @@ export default function App() {
   }, [openPz, plantId, ctrlId])
 
   const open = useMemo(() => bode(loop.open, freqs), [loop, freqs])
-  const marg = useMemo(() => loopMargins(loop.open, freqs), [loop, freqs])
+  const marg = useMemo(() => margins(loop.open, freqs), [loop, freqs])
   const stable = isStable(loop.closed)
   const second = useMemo(() => secondOrderMetrics(loop.closed), [loop])
 
