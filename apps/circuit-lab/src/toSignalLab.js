@@ -87,3 +87,96 @@ export function suggestRate(f0) {
   }
   return 192000
 }
+
+// ------------------------------------------------- and as a thing to control
+
+/**
+ * The same circuit, expressed as a plant Control Lab can close a loop around.
+ *
+ * Control Lab's plants are a fixed set with named parameters rather than
+ * arbitrary transfer functions, so this only offers a hand-over where the
+ * mapping is exact. A series RLC measured across its capacitor IS
+ * K*wn^2/(s^2 + 2*zeta*wn*s + wn^2) with wn = 1/sqrt(LC) and zeta = (R/2)sqrt(C/L)
+ * — the same two numbers the filter view already reports as f0 and Q.
+ *
+ * Measured across R or L the numerator has zeros in it, and Control Lab's
+ * second-order plant has none. That is a different system, so it is declined
+ * rather than approximated: a plant that is nearly right would produce a loop
+ * whose margins are confidently wrong.
+ */
+export function asControlPlant(tf) {
+  const m = secondOrderMetrics(tf)
+  const strip = (c) => {
+    const out = [...c]
+    while (out.length > 1 && Math.abs(out[0]) < 1e-18) out.shift()
+    return out
+  }
+
+  // Second order with a constant numerator: Control Lab's `secondOrder`.
+  if (m && strip(tf.b).length === 1) {
+    const k = dcGain(tf)
+    if (!Number.isFinite(k)) return null
+    return {
+      plant: 'secondOrder',
+      label: 'a second-order plant',
+      params: [k, m.wn, m.zeta],
+      detail: { k, wn: m.wn, zeta: m.zeta },
+      why:
+        `Resonant at ${(m.wn / (2 * Math.PI)).toPrecision(4)} Hz with a damping ratio of ` +
+        `${m.zeta.toPrecision(3)} — the same two numbers the filter view calls f₀ and Q.`,
+      link: buildLink({
+        plant: { type: 'secondOrder', params: [k, m.wn, m.zeta] },
+        ctrl: { type: 'p', params: [1] },
+      }),
+    }
+  }
+
+  const a = strip(tf.a)
+
+  // A single pole at the ORIGIN is checked first, because it also looks
+  // first-order: an early `return null` in the branch below swallowed the
+  // integrator entirely, since its DC gain is infinite and its time constant a
+  // division by zero. A branch that cannot handle a case must fall through to
+  // the next one, not decide for it.
+  if (a.length === 2 && Math.abs(a[1]) < 1e-18) {
+    const k = strip(tf.b)[0] / a[0]
+    if (Number.isFinite(k)) {
+      return {
+        plant: 'integrator',
+        label: 'an integrator',
+        params: [Math.abs(k)],
+        detail: { k: Math.abs(k) },
+        why:
+          'A pole exactly at the origin, so proportional control alone already gives zero ' +
+          'steady-state error to a step.',
+        link: buildLink({
+          plant: { type: 'integrator', params: [Math.abs(k)] },
+          ctrl: { type: 'p', params: [1] },
+        }),
+      }
+    }
+  }
+
+  // First order with a constant numerator: `firstOrder`, K/(1 + tau s).
+  if (a.length === 2 && strip(tf.b).length === 1) {
+    const k = dcGain(tf)
+    const tau = a[0] / a[1]
+    if (Number.isFinite(k) && tau > 0) {
+      return {
+        plant: 'firstOrder',
+        label: 'a first-order lag',
+        params: [k, tau],
+        detail: { k, tau },
+        why:
+          `One pole, a time constant of ${tau.toPrecision(4)} s, and no way to be destabilised ` +
+          'by any amount of proportional gain.',
+        link: buildLink({
+          plant: { type: 'firstOrder', params: [k, tau] },
+          ctrl: { type: 'p', params: [1] },
+        }),
+      }
+    }
+  }
+
+  return null
+}

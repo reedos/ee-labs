@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { asDigitalFilter, suggestRate } from './toSignalLab.js'
+import { asDigitalFilter, suggestRate, asControlPlant } from './toSignalLab.js'
 import { transferOf, defaultsOf, CIRCUITS } from './circuits.js'
 import { parseLink } from '@ee-labs/ui'
 import { magnitudeAt, secondOrderMetrics } from '@ee-labs/systems'
@@ -180,5 +180,69 @@ describe('choosing a sample rate for a circuit', () => {
         expect(d.tooFast, `${id}/${o.key} at ${d.sampleRate} Hz`).toBe(false)
       }
     }
+  })
+})
+
+describe('the same circuit as a thing to control', () => {
+  it('a series RLC across C is exactly a second-order plant', () => {
+    const tf = transferOf('rlcSeries', p, 'c')
+    const c = asControlPlant(tf)
+    expect(c.plant).toBe('secondOrder')
+    const [k, wn, zeta] = c.params
+    expect(k).toBeCloseTo(1, 9)
+    expect(wn).toBeCloseTo(1 / Math.sqrt(p.l * p.c), 6)
+    expect(zeta).toBeCloseTo((p.r / 2) * Math.sqrt(p.c / p.l), 9)
+    // The same two numbers the filter view calls f0 and Q.
+    expect(wn / (2 * Math.PI)).toBeCloseTo(f0, 6)
+    expect(1 / (2 * zeta)).toBeCloseTo(Q, 9)
+  })
+
+  it('and rebuilding it from those numbers gives the same response', () => {
+    // The mapping has to be exact, not close: a plant that is nearly right
+    // produces a loop whose margins are confidently wrong.
+    const tf = transferOf('rlcSeries', p, 'c')
+    const [k, wn, zeta] = asControlPlant(tf).params
+    const rebuilt = { b: [k * wn * wn], a: [1, 2 * zeta * wn, wn * wn] }
+    for (const r of [0.1, 0.5, 1, 2, 10]) {
+      expect(magnitudeAt(rebuilt, f0 * r), `${r}x f0`).toBeCloseTo(magnitudeAt(tf, f0 * r), 9)
+    }
+  })
+
+  it('declines the outputs whose numerator it cannot express', () => {
+    // Across R and L the numerator carries zeros, and Control Lab's
+    // second-order plant has none. A different system, so no hand-over.
+    expect(asControlPlant(transferOf('rlcSeries', p, 'r'))).toBeNull()
+    expect(asControlPlant(transferOf('rlcSeries', p, 'l'))).toBeNull()
+  })
+
+  it('maps an RC low-pass to a first-order lag with the right time constant', () => {
+    const par = defaultsOf('rcLow')
+    const c = asControlPlant(transferOf('rcLow', par, 'c'))
+    expect(c.plant).toBe('firstOrder')
+    expect(c.params[0]).toBeCloseTo(1, 9)
+    expect(c.params[1]).toBeCloseTo(par.r * par.c, 12)
+  })
+
+  it('recognises the op-amp integrator as an integrator', () => {
+    const par = defaultsOf('integrator')
+    const c = asControlPlant(transferOf('integrator', par, 'out'))
+    expect(c.plant).toBe('integrator')
+    expect(c.params[0]).toBeCloseTo(1 / (par.r * par.c), 6)
+  })
+
+  it('builds a link that parses, for every circuit it accepts', () => {
+    let offered = 0
+    for (const [id, circ] of Object.entries(CIRCUITS)) {
+      for (const o of circ.outputs) {
+        const c = asControlPlant(transferOf(id, defaultsOf(id), o.key))
+        if (!c) continue
+        offered++
+        const { patch, warnings } = parseLink(c.link)
+        expect(warnings, `${id}/${o.key}`).toEqual([])
+        expect(patch.plant.type, `${id}/${o.key}`).toBe(c.plant)
+        expect(patch.ctrl.type, `${id}/${o.key}`).toBe('p')
+      }
+    }
+    expect(offered, 'several circuits should be controllable').toBeGreaterThanOrEqual(4)
   })
 })

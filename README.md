@@ -6,7 +6,7 @@ and explains, next to every number, where that number came from.
 
 ```
 npm install
-npm test                 # every package and every app (288 tests)
+npm test                 # every package and every app (304 tests)
 npm run dev              # Signal Lab, at http://localhost:1421
 ```
 
@@ -35,7 +35,7 @@ four in Signal Lab and two written while building the other two apps. The most r
 Control Lab note promised a step overshooting "about 45%" and the setup it loaded
 overshot 57%.
 
-## The bridge
+## The bridges
 
 Circuit Lab has a **The same filter, sampled** panel. Load the series RLC, and it says the
 circuit is a low-pass biquad at 5.033 kHz with a Q of 3.162 — then gives you a link:
@@ -56,6 +56,16 @@ agree on what a second-order section with that resonance and Q *means*.
 The panel declines where the mapping would not be honest: a first-order RC has no Q to
 hand over, and a sample rate leaving fewer than twenty samples per cycle at the corner
 gets a warning rather than a link presented as equivalent.
+
+The same panel offers the third corner. That RLC is also **something to control**:
+
+    #plant=secondOrder:1:31622.8:0.158114&ctrl=p:1
+
+Open that in Control Lab and the question changes from what the circuit does to a signal
+into how much gain you can close around it before it sings. Same network, three subjects.
+It declines the outputs it cannot express exactly — measured across R or L the numerator
+carries zeros that Control Lab's second-order plant does not have, and a plant that was
+nearly right would produce margins that are confidently wrong.
 
 ## Why these boundaries
 

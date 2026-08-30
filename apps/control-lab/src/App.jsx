@@ -17,6 +17,8 @@ import {
 import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
 import { loopMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
+import { readLocationLink } from '@ee-labs/ui'
+import { stateFromLink } from './fromLink.js'
 import BodeCanvas from './components/BodeCanvas.jsx'
 import StepCanvas from './components/StepCanvas.jsx'
 import NyquistCanvas from './components/NyquistCanvas.jsx'
@@ -24,10 +26,19 @@ import NyquistCanvas from './components/NyquistCanvas.jsx'
 const POINTS = 900
 
 export default function App() {
-  const [plantId, setPlantId] = useState('motor')
-  const [plantP, setPlantP] = useState(() => defaultsOf(PLANTS.motor))
-  const [ctrlId, setCtrlId] = useState('p')
-  const [ctrlP, setCtrlP] = useState(() => defaultsOf(CONTROLLERS.p))
+  // A loop handed over from another tool, read once at startup.
+  const [linked] = useState(() => {
+    const { patch, warnings } = readLocationLink()
+    const { state, warnings: more } = stateFromLink(patch)
+    return { state, warnings: [...warnings, ...more] }
+  })
+
+  const [plantId, setPlantId] = useState(linked.state?.plantId ?? 'motor')
+  const [plantP, setPlantP] = useState(
+    () => linked.state?.plantP ?? defaultsOf(PLANTS.motor),
+  )
+  const [ctrlId, setCtrlId] = useState(linked.state?.ctrlId ?? 'p')
+  const [ctrlP, setCtrlP] = useState(() => linked.state?.ctrlP ?? defaultsOf(CONTROLLERS.p))
   const [lower, setLower] = useState('step')
   const [showPhase, setShowPhase] = useState(true)
   // Cleared as soon as anything is touched: the note describes one setup.
@@ -142,6 +153,19 @@ export default function App() {
         </header>
 
         <section>
+          {linked.state ? (
+            <p className="hint from-link">
+              Loaded from a link — this plant came from another tool in the suite. Pick anything
+              below to start over.
+            </p>
+          ) : null}
+          {linked.warnings.length ? (
+            <ul className="link-warnings">
+              {linked.warnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          ) : null}
           <h2>Try this</h2>
           {LESSON_GROUPS.map((g) => {
             const inGroup = LESSONS.filter((l) => l.group === g)

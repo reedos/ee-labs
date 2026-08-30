@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { NumField, fmt, fmtHz } from '@ee-labs/ui'
-import { asDigitalFilter, suggestRate } from '../toSignalLab.js'
+import { asDigitalFilter, suggestRate, asControlPlant } from '../toSignalLab.js'
 
 // "This circuit IS that filter", made into a button.
 //
@@ -21,6 +21,7 @@ const SHAPE_LABEL = {
 
 export default function HandOver({ tf, circuitName }) {
   const natural = useMemo(() => asDigitalFilter(tf), [tf])
+  const plant = useMemo(() => asControlPlant(tf), [tf])
 
   // Null means "follow the circuit". A useState initializer runs once, so
   // holding the rate in state directly left it stuck at whatever the first
@@ -35,10 +36,13 @@ export default function HandOver({ tf, circuitName }) {
 
   if (!d || !d.shape) {
     return (
-      <p className="hint">
-        This circuit is not a second-order section of a shape a biquad can express, so there is
-        no filter to hand over. The series RLC, the tank and the Sallen–Key all can be.
-      </p>
+      <>
+        <p className="hint">
+          This circuit is not a second-order section of a shape a biquad can express, so there is
+          no filter to hand over. The series RLC, the tank and the Sallen–Key all can be.
+        </p>
+        <AsPlant plant={plant} circuitName={circuitName} />
+      </>
     )
   }
 
@@ -111,6 +115,45 @@ export default function HandOver({ tf, circuitName }) {
         {copied ? 'copied — paste after Signal Lab’s URL' : 'Copy link for Signal Lab'}
       </button>
       <code className="handover-link">#{d.link}</code>
+
+      <AsPlant plant={plant} circuitName={circuitName} />
+    </div>
+  )
+}
+
+/**
+ * The third corner of the triangle.
+ *
+ * The same network is also something you could close a loop around, and that is
+ * a different subject with different questions — not "what does it do to a
+ * signal" but "how much gain can I put around it before it sings". Offered only
+ * where Control Lab can express the plant exactly.
+ */
+function AsPlant({ plant, circuitName }) {
+  const [copied, setCopied] = useState(false)
+  if (!plant) return null
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(plant.link)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <div className="handover as-plant">
+      <h3>...and as something to control</h3>
+      <p className="hint">
+        The same {circuitName} is {plant.label}. {plant.why} Hand it to Control Lab and the
+        question changes from what it does to a signal to how much gain you can close around it.
+      </p>
+      <button type="button" className="preset handover-copy" onClick={copy}>
+        {copied ? 'copied — paste after Control Lab’s URL' : 'Copy link for Control Lab'}
+      </button>
+      <code className="handover-link">#{plant.link}</code>
     </div>
   )
 }

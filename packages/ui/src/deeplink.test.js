@@ -60,3 +60,33 @@ describe('deep links', () => {
     expect(patch.blocks[0].params[1]).toBeCloseTo(0.7071068, 6)
   })
 })
+
+describe('carrying a control loop', () => {
+  it('round-trips a plant and a controller', () => {
+    const patch = {
+      plant: { type: 'secondOrder', params: [1, 31622.8, 0.158] },
+      ctrl: { type: 'pi', params: [2, 4] },
+    }
+    const { patch: back, warnings } = parseLink(buildLink(patch))
+    expect(warnings).toEqual([])
+    expect(back.plant).toEqual(patch.plant)
+    expect(back.ctrl).toEqual(patch.ctrl)
+  })
+
+  it('uses the same grammar as the other item keys', () => {
+    const link = buildLink({
+      plant: { type: 'firstOrder', params: [1, 0.5] },
+      ctrl: { type: 'p', params: [9] },
+    })
+    expect(link).toBe('plant=firstOrder:1:0.5&ctrl=p:9')
+  })
+
+  it('a plant alone is a patch, not nothing', () => {
+    expect(parseLink('plant=integrator:1').patch.plant.type).toBe('integrator')
+  })
+
+  it('still refuses a malformed one', () => {
+    const { warnings } = parseLink('plant=secondOrder:1:fast:0.2')
+    expect(warnings[0]).toMatch(/"fast" is not a number/)
+  })
+})

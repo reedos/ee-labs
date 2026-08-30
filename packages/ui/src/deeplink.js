@@ -11,9 +11,15 @@
 //
 // Grammar, in the fragment so it never reaches a server:
 //
-//   b=<type>:<number>:<number>...   a block, repeatable, params positional
 //   rate=<number>                   sample rate
 //   src=<type>:<freq>:<amp>         a source, repeatable
+//   b=<type>:<number>...            a processing block, repeatable
+//   plant=<type>:<number>...        a plant to be controlled
+//   ctrl=<type>:<number>...         a controller
+//
+// The three item keys share one grammar — a name followed by positional numbers
+// — because every tool in the suite describes its parts that way, and one rule
+// is easier to remember than three.
 //
 // Anything unrecognised is dropped and reported rather than guessed at. A link
 // that silently loads as something else is worse than one that refuses.
@@ -30,6 +36,8 @@ export function buildLink(patch = {}) {
   for (const b of patch.blocks || []) {
     parts.push(`b=${[b.type, ...(b.params || []).map(trim)].join(':')}`)
   }
+  if (patch.plant) parts.push(`plant=${[patch.plant.type, ...(patch.plant.params || []).map(trim)].join(':')}`)
+  if (patch.ctrl) parts.push(`ctrl=${[patch.ctrl.type, ...(patch.ctrl.params || []).map(trim)].join(':')}`)
   return parts.join('&')
 }
 
@@ -68,7 +76,7 @@ export function parseLink(fragment) {
       continue
     }
 
-    if (key === 'b' || key === 'src') {
+    if (key === 'b' || key === 'src' || key === 'plant' || key === 'ctrl') {
       const bits = value.split(':')
       const type = bits.shift()
       if (!type) {
@@ -87,6 +95,8 @@ export function parseLink(fragment) {
       }
       if (bad) continue
       if (key === 'b') patch.blocks.push({ type, params: nums })
+      else if (key === 'plant') patch.plant = { type, params: nums }
+      else if (key === 'ctrl') patch.ctrl = { type, params: nums }
       else patch.sources.push({ type, freq: nums[0], amp: nums[1] })
       continue
     }
@@ -94,7 +104,8 @@ export function parseLink(fragment) {
     warnings.push(`unknown setting "${key}"`)
   }
 
-  const empty = !patch.rate && !patch.blocks.length && !patch.sources.length
+  const empty =
+    !patch.rate && !patch.blocks.length && !patch.sources.length && !patch.plant && !patch.ctrl
   return { patch: empty ? null : patch, warnings }
 }
 

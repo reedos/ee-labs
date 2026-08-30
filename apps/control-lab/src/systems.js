@@ -8,6 +8,14 @@ import { series, closeLoop, polyMul } from '@ee-labs/systems'
 // "given this plant, what controller makes it behave", and the tool should make
 // that pairing the obvious thing to vary.
 
+// Ranges span circuit timescales as well as mechanical ones.
+//
+// They were originally set for the process-control end of the world — seconds,
+// and radians per second in the tens — and a circuit handed over from Circuit
+// Lab resonates at 31,000 rad/s. It arrived clamped to the top of the range and
+// silently became a different plant, which is exactly the failure a handover is
+// supposed to make impossible. Closing a loop around a filter at a few kHz is
+// an ordinary thing to want.
 const P = (key, label, value, min, max, hint, unit = '') => ({
   key,
   label,
@@ -29,7 +37,7 @@ export const PLANTS = {
       'A tank filling, a room heating, an RC network. It has no overshoot of its own and no way ' +
       'to become unstable — whatever you do to the gain, one pole cannot cross into the right ' +
       'half plane. The easiest thing there is to control.',
-    params: [P('k', 'Gain K', 1, 0.01, 100), P('tau', 'Time constant τ', 1, 0.001, 100, null, 's')],
+    params: [P('k', 'Gain K', 1, 0.001, 1e6), P('tau', 'Time constant τ', 1, 1e-7, 100, null, 's')],
     tf: (p) => ({ b: [p.k], a: [p.tau, 1] }),
     tex: 'P(s) = \\frac{K}{1 + \\tau s}',
   },
@@ -41,7 +49,7 @@ export const PLANTS = {
       'A motor driven by voltage, where position is what you want: the input sets the RATE, so ' +
       'the output accumulates. Its pole sits at the origin, which is why proportional control ' +
       'alone already gives zero steady-state error to a step.',
-    params: [P('k', 'Gain K', 1, 0.01, 100)],
+    params: [P('k', 'Gain K', 1, 0.001, 1e6)],
     tf: (p) => ({ b: [p.k], a: [1, 0] }),
     tex: 'P(s) = \\frac{K}{s}',
   },
@@ -54,8 +62,8 @@ export const PLANTS = {
       'resonance of its own before you touch it, and a controller can either damp that or make ' +
       'it very much worse.',
     params: [
-      P('k', 'Gain K', 1, 0.01, 100),
-      P('wn', 'Natural frequency ωₙ', 6.283, 0.1, 1000, null, 'rad/s'),
+      P('k', 'Gain K', 1, 0.001, 1e6),
+      P('wn', 'Natural frequency ωₙ', 6.283, 0.01, 1e8, null, 'rad/s'),
       P('zeta', 'Damping ζ', 0.3, 0.01, 5),
     ],
     tf: (p) => ({ b: [p.k * p.wn * p.wn], a: [1, 2 * p.zeta * p.wn, p.wn * p.wn] }),
@@ -69,7 +77,7 @@ export const PLANTS = {
       'A first-order motor with an integrator after it, because position is the integral of ' +
       'speed. The classic K/(s(1+τs)) — enough dynamics to be interesting, still impossible to ' +
       'destabilise with proportional gain alone.',
-    params: [P('k', 'Gain K', 1, 0.01, 100), P('tau', 'Time constant τ', 0.5, 0.001, 100, null, 's')],
+    params: [P('k', 'Gain K', 1, 0.001, 1e6), P('tau', 'Time constant τ', 0.5, 1e-7, 100, null, 's')],
     tf: (p) => ({ b: [p.k], a: [p.tau, 1, 0] }),
     tex: 'P(s) = \\frac{K}{s(1 + \\tau s)}',
   },
@@ -82,10 +90,10 @@ export const PLANTS = {
       'can reach −180° while the gain is still above one — and that is the condition for the ' +
       'loop to oscillate. Turn the gain up and watch it happen.',
     params: [
-      P('k', 'Gain K', 1, 0.01, 100),
-      P('t1', 'τ₁', 1, 0.001, 100, null, 's'),
-      P('t2', 'τ₂', 0.5, 0.001, 100, null, 's'),
-      P('t3', 'τ₃', 0.25, 0.001, 100, null, 's'),
+      P('k', 'Gain K', 1, 0.001, 1e6),
+      P('t1', 'τ₁', 1, 1e-7, 100, null, 's'),
+      P('t2', 'τ₂', 0.5, 1e-7, 100, null, 's'),
+      P('t3', 'τ₃', 0.25, 1e-7, 100, null, 's'),
     ],
     tf: (p) => ({
       b: [p.k],
@@ -101,7 +109,7 @@ export const PLANTS = {
       'A pole in the RIGHT half plane: an inverted pendulum, a fighter airframe, a magnetic ' +
       'bearing. Left alone it runs away exponentially, and feedback is not an improvement here ' +
       'but the only reason it works at all. Note that too LITTLE gain is now the problem.',
-    params: [P('k', 'Gain K', 1, 0.01, 100), P('p', 'Unstable pole at +p', 1, 0.01, 100, null, '1/s')],
+    params: [P('k', 'Gain K', 1, 0.001, 1e6), P('p', 'Unstable pole at +p', 1, 0.01, 1e6, null, '1/s')],
     tf: (p) => ({ b: [p.k], a: [1, -p.p] }),
     tex: 'P(s) = \\frac{K}{s - p}',
   },
@@ -153,8 +161,8 @@ export const CONTROLLERS = {
       'is bounded, so it does not amplify noise without limit.',
     params: [
       P('k', 'Gain', 1, 0.001, 1000),
-      P('z', 'Zero at', 1, 0.01, 1000, null, 'rad/s'),
-      P('p', 'Pole at', 10, 0.01, 10000, null, 'rad/s'),
+      P('z', 'Zero at', 1, 0.001, 1e7, null, 'rad/s'),
+      P('p', 'Pole at', 10, 0.001, 1e8, null, 'rad/s'),
     ],
     tf: (c) => ({ b: [c.k / c.z, c.k], a: [1 / c.p, 1] }),
     tex: 'C(s) = K\\,\\frac{1 + s/z}{1 + s/p}, \\qquad z < p',
