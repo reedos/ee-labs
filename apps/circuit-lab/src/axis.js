@@ -41,6 +41,56 @@ export function axisFreqs(centre, points) {
 }
 
 /**
+ * The step pane's time span, sticky the same way the frequency axis is.
+ *
+ * `natural` is how long the response needs to arrive (pole time constants,
+ * settling). Reframing lands that arrival at ~74% of the axis (the 1.35
+ * headroom), and then the axis HOLDS: tuning that speeds the circuit up
+ * moves the arrival visibly left across a fixed axis, instead of the axis
+ * rescaling to pin the curve in place. It reframes only when the response
+ * outgrows the axis (would run off the right edge unsettled — the pane's one
+ * unforgivable state) or has shrunk into the left fifth of it.
+ */
+export function stickyDuration(prev, natural, force = false) {
+  const want = natural * 1.35
+  if (force || !(Number.isFinite(prev) && prev > 0)) return want
+  if (natural > prev) return want
+  if (natural < prev * 0.2) return want
+  return prev
+}
+
+/**
+ * A sticky y-range: hold while the data still lives inside it and still
+ * fills a reasonable share of it. Expanding is immediate (clipping a curve
+ * is the fixed-ceiling defect); shrinking waits until the data uses less
+ * than 35% of the frame, so ringing that grows and shrinks under tuning
+ * visibly grows and shrinks against one scale.
+ */
+export function stickyRange(prev, lo, hi, force = false) {
+  const pad = (hi - lo) * 0.12 || 0.2
+  const want = { lo: lo - pad, hi: hi + pad }
+  if (force || !prev) return want
+  if (lo < prev.lo || hi > prev.hi) return want
+  if (hi - lo < (prev.hi - prev.lo) * 0.35) return want
+  return prev
+}
+
+/**
+ * A sticky half-height for the pole-zero view, in rad/s. Same contract:
+ * reframe with a little headroom when the content escapes or has shrunk
+ * deep into the middle, hold otherwise — so tuning C visibly slides the
+ * poles along their radius instead of the axis re-labelling under them.
+ * (Consumed via PoleZeroCanvas's `span` prop; see NEEDS.md.)
+ */
+export function stickySpan(prev, natural, force = false) {
+  const want = natural * 1.15
+  if (force || !(Number.isFinite(prev) && prev > 0)) return want
+  if (natural > prev) return want
+  if (natural < prev * 0.4) return want
+  return prev
+}
+
+/**
  * The grid with one frequency guaranteed to be IN it.
  *
  * A resonant tip must be sampled, not hoped for: at Q = 100 the peak is

@@ -3,6 +3,36 @@
 
 .preset-group { margin-bottom: 10px; }
 
+/* The lesson and circuit chips, styled as Signal Lab styles its presets —
+   Circuit Lab never defined these, so they fell through to default button
+   chrome and read as a different (worse) application. */
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preset {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11.5px;
+  padding: 5px 8px;
+}
+
+.preset:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.preset.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(56, 224, 176, 0.1);
+}
+
 /* Preset groups as fold-outs, same as Signal Lab: the summary row is the h3
    it replaced, with its own marker so the browser's default triangle (which
    ignores the typography) stays hidden. */

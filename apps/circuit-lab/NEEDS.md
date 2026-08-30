@@ -32,3 +32,39 @@ with an UNSTABLE flag rather than exploding.
 NEEDS has the spec), add the same fallback tier there:
 `plant=custom:b2:b1:b0:a2:a1:a0`. Circuit → Control needs no bilinear at all,
 so that hand-over is EXACT, not merely faithful.
+
+## Open: PoleZeroCanvas tolerance cloud is too faint to read as a shape
+
+Circuit Lab now has per-part tolerances, and its "Blame the right part"
+lesson's whole payload is the SHAPE of the pole scatter — an arc of constant
+radius when only R wobbles. The cloud rendering in
+`packages/ui/src/PoleZeroCanvas.jsx` (1.8px dots at alpha 0.28, under the
+nominal marks) is right for "there is uncertainty" and too faint for "the
+uncertainty has this shape": a 240-dot arc reads as a smear inside the X
+marker. Circuit Lab worked around it by choosing lesson parameters that
+stretch the arc across ~24° of the circle, which helps but is subtler than
+it deserves.
+
+Request, low priority: bump the cloud to ~2.5px at ~0.45 alpha, or expose a
+`cloudEmphasis` prop an app can set when the cloud IS the lesson. Keep the
+nominal marks on top.
+
+## Open: PoleZeroCanvas needs a `span` prop for sticky axes
+
+Reed's tuning rule (the curve moves, not the axis — already law for Circuit
+Lab's frequency and now its step axes) can't reach the pole-zero view: the
+canvas auto-fits its span from the content on every render, so tuning C
+re-labels the axes under poles that appear pinned in place.
+
+Requested contract, and Circuit Lab already passes the prop (harmlessly
+ignored today, lights up when you land it):
+
+- `span` (optional number): the half-height of the view in rad/s. When given,
+  use `max(span, autoSpan)` — the caller's frame, but never clipping content
+  the auto-fit would have shown. When absent, behave exactly as today.
+- x stays `span * aspect` with the square scaling kept, so an angle on screen
+  remains the angle in the algebra.
+
+The caller owns stickiness (Circuit Lab holds it in `stickySpan`, axis.js),
+so the canvas stays stateless. Control Lab's root-locus use is unaffected
+unless it opts in.

@@ -12,30 +12,43 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
  * `band`, when given, is the tolerance envelope { t, lo, hi } across the
  * sampled builds — its own (coarser) time grid, same duration — shaded under
  * the nominal trace.
+ *
+ * `range`, when given, is the y-range to draw in — the app holds it sticky
+ * across component tuning, so ringing grows and shrinks against one scale
+ * instead of the axis rescaling to pin the curve in place. Without it the
+ * canvas fits the data itself, band included.
  */
-export default function StepCanvas({ t, y, final, band = null, markers = [] }) {
+export default function StepCanvas({ t, y, final, band = null, range = null, markers = [] }) {
   const ref = useCanvas(
     (ctx, w, h) => {
       const area = plotArea(w, h)
       const k = area.k || 1
 
-      let lo = 0
-      let hi = 0
-      for (let i = 0; i < y.length; i++) {
-        if (y[i] < lo) lo = y[i]
-        if (y[i] > hi) hi = y[i]
-      }
-      // The band counts toward the range: a build that rings past the nominal
-      // trace must not be clipped by an axis fitted to the nominal alone.
-      if (band) {
-        for (let i = 0; i < band.lo.length; i++) {
-          if (band.lo[i] < lo) lo = band.lo[i]
-          if (band.hi[i] > hi) hi = band.hi[i]
+      let lo
+      let hi
+      if (range) {
+        lo = range.lo
+        hi = range.hi
+      } else {
+        lo = 0
+        hi = 0
+        for (let i = 0; i < y.length; i++) {
+          if (y[i] < lo) lo = y[i]
+          if (y[i] > hi) hi = y[i]
         }
+        // The band counts toward the range: a build that rings past the
+        // nominal trace must not be clipped by an axis fitted to the nominal
+        // alone.
+        if (band) {
+          for (let i = 0; i < band.lo.length; i++) {
+            if (band.lo[i] < lo) lo = band.lo[i]
+            if (band.hi[i] > hi) hi = band.hi[i]
+          }
+        }
+        const pad = (hi - lo) * 0.12 || 0.2
+        lo -= pad
+        hi += pad
       }
-      const pad = (hi - lo) * 0.12 || 0.2
-      lo -= pad
-      hi += pad
 
       const tMax = t[t.length - 1] || 1
       const { sx, sy } = drawFrame(
@@ -145,8 +158,20 @@ export default function StepCanvas({ t, y, final, band = null, markers = [] }) {
       ctx.stroke()
       ctx.restore()
     },
-    [t, y, final, band, markers],
+    [t, y, final, band, range, markers],
   )
 
-  return <canvas ref={ref} className="plot" role="img" aria-label="Step response of the circuit in time" />
+  // The frame, readable from the DOM: the harness asserts the axes hold
+  // still under a nudge and re-frame under a big change — pixels can show a
+  // curve moved, but not that the frame did not.
+  return (
+    <canvas
+      ref={ref}
+      className="plot"
+      role="img"
+      aria-label="Step response of the circuit in time"
+      data-t-max={t.length ? t[t.length - 1] : 0}
+      data-y-hi={range ? range.hi : ''}
+    />
+  )
 }

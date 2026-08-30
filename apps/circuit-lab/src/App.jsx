@@ -15,7 +15,14 @@ import { circuitMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { TOLERANCES, responseBand, stepBand, toleranceCloud, tolsOf, spreadPct } from './tolerance.js'
 import { termsFor } from './terms.js'
-import { axisFreqs, ensureSampled, stickyCentre } from './axis.js'
+import {
+  axisFreqs,
+  ensureSampled,
+  stickyCentre,
+  stickyDuration,
+  stickyRange,
+  stickySpan,
+} from './axis.js'
 import Schematic from './schematics.jsx'
 import HandOver from './components/HandOver.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
@@ -123,7 +130,7 @@ export default function App() {
   // pane. Its own memo because the tolerance band must ride the SAME span —
   // an envelope on a different time grid would be two plots pretending to
   // be one.
-  const stepDuration = useMemo(() => {
+  const naturalDuration = useMemo(() => {
     const slowest = Math.min(
       ...pz.poles.filter(([re]) => Math.abs(re) > 1e-9).map(([re, im]) => Math.hypot(re, im)),
     )
@@ -134,6 +141,19 @@ export default function App() {
     const bySettling = second && Number.isFinite(second.settling) ? 1.4 * second.settling : 0
     return Math.max(byPole, bySettling)
   }, [pz, second])
+  // ...and STICKY, like the frequency axis: tuning a component moves the
+  // arrival across a held time axis instead of the axis rescaling to pin the
+  // curve in place. Same for the y-range below, so growing overshoot grows
+  // on screen. Both snap on a circuit or output change.
+  const stepAxisRef = useRef({ key: '', duration: 0, range: null })
+  const stepDuration = useMemo(() => {
+    const key = `${id}/${output}`
+    const held = stepAxisRef.current.key === key ? stepAxisRef.current.duration : 0
+    const d = stickyDuration(held, naturalDuration)
+    stepAxisRef.current.key = key
+    stepAxisRef.current.duration = d
+    return d
+  }, [id, output, naturalDuration])
   const step = useMemo(
     () => stepResponse(tf, { duration: stepDuration, points: 900 }),
     [tf, stepDuration],
@@ -170,6 +190,43 @@ export default function App() {
     () => stepBand(id, params, output, tolsN, stepDuration),
     [id, params, output, tolsN, stepDuration],
   )
+  // The step pane's y-range, held sticky over trace AND band so neither can
+  // be clipped and shrinking overshoot visibly shrinks.
+  const stepRange = useMemo(() => {
+    let lo = 0
+    let hi = 0
+    for (let i = 0; i < step.y.length; i++) {
+      if (step.y[i] < lo) lo = step.y[i]
+      if (step.y[i] > hi) hi = step.y[i]
+    }
+    if (stepEnvelope) {
+      for (let i = 0; i < stepEnvelope.lo.length; i++) {
+        if (stepEnvelope.lo[i] < lo) lo = stepEnvelope.lo[i]
+        if (stepEnvelope.hi[i] > hi) hi = stepEnvelope.hi[i]
+      }
+    }
+    const key = `${id}/${output}`
+    const prev = stepAxisRef.current.rangeKey === key ? stepAxisRef.current.range : null
+    const r = stickyRange(prev, lo, hi)
+    stepAxisRef.current.rangeKey = key
+    stepAxisRef.current.range = r
+    return r
+  }, [id, output, step, stepEnvelope])
+  // The pole view's frame, sticky the same way — tuning C slides the poles
+  // along their radius across a held axis. Delivered through PoleZeroCanvas's
+  // `span` prop; until the packages agent adds it (NEEDS.md) the prop is
+  // ignored and the view keeps its per-render auto-fit.
+  const pzSpanRef = useRef({ key: '', span: 0 })
+  const pzSpan = useMemo(() => {
+    let m = 1
+    const all = [...pz.poles, ...pz.zeros, ...(wobble.any ? wobble.cloud : [])]
+    for (const [re, im] of all) m = Math.max(m, Math.abs(re) * 1.4, Math.abs(im) * 1.4)
+    const key = `${id}/${output}`
+    const prev = pzSpanRef.current.key === key ? pzSpanRef.current.span : 0
+    const s = stickySpan(prev, m)
+    pzSpanRef.current = { key, span: s }
+    return s
+  }, [id, output, pz, wobble])
   const f0Nominal = metrics ? metrics.w0 / (2 * Math.PI) : second ? second.f0 : null
   const f0Spread = wobble.any && f0Nominal ? spreadPct(wobble.f0, f0Nominal) : null
   const qNominal = metrics && Number.isFinite(metrics.q) ? metrics.q : second ? second.q : null
@@ -532,12 +589,19 @@ export default function App() {
             </div>
           </div>
           {lower === 'step' ? (
-            <StepCanvas t={step.t} y={step.y} final={gain} band={stepEnvelope} />
+            <StepCanvas
+              t={step.t}
+              y={step.y}
+              final={gain}
+              band={stepEnvelope}
+              range={stepRange}
+            />
           ) : (
             <PoleZeroCanvas
               poles={pz.poles}
               zeros={pz.zeros}
               cloud={wobble.any ? wobble.cloud : null}
+              span={pzSpan}
             />
           )}
         </section>

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { SPAN_DECADES, axisFreqs, ensureSampled, stickyCentre } from './axis.js'
+import {
+  SPAN_DECADES,
+  axisFreqs,
+  ensureSampled,
+  stickyCentre,
+  stickyDuration,
+  stickyRange,
+  stickySpan,
+} from './axis.js'
 import { transferOf, defaultsOf } from './circuits.js'
 import { magnitudeAt } from '@ee-labs/systems'
 
@@ -45,6 +53,45 @@ describe('axisFreqs', () => {
     // Log-spaced: constant ratio between neighbours.
     const r = f[1] / f[0]
     expect(f[151] / f[150]).toBeCloseTo(r, 9)
+  })
+})
+
+// The same rule the frequency axis established, applied to the other two
+// panes: tuning moves the CURVE (or the poles) across a held frame; the frame
+// re-frames only when the content escapes it or gets lost inside it.
+describe('sticky step and pole frames', () => {
+  it('the time span holds while the arrival stays on screen', () => {
+    const framed = stickyDuration(0, 1e-3, true) // 1.35 ms of axis
+    expect(framed).toBeCloseTo(1.35e-3, 12)
+    // Speeding the circuit up (shorter natural) holds — the arrival slides
+    // left across a fixed axis...
+    expect(stickyDuration(framed, 0.5e-3)).toBe(framed)
+    expect(stickyDuration(framed, 0.3e-3)).toBe(framed)
+    // ...until it is crammed into the left fifth, which reframes...
+    expect(stickyDuration(framed, 0.1e-3)).toBeCloseTo(0.135e-3, 12)
+    // ...and outgrowing the axis reframes immediately: an unsettled curve
+    // running off the right edge is the one thing this pane must never show.
+    expect(stickyDuration(framed, 2e-3)).toBeCloseTo(2.7e-3, 12)
+  })
+
+  it('the y-range expands at once, shrinks reluctantly, holds otherwise', () => {
+    const r0 = stickyRange(null, 0, 1.6) // e.g. a 60% overshoot
+    expect(r0.lo).toBeCloseTo(-0.192, 9)
+    expect(r0.hi).toBeCloseTo(1.792, 9)
+    // Less overshoot: the ringing visibly shrinks against the SAME scale.
+    expect(stickyRange(r0, 0, 1.3)).toBe(r0)
+    // Escaping data reframes immediately — clipping is never acceptable.
+    expect(stickyRange(r0, 0, 2.4).hi).toBeGreaterThan(2.4)
+    // A curve using under 35% of the frame gets a tighter one.
+    expect(stickyRange(r0, 0, 0.5)).not.toBe(r0)
+  })
+
+  it('the pole-view span holds while the poles move within it', () => {
+    const s0 = stickySpan(0, 44000, true)
+    expect(s0).toBeCloseTo(50600, 0)
+    expect(stickySpan(s0, 30000)).toBe(s0) // poles slid inward: hold
+    expect(stickySpan(s0, 60000)).toBeCloseTo(69000, 0) // escaped: reframe
+    expect(stickySpan(s0, 10000)).toBeCloseTo(11500, 0) // lost in the middle
   })
 })
 

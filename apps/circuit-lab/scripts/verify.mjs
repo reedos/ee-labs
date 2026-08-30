@@ -206,6 +206,40 @@ const span3 = await spanShown()
 if (span3 === span2) fail('switching circuits should re-centre the axis')
 else console.log('   switching to the RLC reframed the axis')
 
+// -------------------- 2c. the step pane's axes hold still while tuning too
+
+console.log('\n2c. Sticky step axes: tuning moves the curve, not the frame\n')
+{
+  const frame = () =>
+    page.evaluate(() => {
+      const c = document.querySelectorAll('.views canvas')[1]
+      return { t: c?.dataset.tMax, y: c?.dataset.yHi }
+    })
+  await pick('RC low-pass')
+  await setField('R', '2.2k')
+  await setField('C', '100n')
+  const f0 = await frame()
+  // Speeding the circuit up by half moves the arrival left across the SAME
+  // frame — this is the whole point.
+  await setField('R', '1k')
+  const f1 = await frame()
+  console.log(`   frame before: t≤${f0.t}s  after 2.2x speed-up: t≤${f1.t}s  ${f0.t === f1.t ? '(held)' : '(MOVED)'}`)
+  if (f0.t !== f1.t) fail(`step time axis re-framed on a modest tune: ${f0.t} -> ${f1.t}`)
+  if (f0.y !== f1.y) fail(`step y-range re-framed on a modest tune: ${f0.y} -> ${f1.y}`)
+  // A 100x change has genuinely outgrown the frame; holding now would cram
+  // the arrival into the first pixels, so it must re-frame. Typed with the
+  // displayed prefix in mind: the field shows kΩ, so a bare "10" would be
+  // 10 kΩ — the eng-notation gotcha, which bit THIS harness line first.
+  await setField('R', '0.01k')
+  const f2 = await frame()
+  if (f2.t === f0.t) fail('step time axis never re-frames — a 100x faster arrival was lost')
+  if (parseFloat(f2.t) > parseFloat(f0.t)) {
+    fail(`a 100x speed-up must re-frame DOWN: ${f0.t} -> ${f2.t}`)
+  } else {
+    console.log(`   after a 100x speed-up: t≤${f2.t}s  (re-framed down, as it must)`)
+  }
+}
+
 // ------------------------------- 3. do resonance and Q follow L, C and R?
 
 console.log('\n3. Series RLC: do f₀ and Q follow the components?\n')
