@@ -172,8 +172,10 @@
         <h1><span class="ee">EE</span> Labs</h1>
         <p class="tagline">
           Build a signal and watch a filter reshape it. Wire a circuit and read its poles.
-          Close a loop and find its margins. Three connected labs, one shared language
-          &mdash; the transfer function &mdash; and
+          Close a loop and find its margins. The three labs trade in one currency &mdash;
+          the transfer function &mdash; so the circuit you wire in one opens in the others
+          as the exact same system: filter a signal through it in Signal Lab, steer it as
+          the plant in Control Lab. And
           <b>every claim on every page is measured against what is drawn.</b>
         </p>
       </header>
@@ -337,27 +339,38 @@
         return { b0: (1 + cw) / 2 / a0, b1: -(1 + cw) / a0, b2: (1 + cw) / 2 / a0,
                  a1: (-2 * cw) / a0, a2: (1 - al) / a0 }
       }
+      // A TRUE square, not the 3-harmonic sum: the high-pass demo's whole
+      // signature — a spike at each edge decaying to zero on the flat tops —
+      // needs sharp edges to differentiate. High-passing a bandlimited
+      // squareish just wobbles. Amplitude 0.6 so the ~2x edge jump fits.
+      const trueSquare = (n, cycles) => Array.from({ length: n }, (_, i) =>
+        Math.sin(2 * Math.PI * ((i / n) * cycles)) >= 0 ? 0.6 : -0.6)
       const DEMOS = [
         { // the cutoff breathes 2.2x-14x f0: the square rounds, then sharpens
           left: 'square, 3 harmonics shown of ∞ · low-passed',
+          src: squareish,
           run(phase, n, x) {
             const mult = 2.2 + 11.8 * (0.5 - 0.5 * Math.cos(phase))
             capR.innerHTML = 'low-pass f<sub>c</sub> = <b>' + mult.toFixed(1) + ' × f₀</b>'
             return runBiquad(lowpass(mult * 3, n), x) // f0 = 3 cycles per n samples
           },
         },
-        { // same square, high-passed: the flat tops die, the edges survive
+        { // a true square, high-passed: the flat tops die, the edges survive
           left: 'square · high-passed: only the edges survive',
+          src: trueSquare,
           run(phase, n, x) {
             const mult = 1.5 + 8.5 * (0.5 - 0.5 * Math.cos(phase))
             capR.innerHTML = 'high-pass f<sub>c</sub> = <b>' + mult.toFixed(1) + ' × f₀</b>'
             return runBiquad(highpass(mult * 3, n), x)
           },
         },
-        { // fixed cutoff, Q breathes 0.9-8: each edge rings the resonance
+        { // fixed cutoff, Q breathes 0.9-4.8: each edge rings the resonance.
+          // Input scaled to 0.72x and Q capped at 4.8: resonance amplifies the
+          // harmonics near fc, and past that the ringing clips the frame.
           left: 'square · resonant low-pass: Q is the ringing',
+          src: (n, c) => squareish(n, c).map((v) => v * 0.72),
           run(phase, n, x) {
-            const q = 0.9 + 7.1 * (0.5 - 0.5 * Math.cos(phase))
+            const q = 0.9 + 3.9 * (0.5 - 0.5 * Math.cos(phase))
             capR.innerHTML = 'Q = <b>' + q.toFixed(1) + '</b> at f<sub>c</sub> = 4 × f₀'
             return runBiquad(lowpass(4 * 3, n, q), x)
           },
@@ -372,17 +385,19 @@
         g.lineWidth = 1
         for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(0, (h * i) / 4); g.lineTo(w, (h * i) / 4); g.stroke() }
         const n = 900
-        const x = squareish(n, 3)
+        const x = DEMOS[demo].src(n, 3)
         capL.textContent = DEMOS[demo].left
         const y = DEMOS[demo].run(phase, n, x)
-        // ghost square
-        g.strokeStyle = 'rgba(56,224,176,0.28)'
+        // The trace wears the colour of the dot that chose it.
+        const traceCol = [COL.amber, COL.accent, COL.blue][demo]
+        // ghost square — neutral, so the coloured output owns its colour
+        g.strokeStyle = 'rgba(148,163,184,0.30)'
         g.lineWidth = 1.2 * d
         g.beginPath()
         x.forEach((v, i) => { const px = (i / (n - 1)) * w, py = h / 2 - v * h * 0.36; i ? g.lineTo(px, py) : g.moveTo(px, py) })
         g.stroke()
         // filtered
-        g.strokeStyle = COL.amber
+        g.strokeStyle = traceCol
         g.lineWidth = 2 * d
         g.beginPath()
         y.forEach((v, i) => { const px = (i / (n - 1)) * w, py = h / 2 - v * h * 0.36; i ? g.lineTo(px, py) : g.moveTo(px, py) })
