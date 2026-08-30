@@ -40,41 +40,87 @@ const lastNonZero = (arr) => {
 /**
  * What Signal Lab would need to reproduce this circuit, or null.
  *
+ * Two tiers, per Reed's full-fidelity rule (NEEDS.md, both directions). A
+ * named shape is PREFERRED when it is exact — its f₀ and Q knobs mean
+ * something over there. When no named shape fits but the order is ≤ 2, the
+ * hand-over does NOT decline: Signal Lab's `biquad` block receives the five
+ * raw coefficients bilinear-exactly, which is what carries the twin-T — the
+ * filter no named mode can express — whole. `raw: true` marks that tier so
+ * the panel can present it honestly as coefficients rather than a recipe.
+ *
+ * The one reasoned refusal left: a pole exactly at the origin (the op-amp
+ * integrator). Its DC gain is unbounded, a sampled copy just counts forever,
+ * and every Signal Lab plot would lie — declined, not approximated.
+ *
  * The sample rate has to be well above the circuit's own frequency or the
  * discrete version is not the same filter in any useful sense — a corner at
  * half of Nyquist is warped badly enough that the correspondence stops being
  * the point. Twenty times is comfortable.
  */
 export function asDigitalFilter(tf, { sampleRate = 48000 } = {}) {
-  const m = secondOrderMetrics(tf)
-  if (!m) return null
-  const shape = shapeOf(tf)
-  const f0 = m.f0
-  if (!(f0 > 0) || !Number.isFinite(f0)) return null
+  const strip = (c) => {
+    const out = [...c]
+    while (out.length > 1 && Math.abs(out[0]) < 1e-18) out.shift()
+    return out
+  }
+  const a = strip(tf.a)
+  const order = a.length - 1
+  if (order > 2) return null
+  // Zero constant term in the denominator = a pole at s = 0.
+  if (Math.abs(a[a.length - 1]) < 1e-18) return null
 
-  const gain = shape === 'lowpass' ? dcGain(tf) : magnitudeAt(tf, f0) / (m.q || 1)
-  const digital = bilinear(tf, sampleRate, f0)
+  const m = secondOrderMetrics(tf)
+  const shape = shapeOf(tf)
+  // The frequency the correspondence is anchored to (pre-warp, rate advice):
+  // the resonance when there is one, the pole's own corner for first order,
+  // nothing for a resistor network — no dynamics, nothing to warp.
+  const fRef =
+    m && Number.isFinite(m.f0) && m.f0 > 0
+      ? m.f0
+      : order === 1
+        ? a[1] / a[0] / (2 * Math.PI)
+        : null
+
+  const digital = bilinear(tf, sampleRate, fRef)
+  // The link wants exactly five numbers; a first-order (or flat) circuit's
+  // shorter arrays pad with zeros, which the biquad runs as written.
+  const five = (arr) => [...arr, 0, 0].slice(0, 3)
+  const [b0, b1, b2] = five(digital.b)
+  const [, a1 = 0, a2 = 0] = [...digital.a, 0, 0].slice(0, 3)
+  // The receiving block's knobs stop at ±3.999, and Signal Lab clamps an
+  // out-of-range arrival (with a warning). Coefficients grow as the rate
+  // drops toward the corner, so this is a rate problem with a rate solution
+  // — flagged here so the panel can say "raise the rate" BEFORE the link is
+  // copied, instead of the other lab saying "clamped" after.
+  const clipped = [b0, b1, b2, a1, a2].some((v) => Math.abs(v) > 3.999)
+
+  const gain =
+    shape === 'lowpass' ? dcGain(tf) : shape && fRef ? magnitudeAt(tf, fRef) / (m.q || 1) : dcGain(tf)
 
   return {
     shape,
-    f0,
-    q: m.q,
-    zeta: m.zeta,
+    raw: !shape,
+    clipped,
+    f0: fRef,
+    q: m ? m.q : null,
+    zeta: m ? m.zeta : null,
     gain,
     sampleRate,
     digital,
     // Below about twenty samples per cycle the bilinear warp starts to matter
-    // enough that "the same filter" needs qualifying.
-    ratio: sampleRate / f0,
-    tooFast: sampleRate / f0 < 20,
-    link:
-      shape && f0 > 0
-        ? buildLink({
-            rate: sampleRate,
-            sources: [{ type: 'noise', freq: 100, amp: 0.6 }],
-            blocks: [{ type: shape, params: [f0, m.q] }],
-          })
-        : null,
+    // enough that "the same filter" needs qualifying. A flat network has no
+    // cycle to sample; its ratio is honestly infinite and never "too fast".
+    ratio: fRef ? sampleRate / fRef : Infinity,
+    tooFast: fRef ? sampleRate / fRef < 20 : false,
+    link: buildLink({
+      rate: sampleRate,
+      sources: [{ type: 'noise', freq: 100, amp: 0.6 }],
+      blocks: [
+        shape && fRef
+          ? { type: shape, params: [fRef, m.q] }
+          : { type: 'biquad', params: [b0, b1, b2, a1, a2] },
+      ],
+    }),
   }
 }
 

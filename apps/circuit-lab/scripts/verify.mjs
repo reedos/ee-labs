@@ -106,7 +106,13 @@ async function setField(label, value) {
   await settle()
 }
 
-const circuitNames = await page.$$eval('.preset', (els) => els.map((e) => e.textContent.trim()))
+// Only the chips in the sidebar lists — the hand-over section's copy buttons
+// share the .preset class but come and go per circuit (the raw tier gave one
+// to nearly every circuit, and the integrator's reasoned refusal takes it
+// away), and sweeping them as if they were circuits timed out exactly there.
+const circuitNames = await page.$$eval('.presets .preset', (els) =>
+  els.map((e) => e.textContent.trim()),
+)
 const pick = async (name) => {
   const btn = page.getByRole('button', { name, exact: true })
   // Preset groups fold now; a button in a folded group is not clickable until
@@ -439,19 +445,23 @@ for (const [rT, r, cT, c] of [
   if (!okQ) fail(`twin-T R=${rT} C=${cT}: Q ${gotQ} should be exactly 0.250`)
   for (const b of bad) fail(`twin-T R=${rT} C=${cT}: ✗ ${b.label} (theory ${b.theory}, measured ${b.measured})`)
 }
-// The hand-over must decline, in words, not break: no biquad shape fits a
-// notch, and Control Lab's plant has no zeros.
+// The full-fidelity hand-over: no named recipe fits a notch, so the twin-T
+// crosses as raw coefficients — the showcase of the tier Reed asked for.
+// Control Lab stays declined until its `custom` plant lands (NEEDS.md).
 {
   const ho = await page.evaluate(
     () => [...document.querySelectorAll('.controls section')].map((s) => s.textContent).join(' '),
   )
-  if (!/not a second-order section of a shape a biquad can express/.test(ho)) {
-    fail('twin-T: the hand-over section should decline with its explanation')
+  if (!/the coefficients themselves/.test(ho)) {
+    fail('twin-T: the hand-over should present itself as raw coefficients')
+  }
+  if (!/b=biquad:/.test(ho)) {
+    fail('twin-T: the hand-over link should carry a raw biquad block')
   }
   if (/as something to control/.test(ho)) {
-    fail('twin-T: Control Lab hand-over should be declined (numerator has zeros)')
+    fail('twin-T: Control Lab hand-over should still be declined (no `custom` plant yet)')
   }
-  console.log('   hand-over declines honestly: no biquad shape, no plant offered')
+  console.log('   hand-over crosses as raw coefficients; Control Lab still declined')
 }
 
 // -------------------- 4d. per-part tolerance: R alone cannot move f₀ at all
@@ -468,6 +478,11 @@ console.log('\n4d. Per-part tolerance: an R-only ±10% pins f₀ and frees Q\n')
     console.log(`   R alone ±10% -> f₀ ±${f0Pct}%  Q ±${qPct}%`)
     if (f0Pct !== 0) fail(`R-only tolerance must leave f₀ at ±0.0%, got ±${f0Pct}%`)
     if (!(qPct > 7)) fail(`Q should take the full R hit, got ±${qPct}%`)
+  }
+  // A complex pair prints its value beside the plot, once, as re ± j·im.
+  {
+    const legend = await page.locator('.views .view').nth(1).locator('.readout').textContent()
+    if (!/± j/.test(legend)) fail(`complex poles should print as ± j pairs, got "${legend.slice(0, 80)}"`)
   }
   // The per-part controls display the lesson's grading: R at ±10%, L and C exact.
   const stateOf = async (label) =>
@@ -511,6 +526,17 @@ await settle()
 const afterView = await canvasHashes()
 if (afterView[1] === beforeView[1]) fail('switching to the pole-zero view did not redraw')
 console.log('   pole-zero view redraws')
+
+// The readout beside the plot is legend AND values: × pole, ○ zero, with the
+// complex numbers a position alone cannot hand the reader.
+{
+  const legend = await page.locator('.views .view').nth(1).locator('.readout').textContent()
+  if (!legend.includes('× poles') || !legend.includes('○ zeros')) {
+    fail(`pz readout should carry the ×/○ legend, got "${legend.slice(0, 80)}"`)
+  }
+  if (!/poles\s*0/.test(legend)) fail('the integrator pole should print its value, 0')
+  console.log(`   legend and values: ${legend.replace(/\s+/g, ' ').trim().slice(0, 70)}...`)
+}
 
 await page.getByRole('button', { name: 'Step response' }).click()
 await settle()

@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
-import { NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
+import { COLORS, NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import {
   bode,
@@ -23,6 +23,7 @@ import {
   stickyRange,
   stickySpan,
 } from './axis.js'
+import { describeRoots } from './pzText.js'
 import Schematic from './schematics.jsx'
 import HandOver from './components/HandOver.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
@@ -575,11 +576,19 @@ export default function App() {
                 </>
               ) : (
                 <>
+                  {/* The legend and the numbers in one stroke: × is a pole,
+                      ○ a zero, in the marks' own colours — and the VALUES,
+                      because a position on a plot is not a number a reader
+                      can write down. Conjugate pairs print once as ±j. */}
                   <span>
-                    poles <b>{pz.poles.length}</b>
+                    <b style={{ color: COLORS.trace }}>×</b> poles{' '}
+                    <b>{describeRoots(pz.poles)}</b>
+                    {pz.poles.length ? <em className="prov"> s⁻¹</em> : null}
                   </span>
                   <span>
-                    zeros <b>{pz.zeros.length}</b>
+                    <b style={{ color: COLORS.response }}>○</b> zeros{' '}
+                    <b>{describeRoots(pz.zeros)}</b>
+                    {pz.zeros.length ? <em className="prov"> s⁻¹</em> : null}
                   </span>
                   <span className={stable ? '' : 'flag warn'}>
                     {stable ? 'all in the left half plane' : 'not all in the left half plane'}

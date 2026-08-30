@@ -26,12 +26,18 @@ describe('recognising which filter a circuit is', () => {
     expect(d.zeta).toBeCloseTo(1 / (2 * Q), 9)
   })
 
-  it('offers nothing for a circuit that is not a second-order section', () => {
-    // First order, so there is no Q to hand over.
-    expect(asDigitalFilter(transferOf('rcLow', defaultsOf('rcLow')))).toBeNull()
-    // Second order but its numerator is not a recognised shape.
+  it('hands a first-order circuit over raw — no named recipe, but no refusal either', () => {
+    // There is no Q to put on a named block's knob, so the RC crosses as its
+    // raw coefficients instead (Reed's full-fidelity rule).
+    const d = asDigitalFilter(transferOf('rcLow', defaultsOf('rcLow')))
+    expect(d.shape).toBeNull()
+    expect(d.raw).toBe(true)
+    expect(d.link).toBeTruthy()
+    // Second order with a recognised numerator still gets the named form —
+    // preferred, because its knobs mean something over there.
     const tank = asDigitalFilter(transferOf('rlcParallel', defaultsOf('rlcParallel')))
     expect(tank.shape).toBe('bandpass')
+    expect(tank.raw).toBe(false)
   })
 
   it('builds a link that actually carries the filter', () => {
@@ -98,18 +104,87 @@ describe('recognising which filter a circuit is', () => {
     }
   })
 
-  it('declines the twin-T rather than claiming a shape the biquads lack', () => {
-    // The twin-T IS a second-order section — but its zeros sit on the axis,
-    // a notch, and Signal Lab's biquad registry has lowpass, bandpass and
-    // highpass only. A band-pass "close enough" would be confidently wrong at
-    // exactly the frequency the circuit exists to remove, so it declines: no
-    // shape, no link. Control Lab is declined too — its second-order plant
-    // has no zeros at all.
-    const tf = transferOf('twinT', defaultsOf('twinT'), 'out')
-    const d = asDigitalFilter(tf)
+  it('carries the twin-T raw — the showcase of the full-fidelity tier', () => {
+    // No named mode can express a notch, and a band-pass "close enough"
+    // would be confidently wrong at exactly the frequency the circuit exists
+    // to remove. It used to decline; now Signal Lab's raw-coefficient biquad
+    // receives it bilinear-exactly.
+    const p = defaultsOf('twinT')
+    const tf = transferOf('twinT', p, 'out')
+    const rate = 48000
+    const d = asDigitalFilter(tf, { sampleRate: rate })
     expect(d.shape).toBeNull()
-    expect(d.link).toBeNull()
+    expect(d.raw).toBe(true)
+    expect(d.clipped).toBe(false)
+
+    // Bilinear-exact in the coefficients themselves: the notch is EXACTLY
+    // zero at the pre-warped frequency — carried whole, not approximated —
+    // and unity at DC and far above, same as the analog circuit.
+    const f0 = 1 / (2 * Math.PI * p.r * p.c)
+    const exact = {
+      b0: d.digital.b[0],
+      b1: d.digital.b[1],
+      b2: d.digital.b[2],
+      a1: d.digital.a[1],
+      a2: d.digital.a[2],
+    }
+    expect(biquadResponse(exact, f0, rate)).toBeLessThan(1e-9)
+    expect(biquadResponse(exact, 1, rate)).toBeCloseTo(1, 4)
+    expect(biquadResponse(exact, rate / 2 - 1, rate)).toBeCloseTo(1, 2)
+
+    // The LINK carries the five numbers in the receiver's schema order,
+    // a-normalized — at the suite serializer's six significant figures
+    // (deeplink.js trim). That prices the carried notch floor at roughly
+    // −100 dB rather than −∞: stated, not hidden, and inaudibly deep. If
+    // raw hand-overs ever deserve better, the ask is a serializer change
+    // (packages/ui), not a deeper approximation here.
+    const { patch, warnings } = parseLink(d.link)
+    expect(warnings).toEqual([])
+    expect(patch.blocks[0].type).toBe('biquad')
+    const [b0, b1, b2, a1, a2] = patch.blocks[0].params
+    expect(b0).toBeCloseTo(d.digital.b[0], 6)
+    expect(a2).toBeCloseTo(d.digital.a[2], 6)
+    expect(biquadResponse({ b0, b1, b2, a1, a2 }, f0, rate)).toBeLessThan(1e-4)
+
+    // Control Lab is still declined — its second-order plant has no zeros.
+    // The raw tier there waits on their `custom` plant (see NEEDS.md).
     expect(asControlPlant(tf)).toBeNull()
+  })
+
+  it('a first-order circuit crosses faithfully too, padded into the five slots', () => {
+    const p = defaultsOf('rcLow')
+    const rate = 192000
+    const d = asDigitalFilter(transferOf('rcLow', p, 'c'), { sampleRate: rate })
+    const { patch, warnings } = parseLink(d.link)
+    expect(warnings).toEqual([])
+    const [b0, b1, b2, a1, a2] = patch.blocks[0].params
+    expect(b2).toBe(0)
+    expect(a2).toBe(0)
+    const coeffs = { b0, b1, b2, a1, a2 }
+    const fc = 1 / (2 * Math.PI * p.r * p.c)
+    // Exact at the pre-warped corner up to the link's six significant
+    // figures, faithful (well under 1%) a decade out.
+    expect(biquadResponse(coeffs, fc, rate)).toBeCloseTo(Math.SQRT1_2, 4)
+    expect(biquadResponse(coeffs, fc / 10, rate)).toBeCloseTo(
+      magnitudeAt(transferOf('rcLow', p, 'c'), fc / 10),
+      3,
+    )
+  })
+
+  it('still refuses the integrator, with its reason intact', () => {
+    // A pole exactly at the origin: unbounded DC gain, a sampled copy that
+    // counts forever. The one circuit whose hand-over stays declined.
+    expect(asDigitalFilter(transferOf('integrator', defaultsOf('integrator'), 'out'))).toBeNull()
+  })
+
+  it('flags coefficients the receiving knobs cannot hold, before the link is copied', () => {
+    // The inverting amp at gain −10: comfortable at its suggested rate, but
+    // drop the rate toward the corner and b₀ outgrows the biquad's ±3.999.
+    // Signal Lab would clamp with a warning on arrival; the panel warns
+    // BEFORE, and says the fix (raise the rate).
+    const tf = transferOf('inverting', defaultsOf('inverting'), 'out')
+    expect(asDigitalFilter(tf, { sampleRate: 192000 }).clipped).toBe(false)
+    expect(asDigitalFilter(tf, { sampleRate: 48000 }).clipped).toBe(true)
   })
 })
 

@@ -34,12 +34,17 @@ export default function HandOver({ tf, circuitName }) {
   const rate = chosen ?? suggestRate(natural ? natural.f0 : 0)
   const d = useMemo(() => asDigitalFilter(tf, { sampleRate: rate }), [tf, rate])
 
-  if (!d || !d.shape) {
+  // The one reasoned refusal: a pole exactly at the origin (the integrator).
+  // Everything else crosses — as a named shape when one is exact, or as raw
+  // coefficients when none is (Reed's full-fidelity rule; the twin-T is the
+  // showcase of the second tier).
+  if (!d) {
     return (
       <>
         <p className="hint">
-          This circuit is not a second-order section of a shape a biquad can express, so there is
-          no filter to hand over. The series RLC, the tank and the Sallen–Key all can be.
+          This circuit’s DC gain is unbounded — its pole sits exactly at the origin — so a
+          sampled copy would just count without limit and every plot over there would lie about
+          it. Declined rather than approximated; every other circuit here crosses.
         </p>
         <AsPlant plant={plant} circuitName={circuitName} />
       </>
@@ -60,11 +65,20 @@ export default function HandOver({ tf, circuitName }) {
 
   return (
     <div className="handover">
-      <p className="hint">
-        Sampled at {fmtHz(rate)}Hz, {circuitName} is a {SHAPE_LABEL[d.shape]} biquad with a
-        cutoff of {fmtHz(d.f0)}Hz and Q of {d.q.toPrecision(4)}. Not similar to one — the same
-        one.
-      </p>
+      {d.shape ? (
+        <p className="hint">
+          Sampled at {fmtHz(rate)}Hz, {circuitName} is a {SHAPE_LABEL[d.shape]} biquad with a
+          cutoff of {fmtHz(d.f0)}Hz and Q of {d.q.toPrecision(4)}. Not similar to one — the same
+          one.
+        </p>
+      ) : (
+        <p className="hint">
+          No named filter recipe over there fits {circuitName}
+          {d.f0 ? ` (${fmtHz(d.f0)}Hz is its own kind of feature)` : ''} — so it crosses as the
+          five raw numbers every second-order digital filter reduces to, bilinear-exact at{' '}
+          {fmtHz(rate)}Hz. Not a shape with knobs; the coefficients themselves.
+        </p>
+      )}
 
       <NumField
         label="Sample rate"
@@ -76,9 +90,11 @@ export default function HandOver({ tf, circuitName }) {
         scale="log"
         eng
         hint={
-          chosen == null
-            ? `chosen for this circuit — ${(rate / d.f0).toPrecision(3)} samples per cycle`
-            : `${(rate / d.f0).toPrecision(3)} samples per cycle at the corner`
+          !Number.isFinite(d.ratio)
+            ? 'no corner to sample — a flat network is flat at any rate'
+            : chosen == null
+              ? `chosen for this circuit — ${(rate / d.f0).toPrecision(3)} samples per cycle`
+              : `${(rate / d.f0).toPrecision(3)} samples per cycle at the corner`
         }
       />
 
@@ -91,22 +107,35 @@ export default function HandOver({ tf, circuitName }) {
         </p>
       ) : null}
 
+      {d.clipped ? (
+        <p className="hint warn">
+          At this rate the coefficients exceed the ±3.999 the biquad’s knobs reach, and Signal
+          Lab would clamp them on arrival. Coefficients shrink as the rate rises above the
+          corner — raise the rate before copying the link.
+        </p>
+      ) : null}
+
       <table className="math-values">
         <caption>as a difference equation</caption>
         <tbody>
           <tr>
             <th scope="row">b₀, b₁, b₂</th>
             <td>
-              {c.b.map((v) => Number(v.toPrecision(5))).join(', ')}
+              {/* Padded to the biquad's five slots, exactly as the link
+                  carries them — a first-order circuit's third tap is a real
+                  zero, not a blank. */}
+              {[...c.b, 0, 0].slice(0, 3).map((v) => Number(v.toPrecision(5))).join(', ')}
             </td>
           </tr>
           <tr>
             <th scope="row">a₁, a₂</th>
-            <td>{c.a.slice(1).map((v) => Number(v.toPrecision(5))).join(', ')}</td>
+            <td>
+              {[...c.a.slice(1), 0, 0].slice(0, 2).map((v) => Number(v.toPrecision(5))).join(', ')}
+            </td>
           </tr>
           <tr>
             <th scope="row">samples per cycle</th>
-            <td>{Number(d.ratio.toPrecision(4))}</td>
+            <td>{Number.isFinite(d.ratio) ? Number(d.ratio.toPrecision(4)) : '—'}</td>
           </tr>
         </tbody>
       </table>

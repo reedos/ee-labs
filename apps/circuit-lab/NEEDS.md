@@ -1,37 +1,31 @@
 # Needs and heads-ups for the other territories
 
-## NEW TASK from Reed (via the packages/signal-lab agent): full-fidelity hand-overs
+## Full-fidelity hand-overs — Circuit Lab's Signal-Lab half is DONE
 
-Reed wants EVERY circuit to migrate to the other labs exactly — not only the
-ones that fit a named block. The receiving half now exists on the Signal Lab
-side; this file is your half.
+Reed's rule (relayed via the packages/signal-lab agent): every circuit
+migrates exactly, not only the ones that fit a named block. Status:
 
-**Signal Lab side (DONE, on master):** a `biquad` block taking raw
-coefficients — `b=biquad:b0:b1:b2:a1:a2` in a link (a-normalized, a0
-dropped). It is bilinear-exact for any order-≤2 H(s), including the twin-T
-(test: "carries a twin-T notch bilinear-exactly" in
-apps/signal-lab/src/dsp/blocks.test.js). Unstable coefficients pass through
-with an UNSTABLE flag rather than exploding.
+- **Signal Lab receiver (DONE, 45b509a):** raw-coefficient `biquad` block,
+  `b=biquad:b0:b1:b2:a1:a2`.
+- **Circuit Lab emitter (DONE):** `asDigitalFilter` now has two tiers —
+  named shape when exact (preferred; the knobs mean something), raw
+  coefficients otherwise for any order ≤ 2, first-order and flat circuits
+  padded into the five slots. The twin-T is the showcase; the harness (4c)
+  drives it. The op-amp integrator keeps its reasoned refusal (pole at the
+  origin, unbounded DC gain). Out-of-range coefficients (they grow as the
+  rate drops toward the corner) are flagged with a raise-the-rate warning
+  BEFORE the link is copied, complementing your clamp-with-warning on
+  arrival.
+- **Control Lab tier (WAITING on you):** the moment the `custom` plant
+  lands, Circuit Lab will add the `asControlPlant` fallback
+  (`plant=custom:...`) — exact, no bilinear.
 
-**Your half — `asDigitalFilter` in toSignalLab.js:**
-- When `shapeOf` finds no named shape but the order is ≤ 2, DO NOT decline:
-  emit the raw link from the `digital` you already compute
-  (`b=biquad:${d.b[0]}:${d.b[1]}:${d.b[2]}:${d.a[1]}:${d.a[2]}` — a is
-  already normalized).
-- Present it honestly: "as exact coefficients" rather than "as a low-pass",
-  same sample-rate control and samples-per-cycle warning. Named forms stay
-  PREFERRED when exact (their knobs mean something); raw is the fallback that
-  never declines for expressibility.
-- The twin-T's hand-over panel currently declines — it should be the
-  showcase. The op-amp integrator may still decline (unbounded DC gain makes
-  every Signal Lab plot lie); keep its reasoned refusal.
-- Extend your harness: twin-T → link present → (optionally) drive the
-  deployed-triangle pattern.
-
-**Also — `asControlPlant`:** once Control Lab lands its `custom` plant (their
-NEEDS has the spec), add the same fallback tier there:
-`plant=custom:b2:b1:b0:a2:a1:a0`. Circuit → Control needs no bilinear at all,
-so that hand-over is EXACT, not merely faithful.
+One observation for you, low priority: `deeplink.js` serializes every number
+at six significant figures, which prices a linked twin-T's notch floor at
+roughly −100 dB instead of −∞ (stated in Circuit Lab's tests). Fine for
+knobs; if raw coefficient hand-overs ever deserve better, the fix is the
+serializer's precision (perhaps only for biquad/custom params), not anything
+in the emitters.
 
 ## Open: PoleZeroCanvas tolerance cloud is too faint to read as a shape
 
