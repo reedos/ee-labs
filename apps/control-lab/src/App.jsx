@@ -16,6 +16,7 @@ import {
 } from '@ee-labs/systems'
 import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
 import { loopMath } from './math.js'
+import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import BodeCanvas from './components/BodeCanvas.jsx'
 import StepCanvas from './components/StepCanvas.jsx'
 import NyquistCanvas from './components/NyquistCanvas.jsx'
@@ -29,6 +30,8 @@ export default function App() {
   const [ctrlP, setCtrlP] = useState(() => defaultsOf(CONTROLLERS.p))
   const [lower, setLower] = useState('step')
   const [showPhase, setShowPhase] = useState(true)
+  // Cleared as soon as anything is touched: the note describes one setup.
+  const [lesson, setLesson] = useState(null)
 
   const plant = PLANTS[plantId]
   const ctrl = CONTROLLERS[ctrlId]
@@ -36,11 +39,25 @@ export default function App() {
   const choosePlant = (id) => {
     setPlantId(id)
     setPlantP(defaultsOf(PLANTS[id]))
+    setLesson(null)
   }
   const chooseCtrl = (id) => {
     setCtrlId(id)
     setCtrlP(defaultsOf(CONTROLLERS[id]))
+    setLesson(null)
   }
+
+  const loadLesson = (l) => {
+    const n = applyLesson(l)
+    setPlantId(n.plantId)
+    setPlantP(n.plantP)
+    setCtrlId(n.ctrlId)
+    setCtrlP(n.ctrlP)
+    setLower(n.view)
+    setLesson(l.name)
+  }
+
+  const active = LESSONS.find((l) => l.name === lesson)
 
   const loop = useMemo(
     () => buildLoop(plantId, plantP, ctrlId, ctrlP),
@@ -125,6 +142,32 @@ export default function App() {
         </header>
 
         <section>
+          <h2>Try this</h2>
+          {LESSON_GROUPS.map((g) => {
+            const inGroup = LESSONS.filter((l) => l.group === g)
+            if (!inGroup.length) return null
+            return (
+              <div className="preset-group" key={g}>
+                <h3>{g}</h3>
+                <div className="presets">
+                  {inGroup.map((l) => (
+                    <button
+                      type="button"
+                      key={l.name}
+                      className={`preset${l.name === lesson ? ' is-on' : ''}`}
+                      onClick={() => loadLesson(l)}
+                    >
+                      {l.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+          {active ? <p className="hint">{active.note}</p> : null}
+        </section>
+
+        <section>
           <h2>Plant</h2>
           {PLANT_GROUPS.map((g) => {
             const inGroup = Object.entries(PLANTS).filter(([, p]) => p.group === g)
@@ -147,14 +190,17 @@ export default function App() {
               </div>
             )
           })}
-          <p className="hint">{plant.hint}</p>
+          {active ? null : <p className="hint">{plant.hint}</p>}
           {plant.params.map((p) => (
             <NumField
               key={p.key}
               label={p.label}
               unit={p.unit}
               value={plantP[p.key]}
-              onChange={(v) => setPlantP((s) => ({ ...s, [p.key]: v }))}
+              onChange={(v) => {
+                setPlantP((s) => ({ ...s, [p.key]: v }))
+                setLesson(null)
+              }}
               min={p.min}
               max={p.max}
               scale={p.scale}
@@ -177,14 +223,17 @@ export default function App() {
               </button>
             ))}
           </div>
-          <p className="hint">{ctrl.hint}</p>
+          {active ? null : <p className="hint">{ctrl.hint}</p>}
           {ctrl.params.map((p) => (
             <NumField
               key={p.key}
               label={p.label}
               unit={p.unit}
               value={ctrlP[p.key]}
-              onChange={(v) => setCtrlP((s) => ({ ...s, [p.key]: v }))}
+              onChange={(v) => {
+                setCtrlP((s) => ({ ...s, [p.key]: v }))
+                setLesson(null)
+              }}
               min={p.min}
               max={p.max}
               scale={p.scale}

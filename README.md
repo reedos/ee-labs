@@ -6,7 +6,7 @@ and explains, next to every number, where that number came from.
 
 ```
 npm install
-npm test                 # every package and every app (255 tests)
+npm test                 # every package and every app (288 tests)
 npm run dev              # Signal Lab, at http://localhost:1421
 ```
 
@@ -15,13 +15,25 @@ npm run dev              # Signal Lab, at http://localhost:1421
 | | covers | status |
 |---|---|---|
 | **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 23 lessons |
-| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters | 9 circuits |
-| **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response | 6 plants x 4 controllers |
+| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters | 12 lessons, 9 circuits |
+| **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response | 11 lessons, 6 plants x 4 controllers |
 
 A third tool, [`waveform-simulator`](https://github.com/reedos/waveform-simulator), covers
 communications and high-speed optical links. It lives outside this repo: it serves
 practising engineers rather than students, it is mature, and retrofitting it onto these
 packages would be work without a reader to benefit from it.
+
+## Every app has a curriculum
+
+Each tool opens with a grouped **Try this** list. Every entry loads a setup and poses a
+question, and every claim its note makes is rendered and measured by a test — including
+the numbers quoted in prose, which are the ones that drift when a default changes and
+nobody notices.
+
+That is not a style preference. It has caught six confidently wrong explanations so far,
+four in Signal Lab and two written while building the other two apps. The most recent: a
+Control Lab note promised a step overshooting "about 45%" and the setup it loaded
+overshot 57%.
 
 ## The bridge
 

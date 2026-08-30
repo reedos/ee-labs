@@ -11,6 +11,7 @@ import {
 } from '@ee-labs/systems'
 import { CIRCUITS, CIRCUIT_GROUPS, defaultsOf, transferOf } from './circuits.js'
 import { circuitMath } from './math.js'
+import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import Schematic from './schematics.jsx'
 import HandOver from './components/HandOver.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
@@ -24,6 +25,10 @@ export default function App() {
   const [output, setOutput] = useState(CIRCUITS.rcLow.outputs[0].key)
   const [showPhase, setShowPhase] = useState(true)
   const [lower, setLower] = useState('step')
+  // Which lesson is loaded, cleared as soon as anything is changed by hand: the
+  // note describes one particular setup and stops being true once you move away
+  // from it.
+  const [lesson, setLesson] = useState(null)
 
   const circuit = CIRCUITS[id]
 
@@ -31,8 +36,23 @@ export default function App() {
     setId(next)
     setParams(defaultsOf(next))
     setOutput(CIRCUITS[next].outputs[0].key)
+    setLesson(null)
   }
-  const setParam = (key, value) => setParams((p) => ({ ...p, [key]: value }))
+  const setParam = (key, value) => {
+    setParams((p) => ({ ...p, [key]: value }))
+    setLesson(null)
+  }
+
+  const loadLesson = (l) => {
+    const next = applyLesson(l)
+    setId(next.id)
+    setParams(next.params)
+    setOutput(next.output || CIRCUITS[next.id].outputs[0].key)
+    setLower(next.view)
+    setLesson(l.name)
+  }
+
+  const active = LESSONS.find((l) => l.name === lesson)
 
   const tf = useMemo(() => transferOf(id, params, output), [id, params, output])
   const metrics = useMemo(() => (circuit.metrics ? circuit.metrics(params) : null), [circuit, params])
@@ -96,6 +116,32 @@ export default function App() {
         </header>
 
         <section>
+          <h2>Try this</h2>
+          {LESSON_GROUPS.map((g) => {
+            const inGroup = LESSONS.filter((l) => l.group === g)
+            if (!inGroup.length) return null
+            return (
+              <div className="preset-group" key={g}>
+                <h3>{g}</h3>
+                <div className="presets">
+                  {inGroup.map((l) => (
+                    <button
+                      type="button"
+                      key={l.name}
+                      className={`preset${l.name === lesson ? ' is-on' : ''}`}
+                      onClick={() => loadLesson(l)}
+                    >
+                      {l.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+          {active ? <p className="hint">{active.note}</p> : null}
+        </section>
+
+        <section>
           <h2>Circuits</h2>
           {CIRCUIT_GROUPS.map((g) => {
             const inGroup = Object.entries(CIRCUITS).filter(([, c]) => c.group === g)
@@ -118,7 +164,7 @@ export default function App() {
               </div>
             )
           })}
-          <p className="hint">{circuit.hint}</p>
+          {active ? null : <p className="hint">{circuit.hint}</p>}
           <MathPanel entry={math} />
         </section>
 

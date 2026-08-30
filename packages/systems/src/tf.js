@@ -92,7 +92,46 @@ export function bode(tf, freqs) {
     while (phase[i] - phase[i - 1] > Math.PI) phase[i] -= 2 * Math.PI
     while (phase[i] - phase[i - 1] < -Math.PI) phase[i] += 2 * Math.PI
   }
+
+  // Anchor the whole curve where the algebra says it must start.
+  //
+  // Unwrapping fixes the steps but not the offset, and the offset is decided by
+  // whatever atan2 happened to return at the first grid point. For a loop with
+  // two integrators the low-frequency phase is -180, which atan2 is equally
+  // entitled to report as +180 — and then the entire curve sits 360 out. That
+  // is not cosmetic: a margin is read against -180, so a shifted curve reports
+  // a phase margin of 360 and finds no phase crossover at all.
+  const shift = expectedLowFrequencyPhase(tf) - phase[0]
+  const turns = Math.round(shift / (2 * Math.PI))
+  if (turns !== 0) {
+    for (let i = 0; i < phase.length; i++) phase[i] += turns * 2 * Math.PI
+  }
   return { mag, phase }
+}
+
+/**
+ * The phase a transfer function must approach as the frequency goes to zero.
+ *
+ * Each pole at the origin contributes -90 degrees and each zero +90, and what
+ * is left over is a real number whose sign contributes 0 or 180. All of that is
+ * readable off the coefficients, which makes it a reliable anchor where the
+ * numerically evaluated angle at one grid point is not.
+ */
+function expectedLowFrequencyPhase(tf) {
+  const strip = (c) => {
+    const out = [...c]
+    let atOrigin = 0
+    while (out.length > 1 && Math.abs(out[out.length - 1]) < 1e-18) {
+      out.pop()
+      atOrigin++
+    }
+    return { atOrigin, last: out[out.length - 1] ?? 0 }
+  }
+  const den = strip(tf.a)
+  const num = strip(tf.b)
+  const ratio = den.last === 0 ? 1 : num.last / den.last
+  const sign = ratio < 0 ? Math.PI : 0
+  return (num.atOrigin - den.atOrigin) * (Math.PI / 2) + sign
 }
 
 /**

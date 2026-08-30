@@ -405,3 +405,58 @@ describe('loops', () => {
     }
   })
 })
+
+describe('phase anchoring', () => {
+  // Unwrapping fixes the steps in a phase curve but not its offset, and the
+  // offset is decided by whatever atan2 returns at the first grid point. For a
+  // loop with two integrators the low-frequency phase is -180 degrees, which
+  // atan2 may report as +180 — putting the whole curve 360 out and making
+  // margins() answer 360 for a phase margin, and find no phase crossover at all.
+  const GRID = Float64Array.from({ length: 4000 }, (_, i) => Math.pow(10, -4 + 8 * (i / 3999)))
+  const deg = (r) => (r * 180) / Math.PI
+
+  it('starts each curve where the pole count says it must', () => {
+    const cases = [
+      [{ b: [1], a: [1, 1] }, 0], // no integrator
+      [{ b: [1], a: [1, 1, 0] }, -90], // one
+      [{ b: [1], a: [1, 1, 0, 0] }, -180], // two
+      [{ b: [1, 0], a: [1, 1] }, 90], // a zero at the origin
+      [{ b: [-1], a: [1, 1] }, 180], // negative gain
+    ]
+    for (const [tf, want] of cases) {
+      expect(deg(bode(tf, GRID).phase[0]), JSON.stringify(tf)).toBeCloseTo(want, 1)
+    }
+  })
+
+  it('reports a sane phase margin for a loop with two integrators', () => {
+    // PI around a plant that already integrates: this is the case that failed.
+    const L = series({ b: [2, 4], a: [1, 0] }, { b: [1], a: [0.5, 1, 0] })
+    const m = margins(L, GRID)
+    expect(m.phaseMargin).toBeGreaterThan(-180)
+    expect(m.phaseMargin).toBeLessThanOrEqual(180)
+    // ...and it agrees with whether the loop actually is stable.
+    expect(m.phaseMargin > 0).toBe(isStable(closeLoop(L)))
+  })
+
+  it('still finds the phase crossover it used to lose', () => {
+    // PI around three lags: one integrator, so it starts at -90 and falls past
+    // -180 on its way to -270. A loop with TWO integrators would start exactly
+    // AT -180 and only fall, never crossing it in the interior — which is not
+    // a lost crossover but an absent one.
+    const L = series({ b: [1, 3], a: [1, 0] }, { b: [1], a: [1, 7, 14, 8] })
+    const m = margins(L, GRID)
+    expect(m.phaseCrossover, 'a loop this lagged must cross -180').not.toBeNull()
+    expect(m.gainMargin).not.toBeNull()
+    // The margin means what it says: just inside it is stable, just outside not.
+    const at = (k) => isStable(closeLoop(series({ b: [k], a: [1] }, L)))
+    expect(at(m.gainMargin * 0.9)).toBe(true)
+    expect(at(m.gainMargin * 1.1)).toBe(false)
+  })
+
+  it('leaves a correctly anchored curve alone', () => {
+    // The classic loop was always right; anchoring must not disturb it.
+    const L = series({ b: [1], a: [1] }, { b: [1], a: [1, 1, 0] })
+    const m = margins(L, GRID)
+    expect(m.phaseMargin).toBeCloseTo(51.8, 0)
+  })
+})
