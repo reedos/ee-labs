@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
+import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, settlesOnScreen } from './systems.js'
 import {
   dcGain,
   magnitudeAt,
@@ -39,6 +39,21 @@ describe('the registries', () => {
         expect(Number.isFinite(magnitudeAt(tf, f)), `${id} at ${f}`).toBe(true)
       }
     }
+  })
+})
+
+describe('the settle flag tells the truth about the plot edge', () => {
+  it('a slow loop capped at 400 s is honestly not settled; a fast one is', () => {
+    // Integrator plant at Kp 0.005: one closed-loop pole at 0.005/s, so the
+    // 2% band needs ~780 s and the plot's 400 s cap arrives first — the trace
+    // ends at 86% of its destination and the readout must say so.
+    const slow = buildLoop('integrator', { k: 1 }, 'p', { kp: 0.005 })
+    const ys = stepResponse(slow.closed, { duration: 400, points: 900 }).y
+    expect(settlesOnScreen(ys, dcGain(slow.closed))).toBe(false)
+
+    const fast = buildLoop('integrator', { k: 1 }, 'p', { kp: 1 })
+    const yf = stepResponse(fast.closed, { duration: 12, points: 900 }).y
+    expect(settlesOnScreen(yf, dcGain(fast.closed))).toBe(true)
   })
 })
 

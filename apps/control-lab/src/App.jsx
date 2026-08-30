@@ -13,7 +13,7 @@ import {
   series,
   closeLoop,
 } from '@ee-labs/systems'
-import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, loopMargins } from './systems.js'
+import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, loopMargins, settlesOnScreen } from './systems.js'
 import { loopMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { readLocationLink } from '@ee-labs/ui'
@@ -74,6 +74,13 @@ export default function App() {
   const chooseCtrl = (id) => {
     setCtrlId(id)
     setCtrlP(defaultsOf(CONTROLLERS[id]))
+    setLesson(null)
+  }
+  // A lesson note describes ONE step input, so flipping the toggle clears the
+  // note like any other control — a note about following r must not stand
+  // over a plot answering d.
+  const chooseStepInput = (which) => {
+    setStepInput(which)
     setLesson(null)
   }
 
@@ -389,7 +396,7 @@ export default function App() {
             onInject={(which) => {
               // Choosing an entry point IS the step toggle, and the step view
               // is where its effect shows.
-              setStepInput(which)
+              chooseStepInput(which)
               setLower('step')
             }}
             onReveal={(id) => {
@@ -475,7 +482,7 @@ export default function App() {
                       className={stepInput === 'ref' ? 'on' : ''}
                       aria-pressed={stepInput === 'ref'}
                       title="Change the setpoint and watch the loop follow it"
-                      onClick={() => setStepInput('ref')}
+                      onClick={() => chooseStepInput('ref')}
                     >
                       Reference
                     </button>
@@ -484,7 +491,7 @@ export default function App() {
                       className={stepInput === 'dist' ? 'on' : ''}
                       aria-pressed={stepInput === 'dist'}
                       title="Shove the plant's input and watch the loop fight back — the reason feedback exists"
-                      onClick={() => setStepInput('dist')}
+                      onClick={() => chooseStepInput('dist')}
                     >
                       Disturbance
                     </button>
@@ -492,6 +499,9 @@ export default function App() {
                   <span>
                     settles to <b>{fmt(dcGain(stepTf), '', 4)}</b>
                   </span>
+                  {stable && !settlesOnScreen(step.y, dcGain(stepTf)) ? (
+                    <span className="prov">not there yet at the plot&apos;s right edge</span>
+                  ) : null}
                   {stepInput === 'ref' && second && second.overshoot > 0 ? (
                     <span>
                       overshoot <b>{(second.overshoot * 100).toFixed(1)}%</b>

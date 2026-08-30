@@ -204,6 +204,17 @@ console.log('\n1b. Loading every lesson through the folded groups\n')
   })
   if (!foldsFreely) fail('an inactive lesson group did not toggle when its summary was clicked')
 
+  // A lesson note describes ONE step input, so flipping the toggle must
+  // clear it — a note about following r over a plot answering d is exactly
+  // the frozen-sentence defect the review playbook opens with.
+  await loadLesson('Proportional cannot get there')
+  const noteBefore = await page.locator('.hint').first().textContent()
+  if (!/90%/.test(noteBefore)) fail('expected the lesson note on screen before the toggle')
+  await clickBtn('Disturbance')
+  const noteAfter = await page.locator('.hint').first().textContent()
+  if (/90%/.test(noteAfter)) fail('flipping to Disturbance left a note describing the reference step')
+  await clickBtn('Reference')
+
   // Leave no lesson active so later sections start from plain plant clicks.
   await clickBtn('First order lag')
 }
@@ -273,6 +284,21 @@ const erased = /rejected completely/.test(distText)
 console.log(`   disturbance under PI: ${erased ? 'rejected completely — the integrator erases it' : 'NOT erased'}`)
 if (!erased) fail('PI should erase a plant-input disturbance exactly')
 await clickBtn('Reference')
+
+// The settle readout confesses when the plot's right edge arrives first: a
+// very slow loop's plot is capped at 400 s, and there the trace is visibly
+// short of the destination the readout names.
+await clickBtn('Integrator')
+await clickBtn('Proportional')
+await setField('Kp', 0.005)
+const slowText = await page.locator('.readout').last().textContent()
+const flagged = /not there yet/.test(slowText)
+console.log(`   slow loop at the 400 s cap: ${flagged ? 'flagged as not settled' : 'NOT flagged'}`)
+if (!flagged) fail('a loop that cannot settle inside the plot should say so in the readout')
+await setField('Kp', 1)
+if (/not there yet/.test(await page.locator('.readout').last().textContent())) {
+  fail('a settled loop should not carry the not-settled flag')
+}
 
 // The unstable plant fails the other way round: too LITTLE gain is the problem.
 await clickBtn('Unstable plant')

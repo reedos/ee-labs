@@ -200,6 +200,27 @@ export function buildLoop(plantId, plantParams, ctrlId, ctrlParams) {
 }
 
 /**
+ * Does the step trace actually reach its destination on screen?
+ *
+ * The readout prints where the loop settles (the DC gain), and the plot has a
+ * finite right edge — capped at 400 s for very slow loops. When the trace has
+ * not entered the 2% band by its last sample, the number and the picture
+ * disagree, and the honest move is to say so in the readout rather than let a
+ * reader hunt the plot for a settle it never shows.
+ */
+export function settlesOnScreen(y, final) {
+  if (!y.length || !Number.isFinite(final)) return true
+  let peak = 0
+  for (let i = 0; i < y.length; i++) {
+    const a = Math.abs(y[i])
+    if (a > peak) peak = a
+  }
+  const size = Math.max(Math.abs(final), peak)
+  if (size < 1e-12) return true
+  return Math.abs(y[y.length - 1] - final) <= 0.02 * size
+}
+
+/**
  * margins(), with the phase margin folded into (−180°, 180°].
  *
  * A phase margin is the ANGLE between L at its crossover and the point −1,
