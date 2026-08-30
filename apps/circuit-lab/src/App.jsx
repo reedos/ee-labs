@@ -12,6 +12,7 @@ import {
 import { CIRCUITS, CIRCUIT_GROUPS, defaultsOf, transferOf } from './circuits.js'
 import { circuitMath } from './math.js'
 import Schematic from './schematics.jsx'
+import HandOver from './components/HandOver.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
 import StepCanvas from './components/StepCanvas.jsx'
 
@@ -154,6 +155,11 @@ export default function App() {
               eng
             />
           ))}
+        </section>
+
+        <section>
+          <h2>The same filter, sampled</h2>
+          <HandOver tf={tf} circuitName={circuit.name.toLowerCase()} />
         </section>
 
         <section>

@@ -64,3 +64,22 @@
 @media (min-width: 3400px) {
   .preset-group h3 { font-size: 14px; }
 }
+
+/* Handing the circuit over to Signal Lab. */
+.handover-copy { width: 100%; margin-top: 8px; }
+
+.handover-link {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.hint.warn { color: var(--warn); }

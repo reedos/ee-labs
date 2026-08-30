@@ -8,6 +8,8 @@ import { COLORS } from '@ee-labs/ui'
 import { spectrum } from '@ee-labs/dsp'
 import { chainPhase, chainResponse, renderChain, runChain } from './dsp/chain.js'
 import { PRESETS } from './presets.js'
+import { readLocationLink } from '@ee-labs/ui'
+import { stateFromLink } from './fromLink.js'
 import { mathContext, mathFor } from './math.js'
 
 const INITIAL = {
@@ -27,8 +29,20 @@ const INITIAL = {
 }
 
 export default function App() {
-  const [state, setState] = useState(INITIAL)
-  const [openBlocks, setOpenBlocks] = useState(() => new Set())
+  // A link from another tool in the suite, if there is one. Read once at
+  // startup: it is where you arrived from, not a thing that keeps changing.
+  const [linked] = useState(() => {
+    const { patch, warnings } = readLocationLink()
+    const { state, warnings: more } = stateFromLink(patch, INITIAL)
+    return { state, warnings: [...warnings, ...more] }
+  })
+
+  const [state, setState] = useState(linked.state || INITIAL)
+  // A block that arrived from a link should be open. You did not choose it, so
+  // being able to see what you were handed is the first thing you want.
+  const [openBlocks, setOpenBlocks] = useState(
+    () => new Set((linked.state?.blocks ?? []).map((b) => b.id)),
+  )
 
   const applyPreset = (p) => {
     // Every toggle is re-pinned to its default before the patch lands, or settings
@@ -164,6 +178,8 @@ export default function App() {
         state={state}
         setState={setState}
         presets={PRESETS}
+        linkWarnings={linked.warnings}
+        cameFromLink={!!linked.state}
         math={math}
         onPreset={applyPreset}
         openBlocks={openBlocks}

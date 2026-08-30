@@ -119,6 +119,9 @@ function Source({ src, sampleRate, onChange, onRemove, canRemove , fftSize}) {
 
 export default function Controls({ state, setState, presets, onPreset, openBlocks, setOpenBlocks,
   math,
+
+  linkWarnings = [],
+  cameFromLink = false,
 }) {
   const patch = (k, v) => setState((s) => ({ ...s, [k]: v }))
 
@@ -188,6 +191,19 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
       </header>
 
       <section>
+        {cameFromLink ? (
+          <p className="hint from-link">
+            Loaded from a link — this chain came from another tool in the suite. Pick anything
+            below to start over.
+          </p>
+        ) : null}
+        {linkWarnings.length ? (
+          <ul className="link-warnings">
+            {linkWarnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        ) : null}
         <h2>Try this</h2>
         {/* Grouped as a rough curriculum. A flat list of two dozen buttons is a
             wall; four short labeled runs can be read. */}

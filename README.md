@@ -6,7 +6,7 @@ and explains, next to every number, where that number came from.
 
 ```
 npm install
-npm test                 # every package and every app (240 tests)
+npm test                 # every package and every app (255 tests)
 npm run dev              # Signal Lab, at http://localhost:1421
 ```
 
@@ -22,6 +22,28 @@ A third tool, [`waveform-simulator`](https://github.com/reedos/waveform-simulato
 communications and high-speed optical links. It lives outside this repo: it serves
 practising engineers rather than students, it is mature, and retrofitting it onto these
 packages would be work without a reader to benefit from it.
+
+## The bridge
+
+Circuit Lab has a **The same filter, sampled** panel. Load the series RLC, and it says the
+circuit is a low-pass biquad at 5.033 kHz with a Q of 3.162 — then gives you a link:
+
+    #rate=192000&src=noise:100:0.6&b=lowpass:5032.92:3.16228
+
+Paste that after Signal Lab's URL and the same filter is loaded there, with noise running
+through it. Not a similar filter: the same resonance and the same Q, carried across.
+
+That is the argument for a suite rather than three separate tools, made checkable instead
+of asserted. It is checked, too — the tests take a circuit, build the link, parse it back,
+design the biquad Signal Lab would design, and require the two responses to agree: exactly
+at the corner, and within 1% two octaves either side. They are not identical, and the
+tests say why. Signal Lab designs an RBJ cookbook section directly in the digital domain
+from (mode, f₀, Q); it is not the bilinear transform of that particular network. The two
+agree on what a second-order section with that resonance and Q *means*.
+
+The panel declines where the mapping would not be honest: a first-order RC has no Q to
+hand over, and a sample rate leaving fewer than twenty samples per cycle at the corner
+gets a warning rather than a link presented as equivalent.
 
 ## Why these boundaries
 

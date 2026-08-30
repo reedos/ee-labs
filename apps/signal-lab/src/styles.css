@@ -196,3 +196,19 @@ button.flow-node:hover {
 @media (min-width: 3400px) {
   .preset-group h3 { font-size: 14px; }
 }
+
+/* Arriving from another tool: say so, and say what could not be honoured. */
+.hint.from-link {
+  padding: 7px 9px;
+  border-left: 2px solid var(--accent);
+  background: var(--panel-2);
+  border-radius: 0 4px 4px 0;
+}
+
+.link-warnings {
+  margin: 6px 0 10px;
+  padding-left: 18px;
+  color: var(--warn);
+  font-size: 11px;
+  line-height: 1.5;
+}
