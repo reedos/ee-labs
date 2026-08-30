@@ -1,0 +1,21 @@
+{
+  "name": "ee-labs",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Interactive tools for the signals half of an electrical engineering curriculum.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev --workspace apps/signal-lab"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "playwright": "^1.62.1",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
+  }
+}
