@@ -94,7 +94,7 @@ Copy the pattern rather than reinventing it.
 
 LTI got its own early lesson because everything downstream rests on it. The
 pattern Reed asked for and approved: **define each property separately**
-(linear = additivity + homogeneity; time-invariance = no clock), give each its
+(linear = superposition + scaling — Reed's preferred names; time-invariance = no clock), give each its
 own formula, its own "why it matters" sentence, and its own machine-exact
 check row measured on the live chain — then combine them into the consequence
 (sines are eigenfunctions). Name measurement floors honestly: the residual

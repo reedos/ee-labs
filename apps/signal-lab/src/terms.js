@@ -108,19 +108,20 @@ export const TERMS = {
   lti: {
     name: 'LTI (linear, time-invariant)',
     def:
-      'The two assumptions under this whole tool. Linear: responses to added signals add ' +
-      '(double the input, double the output). Time-invariant: shift the input, the output ' +
-      'shifts identically. Together they force a system to treat each frequency separately — a ' +
-      'sine in gives a sine of the SAME frequency out, only scaled and shifted — which is why ' +
-      'response curves, spectra and convolution describe filters completely. Clip or quantize ' +
-      'and linearity is gone: new frequencies appear, and none of those descriptions hold.',
+      'The two assumptions under this whole tool. Linear means superposition (responses to ' +
+      'added signals add) plus scaling (double the input, double the output). Time-invariant: ' +
+      'shift the input, the output shifts identically. Together they force a system to treat ' +
+      'each frequency separately — a sine in gives a sine of the SAME frequency out, only ' +
+      'scaled and shifted — which is why response curves, spectra and convolution describe ' +
+      'filters completely. Clip or quantize and linearity is gone: new frequencies appear, and ' +
+      'none of those descriptions hold.',
   },
   superposition: {
     name: 'Superposition',
     def:
-      'The consequence of linearity: the response to a sum is the sum of the responses. It is ' +
-      'why sources here simply add, why each spectral line can be read independently, and what ' +
-      'nonlinear blocks visibly break.',
+      'Half of what "linear" means (the other half is scaling): the response to a sum is the ' +
+      'sum of the responses. It is why sources here simply add, why each spectral line can be ' +
+      'read independently, and what nonlinear blocks visibly break.',
   },
   zplane: {
     name: 'z-plane',

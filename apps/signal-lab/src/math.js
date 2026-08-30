@@ -157,11 +157,11 @@ const ENTRIES = {
       scale = Math.max(scale, Math.abs(a[i + shiftSamples]))
     }
 
-    // Linearity, measured as its two halves. Additivity: the response to a
-    // sum is the sum of the responses. Homogeneity: scale the input, the
-    // output scales by the same factor. Both are machine-exact for this
-    // chain, because the arithmetic inside it is nothing but multiplies and
-    // adds of the input.
+    // Linearity, measured as its two halves — in Reed's preferred names:
+    // SUPERPOSITION (the response to a sum is the sum of the responses) and
+    // SCALING (scale the input, the output scales by the same factor). Both
+    // are machine-exact for this chain, because the arithmetic inside it is
+    // nothing but multiplies and adds of the input.
     const x1 = render([{ ...src }], 400, fs, 0)
     const x2 = render([{ ...src, freq: src.freq * 1.7, phase: 1.1 }], 400, fs, 0)
     const xsum = new Float64Array(400)
@@ -186,9 +186,9 @@ const ENTRIES = {
     return {
       blocks: [
         T(
-          '1. LINEAR, which is two promises. Additivity: feed a sum, get the sum of the ' +
-            'individual responses. Homogeneity: double the input, get exactly double the ' +
-            'output. Together:',
+          '1. LINEAR, which is two promises. Superposition: feed a sum, get the sum of the ' +
+            'individual responses. Scaling: double the input, get exactly double the output. ' +
+            'Together:',
         ),
         F('x_1 \\to y_1,\\; x_2 \\to y_2 \\;\\Longrightarrow\\; a\\,x_1 + b\\,x_2 \\to a\\,y_1 + b\\,y_2'),
         T(
@@ -199,13 +199,13 @@ const ENTRIES = {
         ),
         C([
           {
-            label: 'additivity: |chain(x₁+x₂) − (y₁+y₂)|, worst sample',
+            label: 'superposition: |chain(x₁+x₂) − (y₁+y₂)|, worst sample',
             predicted: 0,
             measured: addErr / yScale,
             abs: 1e-12,
           },
           {
-            label: 'homogeneity: |chain(2x) − 2y|, worst sample',
+            label: 'scaling: |chain(2x) − 2y|, worst sample',
             predicted: 0,
             measured: sclErr / yScale,
             abs: 1e-12,
