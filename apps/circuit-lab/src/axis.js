@@ -39,3 +39,26 @@ export function axisFreqs(centre, points) {
     Math.pow(10, lo + ((hi - lo) * i) / (points - 1)),
   )
 }
+
+/**
+ * The grid with one frequency guaranteed to be IN it.
+ *
+ * A resonant tip must be sampled, not hoped for: at Q = 100 the peak is
+ * narrower than a 600-point grid's spacing, and the drawn curve stops several
+ * dB short of the height the topbar claims — on exactly the lesson whose
+ * point is the height of the peak. Splicing f into sorted position costs one
+ * sample and makes the drawn maximum the true maximum.
+ *
+ * The caller decides WHETHER: a twin-T's notch frequency must NOT be spliced
+ * in, because |H| there is zero and one −240 dB sample would stretch the axis
+ * until the rest of the curve is unreadable. (Its dip is grid-limited either
+ * way — no finite sample can draw "no bottom" — and its panel says so.)
+ */
+export function ensureSampled(freqs, f) {
+  if (!(f > 0) || f <= freqs[0] || f >= freqs[freqs.length - 1]) return freqs
+  const out = Array.from(freqs)
+  let i = 0
+  while (out[i] < f) i++
+  if (out[i] !== f) out.splice(i, 0, f)
+  return out
+}

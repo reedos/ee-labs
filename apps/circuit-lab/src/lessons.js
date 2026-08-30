@@ -20,6 +20,7 @@ export const LESSONS = [
   {
     group: 'Reading a response',
     name: 'A divider has no dynamics',
+    terms: ['impedance', 'phase'],
     note:
       'Two resistors. The response is a flat line and the phase is zero, at every frequency, ' +
       'because resistors store no energy and so nothing can depend on how fast the signal ' +
@@ -31,6 +32,7 @@ export const LESSONS = [
   {
     group: 'Reading a response',
     name: 'Where the corner comes from',
+    terms: ['corner', 'db', 'impedance'],
     note:
       'The cutoff is not a convention: it is the frequency where the capacitor’s impedance ' +
       'equals the resistor’s. There the two split the input evenly in magnitude — each 45° ' +
@@ -43,6 +45,7 @@ export const LESSONS = [
   {
     group: 'Reading a response',
     name: 'The same filter, read backwards',
+    terms: ['corner', 'phase'],
     note:
       'Move the probe to the resistor and the low-pass becomes a high-pass. Nothing else ' +
       'changed — the same current flows through both components — so whatever one keeps, the ' +
@@ -53,6 +56,7 @@ export const LESSONS = [
   {
     group: 'Reading a response',
     name: 'Different physics, same algebra',
+    terms: ['tau', 'impedance', 'tf'],
     note:
       'An inductor resists a change in current where a capacitor resists a change in voltage, ' +
       'and yet this is the RC low-pass again with L/R in its place. Nothing downstream can tell ' +
@@ -66,6 +70,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'One circuit, three filters',
+    terms: ['tf', 'resonance'],
     note:
       'Switch the output between C, R and L. Same components, same resonance, three completely ' +
       'different filters — low-pass, band-pass, high-pass — because they share a denominator ' +
@@ -77,6 +82,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'Q is how sharp, and R sets it',
+    terms: ['q', 'resonance'],
     note:
       'Drag R from 10 Ω upward. The resonant peak collapses, because at resonance the inductor ' +
       'and capacitor cancel exactly and only the resistor is left to limit the current. Double ' +
@@ -87,6 +93,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'The same R, the opposite effect',
+    terms: ['q', 'impedance', 'resonance'],
     note:
       'The same three components in parallel. Now the impedance PEAKS at resonance where the ' +
       'series circuit dipped, and R has swapped roles: more resistance means a sharper peak, ' +
@@ -98,6 +105,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'Resonance, seen in time',
+    terms: ['zeta', 'q'],
     note:
       'The same circuit, hit with a step. A resonance that reads as a bump on the frequency ' +
       'plot reads as overshoot and ringing here, and ζ = 1/2Q connects them. Note where the ' +
@@ -108,6 +116,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'A zero on the axis is silence',
+    terms: ['zero', 'q', 'resonance'],
     note:
       'The twin-T’s two tees deliver equal and opposite signals at exactly one frequency, so ' +
       'the zeros of H(s) sit ON the imaginary axis — the poles view shows them riding the ' +
@@ -124,6 +133,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'Real parts wobble',
+    terms: ['tolerance', 'q', 'pole'],
     note:
       'Every number on this page has assumed exact components, and no part in a drawer is. ' +
       'This is the series RLC built 120 times from ±5% parts: the poles view shows where the ' +
@@ -138,6 +148,7 @@ export const LESSONS = [
   {
     group: 'Active circuits',
     name: 'Why active filters exist',
+    terms: ['pole', 'q'],
     note:
       'A second-order low-pass with no inductor anywhere. Two RC sections alone can only ever ' +
       'give real poles, and a real pole cannot ring; the op-amp feeding the output back through ' +
@@ -149,6 +160,7 @@ export const LESSONS = [
   {
     group: 'Active circuits',
     name: 'Gain is a ratio, and negative',
+    terms: ['virtualearth', 'phase'],
     note:
       'Negative feedback holds the inverting input at zero without connecting it to anything, ' +
       'so all the input current must flow on through the feedback resistor. The gain is −Rf/Rin: ' +
@@ -160,6 +172,7 @@ export const LESSONS = [
   {
     group: 'Active circuits',
     name: 'A pole exactly at the origin',
+    terms: ['pole', 'tau'],
     note:
       'Replace the feedback resistor with a capacitor and the ratio becomes a division by s — ' +
       'which is integration. The pole sits on the boundary rather than inside it, so this is ' +
@@ -173,6 +186,7 @@ export const LESSONS = [
   {
     group: 'One object, two names',
     name: 'This circuit is a biquad',
+    terms: ['biquad', 'tf', 'q'],
     note:
       'Open "The same filter, sampled" below. This RLC is a low-pass biquad with a cutoff of ' +
       '5.03 kHz and a Q of 3.16 — not similar to one, the same one. Copy the link, paste it ' +

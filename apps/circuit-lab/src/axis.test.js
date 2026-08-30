@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { SPAN_DECADES, axisFreqs, stickyCentre } from './axis.js'
+import { SPAN_DECADES, axisFreqs, ensureSampled, stickyCentre } from './axis.js'
+import { transferOf, defaultsOf } from './circuits.js'
+import { magnitudeAt } from '@ee-labs/systems'
 
 // The behaviour Reed asked for by name: tuning a component should move the
 // CURVE across a fixed axis, not slide the axis labels under a fixed curve.
@@ -43,5 +45,39 @@ describe('axisFreqs', () => {
     // Log-spaced: constant ratio between neighbours.
     const r = f[1] / f[0]
     expect(f[151] / f[150]).toBeCloseTo(r, 9)
+  })
+})
+
+describe('ensureSampled', () => {
+  it('splices an interior frequency into sorted position, once', () => {
+    const grid = axisFreqs(1000, 101)
+    const out = ensureSampled(grid, 1234.5)
+    expect(out.length).toBe(102)
+    expect(out).toContain(1234.5)
+    for (let i = 1; i < out.length; i++) expect(out[i]).toBeGreaterThan(out[i - 1])
+    // Idempotent when the frequency is already a grid point.
+    expect(ensureSampled(out, 1234.5).length).toBe(102)
+  })
+
+  it('leaves the grid alone when the frequency is outside it', () => {
+    const grid = axisFreqs(1000, 101)
+    expect(ensureSampled(grid, 0.5)).toBe(grid)
+    expect(ensureSampled(grid, 1e9)).toBe(grid)
+    expect(ensureSampled(grid, NaN)).toBe(grid)
+  })
+
+  it('makes the drawn peak the true peak: Q = 316 is on the plain grid nowhere', () => {
+    // The defect this exists for: at R = 1 Ω the series RLC's peak is far
+    // narrower than the 600-point grid's spacing, so the tallest plotted
+    // sample sits several dB below the Q the topbar states. With the exact
+    // resonance spliced in, the drawn maximum IS Q.
+    const p = { ...defaultsOf('rlcSeries'), r: 1 }
+    const f0 = 1 / (2 * Math.PI * Math.sqrt(p.l * p.c))
+    const q = (1 / p.r) * Math.sqrt(p.l / p.c)
+    const tf = transferOf('rlcSeries', p, 'c')
+    const plain = axisFreqs(f0, 600)
+    const maxOn = (grid) => Math.max(...Array.from(grid, (f) => magnitudeAt(tf, f)))
+    expect(maxOn(plain)).toBeLessThan(q * 0.9)
+    expect(maxOn(ensureSampled(plain, f0))).toBeCloseTo(q, 6)
   })
 })

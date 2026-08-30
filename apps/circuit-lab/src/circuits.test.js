@@ -350,6 +350,62 @@ describe('phase, wherever magnitude is claimed', () => {
   })
 })
 
+// The phase TRANSITION slope, measured before it is printed — because the
+// "obvious" figure is a trap. The Bode sketch's −45° per decade per order is a
+// straight-line approximation; the true curve's slope at the corner is
+// −(ln 10)/2 rad/decade for one pole, and for a second-order section it is
+// −2Q·ln 10 rad/decade — it follows Q, and no flat per-order number exists.
+// Every slope here is a central difference of phaseAt against the closed form.
+describe('phase transition slope at the corner', () => {
+  // Degrees per decade of frequency, measured over ±1e-4 decades.
+  const slopeAt = (tf, f) => {
+    const h = 1e-4
+    const up = phaseAt(tf, f * Math.pow(10, h))
+    const dn = phaseAt(tf, f * Math.pow(10, -h))
+    return (((up - dn) / (2 * h)) * 180) / Math.PI
+  }
+  const LN10 = Math.log(10)
+
+  it('one pole crosses its corner at exactly −(ln 10)/2 rad per decade', () => {
+    const want = (-(LN10 / 2) * 180) / Math.PI // −65.964°/decade
+    for (const [id, fcOf] of [
+      ['rcLow', (p) => 1 / (2 * Math.PI * p.r * p.c)],
+      ['rlLow', (p) => 1 / (2 * Math.PI * (p.l / p.r))],
+    ]) {
+      const p = defaultsOf(id)
+      expect(slopeAt(tfOf(id), fcOf(p)), id).toBeCloseTo(want, 5)
+    }
+    // The high-pass sheds its lead at the same rate the low-pass gains lag.
+    const p = defaultsOf('rcHigh')
+    expect(slopeAt(tfOf('rcHigh'), 1 / (2 * Math.PI * p.r * p.c))).toBeCloseTo(want, 5)
+    // ...and the Bode sketch's −45°/decade is an approximation, not the tangent:
+    // the true corner slope is steeper by ln(10)·90/π ÷ 45 ≈ 1.466.
+    expect(Math.abs(want)).toBeGreaterThan(45)
+  })
+
+  it('a second-order corner crosses at −2Q·ln 10 rad per decade — Q decides, not order', () => {
+    // Same denominator, three numerators whose phase contributions are
+    // CONSTANT (0°, +90°, +180°) — so all three outputs cross f₀ at the same
+    // Q-set rate, and changing R changes it.
+    for (const r of [100, 316]) {
+      const p = { ...defaultsOf('rlcSeries'), r }
+      const f0 = 1 / (2 * Math.PI * Math.sqrt(p.l * p.c))
+      const q = CIRCUITS.rlcSeries.metrics(p).q
+      const want = ((-2 * q * LN10) * 180) / Math.PI
+      for (const out of ['c', 'r', 'l']) {
+        // 2 decimals of a ~800°/decade figure: the residual is the central
+        // difference's own truncation error, not the physics.
+        expect(slopeAt(transferOf('rlcSeries', p, out), f0), `R=${r}/${out}`).toBeCloseTo(want, 2)
+      }
+    }
+    // The Sallen-Key too: its manufactured resonance pays the same phase bill.
+    const p = defaultsOf('sallenKey')
+    const m = CIRCUITS.sallenKey.metrics(p)
+    const want = ((-2 * m.q * LN10) * 180) / Math.PI
+    expect(slopeAt(tfOf('sallenKey'), m.w0 / (2 * Math.PI))).toBeCloseTo(want, 4)
+  })
+})
+
 // The twin-T's whole story is where its zeros are, so every sentence about it
 // is pinned here: zeros exactly ON the axis (the notch is removal, not
 // attenuation), poles safely real and inside, Q refusing to follow any

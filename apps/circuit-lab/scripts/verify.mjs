@@ -280,6 +280,28 @@ await pick('This circuit is a biquad')
 const hints = () => page.$$eval('.controls .hint', (els) => els.map((e) => e.textContent))
 const noteOn = (await hints()).some((t) => t.includes('low-pass biquad'))
 if (!noteOn) fail('the biquad lesson note did not appear')
+
+// Definitions on contact: the note leans on "biquad" and "Q", so a folded
+// "Terms used here" with those definitions must sit right under it.
+{
+  const terms = await page.$$eval('details.terms dt', (els) => els.map((e) => e.textContent))
+  if (!terms.length) fail('no terms panel under the biquad lesson note')
+  if (!terms.some((t) => t.includes('Biquad'))) fail(`terms panel misses "Biquad": ${terms.join(', ')}`)
+  console.log(`   terms offered under the note: ${terms.join(', ')}`)
+}
+
+// Reading order is working order: the component fields come BEFORE the math
+// panel that explains them, top to bottom.
+{
+  const orderOk = await page.evaluate(() => {
+    const field = document.querySelector('.controls input[type=number], .controls [role=spinbutton]')
+    const math = document.querySelector('.math-toggle')
+    return !!field && !!math &&
+      !!(field.compareDocumentPosition(math) & Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+  if (!orderOk) fail('the math panel should come after the component fields')
+  else console.log('   components precede the math panel in the sidebar')
+}
 await page.locator('.controls select').first().selectOption({ label: 'across L — high-pass' })
 await settle()
 const noteAfter = (await hints()).some((t) => t.includes('low-pass biquad'))

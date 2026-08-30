@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
+import { TERMS } from './terms.js'
 import { CIRCUITS, transferOf, defaultsOf } from './circuits.js'
 import { asDigitalFilter } from './toSignalLab.js'
 import { toleranceCloud, spreadPct } from './tolerance.js'
@@ -256,6 +257,45 @@ describe('the claims each lesson makes', () => {
     // The note quotes these two numbers, so they had better be these numbers.
     expect(d.f0 / 1000).toBeCloseTo(5.03, 1)
     expect(d.q).toBeCloseTo(3.16, 1)
+  })
+})
+
+// Definitions on contact — Signal Lab's pattern, and its enforcement too: a
+// term a note leans on with no definition sends the student to a second tab,
+// and a definition nothing surfaces is dead weight that will silently rot.
+describe('terms — definitions on contact', () => {
+  it('every term a lesson references is defined', () => {
+    for (const l of LESSONS) {
+      for (const id of l.terms || []) {
+        expect(TERMS[id], `${l.name} references "${id}"`).toBeTruthy()
+      }
+    }
+  })
+
+  it('every defined term is referenced by at least one lesson', () => {
+    const used = new Set(LESSONS.flatMap((l) => l.terms || []))
+    for (const id of Object.keys(TERMS)) {
+      expect(used.has(id), `"${id}" defined but never surfaced`).toBe(true)
+    }
+  })
+
+  it('the load-bearing concepts appear where their lesson lives', () => {
+    const of = (name) => LESSONS.find((l) => l.name === name)?.terms || []
+    expect(of('Where the corner comes from')).toContain('corner')
+    expect(of('Q is how sharp, and R sets it')).toContain('q')
+    expect(of('Resonance, seen in time')).toContain('zeta')
+    expect(of('A zero on the axis is silence')).toContain('zero')
+    expect(of('Real parts wobble')).toContain('tolerance')
+    expect(of('This circuit is a biquad')).toContain('biquad')
+    expect(of('Gain is a ratio, and negative')).toContain('virtualearth')
+  })
+
+  it('definitions hold to the house rules: short, and named', () => {
+    for (const [id, t] of Object.entries(TERMS)) {
+      expect(t.def.length, id).toBeLessThan(600)
+      expect(t.def.length, id).toBeGreaterThan(120)
+      expect(t.name.length, id).toBeGreaterThan(1)
+    }
   })
 })
 

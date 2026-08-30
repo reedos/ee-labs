@@ -3,6 +3,7 @@ import { NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import {
   bode,
+  magnitudeAt,
   polesZeros,
   secondOrderMetrics,
   stepResponse,
@@ -13,7 +14,8 @@ import { CIRCUITS, CIRCUIT_GROUPS, defaultsOf, transferOf } from './circuits.js'
 import { circuitMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { TOLERANCES, toleranceCloud, spreadPct } from './tolerance.js'
-import { axisFreqs, stickyCentre } from './axis.js'
+import { termsFor } from './terms.js'
+import { axisFreqs, ensureSampled, stickyCentre } from './axis.js'
 import Schematic from './schematics.jsx'
 import HandOver from './components/HandOver.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
@@ -96,8 +98,15 @@ export default function App() {
       scale,
     )
     axisRef.current = { key, centre }
-    return axisFreqs(centre, POINTS)
-  }, [id, output, metrics, pz])
+    const grid = axisFreqs(centre, POINTS)
+    // A high-Q peak is narrower than the grid spacing, so the exact resonance
+    // is spliced in — the drawn peak must be the peak the topbar claims. Not
+    // for a frequency the circuit removes entirely (the twin-T's notch): one
+    // zero-magnitude sample would stretch the dB axis until nothing else on
+    // it could be read, and no finite sample draws "no bottom" anyway.
+    const f0 = metrics ? metrics.w0 / (2 * Math.PI) : second ? second.f0 : 0
+    return f0 > 0 && magnitudeAt(tf, f0) > 1e-9 ? ensureSampled(grid, f0) : grid
+  }, [id, output, metrics, second, pz, tf])
 
   const response = useMemo(() => bode(tf, freqs), [tf, freqs])
 
@@ -185,6 +194,23 @@ export default function App() {
             )
           })}
           {active ? <p className="hint">{active.note}</p> : null}
+          {/* The vocabulary this lesson leans on, defined where it is used —
+              Signal Lab's pattern. A student meeting "Q" or "pole" mid-note
+              should not need a second tab, and folded, the definitions cost
+              nothing to someone who already has them. */}
+          {active && termsFor(active.terms).length ? (
+            <details className="terms">
+              <summary>Terms used here</summary>
+              <dl>
+                {termsFor(active.terms).map((t) => (
+                  <React.Fragment key={t.id}>
+                    <dt>{t.name}</dt>
+                    <dd>{t.def}</dd>
+                  </React.Fragment>
+                ))}
+              </dl>
+            </details>
+          ) : null}
         </section>
 
         <section>
@@ -215,7 +241,6 @@ export default function App() {
             )
           })}
           {active ? null : <p className="hint">{circuit.hint}</p>}
-          <MathPanel entry={math} />
         </section>
 
         <section>
@@ -282,6 +307,12 @@ export default function App() {
               The poles view shows the scatter.
             </p>
           ) : null}
+
+          {/* The math BELOW the values it explains, so the reading order is the
+              working order: set the components, then unfold what they mean.
+              It sat above the schematic and the fields before, which asked the
+              reader to study consequences before they could see the causes. */}
+          <MathPanel entry={math} />
         </section>
 
         <section>

@@ -27,6 +27,20 @@ const V = (rows) => ({ kind: 'values', rows })
 
 const TAU = 2 * Math.PI
 
+/**
+ * Measured phase slope in degrees per decade: a central difference of the
+ * actual response, for the check rows that quote a transition rate. The
+ * predicted side comes from the closed form (−(ln 10)/2 for one pole,
+ * −2Q·ln 10 for a second-order corner, in rad/decade) — different path, so a
+ * wrong Q or a mis-derived denominator separates them.
+ */
+const phaseSlope = (tf, f) => {
+  const h = 1e-4
+  const up = phaseAt(tf, f * Math.pow(10, h))
+  const dn = phaseAt(tf, f * Math.pow(10, -h))
+  return (((up - dn) / (2 * h)) * 180) / Math.PI
+}
+
 /** Blocks shared by every circuit: what H(s) is, and where its poles are. */
 function common(tf, p, id) {
   const { poles, zeros } = polesZeros(tf)
@@ -93,6 +107,13 @@ const ENTRIES = {
           'This corner is the unit every other circuit here is priced in: a 1st-order corner ' +
             'costs 45° at the corner and 90° beyond, and a circuit of order N pays that N times.',
         ),
+        T(
+          'The lag also arrives at a known rate. The Bode sketch draws −45° per decade per ' +
+            'order across the two decades around the corner — a straight-line approximation, ' +
+            'and a useful one. The true curve is steepest exactly at the corner: −(ln 10)/2 ≈ ' +
+            '−1.151 rad per decade, which is −66.0° per decade — half again steeper than the ' +
+            'sketch.',
+        ),
         F('f_c = \\frac{1}{2\\pi RC}'),
         C([
           {
@@ -106,6 +127,13 @@ const ENTRIES = {
             predicted: -45,
             measured: (phaseAt(tf, fc) * 180) / Math.PI,
             tol: 1e-6,
+          },
+          {
+            label: 'phase slope at f_c, −(ln 10)/2 rad',
+            predicted: (-(Math.LN10 / 2) * 180) / Math.PI,
+            measured: phaseSlope(tf, fc),
+            tol: 1e-4,
+            unit: '°/decade',
           },
           { label: 'DC gain', predicted: 1, measured: magnitudeAt(tf, 1e-9), tol: 1e-9 },
         ]),
@@ -228,6 +256,13 @@ const ENTRIES = {
             'it exactly (0° across R), and the high-pass numerator’s +180° overshoots it ' +
             '(+90° across L).',
         ),
+        T(
+          'How FAST the phase crosses f₀ is Q’s to decide, not order’s: the Bode sketch says ' +
+            '−90° per decade for any 2nd-order corner, but the true slope at f₀ is 2Q·ln 10 ' +
+            'rad per decade — about 264·Q degrees — and it is the same for all three outputs, ' +
+            'because their numerators only add constant phase. Sharp filters do not just peak ' +
+            'harder; they snap phase faster.',
+        ),
         F('\\omega_0 = \\frac{1}{\\sqrt{LC}}, \\qquad ' + m.qTex),
         C([
           {
@@ -243,6 +278,13 @@ const ENTRIES = {
             tol: 1e-6,
             abs: 1e-6,
             unit: '°',
+          },
+          {
+            label: 'phase slope at f₀, −2Q·ln 10 rad',
+            predicted: ((-2 * m.q * Math.LN10) * 180) / Math.PI,
+            measured: phaseSlope(tf, f0),
+            tol: 1e-3,
+            unit: '°/decade',
           },
           {
             label: 'resonant frequency',
@@ -379,6 +421,11 @@ const ENTRIES = {
             'independently, which also lifts the notch floor off zero; a two-parameter model ' +
             'cannot show that, so the tolerance cloud here understates a real twin-T’s troubles.',
         ),
+        T(
+          'The plot is grid-limited at the notch for the same kind of reason: it bottoms out ' +
+            'wherever the nearest frequency sample lands, because no finite sample can draw a ' +
+            'dip with no bottom. The |H| at f₀ row above is the measurement that can.',
+        ),
         V([
           { label: 'notch frequency', value: f0, unit: 'Hz' },
           { label: 'Q', value: 0.25, note: 'fixed by the topology' },
@@ -412,7 +459,9 @@ const ENTRIES = {
         T(
           'The phase does not care that the resonance is manufactured: a 1st-order corner ' +
             'costs 45° of lag at the corner and 90° beyond, this is 2nd order, so the lag is ' +
-            'exactly 90° at f₀ — whatever Q the ratios chose — heading to 180° far above.',
+            'exactly 90° at f₀ — whatever Q the ratios chose — heading to 180° far above. What ' +
+            'Q does set is how fast it gets there: the slope at f₀ is 2Q·ln 10 rad per decade, ' +
+            'so raising C1/C2 steepens the phase fall as surely as it raises the peak.',
         ),
         C([
           { label: 'resonant frequency', predicted: f0, measured: so ? so.f0 : NaN, tol: 1e-6, unit: 'Hz' },
@@ -423,6 +472,13 @@ const ENTRIES = {
             measured: (phaseAt(tf, f0) * 180) / Math.PI,
             tol: 1e-6,
             unit: '°',
+          },
+          {
+            label: 'phase slope at f₀, −2Q·ln 10 rad',
+            predicted: ((-2 * m.q * Math.LN10) * 180) / Math.PI,
+            measured: phaseSlope(tf, f0),
+            tol: 1e-3,
+            unit: '°/decade',
           },
           { label: 'DC gain', predicted: 1, measured: magnitudeAt(tf, 1e-9), tol: 1e-9 },
         ]),
