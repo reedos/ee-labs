@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.vite/
+
+# Test output
+coverage/
+
+# Local env overrides
+.env
+*.env
+!*.env.example
+*.local
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Screenshots from scripts/shoot.mjs
+shots/

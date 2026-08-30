@@ -1,0 +1,27 @@
+{
+  "name": "signal-lab",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "node scripts/verify.mjs",
+    "shots": "node scripts/shoot.mjs --all"
+  },
+  "dependencies": {
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "playwright": "^1.62.1",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
+  },
+  "description": "An educational sandbox for time-domain waveforms, their frequency content, and the blocks that modify them."
+}
