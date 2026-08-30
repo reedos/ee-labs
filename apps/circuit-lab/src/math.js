@@ -169,6 +169,14 @@ const ENTRIES = {
             measured: magnitudeAt(tf, 1 / (TAU * tau)),
             tol: 1e-6,
           },
+          // Same algebra, same phase: the RC's 45° of lag at the corner is
+          // this circuit's too, and it is exact.
+          {
+            label: 'phase at the corner',
+            predicted: -45,
+            measured: (phaseAt(tf, 1 / (TAU * tau)) * 180) / Math.PI,
+            tol: 1e-6,
+          },
         ]),
         V([
           { label: 'time constant τ = L/R', value: tau, unit: 's' },
@@ -184,6 +192,9 @@ const ENTRIES = {
     const f0 = m.w0 / TAU
     const so = secondOrderMetrics(tf)
     const atRes = output === 'r' ? 1 : m.q
+    // At ω₀ the s²LC and 1 terms of the denominator cancel exactly, leaving
+    // jω₀RC alone — so the phase there is pinned regardless of R.
+    const phaseAtRes = output === 'r' ? 0 : output === 'l' ? 90 : -90
     return {
       blocks: [
         T(
@@ -203,6 +214,12 @@ const ENTRIES = {
             'completely, leaving only R. The current is then at its largest, which is why the ' +
             'voltages across L and C are Q times the input while the voltage across R is exactly ' +
             'the input.',
+        ),
+        T(
+          'The cancellation pins the phase there too, and R has no say in it: a 1st-order ' +
+            'corner costs 45°, this circuit is 2nd order, and its 90° lands whole on the ' +
+            'low-pass (−90° across C), not at all on the band-pass (0° across R, whose ' +
+            'numerator lead cancels it), and inverted on the high-pass (+90° across L).',
         ),
         F('\\omega_0 = \\frac{1}{\\sqrt{LC}}, \\qquad ' + m.qTex),
         C([

@@ -558,3 +558,24 @@ describe('phase at the cutoff', () => {
     }
   })
 })
+
+describe('the phase transition, as the hint describes it', () => {
+  // The hint says the swing happens "over roughly the two decades around the
+  // cutoff". Measured: at least three quarters of the full 90-degrees-per-order
+  // swing lies inside fc/10 .. 10fc, and none of it is left far outside.
+  it('most of the swing sits within a decade either side of fc', () => {
+    const FS3 = 48000 // room for 10x fc below Nyquist
+    const FC = 200
+    for (const order of ['1', '2', '4']) {
+      const n = Number(order)
+      const ph = (f) =>
+        (BLOCK_TYPES.lowpass.phase({ freq: FC, q: Math.SQRT1_2, gainDb: 0, order }, f, FS3) * 180) /
+        Math.PI
+      const swing = Math.abs(ph(10 * FC) - ph(FC / 10))
+      expect(swing, `order ${order}`).toBeGreaterThan(0.75 * 90 * n)
+      expect(swing, `order ${order}`).toBeLessThanOrEqual(90 * n + 1)
+      // And far outside the transition there is almost nothing left.
+      expect(Math.abs(ph(FC / 100)), `order ${order} at fc/100`).toBeLessThan(0.1 * 90 * n)
+    }
+  })
+})

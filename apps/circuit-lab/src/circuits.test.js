@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { CIRCUITS, CIRCUIT_GROUPS, transferOf, defaultsOf } from './circuits.js'
 import {
+  bode,
   magnitudeAt,
   phaseAt,
   dcGain,
@@ -204,6 +205,20 @@ describe('active circuits', () => {
     expect(poles[0][0]).toBeCloseTo(-1 / (p.rf * p.cf), 3)
   })
 
+  it('an inverting amplifier at its pole has lost exactly 45 of its 180 degrees', () => {
+    // The hint used to say "180° at every frequency", and that is false the
+    // moment the feedback capacitor engages: the minus sign contributes 180°,
+    // the pole then takes its 45°-per-order toll at the corner. Total: 135°,
+    // exactly, because this is 1st order.
+    const p = defaultsOf('inverting')
+    const tf = tfOf('inverting')
+    const fp = 1 / (2 * Math.PI * p.rf * p.cf)
+    expect((phaseAt(tf, fp) * 180) / Math.PI).toBeCloseTo(135, 9)
+    // Far above the corner only 90° is left: the full first-order lag has
+    // arrived on top of the inversion.
+    expect((phaseAt(tf, fp * 1e4) * 180) / Math.PI).toBeCloseTo(90, 1)
+  })
+
   it('an integrator has its pole exactly at the origin', () => {
     const tf = tfOf('integrator')
     const { poles } = polesZeros(tf)
@@ -221,5 +236,105 @@ describe('active circuits', () => {
     const mid = Math.floor(y.length / 2)
     expect(y[y.length - 1]).toBeCloseTo(-t[t.length - 1] / (p.r * p.c), 3)
     expect(Math.abs(y[y.length - 1])).toBeGreaterThan(Math.abs(y[mid]))
+  })
+})
+
+// Every phase figure the hints and panels print, measured before it is allowed
+// to appear. The rule the sentences lead with — a 1st-order corner costs 45° at
+// the corner and 90° beyond, times the order — is EXACT for these circuits at
+// their corner, not a sketch: at ω₀ the s² and 1 terms of a second-order
+// denominator cancel, leaving a purely imaginary jωRC, whatever R is. Which is
+// also why every figure below is checked to nine decimal places and at more
+// than one damping.
+describe('phase, wherever magnitude is claimed', () => {
+  const deg = (tf, f) => (phaseAt(tf, f) * 180) / Math.PI
+
+  it('the RC low-pass lags exactly 45 degrees at the corner, heading to 90', () => {
+    const p = defaultsOf('rcLow')
+    const tf = tfOf('rcLow')
+    const fc = 1 / (2 * Math.PI * p.r * p.c)
+    expect(deg(tf, fc)).toBeCloseTo(-45, 9)
+    // "Heading to 90 beyond" is asymptotic, so it is tested as one: the lag
+    // only ever grows across the sweep and lands within a tenth of a degree
+    // of -90 four decades out.
+    const { phase } = bode(tf, [fc, fc * 10, fc * 100, fc * 1e3, fc * 1e4])
+    for (let i = 1; i < phase.length; i++) expect(phase[i]).toBeLessThan(phase[i - 1])
+    expect((phase[phase.length - 1] * 180) / Math.PI).toBeCloseTo(-90, 1)
+  })
+
+  it('the RC high-pass leads exactly 45 at the corner, from 90 at DC down to 0', () => {
+    const p = defaultsOf('rcHigh')
+    const tf = tfOf('rcHigh')
+    const fc = 1 / (2 * Math.PI * p.r * p.c)
+    expect(deg(tf, fc)).toBeCloseTo(45, 9)
+    expect(deg(tf, fc / 1e4)).toBeCloseTo(90, 1)
+    expect(deg(tf, fc * 1e4)).toBeCloseTo(0, 1)
+  })
+
+  it('the RL low-pass lags the same 45 degrees at its own corner', () => {
+    const p = defaultsOf('rlLow')
+    const fc = 1 / (2 * Math.PI * (p.l / p.r))
+    expect(deg(tfOf('rlLow'), fc)).toBeCloseTo(-45, 9)
+  })
+
+  it('the two RC outputs are 90 degrees apart at EVERY frequency, not 45', () => {
+    // The corner lesson used to say the two component voltages sit "45° apart".
+    // Each is 45° from the INPUT at the corner — the two are 90° from each
+    // other, there and everywhere else, because V_R/V_C = jωRC is purely
+    // imaginary. The tenth confidently wrong explanation, caught here.
+    const p = defaultsOf('rcLow')
+    const lo = transferOf('rcLow', p, 'c')
+    const hi = transferOf('rcHigh', p, 'r')
+    const fc = 1 / (2 * Math.PI * p.r * p.c)
+    for (const f of [fc / 100, fc, fc * 100]) {
+      expect(deg(hi, f) - deg(lo, f), `${f} Hz`).toBeCloseTo(90, 9)
+    }
+  })
+
+  it('the series RLC at resonance reads exactly -90, 0 and +90 across C, R and L', () => {
+    // Second order = 2 x 45° for the low- and high-pass outputs; the band-pass
+    // numerator's own +90 cancels one corner's worth. And none of it moves
+    // with R: damping reshapes the magnitude peak but the phase at ω₀ is
+    // pinned by the LC cancellation alone.
+    for (const r of [20, 100, 1000]) {
+      const p = { ...defaultsOf('rlcSeries'), r }
+      const f0 = 1 / (2 * Math.PI * Math.sqrt(p.l * p.c))
+      expect(deg(transferOf('rlcSeries', p, 'c'), f0), `C, R=${r}`).toBeCloseTo(-90, 9)
+      expect(deg(transferOf('rlcSeries', p, 'r'), f0), `R, R=${r}`).toBeCloseTo(0, 9)
+      expect(deg(transferOf('rlcSeries', p, 'l'), f0), `L, R=${r}`).toBeCloseTo(90, 9)
+    }
+  })
+
+  it('the tank is purely resistive at resonance: zero phase, whatever R is', () => {
+    for (const r of [1000, 10000, 100000]) {
+      const p = { ...defaultsOf('rlcParallel'), r }
+      const f0 = 1 / (2 * Math.PI * Math.sqrt(p.l * p.c))
+      expect(deg(transferOf('rlcParallel', p, 'z'), f0), `R=${r}`).toBeCloseTo(0, 9)
+    }
+  })
+
+  it('the Sallen-Key lags exactly 90 degrees at f0, heading to 180', () => {
+    const p = defaultsOf('sallenKey')
+    const tf = tfOf('sallenKey')
+    const f0 = CIRCUITS.sallenKey.metrics(p).w0 / (2 * Math.PI)
+    expect(deg(tf, f0)).toBeCloseTo(-90, 9)
+    expect(deg(tf, f0 * 1e4)).toBeCloseTo(-180, 1)
+  })
+
+  it('the integrator holds +90 degrees at every frequency', () => {
+    // 1/s costs a constant -90; the inversion adds 180. The sum never moves,
+    // which is the frequency-domain face of "integration shifts everything a
+    // quarter cycle" — and unlike every corner above, there is no corner.
+    const tf = tfOf('integrator')
+    for (const f of [0.1, 10, 1e3, 1e6]) {
+      expect(deg(tf, f), `${f} Hz`).toBeCloseTo(90, 9)
+    }
+  })
+
+  it('the integrator falls at 6.02 dB per octave AND 20 dB per decade', () => {
+    // The slope row states both units, so both are measured.
+    const tf = tfOf('integrator')
+    expect(db(magnitudeAt(tf, 2000)) - db(magnitudeAt(tf, 1000))).toBeCloseTo(-6.0206, 3)
+    expect(db(magnitudeAt(tf, 10000)) - db(magnitudeAt(tf, 1000))).toBeCloseTo(-20, 6)
   })
 })

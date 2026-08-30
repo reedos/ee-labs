@@ -170,12 +170,18 @@ export const BLOCK_TYPES = {
     // phase, which a magnitude-only hint leaves out. The 45°-per-order figure
     // at the cutoff is exact for these sections, not a rule of thumb (see the
     // phase-at-cutoff test).
+    // The phase-slope figure is the Bode STRAIGHT-LINE rule and is labelled as
+    // such: the true slope at the cutoff depends on each section's Q (−191°
+    // per decade for one Q = 0.707 biquad, not 2 × 66°), so only the
+    // approximation has a simple per-order number.
     (p) => {
       const n = Number(p?.order ?? 2)
       return (
         `A 1st-order low-pass rolls off at 6 dB per octave (20 dB per decade). ` +
         `This one is order ${n}: ${6 * n} dB per octave (${20 * n} dB per decade). ` +
-        `Phase lags too — exactly ${45 * n}° at the cutoff, heading toward ${90 * n}° far above it.`
+        `Phase lags too — exactly ${45 * n}° at the cutoff, sweeping from 0° to ${90 * n}° over ` +
+        `roughly the two decades around it (the Bode straight-line rule: ` +
+        `${45 * n}° per decade, about ${Number((13.5 * n).toPrecision(3))}° per octave, through the transition).`
       )
     },
   ),
@@ -187,8 +193,9 @@ export const BLOCK_TYPES = {
       return (
         `The low-pass mirrored: everything below the cutoff is removed. A 1st-order slope is ` +
         `6 dB per octave (20 dB per decade); this one is order ${n}: ${6 * n} dB per octave ` +
-        `(${20 * n} dB per decade). Phase LEADS here — exactly +${45 * n}° at the cutoff, from ` +
-        `+${90 * n}° at DC down to 0° far above.`
+        `(${20 * n} dB per decade). Phase LEADS here — exactly +${45 * n}° at the cutoff, ` +
+        `sweeping from +${90 * n}° at DC to 0° far above, again about ${45 * n}° per decade ` +
+        `(${Number((13.5 * n).toPrecision(3))}° per octave) through the transition.`
       )
     },
   ),

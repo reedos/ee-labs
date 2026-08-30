@@ -69,7 +69,9 @@ export const CIRCUITS = {
     group: 'First order',
     hint:
       'The first filter anyone meets. The capacitor is an open circuit at DC and a short at high ' +
-      'frequency, so low frequencies reach the output and high ones are shunted to ground.',
+      'frequency, so low frequencies reach the output and high ones are shunted to ground. A ' +
+      '1st-order corner costs 45° of lag at the corner and 90° beyond; this is 1st order, so the ' +
+      'output lags exactly 45° at the cutoff.',
     params: [R('r', 'R', 1000), C('c', 'C', 100e-9)],
     outputs: [{ key: 'c', label: 'across C' }],
     tf: (p) => ({ b: [1], a: [p.r * p.c, 1] }),
@@ -86,7 +88,8 @@ export const CIRCUITS = {
     group: 'First order',
     hint:
       'The same two components with the output taken across the resistor instead. Everything ' +
-      'the low-pass keeps, this one discards, and vice versa.',
+      'the low-pass keeps, this one discards, and vice versa. The phase LEADS here — exactly ' +
+      '+45° at the corner, from +90° at DC down to 0° far above.',
     params: [R('r', 'R', 1000), C('c', 'C', 100e-9)],
     outputs: [{ key: 'r', label: 'across R' }],
     tf: (p) => ({ b: [p.r * p.c, 0], a: [p.r * p.c, 1] }),
@@ -103,7 +106,8 @@ export const CIRCUITS = {
     group: 'First order',
     hint:
       'An inductor resists a change in current, so it blocks high frequencies where a capacitor ' +
-      'would pass them. Different physics, identical algebra: the time constant is L/R.',
+      'would pass them. Different physics, identical algebra: the time constant is L/R — and ' +
+      'identical phase, with the same exact 45° of lag at the corner.',
     params: [R('r', 'R', 1000), L('l', 'L', 100e-3)],
     outputs: [{ key: 'r', label: 'across R' }],
     tf: (p) => ({ b: [1], a: [p.l / p.r, 1] }),
@@ -121,7 +125,8 @@ export const CIRCUITS = {
     hint:
       'One circuit, three filters. The same current flows through all three components, so the ' +
       'voltage across each is a different filter of the same input — low-pass, band-pass and ' +
-      'high-pass, sharing one resonance.',
+      'high-pass, sharing one resonance. At that resonance the phase is pinned whatever R is: ' +
+      '−90° across C, 0° across R, +90° across L.',
     params: [R('r', 'R', 100), L('l', 'L', 10e-3), C('c', 'C', 100e-9)],
     outputs: [
       { key: 'c', label: 'across C — low-pass' },
@@ -156,7 +161,8 @@ export const CIRCUITS = {
     hint:
       'The same three components in parallel, driven by a current. Its impedance PEAKS at ' +
       'resonance where the series circuit dipped, and the resistor now sets Q the other way ' +
-      'round: more resistance means a sharper peak, not a blunter one.',
+      'round: more resistance means a sharper peak, not a blunter one. At the peak the phase ' +
+      'is exactly 0° — the tank is purely resistive there.',
     params: [R('r', 'R', 10000), L('l', 'L', 10e-3), C('c', 'C', 100e-9)],
     outputs: [{ key: 'z', label: 'impedance Z(s)' }],
     tf: (p) => ({ b: [p.l, 0], a: [p.l * p.c, p.l / p.r, 1] }),
@@ -179,7 +185,9 @@ export const CIRCUITS = {
     hint:
       'A second-order low-pass with no inductor at all. The op-amp feeds the signal back through ' +
       'C1, which manufactures the resonance an inductor would otherwise provide — and Q comes ' +
-      'from component RATIOS, which is why active filters displaced passive ones.',
+      'from component RATIOS, which is why active filters displaced passive ones. A 1st-order ' +
+      'corner costs 45° at the corner and 90° beyond; this is 2nd order, so the lag is exactly ' +
+      '90° at f₀, heading to 180°.',
     params: [
       R('r1', 'R1', 10000),
       R('r2', 'R2', 10000),
@@ -206,7 +214,8 @@ export const CIRCUITS = {
     group: 'Active',
     hint:
       'Gain set by a ratio of resistors, and negative — the output is upside down, which reads ' +
-      'as 180° of phase at every frequency. The feedback capacitor adds one pole.',
+      'as 180° of phase at DC. The feedback capacitor adds one pole, and a 1st-order corner ' +
+      'costs 45°: exactly 135° remain at the corner, and only the inversion’s last 90° far above.',
     params: [R('rin', 'R input', 1000), R('rf', 'R feedback', 10000), C('cf', 'C feedback', 1e-9)],
     outputs: [{ key: 'out', label: 'op-amp output' }],
     tf: (p) => ({ b: [-p.rf], a: [p.rin * p.rf * p.cf, p.rin] }),
@@ -222,9 +231,10 @@ export const CIRCUITS = {
     name: 'Op-amp integrator',
     group: 'Active',
     hint:
-      'A pole exactly at the origin: infinite gain at DC, falling at 6 dB per octave forever. ' +
-      'This is the one circuit here that is not stable on its own, and the pole-zero view shows ' +
-      'why — the pole sits on the boundary rather than inside it.',
+      'A pole exactly at the origin: infinite gain at DC, falling at the 1st-order rate — 6 dB ' +
+      'per octave, 20 dB per decade — forever, with the phase held at exactly +90° at every ' +
+      'frequency. This is the one circuit here that is not stable on its own, and the pole-zero ' +
+      'view shows why — the pole sits on the boundary rather than inside it.',
     params: [R('r', 'R', 10000), C('c', 'C', 10e-9)],
     outputs: [{ key: 'out', label: 'op-amp output' }],
     tf: (p) => ({ b: [-1], a: [p.r * p.c, 0] }),

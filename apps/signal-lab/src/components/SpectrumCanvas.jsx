@@ -75,7 +75,21 @@ export default function SpectrumCanvas({
       let yMax
       if (db) {
         yMin = FLOOR_DB
-        yMax = 10
+        // The top of the axis follows the chain. It sat fixed at +10 dB, and a
+        // Q = 20 low-pass puts its resonant peak at +26 — the one feature the
+        // "Resonance is Q" lesson exists to show left the plot entirely. Scan
+        // everything drawn (signal, response curve, pre-chain ghost) within
+        // the visible span and round the ceiling up to the next 10 dB, with
+        // +10 as the floor so ordinary views keep their familiar frame.
+        let pk = 0
+        for (let i = 0; i < amps.length; i++) {
+          if (freqs[i] > fMax) break
+          if (amps[i] > pk) pk = amps[i]
+          if (response && response[i] > pk) pk = response[i]
+          if (ghostAmps && ghostAmps[i] > pk) pk = ghostAmps[i]
+        }
+        const peakDb = pk > 0 ? 20 * Math.log10(pk) : 0
+        yMax = Math.max(10, Math.ceil((peakDb + 4) / 10) * 10)
       } else {
         let pk = 0
         for (let i = 0; i < amps.length; i++) if (amps[i] > pk) pk = amps[i]
