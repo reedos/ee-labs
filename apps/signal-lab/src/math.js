@@ -114,6 +114,90 @@ const ENTRIES = {
     }
   },
 
+  'Sines in, sines out': (ctx) => {
+    const src = ctx.sources[0] || { freq: 700, amp: 0.8, phase: 0 }
+    const fs = ctx.sampleRate
+
+    // Claim 1, eigenfunction: through an LTI chain, ALL output energy stays at
+    // the input's own frequency. Measured from the rendered spectrum: the
+    // biggest line anywhere AWAY from f0 (and its skirt) against the line at f0.
+    const at0 = ctx.at(src.freq)
+    let worstOther = 0
+    const binHz = fs / ctx.fftSize
+    for (let f = binHz * 4; f < fs / 2; f += binHz * 2) {
+      // Skip the line's own window skirt: a Hann mainlobe-plus-sidelobes
+      // occupies a dozen bins around a strong line, and reading them as "new
+      // frequencies" would blame the filter for the analysis window.
+      if (Math.abs(f - src.freq) < binHz * 12) continue
+      const v = ctx.at(f)
+      if (v > worstOther) worstOther = v
+    }
+
+    // Claim 2, time-invariance: shift the input by a quarter period and the
+    // output is the same waveform shifted by exactly the same amount. Measured
+    // by rendering both through the real chain and comparing sample ranges.
+    const period = fs / src.freq
+    const shiftSamples = Math.round(period / 4)
+    const shiftPhase = (2 * Math.PI * shiftSamples) / period
+    const N = 1024
+    const a = applyChain(ctx.blocks, render([{ ...src }], N + shiftSamples, fs, 0), fs, 0)
+    const b = applyChain(
+      ctx.blocks,
+      render([{ ...src, phase: (src.phase || 0) + shiftPhase }], N + shiftSamples, fs, 0),
+      fs,
+      0,
+    )
+    // Compare well past the start-up transient (the two runs' transients differ
+    // by the shift itself, and the residual decays as the pole radius to the
+    // n-th): from sample 700 the comparison is machine-exact.
+    let err = 0
+    let scale = 1e-12
+    for (let i = 700; i < N; i++) {
+      err = Math.max(err, Math.abs(b[i] - a[i + shiftSamples]))
+      scale = Math.max(scale, Math.abs(a[i + shiftSamples]))
+    }
+
+    return {
+      blocks: [
+        T(
+          'Linear: responses add and scale. Time-invariant: the system does not care WHEN — ' +
+            'shift the input, the output shifts identically. A system with both properties can ' +
+            'do only one thing to a sine:',
+        ),
+        F(
+          'A\\sin(2\\pi f t) \\;\\longrightarrow\\; |H(f)|\\,A\\sin\\bigl(2\\pi f t + \\angle H(f)\\bigr)',
+        ),
+        T(
+          'Same frequency out, always — scaled by |H(f)|, shifted by the phase. Sines are the ' +
+            'EIGENFUNCTIONS of LTI systems, which is the entire reason frequency is the right ' +
+            'language here: describe what happens to each sine and you have described the ' +
+            'system completely. Both halves are measured below, not asserted.',
+        ),
+        C([
+          {
+            // The floor here is the WINDOW's sidelobes (about -55 dB for
+            // Hann), not the chain: an LTI chain contributes exactly nothing.
+            label: 'largest output away from the input frequency (window sidelobes set the floor)',
+            predicted: 0,
+            measured: worstOther / (at0 || 1e-12),
+            abs: 0.005,
+          },
+          {
+            label: `shift input by ${shiftSamples} samples → output shifts by the same`,
+            predicted: 0,
+            measured: err / scale,
+            abs: 1e-9,
+          },
+        ]),
+        T(
+          'The second row is exact to rounding because time-invariance here is structural: the ' +
+            'chain has no clock of its own. Add a clipper and the FIRST row is what breaks — ' +
+            'new lines appear at frequencies the input never contained.',
+        ),
+      ],
+    }
+  },
+
   'Square = odd harmonics': (ctx) => {
     const f0 = ctx.sourceFreq || 250
     const N = ctx.sampleRate / f0

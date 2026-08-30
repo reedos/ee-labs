@@ -32,12 +32,14 @@ export const PRESETS = [
   {
     group: 'Signals and Fourier',
     name: 'Single tone',
+    terms: ['db', 'rms'],
     note: 'One sine, one line. The baseline everything else is read against.',
     patch: { sources: [mk(1, 'sine', 250, 1)], sampleRate: 8000, timeSpanMs: 20, spanCycles: 5 },
   },
   {
     group: 'Signals and Fourier',
     name: 'Square = odd harmonics',
+    terms: ['harmonic', 'nyquist'],
     note:
       'A square wave is a sum of odd harmonics at 4A/(kπ). Turn on harmonic markers and count: ' +
       '1st, 3rd, 5th — and nothing between them. The flattening above 2 kHz is real, not a ' +
@@ -53,6 +55,7 @@ export const PRESETS = [
   {
     group: 'Signals and Fourier',
     name: 'Corners make harmonics',
+    terms: ['harmonic'],
     note:
       'A triangle has the same period as a square but no sudden jumps, and its harmonics fall ' +
       'as 1/k² instead of 1/k — the 3rd is a ninth of the fundamental rather than a third. ' +
@@ -82,6 +85,7 @@ export const PRESETS = [
   {
     group: 'Signals and Fourier',
     name: 'Sources simply add',
+    terms: ['superposition'],
     note:
       'Two tones, nothing else. The scope shows their sample-by-sample sum — a shape neither ' +
       'has alone — while the spectrum shows two clean lines, each at exactly its own source’s ' +
@@ -100,7 +104,31 @@ export const PRESETS = [
   },
   {
     group: 'Signals and Fourier',
+    name: 'Sines in, sines out',
+    terms: ['lti', 'superposition'],
+    note:
+      'The quiet assumption under this whole tool, made loud. This chain is LINEAR (double the ' +
+      'input, double the output — the previous preset) and TIME-INVARIANT (shift the input in ' +
+      'time, the output shifts identically — drag the phase slider and watch the filtered ' +
+      'wave slide without changing shape). Any system with those two properties can do exactly ' +
+      'one thing to a sine: scale it and shift it. It CANNOT change its frequency or add new ' +
+      'ones — look at the spectrum: one line in, one line out, at the same place, through a ' +
+      'strongly resonant filter. That is why a response curve fully describes a filter, why ' +
+      'spectra can be read line by line, and why convolution works. Every block in the ' +
+      'Nonlinearity group is interesting precisely because it breaks this.',
+    patch: {
+      sources: [mk(1, 'sine', 700, 0.8)],
+      blocks: [bk(1, 'lowpass', { freq: 800, q: 6 })],
+      sampleRate: 8000,
+      timeSpanMs: 20,
+      spanCycles: 5,
+      showGhost: true,
+    },
+  },
+  {
+    group: 'Signals and Fourier',
     name: 'Beating',
+    terms: ['bin'],
     note:
       'Two tones 5 Hz apart. The spectrum shows two lines — the axis is zoomed to 500 Hz and ' +
       'the frame stretched to 8192 samples, because telling 250 from 255 takes both: a long ' +
@@ -121,6 +149,7 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Aliasing',
+    terms: ['aliasing', 'nyquist'],
     note:
       'A 3.4 kHz tone at 8 kHz behaves. Drag it past 4 kHz — or click the "alias" chip — and the ' +
       'peak turns around and walks back down. The signal is gone and an impostor took its place.',
@@ -129,12 +158,16 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Exactly at Nyquist',
+    terms: ['nyquist', 'phase'],
     note:
       'A 4 kHz tone sampled at 8 kHz: exactly two samples per cycle, the limit the sampling ' +
       'theorem allows. Now drag the phase. At 90° the samples land on the peaks and it reads ' +
       'full amplitude; at 0° they land on the zero crossings and the signal vanishes entirely. ' +
       'Same frequency, same amplitude, any answer you like — which is why "up to half the ' +
-      'sample rate" is a bound you approach, not one you sit on.',
+      'sample rate" is a bound you approach, not one you sit on. (The bright dots are the ' +
+      'samples — the only thing that exists after sampling. The straight lines joining them ' +
+      'are just the scope’s interpolation, which is why a sine at this extreme draws as a ' +
+      'triangle.)',
     patch: {
       sources: [mk(1, 'sine', 4000, 1, Math.PI / 2)],
       sampleRate: 8000,
@@ -145,6 +178,7 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Resolution needs time',
+    terms: ['bin'],
     note:
       'Two tones 15 Hz apart, in a 512-point frame whose bins are 15.6 Hz wide. They fall in the ' +
       'same bin and read as one peak. Raise the FFT size in the top bar and they separate — ' +
@@ -161,6 +195,7 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Spectral leakage',
+    terms: ['leakage', 'window'],
     note:
       'Window is set to "none". A tone that does not complete whole cycles in the frame smears ' +
       'across every bin. Switch to Hann in the top bar and watch it collapse back to a line.',
@@ -178,6 +213,7 @@ export const PRESETS = [
   {
     group: 'Filters',
     name: 'Low-pass a square',
+    terms: ['harmonic', 'db'],
     note:
       'The dim trace is the square before the filter, the solid one after. The gap between them ' +
       'at each harmonic IS the blue response curve: the 3rd is barely touched, the 5th is down ' +
@@ -197,6 +233,7 @@ export const PRESETS = [
   {
     group: 'Filters',
     name: 'Resonance is Q',
+    terms: ['q'],
     note:
       'The title is the claim, literally: the RESONANCE — that peak standing at the cutoff — ' +
       'has height exactly equal to Q. Not proportional to it; equal. At Q=10 it stands 20 dB ' +
@@ -217,6 +254,7 @@ export const PRESETS = [
   {
     group: 'Filters',
     name: 'Phase is invisible here',
+    terms: ['phase', 'groupdelay'],
     note:
       'An all-pass changes the scope waveform completely and leaves the spectrum untouched — ' +
       '|H| = 1 at every frequency, and the FFT throws phase away. The violet curve sweeps a ' +
@@ -236,6 +274,7 @@ export const PRESETS = [
   {
     group: 'Filters',
     name: 'Two filters are steeper',
+    terms: ['order'],
     note:
       'Two identical low-passes in series. Cascading multiplies the magnitudes, so the second ' +
       'one squares the response and doubles the attenuation in dB at every frequency. Bypass ' +
@@ -258,6 +297,7 @@ export const PRESETS = [
   {
     group: 'Filters',
     name: 'Order is a choice',
+    terms: ['order', 'q'],
     note:
       'These two cascaded sections make a real 4th-order Butterworth: the Qs are 0.541 and ' +
       '1.307, NOT 0.707 twice. Set them both to 0.707 — still 4th order, still the same far ' +
@@ -411,6 +451,7 @@ export const PRESETS = [
   {
     group: 'FIR and the z-plane',
     name: 'A moving average is a filter',
+    terms: ['kernel'],
     note:
       'Average the last 8 samples and you have built a low-pass — no design, no coefficients to ' +
       'look up. Noise makes its shape visible: deep nulls every 1000 Hz, which is the sample ' +
@@ -427,6 +468,7 @@ export const PRESETS = [
   {
     group: 'FIR and the z-plane',
     name: 'Everything arrives together',
+    terms: ['groupdelay', 'order'],
     note:
       'A 61-tap FIR, with the overlay switched to group delay: a flat line at exactly 30 ' +
       'samples. Every frequency is held up by the same amount, so the signal comes out late ' +
@@ -446,6 +488,7 @@ export const PRESETS = [
   {
     group: 'FIR and the z-plane',
     name: 'The kernel is the filter',
+    terms: ['kernel', 'convolution', 'lti'],
     note:
       'The top pane shows the Kernel view — the impulse response, and those are two names for ' +
       'ONE sequence: what comes out when a single 1 goes in, and the weights the convolution ' +
@@ -468,6 +511,7 @@ export const PRESETS = [
   {
     group: 'FIR and the z-plane',
     name: 'Cut it off abruptly and it rings',
+    terms: ['window'],
     note:
       'The same design with the window set to none. The ideal filter is a sinc running to ' +
       'infinity, so it has to be cut short — and cutting it short IS a rectangular window, ' +
@@ -485,6 +529,7 @@ export const PRESETS = [
   {
     group: 'FIR and the z-plane',
     name: 'Zeros on the circle',
+    terms: ['zplane'],
     note:
       'The bottom pane now shows the z-plane. For a sampled filter the frequency axis is not a ' +
       'line — it is the unit circle, running from DC at z = 1 anticlockwise to Nyquist at ' +
@@ -505,6 +550,7 @@ export const PRESETS = [
   {
     group: 'FIR and the z-plane',
     name: 'Convolution, watched',
+    terms: ['convolution', 'kernel', 'lti'],
     note:
       'A square through an 8-tap moving average, with the time pane switched to the ' +
       'convolution view. Drag the scrubber or press play: the kernel rides along the input ' +

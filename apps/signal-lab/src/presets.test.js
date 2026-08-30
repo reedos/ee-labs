@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { PRESETS, PRESET_GROUPS } from './presets.js'
+import { TERMS } from './terms.js'
 import { chainResponse, renderChain } from './dsp/chain.js'
 import { render, spectrum } from '@ee-labs/dsp'
 import { designBiquad, biquadResponse, designFir } from '@ee-labs/dsp'
@@ -567,5 +568,58 @@ describe('preset: Beating', () => {
     expect(p255).toBeGreaterThan(0.3)
     // A real valley between two real peaks — not one merged blob.
     expect(dip).toBeLessThan(Math.min(p250, p255) * 0.7)
+  })
+})
+
+describe('terms — definitions on contact', () => {
+  it('every term a preset references is defined', () => {
+    for (const p of PRESETS) {
+      for (const id of p.terms || []) {
+        expect(TERMS[id], `${p.name} references "${id}"`).toBeTruthy()
+      }
+    }
+  })
+
+  it('every defined term is referenced by at least one preset', () => {
+    const used = new Set(PRESETS.flatMap((p) => p.terms || []))
+    for (const id of Object.keys(TERMS)) {
+      expect(used.has(id), `"${id}" defined but never surfaced`).toBe(true)
+    }
+  })
+
+  it('the load-bearing concepts appear where their lesson lives', () => {
+    const of = (name) => PRESETS.find((p) => p.name === name)?.terms || []
+    expect(of('Sines in, sines out')).toContain('lti')
+    expect(of('Aliasing')).toContain('aliasing')
+    expect(of('Resonance is Q')).toContain('q')
+    expect(of('Spectral leakage')).toContain('window')
+    expect(of('Convolution, watched')).toContain('convolution')
+  })
+
+  it('definitions hold to the house rules: short, and no dangling references', () => {
+    for (const [id, t] of Object.entries(TERMS)) {
+      expect(t.def.length, id).toBeLessThan(600)
+      expect(t.def.length, id).toBeGreaterThan(120)
+      expect(t.name.length, id).toBeGreaterThan(1)
+    }
+  })
+})
+
+describe('preset: Sines in, sines out', () => {
+  // The eigenfunction claim, at the preset's own settings: through a Q=6
+  // resonant low-pass, output energy exists ONLY at the input frequency.
+  it('one line in, one line out, same place', () => {
+    const { freqs, amps } = run('Sines in, sines out')
+    let iMax = 0
+    for (let i = 1; i < amps.length; i++) if (amps[i] > amps[iMax]) iMax = i
+    expect(Math.abs(freqs[iMax] - 700)).toBeLessThan(8)
+    // Everything 12+ bins away is window floor, > 45 dB down.
+    const binHz = 8000 / 2048
+    let worst = 0
+    for (let i = 0; i < amps.length; i++) {
+      if (Math.abs(freqs[i] - 700) < binHz * 12) continue
+      worst = Math.max(worst, amps[i])
+    }
+    expect(worst / amps[iMax]).toBeLessThan(0.006)
   })
 })

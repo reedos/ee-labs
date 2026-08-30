@@ -172,6 +172,24 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
       ctx.lineTo(sx(n), bot.y + bot.h)
       ctx.stroke()
       ctx.globalAlpha = 1
+
+      // The horizontal dimension, named. This view shipped with no axis at
+      // all, and "which way is time and in what units" is not a thing a
+      // student should have to infer: it is sample index m, 0 at the left.
+      ctx.fillStyle = COLORS.text
+      ctx.font = `${Math.round(10 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+      ctx.textBaseline = 'top'
+      const axisY = bot.y + bot.h + 6 * k
+      ctx.textAlign = 'left'
+      ctx.fillText('m = 0', outer.x, axisY)
+      ctx.textAlign = 'center'
+      ctx.fillText(String(Math.round((x.length - 1) / 2)), sx((x.length - 1) / 2), axisY)
+      ctx.textAlign = 'right'
+      ctx.fillText(`${x.length - 1}  (sample index)`, outer.x + outer.w, axisY)
+      // And the cursor's own position, in the cursor's colour.
+      ctx.fillStyle = COLORS.textBright
+      ctx.textAlign = n / (x.length - 1) > 0.85 ? 'right' : 'center'
+      ctx.fillText(`n = ${n}`, sx(n), axisY + 13 * k)
     },
     [x, h, y, n, exact],
   )

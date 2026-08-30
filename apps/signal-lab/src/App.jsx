@@ -190,7 +190,7 @@ export default function App() {
     return {
       kind: 'delay',
       values: r.delay,
-      label: 'Group delay of the chain',
+      label: 'Group delay of the chain (samples)',
       tick: (v) => `${Number(v.toPrecision(3))}`,
     }
   }, [state.overlay, state.blocks, freqs, state.sampleRate])

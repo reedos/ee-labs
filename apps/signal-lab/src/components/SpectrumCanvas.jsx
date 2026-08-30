@@ -109,7 +109,7 @@ export default function SpectrumCanvas({
         (v) => (db ? v.toFixed(0) : v.toFixed(2)),
         {
           xTitle: 'Frequency (Hz)',
-          yTitle: db ? 'Amplitude (dB, 1.0 = 0 dB)' : 'Amplitude',
+          yTitle: db ? 'Amplitude (dB, 1.0 = 0 dB)' : 'Amplitude (signal units)',
         },
       )
 

@@ -108,11 +108,15 @@ export default function ScopeCanvas({
         ctx.stroke()
 
         // Individual samples become meaningful once they are sparse enough —
-        // and seeing them is the point when the question is about sampling.
+        // and seeing them is the point when the question is about sampling. At
+        // two samples per cycle the line between them is pure interpolation
+        // (a sine renders as a triangle), so the dots must be unmissable:
+        // bright, haloed, and clearly THE data with the line as a guide.
         if (samplesPerPx < 0.06 && !tr.dim) {
+          const sparse = samplesPerPx < 0.02
           ctx.beginPath()
-          ctx.fillStyle = tr.color || COLORS.trace
-          const r = 2 * k
+          ctx.fillStyle = sparse ? COLORS.textBright : tr.color || COLORS.trace
+          const r = (sparse ? 3.5 : 2) * k
           for (let i = 0; i < n; i++) {
             const x = xOf(i)
             const y = sy(buf[i])

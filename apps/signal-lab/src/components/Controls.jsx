@@ -6,6 +6,7 @@ import { PRESET_GROUPS } from '../presets.js'
 import BlockCard from './BlockCard.jsx'
 import { WAVEFORMS } from '@ee-labs/dsp'
 import { BLOCK_GROUPS, BLOCK_TYPES, makeBlockRecord } from '../dsp/blocks.js'
+import { termsFor } from '../terms.js'
 
 const HZ = { k: 1e3, khz: 1e3, hz: 1 }
 
@@ -249,6 +250,23 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
           )
         })}
         {activePreset ? <p className="hint">{activePreset.note}</p> : null}
+        {/* The vocabulary this lesson leans on, defined where it is used. A
+            student meeting "bin" or "Q" mid-note should not need a second
+            tab — and folded, the definitions cost nothing to someone who
+            already has them. */}
+        {activePreset && termsFor(activePreset.terms).length ? (
+          <details className="terms">
+            <summary>Terms used here</summary>
+            <dl>
+              {termsFor(activePreset.terms).map((t) => (
+                <React.Fragment key={t.id}>
+                  <dt>{t.name}</dt>
+                  <dd>{t.def}</dd>
+                </React.Fragment>
+              ))}
+            </dl>
+          </details>
+        ) : null}
         <MathPanel entry={math} />
       </section>
 
