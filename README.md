@@ -91,6 +91,27 @@ It needs a plant and a controller as distinct roles, and its characteristic plot
 with margins, Nyquist, root locus — all describe a *loop* transfer function whose key
 readouts are how far it sits from the single point −1.
 
+The other boundary is mathematical, and it is governed by [CORE_SCOPE.md](CORE_SCOPE.md):
+the shared core trades **only in exact rational transfer functions**, and every bridge
+either maps exactly, guards its stated approximation, or refuses with a tested reason.
+Per app, today:
+
+- **Signal Lab** — admissible: every block (biquads, cascades, FIRs, combs are exact
+  rational H(z); the nonlinear blocks are honest about having no H at all). Guarded
+  approximation: the sampled view of a continuous circuit (bilinear-exact; the
+  twenty-samples-per-cycle warning is the guard). Refused: none — the raw-coefficient
+  biquad receives anything rational of order ≤ 2, and says UNSTABLE rather than
+  diverging when handed poles outside the circle.
+- **Circuit Lab** — admissible: every circuit (exact rational H(s), derived on the
+  panel). Guarded: hand-over coefficients that would exceed the receiving knobs warn
+  before the link is cut. Refused: the op-amp integrator's hand-over to Signal Lab
+  (unbounded DC gain — a sampled copy would just count), with the reason on the panel
+  and under test.
+- **Control Lab** — admissible: every plant and controller, and any circuit arriving
+  as one (exact — no transform is involved). Guarded: ζ ≈ PM/100 is quoted as a rule
+  of thumb with its preconditions. Refused: margins that do not exist are shown as
+  "—" with the reason ("gain never reaches 1"), never invented.
+
 ## The packages
 
 ```

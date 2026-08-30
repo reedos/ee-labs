@@ -36,6 +36,12 @@ You are one of three agents working this repo in parallel. **Your territory is
 
 ## The house discipline (non-negotiable)
 
+**First: read `/CORE_SCOPE.md`.** It governs `@ee-labs/systems` and every bridge
+between apps: exact rational transfer functions only in the core; a refused
+bridge is a finished feature; no approximation without a tested guard; and
+exact mappings are never hedged. If a task conflicts with it, stop and flag
+rather than working around it.
+
 Every explanatory sentence in a lesson note, hint, or math panel is a **claim
 about physics, and a test must measure it** — never restate the formula that
 produced it. Rules of thumb are stated as rules of thumb WITH their
