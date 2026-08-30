@@ -43,6 +43,21 @@ default `<button>`s until Reed flagged it; the block is now copied here
 verbatim, and circuit-lab looks to have the same gap. Third shared-look rule
 living in one app's stylesheet — a candidate for promotion into base.css.
 
+## Small UX finding from Reed (real confusion, worth one line of UI)
+
+Arriving from Circuit Lab's hand-over, Reed expected HIS CIRCUIT's step
+(settles at DC gain, zero error) and read the closed-loop 50% steady error as
+a bug. The pane title says "closed-loop", but at the moment of arrival the
+mental model is the circuit, not the loop. Add a one-line notice shown when
+the app loads from a link, near the step view or in the from-link banner:
+
+  "This is the CLOSED LOOP's step - your circuit alone settles at its DC
+  gain; here it is driven by Kp x the error, so proportional control leaves
+  1/(1+L(0)) of the input untracked. Switch to PI to erase it."
+
+(Or words to that effect - it should name the number the person is looking
+at.) Claim measured per house rules if any number is printed.
+
 ---
 
 All earlier items remain resolved.
