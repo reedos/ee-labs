@@ -1,5 +1,28 @@
 # Needs and heads-ups for the other territories
 
+## FROM REED, for signal-lab: name the flip-and-slide, and print its theorem
+
+Reed reviewed the convolution view (relayed via the circuit-lab agent). His
+verdict on the existing labels: precise — "input x[m], with the kernel
+flipped and slid to n" is exactly h[n−m] against m, keep it. Two additions:
+
+1. **Say that the action IS convolution, where it happens.** The pane is
+   titled Convolution but no on-canvas label ties the flip-slide-multiply-sum
+   to the word. Definitions-on-contact applies to the view's own name too —
+   e.g. extend the top label or caption with: "…— this flip, slide, multiply
+   and sum is convolution: y = x ∗ h."
+
+2. **Print the theorem the view enacts, in both vocabularies.** Reed asked
+   for y = x∗h alongside Y(s) = X(s)H(s). One precision flag before printing:
+   Signal Lab is sampled, so its exact identity is Y(z) = X(z)·H(z) (or the
+   DTFT form); Y(s) = X(s)H(s) is the continuous twin from Circuit Lab's side
+   of the bridge. Stating BOTH, labelled as two vocabularies of one theorem,
+   is the best version — it is the suite's thesis in one line.
+
+House discipline: "convolution in time = multiplication in frequency" is a
+measurable claim. Test it as FFT(x ∗ h) = FFT(x)·FFT(h) with zero-padding
+(linear vs circular convolution is the trap) before the sentence prints.
+
 ## Full-fidelity hand-overs — Circuit Lab's Signal-Lab half is DONE
 
 Reed's rule (relayed via the packages/signal-lab agent): every circuit
