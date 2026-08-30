@@ -1,7 +1,7 @@
 import { render, rms, peak } from '@ee-labs/dsp'
 import { applyChain } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
-import { biquadResponse, butterworthQs, designBiquad, designFirstOrder, designFir, poleRadius, isStable } from '@ee-labs/dsp'
+import { biquadPolesZeros, biquadResponse, butterworthQs, designBiquad, designFirstOrder, designFir, poleRadius, isStable } from '@ee-labs/dsp'
 
 // The math for one source, and for one block.
 //
@@ -307,6 +307,72 @@ const CORNER_IDENTITY = {
  * is what turns "a filter" from a black box into five numbers you could work out
  * by hand.
  */
+/**
+ * A biquad's roots, made explicit: the factored H(z), plus one row per root
+ * translating position into behavior — radius into decay, angle into the
+ * frequency the root acts at (f = θ·fs/2π on the unit circle's clock).
+ */
+function rootStory(pz, sampleRate) {
+  const texOf = (roots) => {
+    if (!roots.length) return '1'
+    const parts = []
+    const seen = new Set()
+    for (const [re, im] of roots) {
+      const key = `${re.toFixed(6)}|${Math.abs(im).toFixed(6)}`
+      if (Math.abs(im) > 1e-12 && seen.has(key)) continue
+      seen.add(key)
+      if (Math.abs(im) < 1e-12) parts.push(`(z ${re < 0 ? '+' : '-'} ${sig(Math.abs(re), 4)})`)
+      else {
+        const r = Math.hypot(re, im)
+        const th = (Math.abs(Math.atan2(im, re)) * 180) / Math.PI
+        parts.push(`(z - ${sig(r, 4)}\\,e^{\\pm j${sig(th, 4)}^\\circ})`)
+      }
+    }
+    return parts.join('')
+  }
+  const rows = []
+  const seen = new Set()
+  const describe = (kind, [re, im]) => {
+    const r = Math.hypot(re, im)
+    const th = Math.abs(Math.atan2(im, re))
+    const f = (th * sampleRate) / (2 * Math.PI)
+    if (Math.abs(im) < 1e-12) {
+      rows.push({
+        label: `${kind} at z = ${sig(re, 4)}`,
+        value: r,
+        note:
+          kind === 'pole'
+            ? re >= 0
+              ? 'real axis: decays as r^n, no ringing'
+              : `real axis at ±180 — acts at Nyquist`
+            : Math.abs(re + 1) < 1e-6
+              ? 'exactly on the circle at Nyquist — an exact null there'
+              : Math.abs(re - 1) < 1e-6
+                ? 'exactly on the circle at DC — an exact null there'
+                : 'real axis',
+      })
+      return
+    }
+    const key = `${kind}|${re.toFixed(6)}|${Math.abs(im).toFixed(6)}`
+    if (seen.has(key)) return
+    seen.add(key)
+    rows.push({
+      label: `${kind} pair at r = ${sig(r, 4)}, ±${sig((th * 180) / Math.PI, 4)}°`,
+      value: f,
+      unit: 'Hz',
+      note:
+        kind === 'pole'
+          ? `rings at this frequency, dying as ${sig(r, 3)}^n`
+          : Math.abs(r - 1) < 1e-6
+            ? 'ON the circle — an exact null at this frequency'
+            : 'pulls the response down near this frequency',
+    })
+  }
+  for (const root of pz.poles) describe('pole', root)
+  for (const root of pz.zeros) describe('zero', root)
+  return { texNum: texOf(pz.zeros), texDen: texOf(pz.poles), rows }
+}
+
 export function blockMath(block, ctx) {
   const def = BLOCK_TYPES[block.type]
   if (!def) return null
@@ -560,11 +626,34 @@ export function blockMath(block, ctx) {
           F('|a_2| < 1 \\quad\\text{and}\\quad |a_1| < 1 + a_2'),
           V([
             { label: 'pole radius r', value: poleRadius(p), note: 'must be < 1' },
+            ...rootStory(biquadPolesZeros(p), sampleRate).rows.filter((row) =>
+              row.label.startsWith('pole'),
+            ),
           ]),
         ],
       }
     }
     const r = poleRadius(p)
+    const pz = biquadPolesZeros(p)
+    const story = rootStory(pz, sampleRate)
+    // A zero ON the unit circle is not just a printed number - it is a
+    // measurable promise: the response there is exactly zero. Promote those
+    // to check rows, impulse-measured like everything else.
+    const nullRows = pz.zeros
+      .filter(([re, im], i, all) => {
+        if (Math.abs(Math.hypot(re, im) - 1) > 1e-6) return false
+        // one row per conjugate pair
+        return im >= 0
+      })
+      .map(([re, im]) => {
+        const f = (Math.abs(Math.atan2(im, re)) * sampleRate) / (2 * Math.PI)
+        return {
+          label: `|H| at the on-circle zero, ${sig(f, 5)} Hz`,
+          predicted: 0,
+          measured: measuredResponse(block, sampleRate, [f])[0],
+          abs: 1e-6,
+        }
+      })
     const probes = [sampleRate / 16, sampleRate / 8, sampleRate / 4]
     const meas = measuredResponse(block, sampleRate, probes)
     return {
@@ -590,8 +679,19 @@ export function blockMath(block, ctx) {
             tol: 0.02,
           })),
         ),
+        T(
+          'Factored, the same five numbers ARE poles and zeros - solved from the two ' +
+            'quadratics, not sketched:',
+        ),
+        F(`H(z) = ${sig(p.b0)}\\,\\frac{${story.texNum}}{${story.texDen}}`),
+        T(
+          'Each root, translated: radius is decay (how fast that part of the response dies, ' +
+            'as r^n), angle is frequency (where on the unit circle’s DC-to-Nyquist clock ' +
+            'it acts).',
+        ),
+        V(story.rows),
         V([
-          { label: 'pole radius r', value: r, note: 'stable (r < 1)' },
+          { label: 'pole radius r (largest)', value: r, note: 'stable (r < 1)' },
           {
             label: 'ring decays to 1e-6 in',
             value: r > 0 && r < 1 ? Math.round(Math.log(1e-6) / Math.log(r)) : 2,
@@ -606,6 +706,15 @@ export function blockMath(block, ctx) {
             note: 'read from the highest nonzero coefficient',
           },
         ]),
+        ...(nullRows.length
+          ? [
+              T(
+                'A zero sitting ON the circle is a promise, not a picture: the response at ' +
+                  'its angle is exactly zero. Measured:',
+              ),
+              C(nullRows),
+            ]
+          : []),
       ],
     }
   }

@@ -3,7 +3,7 @@ import katex from 'katex'
 import { sourceMath, blockMath } from './math-parts.js'
 import { agrees } from '@ee-labs/explain'
 import { BLOCK_TYPES, makeBlockRecord } from './dsp/blocks.js'
-import { WAVEFORMS } from '@ee-labs/dsp'
+import { designBiquad, WAVEFORMS } from '@ee-labs/dsp'
 
 // The source and block panels explain whatever the reader has built, rather
 // than only the presets we shipped, so they have to hold for every waveform and
@@ -204,5 +204,52 @@ describe('formulas contain no mangled escapes', () => {
       }
     }
     expect(bad.join('\n  ')).toBe('')
+  })
+})
+
+describe('the raw biquad states its roots', () => {
+  it('the RC arrival reads: one real pole, one zero at Nyquist, order 1', () => {
+    const b = makeBlockRecord('biquad', 1)
+    b.params = { b0: 0.0253863, b1: 0.0253863, b2: 0, a1: -0.949227, a2: 0 }
+    const entry = blockMath(b, { sampleRate: 192000, nyquist: 96000, fftSize: 2048 })
+    const vals = rowsOf(entry, 'values')
+    const pole = vals.find((r) => r.label.startsWith('pole at z = 0.9492'))
+    expect(pole, 'the real pole, stated with its value').toBeTruthy()
+    expect(pole.note).toContain('no ringing')
+    const zero = vals.find((r) => r.label.startsWith('zero at z = -1'))
+    expect(zero, 'the bilinear zero at Nyquist, stated').toBeTruthy()
+    expect(zero.note).toContain('Nyquist')
+    expect(vals.find((r) => r.label === 'order of this filter').value).toBe(1)
+    // And the on-circle zero is PROMISED, then measured: |H(Nyquist)| = 0.
+    const nulls = rowsOf(entry, 'check').filter((r) => r.label.includes('on-circle zero'))
+    expect(nulls).toHaveLength(1)
+    expect(nulls[0].measured).toBeLessThan(1e-6)
+  })
+
+  it('a resonant pair reads as radius, angle, and the frequency it rings at', () => {
+    const co = designBiquad({ mode: 'lowpass', freq: 2000, q: 8 }, 48000)
+    const b = makeBlockRecord('biquad', 1)
+    b.params = { ...co }
+    const entry = blockMath(b, { sampleRate: 48000, nyquist: 24000, fftSize: 2048 })
+    const pair = rowsOf(entry, 'values').find((r) => r.label.startsWith('pole pair'))
+    expect(pair, 'complex poles reported as a pair').toBeTruthy()
+    // The pair's angle-frequency sits near the design frequency (damped
+    // slightly below it — the pole rings at fd, not f0).
+    expect(pair.value).toBeGreaterThan(1800)
+    expect(pair.value).toBeLessThan(2050)
+    expect(pair.note).toContain('rings')
+  })
+
+  it('the factored H(z) typesets and matches the coefficients it came from', () => {
+    const co = designBiquad({ mode: 'notch', freq: 3000, q: 4 }, 48000)
+    const b = makeBlockRecord('biquad', 1)
+    b.params = { ...co }
+    const entry = blockMath(b, { sampleRate: 48000, nyquist: 24000, fftSize: 2048 })
+    const factored = entry.blocks.find((x) => x.kind === 'formula' && x.tex.includes('frac'))
+    expect(factored).toBeTruthy()
+    // A notch's zeros are ON the circle: the check rows must promise the null.
+    const nulls = rowsOf(entry, 'check').filter((r) => r.label.includes('on-circle zero'))
+    expect(nulls).toHaveLength(1)
+    expect(nulls[0].measured).toBeLessThan(1e-6)
   })
 })
