@@ -114,3 +114,25 @@ export function readLocationLink() {
   if (typeof window === 'undefined') return { patch: null, warnings: [] }
   return parseLink(window.location.hash)
 }
+
+/**
+ * The URL of a sibling app in the deployed suite, or null.
+ *
+ * On the deployed site the three apps live side by side —
+ * .../ee-labs/circuit-lab/, .../ee-labs/signal-lab/ — so a hand-over can be a
+ * real link rather than a fragment to paste. The current app's own segment is
+ * looked up in the path and swapped for the sibling's.
+ *
+ * In dev the apps run on separate ports and no segment matches, so this
+ * returns null and the UI falls back to copy-and-paste. That fallback is kept
+ * deliberately: a link that silently pointed at a page that is not there would
+ * be worse than the paste flow it replaced.
+ */
+export function siblingUrl(app, fragment, loc = typeof window === 'undefined' ? null : window.location) {
+  if (!loc) return null
+  const apps = ['signal-lab', 'circuit-lab', 'control-lab']
+  if (!apps.includes(app)) return null
+  const m = loc.pathname.match(new RegExp(`^(.*/)(${apps.join('|')})(/[^/]*)?$`))
+  if (!m || m[2] === app) return null
+  return `${loc.origin}${m[1]}${app}/${fragment ? '#' + fragment : ''}`
+}

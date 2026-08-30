@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildLink, parseLink } from './deeplink.js'
+import { buildLink, parseLink, siblingUrl } from './deeplink.js'
 
 // Both ends of the bridge have to agree, so the round trip is the contract.
 
@@ -88,5 +88,41 @@ describe('carrying a control loop', () => {
   it('still refuses a malformed one', () => {
     const { warnings } = parseLink('plant=secondOrder:1:fast:0.2')
     expect(warnings[0]).toMatch(/"fast" is not a number/)
+  })
+})
+
+describe('siblingUrl', () => {
+  const at = (pathname, origin = 'https://reedos.github.io') => ({ origin, pathname })
+
+  it('swaps the app segment on the deployed site', () => {
+    expect(siblingUrl('signal-lab', 'rate=48000', at('/ee-labs/circuit-lab/'))).toBe(
+      'https://reedos.github.io/ee-labs/signal-lab/#rate=48000',
+    )
+    expect(siblingUrl('control-lab', 'plant=integrator:2', at('/ee-labs/circuit-lab/index.html'))).toBe(
+      'https://reedos.github.io/ee-labs/control-lab/#plant=integrator:2',
+    )
+  })
+
+  it('works at any mount depth, including the domain root', () => {
+    expect(siblingUrl('signal-lab', 'rate=8000', at('/circuit-lab/'))).toBe(
+      'https://reedos.github.io/signal-lab/#rate=8000',
+    )
+    expect(siblingUrl('signal-lab', 'rate=8000', at('/deep/nest/circuit-lab/'))).toBe(
+      'https://reedos.github.io/deep/nest/signal-lab/#rate=8000',
+    )
+  })
+
+  it('returns null in dev, where no app segment is in the path', () => {
+    expect(siblingUrl('signal-lab', 'rate=8000', at('/', 'http://localhost:1422'))).toBeNull()
+  })
+
+  it('returns null for itself, an unknown app, and no location at all', () => {
+    expect(siblingUrl('circuit-lab', 'x=1', at('/ee-labs/circuit-lab/'))).toBeNull()
+    expect(siblingUrl('mystery-lab', 'x=1', at('/ee-labs/circuit-lab/'))).toBeNull()
+    expect(siblingUrl('signal-lab', 'x=1', null)).toBeNull()
+  })
+
+  it('does not match a segment that merely contains an app name', () => {
+    expect(siblingUrl('signal-lab', 'x=1', at('/my-circuit-lab-notes/'))).toBeNull()
   })
 })

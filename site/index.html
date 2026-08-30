@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EE Labs</title>
+    <meta
+      name="description"
+      content="Interactive labs for the signals half of an electrical engineering curriculum: signals and DSP, circuits, and control — one transfer function shared three ways."
+    />
+    <style>
+      /* The suite's own palette, from packages/ui/src/base.css. */
+      :root {
+        --bg: #0b0f14;
+        --panel: #11161d;
+        --panel-2: #171e27;
+        --line: #242f3d;
+        --text: #c9d6e4;
+        --dim: #7d8b9c;
+        --accent: #38e0b0;
+        --spectrum: #f0a23c;
+        --response: #5fa8ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.55 ui-sans-serif, system-ui, sans-serif;
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+      }
+      main { max-width: 860px; }
+      h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: 0.01em; }
+      .tagline { color: var(--dim); margin: 0 0 30px; }
+      .labs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+      .lab {
+        display: block;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 18px;
+        text-decoration: none;
+        color: var(--text);
+        transition: border-color 0.15s;
+      }
+      .lab:hover { border-color: var(--accent); }
+      .lab h2 { margin: 0 0 8px; font-size: 17px; }
+      .lab p { margin: 0; color: var(--dim); font-size: 13px; }
+      .lab .go { display: block; margin-top: 12px; font-size: 13px; font-weight: 600; }
+      .signal h2, .signal .go { color: var(--spectrum); }
+      .circuit h2, .circuit .go { color: var(--accent); }
+      .control h2, .control .go { color: var(--response); }
+      .triangle {
+        margin-top: 26px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px 18px;
+        color: var(--dim);
+        font-size: 13.5px;
+      }
+      .triangle b { color: var(--text); }
+      code {
+        font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+      @media (min-width: 2400px) {
+        body { font-size: 18px; }
+        h1 { font-size: 32px; }
+        .lab h2 { font-size: 21px; }
+        .lab p, .lab .go, .triangle { font-size: 16px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>EE Labs</h1>
+      <p class="tagline">
+        Interactive labs for the signals half of an electrical engineering curriculum. Every claim
+        on every page is measured against what is actually drawn — the explanations are tested.
+      </p>
+
+      <nav class="labs">
+        <a class="lab signal" href="signal-lab/">
+          <h2>Signal Lab</h2>
+          <p>
+            Signals and DSP. Build waveforms from harmonics, sample and alias them, run them through
+            filter chains — biquads and FIRs — and read the spectrum, the kernel, the z-plane, and
+            the group delay of what you built.
+          </p>
+          <span class="go">28 guided presets →</span>
+        </a>
+        <a class="lab circuit" href="circuit-lab/">
+          <h2>Circuit Lab</h2>
+          <p>
+            RC, RLC, op-amp networks. Component values become poles and zeros, Bode plots and step
+            responses — and every schematic's transfer function is derived where you can check it.
+          </p>
+          <span class="go">12 lessons, 9 circuits →</span>
+        </a>
+        <a class="lab control" href="control-lab/">
+          <h2>Control Lab</h2>
+          <p>
+            Close a loop. Six plants, four controllers, and the point −1: step responses, stability
+            margins, root locus and Nyquist — with the rules of thumb stated as rules of thumb.
+          </p>
+          <span class="go">11 lessons, six plants →</span>
+        </a>
+      </nav>
+
+      <p class="triangle">
+        The three labs share one spine. A series RLC in <b>Circuit Lab</b> is a biquad —
+        hand it to <b>Signal Lab</b> and watch the same <code>f₀</code> and <code>Q</code> filter a
+        signal. The same network is a second-order plant — hand it to <b>Control Lab</b> and ask how
+        much gain the loop takes before it sings. Not three approximations of each other: the same
+        transfer function, read three ways.
+      </p>
+    </main>
+  </body>
+</html>

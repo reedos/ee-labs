@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { NumField, fmt, fmtHz } from '@ee-labs/ui'
+import { NumField, fmt, fmtHz, siblingUrl } from '@ee-labs/ui'
 import { asDigitalFilter, suggestRate, asControlPlant } from '../toSignalLab.js'
 
 // "This circuit IS that filter", made into a button.
@@ -111,13 +111,55 @@ export default function HandOver({ tf, circuitName }) {
         </tbody>
       </table>
 
-      <button type="button" className="preset handover-copy" onClick={copy}>
-        {copied ? 'copied — paste after Signal Lab’s URL' : 'Copy link for Signal Lab'}
-      </button>
-      <code className="handover-link">#{d.link}</code>
+      <HandOverLink app="signal-lab" appName="Signal Lab" fragment={d.link} />
 
       <AsPlant plant={plant} circuitName={circuitName} />
     </div>
+  )
+}
+
+/**
+ * The hand-over itself: a real link when the sibling app is reachable, the
+ * copy-a-fragment flow when it is not.
+ *
+ * On the deployed site the apps sit side by side, so siblingUrl resolves and
+ * this is simply a link that opens the other tool loaded with this circuit. In
+ * dev the apps are on separate ports, siblingUrl returns null, and the old
+ * paste flow remains — deliberately, because a link pointing at a page that is
+ * not there would be worse than the paste it replaced.
+ */
+function HandOverLink({ app, appName, fragment }) {
+  const [copied, setCopied] = useState(false)
+  const url = siblingUrl(app, fragment)
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url || fragment)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <>
+      {url ? (
+        <a className="preset handover-copy" href={url} target="_blank" rel="noopener">
+          Open in {appName} →
+        </a>
+      ) : null}
+      <button type="button" className="preset handover-copy" onClick={copy}>
+        {copied
+          ? url
+            ? 'link copied'
+            : `copied — paste after ${appName}’s URL`
+          : url
+            ? 'Copy the link'
+            : `Copy link for ${appName}`}
+      </button>
+      <code className="handover-link">#{fragment}</code>
+    </>
   )
 }
 
@@ -130,18 +172,7 @@ export default function HandOver({ tf, circuitName }) {
  * where Control Lab can express the plant exactly.
  */
 function AsPlant({ plant, circuitName }) {
-  const [copied, setCopied] = useState(false)
   if (!plant) return null
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(plant.link)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1600)
-    } catch {
-      setCopied(false)
-    }
-  }
 
   return (
     <div className="handover as-plant">
@@ -150,10 +181,7 @@ function AsPlant({ plant, circuitName }) {
         The same {circuitName} is {plant.label}. {plant.why} Hand it to Control Lab and the
         question changes from what it does to a signal to how much gain you can close around it.
       </p>
-      <button type="button" className="preset handover-copy" onClick={copy}>
-        {copied ? 'copied — paste after Control Lab’s URL' : 'Copy link for Control Lab'}
-      </button>
-      <code className="handover-link">#{plant.link}</code>
+      <HandOverLink app="control-lab" appName="Control Lab" fragment={plant.link} />
     </div>
   )
 }
