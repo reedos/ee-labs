@@ -5,6 +5,7 @@ import {
   dcGain,
   polesZeros,
   secondOrderMetrics,
+  simulate,
   stepResponse,
 } from '@ee-labs/systems'
 
@@ -41,6 +42,51 @@ const phaseSlope = (tf, f) => {
   return (((up - dn) / (2 * h)) * 180) / Math.PI
 }
 
+/**
+ * The steady-state response to a unit sine at f, measured by actually RUNNING
+ * the circuit in time (RK4) and demodulating the settled tail — the
+ * simulation path, entirely separate from evaluating the polynomial at jω.
+ * This is what lets the panel print "sines in, sines out, scaled by |H|" as
+ * a measurement instead of a restatement.
+ *
+ * Settling waits on the slowest DECAY (the smallest |Re| of any pole), not
+ * the slowest pole radius — a lightly damped pair rings far longer than its
+ * radius suggests, and demodulating an unsettled tail smears the transient
+ * into the answer. Quadrature over whole cycles then rejects any constant
+ * offset exactly (which is what makes this safe even for the integrator).
+ */
+export function sineResponse(tf, f) {
+  const w = TAU * f
+  const { poles } = polesZeros(tf)
+  const decays = poles.map(([re]) => Math.abs(re)).filter((d) => d > 1e-9)
+  const settle = decays.length ? 8 / Math.min(...decays) : 0
+
+  // The whole run is an integer number of periods and the sample grid divides
+  // the period exactly, so the demodulation window is whole cycles on a
+  // uniform phase grid — the sum over sin·sin and sin·cos then cancels to
+  // spectral accuracy and what remains is the integrator's own error, not
+  // windowing leakage. (The first cut used a free-running grid and paid
+  // ~0.1° of phase for it.)
+  const tailPeriods = 4
+  const periods = Math.ceil(settle * f) + tailPeriods + 4
+  const perCycle = Math.max(12, Math.min(60, Math.floor(8000 / periods)))
+  const points = periods * perCycle + 1
+  const duration = periods / f
+  const { t, y } = simulate(tf, (tv) => Math.sin(w * tv), { duration, points })
+
+  let re = 0
+  let im = 0
+  const n = tailPeriods * perCycle
+  for (let i = points - 1 - n; i < points - 1; i++) {
+    re += y[i] * Math.sin(w * t[i])
+    im += y[i] * Math.cos(w * t[i])
+  }
+  return {
+    amplitude: (2 / n) * Math.hypot(re, im),
+    phase: Math.atan2(im, re),
+  }
+}
+
 /** Blocks shared by every circuit: what H(s) is, and where its poles are. */
 function common(tf, p, id) {
   const { poles, zeros } = polesZeros(tf)
@@ -58,12 +104,49 @@ function common(tf, p, id) {
       note: im ? `± j${Math.abs(im).toPrecision(4)}` : 'real',
     })
   }
+
+  // A test frequency at the circuit's own scale — nudged off any feature the
+  // circuit REMOVES, because demodulating the twin-T at its notch compares
+  // one zero with another and measures nothing.
+  const ws = poles.map(([pr, pi]) => Math.hypot(pr, pi)).filter((v) => v > 1e-9)
+  let fSine = ws.length
+    ? Math.exp(ws.reduce((s, v) => s + Math.log(v), 0) / ws.length) / TAU
+    : 1000
+  if (magnitudeAt(tf, fSine) < 1e-3) fSine /= 4
+  const sim = sineResponse(tf, fSine)
+
   return [
     T(
       'The order of the denominator counts the independent energy stores — every capacitor ' +
         'and inductor that can hold a state of its own. That is why an RC has one pole and an ' +
         'RLC has two, and why no arrangement of resistors alone has any.',
     ),
+    F('Y(s) = X(s)\\,H(s)'),
+    T(
+      'One multiplication is the whole story. Whatever comes in, its transform is multiplied ' +
+        'by H(s): the frequency pane draws that multiplier against jω, the step pane is the ' +
+        'same product with X = 1/s, and in the time domain the product is a convolution with ' +
+        'the impulse response — the flip-and-slide Signal Lab animates. Sines show it plainest: ' +
+        'a sine in comes out a sine, |H| times as large and ∠H shifted — measured below by ' +
+        'actually running this circuit in time, not by re-reading the formula.',
+    ),
+    C([
+      {
+        label: `sine at ${fSine.toPrecision(4)} Hz, simulated: gain`,
+        predicted: magnitudeAt(tf, fSine),
+        measured: sim.amplitude,
+        tol: 0.02,
+        abs: 1e-6,
+      },
+      {
+        label: 'and its phase',
+        predicted: (phaseAt(tf, fSine) * 180) / Math.PI,
+        measured: (sim.phase * 180) / Math.PI,
+        tol: 0.02,
+        abs: 0.5,
+        unit: '°',
+      },
+    ]),
     V(rows),
   ]
 }

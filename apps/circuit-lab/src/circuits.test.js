@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { CIRCUITS, CIRCUIT_GROUPS, transferOf, defaultsOf } from './circuits.js'
+import { sineResponse } from './math.js'
 import {
   bode,
   magnitudeAt,
@@ -410,6 +411,45 @@ describe('phase transition slope at the corner', () => {
 // is pinned here: zeros exactly ON the axis (the notch is removal, not
 // attenuation), poles safely real and inside, Q refusing to follow any
 // component, and the 180-degree phase snap that only an axis zero produces.
+// The panel's Y(s) = X(s)·H(s) block prints "a sine in comes out |H| times
+// as large and ∠H shifted" as a MEASURED row: sineResponse() runs the circuit
+// through RK4 and demodulates the settled tail — a path that shares nothing
+// with evaluating the polynomial at jω. These pin the two paths together at
+// the sharpest points available: a corner, a Q-tall resonance (whose long
+// ring is exactly what the settle-on-decay logic must survive), and the
+// integrator's frequency-independent +90°.
+describe('sines are eigenfunctions — simulated in time, not restated', () => {
+  const deg = (r) => (r * 180) / Math.PI
+
+  it('the RC at its corner: 1/√2 the size, 45 degrees late, out of RK4 alone', () => {
+    const p = defaultsOf('rcLow')
+    const fc = 1 / (2 * Math.PI * p.r * p.c)
+    const r = sineResponse(tfOf('rcLow'), fc)
+    expect(r.amplitude).toBeCloseTo(Math.SQRT1_2, 3)
+    expect(deg(r.phase)).toBeCloseTo(-45, 1)
+  })
+
+  it('the series RLC at resonance: Q times the input, phase pinned at −90', () => {
+    const p = defaultsOf('rlcSeries')
+    const f0 = 1 / (2 * Math.PI * Math.sqrt(p.l * p.c))
+    const Q = (1 / p.r) * Math.sqrt(p.l / p.c)
+    const r = sineResponse(transferOf('rlcSeries', p, 'c'), f0)
+    expect(r.amplitude).toBeCloseTo(Q, 2)
+    expect(deg(r.phase)).toBeCloseTo(-90, 1)
+  })
+
+  it('the integrator: the running circuit leads by 90 degrees, DC offset and all', () => {
+    // The sine response of −1/sRC carries a constant offset (the integral of
+    // sin does not average to zero from t = 0); quadrature over whole cycles
+    // must reject it exactly, or this row could never be printed.
+    const p = defaultsOf('integrator')
+    const f = 1 / (2 * Math.PI * p.r * p.c)
+    const r = sineResponse(tfOf('integrator'), f)
+    expect(r.amplitude).toBeCloseTo(1, 3)
+    expect(deg(r.phase)).toBeCloseTo(90, 1)
+  })
+})
+
 describe('twin-T notch', () => {
   const deg = (tf, f) => (phaseAt(tf, f) * 180) / Math.PI
   const p = defaultsOf('twinT')

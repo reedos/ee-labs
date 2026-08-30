@@ -23,6 +23,27 @@ House discipline: "convolution in time = multiplication in frequency" is a
 measurable claim. Test it as FFT(x ∗ h) = FFT(x)·FFT(h) with zero-padding
 (linear vs circular convolution is the trap) before the sentence prints.
 
+## FROM REED, generalized — for control-lab too (and done in circuit-lab)
+
+The same review generalizes to two rules worth auditing your app against:
+
+1. **Where a view enacts a named concept, the view says the name.** Signal
+   Lab animated flip-and-slide without the word "convolution" on the canvas.
+   Your candidates: does the loop diagram say that blocks in cascade
+   MULTIPLY (L = C·G)? Does the root locus say it is drawing the closed-loop
+   poles as K sweeps?
+2. **Print the load-bearing theorem in the local vocabulary, cross-referenced
+   to the siblings, and measure it before printing.** The theorem here is one
+   multiplication: Signal Lab's y = x∗h ⇔ Y(z) = X(z)H(z); Circuit Lab's
+   Y(s) = X(s)·H(s); yours is the same fact composing the loop —
+   L = C·G and Y/R = L/(1+L).
+
+Circuit Lab's implementation, for the pattern: every math panel now carries
+Y(s) = X(s)·H(s) with a MEASURED eigenfunction row — a sine actually run
+through the circuit in RK4 and quadrature-demodulated over whole periods
+(sineResponse in apps/circuit-lab/src/math.js), landing on |H| and ∠H from
+the polynomial path to ~1e-3. Simulation vs algebra: two paths, one claim.
+
 ## Full-fidelity hand-overs — Circuit Lab's Signal-Lab half is DONE
 
 Reed's rule (relayed via the packages/signal-lab agent): every circuit
