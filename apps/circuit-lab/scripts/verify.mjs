@@ -326,12 +326,16 @@ else {
   if (!(f0Pct > 2 && f0Pct <= 5.5)) fail(`f₀ spread ${f0Pct}% out of range for ±5% parts`)
   if (!(qPct > f0Pct * 1.3)) fail(`Q spread ${qPct}% should exceed f₀'s ${f0Pct}% clearly`)
 }
-const withCloud = (await canvasHashes())[1]
-await page.locator('.segmented button', { hasText: 'exact' }).first().click()
+const withBand = await canvasHashes()
+// The "every part at once" row, not a single part's control: the lesson set
+// every part to ±5%, so only the master row can clear them all in one click.
+await page.locator('[data-role=tol-all] button', { hasText: 'exact' }).click()
 await settle()
 if ((await spreadText()) !== '') fail('spread text should clear at exact')
-if ((await canvasHashes())[1] === withCloud) fail('clearing tolerance did not redraw the poles view')
-else console.log('   exact -> cloud and ranges gone, canvas redrew')
+const cleared = await canvasHashes()
+if (cleared[1] === withBand[1]) fail('clearing tolerance did not redraw the poles view')
+if (cleared[0] === withBand[0]) fail('clearing tolerance did not remove the response band')
+else console.log('   exact -> cloud, ranges and shaded band gone, canvases redrew')
 // The wobble lesson switched the lower pane to poles & zeros; put it back, or
 // section 5's "switching to the pole-zero view redraws" is a no-op.
 await page.getByRole('button', { name: 'Step response' }).click()
@@ -414,6 +418,48 @@ for (const [rT, r, cT, c] of [
     fail('twin-T: Control Lab hand-over should be declined (numerator has zeros)')
   }
   console.log('   hand-over declines honestly: no biquad shape, no plant offered')
+}
+
+// -------------------- 4d. per-part tolerance: R alone cannot move f₀ at all
+
+console.log('\n4d. Per-part tolerance: an R-only ±10% pins f₀ and frees Q\n')
+{
+  await pick('Blame the right part')
+  const spread = (await page.locator('[data-role=tolerance-spread]').textContent().catch(() => '')) || ''
+  const m = spread.match(/±([\d.]+)%.*±([\d.]+)%/)
+  if (!m) fail(`no spread text after the blame lesson: "${spread.slice(0, 80)}"`)
+  else {
+    const f0Pct = parseFloat(m[1])
+    const qPct = parseFloat(m[2])
+    console.log(`   R alone ±10% -> f₀ ±${f0Pct}%  Q ±${qPct}%`)
+    if (f0Pct !== 0) fail(`R-only tolerance must leave f₀ at ±0.0%, got ±${f0Pct}%`)
+    if (!(qPct > 7)) fail(`Q should take the full R hit, got ±${qPct}%`)
+  }
+  // The per-part controls display the lesson's grading: R at ±10%, L and C exact.
+  const stateOf = async (label) =>
+    page.getByRole('group', { name: `${label} tolerance` }).locator('button.on').textContent()
+  if ((await stateOf('R')) !== '±10%') fail('R control should read ±10%')
+  if ((await stateOf('L')) !== 'exact') fail('L control should read exact')
+  const withRBand = await canvasHashes()
+  // "Move the ±10% to C instead and the circle breaks": do as the note says.
+  await page.getByRole('group', { name: 'C tolerance' }).getByRole('button', { name: '±10%' }).click()
+  await page.getByRole('group', { name: 'R tolerance' }).getByRole('button', { name: 'exact' }).click()
+  await settle()
+  const spread2 = (await page.locator('[data-role=tolerance-spread]').textContent().catch(() => '')) || ''
+  const m2 = spread2.match(/±([\d.]+)%/)
+  const f0Pct2 = m2 ? parseFloat(m2[1]) : NaN
+  console.log(`   moved to C ±10% -> f₀ ±${f0Pct2}%`)
+  if (!(f0Pct2 > 2)) fail(`C-only tolerance must move f₀, got ±${f0Pct2}%`)
+  if ((await canvasHashes())[1] === withRBand[1]) {
+    fail('moving the tolerance from R to C did not redraw the poles view')
+  }
+  await page.locator('[data-role=tol-all] button', { hasText: 'exact' }).click()
+  await settle()
+  // The blame lesson switched the lower pane to poles & zeros; put it back,
+  // or section 5's "switching to the pole-zero view redraws" is a no-op —
+  // the same trap 4a already steps around.
+  await page.getByRole('button', { name: 'Step response' }).click()
+  await settle()
 }
 
 // ------------------------------------------------- 5. the views, and stability

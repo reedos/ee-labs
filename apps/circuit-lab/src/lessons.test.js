@@ -3,7 +3,7 @@ import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { TERMS } from './terms.js'
 import { CIRCUITS, transferOf, defaultsOf } from './circuits.js'
 import { asDigitalFilter } from './toSignalLab.js'
-import { toleranceCloud, spreadPct } from './tolerance.js'
+import { responseBand, toleranceCloud, spreadPct } from './tolerance.js'
 import {
   magnitudeAt,
   phaseAt,
@@ -318,5 +318,53 @@ describe('lesson: Real parts wobble', () => {
     // "wobbles roughly twice as hard": between 1.5x and 3x.
     expect(qPct / f0Pct).toBeGreaterThan(1.5)
     expect(qPct / f0Pct).toBeLessThan(3)
+  })
+})
+
+// "Blame the right part" makes four measurable claims about an R-only ±10%,
+// and the strongest is an absolute: f₀ does not move AT ALL, because its
+// formula contains no R. Absolutes get tested as absolutes.
+describe('lesson: Blame the right part', () => {
+  const l = () => LESSONS.find((x) => x.name === 'Blame the right part')
+  // At the lesson's OWN settings — it loads R = 470 so the arc is visible.
+  const setup = () => applyLesson(l())
+
+  it('R alone leaves f₀ exactly put, the poles on the ω₀ circle, Q hit in full', () => {
+    const s = setup()
+    const { f0, q, cloud } = toleranceCloud(s.id, s.params, 'c', s.tols)
+    const m = CIRCUITS[s.id].metrics(s.params)
+    const f0Nom = m.w0 / (2 * Math.PI)
+    // "not one of the 120 builds resonates anywhere else"
+    expect(f0.lo).toBeCloseTo(f0Nom, 6)
+    expect(f0.hi).toBeCloseTo(f0Nom, 6)
+    // "the poles slide along a circle of constant radius ω₀" — and they must
+    // still be a complex pair at the worst-case R, or there is no circle.
+    expect(cloud.length).toBeGreaterThan(200)
+    for (const [re, im] of cloud) {
+      expect(Math.hypot(re, im) / m.w0).toBeCloseTo(1, 9)
+      expect(Math.abs(im)).toBeGreaterThan(0)
+    }
+    // "Q takes the entire hit" — the full ±10%-ish, not the halved share.
+    expect(spreadPct(q, m.q)).toBeGreaterThan(7)
+    // The visibility argument for R = 470: a slide the size of the marker,
+    // not a smudge inside it — the real parts spread by more than 5% of ω₀.
+    const res = cloud.map(([re]) => re)
+    expect((Math.max(...res) - Math.min(...res)) / m.w0).toBeGreaterThan(0.05)
+  })
+
+  it('the response band pinches shut at DC, where R cancels out of the gain', () => {
+    const s = setup()
+    const f0Nom = CIRCUITS[s.id].metrics(s.params).w0 / (2 * Math.PI)
+    const band = responseBand(s.id, s.params, 'c', s.tols, [f0Nom / 1e3, f0Nom])
+    expect(band.magHi[0] / band.magLo[0]).toBeLessThan(1.0001)
+    expect(band.magHi[1] / band.magLo[1]).toBeGreaterThan(1.1)
+  })
+
+  it('moving the tolerance to C breaks the circle, as the note promises', () => {
+    const s = setup()
+    const m = CIRCUITS[s.id].metrics(s.params)
+    const { cloud } = toleranceCloud(s.id, s.params, 'c', { c: 0.1 })
+    const radii = cloud.map(([re, im]) => Math.hypot(re, im) / m.w0)
+    expect(Math.max(...radii) / Math.min(...radii)).toBeGreaterThan(1.05)
   })
 })

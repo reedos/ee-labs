@@ -8,8 +8,12 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
  * that shows as a bump on the magnitude curve shows here as overshoot and
  * ringing, and which of the two is easier to recognise depends entirely on what
  * you are trying to decide.
+ *
+ * `band`, when given, is the tolerance envelope { t, lo, hi } across the
+ * sampled builds — its own (coarser) time grid, same duration — shaded under
+ * the nominal trace.
  */
-export default function StepCanvas({ t, y, final, markers = [] }) {
+export default function StepCanvas({ t, y, final, band = null, markers = [] }) {
   const ref = useCanvas(
     (ctx, w, h) => {
       const area = plotArea(w, h)
@@ -20,6 +24,14 @@ export default function StepCanvas({ t, y, final, markers = [] }) {
       for (let i = 0; i < y.length; i++) {
         if (y[i] < lo) lo = y[i]
         if (y[i] > hi) hi = y[i]
+      }
+      // The band counts toward the range: a build that rings past the nominal
+      // trace must not be clipped by an axis fitted to the nominal alone.
+      if (band) {
+        for (let i = 0; i < band.lo.length; i++) {
+          if (band.lo[i] < lo) lo = band.lo[i]
+          if (band.hi[i] > hi) hi = band.hi[i]
+        }
       }
       const pad = (hi - lo) * 0.12 || 0.2
       lo -= pad
@@ -84,6 +96,42 @@ export default function StepCanvas({ t, y, final, markers = [] }) {
         }
       }
 
+      // The tolerance envelope first, so the nominal line always reads on top.
+      // Fill plus hairline edges: a nearly-agreeing set of builds is a thin
+      // band, and edges keep thin honest bands from vanishing entirely.
+      if (band) {
+        const edge = (arr) => {
+          ctx.beginPath()
+          for (let i = 0; i < arr.length; i++) {
+            const x = sx(band.t[i])
+            const yy = sy(arr[i])
+            if (i === 0) ctx.moveTo(x, yy)
+            else ctx.lineTo(x, yy)
+          }
+          ctx.stroke()
+        }
+        ctx.fillStyle = COLORS.trace
+        ctx.globalAlpha = 0.14
+        ctx.beginPath()
+        for (let i = 0; i < band.hi.length; i++) {
+          const x = sx(band.t[i])
+          const yy = sy(band.hi[i])
+          if (i === 0) ctx.moveTo(x, yy)
+          else ctx.lineTo(x, yy)
+        }
+        for (let i = band.lo.length - 1; i >= 0; i--) {
+          ctx.lineTo(sx(band.t[i]), sy(band.lo[i]))
+        }
+        ctx.closePath()
+        ctx.fill()
+        ctx.strokeStyle = COLORS.trace
+        ctx.lineWidth = 1 * k
+        ctx.globalAlpha = 0.35
+        edge(band.hi)
+        edge(band.lo)
+        ctx.globalAlpha = 1
+      }
+
       ctx.strokeStyle = COLORS.trace
       ctx.lineWidth = 1.8 * k
       ctx.lineJoin = 'round'
@@ -97,7 +145,7 @@ export default function StepCanvas({ t, y, final, markers = [] }) {
       ctx.stroke()
       ctx.restore()
     },
-    [t, y, final, markers],
+    [t, y, final, band, markers],
   )
 
   return <canvas ref={ref} className="plot" role="img" aria-label="Step response of the circuit in time" />

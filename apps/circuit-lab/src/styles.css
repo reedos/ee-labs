@@ -43,6 +43,22 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   display: inline-block;
 }
 
+/* Each component's own tolerance, hugging the field it grades. */
+.field-tol {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 10px;
+}
+
+.field-tol .tol-tag {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  opacity: 0.7;
+}
+
 /* Definitions on contact, folded under the lesson note — Signal Lab's pattern. */
 details.terms { margin: 6px 0 2px; }
 

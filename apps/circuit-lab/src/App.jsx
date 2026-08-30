@@ -13,7 +13,7 @@ import {
 import { CIRCUITS, CIRCUIT_GROUPS, defaultsOf, transferOf } from './circuits.js'
 import { circuitMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
-import { TOLERANCES, toleranceCloud, spreadPct } from './tolerance.js'
+import { TOLERANCES, responseBand, stepBand, toleranceCloud, tolsOf, spreadPct } from './tolerance.js'
 import { termsFor } from './terms.js'
 import { axisFreqs, ensureSampled, stickyCentre } from './axis.js'
 import Schematic from './schematics.jsx'
@@ -27,8 +27,10 @@ export default function App() {
   const [id, setId] = useState('rcLow')
   const [params, setParams] = useState(() => defaultsOf('rcLow'))
   const [output, setOutput] = useState(CIRCUITS.rcLow.outputs[0].key)
-  // How honest the parts are. Zero means the textbook world of exact values.
-  const [tol, setTol] = useState(0)
+  // How honest the parts are, PER PART: { paramKey: ±fraction }. Empty means
+  // the textbook world of exact values; a board is never all one grade, and
+  // which spec suffers depends on which part wobbles.
+  const [tols, setTols] = useState({})
   const [showPhase, setShowPhase] = useState(true)
   const [lower, setLower] = useState('step')
   // Which lesson is loaded, cleared as soon as anything is changed by hand: the
@@ -47,6 +49,7 @@ export default function App() {
     setId(next)
     setParams(defaultsOf(next))
     setOutput(CIRCUITS[next].outputs[0].key)
+    setTols({})
     setLesson(null)
   }
   const setParam = (key, value) => {
@@ -62,8 +65,14 @@ export default function App() {
     setOutput(key)
     setLesson(null)
   }
-  const chooseTol = (value) => {
-    setTol(value)
+  const chooseTol = (key, value) => {
+    setTols((t) => ({ ...t, [key]: value }))
+    setLesson(null)
+  }
+  const chooseAllTol = (value) => {
+    const next = {}
+    for (const p of circuit.params) next[p.key] = value
+    setTols(next)
     setLesson(null)
   }
 
@@ -73,7 +82,7 @@ export default function App() {
     setParams(next.params)
     setOutput(next.output || CIRCUITS[next.id].outputs[0].key)
     setLower(next.view)
-    setTol(next.tol)
+    setTols(tolsOf(next.id, next.tols))
     setLesson(l.name)
   }
 
@@ -110,8 +119,11 @@ export default function App() {
 
   const response = useMemo(() => bode(tf, freqs), [tf, freqs])
 
-  // Long enough to see it arrive, short enough that the arrival fills the pane.
-  const step = useMemo(() => {
+  // Long enough to see it arrive, short enough that the arrival fills the
+  // pane. Its own memo because the tolerance band must ride the SAME span —
+  // an envelope on a different time grid would be two plots pretending to
+  // be one.
+  const stepDuration = useMemo(() => {
     const slowest = Math.min(
       ...pz.poles.filter(([re]) => Math.abs(re) > 1e-9).map(([re, im]) => Math.hypot(re, im)),
     )
@@ -120,8 +132,12 @@ export default function App() {
     // suggests, and a step response cut off before it settles is the one thing
     // this pane exists to show.
     const bySettling = second && Number.isFinite(second.settling) ? 1.4 * second.settling : 0
-    return stepResponse(tf, { duration: Math.max(byPole, bySettling), points: 900 })
-  }, [tf, pz, second])
+    return Math.max(byPole, bySettling)
+  }, [pz, second])
+  const step = useMemo(
+    () => stepResponse(tf, { duration: stepDuration, points: 900 }),
+    [tf, stepDuration],
+  )
 
   const markers = useMemo(() => {
     const out = []
@@ -138,10 +154,21 @@ export default function App() {
 
   const math = useMemo(() => circuitMath(id, tf, params, output), [id, tf, params, output])
 
-  // The scatter from building this circuit 120 times with real parts.
+  // The scatter from building this circuit 120 times with real parts — and
+  // the same builds as an envelope on each plot: shaded regions for where the
+  // response and the step could land, the pole cloud for where the poles do.
+  const tolsN = useMemo(() => tolsOf(id, tols), [id, tols])
   const wobble = useMemo(
-    () => toleranceCloud(id, params, output, tol),
-    [id, params, output, tol],
+    () => toleranceCloud(id, params, output, tolsN),
+    [id, params, output, tolsN],
+  )
+  const band = useMemo(
+    () => responseBand(id, params, output, tolsN, freqs),
+    [id, params, output, tolsN, freqs],
+  )
+  const stepEnvelope = useMemo(
+    () => stepBand(id, params, output, tolsN, stepDuration),
+    [id, params, output, tolsN, stepDuration],
   )
   const f0Nominal = metrics ? metrics.w0 / (2 * Math.PI) : second ? second.f0 : null
   const f0Spread = wobble.any && f0Nominal ? spreadPct(wobble.f0, f0Nominal) : null
@@ -262,39 +289,68 @@ export default function App() {
 
         <section>
           <h2>Components</h2>
+          {/* No part in a drawer is exact, and no board is all one grade —
+              so each part carries its own tolerance, right under its value.
+              The shaded bands on the plots, the ranges below and the cloud on
+              the pole view are all the same 120 builds from these bands. */}
           {circuit.params.map((p) => (
-            <NumField
-              key={p.key}
-              label={p.label}
-              unit={p.unit}
-              value={params[p.key]}
-              onChange={(v) => setParam(p.key, v)}
-              min={p.min}
-              max={p.max}
-              scale={p.scale}
-              hint={p.hint}
-              eng
-            />
+            <React.Fragment key={p.key}>
+              <NumField
+                label={p.label}
+                unit={p.unit}
+                value={params[p.key]}
+                onChange={(v) => setParam(p.key, v)}
+                min={p.min}
+                max={p.max}
+                scale={p.scale}
+                hint={p.hint}
+                eng
+              />
+              <div className="field-tol" role="group" aria-label={`${p.label} tolerance`}>
+                <span className="tol-tag">tol</span>
+                <div className="segmented sm">
+                  {TOLERANCES.map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      className={(tols[p.key] || 0) === t.value ? 'on' : ''}
+                      aria-pressed={(tols[p.key] || 0) === t.value}
+                      onClick={() => chooseTol(p.key, t.value)}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </React.Fragment>
           ))}
 
-          {/* No part in a drawer is exact. The cloud on the pole view and the
-              ranges here are what a drawer of real parts does to this page. */}
+          {/* One row to grade the whole drawer at once — it reads as "on"
+              only when every part agrees with it. */}
           <div className="field">
-            <span className="field-label" id="tol-label">
-              Part tolerance
+            <span className="field-label" id="tol-all-label">
+              Every part at once
             </span>
-            <div className="segmented sm" role="group" aria-labelledby="tol-label">
-              {TOLERANCES.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  className={tol === t.value ? 'on' : ''}
-                  aria-pressed={tol === t.value}
-                  onClick={() => chooseTol(t.value)}
-                >
-                  {t.label}
-                </button>
-              ))}
+            <div
+              className="segmented sm"
+              role="group"
+              aria-labelledby="tol-all-label"
+              data-role="tol-all"
+            >
+              {TOLERANCES.map((t) => {
+                const allAt = circuit.params.every((p) => (tols[p.key] || 0) === t.value)
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    className={allAt ? 'on' : ''}
+                    aria-pressed={allAt}
+                    onClick={() => chooseAllTol(t.value)}
+                  >
+                    {t.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
           {wobble.any && f0Spread != null ? (
@@ -420,6 +476,7 @@ export default function App() {
             mag={response.mag}
             phase={response.phase}
             showPhase={showPhase}
+            band={band}
             markers={markers}
             yUnit={circuit.outputs.find((o) => o.key === output)?.key === 'z' ? 'dBΩ' : 'dB'}
           />
@@ -462,7 +519,7 @@ export default function App() {
             </div>
           </div>
           {lower === 'step' ? (
-            <StepCanvas t={step.t} y={step.y} final={gain} />
+            <StepCanvas t={step.t} y={step.y} final={gain} band={stepEnvelope} />
           ) : (
             <PoleZeroCanvas
               poles={pz.poles}

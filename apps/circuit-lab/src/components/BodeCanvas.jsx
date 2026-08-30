@@ -12,12 +12,18 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmtHz } from '@ee-labs/ui'
  * Phase, when shown, gets its own axis on the right rather than a second pane.
  * It is the half of the response a magnitude plot cannot show, and reading it
  * against the same frequency axis is the point.
+ *
+ * `band`, when given, is the tolerance envelope across the sampled builds —
+ * { magLo, magHi, phaseLo, phaseHi } on the same frequency grid — drawn as
+ * shaded regions UNDER the nominal traces: the line is the circuit you asked
+ * for, the shading is everywhere the drawer's parts could put it.
  */
 export default function BodeCanvas({
   freqs,
   mag,
   phase,
   showPhase,
+  band = null,
   markers = [],
   yUnit = 'dB',
 }) {
@@ -32,14 +38,22 @@ export default function BodeCanvas({
       const xMax = lx(freqs[freqs.length - 1])
 
       // Round the dB range outward to whole 20 dB steps so gridlines land on
-      // decades of amplitude, where a reader expects them.
+      // decades of amplitude, where a reader expects them. The band counts
+      // toward the range — a shaded region the axis clips is the fixed-ceiling
+      // defect all over again.
       let lo = Infinity
       let hi = -Infinity
-      for (let i = 0; i < mag.length; i++) {
-        const v = db(mag[i])
+      const take = (v) => {
         if (Number.isFinite(v)) {
           if (v < lo) lo = v
           if (v > hi) hi = v
+        }
+      }
+      for (let i = 0; i < mag.length; i++) {
+        take(db(mag[i]))
+        if (band) {
+          take(db(band.magLo[i]))
+          take(db(band.magHi[i]))
         }
       }
       if (!Number.isFinite(lo)) {
@@ -121,6 +135,43 @@ export default function BodeCanvas({
         ctx.setLineDash([])
       }
 
+      // The tolerance envelope first, so the nominal line always reads on top.
+      // Hairline strokes on the envelope's edges as well as the fill: on a
+      // 160 dB axis a ±1 dB band is thinner than a pixel, and without edges
+      // it would be present in the data and absent from the picture.
+      if (band) {
+        const edge = (arr) => {
+          ctx.beginPath()
+          for (let i = 0; i < mag.length; i++) {
+            const x = sx(lx(freqs[i]))
+            const y = sy(db(arr[i]))
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.stroke()
+        }
+        ctx.fillStyle = COLORS.trace
+        ctx.globalAlpha = 0.14
+        ctx.beginPath()
+        for (let i = 0; i < mag.length; i++) {
+          const x = sx(lx(freqs[i]))
+          const y = sy(db(band.magHi[i]))
+          if (i === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        }
+        for (let i = mag.length - 1; i >= 0; i--) {
+          ctx.lineTo(sx(lx(freqs[i])), sy(db(band.magLo[i])))
+        }
+        ctx.closePath()
+        ctx.fill()
+        ctx.strokeStyle = COLORS.trace
+        ctx.lineWidth = 1 * k
+        ctx.globalAlpha = 0.4
+        edge(band.magHi)
+        edge(band.magLo)
+        ctx.globalAlpha = 1
+      }
+
       ctx.strokeStyle = COLORS.trace
       ctx.lineWidth = 1.8 * k
       ctx.lineJoin = 'round'
@@ -136,14 +187,54 @@ export default function BodeCanvas({
       if (showPhase && phase) {
         let plo = 0
         let phi = 0
-        for (let i = 0; i < phase.length; i++) {
-          const d = (phase[i] * 180) / Math.PI
+        const takeDeg = (rad) => {
+          const d = (rad * 180) / Math.PI
           if (d < plo) plo = d
           if (d > phi) phi = d
+        }
+        for (let i = 0; i < phase.length; i++) {
+          takeDeg(phase[i])
+          if (band) {
+            takeDeg(band.phaseLo[i])
+            takeDeg(band.phaseHi[i])
+          }
         }
         plo = Math.min(-90, Math.floor(plo / 90) * 90)
         phi = Math.max(90, Math.ceil(phi / 90) * 90)
         const py = (d) => area.y + area.h - ((d - plo) / (phi - plo)) * area.h
+
+        if (band) {
+          const pedge = (arr) => {
+            ctx.beginPath()
+            for (let i = 0; i < phase.length; i++) {
+              const x = sx(lx(freqs[i]))
+              const y = py((arr[i] * 180) / Math.PI)
+              if (i === 0) ctx.moveTo(x, y)
+              else ctx.lineTo(x, y)
+            }
+            ctx.stroke()
+          }
+          ctx.fillStyle = COLORS.phase
+          ctx.globalAlpha = 0.1
+          ctx.beginPath()
+          for (let i = 0; i < phase.length; i++) {
+            const x = sx(lx(freqs[i]))
+            const y = py((band.phaseHi[i] * 180) / Math.PI)
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          for (let i = phase.length - 1; i >= 0; i--) {
+            ctx.lineTo(sx(lx(freqs[i])), py((band.phaseLo[i] * 180) / Math.PI))
+          }
+          ctx.closePath()
+          ctx.fill()
+          ctx.strokeStyle = COLORS.phase
+          ctx.lineWidth = 1 * k
+          ctx.globalAlpha = 0.3
+          pedge(band.phaseHi)
+          pedge(band.phaseLo)
+          ctx.globalAlpha = 1
+        }
 
         ctx.strokeStyle = COLORS.phase
         ctx.lineWidth = 1.5 * k
@@ -177,7 +268,7 @@ export default function BodeCanvas({
       }
       ctx.restore()
     },
-    [freqs, mag, phase, showPhase, markers, yUnit],
+    [freqs, mag, phase, showPhase, band, markers, yUnit],
   )
 
   return <canvas ref={ref} className="plot" role="img" aria-label="Bode plot: magnitude and phase of the circuit against frequency" />

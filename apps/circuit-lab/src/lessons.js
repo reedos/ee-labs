@@ -146,6 +146,31 @@ export const LESSONS = [
     claim: { tolQHarderThanF0: true },
   },
   {
+    group: 'Resonance',
+    name: 'Blame the right part',
+    terms: ['tolerance', 'q', 'resonance'],
+    note:
+      'Give R alone ±10% and watch what does NOT happen: f₀ = 1/(2π√LC) has no R in it, so ' +
+      'not one of the 120 builds resonates anywhere else — the poles slide along a circle of ' +
+      'constant radius ω₀ while Q takes the entire hit, and the shaded band on the response ' +
+      'pinches shut at DC, where R cancels out of the gain too. A tolerance budget is ' +
+      'per-part accounting: a spec only inherits error from the parts in its own formula. ' +
+      'Move the ±10% to C instead and the circle breaks.',
+    // R = 560 (an E12 value) sets ζ ≈ 0.89, so the ±10% builds span ζ 0.80
+    // to 0.97 and the poles sweep a ~24° arc of the circle — long enough to
+    // read as an arc past the pole marker. At the default 100 Ω the same
+    // tolerance slides them ~2°, a smudge smaller than the marker; any
+    // higher than ~570 Ω and the worst build goes overdamped, the pair
+    // lands on the real axis, and the circle story stops being true.
+    patch: {
+      circuit: 'rlcSeries',
+      params: p('rlcSeries', { r: 560 }),
+      view: 'pz',
+      tols: { r: 0.1 },
+    },
+    claim: { f0Immune: true, polesOnCircle: true },
+  },
+  {
     group: 'Active circuits',
     name: 'Why active filters exist',
     terms: ['pole', 'q'],
@@ -205,6 +230,9 @@ export function applyLesson(lesson) {
     params: lesson.patch.params || defaultsOf(circuit),
     output: lesson.patch.output || null,
     view: lesson.patch.view || 'step',
-    tol: lesson.patch.tol || 0,
+    // A tolerance spec: `tol` (a number) grades every part alike, `tols` (a
+    // map) grades parts individually — the wobble lesson wants the first, the
+    // blame lesson the second. tolsOf() normalises either.
+    tols: lesson.patch.tols ?? lesson.patch.tol ?? 0,
   }
 }
