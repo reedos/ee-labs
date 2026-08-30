@@ -174,6 +174,25 @@ describe('what the parts show is the story the lessons tell', () => {
     for (const v of dPart.y) expect(Number.isFinite(v)).toBe(true)
   })
 
+  it("each strip's claim holds: the answer is the raw signal times its gain", () => {
+    // The strips draw e, ∫e and ė dashed under Kp·e, Ki·∫e and Kd·ė, and say
+    // the gain is the stretch between them — so the stretch is measured.
+    const gains = defaultsOf(CONTROLLERS.pid)
+    const loop = loopOf('secondOrder', 'pid')
+    const w = watchSignals(loop, 'pid', gains, 'ref', OPTS)
+    const at = (key) => w.parts.find((q) => q.key === key)
+    for (const p of w.parts) {
+      expect(p.raw.length).toBe(w.t.length)
+      expect(p.rawLabel).toBeTruthy()
+    }
+    expect(at('p').raw, "P acts on the error itself").toBe(w.e)
+    for (let i = 0; i < w.t.length; i += 41) {
+      expect(at('p').y[i]).toBeCloseTo(gains.kp * at('p').raw[i], 9)
+      expect(at('i').y[i]).toBeCloseTo(gains.ki * at('i').raw[i], 9)
+      expect(at('d').y[i]).toBeCloseTo(gains.kd * at('d').raw[i], 9)
+    }
+  })
+
   it('every plant × controller produces finite signals of matching length', () => {
     for (const plantId of Object.keys(PLANTS)) {
       for (const ctrlId of Object.keys(CONTROLLERS)) {

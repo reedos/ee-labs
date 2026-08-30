@@ -106,25 +106,30 @@ export function watchSignals(loop, ctrlId, ctrlP, stepInput, { duration, points 
   const { y } = stepResponse(dist ? loop.disturbance : loop.closed, { duration, points })
   const input = Float64Array.from(t, () => 1)
 
+  // Each part carries the RAW signal its gain acts on — e, ∫e, or ė — so the
+  // canvas can draw input and answer on one strip and the gain reads as the
+  // vertical stretch between them: the multiplication, visible.
   const parts = []
   let u
   let kick = null
   if (ctrlId === 'lead') {
     // Lead is a proper system of its own; its effort is one signal, not a sum.
     u = simulate(CONTROLLERS.lead.tf(ctrlP), interp(t, e), { duration, points }).y
-    parts.push({ key: 'u', label: 'u = lead(e)', y: u })
+    parts.push({ key: 'u', label: 'u = lead(e)', y: u, raw: e, rawLabel: 'the error e' })
   } else {
     const pTerm = Float64Array.from(e, (v) => ctrlP.kp * v)
-    parts.push({ key: 'p', label: 'Kp·e', y: pTerm })
+    parts.push({ key: 'p', label: 'Kp·e', y: pTerm, raw: e, rawLabel: 'the error e' })
     let iTerm = null
     let dTerm = null
     if (ctrlId === 'pi' || ctrlId === 'pid') {
-      iTerm = Float64Array.from(cumtrapz(t, e), (v) => ctrlP.ki * v)
-      parts.push({ key: 'i', label: 'Ki·∫e', y: iTerm })
+      const eInt = cumtrapz(t, e)
+      iTerm = Float64Array.from(eInt, (v) => ctrlP.ki * v)
+      parts.push({ key: 'i', label: 'Ki·∫e', y: iTerm, raw: eInt, rawLabel: '∫e — the shaded area above' })
     }
     if (ctrlId === 'pid') {
-      dTerm = Float64Array.from(diff(t, e), (v) => ctrlP.kd * v)
-      parts.push({ key: 'd', label: 'Kd·ė', y: dTerm })
+      const eDot = diff(t, e)
+      dTerm = Float64Array.from(eDot, (v) => ctrlP.kd * v)
+      parts.push({ key: 'd', label: 'Kd·ė', y: dTerm, raw: eDot, rawLabel: "ė — the error's slope" })
       // A reference step arrives at the derivative as a jump in e; the ideal
       // Kd·ė is then an impulse of weight Kd at t = 0. A shove at the plant
       // input does not jump e (the plant integrates first), so no kick.

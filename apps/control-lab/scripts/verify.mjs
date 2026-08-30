@@ -546,7 +546,9 @@ console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
   if (!(during > 0 && during < 599)) {
     fail(`watch: play at the end should restart and advance (slider at ${during})`)
   }
-  await page.waitForTimeout(2200)
+  // A 1× sweep is ~12 s (halved from the convolution view's pace on Reed's
+  // review), so 4× needs ~3 s to cross.
+  await page.waitForTimeout(3400)
   const after = Number(await slider.inputValue())
   const btnNow = await page.getByRole('button', { name: /play|pause/ }).first().textContent()
   if (after !== 599) fail(`watch: a 4× sweep should reach the end (slider at ${after})`)
