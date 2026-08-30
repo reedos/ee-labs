@@ -107,10 +107,11 @@ export const PRESETS = [
     name: 'Sines in, sines out',
     terms: ['lti', 'superposition'],
     note:
-      'The quiet assumption under this whole tool, made loud. This chain is LINEAR (double the ' +
-      'input, double the output — the previous preset) and TIME-INVARIANT (shift the input in ' +
-      'time, the output shifts identically — drag the phase slider and watch the filtered ' +
-      'wave slide without changing shape). Any system with those two properties can do exactly ' +
+      'The quiet assumption under this whole tool, made loud. This chain is LINEAR — meaning ' +
+      'superposition (sums in give sums out, the previous preset) plus scaling (double the ' +
+      'input, double the output) — and TIME-INVARIANT (shift the input in time, the output ' +
+      'shifts identically: drag the phase slider and watch the filtered wave slide without ' +
+      'changing shape). Any system with those two properties can do exactly ' +
       'one thing to a sine: scale it and shift it. It CANNOT change its frequency or add new ' +
       'ones — look at the spectrum: one line in, one line out, at the same place, through a ' +
       'strongly resonant filter. That is why a response curve fully describes a filter, why ' +
