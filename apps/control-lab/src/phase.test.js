@@ -1,0 +1,148 @@
+import { describe, it, expect } from 'vitest'
+import { bode, margins, phaseAt, series, closeLoop, isStable } from '@ee-labs/systems'
+import { checkFailures, texFailures, valueRowsPretendingToCheck, rowsOf, inertRows } from '@ee-labs/explain/testing'
+import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
+import { loopMath } from './math.js'
+
+// The phase rules the app prints, measured.
+//
+// The hints and the math panel now lead with three rules — each pole costs up
+// to 90° of lag and has spent 45° at its corner, an integrator is a flat −90°
+// everywhere, zeros add phase on the same schedule — and every number in that
+// sentence is a claim about physics. These tests read each one off bode() and
+// margins() rather than trusting the prose, because the prose is exactly what
+// drifts when a definition changes and nobody notices.
+
+const logspace = (lo, hi, n) =>
+  Float64Array.from(
+    { length: n },
+    (_, i) => Math.pow(10, Math.log10(lo) + ((Math.log10(hi) - Math.log10(lo)) * i) / (n - 1)),
+  )
+const deg = (r) => (r * 180) / Math.PI
+const phaseDegOn = (tf, freqs) => Array.from(bode(tf, freqs).phase, deg)
+
+describe('the phase rules the hints print', () => {
+  it('a first-order lag spends 45° at its corner and never the full 90°', () => {
+    const tau = 0.7
+    const p = PLANTS.firstOrder.tf({ k: 3, tau })
+    const corner = 1 / (2 * Math.PI * tau)
+    // An odd, log-symmetric grid puts the corner exactly on the middle point.
+    const grid = logspace(corner / 1000, corner * 1000, 2001)
+    const ph = phaseDegOn(p, grid)
+    expect(ph[1000], '45° of lag at ω = 1/τ').toBeCloseTo(-45, 6)
+    expect(Math.min(...ph), 'one pole never costs the full 90°').toBeGreaterThan(-90)
+    // ...so the hint's stability claim follows: even a million of gain finds
+    // no −180° to cross, and the closed loop stays stable.
+    const L = series({ b: [1e6], a: [1] }, p)
+    expect(margins(L, grid).gainMargin, 'no phase crossover exists').toBeNull()
+    expect(isStable(closeLoop(L))).toBe(true)
+  })
+
+  it('the motor holds between −90° and −180°, approaching but never arriving', () => {
+    const p = PLANTS.motor.tf(defaultsOf(PLANTS.motor))
+    const grid = logspace(1e-6, 1e6, 4000)
+    const ph = phaseDegOn(p, grid)
+    expect(Math.max(...ph), "the integrator's floor").toBeLessThan(-89.99)
+    expect(Math.min(...ph), 'the lag never adds its full 90°').toBeGreaterThan(-180)
+    // Proportional gain moves none of that phase: at any gain the sliders
+    // allow there is no phase crossover and no way to go unstable.
+    for (const kp of [0.001, 1, 1000]) {
+      const L = series(CONTROLLERS.p.tf({ kp }), p)
+      expect(margins(L, grid).gainMargin, `Kp ${kp}`).toBeNull()
+      expect(isStable(closeLoop(L)), `Kp ${kp}`).toBe(true)
+    }
+  })
+
+  it("the integrator's −90° really is flat across every frequency", () => {
+    const grid = logspace(1e-9, 1e9, 2000)
+    for (const v of phaseDegOn({ b: [1], a: [1, 0] }, grid)) expect(v).toBeCloseTo(-90, 9)
+    // The panel reads the claim off the live controller far below its corner;
+    // that read must hold even at the worst corner the sliders can build.
+    expect(deg(phaseAt(CONTROLLERS.pi.tf({ kp: 1000, ki: 0.001 }), 1e-12))).toBeCloseTo(-90, 1)
+    expect(deg(phaseAt(CONTROLLERS.pid.tf({ kp: 1000, ki: 0.001, kd: 100 }), 1e-12))).toBeCloseTo(-90, 1)
+  })
+
+  it("derivative action climbs from the integrator's −90° to +90°", () => {
+    const c = CONTROLLERS.pid.tf(defaultsOf(CONTROLLERS.pid))
+    const grid = logspace(1e-6, 1e8, 3000)
+    const ph = phaseDegOn(c, grid)
+    expect(ph[0]).toBeCloseTo(-90, 1)
+    expect(ph[ph.length - 1], 'up to +90, as printed').toBeCloseTo(90, 1)
+  })
+
+  it('lead adds phase between z and p, peaking at their geometric mean', () => {
+    const z = 2
+    const p = 180
+    const c = CONTROLLERS.lead.tf({ k: 1, z, p })
+    const geo = Math.sqrt(z * p) / (2 * Math.PI)
+    const grid = logspace(geo / 1e5, geo * 1e5, 4001)
+    const ph = phaseDegOn(c, grid)
+    const peakAt = grid[ph.indexOf(Math.max(...ph))]
+    expect(peakAt / geo, 'peak at √(z·p)').toBeCloseTo(1, 1)
+    expect(Math.max(...ph)).toBeGreaterThan(45)
+    // ...and far outside the band it gives every degree back.
+    expect(ph[0]).toBeCloseTo(0, 0)
+    expect(ph[ph.length - 1]).toBeCloseTo(0, 0)
+  })
+
+  it('a second-order pair falls through −90° at ωₙ, 180° in total, faster when light', () => {
+    const at = (zeta) => {
+      const wn = 40
+      const f0 = wn / (2 * Math.PI)
+      const grid = logspace(f0 / 100, f0 * 100, 2001)
+      return phaseDegOn(PLANTS.secondOrder.tf({ k: 1, wn, zeta }), grid)
+    }
+    const light = at(0.05)
+    const heavy = at(1)
+    expect(light[1000], '−90° at ωₙ regardless of damping').toBeCloseTo(-90, 4)
+    expect(heavy[1000]).toBeCloseTo(-90, 4)
+    expect(light[2000], 'the pair spends 180° in total').toBeCloseTo(-180, 0)
+    // "the lighter the damping, the more abruptly": the slope at ωₙ.
+    const slope = (ph) => Math.abs(ph[1001] - ph[999])
+    expect(slope(light)).toBeGreaterThan(slope(heavy))
+  })
+})
+
+describe("the math panel's phase accounting", () => {
+  const GRID = logspace(1e-6, 1e6, 6000)
+  const entryFor = (plantId, ctrlId, plantOver = {}, ctrlOver = {}) => {
+    const plantP = { ...defaultsOf(PLANTS[plantId]), ...plantOver }
+    const ctrlP = { ...defaultsOf(CONTROLLERS[ctrlId]), ...ctrlOver }
+    const loop = buildLoop(plantId, plantP, ctrlId, ctrlP)
+    const marg = margins(loop.open, GRID)
+    return loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, GRID)
+  }
+
+  it('every check row agrees for every plant against every controller', () => {
+    for (const plantId of Object.keys(PLANTS)) {
+      for (const ctrlId of Object.keys(CONTROLLERS)) {
+        const label = `${plantId} + ${ctrlId}`
+        const entry = entryFor(plantId, ctrlId)
+        expect(entry, label).toBeTruthy()
+        expect(checkFailures(entry, label)).toEqual([])
+        expect(texFailures(entry, label)).toEqual([])
+        expect(valueRowsPretendingToCheck(entry, label)).toEqual([])
+      }
+    }
+  })
+
+  it('the accounting rows exist where they can be measured', () => {
+    // A loop with a crossover carries the ∠C + ∠P = ∠L row; a controller with
+    // an integrator carries the flat −90° row. Their absence would not fail a
+    // check, so their presence is pinned here.
+    const rows = rowsOf(entryFor('motor', 'pi'), 'check').map((r) => r.label)
+    expect(rows.some((l) => l.includes('∠C + ∠P'))).toBe(true)
+    expect(rows.some((l) => l.includes('−90°'))).toBe(true)
+    // Proportional on the first-order lag: crossover yes (once the gain is
+    // high enough that |L| actually reaches 1 — at Kp = 1 it never does, and
+    // the row is rightly absent), integrator no.
+    const rowsP = rowsOf(entryFor('firstOrder', 'p', {}, { kp: 9 }), 'check').map((r) => r.label)
+    expect(rowsP.some((l) => l.includes('∠C + ∠P'))).toBe(true)
+    expect(rowsP.some((l) => l.includes('−90°'))).toBe(false)
+  })
+
+  it('no accounting row is inert — each one actually reads the loop', () => {
+    const build = ({ tau, ki }) => entryFor('motor', 'pi', { tau }, { ki })
+    expect(inertRows(build, { tau: 0.5, ki: 1 }, { tau: 1.7, ki: 3 }, 'motor + pi')).toEqual([])
+  })
+})

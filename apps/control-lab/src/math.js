@@ -1,5 +1,5 @@
 import { PLANTS, CONTROLLERS } from './systems.js'
-import { dcGain, polesZeros, secondOrderMetrics, isStable, magnitudeAt } from '@ee-labs/systems'
+import { bode, dcGain, phaseAt, polesZeros, secondOrderMetrics, isStable, magnitudeAt } from '@ee-labs/systems'
 
 // The math for the loop currently on screen.
 //
@@ -10,6 +10,14 @@ import { dcGain, polesZeros, secondOrderMetrics, isStable, magnitudeAt } from '@
 // characteristic polynomial — while "theory" is the closed form in terms of the
 // plant and controller parameters. Different paths; a dropped term separates
 // them at once.
+
+/** An unwrapped phase curve read at one frequency, in degrees, log-interpolated. */
+const phaseDegAt = (phase, freqs, f) => {
+  let i = 1
+  while (i < freqs.length - 1 && freqs[i] < f) i++
+  const t = Math.log(f / freqs[i - 1]) / Math.log(freqs[i] / freqs[i - 1])
+  return ((phase[i - 1] + t * (phase[i] - phase[i - 1])) * 180) / Math.PI
+}
 
 const T = (text) => ({ kind: 'text', text })
 const F = (tex, caption) => ({ kind: 'formula', tex, caption })
@@ -98,6 +106,12 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
           measured: 1 - closedDc,
           tol: 0.01,
           abs: 1e-6,
+          // An unstable loop settles nowhere, so there is no steady state to
+          // have an error — the default unstable plant under P sits exactly on
+          // the boundary and reads Infinity against −Infinity otherwise.
+          unchecked: stable
+            ? null
+            : 'The loop is not stable, so it settles nowhere and has no steady-state error.',
         },
       ]),
     )
@@ -156,6 +170,65 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
         { label: 'in the right half plane', value: pz.poles.filter(([re]) => re > 0).length },
       ]),
     )
+
+    // --- where the phase went ---
+    //
+    // The margin numbers invite the wrong lesson — that stability is about
+    // gain. Gain only decides WHERE the crossover sits; what gets spent there
+    // is phase, and the spending follows three rules worth saying every time.
+    // The rows then measure the accounting on the loop actually on screen.
+    blocks.push(
+      T(
+        'The lag has an accounting, the same three rules every time: each pole costs up to 90° ' +
+          'of phase and has already spent 45° of it at its corner frequency; an integrator is a ' +
+          'pole at the origin, so its −90° is flat across every frequency; and zeros work the ' +
+          'other way — derivative and lead action ADD phase on the same schedule. The phase ' +
+          'margin is what is left of 180° once C and P have each taken their share at the ' +
+          'crossover.',
+      ),
+    )
+
+    const phaseRows = []
+    let phaseShares = null
+    if (marg.gainCrossover != null) {
+      // The shares measured separately — the controller's own unwrapped phase
+      // curve and the plant's, each read at the crossover the composed loop
+      // found — against the composed loop's phase there. series() multiplies
+      // the polynomials, this adds the angles; a composition bug splits them.
+      const phC = phaseDegAt(bode(loop.controller, freqs).phase, freqs, marg.gainCrossover)
+      const phP = phaseDegAt(bode(loop.plant, freqs).phase, freqs, marg.gainCrossover)
+      const phL = phaseDegAt(bode(loop.open, freqs).phase, freqs, marg.gainCrossover)
+      phaseRows.push({
+        label: '∠C + ∠P = ∠L at the crossover',
+        predicted: phC + phP,
+        measured: phL,
+        tol: 0.02,
+        abs: 0.5,
+      })
+      phaseShares = { phC, phP, phL }
+    }
+    if (ctrlId === 'pi' || ctrlId === 'pid') {
+      // "A flat −90°" is a claim about the integrator term alone, and far
+      // below the controller's corner that term is all there is — so it is
+      // measured there numerically rather than asserted.
+      phaseRows.push({
+        label: "the integrator's −90°, read far below its corner",
+        predicted: -90,
+        measured: (phaseAt(loop.controller, 1e-12) * 180) / Math.PI,
+        tol: 0.01,
+        abs: 0.5,
+      })
+    }
+    if (phaseRows.length) blocks.push(C(phaseRows))
+    if (phaseShares) {
+      blocks.push(
+        V([
+          { label: "the controller's share ∠C", value: phaseShares.phC, unit: '°', note: phaseShares.phC > 0 ? 'adds phase' : '' },
+          { label: "the plant's share ∠P", value: phaseShares.phP, unit: '°' },
+          { label: '180° + the total', value: 180 + phaseShares.phL, unit: '°', note: 'the phase margin' },
+        ]),
+      )
+    }
 
     // --- the frequency/time link ---
     if (second) {

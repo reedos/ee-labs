@@ -71,10 +71,10 @@ export const LESSONS = [
     group: 'Losing stability',
     name: 'Turn it up until it sings',
     note:
-      'Three lags, each contributing up to 90° of phase. Together they can reach −180° while ' +
-      'the gain is still above one — and at that point the feedback that was subtracting starts ' +
-      'adding. Drag Kp upward and watch the step response go from sluggish, to lively, to ' +
-      'ringing, to divergent.',
+      'Three lags, each costing up to 90° of phase — 45° already spent at its corner. Together ' +
+      'they can reach −180° while the gain is still above one — and at that point the feedback ' +
+      'that was subtracting starts adding. Drag Kp upward and watch the step response go from ' +
+      'sluggish, to lively, to ringing, to divergent.',
     patch: { plant: 'threePole', plantP: pp('threePole'), ctrl: 'p', ctrlP: cp('p', { kp: 4 }), view: 'step' },
   },
   {
