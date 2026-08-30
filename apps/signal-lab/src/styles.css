@@ -358,3 +358,20 @@ details.terms > summary::-webkit-details-marker { display: none; }
 details.terms dl { margin: 6px 0 0; }
 details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
 details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+
+/* Pane-header controls: compact fields sized to the header row, so moving
+   them next to their plot costs almost no plot height. */
+.view-head .num.is-compact { flex: 0 0 auto; }
+.view-head .num.is-compact .num-input { height: 24px; width: 74px; }
+.view-head .num.is-compact .num-step { height: 24px; }
+.view-head .segmented { flex: 0 0 auto; }
+.view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
+
+/* Phone: the topbar's global controls wrap instead of running off the right
+   edge (the Window select was clipped at 390px), and pane-header control
+   groups wrap under the title without crowding the readouts. */
+@media (max-width: 900px) {
+  .topbar-controls { flex-wrap: wrap; row-gap: 6px; max-width: 100%; }
+  .view-head { row-gap: 6px; }
+  .view-head .readout { flex-basis: 100%; }
+}

@@ -412,23 +412,23 @@ console.log('\n10. Impulse response, z-plane and the group-delay overlay\n')
 
   // The preset selects the group-delay overlay; switching it must redraw, which
   // is what proves the canvas received it rather than the state merely holding it.
-  const pressed = await page.$$eval('.controls .segmented button[aria-pressed="true"]', (b) =>
+  const pressed = await page.$$eval('.views .segmented button[aria-pressed="true"]', (b) =>
     b.map((x) => x.textContent.trim()),
   )
-  if (!pressed.includes('Group delay')) {
+  if (!pressed.includes('delay')) {
     fail(`group-delay overlay not selected by the preset: ${pressed.join(', ')}`)
   } else {
     console.log('   preset selected the group-delay overlay')
   }
 
   const before = (await canvasHashes())[1]
-  await page.locator('.controls .segmented button', { hasText: 'Phase' }).first().click()
+  await page.locator('.views .segmented button', { hasText: 'phase' }).first().click()
   await settle()
   const after = (await canvasHashes())[1]
   if (before === after) fail('switching overlay from group delay to phase did not redraw')
   else console.log('   overlay switches redraw the spectrum')
 
-  await page.locator('.controls .segmented button', { hasText: 'None' }).first().click()
+  await page.locator('.views .segmented button', { hasText: 'no overlay' }).first().click()
   await settle()
   if ((await canvasHashes())[1] === after) fail('turning the overlay off did not redraw')
 }

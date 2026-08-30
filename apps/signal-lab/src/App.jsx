@@ -6,7 +6,7 @@ import SpectrumCanvas from './components/SpectrumCanvas.jsx'
 import ImpulseCanvas from './components/ImpulseCanvas.jsx'
 import ConvolutionCanvas, { CONV_SPEEDS, useConvolutionPosition } from './components/ConvolutionCanvas.jsx'
 import { APERIODIC, render, rms, peak } from '@ee-labs/dsp'
-import { COLORS, ZPlaneCanvas } from '@ee-labs/ui'
+import { COLORS, NumField, ZPlaneCanvas } from '@ee-labs/ui'
 import { spectrum } from '@ee-labs/dsp'
 import {
   applyChain,
@@ -337,6 +337,36 @@ export default function App() {
                 },
               ]}
             />
+            {/* The span governs THIS pane, so it lives here — not in the top
+                bar a full screen-width away. Cycles of the fundamental when
+                something periodic is playing; milliseconds otherwise. */}
+            {state.timeView !== 'impulse' ? (
+              divisionRate ? (
+                <NumField
+                  compact
+                  label="Span"
+                  unit="cycles"
+                  value={state.spanCycles}
+                  onChange={(v) => patch('spanCycles', v)}
+                  min={0.5}
+                  max={200}
+                  scale="log"
+                  step={0.5}
+                />
+              ) : (
+                <NumField
+                  compact
+                  label="Span"
+                  unit="ms"
+                  value={state.timeSpanMs}
+                  onChange={(v) => patch('timeSpanMs', v)}
+                  min={0.1}
+                  max={1000}
+                  scale="log"
+                  step={0.1}
+                />
+              )
+            ) : null}
             <div className="readout">
               {state.timeView === 'signal' ? (
                 <>
@@ -472,6 +502,63 @@ export default function App() {
                 },
               ]}
             />
+            {state.freqView === 'spectrum' ? (
+              <>
+                <div className="segmented sm" role="group" aria-label="Amplitude scale">
+                  <button
+                    type="button"
+                    className={state.scale === 'db' ? 'on' : ''}
+                    aria-pressed={state.scale === 'db'}
+                    onClick={() => patch('scale', 'db')}
+                  >
+                    dB
+                  </button>
+                  <button
+                    type="button"
+                    className={state.scale === 'linear' ? 'on' : ''}
+                    aria-pressed={state.scale === 'linear'}
+                    onClick={() => patch('scale', 'linear')}
+                  >
+                    lin
+                  </button>
+                </div>
+                <div className="segmented sm" role="group" aria-label="Overlay on the spectrum">
+                  {[
+                    { id: 'none', label: 'no overlay', title: 'Magnitude only' },
+                    { id: 'phase', label: 'phase', title: 'How much each frequency is shifted' },
+                    {
+                      id: 'delay',
+                      label: 'delay',
+                      title: 'How long each frequency is held up, in samples — flat means the shape survives',
+                    },
+                  ].map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      className={state.overlay === o.id ? 'on' : ''}
+                      aria-pressed={state.overlay === o.id}
+                      title={o.title}
+                      onClick={() => patch('overlay', o.id)}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                <NumField
+                  compact
+                  label="to"
+                  unit="Hz"
+                  spoken="hertz"
+                  value={state.specMax ?? state.sampleRate / 2}
+                  onChange={(v) => patch('specMax', v >= state.sampleRate / 2 ? null : v)}
+                  min={50}
+                  max={state.sampleRate / 2}
+                  scale="log"
+                  step={1}
+                  suffixes={{ k: 1e3, khz: 1e3, hz: 1 }}
+                />
+              </>
+            ) : null}
             <div className="readout">
               {state.freqView === 'spectrum' ? (
                 <>

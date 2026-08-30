@@ -367,50 +367,9 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
           />
           Show pre-chain spectrum
         </label>
-        <NumField
-          label="Spectrum shows up to"
-          unit="Hz"
-          value={state.specMax ?? state.sampleRate / 2}
-          onChange={(v) => patch('specMax', v >= state.sampleRate / 2 ? null : v)}
-          min={50}
-          max={state.sampleRate / 2}
-          scale="log"
-          hint="Zoom for the frequency axis. Nyq shows everything."
-          presets={[250, 500, 1000, { value: state.sampleRate / 2, label: 'Nyq' }]}
-          suffixes={{ k: 1e3, khz: 1e3, hz: 1 }}
-        />
-        {/* One right-hand axis, so one choice. Phase and group delay are the
-            same information differentiated, and showing both at once makes a
-            worse plot than either. */}
-        <div className="field">
-          <label className="field-label" htmlFor="overlay-none">
-            Overlay on the spectrum
-          </label>
-          <div className="segmented sm" role="group">
-            {[
-              { id: 'none', label: 'None', title: 'Magnitude only' },
-              { id: 'phase', label: 'Phase', title: 'How much each frequency is shifted' },
-              {
-                id: 'delay',
-                label: 'Group delay',
-                title:
-                  'How long each frequency is held up, in samples. Flat means the shape survives.',
-              },
-            ].map((o) => (
-              <button
-                key={o.id}
-                id={`overlay-${o.id}`}
-                type="button"
-                className={state.overlay === o.id ? 'on' : ''}
-                aria-pressed={state.overlay === o.id}
-                title={o.title}
-                onClick={() => patch('overlay', o.id)}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* The dB/lin scale, the overlay and the zoom moved to the frequency
+            pane's own header — next to the plot they govern. This section
+            keeps the lesson-flavoured toggles that annotate BOTH panes. */}
         <label className="check">
           <input
             type="checkbox"

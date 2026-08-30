@@ -5,9 +5,12 @@ import FlowDiagram from './FlowDiagram.jsx'
 import { WINDOWS } from '@ee-labs/dsp'
 
 /**
- * Global settings live above the plots they govern, not in the per-signal sidebar.
- * Sharing one row with the flow strip keeps the chrome to 44px, which is what lets
- * both plots stay on screen at 16:9.
+ * CHAIN-GLOBAL settings only: sample rate, frame length, analysis window —
+ * things that change what every pane means at once. Controls that govern one
+ * pane (the time span, the dB/lin scale, the overlay, the zoom) live in that
+ * pane's own header now, next to the thing they change — Reed's point, and
+ * the proximity principle: a student tuning the spectrum should not be
+ * looking 1400px left of it.
  */
 export default function TopBar({ state, patch, stages, onReveal }) {
   const [diagram, setDiagram] = React.useState(false)
@@ -75,50 +78,6 @@ export default function TopBar({ state, patch, stages, onReveal }) {
             ))}
           </select>
         </label>
-        {/* Counted in cycles of the fundamental, not milliseconds, so it stays
-            correct when you move a source's frequency. Falls back to a time
-            span when nothing periodic is playing. */}
-        {state.divisionRate ? (
-          <NumField
-            compact
-            label="Span"
-            unit="cycles"
-            value={state.spanCycles}
-            onChange={(v) => patch('spanCycles', v)}
-            min={0.5}
-            max={200}
-            scale="log"
-            step={0.5}
-          />
-        ) : (
-          <NumField
-            compact
-            label="Span"
-            unit="ms"
-            value={state.timeSpanMs}
-            onChange={(v) => patch('timeSpanMs', v)}
-            min={0.1}
-            max={1000}
-            scale="log"
-            step={0.1}
-          />
-        )}
-        <div className="segmented sm">
-          <button
-            type="button"
-            className={state.scale === 'db' ? 'on' : ''}
-            onClick={() => patch('scale', 'db')}
-          >
-            dB
-          </button>
-          <button
-            type="button"
-            className={state.scale === 'linear' ? 'on' : ''}
-            onClick={() => patch('scale', 'linear')}
-          >
-            lin
-          </button>
-        </div>
       </div>
     </div>
   )
