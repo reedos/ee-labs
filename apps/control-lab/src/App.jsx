@@ -24,8 +24,13 @@ import BodeCanvas from './components/BodeCanvas.jsx'
 import StepCanvas from './components/StepCanvas.jsx'
 import NyquistCanvas from './components/NyquistCanvas.jsx'
 import LoopDiagram from './components/LoopDiagram.jsx'
+import WatchCanvas, { useWatchPosition, WATCH_SPEEDS } from './components/WatchCanvas.jsx'
+import { watchSignals } from './watch.js'
 
 const POINTS = 900
+// The watch view's time grid. Fixed, so the scrubber's range never shifts
+// under the reader while gains are dragged mid-scrub.
+const WATCH_POINTS = 600
 
 export default function App() {
   // A loop handed over from another tool, read once at startup.
@@ -146,14 +151,30 @@ export default function App() {
 
   const stepTf = stepInput === 'dist' ? loop.disturbance : loop.closed
 
-  const step = useMemo(() => {
-    // Long enough to see it settle, or to see clearly that it will not.
+  // Long enough to see it settle, or to see clearly that it will not.
+  const duration = useMemo(() => {
     const slow = Math.min(
       ...pz.poles.filter(([re]) => Math.abs(re) > 1e-9).map(([re]) => Math.abs(re)),
     )
-    const d = Number.isFinite(slow) && slow > 0 ? Math.min(12 / slow, 400) : 20
-    return stepResponse(stepTf, { duration: d, points: 900 })
-  }, [stepTf, pz])
+    return Number.isFinite(slow) && slow > 0 ? Math.min(12 / slow, 400) : 20
+  }, [pz])
+
+  const step = useMemo(
+    () => stepResponse(stepTf, { duration, points: 900 }),
+    [stepTf, duration],
+  )
+
+  // The loop's internal signals, for the watch view: the error the controller
+  // sees and the effort it answers with, part by part. Only computed while
+  // that view is on screen — it is several extra simulations.
+  const watch = useMemo(
+    () =>
+      lower === 'watch'
+        ? watchSignals(loop, ctrlId, ctrlP, stepInput, { duration, points: WATCH_POINTS })
+        : null,
+    [lower, loop, ctrlId, ctrlP, stepInput, duration],
+  )
+  const scrub = useWatchPosition(WATCH_POINTS, lesson)
 
   // The locus of closed-loop poles as the loop gain is swept, with the poles at
   // the CURRENT gain marked on it.
@@ -367,6 +388,14 @@ export default function App() {
             </button>
             <button
               type="button"
+              className={lower === 'watch' ? 'on' : ''}
+              title="Scrub or play through the step and watch the error drive the controller"
+              onClick={() => setLower('watch')}
+            >
+              Watch
+            </button>
+            <button
+              type="button"
               className={lower === 'nyquist' ? 'on' : ''}
               onClick={() => setLower('nyquist')}
             >
@@ -506,33 +535,50 @@ export default function App() {
                 ? stepInput === 'dist'
                   ? 'Response to a disturbance at the plant input'
                   : 'Closed-loop step response'
-                : lower === 'nyquist'
-                  ? 'Nyquist — the loop against −1'
-                  : 'Root locus — poles as the gain sweeps'}
+                : lower === 'watch'
+                  ? stepInput === 'dist'
+                    ? 'The loop fighting a shove, watched'
+                    : 'The loop closing the gap, watched'
+                  : lower === 'nyquist'
+                    ? 'Nyquist — the loop against −1'
+                    : 'Root locus — poles as the gain sweeps'}
             </h2>
             <div className="readout">
+              {lower === 'step' || lower === 'watch' ? (
+                <div className="segmented sm" role="group" aria-label="Where the step is applied">
+                  <button
+                    type="button"
+                    className={stepInput === 'ref' ? 'on' : ''}
+                    aria-pressed={stepInput === 'ref'}
+                    title="Change the setpoint and watch the loop follow it"
+                    onClick={() => chooseStepInput('ref')}
+                  >
+                    Reference
+                  </button>
+                  <button
+                    type="button"
+                    className={stepInput === 'dist' ? 'on' : ''}
+                    aria-pressed={stepInput === 'dist'}
+                    title="Shove the plant's input and watch the loop fight back — the reason feedback exists"
+                    onClick={() => chooseStepInput('dist')}
+                  >
+                    Disturbance
+                  </button>
+                </div>
+              ) : null}
+              {lower === 'watch' && watch ? (
+                <>
+                  <span>
+                    e now <b>{fmt(watch.e[Math.min(scrub.pos, watch.e.length - 1)], '', 3)}</b>
+                  </span>
+                  <span>
+                    u now <b>{fmt(watch.u[Math.min(scrub.pos, watch.u.length - 1)], '', 3)}</b>
+                  </span>
+                  {!stable ? <span className="flag warn">diverges</span> : null}
+                </>
+              ) : null}
               {lower === 'step' ? (
                 <>
-                  <div className="segmented sm" role="group" aria-label="Where the step is applied">
-                    <button
-                      type="button"
-                      className={stepInput === 'ref' ? 'on' : ''}
-                      aria-pressed={stepInput === 'ref'}
-                      title="Change the setpoint and watch the loop follow it"
-                      onClick={() => chooseStepInput('ref')}
-                    >
-                      Reference
-                    </button>
-                    <button
-                      type="button"
-                      className={stepInput === 'dist' ? 'on' : ''}
-                      aria-pressed={stepInput === 'dist'}
-                      title="Shove the plant's input and watch the loop fight back — the reason feedback exists"
-                      onClick={() => chooseStepInput('dist')}
-                    >
-                      Disturbance
-                    </button>
-                  </div>
                   <span>
                     settles to <b>{fmt(dcGain(stepTf), '', 4)}</b>
                   </span>
@@ -553,14 +599,58 @@ export default function App() {
                 <span className="prov">
                   stability is a statement about one point: 1 + L = 0
                 </span>
-              ) : (
+              ) : lower === 'locus' ? (
                 <span className="prov">
                   crosses into the shaded half and the loop oscillates
                 </span>
-              )}
+              ) : null}
             </div>
           </div>
-          {lower === 'step' ? (
+          {lower === 'watch' && watch ? (
+            <>
+              <div className="conv-bar">
+                <button type="button" className="ghost" onClick={scrub.play}>
+                  {scrub.playing ? '⏸ pause' : '▶ play'}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={WATCH_POINTS - 1}
+                  value={Math.min(WATCH_POINTS - 1, scrub.pos)}
+                  aria-label="Moment in the response"
+                  onChange={(e) => {
+                    scrub.setPlaying(false)
+                    scrub.setPos(Number(e.target.value))
+                  }}
+                />
+                <div className="segmented sm conv-speed" role="group" aria-label="Playback speed">
+                  {WATCH_SPEEDS.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={scrub.speed === v ? 'on' : ''}
+                      aria-pressed={scrub.speed === v}
+                      onClick={() => scrub.setSpeed(v)}
+                    >
+                      {v < 1 ? `${v}×`.replace('0.25', '¼').replace('0.5', '½') : `${v}×`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <WatchCanvas
+                t={watch.t}
+                input={watch.input}
+                y={watch.y}
+                e={watch.e}
+                u={watch.u}
+                parts={watch.parts}
+                kick={watch.kick}
+                pos={scrub.pos}
+                dist={stepInput === 'dist'}
+                diverges={!stable}
+              />
+            </>
+          ) : lower === 'step' ? (
             <StepCanvas t={step.t} y={step.y} final={dcGain(stepTf)} diverges={!stable} />
           ) : lower === 'nyquist' ? (
             <NyquistCanvas

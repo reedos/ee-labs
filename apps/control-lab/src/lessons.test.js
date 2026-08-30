@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { TERMS } from './terms.js'
+import { watchSignals } from './watch.js'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
 import {
   dcGain,
@@ -33,7 +34,7 @@ describe('the lesson list itself', () => {
       expect(LESSON_GROUPS, l.name).toContain(l.group)
       expect(PLANTS[l.patch.plant], `${l.name}: plant`).toBeTruthy()
       expect(CONTROLLERS[l.patch.ctrl], `${l.name}: controller`).toBeTruthy()
-      expect(['step', 'nyquist', 'locus'], l.name).toContain(l.patch.view)
+      expect(['step', 'watch', 'nyquist', 'locus'], l.name).toContain(l.patch.view)
       expect(l.note.length, l.name).toBeGreaterThan(100)
     }
   })
@@ -134,6 +135,27 @@ describe('what each lesson claims', () => {
     const piDefault = margins(buildLoop(s.plantId, s.plantP, 'pi', defaultsOf(CONTROLLERS.pi)).open, GRID)
     expect(withPi.phaseMargin, 'the lesson against the P click').toBeLessThan(pDefault.phaseMargin - 20)
     expect(piDefault.phaseMargin, 'the PI click against the P click').toBeLessThan(pDefault.phaseMargin - 20)
+  })
+
+  it('the watch lesson: the handoff it narrates is what its own setup produces', () => {
+    const l = byName('Watch the integrator take over')
+    expect(l.patch.view).toBe('watch')
+    const s = applyLesson(l)
+    const loop = buildLoop(s.plantId, s.plantP, s.ctrlId, s.ctrlP)
+    const w = watchSignals(loop, s.ctrlId, s.ctrlP, 'ref', { duration: 60, points: 1200 })
+    const at = (key) => w.parts.find((p) => p.key === key).y
+    const end = (a) => a[a.length - 1]
+    // "At first the proportional part carries all of the effort."
+    expect(at('p')[0] / w.u[0]).toBeCloseTo(1, 6)
+    // "By the end ... the proportional part is zero, the integral holds the
+    // entire drive" — and the drive must be what holds y at 1 through P.
+    expect(end(w.e)).toBeCloseTo(0, 2)
+    expect(end(at('p'))).toBeCloseTo(0, 2)
+    expect(end(at('i'))).toBeCloseTo(1 / dcGain(loop.plant), 2)
+    // "Flip to Disturbance and the same memory winds down to exactly minus
+    // the shove."
+    const wd = watchSignals(loop, s.ctrlId, s.ctrlP, 'dist', { duration: 60, points: 1200 })
+    expect(end(wd.u)).toBeCloseTo(-1, 2)
   })
 
   it('three lags go from stable to divergent as the gain rises', () => {

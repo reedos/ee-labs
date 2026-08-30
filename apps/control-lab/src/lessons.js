@@ -41,6 +41,19 @@ export const LESSONS = [
   },
   {
     group: 'What feedback buys',
+    name: 'Watch the integrator take over',
+    note:
+      'The same handoff, watched happening: scrub through the response, or press play. At ' +
+      'first the proportional part carries all of the effort, because the error is the whole ' +
+      'ask; as y arrives, Kp·e falls with the gap while Ki·∫e climbs, remembering every moment ' +
+      'of error so far. By the end the error is zero, the proportional part is zero with it, ' +
+      'and the integral holds the entire drive — what keeps the plant on target is accumulated ' +
+      'history. Flip to Disturbance and the same memory winds down to exactly minus the shove.',
+    terms: ['integrator', 'effort'],
+    patch: { plant: 'firstOrder', plantP: pp('firstOrder'), ctrl: 'pi', ctrlP: cp('pi'), view: 'watch' },
+  },
+  {
+    group: 'What feedback buys',
     name: 'A shove at the plant input',
     note:
       'The reference step asks "can it follow orders". This asks the better question: a ' +

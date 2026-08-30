@@ -503,6 +503,70 @@ console.log('\n4c. The frequency axis: sticky under tuning, reframed on structur
   if (!/rad\/s/.test(openReadout)) fail('the crossover readout should carry its rad/s twin')
 }
 
+// ---------------------------------------- 4d. the watch view and its transport
+
+console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
+{
+  await clickBtn('First order lag')
+  await clickBtn('PI')
+  await clickBtn('Watch')
+  const slider = page.getByRole('slider', { name: 'Moment in the response' })
+  if (!(await slider.count())) fail('watch: no scrubber on the watch view')
+  if (await scrolls()) fail('watch view: page scrolls at 1080p')
+
+  // Scrubbing moves the cursor readouts and redraws the canvas.
+  const readNow = async () => (await page.locator('.readout').last().textContent()).trim()
+  await slider.fill('60')
+  await settle()
+  const early = await readNow()
+  const hashEarly = (await canvasHashes())[1]
+  await slider.fill('550')
+  await settle()
+  const late = await readNow()
+  const hashLate = (await canvasHashes())[1]
+  if (early === late) fail('watch: scrubbing did not move the e/u readouts')
+  if (hashEarly === hashLate) fail('watch: scrubbing did not redraw the canvas')
+  console.log('   scrubbing moves the readouts and the picture')
+
+  // The early moment tells the lesson's story: e large, u dominated by Kp·e.
+  const eEarly = parseFloat((early.match(/e now\s*(-?[\d.]+)/) || [])[1])
+  if (!(eEarly > 0.3)) fail(`watch: early in the step e should still be large, readout says ${early}`)
+
+  // Play: at the end it restarts, sweeps, and pauses itself at the end again.
+  await page.getByRole('button', { name: /4×/ }).click()
+  await slider.fill('599')
+  await settle()
+  await page.getByRole('button', { name: '▶ play', exact: true }).click()
+  await page.waitForTimeout(500)
+  const during = Number(await slider.inputValue())
+  if (!(during > 0 && during < 599)) {
+    fail(`watch: play at the end should restart and advance (slider at ${during})`)
+  }
+  await page.waitForTimeout(2200)
+  const after = Number(await slider.inputValue())
+  const btnNow = await page.getByRole('button', { name: /play|pause/ }).first().textContent()
+  if (after !== 599) fail(`watch: a 4× sweep should reach the end (slider at ${after})`)
+  if (!/play/.test(btnNow)) fail('watch: playback should pause itself at the end')
+  console.log('   play restarts from the end, sweeps at 4×, and parks itself')
+
+  // Loading a lesson resets the story (to the finished response, paused).
+  await slider.fill('100')
+  await settle()
+  await loadLesson('Watch the integrator take over')
+  const reset = Number(await slider.inputValue())
+  if (reset !== 599) fail(`watch: loading a lesson should reset the scrubber (at ${reset})`)
+  const heading = await page.locator('.views .view').last().locator('h2').textContent()
+  if (!/watched/i.test(heading)) fail('watch: the lesson should land on the watch view')
+  console.log('   a lesson load resets the transport')
+
+  // The disturbance story is one click away, same as the step view.
+  await clickBtn('Disturbance')
+  const h2 = await page.locator('.views .view').last().locator('h2').textContent()
+  if (!/shove/i.test(h2)) fail('watch: the Disturbance toggle should switch the watched story')
+  await clickBtn('Reference')
+  await clickBtn('Step')
+}
+
 // ------------------------------------------------ A11Y. names for everything
 
 console.log('\nA11y: every control has a name, every plot has a label\n')
@@ -543,7 +607,12 @@ for (const p of plants) {
   await clickBtn(p)
   if (await scrolls()) fail(`4K / ${p}: page scrolls`)
 }
-console.log(`   all ${plants.length} plants fit at 3840x2160`)
+// The watch view adds a transport row inside the pane; the layout budget
+// must absorb it at 4K too.
+await clickBtn('Watch')
+if (await scrolls()) fail('4K / watch view: page scrolls')
+await clickBtn('Step')
+console.log(`   all ${plants.length} plants fit at 3840x2160, watch view included`)
 
 await browser.close()
 

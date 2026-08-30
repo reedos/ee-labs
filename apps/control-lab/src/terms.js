@@ -121,6 +121,14 @@ export const TERMS = {
       'moment a branch crosses into the right half plane is the moment the loop starts ' +
       'oscillating — nothing sudden happens to the plant.',
   },
+  effort: {
+    name: 'Effort (controller output u)',
+    def:
+      'What the controller actually asks of the plant — the drive u it computes from the ' +
+      'error: volts to a motor, a valve opening, thrust. The watch view splits it by gain: ' +
+      'Kp·e answers the present gap, Ki·∫e remembers every error so far, Kd·ė answers the ' +
+      'slope. At steady state under an integrator, u is made entirely of memory.',
+  },
   radpersec: {
     name: 'rad/s (angular frequency)',
     def:
