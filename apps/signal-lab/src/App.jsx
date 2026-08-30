@@ -300,6 +300,7 @@ export default function App() {
         presets={PRESETS}
         linkWarnings={linked.warnings}
         cameFromLink={!!linked.state}
+        linkFrom={linked.state ? linked.state.linkFrom : null}
         math={math}
         onPreset={applyPreset}
         openBlocks={openBlocks}

@@ -61,3 +61,31 @@ at.) Claim measured per house rules if any number is printed.
 ---
 
 All earlier items remain resolved.
+
+
+## FROM REED: the loop diagram should show the circuit ITSELF as the plant
+
+Reed, after handing an RC low-pass over and being surprised by the closed
+loop's 50% error: "maybe we need block diagrams that represent this to
+explicitly show how the actual RC circuit fits into the control lab." The
+diagram exists; what it lacks is IDENTITY - the P(s) box says "First order
+lag", which is true and anonymous. Three tiers, in order:
+
+1. NOW - name the box. The link grammar carries `from=<app>:<id>:<label>`
+   (live in packages/ui, tested; Circuit Lab's NEEDS tells them to emit it).
+   When the app loaded from a link with provenance: the P(s) box's title
+   becomes the circuit's label ("your RC low-pass") with the named plant as
+   the subtitle, the from-link banner names it too, and this pairs with the
+   arrival-orientation notice already specced below - the two together answer
+   the exact confusion Reed hit ("whose step is this, and where is my
+   circuit in it?").
+
+2. NEXT - the drive is the point. Annotate the wire INTO the plant box:
+   "driven by Kp·(r−y), not by r" when P-control is active - that one label
+   is the whole explanation of the steady-state error.
+
+3. LATER (cross-territory, coordinate before starting) - a mini-schematic
+   inside the P(s) box: the actual R-and-C drawing. Circuit Lab's Schematic
+   component is app-local; doing this properly means lifting a small
+   schematic renderer into packages/ui (the packages agent's territory - file
+   back what you need). Do not block tiers 1-2 on this.

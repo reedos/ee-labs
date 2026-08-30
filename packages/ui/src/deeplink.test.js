@@ -126,3 +126,27 @@ describe('siblingUrl', () => {
     expect(siblingUrl('signal-lab', 'x=1', at('/my-circuit-lab-notes/'))).toBeNull()
   })
 })
+
+describe('provenance', () => {
+  it('round-trips app, id and a label with spaces and colons', () => {
+    const link = buildLink({
+      plant: { type: 'firstOrder', params: [1, 0.0001] },
+      from: { app: 'circuit', id: 'rcLow', label: 'RC low-pass: 1k / 100n' },
+    })
+    const { patch, warnings } = parseLink(link)
+    expect(warnings).toEqual([])
+    expect(patch.from).toEqual({ app: 'circuit', id: 'rcLow', label: 'RC low-pass: 1k / 100n' })
+    expect(patch.plant.type).toBe('firstOrder')
+  })
+
+  it('a malformed from= warns instead of guessing', () => {
+    const { patch, warnings } = parseLink('#plant=firstOrder:1:0.1&from=circuit')
+    expect(patch.plant).toBeTruthy()
+    expect(warnings.some((w) => w.includes('from='))).toBe(true)
+  })
+
+  it('provenance alone does not make an empty link loadable', () => {
+    const { patch } = parseLink('#from=circuit:rcLow:RC')
+    expect(patch).toBeNull()
+  })
+})

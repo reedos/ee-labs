@@ -16,6 +16,8 @@
 //   b=<type>:<number>...            a processing block, repeatable
 //   plant=<type>:<number>...        a plant to be controlled
 //   ctrl=<type>:<number>...         a controller
+//   from=<app>:<id>:<label>         provenance: where this setup was built
+//                                   (label URI-encoded; it is a name, not data)
 //
 // The three item keys share one grammar — a name followed by positional numbers
 // — because every tool in the suite describes its parts that way, and one rule
@@ -38,6 +40,14 @@ export function buildLink(patch = {}) {
   }
   if (patch.plant) parts.push(`plant=${[patch.plant.type, ...(patch.plant.params || []).map(trim)].join(':')}`)
   if (patch.ctrl) parts.push(`ctrl=${[patch.ctrl.type, ...(patch.ctrl.params || []).map(trim)].join(':')}`)
+  // Provenance travels with the setup, so the receiving lab can say "your RC
+  // low-pass" instead of the anonymous name of whatever plant it mapped to —
+  // the difference between a hand-over and a teleport with amnesia.
+  if (patch.from) {
+    parts.push(
+      `from=${patch.from.app}:${patch.from.id}:${encodeURIComponent(patch.from.label || '')}`,
+    )
+  }
   return parts.join('&')
 }
 
@@ -73,6 +83,20 @@ export function parseLink(fragment) {
         continue
       }
       patch.rate = Number(value)
+      continue
+    }
+
+    if (key === 'from') {
+      // Parsed from the RAW value: the label is URI-encoded and may decode to
+      // anything, so splitting must happen before decoding or an encoded
+      // colon inside a name would shear the field apart.
+      const raw = pair.slice(eq + 1)
+      const [app, id, ...rest] = raw.split(':')
+      if (!app || !id) {
+        warnings.push('from= needs at least app:id')
+        continue
+      }
+      patch.from = { app, id, label: decodeURIComponent(rest.join(':') || '') }
       continue
     }
 

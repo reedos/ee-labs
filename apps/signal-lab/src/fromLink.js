@@ -54,7 +54,10 @@ export function stateFromLink(patch, base) {
   const warnings = []
   if (!patch) return { state: null, warnings }
 
-  const next = { ...base, presetName: 'from a link' }
+  // Provenance, when the link carries it: the banner can then say WHOSE
+  // setup this is ("your RC low-pass from Circuit Lab") instead of the
+  // anonymous "a link".
+  const next = { ...base, presetName: 'from a link', linkFrom: patch.from || null }
 
   if (patch.rate != null) {
     if (patch.rate >= 1000 && patch.rate <= 192000) next.sampleRate = patch.rate

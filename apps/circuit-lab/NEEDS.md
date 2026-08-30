@@ -68,3 +68,16 @@ ignored today, lights up when you land it):
 The caller owns stickiness (Circuit Lab holds it in `stickySpan`, axis.js),
 so the canvas stays stateless. Control Lab's root-locus use is unaffected
 unless it opts in.
+
+
+## ADDITION to the hand-over task: carry provenance (grammar is live)
+
+The link grammar now has `from=<app>:<id>:<label>` (packages/ui/src/deeplink.js,
+tests in deeplink.test.js; the label is URI-encoded). Append it to BOTH
+hand-over links you emit:
+
+    buildLink({ ..., from: { app: 'circuit', id, label: circuit.name } })
+
+Signal Lab already displays it ("This chain IS your “RC low-pass” from
+Circuit Lab..."); Control Lab's use is specified in their NEEDS. Without it,
+the receiving lab cannot say whose circuit the box is.

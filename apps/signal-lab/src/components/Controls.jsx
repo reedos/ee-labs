@@ -123,6 +123,7 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
 
   linkWarnings = [],
   cameFromLink = false,
+  linkFrom = null,
 }) {
   // Which preset groups are unfolded. The active preset's group is always
   // open regardless, so collapsing is never able to hide where you are.
@@ -197,8 +198,11 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
       <section>
         {cameFromLink ? (
           <p className="hint from-link">
-            Loaded from a link — this chain came from another tool in the suite. Pick anything
-            below to start over.
+            {linkFrom && linkFrom.label
+              ? `This chain IS your “${linkFrom.label}” from ${
+                  linkFrom.app === 'circuit' ? 'Circuit Lab' : linkFrom.app
+                } — the same transfer function, sampled. Pick anything below to start over.`
+              : 'Loaded from a link — this chain came from another tool in the suite. Pick anything below to start over.'}
           </p>
         ) : null}
         {linkWarnings.length ? (
