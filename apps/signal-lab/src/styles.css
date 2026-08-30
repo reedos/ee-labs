@@ -248,3 +248,96 @@ button.flow-node:hover {
 
 .conv-speed { flex: 0 0 auto; }
 .conv-speed button { padding: 2px 9px; white-space: nowrap; }
+
+/* Preset groups as fold-outs. The summary row is the h3 it replaced. */
+details.preset-group > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+details.preset-group > summary::before {
+  content: '▸';
+  font-size: 9px;
+  transition: transform 0.12s;
+}
+
+details.preset-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.preset-group > summary::-webkit-details-marker { display: none; }
+
+details.preset-group > .presets { margin: 4px 0 8px; }
+
+.group-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+}
+
+/* ---------- the signal-path diagram ---------- */
+.fd-open { white-space: nowrap; }
+
+.fd-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 7, 10, 0.55);
+  z-index: 40;
+}
+
+.fd-panel {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(92vw, 1400px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  padding: 10px 14px 14px;
+}
+
+.fd-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.fd-head b { font-size: 13px; }
+.fd-head span { color: var(--dim); font-size: 11.5px; flex: 1; }
+.fd-head span em { color: var(--text); font-style: normal; font-weight: 600; }
+
+.fd-scroll { overflow-x: auto; }
+
+.fd-box rect {
+  fill: var(--panel-2);
+  stroke: var(--line);
+  stroke-width: 1.2;
+}
+.fd-box[role='button'] { cursor: pointer; }
+.fd-box[role='button']:hover rect, .fd-box[role='button']:focus-visible rect { stroke: var(--accent); }
+.fd-box.is-off rect { stroke-dasharray: 4 3; opacity: 0.55; }
+.fd-box.is-off text { opacity: 0.55; }
+.fd-box.is-out rect { stroke: var(--spectrum); }
+
+.fd-label { fill: var(--text); font-size: 12px; font-weight: 600; }
+.fd-sub { fill: var(--dim); font-size: 10.5px; }
+
+.fd-sum circle { fill: var(--panel-2); stroke: var(--accent); stroke-width: 1.4; }
+.fd-sum text { fill: var(--accent); font-size: 16px; font-weight: 700; }
+
+.fd-wire { fill: none; stroke: var(--axis); stroke-width: 1.4; }
+.fd-arrowhead { fill: var(--axis); }

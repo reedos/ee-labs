@@ -117,7 +117,19 @@ async function setField(label, value, nth = 0) {
  */
 const loadPreset = async (name) => {
   const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  await page.locator('.preset').filter({ hasText: new RegExp(`^${esc}$`) }).first().click()
+  const btn = page.locator('.preset').filter({ hasText: new RegExp(`^${esc}$`) }).first()
+  // Preset groups fold now; a preset in a folded group is not clickable until
+  // its group is opened, exactly as for a person.
+  if (!(await btn.isVisible().catch(() => false))) {
+    await page.evaluate((n) => {
+      for (const d of document.querySelectorAll('details.preset-group')) {
+        const has = [...d.querySelectorAll('.preset')].some((b) => b.textContent.trim() === n)
+        if (has && !d.open) d.querySelector('summary').click()
+      }
+    }, name)
+    await page.waitForTimeout(120)
+  }
+  await btn.click()
   await settle()
 }
 
@@ -650,14 +662,72 @@ console.log('\n10e. Block type switch and the order select\n')
   if (!bad1.length) console.log('   order-1 one-pole panel: every check ✓')
 }
 
+// ---------------- 10f. folded preset groups, live hints, and the diagram
+
+console.log('\n10f. Folded groups, order-aware hints, the signal-path diagram\n')
+
+{
+  // Groups fold; the active preset's group cannot be hidden. Section 1's
+  // sweep opened every group on its way through, so fold the inactive ones
+  // back first — the way a person tidies the list.
+  await loadPreset('Resonance is Q')
+  await page.evaluate(() => {
+    for (const d of document.querySelectorAll('details.preset-group[open]')) {
+      if (!d.querySelector('.preset.is-on')) d.querySelector('summary').click()
+    }
+  })
+  await settle()
+  const groups = await page.$$eval('details.preset-group', (els) =>
+    els.map((d) => ({ open: d.open, label: d.querySelector('summary').textContent.trim() })),
+  )
+  const openOnes = groups.filter((g) => g.open)
+  console.log(`   ${groups.length} groups, open: ${openOnes.map((g) => g.label).join(', ') || 'none'}`)
+  if (!openOnes.some((g) => g.label.includes('Filters'))) {
+    fail('the active preset (Filters group) must keep its group open')
+  }
+  if (openOnes.length > 2) fail(`most groups should fold: ${openOnes.length} open`)
+
+  // The low-pass hint follows the order select: 12 dB/oct at 2nd, 24 at 4th.
+  await expandBlocks()
+  const hintText = async () => (await page.locator('.block-hint').first().textContent()) || ''
+  const h2 = await hintText()
+  if (!/12 dB per octave/.test(h2) || !/40 dB per decade/.test(h2)) {
+    fail(`order-2 hint should say 12 dB/oct and 40 dB/dec: "${h2.slice(0, 90)}"`)
+  }
+  await page.locator('.block select').nth(1).selectOption('4')
+  await settle()
+  const h4 = await hintText()
+  if (!/24 dB per octave/.test(h4) || !/80 dB per decade/.test(h4)) {
+    fail(`order-4 hint should say 24 dB/oct and 80 dB/dec: "${h4.slice(0, 90)}"`)
+  } else {
+    console.log('   hint follows the order: 12/40 at 2nd -> 24/80 at 4th, both units stated')
+  }
+  await page.locator('.block select').nth(1).selectOption('2')
+  await settle()
+
+  // The diagram: every source its own box, the chain in series, one output.
+  await loadPreset('Build a square')
+  await page.locator('.fd-open').click()
+  await settle()
+  const boxes = await page.locator('.fd-panel .fd-box').count()
+  const sums = await page.locator('.fd-panel .fd-sum').count()
+  console.log(`   diagram: ${boxes} boxes + ${sums} summing junction`)
+  if (sums !== 1) fail('diagram should show exactly one summing junction')
+  if (boxes !== 4) fail(`3 sources + output should be 4 boxes, got ${boxes}`)
+  // Clicking a box closes the dialog and reveals the card.
+  await page.locator('.fd-panel .fd-box[role=button]').first().click()
+  await settle()
+  if ((await page.locator('.fd-panel').count()) !== 0) fail('clicking a diagram box should close it')
+  else console.log('   clicking a source box closes the diagram and reveals the sidebar card')
+}
+
 // -------------------------------------------------------------- 11. 4K fit
 
 console.log('\n11. Re-checking layout at 4K\n')
 await page.setViewportSize({ width: 3840, height: 2160 })
 await page.waitForTimeout(500)
 for (const name of presetNames) {
-  await page.locator('.preset', { hasText: name }).first().click()
-  await page.waitForTimeout(120)
+  await loadPreset(name)
   if (await scrolls()) fail(`4K / ${name}: page scrolls`)
 }
 console.log(`   all ${presetNames.length} presets fit at 3840x2160`)

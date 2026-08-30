@@ -166,12 +166,28 @@ export const BLOCK_TYPES = {
   lowpass: biquadType(
     'lowpass',
     'Low-pass',
-    'Passes what is below the cutoff and rolls off above it at 12 dB per octave.',
+    // The rolloff follows the ORDER control, so the sentence must too - it
+    // sat frozen at "12 dB per octave" while the select said 1st or 4th.
+    (p) => {
+      const n = Number(p?.order ?? 2)
+      return (
+        `Passes what is below the cutoff and rolls off above it at ${6 * n} dB per octave ` +
+        `(${20 * n} dB per decade) - that is 6 dB/octave, 20 dB/decade, times the filter ` +
+        `order, which is ${n} here.`
+      )
+    },
   ),
   highpass: biquadType(
     'highpass',
     'High-pass',
-    'The mirror image of the low-pass: everything below the cutoff is removed.',
+    (p) => {
+      const n = Number(p?.order ?? 2)
+      return (
+        `The mirror image of the low-pass: everything below the cutoff is removed, rising at ` +
+        `${6 * n} dB per octave (${20 * n} dB per decade) - 6 dB/octave, 20 dB/decade, times ` +
+        `the filter order, which is ${n} here.`
+      )
+    },
   ),
   bandpass: biquadType(
     'bandpass',

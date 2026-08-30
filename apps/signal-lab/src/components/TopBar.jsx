@@ -1,6 +1,7 @@
 import React from 'react'
 import { NumField } from '@ee-labs/ui'
 import FlowStrip from './FlowStrip.jsx'
+import FlowDiagram from './FlowDiagram.jsx'
 import { WINDOWS } from '@ee-labs/dsp'
 
 /**
@@ -9,6 +10,7 @@ import { WINDOWS } from '@ee-labs/dsp'
  * both plots stay on screen at 16:9.
  */
 export default function TopBar({ state, patch, stages, onReveal }) {
+  const [diagram, setDiagram] = React.useState(false)
   return (
     <div className="topbar">
       <FlowStrip
@@ -17,6 +19,26 @@ export default function TopBar({ state, patch, stages, onReveal }) {
         sampleRate={state.sampleRate}
         onReveal={onReveal}
       />
+      <button
+        type="button"
+        className="ghost fd-open"
+        aria-expanded={diagram}
+        title="The full signal path as a block diagram — every source, the summing junction, the chain, the output"
+        onClick={() => setDiagram(true)}
+      >
+        ⧉ diagram
+      </button>
+      {diagram ? (
+        <FlowDiagram
+          state={state}
+          stages={stages}
+          onReveal={(id) => {
+            setDiagram(false)
+            onReveal(id)
+          }}
+          onClose={() => setDiagram(false)}
+        />
+      ) : null}
 
       <div className="topbar-controls">
         <NumField

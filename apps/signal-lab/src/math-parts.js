@@ -364,7 +364,7 @@ export function blockMath(block, ctx) {
         ]),
         V([
           { label: 'order', value: 1 },
-          { label: 'rolloff', value: 6, unit: 'dB/octave', note: 'asymptotic' },
+          { label: 'rolloff', value: 6, unit: 'dB/octave', note: '= 20 dB/decade; ×1 for order 1' },
           { label: 'poles', value: 1, note: 'so it cannot ring' },
         ]),
       ],
@@ -399,7 +399,7 @@ export function blockMath(block, ctx) {
         ),
         V([
           { label: 'order', value: 4 },
-          { label: 'rolloff', value: 24, unit: 'dB/octave', note: 'asymptotic' },
+          { label: 'rolloff', value: 24, unit: 'dB/octave', note: '= 80 dB/decade; 6 dB/oct × order 4' },
           { label: 'section Qs', value: Number(qs[0].toPrecision(4)), note: `and ${Number(qs[1].toPrecision(4))}` },
         ]),
       ],
@@ -446,7 +446,7 @@ export function blockMath(block, ctx) {
           },
           { label: 'cutoff as a fraction of Nyquist', value: p.freq / (sampleRate / 2) },
           { label: 'order of this section', value: 2 },
-          { label: 'rolloff', value: 12, unit: 'dB/octave', note: 'asymptotic' },
+          { label: 'rolloff', value: 12, unit: 'dB/octave', note: '= 40 dB/decade; 6 dB/oct × order 2' },
         ]),
         T(
           'Second order is this block, not filters in general. A filter can be any order, and ' +

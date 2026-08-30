@@ -123,6 +123,9 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
   linkWarnings = [],
   cameFromLink = false,
 }) {
+  // Which preset groups are unfolded. The active preset's group is always
+  // open regardless, so collapsing is never able to hide where you are.
+  const [openGroups, setOpenGroups] = React.useState(() => new Set())
   const patch = (k, v) => setState((s) => ({ ...s, [k]: v }))
 
   const setSource = (i, next) =>
@@ -205,14 +208,31 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
           </ul>
         ) : null}
         <h2>Try this</h2>
-        {/* Grouped as a rough curriculum. A flat list of two dozen buttons is a
-            wall; four short labeled runs can be read. */}
+        {/* Grouped as a curriculum, and COLLAPSED to group headers by default:
+            thirty buttons were most of the sidebar, and the thing a preset
+            changes - the sources and chain below - was scrolled out of sight
+            at the moment it changed. Only the active preset's group stays
+            open, so where-you-are survives the fold. */}
         {PRESET_GROUPS.map((g) => {
           const inGroup = presets.filter((p) => p.group === g)
           if (!inGroup.length) return null
+          const holdsActive = inGroup.some((p) => p.name === state.presetName)
           return (
-            <div className="preset-group" key={g}>
-              <h3>{g}</h3>
+            <details
+              className="preset-group"
+              key={g}
+              open={holdsActive || openGroups.has(g)}
+              onToggle={(e) => {
+                const next = new Set(openGroups)
+                if (e.target.open) next.add(g)
+                else next.delete(g)
+                setOpenGroups(next)
+              }}
+            >
+              <summary>
+                {g}
+                {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
+              </summary>
               <div className="presets">
                 {inGroup.map((p) => (
                   <button
@@ -225,7 +245,7 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
                   </button>
                 ))}
               </div>
-            </div>
+            </details>
           )
         })}
         {activePreset ? <p className="hint">{activePreset.note}</p> : null}
