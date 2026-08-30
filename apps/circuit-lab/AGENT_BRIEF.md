@@ -74,6 +74,15 @@ Gotchas that have burned us:
 - Layout hard rule: at 16:9 the page never scrolls and both plots stay fully
   visible. The harness checks it at 1080p and 4K; keep those checks passing.
 
+## The review playbook
+
+Before the worklist, read `REVIEW_PLAYBOOK.md` at the repo root: eleven
+classes of defect Reed personally caught in Signal Lab, generalized into an
+audit checklist. Your adversarial-audit item below MEANS working through that
+checklist against your app. Items 1–6 (sentences frozen while controls move;
+lead with the base rule; phase beside magnitude; axes named/united/adaptive;
+can the feature be SEEN; rendering honesty) apply to you verbatim.
+
 ## Worklist, in order
 
 1. **Fold the sidebar lists.** "Try this" and "Circuits" are long button walls;
