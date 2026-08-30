@@ -583,7 +583,7 @@ export default function App() {
                     : 'The loop closing the gap, watched'
                   : lower === 'nyquist'
                     ? 'Nyquist — the loop against −1'
-                    : 'Root locus — poles as the gain sweeps'}
+                    : 'Root locus — the closed-loop poles, as the gain K sweeps'}
             </h2>
             {/* The view switch lives on the pane it switches — the same
                 proximity rule as Signal Lab's spectrum controls. */}

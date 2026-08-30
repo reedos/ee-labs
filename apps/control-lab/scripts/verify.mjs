@@ -391,6 +391,14 @@ for (const view of ['Nyquist', 'Root locus', 'Step']) {
   prev = now
 }
 
+// The locus names WHOSE poles it draws — Reed's say-the-name rule.
+await clickBtn('Root locus')
+const locusH2 = await page.locator('.views .view').last().locator('h2').textContent()
+if (!/closed-loop poles/.test(locusH2)) {
+  fail(`the locus heading should say whose poles it draws; it reads "${locusH2}"`)
+}
+await clickBtn('Step')
+
 
 // --------------------------------------- 4b. the loop diagram, and its wiring
 
@@ -411,7 +419,15 @@ console.log('\n4b. The loop diagram: live parameters, and the step entry wired t
 
   // The boxes carry the CURRENT parameters, not a stock picture.
   const svgText = await page.locator('.fd-svg').textContent()
-  for (const want of ['C(s) — PI', 'P(s) — Motor position', 'Kp 3', 'Ki 500 m', 'r − y']) {
+  for (const want of [
+    'C(s) — PI',
+    'P(s) — Motor position',
+    'Kp 3',
+    'Ki 500 m',
+    'r − y',
+    // Reed's rule: the view says the name of the thing it enacts.
+    'transfer functions multiply — L = C·P',
+  ]) {
     if (!svgText.includes(want)) fail(`diagram: expected "${want}" in the drawing, not found`)
   }
   console.log('   C and P boxes carry the live controller and plant parameters')

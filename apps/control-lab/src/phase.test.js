@@ -190,6 +190,27 @@ describe("the math panel's phase accounting", () => {
     expect(wn.value).toBeCloseTo(2 * Math.PI * fn.value, 9)
   })
 
+  it('the one-multiplication theorem: three vocabularies printed, this dialect measured', () => {
+    // Reed's convolution-review rule, generalized: print the load-bearing
+    // theorem in the local vocabulary, cross-referenced to the siblings, and
+    // measure it before printing. The sweep above verifies the row agrees
+    // for every pairing; this pins that it EXISTS and says all three names.
+    const entry = entryFor('motor', 'pi')
+    const texts = entry.blocks
+      .filter((b) => b.kind === 'text')
+      .map((b) => b.text)
+      .join(' ')
+    expect(texts).toContain('Y(z) = X(z)·H(z)')
+    expect(texts).toContain('Y(s) = X(s)·H(s)')
+    expect(texts).toContain('L = C·P')
+    const rows = rowsOf(entry, 'check').map((r) => r.label)
+    expect(rows.some((l) => l.includes('|C|·|P|'))).toBe(true)
+    // The probe falls back mid-sweep where no crossover exists, so the
+    // multiplication is measured on every loop, not just the lively ones.
+    const rowsNoXover = rowsOf(entryFor('firstOrder', 'p'), 'check').map((r) => r.label)
+    expect(rowsNoXover.some((l) => l.includes('|C|·|P|'))).toBe(true)
+  })
+
   it('the sensitivity row appears exactly where a crossover exists', () => {
     const has = (entry) =>
       rowsOf(entry, 'check').some((r) => r.label.includes('price at the crossover'))

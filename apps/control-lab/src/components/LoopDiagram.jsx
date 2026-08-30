@@ -195,6 +195,11 @@ export default function LoopDiagram({
               () => onReveal('controller'),
               'Show the controller in the sidebar',
             )}
+            {/* The view says the name of the thing it enacts (Reed's rule,
+                from the convolution review): boxes in cascade MULTIPLY. */}
+            <text className="fd-note" x={cX + 4} y={midY + BH / 2 + 12} textAnchor="start">
+              in cascade: transfer functions multiply — L = C·P
+            </text>
 
             {/* The disturbance: what the world does to the plant, entering at
                 its INPUT — after the controller has had its say. */}

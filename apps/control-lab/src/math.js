@@ -85,10 +85,36 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
           'a solution in the right half plane — which is why the Nyquist view is a plot of L ' +
           'against the single point −1.',
       ),
+      T(
+        'One multiplication carries the whole suite. Signal Lab writes it y = x∗h ⇔ ' +
+          'Y(z) = X(z)·H(z); Circuit Lab writes Y(s) = X(s)·H(s); here the same fact composes ' +
+          'the loop — blocks in cascade MULTIPLY, L = C·P — and closing the wire turns it into ' +
+          'Y/R = L/(1+L). Three vocabularies, one theorem; the row below measures this app’s ' +
+          'dialect of it on the loop on screen.',
+      ),
       F(`C(s):\\quad ${ctrl.tex}`),
       // The custom plant's formula is built from its live coefficients.
       F(`P(s):\\quad ${typeof plant.tex === 'function' ? plant.tex(plantP) : plant.tex}`),
     ]
+
+    // The multiplication, measured: |C| and |P| each read from their own
+    // polynomial, their float product against the composed |L| — polyMul
+    // built one side, a multiply builds the other, and a composition bug
+    // splits them. Probed at the crossover where one exists (the frequency
+    // that decides everything else), mid-sweep otherwise.
+    {
+      const fProbe = marg.gainCrossover ?? freqs[Math.floor(freqs.length / 2)]
+      blocks.push(
+        C([
+          {
+            label: 'cascade multiplies: |C|·|P| = |L|',
+            predicted: magnitudeAt(loop.controller, fProbe) * magnitudeAt(loop.plant, fProbe),
+            measured: magnitudeAt(loop.open, fProbe),
+            tol: 1e-3,
+          },
+        ]),
+      )
+    }
 
     // --- the bridge back to Circuit Lab ---
     //
