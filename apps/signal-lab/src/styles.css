@@ -3,30 +3,7 @@
  * @ee-labs/ui and @ee-labs/explain. */
 
 
-/* ---------- flow strip ---------- */
-.flow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  overflow-x: auto;
-  white-space: nowrap;
-  scrollbar-width: thin;
-}
 
-.flow-node {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  color: var(--text);
-  font: inherit;
-  font-size: 11px;
-  padding: 3px 8px;
-  white-space: nowrap;
-}
 
 button.flow-node {
   cursor: pointer;
@@ -37,28 +14,9 @@ button.flow-node:hover {
   color: var(--accent);
 }
 
-.flow-node em {
-  color: var(--dim);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
-  font-style: normal;
-}
 
-.flow-node.is-off {
-  opacity: 0.45;
-  border-style: dashed;
-}
 
-.flow-node.is-out {
-  border-color: transparent;
-  background: transparent;
-  color: var(--dim);
-}
 
-.flow-arrow {
-  color: var(--line);
-  font-size: 11px;
-}
 
 /* ---------- presets ---------- */
 .presets {

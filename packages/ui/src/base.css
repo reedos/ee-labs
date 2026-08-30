@@ -12,6 +12,9 @@
   --panel: #111721;
   --panel-2: #161e2a;
   --line: #202a37;
+  /* Matches COLORS.axis in plot.js, so a schematic wire and a plot axis are the
+     same weight of line. */
+  --line-bright: #3a4757;
   --text: #c9d6e4;
   --dim: #7d8b9c;
   --accent: #38e0b0;
@@ -599,4 +602,55 @@ select {
   padding: 5px 7px;
   font: inherit;
   font-size: 13px;
+}
+
+/* The signal-flow strip: a compact summary of what the tool is doing,
+   used by every app in the suite. */
+
+/* ---------- flow strip ---------- */
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+
+.flow-node {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.flow-node em {
+  color: var(--dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.flow-node.is-off {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+.flow-node.is-out {
+  border-color: transparent;
+  background: transparent;
+  color: var(--dim);
+}
+
+.flow-arrow {
+  color: var(--line);
+  font-size: 11px;
 }

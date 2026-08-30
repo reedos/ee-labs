@@ -1,0 +1,404 @@
+import { CIRCUITS } from './circuits.js'
+import {
+  magnitudeAt,
+  phaseAt,
+  dcGain,
+  polesZeros,
+  secondOrderMetrics,
+  stepResponse,
+} from '@ee-labs/systems'
+
+// The math for the circuit currently on screen.
+//
+// Same discipline as the rest of the suite: a two-column comparison only where
+// the measured side is genuinely computed from the system rather than restating
+// the formula, and anything else is a derived value with no tick.
+//
+// Here "measured" means evaluated from the transfer function the circuit
+// produced — H(s) at a frequency, or a simulated step response — while "theory"
+// is the closed form written in terms of R, L and C. Those are different paths:
+// one goes through the polynomial, the other through the component algebra, and
+// a swapped component or a dropped factor separates them immediately.
+
+const T = (text) => ({ kind: 'text', text })
+const F = (tex, caption) => ({ kind: 'formula', tex, caption })
+const C = (rows) => ({ kind: 'check', rows })
+const V = (rows) => ({ kind: 'values', rows })
+
+const TAU = 2 * Math.PI
+
+/** Blocks shared by every circuit: what H(s) is, and where its poles are. */
+function common(tf, p, id) {
+  const { poles, zeros } = polesZeros(tf)
+  const rows = [
+    { label: 'DC gain', value: dcGain(tf) },
+    { label: 'poles', value: poles.length },
+    { label: 'zeros', value: zeros.length },
+  ]
+  for (let i = 0; i < poles.length; i++) {
+    const [re, im] = poles[i]
+    rows.push({
+      label: `pole ${i + 1}`,
+      value: re,
+      unit: '1/s',
+      note: im ? `± j${Math.abs(im).toPrecision(4)}` : 'real',
+    })
+  }
+  return [
+    T(
+      'The order of the denominator counts the independent energy stores — every capacitor ' +
+        'and inductor that can hold a state of its own. That is why an RC has one pole and an ' +
+        'RLC has two, and why no arrangement of resistors alone has any.',
+    ),
+    V(rows),
+  ]
+}
+
+const ENTRIES = {
+  divider: (tf, p) => ({
+    blocks: [
+      T(
+        'Resistors store no energy, so nothing here can depend on frequency. The response is a ' +
+          'real constant at every frequency, with zero phase and no poles at all.',
+      ),
+      F('H(s) = \\frac{R_2}{R_1 + R_2}'),
+      C([
+        {
+          label: 'gain',
+          predicted: p.r2 / (p.r1 + p.r2),
+          measured: magnitudeAt(tf, 1000),
+          tol: 1e-9,
+        },
+        { label: 'phase at 1 kHz', predicted: 0, measured: phaseAt(tf, 1000), abs: 1e-9 },
+      ]),
+      T(
+        'Worth loading first, because everything after it is this with a frequency-dependent ' +
+          'impedance in place of one resistor.',
+      ),
+    ],
+  }),
+
+  rcLow: (tf, p) => {
+    const fc = 1 / (TAU * p.r * p.c)
+    return {
+      blocks: [
+        T('A resistor and a capacitor form a divider whose lower leg falls with frequency:'),
+        F('Z_C = \\frac{1}{sC} \\quad\\Rightarrow\\quad H(s) = \\frac{1/sC}{R + 1/sC} = \\frac{1}{1 + sRC}'),
+        T(
+          'The corner is where the two impedances are equal — |Z_C| = R — and there the output ' +
+            'is 1/√2 of the input, which is −3.01 dB, with exactly 45° of lag. Both fall out of ' +
+            'the same fact and neither is a convention.',
+        ),
+        F('f_c = \\frac{1}{2\\pi RC}'),
+        C([
+          {
+            label: `|H| at f_c = ${fc.toPrecision(5)} Hz`,
+            predicted: Math.SQRT1_2,
+            measured: magnitudeAt(tf, fc),
+            tol: 1e-6,
+          },
+          {
+            label: 'phase at f_c',
+            predicted: -45,
+            measured: (phaseAt(tf, fc) * 180) / Math.PI,
+            tol: 1e-6,
+          },
+          { label: 'DC gain', predicted: 1, measured: magnitudeAt(tf, 1e-9), tol: 1e-9 },
+        ]),
+        V([
+          { label: 'time constant τ = RC', value: p.r * p.c, unit: 's' },
+          { label: 'corner frequency', value: fc, unit: 'Hz' },
+          { label: 'rise time (10–90%)', value: 2.2 * p.r * p.c, unit: 's' },
+        ]),
+        ...common(tf, p, 'rcLow'),
+      ],
+    }
+  },
+
+  rcHigh: (tf, p) => {
+    const fc = 1 / (TAU * p.r * p.c)
+    return {
+      blocks: [
+        T('The same divider read across the other component:'),
+        F('H(s) = \\frac{R}{R + 1/sC} = \\frac{sRC}{1 + sRC}'),
+        T(
+          'Same pole, plus a zero at the origin. The zero is what removes DC: at s = 0 the ' +
+            'numerator vanishes, which is the algebra saying a capacitor passes no steady ' +
+            'current. And since the two outputs share one current, they are complementary — ' +
+            'their squared magnitudes sum to 1 at every frequency.',
+        ),
+        F('|H_{LP}|^2 + |H_{HP}|^2 = 1'),
+        C([
+          {
+            label: `|H| at f_c = ${fc.toPrecision(5)} Hz`,
+            predicted: Math.SQRT1_2,
+            measured: magnitudeAt(tf, fc),
+            tol: 1e-6,
+          },
+          {
+            label: 'phase at f_c',
+            predicted: 45,
+            measured: (phaseAt(tf, fc) * 180) / Math.PI,
+            tol: 1e-6,
+          },
+          { label: 'DC gain', predicted: 0, measured: magnitudeAt(tf, 1e-9), abs: 1e-9 },
+        ]),
+        ...common(tf, p, 'rcHigh'),
+      ],
+    }
+  },
+
+  rlLow: (tf, p) => {
+    const tau = p.l / p.r
+    return {
+      blocks: [
+        T(
+          'An inductor opposes a change in current, so its impedance RISES with frequency where ' +
+            'a capacitor’s falls. Put it in the series position and you get a low-pass again:',
+        ),
+        F('Z_L = sL \\quad\\Rightarrow\\quad H(s) = \\frac{R}{R + sL} = \\frac{1}{1 + s\\,L/R}'),
+        T(
+          'This is the RC low-pass with L/R in place of RC. The physics is different and the ' +
+            'algebra is identical, which is the reason filters are designed as transfer ' +
+            'functions first and built from whatever components suit second.',
+        ),
+        C([
+          {
+            label: `|H| at 1/(2πτ) = ${(1 / (TAU * tau)).toPrecision(5)} Hz`,
+            predicted: Math.SQRT1_2,
+            measured: magnitudeAt(tf, 1 / (TAU * tau)),
+            tol: 1e-6,
+          },
+        ]),
+        V([
+          { label: 'time constant τ = L/R', value: tau, unit: 's' },
+          { label: 'corner frequency', value: 1 / (TAU * tau), unit: 'Hz' },
+        ]),
+        ...common(tf, p, 'rlLow'),
+      ],
+    }
+  },
+
+  rlcSeries: (tf, p, output) => {
+    const m = CIRCUITS.rlcSeries.metrics(p)
+    const f0 = m.w0 / TAU
+    const so = secondOrderMetrics(tf)
+    const atRes = output === 'r' ? 1 : m.q
+    return {
+      blocks: [
+        T(
+          'One loop, one current, three voltages. The impedances are in series so they share a ' +
+            'denominator, and the numerator is whichever component you measure across:',
+        ),
+        F(
+          'H_C = \\frac{1}{s^2LC + sRC + 1}, \\quad H_R = \\frac{sRC}{s^2LC + sRC + 1}, ' +
+            '\\quad H_L = \\frac{s^2LC}{s^2LC + sRC + 1}',
+        ),
+        T(
+          'Those three numerators add up to the denominator, so the three outputs sum to the ' +
+            'input exactly — Kirchhoff’s voltage law, written as an identity in s.',
+        ),
+        T(
+          'At resonance the inductor and capacitor impedances are equal and opposite and cancel ' +
+            'completely, leaving only R. The current is then at its largest, which is why the ' +
+            'voltages across L and C are Q times the input while the voltage across R is exactly ' +
+            'the input.',
+        ),
+        F('\\omega_0 = \\frac{1}{\\sqrt{LC}}, \\qquad ' + m.qTex),
+        C([
+          {
+            label: `|H| at f₀ = ${f0.toPrecision(5)} Hz`,
+            predicted: atRes,
+            measured: magnitudeAt(tf, f0),
+            tol: 1e-4,
+          },
+          {
+            label: 'resonant frequency',
+            predicted: f0,
+            measured: so ? so.f0 : NaN,
+            tol: 1e-6,
+            unit: 'Hz',
+          },
+          { label: 'Q', predicted: m.q, measured: so ? so.q : NaN, tol: 1e-6 },
+        ]),
+        V([
+          { label: 'ζ = 1/2Q', value: so ? so.zeta : NaN, note: so && so.zeta >= 1 ? 'no overshoot' : 'rings' },
+          { label: 'bandwidth ω₀/Q', value: f0 / m.q, unit: 'Hz' },
+          { label: 'characteristic impedance √(L/C)', value: Math.sqrt(p.l / p.c), unit: 'Ω' },
+        ]),
+        T(
+          'ζ = 1/2Q is the same damping ratio a control course writes for a second-order plant, ' +
+            'and Q is the same Q a filter course puts on a biquad. One circuit, three vocabularies.',
+        ),
+        ...common(tf, p, 'rlcSeries'),
+      ],
+    }
+  },
+
+  rlcParallel: (tf, p) => {
+    const m = CIRCUITS.rlcParallel.metrics(p)
+    const f0 = m.w0 / TAU
+    return {
+      blocks: [
+        T('In parallel the admittances add, so it is 1/Z that is simple:'),
+        F(
+          'Y(s) = \\frac{1}{R} + \\frac{1}{sL} + sC \\quad\\Rightarrow\\quad ' +
+            'Z(s) = \\frac{sL}{s^2LC + sL/R + 1}',
+        ),
+        T(
+          'At resonance the inductor and capacitor currents are equal and opposite and cancel, ' +
+            'so all the source current flows in R and the impedance peaks at exactly R. The ' +
+            'series circuit did the mirror image: there the impedance DIPPED to R.',
+        ),
+        F(m.qTex),
+        T(
+          'Note the reciprocal: series Q is (1/R)√(L/C), parallel Q is R√(C/L). More resistance ' +
+            'damps a series resonance and sharpens a parallel one, because in one case R is in ' +
+            'the current path and in the other it is the leak across it.',
+        ),
+        C([
+          {
+            label: `|Z| at f₀ = ${f0.toPrecision(5)} Hz`,
+            predicted: p.r,
+            measured: magnitudeAt(tf, f0),
+            tol: 1e-4,
+            unit: 'Ω',
+          },
+        ]),
+        V([
+          { label: 'resonant frequency', value: f0, unit: 'Hz' },
+          { label: 'Q', value: m.q },
+          { label: 'bandwidth', value: f0 / m.q, unit: 'Hz' },
+        ]),
+        ...common(tf, p, 'rlcParallel'),
+      ],
+    }
+  },
+
+  sallenKey: (tf, p) => {
+    const m = CIRCUITS.sallenKey.metrics(p)
+    const f0 = m.w0 / TAU
+    const so = secondOrderMetrics(tf)
+    return {
+      blocks: [
+        T(
+          'Two RC sections cannot resonate: cascading first-order lags only ever gives real ' +
+            'poles, and a real pole cannot ring. The op-amp is what changes that. It feeds the ' +
+            'output back through C1 into the middle of the network, and that feedback pushes the ' +
+            'pole pair off the real axis.',
+        ),
+        F('H(s) = \\frac{1}{s^2 R_1R_2C_1C_2 + sC_2(R_1+R_2) + 1}'),
+        F('\\omega_0 = \\frac{1}{\\sqrt{R_1R_2C_1C_2}}, \\qquad ' + m.qTex),
+        T(
+          'Q depends only on ratios of components, never on their absolute size — and there is ' +
+            'no inductor anywhere. At audio frequencies an inductor of the right value would be ' +
+            'large, lossy and expensive, which is the entire reason active filters displaced ' +
+            'passive ones.',
+        ),
+        C([
+          { label: 'resonant frequency', predicted: f0, measured: so ? so.f0 : NaN, tol: 1e-6, unit: 'Hz' },
+          { label: 'Q', predicted: m.q, measured: so ? so.q : NaN, tol: 1e-6 },
+          { label: 'DC gain', predicted: 1, measured: magnitudeAt(tf, 1e-9), tol: 1e-9 },
+        ]),
+        V([
+          { label: 'ζ = 1/2Q', value: so ? so.zeta : NaN },
+          { label: 'Q for a Butterworth', value: Math.SQRT1_2, note: 'flattest passband' },
+          { label: 'Q for no overshoot', value: 0.5, note: 'critically damped' },
+        ]),
+        T(
+          'Set Q to 0.707 and this is a Butterworth section — the same one a filter tool would ' +
+            'call a biquad. It still overshoots 4.3% on a step; flat in frequency and clean in ' +
+            'time are different requests.',
+        ),
+        ...common(tf, p, 'sallenKey'),
+      ],
+    }
+  },
+
+  inverting: (tf, p) => {
+    const fp = 1 / (TAU * p.rf * p.cf)
+    return {
+      blocks: [
+        T(
+          'Negative feedback holds the inverting input at the same voltage as the grounded one, ' +
+            'so it sits at zero without being connected to it — a virtual earth. All the input ' +
+            'current must then flow on through the feedback impedance:',
+        ),
+        F('H(s) = -\\frac{Z_f}{Z_{in}} = -\\frac{R_f}{R_{in}(1 + sR_fC_f)}'),
+        T(
+          'The gain is a ratio, so it depends on how well two resistors match rather than on ' +
+            'any absolute value — which is exactly what an integrated process can do well. The ' +
+            'minus sign is a real 180° of phase at every frequency, not a bookkeeping detail.',
+        ),
+        C([
+          {
+            label: 'DC gain −Rf/Rin',
+            predicted: -p.rf / p.rin,
+            measured: dcGain(tf),
+            tol: 1e-9,
+          },
+          {
+            label: `|H| at the pole, ${fp.toPrecision(5)} Hz`,
+            predicted: (p.rf / p.rin) * Math.SQRT1_2,
+            measured: magnitudeAt(tf, fp),
+            tol: 1e-6,
+          },
+        ]),
+        V([
+          { label: 'gain', value: -p.rf / p.rin, unit: '×' },
+          { label: 'gain', value: 20 * Math.log10(p.rf / p.rin), unit: 'dB' },
+          { label: 'pole frequency', value: fp, unit: 'Hz' },
+        ]),
+        ...common(tf, p, 'inverting'),
+      ],
+    }
+  },
+
+  integrator: (tf, p) => {
+    const st = stepResponse(tf, { duration: 5 * p.r * p.c, points: 200 })
+    return {
+      blocks: [
+        T('Replace the feedback resistor with a capacitor and the ratio becomes a division by s:'),
+        F('H(s) = -\\frac{1/sC}{R} = -\\frac{1}{sRC}'),
+        T(
+          'Dividing by s in the frequency domain is integrating in time, so a step in gives a ' +
+            'ramp out. The pole sits exactly at the origin — not in the left half plane but on ' +
+            'the boundary — which is why the output never settles and why a real integrator ' +
+            'needs a large resistor across C to stop it drifting into its own supply rail.',
+        ),
+        F('\\frac{1}{s} \\;\\longleftrightarrow\\; \\int_0^t (\\cdot)\\,d\\tau'),
+        C([
+          {
+            label: 'ramp slope −1/RC',
+            predicted: -1 / (p.r * p.c),
+            measured: (st.y[st.y.length - 1] - st.y[0]) / (st.t[st.t.length - 1] - st.t[0]),
+            tol: 0.01,
+            unit: '1/s',
+          },
+          {
+            label: 'gain at 1/(2πRC)',
+            predicted: 1,
+            measured: magnitudeAt(tf, 1 / (TAU * p.r * p.c)),
+            tol: 1e-6,
+          },
+        ]),
+        V([
+          { label: 'unity-gain frequency', value: 1 / (TAU * p.r * p.c), unit: 'Hz' },
+          { label: 'slope', value: -6.02, unit: 'dB/octave' },
+        ]),
+        ...common(tf, p, 'integrator'),
+      ],
+    }
+  },
+}
+
+/** The math panel for a circuit, or null if it has none. */
+export function circuitMath(id, tf, params, output) {
+  const fn = ENTRIES[id]
+  if (!fn) return null
+  try {
+    return fn(tf, params, output)
+  } catch {
+    return null
+  }
+}

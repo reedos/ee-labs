@@ -6,7 +6,7 @@ and explains, next to every number, where that number came from.
 
 ```
 npm install
-npm test                 # every package and every app
+npm test                 # every package and every app (203 tests)
 npm run dev              # Signal Lab, at http://localhost:1421
 ```
 
@@ -14,7 +14,8 @@ npm run dev              # Signal Lab, at http://localhost:1421
 
 | | covers | status |
 |---|---|---|
-| **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 23 lessons, 155 tests |
+| **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 23 lessons |
+| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters | 9 circuits |
 | **Control Lab** | feedback, stability, transient response | planned |
 
 A third tool, [`waveform-simulator`](https://github.com/reedos/waveform-simulator), covers
@@ -31,6 +32,13 @@ Signal Lab's model is `sources → chain → time + spectrum`. Anything that fit
 belongs in it whichever course teaches it — FIR filters, z-plane views, group delay,
 statistics of noise are all extensions, not new apps.
 
+Circuit Lab is a different shape again: a network, not a chain, whose output is H(s)
+rather than a waveform. But it is also the bridge. One series RLC is simultaneously a
+circuit you could buy the parts for, a filter with a Q, a second-order plant with a
+damping ratio, and — through the bilinear transform — the same biquad Signal Lab ships.
+Same object, four vocabularies, which is the thing a suite can show and a single app
+cannot.
+
 A feedback loop does not fit that shape. It needs a summing junction, a plant and a
 controller as distinct roles, and its characteristic plots — Bode, Nyquist, root locus —
 describe a loop transfer function whose key readouts are gain and phase margin. Forcing
@@ -40,9 +48,16 @@ that into a linear chain would damage both tools, so Control Lab is separate.
 
 ```
 packages/dsp       generation, transforms, filters, the chain
+packages/systems   transfer functions: Bode, poles, step response, stability
 packages/ui        numeric entry, plot chrome, the shell
 packages/explain   the math panel, and the discipline behind it
 ```
+
+**`@ee-labs/systems`** is the currency the suite trades in. A circuit produces a transfer
+function; so does a control loop; a digital filter is one after a change of variable. So
+frequency response, root finding, step response and stability are written once, and each
+tool describes only its own subject before handing the analysis over. It is what makes
+Control Lab cheap to build now that Circuit Lab exists.
 
 **`@ee-labs/dsp`** knows nothing about any application's blocks. `createChain(registry)`
 binds the chain machinery to whatever blocks a tool defines and returns the functions

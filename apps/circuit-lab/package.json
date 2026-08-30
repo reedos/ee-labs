@@ -1,0 +1,22 @@
+{
+  "name": "circuit-lab",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Circuits, their transfer functions, and the bridge to filters and control.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee-labs/dsp": "*",
+    "@ee-labs/explain": "*",
+    "@ee-labs/systems": "*",
+    "@ee-labs/ui": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

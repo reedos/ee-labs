@@ -68,6 +68,7 @@ export function drawFrame(ctx, area, xMin, xMax, yMin, yMax, fmtX, fmtY, opts = 
   const {
     zeroLine = false,
     yStep: yStepOverride = null,
+    xStep: xStepOverride = null,
     xTitle = null,
     yTitle = null,
   } = opts
@@ -79,7 +80,11 @@ export function drawFrame(ctx, area, xMin, xMax, yMin, yMax, fmtX, fmtY, opts = 
   ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
   ctx.textBaseline = 'middle'
 
-  const xStep = niceStep(xMax - xMin, Math.max(2, Math.floor(area.w / (90 * k))))
+  // Same override as yStep, for the same reason: a decade axis is plotted in
+  // powers of ten, and letting niceStep pick a fifth of one gives five ticks
+  // that all format to the same number.
+  const xStep =
+    xStepOverride || niceStep(xMax - xMin, Math.max(2, Math.floor(area.w / (90 * k))))
   ctx.textAlign = 'center'
   for (let v = Math.ceil(xMin / xStep) * xStep; v <= xMax + 1e-9; v += xStep) {
     const x = sx(v)
