@@ -57,6 +57,72 @@ describe('the settle flag tells the truth about the plot edge', () => {
   })
 })
 
+describe('the custom plant: exactness is the whole point', () => {
+  it('an RLC through custom equals the same circuit through the named mapping', () => {
+    // The reason this plant exists: a circuit must arrive as ITSELF. The same
+    // series RLC, once as raw {b, a} coefficients and once through the named
+    // second-order mapping (ωₙ = 1/√LC, ζ = (R/2)√(C/L)), must produce the
+    // same margins and the same step. Bit-equality is impossible across the
+    // two normalizations — the named form divides through by LC — so
+    // equality here means double precision, and says so.
+    const L = 0.01
+    const C = 1e-7
+    const R = 50
+    const viaCustom = buildLoop('custom', { b2: 0, b1: 0, b0: 1, a2: L * C, a1: R * C, a0: 1 }, 'p', { kp: 2 })
+    const wn = 1 / Math.sqrt(L * C)
+    const zeta = (R / 2) * Math.sqrt(C / L)
+    const viaNamed = buildLoop('secondOrder', { k: 1, wn, zeta }, 'p', { kp: 2 })
+    const mc = margins(viaCustom.open, GRID)
+    const mn = margins(viaNamed.open, GRID)
+    expect(mc.phaseMargin).toBeCloseTo(mn.phaseMargin, 8)
+    expect(mc.gainCrossover / mn.gainCrossover).toBeCloseTo(1, 10)
+    const sc = stepResponse(viaCustom.closed, { duration: 0.01, points: 500 })
+    const sn = stepResponse(viaNamed.closed, { duration: 0.01, points: 500 })
+    let worst = 0
+    for (let i = 0; i < sc.y.length; i++) worst = Math.max(worst, Math.abs(sc.y[i] - sn.y[i]))
+    expect(worst).toBeLessThan(1e-6)
+  })
+
+  it('leading zero coefficients trim away: a first-order arrival is first order', () => {
+    const tf = PLANTS.custom.tf({ b2: 0, b1: 0, b0: 1, a2: 0, a1: 1, a0: 1 })
+    expect(tf.a).toEqual([1, 1])
+    expect(tf.b).toEqual([1])
+    expect(polesZeros(tf).poles).toHaveLength(1)
+  })
+})
+
+describe('every circuit analogue is the plant it claims to be', () => {
+  it('matches across frequency, at off-default parameters too', () => {
+    const cases = {
+      firstOrder: { k: 3, tau: 0.02 },
+      integrator: { k: 7 },
+      secondOrder: { k: 2, wn: 300, zeta: 0.4 },
+      motor: { k: 5, tau: 0.13 },
+      threePole: { k: 2, t1: 1.5, t2: 0.3, t3: 0.05 },
+    }
+    for (const [id, params] of Object.entries(cases)) {
+      const plant = PLANTS[id]
+      expect(plant.circuit, `${id} should carry its circuit analogue`).toBeTruthy()
+      const asPlant = plant.tf(params)
+      const asCircuit = plant.circuit.tf(params)
+      for (const f of [0.001, 0.05, 1, 40, 2000]) {
+        expect(magnitudeAt(asCircuit, f) / magnitudeAt(asPlant, f), `${id} |H| at ${f} Hz`).toBeCloseTo(1, 9)
+        expect(deg(phaseAt(asCircuit, f)), `${id} phase at ${f} Hz`).toBeCloseTo(deg(phaseAt(asPlant, f)), 7)
+      }
+    }
+  })
+
+  it("passivity, measured: no analogue's pole reaches the right half plane", () => {
+    // The unstable plant's panel claims a passive network cannot grow; the
+    // claim is checked against every analogue this file provides.
+    for (const [id, plant] of Object.entries(PLANTS)) {
+      if (!plant.circuit) continue
+      const { poles } = polesZeros(plant.circuit.tf(defaultsOf(plant)))
+      for (const [re] of poles) expect(re, id).toBeLessThanOrEqual(1e-9)
+    }
+  })
+})
+
 describe('plants behave as their physics demands', () => {
   it('a first-order lag has one real pole and cannot be destabilised', () => {
     const p = PLANTS.firstOrder

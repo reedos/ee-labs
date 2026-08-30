@@ -36,6 +36,18 @@ describe('loading a loop from a link', () => {
     expect(state.plantId).toBe('integrator')
     expect(state.ctrlId).toBeNull()
   })
+
+  it('a custom plant arrives with exact, unclamped coefficients', () => {
+    // The whole point of custom: an RLC's a₂ = LC ≈ 1e-10 must land as
+    // itself, not clamped to some slider's idea of reasonable.
+    const { state, warnings } = load('plant=custom:0:0:1:1e-10:1e-5:1&ctrl=p:2')
+    expect(warnings).toEqual([])
+    expect(state.plantId).toBe('custom')
+    expect(state.plantP.b0).toBe(1)
+    expect(state.plantP.a2).toBe(1e-10)
+    expect(state.plantP.a1).toBe(1e-5)
+    expect(state.ctrlP.kp).toBe(2)
+  })
 })
 
 describe('a circuit really arrives as the same system', () => {

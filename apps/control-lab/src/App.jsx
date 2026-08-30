@@ -330,6 +330,7 @@ export default function App() {
               min={p.min}
               max={p.max}
               scale={p.scale}
+              compact={!!p.compact}
               eng
             />
           ))}

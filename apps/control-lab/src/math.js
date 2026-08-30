@@ -86,8 +86,50 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
           'against the single point −1.',
       ),
       F(`C(s):\\quad ${ctrl.tex}`),
-      F(`P(s):\\quad ${plant.tex}`),
+      // The custom plant's formula is built from its live coefficients.
+      F(`P(s):\\quad ${typeof plant.tex === 'function' ? plant.tex(plantP) : plant.tex}`),
     ]
+
+    // --- the bridge back to Circuit Lab ---
+    //
+    // Each named plant carries its circuit analogue: the network that IS this
+    // transfer function, with component values computed from the CURRENT
+    // parameters. The check rows then build the network from those printed
+    // component values and require it to match the plant — so the mapping in
+    // the prose is measured, not asserted.
+    if (plant.circuit) {
+      const ctf = plant.circuit.tf(plantP)
+      const f1 = freqs[Math.floor(freqs.length / 3)]
+      const f2 = freqs[Math.floor((2 * freqs.length) / 3)]
+      const degOf = (tf, f) => (phaseAt(tf, f) * 180) / Math.PI
+      blocks.push(
+        T('Where a plant like this comes from on a bench: ' + plant.circuit.text(plantP)),
+        F(plant.circuit.tex),
+        C([
+          {
+            label: '|circuit| = |P|, below the corner',
+            predicted: magnitudeAt(loop.plant, f1),
+            measured: magnitudeAt(ctf, f1),
+            tol: 1e-3,
+          },
+          {
+            label: '…and above it',
+            predicted: magnitudeAt(loop.plant, f2),
+            measured: magnitudeAt(ctf, f2),
+            tol: 1e-3,
+          },
+          {
+            label: '∠circuit = ∠P',
+            predicted: degOf(loop.plant, f1),
+            measured: degOf(ctf, f1),
+            tol: 1e-3,
+            abs: 0.05,
+          },
+        ]),
+      )
+    } else if (plant.circuitNote) {
+      blocks.push(T(plant.circuitNote))
+    }
 
     // --- steady-state error, and why ---
     blocks.push(

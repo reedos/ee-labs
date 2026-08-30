@@ -118,7 +118,7 @@ const loadLesson = async (name) => {
   await settle()
 }
 
-const plants = ['First order lag', 'Integrator', 'Second order', 'Motor position', 'Three lags', 'Unstable plant']
+const plants = ['First order lag', 'Integrator', 'Second order', 'Motor position', 'Three lags', 'Unstable plant', 'Custom H(s)']
 const ctrls = ['Proportional', 'PI', 'PID', 'Lead']
 
 // ------------------------------------- 1. every plant against every controller

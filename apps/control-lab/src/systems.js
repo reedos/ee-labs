@@ -1,4 +1,5 @@
 import { series, closeLoop, polyAdd, polyMul } from '@ee-labs/systems'
+import { fmt } from '@ee-labs/ui'
 
 // The things being controlled, and the things doing the controlling.
 //
@@ -27,7 +28,30 @@ const P = (key, label, value, min, max, hint, unit = '') => ({
   hint,
 })
 
-export const PLANT_GROUPS = ['First order', 'Second order', 'Hard to control']
+export const PLANT_GROUPS = ['First order', 'Second order', 'Hard to control', 'Any transfer function']
+
+// A number as TeX, for the custom plant's live formula. Exponent form where
+// plain digits would be a wall of zeros (an RLC arrives with LC ≈ 1e-10).
+const texNum = (v) => {
+  const a = Math.abs(v)
+  if (a !== 0 && (a >= 1e4 || a < 1e-3)) {
+    const [m, ex] = v.toExponential(3).split('e')
+    return `${Number(m)}\\times 10^{${Number(ex)}}`
+  }
+  return String(Number(v.toPrecision(4)))
+}
+const texPoly = (c2, c1, c0) => {
+  const terms = []
+  if (Math.abs(c2) > 1e-30) terms.push(`${texNum(c2)}\\,s^2`)
+  if (Math.abs(c1) > 1e-30) terms.push(`${texNum(c1)}\\,s`)
+  if (Math.abs(c0) > 1e-30 || !terms.length) terms.push(texNum(c0))
+  return terms.join(' + ').replace(/\+ -/g, '- ')
+}
+const trimLeading = (c) => {
+  const out = [...c]
+  while (out.length > 1 && Math.abs(out[0]) < 1e-30) out.shift()
+  return out
+}
 
 export const PLANTS = {
   firstOrder: {
@@ -41,6 +65,25 @@ export const PLANTS = {
     params: [P('k', 'Gain K', 1, 0.001, 1e6), P('tau', 'Time constant τ', 1, 1e-7, 100, null, 's')],
     tf: (p) => ({ b: [p.k], a: [p.tau, 1] }),
     tex: 'P(s) = \\frac{K}{1 + \\tau s}',
+    // The bridge back to Circuit Lab: the network this plant IS, with
+    // component values derived from the CURRENT parameters. The math panel
+    // prints the mapping and measures that the component-built network
+    // matches the plant it claims to be.
+    circuit: {
+      text: (p) => {
+        const C = p.tau / 1000
+        return (
+          `Circuit Lab's RC low-pass — τ is literally R·C. With R = 1 kΩ, C = ${fmt(C, 'F', 3)} ` +
+          `gives this exact τ${p.k === 1 ? '' : `; the gain K is a ×${fmt(p.k, '', 3)} amplifier after it`}.`
+        )
+      },
+      tex: 'H(s) = K\\cdot\\frac{1}{1 + sRC}',
+      tf: (p) => {
+        const R = 1000
+        const C = p.tau / R
+        return { b: [p.k], a: [R * C, 1] }
+      },
+    },
   },
 
   integrator: {
@@ -53,6 +96,21 @@ export const PLANTS = {
     params: [P('k', 'Gain K', 1, 0.001, 1e6)],
     tf: (p) => ({ b: [p.k], a: [1, 0] }),
     tex: 'P(s) = \\frac{K}{s}',
+    circuit: {
+      text: (p) => {
+        const C = 1e-3 / p.k
+        return (
+          'a transconductance driving a bare capacitor: the current gₘ·vin charges C, so ' +
+          `K = gₘ/C. With gₘ = 1 mS, C = ${fmt(C, 'F', 3)} gives this exact K.`
+        )
+      },
+      tex: 'H(s) = \\frac{g_m}{sC}',
+      tf: (p) => {
+        const gm = 1e-3
+        const C = gm / p.k
+        return { b: [gm], a: [C, 0] }
+      },
+    },
   },
 
   secondOrder: {
@@ -70,6 +128,25 @@ export const PLANTS = {
     ],
     tf: (p) => ({ b: [p.k * p.wn * p.wn], a: [1, 2 * p.zeta * p.wn, p.wn * p.wn] }),
     tex: 'P(s) = \\frac{K\\omega_n^2}{s^2 + 2\\zeta\\omega_n s + \\omega_n^2}',
+    circuit: {
+      text: (p) => {
+        const L = 0.01
+        const C = 1 / (p.wn * p.wn * L)
+        const R = 2 * p.zeta * Math.sqrt(L / C)
+        return (
+          'Circuit Lab\'s series RLC, read across the capacitor: ωₙ = 1/√(LC) and ' +
+          `ζ = (R/2)·√(C/L). With L = 10 mH: C = ${fmt(C, 'F', 3)}, R = ${fmt(R, 'Ω', 3)}` +
+          `${p.k === 1 ? '' : `, then a ×${fmt(p.k, '', 3)} amplifier`}.`
+        )
+      },
+      tex: 'H(s) = K\\cdot\\frac{1}{LC\\,s^2 + RC\\,s + 1}',
+      tf: (p) => {
+        const L = 0.01
+        const C = 1 / (p.wn * p.wn * L)
+        const R = 2 * p.zeta * Math.sqrt(L / C)
+        return { b: [p.k], a: [L * C, R * C, 1] }
+      },
+    },
   },
 
   motor: {
@@ -83,6 +160,24 @@ export const PLANTS = {
     params: [P('k', 'Gain K', 1, 0.001, 1e6), P('tau', 'Time constant τ', 0.5, 1e-7, 100, null, 's')],
     tf: (p) => ({ b: [p.k], a: [p.tau, 1, 0] }),
     tex: 'P(s) = \\frac{K}{s(1 + \\tau s)}',
+    circuit: {
+      text: (p) => {
+        const C = p.tau / 1000
+        const C2 = 1e-3 / p.k
+        return (
+          'the RC lag feeding the transconductance integrator: R·C sets τ, gₘ/C₂ sets K. ' +
+          `With R = 1 kΩ, C = ${fmt(C, 'F', 3)}; gₘ = 1 mS, C₂ = ${fmt(C2, 'F', 3)}.`
+        )
+      },
+      tex: 'H(s) = \\frac{1}{1+sRC}\\cdot\\frac{g_m}{sC_2}',
+      tf: (p) => {
+        const R = 1000
+        const C = p.tau / R
+        const gm = 1e-3
+        const C2 = gm / p.k
+        return { b: [gm], a: polyMul([R * C, 1], [C2, 0]) }
+      },
+    },
   },
 
   threePole: {
@@ -103,6 +198,23 @@ export const PLANTS = {
       a: polyMul(polyMul([p.t1, 1], [p.t2, 1]), [p.t3, 1]),
     }),
     tex: 'P(s) = \\frac{K}{(1+\\tau_1 s)(1+\\tau_2 s)(1+\\tau_3 s)}',
+    circuit: {
+      text: (p) => {
+        const C = 1e-6
+        return (
+          'three RC stages, each BUFFERED so the next cannot load it (unbuffered, the stages ' +
+          `pull each other's poles). With C = 1 µF each: R₁ = ${fmt(p.t1 / C, 'Ω', 3)}, ` +
+          `R₂ = ${fmt(p.t2 / C, 'Ω', 3)}, R₃ = ${fmt(p.t3 / C, 'Ω', 3)}` +
+          `${p.k === 1 ? '' : `, and a ×${fmt(p.k, '', 3)} amplifier`}.`
+        )
+      },
+      tex: 'H(s) = K\\prod_{i=1}^{3}\\frac{1}{1+sR_iC}',
+      tf: (p) => {
+        const C = 1e-6
+        const stage = (t) => [(t / C) * C, 1]
+        return { b: [p.k], a: polyMul(polyMul(stage(p.t1), stage(p.t2)), stage(p.t3)) }
+      },
+    },
   },
 
   unstable: {
@@ -115,6 +227,34 @@ export const PLANTS = {
     params: [P('k', 'Gain K', 1, 0.001, 1e6), P('p', 'Unstable pole at +p', 1, 0.01, 1e6, null, '1/s')],
     tf: (p) => ({ b: [p.k], a: [1, -p.p] }),
     tex: 'P(s) = \\frac{K}{s - p}',
+    circuitNote:
+      'No passive network can be this plant: resistors, capacitors and inductors only ever ' +
+      'dissipate or store, so their poles never reach the right half plane — a claim the test ' +
+      'suite measures against every circuit analogue in this panel. Building a growing mode ' +
+      'takes an active element pumping energy in: an op-amp wired for positive feedback, the ' +
+      'electronic inverted pendulum.',
+  },
+
+  custom: {
+    name: 'Custom H(s)',
+    group: 'Any transfer function',
+    hint:
+      'The raw form every named plant reduces to — six coefficients, highest power first — and ' +
+      'how a circuit arrives from Circuit Lab without approximation: the link hands over the ' +
+      'exact polynomials, not a nearest named fit. A first-order arrival simply has b₂ = a₂ = 0.',
+    // Coefficients are signed, span decades (an RLC arrives with a₂ = LC ≈
+    // 1e-10), and are link-fed first, hand-typed second — so plain compact
+    // fields with effectively-unclamped bounds, not log sliders.
+    params: [
+      { key: 'b2', label: 'b₂', value: 0, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
+      { key: 'b1', label: 'b₁', value: 0, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
+      { key: 'b0', label: 'b₀', value: 1, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
+      { key: 'a2', label: 'a₂', value: 0, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
+      { key: 'a1', label: 'a₁', value: 1, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
+      { key: 'a0', label: 'a₀', value: 1, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
+    ],
+    tf: (p) => ({ b: trimLeading([p.b2, p.b1, p.b0]), a: trimLeading([p.a2, p.a1, p.a0]) }),
+    tex: (p) => `P(s) = \\frac{${texPoly(p.b2, p.b1, p.b0)}}{${texPoly(p.a2, p.a1, p.a0)}}`,
   },
 }
 
