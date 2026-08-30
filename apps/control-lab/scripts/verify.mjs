@@ -98,6 +98,26 @@ const clickBtn = async (name) => {
   await settle()
 }
 
+/**
+ * Load a lesson by name. Lesson groups fold now; a lesson in a folded group is
+ * not clickable until its group is opened, exactly as for a person.
+ */
+const loadLesson = async (name) => {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const btn = page.locator('.preset').filter({ hasText: new RegExp(`^${esc}$`) }).first()
+  if (!(await btn.isVisible().catch(() => false))) {
+    await page.evaluate((n) => {
+      for (const d of document.querySelectorAll('details.preset-group')) {
+        const has = [...d.querySelectorAll('.preset')].some((b) => b.textContent.trim() === n)
+        if (has && !d.open) d.querySelector('summary').click()
+      }
+    }, name)
+    await page.waitForTimeout(120)
+  }
+  await btn.click()
+  await settle()
+}
+
 const plants = ['First order lag', 'Integrator', 'Second order', 'Motor position', 'Three lags', 'Unstable plant']
 const ctrls = ['Proportional', 'PI', 'PID', 'Lead']
 
@@ -116,6 +136,69 @@ for (const p of plants) {
     row.push(`${c}:${bad.length ? bad.length + '✗' : 'ok'}`)
   }
   console.log(`   ${p.padEnd(18)} ${row.join('  ')}`)
+}
+
+// ------------------------------------ 1b. every lesson loads, and stays visible
+
+console.log('\n1b. Loading every lesson through the folded groups\n')
+{
+  // The groups collapse to headers, so the lesson names live behind a fold.
+  // Collect them from the DOM rather than a hardcoded list, open each group as
+  // a person would, and require the loaded lesson to keep its group open.
+  const lessonNames = await page.evaluate(() =>
+    [...document.querySelectorAll('details.preset-group .preset')].map((b) => b.textContent.trim()),
+  )
+  if (lessonNames.length < 10) fail(`expected the full lesson list, found ${lessonNames.length}`)
+  for (const name of lessonNames) {
+    await loadLesson(name)
+    await openMath()
+    const bad = (await readChecks()).filter((r) => r.mark === '✗')
+    for (const b of bad) fail(`${name}: ✗ ${b.label} (theory ${b.theory}, measured ${b.measured})`)
+    if (await scrolls()) fail(`${name}: page scrolls`)
+    const state = await page.evaluate(() => {
+      const on = document.querySelector('details.preset-group .preset.is-on')
+      const group = on ? on.closest('details.preset-group') : null
+      return { active: !!on, open: group ? group.open : false }
+    })
+    if (!state.active) fail(`${name}: no lesson button marked active after loading`)
+    if (!state.open) fail(`${name}: the active lesson's group is folded shut`)
+    console.log(`   ${name.padEnd(34)} ${bad.length ? bad.length + '✗' : 'ok'}`)
+  }
+
+  // The active group must be impossible to fold away: click its summary and
+  // it has to stay open, because the fold must never hide where you are.
+  // (React reasserts the open attribute on its next render, so the state is
+  // read after a beat rather than synchronously off the click.)
+  await page.evaluate(() => {
+    document
+      .querySelector('details.preset-group .preset.is-on')
+      .closest('details.preset-group')
+      .querySelector('summary')
+      .click()
+  })
+  await page.waitForTimeout(150)
+  const stillOpen = await page.evaluate(() =>
+    document
+      .querySelector('details.preset-group .preset.is-on')
+      .closest('details.preset-group').open,
+  )
+  console.log(`   active group after clicking its own summary: ${stillOpen ? 'still open' : 'FOLDED'}`)
+  if (!stillOpen) fail("the active lesson's group folded away when its summary was clicked")
+
+  // An inactive group folds and unfolds freely — the fold is real, not stuck open.
+  const foldsFreely = await page.evaluate(() => {
+    const groups = [...document.querySelectorAll('details.preset-group')]
+    const idle = groups.find((g) => !g.querySelector('.preset.is-on'))
+    const before = idle.open
+    idle.querySelector('summary').click()
+    const after = idle.open
+    idle.querySelector('summary').click()
+    return after !== before
+  })
+  if (!foldsFreely) fail('an inactive lesson group did not toggle when its summary was clicked')
+
+  // Leave no lesson active so later sections start from plain plant clicks.
+  await clickBtn('First order lag')
 }
 
 // ------------------------------- 2. does the gain margin predict what happens?

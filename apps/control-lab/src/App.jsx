@@ -46,6 +46,9 @@ export default function App() {
   const [showPhase, setShowPhase] = useState(true)
   // Cleared as soon as anything is touched: the note describes one setup.
   const [lesson, setLesson] = useState(null)
+  // Which lesson groups are unfolded. The active lesson's group is always open
+  // regardless, so collapsing can never hide where you are.
+  const [openGroups, setOpenGroups] = useState(() => new Set())
 
   const plant = PLANTS[plantId]
   const ctrl = CONTROLLERS[ctrlId]
@@ -173,12 +176,35 @@ export default function App() {
             </ul>
           ) : null}
           <h2>Try this</h2>
+          {/* Grouped as a curriculum and COLLAPSED to group headers by default,
+              the same fold as Signal Lab's presets: twelve buttons were most of
+              the sidebar, and the plant and controller a lesson changes sat
+              scrolled out of sight at the moment they changed. Only the active
+              lesson's group stays open, so where-you-are survives the fold. */}
           {LESSON_GROUPS.map((g) => {
             const inGroup = LESSONS.filter((l) => l.group === g)
             if (!inGroup.length) return null
+            const holdsActive = inGroup.some((l) => l.name === lesson)
             return (
-              <div className="preset-group" key={g}>
-                <h3>{g}</h3>
+              <details
+                className="preset-group"
+                key={g}
+                open={holdsActive || openGroups.has(g)}
+                onToggle={(e) => {
+                  const next = new Set(openGroups)
+                  if (e.target.open) next.add(g)
+                  else next.delete(g)
+                  setOpenGroups(next)
+                }}
+              >
+                {/* preventDefault, not just a controlled `open`: React skips
+                    rewriting an attribute whose prop value has not changed, so
+                    a native toggle would stand and the active group WOULD fold
+                    away. Blocking the click is the only reliable pin. */}
+                <summary onClick={holdsActive ? (e) => e.preventDefault() : undefined}>
+                  {g}
+                  {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
+                </summary>
                 <div className="presets">
                   {inGroup.map((l) => (
                     <button
@@ -191,7 +217,7 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </details>
             )
           })}
           {active ? <p className="hint">{active.note}</p> : null}
