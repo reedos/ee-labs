@@ -189,7 +189,11 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
 export function useConvolutionPosition(length, resetKey) {
   const [pos, setPos] = useState(Math.floor(length / 3))
   const [playing, setPlaying] = useState(false)
+  const [speed, setSpeed] = useState(1)
   const raf = useRef(0)
+  // Fractional position accumulator, so quarter speed is genuinely a quarter
+  // rather than rounding back up to one sample per frame.
+  const acc = useRef(0)
 
   // Clamp when the buffer shrinks under us (sample-rate or span change).
   useEffect(() => {
@@ -209,22 +213,37 @@ export function useConvolutionPosition(length, resetKey) {
   useEffect(() => {
     if (!playing) return undefined
     // A constant sweep TIME rather than a constant samples-per-frame, so short
-    // and long buffers both take about six seconds to cross.
-    const step = Math.max(1, Math.round(length / 360))
+    // and long buffers both take about six seconds to cross at 1x. The speed
+    // control multiplies that.
+    const step = (length / 360) * speed
     const tick = () => {
-      setPos((p) => {
-        const next = p + step
-        if (next >= length - 1) {
-          setPlaying(false)
-          return length - 1
-        }
-        return next
-      })
+      acc.current += step
+      const whole = Math.floor(acc.current)
+      if (whole >= 1) {
+        acc.current -= whole
+        setPos((p) => {
+          const next = p + whole
+          if (next >= length - 1) {
+            setPlaying(false)
+            return length - 1
+          }
+          return next
+        })
+      }
       raf.current = requestAnimationFrame(tick)
     }
     raf.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf.current)
-  }, [playing, length])
+  }, [playing, length, speed])
 
-  return { pos, setPos, playing, setPlaying }
+  // Play resumes from a pause — but pressed AT THE END it restarts, because
+  // "press play, nothing happens, the button flicks back" reads as broken.
+  const play = () => {
+    setPos((p) => (p >= length - 1 ? 0 : p))
+    setPlaying((was) => !was)
+  }
+
+  return { pos, setPos, playing, setPlaying, play, speed, setSpeed }
 }
+
+export const CONV_SPEEDS = [0.25, 0.5, 1, 2, 4]

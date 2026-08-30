@@ -4,7 +4,7 @@ import TopBar from './components/TopBar.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
 import SpectrumCanvas from './components/SpectrumCanvas.jsx'
 import ImpulseCanvas from './components/ImpulseCanvas.jsx'
-import ConvolutionCanvas, { useConvolutionPosition } from './components/ConvolutionCanvas.jsx'
+import ConvolutionCanvas, { CONV_SPEEDS, useConvolutionPosition } from './components/ConvolutionCanvas.jsx'
 import { APERIODIC, render, rms, peak } from '@ee-labs/dsp'
 import { COLORS, ZPlaneCanvas } from '@ee-labs/ui'
 import { spectrum } from '@ee-labs/dsp'
@@ -393,11 +393,7 @@ export default function App() {
           {state.timeView === 'conv' && conv ? (
             <>
               <div className="conv-bar">
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() => scrub.setPlaying((p) => !p)}
-                >
+                <button type="button" className="ghost" onClick={scrub.play}>
                   {scrub.playing ? '⏸ pause' : '▶ play'}
                 </button>
                 <input
@@ -411,6 +407,19 @@ export default function App() {
                     scrub.setPos(Number(e.target.value))
                   }}
                 />
+                <div className="segmented sm conv-speed" role="group" aria-label="Playback speed">
+                  {CONV_SPEEDS.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={scrub.speed === v ? 'on' : ''}
+                      aria-pressed={scrub.speed === v}
+                      onClick={() => scrub.setSpeed(v)}
+                    >
+                      {v < 1 ? `${v}×`.replace('0.25', '¼').replace('0.5', '½') : `${v}×`}
+                    </button>
+                  ))}
+                </div>
               </div>
               <ConvolutionCanvas
                 x={conv.x}

@@ -245,3 +245,6 @@ button.flow-node:hover {
 }
 
 .conv-bar .ghost { white-space: nowrap; }
+
+.conv-speed { flex: 0 0 auto; }
+.conv-speed button { padding: 2px 9px; white-space: nowrap; }

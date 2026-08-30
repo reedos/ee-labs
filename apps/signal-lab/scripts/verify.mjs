@@ -553,6 +553,54 @@ console.log('\nA11y: every control has a name, every plot has a label\n')
   else console.log('   no unnamed controls, no unlabelled plots')
 }
 
+// -------------------------------- 10d. play restarts at the end, speed obeys
+
+console.log('\n10d. Convolution transport: restart at end, speed multiplier\n')
+{
+  await loadPreset('Convolution, watched')
+  const posOf = async () =>
+    parseInt((await page.locator('.conv-bar input[type=range]').inputValue()), 10)
+  const max = parseInt(await page.locator('.conv-bar input[type=range]').getAttribute('max'), 10)
+
+  // Park at the end, press play: it must restart from the left, not flick off.
+  await page.evaluate(() => {
+    const r = document.querySelector('.conv-bar input[type=range]')
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+    set.call(r, r.max)
+    r.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await settle()
+  await page.locator('.conv-bar .ghost').click()
+  await page.waitForTimeout(450)
+  const afterRestart = await posOf()
+  if (!(afterRestart > 0 && afterRestart < max * 0.6)) {
+    fail(`play at the end should restart from the left; position went to ${afterRestart}/${max}`)
+  } else {
+    console.log(`   play at the end restarted: position ${afterRestart}/${max} after 450 ms`)
+  }
+  await page.locator('.conv-bar .ghost').click() // pause
+
+  // Quarter speed advances measurably slower than 4x over the same time.
+  const advance = async (label) => {
+    await page.locator('.conv-speed button', { hasText: label }).click()
+    await page.evaluate(() => {
+      const r = document.querySelector('.conv-bar input[type=range]')
+      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+      set.call(r, 0)
+      r.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await settle()
+    await page.locator('.conv-bar .ghost').click()
+    await page.waitForTimeout(700)
+    await page.locator('.conv-bar .ghost').click()
+    return posOf()
+  }
+  const slow = await advance('¼×')
+  const fast = await advance('4×')
+  console.log(`   700 ms of play: ¼× reached ${slow}, 4× reached ${fast}`)
+  if (!(fast > slow * 4)) fail(`4x (${fast}) should outrun quarter speed (${slow}) by far`)
+}
+
 // -------------------------------------------------------------- 11. 4K fit
 
 console.log('\n11. Re-checking layout at 4K\n')
