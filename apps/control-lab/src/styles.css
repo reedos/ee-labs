@@ -103,6 +103,82 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   .preset-group h3, details.preset-group > summary { font-size: 14px; }
 }
 
+/* ---------- the feedback-loop diagram ---------- */
+.fd-open { white-space: nowrap; }
+
+.fd-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 7, 10, 0.55);
+  z-index: 40;
+}
+
+.fd-panel {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(92vw, 1400px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  padding: 10px 14px 14px;
+}
+
+.fd-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.fd-head b { font-size: 13px; }
+.fd-head span { color: var(--dim); font-size: 11.5px; flex: 1; }
+.fd-head span em { color: var(--text); font-style: normal; font-weight: 600; }
+
+.fd-scroll { overflow-x: auto; }
+
+.fd-box rect {
+  fill: var(--panel-2);
+  stroke: var(--line);
+  stroke-width: 1.2;
+}
+.fd-box[role='button'] { cursor: pointer; }
+.fd-box[role='button']:hover rect, .fd-box[role='button']:focus-visible rect { stroke: var(--accent); }
+
+.fd-label { fill: var(--text); font-size: 12px; font-weight: 600; }
+.fd-sub { fill: var(--dim); font-size: 10.5px; }
+
+.fd-sum circle { fill: var(--panel-2); stroke: var(--accent); stroke-width: 1.4; }
+.fd-sum text { fill: var(--accent); font-size: 16px; font-weight: 700; }
+
+/* NOT var(--axis), which Signal Lab's copy of this diagram uses: no stylesheet
+   in the suite defines it, the invalid var() computes to stroke:none, and the
+   wires of a wiring diagram silently do not draw. */
+.fd-wire { fill: none; stroke: var(--dim); stroke-width: 1.4; opacity: 0.85; }
+.fd-arrowhead { fill: var(--dim); }
+.fd-tap { fill: var(--dim); }
+
+/* The loop's terminals and annotations. The +/− signs are the point of the
+   whole drawing; they get the text colour, not the dim one. */
+.fd-port { fill: var(--text); font-size: 14px; font-weight: 700; font-style: italic; }
+.fd-port.is-warn { fill: var(--warn); }
+.fd-sign { fill: var(--text); font-size: 13px; font-weight: 700; }
+.fd-note { fill: var(--dim); font-size: 10px; font-style: italic; }
+
+/* The entry the step toggle currently injects, and the click that moves it. */
+.fd-entry { cursor: pointer; outline: none; }
+.fd-entry:focus-visible .fd-hit { stroke: var(--accent); stroke-dasharray: 3 3; }
+.fd-hit { fill: transparent; pointer-events: all; }
+.fd-entry:hover .fd-wire, .fd-entry:focus-visible .fd-wire { stroke: var(--accent); }
+.fd-entry.is-inject .fd-wire { stroke: var(--accent); stroke-width: 2; }
+.fd-arrowhead.is-on { fill: var(--accent); }
+.fd-entry.is-inject .fd-port, .fd-entry.is-inject .fd-note { fill: var(--accent); }
+
+/* A sidebar card the diagram just pointed at. */
+.controls section.is-flash h2 { color: var(--accent); }
+
 /* A margin that has run thin is worth seeing before you read the number. */
 .topbar-field b.warn { color: var(--warn); }
 

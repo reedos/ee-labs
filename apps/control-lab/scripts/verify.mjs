@@ -356,6 +356,82 @@ for (const view of ['Nyquist', 'Root locus', 'Step']) {
 }
 
 
+// --------------------------------------- 4b. the loop diagram, and its wiring
+
+console.log('\n4b. The loop diagram: live parameters, and the step entry wired to the toggle\n')
+{
+  // A known setup so the parameter summaries have known contents.
+  await clickBtn('Motor position')
+  await clickBtn('PI')
+  await setField('Kp', 3)
+  await setField('Ki', 0.5)
+
+  const openDiagram = async () => {
+    await page.getByRole('button', { name: '⧉ diagram' }).click()
+    await page.waitForTimeout(200)
+  }
+  await openDiagram()
+  if (!(await page.locator('.fd-panel').count())) fail('diagram: panel did not open')
+
+  // The boxes carry the CURRENT parameters, not a stock picture.
+  const svgText = await page.locator('.fd-svg').textContent()
+  for (const want of ['C(s) — PI', 'P(s) — Motor position', 'Kp 3', 'Ki 500 m', 'r − y']) {
+    if (!svgText.includes(want)) fail(`diagram: expected "${want}" in the drawing, not found`)
+  }
+  console.log('   C and P boxes carry the live controller and plant parameters')
+
+  // The injected-entry marker follows the Reference/Disturbance toggle, and
+  // clicking an entry drives the toggle — the diagram and the toggle are two
+  // views of one piece of state.
+  const injected = () => page.locator('.fd-entry.is-inject').getAttribute('aria-label')
+  if (!/reference/i.test(await injected())) fail('diagram: with Reference selected, r should be marked as the entry')
+  await page.locator('.fd-entry[aria-label*="plant input"]').click()
+  await settle()
+  if (!/plant input/i.test(await injected())) fail('diagram: clicking d should move the injection marker')
+  await page.keyboard.press('Escape')
+  await settle()
+  if (await page.locator('.fd-panel').count()) fail('diagram: Escape should close it')
+  const distOn = await page
+    .locator('.segmented.sm button.on')
+    .textContent()
+    .catch(() => '')
+  if (distOn.trim() !== 'Disturbance') fail(`diagram: clicking d should select the Disturbance step, toggle reads "${distOn}"`)
+  const heading = await page.locator('.views .view-head h2').last().textContent()
+  if (!/disturbance at the plant input/i.test(heading)) {
+    fail(`diagram: after choosing d the lower view should answer the disturbance question, heading reads "${heading}"`)
+  }
+  console.log('   clicking d in the diagram selects the Disturbance step and the plot follows')
+
+  // And back: r restores the reference step.
+  await openDiagram()
+  await page.locator('.fd-entry[aria-label*="reference"]').click()
+  await settle()
+  await page.keyboard.press('Escape')
+  await settle()
+  const refOn = await page.locator('.segmented.sm button.on').textContent()
+  if (refOn.trim() !== 'Reference') fail('diagram: clicking r should select the Reference step again')
+
+  // Clicking a box closes the diagram and points at the sidebar card.
+  await openDiagram()
+  await page.locator('.fd-box[aria-label*="plant"]').click()
+  await page.waitForTimeout(200)
+  if (await page.locator('.fd-panel').count()) fail('diagram: clicking the P box should close it')
+  console.log('   the P box hands off to the plant card in the sidebar')
+
+  // A wiring diagram whose wires do not draw is the failure Signal Lab ships
+  // today (stroke: var(--axis) with --axis defined nowhere), so the computed
+  // stroke of a wire is checked outright.
+  await openDiagram()
+  const stroke = await page
+    .locator('.fd-wire')
+    .first()
+    .evaluate((el) => getComputedStyle(el).stroke)
+  if (stroke === 'none' || stroke === '') fail(`diagram: wires have no stroke (computed "${stroke}")`)
+  console.log(`   wires actually draw (computed stroke ${stroke})`)
+  await page.keyboard.press('Escape')
+  await settle()
+}
+
 // ------------------------------------------------ A11Y. names for everything
 
 console.log('\nA11y: every control has a name, every plot has a label\n')

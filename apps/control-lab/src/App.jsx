@@ -22,6 +22,7 @@ import { stateFromLink } from './fromLink.js'
 import BodeCanvas from './components/BodeCanvas.jsx'
 import StepCanvas from './components/StepCanvas.jsx'
 import NyquistCanvas from './components/NyquistCanvas.jsx'
+import LoopDiagram from './components/LoopDiagram.jsx'
 
 const POINTS = 900
 
@@ -49,6 +50,19 @@ export default function App() {
   // Which lesson groups are unfolded. The active lesson's group is always open
   // regardless, so collapsing can never hide where you are.
   const [openGroups, setOpenGroups] = useState(() => new Set())
+  const [diagram, setDiagram] = useState(false)
+
+  // Scroll a sidebar card into view, for clicks on the diagram's boxes.
+  const reveal = (id) => {
+    const el = document.getElementById(id)
+    if (!el) return
+    // CSS scroll-behavior cannot override an explicit 'smooth' argument, so
+    // the reduced-motion preference has to be honoured here in the call.
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ block: 'nearest', behavior: still ? 'auto' : 'smooth' })
+    el.classList.add('is-flash')
+    window.setTimeout(() => el.classList.remove('is-flash'), 600)
+  }
 
   const plant = PLANTS[plantId]
   const ctrl = CONTROLLERS[ctrlId]
@@ -223,7 +237,7 @@ export default function App() {
           {active ? <p className="hint">{active.note}</p> : null}
         </section>
 
-        <section>
+        <section id="plant">
           <h2>Plant</h2>
           {PLANT_GROUPS.map((g) => {
             const inGroup = Object.entries(PLANTS).filter(([, p]) => p.group === g)
@@ -265,7 +279,7 @@ export default function App() {
           ))}
         </section>
 
-        <section>
+        <section id="controller">
           <h2>Controller</h2>
           <div className="presets">
             {Object.entries(CONTROLLERS).map(([key, c]) => (
@@ -356,6 +370,36 @@ export default function App() {
             <em>{stable ? 'closed loop settles' : 'closed loop runs away'}</em>
           </span>
         </nav>
+        <button
+          type="button"
+          className="ghost fd-open"
+          aria-expanded={diagram}
+          title="The whole loop as a block diagram — the summing junction, where the disturbance gets in, and the feedback wire that closes it"
+          onClick={() => setDiagram(true)}
+        >
+          ⧉ diagram
+        </button>
+        {diagram ? (
+          <LoopDiagram
+            plant={plant}
+            plantP={plantP}
+            ctrl={ctrl}
+            ctrlP={ctrlP}
+            stepInput={stepInput}
+            stable={stable}
+            onInject={(which) => {
+              // Choosing an entry point IS the step toggle, and the step view
+              // is where its effect shows.
+              setStepInput(which)
+              setLower('step')
+            }}
+            onReveal={(id) => {
+              setDiagram(false)
+              reveal(id)
+            }}
+            onClose={() => setDiagram(false)}
+          />
+        ) : null}
         <div className="topbar-controls">
           <span className="topbar-field">
             <span>phase margin</span>

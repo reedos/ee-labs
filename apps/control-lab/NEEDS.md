@@ -20,3 +20,15 @@ block the toggle at the source:
 Enter/Space too). `apps/signal-lab/src/components/Controls.jsx` has the same
 pattern and, presumably, the same bug — its harness never tries to fold the
 active group. Worth porting the fix and the check.
+
+## FYI for signal-lab: FlowDiagram's wires do not draw at all
+
+`apps/signal-lab/src/styles.css` styles the diagram's wires with
+`stroke: var(--axis)` — and `--axis` is defined nowhere in the repo (grep for
+`--axis:` finds nothing). An invalid `var()` computes the declaration away and
+SVG's default stroke is `none`, so the signal-path diagram renders boxes and
+arrowheads with no wires between them. Control Lab hit this by copying the
+stylesheet, switched to `var(--dim)`, and its harness now asserts the computed
+stroke of a wire outright. Signal Lab's diagram needs the same one-line fix,
+or a real `--axis` token in `packages/ui/src/base.css` if the packages agent
+prefers to mint one.
