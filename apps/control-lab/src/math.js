@@ -166,6 +166,13 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
           note: marg.gainMargin == null ? 'phase never reaches −180°' : '',
         },
         { label: 'crossover frequency', value: marg.gainCrossover ?? NaN, unit: 'Hz' },
+        // Both unit systems, always: the suite plots hertz, the textbook
+        // derivations this panel mirrors are written in radians per second.
+        {
+          label: '…as a textbook writes it',
+          value: marg.gainCrossover != null ? 2 * Math.PI * marg.gainCrossover : NaN,
+          unit: 'rad/s',
+        },
         { label: 'closed-loop poles', value: pz.poles.length },
         { label: 'in the right half plane', value: pz.poles.filter(([re]) => re > 0).length },
       ]),
@@ -331,7 +338,10 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
         ]),
         V([
           { label: 'ζ', value: second.zeta, note: second.zeta >= 1 ? 'no overshoot' : 'rings' },
-          { label: 'ωn', value: second.f0, unit: 'Hz' },
+          // ωₙ is a rad/s symbol — printing it against a Hz value was a
+          // quiet unit mismatch. Both systems, labelled as themselves.
+          { label: 'ωₙ', value: 2 * Math.PI * second.f0, unit: 'rad/s' },
+          { label: 'fₙ = ωₙ/2π', value: second.f0, unit: 'Hz' },
           { label: 'overshoot', value: second.overshoot, unit: '×' },
           { label: 'settles in', value: second.settling, unit: 's', note: 'to within 2%' },
         ]),

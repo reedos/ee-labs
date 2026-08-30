@@ -181,6 +181,21 @@ describe("the math panel's phase accounting", () => {
     expect(inertRows(build, { tau: 0.5, ki: 1 }, { tau: 1.7, ki: 3 }, 'motor + pi')).toEqual([])
   })
 
+  it('frequencies come in both unit systems: each Hz value has its rad/s twin', () => {
+    const values = rowsOf(entryFor('motor', 'p'), 'values')
+    const hz = values.find((r) => r.label === 'crossover frequency')
+    const rad = values.find((r) => r.unit === 'rad/s' && r.label.includes('textbook'))
+    expect(hz).toBeTruthy()
+    expect(rad).toBeTruthy()
+    expect(rad.value).toBeCloseTo(2 * Math.PI * hz.value, 9)
+    // ωₙ printed against a Hz value was a quiet unit mismatch; now each
+    // symbol carries its own system and the twin sits beside it.
+    const wn = values.find((r) => r.label === 'ωₙ')
+    const fn = values.find((r) => r.label.startsWith('fₙ'))
+    expect(wn.unit).toBe('rad/s')
+    expect(wn.value).toBeCloseTo(2 * Math.PI * fn.value, 9)
+  })
+
   it('the sensitivity row appears exactly where a crossover exists', () => {
     const has = (entry) =>
       rowsOf(entry, 'check').some((r) => r.label.includes('price at the crossover'))

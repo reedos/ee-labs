@@ -426,7 +426,14 @@ export default function App() {
               {marg.gainMargin == null ? '—' : `${marg.gainMarginDb.toFixed(1)} dB`}
             </b>
           </span>
-          <span className="topbar-field">
+          <span
+            className="topbar-field"
+            title={
+              marg.gainCrossover == null
+                ? 'Where the open-loop gain passes 1'
+                : `${fmt(2 * Math.PI * marg.gainCrossover, 'rad/s', 3)} — where the open-loop gain passes 1`
+            }
+          >
             <span>crossover</span>
             <b>{marg.gainCrossover == null ? '—' : `${fmtHz(marg.gainCrossover)}Hz`}</b>
           </span>
@@ -447,6 +454,8 @@ export default function App() {
               ) : (
                 <span>
                   crosses 0 dB at <b>{fmtHz(marg.gainCrossover)}Hz</b>
+                  {/* Both unit systems, always: the textbook says rad/s. */}
+                  <em className="prov"> = {fmt(2 * Math.PI * marg.gainCrossover, 'rad/s', 3)}</em>
                   <em className="prov"> with {marg.phaseMargin.toFixed(1)}° to spare</em>
                 </span>
               )}

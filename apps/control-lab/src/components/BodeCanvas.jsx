@@ -178,7 +178,7 @@ export default function BodeCanvas({
         ctx.rotate(Math.PI / 2)
         ctx.textAlign = 'center'
         ctx.font = `${Math.round(12 * k)}px ui-sans-serif, system-ui, sans-serif`
-        ctx.fillText('Phase', 0, 0)
+        ctx.fillText('Phase (°)', 0, 0)
         ctx.restore()
         return
       }

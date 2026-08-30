@@ -493,6 +493,11 @@ console.log('\n4c. The frequency axis: sticky under tuning, reframed on structur
   }
   await setField('Time constant τ', 0.5)
   console.log('   still under a small τ move, reframed after a 2.4-decade one')
+
+  // Both unit systems on the crossover: the plot speaks Hz, the textbook
+  // rad/s, and the readout must say both.
+  const openReadout = await page.locator('.views .view').first().locator('.readout').textContent()
+  if (!/rad\/s/.test(openReadout)) fail('the crossover readout should carry its rad/s twin')
 }
 
 // ------------------------------------------------ A11Y. names for everything
