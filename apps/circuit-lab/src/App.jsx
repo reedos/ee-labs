@@ -12,6 +12,7 @@ import {
 import { CIRCUITS, CIRCUIT_GROUPS, defaultsOf, transferOf } from './circuits.js'
 import { circuitMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
+import { TOLERANCES, toleranceCloud, spreadPct } from './tolerance.js'
 import Schematic from './schematics.jsx'
 import HandOver from './components/HandOver.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
@@ -23,6 +24,8 @@ export default function App() {
   const [id, setId] = useState('rcLow')
   const [params, setParams] = useState(() => defaultsOf('rcLow'))
   const [output, setOutput] = useState(CIRCUITS.rcLow.outputs[0].key)
+  // How honest the parts are. Zero means the textbook world of exact values.
+  const [tol, setTol] = useState(0)
   const [showPhase, setShowPhase] = useState(true)
   const [lower, setLower] = useState('step')
   // Which lesson is loaded, cleared as soon as anything is changed by hand: the
@@ -49,6 +52,7 @@ export default function App() {
     setParams(next.params)
     setOutput(next.output || CIRCUITS[next.id].outputs[0].key)
     setLower(next.view)
+    setTol(next.tol)
     setLesson(l.name)
   }
 
@@ -100,6 +104,16 @@ export default function App() {
   }, [metrics, second, pz])
 
   const math = useMemo(() => circuitMath(id, tf, params, output), [id, tf, params, output])
+
+  // The scatter from building this circuit 120 times with real parts.
+  const wobble = useMemo(
+    () => toleranceCloud(id, params, output, tol),
+    [id, params, output, tol],
+  )
+  const f0Nominal = metrics ? metrics.w0 / (2 * Math.PI) : second ? second.f0 : null
+  const f0Spread = wobble.any && f0Nominal ? spreadPct(wobble.f0, f0Nominal) : null
+  const qNominal = metrics && Number.isFinite(metrics.q) ? metrics.q : second ? second.q : null
+  const qSpread = wobble.any && qNominal ? spreadPct(wobble.q, qNominal) : null
 
   const gain = dcGain(tf)
   const stable = isStable(tf)
@@ -201,6 +215,37 @@ export default function App() {
               eng
             />
           ))}
+
+          {/* No part in a drawer is exact. The cloud on the pole view and the
+              ranges here are what a drawer of real parts does to this page. */}
+          <div className="field">
+            <span className="field-label" id="tol-label">
+              Part tolerance
+            </span>
+            <div className="segmented sm" role="group" aria-labelledby="tol-label">
+              {TOLERANCES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  className={tol === t.value ? 'on' : ''}
+                  aria-pressed={tol === t.value}
+                  onClick={() => setTol(t.value)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {wobble.any && f0Spread != null ? (
+            <p className="hint" data-role="tolerance-spread">
+              With these parts f₀ lands anywhere in {fmt(wobble.f0.lo, 'Hz', 3)} to{' '}
+              {fmt(wobble.f0.hi, 'Hz', 3)} (±{f0Spread.toFixed(1)}%)
+              {qSpread != null
+                ? ` and Q in ${wobble.q.lo.toPrecision(3)} to ${wobble.q.hi.toPrecision(3)} (±${qSpread.toFixed(1)}%). The square root in f₀ halves each part's error; nothing does that for Q.`
+                : '.'}{' '}
+              The poles view shows the scatter.
+            </p>
+          ) : null}
         </section>
 
         <section>
@@ -352,7 +397,11 @@ export default function App() {
           {lower === 'step' ? (
             <StepCanvas t={step.t} y={step.y} final={gain} />
           ) : (
-            <PoleZeroCanvas poles={pz.poles} zeros={pz.zeros} />
+            <PoleZeroCanvas
+              poles={pz.poles}
+              zeros={pz.zeros}
+              cloud={wobble.any ? wobble.cloud : null}
+            />
           )}
         </section>
       </main>

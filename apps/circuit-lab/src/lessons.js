@@ -107,6 +107,20 @@ export const LESSONS = [
 
   // ------------------------------------------------------- Active circuits
   {
+    group: 'Resonance',
+    name: 'Real parts wobble',
+    note:
+      'Every number on this page has assumed exact components, and no part in a drawer is. ' +
+      'This is the series RLC built 120 times from ±5% parts: the poles view shows where the ' +
+      'poles actually scatter. The square root in 1/2π√LC halves what each part can do to f₀ ' +
+      '— but L and C both contribute, so the worst corner is still about ±5%. Q has it twice ' +
+      'as bad: R, L and C all pile in with nothing halved, and the spread reaches roughly ' +
+      'double f₀’s. Ratios are fragile; geometric means are forgiving. That is why the Q of a ' +
+      'filter is the spec that costs money.',
+    patch: { circuit: 'rlcSeries', view: 'pz', tol: 0.05 },
+    claim: { tolQHarderThanF0: true },
+  },
+  {
     group: 'Active circuits',
     name: 'Why active filters exist',
     note:
@@ -162,5 +176,6 @@ export function applyLesson(lesson) {
     params: lesson.patch.params || defaultsOf(circuit),
     output: lesson.patch.output || null,
     view: lesson.patch.view || 'step',
+    tol: lesson.patch.tol || 0,
   }
 }

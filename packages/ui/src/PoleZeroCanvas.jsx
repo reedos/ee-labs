@@ -16,6 +16,7 @@ export default function PoleZeroCanvas({
   zeros = [],
   branches = null,
   highlight = null,
+  cloud = null,
   xTitle = 'Real  σ  (1/s)',
   yTitle = 'Imaginary  jω  (rad/s)',
   ariaLabel = 'Poles and zeros on the s-plane; the right half is the unstable region',
@@ -26,7 +27,7 @@ export default function PoleZeroCanvas({
       const k = area.k || 1
 
       let span = 1
-      const every = [...poles, ...zeros, ...(highlight || [])]
+      const every = [...poles, ...zeros, ...(highlight || []), ...(cloud || [])]
       for (const b of branches || []) for (const p of b) every.push(p)
       for (const [re, im] of every) {
         span = Math.max(span, Math.abs(re) * 1.4, Math.abs(im) * 1.4)
@@ -96,6 +97,20 @@ export default function PoleZeroCanvas({
         }
       }
 
+      // Where the marks scatter when the parts are real. Small dim dots,
+      // under the nominal marks, so the nominal position stays the anchor and
+      // the cloud reads as its uncertainty.
+      if (cloud) {
+        ctx.fillStyle = COLORS.trace
+        ctx.globalAlpha = 0.28
+        for (const [re, im] of cloud) {
+          ctx.beginPath()
+          ctx.arc(sx(re), sy(im), 1.8 * k, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.globalAlpha = 1
+      }
+
       const r = 7 * k
       ctx.lineWidth = 2 * k
 
@@ -135,7 +150,7 @@ export default function PoleZeroCanvas({
       }
       ctx.restore()
     },
-    [poles, zeros, branches, highlight, xTitle, yTitle],
+    [poles, zeros, branches, highlight, cloud, xTitle, yTitle],
   )
 
   return <canvas ref={ref} className="plot" role="img" aria-label={ariaLabel} />

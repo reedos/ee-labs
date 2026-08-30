@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { CIRCUITS, transferOf, defaultsOf } from './circuits.js'
 import { asDigitalFilter } from './toSignalLab.js'
+import { toleranceCloud, spreadPct } from './tolerance.js'
 import {
   magnitudeAt,
   phaseAt,
@@ -226,5 +227,27 @@ describe('the claims each lesson makes', () => {
     // The note quotes these two numbers, so they had better be these numbers.
     expect(d.f0 / 1000).toBeCloseTo(5.03, 1)
     expect(d.q).toBeCloseTo(3.16, 1)
+  })
+})
+
+// "Real parts wobble" claims Q suffers about twice as hard as f0 from the same
+// drawer of parts. The note quantifies it, so the test does too — at the
+// lesson's own circuit, tolerance and defaults.
+describe('lesson: Real parts wobble', () => {
+  it('Q spreads roughly twice as wide as f0 at the lesson settings', () => {
+    const l = LESSONS.find((x) => x.name === 'Real parts wobble')
+    expect(l).toBeTruthy()
+    const params = defaultsOf(l.patch.circuit)
+    const { f0, q } = toleranceCloud(l.patch.circuit, params, 'c', l.patch.tol)
+    const m = CIRCUITS[l.patch.circuit].metrics(params)
+    const f0Pct = spreadPct(f0, m.w0 / (2 * Math.PI))
+    const qPct = spreadPct(q, m.q)
+    // Each part's error is halved by the square root, but TWO parts
+    // contribute, so the worst corner is the full tolerance and no more.
+    expect(f0Pct).toBeLessThanOrEqual(l.patch.tol * 100 + 0.2)
+    expect(f0Pct).toBeGreaterThan(l.patch.tol * 100 * 0.5)
+    // "wobbles roughly twice as hard": between 1.5x and 3x.
+    expect(qPct / f0Pct).toBeGreaterThan(1.5)
+    expect(qPct / f0Pct).toBeLessThan(3)
   })
 })

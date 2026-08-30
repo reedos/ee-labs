@@ -220,6 +220,35 @@ const uniq = new Set(seen.values())
 if (uniq.size !== 3) fail(`the three RLC outputs produced ${uniq.size} distinct plots, not 3`)
 console.log(`   -> ${uniq.size} distinct frequency responses from one circuit`)
 
+// ---------------------------------------- 4a. real parts wobble the numbers
+
+console.log('\n4a. Tolerance: the cloud appears, the ranges are sane, exact clears it\n')
+await pick('Series RLC')
+// The lesson loads this directly, with the poles view and 5% parts.
+await pick('Real parts wobble')
+const spreadText = async () =>
+  (await page.locator('[data-role=tolerance-spread]').textContent().catch(() => '')) || ''
+const t5 = await spreadText()
+const m5 = t5.match(/±([\d.]+)%.*±([\d.]+)%/)
+if (!m5) fail(`no tolerance spread text after the wobble lesson: "${t5.slice(0, 80)}"`)
+else {
+  const f0Pct = parseFloat(m5[1])
+  const qPct = parseFloat(m5[2])
+  console.log(`   ±5% parts -> f₀ ±${f0Pct}%  Q ±${qPct}%`)
+  if (!(f0Pct > 2 && f0Pct <= 5.5)) fail(`f₀ spread ${f0Pct}% out of range for ±5% parts`)
+  if (!(qPct > f0Pct * 1.3)) fail(`Q spread ${qPct}% should exceed f₀'s ${f0Pct}% clearly`)
+}
+const withCloud = (await canvasHashes())[1]
+await page.locator('.segmented button', { hasText: 'exact' }).first().click()
+await settle()
+if ((await spreadText()) !== '') fail('spread text should clear at exact')
+if ((await canvasHashes())[1] === withCloud) fail('clearing tolerance did not redraw the poles view')
+else console.log('   exact -> cloud and ranges gone, canvas redrew')
+// The wobble lesson switched the lower pane to poles & zeros; put it back, or
+// section 5's "switching to the pole-zero view redraws" is a no-op.
+await page.getByRole('button', { name: 'Step response' }).click()
+await settle()
+
 // ------------------- 4b. Sallen–Key: Q from ratios, with no inductor anywhere
 
 console.log('\n4b. Sallen–Key: do f₀ and Q follow the component ratios?\n')
