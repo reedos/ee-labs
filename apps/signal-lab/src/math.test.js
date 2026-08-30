@@ -231,7 +231,11 @@ describe('a check must actually read something', () => {
   const perturbed = (preset, factor) => {
     const patch = preset.patch
     const state = {
-      sources: patch.sources,
+      // Source amplitudes scale with the perturbation too. The spectrum-derived
+      // context covers rows that read bins; a row measured from the TIME-domain
+      // signal - the convolution entry re-renders and re-filters it - reads the
+      // state instead, and must also be seen to move.
+      sources: patch.sources.map((x) => ({ ...x, amp: x.amp * factor })),
       blocks: patch.blocks || [],
       sampleRate: patch.sampleRate || 8000,
       fftSize: patch.fftSize || 2048,

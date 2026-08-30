@@ -468,6 +468,28 @@ export const PRESETS = [
   },
 
   {
+    group: 'FIR and the z-plane',
+    name: 'Convolution, watched',
+    note:
+      'A square through an 8-tap moving average, with the time pane switched to the ' +
+      'convolution view. Drag the scrubber or press play: the kernel rides along the input ' +
+      'FLIPPED — h[n−m], the one detail everyone trips on — and each output sample is the sum ' +
+      'of the shaded products under it. Where the window sits wholly inside a half-period the ' +
+      'average is exactly the amplitude, which is why the output has flat tops; the ramps ' +
+      'between them are the window straddling an edge, and they are exactly N−1 samples wide. ' +
+      'The first few samples ramp too — that is filter warm-up, seen for what it is: partial ' +
+      'overlap.',
+    patch: {
+      sources: [mk(1, 'square', 250, 0.8)],
+      blocks: [bk(1, 'movingavg', { taps: 8 })],
+      sampleRate: 8000,
+      timeSpanMs: 20,
+      spanCycles: 3,
+      timeView: 'conv',
+    },
+  },
+
+  {
     group: 'Nonlinearity',
     name: '4 bits',
     note:

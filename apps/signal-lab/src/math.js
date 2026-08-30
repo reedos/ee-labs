@@ -1,4 +1,5 @@
-import { designBiquad, biquadResponse } from '@ee-labs/dsp'
+import { designBiquad, biquadResponse, render } from '@ee-labs/dsp'
+import { applyChain, chainImpulse } from './dsp/chain.js'
 
 // What is actually happening, for the preset currently loaded.
 //
@@ -615,6 +616,63 @@ const ENTRIES = {
           { label: 'zeros on the circle', value: N - 1 },
           { label: 'angle between them', value: 360 / N, unit: '°' },
           { label: 'poles away from the origin', value: 0, note: 'so it cannot be unstable' },
+        ]),
+      ],
+    }
+  },
+
+  'Convolution, watched': (ctx) => {
+    const N = ctx.blocks[0] ? ctx.blocks[0].params.taps : 8
+    const fs = ctx.sampleRate
+    const src = ctx.sources[0] || { freq: 250, amp: 0.8 }
+    // Two genuinely different paths to the same sample: the chain's stateful
+    // processors, and a dot product against the kernel measured by impulse.
+    // For an LTI chain they must agree to rounding — that agreement is the
+    // entire content of the word "convolution".
+    const n = Math.max(N, Math.round(fs / src.freq / 4) - 1) // mid flat top
+    const x = render(ctx.sources, n + 1, fs, 0)
+    const y = applyChain(ctx.blocks, x, fs, 0)
+    const { h } = chainImpulse(ctx.blocks, 4 * N, fs)
+    let dot = 0
+    for (let k = 0; k < h.length && k <= n; k++) dot += h[k] * x[n - k]
+    return {
+      blocks: [
+        T('Every output sample is one number: the kernel times the recent past, summed.'),
+        F('y[n] = \sum_{k=0}^{N-1} h[k]\,x[n-k]'),
+        T(
+          'The kernel rides along the input FLIPPED — h[n−m] against m — because x[n−k] walks ' +
+            'backwards as k walks forwards. That flip is not a convention; without it the sum ' +
+            'would weight the newest sample by the oldest tap.',
+        ),
+        C([
+          {
+            label: `chain output vs the sum, at n = ${n}`,
+            predicted: dot,
+            measured: y[n],
+            tol: 1e-9,
+            abs: 1e-9,
+          },
+          {
+            label: 'on a flat top the average IS the amplitude',
+            predicted: src.amp,
+            measured: y[n],
+            tol: 0.001,
+          },
+        ]),
+        T(
+          'The first row is computed twice on purpose: once by the running filter, once as this ' +
+            'sum against the kernel measured from an impulse. Only for a linear, time-invariant ' +
+            'chain do the two agree — add a clipper and watch them separate.',
+        ),
+        V([
+          { label: 'kernel length N', value: N, unit: 'samples' },
+          { label: 'ramps between flat tops', value: N - 1, unit: 'samples' },
+          {
+            label: 'flat top needs a half-period of at least',
+            value: N,
+            unit: 'samples',
+            note: `a half-period is ${Number((fs / src.freq / 2).toPrecision(4))} here`,
+          },
         ]),
       ],
     }

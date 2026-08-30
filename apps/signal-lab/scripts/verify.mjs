@@ -472,6 +472,55 @@ console.log('\n10b. FIR: nulls follow fs/N, the window kills the Gibbs row hones
   if ((await gibbsRow())?.mark !== '✓') fail('Gibbs row did not recover when the window went back')
 }
 
+// ---------------------------------------------- 10c. the convolution view
+
+console.log('\n10c. Convolution: two code paths, one number, and a scrubber\n')
+
+{
+  await loadPreset('Convolution, watched')
+
+  const nums = async () => {
+    const r = await readout()
+    const row = (r['Time domain'] || []).join(' | ')
+    const m = row.match(/chain y\[n\]\s*(-?[\d.]+).*Σ h·x\s*(-?[\d.]+)/)
+    return m ? { chain: parseFloat(m[1]), dot: parseFloat(m[2]), row } : { row }
+  }
+
+  const first = await nums()
+  if (first.chain == null) fail(`convolution readout unreadable: ${first.row}`)
+  else if (Math.abs(first.chain - first.dot) > 1e-3) {
+    fail(`LTI chain: y[n] ${first.chain} vs Σ h·x ${first.dot} should agree`)
+  } else {
+    console.log(`   chain y[n] = ${first.chain}, Σ h·x = ${first.dot} — agree`)
+  }
+
+  // Scrub: the canvas must follow, and the two numbers must stay married.
+  const before = (await canvasHashes())[0]
+  await page.evaluate(() => {
+    const r = document.querySelector('.conv-bar input[type=range]')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+    setter.call(r, Math.floor(Number(r.max) * 0.8))
+    r.dispatchEvent(new Event('input', { bubbles: true }))
+    r.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  await settle()
+  const after = await nums()
+  if ((await canvasHashes())[0] === before) fail('scrubbing did not redraw the convolution view')
+  else if (Math.abs(after.chain - after.dot) > 1e-3) {
+    fail(`after scrubbing: y[n] ${after.chain} vs Σ h·x ${after.dot}`)
+  } else {
+    console.log(`   scrubbed to 80%: y[n] = ${after.chain}, still agrees, canvas redrew`)
+  }
+
+  // Add a clipper: the two paths must now separate and the flag must say so.
+  await page.selectOption('select.add', 'clip')
+  await settle()
+  const r2 = await readout()
+  const flagged = (r2['Time domain'] || []).some((t) => /not LTI/.test(t))
+  if (!flagged) fail('adding a clipper should raise the "not LTI" flag in the convolution view')
+  else console.log('   with a clipper in the chain: "they disagree — this chain is not LTI"')
+}
+
 // -------------------------------------------------------------- 11. 4K fit
 
 console.log('\n11. Re-checking layout at 4K\n')

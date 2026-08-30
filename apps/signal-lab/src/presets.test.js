@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { PRESETS, PRESET_GROUPS } from './presets.js'
 import { chainResponse, renderChain } from './dsp/chain.js'
-import { spectrum } from '@ee-labs/dsp'
+import { render, spectrum } from '@ee-labs/dsp'
 import { designBiquad, biquadResponse, designFir } from '@ee-labs/dsp'
-import { chainGroupDelay, chainImpulse, chainPolesZeros } from './dsp/chain.js'
+import { applyChain, chainGroupDelay, chainImpulse, chainPolesZeros } from './dsp/chain.js'
 
 // The presets are the lessons, and each note makes a claim about physics:
 // "only odd harmonics", "the peak is Q", "neither input survives". A note that
@@ -461,5 +461,63 @@ describe('preset: Zeros on the circle', () => {
       const { mag } = chainResponse(p.blocks, Float64Array.of(f), fs)
       expect(mag[0], `${f} Hz`).toBeLessThan(1e-9)
     }
+  })
+})
+
+describe('preset: Convolution, watched', () => {
+  const setup = () => {
+    const p = byName('Convolution, watched').patch
+    const n = 480 // 3 periods at 8 kHz / 250 Hz, plus room
+    const x = render(p.sources, n, p.sampleRate, 0)
+    const y = applyChain(p.blocks, x, p.sampleRate, 0)
+    const { h } = chainImpulse(p.blocks, 64, p.sampleRate)
+    return { p, x, y, h }
+  }
+
+  // The view's central claim, at every sample: the chain's stateful output IS
+  // the dot product against the kernel. Two code paths, one number.
+  it('the chain output equals the convolution sum at every sample', () => {
+    const { x, y, h } = setup()
+    for (let n = 0; n < x.length; n++) {
+      let dot = 0
+      for (let k = 0; k < h.length && k <= n; k++) dot += h[k] * x[n - k]
+      expect(y[n], `sample ${n}`).toBeCloseTo(dot, 12)
+    }
+  })
+
+  it('flat tops sit exactly at the amplitude, ramps are exactly N-1 wide', () => {
+    const { p, y } = setup()
+    const A = p.sources[0].amp
+    const N = p.blocks[0].params.taps
+    const half = 8000 / p.sources[0].freq / 2 // 16 samples per half-period
+
+    // Window wholly inside the first high half-period: samples N-1 .. half-1.
+    for (let n = N - 1; n < half; n++) expect(y[n]).toBeCloseTo(A, 12)
+    // And wholly inside the following low half-period.
+    for (let n = half + N - 1; n < 2 * half; n++) expect(y[n]).toBeCloseTo(-A, 12)
+    // The ramp between them takes exactly N-1 samples: strictly between the
+    // levels while the window straddles the edge.
+    for (let n = half; n < half + N - 1; n++) {
+      expect(Math.abs(y[n]), `ramp sample ${n}`).toBeLessThan(A)
+    }
+  })
+
+  it('breaks, visibly, for a nonlinear chain — which is the lesson', () => {
+    const p = byName('Convolution, watched').patch
+    const blocks = [
+      ...p.blocks,
+      { id: 99, type: 'clip', bypass: false, params: { threshold: 0.4 } },
+    ]
+    const x = render(p.sources, 256, p.sampleRate, 0)
+    const y = applyChain(blocks, x, p.sampleRate, 0)
+    const { h, exact } = chainImpulse(blocks, 64, p.sampleRate)
+    expect(exact).toBe(false)
+    let worst = 0
+    for (let n = 32; n < 256; n++) {
+      let dot = 0
+      for (let k = 0; k < h.length && k <= n; k++) dot += h[k] * x[n - k]
+      worst = Math.max(worst, Math.abs(y[n] - dot))
+    }
+    expect(worst).toBeGreaterThan(0.05)
   })
 })

@@ -229,3 +229,19 @@ button.flow-node:hover {
 @media (max-height: 700px) {
   .view-switch button { padding: 1px 8px; font-size: 10px; }
 }
+
+/* The convolution scrubber: one thin row between the pane header and the
+   canvas, so the two-plots-always-visible budget barely notices it. */
+.conv-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0 6px;
+}
+
+.conv-bar input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.conv-bar .ghost { white-space: nowrap; }

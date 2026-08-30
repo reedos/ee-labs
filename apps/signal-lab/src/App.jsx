@@ -4,10 +4,12 @@ import TopBar from './components/TopBar.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
 import SpectrumCanvas from './components/SpectrumCanvas.jsx'
 import ImpulseCanvas from './components/ImpulseCanvas.jsx'
+import ConvolutionCanvas, { useConvolutionPosition } from './components/ConvolutionCanvas.jsx'
 import { APERIODIC, render, rms, peak } from '@ee-labs/dsp'
 import { COLORS, ZPlaneCanvas } from '@ee-labs/ui'
 import { spectrum } from '@ee-labs/dsp'
 import {
+  applyChain,
   chainGroupDelay,
   chainImpulse,
   chainPhase,
@@ -209,6 +211,36 @@ export default function App() {
     [impulse],
   )
 
+  // The convolution view's three actors. The input starts at t = 0 with no
+  // pre-roll — deliberately, because the first N samples of partial overlap
+  // ARE the filter's warm-up, and this is the one view where showing it is the
+  // point rather than a contamination.
+  const conv = useMemo(() => {
+    if (state.timeView !== 'conv') return null
+    const x = render(state.sources, timeN, state.sampleRate, 0)
+    const { h, exact } = chainImpulse(
+      state.blocks,
+      Math.min(2048, Math.max(64, Math.ceil(state.sampleRate * 0.05))),
+      state.sampleRate,
+    )
+    const y = applyChain(state.blocks, x, state.sampleRate, 0)
+    return { x, h, y, exact }
+  }, [state.timeView, state.sources, state.blocks, timeN, state.sampleRate])
+
+  const scrub = useConvolutionPosition(timeN)
+
+  // The sum the shaded bars represent, computed HERE from the kernel — an
+  // independent path from the chain's own stateful processors. For a linear
+  // chain the two must agree to rounding; for a nonlinear one they visibly
+  // do not, and that disagreement is the readout's whole message.
+  const convDot = useMemo(() => {
+    if (!conv) return 0
+    const n = Math.min(conv.x.length - 1, scrub.pos)
+    let acc = 0
+    for (let k = 0; k < conv.h.length && k <= n; k++) acc += conv.h[k] * conv.x[n - k]
+    return acc
+  }, [conv, scrub.pos])
+
   const stats = useMemo(() => {
     let iMax = 0
     for (let i = 1; i < amps.length; i++) if (amps[i] > amps[iMax]) iMax = i
@@ -293,6 +325,11 @@ export default function App() {
                   label: 'Kernel',
                   title: 'The impulse response — the kernel the chain convolves every input with',
                 },
+                {
+                  id: 'conv',
+                  label: 'Convolution',
+                  title: 'Watch the kernel slide over the input, one output sample at a time',
+                },
               ]}
             />
             <div className="readout">
@@ -310,6 +347,21 @@ export default function App() {
                   {state.showTransient && state.blocks.length > 0 ? (
                     <span className="flag">transient shown</span>
                   ) : null}
+                </>
+              ) : state.timeView === 'conv' && conv ? (
+                <>
+                  <span>
+                    n = <b>{Math.min(conv.x.length - 1, scrub.pos)}</b>
+                  </span>
+                  <span>
+                    chain y[n] <b>{conv.y[Math.min(conv.x.length - 1, scrub.pos)].toFixed(4)}</b>
+                  </span>
+                  <span>
+                    Σ h·x <b>{convDot.toFixed(4)}</b>
+                  </span>
+                  {conv.exact ? null : (
+                    <span className="flag warn">they disagree — this chain is not LTI</span>
+                  )}
                 </>
               ) : (
                 <>
@@ -330,7 +382,37 @@ export default function App() {
               )}
             </div>
           </div>
-          {state.timeView === 'impulse' && impulse ? (
+          {state.timeView === 'conv' && conv ? (
+            <>
+              <div className="conv-bar">
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => scrub.setPlaying((p) => !p)}
+                >
+                  {scrub.playing ? '⏸ pause' : '▶ play'}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={timeN - 1}
+                  value={Math.min(timeN - 1, scrub.pos)}
+                  aria-label="Output sample n"
+                  onChange={(e) => {
+                    scrub.setPlaying(false)
+                    scrub.setPos(Number(e.target.value))
+                  }}
+                />
+              </div>
+              <ConvolutionCanvas
+                x={conv.x}
+                h={conv.h}
+                y={conv.y}
+                pos={scrub.pos}
+                exact={conv.exact}
+              />
+            </>
+          ) : state.timeView === 'impulse' && impulse ? (
             <ImpulseCanvas
               h={impulse.h}
               sampleRate={state.sampleRate}
