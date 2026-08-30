@@ -41,7 +41,7 @@ export function agrees({ predicted, measured, tol = 0.02, abs = 0 }) {
   return Math.abs(measured - predicted) <= slack
 }
 
-function Row({ label, predicted, measured, unit = '', tol = 0.02, abs = 0 }) {
+function Row({ label, predicted, measured, unit = '', tol = 0.02, abs = 0, unchecked = null, mark = '' }) {
   const ok = agrees({ predicted, measured, tol, abs })
   const fmt = (v) =>
     !Number.isFinite(v)
@@ -53,8 +53,14 @@ function Row({ label, predicted, measured, unit = '', tol = 0.02, abs = 0 }) {
     <tr>
       <th scope="row">{label}</th>
       <td>{fmt(predicted)}</td>
-      <td>{fmt(measured)}</td>
-      <td className={ok ? 'agree' : 'disagree'}>{ok ? '✓' : '✗'}</td>
+      <td>{unchecked ? '—' : fmt(measured)}</td>
+      {unchecked ? (
+        <td className="unchecked" title={unchecked}>
+          {mark}
+        </td>
+      ) : (
+        <td className={ok ? 'agree' : 'disagree'}>{ok ? '✓' : '✗'}</td>
+      )}
       <td className="unit">{unit}</td>
     </tr>
   )
@@ -62,7 +68,18 @@ function Row({ label, predicted, measured, unit = '', tol = 0.02, abs = 0 }) {
 
 export function Check({ rows }) {
   if (!rows || !rows.length) return null
+  // A row the current settings make unmeasurable is footnoted rather than
+  // marked wrong. The theory has not stopped holding; this frame just cannot
+  // see it, and saying so is more use than a cross.
+  const notes = []
+  for (const r of rows) {
+    if (r.unchecked && !notes.includes(r.unchecked)) notes.push(r.unchecked)
+  }
+  const marked = rows.map((r) =>
+    r.unchecked ? { ...r, mark: `[${notes.indexOf(r.unchecked) + 1}]` } : r,
+  )
   return (
+    <>
     <table className="maths-check">
       <thead>
         <tr>
@@ -74,11 +91,19 @@ export function Check({ rows }) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((r, i) => (
+        {marked.map((r, i) => (
           <Row key={i} {...r} />
         ))}
       </tbody>
     </table>
+    {notes.length ? (
+      <ol className="maths-notes">
+        {notes.map((n, i) => (
+          <li key={i}>{n}</li>
+        ))}
+      </ol>
+    ) : null}
+    </>
   )
 }
 

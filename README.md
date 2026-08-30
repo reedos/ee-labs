@@ -17,7 +17,7 @@ the tool just measured.
 ```
 npm install
 npm run dev        # http://localhost:1421
-npm test           # 128 tests
+npm test           # 133 tests
 npm run build
 ```
 
@@ -121,6 +121,21 @@ preset and measures its claim, and `src/maths.test.js` checks that every formula
 typesets and that **every predicted number the panel prints agrees with the measurement**
 — using the same predicate the panel itself uses to draw its tick or cross, so the test
 and the page cannot disagree about what "agrees" means.
+
+### When a claim stops being checkable
+
+The panel reads live state, so one slider can invalidate a comparison that held when
+the preset loaded. Raise a 250 Hz square to 1 kHz and its 5th harmonic is above Nyquist —
+there is no line left to measure. Move it to 400 Hz and the harmonics no longer land on
+bin centres, so the window reads their peaks up to 1.4 dB low. Neither case means the
+formula is wrong.
+
+So each comparison states its own preconditions — below Nyquist, a whole number of
+samples per period, centred on a bin — and when one fails the row is footnoted with the
+reason instead of marked with a cross. `maths.test.js` sweeps frequency, sample rate and
+FFT size across those presets and requires every row to be either correct or explicitly
+unmeasurable, and separately requires that the escape hatch is not being used everywhere:
+a panel that checked nothing would pass the first test and teach nothing.
 
 This is not ceremony. Three things were wrong before those tests existed:
 

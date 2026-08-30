@@ -917,3 +917,15 @@ select {
   .maths-check { font-size: 15px; }
   .maths-check thead th, .maths-caption { font-size: 14px; }
 }
+
+.maths-check .unchecked { color: var(--dim); }
+.maths-notes {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.maths-notes li { margin-bottom: 3px; }
+@media (min-width: 2400px) { .maths-notes { font-size: 12px; } }
+@media (min-width: 3400px) { .maths-notes { font-size: 14px; } }

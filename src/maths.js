@@ -17,6 +17,39 @@ const C = (rows) => ({ kind: 'check', rows })
 /** Amplitude of a discrete square/triangle harmonic, including the sampling correction. */
 const discreteBoost = (k, N) => (k * Math.PI) / N / Math.sin((k * Math.PI) / N)
 
+// A predicted harmonic amplitude is only comparable against what is on screen
+// when three things hold, and one slider can break any of them. When that
+// happens the honest answer is to name the condition that broke — not to print
+// a cross against a formula that is still perfectly correct.
+//
+//   1. The harmonic is below Nyquist. Above it there is no line to read, and
+//      asking for one returns whatever happens to sit at the end of the axis.
+//   2. f_s/f_0 is a whole number. The closed form sums a fixed number of
+//      samples per period; with 13.33 of them it does not apply at all.
+//   3. The harmonic sits on a bin centre. Otherwise the window straddles two
+//      bins and reads the peak up to 1.4 dB low — scalloping loss, the same
+//      effect the leakage preset exists to show.
+const NOTE_ALIASED =
+  'Above Nyquist: this harmonic has folded back onto a lower bin, so there is no line here to measure.'
+const NOTE_NON_INTEGER =
+  'fₛ/f₀ is not a whole number of samples per period, so the sampled closed form does not apply.'
+const NOTE_OFF_BIN =
+  'Not centred on an FFT bin, so the window reads this peak low — scalloping loss, not a wrong prediction.'
+const NOTE_COARSE =
+  'Fewer than 16 samples per period: the sampled waveform’s own correction differs between these two harmonics and skews the ratio away from the continuous law.'
+
+function harmonicCheck(ctx, k) {
+  const f0 = ctx.sourceFreq
+  const f = k * f0
+  const N = ctx.sampleRate / f0
+  const binHz = ctx.sampleRate / ctx.fftSize
+  if (!(f0 > 0)) return NOTE_NON_INTEGER
+  if (f >= ctx.sampleRate / 2) return NOTE_ALIASED
+  if (Math.abs(N - Math.round(N)) > 1e-9) return NOTE_NON_INTEGER
+  if (Math.abs(f / binHz - Math.round(f / binHz)) > 1e-6) return NOTE_OFF_BIN
+  return null
+}
+
 const ENTRIES = {
   'Single tone': () => ({
     blocks: [
@@ -41,6 +74,7 @@ const ENTRIES = {
       predicted: (4 / (k * Math.PI)) * discreteBoost(k, N),
       measured: ctx.at(k * f0),
       tol: 0.05,
+      unchecked: harmonicCheck(ctx, k),
     }))
     // Predicted exactly zero, so a relative tolerance cannot judge it. -80 dB
     // against a fundamental of 1.27 is unambiguously absent; what is actually
@@ -50,6 +84,7 @@ const ENTRIES = {
       predicted: 0,
       measured: ctx.at(2 * f0),
       abs: 1e-4,
+      unchecked: harmonicCheck(ctx, 2),
     })
     return {
       blocks: [
@@ -68,6 +103,12 @@ const ENTRIES = {
             'the fundamental, 4% by the fifth:',
         ),
         F('\\hat{A}_k = \\frac{4A}{k\\pi}\\cdot\\frac{k\\pi/N}{\\sin(k\\pi/N)}, \\qquad N = f_s/f_0'),
+        T(
+          `At ${f0} Hz there are ${Number(N.toFixed(3))} samples per period, and only ` +
+            `harmonics below ${ctx.sampleRate / 2} Hz get a line of their own. Anything above ` +
+            'that has folded back and is already counted inside the lines below — which is why ' +
+            'the remaining values still match while the higher harmonics have no row.',
+        ),
         C(rows),
       ],
     }
@@ -93,9 +134,19 @@ const ENTRIES = {
         C([
           {
             label: 'fundamental / 3rd',
-            predicted: ctx.sourceType === 'triangle' ? 9 : ctx.sourceType === 'square' ? 3 : 3,
+            predicted: ctx.sourceType === 'triangle' ? 9 : 3,
             measured: ctx.at(f0) / (ctx.at(3 * f0) || 1e-12),
             tol: 0.15,
+            // Two different frequencies, so scalloping does not divide out —
+            // both have to be cleanly measurable — and 3 and 9 are limits of
+            // the CONTINUOUS series. With few samples per period the sampled
+            // wave's own (k(pi)/N)/sin(k(pi)/N) correction differs between the
+            // fundamental and the third and skews the ratio: 20% out for a
+            // square at eight samples per period, 35% for a triangle.
+            unchecked:
+              harmonicCheck(ctx, 1) ||
+              harmonicCheck(ctx, 3) ||
+              (ctx.sampleRate / f0 < 16 ? NOTE_COARSE : null),
           },
         ]),
       ],
@@ -252,6 +303,9 @@ const ENTRIES = {
         const f = (ctx.sourceFreq || 250) * k
         rows.push({
           label: `|H| at ${f} Hz`,
+          // Numerator and denominator are the same bin of the same window, so
+          // scalloping divides straight out and only Nyquist can spoil this.
+          unchecked: f >= ctx.sampleRate / 2 ? NOTE_ALIASED : null,
           predicted: biquadResponse(co, f, ctx.sampleRate),
           measured: ctx.dryAt ? ctx.at(f) / (ctx.dryAt(f) || 1e-12) : NaN,
           tol: 0.08,
