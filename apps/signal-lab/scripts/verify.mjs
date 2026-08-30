@@ -601,6 +601,55 @@ console.log('\n10d. Convolution transport: restart at end, speed multiplier\n')
   if (!(fast > slow * 4)) fail(`4x (${fast}) should outrun quarter speed (${slow}) by far`)
 }
 
+// ------------------- 10e. type switching in place, and the order control
+
+console.log('\n10e. Block type switch and the order select\n')
+
+{
+  await loadPreset('Resonance is Q')
+  await expandBlocks()
+  await openAllMath()
+
+  // The note says: switch the block to band-pass and the peak pins at 0 dB.
+  // That used to mean delete-and-re-add; now it is the card's own select.
+  await page.locator('.block select[aria-label="Change block type"]').first().selectOption('bandpass')
+  await settle()
+  await openAllMath()
+  const rows = await readChecks()
+  const pinned = rows.find((r) => r.label.includes('|H| at f'))
+  if (!pinned) fail('after switching to band-pass: no corner identity row')
+  else if (pinned.mark !== '✓' && pinned.mark !== '✓') {
+    fail(`band-pass corner row not ✓: ${pinned.label} ${pinned.mark}`)
+  } else {
+    console.log(`   switched to band-pass in place: ${pinned.label} -> ${pinned.mark} (pinned at 1)`)
+  }
+  // And the freq/Q settings survived the switch.
+  const cutoffVal = await page.getByRole('spinbutton', { name: 'Centre' }).first().inputValue()
+  console.log(`   centre carried over: ${cutoffVal}`)
+
+  // Back to low-pass, then the order select.
+  await page.locator('.block select[aria-label="Change block type"]').first().selectOption('lowpass')
+  await settle()
+  const qBefore = await page.getByRole('spinbutton', { name: 'Q (resonance)' }).count()
+  await page.locator('.block select').nth(1).selectOption('4')
+  await settle()
+  const qAfter = await page.getByRole('spinbutton', { name: 'Q (resonance)' }).count()
+  const summaryTxt = await page.locator('.flow-node', { hasText: 'Low-pass' }).first().textContent()
+  console.log(`   order 4: Q field ${qBefore} -> ${qAfter}; flow reads "${summaryTxt.trim()}"`)
+  if (qAfter !== 0) fail('order 4 should hide the Q knob — Butterworth chooses the Qs')
+  await openAllMath()
+  const bad4 = (await readChecks()).filter((r) => r.mark === '✗')
+  for (const b of bad4) fail(`order 4: ✗ ${b.label} (${b.theory} vs ${b.measured})`)
+  if (!bad4.length) console.log('   order-4 Butterworth panel: every check ✓ (corner at −3.01 dB)')
+
+  await page.locator('.block select').nth(1).selectOption('1')
+  await settle()
+  await openAllMath()
+  const bad1 = (await readChecks()).filter((r) => r.mark === '✗')
+  for (const b of bad1) fail(`order 1: ✗ ${b.label} (${b.theory} vs ${b.measured})`)
+  if (!bad1.length) console.log('   order-1 one-pole panel: every check ✓')
+}
+
 // -------------------------------------------------------------- 11. 4K fit
 
 console.log('\n11. Re-checking layout at 4K\n')

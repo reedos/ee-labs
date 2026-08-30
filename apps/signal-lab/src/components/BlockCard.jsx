@@ -2,7 +2,7 @@ import React from 'react'
 import { NumField } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { blockMath } from '../math-parts.js'
-import { BLOCK_TYPES, resolve } from '../dsp/blocks.js'
+import { BLOCK_GROUPS, BLOCK_TYPES, resolve } from '../dsp/blocks.js'
 
 /**
  * One block in the chain. Collapsed it is a 30px summary row; expanded it renders
@@ -67,6 +67,38 @@ export default function BlockCard({
 
       {open && (
         <div className="block-body" id={`bb-${block.id}`}>
+          {/* Change what this block IS, in place. "Switch the block to
+              band-pass" used to mean delete-and-re-add; a lesson that says
+              "try it as a band-pass" should be one select away. Parameters the
+              two types share — cutoff, Q — survive the change. */}
+          <label className="field">
+            <span className="field-label">Block type</span>
+            <select
+              value={block.type}
+              aria-label="Change block type"
+              onChange={(e) => {
+                const type = e.target.value
+                const next = BLOCK_TYPES[type]
+                const params = { ...next.defaults }
+                for (const key of Object.keys(params)) {
+                  if (key in block.params) params[key] = block.params[key]
+                }
+                onChange({ ...block, type, params })
+              }}
+            >
+              {BLOCK_GROUPS.map((g) => (
+                <optgroup key={g} label={g}>
+                  {Object.entries(BLOCK_TYPES)
+                    .filter(([, d]) => d.group === g)
+                    .map(([t, d]) => (
+                      <option key={t} value={t}>
+                        {d.label}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
           {/* What this block does, in a sentence, where someone meeting it for
               the first time will actually look: inside the block itself. */}
           {def.hint ? <p className="block-hint">{def.hint}</p> : null}
@@ -75,6 +107,7 @@ export default function BlockCard({
             getEntry={() => blockMath(block, ctx)}
           />
           {def.params.map((p) => {
+            if (p.when && !p.when(block.params)) return null
             if (p.kind === 'select') {
               return (
                 <label className="field" key={p.key}>

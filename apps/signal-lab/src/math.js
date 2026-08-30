@@ -76,6 +76,44 @@ const ENTRIES = {
     ],
   }),
 
+  'Sources simply add': (ctx) => {
+    const [s1, s2] = ctx.sources
+    return {
+      blocks: [
+        T('Adding signals is exact, sample by sample, and the Fourier transform is linear:'),
+        F(
+          'x[n] = x_1[n] + x_2[n] \\;\\Longrightarrow\\; X(f) = X_1(f) + X_2(f)',
+        ),
+        T(
+          'So each line in the spectrum sits at its own source’s amplitude, untouched by the ' +
+            'other — measured here, not assumed. This is the property every linear block ' +
+            'preserves and every nonlinear one destroys.',
+        ),
+        C([
+          {
+            label: `line at ${sig(s1.freq, 4)} Hz = source 1’s amplitude`,
+            predicted: s1.amp,
+            measured: ctx.at(s1.freq),
+            tol: 0.03,
+          },
+          {
+            label: `line at ${sig(s2.freq, 4)} Hz = source 2’s amplitude`,
+            predicted: s2.amp,
+            measured: ctx.at(s2.freq),
+            tol: 0.03,
+          },
+        ]),
+        V([
+          {
+            label: 'peak of the summed waveform can reach',
+            value: s1.amp + s2.amp,
+            note: 'when the crests align — amplitudes add in time as well',
+          },
+        ]),
+      ],
+    }
+  },
+
   'Square = odd harmonics': (ctx) => {
     const f0 = ctx.sourceFreq || 250
     const N = ctx.sampleRate / f0
@@ -347,20 +385,44 @@ const ENTRIES = {
       // different code paths — the Q setting against the RBJ design — but it
       // would not be checking anything the reader can see, and a row whose
       // "measured" side is invisible is halfway to a tautology already.
+      //
+      // And the prediction follows the block's OWN controls — the note tells
+      // the reader to switch the type to band-pass, and the order select is
+      // three lines below the Q. Each variant is a different true claim, not
+      // the second-order one marked wrong.
       const peak = ctx.respAt(b.params.freq)
+      const order = Number(b.params.order ?? 2)
+      const cornered = (b.type === 'lowpass' || b.type === 'highpass') && order !== 2
+      const expect =
+        b.type === 'bandpass'
+          ? { v: 1, why: 'band-pass: pinned at 1 whatever Q says — Q sets the width here' }
+          : b.type === 'notch'
+            ? { v: 0, why: 'notch: exactly zero at the centre', abs: 0.02 }
+            : cornered
+              ? {
+                  v: Math.SQRT1_2,
+                  why:
+                    order === 1
+                      ? 'order 1: one pole cannot resonate — the corner sits at −3.01 dB'
+                      : 'order 4 Butterworth: −3.01 dB at the corner, whatever the order',
+                }
+              : { v: b.params.q, why: null }
       rows.push({
-        label: 'peak |H| at cutoff',
-        predicted: b.params.q,
+        label: expect.why ? `|H| at the corner — ${expect.why}` : 'peak |H| at cutoff',
+        predicted: expect.v,
         measured: peak,
         tol: 0.02,
+        abs: expect.abs || 0,
       })
-      rows.push({
-        label: 'peak in dB',
-        predicted: 20 * Math.log10(b.params.q),
-        measured: 20 * Math.log10(peak),
-        unit: 'dB',
-        tol: 0.05,
-      })
+      if (!expect.why) {
+        rows.push({
+          label: 'peak in dB',
+          predicted: 20 * Math.log10(b.params.q),
+          measured: 20 * Math.log10(peak),
+          unit: 'dB',
+          tol: 0.05,
+        })
+      }
     }
     return {
       blocks: [
@@ -649,7 +711,7 @@ const ENTRIES = {
     return {
       blocks: [
         T('Every output sample is one number: the kernel times the recent past, summed.'),
-        F('y[n] = \sum_{k=0}^{N-1} h[k]\,x[n-k]'),
+        F('y[n] = \\sum_{k=0}^{N-1} h[k]\\,x[n-k]'),
         T(
           'The kernel rides along the input FLIPPED — h[n−m] against m — because x[n−k] walks ' +
             'backwards as k walks forwards. That flip is not a convention; without it the sum ' +

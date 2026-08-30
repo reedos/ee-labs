@@ -81,13 +81,37 @@ export const PRESETS = [
   },
   {
     group: 'Signals and Fourier',
+    name: 'Sources simply add',
+    note:
+      'Two tones, nothing else. The scope shows their sample-by-sample sum — a shape neither ' +
+      'has alone — while the spectrum shows two clean lines, each at exactly its own source’s ' +
+      'amplitude, as if the other were not there. That is superposition, and it is why the ' +
+      'sidebar can treat sources as independent: adding signals adds spectra, line by line. ' +
+      'Untick one source and the other’s line does not move. It survives every LINEAR block ' +
+      'too — filter this pair and each line is scaled by |H| at its own frequency — and it is ' +
+      'precisely what nonlinear blocks break: see "Two tones, one nonlinearity", where a ' +
+      'clipper makes this pair breed children at new frequencies.',
+    patch: {
+      sources: [mk(1, 'sine', 300, 0.7), mk(2, 'sine', 1800, 0.4)],
+      sampleRate: 8000,
+      timeSpanMs: 20,
+      spanCycles: 6,
+    },
+  },
+  {
+    group: 'Signals and Fourier',
     name: 'Beating',
     note:
-      'Two tones 5 Hz apart. The spectrum shows two lines; the scope shows one tone whose ' +
-      'envelope pulses at the difference. Same signal, two truths.',
+      'Two tones 5 Hz apart. The spectrum shows two lines — the axis is zoomed to 500 Hz and ' +
+      'the frame stretched to 8192 samples, because telling 250 from 255 takes both: a long ' +
+      'enough look (bins under 1 Hz) and a close enough one (at full width the pair is one ' +
+      'pixel). The scope shows the other truth: one tone whose envelope pulses at the 5 Hz ' +
+      'difference. Same signal, two descriptions.',
     patch: {
       sources: [mk(1, 'sine', 250, 0.5), mk(2, 'sine', 255, 0.5)],
       sampleRate: 8000,
+      fftSize: 8192,
+      specMax: 500,
       timeSpanMs: 200,
       spanCycles: 50,
     },
@@ -174,11 +198,15 @@ export const PRESETS = [
     group: 'Filters',
     name: 'Resonance is Q',
     note:
-      "White noise contains every frequency at once, so it paints the filter's shape directly — " +
-      'the orange trace and the blue curve are the same shape. For a low-pass the peak height ' +
-      'at the cutoff IS Q: at Q=10 it stands exactly 20 dB above the flat part. Drag Q and ' +
-      'watch it track. (Switch the block to band-pass and the peak stays pinned at 0 dB however ' +
-      'hard you drag — there Q sets the width instead.)',
+      'The title is the claim, literally: the RESONANCE — that peak standing at the cutoff — ' +
+      'has height exactly equal to Q. Not proportional to it; equal. At Q=10 it stands 20 dB ' +
+      '(×10) above the flat passband; drag Q and watch the peak BE the number. The source is ' +
+      'white noise on purpose: it holds every frequency equally, so the spectrum paints the ' +
+      'whole filter shape at once and the orange trace lies on the blue curve. Then open the ' +
+      'block and use its type select to switch it to band-pass: the peak stays pinned at 0 dB ' +
+      'however hard you drag, because a band-pass is normalized to 1 at its centre — there Q ' +
+      'sets the WIDTH instead. Same knob, two meanings; the low-pass is where peak height and ' +
+      'Q are the same thing.',
     patch: {
       sources: [mk(1, 'noise', 100, 0.6)],
       blocks: [bk(1, 'lowpass', { freq: 800, q: 10 })],
@@ -214,7 +242,9 @@ export const PRESETS = [
       'one with its power button and watch the curve halve its slope. (It also steepens near ' +
       '4 kHz for a separate reason: a digital filter has a zero at Nyquist that the textbook ' +
       'analogue prototype does not.) Two sections is a 4th-order filter — but not a 4th-order ' +
-      'Butterworth, which needs a different Q in each. See "Order is a choice".',
+      'Butterworth, which needs a different Q in each. See "Order is a choice". Noise is the ' +
+      'source because it probes every frequency at once — the doubling shows across the whole ' +
+      'curve, not at one point.',
     patch: {
       sources: [mk(1, 'noise', 100, 0.6)],
       blocks: [
@@ -229,11 +259,13 @@ export const PRESETS = [
     group: 'Filters',
     name: 'Order is a choice',
     note:
-      'Every filter block here is second order — a biquad — but that is this tool\'s choice, not ' +
-      'a law. Order is set by how many sections you cascade, and each order adds about 6 dB per ' +
-      'octave. These two make a real 4th-order Butterworth, and the Qs are 0.541 and 1.307, NOT ' +
-      '0.707 twice. Set them both to 0.707: still 4th order, still the same far slope, but the ' +
-      'corner sags from −3 dB to −6, because a Butterworth needs a particular Q per section.',
+      'These two cascaded sections make a real 4th-order Butterworth: the Qs are 0.541 and ' +
+      '1.307, NOT 0.707 twice. Set them both to 0.707 — still 4th order, still the same far ' +
+      'slope, but the corner sags from −3 dB to −6, because a Butterworth needs a particular ' +
+      'Q per section. The low-pass block also has an Order select now: bypass one section ' +
+      'and set the other to 4th for this exact Butterworth built in — or to 1st, one bare ' +
+      'pole that cannot resonate at all. The source is noise so the whole curve is measured ' +
+      'at once; a single tone would only probe one point of it.',
     patch: {
       sources: [mk(1, 'noise', 100, 0.6)],
       blocks: [

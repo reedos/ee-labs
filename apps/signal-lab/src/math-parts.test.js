@@ -166,3 +166,43 @@ describe('block math', () => {
     }
   })
 })
+
+// Malformed TeX with a swallowed backslash ("rac{1}{2}", a literal tab) still
+// TYPESETS — KaTeX renders the wreckage as ordinary letters without throwing —
+// so the strict-mode test cannot see it. Control characters can only get into
+// a formula by that route, so their absence is the checkable proxy.
+describe('formulas contain no mangled escapes', () => {
+  it('no control characters or orphaned frac/tan/cos in any block formula', () => {
+    const bad = []
+    for (const type of Object.keys(BLOCK_TYPES)) {
+      const variants = [{}]
+      if (type === 'lowpass' || type === 'highpass') {
+        variants.push({ order: '1' }, { order: '4' })
+      }
+      for (const over of variants) {
+        const b = makeBlockRecord(type, 1)
+        b.params = { ...b.params, ...over }
+        const entry = blockMath(b, CTX)
+        for (const blk of entry.blocks) {
+          if (blk.kind !== 'formula') continue
+          if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(blk.tex)) {
+            bad.push(`${type} ${JSON.stringify(over)}: control char in "${blk.tex.slice(0, 50)}"`)
+          }
+        }
+      }
+    }
+    expect(bad.join('\n  ')).toBe('')
+  })
+
+  it('order-1 and order-4 panels check out against their own measurements', () => {
+    const bad = []
+    for (const mode of ['lowpass', 'highpass']) {
+      for (const order of ['1', '4']) {
+        const b = makeBlockRecord(mode, 1)
+        b.params = { ...b.params, freq: 800, order }
+        bad.push(...checkFailures(blockMath(b, CTX), `${mode} order ${order}`))
+      }
+    }
+    expect(bad.join('\n  ')).toBe('')
+  })
+})

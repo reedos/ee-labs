@@ -521,3 +521,51 @@ describe('preset: Convolution, watched', () => {
     expect(worst).toBeGreaterThan(0.05)
   })
 })
+
+describe('preset: Sources simply add', () => {
+  it('each spectral line sits at its own source amplitude, with and without the other', () => {
+    const both = run('Sources simply add')
+    const p = byName('Sources simply add').patch
+    expect(both.at(300)).toBeCloseTo(0.7, 1)
+    expect(both.at(1800)).toBeCloseTo(0.4, 1)
+    // Superposition, tested as the note states it: remove one source and the
+    // other's line does not move.
+    const solo = run('Sources simply add', {
+      sources: p.sources.filter((s) => s.freq === 300),
+    })
+    expect(solo.at(300)).toBeCloseTo(both.at(300), 3)
+  })
+
+  it('survives a linear block: each line scales by |H| at its own frequency', () => {
+    const p = byName('Sources simply add').patch
+    const blocks = [{ id: 9, type: 'lowpass', bypass: false, params: { freq: 700, q: 0.707, gainDb: 0, order: '2' } }]
+    const { mag } = chainResponse(blocks, Float64Array.of(300, 1800), 8000)
+    const filtered = run('Sources simply add', { blocks })
+    expect(filtered.at(300)).toBeCloseTo(0.7 * mag[0], 1)
+    expect(filtered.at(1800)).toBeCloseTo(0.4 * mag[1], 1)
+  })
+})
+
+describe('preset: Beating', () => {
+  // The note claims the spectrum shows TWO lines. At the old 2048-point frame
+  // the tones were 1.3 bins apart and genuinely merged into one — the claim
+  // was false on screen, and Reed caught it. At 8192 points the bins are
+  // 0.98 Hz and the pair resolves.
+  it('genuinely resolves the two tones', () => {
+    const { freqs, amps } = run('Beating')
+    const at = (f) => {
+      let bi = 0
+      for (let i = 1; i < freqs.length; i++) {
+        if (Math.abs(freqs[i] - f) < Math.abs(freqs[bi] - f)) bi = i
+      }
+      return amps[bi]
+    }
+    const p250 = at(250)
+    const p255 = at(255)
+    const dip = at(252.5)
+    expect(p250).toBeGreaterThan(0.3)
+    expect(p255).toBeGreaterThan(0.3)
+    // A real valley between two real peaks — not one merged blob.
+    expect(dip).toBeLessThan(Math.min(p250, p255) * 0.7)
+  })
+})

@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { BLOCK_TYPES, makeBlockRecord } from './blocks.js'
 import { applyChain, chainResponse, chainSettle, renderChain, runChain } from './chain.js'
-import { render, rms, peak } from '@ee-labs/dsp'
+import { render, rms, peak, butterworthQs, biquadResponse, designBiquad } from '@ee-labs/dsp'
 import { spectrum } from '@ee-labs/dsp'
-import { designBiquad, biquadResponse } from '@ee-labs/dsp'
 
 const SR = 8000
 const N = 4096 // 1.953125 Hz/bin
@@ -436,6 +435,92 @@ describe('registry', () => {
   it('every type produces a summary string', () => {
     for (const [type, def] of Object.entries(BLOCK_TYPES)) {
       expect(typeof def.summary(def.defaults), type).toBe('string')
+    }
+  })
+})
+
+describe('filter order', () => {
+  const FS2 = 8000
+  const respOf = (over, f) =>
+    BLOCK_TYPES.lowpass.response({ freq: 500, q: Math.SQRT1_2, gainDb: 0, ...over }, f, FS2)
+
+  it('order 1: exactly -3.01 dB at the cutoff, 6 dB per octave beyond', () => {
+    expect(respOf({ order: '1' }, 500)).toBeCloseTo(Math.SQRT1_2, 6)
+    // Far above the corner each octave costs x2 (until Nyquist warping bites).
+    const r1 = respOf({ order: '1' }, 1200)
+    const r2 = respOf({ order: '1' }, 2400)
+    expect(r1 / r2).toBeGreaterThan(1.85)
+    expect(r1 / r2).toBeLessThan(2.6)
+  })
+
+  it('order 4: still exactly -3.01 dB at the cutoff — the Butterworth signature', () => {
+    expect(respOf({ order: '4' }, 500)).toBeCloseTo(Math.SQRT1_2, 6)
+    // ...which two identical 0.707 sections do NOT give: they sag to -6.02.
+    const twice = Math.pow(respOf({ order: '2', q: Math.SQRT1_2 }, 500), 2)
+    expect(twice).toBeCloseTo(0.5, 6)
+  })
+
+  it('order 4 equals the product of the two RBJ sections with Butterworth Qs', () => {
+    const [q1, q2] = butterworthQs(4)
+    for (const f of [100, 500, 900, 2000]) {
+      const want =
+        biquadResponse(designBiquad({ mode: 'lowpass', freq: 500, q: q1 }, FS2), f, FS2) *
+        biquadResponse(designBiquad({ mode: 'lowpass', freq: 500, q: q2 }, FS2), f, FS2)
+      expect(respOf({ order: '4' }, f)).toBeCloseTo(want, 12)
+    }
+  })
+
+  it('rolloff doubles with each doubling of order: 6, 12, 24 dB per octave', () => {
+    // Measured well above the corner as dB lost from f to 2f.
+    const octave = (order) =>
+      20 * Math.log10(respOf({ order }, 1000) / respOf({ order }, 2000))
+    expect(octave('1')).toBeGreaterThan(5)
+    expect(octave('1')).toBeLessThan(8.5)
+    expect(octave('2')).toBeGreaterThan(11)
+    expect(octave('2')).toBeLessThan(16)
+    expect(octave('4')).toBeGreaterThan(22)
+    expect(octave('4')).toBeLessThan(32)
+  })
+
+  it('the z-plane carries 1, 2 and 4 poles respectively — no phantom origin marks', () => {
+    for (const [order, n] of [
+      ['1', 1],
+      ['2', 2],
+      ['4', 4],
+    ]) {
+      const { poles } = BLOCK_TYPES.lowpass.pz(
+        { freq: 500, q: Math.SQRT1_2, gainDb: 0, order },
+        FS2,
+      )
+      expect(poles, `order ${order}`).toHaveLength(n)
+      for (const [re, im] of poles) {
+        expect(Math.hypot(re, im), `order ${order}`).toBeGreaterThan(0.1)
+        expect(Math.hypot(re, im), `order ${order}`).toBeLessThan(1)
+      }
+    }
+  })
+
+  it('running the order-4 filter matches its own response curve', () => {
+    const p = { freq: 500, q: Math.SQRT1_2, gainDb: 0, order: '4' }
+    const proc = BLOCK_TYPES.lowpass.make(p, FS2)
+    const N = 8192
+    for (const f of [250, 500, 1000]) {
+      let sr = 0
+      let si = 0
+      const settle = proc.settle
+      const total = settle + N
+      const fresh = BLOCK_TYPES.lowpass.make(p, FS2)
+      const ys = new Float64Array(total)
+      for (let i = 0; i < total; i++) {
+        ys[i] = fresh.process(Math.sin((2 * Math.PI * f * i) / FS2), i / FS2)
+      }
+      for (let i = settle; i < total; i++) {
+        const a = (2 * Math.PI * f * i) / FS2
+        sr += ys[i] * Math.cos(a)
+        si += ys[i] * Math.sin(a)
+      }
+      const amp = (2 * Math.hypot(sr, si)) / N
+      expect(amp, `${f} Hz`).toBeCloseTo(respOf({ order: '4' }, f), 4)
     }
   })
 })

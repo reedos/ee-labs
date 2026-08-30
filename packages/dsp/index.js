@@ -21,6 +21,9 @@ export {
   settleSamples,
   makeBiquad,
   biquadPolesZeros,
+  butterworthQs,
+  designFirstOrder,
+  designCascade,
 } from './src/biquad.js'
 export {
   FIR_MODES,

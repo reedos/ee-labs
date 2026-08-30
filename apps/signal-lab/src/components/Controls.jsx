@@ -322,6 +322,18 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
           />
           Show pre-chain spectrum
         </label>
+        <NumField
+          label="Spectrum shows up to"
+          unit="Hz"
+          value={state.specMax ?? state.sampleRate / 2}
+          onChange={(v) => patch('specMax', v >= state.sampleRate / 2 ? null : v)}
+          min={50}
+          max={state.sampleRate / 2}
+          scale="log"
+          hint="Zoom for the frequency axis. Nyq shows everything."
+          presets={[250, 500, 1000, { value: state.sampleRate / 2, label: 'Nyq' }]}
+          suffixes={{ k: 1e3, khz: 1e3, hz: 1 }}
+        />
         {/* One right-hand axis, so one choice. Phase and group delay are the
             same information differentiated, and showing both at once makes a
             worse plot than either. */}

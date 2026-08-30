@@ -1,7 +1,7 @@
 import { render, rms, peak } from '@ee-labs/dsp'
 import { applyChain } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
-import { designBiquad, designFir, poleRadius, isStable } from '@ee-labs/dsp'
+import { biquadResponse, butterworthQs, designBiquad, designFirstOrder, designFir, poleRadius, isStable } from '@ee-labs/dsp'
 
 // The math for one source, and for one block.
 //
@@ -312,6 +312,99 @@ export function blockMath(block, ctx) {
   if (!def) return null
   const { sampleRate } = ctx
   const p = { ...def.defaults, ...block.params }
+
+  // Order 1 and 4 are different animals from the RBJ section: no Q exists at
+  // first order, and at fourth the section Qs are Butterworth's, not the
+  // knob's. Each gets its own panel, because the |H(f0)| = Q identity below is
+  // an ORDER-2 fact and printing it against a cascade would mark correct
+  // physics wrong.
+  const order = Number(p.order ?? 2)
+  if (BIQUAD_NAMES[block.type] && order === 1) {
+    const meas = measuredResponse(block, sampleRate, [p.freq, 4 * p.freq])
+    return {
+      blocks: [
+        T(
+          'One pole, from the bilinear transform of 1/(1 + s/ω_c). The least a filter can be — ' +
+            'and the reason there is no Q control: resonance takes two poles trading energy, ' +
+            'and this section only has the one.',
+        ),
+        F(
+          'H(s) = \\frac{1}{1 + s/\\omega_c} \\;\\longrightarrow\\; ' +
+            'H(z) = \\frac{K + Kz^{-1}}{(K{+}1) + (K{-}1)z^{-1}}, \\quad K = \\tan(\\pi f_c/f_s)',
+        ),
+        C([
+          {
+            label: `|H| at f_c = ${sig(p.freq, 5)} Hz`,
+            predicted: Math.SQRT1_2,
+            measured: meas[0],
+            tol: 0.02,
+          },
+          {
+            // Predicted from the digital section's own closed form, not the
+            // analog asymptote: the bilinear zero at Nyquist steepens the
+            // curve well below it, and the analog ratio would mark a correct
+            // filter wrong once 4 f_c gets anywhere near f_s/2. The measured
+            // side still comes the independent way, impulse through the real
+            // processor.
+            label: '|H(f_c)| / |H(4f_c)| — two octaves of rolloff',
+            predicted: (() => {
+              const co = designFirstOrder({ mode: block.type, freq: p.freq }, sampleRate)
+              return (
+                biquadResponse(co, p.freq, sampleRate) /
+                (biquadResponse(co, 4 * p.freq, sampleRate) || 1e-12)
+              )
+            })(),
+            measured: meas[0] / (meas[1] || 1e-12),
+            tol: 0.02,
+            unchecked:
+              4 * p.freq >= sampleRate * 0.499
+                ? 'The octave probe would land beyond Nyquist at this cutoff.'
+                : null,
+          },
+        ]),
+        V([
+          { label: 'order', value: 1 },
+          { label: 'rolloff', value: 6, unit: 'dB/octave', note: 'asymptotic' },
+          { label: 'poles', value: 1, note: 'so it cannot ring' },
+        ]),
+      ],
+    }
+  }
+  if (BIQUAD_NAMES[block.type] && order === 4) {
+    const qs = butterworthQs(4)
+    const meas = measuredResponse(block, sampleRate, [p.freq])
+    return {
+      blocks: [
+        T(
+          'A true 4th-order Butterworth: two second-order sections in series, with the section ' +
+            'Qs chosen by the mathematics — NOT the same Q twice. That choice is what keeps the ' +
+            'passband maximally flat and the corner at exactly −3.01 dB.',
+        ),
+        F(
+          `Q_k = \\frac{1}{2\\cos\\left(\\frac{(2k+1)\\pi}{8}\\right)} ` +
+            `\\;\\Rightarrow\\; Q_1 = ${sig(qs[0], 4)}, \\; Q_2 = ${sig(qs[1], 4)}`,
+        ),
+        C([
+          {
+            label: `|H| at f_c = ${sig(p.freq, 5)} Hz`,
+            predicted: Math.SQRT1_2,
+            measured: meas[0],
+            tol: 0.02,
+          },
+        ]),
+        T(
+          'Every true Butterworth passes −3.01 dB at its cutoff whatever its order. Two ' +
+            'identical Q = 0.707 sections would instead sag to −6.02 dB there — same far ' +
+            'slope, different filter. The "Order is a choice" preset puts the two side by side.',
+        ),
+        V([
+          { label: 'order', value: 4 },
+          { label: 'rolloff', value: 24, unit: 'dB/octave', note: 'asymptotic' },
+          { label: 'section Qs', value: Number(qs[0].toPrecision(4)), note: `and ${Number(qs[1].toPrecision(4))}` },
+        ]),
+      ],
+    }
+  }
 
   if (BIQUAD_NAMES[block.type]) {
     const co = designBiquad({ mode: block.type, ...p }, sampleRate)

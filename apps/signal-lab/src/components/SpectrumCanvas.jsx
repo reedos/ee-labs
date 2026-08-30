@@ -58,11 +58,17 @@ export default function SpectrumCanvas({
   overlay = null,
   scale,
   markers,
+  xMax = null,
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
       const area = plotArea(w, h, { rightAxis: !!overlay })
-      const fMax = freqs.length ? freqs[freqs.length - 1] : 1
+      // A zoomed x-axis, for tones too close to separate on a full-Nyquist
+      // span: two lines 5 Hz apart are one pixel at 4 kHz wide and plainly
+      // two at 500. Everything beyond xMax still exists — the clip rectangle
+      // just does not show it.
+      const fFull = freqs.length ? freqs[freqs.length - 1] : 1
+      const fMax = xMax != null ? Math.min(xMax, fFull) : fFull
       const db = scale === 'db'
 
       let yMin
@@ -232,7 +238,7 @@ export default function SpectrumCanvas({
         ctx.restore()
       }
     },
-    [freqs, amps, ghostAmps, response, responseExact, overlay, scale, markers],
+    [freqs, amps, ghostAmps, response, responseExact, overlay, scale, markers, xMax],
   )
 
   return <canvas ref={ref} className="plot" role="img" aria-label="Spectrum: amplitude against frequency, with the chain response overlaid" />

@@ -173,8 +173,22 @@ export function biquadPolesZeros({ b0, b1, b2, a1, a2 }) {
   return { poles: quadRoots(1, a1, a2), zeros: quadRoots(b0, b1, b2) }
 }
 
-/** Roots of a z^2 + b z + c, degenerating gracefully as the degree drops. */
+/**
+ * Roots of a z^2 + b z + c, degenerating gracefully as the degree drops.
+ *
+ * A TRAILING zero coefficient lowers the degree in z^-1 — a first-order
+ * section stored as {b0, b1, 0} is (b0 z + b1)/z after multiplying through,
+ * one genuine root plus a pole at the origin that is only delay bookkeeping.
+ * Dividing the common z out first keeps the z-plane free of phantom marks at
+ * the centre.
+ */
 function quadRoots(a, b, c) {
+  if (Math.abs(c) < 1e-18) {
+    // Degree drops: az^2 + bz = z(az + b) — the z root is bookkeeping.
+    if (Math.abs(b) < 1e-18) return []
+    if (Math.abs(a) < 1e-18) return []
+    return [[-b / a, 0]]
+  }
   if (Math.abs(a) < 1e-18) {
     if (Math.abs(b) < 1e-18) return []
     return [[-c / b, 0]]
@@ -226,4 +240,53 @@ export function makeBiquad(coeffs) {
     y1 = y
     return y
   }
+}
+
+// ------------------------------------------------------------- filter order
+
+/**
+ * Butterworth section Qs for a cascade of total order N (even): the k-th
+ * section needs Q = 1/(2 cos((2k+1)π/2N)). For N = 4 that is 0.5412 and
+ * 1.3066 — and NOT 0.7071 twice, which is the whole content of the "Order is
+ * a choice" lesson.
+ */
+export function butterworthQs(order) {
+  const out = []
+  for (let k = 0; k < order / 2; k++) {
+    out.push(1 / (2 * Math.cos(((2 * k + 1) * Math.PI) / (2 * order))))
+  }
+  return out
+}
+
+/**
+ * A first-order section — one pole, and for the high-pass one zero at DC —
+ * from the bilinear transform with the corner pre-warped so |H(fc)| is
+ * exactly 1/√2. Expressed in the same {b0,b1,b2,a1,a2} shape (b2 = a2 = 0),
+ * so every downstream consumer — makeBiquad, biquadResponse, the z-plane —
+ * works unchanged.
+ *
+ * There is no Q. That is not a missing feature: one pole cannot resonate,
+ * which is exactly what the order control exists to teach.
+ */
+export function designFirstOrder({ mode, freq }, sampleRate) {
+  const f0 = Math.min(Math.max(freq, FREQ_MIN), sampleRate * FREQ_MAX_RATIO)
+  const K = Math.tan((Math.PI * f0) / sampleRate)
+  const a0 = K + 1
+  if (mode === 'highpass') {
+    return { b0: 1 / a0, b1: -1 / a0, b2: 0, a1: (K - 1) / a0, a2: 0 }
+  }
+  return { b0: K / a0, b1: K / a0, b2: 0, a1: (K - 1) / a0, a2: 0 }
+}
+
+/**
+ * The cascade for a low-pass or high-pass of a chosen order, as a list of
+ * sections. Order 2 is the plain RBJ section with the user's Q; order 1 has
+ * no Q to set; order 4 is a true Butterworth, whose section Qs are decided by
+ * the mathematics rather than the knob.
+ */
+export function designCascade({ mode, freq, q, order = 2 }, sampleRate) {
+  const n = Number(order) || 2
+  if (n === 1) return [designFirstOrder({ mode, freq }, sampleRate)]
+  if (n === 2) return [designBiquad({ mode, freq, q }, sampleRate)]
+  return butterworthQs(n).map((bq) => designBiquad({ mode, freq, q: bq }, sampleRate))
 }

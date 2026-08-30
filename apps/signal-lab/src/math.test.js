@@ -360,3 +360,26 @@ describe('preset math follows the controls it exposes', () => {
     expect(at12.measured).toBeLessThan(0.02)
   })
 })
+
+// A swallowed backslash leaves the macro NAME behind as plain letters —
+// "Longrightarrow", "frac{...}" — and KaTeX typesets that wreckage without
+// throwing, so the strict-mode test above cannot see it. This one can: a known
+// macro name not preceded by a backslash (or a letter) is always the scar of
+// an escaping accident.
+it('no formula contains a macro name that lost its backslash', () => {
+  const MACROS =
+    /(^|[^\\a-zA-Z])(frac|Longrightarrow|longrightarrow|Rightarrow|omega|qquad|quad|left|right|sqrt|text|sum|infty|delta|varphi|lambda|theta)(?![a-zA-Z])/
+  const bad = []
+  for (const p of PRESETS) {
+    const entry = mathFor(p.name, contextFor(p))
+    for (const b of entry.blocks) {
+      if (b.kind !== 'formula') continue
+      const m = MACROS.exec(b.tex)
+      if (m) bad.push(`${p.name}: "${m[2]}" bare in "${b.tex.slice(0, 60)}"`)
+      if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(b.tex)) {
+        bad.push(`${p.name}: control character in "${b.tex.slice(0, 60)}"`)
+      }
+    }
+  }
+  expect(bad.join('\n  ')).toBe('')
+})

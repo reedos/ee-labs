@@ -39,6 +39,8 @@ const INITIAL = {
   // Phase and group delay share one right-hand axis, so they are a choice
   // rather than two toggles. See SpectrumCanvas.
   overlay: 'none',
+  // Zoom for the spectrum's x-axis; null means the full span to Nyquist.
+  specMax: null,
   showTransient: false,
   // Each pane can show the chain from a different side. The signal and its
   // spectrum are the default pair; the impulse response and the z-plane are the
@@ -527,6 +529,7 @@ export default function App() {
               overlay={overlay}
               scale={state.scale}
               markers={markers}
+              xMax={state.specMax}
             />
           )}
         </section>

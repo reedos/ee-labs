@@ -3,7 +3,9 @@ import {
   biquadPhase,
   biquadPolesZeros,
   biquadResponse,
+  butterworthQs,
   designBiquad,
+  designCascade,
   designFir,
   firPhase,
   firResponse,
@@ -65,33 +67,98 @@ const qParam = {
   step: 0.01,
   presets: Q_PRESETS,
   hint: 'For a low-pass the peak height at the cutoff is exactly Q.',
+  // Only a second-order section has a Q to set. First order cannot resonate,
+  // and at fourth order the mathematics chooses the section Qs (Butterworth),
+  // not the knob — so the knob leaves rather than sitting there ignored.
+  when: (p) => Number(p.order ?? 2) === 2,
 }
 
-/** A biquad entry, one per RBJ mode. */
+const orderParam = {
+  key: 'order',
+  label: 'Order',
+  kind: 'select',
+  options: ['1', '2', '4'],
+  hint:
+    '1st: one pole, 6 dB per octave, cannot resonate. 2nd: this section, with its Q. ' +
+    '4th: a true Butterworth — two sections whose Qs (0.541 and 1.307) the math dictates.',
+}
+
+/**
+ * A biquad entry, one per RBJ mode.
+ *
+ * Low-pass and high-pass additionally carry an ORDER select: 1 is a true
+ * one-pole (no Q exists), 2 the RBJ section with its Q, 4 a genuine
+ * Butterworth cascade whose section Qs the math dictates. Everything below is
+ * written over the section LIST from designCascade, which for the other modes
+ * is always one section — so nothing changes for them.
+ */
 function biquadType(mode, label, hint, extra = []) {
+  const ordered = mode === 'lowpass' || mode === 'highpass'
+  const sections = (p, sampleRate) =>
+    ordered
+      ? designCascade({ mode, ...p }, sampleRate)
+      : [designBiquad({ mode, ...p }, sampleRate)]
   return {
     label,
     group: 'Filter',
     hint,
     nonlinear: false,
-    defaults: { freq: 1000, q: Math.SQRT1_2, gainDb: 0 },
-    params: [cutoff(mode === 'bandpass' || mode === 'notch' ? 'Centre' : 'Cutoff'), qParam, ...extra],
-    summary: (p) =>
-      `${fmtHz(p.freq)} · Q ${Number(p.q.toPrecision(3))}` +
-      (mode === 'peaking' ? ` · ${fmtDb(p.gainDb)}` : ''),
-    make: (p, sampleRate) => {
-      const coeffs = designBiquad({ mode, ...p }, sampleRate)
-      const step = makeBiquad(coeffs)
-      return { process: (x) => step(x), settle: settleSamples(coeffs) }
+    defaults: ordered
+      ? { freq: 1000, q: Math.SQRT1_2, gainDb: 0, order: '2' }
+      : { freq: 1000, q: Math.SQRT1_2, gainDb: 0 },
+    params: [
+      cutoff(mode === 'bandpass' || mode === 'notch' ? 'Centre' : 'Cutoff'),
+      ...(ordered ? [orderParam] : []),
+      qParam,
+      ...extra,
+    ],
+    summary: (p) => {
+      const n = Number(p.order ?? 2)
+      const head = ordered && n !== 2 ? `${n === 1 ? '1st' : '4th Btw'} · ` : ''
+      const q = ordered && n !== 2 ? '' : ` · Q ${Number(p.q.toPrecision(3))}`
+      return `${head}${fmtHz(p.freq)}${q}` + (mode === 'peaking' ? ` · ${fmtDb(p.gainDb)}` : '')
     },
-    response: (p, f, sampleRate) =>
-      biquadResponse(designBiquad({ mode, ...p }, sampleRate), f, sampleRate),
+    make: (p, sampleRate) => {
+      const secs = sections(p, sampleRate)
+      const steps = secs.map(makeBiquad)
+      let settle = 0
+      for (const c of secs) {
+        const s = settleSamples(c)
+        settle += Number.isFinite(s) ? s : 0
+      }
+      return {
+        process: (x) => {
+          let v = x
+          for (const step of steps) v = step(v)
+          return v
+        },
+        settle,
+      }
+    },
+    // Cascaded magnitudes multiply, phases add, roots collect.
+    response: (p, f, sampleRate) => {
+      let m = 1
+      for (const c of sections(p, sampleRate)) m *= biquadResponse(c, f, sampleRate)
+      return m
+    },
     // The half a magnitude plot cannot show. An allpass is the extreme case:
     // |H| is 1.0000 at every frequency while the phase swings through 180
     // degrees, so on the spectrum alone the block appears to do nothing at all.
-    phase: (p, f, sampleRate) =>
-      biquadPhase(designBiquad({ mode, ...p }, sampleRate), f, sampleRate),
-    pz: (p, sampleRate) => biquadPolesZeros(designBiquad({ mode, ...p }, sampleRate)),
+    phase: (p, f, sampleRate) => {
+      let a = 0
+      for (const c of sections(p, sampleRate)) a += biquadPhase(c, f, sampleRate)
+      return a
+    },
+    pz: (p, sampleRate) => {
+      const poles = []
+      const zeros = []
+      for (const c of sections(p, sampleRate)) {
+        const r = biquadPolesZeros(c)
+        poles.push(...r.poles)
+        zeros.push(...r.zeros)
+      }
+      return { poles, zeros }
+    },
   }
 }
 
