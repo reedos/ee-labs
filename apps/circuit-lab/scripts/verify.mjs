@@ -220,6 +220,40 @@ const uniq = new Set(seen.values())
 if (uniq.size !== 3) fail(`the three RLC outputs produced ${uniq.size} distinct plots, not 3`)
 console.log(`   -> ${uniq.size} distinct frequency responses from one circuit`)
 
+// ------------------- 4b. Sallen–Key: Q from ratios, with no inductor anywhere
+
+console.log('\n4b. Sallen–Key: do f₀ and Q follow the component ratios?\n')
+await pick('Sallen–Key low-pass')
+await openAllMath()
+for (const [r1T, r1, r2T, r2, c1T, c1, c2T, c2] of [
+  ['10k', 1e4, '10k', 1e4, '22n', 22e-9, '10n', 10e-9],
+  // C1/C2 ratio up: Q rises with no resistor change — the active-filter pitch.
+  ['10k', 1e4, '10k', 1e4, '100n', 100e-9, '10n', 10e-9],
+  // Unequal resistors.
+  ['4.7k', 4.7e3, '22k', 2.2e4, '47n', 47e-9, '4.7n', 4.7e-9],
+]) {
+  await setField('R1', r1T)
+  await setField('R2', r2T)
+  await setField('C1 (feedback)', c1T)
+  await setField('C2 (to ground)', c2T)
+  const wantF0 = 1 / (2 * Math.PI * Math.sqrt(r1 * r2 * c1 * c2))
+  const wantQ = Math.sqrt(r1 * r2 * c1 * c2) / (c2 * (r1 + r2))
+  const t = await topbar()
+  const gotF0 = si(t['f₀'])
+  const gotQ = parseFloat(t.Q)
+  const okF = Math.abs(gotF0 - wantF0) / wantF0 < 0.01
+  const okQ = Math.abs(gotQ - wantQ) / wantQ < 0.01
+  const bad = (await readChecks()).filter((x) => x.mark === '✗')
+  console.log(
+    `   R1=${r1T} R2=${r2T} C1=${c1T} C2=${c2T} -> ` +
+      `f₀ ${gotF0.toFixed(0).padStart(6)} (want ${wantF0.toFixed(0)})  ` +
+      `Q ${gotQ.toFixed(3)} (want ${wantQ.toFixed(3)})  ${okF && okQ ? 'ok' : 'MISMATCH'}  ${bad.length} ✗`,
+  )
+  if (!okF) fail(`Sallen–Key: f₀ ${gotF0} vs ${wantF0}`)
+  if (!okQ) fail(`Sallen–Key: Q ${gotQ} vs ${wantQ}`)
+  for (const b of bad) fail(`Sallen–Key ${c1T}/${c2T}: ✗ ${b.label}`)
+}
+
 // ------------------------------------------------- 5. the views, and stability
 
 console.log('\n5. Views, and the circuit that is deliberately not stable\n')

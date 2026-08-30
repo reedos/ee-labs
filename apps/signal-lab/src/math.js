@@ -468,6 +468,10 @@ const ENTRIES = {
 
   'The kernel is the filter': (ctx) => {
     const N = ctx.blocks[0] ? ctx.blocks[0].params.taps : 31
+    // The DC row must follow the mode select, not assume the preset's low-pass:
+    // flipped to high-pass, the null at DC is exact and 1 would be a ✗ against
+    // correct physics.
+    const hp = ctx.blocks[0] && ctx.blocks[0].params.mode === 'highpass'
     return {
       blocks: [
         T(
@@ -482,16 +486,20 @@ const ENTRIES = {
         ),
         F('y[n] = (h * x)[n] \\quad \\Longleftrightarrow \\quad Y(\\omega) = H(\\omega)\\,X(\\omega)'),
         T(
-          'The taps are scaled to sum to one. Summing the taps IS the response at DC, since ' +
-            'every e^{-j\\omega k} equals 1 there — so unit DC gain is arithmetic rather than a ' +
-            'tolerance:',
+          hp
+            ? 'As a high-pass the low-pass kernel is subtracted from a delayed impulse, so the ' +
+              'null at DC is exact — the taps sum to exactly zero:'
+            : 'The taps are scaled to sum to one. Summing the taps IS the response at DC, since ' +
+              'every e^{-j\\omega k} equals 1 there — so unit DC gain is arithmetic rather than a ' +
+              'tolerance:',
         ),
         C([
           {
             label: '|H| at DC',
-            predicted: 1,
+            predicted: hp ? 0 : 1,
             measured: ctx.respAt(0),
             tol: 0.01,
+            abs: 0.01,
           },
         ]),
         V([
@@ -506,6 +514,11 @@ const ENTRIES = {
   'Cut it off abruptly and it rings': (ctx) => {
     const b = ctx.blocks[0]
     const fc = b ? b.params.freq : 1000
+    // The 8.9% prediction is a claim about the UNTAPERED cut. The window
+    // control is right there in the block card, and switching it to hamming is
+    // the natural experiment — after which the overshoot is gone and a ✗
+    // against 1.085 would be marking correct physics wrong. Footnote instead.
+    const tapered = b && b.params.window !== 'none'
     // The overshoot as it appears on the curve the app is drawing: the largest
     // value anywhere in the passband.
     let top = 0
@@ -535,6 +548,9 @@ const ENTRIES = {
             predicted: 1.085,
             measured: top,
             tol: 0.05,
+            unchecked: tapered
+              ? 'Holds for the untapered cut. Set the window back to none — with a taper the overshoot is (by design) gone.'
+              : null,
           },
         ]),
         T(

@@ -423,6 +423,55 @@ console.log('\n10. Impulse response, z-plane and the group-delay overlay\n')
 
 if (await scrolls()) fail('new views: page scrolls')
 
+// ----------------------------- 10b. the FIR blocks under live parameter drags
+
+console.log('\n10b. FIR: nulls follow fs/N, the window kills the Gibbs row honestly\n')
+
+{
+  await loadPreset('A moving average is a filter')
+  await expandBlocks()
+  await openAllMath()
+
+  // The nulls move as fs/N while the panel keeps agreeing.
+  for (const n of [4, 8, 16]) {
+    await setField('Taps N', n)
+    const rows = await readChecks()
+    const nullRow = rows.find((r) => r.label.includes('first null'))
+    const want = 8000 / n
+    const labelled = parseFloat((nullRow?.label.match(/([\d.]+)\s*Hz/) || [])[1])
+    const ok = nullRow && nullRow.mark === '✓' && Math.abs(labelled - want) < 1
+    console.log(
+      `   N=${String(n).padEnd(3)} first null labelled ${labelled} Hz (want ${want.toFixed(1)})  ${nullRow?.mark || '?'}`,
+    )
+    if (!ok) fail(`moving average N=${n}: null row ${labelled} Hz / ${nullRow?.mark}`)
+  }
+}
+
+{
+  await loadPreset('Cut it off abruptly and it rings')
+  await expandBlocks()
+  await openAllMath()
+
+  const gibbsRow = async () => (await readChecks()).find((r) => r.label.startsWith('largest |H|'))
+  const before = await gibbsRow()
+  if (before?.mark !== '✓') fail(`Gibbs row should be ✓ with window none, got ${before?.mark}`)
+
+  // Switch the window on the live block: the overshoot vanishes BY DESIGN, so
+  // the row must footnote itself rather than turn into a ✗ against physics.
+  await page.locator('.block select').last().selectOption('hamming')
+  await settle()
+  const after = await gibbsRow()
+  const foot = after && after.mark !== '✓' && after.mark !== '✗'
+  console.log(
+    `   window none -> ✓ (${before.measured});  hamming -> ${foot ? 'footnoted' : after?.mark} (${after?.measured})`,
+  )
+  if (!foot) fail(`Gibbs row with a hamming window should footnote, got "${after?.mark}"`)
+
+  await page.locator('.block select').last().selectOption('none')
+  await settle()
+  if ((await gibbsRow())?.mark !== '✓') fail('Gibbs row did not recover when the window went back')
+}
+
 // -------------------------------------------------------------- 11. 4K fit
 
 console.log('\n11. Re-checking layout at 4K\n')

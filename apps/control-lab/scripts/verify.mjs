@@ -172,6 +172,66 @@ console.log(
 if (lowGain) fail('unstable plant with too little gain should not be stable')
 if (!highGain) fail('unstable plant with enough gain should be stable')
 
+// ------------------- 3b. derivative action, and lead, do what they claim to
+
+console.log('\n3b. Kd buys damping; lead buys phase margin\n')
+
+// The overshoot readout only exists where overshoot is well defined — a
+// closed loop that IS second order. Plant + P is; plant + PID is order three
+// and the app rightly declines to name a ζ for it. So overshoot is swept with
+// proportional gain (raising Kp divides ζ by √(1+KpK): a real second-order
+// fact), and the derivative claim is read from the phase margin instead,
+// which the topbar always carries.
+await clickBtn('Second order')
+await clickBtn('Proportional')
+await clickBtn('Step')
+await setField('Damping ζ', 0.3)
+const overshootShown = async () => {
+  const m = (await page.locator('.readout').last().textContent()).match(/overshoot\s*([\d.]+)\s*%/)
+  return m ? parseFloat(m[1]) : 0
+}
+const byKp = []
+for (const kp of [1, 4, 16]) {
+  await setField('Kp', kp)
+  byKp.push(await overshootShown())
+}
+console.log(`   overshoot at Kp 1 / 4 / 16: ${byKp.map((v) => v.toFixed(1) + '%').join('  ')}`)
+if (!(byKp[0] < byKp[1] && byKp[1] < byKp[2])) {
+  fail(`raising Kp on a second-order plant must raise overshoot, got ${byKp.join(', ')}`)
+}
+if (byKp[2] < 40) fail(`Kp=16 should push ζ well under 0.1 and overshoot past 40%, got ${byKp[2]}%`)
+
+// Derivative action adds phase. Same plant under PID, Kd swept: the margin
+// must climb monotonically.
+await clickBtn('PID')
+await setField('Kp', 2)
+await setField('Ki', 1)
+const pmByKd = []
+for (const kd of [0.001, 0.2, 0.5]) {
+  await setField('Kd', kd)
+  pmByKd.push(parseFloat((await topbar())['phase margin']))
+}
+console.log(`   phase margin at Kd 0.001 / 0.2 / 0.5: ${pmByKd.map((v) => v + '°').join('  ')}`)
+if (!(pmByKd[0] < pmByKd[1] && pmByKd[1] < pmByKd[2])) {
+  fail(`derivative action should raise the phase margin monotonically, got ${pmByKd.join(', ')}`)
+}
+
+// Lead on the three-lag plant: same low-frequency gain as plain proportional,
+// but with phase added back where the loop crosses over.
+await clickBtn('Three lags')
+await clickBtn('Proportional')
+await setField('Kp', 3)
+const pmP = parseFloat((await topbar())['phase margin'])
+await clickBtn('Lead')
+await setField('Gain', 3)
+await setField('Zero at', 1)
+await setField('Pole at', 20)
+const pmLead = parseFloat((await topbar())['phase margin'])
+console.log(`   phase margin: proportional ${pmP}°  ->  lead ${pmLead}°`)
+if (!(pmLead > pmP + 10)) {
+  fail(`a lead 1..20 rad/s should add well over 10° of margin (got ${pmP}° -> ${pmLead}°)`)
+}
+
 // --------------------------------------------------------- 4. the three views
 
 console.log('\n4. All three lower views\n')

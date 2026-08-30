@@ -305,3 +305,54 @@ describe('a check must actually read something', () => {
     }
   })
 })
+
+describe('preset math follows the controls it exposes', () => {
+  // The panel stays on screen while its block's controls are dragged, so a
+  // prediction tied to one setting must either follow the control or say why
+  // it no longer applies — never show ✗ against correct physics.
+
+  const withParams = (name, over) => {
+    const base = PRESETS.find((p) => p.name === name)
+    const patch = {
+      ...base.patch,
+      blocks: base.patch.blocks.map((b) => ({ ...b, params: { ...b.params, ...over } })),
+    }
+    return contextFor({ ...base, patch })
+  }
+
+  const rowIn = (entry, startsWith) =>
+    entry.blocks
+      .filter((b) => b.kind === 'check')
+      .flatMap((b) => b.rows)
+      .find((r) => r.label.startsWith(startsWith))
+
+  it('the Gibbs check footnotes itself when the window is tapered', () => {
+    const name = 'Cut it off abruptly and it rings'
+    // As shipped: a live check that agrees.
+    const bare = rowIn(mathFor(name, withParams(name, {})), 'largest |H|')
+    expect(bare.unchecked).toBeFalsy()
+    expect(Math.abs(bare.measured - bare.predicted)).toBeLessThan(0.05 * bare.predicted)
+    // Window switched to hamming: the overshoot is gone BY DESIGN, so the row
+    // must footnote rather than fail.
+    const tapered = rowIn(mathFor(name, withParams(name, { window: 'hamming' })), 'largest |H|')
+    expect(tapered.unchecked).toBeTruthy()
+    expect(tapered.measured).toBeLessThan(1.02)
+  })
+
+  it('the kernel DC check follows the low-pass/high-pass select', () => {
+    const name = 'The kernel is the filter'
+    const lp = rowIn(mathFor(name, withParams(name, {})), '|H| at DC')
+    expect(lp.predicted).toBe(1)
+    expect(lp.measured).toBeCloseTo(1, 2)
+    const hp = rowIn(mathFor(name, withParams(name, { mode: 'highpass' })), '|H| at DC')
+    expect(hp.predicted).toBe(0)
+    expect(hp.measured).toBeLessThan(0.01)
+  })
+
+  it('the moving-average rows follow the tap count', () => {
+    const name = 'A moving average is a filter'
+    const at12 = rowIn(mathFor(name, withParams(name, { taps: 12 })), '|H| at the first null')
+    expect(at12.label).toContain('666.7')
+    expect(at12.measured).toBeLessThan(0.02)
+  })
+})
