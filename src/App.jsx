@@ -8,7 +8,7 @@ import { COLORS } from './components/plot.js'
 import { spectrum } from './dsp/spectrum.js'
 import { chainPhase, chainResponse, renderChain, runChain } from './dsp/chain.js'
 import { PRESETS } from './presets.js'
-import { mathsContext, mathsFor } from './maths.js'
+import { mathContext, mathFor } from './math.js'
 
 const INITIAL = {
   sources: [{ id: 1, type: 'sine', freq: 250, amp: 1, phase: 0, enabled: true }],
@@ -148,12 +148,12 @@ export default function App() {
   }, [dryBuf, timeBuf])
 
   // Built from live state, so the numbers follow the sliders. The context
-  // builder is shared with maths.test.js, which checks every panel's claims.
-  const maths = useMemo(
+  // builder is shared with math.test.js, which checks every panel's claims.
+  const math = useMemo(
     () =>
-      mathsFor(
+      mathFor(
         state.presetName,
-        mathsContext({ state, freqs, amps, ghostAmps, resp, peakFreq: stats.peakFreq }),
+        mathContext({ state, freqs, amps, ghostAmps, resp, peakFreq: stats.peakFreq }),
       ),
     [state, freqs, amps, ghostAmps, resp, stats.peakFreq],
   )
@@ -164,7 +164,7 @@ export default function App() {
         state={state}
         setState={setState}
         presets={PRESETS}
-        maths={maths}
+        math={math}
         onPreset={applyPreset}
         openBlocks={openBlocks}
         setOpenBlocks={setOpenBlocks}

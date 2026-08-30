@@ -238,7 +238,7 @@ export const PRESETS = [
     note:
       'A sudden jump, held. A gentle filter rounds the corner; a resonant one overshoots and ' +
       'rings at its cutoff before settling. Drag Q down from 5 — this is what Q feels like in ' +
-      'time, and it is easier to recognise here than as a bump on a curve. Q = 0.707 is the ' +
+      'time, and it is easier to recognize here than as a bump on a curve. Q = 0.707 is the ' +
       'largest value that does not overshoot at all.',
     patch: {
       sources: [mk(1, 'step', 250, 1)],
@@ -346,7 +346,7 @@ export const PRESETS = [
     group: 'Nonlinearity',
     name: '4 bits',
     note:
-      'Quantise to 4 bits and the error is correlated with the signal, so you get discrete spurs ' +
+      'Quantize to 4 bits and the error is correlated with the signal, so you get discrete spurs ' +
       'rather than a noise floor. Raise it to 12 and they smear into the flat floor that ' +
       '6.02N + 1.76 dB predicts. Tick dither at 4 bits to trade the spurs for honest noise.',
     patch: {

@@ -1,5 +1,7 @@
 import React from 'react'
 import NumField from './NumField.jsx'
+import MathPanel from './MathPanel.jsx'
+import { blockMath } from '../math-parts.js'
 import { BLOCK_TYPES, resolve } from '../dsp/blocks.js'
 
 /**
@@ -68,6 +70,10 @@ export default function BlockCard({
           {/* What this block does, in a sentence, where someone meeting it for
               the first time will actually look: inside the block itself. */}
           {def.hint ? <p className="block-hint">{def.hint}</p> : null}
+          <MathPanel
+            label="The math for this block"
+            getEntry={() => blockMath(block, ctx)}
+          />
           {def.params.map((p) => {
             if (p.kind === 'select') {
               return (

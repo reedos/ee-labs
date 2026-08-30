@@ -18,7 +18,7 @@ describe('designBiquad', () => {
     expect(() => d('bogus', 1000, 1)).toThrow(/unknown biquad mode/)
   })
 
-  it('normalises so a0 = 1', () => {
+  it('normalizes so a0 = 1', () => {
     // Not directly observable, but |H(0)| = 1 for a lowpass only holds if it did.
     expect(H(d('lowpass', 1000, 1), 0)).toBeCloseTo(1, 12)
   })

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import katex from 'katex'
 import { PRESETS } from './presets.js'
-import { mathsContext, mathsFor } from './maths.js'
-import { agrees } from './components/Maths.jsx'
+import { mathContext, mathFor } from './math.js'
+import { agrees } from './components/MathPanel.jsx'
 import { chainResponse, renderChain } from './dsp/chain.js'
 import { render } from './dsp/signals.js'
 import { spectrum } from './dsp/spectrum.js'
@@ -10,7 +10,7 @@ import { spectrum } from './dsp/spectrum.js'
 /** One failure per line, indented, so vitest's diff stays readable. */
 const SEP = `\n  `
 
-// The maths panel pairs a formula with the number this tool measured, which is
+// The math panel pairs a formula with the number this tool measured, which is
 // only worth anything if the pairing is checked. Every claim it makes is
 // rendered here against the real signal, so a row that quietly stopped agreeing
 // fails the build rather than sitting on screen looking authoritative.
@@ -40,19 +40,19 @@ function contextFor(preset) {
   let iMax = 0
   for (let i = 1; i < amps.length; i++) if (amps[i] > amps[iMax]) iMax = i
 
-  return mathsContext({ state, freqs, amps, ghostAmps, resp, peakFreq: freqs[iMax] })
+  return mathContext({ state, freqs, amps, ghostAmps, resp, peakFreq: freqs[iMax] })
 }
 
-describe('the maths panel', () => {
+describe('the math panel', () => {
   it('covers every preset', () => {
     for (const p of PRESETS) {
-      expect(mathsFor(p.name, contextFor(p)), p.name).not.toBeNull()
+      expect(mathFor(p.name, contextFor(p)), p.name).not.toBeNull()
     }
   })
 
   it('emits only formulas KaTeX can typeset', () => {
     for (const p of PRESETS) {
-      const entry = mathsFor(p.name, contextFor(p))
+      const entry = mathFor(p.name, contextFor(p))
       for (const b of entry.blocks) {
         if (b.kind !== 'formula') continue
         // strict:'error' turns silent fallbacks into failures, so a malformed
@@ -67,7 +67,7 @@ describe('the maths panel', () => {
 
   it('says something, not just formulas', () => {
     for (const p of PRESETS) {
-      const entry = mathsFor(p.name, contextFor(p))
+      const entry = mathFor(p.name, contextFor(p))
       const kinds = entry.blocks.map((b) => b.kind)
       expect(kinds, p.name).toContain('text')
       expect(entry.blocks.length, p.name).toBeGreaterThan(1)
@@ -78,7 +78,7 @@ describe('the maths panel', () => {
     // The whole reason the panel is built from live state instead of prose.
     const failures = []
     for (const p of PRESETS) {
-      const entry = mathsFor(p.name, contextFor(p))
+      const entry = mathFor(p.name, contextFor(p))
       for (const b of entry.blocks) {
         if (b.kind !== 'check') continue
         for (const row of b.rows) {
@@ -118,7 +118,7 @@ describe('when the settings move away from the preset', () => {
     const base = PRESETS.find((p) => p.name === preset)
     const failures = []
     for (const variant of mutate(base)) {
-      const entry = mathsFor(base.name, contextFor(variant))
+      const entry = mathFor(base.name, contextFor(variant))
       for (const b of entry.blocks) {
         if (b.kind !== 'check') continue
         for (const row of b.rows) {
@@ -198,7 +198,7 @@ describe('when the settings move away from the preset', () => {
     const base = PRESETS.find((p) => p.name === 'Square = odd harmonics')
     let checked = 0
     for (const freq of [125, 250, 500, 1000]) {
-      const entry = mathsFor(base.name, contextFor({
+      const entry = mathFor(base.name, contextFor({
         ...base,
         patch: { ...base.patch, sources: [{ ...base.patch.sources[0], freq }] },
       }))
@@ -258,7 +258,7 @@ describe('a check must actually read something', () => {
     let iMax = 0
     for (let i = 1; i < amps.length; i++) if (amps[i] > amps[iMax]) iMax = i
 
-    return mathsContext({
+    return mathContext({
       state,
       freqs,
       amps: scale(amps, factor),
@@ -271,8 +271,8 @@ describe('a check must actually read something', () => {
   it('every check row moves when the thing it reads is perturbed', () => {
     const inert = []
     for (const p of PRESETS) {
-      const a = mathsFor(p.name, perturbed(p, 1))
-      const b = mathsFor(p.name, perturbed(p, 1.9))
+      const a = mathFor(p.name, perturbed(p, 1))
+      const b = mathFor(p.name, perturbed(p, 1.9))
       const rowsOf = (e) => e.blocks.filter((x) => x.kind === 'check').flatMap((x) => x.rows)
       const ra = rowsOf(a)
       const rb = rowsOf(b)
@@ -292,7 +292,7 @@ describe('a check must actually read something', () => {
 
   it('derived values are never presented as checks', () => {
     for (const p of PRESETS) {
-      const entry = mathsFor(p.name, contextFor(p))
+      const entry = mathFor(p.name, contextFor(p))
       for (const b of entry.blocks) {
         if (b.kind !== 'values') continue
         for (const row of b.rows) {

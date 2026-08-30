@@ -27,7 +27,7 @@ describe('fft', () => {
     for (let k = 1; k < n; k++) expect(mag[k]).toBeCloseTo(0, 10)
   })
 
-  it('puts a bin-centred sine in exactly that bin and its mirror', () => {
+  it('puts a bin-centered sine in exactly that bin and its mirror', () => {
     const n = 64
     const k0 = 5
     const re = new Float64Array(n)
@@ -159,7 +159,7 @@ describe('spectrum', () => {
   // 8000/4096 = 1.953125 Hz per bin; 250 Hz is exactly bin 128.
   const onBin = 250
 
-  it('reads back the true amplitude of a bin-centred sine', () => {
+  it('reads back the true amplitude of a bin-centered sine', () => {
     for (const windowName of ['none', 'hann', 'hamming', 'blackman']) {
       const buf = render([src({ freq: onBin, amp: 1.5 })], n, sr)
       const { amps } = spectrum(buf, sr, windowName)

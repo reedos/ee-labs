@@ -1,0 +1,496 @@
+import { render, rms, peak } from './dsp/signals.js'
+import { applyChain } from './dsp/chain.js'
+import { BLOCK_TYPES } from './dsp/blocks.js'
+import { designBiquad, poleRadius, isStable } from './dsp/biquad.js'
+
+// The math for one source, and for one block.
+//
+// The preset panels only fire when a preset is loaded, which leaves the whole
+// tool silent the moment someone builds their own chain — exactly the point at
+// which they are most likely to want an explanation. These attach to the source
+// and block cards instead, so every configuration is explained, not just the
+// twenty-odd we shipped.
+//
+// Same rule as the preset panels: a two-column comparison only appears when the
+// measured side is genuinely computed from the signal rather than restated from
+// the formula. Anything else is a derived value with no tick.
+
+const T = (text) => ({ kind: 'text', text })
+const F = (tex, caption) => ({ kind: 'formula', tex, caption })
+const C = (rows) => ({ kind: 'check', rows })
+const V = (rows) => ({ kind: 'values', rows })
+
+/** Enough digits to reproduce the arithmetic, not so many it becomes noise. */
+const sig = (v, n = 6) => Number(v.toPrecision(n))
+
+/** Signed, for writing a difference equation without "+ -0.7". */
+const signed = (v, n = 6) => (v < 0 ? `- ${Math.abs(sig(v, n))}` : `+ ${sig(v, n)}`)
+
+// ---------------------------------------------------------------- sources
+
+const WAVE_MATH = {
+  sine: {
+    tex: 'x(t) = A\\sin(2\\pi f_0 t + \\varphi)',
+    rms: (a) => a / Math.SQRT2,
+    crest: Math.SQRT2,
+    harmonics: 'A single frequency, and nothing else. Every other waveform here is read against it.',
+  },
+  square: {
+    tex: 'x(t) = \\frac{4A}{\\pi}\\sum_{m=0}^{\\infty}\\frac{\\sin\\bigl(2\\pi(2m+1)f_0t\\bigr)}{2m+1}',
+    rms: (a) => a,
+    crest: 1,
+    harmonics:
+      'Odd harmonics only, falling as 1/k. The wave is antisymmetric about half a period, and an ' +
+      'even harmonic could not survive that flip.',
+  },
+  triangle: {
+    tex: 'x(t) = \\frac{8A}{\\pi^{2}}\\sum_{m=0}^{\\infty}\\frac{(-1)^{m}\\sin\\bigl(2\\pi(2m+1)f_0t\\bigr)}{(2m+1)^{2}}',
+    rms: (a) => a / Math.sqrt(3),
+    crest: Math.sqrt(3),
+    harmonics:
+      'Odd harmonics again, but falling as 1/k². The wave itself has no jumps — only its slope ' +
+      'does — and one extra degree of smoothness costs one extra power of k.',
+  },
+  sawtooth: {
+    tex: 'x(t) = \\frac{2A}{\\pi}\\sum_{k=1}^{\\infty}\\frac{(-1)^{k+1}\\sin(2\\pi k f_0 t)}{k}',
+    rms: (a) => a / Math.sqrt(3),
+    crest: Math.sqrt(3),
+    harmonics:
+      'Every harmonic, even and odd, falling as 1/k. It jumps like a square, so it decays like ' +
+      'one — but it is not antisymmetric about half a period, so the even harmonics survive.',
+  },
+  noise: {
+    tex: 'x[n] \\sim \\mathcal{U}(-A,\\,A), \\qquad S(f) = \\text{constant}',
+    rms: (a) => a / Math.sqrt(3),
+    crest: Math.sqrt(3),
+    harmonics:
+      'Uniform white noise: every frequency present in equal measure, on average. That flatness ' +
+      'is what makes it useful — put it through a filter and it paints the filter’s shape.',
+  },
+  impulse: {
+    tex: 'x[n] = A\\,\\delta[n], \\qquad |X(f)| = \\text{constant}',
+    rms: null,
+    crest: null,
+    harmonics:
+      'One sample, then silence. Its spectrum is perfectly flat, so anything the spectrum shows ' +
+      'downstream was put there by the chain. Meanwhile the time view is drawing h[n] itself.',
+  },
+  step: {
+    tex: 'x[n] = A\\,u[n], \\qquad |X(f)| \\sim \\frac{1}{f}',
+    rms: null,
+    crest: null,
+    harmonics:
+      'A jump, held. Mostly low-frequency energy falling as 1/f, plus a large DC term — which is ' +
+      'why it shows what a filter does to a sudden change rather than to a steady tone.',
+  },
+}
+
+/**
+ * Math for one source, with its own numbers substituted.
+ *
+ * The RMS row is a genuine check: the left side is a closed form, the right is
+ * computed by squaring and summing the samples this generator actually produces.
+ * Different code paths, and it would catch a generator that drifted from its own
+ * definition — which is exactly the bug the square wave had.
+ */
+export function sourceMath(source, ctx) {
+  const w = WAVE_MATH[source.type]
+  if (!w) return null
+
+  const { sampleRate, fftSize } = ctx
+  const A = source.amp
+  const f0 = source.freq
+  const N = f0 > 0 ? sampleRate / f0 : Infinity
+  const binHz = sampleRate / fftSize
+  const periodic = w.rms != null
+  // Noise has a well-defined RMS but no period at all — the generator does not
+  // even read `freq` — so anything counted per period is meaningless for it.
+  const hasPeriod = periodic && source.type !== 'noise'
+
+  // Measure this source on its own, ignoring the rest of the patch.
+  const buf = render([{ ...source, enabled: true }], 4096, sampleRate, 0)
+  const measuredRms = rms(buf)
+  const measuredPeak = peak(buf)
+
+  // A sine and a square hit their continuous RMS exactly at any sample rate:
+  // the sum of sin² over whole periods is exactly N/2, and a square is |A|
+  // everywhere. A triangle and a sawtooth do not — their samples miss the
+  // extremes — and converge only as the grid gets finer: 6% out at eight
+  // samples per period, 1.6% at sixteen.
+  const slowConverging = source.type === 'triangle' || source.type === 'sawtooth'
+  const coarse =
+    slowConverging && N < 16
+      ? `Only ${Number(N.toFixed(2))} samples per period: the sampled values do not yet match the continuous integral for this shape.`
+      : null
+
+  const blocks = [F(w.tex), T(w.harmonics)]
+
+  if (periodic) {
+    blocks.push(
+      T(
+        'Root-mean-square is the amplitude a DC value would need to deliver the same power, and ' +
+          'crest factor is how far the peak sits above it. They depend on the SHAPE, not the ' +
+          'frequency: a square spends all its time at full amplitude and so has a crest factor ' +
+          'of 1, while a triangle spends most of its time near zero.',
+      ),
+      F('x_{\\text{rms}} = \\sqrt{\\frac{1}{T}\\int_0^{T}\\! x(t)^2\\,dt}, \\qquad \\text{crest} = \\frac{x_{\\text{peak}}}{x_{\\text{rms}}}'),
+      C([
+        {
+          label: 'RMS',
+          predicted: w.rms(A),
+          measured: measuredRms,
+          tol: 0.02,
+          unchecked: coarse,
+        },
+        {
+          label: 'crest factor',
+          predicted: w.crest,
+          measured: measuredPeak / (measuredRms || 1e-12),
+          tol: 0.05,
+          unchecked: coarse,
+        },
+      ]),
+    )
+  }
+
+  if (f0 > 0 && hasPeriod) {
+    blocks.push(
+      V([
+        { label: 'samples per period', value: N, note: N < 4 ? 'very coarse' : '' },
+        { label: 'bin width', value: binHz, unit: 'Hz' },
+        {
+          label: 'bins per period',
+          value: f0 / binHz,
+          note:
+            Math.abs(f0 / binHz - Math.round(f0 / binHz)) < 1e-6
+              ? 'a whole number, so no leakage'
+              : 'not a whole number, so this tone leaks',
+        },
+        {
+          label: 'harmonics below Nyquist',
+          value: Math.max(0, Math.floor((sampleRate / 2 - 1e-9) / f0)),
+        },
+      ]),
+    )
+  }
+
+  if (source.type === 'noise') {
+    blocks.push(
+      V([
+        { label: 'bin width', value: binHz, unit: 'Hz' },
+        { label: 'bins in the frame', value: Math.floor(fftSize / 2) },
+      ]),
+      T(
+        'The frequency control does nothing for noise — there is no period to set. Amplitude is ' +
+          'the half-width of the uniform distribution, so the RMS is A/√3 and the spectrum is ' +
+          'flat on average, with each bin fluctuating around that average from frame to frame.',
+      ),
+    )
+  }
+
+  if (f0 >= sampleRate / 2 && hasPeriod) {
+    blocks.push(
+      T(
+        'This source is at or above Nyquist, so what you see is an alias — a lower frequency ' +
+          'standing in for it. Nothing here can recover the original.',
+      ),
+    )
+  }
+
+  return { blocks }
+}
+
+// ----------------------------------------------------------------- blocks
+
+/**
+ * Measure a block's own magnitude response by running an impulse through it.
+ *
+ * Deliberately NOT biquadResponse: that is the same formula the block card is
+ * already printing, and comparing a formula against itself proves nothing. An
+ * impulse through the actual difference equation, transformed, is an
+ * independent path — it checks that the code implements the transfer function
+ * rather than merely that the algebra was retyped consistently.
+ */
+function measuredResponse(block, sampleRate, freqs) {
+  const def = BLOCK_TYPES[block.type]
+  const p = { ...def.defaults, ...block.params }
+  // Long enough that the ring has died away; a truncated impulse response would
+  // smear its own spectrum and blunt exactly the sharp features being checked.
+  const { settle } = def.make(p, sampleRate)
+  const n = Math.min(65536, Math.max(4096, Math.ceil((settle || 0) * 4)))
+
+  const imp = new Float64Array(n)
+  imp[0] = 1
+  const h = applyChain([{ ...block, bypass: false }], imp, sampleRate, 0)
+
+  // Evaluate the transform at exactly the frequencies asked for, rather than
+  // reading an FFT bin grid. A notch is infinitely narrow, and the nearest bin
+  // to its centre sits on the skirt beside the null — which read 0.063 where
+  // the answer is 0, and looked like a broken filter rather than a blunt ruler.
+  return freqs.map((f) => {
+    const w = (-2 * Math.PI * f) / sampleRate
+    let re = 0
+    let im = 0
+    for (let i = 0; i < n; i++) {
+      const a = w * i
+      re += h[i] * Math.cos(a)
+      im += h[i] * Math.sin(a)
+    }
+    return Math.hypot(re, im)
+  })
+}
+
+const BIQUAD_NAMES = {
+  lowpass: 'Low-pass',
+  highpass: 'High-pass',
+  bandpass: 'Band-pass',
+  notch: 'Notch',
+  peaking: 'Peaking',
+  allpass: 'All-pass',
+}
+
+/** |H| at the corner frequency, as an identity rather than an evaluation. */
+const CORNER_IDENTITY = {
+  lowpass: (p) => ({ value: p.q, tex: '|H(f_0)| = Q' }),
+  highpass: (p) => ({ value: p.q, tex: '|H(f_0)| = Q' }),
+  bandpass: () => ({ value: 1, tex: '|H(f_0)| = 1 \\quad\\text{for every } Q' }),
+  notch: () => ({ value: 0, tex: '|H(f_0)| = 0' }),
+  peaking: (p) => ({
+    value: Math.pow(10, p.gainDb / 20),
+    tex: '|H(f_0)| = 10^{G/20}',
+  }),
+  allpass: () => ({ value: 1, tex: '|H(f)| = 1 \\quad\\text{at every } f' }),
+}
+
+/**
+ * Math for one block, with its own coefficients substituted.
+ *
+ * The point of showing the actual numbers is that a biquad is four multiply-adds
+ * and nothing else. Seeing the difference equation with real coefficients in it
+ * is what turns "a filter" from a black box into five numbers you could work out
+ * by hand.
+ */
+export function blockMath(block, ctx) {
+  const def = BLOCK_TYPES[block.type]
+  if (!def) return null
+  const { sampleRate } = ctx
+  const p = { ...def.defaults, ...block.params }
+
+  if (BIQUAD_NAMES[block.type]) {
+    const co = designBiquad({ mode: block.type, ...p }, sampleRate)
+    const r = poleRadius(co)
+    const ident = CORNER_IDENTITY[block.type](p)
+    const probes = [p.freq, sampleRate / 4, sampleRate / 2 - 1]
+    const meas = measuredResponse(block, sampleRate, probes)
+
+    return {
+      blocks: [
+        T(
+          'A biquad is a second-order section: two samples of memory on the input, two on the ' +
+            'output, and five coefficients. Everything a filter of this kind can do lives here.',
+        ),
+        F(
+          'H(z) = \\frac{b_0 + b_1 z^{-1} + b_2 z^{-2}}{1 + a_1 z^{-1} + a_2 z^{-2}}',
+        ),
+        T('With the current settings the coefficients are'),
+        F(
+          `H(z) = \\frac{${sig(co.b0)} ${signed(co.b1)}z^{-1} ${signed(co.b2)}z^{-2}}` +
+            `{1 ${signed(co.a1)}z^{-1} ${signed(co.a2)}z^{-2}}`,
+        ),
+        T('which the code runs as a difference equation, one multiply-add per coefficient:'),
+        F(
+          `y[n] = ${sig(co.b0)}\\,x[n] ${signed(co.b1)}\\,x[n{-}1] ${signed(co.b2)}\\,x[n{-}2] ` +
+            `${signed(-co.a1)}\\,y[n{-}1] ${signed(-co.a2)}\\,y[n{-}2]`,
+        ),
+        T(
+          'The poles sit at radius r from the origin. Inside the unit circle the filter is ' +
+            'stable and its ringing dies away as rⁿ; at r = 1 it would ring forever, and beyond ' +
+            'it the output would grow without limit.',
+        ),
+        V([
+          { label: 'pole radius r', value: r, note: isStable(co) ? 'stable (r < 1)' : 'UNSTABLE' },
+          {
+            label: 'ring decays to 1e-6 in',
+            value: r > 0 && r < 1 ? Math.round(Math.log(1e-6) / Math.log(r)) : Infinity,
+            unit: 'samples',
+          },
+          { label: 'cutoff as a fraction of Nyquist', value: p.freq / (sampleRate / 2) },
+        ]),
+        T(`At the corner frequency this mode has a defining value, ${BIQUAD_NAMES[block.type]}:`),
+        F(ident.tex),
+        T(
+          'The measured column below is not that formula evaluated again — it is an impulse sent ' +
+            'through the difference equation above and transformed back. If the code did not ' +
+            'implement the algebra, these two would part company.',
+        ),
+        C([
+          {
+            label: `|H| at f₀ = ${sig(p.freq, 5)} Hz`,
+            predicted: ident.value,
+            measured: meas[0],
+            tol: 0.03,
+            abs: 0.02,
+          },
+          {
+            label: `|H| at ${sig(sampleRate / 4, 5)} Hz`,
+            predicted: def.response(p, sampleRate / 4, sampleRate),
+            measured: meas[1],
+            tol: 0.03,
+            abs: 0.01,
+          },
+          {
+            label: '|H| just below Nyquist',
+            predicted: def.response(p, sampleRate / 2 - 1, sampleRate),
+            measured: meas[2],
+            tol: 0.05,
+            abs: 0.01,
+          },
+        ]),
+      ],
+    }
+  }
+
+  if (block.type === 'gain') {
+    const g = Math.pow(10, p.gainDb / 20)
+    return {
+      blocks: [
+        T('A scaling and an offset — the only affine thing in the chain.'),
+        F(`y[n] = g\\,x[n] + d, \\qquad g = 10^{G/20} = ${sig(g)}, \\quad d = ${sig(p.dcOffset)}`),
+        T(
+          'Decibels are logarithmic, so 20 dB is a factor of ten in amplitude and 6.02 dB is a ' +
+            'factor of two. The offset is not a gain at all: it adds a constant, which appears ' +
+            'as a spike in the 0 Hz bin and shifts the waveform off centre.',
+        ),
+        T(
+          'That offset matters most in front of something nonlinear. A symmetric clipper makes ' +
+            'only odd harmonics; move the signal off centre first and the even ones appear.',
+        ),
+        V([
+          { label: 'amplitude gain', value: g, unit: '×' },
+          { label: 'power gain', value: g * g, unit: '×' },
+          { label: 'DC offset', value: p.dcOffset },
+        ]),
+      ],
+    }
+  }
+
+  if (block.type === 'clip') {
+    const c = p.threshold
+    return {
+      blocks: [
+        T('Memoryless, and flat beyond the threshold in both directions.'),
+        F(`y = \\max(-c,\\ \\min(c,\\ x)), \\qquad c = ${sig(c)}`),
+        T(
+          'This is not expressible as H(f)·X(f) for any H, which is what "nonlinear" means here ' +
+            'and why the response curve on the spectrum turns dashed. In the hard limit, where a ' +
+            'sine is flattened almost into a square, the harmonics approach',
+        ),
+        F('A_k = \\frac{4c}{k\\pi}, \\qquad k \\text{ odd}'),
+        T(
+          'Odd only, because clipping is an odd function: f(−x) = −f(x). Break that symmetry ' +
+            'with a DC offset upstream and the even harmonics arrive.',
+        ),
+      ],
+    }
+  }
+
+  if (block.type === 'comb') {
+    const D = Math.max(1, Math.round((p.delayMs / 1000) * sampleRate))
+    const fb = p.mode === 'feedback'
+    return {
+      blocks: [
+        T(
+          fb
+            ? 'Feeding the delayed copy back makes this an IIR filter: its response never quite ends.'
+            : 'Adding a delayed copy makes this an FIR filter: its response is exactly D+1 samples long.',
+        ),
+        F(
+          fb
+            ? `H(z) = \\frac{1}{1 - g\\,z^{-D}}, \\qquad g = ${sig(p.g)}, \\quad D = ${D}`
+            : `H(z) = 1 + g\\,z^{-D}, \\qquad g = ${sig(p.g)}, \\quad D = ${D}`,
+        ),
+        T(
+          fb
+            ? 'The delayed copy reinforces itself wherever the delay is a whole number of periods, ' +
+              'so the comb’s teeth point up: peaks every fₛ/D, of height 1/(1−g).'
+            : 'The two paths cancel wherever the delay is an odd number of half periods, so the ' +
+              'comb’s teeth point down: nulls every fₛ/D.',
+        ),
+        V([
+          { label: 'delay D', value: D, unit: 'samples' },
+          { label: 'delay', value: (1000 * D) / sampleRate, unit: 'ms' },
+          { label: 'tooth spacing', value: sampleRate / D, unit: 'Hz' },
+          ...(fb ? [{ label: 'peak height 1/(1−g)', value: 1 / (1 - Math.min(0.999, p.g)) }] : []),
+        ]),
+      ],
+    }
+  }
+
+  if (block.type === 'ringmod') {
+    return {
+      blocks: [
+        T('Multiplication by a sine, sample by sample.'),
+        F(`y(t) = x(t)\\,\\sin(2\\pi f_c t), \\qquad f_c = ${sig(p.freq, 5)}\\ \\text{Hz}`),
+        T('For a single input tone the product identity says exactly what comes out:'),
+        F(
+          '\\cos(2\\pi f_1 t)\\cos(2\\pi f_c t) = \\tfrac{1}{2}\\cos\\bigl(2\\pi(f_c - f_1)t\\bigr)' +
+            ' + \\tfrac{1}{2}\\cos\\bigl(2\\pi(f_c + f_1)t\\bigr)',
+        ),
+        T(
+          'Neither f₁ nor f_c appears on the right, which is why both inputs vanish. More ' +
+            'generally, multiplying in time is convolving in frequency, and convolving with a ' +
+            'pair of impulses at ±f_c is what copies the spectrum up around the carrier.',
+        ),
+        F('x(t)\\,c(t) \\;\\longleftrightarrow\\; X(f) * C(f)'),
+      ],
+    }
+  }
+
+  if (block.type === 'quantize') {
+    const bits = p.bits
+    return {
+      blocks: [
+        T('Rounding to a fixed grid — what an analogue-to-digital converter does.'),
+        F(`\\Delta = \\frac{2}{2^{N}} = ${sig(2 / Math.pow(2, bits))}, \\qquad N = ${bits}\\ \\text{bits}`),
+        T(
+          'If the rounding error were random and independent of the signal, its power would be ' +
+            'Δ²/12 and the signal-to-noise ratio would be',
+        ),
+        F('\\text{SNR} \\approx 6.02N + 1.76\\ \\text{dB}'),
+        T(
+          'It is neither random nor independent. For a periodic input the error repeats with the ' +
+            'signal, so it lands on harmonics — the spurs you can see. Dither adds a small random ' +
+            'offset before rounding, which decorrelates the error and turns the spurs into the ' +
+            'smooth floor the formula assumed all along.',
+        ),
+        V([
+          { label: 'levels', value: Math.pow(2, bits) },
+          { label: 'step Δ', value: 2 / Math.pow(2, bits) },
+          { label: 'ideal SNR', value: 6.02 * bits + 1.76, unit: 'dB' },
+          { label: 'dither', value: p.dither ? 1 : 0, note: p.dither ? 'on' : 'off' },
+        ]),
+      ],
+    }
+  }
+
+  if (block.type === 'rectify') {
+    return {
+      blocks: [
+        T('Absolute value: the negative half is folded upwards.'),
+        F('y = |x|'),
+        T(
+          'For a sine this halves the period, so the output is built entirely from EVEN ' +
+            'harmonics of the original, plus a large DC term:',
+        ),
+        F('|A\\sin\\omega t| = \\frac{2A}{\\pi} - \\frac{4A}{\\pi}\\sum_{m=1}^{\\infty}\\frac{\\cos(2m\\omega t)}{4m^{2}-1}'),
+        T(
+          'The 2A/π is the DC average, and the fundamental is entirely absent — the one frequency ' +
+            'that went in is the one frequency missing from what comes out.',
+        ),
+        V([{ label: 'DC term 2A/π (for A = 1)', value: 2 / Math.PI }]),
+      ],
+    }
+  }
+
+  return null
+}

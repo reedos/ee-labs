@@ -22,7 +22,7 @@ export const Q_MIN = 0.05
 export const Q_MAX = 40
 
 /**
- * Coefficients for one section, already normalised by a0 so that a0 = 1.
+ * Coefficients for one section, already normalized by a0 so that a0 = 1.
  * Returns `{ b0, b1, b2, a1, a2 }`.
  */
 export function designBiquad({ mode, freq, q = Math.SQRT1_2, gainDb = 0 }, sampleRate) {
@@ -169,7 +169,7 @@ export function settleSamples(coeffs, eps = 1e-6) {
  *   y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
  *
  * Transposed Direct Form II is the usual professional choice — it needs two state
- * variables instead of four and has better numerical behaviour in fixed point or
+ * variables instead of four and has better numerical behavior in fixed point or
  * float32. Neither matters at float64 with Q <= 40, and DF-I has the property that
  * counts here: the code is the equation on the page.
  */

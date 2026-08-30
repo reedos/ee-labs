@@ -40,7 +40,7 @@ const NOTE_ALIASED =
 const NOTE_NON_INTEGER =
   'fₛ/f₀ is not a whole number of samples per period, so the sampled closed form does not apply.'
 const NOTE_OFF_BIN =
-  'Not centred on an FFT bin, so the window reads this peak low — scalloping loss, not a wrong prediction.'
+  'Not centered on an FFT bin, so the window reads this peak low — scalloping loss, not a wrong prediction.'
 const NOTE_COARSE =
   'Fewer than 16 samples per period: the sampled waveform’s own correction differs between these two harmonics and skews the ratio away from the continuous law.'
 
@@ -366,7 +366,7 @@ const ENTRIES = {
         F('|H(j\\omega_0)| = \\frac{\\omega_0^{2}}{\\dfrac{\\omega_0}{Q}\\,\\omega_0} = Q'),
         T(
           'That is the whole definition. It is specific to the low-pass (and high-pass): a ' +
-            'band-pass is normalised so |H(jω₀)| = 1 whatever Q is, and there Q sets the ' +
+            'band-pass is normalized so |H(jω₀)| = 1 whatever Q is, and there Q sets the ' +
             'bandwidth instead, as ω₀/Q.',
         ),
         C(rows),
@@ -631,8 +631,8 @@ const ENTRIES = {
   },
 }
 
-/** The maths panel for the active preset, or null if it has none. */
-export function mathsFor(name, ctx) {
+/** The math panel for the active preset, or null if it has none. */
+export function mathFor(name, ctx) {
   const fn = ENTRIES[name]
   if (!fn) return null
   try {
@@ -646,11 +646,11 @@ export function mathsFor(name, ctx) {
  * Everything an entry needs to state a prediction and check it against what is
  * on screen.
  *
- * Lives here rather than in App so that maths.test.js can build the identical
+ * Lives here rather than in App so that math.test.js can build the identical
  * context and verify each panel's own claims. A check row that quietly stopped
  * agreeing would otherwise be invisible until someone read it.
  */
-export function mathsContext({ state, freqs, amps, ghostAmps, resp, peakFreq }) {
+export function mathContext({ state, freqs, amps, ghostAmps, resp, peakFreq }) {
   const nearest = (f) => {
     let bi = 0
     for (let i = 1; i < freqs.length; i++) {

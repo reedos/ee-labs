@@ -814,7 +814,7 @@ select {
 @media (min-width: 2400px) { .block-hint { font-size: 14px; } }
 @media (min-width: 3400px) { .block-hint { font-size: 17px; } }
 
-/* ------------------------------------------------ preset groups + maths */
+/* ------------------------------------------------ preset groups + math */
 
 .preset-group { margin-bottom: 10px; }
 
@@ -831,9 +831,9 @@ select {
 /* A formula is something to take on trust; a formula next to the number this
    tool just measured is something you can check. Hence the panel, and hence it
    being collapsed until asked for. */
-.maths { margin-top: 10px; }
+.math { margin-top: 10px; }
 
-.maths-toggle {
+.math-toggle {
   width: 100%;
   padding: 5px 0;
   border: 0;
@@ -844,9 +844,9 @@ select {
   text-align: left;
   cursor: pointer;
 }
-.maths-toggle:hover { text-decoration: underline; }
+.math-toggle:hover { text-decoration: underline; }
 
-.maths-body {
+.math-body {
   margin-top: 6px;
   padding: 10px 12px;
   border-left: 2px solid var(--line);
@@ -854,15 +854,15 @@ select {
   font-size: 12px;
   line-height: 1.6;
 }
-.maths-body p { margin: 0 0 10px; }
-.maths-body p:last-child { margin-bottom: 0; }
+.math-body p { margin: 0 0 10px; }
+.math-body p:last-child { margin-bottom: 0; }
 
-.maths-formula {
+.math-formula {
   margin: 12px 0;
   overflow-x: auto;
   overflow-y: hidden;
 }
-.maths-caption {
+.math-caption {
   margin-top: 4px;
   color: var(--dim);
   font-size: 11px;
@@ -871,74 +871,74 @@ select {
 /* KaTeX defaults to a size tuned for body copy at 16px; the sidebar is smaller
    and the formulas are the thing being read, so nudge them back up. */
 .tex .katex { font-size: 1.06em; color: var(--text); }
-.maths-formula .katex-display { margin: 0; }
+.math-formula .katex-display { margin: 0; }
 
-.maths-check {
+.math-check {
   width: 100%;
   margin: 12px 0 4px;
   border-collapse: collapse;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
 }
-.maths-check th,
-.maths-check td {
+.math-check th,
+.math-check td {
   padding: 3px 6px 3px 0;
   text-align: right;
   font-weight: 400;
   white-space: nowrap;
 }
-.maths-check thead th {
+.math-check thead th {
   color: var(--dim);
   font-size: 10px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   border-bottom: 1px solid var(--line);
 }
-.maths-check tbody th {
+.math-check tbody th {
   text-align: left;
   color: var(--dim);
   font-family: ui-sans-serif, system-ui, sans-serif;
   white-space: normal;
 }
-.maths-check td { color: var(--text); }
-.maths-check .agree { color: var(--accent); }
-.maths-check .disagree { color: var(--warn); }
-.maths-check .unit { color: var(--dim); }
+.math-check td { color: var(--text); }
+.math-check .agree { color: var(--accent); }
+.math-check .disagree { color: var(--warn); }
+.math-check .unit { color: var(--dim); }
 
 @media (min-width: 2400px) {
   .preset-group h3 { font-size: 12px; }
-  .maths-toggle, .maths-body { font-size: 14px; }
-  .maths-check { font-size: 13px; }
-  .maths-check thead th, .maths-caption { font-size: 12px; }
+  .math-toggle, .math-body { font-size: 14px; }
+  .math-check { font-size: 13px; }
+  .math-check thead th, .math-caption { font-size: 12px; }
 }
 @media (min-width: 3400px) {
   .preset-group h3 { font-size: 14px; }
-  .maths-toggle, .maths-body { font-size: 17px; }
-  .maths-check { font-size: 15px; }
-  .maths-check thead th, .maths-caption { font-size: 14px; }
+  .math-toggle, .math-body { font-size: 17px; }
+  .math-check { font-size: 15px; }
+  .math-check thead th, .math-caption { font-size: 14px; }
 }
 
-.maths-check .unchecked { color: var(--dim); }
-.maths-notes {
+.math-check .unchecked { color: var(--dim); }
+.math-notes {
   margin: 4px 0 0;
   padding-left: 18px;
   color: var(--dim);
   font-size: 11px;
   line-height: 1.5;
 }
-.maths-notes li { margin-bottom: 3px; }
-@media (min-width: 2400px) { .maths-notes { font-size: 12px; } }
-@media (min-width: 3400px) { .maths-notes { font-size: 14px; } }
+.math-notes li { margin-bottom: 3px; }
+@media (min-width: 2400px) { .math-notes { font-size: 12px; } }
+@media (min-width: 3400px) { .math-notes { font-size: 14px; } }
 
 /* Derived values, not comparisons: one column and no tick. */
-.maths-values {
+.math-values {
   width: 100%;
   margin: 12px 0 4px;
   border-collapse: collapse;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
 }
-.maths-values caption {
+.math-values caption {
   padding-bottom: 3px;
   border-bottom: 1px solid var(--line);
   color: var(--dim);
@@ -948,14 +948,14 @@ select {
   text-transform: uppercase;
   text-align: left;
 }
-.maths-values th,
-.maths-values td { padding: 3px 6px 3px 0; font-weight: 400; }
-.maths-values th {
+.math-values th,
+.math-values td { padding: 3px 6px 3px 0; font-weight: 400; }
+.math-values th {
   color: var(--dim);
   font-family: ui-sans-serif, system-ui, sans-serif;
   text-align: left;
 }
-.maths-values td { color: var(--text); text-align: right; }
-.maths-values .unit { color: var(--dim); text-align: left; }
-@media (min-width: 2400px) { .maths-values { font-size: 13px; } .maths-values caption { font-size: 12px; } }
-@media (min-width: 3400px) { .maths-values { font-size: 15px; } .maths-values caption { font-size: 14px; } }
+.math-values td { color: var(--text); text-align: right; }
+.math-values .unit { color: var(--dim); text-align: left; }
+@media (min-width: 2400px) { .math-values { font-size: 13px; } .math-values caption { font-size: 12px; } }
+@media (min-width: 3400px) { .math-values { font-size: 15px; } .math-values caption { font-size: 14px; } }

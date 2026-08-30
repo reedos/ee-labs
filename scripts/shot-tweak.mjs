@@ -1,4 +1,4 @@
-// Load a preset, change a source parameter, open the maths panel, screenshot.
+// Load a preset, change a source parameter, open the math panel, screenshot.
 import { chromium } from 'playwright'
 const URL = process.env.APP_URL || 'http://localhost:4173'
 const [preset, freq] = [process.argv[2], process.argv[3]]
@@ -17,7 +17,7 @@ if (freq) {
   await box.press('Enter')
   await page.waitForTimeout(400)
 }
-await page.locator('.maths-toggle').click()
+await page.locator('.math-toggle').click()
 await page.waitForTimeout(400)
 await page.locator('.controls').screenshot({ path: 'shots/_tweak.png' })
 console.log(problems.length ? problems.join('\n') : 'no page errors')

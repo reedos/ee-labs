@@ -7,9 +7,9 @@ the plots sits a chain of blocks you can add, reorder and bypass. Change anythin
 both views answer at once. That pairing is the whole idea: most things that are hard to
 picture in one domain are obvious in the other.
 
-Built for someone who knows some maths but has not done much signal processing. No
+Built for someone who knows some math but has not done much signal processing. No
 install beyond `npm`, nothing to configure, and every preset is a question with a
-visible answer — plus, under each one, the maths that predicts it, checked against what
+visible answer — plus, under each one, the math that predicts it, checked against what
 the tool just measured.
 
 ## Running it
@@ -17,14 +17,14 @@ the tool just measured.
 ```
 npm install
 npm run dev        # http://localhost:1421
-npm test           # 135 tests
+npm test           # 146 tests
 npm run build
 ```
 
 ## Where to start
 
 Click through **Try this** in the sidebar, top to bottom. Each preset loads a setup, says
-what to look at, and offers a collapsible **The maths** panel. Then change it and see
+what to look at, and offers a collapsible **The math** panel. Then change it and see
 what breaks.
 
 **Signals and Fourier** — what a spectrum is
@@ -63,7 +63,7 @@ what breaks.
 | Ring modulator | Multiplication in time is a shift in frequency. |
 | AM: the carrier returns | One DC offset separates broadcast AM from DSB-SC. |
 | Comb | Delay, and evenly spaced notches. |
-| 4 bits | Quantisation spurs, and what dither trades them for. |
+| 4 bits | Quantization spurs, and what dither trades them for. |
 
 ## How it is put together
 
@@ -84,7 +84,7 @@ sources → sum → [ordered block chain] → scope + FFT
   an unrelated filter happened to ask for.
 - **`src/dsp/blocks.js`** — the block registry, as data. One card component renders every
   block, so adding a type touches this file only.
-- **`src/presets.js`**, **`src/maths.js`** — the lessons, and the maths behind them.
+- **`src/presets.js`**, **`src/math.js`** — the lessons, and the math behind them.
 
 The scope's horizontal axis counts cycles of the signal rather than milliseconds, so
 "show me five periods" stays five periods when you move a source from 250 Hz to 2 kHz.
@@ -113,6 +113,32 @@ generators take time from the absolute sample index rather than from an offset. 
 that subtly wrong made a filtered square measure up to 10% away from its own response
 curve, and the test that should have caught it was pinning the artifact instead.
 
+## The math is attached to what you built
+
+Every preset carries a collapsible **The math** panel, but so does every **source** and
+every **block** — because the presets go quiet the moment you build a chain of your own,
+which is exactly when an explanation is most wanted.
+
+A source panel gives its waveform's series, its RMS and crest factor as a closed form
+checked against the samples the generator actually produced, and how the current
+frequency lands on the sample grid and the FFT bins.
+
+A block panel prints the transfer function **with its own coefficients substituted**, and
+the difference equation the code really runs:
+
+```
+H(z) = (0.0927652 + 0.18553 z⁻¹ + 0.0927652 z⁻²) / (1 − 1.57184 z⁻¹ + 0.9429 z⁻²)
+```
+
+plus the pole radius, whether it is stable, and how long its ringing takes to die. A
+biquad is four multiply-adds and five numbers; seeing the actual numbers is what turns it
+from a black box into arithmetic you could do by hand.
+
+Its check column is measured by pushing an impulse through that difference equation and
+transforming the result — deliberately *not* by evaluating the same formula twice. So it
+verifies that the code implements the algebra being printed, rather than that the algebra
+was retyped consistently.
+
 ## What "theory vs measured" is worth
 
 A fair question, since both numbers come out of the same program. The comparison is
@@ -139,9 +165,9 @@ fails.
 
 ## The explanations are tested
 
-Each preset's note makes a claim about physics, and each maths panel prints a predicted
+Each preset's note makes a claim about physics, and each math panel prints a predicted
 value beside the measured one. Both are verified: `src/presets.test.js` renders every
-preset and measures its claim, and `src/maths.test.js` checks that every formula
+preset and measures its claim, and `src/math.test.js` checks that every formula
 typesets and that **every predicted number the panel prints agrees with the measurement**
 — using the same predicate the panel itself uses to draw its tick or cross, so the test
 and the page cannot disagree about what "agrees" means.
@@ -155,8 +181,8 @@ bin centres, so the window reads their peaks up to 1.4 dB low. Neither case mean
 formula is wrong.
 
 So each comparison states its own preconditions — below Nyquist, a whole number of
-samples per period, centred on a bin — and when one fails the row is footnoted with the
-reason instead of marked with a cross. `maths.test.js` sweeps frequency, sample rate and
+samples per period, centered on a bin — and when one fails the row is footnoted with the
+reason instead of marked with a cross. `math.test.js` sweeps frequency, sample rate and
 FFT size across those presets and requires every row to be either correct or explicitly
 unmeasurable, and separately requires that the escape hatch is not being used everywhere:
 a panel that checked nothing would pass the first test and teach nothing.

@@ -1,6 +1,7 @@
 import React from 'react'
 import NumField from './NumField.jsx'
-import Maths from './Maths.jsx'
+import MathPanel from './MathPanel.jsx'
+import { sourceMath } from '../math-parts.js'
 import { PRESET_GROUPS } from '../presets.js'
 import BlockCard from './BlockCard.jsx'
 import { WAVEFORMS } from '../dsp/signals.js'
@@ -8,7 +9,7 @@ import { BLOCK_GROUPS, BLOCK_TYPES, makeBlockRecord } from '../dsp/blocks.js'
 
 const HZ = { k: 1e3, khz: 1e3, hz: 1 }
 
-function Source({ src, sampleRate, onChange, onRemove, canRemove }) {
+function Source({ src, sampleRate, onChange, onRemove, canRemove , fftSize}) {
   const set = (k, v) => onChange({ ...src, [k]: v })
   const nyquist = sampleRate / 2
   const aliased = src.freq > nyquist
@@ -107,12 +108,17 @@ function Source({ src, sampleRate, onChange, onRemove, canRemove }) {
           decimals={0}
         />
       )}
+
+      <MathPanel
+        label="The math for this source"
+        getEntry={() => sourceMath(src, { sampleRate, fftSize })}
+      />
     </div>
   )
 }
 
 export default function Controls({ state, setState, presets, onPreset, openBlocks, setOpenBlocks,
-  maths,
+  math,
 }) {
   const patch = (k, v) => setState((s) => ({ ...s, [k]: v }))
 
@@ -184,7 +190,7 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
       <section>
         <h2>Try this</h2>
         {/* Grouped as a rough curriculum. A flat list of two dozen buttons is a
-            wall; four short labelled runs can be read. */}
+            wall; four short labeled runs can be read. */}
         {PRESET_GROUPS.map((g) => {
           const inGroup = presets.filter((p) => p.group === g)
           if (!inGroup.length) return null
@@ -207,7 +213,7 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
           )
         })}
         {activePreset ? <p className="hint">{activePreset.note}</p> : null}
-        <Maths entry={maths} />
+        <MathPanel entry={math} />
       </section>
 
       <section id="sources">
@@ -222,6 +228,7 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
             key={s.id}
             src={s}
             sampleRate={state.sampleRate}
+            fftSize={state.fftSize}
             onChange={(next) => setSource(i, next)}
             onRemove={() => removeSource(i)}
             canRemove={state.sources.length > 1}

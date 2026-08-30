@@ -305,7 +305,7 @@ describe('quantizer', () => {
     return buf
   }
 
-  it('output lands on the quantisation grid', () => {
+  it('output lands on the quantization grid', () => {
     const bits = 6
     const delta = 2 / Math.pow(2, bits)
     for (const v of quant(bits)) {

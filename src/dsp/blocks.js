@@ -172,9 +172,9 @@ export const BLOCK_TYPES = {
     label: 'Comb / delay',
     group: 'Nonlinear',
     hint:
-      'Adds the signal to a delayed copy of itself, cancelling wherever the delay is half a ' +
+      'Adds the signal to a delayed copy of itself, canceling wherever the delay is half a ' +
       'period — evenly spaced notches. Feed-forward is an FIR filter, feedback an IIR one: ' +
-      'the same control, two very different behaviours.',
+      'the same control, two very different behaviors.',
     nonlinear: false,
     defaults: { delayMs: 4, g: 0.7, mode: 'feedforward' },
     params: [

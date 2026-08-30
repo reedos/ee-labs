@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import katex from 'katex'
 
-// The maths behind whatever is currently on screen.
+// The math behind whatever is currently on screen.
 //
 // Two halves, and the second is the point. A formula alone is something to take
 // on trust; a formula next to the number this tool just measured is something
@@ -81,7 +81,7 @@ export function Values({ rows }) {
         ? v.toExponential(3)
         : Number(v.toFixed(4)).toString()
   return (
-    <table className="maths-values">
+    <table className="math-values">
       <caption>from these settings</caption>
       <tbody>
         {rows.map((r, i) => (
@@ -111,7 +111,7 @@ export function Check({ rows }) {
   )
   return (
     <>
-    <table className="maths-check">
+    <table className="math-check">
       <thead>
         <tr>
           <th scope="col">quantity</th>
@@ -128,7 +128,7 @@ export function Check({ rows }) {
       </tbody>
     </table>
     {notes.length ? (
-      <ol className="maths-notes">
+      <ol className="math-notes">
         {notes.map((n, i) => (
           <li key={i}>{n}</li>
         ))}
@@ -145,29 +145,33 @@ export function Check({ rows }) {
  * to scroll past a derivation to reach it, and someone who wants the derivation
  * knows to open it.
  */
-export default function Maths({ entry }) {
+export default function MathPanel({ entry, getEntry, label = 'The math' }) {
   const [open, setOpen] = useState(false)
-  if (!entry) return null
+  // Built only once opened. A block's panel measures its own impulse response
+  // to check itself, which is not work worth doing on every keystroke for a
+  // panel nobody has looked at.
+  const built = useMemo(() => (open ? entry || (getEntry && getEntry()) : null), [open, entry, getEntry])
+  if (!entry && !getEntry) return null
 
   return (
-    <div className={`maths ${open ? 'is-open' : ''}`}>
+    <div className={`math ${open ? 'is-open' : ''}`}>
       <button
         type="button"
-        className="maths-toggle"
+        className="math-toggle"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span aria-hidden="true">{open ? '▾' : '▸'}</span> The maths
+        <span aria-hidden="true">{open ? '▾' : '▸'}</span> {label}
       </button>
-      {open && (
-        <div className="maths-body">
-          {entry.blocks.map((b, i) => {
+      {open && built && (
+        <div className="math-body">
+          {built.blocks.map((b, i) => {
             if (b.kind === 'text') return <p key={i}>{b.text}</p>
             if (b.kind === 'formula')
               return (
-                <div key={i} className="maths-formula">
+                <div key={i} className="math-formula">
                   <Formula>{b.tex}</Formula>
-                  {b.caption ? <p className="maths-caption">{b.caption}</p> : null}
+                  {b.caption ? <p className="math-caption">{b.caption}</p> : null}
                 </div>
               )
             if (b.kind === 'check') return <Check key={i} rows={b.rows} />

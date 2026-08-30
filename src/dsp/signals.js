@@ -65,7 +65,7 @@ export function sample(type, t, freq, amp, phase, index = 0, seed = 0) {
       // (2/pi)*asin(sin x) is a unit triangle, peak 1, continuous.
       return amp * (2 / Math.PI) * Math.asin(Math.sin(theta))
     case 'sawtooth': {
-      // Rising ramp in [-1, 1), period 1 in normalised phase.
+      // Rising ramp in [-1, 1), period 1 in normalized phase.
       const p = theta / (2 * Math.PI)
       return amp * 2 * (p - Math.floor(p + 0.5))
     }
@@ -88,7 +88,7 @@ export function sample(type, t, freq, amp, phase, index = 0, seed = 0) {
     case 'step':
       // Everything a filter does to a sudden change: rise time, overshoot and
       // ringing. It is what Q feels like in the time domain, where a resonance
-      // is easier to recognise than it is as a bump on a curve.
+      // is easier to recognize than it is as a bump on a curve.
       return index >= 0 ? amp : 0
     default:
       throw new Error(`unknown waveform: ${type}`)
