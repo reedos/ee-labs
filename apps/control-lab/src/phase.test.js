@@ -108,11 +108,12 @@ describe('the phase margin stays on the circle', () => {
 
   it('the unstable plant under Kp 5 reads 78.5°, not 438.5°', () => {
     // bode() anchors this plant at +180° (negative DC gain), so the raw
-    // 180 + ∠L is a full turn high. The raw value is pinned too, so if the
-    // package ever folds it at the source this workaround shows up as the
-    // dead code it will have become.
+    // 180 + ∠L was a full turn high — 438.5°, printed verbatim in the topbar
+    // until this test pinned it. The fold now lives in margins() itself: the
+    // NEEDS.md handshake worked as designed — the pinned raw value flagged
+    // the local workaround as dead code, and both moved in the same commit.
     const L = series(CONTROLLERS.p.tf({ kp: 5 }), PLANTS.unstable.tf({ k: 1, p: 1 }))
-    expect(margins(L, GRID).phaseMargin).toBeCloseTo(438.5, 0)
+    expect(margins(L, GRID).phaseMargin).toBeCloseTo(78.5, 0)
     expect(loopMargins(L, GRID).phaseMargin).toBeCloseTo(78.5, 0)
   })
 

@@ -451,6 +451,14 @@ export function margins(L, freqs) {
       const t = (1 - mag[i - 1]) / (mag[i] - mag[i - 1])
       wGc = freqs[i - 1] + t * (freqs[i] - freqs[i - 1])
       pm = 180 + deg(phase[i - 1] + t * (phase[i] - phase[i - 1]))
+      // A phase margin is an angle to the point -1, and an angle lives on a
+      // circle: fold into (-180, 180]. Without this, a negative-DC-gain loop
+      // - bode() anchors those at +180 degrees - reported margins a full turn
+      // high: the unstable plant under Kp 5 printed 438.5 where MATLAB's
+      // margin() prints 78.5. Found by the Control Lab agent, which carried a
+      // local fold (loopMargins) until this landed at the source.
+      pm = ((pm % 360) + 360) % 360
+      if (pm > 180) pm -= 360
       break
     }
   }

@@ -687,6 +687,41 @@ console.log('\n10f. Folded groups, order-aware hints, the signal-path diagram\n'
   }
   if (openOnes.length > 2) fail(`most groups should fold: ${openOnes.length} open`)
 
+  // The attack the promise must survive: click the ACTIVE group's own summary
+  // and expect to get nowhere. (Natively a <details> folds before React hears
+  // of it, and a true->true prop is never rewritten - the hole the Control
+  // Lab agent found in this very pattern.)
+  await page.evaluate(() => {
+    for (const d of document.querySelectorAll('details.preset-group')) {
+      if (d.querySelector('.preset.is-on')) d.querySelector('summary').click()
+    }
+  })
+  await settle()
+  const activeStillOpen = await page.evaluate(() => {
+    for (const d of document.querySelectorAll('details.preset-group')) {
+      if (d.querySelector('.preset.is-on')) return d.open
+    }
+    return false
+  })
+  if (!activeStillOpen) fail('clicking the active group summary folded it - the active preset can be hidden')
+  else console.log('   the active group refuses to fold - where-you-are cannot be hidden')
+
+  // And the diagram's wires must actually draw: an undefined CSS var left
+  // stroke: none, boxes with nothing between them, shipped.
+  await page.locator('.fd-open').click()
+  await settle()
+  const wireStroke = await page.evaluate(() => {
+    const w = document.querySelector('.fd-wire')
+    return w ? getComputedStyle(w).stroke : 'missing'
+  })
+  await page.keyboard.press('Escape')
+  await settle()
+  if (wireStroke === 'none' || wireStroke === 'missing') {
+    fail(`flow diagram wires do not draw: stroke = ${wireStroke}`)
+  } else {
+    console.log(`   diagram wires draw (stroke ${wireStroke})`)
+  }
+
   // The low-pass hint follows the order select: 12 dB/oct at 2nd, 24 at 4th.
   await expandBlocks()
   const hintText = async () => (await page.locator('.block-hint').first().textContent()) || ''

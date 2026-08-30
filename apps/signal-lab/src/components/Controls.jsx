@@ -230,7 +230,14 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
                 setOpenGroups(next)
               }}
             >
-              <summary>
+              {/* The browser folds a <details> natively BEFORE React hears of
+                  it, and React will not rewrite an `open` prop that did not
+                  change (true -> true), so the controlled prop alone is a
+                  fiction: the active group could be folded away despite the
+                  promise above. Refuse the gesture at the source — keyboard
+                  activation arrives as a click too, so this covers Enter and
+                  Space. Found by the Control Lab agent's harness. */}
+              <summary onClick={holdsActive ? (e) => e.preventDefault() : undefined}>
                 {g}
                 {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
               </summary>

@@ -232,13 +232,10 @@ export function settlesOnScreen(y, final) {
  * really tolerates. Flagged in NEEDS.md for a fix at the source.
  */
 export function loopMargins(L, freqs) {
-  const m = margins(L, freqs)
-  if (m.phaseMargin != null) {
-    let pm = ((m.phaseMargin % 360) + 360) % 360
-    if (pm > 180) pm -= 360
-    m.phaseMargin = pm
-  }
-  return m
+  // The fold this used to do now lives in margins() itself (see NEEDS.md -
+  // the packages agent landed it at the source). Kept as the app's single
+  // entry point for margins, doing nothing extra.
+  return margins(L, freqs)
 }
 
 export const defaultsOf = (defs) => {

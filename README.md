@@ -8,7 +8,7 @@ and explains, next to every number, where that number came from.
 
 ```
 npm install
-npm test                 # every package and every app (387 tests)
+npm test                 # every package and every app (468 tests)
 npm run dev              # Signal Lab, at http://localhost:1421
 ```
 

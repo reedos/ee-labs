@@ -339,8 +339,8 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 .fd-sum circle { fill: var(--panel-2); stroke: var(--accent); stroke-width: 1.4; }
 .fd-sum text { fill: var(--accent); font-size: 16px; font-weight: 700; }
 
-.fd-wire { fill: none; stroke: var(--axis); stroke-width: 1.4; }
-.fd-arrowhead { fill: var(--axis); }
+.fd-wire { fill: none; stroke: var(--line-bright); stroke-width: 1.4; }
+.fd-arrowhead { fill: var(--line-bright); }
 
 /* Definitions on contact: the vocabulary a lesson uses, under its note. */
 details.terms { margin: 6px 0 2px; }
@@ -348,7 +348,7 @@ details.terms { margin: 6px 0 2px; }
 details.terms > summary {
   cursor: pointer;
   font-size: 11px;
-  color: var(--response);
+  color: var(--blue);
   list-style: none;
 }
 details.terms > summary::before { content: '\25B8  '; font-size: 9px; }
