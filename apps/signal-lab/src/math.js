@@ -157,21 +157,90 @@ const ENTRIES = {
       scale = Math.max(scale, Math.abs(a[i + shiftSamples]))
     }
 
+    // Linearity, measured as its two halves. Additivity: the response to a
+    // sum is the sum of the responses. Homogeneity: scale the input, the
+    // output scales by the same factor. Both are machine-exact for this
+    // chain, because the arithmetic inside it is nothing but multiplies and
+    // adds of the input.
+    const x1 = render([{ ...src }], 400, fs, 0)
+    const x2 = render([{ ...src, freq: src.freq * 1.7, phase: 1.1 }], 400, fs, 0)
+    const xsum = new Float64Array(400)
+    const xdouble = new Float64Array(400)
+    for (let i = 0; i < 400; i++) {
+      xsum[i] = x1[i] + x2[i]
+      xdouble[i] = 2 * x1[i]
+    }
+    const y1 = applyChain(ctx.blocks, x1, fs, 0)
+    const y2 = applyChain(ctx.blocks, x2, fs, 0)
+    const ysum = applyChain(ctx.blocks, xsum, fs, 0)
+    const ydouble = applyChain(ctx.blocks, xdouble, fs, 0)
+    let addErr = 0
+    let sclErr = 0
+    let yScale = 1e-12
+    for (let i = 0; i < 400; i++) {
+      addErr = Math.max(addErr, Math.abs(ysum[i] - (y1[i] + y2[i])))
+      sclErr = Math.max(sclErr, Math.abs(ydouble[i] - 2 * y1[i]))
+      yScale = Math.max(yScale, Math.abs(y1[i]))
+    }
+
     return {
       blocks: [
         T(
-          'Linear: responses add and scale. Time-invariant: the system does not care WHEN — ' +
-            'shift the input, the output shifts identically. A system with both properties can ' +
-            'do only one thing to a sine:',
+          '1. LINEAR, which is two promises. Additivity: feed a sum, get the sum of the ' +
+            'individual responses. Homogeneity: double the input, get exactly double the ' +
+            'output. Together:',
+        ),
+        F('x_1 \\to y_1,\\; x_2 \\to y_2 \\;\\Longrightarrow\\; a\\,x_1 + b\\,x_2 \\to a\\,y_1 + b\\,y_2'),
+        T(
+          'Why it matters: it is the licence to take a signal APART. Any signal is a sum of ' +
+            'sines; linearity says you may push each sine through alone and add the answers — ' +
+            'which is what reading a spectrum line by line, or multiplying by a response ' +
+            'curve, quietly does. No linearity, no decomposition.',
+        ),
+        C([
+          {
+            label: 'additivity: |chain(x₁+x₂) − (y₁+y₂)|, worst sample',
+            predicted: 0,
+            measured: addErr / yScale,
+            abs: 1e-12,
+          },
+          {
+            label: 'homogeneity: |chain(2x) − 2y|, worst sample',
+            predicted: 0,
+            measured: sclErr / yScale,
+            abs: 1e-12,
+          },
+        ]),
+        T(
+          '2. TIME-INVARIANT: the system has no clock of its own. Shift the input by k ' +
+            'samples and the output shifts by exactly k samples, unchanged:',
+        ),
+        F('x[n] \\to y[n] \\;\\Longrightarrow\\; x[n-k] \\to y[n-k]'),
+        T(
+          'Why it matters: it makes |H(f)| a fixed property rather than a moment’s mood. A ' +
+            'filter that treated Tuesday differently from Wednesday could not be summarized by ' +
+            'one curve, and a sine pushed through it would not come out a sine.',
+        ),
+        C([
+          {
+            label: `time-invariance: shift input by ${shiftSamples} samples → output shifts by the same`,
+            predicted: 0,
+            measured: err / scale,
+            abs: 1e-9,
+          },
+        ]),
+        T(
+          'Put the two together and a sine has nowhere to go. It must come out at its own ' +
+            'frequency, merely scaled and shifted:',
         ),
         F(
           'A\\sin(2\\pi f t) \\;\\longrightarrow\\; |H(f)|\\,A\\sin\\bigl(2\\pi f t + \\angle H(f)\\bigr)',
         ),
         T(
           'Same frequency out, always — scaled by |H(f)|, shifted by the phase. Sines are the ' +
-            'EIGENFUNCTIONS of LTI systems, which is the entire reason frequency is the right ' +
-            'language here: describe what happens to each sine and you have described the ' +
-            'system completely. Both halves are measured below, not asserted.',
+            'EIGENFUNCTIONS of LTI systems, and that is the entire reason frequency is the ' +
+            'right language in this tool: describe what happens to each sine and you have ' +
+            'described the system completely. Measured on this very chain:',
         ),
         C([
           {
@@ -182,17 +251,11 @@ const ENTRIES = {
             measured: worstOther / (at0 || 1e-12),
             abs: 0.005,
           },
-          {
-            label: `shift input by ${shiftSamples} samples → output shifts by the same`,
-            predicted: 0,
-            measured: err / scale,
-            abs: 1e-9,
-          },
         ]),
         T(
-          'The second row is exact to rounding because time-invariance here is structural: the ' +
-            'chain has no clock of its own. Add a clipper and the FIRST row is what breaks — ' +
-            'new lines appear at frequencies the input never contained.',
+          'Every row above is exact to rounding (the last is limited only by the analysis ' +
+            'window). Add a clipper and the FIRST two are what break — chain(2x) is no longer ' +
+            '2·chain(x), and new lines appear at frequencies the input never contained.',
         ),
       ],
     }
