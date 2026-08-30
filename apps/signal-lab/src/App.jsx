@@ -353,6 +353,7 @@ export default function App() {
                 </>
               ) : state.timeView === 'conv' && conv ? (
                 <>
+                  <span className="prov">the kernel is the impulse response, doing its job</span>
                   <span>
                     n = <b>{Math.min(conv.x.length - 1, scrub.pos)}</b>
                   </span>
@@ -373,6 +374,13 @@ export default function App() {
                 </>
               ) : (
                 <>
+                  {/* Two names, one sequence — said where both camps can see
+                      it, because someone taught "impulse response" should not
+                      have to guess what a button called "Kernel" shows. */}
+                  <span className="prov">
+                    the impulse response — the same sequence the convolution view uses as the
+                    kernel
+                  </span>
                   {impulseCentre != null ? (
                     <span>
                       delay <b>{impulseCentre} samples</b>, every frequency

@@ -476,11 +476,22 @@ const ENTRIES = {
     return {
       blocks: [
         T(
-          'Feed a single 1 followed by silence and what comes out is the sequence the filter ' +
-            'convolves every input with. For an FIR that sequence is the coefficient list ' +
-            'itself — the stems in the top pane ARE h[k].',
+          'Two names, one sequence. "Impulse response" says how it is measured: feed a single ' +
+            '1 followed by silence and record what comes out. "Kernel" says what it is for: the ' +
+            'weights the convolution sum applies to the recent past. For an FIR that sequence ' +
+            'is the coefficient list itself — the stems in the top pane ARE h[k].',
         ),
         F('y[n] = \\sum_{k} h[k]\\,x[n-k]'),
+        T(
+          'That the two are the SAME sequence is a theorem, not a definition. Any input is a ' +
+            'train of scaled, shifted impulses — x[0] worth at time 0, x[1] worth at time 1, ' +
+            'and so on. If the system is linear (responses add) and time-invariant (a shifted ' +
+            'impulse gives a shifted copy of the same response), the output must be the sum of ' +
+            'scaled, shifted impulse responses — and that sum is exactly the convolution above. ' +
+            'LTI is the hypothesis: a clipper has a perfectly measurable impulse response that ' +
+            'predicts nothing about its response to anything else, so there the two names come ' +
+            'apart. The convolution view shows that happening.',
+        ),
         T(
           'Convolution in time is multiplication in frequency, which is why one object explains ' +
             'both panes at once:',

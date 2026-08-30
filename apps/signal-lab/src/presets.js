@@ -415,12 +415,15 @@ export const PRESETS = [
     group: 'FIR and the z-plane',
     name: 'The kernel is the filter',
     note:
-      'Switch the top pane to the impulse response. Those stems are not a picture OF the ' +
-      'filter — for an FIR they are the filter, the 31 numbers the design produced. Every ' +
-      'output sample is this kernel flipped, slid to the current position, multiplied by the ' +
-      'input underneath it and summed. That is convolution, and it is the only description of ' +
-      'filtering that covers FIR and IIR at once. Note where the symmetry centre falls: at tap ' +
-      '15, which is exactly the delay the group-delay overlay reports.',
+      'The top pane shows the Kernel view — the impulse response, and those are two names for ' +
+      'ONE sequence: what comes out when a single 1 goes in, and the weights the convolution ' +
+      'sum applies to the recent past. The stems are not a picture OF the filter — for an FIR ' +
+      'they are the filter, the 31 numbers the design produced. Every output sample is this ' +
+      'kernel flipped, slid to the current position, multiplied by the input underneath it and ' +
+      'summed. That is convolution, the only description of filtering that covers FIR and IIR ' +
+      'at once. Note where the symmetry centre falls: at tap 15, exactly the delay the ' +
+      'group-delay overlay reports. The math below says why the two names must coincide — and ' +
+      'that it takes LTI to make them.',
     patch: {
       sources: [mk(1, 'sine', 300, 0.8), mk(2, 'sine', 1800, 0.5)],
       blocks: [bk(1, 'fir', { taps: 31, freq: 900, mode: 'lowpass', window: 'blackman' })],
