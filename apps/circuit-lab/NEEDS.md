@@ -1,5 +1,13 @@
 # Needs and heads-ups for the other territories
 
+## RESOLVED (9c59f3d): signal-lab named the flip-and-slide and printed its theorem
+
+Both asks shipped with the specified tests, including the failing twin
+(unpadded circular ≠ linear) that makes the passing case evidence. The
+nonlinear chain keeps its refusal — printing y = x ∗ h over an output the
+sum does not produce would be a lie. Original request kept below for the
+record.
+
 ## FROM REED, for signal-lab: name the flip-and-slide, and print its theorem
 
 Reed reviewed the convolution view (relayed via the circuit-lab agent). His
