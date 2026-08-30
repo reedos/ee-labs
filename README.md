@@ -1,5 +1,7 @@
 # EE Labs
 
+**Live at [reedos.github.io/ee-labs](https://reedos.github.io/ee-labs/)** — nothing to install.
+
 Interactive tools for the signals half of an electrical engineering curriculum. Each one
 shows a signal, what it is made of, and what happens when you put something in the way —
 and explains, next to every number, where that number came from.

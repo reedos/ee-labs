@@ -4,16 +4,8 @@
 # plan, and it matches the point of the suite: the labs are meant to be handed
 # to people. Only the built site leaves the repo; source and history need not.
 #
-# STATUS: Pages is not yet available here. On the free plan a PRIVATE repo
-# cannot have a Pages site (API answered 422, "Your current plan does not
-# support GitHub Pages for this repository"). Two ways to unblock, both Reed's
-# call, neither taken automatically:
-#   - make the repo public   (Settings -> General -> Danger Zone), or
-#   - upgrade to GitHub Pro  (keeps the repo private; the site is public).
-# Until then the deploy step fails softly (continue-on-error) while the test
-# and build stages still run as CI on every push. The moment Pages exists,
-# the next push publishes to https://reedos.github.io/ee-labs/ with no other
-# change.
+# Live at https://reedos.github.io/ee-labs/ since 2026-08-31, when the repo
+# went public.
 #
 # Tests gate the deploy. A lab whose explanations have stopped agreeing with
 # its own measurements is worse than one that is briefly down.
@@ -66,8 +58,6 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    # Softly, until Pages is available for this repo — see the header comment.
-    continue-on-error: true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
