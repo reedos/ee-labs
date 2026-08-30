@@ -18,6 +18,38 @@ import { CONTROLLERS } from './systems.js'
 // has no height to plot, so the smooth part of Kd·ė is drawn and the kick is
 // returned as a fact for the canvas to mark, not as a fake spike.
 
+/**
+ * The vertical range of a watch pane.
+ *
+ * A stable loop frames its WHOLE story once and the axis never moves — the
+ * sticky-axis rule. A diverging loop cannot be framed whole: fitting the full
+ * runaway crushes the early mechanism (the first cut clamped to ±4 instead,
+ * and both traces simply left the picture — noticed immediately). So a
+ * runaway frames what has happened UP TO THE CURSOR, quantized to a doubling
+ * ladder: the axis zooms out in steps as the story runs away — which is what
+ * instability looks like — and small scrub moves land on the same rung, so
+ * the frame does not crawl underneath the reader.
+ */
+export function paneRange(arrs, { floor = 1, upTo = null, diverges = false } = {}) {
+  const last = arrs[0].length - 1
+  const n = diverges && upTo != null ? Math.max(2, Math.min(upTo, last)) : last
+  let lo = 0
+  let hi = floor
+  for (const a of arrs) {
+    for (let i = 0; i <= n; i++) {
+      if (a[i] < lo) lo = a[i]
+      if (a[i] > hi) hi = a[i]
+    }
+  }
+  if (diverges) {
+    const rung = (v) => floor * Math.pow(2, Math.max(0, Math.ceil(Math.log2(v / floor))))
+    if (hi > 0) hi = rung(hi)
+    if (lo < 0) lo = -rung(-lo)
+  }
+  const pad = (hi - lo) * 0.14 || 0.2
+  return { lo: lo - pad, hi: hi + pad }
+}
+
 /** Trapezoid running integral of a sampled signal. */
 const cumtrapz = (t, y) => {
   const out = new Float64Array(y.length)

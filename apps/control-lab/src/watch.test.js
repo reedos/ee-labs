@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { simulate, dcGain } from '@ee-labs/systems'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
-import { watchSignals } from './watch.js'
+import { paneRange, watchSignals } from './watch.js'
 
 // The watch view claims to show the loop's ACTUAL internals — the error the
 // controller sees, the effort it answers with. Each claim is measured by an
@@ -84,6 +84,49 @@ describe('the effort trace really drives the plant', () => {
       // own t=0 edge to RK4's sub-steps.
       expect(maxAbsDiff(w.y, yRebuilt, 5), `${plantId} + ${ctrlId} (${stepInput})`).toBeLessThan(5e-3)
     }
+  })
+})
+
+describe('the pane framing never loses the trace', () => {
+  // The defect this rules out shipped: a diverging watch pane was clamped to
+  // ±4 and both traces simply left the picture. Now a runaway frames what
+  // has happened up to the cursor, on a doubling ladder.
+  const runaway = Float64Array.from({ length: 500 }, (_, i) => Math.exp(i / 40))
+
+  it('a stable pane is framed whole, once — the cursor cannot move the axis', () => {
+    const y = Float64Array.from({ length: 500 }, (_, i) => 1 - Math.exp(-i / 60))
+    const full = paneRange([y], { floor: 1 })
+    for (const upTo of [10, 100, 499]) {
+      expect(paneRange([y], { floor: 1, upTo, diverges: false })).toEqual(full)
+    }
+  })
+
+  it('a runaway keeps everything shown so far inside the frame, at every cursor', () => {
+    for (const upTo of [5, 50, 150, 300, 499]) {
+      const r = paneRange([runaway], { floor: 1, upTo, diverges: true })
+      let seen = 0
+      for (let i = 0; i <= upTo; i++) seen = Math.max(seen, runaway[i])
+      expect(r.hi, `cursor ${upTo}`).toBeGreaterThanOrEqual(seen)
+      // ...and the frame stays proportionate: within one doubling plus pad,
+      // so the early mechanism is never crushed by a range fit to nothing.
+      expect(r.hi, `cursor ${upTo}`).toBeLessThan(seen * 2.4 + 2)
+    }
+  })
+
+  it('the ladder holds still between rungs — small scrubs do not move the axis', () => {
+    const a = paneRange([runaway], { floor: 1, upTo: 200, diverges: true })
+    const b = paneRange([runaway], { floor: 1, upTo: 205, diverges: true })
+    expect(b).toEqual(a)
+    const far = paneRange([runaway], { floor: 1, upTo: 400, diverges: true })
+    expect(far.hi).toBeGreaterThan(a.hi)
+  })
+
+  it('a runaway downward is framed too', () => {
+    const down = Float64Array.from(runaway, (v) => -v)
+    const r = paneRange([down], { floor: 1, upTo: 300, diverges: true })
+    let worst = 0
+    for (let i = 0; i <= 300; i++) worst = Math.min(worst, down[i])
+    expect(r.lo).toBeLessThanOrEqual(worst)
   })
 })
 

@@ -427,8 +427,10 @@ console.log('\n4b. The loop diagram: live parameters, and the step entry wired t
   await page.keyboard.press('Escape')
   await settle()
   if (await page.locator('.fd-panel').count()) fail('diagram: Escape should close it')
+  // Scoped to the step-input group: since the view controls moved into the
+  // pane headers, several segmented groups have an "on" button at once.
   const distOn = await page
-    .locator('.segmented.sm button.on')
+    .locator('[aria-label="Where the step is applied"] button.on')
     .textContent()
     .catch(() => '')
   if (distOn.trim() !== 'Disturbance') fail(`diagram: clicking d should select the Disturbance step, toggle reads "${distOn}"`)
@@ -444,7 +446,9 @@ console.log('\n4b. The loop diagram: live parameters, and the step entry wired t
   await settle()
   await page.keyboard.press('Escape')
   await settle()
-  const refOn = await page.locator('.segmented.sm button.on').textContent()
+  const refOn = await page
+    .locator('[aria-label="Where the step is applied"] button.on')
+    .textContent()
   if (refOn.trim() !== 'Reference') fail('diagram: clicking r should select the Reference step again')
 
   // Clicking a box closes the diagram and points at the sidebar card.
@@ -564,6 +568,26 @@ console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
   const h2 = await page.locator('.views .view').last().locator('h2').textContent()
   if (!/shove/i.test(h2)) fail('watch: the Disturbance toggle should switch the watched story')
   await clickBtn('Reference')
+
+  // The proximity rule, migrated from Signal Lab: each pane's controls live
+  // in ITS header — the view switch on the lower pane, the phase toggle on
+  // the Bode pane — not in a sidebar a screen-width (on a phone, a screen-
+  // height) away.
+  const lowerHead = page.locator('.views .view').last().locator('.view-head')
+  if (!(await lowerHead.getByRole('button', { name: 'Nyquist', exact: true }).count())) {
+    fail('the lower view switch should live in the lower pane header')
+  }
+  const bodeHead = page.locator('.views .view').first().locator('.view-head')
+  if (!(await bodeHead.getByRole('button', { name: 'phase', exact: true }).count())) {
+    fail('the phase toggle should live on the Bode pane header')
+  }
+  const withPhase = (await canvasHashes())[0]
+  await bodeHead.getByRole('button', { name: 'no phase', exact: true }).click()
+  await settle()
+  if ((await canvasHashes())[0] === withPhase) fail('the phase toggle should redraw the Bode pane')
+  await bodeHead.getByRole('button', { name: 'phase', exact: true }).click()
+  await settle()
+  console.log('   controls live on the panes they govern; the phase toggle redraws')
   await clickBtn('Step')
 }
 
@@ -613,6 +637,28 @@ await clickBtn('Watch')
 if (await scrolls()) fail('4K / watch view: page scrolls')
 await clickBtn('Step')
 console.log(`   all ${plants.length} plants fit at 3840x2160, watch view included`)
+
+// ------------------------------------------------------------ 6. at phone size
+
+console.log('\n6. Phone width\n')
+{
+  // The layout stacks below 900px, so vertical scroll is expected there —
+  // HORIZONTAL scroll is the failure (a control clipped off the right edge
+  // is how Signal Lab's Window select shipped broken at 390px).
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.waitForTimeout(500)
+  const sideways = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  )
+  if (sideways) fail('390px: the page scrolls horizontally')
+  await clickBtn('Watch')
+  const sideways2 = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  )
+  if (sideways2) fail('390px / watch view: the page scrolls horizontally')
+  await clickBtn('Step')
+  console.log('   no horizontal scroll at 390px, watch view included')
+}
 
 await browser.close()
 

@@ -369,48 +369,9 @@ export default function App() {
           <MathPanel entry={math} />
         </section>
 
-        <section>
-          <h2>View</h2>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={showPhase}
-              onChange={(e) => setShowPhase(e.target.checked)}
-            />
-            Show phase
-          </label>
-          <div className="segmented">
-            <button
-              type="button"
-              className={lower === 'step' ? 'on' : ''}
-              onClick={() => setLower('step')}
-            >
-              Step
-            </button>
-            <button
-              type="button"
-              className={lower === 'watch' ? 'on' : ''}
-              title="Scrub or play through the step and watch the error drive the controller"
-              onClick={() => setLower('watch')}
-            >
-              Watch
-            </button>
-            <button
-              type="button"
-              className={lower === 'nyquist' ? 'on' : ''}
-              onClick={() => setLower('nyquist')}
-            >
-              Nyquist
-            </button>
-            <button
-              type="button"
-              className={lower === 'locus' ? 'on' : ''}
-              onClick={() => setLower('locus')}
-            >
-              Root locus
-            </button>
-          </div>
-        </section>
+        {/* No View section: the view controls live in the headers of the
+            panes they govern, same proximity rule Reed asked of Signal Lab —
+            on a phone the sidebar is a full screen away from the plots. */}
       </aside>
 
       <div className="topbar">
@@ -499,6 +460,26 @@ export default function App() {
         <section className="view">
           <div className="view-head">
             <h2>Open loop L(s) = C(s)·P(s)</h2>
+            {/* This pane's one control, next to the pane it changes. */}
+            <div className="segmented sm" role="group" aria-label="Phase overlay">
+              <button
+                type="button"
+                className={showPhase ? '' : 'on'}
+                aria-pressed={!showPhase}
+                onClick={() => setShowPhase(false)}
+              >
+                no phase
+              </button>
+              <button
+                type="button"
+                className={showPhase ? 'on' : ''}
+                aria-pressed={showPhase}
+                title="The half of the response the magnitude curve cannot show"
+                onClick={() => setShowPhase(true)}
+              >
+                phase
+              </button>
+            </div>
             <div className="readout">
               {marg.phaseMargin == null ? (
                 <span className="prov">gain never reaches 1 — no crossover to measure</span>
@@ -544,6 +525,27 @@ export default function App() {
                     ? 'Nyquist — the loop against −1'
                     : 'Root locus — poles as the gain sweeps'}
             </h2>
+            {/* The view switch lives on the pane it switches — the same
+                proximity rule as Signal Lab's spectrum controls. */}
+            <div className="segmented sm" role="group" aria-label="Lower view">
+              {[
+                { id: 'step', label: 'Step' },
+                { id: 'watch', label: 'Watch', title: 'Scrub or play through the step and watch the error drive the controller' },
+                { id: 'nyquist', label: 'Nyquist' },
+                { id: 'locus', label: 'Root locus' },
+              ].map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  className={lower === v.id ? 'on' : ''}
+                  aria-pressed={lower === v.id}
+                  title={v.title}
+                  onClick={() => setLower(v.id)}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
             <div className="readout">
               {lower === 'step' || lower === 'watch' ? (
                 <div className="segmented sm" role="group" aria-label="Where the step is applied">
