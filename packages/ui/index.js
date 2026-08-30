@@ -6,6 +6,7 @@
 
 export { default as NumField } from './src/NumField.jsx'
 export { useCanvas } from './src/useCanvas.js'
+export { default as PoleZeroCanvas } from './src/PoleZeroCanvas.jsx'
 export { COLORS, plotScale, plotArea, niceStep, drawFrame } from './src/plot.js'
 export { POS_MAX, clamp, toPos, fromPos, snap, near } from './src/scale.js'
 export { eng, fmt, parseEng, dbToLin, linToDb, dbToAmp, ampToDb } from './src/units.js'

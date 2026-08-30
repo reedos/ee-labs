@@ -1,5 +1,7 @@
 import React from 'react'
-import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
+import { useCanvas } from './useCanvas.js'
+import { COLORS, drawFrame, plotArea } from './plot.js'
+import { fmt } from './units.js'
 
 /**
  * Poles and zeros on the s-plane.
@@ -9,14 +11,23 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
  * a pole sits in decides whether the thing is stable at all — so the right half
  * is shaded, because a pole crossing that line is the whole subject of stability.
  */
-export default function PoleZeroCanvas({ poles = [], zeros = [] }) {
+export default function PoleZeroCanvas({
+  poles = [],
+  zeros = [],
+  branches = null,
+  highlight = null,
+  xTitle = 'Real  σ  (1/s)',
+  yTitle = 'Imaginary  jω  (rad/s)',
+}) {
   const ref = useCanvas(
     (ctx, w, h) => {
       const area = plotArea(w, h)
       const k = area.k || 1
 
       let span = 1
-      for (const [re, im] of [...poles, ...zeros]) {
+      const every = [...poles, ...zeros, ...(highlight || [])]
+      for (const b of branches || []) for (const p of b) every.push(p)
+      for (const [re, im] of every) {
         span = Math.max(span, Math.abs(re) * 1.4, Math.abs(im) * 1.4)
       }
       // Keep the origin visible and the axes square, so an angle on screen is
@@ -34,7 +45,7 @@ export default function PoleZeroCanvas({ poles = [], zeros = [] }) {
         yMax,
         (v) => fmt(v, '', 2),
         (v) => fmt(v, '', 2),
-        { zeroLine: true, xTitle: 'Real  σ  (1/s)', yTitle: 'Imaginary  jω  (rad/s)' },
+        { zeroLine: true, xTitle, yTitle },
       )
 
       ctx.save()
@@ -64,6 +75,26 @@ export default function PoleZeroCanvas({ poles = [], zeros = [] }) {
       ctx.fillText('unstable', x0 + 6 * k, area.y + 6 * k)
       ctx.globalAlpha = 1
 
+      // Where the closed-loop poles travel as a gain is swept. Drawn first, so
+      // the open-loop marks stay legible on top of them.
+      if (branches) {
+        ctx.lineWidth = 1.4 * k
+        for (const branch of branches) {
+          ctx.beginPath()
+          for (let i = 0; i < branch.length; i++) {
+            const [re, im] = branch[i]
+            const x = sx(re)
+            const y = sy(im)
+            // Colour by which half of the plane the branch is in, so the moment
+            // it crosses is visible without reading the axis.
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.strokeStyle = COLORS.traceGhost
+          ctx.stroke()
+        }
+      }
+
       const r = 7 * k
       ctx.lineWidth = 2 * k
 
@@ -86,9 +117,24 @@ export default function PoleZeroCanvas({ poles = [], zeros = [] }) {
         ctx.arc(sx(re), sy(im), r, 0, Math.PI * 2)
         ctx.stroke()
       }
+      // The closed-loop poles at the gain currently selected.
+      if (highlight) {
+        ctx.strokeStyle = COLORS.marker
+        ctx.lineWidth = 2.4 * k
+        for (const [re, im] of highlight) {
+          const x = sx(re)
+          const y = sy(im)
+          ctx.beginPath()
+          ctx.moveTo(x - r, y - r)
+          ctx.lineTo(x + r, y + r)
+          ctx.moveTo(x + r, y - r)
+          ctx.lineTo(x - r, y + r)
+          ctx.stroke()
+        }
+      }
       ctx.restore()
     },
-    [poles, zeros],
+    [poles, zeros, branches, highlight, xTitle, yTitle],
   )
 
   return <canvas ref={ref} className="plot" />

@@ -6,7 +6,7 @@ and explains, next to every number, where that number came from.
 
 ```
 npm install
-npm test                 # every package and every app (203 tests)
+npm test                 # every package and every app (240 tests)
 npm run dev              # Signal Lab, at http://localhost:1421
 ```
 
@@ -16,7 +16,7 @@ npm run dev              # Signal Lab, at http://localhost:1421
 |---|---|---|
 | **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 23 lessons |
 | **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters | 9 circuits |
-| **Control Lab** | feedback, stability, transient response | planned |
+| **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response | 6 plants x 4 controllers |
 
 A third tool, [`waveform-simulator`](https://github.com/reedos/waveform-simulator), covers
 communications and high-speed optical links. It lives outside this repo: it serves
@@ -39,10 +39,10 @@ damping ratio, and — through the bilinear transform — the same biquad Signal
 Same object, four vocabularies, which is the thing a suite can show and a single app
 cannot.
 
-A feedback loop does not fit that shape. It needs a summing junction, a plant and a
-controller as distinct roles, and its characteristic plots — Bode, Nyquist, root locus —
-describe a loop transfer function whose key readouts are gain and phase margin. Forcing
-that into a linear chain would damage both tools, so Control Lab is separate.
+A feedback loop does not fit that shape either, which is why Control Lab is its own app.
+It needs a plant and a controller as distinct roles, and its characteristic plots — Bode
+with margins, Nyquist, root locus — all describe a *loop* transfer function whose key
+readouts are how far it sits from the single point −1.
 
 ## The packages
 

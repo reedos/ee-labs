@@ -1,0 +1,69 @@
+/* Circuit Lab's own furniture. The shell, controls and math panel come from
+ * @ee-labs/ui and @ee-labs/explain. */
+
+.preset-group { margin-bottom: 10px; }
+
+.preset-group h3 {
+  margin: 0 0 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--dim);
+  opacity: 0.7;
+}
+
+/* The schematic. Values are live, so the picture always matches the plots. */
+.schematic {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 2px 0 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.sch-label {
+  fill: var(--dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+}
+.sch-port {
+  fill: var(--text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+}
+.sch-sign {
+  fill: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+}
+.sch-note {
+  fill: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 9px;
+  font-style: italic;
+}
+/* Which component the output is measured across — the one thing about a series
+   RLC that a static drawing cannot convey. */
+.sch-probe {
+  fill: var(--accent);
+  fill-opacity: 0.1;
+  stroke: var(--accent);
+  stroke-opacity: 0.5;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+@media (min-width: 2400px) {
+  .preset-group h3 { font-size: 12px; }
+  .sch-label, .sch-note { font-size: 8px; }
+}
+@media (min-width: 3400px) {
+  .preset-group h3 { font-size: 14px; }
+}
+
+/* A margin that has run thin is worth seeing before you read the number. */
+.topbar-field b.warn { color: var(--warn); }

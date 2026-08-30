@@ -1,0 +1,23 @@
+{
+  "name": "control-lab",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Feedback, stability margins, and what a controller actually buys.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "verify": "node scripts/verify.mjs",
+    "shots": "node scripts/shoot.mjs --all"
+  },
+  "dependencies": {
+    "@ee-labs/explain": "*",
+    "@ee-labs/systems": "*",
+    "@ee-labs/ui": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

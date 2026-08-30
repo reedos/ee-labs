@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { NumField, fmt, fmtHz } from '@ee-labs/ui'
+import { NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import {
   bode,
@@ -14,7 +14,6 @@ import { circuitMath } from './math.js'
 import Schematic from './schematics.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
 import StepCanvas from './components/StepCanvas.jsx'
-import PoleZeroCanvas from './components/PoleZeroCanvas.jsx'
 
 const POINTS = 600
 
