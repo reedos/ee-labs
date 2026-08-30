@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import {
@@ -16,6 +16,7 @@ import {
 import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, loopMargins, settlesOnScreen } from './systems.js'
 import { loopMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
+import { nextFrame } from './frame.js'
 import { readLocationLink } from '@ee-labs/ui'
 import { stateFromLink } from './fromLink.js'
 import BodeCanvas from './components/BodeCanvas.jsx'
@@ -105,7 +106,11 @@ export default function App() {
   const pz = useMemo(() => polesZeros(loop.closed), [loop])
   const openPz = useMemo(() => polesZeros(loop.open), [loop])
 
-  // Centre the sweep on whatever the loop's own timescale turns out to be.
+  // Centre the sweep on whatever the loop's own timescale turns out to be —
+  // but STICKILY: while parameters are tuned the curve moves and the axis
+  // holds still, re-framing only on a plant/controller change or when the
+  // centre nears the window's edge (see frame.js).
+  const frameRef = useRef(null)
   const freqs = useMemo(() => {
     const ws = [...openPz.poles, ...openPz.zeros]
       .map(([re, im]) => Math.hypot(re, im))
@@ -113,12 +118,14 @@ export default function App() {
     const centre = ws.length
       ? Math.exp(ws.reduce((s, w) => s + Math.log(w), 0) / ws.length) / (2 * Math.PI)
       : 1
-    const lo = Math.log10(centre / 300)
-    const hi = Math.log10(centre * 300)
-    return Float64Array.from({ length: POINTS }, (_, i) =>
-      Math.pow(10, lo + ((hi - lo) * i) / (POINTS - 1)),
+    const frame = nextFrame(frameRef.current, `${plantId}|${ctrlId}`, centre)
+    if (frame === frameRef.current && frame.freqs) return frame.freqs
+    frame.freqs = Float64Array.from({ length: POINTS }, (_, i) =>
+      Math.pow(10, frame.lo + ((frame.hi - frame.lo) * i) / (POINTS - 1)),
     )
-  }, [openPz])
+    frameRef.current = frame
+    return frame.freqs
+  }, [openPz, plantId, ctrlId])
 
   const open = useMemo(() => bode(loop.open, freqs), [loop, freqs])
   const marg = useMemo(() => loopMargins(loop.open, freqs), [loop, freqs])

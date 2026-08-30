@@ -465,6 +465,36 @@ console.log('\n4b. The loop diagram: live parameters, and the step entry wired t
   await settle()
 }
 
+// ------------------------------------- 4c. the axis holds still while tuning
+
+console.log('\n4c. The frequency axis: sticky under tuning, reframed on structure\n')
+{
+  // The tick-label strip of the Bode canvas, byte-compared. (The x-axis
+  // TITLE never changes, so the clip must sit on the labels above it — a
+  // probe on the title strip proves nothing, as the first draft of this
+  // check demonstrated.)
+  const axisStrip = async () => {
+    const box = await page.locator('.views canvas').first().boundingBox()
+    const buf = await page.screenshot({
+      clip: { x: box.x, y: box.y + box.height - 62, width: box.width, height: 26 },
+    })
+    return buf.toString('base64')
+  }
+  await clickBtn('Motor position')
+  await clickBtn('Proportional')
+  const before = await axisStrip()
+  await setField('Time constant τ', 0.8)
+  if ((await axisStrip()) !== before) {
+    fail('tuning τ inside the guard band moved the frequency axis — it must hold still')
+  }
+  await setField('Time constant τ', 0.002)
+  if ((await axisStrip()) === before) {
+    fail('a 2.4-decade τ move left the axis unchanged — the window must re-frame')
+  }
+  await setField('Time constant τ', 0.5)
+  console.log('   still under a small τ move, reframed after a 2.4-decade one')
+}
+
 // ------------------------------------------------ A11Y. names for everything
 
 console.log('\nA11y: every control has a name, every plot has a label\n')
