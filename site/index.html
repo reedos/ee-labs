@@ -6,122 +6,434 @@
     <title>EE Labs</title>
     <meta
       name="description"
-      content="Interactive labs for the signals half of an electrical engineering curriculum: signals and DSP, circuits, and control — one transfer function shared three ways."
+      content="Interactive labs for the signals half of an electrical engineering curriculum: signals and DSP, circuits, and control — one transfer function shared three ways, every claim measured."
     />
     <style>
-      /* The suite's own palette, from packages/ui/src/base.css. */
       :root {
         --bg: #0b0f14;
-        --panel: #11161d;
-        --panel-2: #171e27;
-        --line: #242f3d;
+        --panel: #111721;
+        --panel-2: #161e2a;
+        --line: #202a37;
+        --line-bright: #3a4757;
         --text: #c9d6e4;
         --dim: #7d8b9c;
         --accent: #38e0b0;
-        --spectrum: #f0a23c;
-        --response: #5fa8ff;
+        --amber: #f0a23c;
+        --blue: #5fa8ff;
+        --warn: #ff5c7a;
       }
-      * { box-sizing: border-box; }
+      * { box-sizing: border-box; margin: 0; }
+      html { color-scheme: dark; }
       body {
-        margin: 0;
         background: var(--bg);
         color: var(--text);
-        font: 15px/1.55 ui-sans-serif, system-ui, sans-serif;
-        display: flex;
-        min-height: 100vh;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 20px;
+        font: 15px/1.55 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+        min-height: 100dvh;
       }
-      main { max-width: 860px; }
-      h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: 0.01em; }
-      .tagline { color: var(--dim); margin: 0 0 30px; }
-      .labs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+      .wrap { max-width: 1060px; margin: 0 auto; padding: 0 22px 60px; }
+
+      /* ---------- hero ---------- */
+      header { padding: 54px 0 8px; text-align: center; }
+      h1 {
+        font-size: clamp(30px, 5vw, 44px);
+        letter-spacing: 0.01em;
+        font-weight: 750;
+      }
+      h1 .ee { color: var(--accent); }
+      .tagline {
+        color: var(--dim);
+        max-width: 620px;
+        margin: 10px auto 0;
+        font-size: clamp(14px, 2vw, 16.5px);
+      }
+      .tagline b { color: var(--text); font-weight: 600; }
+
+      .scopeframe {
+        margin: 26px auto 0;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+        padding: 10px 12px 6px;
+        max-width: 860px;
+      }
+      .scopeframe .lights {
+        display: flex; gap: 6px; padding: 0 2px 8px;
+      }
+      .scopeframe .lights i {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--line-bright); display: block;
+      }
+      .scopeframe .lights i:first-child { background: var(--accent); }
+      #hero { width: 100%; height: 150px; display: block; }
+      .scopecap {
+        display: flex; justify-content: space-between; align-items: baseline;
+        flex-wrap: wrap; gap: 2px 14px;
+        color: var(--dim); font-size: 11.5px; padding: 6px 2px 4px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .scopecap b { color: var(--amber); font-weight: 600; }
+
+      /* ---------- cards ---------- */
+      .labs {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        margin-top: 34px;
+      }
       .lab {
-        display: block;
+        display: flex; flex-direction: column;
         background: var(--panel);
         border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 18px;
+        border-radius: 12px;
+        overflow: hidden;
         text-decoration: none;
         color: var(--text);
-        transition: border-color 0.15s;
+        transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
       }
-      .lab:hover { border-color: var(--accent); }
-      .lab h2 { margin: 0 0 8px; font-size: 17px; }
-      .lab p { margin: 0; color: var(--dim); font-size: 13px; }
-      .lab .go { display: block; margin-top: 12px; font-size: 13px; font-weight: 600; }
-      .signal h2, .signal .go { color: var(--spectrum); }
-      .circuit h2, .circuit .go { color: var(--accent); }
-      .control h2, .control .go { color: var(--response); }
+      .lab:hover {
+        transform: translateY(-3px);
+        border-color: var(--card);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      }
+      .lab canvas { width: 100%; height: 130px; display: block; background: var(--panel-2); }
+      .lab .body { padding: 15px 17px 17px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+      .lab h2 { font-size: 18px; color: var(--card); display: flex; align-items: center; gap: 9px; }
+      .lab h2 .glyph { font-family: ui-monospace, monospace; font-size: 15px; opacity: 0.9; }
+      .lab p { color: var(--dim); font-size: 13px; flex: 1; }
+      .lab .go {
+        font-size: 13px; font-weight: 650; color: var(--card);
+        display: inline-flex; align-items: center; gap: 6px;
+      }
+      .lab .go::after { content: '→'; transition: transform 0.15s; }
+      .lab:hover .go::after { transform: translateX(4px); }
+      .lab.signal { --card: var(--amber); }
+      .lab.circuit { --card: var(--accent); }
+      .lab.control { --card: var(--blue); }
+
+      /* ---------- the triangle ---------- */
       .triangle {
-        margin-top: 26px;
+        margin-top: 34px;
         background: var(--panel);
         border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 16px 18px;
-        color: var(--dim);
-        font-size: 13.5px;
+        border-radius: 12px;
+        padding: 22px 24px;
+        display: grid;
+        grid-template-columns: minmax(230px, 340px) 1fr;
+        gap: 26px;
+        align-items: center;
       }
-      .triangle b { color: var(--text); }
-      code {
+      .triangle svg { width: 100%; height: auto; display: block; }
+      .triangle .txt h3 { font-size: 17px; margin-bottom: 8px; }
+      .triangle .txt p { color: var(--dim); font-size: 13.5px; }
+      .triangle .txt b { color: var(--text); font-weight: 600; }
+      .triangle code {
         font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
         background: var(--panel-2);
         border: 1px solid var(--line);
         border-radius: 4px;
         padding: 1px 5px;
+        color: var(--text);
       }
-      @media (min-width: 2400px) {
-        body { font-size: 18px; }
-        h1 { font-size: 32px; }
-        .lab h2 { font-size: 21px; }
-        .lab p, .lab .go, .triangle { font-size: 16px; }
+      @media (max-width: 700px) {
+        .triangle { grid-template-columns: 1fr; }
+      }
+
+      /* ---------- footer ---------- */
+      .creed {
+        margin-top: 30px;
+        text-align: center;
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .creed b { color: var(--text); font-weight: 600; }
+      .foot {
+        margin-top: 14px; text-align: center; font-size: 12px; color: var(--dim);
+      }
+      .foot a { color: var(--blue); text-decoration: none; }
+      .foot a:hover { text-decoration: underline; }
+
+      @media (min-width: 2200px) {
+        body { font-size: 17px; }
+        .wrap { max-width: 1280px; }
       }
     </style>
   </head>
   <body>
-    <main>
-      <h1>EE Labs</h1>
-      <p class="tagline">
-        Interactive labs for the signals half of an electrical engineering curriculum. Every claim
-        on every page is measured against what is actually drawn — the explanations are tested.
-      </p>
+    <div class="wrap">
+      <header>
+        <h1><span class="ee">EE</span> Labs</h1>
+        <p class="tagline">
+          A signal, its frequency content, and what happens when you put things in the way.
+          Three instruments for the LTI core of electrical engineering —
+          <b>every claim on every page is measured against what is drawn.</b>
+        </p>
+      </header>
+
+      <div class="scopeframe" aria-label="A live demonstration: a square wave being low-pass filtered as the cutoff sweeps">
+        <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+        <canvas id="hero"></canvas>
+        <div class="scopecap">
+          <span>square, 3 harmonics shown of ∞</span>
+          <span>low-pass f<sub>c</sub> = <b id="fc">—</b></span>
+        </div>
+      </div>
 
       <nav class="labs">
         <a class="lab signal" href="signal-lab/">
-          <h2>Signal Lab</h2>
-          <p>
-            Signals and DSP. Build waveforms from harmonics, sample and alias them, run them through
-            filter chains — biquads and FIRs — and read the spectrum, the kernel, the z-plane, and
-            the group delay of what you built.
-          </p>
-          <span class="go">28 guided presets →</span>
+          <canvas data-mini="signal" aria-hidden="true"></canvas>
+          <div class="body">
+            <h2><span class="glyph">~Σ</span>Signal Lab</h2>
+            <p>
+              Build waveforms from harmonics, sample and alias them, run them through chains of
+              biquads and FIRs. Read the result four ways: spectrum, kernel, z-plane, group delay
+              — and watch convolution happen one sample at a time.
+            </p>
+            <span class="go">30 guided lessons</span>
+          </div>
         </a>
         <a class="lab circuit" href="circuit-lab/">
-          <h2>Circuit Lab</h2>
-          <p>
-            RC, RLC, op-amp networks. Component values become poles and zeros, Bode plots and step
-            responses — and every schematic's transfer function is derived where you can check it.
-          </p>
-          <span class="go">12 lessons, 9 circuits →</span>
+          <canvas data-mini="circuit" aria-hidden="true"></canvas>
+          <div class="body">
+            <h2><span class="glyph">⎓⏦</span>Circuit Lab</h2>
+            <p>
+              RC, RLC, twin-T, op-amp stages. Component values become poles, Bode plots and step
+              responses — every H(s) derived where you can check it, and ±5% parts shown for
+              what they do to the promises.
+            </p>
+            <span class="go">13 lessons, 10 circuits</span>
+          </div>
         </a>
         <a class="lab control" href="control-lab/">
-          <h2>Control Lab</h2>
-          <p>
-            Close a loop. Six plants, four controllers, and the point −1: step responses, stability
-            margins, root locus and Nyquist — with the rules of thumb stated as rules of thumb.
-          </p>
-          <span class="go">11 lessons, six plants →</span>
+          <canvas data-mini="control" aria-hidden="true"></canvas>
+          <div class="body">
+            <h2><span class="glyph">⊕→</span>Control Lab</h2>
+            <p>
+              Close a loop and pay its bills: margins, root locus, Nyquist, disturbance
+              rejection, S + T = 1. Six plants, four controllers, and the point −1 — with rules
+              of thumb stated as rules of thumb.
+            </p>
+            <span class="go">12 lessons, six plants</span>
+          </div>
         </a>
       </nav>
 
-      <p class="triangle">
-        The three labs share one spine. A series RLC in <b>Circuit Lab</b> is a biquad —
-        hand it to <b>Signal Lab</b> and watch the same <code>f₀</code> and <code>Q</code> filter a
-        signal. The same network is a second-order plant — hand it to <b>Control Lab</b> and ask how
-        much gain the loop takes before it sings. Not three approximations of each other: the same
-        transfer function, read three ways.
+      <section class="triangle">
+        <svg viewBox="0 0 300 220" role="img" aria-label="One RLC circuit handed three ways: to Signal Lab as a biquad, to Control Lab as a plant">
+          <defs>
+            <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L8,4 L0,8 z" fill="#3a4757"></path>
+            </marker>
+          </defs>
+          <!-- wires -->
+          <path d="M150 74 L74 150" stroke="#3a4757" stroke-width="1.6" fill="none" marker-end="url(#arr)"></path>
+          <path d="M150 74 L226 150" stroke="#3a4757" stroke-width="1.6" fill="none" marker-end="url(#arr)"></path>
+          <path d="M96 176 L204 176" stroke="#3a4757" stroke-width="1.6" fill="none" stroke-dasharray="5 4"></path>
+          <!-- top node: the circuit -->
+          <g>
+            <rect x="95" y="18" width="110" height="52" rx="9" fill="#161e2a" stroke="#38e0b0" stroke-width="1.4"></rect>
+            <text x="150" y="39" text-anchor="middle" fill="#c9d6e4" font-size="12" font-weight="600">series RLC</text>
+            <text x="150" y="57" text-anchor="middle" fill="#7d8b9c" font-size="10.5">R · L · C</text>
+          </g>
+          <!-- left node -->
+          <g>
+            <rect x="10" y="152" width="120" height="52" rx="9" fill="#161e2a" stroke="#f0a23c" stroke-width="1.4"></rect>
+            <text x="70" y="173" text-anchor="middle" fill="#c9d6e4" font-size="12" font-weight="600">a biquad</text>
+            <text x="70" y="191" text-anchor="middle" fill="#7d8b9c" font-size="10.5">same f₀, same Q</text>
+          </g>
+          <!-- right node -->
+          <g>
+            <rect x="170" y="152" width="120" height="52" rx="9" fill="#161e2a" stroke="#5fa8ff" stroke-width="1.4"></rect>
+            <text x="230" y="173" text-anchor="middle" fill="#c9d6e4" font-size="12" font-weight="600">a plant</text>
+            <text x="230" y="191" text-anchor="middle" fill="#7d8b9c" font-size="10.5">same ωₙ, same ζ</text>
+          </g>
+        </svg>
+        <div class="txt">
+          <h3>One object, three vocabularies</h3>
+          <p>
+            The labs share one spine. A series RLC in <b>Circuit Lab</b> is a biquad — hand it to
+            <b>Signal Lab</b> and the same <code>f₀</code> and <code>Q</code> filter a signal,
+            bilinear-exact. The same network is a second-order plant — hand it to
+            <b>Control Lab</b>, exactly, and ask how much gain the loop takes before it sings.
+            Not three approximations of each other: <b>the same transfer function, read three
+            ways</b> — and where a mapping cannot be exact, the suite says so instead of
+            pretending.
+          </p>
+        </div>
+      </section>
+
+      <p class="creed">
+        The explanations are <b>tested</b>: several hundred assertions render each lesson and
+        measure every sentence against the screen. Nine confidently wrong explanations have been
+        caught that way so far — that count is part of the method, not an embarrassment.
       </p>
-    </main>
+      <p class="foot">
+        open source — <a href="https://github.com/reedos/ee-labs">github.com/reedos/ee-labs</a>
+      </p>
+    </div>
+
+    <script>
+      // All plots below are computed, not drawn by hand: the hero runs a real
+      // RBJ biquad over a real square's partial sum, and the card thumbnails
+      // are the actual curves their labs would show. The landing page obeys
+      // the same rule as the labs: nothing decorative pretending to be data.
+      const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim()
+      const COL = { accent: css('--accent'), amber: css('--amber'), blue: css('--blue'),
+                    dim: css('--dim'), line: css('--line'), warn: css('--warn') }
+      const still = matchMedia('(prefers-reduced-motion: reduce)').matches
+
+      function fit(c) {
+        const r = c.getBoundingClientRect()
+        const d = Math.min(devicePixelRatio || 1, 2)
+        c.width = Math.max(1, Math.round(r.width * d))
+        c.height = Math.max(1, Math.round(r.height * d))
+        return { w: c.width, h: c.height, d }
+      }
+
+      // ---- a real biquad, filtering a real square-ish sum ----
+      function lowpass(fc, fs, q = 0.7071) {
+        const w = (2 * Math.PI * fc) / fs, cw = Math.cos(w), al = Math.sin(w) / (2 * q)
+        const a0 = 1 + al
+        return { b0: (1 - cw) / 2 / a0, b1: (1 - cw) / a0, b2: (1 - cw) / 2 / a0,
+                 a1: (-2 * cw) / a0, a2: (1 - al) / a0 }
+      }
+      function runBiquad(co, xs) {
+        let x1 = 0, x2 = 0, y1 = 0, y2 = 0
+        return xs.map((x) => {
+          const y = co.b0 * x + co.b1 * x1 + co.b2 * x2 - co.a1 * y1 - co.a2 * y2
+          x2 = x1; x1 = x; y2 = y1; y1 = y
+          return y
+        })
+      }
+      const squareish = (n, cycles) => Array.from({ length: n }, (_, i) => {
+        const t = (i / n) * cycles
+        let v = 0
+        for (const k of [1, 3, 5]) v += Math.sin(2 * Math.PI * k * t) / k
+        return v * (4 / Math.PI) * 0.72
+      })
+
+      // ---- hero: the cutoff breathes, the square rounds and sharpens ----
+      const hero = document.getElementById('hero')
+      const fcEl = document.getElementById('fc')
+      function drawHero(phase) {
+        const { w, h, d } = fit(hero)
+        const g = hero.getContext('2d')
+        g.clearRect(0, 0, w, h)
+        g.strokeStyle = COL.line
+        g.lineWidth = 1
+        for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(0, (h * i) / 4); g.lineTo(w, (h * i) / 4); g.stroke() }
+        const n = 900
+        const x = squareish(n, 3)
+        // The cutoff breathes between 2.2x and 14x the fundamental: at the low
+        // end the square rounds to nearly its fundamental, at the top the
+        // corners come back. The caption states it in the only unit that
+        // matters here - multiples of f0.
+        const mult = 2.2 + 11.8 * (0.5 - 0.5 * Math.cos(phase))
+        const y = runBiquad(lowpass(mult * 3, n), x) // f0 = 3 cycles per n samples
+        fcEl.textContent = mult.toFixed(1) + ' × f₀'
+        // ghost square
+        g.strokeStyle = 'rgba(56,224,176,0.28)'
+        g.lineWidth = 1.2 * d
+        g.beginPath()
+        x.forEach((v, i) => { const px = (i / (n - 1)) * w, py = h / 2 - v * h * 0.36; i ? g.lineTo(px, py) : g.moveTo(px, py) })
+        g.stroke()
+        // filtered
+        g.strokeStyle = COL.amber
+        g.lineWidth = 2 * d
+        g.beginPath()
+        y.forEach((v, i) => { const px = (i / (n - 1)) * w, py = h / 2 - v * h * 0.36; i ? g.lineTo(px, py) : g.moveTo(px, py) })
+        g.stroke()
+      }
+      if (still) drawHero(Math.PI * 0.66)
+      else {
+        let t0
+        const tick = (ts) => { if (!t0) t0 = ts; drawHero(((ts - t0) / 6500) * 2 * Math.PI); requestAnimationFrame(tick) }
+        requestAnimationFrame(tick)
+      }
+
+      // ---- card thumbnails: each lab's signature curve, computed ----
+      function axes(g, w, h, d) {
+        g.strokeStyle = COL.line
+        g.lineWidth = 1
+        for (let i = 1; i < 3; i++) { g.beginPath(); g.moveTo(0, (h * i) / 3); g.lineTo(w, (h * i) / 3); g.stroke() }
+      }
+      function mini(sel, draw) {
+        const c = document.querySelector(`[data-mini="${sel}"]`)
+        const { w, h, d } = fit(c)
+        const g = c.getContext('2d')
+        axes(g, w, h, d)
+        draw(g, w, h, d)
+      }
+      // Signal: a spectrum — odd-harmonic comb under a response curve.
+      mini('signal', (g, w, h, d) => {
+        const co = lowpass(0.16, 1)
+        g.strokeStyle = 'rgba(95,168,255,0.85)'
+        g.lineWidth = 1.6 * d
+        g.beginPath()
+        for (let i = 0; i <= 120; i++) {
+          const f = (i / 120) * 0.5
+          const wq = 2 * Math.PI * f, c1 = Math.cos(wq), s1 = Math.sin(wq), c2 = Math.cos(2 * wq), s2 = Math.sin(2 * wq)
+          const nr = co.b0 + co.b1 * c1 + co.b2 * c2, ni = -(co.b1 * s1 + co.b2 * s2)
+          const dr = 1 + co.a1 * c1 + co.a2 * c2, di = -(co.a1 * s1 + co.a2 * s2)
+          const m = Math.hypot(nr, ni) / Math.hypot(dr, di)
+          const db = Math.max(-60, 20 * Math.log10(m))
+          const px = (i / 120) * w, py = ((-db) / 60) * (h * 0.86) + h * 0.06
+          i ? g.lineTo(px, py) : g.moveTo(px, py)
+        }
+        g.stroke()
+        g.fillStyle = COL.amber
+        for (let k = 1; k <= 11; k += 2) {
+          const f = k * 0.042
+          const wq = 2 * Math.PI * f, c1 = Math.cos(wq), s1 = Math.sin(wq), c2 = Math.cos(2 * wq), s2 = Math.sin(2 * wq)
+          const nr = co.b0 + co.b1 * c1 + co.b2 * c2, ni = -(co.b1 * s1 + co.b2 * s2)
+          const dr = 1 + co.a1 * c1 + co.a2 * c2, di = -(co.a1 * s1 + co.a2 * s2)
+          const m = (Math.hypot(nr, ni) / Math.hypot(dr, di)) * (4 / (Math.PI * k))
+          const db = Math.max(-60, 20 * Math.log10(m))
+          const px = f * 2 * w, py = ((-db) / 60) * (h * 0.86) + h * 0.06
+          g.fillRect(px - 1.2 * d, py, 2.4 * d, h - py - 2)
+        }
+      })
+      // Circuit: a resonant Bode magnitude, Q visible as the peak.
+      mini('circuit', (g, w, h, d) => {
+        g.strokeStyle = COL.accent
+        g.lineWidth = 2 * d
+        g.beginPath()
+        for (let i = 0; i <= 160; i++) {
+          const lf = -1.6 + (i / 160) * 3.2, f = Math.pow(10, lf)
+          const m = 1 / Math.hypot(1 - f * f, f / 3.2)
+          const db = Math.max(-40, Math.min(14, 20 * Math.log10(m)))
+          const px = (i / 160) * w, py = ((14 - db) / 54) * (h * 0.92) + h * 0.04
+          i ? g.lineTo(px, py) : g.moveTo(px, py)
+        }
+        g.stroke()
+        g.setLineDash([4 * d, 3 * d])
+        g.strokeStyle = 'rgba(125,139,156,0.6)'
+        g.lineWidth = 1 * d
+        g.beginPath(); g.moveTo(0, ((14 - 0) / 54) * (h * 0.92) + h * 0.04); g.lineTo(w, ((14 - 0) / 54) * (h * 0.92) + h * 0.04); g.stroke()
+        g.setLineDash([])
+      })
+      // Control: a step with overshoot, settling to a dashed target.
+      mini('control', (g, w, h, d) => {
+        const zeta = 0.25, wn = 14
+        g.setLineDash([4 * d, 3 * d])
+        g.strokeStyle = 'rgba(125,139,156,0.6)'
+        g.lineWidth = 1 * d
+        const target = h * 0.42
+        g.beginPath(); g.moveTo(0, target); g.lineTo(w, target); g.stroke()
+        g.setLineDash([])
+        g.strokeStyle = COL.blue
+        g.lineWidth = 2 * d
+        g.beginPath()
+        for (let i = 0; i <= 200; i++) {
+          const t = (i / 200) * 1.05
+          const wd = wn * Math.sqrt(1 - zeta * zeta)
+          const y = 1 - Math.exp(-zeta * wn * t) * (Math.cos(wd * t) + (zeta / Math.sqrt(1 - zeta * zeta)) * Math.sin(wd * t))
+          const px = (i / 200) * w, py = h * 0.92 - y * (h * 0.92 - target)
+          i ? g.lineTo(px, py) : g.moveTo(px, py)
+        }
+        g.stroke()
+      })
+
+      addEventListener('resize', () => { if (still) drawHero(Math.PI * 0.66) })
+    </script>
   </body>
 </html>
