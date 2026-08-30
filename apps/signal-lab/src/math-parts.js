@@ -597,7 +597,14 @@ export function blockMath(block, ctx) {
             value: r > 0 && r < 1 ? Math.round(Math.log(1e-6) / Math.log(r)) : 2,
             unit: 'samples',
           },
-          { label: 'order of this section', value: 2 },
+          {
+            // The section HOLDS two of everything, but the filter's order is
+            // what its trailing coefficients say: a first-order RC arrives
+            // with b2 = a2 = 0 and printing "2" for it was a frozen sentence.
+            label: 'order of this filter',
+            value: Math.abs(p.a2) > 1e-12 || Math.abs(p.b2) > 1e-12 ? 2 : Math.abs(p.a1) > 1e-12 || Math.abs(p.b1) > 1e-12 ? 1 : 0,
+            note: 'read from the highest nonzero coefficient',
+          },
         ]),
       ],
     }

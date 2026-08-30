@@ -18,6 +18,10 @@
 //   ctrl=<type>:<number>...         a controller
 //   from=<app>:<id>:<label>         provenance: where this setup was built
 //                                   (label URI-encoded; it is a name, not data)
+//   zoom=<hz>                       show the spectrum only up to here — a
+//                                   hand-over at 192 kHz whose whole story is a
+//                                   1.6 kHz corner must not bury it at 1.7% of a
+//                                   linear axis
 //
 // The three item keys share one grammar — a name followed by positional numbers
 // — because every tool in the suite describes its parts that way, and one rule
@@ -43,6 +47,7 @@ export function buildLink(patch = {}) {
   // Provenance travels with the setup, so the receiving lab can say "your RC
   // low-pass" instead of the anonymous name of whatever plant it mapped to —
   // the difference between a hand-over and a teleport with amnesia.
+  if (patch.zoom) parts.push(`zoom=${trim(patch.zoom)}`)
   if (patch.from) {
     parts.push(
       `from=${patch.from.app}:${patch.from.id}:${encodeURIComponent(patch.from.label || '')}`,
@@ -83,6 +88,15 @@ export function parseLink(fragment) {
         continue
       }
       patch.rate = Number(value)
+      continue
+    }
+
+    if (key === 'zoom') {
+      if (!NUM.test(value)) {
+        warnings.push(`zoom "${value}" is not a number`)
+        continue
+      }
+      patch.zoom = Number(value)
       continue
     }
 

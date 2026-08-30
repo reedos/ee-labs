@@ -69,3 +69,31 @@ unless it opts in.
 Both emitted link kinds now carry `from=circuit:<id>:<label>` (Signal Lab
 filter links and Control Lab plant links alike), round-trip tested through
 parseLink. Greet away.
+
+
+## FROM REED: the hand-over arrives unrecognizable - two emit-side fixes
+
+Reed built the RC low-pass, crossed to Signal Lab, and reported "the cutoff
+clearly does not match and the order is off." The coefficients you emit are
+EXACT (verified: |H| = 0.7071 at 1591.5 Hz on the emitted link) - the failure
+is presentation, and the receiving fixes are live. Two changes to the links
+you emit, both tiers (named and raw):
+
+1. `zoom=<hz>` (grammar live in packages/ui, tested; Signal Lab maps it to
+   its spectrum span on arrival). Emit roughly 8x the corner: the hand-over
+   picks 192 kHz for warp headroom, Signal Lab's axis is LINEAR to Nyquist,
+   and without the zoom a 1.6 kHz corner occupies 1.7% of the plot - the
+   exact mapping looks like a wrong one. Skip it when there is no corner
+   (the divider).
+
+2. Reed's directive on the default source: NOT noise - "we'd be better
+   served with something like a square or sine." Emit a square at about a
+   fifth of the corner (rounded to something clean, amp ~0.8): its harmonic
+   comb probes the curve at discrete, checkable points and gives the scope a
+   story (corners rounding / plateaus dying), where noise gave a shimmer.
+   For the no-corner case a square at any audio-ish frequency is fine.
+
+Also fixed on the receiving side (was mine): the raw-biquad panel printed
+"order of this section: 2" unconditionally - your first-order RC arrival now
+reads order 1 off its trailing zeros. That was the "order is off" half of
+Reed's report.

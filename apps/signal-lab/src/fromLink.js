@@ -58,6 +58,9 @@ export function stateFromLink(patch, base) {
   // setup this is ("your RC low-pass from Circuit Lab") instead of the
   // anonymous "a link".
   const next = { ...base, presetName: 'from a link', linkFrom: patch.from || null }
+  // The zoom the sender asked for: a circuit's corner must arrive on screen,
+  // not at 1.7% of a 96 kHz axis.
+  if (patch.zoom && patch.zoom >= 50) next.specMax = patch.zoom
 
   if (patch.rate != null) {
     if (patch.rate >= 1000 && patch.rate <= 192000) next.sampleRate = patch.rate

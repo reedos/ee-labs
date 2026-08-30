@@ -150,3 +150,10 @@ describe('provenance', () => {
     expect(patch).toBeNull()
   })
 })
+
+it('zoom rides the link and bad zooms warn', () => {
+  const link = buildLink({ rate: 192000, zoom: 12732 })
+  expect(link).toContain('zoom=12732')
+  expect(parseLink(link).patch.zoom).toBe(12732)
+  expect(parseLink('#rate=8000&zoom=wat').warnings.some((w) => w.includes('zoom'))).toBe(true)
+})

@@ -82,3 +82,8 @@ it('a raw-coefficient biquad arrives through a link, coefficients in schema orde
   expect(b.type).toBe('biquad')
   expect(b.params).toMatchObject({ b0: 0.2, b1: 0.1, b2: 0.05, a1: -0.3, a2: 0.2 })
 })
+
+it('an arriving zoom sets the spectrum span, so the corner is on screen', () => {
+  const { state } = load('#rate=192000&b=biquad:0.0254:0.0254:0:-0.9492:0&zoom=12732')
+  expect(state.specMax).toBe(12732)
+})
