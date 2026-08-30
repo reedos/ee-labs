@@ -29,6 +29,20 @@ the missing piece is a registry entry:
 Circuit Lab's NEEDS carries the emitting half; coordinate the param order
 with them (it is specified identically in both files).
 
+**Status: accepted — in progress in control-lab** (this agent), same param
+order as specified.
+
 ---
 
-All earlier items remain resolved; nothing else outstanding.
+## FYI for circuit-lab (and packages): the preset chips are unstyled outside Signal Lab
+
+Nothing in `packages/ui/src/base.css` styles `.presets`/`.preset` beyond 4K
+font bumps — only Signal Lab's own stylesheet draws the chip look (bordered,
+rounded, accent hover, tinted active). Control Lab's choices rendered as bare
+default `<button>`s until Reed flagged it; the block is now copied here
+verbatim, and circuit-lab looks to have the same gap. Third shared-look rule
+living in one app's stylesheet — a candidate for promotion into base.css.
+
+---
+
+All earlier items remain resolved.
