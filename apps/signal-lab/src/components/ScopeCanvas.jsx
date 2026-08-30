@@ -1,7 +1,7 @@
 import React from 'react'
-import { useCanvas } from './useCanvas.js'
-import { COLORS, drawFrame, plotArea } from './plot.js'
-import { fmtHz } from '../format.js'
+import { useCanvas } from '@ee-labs/ui'
+import { COLORS, drawFrame, plotArea } from '@ee-labs/ui'
+import { fmtHz } from '@ee-labs/ui'
 
 /**
  * Time-domain view.

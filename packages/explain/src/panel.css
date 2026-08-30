@@ -1,0 +1,168 @@
+/* The math panel: formulas, the theory-vs-measured table, and derived values.
+ *
+ * Derived values are deliberately styled without a tick column. They are not
+ * comparisons, and marking them correct would be marking 1 = 1 correct. */
+
+/* A formula is something to take on trust; a formula next to the number this
+   tool just measured is something you can check. Hence the panel, and hence it
+   being collapsed until asked for. */
+.math { margin-top: 10px; }
+
+.math-toggle {
+  width: 100%;
+  padding: 5px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.math-toggle:hover { text-decoration: underline; }
+
+.math-body {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--line);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.math-body p { margin: 0 0 10px; }
+
+.math-body p:last-child { margin-bottom: 0; }
+
+.math-formula {
+  margin: 12px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.math-caption {
+  margin-top: 4px;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+/* KaTeX defaults to a size tuned for body copy at 16px; the sidebar is smaller
+   and the formulas are the thing being read, so nudge them back up. */
+.tex .katex { font-size: 1.06em; color: var(--text); }
+
+.math-formula .katex-display { margin: 0; }
+
+.math-check {
+  width: 100%;
+  margin: 12px 0 4px;
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.math-check th,
+.math-check td {
+  padding: 3px 6px 3px 0;
+  text-align: right;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.math-check thead th {
+  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+}
+
+.math-check tbody th {
+  text-align: left;
+  color: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  white-space: normal;
+}
+
+.math-check td { color: var(--text); }
+
+.math-check .agree { color: var(--accent); }
+
+.math-check .disagree { color: var(--warn); }
+
+.math-check .unit { color: var(--dim); }
+
+@media (min-width: 2400px) {
+  .math-toggle, .math-body { font-size: 14px; }
+  .math-check { font-size: 13px; }
+  .math-check thead th, .math-caption { font-size: 12px; }
+}
+
+@media (min-width: 3400px) {
+  .math-toggle, .math-body { font-size: 17px; }
+  .math-check { font-size: 15px; }
+  .math-check thead th, .math-caption { font-size: 14px; }
+}
+
+.math-check .unchecked { color: var(--dim); }
+
+.math-notes {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.math-notes li { margin-bottom: 3px; }
+
+@media (min-width: 2400px) {
+  .math-notes { font-size: 12px; }
+}
+
+@media (min-width: 3400px) {
+  .math-notes { font-size: 14px; }
+}
+
+/* Derived values, not comparisons: one column and no tick. */
+.math-values {
+  width: 100%;
+  margin: 12px 0 4px;
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.math-values caption {
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--line);
+  color: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.math-values th,
+.math-values td { padding: 3px 6px 3px 0; font-weight: 400; }
+
+.math-values th {
+  color: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  text-align: left;
+}
+
+.math-values td { color: var(--text); text-align: right; }
+
+.math-values .unit { color: var(--dim); text-align: left; }
+
+@media (min-width: 2400px) {
+  .math-values { font-size: 13px; }
+  .math-values caption { font-size: 12px; }
+}
+
+@media (min-width: 3400px) {
+  .math-values { font-size: 15px; }
+  .math-values caption { font-size: 14px; }
+}

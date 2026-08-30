@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { PRESETS, PRESET_GROUPS } from './presets.js'
 import { chainResponse, renderChain } from './dsp/chain.js'
-import { spectrum } from './dsp/spectrum.js'
-import { designBiquad, biquadResponse } from './dsp/biquad.js'
+import { spectrum } from '@ee-labs/dsp'
+import { designBiquad, biquadResponse } from '@ee-labs/dsp'
 
 // The presets are the lessons, and each note makes a claim about physics:
 // "only odd harmonics", "the peak is Q", "neither input survives". A note that

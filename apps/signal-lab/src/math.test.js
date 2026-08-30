@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest'
 import katex from 'katex'
 import { PRESETS } from './presets.js'
 import { mathContext, mathFor } from './math.js'
-import { agrees } from './components/MathPanel.jsx'
+import { agrees } from '@ee-labs/explain'
 import { chainResponse, renderChain } from './dsp/chain.js'
-import { render } from './dsp/signals.js'
-import { spectrum } from './dsp/spectrum.js'
+import { render } from '@ee-labs/dsp'
+import { spectrum } from '@ee-labs/dsp'
 
 /** One failure per line, indented, so vitest's diff stays readable. */
 const SEP = `\n  `

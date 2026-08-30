@@ -1,7 +1,7 @@
 import React from 'react'
-import { useCanvas } from './useCanvas.js'
-import { COLORS, drawFrame, plotArea } from './plot.js'
-import { toDb } from '../dsp/spectrum.js'
+import { useCanvas } from '@ee-labs/ui'
+import { COLORS, drawFrame, plotArea } from '@ee-labs/ui'
+import { toDb } from '@ee-labs/dsp'
 
 const FLOOR_DB = -100
 

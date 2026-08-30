@@ -1,7 +1,7 @@
-import { render, rms, peak } from './dsp/signals.js'
+import { render, rms, peak } from '@ee-labs/dsp'
 import { applyChain } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
-import { designBiquad, poleRadius, isStable } from './dsp/biquad.js'
+import { designBiquad, poleRadius, isStable } from '@ee-labs/dsp'
 
 // The math for one source, and for one block.
 //

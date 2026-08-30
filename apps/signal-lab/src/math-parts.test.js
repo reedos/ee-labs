@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import katex from 'katex'
 import { sourceMath, blockMath } from './math-parts.js'
-import { agrees } from './components/MathPanel.jsx'
+import { agrees } from '@ee-labs/explain'
 import { BLOCK_TYPES, makeBlockRecord } from './dsp/blocks.js'
-import { WAVEFORMS } from './dsp/signals.js'
+import { WAVEFORMS } from '@ee-labs/dsp'
 
 // The source and block panels explain whatever the reader has built, rather
 // than only the presets we shipped, so they have to hold for every waveform and

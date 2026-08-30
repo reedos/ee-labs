@@ -1,6 +1,6 @@
 import React from 'react'
-import NumField from './NumField.jsx'
-import MathPanel from './MathPanel.jsx'
+import { NumField } from '@ee-labs/ui'
+import { MathPanel } from '@ee-labs/explain'
 import { blockMath } from '../math-parts.js'
 import { BLOCK_TYPES, resolve } from '../dsp/blocks.js'
 

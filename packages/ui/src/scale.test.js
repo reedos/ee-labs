@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { POS_MAX, clamp, fromPos, near, snap, toPos } from './scale.js'
-import { fmtHz } from '../format.js'
+import { fmtHz } from './format.js'
 
 const lin = { scale: 'linear', min: 0, max: 2, step: 0.01 }
 const log = { scale: 'log', min: 1, max: 8000, step: 1 }

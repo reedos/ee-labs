@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
 import { POS_MAX, clamp, fromPos, near, snap, toPos } from './scale.js'
-import { eng, parseEng } from '../units.js'
+import { eng, parseEng } from './units.js'
 
 /**
  * A number you can type, drag, step, scroll, or click a preset for.

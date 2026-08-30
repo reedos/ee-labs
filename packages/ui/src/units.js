@@ -105,7 +105,6 @@ export function parseEng(text, unit = '') {
 }
 
 /** Symbol period for a baud rate, in seconds. 224e9 -> 4.464e-12 */
-export const uiSeconds = (symbolRate) => 1 / symbolRate
 
 /** Decibels to a linear power ratio, and back. */
 export const dbToLin = (db) => Math.pow(10, db / 10)
@@ -115,4 +114,3 @@ export const linToDb = (lin) => 10 * Math.log10(Math.max(lin, 1e-300))
 export const dbToAmp = (db) => Math.pow(10, db / 20)
 export const ampToDb = (a) => 20 * Math.log10(Math.max(a, 1e-300))
 
-export const C_LIGHT = 299792458 // m/s

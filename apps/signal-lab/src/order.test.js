@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { designBiquad, biquadResponse } from './dsp/biquad.js'
+import { designBiquad, biquadResponse } from '@ee-labs/dsp'
 import { PRESETS } from './presets.js'
 import { renderChain } from './dsp/chain.js'
 

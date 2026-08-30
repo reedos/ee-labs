@@ -1,5 +1,5 @@
 import React from 'react'
-import { fmtHz } from '../format.js'
+import { fmtHz } from '@ee-labs/ui'
 
 /**
  * The signal chain as a row of nodes, with the RMS after each stage.

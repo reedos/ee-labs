@@ -1,7 +1,7 @@
 import React from 'react'
-import NumField from './NumField.jsx'
+import { NumField } from '@ee-labs/ui'
 import FlowStrip from './FlowStrip.jsx'
-import { WINDOWS } from '../dsp/spectrum.js'
+import { WINDOWS } from '@ee-labs/dsp'
 
 /**
  * Global settings live above the plots they govern, not in the per-signal sidebar.

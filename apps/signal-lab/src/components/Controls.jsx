@@ -1,10 +1,10 @@
 import React from 'react'
-import NumField from './NumField.jsx'
-import MathPanel from './MathPanel.jsx'
+import { NumField } from '@ee-labs/ui'
+import { MathPanel } from '@ee-labs/explain'
 import { sourceMath } from '../math-parts.js'
 import { PRESET_GROUPS } from '../presets.js'
 import BlockCard from './BlockCard.jsx'
-import { WAVEFORMS } from '../dsp/signals.js'
+import { WAVEFORMS } from '@ee-labs/dsp'
 import { BLOCK_GROUPS, BLOCK_TYPES, makeBlockRecord } from '../dsp/blocks.js'
 
 const HZ = { k: 1e3, khz: 1e3, hz: 1 }

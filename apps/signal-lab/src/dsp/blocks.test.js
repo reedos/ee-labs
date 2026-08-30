@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { BLOCK_TYPES, makeBlockRecord } from './blocks.js'
 import { applyChain, chainResponse, chainSettle, renderChain, runChain } from './chain.js'
-import { render, rms, peak } from './signals.js'
-import { spectrum } from './spectrum.js'
-import { designBiquad, biquadResponse } from './biquad.js'
+import { render, rms, peak } from '@ee-labs/dsp'
+import { spectrum } from '@ee-labs/dsp'
+import { designBiquad, biquadResponse } from '@ee-labs/dsp'
 
 const SR = 8000
 const N = 4096 // 1.953125 Hz/bin

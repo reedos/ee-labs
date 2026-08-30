@@ -1,4 +1,4 @@
-import { designBiquad, biquadResponse } from './dsp/biquad.js'
+import { designBiquad, biquadResponse } from '@ee-labs/dsp'
 
 // What is actually happening, for the preset currently loaded.
 //

@@ -5,9 +5,9 @@ import {
   designBiquad,
   makeBiquad,
   settleSamples,
-} from './biquad.js'
-import { hash01 } from './signals.js'
-import { fmtDb, fmtHz } from '../format.js'
+} from '@ee-labs/dsp'
+import { hash01 } from '@ee-labs/dsp'
+import { fmtDb, fmtHz } from '@ee-labs/ui'
 
 // Processing blocks, as data.
 //
