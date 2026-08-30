@@ -42,6 +42,8 @@ export default function LoopDiagram({
   plantP,
   ctrl,
   ctrlP,
+  ctrlId,
+  from,
   stepInput,
   onInject,
   stable,
@@ -226,13 +228,24 @@ export default function LoopDiagram({
             </text>
             {sum(sum2, 'sum2')}
             {wire(`M ${sum2 + R} ${midY} H ${pX - 2}`, 'wp')}
+            {/* The identity Reed found missing: a plant that arrived from
+                Circuit Lab is titled as THE CIRCUIT it is ("your RC
+                low-pass"), the named plant demoted to the subtitle. */}
             {box(
               pX,
-              `P(s) — ${plant.name}`,
-              chunk(summarize(plant, plantP)),
+              from ? `P(s) — ${from.label || from.id}` : `P(s) — ${plant.name}`,
+              chunk(from ? [plant.name, ...summarize(plant, plantP)] : summarize(plant, plantP)),
               () => onReveal('plant'),
               'Show the plant in the sidebar',
             )}
+            {/* The drive is the point: under proportional control the plant
+                is fed the scaled ERROR, and this one label is the whole
+                explanation of the steady-state error. */}
+            {ctrlId === 'p' ? (
+              <text className="fd-note" x={pX + 4} y={midY + BH / 2 + 12} textAnchor="start">
+                driven by Kp·(r − y), not by r
+              </text>
+            ) : null}
 
             {/* The output, and the tap that makes it a loop. */}
             <path className="fd-wire" d={`M ${pX + BW} ${midY} H ${width - 26}`} markerEnd="url(#fd-arrow)" />

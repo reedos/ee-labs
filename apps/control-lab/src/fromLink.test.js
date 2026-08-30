@@ -37,6 +37,15 @@ describe('loading a loop from a link', () => {
     expect(state.ctrlId).toBeNull()
   })
 
+  it('provenance rides along, and only with a plant that survived', () => {
+    const { state } = load('plant=firstOrder:1:1&ctrl=p:9&from=circuit:rc:My%20RC%20low-pass')
+    expect(state.from).toEqual({ app: 'circuit', id: 'rc', label: 'My RC low-pass' })
+    // Provenance without a usable plant would name a circuit that is not
+    // on screen — dropped.
+    const { state: ctrlOnly } = load('ctrl=p:9&from=circuit:rc:x')
+    expect(ctrlOnly.from).toBeNull()
+  })
+
   it('a custom plant arrives with exact, unclamped coefficients', () => {
     // The whole point of custom: an RLC's a₂ = LC ≈ 1e-10 must land as
     // itself, not clamped to some slider's idea of reasonable.

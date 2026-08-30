@@ -51,6 +51,11 @@ export function stateFromLink(patch) {
       plantP: plant ? plant.params : null,
       ctrlId: ctrl ? ctrl.id : null,
       ctrlP: ctrl ? ctrl.params : null,
+      // Provenance: where this setup was built ("from=circuit:rlc:My RLC").
+      // Carried so the diagram can name the P(s) box as THE CIRCUIT it is,
+      // not just the named plant it mapped onto — the identity Reed found
+      // missing when his handed-over RC arrived anonymous.
+      from: plant && patch.from ? patch.from : null,
     },
     warnings,
   }

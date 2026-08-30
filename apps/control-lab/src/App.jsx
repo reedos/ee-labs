@@ -58,6 +58,10 @@ export default function App() {
   // regardless, so collapsing can never hide where you are.
   const [openGroups, setOpenGroups] = useState(() => new Set())
   const [diagram, setDiagram] = useState(false)
+  // The circuit this plant arrived AS ("circuit:rlc:My RLC"), kept while the
+  // plant is still that arrival — tuning its params keeps the identity,
+  // choosing a different plant sheds it.
+  const [fromInfo, setFromInfo] = useState(linked.state?.from ?? null)
 
   // Scroll a sidebar card into view, for clicks on the diagram's boxes.
   const reveal = (id) => {
@@ -78,6 +82,7 @@ export default function App() {
     setPlantId(id)
     setPlantP(defaultsOf(PLANTS[id]))
     setLesson(null)
+    setFromInfo(null)
   }
   const chooseCtrl = (id) => {
     setCtrlId(id)
@@ -218,8 +223,26 @@ export default function App() {
         <section>
           {linked.state ? (
             <p className="hint from-link">
-              Loaded from a link — this plant came from another tool in the suite. Pick anything
-              below to start over.
+              Loaded from a link —{' '}
+              {fromInfo?.label
+                ? `your “${fromInfo.label}” arrived from ${fromInfo.app === 'circuit' ? 'Circuit Lab' : 'another tool'} as the plant.`
+                : 'this plant came from another tool in the suite.'}{' '}
+              Pick anything below to start over.
+            </p>
+          ) : null}
+          {/* The arrival orientation Reed asked for after reading his RC's
+              closed-loop step as a bug: whose step this is, and where the
+              steady error he is looking at comes from. The number printed is
+              the measured one from the top bar; the math panel's check row
+              measures it against 1/(1+L(0)). */}
+          {linked.state && stable ? (
+            <p className="hint from-link">
+              What the step view shows is the CLOSED LOOP — your circuit alone would settle at
+              its own DC gain with nothing left over. Here the plant is driven by C(s) × the
+              error, so{' '}
+              {Math.abs(err) < 1e-9
+                ? 'with an integrator in the loop the error is erased exactly: steady error none.'
+                : `the ${(err * 100).toFixed(1)}% steady error in the top bar is the loop's doing — e_ss = 1/(1+L(0)) — not the circuit's. Switch to PI to erase it.`}
             </p>
           ) : null}
           {linked.warnings.length ? (
@@ -427,6 +450,8 @@ export default function App() {
             plantP={plantP}
             ctrl={ctrl}
             ctrlP={ctrlP}
+            ctrlId={ctrlId}
+            from={fromInfo}
             stepInput={stepInput}
             stable={stable}
             onInject={(which) => {

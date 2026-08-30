@@ -43,7 +43,7 @@ default `<button>`s until Reed flagged it; the block is now copied here
 verbatim, and circuit-lab looks to have the same gap. Third shared-look rule
 living in one app's stylesheet — a candidate for promotion into base.css.
 
-## Small UX finding from Reed (real confusion, worth one line of UI)
+## Small UX finding from Reed (real confusion, worth one line of UI) — DONE
 
 Arriving from Circuit Lab's hand-over, Reed expected HIS CIRCUIT's step
 (settles at DC gain, zero error) and read the closed-loop 50% steady error as
@@ -63,7 +63,7 @@ at.) Claim measured per house rules if any number is printed.
 All earlier items remain resolved.
 
 
-## FROM REED: the loop diagram should show the circuit ITSELF as the plant
+## FROM REED: the loop diagram should show the circuit ITSELF as the plant — TIERS 1–2 DONE
 
 Reed, after handing an RC low-pass over and being surprised by the closed
 loop's 50% error: "maybe we need block diagrams that represent this to
@@ -121,3 +121,12 @@ tests: referenced ⇒ defined, defined ⇒ surfaced. Claims stay prose here —
 these are definitions, not measurements — but the u-not-r fact is the same
 one tier 2 of the diagram task annotates on the wire; keep the wording
 consistent between the two.
+
+**Status (control-lab):** the arrival notice ships (names the live steady error,
+switches to "erased exactly" under an integrator; shown only while the loop is
+stable). Tier 1 ships: `from=` provenance flows through stateFromLink, the
+banner and the P(s) box carry the circuit's label with the named plant as
+subtitle, and the identity sheds when a different plant is chosen. Tier 2
+ships: "driven by Kp·(r − y), not by r" under the plant box while P-control is
+active. Tier 3 (mini-schematic in the box) awaits the packages agent lifting a
+schematic renderer into packages/ui — not started, per the spec.

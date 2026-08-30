@@ -621,6 +621,75 @@ console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
   await clickBtn('Step')
 }
 
+// ------------------------------------ 4e. arriving from Circuit Lab, oriented
+
+console.log('\n4e. Arrival from a circuit: named, oriented, the drive labelled\n')
+{
+  // Via about:blank: navigating from the loaded page to the same URL plus a
+  // hash is a same-document navigation, and the app's startup link read
+  // never re-runs.
+  await page.goto('about:blank')
+  await page.goto(
+    `${URL}#plant=firstOrder:1:1&ctrl=p:9&from=circuit:rc:${encodeURIComponent('My RC low-pass')}`,
+    { waitUntil: 'load' },
+  )
+  await page.waitForSelector('.views canvas')
+  await page.waitForTimeout(400)
+
+  const banner = await page.locator('.hint.from-link').first().textContent()
+  if (!/My RC low-pass/.test(banner)) fail('arrival: the banner should name the circuit')
+
+  // The orientation notice names the SAME number the top bar shows — the
+  // exact confusion this exists for ("whose steady error is this?").
+  const notice = (await page.locator('.hint.from-link').nth(1).textContent()) || ''
+  const errShown = (await topbar())['steady error']
+  if (!/CLOSED LOOP/.test(notice)) fail('arrival: the orientation notice is missing')
+  if (!notice.includes(errShown.replace('%', ''))) {
+    fail(`arrival: the notice should name the top bar's steady error (${errShown}); it reads "${notice}"`)
+  }
+
+  // The diagram titles the P(s) box as the circuit, keeps the named plant as
+  // the subtitle, and labels the drive into the plant under P-control.
+  await page.getByRole('button', { name: '⧉ diagram' }).click()
+  await page.waitForTimeout(200)
+  let svgText = await page.locator('.fd-svg').textContent()
+  if (!/My RC low-pass/.test(svgText)) fail('diagram: the P(s) box should be titled as the circuit')
+  if (!/First order lag/.test(svgText)) fail('diagram: the named plant should remain as the subtitle')
+  if (!/driven by Kp·\(r − y\)/.test(svgText)) fail('diagram: the drive label should show under P-control')
+  await page.keyboard.press('Escape')
+  await settle()
+
+  // Switching to PI erases the error — the notice must follow, and the Kp
+  // drive label is proportional control's alone.
+  await clickBtn('PI')
+  const noticePI = (await page.locator('.hint.from-link').nth(1).textContent()) || ''
+  if (!/erased exactly/.test(noticePI)) fail('arrival: after PI the notice should say the error is erased')
+  await page.getByRole('button', { name: '⧉ diagram' }).click()
+  await page.waitForTimeout(200)
+  if (/driven by Kp/.test(await page.locator('.fd-svg').textContent())) {
+    fail('diagram: the Kp drive label should not outlive proportional control')
+  }
+  await page.keyboard.press('Escape')
+  await settle()
+
+  // Choosing a different plant sheds the borrowed identity.
+  await clickBtn('Three lags')
+  await page.getByRole('button', { name: '⧉ diagram' }).click()
+  await page.waitForTimeout(200)
+  if (/My RC low-pass/.test(await page.locator('.fd-svg').textContent())) {
+    fail('diagram: provenance should not survive choosing a different plant')
+  }
+  await page.keyboard.press('Escape')
+  await settle()
+  console.log('   circuit named in banner and diagram; notice tracks the controller; identity sheds on plant change')
+
+  // A clean page for the sections after this one (blank first, same reason).
+  await page.goto('about:blank')
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await page.waitForTimeout(400)
+}
+
 // ------------------------------------------------ A11Y. names for everything
 
 console.log('\nA11y: every control has a name, every plot has a label\n')
