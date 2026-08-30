@@ -1,5 +1,5 @@
 import { PLANTS, CONTROLLERS } from './systems.js'
-import { bode, dcGain, phaseAt, polesZeros, secondOrderMetrics, isStable, magnitudeAt } from '@ee-labs/systems'
+import { bode, dcGain, errorLoop, phaseAt, polesZeros, secondOrderMetrics, isStable, magnitudeAt } from '@ee-labs/systems'
 
 // The math for the loop currently on screen.
 //
@@ -228,6 +228,81 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
           { label: '180° + the total', value: 180 + phaseShares.phL, unit: '°', note: 'the phase margin' },
         ]),
       )
+    }
+
+    // --- the two doors: S and T ---
+    //
+    // S + T = 1 is NOT offered as a check row: errorLoop and closeLoop build
+    // their polynomials from the same additions, so the sum is 1 to the last
+    // bit by construction and a row for it could never disagree — the
+    // definition of a tick that carries no information. It stays a formula.
+    // The row with content is the price at the crossover, which ties the
+    // margin (read by walking the frequency response) to |S| (read from the
+    // polynomial) through two genuinely different computations.
+    const S = errorLoop(loop.open)
+    blocks.push(
+      T(
+        'One more split, and it is the deal the loop cannot escape: what the output follows of ' +
+          'the reference is T = L/(1+L), and what survives at the output — of the reference the ' +
+          'loop failed to track, of anything shoved in from outside — is S = 1/(1+L), the same ' +
+          'E(s) as above. They add to exactly one at every frequency, identically, so no ' +
+          'frequency can have both doors closed: |S| and |T| can never both be below ½. Below ' +
+          'the crossover the loop has the gain to hold S near zero — it follows r and erases d ' +
+          'together. Above it, both revert to doing nothing. The bill comes due at the ' +
+          'crossover, where |L| = 1 and NEITHER is small — and a thin phase margin makes both ' +
+          'larger than one at once: the loop amplifies precisely at the edge of its authority.',
+      ),
+      F(
+        'S(s) = \\frac{1}{1+L} = E(s), \\qquad T(s) = \\frac{L}{1+L}, \\qquad S + T = 1',
+      ),
+    )
+    if (marg.phaseMargin != null) {
+      // At the crossover L = e^{j(PM−180°)}, so |1+L| = 2·sin(PM/2): the
+      // sensitivity there is set by the phase margin and nothing else.
+      blocks.push(
+        C([
+          {
+            label: 'the price at the crossover: |S| = 1/(2·sin(PM/2))',
+            predicted: 1 / (2 * Math.abs(Math.sin((marg.phaseMargin * Math.PI) / 360))),
+            measured: magnitudeAt(S, marg.gainCrossover),
+            tol: 0.03,
+            // 1/(2·sin) blows up toward the boundary faster than the
+            // interpolated crossover can follow — the physics stays right,
+            // the comparison stops being honest.
+            unchecked:
+              Math.abs(marg.phaseMargin) < 5
+                ? 'Within a few degrees of the boundary the crossover is known too coarsely to price this honestly.'
+                : null,
+          },
+        ]),
+      )
+    }
+    {
+      const sMag = bode(S, freqs).mag
+      let iPeak = 0
+      for (let i = 1; i < sMag.length; i++) if (sMag[i] > sMag[iPeak]) iPeak = i
+      const rows = []
+      if (marg.gainCrossover != null) {
+        rows.push(
+          {
+            label: '|S| at the crossover',
+            value: magnitudeAt(S, marg.gainCrossover),
+            note: 'what gets through',
+          },
+          {
+            label: '|T| at the crossover',
+            value: magnitudeAt(loop.closed, marg.gainCrossover),
+            note: 'equal — |L| is 1 there',
+          },
+        )
+      }
+      rows.push({
+        label: 'worst amplification, max |S|',
+        value: sMag[iPeak],
+        note: sMag[iPeak] > 2 ? 'a thin margin, priced' : 'the sensitivity peak',
+      })
+      rows.push({ label: 'paid at', value: freqs[iPeak], unit: 'Hz' })
+      blocks.push(V(rows))
     }
 
     // --- the frequency/time link ---

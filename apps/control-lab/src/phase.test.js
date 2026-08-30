@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { bode, margins, phaseAt, series, closeLoop, isStable } from '@ee-labs/systems'
+import { bode, errorLoop, magnitudeAt, margins, phaseAt, series, closeLoop, isStable } from '@ee-labs/systems'
 import { checkFailures, texFailures, valueRowsPretendingToCheck, rowsOf, inertRows } from '@ee-labs/explain/testing'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf, loopMargins } from './systems.js'
 import { loopMath } from './math.js'
@@ -141,7 +141,10 @@ describe("the math panel's phase accounting", () => {
     const plantP = { ...defaultsOf(PLANTS[plantId]), ...plantOver }
     const ctrlP = { ...defaultsOf(CONTROLLERS[ctrlId]), ...ctrlOver }
     const loop = buildLoop(plantId, plantP, ctrlId, ctrlP)
-    const marg = margins(loop.open, GRID)
+    // loopMargins, not raw margins: it is what the app feeds the panel, and
+    // the difference matters — unstable + PI reads PM ≈ 360.0002° raw, which
+    // slips past the near-boundary footnote that 0.0002° rightly triggers.
+    const marg = loopMargins(loop.open, GRID)
     return loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, GRID)
   }
 
@@ -176,5 +179,74 @@ describe("the math panel's phase accounting", () => {
   it('no accounting row is inert — each one actually reads the loop', () => {
     const build = ({ tau, ki }) => entryFor('motor', 'pi', { tau }, { ki })
     expect(inertRows(build, { tau: 0.5, ki: 1 }, { tau: 1.7, ki: 3 }, 'motor + pi')).toEqual([])
+  })
+
+  it('the sensitivity row appears exactly where a crossover exists', () => {
+    const has = (entry) =>
+      rowsOf(entry, 'check').some((r) => r.label.includes('price at the crossover'))
+    expect(has(entryFor('motor', 'p'))).toBe(true)
+    // firstOrder at Kp 1 never reaches |L| = 1: no crossover, no price row.
+    expect(has(entryFor('firstOrder', 'p'))).toBe(false)
+  })
+})
+
+describe('the two doors: what the S and T prose claims', () => {
+  const GRID = logspace(1e-5, 1e5, 4000)
+  const doors = (loop) => ({
+    S: errorLoop(loop.open),
+    T: loop.closed,
+  })
+
+  it('no frequency has both |S| and |T| below ½, for any default pairing', () => {
+    for (const plantId of Object.keys(PLANTS)) {
+      for (const ctrlId of Object.keys(CONTROLLERS)) {
+        const loop = buildLoop(plantId, defaultsOf(PLANTS[plantId]), ctrlId, defaultsOf(CONTROLLERS[ctrlId]))
+        const { S, T } = doors(loop)
+        const sMag = bode(S, GRID).mag
+        const tMag = bode(T, GRID).mag
+        for (let i = 0; i < GRID.length; i += 37) {
+          expect(
+            Math.max(sMag[i], tMag[i]),
+            `${plantId} + ${ctrlId} at ${GRID[i]} Hz`,
+          ).toBeGreaterThanOrEqual(0.5)
+        }
+      }
+    }
+  })
+
+  it('at the crossover neither door is small, and a thin margin makes both exceed one', () => {
+    // Three lags at Kp 4: PM ≈ 39°, so 1/(2·sin(19.6°)) ≈ 1.5 — both doors
+    // wide open at once, exactly as the panel's paragraph says.
+    const loop = buildLoop('threePole', defaultsOf(PLANTS.threePole), 'p', { kp: 4 })
+    const m = margins(loop.open, GRID)
+    const { S, T } = doors(loop)
+    const sAt = magnitudeAt(S, m.gainCrossover)
+    const tAt = magnitudeAt(T, m.gainCrossover)
+    expect(sAt).toBeGreaterThan(1)
+    expect(tAt).toBeGreaterThan(1)
+    expect(sAt, '|T| = |L|·|S| and |L| = 1 there').toBeCloseTo(tAt, 2)
+    expect(sAt, 'the price the margin sets').toBeCloseTo(
+      1 / (2 * Math.sin((m.phaseMargin * Math.PI) / 360)),
+      1,
+    )
+  })
+
+  it('below the crossover an integrator holds S near zero — r followed, d erased, together', () => {
+    const loop = buildLoop('motor', defaultsOf(PLANTS.motor), 'pi', { kp: 2, ki: 2 })
+    const m = margins(loop.open, GRID)
+    const { S, T } = doors(loop)
+    const low = m.gainCrossover / 50
+    expect(magnitudeAt(S, low)).toBeLessThan(0.05)
+    expect(magnitudeAt(T, low)).toBeCloseTo(1, 1)
+  })
+
+  it('driving the loop toward its margin raises the sensitivity peak', () => {
+    const peakOf = (kp) => {
+      const loop = buildLoop('threePole', defaultsOf(PLANTS.threePole), 'p', { kp })
+      return Math.max(...bode(errorLoop(loop.open), GRID).mag)
+    }
+    // Kp 9 sits just under the 11.2× gain margin: the waterbed bill.
+    expect(peakOf(9)).toBeGreaterThan(2)
+    expect(peakOf(9)).toBeGreaterThan(peakOf(1))
   })
 })
