@@ -532,9 +532,6 @@ body {
    Fixed-pixel chrome tuned at 1080p shrinks to an illegible fraction of the
    plot on a 4K display. The canvases scale themselves from their own width
    (see plotScale in plot.js); these do the same for the DOM around them. */
-whole interface shrinks into a corner while the plots stretch. Scale the
-   chrome with the viewport; the canvases scale themselves off their own width
-   (see plotScale in plot.js). */
 
 @media (min-width: 2400px) {
   .app {
