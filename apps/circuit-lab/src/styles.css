@@ -3,14 +3,44 @@
 
 .preset-group { margin-bottom: 10px; }
 
-.preset-group h3 {
-  margin: 0 0 5px;
-  font-size: 10px;
+/* Preset groups as fold-outs, same as Signal Lab: the summary row is the h3
+   it replaced, with its own marker so the browser's default triangle (which
+   ignores the typography) stays hidden. */
+details.preset-group > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--dim);
-  opacity: 0.7;
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+details.preset-group > summary::before {
+  content: '▸';
+  font-size: 9px;
+  transition: transform 0.12s;
+}
+
+details.preset-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.preset-group > summary::-webkit-details-marker { display: none; }
+
+details.preset-group > .presets { margin: 4px 0 8px; }
+
+/* Marks the folded-away-proof group: the one holding the active item. */
+.group-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
 }
 
 /* The schematic. Values are live, so the picture always matches the plots. */
@@ -58,11 +88,11 @@
 }
 
 @media (min-width: 2400px) {
-  .preset-group h3 { font-size: 12px; }
+  details.preset-group > summary { font-size: 13px; }
   .sch-label, .sch-note { font-size: 8px; }
 }
 @media (min-width: 3400px) {
-  .preset-group h3 { font-size: 14px; }
+  details.preset-group > summary { font-size: 15px; }
 }
 
 /* Handing the circuit over to Signal Lab. */

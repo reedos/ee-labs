@@ -108,7 +108,19 @@ async function setField(label, value) {
 
 const circuitNames = await page.$$eval('.preset', (els) => els.map((e) => e.textContent.trim()))
 const pick = async (name) => {
-  await page.getByRole('button', { name, exact: true }).click()
+  const btn = page.getByRole('button', { name, exact: true })
+  // Preset groups fold now; a button in a folded group is not clickable until
+  // its group is opened, exactly as for a person.
+  if (!(await btn.isVisible().catch(() => false))) {
+    await page.evaluate((n) => {
+      for (const d of document.querySelectorAll('details.preset-group')) {
+        const has = [...d.querySelectorAll('.preset')].some((b) => b.textContent.trim() === n)
+        if (has && !d.open) d.querySelector('summary').click()
+      }
+    }, name)
+    await page.waitForTimeout(120)
+  }
+  await btn.click()
   await settle()
 }
 
@@ -239,13 +251,40 @@ for (const label of ['across C — low-pass', 'across R — band-pass', 'across 
   const t = await topbar()
   const hashes = await canvasHashes()
   seen.set(label, hashes[0])
-  const bad = (await readChecks()).filter((x) => x.mark === '✗')
-  console.log(`   ${label.padEnd(24)} DC gain ${String(t['DC gain']).padStart(8)}  ${bad.length} ✗`)
+  const rows = await readChecks()
+  const bad = rows.filter((x) => x.mark === '✗')
+  // The phase-at-resonance row follows the output select: −90° across C,
+  // 0° across R, +90° across L. New wiring, so its presence is asserted
+  // rather than trusted to the generic ✗ sweep.
+  const phRow = rows.find((x) => x.label.includes('phase at f₀'))
+  const wantPh = label.includes('band-pass') ? 0 : label.includes('high-pass') ? 90 : -90
+  if (!phRow) fail(`${label}: no "phase at f₀" check row`)
+  else if (Math.abs(parseFloat(phRow.theory) - wantPh) > 0.01) {
+    fail(`${label}: phase at f₀ predicts ${phRow.theory}, expected ${wantPh}`)
+  }
+  console.log(
+    `   ${label.padEnd(24)} DC gain ${String(t['DC gain']).padStart(8)}  ` +
+      `phase@f₀ ${phRow ? phRow.theory : '?'}  ${bad.length} ✗`,
+  )
   for (const b of bad) fail(`${label}: ✗ ${b.label} (theory ${b.theory}, measured ${b.measured})`)
 }
 const uniq = new Set(seen.values())
 if (uniq.size !== 3) fail(`the three RLC outputs produced ${uniq.size} distinct plots, not 3`)
 console.log(`   -> ${uniq.size} distinct frequency responses from one circuit`)
+
+// A lesson note describes one setup, and the output probe is part of it: the
+// biquad lesson says "low-pass" in so many words, so moving the probe to L
+// must retire the note rather than leave it lying about the screen.
+console.log('\n4x. A lesson note dies when the probe moves off the setup it describes\n')
+await pick('This circuit is a biquad')
+const hints = () => page.$$eval('.controls .hint', (els) => els.map((e) => e.textContent))
+const noteOn = (await hints()).some((t) => t.includes('low-pass biquad'))
+if (!noteOn) fail('the biquad lesson note did not appear')
+await page.locator('.controls select').first().selectOption({ label: 'across L — high-pass' })
+await settle()
+const noteAfter = (await hints()).some((t) => t.includes('low-pass biquad'))
+if (noteAfter) fail('the biquad note still claims a low-pass while the probe is on L')
+else console.log('   note shown at load, gone once the output select moved to L')
 
 // ---------------------------------------- 4a. real parts wobble the numbers
 
@@ -337,6 +376,54 @@ if (withPhase[0] === withoutPhase[0]) fail('toggling phase did not redraw the Bo
 console.log('   phase toggle redraws')
 await page.getByRole('checkbox', { name: 'Show phase' }).check()
 await settle()
+
+// ---------------------------- 5b. groups fold, and the active ones cannot hide
+
+console.log('\n5b. Folded sidebar groups: tidy folds, the active groups refuse to\n')
+{
+  // Land on a lesson so BOTH lists hold an active item: the lesson in
+  // "Try this" and the circuit it loaded in "Circuits". The earlier sweeps
+  // unfolded every group on their way through, so fold the inactive ones
+  // back first — the way a person tidies the list.
+  await pick('Q is how sharp, and R sets it')
+  await page.evaluate(() => {
+    for (const d of document.querySelectorAll('details.preset-group[open]')) {
+      if (!d.querySelector('.preset.is-on')) d.querySelector('summary').click()
+    }
+  })
+  await settle()
+  const groups = await page.$$eval('details.preset-group', (els) =>
+    els.map((d) => ({
+      open: d.open,
+      label: d.querySelector('summary').textContent.trim(),
+      active: !!d.querySelector('.preset.is-on'),
+    })),
+  )
+  const openOnes = groups.filter((g) => g.open)
+  console.log(
+    `   ${groups.length} groups, open after tidying: ${openOnes.map((g) => g.label).join(', ') || 'none'}`,
+  )
+  if (openOnes.length !== 2) fail(`exactly the two active groups should stay open, got ${openOnes.length}`)
+  for (const g of openOnes) {
+    if (!g.active) fail(`group "${g.label}" is open without holding the active item`)
+  }
+  // Now attack the active groups directly: clicking their summaries must not
+  // manage to fold them.
+  await page.evaluate(() => {
+    for (const d of document.querySelectorAll('details.preset-group[open]')) {
+      d.querySelector('summary').click()
+    }
+  })
+  await settle()
+  const survivors = await page.$$eval('details.preset-group[open]', (els) =>
+    els.map((d) => d.querySelector('summary').textContent.trim()),
+  )
+  if (survivors.length !== 2) {
+    fail(`the active groups must be impossible to fold away: ${survivors.length} still open`)
+  } else {
+    console.log(`   clicking their summaries left them open: ${survivors.join(', ')}`)
+  }
+}
 
 
 // ------------------------------------------------ A11Y. names for everything

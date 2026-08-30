@@ -89,6 +89,10 @@ const ENTRIES = {
             'is 1/√2 of the input, which is −3.01 dB, with exactly 45° of lag. Both fall out of ' +
             'the same fact and neither is a convention.',
         ),
+        T(
+          'This corner is the unit every other circuit here is priced in: a 1st-order corner ' +
+            'costs 45° at the corner and 90° beyond, and a circuit of order N pays that N times.',
+        ),
         F('f_c = \\frac{1}{2\\pi RC}'),
         C([
           {
@@ -125,7 +129,9 @@ const ENTRIES = {
           'Same pole, plus a zero at the origin. The zero is what removes DC: at s = 0 the ' +
             'numerator vanishes, which is the algebra saying a capacitor passes no steady ' +
             'current. And since the two outputs share one current, they are complementary — ' +
-            'their squared magnitudes sum to 1 at every frequency.',
+            'their squared magnitudes sum to 1 at every frequency, and the phase LEADS by ' +
+            'exactly +45° at the corner, the mirror of the low-pass’s lag, on its way from ' +
+            '+90° at DC to 0° far above.',
         ),
         F('|H_{LP}|^2 + |H_{HP}|^2 = 1'),
         C([
@@ -216,10 +222,11 @@ const ENTRIES = {
             'the input.',
         ),
         T(
-          'The cancellation pins the phase there too, and R has no say in it: a 1st-order ' +
-            'corner costs 45°, this circuit is 2nd order, and its 90° lands whole on the ' +
-            'low-pass (−90° across C), not at all on the band-pass (0° across R, whose ' +
-            'numerator lead cancels it), and inverted on the high-pass (+90° across L).',
+          'The cancellation pins the phase at resonance too, and R has no say in it: a ' +
+            '1st-order corner costs 45° of lag, this circuit is 2nd order, and its 90° lands ' +
+            'whole on the low-pass (−90° across C). The band-pass numerator’s own +90° cancels ' +
+            'it exactly (0° across R), and the high-pass numerator’s +180° overshoots it ' +
+            '(+90° across L).',
         ),
         F('\\omega_0 = \\frac{1}{\\sqrt{LC}}, \\qquad ' + m.qTex),
         C([
@@ -228,6 +235,14 @@ const ENTRIES = {
             predicted: atRes,
             measured: magnitudeAt(tf, f0),
             tol: 1e-4,
+          },
+          {
+            label: 'phase at f₀',
+            predicted: phaseAtRes,
+            measured: (phaseAt(tf, f0) * 180) / Math.PI,
+            tol: 1e-6,
+            abs: 1e-6,
+            unit: '°',
           },
           {
             label: 'resonant frequency',
@@ -265,7 +280,9 @@ const ENTRIES = {
         T(
           'At resonance the inductor and capacitor currents are equal and opposite and cancel, ' +
             'so all the source current flows in R and the impedance peaks at exactly R. The ' +
-            'series circuit did the mirror image: there the impedance DIPPED to R.',
+            'series circuit did the mirror image: there the impedance DIPPED to R. Purely ' +
+            'resistive means zero phase, so the phase curve crosses exactly 0° at the peak — ' +
+            'from +90° (inductive) below resonance to −90° (capacitive) above.',
         ),
         F(m.qTex),
         T(
@@ -280,6 +297,13 @@ const ENTRIES = {
             measured: magnitudeAt(tf, f0),
             tol: 1e-4,
             unit: 'Ω',
+          },
+          {
+            label: 'phase at f₀',
+            predicted: 0,
+            measured: (phaseAt(tf, f0) * 180) / Math.PI,
+            abs: 1e-6,
+            unit: '°',
           },
         ]),
         V([
@@ -312,9 +336,21 @@ const ENTRIES = {
             'large, lossy and expensive, which is the entire reason active filters displaced ' +
             'passive ones.',
         ),
+        T(
+          'The phase does not care that the resonance is manufactured: a 1st-order corner ' +
+            'costs 45° of lag at the corner and 90° beyond, this is 2nd order, so the lag is ' +
+            'exactly 90° at f₀ — whatever Q the ratios chose — heading to 180° far above.',
+        ),
         C([
           { label: 'resonant frequency', predicted: f0, measured: so ? so.f0 : NaN, tol: 1e-6, unit: 'Hz' },
           { label: 'Q', predicted: m.q, measured: so ? so.q : NaN, tol: 1e-6 },
+          {
+            label: 'phase at f₀',
+            predicted: -90,
+            measured: (phaseAt(tf, f0) * 180) / Math.PI,
+            tol: 1e-6,
+            unit: '°',
+          },
           { label: 'DC gain', predicted: 1, measured: magnitudeAt(tf, 1e-9), tol: 1e-9 },
         ]),
         V([
@@ -345,7 +381,9 @@ const ENTRIES = {
         T(
           'The gain is a ratio, so it depends on how well two resistors match rather than on ' +
             'any absolute value — which is exactly what an integrated process can do well. The ' +
-            'minus sign is a real 180° of phase at every frequency, not a bookkeeping detail.',
+            'minus sign is a real 180° of phase, not a bookkeeping detail — but it is 180° at ' +
+            'DC only. The feedback pole then takes the 1st-order toll of 45° at its corner, ' +
+            'leaving exactly 135° there and only the inversion’s last 90° far above.',
         ),
         C([
           {
@@ -359,6 +397,13 @@ const ENTRIES = {
             predicted: (p.rf / p.rin) * Math.SQRT1_2,
             measured: magnitudeAt(tf, fp),
             tol: 1e-6,
+          },
+          {
+            label: 'phase at the pole, 180° − 45°',
+            predicted: 135,
+            measured: (phaseAt(tf, fp) * 180) / Math.PI,
+            tol: 1e-6,
+            unit: '°',
           },
         ]),
         V([
@@ -384,6 +429,12 @@ const ENTRIES = {
             'needs a large resistor across C to stop it drifting into its own supply rail.',
         ),
         F('\\frac{1}{s} \\;\\longleftrightarrow\\; \\int_0^t (\\cdot)\\,d\\tau'),
+        T(
+          'The magnitude falls at the 1st-order rate — 6 dB per octave, 20 dB per decade — and ' +
+            'with no corner anywhere it does so forever. The phase is just as featureless: 1/s ' +
+            'is a constant −90°, the inversion adds 180°, and the sum sits at exactly +90° at ' +
+            'every frequency.',
+        ),
         C([
           {
             label: 'ramp slope −1/RC',
@@ -398,10 +449,18 @@ const ENTRIES = {
             measured: magnitudeAt(tf, 1 / (TAU * p.r * p.c)),
             tol: 1e-6,
           },
+          {
+            label: 'phase, at any frequency',
+            predicted: 90,
+            measured: (phaseAt(tf, 1 / (TAU * p.r * p.c)) * 180) / Math.PI,
+            tol: 1e-6,
+            unit: '°',
+          },
         ]),
         V([
           { label: 'unity-gain frequency', value: 1 / (TAU * p.r * p.c), unit: 'Hz' },
           { label: 'slope', value: -6.02, unit: 'dB/octave' },
+          { label: 'slope', value: -20, unit: 'dB/decade' },
         ]),
         ...common(tf, p, 'integrator'),
       ],

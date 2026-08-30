@@ -84,6 +84,14 @@ describe('the claims each lesson makes', () => {
     expect(db(magnitudeAt(tf, fc))).toBeCloseTo(-3.0103, 4)
     expect(deg(phaseAt(tf, fc))).toBeCloseTo(-45, 6)
 
+    // The note used to say the two component voltages sit "45° apart". Each is
+    // 45° from the INPUT; from each other they are 90°, at the corner and
+    // everywhere else, because V_R/V_C = jωRC is purely imaginary.
+    const vr = transferOf('rcHigh', s.params, 'r')
+    for (const f of [fc / 100, fc, fc * 100]) {
+      expect(deg(phaseAt(vr, f)) - deg(phaseAt(tf, f)), `${f} Hz`).toBeCloseTo(l.claim.splitDeg, 9)
+    }
+
     // ...and it is 1/(2 pi RC), not something that merely looks like it.
     for (const [r, c] of [[2200, 47e-9], [10000, 10e-9]]) {
       const moved = transferOf('rcLow', { r, c }, 'c')

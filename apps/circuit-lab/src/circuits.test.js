@@ -311,14 +311,25 @@ describe('phase, wherever magnitude is claimed', () => {
       const f0 = 1 / (2 * Math.PI * Math.sqrt(p.l * p.c))
       expect(deg(transferOf('rlcParallel', p, 'z'), f0), `R=${r}`).toBeCloseTo(0, 9)
     }
+    // ...and the crossing runs from inductive to capacitive, as the panel says:
+    // +90° far below the peak, where Z ≈ sL, and −90° far above, where Z ≈ 1/sC.
+    const p = defaultsOf('rlcParallel')
+    const f0 = 1 / (2 * Math.PI * Math.sqrt(p.l * p.c))
+    const z = transferOf('rlcParallel', p, 'z')
+    expect(deg(z, f0 / 1e4)).toBeCloseTo(90, 1)
+    expect(deg(z, f0 * 1e4)).toBeCloseTo(-90, 1)
   })
 
-  it('the Sallen-Key lags exactly 90 degrees at f0, heading to 180', () => {
-    const p = defaultsOf('sallenKey')
-    const tf = tfOf('sallenKey')
-    const f0 = CIRCUITS.sallenKey.metrics(p).w0 / (2 * Math.PI)
-    expect(deg(tf, f0)).toBeCloseTo(-90, 9)
-    expect(deg(tf, f0 * 1e4)).toBeCloseTo(-180, 1)
+  it('the Sallen-Key lags exactly 90 degrees at f0, whatever Q the ratios chose', () => {
+    // The panel says "whatever Q", so more than one Q gets measured: the
+    // capacitor ratio swings Q without touching f₀'s pinned-phase argument.
+    for (const c1 of [22e-9, 100e-9, 4.7e-9]) {
+      const p = { ...defaultsOf('sallenKey'), c1 }
+      const tf = transferOf('sallenKey', p, 'out')
+      const f0 = CIRCUITS.sallenKey.metrics(p).w0 / (2 * Math.PI)
+      expect(deg(tf, f0), `C1=${c1}`).toBeCloseTo(-90, 9)
+      expect(deg(tf, f0 * 1e4), `C1=${c1}`).toBeCloseTo(-180, 1)
+    }
   })
 
   it('the integrator holds +90 degrees at every frequency', () => {

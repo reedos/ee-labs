@@ -33,11 +33,12 @@ export const LESSONS = [
     name: 'Where the corner comes from',
     note:
       'The cutoff is not a convention: it is the frequency where the capacitor’s impedance ' +
-      'equals the resistor’s. There the two split the input evenly in magnitude but 45° apart ' +
-      'in phase, which is why the output is 1/√2 of the input and −3.01 dB rather than −6. ' +
+      'equals the resistor’s. There the two split the input evenly in magnitude — each 45° ' +
+      'from the input in phase, and so 90° from each other, as R and C always are — which is ' +
+      'why the output is 1/√2 of the input and −3.01 dB rather than −6. ' +
       'Change R or C and watch the corner move as 1/(2πRC).',
     patch: { circuit: 'rcLow', view: 'step' },
-    claim: { cornerDb: -3.0103, cornerPhase: -45 },
+    claim: { cornerDb: -3.0103, cornerPhase: -45, splitDeg: 90 },
   },
   {
     group: 'Reading a response',

@@ -33,6 +33,11 @@ export default function App() {
   // note describes one particular setup and stops being true once you move away
   // from it.
   const [lesson, setLesson] = useState(null)
+  // Which sidebar groups are unfolded, keyed "section:group" since lessons and
+  // circuits both fold. The active item's group is always open regardless, so
+  // collapsing is never able to hide where you are — same pattern as Signal
+  // Lab's preset groups.
+  const [openGroups, setOpenGroups] = useState(() => new Set())
 
   const circuit = CIRCUITS[id]
 
@@ -44,6 +49,19 @@ export default function App() {
   }
   const setParam = (key, value) => {
     setParams((p) => ({ ...p, [key]: value }))
+    setLesson(null)
+  }
+  // The output probe and the part tolerance are part of the setup a note
+  // describes, every bit as much as a component value: "this RLC is a low-pass
+  // biquad" is false the moment the probe moves to L, and "±5% parts" is false
+  // at 1%. So changing either by hand retires the note too. The view toggles
+  // stay exempt — they change which pane is shown, not what the circuit is.
+  const chooseOutput = (key) => {
+    setOutput(key)
+    setLesson(null)
+  }
+  const chooseTol = (value) => {
+    setTol(value)
     setLesson(null)
   }
 
@@ -137,25 +155,33 @@ export default function App() {
 
         <section>
           <h2>Try this</h2>
+          {/* Both lists fold to their group headers — thirteen lessons and
+              eight circuits were a wall of buttons that pushed the components
+              and the schematic below the fold. Only the active item's group
+              stays open, so where-you-are survives any amount of tidying. */}
           {LESSON_GROUPS.map((g) => {
             const inGroup = LESSONS.filter((l) => l.group === g)
             if (!inGroup.length) return null
             return (
-              <div className="preset-group" key={g}>
-                <h3>{g}</h3>
-                <div className="presets">
-                  {inGroup.map((l) => (
-                    <button
-                      type="button"
-                      key={l.name}
-                      className={`preset${l.name === lesson ? ' is-on' : ''}`}
-                      onClick={() => loadLesson(l)}
-                    >
-                      {l.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <FoldGroup
+                key={g}
+                sectionKey={`try:${g}`}
+                label={g}
+                holdsActive={inGroup.some((l) => l.name === lesson)}
+                openGroups={openGroups}
+                setOpenGroups={setOpenGroups}
+              >
+                {inGroup.map((l) => (
+                  <button
+                    type="button"
+                    key={l.name}
+                    className={`preset${l.name === lesson ? ' is-on' : ''}`}
+                    onClick={() => loadLesson(l)}
+                  >
+                    {l.name}
+                  </button>
+                ))}
+              </FoldGroup>
             )
           })}
           {active ? <p className="hint">{active.note}</p> : null}
@@ -167,21 +193,25 @@ export default function App() {
             const inGroup = Object.entries(CIRCUITS).filter(([, c]) => c.group === g)
             if (!inGroup.length) return null
             return (
-              <div className="preset-group" key={g}>
-                <h3>{g}</h3>
-                <div className="presets">
-                  {inGroup.map(([key, c]) => (
-                    <button
-                      type="button"
-                      key={key}
-                      className={`preset${key === id ? ' is-on' : ''}`}
-                      onClick={() => choose(key)}
-                    >
-                      {c.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <FoldGroup
+                key={g}
+                sectionKey={`circuits:${g}`}
+                label={g}
+                holdsActive={inGroup.some(([key]) => key === id)}
+                openGroups={openGroups}
+                setOpenGroups={setOpenGroups}
+              >
+                {inGroup.map(([key, c]) => (
+                  <button
+                    type="button"
+                    key={key}
+                    className={`preset${key === id ? ' is-on' : ''}`}
+                    onClick={() => choose(key)}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </FoldGroup>
             )
           })}
           {active ? null : <p className="hint">{circuit.hint}</p>}
@@ -194,7 +224,7 @@ export default function App() {
           {circuit.outputs.length > 1 ? (
             <label className="field">
               <span className="field-label">Output measured</span>
-              <select value={output} onChange={(e) => setOutput(e.target.value)}>
+              <select value={output} onChange={(e) => chooseOutput(e.target.value)}>
                 {circuit.outputs.map((o) => (
                   <option key={o.key} value={o.key}>
                     {o.label}
@@ -235,7 +265,7 @@ export default function App() {
                   type="button"
                   className={tol === t.value ? 'on' : ''}
                   aria-pressed={tol === t.value}
-                  onClick={() => setTol(t.value)}
+                  onClick={() => chooseTol(t.value)}
                 >
                   {t.label}
                 </button>
@@ -412,6 +442,40 @@ export default function App() {
         </section>
       </main>
     </div>
+  )
+}
+
+/**
+ * One foldable sidebar group: a <details> whose summary is the group header.
+ *
+ * The open state is the union of "the user unfolded it" and "it holds the
+ * active item" — the second half is not stored, so no sequence of clicks can
+ * ever fold the group that shows where you are.
+ *
+ * The refusal has to happen on the summary CLICK, not in render: the browser
+ * folds a <details> natively before React hears about it, and React will not
+ * re-write an `open` prop that did not change between renders — so a fold of
+ * the active group would stick even though the prop still says open. (The
+ * harness clicks the active groups' summaries and expects to get nowhere.)
+ */
+function FoldGroup({ sectionKey, label, holdsActive, openGroups, setOpenGroups, children }) {
+  return (
+    <details
+      className="preset-group"
+      open={holdsActive || openGroups.has(sectionKey)}
+      onToggle={(e) => {
+        const next = new Set(openGroups)
+        if (e.target.open) next.add(sectionKey)
+        else next.delete(sectionKey)
+        setOpenGroups(next)
+      }}
+    >
+      <summary onClick={(e) => holdsActive && e.preventDefault()}>
+        {label}
+        {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
+      </summary>
+      <div className="presets">{children}</div>
+    </details>
   )
 }
 
