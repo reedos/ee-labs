@@ -15,6 +15,15 @@ apps read `margins()` too.
 
 Other findings that cross territory:
 
+## FYI for signal-lab: the terms summary is tinted with an undefined variable
+
+`details.terms > summary` in `apps/signal-lab/src/styles.css` uses
+`color: var(--response)` — and no app stylesheet defines `--response` (only
+`site/index.html` does, for the landing page). The invalid var() falls back to
+the inherited text colour, so the intended tint never applies. Cosmetic, but
+it is the `--axis` failure again in miniature; Control Lab's copy of the
+pattern uses `var(--accent)`. Worth a one-line fix, or a shared palette token.
+
 ## FYI for signal-lab: the active preset group CAN be folded away
 
 Control Lab copied signal-lab's folding preset-group pattern (`details` with

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
+import { TERMS } from './terms.js'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
 import {
   dcGain,
@@ -56,6 +57,42 @@ describe('the lesson list itself', () => {
       // UNSTABLE badge and a step ringing forever under a note calmly
       // discussing margins, and nothing here looked.
       expect(isStable(closed), `${l.name} should load a stable loop`).toBe(true)
+    }
+  })
+})
+
+describe('terms — definitions on contact', () => {
+  it('every lesson declares terms, and every one of them is defined', () => {
+    for (const l of LESSONS) {
+      expect(l.terms?.length, `${l.name} should lean on at least one term`).toBeGreaterThan(0)
+      for (const id of l.terms) {
+        expect(TERMS[id], `${l.name} references "${id}"`).toBeTruthy()
+      }
+    }
+  })
+
+  it('every defined term is surfaced by at least one lesson', () => {
+    const used = new Set(LESSONS.flatMap((l) => l.terms || []))
+    for (const id of Object.keys(TERMS)) {
+      expect(used.has(id), `"${id}" defined but never surfaced`).toBe(true)
+    }
+  })
+
+  it('the load-bearing concepts appear where their lesson lives', () => {
+    const of = (name) => LESSONS.find((l) => l.name === name)?.terms || []
+    expect(of('The integrator closes the gap')).toContain('integrator')
+    expect(of('The margin says exactly how far')).toContain('gainmargin')
+    expect(of('A margin thin enough to feel')).toContain('zeta')
+    expect(of('The plant that needs feedback')).toContain('rhp')
+    expect(of('Everything is about one point')).toContain('nyquistplot')
+    expect(of('Watch the poles cross')).toContain('rootlocus')
+  })
+
+  it('definitions hold to the house rules: short, and named', () => {
+    for (const [id, t] of Object.entries(TERMS)) {
+      expect(t.def.length, id).toBeLessThan(600)
+      expect(t.def.length, id).toBeGreaterThan(120)
+      expect(t.name.length, id).toBeGreaterThan(1)
     }
   })
 })

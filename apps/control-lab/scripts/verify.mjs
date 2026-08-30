@@ -169,7 +169,10 @@ console.log('\n1b. Loading every lesson through the folded groups\n')
     if (pmText !== '—' && !(Math.abs(parseFloat(pmText)) <= 180)) {
       fail(`${name}: phase margin reads ${pmText} — off the circle`)
     }
-    console.log(`   ${name.padEnd(34)} ${bad.length ? bad.length + '✗' : 'ok'}`)
+    // Definitions on contact: every lesson offers its terms under the note.
+    const termCount = await page.locator('details.terms dt').count()
+    if (termCount < 1) fail(`${name}: no "Terms used here" definitions offered`)
+    console.log(`   ${name.padEnd(34)} ${bad.length ? bad.length + '✗' : 'ok'}  ${termCount} terms`)
   }
 
   // The active group must be impossible to fold away: click its summary and

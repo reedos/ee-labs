@@ -103,6 +103,27 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   .preset-group h3, details.preset-group > summary { font-size: 14px; }
 }
 
+/* Definitions on contact, folded under the lesson note. Signal Lab's
+   pattern, copied per the review playbook — except its summary colour:
+   that stylesheet says var(--response), which no app stylesheet defines
+   (only the landing page does), so the tint silently never applies.
+   --accent is real. */
+details.terms { margin: 6px 0 2px; }
+
+details.terms > summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--accent);
+  list-style: none;
+}
+details.terms > summary::before { content: '\25B8  '; font-size: 9px; }
+details.terms[open] > summary::before { content: '\25BE  '; }
+details.terms > summary::-webkit-details-marker { display: none; }
+
+details.terms dl { margin: 6px 0 0; }
+details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
+details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+
 /* ---------- the feedback-loop diagram ---------- */
 .fd-open { white-space: nowrap; }
 

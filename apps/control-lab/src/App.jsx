@@ -16,6 +16,7 @@ import {
 import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, loopMargins, settlesOnScreen } from './systems.js'
 import { loopMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
+import { termsFor } from './terms.js'
 import { nextFrame } from './frame.js'
 import { readLocationLink } from '@ee-labs/ui'
 import { stateFromLink } from './fromLink.js'
@@ -248,6 +249,22 @@ export default function App() {
             )
           })}
           {active ? <p className="hint">{active.note}</p> : null}
+          {/* Definitions on contact: the terms this lesson leans on, defined
+              right under the note rather than in a second tab — and folded,
+              so they cost nothing to someone who already has them. */}
+          {active && termsFor(active.terms).length ? (
+            <details className="terms">
+              <summary>Terms used here</summary>
+              <dl>
+                {termsFor(active.terms).map((t) => (
+                  <React.Fragment key={t.id}>
+                    <dt>{t.name}</dt>
+                    <dd>{t.def}</dd>
+                  </React.Fragment>
+                ))}
+              </dl>
+            </details>
+          ) : null}
         </section>
 
         <section id="plant">

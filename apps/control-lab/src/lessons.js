@@ -25,6 +25,7 @@ export const LESSONS = [
       'at 90% of where it was asked to go and stays there — because the controller drives the ' +
       'plant with the error, so zero error would mean zero drive, and nothing would hold it. ' +
       'Raise Kp and the gap shrinks but never closes.',
+    terms: ['steadystate'],
     patch: { plant: 'firstOrder', plantP: pp('firstOrder'), ctrl: 'p', ctrlP: cp('p', { kp: 9 }), view: 'step' },
   },
   {
@@ -35,6 +36,7 @@ export const LESSONS = [
       'integral keeps accumulating for as long as any error remains — it stops growing only ' +
       'when there is nothing left to grow on. That is what an integrator buys, and it is not ' +
       'an approximation.',
+    terms: ['integrator', 'steadystate'],
     patch: { plant: 'firstOrder', plantP: pp('firstOrder'), ctrl: 'pi', ctrlP: cp('pi'), view: 'step' },
   },
   {
@@ -47,6 +49,7 @@ export const LESSONS = [
       'P(0)/(1+L(0)): shrunk, not removed. Switch to PI and the offset is erased exactly — the ' +
       'integral winds up until nothing of the shove remains. THAT is why feedback exists; ' +
       'following a setpoint is the easy half.',
+    terms: ['disturbance', 'integrator'],
     patch: {
       plant: 'firstOrder',
       plantP: pp('firstOrder'),
@@ -66,6 +69,7 @@ export const LESSONS = [
     // ki 2, not 4: at ki 4 this exact loop has poles AT ±2j — a 0.0° margin,
     // an UNSTABLE badge, and a step that rings forever under a note calmly
     // discussing margins. ki 2 leaves 19° — thin enough to feel, still a loop.
+    terms: ['integrator', 'phasemargin', 'crossover'],
     patch: { plant: 'motor', plantP: pp('motor'), ctrl: 'pi', ctrlP: cp('pi', { kp: 2, ki: 2 }), view: 'step' },
   },
 
@@ -78,6 +82,7 @@ export const LESSONS = [
       'they can reach −180° while the gain is still above one — and at that point the feedback ' +
       'that was subtracting starts adding. Drag Kp upward and watch the step response go from ' +
       'sluggish, to lively, to ringing, to divergent.',
+    terms: ['pole', 'phasemargin'],
     patch: { plant: 'threePole', plantP: pp('threePole'), ctrl: 'p', ctrlP: cp('p', { kp: 4 }), view: 'step' },
   },
   {
@@ -87,6 +92,7 @@ export const LESSONS = [
       'The gain margin in the top bar is not a guideline. It is the factor by which Kp can rise ' +
       'before the loop is on the edge of oscillating: multiply Kp by it and the loop sits ' +
       'exactly on the boundary. Try 0.9 of it, then 1.1 of it, and watch the verdict flip.',
+    terms: ['gainmargin', 'db'],
     patch: { plant: 'threePole', plantP: pp('threePole'), ctrl: 'p', ctrlP: cp('p', { kp: 1 }), view: 'step' },
   },
   {
@@ -97,6 +103,7 @@ export const LESSONS = [
       'closed-loop pole travels as the gain sweeps, and the moment a branch enters the shaded ' +
       'half is the moment the loop starts oscillating. Nothing sudden happens to the plant — ' +
       'the poles simply walk across a line.',
+    terms: ['pole', 'rootlocus'],
     patch: { plant: 'threePole', plantP: pp('threePole'), ctrl: 'p', ctrlP: cp('p', { kp: 4 }), view: 'locus' },
   },
 
@@ -109,6 +116,7 @@ export const LESSONS = [
       'is the whole of stability: 1 + L = 0 means L = −1, so a loop passing through it returns ' +
       'a signal inverted and the same size it went out. The margins become distances you can ' +
       'see — how far the curve misses −1, and how far round the circle it is when it crosses.',
+    terms: ['nyquistplot', 'phasemargin', 'gainmargin'],
     patch: { plant: 'threePole', plantP: pp('threePole'), ctrl: 'p', ctrlP: cp('p', { kp: 4 }), view: 'nyquist' },
   },
   {
@@ -119,6 +127,7 @@ export const LESSONS = [
       'times the damping ratio — predicts ζ ≈ 0.25, and the actual ζ is 0.22, which overshoots ' +
       '49% rather than the 44% a true 0.25 would give. That gap IS the rule of thumb: close ' +
       'enough to design with, not an identity. The math panel says when it applies at all.',
+    terms: ['phasemargin', 'zeta', 'overshoot'],
     patch: { plant: 'motor', plantP: pp('motor'), ctrl: 'p', ctrlP: cp('p', { kp: 10 }), view: 'step' },
   },
 
@@ -131,6 +140,7 @@ export const LESSONS = [
       'bearing. Left alone it runs away exponentially. Here feedback is not an improvement, it ' +
       'is the only reason the thing works at all — and the failure mode is inverted. Turn the ' +
       'gain DOWN and it falls over.',
+    terms: ['rhp', 'pole'],
     patch: { plant: 'unstable', plantP: pp('unstable'), ctrl: 'p', ctrlP: cp('p', { kp: 5 }), view: 'step' },
   },
   {
@@ -141,6 +151,7 @@ export const LESSONS = [
       'to where the error is heading rather than where it is, which adds phase exactly where ' +
       'the loop is short of it. Set Kd to zero and back, and watch the margin and the overshoot ' +
       'move together. Real derivative terms are always filtered, because this also amplifies noise.',
+    terms: ['zero', 'phasemargin', 'overshoot'],
     patch: {
       plant: 'secondOrder',
       plantP: pp('secondOrder', { zeta: 0.15 }),
@@ -157,6 +168,7 @@ export const LESSONS = [
       '— but unlike a derivative its gain stops rising above the pole, so it does not amplify ' +
       'high-frequency noise without limit. That bounded high end is the entire reason to prefer ' +
       'it, and it is visible on the open-loop plot.',
+    terms: ['zero', 'pole', 'radpersec'],
     patch: {
       plant: 'threePole',
       plantP: pp('threePole'),
