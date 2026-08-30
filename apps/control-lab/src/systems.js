@@ -246,12 +246,12 @@ export const PLANTS = {
     // 1e-10), and are link-fed first, hand-typed second — so plain compact
     // fields with effectively-unclamped bounds, not log sliders.
     params: [
-      { key: 'b2', label: 'b₂', value: 0, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
-      { key: 'b1', label: 'b₁', value: 0, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
-      { key: 'b0', label: 'b₀', value: 1, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
-      { key: 'a2', label: 'a₂', value: 0, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
-      { key: 'a1', label: 'a₁', value: 1, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
-      { key: 'a0', label: 'a₀', value: 1, min: -1e12, max: 1e12, unit: '', scale: 'linear', compact: true },
+      { key: 'b2', label: 'b₂', value: 0, min: -1e12, max: 1e12, unit: '', scale: 'linear', step: 1e-12, compact: true },
+      { key: 'b1', label: 'b₁', value: 0, min: -1e12, max: 1e12, unit: '', scale: 'linear', step: 1e-12, compact: true },
+      { key: 'b0', label: 'b₀', value: 1, min: -1e12, max: 1e12, unit: '', scale: 'linear', step: 1e-12, compact: true },
+      { key: 'a2', label: 'a₂', value: 0, min: -1e12, max: 1e12, unit: '', scale: 'linear', step: 1e-12, compact: true },
+      { key: 'a1', label: 'a₁', value: 1, min: -1e12, max: 1e12, unit: '', scale: 'linear', step: 1e-12, compact: true },
+      { key: 'a0', label: 'a₀', value: 1, min: -1e12, max: 1e12, unit: '', scale: 'linear', step: 1e-12, compact: true },
     ],
     tf: (p) => ({ b: trimLeading([p.b2, p.b1, p.b0]), a: trimLeading([p.a2, p.a1, p.a0]) }),
     tex: (p) => `P(s) = \\frac{${texPoly(p.b2, p.b1, p.b0)}}{${texPoly(p.a2, p.a1, p.a0)}}`,

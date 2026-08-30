@@ -251,6 +251,17 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .conv-speed { flex: 0 0 auto; }
 .conv-speed button { padding: 2px 9px; white-space: nowrap; }
 
+/* The custom plant's equation, live under the coefficient fields. */
+.live-tf {
+  margin: 8px 0 4px;
+  padding: 6px 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow-x: auto;
+  text-align: center;
+}
+
 /* Pane-header controls, sized to the header row — the proximity rule from
    Signal Lab: a control lives next to the plot it governs, not a sidebar (or
    on a phone, a full screen) away. */

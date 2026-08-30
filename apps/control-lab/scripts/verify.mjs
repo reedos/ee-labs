@@ -590,6 +590,34 @@ console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
   await bodeHead.getByRole('button', { name: 'phase', exact: true }).click()
   await settle()
   console.log('   controls live on the panes they govern; the phase toggle redraws')
+
+  // The sidebar names its cards with the loop's symbols — the topbar, the
+  // diagram and the math panel all speak C(s) and P(s), and the cards must
+  // say which is which.
+  const plantH2 = await page.locator('#plant h2').textContent()
+  const ctrlH2 = await page.locator('#controller h2').textContent()
+  if (!/P\(s\)/.test(plantH2)) fail(`the Plant card should say P(s); it reads "${plantH2}"`)
+  if (!/C\(s\)/.test(ctrlH2)) fail(`the Controller card should say C(s); it reads "${ctrlH2}"`)
+
+  // The custom plant's equation is defined LIVE under its coefficients:
+  // type a value, see it in the typeset H(s).
+  await clickBtn('Custom H(s)')
+  const texBefore = await page.locator('.live-tf').innerHTML()
+  await setField('b₀', 5)
+  const texAfter = await page.locator('.live-tf').innerHTML()
+  if (texBefore === texAfter) fail('editing a coefficient should re-typeset the live H(s)')
+  if (!/5/.test(texAfter)) fail('the live H(s) should carry the coefficient just typed')
+  // The broken case the live formula itself exposed: a fractional
+  // coefficient once snapped to the default step of 1 and became 0.
+  await setField('a₂', 0.0001)
+  const mantissa = await page.getByRole('spinbutton', { name: 'a₂' }).first().inputValue()
+  if (mantissa === '0') fail('a coefficient of 1e-4 snapped to 0 — the step is wrong again')
+  const texTiny = await page.locator('.live-tf').innerHTML()
+  if (!/s\^?/.test(texTiny) || texTiny === texAfter) {
+    fail('a small a₂ should put an s² term into the live H(s)')
+  }
+  console.log('   the custom plant typesets the equation being defined, live — tiny coefficients included')
+  await clickBtn('First order lag')
   await clickBtn('Step')
 }
 

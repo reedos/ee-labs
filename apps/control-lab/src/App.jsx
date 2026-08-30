@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
-import { MathPanel } from '@ee-labs/explain'
+import { Formula, MathPanel } from '@ee-labs/explain'
 import {
   bode,
   evalAtFreq,
@@ -293,8 +293,11 @@ export default function App() {
           ) : null}
         </section>
 
+        {/* The section names carry the loop's symbols: the topbar strip, the
+            block diagram and the math panel all speak C(s) and P(s), and the
+            sidebar should say which card is which. */}
         <section id="plant">
-          <h2>Plant</h2>
+          <h2>Plant — P(s)</h2>
           {PLANT_GROUPS.map((g) => {
             const inGroup = Object.entries(PLANTS).filter(([, p]) => p.group === g)
             if (!inGroup.length) return null
@@ -330,14 +333,27 @@ export default function App() {
               min={p.min}
               max={p.max}
               scale={p.scale}
+              // Linear-scale fields snap TYPED values to their step, and the
+              // default step of 1 silently turned a coefficient of 1e-4 into
+              // 0 — caught in the first screenshot of the live formula. The
+              // custom plant's params carry a 1e-12 step for this reason.
+              step={p.step}
               compact={!!p.compact}
               eng
             />
           ))}
+          {/* A plant whose formula is built from its live values (the custom
+              plant) shows the equation being defined RIGHT HERE, as the
+              coefficients are typed — not two folds away in the math panel. */}
+          {typeof plant.tex === 'function' ? (
+            <div className="live-tf" aria-label="The transfer function these coefficients define">
+              <Formula>{plant.tex(plantP)}</Formula>
+            </div>
+          ) : null}
         </section>
 
         <section id="controller">
-          <h2>Controller</h2>
+          <h2>Controller — C(s)</h2>
           <div className="presets">
             {Object.entries(CONTROLLERS).map(([key, c]) => (
               <button
