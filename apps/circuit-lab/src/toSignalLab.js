@@ -57,7 +57,7 @@ const lastNonZero = (arr) => {
  * half of Nyquist is warped badly enough that the correspondence stops being
  * the point. Twenty times is comfortable.
  */
-export function asDigitalFilter(tf, { sampleRate = 48000 } = {}) {
+export function asDigitalFilter(tf, { sampleRate = 48000, from = null } = {}) {
   const strip = (c) => {
     const out = [...c]
     while (out.length > 1 && Math.abs(out[0]) < 1e-18) out.shift()
@@ -112,6 +112,9 @@ export function asDigitalFilter(tf, { sampleRate = 48000 } = {}) {
     // cycle to sample; its ratio is honestly infinite and never "too fast".
     ratio: fRef ? sampleRate / fRef : Infinity,
     tooFast: fRef ? sampleRate / fRef < 20 : false,
+    // Provenance rides along (from=circuit:<id>:<label>) so the receiving
+    // lab can say "your RC low-pass" instead of the anonymous name of
+    // whatever block it mapped to.
     link: buildLink({
       rate: sampleRate,
       sources: [{ type: 'noise', freq: 100, amp: 0.6 }],
@@ -120,6 +123,7 @@ export function asDigitalFilter(tf, { sampleRate = 48000 } = {}) {
           ? { type: shape, params: [fRef, m.q] }
           : { type: 'biquad', params: [b0, b1, b2, a1, a2] },
       ],
+      ...(from ? { from } : {}),
     }),
   }
 }
@@ -150,7 +154,7 @@ export function suggestRate(f0) {
  * rather than approximated: a plant that is nearly right would produce a loop
  * whose margins are confidently wrong.
  */
-export function asControlPlant(tf) {
+export function asControlPlant(tf, from = null) {
   const m = secondOrderMetrics(tf)
   const strip = (c) => {
     const out = [...c]
@@ -173,6 +177,7 @@ export function asControlPlant(tf) {
       link: buildLink({
         plant: { type: 'secondOrder', params: [k, m.wn, m.zeta] },
         ctrl: { type: 'p', params: [1] },
+        ...(from ? { from } : {}),
       }),
     }
   }
@@ -198,6 +203,7 @@ export function asControlPlant(tf) {
         link: buildLink({
           plant: { type: 'integrator', params: [Math.abs(k)] },
           ctrl: { type: 'p', params: [1] },
+          ...(from ? { from } : {}),
         }),
       }
     }
@@ -219,6 +225,7 @@ export function asControlPlant(tf) {
         link: buildLink({
           plant: { type: 'firstOrder', params: [k, tau] },
           ctrl: { type: 'p', params: [1] },
+          ...(from ? { from } : {}),
         }),
       }
     }

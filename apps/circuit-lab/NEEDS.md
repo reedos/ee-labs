@@ -64,14 +64,8 @@ so the canvas stays stateless. Control Lab's root-locus use is unaffected
 unless it opts in.
 
 
-## ADDITION to the hand-over task: carry provenance (grammar is live)
+## Provenance on hand-over links — DONE
 
-The link grammar now has `from=<app>:<id>:<label>` (packages/ui/src/deeplink.js,
-tests in deeplink.test.js; the label is URI-encoded). Append it to BOTH
-hand-over links you emit:
-
-    buildLink({ ..., from: { app: 'circuit', id, label: circuit.name } })
-
-Signal Lab already displays it ("This chain IS your “RC low-pass” from
-Circuit Lab..."); Control Lab's use is specified in their NEEDS. Without it,
-the receiving lab cannot say whose circuit the box is.
+Both emitted link kinds now carry `from=circuit:<id>:<label>` (Signal Lab
+filter links and Control Lab plant links alike), round-trip tested through
+parseLink. Greet away.

@@ -19,9 +19,11 @@ const SHAPE_LABEL = {
   highpass: 'high-pass',
 }
 
-export default function HandOver({ tf, circuitName }) {
-  const natural = useMemo(() => asDigitalFilter(tf), [tf])
-  const plant = useMemo(() => asControlPlant(tf), [tf])
+export default function HandOver({ tf, circuitName, from = null }) {
+  // Provenance (from=circuit:<id>:<label>) rides every emitted link, so the
+  // receiving lab can greet the arrival by the circuit's own name.
+  const natural = useMemo(() => asDigitalFilter(tf, { from }), [tf, from])
+  const plant = useMemo(() => asControlPlant(tf, from), [tf, from])
 
   // Null means "follow the circuit". A useState initializer runs once, so
   // holding the rate in state directly left it stuck at whatever the first
@@ -32,7 +34,7 @@ export default function HandOver({ tf, circuitName }) {
   const [copied, setCopied] = useState(false)
 
   const rate = chosen ?? suggestRate(natural ? natural.f0 : 0)
-  const d = useMemo(() => asDigitalFilter(tf, { sampleRate: rate }), [tf, rate])
+  const d = useMemo(() => asDigitalFilter(tf, { sampleRate: rate, from }), [tf, rate, from])
 
   // The one reasoned refusal: a pole exactly at the origin (the integrator).
   // Everything else crosses — as a named shape when one is exact, or as raw

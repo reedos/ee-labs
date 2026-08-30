@@ -235,6 +235,9 @@ export default function App() {
 
   const gain = dcGain(tf)
   const stable = isStable(tf)
+  // Provenance for outgoing hand-over links — memoized so HandOver's link
+  // building doesn't re-run on unrelated renders.
+  const handOverFrom = useMemo(() => ({ app: 'circuit', id, label: circuit.name }), [id, circuit])
 
   return (
     <div className="app">
@@ -431,7 +434,7 @@ export default function App() {
 
         <section>
           <h2>The same filter, sampled</h2>
-          <HandOver tf={tf} circuitName={circuit.name.toLowerCase()} />
+          <HandOver tf={tf} circuitName={circuit.name.toLowerCase()} from={handOverFrom} />
         </section>
 
       </aside>

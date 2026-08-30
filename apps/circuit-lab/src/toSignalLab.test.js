@@ -177,6 +177,24 @@ describe('recognising which filter a circuit is', () => {
     expect(asDigitalFilter(transferOf('integrator', defaultsOf('integrator'), 'out'))).toBeNull()
   })
 
+  it('carries provenance, so the receiving lab can greet the circuit by name', () => {
+    // from=circuit:<id>:<label> — the difference between a hand-over and a
+    // teleport with amnesia, per the deeplink grammar. On both link kinds.
+    const from = { app: 'circuit', id: 'twinT', label: 'Twin-T notch' }
+    const tf = transferOf('twinT', defaultsOf('twinT'), 'out')
+    const { patch, warnings } = parseLink(asDigitalFilter(tf, { from }).link)
+    expect(warnings).toEqual([])
+    expect(patch.from).toEqual(from)
+
+    const rlc = transferOf('rlcSeries', defaultsOf('rlcSeries'), 'c')
+    const plant = asControlPlant(rlc, { app: 'circuit', id: 'rlcSeries', label: 'Series RLC' })
+    expect(parseLink(plant.link).patch.from).toEqual({
+      app: 'circuit',
+      id: 'rlcSeries',
+      label: 'Series RLC',
+    })
+  })
+
   it('flags coefficients the receiving knobs cannot hold, before the link is copied', () => {
     // The inverting amp at gain −10: comfortable at its suggested rate, but
     // drop the rate toward the corner and b₀ outgrows the biquad's ±3.999.
