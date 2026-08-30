@@ -11,6 +11,23 @@ You are one of three agents working this repo in parallel. **Your territory is
   nothing. If you genuinely need a package change, write the need into
   `apps/circuit-lab/NEEDS.md`, commit it, and continue with what you can do —
   the packages agent will pick it up.
+- **Run in your own clone, not the shared checkout.** If your working
+  directory is `~/projects/ee-labs` itself, STOP and move:
+
+  ```
+  git clone ~/projects/ee-labs ~/projects/ee-labs-circuit-lab
+  cd ~/projects/ee-labs-circuit-lab
+  git remote set-url origin https://github.com/reedos/ee-labs.git
+  git config user.name "Reed" && git config user.email "48570578+reedos@users.noreply.github.com"
+  npm ci
+  ```
+
+  Three agents in one tree have already crossed streams once: a `git add -A`
+  from one swept another's half-finished files into an unrelated commit.
+  Also, `npm run build` builds ALL THREE apps' dist folders — in a shared
+  tree that clobbers another agent's preview mid-harness.
+- **Stage by path, never `git add -A` and never `commit -a`** — even in your
+  own clone, the habit is the protection: `git add apps/circuit-lab`.
 - Work directly on `master`. **`git pull --rebase` before every push.** Never
   rewrite pushed history. Commits already use the right author (repo-local
   config). Every push triggers CI and a live deploy to
