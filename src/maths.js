@@ -14,6 +14,12 @@ const T = (text) => ({ kind: 'text', text })
 const F = (tex, caption) => ({ kind: 'formula', tex, caption })
 const C = (rows) => ({ kind: 'check', rows })
 
+// Values worked out from the current settings. NOT a check, and deliberately
+// rendered without a tick: nothing is being compared, so a tick would be a
+// tautology dressed as verification. Half this panel used to do exactly that —
+// printing one number in both columns and marking it correct.
+const V = (rows) => ({ kind: 'values', rows })
+
 /** Amplitude of a discrete square/triangle harmonic, including the sampling correction. */
 const discreteBoost = (k, N) => (k * Math.PI) / N / Math.sin((k * Math.PI) / N)
 
@@ -182,14 +188,9 @@ const ENTRIES = {
             'its magnitude, the loudness peaks twice per cycle of it — so the beat rate is the ' +
             'full difference, not half of it.',
         ),
-        C([
-          { label: 'beat rate (Hz)', predicted: beat, measured: beat, tol: 1e-9 },
-          {
-            label: 'beat period (ms)',
-            predicted: beat ? 1000 / beat : NaN,
-            measured: beat ? 1000 / beat : NaN,
-            tol: 1e-9,
-          },
+        V([
+          { label: 'beat rate', value: beat, unit: 'Hz' },
+          { label: 'beat period', value: beat ? 1000 / beat : NaN, unit: 'ms' },
         ]),
       ],
     }
@@ -211,9 +212,15 @@ const ENTRIES = {
             'turns around and walks back down — which is why pushing the source up moves the ' +
             'peak the wrong way.',
         ),
+        V([{ label: 'Nyquist', value: fs / 2, unit: 'Hz' }]),
         C([
-          { label: 'apparent frequency (Hz)', predicted: folded, measured: ctx.peakFreq, tol: 0.02 },
-          { label: 'Nyquist (Hz)', predicted: fs / 2, measured: fs / 2, tol: 1e-9 },
+          {
+            label: 'apparent frequency',
+            predicted: folded,
+            measured: ctx.peakFreq,
+            unit: 'Hz',
+            tol: 0.02,
+          },
         ]),
       ],
     }
@@ -260,11 +267,11 @@ const ENTRIES = {
             'frame. Frequency resolution is not a property of the algorithm — it is a property ' +
             'of how long you looked. To resolve 15 Hz you must observe for at least 1/15 s.',
         ),
-        C([
-          { label: 'bin width (Hz)', predicted: binHz, measured: binHz, tol: 1e-9 },
-          { label: 'frame length (ms)', predicted: (1000 * ctx.fftSize) / ctx.sampleRate, measured: (1000 * ctx.fftSize) / ctx.sampleRate, tol: 1e-9 },
-          { label: 'tone separation (Hz)', predicted: sep, measured: sep, tol: 1e-9 },
-          { label: 'bins between them', predicted: sep / binHz, measured: sep / binHz, tol: 1e-9 },
+        V([
+          { label: 'bin width', value: binHz, unit: 'Hz' },
+          { label: 'frame length', value: (1000 * ctx.fftSize) / ctx.sampleRate, unit: 'ms' },
+          { label: 'tone separation', value: sep, unit: 'Hz' },
+          { label: 'bins between them', value: sep / binHz },
         ]),
       ],
     }
@@ -283,12 +290,11 @@ const ENTRIES = {
           'resolution — the main lobe widens — and buys enormous sidelobe rejection: about ' +
           '−31 dB for Hann against −13 dB for no window at all.',
       ),
-      C([
+      V([
         {
           label: 'cycles in the frame',
-          predicted: Math.round((ctx.sourceFreq * ctx.fftSize) / ctx.sampleRate),
-          measured: (ctx.sourceFreq * ctx.fftSize) / ctx.sampleRate,
-          tol: 0.01,
+          value: (ctx.sourceFreq * ctx.fftSize) / ctx.sampleRate,
+          note: 'a whole number means no leakage',
         },
       ]),
     ],
@@ -332,17 +338,23 @@ const ENTRIES = {
     const b = ctx.blocks[0]
     const rows = []
     if (b) {
-      const co = designBiquad({ mode: b.type, ...b.params }, ctx.sampleRate)
+      // Read off the blue curve the app is actually drawing, rather than
+      // recomputing biquadResponse here. Recomputing would still compare two
+      // different code paths — the Q setting against the RBJ design — but it
+      // would not be checking anything the reader can see, and a row whose
+      // "measured" side is invisible is halfway to a tautology already.
+      const peak = ctx.respAt(b.params.freq)
       rows.push({
         label: 'peak |H| at cutoff',
         predicted: b.params.q,
-        measured: biquadResponse(co, b.params.freq, ctx.sampleRate),
+        measured: peak,
         tol: 0.02,
       })
       rows.push({
         label: 'peak in dB',
         predicted: 20 * Math.log10(b.params.q),
-        measured: 20 * Math.log10(biquadResponse(co, b.params.freq, ctx.sampleRate)),
+        measured: 20 * Math.log10(peak),
+        unit: 'dB',
         tol: 0.05,
       })
     }
@@ -460,9 +472,9 @@ const ENTRIES = {
             'is as fast as it can be without ringing. That is the same Q that gives the flattest ' +
             'possible passband — the Butterworth condition, arrived at from the time side.',
         ),
-        C([
-          { label: 'damping ζ = 1/2Q', predicted: zeta, measured: zeta, tol: 1e-9 },
-          { label: 'overshoot (fraction)', predicted: over, measured: over, tol: 1e-9 },
+        V([
+          { label: 'damping ζ = 1/2Q', value: zeta },
+          { label: 'predicted overshoot', value: over, unit: '×' },
         ]),
       ],
     }
@@ -584,9 +596,9 @@ const ENTRIES = {
             'nulls become resonances, and the filter is now IIR:',
         ),
         F('H(z) = \\frac{1}{1 - g\\,z^{-D}}'),
-        C([
-          { label: 'delay D (samples)', predicted: D, measured: D, tol: 1e-9 },
-          { label: 'notch spacing (Hz)', predicted: spacing, measured: spacing, tol: 1e-9 },
+        V([
+          { label: 'delay D', value: D, unit: 'samples' },
+          { label: 'notch spacing', value: spacing, unit: 'Hz' },
         ]),
       ],
     }
@@ -610,9 +622,9 @@ const ENTRIES = {
             'Dither adds a small random offset before rounding, which decorrelates the error ' +
             'and converts the spurs into the smooth floor the formula assumes.',
         ),
-        C([
-          { label: 'step Δ', predicted: 2 / Math.pow(2, bits), measured: 2 / Math.pow(2, bits), tol: 1e-9 },
-          { label: 'ideal SNR (dB)', predicted: 6.02 * bits + 1.76, measured: 6.02 * bits + 1.76, tol: 1e-9 },
+        V([
+          { label: 'step Δ', value: 2 / Math.pow(2, bits) },
+          { label: 'ideal SNR', value: 6.02 * bits + 1.76, unit: 'dB' },
         ]),
       ],
     }

@@ -210,3 +210,98 @@ describe('when the settings move away from the preset', () => {
     expect(checked).toBeGreaterThanOrEqual(8)
   })
 })
+
+describe('a check must actually read something', () => {
+  // The question this answers: what is the point of "theory" and "measured"
+  // being separate columns at all?
+  //
+  // Only that the two sides come from different places. The theory side is a
+  // closed form; the measured side has to be read off something the app is
+  // really showing — the FFT trace, the pre-chain ghost, the response curve.
+  // When that holds, agreement means the implementation matches the formula,
+  // and it has caught three genuine bugs.
+  //
+  // When it does not hold, the row is a tautology: half of this panel used to
+  // print one number in both columns and mark it correct. Those are now
+  // rendered as plain derived values with no tick.
+  //
+  // This test makes the distinction enforceable. Perturb everything the panel
+  // could be measuring FROM, and every check row's measured value must move.
+  // A row that does not move is not reading anything.
+  const perturbed = (preset, factor) => {
+    const patch = preset.patch
+    const state = {
+      sources: patch.sources,
+      blocks: patch.blocks || [],
+      sampleRate: patch.sampleRate || 8000,
+      fftSize: patch.fftSize || 2048,
+      window: patch.window || 'hann',
+      presetName: preset.name,
+      showGhost: !!patch.showGhost,
+    }
+    const r = renderChain(state.sources, state.blocks, state.fftSize, state.sampleRate)
+    const { freqs, amps } = spectrum(r.buf, state.sampleRate, state.window)
+    const dry = render(state.sources, state.fftSize, state.sampleRate)
+    const ghost = spectrum(dry, state.sampleRate, state.window).amps
+    const resp = state.blocks.length
+      ? chainResponse(state.blocks, freqs, state.sampleRate)
+      : null
+
+    // Scale every source of measurement by a different amount, AND tilt each
+    // across frequency. A flat scale is not enough: a row that reads a ratio of
+    // two bins — the rolloff comparison does — is scale-invariant by
+    // construction and would look inert without the tilt.
+    // The tilt has to vary WITH the perturbation, not just exist: an identical
+    // tilt in both contexts cancels out of a ratio exactly as a flat scale does.
+    const scale = (arr, k) =>
+      Float64Array.from(arr, (v, i) => v * k * (1 + ((k - 1) * 0.6 * i) / arr.length))
+    let iMax = 0
+    for (let i = 1; i < amps.length; i++) if (amps[i] > amps[iMax]) iMax = i
+
+    return mathsContext({
+      state,
+      freqs,
+      amps: scale(amps, factor),
+      ghostAmps: scale(ghost, factor * 1.31),
+      resp: resp ? { ...resp, mag: scale(resp.mag, factor * 0.77) } : null,
+      peakFreq: freqs[iMax] * factor,
+    })
+  }
+
+  it('every check row moves when the thing it reads is perturbed', () => {
+    const inert = []
+    for (const p of PRESETS) {
+      const a = mathsFor(p.name, perturbed(p, 1))
+      const b = mathsFor(p.name, perturbed(p, 1.9))
+      const rowsOf = (e) => e.blocks.filter((x) => x.kind === 'check').flatMap((x) => x.rows)
+      const ra = rowsOf(a)
+      const rb = rowsOf(b)
+      for (let i = 0; i < ra.length; i++) {
+        // An unmeasurable row has nothing to read, which is the point of it.
+        if (ra[i].unchecked) continue
+        // A predicted-zero row stays near zero under scaling; exempt it, since
+        // its content is "this is absent" rather than a magnitude.
+        if (ra[i].predicted === 0) continue
+        if (ra[i].measured === rb[i].measured) {
+          inert.push(`${p.name} / ${ra[i].label}`)
+        }
+      }
+    }
+    expect(inert.join(SEP)).toBe('')
+  })
+
+  it('derived values are never presented as checks', () => {
+    for (const p of PRESETS) {
+      const entry = mathsFor(p.name, contextFor(p))
+      for (const b of entry.blocks) {
+        if (b.kind !== 'values') continue
+        for (const row of b.rows) {
+          // A values row carries one number and no comparison, by construction.
+          expect(row, `${p.name} / ${row.label}`).not.toHaveProperty('predicted')
+          expect(row, `${p.name} / ${row.label}`).not.toHaveProperty('measured')
+          expect(Number.isFinite(row.value) || row.value === undefined).toBe(true)
+        }
+      }
+    }
+  })
+})

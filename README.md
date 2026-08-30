@@ -17,7 +17,7 @@ the tool just measured.
 ```
 npm install
 npm run dev        # http://localhost:1421
-npm test           # 133 tests
+npm test           # 135 tests
 npm run build
 ```
 
@@ -112,6 +112,30 @@ That scheme depends on the pre-roll being genuinely the same signal, which is wh
 generators take time from the absolute sample index rather than from an offset. Getting
 that subtly wrong made a filtered square measure up to 10% away from its own response
 curve, and the test that should have caught it was pinning the artifact instead.
+
+## What "theory vs measured" is worth
+
+A fair question, since both numbers come out of the same program. The comparison is
+only worth something when the two sides come from genuinely different places: the theory
+side is a closed form, and the measured side has to be *read off something the app is
+really showing you* — the FFT trace, the pre-chain ghost, the response curve. The FFT
+knows nothing about Fourier series, so when they agree, the implementation matches the
+formula. That has caught three real bugs.
+
+It does not prove the physics is right. It is an internal consistency check between two
+of my own code paths, not a measurement against reality, and it cannot catch a mistake
+that is present in both the formula and the model.
+
+Half the panel used to fail even the weaker test. Thirteen of twenty-four rows printed
+the same expression in both columns — `predicted: beat, measured: beat` — and so could
+never disagree. Those are now rendered as plain derived values under "from these
+settings", with no tick, because marking 1 = 1 correct is worse than saying nothing: it
+teaches you to trust a ✓ that means nothing.
+
+A test enforces the distinction. It perturbs everything a panel could be measuring from
+— scaling and tilting the spectrum, the ghost and the response curve — and requires every
+check row's measured value to move. A row that does not move is not reading anything, and
+fails.
 
 ## The explanations are tested
 

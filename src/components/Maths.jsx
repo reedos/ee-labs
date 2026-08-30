@@ -66,6 +66,37 @@ function Row({ label, predicted, measured, unit = '', tol = 0.02, abs = 0, unche
   )
 }
 
+/**
+ * Quantities worked out from the current settings.
+ *
+ * One column, no tick. These are not comparisons, and marking them correct
+ * would be marking 1 = 1 correct.
+ */
+export function Values({ rows }) {
+  if (!rows || !rows.length) return null
+  const fmt = (v) =>
+    !Number.isFinite(v)
+      ? '—'
+      : Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-3 && v !== 0)
+        ? v.toExponential(3)
+        : Number(v.toFixed(4)).toString()
+  return (
+    <table className="maths-values">
+      <caption>from these settings</caption>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i}>
+            <th scope="row">{r.label}</th>
+            <td>{fmt(r.value)}</td>
+            <td className="unit">{r.unit || ''}</td>
+            <td className="unit">{r.note || ''}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 export function Check({ rows }) {
   if (!rows || !rows.length) return null
   // A row the current settings make unmeasurable is footnoted rather than
@@ -140,6 +171,7 @@ export default function Maths({ entry }) {
                 </div>
               )
             if (b.kind === 'check') return <Check key={i} rows={b.rows} />
+            if (b.kind === 'values') return <Values key={i} rows={b.rows} />
             return null
           })}
         </div>

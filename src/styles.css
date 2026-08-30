@@ -929,3 +929,33 @@ select {
 .maths-notes li { margin-bottom: 3px; }
 @media (min-width: 2400px) { .maths-notes { font-size: 12px; } }
 @media (min-width: 3400px) { .maths-notes { font-size: 14px; } }
+
+/* Derived values, not comparisons: one column and no tick. */
+.maths-values {
+  width: 100%;
+  margin: 12px 0 4px;
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+.maths-values caption {
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--line);
+  color: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: left;
+}
+.maths-values th,
+.maths-values td { padding: 3px 6px 3px 0; font-weight: 400; }
+.maths-values th {
+  color: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  text-align: left;
+}
+.maths-values td { color: var(--text); text-align: right; }
+.maths-values .unit { color: var(--dim); text-align: left; }
+@media (min-width: 2400px) { .maths-values { font-size: 13px; } .maths-values caption { font-size: 12px; } }
+@media (min-width: 3400px) { .maths-values { font-size: 15px; } .maths-values caption { font-size: 14px; } }
