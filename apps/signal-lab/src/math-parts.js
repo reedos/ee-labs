@@ -548,6 +548,61 @@ export function blockMath(block, ctx) {
     }
   }
 
+  if (block.type === 'biquad') {
+    if (!isStable(p)) {
+      return {
+        blocks: [
+          T(
+            'These coefficients put a pole ON or OUTSIDE the unit circle, so the section would ' +
+              'grow its own output without bound. The block is passing the signal through ' +
+              'untouched until the poles come back inside: |a₂| < 1 and |a₁| < 1 + a₂.',
+          ),
+          F('|a_2| < 1 \\quad\\text{and}\\quad |a_1| < 1 + a_2'),
+          V([
+            { label: 'pole radius r', value: poleRadius(p), note: 'must be < 1' },
+          ]),
+        ],
+      }
+    }
+    const r = poleRadius(p)
+    const probes = [sampleRate / 16, sampleRate / 8, sampleRate / 4]
+    const meas = measuredResponse(block, sampleRate, probes)
+    return {
+      blocks: [
+        T(
+          'The five numbers themselves — what every named filter block reduces to, and what a ' +
+            'hand-over from Circuit Lab delivers bilinear-exactly. The code runs them as one ' +
+            'multiply-add per coefficient:',
+        ),
+        F(
+          `y[n] = ${sig(p.b0)}\\,x[n] ${signed(p.b1)}\\,x[n{-}1] ${signed(p.b2)}\\,x[n{-}2] ` +
+            `${signed(-p.a1)}\\,y[n{-}1] ${signed(-p.a2)}\\,y[n{-}2]`,
+        ),
+        T(
+          'The measured column below is an impulse pushed through that difference equation and ' +
+            'transformed back — an independent path from the closed form it is checked against.',
+        ),
+        C(
+          probes.map((f, i) => ({
+            label: `|H| at ${sig(f, 5)} Hz`,
+            predicted: biquadResponse(p, f, sampleRate),
+            measured: meas[i],
+            tol: 0.02,
+          })),
+        ),
+        V([
+          { label: 'pole radius r', value: r, note: 'stable (r < 1)' },
+          {
+            label: 'ring decays to 1e-6 in',
+            value: r > 0 && r < 1 ? Math.round(Math.log(1e-6) / Math.log(r)) : 2,
+            unit: 'samples',
+          },
+          { label: 'order of this section', value: 2 },
+        ]),
+      ],
+    }
+  }
+
   if (block.type === 'movingavg') {
     const N = p.taps
     const spacing = sampleRate / N

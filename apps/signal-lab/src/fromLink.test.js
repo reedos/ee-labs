@@ -73,3 +73,12 @@ describe('loading a setup from a link', () => {
     expect(load('').state).toBeNull()
   })
 })
+
+it('a raw-coefficient biquad arrives through a link, coefficients in schema order', () => {
+  const { patch } = parseLink('#rate=48000&src=noise:100:0.6&b=biquad:0.2:0.1:0.05:-0.3:0.2')
+  const { state, warnings } = stateFromLink(patch, BASE)
+  expect(warnings).toEqual([])
+  const b = state.blocks[0]
+  expect(b.type).toBe('biquad')
+  expect(b.params).toMatchObject({ b0: 0.2, b1: 0.1, b2: 0.05, a1: -0.3, a2: 0.2 })
+})

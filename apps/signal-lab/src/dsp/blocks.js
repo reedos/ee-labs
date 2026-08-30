@@ -1,6 +1,7 @@
 import {
   BIQUAD_MODES,
   biquadPhase,
+  isStable,
   biquadPolesZeros,
   biquadResponse,
   butterworthQs,
@@ -223,6 +224,52 @@ export const BLOCK_TYPES = {
     'Passes every frequency at full amplitude and changes only their phase. The waveform ' +
       'changes shape; the spectrum does not move at all.',
   ),
+
+  // The general second-order section, by its raw coefficients.
+  //
+  // The named modes above are particular recipes for these five numbers; this
+  // block accepts the numbers themselves, which makes it the universal
+  // RECEIVER for hand-overs: any order-2 circuit — twin-T included, which no
+  // named mode can express — arrives here bilinear-exactly as
+  // b=biquad:b0:b1:b2:a1:a2. It is also the one block where instability is
+  // reachable from the controls, so it says so instead of quietly exploding.
+  biquad: {
+    label: 'Biquad — raw coefficients',
+    group: 'Filter',
+    hint:
+      'The five numbers every second-order digital filter reduces to. The named filter blocks ' +
+      'are recipes for choosing them; here you (or a hand-over from Circuit Lab) set them ' +
+      'directly. y[n] = b₀x[n] + b₁x[n−1] + b₂x[n−2] − a₁y[n−1] − a₂y[n−2]. Stable only ' +
+      'while the poles stay inside the unit circle: |a₂| < 1 and |a₁| < 1 + a₂.',
+    nonlinear: false,
+    defaults: { b0: 1, b1: 0, b2: 0, a1: 0, a2: 0 },
+    params: ['b0', 'b1', 'b2', 'a1', 'a2'].map((key) => ({
+      key,
+      label: key === 'b0' ? 'b₀' : key === 'b1' ? 'b₁' : key === 'b2' ? 'b₂' : key === 'a1' ? 'a₁' : 'a₂',
+      scale: 'linear',
+      min: -3.999,
+      max: 3.999,
+      step: 0.0001,
+      decimals: 4,
+    })),
+    summary: (p) =>
+      isStable(p) ? `[${['b0', 'b1', 'b2'].map((k) => Number(p[k].toPrecision(3))).join(', ')}]` : 'UNSTABLE',
+    make: (p, sampleRate) => {
+      // An unstable section would overflow every buffer downstream and take
+      // both plots with it. Passing the input through unchanged, with the
+      // summary and hint shouting, is the honest failure mode for a sandbox.
+      if (!isStable(p)) return { process: (x) => x, settle: 0 }
+      const step = makeBiquad(p)
+      // settleSamples answers Infinity for a pole radius of exactly zero (the
+      // pass-through default) — but a section with no feedback forgets in its
+      // two delay taps, the FIR way.
+      const st = settleSamples(p)
+      return { process: (x) => step(x), settle: Number.isFinite(st) ? st : 2 }
+    },
+    response: (p, f, sampleRate) => (isStable(p) ? biquadResponse(p, f, sampleRate) : null),
+    phase: (p, f, sampleRate) => (isStable(p) ? biquadPhase(p, f, sampleRate) : undefined),
+    pz: (p) => biquadPolesZeros(p),
+  },
 
   // ------------------------------------------------------------- FIR
   //

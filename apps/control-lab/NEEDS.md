@@ -1,13 +1,34 @@
 # Needs and findings for the other territories
 
-All previous items are RESOLVED (2026-08-31, by the packages/signal-lab agent):
+## NEW TASK from Reed (via the packages/signal-lab agent): the custom plant
 
-- margins() now folds the phase margin into (-180, 180] at the source;
-  loopMargins() is a pass-through kept as the app's single entry point, and
-  phase.test.js pins the fixed value on both paths.
-- Signal Lab's terms-summary tint and FlowDiagram wires now use real tokens
-  (--blue, --line-bright).
-- Signal Lab's active preset group now refuses to fold (same preventDefault
-  fix), with the attack written into its harness.
+Reed wants every Circuit Lab topology to migrate into this lab exactly. Your
+loop machinery already runs on raw {b, a} — the named plants are skins — so
+the missing piece is a registry entry:
 
-Nothing currently outstanding.
+**Add plant `custom` ("Custom H(s)"):**
+- Params: six coefficients, highest power first —
+  `b2, b1, b0, a2, a1, a0` — so `tf: (p) => ({ b: [p.b2, p.b1, p.b0],
+  a: [p.a2, p.a1, p.a0] })` with leading near-zeros trimmed (a first-order
+  circuit arrives with b2 = a2 = 0).
+- Link grammar needs nothing new: `plant=custom:b2:b1:b0:a2:a1:a0` is already
+  positional numbers. Extend fromLink to accept it (values span decades —
+  an RLC's a2 = LC ≈ 1e-10 — so do NOT clamp these to slider ranges; the
+  fields are link-fed first, hand-typed second).
+- UI: plain numeric fields are fine (log sliders cannot hold signed
+  coefficients spanning decades). Hint: this is the raw form every named
+  plant reduces to, and how a circuit arrives without approximation.
+- Math panel: print H(s) with the numbers, poles via roots(), stability, DC
+  gain — with checks measured off the live loop per the house rules. Where a
+  custom plant has zeros (twin-T measured across the network), the ζ ≈ PM/100
+  rule's preconditions note already covers saying so.
+- Tests: a hand-built RLC {b:[1],a:[LC, RC, 1]} through `custom` must produce
+  the SAME margins/step as the same circuit through the named secondOrder
+  mapping — exactness is the whole point, so assert equality, not closeness.
+
+Circuit Lab's NEEDS carries the emitting half; coordinate the param order
+with them (it is specified identically in both files).
+
+---
+
+All earlier items remain resolved; nothing else outstanding.

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { BLOCK_TYPES, makeBlockRecord } from './blocks.js'
 import { applyChain, chainResponse, chainSettle, renderChain, runChain } from './chain.js'
 import { render, rms, peak, butterworthQs, biquadResponse, designBiquad } from '@ee-labs/dsp'
+import { bilinear, magnitudeAt } from '@ee-labs/systems'
 import { spectrum } from '@ee-labs/dsp'
 
 const SR = 8000
@@ -577,5 +578,54 @@ describe('the phase transition, as the hint describes it', () => {
       // And far outside the transition there is almost nothing left.
       expect(Math.abs(ph(FC / 100)), `order ${order} at fc/100`).toBeLessThan(0.1 * 90 * n)
     }
+  })
+})
+
+describe('the raw-coefficient biquad — the universal hand-over receiver', () => {
+  it('given a named mode\u2019s own coefficients, it IS that block, sample for sample', () => {
+    const co = designBiquad({ mode: 'lowpass', freq: 700, q: 4 }, SR)
+    const named = BLOCK_TYPES.lowpass.make({ freq: 700, q: 4, gainDb: 0, order: '2' }, SR)
+    const raw = BLOCK_TYPES.biquad.make({ ...co }, SR)
+    for (let i = 0; i < 512; i++) {
+      const x = Math.sin(i * 0.37) + 0.3 * Math.sin(i * 1.91)
+      expect(raw.process(x, i / SR)).toBe(named.process(x, i / SR))
+    }
+  })
+
+  it('carries a twin-T notch \u2014 which no named mode can express \u2014 bilinear-exactly', () => {
+    // The twin-T's H(s) at R = 10k, C = 10n: zeros ON the axis at w0 = 1/RC.
+    const R = 1e4
+    const C = 10e-9
+    const w0 = 1 / (R * C)
+    const analog = { b: [1 / (w0 * w0), 0, 1], a: [1 / (w0 * w0), 4 / w0, 1] }
+    const f0 = w0 / (2 * Math.PI)
+    const fs = 48000
+    const d = bilinear(analog, fs, f0)
+    const p = { b0: d.b[0], b1: d.b[1], b2: d.b[2], a1: d.a[1], a2: d.a[2] }
+
+    // The notch survives the journey: exactly zero at the (pre-warped) f0...
+    expect(BLOCK_TYPES.biquad.response(p, f0, fs)).toBeLessThan(1e-9)
+    // ...and passes DC and high frequencies at unity, as the circuit does.
+    expect(BLOCK_TYPES.biquad.response(p, 1, fs)).toBeCloseTo(1, 3)
+    expect(BLOCK_TYPES.biquad.response(p, 20000, fs)).toBeCloseTo(1, 1)
+    // Against the analog curve: the bilinear map is EXACT at the pre-warped
+    // f0 and drifts as tan(pi f/fs)/(pi f/fs) elsewhere - about 1.6% by 2*f0
+    // at this rate. That drift is the honest cost of sampling, so the
+    // tolerance states it rather than hiding it.
+    for (const f of [200, 800, 1600, 3183]) {
+      const want = magnitudeAt(analog, f)
+      expect(Math.abs(BLOCK_TYPES.biquad.response(p, f, fs) - want) / want).toBeLessThan(0.02)
+    }
+    // And the z-plane shows what a notch IS: zeros on the unit circle.
+    const { zeros } = BLOCK_TYPES.biquad.pz(p, fs)
+    for (const [re, im] of zeros) expect(Math.hypot(re, im)).toBeCloseTo(1, 6)
+  })
+
+  it('an unstable setting passes through and says so, instead of exploding the plots', () => {
+    const p = { b0: 1, b1: 0, b2: 0, a1: -2.1, a2: 1.2 }
+    const proc = BLOCK_TYPES.biquad.make(p, SR)
+    expect(proc.process(0.5, 0)).toBe(0.5)
+    expect(BLOCK_TYPES.biquad.summary(p)).toBe('UNSTABLE')
+    expect(BLOCK_TYPES.biquad.response(p, 100, SR)).toBeNull()
   })
 })
