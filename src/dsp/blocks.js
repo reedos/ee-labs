@@ -1,5 +1,6 @@
 import {
   BIQUAD_MODES,
+  biquadPhase,
   biquadResponse,
   designBiquad,
   makeBiquad,
@@ -78,6 +79,11 @@ function biquadType(mode, label, hint, extra = []) {
     },
     response: (p, f, sampleRate) =>
       biquadResponse(designBiquad({ mode, ...p }, sampleRate), f, sampleRate),
+    // The half a magnitude plot cannot show. An allpass is the extreme case:
+    // |H| is 1.0000 at every frequency while the phase swings through 180
+    // degrees, so on the spectrum alone the block appears to do nothing at all.
+    phase: (p, f, sampleRate) =>
+      biquadPhase(designBiquad({ mode, ...p }, sampleRate), f, sampleRate),
   }
 }
 
@@ -139,6 +145,8 @@ export const BLOCK_TYPES = {
     // Affine, not linear — the DC term shows up as a bin-0 spike in the measured
     // trace. The magnitude response of the gain part is flat.
     response: (p) => Math.pow(10, p.gainDb / 20),
+    // A positive real scaling shifts nothing.
+    phase: () => 0,
   },
 
   clip: {
@@ -210,6 +218,18 @@ export const BLOCK_TYPES = {
       const im = (p.mode === 'feedback' ? g : -g) * Math.sin(w)
       const m = Math.hypot(re, im)
       return p.mode === 'feedback' ? 1 / m : m
+    },
+    phase: (p, f, sampleRate) => {
+      const D = Math.max(1, Math.round((p.delayMs / 1000) * sampleRate))
+      const g = Math.max(-0.999, Math.min(0.999, p.g))
+      const w = (2 * Math.PI * f * D) / sampleRate
+      const fb = p.mode === 'feedback'
+      // Same complex value as above; for feedback it is the denominator, so its
+      // angle is negated.
+      const re = 1 + (fb ? -g : g) * Math.cos(w)
+      const im = (fb ? g : -g) * Math.sin(w)
+      const a = Math.atan2(im, re)
+      return fb ? -a : a
     },
   },
 

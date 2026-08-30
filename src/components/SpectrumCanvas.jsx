@@ -22,12 +22,13 @@ export default function SpectrumCanvas({
   ghostAmps,
   response,
   responseExact = true,
+  phase = null,
   scale,
   markers,
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
-      const area = plotArea(w, h)
+      const area = plotArea(w, h, { rightAxis: !!phase })
       const fMax = freqs.length ? freqs[freqs.length - 1] : 1
       const db = scale === 'db'
 
@@ -148,9 +149,68 @@ export default function SpectrumCanvas({
         else ctx.lineTo(x, y)
       }
       ctx.stroke()
+
+      // Phase of the CHAIN, on its own axis — never the phase of the measured
+      // signal, which depends on where the frame starts and is random wherever
+      // there is no signal.
+      if (phase) {
+        let lo = 0
+        let hi = 0
+        for (let i = 0; i < phase.length; i++) {
+          const d = (phase[i] * 180) / Math.PI
+          if (d < lo) lo = d
+          if (d > hi) hi = d
+        }
+        // Snap to whole quarter turns so the gridlines mean something.
+        lo = Math.min(-90, Math.floor(lo / 90) * 90)
+        hi = Math.max(90, Math.ceil(hi / 90) * 90)
+        const py = (d) => area.y + area.h - ((d - lo) / (hi - lo)) * area.h
+
+        ctx.strokeStyle = COLORS.phase
+        ctx.lineWidth = 1.4 * k
+        ctx.setLineDash([6 * k, 3 * k])
+        ctx.beginPath()
+        for (let i = 0; i < phase.length; i++) {
+          const x = sx(freqs[i])
+          const y = py((phase[i] * 180) / Math.PI)
+          if (i === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        }
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
       ctx.restore()
+
+      // Right-hand axis, outside the clip.
+      if (phase) {
+        let lo = 0
+        let hi = 0
+        for (let i = 0; i < phase.length; i++) {
+          const d = (phase[i] * 180) / Math.PI
+          if (d < lo) lo = d
+          if (d > hi) hi = d
+        }
+        lo = Math.min(-90, Math.floor(lo / 90) * 90)
+        hi = Math.max(90, Math.ceil(hi / 90) * 90)
+        const py = (d) => area.y + area.h - ((d - lo) / (hi - lo)) * area.h
+
+        ctx.save()
+        ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+        ctx.fillStyle = COLORS.phase
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'middle'
+        for (let d = lo; d <= hi + 1e-9; d += 90) {
+          ctx.fillText(`${d}°`, area.x + area.w + 8 * k, py(d))
+        }
+        ctx.translate(area.x + area.w + 52 * k, area.y + area.h / 2)
+        ctx.rotate(Math.PI / 2)
+        ctx.textAlign = 'center'
+        ctx.font = `${Math.round(12 * k)}px ui-sans-serif, system-ui, sans-serif`
+        ctx.fillText('Phase of the chain', 0, 0)
+        ctx.restore()
+      }
     },
-    [freqs, amps, ghostAmps, response, responseExact, scale, markers],
+    [freqs, amps, ghostAmps, response, responseExact, phase, scale, markers],
   )
 
   return <canvas ref={ref} className="plot" />

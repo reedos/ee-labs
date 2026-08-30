@@ -16,6 +16,7 @@ export const COLORS = {
   response: '#5fa8ff',
   ghost: 'rgba(240, 162, 60, 0.30)',
   traceGhost: 'rgba(56, 224, 176, 0.32)',
+  phase: '#b98cf0',
 }
 
 // Roomier gutters than a bare plot needs, because both axes carry a written
@@ -36,10 +37,11 @@ export function plotScale(w) {
   return Math.max(1, Math.min(2.2, w / 1150))
 }
 
-export function plotArea(w, h) {
+export function plotArea(w, h, opts = {}) {
   const k = plotScale(w)
   const l = PAD.l * k
-  const r = PAD.r * k
+  // A second y-axis on the right needs room for its labels.
+  const r = (opts.rightAxis ? 64 : PAD.r) * k
   const t = PAD.t * k
   const b = PAD.b * k
   return { x: l, y: t, w: Math.max(1, w - l - r), h: Math.max(1, h - t - b), k }

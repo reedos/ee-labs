@@ -1,5 +1,7 @@
 import React from 'react'
 import NumField from './NumField.jsx'
+import Maths from './Maths.jsx'
+import { PRESET_GROUPS } from '../presets.js'
 import BlockCard from './BlockCard.jsx'
 import { WAVEFORMS } from '../dsp/signals.js'
 import { BLOCK_GROUPS, BLOCK_TYPES, makeBlockRecord } from '../dsp/blocks.js'
@@ -109,7 +111,9 @@ function Source({ src, sampleRate, onChange, onRemove, canRemove }) {
   )
 }
 
-export default function Controls({ state, setState, presets, onPreset, openBlocks, setOpenBlocks }) {
+export default function Controls({ state, setState, presets, onPreset, openBlocks, setOpenBlocks,
+  maths,
+}) {
   const patch = (k, v) => setState((s) => ({ ...s, [k]: v }))
 
   const setSource = (i, next) =>
@@ -179,19 +183,31 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
 
       <section>
         <h2>Try this</h2>
-        <div className="presets">
-          {presets.map((p) => (
-            <button
-              type="button"
-              key={p.name}
-              className={`preset${p.name === state.presetName ? ' is-on' : ''}`}
-              onClick={() => onPreset(p)}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
+        {/* Grouped as a rough curriculum. A flat list of two dozen buttons is a
+            wall; four short labelled runs can be read. */}
+        {PRESET_GROUPS.map((g) => {
+          const inGroup = presets.filter((p) => p.group === g)
+          if (!inGroup.length) return null
+          return (
+            <div className="preset-group" key={g}>
+              <h3>{g}</h3>
+              <div className="presets">
+                {inGroup.map((p) => (
+                  <button
+                    type="button"
+                    key={p.name}
+                    className={`preset${p.name === state.presetName ? ' is-on' : ''}`}
+                    onClick={() => onPreset(p)}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })}
         {activePreset ? <p className="hint">{activePreset.note}</p> : null}
+        <Maths entry={maths} />
       </section>
 
       <section id="sources">
@@ -282,6 +298,14 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
             onChange={(e) => patch('showGhost', e.target.checked)}
           />
           Show pre-chain spectrum
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={state.showPhase}
+            onChange={(e) => patch('showPhase', e.target.checked)}
+          />
+          Show phase of the chain
         </label>
         <label className="check">
           <input

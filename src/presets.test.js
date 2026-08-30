@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { PRESETS } from './App.jsx'
-import { renderChain } from './dsp/chain.js'
+import { PRESETS, PRESET_GROUPS } from './presets.js'
+import { chainResponse, renderChain } from './dsp/chain.js'
 import { spectrum } from './dsp/spectrum.js'
 import { designBiquad, biquadResponse } from './dsp/biquad.js'
 
@@ -181,6 +181,12 @@ describe('preset: Beating', () => {
 })
 
 describe('every preset', () => {
+  it('belongs to a declared group', () => {
+    for (const p of PRESETS) {
+      expect(PRESET_GROUPS, `${p.name}`).toContain(p.group)
+    }
+  })
+
   it('names a block type that exists and renders without NaN', () => {
     for (const p of PRESETS) {
       const sampleRate = p.patch.sampleRate || 8000
@@ -191,13 +197,115 @@ describe('every preset', () => {
     }
   })
 
-  it('keeps every source below Nyquist except the one about aliasing', () => {
+  it('keeps every source below Nyquist except the ones about the limit itself', () => {
+    // Two presets sit on or past the limit deliberately, which is their lesson.
+    const deliberate = new Set(['Aliasing', 'Exactly at Nyquist'])
     for (const p of PRESETS) {
-      if (p.name === 'Aliasing') continue
+      if (deliberate.has(p.name)) continue
       const nyq = (p.patch.sampleRate || 8000) / 2
       for (const s of p.patch.sources) {
-        expect(s.freq, `${p.name}`).toBeLessThan(nyq)
+        expect(s.freq, `${p.name}`).toBeLessThanOrEqual(nyq)
       }
     }
+  })
+})
+
+describe('preset: Exactly at Nyquist', () => {
+  it('reads a different amplitude for the same tone depending only on phase', () => {
+    // The whole lesson. Two samples per cycle is the theorem's limit, and at the
+    // limit the samples can land on the peaks or on the zero crossings.
+    const p = byName('Exactly at Nyquist').patch
+    const amp = (phase) => {
+      const src = [{ ...p.sources[0], phase }]
+      const s = run('Exactly at Nyquist', { sources: src })
+      return s.at(4000)
+    }
+    expect(amp(Math.PI / 2)).toBeCloseTo(1, 2) // samples on the peaks
+    expect(amp(0)).toBeLessThan(1e-9) // samples on the zero crossings
+    expect(amp(Math.PI / 4)).toBeCloseTo(Math.SQRT1_2, 2)
+  })
+})
+
+describe('preset: Corners make harmonics', () => {
+  it('falls as 1/k^2 for a triangle where a square falls as 1/k', () => {
+    const tri = run('Corners make harmonics')
+    const sq = run('Corners make harmonics', {
+      sources: [{ ...byName('Corners make harmonics').patch.sources[0], type: 'square' }],
+    })
+    // Ratio of fundamental to 3rd harmonic: 3 for 1/k, 9 for 1/k^2.
+    expect(sq.at(250) / sq.at(750)).toBeCloseTo(3, 0)
+    expect(tri.at(250) / tri.at(750)).toBeCloseTo(9, 0)
+  })
+})
+
+describe('preset: Two filters are steeper', () => {
+  it('squares the response, doubling the attenuation in dB', () => {
+    const p = byName('Two filters are steeper').patch
+    const one = chainResponse([p.blocks[0]], Float64Array.from([1600, 3200]), 8000)
+    const two = chainResponse(p.blocks, Float64Array.from([1600, 3200]), 8000)
+    for (let i = 0; i < 2; i++) {
+      expect(two.mag[i] / (one.mag[i] * one.mag[i])).toBeCloseTo(1, 6)
+    }
+    // Both blocks are the same filter, so this really is |H| squared.
+    expect(p.blocks[0].params.freq).toBe(p.blocks[1].params.freq)
+    expect(p.blocks[0].params.q).toBe(p.blocks[1].params.q)
+  })
+})
+
+describe('preset: Impulse response', () => {
+  it('measures the transfer function, because the input spectrum is flat', () => {
+    const p = byName('Impulse response').patch
+    const dry = run('Impulse response', { blocks: [] })
+    const wet = run('Impulse response')
+    // A single unit sample spreads evenly over every bin.
+    const flat = dry.at(1000)
+    for (const f of [200, 800, 2000, 3000]) {
+      expect(dry.at(f) / flat, `flat at ${f}`).toBeCloseTo(1, 3)
+    }
+    // ...so the ratio out/in is |H(f)| itself.
+    const h = chainResponse(p.blocks, Float64Array.from([200, 800, 2000]), 8000)
+    const fs = [200, 800, 2000]
+    for (let i = 0; i < fs.length; i++) {
+      expect(wet.at(fs[i]) / dry.at(fs[i]) / h.mag[i], `${fs[i]} Hz`).toBeCloseTo(1, 1)
+    }
+  })
+
+  it('is silent before the impulse arrives, so what follows is the response alone', () => {
+    const p = byName('Impulse response').patch
+    const r = renderChain(p.sources, p.blocks, 256, 8000)
+    expect(r.warmup).toBeGreaterThan(0)
+    expect(Math.abs(r.buf[0])).toBeGreaterThan(0)
+  })
+})
+
+describe('preset: AM: the carrier returns', () => {
+  it('restores the carrier that the ring modulator suppresses', () => {
+    const p = byName('AM: the carrier returns').patch
+    const am = run('AM: the carrier returns')
+    // Same chain with the offset removed is plain DSB-SC.
+    const noDc = [{ ...p.blocks[0], params: { ...p.blocks[0].params, dcOffset: 0 } }, p.blocks[1]]
+    const dsb = run('AM: the carrier returns', { blocks: noDc })
+
+    expect(am.at(1000)).toBeGreaterThan(0.1)
+    expect(dsb.at(1000)).toBeLessThan(am.at(1000) / 100)
+    // The sidebands are untouched either way — only the carrier changes.
+    for (const f of [750, 1250]) {
+      expect(am.at(f) / dsb.at(f), `${f} Hz`).toBeCloseTo(1, 2)
+    }
+  })
+})
+
+describe('preset: Two tones, one nonlinearity', () => {
+  it('creates frequencies that are harmonics of neither input', () => {
+    const clipped = run('Two tones, one nonlinearity')
+    const clean = run('Two tones, one nonlinearity', { blocks: [] })
+    // 2*400 - 250 and 3*250 - 2*400: intermodulation, not harmonics.
+    for (const f of [900, 50]) {
+      expect(clipped.at(f), `${f} Hz clipped`).toBeGreaterThan(clean.at(f) * 50 + 1e-3)
+      expect(clean.at(f), `${f} Hz clean`).toBeLessThan(1e-3)
+    }
+    // A symmetric clipper makes odd-order products; the even-order ones stay
+    // small until something breaks the symmetry.
+    expect(clipped.at(150)).toBeLessThan(clipped.at(900) / 10)
   })
 })

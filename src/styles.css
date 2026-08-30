@@ -813,3 +813,107 @@ select {
 }
 @media (min-width: 2400px) { .block-hint { font-size: 14px; } }
 @media (min-width: 3400px) { .block-hint { font-size: 17px; } }
+
+/* ------------------------------------------------ preset groups + maths */
+
+.preset-group { margin-bottom: 10px; }
+
+.preset-group h3 {
+  margin: 0 0 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--dim);
+  opacity: 0.7;
+}
+
+/* A formula is something to take on trust; a formula next to the number this
+   tool just measured is something you can check. Hence the panel, and hence it
+   being collapsed until asked for. */
+.maths { margin-top: 10px; }
+
+.maths-toggle {
+  width: 100%;
+  padding: 5px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.maths-toggle:hover { text-decoration: underline; }
+
+.maths-body {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--line);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.maths-body p { margin: 0 0 10px; }
+.maths-body p:last-child { margin-bottom: 0; }
+
+.maths-formula {
+  margin: 12px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.maths-caption {
+  margin-top: 4px;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+/* KaTeX defaults to a size tuned for body copy at 16px; the sidebar is smaller
+   and the formulas are the thing being read, so nudge them back up. */
+.tex .katex { font-size: 1.06em; color: var(--text); }
+.maths-formula .katex-display { margin: 0; }
+
+.maths-check {
+  width: 100%;
+  margin: 12px 0 4px;
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+.maths-check th,
+.maths-check td {
+  padding: 3px 6px 3px 0;
+  text-align: right;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.maths-check thead th {
+  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+}
+.maths-check tbody th {
+  text-align: left;
+  color: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  white-space: normal;
+}
+.maths-check td { color: var(--text); }
+.maths-check .agree { color: var(--accent); }
+.maths-check .disagree { color: var(--warn); }
+.maths-check .unit { color: var(--dim); }
+
+@media (min-width: 2400px) {
+  .preset-group h3 { font-size: 12px; }
+  .maths-toggle, .maths-body { font-size: 14px; }
+  .maths-check { font-size: 13px; }
+  .maths-check thead th, .maths-caption { font-size: 12px; }
+}
+@media (min-width: 3400px) {
+  .preset-group h3 { font-size: 14px; }
+  .maths-toggle, .maths-body { font-size: 17px; }
+  .maths-check { font-size: 15px; }
+  .maths-check thead th, .maths-caption { font-size: 14px; }
+}

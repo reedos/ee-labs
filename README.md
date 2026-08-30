@@ -9,36 +9,61 @@ picture in one domain are obvious in the other.
 
 Built for someone who knows some maths but has not done much signal processing. No
 install beyond `npm`, nothing to configure, and every preset is a question with a
-visible answer.
+visible answer — plus, under each one, the maths that predicts it, checked against what
+the tool just measured.
 
 ## Running it
 
 ```
 npm install
 npm run dev        # http://localhost:1421
-npm test           # 116 tests
+npm test           # 128 tests
 npm run build
 ```
 
 ## Where to start
 
-Click through **Try this** in the sidebar, top to bottom. Each preset loads a setup and
-says what to look at; then change it and see what breaks. In rough order:
+Click through **Try this** in the sidebar, top to bottom. Each preset loads a setup, says
+what to look at, and offers a collapsible **The maths** panel. Then change it and see
+what breaks.
 
-| Preset | The question |
+**Signals and Fourier** — what a spectrum is
+| | |
 |---|---|
 | Single tone | What does one frequency look like in each view? |
 | Square = odd harmonics | Why does a square wave contain many frequencies? |
-| Build a square | Can I add sines up into a square? (Yes — 1, 1/3, 1/5.) |
-| Aliasing | What happens above half the sample rate? |
-| Spectral leakage | Why does a clean tone smear across the spectrum? |
+| Corners make harmonics | 1/k against 1/k²: why sharper corners cost more bandwidth. |
+| Build a square | Adding sines up into a square, and the Gibbs overshoot that never leaves. |
 | Beating | Two close tones: one waveform, two lines. Which is "true"? |
+
+**Sampling** — what discrete time costs you
+| | |
+|---|---|
+| Aliasing | What happens above half the sample rate. |
+| Exactly at Nyquist | The same tone reads 0.000, 0.707 or 1.000 depending only on its phase. |
+| Resolution needs time | Two tones that will not separate until the frame is long enough. |
+| Spectral leakage | Why a clean tone smears, and what a window buys. |
+
+**Filters** — linear, time-invariant
+| | |
+|---|---|
 | Low-pass a square | What exactly does a filter remove? |
-| Resonance is Q | What is Q, in a way you can see? |
-| Phase is invisible here | A filter that changes everything and nothing. |
+| Resonance is Q | Q, in a way you can see: the peak height *is* Q. |
+| Phase is invisible here | A filter that changes everything and nothing. Turn on the phase curve. |
+| Two filters are steeper | Cascading squares the response and doubles the dB. |
+| Impulse response | h(t) and H(f) side by side — the same object from two sides. |
+| Step response and ringing | What Q feels like in time: overshoot and settling. |
+
+**Nonlinearity** — where transfer functions stop working
+| | |
+|---|---|
 | Clipping makes harmonics | Frequencies appearing from nowhere. |
 | DC breaks the symmetry | Why odd harmonics become odd *and* even. |
-| Comb, Ring modulator, 4 bits | Delay, multiplication, and quantisation. |
+| Two tones, one nonlinearity | Intermodulation: products that are harmonics of neither input. |
+| Ring modulator | Multiplication in time is a shift in frequency. |
+| AM: the carrier returns | One DC offset separates broadcast AM from DSB-SC. |
+| Comb | Delay, and evenly spaced notches. |
+| 4 bits | Quantisation spurs, and what dither trades them for. |
 
 ## How it is put together
 
@@ -49,7 +74,8 @@ sources → sum → [ordered block chain] → scope + FFT
 - **`src/dsp/signals.js`** — waveform generators. Deliberately *not* band-limited, so
   aliasing is visible rather than hidden. Noise is a hash of the absolute sample index
   rather than `Math.random()`, so it is identical in both views and stable across a
-  redraw.
+  redraw. `impulse` and `step` are keyed to absolute sample zero, so the filter pre-roll
+  runs at negative indices and the chain is provably at rest before the event arrives.
 - **`src/dsp/biquad.js`** — RBJ cookbook filters, Direct Form I, one section. Written so
   the code reads as the difference equation on the page.
 - **`src/dsp/chain.js`** — `make()` returns a fresh processor on every call, so applying
@@ -58,9 +84,22 @@ sources → sum → [ordered block chain] → scope + FFT
   an unrelated filter happened to ask for.
 - **`src/dsp/blocks.js`** — the block registry, as data. One card component renders every
   block, so adding a type touches this file only.
+- **`src/presets.js`**, **`src/maths.js`** — the lessons, and the maths behind them.
 
 The scope's horizontal axis counts cycles of the signal rather than milliseconds, so
 "show me five periods" stays five periods when you move a source from 250 Hz to 2 kHz.
+Aperiodic sources fall back to a span in milliseconds.
+
+### Phase, and what is deliberately not offered
+
+The spectrum can overlay the **chain's** phase response on a right-hand axis. That is
+what makes the all-pass legible: |H| is 1.0000 at every frequency while the phase sweeps
+a full 360°, so on the magnitude plot alone the block appears to do nothing at all.
+
+The measured phase *of the signal* is not offered, and that is a decision rather than an
+omission. It depends on where the frame happens to start — shift the window one sample
+and every value changes — and at bins holding no signal it is uniformly random. Plotting
+it fills the view with noise that means nothing.
 
 ### Warm-up is not optional
 
@@ -74,13 +113,16 @@ generators take time from the absolute sample index rather than from an offset. 
 that subtly wrong made a filtered square measure up to 10% away from its own response
 curve, and the test that should have caught it was pinning the artifact instead.
 
-## The presets are tested
+## The explanations are tested
 
-Each preset's note makes a claim about physics — "only odd harmonics", "the peak height
-is Q", "neither input frequency survives". `src/presets.test.js` renders each setup and
-measures whether the claim actually holds.
+Each preset's note makes a claim about physics, and each maths panel prints a predicted
+value beside the measured one. Both are verified: `src/presets.test.js` renders every
+preset and measures its claim, and `src/maths.test.js` checks that every formula
+typesets and that **every predicted number the panel prints agrees with the measurement**
+— using the same predicate the panel itself uses to draw its tick or cross, so the test
+and the page cannot disagree about what "agrees" means.
 
-This is not ceremony. Two of the notes were wrong:
+This is not ceremony. Three things were wrong before those tests existed:
 
 - **"each surviving harmonic sits on the response curve."** It does not. A square's
   harmonics already fall as 4/kπ before the filter sees them, so the peaks land 7–17 dB
@@ -89,6 +131,10 @@ This is not ceremony. Two of the notes were wrong:
 - **"at Q = 10 the peak is literally 10×."** True of a low-pass, false of the band-pass
   the preset actually used, where |H(f₀)| is pinned at 1 however far Q is pushed. For a
   band-pass, Q sets the width instead.
+- **the square generator itself**, which decided its transition samples with
+  `sign(sin θ)`. Since `sin(π)` returns 1.22e-16 rather than 0, every period got 17
+  samples high and 15 low — a DC offset and a full set of even harmonics at −39 dB on the
+  one waveform whose entire lesson is that it has none.
 
 A confidently wrong explanation is worse here than a missing feature: someone learns the
 wrong thing and has no way to catch it. So the claims are measured rather than trusted.

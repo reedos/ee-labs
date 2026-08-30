@@ -124,3 +124,71 @@ export function chainResponse(blocks, freqs, sampleRate) {
 
   return { mag, exact, any }
 }
+
+/**
+ * Combined phase response of the linear blocks, in radians, on `freqs`.
+ *
+ * Phases of cascaded LTI blocks ADD, where magnitudes multiply. Returned
+ * unwrapped, because the wrapped version jumps by 2pi wherever atan2 crosses
+ * its branch cut and those jumps read as though the filter did something
+ * abrupt, which it did not.
+ *
+ * Only the chain's own phase is offered, never the measured phase of the
+ * signal. That one depends on where the frame happens to start — shift the
+ * window by a sample and every value changes — and at bins holding no signal it
+ * is uniformly random, so plotting it fills the view with noise that means
+ * nothing.
+ */
+export function chainPhase(blocks, freqs, sampleRate) {
+  const list = active(blocks)
+  const phase = new Float64Array(freqs.length)
+  let exact = true
+  let any = false
+
+  for (const b of list) {
+    const def = BLOCK_TYPES[b.type]
+    if (!def.phase) {
+      exact = false
+      continue
+    }
+    any = true
+
+    // Where |H| is exactly zero the angle is genuinely undefined, and atan2(0,0)
+    // answers 0 — which lands a spurious spike at the end of the axis: a
+    // low-pass at Nyquist, a high-pass at DC. Mark those and fill them from the
+    // nearest frequency that does have an angle.
+    const own = new Float64Array(freqs.length)
+    const known = new Array(freqs.length).fill(false)
+    for (let i = 0; i < freqs.length; i++) {
+      const m = def.response(b.params, freqs[i], sampleRate)
+      if (m == null || m < 1e-12) continue
+      own[i] = def.phase(b.params, freqs[i], sampleRate)
+      known[i] = true
+    }
+    let last = null
+    for (let i = 0; i < freqs.length; i++) {
+      if (known[i]) last = own[i]
+      else if (last != null) own[i] = last
+    }
+    for (let i = freqs.length - 1; i >= 0; i--) {
+      if (known[i]) last = own[i]
+      else if (last != null) own[i] = last
+    }
+    for (let i = 0; i < freqs.length; i++) phase[i] += own[i]
+  }
+
+  // Unwrap: remove 2pi steps introduced by atan2 rather than by the filter.
+  for (let i = 1; i < phase.length; i++) {
+    let d = phase[i] - phase[i - 1]
+    while (d > Math.PI) {
+      phase[i] -= 2 * Math.PI
+      d = phase[i] - phase[i - 1]
+    }
+    while (d < -Math.PI) {
+      phase[i] += 2 * Math.PI
+      d = phase[i] - phase[i - 1]
+    }
+  }
+
+  return { phase, exact, any }
+}

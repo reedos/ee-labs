@@ -6,7 +6,16 @@
 // than hiding: push a sawtooth's frequency up and watch the spectrum fill
 // with lines that should not be there.
 
-export const WAVEFORMS = ['sine', 'square', 'triangle', 'sawtooth', 'noise']
+export const WAVEFORMS = ['sine', 'square', 'triangle', 'sawtooth', 'noise', 'impulse', 'step']
+
+/**
+ * Waveforms with no repeating period, so nothing to count cycles of.
+ *
+ * The scope measures its span in cycles of the fundamental, which is what keeps
+ * the view stable when you change frequency. These have no fundamental, so it
+ * falls back to milliseconds.
+ */
+export const APERIODIC = new Set(['noise', 'impulse', 'step'])
 
 /**
  * Stateless hash of an integer to [0, 1) — the mulberry32 mixing step.
@@ -63,6 +72,24 @@ export function sample(type, t, freq, amp, phase, index = 0, seed = 0) {
     case 'noise':
       // Uniform white noise. `amp` is the peak, so RMS is amp/sqrt(3).
       return amp * (2 * hash01(index, seed) - 1)
+
+    // The next two are the only sources keyed to absolute sample zero rather
+    // than to a repeating phase, which is exactly what makes them useful: the
+    // filter pre-roll runs at negative indices, so the chain is provably at
+    // rest before the event arrives and what follows is its response and
+    // nothing else.
+    case 'impulse':
+      // A single sample. Its spectrum is flat, so whatever shape the spectrum
+      // then has was put there by the chain: the transfer function, measured.
+      // Meanwhile the time view is drawing the impulse response. One object,
+      // both domains, side by side.
+      return index === 0 ? amp : 0
+
+    case 'step':
+      // Everything a filter does to a sudden change: rise time, overshoot and
+      // ringing. It is what Q feels like in the time domain, where a resonance
+      // is easier to recognise than it is as a bump on a curve.
+      return index >= 0 ? amp : 0
     default:
       throw new Error(`unknown waveform: ${type}`)
   }
