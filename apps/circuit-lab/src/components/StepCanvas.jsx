@@ -100,5 +100,5 @@ export default function StepCanvas({ t, y, final, markers = [] }) {
     [t, y, final, markers],
   )
 
-  return <canvas ref={ref} className="plot" />
+  return <canvas ref={ref} className="plot" role="img" aria-label="Step response of the circuit in time" />
 }

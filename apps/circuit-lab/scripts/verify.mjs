@@ -282,6 +282,38 @@ console.log('   phase toggle redraws')
 await page.getByRole('checkbox', { name: 'Show phase' }).check()
 await settle()
 
+
+// ------------------------------------------------ A11Y. names for everything
+
+console.log('\nA11y: every control has a name, every plot has a label\n')
+{
+  const audit = await page.evaluate(() => {
+    const problems = []
+    const nameOf = (el) =>
+      el.getAttribute('aria-label') ||
+      el.getAttribute('aria-labelledby') ||
+      (el.labels && el.labels.length) ||
+      (el.textContent || '').trim() ||
+      el.getAttribute('title')
+    for (const el of document.querySelectorAll('button, select, input, [role=img]')) {
+      if (el.type === 'hidden' || el.disabled) continue
+      if (!nameOf(el)) {
+        const tag = el.tagName.toLowerCase()
+        const cls = (el.className || '').toString().slice(0, 40)
+        problems.push(`${tag}.${cls || '?'} has no accessible name`)
+      }
+    }
+    for (const c of document.querySelectorAll('canvas')) {
+      if (c.getAttribute('role') !== 'img' || !c.getAttribute('aria-label')) {
+        problems.push('canvas without role="img" + aria-label')
+      }
+    }
+    return [...new Set(problems)]
+  })
+  if (audit.length) for (const p of audit) fail(`a11y: ${p}`)
+  else console.log('   no unnamed controls, no unlabelled plots')
+}
+
 // -------------------------------------- 6. every circuit at 4K, still fitting
 
 console.log('\n6. Re-checking layout at 4K\n')

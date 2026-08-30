@@ -141,5 +141,5 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
     [re, im, gainMargin, phaseMargin],
   )
 
-  return <canvas ref={ref} className="plot" />
+  return <canvas ref={ref} className="plot" role="img" aria-label="Nyquist plot: the open loop on the complex plane, against the point minus one" />
 }

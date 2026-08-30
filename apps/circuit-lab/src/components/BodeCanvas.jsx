@@ -180,5 +180,5 @@ export default function BodeCanvas({
     [freqs, mag, phase, showPhase, markers, yUnit],
   )
 
-  return <canvas ref={ref} className="plot" />
+  return <canvas ref={ref} className="plot" role="img" aria-label="Bode plot: magnitude and phase of the circuit against frequency" />
 }

@@ -115,5 +115,5 @@ export default function ImpulseCanvas({ h, sampleRate, centre = null, exact = tr
     [h, sampleRate, centre, exact],
   )
 
-  return <canvas ref={ref} className="plot" />
+  return <canvas ref={ref} className="plot" role="img" aria-label="Impulse response of the chain, drawn as stems, one per sample" />
 }

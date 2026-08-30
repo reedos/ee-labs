@@ -138,7 +138,7 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
     [x, h, y, n, exact],
   )
 
-  return <canvas ref={ref} className="plot" />
+  return <canvas ref={ref} className="plot" role="img" aria-label="Convolution: the flipped kernel sliding over the input above, and the output built so far below" />
 }
 
 /**

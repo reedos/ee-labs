@@ -1,4 +1,4 @@
-import { series, closeLoop, polyMul } from '@ee-labs/systems'
+import { series, closeLoop, polyAdd, polyMul } from '@ee-labs/systems'
 
 // The things being controlled, and the things doing the controlling.
 //
@@ -169,12 +169,28 @@ export const CONTROLLERS = {
   },
 }
 
-/** Open loop L = C·P, and the closed loop T = L/(1+L) around it. */
+/**
+ * Open loop L = C·P, the closed loop T = L/(1+L) around it, and the
+ * DISTURBANCE path — the response at the output to a step shoved in at the
+ * plant's input, where real disturbances arrive (a gust on the airframe, a
+ * load dropped on the motor):
+ *
+ *   Gd = P / (1 + C·P) = Pb·Ca / (Pa·Ca + Pb·Cb)
+ *
+ * Same denominator as T — the loop has ONE set of poles however you poke it —
+ * but a different numerator, and the difference is the whole story: at DC an
+ * integrator in C makes Gd exactly zero, which is feedback not merely reducing
+ * a disturbance but erasing it.
+ */
 export function buildLoop(plantId, plantParams, ctrlId, ctrlParams) {
   const P0 = PLANTS[plantId].tf(plantParams)
   const C0 = CONTROLLERS[ctrlId].tf(ctrlParams)
   const L = series(C0, P0)
-  return { plant: P0, controller: C0, open: L, closed: closeLoop(L) }
+  const disturbance = {
+    b: polyMul(P0.b, C0.a),
+    a: polyAdd(polyMul(P0.a, C0.a), polyMul(P0.b, C0.b)),
+  }
+  return { plant: P0, controller: C0, open: L, closed: closeLoop(L), disturbance }
 }
 
 export const defaultsOf = (defs) => {

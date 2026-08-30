@@ -235,5 +235,5 @@ export default function SpectrumCanvas({
     [freqs, amps, ghostAmps, response, responseExact, overlay, scale, markers],
   )
 
-  return <canvas ref={ref} className="plot" />
+  return <canvas ref={ref} className="plot" role="img" aria-label="Spectrum: amplitude against frequency, with the chain response overlaid" />
 }

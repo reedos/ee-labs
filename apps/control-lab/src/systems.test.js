@@ -10,6 +10,7 @@ import {
   margins,
   secondOrderMetrics,
   stepResponse,
+  roots,
 } from '@ee-labs/systems'
 
 // Each plant and controller is checked against what it must do, not against its
@@ -192,5 +193,63 @@ describe('the loop as a whole', () => {
     // Just inside it, stable; just outside, not. That is what the number means.
     expect(isStable(buildLoop('threePole', plant, 'p', { kp: gm * 0.95 }).closed)).toBe(true)
     expect(isStable(buildLoop('threePole', plant, 'p', { kp: gm * 1.05 }).closed)).toBe(false)
+  })
+})
+
+describe('the disturbance path', () => {
+  // Gd = P/(1+CP): what the output does when a step lands on the plant input.
+  it('has DC gain P(0)/(1+L(0)) under proportional control — shrunk, not removed', () => {
+    const { plant, open, disturbance } = buildLoop(
+      'firstOrder',
+      { k: 2, tau: 1 },
+      'p',
+      { kp: 9 },
+    )
+    const want = dcGain(plant) / (1 + dcGain(open))
+    expect(dcGain(disturbance)).toBeCloseTo(want, 12)
+    expect(want).toBeCloseTo(2 / 19, 12)
+  })
+
+  it('is erased EXACTLY at DC by an integrator in the controller', () => {
+    for (const [plantId, pp] of [
+      ['firstOrder', { k: 2, tau: 1 }],
+      ['secondOrder', { k: 1, wn: 6.283, zeta: 0.3 }],
+      ['threePole', { k: 1, t1: 1, t2: 0.5, t3: 0.25 }],
+    ]) {
+      const { disturbance } = buildLoop(plantId, pp, 'pi', { kp: 1, ki: 1 })
+      // Exactly zero: the numerator Pb·Ca carries the controller's pole at the
+      // origin as a factor of s, so this is algebra, not a small number.
+      expect(dcGain(disturbance), plantId).toBe(0)
+    }
+  })
+
+  // One loop, one characteristic polynomial. However the loop is poked —
+  // reference or disturbance — the poles are the same, so the two responses
+  // ring at the same frequencies and decay at the same rates.
+  it('shares its poles with the closed loop exactly', () => {
+    const { closed, disturbance } = buildLoop(
+      'secondOrder',
+      { k: 1, wn: 10, zeta: 0.2 },
+      'pid',
+      { kp: 2, ki: 1, kd: 0.1 },
+    )
+    const a = roots(closed.a).sort((p, q) => p[0] - q[0] || p[1] - q[1])
+    const b = roots(disturbance.a).sort((p, q) => p[0] - q[0] || p[1] - q[1])
+    expect(b).toHaveLength(a.length)
+    for (let i = 0; i < a.length; i++) {
+      expect(b[i][0], `pole ${i} re`).toBeCloseTo(a[i][0], 8)
+      expect(b[i][1], `pole ${i} im`).toBeCloseTo(a[i][1], 8)
+    }
+  })
+
+  it('simulates to a nonzero settle under P and back to zero under PI', () => {
+    const p = { k: 2, tau: 0.5 }
+    const settled = (ctrl, cp) => {
+      const { disturbance } = buildLoop('firstOrder', p, ctrl, cp)
+      const { y } = stepResponse(disturbance, { duration: 30, points: 600 })
+      return y[y.length - 1]
+    }
+    expect(settled('p', { kp: 9 })).toBeCloseTo(2 / 19, 4)
+    expect(Math.abs(settled('pi', { kp: 2, ki: 2 }))).toBeLessThan(1e-4)
   })
 })

@@ -39,6 +39,25 @@ export const LESSONS = [
   },
   {
     group: 'What feedback buys',
+    name: 'A shove at the plant input',
+    note:
+      'The reference step asks "can it follow orders". This asks the better question: a ' +
+      'disturbance lands on the PLANT — a gust, a load, a warm-up drift — and the loop has to ' +
+      'fight it off. Under proportional control the shove leaves a permanent offset of ' +
+      'P(0)/(1+L(0)): shrunk, not removed. Switch to PI and the offset is erased exactly — the ' +
+      'integral winds up until nothing of the shove remains. THAT is why feedback exists; ' +
+      'following a setpoint is the easy half.',
+    patch: {
+      plant: 'firstOrder',
+      plantP: pp('firstOrder'),
+      ctrl: 'p',
+      ctrlP: cp('p', { kp: 9 }),
+      view: 'step',
+      stepInput: 'dist',
+    },
+  },
+  {
+    group: 'What feedback buys',
     name: '...and what it costs',
     note:
       'Nothing is free. An integrator contributes −90° of phase at every frequency, so the loop ' +
@@ -153,5 +172,6 @@ export function applyLesson(l) {
     ctrlId: l.patch.ctrl,
     ctrlP: l.patch.ctrlP,
     view: l.patch.view || 'step',
+    stepInput: l.patch.stepInput || 'ref',
   }
 }

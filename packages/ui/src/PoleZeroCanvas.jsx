@@ -18,6 +18,7 @@ export default function PoleZeroCanvas({
   highlight = null,
   xTitle = 'Real  σ  (1/s)',
   yTitle = 'Imaginary  jω  (rad/s)',
+  ariaLabel = 'Poles and zeros on the s-plane; the right half is the unstable region',
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -137,5 +138,5 @@ export default function PoleZeroCanvas({
     [poles, zeros, branches, highlight, xTitle, yTitle],
   )
 
-  return <canvas ref={ref} className="plot" />
+  return <canvas ref={ref} className="plot" role="img" aria-label={ariaLabel} />
 }

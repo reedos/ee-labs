@@ -187,5 +187,5 @@ export default function BodeCanvas({
     [freqs, mag, phase, showPhase, markers, crossover, phaseCrossover, yUnit],
   )
 
-  return <canvas ref={ref} className="plot" />
+  return <canvas ref={ref} className="plot" role="img" aria-label="Open-loop Bode plot: magnitude and phase, with the stability margins marked" />
 }

@@ -108,5 +108,5 @@ export default function StepCanvas({ t, y, final, markers = [], diverges = false
     [t, y, final, markers, diverges],
   )
 
-  return <canvas ref={ref} className="plot" />
+  return <canvas ref={ref} className="plot" role="img" aria-label="Closed-loop step response in time" />
 }

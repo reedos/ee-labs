@@ -129,5 +129,5 @@ export default function ScopeCanvas({
     [traces, sampleRate, spanSeconds, divisionRate, yMax],
   )
 
-  return <canvas ref={ref} className="plot" />
+  return <canvas ref={ref} className="plot" role="img" aria-label="Oscilloscope: the signal against time" />
 }

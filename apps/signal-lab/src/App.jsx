@@ -108,7 +108,10 @@ export default function App() {
   const reveal = (id) => {
     const el = document.getElementById(id)
     if (!el) return
-    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    // CSS scroll-behavior cannot override an explicit 'smooth' argument, so
+    // the reduced-motion preference has to be honoured here in the call.
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ block: 'nearest', behavior: still ? 'auto' : 'smooth' })
     el.classList.add('is-flash')
     window.setTimeout(() => el.classList.remove('is-flash'), 600)
   }

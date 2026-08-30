@@ -28,6 +28,7 @@ export default function ZPlaneCanvas({
   sampleRate = 0,
   xTitle = 'Real',
   yTitle = 'Imaginary',
+  ariaLabel = 'Poles and zeros on the z-plane; the unit circle is the frequency axis',
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -156,5 +157,5 @@ export default function ZPlaneCanvas({
     [poles, zeros, markerFreq, sampleRate, xTitle, yTitle],
   )
 
-  return <canvas ref={ref} className="plot" />
+  return <canvas ref={ref} className="plot" role="img" aria-label={ariaLabel} />
 }

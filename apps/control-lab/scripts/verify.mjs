@@ -159,6 +159,31 @@ const errPI = (await topbar())['steady error']
 console.log(`   PI on the same plant                        -> steady error ${errPI}`)
 if (errPI !== 'none') fail(`PI should remove steady-state error, got ${errPI}`)
 
+// The disturbance toggle: the same loop poked at the plant input. Under P the
+// shove leaves exactly P(0)/(1+L(0)); under PI the integrator erases it.
+await clickBtn('First order lag')
+await clickBtn('Proportional')
+await setField('Kp', 9)
+await clickBtn('Disturbance')
+// The readout is in engineering notation — "100 m" is 0.1 — so the suffix
+// must be read along with the number.
+const distRaw = (await page.locator('.readout').last().textContent()).match(
+  /settles to\s*(-?[\d.]+)\s*([mµu]?)/,
+)
+const distVal = distRaw
+  ? parseFloat(distRaw[1]) * ({ m: 1e-3, 'µ': 1e-6, u: 1e-6, '': 1 })[distRaw[2]]
+  : NaN
+console.log(`   disturbance under P (Kp=9, K=1, so 1/(1+9)): settles to ${distVal}`)
+if (Math.abs(distVal - 0.1) > 0.005) {
+  fail(`disturbance under P should settle to 0.1, got ${distVal}`)
+}
+await clickBtn('PI')
+const distText = await page.locator('.readout').last().textContent()
+const erased = /rejected completely/.test(distText)
+console.log(`   disturbance under PI: ${erased ? 'rejected completely — the integrator erases it' : 'NOT erased'}`)
+if (!erased) fail('PI should erase a plant-input disturbance exactly')
+await clickBtn('Reference')
+
 // The unstable plant fails the other way round: too LITTLE gain is the problem.
 await clickBtn('Unstable plant')
 await clickBtn('Proportional')
@@ -245,6 +270,38 @@ for (const view of ['Nyquist', 'Root locus', 'Step']) {
   console.log(`   ${view.padEnd(11)} ${changed ? 'redraws' : 'UNCHANGED'}`)
   if (!changed) fail(`switching to ${view} did not redraw`)
   prev = now
+}
+
+
+// ------------------------------------------------ A11Y. names for everything
+
+console.log('\nA11y: every control has a name, every plot has a label\n')
+{
+  const audit = await page.evaluate(() => {
+    const problems = []
+    const nameOf = (el) =>
+      el.getAttribute('aria-label') ||
+      el.getAttribute('aria-labelledby') ||
+      (el.labels && el.labels.length) ||
+      (el.textContent || '').trim() ||
+      el.getAttribute('title')
+    for (const el of document.querySelectorAll('button, select, input, [role=img]')) {
+      if (el.type === 'hidden' || el.disabled) continue
+      if (!nameOf(el)) {
+        const tag = el.tagName.toLowerCase()
+        const cls = (el.className || '').toString().slice(0, 40)
+        problems.push(`${tag}.${cls || '?'} has no accessible name`)
+      }
+    }
+    for (const c of document.querySelectorAll('canvas')) {
+      if (c.getAttribute('role') !== 'img' || !c.getAttribute('aria-label')) {
+        problems.push('canvas without role="img" + aria-label')
+      }
+    }
+    return [...new Set(problems)]
+  })
+  if (audit.length) for (const p of audit) fail(`a11y: ${p}`)
+  else console.log('   no unnamed controls, no unlabelled plots')
 }
 
 // ----------------------------------------------------------------- 5. at 4K

@@ -40,6 +40,9 @@ export default function App() {
   const [ctrlId, setCtrlId] = useState(linked.state?.ctrlId ?? 'p')
   const [ctrlP, setCtrlP] = useState(() => linked.state?.ctrlP ?? defaultsOf(CONTROLLERS.p))
   const [lower, setLower] = useState('step')
+  // What the step is applied TO: the reference (follow a new setpoint) or the
+  // plant input (shrug off a shove). Different questions, one loop.
+  const [stepInput, setStepInput] = useState('ref')
   const [showPhase, setShowPhase] = useState(true)
   // Cleared as soon as anything is touched: the note describes one setup.
   const [lesson, setLesson] = useState(null)
@@ -65,6 +68,7 @@ export default function App() {
     setCtrlId(n.ctrlId)
     setCtrlP(n.ctrlP)
     setLower(n.view)
+    setStepInput(n.stepInput)
     setLesson(l.name)
   }
 
@@ -109,14 +113,16 @@ export default function App() {
     return { re, im }
   }, [loop, freqs])
 
+  const stepTf = stepInput === 'dist' ? loop.disturbance : loop.closed
+
   const step = useMemo(() => {
     // Long enough to see it settle, or to see clearly that it will not.
     const slow = Math.min(
       ...pz.poles.filter(([re]) => Math.abs(re) > 1e-9).map(([re]) => Math.abs(re)),
     )
     const d = Number.isFinite(slow) && slow > 0 ? Math.min(12 / slow, 400) : 20
-    return stepResponse(loop.closed, { duration: d, points: 900 })
-  }, [loop, pz])
+    return stepResponse(stepTf, { duration: d, points: 900 })
+  }, [stepTf, pz])
 
   // The locus of closed-loop poles as the loop gain is swept, with the poles at
   // the CURRENT gain marked on it.
@@ -384,7 +390,9 @@ export default function App() {
           <div className="view-head">
             <h2>
               {lower === 'step'
-                ? 'Closed-loop step response'
+                ? stepInput === 'dist'
+                  ? 'Response to a disturbance at the plant input'
+                  : 'Closed-loop step response'
                 : lower === 'nyquist'
                   ? 'Nyquist — the loop against −1'
                   : 'Root locus — poles as the gain sweeps'}
@@ -392,13 +400,36 @@ export default function App() {
             <div className="readout">
               {lower === 'step' ? (
                 <>
+                  <div className="segmented sm" role="group" aria-label="Where the step is applied">
+                    <button
+                      type="button"
+                      className={stepInput === 'ref' ? 'on' : ''}
+                      aria-pressed={stepInput === 'ref'}
+                      title="Change the setpoint and watch the loop follow it"
+                      onClick={() => setStepInput('ref')}
+                    >
+                      Reference
+                    </button>
+                    <button
+                      type="button"
+                      className={stepInput === 'dist' ? 'on' : ''}
+                      aria-pressed={stepInput === 'dist'}
+                      title="Shove the plant's input and watch the loop fight back — the reason feedback exists"
+                      onClick={() => setStepInput('dist')}
+                    >
+                      Disturbance
+                    </button>
+                  </div>
                   <span>
-                    settles to <b>{fmt(dcGain(loop.closed), '', 4)}</b>
+                    settles to <b>{fmt(dcGain(stepTf), '', 4)}</b>
                   </span>
-                  {second && second.overshoot > 0 ? (
+                  {stepInput === 'ref' && second && second.overshoot > 0 ? (
                     <span>
                       overshoot <b>{(second.overshoot * 100).toFixed(1)}%</b>
                     </span>
+                  ) : null}
+                  {stepInput === 'dist' && Math.abs(dcGain(stepTf)) < 1e-9 ? (
+                    <span className="flag">rejected completely — the integrator erases it</span>
                   ) : null}
                   {!stable ? <span className="flag warn">diverges</span> : null}
                 </>
@@ -414,7 +445,7 @@ export default function App() {
             </div>
           </div>
           {lower === 'step' ? (
-            <StepCanvas t={step.t} y={step.y} final={dcGain(loop.closed)} diverges={!stable} />
+            <StepCanvas t={step.t} y={step.y} final={dcGain(stepTf)} diverges={!stable} />
           ) : lower === 'nyquist' ? (
             <NyquistCanvas
               re={nyq.re}
