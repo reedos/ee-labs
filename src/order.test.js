@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { designBiquad, biquadResponse } from './dsp/biquad.js'
 import { PRESETS } from './presets.js'
+import { renderChain } from './dsp/chain.js'
 
 // Filter order, and the claim the "Order is a choice" preset makes.
 //
@@ -89,5 +90,47 @@ describe('filter order', () => {
       1,
     )
     expect(db(mag)).toBeCloseTo(-3.01, 1)
+  })
+})
+
+describe('second-order step response', () => {
+  // Prompted by a claim in the tool that was simply wrong: "Q = 0.707 is the
+  // largest value that does not overshoot at all". It is not. Butterworth is
+  // the flattest FREQUENCY response and still overshoots by 4.3%; the
+  // no-overshoot boundary is critical damping at Q = 0.5.
+  const overshoot = (q) => {
+    const z = 1 / (2 * q)
+    return z < 1 ? Math.exp((-Math.PI * z) / Math.sqrt(1 - z * z)) : 0
+  }
+
+  it('stops overshooting at Q = 0.5, not at 0.707', () => {
+    expect(overshoot(0.5)).toBe(0)
+    expect(overshoot(0.4)).toBe(0)
+    expect(overshoot(0.707)).toBeGreaterThan(0.04)
+    expect(overshoot(0.707)).toBeCloseTo(0.0432, 3)
+  })
+
+  it('grows monotonically with Q above critical damping', () => {
+    let prev = -1
+    for (const q of [0.5, 0.6, 0.707, 1, 2, 5, 10]) {
+      const o = overshoot(q)
+      expect(o, `Q=${q}`).toBeGreaterThan(prev)
+      prev = o
+    }
+  })
+
+  it('the formula matches the filter this tool actually runs', () => {
+    // Independent path: a step pushed through the real difference equation.
+    const sr = 48000
+    const step = [{ id: 1, type: 'step', freq: 1, amp: 1, phase: 0, enabled: true }]
+    for (const q of [0.5, 0.6, 0.707, 1, 2, 5]) {
+      const blocks = [
+        { id: 1, type: 'lowpass', bypass: false, params: { freq: 200, q, gainDb: 0 } },
+      ]
+      const { buf } = renderChain(step, blocks, 8192, sr)
+      let pk = 0
+      for (let i = 0; i < buf.length; i++) if (buf[i] > pk) pk = buf[i]
+      expect(pk - 1, `Q=${q}`).toBeCloseTo(overshoot(q), 2)
+    }
   })
 })

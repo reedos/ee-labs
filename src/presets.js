@@ -261,8 +261,10 @@ export const PRESETS = [
     note:
       'A sudden jump, held. A gentle filter rounds the corner; a resonant one overshoots and ' +
       'rings at its cutoff before settling. Drag Q down from 5 — this is what Q feels like in ' +
-      'time, and it is easier to recognize here than as a bump on a curve. Q = 0.707 is the ' +
-      'largest value that does not overshoot at all.',
+      'time, and it is easier to recognize here than as a bump on a curve. Note where the ' +
+      'overshoot actually stops: at Q = 0.5, not at 0.707. The Butterworth Q gives the flattest ' +
+      'frequency response and still overshoots by 4.3%, because flat in frequency and clean in ' +
+      'time are two different requests.',
     patch: {
       sources: [mk(1, 'step', 250, 1)],
       blocks: [bk(1, 'lowpass', { freq: 400, q: 5 })],
