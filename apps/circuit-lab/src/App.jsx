@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import {
@@ -13,6 +13,7 @@ import { CIRCUITS, CIRCUIT_GROUPS, defaultsOf, transferOf } from './circuits.js'
 import { circuitMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { TOLERANCES, toleranceCloud, spreadPct } from './tolerance.js'
+import { axisFreqs, stickyCentre } from './axis.js'
 import Schematic from './schematics.jsx'
 import HandOver from './components/HandOver.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
@@ -63,17 +64,22 @@ export default function App() {
   const second = useMemo(() => secondOrderMetrics(tf), [tf])
   const pz = useMemo(() => polesZeros(tf), [tf])
 
-  // A decade span centred on whatever the circuit's own scale turns out to be,
-  // so the interesting part is on screen without anyone reaching for a control.
+  // A ±3-decade span around the circuit's own scale — but STICKY while
+  // components are tuned, so the response visibly moves across a fixed axis
+  // instead of the axis re-labelling itself under a stationary curve. It
+  // re-centres on a circuit or output change, or when the corner drifts
+  // within a decade of the edge. See axis.js.
+  const axisRef = useRef({ key: '', centre: 0 })
   const freqs = useMemo(() => {
     const scale = metrics ? metrics.w0 / (2 * Math.PI) : naturalScale(pz.poles)
-    const centre = Number.isFinite(scale) && scale > 0 ? scale : 1000
-    const lo = Math.log10(centre / 1000)
-    const hi = Math.log10(centre * 1000)
-    return Float64Array.from({ length: POINTS }, (_, i) =>
-      Math.pow(10, lo + ((hi - lo) * i) / (POINTS - 1)),
+    const key = `${id}/${output}`
+    const centre = stickyCentre(
+      axisRef.current.key === key ? axisRef.current.centre : 0,
+      scale,
     )
-  }, [metrics, pz])
+    axisRef.current = { key, centre }
+    return axisFreqs(centre, POINTS)
+  }, [id, output, metrics, pz])
 
   const response = useMemo(() => bode(tf, freqs), [tf, freqs])
 

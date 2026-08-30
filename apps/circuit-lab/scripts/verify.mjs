@@ -167,6 +167,33 @@ for (const [rTxt, r, cTxt, c] of [
   prev = now
 }
 
+// ---------------------- 2b. the axis holds still while components are tuned
+
+console.log('\n2b. Sticky axis: tuning moves the curve, not the labels\n')
+const spanShown = async () =>
+  (await page.locator('.readout').first().textContent()).match(/span\s*([^–]+–[^H]+Hz)/)?.[1].trim()
+await pick('RC low-pass')
+await setField('R', '1k')
+await setField('C', '100n')
+const span0 = await spanShown()
+// A 10x component change moves the corner a decade: well within the view, so
+// the axis must not move.
+await setField('C', '10n')
+const span1 = await spanShown()
+console.log(`   span before: ${span0}`)
+console.log(`   after 10x C change: ${span1}  ${span0 === span1 ? '(held)' : '(MOVED)'}`)
+if (span0 !== span1) fail(`axis re-centred on a 10x tune: "${span0}" -> "${span1}"`)
+// Push the corner two decades past its axis room and the view must follow.
+await setField('C', '10p')
+const span2 = await spanShown()
+if (span2 === span0) fail('axis never re-centres — a corner pushed to the edge was lost')
+else console.log(`   after a 10,000x change ${span2}  (re-centred, as it must)`)
+// And switching circuits always reframes.
+await pick('Series RLC')
+const span3 = await spanShown()
+if (span3 === span2) fail('switching circuits should re-centre the axis')
+else console.log('   switching to the RLC reframed the axis')
+
 // ------------------------------- 3. do resonance and Q follow L, C and R?
 
 console.log('\n3. Series RLC: do f₀ and Q follow the components?\n')
