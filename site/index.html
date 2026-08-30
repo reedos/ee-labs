@@ -57,13 +57,21 @@
         max-width: 860px;
       }
       .scopeframe .lights {
-        display: flex; gap: 6px; padding: 0 2px 8px;
+        display: flex; gap: 8px; padding: 0 2px 8px;
       }
-      .scopeframe .lights i {
-        width: 8px; height: 8px; border-radius: 50%;
-        background: var(--line-bright); display: block;
+      .scopeframe .dot {
+        width: 11px; height: 11px; border-radius: 50%;
+        border: 1.5px solid var(--line-bright);
+        background: transparent; cursor: pointer; padding: 0;
+        transition: background 0.15s, border-color 0.15s, transform 0.1s;
       }
-      .scopeframe .lights i:first-child { background: var(--accent); }
+      .scopeframe .dot:hover { transform: scale(1.25); }
+      .scopeframe .dot.signal { border-color: var(--amber); }
+      .scopeframe .dot.circuit { border-color: var(--accent); }
+      .scopeframe .dot.control { border-color: var(--blue); }
+      .scopeframe .dot.signal.is-on { background: var(--amber); }
+      .scopeframe .dot.circuit.is-on { background: var(--accent); }
+      .scopeframe .dot.control.is-on { background: var(--blue); }
       #hero { width: 100%; height: 150px; display: block; }
       .scopecap {
         display: flex; justify-content: space-between; align-items: baseline;
@@ -163,18 +171,23 @@
       <header>
         <h1><span class="ee">EE</span> Labs</h1>
         <p class="tagline">
-          A signal, its frequency content, and what happens when you put things in the way.
-          Three instruments for the LTI core of electrical engineering —
+          Build a signal and watch a filter reshape it. Wire a circuit and read its poles.
+          Close a loop and find its margins. Three connected labs, one shared language
+          &mdash; the transfer function &mdash; and
           <b>every claim on every page is measured against what is drawn.</b>
         </p>
       </header>
 
-      <div class="scopeframe" aria-label="A live demonstration: a square wave being low-pass filtered as the cutoff sweeps">
-        <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="scopeframe" aria-label="A live demonstration; the three dots switch between filtering demos">
+        <div class="lights" role="tablist" aria-label="Choose a demo">
+          <button class="dot signal is-on" role="tab" aria-selected="true" data-demo="0" aria-label="Low-pass a square"></button>
+          <button class="dot circuit" role="tab" aria-selected="false" data-demo="1" aria-label="High-pass a square"></button>
+          <button class="dot control" role="tab" aria-selected="false" data-demo="2" aria-label="Resonance ringing"></button>
+        </div>
         <canvas id="hero"></canvas>
         <div class="scopecap">
-          <span>square, 3 harmonics shown of ∞</span>
-          <span>low-pass f<sub>c</sub> = <b id="fc">—</b></span>
+          <span id="cap-left">square, 3 harmonics shown of ∞</span>
+          <span id="cap-right">low-pass f<sub>c</sub> = <b id="fc">—</b></span>
         </div>
       </div>
 
@@ -311,9 +324,46 @@
         return v * (4 / Math.PI) * 0.72
       })
 
-      // ---- hero: the cutoff breathes, the square rounds and sharpens ----
+      // ---- hero: three demos, one per dot. Each is a real filter doing its
+      // signature thing to the same square: a low-pass rounding it, a high-pass
+      // keeping only its edges, a resonant low-pass making it ring. The dots
+      // are controls, not decoration - a thing that looks clickable must click.
       const hero = document.getElementById('hero')
-      const fcEl = document.getElementById('fc')
+      const capL = document.getElementById('cap-left')
+      const capR = document.getElementById('cap-right')
+      function highpass(fc, fs, q = 0.7071) {
+        const w = (2 * Math.PI * fc) / fs, cw = Math.cos(w), al = Math.sin(w) / (2 * q)
+        const a0 = 1 + al
+        return { b0: (1 + cw) / 2 / a0, b1: -(1 + cw) / a0, b2: (1 + cw) / 2 / a0,
+                 a1: (-2 * cw) / a0, a2: (1 - al) / a0 }
+      }
+      const DEMOS = [
+        { // the cutoff breathes 2.2x-14x f0: the square rounds, then sharpens
+          left: 'square, 3 harmonics shown of ∞ · low-passed',
+          run(phase, n, x) {
+            const mult = 2.2 + 11.8 * (0.5 - 0.5 * Math.cos(phase))
+            capR.innerHTML = 'low-pass f<sub>c</sub> = <b>' + mult.toFixed(1) + ' × f₀</b>'
+            return runBiquad(lowpass(mult * 3, n), x) // f0 = 3 cycles per n samples
+          },
+        },
+        { // same square, high-passed: the flat tops die, the edges survive
+          left: 'square · high-passed: only the edges survive',
+          run(phase, n, x) {
+            const mult = 1.5 + 8.5 * (0.5 - 0.5 * Math.cos(phase))
+            capR.innerHTML = 'high-pass f<sub>c</sub> = <b>' + mult.toFixed(1) + ' × f₀</b>'
+            return runBiquad(highpass(mult * 3, n), x)
+          },
+        },
+        { // fixed cutoff, Q breathes 0.9-8: each edge rings the resonance
+          left: 'square · resonant low-pass: Q is the ringing',
+          run(phase, n, x) {
+            const q = 0.9 + 7.1 * (0.5 - 0.5 * Math.cos(phase))
+            capR.innerHTML = 'Q = <b>' + q.toFixed(1) + '</b> at f<sub>c</sub> = 4 × f₀'
+            return runBiquad(lowpass(4 * 3, n, q), x)
+          },
+        },
+      ]
+      let demo = 0
       function drawHero(phase) {
         const { w, h, d } = fit(hero)
         const g = hero.getContext('2d')
@@ -323,13 +373,8 @@
         for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(0, (h * i) / 4); g.lineTo(w, (h * i) / 4); g.stroke() }
         const n = 900
         const x = squareish(n, 3)
-        // The cutoff breathes between 2.2x and 14x the fundamental: at the low
-        // end the square rounds to nearly its fundamental, at the top the
-        // corners come back. The caption states it in the only unit that
-        // matters here - multiples of f0.
-        const mult = 2.2 + 11.8 * (0.5 - 0.5 * Math.cos(phase))
-        const y = runBiquad(lowpass(mult * 3, n), x) // f0 = 3 cycles per n samples
-        fcEl.textContent = mult.toFixed(1) + ' × f₀'
+        capL.textContent = DEMOS[demo].left
+        const y = DEMOS[demo].run(phase, n, x)
         // ghost square
         g.strokeStyle = 'rgba(56,224,176,0.28)'
         g.lineWidth = 1.2 * d
@@ -343,6 +388,17 @@
         y.forEach((v, i) => { const px = (i / (n - 1)) * w, py = h / 2 - v * h * 0.36; i ? g.lineTo(px, py) : g.moveTo(px, py) })
         g.stroke()
       }
+      document.querySelectorAll('.scopeframe .dot').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          demo = Number(btn.dataset.demo)
+          document.querySelectorAll('.scopeframe .dot').forEach((b) => {
+            const on = b === btn
+            b.classList.toggle('is-on', on)
+            b.setAttribute('aria-selected', String(on))
+          })
+          if (still) drawHero(Math.PI * 0.66)
+        })
+      })
       if (still) drawHero(Math.PI * 0.66)
       else {
         let t0
