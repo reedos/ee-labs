@@ -1,4 +1,5 @@
 import React from 'react'
+import { stickyRange } from '../stepAxis.js'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
 
 /**
@@ -9,7 +10,8 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
  * ringing, and which of the two is easier to recognise depends entirely on what
  * you are trying to decide.
  */
-export default function StepCanvas({ t, y, final, markers = [], diverges = false }) {
+export default function StepCanvas({ t, y, final, markers = [], diverges = false, resetKey = '' }) {
+  const heldY = React.useRef({ key: '', range: null })
   const ref = useCanvas(
     (ctx, w, h) => {
       const area = plotArea(w, h)
@@ -32,6 +34,21 @@ export default function StepCanvas({ t, y, final, markers = [], diverges = false
       const pad = (hi - lo) * 0.12 || 0.2
       lo -= pad
       hi += pad
+      // Sticky: hold the frame while gains are tuned so the CURVE visibly
+      // grows and shrinks; snap on a system change (resetKey), on a would-be
+      // clip, or when the trace has shrunk to a sliver. A diverging trace
+      // keeps its clamped frame — stickiness is for comparing stable shapes.
+      if (!diverges) {
+        const held = stickyRange(
+          heldY.current.key === resetKey ? heldY.current.range : null,
+          { lo, hi },
+        )
+        heldY.current = { key: resetKey, range: held }
+        lo = held.lo
+        hi = held.hi
+      } else {
+        heldY.current = { key: '', range: null }
+      }
 
       const tMax = t[t.length - 1] || 1
       const { sx, sy } = drawFrame(
@@ -105,7 +122,7 @@ export default function StepCanvas({ t, y, final, markers = [], diverges = false
       ctx.stroke()
       ctx.restore()
     },
-    [t, y, final, markers, diverges],
+    [t, y, final, markers, diverges, resetKey],
   )
 
   return <canvas ref={ref} className="plot" role="img" aria-label="Closed-loop step response in time" />

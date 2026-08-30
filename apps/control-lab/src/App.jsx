@@ -17,6 +17,7 @@ import {
 import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, settlesOnScreen } from './systems.js'
 import { loopMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
+import { stickyDuration } from './stepAxis.js'
 import { termsFor } from './terms.js'
 import { nextFrame } from './frame.js'
 import { readLocationLink } from '@ee-labs/ui'
@@ -157,13 +158,25 @@ export default function App() {
 
   const stepTf = stepInput === 'dist' ? loop.disturbance : loop.closed
 
-  // Long enough to see it settle, or to see clearly that it will not.
+  // Long enough to see it settle — and STICKY while gains are tuned, so the
+  // curve moves across a held time axis instead of the axis chasing the
+  // curve (Reed's report; the rules and their tests live in stepAxis.js).
+  // It reframes for a new plant/controller/step-input, for a response that
+  // would settle off screen, or for one shrunk into the left sixth.
+  const durRef = useRef({ key: '', dur: 0 })
   const duration = useMemo(() => {
     const slow = Math.min(
       ...pz.poles.filter(([re]) => Math.abs(re) > 1e-9).map(([re]) => Math.abs(re)),
     )
-    return Number.isFinite(slow) && slow > 0 ? Math.min(12 / slow, 400) : 20
-  }, [pz])
+    const natural = Number.isFinite(slow) && slow > 0 ? Math.min(12 / slow, 400) : 20
+    const key = `${plantId}|${ctrlId}|${stepInput}`
+    const dur = stickyDuration(
+      durRef.current.key === key ? durRef.current.dur : NaN,
+      natural,
+    )
+    durRef.current = { key, dur }
+    return dur
+  }, [pz, plantId, ctrlId, stepInput])
 
   const step = useMemo(
     () => stepResponse(stepTf, { duration, points: 900 }),
@@ -696,7 +709,13 @@ export default function App() {
               />
             </>
           ) : lower === 'step' ? (
-            <StepCanvas t={step.t} y={step.y} final={dcGain(stepTf)} diverges={!stable} />
+            <StepCanvas
+              t={step.t}
+              y={step.y}
+              final={dcGain(stepTf)}
+              diverges={!stable}
+              resetKey={`${plantId}|${ctrlId}|${stepInput}`}
+            />
           ) : lower === 'nyquist' ? (
             <NyquistCanvas
               re={nyq.re}

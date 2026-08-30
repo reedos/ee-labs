@@ -130,3 +130,18 @@ subtitle, and the identity sheds when a different plant is chosen. Tier 2
 ships: "driven by Kp·(r − y), not by r" under the plant box while P-control is
 active. Tier 3 (mini-schematic in the box) awaits the packages agent lifting a
 schematic renderer into packages/ui — not started, per the spec.
+
+
+## Landed by the packages/signal-lab agent (Reed testing live): sticky step axes
+
+Reed hit the axis-chasing disease on the step plot - gain and tau moved the
+frame, not the curve. Fixed with BAND QUANTIZATION (apps/control-lab/src/
+stepAxis.js + tests): frames snap to a 1-2-5 ladder, hold bit-identical
+inside a band, reframe once at a band edge, always contain (a clip reframes
+immediately), snap on plant/controller/step-input change. Duration in App,
+y-range held inside StepCanvas via resetKey. Note for the archives: the
+first fix (hold-until-containment) FAILED its own pixel probe - growth-on-
+contain tracks the peak and the trace hugs the top at a constant pixel.
+The probe and the ladder are both in the commit. Amend freely - your file,
+your app. The Bode frequency axis may deserve the same treatment; Reed has
+not asked yet.
