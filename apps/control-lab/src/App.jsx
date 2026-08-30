@@ -58,6 +58,9 @@ export default function App() {
   // Which lesson groups are unfolded. The active lesson's group is always open
   // regardless, so collapsing can never hide where you are.
   const [openGroups, setOpenGroups] = useState(() => new Set())
+  // The plant groups fold the same way — Reed asked for the sidebar to match
+  // the other labs: hideable choice groups everywhere, active group pinned.
+  const [openPlantGroups, setOpenPlantGroups] = useState(() => new Set())
   const [diagram, setDiagram] = useState(false)
   // The circuit this plant arrived AS ("circuit:rlc:My RLC"), kept while the
   // plant is still that arrival — tuning its params keeps the identity,
@@ -233,7 +236,7 @@ export default function App() {
           </p>
         </header>
 
-        <section>
+        <section id="lessons">
           {linked.state ? (
             <p className="hint from-link">
               Loaded from a link —{' '}
@@ -342,9 +345,26 @@ export default function App() {
           {PLANT_GROUPS.map((g) => {
             const inGroup = Object.entries(PLANTS).filter(([, p]) => p.group === g)
             if (!inGroup.length) return null
+            const holdsActive = inGroup.some(([key]) => key === plantId)
             return (
-              <div className="preset-group" key={g}>
-                <h3>{g}</h3>
+              <details
+                className="preset-group"
+                key={g}
+                open={holdsActive || openPlantGroups.has(g)}
+                onToggle={(e) => {
+                  const next = new Set(openPlantGroups)
+                  if (e.target.open) next.add(g)
+                  else next.delete(g)
+                  setOpenPlantGroups(next)
+                }}
+              >
+                {/* preventDefault while active, same as the lesson groups:
+                    React skips rewriting an unchanged open attribute, so the
+                    native toggle would fold the active plant away. */}
+                <summary onClick={holdsActive ? (e) => e.preventDefault() : undefined}>
+                  {g}
+                  {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
+                </summary>
                 <div className="presets">
                   {inGroup.map(([key, p]) => (
                     <button
@@ -357,10 +377,15 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </details>
             )
           })}
-          {active ? null : <p className="hint">{plant.hint}</p>}
+          {active ? null : (
+            <>
+              <h3 className="note-title">{plant.name}</h3>
+              <p className="hint">{plant.hint}</p>
+            </>
+          )}
           {plant.params.map((p) => (
             <NumField
               key={p.key}
@@ -407,7 +432,12 @@ export default function App() {
               </button>
             ))}
           </div>
-          {active ? null : <p className="hint">{ctrl.hint}</p>}
+          {active ? null : (
+            <>
+              <h3 className="note-title">{ctrl.name}</h3>
+              <p className="hint">{ctrl.hint}</p>
+            </>
+          )}
           {ctrl.params.map((p) => (
             <NumField
               key={p.key}

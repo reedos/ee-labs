@@ -57,7 +57,7 @@ export const LESSONS = [
     name: 'A shove at the plant input',
     note:
       'The reference step asks "can it follow orders". This asks the better question: a ' +
-      'disturbance lands on the PLANT — a gust, a load, a warm-up drift — and the loop has to ' +
+      'disturbance lands on the PLANT — a load transient, supply ripple, a warm-up drift — and the loop has to ' +
       'fight it off. Under proportional control the shove leaves a permanent offset of ' +
       'P(0)/(1+L(0)): shrunk, not removed. Switch to PI and the offset is erased exactly — the ' +
       'integral winds up until nothing of the shove remains. THAT is why feedback exists; ' +
@@ -149,10 +149,10 @@ export const LESSONS = [
     group: 'Harder plants',
     name: 'The plant that needs feedback',
     note:
-      'A pole in the right half plane: an inverted pendulum, a fighter airframe, a magnetic ' +
-      'bearing. Left alone it runs away exponentially. Here feedback is not an improvement, it ' +
-      'is the only reason the thing works at all — and the failure mode is inverted. Turn the ' +
-      'gain DOWN and it falls over.',
+      'A pole in the right half plane: a positive-feedback stage, a maglev coil, a tunnel ' +
+      "diode's negative-resistance bias point. Left alone it runs away exponentially. Here " +
+      'feedback is not an improvement, it is the only reason the thing works at all — and the ' +
+      'failure mode is inverted. Turn the gain DOWN and it latches to a rail.',
     terms: ['rhp', 'pole'],
     patch: { plant: 'unstable', plantP: pp('unstable'), ctrl: 'p', ctrlP: cp('p', { kp: 5 }), view: 'step' },
   },

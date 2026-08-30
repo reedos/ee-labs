@@ -118,6 +118,10 @@ const loadLesson = async (name) => {
   await settle()
 }
 
+// Plants live behind the same folds as lessons now; clicking one goes
+// through the unfold-first path, exactly as for a person.
+const clickPreset = loadLesson
+
 const plants = ['First order lag', 'Integrator', 'Second order', 'Motor position', 'Three lags', 'Unstable plant', 'Custom H(s)']
 const ctrls = ['Proportional', 'PI', 'PID', 'Lead']
 
@@ -127,7 +131,7 @@ console.log(`\n1. All ${plants.length} plants x ${ctrls.length} controllers\n`)
 for (const p of plants) {
   const row = []
   for (const c of ctrls) {
-    await clickBtn(p)
+    await clickPreset(p)
     await clickBtn(c)
     await openMath()
     const bad = (await readChecks()).filter((r) => r.mark === '✗')
@@ -146,7 +150,7 @@ console.log('\n1b. Loading every lesson through the folded groups\n')
   // Collect them from the DOM rather than a hardcoded list, open each group as
   // a person would, and require the loaded lesson to keep its group open.
   const lessonNames = await page.evaluate(() =>
-    [...document.querySelectorAll('details.preset-group .preset')].map((b) => b.textContent.trim()),
+    [...document.querySelectorAll('#lessons details.preset-group .preset')].map((b) => b.textContent.trim()),
   )
   if (lessonNames.length < 10) fail(`expected the full lesson list, found ${lessonNames.length}`)
   for (const name of lessonNames) {
@@ -207,6 +211,21 @@ console.log('\n1b. Loading every lesson through the folded groups\n')
   })
   if (!foldsFreely) fail('an inactive lesson group did not toggle when its summary was clicked')
 
+  // The plant groups fold now too, and the active plant's group is pinned
+  // exactly like the active lesson's: click its summary, it must stay open.
+  await page.evaluate(() => {
+    document
+      .querySelector('#plant .preset.is-on')
+      .closest('details.preset-group')
+      .querySelector('summary')
+      .click()
+  })
+  await page.waitForTimeout(150)
+  const plantGroupOpen = await page.evaluate(
+    () => document.querySelector('#plant .preset.is-on').closest('details.preset-group').open,
+  )
+  if (!plantGroupOpen) fail("the active plant's group folded away when its summary was clicked")
+
   // A lesson note describes ONE step input, so flipping the toggle must
   // clear it — a note about following r over a plot answering d is exactly
   // the frozen-sentence defect the review playbook opens with.
@@ -219,13 +238,13 @@ console.log('\n1b. Loading every lesson through the folded groups\n')
   await clickBtn('Reference')
 
   // Leave no lesson active so later sections start from plain plant clicks.
-  await clickBtn('First order lag')
+  await clickPreset('First order lag')
 }
 
 // ------------------------------- 2. does the gain margin predict what happens?
 
 console.log('\n2. Does the gain margin actually predict instability?\n')
-await clickBtn('Three lags')
+await clickPreset('Three lags')
 await clickBtn('Proportional')
 const gmText = (await topbar())['gain margin']
 const gmDb = parseFloat(gmText)
@@ -251,7 +270,7 @@ for (const [factor, expect] of [
 // ------------------------------------------- 3. what each controller is for
 
 console.log('\n3. Does each controller do the thing it exists for?\n')
-await clickBtn('First order lag')
+await clickPreset('First order lag')
 await clickBtn('Proportional')
 await setField('Kp', 9)
 const errP = (await topbar())['steady error']
@@ -265,7 +284,7 @@ if (errPI !== 'none') fail(`PI should remove steady-state error, got ${errPI}`)
 
 // The disturbance toggle: the same loop poked at the plant input. Under P the
 // shove leaves exactly P(0)/(1+L(0)); under PI the integrator erases it.
-await clickBtn('First order lag')
+await clickPreset('First order lag')
 await clickBtn('Proportional')
 await setField('Kp', 9)
 await clickBtn('Disturbance')
@@ -291,7 +310,7 @@ await clickBtn('Reference')
 // The settle readout confesses when the plot's right edge arrives first: a
 // very slow loop's plot is capped at 400 s, and there the trace is visibly
 // short of the destination the readout names.
-await clickBtn('Integrator')
+await clickPreset('Integrator')
 await clickBtn('Proportional')
 await setField('Kp', 0.005)
 const slowText = await page.locator('.readout').last().textContent()
@@ -304,7 +323,7 @@ if (/not there yet/.test(await page.locator('.readout').last().textContent())) {
 }
 
 // The unstable plant fails the other way round: too LITTLE gain is the problem.
-await clickBtn('Unstable plant')
+await clickPreset('Unstable plant')
 await clickBtn('Proportional')
 await setField('Kp', 0.2)
 const lowGain = await isStable()
@@ -326,7 +345,7 @@ console.log('\n3b. Kd buys damping; lead buys phase margin\n')
 // proportional gain (raising Kp divides ζ by √(1+KpK): a real second-order
 // fact), and the derivative claim is read from the phase margin instead,
 // which the topbar always carries.
-await clickBtn('Second order')
+await clickPreset('Second order')
 await clickBtn('Proportional')
 await clickBtn('Step')
 await setField('Damping ζ', 0.3)
@@ -362,7 +381,7 @@ if (!(pmByKd[0] < pmByKd[1] && pmByKd[1] < pmByKd[2])) {
 
 // Lead on the three-lag plant: same low-frequency gain as plain proportional,
 // but with phase added back where the loop crosses over.
-await clickBtn('Three lags')
+await clickPreset('Three lags')
 await clickBtn('Proportional')
 await setField('Kp', 3)
 const pmP = parseFloat((await topbar())['phase margin'])
@@ -379,7 +398,7 @@ if (!(pmLead > pmP + 10)) {
 // --------------------------------------------------------- 4. the three views
 
 console.log('\n4. All three lower views\n')
-await clickBtn('Three lags')
+await clickPreset('Three lags')
 await clickBtn('Proportional')
 let prev = await canvasHashes()
 for (const view of ['Nyquist', 'Root locus', 'Step']) {
@@ -405,7 +424,7 @@ await clickBtn('Step')
 console.log('\n4b. The loop diagram: live parameters, and the step entry wired to the toggle\n')
 {
   // A known setup so the parameter summaries have known contents.
-  await clickBtn('Motor position')
+  await clickPreset('Motor position')
   await clickBtn('PI')
   await setField('Kp', 3)
   await setField('Ki', 0.5)
@@ -503,7 +522,7 @@ console.log('\n4c. The frequency axis: sticky under tuning, reframed on structur
     })
     return buf.toString('base64')
   }
-  await clickBtn('Motor position')
+  await clickPreset('Motor position')
   await clickBtn('Proportional')
   const before = await axisStrip()
   await setField('Time constant τ', 0.8)
@@ -527,7 +546,7 @@ console.log('\n4c. The frequency axis: sticky under tuning, reframed on structur
 
 console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
 {
-  await clickBtn('First order lag')
+  await clickPreset('First order lag')
   await clickBtn('PI')
   await clickBtn('Watch')
   const slider = page.getByRole('slider', { name: 'Moment in the response' })
@@ -617,7 +636,7 @@ console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
 
   // The custom plant's equation is defined LIVE under its coefficients:
   // type a value, see it in the typeset H(s).
-  await clickBtn('Custom H(s)')
+  await clickPreset('Custom H(s)')
   const texBefore = await page.locator('.live-tf').innerHTML()
   await setField('b₀', 5)
   const texAfter = await page.locator('.live-tf').innerHTML()
@@ -633,7 +652,7 @@ console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
     fail('a small a₂ should put an s² term into the live H(s)')
   }
   console.log('   the custom plant typesets the equation being defined, live — tiny coefficients included')
-  await clickBtn('First order lag')
+  await clickPreset('First order lag')
   await clickBtn('Step')
 }
 
@@ -689,7 +708,7 @@ console.log('\n4e. Arrival from a circuit: named, oriented, the drive labelled\n
   await settle()
 
   // Choosing a different plant sheds the borrowed identity.
-  await clickBtn('Three lags')
+  await clickPreset('Three lags')
   await page.getByRole('button', { name: '⧉ diagram' }).click()
   await page.waitForTimeout(200)
   if (/My RC low-pass/.test(await page.locator('.fd-svg').textContent())) {
@@ -743,7 +762,7 @@ console.log('\n5. Layout at 4K\n')
 await page.setViewportSize({ width: 3840, height: 2160 })
 await page.waitForTimeout(500)
 for (const p of plants) {
-  await clickBtn(p)
+  await clickPreset(p)
   if (await scrolls()) fail(`4K / ${p}: page scrolls`)
 }
 // The watch view adds a transport row inside the pane; the layout budget

@@ -58,7 +58,8 @@ export const PLANTS = {
     name: 'First order lag',
     group: 'First order',
     hint:
-      'A tank filling, a room heating, an RC network. It has no overshoot of its own and no way ' +
+      'An RC network — a gate charging through its driver, a decoupled rail settling after a ' +
+      'load step. It has no overshoot of its own and no way ' +
       'to become unstable: one pole costs at most 90° of lag — 45° of it already spent at its ' +
       'corner ω = 1/τ — so however high the gain, the loop never reaches the −180° where ' +
       'feedback turns against you. The easiest thing there is to control.',
@@ -90,9 +91,9 @@ export const PLANTS = {
     name: 'Integrator',
     group: 'First order',
     hint:
-      'A motor driven by voltage, where position is what you want: the input sets the RATE, so ' +
-      'the output accumulates. Its pole sits at the origin, which is why proportional control ' +
-      'alone already gives zero steady-state error to a step.',
+      "A current source charging a capacitor — or a PLL's phase, which accumulates frequency: " +
+      'the input sets the RATE, so the output accumulates. Its pole sits at the origin, which ' +
+      'is why proportional control alone already gives zero steady-state error to a step.',
     params: [P('k', 'Gain K', 1, 0.001, 1e6)],
     tf: (p) => ({ b: [p.k], a: [1, 0] }),
     tex: 'P(s) = \\frac{K}{s}',
@@ -117,7 +118,7 @@ export const PLANTS = {
     name: 'Second order',
     group: 'Second order',
     hint:
-      'A mass on a spring with damping — a servo, a suspension, a galvanometer. It has a ' +
+      'The series RLC from Circuit Lab — a filter tank, a crystal, any tuned stage. It has a ' +
       'resonance of its own before you touch it, and its pole pair spends 180° of phase in ' +
       'total, falling through −90° at ωₙ — the lighter the damping, the more abruptly. A ' +
       'controller can damp the resonance or make it very much worse.',
@@ -153,10 +154,10 @@ export const PLANTS = {
     name: 'Motor position',
     group: 'Second order',
     hint:
-      'A first-order motor with an integrator after it, because position is the integral of ' +
-      'speed. The classic K/(s(1+τs)) — and impossible to destabilise with proportional gain ' +
-      'alone: the integrator holds a flat −90°, the lag adds at most 90° more, so the phase ' +
-      'approaches −180° but never arrives.',
+      "A DC motor under voltage drive — the EE lab's classic servo plant: the winding's lag " +
+      'sets the speed, and position is speed integrated. K/(s(1+τs)) — and impossible to ' +
+      'destabilise with proportional gain alone: the integrator holds a flat −90°, the lag ' +
+      'adds at most 90° more, so the phase approaches −180° but never arrives.',
     params: [P('k', 'Gain K', 1, 0.001, 1e6), P('tau', 'Time constant τ', 0.5, 1e-7, 100, null, 's')],
     tf: (p) => ({ b: [p.k], a: [p.tau, 1, 0] }),
     tex: 'P(s) = \\frac{K}{s(1 + \\tau s)}',
@@ -184,7 +185,7 @@ export const PLANTS = {
     name: 'Three lags',
     group: 'Hard to control',
     hint:
-      'Three first-order lags in series. Each costs up to 90° of phase — 45° of it already at ' +
+      'Three buffered RC stages in series. Each costs up to 90° of phase — 45° of it already at ' +
       'its corner — so together they can reach −180° while the gain is still above one, and ' +
       'that is the condition for the loop to oscillate. Turn the gain up and watch it happen.',
     params: [
@@ -221,9 +222,10 @@ export const PLANTS = {
     name: 'Unstable plant',
     group: 'Hard to control',
     hint:
-      'A pole in the RIGHT half plane: an inverted pendulum, a fighter airframe, a magnetic ' +
-      'bearing. Left alone it runs away exponentially, and feedback is not an improvement here ' +
-      'but the only reason it works at all. Note that too LITTLE gain is now the problem.',
+      'A pole in the RIGHT half plane: an op-amp wired with positive feedback, a maglev coil, ' +
+      'a tunnel diode biased in its negative-resistance region. Left alone the state runs away ' +
+      'exponentially, and feedback is not an improvement here but the only reason it works at ' +
+      'all. Note that too LITTLE gain is now the problem.',
     params: [P('k', 'Gain K', 1, 0.001, 1e6), P('p', 'Unstable pole at +p', 1, 0.01, 1e6, null, '1/s')],
     tf: (p) => ({ b: [p.k], a: [1, -p.p] }),
     tex: 'P(s) = \\frac{K}{s - p}',
@@ -231,8 +233,8 @@ export const PLANTS = {
       'No passive network can be this plant: resistors, capacitors and inductors only ever ' +
       'dissipate or store, so their poles never reach the right half plane — a claim the test ' +
       'suite measures against every circuit analogue in this panel. Building a growing mode ' +
-      'takes an active element pumping energy in: an op-amp wired for positive feedback, the ' +
-      'electronic inverted pendulum.',
+      'takes an active element pumping energy in: an op-amp wired for positive feedback — a ' +
+      'latch fighting to be an amplifier.',
   },
 
   custom: {
@@ -318,8 +320,8 @@ export const CONTROLLERS = {
 /**
  * Open loop L = C·P, the closed loop T = L/(1+L) around it, and the
  * DISTURBANCE path — the response at the output to a step shoved in at the
- * plant's input, where real disturbances arrive (a gust on the airframe, a
- * load dropped on the motor):
+ * plant's input, where real disturbances arrive (a load transient, ripple
+ * from the supply):
  *
  *   Gd = P / (1 + C·P) = Pb·Ca / (Pa·Ca + Pb·Cb)
  *

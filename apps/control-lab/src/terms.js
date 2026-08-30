@@ -77,7 +77,7 @@ export const TERMS = {
     name: 'Disturbance',
     def:
       'An input the loop did not ask for, landing where real trouble lands: at the plant, ' +
-      'not the reference — a gust, a load, a warm-up drift. The loop sees it only through ' +
+      'not the reference — a load transient, supply ripple, a warm-up drift. The loop sees it only through ' +
       'the error it causes, and rejecting it is the half of feedback that following a ' +
       'setpoint cannot demonstrate.',
   },
@@ -100,8 +100,8 @@ export const TERMS = {
   rhp: {
     name: 'Right-half-plane pole',
     def:
-      'A pole with positive real part: a mode that GROWS, e^(+pt), like an inverted ' +
-      'pendulum falling. Turning the gain down does not help — only feedback fast and ' +
+      'A pole with positive real part: a mode that GROWS, e^(+pt) — a positive-feedback ' +
+      'stage latching toward its rail. Turning the gain down does not help — only feedback fast and ' +
       'strong enough can hold it, which inverts the usual failure mode: too LITTLE gain is ' +
       'what breaks this loop.',
   },
@@ -125,7 +125,7 @@ export const TERMS = {
     name: 'Effort (controller output u)',
     def:
       'What the controller actually asks of the plant — the drive u it computes from the ' +
-      'error: volts to a motor, a valve opening, thrust. The watch view splits it by gain: ' +
+      "error: volts across a winding, current into a coil, a converter's duty cycle. The watch view splits it by gain: " +
       'Kp·e answers the present gap, Ki·∫e remembers every error so far, Kd·ė answers the ' +
       'slope. At steady state under an integrator, u is made entirely of memory.',
   },
