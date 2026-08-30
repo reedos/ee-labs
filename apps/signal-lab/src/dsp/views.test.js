@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { designFir, movingAverage, poleRadius, designBiquad } from '@ee-labs/dsp'
+import { designFir, fft, movingAverage, poleRadius, designBiquad } from '@ee-labs/dsp'
 import {
   applyChain,
   chainGroupDelay,
@@ -344,5 +344,80 @@ describe('convolution kernel length', () => {
   it('stays small for chains that settle fast', () => {
     expect(convKernel([blk('movingavg', { taps: 8 })], FS).n).toBe(64)
     expect(convKernel([], FS).n).toBe(64)
+  })
+})
+
+describe('the theorem the convolution view prints', () => {
+  // The app prints "y = x ∗ h in time is Y(z) = X(z)·H(z)". House rule: a
+  // printed sentence is a measurable claim, so measure it — FFT(x ∗ h)
+  // against FFT(x)·FFT(h), pointwise.
+  //
+  // The trap: the DFT identity holds for CIRCULAR convolution. It equals the
+  // linear convolution the view performs only when both sequences are
+  // zero-padded to at least len(x)+len(h)−1, so the tail has nowhere to wrap.
+  const fftOf = (seq, size) => {
+    const re = new Float64Array(size)
+    const im = new Float64Array(size)
+    re.set(seq)
+    fft(re, im)
+    return { re, im }
+  }
+
+  it('FFT(x ∗ h) = FFT(x)·FFT(h), zero-padded past wrap-around', () => {
+    const blocks = [blk('lowpass', { freq: 900, q: 2 })]
+    const N = 256
+    const x = new Float64Array(N)
+    for (let i = 0; i < N; i++) {
+      x[i] = Math.sin((2 * Math.PI * 500 * i) / FS) + 0.4 * Math.sin((2 * Math.PI * 1700 * i) / FS)
+    }
+    const { h, exact } = chainImpulse(blocks, convKernel(blocks, FS).n, FS)
+    expect(exact).toBe(true)
+
+    // Linear convolution, by the definition the view animates.
+    const L = N + h.length - 1
+    const y = new Float64Array(L)
+    for (let n = 0; n < L; n++) {
+      let acc = 0
+      for (let k = Math.max(0, n - N + 1); k < h.length && k <= n; k++) acc += h[k] * x[n - k]
+      y[n] = acc
+    }
+
+    let size = 1
+    while (size < L) size <<= 1
+    const X = fftOf(x, size)
+    const H = fftOf(h, size)
+    const Y = fftOf(y, size)
+    for (let i = 0; i < size; i++) {
+      const pr = X.re[i] * H.re[i] - X.im[i] * H.im[i]
+      const pi = X.re[i] * H.im[i] + X.im[i] * H.re[i]
+      expect(Math.abs(Y.re[i] - pr), `bin ${i} re`).toBeLessThan(1e-9)
+      expect(Math.abs(Y.im[i] - pi), `bin ${i} im`).toBeLessThan(1e-9)
+    }
+  })
+
+  it('and fails WITHOUT the padding — circular is not linear', () => {
+    // Same identity attempted at FFT size N: the convolution tail wraps onto
+    // the front and the product no longer matches. This failing case is what
+    // makes the passing one above evidence rather than coincidence.
+    const blocks = [blk('lowpass', { freq: 900, q: 2 })]
+    const N = 256
+    const x = new Float64Array(N)
+    for (let i = 0; i < N; i++) x[i] = Math.sin((2 * Math.PI * 500 * i) / FS)
+    const { h } = chainImpulse(blocks, convKernel(blocks, FS).n, FS)
+    const y = new Float64Array(N)
+    for (let n = 0; n < N; n++) {
+      let acc = 0
+      for (let k = 0; k < h.length && k <= n; k++) acc += h[k] * x[n - k]
+      y[n] = acc
+    }
+    const X = fftOf(x, N)
+    const H = fftOf(h.slice(0, N), N)
+    const Y = fftOf(y, N)
+    let worst = 0
+    for (let i = 0; i < N; i++) {
+      const pr = X.re[i] * H.re[i] - X.im[i] * H.im[i]
+      worst = Math.max(worst, Math.abs(Y.re[i] - pr))
+    }
+    expect(worst).toBeGreaterThan(0.01)
   })
 })

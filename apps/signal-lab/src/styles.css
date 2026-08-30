@@ -249,6 +249,16 @@ button.flow-node:hover {
 .conv-speed { flex: 0 0 auto; }
 .conv-speed button { padding: 2px 9px; white-space: nowrap; }
 
+/* The theorem line under the convolution canvas: one thin caption, muted so
+   the plots keep the stage, the z-identity bolded as this lab's exact form. */
+.conv-theorem {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.45;
+}
+.conv-theorem b { color: var(--text); font-weight: 600; }
+
 /* Preset groups as fold-outs. The summary row is the h3 it replaced. */
 details.preset-group > summary {
   cursor: pointer;

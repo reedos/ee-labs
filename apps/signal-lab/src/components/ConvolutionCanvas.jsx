@@ -142,8 +142,12 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
         ctx.fillText(`kernel drawn ×${shown}`, outer.x + outer.w - 4 * k, top.y - 4 * k)
       }
 
-      // ---- bottom strip: the output so far
-      label(bot, exact ? 'output y so far — each sample is one such sum' : 'chain output — NOT this sum: the chain is nonlinear')
+      // ---- bottom strip: the output so far. This is where the action gets
+      // its name: the flip-slide-multiply-sum above IS convolution, and the
+      // view should say so where it happens, not leave the pane title to
+      // carry it. The nonlinear label keeps its refusal instead — printing
+      // y = x ∗ h over an output the sum does not produce would be a lie.
+      label(bot, exact ? 'output y = x ∗ h so far — this flip, slide, multiply and sum is convolution' : 'chain output — NOT this sum: the chain is nonlinear')
       zero(bot, syBot)
 
       ctx.strokeStyle = exact ? COLORS.spectrum : COLORS.marker

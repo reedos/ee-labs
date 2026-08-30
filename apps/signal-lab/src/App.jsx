@@ -474,6 +474,23 @@ export default function App() {
                 pos={scrub.pos}
                 exact={conv.exact}
               />
+              {conv.exact && (
+                // The theorem this view enacts, in both vocabularies. This lab
+                // is sampled, so its exact identity is the z-form; the s-form
+                // is the continuous twin Circuit Lab speaks. Both, labelled,
+                // because they are one theorem — the suite's thesis in a line.
+                // Gated on exact: a nonlinear chain has no H, and the canvas
+                // label above already says so. Tested (linear vs circular
+                // convolution) in views.test.js before this sentence prints.
+                <p className="conv-theorem">
+                  One theorem, two vocabularies: y = x ∗ h in time is{' '}
+                  <b>
+                    Y(z) = X(z)·H(z)
+                  </b>{' '}
+                  here in the sampled domain — and Y(s) = X(s)·H(s) is its
+                  continuous twin, the form Circuit Lab reads.
+                </p>
+              )}
             </>
           ) : state.timeView === 'impulse' && impulse ? (
             <ImpulseCanvas
