@@ -6,7 +6,7 @@ and explains, next to every number, where that number came from.
 
 ```
 npm install
-npm test                 # every package and every app (365 tests)
+npm test                 # every package and every app (387 tests)
 npm run dev              # Signal Lab, at http://localhost:1421
 ```
 
@@ -14,9 +14,9 @@ npm run dev              # Signal Lab, at http://localhost:1421
 
 | | covers | status |
 |---|---|---|
-| **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 23 lessons |
-| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters | 12 lessons, 9 circuits |
-| **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response | 11 lessons, 6 plants x 4 controllers |
+| **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 29 lessons |
+| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters, tolerance | 13 lessons, 9 circuits |
+| **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 12 lessons, 6 plants x 4 controllers |
 
 A third tool, [`waveform-simulator`](https://github.com/reedos/waveform-simulator), covers
 communications and high-speed optical links. It lives outside this repo: it serves
@@ -30,10 +30,11 @@ question, and every claim its note makes is rendered and measured by a test — 
 the numbers quoted in prose, which are the ones that drift when a default changes and
 nobody notices.
 
-That is not a style preference. It has caught six confidently wrong explanations so far,
-four in Signal Lab and two written while building the other two apps. The most recent: a
-Control Lab note promised a step overshooting "about 45%" and the setup it loaded
-overshot 57%.
+That is not a style preference. It has caught eight confidently wrong explanations so
+far. A Control Lab note promised a step overshooting "about 45%" and the setup it loaded
+overshot 57%; a Circuit Lab note claimed ±5% parts move f₀ by "about half the part
+tolerance", and its own test measured 4.3% — the square root halves each PART'S error,
+but two parts contribute, and the note now says what is true.
 
 ## The bridges
 
