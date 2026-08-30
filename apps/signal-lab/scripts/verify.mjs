@@ -110,14 +110,24 @@ async function setField(label, value, nth = 0) {
   await settle()
 }
 
+/** Click a preset by name.
+ *
+ * Scoped to `.preset` and anchored, because a view-switch button can carry the
+ * same words as a preset, and a preset name can be a prefix of another's.
+ */
+const loadPreset = async (name) => {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  await page.locator('.preset').filter({ hasText: new RegExp(`^${esc}$`) }).first().click()
+  await settle()
+}
+
 const presetNames = await page.$$eval('.preset', (els) => els.map((e) => e.textContent.trim()))
 
 // ------------------------------------------------- 1. every preset renders
 
 console.log(`\n1. Loading all ${presetNames.length} presets, opening every math panel\n`)
 for (const name of presetNames) {
-  await page.getByRole('button', { name, exact: true }).click()
-  await settle()
+  await loadPreset(name)
   if (await scrolls()) fail(`${name}: page scrolls`)
 
   await expandBlocks()
@@ -139,8 +149,7 @@ for (const name of presetNames) {
 // ------------------------------- 2. does the spectrum follow the frequency?
 
 console.log('\n2. Sweeping source frequency — does the measured peak follow?\n')
-await page.getByRole('button', { name: 'Single tone', exact: true }).click()
-await settle()
+await loadPreset('Single tone')
 let prev = await canvasHashes()
 for (const f of [100, 250, 440, 1000, 2000, 3300]) {
   await setField('Frequency', f)
@@ -161,8 +170,7 @@ for (const f of [100, 250, 440, 1000, 2000, 3300]) {
 // ------------------------------------------ 3. does Q follow into the math?
 
 console.log('\n3. Sweeping Q — does the panel track |H(f0)| = Q?\n')
-await page.getByRole('button', { name: 'Resonance is Q', exact: true }).click()
-await settle()
+await loadPreset('Resonance is Q')
 await expandBlocks()
 await openAllMath()
 for (const q of [0.5, 0.707, 1, 2, 5, 10, 20]) {
@@ -185,8 +193,7 @@ for (const q of [0.5, 0.707, 1, 2, 5, 10, 20]) {
 // ------------------------------------- 4. cutoff sweep on a filtered square
 
 console.log('\n4. Sweeping filter cutoff on a square — does |H| stay right?\n')
-await page.getByRole('button', { name: 'Low-pass a square', exact: true }).click()
-await settle()
+await loadPreset('Low-pass a square')
 await openAllMath()
 for (const fc of [300, 500, 700, 1200, 2000, 3000]) {
   await setField('Cutoff', fc)
@@ -202,8 +209,7 @@ for (const fc of [300, 500, 700, 1200, 2000, 3000]) {
 // -------------------------------------------- 5. every source type in turn
 
 console.log('\n5. Every source waveform, with its own math panel\n')
-await page.getByRole('button', { name: 'Single tone', exact: true }).click()
-await settle()
+await loadPreset('Single tone')
 const typeSelect = page.locator('.source select').first()
 const types = await typeSelect.locator('option').evaluateAll((os) => os.map((o) => o.value))
 for (const t of types) {
@@ -224,16 +230,14 @@ for (const t of types) {
 // --------------------------------------------- 6. every block type in turn
 
 console.log('\n6. Every block type, added fresh, with its own math panel\n')
-await page.getByRole('button', { name: 'Single tone', exact: true }).click()
-await settle()
+await loadPreset('Single tone')
 const addMenu = page.locator('select[aria-label="Add a processing block"]')
 const blockTypes = await addMenu
   .locator('option')
   .evaluateAll((os) => os.filter((o) => o.value).map((o) => o.value))
 
 for (const type of blockTypes) {
-  await page.getByRole('button', { name: 'Single tone', exact: true }).click()
-  await settle()
+  await loadPreset('Single tone')
   const before = await canvasHashes()
   await addMenu.selectOption(type)
   await settle()
@@ -258,8 +262,7 @@ for (const type of blockTypes) {
 // --------------------------------- 7. a filter's own parameters, end to end
 
 console.log('\n7. Editing a biquad — do its printed coefficients and checks follow?\n')
-await page.getByRole('button', { name: 'Resonance is Q', exact: true }).click()
-await settle()
+await loadPreset('Resonance is Q')
 await openAllMath()
 let lastCoeff = null
 for (const [fc, q] of [[400, 1], [800, 4], [1600, 0.707], [2400, 12]]) {
@@ -285,8 +288,7 @@ for (const [fc, q] of [[400, 1], [800, 4], [1600, 0.707], [2400, 12]]) {
 // ------------------------------------------------- 8. quantizer bit depth
 
 console.log('\n8. Bit crusher — does the derived step size follow the bit count?\n')
-await page.getByRole('button', { name: '4 bits', exact: true }).click()
-await settle()
+await loadPreset('4 bits')
 await openAllMath()
 for (const bits of [4, 8, 12, 16]) {
   await setField('Bits', bits)
@@ -307,8 +309,7 @@ for (const bits of [4, 8, 12, 16]) {
 // ------------------------------------------------- 9. sample rate and FFT
 
 console.log('\n9. Changing sample rate and FFT size\n')
-await page.getByRole('button', { name: 'Square = odd harmonics', exact: true }).click()
-await settle()
+await loadPreset('Square = odd harmonics')
 await openAllMath()
 for (const [rate, fft] of [[8000, 2048], [16000, 2048], [22050, 4096], [44100, 8192], [48000, 1024]]) {
   await setField('Rate', rate)
@@ -324,13 +325,111 @@ for (const [rate, fft] of [[8000, 2048], [16000, 2048], [22050, 4096], [44100, 8
   if (await scrolls()) fail(`rate ${rate}/${fft}: page scrolls`)
 }
 
-// -------------------------------------------------------------- 10. 4K fit
+// ----------------------- 10. the pane view switches and the spectrum overlay
 
-console.log('\n10. Re-checking layout at 4K\n')
+console.log('\n10. Impulse response, z-plane and the group-delay overlay\n')
+
+{
+  await loadPreset('The kernel is the filter')
+
+  // The preset asks for the impulse view, so it should already be showing.
+  const impulseOn = await page
+    .locator('.view-switch button[aria-pressed="true"]')
+    .first()
+    .textContent()
+  if (!/Kernel/.test(impulseOn)) {
+    fail(`preset did not select the impulse view (got "${impulseOn.trim()}")`)
+  }
+
+  // The readout must state the delay this kernel actually has.
+  const r1 = await readout()
+  const timeRow = (r1['Time domain'] || []).join(' | ')
+  if (!/15 samples/.test(timeRow)) {
+    fail(`impulse readout does not report a 15-sample delay: ${timeRow}`)
+  } else {
+    console.log(`   impulse view reports: ${timeRow}`)
+  }
+
+  // Switching back and forth must actually redraw the top canvas.
+  const hImpulse = (await canvasHashes())[0]
+  await page.locator('.view-switch button', { hasText: 'Signal' }).first().click()
+  await settle()
+  const hSignal = (await canvasHashes())[0]
+  if (hImpulse === hSignal) fail('switching to the signal view did not redraw the top plot')
+  await page.locator('.view-switch button', { hasText: 'Kernel' }).first().click()
+  await settle()
+  if ((await canvasHashes())[0] !== hImpulse) {
+    fail('returning to the impulse view did not reproduce the same plot')
+  } else {
+    console.log('   impulse <-> signal switching redraws, and is stable')
+  }
+
+  // Raising the tap count must move the reported delay to (N-1)/2.
+  await expandBlocks()
+  await setField('Taps N', 61)
+  const r2 = await readout()
+  const t2 = (r2['Time domain'] || []).join(' | ')
+  if (!/30 samples/.test(t2)) fail(`61 taps should delay by 30 samples, readout says: ${t2}`)
+  else console.log('   61 taps -> delay 30 samples, as (N-1)/2')
+}
+
+{
+  await loadPreset('Zeros on the circle')
+
+  const r = await readout()
+  const freqRow = (r['Frequency domain'] || []).join(' | ')
+  // A 12-tap moving average has 11 zeros and no poles at all.
+  if (!/poles\s*0/.test(freqRow) || !/zeros\s*11/.test(freqRow)) {
+    fail(`z-plane readout wrong for a 12-tap average: ${freqRow}`)
+  } else {
+    console.log(`   z-plane reports: ${freqRow}`)
+  }
+
+  // A resonant biquad must add two poles and two zeros to that count.
+  const zBefore = (await canvasHashes())[1]
+  await page.selectOption('select.add', 'lowpass')
+  await settle()
+  const freq2 = ((await readout())['Frequency domain'] || []).join(' | ')
+  if (!/poles\s*2/.test(freq2)) fail(`adding a low-pass should add 2 poles: ${freq2}`)
+  else console.log(`   after adding a low-pass: ${freq2}`)
+  if ((await canvasHashes())[1] === zBefore) fail('z-plane did not redraw when a block was added')
+}
+
+{
+  await loadPreset('Everything arrives together')
+
+  // The preset selects the group-delay overlay; switching it must redraw, which
+  // is what proves the canvas received it rather than the state merely holding it.
+  const pressed = await page.$$eval('.controls .segmented button[aria-pressed="true"]', (b) =>
+    b.map((x) => x.textContent.trim()),
+  )
+  if (!pressed.includes('Group delay')) {
+    fail(`group-delay overlay not selected by the preset: ${pressed.join(', ')}`)
+  } else {
+    console.log('   preset selected the group-delay overlay')
+  }
+
+  const before = (await canvasHashes())[1]
+  await page.locator('.controls .segmented button', { hasText: 'Phase' }).first().click()
+  await settle()
+  const after = (await canvasHashes())[1]
+  if (before === after) fail('switching overlay from group delay to phase did not redraw')
+  else console.log('   overlay switches redraw the spectrum')
+
+  await page.locator('.controls .segmented button', { hasText: 'None' }).first().click()
+  await settle()
+  if ((await canvasHashes())[1] === after) fail('turning the overlay off did not redraw')
+}
+
+if (await scrolls()) fail('new views: page scrolls')
+
+// -------------------------------------------------------------- 11. 4K fit
+
+console.log('\n11. Re-checking layout at 4K\n')
 await page.setViewportSize({ width: 3840, height: 2160 })
 await page.waitForTimeout(500)
 for (const name of presetNames) {
-  await page.getByRole('button', { name, exact: true }).click()
+  await page.locator('.preset', { hasText: name }).first().click()
   await page.waitForTimeout(120)
   if (await scrolls()) fail(`4K / ${name}: page scrolls`)
 }

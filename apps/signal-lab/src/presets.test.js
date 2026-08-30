@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { PRESETS, PRESET_GROUPS } from './presets.js'
 import { chainResponse, renderChain } from './dsp/chain.js'
 import { spectrum } from '@ee-labs/dsp'
-import { designBiquad, biquadResponse } from '@ee-labs/dsp'
+import { designBiquad, biquadResponse, designFir } from '@ee-labs/dsp'
+import { chainGroupDelay, chainImpulse, chainPolesZeros } from './dsp/chain.js'
 
 // The presets are the lessons, and each note makes a claim about physics:
 // "only odd harmonics", "the peak is Q", "neither input survives". A note that
@@ -307,5 +308,158 @@ describe('preset: Two tones, one nonlinearity', () => {
     // A symmetric clipper makes odd-order products; the even-order ones stay
     // small until something breaks the symmetry.
     expect(clipped.at(150)).toBeLessThan(clipped.at(900) / 10)
+  })
+})
+
+// ------------------------------------------------------ FIR and the z-plane
+
+describe('preset: A moving average is a filter', () => {
+  // The note claims deep nulls every fs/N. Tested by putting a sine exactly on
+  // one and seeing whether it survives, which is a stronger reading than
+  // eyeballing a noise spectrum.
+  it('annihilates a tone sitting exactly on a null', () => {
+    const p = byName('A moving average is a filter').patch
+    const N = p.blocks[0].params.taps
+    const fs = p.sampleRate
+    const spacing = fs / N
+
+    for (let mult = 1; mult * spacing < fs / 2; mult++) {
+      const f = mult * spacing
+      const sources = [{ id: 1, type: 'sine', freq: f, amp: 1, phase: 0, enabled: true }]
+      const r = renderChain(sources, p.blocks, 4096, fs)
+      let pk = 0
+      // Skip the pre-roll region: the filter is settled, but the first N-1
+      // output samples of the returned frame are still the honest response.
+      for (let i = N; i < r.buf.length; i++) pk = Math.max(pk, Math.abs(r.buf[i]))
+      expect(pk, `${f} Hz`).toBeLessThan(1e-9)
+    }
+  })
+
+  it('passes DC through untouched', () => {
+    const p = byName('A moving average is a filter').patch
+    const sources = [{ id: 1, type: 'sine', freq: 0, amp: 1, phase: Math.PI / 2, enabled: true }]
+    const r = renderChain(sources, p.blocks, 512, p.sampleRate)
+    for (let i = p.blocks[0].params.taps; i < r.buf.length; i++) {
+      expect(r.buf[i]).toBeCloseTo(1, 12)
+    }
+  })
+})
+
+describe('preset: Everything arrives together', () => {
+  it('has a flat group delay of exactly (N-1)/2 samples', () => {
+    const p = byName('Everything arrives together').patch
+    const N = p.blocks[0].params.taps
+    const freqs = Float64Array.from({ length: 513 }, (_, i) => (i * p.sampleRate) / 2 / 512)
+    const { delay } = chainGroupDelay(p.blocks, freqs, p.sampleRate)
+    let seen = 0
+    for (let i = 1; i < delay.length - 1; i++) {
+      if (!Number.isFinite(delay[i])) continue
+      expect(delay[i]).toBeCloseTo((N - 1) / 2, 5)
+      seen++
+    }
+    expect(seen).toBeGreaterThan(300)
+  })
+
+  // The note contrasts this against a biquad. That contrast is the lesson, so
+  // it gets measured rather than asserted.
+  it('a biquad at the same cutoff is NOT flat', () => {
+    const p = byName('Everything arrives together').patch
+    const fc = p.blocks[0].params.freq
+    const bq = [{ id: 9, type: 'lowpass', bypass: false, params: { freq: fc, q: 4, gainDb: 0 } }]
+    const freqs = Float64Array.from({ length: 513 }, (_, i) => (i * p.sampleRate) / 2 / 512)
+    const { delay } = chainGroupDelay(bq, freqs, p.sampleRate)
+    let lo = Infinity
+    let hi = -Infinity
+    for (let i = 1; i < delay.length - 1; i++) {
+      if (!Number.isFinite(delay[i])) continue
+      lo = Math.min(lo, delay[i])
+      hi = Math.max(hi, delay[i])
+    }
+    expect(hi - lo).toBeGreaterThan(5)
+  })
+
+  it('sits at half amplitude at the cutoff, not at -3 dB', () => {
+    const p = byName('Everything arrives together').patch
+    const fc = p.blocks[0].params.freq
+    const { mag } = chainResponse(p.blocks, Float64Array.of(fc), p.sampleRate)
+    expect(mag[0]).toBeCloseTo(0.5, 2)
+    // Emphatically not the biquad convention.
+    expect(Math.abs(mag[0] - Math.SQRT1_2)).toBeGreaterThan(0.1)
+  })
+})
+
+describe('preset: The kernel is the filter', () => {
+  it('the impulse response IS the designed kernel', () => {
+    const p = byName('The kernel is the filter').patch
+    const want = designFir(p.blocks[0].params, p.sampleRate)
+    const { h, exact } = chainImpulse(p.blocks, 256, p.sampleRate)
+    expect(exact).toBe(true)
+    for (let k = 0; k < want.length; k++) expect(h[k]).toBeCloseTo(want[k], 15)
+  })
+
+  it('has its symmetry centre where the note says', () => {
+    const p = byName('The kernel is the filter').patch
+    const h = designFir(p.blocks[0].params, p.sampleRate)
+    expect((h.length - 1) / 2).toBe(15)
+    for (let k = 0, j = h.length - 1; k < j; k++, j--) {
+      expect(h[k]).toBeCloseTo(h[j], 15)
+    }
+  })
+})
+
+describe('preset: Cut it off abruptly and it rings', () => {
+  const overshoot = (blocks, fs) => {
+    const freqs = Float64Array.from({ length: 400 }, (_, i) => (i * blocks[0].params.freq) / 400)
+    const { mag } = chainResponse(blocks, freqs, fs)
+    let top = 0
+    for (const v of mag) top = Math.max(top, v)
+    return top - 1
+  }
+
+  it('overshoots by roughly the Gibbs 9%', () => {
+    const p = byName('Cut it off abruptly and it rings').patch
+    const o = overshoot(p.blocks, p.sampleRate)
+    expect(o).toBeGreaterThan(0.05)
+    expect(o).toBeLessThan(0.12)
+  })
+
+  it('more taps do not fix it, and a taper does', () => {
+    const p = byName('Cut it off abruptly and it rings').patch
+    const with_ = (over) => [{ ...p.blocks[0], params: { ...p.blocks[0].params, ...over } }]
+    // Doubling the length leaves the overshoot essentially where it was...
+    const short = overshoot(with_({ taps: 101 }), p.sampleRate)
+    const long = overshoot(with_({ taps: 201 }), p.sampleRate)
+    expect(Math.abs(long - short)).toBeLessThan(0.02)
+    // ...while a window removes it outright.
+    expect(overshoot(with_({ window: 'hamming' }), p.sampleRate)).toBeLessThan(0.01)
+  })
+})
+
+describe('preset: Zeros on the circle', () => {
+  it('has N-1 zeros, all of them exactly on the unit circle', () => {
+    const p = byName('Zeros on the circle').patch
+    const N = p.blocks[0].params.taps
+    const { poles, zeros } = chainPolesZeros(p.blocks, p.sampleRate)
+    expect(poles).toHaveLength(0)
+    expect(zeros).toHaveLength(N - 1)
+    for (const [re, im] of zeros) expect(Math.hypot(re, im)).toBeCloseTo(1, 9)
+  })
+
+  // The claim that ties the two panes together: each zero's ANGLE is a null's
+  // frequency. Not a resemblance — the same numbers.
+  it('every zero sits at the angle of a null in the spectrum', () => {
+    const p = byName('Zeros on the circle').patch
+    const fs = p.sampleRate
+    const { zeros } = chainPolesZeros(p.blocks, fs)
+    const spacing = fs / p.blocks[0].params.taps
+    for (const [re, im] of zeros) {
+      const f = (Math.abs(Math.atan2(im, re)) * fs) / (2 * Math.PI)
+      // The angle lands on a whole multiple of fs/N...
+      const mult = f / spacing
+      expect(Math.abs(mult - Math.round(mult)), `${f} Hz`).toBeLessThan(1e-6)
+      // ...and the response there really is zero.
+      const { mag } = chainResponse(p.blocks, Float64Array.of(f), fs)
+      expect(mag[0], `${f} Hz`).toBeLessThan(1e-9)
+    }
   })
 })

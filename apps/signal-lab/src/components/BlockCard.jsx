@@ -50,7 +50,7 @@ export default function BlockCard({
         </button>
         {!open && (
           <span className="block-summary">
-            {block.bypass ? 'bypassed' : def.summary(block.params)}
+            {block.bypass ? 'bypassed' : def.summary(block.params, ctx)}
           </span>
         )}
         <button

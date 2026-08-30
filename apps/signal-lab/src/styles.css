@@ -212,3 +212,20 @@ button.flow-node:hover {
   font-size: 11px;
   line-height: 1.5;
 }
+
+/* The per-pane view switch, in the pane's own header.
+   Sized to sit on the h2's baseline without pushing the readouts to a second
+   row, which would cost plot height — the one thing the layout has none of. */
+.view-switch {
+  margin-right: auto;
+  flex: 0 0 auto;
+}
+
+.view-switch button {
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+@media (max-height: 700px) {
+  .view-switch button { padding: 1px 8px; font-size: 10px; }
+}

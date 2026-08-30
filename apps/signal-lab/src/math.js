@@ -20,6 +20,9 @@ const C = (rows) => ({ kind: 'check', rows })
 // printing one number in both columns and marking it correct.
 const V = (rows) => ({ kind: 'values', rows })
 
+/** Enough digits to reproduce the arithmetic, not so many it becomes noise. */
+const sig = (v, n = 6) => Number(v.toPrecision(n))
+
 /** Amplitude of a discrete square/triangle harmonic, including the sampling correction. */
 const discreteBoost = (k, N) => (k * Math.PI) / N / Math.sin((k * Math.PI) / N)
 
@@ -370,6 +373,233 @@ const ENTRIES = {
             'bandwidth instead, as ω₀/Q.',
         ),
         C(rows),
+      ],
+    }
+  },
+
+  'A moving average is a filter': (ctx) => {
+    const N = ctx.blocks[0] ? ctx.blocks[0].params.taps : 8
+    const fs = ctx.sampleRate
+    const spacing = fs / N
+    // The Dirichlet kernel where it is neither 1 nor 0, so the row reads the
+    // curve's actual shape rather than one of its two easy points.
+    const mid = spacing * 1.5
+    const dirichlet = (f) => {
+      const w = (2 * Math.PI * f) / fs
+      return Math.abs(Math.sin((N * w) / 2) / (N * Math.sin(w / 2)))
+    }
+    return {
+      blocks: [
+        T('Averaging the last N samples is a filter whose coefficients are all the same:'),
+        F(`y[n] = \\frac{1}{N}\\sum_{k=0}^{N-1} x[n-k], \\qquad N = ${N}`),
+        T(
+          'Summing that geometric series of e^{-j\\omega k} in closed form gives the Dirichlet ' +
+            'kernel, and the whole shape follows from it:',
+        ),
+        F('|H(f)| = \\left|\\frac{\\sin(\\pi f N / f_s)}{N \\sin(\\pi f / f_s)}\\right|'),
+        T(
+          'The numerator vanishes whenever fN/fₛ is a whole number and the denominator does ' +
+            'not — so there is an exact null at every multiple of fₛ/N, with no approximation ' +
+            'anywhere in the statement.',
+        ),
+        C([
+          {
+            label: `|H| at ${sig(mid, 4)} Hz, between two nulls`,
+            predicted: dirichlet(mid),
+            measured: ctx.respAt(mid),
+            tol: 0.03,
+          },
+          {
+            label: `|H| at the first null, ${sig(spacing, 4)} Hz`,
+            predicted: 0,
+            measured: ctx.respAt(spacing),
+            abs: 0.02,
+          },
+        ]),
+        V([
+          { label: 'null spacing fₛ/N', value: spacing, unit: 'Hz' },
+          { label: 'nulls below Nyquist', value: Math.floor(fs / 2 / spacing) },
+          { label: 'group delay (N−1)/2', value: (N - 1) / 2, unit: 'samples' },
+        ]),
+      ],
+    }
+  },
+
+  'Everything arrives together': (ctx) => {
+    const b = ctx.blocks[0]
+    const N = b ? b.params.taps : 61
+    const M = (N - 1) / 2
+    const fc = b ? b.params.freq : 1000
+    return {
+      blocks: [
+        T(
+          'A kernel symmetric about its centre tap factors into a real amplitude times a pure ' +
+            'delay — and a pure delay is the one operation that changes no shape at all:',
+        ),
+        F('H(\\omega) = A(\\omega)\\,e^{-j\\omega M}, \\qquad A(\\omega)\\ \\text{real}'),
+        T('Group delay is the derivative of that phase, so it is constant whatever A does:'),
+        F(
+          `\\tau_g(\\omega) = -\\frac{d}{d\\omega}\\bigl(-\\omega M\\bigr) = M = \\frac{N-1}{2} = ${M}` +
+            `\\ \\text{samples}`,
+        ),
+        T(
+          'The design also puts its corner at the HALF-amplitude point rather than the −3 dB ' +
+            'point a biquad uses. A windowed sinc truncates an ideal rectangle, and the ' +
+            'truncation rounds that edge symmetrically about f_c, leaving the response there at ' +
+            '0.5 — which is −6 dB, not −3.',
+        ),
+        C([
+          {
+            label: `|H| at the cutoff, ${sig(fc, 4)} Hz`,
+            predicted: 0.5,
+            measured: ctx.respAt(fc),
+            tol: 0.04,
+          },
+        ]),
+        V([
+          { label: 'group delay', value: M, unit: 'samples' },
+          { label: 'group delay', value: (1000 * M) / ctx.sampleRate, unit: 'ms' },
+          { label: 'cutoff in dB', value: -6.02, unit: 'dB', note: 'a biquad’s is −3.01' },
+          { label: 'multiply-adds per sample', value: N, note: 'a biquad needs 5' },
+        ]),
+      ],
+    }
+  },
+
+  'The kernel is the filter': (ctx) => {
+    const N = ctx.blocks[0] ? ctx.blocks[0].params.taps : 31
+    return {
+      blocks: [
+        T(
+          'Feed a single 1 followed by silence and what comes out is the sequence the filter ' +
+            'convolves every input with. For an FIR that sequence is the coefficient list ' +
+            'itself — the stems in the top pane ARE h[k].',
+        ),
+        F('y[n] = \\sum_{k} h[k]\\,x[n-k]'),
+        T(
+          'Convolution in time is multiplication in frequency, which is why one object explains ' +
+            'both panes at once:',
+        ),
+        F('y[n] = (h * x)[n] \\quad \\Longleftrightarrow \\quad Y(\\omega) = H(\\omega)\\,X(\\omega)'),
+        T(
+          'The taps are scaled to sum to one. Summing the taps IS the response at DC, since ' +
+            'every e^{-j\\omega k} equals 1 there — so unit DC gain is arithmetic rather than a ' +
+            'tolerance:',
+        ),
+        C([
+          {
+            label: '|H| at DC',
+            predicted: 1,
+            measured: ctx.respAt(0),
+            tol: 0.01,
+          },
+        ]),
+        V([
+          { label: 'taps N', value: N },
+          { label: 'symmetry centre', value: (N - 1) / 2, unit: 'samples' },
+          { label: 'exactly zero after', value: N - 1, unit: 'samples', note: 'no tail at all' },
+        ]),
+      ],
+    }
+  },
+
+  'Cut it off abruptly and it rings': (ctx) => {
+    const b = ctx.blocks[0]
+    const fc = b ? b.params.freq : 1000
+    // The overshoot as it appears on the curve the app is drawing: the largest
+    // value anywhere in the passband.
+    let top = 0
+    for (let f = 0; f < fc; f += fc / 200) {
+      const v = ctx.respAt(f)
+      if (Number.isFinite(v) && v > top) top = v
+    }
+    return {
+      blocks: [
+        T(
+          'The ideal low-pass is a rectangle in frequency, and its inverse transform is a sinc ' +
+            'that never ends, so a real filter keeps a finite piece of it:',
+        ),
+        F(
+          'h_{\\text{ideal}}[k] = 2\\frac{f_c}{f_s}\\,' +
+            '\\operatorname{sinc}\\!\\left(2\\frac{f_c}{f_s}(k-M)\\right)',
+        ),
+        T(
+          'Keeping a finite piece is multiplying by a rectangular window, and multiplying in ' +
+            'time is convolving in frequency — so the brick wall gets convolved with that ' +
+            'window’s transform, a sinc with substantial side lobes. The overshoot beside the ' +
+            'corner IS that convolution.',
+        ),
+        C([
+          {
+            label: 'largest |H| in the passband',
+            predicted: 1.085,
+            measured: top,
+            tol: 0.05,
+          },
+        ]),
+        T(
+          'More taps make the ripple narrower and never shorter, because it converges to a ' +
+            'constant fraction of the step — the same Gibbs behaviour as a truncated Fourier ' +
+            'series overshooting a square wave, seen in the other domain. Only tapering the ' +
+            'window’s ends removes it.',
+        ),
+        V([
+          { label: 'overshoot above the passband', value: (top - 1) * 100, unit: '%' },
+          { label: 'Gibbs limit for a step', value: 8.95, unit: '%' },
+        ]),
+      ],
+    }
+  },
+
+  'Zeros on the circle': (ctx) => {
+    const N = ctx.blocks[0] ? ctx.blocks[0].params.taps : 12
+    const fs = ctx.sampleRate
+    const spacing = fs / N
+    const mid = spacing * 0.5
+    const dirichlet = (f) => {
+      const w = (2 * Math.PI * f) / fs
+      return Math.abs(Math.sin((N * w) / 2) / (N * Math.sin(w / 2)))
+    }
+    return {
+      blocks: [
+        T(
+          'Sum the moving average’s geometric series and its transfer function becomes a ratio ' +
+            'whose roots can be read off by inspection:',
+        ),
+        F(
+          'H(z) = \\frac{1}{N}\\sum_{k=0}^{N-1} z^{-k} = ' +
+            '\\frac{1}{N}\\,\\frac{z^{N}-1}{z^{N-1}(z-1)}',
+        ),
+        T(
+          'The numerator vanishes at the N-th roots of unity. One of them, z = 1, is cancelled ' +
+            'by the denominator — which is why DC survives untouched — and the other N−1 are ' +
+            'the zeros drawn below, sitting exactly on the unit circle at evenly spaced angles:',
+        ),
+        F(`z_k = e^{\\,j 2\\pi k / N}, \\qquad k = 1 \\ldots ${N - 1}`),
+        T(
+          'A point at angle ω on that circle IS the frequency ωfₛ/2π, so a zero sitting on it ' +
+            'means an exact null there. The evenly spaced ring and the evenly spaced comb of ' +
+            'nulls are one fact drawn twice.',
+        ),
+        C([
+          {
+            label: `|H| halfway to the first null, ${sig(mid, 4)} Hz`,
+            predicted: dirichlet(mid),
+            measured: ctx.respAt(mid),
+            tol: 0.03,
+          },
+          {
+            label: `a zero lands on the null at ${sig(spacing, 4)} Hz`,
+            predicted: 0,
+            measured: ctx.respAt(spacing),
+            abs: 0.02,
+          },
+        ]),
+        V([
+          { label: 'zeros on the circle', value: N - 1 },
+          { label: 'angle between them', value: 360 / N, unit: '°' },
+          { label: 'poles away from the origin', value: 0, note: 'so it cannot be unstable' },
+        ]),
       ],
     }
   },

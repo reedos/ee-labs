@@ -20,5 +20,21 @@ export {
   isStable,
   settleSamples,
   makeBiquad,
+  biquadPolesZeros,
 } from './src/biquad.js'
+export {
+  FIR_MODES,
+  TAPS_MIN,
+  TAPS_MAX,
+  sinc,
+  movingAverage,
+  designFir,
+  firAt,
+  firResponse,
+  firPhase,
+  firGroupDelay,
+  firZeros,
+  isSymmetric,
+  makeFir,
+} from './src/fir.js'
 export { createChain } from './src/chain.js'

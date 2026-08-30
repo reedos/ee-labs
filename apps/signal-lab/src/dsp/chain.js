@@ -8,5 +8,115 @@ import { BLOCK_TYPES } from './blocks.js'
 // entirely different blocks — a control loop, say — reuses all of this without
 // the package needing to know anything about filters.
 
-export const { chainSettle, applyChain, renderChain, runChain, chainResponse, chainPhase } =
-  createChain(BLOCK_TYPES)
+export const {
+  chainSettle,
+  applyChain,
+  renderChain,
+  runChain,
+  chainResponse,
+  chainPhase,
+  chainGroupDelay,
+} = createChain(BLOCK_TYPES)
+
+const active = (blocks) => blocks.filter((b) => !b.bypass && BLOCK_TYPES[b.type])
+
+/**
+ * Every pole and zero in the chain, gathered onto one z-plane.
+ *
+ * Cascading multiplies transfer functions, so the poles and zeros of a chain are
+ * simply all of them collected — no algebra required, which is exactly why this
+ * view scales to a chain in a way that writing out H(z) does not.
+ *
+ * Returns `{ poles, zeros, exact, any, tooMany }`. `exact` is false when some
+ * block has no transfer function at all: a clipper is not a filter and has no
+ * roots to draw, so the picture is then only part of the story and the UI says
+ * so rather than presenting it as complete.
+ */
+export function chainPolesZeros(blocks, sampleRate) {
+  const poles = []
+  const zeros = []
+  let exact = true
+  let any = false
+  let tooMany = 0
+
+  for (const b of active(blocks)) {
+    const def = BLOCK_TYPES[b.type]
+    if (!def.pz) {
+      exact = false
+      continue
+    }
+    const r = def.pz(b.params, sampleRate)
+    if (r.tooMany) {
+      tooMany = Math.max(tooMany, r.tooMany)
+      exact = false
+      continue
+    }
+    any = true
+    poles.push(...r.poles)
+    zeros.push(...r.zeros)
+  }
+
+  return { poles, zeros, exact, any, tooMany }
+}
+
+/**
+ * The chain's impulse response — its kernel.
+ *
+ * Fed a single 1 followed by silence, an LTI chain emits exactly the sequence it
+ * convolves every input with. That is not an analogy: filtering IS convolution
+ * with this, and for the FIR blocks the samples that come back are literally the
+ * tap values the designer computed.
+ *
+ * Measured by running the real chain rather than by asking each block for its
+ * kernel, so what is drawn is what the audio path actually does, cascade
+ * included. `exact` carries the usual caveat: a nonlinear block has no impulse
+ * response, and what comes back is then that block's response to an impulse,
+ * which is a different and much weaker claim.
+ */
+/**
+ * The centre of symmetry of a kernel, in samples, or null if it has none.
+ *
+ * A symmetric kernel is a pure delay times a real amplitude, so this number is
+ * the group delay — the same value the overlay plots as a flat line.
+ *
+ * Trimmed from BOTH ends before testing, which is the whole subtlety. A Hann or
+ * Blackman window is exactly zero at its first and last point, so a 31-tap
+ * Blackman kernel really does begin and end with a 0. Trimming only the tail
+ * left h[0] = 0 paired against a nonzero last tap, the symmetry test failed, and
+ * a perfectly linear-phase filter reported "delay varies with frequency". The
+ * leading zeros are part of the symmetry, not noise to be cut away.
+ */
+export function kernelCentre(h, eps = 1e-9) {
+  let pk = 0
+  for (let i = 0; i < h.length; i++) pk = Math.max(pk, Math.abs(h[i]))
+  if (!(pk > 0)) return null
+  const floor = pk * eps
+
+  let first = -1
+  let last = -1
+  for (let i = 0; i < h.length; i++) {
+    if (Math.abs(h[i]) > floor) {
+      if (first < 0) first = i
+      last = i
+    }
+  }
+  // Running to the end of the buffer means the response has not finished, so it
+  // is an IIR tail and has no centre to speak of.
+  if (first < 0 || last <= first || last >= h.length - 1) return null
+
+  for (let a = first, b = last; a < b; a++, b--) {
+    if (Math.abs(h[a] - h[b]) > floor) return null
+  }
+  return (first + last) / 2
+}
+
+export function chainImpulse(blocks, n, sampleRate) {
+  const list = active(blocks)
+  const exact = list.every((b) => !BLOCK_TYPES[b.type].nonlinear)
+  const x = new Float64Array(n)
+  x[0] = 1
+  // t0 = 0 and no pre-roll: the impulse IS the start of time here, and warming
+  // up would feed the chain a signal it is not being asked about.
+  const h = applyChain(blocks, x, sampleRate, 0)
+  return { h, exact, any: list.length > 0 }
+}

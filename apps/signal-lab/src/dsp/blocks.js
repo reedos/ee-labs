@@ -1,9 +1,16 @@
 import {
   BIQUAD_MODES,
   biquadPhase,
+  biquadPolesZeros,
   biquadResponse,
   designBiquad,
+  designFir,
+  firPhase,
+  firResponse,
+  firZeros,
   makeBiquad,
+  makeFir,
+  movingAverage,
   settleSamples,
 } from '@ee-labs/dsp'
 import { hash01 } from '@ee-labs/dsp'
@@ -84,6 +91,7 @@ function biquadType(mode, label, hint, extra = []) {
     // degrees, so on the spectrum alone the block appears to do nothing at all.
     phase: (p, f, sampleRate) =>
       biquadPhase(designBiquad({ mode, ...p }, sampleRate), f, sampleRate),
+    pz: (p, sampleRate) => biquadPolesZeros(designBiquad({ mode, ...p }, sampleRate)),
   }
 }
 
@@ -123,6 +131,98 @@ export const BLOCK_TYPES = {
       'changes shape; the spectrum does not move at all.',
   ),
 
+  // ------------------------------------------------------------- FIR
+  //
+  // Everything above has feedback and therefore poles. These two have neither,
+  // and the contrast is the point of putting them in the same rack: an FIR
+  // cannot be unstable, forgets in exactly N samples, and — being symmetric —
+  // delays every frequency by the same amount, which no IIR can do.
+
+  movingavg: {
+    label: 'Moving average',
+    group: 'FIR',
+    hint:
+      'Averages the last N samples, and nothing more. The simplest filter that does anything, ' +
+      'and the only one whose nulls you can work out in your head: averaging N samples exactly ' +
+      'cancels every frequency that fits a whole number of cycles into the window, so the nulls ' +
+      'sit at every multiple of the sample rate over N.',
+    nonlinear: false,
+    defaults: { taps: 8 },
+    params: [
+      {
+        key: 'taps',
+        label: 'Taps N',
+        scale: 'linear',
+        min: 2,
+        max: 64,
+        step: 1,
+        decimals: 0,
+        presets: [2, 4, 8, 16, 32],
+        hint: 'Nulls land at every multiple of fs / N.',
+      },
+    ],
+    summary: (p, ctx) =>
+      `${p.taps} taps · nulls every ${fmtHz((ctx?.sampleRate ?? 8000) / p.taps)}`,
+    make: (p) => {
+      const h = movingAverage(p.taps)
+      const step = makeFir(h)
+      // Exact, not estimated. After N samples every tap multiplies a sample the
+      // filter has actually seen, so there is no initial condition left.
+      return { process: (x) => step(x), settle: h.length - 1 }
+    },
+    response: (p, f, sampleRate) => firResponse(movingAverage(p.taps), f, sampleRate),
+    phase: (p, f, sampleRate) => firPhase(movingAverage(p.taps), f, sampleRate),
+    pz: (p) => ({ poles: [], zeros: firZeros(movingAverage(p.taps)) }),
+    kernel: (p) => movingAverage(p.taps),
+  },
+
+  fir: {
+    label: 'FIR (windowed sinc)',
+    group: 'FIR',
+    hint:
+      'A designed FIR: the ideal brick-wall filter is a sinc that runs forever, so it gets cut ' +
+      'off and tapered. Cutting it off abruptly is itself a rectangular window, and the ripple ' +
+      'that produces does not shrink as taps are added — only narrows. Set the window to none ' +
+      'to see it. The phase is exactly linear whatever you choose.',
+    nonlinear: false,
+    defaults: { taps: 41, freq: 1000, mode: 'lowpass', window: 'hamming' },
+    params: [
+      {
+        key: 'taps',
+        label: 'Taps N',
+        scale: 'log',
+        min: 3,
+        max: 201,
+        step: 2,
+        decimals: 0,
+        presets: [11, 31, 61, 121, 201],
+        hint: 'Forced odd, so the kernel has a centre tap and delays by exactly (N-1)/2 samples.',
+      },
+      cutoff(),
+      { key: 'mode', label: 'Shape', kind: 'select', options: ['lowpass', 'highpass'] },
+      {
+        key: 'window',
+        label: 'Window',
+        kind: 'select',
+        options: ['none', 'hann', 'hamming', 'blackman'],
+        hint: 'Trades transition width against stopband depth. "none" is the untapered cut.',
+      },
+    ],
+    summary: (p) =>
+      `${p.mode === 'highpass' ? 'HP' : 'LP'} ${fmtHz(p.freq)} · ${p.taps} taps · ${p.window}`,
+    make: (p, sampleRate) => {
+      const h = designFir(p, sampleRate)
+      const step = makeFir(h)
+      return { process: (x) => step(x), settle: h.length - 1 }
+    },
+    response: (p, f, sampleRate) => firResponse(designFir(p, sampleRate), f, sampleRate),
+    phase: (p, f, sampleRate) => firPhase(designFir(p, sampleRate), f, sampleRate),
+    // No poles at all, anywhere but the origin — and those only account for the
+    // delay. That absence IS the difference from everything in the Filter group.
+    pz: (p, sampleRate) => ({ poles: [], zeros: firZeros(designFir(p, sampleRate)) }),
+    kernel: (p, sampleRate) => designFir(p, sampleRate),
+  },
+
   gain: {
     label: 'Gain / DC',
     group: 'Level',
@@ -147,6 +247,9 @@ export const BLOCK_TYPES = {
     response: (p) => Math.pow(10, p.gainDb / 20),
     // A positive real scaling shifts nothing.
     phase: () => 0,
+    // A constant has no roots. Not "none found" — none exist, so a chain of
+    // nothing but gain blocks correctly shows an empty z-plane.
+    pz: () => ({ poles: [], zeros: [] }),
   },
 
   clip: {
@@ -231,6 +334,30 @@ export const BLOCK_TYPES = {
       const a = Math.atan2(im, re)
       return fb ? -a : a
     },
+    // The prettiest picture in the z-plane view, and the clearest statement of
+    // what "comb" means. H(z) = 1 + g z^-D has z^D = -g, so its D roots are
+    // evenly spaced around a circle of radius |g|^(1/D) — a ring of marks whose
+    // angles are the notch frequencies. Feedback puts the same ring in the
+    // denominator, which is why the same control produces peaks instead of
+    // notches, and why g -> 1 pushes them onto the circle and rings forever.
+    pz: (p, sampleRate) => {
+      const D = Math.max(1, Math.round((p.delayMs / 1000) * sampleRate))
+      // A long delay at a high rate is thousands of roots. Past a few hundred
+      // the ring is a solid circle and says nothing more, so decline rather than
+      // grind — the caller reports it as too many to draw.
+      if (D > 256) return { poles: [], zeros: [], tooMany: D }
+      const g = Math.max(-0.999, Math.min(0.999, p.g))
+      const r = Math.pow(Math.abs(g), 1 / D)
+      const marks = []
+      // z^D = -g for feed-forward, +g for feedback.
+      const target = p.mode === 'feedback' ? g : -g
+      const base = target < 0 ? Math.PI / D : 0
+      for (let k = 0; k < D; k++) {
+        const ang = base + (2 * Math.PI * k) / D
+        marks.push([r * Math.cos(ang), r * Math.sin(ang)])
+      }
+      return p.mode === 'feedback' ? { poles: marks, zeros: [] } : { poles: [], zeros: marks }
+    },
   },
 
   ringmod: {
@@ -299,7 +426,7 @@ export const BLOCK_TYPES = {
   },
 }
 
-export const BLOCK_GROUPS = ['Filter', 'Level', 'Nonlinear']
+export const BLOCK_GROUPS = ['Filter', 'FIR', 'Level', 'Nonlinear']
 
 /** A new block record of `type`, with its defaults. */
 export function makeBlockRecord(type, id) {

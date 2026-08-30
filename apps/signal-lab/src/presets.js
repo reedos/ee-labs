@@ -19,7 +19,13 @@ const bk = (id, type, params) => ({
   params: { ...BLOCK_TYPES[type].defaults, ...params },
 })
 
-export const PRESET_GROUPS = ['Signals and Fourier', 'Sampling', 'Filters', 'Nonlinearity']
+export const PRESET_GROUPS = [
+  'Signals and Fourier',
+  'Sampling',
+  'Filters',
+  'FIR and the z-plane',
+  'Nonlinearity',
+]
 
 export const PRESETS = [
   // --------------------------------------------------- Signals and Fourier
@@ -185,16 +191,18 @@ export const PRESETS = [
     name: 'Phase is invisible here',
     note:
       'An all-pass changes the scope waveform completely and leaves the spectrum untouched — ' +
-      '|H| = 1 at every frequency, and the FFT throws phase away. Tick "show phase of the ' +
-      'chain": the violet curve sweeps a full 360° while the magnitude never moves. That sweep ' +
-      'is the entire content of this block, and no other view here can show it.',
+      '|H| = 1 at every frequency, and the FFT throws phase away. The violet curve sweeps a ' +
+      'full 360° while the magnitude never moves. That sweep is the entire content of this ' +
+      'block. Switch the overlay to group delay to see the same fact as a time: the components ' +
+      'near 400 Hz are held up by several samples more than the rest, which is precisely why ' +
+      'the waveform changes shape while its spectrum does not.',
     patch: {
       sources: [mk(1, 'sine', 250, 0.6), mk(2, 'sine', 750, 0.3), mk(3, 'sine', 1250, 0.2)],
       blocks: [bk(1, 'allpass', { freq: 400, q: 2 })],
       sampleRate: 8000,
       timeSpanMs: 20,
       spanCycles: 5,
-      showPhase: true,
+      overlay: 'phase',
     },
   },
   {
@@ -367,6 +375,98 @@ export const PRESETS = [
       timeSpanMs: 20,
     },
   },
+  // ----------------------------------------------------- FIR and the z-plane
+  {
+    group: 'FIR and the z-plane',
+    name: 'A moving average is a filter',
+    note:
+      'Average the last 8 samples and you have built a low-pass — no design, no coefficients to ' +
+      'look up. Noise makes its shape visible: deep nulls every 1000 Hz, which is the sample ' +
+      'rate over 8. The reason needs no algebra. Summing a whole number of cycles of a sine ' +
+      'gives exactly zero, so every frequency that fits a whole number of cycles into the ' +
+      'window is cancelled completely. Drag N and watch the nulls move as fₛ/N.',
+    patch: {
+      sources: [mk(1, 'noise', 100, 0.6)],
+      blocks: [bk(1, 'movingavg', { taps: 8 })],
+      sampleRate: 8000,
+      timeSpanMs: 20,
+    },
+  },
+  {
+    group: 'FIR and the z-plane',
+    name: 'Everything arrives together',
+    note:
+      'A 61-tap FIR, with the overlay switched to group delay: a flat line at exactly 30 ' +
+      'samples. Every frequency is held up by the same amount, so the signal comes out late ' +
+      'and otherwise unchanged. Now compare a biquad — its delay peaks sharply at the corner, ' +
+      'which is why a filtered square rings there. No filter with feedback can have a flat ' +
+      'group delay, and no FIR with a symmetric kernel can fail to. That is the entire trade: ' +
+      '61 multiply-adds per sample against a biquad’s 5.',
+    patch: {
+      sources: [mk(1, 'square', 250, 0.8)],
+      blocks: [bk(1, 'fir', { taps: 61, freq: 1000, mode: 'lowpass', window: 'hamming' })],
+      sampleRate: 8000,
+      timeSpanMs: 20,
+      spanCycles: 3,
+      overlay: 'delay',
+    },
+  },
+  {
+    group: 'FIR and the z-plane',
+    name: 'The kernel is the filter',
+    note:
+      'Switch the top pane to the impulse response. Those stems are not a picture OF the ' +
+      'filter — for an FIR they are the filter, the 31 numbers the design produced. Every ' +
+      'output sample is this kernel flipped, slid to the current position, multiplied by the ' +
+      'input underneath it and summed. That is convolution, and it is the only description of ' +
+      'filtering that covers FIR and IIR at once. Note where the symmetry centre falls: at tap ' +
+      '15, which is exactly the delay the group-delay overlay reports.',
+    patch: {
+      sources: [mk(1, 'sine', 300, 0.8), mk(2, 'sine', 1800, 0.5)],
+      blocks: [bk(1, 'fir', { taps: 31, freq: 900, mode: 'lowpass', window: 'blackman' })],
+      sampleRate: 8000,
+      timeSpanMs: 20,
+      spanCycles: 4,
+      timeView: 'impulse',
+    },
+  },
+  {
+    group: 'FIR and the z-plane',
+    name: 'Cut it off abruptly and it rings',
+    note:
+      'The same design with the window set to none. The ideal filter is a sinc running to ' +
+      'infinity, so it has to be cut short — and cutting it short IS a rectangular window, ' +
+      'whose leakage puts about 8% of overshoot beside the corner. Raise the taps to 201: the ' +
+      'ripple gets NARROWER and no shorter, because it converges to a constant fraction of the ' +
+      'step. This is Gibbs, the same phenomenon as the overshoot on a truncated square-wave ' +
+      'series, seen in the other domain. Adding taps never fixes it; tapering the ends does.',
+    patch: {
+      sources: [mk(1, 'noise', 100, 0.6)],
+      blocks: [bk(1, 'fir', { taps: 101, freq: 1000, mode: 'lowpass', window: 'none' })],
+      sampleRate: 8000,
+      timeSpanMs: 20,
+    },
+  },
+  {
+    group: 'FIR and the z-plane',
+    name: 'Zeros on the circle',
+    note:
+      'The bottom pane now shows the z-plane. For a sampled filter the frequency axis is not a ' +
+      'line — it is the unit circle, running from DC at z = 1 anticlockwise to Nyquist at ' +
+      'z = −1, and that circle is the whole spectrum. The 11 circles are this filter’s zeros, ' +
+      'and they sit exactly ON the rim, evenly spaced. A zero on the circle means the response ' +
+      'at that angle is exactly zero — so the ring of marks and the comb of nulls in the ' +
+      'spectrum are the same fact drawn twice. Add a resonant low-pass and its poles appear as ' +
+      'crosses, pulled toward the rim as Q rises.',
+    patch: {
+      sources: [mk(1, 'noise', 100, 0.6)],
+      blocks: [bk(1, 'movingavg', { taps: 12 })],
+      sampleRate: 8000,
+      timeSpanMs: 20,
+      freqView: 'zplane',
+    },
+  },
+
   {
     group: 'Nonlinearity',
     name: '4 bits',

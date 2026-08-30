@@ -155,6 +155,45 @@ export function isStable({ a1, a2 }) {
   return Math.abs(a2) < 1 && Math.abs(a1) < 1 + a2
 }
 
+/**
+ * The section's poles and zeros as points on the z-plane.
+ *
+ * Multiply the difference equation through by z^2 and the transfer function is
+ * (b0 z^2 + b1 z + b2) / (z^2 + a1 z + a2), so both sets are the roots of an
+ * ordinary quadratic and no iterative solver is needed. Returned as
+ * `{ poles, zeros }`, each a list of `[re, im]`.
+ *
+ * This is the same filter said a third way. The magnitude curve is what these
+ * marks do to a point walking around the unit circle: close to a pole the
+ * response rises, close to a zero it falls, and a zero exactly ON the circle
+ * puts an exact null at that frequency. Q, which the curve shows as peak height,
+ * is here the pole's distance from the circle.
+ */
+export function biquadPolesZeros({ b0, b1, b2, a1, a2 }) {
+  return { poles: quadRoots(1, a1, a2), zeros: quadRoots(b0, b1, b2) }
+}
+
+/** Roots of a z^2 + b z + c, degenerating gracefully as the degree drops. */
+function quadRoots(a, b, c) {
+  if (Math.abs(a) < 1e-18) {
+    if (Math.abs(b) < 1e-18) return []
+    return [[-c / b, 0]]
+  }
+  const disc = b * b - 4 * a * c
+  if (disc >= 0) {
+    const s = Math.sqrt(disc)
+    return [
+      [(-b + s) / (2 * a), 0],
+      [(-b - s) / (2 * a), 0],
+    ]
+  }
+  const s = Math.sqrt(-disc)
+  return [
+    [-b / (2 * a), s / (2 * a)],
+    [-b / (2 * a), -s / (2 * a)],
+  ]
+}
+
 /** Samples until the impulse response has decayed below `eps`. */
 export function settleSamples(coeffs, eps = 1e-6) {
   const r = poleRadius(coeffs)

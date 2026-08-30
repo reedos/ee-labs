@@ -101,9 +101,34 @@ The scope's horizontal axis counts cycles of the signal rather than milliseconds
 "show me five periods" stays five periods when you move a source from 250 Hz to 2 kHz.
 Aperiodic sources fall back to a span in milliseconds.
 
+### Two families of filter
+
+The **Filter** group is biquads: second-order sections with feedback, so they have poles,
+they can in principle be unstable, and their impulse response never quite ends. The
+**FIR** group has no feedback at all — a moving average, and a designed windowed sinc.
+
+The contrast is the reason both are here:
+
+|  | Biquad (IIR) | FIR |
+|---|---|---|
+| Impulse response | never ends | exactly N samples |
+| Stability | a question worth asking | cannot be unstable |
+| Group delay | peaks at the corner | flat, exactly (N−1)/2 |
+| Cost for a given skirt | 5 multiply-adds | often 60–200 |
+| Cutoff convention | −3.01 dB | −6.02 dB (half amplitude) |
+
+That last row surprises people. A windowed sinc is built by truncating an ideal
+rectangle, and the truncation rounds the edge symmetrically about f_c, so the response
+there is 0.5 — not the 1/√2 a Butterworth section gives.
+
+The flat group delay is the FIR's whole reason for existing. A symmetric kernel factors
+into a real amplitude times a pure delay, so every frequency is held up by the same
+(N−1)/2 samples and the waveform comes out late and otherwise unchanged. No amount of
+feedback can do that.
+
 ### Order
 
-Every filter block here is a second-order section — a biquad. That is what this tool
+Every biquad block here is a second-order section. That is what this tool
 ships, not a fact about filters. Order is set by how many sections you put in series, and
 each order adds roughly 6 dB per octave of rolloff, approached as an asymptote from above.
 
@@ -114,11 +139,24 @@ second-order case is 0.707. The giveaway is at the cutoff: every true Butterwort
 exactly −3.01 dB there whatever its order, while two identical sections give −6.02 dB and
 sag well before the corner. The "Order is a choice" preset puts both side by side.
 
-### Phase, and what is deliberately not offered
+### Phase, group delay, and what is deliberately not offered
 
-The spectrum can overlay the **chain's** phase response on a right-hand axis. That is
-what makes the all-pass legible: |H| is 1.0000 at every frequency while the phase sweeps
-a full 360°, so on the magnitude plot alone the block appears to do nothing at all.
+The spectrum can overlay the **chain's** phase or its **group delay** on a right-hand
+axis — one at a time, since they are the same information differentiated and two dashed
+curves over one magnitude plot is a worse view than either alone. Phase is what makes the
+all-pass legible: |H| is 1.0000 at every frequency while the phase sweeps a full 360°, so
+on the magnitude plot alone the block appears to do nothing at all. Group delay says the
+same thing as a time, in samples, which is usually the more useful reading — a flat line
+means the shape survives.
+
+Group delay comes back **undefined across a null**, and the trace breaks rather than
+joining up. Two separate things go wrong there, and both had to be handled before a
+moving average would report its actual constant delay: the phase steps by π at a null
+because the real amplitude behind it changed sign, and at the null itself there is no
+angle at all, so the curve is filled in from a neighbour to stay continuous.
+Differencing through the first gave a spike of −125 samples; differencing across the
+second gave exactly *half* the true delay, which is the more dangerous of the two because
+it looks like an answer.
 
 The measured phase *of the signal* is not offered, and that is a decision rather than an
 omission. It depends on where the frame happens to start — shift the window one sample
@@ -136,6 +174,30 @@ That scheme depends on the pre-roll being genuinely the same signal, which is wh
 generators take time from the absolute sample index rather than from an offset. Getting
 that subtly wrong made a filtered square measure up to 10% away from its own response
 curve, and the test that should have caught it was pinning the artifact instead.
+
+### The other two views
+
+Each pane has a switch in its own header, so the layout stays two panes.
+
+**Kernel** replaces the scope with the chain's impulse response, drawn as stems. For an
+FIR those stems are not a picture *of* the filter, they are the filter — the coefficients
+the design produced. Every output sample is that kernel flipped, slid along, multiplied
+by the input underneath and summed, which is convolution and is the only description of
+filtering that covers FIR and IIR at once. An IIR's kernel is visibly a decaying
+oscillation that never reaches zero.
+
+**z-plane** replaces the spectrum with poles and zeros. The thing to notice is that for a
+sampled filter the frequency axis is not a line, it is the unit circle: DC at z = 1,
+running anticlockwise to Nyquist at z = −1, and that circle is the entire spectrum. The
+response at a frequency is the product of the distances from that point to the zeros over
+the distances to the poles, so a pole near the rim makes a peak and a zero on the rim
+makes an exact null. Q, which the spectrum shows as peak height, is here how close the
+poles crowd the circle. Stability inverts from the s-plane — inside is stable — which is
+why the outside is what gets shaded.
+
+A moving average is the clearest case: its N−1 zeros sit exactly on the rim at evenly
+spaced angles, and those angles are exactly the frequencies of the nulls in its spectrum.
+One fact, drawn twice.
 
 ## The math is attached to what you built
 

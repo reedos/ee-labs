@@ -148,6 +148,10 @@ export function createChain(BLOCK_TYPES) {
   function chainPhase(blocks, freqs, sampleRate) {
     const list = active(blocks)
     const phase = new Float64Array(freqs.length)
+    // Which bins carry a real angle rather than one carried in from a
+    // neighbour. Filling is right for drawing a continuous curve and wrong for
+    // differentiating one, so the fact is reported rather than buried.
+    const known = new Uint8Array(freqs.length).fill(1)
     let exact = true
     let any = false
 
@@ -164,23 +168,27 @@ export function createChain(BLOCK_TYPES) {
       // low-pass at Nyquist, a high-pass at DC. Mark those and fill them from the
       // nearest frequency that does have an angle.
       const own = new Float64Array(freqs.length)
-      const known = new Array(freqs.length).fill(false)
+      const ownKnown = new Array(freqs.length).fill(false)
       for (let i = 0; i < freqs.length; i++) {
         const m = def.response(b.params, freqs[i], sampleRate)
         if (m == null || m < 1e-12) continue
         own[i] = def.phase(b.params, freqs[i], sampleRate)
-        known[i] = true
+        ownKnown[i] = true
       }
       let last = null
       for (let i = 0; i < freqs.length; i++) {
-        if (known[i]) last = own[i]
+        if (ownKnown[i]) last = own[i]
         else if (last != null) own[i] = last
       }
       for (let i = freqs.length - 1; i >= 0; i--) {
-        if (known[i]) last = own[i]
+        if (ownKnown[i]) last = own[i]
         else if (last != null) own[i] = last
       }
-      for (let i = 0; i < freqs.length; i++) phase[i] += own[i]
+      // One block not knowing a bin is enough to spoil the sum there.
+      for (let i = 0; i < freqs.length; i++) {
+        phase[i] += own[i]
+        if (!ownKnown[i]) known[i] = 0
+      }
     }
 
     // Unwrap: remove 2pi steps introduced by atan2 rather than by the filter.
@@ -196,7 +204,98 @@ export function createChain(BLOCK_TYPES) {
       }
     }
 
-    return { phase, exact, any }
+    return { phase, exact, any, known }
+  }
+
+  /**
+   * Group delay of the chain, in SAMPLES, on `freqs`.
+   *
+   * Group delay is -dphi/dOmega with Omega in radians per sample, so measuring
+   * it in samples is not a display choice — it is the natural unit, and it makes
+   * the headline result readable straight off the axis: a symmetric FIR sits on
+   * a flat line at exactly (N-1)/2.
+   *
+   * It answers the question a magnitude plot cannot. Two filters can remove the
+   * same frequencies and still do very different things to a waveform, because
+   * what survives can come out with its parts shifted relative to one another.
+   * Where the group delay is flat, the output is the input delayed and nothing
+   * more. Where it has a peak — and every IIR has one at its corner — components
+   * near that frequency arrive late relative to the rest, and the shape changes.
+   * That is exactly what the all-pass block does while leaving |H| at 1.0.
+   *
+   * Computed by differencing the already-unwrapped phase. Central differences in
+   * the interior, one-sided at the ends. The bins are uniformly spaced, so this
+   * is second-order accurate and there is nothing to gain from a closed form
+   * that every block type would have to implement separately.
+   *
+   * Bins across a null come back as NaN, and the caller must break the trace
+   * rather than plot them. A null spoils the derivative in two separate ways,
+   * and both had to be handled before a moving average — whose delay is exactly
+   * (N-1)/2 at every frequency — would say so:
+   *
+   *   - The phase steps by pi there, because the real amplitude behind it has
+   *     changed SIGN, and a sign is not a delay. Differencing through that step
+   *     produced a spike of pi/dOmega, reported as -125 samples.
+   *   - At the null itself the angle does not exist at all, and chainPhase fills
+   *     it from a neighbour so the curve stays continuous. Differencing across a
+   *     filled bin is differencing a value that was copied rather than measured,
+   *     which read as exactly HALF the true delay in the bin beside each null —
+   *     a plausible-looking number, and the more dangerous of the two.
+   *
+   * There is also nothing at a null to be delayed, so undefined is the honest
+   * answer rather than merely a convenient one.
+   *
+   * The same test bounds what this can measure at all. A step is read as a sign
+   * flip once it exceeds pi/2 per bin, so a delay beyond about a quarter of the
+   * frame length cannot be told from one — which is not a flaw in the rule but
+   * the resolution limit of a phase sampled at these bins.
+   */
+  const SIGN_FLIP = Math.PI / 2
+
+  function chainGroupDelay(blocks, freqs, sampleRate) {
+    const { phase, exact, any, known } = chainPhase(blocks, freqs, sampleRate)
+    const n = freqs.length
+    const delay = new Float64Array(n)
+    if (!any || n < 2) return { delay, exact, any }
+
+    // dOmega between adjacent bins, in radians per sample.
+    const dW = ((2 * Math.PI) / sampleRate) * (freqs[1] - freqs[0])
+    if (!(dW > 0)) return { delay, exact, any }
+
+    // A step spanning bins i and i+1 is unusable if either end was filled in
+    // rather than measured, or if the phase jumped by about half a turn across
+    // it. step[i] covers the gap between i and i+1.
+    const bad = new Array(n - 1)
+    for (let i = 0; i < n - 1; i++) {
+      bad[i] =
+        !known[i] || !known[i + 1] || Math.abs(phase[i + 1] - phase[i]) > SIGN_FLIP
+    }
+
+    for (let i = 0; i < n; i++) {
+      let d
+      if (i === 0) {
+        if (bad[0]) {
+          delay[i] = NaN
+          continue
+        }
+        d = phase[1] - phase[0]
+      } else if (i === n - 1) {
+        if (bad[n - 2]) {
+          delay[i] = NaN
+          continue
+        }
+        d = phase[n - 1] - phase[n - 2]
+      } else {
+        // A central difference straddles two steps, so either one spoils it.
+        if (bad[i - 1] || bad[i]) {
+          delay[i] = NaN
+          continue
+        }
+        d = (phase[i + 1] - phase[i - 1]) / 2
+      }
+      delay[i] = -d / dW
+    }
+    return { delay, exact, any }
   }
 
   return {
@@ -206,5 +305,6 @@ export function createChain(BLOCK_TYPES) {
     runChain,
     chainResponse,
     chainPhase,
+    chainGroupDelay,
   }
 }

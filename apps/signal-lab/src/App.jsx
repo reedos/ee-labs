@@ -3,10 +3,20 @@ import Controls from './components/Controls.jsx'
 import TopBar from './components/TopBar.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
 import SpectrumCanvas from './components/SpectrumCanvas.jsx'
+import ImpulseCanvas from './components/ImpulseCanvas.jsx'
 import { APERIODIC, render, rms, peak } from '@ee-labs/dsp'
-import { COLORS } from '@ee-labs/ui'
+import { COLORS, ZPlaneCanvas } from '@ee-labs/ui'
 import { spectrum } from '@ee-labs/dsp'
-import { chainPhase, chainResponse, renderChain, runChain } from './dsp/chain.js'
+import {
+  chainGroupDelay,
+  chainImpulse,
+  chainPhase,
+  kernelCentre,
+  chainPolesZeros,
+  chainResponse,
+  renderChain,
+  runChain,
+} from './dsp/chain.js'
 import { PRESETS } from './presets.js'
 import { readLocationLink } from '@ee-labs/ui'
 import { stateFromLink } from './fromLink.js'
@@ -23,9 +33,42 @@ const INITIAL = {
   scale: 'db',
   showHarmonics: false,
   showGhost: false,
-  showPhase: false,
+  // Phase and group delay share one right-hand axis, so they are a choice
+  // rather than two toggles. See SpectrumCanvas.
+  overlay: 'none',
   showTransient: false,
+  // Each pane can show the chain from a different side. The signal and its
+  // spectrum are the default pair; the impulse response and the z-plane are the
+  // same filter described by its kernel and by its roots.
+  timeView: 'signal',
+  freqView: 'spectrum',
   presetName: 'Single tone',
+}
+
+/**
+ * Which side of the chain a pane is showing.
+ *
+ * Sits in the pane's own header rather than in the sidebar because it changes
+ * that pane and nothing else — and because the two panes stay two panes, which
+ * is the constraint the whole layout is built around.
+ */
+function ViewSwitch({ value, onChange, options }) {
+  return (
+    <div className="segmented sm view-switch" role="group">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          className={value === o.id ? 'on' : ''}
+          aria-pressed={value === o.id}
+          title={o.title}
+          onClick={() => onChange(o.id)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 export default function App() {
@@ -118,13 +161,53 @@ export default function App() {
     return r.any || !r.exact ? r : null
   }, [state.blocks, freqs, state.sampleRate])
 
-  // Only the chain's own phase, and only when asked for. See chainPhase for why
-  // the measured signal's phase is deliberately not on offer.
-  const phase = useMemo(() => {
-    if (!state.showPhase || state.blocks.length === 0) return null
-    const r = chainPhase(state.blocks, freqs, state.sampleRate)
-    return r.any ? r.phase : null
-  }, [state.showPhase, state.blocks, freqs, state.sampleRate])
+  // Only the chain's own phase or delay, and only when asked for. See chainPhase
+  // for why the measured signal's phase is deliberately not on offer.
+  const overlay = useMemo(() => {
+    if (state.overlay === 'none' || state.blocks.length === 0) return null
+    if (state.overlay === 'phase') {
+      const r = chainPhase(state.blocks, freqs, state.sampleRate)
+      if (!r.any) return null
+      const values = new Float64Array(r.phase.length)
+      for (let i = 0; i < values.length; i++) values[i] = (r.phase[i] * 180) / Math.PI
+      return {
+        kind: 'phase',
+        values,
+        label: 'Phase of the chain',
+        tick: (v) => `${v}°`,
+      }
+    }
+    const r = chainGroupDelay(state.blocks, freqs, state.sampleRate)
+    if (!r.any) return null
+    return {
+      kind: 'delay',
+      values: r.delay,
+      label: 'Group delay of the chain',
+      tick: (v) => `${Number(v.toPrecision(3))}`,
+    }
+  }, [state.overlay, state.blocks, freqs, state.sampleRate])
+
+  // The same chain said two more ways: as the kernel it convolves with, and as
+  // the roots that kernel has. Both are cheap and neither is computed unless its
+  // pane is actually showing.
+  const impulse = useMemo(() => {
+    if (state.timeView !== 'impulse') return null
+    // Long enough to show an IIR tail decaying, capped so a resonant section at
+    // Q 40 does not turn the view into a solid block of stems.
+    const n = Math.min(2048, Math.max(64, Math.ceil(state.sampleRate * 0.05)))
+    return chainImpulse(state.blocks, n, state.sampleRate)
+  }, [state.timeView, state.blocks, state.sampleRate])
+
+  const pz = useMemo(() => {
+    if (state.freqView !== 'zplane') return null
+    return chainPolesZeros(state.blocks, state.sampleRate)
+  }, [state.freqView, state.blocks, state.sampleRate])
+
+  // Where a linear-phase kernel's centre of symmetry is, and so its delay.
+  const impulseCentre = useMemo(
+    () => (impulse && impulse.exact ? kernelCentre(impulse.h) : null),
+    [impulse],
+  )
 
   const stats = useMemo(() => {
     let iMax = 0
@@ -197,59 +280,148 @@ export default function App() {
         <section className="view">
           <div className="view-head">
             <h2>Time domain</h2>
+            <ViewSwitch
+              value={state.timeView}
+              onChange={(v) => patch('timeView', v)}
+              options={[
+                { id: 'signal', label: 'Signal', title: 'The waveform going through the chain' },
+                {
+                  id: 'impulse',
+                  // Not "Impulse response": there is already a preset by that
+                  // name, and two buttons reading the same and doing different
+                  // things is a genuine ambiguity, not just an awkward selector.
+                  label: 'Kernel',
+                  title: 'The impulse response — the kernel the chain convolves every input with',
+                },
+              ]}
+            />
             <div className="readout">
-              <span>
-                RMS <b>{stats.rms.toFixed(3)}</b>
-              </span>
-              <span>
-                peak <b>{stats.peak.toFixed(3)}</b>
-              </span>
-              <span>
-                crest <b>{(stats.peak / (stats.rms || 1)).toFixed(2)}</b>
-              </span>
-              {state.showTransient && state.blocks.length > 0 ? (
-                <span className="flag">transient shown</span>
-              ) : null}
+              {state.timeView === 'signal' ? (
+                <>
+                  <span>
+                    RMS <b>{stats.rms.toFixed(3)}</b>
+                  </span>
+                  <span>
+                    peak <b>{stats.peak.toFixed(3)}</b>
+                  </span>
+                  <span>
+                    crest <b>{(stats.peak / (stats.rms || 1)).toFixed(2)}</b>
+                  </span>
+                  {state.showTransient && state.blocks.length > 0 ? (
+                    <span className="flag">transient shown</span>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  {impulseCentre != null ? (
+                    <span>
+                      delay <b>{impulseCentre} samples</b>, every frequency
+                    </span>
+                  ) : (
+                    <span>
+                      delay <b>varies with frequency</b>
+                    </span>
+                  )}
+                  {impulse && !impulse.any ? <span className="flag">no blocks — h[0] = 1</span> : null}
+                  {impulse && !impulse.exact ? (
+                    <span className="flag warn">nonlinear: this is not an impulse response</span>
+                  ) : null}
+                </>
+              )}
             </div>
           </div>
-          <ScopeCanvas
-            traces={scopeTraces}
-            sampleRate={state.sampleRate}
-            spanSeconds={spanSeconds}
-            divisionRate={divisionRate}
-            yMax={yMax}
-          />
+          {state.timeView === 'impulse' && impulse ? (
+            <ImpulseCanvas
+              h={impulse.h}
+              sampleRate={state.sampleRate}
+              centre={impulseCentre}
+              exact={impulse.exact}
+            />
+          ) : (
+            <ScopeCanvas
+              traces={scopeTraces}
+              sampleRate={state.sampleRate}
+              spanSeconds={spanSeconds}
+              divisionRate={divisionRate}
+              yMax={yMax}
+            />
+          )}
         </section>
 
         <section className="view">
           <div className="view-head">
             <h2>Frequency domain</h2>
+            <ViewSwitch
+              value={state.freqView}
+              onChange={(v) => patch('freqView', v)}
+              options={[
+                { id: 'spectrum', label: 'Spectrum', title: 'What came out, against what the chain should do' },
+                {
+                  id: 'zplane',
+                  label: 'z-plane',
+                  title: 'The same filter as poles and zeros, with the unit circle as the frequency axis',
+                },
+              ]}
+            />
             <div className="readout">
-              <span>
-                peak <b>{stats.peakFreq.toFixed(1)} Hz</b>
-              </span>
-              <span>
-                amp <b>{stats.peakAmp.toFixed(3)}</b>
-              </span>
-              <span>
-                Nyquist <b>{state.sampleRate / 2} Hz</b>
-              </span>
-              {resp && !resp.exact ? (
-                <span className="flag">response covers linear blocks only</span>
-              ) : null}
-              {clamped ? <span className="flag warn">still ringing at frame start</span> : null}
+              {state.freqView === 'spectrum' ? (
+                <>
+                  <span>
+                    peak <b>{stats.peakFreq.toFixed(1)} Hz</b>
+                  </span>
+                  <span>
+                    amp <b>{stats.peakAmp.toFixed(3)}</b>
+                  </span>
+                  <span>
+                    Nyquist <b>{state.sampleRate / 2} Hz</b>
+                  </span>
+                  {resp && !resp.exact ? (
+                    <span className="flag">response covers linear blocks only</span>
+                  ) : null}
+                  {clamped ? <span className="flag warn">still ringing at frame start</span> : null}
+                </>
+              ) : (
+                <>
+                  <span>
+                    poles <b>{pz ? pz.poles.length : 0}</b>
+                  </span>
+                  <span>
+                    zeros <b>{pz ? pz.zeros.length : 0}</b>
+                  </span>
+                  {pz && !pz.any && state.blocks.length === 0 ? (
+                    <span className="flag">add a filter to see its roots</span>
+                  ) : null}
+                  {pz && pz.tooMany ? (
+                    <span className="flag">
+                      {pz.tooMany} delay taps — too many roots to draw
+                    </span>
+                  ) : null}
+                  {pz && !pz.exact && !pz.tooMany ? (
+                    <span className="flag">nonlinear blocks have no roots to show</span>
+                  ) : null}
+                </>
+              )}
             </div>
           </div>
-          <SpectrumCanvas
-            freqs={freqs}
-            amps={amps}
-            ghostAmps={ghostAmps}
-            response={resp ? resp.mag : null}
-            responseExact={resp ? resp.exact : true}
-            phase={phase}
-            scale={state.scale}
-            markers={markers}
-          />
+          {state.freqView === 'zplane' && pz ? (
+            <ZPlaneCanvas
+              poles={pz.poles}
+              zeros={pz.zeros}
+              markerFreq={stats.peakFreq}
+              sampleRate={state.sampleRate}
+            />
+          ) : (
+            <SpectrumCanvas
+              freqs={freqs}
+              amps={amps}
+              ghostAmps={ghostAmps}
+              response={resp ? resp.mag : null}
+              responseExact={resp ? resp.exact : true}
+              overlay={overlay}
+              scale={state.scale}
+              markers={markers}
+            />
+          )}
         </section>
       </main>
     </div>

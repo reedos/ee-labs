@@ -1,7 +1,7 @@
 import { render, rms, peak } from '@ee-labs/dsp'
 import { applyChain } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
-import { designBiquad, poleRadius, isStable } from '@ee-labs/dsp'
+import { designBiquad, designFir, poleRadius, isStable } from '@ee-labs/dsp'
 
 // The math for one source, and for one block.
 //
@@ -451,6 +451,143 @@ export function blockMath(block, ctx) {
           'Odd only, because clipping is an odd function: f(−x) = −f(x). Break that symmetry ' +
             'with a DC offset upstream and the even harmonics arrive.',
         ),
+      ],
+    }
+  }
+
+  if (block.type === 'movingavg') {
+    const N = p.taps
+    const spacing = sampleRate / N
+    // DC, then the first two nulls. Measured by impulse through the real filter.
+    const probes = [0, spacing, 2 * spacing].filter((f) => f < sampleRate / 2)
+    const meas = measuredResponse(block, sampleRate, probes)
+
+    return {
+      blocks: [
+        T(
+          'Add up the last N samples and divide by N. There is no feedback anywhere in it, so ' +
+            'the coefficients ARE the filter — all N of them equal to 1/N.',
+        ),
+        F(`y[n] = \\frac{1}{N}\\sum_{k=0}^{N-1} x[n-k], \\qquad N = ${N}`),
+        T(
+          'Summing a whole number of cycles of a sine gives exactly zero, so every frequency ' +
+            'that fits a whole number of cycles into the window is removed completely. That is ' +
+            'the entire explanation for where the nulls are:',
+        ),
+        F(`|H(f)| = \\left|\\frac{\\sin(\\pi f N / f_s)}{N\\,\\sin(\\pi f / f_s)}\\right|`),
+        C([
+          { label: '|H| at DC', predicted: 1, measured: meas[0], tol: 1e-6 },
+          ...(probes.length > 1
+            ? [
+                {
+                  label: `|H| at fₛ/N = ${sig(spacing, 5)} Hz`,
+                  predicted: 0,
+                  measured: meas[1],
+                  abs: 1e-9,
+                },
+              ]
+            : []),
+          ...(probes.length > 2
+            ? [
+                {
+                  label: `|H| at 2fₛ/N = ${sig(2 * spacing, 5)} Hz`,
+                  predicted: 0,
+                  measured: meas[2],
+                  abs: 1e-9,
+                },
+              ]
+            : []),
+        ]),
+        T(
+          'Because the taps are all the same they are trivially symmetric, and a symmetric ' +
+            'kernel delays every frequency by the same amount. Nothing is smeared: the output ' +
+            'is the filtered signal, late by half the window and not otherwise reshaped.',
+        ),
+        V([
+          { label: 'taps N', value: N },
+          { label: 'null spacing fₛ/N', value: spacing, unit: 'Hz' },
+          { label: 'group delay (N−1)/2', value: (N - 1) / 2, unit: 'samples' },
+          { label: 'settles in exactly', value: N - 1, unit: 'samples' },
+          { label: 'zeros on the unit circle', value: N - 1 },
+        ]),
+      ],
+    }
+  }
+
+  if (block.type === 'fir') {
+    const h = designFir(p, sampleRate)
+    const N = h.length
+    const M = (N - 1) / 2
+    const hp = p.mode === 'highpass'
+    // The largest disagreement between a tap and its mirror. Read off the
+    // kernel the designer actually produced, so it can genuinely fail.
+    let asym = 0
+    for (let k = 0, j = N - 1; k < j; k++, j--) asym = Math.max(asym, Math.abs(h[k] - h[j]))
+    const meas = measuredResponse(block, sampleRate, [0])
+
+    return {
+      blocks: [
+        T(
+          'The ideal filter is a rectangle in frequency, and the inverse transform of a ' +
+            'rectangle is a sinc running to infinity in both directions. You cannot store that, ' +
+            'so it is cut to N taps and tapered by a window.',
+        ),
+        F(
+          `h[k] = w[k]\\;\\frac{\\sin\\bigl(2\\pi f_c (k - M)/f_s\\bigr)}{\\pi (k - M)}, ` +
+            `\\qquad M = \\frac{N-1}{2} = ${M}`,
+        ),
+        T(
+          hp
+            ? 'For the high-pass the low-pass is subtracted from an all-pass delayed by the same ' +
+              'M samples, so the two line up before they cancel. That makes the null at DC exact ' +
+              'rather than approximate:'
+            : 'The taps are scaled so they sum to one, which makes the DC gain exactly one rather ' +
+              'than approximately one:',
+        ),
+        C([
+          {
+            label: '|H| at DC',
+            predicted: hp ? 0 : 1,
+            measured: meas[0],
+            tol: 1e-6,
+            abs: 1e-9,
+          },
+          {
+            label: 'largest h[k] − h[N−1−k]',
+            predicted: 0,
+            measured: asym,
+            abs: 1e-15,
+          },
+        ]),
+        T(
+          'That second row is the whole reason to reach for an FIR. A symmetric kernel has ' +
+            'exactly linear phase, so every frequency is held up by the same M samples and the ' +
+            'waveform arrives late but undistorted. No amount of feedback can achieve that, ' +
+            'which is why no biquad in this rack has a flat group delay.',
+        ),
+        F('H(\\omega) = A(\\omega)\\,e^{-j\\omega M}, \\qquad A(\\omega)\\ \\text{real}'),
+        T(
+          p.window === 'none'
+            ? 'With no window the cut is abrupt, and an abrupt cut is itself a rectangular ' +
+              'window whose leakage puts about 9% of overshoot beside the corner. Adding taps ' +
+              'makes that ripple NARROWER but no shorter — Gibbs again. Choose a taper to remove ' +
+              'it.'
+            : 'The window trades transition width against stopband depth. A wider taper reaches ' +
+              'deeper but takes longer to get there, which is why the choice exists at all.',
+        ),
+        V([
+          { label: 'taps N', value: N, note: 'forced odd' },
+          { label: 'group delay (N−1)/2', value: M, unit: 'samples' },
+          { label: 'group delay', value: (1000 * M) / sampleRate, unit: 'ms' },
+          { label: 'settles in exactly', value: N - 1, unit: 'samples' },
+          { label: 'zeros', value: N - 1 },
+          { label: 'poles away from the origin', value: 0, note: 'so it cannot be unstable' },
+          {
+            label: 'multiply-adds per sample',
+            value: N,
+            note: 'a biquad needs 5',
+          },
+        ]),
       ],
     }
   }

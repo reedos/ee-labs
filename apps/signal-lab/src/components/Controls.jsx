@@ -322,14 +322,38 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
           />
           Show pre-chain spectrum
         </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={state.showPhase}
-            onChange={(e) => patch('showPhase', e.target.checked)}
-          />
-          Show phase of the chain
-        </label>
+        {/* One right-hand axis, so one choice. Phase and group delay are the
+            same information differentiated, and showing both at once makes a
+            worse plot than either. */}
+        <div className="field">
+          <label className="field-label" htmlFor="overlay-none">
+            Overlay on the spectrum
+          </label>
+          <div className="segmented sm" role="group">
+            {[
+              { id: 'none', label: 'None', title: 'Magnitude only' },
+              { id: 'phase', label: 'Phase', title: 'How much each frequency is shifted' },
+              {
+                id: 'delay',
+                label: 'Group delay',
+                title:
+                  'How long each frequency is held up, in samples. Flat means the shape survives.',
+              },
+            ].map((o) => (
+              <button
+                key={o.id}
+                id={`overlay-${o.id}`}
+                type="button"
+                className={state.overlay === o.id ? 'on' : ''}
+                aria-pressed={state.overlay === o.id}
+                title={o.title}
+                onClick={() => patch('overlay', o.id)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <label className="check">
           <input
             type="checkbox"

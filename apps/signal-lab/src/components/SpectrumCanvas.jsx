@@ -1,9 +1,42 @@
 import React from 'react'
 import { useCanvas } from '@ee-labs/ui'
-import { COLORS, drawFrame, plotArea } from '@ee-labs/ui'
+import { COLORS, drawFrame, niceStep, plotArea } from '@ee-labs/ui'
 import { toDb } from '@ee-labs/dsp'
 
 const FLOOR_DB = -100
+
+/**
+ * Range and tick spacing for the right-hand axis.
+ *
+ * Phase snaps to quarter turns, because 90 degrees is a quantity with meaning and
+ * a gridline at 73.4 is not. Group delay gets an ordinary round step, and is
+ * pinned to include zero so a flat line at (N-1)/2 samples can be seen to BE
+ * flat rather than merely straight.
+ */
+function overlayAxis(overlay, area) {
+  let lo = 0
+  let hi = 0
+  for (let i = 0; i < overlay.values.length; i++) {
+    const v = overlay.values[i]
+    if (!Number.isFinite(v)) continue
+    if (v < lo) lo = v
+    if (v > hi) hi = v
+  }
+  let step
+  if (overlay.kind === 'phase') {
+    lo = Math.min(-90, Math.floor(lo / 90) * 90)
+    hi = Math.max(90, Math.ceil(hi / 90) * 90)
+    step = 90
+    while ((hi - lo) / step > 8) step += 90
+  } else {
+    hi = Math.max(hi, 1)
+    step = niceStep(hi - lo, 5)
+    lo = Math.floor(lo / step) * step
+    hi = Math.ceil(hi / step) * step
+  }
+  const py = (v) => area.y + area.h - ((v - lo) / (hi - lo || 1)) * area.h
+  return { lo, hi, step, py }
+}
 
 /**
  * Frequency-domain view. X runs 0..Nyquist; Y is either dBV or linear amplitude.
@@ -22,13 +55,13 @@ export default function SpectrumCanvas({
   ghostAmps,
   response,
   responseExact = true,
-  phase = null,
+  overlay = null,
   scale,
   markers,
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
-      const area = plotArea(w, h, { rightAxis: !!phase })
+      const area = plotArea(w, h, { rightAxis: !!overlay })
       const fMax = freqs.length ? freqs[freqs.length - 1] : 1
       const db = scale === 'db'
 
@@ -150,31 +183,30 @@ export default function SpectrumCanvas({
       }
       ctx.stroke()
 
-      // Phase of the CHAIN, on its own axis — never the phase of the measured
-      // signal, which depends on where the frame starts and is random wherever
-      // there is no signal.
-      if (phase) {
-        let lo = 0
-        let hi = 0
-        for (let i = 0; i < phase.length; i++) {
-          const d = (phase[i] * 180) / Math.PI
-          if (d < lo) lo = d
-          if (d > hi) hi = d
-        }
-        // Snap to whole quarter turns so the gridlines mean something.
-        lo = Math.min(-90, Math.floor(lo / 90) * 90)
-        hi = Math.max(90, Math.ceil(hi / 90) * 90)
-        const py = (d) => area.y + area.h - ((d - lo) / (hi - lo)) * area.h
-
+      // A property of the CHAIN, on its own axis — never a property of the
+      // measured signal, which depends on where the frame starts and is random
+      // wherever there is no signal. Phase and group delay share this axis and
+      // are offered one at a time: they are two readings of the same thing, and
+      // two dashed curves against one magnitude plot is a worse view than
+      // either alone.
+      if (overlay) {
+        const { py } = overlayAxis(overlay, area)
         ctx.strokeStyle = COLORS.phase
         ctx.lineWidth = 1.4 * k
         ctx.setLineDash([6 * k, 3 * k])
         ctx.beginPath()
-        for (let i = 0; i < phase.length; i++) {
+        let down = true
+        for (let i = 0; i < overlay.values.length; i++) {
+          const v = overlay.values[i]
+          if (!Number.isFinite(v)) {
+            down = true
+            continue
+          }
           const x = sx(freqs[i])
-          const y = py((phase[i] * 180) / Math.PI)
-          if (i === 0) ctx.moveTo(x, y)
+          const y = py(v)
+          if (down) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
+          down = false
         }
         ctx.stroke()
         ctx.setLineDash([])
@@ -182,35 +214,25 @@ export default function SpectrumCanvas({
       ctx.restore()
 
       // Right-hand axis, outside the clip.
-      if (phase) {
-        let lo = 0
-        let hi = 0
-        for (let i = 0; i < phase.length; i++) {
-          const d = (phase[i] * 180) / Math.PI
-          if (d < lo) lo = d
-          if (d > hi) hi = d
-        }
-        lo = Math.min(-90, Math.floor(lo / 90) * 90)
-        hi = Math.max(90, Math.ceil(hi / 90) * 90)
-        const py = (d) => area.y + area.h - ((d - lo) / (hi - lo)) * area.h
-
+      if (overlay) {
+        const { lo, hi, step, py } = overlayAxis(overlay, area)
         ctx.save()
         ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
         ctx.fillStyle = COLORS.phase
         ctx.textAlign = 'left'
         ctx.textBaseline = 'middle'
-        for (let d = lo; d <= hi + 1e-9; d += 90) {
-          ctx.fillText(`${d}°`, area.x + area.w + 8 * k, py(d))
+        for (let v = lo; v <= hi + step * 1e-9; v += step) {
+          ctx.fillText(overlay.tick(v), area.x + area.w + 8 * k, py(v))
         }
         ctx.translate(area.x + area.w + 52 * k, area.y + area.h / 2)
         ctx.rotate(Math.PI / 2)
         ctx.textAlign = 'center'
         ctx.font = `${Math.round(12 * k)}px ui-sans-serif, system-ui, sans-serif`
-        ctx.fillText('Phase of the chain', 0, 0)
+        ctx.fillText(overlay.label, 0, 0)
         ctx.restore()
       }
     },
-    [freqs, amps, ghostAmps, response, responseExact, phase, scale, markers],
+    [freqs, amps, ghostAmps, response, responseExact, overlay, scale, markers],
   )
 
   return <canvas ref={ref} className="plot" />
