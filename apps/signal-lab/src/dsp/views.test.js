@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { designFir, movingAverage, poleRadius, designBiquad } from '@ee-labs/dsp'
 import {
+  applyChain,
   chainGroupDelay,
   chainImpulse,
   chainPolesZeros,
   chainResponse,
+  convKernel,
   kernelCentre,
 } from './chain.js'
 import { makeBlockRecord } from './blocks.js'
@@ -304,5 +306,43 @@ describe('kernel centre', () => {
     // A feed-forward comb is 1 at tap 0 and g at tap D — not symmetric.
     const { h } = chainImpulse([blk('comb', { delayMs: 2, g: 0.7, mode: 'feedforward' })], 256, FS)
     expect(kernelCentre(h)).toBeNull()
+  })
+})
+
+describe('convolution kernel length', () => {
+  // The bug Reed's skepticism led to: a Q=20 low-pass at 100 Hz rings for
+  // ~7000 samples, and a kernel capped at 0.05 s made the dot product miss a
+  // third of the answer — shown unflagged, on a linear chain, in the one view
+  // whose entire message is that the two numbers are equal.
+  it('sizes the kernel by the chain ring time, and then the sum matches', () => {
+    const blocks = [blk('lowpass', { freq: 100, q: 20 })]
+    const { n, truncated } = convKernel(blocks, FS)
+    expect(truncated).toBe(false)
+    expect(n).toBeGreaterThan(7000)
+
+    const { h } = chainImpulse(blocks, n, FS)
+    const N = 1600
+    const x = new Float64Array(N)
+    for (let i = 0; i < N; i++) x[i] = Math.sin((2 * Math.PI * 100 * i) / FS)
+    const y = applyChain(blocks, x, FS, 0)
+    for (const at of [399, 500, 800, 1500]) {
+      let dot = 0
+      for (let kk = 0; kk < h.length && kk <= at; kk++) dot += h[kk] * x[at - kk]
+      // The old 400-sample kernel was off by 4.96 at n=800. Now: rounding.
+      expect(Math.abs(y[at] - dot), `n=${at}`).toBeLessThan(1e-4)
+    }
+  })
+
+  it('flags, rather than hides, a chain that out-rings even the cap', () => {
+    // Q=20 at 20 Hz at 48 kHz settles in ~200k samples.
+    const blocks = [blk('lowpass', { freq: 20, q: 20 })]
+    const { n, truncated } = convKernel(blocks, 48000)
+    expect(truncated).toBe(true)
+    expect(n).toBe(32768)
+  })
+
+  it('stays small for chains that settle fast', () => {
+    expect(convKernel([blk('movingavg', { taps: 8 })], FS).n).toBe(64)
+    expect(convKernel([], FS).n).toBe(64)
   })
 })

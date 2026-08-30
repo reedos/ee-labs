@@ -13,6 +13,7 @@ import {
   chainGroupDelay,
   chainImpulse,
   chainPhase,
+  convKernel,
   kernelCentre,
   chainPolesZeros,
   chainResponse,
@@ -221,16 +222,15 @@ export default function App() {
   const conv = useMemo(() => {
     if (state.timeView !== 'conv') return null
     const x = render(state.sources, timeN, state.sampleRate, 0)
-    const { h, exact } = chainImpulse(
-      state.blocks,
-      Math.min(2048, Math.max(64, Math.ceil(state.sampleRate * 0.05))),
-      state.sampleRate,
-    )
+    // Kernel long enough that the sum genuinely equals the chain — sized by
+    // the chain's own ring time, not by a guess. See convKernel.
+    const k = convKernel(state.blocks, state.sampleRate)
+    const { h, exact } = chainImpulse(state.blocks, k.n, state.sampleRate)
     const y = applyChain(state.blocks, x, state.sampleRate, 0)
-    return { x, h, y, exact }
+    return { x, h, y, exact, truncated: k.truncated }
   }, [state.timeView, state.sources, state.blocks, timeN, state.sampleRate])
 
-  const scrub = useConvolutionPosition(timeN)
+  const scrub = useConvolutionPosition(timeN, state.presetName)
 
   // The sum the shaded bars represent, computed HERE from the kernel — an
   // independent path from the chain's own stateful processors. For a linear
@@ -365,6 +365,11 @@ export default function App() {
                   {conv.exact ? null : (
                     <span className="flag warn">they disagree — this chain is not LTI</span>
                   )}
+                  {conv.truncated ? (
+                    <span className="flag warn">
+                      kernel truncated — the chain rings past the window, sums may drift
+                    </span>
+                  ) : null}
                 </>
               ) : (
                 <>

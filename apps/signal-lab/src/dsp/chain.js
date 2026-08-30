@@ -120,3 +120,26 @@ export function chainImpulse(blocks, n, sampleRate) {
   const h = applyChain(blocks, x, sampleRate, 0)
   return { h, exact, any: list.length > 0 }
 }
+
+/**
+ * How long the convolution view's kernel must be for the dot product to match
+ * the chain, and whether even that had to be cut short.
+ *
+ * The kernel length was a flat 0.05 s, and a Q = 20 low-pass at 100 Hz rings
+ * for 7,000+ samples: at n = 800 the chain said -15.84 while the truncated sum
+ * said -10.88 — a 31% disagreement presented, unflagged, for a perfectly
+ * linear chain. On the one view whose entire message is "these two numbers are
+ * equal", a silently truncated kernel is not an approximation, it is the
+ * exhibit lying.
+ *
+ * So the length comes from chainSettle — the same bound the FFT pre-roll
+ * trusts — and the cap is generous. When a chain out-rings even the cap,
+ * `truncated` is true and the view says so instead of letting the numbers
+ * quietly diverge.
+ */
+export function convKernel(blocks, sampleRate) {
+  const settle = chainSettle(blocks, sampleRate)
+  const cap = 32768
+  const n = Math.min(cap, Math.max(64, settle + 1))
+  return { n, truncated: settle + 1 > cap }
+}

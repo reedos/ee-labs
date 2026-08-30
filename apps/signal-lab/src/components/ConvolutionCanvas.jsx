@@ -64,15 +64,25 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
       label(top, 'input x[m], with the kernel flipped and slid to n')
       zero(top, syTop)
 
-      // Product bars first, underneath everything: h[n−m]·x[m] on the input's
-      // own scale, since their SUM is the next output sample.
+      // Product bars: h[n−m]·x[m] on the input's own scale, since their SUM is
+      // the next output sample. Drawn WIDE — most of a sample pitch — because
+      // in the first cut they were 2px bars at the exact positions of the
+      // kernel stems, same sign, and therefore invisible behind them. The one
+      // thing this view exists to show was the one thing you could not see.
+      const pitch = outer.w / Math.max(1, x.length - 1)
+      const barW = Math.max(2 * k, pitch * 0.62)
       ctx.fillStyle = COLORS.spectrum
-      ctx.globalAlpha = 0.5
+      ctx.globalAlpha = 0.55
       for (let m = Math.max(0, n - h.length + 1); m <= n; m++) {
         const prod = h[n - m] * x[m]
         if (prod === 0) continue
         const px = sx(m)
-        ctx.fillRect(px - 1 * k, Math.min(syTop(0), syTop(prod)), 2 * k, Math.abs(syTop(prod) - syTop(0)))
+        ctx.fillRect(
+          px - barW / 2,
+          Math.min(syTop(0), syTop(prod)),
+          barW,
+          Math.abs(syTop(prod) - syTop(0)),
+        )
       }
       ctx.globalAlpha = 1
 
@@ -89,19 +99,47 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
       ctx.stroke()
 
       // The kernel, flipped: h[n−m] plotted against m, on its own scale so a
-      // 1/N-tall moving average is still visible. Drawn as stems to keep it
-      // legibly a different object from the signal.
+      // 1/N-tall moving average is still visible — and SAYING SO. The first
+      // cut drew 0.125-tall taps as tall as a ±0.8 input with no scale cue,
+      // which reads as a wrong plot even though the arithmetic was right.
+      const mStart = Math.max(0, n - h.length + 1)
+      const hy = (hv) => mid(top) - (hv / (hPeak * 1.15)) * (top.h / 2)
       ctx.strokeStyle = COLORS.response
-      ctx.lineWidth = 1.6 * k
-      for (let m = Math.max(0, n - h.length + 1); m <= n; m++) {
-        const hv = h[n - m]
-        if (hv === 0) continue
-        const px = sx(m)
-        const py = mid(top) - (hv / (hPeak * 1.15)) * (top.h / 2)
+      if (n - mStart + 1 <= 48) {
+        // Few taps: stems, thin, so the wide product bars stay visible.
+        ctx.lineWidth = 1.1 * k
+        for (let m = mStart; m <= n; m++) {
+          const hv = h[n - m]
+          if (hv === 0) continue
+          const px = sx(m)
+          ctx.beginPath()
+          ctx.moveTo(px, syTop(0))
+          ctx.lineTo(px, hy(hv))
+          ctx.stroke()
+        }
+      } else {
+        // A long (IIR) kernel as stems is spray over the signal; a thin
+        // continuous curve reads as the envelope it is.
+        ctx.lineWidth = 1.2 * k
         ctx.beginPath()
-        ctx.moveTo(px, syTop(0))
-        ctx.lineTo(px, py)
+        for (let m = mStart; m <= n; m++) {
+          const px = sx(m)
+          const py = hy(h[n - m])
+          if (m === mStart) ctx.moveTo(px, py)
+          else ctx.lineTo(px, py)
+        }
         ctx.stroke()
+      }
+
+      // Name the magnification, or the kernel's height is a quiet lie.
+      const mag = (xPeak * 1.1) / (hPeak * 1.15)
+      if (mag > 1.25 || mag < 0.8) {
+        ctx.fillStyle = COLORS.response
+        ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
+        ctx.textAlign = 'right'
+        ctx.textBaseline = 'bottom'
+        const shown = mag >= 10 ? Math.round(mag) : Number(mag.toPrecision(2))
+        ctx.fillText(`kernel drawn ×${shown}`, outer.x + outer.w - 4 * k, top.y - 4 * k)
       }
 
       // ---- bottom strip: the output so far
@@ -148,7 +186,7 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
  * is a per-view convenience, not part of the setup a preset or a link should
  * carry.
  */
-export function useConvolutionPosition(length) {
+export function useConvolutionPosition(length, resetKey) {
   const [pos, setPos] = useState(Math.floor(length / 3))
   const [playing, setPlaying] = useState(false)
   const raf = useRef(0)
@@ -157,6 +195,16 @@ export function useConvolutionPosition(length) {
   useEffect(() => {
     setPos((p) => Math.min(p, Math.max(0, length - 1)))
   }, [length])
+
+  // A new preset is a new story: start it from the beginning, paused, instead
+  // of wherever the scrubber happened to be left on the previous one.
+  const started = useRef(resetKey)
+  useEffect(() => {
+    if (started.current === resetKey) return
+    started.current = resetKey
+    setPos(0)
+    setPlaying(false)
+  }, [resetKey])
 
   useEffect(() => {
     if (!playing) return undefined
