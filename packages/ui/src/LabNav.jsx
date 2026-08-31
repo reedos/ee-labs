@@ -22,9 +22,9 @@ export default function LabNav({ current }) {
   const home = homeUrl()
   if (!home) return null
   return (
-    <nav className="labnav" aria-label="Reed's Labs suite">
+    <nav className="labnav" aria-label="REED's Engineering Labs suite">
       <a className="labnav-home" href={home}>
-        R<b className="labnav-ee">ee</b>d&rsquo;s Labs
+        R<b className="labnav-ee">EE</b>D&rsquo;s Engineering Labs
       </a>
       {LABS.map((lab) =>
         lab.id === current ? (

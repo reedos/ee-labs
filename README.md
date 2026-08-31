@@ -1,4 +1,4 @@
-# Reed's Labs
+# REED's Engineering Labs
 
 **Live at [reedos.github.io/ee-labs](https://reedos.github.io/ee-labs/)** — nothing to install.
 
