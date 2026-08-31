@@ -46,7 +46,7 @@ jobs:
       - name: Assemble the site
         run: |
           mkdir -p _site
-          cp site/index.html _site/
+          cp site/index.html site/icon-512.png site/icon-180.png _site/
           cp -r apps/signal-lab/dist  _site/signal-lab
           cp -r apps/circuit-lab/dist _site/circuit-lab
           cp -r apps/control-lab/dist _site/control-lab

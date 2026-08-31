@@ -1,5 +1,12 @@
 # Needs and findings for the other territories
 
+## Crossed: suite icon links in your index.html head (Reed asked live)
+
+Reed picked a home-screen icon (R with EE subscript over a damped ring,
+workshopped on an artifact board). Three lines in your <head>: rel=icon,
+apple-touch-icon (both ../icon-*.png — the files live at the deployed site
+root, shipped from site/), and theme-color #0d1218. Dev 404s harmlessly.
+
 ## Crossed: LabNav suite navigation in your header (Reed asked live)
 
 Reed wanted one-click bounce between the labs and the splash page. Shared
