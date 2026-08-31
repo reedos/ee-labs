@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
-import { COLORS, LabNav, NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
+import { COLORS, LabNav, NumField, PoleZeroCanvas, fmt, fmtHz, fmtNum } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import {
   bode,
@@ -155,10 +155,15 @@ export default function App() {
     stepAxisRef.current.duration = d
     return d
   }, [id, output, naturalDuration])
-  const step = useMemo(
-    () => stepResponse(tf, { duration: stepDuration, points: 900 }),
-    [tf, stepDuration],
-  )
+  const step = useMemo(() => {
+    // Affordability gate, the same one sineResponse applies: RK4 sub-steps
+    // scale as duration × the fastest pole, and a slider-legal 1 MΩ tank at
+    // Q ≈ 3e5 asks for ~4e7 of them — a tab frozen for half a minute per
+    // keystroke. Null means "too stiff to simulate", and the pane says so.
+    const fastest = Math.max(0, ...pz.poles.map(([re, im]) => Math.hypot(re, im)))
+    if ((stepDuration * fastest) / 0.08 + 900 > 2e6) return null
+    return stepResponse(tf, { duration: stepDuration, points: 900 })
+  }, [tf, stepDuration, pz])
 
   const markers = useMemo(() => {
     const out = []
@@ -188,14 +193,17 @@ export default function App() {
     [id, params, output, tolsN, freqs],
   )
   const stepEnvelope = useMemo(
-    () => stepBand(id, params, output, tolsN, stepDuration),
-    [id, params, output, tolsN, stepDuration],
+    // 120 builds of a circuit the nominal simulation already declined would
+    // be 120 frozen tabs; the band only exists when the trace does.
+    () => (step ? stepBand(id, params, output, tolsN, stepDuration) : null),
+    [id, params, output, tolsN, stepDuration, step],
   )
   // The step pane's y-range, held sticky over trace AND band so neither can
   // be clipped and shrinking overshoot visibly shrinks.
   const stepRange = useMemo(() => {
     let lo = 0
     let hi = 0
+    if (!step) return null
     for (let i = 0; i < step.y.length; i++) {
       if (step.y[i] < lo) lo = step.y[i]
       if (step.y[i] > hi) hi = step.y[i]
@@ -477,7 +485,8 @@ export default function App() {
         <div className="topbar-controls">
           <span className="topbar-field">
             <span>DC gain</span>
-            <b>{Number.isFinite(gain) ? fmt(gain, '', 4) : '∞'}</b>
+            {/* A gain is dimensionless: 0.5, not "500 m". */}
+            <b>{Number.isFinite(gain) ? fmtNum(gain, 4) : '∞'}</b>
           </span>
           {metrics || second ? (
             <>
@@ -574,7 +583,7 @@ export default function App() {
               {lower === 'step' ? (
                 <>
                   <span>
-                    final <b>{Number.isFinite(gain) ? fmt(gain, '', 4) : 'never settles'}</b>
+                    final <b>{Number.isFinite(gain) ? fmtNum(gain, 4) : 'never settles'}</b>
                   </span>
                   {second && second.overshoot > 0 ? (
                     <span>
@@ -612,13 +621,21 @@ export default function App() {
             </div>
           </div>
           {lower === 'step' ? (
-            <StepCanvas
-              t={step.t}
-              y={step.y}
-              final={gain}
-              band={stepEnvelope}
-              range={stepRange}
-            />
+            step ? (
+              <StepCanvas
+                t={step.t}
+                y={step.y}
+                final={gain}
+                band={stepEnvelope}
+                range={stepRange}
+              />
+            ) : (
+              <p className="hint" data-role="step-too-stiff">
+                Too stiff to simulate: this circuit rings for millions of its fastest time
+                steps, so drawing its step response would freeze the page. The frequency
+                view above is exact regardless — it needs no integration.
+              </p>
+            )
           ) : (
             <PoleZeroCanvas
               poles={pz.poles}

@@ -150,6 +150,15 @@ export function stepBand(id, params, output, tols, duration, points = 300) {
   const t = tolsOf(id, typeof tols === 'number' ? tols : tols || {})
   if (!anyTol(t) || !(duration > 0)) return null
 
+  // Its own affordability gate, mirroring the nominal trace's: 120 builds of
+  // a circuit too stiff to simulate once would be 120 frozen tabs.
+  const nominal = transferOf(id, params, output)
+  const fastest = Math.max(
+    0,
+    ...polesZeros(nominal).poles.map(([re, im]) => Math.hypot(re, im)),
+  )
+  if (SAMPLES * ((duration * fastest) / 0.08 + points) > 2e6) return null
+
   let grid = null
   const lo = new Float64Array(points).fill(Infinity)
   const hi = new Float64Array(points).fill(-Infinity)

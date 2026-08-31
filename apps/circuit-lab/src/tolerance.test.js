@@ -159,3 +159,16 @@ describe('stepBand', () => {
     expect(width).toBeGreaterThan(0.05)
   })
 })
+
+describe('stepBand declines circuits too stiff to simulate', () => {
+  it('returns null for the 1 MOhm tank instead of 120 frozen builds', () => {
+    // Nominal simulation of this configuration needs ~4e7 RK4 sub-steps; the
+    // band would need 120x that. The App pane explains; the band just stays
+    // away.
+    const stiff = { r: 1e6, l: 1e-6, c: 1e-3 }
+    expect(stepBand('rlcParallel', stiff, 'z', 0.05, 1.0)).toBeNull()
+  })
+  it('still draws for the ordinary case', () => {
+    expect(stepBand('rlcSeries', RLC, 'c', 0.05, 2e-3, 100)).not.toBeNull()
+  })
+})
