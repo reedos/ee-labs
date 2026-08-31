@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { fmt } from '@ee-labs/ui'
+import { fmt, fmtNum } from '@ee-labs/ui'
 
 /**
  * The classic feedback loop as a block diagram, on demand.
@@ -35,7 +35,13 @@ const SYMBOLS = {
 }
 
 const summarize = (defs, values) =>
-  defs.params.map((p) => `${SYMBOLS[p.key] || p.label} ${fmt(values[p.key], p.unit || '', 3)}`)
+  defs.params.map(
+    (p) =>
+      // Engineering prefixes only where a UNIT exists (τ in seconds, poles in
+      // rad/s). A dimensionless Kd = 0.2 printed as "Kd 200 m" reads as two
+      // hundred, which is a thousand-fold lie in a box meant to be glanced at.
+      `${SYMBOLS[p.key] || p.label} ${p.unit ? fmt(values[p.key], p.unit, 3) : fmtNum(values[p.key], 3)}`,
+  )
 
 export default function LoopDiagram({
   plant,

@@ -29,10 +29,12 @@ export const TERMS = {
   zero: {
     name: 'Zero',
     def:
-      "A root of a transfer function's numerator. Where a pole spends phase, a zero earns " +
-      'it — up to +90° — and derivative and lead action are useful precisely because they ' +
-      'place zeros. Zeros also move overshoot on their own, which is one reason the ζ ' +
-      'tables only apply to loops without them.',
+      "A root of a transfer function's numerator. Where a pole spends phase, a LEFT-half-plane " +
+      'zero earns it — up to +90° — and derivative and lead action are useful precisely ' +
+      'because they place zeros there. A RIGHT-half-plane zero (a custom plant can carry one) ' +
+      'does the opposite: it subtracts phase while its magnitude looks identical, which is ' +
+      'what makes such plants notoriously hard to control. Zeros also move overshoot on ' +
+      'their own, which is one reason the ζ tables only apply to loops without them.',
   },
   integrator: {
     name: 'Integrator',
@@ -118,8 +120,10 @@ export const TERMS = {
     def:
       'The paths the closed-loop poles trace as the loop gain sweeps. Plant and controller ' +
       'fix the roads; the gain only chooses where on them the poles currently sit. The ' +
-      'moment a branch crosses into the right half plane is the moment the loop starts ' +
-      'oscillating — nothing sudden happens to the plant.',
+      'moment a branch crosses into the right half plane is the moment the loop runs away — ' +
+      'as a growing oscillation when a complex pair crosses, as a latch-up when a branch ' +
+      'crosses on the real axis (the unstable plant under too little gain). Nothing sudden ' +
+      'happens to the plant either way.',
   },
   effort: {
     name: 'Effort (controller output u)',

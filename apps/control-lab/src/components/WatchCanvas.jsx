@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { COLORS, niceStep, plotArea, plotScale, useCanvas, fmt } from '@ee-labs/ui'
+import { COLORS, niceStep, plotArea, plotScale, useCanvas, fmt, fmtNum } from '@ee-labs/ui'
 import { paneRange } from '../watch.js'
 
 /**
@@ -114,7 +114,8 @@ export default function WatchCanvas({ t, input, y, e, u, parts, kick, pos, dist,
         ctx.textAlign = 'right'
         ctx.textBaseline = 'middle'
         for (const v of tickValues(s.r, s.kind === 'io' ? 4 : 2)) {
-          ctx.fillText(fmt(v, '', 2), s.area.x - 7 * k, s.sy(v))
+          // Signal values are dimensionless — 0.5, never "500 m".
+          ctx.fillText(fmtNum(v, 2), s.area.x - 7 * k, s.sy(v))
         }
       }
       // Everything painted in a strip stays IN the strip: a diverging ghost
@@ -236,7 +237,7 @@ export default function WatchCanvas({ t, input, y, e, u, parts, kick, pos, dist,
               ctx.textAlign = n / (t.length - 1) > 0.85 ? 'right' : 'left'
               ctx.textBaseline = 'middle'
               ctx.fillText(
-                ` e = ${fmt(e[n], '', 3)} `,
+                ` e = ${fmtNum(e[n], 3)} `,
                 ex + (n / (t.length - 1) > 0.85 ? -6 : 6) * k,
                 (yAsk + yGot) / 2,
               )
@@ -258,7 +259,7 @@ export default function WatchCanvas({ t, input, y, e, u, parts, kick, pos, dist,
           )
           liveValue(
             s.area,
-            `${s.kind === 'solo' ? 'u' : p.label} = ${fmt((s.kind === 'solo' ? u : p.y)[n], '', 2)}`,
+            `${s.kind === 'solo' ? 'u' : p.label} = ${fmtNum((s.kind === 'solo' ? u : p.y)[n], 2)}`,
             color,
           )
           // The raw signal and the term's answer share one scale, so the
@@ -288,7 +289,7 @@ export default function WatchCanvas({ t, input, y, e, u, parts, kick, pos, dist,
 
         if (s.kind === 'sum') {
           label(s.area, 'their sum u — what actually drives the plant')
-          liveValue(s.area, `u = ${fmt(u[n], '', 2)}`, PART_COLORS.u)
+          liveValue(s.area, `u = ${fmtNum(u[n], 2)}`, PART_COLORS.u)
           trace(s.area, u, s.sy, PART_COLORS.u, 1.9)
           // The composition at the cursor: each part a segment laid end to
           // end from zero to u — the convolution view's product bars,

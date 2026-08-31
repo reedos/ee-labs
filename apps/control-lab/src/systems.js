@@ -1,5 +1,5 @@
 import { series, closeLoop, polyAdd, polyMul } from '@ee-labs/systems'
-import { fmt } from '@ee-labs/ui'
+import { fmt, fmtNum } from '@ee-labs/ui'
 
 // The things being controlled, and the things doing the controlling.
 //
@@ -75,7 +75,7 @@ export const PLANTS = {
         const C = p.tau / 1000
         return (
           `Circuit Lab's RC low-pass — τ is literally R·C. With R = 1 kΩ, C = ${fmt(C, 'F', 3)} ` +
-          `gives this exact τ${p.k === 1 ? '' : `; the gain K is a ×${fmt(p.k, '', 3)} amplifier after it`}.`
+          `gives this exact τ${p.k === 1 ? '' : `; the gain K is a ×${fmtNum(p.k, 3)} amplifier after it`}.`
         )
       },
       tex: 'H(s) = K\\cdot\\frac{1}{1 + sRC}',
@@ -137,7 +137,7 @@ export const PLANTS = {
         return (
           'Circuit Lab\'s series RLC, read across the capacitor: ωₙ = 1/√(LC) and ' +
           `ζ = (R/2)·√(C/L). With L = 10 mH: C = ${fmt(C, 'F', 3)}, R = ${fmt(R, 'Ω', 3)}` +
-          `${p.k === 1 ? '' : `, then a ×${fmt(p.k, '', 3)} amplifier`}.`
+          `${p.k === 1 ? '' : `, then a ×${fmtNum(p.k, 3)} amplifier`}.`
         )
       },
       tex: 'H(s) = K\\cdot\\frac{1}{LC\\,s^2 + RC\\,s + 1}',
@@ -206,7 +206,7 @@ export const PLANTS = {
           'three RC stages, each BUFFERED so the next cannot load it (unbuffered, the stages ' +
           `pull each other's poles). With C = 1 µF each: R₁ = ${fmt(p.t1 / C, 'Ω', 3)}, ` +
           `R₂ = ${fmt(p.t2 / C, 'Ω', 3)}, R₃ = ${fmt(p.t3 / C, 'Ω', 3)}` +
-          `${p.k === 1 ? '' : `, and a ×${fmt(p.k, '', 3)} amplifier`}.`
+          `${p.k === 1 ? '' : `, and a ×${fmtNum(p.k, 3)} amplifier`}.`
         )
       },
       tex: 'H(s) = K\\prod_{i=1}^{3}\\frac{1}{1+sR_iC}',
@@ -306,7 +306,8 @@ export const CONTROLLERS = {
       'A zero below a pole. It ADDS phase in the band between them, peaking at their geometric ' +
       'mean — put that peak at the crossover and it is exactly what a loop short of margin ' +
       'needs — and unlike a derivative term its high-frequency gain is bounded, so it does not ' +
-      'amplify noise without limit.',
+      'amplify noise without limit. (Drag the zero past the pole and it is a LAG instead: the ' +
+      'same structure now subtracts phase in the band between them.)',
     params: [
       P('k', 'Gain', 1, 0.001, 1000),
       P('z', 'Zero at', 1, 0.001, 1e7, null, 'rad/s'),
@@ -331,13 +332,23 @@ export const CONTROLLERS = {
  * a disturbance but erasing it.
  */
 export function buildLoop(plantId, plantParams, ctrlId, ctrlParams) {
+  // Normalized so the open loop's a[0] = 1 (same rule as Circuit Lab's
+  // transferOf): three microsecond lags multiply into a leading coefficient
+  // around 1e-16, and raw-scaled polynomials are what let an absolute
+  // epsilon anywhere downstream quietly change the loop's order. H(s) is a
+  // ratio; the scale is free, so choose the one every instrument expects.
+  const norm = (tf) => {
+    const g = tf.a[0]
+    if (!Number.isFinite(g) || g === 0 || g === 1) return tf
+    return { b: tf.b.map((v) => v / g), a: tf.a.map((v) => v / g) }
+  }
   const P0 = PLANTS[plantId].tf(plantParams)
   const C0 = CONTROLLERS[ctrlId].tf(ctrlParams)
-  const L = series(C0, P0)
-  const disturbance = {
+  const L = norm(series(C0, P0))
+  const disturbance = norm({
     b: polyMul(P0.b, C0.a),
     a: polyAdd(polyMul(P0.a, C0.a), polyMul(P0.b, C0.b)),
-  }
+  })
   return { plant: P0, controller: C0, open: L, closed: closeLoop(L), disturbance }
 }
 

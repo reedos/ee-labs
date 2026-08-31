@@ -58,7 +58,8 @@ export default function StepCanvas({ t, y, final, markers = [], diverges = false
         tMax,
         lo,
         hi,
-        (v) => fmt(v, '', 3),
+        // "200 ms", not a bare "200 m" under a title that promises seconds.
+        (v) => fmt(v, 's', 3),
         (v) => (Math.abs(hi - lo) > 20 ? v.toFixed(0) : v.toFixed(2)),
         { zeroLine: true, xTitle: 'Time (seconds)', yTitle: 'Output' },
       )

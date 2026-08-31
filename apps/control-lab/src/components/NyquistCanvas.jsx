@@ -1,5 +1,5 @@
 import React from 'react'
-import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
+import { useCanvas, COLORS, drawFrame, plotArea, fmtNum } from '@ee-labs/ui'
 
 /**
  * The open loop plotted on the complex plane, against the point −1.
@@ -54,8 +54,10 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
         xMid + xHalf,
         -yHalf,
         yHalf,
-        (v) => fmt(v, '', 2),
-        (v) => fmt(v, '', 2),
+        // Plain numbers: these axes are dimensionless, and the engineering
+        // formatter printed 0.5 as "500 m" — a prefix for a unit it lacks.
+        (v) => fmtNum(v),
+        (v) => fmtNum(v),
         { zeroLine: true, xTitle: 'Real', yTitle: 'Imaginary' },
       )
 
@@ -84,7 +86,13 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
         ctx.beginPath()
         let started = false
         for (let i = 0; i < re.length; i++) {
-          if (!Number.isFinite(re[i]) || !Number.isFinite(im[i])) continue
+          if (!Number.isFinite(re[i]) || !Number.isFinite(im[i])) {
+            // BREAK the path across a singularity rather than skipping the
+            // point: connecting the neighbours would draw a chord the locus
+            // never traverses.
+            started = false
+            continue
+          }
           const x = sx(re[i])
           const y = sy(sign * im[i])
           if (!started) {
@@ -97,6 +105,33 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
       }
       draw(1, 1)
       draw(-1, 0.35)
+
+      // Which way the curve is traversed as ω rises — the encirclement COUNT
+      // has a sign, and a contour without a direction cannot be counted. One
+      // arrowhead on the solid (positive-ω) branch, placed a third of the way
+      // along so it stays clear of both the tail at the origin and the
+      // margin annotations near −1.
+      {
+        const finite = []
+        for (let i = 0; i < re.length; i++) {
+          if (Number.isFinite(re[i]) && Number.isFinite(im[i])) finite.push(i)
+        }
+        if (finite.length > 8) {
+          const at = finite[Math.floor(finite.length / 3)]
+          const nx = finite[Math.floor(finite.length / 3) + 1]
+          const x0 = sx(re[at])
+          const y0 = sy(im[at])
+          const ang = Math.atan2(sy(im[nx]) - y0, sx(re[nx]) - x0)
+          const L = 7 * k
+          ctx.strokeStyle = COLORS.trace
+          ctx.lineWidth = 1.8 * k
+          ctx.beginPath()
+          ctx.moveTo(x0 - L * Math.cos(ang - 0.45), y0 - L * Math.sin(ang - 0.45))
+          ctx.lineTo(x0, y0)
+          ctx.lineTo(x0 - L * Math.cos(ang + 0.45), y0 - L * Math.sin(ang + 0.45))
+          ctx.stroke()
+        }
+      }
 
       // The point everything is about.
       const px = sx(-1)

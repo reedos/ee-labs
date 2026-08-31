@@ -460,3 +460,106 @@ describe('phase anchoring', () => {
     expect(m.phaseMargin).toBeCloseTo(51.8, 0)
   })
 })
+
+// ---- regression pins for the 2026-08-31 control-loop audit fixes ----
+
+describe('roots keeps genuine tiny leading coefficients', () => {
+  it('the microsecond-lag characteristic quartic keeps all four roots and its true verdict', () => {
+    // threePole k=7.062 tau=(4.29e-7, 6.22e-5, 1.22e-5) + PI kp=31.15 ki=49.01:
+    // char poly leading coefficient 3.25e-16 is REAL PHYSICS, not padding.
+    // The old absolute 1e-14 strip solved the wrong cubic and called a loop
+    // growing as e^(+9621 t) stable.
+    const char_ = [3.253e-16, 7.908e-10, 7.486e-5, 220.98, 346.12]
+    const r = roots(char_)
+    expect(r).toHaveLength(4)
+    const unstablePair = r.filter(([re]) => re > 0)
+    expect(unstablePair).toHaveLength(2)
+    expect(unstablePair[0][0]).toBeCloseTo(9620.7, -1)
+    expect(Math.abs(unstablePair[0][1])).toBeCloseTo(5.265e5, -2)
+    expect(isStable({ b: [1], a: char_ })).toBe(false)
+  })
+
+  it('a genuinely stable slow pole is not called unstable by an absolute epsilon', () => {
+    // pole at -2.6e-19: stable, merely slow. The old -1e-12 absolute test
+    // flagged it.
+    expect(isStable({ b: [1], a: [1, 2.6e-19] })).toBe(true)
+    // ...while a pole ON the axis stays not-stable.
+    expect(isStable({ b: [1], a: [1, 0] })).toBe(false)
+  })
+})
+
+describe('margins: geometry over conventions', () => {
+  const grid = (lo, hi, n = 4000) =>
+    Float64Array.from({ length: n }, (_, i) => lo * Math.pow(hi / lo, i / (n - 1)))
+
+  it('multi-crossing loop: the reported PM agrees in sign with the verdict', () => {
+    // secondOrder k=0.004 wn=0.0303 zeta=0.0148 + PI kp=19 ki=0.57: three
+    // gain crossings; the old first-crossing rule printed "+94.6 deg to
+    // spare" beside an UNSTABLE banner.
+    const P0 = { b: [0.004 * 0.0303 * 0.0303], a: [1, 2 * 0.0148 * 0.0303, 0.0303 * 0.0303] }
+    const C0 = { b: [19, 0.57], a: [1, 0] }
+    const L = { b: polyMul(P0.b, C0.b), a: polyMul(P0.a, C0.a) }
+    const m = margins(L, grid(1e-7, 1e3))
+    expect(isStable({ b: [1], a: polyAdd(L.b, L.a) })).toBe(false)
+    expect(m.gainCrossings.length).toBeGreaterThanOrEqual(3)
+    expect(m.phaseMargin).toBeLessThan(0)
+  })
+
+  it('a crossover with true phase LEAD reports a large positive margin, not a folded negative one', () => {
+    // firstOrder k=7 tau=5e-6 + lead k=0.005 z=0.66 p=35: +53 deg of lead at
+    // the crossing - 127 deg from the nearest 180 line, robustly stable. The
+    // old fold printed -124.3 and flagged it "thin".
+    const P0 = { b: [7], a: [5e-6, 1] }
+    const C0 = { b: [0.005 / 0.66, 0.005], a: [1 / 35, 1] }
+    const L = { b: polyMul(P0.b, C0.b), a: polyMul(P0.a, C0.a) }
+    const m = margins(L, grid(1e-6, 1e9))
+    expect(m.phaseMargin).toBeGreaterThan(90)
+  })
+
+  it('finds the negative-real-axis crossing of a +180-anchored loop', () => {
+    // unstable plant + PID: the loop is stable ONLY because the gain is high
+    // enough; its real-axis crossing lives on the +180 branch of unwrapped
+    // phase and the old -180-only test reported "phase never reaches -180".
+    const P0 = { b: [2167], a: [1, -0.32] }
+    const C0 = { b: [0.0088, 0.0029, 6.26], a: [1, 0] }
+    const L = { b: polyMul(P0.b, C0.b), a: polyMul(P0.a, C0.a) }
+    const m = margins(L, grid(1e-4, 1e4))
+    expect(m.phaseCrossover).not.toBeNull()
+    // |L| at the crossing ~ 19.6: reduce the gain ~19.6x and it falls over -
+    // the gain margin is BELOW 1, the registry hint's own lesson.
+    expect(m.gainMargin).toBeLessThan(1)
+    expect(m.gainMargin).toBeCloseTo(1 / 19.6, 1)
+  })
+
+  it('the binding gain margin, not the first crossing', () => {
+    // threePole k=1684 tau=(0.79, 0.0044, 99) + PID(0.536, 1.043, 0.0526):
+    // stable, two crossings with 1/|L| of 0.00206 and 0.634. The boundary a
+    // reader can act on is 0.634; the old code reported 0.002.
+    const Pa = polyMul(polyMul([0.79, 1], [0.0044, 1]), [99, 1])
+    const L = { b: polyMul([1684], [0.0526, 0.536, 1.043]), a: polyMul(Pa, [1, 0]) }
+    const m = margins(L, grid(1e-6, 1e4))
+    expect(isStable({ b: [1], a: polyAdd(L.b, L.a) })).toBe(true)
+    expect(m.gainMargin).toBeCloseTo(0.634, 1)
+  })
+
+  it('no phantom crossover at an |L| = 0 notch', () => {
+    // custom plant with an imaginary-axis zero pair + lead: the true phase
+    // never crosses the negative real axis; the unwrap slip once reported a
+    // crossover AT the notch with GM = 4e11.
+    const P0 = { b: [-2.16e-6, 0, -1.58e-5], a: [0.112, 2.17e-4, -0.367] }
+    const C0 = { b: [1 / 0.66, 1], a: [1 / 35, 1] }
+    const L = { b: polyMul(P0.b, C0.b), a: polyMul(P0.a, C0.a) }
+    const m = margins(L, grid(1e-5, 1e5))
+    for (const c of m.phaseCrossings) {
+      expect(c.mag).toBeGreaterThan(1e-9)
+      expect(1 / c.mag).toBeLessThan(1e9)
+    }
+  })
+
+  it('still reproduces the MATLAB-checked textbook case exactly', () => {
+    // unstable plant p=1, k=1 under Kp=5: PM = atan(sqrt(24)) = 78.46 deg.
+    const L = { b: [5], a: [1, -1] }
+    const m = margins(L, grid(1e-3, 1e3))
+    expect(m.phaseMargin).toBeCloseTo(78.46, 1)
+  })
+})

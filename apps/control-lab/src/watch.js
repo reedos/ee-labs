@@ -1,4 +1,4 @@
-import { errorLoop, simulate, stepResponse } from '@ee-labs/systems'
+import { errorLoop, polyMul, simulate, stepResponse } from '@ee-labs/systems'
 import { CONTROLLERS } from './systems.js'
 
 // The loop's internal signals over time, for watching.
@@ -50,15 +50,6 @@ export function paneRange(arrs, { floor = 1, upTo = null, diverges = false } = {
   return { lo: lo - pad, hi: hi + pad }
 }
 
-/** Trapezoid running integral of a sampled signal. */
-const cumtrapz = (t, y) => {
-  const out = new Float64Array(y.length)
-  for (let i = 1; i < y.length; i++) {
-    out[i] = out[i - 1] + ((y[i] + y[i - 1]) / 2) * (t[i] - t[i - 1])
-  }
-  return out
-}
-
 /** Central-difference derivative of a sampled signal, endpoints copied. */
 const diff = (t, y) => {
   const out = new Float64Array(y.length)
@@ -89,7 +80,9 @@ const interp = (t, y) => (tv) => {
  *   input — the step itself (r for 'ref', the shove d for 'dist')
  *   y     — the output, same curve the step view draws
  *   e     — the error r − y, simulated through S = 1/(1+L), NOT computed as
- *           r − y: two independent paths that the tests then require to agree
+ *           r − y. Honesty note: S and T share their denominator, so the two
+ *           sims integrate the same state trajectory — this is a consistency
+ *           check on the loop algebra, not an independent measurement
  *   parts — the controller's effort split by gain: [{ key, label, y }]
  *   u     — the total effort (the sum of parts, or the lead's own output)
  *   kick  — { weight } when an ideal derivative met the step edge and its
@@ -122,7 +115,13 @@ export function watchSignals(loop, ctrlId, ctrlP, stepInput, { duration, points 
     let iTerm = null
     let dTerm = null
     if (ctrlId === 'pi' || ctrlId === 'pid') {
-      const eInt = cumtrapz(t, e)
+      // ∫e is computed the way e itself is — as the step response of a
+      // transfer function, eTf with an extra pole at the origin — never by
+      // trapezoid on the display grid. The trapezoid missed whatever part of
+      // the transient fell between samples, and at Kp = Ki = 100 the missed
+      // area was 47% of ∫e's final value, carried forever into Ki·∫e and u
+      // while the e trace beside them was float-exact.
+      const eInt = stepResponse({ b: eTf.b, a: polyMul(eTf.a, [1, 0]) }, { duration, points }).y
       iTerm = Float64Array.from(eInt, (v) => ctrlP.ki * v)
       parts.push({ key: 'i', label: 'Ki·∫e', y: iTerm, raw: eInt, rawLabel: '∫e — the shaded area above' })
     }

@@ -142,17 +142,27 @@ function expectedLowFrequencyPhase(tf) {
  * dividing the polynomial down as it goes.
  */
 export function roots(coeffs) {
-  // Drop leading zeros; they are not roots, they are a lower-order polynomial.
+  // Drop leading zeros — EXACT zeros only. They are not roots, they are a
+  // lower-order polynomial. An absolute epsilon here (1e-14, once) deleted
+  // the genuine leading coefficient of any microsecond-timescale loop —
+  // τ₁τ₂τ₃ of three fast lags is smaller than that — and with it the fastest
+  // pole pair, which is exactly the pair that goes unstable: a loop growing
+  // as e^(+9621 t) reported "stable" with a calm step plot to match. The
+  // balancing below handles tiny-but-real leading coefficients exactly.
   let c = [...coeffs]
-  while (c.length && Math.abs(c[0]) < 1e-14) c.shift()
+  while (c.length && c[0] === 0) c.shift()
   const n = c.length - 1
   if (n < 1) return []
 
   const monic = c.map((v) => v / c[0])
-  // Trailing zeros are roots at the origin exactly; peel them off so the
-  // iteration below never has to converge onto a repeated root at zero.
+  // Trailing EXACT zeros are roots at the origin exactly; peel them off so
+  // the iteration below never has to converge onto a repeated root at zero.
+  // Exact, for the same reason as the leading strip: an absolute 1e-14 here
+  // swallowed a genuine pole at −2.6e-19 as "at the origin", turning a
+  // stable-but-slow system into a marginal one. A tiny-but-real trailing
+  // coefficient is a tiny-but-real root, and the balancing resolves it.
   let atOrigin = 0
-  while (monic.length > 1 && Math.abs(monic[monic.length - 1]) < 1e-14) {
+  while (monic.length > 1 && monic[monic.length - 1] === 0) {
     monic.pop()
     atOrigin++
   }
@@ -214,7 +224,13 @@ export function isStable(tf) {
   // No poles is not instability — a memoryless network (a resistor divider)
   // has no state to run away with, and calling the trivially well-behaved
   // baseline "not stable" taught the opposite of the lesson it sat under.
-  return p.every(([re]) => re < -1e-12)
+  //
+  // The left-half test is RELATIVE to each pole's own magnitude: an absolute
+  // −1e-12 called a genuinely stable pole at −2.6e-19 (slow, not marginal)
+  // unstable, and scale-free coefficients make every absolute epsilon wrong
+  // somewhere. A pole within 1e-9 of the axis relative to its distance from
+  // the origin is numerically marginal, and marginal is not stable.
+  return p.every(([re, im]) => re < -1e-9 * Math.max(Math.hypot(re, im), Number.MIN_VALUE))
 }
 
 /**
@@ -224,8 +240,10 @@ export function isStable(tf) {
  * integrating the state equations needs none, and works at any order.
  */
 export function toStateSpace(tf) {
+  // Exact zeros only, for roots()'s reason: an absolute epsilon truncated
+  // µs-timescale loops to a lower order and simulated the wrong system.
   const a = [...tf.a]
-  while (a.length && Math.abs(a[0]) < 1e-14) a.shift()
+  while (a.length && a[0] === 0) a.shift()
   const n = a.length - 1
   if (n < 1) {
     // A purely resistive network stores no energy, so it has no state at all.
@@ -323,8 +341,9 @@ export const stepResponse = (tf, opts) => simulate(tf, () => 1, opts)
  * ratio of a third-order system is not a well-defined thing.
  */
 export function secondOrderMetrics(tf) {
+  // Exact zeros only — see roots().
   const a = [...tf.a]
-  while (a.length && Math.abs(a[0]) < 1e-14) a.shift()
+  while (a.length && a[0] === 0) a.shift()
   if (a.length !== 3) return null
   const [a0, a1, a2] = a
   const wn = Math.sqrt(a2 / a0)
@@ -459,42 +478,97 @@ export function errorLoop(L) {
  * controls textbook would print. A loop crossing at 0.786 rad/s reports 0.125.
  */
 export function margins(L, freqs) {
-  const { mag, phase } = bode(L, freqs)
-  const deg = (r) => (r * 180) / Math.PI
-
-  // Gain crossover: |L| passes through 1.
-  let wGc = null
-  let pm = null
-  for (let i = 1; i < mag.length; i++) {
-    if ((mag[i - 1] - 1) * (mag[i] - 1) < 0) {
-      const t = (1 - mag[i - 1]) / (mag[i] - mag[i - 1])
-      wGc = freqs[i - 1] + t * (freqs[i] - freqs[i - 1])
-      pm = 180 + deg(phase[i - 1] + t * (phase[i] - phase[i - 1]))
-      // A phase margin is an angle to the point -1, and an angle lives on a
-      // circle: fold into (-180, 180]. Without this, a negative-DC-gain loop
-      // - bode() anchors those at +180 degrees - reported margins a full turn
-      // high: the unstable plant under Kp 5 printed 438.5 where MATLAB's
-      // margin() prints 78.5. Found by the Control Lab agent, which carried a
-      // local fold (loopMargins) until this landed at the source.
-      pm = ((pm % 360) + 360) % 360
-      if (pm > 180) pm -= 360
-      break
+  // Rebuilt after the audit, on three principles the first version broke:
+  //
+  //   1. GEOMETRY, not unwrapped phase. The phase crossover is where the
+  //      locus crosses the NEGATIVE REAL AXIS — Im L = 0 with Re L < 0 —
+  //      found directly from L(jω). The old ±180°-line test on unwrapped
+  //      phase missed every crossing of +180 (all of the unstable plant's,
+  //      whose loops anchor there), and manufactured phantom crossovers at
+  //      |L| ≈ 0 notches where the unwrap slipped a turn.
+  //   2. ALL crossings, then the BINDING one. Taking the first |L| = 1
+  //      crossing printed "+94.6° to spare" beside an UNSTABLE banner on a
+  //      three-crossing loop; taking the first phase crossing reported a
+  //      GM of 0.002× where the binding boundary sat at 0.634×. The binding
+  //      gain crossing is the one closest to the ±180 line; the binding
+  //      phase crossing is the one whose gain is closest to 1.
+  //   3. The phase margin's SIGN is the stability verdict, and its size is
+  //      the geodesic distance from the crossover phase to the ±180 line.
+  //      Folding 180 + φ into (−180, 180] flipped a loop with +53° of true
+  //      phase LEAD (233° from trouble) to a red-flagged "−124°"; measuring
+  //      the arc to the nearest ±180 and signing it by the closed loop's
+  //      actual stability reproduces every textbook case (78.5° stays
+  //      78.5°) and cannot contradict the verdict beside it.
+  //
+  // Crossings are bracketed on the caller's grid and refined by bisection,
+  // so the returned numbers are exact rather than linear interpolations —
+  // the old interpolation was off 15%–2× at lightly damped resonances, on a
+  // row whose caption says "multiply the gain by exactly this". A dip in |L|
+  // narrower than one grid step still cannot be bracketed; margins are
+  // grid-limited in that one respect.
+  const evalL = (f) => {
+    const [re, im] = evalAtFreq(L, f)
+    return { re, im, mag: Math.hypot(re, im) }
+  }
+  const bisect = (lo, hi, test) => {
+    let flo = test(lo)
+    for (let i = 0; i < 70; i++) {
+      const mid = Math.sqrt(lo * hi)
+      const fm = test(mid)
+      if (flo < 0 === fm < 0) {
+        lo = mid
+        flo = fm
+      } else hi = mid
     }
+    return Math.sqrt(lo * hi)
   }
 
-  // Phase crossover: the angle passes through -180 degrees.
+  const stable = isStable({ b: [1], a: polyAdd(L.b, L.a) })
+
+  // Gain crossings: |L| = 1, each refined, each carrying its distance to
+  // the ±180 line.
+  const gainCrossings = []
+  let prev = evalL(freqs[0])
+  for (let i = 1; i < freqs.length; i++) {
+    const cur = evalL(freqs[i])
+    if ((prev.mag - 1) * (cur.mag - 1) < 0) {
+      const f = bisect(freqs[i - 1], freqs[i], (x) => evalL(x).mag - 1)
+      const at = evalL(f)
+      const phiw = (Math.atan2(at.im, at.re) * 180) / Math.PI
+      gainCrossings.push({ f, dist: 180 - Math.abs(phiw) })
+    }
+    prev = cur
+  }
+  let wGc = null
+  let pm = null
+  if (gainCrossings.length) {
+    const binding = gainCrossings.reduce((m, c) => (c.dist < m.dist ? c : m))
+    wGc = binding.f
+    pm = (stable ? 1 : -1) * binding.dist
+  }
+
+  // Phase crossings: Im L = 0 with Re L < 0. A crossing with |L| below any
+  // display relevance is the locus passing through the ORIGIN (a notch), not
+  // an approach to −1, and is not a margin anyone can act on.
+  const phaseCrossings = []
+  prev = evalL(freqs[0])
+  for (let i = 1; i < freqs.length; i++) {
+    const cur = evalL(freqs[i])
+    if (prev.im * cur.im < 0) {
+      const f = bisect(freqs[i - 1], freqs[i], (x) => evalL(x).im)
+      const at = evalL(f)
+      if (at.re < 0 && at.mag > 1e-12) phaseCrossings.push({ f, mag: at.mag })
+    }
+    prev = cur
+  }
   let wPc = null
   let gm = null
-  for (let i = 1; i < phase.length; i++) {
-    const a = deg(phase[i - 1]) + 180
-    const b = deg(phase[i]) + 180
-    if (a * b < 0) {
-      const t = a / (a - b)
-      wPc = freqs[i - 1] + t * (freqs[i] - freqs[i - 1])
-      const m = mag[i - 1] + t * (mag[i] - mag[i - 1])
-      gm = m > 0 ? 1 / m : Infinity
-      break
-    }
+  if (phaseCrossings.length) {
+    const binding = phaseCrossings.reduce((m, c) =>
+      Math.abs(Math.log(c.mag)) < Math.abs(Math.log(m.mag)) ? c : m,
+    )
+    wPc = binding.f
+    gm = 1 / binding.mag
   }
 
   return {
@@ -503,6 +577,10 @@ export function margins(L, freqs) {
     phaseCrossover: wPc,
     gainMargin: gm,
     gainMarginDb: gm == null ? null : 20 * Math.log10(gm),
+    // Every crossing, for callers that want the full story rather than the
+    // binding summary — a conditionally stable loop HAS several margins.
+    gainCrossings,
+    phaseCrossings,
   }
 }
 

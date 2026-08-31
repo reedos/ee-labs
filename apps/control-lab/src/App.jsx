@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
-import { LabNav, NumField, PoleZeroCanvas, fmt, fmtHz } from '@ee-labs/ui'
+import { LabNav, NumField, PoleZeroCanvas, fmt, fmtHz, fmtNum } from '@ee-labs/ui'
 import { Formula, MathPanel } from '@ee-labs/explain'
 import {
   bode,
@@ -144,7 +144,17 @@ export default function App() {
   }, [openPz, plantId, ctrlId])
 
   const open = useMemo(() => bode(loop.open, freqs), [loop, freqs])
-  const marg = useMemo(() => margins(loop.open, freqs), [loop, freqs])
+  // Margins are measured on a far WIDER grid than the plot. The display
+  // window frames the loop's own corners, but gain moves the crossover and
+  // not the window — at Kp = 1000 on a one-pole plant the true crossover sat
+  // two decades past the right edge, and a crossover the grid could not see
+  // was reported as "gain never reaches 1" against correct physics.
+  const wideFreqs = useMemo(() => {
+    const centre = Math.sqrt(freqs[0] * freqs[freqs.length - 1])
+    const lo = Math.log10(centre) - 8
+    return Float64Array.from({ length: 1600 }, (_, i) => Math.pow(10, lo + (16 * i) / 1599))
+  }, [freqs])
+  const marg = useMemo(() => margins(loop.open, wideFreqs), [loop, wideFreqs])
   const stable = isStable(loop.closed)
   const second = useMemo(() => secondOrderMetrics(loop.closed), [loop])
 
@@ -171,8 +181,16 @@ export default function App() {
     const slow = Math.min(
       ...pz.poles.filter(([re]) => Math.abs(re) > 1e-9).map(([re]) => Math.abs(re)),
     )
-    const natural = Number.isFinite(slow) && slow > 0 ? Math.min(12 / slow, 400) : 20
-    const key = `${plantId}|${ctrlId}|${stepInput}`
+    let natural = Number.isFinite(slow) && slow > 0 ? Math.min(12 / slow, 400) : 20
+    // An unstable loop keyed to its SLOWEST pole overflowed float range
+    // eleven samples into a 400 s window — the trace just stopped, and the
+    // "axis zooming out with the runaway" story never got to happen. Key the
+    // window to the runaway instead: ~25 growth constants fills the pane
+    // with the divergence this view exists to show, at e^25 ≈ 7e10 — big,
+    // and finite.
+    const grow = Math.max(0, ...pz.poles.map(([re]) => re))
+    if (grow > 1e-9) natural = Math.min(natural, 25 / grow)
+    const key = `${plantId}|${ctrlId}|${stepInput}|${grow > 1e-9 ? 'runaway' : 'settling'}`
     const dur = stickyDuration(
       durRef.current.key === key ? durRef.current.dur : NaN,
       natural,
@@ -181,9 +199,35 @@ export default function App() {
     return dur
   }, [pz, plantId, ctrlId, stepInput])
 
+  // The reasons a time simulation is declined, shared by step and watch.
+  // Affordability: RK4 sub-steps scale as duration × the fastest closed
+  // pole, and the two ends of that product are set independently — a slow
+  // pole stretches the window while a fast one shrinks the sub-step, and
+  // slider-interior values reached 6.4 s per keystroke (extremes: hours).
+  // Degeneracy: a custom plant with an all-zero denominator is not a system,
+  // and simulating it painted NaN strips. The frequency panes are exact
+  // regardless; only the time simulations need declining, with the reason.
+  const simBlocked = useMemo(() => {
+    if (!loop.open.a.length || !loop.open.a.some((v) => v !== 0)) {
+      return 'This H(s) has an all-zero denominator — not a system yet. Give a₂, a₁ or a₀ a value.'
+    }
+    const fastest = Math.max(0, ...pz.poles.map(([re, im]) => Math.hypot(re, im)))
+    if ((duration * fastest) / 0.08 + 900 > 2.5e6) {
+      return (
+        'Too stiff to simulate: this loop mixes a pole fast enough to set the integration ' +
+        'step with one slow enough to set the window, and the product is millions of steps ' +
+        'per frame. The frequency views above are exact regardless — they need no integration.'
+      )
+    }
+    return null
+  }, [loop, pz, duration])
+  const simAffordable = simBlocked == null
+
   const step = useMemo(
-    () => stepResponse(stepTf, { duration, points: 900 }),
-    [stepTf, duration],
+    // Computed only for the pane that shows it — this ran on every keystroke
+    // in every view once, which is what made the freeze universal.
+    () => (lower === 'step' && simAffordable ? stepResponse(stepTf, { duration, points: 900 }) : null),
+    [lower, simAffordable, stepTf, duration],
   )
 
   // The loop's internal signals, for the watch view: the error the controller
@@ -191,16 +235,17 @@ export default function App() {
   // that view is on screen — it is several extra simulations.
   const watch = useMemo(
     () =>
-      lower === 'watch'
+      lower === 'watch' && simAffordable
         ? watchSignals(loop, ctrlId, ctrlP, stepInput, { duration, points: WATCH_POINTS })
         : null,
-    [lower, loop, ctrlId, ctrlP, stepInput, duration],
+    [lower, simAffordable, loop, ctrlId, ctrlP, stepInput, duration],
   )
   const scrub = useWatchPosition(WATCH_POINTS, lesson)
 
   // The locus of closed-loop poles as the loop gain is swept, with the poles at
   // the CURRENT gain marked on it.
   const locus = useMemo(() => {
+    if (lower !== 'locus') return []
     // Sweep to 100x, not 1000x: the far branches only stretch the frame, and
     // at 1000x the fan the lesson exists to show was a sliver around the
     // origin. Every plant here crosses (or provably never crosses) the axis
@@ -209,14 +254,43 @@ export default function App() {
     const sweep = rootLocus(loop.open, gains)
     const n = Math.max(...sweep.map((s) => s.poles.length))
     const branches = Array.from({ length: n }, () => [])
+    // Keep each branch continuous by ACTUALLY matching each pole to the
+    // nearest one on the previous step. The first cut said it did this and
+    // sorted by value instead, which swaps branch identity wherever a real
+    // pair meets and splits into a complex one — spaghetti at exactly the
+    // breakaway points the plot exists to show.
+    let prev = null
     for (const s of sweep) {
-      // Keep each branch continuous by matching each pole to the nearest one on
-      // the previous step, or the branches cross over and draw as spaghetti.
-      const sorted = [...s.poles].sort((a, b) => a[0] - b[0] || a[1] - b[1])
-      for (let i = 0; i < n; i++) if (sorted[i]) branches[i].push(sorted[i])
+      const cur = [...s.poles]
+      let order
+      if (!prev) {
+        order = cur.sort((a, b) => a[0] - b[0] || a[1] - b[1])
+      } else {
+        order = new Array(n)
+        const used = new Set()
+        for (let i = 0; i < n; i++) {
+          if (!prev[i]) continue
+          let best = -1
+          let bd = Infinity
+          for (let j = 0; j < cur.length; j++) {
+            if (used.has(j)) continue
+            const d = Math.hypot(cur[j][0] - prev[i][0], cur[j][1] - prev[i][1])
+            if (d < bd) {
+              bd = d
+              best = j
+            }
+          }
+          if (best >= 0) {
+            order[i] = cur[best]
+            used.add(best)
+          }
+        }
+      }
+      for (let i = 0; i < n; i++) if (order[i]) branches[i].push(order[i])
+      prev = order
     }
     return branches
-  }, [loop])
+  }, [lower, loop])
 
   const math = useMemo(
     () => loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs),
@@ -584,9 +658,15 @@ export default function App() {
               )}
               {marg.gainMargin == null ? (
                 <span className="prov">phase never reaches −180°</span>
-              ) : (
+              ) : marg.gainMargin >= 1 ? (
                 <span>
                   room for <b>{marg.gainMargin.toFixed(2)}×</b> more gain
+                </span>
+              ) : (
+                // "Room for 0.14× more gain" read as an invitation. Below 1
+                // the margin is a debt, and the sentence must point DOWN.
+                <span>
+                  past the boundary — it sits at <b>{marg.gainMargin.toFixed(2)}×</b> this gain
                 </span>
               )}
             </div>
@@ -663,31 +743,49 @@ export default function App() {
               {lower === 'watch' && watch ? (
                 <>
                   <span>
-                    e now <b>{fmt(watch.e[Math.min(scrub.pos, watch.e.length - 1)], '', 3)}</b>
+                    e now <b>{fmtNum(watch.e[Math.min(scrub.pos, watch.e.length - 1)], 3)}</b>
                   </span>
                   <span>
-                    u now <b>{fmt(watch.u[Math.min(scrub.pos, watch.u.length - 1)], '', 3)}</b>
+                    u now <b>{fmtNum(watch.u[Math.min(scrub.pos, watch.u.length - 1)], 3)}</b>
                   </span>
-                  {!stable ? <span className="flag warn">diverges</span> : null}
+                  {!stable ? <span className="flag warn">never settles</span> : null}
                 </>
               ) : null}
               {lower === 'step' ? (
                 <>
-                  <span>
-                    settles to <b>{fmt(dcGain(stepTf), '', 4)}</b>
-                  </span>
-                  {stable && !settlesOnScreen(step.y, dcGain(stepTf)) ? (
-                    <span className="prov">not there yet at the plot&apos;s right edge</span>
-                  ) : null}
-                  {stepInput === 'ref' && second && second.overshoot > 0 ? (
+                  {/* A destination only exists for a loop that is going
+                      somewhere: "settles to 1" beside a "diverges" flag was
+                      the readout arguing with itself. */}
+                  {stable ? (
                     <span>
-                      overshoot <b>{(second.overshoot * 100).toFixed(1)}%</b>
+                      settles to <b>{fmtNum(dcGain(stepTf), 4)}</b>
                     </span>
                   ) : null}
+                  {stable && step && !settlesOnScreen(step.y, dcGain(stepTf)) ? (
+                    <span className="prov">not there yet at the plot&apos;s right edge</span>
+                  ) : null}
+                  {/* Overshoot MEASURED off the trace being drawn, so the
+                      number and the picture cannot disagree. The ζ-only
+                      closed form ignored closed-loop zeros: a PI loop drew a
+                      29.8% peak beside a readout claiming 16.3%. */}
+                  {stepInput === 'ref' && stable && step
+                    ? (() => {
+                        const final = dcGain(stepTf)
+                        if (!(Math.abs(final) > 1e-12)) return null
+                        let pk = -Infinity
+                        for (let i = 0; i < step.y.length; i++) if (step.y[i] > pk) pk = step.y[i]
+                        const over = (pk - final) / Math.abs(final)
+                        return over > 0.005 ? (
+                          <span>
+                            overshoot <b>{(over * 100).toFixed(1)}%</b>
+                          </span>
+                        ) : null
+                      })()
+                    : null}
                   {stepInput === 'dist' && Math.abs(dcGain(stepTf)) < 1e-9 ? (
                     <span className="flag">rejected completely — the integrator erases it</span>
                   ) : null}
-                  {!stable ? <span className="flag warn">diverges</span> : null}
+                  {!stable ? <span className="flag warn">never settles</span> : null}
                 </>
               ) : lower === 'nyquist' ? (
                 <span className="prov">
@@ -700,7 +798,11 @@ export default function App() {
               ) : null}
             </div>
           </div>
-          {lower === 'watch' && watch ? (
+          {lower === 'watch' && !watch ? (
+            <p className="hint" data-role="sim-too-stiff">
+              {simBlocked}
+            </p>
+          ) : lower === 'watch' && watch ? (
             <>
               <div className="conv-bar">
                 <button type="button" className="ghost" onClick={scrub.play}>
@@ -745,13 +847,19 @@ export default function App() {
               />
             </>
           ) : lower === 'step' ? (
-            <StepCanvas
-              t={step.t}
-              y={step.y}
-              final={dcGain(stepTf)}
-              diverges={!stable}
-              resetKey={`${plantId}|${ctrlId}|${stepInput}`}
-            />
+            step ? (
+              <StepCanvas
+                t={step.t}
+                y={step.y}
+                final={dcGain(stepTf)}
+                diverges={!stable}
+                resetKey={`${plantId}|${ctrlId}|${stepInput}`}
+              />
+            ) : (
+              <p className="hint" data-role="sim-too-stiff">
+                {simBlocked}
+              </p>
+            )
           ) : lower === 'nyquist' ? (
             <NyquistCanvas
               re={nyq.re}

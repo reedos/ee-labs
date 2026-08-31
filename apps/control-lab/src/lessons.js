@@ -93,8 +93,8 @@ export const LESSONS = [
     note:
       'Three lags, each costing up to 90° of phase — 45° already spent at its corner. Together ' +
       'they can reach −180° while the gain is still above one — and at that point the feedback ' +
-      'that was subtracting starts adding. Drag Kp upward and watch the step response go from ' +
-      'sluggish, to lively, to ringing, to divergent.',
+      'that was subtracting starts adding. This loads Kp = 4, already ringing; drag it down to ' +
+      '0.5 for the sluggish start, then up through lively, ringing, and — past 11.25 — divergent.',
     terms: ['pole', 'phasemargin'],
     patch: { plant: 'threePole', plantP: pp('threePole'), ctrl: 'p', ctrlP: cp('p', { kp: 4 }), view: 'step' },
   },
@@ -102,9 +102,10 @@ export const LESSONS = [
     group: 'Losing stability',
     name: 'The margin says exactly how far',
     note:
-      'The gain margin in the top bar is not a guideline. It is the factor by which Kp can rise ' +
-      'before the loop is on the edge of oscillating: multiply Kp by it and the loop sits ' +
-      'exactly on the boundary. Try 0.9 of it, then 1.1 of it, and watch the verdict flip.',
+      'The gain margin is not a guideline. The Bode pane prints it as the factor — "room for ' +
+      'N× more gain" — and the top bar as the same number in dB: multiply Kp by that factor ' +
+      'and the loop sits exactly on the boundary. Try 0.9 of it, then 1.1 of it, and watch ' +
+      'the verdict flip.',
     terms: ['gainmargin', 'db'],
     patch: { plant: 'threePole', plantP: pp('threePole'), ctrl: 'p', ctrlP: cp('p', { kp: 1 }), view: 'step' },
   },
@@ -162,7 +163,8 @@ export const LESSONS = [
     note:
       'A resonant plant that proportional control alone makes worse. Derivative action responds ' +
       'to where the error is heading rather than where it is, which adds phase exactly where ' +
-      'the loop is short of it. Set Kd to zero and back, and watch the margin and the overshoot ' +
+      'the loop is short of it. Drag Kd to its floor and back, and watch the margin and the ' +
+      'overshoot of the trace ' +
       'move together. Real derivative terms are always filtered, because this also amplifies noise.',
     terms: ['zero', 'phasemargin', 'overshoot'],
     patch: {

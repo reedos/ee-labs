@@ -48,7 +48,7 @@ function ruleOfThumbBlocker(marg, second, loop, integrators, pz) {
     return `The rule is derived for a loop with exactly one integrator; this one has ${integrators}. Without that the crossover and the closed-loop pair are not related in the way it assumes.`
   }
   if (loop.closed.b.length > 1) {
-    return 'The controller puts a zero in the closed loop, which moves the overshoot independently of ζ and breaks the correspondence.'
+    return 'The closed loop carries a zero — from the controller or the plant — which moves the overshoot independently of ζ and breaks the correspondence.'
   }
   if (second.zeta > 0.7) {
     return 'Only holds while the loop is lightly damped — above ζ ≈ 0.7 the approximation behind it fails.'
@@ -66,9 +66,16 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
     const closedDc = dcGain(loop.closed)
 
     // An integrator anywhere in the loop is what kills steady-state error, so
-    // it is worth naming rather than leaving the reader to infer it.
-    const openPoles = polesZeros(loop.open).poles
-    const integrators = openPoles.filter(([re, im]) => Math.abs(re) < 1e-9 && Math.abs(im) < 1e-9).length
+    // it is worth naming rather than leaving the reader to infer it. Counted
+    // from the denominator's trailing coefficients RELATIVE to its own scale:
+    // an absolute pole test (|re| < 1e-9) once called a custom plant's
+    // −1e-12 rad/s pole an integrator and printed "steady-state error is
+    // exactly zero" beside its own measurement of 0.5. A genuine integrator
+    // has a constant term of exactly zero, not merely a slow pole.
+    const openA = loop.open.a
+    const aScale = Math.max(...openA.map(Math.abs), 1e-300)
+    let integrators = 0
+    for (let i = openA.length - 1; i > 0 && Math.abs(openA[i]) < 1e-12 * aScale; i--) integrators++
 
     const blocks = [
       T(
@@ -132,14 +139,18 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
         T('Where a plant like this comes from on a bench: ' + plant.circuit.text(plantP)),
         F(plant.circuit.tex),
         C([
+          // Labelled by the probe frequency itself, not by "below/above the
+          // corner": the sticky frame drifts while τ is tuned, and a label
+          // that names a side can end up on the wrong one (and the
+          // integrator plant has no corner to be below).
           {
-            label: '|circuit| = |P|, below the corner',
+            label: `|circuit| = |P| at ${Number(f1.toPrecision(3))} Hz`,
             predicted: magnitudeAt(loop.plant, f1),
             measured: magnitudeAt(ctf, f1),
             tol: 1e-3,
           },
           {
-            label: '…and above it',
+            label: `…and at ${Number(f2.toPrecision(3))} Hz`,
             predicted: magnitudeAt(loop.plant, f2),
             measured: magnitudeAt(ctf, f2),
             tol: 1e-3,
@@ -410,8 +421,30 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
           // quiet unit mismatch. Both systems, labelled as themselves.
           { label: 'ωₙ', value: 2 * Math.PI * second.f0, unit: 'rad/s' },
           { label: 'fₙ = ωₙ/2π', value: second.f0, unit: 'Hz' },
-          { label: 'overshoot', value: second.overshoot, unit: '×' },
-          { label: 'settles in', value: second.settling, unit: 's', note: 'to within 2%' },
+          {
+            label: 'overshoot (ζ-only form)',
+            // The e^(−πζ/√(1−ζ²)) form assumes NO closed-loop zeros; with one
+            // present the true peak sits higher (a PI loop drew 29.8% beside
+            // a claim of 16.3%). The step readout measures the real peak.
+            value: loop.closed.b.length > 1 ? NaN : second.overshoot,
+            unit: '×',
+            note:
+              loop.closed.b.length > 1
+                ? 'not offered: the closed-loop zero raises the true peak — the step readout measures it'
+                : '',
+          },
+          {
+            label: 'settles in',
+            // 4/(ζωₙ) is the underdamped envelope estimate. For an overdamped
+            // pair it undershot the true 2% time by up to 44x, so it is not
+            // offered there.
+            value: second.zeta < 1 ? second.settling : NaN,
+            unit: 's',
+            note:
+              second.zeta < 1
+                ? 'to within 2%'
+                : 'no simple form when overdamped — the slow pole alone sets it; read the step pane',
+          },
         ]),
       )
     }

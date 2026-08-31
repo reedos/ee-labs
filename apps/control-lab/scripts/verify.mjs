@@ -442,7 +442,10 @@ console.log('\n4b. The loop diagram: live parameters, and the step entry wired t
     'C(s) — PI',
     'P(s) — Motor position',
     'Kp 3',
-    'Ki 500 m',
+    // Plain 0.5, not "500 m": a dimensionless gain carries no unit for a
+    // prefix to belong to. (This pin once read "Ki 500 m" — the diagram was
+    // verified against the very formatting bug the audit removed.)
+    'Ki 0.5',
     'r − y',
     // Reed's rule: the view says the name of the thing it enacts.
     'transfer functions multiply — L = C·P',
@@ -567,9 +570,14 @@ console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
   if (hashEarly === hashLate) fail('watch: scrubbing did not redraw the canvas')
   console.log('   scrubbing moves the readouts and the picture')
 
-  // The early moment tells the lesson's story: e large, u dominated by Kp·e.
+  // The early moment tells the lesson's story: e still substantial, far from
+  // settled. The physics: this loop pole-zero cancels to L = 1/s, e = e^-t,
+  // and slider 60 of 600 on the laddered 15 s window is t = 1.5 → e ≈ 0.223.
+  // The old threshold of 0.3 "passed" only because the readout printed
+  // "223 m" and the parse read it as 223 — a check green on the very bug the
+  // audit removed.
   const eEarly = parseFloat((early.match(/e now\s*(-?[\d.]+)/) || [])[1])
-  if (!(eEarly > 0.3)) fail(`watch: early in the step e should still be large, readout says ${early}`)
+  if (!(eEarly > 0.15)) fail(`watch: early in the step e should still be substantial, readout says ${early}`)
 
   // Play: at the end it restarts, sweeps, and pauses itself at the end again.
   await page.getByRole('button', { name: /4×/ }).click()
