@@ -208,11 +208,19 @@ function quadRoots(a, b, c) {
   ]
 }
 
-/** Samples until the impulse response has decayed below `eps`. */
+/**
+ * Samples until the impulse response has decayed below `eps`.
+ *
+ * Floored at 2: the decay model r^n only describes the recursive part, but the
+ * numerator holds two samples of input memory whatever the poles do. With the
+ * poles at (or numerically indistinguishable from) the origin — f0 = fs/4 at
+ * Q = 0.5 lands exactly there — the formula alone said "settled after 1 sample"
+ * of a kernel whose second tap is 0.5, and renderChain trusted it.
+ */
 export function settleSamples(coeffs, eps = 1e-6) {
   const r = poleRadius(coeffs)
-  if (!(r > 0) || r >= 1) return Infinity
-  return Math.ceil(Math.log(eps) / Math.log(r))
+  if (Number.isNaN(r) || r >= 1) return Infinity
+  return Math.max(2, r > 0 ? Math.ceil(Math.log(eps) / Math.log(r)) : 0)
 }
 
 /**

@@ -12,6 +12,13 @@ export const WINDOWS = ['hann', 'hamming', 'blackman', 'none']
 
 export function windowFn(name, n) {
   const w = new Float64Array(n)
+  // A one-point window is the degenerate [1] whatever its shape — the
+  // symmetric formula's (n - 1) denominator would make it 0/0, and evaluating
+  // a taper AT its endpoint would make it 0.
+  if (n === 1) {
+    w[0] = 1
+    return w
+  }
   for (let i = 0; i < n; i++) {
     const x = (2 * Math.PI * i) / (n - 1)
     switch (name) {

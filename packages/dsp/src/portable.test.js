@@ -150,3 +150,30 @@ describe('the chain works with a registry it has never seen', () => {
     expect(amps[bi]).toBeCloseTo(1, 2)
   })
 })
+
+describe('runChain honors the warmup option', () => {
+  // The "show transient" checkbox passes warmup: 0 here. runChain once
+  // destructured only t0 and silently pre-rolled anyway, so the checkbox
+  // toggled a "transient shown" flag over a fully settled waveform.
+  const { runChain, renderChain } = createChain(TOY)
+  const sources = [{ id: 1, enabled: true, type: 'sine', freq: 250, amp: 1, phase: 0 }]
+  const blocks = [{ id: 1, type: 'leak', bypass: false, params: { a: 0.98 } }]
+
+  it('warmup: 0 really starts cold, and differs from auto', () => {
+    const cold = runChain(sources, blocks, 256, 8000, { warmup: 0 })
+    const warm = runChain(sources, blocks, 256, 8000, {})
+    expect(cold.warmup).toBe(0)
+    expect(warm.warmup).toBeGreaterThan(0)
+    let diff = 0
+    for (let i = 0; i < 256; i++) diff = Math.max(diff, Math.abs(cold.out[i] - warm.out[i]))
+    expect(diff).toBeGreaterThan(0.01)
+  })
+
+  it('matches renderChain sample for sample under the same warmup', () => {
+    for (const warmup of [0, 'auto']) {
+      const a = runChain(sources, blocks, 256, 8000, { warmup })
+      const b = renderChain(sources, blocks, 256, 8000, { warmup })
+      for (let i = 0; i < 256; i++) expect(a.out[i], `warmup=${warmup} i=${i}`).toBe(b.buf[i])
+    }
+  })
+})

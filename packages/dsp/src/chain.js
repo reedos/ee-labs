@@ -30,7 +30,9 @@ export function createChain(BLOCK_TYPES) {
   /** Run `buf` through the chain. Pure: same inputs, bit-identical output. */
   function applyChain(blocks, buf, sampleRate, t0 = 0) {
     const procs = active(blocks).map((b) => BLOCK_TYPES[b.type].make(b.params, sampleRate))
-    if (procs.length === 0) return buf
+    // A copy, not the input by reference: every other path returns a fresh
+    // buffer, and a caller mutating the "output" must not corrupt its source.
+    if (procs.length === 0) return Float64Array.from(buf)
     const out = new Float64Array(buf.length)
     for (let i = 0; i < buf.length; i++) {
       let v = buf[i]
@@ -76,8 +78,11 @@ export function createChain(BLOCK_TYPES) {
    * can show what every block did.
    */
   function runChain(sources, blocks, n, sampleRate, opts = {}) {
-    const { t0 = 0 } = opts
-    const want = chainSettle(blocks, sampleRate)
+    // `warmup` is honored exactly as in renderChain — this function silently
+    // dropped it once, which left the scope's "show transient" checkbox wired
+    // to nothing while the flag beside the plot claimed otherwise.
+    const { t0 = 0, warmup = 'auto' } = opts
+    const want = warmup === 'auto' ? chainSettle(blocks, sampleRate) : Math.max(0, warmup)
     const W = Math.min(want, 4 * n)
     const start = t0 - W / sampleRate
     const total = W + n

@@ -138,11 +138,11 @@ export function isSymmetric(h, eps = 1e-12) {
 }
 
 /**
- * Group delay in samples.
- *
- * For a symmetric kernel this is exactly (N-1)/2 at every frequency, which is
- * the claim worth making: the filter delays the whole signal and distorts its
- * shape not at all. Asymmetric kernels get the honest numerical answer.
+ * Group delay in samples — of a SYMMETRIC (linear-phase) kernel, which is the
+ * only kind this package designs: exactly (N-1)/2 at every frequency, meaning
+ * the filter delays the whole signal and distorts its shape not at all. For an
+ * asymmetric kernel the true group delay varies with frequency and this
+ * closed form does not apply; check isSymmetric() first if the kernel could be.
  */
 export function firGroupDelay(h) {
   return (h.length - 1) / 2
@@ -182,20 +182,40 @@ export function makeFir(h) {
  * roots — a polynomial does not care which plane it is being read in.
  */
 export function firZeros(h) {
-  // Leading coefficient first, in z.
+  // Leading coefficient first, in z. End taps are trimmed RELATIVE to the
+  // kernel's own scale: a windowed sinc's outermost taps can be ~1e-18 while
+  // the centre tap is ~0.2, and normalizing the polynomial by such a leading
+  // coefficient blows the remaining coefficients up by 17 orders of magnitude.
+  // Those taps are the window's taper reaching zero, not information.
+  let peak = 0
+  for (let i = 0; i < h.length; i++) peak = Math.max(peak, Math.abs(h[i]))
+  if (!(peak > 0)) return []
+  const tiny = peak * 1e-12
   const c = Array.from(h)
-  while (c.length > 1 && Math.abs(c[c.length - 1]) < 1e-18) c.pop() // trailing zeros in z^-1
-  while (c.length > 1 && Math.abs(c[0]) < 1e-18) c.shift()
+  while (c.length > 1 && Math.abs(c[c.length - 1]) < tiny) c.pop() // trailing zeros in z^-1
+  while (c.length > 1 && Math.abs(c[0]) < tiny) c.shift()
   const n = c.length - 1
   if (n < 1) return []
 
   const a = c.map((v) => v / c[0])
+
+  // Durand-Kerner wants starting points with DIFFERENT moduli — a symmetric
+  // kernel's zeros come in reciprocal pairs, and seeding every guess on one
+  // circle let the iteration stagnate symmetrically. The classic (0.4+0.9i)^k
+  // spiral varies both angle and radius.
   let re = []
   let im = []
-  for (let k = 0; k < n; k++) {
-    const ang = (2 * Math.PI * k) / n + 0.4
-    re.push(0.9 * Math.cos(ang))
-    im.push(0.9 * Math.sin(ang))
+  {
+    let sr = 1
+    let si = 0
+    for (let k = 0; k < n; k++) {
+      const nr = sr * 0.4 - si * 0.9
+      const ni = sr * 0.9 + si * 0.4
+      sr = nr
+      si = ni
+      re.push(sr)
+      im.push(si)
+    }
   }
 
   const evalPoly = (x, y) => {
@@ -210,30 +230,85 @@ export function firZeros(h) {
     return [pr, pi]
   }
 
-  for (let iter = 0; iter < 500; iter++) {
+  // Two numerical hazards at high degree, both fatal in the naive form:
+  //
+  //   - An iterate that escapes the unit circle's neighbourhood overflows
+  //     evalPoly (1000^200 is Infinity), and one NaN then spreads to every
+  //     root through the denominator product. The LEASH pulls runaways back;
+  //     zeros of a relatively-trimmed FIR live near the circle, and anything
+  //     beyond |z| = 8 is off every canvas regardless.
+  //   - The denominator is a product of ~n root separations. Two hundred
+  //     factors underflow 1e-308 long before the roots have separated, and
+  //     "skip the update when den is tiny" — the old guard — froze every root
+  //     for good. So the correction is computed in log-magnitude and angle,
+  //     where the product is a sum and cannot under- or overflow.
+  const LEASH = 8
+  const MAX_STEP = 2
+  const iters = Math.max(500, 12 * n)
+  for (let iter = 0; iter < iters; iter++) {
     let moved = 0
     for (let k = 0; k < n; k++) {
       const [pr, pi] = evalPoly(re[k], im[k])
-      let dr = 1
-      let di = 0
+      const pMag = Math.hypot(pr, pi)
+      if (pMag === 0) continue // sitting exactly on a root
+      let lnDen = 0
+      let angDen = 0
+      let collided = false
       for (let j = 0; j < n; j++) {
         if (j === k) continue
         const xr = re[k] - re[j]
         const xi = im[k] - im[j]
-        const nr = dr * xr - di * xi
-        const ni = dr * xi + di * xr
-        dr = nr
-        di = ni
+        const m = Math.hypot(xr, xi)
+        if (m < 1e-30) {
+          collided = true
+          break
+        }
+        lnDen += Math.log(m)
+        angDen += Math.atan2(xi, xr)
       }
-      const den = dr * dr + di * di
-      if (den < 1e-300) continue
-      const qr = (pr * dr + pi * di) / den
-      const qi = (pi * dr - pr * di) / den
-      re[k] -= qr
-      im[k] -= qi
-      moved = Math.max(moved, Math.hypot(qr, qi))
+      if (collided) {
+        // Two guesses landed on top of each other: separate them and let the
+        // next sweep sort out which root each one owns.
+        re[k] += 1e-6 * (k + 1)
+        im[k] -= 1e-6
+        moved = Math.max(moved, 1)
+        continue
+      }
+      let qMag = Math.exp(Math.log(pMag) - lnDen)
+      const qAng = Math.atan2(pi, pr) - angDen
+      if (!Number.isFinite(qMag)) continue
+      if (qMag > MAX_STEP) qMag = MAX_STEP
+      const qr = qMag * Math.cos(qAng)
+      const qi = qMag * Math.sin(qAng)
+      let zr = re[k] - qr
+      let zi = im[k] - qi
+      const mag = Math.hypot(zr, zi)
+      if (mag > LEASH) {
+        zr *= LEASH / mag
+        zi *= LEASH / mag
+      }
+      re[k] = zr
+      im[k] = zi
+      moved = Math.max(moved, qMag)
     }
     if (moved < 1e-14) break
+  }
+
+  // Better no marks than wrong marks: verify every root actually sits on a
+  // zero, with the residual scaled to the polynomial's own size at that point.
+  // A failure returns null, and the caller declines to draw — saying why —
+  // instead of presenting marks that do not reproduce the response.
+  for (let k = 0; k < n; k++) {
+    const [pr, pi] = evalPoly(re[k], im[k])
+    const zMag = Math.hypot(re[k], im[k])
+    let scale = 1
+    let zp = 1
+    for (let j = 1; j <= n; j++) {
+      zp *= zMag
+      scale += Math.abs(a[j]) * zp
+      if (!Number.isFinite(scale)) break
+    }
+    if (!(Math.hypot(pr, pi) / Math.min(scale, Number.MAX_VALUE) < 1e-8)) return null
   }
 
   return re.map((r, k) => [r, im[k]])
