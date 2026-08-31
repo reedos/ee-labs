@@ -32,17 +32,21 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
       const top = { ...outer, h: half }
       const bot = { ...outer, y: outer.y + half + gap, h: half }
 
-      let xPeak = 1e-9
-      for (let i = 0; i < x.length; i++) xPeak = Math.max(xPeak, Math.abs(x[i]))
       let hPeak = 1e-9
       for (let i = 0; i < h.length; i++) hPeak = Math.max(hPeak, Math.abs(h[i]))
-      let yPeak = xPeak
-      for (let i = 0; i < y.length; i++) yPeak = Math.max(yPeak, Math.abs(y[i]))
+      // ONE amplitude scale for both strips — the max over input AND output —
+      // exactly as the scope superimposes them. The first cut normalized each
+      // strip to its own peak, so a high-pass square's 2x edge spikes drew the
+      // same height as the square itself (Reed's report): each strip honest
+      // alone, the comparison between them a quiet lie.
+      let peak = 1e-9
+      for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]))
+      for (let i = 0; i < y.length; i++) peak = Math.max(peak, Math.abs(y[i]))
 
       const sx = (m) => outer.x + (m / (x.length - 1)) * outer.w
       const mid = (area) => area.y + area.h / 2
-      const syTop = (v) => mid(top) - (v / (xPeak * 1.1)) * (top.h / 2)
-      const syBot = (v) => mid(bot) - (v / (yPeak * 1.1)) * (bot.h / 2)
+      const syTop = (v) => mid(top) - (v / (peak * 1.1)) * (top.h / 2)
+      const syBot = (v) => mid(bot) - (v / (peak * 1.1)) * (bot.h / 2)
 
       const label = (area, text) => {
         ctx.fillStyle = COLORS.text
@@ -132,7 +136,7 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
       }
 
       // Name the magnification, or the kernel's height is a quiet lie.
-      const mag = (xPeak * 1.1) / (hPeak * 1.15)
+      const mag = (peak * 1.1) / (hPeak * 1.15)
       if (mag > 1.25 || mag < 0.8) {
         ctx.fillStyle = COLORS.response
         ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
