@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { PRESETS, PRESET_GROUPS } from './presets.js'
 import { TERMS } from './terms.js'
 import { chainResponse, renderChain } from './dsp/chain.js'
-import { render, spectrum } from '@ee-labs/dsp'
+import { render, spectrum, sincInterp } from '@ee-labs/dsp'
 import { designBiquad, biquadResponse, designFir } from '@ee-labs/dsp'
 import { applyChain, chainGroupDelay, chainImpulse, chainPolesZeros } from './dsp/chain.js'
 
@@ -568,6 +568,34 @@ describe('preset: Beating', () => {
     expect(p255).toBeGreaterThan(0.3)
     // A real valley between two real peaks — not one merged blob.
     expect(dip).toBeLessThan(Math.min(p250, p255) * 0.7)
+  })
+})
+
+describe('Coarse, not undersampled', () => {
+  // The theorem's POSITIVE promise, which the group otherwise skips: coarse
+  // but legal sampling loses nothing. Every number the note quotes, measured.
+  const p = byName('Coarse, not undersampled')
+
+  it('quotes the true samples-per-cycle and the distance to the fold', () => {
+    const src = p.patch.sources[0]
+    expect(p.patch.sampleRate / src.freq).toBeCloseTo(2.35, 2)
+    expect(p.patch.sampleRate / 2 - src.freq).toBe(600)
+    expect(p.note).toContain('2.35')
+    expect(p.note).toContain('600 Hz')
+    expect(p.note).toContain('0.707')
+  })
+
+  it('nothing was lost: RMS holds and the reconstruction IS the original', () => {
+    const buf = render(p.patch.sources, 4096, p.patch.sampleRate, 0)
+    let sq = 0
+    for (const v of buf) sq += v * v
+    expect(Math.sqrt(sq / buf.length)).toBeCloseTo(Math.SQRT1_2, 3)
+    // Off-grid instants an interpolation cannot fake: the sinc reconstruction
+    // must land on the CONTINUOUS 3.4 kHz sine, at 2.35 samples per cycle.
+    for (const t of [1000.37, 2048.5, 3000.11]) {
+      const truth = Math.sin((2 * Math.PI * 3400 * t) / 8000)
+      expect(Math.abs(sincInterp(buf, t, 256) - truth), `t=${t}`).toBeLessThan(3e-3)
+    }
   })
 })
 

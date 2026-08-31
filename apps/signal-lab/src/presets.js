@@ -149,6 +149,20 @@ export const PRESETS = [
   // -------------------------------------------------------------- Sampling
   {
     group: 'Sampling',
+    name: 'Coarse, not undersampled',
+    terms: ['sampled', 'nyquist'],
+    note:
+      'A 3.4 kHz sine at 8 kHz: about 2.35 samples per cycle. Drawn dot-to-dot it looks ' +
+      'mangled — yet the RMS still reads 0.707, because nothing was lost. More than two ' +
+      'samples per cycle is ENOUGH: exactly one bandlimited signal passes through these dots, ' +
+      'and the scope’s sin(x)/x curve draws it — the original, not an approximation. Coarse is ' +
+      'an interpolation problem; undersampled (fewer than two per cycle) is an information ' +
+      'problem. The slow wobble in the dots’ envelope is the sampling phase creeping toward ' +
+      'the fold, 600 Hz away — Aliasing and Exactly at Nyquist take the story from there.',
+    patch: { sources: [mk(1, 'sine', 3400, 1)], sampleRate: 8000, timeSpanMs: 5, spanCycles: 6 },
+  },
+  {
+    group: 'Sampling',
     name: 'Aliasing',
     terms: ['sampled', 'aliasing', 'nyquist'],
     note:

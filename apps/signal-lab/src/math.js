@@ -1,4 +1,4 @@
-import { designBiquad, biquadResponse, render } from '@ee-labs/dsp'
+import { designBiquad, biquadResponse, render, sincInterp } from '@ee-labs/dsp'
 import { applyChain, chainImpulse } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
 
@@ -404,6 +404,56 @@ const ENTRIES = {
         V([
           { label: 'beat rate', value: beat, unit: 'Hz' },
           { label: 'beat period', value: beat ? 1000 / beat : NaN, unit: 'ms' },
+        ]),
+      ],
+    }
+  },
+
+  'Coarse, not undersampled': (ctx) => {
+    const src = ctx.sources.find((x) => x.enabled)
+    const f = src ? src.freq : 0
+    const fs = ctx.sampleRate
+    const nyq = fs / 2
+    // The strongest claim on the page, measured live: reconstruct the signal
+    // BETWEEN its samples and land on the continuous sine. An off-grid
+    // instant, well inside the frame so the sinc window is two-sided.
+    const buf = render(ctx.sources.filter((x) => x.enabled), 4096, fs, 0)
+    const t = 1000.37
+    const truth = src ? src.amp * Math.sin((2 * Math.PI * f * t) / fs + src.phase) : 0
+    const above = f >= nyq
+    return {
+      blocks: [
+        T(
+          'The sampling theorem’s promise, run forwards: for a signal with nothing above ' +
+            'fₛ/2, MORE than two samples per cycle determines it completely. The samples do ' +
+            'not store the shape — the shape is the only bandlimited curve through them:',
+        ),
+        F(
+          'x(t) = \\sum_{n} x[n]\\,\\operatorname{sinc}\\!\\left(\\frac{t - nT}{T}\\right)',
+          'Whittaker–Shannon reconstruction — the scope’s sin(x)/x curve',
+        ),
+        V([
+          { label: 'samples per cycle', value: f > 0 ? fs / f : Infinity },
+          { label: 'margin to the fold', value: nyq - f, unit: 'Hz' },
+        ]),
+        C([
+          {
+            label: `x(t) between samples, t = ${t} samples`,
+            predicted: truth,
+            measured: sincInterp(buf, t, 256),
+            tol: 0.01,
+            abs: 0.005,
+            unchecked: above
+              ? 'at or above the fold the reconstruction lands on the alias instead — the Aliasing experiment takes it from here'
+              : null,
+          },
+          {
+            label: 'spectrum peak',
+            predicted: above ? Math.abs(f - fs * Math.round(f / fs)) : f,
+            measured: ctx.peakFreq,
+            unit: 'Hz',
+            tol: 0.02,
+          },
         ]),
       ],
     }
