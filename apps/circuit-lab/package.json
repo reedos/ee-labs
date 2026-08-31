@@ -2,6 +2,7 @@
   "name": "circuit-lab",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "description": "Circuits, their transfer functions, and the bridge to filters and control.",
   "scripts": {
