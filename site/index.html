@@ -3,6 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&display=swap" rel="stylesheet">
     <title>REED's Engineering Labs</title>
     <meta
       name="description"
@@ -35,9 +38,12 @@
       /* ---------- hero ---------- */
       header { padding: 54px 0 8px; text-align: center; }
       h1 {
+        /* Chakra Petch: squared, technical, built for caps - the faceplate
+           font the REED wordmark asks for. System sans as the fallback. */
+        font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
         font-size: clamp(30px, 5vw, 44px);
-        letter-spacing: 0.01em;
-        font-weight: 750;
+        letter-spacing: 0.02em;
+        font-weight: 700;
       }
       h1 .ee { color: var(--accent); }
       .tagline {
