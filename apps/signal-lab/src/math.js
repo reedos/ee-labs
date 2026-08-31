@@ -516,6 +516,73 @@ const ENTRIES = {
     }
   },
 
+  'Turn the rate down': (ctx) => {
+    const fs = ctx.sampleRate
+    const nyq = fs / 2
+    const binHz = fs / ctx.fftSize
+    const on = ctx.sources.filter((s) => s.enabled)
+    // Where a component appears once the rate can no longer hold it: the
+    // nearest multiple of fs is subtracted off, and what is left is the
+    // distance to it. Below Nyquist that distance IS the frequency, which is
+    // why the same formula covers the honest case and the folded one.
+    const fold = (f) => Math.abs(f - fs * Math.round(f / fs))
+    const rows = on.map((s) => {
+      const f = fold(s.freq)
+      const under = s.freq < nyq
+      // Two components can land in one bin at some rates, and a fold onto DC
+      // or exactly Nyquist changes what a single-sided spectrum counts. Both
+      // are true physics the row cannot read, so both are named.
+      const collides = on.some((o) => o !== s && Math.abs(fold(o.freq) - f) < 2 * binHz)
+      const edge = f < 2 * binHz || Math.abs(f - nyq) < 2 * binHz
+      return {
+        label: under
+          ? `${sig(s.freq, 4)} Hz — under Nyquist, still itself`
+          : `${sig(s.freq, 4)} Hz folds down to ${sig(f, 4)} Hz`,
+        predicted: s.amp,
+        measured: ctx.at(f),
+        tol: 0.06,
+        unchecked: collides
+          ? 'Two components land in the same bin at this rate, so the line there is their sum and not either one alone.'
+          : edge
+            ? 'This one lands on DC or exactly on Nyquist, where a single-sided spectrum counts amplitude differently.'
+            : null,
+      }
+    })
+    return {
+      blocks: [
+        T(
+          'Sampling cannot tell a frequency from that same frequency plus any whole number of ' +
+            'sample rates: both produce identical samples. So a component above Nyquist does not ' +
+            'go missing, it comes back wearing the identity of a lower one.',
+        ),
+        F('f_{\\text{apparent}} = \\bigl|\\,f - f_s\\cdot\\mathrm{round}(f/f_s)\\,\\bigr|'),
+        T(
+          'While every component sits below Nyquist that expression returns the frequency ' +
+            'itself, nothing has been lost, and the reconstruction through the samples is the ' +
+            'signal exactly. The moment one crosses, its line moves — and the samples carry no ' +
+            'record of where it came from.',
+        ),
+        C(rows),
+        V([
+          { label: 'sample rate', value: fs, unit: 'Hz' },
+          { label: 'Nyquist', value: nyq, unit: 'Hz' },
+          {
+            label: 'components still under it',
+            value: on.filter((s) => s.freq < nyq).length,
+            note: `of ${on.length}`,
+          },
+          { label: 'highest component', value: Math.max(...on.map((s) => s.freq)), unit: 'Hz' },
+          {
+            label: 'rate needed to keep them all',
+            value: 2 * Math.max(...on.map((s) => s.freq)),
+            unit: 'Hz',
+            note: 'twice the highest — the sampling theorem, as a shopping list',
+          },
+        ]),
+      ],
+    }
+  },
+
   'Exactly at Nyquist': (ctx) => {
     const src = ctx.sources.find((s) => s.enabled)
     const phi = src ? src.phase : 0

@@ -181,6 +181,33 @@ export const PRESETS = [
   },
   {
     group: 'Sampling',
+    name: 'Turn the rate down',
+    terms: ['sampled', 'aliasing', 'nyquist'],
+    note:
+      'The other lessons move the signal; this one moves the RATE, which is the knob you ' +
+      'usually have. Three sines at 625, 1875 and 3125 Hz — an odd-harmonic stack — sampled at ' +
+      '16 kHz, where all three sit well below Nyquist. Nothing here is approximate: the dots ' +
+      'describe exactly this signal and the curve through them IS it. Now halve the rate in the ' +
+      'top bar, and halve it again. At 4 kHz the 3125 Hz component no longer fits beneath ' +
+      'Nyquist and folds to 875 Hz — a line at a frequency the signal never contained, and ' +
+      'nothing in the samples can tell you it is an impostor. At 2 kHz the 1875 folds to 125 as ' +
+      'well, and only the fundamental is left where it started. Notice what did NOT fail: the ' +
+      'reconstruction draws the samples faithfully at every rate. What failed is that the ' +
+      'samples stopped describing the signal you began with.',
+    patch: {
+      // 625 Hz and its odd harmonics land on an FFT bin centre at 16, 8, 4 and
+      // 2 kHz alike (fs/2048 divides 625 at every one), so the lines stay
+      // sharp as the rate is halved and the folding is the only thing moving.
+      sources: [mk(1, 'sine', 625, 1), mk(2, 'sine', 1875, 1 / 3), mk(3, 'sine', 3125, 1 / 5)],
+      sampleRate: 16000,
+      fftSize: 2048,
+      specMax: 4000,
+      timeSpanMs: 5,
+      spanCycles: 3,
+    },
+  },
+  {
+    group: 'Sampling',
     name: 'Exactly at Nyquist',
     terms: ['sampled', 'nyquist', 'phase'],
     note:
@@ -271,7 +298,12 @@ export const PRESETS = [
     patch: {
       sources: [mk(1, 'square', 250, 1)],
       blocks: [bk(1, 'highpass', { freq: 700, q: Math.SQRT1_2 })],
-      sampleRate: 8000,
+      // 16 kHz, not 8: a high-pass lifts a square's upper harmonics, and at
+      // 8 kHz the ones folded down from above Nyquist rode on the plateaus at
+      // 22% of the sag this note asks the reader to look at. Doubling the rate
+      // halves that (10%, and 3% at 32k) and leaves every precondition intact
+      // — 250 Hz still divides the rate and still lands on a bin centre.
+      sampleRate: 16000,
       timeSpanMs: 20,
       spanCycles: 3,
       showHarmonics: true,

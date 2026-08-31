@@ -657,7 +657,9 @@ describe('preset: High-pass a square', () => {
     const p = byName('High-pass a square').patch
     const { at } = run('High-pass a square')
     const dry = run('High-pass a square', { blocks: [] })
-    const { mag } = chainResponse(p.blocks, Float64Array.of(250, 750, 1250), 8000)
+    // Read the rate from the patch: this preset runs at 16 kHz so that folded
+    // harmonics stop riding on the plateaus its note describes.
+    const { mag } = chainResponse(p.blocks, Float64Array.of(250, 750, 1250), p.sampleRate)
     expect(at(250) / dry.at(250)).toBeCloseTo(mag[0], 1)
     expect(at(750) / dry.at(750)).toBeCloseTo(mag[1], 1)
     expect(at(1250) / dry.at(1250)).toBeCloseTo(mag[2], 1)
@@ -668,15 +670,18 @@ describe('preset: High-pass a square', () => {
 
   it('the plateaus die and the edges survive as spikes — the note\u2019s scope claim', () => {
     const p = byName('High-pass a square').patch
-    const r = renderChain(p.sources, p.blocks, 512, 8000)
+    const n = 1024
+    const r = renderChain(p.sources, p.blocks, n, p.sampleRate)
     const y = r.buf
-    // Square at 250 Hz / 8 kHz: 32-sample period, edges at multiples of 16.
-    // Plateau centres sit 8 samples after each edge.
+    // Derived from the patch rather than pinned to one rate: the square's
+    // half-period is where the edges are, and the plateau centre is halfway
+    // between two of them.
+    const half = Math.round(p.sampleRate / (2 * p.sources[0].freq))
     let plateau = 0
     let edge = 0
-    for (let e = 64; e + 16 < 512; e += 16) {
+    for (let e = 4 * half; e + half < n; e += half) {
       edge = Math.max(edge, Math.abs(y[e]), Math.abs(y[e + 1]))
-      plateau = Math.max(plateau, Math.abs(y[e + 8]))
+      plateau = Math.max(plateau, Math.abs(y[e + Math.round(half / 2)]))
     }
     // Edges ring near full scale; mid-plateau the output has decayed hard.
     expect(edge).toBeGreaterThan(0.8)
@@ -785,5 +790,59 @@ describe('preset: Step response and ringing (corrected percentage)', () => {
     const overshoot = top - 1
     expect(overshoot).toBeGreaterThan(0.041)
     expect(overshoot).toBeLessThan(0.048)
+  })
+})
+
+describe('preset: Turn the rate down', () => {
+  const P = () => byName('Turn the rate down').patch
+
+  it('every component sits on a bin centre at 16, 8, 4 and 2 kHz alike', () => {
+    // The lines must stay sharp while the rate is halved, or the folding is
+    // hidden under leakage rather than shown.
+    const p = P()
+    for (const fs of [16000, 8000, 4000, 2000]) {
+      const binHz = fs / p.fftSize
+      for (const s of p.sources) {
+        expect(Number.isInteger(s.freq / binHz), `${s.freq} Hz at ${fs}`).toBe(true)
+      }
+    }
+  })
+
+  it('at the loaded rate all three stand where they belong', () => {
+    const { at } = run('Turn the rate down')
+    const p = P()
+    for (const s of p.sources) expect(at(s.freq), `${s.freq} Hz`).toBeCloseTo(s.amp, 1)
+  })
+
+  it('at 4 kHz the top component folds to 875 Hz — the note\u2019s number', () => {
+    const { at } = run('Turn the rate down', { sampleRate: 4000 })
+    // 3125 no longer fits under a 2 kHz Nyquist: |3125 - 4000| = 875.
+    expect(at(875)).toBeCloseTo(1 / 5, 1)
+    // ...and the two that still fit are untouched.
+    expect(at(625)).toBeCloseTo(1, 1)
+    expect(at(1875)).toBeCloseTo(1 / 3, 1)
+  })
+
+  it('at 2 kHz only the fundamental is left where it started', () => {
+    const { at } = run('Turn the rate down', { sampleRate: 2000 })
+    expect(at(625)).toBeCloseTo(1, 1)
+    // 1875 -> |1875-2000| = 125, and 3125 -> |3125-4000| = 875.
+    expect(at(125)).toBeCloseTo(1 / 3, 1)
+    expect(at(875)).toBeCloseTo(1 / 5, 1)
+  })
+
+  it('the samples themselves are exact at the loaded rate — nothing is lost yet', () => {
+    // Below Nyquist the reconstruction reproduces the continuous sum, so the
+    // note's "the curve through them IS it" is a measurable claim.
+    const p = P()
+    const n = 256
+    const buf = render(p.sources, n + 128, p.sampleRate, -64 / p.sampleRate)
+    let worst = 0
+    for (let t = 20; t < n - 20; t += 0.1) {
+      let truth = 0
+      for (const s of p.sources) truth += s.amp * Math.sin((2 * Math.PI * s.freq * t) / p.sampleRate)
+      worst = Math.max(worst, Math.abs(sincInterp(buf, 64 + t, 64) - truth))
+    }
+    expect(worst).toBeLessThan(0.01)
   })
 })
