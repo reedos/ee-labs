@@ -32,11 +32,12 @@ export default function ScopeCanvas({
   spanSeconds,
   divisionRate = null,
   yMax,
-  // True when the top of the band is carrying a HASH of components rather
-  // than one tone — see App. A single tone up near Nyquist is what the
-  // sampling lessons are about and needs no advice; a spread of harmonics up
-  // there is aliasing roughening the shape, and a higher rate clears it.
-  aliasHash = false,
+  // How this rate is coping with this signal, measured in App: `aliased` when
+  // real content sits above Nyquist and has folded down into the samples, and
+  // `atNyquist` when it sits exactly on the boundary instead. The two get
+  // different captions because they are different problems — one is fixed by
+  // a higher rate, the other is not a fold at all.
+  sampling = { aliased: false, atNyquist: false },
   // Samples rendered BEFORE the visible span (and after it), so the
   // reconstruction has neighbours on both sides at the edges of the picture.
   // Without them sincInterp's window goes one-sided exactly where the trace
@@ -241,9 +242,20 @@ export default function ScopeCanvas({
         // error: it is content from above Nyquist folded back into the samples
         // themselves, and it falls as the rate rises (measured: 22% of the sag
         // at 8 kHz, 10% at 16, 3% at 32).
-        if (aliasHash) {
+        if (sampling.aliased) {
           lines.push(
             'the ripple riding on this shape is aliasing — content folded back from above Nyquist; raise the rate to clear it',
+          )
+        }
+        // A different failure, and it earns different words. Nothing has
+        // folded here: the tone sits ON Nyquist, two samples to a cycle, and
+        // those two samples fix its frequency while leaving its height to
+        // whatever phase they happened to land on. Telling the reader to
+        // "raise the rate to clear" a fold would be describing the wrong
+        // problem, so this line names the real one and the knob that shows it.
+        if (sampling.atNyquist) {
+          lines.push(
+            'this sits exactly at Nyquist — two samples a cycle: they pin the frequency but not the height, so drag the phase and watch the same tone read anything from full scale to nothing',
           )
         }
         ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`

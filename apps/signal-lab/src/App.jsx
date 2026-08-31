@@ -24,6 +24,7 @@ import { PRESETS } from './presets.js'
 import { readLocationLink } from '@ee-labs/ui'
 import { stateFromLink } from './fromLink.js'
 import { mathContext, mathFor } from './math.js'
+import { samplingState } from './sampling.js'
 
 const INITIAL = {
   sources: [{ id: 1, type: 'sine', freq: 250, amp: 1, phase: 0, enabled: true }],
@@ -267,48 +268,20 @@ export default function App() {
 
   // Is the top of the band carrying a HASH, or a tone?
   //
-  // A single component up near Nyquist is exactly what the sampling lessons
-  // put there on purpose — the scope's curve through those samples is clean
-  // and correct, and telling the reader to raise the rate would argue with
-  // the lesson. A SPREAD of components up there is different: it is the
-  // naive generators' harmonics folding back, it roughens the shape the note
-  // is describing, and it genuinely halves every time the rate doubles. So
-  // the advice is offered only for the second case, counted rather than
-  // guessed: how many bins above fs/4 carry real amplitude?
-  // Is anything actually FOLDING at this rate?
-  //
-  // Measured rather than inferred: render the same chain with twice the
-  // headroom and weigh the energy that sits above the current Nyquist. That
-  // is precisely the content this rate cannot hold and must fold down, and it
-  // is what a higher rate would clear. Counting busy bins instead — the first
-  // attempt — described roughness rather than aliasing, so it missed the
-  // plainest case of all: a single tone dragged past Nyquist folds to one
-  // clean line and lit nothing up.
-  //
-  // Noise and impulses are excluded because they are defined per SAMPLE, not
-  // as continuous signals: rendering them at twice the rate does not give the
-  // same signal with more room, it gives a different one, so the comparison
-  // means nothing there. (White noise is white at every rate; no rate clears
-  // it.)
-  const aliasHash = useMemo(() => {
-    const on = state.sources.filter((s) => s.enabled)
-    if (!on.length) return false
-    if (on.some((s) => s.type === 'noise' || s.type === 'impulse')) return false
-    const nyq = state.sampleRate / 2
-    const r = renderChain(state.sources, state.blocks, state.fftSize * 2, state.sampleRate * 2)
-    const s = spectrum(r.buf, state.sampleRate * 2, state.window)
-    let below = 0
-    let above = 0
-    for (let i = 0; i < s.amps.length; i++) {
-      const e = s.amps[i] * s.amps[i]
-      if (s.freqs[i] < nyq) below += e
-      else above += e
-    }
-    // Folded amplitude as a fraction of what stays. Calibrated: a tone under
-    // Nyquist reads 0.0%, a low-passed square 0.1%, the high-passed square
-    // that started this 37.8%, and a tone above Nyquist runs away entirely.
-    return Math.sqrt(above / (below || 1e-30)) > 0.1
-  }, [state.sources, state.blocks, state.sampleRate, state.fftSize, state.window])
+  // Is anything actually folding at this rate, and is anything sitting on the
+  // boundary? Measured in sampling.js, where the thresholds are pinned against
+  // the whole preset library.
+  const sampling = useMemo(
+    () =>
+      samplingState({
+        sources: state.sources,
+        blocks: state.blocks,
+        sampleRate: state.sampleRate,
+        fftSize: state.fftSize,
+        window: state.window,
+      }),
+    [state.sources, state.blocks, state.sampleRate, state.fftSize, state.window],
+  )
 
   const stats = useMemo(() => {
     let iMax = 0
@@ -587,7 +560,7 @@ export default function App() {
               spanSeconds={spanSeconds}
               divisionRate={divisionRate}
               yMax={yMax}
-              aliasHash={aliasHash}
+              sampling={sampling}
               guard={GUARD}
             />
           )}
