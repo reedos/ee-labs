@@ -19,6 +19,15 @@ const SHAPE_LABEL = {
   highpass: 'high-pass',
 }
 
+// A carried gain, said both ways: "+80.0 dB (×10000)". The sign is printed
+// explicitly because "gain 6 dB" and "gain −6 dB" are opposite claims that
+// differ by one thin glyph.
+const fmtDbSigned = (db) => `${db >= 0 ? '+' : '−'}${Math.abs(db).toFixed(1)} dB`
+const fmtTimes = (db) => {
+  const k = Math.pow(10, db / 20)
+  return k >= 100 ? Math.round(k).toLocaleString('en-US') : Number(k.toPrecision(3))
+}
+
 export default function HandOver({ tf, circuitName, from = null }) {
   // Provenance (from=circuit:<id>:<label>) rides every emitted link, so the
   // receiving lab can greet the arrival by the circuit's own name.
@@ -53,7 +62,13 @@ export default function HandOver({ tf, circuitName, from = null }) {
     )
   }
 
-  const c = d.digital
+  const c = d.carried
+  // The gain block's sentence, shared by both named tiers: an exact rational
+  // scaling, so it is stated without a hedge (CORE_SCOPE counter-rule).
+  const gainClause =
+    d.gainDb != null
+      ? ` Its in-band gain of ${fmtDbSigned(d.gainDb)} (×${fmtTimes(d.gainDb)}) rides along as a gain block — carried, not normalized away.`
+      : ''
 
   return (
     <div className="handover">
@@ -62,7 +77,7 @@ export default function HandOver({ tf, circuitName, from = null }) {
         <p className="hint">
           Sampled at {fmtHz(rate)}Hz, {circuitName} is a {SHAPE_LABEL[d.shape]} biquad with a
           cutoff of {fmtHz(d.f0)}Hz and Q of {d.q.toPrecision(4)}. It crosses by name — Signal
-          Lab rebuilds it from (shape, f₀, Q). Not similar to one; the same one.
+          Lab rebuilds it from (shape, f₀, Q). Not similar to one; the same one.{gainClause}
         </p>
       ) : d.order === 1 ? (
         <p className="hint">
@@ -70,13 +85,46 @@ export default function HandOver({ tf, circuitName, from = null }) {
           its corner at {fmtHz(d.f0)}Hz — one pole, no Q to send. It crosses by name: Signal
           Lab’s own 1st-order recipe is the same bilinear transform, so the corner lands
           exactly, and the Q knob stays hidden there because one pole cannot resonate.
+          {gainClause}
         </p>
       ) : (
         <p className="hint">
-          The named hand-over speaks in (shape, f₀, Q) or a 1st-order corner, and {circuitName}
-          is neither — so it crosses as the five raw coefficients every digital biquad reduces
-          to, bilinear-exact at {fmtHz(rate)}Hz. Not a shape with knobs; the coefficients
-          themselves.
+          {d.rawReason === 'q' ? (
+            <>
+              At Q {d.q.toPrecision(4)} this resonance is beyond the 0.1–100 the named block’s
+              knob reaches, so {circuitName} crosses as the five raw coefficients instead —
+              bilinear-exact at {fmtHz(rate)}Hz, the same filter with no knob pretending to
+              hold it.
+            </>
+          ) : d.rawReason === 'corner' ? (
+            <>
+              Its corner at {fmtHz(d.f0)}Hz sits outside the 20 Hz–0.499·fs window the named
+              block’s cutoff knob reaches at this rate, so {circuitName} crosses as the five
+              raw coefficients — bilinear-exact, with the corner exactly where the circuit
+              put it.
+            </>
+          ) : d.rawReason === 'inverted' ? (
+            <>
+              {circuitName} inverts — its gain is negative, and no dB knob says a sign — so it
+              crosses as the five raw coefficients with the inversion carried in them,
+              bilinear-exact at {fmtHz(rate)}Hz.
+            </>
+          ) : (
+            <>
+              The named hand-over speaks in (shape, f₀, Q) or a 1st-order corner, and{' '}
+              {circuitName} is neither — so it crosses as the five raw coefficients every
+              digital biquad reduces to, bilinear-exact at {fmtHz(rate)}Hz. Not a shape with
+              knobs; the coefficients themselves.
+            </>
+          )}
+          {d.gainDb != null ? (
+            <>
+              {' '}
+              The coefficients cross scaled to fit the ±3.999 knobs; the factor,{' '}
+              {fmtDbSigned(d.gainDb)}, rides along as a gain block — still the same filter,
+              said in two blocks.
+            </>
+          ) : null}
         </p>
       )}
 
@@ -107,6 +155,25 @@ export default function HandOver({ tf, circuitName, from = null }) {
         </p>
       ) : null}
 
+      {d.uncertifiable ? (
+        <p className="hint warn">
+          At this rate the corner sits so many decades below the sample rate that the sampled
+          copy’s poles land closer to the unit circle than double precision can tell apart from
+          ON it — Signal Lab would read the arriving coefficients as unstable and pass the
+          signal through untouched. The mathematics is fine; the digits ran out. Lower the rate
+          to bring the circuit back into range.
+        </p>
+      ) : null}
+
+      {d.gainOver ? (
+        <p className="hint warn">
+          The scale factored out of the coefficients, {fmtDbSigned(d.gainWanted)}, exceeds the
+          ±126 dB the gain block reaches — the one boundary no exact carrier crosses. The link
+          carries the closest thing the knobs hold; reduce the gain-setting component before
+          copying if the exact scale matters.
+        </p>
+      ) : null}
+
       {d.clipped ? (
         <p className="hint warn">
           At this rate the coefficients exceed the ±3.999 the biquad’s knobs reach, and Signal
@@ -121,18 +188,25 @@ export default function HandOver({ tf, circuitName, from = null }) {
           <tr>
             <th scope="row">b₀, b₁, b₂</th>
             <td>
-              {/* Padded to the biquad's five slots, exactly as the link
-                  carries them — a first-order circuit's third tap is a real
-                  zero, not a blank. */}
-              {[...c.b, 0, 0].slice(0, 3).map((v) => Number(v.toPrecision(5))).join(', ')}
+              {/* The five slots exactly as the link carries them (post-
+                  factoring, when a scale was split off into the gain block) —
+                  a first-order circuit's third tap is a real zero, not a
+                  blank. */}
+              {c.b.map((v) => Number(v.toPrecision(5))).join(', ')}
             </td>
           </tr>
           <tr>
             <th scope="row">a₁, a₂</th>
-            <td>
-              {[...c.a.slice(1), 0, 0].slice(0, 2).map((v) => Number(v.toPrecision(5))).join(', ')}
-            </td>
+            <td>{c.a.map((v) => Number(v.toPrecision(5))).join(', ')}</td>
           </tr>
+          {d.gainDb != null ? (
+            <tr>
+              <th scope="row">gain block</th>
+              <td>
+                {fmtDbSigned(d.gainDb)} (×{fmtTimes(d.gainDb)})
+              </td>
+            </tr>
+          ) : null}
           <tr>
             <th scope="row">samples per cycle</th>
             <td>{Number.isFinite(d.ratio) ? Number(d.ratio.toPrecision(4)) : '—'}</td>

@@ -1,5 +1,76 @@
 # Needs and heads-ups for the other territories
 
+## Crossed (Reed direct, in the shared tree): gain rides the bridge — full-fidelity hand-overs, no clamped arrivals
+
+Reed asked for full parameter direct translation on the circuit → signal
+hand-over and directed the cross-territory work himself. What changed, by
+territory — amend freely:
+
+- **packages/dsp** `Q_MAX` 40 → 100 (the design clamp now equals the knob;
+  a knob past the design clamp silently rebuilt a different filter).
+- **packages/ui deeplink** `trimExact` now serializes raw carriers
+  bit-exactly (shortest round-trip decimal, `String(x)`). Twelve figures
+  broke a component-extreme tank: at Q ≈ 3×10⁴ the pole pair's distance
+  from instability lives past digit twelve. Also affects `plant=custom`
+  (your links get MORE exact; the round-trip test pins it).
+- **signal-lab blocks** Q knob 20 → 100 (tracks Q_MAX, agreement pinned by
+  test); gain block ±126 dB (was −60/+24) so it can carry a hand-over's
+  in-band gain up to the component box's ×10⁶. fromLink clamps source
+  frequency to [1 Hz, Nyquist] — a sub-hertz source made the cycle-counted
+  scope allocate hours of buffer (tab-killing; the emitter also never sends
+  one now).
+- **circuit-lab emitter** (`toSignalLab.js`): named tiers now carry a
+  non-unity in-band gain as `b=gain:<dB>` beside the filter (the tank
+  crosses whole: band-pass, Q 31.6 on the knob, +80 dB — it used to arrive
+  Q-clamped and normalized to peak 1). Named tier gates every knob against
+  the receiving ranges (mirrored in RECEIVER, cross-checked by the
+  component-box sweep test); anything outside crosses raw, with the reason
+  named on the panel. Raw coefficients that would clip are factored
+  (largest tap → 1, scale → gain block) instead of flagged. Pre-warp is
+  skipped at/above Nyquist (negative warp constant made an UNSTABLE copy of
+  a stable circuit). Two Rule-3 guards: `gainOver` (scale past ±126 dB,
+  synthetic-only) and `uncertifiable` (corner so many decades below the
+  rate that float64 can no longer certify the carried poles stable —
+  remedy: LOWER the rate, the mirror of clipped's raise-it).
+- The emitter-contract sweep (`toSignalLab.test.js`) runs every circuit's
+  full component box at three rates: every link parses with zero receiver
+  warnings, carried knobs inside range, carried filter certifiably stable
+  or pre-flagged, response exact at the anchor.
+
+Follow-up welcome: the Playwright harnesses were not extended for the new
+panel branches (they are covered by a renderToString smoke test,
+`HandOver.smoke.test.jsx`); add browser coverage when next in there.
+
+## Crossed (Reed direct, follow-up): the Control-Lab hand-over got the same treatment — heads-up, control-lab
+
+No control-lab files changed; your receiver was the spec. What the
+circuit-lab emitter (`asControlPlant`) now does differently, and why:
+
+- **Two sign bugs fixed.** The op-amp integrator crossed as +K/s via
+  `Math.abs` — closing negative feedback around what is really an INVERTING
+  integrator is positive feedback, so your loop showed stable margins in
+  exactly the case the real one has none. And the inverting amplifier
+  crossed as `firstOrder` with k = −10, which your k knob (floor 0.001)
+  clamped into a completely different plant. Both now cross as `custom`
+  with the sign in the coefficients; the old integrator test pinned the
+  bug and was rewritten saying so.
+- **Named plants are gated against your knob ranges as serialized**
+  (k 0.001…1e6, τ 1e-7…100 s, ωₙ 0.01…1e8, ζ 0.01…5 — mirrored as
+  CTRL_RECEIVER, cross-checked by a component-box sweep). Circuits your
+  knobs cannot hold (ζ from 1.6e-4 to 1.6e7 is reachable!) fall to
+  `custom` instead of arriving clamped; the panel names the reason.
+- **`custom` coefficients are scaled into your ±1e12 fields when needed**
+  — by a power of two, which is exact in binary floating point (a twin-T
+  at τ = 1 ns otherwise arrives with 1/τ² = 1e24). The sweep asserts
+  nothing lands within reach of your 1e-30 trimLeading epsilon either.
+- An order-2 denominator with a pole at the origin (motor-shaped, infinite
+  DC gain) used to hit an early `return null`; it now falls through to
+  `custom` exactly. No catalog circuit produces it today.
+- Verified end-to-end against your ACTUAL `stateFromLink` + `buildLoop`
+  (temporary cross-app test, since removed): 270 component-box combos,
+  zero warnings, plant magnitude exact on a 1e-4…1e6 Hz grid, DC-gain sign
+  preserved, provenance intact.
+
 ## Done for you: the asControlPlant custom fallback (your queued task)
 
 Reed asked live, so I landed your queued tier: circuits with numerator

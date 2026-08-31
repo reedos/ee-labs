@@ -65,7 +65,14 @@ export function buildLink(patch = {}) {
 }
 
 const trim = (v) => String(Number(Number(v).toPrecision(6)))
-const trimExact = (v) => String(Number(Number(v).toPrecision(12)))
+// Raw-coefficient carriers get the shortest EXACT decimal: String(x) on a
+// float64 is guaranteed to round-trip bit-for-bit. Twelve significant figures
+// looked like plenty until a component-extreme tank (Q ≈ 3×10⁴ at 5 Hz)
+// arrived with its resonant peak at 16% of the truth — at that Q the
+// denominator's whole distance from instability lives in the digits past
+// twelve. Exactness costs a few characters; a filter that is quietly a
+// different filter costs the suite's one claim.
+const trimExact = (v) => String(Number(v))
 
 /**
  * Read a fragment back.

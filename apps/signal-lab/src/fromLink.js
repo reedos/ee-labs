@@ -104,10 +104,21 @@ export function stateFromLink(patch, base) {
       warnings.push(`no waveform called "${s.type}"`)
       continue
     }
+    // The frequency is clamped to [1 Hz, Nyquist], and the floor is
+    // load-bearing, not tidiness: the scope spans a fixed count of the
+    // fundamental's CYCLES, so a link saying src=square:0.0001 asks for a
+    // buffer of five cycles at 0.1 mHz — fourteen hours of samples, an
+    // allocation that kills the tab before the first frame draws.
+    let freq = Number.isFinite(s.freq) ? s.freq : 250
+    if (freq < 1 || freq > ctx.nyquist) {
+      const held = Math.min(ctx.nyquist, Math.max(1, freq))
+      warnings.push(`${s.type} frequency ${freq} is outside 1…${ctx.nyquist}; clamped`)
+      freq = held
+    }
     sources.push({
       id: id++,
       type: s.type,
-      freq: Number.isFinite(s.freq) ? s.freq : 250,
+      freq,
       amp: Number.isFinite(s.amp) ? s.amp : 1,
       phase: 0,
       enabled: true,

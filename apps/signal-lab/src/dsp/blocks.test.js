@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { BLOCK_TYPES, makeBlockRecord } from './blocks.js'
 import { applyChain, chainResponse, chainSettle, renderChain, runChain } from './chain.js'
-import { render, rms, peak, butterworthQs, biquadResponse, designBiquad } from '@ee-labs/dsp'
+import { render, rms, peak, butterworthQs, biquadResponse, designBiquad, Q_MAX } from '@ee-labs/dsp'
 import { bilinear, magnitudeAt } from '@ee-labs/systems'
 import { spectrum } from '@ee-labs/dsp'
 
@@ -31,6 +31,22 @@ const spec = (sources, blocks, opts = {}) => {
   const { buf } = renderChain(sources, blocks, N, SR, opts)
   return spectrum(buf, SR, 'hann')
 }
+
+describe('knob and design agree', () => {
+  it('the Q knob ceiling IS the design clamp, so the knob cannot lie', () => {
+    // designBiquad clamps at Q_MAX below whatever the knob says; if the two
+    // drift apart, a knob reading 80 quietly rebuilds a Q-40 filter. The
+    // ceiling was raised together with Q_MAX so a hand-over's series RLC
+    // (Q = (1/R)√(L/C), past 20 at everyday values) crosses by name.
+    const q = BLOCK_TYPES.lowpass.params.find((p) => p.key === 'q')
+    expect(q.max).toBe(Q_MAX)
+    expect(Q_MAX).toBe(100)
+    // A designed Q at the new ceiling really is that Q: for a low-pass,
+    // |H(f0)| = Q exactly.
+    const co = designBiquad({ mode: 'lowpass', freq: 1000, q: 100 }, 48000)
+    expect(biquadResponse(co, 1000, 48000)).toBeCloseTo(100, 6)
+  })
+})
 
 describe('chain plumbing', () => {
   it('an empty chain is a bit-exact passthrough', () => {

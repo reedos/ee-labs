@@ -59,6 +59,19 @@ describe('deep links', () => {
     expect(patch.blocks[0].params[0]).toBeCloseTo(1234.5678, 2)
     expect(patch.blocks[0].params[1]).toBeCloseTo(0.7071068, 6)
   })
+
+  it('raw-coefficient carriers round-trip bit-exactly', () => {
+    // For b=biquad and plant=custom the coefficients ARE the object, and at
+    // a high-Q resonance the digits past twelve are the pole's whole
+    // distance from instability. String(x) is the shortest decimal that
+    // round-trips a float64 exactly — so the contract here is toEqual, not
+    // toBeCloseTo.
+    const b = [0.9056990020843223, -1.8089416937329754, 0.905699002084322, -1.80894169373, 0.9999999999995452]
+    const bi = buildLink({ blocks: [{ type: 'biquad', params: b }] })
+    expect(parseLink(bi).patch.blocks[0].params).toEqual(b)
+    const cu = buildLink({ plant: { type: 'custom', params: b.concat(1e-13) } })
+    expect(parseLink(cu).patch.plant.params).toEqual(b.concat(1e-13))
+  })
 })
 
 describe('carrying a control loop', () => {

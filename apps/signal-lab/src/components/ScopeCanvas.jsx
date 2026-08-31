@@ -99,8 +99,21 @@ export default function ScopeCanvas({
             }
             if (lo === Infinity) continue
             const x = area.x + px + 0.5
-            ctx.moveTo(x, sy(hi))
-            ctx.lineTo(x, sy(lo))
+            // A flat stretch has hi ≈ lo, and a zero-length butt-capped stroke
+            // paints NOTHING — a filtered square arriving from Circuit Lab lost
+            // its flat tops entirely and read as a clipped signal. Pad each
+            // column to at least one pixel about its own centre, so a flat
+            // region draws as the same-weight line the non-envelope branch
+            // would have drawn.
+            let y0 = sy(hi)
+            let y1 = sy(lo)
+            if (y1 - y0 < 1) {
+              const mid = (y0 + y1) / 2
+              y0 = mid - 0.5
+              y1 = mid + 0.5
+            }
+            ctx.moveTo(x, y0)
+            ctx.lineTo(x, y1)
           }
           ctx.stroke()
           continue

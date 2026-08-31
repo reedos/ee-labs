@@ -64,7 +64,43 @@ describe('loading a setup from a link', () => {
   it('clamps an out-of-range value rather than loading it', () => {
     const { state, warnings } = load('b=lowpass:800:9999')
     expect(warnings.join(' ')).toMatch(/outside/)
-    expect(state.blocks[0].params.q).toBeLessThanOrEqual(20)
+    // The knob ceiling is 100 now (it tracks Q_MAX, so a hand-over's series
+    // RLC crosses by name at everyday component values); 9999 still clamps.
+    expect(state.blocks[0].params.q).toBe(100)
+  })
+
+  it('accepts the Q a hand-over names up to 100, unclamped', () => {
+    const { state, warnings } = load('rate=192000&b=bandpass:5033:31.6228')
+    expect(warnings).toEqual([])
+    expect(state.blocks[0].params.q).toBeCloseTo(31.6228, 6)
+  })
+
+  it('a hand-over gain block arrives beside its filter, up to ±126 dB', () => {
+    // Circuit Lab factors an in-band gain (a 1 MΩ tank's 80 dB resonant
+    // impedance, a normalized raw biquad's scale) into b=gain:<dB>. The
+    // widened range must hold the component box's full ×10⁶.
+    const { state, warnings } = load('rate=192000&b=bandpass:5033:31.6&b=gain:80')
+    expect(warnings).toEqual([])
+    expect(state.blocks).toHaveLength(2)
+    expect(state.blocks[1].type).toBe('gain')
+    expect(state.blocks[1].params.gainDb).toBe(80)
+    // ...and past the knob it still clamps with the warning, never silently.
+    const over = load('b=gain:200')
+    expect(over.warnings.join(' ')).toMatch(/outside/)
+    expect(over.state.blocks[0].params.gainDb).toBe(126)
+  })
+
+  it('a source below 1 Hz is clamped — the scope must not buffer hours of signal', () => {
+    // The scope spans a fixed count of the fundamental's cycles, so
+    // src=square:0.0001 asks for five cycles at 0.1 mHz: fourteen hours of
+    // samples, an allocation that kills the tab. Clamped and named.
+    const { state, warnings } = load('src=square:0.0001:0.8&b=lowpass:100:1')
+    expect(warnings.join(' ')).toMatch(/outside 1…/)
+    expect(state.sources[0].freq).toBe(1)
+    // The other edge: a source past Nyquist folds; clamped there too.
+    const hot = load('src=sine:999999:1')
+    expect(hot.warnings.join(' ')).toMatch(/outside/)
+    expect(hot.state.sources[0].freq).toBe(4000) // BASE rate 8000
   })
 
   it('rejects an impossible sample rate but keeps the rest', () => {

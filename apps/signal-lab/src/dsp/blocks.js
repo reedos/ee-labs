@@ -67,7 +67,12 @@ const qParam = {
   label: 'Q (resonance)',
   scale: 'log',
   min: 0.1,
-  max: 20,
+  // Wide enough to hold what a hand-over can name: a series RLC crosses with
+  // Q = (1/R)√(L/C), which passes 20 at everyday component values. The design
+  // functions clamp at the same 100 (Q_MAX), so knob and filter agree; past
+  // it, Circuit Lab's emitter drops to raw coefficients rather than letting
+  // this knob lie about the filter that arrived.
+  max: 100,
   step: 0.01,
   presets: Q_PRESETS,
   hint: 'For a low-pass the peak height at the cutoff is exactly Q.',
@@ -388,7 +393,12 @@ export const BLOCK_TYPES = {
     nonlinear: false,
     defaults: { gainDb: 0, dcOffset: 0 },
     params: [
-      { key: 'gainDb', label: 'Gain', unit: 'dB', scale: 'linear', min: -60, max: 24, step: 0.5, presets: [-12, -6, 0, 6] },
+      // ±126 dB, not an audio-taste ±60/+24: this block is also the carrier
+      // for a hand-over's in-band gain, and Circuit Lab's component ranges
+      // reach ×10⁶ (a 1 MΩ tank's resonant impedance, a divider at one part
+      // per million) — exactly 120 dB, kept with margin so the boundary
+      // never clamps. The presets still cover the audio range.
+      { key: 'gainDb', label: 'Gain', unit: 'dB', scale: 'linear', min: -126, max: 126, step: 0.5, presets: [-12, -6, 0, 6] },
       // DC lives here so it can sit before a clipper: symmetric clipping makes odd
       // harmonics, and offsetting the signal first breaks that symmetry and brings
       // the even ones in.

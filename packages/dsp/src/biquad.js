@@ -16,10 +16,15 @@ export const BIQUAD_MODES = [
 
 // Kept well inside the unit circle. The UI clamps to these too, so isStable()
 // should never be able to fail from user input.
+// Q_MAX tracks the widest Q a hand-over from Circuit Lab can name: a series
+// RLC reaches the old ceiling of 40 with ordinary component values, and a
+// design clamp BELOW the UI's knob silently rebuilt a different filter than
+// the knob claimed. At float64 a Q of 100 is still nowhere near trouble —
+// the pole pair sits at radius ≈ 1 − w0/(2Q), fully resolved.
 export const FREQ_MIN = 1
 export const FREQ_MAX_RATIO = 0.499
 export const Q_MIN = 0.05
-export const Q_MAX = 40
+export const Q_MAX = 100
 
 /**
  * Coefficients for one section, already normalized by a0 so that a0 = 1.
@@ -231,7 +236,7 @@ export function settleSamples(coeffs, eps = 1e-6) {
  *
  * Transposed Direct Form II is the usual professional choice — it needs two state
  * variables instead of four and has better numerical behavior in fixed point or
- * float32. Neither matters at float64 with Q <= 40, and DF-I has the property that
+ * float32. Neither matters at float64 with Q <= 100, and DF-I has the property that
  * counts here: the code is the equation on the page.
  */
 export function makeBiquad(coeffs) {
