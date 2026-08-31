@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   captionLines,
+  wrapLines,
   CAPTION_RECONSTRUCTION,
   CAPTION_ALIASED,
   CAPTION_AT_NYQUIST,
@@ -99,5 +100,57 @@ describe('the presets that should carry a warning do carry one', () => {
     const lines = at('Exactly at Nyquist')
     expect(lines).toContain(CAPTION_AT_NYQUIST)
     expect(lines).not.toContain(CAPTION_ALIASED)
+  })
+})
+
+describe('fitting the caption to the pane it is given', () => {
+  // A stand-in for the canvas measurer: six pixels a character is close
+  // enough to the real proportional font to exercise the wrap, and it makes
+  // the arithmetic checkable by hand.
+  const ctx = { measureText: (t) => ({ width: t.length * 6 }) }
+
+  it('leaves a line that fits alone', () => {
+    expect(wrapLines(ctx, ['one two three'], 1000)).toEqual(['one two three'])
+  })
+
+  it('folds a line that does not, on word boundaries', () => {
+    // 48px holds 8 characters, so "aaa bbb" (7) fits and adding " ccc" (11)
+    // does not.
+    expect(wrapLines(ctx, ['aaa bbb ccc ddd'], 48)).toEqual(['aaa bbb', 'ccc ddd'])
+    // 24px holds 4, so every word stands alone.
+    const out = wrapLines(ctx, ['aaa bbb ccc ddd'], 24)
+    expect(out).toEqual(['aaa', 'bbb', 'ccc', 'ddd'])
+    for (const l of out) expect(l).not.toMatch(/^ | $/)
+  })
+
+  it('keeps every word, in order', () => {
+    const words = CAPTION_ALIASED.split(' ')
+    expect(wrapLines(ctx, [CAPTION_ALIASED], 300).join(' ').split(' ')).toEqual(words)
+  })
+
+  it('wraps each caption independently, so they never run together', () => {
+    const out = wrapLines(ctx, [CAPTION_RECONSTRUCTION, CAPTION_ALIASED], 400)
+    // The second caption must start its own line rather than continuing the
+    // tail of the first — the band's height is counted in these lines.
+    expect(out.some((l) => l.startsWith('the ripple riding'))).toBe(true)
+  })
+
+  it('emits a single over-long word rather than dropping or breaking it', () => {
+    expect(wrapLines(ctx, ['short enormouslylongword'], 30)).toEqual([
+      'short',
+      'enormouslylongword',
+    ])
+  })
+
+  it('says nothing when given nothing', () => {
+    expect(wrapLines(ctx, [], 500)).toEqual([])
+  })
+
+  it('produces more lines as the pane narrows, never fewer', () => {
+    const all = [CAPTION_RECONSTRUCTION, CAPTION_ALIASED, CAPTION_AT_NYQUIST]
+    const counts = [1600, 1200, 800, 500, 300].map((w) => wrapLines(ctx, all, w).length)
+    for (let i = 1; i < counts.length; i++) {
+      expect(counts[i], `width step ${i}`).toBeGreaterThanOrEqual(counts[i - 1])
+    }
   })
 })

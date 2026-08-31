@@ -42,7 +42,12 @@ export function plotArea(w, h, opts = {}) {
   const l = PAD.l * k
   // A second y-axis on the right needs room for its labels.
   const r = (opts.rightAxis ? 64 : PAD.r) * k
-  const t = PAD.t * k
+  // Extra headroom above the frame, in device pixels, for a view that writes
+  // something over its plot. A caption drawn INSIDE the plot is covering
+  // signal however it is placed and whatever it is plated with — the scope's
+  // sat across the trace it was describing. Giving it its own band costs a
+  // little height and costs the trace nothing.
+  const t = PAD.t * k + Math.max(0, opts.topInset || 0)
   const b = PAD.b * k
   return { x: l, y: t, w: Math.max(1, w - l - r), h: Math.max(1, h - t - b), k }
 }

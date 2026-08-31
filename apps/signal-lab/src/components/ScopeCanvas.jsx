@@ -48,6 +48,36 @@ export function captionLines({ reconstructed, sampling }) {
 }
 
 /**
+ * Greedy word wrap of each caption to `maxWidth`, using the context's current
+ * font.
+ *
+ * The caption now sits in a band whose height is reserved before the plot is
+ * sized, so the wrap has to happen BEFORE drawing rather than being left to
+ * overflow: an unwrapped line ran off the side of a narrow pane, and a band
+ * measured in unwrapped lines would reserve the wrong height.
+ *
+ * A single word longer than the pane is emitted on its own line and allowed to
+ * overflow. Breaking mid-word would be worse, and no caption here contains one.
+ */
+export function wrapLines(ctx, lines, maxWidth) {
+  const out = []
+  for (const line of lines) {
+    let cur = ''
+    for (const word of line.split(' ')) {
+      const next = cur ? `${cur} ${word}` : word
+      if (cur && ctx.measureText(next).width > maxWidth) {
+        out.push(cur)
+        cur = word
+      } else {
+        cur = next
+      }
+    }
+    if (cur) out.push(cur)
+  }
+  return out
+}
+
+/**
  * Time-domain view.
  *
  * The horizontal axis counts the signal's OWN cycles rather than absolute
@@ -91,8 +121,13 @@ export default function ScopeCanvas({
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
-      const area = plotArea(w, h)
-      const k = area.k || 1
+      // Laid out in two passes. The first sizes the plot without a caption,
+      // which is all that is needed to know how the trace will be DRAWN — the
+      // caption only ever takes height, and every decision below turns on
+      // area.w, which it does not touch. The second gives the caption its own
+      // band above the frame and hands the rest to the plot.
+      const probe = plotArea(w, h)
+      const k = probe.k || 1
 
       // One x unit is either one cycle of the fundamental or one millisecond.
       const perSecond = divisionRate || 1000
@@ -104,9 +139,24 @@ export default function ScopeCanvas({
       )
       if (n < 2) return
 
-      const samplesPerPx = ((xMax / area.w) / perSecond) * sampleRate
+      const samplesPerPx = ((xMax / probe.w) / perSecond) * sampleRate
       const sparse = samplesPerPx < 0.5
       const marked = samplesPerPx < 1 / 9
+      const drawable = traces.some((tr) => tr.buf && tr.buf.length >= 2)
+
+      // Wrapped to the plot's own width, so a narrow pane folds the caption
+      // instead of running it off the canvas — and so the band reserved for it
+      // is the height it will really occupy.
+      ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
+      const lh = 14 * k
+      const wrapped = wrapLines(
+        ctx,
+        captionLines({ reconstructed: sparse && marked && drawable, sampling }),
+        probe.w,
+      )
+      const band = wrapped.length ? wrapped.length * lh + 6 * k : 0
+
+      const area = plotArea(w, h, { topInset: band })
 
       // The frame has to hold what is DRAWN, not just the samples. A square's
       // reconstruction overshoots its own samples by 28% — real Gibbs, not an
@@ -155,7 +205,6 @@ export default function ScopeCanvas({
       // Sample i of the VISIBLE span; the buffer holds `guard` more before it.
       const xOf = (i) => sx((i / sampleRate) * perSecond)
       const at = (buf, i) => buf[guard + i]
-      let reconstructed = false
 
       // Back to front, so the processed signal is never hidden by its ghost.
       for (const tr of traces) {
@@ -230,7 +279,6 @@ export default function ScopeCanvas({
         // reconstructed main trace would show two different interpolations of
         // the same kind of data under one caption.
         if (sparse) {
-          if (marked) reconstructed = true
           // Pixel -> time through the AXIS mapping, the same sx the dots use.
           const tPerPx = samplesPerPx
           ctx.beginPath()
@@ -274,49 +322,25 @@ export default function ScopeCanvas({
         }
       }
 
-      // Name what is being drawn, and what the rate is doing to it — see
-      // captionLines, which decides that and says why the two are separate.
-      const lines = captionLines({ reconstructed, sampling })
-      if (lines.length) {
+      ctx.restore()
+
+      // The caption, in the band reserved for it above the frame.
+      //
+      // It used to be placed INSIDE the plot, moved to whichever half of the
+      // trace had more clearance and backed with a dark plate for the case
+      // where a busy signal crossed both. That was the wrong problem to solve:
+      // a plate over the trace is still covering signal, and on a square or a
+      // step there is no clear half to move to. Sitting above the frame it
+      // covers nothing, needs no plate, and stops moving around as the reader
+      // turns a knob.
+      if (wrapped.length) {
         ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
         ctx.textAlign = 'left'
         ctx.textBaseline = 'top'
-        const lh = 14 * k
-        const wText = Math.max(...lines.map((t) => ctx.measureText(t).width))
-        const boxH = lines.length * lh + 4 * k
-        const x0 = area.x + 6 * k
-
-        // Put the caption where the trace is NOT. It sat at the top left
-        // whatever was drawn there, and on a signal that spends its time high
-        // — a step, a rectified wave, a resonance ringing up — the words lay
-        // across the very trace they describe. So the span the text will
-        // cover is measured first, and the caption goes to whichever side has
-        // more clearance; the backing plate then covers the remaining case,
-        // where a busy trace crosses both.
-        let hi = -Infinity
-        let lo = Infinity
-        const iFrom = Math.max(0, Math.floor(((x0 - area.x) / area.w) * (n - 1)))
-        const iTo = Math.min(n - 1, Math.ceil(((x0 + wText - area.x) / area.w) * (n - 1)))
-        for (const tr of traces) {
-          if (!tr.buf || tr.buf.length < 2) continue
-          for (let i = iFrom; i <= iTo; i++) {
-            const v = at(tr.buf, i)
-            if (v > hi) hi = v
-            if (v < lo) lo = v
-          }
-        }
-        const roomAbove = Number.isFinite(hi) ? yLimit - hi : yLimit
-        const roomBelow = Number.isFinite(lo) ? lo + yLimit : yLimit
-        const yTop =
-          roomAbove >= roomBelow ? area.y + 5 * k : area.y + area.h - boxH - 4 * k
-
-        ctx.fillStyle = 'rgba(11, 15, 20, 0.82)'
-        ctx.fillRect(x0 - 4 * k, yTop - 3 * k, wText + 8 * k, boxH)
         ctx.fillStyle = COLORS.text
-        lines.forEach((t, i) => ctx.fillText(t, x0, yTop + i * lh))
+        const top = area.y - band + 2 * k
+        wrapped.forEach((t, i) => ctx.fillText(t, area.x, top + i * lh))
       }
-
-      ctx.restore()
     },
     [traces, sampleRate, spanSeconds, divisionRate, yMax],
   )
