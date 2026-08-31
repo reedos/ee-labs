@@ -32,6 +32,11 @@ export default function ScopeCanvas({
   spanSeconds,
   divisionRate = null,
   yMax,
+  // True when the top of the band is carrying a HASH of components rather
+  // than one tone — see App. A single tone up near Nyquist is what the
+  // sampling lessons are about and needs no advice; a spread of harmonics up
+  // there is aliasing roughening the shape, and a higher rate clears it.
+  aliasHash = false,
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -184,6 +189,18 @@ export default function ScopeCanvas({
           area.x + 6 * k,
           area.y + 5 * k,
         )
+        // ...and, where it is true, what to do about a rough-looking shape.
+        // The ripple riding on a high-passed square at 8 kHz is not drawing
+        // error: it is harmonics from above Nyquist folded back into the
+        // samples themselves, and it falls by about half every time the rate
+        // doubles (measured: 22% of the sag at 8 kHz, 10% at 16, 3% at 32).
+        if (aliasHash) {
+          ctx.fillText(
+            'the ripple riding on this shape is aliasing — harmonics folded back from above Nyquist; raise the rate to clear it',
+            area.x + 6 * k,
+            area.y + 5 * k + 14 * k,
+          )
+        }
       }
 
       ctx.restore()

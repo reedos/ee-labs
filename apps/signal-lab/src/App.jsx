@@ -246,6 +246,28 @@ export default function App() {
     return acc
   }, [conv, scrub.pos])
 
+  // Is the top of the band carrying a HASH, or a tone?
+  //
+  // A single component up near Nyquist is exactly what the sampling lessons
+  // put there on purpose — the scope's curve through those samples is clean
+  // and correct, and telling the reader to raise the rate would argue with
+  // the lesson. A SPREAD of components up there is different: it is the
+  // naive generators' harmonics folding back, it roughens the shape the note
+  // is describing, and it genuinely halves every time the rate doubles. So
+  // the advice is offered only for the second case, counted rather than
+  // guessed: how many bins above fs/4 carry real amplitude?
+  const aliasHash = useMemo(() => {
+    let pk = 0
+    for (let i = 0; i < amps.length; i++) if (amps[i] > pk) pk = amps[i]
+    if (!(pk > 0)) return false
+    let lines = 0
+    for (let i = Math.floor(amps.length / 2); i < amps.length; i++) {
+      if (amps[i] > 0.05 * pk) lines++
+    }
+    // A lone tone plus its window skirt is a handful of bins; a hash is many.
+    return lines >= 8
+  }, [amps])
+
   const stats = useMemo(() => {
     let iMax = 0
     for (let i = 1; i < amps.length; i++) if (amps[i] > amps[iMax]) iMax = i
@@ -521,6 +543,7 @@ export default function App() {
               spanSeconds={spanSeconds}
               divisionRate={divisionRate}
               yMax={yMax}
+              aliasHash={aliasHash}
             />
           )}
         </section>
