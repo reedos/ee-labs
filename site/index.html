@@ -169,15 +169,8 @@
       }
 
       /* ---------- footer ---------- */
-      .creed {
-        margin-top: 30px;
-        text-align: center;
-        color: var(--dim);
-        font-size: 13px;
-      }
-      .creed b { color: var(--text); font-weight: 600; }
       .foot {
-        margin-top: 14px; text-align: center; font-size: 12px; color: var(--dim);
+        margin-top: 34px; text-align: center; font-size: 12px; color: var(--dim);
       }
       .foot a { color: var(--blue); text-decoration: none; }
       .foot a:hover { text-decoration: underline; }
@@ -247,7 +240,7 @@
             <h2><span class="glyph">⊕→</span>Control Lab</h2>
             <p>
               Close a loop and pay its bills: margins, root locus, Nyquist, disturbance
-              rejection, S + T = 1. Six plants, four controllers, and the point −1 — with rules
+              rejection, S + T = 1. Seven plants, four controllers, and the point −1 — with rules
               of thumb stated as rules of thumb.
             </p>
             <span class="go">13 experiments, 7 plants</span>
@@ -290,7 +283,7 @@
           <p>
             The labs share one spine. A series RLC in <b>Circuit Lab</b> is a biquad — hand it to
             <b>Signal Lab</b> and the same <code>f₀</code> and <code>Q</code> filter a signal,
-            bilinear-exact. The same network is a second-order plant — hand it to
+            exact at the pre-warped corner. The same network is a second-order plant — hand it to
             <b>Control Lab</b>, exactly, and ask how much gain the loop takes before it sings.
             Not three approximations of each other: <b>the same transfer function, read three
             ways</b> — and where a mapping cannot be exact, the suite says so instead of
@@ -299,11 +292,6 @@
         </div>
       </section>
 
-      <p class="creed">
-        The explanations are <b>tested</b>: every experiment is rendered by the test suite, and
-        the numbers its note quotes are measured against what the screen shows. When a sentence
-        and a measurement disagree, the sentence changes.
-      </p>
       <p class="foot">
         open source — <a href="https://github.com/reedos/ee-labs">github.com/reedos/ee-labs</a>
       </p>
