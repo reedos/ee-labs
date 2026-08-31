@@ -37,6 +37,13 @@ export default function ScopeCanvas({
   // sampling lessons are about and needs no advice; a spread of harmonics up
   // there is aliasing roughening the shape, and a higher rate clears it.
   aliasHash = false,
+  // Samples rendered BEFORE the visible span (and after it), so the
+  // reconstruction has neighbours on both sides at the edges of the picture.
+  // Without them sincInterp's window goes one-sided exactly where the trace
+  // meets the frame and draws a spurious overshoot — at Nyquist the interior
+  // curve peaks at 1.02 and the edge threw 1.26, a quarter of full scale of
+  // pure artifact, right where a reader looks first.
+  guard = 0,
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -47,15 +54,46 @@ export default function ScopeCanvas({
       const perSecond = divisionRate || 1000
       const xMax = Math.max(1e-9, spanSeconds * perSecond)
 
+      const n = Math.min(
+        (traces[0]?.buf.length || 0) - 2 * guard,
+        Math.ceil(spanSeconds * sampleRate),
+      )
+      if (n < 2) return
+
+      const samplesPerPx = ((xMax / area.w) / perSecond) * sampleRate
+      const sparse = samplesPerPx < 0.5
+      const marked = samplesPerPx < 1 / 9
+
+      // The frame has to hold what is DRAWN, not just the samples. A square's
+      // reconstruction overshoots its own samples by 28% — real Gibbs, not an
+      // artifact — and an axis built from the sample peak alone clipped it
+      // flat against the top of the plot. Measured here once, at the same
+      // pixel positions the curve will be drawn at, so nothing can exceed it.
+      let yLimit = yMax
+      if (sparse) {
+        let curve = 0
+        for (const tr of traces) {
+          const buf = tr.buf
+          if (!buf || buf.length < 2) continue
+          for (let px = 0; px <= area.w; px++) {
+            const t = px * samplesPerPx
+            if (t > n - 1) break
+            const v = Math.abs(sincInterp(buf, guard + t, 64))
+            if (v > curve) curve = v
+          }
+        }
+        yLimit = Math.max(yMax, Math.ceil(curve * 1.05 * 10) / 10 || yMax)
+      }
+
       const { sx, sy } = drawFrame(
         ctx,
         area,
         0,
         xMax,
-        -yMax,
-        yMax,
+        -yLimit,
+        yLimit,
         (v) => (xMax >= 10 ? v.toFixed(0) : v.toFixed(1)),
-        (v) => v.toFixed(Math.abs(yMax) >= 10 ? 0 : 2),
+        (v) => v.toFixed(Math.abs(yLimit) >= 10 ? 0 : 2),
         {
           zeroLine: true,
           xTitle: divisionRate
@@ -65,20 +103,14 @@ export default function ScopeCanvas({
         },
       )
 
-      const n = Math.min(traces[0]?.buf.length || 0, Math.ceil(spanSeconds * sampleRate))
-      if (n < 2) return
-
       ctx.save()
       ctx.beginPath()
       ctx.rect(area.x, area.y, area.w, area.h)
       ctx.clip()
 
+      // Sample i of the VISIBLE span; the buffer holds `guard` more before it.
       const xOf = (i) => sx((i / sampleRate) * perSecond)
-      // Samples per pixel OF THE AXIS — one mapping for every branch below.
-      // Deriving it from the buffer length instead (n / area.w) quietly
-      // disagrees with xOf whenever the buffer is shorter than the requested
-      // span, which is the same disease the sparse branch's comment records.
-      const samplesPerPx = ((xMax / area.w) / perSecond) * sampleRate
+      const at = (buf, i) => buf[guard + i]
       let reconstructed = false
 
       // Back to front, so the processed signal is never hidden by its ghost.
@@ -99,8 +131,9 @@ export default function ScopeCanvas({
             let lo = Infinity
             let hi = -Infinity
             for (let i = i0; i < i1; i++) {
-              if (buf[i] < lo) lo = buf[i]
-              if (buf[i] > hi) hi = buf[i]
+              const v = at(buf, i)
+              if (v < lo) lo = v
+              if (v > hi) hi = v
             }
             if (lo === Infinity) continue
             const x = area.x + px + 0.5
@@ -124,28 +157,44 @@ export default function ScopeCanvas({
           continue
         }
 
-        // Individual samples become meaningful once they are sparse enough —
-        // and seeing them is the point when the question is about sampling.
-        // At that zoom, a straight line between dots is a LIE: at two samples
-        // per cycle it renders a sine as a triangle. So the sparse view draws
-        // what the samples actually describe — the ideal (sin x)/x
-        // reconstruction, the same mathematics a bench DSO's sin(x)/x mode
-        // uses between its own samples — with the dots as THE data on top.
+        // A straight line between samples is a LIE wherever the samples are
+        // far enough apart to see: at two samples per cycle it renders a sine
+        // as a triangle. So the scope draws what the samples actually
+        // describe — the ideal (sin x)/x reconstruction, the same mathematics
+        // a bench DSO's sin(x)/x mode uses between its own samples.
+        //
+        // Two separate questions, decoupled — they were one threshold once,
+        // and conflating them is what let straight lines through:
+        //
+        //   is the reconstruction WORTH DRAWING?  whenever samples are more
+        //     than about two pixels apart, since below that nothing fits
+        //     between them anyway.
+        //   are the samples worth MARKING?  only once they are far enough
+        //     apart to read as individual dots.
+        //
+        // The curve is now honest at every density it can be. Measured across
+        // the presets, the old single cutoff (seventeen pixels per sample)
+        // permitted straight lines that departed from the true curve by 5 to
+        // 100 pixels on twenty of thirty-three setups — squares, noise and
+        // combs, exactly the broadband signals this tool ships naive on
+        // purpose. And raising the sample rate does not rescue a line: a
+        // square's edge is a discontinuity no rate resolves, so the gap
+        // measures 20% of peak at 8 kHz and is still 15% at 48 kHz. Only
+        // drawing what the samples describe fixes it.
+        //
         // The ghost gets the same treatment: a linearly-joined ghost beside a
         // reconstructed main trace would show two different interpolations of
         // the same kind of data under one caption.
-        const sparse = samplesPerPx < 0.06
-
         if (sparse) {
-          reconstructed = true
+          if (marked) reconstructed = true
           // Pixel -> time through the AXIS mapping, the same sx the dots use.
           const tPerPx = samplesPerPx
           ctx.beginPath()
           let started = false
           for (let px = 0; px <= area.w; px++) {
             const t = px * tPerPx
-            if (t > buf.length - 1) break
-            const y = sy(sincInterp(buf, t, 64))
+            if (t > n - 1) break
+            const y = sy(sincInterp(buf, guard + t, 64))
             if (!started) ctx.moveTo(area.x + px, y)
             else ctx.lineTo(area.x + px, y)
             started = true
@@ -154,21 +203,25 @@ export default function ScopeCanvas({
         } else {
           for (let i = 0; i < n; i++) {
             const x = xOf(i)
-            const y = sy(buf[i])
+            const y = sy(at(buf, i))
             if (i === 0) ctx.moveTo(x, y)
             else ctx.lineTo(x, y)
           }
           ctx.stroke()
         }
 
-        if (sparse && !tr.dim) {
+        if (marked && !tr.dim) {
           const dots = samplesPerPx < 0.02
           ctx.beginPath()
           ctx.fillStyle = dots ? COLORS.textBright : tr.color || COLORS.trace
-          const r = (dots ? 3.5 : 2) * k
+          // Radius yields to the spacing: at six pixels per sample a 2.6-pixel
+          // dot would close the gaps into a solid band, which reads as a
+          // thick line rather than as data.
+          const pxPerSample = 1 / Math.max(samplesPerPx, 1e-9)
+          const r = Math.max(1, Math.min((dots ? 3.5 : 2) * k, pxPerSample / 4))
           for (let i = 0; i < n; i++) {
             const x = xOf(i)
-            const y = sy(buf[i])
+            const y = sy(at(buf, i))
             // Start on the rim, or arc() draws a spoke in from the centre.
             ctx.moveTo(x + r, y)
             ctx.arc(x, y, r, 0, Math.PI * 2)

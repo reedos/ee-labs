@@ -134,13 +134,27 @@ export default function App() {
   // go through the chain, or the two plots would disagree at the left edge.
   const timeN = Math.max(2, Math.ceil(spanSeconds * state.sampleRate))
 
-  const { out: timeBuf, stages } = useMemo(
+  // Samples either side of the visible span, for the scope's reconstruction
+  // to lean on. sincInterp's window goes one-sided at a buffer edge, which
+  // draws a spurious overshoot exactly where the trace meets the frame — at
+  // Nyquist the honest interior peak is 1.02 and the edge threw 1.26. The
+  // guard is the same idea as the FFT's pre-roll: compute past what you show.
+  const GUARD = 64
+  const guarded = useMemo(
     () =>
-      runChain(state.sources, state.blocks, timeN, state.sampleRate, {
-        t0: 0,
+      runChain(state.sources, state.blocks, timeN + 2 * GUARD, state.sampleRate, {
+        t0: -GUARD / state.sampleRate,
         warmup: state.showTransient ? 0 : 'auto',
       }),
     [state.sources, state.blocks, timeN, state.sampleRate, state.showTransient],
+  )
+  // Everything that MEASURES — the RMS/peak readouts, the flow strip — reads
+  // the visible span alone, or the numbers would describe more signal than
+  // the picture shows.
+  const timeBuf = useMemo(() => guarded.out.subarray(GUARD, GUARD + timeN), [guarded, timeN])
+  const stages = useMemo(
+    () => guarded.stages.map((s) => ({ ...s, buf: s.buf.subarray(GUARD, GUARD + timeN) })),
+    [guarded, timeN],
   )
 
   const { freqs, amps, clamped } = useMemo(() => {
@@ -152,10 +166,15 @@ export default function App() {
   // The same window of signal without the chain, drawn under the processed
   // trace. "What did this block do to the shape" should be answerable by
   // looking, not by toggling the block off and trying to remember.
-  const dryBuf = useMemo(() => {
+  // Guarded like the wet trace, since it is reconstructed the same way.
+  const dryGuarded = useMemo(() => {
     if (!state.showGhost || state.blocks.length === 0) return null
-    return render(state.sources, timeN, state.sampleRate, 0)
+    return render(state.sources, timeN + 2 * GUARD, state.sampleRate, -GUARD / state.sampleRate)
   }, [state.showGhost, state.sources, state.blocks.length, timeN, state.sampleRate])
+  const dryBuf = useMemo(
+    () => (dryGuarded ? dryGuarded.subarray(GUARD, GUARD + timeN) : null),
+    [dryGuarded, timeN],
+  )
 
   const ghostAmps = useMemo(() => {
     if (!state.showGhost || state.blocks.length === 0) return null
@@ -257,6 +276,11 @@ export default function App() {
   // the advice is offered only for the second case, counted rather than
   // guessed: how many bins above fs/4 carry real amplitude?
   const aliasHash = useMemo(() => {
+    // Noise is white at every rate. Its content near Nyquist is genuinely
+    // there rather than folded down, so raising the rate cleans nothing and
+    // the advice would be false — worth excluding by name, since a noise
+    // source fills more bins up there than any harmonic ever will.
+    if (state.sources.some((s) => s.enabled && s.type === 'noise')) return false
     let pk = 0
     for (let i = 0; i < amps.length; i++) if (amps[i] > pk) pk = amps[i]
     if (!(pk > 0)) return false
@@ -266,7 +290,7 @@ export default function App() {
     }
     // A lone tone plus its window skirt is a handful of bins; a hash is many.
     return lines >= 8
-  }, [amps])
+  }, [amps, state.sources])
 
   const stats = useMemo(() => {
     let iMax = 0
@@ -301,12 +325,14 @@ export default function App() {
   }, [stats.peak, dryBuf])
 
   // Ghost first, so the processed trace is drawn on top of it.
+  // The scope gets the GUARDED buffers — it is the one consumer that reads
+  // past the visible span, and it is told how far past by `guard`.
   const scopeTraces = useMemo(() => {
     const list = []
-    if (dryBuf) list.push({ buf: dryBuf, color: COLORS.traceGhost, dim: true })
-    list.push({ buf: timeBuf, color: COLORS.trace })
+    if (dryGuarded) list.push({ buf: dryGuarded, color: COLORS.traceGhost, dim: true })
+    list.push({ buf: guarded.out, color: COLORS.trace })
     return list
-  }, [dryBuf, timeBuf])
+  }, [dryGuarded, guarded])
 
   // Built from live state, so the numbers follow the sliders. The context
   // builder is shared with math.test.js, which checks every panel's claims.
@@ -544,6 +570,7 @@ export default function App() {
               divisionRate={divisionRate}
               yMax={yMax}
               aliasHash={aliasHash}
+              guard={GUARD}
             />
           )}
         </section>

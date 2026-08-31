@@ -323,8 +323,10 @@ for (const bits of [4, 8, 12, 16]) {
 console.log('\n9. Changing sample rate and FFT size\n')
 await loadPreset('Square = odd harmonics')
 await openAllMath()
+// The Rate box reads in kHz (engineering mode), so it is typed the way a
+// reader types it: "16", not "16000".
 for (const [rate, fft] of [[8000, 2048], [16000, 2048], [22050, 4096], [44100, 8192], [48000, 1024]]) {
-  await setField('Rate', rate)
+  await setField('Rate', rate / 1000)
   await setField('FFT', fft)
   const checks = await readChecks()
   const bad = checks.filter((r) => r.mark === '✗')

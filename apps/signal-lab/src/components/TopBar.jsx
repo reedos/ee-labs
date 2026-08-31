@@ -55,6 +55,11 @@ export default function TopBar({ state, patch, stages, onReveal }) {
           max={96000}
           scale="log"
           step={1}
+          // Engineering mode moves the prefix onto the unit, so the box reads
+          // "8 kHz" rather than "8000 Hz" — the way a rate is spoken, and the
+          // way every other frequency field in the suite already reads. State
+          // stays in hertz; only the display changes.
+          eng
           suffixes={{ k: 1e3, khz: 1e3, hz: 1 }}
         />
         <NumField
