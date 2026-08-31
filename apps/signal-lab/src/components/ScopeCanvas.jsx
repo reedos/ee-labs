@@ -4,6 +4,49 @@ import { COLORS, drawFrame, plotArea } from '@ee-labs/ui'
 import { fmtHz } from '@ee-labs/ui'
 import { sincInterp } from '@ee-labs/dsp'
 
+export const CAPTION_RECONSTRUCTION =
+  'dots are the samples; the curve is their ideal (sin x)/x reconstruction — how a digital oscilloscope draws'
+
+export const CAPTION_ALIASED =
+  'the ripple riding on this shape is aliasing — content folded back from above Nyquist; raise the rate to clear it'
+
+export const CAPTION_AT_NYQUIST =
+  'this sits exactly at Nyquist — two samples a cycle: they pin the frequency but not the height, so drag the phase and watch the same tone read anything from full scale to nothing'
+
+/**
+ * Which captions the scope owes the reader, given what it drew and what the
+ * signal is doing.
+ *
+ * Two different kinds of claim share one box, and they are decided separately
+ * because they are true under different conditions.
+ *
+ * The reconstruction line describes what is ON SCREEN — dots, and a curve
+ * drawn through them — so it is only offered when the screen actually shows
+ * that. The other two describe the SIGNAL and the RATE, and neither of those
+ * cares how far the reader has zoomed out.
+ *
+ * Hanging all three off the dots gate was a real defect, and it silenced
+ * precisely the case the alias line was written for: "High-pass a square"
+ * carries the heaviest fold in the library, and once its rate went up to
+ * 16 kHz it drew no warning at all — not because the aliasing had stopped but
+ * because the samples got too dense to draw one at a time.
+ *
+ * A pure function so the decision can be checked without a canvas, which is
+ * where the regression above would have been caught.
+ */
+export function captionLines({ reconstructed, sampling }) {
+  const out = []
+  if (reconstructed) out.push(CAPTION_RECONSTRUCTION)
+  if (sampling?.aliased) out.push(CAPTION_ALIASED)
+  // A different failure from a fold, and it earns different words. Nothing has
+  // come down from anywhere: the tone sits ON Nyquist, two samples to a cycle,
+  // and those two fix its frequency while leaving its height to whatever phase
+  // they landed on. Telling the reader to "raise the rate to clear" a fold
+  // would describe the wrong problem.
+  if (sampling?.atNyquist) out.push(CAPTION_AT_NYQUIST)
+  return out
+}
+
 /**
  * Time-domain view.
  *
@@ -231,33 +274,10 @@ export default function ScopeCanvas({
         }
       }
 
-      // Name what is being drawn, where it is drawn — the whole point is
-      // that the display is sampled and honest about it.
-      if (reconstructed) {
-        const lines = [
-          'dots are the samples; the curve is their ideal (sin x)/x reconstruction — how a digital oscilloscope draws',
-        ]
-        // ...and, where it is true, what to do about a rough-looking shape.
-        // The ripple riding on a high-passed square at 8 kHz is not drawing
-        // error: it is content from above Nyquist folded back into the samples
-        // themselves, and it falls as the rate rises (measured: 22% of the sag
-        // at 8 kHz, 10% at 16, 3% at 32).
-        if (sampling.aliased) {
-          lines.push(
-            'the ripple riding on this shape is aliasing — content folded back from above Nyquist; raise the rate to clear it',
-          )
-        }
-        // A different failure, and it earns different words. Nothing has
-        // folded here: the tone sits ON Nyquist, two samples to a cycle, and
-        // those two samples fix its frequency while leaving its height to
-        // whatever phase they happened to land on. Telling the reader to
-        // "raise the rate to clear" a fold would be describing the wrong
-        // problem, so this line names the real one and the knob that shows it.
-        if (sampling.atNyquist) {
-          lines.push(
-            'this sits exactly at Nyquist — two samples a cycle: they pin the frequency but not the height, so drag the phase and watch the same tone read anything from full scale to nothing',
-          )
-        }
+      // Name what is being drawn, and what the rate is doing to it — see
+      // captionLines, which decides that and says why the two are separate.
+      const lines = captionLines({ reconstructed, sampling })
+      if (lines.length) {
         ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
         ctx.textAlign = 'left'
         ctx.textBaseline = 'top'
