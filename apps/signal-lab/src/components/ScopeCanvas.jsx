@@ -162,7 +162,7 @@ export default function ScopeCanvas({
         ctx.textAlign = 'left'
         ctx.textBaseline = 'top'
         ctx.fillText(
-          'dots are the samples; the curve is their ideal (sin x)/x reconstruction — how a DSO draws',
+          'dots are the samples; the curve is their ideal (sin x)/x reconstruction — how a digital oscilloscope draws',
           area.x + 6 * k,
           area.y + 5 * k,
         )
