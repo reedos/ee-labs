@@ -1,4 +1,4 @@
-import { render, rms, peak } from '@ee-labs/dsp'
+import { render, rms, peak, spectrum } from '@ee-labs/dsp'
 import { applyChain } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
 import { biquadPolesZeros, biquadResponse, butterworthQs, designBiquad, designFirstOrder, designFir, poleRadius, isStable } from '@ee-labs/dsp'
@@ -39,6 +39,10 @@ const WAVE_MATH = {
     tex: 'x(t) = \\frac{4A}{\\pi}\\sum_{m=0}^{\\infty}\\frac{\\sin\\bigl(2\\pi(2m+1)f_0t\\bigr)}{2m+1}',
     rms: (a) => a,
     crest: 1,
+    // The continuous Fourier-series amplitude of harmonic k, per unit A —
+    // what the infinite series above assigns, before sampling folds it.
+    coeff: (k) => 4 / (k * Math.PI),
+    kStep: 2,
     harmonics:
       'Odd harmonics only, falling as 1/k. The wave is antisymmetric about half a period, and an ' +
       'even harmonic could not survive that flip.',
@@ -47,6 +51,8 @@ const WAVE_MATH = {
     tex: 'x(t) = \\frac{8A}{\\pi^{2}}\\sum_{m=0}^{\\infty}\\frac{(-1)^{m}\\sin\\bigl(2\\pi(2m+1)f_0t\\bigr)}{(2m+1)^{2}}',
     rms: (a) => a / Math.sqrt(3),
     crest: Math.sqrt(3),
+    coeff: (k) => 8 / (k * k * Math.PI * Math.PI),
+    kStep: 2,
     harmonics:
       'Odd harmonics again, but falling as 1/k². The wave itself has no jumps — only its slope ' +
       'does — and one extra degree of smoothness costs one extra power of k.',
@@ -55,6 +61,8 @@ const WAVE_MATH = {
     tex: 'x(t) = \\frac{2A}{\\pi}\\sum_{k=1}^{\\infty}\\frac{(-1)^{k+1}\\sin(2\\pi k f_0 t)}{k}',
     rms: (a) => a / Math.sqrt(3),
     crest: Math.sqrt(3),
+    coeff: (k) => 2 / (k * Math.PI),
+    kStep: 1,
     harmonics:
       'Every harmonic, even and odd, falling as 1/k. It jumps like a square, so it decays like ' +
       'one — but it is not antisymmetric about half a period, so the even harmonics survive.',
@@ -175,6 +183,105 @@ export function sourceMath(source, ctx) {
         {
           label: 'harmonics below Nyquist',
           value: Math.max(0, Math.floor((sampleRate / 2 - 1e-9) / f0)),
+        },
+      ]),
+    )
+  }
+
+  // ---- continuous vs sampled: what the infinite series above cannot keep ----
+  //
+  // The series in the header is the CONTINUOUS ideal: harmonics forever. This
+  // generator computes that ideal's samples directly (no band-limiting on
+  // purpose — see signals.js), and a sampled world cannot hold anything above
+  // Nyquist, so the tail does not vanish: it folds. Where it folds is exact
+  // arithmetic; whether it is VISIBLE depends on fs/f0 — an integer puts every
+  // fold exactly on a lower harmonic, shifting amplitudes instead of adding
+  // lines. Both cases are named, and the amplitude check carries the folded
+  // tail in its tolerance rather than pretending the ideal survives sampling.
+  const nyq = sampleRate / 2
+  const foldOf = (f) => Math.abs(f - sampleRate * Math.round(f / sampleRate))
+  const measured = f0 > 0 && hasPeriod ? spectrum(buf, sampleRate) : null
+  const measBin = sampleRate / 4096
+  const centred = Math.abs(f0 / measBin - Math.round(f0 / measBin)) < 1e-9
+  const ampNear = (f) => {
+    const i = Math.round(f / measBin)
+    let best = 0
+    for (let j = Math.max(0, i - 1); j <= Math.min(measured.amps.length - 1, i + 1); j++)
+      best = Math.max(best, measured.amps[j])
+    return best
+  }
+
+  if (measured && w.coeff && f0 < nyq * 0.95) {
+    const kFold = (() => {
+      let k = 1
+      while (k * f0 <= nyq) k += w.kStep
+      return k
+    })()
+    const foldF = foldOf(kFold * f0)
+    // Does the fold land on the comb of harmonics that are actually present?
+    let onComb = false
+    for (let k = 1; k * f0 < nyq; k += w.kStep) {
+      if (Math.abs(foldF - k * f0) < 2.5 * measBin) onComb = true
+    }
+    blocks.push(
+      T(
+        'The series above is the continuous ideal — harmonics forever. Sampling keeps nothing ' +
+          'above Nyquist, and this generator samples the ideal shape directly, so the tail ' +
+          'folds back instead of disappearing:',
+      ),
+      F(
+        'f_{\\text{fold}} = \\left|\\,k f_0 - f_s\\,\\operatorname{round}\\!\\left(\\frac{k f_0}{f_s}\\right)\\right|',
+        'where each harmonic k above Nyquist lands',
+      ),
+      V([
+        { label: 'first harmonic past Nyquist', value: kFold },
+        {
+          label: 'it folds back to',
+          value: foldF,
+          unit: 'Hz',
+          note: onComb
+            ? `exactly onto a lower harmonic — fₛ/f₀ = ${sig(sampleRate / f0, 5)} puts every fold on the comb, so amplitudes shift rather than new lines appearing`
+            : 'between harmonics — visible in the spectrum as its own line',
+        },
+      ]),
+      C([
+        {
+          label: 'k = 1 amplitude (± folded tail)',
+          predicted: A * w.coeff(1),
+          measured: ampNear(f0),
+          tol: 0.02,
+          // The folds land somewhere, and when they land on k = 1 they move
+          // it: the honest tolerance is the first folded coefficient, not a
+          // pretence that the continuous value survives sampling untouched.
+          abs: 1.5 * A * w.coeff(kFold),
+          unchecked: centred
+            ? null
+            : 'this tone leaks in the measuring frame, smearing the peak — retune to a bin centre to see the comparison',
+        },
+      ]),
+    )
+  }
+
+  if (measured && source.type === 'sine' && f0 > nyq) {
+    // The single-line waveform makes the fold a clean position measurement:
+    // the spectrum's biggest line IS the alias, nothing else is present.
+    let argmax = 1
+    for (let i = 2; i < measured.amps.length; i++) {
+      if (measured.amps[i] > measured.amps[argmax]) argmax = i
+    }
+    blocks.push(
+      T(
+        `This sine is above Nyquist (${sig(nyq, 5)} Hz): its samples are indistinguishable from ` +
+          'those of a lower sine, and the spectrum shows that lower sine — the alias. The ' +
+          'continuous signal is not attenuated; it is misread.',
+      ),
+      C([
+        {
+          label: 'appears folded to (Hz)',
+          predicted: foldOf(f0),
+          measured: measured.freqs[argmax],
+          tol: 0,
+          abs: 3 * measBin,
         },
       ]),
     )

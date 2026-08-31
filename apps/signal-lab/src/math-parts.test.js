@@ -86,6 +86,42 @@ describe('source math', () => {
     expect(crestOf('sawtooth')).toBeCloseTo(Math.sqrt(3), 6)
   })
 
+  it('states the fold: a sine above Nyquist is measured AT its alias', () => {
+    // 5.2 kHz sampled at 8 kHz: the check row must predict 2.8 kHz and the
+    // measured side must find the spectrum's biggest line there.
+    const entry = sourceMath(src({ type: 'sine', freq: 5200 }), CTX)
+    const row = rowsOf(entry, 'check').find((r) => r.label.startsWith('appears folded'))
+    expect(row).toBeTruthy()
+    expect(row.predicted).toBeCloseTo(2800, 6)
+    expect(Math.abs(row.measured - row.predicted)).toBeLessThanOrEqual(row.abs)
+  })
+
+  it('places the first folded harmonic between the comb when fs/f0 is not simple', () => {
+    // f0 on a measuring-frame bin centre but NOT dividing fs: the fold of the
+    // first above-Nyquist harmonic lands between harmonics, and the value
+    // row says so. 273.4375 Hz = 140 bins of 8000/4096; k = 15 crosses
+    // Nyquist (4101.6 Hz) and folds to 3898.4 Hz.
+    const f0 = 273.4375
+    const entry = sourceMath(src({ type: 'square', freq: f0 }), CTX)
+    const rows = rowsOf(entry, 'values')
+    const kRow = rows.find((r) => r.label === 'first harmonic past Nyquist')
+    const fRow = rows.find((r) => r.label === 'it folds back to')
+    expect(kRow.value).toBe(15)
+    expect(fRow.value).toBeCloseTo(8000 - 15 * f0, 6)
+    expect(fRow.note).toMatch(/between harmonics/)
+    // And the amplitude check must hold there too (bin-centred, so checked).
+    expect(checkFailures(entry, 'square off-comb')).toEqual([])
+  })
+
+  it('names the hidden fold when fs/f0 is an integer', () => {
+    // 250 Hz at 8 kHz: every fold lands exactly on a lower harmonic, so no
+    // new line appears - the row must say the comb hides them, not imply a
+    // visible spur that is not there.
+    const entry = sourceMath(src({ type: 'square', freq: 250 }), CTX)
+    const fRow = rowsOf(entry, 'values').find((r) => r.label === 'it folds back to')
+    expect(fRow.note).toMatch(/exactly onto a lower harmonic/)
+  })
+
   it('does not count periods for noise, which has none', () => {
     // The frequency control is not even read by the noise generator, so
     // "samples per period" and "bins per period" were describing nothing.
