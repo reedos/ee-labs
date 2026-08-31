@@ -46,6 +46,17 @@
         font-weight: 700;
       }
       h1 .ee { color: var(--accent); }
+      /* The kicker that pays off the wordmark: the same green E's, so the
+         EE in REED visibly stands for Electrical Engineering. */
+      .kicker {
+        margin: 8px 0 0;
+        font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+        font-size: clamp(13px, 1.8vw, 15px);
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        color: var(--dim);
+      }
+      .kicker .ee { color: var(--accent); }
       .tagline {
         color: var(--dim);
         max-width: 620px;
@@ -176,6 +187,7 @@
     <div class="wrap">
       <header>
         <h1>R<span class="ee">EE</span>D’s Engineering Labs</h1>
+        <p class="kicker"><span class="ee">E</span>lectrical <span class="ee">E</span>ngineering focused.</p>
         <p class="tagline">
           Build a signal and watch a filter reshape it. Wire a circuit and read its poles.
           Close a loop and find its margins. The three labs trade in one currency &mdash;
