@@ -21,13 +21,16 @@ const readme = readFileSync(join(root, 'README.md'), 'utf8')
 const splash = readFileSync(join(root, 'site', 'index.html'), 'utf8')
 
 describe('the README quotes the tree it describes', () => {
-  it('curriculum counts match the arrays that render them', () => {
-    expect(readme).toContain(`${PRESETS.length} lessons`)
+  it('experiment counts match the arrays that render them', () => {
+    // "Experiments", not "guided lessons" - reader feedback: "guided" set
+    // the expectation of a formal lesson plan, which these are not. Each
+    // entry is a configured setup plus a question plus a tested note.
+    expect(readme).toContain(`${PRESETS.length} experiments`)
     expect(readme).toContain(
-      `${CIRCUIT_LESSONS.length} lessons, ${Object.keys(CIRCUITS).length} circuits`,
+      `${CIRCUIT_LESSONS.length} experiments, ${Object.keys(CIRCUITS).length} circuits`,
     )
     expect(readme).toContain(
-      `${CONTROL_LESSONS.length} lessons, ${Object.keys(PLANTS).length} plants x ${Object.keys(CONTROLLERS).length} controllers`,
+      `${CONTROL_LESSONS.length} experiments, ${Object.keys(PLANTS).length} plants x ${Object.keys(CONTROLLERS).length} controllers`,
     )
   })
 
@@ -49,12 +52,12 @@ describe('the README quotes the tree it describes', () => {
 
 describe('the splash page quotes the tree it describes', () => {
   it('lab-card counts match the arrays that render them', () => {
-    expect(splash).toContain(`${PRESETS.length} guided lessons`)
+    expect(splash).toContain(`${PRESETS.length} experiments`)
     expect(splash).toContain(
-      `${CIRCUIT_LESSONS.length} lessons, ${Object.keys(CIRCUITS).length} circuits`,
+      `${CIRCUIT_LESSONS.length} experiments, ${Object.keys(CIRCUITS).length} circuits`,
     )
     expect(splash).toContain(
-      `${CONTROL_LESSONS.length} lessons, ${Object.keys(PLANTS).length} plants`,
+      `${CONTROL_LESSONS.length} experiments, ${Object.keys(PLANTS).length} plants`,
     )
   })
 })

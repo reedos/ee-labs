@@ -16,19 +16,20 @@ npm run dev              # Signal Lab, at http://localhost:1421
 
 | | covers | status |
 |---|---|---|
-| **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 32 lessons |
-| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters, tolerance | 15 lessons, 10 circuits |
-| **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 13 lessons, 7 plants x 4 controllers |
+| **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 32 experiments |
+| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters, tolerance | 15 experiments, 10 circuits |
+| **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 13 experiments, 7 plants x 4 controllers |
 
 A third tool, `waveform-simulator`, covers communications and high-speed optical links.
 It lives outside this repo, in a private one: it serves practising engineers rather than
 students, it is mature, and retrofitting it onto these packages would be work without a
 reader to benefit from it.
 
-## Every app has a curriculum
+## The experiments
 
-Each tool opens with a grouped **Try this** list. Every entry loads a setup and poses a
-question, and every claim its note makes is rendered and measured by a test — including
+Each tool opens with a grouped **Try this** list. Every entry is an experiment, not a
+lesson plan: it loads a setup and poses a question, and every claim its note makes is
+rendered and measured by a test — including
 the numbers quoted in prose, which are the ones that drift when a default changes and
 nobody notices.
 
