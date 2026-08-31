@@ -233,27 +233,55 @@ export default function ScopeCanvas({
       // Name what is being drawn, where it is drawn — the whole point is
       // that the display is sampled and honest about it.
       if (reconstructed) {
-        ctx.fillStyle = COLORS.text
+        const lines = [
+          'dots are the samples; the curve is their ideal (sin x)/x reconstruction — how a digital oscilloscope draws',
+        ]
+        // ...and, where it is true, what to do about a rough-looking shape.
+        // The ripple riding on a high-passed square at 8 kHz is not drawing
+        // error: it is content from above Nyquist folded back into the samples
+        // themselves, and it falls as the rate rises (measured: 22% of the sag
+        // at 8 kHz, 10% at 16, 3% at 32).
+        if (aliasHash) {
+          lines.push(
+            'the ripple riding on this shape is aliasing — content folded back from above Nyquist; raise the rate to clear it',
+          )
+        }
         ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
         ctx.textAlign = 'left'
         ctx.textBaseline = 'top'
-        ctx.fillText(
-          'dots are the samples; the curve is their ideal (sin x)/x reconstruction — how a digital oscilloscope draws',
-          area.x + 6 * k,
-          area.y + 5 * k,
-        )
-        // ...and, where it is true, what to do about a rough-looking shape.
-        // The ripple riding on a high-passed square at 8 kHz is not drawing
-        // error: it is harmonics from above Nyquist folded back into the
-        // samples themselves, and it falls by about half every time the rate
-        // doubles (measured: 22% of the sag at 8 kHz, 10% at 16, 3% at 32).
-        if (aliasHash) {
-          ctx.fillText(
-            'the ripple riding on this shape is aliasing — harmonics folded back from above Nyquist; raise the rate to clear it',
-            area.x + 6 * k,
-            area.y + 5 * k + 14 * k,
-          )
+        const lh = 14 * k
+        const wText = Math.max(...lines.map((t) => ctx.measureText(t).width))
+        const boxH = lines.length * lh + 4 * k
+        const x0 = area.x + 6 * k
+
+        // Put the caption where the trace is NOT. It sat at the top left
+        // whatever was drawn there, and on a signal that spends its time high
+        // — a step, a rectified wave, a resonance ringing up — the words lay
+        // across the very trace they describe. So the span the text will
+        // cover is measured first, and the caption goes to whichever side has
+        // more clearance; the backing plate then covers the remaining case,
+        // where a busy trace crosses both.
+        let hi = -Infinity
+        let lo = Infinity
+        const iFrom = Math.max(0, Math.floor(((x0 - area.x) / area.w) * (n - 1)))
+        const iTo = Math.min(n - 1, Math.ceil(((x0 + wText - area.x) / area.w) * (n - 1)))
+        for (const tr of traces) {
+          if (!tr.buf || tr.buf.length < 2) continue
+          for (let i = iFrom; i <= iTo; i++) {
+            const v = at(tr.buf, i)
+            if (v > hi) hi = v
+            if (v < lo) lo = v
+          }
         }
+        const roomAbove = Number.isFinite(hi) ? yLimit - hi : yLimit
+        const roomBelow = Number.isFinite(lo) ? lo + yLimit : yLimit
+        const yTop =
+          roomAbove >= roomBelow ? area.y + 5 * k : area.y + area.h - boxH - 4 * k
+
+        ctx.fillStyle = 'rgba(11, 15, 20, 0.82)'
+        ctx.fillRect(x0 - 4 * k, yTop - 3 * k, wText + 8 * k, boxH)
+        ctx.fillStyle = COLORS.text
+        lines.forEach((t, i) => ctx.fillText(t, x0, yTop + i * lh))
       }
 
       ctx.restore()

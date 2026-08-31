@@ -275,22 +275,40 @@ export default function App() {
   // is describing, and it genuinely halves every time the rate doubles. So
   // the advice is offered only for the second case, counted rather than
   // guessed: how many bins above fs/4 carry real amplitude?
+  // Is anything actually FOLDING at this rate?
+  //
+  // Measured rather than inferred: render the same chain with twice the
+  // headroom and weigh the energy that sits above the current Nyquist. That
+  // is precisely the content this rate cannot hold and must fold down, and it
+  // is what a higher rate would clear. Counting busy bins instead — the first
+  // attempt — described roughness rather than aliasing, so it missed the
+  // plainest case of all: a single tone dragged past Nyquist folds to one
+  // clean line and lit nothing up.
+  //
+  // Noise and impulses are excluded because they are defined per SAMPLE, not
+  // as continuous signals: rendering them at twice the rate does not give the
+  // same signal with more room, it gives a different one, so the comparison
+  // means nothing there. (White noise is white at every rate; no rate clears
+  // it.)
   const aliasHash = useMemo(() => {
-    // Noise is white at every rate. Its content near Nyquist is genuinely
-    // there rather than folded down, so raising the rate cleans nothing and
-    // the advice would be false — worth excluding by name, since a noise
-    // source fills more bins up there than any harmonic ever will.
-    if (state.sources.some((s) => s.enabled && s.type === 'noise')) return false
-    let pk = 0
-    for (let i = 0; i < amps.length; i++) if (amps[i] > pk) pk = amps[i]
-    if (!(pk > 0)) return false
-    let lines = 0
-    for (let i = Math.floor(amps.length / 2); i < amps.length; i++) {
-      if (amps[i] > 0.05 * pk) lines++
+    const on = state.sources.filter((s) => s.enabled)
+    if (!on.length) return false
+    if (on.some((s) => s.type === 'noise' || s.type === 'impulse')) return false
+    const nyq = state.sampleRate / 2
+    const r = renderChain(state.sources, state.blocks, state.fftSize * 2, state.sampleRate * 2)
+    const s = spectrum(r.buf, state.sampleRate * 2, state.window)
+    let below = 0
+    let above = 0
+    for (let i = 0; i < s.amps.length; i++) {
+      const e = s.amps[i] * s.amps[i]
+      if (s.freqs[i] < nyq) below += e
+      else above += e
     }
-    // A lone tone plus its window skirt is a handful of bins; a hash is many.
-    return lines >= 8
-  }, [amps, state.sources])
+    // Folded amplitude as a fraction of what stays. Calibrated: a tone under
+    // Nyquist reads 0.0%, a low-passed square 0.1%, the high-passed square
+    // that started this 37.8%, and a tone above Nyquist runs away entirely.
+    return Math.sqrt(above / (below || 1e-30)) > 0.1
+  }, [state.sources, state.blocks, state.sampleRate, state.fftSize, state.window])
 
   const stats = useMemo(() => {
     let iMax = 0
