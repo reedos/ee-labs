@@ -26,9 +26,10 @@ const byName = (n) => {
 
 const of = (name, over = {}) => samplingState(ctx(byName(name), over))
 
-const sq = (partials, over = {}) =>
+// `K` is the highest odd harmonic kept.
+const sq = (K, over = {}) =>
   samplingState({
-    sources: [{ id: 1, type: 'square', freq: 281.25, amp: 1, phase: 0, enabled: true, partials }],
+    sources: [{ id: 1, type: 'square', freq: 281.25, amp: 1, phase: 0, enabled: true, topHarmonic: K }],
     blocks: [],
     sampleRate: 8000,
     fftSize: 2048,
@@ -119,22 +120,22 @@ describe('a tone exactly on Nyquist is its own case, not a fold', () => {
 describe('it tracks the controls the reader is told to turn', () => {
   it('turns on the moment a band-limited square outgrows the rate', () => {
     // f0 = 281.25 at 8 kHz: the 15th harmonic (4219 Hz) is the first past
-    // the 4 kHz Nyquist, so N = 8 is the first count that folds. This is the
-    // case the old 1e-1 threshold missed — it reads 6.1e-2.
-    for (const N of [1, 3, 5, 6, 7]) expect(sq(N).aliased, `N=${N}`).toBe(false)
-    for (const N of [8, 9, 12, 20]) expect(sq(N).aliased, `N=${N}`).toBe(true)
+    // the 4 kHz Nyquist. This is the case the old 1e-1 threshold missed — it
+    // reads 6.1e-2.
+    for (const K of [1, 3, 5, 9, 13]) expect(sq(K).aliased, `k=${K}`).toBe(false)
+    for (const K of [15, 17, 23, 39]) expect(sq(K).aliased, `k=${K}`).toBe(true)
     // ...and the naive square, which always folds.
     expect(sq(0).aliased).toBe(true)
   })
 
   it('turns off again when the rate is raised to meet the signal', () => {
-    // N = 8 tops out at 4218.75 Hz, so the theorem asks for more than
+    // A top harmonic of 15 reaches 4218.75 Hz, so the theorem asks for more than
     // 8437.5 Hz. Either side of that, with a bin of clearance: a harmonic
     // landing WITHIN a bin of Nyquist is genuinely ambiguous rather than
     // folded, and the detector classifies it that way on purpose.
-    for (const fs of [8000, 8200, 8400]) expect(sq(8, { sampleRate: fs }).aliased, fs).toBe(true)
+    for (const fs of [8000, 8200, 8400]) expect(sq(15, { sampleRate: fs }).aliased, fs).toBe(true)
     for (const fs of [8500, 12000, 48000]) {
-      expect(sq(8, { sampleRate: fs }).aliased, fs).toBe(false)
+      expect(sq(15, { sampleRate: fs }).aliased, fs).toBe(false)
     }
   })
 
@@ -155,11 +156,11 @@ describe('it tracks the controls the reader is told to turn', () => {
     // The ratio is scale-free by construction; a quiet aliased signal is
     // still aliased. (Absolute thresholds meeting scale-free data is the
     // failure mode this suite keeps finding.)
-    const s = sq(12)
+    const s = sq(23)
     expect(s.aliased).toBe(true)
     for (const amp of [0.01, 0.1, 1, 8]) {
       const q = samplingState({
-        sources: [{ id: 1, type: 'square', freq: 281.25, amp, phase: 0, enabled: true, partials: 12 }],
+        sources: [{ id: 1, type: 'square', freq: 281.25, amp, phase: 0, enabled: true, topHarmonic: 23 }],
         blocks: [],
         sampleRate: 8000,
         fftSize: 2048,

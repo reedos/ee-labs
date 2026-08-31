@@ -26,6 +26,16 @@ const sig = (v, n = 6) => Number(v.toPrecision(n))
 /** Signed, for writing a difference equation without "+ -0.7". */
 const signed = (v, n = 6) => (v < 0 ? `- ${Math.abs(sig(v, n))}` : `+ ${sig(v, n)}`)
 
+/** 1st, 3rd, 5th, 11th — the ordinal suffix, for naming a harmonic. */
+const ord = (n) => {
+  const t = n % 100
+  if (t >= 11 && t <= 13) return 'th'
+  return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'
+}
+
+/** The largest odd number not exceeding n — a square stops only on odd terms. */
+const oddAtOrBelow = (n) => (n < 1 ? 0 : n % 2 === 1 ? n : n - 1)
+
 // ---------------------------------------------------------------- sources
 
 const WAVE_MATH = {
@@ -111,26 +121,29 @@ export function sourceMath(source, ctx) {
   // tail left to fold. Its PEAK has no elementary closed form — truncating
   // the series is what produces Gibbs overshoot — so the crest row states
   // that instead of predicting it.
-  const P = source.type === 'square' ? Math.round(Number(source.partials) || 0) : 0
+  // K is the highest odd harmonic kept, so the series holds (K+1)/2 terms.
+  const K = source.type === 'square' ? oddAtOrBelow(Math.round(Number(source.topHarmonic) || 0)) : 0
+  const terms = (K + 1) / 2
   const w =
-    P > 0
+    K > 0
       ? {
           ...base,
-          tex: `x(t) = \\frac{4A}{\\pi}\\sum_{m=0}^{${P - 1}}\\frac{\\sin\\bigl(2\\pi(2m+1)f_0t\\bigr)}{2m+1}`,
+          tex: `x(t) = \\frac{4A}{\\pi}\\sum_{\\substack{k=1\\\\k\\text{ odd}}}^{${K}}\\frac{\\sin(2\\pi k f_0 t)}{k}`,
           rms: (a) => {
             let acc = 0
-            for (let m = 0; m < P; m++) acc += 1 / ((2 * m + 1) * (2 * m + 1))
+            for (let k = 1; k <= K; k += 2) acc += 1 / (k * k)
             return a * (4 / Math.PI) * Math.sqrt(acc / 2)
           },
           crest: null,
           // Nothing exists above the last harmonic, so nothing folds from there.
           coeff: null,
           harmonics:
-            `The same series as a square, stopped after ${P} odd harmonic${P === 1 ? '' : 's'} — so its ` +
-            `highest component is exactly ${2 * P - 1}·f₀, a finite number where a real square's is ` +
-            'infinite. That is what makes it the one waveform here whose sampling requirement can ' +
-            'be met rather than merely approached: clear twice that frequency and the samples ' +
-            'describe it perfectly, with nothing left over to fold.',
+            `The same series as a square, stopped at the ${K}${ord(K)} harmonic — ${terms} term` +
+            `${terms === 1 ? '' : 's'}, since only the odd ones are there. Its highest component is ` +
+            `therefore exactly ${K}·f₀, a finite number where a real square's is infinite. That is ` +
+            'what makes it the one waveform here whose sampling requirement can be met rather than ' +
+            'merely approached: clear twice that frequency and the samples describe it perfectly, ' +
+            'with nothing left over to fold.',
         }
       : base
 
@@ -260,8 +273,8 @@ export function sourceMath(source, ctx) {
   // The band-limited square is the only source here that can SATISFY the
   // sampling theorem rather than approach it, so the panel says what it costs
   // and then checks that it was paid.
-  if (P > 0 && f0 > 0) {
-    const top = (2 * P - 1) * f0
+  if (K > 0 && f0 > 0) {
+    const top = K * f0
     const need = 2 * top
     const clears = sampleRate > need
     const onBin = Math.abs(top / measBin - Math.round(top / measBin)) < 1e-6
@@ -273,9 +286,9 @@ export function sourceMath(source, ctx) {
           'waveform, it is this waveform. Miss it and the harmonics that no longer fit fold ' +
           'down and land on top of the ones that do.',
       ),
-      F('f_s > 2f_{\\max}, \\qquad f_{\\max} = (2N-1)f_0'),
+      F('f_s > 2f_{\\max}, \\qquad f_{\\max} = k_{\\max} f_0'),
       V([
-        { label: `highest harmonic (${2 * P - 1}·f₀)`, value: top, unit: 'Hz' },
+        { label: `highest harmonic (${K}·f₀)`, value: top, unit: 'Hz' },
         { label: 'rate this demands', value: need, unit: 'Hz', note: 'strictly above' },
         {
           label: 'rate in use',
@@ -292,12 +305,8 @@ export function sourceMath(source, ctx) {
       ]),
       C([
         {
-          label: `amplitude of the ${2 * P - 1}${(() => {
-            const t = (2 * P - 1) % 100
-            if (t >= 11 && t <= 13) return 'th'
-            return { 1: 'st', 2: 'nd', 3: 'rd' }[(2 * P - 1) % 10] || 'th'
-          })()} harmonic, 4A/${2 * P - 1}π`,
-          predicted: (4 * A) / ((2 * P - 1) * Math.PI),
+          label: `amplitude of the ${K}${ord(K)} harmonic, 4A/${K}π`,
+          predicted: (4 * A) / (K * Math.PI),
           measured: measured ? ampNear(top) : NaN,
           tol: 0.03,
           unchecked: !measured

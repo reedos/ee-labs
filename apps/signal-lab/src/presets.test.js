@@ -854,7 +854,7 @@ describe('preset: A square that fits', () => {
   it('every harmonic of the loaded shape lands on a bin centre', () => {
     const p = P()
     const binHz = p.sampleRate / p.fftSize
-    for (let k = 1; k <= 2 * p.sources[0].partials - 1; k += 2) {
+    for (let k = 1; k <= p.sources[0].topHarmonic; k += 2) {
       expect(Number.isInteger((k * f0) / binHz), `${k}f0`).toBe(true)
     }
   })
@@ -880,14 +880,14 @@ describe('preset: A square that fits', () => {
 
   it('quotes the top harmonic and the rate it needs correctly', () => {
     const p = P()
-    const top = (2 * p.sources[0].partials - 1) * f0
+    const top = p.sources[0].topHarmonic * f0
     expect(Math.round(top)).toBe(2531) // the note's number
     expect(p.sampleRate).toBeGreaterThan(2 * top) // strictly
   })
 
-  it('at 8 partials the 15th folds to 3781 Hz, off the comb — the note\u2019s numbers', () => {
+  it('raised to 15, that harmonic folds to 3781 Hz off the comb', () => {
     const p = P()
-    const raised = [{ ...p.sources[0], partials: 8 }]
+    const raised = [{ ...p.sources[0], topHarmonic: 15 }]
     const { at } = run('A square that fits', { sources: raised, window: 'none' })
     const fifteenth = 15 * f0 // 4218.75, above the 4 kHz Nyquist
     expect(Math.round(fifteenth)).toBe(4219)
@@ -903,7 +903,7 @@ describe('preset: A square that fits', () => {
 
   it('the naive square fills the same spectrum with a folded tail', () => {
     const p = P()
-    const naive = [{ ...p.sources[0], partials: 0 }]
+    const naive = [{ ...p.sources[0], topHarmonic: 0 }]
     const { freqs, amps } = run('A square that fits', { sources: naive, window: 'none' })
     // Count lines sitting where no harmonic of f0 lives. The band-limited
     // version has none; the real square has many.
@@ -929,8 +929,7 @@ describe('preset: A square that fits', () => {
     let worst = 0
     for (let t = 30; t < n - 30; t += 0.13) {
       let truth = 0
-      for (let m = 0; m < s.partials; m++) {
-        const k = 2 * m + 1
+      for (let k = 1; k <= s.topHarmonic; k += 2) {
         truth += Math.sin((2 * Math.PI * k * s.freq * t) / p.sampleRate) / k
       }
       truth *= s.amp * (4 / Math.PI)

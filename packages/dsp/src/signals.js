@@ -37,29 +37,39 @@ export function hash01(n, seed = 0) {
  * One cycle-accurate sample of `type` at time `t` seconds.
  * `phase` is in radians. `index` is the absolute sample number and `seed`
  * distinguishes one noise source from another; both are only used by noise.
+ *
+ * `topHarmonic` band-limits a square to the Fourier terms up to and including
+ * that odd harmonic; 0 (the default) gives the true square with harmonics
+ * running to infinity. Ignored by every other waveform.
  */
-export function sample(type, t, freq, amp, phase, index = 0, seed = 0, partials = 0) {
+export function sample(type, t, freq, amp, phase, index = 0, seed = 0, topHarmonic = 0) {
   const theta = 2 * Math.PI * freq * t + phase
   switch (type) {
     case 'sine':
       return amp * Math.sin(theta)
     case 'square': {
-      // BAND-LIMITED on request: the Fourier series stopped after `partials`
-      // odd harmonics, which is a different object from the naive square
-      // above and worth having as a choice rather than a fixed policy. Its
-      // highest component is exactly (2N-1)*f0 — a number, unlike the naive
-      // square's infinity — so it is the one waveform here whose sampling
-      // requirement can be stated and then met, and the reconstruction really
-      // is exact once the rate clears twice that.
+      // BAND-LIMITED on request: the Fourier series stopped at the odd
+      // harmonic `topHarmonic`, so the terms present are 1, 3, ... up to and
+      // INCLUDING it. Named for the highest harmonic rather than for a count
+      // of terms because that is the number the reader is reasoning about —
+      // asking for 3 should give the fundamental and the third, not the first
+      // three odd harmonics, which is a different signal reaching to the
+      // fifth. (It was a count, and that is exactly how it misread.)
       //
-      // The naive square remains the default (partials = 0) because the
+      // An even value is rounded down to the odd one below: a square has no
+      // even harmonics to stop on, so "up to the 4th" can only mean the 3rd.
+      //
+      // This is a different object from the naive square below, and the one
+      // waveform here whose sampling requirement can be stated and then met:
+      // its highest component is exactly topHarmonic*f0, a number rather than
+      // the naive square's infinity, and once the rate clears twice that the
+      // reconstruction really is exact.
+      //
+      // The naive square remains the default (topHarmonic = 0) because the
       // aliasing lessons need a generator that genuinely runs past Nyquist.
-      if (partials > 0) {
+      if (topHarmonic > 0) {
         let acc = 0
-        for (let m = 0; m < partials; m++) {
-          const k = 2 * m + 1
-          acc += Math.sin(k * theta) / k
-        }
+        for (let k = 1; k <= topHarmonic; k += 2) acc += Math.sin(k * theta) / k
         return amp * (4 / Math.PI) * acc
       }
       // Decided from the fractional phase, NOT from sign(sin(theta)), and NOT
@@ -142,7 +152,7 @@ export function render(sources, n, sampleRate, t0 = 0) {
       // was being compared against a *different* unfiltered square, and its
       // measured attenuation missed the filter's true response by up to 10%.
       const t = (n0 + i) / sampleRate
-      out[i] += sample(s.type, t, s.freq, s.amp, s.phase, n0 + i, seed, s.partials || 0)
+      out[i] += sample(s.type, t, s.freq, s.amp, s.phase, n0 + i, seed, s.topHarmonic || 0)
     }
   }
   return out

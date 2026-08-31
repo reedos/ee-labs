@@ -17,11 +17,18 @@ const ord = (n) => {
   return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'
 }
 
+/** The largest odd number not exceeding n. */
+const oddAtOrBelow = (n) => (n < 1 ? 1 : n % 2 === 1 ? n : n - 1)
+
 function Source({ src, sampleRate, onChange, onRemove, canRemove , fftSize}) {
   const set = (k, v) => onChange({ ...src, [k]: v })
   const nyquist = sampleRate / 2
   const aliased = src.freq > nyquist
   const folded = Math.abs(src.freq - Math.round(src.freq / sampleRate) * sampleRate)
+  // The highest odd harmonic of this fundamental that still lands below
+  // Nyquist. At least 1: a fundamental already past Nyquist has no harmonic
+  // that fits, and offering 0 there would mean the ideal square instead.
+  const fits = Math.max(1, oddAtOrBelow(Math.ceil(nyquist / Math.max(src.freq, 1e-9)) - 1))
 
   return (
     <div className={`source${src.enabled ? '' : ' is-off'}`}>
@@ -53,34 +60,50 @@ function Source({ src, sampleRate, onChange, onRemove, canRemove , fftSize}) {
 
       {src.type === 'square' && (
         <NumField
-          label="Odd harmonics"
-          value={src.partials || 0}
-          onChange={(v) => set('partials', Math.max(0, Math.round(v)))}
+          label="Highest harmonic"
+          value={src.topHarmonic || 0}
+          // Snapped DOWN to an odd number, because a square has no even
+          // harmonics to stop on: "up to the 4th" can only mean the 3rd, and
+          // silently keeping 4 would put a number on screen that names no
+          // term in the series.
+          onChange={(v) => {
+            const n = Math.max(0, Math.round(v))
+            set('topHarmonic', n === 0 ? 0 : n % 2 === 1 ? n : n - 1)
+          }}
           min={0}
-          max={64}
-          step={1}
+          max={127}
+          step={2}
           decimals={0}
           scale="linear"
           presets={[
-            { value: 0, label: 'all', title: 'The naive square: harmonics forever, and whatever is above Nyquist folds back' },
             1,
             3,
             5,
             9,
-            { value: 16, label: '16' },
+            15,
+            // A real number rather than a vague one: the highest odd harmonic
+            // that still fits under Nyquist, which is the most detailed square
+            // this rate can carry without anything folding.
+            { value: fits, label: `fits (${fits})`, title: `The highest odd harmonic below Nyquist at ${fmtHz(sampleRate)}Hz — the sharpest square this rate can hold with nothing folding` },
+            {
+              value: 0,
+              label: 'ideal',
+              title:
+                'The true square: harmonics forever. Not a bigger number — a different object, and everything above Nyquist folds back',
+            },
           ]}
           hint={
-            src.partials > 0
-              ? `stops at ${fmtHz((2 * src.partials - 1) * src.freq)}Hz — the ${
-                  2 * src.partials - 1
-                }${ord(2 * src.partials - 1)} harmonic. Perfect reconstruction needs a rate above ${fmtHz(
-                  2 * (2 * src.partials - 1) * src.freq,
+            src.topHarmonic > 0
+              ? `${(src.topHarmonic + 1) / 2} term${src.topHarmonic === 1 ? '' : 's'} — odd harmonics 1 to ${
+                  src.topHarmonic
+                }, topping out at ${fmtHz(src.topHarmonic * src.freq)}Hz. Perfect reconstruction needs a rate above ${fmtHz(
+                  2 * src.topHarmonic * src.freq,
                 )}Hz${
-                  sampleRate > 2 * (2 * src.partials - 1) * src.freq
+                  sampleRate > 2 * src.topHarmonic * src.freq
                     ? ' — this rate clears it, so nothing folds'
                     : ' — this rate does NOT, so the top harmonics fold back'
                 }.`
-              : 'A real square has harmonics forever, so something always folds. Set a count to band-limit it and the sampling theorem becomes satisfiable.'
+              : 'The ideal square: harmonics forever, so something always folds. Its trace looks CLEANER than a band-limited one, not rougher — the generator samples the shape directly, so every sample sits exactly on ±A and the folded content hides inside a pristine-looking trace. Set a highest harmonic to see the series instead.'
           }
         />
       )}

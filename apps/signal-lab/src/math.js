@@ -25,6 +25,16 @@ const V = (rows) => ({ kind: 'values', rows })
 /** Enough digits to reproduce the arithmetic, not so many it becomes noise. */
 const sig = (v, n = 6) => Number(v.toPrecision(n))
 
+/** 1st, 3rd, 5th, 11th — the ordinal suffix, for naming a harmonic. */
+const ord = (n) => {
+  const t = n % 100
+  if (t >= 11 && t <= 13) return 'th'
+  return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'
+}
+
+/** The largest odd number not exceeding n — a square stops only on odd terms. */
+const oddAtOrBelow = (n) => (n < 1 ? 0 : n % 2 === 1 ? n : n - 1)
+
 /** Amplitude of a discrete square/triangle harmonic, including the sampling correction. */
 const discreteBoost = (k, N) => (k * Math.PI) / N / Math.sin((k * Math.PI) / N)
 
@@ -585,17 +595,19 @@ const ENTRIES = {
 
   'A square that fits': (ctx) => {
     const src = ctx.sources.find((s) => s.enabled && s.type === 'square')
-    const P = src ? Math.round(Number(src.partials) || 0) : 0
+    // K is the highest odd harmonic kept; the series holds (K+1)/2 terms.
+    const K = src ? oddAtOrBelow(Math.round(Number(src.topHarmonic) || 0)) : 0
     const f0 = src ? src.freq : ctx.sourceFreq || 0
     const A = src ? src.amp : 1
     const fs = ctx.sampleRate
     const nyq = fs / 2
     const binHz = fs / ctx.fftSize
-    const top = (2 * P - 1) * f0
+    const top = K * f0
     const fold = (f) => Math.abs(f - fs * Math.round(f / fs))
 
-    if (!src || P <= 0) {
-      // The reader has set the count back to "all", which the note asks for.
+    if (!src || K <= 0) {
+      // The reader has set it back to the ideal square, which the note asks
+      // for.
       // The band-limited arithmetic does not describe this signal, so the
       // panel says what changed rather than printing rows about a series
       // that no longer terminates.
@@ -620,16 +632,14 @@ const ENTRIES = {
 
     // Every harmonic in the series, checked where it actually lands.
     const rows = []
-    for (let m = 0; m < P; m++) {
-      const k = 2 * m + 1
+    for (let k = 1; k <= K; k += 2) {
       const f = k * f0
       const above = f > nyq
       const at = fold(f)
       // A fold landing on another harmonic adds to it rather than appearing
       // alone, and then neither line is either one by itself.
       let collides = false
-      for (let j = 0; j < P; j++) {
-        const kj = 2 * j + 1
+      for (let kj = 1; kj <= K; kj += 2) {
         if (kj !== k && Math.abs(fold(kj * f0) - at) < 2 * binHz) collides = true
       }
       rows.push({
@@ -668,14 +678,14 @@ const ENTRIES = {
     return {
       blocks: [
         T(
-          `Stop the square's series after ${P} odd term${P === 1 ? '' : 's'} and it becomes a ` +
-            'different kind of object: one with a highest frequency. That is the property the ' +
-            'sampling theorem is actually about — not smoothness, not shape, just whether there ' +
-            'is a frequency above which the signal is silent.',
+          `Stop the square's series at the ${K}${ord(K)} harmonic and it becomes a different ` +
+            'kind of object: one with a highest frequency. That is the property the sampling ' +
+            'theorem is actually about — not smoothness, not shape, just whether there is a ' +
+            'frequency above which the signal is silent.',
         ),
         F(
-          `x(t) = \\frac{4A}{\\pi}\\sum_{m=0}^{${P - 1}} ` +
-            '\\frac{\\sin\\bigl(2\\pi(2m+1)f_0 t\\bigr)}{2m+1}, \\qquad f_{\\max} = (2N-1)f_0',
+          `x(t) = \\frac{4A}{\\pi}\\sum_{\\substack{k=1\\\\k\\text{ odd}}}^{${K}} ` +
+            '\\frac{\\sin(2\\pi k f_0 t)}{k}, \\qquad f_{\\max} = k_{\\max} f_0',
         ),
         T(
           'And the theorem is an inequality, strictly: at exactly twice the highest frequency ' +
@@ -684,7 +694,11 @@ const ENTRIES = {
         ),
         F('f_s > 2f_{\\max}'),
         V([
-          { label: 'terms kept', value: P, note: `harmonics 1 through ${2 * P - 1}, odd only` },
+          {
+            label: 'highest harmonic kept',
+            value: K,
+            note: `${(K + 1) / 2} term${K === 1 ? '' : 's'} — the odd harmonics 1 through ${K}`,
+          },
           { label: 'highest frequency present', value: top, unit: 'Hz' },
           { label: 'rate this demands', value: 2 * top, unit: 'Hz', note: 'strictly above' },
           {

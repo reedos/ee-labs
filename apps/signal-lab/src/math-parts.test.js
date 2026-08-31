@@ -144,33 +144,34 @@ describe('source math', () => {
   describe('a band-limited square', () => {
     // 125 Hz is bin 64 of 8000/4096, so every odd harmonic lands on a bin
     // centre and the panel's amplitude check is a real comparison.
-    const bl = (partials, over = {}) =>
-      sourceMath(src({ type: 'square', freq: 125, partials, ...over }), CTX)
+    // `K` is the highest odd harmonic kept.
+    const bl = (K, over = {}) =>
+      sourceMath(src({ type: 'square', freq: 125, topHarmonic: K, ...over }), CTX)
 
     it('checks out numerically for every partial count that fits', () => {
       const bad = []
-      for (const P of [1, 2, 3, 5, 9, 16]) bad.push(...checkFailures(bl(P), `square N=${P}`))
+      for (const K of [1, 3, 5, 9, 17, 31]) bad.push(...checkFailures(bl(K), `square k=${K}`))
       expect(bad).toEqual([])
     })
 
     it('renders valid TeX for the truncated series', () => {
-      for (const P of [1, 4, 16]) expect(texFailures(bl(P), `N=${P}`)).toEqual([])
-      const tex = bl(4).blocks.find((b) => b.kind === 'formula').tex
+      for (const K of [1, 7, 31]) expect(texFailures(bl(K), `k=${K}`)).toEqual([])
+      const tex = bl(7).blocks.find((b) => b.kind === 'formula').tex
       expect(tex).toMatch(/sum/)
-      expect(tex).toMatch(/m=0/)
-      expect(tex).toContain('{3}') // stops at m = N-1
+      expect(tex).toMatch(/odd/)
+      expect(tex).toContain('{7}') // the sum's upper limit IS the harmonic
     })
 
     it('predicts the truncated RMS, not A', () => {
-      const row = rowsOf(bl(3, { amp: 2 }), 'check').find((r) => r.label === 'RMS')
+      const row = rowsOf(bl(5, { amp: 2 }), 'check').find((r) => r.label === 'RMS')
       let acc = 0
-      for (let m = 0; m < 3; m++) acc += 1 / ((2 * m + 1) * (2 * m + 1))
+      for (let k = 1; k <= 5; k += 2) acc += 1 / (k * k)
       expect(row.predicted).toBeCloseTo(2 * (4 / Math.PI) * Math.sqrt(acc / 2), 9)
       expect(row.predicted).toBeLessThan(2) // strictly under the naive square's A
     })
 
     it('declines to predict the crest factor, because Gibbs owns it', () => {
-      const row = rowsOf(bl(8), 'check').find((r) => r.label === 'crest factor')
+      const row = rowsOf(bl(15), 'check').find((r) => r.label === 'crest factor')
       expect(row.predicted).toBeNull()
       expect(row.unchecked).toMatch(/Gibbs/)
       // ...but the naive square still claims its exact 1.
@@ -178,7 +179,7 @@ describe('source math', () => {
     })
 
     it('reports nothing folding, because nothing is left above the top harmonic', () => {
-      const labels = rowsOf(bl(4), 'values').map((r) => r.label)
+      const labels = rowsOf(bl(7), 'values').map((r) => r.label)
       expect(labels).not.toContain('first harmonic past Nyquist')
       expect(labels).not.toContain('it folds back to')
       // The naive square at the same frequency does fold, and still says so.
@@ -186,27 +187,27 @@ describe('source math', () => {
     })
 
     it('names the rate the top harmonic demands and whether it is met', () => {
-      // N = 4 tops out at the 7th harmonic: 875 Hz, needing fs > 1750 Hz.
-      // At 8 kHz that clears.
-      const rows = rowsOf(bl(4), 'values')
+      // The 7th harmonic of 125 Hz is 875 Hz, needing fs > 1750 Hz. At 8 kHz
+      // that clears.
+      const rows = rowsOf(bl(7), 'values')
       expect(rows.find((r) => r.label === 'highest harmonic (7·f₀)').value).toBeCloseTo(875, 9)
       expect(rows.find((r) => r.label === 'rate this demands').value).toBeCloseTo(1750, 9)
       expect(rows.find((r) => r.label === 'rate in use').note).toMatch(/clears it/)
 
-      // N = 20 tops out at the 39th: 4875 Hz, past the 4 kHz Nyquist.
-      const tight = rowsOf(bl(20), 'values')
+      // The 39th is 4875 Hz, past the 4 kHz Nyquist.
+      const tight = rowsOf(bl(39), 'values')
       expect(tight.find((r) => r.label === 'rate this demands').value).toBeCloseTo(9750, 9)
       expect(tight.find((r) => r.label === 'rate in use').note).toMatch(/short by/)
       // And the harmonic it names has folded, so the panel must not claim to
       // have measured it.
-      const amp = rowsOf(bl(20), 'check').find((r) => /39th harmonic/.test(r.label))
+      const amp = rowsOf(bl(39), 'check').find((r) => /39th harmonic/.test(r.label))
       expect(amp.unchecked).toMatch(/above Nyquist/)
     })
 
     it('is strict at exactly twice the top harmonic, not merely equal', () => {
       // fs = 2*fmax is the degenerate case, not a passing one: the samples
       // land at a fixed phase of the top harmonic and can miss it entirely.
-      const at = sourceMath(src({ type: 'square', freq: 125, partials: 32 }), {
+      const at = sourceMath(src({ type: 'square', freq: 125, topHarmonic: 63 }), {
         ...CTX,
         sampleRate: 2 * 63 * 125,
       })
@@ -215,7 +216,7 @@ describe('source math', () => {
       expect(note).not.toMatch(/short by 0/)
       expect(note).toMatch(/exactly twice it/)
       // One hair above, and it passes.
-      const above = sourceMath(src({ type: 'square', freq: 125, partials: 32 }), {
+      const above = sourceMath(src({ type: 'square', freq: 125, topHarmonic: 63 }), {
         ...CTX,
         sampleRate: 2 * 63 * 125 + 1,
       })
@@ -371,5 +372,47 @@ describe('the raw biquad states its roots', () => {
     const nulls = rowsOf(entry, 'check').filter((r) => r.label.includes('on-circle zero'))
     expect(nulls).toHaveLength(1)
     expect(nulls[0].measured).toBeLessThan(1e-6)
+  })
+})
+
+describe('the "fits" chip names a real harmonic, not a vague one', () => {
+  // The chip offers the highest odd harmonic still under Nyquist. It replaced
+  // an "all" option, which was both vague and misleading: "all" is not a
+  // larger count, it is the ideal square — a different object whose trace
+  // looks CLEANER than a band-limited one because the generator samples the
+  // shape directly instead of summing terms.
+  const fits = (f0, sampleRate) => {
+    const n = Math.ceil(sampleRate / 2 / Math.max(f0, 1e-9)) - 1
+    return Math.max(1, n < 1 ? 1 : n % 2 === 1 ? n : n - 1)
+  }
+
+  it('is odd, and its harmonic really does land under Nyquist', () => {
+    for (const f0 of [50, 125, 281.25, 440, 1000]) {
+      for (const sr of [8000, 16000, 44100, 48000, 96000]) {
+        const k = fits(f0, sr)
+        expect(k % 2, `${f0} @ ${sr}`).toBe(1)
+        expect(k * f0, `${f0} @ ${sr}`).toBeLessThan(sr / 2)
+        // ...and it is the HIGHEST such odd harmonic: the next one does not fit.
+        if (k > 1) expect((k + 2) * f0).toBeGreaterThanOrEqual(sr / 2)
+      }
+    }
+  })
+
+  it('never offers 0, which would silently mean the ideal square', () => {
+    // A fundamental already at or past Nyquist has no harmonic that fits, and
+    // returning 0 there would hand back the infinite series under a label
+    // promising the opposite.
+    for (const f0 of [3999, 4000, 6000, 7999]) expect(fits(f0, 8000)).toBe(1)
+  })
+
+  it('matches the panel: at the preset\u2019s own settings it is the 13th', () => {
+    expect(fits(281.25, 8000)).toBe(13)
+    const e = sourceMath(
+      src({ type: 'square', freq: 281.25, topHarmonic: fits(281.25, 8000) }),
+      { sampleRate: 8000, fftSize: 2048 },
+    )
+    const rows = rowsOf(e, 'values')
+    expect(rows.find((r) => r.label === 'rate in use').note).toMatch(/clears it/)
+    expect(checkFailures(e, 'fits')).toEqual([])
   })
 })

@@ -241,22 +241,26 @@ export const PRESETS = [
     note:
       'Every other lesson here samples a signal with harmonics running to infinity, so ' +
       'something always folds and the theorem can only be approached. This one can be ' +
-      'satisfied. "Odd harmonics: 5" builds the square from its first five odd terms and then ' +
-      'stops — 1st through 9th, topping out at 2531 Hz — so it has a highest frequency, a ' +
+      'satisfied. "Highest harmonic: 9" builds the square from the odd harmonics up to the 9th ' +
+      'and then stops — five terms, topping out at 2531 Hz — so it has a highest frequency, a ' +
       'finite number, and 8 kHz is comfortably more than twice it. Look at the spectrum: five ' +
       'lines, nothing above the 9th, and no floor between them. These samples are not an ' +
-      'approximation of this signal, they ARE it. Now raise the count to 8. The 15th harmonic ' +
-      'lands at 4219 Hz, past the 4 kHz Nyquist, and reappears at 3781 Hz — between harmonics, ' +
-      'where nothing belongs, and no measurement of the samples can tell you it does not. Set ' +
-      'the count back to "all" for the real square, and the whole spectrum fills with the ' +
-      'infinite tail folding down on itself. The corners you gain in the time view are exactly ' +
-      'what you cannot afford at this rate.',
+      'approximation of this signal, they ARE it. Now raise it to 15. That harmonic lands at ' +
+      '4219 Hz, past the 4 kHz Nyquist, and reappears at 3781 Hz — between harmonics, where ' +
+      'nothing belongs, and no measurement of the samples can tell you it does not. Then press ' +
+      '"ideal" for the real square. Watch what happens: the spectrum fills with a forest of ' +
+      'folded lines, and yet the TRACE gets cleaner, its corners sharp and its tops flat. That ' +
+      'is not fewer harmonics, it is more — sixty-four lines against sixteen. The ideal ' +
+      'generator samples the shape itself rather than summing terms, so every sample sits ' +
+      'exactly on ±1 and all that folded content hides inside a trace with nothing visibly ' +
+      'wrong with it. Which is the real lesson: aliasing is not something you can count on ' +
+      'seeing.',
     patch: {
       // 281.25 Hz is bin 72 of 8000/2048, so every harmonic lands on a bin
       // centre and the lines are sharp. fs/f0 = 28.44 is deliberately NOT an
       // integer: the folds then land BETWEEN harmonics and are visible as
       // their own lines, rather than hiding on top of the comb.
-      sources: [mk(1, 'square', 281.25, 1, 0, { partials: 5 })],
+      sources: [mk(1, 'square', 281.25, 1, 0, { topHarmonic: 9 })],
       sampleRate: 8000,
       fftSize: 2048,
       timeSpanMs: 12,
