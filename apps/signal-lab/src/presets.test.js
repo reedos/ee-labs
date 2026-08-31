@@ -683,3 +683,107 @@ describe('preset: High-pass a square', () => {
     expect(plateau).toBeLessThan(edge * 0.25)
   })
 })
+
+// ---- regression tests for claims the 2026-08 audit corrected ----
+// Each of these notes once said something the loaded configuration did not
+// show. The fixes are pinned here the same way the original claims are.
+
+import { rms } from '@ee-labs/dsp'
+import { BLOCK_TYPES } from './dsp/blocks.js'
+
+describe('preset: Coarse, not undersampled (corrected)', () => {
+  it('the RMS the readout displays - over the VISIBLE span - reads 0.707', () => {
+    // The app averages the visible scope buffer, not a long frame. The note
+    // quotes 0.707, so the span must hold a whole number of cycles: 17 cycles
+    // of 3400 Hz at 8 kHz is exactly 40 samples. At the old 6 cycles it was
+    // 14.12 samples and the readout said 0.671 under a note claiming 0.707.
+    const p = byName('Coarse, not undersampled').patch
+    const src = p.sources[0]
+    const n = Math.ceil((p.spanCycles / src.freq) * p.sampleRate)
+    expect(Math.abs(n - (p.spanCycles / src.freq) * p.sampleRate)).toBeLessThan(1e-9)
+    const buf = render(p.sources, n, p.sampleRate, 0)
+    expect(rms(buf)).toBeCloseTo(Math.SQRT1_2, 3)
+  })
+})
+
+describe('preset: Two tones, one nonlinearity (corrected arithmetic)', () => {
+  it('every product the note quotes is present, with the right formula', () => {
+    expect(2 * 400 - 250).toBe(550)
+    expect(2 * 250 + 400).toBe(900)
+    expect(Math.abs(3 * 250 - 2 * 400)).toBe(50)
+    const clipped = run('Two tones, one nonlinearity')
+    const clean = run('Two tones, one nonlinearity', { blocks: [] })
+    for (const f of [550, 900, 50]) {
+      expect(clipped.at(f), `${f} Hz clipped`).toBeGreaterThan(0.01)
+      expect(clean.at(f), `${f} Hz clean`).toBeLessThan(clipped.at(f) / 5)
+    }
+  })
+})
+
+describe('preset: Comb (corrected geometry)', () => {
+  it('feedback peaks land midway between the feed-forward notches, at 1/(1-g) and 1-g', () => {
+    const p = byName('Comb').patch.blocks[0].params
+    const sr = 8000
+    const D = Math.round((p.delayMs / 1000) * sr)
+    const spacing = sr / D
+    const ff = (f) => BLOCK_TYPES.comb.response({ ...p, mode: 'feedforward' }, f, sr)
+    const fb = (f) => BLOCK_TYPES.comb.response({ ...p, mode: 'feedback' }, f, sr)
+    // Feed-forward: notch at the odd half-period, depth 1-g, not a full null.
+    expect(ff(spacing / 2)).toBeCloseTo(1 - p.g, 6)
+    // Feedback: the peak is at the WHOLE period - midway between the notches -
+    // and its height is 1/(1-g).
+    expect(fb(spacing)).toBeCloseTo(1 / (1 - p.g), 6)
+    // And at the old notch frequency the feedback comb is BELOW unity, which
+    // is what "the notches become resonances" wrongly denied.
+    expect(fb(spacing / 2)).toBeLessThan(1)
+  })
+
+  it('the note’s z-plane claim holds: D zeros in a ring at |g|^(1/D), just inside the rim', () => {
+    const p = byName('Comb').patch.blocks[0].params
+    const sr = 8000
+    const D = Math.round((p.delayMs / 1000) * sr)
+    const { zeros, poles } = BLOCK_TYPES.comb.pz(p, sr)
+    expect(zeros).toHaveLength(D)
+    expect(poles).toHaveLength(0)
+    const r = Math.pow(Math.abs(p.g), 1 / D)
+    for (const [re, im] of zeros) expect(Math.hypot(re, im)).toBeCloseTo(r, 9)
+    expect(r).toBeGreaterThan(0.99) // "pulled just inside the rim"
+    expect(r).toBeLessThan(1)
+  })
+})
+
+describe('preset: 4 bits (corrected 12-bit sentence)', () => {
+  it('undithered 12-bit error stays discrete and harmonic-locked - no smearing', () => {
+    // 250 Hz divides 8 kHz exactly, so the quantization error is periodic at
+    // every bit depth: discrete spurs on harmonics of 250 Hz over an empty
+    // floor. The note used to promise they "smear into the flat floor".
+    const wet = run('4 bits', { blocks: [{ id: 1, type: 'quantize', bypass: false, params: { bits: 12, dither: false } }] })
+    const clean = run('4 bits', { blocks: [] })
+    const binHz = wet.sampleRate / 2048
+    let spurPeak = 0
+    let offGrid = 0
+    for (let i = 4; i < wet.amps.length - 2; i++) {
+      const f = wet.freqs[i]
+      if (Math.abs(f - 250) < 3 * binHz) continue // the tone itself
+      const err = Math.abs(wet.amps[i] - clean.amps[i])
+      const onHarmonic = Math.abs(f / 250 - Math.round(f / 250)) < (2 * binHz) / 250
+      if (onHarmonic) spurPeak = Math.max(spurPeak, err)
+      else offGrid = Math.max(offGrid, err)
+    }
+    // Spurs stand well proud of everything between them.
+    expect(spurPeak).toBeGreaterThan(5 * offGrid)
+  })
+})
+
+describe('preset: Step response and ringing (corrected percentage)', () => {
+  it('the sampled Q = 0.707 overshoot is a shade above the continuous 4.3%', () => {
+    const p = byName('Step response and ringing').patch
+    const blocks = [{ ...p.blocks[0], params: { ...p.blocks[0].params, q: Math.SQRT1_2 } }]
+    const r = renderChain(p.sources, blocks, 2048, p.sampleRate, { warmup: 0 })
+    let top = 0
+    for (const v of r.buf) top = Math.max(top, v)
+    const overshoot = top - 1
+    expect(overshoot).toBeGreaterThan(0.041)
+    expect(overshoot).toBeLessThan(0.048)
+  })
+})

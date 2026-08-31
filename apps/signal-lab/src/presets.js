@@ -41,7 +41,8 @@ export const PRESETS = [
     name: 'Square = odd harmonics',
     terms: ['harmonic', 'nyquist'],
     note:
-      'A square wave is a sum of odd harmonics at 4A/(kπ). Turn on harmonic markers and count: ' +
+      'A square wave is a sum of odd harmonics falling as 1/k — 4A/(kπ), plus the small ' +
+      'sampling correction the math panel carries. Turn on harmonic markers and count: ' +
       '1st, 3rd, 5th — and nothing between them. The flattening above 2 kHz is real, not a ' +
       'glitch: harmonics past Nyquist fold back and land on top of the ones below.',
     patch: {
@@ -88,7 +89,7 @@ export const PRESETS = [
     terms: ['superposition'],
     note:
       'Two tones, nothing else. The scope shows their sample-by-sample sum — a shape neither ' +
-      'has alone — while the spectrum shows two clean lines, each at exactly its own source’s ' +
+      'has alone — while the spectrum shows two clean lines, each at its own source’s ' +
       'amplitude, as if the other were not there. That is superposition, and it is why the ' +
       'sidebar can treat sources as independent: adding signals adds spectra, line by line. ' +
       'Untick one source and the other’s line does not move. It survives every LINEAR block ' +
@@ -155,11 +156,15 @@ export const PRESETS = [
       'A 3.4 kHz sine at 8 kHz: about 2.35 samples per cycle. Drawn dot-to-dot it looks ' +
       'mangled — yet the RMS still reads 0.707, because nothing was lost. More than two ' +
       'samples per cycle is ENOUGH: exactly one bandlimited signal passes through these dots, ' +
-      'and the scope’s sin(x)/x curve draws it — the original, not an approximation. Coarse is ' +
+      'and the scope’s sin(x)/x curve draws it back — exact mid-pane, fraying only at the ' +
+      'edges where the sum runs out of neighbours. Coarse is ' +
       'an interpolation problem; undersampled (fewer than two per cycle) is an information ' +
       'problem. The slow wobble in the dots’ envelope is the sampling phase creeping toward ' +
       'the fold, 600 Hz away — Aliasing and Exactly at Nyquist take the story from there.',
-    patch: { sources: [mk(1, 'sine', 3400, 1)], sampleRate: 8000, timeSpanMs: 5, spanCycles: 6 },
+    // 17 cycles = exactly 40 samples at this ratio, so the visible-span RMS
+    // the readout actually averages lands on 0.7071 as the note promises. Six
+    // cycles was 14.1 — a fractional cycle, and the readout said 0.671.
+    patch: { sources: [mk(1, 'sine', 3400, 1)], sampleRate: 8000, timeSpanMs: 5, spanCycles: 17 },
   },
   {
     group: 'Sampling',
@@ -180,9 +185,9 @@ export const PRESETS = [
       'full amplitude; at 0° they land on the zero crossings and the signal vanishes entirely. ' +
       'Same frequency, same amplitude, any answer you like — which is why "up to half the ' +
       'sample rate" is a bound you approach, not one you sit on. (The bright dots are the ' +
-      'samples — the only thing that exists after sampling. The straight lines joining them ' +
-      'are just the scope’s interpolation, which is why a sine at this extreme draws as a ' +
-      'triangle.)',
+      'samples — the only thing that exists after sampling. The smooth curve through them is ' +
+      'the scope’s own sin(x)/x reconstruction, and it follows the phase honestly: full ' +
+      'height at 90°, a flat line at 0°.)',
     patch: {
       sources: [mk(1, 'sine', 4000, 1, Math.PI / 2)],
       sampleRate: 8000,
@@ -195,8 +200,8 @@ export const PRESETS = [
     name: 'Resolution needs time',
     terms: ['bin'],
     note:
-      'Two tones 15 Hz apart, in a 512-point frame whose bins are 15.6 Hz wide. They fall in the ' +
-      'same bin and read as one peak. Raise the FFT size in the top bar and they separate — ' +
+      'Two tones 15 Hz apart, in a 512-point frame whose bins are 15.6 Hz wide. Closer together ' +
+      'than one bin, they read as one peak. Raise the FFT size in the top bar and they separate — ' +
       'telling two frequencies apart requires listening for long enough, and the frame length ' +
       'IS that listening time.',
     patch: {
@@ -231,10 +236,11 @@ export const PRESETS = [
     terms: ['harmonic', 'db'],
     note:
       'The dim trace is the square before the filter, the solid one after. The gap between them ' +
-      'at each harmonic IS the blue response curve: the 3rd is barely touched, the 5th is down ' +
-      '11 dB, and in the time view the corners round off. (The peaks do not sit ON the curve — ' +
+      'at each harmonic IS the blue response curve: the 3rd gives up 3.7 dB — a third of its ' +
+      'amplitude — the 5th is down 11, and in the time view the corners round off. (The peaks ' +
+      'do not sit ON the curve — ' +
       "a square's harmonics already fall as 4/kπ before the filter sees them. Try \"Resonance " +
-      'is Q", where the input is flat and they do.)',
+      'is Q", where a flat input lets the trace draw the curve’s exact shape.)',
     patch: {
       sources: [mk(1, 'square', 250, 1)],
       blocks: [bk(1, 'lowpass', { freq: 700, q: Math.SQRT1_2 })],
@@ -277,7 +283,8 @@ export const PRESETS = [
       'has height exactly equal to Q. Not proportional to it; equal. At Q=10 it stands 20 dB ' +
       '(×10) above the flat passband; drag Q and watch the peak BE the number. The source is ' +
       'white noise on purpose: it holds every frequency equally, so the spectrum paints the ' +
-      'whole filter shape at once and the orange trace lies on the blue curve. Then open the ' +
+      'whole filter shape at once — the orange trace runs parallel to the blue curve, every ' +
+      'bump and slope matching, from the noise floor’s own height below it. Then open the ' +
       'block and use its type select to switch it to band-pass: the peak stays pinned at 0 dB ' +
       'however hard you drag, because a band-pass is normalized to 1 at its centre — there Q ' +
       'sets the WIDTH instead. Same knob, two meanings; the low-pass is where peak height and ' +
@@ -359,9 +366,10 @@ export const PRESETS = [
     name: 'Impulse response',
     note:
       'One sample, then silence. Its spectrum is flat, so whatever shape the spectrum now has ' +
-      'was put there by the filter — the orange trace and the blue curve are the same curve. ' +
+      'was put there by the filter — the orange trace is the blue curve redrawn at the ' +
+      'impulse’s own low 2/N level, the same shape 60 dB down. ' +
       'Meanwhile the time view is drawing the impulse response itself. h(t) and H(f) are one ' +
-      'object seen from two sides, and this is the only preset that shows you both at once.',
+      'object seen from two sides, here side by side.',
     patch: {
       sources: [mk(1, 'impulse', 250, 1)],
       blocks: [bk(1, 'lowpass', { freq: 800, q: 4 })],
@@ -381,7 +389,8 @@ export const PRESETS = [
       'rings at its cutoff before settling. Drag Q down from 5 — this is what Q feels like in ' +
       'time, and it is easier to recognize here than as a bump on a curve. Note where the ' +
       'overshoot actually stops: at Q = 0.5, not at 0.707. The Butterworth Q gives the flattest ' +
-      'frequency response and still overshoots by 4.3%, because flat in frequency and clean in ' +
+      'frequency response and still overshoots — 4.3% in the ideal continuous prototype, a ' +
+      'shade more as sampled here — because flat in frequency and clean in ' +
       'time are two different requests.',
     patch: {
       sources: [mk(1, 'step', 250, 1)],
@@ -396,7 +405,8 @@ export const PRESETS = [
     group: 'Nonlinearity',
     name: 'Clipping makes harmonics',
     note:
-      'Hard-clip a pure sine and odd harmonics appear at 4c/(kπ) — no filter involved, the ' +
+      'Hard-clip a pure sine and odd harmonics appear — approaching 4c/(kπ) in the deep-clip ' +
+      'limit, falling away faster at a clip this gentle — no filter involved, the ' +
       'nonlinearity manufactures them. The response curve goes dashed because no transfer ' +
       'function can describe this: a nonlinear block does not have one.',
     patch: {
@@ -428,8 +438,9 @@ export const PRESETS = [
     name: 'Two tones, one nonlinearity',
     note:
       'A linear block can only change how much of a frequency there is. A nonlinear one invents ' +
-      'new ones. Clipping 250 Hz and 400 Hz together produces 900 Hz (2×400−250) and 50 Hz ' +
-      '(3×250−2×400) — not harmonics of either input, but sums and differences of their ' +
+      'new ones. Clipping 250 Hz and 400 Hz together produces 550 Hz (2×400−250), 900 Hz ' +
+      '(2×250+400) and 50 Hz (3×250−2×400) — not harmonics of either input, but sums and ' +
+      'differences of their ' +
       'harmonics. Bypass the clipper and every one of them disappears. This is intermodulation, ' +
       'and avoiding it is most of why linearity is worth paying for.',
     patch: {
@@ -469,20 +480,6 @@ export const PRESETS = [
       sampleRate: 8000,
       timeSpanMs: 20,
       spanCycles: 5,
-    },
-  },
-  {
-    group: 'Nonlinearity',
-    name: 'Comb',
-    note:
-      'Add a delayed copy of the signal to itself and it cancels at every frequency where the ' +
-      'delay is half a period — notches every 1/D, evenly spaced. Switch it to feedback and the ' +
-      'notches become resonances.',
-    patch: {
-      sources: [mk(1, 'noise', 100, 0.6)],
-      blocks: [bk(1, 'comb', { delayMs: 4, g: 0.9, mode: 'feedforward' })],
-      sampleRate: 8000,
-      timeSpanMs: 20,
     },
   },
   // ----------------------------------------------------- FIR and the z-plane
@@ -535,8 +532,10 @@ export const PRESETS = [
       'kernel flipped, slid to the current position, multiplied by the input underneath it and ' +
       'summed. That is convolution, the only description of filtering that covers FIR and IIR ' +
       'at once. Note where the symmetry centre falls: at tap 15, exactly the delay the ' +
-      'group-delay overlay reports. The math below says why the two names must coincide — and ' +
-      'that it takes LTI to make them.',
+      'group-delay overlay reports. And the baseline dots after the last tap are samples too — ' +
+      'exactly zero, which is the point: an FIR forgets COMPLETELY, where an IIR’s baseline ' +
+      'dots would be ringing too small to see. The math below says why the two names must ' +
+      'coincide — and that it takes LTI to make them.',
     patch: {
       sources: [mk(1, 'sine', 300, 0.8), mk(2, 'sine', 1800, 0.5)],
       blocks: [bk(1, 'fir', { taps: 31, freq: 900, mode: 'lowpass', window: 'blackman' })],
@@ -584,6 +583,29 @@ export const PRESETS = [
       freqView: 'zplane',
     },
   },
+  {
+    // Lives here, not under Nonlinearity: a comb is LTI — it has an H(z) and
+    // draws a solid curve — and its ring of roots is this group's climax.
+    // Filed with the effects once, it sat as a counterexample inside a section
+    // whose header says "where transfer functions stop working".
+    group: 'FIR and the z-plane',
+    name: 'Comb',
+    terms: ['zplane'],
+    note:
+      'Add a delayed copy of the signal to itself and it nearly cancels wherever the delay is ' +
+      'an odd number of half-periods — notches every 1/D, evenly spaced, dipping to 1−g (a ' +
+      'full null only at g = 1). Switch it to feedback and the same delay resonates instead — ' +
+      'peaks at the whole-period frequencies, midway between where the notches were, because ' +
+      'the comb has moved into the denominator. Open the z-plane view: this is "Zeros on the ' +
+      'circle" again, D of them in a ring pulled just inside the rim at radius |g|^(1/D) — ' +
+      'and in feedback mode the same ring is poles.',
+    patch: {
+      sources: [mk(1, 'noise', 100, 0.6)],
+      blocks: [bk(1, 'comb', { delayMs: 4, g: 0.9, mode: 'feedforward' })],
+      sampleRate: 8000,
+      timeSpanMs: 20,
+    },
+  },
 
   {
     group: 'FIR and the z-plane',
@@ -613,8 +635,11 @@ export const PRESETS = [
     name: '4 bits',
     note:
       'Quantize to 4 bits and the error is correlated with the signal, so you get discrete spurs ' +
-      'rather than a noise floor. Raise it to 12 and they smear into the flat floor that ' +
-      '6.02N + 1.76 dB predicts. Tick dither at 4 bits to trade the spurs for honest noise.',
+      'rather than a noise floor. Raise it to 12 and the spurs shrink toward the bottom of the ' +
+      'view — but they stay discrete and harmonic-locked, because this tone divides the sample ' +
+      'rate exactly and the error repeats with it at any bit depth. Only dither breaks that ' +
+      'grip: tick it and the spurs become the honest flat floor that 6.02N + 1.76 dB assumed ' +
+      'all along.',
     patch: {
       sources: [mk(1, 'sine', 250, 1)],
       blocks: [bk(1, 'quantize', { bits: 4, dither: false })],

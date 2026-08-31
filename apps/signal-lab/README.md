@@ -17,7 +17,7 @@ the tool just measured.
 ```
 npm install
 npm run dev        # http://localhost:1421
-npm test           # 152 unit tests
+npm test           # 200 unit tests
 npm run build
 npm run preview    # then, against that server:
 npm run verify     # drives the real UI in a browser
@@ -44,11 +44,14 @@ what breaks.
 | Square = odd harmonics | Why does a square wave contain many frequencies? |
 | Corners make harmonics | 1/k against 1/k²: why sharper corners cost more bandwidth. |
 | Build a square | Adding sines up into a square, and the Gibbs overshoot that never leaves. |
+| Sources simply add | Two tones, two lines, each untouched by the other. Superposition, measured. |
+| Sines in, sines out | LTI, made loud: a sine cannot come out as anything but itself. |
 | Beating | Two close tones: one waveform, two lines. Which is "true"? |
 
 **Sampling** — what discrete time costs you
 | | |
 |---|---|
+| Coarse, not undersampled | 2.35 samples per cycle looks mangled — and nothing was lost. |
 | Aliasing | What happens above half the sample rate. |
 | Exactly at Nyquist | The same tone reads 0.000, 0.707 or 1.000 depending only on its phase. |
 | Resolution needs time | Two tones that will not separate until the frame is long enough. |
@@ -58,12 +61,24 @@ what breaks.
 | | |
 |---|---|
 | Low-pass a square | What exactly does a filter remove? |
+| High-pass a square | The mirror: keep the edges, lose the plateaus. |
 | Resonance is Q | Q, in a way you can see: the peak height *is* Q. |
 | Phase is invisible here | A filter that changes everything and nothing. Turn on the phase curve. |
 | Two filters are steeper | Cascading squares the response and doubles the dB. |
 | Order is a choice | Every block here is 2nd order — but filters are not, and cascading is how you climb. |
 | Impulse response | h(t) and H(f) side by side — the same object from two sides. |
 | Step response and ringing | What Q feels like in time: overshoot and settling. |
+
+**FIR and the z-plane** — filters with no feedback, and the plane they are read in
+| | |
+|---|---|
+| A moving average is a filter | Average 8 samples: a low-pass whose nulls you can work out in your head. |
+| Everything arrives together | Flat group delay — the FIR's whole reason to exist. |
+| The kernel is the filter | The stems are not a picture of the filter. They are the filter. |
+| Cut it off abruptly and it rings | Truncation is a window, and its ripple never shrinks: Gibbs, in the other domain. |
+| Zeros on the circle | The nulls in the spectrum and the ring on the z-plane: one fact, drawn twice. |
+| Comb | Delay, evenly spaced notches — and the same ring, pulled just inside the rim. |
+| Convolution, watched | Flip, slide, multiply, sum — one output sample at a time. |
 
 **Nonlinearity** — where transfer functions stop working
 | | |
@@ -73,7 +88,6 @@ what breaks.
 | Two tones, one nonlinearity | Intermodulation: products that are harmonics of neither input. |
 | Ring modulator | Multiplication in time is a shift in frequency. |
 | AM: the carrier returns | One DC offset separates broadcast AM from DSB-SC. |
-| Comb | Delay, and evenly spaced notches. |
 | 4 bits | Quantization spurs, and what dither trades them for. |
 
 ## How it is put together

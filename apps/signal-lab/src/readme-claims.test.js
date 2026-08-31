@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { PRESETS } from './presets.js'
+import { PRESETS, PRESET_GROUPS } from './presets.js'
 import { LESSONS as CIRCUIT_LESSONS } from '../../circuit-lab/src/lessons.js'
 import { CIRCUITS, transferOf, defaultsOf } from '../../circuit-lab/src/circuits.js'
 import { asDigitalFilter, asControlPlant } from '../../circuit-lab/src/toSignalLab.js'
@@ -47,6 +47,34 @@ describe('the README quotes the tree it describes', () => {
     const p = defaultsOf('rlcSeries')
     const d = asControlPlant(transferOf('rlcSeries', p, 'c'))
     expect(readme).toContain(`#${d.link}`)
+  })
+})
+
+describe("this app's README lists the experiments it ships", () => {
+  // The "Where to start" tables drifted ten presets and one whole group
+  // behind the sidebar before anything noticed — the same class of rot the
+  // root-README counts are pinned against. So the tables are now pinned to
+  // the PRESETS array: every preset gets a row, every row names a real
+  // preset, and the rows come in the sidebar's own group order.
+  const appReadme = readFileSync(join(__dirname, '..', 'README.md'), 'utf8')
+  const section = appReadme.split('## Where to start')[1].split('\n## ')[0]
+
+  const rowNames = section
+    .split('\n')
+    .filter((l) => l.startsWith('| ') && !l.startsWith('| |') && !l.startsWith('|--'))
+    .map((l) => l.split('|')[1].trim())
+
+  it('has exactly one row per preset, in sidebar order', () => {
+    const want = PRESET_GROUPS.flatMap((g) =>
+      PRESETS.filter((p) => p.group === g).map((p) => p.name),
+    )
+    expect(rowNames).toEqual(want)
+  })
+
+  it('names every group with its sidebar title', () => {
+    for (const g of PRESET_GROUPS) {
+      expect(section, g).toContain(`**${g}**`)
+    }
   })
 })
 
