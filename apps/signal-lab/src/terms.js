@@ -28,9 +28,11 @@ export const TERMS = {
   nyquist: {
     name: 'Nyquist frequency',
     def:
-      'Half the sample rate — the highest frequency a sampled system can represent, because a ' +
-      'cycle needs at least two samples to be a cycle at all. At 8 kHz sampling, Nyquist is ' +
-      '4 kHz, and it is the right-hand end of every spectrum here.',
+      'Half the sample rate — the boundary of what a sampled system can represent. Everything ' +
+      'STRICTLY below it survives sampling; exactly AT it a sine’s amplitude depends on where ' +
+      'the samples land in its cycle (the "Exactly at Nyquist" experiment), and above it ' +
+      'frequencies fold back as aliases. At 8 kHz sampling, Nyquist is 4 kHz, and it is the ' +
+      'right-hand end of every spectrum here.',
   },
   sampled: {
     name: 'Sampled display (and sin(x)/x)',
@@ -60,9 +62,10 @@ export const TERMS = {
   harmonic: {
     name: 'Harmonic',
     def:
-      'A component at a whole-number multiple of a fundamental frequency: 250 Hz has harmonics ' +
-      'at 500, 750, 1000… Periodic shapes are built entirely from their harmonics, and WHICH ' +
-      'ones a shape needs (odd only? falling as 1/k or 1/k²?) is a fingerprint of the shape.',
+      'A component at a whole-number multiple of a fundamental frequency: for 250 Hz that is ' +
+      '250 itself (harmonic 1, as the panels count), 500, 750, 1000… Periodic shapes are built ' +
+      'entirely from their harmonics, and WHICH ones a shape needs (odd only? falling as 1/k ' +
+      'or 1/k²?) is a fingerprint of the shape.',
   },
   window: {
     name: 'Window (analysis window)',
@@ -139,14 +142,16 @@ export const TERMS = {
     def:
       'The complex plane where a digital filter’s poles (×) and zeros (○) live. The unit ' +
       'circle IS the frequency axis — DC at z = 1, Nyquist at z = −1 — and the response at a ' +
-      'frequency is the product of distances to zeros over distances to poles from that point ' +
-      'on the circle. Stable means all poles inside.',
+      'frequency is proportional to the product of distances to zeros over distances to poles ' +
+      'from that point on the circle (an overall gain scales it). Stable means all poles inside.',
   },
   order: {
     name: 'Filter order',
     def:
-      'The number of poles — the filter’s memory depth, and what sets the ultimate slope: ' +
-      '6 dB/octave (20 dB/decade) per order. One pole cannot resonate; two can; four rolled ' +
+      'The highest power of delay in the difference equation — the filter’s memory depth. For ' +
+      'the IIR blocks here that is the number of poles, and it sets the ultimate slope: ' +
+      '6 dB/octave (20 dB/decade) per order. (A 61-tap FIR is order 60 with no poles at all — ' +
+      'order counts delays, not poles as such.) One pole cannot resonate; two can; four rolled ' +
       'off as a Butterworth need particular Qs per section.',
   },
 }

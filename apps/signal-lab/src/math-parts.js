@@ -131,11 +131,13 @@ export function sourceMath(source, ctx) {
   // the crest factor collapses to 1. That is the same failure the sampling
   // theorem warns about for amplitude, showing up in the power instead.
   const coarse =
-    N <= 2
-      ? 'Exactly two samples per cycle: the samples only ever land on two phases, so RMS depends on phase — A·|sin φ| — rather than on the shape. The continuous value does not apply.'
-      : slowConverging && N < 16
-        ? `Only ${Number(N.toFixed(2))} samples per period: the sampled values do not yet match the continuous integral for this shape.`
-        : null
+    N < 2
+      ? 'Fewer than two samples per cycle: the waveform is undersampled outright, and the continuous RMS does not apply.'
+      : N === 2
+        ? 'Exactly two samples per cycle: the samples only ever land on two phases, so RMS depends on phase — A·|sin φ| — rather than on the shape. The continuous value does not apply.'
+        : slowConverging && N < 16
+          ? `Only ${Number(N.toFixed(2))} samples per period: the sampled values do not yet match the continuous integral for this shape.`
+          : null
 
   const blocks = [F(w.tex), T(w.harmonics)]
 
@@ -180,10 +182,22 @@ export function sourceMath(source, ctx) {
               ? 'a whole number, so no leakage'
               : 'not a whole number, so this tone leaks',
         },
-        {
-          label: 'harmonics below Nyquist',
-          value: Math.max(0, Math.floor((sampleRate / 2 - 1e-9) / f0)),
-        },
+        // Counted only for waveforms that HAVE a harmonic series, and only
+        // the harmonics their series contains: a sine got "15" here once —
+        // fifteen empty slots — and a square was credited with the even
+        // harmonics its own lesson says it lacks.
+        ...(source.type === 'sine'
+          ? []
+          : [
+              (() => {
+                const K = Math.max(0, Math.floor((sampleRate / 2 - 1e-9) / f0))
+                const odd = source.type !== 'sawtooth'
+                return {
+                  label: odd ? 'odd harmonics below Nyquist' : 'harmonics below Nyquist',
+                  value: odd ? Math.ceil(K / 2) : K,
+                }
+              })(),
+            ]),
       ]),
     )
   }
@@ -296,7 +310,15 @@ export function sourceMath(source, ctx) {
         source.type === 'impulse'
           ? [
               { label: 'total energy A²', value: A * A },
-              { label: 'flat spectrum level 2A/N', value: flat, note: 'every bin, equally' },
+              {
+                label: 'flat spectrum level 2A/N',
+                value: flat,
+                // The impulse sits at the frame edge, where every taper is
+                // zero (or nearly) — under the default Hann the on-screen
+                // spectrum reads the floor, not 2A/N. Say so, or the panel
+                // promises a level the plot visibly does not show.
+                note: 'every bin, equally — with the analysis window set to "none"; a taper is zero at the frame edge where this impulse sits',
+              },
               { label: 'in dB', value: 20 * Math.log10(flat), unit: 'dB' },
               { label: 'frame length N', value: fftSize, unit: 'samples' },
             ]
@@ -322,7 +344,9 @@ export function sourceMath(source, ctx) {
     blocks.push(
       V([
         { label: 'bin width', value: binHz, unit: 'Hz' },
-        { label: 'bins in the frame', value: Math.floor(fftSize / 2) },
+        // fftSize/2 + 1, counting DC and Nyquist — the same count the
+        // spectrum draws, which is the one this row should agree with.
+        { label: 'bins in the frame', value: Math.floor(fftSize / 2) + 1 },
       ]),
       T(
         'The frequency control does nothing for noise — there is no period to set. Amplitude is ' +
@@ -494,16 +518,25 @@ export function blockMath(block, ctx) {
   const order = Number(p.order ?? 2)
   if (BIQUAD_NAMES[block.type] && order === 1) {
     const meas = measuredResponse(block, sampleRate, [p.freq, 4 * p.freq])
+    // The high-pass is NOT the low-pass formula: same pole, but the zero moves
+    // from z = −1 to z = +1 (DC), and H(s) carries the s in its numerator.
+    // This branch once printed the low-pass transfer function for both — the
+    // check rows passed, because they use the real design, around a wrong
+    // formula on display.
+    const hp = block.type === 'highpass'
     return {
       blocks: [
         T(
-          'One pole, from the bilinear transform of 1/(1 + s/ω_c). The least a filter can be — ' +
-            'and the reason there is no Q control: resonance takes two poles trading energy, ' +
-            'and this section only has the one.',
+          `One pole, from the bilinear transform of ${hp ? '(s/ω_c)/(1 + s/ω_c)' : '1/(1 + s/ω_c)'}. ` +
+            'The least a filter can be — and the reason there is no Q control: resonance takes ' +
+            'two poles trading energy, and this section only has the one.',
         ),
         F(
-          'H(s) = \\frac{1}{1 + s/\\omega_c} \\;\\longrightarrow\\; ' +
-            'H(z) = \\frac{K + Kz^{-1}}{(K{+}1) + (K{-}1)z^{-1}}, \\quad K = \\tan(\\pi f_c/f_s)',
+          hp
+            ? 'H(s) = \\frac{s/\\omega_c}{1 + s/\\omega_c} \\;\\longrightarrow\\; ' +
+              'H(z) = \\frac{1 - z^{-1}}{(K{+}1) + (K{-}1)z^{-1}}, \\quad K = \\tan(\\pi f_c/f_s)'
+            : 'H(s) = \\frac{1}{1 + s/\\omega_c} \\;\\longrightarrow\\; ' +
+              'H(z) = \\frac{K + Kz^{-1}}{(K{+}1) + (K{-}1)z^{-1}}, \\quad K = \\tan(\\pi f_c/f_s)',
         ),
         C([
           {
@@ -951,7 +984,14 @@ export function blockMath(block, ctx) {
           { label: 'group delay (N−1)/2', value: M, unit: 'samples' },
           { label: 'group delay', value: (1000 * M) / sampleRate, unit: 'ms' },
           { label: 'settles in exactly', value: N - 1, unit: 'samples' },
-          { label: 'zeros', value: N - 1 },
+          {
+            label: 'zeros',
+            value: N - 1,
+            note:
+              p.window === 'hann' || p.window === 'blackman'
+                ? 'a few fewer are drawn: this window’s end taps are exactly zero, and a zero tap carries no root'
+                : '',
+          },
           { label: 'poles away from the origin', value: 0, note: 'so it cannot be unstable' },
           {
             label: 'multiply-adds per sample',
@@ -980,16 +1020,22 @@ export function blockMath(block, ctx) {
         ),
         T(
           fb
-            ? 'The delayed copy reinforces itself wherever the delay is a whole number of periods, ' +
-              'so the comb’s teeth point up: peaks every fₛ/D, of height 1/(1−g).'
-            : 'The two paths cancel wherever the delay is an odd number of half periods, so the ' +
-              'comb’s teeth point down: nulls every fₛ/D.',
+            ? 'The delayed copy reinforces itself wherever the delay is a whole number of periods ' +
+              '(for positive g — negative g moves the teeth to odd half-periods), so the comb’s ' +
+              'teeth point up: peaks every fₛ/D, of height 1/(1−|g|).'
+            : 'The two paths oppose wherever the delay is an odd number of half periods (for ' +
+              'positive g — negative g moves the notches to whole periods), dipping to 1−|g| — a ' +
+              'full cancel only as |g| reaches 1. The comb’s teeth point down: notches every fₛ/D.',
         ),
         V([
           { label: 'delay D', value: D, unit: 'samples' },
           { label: 'delay', value: (1000 * D) / sampleRate, unit: 'ms' },
           { label: 'tooth spacing', value: sampleRate / D, unit: 'Hz' },
-          ...(fb ? [{ label: 'peak height 1/(1−g)', value: 1 / (1 - Math.min(0.999, p.g)) }] : []),
+          // |g|, not g: for negative g the un-absed formula printed the
+          // response MINIMUM and called it the peak.
+          ...(fb
+            ? [{ label: 'peak height 1/(1−|g|)', value: 1 / (1 - Math.min(0.999, Math.abs(p.g))) }]
+            : [{ label: 'notch floor 1−|g|', value: 1 - Math.min(0.999, Math.abs(p.g)) }]),
         ]),
       ],
     }
@@ -1023,7 +1069,7 @@ export function blockMath(block, ctx) {
         F(`\\Delta = \\frac{2}{2^{N}} = ${sig(2 / Math.pow(2, bits))}, \\qquad N = ${bits}\\ \\text{bits}`),
         T(
           'If the rounding error were random and independent of the signal, its power would be ' +
-            'Δ²/12 and the signal-to-noise ratio would be',
+            'Δ²/12 and the signal-to-noise ratio for a full-scale sine would be',
         ),
         F('\\text{SNR} \\approx 6.02N + 1.76\\ \\text{dB}'),
         T(

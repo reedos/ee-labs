@@ -383,3 +383,24 @@ it('no formula contains a macro name that lost its backslash', () => {
   }
   expect(bad.join('\n  ')).toBe('')
 })
+
+// A macro that LOSES its backslash in JS ('\,' evaluates to ','), unlike one
+// that keeps a bare name, cannot be caught from the rendered tex — the comma
+// looks legitimate there. So this one check greps the SOURCE: every LaTeX
+// spacing macro must be written with a doubled backslash. This caught
+// "Y(f) = H(f),X(f)" shipping as a product turned into a list.
+it('never swallows a spacing macro backslash in the source', async () => {
+  const { readFileSync } = await import('node:fs')
+  const { fileURLToPath } = await import('node:url')
+  const bad = []
+  for (const file of ['./math.js', './math-parts.js']) {
+    const src = readFileSync(fileURLToPath(new URL(file, import.meta.url)), 'utf8')
+    const lines = src.split('\n')
+    lines.forEach((line, i) => {
+      // A single backslash before , ; or ! inside source is a swallowed
+      // spacing macro; the correct form is the doubled backslash.
+      if (/(?<!\\)\\[,;!]/.test(line)) bad.push(`${file}:${i + 1}: ${line.trim().slice(0, 70)}`)
+    })
+  }
+  expect(bad.join('\n  ')).toBe('')
+})

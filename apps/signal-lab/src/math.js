@@ -1,5 +1,5 @@
-import { designBiquad, biquadResponse, render, sincInterp } from '@ee-labs/dsp'
-import { applyChain, chainImpulse } from './dsp/chain.js'
+import { render, sincInterp } from '@ee-labs/dsp'
+import { applyChain, chainImpulse, convKernel } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
 
 // What is actually happening, for the preset currently loaded.
@@ -288,12 +288,20 @@ const ENTRIES = {
   'Square = odd harmonics': (ctx) => {
     const f0 = ctx.sourceFreq || 250
     const N = ctx.sampleRate / f0
+    // The formula says 4A/kπ and the prediction must follow BOTH exposed
+    // controls: the amplitude slider (this hard-coded A = 1 once, so halving
+    // the amp crossed every row against correct physics) and the type select.
+    const A = ctx.sourceAmp || 1
+    const notSquare =
+      ctx.sourceType !== 'square'
+        ? 'The source is no longer a square wave, so the square-wave series does not apply.'
+        : null
     const rows = [1, 3, 5].map((k) => ({
       label: `harmonic ${k} (${k * f0} Hz)`,
-      predicted: (4 / (k * Math.PI)) * discreteBoost(k, N),
+      predicted: ((4 * A) / (k * Math.PI)) * discreteBoost(k, N),
       measured: ctx.at(k * f0),
       tol: 0.05,
-      unchecked: harmonicCheck(ctx, k),
+      unchecked: notSquare || harmonicCheck(ctx, k),
     }))
     // Predicted exactly zero, so a relative tolerance cannot judge it. -80 dB
     // against a fundamental of 1.27 is unambiguously absent; what is actually
@@ -302,8 +310,8 @@ const ENTRIES = {
       label: 'harmonic 2 (absent)',
       predicted: 0,
       measured: ctx.at(2 * f0),
-      abs: 1e-4,
-      unchecked: harmonicCheck(ctx, 2),
+      abs: 1e-4 * Math.max(A, 0.1),
+      unchecked: notSquare || harmonicCheck(ctx, 2),
     })
     return {
       blocks: [
@@ -318,8 +326,13 @@ const ENTRIES = {
         ),
         T(
           'A SAMPLED square is not quite the continuous series, though. Summing N samples per ' +
-            'period instead of integrating multiplies each harmonic by a small factor — 0.2% at ' +
-            'the fundamental, 4% by the fifth:',
+            'period instead of integrating multiplies each harmonic by a small factor' +
+            // Live numbers, not the N = 32 values baked into prose: at other
+            // sample rates or frequencies "0.2% and 4%" were simply wrong.
+            (Number.isFinite(discreteBoost(1, N)) && Number.isFinite(discreteBoost(5, N)) && N > 5
+              ? ` — ${sig((discreteBoost(1, N) - 1) * 100, 2)}% at the fundamental, ` +
+                `${sig((discreteBoost(5, N) - 1) * 100, 2)}% by the fifth:`
+              : ', growing with k:'),
         ),
         F('\\hat{A}_k = \\frac{4A}{k\\pi}\\cdot\\frac{k\\pi/N}{\\sin(k\\pi/N)}, \\qquad N = f_s/f_0'),
         T(
@@ -362,7 +375,15 @@ const ENTRIES = {
             // wave's own (k(pi)/N)/sin(k(pi)/N) correction differs between the
             // fundamental and the third and skews the ratio: 20% out for a
             // square at eight samples per period, 35% for a triangle.
+            // And the law belongs to waveforms with corners: a sine has no
+            // third harmonic at all, so the ratio there measures the noise
+            // floor rather than anything this formula predicts.
             unchecked:
+              (ctx.sourceType !== 'square' &&
+              ctx.sourceType !== 'triangle' &&
+              ctx.sourceType !== 'sawtooth'
+                ? 'This source has no harmonic series for the decay law to describe — pick a square, triangle or sawtooth.'
+                : null) ||
               harmonicCheck(ctx, 1) ||
               harmonicCheck(ctx, 3) ||
               (ctx.sampleRate / f0 < 16 ? NOTE_COARSE : null),
@@ -381,7 +402,13 @@ const ENTRIES = {
           'narrower. That is the Gibbs phenomenon.',
       ),
       F('S_M(t) = \\frac{4A}{\\pi}\\sum_{m=0}^{M} \\frac{\\sin\\bigl(2\\pi(2m+1)f_0t\\bigr)}{2m+1}'),
-      F('\\lim_{M\\to\\infty} \\max_t S_M(t) = A\\cdot 1.0895\\ldots'),
+      // (2/π)·Si(π) = 1.17898…: the partial sums overshoot the +A plateau by
+      // 8.95% OF THE 2A JUMP, i.e. 0.179·A. The old line printed A·1.0895 —
+      // the 8.95% applied to the wrong base, off by a factor of two, and
+      // contradicting the "9% of the jump" sentence above it.
+      F(
+        '\\lim_{M\\to\\infty} \\max_t S_M(t) = \\frac{2A}{\\pi}\\,\\mathrm{Si}(\\pi) = A\\cdot 1.17898\\ldots',
+      ),
     ],
   }),
 
@@ -572,7 +599,10 @@ const ENTRIES = {
             'the input spectrum times the filter, bin by bin — and this filter keeps the TOP ' +
             'of the series instead of the bottom.',
         ),
-        F('Y(f) = H(f)\,X(f)'),
+        // Double backslash, or JS eats it and the page typesets a literal
+        // comma: "Y(f) = H(f),X(f)". A test now greps the source for the
+        // single-backslash form of every spacing macro.
+        F('Y(f) = H(f)\\,X(f)'),
         T(
           'The time view is the real lesson. A plateau is a stretch of not-changing — low ' +
             'frequency — so the flat tops die toward zero. An edge is the fastest change the ' +
@@ -625,15 +655,25 @@ const ENTRIES = {
           ? { v: 1, why: 'band-pass: pinned at 1 whatever Q says — Q sets the width here' }
           : b.type === 'notch'
             ? { v: 0, why: 'notch: exactly zero at the centre', abs: 0.02 }
-            : cornered
-              ? {
-                  v: Math.SQRT1_2,
-                  why:
-                    order === 1
-                      ? 'order 1: one pole cannot resonate — the corner sits at −3.01 dB'
-                      : 'order 4 Butterworth: −3.01 dB at the corner, whatever the order',
-                }
-              : { v: b.params.q, why: null }
+            : b.type === 'allpass'
+              ? { v: 1, why: 'all-pass: |H| is 1 everywhere — only the phase moves, whatever Q says' }
+              : b.type === 'peaking'
+                ? {
+                    v: Math.pow(10, (b.params.gainDb || 0) / 20),
+                    why: 'peaking: the peak is the GAIN setting, not Q — Q sets the width here',
+                  }
+                : cornered
+                  ? {
+                      v: Math.SQRT1_2,
+                      why:
+                        order === 1
+                          ? 'order 1: one pole cannot resonate — the corner sits at −3.01 dB'
+                          : 'order 4 Butterworth: −3.01 dB at the corner, whatever the order',
+                    }
+                  : b.type === 'lowpass' || b.type === 'highpass'
+                    ? { v: b.params.q, why: null }
+                    : null
+      if (expect) {
       rows.push({
         label: expect.why ? `|H| at the corner — ${expect.why}` : 'peak |H| at cutoff',
         predicted: expect.v,
@@ -648,6 +688,19 @@ const ENTRIES = {
           measured: 20 * Math.log10(peak),
           unit: 'dB',
           tol: 0.05,
+        })
+      }
+      } else {
+        // A block this panel has no closed-form peak for (raw coefficients,
+        // an FIR, a comb): the curve is still drawn, but there is no single
+        // "peak = Q" claim to check, and pretending Q predicts it would print
+        // a cross against correct physics.
+        rows.push({
+          label: '|H| at this block’s peak',
+          predicted: NaN,
+          measured: NaN,
+          unchecked:
+            'This block type has no single peak-equals-Q claim; read the response curve directly.',
         })
       }
     }
@@ -708,7 +761,13 @@ const ENTRIES = {
         ]),
         V([
           { label: 'null spacing fₛ/N', value: spacing, unit: 'Hz' },
-          { label: 'nulls below Nyquist', value: Math.floor(fs / 2 / spacing) },
+          {
+            label: 'nulls below Nyquist',
+            // Strictly below: for even N the N/2-th null lands exactly AT
+            // Nyquist, and floor() was counting it.
+            value: Math.ceil(fs / 2 / spacing) - 1,
+            note: N % 2 === 0 ? 'plus one exactly at Nyquist' : '',
+          },
           { label: 'group delay (N−1)/2', value: (N - 1) / 2, unit: 'samples' },
         ]),
       ],
@@ -749,7 +808,7 @@ const ENTRIES = {
         V([
           { label: 'group delay', value: M, unit: 'samples' },
           { label: 'group delay', value: (1000 * M) / ctx.sampleRate, unit: 'ms' },
-          { label: 'cutoff in dB', value: -6.02, unit: 'dB', note: 'a biquad’s is −3.01' },
+          { label: 'cutoff in dB', value: -6.02, unit: 'dB', note: 'a Q = 0.707 biquad’s is −3.01' },
           { label: 'multiply-adds per sample', value: N, note: 'a biquad needs 5' },
         ]),
       ],
@@ -845,8 +904,12 @@ const ENTRIES = {
         ),
         C([
           {
-            label: 'largest |H| in the passband',
-            predicted: 1.085,
+            // The limit is the Gibbs constant 1 + 0.0895 (of the unit step),
+            // approached from below as taps grow: 101 taps measures 1.0799.
+            // The old prediction printed 1.085 — a number that is neither the
+            // limit nor any finite-tap value, passing only by tolerance.
+            label: 'largest |H| in the passband (→ 1.0895 as taps grow)',
+            predicted: 1.0895,
             measured: top,
             tol: 0.05,
             unchecked: tapered
@@ -922,19 +985,30 @@ const ENTRIES = {
   },
 
   'Convolution, watched': (ctx) => {
-    const N = ctx.blocks[0] ? ctx.blocks[0].params.taps : 8
+    const N = (ctx.blocks[0] && ctx.blocks[0].params.taps) || 8
     const fs = ctx.sampleRate
     const src = ctx.sources[0] || { freq: 250, amp: 0.8 }
     // Two genuinely different paths to the same sample: the chain's stateful
     // processors, and a dot product against the kernel measured by impulse.
     // For an LTI chain they must agree to rounding — that agreement is the
-    // entire content of the word "convolution".
+    // entire content of the word "convolution". The kernel is sized by the
+    // chain's own ring time (convKernel), so a block swapped for an IIR does
+    // not silently truncate the sum.
     const n = Math.max(N, Math.round(fs / src.freq / 4) - 1) // mid flat top
     const x = render(ctx.sources, n + 1, fs, 0)
     const y = applyChain(ctx.blocks, x, fs, 0)
-    const { h } = chainImpulse(ctx.blocks, 4 * N, fs)
+    const { h, exact } = chainImpulse(ctx.blocks, convKernel(ctx.blocks, fs).n, fs)
     let dot = 0
     for (let k = 0; k < h.length && k <= n; k++) dot += h[k] * x[n - k]
+    // The flat-top row's own preconditions, both movable from the controls:
+    // a square wave, whose half-period holds at least N samples.
+    const half = fs / src.freq / 2
+    const flatTopNote =
+      ctx.sourceType !== 'square'
+        ? 'The source is not a square wave, so there is no flat top for the average to sit on.'
+        : half < N
+          ? 'The half-period is shorter than the kernel, so the window never sees a whole flat top.'
+          : null
     return {
       blocks: [
         T('Every output sample is one number: the kernel times the recent past, summed.'),
@@ -951,12 +1025,16 @@ const ENTRIES = {
             measured: y[n],
             tol: 1e-9,
             abs: 1e-9,
+            unchecked: exact
+              ? null
+              : 'The chain is not LTI here, and the two paths deliberately disagree — that disagreement is the lesson.',
           },
           {
             label: 'on a flat top the average IS the amplitude',
             predicted: src.amp,
             measured: y[n],
             tol: 0.001,
+            unchecked: flatTopNote,
           },
         ]),
         T(
@@ -1001,14 +1079,23 @@ const ENTRIES = {
   'Two filters are steeper': (ctx) => {
     const rows = []
     if (ctx.blocks.length >= 2) {
-      const one = designBiquad({ mode: ctx.blocks[0].type, ...ctx.blocks[0].params }, ctx.sampleRate)
+      const [b1, b2] = ctx.blocks
+      const def = BLOCK_TYPES[b1.type]
+      // Predicted through the block's own response() — which follows the
+      // ORDER select — not through designBiquad, which is order-2 only and
+      // marked an order-4 cascade's correct physics wrong (the very trap the
+      // harmonicRatioRows comment warns about).
+      const same = b1.type === b2.type && JSON.stringify(b1.params) === JSON.stringify(b2.params)
       for (const f of [1600, 3200]) {
-        const h = biquadResponse(one, f, ctx.sampleRate)
+        const h = def.response ? def.response(b1.params, f, ctx.sampleRate) : NaN
         rows.push({
           label: `|H|² at ${f} Hz`,
           predicted: h * h,
           measured: ctx.respAt(f),
           tol: 0.02,
+          unchecked: same
+            ? null
+            : 'The two blocks are no longer identical, so the chain is H₁·H₂ rather than a square.',
         })
       }
     }
@@ -1037,8 +1124,13 @@ const ENTRIES = {
     // Butterworth section Qs for order N, from the pole angles.
     const bw = (N) =>
       Array.from({ length: N / 2 }, (_, k) => 1 / (2 * Math.cos(((2 * k + 1) * Math.PI) / (2 * N))))
+    // The Butterworth claim needs BOTH knobs honest: the Q pair, and each
+    // block still being a single second-order section. Flip either block's
+    // order select to 4 and the chain is 8th order — |H(fc)| = 0.5, and
+    // −3.01 dB would be a cross against correct physics.
     const isBw =
       qs.length === 2 &&
+      ctx.blocks.every((b) => b.type === 'lowpass' && Number(b.params.order ?? 2) === 2) &&
       bw(4).every((q, i) => Math.abs(qs[i] - q) < 0.01)
 
     return {
@@ -1083,7 +1175,7 @@ const ENTRIES = {
             tol: 0.02,
             unchecked: isBw
               ? null
-              : 'The two Q values are no longer the Butterworth pair, so −3.01 dB is not what this cascade is aiming for.',
+              : 'This is no longer the pair of second-order Butterworth sections (the Qs or the order select moved), so −3.01 dB is not what this cascade is aiming for.',
           },
         ]),
       ],
@@ -1104,9 +1196,9 @@ const ENTRIES = {
       ),
       F('x[n] = \\delta[n] \\;\\Rightarrow\\; y[n] = h[n], \\qquad |X(f)| = \\text{constant}'),
       T(
-        'That flat level sits low on the dB axis, at 2/N for an N-point frame, because one ' +
-          'sample of energy is being shared out across every bin. It is the shape that matters, ' +
-          'not the height.',
+        'That flat level sits low on the dB axis, at 2/N for an N-point frame read without an ' +
+          'analysis window, because one sample of energy is being shared out across every bin. ' +
+          'It is the shape that matters, not the height.',
       ),
       C([
         {
@@ -1114,9 +1206,15 @@ const ENTRIES = {
           predicted: 2 / ctx.fftSize,
           measured: ctx.dryAt ? ctx.dryAt(ctx.sampleRate / 4) : NaN,
           tol: 0.1,
-          unchecked: ctx.dryAt
-            ? null
-            : 'Turn on "show pre-chain spectrum" to measure the input level.',
+          // 2/N is the RECTANGULAR-window value. Every taper is zero (or
+          // nearly) at the frame edge, which is exactly where this impulse
+          // sits — under Hann the measured level is literally 0, and a ✗
+          // there would be marking the window's own arithmetic wrong.
+          unchecked: !ctx.dryAt
+            ? 'Turn on "show pre-chain spectrum" to measure the input level.'
+            : ctx.state.window !== 'none'
+              ? 'The 2/N level holds for the rectangular window ("none"); the current window tapers to zero at the frame edge, where this impulse sits.'
+              : null,
         },
       ]),
     ],
@@ -1137,9 +1235,11 @@ const ENTRIES = {
         T('Driven by a step, its overshoot above the final value is'),
         F('M_p = \\exp\\!\\left(\\frac{-\\pi\\zeta}{\\sqrt{1-\\zeta^{2}}}\\right), \\qquad \\zeta < 1'),
         T(
-          'At ζ = 1/√2, meaning Q = 0.707, the overshoot is essentially gone and the response ' +
-            'is as fast as it can be without ringing. That is the same Q that gives the flattest ' +
-            'possible passband — the Butterworth condition, arrived at from the time side.',
+          'At ζ = 1/√2, meaning Q = 0.707, the step still overshoots — by 4.3%, as the row ' +
+            'below computes. Truly overshoot-free needs ζ ≥ 1, which is Q ≤ 0.5. What ' +
+            'Q = 0.707 buys instead is the flattest possible passband — the Butterworth ' +
+            'condition — at the price of that last few percent of ringing. Flat in frequency ' +
+            'and clean in time are two different requests.',
         ),
         V([
           { label: 'damping ζ = 1/2Q', value: zeta },
@@ -1176,7 +1276,9 @@ const ENTRIES = {
           'terms generate odd harmonics, even terms generate even ones:',
       ),
       F('y = a_1x + a_2x^{2} + a_3x^{3} + \\ldots'),
-      F('x^{2} = \\tfrac{1}{2}\\bigl(1 - \\cos 2\\omega t\\bigr) \\quad\\text{(second harmonic, and DC)}'),
+      F(
+        'x^{2} = \\tfrac{1}{2}\\bigl(1 - \\cos 2\\omega t\\bigr) \\quad\\text{(for } x = \\sin\\omega t\\text{: second harmonic, and DC)}',
+      ),
       T(
         'A symmetric clipper has only odd terms, so a₂ = 0 and the even harmonics never appear. ' +
           'Adding an offset moves the operating point to where the curve is no longer symmetric ' +
@@ -1254,20 +1356,26 @@ const ENTRIES = {
   Comb: (ctx) => {
     const b = ctx.blocks[0]
     const D = b ? Math.max(1, Math.round((b.params.delayMs / 1000) * ctx.sampleRate)) : 1
+    const g = b ? Math.max(-0.95, Math.min(0.95, b.params.g)) : 0.9
     const spacing = ctx.sampleRate / D
     return {
       blocks: [
-        T('Adding a delayed copy gives a transfer function with evenly spaced nulls:'),
+        T('Adding a delayed copy gives a transfer function with evenly spaced notches:'),
         F('H(z) = 1 + g\\,z^{-D} \\qquad |H(f)| = \\bigl|1 + g\\,e^{-j2\\pi fD/f_s}\\bigr|'),
         T(
-          'The two terms cancel wherever the delay is an odd number of half periods, which ' +
-            'happens every f_s/D hertz. Feeding the output back instead inverts the shape — the ' +
-            'nulls become resonances, and the filter is now IIR:',
+          'For positive g the two terms oppose wherever the delay is an odd number of half ' +
+            'periods — every f_s/D hertz — dipping to 1 − g, a full cancel only at g = 1. ' +
+            '(Negative g swaps the pattern: the notches move to whole periods.) Feeding the ' +
+            'output back instead puts the same comb in the DENOMINATOR, and a dip downstairs ' +
+            'is a peak upstairs — so the peaks land at multiples of f_s/D, midway between ' +
+            'where the feed-forward notches were, not on top of them:',
         ),
         F('H(z) = \\frac{1}{1 - g\\,z^{-D}}'),
         V([
           { label: 'delay D', value: D, unit: 'samples' },
           { label: 'notch spacing', value: spacing, unit: 'Hz' },
+          { label: 'feed-forward notch floor |1 − |g||', value: Math.abs(1 - Math.abs(g)) },
+          { label: 'feedback peak height 1/(1 − |g|)', value: 1 / (1 - Math.abs(g)) },
         ]),
       ],
     }
@@ -1278,7 +1386,10 @@ const ENTRIES = {
     const bits = b ? b.params.bits : 8
     return {
       blocks: [
-        T('Rounding to a grid of step Δ leaves an error bounded by half a step:'),
+        T(
+          'Rounding to a grid of step Δ leaves an error bounded by half a step (except right ' +
+            'at +full scale, where a converter’s top code sits one step shy):',
+        ),
         F('\\Delta = \\frac{2}{2^{N}}, \\qquad |e| \\le \\frac{\\Delta}{2}'),
         T(
           'If that error were uniformly distributed and independent of the signal, its power ' +
@@ -1345,6 +1456,7 @@ export function mathContext({ state, freqs, amps, ghostAmps, resp, peakFreq }) {
     fftSize: state.fftSize,
     sourceFreq: first ? first.freq : 0,
     sourceType: first ? first.type : 'sine',
+    sourceAmp: first ? first.amp : 1,
     peakFreq,
     at: peakNear(amps),
     dryAt: ghostAmps ? peakNear(ghostAmps) : null,
