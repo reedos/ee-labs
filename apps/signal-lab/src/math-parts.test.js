@@ -140,6 +140,90 @@ describe('source math', () => {
     const text = e.blocks.filter((b) => b.kind === 'text').map((b) => b.text).join(' ')
     expect(text).toMatch(/alias/i)
   })
+
+  describe('a band-limited square', () => {
+    // 125 Hz is bin 64 of 8000/4096, so every odd harmonic lands on a bin
+    // centre and the panel's amplitude check is a real comparison.
+    const bl = (partials, over = {}) =>
+      sourceMath(src({ type: 'square', freq: 125, partials, ...over }), CTX)
+
+    it('checks out numerically for every partial count that fits', () => {
+      const bad = []
+      for (const P of [1, 2, 3, 5, 9, 16]) bad.push(...checkFailures(bl(P), `square N=${P}`))
+      expect(bad).toEqual([])
+    })
+
+    it('renders valid TeX for the truncated series', () => {
+      for (const P of [1, 4, 16]) expect(texFailures(bl(P), `N=${P}`)).toEqual([])
+      const tex = bl(4).blocks.find((b) => b.kind === 'formula').tex
+      expect(tex).toMatch(/sum/)
+      expect(tex).toMatch(/m=0/)
+      expect(tex).toContain('{3}') // stops at m = N-1
+    })
+
+    it('predicts the truncated RMS, not A', () => {
+      const row = rowsOf(bl(3, { amp: 2 }), 'check').find((r) => r.label === 'RMS')
+      let acc = 0
+      for (let m = 0; m < 3; m++) acc += 1 / ((2 * m + 1) * (2 * m + 1))
+      expect(row.predicted).toBeCloseTo(2 * (4 / Math.PI) * Math.sqrt(acc / 2), 9)
+      expect(row.predicted).toBeLessThan(2) // strictly under the naive square's A
+    })
+
+    it('declines to predict the crest factor, because Gibbs owns it', () => {
+      const row = rowsOf(bl(8), 'check').find((r) => r.label === 'crest factor')
+      expect(row.predicted).toBeNull()
+      expect(row.unchecked).toMatch(/Gibbs/)
+      // ...but the naive square still claims its exact 1.
+      expect(rowsOf(bl(0), 'check').find((r) => r.label === 'crest factor').predicted).toBe(1)
+    })
+
+    it('reports nothing folding, because nothing is left above the top harmonic', () => {
+      const labels = rowsOf(bl(4), 'values').map((r) => r.label)
+      expect(labels).not.toContain('first harmonic past Nyquist')
+      expect(labels).not.toContain('it folds back to')
+      // The naive square at the same frequency does fold, and still says so.
+      expect(rowsOf(bl(0), 'values').map((r) => r.label)).toContain('it folds back to')
+    })
+
+    it('names the rate the top harmonic demands and whether it is met', () => {
+      // N = 4 tops out at the 7th harmonic: 875 Hz, needing fs > 1750 Hz.
+      // At 8 kHz that clears.
+      const rows = rowsOf(bl(4), 'values')
+      expect(rows.find((r) => r.label === 'highest harmonic (7·f₀)').value).toBeCloseTo(875, 9)
+      expect(rows.find((r) => r.label === 'rate this demands').value).toBeCloseTo(1750, 9)
+      expect(rows.find((r) => r.label === 'rate in use').note).toMatch(/clears it/)
+
+      // N = 20 tops out at the 39th: 4875 Hz, past the 4 kHz Nyquist.
+      const tight = rowsOf(bl(20), 'values')
+      expect(tight.find((r) => r.label === 'rate this demands').value).toBeCloseTo(9750, 9)
+      expect(tight.find((r) => r.label === 'rate in use').note).toMatch(/short by/)
+      // And the harmonic it names has folded, so the panel must not claim to
+      // have measured it.
+      const amp = rowsOf(bl(20), 'check').find((r) => /39th harmonic/.test(r.label))
+      expect(amp.unchecked).toMatch(/above Nyquist/)
+    })
+
+    it('is strict at exactly twice the top harmonic, not merely equal', () => {
+      // fs = 2*fmax is the degenerate case, not a passing one: the samples
+      // land at a fixed phase of the top harmonic and can miss it entirely.
+      const at = sourceMath(src({ type: 'square', freq: 125, partials: 32 }), {
+        ...CTX,
+        sampleRate: 2 * 63 * 125,
+      })
+      const note = rowsOf(at, 'values').find((r) => r.label === 'rate in use').note
+      expect(note).not.toMatch(/clears it/)
+      expect(note).not.toMatch(/short by 0/)
+      expect(note).toMatch(/exactly twice it/)
+      // One hair above, and it passes.
+      const above = sourceMath(src({ type: 'square', freq: 125, partials: 32 }), {
+        ...CTX,
+        sampleRate: 2 * 63 * 125 + 1,
+      })
+      expect(rowsOf(above, 'values').find((r) => r.label === 'rate in use').note).toMatch(
+        /clears it/,
+      )
+    })
+  })
 })
 
 describe('block math', () => {

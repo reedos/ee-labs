@@ -1,5 +1,5 @@
 import React from 'react'
-import { LabNav, NumField } from '@ee-labs/ui'
+import { LabNav, NumField, fmtHz } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { sourceMath } from '../math-parts.js'
 import { PRESET_GROUPS } from '../presets.js'
@@ -9,6 +9,13 @@ import { BLOCK_GROUPS, BLOCK_TYPES, makeBlockRecord } from '../dsp/blocks.js'
 import { termsFor } from '../terms.js'
 
 const HZ = { k: 1e3, khz: 1e3, hz: 1 }
+
+/** 1st, 3rd, 5th, 11th — the ordinal suffix, for naming a harmonic. */
+const ord = (n) => {
+  const t = n % 100
+  if (t >= 11 && t <= 13) return 'th'
+  return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'
+}
 
 function Source({ src, sampleRate, onChange, onRemove, canRemove , fftSize}) {
   const set = (k, v) => onChange({ ...src, [k]: v })
@@ -43,6 +50,40 @@ function Source({ src, sampleRate, onChange, onRemove, canRemove , fftSize}) {
           ×
         </button>
       </div>
+
+      {src.type === 'square' && (
+        <NumField
+          label="Odd harmonics"
+          value={src.partials || 0}
+          onChange={(v) => set('partials', Math.max(0, Math.round(v)))}
+          min={0}
+          max={64}
+          step={1}
+          decimals={0}
+          scale="linear"
+          presets={[
+            { value: 0, label: 'all', title: 'The naive square: harmonics forever, and whatever is above Nyquist folds back' },
+            1,
+            3,
+            5,
+            9,
+            { value: 16, label: '16' },
+          ]}
+          hint={
+            src.partials > 0
+              ? `stops at ${fmtHz((2 * src.partials - 1) * src.freq)}Hz — the ${
+                  2 * src.partials - 1
+                }${ord(2 * src.partials - 1)} harmonic. Perfect reconstruction needs a rate above ${fmtHz(
+                  2 * (2 * src.partials - 1) * src.freq,
+                )}Hz${
+                  sampleRate > 2 * (2 * src.partials - 1) * src.freq
+                    ? ' — this rate clears it, so nothing folds'
+                    : ' — this rate does NOT, so the top harmonics fold back'
+                }.`
+              : 'A real square has harmonics forever, so something always folds. Set a count to band-limit it and the sampling theorem becomes satisfiable.'
+          }
+        />
+      )}
 
       {src.type !== 'noise' && (
         <NumField

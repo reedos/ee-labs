@@ -10,7 +10,15 @@ import { BLOCK_TYPES } from './dsp/blocks.js'
 //
 // Grouped as a rough curriculum. Order within a group is the order to read them.
 
-const mk = (id, type, freq, amp, phase = 0) => ({ id, type, freq, amp, phase, enabled: true })
+const mk = (id, type, freq, amp, phase = 0, extra = null) => ({
+  id,
+  type,
+  freq,
+  amp,
+  phase,
+  enabled: true,
+  ...extra,
+})
 
 const bk = (id, type, params) => ({
   id,
@@ -224,6 +232,36 @@ export const PRESETS = [
       sampleRate: 8000,
       timeSpanMs: 3,
       spanCycles: 8,
+    },
+  },
+  {
+    group: 'Sampling',
+    name: 'A square that fits',
+    terms: ['sampled', 'nyquist', 'harmonic', 'aliasing'],
+    note:
+      'Every other lesson here samples a signal with harmonics running to infinity, so ' +
+      'something always folds and the theorem can only be approached. This one can be ' +
+      'satisfied. "Odd harmonics: 5" builds the square from its first five odd terms and then ' +
+      'stops — 1st through 9th, topping out at 2531 Hz — so it has a highest frequency, a ' +
+      'finite number, and 8 kHz is comfortably more than twice it. Look at the spectrum: five ' +
+      'lines, nothing above the 9th, and no floor between them. These samples are not an ' +
+      'approximation of this signal, they ARE it. Now raise the count to 8. The 15th harmonic ' +
+      'lands at 4219 Hz, past the 4 kHz Nyquist, and reappears at 3781 Hz — between harmonics, ' +
+      'where nothing belongs, and no measurement of the samples can tell you it does not. Set ' +
+      'the count back to "all" for the real square, and the whole spectrum fills with the ' +
+      'infinite tail folding down on itself. The corners you gain in the time view are exactly ' +
+      'what you cannot afford at this rate.',
+    patch: {
+      // 281.25 Hz is bin 72 of 8000/2048, so every harmonic lands on a bin
+      // centre and the lines are sharp. fs/f0 = 28.44 is deliberately NOT an
+      // integer: the folds then land BETWEEN harmonics and are visible as
+      // their own lines, rather than hiding on top of the comb.
+      sources: [mk(1, 'square', 281.25, 1, 0, { partials: 5 })],
+      sampleRate: 8000,
+      fftSize: 2048,
+      timeSpanMs: 12,
+      spanCycles: 3,
+      showHarmonics: true,
     },
   },
   {

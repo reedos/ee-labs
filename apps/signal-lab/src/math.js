@@ -583,6 +583,127 @@ const ENTRIES = {
     }
   },
 
+  'A square that fits': (ctx) => {
+    const src = ctx.sources.find((s) => s.enabled && s.type === 'square')
+    const P = src ? Math.round(Number(src.partials) || 0) : 0
+    const f0 = src ? src.freq : ctx.sourceFreq || 0
+    const A = src ? src.amp : 1
+    const fs = ctx.sampleRate
+    const nyq = fs / 2
+    const binHz = fs / ctx.fftSize
+    const top = (2 * P - 1) * f0
+    const fold = (f) => Math.abs(f - fs * Math.round(f / fs))
+
+    if (!src || P <= 0) {
+      // The reader has set the count back to "all", which the note asks for.
+      // The band-limited arithmetic does not describe this signal, so the
+      // panel says what changed rather than printing rows about a series
+      // that no longer terminates.
+      return {
+        blocks: [
+          T(
+            'The source is a full square wave again — the series runs to infinity, so there is ' +
+              'no highest frequency to sample twice and no rate that makes this exact. Every ' +
+              'harmonic above Nyquist folds down and lands somewhere in the spectrum below, ' +
+              'which is the floor now filling the gaps between the lines.',
+          ),
+          F(
+            'x(t) = \\frac{4A}{\\pi}\\sum_{m=0}^{\\infty} \\frac{\\sin\\bigl(2\\pi(2m+1)f_0 t\\bigr)}{2m+1}',
+          ),
+          T(
+            'Set "Odd harmonics" to a number and the sum stops there. That is the only ' +
+              'difference between a signal the sampling theorem can serve and one it cannot.',
+          ),
+        ],
+      }
+    }
+
+    // Every harmonic in the series, checked where it actually lands.
+    const rows = []
+    for (let m = 0; m < P; m++) {
+      const k = 2 * m + 1
+      const f = k * f0
+      const above = f > nyq
+      const at = fold(f)
+      // A fold landing on another harmonic adds to it rather than appearing
+      // alone, and then neither line is either one by itself.
+      let collides = false
+      for (let j = 0; j < P; j++) {
+        const kj = 2 * j + 1
+        if (kj !== k && Math.abs(fold(kj * f0) - at) < 2 * binHz) collides = true
+      }
+      rows.push({
+        label: above
+          ? `harmonic ${k} (${sig(f, 5)} Hz) — folds to ${sig(at, 5)} Hz`
+          : `harmonic ${k} (${sig(f, 5)} Hz)`,
+        // The generator sums sines exactly, so there is no sampled-square
+        // correction here: the coefficient is the continuous one.
+        predicted: (4 * A) / (k * Math.PI),
+        measured: ctx.at(at),
+        tol: 0.05,
+        unchecked: collides
+          ? 'This one folds onto another harmonic, so the line there is their sum and not either alone.'
+          : at < 2 * binHz || Math.abs(at - nyq) < 2 * binHz
+            ? 'Lands on DC or exactly on Nyquist, where a single-sided spectrum counts amplitude differently.'
+            : Math.abs(at / binHz - Math.round(at / binHz)) > 1e-6
+              ? NOTE_OFF_BIN
+              : null,
+      })
+    }
+    // The claim that makes this preset different from every other one: past
+    // the last harmonic there is nothing, and nothing is a measurable value.
+    if (top < nyq) {
+      let mx = 0
+      for (let i = 0; i < ctx.freqs.length; i++) {
+        if (ctx.freqs[i] > top + 4 * binHz && ctx.amps[i] > mx) mx = ctx.amps[i]
+      }
+      rows.push({
+        label: `everything above ${sig(top, 5)} Hz (nothing)`,
+        predicted: 0,
+        measured: mx,
+        abs: 1e-4 * Math.max(A, 0.1),
+      })
+    }
+
+    return {
+      blocks: [
+        T(
+          `Stop the square's series after ${P} odd term${P === 1 ? '' : 's'} and it becomes a ` +
+            'different kind of object: one with a highest frequency. That is the property the ' +
+            'sampling theorem is actually about — not smoothness, not shape, just whether there ' +
+            'is a frequency above which the signal is silent.',
+        ),
+        F(
+          `x(t) = \\frac{4A}{\\pi}\\sum_{m=0}^{${P - 1}} ` +
+            '\\frac{\\sin\\bigl(2\\pi(2m+1)f_0 t\\bigr)}{2m+1}, \\qquad f_{\\max} = (2N-1)f_0',
+        ),
+        T(
+          'And the theorem is an inequality, strictly: at exactly twice the highest frequency ' +
+            'the samples land at one fixed phase of it and can read anything from full ' +
+            'amplitude down to zero, which is what "Exactly at Nyquist" demonstrates.',
+        ),
+        F('f_s > 2f_{\\max}'),
+        V([
+          { label: 'terms kept', value: P, note: `harmonics 1 through ${2 * P - 1}, odd only` },
+          { label: 'highest frequency present', value: top, unit: 'Hz' },
+          { label: 'rate this demands', value: 2 * top, unit: 'Hz', note: 'strictly above' },
+          {
+            label: 'rate in use',
+            value: fs,
+            unit: 'Hz',
+            note:
+              fs > 2 * top
+                ? 'clears it — the samples describe this signal exactly, and the curve through them is it'
+                : fs === 2 * top
+                  ? 'exactly twice it: the excluded case, where the answer depends on sampling phase'
+                  : `short by ${sig(2 * top - fs, 4)} Hz — the top harmonics have folded`,
+          },
+        ]),
+        C(rows),
+      ],
+    }
+  },
+
   'Exactly at Nyquist': (ctx) => {
     const src = ctx.sources.find((s) => s.enabled)
     const phi = src ? src.phase : 0
@@ -1525,6 +1646,11 @@ export function mathContext({ state, freqs, amps, ghostAmps, resp, peakFreq }) {
     sourceType: first ? first.type : 'sine',
     sourceAmp: first ? first.amp : 1,
     peakFreq,
+    // The raw spectrum, for the one claim that is about the ABSENCE of lines
+    // rather than the height of one: "nothing above the top harmonic" cannot
+    // be checked by sampling a frequency, only by sweeping the axis.
+    freqs,
+    amps,
     at: peakNear(amps),
     dryAt: ghostAmps ? peakNear(ghostAmps) : null,
     respAt: (f) => (resp ? resp.mag[nearest(f)] : NaN),

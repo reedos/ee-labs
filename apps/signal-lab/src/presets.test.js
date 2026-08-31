@@ -846,3 +846,96 @@ describe('preset: Turn the rate down', () => {
     expect(worst).toBeLessThan(0.01)
   })
 })
+
+describe('preset: A square that fits', () => {
+  const P = () => byName('A square that fits').patch
+  const f0 = 281.25
+
+  it('every harmonic of the loaded shape lands on a bin centre', () => {
+    const p = P()
+    const binHz = p.sampleRate / p.fftSize
+    for (let k = 1; k <= 2 * p.sources[0].partials - 1; k += 2) {
+      expect(Number.isInteger((k * f0) / binHz), `${k}f0`).toBe(true)
+    }
+  })
+
+  it('the folds land BETWEEN harmonics, which is why they are visible at all', () => {
+    // fs/f0 must not be an integer, or every fold hides on top of a harmonic
+    // that is already there and the lesson shows nothing.
+    const p = P()
+    expect(Number.isInteger(p.sampleRate / f0)).toBe(false)
+  })
+
+  it('shows five lines at 4A/k(pi) and nothing above the 9th', () => {
+    const { at, freqs, amps } = run('A square that fits', { window: 'none' })
+    for (let k = 1; k <= 9; k += 2) {
+      expect(at(k * f0), `${k}f0`).toBeCloseTo(4 / (k * Math.PI), 3)
+    }
+    // No floor between them, and nothing at all past the top harmonic: this
+    // is the whole point — the samples describe the signal exactly.
+    for (let i = 0; i < freqs.length; i++) {
+      if (freqs[i] > 9 * f0 + 20) expect(amps[i], `${freqs[i].toFixed(0)} Hz`).toBeLessThan(1e-9)
+    }
+  })
+
+  it('quotes the top harmonic and the rate it needs correctly', () => {
+    const p = P()
+    const top = (2 * p.sources[0].partials - 1) * f0
+    expect(Math.round(top)).toBe(2531) // the note's number
+    expect(p.sampleRate).toBeGreaterThan(2 * top) // strictly
+  })
+
+  it('at 8 partials the 15th folds to 3781 Hz, off the comb — the note\u2019s numbers', () => {
+    const p = P()
+    const raised = [{ ...p.sources[0], partials: 8 }]
+    const { at } = run('A square that fits', { sources: raised, window: 'none' })
+    const fifteenth = 15 * f0 // 4218.75, above the 4 kHz Nyquist
+    expect(Math.round(fifteenth)).toBe(4219)
+    const fold = p.sampleRate - fifteenth
+    expect(Math.round(fold)).toBe(3781)
+    // It arrives at its folded amplitude...
+    expect(at(fold)).toBeCloseTo(4 / (15 * Math.PI), 3)
+    // ...at a frequency that is NOT a harmonic of the fundamental.
+    expect(Number.isInteger(fold / f0)).toBe(false)
+    // ...and the 13th, which still fits, is untouched.
+    expect(at(13 * f0)).toBeCloseTo(4 / (13 * Math.PI), 3)
+  })
+
+  it('the naive square fills the same spectrum with a folded tail', () => {
+    const p = P()
+    const naive = [{ ...p.sources[0], partials: 0 }]
+    const { freqs, amps } = run('A square that fits', { sources: naive, window: 'none' })
+    // Count lines sitting where no harmonic of f0 lives. The band-limited
+    // version has none; the real square has many.
+    const spurs = (a, f) => {
+      let n = 0
+      for (let i = 1; i < f.length; i++) {
+        if (a[i] > 1e-4 && Math.abs(f[i] / f0 - Math.round(f[i] / f0)) > 0.05) n++
+      }
+      return n
+    }
+    const clean = run('A square that fits', { window: 'none' })
+    expect(spurs(clean.amps, clean.freqs)).toBe(0)
+    expect(spurs(amps, freqs)).toBeGreaterThan(10)
+  })
+
+  it('the reconstruction through the samples IS the signal, to floating point', () => {
+    // The claim the note actually makes. Below Nyquist with a finite
+    // bandwidth, sin(x)/x through the dots recovers the continuous waveform.
+    const p = P()
+    const s = p.sources[0]
+    const n = 256
+    const buf = render(p.sources, n + 256, p.sampleRate, -128 / p.sampleRate)
+    let worst = 0
+    for (let t = 30; t < n - 30; t += 0.13) {
+      let truth = 0
+      for (let m = 0; m < s.partials; m++) {
+        const k = 2 * m + 1
+        truth += Math.sin((2 * Math.PI * k * s.freq * t) / p.sampleRate) / k
+      }
+      truth *= s.amp * (4 / Math.PI)
+      worst = Math.max(worst, Math.abs(sincInterp(buf, 128 + t, 128) - truth))
+    }
+    expect(worst).toBeLessThan(0.01)
+  })
+})

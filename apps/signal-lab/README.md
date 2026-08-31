@@ -53,6 +53,7 @@ what breaks.
 | Aliasing | What happens above half the sample rate. |
 | Turn the rate down | Move the knob you actually have, and watch which component folds first. |
 | Exactly at Nyquist | The same tone reads 0.000, 0.707 or 1.000 depending only on its phase. |
+| A square that fits | The one signal here the sampling theorem can actually be satisfied for — and what it costs. |
 | Resolution needs time | Two tones that will not separate until the frame is long enough. |
 | Spectral leakage | Why a clean tone smears, and what a window buys. |
 

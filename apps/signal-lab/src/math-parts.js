@@ -102,8 +102,37 @@ const WAVE_MATH = {
  * definition — which is exactly the bug the square wave had.
  */
 export function sourceMath(source, ctx) {
-  const w = WAVE_MATH[source.type]
-  if (!w) return null
+  const base = WAVE_MATH[source.type]
+  if (!base) return null
+
+  // A band-limited square is a different object from the naive one and its
+  // arithmetic follows: the series stops, so the RMS is the root-sum-square
+  // of the harmonics that are actually there rather than A, and there is no
+  // tail left to fold. Its PEAK has no elementary closed form — truncating
+  // the series is what produces Gibbs overshoot — so the crest row states
+  // that instead of predicting it.
+  const P = source.type === 'square' ? Math.round(Number(source.partials) || 0) : 0
+  const w =
+    P > 0
+      ? {
+          ...base,
+          tex: `x(t) = \\frac{4A}{\\pi}\\sum_{m=0}^{${P - 1}}\\frac{\\sin\\bigl(2\\pi(2m+1)f_0t\\bigr)}{2m+1}`,
+          rms: (a) => {
+            let acc = 0
+            for (let m = 0; m < P; m++) acc += 1 / ((2 * m + 1) * (2 * m + 1))
+            return a * (4 / Math.PI) * Math.sqrt(acc / 2)
+          },
+          crest: null,
+          // Nothing exists above the last harmonic, so nothing folds from there.
+          coeff: null,
+          harmonics:
+            `The same series as a square, stopped after ${P} odd harmonic${P === 1 ? '' : 's'} — so its ` +
+            `highest component is exactly ${2 * P - 1}·f₀, a finite number where a real square's is ` +
+            'infinite. That is what makes it the one waveform here whose sampling requirement can ' +
+            'be met rather than merely approached: clear twice that frequency and the samples ' +
+            'describe it perfectly, with nothing left over to fold.',
+        }
+      : base
 
   const { sampleRate, fftSize } = ctx
   const A = source.amp
@@ -163,7 +192,10 @@ export function sourceMath(source, ctx) {
           predicted: w.crest,
           measured: measuredPeak / (measuredRms || 1e-12),
           tol: 0.05,
-          unchecked: coarse,
+          unchecked:
+            w.crest == null
+              ? 'A truncated series overshoots at each edge — Gibbs — and that peak has no elementary closed form to predict, so it is measured and not claimed.'
+              : coarse,
         },
       ]),
     )
@@ -223,6 +255,61 @@ export function sourceMath(source, ctx) {
     for (let j = Math.max(0, i - 1); j <= Math.min(measured.amps.length - 1, i + 1); j++)
       best = Math.max(best, measured.amps[j])
     return best
+  }
+
+  // The band-limited square is the only source here that can SATISFY the
+  // sampling theorem rather than approach it, so the panel says what it costs
+  // and then checks that it was paid.
+  if (P > 0 && f0 > 0) {
+    const top = (2 * P - 1) * f0
+    const need = 2 * top
+    const clears = sampleRate > need
+    const onBin = Math.abs(top / measBin - Math.round(top / measBin)) < 1e-6
+    blocks.push(
+      T(
+        'A signal built from a finite set of harmonics has a highest one, and the sampling ' +
+          'theorem asks for a rate STRICTLY above twice it. Meet that and the samples carry the ' +
+          'whole signal: the reconstruction through them is not an approximation of this ' +
+          'waveform, it is this waveform. Miss it and the harmonics that no longer fit fold ' +
+          'down and land on top of the ones that do.',
+      ),
+      F('f_s > 2f_{\\max}, \\qquad f_{\\max} = (2N-1)f_0'),
+      V([
+        { label: `highest harmonic (${2 * P - 1}·f₀)`, value: top, unit: 'Hz' },
+        { label: 'rate this demands', value: need, unit: 'Hz', note: 'strictly above' },
+        {
+          label: 'rate in use',
+          value: sampleRate,
+          unit: 'Hz',
+          note: clears
+            ? 'clears it — nothing folds'
+            : sampleRate === need
+              ? 'exactly twice it, which is the one case the inequality excludes: two ' +
+                'samples per cycle land at a fixed phase of that harmonic, and depending ' +
+                'on which phase, they read anything from its full amplitude down to zero'
+              : `short by ${sig(need - sampleRate, 4)} Hz — the top harmonics fold`,
+        },
+      ]),
+      C([
+        {
+          label: `amplitude of the ${2 * P - 1}${(() => {
+            const t = (2 * P - 1) % 100
+            if (t >= 11 && t <= 13) return 'th'
+            return { 1: 'st', 2: 'nd', 3: 'rd' }[(2 * P - 1) % 10] || 'th'
+          })()} harmonic, 4A/${2 * P - 1}π`,
+          predicted: (4 * A) / ((2 * P - 1) * Math.PI),
+          measured: measured ? ampNear(top) : NaN,
+          tol: 0.03,
+          unchecked: !measured
+            ? 'No periodic measurement available for this source.'
+            : !clears
+              ? 'This harmonic is above Nyquist at the current rate: it has folded down onto a lower one, so there is no line at its own frequency to read.'
+              : !onBin
+                ? 'This harmonic does not land on a bin centre in the measuring frame, so the window reads its peak low.'
+                : null,
+        },
+      ]),
+    )
   }
 
   if (measured && w.coeff && f0 < nyq * 0.95) {

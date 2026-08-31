@@ -134,6 +134,86 @@ describe('generators', () => {
   })
 })
 
+describe('band-limited square', () => {
+  const sr = 48000
+  const n = 8192
+  const f0 = sr / n // exactly one bin, so every odd harmonic is on a bin centre
+  const bl = (partials, over = {}) =>
+    render([src({ type: 'square', freq: f0 * 32, partials, ...over })], n, sr)
+
+  // 32 bins per fundamental, so harmonic k sits in bin 32k.
+  const amps = (buf) => {
+    const { amps } = spectrum(buf, sr, 'none')
+    return amps
+  }
+
+  it('one partial is a pure sine at 4/pi', () => {
+    const a = amps(bl(1))
+    expect(a[32]).toBeCloseTo(4 / Math.PI, 6)
+    for (let k = 2; k < 40; k++) expect(a[32 * k]).toBeLessThan(1e-9)
+  })
+
+  it('holds every odd harmonic at 4A/(k*pi) and no even ones', () => {
+    const a = amps(bl(9, { amp: 0.7 }))
+    for (let k = 1; k <= 17; k += 2) {
+      expect(a[32 * k]).toBeCloseTo((4 * 0.7) / (k * Math.PI), 6)
+    }
+    for (let k = 2; k <= 18; k += 2) expect(a[32 * k]).toBeLessThan(1e-9)
+  })
+
+  it('stops dead after the (2N-1)th harmonic — nothing above to fold', () => {
+    const a = amps(bl(5)) // top harmonic is the 9th
+    expect(a[32 * 9]).toBeCloseTo(4 / (9 * Math.PI), 6)
+    for (let i = 32 * 9 + 4; i < a.length; i++) expect(a[i]).toBeLessThan(1e-9)
+  })
+
+  it('matches the truncated-series RMS in closed form', () => {
+    for (const P of [1, 3, 9, 32]) {
+      let acc = 0
+      for (let m = 0; m < P; m++) acc += 1 / ((2 * m + 1) * (2 * m + 1))
+      expect(rms(bl(P))).toBeCloseTo((4 / Math.PI) * Math.sqrt(acc / 2), 6)
+    }
+  })
+
+  it('overshoots to (2/pi)Si(pi) and stays there — Gibbs', () => {
+    // Adding terms does NOT reduce the overshoot, it only narrows it: the peak
+    // converges to (2/pi)*Si(pi) = 1.178980*A, which is 8.95% of the 2A jump.
+    // That is why the math panel measures the crest factor of a band-limited
+    // square instead of predicting it.
+    const LIMIT = 1.1789797
+    const peaks = [4, 16, 64, 256].map((P) =>
+      peak(render([src({ type: 'square', freq: 1, partials: P })], 400000, 400000)),
+    )
+    // Approached from above, monotonically, and never washing out.
+    for (let i = 1; i < peaks.length; i++) expect(peaks[i]).toBeLessThan(peaks[i - 1])
+    for (const p of peaks) expect(p).toBeGreaterThan(LIMIT - 1e-4)
+    expect(peaks[0]).toBeLessThan(1.19)
+    expect(peaks.at(-1)).toBeCloseTo(LIMIT, 4)
+  })
+
+  it('converges to the naive square away from the edges', () => {
+    const naive = render([src({ type: 'square', freq: 1, partials: 0 })], 4096, 4096)
+    const many = render([src({ type: 'square', freq: 1, partials: 400 })], 4096, 4096)
+    // Sample a quarter period in, far from either discontinuity.
+    for (const i of [1024, 3072]) expect(many[i]).toBeCloseTo(naive[i], 2)
+  })
+
+  it('leaves the naive square untouched at partials = 0', () => {
+    const a = render([src({ type: 'square', freq: 250, partials: 0 })], 256, sr)
+    const b = render([src({ type: 'square', freq: 250 })], 256, sr)
+    for (let i = 0; i < 256; i++) expect(a[i]).toBe(b[i])
+    for (const v of a) expect(Math.abs(v)).toBe(1)
+  })
+
+  it('band-limits only the square, not the other waveforms', () => {
+    for (const type of ['sine', 'triangle', 'sawtooth']) {
+      const a = render([src({ type, freq: 250, partials: 4 })], 256, sr)
+      const b = render([src({ type, freq: 250 })], 256, sr)
+      for (let i = 0; i < 256; i++) expect(a[i]).toBe(b[i])
+    }
+  })
+})
+
 describe('windows', () => {
   it('rectangular is all ones', () => {
     const w = windowFn('none', 8)
