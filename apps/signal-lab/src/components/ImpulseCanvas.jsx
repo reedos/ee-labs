@@ -1,6 +1,6 @@
 import React from 'react'
 import { COLORS, drawFrame, plotArea, useCanvas } from '@ee-labs/ui'
-import { fmt } from '@ee-labs/ui'
+import { fmtNum } from '@ee-labs/ui'
 
 /**
  * The chain's impulse response, drawn as stems.
@@ -47,7 +47,8 @@ export default function ImpulseCanvas({ h, sampleRate, centre = null, exact = tr
         -yMax,
         yMax,
         (v) => String(Math.round(v)),
-        (v) => fmt(v, '', 2),
+        // h[n] is dimensionless — plain numbers, not engineering prefixes.
+        (v) => fmtNum(v),
         { zeroLine: true, xTitle: 'Sample  n', yTitle: 'h[n]' },
       )
 

@@ -2,6 +2,7 @@ import React from 'react'
 import { useCanvas } from './useCanvas.js'
 import { COLORS, drawFrame, plotArea } from './plot.js'
 import { fmt } from './units.js'
+import { fmtNum } from './format.js'
 
 /**
  * Poles and zeros on the z-plane.
@@ -41,9 +42,12 @@ export default function ZPlaneCanvas({
       for (const [re, im] of [...poles, ...zeros]) {
         span = Math.max(span, Math.abs(re) * 1.15, Math.abs(im) * 1.15)
       }
+      // Equal pixels-per-unit on both axes keeps the circle round; growing
+      // whichever span the pane is short of keeps it FULLY VISIBLE in a
+      // portrait pane too, where scaling x by the aspect alone clipped it.
       const aspect = area.w / area.h
-      const yMax = span
-      const xMax = span * aspect
+      const yMax = span * Math.max(1, 1 / aspect)
+      const xMax = span * Math.max(1, aspect)
 
       const { sx, sy } = drawFrame(
         ctx,
@@ -52,8 +56,10 @@ export default function ZPlaneCanvas({
         xMax,
         -yMax,
         yMax,
-        (v) => fmt(v, '', 2),
-        (v) => fmt(v, '', 2),
+        // Plain numbers: this axis is dimensionless, and the engineering
+        // formatter rendered 0.5 as "500 m" — a prefix for a unit it lacks.
+        (v) => fmtNum(v),
+        (v) => fmtNum(v),
         { zeroLine: true, xTitle, yTitle },
       )
 

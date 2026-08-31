@@ -69,7 +69,11 @@ export default function ScopeCanvas({
       ctx.clip()
 
       const xOf = (i) => sx((i / sampleRate) * perSecond)
-      const samplesPerPx = n / area.w
+      // Samples per pixel OF THE AXIS — one mapping for every branch below.
+      // Deriving it from the buffer length instead (n / area.w) quietly
+      // disagrees with xOf whenever the buffer is shorter than the requested
+      // span, which is the same disease the sparse branch's comment records.
+      const samplesPerPx = ((xMax / area.w) / perSecond) * sampleRate
       let reconstructed = false
 
       // Back to front, so the processed signal is never hidden by its ghost.
@@ -85,6 +89,7 @@ export default function ScopeCanvas({
         if (samplesPerPx > 2) {
           for (let px = 0; px < area.w; px++) {
             const i0 = Math.floor(px * samplesPerPx)
+            if (i0 >= n) break
             const i1 = Math.min(n, Math.floor((px + 1) * samplesPerPx))
             let lo = Infinity
             let hi = -Infinity
@@ -108,15 +113,15 @@ export default function ScopeCanvas({
         // what the samples actually describe — the ideal (sin x)/x
         // reconstruction, the same mathematics a bench DSO's sin(x)/x mode
         // uses between its own samples — with the dots as THE data on top.
-        const sparse = samplesPerPx < 0.06 && !tr.dim
+        // The ghost gets the same treatment: a linearly-joined ghost beside a
+        // reconstructed main trace would show two different interpolations of
+        // the same kind of data under one caption.
+        const sparse = samplesPerPx < 0.06
 
         if (sparse) {
           reconstructed = true
-          // Pixel -> time through the AXIS mapping (the same sx the dots
-          // use), not through a sample count: when the buffer is shorter
-          // than the requested span the two disagree, and the first cut
-          // drew a curve the dots visibly did not sit on.
-          const tPerPx = ((xMax / area.w) / perSecond) * sampleRate
+          // Pixel -> time through the AXIS mapping, the same sx the dots use.
+          const tPerPx = samplesPerPx
           ctx.beginPath()
           let started = false
           for (let px = 0; px <= area.w; px++) {
@@ -138,7 +143,7 @@ export default function ScopeCanvas({
           ctx.stroke()
         }
 
-        if (sparse) {
+        if (sparse && !tr.dim) {
           const dots = samplesPerPx < 0.02
           ctx.beginPath()
           ctx.fillStyle = dots ? COLORS.textBright : tr.color || COLORS.trace

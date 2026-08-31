@@ -1,7 +1,7 @@
 import React from 'react'
 import { useCanvas } from './useCanvas.js'
 import { COLORS, drawFrame, plotArea } from './plot.js'
-import { fmt } from './units.js'
+import { fmtNum } from './format.js'
 
 /**
  * Poles and zeros on the s-plane.
@@ -34,9 +34,11 @@ export default function PoleZeroCanvas({
       }
       // Keep the origin visible and the axes square, so an angle on screen is
       // the angle in the algebra.
+      // See ZPlaneCanvas: equal pixels-per-unit both ways, grown to fit
+      // whichever dimension the pane is short of.
       const aspect = area.w / area.h
-      const yMax = span
-      const xMax = span * aspect
+      const yMax = span * Math.max(1, 1 / aspect)
+      const xMax = span * Math.max(1, aspect)
 
       const { sx, sy } = drawFrame(
         ctx,
@@ -45,8 +47,8 @@ export default function PoleZeroCanvas({
         xMax,
         -yMax,
         yMax,
-        (v) => fmt(v, '', 2),
-        (v) => fmt(v, '', 2),
+        (v) => fmtNum(v),
+        (v) => fmtNum(v),
         { zeroLine: true, xTitle, yTitle },
       )
 

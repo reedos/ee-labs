@@ -34,6 +34,17 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
 
       let hPeak = 1e-9
       for (let i = 0; i < h.length; i++) hPeak = Math.max(hPeak, Math.abs(h[i]))
+      // The kernel's SUPPORT — its last sample that is actually nonzero —
+      // rather than its buffer length, which convKernel pads to 64+. The
+      // stems-versus-envelope choice below keys on this: an 8-tap moving
+      // average in a 64-long buffer is 8 taps, not 64.
+      let hSupport = 0
+      for (let i = h.length - 1; i >= 0; i--) {
+        if (Math.abs(h[i]) > hPeak * 1e-9) {
+          hSupport = i + 1
+          break
+        }
+      }
       // ONE amplitude scale for both strips — the max over input AND output —
       // exactly as the scope superimposes them. The first cut normalized each
       // strip to its own peak, so a high-pass square's 2x edge spikes drew the
@@ -64,8 +75,29 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
         ctx.stroke()
       }
 
-      // ---- top strip: input, flipped kernel, products
+      // Labels above the plot frame go down first — the clip that keeps data
+      // marks inside the frame would swallow them.
       label(top, 'input x[m], with the kernel flipped and slid to n')
+
+      // Name the magnification, or the kernel's height is a quiet lie.
+      const mag = (peak * 1.1) / (hPeak * 1.15)
+      if (mag > 1.25 || mag < 0.8) {
+        ctx.fillStyle = COLORS.response
+        ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
+        ctx.textAlign = 'right'
+        ctx.textBaseline = 'bottom'
+        const shown = mag >= 10 ? Math.round(mag) : Number(mag.toPrecision(2))
+        ctx.fillText(`kernel drawn ×${shown}`, outer.x + outer.w - 4 * k, top.y - 4 * k)
+      }
+
+      // Everything that marks data stays inside the frame — the output dot at
+      // n = 0 used to bleed past the left edge, the one canvas with no clip.
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(outer.x - 0.5, outer.y - 0.5, outer.w + 1, outer.h + 1)
+      ctx.clip()
+
+      // ---- top strip: input, flipped kernel, products
       zero(top, syTop)
 
       // Product bars: h[n−m]·x[m] on the input's own scale, since their SUM is
@@ -109,7 +141,11 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
       const mStart = Math.max(0, n - h.length + 1)
       const hy = (hv) => mid(top) - (hv / (hPeak * 1.15)) * (top.h / 2)
       ctx.strokeStyle = COLORS.response
-      if (n - mStart + 1 <= 48) {
+      // Keyed on the kernel's SUPPORT, not the drawn window: the padded buffer
+      // made an 8-tap moving average flip to the IIR-envelope branch the
+      // moment the cursor passed 48 — a joined line riding the baseline
+      // through dozens of exact zeros, mid-animation.
+      if (Math.min(n - mStart + 1, hSupport) <= 48) {
         // Few taps: stems, thin, so the wide product bars stay visible.
         ctx.lineWidth = 1.1 * k
         for (let m = mStart; m <= n; m++) {
@@ -123,27 +159,18 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
         }
       } else {
         // A long (IIR) kernel as stems is spray over the signal; a thin
-        // continuous curve reads as the envelope it is.
+        // continuous curve reads as the envelope it is. Only the support is
+        // drawn — the padding beyond it is zeros, not envelope.
         ctx.lineWidth = 1.2 * k
         ctx.beginPath()
-        for (let m = mStart; m <= n; m++) {
+        const mEnvStart = Math.max(mStart, n - hSupport + 1)
+        for (let m = mEnvStart; m <= n; m++) {
           const px = sx(m)
           const py = hy(h[n - m])
-          if (m === mStart) ctx.moveTo(px, py)
+          if (m === mEnvStart) ctx.moveTo(px, py)
           else ctx.lineTo(px, py)
         }
         ctx.stroke()
-      }
-
-      // Name the magnification, or the kernel's height is a quiet lie.
-      const mag = (peak * 1.1) / (hPeak * 1.15)
-      if (mag > 1.25 || mag < 0.8) {
-        ctx.fillStyle = COLORS.response
-        ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
-        ctx.textAlign = 'right'
-        ctx.textBaseline = 'bottom'
-        const shown = mag >= 10 ? Math.round(mag) : Number(mag.toPrecision(2))
-        ctx.fillText(`kernel drawn ×${shown}`, outer.x + outer.w - 4 * k, top.y - 4 * k)
       }
 
       // ---- bottom strip: the output so far. This is where the action gets
@@ -180,6 +207,7 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
       ctx.lineTo(sx(n), bot.y + bot.h)
       ctx.stroke()
       ctx.globalAlpha = 1
+      ctx.restore()
 
       // The horizontal dimension, named. This view shipped with no axis at
       // all, and "which way is time and in what units" is not a thing a
@@ -191,7 +219,10 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
       ctx.textAlign = 'left'
       ctx.fillText('m = 0', outer.x, axisY)
       ctx.textAlign = 'center'
-      ctx.fillText(String(Math.round((x.length - 1) / 2)), sx((x.length - 1) / 2), axisY)
+      // Text and position agree on the same rounded sample, or the label sits
+      // half a pitch off its own tick whenever the buffer length is even.
+      const mMid = Math.round((x.length - 1) / 2)
+      ctx.fillText(String(mMid), sx(mMid), axisY)
       ctx.textAlign = 'right'
       ctx.fillText(`${x.length - 1}  (sample index)`, outer.x + outer.w, axisY)
       // And the cursor's own position, in the cursor's colour.
@@ -227,14 +258,16 @@ export function useConvolutionPosition(length, resetKey) {
   }, [length])
 
   // A new preset is a new story: start it from the beginning, paused, instead
-  // of wherever the scrubber happened to be left on the previous one.
+  // of wherever the scrubber happened to be left on the previous one. Adjusted
+  // DURING render (the documented setState-in-render pattern), not in an
+  // effect: the effect ran after commit, so the first frame of every preset
+  // was painted at the previous preset's scrub position.
   const started = useRef(resetKey)
-  useEffect(() => {
-    if (started.current === resetKey) return
+  if (started.current !== resetKey) {
     started.current = resetKey
     setPos(0)
     setPlaying(false)
-  }, [resetKey])
+  }
 
   useEffect(() => {
     if (!playing) return undefined

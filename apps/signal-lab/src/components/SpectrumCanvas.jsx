@@ -91,9 +91,18 @@ export default function SpectrumCanvas({
         const peakDb = pk > 0 ? 20 * Math.log10(pk) : 0
         yMax = Math.max(10, Math.ceil((peakDb + 4) / 10) * 10)
       } else {
+        // Same scan discipline as the dB branch above: only the visible span,
+        // and the pre-chain ghost included. Scanning past fMax let invisible
+        // out-of-range peaks set the scale of a zoomed view, and omitting the
+        // ghost cut a taller pre-chain trace off flat at the frame — the very
+        // failure the scope's yMax fixed for the time domain.
         let pk = 0
-        for (let i = 0; i < amps.length; i++) if (amps[i] > pk) pk = amps[i]
-        if (response) for (let i = 0; i < response.length; i++) if (response[i] > pk) pk = response[i]
+        for (let i = 0; i < amps.length; i++) {
+          if (freqs[i] > fMax) break
+          if (amps[i] > pk) pk = amps[i]
+          if (response && response[i] > pk) pk = response[i]
+          if (ghostAmps && ghostAmps[i] > pk) pk = ghostAmps[i]
+        }
         yMin = 0
         yMax = Math.max(pk * 1.15, 1e-3)
       }

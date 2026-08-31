@@ -86,7 +86,9 @@ export function drawFrame(ctx, area, xMin, xMax, yMin, yMax, fmtX, fmtY, opts = 
   const xStep =
     xStepOverride || niceStep(xMax - xMin, Math.max(2, Math.floor(area.w / (90 * k))))
   ctx.textAlign = 'center'
-  for (let v = Math.ceil(xMin / xStep) * xStep; v <= xMax + 1e-9; v += xStep) {
+  // The end-of-axis epsilon is relative to the step, not absolute — an
+  // absolute 1e-9 is meaningless on an axis measured in hundreds of kilohertz.
+  for (let v = Math.ceil(xMin / xStep) * xStep; v <= xMax + xStep * 1e-6; v += xStep) {
     const x = sx(v)
     ctx.strokeStyle = COLORS.grid
     ctx.lineWidth = 1
@@ -101,7 +103,7 @@ export function drawFrame(ctx, area, xMin, xMax, yMin, yMax, fmtX, fmtY, opts = 
   const yStep =
     yStepOverride || niceStep(yMax - yMin, Math.max(2, Math.floor(area.h / (46 * k))))
   ctx.textAlign = 'right'
-  for (let v = Math.ceil(yMin / yStep) * yStep; v <= yMax + 1e-9; v += yStep) {
+  for (let v = Math.ceil(yMin / yStep) * yStep; v <= yMax + yStep * 1e-6; v += yStep) {
     const y = sy(v)
     const isZero = Math.abs(v) < yStep * 1e-6
     ctx.strokeStyle = isZero && zeroLine ? COLORS.gridMajor : COLORS.grid
