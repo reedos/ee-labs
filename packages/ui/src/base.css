@@ -122,6 +122,13 @@ body {
   font-weight: 700;
   padding-right: 8px;
   border-right: 1px solid var(--line);
+  white-space: nowrap;
+}
+/* The ee inside Reed picked out in the accent, matching the splash
+   wordmark: the name contains the EE. */
+.labnav .labnav-ee {
+  color: var(--accent);
+  font-weight: inherit;
 }
 .labnav .labnav-here {
   color: var(--accent);
