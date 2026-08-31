@@ -94,8 +94,11 @@ function Source({ src, sampleRate, onChange, onRemove, canRemove , fftSize}) {
       />
 
       {src.type !== 'noise' && (
+        // Not compact: the LTI experiment says "drag the phase slider and
+        // watch the filtered wave slide without changing shape", and time-
+        // invariance deserves a control you can actually scrub. The note
+        // pointed at a slider that was not there (Reed's report).
         <NumField
-          compact
           label="Phase"
           unit="°"
           spoken="degrees"
