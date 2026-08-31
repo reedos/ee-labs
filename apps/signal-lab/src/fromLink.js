@@ -15,7 +15,7 @@ import { WAVEFORMS } from '@ee-labs/dsp'
  * Positional rather than named because the link should stay short and readable,
  * and a block's parameter order is already the order it renders them in.
  */
-function blockFrom(spec, warnings) {
+function blockFrom(spec, warnings, ctx) {
   const def = BLOCK_TYPES[spec.type]
   if (!def) {
     warnings.push(`no block called "${spec.type}"`)
@@ -39,7 +39,6 @@ function blockFrom(spec, warnings) {
   numeric.forEach((p, i) => {
     if (i >= spec.params.length) return
     const v = spec.params[i]
-    const ctx = { sampleRate: 48000, nyquist: 24000 }
     const lo = typeof p.min === 'function' ? p.min(ctx) : p.min
     const hi = typeof p.max === 'function' ? p.max(ctx) : p.max
     if (Number.isFinite(lo) && Number.isFinite(hi) && (v < lo || v > hi)) {
@@ -79,13 +78,24 @@ export function stateFromLink(patch, base) {
   // anonymous "a link".
   const next = { ...base, presetName: 'from a link', linkFrom: patch.from || null }
   // The zoom the sender asked for: a circuit's corner must arrive on screen,
-  // not at 1.7% of a 96 kHz axis.
-  if (patch.zoom && patch.zoom >= 50) next.specMax = patch.zoom
+  // not at 1.7% of a 96 kHz axis. Refusals are named, per the header rule —
+  // this one used to be the single silent drop in the file.
+  if (patch.zoom) {
+    if (patch.zoom >= 50) next.specMax = patch.zoom
+    else warnings.push(`zoom ${patch.zoom} is below 50 Hz; ignored`)
+  }
 
   if (patch.rate != null) {
     if (patch.rate >= 1000 && patch.rate <= 192000) next.sampleRate = patch.rate
     else warnings.push(`sample rate ${patch.rate} is outside 1000…192000; ignored`)
   }
+
+  // Parameter ranges are checked against the rate THIS LINK runs at, decided
+  // just above — not a hardcoded 48 kHz. The hardcoded context clamped a
+  // legitimate 40 kHz corner arriving at 192 kHz down to 24 kHz with a bogus
+  // warning, and waved a 20 kHz cutoff into an 8 kHz patch with no warning at
+  // all while the filter silently ran at 3992 Hz.
+  const ctx = { sampleRate: next.sampleRate, nyquist: next.sampleRate / 2 }
 
   const sources = []
   let id = 1
@@ -108,7 +118,7 @@ export function stateFromLink(patch, base) {
   const blocks = []
   let bid = 1
   for (const b of patch.blocks || []) {
-    const rec = blockFrom(b, warnings)
+    const rec = blockFrom(b, warnings, ctx)
     if (rec) blocks.push({ ...rec, id: bid++ })
   }
   next.blocks = blocks

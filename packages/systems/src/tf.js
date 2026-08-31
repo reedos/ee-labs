@@ -181,8 +181,12 @@ export function roots(coeffs) {
 
   // Snap near-real roots onto the real axis: a conjugate pair whose imaginary
   // part is 1e-16 is a numerical artefact, and it changes how the pole is drawn
-  // and described.
-  const out = z.map(([re, im]) => (Math.abs(im) < 1e-9 * Math.max(1, Math.abs(re)) ? [re, 0] : [re, im]))
+  // and described. The threshold is 1e-6, not 1e-9: Durand-Kerner's attainable
+  // accuracy on an m-fold root is only ~eps^(1/m) (≈1.5e-8 for a double root),
+  // so a critically damped pole PAIR — (s+1)², the textbook case — came back
+  // ±6.7e-9 off the axis, drawn as a complex pair that was not even conjugate.
+  // No genuine pair here is that flat: im/re = 1/(2Q) puts even Q = 40 at 0.0125.
+  const out = z.map(([re, im]) => (Math.abs(im) < 1e-6 * Math.max(1, Math.abs(re)) ? [re, 0] : [re, im]))
   for (let i = 0; i < atOrigin; i++) out.push([0, 0])
   return out
 }

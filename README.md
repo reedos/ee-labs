@@ -53,7 +53,9 @@ a similar filter: the same resonance and the same Q, carried across.
 That is the argument for a suite rather than three separate tools, made checkable instead
 of asserted. It is checked, too — the tests take a circuit, build the link, parse it back,
 design the biquad Signal Lab would design, and require the two responses to agree: exactly
-at the corner, and within 1% two octaves either side. They are not identical, and the
+at the corner, and within 2% two octaves either side at the test's generous 500 kHz. At
+this link's own 192 kHz the corner is still exact but the drift reaches ~7% two octaves
+up — the drift the twenty-samples-per-cycle warning exists to bound. They are not identical, and the
 tests say why. Signal Lab designs an RBJ cookbook section directly in the digital domain
 from (mode, f₀, Q); it is not the bilinear transform of that particular network. The two
 agree on what a second-order section with that resonance and Q *means*.
