@@ -32,6 +32,17 @@ export const TERMS = {
       'cycle needs at least two samples to be a cycle at all. At 8 kHz sampling, Nyquist is ' +
       '4 kHz, and it is the right-hand end of every spectrum here.',
   },
+  sampled: {
+    name: 'Sampled display (and sin(x)/x)',
+    def:
+      'Everything this lab shows is samples — values taken fₛ times a second — because that ' +
+      'is all a computer can hold, and it is exactly what a bench oscilloscope holds too: a ' +
+      'modern DSO samples first and draws afterwards. When you zoom in far enough to see the ' +
+      'dots, the curve drawn through them is the ideal (sin x)/x reconstruction — the one ' +
+      'bandlimited signal those samples describe, the same interpolation a real DSO’s ' +
+      'sin(x)/x mode computes. Below Nyquist that reconstruction IS the continuous original; ' +
+      'above it, it is the alias, because the samples genuinely describe the folded frequency.',
+  },
   aliasing: {
     name: 'Aliasing',
     def:

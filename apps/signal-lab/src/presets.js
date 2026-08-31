@@ -150,7 +150,7 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Aliasing',
-    terms: ['aliasing', 'nyquist'],
+    terms: ['sampled', 'aliasing', 'nyquist'],
     note:
       'A 3.4 kHz tone at 8 kHz behaves. Drag it past 4 kHz — or click the "alias" chip — and the ' +
       'peak turns around and walks back down. The signal is gone and an impostor took its place.',
@@ -159,7 +159,7 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Exactly at Nyquist',
-    terms: ['nyquist', 'phase'],
+    terms: ['sampled', 'nyquist', 'phase'],
     note:
       'A 4 kHz tone sampled at 8 kHz: exactly two samples per cycle, the limit the sampling ' +
       'theorem allows. Now drag the phase. At 90° the samples land on the peaks and it reads ' +

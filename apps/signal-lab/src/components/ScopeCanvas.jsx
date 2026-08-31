@@ -2,6 +2,7 @@ import React from 'react'
 import { useCanvas } from '@ee-labs/ui'
 import { COLORS, drawFrame, plotArea } from '@ee-labs/ui'
 import { fmtHz } from '@ee-labs/ui'
+import { sincInterp } from '@ee-labs/dsp'
 
 /**
  * Time-domain view.
@@ -69,6 +70,7 @@ export default function ScopeCanvas({
 
       const xOf = (i) => sx((i / sampleRate) * perSecond)
       const samplesPerPx = n / area.w
+      let reconstructed = false
 
       // Back to front, so the processed signal is never hidden by its ghost.
       for (const tr of traces) {
@@ -99,24 +101,48 @@ export default function ScopeCanvas({
           continue
         }
 
-        for (let i = 0; i < n; i++) {
-          const x = xOf(i)
-          const y = sy(buf[i])
-          if (i === 0) ctx.moveTo(x, y)
-          else ctx.lineTo(x, y)
-        }
-        ctx.stroke()
-
         // Individual samples become meaningful once they are sparse enough —
-        // and seeing them is the point when the question is about sampling. At
-        // two samples per cycle the line between them is pure interpolation
-        // (a sine renders as a triangle), so the dots must be unmissable:
-        // bright, haloed, and clearly THE data with the line as a guide.
-        if (samplesPerPx < 0.06 && !tr.dim) {
-          const sparse = samplesPerPx < 0.02
+        // and seeing them is the point when the question is about sampling.
+        // At that zoom, a straight line between dots is a LIE: at two samples
+        // per cycle it renders a sine as a triangle. So the sparse view draws
+        // what the samples actually describe — the ideal (sin x)/x
+        // reconstruction, the same mathematics a bench DSO's sin(x)/x mode
+        // uses between its own samples — with the dots as THE data on top.
+        const sparse = samplesPerPx < 0.06 && !tr.dim
+
+        if (sparse) {
+          reconstructed = true
+          // Pixel -> time through the AXIS mapping (the same sx the dots
+          // use), not through a sample count: when the buffer is shorter
+          // than the requested span the two disagree, and the first cut
+          // drew a curve the dots visibly did not sit on.
+          const tPerPx = ((xMax / area.w) / perSecond) * sampleRate
           ctx.beginPath()
-          ctx.fillStyle = sparse ? COLORS.textBright : tr.color || COLORS.trace
-          const r = (sparse ? 3.5 : 2) * k
+          let started = false
+          for (let px = 0; px <= area.w; px++) {
+            const t = px * tPerPx
+            if (t > buf.length - 1) break
+            const y = sy(sincInterp(buf, t, 64))
+            if (!started) ctx.moveTo(area.x + px, y)
+            else ctx.lineTo(area.x + px, y)
+            started = true
+          }
+          ctx.stroke()
+        } else {
+          for (let i = 0; i < n; i++) {
+            const x = xOf(i)
+            const y = sy(buf[i])
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.stroke()
+        }
+
+        if (sparse) {
+          const dots = samplesPerPx < 0.02
+          ctx.beginPath()
+          ctx.fillStyle = dots ? COLORS.textBright : tr.color || COLORS.trace
+          const r = (dots ? 3.5 : 2) * k
           for (let i = 0; i < n; i++) {
             const x = xOf(i)
             const y = sy(buf[i])
@@ -126,6 +152,20 @@ export default function ScopeCanvas({
           }
           ctx.fill()
         }
+      }
+
+      // Name what is being drawn, where it is drawn — the whole point is
+      // that the display is sampled and honest about it.
+      if (reconstructed) {
+        ctx.fillStyle = COLORS.text
+        ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'top'
+        ctx.fillText(
+          'dots are the samples; the curve is their ideal (sin x)/x reconstruction — how a DSO draws',
+          area.x + 6 * k,
+          area.y + 5 * k,
+        )
       }
 
       ctx.restore()

@@ -41,3 +41,4 @@ export {
   makeFir,
 } from './src/fir.js'
 export { createChain } from './src/chain.js'
+export { sincInterp } from './src/reconstruct.js'
