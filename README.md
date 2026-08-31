@@ -8,7 +8,7 @@ and explains, next to every number, where that number came from.
 
 ```
 npm install
-npm test                 # every package and every app (468 tests)
+npm test                 # every package and every app, one run (500+ tests)
 npm run dev              # Signal Lab, at http://localhost:1421
 ```
 
@@ -16,14 +16,14 @@ npm run dev              # Signal Lab, at http://localhost:1421
 
 | | covers | status |
 |---|---|---|
-| **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 29 lessons |
-| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters, tolerance | 13 lessons, 9 circuits |
-| **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 12 lessons, 6 plants x 4 controllers |
+| **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 32 lessons |
+| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters, tolerance | 15 lessons, 10 circuits |
+| **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 13 lessons, 7 plants x 4 controllers |
 
-A third tool, [`waveform-simulator`](https://github.com/reedos/waveform-simulator), covers
-communications and high-speed optical links. It lives outside this repo: it serves
-practising engineers rather than students, it is mature, and retrofitting it onto these
-packages would be work without a reader to benefit from it.
+A third tool, `waveform-simulator`, covers communications and high-speed optical links.
+It lives outside this repo, in a private one: it serves practising engineers rather than
+students, it is mature, and retrofitting it onto these packages would be work without a
+reader to benefit from it.
 
 ## Every app has a curriculum
 
@@ -32,7 +32,7 @@ question, and every claim its note makes is rendered and measured by a test — 
 the numbers quoted in prose, which are the ones that drift when a default changes and
 nobody notices.
 
-That is not a style preference. It has caught eight confidently wrong explanations so
+That is not a style preference. It has caught nine confidently wrong explanations so
 far. A Control Lab note promised a step overshooting "about 45%" and the setup it loaded
 overshot 57%; a Circuit Lab note claimed ±5% parts move f₀ by "about half the part
 tolerance", and its own test measured 4.3% — the square root halves each PART'S error,
@@ -43,10 +43,11 @@ but two parts contribute, and the note now says what is true.
 Circuit Lab has a **The same filter, sampled** panel. Load the series RLC, and it says the
 circuit is a low-pass biquad at 5.033 kHz with a Q of 3.162 — then gives you a link:
 
-    #rate=192000&src=noise:100:0.6&b=lowpass:5032.92:3.16228
+    #rate=192000&src=square:1000:0.8&b=lowpass:5032.92:3.16228&zoom=40263.4
 
-Paste that after Signal Lab's URL and the same filter is loaded there, with noise running
-through it. Not a similar filter: the same resonance and the same Q, carried across.
+Paste that after Signal Lab's URL and the same filter is loaded there, with a square wave
+running through it and the spectrum zoomed so the corner is on screen when you arrive. Not
+a similar filter: the same resonance and the same Q, carried across.
 
 That is the argument for a suite rather than three separate tools, made checkable instead
 of asserted. It is checked, too — the tests take a circuit, build the link, parse it back,
@@ -56,9 +57,12 @@ tests say why. Signal Lab designs an RBJ cookbook section directly in the digita
 from (mode, f₀, Q); it is not the bilinear transform of that particular network. The two
 agree on what a second-order section with that resonance and Q *means*.
 
-The panel declines where the mapping would not be honest: a first-order RC has no Q to
-hand over, and a sample rate leaving fewer than twenty samples per cycle at the corner
-gets a warning rather than a link presented as equivalent.
+The panel maps in two tiers. A circuit that is exactly a named shape hands over as
+(mode, f₀, Q), so the knobs on arrival mean something; anything else that is rational of
+order ≤ 2 — a first-order RC, a shapeless two-pole — hands over as raw coefficients and
+migrates just as exactly. What remains refused is refused for stated reasons: the op-amp
+integrator's pole at the origin (a sampled copy would just count), and a sample rate
+leaving fewer than twenty samples per cycle at the corner warns before the link is cut.
 
 The same panel offers the third corner. That RLC is also **something to control**:
 
@@ -98,8 +102,9 @@ Per app, today:
 
 - **Signal Lab** — admissible: every block (biquads, cascades, FIRs, combs are exact
   rational H(z); the nonlinear blocks are honest about having no H at all). Guarded
-  approximation: the sampled view of a continuous circuit (bilinear-exact; the
-  twenty-samples-per-cycle warning is the guard). Refused: none — the raw-coefficient
+  approximation: the sampled view of a continuous circuit — the bilinear transform is
+  exact at the pre-warped corner and drifts away from it, and the
+  twenty-samples-per-cycle warning is the guard on that drift. Refused: none — the raw-coefficient
   biquad receives anything rational of order ≤ 2, and says UNSTABLE rather than
   diverging when handed poles outside the circle.
 - **Circuit Lab** — admissible: every circuit (exact rational H(s), derived on the
