@@ -3,7 +3,7 @@ import { asDigitalFilter, suggestRate, asControlPlant } from './toSignalLab.js'
 import { transferOf, defaultsOf, CIRCUITS } from './circuits.js'
 import { parseLink } from '@ee-labs/ui'
 import { magnitudeAt, secondOrderMetrics } from '@ee-labs/systems'
-import { designBiquad, biquadResponse } from '@ee-labs/dsp'
+import { designBiquad, designFirstOrder, biquadResponse } from '@ee-labs/dsp'
 
 // The bridge is the suite's central claim made checkable: an RLC network and a
 // biquad are the same object. If the mapping is wrong, the claim is marketing.
@@ -26,18 +26,41 @@ describe('recognising which filter a circuit is', () => {
     expect(d.zeta).toBeCloseTo(1 / (2 * Q), 9)
   })
 
-  it('hands a first-order circuit over raw — no named recipe, but no refusal either', () => {
-    // There is no Q to put on a named block's knob, so the RC crosses as its
-    // raw coefficients instead (Reed's full-fidelity rule).
+  it('hands a first-order low-pass over BY NAME, order 1 in the link', () => {
+    // Reed's rule, upgraded from the raw tier: Signal Lab has a named
+    // 1st-order recipe (the order select), so a unity-gain RC low-pass
+    // crosses as b=lowpass:<fc>:<q>:1 — the corner by name, not anonymous
+    // coefficients. The Q slot carries the default; order 1 has no Q.
     const d = asDigitalFilter(transferOf('rcLow', defaultsOf('rcLow')))
-    expect(d.shape).toBeNull()
-    expect(d.raw).toBe(true)
-    expect(d.link).toBeTruthy()
+    expect(d.shape).toBe('lowpass')
+    expect(d.order).toBe(1)
+    expect(d.raw).toBe(false)
+    const { patch, warnings } = parseLink(d.link)
+    expect(warnings).toEqual([])
+    expect(patch.blocks[0].type).toBe('lowpass')
+    expect(patch.blocks[0].params[2]).toBe(1)
     // Second order with a recognised numerator still gets the named form —
     // preferred, because its knobs mean something over there.
     const tank = asDigitalFilter(transferOf('rlcParallel', defaultsOf('rlcParallel')))
     expect(tank.shape).toBe('bandpass')
+    expect(tank.order).toBe(2)
     expect(tank.raw).toBe(false)
+  })
+
+  it('the named 1st-order map is EXACT: bilinear of the circuit equals the recipe', () => {
+    // The claim the panel makes with no hedge, proven at the coefficient
+    // level: Signal Lab's designFirstOrder is the pre-warped bilinear
+    // transform of the unity-gain prototype, so discretising the RC gives
+    // the same section Signal Lab designs from (fc, order 1), to rounding.
+    const q = defaultsOf('rcLow')
+    const rate = 192000
+    const d = asDigitalFilter(transferOf('rcLow', q, 'c'), { sampleRate: rate })
+    const recipe = designFirstOrder({ mode: 'lowpass', freq: d.f0 }, rate)
+    expect(d.digital.b[0]).toBeCloseTo(recipe.b0, 12)
+    expect(d.digital.b[1] ?? 0).toBeCloseTo(recipe.b1, 12)
+    expect(d.digital.a[1] ?? 0).toBeCloseTo(recipe.a1, 12)
+    // And the corner lands where the panel says: |H| = 1/√2 exactly there.
+    expect(biquadResponse({ ...recipe }, d.f0, rate)).toBeCloseTo(Math.SQRT1_2, 9)
   })
 
   it('builds a link that actually carries the filter', () => {
@@ -151,19 +174,22 @@ describe('recognising which filter a circuit is', () => {
     expect(asControlPlant(tf)).toBeNull()
   })
 
-  it('a first-order circuit crosses faithfully too, padded into the five slots', () => {
+  it('the named 1st-order link lands on the circuit’s own curve', () => {
+    // The link now says lowpass:<fc>:<q>:1 rather than five raw numbers;
+    // what must survive unchanged is the FIDELITY: rebuild the section the
+    // receiving recipe designs from the linked corner, and it sits on the
+    // circuit's curve — exact at the pre-warped corner up to the link's six
+    // significant figures, faithful (well under 1%) a decade out.
     const p = defaultsOf('rcLow')
     const rate = 192000
     const d = asDigitalFilter(transferOf('rcLow', p, 'c'), { sampleRate: rate })
     const { patch, warnings } = parseLink(d.link)
     expect(warnings).toEqual([])
-    const [b0, b1, b2, a1, a2] = patch.blocks[0].params
-    expect(b2).toBe(0)
-    expect(a2).toBe(0)
-    const coeffs = { b0, b1, b2, a1, a2 }
+    expect(patch.blocks[0].type).toBe('lowpass')
+    const [linkFc, , linkOrder] = patch.blocks[0].params
+    expect(linkOrder).toBe(1)
+    const coeffs = designFirstOrder({ mode: 'lowpass', freq: linkFc }, rate)
     const fc = 1 / (2 * Math.PI * p.r * p.c)
-    // Exact at the pre-warped corner up to the link's six significant
-    // figures, faithful (well under 1%) a decade out.
     expect(biquadResponse(coeffs, fc, rate)).toBeCloseTo(Math.SQRT1_2, 4)
     expect(biquadResponse(coeffs, fc / 10, rate)).toBeCloseTo(
       magnitudeAt(transferOf('rcLow', p, 'c'), fc / 10),

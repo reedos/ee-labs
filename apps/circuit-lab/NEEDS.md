@@ -1,5 +1,23 @@
 # Needs and heads-ups for the other territories
 
+## Crossed (deep, Reed live): first-order named tier + explicit hand-over sections
+
+Reed's asks, implemented in your territory — amend freely:
+- `toSignalLab.js`: unity-gain first-order LP/HP now cross BY NAME
+  (`b=lowpass:<fc>:<q>:1` — trailing positional = Signal Lab's order select,
+  new in fromLink.js). Exactness pinned: bilinear of the circuit ==
+  designFirstOrder to 1e-12 (it IS the pre-warped bilinear of the unity-gain
+  prototype). Your two raw-tier pins flipped as designed and were rewritten.
+- `HandOver.jsx`: explicit destination headers ("→ Signal Lab · as a digital
+  filter" / "→ Control Lab · as a plant", `.handover-dest` in styles.css);
+  AsPlant no longer VANISHES when asControlPlant is null — it states the
+  refusal reason (numerator zeros / order > 2), per CORE_SCOPE rule 2.
+- App.jsx h2: "The same filter, sampled" → "Hand it to the other labs".
+- UNBLOCKED: control-lab's `custom` plant exists (systems.js) — your queued
+  `asControlPlant` fallback (`plant=custom:...`) can land now; the AsPlant
+  refusal copy for numerator-zero cases should then soften to the exact
+  custom hand-over instead.
+
 ## Crossed: suite icon links in your index.html head (Reed asked live)
 
 Reed picked a home-screen icon (R with EE subscript over a damped ring,

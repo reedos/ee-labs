@@ -43,12 +43,13 @@ export default function HandOver({ tf, circuitName, from = null }) {
   if (!d) {
     return (
       <>
+        <h3 className="handover-dest">→ Signal Lab · as a digital filter</h3>
         <p className="hint">
-          This circuit’s DC gain is unbounded — its pole sits exactly at the origin — so a
-          sampled copy would just count without limit and every plot over there would lie about
-          it. Declined rather than approximated; every other circuit here crosses.
+          Declined. This circuit’s DC gain is unbounded — its pole sits exactly at the origin —
+          so a sampled copy would just count without limit, and every plot in Signal Lab would
+          lie about it. Refused rather than approximated; every other circuit here crosses.
         </p>
-        <AsPlant plant={plant} circuitName={circuitName} />
+        <AsPlant plant={plant} circuitName={circuitName} tf={tf} />
       </>
     )
   }
@@ -67,18 +68,26 @@ export default function HandOver({ tf, circuitName, from = null }) {
 
   return (
     <div className="handover">
-      {d.shape ? (
+      <h3 className="handover-dest">→ Signal Lab · as a digital filter</h3>
+      {d.order === 2 ? (
         <p className="hint">
           Sampled at {fmtHz(rate)}Hz, {circuitName} is a {SHAPE_LABEL[d.shape]} biquad with a
-          cutoff of {fmtHz(d.f0)}Hz and Q of {d.q.toPrecision(4)}. Not similar to one — the same
-          one.
+          cutoff of {fmtHz(d.f0)}Hz and Q of {d.q.toPrecision(4)}. It crosses by name — Signal
+          Lab rebuilds it from (shape, f₀, Q). Not similar to one; the same one.
+        </p>
+      ) : d.order === 1 ? (
+        <p className="hint">
+          Sampled at {fmtHz(rate)}Hz, {circuitName} is a 1st-order {SHAPE_LABEL[d.shape]} with
+          its corner at {fmtHz(d.f0)}Hz — one pole, no Q to send. It crosses by name: Signal
+          Lab’s own 1st-order recipe is the same bilinear transform, so the corner lands
+          exactly, and the Q knob stays hidden there because one pole cannot resonate.
         </p>
       ) : (
         <p className="hint">
-          No named filter recipe over there fits {circuitName}
-          {d.f0 ? ` (${fmtHz(d.f0)}Hz is its own kind of feature)` : ''} — so it crosses as the
-          five raw numbers every second-order digital filter reduces to, bilinear-exact at{' '}
-          {fmtHz(rate)}Hz. Not a shape with knobs; the coefficients themselves.
+          The named hand-over speaks in (shape, f₀, Q) or a 1st-order corner, and {circuitName}
+          is neither — so it crosses as the five raw coefficients every digital biquad reduces
+          to, bilinear-exact at {fmtHz(rate)}Hz. Not a shape with knobs; the coefficients
+          themselves.
         </p>
       )}
 
@@ -144,7 +153,7 @@ export default function HandOver({ tf, circuitName, from = null }) {
 
       <HandOverLink app="signal-lab" appName="Signal Lab" fragment={d.link} />
 
-      <AsPlant plant={plant} circuitName={circuitName} />
+      <AsPlant plant={plant} circuitName={circuitName} tf={tf} />
     </div>
   )
 }
@@ -202,17 +211,47 @@ function HandOverLink({ app, appName, fragment }) {
  * signal" but "how much gain can I put around it before it sings". Offered only
  * where Control Lab can express the plant exactly.
  */
-function AsPlant({ plant, circuitName }) {
-  if (!plant) return null
+function AsPlant({ plant, circuitName, tf }) {
+  // A refused bridge is a finished feature (CORE_SCOPE rule 2): when no named
+  // plant fits, this section STAYS, and says why — it used to vanish
+  // silently, which read as a missing feature instead of a decision.
+  if (!plant) {
+    const bZeros = tf ? stripLeading(tf.b).length > 1 : false
+    const order = tf ? stripLeading(tf.a).length - 1 : 0
+    return (
+      <div className="handover as-plant">
+        <h3 className="handover-dest">→ Control Lab · as a plant</h3>
+        <p className="hint">
+          Declined.{' '}
+          {order > 2
+            ? `At order ${order}, ${circuitName} fits none of Control Lab's named plants.`
+            : bZeros
+              ? `Measured at this output, ${circuitName}'s numerator carries zeros, and no named
+                 plant in Control Lab has one — a nearly-right plant would close a loop whose
+                 margins are confidently wrong.`
+              : `${circuitName} does not reduce to any of Control Lab's named plants.`}{' '}
+          Refused rather than approximated.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="handover as-plant">
-      <h3>...and as something to control</h3>
+      <h3 className="handover-dest">→ Control Lab · as a plant</h3>
       <p className="hint">
-        The same {circuitName} is {plant.label}. {plant.why} Hand it to Control Lab and the
-        question changes from what it does to a signal to how much gain you can close around it.
+        The same {circuitName} is {plant.label}. {plant.why} It crosses exactly — no transform
+        involved — and the question changes from what it does to a signal to how much gain you
+        can close around it.
       </p>
       <HandOverLink app="control-lab" appName="Control Lab" fragment={plant.link} />
     </div>
   )
+}
+
+// The same leading-zero strip the emitters use, for naming a refusal's reason.
+function stripLeading(c) {
+  const out = [...c]
+  while (out.length > 1 && Math.abs(out[0]) < 1e-18) out.shift()
+  return out
 }

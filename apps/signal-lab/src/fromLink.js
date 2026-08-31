@@ -22,10 +22,18 @@ function blockFrom(spec, warnings) {
     return null
   }
   const rec = makeBlockRecord(spec.type, 0)
+  // Positional slots: the numeric params, then any select whose options are
+  // all numbers (the filter-order control). Circuit Lab's first-order tier
+  // needs to say "order 1" in a link — b=lowpass:2456:0.70711:1 — and a
+  // select that only ever holds numbers has an obvious positional meaning.
   const numeric = def.params.filter((p) => p.kind !== 'select' && p.kind !== 'check')
-  if (spec.params.length > numeric.length) {
+  const numericSelects = def.params.filter(
+    (p) => p.kind === 'select' && (p.options || []).every((o) => Number.isFinite(Number(o))),
+  )
+  const slots = numeric.length + numericSelects.length
+  if (spec.params.length > slots) {
     warnings.push(
-      `${def.label} takes ${numeric.length} value${numeric.length === 1 ? '' : 's'}, got ${spec.params.length}`,
+      `${def.label} takes ${slots} value${slots === 1 ? '' : 's'}, got ${spec.params.length}`,
     )
   }
   numeric.forEach((p, i) => {
@@ -39,6 +47,18 @@ function blockFrom(spec, warnings) {
       rec.params[p.key] = Math.min(hi, Math.max(lo, v))
     } else {
       rec.params[p.key] = v
+    }
+  })
+  numericSelects.forEach((p, i) => {
+    const at = numeric.length + i
+    if (at >= spec.params.length) return
+    const v = String(spec.params[at])
+    if ((p.options || []).includes(v)) {
+      rec.params[p.key] = v
+    } else {
+      warnings.push(
+        `${def.label} ${p.label} ${v} is not one of ${(p.options || []).join('/')}; kept ${rec.params[p.key]}`,
+      )
     }
   })
   return rec

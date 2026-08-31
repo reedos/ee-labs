@@ -1,5 +1,15 @@
 # Needs and findings for the other territories
 
+## Heads-up: sidebar sections are bordered wells now (base.css, suite-wide)
+
+Reed asked for unmistakable section delineation across all three labs. Done
+once in packages/ui base.css: `.controls section` is a bordered well of
+--bg with the sticky h2 as its ruled cap (surfaces: --panel sidebar >
+--bg well > --panel-2 widgets). Your sidebar picked it up with zero edits —
+verified by screenshot, looks right. Shout if any custom layout fights it.
+Also: your `custom` plant unblocked Circuit Lab's plant=custom fallback
+(noted in their NEEDS).
+
 ## Crossed: suite icon links in your index.html head (Reed asked live)
 
 Reed picked a home-screen icon (R with EE subscript over a damped ring,

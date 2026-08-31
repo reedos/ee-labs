@@ -444,7 +444,7 @@ export default function App() {
         </section>
 
         <section>
-          <h2>The same filter, sampled</h2>
+          <h2>Hand it to the other labs</h2>
           <HandOver tf={tf} circuitName={circuit.name.toLowerCase()} from={handOverFrom} />
         </section>
 

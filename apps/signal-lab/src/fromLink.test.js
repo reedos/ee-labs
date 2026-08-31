@@ -23,6 +23,24 @@ describe('loading a setup from a link', () => {
     expect(state.blocks[0].params.q).toBe(10)
   })
 
+  it('the order select rides the link as a trailing positional (Circuit Lab’s 1st-order tier)', () => {
+    // b=lowpass:<fc>:<q>:<order> — the numeric params first, then any select
+    // whose options are all numbers. An RC low-pass must arrive AS a
+    // 1st-order low-pass, Q knob hidden, not as an order-2 lookalike.
+    const { state, warnings } = load('rate=192000&b=lowpass:2456.6:0.70711:1')
+    expect(warnings).toEqual([])
+    const b = state.blocks[0]
+    expect(b.type).toBe('lowpass')
+    expect(b.params.freq).toBeCloseTo(2456.6, 6)
+    expect(b.params.order).toBe('1')
+  })
+
+  it('an order the select does not offer is refused by name, default kept', () => {
+    const { state, warnings } = load('rate=48000&b=lowpass:1000:0.7:3')
+    expect(warnings.some((w) => /Order 3 is not one of 1\/2\/4/.test(w))).toBe(true)
+    expect(state.blocks[0].params.order).toBe('2')
+  })
+
   it('maps positional values in the order the block declares them', () => {
     const { state } = load('b=peaking:1000:2:6')
     const p = state.blocks[0].params

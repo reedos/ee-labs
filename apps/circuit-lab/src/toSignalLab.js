@@ -71,6 +71,22 @@ export function asDigitalFilter(tf, { sampleRate = 48000, from = null } = {}) {
 
   const m = secondOrderMetrics(tf)
   const shape = shapeOf(tf)
+  // The first-order named tier (Reed's rule: an RC/RL low-pass must cross BY
+  // NAME, not as anonymous coefficients). Signal Lab's order-1 recipe
+  // (designFirstOrder) IS the pre-warped bilinear transform of the
+  // unity-gain analog prototype - verified coefficient-exact by test - so
+  // this mapping is exact and carries no hedge. Only unity-gain circuits
+  // qualify: the named block has no gain knob to carry a k with.
+  const firstShape = (() => {
+    if (order !== 1) return null
+    const bs = strip(tf.b)
+    // Constant numerator with DC gain exactly 1: a low-pass.
+    if (bs.length === 1 && Math.abs(bs[0] / a[1] - 1) < 1e-9) return 'lowpass'
+    // One zero at the origin with high-frequency gain exactly 1: a high-pass.
+    if (bs.length === 2 && Math.abs(bs[1]) < 1e-18 && Math.abs(bs[0] / a[0] - 1) < 1e-9)
+      return 'highpass'
+    return null
+  })()
   // The frequency the correspondence is anchored to (pre-warp, rate advice):
   // the resonance when there is one, the pole's own corner for first order,
   // nothing for a resistor network — no dynamics, nothing to warp.
@@ -98,8 +114,11 @@ export function asDigitalFilter(tf, { sampleRate = 48000, from = null } = {}) {
     shape === 'lowpass' ? dcGain(tf) : shape && fRef ? magnitudeAt(tf, fRef) / (m.q || 1) : dcGain(tf)
 
   return {
-    shape,
-    raw: !shape,
+    shape: shape || firstShape,
+    // 2 for the named RBJ section, 1 for the named first-order recipe,
+    // null when it crossed raw - the panel words each tier differently.
+    order: shape ? 2 : firstShape ? 1 : null,
+    raw: !(shape || firstShape),
     clipped,
     f0: fRef,
     q: m ? m.q : null,
@@ -135,7 +154,12 @@ export function asDigitalFilter(tf, { sampleRate = 48000, from = null } = {}) {
       blocks: [
         shape && fRef
           ? { type: shape, params: [fRef, m.q] }
-          : { type: 'biquad', params: [b0, b1, b2, a1, a2] },
+          : firstShape && fRef
+            ? // Third slot is the order select (b=lowpass:fc:q:1); the Q slot
+              // carries the default - order 1 has no Q, and the receiving
+              // block hides the knob.
+              { type: firstShape, params: [fRef, Math.SQRT1_2, 1] }
+            : { type: 'biquad', params: [b0, b1, b2, a1, a2] },
       ],
       ...(fRef ? { zoom: Math.min(8 * fRef, sampleRate / 2) } : {}),
       ...(from ? { from } : {}),

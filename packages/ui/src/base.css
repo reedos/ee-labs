@@ -146,8 +146,17 @@ body {
   font-size: 12px;
 }
 
+/* Sidebar sections as bordered wells (Reed: every part of the side panel
+   should be unmistakably delineated). Three surfaces, darkest inside:
+   sidebar (--panel) > section well (--bg) > widgets (--panel-2). The h2 is
+   the well's own cap — full-bleed, ruled off — and stays sticky so the
+   current section names itself while its body scrolls. */
 .controls section {
-  margin-top: 20px;
+  margin-top: 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 12px 12px;
 }
 
 .controls h2 {
@@ -158,9 +167,11 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin: 0 0 10px;
-  padding-block: 6px;
-  background: var(--panel);
+  margin: 0 -12px 10px;
+  padding: 8px 12px 6px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  border-radius: 10px 10px 0 0;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
