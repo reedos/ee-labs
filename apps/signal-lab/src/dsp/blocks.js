@@ -49,7 +49,10 @@ const cutoff = (label = 'Cutoff') => ({
   unit: 'Hz',
   scale: 'log',
   min: 20,
-  max: nyq,
+  // The designs clamp at 0.499 fs (see FREQ_MAX_RATIO), so the slider stops
+  // where the filter stops: a knob reading 4000 Hz over a corner quietly held
+  // at 3992 Hz would be the slider lying by eight hertz.
+  max: ({ nyquist }) => Math.floor(nyquist * 0.998),
   step: 1,
   presets: ({ nyquist }) => [
     100,
@@ -266,9 +269,8 @@ export const BLOCK_TYPES = {
       // summary and hint shouting, is the honest failure mode for a sandbox.
       if (!isStable(p)) return { process: (x) => x, settle: 0 }
       const step = makeBiquad(p)
-      // settleSamples answers Infinity for a pole radius of exactly zero (the
-      // pass-through default) — but a section with no feedback forgets in its
-      // two delay taps, the FIR way.
+      // settleSamples floors at the section's two-tap state depth itself now;
+      // the finite check only guards against NaN coefficients sneaking in.
       const st = settleSamples(p)
       return { process: (x) => step(x), settle: Number.isFinite(st) ? st : 2 }
     },
@@ -318,7 +320,12 @@ export const BLOCK_TYPES = {
     },
     response: (p, f, sampleRate) => firResponse(movingAverage(p.taps), f, sampleRate),
     phase: (p, f, sampleRate) => firPhase(movingAverage(p.taps), f, sampleRate),
-    pz: (p) => ({ poles: [], zeros: firZeros(movingAverage(p.taps)) }),
+    pz: (p) => {
+      const zs = firZeros(movingAverage(p.taps))
+      // null = the solver could not certify its roots; declining to draw is
+      // reported as tooMany so the view says "not drawn" instead of lying.
+      return zs ? { poles: [], zeros: zs } : { poles: [], zeros: [], tooMany: p.taps - 1 }
+    },
     kernel: (p) => movingAverage(p.taps),
   },
 
@@ -365,7 +372,12 @@ export const BLOCK_TYPES = {
     phase: (p, f, sampleRate) => firPhase(designFir(p, sampleRate), f, sampleRate),
     // No poles at all, anywhere but the origin — and those only account for the
     // delay. That absence IS the difference from everything in the Filter group.
-    pz: (p, sampleRate) => ({ poles: [], zeros: firZeros(designFir(p, sampleRate)) }),
+    pz: (p, sampleRate) => {
+      const h = designFir(p, sampleRate)
+      const zs = firZeros(h)
+      // See movingavg.pz: a null from the solver becomes a stated refusal.
+      return zs ? { poles: [], zeros: zs } : { poles: [], zeros: [], tooMany: h.length - 1 }
+    },
     kernel: (p, sampleRate) => designFir(p, sampleRate),
   },
 
@@ -383,6 +395,13 @@ export const BLOCK_TYPES = {
       { key: 'dcOffset', label: 'DC offset', scale: 'linear', min: -1, max: 1, step: 0.01, presets: [-0.3, 0, 0.3], hint: 'A constant added to every sample. Appears as a spike at 0 Hz.' },
     ],
     summary: (p) => `${fmtDb(p.gainDb)}${p.dcOffset ? ` · DC ${p.dcOffset}` : ''}`,
+    // Linear only while the offset is zero. With DC the block is AFFINE, and
+    // an affine block has no impulse response to convolve with: the measured
+    // "kernel" would carry the offset in every tap, and the convolution view's
+    // "y = x ∗ h" would re-add it once per overlapped sample — measured 5x off
+    // while the label claimed exact equality. So the exactness machinery asks
+    // this predicate instead of the static flag.
+    lti: (p) => p.dcOffset === 0,
     make: (p) => {
       const g = Math.pow(10, p.gainDb / 20)
       const dc = p.dcOffset
@@ -419,16 +438,21 @@ export const BLOCK_TYPES = {
 
   comb: {
     label: 'Comb / delay',
-    group: 'Nonlinear',
+    // A comb is LTI — it has an H(z), draws a solid response curve, and its
+    // rack home says so. It sat under Nonlinear once, which undercut that
+    // group's whole storyline of dashed curves and manufactured harmonics.
+    group: 'Filter',
     hint:
-      'Adds the signal to a delayed copy of itself, canceling wherever the delay is half a ' +
+      'Adds the signal to a delayed copy of itself, cancelling deepest where the delay is half a ' +
       'period — evenly spaced notches. Feed-forward is an FIR filter, feedback an IIR one: ' +
       'the same control, two very different behaviors.',
     nonlinear: false,
     defaults: { delayMs: 4, g: 0.7, mode: 'feedforward' },
     params: [
       { key: 'delayMs', label: 'Delay', unit: 'ms', scale: 'log', min: 0.1, max: 100, step: 0.1, presets: [0.5, 1, 4, 20] },
-      { key: 'g', label: 'Feedback', scale: 'linear', min: -0.95, max: 0.95, step: 0.01, presets: [-0.7, 0.5, 0.7, 0.9] },
+      // "Delayed-copy gain", not "Feedback": in feed-forward mode nothing is
+      // fed back — the same knob is the echo's strength in both modes.
+      { key: 'g', label: 'Delay gain g', scale: 'linear', min: -0.95, max: 0.95, step: 0.01, presets: [-0.7, 0.5, 0.7, 0.9] },
       { key: 'mode', label: 'Type', kind: 'select', options: ['feedforward', 'feedback'] },
     ],
     summary: (p) => `${p.delayMs} ms · g ${p.g} · ${p.mode === 'feedback' ? 'IIR' : 'FIR'}`,
@@ -531,25 +555,37 @@ export const BLOCK_TYPES = {
     label: 'Bit crusher',
     group: 'Nonlinear',
     hint:
-      'Rounds every sample to a coarse grid, as an analogue-to-digital converter does. ' +
+      'Rounds every sample to one of 2^bits levels, as an analogue-to-digital converter does. ' +
       'Undithered, the error tracks the signal and appears as discrete spurious tones; ' +
-      'dither turns those into a smooth noise floor.',
+      'dither decorrelates it into a smooth noise floor.',
     nonlinear: true,
     defaults: { bits: 8, dither: false },
     params: [
-      { key: 'bits', label: 'Bits', scale: 'linear', min: 1, max: 16, step: 1, decimals: 0, presets: [4, 8, 12, 16], hint: 'Signal-to-noise ratio is about 6.02 x bits + 1.76 dB.' },
+      { key: 'bits', label: 'Bits', scale: 'linear', min: 1, max: 16, step: 1, decimals: 0, presets: [4, 8, 12, 16], hint: 'Signal-to-noise ratio is about 6.02 x bits + 1.76 dB for a full-scale sine.' },
       { key: 'dither', label: 'Dither', kind: 'check' },
     ],
     summary: (p) => `${p.bits} bit${p.dither ? ' · dithered' : ''}`,
-    make: (p) => {
+    make: (p, sampleRate) => {
       const levels = Math.pow(2, p.bits)
       const delta = 2 / levels
+      // A b-bit converter has 2^b codes, not 2^b + 1: midtread rounding over
+      // a symmetric range includes BOTH rails, which handed a "1-bit" crusher
+      // three levels. The top code is dropped, the standard ADC convention
+      // (-2^(b-1) .. 2^(b-1)-1 in codes), so the count comes out exact.
+      const top = 1 - delta
       const dither = p.dither
-      let n = 0
       return {
-        process: (x) => {
-          const d = dither ? (hash01(n++, 0xd1) - 0.5) * delta : 0
-          return Math.round((x + d) / delta) * delta
+        // Dither is keyed to the ABSOLUTE sample index, like the noise source
+        // and the ring modulator's carrier — a local counter would give the
+        // scope buffer and the FFT frame different realizations whenever their
+        // pre-roll lengths differ. TPDF (two uniforms summed, ±1 LSB), which
+        // is what actually decorrelates the error; a single uniform leaves
+        // its variance tracking the signal.
+        process: (x, t) => {
+          const n = Math.round(t * sampleRate)
+          const d = dither ? (hash01(n, 0xd1) + hash01(n, 0x7e2) - 1) * delta : 0
+          const y = Math.round((x + d) / delta) * delta
+          return y > top ? top : y < -1 ? -1 : y
         },
         settle: 0,
       }

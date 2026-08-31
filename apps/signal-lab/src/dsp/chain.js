@@ -112,7 +112,13 @@ export function kernelCentre(h, eps = 1e-9) {
 
 export function chainImpulse(blocks, n, sampleRate) {
   const list = active(blocks)
-  const exact = list.every((b) => !BLOCK_TYPES[b.type].nonlinear)
+  // A block may be LTI only for some settings — gain is linear until its DC
+  // offset moves — so exactness consults the per-params `lti` predicate where
+  // one exists, and falls back to the static nonlinear flag.
+  const exact = list.every((b) => {
+    const def = BLOCK_TYPES[b.type]
+    return def.lti ? def.lti(b.params) : !def.nonlinear
+  })
   const x = new Float64Array(n)
   x[0] = 1
   // t0 = 0 and no pre-roll: the impulse IS the start of time here, and warming
@@ -140,6 +146,10 @@ export function chainImpulse(blocks, n, sampleRate) {
 export function convKernel(blocks, sampleRate) {
   const settle = chainSettle(blocks, sampleRate)
   const cap = 32768
-  const n = Math.min(cap, Math.max(64, settle + 1))
-  return { n, truncated: settle + 1 > cap }
+  // settle + 2, not + 1: with the tight size a complete FIR kernel ran to the
+  // very last sample of its buffer, which is exactly the signature kernelCentre
+  // uses to recognize an unfinished IIR tail — so a perfectly symmetric moving
+  // average was refused its centre. One trailing zero disambiguates.
+  const n = Math.min(cap, Math.max(64, settle + 2))
+  return { n, truncated: settle + 2 > cap }
 }

@@ -313,12 +313,31 @@ describe('quantizer', () => {
     }
   })
 
-  it('error never exceeds half a step', () => {
+  it('error never exceeds half a step — except at the positive rail', () => {
+    // A b-bit converter's top code is 1 - delta (codes -2^(b-1) .. 2^(b-1)-1),
+    // so a sample AT +1 clips by up to a full step. That asymmetry is the
+    // standard two's-complement ADC convention, not an accident.
     const bits = 8
     const delta = 2 / Math.pow(2, bits)
     const dry = render([src({ freq: 250, amp: 1 })], N, SR)
     const wet = quant(bits)
-    for (let i = 0; i < N; i++) expect(Math.abs(wet[i] - dry[i])).toBeLessThanOrEqual(delta / 2 + 1e-12)
+    for (let i = 0; i < N; i++) {
+      const bound = dry[i] > 1 - delta / 2 ? delta : delta / 2
+      expect(Math.abs(wet[i] - dry[i])).toBeLessThanOrEqual(bound + 1e-12)
+    }
+  })
+
+  it('produces exactly 2^bits distinct levels, rails included', () => {
+    // Midtread rounding over a symmetric range would include BOTH rails and
+    // hand a "1-bit" crusher three levels. The clamp makes the count exact.
+    for (const bits of [1, 2, 4]) {
+      const proc = BLOCK_TYPES.quantize.make({ bits, dither: false }, SR)
+      const seen = new Set()
+      for (let i = 0; i <= 4000; i++) {
+        seen.add(proc.process(-1 + (2 * i) / 4000, i / SR).toFixed(9))
+      }
+      expect(seen.size, `${bits} bits`).toBe(Math.pow(2, bits))
+    }
   })
 
   it('SNR approaches 6.02*bits + 1.76 dB at high resolution', () => {
