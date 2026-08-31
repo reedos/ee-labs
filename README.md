@@ -6,6 +6,16 @@ Interactive tools for the signals half of an electrical engineering curriculum. 
 shows a signal, what it is made of, and what happens when you put something in the way —
 and explains, next to every number, where that number came from.
 
+I built this as the tool I wish I'd had as an engineering student. It is undergrad
+course-focused, and it exists to bridge the gap between reading a textbook — equations,
+worked examples, a static figure — and watching the same concepts move in real time:
+drag a Q slider and the resonance stands up in front of you, in the spectrum, on the
+z-plane, and in the ringing of a step, all at once. That is where intuition comes from,
+and it is hard to get from a page. Underneath the coursework it is also about the thing
+that makes this subject worth loving: the bridge between the math and the physics — one
+series RLC that is simultaneously algebra on paper, parts you could buy, and a curve you
+can watch move — and the rhyme and reason that runs through all of it.
+
 ```
 npm install
 npm test                 # every package and every app, one run (500+ tests)
@@ -29,16 +39,9 @@ reader to benefit from it.
 
 Each tool opens with a grouped **Try this** list. Every entry is an experiment, not a
 lesson plan: it loads a setup and poses a question, and every claim its note makes is
-rendered and measured by a test — including
-the numbers quoted in prose, which are the ones that drift when a default changes and
-nobody notices.
-
-That is not a style preference. It has caught nine confidently wrong explanations so
-far. A Control Lab note promised a step overshooting "about 45%" and the setup it loaded
-overshot 57%; a Circuit Lab note claimed ±5% parts move f₀ by "about half the part
-tolerance", and its own test measured the spread of its 120 builds at 4.3% — the square
-root halves each PART'S error, but two parts contribute, and the note now says what is
-true (the analytic worst corner is ±5.3%; 4.3% is how close a batch of 120 gets to it).
+rendered and measured by a test. That matters more here than in most software — someone
+building intuition from a confidently wrong explanation has no way to catch it — so the
+claims are measured rather than trusted.
 
 ## The bridges
 
@@ -53,12 +56,10 @@ a similar filter: the same resonance and the same Q, carried across.
 
 That is the argument for a suite rather than three separate tools, made checkable instead
 of asserted. It is checked, too — the tests take a circuit, build the link, parse it back,
-design the biquad Signal Lab would design, and require the two responses to agree: exactly
-at the corner, and within 2% two octaves either side at the test's generous 500 kHz. At
-this link's own 192 kHz the corner is still exact but the drift reaches ~7% two octaves
-up — the drift the twenty-samples-per-cycle warning exists to bound. They are not identical, and the
-tests say why. Signal Lab designs an RBJ cookbook section directly in the digital domain
-from (mode, f₀, Q); it is not the bilinear transform of that particular network. The two
+design the biquad Signal Lab would design, and require the two responses to agree at the
+corner and closely either side of it. They are not identical, and the tests say why:
+Signal Lab designs an RBJ cookbook section directly in the digital domain from
+(mode, f₀, Q); it is not the bilinear transform of that particular network. The two
 agree on what a second-order section with that resonance and Q *means*.
 
 The panel maps in two tiers. A circuit that is exactly a named shape hands over as
@@ -160,12 +161,6 @@ assuming 1080p, and a shell whose page never scrolls so both plots always fit.
 
 `@ee-labs/explain/testing` holds every tool to that standard, including `inertRows`, which
 perturbs what a panel measures from and fails any check row that does not move.
-
-That discipline is not decoration. It has caught, so far: a square-wave generator putting
-17 samples high and 15 low in every period; a pre-roll bug that made a filtered square
-miss its own response curve by 10%; thirteen rows that printed one number twice and always
-agreed; and four confidently wrong explanations, including the claim that Q = 0.707 does
-not overshoot — it overshoots 4.3%, and critical damping is Q = 0.5.
 
 ## Working here
 
