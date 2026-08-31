@@ -24,12 +24,10 @@ npm run verify     # drives the real UI in a browser
 ```
 
 `npm test` exercises the DSP and the math directly. `npm run verify` is the one that
-catches wiring: it drives the actual page in Chromium, loads every preset, opens every
-math panel, changes parameters, and checks that the numbers on screen and the pixels in
-the canvases both follow. It found three bugs the unit tests could not — a claim that
-went unmeasurable at exactly two samples per cycle, a row showing a cross for a value
-that was never measured at all, and a preset missing the ghost trace its own lesson
-depended on.
+catches wiring: it drives the actual page in a real browser, loads every preset, opens
+every math panel, changes parameters, and checks that the numbers on screen and the
+pixels in the canvases both follow — the class of mistake a unit test cannot see, like a
+prop that stopped being passed or a panel reading stale state.
 
 ## Where to start
 
@@ -164,13 +162,12 @@ same thing as a time, in samples, which is usually the more useful reading — a
 means the shape survives.
 
 Group delay comes back **undefined across a null**, and the trace breaks rather than
-joining up. Two separate things go wrong there, and both had to be handled before a
-moving average would report its actual constant delay: the phase steps by π at a null
-because the real amplitude behind it changed sign, and at the null itself there is no
-angle at all, so the curve is filled in from a neighbour to stay continuous.
-Differencing through the first gave a spike of −125 samples; differencing across the
-second gave exactly *half* the true delay, which is the more dangerous of the two because
-it looks like an answer.
+joining up. Two separate things go wrong at a null, and a delay differenced through
+either one is not a delay: the phase steps by π there because the real amplitude behind
+it changed sign, and a sign is not a shift; and at the null itself there is no angle at
+all, so the curve is filled in from a neighbour to stay continuous — differencing a
+value that was copied rather than measured. There is also nothing at a null to be
+delayed, so undefined is the honest answer rather than merely a convenient one.
 
 The measured phase *of the signal* is not offered, and that is a decision rather than an
 omission. It depends on where the frame happens to start — shift the window one sample
@@ -185,11 +182,12 @@ zero pad and not a repeat of the frame — and discards it. A checkbox shows the
 once you know it is there.
 
 That scheme depends on the pre-roll being genuinely the same signal, which is why the
-generators take time from the absolute sample index rather than from an offset. Getting
-that subtly wrong made a filtered square measure up to 10% away from its own response
-curve, and the test that should have caught it was pinning the artifact instead.
+generators take time from the absolute sample index rather than from an offset. Compute
+it from a local index instead and the two differ in the last bit — invisible on a sine,
+but enough to move a square's transition samples across the decision threshold, so the
+filtered square is compared against a *different* unfiltered square.
 
-### The other two views
+### The other views
 
 Each pane has a switch in its own header, so the layout stays two panes.
 
@@ -199,6 +197,42 @@ the design produced. Every output sample is that kernel flipped, slid along, mul
 by the input underneath and summed, which is convolution and is the only description of
 filtering that covers FIR and IIR at once. An IIR's kernel is visibly a decaying
 oscillation that never reaches zero.
+
+**Convolution** replaces the scope with that sentence happening, one output sample at a
+time:
+
+```
+y[n] = Σ h[k]·x[n−k]
+```
+
+The top strip is the input with the kernel drawn **flipped** and slid to the current
+position — h[n−m] against m — because that flip is the detail everyone trips on, and no
+amount of prose fixes it the way watching the kernel ride backwards does. It is not a
+convention: x[n−k] walks backwards as k walks forwards, so without the flip the sum would
+weight the newest input by the oldest tap. The shaded bars are the products being summed;
+the bottom strip is the output built so far, ending on the sample those bars just made.
+
+Why this is *the* description of filtering, rather than one of several: any input is a
+train of scaled, shifted impulses. If the system is linear, the responses to them add; if
+it is time-invariant, a shifted impulse gives a shifted copy of the same response. Put
+those two together and the output must be the sum of scaled, shifted impulse responses —
+which is the sum above. LTI is the hypothesis, and the view shows what happens without
+it: put a clipper in the chain and the label changes to say the two disagree, because
+they genuinely do. The scrubber's readout is computed twice on purpose — once by the
+chain's stateful processors, once as this dot product against the measured kernel — and
+for a linear chain the two agree to rounding.
+
+The first N samples ramp rather than starting at full value. That is not a rendering
+artifact, it is filter warm-up seen for what it is: the kernel still hangs off the left
+edge of the signal, so the sum runs over a partial overlap.
+
+Everything in this view is a **sample**: one product bar per sample, one tap per sample,
+one dot per completed sum. The line joining the dots is drawn to make the shape legible
+and is not a claim about what happens between them — that question belongs to the Signal
+view, where the same numbers are drawn as the (sin x)/x curve they describe.
+Reconstruction is a separate step *after* this arithmetic, not part of it, and the two
+views agree exactly where it counts: they are drawing the same samples, from the same
+chain.
 
 **z-plane** replaces the spectrum with poles and zeros. The thing to notice is that for a
 sampled filter the frequency axis is not a line, it is the unit circle: DC at z = 1,
@@ -246,17 +280,16 @@ only worth something when the two sides come from genuinely different places: th
 side is a closed form, and the measured side has to be *read off something the app is
 really showing you* — the FFT trace, the pre-chain ghost, the response curve. The FFT
 knows nothing about Fourier series, so when they agree, the implementation matches the
-formula. That has caught three real bugs.
+formula.
 
 It does not prove the physics is right. It is an internal consistency check between two
 of my own code paths, not a measurement against reality, and it cannot catch a mistake
 that is present in both the formula and the model.
 
-Half the panel used to fail even the weaker test. Thirteen of twenty-four rows printed
-the same expression in both columns — `predicted: beat, measured: beat` — and so could
-never disagree. Those are now rendered as plain derived values under "from these
-settings", with no tick, because marking 1 = 1 correct is worse than saying nothing: it
-teaches you to trust a ✓ that means nothing.
+A row that prints the same expression in both columns — `predicted: beat, measured: beat`
+— cannot disagree, so it is not a check at all. Those are rendered as plain derived
+values under "from these settings", with no tick, because marking 1 = 1 correct is worse
+than saying nothing: it teaches you to trust a ✓ that means nothing.
 
 A test enforces the distinction. It perturbs everything a panel could be measuring from
 — scaling and tilting the spectrum, the ghost and the response curve — and requires every
@@ -287,22 +320,14 @@ FFT size across those presets and requires every row to be either correct or exp
 unmeasurable, and separately requires that the escape hatch is not being used everywhere:
 a panel that checked nothing would pass the first test and teach nothing.
 
-This is not ceremony. Three things were wrong before those tests existed:
-
-- **"each surviving harmonic sits on the response curve."** It does not. A square's
-  harmonics already fall as 4/kπ before the filter sees them, so the peaks land 7–17 dB
-  below the curve. What equals the curve is the *gap* between the pre- and post-filter
-  traces.
-- **"at Q = 10 the peak is literally 10×."** True of a low-pass, false of the band-pass
-  the preset actually used, where |H(f₀)| is pinned at 1 however far Q is pushed. For a
-  band-pass, Q sets the width instead.
-- **the square generator itself**, which decided its transition samples with
-  `sign(sin θ)`. Since `sin(π)` returns 1.22e-16 rather than 0, every period got 17
-  samples high and 15 low — a DC offset and a full set of even harmonics at −39 dB on the
-  one waveform whose entire lesson is that it has none.
-
-A confidently wrong explanation is worse here than a missing feature: someone learns the
-wrong thing and has no way to catch it. So the claims are measured rather than trusted.
+This is not ceremony. A confidently wrong explanation is worse here than a missing
+feature: someone building intuition from it has no way to catch it. The claims that are
+easiest to get wrong are the ones that sound obviously right — that each surviving
+harmonic of a filtered square sits *on* the response curve (it does not: the square's own
+4/kπ envelope is already there, and what equals the curve is the gap between the two
+traces), or that a Q of 10 always means a peak ten times taller (true of a low-pass,
+false of a band-pass, where |H(f₀)| is pinned at 1 and Q sets the width instead). So the
+claims are measured rather than trusted.
 
 ## Relation to waveform-simulator
 

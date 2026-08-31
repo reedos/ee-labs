@@ -496,6 +496,16 @@ export default function App() {
                   continuous twin, the form Circuit Lab reads.
                 </p>
               )}
+              {/* What this view is NOT drawing, said once. The sum produces
+                  SAMPLES; the smooth curve a scope shows is a later, separate
+                  step, and conflating the two is how "convolution" starts
+                  sounding like it smooths things. */}
+              <p className="conv-theorem">
+                Every dot is one sample — one completed sum. The line joining them is
+                drawn for legibility, not computed: what the samples describe between
+                themselves is the (sin x)/x curve the <b>Signal</b> view draws, which is
+                reconstruction, a separate step after this arithmetic and not part of it.
+              </p>
             </>
           ) : state.timeView === 'impulse' && impulse ? (
             <ImpulseCanvas

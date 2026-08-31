@@ -106,7 +106,11 @@ export const PRESETS = [
   {
     group: 'Signals and Fourier',
     name: 'Sines in, sines out',
-    terms: ['lti', 'superposition'],
+    // 'sampled' because this preset's span is zoomed far enough in that the
+    // scope switches to sample dots and its (sin x)/x reconstruction — the
+    // caption for that appears on the canvas, so the definition behind it
+    // should be one click away here as it is in the sampling lessons.
+    terms: ['lti', 'superposition', 'sampled'],
     note:
       'The quiet assumption under this whole tool, made loud. This chain is LINEAR — meaning ' +
       'superposition (sums in give sums out, the previous preset) plus scaling (double the ' +
@@ -619,7 +623,9 @@ export const PRESETS = [
       'average is exactly the amplitude, which is why the output has flat tops; the ramps ' +
       'between them are the window straddling an edge, and they are exactly N−1 samples wide. ' +
       'The first few samples ramp too — that is filter warm-up, seen for what it is: partial ' +
-      'overlap.',
+      'overlap. Every dot down there is one sum: this view is arithmetic on samples, and the ' +
+      'smooth curve those samples describe belongs to the Signal view, after the arithmetic ' +
+      'is done.',
     patch: {
       sources: [mk(1, 'square', 250, 0.8)],
       blocks: [bk(1, 'movingavg', { taps: 8 })],

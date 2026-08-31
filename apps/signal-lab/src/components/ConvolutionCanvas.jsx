@@ -134,6 +134,31 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
       }
       ctx.stroke()
 
+      // Dots ON the samples, wherever they are far enough apart to see.
+      //
+      // Everything in this view is a sample: one product bar per sample, one
+      // kernel tap per sample, one output value per sample. Drawing the
+      // traces as bare polylines let the eye read a continuous curve being
+      // filtered, which is the one thing convolution is NOT — so the data
+      // says it is data, the same way the scope's sample dots do. The line
+      // between them is drawn to make the shape legible and is not a claim
+      // about what happens between samples; the scope answers that, with the
+      // (sin x)/x curve these same numbers describe.
+      const dots = (buf, sy, colour, upTo = buf.length - 1) => {
+        if (pitch < 6 * k) return
+        ctx.fillStyle = colour
+        ctx.beginPath()
+        const r = 2.1 * k
+        for (let m = 0; m <= upTo; m++) {
+          const px = sx(m)
+          const py = sy(buf[m])
+          ctx.moveTo(px + r, py)
+          ctx.arc(px, py, r, 0, Math.PI * 2)
+        }
+        ctx.fill()
+      }
+      dots(x, syTop, COLORS.trace)
+
       // The kernel, flipped: h[n−m] plotted against m, on its own scale so a
       // 1/N-tall moving average is still visible — and SAYING SO. The first
       // cut drew 0.125-tall taps as tall as a ±0.8 input with no scale cue,
@@ -191,6 +216,8 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
         else ctx.lineTo(px, py)
       }
       ctx.stroke()
+      // Each output dot is one completed sum — the bars above, added up.
+      dots(y, syBot, exact ? COLORS.spectrum : COLORS.marker, n)
 
       // The sample the bars above just made.
       ctx.fillStyle = exact ? COLORS.spectrum : COLORS.marker
