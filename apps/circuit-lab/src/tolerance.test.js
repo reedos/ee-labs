@@ -25,8 +25,9 @@ describe('toleranceCloud', () => {
   })
 
   // f0 = 1/(2π√LC): the worst cases are both parts at the same extreme, and
-  // the square root halves the damage — ±5% parts move f0 by only about ∓5%
-  // in the worst corner, ~±2.5% typically.
+  // the square root halves the damage — ±5% parts move f0 by at most +5.26%
+  // (1/√ is convex, so the up-corner exceeds the tolerance slightly); a
+  // typical single build lands within about ±2%.
   it('keeps f₀ inside the analytic worst-case band, and spreads meaningfully', () => {
     const tol = 0.05
     const { f0 } = toleranceCloud('rlcSeries', RLC, 'c', tol)

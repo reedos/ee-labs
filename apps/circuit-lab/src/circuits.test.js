@@ -504,3 +504,65 @@ describe('twin-T notch', () => {
     expect(deg(tf, f0 * 1e4)).toBeCloseTo(0, 1)
   })
 })
+
+// ---- regression tests for the 2026-08 audit fixes ----
+
+import { polesZeros as pzOf, secondOrderMetrics as somOf, roots as rootsOf, isStable as stableOf } from '@ee-labs/systems'
+
+describe('normalization: SI-scaled circuits survive the shared instruments', () => {
+  // transferOf normalizes a[0] to 1. Fed raw SI products (a0 = LC ~ 1e-15),
+  // the instruments' absolute leading-zero guards read "not second order":
+  // a 5 MHz RLC lost a pole, its metrics went null, the twin-T lost its
+  // zeros - across ~15-24% of the slider space.
+  it('a 5 MHz RLC keeps both poles and its metrics', () => {
+    const tf = transferOf('rlcSeries', { r: 10, l: 1e-6, c: 1e-9 }, 'c')
+    expect(tf.a[0]).toBe(1)
+    expect(pzOf(tf).poles).toHaveLength(2)
+    const m = somOf(tf)
+    expect(m).not.toBeNull()
+    expect(m.f0).toBeCloseTo(5032921.2, 0)
+    expect(m.q).toBeCloseTo(3.16228, 4)
+  })
+
+  it('widely spread overdamped poles come back accurate (balanced Durand-Kerner)', () => {
+    const tf = transferOf('rlcSeries', { r: 100, l: 1e-6, c: 1e-9 }, 'c')
+    const res = rootsOf(tf.a).map(([re]) => re).sort((x, y) => y - x)
+    expect(res[0] / -1.1270167e7).toBeCloseTo(1, 5)
+    expect(res[1] / -8.8729833e7).toBeCloseTo(1, 5)
+  })
+
+  it('the twin-T keeps its on-axis zeros at 10 pF (a 15.9 MHz notch)', () => {
+    const tf = transferOf('twinT', { r: 1000, c: 10e-12 }, 'out')
+    const { zeros } = pzOf(tf)
+    expect(zeros).toHaveLength(2)
+    for (const [re, im] of zeros) {
+      expect(Math.abs(re)).toBeLessThan(1)
+      expect(Math.abs(Math.abs(im) - 1e8) / 1e8).toBeLessThan(1e-6)
+    }
+  })
+})
+
+describe('stability of the trivial baseline', () => {
+  it('a resistor divider is stable - no poles is not instability', () => {
+    expect(stableOf(transferOf('divider', { r1: 1000, r2: 1000 }, 'out'))).toBe(true)
+  })
+  it('the integrator still reads not stable', () => {
+    expect(stableOf(transferOf('integrator', { r: 10000, c: 10e-9 }, 'out'))).toBe(false)
+  })
+})
+
+describe('sineResponse declines instead of freezing', () => {
+  it('returns null for a slider-legal 1 MOhm tank at Q ~ 3e7', () => {
+    // This configuration once asked for ~1e9 RK4 sub-steps (a multi-GB
+    // allocation whose RangeError a try/catch swallowed, blanking the whole
+    // math panel). Declining lets the row footnote the reason instead.
+    const tf = transferOf('rlcParallel', { r: 1e6, l: 1e-6, c: 1e-3 }, 'z')
+    expect(sineResponse(tf, 5000)).toBeNull()
+  })
+  it('still measures the ordinary cases', () => {
+    const tf = transferOf('rlcSeries', { r: 100, l: 10e-3, c: 100e-9 }, 'c')
+    const r = sineResponse(tf, 5033)
+    expect(r).not.toBeNull()
+    expect(r.amplitude).toBeGreaterThan(1)
+  })
+})

@@ -430,7 +430,7 @@ export default function App() {
               With these parts f₀ lands anywhere in {fmt(wobble.f0.lo, 'Hz', 3)} to{' '}
               {fmt(wobble.f0.hi, 'Hz', 3)} (±{f0Spread.toFixed(1)}%)
               {qSpread != null
-                ? ` and Q in ${wobble.q.lo.toPrecision(3)} to ${wobble.q.hi.toPrecision(3)} (±${qSpread.toFixed(1)}%). The square root in f₀ halves each part's error; nothing does that for Q.`
+                ? ` and Q in ${wobble.q.lo.toPrecision(3)} to ${wobble.q.hi.toPrecision(3)} (±${qSpread.toFixed(1)}%). The square root halves L's and C's errors in both — what doubles Q's spread is R, which enters Q in full and f₀ not at all.`
                 : '.'}{' '}
               The poles view shows the scatter.
             </p>

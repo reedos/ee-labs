@@ -31,7 +31,6 @@ export default function HandOver({ tf, circuitName, from = null }) {
   // samples a cycle, and the panel warned about a problem it had created
   // itself. Derived by default, sticky only once someone sets it.
   const [chosen, setChosen] = useState(null)
-  const [copied, setCopied] = useState(false)
 
   const rate = chosen ?? suggestRate(natural ? natural.f0 : 0)
   const d = useMemo(() => asDigitalFilter(tf, { sampleRate: rate, from }), [tf, rate, from])
@@ -52,16 +51,6 @@ export default function HandOver({ tf, circuitName, from = null }) {
         <AsPlant plant={plant} circuitName={circuitName} tf={tf} />
       </>
     )
-  }
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(d.link)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1600)
-    } catch {
-      setCopied(false)
-    }
   }
 
   const c = d.digital

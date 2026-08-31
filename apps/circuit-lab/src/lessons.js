@@ -47,7 +47,8 @@ export const LESSONS = [
     name: 'The same filter, read backwards',
     terms: ['corner', 'phase'],
     note:
-      'Move the probe to the resistor and the low-pass becomes a high-pass. Nothing else ' +
+      'The same two components, with the output read across the resistor instead — and the ' +
+      'low-pass becomes a high-pass. Nothing else ' +
       'changed — the same current flows through both components — so whatever one keeps, the ' +
       'other discards. Their squared magnitudes sum to exactly 1 at every frequency.',
     patch: { circuit: 'rcHigh', view: 'pz' },
@@ -84,7 +85,7 @@ export const LESSONS = [
     name: 'Q is how sharp, and R sets it',
     terms: ['q', 'resonance'],
     note:
-      'Drag R from 10 Ω upward. The resonant peak collapses, because at resonance the inductor ' +
+      'Drag R up from its 20 Ω. The resonant peak collapses, because at resonance the inductor ' +
       'and capacitor cancel exactly and only the resistor is left to limit the current. Double ' +
       'R and Q halves: Q = (1/R)√(L/C), and none of it depends on frequency.',
     patch: { circuit: 'rlcSeries', params: p('rlcSeries', { r: 20 }), output: 'c', view: 'step' },
@@ -129,7 +130,6 @@ export const LESSONS = [
     claim: { zeroOnAxis: true, qFixed: 0.25 },
   },
 
-  // ------------------------------------------------------- Active circuits
   {
     group: 'Resonance',
     name: 'Real parts wobble',
@@ -139,9 +139,10 @@ export const LESSONS = [
       'This is the series RLC built 120 times from ±5% parts: the poles view shows where the ' +
       'poles actually scatter. The square root in 1/2π√LC halves what each part can do to f₀ ' +
       '— but L and C both contribute, so the worst corner is still about ±5%. Q has it twice ' +
-      'as bad: R, L and C all pile in with nothing halved, and the spread reaches roughly ' +
-      'double f₀’s. Ratios are fragile; geometric means are forgiving. That is why the Q of a ' +
-      'filter is the spec that costs money.',
+      'as bad — not because anything escapes the square root (L and C are halved in Q by the ' +
+      'same one) but because R joins them at FULL strength: Q = (1/R)√(L/C), and R appears ' +
+      'nowhere in f₀. A whole extra part’s worth of error, so the spread reaches roughly ' +
+      'double f₀’s. That is why the Q of a filter is the spec that costs money.',
     patch: { circuit: 'rlcSeries', view: 'pz', tol: 0.05 },
     claim: { tolQHarderThanF0: true },
   },
@@ -170,6 +171,7 @@ export const LESSONS = [
     },
     claim: { f0Immune: true, polesOnCircle: true },
   },
+  // ------------------------------------------------------- Active circuits
   {
     group: 'Active circuits',
     name: 'Why active filters exist',

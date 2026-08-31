@@ -312,8 +312,12 @@ describe('lesson: Real parts wobble', () => {
     const f0Pct = spreadPct(f0, m.w0 / (2 * Math.PI))
     const qPct = spreadPct(q, m.q)
     // Each part's error is halved by the square root, but TWO parts
-    // contribute, so the worst corner is the full tolerance and no more.
-    expect(f0Pct).toBeLessThanOrEqual(l.patch.tol * 100 + 0.2)
+    // contribute, so the worst ANALYTIC corner is 1/√(0.95·0.95) − 1 =
+    // +5.26% — slightly ABOVE the tolerance, since 1/√ is convex. The 120
+    // hashed builds rarely land both parts at a band edge, so the sampled
+    // spread sits below that; the bound is the analytic corner, not the
+    // sample luck of the current hash.
+    expect(f0Pct).toBeLessThanOrEqual((1 / (1 - l.patch.tol) - 1) * 100 + 0.1)
     expect(f0Pct).toBeGreaterThan(l.patch.tol * 100 * 0.5)
     // "wobbles roughly twice as hard": between 1.5x and 3x.
     expect(qPct / f0Pct).toBeGreaterThan(1.5)
@@ -326,7 +330,7 @@ describe('lesson: Real parts wobble', () => {
 // formula contains no R. Absolutes get tested as absolutes.
 describe('lesson: Blame the right part', () => {
   const l = () => LESSONS.find((x) => x.name === 'Blame the right part')
-  // At the lesson's OWN settings — it loads R = 470 so the arc is visible.
+  // At the lesson's OWN settings — it loads R = 560 so the arc is visible.
   const setup = () => applyLesson(l())
 
   it('R alone leaves f₀ exactly put, the poles on the ω₀ circle, Q hit in full', () => {
@@ -346,7 +350,7 @@ describe('lesson: Blame the right part', () => {
     }
     // "Q takes the entire hit" — the full ±10%-ish, not the halved share.
     expect(spreadPct(q, m.q)).toBeGreaterThan(7)
-    // The visibility argument for R = 470: a slide the size of the marker,
+    // The visibility argument for R = 560: a slide the size of the marker,
     // not a smudge inside it — the real parts spread by more than 5% of ω₀.
     const res = cloud.map(([re]) => re)
     expect((Math.max(...res) - Math.min(...res)) / m.w0).toBeGreaterThan(0.05)

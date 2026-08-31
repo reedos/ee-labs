@@ -159,10 +159,19 @@ export function roots(coeffs) {
   const deg = monic.length - 1
   if (deg < 1) return Array.from({ length: atOrigin }, () => [0, 0])
 
+  // Balance before iterating: substitute s = g·z with g = |monic[deg]|^(1/deg),
+  // which maps a physically-scaled polynomial like s² + 1e8·s + 1e15 (an RLC
+  // written in SI units) onto z² + 3.2·z + 1 — coefficients of order one, so
+  // the seeds start near the roots instead of seven decades away and the
+  // iteration cannot stagnate on the spread. A pure change of variable: the
+  // roots come back multiplied by g.
+  const g = Math.abs(monic[deg]) > 0 ? Math.pow(Math.abs(monic[deg]), 1 / deg) : 1
+  const bal = monic.map((v, k) => v / Math.pow(g, k))
+
   // Spread the starting guesses around a circle, off the real axis, so a
   // polynomial with real roots does not start with every guess identical.
   let z = Array.from({ length: deg }, (_, k) => {
-    const r = 1 + Math.abs(monic[deg])
+    const r = 1 + Math.abs(bal[deg])
     const th = (2 * Math.PI * k) / deg + 0.35
     return [r * Math.cos(th), r * Math.sin(th)]
   })
@@ -172,12 +181,13 @@ export function roots(coeffs) {
     for (let i = 0; i < deg; i++) {
       let denom = [1, 0]
       for (let j = 0; j < deg; j++) if (j !== i) denom = cMul(denom, cSub(z[i], z[j]))
-      const step = cDiv(polyEval(monic, z[i]), denom)
+      const step = cDiv(polyEval(bal, z[i]), denom)
       z[i] = cSub(z[i], step)
       moved = Math.max(moved, cAbs(step))
     }
     if (moved < 1e-14) break
   }
+  z = z.map(([re, im]) => [g * re, g * im])
 
   // Snap near-real roots onto the real axis: a conjugate pair whose imaginary
   // part is 1e-16 is a numerical artefact, and it changes how the pole is drawn
@@ -198,8 +208,13 @@ export function polesZeros(tf) {
 
 /** Continuous-time stability: every pole strictly in the left half plane. */
 export function isStable(tf) {
+  // A degenerate denominator is not a system at all.
+  if (!tf.a.length || !tf.a.some((v) => v !== 0)) return false
   const p = roots(tf.a)
-  return p.length > 0 && p.every(([re]) => re < -1e-12)
+  // No poles is not instability — a memoryless network (a resistor divider)
+  // has no state to run away with, and calling the trivially well-behaved
+  // baseline "not stable" taught the opposite of the lesson it sat under.
+  return p.every(([re]) => re < -1e-12)
 }
 
 /**

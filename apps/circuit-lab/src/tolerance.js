@@ -21,9 +21,11 @@ import { CIRCUITS, transferOf } from './circuits.js'
 // views disagree about nothing.
 //
 // The lesson hiding in it: f₀ moves as −(δL+δC)/2 — the square root HALVES
-// each part's error — while Q = (1/R)√(L/C) takes δR, δL and δC with no such
-// mercy. Ratios wobble harder than geometric means, and that is why Q is the
-// spec that costs money.
+// each part's error — while Q = (1/R)√(L/C) moves as −δR + δL/2 − δC/2. The
+// same square root halves L and C for Q too; what Q suffers extra is R,
+// which enters at FULL strength and touches f₀ not at all. One whole extra
+// part's worth of error is why Q's spread runs about double f₀'s, and why Q
+// is the spec that costs money.
 
 export const TOLERANCES = [
   { value: 0, label: 'exact' },

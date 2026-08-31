@@ -36,8 +36,9 @@ nobody notices.
 That is not a style preference. It has caught nine confidently wrong explanations so
 far. A Control Lab note promised a step overshooting "about 45%" and the setup it loaded
 overshot 57%; a Circuit Lab note claimed ±5% parts move f₀ by "about half the part
-tolerance", and its own test measured 4.3% — the square root halves each PART'S error,
-but two parts contribute, and the note now says what is true.
+tolerance", and its own test measured the spread of its 120 builds at 4.3% — the square
+root halves each PART'S error, but two parts contribute, and the note now says what is
+true (the analytic worst corner is ±5.3%; 4.3% is how close a batch of 120 gets to it).
 
 ## The bridges
 

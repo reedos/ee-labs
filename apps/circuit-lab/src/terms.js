@@ -21,9 +21,10 @@ export const TERMS = {
     name: 'Pole',
     def:
       'A root of H(s)’s denominator — a complex frequency where the circuit’s own dynamics ' +
-      'diverge. Each independent energy store (capacitor or inductor) contributes one, and ' +
-      'poles in the left half plane mean every disturbance dies out on its own. On the ' +
-      'boundary, like the integrator’s, it never does.',
+      'diverge. Each independent energy store (capacitor or inductor) contributes one, though ' +
+      'a pole–zero cancellation can hide a mode from H(s) — the twin-T’s three capacitors ' +
+      'show only two poles. Poles in the left half plane mean every disturbance dies out on ' +
+      'its own. On the boundary, like the integrator’s, it never does.',
   },
   zero: {
     name: 'Zero',
@@ -42,15 +43,18 @@ export const TERMS = {
   corner: {
     name: 'Corner (cutoff) frequency',
     def:
-      'The frequency where a filter’s two impedances are equal, so the output is 1/√2 of the ' +
-      'input (−3.01 dB) with 45° of phase per order. Not a convention but a consequence: for ' +
-      'an RC it lands at 1/(2πRC), and moving R or C moves it exactly that way.',
+      'For a first-order filter: the frequency where its two impedances are equal, so the ' +
+      'output is 1/√2 of the input (−3.01 dB) with 45° of phase. Not a convention but a ' +
+      'consequence: for an RC it lands at 1/(2πRC), and moving R or C moves it exactly that ' +
+      'way. A resonant second-order circuit does something different at its equal-impedance ' +
+      'frequency — the series RLC across C reads Q× there, not −3 dB.',
   },
   q: {
     name: 'Q (quality factor)',
     def:
       'How resonant a 2nd-order circuit is. For the series RLC read across C it is literally ' +
-      'the height of the peak at f₀ (Q = 10 → 10× the input); for a band-pass it sets width ' +
+      '|H| at f₀ (Q = 10 → 10× the input); the true maximum sits a shade higher and just ' +
+      'below f₀ — 1.3% higher at Q = 3, vanishing by Q = 10. For a band-pass Q sets width ' +
       'instead (bandwidth = f₀/Q). High Q also means long ringing after a step — the same ' +
       'fact in the time domain.',
   },

@@ -35,8 +35,14 @@ const TAU = 2 * Math.PI
  * −2Q·ln 10 for a second-order corner, in rad/decade) — different path, so a
  * wrong Q or a mis-derived denominator separates them.
  */
-const phaseSlope = (tf, f) => {
-  const h = 1e-4
+const phaseSlope = (tf, f, q = 1) => {
+  // The step must SHRINK with Q: the phase feature at a resonance is ~1/Q of
+  // a decade wide, and a fixed h = 1e-4 has central-difference truncation
+  // error growing as (Q·h)² — past Q ≈ 120 (slider-reachable) the row went ✗
+  // against correct physics. At h = 5e-3/Q the relative error is a
+  // Q-independent 1.8e-4, safely inside the row's 1e-3, and the differenced
+  // phase (~0.05 rad) stays far above float noise.
+  const h = Math.min(1e-4, 5e-3 / Math.max(1, q))
   const up = phaseAt(tf, f * Math.pow(10, h))
   const dn = phaseAt(tf, f * Math.pow(10, -h))
   return (((up - dn) / (2 * h)) * 180) / Math.PI
@@ -72,6 +78,20 @@ export function sineResponse(tf, f) {
   const perCycle = Math.max(12, Math.min(60, Math.floor(8000 / periods)))
   const points = periods * perCycle + 1
   const duration = periods / f
+
+  // Affordability check BEFORE simulating. The run settles on the slowest
+  // decay while the integrator sub-steps on the fastest pole, so the total
+  // work grows with the stiffness ratio: a slider-legal 1 MΩ tank at
+  // Q ≈ 3e7 asks for ~1e9 sub-steps — gigabytes and minutes on the render
+  // path, with the eventual RangeError vanishing into a try/catch and taking
+  // the whole panel with it. Declining is the honest answer; the caller
+  // footnotes the row with the reason instead of freezing or going blank.
+  const fastest = poles.length
+    ? Math.max(...poles.map(([re, im]) => Math.hypot(re, im)))
+    : 0
+  const estSubSteps = (duration * fastest) / 0.08 + points
+  if (!Number.isFinite(estSubSteps) || estSubSteps > 2e6) return null
+
   const { t, y } = simulate(tf, (tv) => Math.sin(w * tv), { duration, points })
 
   let re = 0
@@ -91,7 +111,11 @@ export function sineResponse(tf, f) {
 function common(tf, p, id) {
   const { poles, zeros } = polesZeros(tf)
   const rows = [
-    { label: 'DC gain', value: dcGain(tf) },
+    {
+      label: 'DC gain',
+      value: dcGain(tf),
+      note: Number.isFinite(dcGain(tf)) ? '' : 'unbounded — the pole at the origin',
+    },
     { label: 'poles', value: poles.length },
     { label: 'zeros', value: zeros.length },
   ]
@@ -119,7 +143,9 @@ function common(tf, p, id) {
     T(
       'The order of the denominator counts the independent energy stores — every capacitor ' +
         'and inductor that can hold a state of its own. That is why an RC has one pole and an ' +
-        'RLC has two, and why no arrangement of resistors alone has any.',
+        'RLC has two, and why no arrangement of resistors alone has any. (One honest caveat: ' +
+        'a pole–zero cancellation can hide a mode from H(s) — the twin-T’s three capacitors ' +
+        'hold three states, but one mode at exactly −1/RC cancels and only two poles show.)',
     ),
     F('Y(s) = X(s)\\,H(s)'),
     T(
@@ -134,17 +160,23 @@ function common(tf, p, id) {
       {
         label: `sine at ${fSine.toPrecision(4)} Hz, simulated: gain`,
         predicted: magnitudeAt(tf, fSine),
-        measured: sim.amplitude,
+        measured: sim ? sim.amplitude : NaN,
         tol: 0.02,
         abs: 1e-6,
+        unchecked: sim
+          ? null
+          : 'This circuit rings for so many of its fastest time steps that simulating it to steady state is unaffordable — the formula stands; this configuration is too stiff to measure it in time.',
       },
       {
         label: 'and its phase',
         predicted: (phaseAt(tf, fSine) * 180) / Math.PI,
-        measured: (sim.phase * 180) / Math.PI,
+        measured: sim ? (sim.phase * 180) / Math.PI : NaN,
         tol: 0.02,
         abs: 0.5,
         unit: '°',
+        unchecked: sim
+          ? null
+          : 'Same stiffness limit as the gain row above.',
       },
     ]),
     V(rows),
@@ -166,7 +198,8 @@ const ENTRIES = {
           measured: magnitudeAt(tf, 1000),
           tol: 1e-9,
         },
-        { label: 'phase at 1 kHz', predicted: 0, measured: phaseAt(tf, 1000), abs: 1e-9 },
+        // Degrees like every other phase row — this one alone spoke radians.
+        { label: 'phase at 1 kHz', predicted: 0, measured: (phaseAt(tf, 1000) * 180) / Math.PI, abs: 1e-9, unit: '°' },
       ]),
       T(
         'Worth loading first, because everything after it is this with a frequency-dependent ' +
@@ -258,7 +291,12 @@ const ENTRIES = {
             measured: (phaseAt(tf, fc) * 180) / Math.PI,
             tol: 1e-6,
           },
-          { label: 'DC gain', predicted: 0, measured: magnitudeAt(tf, 1e-9), abs: 1e-9 },
+          // dcGain reads the constant terms, where the high-pass numerator's
+          // trailing zero makes the answer EXACTLY 0. Probing |H| at 1e-9 Hz
+          // instead read the first-order value 2π·10⁻⁹·RC, which pokes above
+          // a 1e-9 tolerance for any RC > 0.16 s — 1 MΩ · 1 mF is on the
+          // sliders — a ✗ against correct physics.
+          { label: 'DC gain', predicted: 0, measured: dcGain(tf), abs: 1e-12 },
         ]),
         ...common(tf, p, 'rcHigh'),
       ],
@@ -365,7 +403,7 @@ const ENTRIES = {
           {
             label: 'phase slope at f₀, −2Q·ln 10 rad',
             predicted: ((-2 * m.q * Math.LN10) * 180) / Math.PI,
-            measured: phaseSlope(tf, f0),
+            measured: phaseSlope(tf, f0, m.q),
             tol: 1e-3,
             unit: '°/decade',
           },
@@ -380,7 +418,7 @@ const ENTRIES = {
         ]),
         V([
           { label: 'ζ = 1/2Q', value: so ? so.zeta : NaN, note: so && so.zeta >= 1 ? 'no overshoot' : 'rings' },
-          { label: 'bandwidth ω₀/Q', value: f0 / m.q, unit: 'Hz' },
+          { label: 'bandwidth f₀/Q', value: f0 / m.q, unit: 'Hz' },
           { label: 'characteristic impedance √(L/C)', value: Math.sqrt(p.l / p.c), unit: 'Ω' },
         ]),
         T(
@@ -559,7 +597,7 @@ const ENTRIES = {
           {
             label: 'phase slope at f₀, −2Q·ln 10 rad',
             predicted: ((-2 * m.q * Math.LN10) * 180) / Math.PI,
-            measured: phaseSlope(tf, f0),
+            measured: phaseSlope(tf, f0, m.q),
             tol: 1e-3,
             unit: '°/decade',
           },

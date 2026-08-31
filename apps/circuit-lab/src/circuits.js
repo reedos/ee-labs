@@ -281,10 +281,24 @@ export const CIRCUITS = {
   },
 }
 
-/** The transfer function for a circuit, its parameters and a chosen output. */
+/**
+ * The transfer function for a circuit, its parameters and a chosen output —
+ * normalized so a[0] = 1 before anything downstream sees it.
+ *
+ * The raw products of SI values put a0 = LC as low as 1e-18, and the shared
+ * instruments guard against padded leading zeros with an absolute epsilon:
+ * fed un-normalized coefficients, they read "not really second order" for any
+ * resonance above ~1.6 MHz — a plain RLC lost a pole, its f0/Q went null, its
+ * step forgot to ring, and the twin-T reported zero zeros while its plotted
+ * notch sat on screen. H(s) is a ratio, so its scale is free to choose;
+ * choose the one every instrument is conditioned for.
+ */
 export function transferOf(id, params, output) {
   const c = CIRCUITS[id]
-  return c.tf(params, output || c.outputs[0].key)
+  const { b, a } = c.tf(params, output || c.outputs[0].key)
+  const g = a[0]
+  if (!Number.isFinite(g) || g === 0) return { b, a }
+  return { b: b.map((v) => v / g), a: a.map((v) => v / g) }
 }
 
 /** Default parameter values for a circuit. */
