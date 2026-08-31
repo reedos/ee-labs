@@ -40,9 +40,17 @@ export function buildLink(patch = {}) {
     parts.push(`src=${[s.type, trim(s.freq), trim(s.amp)].join(':')}`)
   }
   for (const b of patch.blocks || []) {
-    parts.push(`b=${[b.type, ...(b.params || []).map(trim)].join(':')}`)
+    // Raw-coefficient carriers get full precision: for a biquad or a custom
+    // plant the coefficients ARE the object (six figures priced a twin-T's
+    // notch floor at -100 dB instead of -inf). Named params (a cutoff, a Q)
+    // stay at six - they are knobs, and the links stay readable.
+    const t = b.type === 'biquad' ? trimExact : trim
+    parts.push(`b=${[b.type, ...(b.params || []).map(t)].join(':')}`)
   }
-  if (patch.plant) parts.push(`plant=${[patch.plant.type, ...(patch.plant.params || []).map(trim)].join(':')}`)
+  if (patch.plant) {
+    const t = patch.plant.type === 'custom' ? trimExact : trim
+    parts.push(`plant=${[patch.plant.type, ...(patch.plant.params || []).map(t)].join(':')}`)
+  }
   if (patch.ctrl) parts.push(`ctrl=${[patch.ctrl.type, ...(patch.ctrl.params || []).map(trim)].join(':')}`)
   // Provenance travels with the setup, so the receiving lab can say "your RC
   // low-pass" instead of the anonymous name of whatever plant it mapped to —
@@ -57,6 +65,7 @@ export function buildLink(patch = {}) {
 }
 
 const trim = (v) => String(Number(Number(v).toPrecision(6)))
+const trimExact = (v) => String(Number(Number(v).toPrecision(12)))
 
 /**
  * Read a fragment back.

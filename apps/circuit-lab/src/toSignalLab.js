@@ -270,5 +270,36 @@ export function asControlPlant(tf, from = null) {
     }
   }
 
+  // Everything else rational of order <= 2 crosses as Control Lab's `custom`
+  // plant: the exact numerator and denominator polynomials, highest power
+  // first, no transform and no approximation (Reed's full-fidelity rule -
+  // this tier was waiting on `custom` landing over there, and it has). The
+  // numerator-zero circuits this finally admits - an RLC measured across R
+  // or L, the twin-T - used to be refused because no NAMED plant could hold
+  // their zeros; the raw form holds anything rational.
+  const bs = strip(tf.b)
+  if (a.length <= 3 && bs.length <= 3) {
+    const pad3 = (arr) => [0, 0, ...arr].slice(-3)
+    const [b2, b1, b0] = pad3(bs)
+    const [a2, a1, a0] = pad3(a)
+    return {
+      plant: 'custom',
+      label: 'a plant with no simpler name',
+      params: [b2, b1, b0, a2, a1, a0],
+      detail: { b: [b2, b1, b0], a: [a2, a1, a0] },
+      why:
+        bs.length > 1
+          ? 'Its numerator carries zeros no named plant has, so it crosses raw: the exact ' +
+            'numerator and denominator polynomials, six coefficients, no approximation.'
+          : 'It reduces to no named plant, so it crosses raw: the exact numerator and ' +
+            'denominator polynomials, six coefficients, no approximation.',
+      link: buildLink({
+        plant: { type: 'custom', params: [b2, b1, b0, a2, a1, a0] },
+        ctrl: { type: 'p', params: [1] },
+        ...(from ? { from } : {}),
+      }),
+    }
+  }
+
   return null
 }

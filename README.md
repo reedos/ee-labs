@@ -71,9 +71,12 @@ The same panel offers the third corner. That RLC is also **something to control*
 
 Open that in Control Lab and the question changes from what the circuit does to a signal
 into how much gain you can close around it before it sings. Same network, three subjects.
-It declines the outputs it cannot express exactly — measured across R or L the numerator
-carries zeros that Control Lab's second-order plant does not have, and a plant that was
-nearly right would produce margins that are confidently wrong.
+This hand-over is two-tier like the other: a named plant when one fits exactly, and the
+raw six-coefficient `custom` plant otherwise — measured across R or L the numerator
+carries zeros no named plant has, so those outputs cross as the exact polynomials
+instead. Nothing is approximated either way: a plant that was nearly right would
+produce margins that are confidently wrong, which is why the raw tier exists rather
+than a nearest named fit.
 
 ## Why these boundaries
 

@@ -156,22 +156,22 @@ describe('recognising which filter a circuit is', () => {
     expect(biquadResponse(exact, rate / 2 - 1, rate)).toBeCloseTo(1, 2)
 
     // The LINK carries the five numbers in the receiver's schema order,
-    // a-normalized — at the suite serializer's six significant figures
-    // (deeplink.js trim). That prices the carried notch floor at roughly
-    // −100 dB rather than −∞: stated, not hidden, and inaudibly deep. If
-    // raw hand-overs ever deserve better, the ask is a serializer change
-    // (packages/ui), not a deeper approximation here.
+    // a-normalized — and raw-coefficient carriers serialize at TWELVE
+    // significant figures (deeplink.js trimExact; named knobs stay at six).
+    // The six-figure serializer used to price this notch floor at roughly
+    // −100 dB; the carried floor is now below −140 dB — the serializer
+    // change this comment used to ask for.
     const { patch, warnings } = parseLink(d.link)
     expect(warnings).toEqual([])
     expect(patch.blocks[0].type).toBe('biquad')
     const [b0, b1, b2, a1, a2] = patch.blocks[0].params
-    expect(b0).toBeCloseTo(d.digital.b[0], 6)
-    expect(a2).toBeCloseTo(d.digital.a[2], 6)
-    expect(biquadResponse({ b0, b1, b2, a1, a2 }, f0, rate)).toBeLessThan(1e-4)
+    expect(b0).toBeCloseTo(d.digital.b[0], 10)
+    expect(a2).toBeCloseTo(d.digital.a[2], 10)
+    expect(biquadResponse({ b0, b1, b2, a1, a2 }, f0, rate)).toBeLessThan(1e-7)
 
-    // Control Lab is still declined — its second-order plant has no zeros.
-    // The raw tier there waits on their `custom` plant (see NEEDS.md).
-    expect(asControlPlant(tf)).toBeNull()
+    // And Control Lab receives it too now, raw: the custom plant holds the
+    // zeros no named plant could (it used to be declined here).
+    expect(asControlPlant(tf).plant).toBe('custom')
   })
 
   it('the named 1st-order link lands on the circuit’s own curve', () => {
@@ -341,11 +341,32 @@ describe('the same circuit as a thing to control', () => {
     }
   })
 
-  it('declines the outputs whose numerator it cannot express', () => {
-    // Across R and L the numerator carries zeros, and Control Lab's
-    // second-order plant has none. A different system, so no hand-over.
-    expect(asControlPlant(transferOf('rlcSeries', p, 'r'))).toBeNull()
-    expect(asControlPlant(transferOf('rlcSeries', p, 'l'))).toBeNull()
+  it('crosses the outputs with zeros as the exact custom plant', () => {
+    // Across R and L the numerator carries zeros no NAMED plant holds, and
+    // they used to be refused for it. Control Lab's `custom` plant holds
+    // anything rational of order <= 2, so now they cross - and the mapping
+    // must be EXACT: rebuild H(s) from the six coefficients the link
+    // carries (12-significant-figure serialization) and it is the same
+    // function, not a neighbour of it.
+    const stripL = (c) => {
+      const out = [...c]
+      while (out.length > 1 && Math.abs(out[0]) < 1e-18) out.shift()
+      return out
+    }
+    for (const out of ['r', 'l']) {
+      const tf = transferOf('rlcSeries', p, out)
+      const c = asControlPlant(tf)
+      expect(c.plant, out).toBe('custom')
+      const { patch, warnings } = parseLink(c.link)
+      expect(warnings, out).toEqual([])
+      const [b2, b1, b0, a2, a1, a0] = patch.plant.params
+      const rebuilt = { b: stripL([b2, b1, b0]), a: stripL([a2, a1, a0]) }
+      for (const r of [0.1, 0.5, 1, 2, 10]) {
+        const want = magnitudeAt(tf, f0 * r)
+        const got = magnitudeAt(rebuilt, f0 * r)
+        expect(Math.abs(got - want) / (want || 1), `${out} at ${r}x f0`).toBeLessThan(1e-9)
+      }
+    }
   })
 
   it('maps an RC low-pass to a first-order lag with the right time constant', () => {

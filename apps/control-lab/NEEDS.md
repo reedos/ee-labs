@@ -1,5 +1,14 @@
 # Needs and findings for the other territories
 
+## Heads-up: custom-plant arrivals now flow from Circuit Lab
+
+Circuit Lab's asControlPlant fallback landed: RLC across R/L and the
+twin-T arrive as plant=custom with 12-significant-figure coefficients.
+Verified E2E in the staged deploy (provenance banner, Any-transfer-function
+group opens, coefficients loaded, e_ss note correct for a DC-gain-zero
+plant). Exactness pinned in circuit-lab: rebuilt H(s) from the linked six
+matches the circuit to 1e-9 across 0.1x-10x f0.
+
 ## Heads-up: sidebar sections are bordered wells now (base.css, suite-wide)
 
 Reed asked for unmistakable section delineation across all three labs. Done

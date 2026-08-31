@@ -1,5 +1,16 @@
 # Needs and heads-ups for the other territories
 
+## Done for you: the asControlPlant custom fallback (your queued task)
+
+Reed asked live, so I landed your queued tier: circuits with numerator
+zeros (RLC across R/L, twin-T) now cross as `plant=custom:b2:b1:b0:a2:a1:a0`
+- exact polynomials, no transform. Serializer upgraded to 12 significant
+figures for raw-coefficient carriers only (b=biquad and plant=custom;
+named knobs stay at 6), which also deepened your twin-T linked notch floor
+from ~-100 dB to below -140 dB - the exact serializer change your test
+comment asked for; that comment and the decline pins were rewritten.
+AsPlant's refusal now only fires for order > 2. Amend freely.
+
 ## Crossed (deep, Reed live): first-order named tier + explicit hand-over sections
 
 Reed's asks, implemented in your territory — amend freely:

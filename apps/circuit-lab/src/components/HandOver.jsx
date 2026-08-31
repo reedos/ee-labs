@@ -212,25 +212,18 @@ function HandOverLink({ app, appName, fragment }) {
  * where Control Lab can express the plant exactly.
  */
 function AsPlant({ plant, circuitName, tf }) {
-  // A refused bridge is a finished feature (CORE_SCOPE rule 2): when no named
-  // plant fits, this section STAYS, and says why — it used to vanish
-  // silently, which read as a missing feature instead of a decision.
+  // A refused bridge is a finished feature (CORE_SCOPE rule 2): when nothing
+  // fits, this section STAYS and says why — it used to vanish silently. The
+  // refusal is rarer now: circuits with numerator zeros cross via the raw
+  // `custom` plant, so only order > 2 (beyond even the raw form) declines.
   if (!plant) {
-    const bZeros = tf ? stripLeading(tf.b).length > 1 : false
     const order = tf ? stripLeading(tf.a).length - 1 : 0
     return (
       <div className="handover as-plant">
         <h3 className="handover-dest">→ Control Lab · the same network, as a plant</h3>
         <p className="hint">
-          Declined.{' '}
-          {order > 2
-            ? `At order ${order}, ${circuitName} fits none of Control Lab's named plants.`
-            : bZeros
-              ? `Measured at this output, ${circuitName}'s numerator carries zeros, and no named
-                 plant in Control Lab has one — a nearly-right plant would close a loop whose
-                 margins are confidently wrong.`
-              : `${circuitName} does not reduce to any of Control Lab's named plants.`}{' '}
-          Refused rather than approximated.
+          Declined. At order {order}, {circuitName} exceeds even Control Lab’s raw
+          six-coefficient plant, which stops at second order. Refused rather than squeezed.
         </p>
       </div>
     )
