@@ -383,7 +383,12 @@ export default function App() {
                     peak <b>{stats.peak.toFixed(3)}</b>
                   </span>
                   <span>
-                    crest <b>{(stats.peak / (stats.rms || 1)).toFixed(2)}</b>
+                    {/* A crest factor of numerical dust is not a crest
+                        factor: a sine at exactly Nyquist, phase 0, samples
+                        to ~1e-13 and the ratio read 2.96 (Reed's report).
+                        Below any real signal level the honest readout is
+                        a dash. */}
+                    crest <b>{stats.peak > 1e-6 ? (stats.peak / (stats.rms || 1)).toFixed(2) : '—'}</b>
                   </span>
                   {state.showTransient && state.blocks.length > 0 ? (
                     <span className="flag">transient shown</span>
@@ -586,10 +591,12 @@ export default function App() {
               {state.freqView === 'spectrum' ? (
                 <>
                   <span>
-                    peak <b>{stats.peakFreq.toFixed(1)} Hz</b>
+                    {/* Same dust rule: the argmax of a numerically-zero
+                        spectrum is a random bin, not a peak. */}
+                    peak <b>{stats.peakAmp > 1e-6 ? `${stats.peakFreq.toFixed(1)} Hz` : '—'}</b>
                   </span>
                   <span>
-                    amp <b>{stats.peakAmp.toFixed(3)}</b>
+                    amp <b>{stats.peakAmp > 1e-6 ? stats.peakAmp.toFixed(3) : '—'}</b>
                   </span>
                   <span>
                     Nyquist <b>{state.sampleRate / 2} Hz</b>

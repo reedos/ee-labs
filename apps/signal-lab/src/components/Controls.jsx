@@ -64,7 +64,14 @@ function Source({ src, sampleRate, onChange, onRemove, canRemove , fftSize}) {
             440,
             1000,
             { value: Math.round(nyquist / 2), label: 'Nyq/2' },
-            { value: Math.round(nyquist), label: 'Nyq', title: 'Nyquist — the fold point' },
+            {
+              value: Math.round(nyquist),
+              label: 'Nyq',
+              title:
+                'Nyquist — the fold point. Exactly here the samples land on the same two phases ' +
+                'every cycle: at phase 0° a sine samples its zero crossings and vanishes; drag ' +
+                'Phase to 90° and it returns at full amplitude.',
+            },
             {
               value: Math.round(nyquist * 1.5),
               label: 'alias',
