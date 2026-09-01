@@ -50,6 +50,9 @@ jobs:
           cp -r apps/signal-lab/dist  _site/signal-lab
           cp -r apps/circuit-lab/dist _site/circuit-lab
           cp -r apps/control-lab/dist _site/control-lab
+          # Dark-launched: built and served at its URL, linked from nowhere until
+          # apps/circuit-elements-lab/RELEASE_STATUS says `released`.
+          cp -r apps/circuit-elements-lab/dist _site/circuit-elements-lab
 
       - uses: actions/upload-pages-artifact@v3
         with:

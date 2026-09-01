@@ -1,0 +1,23 @@
+{
+  "name": "circuit-elements-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Circuits from the two laws up: KVL, KCL, series and parallel, nodal and mesh analysis, the network theorems, and the op-amp as a circuit element.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@ee-labs/explain": "*",
+    "@ee-labs/network": "*",
+    "@ee-labs/ui": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

@@ -18,15 +18,21 @@ const LABS = [
   { id: 'control-lab', label: 'Control' },
 ]
 
-export default function LabNav({ current }) {
+/**
+ * A lab that is deployed but not yet released lists itself here so its own nav
+ * still names it — the released labs do not list it back until it joins LABS.
+ * `currentLabel` is that lab's short name; ignored for labs already in LABS.
+ */
+export default function LabNav({ current, currentLabel = null }) {
   const home = homeUrl()
   if (!home) return null
+  const labs = LABS.some((l) => l.id === current) || !currentLabel ? LABS : [...LABS, { id: current, label: currentLabel }]
   return (
     <nav className="labnav" aria-label="REED's Engineering Labs suite">
       <a className="labnav-home" href={home}>
         R<b className="labnav-ee">EE</b>D&rsquo;s Engineering Labs
       </a>
-      {LABS.map((lab) =>
+      {labs.map((lab) =>
         lab.id === current ? (
           <span key={lab.id} className="labnav-here" aria-current="page">
             {lab.label}

@@ -42,7 +42,9 @@ const PARSE_MULT = {
 export function eng(value, sig = 4) {
   if (!Number.isFinite(value)) return { num: '—', prefix: '', mult: 1 }
   if (value === 0) return { num: '0', prefix: '', mult: 1 }
-  const mag = Math.abs(value)
+  // Pick the prefix from the value as it will print, not as it is: a solver's
+  // 0.99999999 V is "1 V" to three figures, and must not come out as "1000 mV".
+  const mag = Math.abs(Number(value.toPrecision(sig)))
   const hit = PREFIXES.find((x) => mag >= x.p) || PREFIXES[PREFIXES.length - 1]
   return { num: String(Number((value / hit.p).toPrecision(sig))), prefix: hit.s, mult: hit.p }
 }

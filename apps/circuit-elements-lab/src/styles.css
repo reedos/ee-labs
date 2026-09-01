@@ -1,0 +1,231 @@
+/* Circuit Elements Lab's own furniture. The shell, controls and math panel come
+ * from @ee-labs/ui and @ee-labs/explain; the schematic renderer from @ee-labs/ui
+ * is styled here. */
+
+.preset-group { margin-bottom: 10px; }
+
+/* The lesson and circuit chips, styled as Signal Lab styles its presets —
+   Circuit Lab never defined these, so they fell through to default button
+   chrome and read as a different (worse) application. */
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preset {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11.5px;
+  padding: 5px 8px;
+}
+
+.preset:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.preset.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(56, 224, 176, 0.1);
+}
+
+/* Preset groups as fold-outs, same as Signal Lab: the summary row is the h3
+   it replaced, with its own marker so the browser's default triangle (which
+   ignores the typography) stays hidden. */
+details.preset-group > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+details.preset-group > summary::before {
+  content: '▸';
+  font-size: 9px;
+  transition: transform 0.12s;
+}
+
+details.preset-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.preset-group > summary::-webkit-details-marker { display: none; }
+
+details.preset-group > .presets { margin: 4px 0 8px; }
+
+/* Marks the folded-away-proof group: the one holding the active item. */
+.group-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+}
+
+/* Pane-header controls — the proximity rule from Signal Lab: a control that
+   governs one plot sits in that plot's header, sized to the header row so
+   moving it there costs almost no plot height. */
+.view-head .segmented { flex: 0 0 auto; }
+.view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
+
+/* Phone: pane-header control groups wrap under the title without crowding
+   the readouts off the edge. */
+@media (max-width: 900px) {
+  .view-head { row-gap: 6px; }
+  .view-head .readout { flex-basis: 100%; }
+}
+
+/* Definitions on contact, folded under the lesson note — Signal Lab's pattern. */
+details.terms { margin: 6px 0 2px; }
+
+details.terms > summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--accent);
+  list-style: none;
+}
+details.terms > summary::before { content: '\25B8  '; font-size: 9px; }
+details.terms[open] > summary::before { content: '\25BE  '; }
+details.terms > summary::-webkit-details-marker { display: none; }
+
+details.terms dl { margin: 6px 0 0; }
+details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
+details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+
+/* The schematic. Values are live, so the picture always matches the plots. */
+.schematic {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 2px 0 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.sch-label {
+  fill: var(--dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+}
+.sch-port {
+  fill: var(--text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+}
+.sch-sign {
+  fill: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+}
+.sch-note {
+  fill: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 9px;
+  font-style: italic;
+}
+/* Which component the output is measured across — the one thing about a series
+
+/* Live readings on the schematic: node voltages beside their dots, element
+   readings above their symbols. Amber so they read as measurements, not labels. */
+.sch-meter {
+  fill: var(--amber);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+}
+.sch-plus { fill: var(--accent); font-weight: 700; }
+
+/* The big schematic is the upper pane: the drawing scales to the pane's width,
+   capped so 320 drawing units never blow up to a screenful of 40 px wire. */
+.view .schematic.big {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+/* Refusals: the solver declined, and the pane says why in the amber the rest
+   of the suite uses for "this is a limit, not an error". */
+.refusal {
+  border: 1px solid var(--amber);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 720px;
+  margin: 8px auto;
+}
+.refusal b { color: var(--amber); }
+
+/* The equations pane: one KCL row per node, then the constraints, then the
+   matrix. Each term shows its live value beneath so the row visibly sums to
+   zero. */
+.equations { display: grid; gap: 10px; padding: 4px 0; overflow-x: auto; }
+.eq-row {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.eq-row .eq-at { color: var(--dim); font-size: 11.5px; padding-top: 4px; }
+.eq-row .eq-at b { color: var(--text); display: block; font-size: 12.5px; }
+.eq-terms { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+.eq-term { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+.eq-term .tex { font-size: 14px; }
+.eq-term .eq-val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--amber);
+}
+.eq-sum { color: var(--dim); font-size: 11.5px; margin-left: 4px; white-space: nowrap; }
+.eq-sum b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.eq-matrix { padding: 8px; overflow-x: auto; }
+.eq-matrix .tex { font-size: 13px; }
+
+/* Thévenin and superposition panes: small tables in the math-panel idiom. */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.table th, .table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.table th { color: var(--dim); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+.table td.num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-align: right; }
+.table td.agree { color: var(--accent); }
+.table td.disagree { color: var(--warn); }
+.table caption { text-align: left; color: var(--dim); font-size: 11px; padding: 4px 8px; }
+.pane-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 1100px) { .pane-grid.two { grid-template-columns: 1fr 1fr; } }
+
+/* The power pane: bars per element, delivering to the left, absorbing right. */
+.power-list { display: grid; gap: 6px; padding: 4px 0; }
+.power-row { display: grid; grid-template-columns: 60px 1fr 90px; gap: 10px; align-items: center; font-size: 12px; }
+.power-row .bar { position: relative; height: 12px; background: var(--panel-2); border-radius: 3px; }
+.power-row .bar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.power-row .bar i.absorbs { background: var(--accent); }
+.power-row .bar i.delivers { background: var(--amber); }
+.power-row .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-align: right; }
+.power-total { color: var(--dim); font-size: 11.5px; margin-top: 4px; }
+.power-total b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+
+/* Pane bodies scroll inside the pane rather than growing it: the two panes
+   stay two panes whatever the equations list or the tables run to. */
+.view-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.view-body .plot { flex: 1; min-height: 160px; }
