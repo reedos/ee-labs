@@ -132,7 +132,8 @@ for (const name of names) {
 // ------------------------------------------- 2. the meters follow the knobs
 
 console.log('\n2. KCL at a node: the meters and the equations follow R₂\n')
-await pick(names[0])
+const kclName = names.find((n) => /current in equals current out/i.test(n))
+await pick(kclName)
 await openAllMath()
 await page.locator('.view-switch button', { hasText: 'Equations' }).click()
 for (const [txt, r2] of [
@@ -152,15 +153,15 @@ for (const [txt, r2] of [
   const okV = Math.abs(shownV - vA) / vA < 0.01
   // Every KCL row in the equations pane sums to (numerically) zero.
   const sums = await page.$$eval('.eq-sum b', (els) => els.map((e) => e.textContent.trim()))
-  for (const s of sums) if (!(Math.abs(si(s)) < 1e-9)) fail(`A1 R2=${txt}: KCL row sums to ${s}`)
+  for (const s of sums) if (!(Math.abs(si(s)) < 1e-9)) fail(`B1 R2=${txt}: KCL row sums to ${s}`)
   const bad = (await readChecks()).filter((x) => x.mark === '✗')
   console.log(
     `   R2=${txt.padStart(4)} -> v_A ${vA.toFixed(4)} V  readout ${Number.isFinite(shownV) ? shownV.toFixed(4) : '?'}  ` +
       `i_R2 want ${(want * 1e3).toFixed(3)} mA  meters ${m.length}  ${okV ? 'ok' : 'MISMATCH'}  ${bad.length} ✗`,
   )
-  if (!okV) fail(`A1 R2=${txt}: readout v_A ${shownV} vs ${vA}`)
-  if (!iR2) fail(`A1 R2=${txt}: no ammeter reads i_R2 = ${want}: ${m.join(' | ')}`)
-  for (const b of bad) fail(`A1 R2=${txt}: ✗ ${b.label}`)
+  if (!okV) fail(`B1 R2=${txt}: readout v_A ${shownV} vs ${vA}`)
+  if (!iR2) fail(`B1 R2=${txt}: no ammeter reads i_R2 = ${want}: ${m.join(' | ')}`)
+  for (const b of bad) fail(`B1 R2=${txt}: ✗ ${b.label}`)
 }
 // The note retires once a knob has moved.
 {
@@ -173,7 +174,7 @@ for (const [txt, r2] of [
 
 console.log('\n3. Meter modes: currents, voltages, powers, none\n')
 {
-  await pick(names[0])
+  await pick(kclName)
   const seen = {}
   for (const mode of ['currents', 'voltages', 'powers', 'none']) {
     await page.getByRole('button', { name: mode, exact: true }).click()
@@ -191,28 +192,28 @@ console.log('\n3. Meter modes: currents, voltages, powers, none\n')
 
 // -------------------------------------------- 4. the refusal, and its lifting
 
-console.log('\n4. D2: the ideal comparator refuses, finite gain lifts it\n')
+console.log('\n4. E3: the ideal comparator refuses, finite gain lifts it\n')
 {
   await pick(names.find((n) => /comparator/i.test(n)))
   const ref = page.locator('[data-role=refusal]')
-  if ((await ref.count()) === 0) fail('D2 at defaults should show a refusal')
+  if ((await ref.count()) === 0) fail('E3 at defaults should show a refusal')
   else {
     const code = await ref.getAttribute('data-code')
     const text = await ref.textContent()
-    if (code !== 'opamp-open-loop') fail(`D2 refusal code ${code}`)
-    if (!/no feedback path/.test(text)) fail(`D2 refusal text: ${text}`)
+    if (code !== 'opamp-open-loop') fail(`E3 refusal code ${code}`)
+    if (!/no feedback path/.test(text)) fail(`E3 refusal text: ${text}`)
     console.log(`   refused: ${text.replace(/\s+/g, ' ').trim().slice(0, 90)}…`)
   }
   await setField('Gain A (0 = ideal)', '100000')
-  if ((await ref.count()) !== 0) fail('D2 with A = 10⁵ should solve')
+  if ((await ref.count()) !== 0) fail('E3 with A = 10⁵ should solve')
   const v = si((await page.locator('.readout').first().textContent()).match(/v_out\s*([\d.]+\s*\S*)V/)?.[1])
-  if (Math.abs(v - 100) > 0.01) fail(`D2 finite gain: v_out ${v}, want 100`)
+  if (Math.abs(v - 100) > 0.01) fail(`E3 finite gain: v_out ${v}, want 100`)
   else console.log(`   A = 10⁵ -> v_out ${v} V, solved`)
 }
 
 // ----------------------------------------- 5. the sweep pane and the marker
 
-console.log('\n5. C6: the sweep redraws and the peak sits at R_s\n')
+console.log('\n5. D6: the sweep redraws and the peak sits at R_s\n')
 {
   await pick(names.find((n) => /power transfer/i.test(n)))
   const hash = () =>
@@ -225,14 +226,14 @@ console.log('\n5. C6: the sweep redraws and the peak sits at R_s\n')
       return `${h}:${d.length}`
     })
   const h0 = await hash()
-  if (!h0) fail('C6: no sweep canvas')
+  if (!h0) fail('D6: no sweep canvas')
   await setField('Load R_L', '2k')
   const h1 = await hash()
-  if (h1 === h0) fail('C6: sweep canvas did not redraw when R_L moved')
+  if (h1 === h0) fail('D6: sweep canvas did not redraw when R_L moved')
   await setField('Source R_s', '1k')
   const near = (await page.locator('.readout').nth(1).textContent()).match(/near\s*([\d.]+\s*\S*)Ω/)?.[1]
   const rOpt = si(near)
-  if (!(rOpt > 940 && rOpt < 1060)) fail(`C6: peak reported near ${near}, want ~1 kΩ`)
+  if (!(rOpt > 940 && rOpt < 1060)) fail(`D6: peak reported near ${near}, want ~1 kΩ`)
   else console.log(`   Rs = 1 kΩ -> peak near ${near}Ω, canvas redrew`)
 }
 

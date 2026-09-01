@@ -22,6 +22,7 @@ import { valueText, elementReading, elementTextPlaces, opampTextPlaces, nodeText
  *   { node: name, x, y, side?: 'l' | 'r' | 't' | 'b' } a node dot with its name and live voltage
  *   { gnd: [x, y] }                                  ground symbol hanging below (x, y)
  *   { text, x, y }                                   a caption
+ *   { box: [x0, y0, x1, y1] }                        a dashed outline — "these parts are one device"
  *
  * Elements are { id, type, value, label? }; types R V I C L SW OPAMP VCVS VCCS.
  * Meters are { v: { node: volts }, i: { id: amps }, p: { id: watts } }; `show`
@@ -39,6 +40,7 @@ export default function Schematic({ elements, layout, meters = null, show = 'i',
       aria-label={`Schematic: ${elements.map((e) => e.label || e.id).join(', ')}`}
     >
       {items.map((it, k) => {
+        if (it.box) return <Frame key={k} pts={it.box} />
         if (it.wire) return <Wire key={k} pts={it.wire} />
         if (it.gnd) return <Gnd key={k} x={it.gnd[0]} y={it.gnd[1]} />
         if (it.node)
@@ -71,6 +73,21 @@ export default function Schematic({ elements, layout, meters = null, show = 'i',
 
 const Wire = ({ pts: [x1, y1, x2, y2] }) => (
   <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--line-bright)" strokeWidth="1.5" />
+)
+
+/** A dashed outline around the parts that make up one device. List it first in the layout so it sits under everything. */
+const Frame = ({ pts: [x0, y0, x1, y1] }) => (
+  <rect
+    x={x0}
+    y={y0}
+    width={x1 - x0}
+    height={y1 - y0}
+    rx="4"
+    fill="none"
+    stroke="var(--dim)"
+    strokeWidth="1"
+    strokeDasharray="4 3"
+  />
 )
 
 const Gnd = ({ x, y }) => (
@@ -132,8 +149,9 @@ function Element({ item, e, meters, show }) {
             strokeWidth="1.5"
             transform={arrow < 0 || flip ? `scale(${arrow < 0 ? -1 : 1} ${flip ? -1 : 1})` : undefined}
           >
-            <line x1={-9} y1={dir === 'v' ? 10 : -10} x2={9} y2={dir === 'v' ? 10 : -10} />
-            <polygon points={`9,${dir === 'v' ? 10 : -10} 4,${dir === 'v' ? 7 : -13} 4,${dir === 'v' ? 13 : -7}`} />
+            {/* 16 off the axis: clear of a round source's rim (11) as well as a zigzag (6). */}
+            <line x1={-9} y1={dir === 'v' ? 16 : -16} x2={9} y2={dir === 'v' ? 16 : -16} />
+            <polygon points={`9,${dir === 'v' ? 16 : -16} 4,${dir === 'v' ? 13 : -19} 4,${dir === 'v' ? 19 : -13}`} />
           </g>
         ) : null}
       </g>

@@ -6,10 +6,17 @@
 // at its defaults and measures the claim its note makes. A claim the test
 // cannot measure does not ship.
 //
-// Groups follow the plan: A the two laws, B series/parallel, C the analysis
-// methods and theorems, D the op-amp as a circuit element.
+// Groups follow the plan: A the elements themselves and what the signs mean,
+// B the two laws, C series/parallel, D the analysis methods and theorems, E
+// the op-amp as a circuit element.
 
-export const GROUPS = ['A · Two laws', 'B · Series and parallel', 'C · Analysis and theorems', 'D · Op-amps']
+export const GROUPS = [
+  'A · Elements and signs',
+  'B · Two laws',
+  'C · Series and parallel',
+  'D · Analysis and theorems',
+  'E · Op-amps',
+]
 
 // ------------------------------------------------------------ knobs
 const R = (key, label, def, hint) => ({ key, label, unit: 'Ω', min: 1, max: 1e6, scale: 'log', default: def, hint })
@@ -20,7 +27,7 @@ const Gain = (key, label, def) => ({ key, label, unit: '', min: 1, max: 1e6, sca
 // ------------------------------------------------------------ drawing
 // A 420 × 180 canvas. Rails at y = 40 (top) and y = 140 (bottom); the source
 // stands on the left at x = 50; vertical legs are centred at y = 90 and carry
-// their label and reading on the right, which is why legs sit 85 apart. Every
+// their label and reading on the right, which is why legs sit 90 apart. Every
 // layout is checked as geometry in experiments.test.js — no text on any other
 // text, symbol or wire — so a change here that crowds the drawing fails a test
 // rather than a screenshot.
@@ -29,7 +36,7 @@ const H = 180
 const TOP = 40
 const BOT = 140
 const MID = 90
-const LEGS = [180, 265, 350]
+const LEGS = [180, 270, 360]
 const leg = (id, x) => [{ el: id, x, y: MID, dir: 'v' }, { wire: [x, TOP, x, MID - 20] }, { wire: [x, MID + 20, x, BOT] }]
 const src = (id, x = 50) => leg(id, x)
 const top = (id, x) => [{ el: id, x, y: TOP, dir: 'h' }]
@@ -97,6 +104,157 @@ export const EXPERIMENTS = [
   {
     id: 'a1',
     group: GROUPS[0],
+    name: 'A voltage source holds its voltage',
+    terms: ['voltage', 'vsource', 'resistor', 'current'],
+    note:
+      'Two elements and two wires, and already the whole idea. A voltage source is a device ' +
+      'that holds a fixed voltage E between its two terminals and supplies whatever current ' +
+      'that takes. A resistor is a device whose current is proportional to the voltage across ' +
+      'it: i = v/R (Ohm’s law). Wire the two together and the source decides the voltage, the ' +
+      'resistor decides the current: i = E/R. Turn R down and the current climbs while the ' +
+      'source’s voltage does not move by a microvolt — that is what “source” means. The ' +
+      'ideal wires between them have no voltage across them at all: the whole top rail is one ' +
+      'node, and it reads E everywhere.',
+    params: [Vs('E', 'Source E', 12), R('R1', 'R', 1000)],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
+        { type: 'R', id: 'R1', nodes: ['in', 'gnd'], value: p.R1 },
+      ],
+    }),
+    layout: {
+      w: W,
+      h: H,
+      items: [...src('V1'), rail(50, LEGS[0], TOP), ...leg('R1', LEGS[0]), rail(50, LEGS[0], BOT), gnd(115), node('in', 50, TOP, 't')],
+    },
+    show: 'i',
+    view: 'equations',
+    views: ['equations', 'power'],
+    claim: { ohm: true },
+  },
+  {
+    id: 'a2',
+    group: GROUPS[0],
+    name: 'A current source holds its current',
+    terms: ['isource', 'resistor', 'current'],
+    note:
+      'The other kind of source. A current source pushes a fixed current I through itself ' +
+      'and lets the circuit decide what voltage that takes. Into a resistor, Ohm’s law read ' +
+      'the other way gives v = I·R: turn R up and the voltage climbs, the current does not. ' +
+      'Push R to a megohm and 5 mA needs 5 kV — an ideal current source into an open circuit ' +
+      'would need an infinite voltage, which is why a current source is never left ' +
+      'unconnected (the solver refuses such a circuit outright). Voltage sources are the ' +
+      'familiar kind — batteries, supplies — but current sources are how transistors behave, ' +
+      'and the op-amp group leans on them.',
+    params: [Is('I', 'Source I', 0.005), R('R1', 'R', 1000)],
+    net: (p) => ({
+      elements: [
+        { type: 'I', id: 'I1', nodes: ['gnd', 'in'], value: p.I },
+        { type: 'R', id: 'R1', nodes: ['in', 'gnd'], value: p.R1 },
+      ],
+    }),
+    layout: {
+      w: W,
+      h: H,
+      items: [
+        // Drawn + end down: the source pushes current up into the top rail.
+        { el: 'I1', x: 50, y: MID, dir: 'v', flip: true },
+        { wire: [50, TOP, 50, MID - 20] },
+        { wire: [50, MID + 20, 50, BOT] },
+        rail(50, LEGS[0], TOP),
+        ...leg('R1', LEGS[0]),
+        rail(50, LEGS[0], BOT),
+        gnd(115),
+        node('in', 50, TOP, 't'),
+      ],
+    },
+    show: 'v',
+    view: 'equations',
+    views: ['equations', 'power'],
+    claim: { ohmOtherWay: true },
+  },
+  {
+    id: 'a3',
+    group: GROUPS[0],
+    name: 'Voltage is a difference; ground is a choice',
+    terms: ['voltage', 'ground', 'node'],
+    note:
+      'A voltage is never a property of one point. It is always the difference between two, ' +
+      'and a meter has two probes for that reason. The numbers at the nodes here are ' +
+      'measured against the node marked with the ground symbol, which the solver — like a ' +
+      'meter’s black lead — takes as 0 V. That choice is free. The divider on the left is ' +
+      'built on top of a source V_ref instead of directly on ground: slide V_ref and every ' +
+      'node voltage moves by exactly that amount, while every element’s voltage, every ' +
+      'current and every power stays put, because an element only ever sees the difference ' +
+      'across its own two terminals. V_ref carries no current at all. It is not doing ' +
+      'anything to the circuit; it is renaming zero.',
+    params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), Vs('Vref', 'Lift V_ref', 5)],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'ref'], value: p.E },
+        { type: 'R', id: 'R1', nodes: ['in', 'A'], value: p.R1 },
+        { type: 'R', id: 'R2', nodes: ['A', 'ref'], value: p.R2 },
+        { type: 'V', id: 'V0', nodes: ['ref', 'gnd'], value: p.Vref },
+      ],
+    }),
+    layout: {
+      w: W,
+      h: H,
+      items: [
+        ...src('V1'),
+        rail(50, 100, TOP),
+        ...top('R1', 120),
+        rail(140, LEGS[0], TOP),
+        ...leg('R2', LEGS[0]),
+        // The bottom rail is node "ref", lifted above ground by V0 on the right.
+        rail(50, 290, BOT),
+        node('ref', 115, BOT, 'b'),
+        { el: 'V0', x: 310, y: BOT, dir: 'h' },
+        { wire: [330, BOT, 350, BOT] },
+        gnd(350, BOT),
+        node('in', 50, TOP, 't'),
+        node('A', LEGS[0], TOP, 't'),
+      ],
+    },
+    show: 'v',
+    view: 'equations',
+    views: ['equations', 'power'],
+    claim: { reference: true },
+  },
+  {
+    id: 'a4',
+    group: GROUPS[0],
+    name: 'Which way is +: the passive sign convention',
+    terms: ['passive', 'voltage', 'current', 'power'],
+    note:
+      'Every element has two terminals, and before a single number can be written down one ' +
+      'of them must be called +. That is a label you choose, not a fact about the element. ' +
+      'Then two rules, always: the element’s voltage is v = (voltage at +) − (voltage at −), ' +
+      'and its current i is measured flowing IN at the + terminal. Here the resistor’s + is ' +
+      'its left end. With E₁ > E₂ its v and i are both positive; slide E₂ above E₁ and both ' +
+      'turn negative together — switch the meters to i and watch the arrow reverse — while ' +
+      'its power p = v·i stays positive, because a resistor only ever absorbs. The source ' +
+      'that is pushing has current LEAVING its +, so its power comes out negative. A negative ' +
+      'reading is not an error; it is the answer, with its direction attached.',
+    params: [Vs('E1', 'E₁', 12), Vs('E2', 'E₂', 5), R('R1', 'R', 1000)],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E1 },
+        { type: 'R', id: 'R1', nodes: ['in', 'n1'], value: p.R1 },
+        { type: 'V', id: 'V2', nodes: ['n1', 'gnd'], value: p.E2 },
+      ],
+    }),
+    layout: loop(['R1', 'V2']),
+    show: 'v',
+    view: 'power',
+    views: ['power', 'equations'],
+    claim: { signs: true },
+  },
+
+  // ============================================================== B
+  {
+    id: 'b1',
+    group: GROUPS[1],
     name: 'Current in equals current out',
     terms: ['kcl', 'node', 'passive'],
     note:
@@ -121,8 +279,8 @@ export const EXPERIMENTS = [
     claim: { kclAt: 'A' },
   },
   {
-    id: 'a2',
-    group: GROUPS[0],
+    id: 'b2',
+    group: GROUPS[1],
     name: 'Voltages around a loop add to zero',
     terms: ['kvl', 'passive'],
     note:
@@ -146,8 +304,8 @@ export const EXPERIMENTS = [
     claim: { kvl: ['V1', 'R1', 'R2'] },
   },
   {
-    id: 'a3',
-    group: GROUPS[0],
+    id: 'b3',
+    group: GROUPS[1],
     name: 'Power, and the sign of it',
     terms: ['passive', 'power'],
     note:
@@ -171,8 +329,8 @@ export const EXPERIMENTS = [
     claim: { tellegen: true, sourceNegative: 'V1' },
   },
   {
-    id: 'a4',
-    group: GROUPS[0],
+    id: 'b4',
+    group: GROUPS[1],
     name: 'Two sources, one loop',
     terms: ['passive', 'power'],
     note:
@@ -196,10 +354,10 @@ export const EXPERIMENTS = [
     claim: { twoSources: true },
   },
 
-  // ============================================================== B
+  // ============================================================== C
   {
-    id: 'b1',
-    group: GROUPS[1],
+    id: 'c1',
+    group: GROUPS[2],
     name: 'Series: one current, shared voltage',
     terms: ['series', 'kvl'],
     note:
@@ -223,8 +381,8 @@ export const EXPERIMENTS = [
     claim: { series: true },
   },
   {
-    id: 'b2',
-    group: GROUPS[1],
+    id: 'c2',
+    group: GROUPS[2],
     name: 'Parallel: one voltage, shared current',
     terms: ['parallel', 'kcl'],
     note:
@@ -245,12 +403,14 @@ export const EXPERIMENTS = [
       w: W,
       h: H,
       items: [
+        // Three legs pulled in 10 from the grid so the rightmost label
+        // ("R3 1.19 kΩ") stays on the canvas.
         ...src('V1'),
-        rail(50, LEGS[2], TOP),
-        ...leg('R1', LEGS[0]),
-        ...leg('R2', LEGS[1]),
-        ...leg('R3', LEGS[2]),
-        rail(50, LEGS[2], BOT),
+        rail(50, 350, TOP),
+        ...leg('R1', 150),
+        ...leg('R2', 250),
+        ...leg('R3', 350),
+        rail(50, 350, BOT),
         gnd(115),
         node('in', 50, TOP, 't'),
       ],
@@ -261,15 +421,15 @@ export const EXPERIMENTS = [
     claim: { parallel: true },
   },
   {
-    id: 'b3',
-    group: GROUPS[1],
+    id: 'c3',
+    group: GROUPS[2],
     name: 'The loaded divider',
     terms: ['series', 'parallel', 'thevenin'],
     note:
       'The divider formula E·R₂/(R₁+R₂) is true only with nothing connected. Hang a load R_L ' +
       'across the output and it sits in parallel with R₂, pulling the voltage down to ' +
       'E·(R₂∥R_L)/(R₁ + R₂∥R_L). The droop is small only while R_L is much larger than R₂ — ' +
-      'which is the real reason dividers are built from small resistors and why, in D7, an ' +
+      'which is the real reason dividers are built from small resistors and why, in E8, an ' +
       'op-amp buffer fixes this completely.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('RL', 'Load R_L', 10000)],
     net: (p) => ({
@@ -290,8 +450,8 @@ export const EXPERIMENTS = [
     claim: { loadedDivider: true },
   },
   {
-    id: 'b4',
-    group: GROUPS[1],
+    id: 'c4',
+    group: GROUPS[2],
     name: 'The Wheatstone bridge',
     terms: ['series', 'kvl'],
     note:
@@ -338,10 +498,10 @@ export const EXPERIMENTS = [
     claim: { bridge: true },
   },
 
-  // ============================================================== C
+  // ============================================================== D
   {
-    id: 'c1',
-    group: GROUPS[2],
+    id: 'd1',
+    group: GROUPS[3],
     name: 'Nodal analysis: one equation per node',
     terms: ['kcl', 'node', 'nodal'],
     note:
@@ -366,8 +526,8 @@ export const EXPERIMENTS = [
     claim: { nodalClosedForm: true },
   },
   {
-    id: 'c2',
-    group: GROUPS[2],
+    id: 'd2',
+    group: GROUPS[3],
     name: 'A source between two nodes: the supernode',
     terms: ['nodal', 'supernode', 'mna'],
     note:
@@ -412,8 +572,8 @@ export const EXPERIMENTS = [
     claim: { supernode: true },
   },
   {
-    id: 'c3',
-    group: GROUPS[2],
+    id: 'd3',
+    group: GROUPS[3],
     name: 'Mesh analysis: one equation per loop',
     terms: ['kvl', 'mesh'],
     note:
@@ -460,8 +620,8 @@ export const EXPERIMENTS = [
     claim: { mesh: true },
   },
   {
-    id: 'c4',
-    group: GROUPS[2],
+    id: 'd4',
+    group: GROUPS[3],
     name: 'Superposition: one source at a time',
     terms: ['superposition', 'linear'],
     note:
@@ -487,13 +647,13 @@ export const EXPERIMENTS = [
         ...src('V1'),
         rail(50, 100, TOP),
         ...top('R1', 120),
-        rail(140, 265, TOP),
+        rail(140, LEGS[1], TOP),
         ...leg('R2', 180),
         // Drawn + end down: the source pushes current up into A.
-        { el: 'I1', x: 265, y: MID, dir: 'v', flip: true },
-        { wire: [265, TOP, 265, MID - 20] },
-        { wire: [265, MID + 20, 265, BOT] },
-        rail(50, 265, BOT),
+        { el: 'I1', x: LEGS[1], y: MID, dir: 'v', flip: true },
+        { wire: [LEGS[1], TOP, LEGS[1], MID - 20] },
+        { wire: [LEGS[1], MID + 20, LEGS[1], BOT] },
+        rail(50, LEGS[1], BOT),
         gnd(115),
         node('in', 50, TOP, 't'),
         node('A', 180, TOP, 't'),
@@ -505,8 +665,8 @@ export const EXPERIMENTS = [
     claim: { superposition: true },
   },
   {
-    id: 'c5',
-    group: GROUPS[2],
+    id: 'd5',
+    group: GROUPS[3],
     name: 'Thévenin, three ways',
     terms: ['thevenin', 'linear'],
     note:
@@ -533,8 +693,8 @@ export const EXPERIMENTS = [
     claim: { theveninAgree: true },
   },
   {
-    id: 'c6',
-    group: GROUPS[2],
+    id: 'd6',
+    group: GROUPS[3],
     name: 'Maximum power transfer',
     terms: ['thevenin', 'power'],
     note:
@@ -564,10 +724,10 @@ export const EXPERIMENTS = [
     claim: { maxPower: true },
   },
 
-  // ============================================================== D
+  // ============================================================== E
   {
-    id: 'd1',
-    group: GROUPS[3],
+    id: 'e1',
+    group: GROUPS[4],
     name: 'A dependent source',
     terms: ['dependent', 'power'],
     note:
@@ -590,10 +750,10 @@ export const EXPERIMENTS = [
       h: H,
       items: [
         ...src('V1'),
-        rail(50, 135, TOP),
-        ...leg('Rin', 135),
-        rail(50, 135, BOT),
-        gnd(92),
+        rail(50, 140, TOP),
+        ...leg('Rin', 140),
+        rail(50, 140, BOT),
+        gnd(95),
         node('in', 50, TOP, 't'),
         ...leg('E1', 240),
         ...leg('RL', 340),
@@ -610,8 +770,77 @@ export const EXPERIMENTS = [
     claim: { dependent: true },
   },
   {
-    id: 'd2',
-    group: GROUPS[3],
+    id: 'e2',
+    group: GROUPS[4],
+    name: 'The op-amp as a black box',
+    terms: ['opamp', 'ideal', 'impedance', 'active'],
+    note:
+      'An operational amplifier is a packaged circuit of a few dozen transistors — active ' +
+      'devices, powered from supply pins the symbol never shows — that behaves, from outside, ' +
+      'like the box drawn here: a resistance R_in between its two inputs, a dependent source ' +
+      'that produces A times the input difference, and a resistance R_out in series with the ' +
+      'output. Nothing else about the inside matters to a circuit designer, which is the point ' +
+      'of a black box. The IDEAL op-amp has A = ∞, R_in = ∞ (its inputs draw no current), ' +
+      'R_out = 0 (its output holds its voltage into any load), no offset and no speed limit; a ' +
+      'real one has A ≈ 10⁵, R_in from 1 MΩ to 10¹² Ω, R_out of tens of ohms. Turn the three ' +
+      'knobs: the input divider R_in/(R_s + R_in) costs a little of the signal, R_out/(R_out + ' +
+      'R_L) costs a little of the output, and the ideal recovers as both go to their limits. ' +
+      'The payoff over any circuit of resistors alone: this one delivers far more power to the ' +
+      'load than the source supplies — a resistor network can only divide what it is given.',
+    params: [
+      Vs('E', 'Input E', 0.01),
+      R('Rs', 'Source R_s', 10000),
+      Gain('A', 'Open-loop gain A', 1000),
+      R('Rin', 'Input R_in', 1e6),
+      R('Rout', 'Output R_out', 50),
+      R('RL', 'Load R_L', 1000),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
+        { type: 'R', id: 'Rs', nodes: ['in', 'p'], value: p.Rs },
+        { type: 'R', id: 'Rin', nodes: ['p', 'gnd'], value: p.Rin },
+        { type: 'VCVS', id: 'E1', nodes: ['o', 'gnd'], ctrl: ['p', 'gnd'], gain: p.A },
+        { type: 'R', id: 'Rout', nodes: ['o', 'out'], value: p.Rout },
+        { type: 'R', id: 'RL', nodes: ['out', 'gnd'], value: p.RL },
+      ],
+    }),
+    layout: {
+      w: W,
+      h: H,
+      items: [
+        // The dashed frame is the package: everything inside is "the op-amp".
+        // Six elements across a canvas built for four: the source steps left
+        // to 40, and the two legs inside the frame sit 94 apart, the least
+        // that keeps Rin's label off E1's arrow.
+        { box: [119, 4, 315, 162] },
+        { text: 'op-amp, modelled', x: 170, y: 14 },
+        ...src('V1', 40),
+        rail(40, 70, TOP),
+        ...top('Rs', 90),
+        rail(110, 140, TOP),
+        ...leg('Rin', 140),
+        node('in', 40, TOP, 't'),
+        node('p', 140, TOP, 'r'),
+        ...leg('E1', 234),
+        rail(234, 262, TOP),
+        ...top('Rout', 282),
+        rail(302, 350, TOP),
+        ...leg('RL', 350),
+        node('o', 234, TOP, 't'),
+        node('out', 350, TOP, 't'),
+        rail(40, 350, BOT),
+        gnd(100),
+      ],
+    },
+    show: 'v',
+    view: 'power',
+    views: ['power', 'equations'],
+    claim: { blackBox: true },
+  },
+  {
+    id: 'e3',
+    group: GROUPS[4],
     name: 'Comparator: an op-amp with no feedback',
     terms: ['opamp', 'gain'],
     note:
@@ -657,8 +886,8 @@ export const EXPERIMENTS = [
     claim: { comparator: true },
   },
   {
-    id: 'd3',
-    group: GROUPS[3],
+    id: 'e4',
+    group: GROUPS[4],
     name: 'The golden rules, derived',
     terms: ['opamp', 'feedback', 'gain'],
     note:
@@ -684,8 +913,8 @@ export const EXPERIMENTS = [
     claim: { goldenRules: true },
   },
   {
-    id: 'd4',
-    group: GROUPS[3],
+    id: 'e5',
+    group: GROUPS[4],
     name: 'Inverting amplifier and the virtual ground',
     terms: ['opamp', 'feedback', 'virtual'],
     note:
@@ -711,8 +940,8 @@ export const EXPERIMENTS = [
     claim: { inverting: true },
   },
   {
-    id: 'd5',
-    group: GROUPS[3],
+    id: 'e6',
+    group: GROUPS[4],
     name: 'The summing amplifier',
     terms: ['opamp', 'virtual', 'kcl'],
     note:
@@ -739,8 +968,8 @@ export const EXPERIMENTS = [
     claim: { summer: true },
   },
   {
-    id: 'd6',
-    group: GROUPS[3],
+    id: 'e7',
+    group: GROUPS[4],
     name: 'The difference amplifier',
     terms: ['opamp', 'feedback', 'cmrr'],
     note:
@@ -775,16 +1004,16 @@ export const EXPERIMENTS = [
     claim: { difference: true },
   },
   {
-    id: 'd7',
-    group: GROUPS[3],
+    id: 'e8',
+    group: GROUPS[4],
     name: 'The buffer fixes the loaded divider',
     terms: ['opamp', 'feedback', 'thevenin'],
     note:
-      'B3’s divider drooped under load. Put a unity-gain buffer between them — output wired ' +
+      'C3’s divider drooped under load. Put a unity-gain buffer between them — output wired ' +
       'straight back to the − input — and the divider sees no load at all (the op-amp input ' +
       'draws nothing) while the load sees a source with zero resistance. The output is the ' +
       'UNLOADED divider voltage E·R₂/(R₁+R₂) whatever R_L is; the load current comes from the ' +
-      'op-amp. Sweep R_L below and the line is flat. Compare the same sweep in B3.',
+      'op-amp. Sweep R_L below and the line is flat. Compare the same sweep in C3.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('RL', 'Load R_L', 100)],
     net: (p) => ({
       elements: [
@@ -823,14 +1052,14 @@ function nonInvertingLayout() {
       { wire: [50, 120, 50, 130] },
       gnd(50, 130),
       node('in', 120, plus, 't'),
-      { wire: [a.x, minus, 130, minus] },
-      node('n', 130, minus, 't'),
-      { wire: [130, minus, 130, 90] },
-      { el: 'Rg', x: 130, y: 110, dir: 'v' },
-      gnd(130, 130),
+      { wire: [a.x, minus, 140, minus] },
+      node('n', 140, minus, 't'),
+      { wire: [140, minus, 140, 90] },
+      { el: 'Rg', x: 140, y: 110, dir: 'v' },
+      gnd(140, 130),
       ...amp(a),
-      { wire: [205, minus, 205, 150] },
-      { wire: [205, 150, 230, 150] },
+      { wire: [215, minus, 215, 150] },
+      { wire: [215, 150, 230, 150] },
       { el: 'Rf', x: 250, y: 150, dir: 'h' },
       { wire: [270, 150, 300, 150] },
       { wire: [300, 150, 300, a.y] },
@@ -857,11 +1086,11 @@ function invertingLayout() {
       gnd(120, 150),
       { wire: [AMP.x, 102, 190, 102] },
       { wire: [190, 102, 190, 150] },
-      { wire: [170, 78, 170, 30] },
-      { wire: [170, 30, 195, 30] },
-      { el: 'Rf', x: 215, y: 30, dir: 'h' },
-      { wire: [235, 30, 300, 30] },
-      { wire: [300, 30, 300, 90] },
+      { wire: [170, 78, 170, 34] },
+      { wire: [170, 34, 195, 34] },
+      { el: 'Rf', x: 215, y: 34, dir: 'h' },
+      { wire: [235, 34, 300, 34] },
+      { wire: [300, 34, 300, 90] },
       ...amp(),
       ...outLoad('RL'),
     ],
@@ -880,24 +1109,24 @@ function summerLayout() {
     items: [
       { el: 'V1', x: 50, y: 130, dir: 'v' },
       { wire: [50, 110, 50, minus] },
-      { wire: [50, minus, 100, minus] },
+      { wire: [50, minus, 95, minus] },
       node('in1', 50, minus, 't'),
-      { el: 'R1', x: 120, y: minus, dir: 'h' },
-      { wire: [140, minus, a.x, minus] },
-      node('n', 192, minus, 'b'),
+      { el: 'R1', x: 115, y: minus, dir: 'h' },
+      { wire: [135, minus, a.x, minus] },
+      node('n', 195, minus, 'b'),
       { el: 'V2', x: 50, y: 35, dir: 'h', flip: true },
       { wire: [30, 35, 20, 35] },
       { wire: [20, 35, 20, rail0] },
-      { wire: [70, 35, 135, 35] },
+      { wire: [70, 35, 145, 35] },
       node('in2', 100, 35, 't'),
-      { el: 'R2', x: 155, y: 35, dir: 'h' },
-      { wire: [175, 35, 185, 35] },
-      { wire: [185, 35, 185, minus] },
-      { wire: [200, minus, 200, 30] },
-      { wire: [200, 30, 230, 30] },
-      { el: 'Rf', x: 250, y: 30, dir: 'h' },
-      { wire: [270, 30, 300, 30] },
-      { wire: [300, 30, 300, a.y] },
+      { el: 'R2', x: 165, y: 35, dir: 'h' },
+      { wire: [185, 35, 195, 35] },
+      { wire: [195, 35, 195, minus] },
+      { wire: [200, minus, 200, 34] },
+      { wire: [200, 34, 230, 34] },
+      { el: 'Rf', x: 250, y: 34, dir: 'h' },
+      { wire: [270, 34, 300, 34] },
+      { wire: [300, 34, 300, a.y] },
       { wire: [a.x, plus, 210, plus] },
       { wire: [210, plus, 210, rail0] },
       { wire: [50, 150, 50, rail0] },
@@ -922,11 +1151,11 @@ function differenceLayout() {
       { el: 'R1', x: 150, y: 78, dir: 'h' },
       { wire: [170, 78, AMP.x, 78] },
       node('n', 195, 78, 'b'),
-      { wire: [210, 78, 210, 30] },
-      { wire: [210, 30, 230, 30] },
-      { el: 'R2', x: 250, y: 30, dir: 'h' },
-      { wire: [270, 30, 300, 30] },
-      { wire: [300, 30, 300, 90] },
+      { wire: [210, 78, 210, 34] },
+      { wire: [210, 34, 230, 34] },
+      { el: 'R2', x: 250, y: 34, dir: 'h' },
+      { wire: [270, 34, 300, 34] },
+      { wire: [300, 34, 300, 90] },
       { wire: [50, 130, 50, 158] },
       { el: 'V2', x: 75, y: 158, dir: 'h', flip: true },
       { wire: [55, 158, 50, 158] },
@@ -949,7 +1178,7 @@ function differenceLayout() {
 }
 
 function bufferLayout() {
-  // The divider from B3 feeding a unity-gain buffer (+ on top), output wired
+  // The divider from C3 feeding a unity-gain buffer (+ on top), output wired
   // back to − under the amplifier, load hung from the output.
   const a = { x: AMP.x, y: 52, invertTop: false, run: 90 }
   const out = a.x + a.run

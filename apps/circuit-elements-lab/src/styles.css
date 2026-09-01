@@ -225,6 +225,32 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .power-total { color: var(--dim); font-size: 11.5px; margin-top: 4px; }
 .power-total b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
 
+/* Desktop: the lower pane has a screenful of room and the phone-sized type
+   read as a squint at arm's length (Reed, 2026-09-01). Everything in it steps
+   up about a third; phones keep the sizes above, which suit them. */
+@media (min-width: 1100px) {
+  .eq-row { padding: 9px 12px; gap: 16px; }
+  .eq-row .eq-at { font-size: 14px; padding-top: 6px; }
+  .eq-row .eq-at b { font-size: 16px; }
+  .eq-terms { gap: 8px 20px; }
+  .eq-term .tex { font-size: 19px; }
+  .eq-term .eq-val { font-size: 13px; }
+  .eq-sum { font-size: 14px; }
+  .eq-matrix .tex { font-size: 18px; }
+  .eq-matrix .hint { font-size: 14px; }
+  .table { font-size: 14px; }
+  .table th { font-size: 12.5px; }
+  .table caption { font-size: 13px; }
+  .power-row { font-size: 14px; grid-template-columns: 72px 1fr 110px; }
+  .power-row .bar { height: 14px; }
+  .power-total { font-size: 13.5px; }
+  .refusal { font-size: 15px; max-width: 900px; }
+  .view-body > .hint { font-size: 14px; }
+}
+@media (min-width: 1400px) {
+  .view .schematic.big { max-width: 900px; }
+}
+
 /* Pane bodies scroll inside the pane rather than growing it: the two panes
    stay two panes whatever the equations list or the tables run to. */
 .view-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }

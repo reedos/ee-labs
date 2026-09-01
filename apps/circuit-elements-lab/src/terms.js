@@ -7,6 +7,50 @@
 // using an undefined term.
 
 export const TERMS = {
+  voltage: {
+    name: 'Voltage',
+    def:
+      'The energy it takes to move a unit of charge from one point to another, in volts (joules ' +
+      'per coulomb) — always between two points, never at one. A meter has two probes because of ' +
+      'this; the one at the ground symbol is the point everything else is measured from.',
+  },
+  current: {
+    name: 'Current',
+    def:
+      'Charge passing a point per second, in amperes (coulombs per second). It has a direction, ' +
+      'and the sign of a current reading says whether it flows the way the arrow was drawn or ' +
+      'the other way — a negative current is a real current, going the other direction.',
+  },
+  vsource: {
+    name: 'Voltage source',
+    def:
+      'An element that holds a fixed voltage between its terminals whatever current the circuit ' +
+      'draws — the model of a battery or a regulated supply. Its current is decided by what it ' +
+      'is connected to; a short across an ideal one has no answer, which is why a real one has ' +
+      'a small internal resistance (D6).',
+  },
+  isource: {
+    name: 'Current source',
+    def:
+      'An element that pushes a fixed current through itself whatever voltage that takes. Its ' +
+      'voltage is decided by what it is connected to; an open circuit across an ideal one has no ' +
+      'answer. Rarer as a component than a battery, but it is how a transistor’s output behaves, ' +
+      'and so how amplifiers are modelled.',
+  },
+  resistor: {
+    name: 'Resistor and Ohm’s law',
+    def:
+      'An element whose voltage and current are proportional: v = i·R, with R in ohms (volts ' +
+      'per ampere). Given the voltage it decides the current; given the current it decides the ' +
+      'voltage. It turns the power v·i into heat, and never gives any back.',
+  },
+  ground: {
+    name: 'Ground (reference node)',
+    def:
+      'The node chosen to be called 0 V, so that every other node can be given one number ' +
+      'instead of a difference. Any node will do; moving the choice shifts every node voltage by ' +
+      'one constant and changes nothing an element can feel.',
+  },
   kcl: {
     name: 'KCL (Kirchhoff’s current law)',
     def:
@@ -118,9 +162,35 @@ export const TERMS = {
   opamp: {
     name: 'Op-amp',
     def:
-      'A differential amplifier: v_out = A·(v₊ − v₋) with A around 10⁵ or more. Its inputs draw ' +
-      'no current. Used almost always with feedback, so that the enormous gain becomes a tool ' +
-      'for forcing v₊ ≈ v₋ rather than a number the output reaches.',
+      'A differential amplifier in a package: v_out = A·(v₊ − v₋) with A around 10⁵ or more, ' +
+      'built from transistors and powered from supply pins the symbol leaves out. Its inputs draw ' +
+      'almost no current. Used almost always with feedback, so that the enormous gain becomes a ' +
+      'tool for forcing v₊ ≈ v₋ rather than a number the output reaches.',
+  },
+  ideal: {
+    name: 'Ideal op-amp',
+    def:
+      'Infinite gain, infinite input resistance (no input current), zero output resistance (the ' +
+      'output holds its voltage into any load), zero offset between the inputs, and no limit on ' +
+      'speed or output swing. Real parts miss each of these by a known, small amount — the data ' +
+      'sheet is the list — and the circuits in this group work because feedback makes those ' +
+      'amounts nearly irrelevant.',
+  },
+  impedance: {
+    name: 'Input and output impedance',
+    def:
+      'What a device looks like as a resistor to whatever connects to it. A high input impedance ' +
+      'draws little current from the source feeding it, so the source’s own voltage is not pulled ' +
+      'down; a low output impedance keeps the output voltage steady when a load draws current. The ' +
+      'ideal op-amp has infinite and zero; an op-amp circuit with feedback comes remarkably close.',
+  },
+  active: {
+    name: 'Active vs passive',
+    def:
+      'A passive element — resistor, capacitor, inductor — can only absorb or store the energy it ' +
+      'is given, so a network of them never delivers more power to a load than the source puts in ' +
+      'and never makes a voltage larger than the source’s. An active device draws on a separate ' +
+      'supply, so it can amplify: more power out than the signal brought in.',
   },
   gain: {
     name: 'Gain',

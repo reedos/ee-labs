@@ -11,7 +11,7 @@ import { fmt } from './units.js'
  *   - a symbol is drawn on the segment (−20, 0)…(20, 0) about its centre,
  *     then rotated: `dir:'v'` turns it 90°, `flip` a further 180°;
  *   - a horizontal element has its label centred 24 below and its reading
- *     centred 18 above; a vertical one has both to its right, the reading
+ *     centred 24 above; a vertical one has both to its right, the reading
  *     stacked over the label — the arrow lives on the left;
  *   - a node's name goes on the side the layout asks for, 7 off the dot
  *     sideways or clear of it above and below;
@@ -73,7 +73,7 @@ export function elementReading(e, meters, show) {
 export function elementTextPlaces({ x, y, dir = 'h' }) {
   return dir === 'v'
     ? { label: { x: x + 14, y: y + 4, anchor: 'start' }, reading: { x: x + 14, y: y - 8, anchor: 'start' } }
-    : { label: { x, y: y + 24, anchor: 'middle' }, reading: { x, y: y - 18, anchor: 'middle' } }
+    : { label: { x, y: y + 24, anchor: 'middle' }, reading: { x, y: y - 24, anchor: 'middle' } }
 }
 
 /**
@@ -117,8 +117,8 @@ export function elementBodyBoxes({ x, y, dir = 'h' }, e, arrow = false) {
     dir === 'v' ? { x0: x + b0, x1: x + b1, y0: y + a0, y1: y + a1 } : { x0: x + a0, x1: x + a1, y0: y + b0, y1: y + b1 }
   boxes.push(local(-along, along, -across, across))
   if (round) boxes.push(local(-20, -11, -0.75, 0.75), local(11, 20, -0.75, 0.75))
-  // The arrow sits at local y = −10 (horizontal) / +10 (vertical → −x).
-  if (arrow) boxes.push(dir === 'v' ? { x0: x - 13, x1: x - 7, y0: y - 9, y1: y + 9 } : { x0: x - 9, x1: x + 9, y0: y - 13, y1: y - 7 })
+  // The arrow sits at local y = −16 (horizontal) / +16 (vertical → −x), head ±3.
+  if (arrow) boxes.push(dir === 'v' ? { x0: x - 19, x1: x - 13, y0: y - 9, y1: y + 9 } : { x0: x - 9, x1: x + 9, y0: y - 19, y1: y - 13 })
   return boxes
 }
 

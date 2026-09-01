@@ -27,7 +27,8 @@ export function EquationsPane({ eq, solved }) {
             <div className="eq-terms">
               {r.terms.map((t, j) => (
                 <span className="eq-term" key={j}>
-                  <Formula display={false}>{(t.sign < 0 ? '-\\,' : j ? '+\\,' : '') + t.latex}</Formula>
+                  {/* Display-style fractions: inline-style ones shrink R and v to a squint. */}
+                  <Formula display={false}>{'\\displaystyle ' + (t.sign < 0 ? '-\\,' : j ? '+\\,' : '') + t.latex}</Formula>
                   {solved ? <span className="eq-val">{num(t.sign < 0 ? -Math.abs(t.value) : t.value, 'A', 3)}</span> : null}
                 </span>
               ))}
@@ -43,7 +44,7 @@ export function EquationsPane({ eq, solved }) {
             </div>
             <div className="eq-terms">
               <span className="eq-term">
-                <Formula display={false}>{r.latex}</Formula>
+                <Formula display={false}>{'\\displaystyle ' + r.latex}</Formula>
                 {solved && Number.isFinite(r.lhs) ? (
                   <span className="eq-val">
                     {num(r.lhs, 'V', 3)}

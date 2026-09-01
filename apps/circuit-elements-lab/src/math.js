@@ -19,6 +19,79 @@ const row = (label, predicted, measured, unit = '', tol = 1e-9, abs = 1e-12) => 
 
 const ENTRIES = {
   a1(p, s) {
+    const i = p.E / p.R1
+    return {
+      blocks: [
+        T('The source fixes the voltage across the resistor; Ohm’s law then fixes the current. The source supplies exactly that current.'),
+        F('v_R = E, \\qquad i = \\frac{v_R}{R} = \\frac{E}{R}'),
+        C([
+          row('v_R = E', p.E, s.volt.R1, 'V'),
+          row('i = E / R', i, s.i.R1, 'A'),
+          row('source current (out of +)', -i, s.i.V1, 'A'),
+          row('p_R = E²/R', (p.E * p.E) / p.R1, s.p.R1, 'W'),
+        ]),
+      ],
+    }
+  },
+
+  a2(p, s) {
+    const v = p.I * p.R1
+    return {
+      blocks: [
+        T('The source fixes the current through the resistor; Ohm’s law then fixes the voltage — the same law, solved for v.'),
+        F('i_R = I, \\qquad v = i_R R = I R'),
+        C([
+          row('i_R = I', p.I, s.i.R1, 'A'),
+          row('v = I·R', v, s.v.in, 'V'),
+          row('p_R = I²R', p.I * p.I * p.R1, s.p.R1, 'W'),
+          row('source delivers it all', -p.I * p.I * p.R1, s.p.I1, 'W'),
+        ]),
+        V([{ label: 'v at R = 1 MΩ', value: p.I * 1e6, unit: 'V', note: 'and unbounded as R → ∞' }]),
+      ],
+    }
+  },
+
+  a3(p, s) {
+    const i = p.E / (p.R1 + p.R2)
+    const vA = p.Vref + i * p.R2
+    return {
+      blocks: [
+        T('Every node voltage carries V_ref; every difference between two nodes does not. Elements see only differences.'),
+        F('v_{in} = V_{ref} + E, \\qquad v_A = V_{ref} + E\\,\\frac{R_2}{R_1 + R_2}, \\qquad v_{ref} = V_{ref}'),
+        F('v_{R_1} = v_{in} - v_A = E\\,\\frac{R_1}{R_1 + R_2}', 'no V_ref in it'),
+        C([
+          row('v_in', p.Vref + p.E, s.v.in, 'V'),
+          row('v_A', vA, s.v.A, 'V'),
+          row('v_ref', p.Vref, s.v.ref, 'V'),
+          row('v_R1 (independent of V_ref)', i * p.R1, s.volt.R1, 'V'),
+          row('i (independent of V_ref)', i, s.i.R1, 'A'),
+          row('current through V_ref', 0, s.i.V0, 'A', 0, 1e-12),
+        ]),
+      ],
+    }
+  },
+
+  a4(p, s) {
+    const v = p.E1 - p.E2
+    const i = v / p.R1
+    return {
+      blocks: [
+        T('The resistor’s + is its left end, at node in. Its voltage is in minus n1; its current is measured into the left end. Both flip sign together, so their product never does.'),
+        F('v_R = v_{in} - v_{n_1} = E_1 - E_2, \\qquad i_R = \\frac{v_R}{R}, \\qquad p_R = v_R\\, i_R = \\frac{(E_1 - E_2)^2}{R} \\ge 0'),
+        F('p_{V_1} = -E_1 i_R', 'negative while V₁ pushes: current leaves its +'),
+        C([
+          row('v_R', v, s.volt.R1, 'V'),
+          row('i_R', i, s.i.R1, 'A'),
+          row('p_R ≥ 0', v * i, s.p.R1, 'W'),
+          row('p_V1', -p.E1 * i, s.p.V1, 'W'),
+          row('p_V2', p.E2 * i, s.p.V2, 'W'),
+        ]),
+        V([{ label: 'sign of v_R × sign of i_R', value: Math.sign(s.volt.R1) * Math.sign(s.i.R1), unit: '', note: 'never −1 for a resistor' }]),
+      ],
+    }
+  },
+
+  b1(p, s) {
     const rp = par(p.R2, p.R3)
     const vA = (p.E * rp) / (p.R1 + rp)
     return {
@@ -36,7 +109,7 @@ const ENTRIES = {
     }
   },
 
-  a2(p, s) {
+  b2(p, s) {
     const i = p.E / (p.R1 + p.R2)
     return {
       blocks: [
@@ -52,7 +125,7 @@ const ENTRIES = {
     }
   },
 
-  a3(p, s) {
+  b3(p, s) {
     const i = p.E / (p.R1 + p.R2)
     return {
       blocks: [
@@ -68,7 +141,7 @@ const ENTRIES = {
     }
   },
 
-  a4(p, s) {
+  b4(p, s) {
     const i = (p.E1 - p.E2) / p.R1
     return {
       blocks: [
@@ -85,7 +158,7 @@ const ENTRIES = {
     }
   },
 
-  b1(p, s) {
+  c1(p, s) {
     const rs = p.R1 + p.R2 + p.R3
     const i = p.E / rs
     return {
@@ -104,7 +177,7 @@ const ENTRIES = {
     }
   },
 
-  b2(p, s) {
+  c2(p, s) {
     const req = par(p.R1, p.R2, p.R3)
     return {
       blocks: [
@@ -124,7 +197,7 @@ const ENTRIES = {
     }
   },
 
-  b3(p, s) {
+  c3(p, s) {
     const rp = par(p.R2, p.RL)
     const unloaded = (p.E * p.R2) / (p.R1 + p.R2)
     const loaded = (p.E * rp) / (p.R1 + rp)
@@ -145,7 +218,7 @@ const ENTRIES = {
     }
   },
 
-  b4(p, s) {
+  c4(p, s) {
     const vL = (p.E * p.R2) / (p.R1 + p.R2)
     const vR = (p.E * p.R4) / (p.R3 + p.R4)
     // Small-signal sensitivity of the output to R4, at balance R4 = R3·R2/R1.
@@ -169,7 +242,7 @@ const ENTRIES = {
     }
   },
 
-  c1(p, s) {
+  d1(p, s) {
     const g = 1 / p.R1 + 1 / p.R2 + 1 / p.R3
     const vA = p.E / p.R1 / g
     return {
@@ -182,7 +255,7 @@ const ENTRIES = {
     }
   },
 
-  c2(p, s) {
+  d2(p, s) {
     // Supernode: (VA−E1)/R1 + VA/R2 + VB/R3 = 0 with VA − VB = E2.
     const vB = (p.E1 / p.R1 - p.E2 / p.R1 - p.E2 / p.R2) / (1 / p.R1 + 1 / p.R2 + 1 / p.R3)
     const vA = vB + p.E2
@@ -202,7 +275,7 @@ const ENTRIES = {
     }
   },
 
-  c3(p, s) {
+  d3(p, s) {
     // Mesh: [R1+R2, −R2; −R2, R2+R3] [i1; i2] = [E1; −E2]
     const a = p.R1 + p.R2
     const b = -p.R2
@@ -224,7 +297,7 @@ const ENTRIES = {
     }
   },
 
-  c4(p, s, x) {
+  d4(p, s, x) {
     const sp = x.superposition
     const vA_E = (p.E1 * p.R2) / (p.R1 + p.R2)
     const vA_I = p.I1 * par(p.R1, p.R2)
@@ -244,7 +317,7 @@ const ENTRIES = {
     }
   },
 
-  c5(p, s, x) {
+  d5(p, s, x) {
     const th = x.thevenin
     const rth = par(p.R1, p.R2, p.R3)
     const voc = (p.E / p.R1) * rth
@@ -264,7 +337,7 @@ const ENTRIES = {
     }
   },
 
-  c6(p, s, x) {
+  d6(p, s, x) {
     const pl = (p.E * p.E * p.RL) / (p.Rs + p.RL) ** 2
     return {
       blocks: [
@@ -282,7 +355,7 @@ const ENTRIES = {
     }
   },
 
-  d1(p, s) {
+  e1(p, s) {
     const vout = p.A * p.E
     return {
       blocks: [
@@ -298,7 +371,38 @@ const ENTRIES = {
     }
   },
 
-  d2(p, s) {
+  e2(p, s) {
+    // Input divider, gain, output divider — three factors, two of them the
+    // non-idealities; the ideal box is the middle one alone.
+    const kin = p.Rin / (p.Rs + p.Rin)
+    const kout = p.RL / (p.Rout + p.RL)
+    const vp = p.E * kin
+    const vout = p.A * vp * kout
+    const pLoad = (vout * vout) / p.RL
+    const pSource = (p.E * p.E) / (p.Rs + p.Rin)
+    return {
+      blocks: [
+        T('Two dividers and a gain. R_in loads the source through R_s; R_out loads the dependent source through R_L; the ideal op-amp loses neither.'),
+        F('v_p = E\\,\\frac{R_{in}}{R_s + R_{in}}, \\qquad v_{out} = A\\,v_p\\,\\frac{R_L}{R_{out} + R_L}'),
+        F('\\frac{v_{out}}{E} \\;\\xrightarrow{\\;R_{in}\\to\\infty,\\;R_{out}\\to 0\\;}\\; A', 'the ideal black box'),
+        C([
+          row('v_p', vp, s.v.p, 'V'),
+          row('v_out', vout, s.v.out, 'V'),
+          row('input current E/(R_s + R_in)', p.E / (p.Rs + p.Rin), -s.i.V1, 'A'),
+          row('power into the load', pLoad, s.p.RL, 'W'),
+          row('power from the source', pSource, -s.p.V1, 'W'),
+        ]),
+        V([
+          { label: 'input loss R_in/(R_s+R_in)', value: kin, unit: '', note: '1 when R_in = ∞' },
+          { label: 'output loss R_L/(R_out+R_L)', value: kout, unit: '', note: '1 when R_out = 0' },
+          { label: 'shortfall from ideal A·E', value: 100 * (1 - kin * kout), unit: '%' },
+          { label: 'power gain, load over source', value: pLoad / pSource, unit: '×', note: 'a resistor network cannot exceed 1' },
+        ]),
+      ],
+    }
+  },
+
+  e3(p, s) {
     if (!s) {
       return {
         blocks: [
@@ -316,7 +420,7 @@ const ENTRIES = {
     }
   },
 
-  d3(p, s) {
+  e4(p, s) {
     const G = 1 + p.Rf / p.Rg
     const vout = (G * p.E) / (1 + G / p.A)
     return {
@@ -338,7 +442,7 @@ const ENTRIES = {
     }
   },
 
-  d4(p, s) {
+  e5(p, s) {
     const vout = -(p.Rf / p.Rg) * p.E
     return {
       blocks: [
@@ -356,7 +460,7 @@ const ENTRIES = {
     }
   },
 
-  d5(p, s) {
+  e6(p, s) {
     const vout = -p.Rf * (p.E1 / p.R1 + p.E2 / p.R2)
     return {
       blocks: [
@@ -372,7 +476,7 @@ const ENTRIES = {
     }
   },
 
-  d6(p, s) {
+  e7(p, s) {
     // Exact output of the four-resistor difference amplifier (ideal op-amp).
     const vp = (p.E2 * p.R4) / (p.R3 + p.R4)
     const vout = vp * (1 + p.R2 / p.R1) - (p.R2 / p.R1) * p.E1
@@ -398,7 +502,7 @@ const ENTRIES = {
     }
   },
 
-  d7(p, s) {
+  e8(p, s) {
     const unloaded = (p.E * p.R2) / (p.R1 + p.R2)
     return {
       blocks: [

@@ -148,7 +148,7 @@ states and the independent sources:
 This is the substitution theorem, and it is exact. The rank check on the substituted
 MNA is what detects the degenerate cases in §1.3. It also produces the circuit's
 **characteristic polynomial** from `det(sI − A)`, which is what the second-order
-experiments (§4 Group F) display and test against `s² + (R/L)s + 1/LC`.
+experiments (§4 Group G) display and test against `s² + (R/L)s + 1/LC`.
 
 ### 1.5 Exact time response — no timestep
 
@@ -162,7 +162,7 @@ specifies in its §1.2, built here first and imported there:
 - **n = 2** (RLC, two-cap ladders, Sallen–Key): the three-case closed form on
   `Δ = (tr A/2)² − det A` — cosh/sinh, cos/sin, or linear — with `φ1` from the same
   case analysis and **no A⁻¹** (an LC with R = 0 is singular in the way that matters
-  and must still work: Group F5 depends on it).
+  and must still work: Group G5 depends on it).
 - **n ≥ 3**: eigendecomposition with balancing (`@ee-labs/systems` already owns
   this), still exact to floating point; used by the RC ladder and any op-amp circuit
   with two dynamic elements plus a rail model.
@@ -203,7 +203,7 @@ v_D₁ = 0.31 V < 0.7 V: consistent." Two diodes → four cases, enumerated on s
 
 **The exponential diode** (`i = I_s(e^{v/nV_T} − 1)`) is nonlinear, not piecewise. It
 is supported for **DC operating points only**, by Newton–Raphson with SPICE's
-voltage-step limiting, and the iterations are *displayed* (Group H2: "this is what a
+voltage-step limiting, and the iterations are *displayed* (Group I2: "this is what a
 simulator does"). In time-domain experiments the diode is one of the three
 piecewise models, and the panel says so and says why — a timestep solver's error is
 something this suite cannot tell apart from physics, so it does not ship one (Rule 2).
@@ -215,7 +215,7 @@ labelled approximation it is (Rule 3), with its tangent error shown.
 The same stamps with complex admittances at `s = jω` (`jωC`, `1/jωL` as a branch
 row so ω = 0 is not a division) give the sinusoidal steady state directly. Two
 independent paths to one number: the phasor solve, and the long-time limit of the
-exact time solution (§1.5 with the natural part decayed). Group G is built on their
+exact time solution (§1.5 with the natural part decayed). Group H is built on their
 agreement.
 
 ### 1.8 Measures
@@ -259,7 +259,7 @@ Across random values on every library circuit:
 | Independent V source | `v = E(t)` | series `R_s` |
 | Independent I source | `i = I(t)` | parallel `R_p` |
 | Dependent sources | VCVS, VCCS (CCVS/CCCS via a sensing 0 V source) | — |
-| Switch | ideal make/break at `t = 0` or on a clock | `R_on`, `R_off` (finite ⇒ the spark in E6) |
+| Switch | ideal make/break at `t = 0` or on a clock | `R_on`, `R_off` (finite ⇒ the spark in F6) |
 | Capacitor | `i = C dv/dt`, `q = Cv`, `w = ½Cv²` | ESR (series R); initial voltage `v(0)` |
 | Inductor | `v = L di/dt`, `w = ½Li²` | winding R (series); initial current `i(0)` |
 | Op-amp | nullor: `v₊ = v₋`, `i₊ = i₋ = 0`, output does what it must | finite `A` (10 … 10⁶); rails `±V_sat`; (stretch) GBW as `A(s) = ω_t/s` — admissible in `systems`, labelled as a model |
@@ -294,7 +294,7 @@ Topbar: the circuit's headline numbers for the current experiment — e.g. `V_th
 
 - **Schematic with live meters** — the lab's signature. Every node voltage and
   branch current shown on the drawing, current arrows scaled and animated (dot flow,
-  direction honest), element power on hover. Click a node to make it ground (A1).
+  direction honest), element power on hover. Click a node to make it ground (A3).
   Click a switch to throw it. When a time pane has a cursor, the meters show the
   values **at the cursor** — the circuit at time t — which is the conduction-scrub
   idea Power Lab inherits.
@@ -303,8 +303,8 @@ Topbar: the circuit's headline numbers for the current experiment — e.g. `V_th
   For dynamic circuits: the state equations, `det(sI − A)`, the roots. Progressive
   disclosure: one equation per row, expanded on demand — never a wall.
 - **Scope** — states and chosen branch quantities vs t, scrubbable cursor, natural
-  and forced components separable as ghost traces (G1), τ-tangent and 63% marker
-  (E3), envelope `±e^{−αt}` (F4). Dual y-axis (V / A). Caption band above the plot,
+  and forced components separable as ghost traces (H1), τ-tangent and 63% marker
+  (F3), envelope `±e^{−αt}` (G4). Dual y-axis (V / A). Caption band above the plot,
   from Signal Lab.
 - **Phasor diagram** — phasors as arrows, tip-to-tail sum, rotating with the time
   cursor; the projection onto the vertical axis is drawn out to the right *as the
@@ -315,7 +315,7 @@ Topbar: the circuit's headline numbers for the current experiment — e.g. `V_th
 - **Energy** — stacked `½Cv²`, `½Li²`, `∫i²R` against energy supplied; the identity
   visible as a bar that always closes.
 - **Sweep** — one parameter across a range with a marked operating point: `P_L` vs
-  `R_L` (C6), `|Z|` vs ω (G4), response vs R across the three damping regimes (F2–4).
+  `R_L` (D6), `|Z|` vs ω (H4), response vs R across the three damping regimes (G2–4).
 
 ### 3.3 Numbers (defaults that make the lessons visible)
 
@@ -335,171 +335,185 @@ so a phone-width scope shows the shape:
 
 ---
 
-## 4. Curriculum — 47 experiments in 8 groups (+2 stretch)
+## 4. Curriculum — 53 experiments in 9 groups (+2 stretch)
 
 Format: **the claim** the note makes → what the reader turns → what is **measured**
 against what **formula**. Every quoted number becomes a pinned test. Order follows a
-standard first course (laws → networks → systematic methods → op-amp → C and L →
-second order → phasors → diode); the op-amp sits before the capacitor because it needs
-only resistive analysis and pays off superposition and Thevenin immediately.
+standard first course (elements and signs → laws → networks → systematic methods →
+op-amp → C and L → second order → phasors → diode); the op-amp sits before the
+capacitor because it needs only resistive analysis and pays off superposition and
+Thevenin immediately.
 
-### Group A — The two laws (4)
+Groups A–E are built (Phase 1, dark). Their entries below describe what shipped; the
+experiment ids are the ones the topbar shows (`A1 · A voltage source holds its
+voltage`). Groups F–I are the plan.
 
-- **A1 · Voltage is a difference; ground is a choice.** A three-node resistive
-  circuit. Click any node to make it the reference: every *node* voltage shifts by
-  one constant; every *element* voltage, every current, every power is unchanged.
-  Measured: element voltages invariant under re-referencing, to fp. (The one idea
-  that unconfuses "0 V" for good.)
-- **A2 · Currents into a node sum to zero.** One node, three resistors to three
-  sources. Drag any value: the three meter readings change; their signed sum reads
-  0.000 mA. Measured: KCL residual at the node = 0; and *why* — charge does not pile
-  up on a wire, stated as `Σi = dq_node/dt = 0`.
-- **A3 · Voltages around a loop sum to zero — and the sign is the whole difficulty.**
-  A two-mesh circuit; the panel walks each loop with the **passive sign convention**
-  (current enters the + terminal of an absorbing element) and shows the sum closing.
-  Then the trap: flip one assumed direction and watch the current come out negative
-  and the sum still close. Measured: KVL on every mesh = 0; the flipped solve returns
-  the same physics with opposite sign.
-- **A4 · Power balances because of the two laws, not because of Ohm.** Sources
-  deliver `v·i`, resistors absorb `i²R`; the totals match. Then the sharper claim:
-  **Tellegen** — `Σ v_k i_k = 0` holds using KVL and KCL alone, for *any* element
-  laws. Measured: the sum on the resistive circuit, then again with an element
-  swapped for a dependent source, still zero.
+### Group A — Elements and signs (4) · built
 
-### Group B — Series, parallel, and what a divider is not (4)
+Added after the first review: the lab opened on a three-resistor circuit and the
+reviewer wanted it to open on *one element*, with the sign convention stated before a
+single loop is walked.
 
-- **B1 · Series: one current, resistances add, voltage divides in proportion.** Three
-  resistors in a chain: `V_k = V · R_k / ΣR`. Drag one R and watch the others' shares
-  shrink. Measured: each share vs the formula; sum of shares = V.
-- **B2 · Parallel: one voltage, conductances add, current divides in proportion.**
-  `I_k = I · G_k / ΣG`, `G = 1/R`. The product-over-sum form works for two resistors
-  and *only* two — the panel shows the three-resistor case refusing to reduce that
-  way. Measured: `R_eq` vs `1/ΣG`; shares vs formula.
-- **B3 · A divider is not a source.** Load the 1 kΩ/1 kΩ divider's 6 V output with
-  `R_L`: `V_out = V · (R₂‖R_L) / (R₁ + R₂‖R_L)`. At `R_L = 1 kΩ` the 6 V is 4 V.
-  Measured: the drop vs formula; `R_L → ∞` recovers 6 V. The number that motivates
-  Thevenin (C5) and the buffer (D6).
-- **B4 · The circuit you cannot reduce.** The Wheatstone bridge: no two resistors are
-  in series or parallel. Balance `R₁/R₂ = R₃/R₄` zeroes the bridge current; off
-  balance, the current has a closed form the panel derives and it is ugly enough to
-  make the case for Group C. Measured: bridge current vs closed form; zero at balance.
+- **A1 · A voltage source holds its voltage.** One source, one resistor. The source
+  decides the voltage, the resistor decides the current: `i = E/R`. Turn R down and
+  the current climbs while E does not move; the whole top rail is one node and reads
+  E everywhere. Measured: `v_R = E`, `i = E/R`, the source current `−i` (it leaves
+  the + terminal), `p_R = E²/R`; E unchanged at R = 10 Ω.
+- **A2 · A current source holds its current.** The dual: `i_R = I`, `v = I·R`. Push R
+  to a megohm and 5 mA needs 5 kV; an ideal current source into an open circuit has
+  no solution, and the solver refuses it (`current-cutset`). Measured: `i_R = I` at
+  1 kΩ and 1 MΩ, `v = 5 kV` at 1 MΩ, the refusal code for a source with no path.
+- **A3 · Voltage is a difference; ground is a choice.** A divider built on top of a
+  source `V_ref` instead of on ground. Slide `V_ref`: every node voltage moves by
+  exactly that amount; every element voltage, current and power stays put; `V_ref`
+  carries no current. Measured: node shifts equal `V_ref` to fp at three lifts;
+  element quantities invariant; `i_{V_ref} = 0`.
+- **A4 · Which way is +: the passive sign convention.** `v = v₊ − v₋`, `i` measured
+  into the + terminal, `p = v·i`. Two sources and one resistor: with `E₁ > E₂` the
+  resistor's v and i are both positive; slide `E₂` above `E₁` and both flip together
+  while `p_R` stays positive and the pushing source's power comes out negative. A
+  negative reading is the answer with its direction attached. Measured: the sign
+  flips, `p_R ≥ 0` both ways, the sign of each source's power.
 
-### Group C — Systematic analysis and the theorems (6)
+### Group B — Two laws (4) · built
 
-- **C1 · Nodal analysis: pick ground, write KCL everywhere else.** `N − 1` equations
-  in `N − 1` node voltages, generated live (§1.2), assembled into `G v = i`, solved.
-  Measured: solution satisfies KCL at every node; matches the hand form for the
-  one-unknown case — node A fed from `E` through `R₁`, with `R₂` and `R₃` to
-  ground: `V_A = (E/R₁) / (1/R₁ + 1/R₂ + 1/R₃)`.
-- **C2 · The supernode, and why simulators use MNA.** A voltage source between two
-  non-ground nodes breaks plain nodal analysis (its current is unknown). The textbook
-  supernode and the MNA extra unknown are the same move; the panel shows both.
-  Measured: equal solutions; the source current recovered.
-- **C3 · Mesh analysis: the same circuit, the other law.** KVL around `B − N + 1`
-  meshes in mesh currents. Equation counts compared for each library circuit —
-  sometimes fewer, sometimes more. Measured: element currents identical from the two
-  methods, to fp.
-- **C4 · Superposition — and the thing that does not superpose.** Two sources: the
-  response to both is the sum of the responses to each (others zeroed: V → short,
-  I → open). Then power: `(i₁ + i₂)²R ≠ i₁²R + i₂²R`, the cross term shown.
-  Measured: linearity to fp; the power discrepancy equals `2 i₁ i₂ R`.
-- **C5 · Thevenin, three ways.** Any two-terminal linear network looks like `V_th` in
-  series with `R_th` (Norton: `I_N = V_th / R_th` in parallel). Measured three
-  independent ways and displayed side by side: (i) open-circuit voltage and
-  short-circuit current, `R_th = V_oc / I_sc`; (ii) kill the sources and drive 1 A
-  into the terminals; (iii) sweep `R_L` and fit the terminal `v–i` line — straight,
-  slope `−R_th`. The bridge from B4 becomes a one-line problem.
-- **C6 · Maximum power transfer costs half the power.** Sweep `R_L`: `P_L` peaks at
-  `R_L = R_th` with `P_max = V_th² / 4R_th` — and efficiency there is exactly 50%.
-  Measured: argmax, peak value, η at the peak; and the note on why power grids
-  never match (efficiency) while antennas always do (power).
+- **B1 · Current in equals current out.** KCL at node A: `i_{R₁} = i_{R₂} + i_{R₃}`
+  however the three are set; make `R₂` tiny and it takes almost everything, but the
+  sum never moves. Measured: the equality to fp; the KCL residual at A.
+- **B2 · Voltages around a loop add to zero.** KVL: the source lifts by E and the
+  resistors drop it all again, in proportion. Measured: `v_{R₁} + v_{R₂} = E`;
+  `v_{R₂}/v_{R₁} = R₂/R₁`.
+- **B3 · Power, and the sign of it.** Resistors positive, source negative, total
+  exactly zero — **Tellegen**, from KVL and KCL alone. Measured: signs; `Σp = 0` to
+  fp (and re-checked on every experiment in the lab, including the dependent-source
+  ones, by the suite).
+- **B4 · Two sources, one loop.** `i = (E₁ − E₂)/R` flows into the weaker source,
+  which absorbs; raise `E₂` past `E₁` and it reverses. Measured: the current; which
+  source's power is negative, before and after the flip.
 
-### Group D — The op-amp (6 + 1 stretch)
+### Group C — Series and parallel (4) · built
 
-- **D1 · A source that watches another branch.** A VCVS with gain μ in a resistive
-  network: nodal analysis still works, the matrix just stops being symmetric. Measured:
-  output vs the hand form; Tellegen still holds (A4's promise).
-- **D2 · An op-amp is a very large A — and open loop, it is a comparator.**
-  `v_out = A(v₊ − v₋)`, `A = 10⁵`, rails ±12 V: 120 µV of input difference hits the
-  rail. Toggle the ideal model: the panel *refuses* (§1.3) — an ideal op-amp with no
-  feedback has no solution — and says that the real one saturates instead. Measured:
-  the switching threshold `V_sat / A`; the refusal message.
-- **D3 · Negative feedback tames it — the golden rules, derived not assumed.**
-  Non-inverting amp: with finite A,
-  `G = (1 + R_f/R_g) / (1 + (1 + R_f/R_g)/A)`. Step A through 10, 100, 10³, 10⁵, ∞:
-  the gain approaches `1 + R_f/R_g` and the input difference `v_out/A` approaches
-  zero. That limit *is* "v₊ = v₋". Measured two ways that share no code: the finite-A
-  VCVS model at each A, and the ideal nullor stamp for the limit.
-- **D4 · The inverting amp and the node that is 0 V without being grounded.**
-  `G = −R_f/R_in` (finite-A form `−(R_f/R_in) / (1 + (1 + R_f/R_in)/A)`); the
-  inverting input sits at 0 V — the **virtual ground** — so the input current all
-  flows through `R_f`. Then C5's machinery on an active circuit: the input impedance
-  seen by the source is `R_in` here and ≈ ∞ for D3 — measured by looking in.
-- **D5 · Summing and difference — superposition made physical.** The summer's output
-  `−R_f(v₁/R₁ + v₂/R₂)` is C4 in copper. The difference amp `(R_f/R_in)(v₂ − v₁)`
-  with a 1% resistor mismatch toggle: common-mode signal leaks through, CMRR
-  measured against the mismatch formula.
-- **D6 · The buffer fixes B3.** Insert a unity-gain follower between the divider and
-  its load: the 4 V is 6 V again, the load current comes from the op-amp. Measured:
-  B3's exact number recovered; the divider's current unchanged by the load.
-- **D7 · Positive feedback: the Schmitt trigger** *(stretch, needs §1.6).* Feed the
+- **C1 · Series: one current, shared voltage.** `V_k = E · R_k / ΣR`; a resistor ten
+  times the others takes ten times the voltage. Measured: the ratio; the shares sum to E.
+- **C2 · Parallel: one voltage, shared current.** `1/R_eq = Σ 1/R_k`; the equivalent
+  is below the smallest branch and the smallest resistor takes the biggest share.
+  Measured: `R_eq` vs `1/ΣG`; the ordering of the shares.
+- **C3 · The loaded divider.** `V_out = E · (R₂‖R_L)/(R₁ + R₂‖R_L)`; the droop is
+  small only while `R_L ≫ R₂`. Measured: the drop vs the formula; `R_L → ∞` recovers
+  the unloaded value. The number that motivates Thevenin (D5) and the buffer (E8).
+- **C4 · The Wheatstone bridge.** No two resistors in series or parallel. Balanced
+  when `R₁/R₂ = R₃/R₄` whatever the supply; 1 % of `R₄` moves the bridge by about
+  `E/4 × 1 %`. Measured: zero at balance; the small-signal sensitivity.
+
+### Group D — Analysis and theorems (6) · built
+
+- **D1 · Nodal analysis: one equation per node.** `N − 1` KCL equations generated live
+  (§1.2), assembled, solved. Measured: KCL at every node; the one-unknown hand form
+  `V_A = (E/R₁)/(1/R₁ + 1/R₂ + 1/R₃)`.
+- **D2 · A source between two nodes: the supernode.** The textbook supernode and the
+  MNA extra unknown are the same move; the printed system has the unknown count the
+  topbar claims. Measured: equal solutions; the source current recovered.
+- **D3 · Mesh analysis: one equation per loop.** KVL around the meshes; the hand 2×2
+  matches nodal exactly. Measured: element currents identical from both methods;
+  `E₂` above `E₁R₂/(R₁+R₂)` reverses `i₂`.
+- **D4 · Superposition: one source at a time.** Voltages and currents superpose to the
+  last digit; power does not, by `2·i₁·i₂·R`. Measured: both.
+- **D5 · Thévenin, three ways.** (i) `V_oc/I_sc`; (ii) kill the sources and look in;
+  (iii) sweep `R_L` and fit the terminal line. Measured: all three `R_th` agree with
+  `R₁‖R₂‖R₃`; the load line's intercepts are `V_oc` and `I_sc`.
+- **D6 · Maximum power transfer.** `P_L` peaks at `R_L = R_s` with 50 % efficiency;
+  efficiency climbs past it while power falls. Measured: argmax, peak, η.
+
+### Group E — Op-amps (8 + 1 stretch) · built
+
+- **E1 · A dependent source.** A VCVS in a resistive network: `v_out = A·v_in`
+  whatever the load; the dependent source delivers more than the input source works.
+  Measured: both; Tellegen still holds (B3's promise).
+- **E2 · The op-amp as a black box.** Added after the first review. A dashed frame
+  around `R_in`, a VCVS of gain A and `R_out` — the package, with the transistors and
+  supply pins left out on purpose. The IDEAL op-amp: `A = ∞`, `R_in = ∞`, `R_out = 0`,
+  no offset, no speed limit; a real one: `A ≈ 10⁵`, `R_in` 1 MΩ–10¹² Ω, `R_out` tens
+  of ohms. The input divider `R_in/(R_s + R_in)` and the output divider
+  `R_out/(R_out + R_L)` each cost a little; the ideal recovers at the limits. The
+  payoff over passive circuits: far more power into the load than the source supplies.
+  Measured: `v_p`, `v_out` vs the two dividers; `A·E` recovered within 1 % at the
+  knob limits; `p_{R_L} > 1000 × p_{source}`; and the passive bound — every
+  single-source resistive experiment in the lab has `|v_node| ≤ E` and load power
+  ≤ source power.
+- **E3 · Comparator: an op-amp with no feedback.** The ideal model *refuses* (§1.3,
+  `opamp-open-loop`) — no feedback path, no solution; finite gain lifts it: 1 mV in,
+  100 V out at `A = 10⁵`. Measured: the refusal code and message; the finite-A output.
+- **E4 · The golden rules, derived.** Non-inverting: `v_out = GE/(1 + G/A)`,
+  `G = 1 + R_f/R_g`; the input difference is `v_out/A` and the gain converges on G as
+  A grows. Measured: at each A.
+- **E5 · Inverting amplifier and the virtual ground.** The inverting input sits at
+  0 V without being grounded; `v_out = −(R_f/R_g)E`; the source sees `R_g`; the load
+  current is the op-amp's. Measured: all four.
+- **E6 · The summing amplifier.** `v_out = −R_f(E₁/R₁ + E₂/R₂)`; each input current is
+  set by its own resistor alone — D4 in copper. Measured.
+- **E7 · The difference amplifier.** Matched: `(R₂/R₁)(E₂ − E₁)`, common mode
+  rejected; 1 % mismatch leaks about 1 % of the differential gain. Measured: CMRR
+  against the mismatch formula.
+- **E8 · The buffer fixes the loaded divider.** A unity-gain follower between C3's
+  divider and its load: the output is the *unloaded* divider voltage whatever `R_L`,
+  and the sweep is flat. Measured.
+- **E9 · Positive feedback: the Schmitt trigger** *(stretch, needs §1.6).* Feed the
   output back to the *non-inverting* input: hysteresis with thresholds
   `±V_sat · R₁/(R₁ + R₂)`; a noisy input crosses cleanly once. Control Lab's "latches
   to a rail", built. Measured: both thresholds; one transition per crossing.
+### Group F — Elements that remember, and the first-order equation (7)
 
-### Group E — Elements that remember, and the first-order equation (7)
-
-- **E1 · The capacitor: current only when the voltage changes.** `i = C dv/dt`.
+- **F1 · The capacitor: current only when the voltage changes.** `i = C dv/dt`.
   Drive with a triangle: the current is a square wave, amplitude `C · slope`. Drive
   with DC: zero current — an open circuit at DC. `q = Cv`, `w = ½Cv²`. Measured:
   `i(t)` vs `C dv/dt` on the exact waveform (a ramp input is exact under §1.5).
-- **E2 · The inductor: the dual.** `v = L di/dt`; a triangle of current makes a
+- **F2 · The inductor: the dual.** `v = L di/dt`; a triangle of current makes a
   square of voltage; a short circuit at DC; `w = ½Li²`. Measured likewise. The panel
-  states the duality table (v↔i, C↔L, series↔parallel) once, and Group F cashes it.
-- **E3 · Charging an RC: the equation, solved.** KVL: `RC dv/dt + v = V_s`. The panel
+  states the duality table (v↔i, C↔L, series↔parallel) once, and Group G cashes it.
+- **F3 · Charging an RC: the equation, solved.** KVL: `RC dv/dt + v = V_s`. The panel
   separates and integrates, step by step, to `v(t) = V_s + (v₀ − V_s) e^{−t/τ}`,
   `τ = RC`. On the scope: 63.2% at τ (`1 − e⁻¹`), 99.3% at 5τ, and the initial
   tangent `V_s/τ` drawn — it meets `V_s` at exactly `t = τ`. Measured: all three
   numbers; and that `v_C` is continuous at the switch while `i_C` jumps.
-- **E4 · Every first-order circuit is three numbers.**
+- **F4 · Every first-order circuit is three numbers.**
   `x(t) = x(∞) + [x(0⁺) − x(∞)] e^{−t/τ}`. `x(0⁺)` from continuity; `x(∞)` from a DC
   solve (C open, L short); `τ = R_th · C` or `L / R_th` — **the Thevenin resistance
-  seen by the element**, which C5 already knows how to find. Demonstrated on a
+  seen by the element**, which D5 already knows how to find. Demonstrated on a
   circuit where `R_th` is no single resistor. Measured: the recipe vs the exact
   solution, on RC, RL, and a divider-fed RC.
-- **E5 · Charging a capacitor from a source wastes exactly half — whatever R is.**
+- **F5 · Charging a capacitor from a source wastes exactly half — whatever R is.**
   Source energy `∫V_s i dt = CV_s²`; stored `½CV_s²`; dissipated `½CV_s²`,
   **independent of R** — R only sets how fast. The energy view shows the bar closing
   at every R. Measured: the three energies at R = 100 Ω, 1 kΩ, 10 kΩ.
-- **E6 · The interrupted inductor: where sparks come from.** A steady 12 mA in
+- **F6 · The interrupted inductor: where sparks come from.** A steady 12 mA in
   1 H; open the switch. Ideal: `di/dt → −∞`, `v → −∞`, no solution. Toggle a finite
   `R_off = 1 MΩ`: the inductor forces its 12 mA through it — a 12 kV spike, decaying
   with `τ = L/R_off = 1 µs`. Measured: `V_spike = I₀ · R_off`, `τ`. The note points
   forward: the flyback diode that Power Lab's every converter relies on is the cure.
-- **E7 · The integrator, in time.** Op-amp integrator, square in: `v_out = −(1/RC)∫v_in
+- **F7 · The integrator, in time.** Op-amp integrator, square in: `v_out = −(1/RC)∫v_in
   dt`, a triangle out with slope `V/RC`. Measured: slope; and the cross-lab pin —
   Circuit Lab shows this exact object as `−1/sRC` and its step response as a ramp.
   Toggle finite A: the ramp bends into an exponential toward `−A·V` — the integrator
   is a first-order low-pass with a very long τ, `τ = (A+1)RC`. Measured.
 
-### Group F — Second order: one equation, three faces (7)
+### Group G — Second order: one equation, three faces (7)
 
-- **F1 · The equation.** Series RLC, KVL, differentiated once:
+- **G1 · The equation.** Series RLC, KVL, differentiated once:
   `L d²i/dt² + R di/dt + i/C = dv_s/dt`; or for the capacitor voltage,
   `LC v'' + RC v' + v = v_s`. Try `v = e^{st}`: the **characteristic equation**
   `s² + (R/L) s + 1/LC = 0`, `α = R/2L`, `ω₀ = 1/√LC`, `ζ = α/ω₀ = (R/2)√(C/L)`.
   Measured: roots of `det(sI − A)` from the engine vs the formula's roots; `α`, `ω₀`
   from the values. (Circuit Lab's `(f₀, Q)` are the same numbers, `Q = 1/2ζ` — pinned.)
-- **F2 · Overdamped (α > ω₀): two exponentials, no overshoot.**
+- **G2 · Overdamped (α > ω₀): two exponentials, no overshoot.**
   `s₁,₂ = −α ± √(α² − ω₀²)`, both real; `v = A₁e^{s₁t} + A₂e^{s₂t}` with the
   coefficients from `v(0)` and `i(0)`. R = 800 Ω. Measured: the two rates; zero
   overshoot; the slow root dominating the tail.
-- **F3 · Critical (α = ω₀): the knife-edge.** `R_crit = 2√(L/C) = 200 Ω`;
+- **G3 · Critical (α = ω₀): the knife-edge.** `R_crit = 2√(L/C) = 200 Ω`;
   `v = (A + Bt) e^{−αt}` — the fastest settling that never crosses. Nudge R by 1 Ω
   either side and the form changes. Measured: the double root; `R_crit`; settling
   time minimum in a sweep of R (the sweep view). The note: a set of measure zero
   that you *aim at* and never land on.
-- **F4 · Underdamped (α < ω₀): a ring at a frequency lower than ω₀.**
+- **G4 · Underdamped (α < ω₀): a ring at a frequency lower than ω₀.**
   `v = e^{−αt}(A cos ω_d t + B sin ω_d t)`, `ω_d = √(ω₀² − α²)` — damping *slows*
   the ring. Envelope `e^{−αt}` drawn. R = 50 Ω: ζ = 0.25, `Q = 1/2ζ = 2`, overshoot
   `e^{−πζ/√(1−ζ²)} = 44.4%`, each cycle's peak `e^{−2πζ/√(1−ζ²)} = 0.20` of the last —
@@ -508,86 +522,86 @@ only resistive analysis and pays off superposition and Thevenin immediately.
   from zero crossings, α from the log-decrement of successive peaks, overshoot from
   the first peak — against the formulas. Cross-lab: Circuit Lab's "Resonance, seen
   in time" is the same step by RK4; they must agree.
-- **F5 · Undamped (R = 0): energy sloshing.** Pure oscillation at ω₀;
+- **G5 · Undamped (R = 0): energy sloshing.** Pure oscillation at ω₀;
   `½Cv² + ½Li²` constant, trading back and forth twice per cycle. The energy view
   shows two lobes and a flat total. Measured: total energy constant to fp (this is
   the singular-A case §1.5 promised to handle); period `2π√LC`.
-- **F6 · Two states, two initial conditions — the shape is the circuit's, the size
+- **G6 · Two states, two initial conditions — the shape is the circuit's, the size
   is the history's.** Same RLC, three different `(v_C(0), i_L(0))`: identical `α`,
   `ω_d`, different amplitudes and phases. Measured: extracted `α, ω_d` equal across
   runs; coefficients `A, B` vs the closed form from the initial conditions.
-- **F7 · The parallel RLC: the dual, with R inverted.** `α = 1/2RC`: *more*
-  resistance rings *longer* — the opposite of series, for the reason E2's table
+- **G7 · The parallel RLC: the dual, with R inverted.** `α = 1/2RC`: *more*
+  resistance rings *longer* — the opposite of series, for the reason F2's table
   gave. Measured: α vs formula; the critical `R = ½√(L/C)`. Circuit Lab's "The same
   R, the opposite effect" is this claim in frequency; the two are cross-linked.
 
-### Group G — Sinusoids and phasors (6)
+### Group H — Sinusoids and phasors (6)
 
-- **G1 · Sine in, the same sine out — after a while.** Drive the RC with a sinusoid.
+- **H1 · Sine in, the same sine out — after a while.** Drive the RC with a sinusoid.
   The exact solution is `natural + forced`: an exponential that dies plus a sinusoid
   at the **same frequency**, with a different amplitude and phase. Ghost traces
   show the two parts. Measured: after 5τ the output spectrum (`@ee-labs/dsp` FFT)
   has one line, at the input frequency; the natural part's decay = τ.
-- **G2 · The phasor: the ODE becomes algebra.** `A cos(ωt + φ) ↔ A∠φ`;
+- **H2 · The phasor: the ODE becomes algebra.** `A cos(ωt + φ) ↔ A∠φ`;
   `d/dt ↔ ×jω`; `Z_R = R`, `Z_L = jωL`, `Z_C = 1/jωC`; the RC divider is now
-  `V_out = V_in · Z_C/(R + Z_C)`. The same circuit solved by G1's exact time solution
+  `V_out = V_in · Z_C/(R + Z_C)`. The same circuit solved by H1's exact time solution
   and by one complex division agree. Measured: to fp (two code paths, §1.7). At
   `f = 1/2πτ`: `|H| = 1/√2`, `∠H = −45°` — the corner, met in time before it is met
   in frequency.
-- **G3 · The phasor diagram, rotating.** Series RLC: `V_R` in phase with `I`, `V_L`
+- **H3 · The phasor diagram, rotating.** Series RLC: `V_R` in phase with `I`, `V_L`
   leads by 90°, `V_C` lags by 90°; tip to tail they sum to `V_s`. Scrub the cursor:
   the whole diagram rotates and its projection draws the waveforms. At resonance
   `V_L` and `V_C` cancel exactly. Measured: vector sum = `V_s` (fp); the angles.
-- **G4 · Impedance, resonance, and a voltage from nowhere.** Sweep ω: `|Z|` dips to
+- **H4 · Impedance, resonance, and a voltage from nowhere.** Sweep ω: `|Z|` dips to
   `R` at ω₀ where `Z` is purely real; current peaks. The capacitor voltage at
   resonance is `Q · V_s` — a 1 V source, Q = 20, and 20 V across the capacitor.
   Measured: `|Z(ω₀)| = R`, `∠Z(ω₀) = 0`, `|V_C(ω₀)| / |V_s| = Q`.
-- **G5 · Power in AC: mean, RMS, and the angle.** `p(t) = v·i` is a constant plus a
+- **H5 · Power in AC: mean, RMS, and the angle.** `p(t) = v·i` is a constant plus a
   2ω term; `P = V_rms I_rms cos φ`; `Q = V_rms I_rms sin φ`; power factor. RMS
   defined and computed as `√(mean of square)` on the exact waveform (Signal Lab's
   oldest lesson, the "√2 for a sine" claim re-derived on a circuit). Measured: `P`
   from the time average vs the phasor formula; pf; the 2ω line in the spectrum of p.
-- **G6 · From one frequency to all of them.** Sweep ω and plot `|H|` and `∠H`: this
+- **H6 · From one frequency to all of them.** Sweep ω and plot `|H|` and `∠H`: this
   *is* the Bode plot. The hand-over button: **Open this circuit in Circuit Lab** —
   exact for every circuit in its catalog, and this is where Circuit Elements Lab ends.
 
-### Group H — The diode: the first nonlinear element (7 + 1 stretch)
+### Group I — The diode: the first nonlinear element (7 + 1 stretch)
 
-- **H1 · The curve, and four ways to approximate it.** Shockley:
+- **I1 · The curve, and four ways to approximate it.** Shockley:
   `i = I_s (e^{v/nV_T} − 1)`, `V_T = kT/q = 25.85 mV`. Overlaid: the ideal switch,
   the constant drop, the PWL `V_f + r_d`, the exponential — each an approximation of
   the next, with its error stated at the operating point. Measured: PWL slope
   `r_d = nV_T/I` equals the exponential's derivative there; a 60 mV/decade rule
   (`nV_T ln 10`) checked.
-- **H2 · The load line, and how a simulator finds the point.** Source, resistor,
+- **I2 · The load line, and how a simulator finds the point.** Source, resistor,
   diode (or an LED at 2.0 V / 20 mA — the most-built circuit in the world, with its
   `R = (V_s − V_f)/I`). Graphically: the line `i = (V_s − v)/R` meets the curve.
   Numerically: Newton–Raphson on the residual, iterations drawn on the i–v plane,
   quadratic convergence in ~5 steps. Measured: KVL residual < 1e−12; the
   constant-drop answer's error vs the exponential (0.70 V vs the true 0.68 V at this
   current).
-- **H3 · Assume, solve, check.** Two diodes, constant-drop model: four assumed
+- **I3 · Assume, solve, check.** Two diodes, constant-drop model: four assumed
   states, each solved as a linear circuit, three rejected by their own contradiction
   (`i_D < 0` while "on", `v_D > V_f` while "off"). Measured: exactly one consistent
   state; it matches the exponential solve to within the model's stated error.
-- **H4 · Half-wave rectifier.** Sine in, positive half out. Ideal: mean `V_p/π`, RMS
+- **I4 · Half-wave rectifier.** Sine in, positive half out. Ideal: mean `V_p/π`, RMS
   `V_p/2`. Constant-drop: peaks at `V_p − V_f`, conducts for `π − 2 asin(V_f/V_p)` of
   each cycle. Measured on the exact event-based waveform (§1.6): mean, RMS,
   conduction angle.
-- **H5 · Full-wave bridge.** `|sin|`: mean `2V_p/π`, RMS `V_p/√2`, two drops, and the
+- **I5 · Full-wave bridge.** `|sin|`: mean `2V_p/π`, RMS `V_p/√2`, two drops, and the
   ripple frequency **doubles** — the spectrum's first line moves from `f` to `2f`.
   Measured: all four; hand-over of the waveform to Signal Lab's spectrum.
-- **H6 · Smoothing: the peak rectifier, exactly and approximately.** Add C: the
+- **I6 · Smoothing: the peak rectifier, exactly and approximately.** Add C: the
   capacitor charges to the peak and decays through R until the next peak catches it.
   The textbook approximation `ΔV ≈ V_p/(fRC)` (half-wave) sits beside the exact
   event-based answer with its error shown, shrinking as RC grows (Rule 3: the
   approximation carries its guard). Measured: exact ripple; approximation error vs
   RC; conduction angle narrowing. This is Power Lab's rectifier group in embryo, and
   the proof that the event machinery works.
-- **H7 · Clipper and clamper.** Diode + reference clips at `±(V_ref + V_f)`; diode +
+- **I7 · Clipper and clamper.** Diode + reference clips at `±(V_ref + V_f)`; diode +
   capacitor shifts the DC level so the waveform's peak sits at `−V_f`. Measured:
   clip levels; the clamped waveform's peak and mean.
-- **H8 · The Zener regulator** *(stretch).* Reverse breakdown as a voltage reference:
+- **I8 · The Zener regulator** *(stretch).* Reverse breakdown as a voltage reference:
   `V_out = V_z` while `I_z > 0`; increase the load until the Zener starves and
   regulation is lost at `R_L = V_z R_s / (V_s − V_z)`. Measured: regulated band;
   the drop-out load.
@@ -596,17 +610,17 @@ only resistive analysis and pays off superposition and Thevenin immediately.
 
 ## 5. Hand-overs
 
-- **→ Circuit Lab** (G6): "Open this circuit in Circuit Lab" for every topology in its
+- **→ Circuit Lab** (H6): "Open this circuit in Circuit Lab" for every topology in its
   catalog (RC low/high, RL, series/parallel RLC, inverting amp, integrator) — an exact
   mapping, presented without hedge (CORE_SCOPE counter-rule). Component values ride
   the existing link grammar; the reverse link ("see this in time, from the ODE") is
   offered from Circuit Lab's math panel for the same set. The deep-link grammar
   itself is owned elsewhere; this lab consumes it.
-- **→ Signal Lab** (G5, H5): the rectified or `p(t)` waveform's spectrum, for the
+- **→ Signal Lab** (H5, I5): the rectified or `p(t)` waveform's spectrum, for the
   "2ω" and "2f" claims to be seen on a real FFT.
 - **→ Control Lab**: not directly; the RC/RLC plants already reach it through Circuit
   Lab, and this lab does not duplicate that path.
-- **→ Power Lab** (future): E6's spark → the freewheel diode; H6 → Group E rectifiers;
+- **→ Power Lab** (future): F6's spark → the freewheel diode; I6 → Power Lab's Group E rectifiers;
   and the engine (§1.5–1.6) itself, imported.
 
 ---
@@ -661,20 +675,23 @@ state, and averaging.
 1. **Phase 1 — Resistive.** `packages/network`: netlist, MNA stamps for R/V/I/
    dependent sources/ideal op-amp, LU, residual, equation printer, Thevenin three
    ways, refusals. `packages/ui/Schematic.jsx` renderer with live meters. App shell,
-   dark deploy, `RELEASE_STATUS` test. **Groups A–D (D1–D6).** Exit: KCL/KVL/Tellegen/
-   superposition invariants fuzzed green; all Group A–D numbers pinned.
+   dark deploy, `RELEASE_STATUS` test. **Groups A–E (E1–E8).** Exit: KCL/KVL/Tellegen/
+   superposition invariants fuzzed green; all Group A–E numbers pinned. *Shipped
+   dark 2026-08-30; Groups A and E2 added on review 2026-09-01.*
 2. **Phase 2 — Dynamics.** State-space extraction, exact propagator (n = 1, 2, ≥ 3),
    step/square/ramp/sine inputs, switch-at-t = 0 with continuity, energy measures.
-   Scope, energy and sweep views. **Groups E and F.** Exit: energy and continuity
+   Scope, energy and sweep views. **Groups F and G** — RC, RL and RLC with the
+   differential equations written out, initial conditions, and the three damping
+   faces. Exit: energy and continuity
    invariants; cross-lab pins against Circuit Lab's RK4 green.
 3. **Phase 3 — Phasors.** Complex MNA, phasor diagram view, long-time-limit
-   agreement, AC power measures, hand-over to Circuit Lab. **Group G.** Exit:
-   phasor-vs-time invariant; G6 hand-over exact and tested both ways.
+   agreement, AC power measures, hand-over to Circuit Lab. **Group H.** Exit:
+   phasor-vs-time invariant; H6 hand-over exact and tested both ways.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
-   op-amp, i–v plane view. **Group H, D7.** Exit: H6's exact-vs-approximate; event
+   op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event
    continuity invariant.
-5. **Phase 5 — Polish.** Stretch items (H8, GBW toggle) if cheap; mobile pass; the
+5. **Phase 5 — Polish.** Stretch items (I8, GBW toggle) if cheap; mobile pass; the
    equations view's progressive disclosure tuned on a phone.
 6. **Phase 6 — Release gate.** REVIEW_PLAYBOOK audit, screenshot pass, Reed's
    hands-on review, then Reed flips `RELEASE_STATUS`. Splash card goes first.
@@ -697,14 +714,14 @@ state, and averaging.
   are the non-idealities that change the lessons; the rest are datasheet facts.
 - **Laplace transforms as a topic.** The characteristic equation is reached by trying
   `e^{st}`, which is all a first course needs; the transform proper is Circuit Lab's
-  and Control Lab's currency, and G6 is the door to it.
+  and Control Lab's currency, and H6 is the door to it.
 
 ---
 
 ## 10. Risks, named
 
 - **Two labs with "circuit" in their nature.** Readers may open the wrong one first.
-  Mitigations: Decision 2's "Start here", G6's hand-over as the visible seam,
+  Mitigations: Decision 2's "Start here", H6's hand-over as the visible seam,
   cross-links in both directions, and the card texts stating the boundary in one
   line each.
 - **The equations view as a wall of text.** MNA on a six-node circuit is six rows of

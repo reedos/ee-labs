@@ -34,19 +34,19 @@ describe('the report summary', () => {
   })
 
   it('lists every knob by key and value', () => {
-    const s = reportSummary({ id: 'a1', params: defaultsOf('a1'), show: 'i', view: 'equations', outcome: 'solved' })
+    const s = reportSummary({ id: 'b1', params: defaultsOf('b1'), show: 'i', view: 'equations', outcome: 'solved' })
     expect(s.Settings).toMatch(/E = 12/)
     expect(s.Settings).toMatch(/R3 = 3000/)
   })
 
   it('says what the schematic shows in words', () => {
-    const base = { id: 'a1', params: defaultsOf('a1'), view: 'equations', outcome: 'solved' }
+    const base = { id: 'b1', params: defaultsOf('b1'), view: 'equations', outcome: 'solved' }
     expect(reportSummary({ ...base, show: 'p' })['Schematic shows']).toBe('powers')
     expect(reportSummary({ ...base, show: 'none' })['Schematic shows']).toBe('no readings')
   })
 
   it('carries the refusal through as the outcome', () => {
-    const s = reportSummary({ id: 'd2', params: defaultsOf('d2'), show: 'v', view: 'equations', outcome: 'refused: opamp-open-loop' })
+    const s = reportSummary({ id: 'e3', params: defaultsOf('e3'), show: 'v', view: 'equations', outcome: 'refused: opamp-open-loop' })
     expect(s.Outcome).toBe('refused: opamp-open-loop')
   })
 

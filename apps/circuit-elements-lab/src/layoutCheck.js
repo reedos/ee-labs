@@ -10,7 +10,8 @@ import { fmt, schematicGeometry as G } from '@ee-labs/ui'
  * symbol, wire and ground symbol the Schematic would draw is listed, using
  * the same placement rules the component uses, and no text may overlap
  * anything else, no wire may cross another wire or run through a symbol
- * without meeting it at its end, and nothing may leave the canvas.
+ * without meeting it at its end, nothing may straddle a dashed frame's edge,
+ * and nothing may leave the canvas.
  *
  * Returns a list of problems, each a sentence; an empty list is a clean
  * drawing. `meters` and `show` matter because readings are the widest text
@@ -22,6 +23,7 @@ export function layoutProblems(layout, elements, meters, show = 'i', margin = 1)
   const texts = [] // { box, what }
   const bodies = [] // { box, what }
   const wires = [] // { x1, y1, x2, y2, what }
+  const edges = [] // { box, what } — the four sides of each dashed frame
   const problems = []
 
   const addText = (place, text, font, what) => {
@@ -30,7 +32,18 @@ export function layoutProblems(layout, elements, meters, show = 'i', margin = 1)
   }
 
   for (const it of items) {
-    if (it.wire) {
+    if (it.box) {
+      // Wires may cross a frame — that is how the device connects — but no text
+      // or symbol may straddle its edge, or the drawing lies about what is inside.
+      const [x0, y0, x1, y1] = it.box
+      const what = `frame (${x0},${y0})–(${x1},${y1})`
+      edges.push(
+        { box: { x0: x0 - 0.5, x1: x0 + 0.5, y0, y1 }, what },
+        { box: { x0: x1 - 0.5, x1: x1 + 0.5, y0, y1 }, what },
+        { box: { x0, x1, y0: y0 - 0.5, y1: y0 + 0.5 }, what },
+        { box: { x0, x1, y0: y1 - 0.5, y1: y1 + 0.5 }, what },
+      )
+    } else if (it.wire) {
       const [x1, y1, x2, y2] = it.wire
       wires.push({ x1, y1, x2, y2, what: `wire (${x1},${y1})→(${x2},${y2})` })
     } else if (it.gnd) {
@@ -78,6 +91,7 @@ export function layoutProblems(layout, elements, meters, show = 'i', margin = 1)
   for (const t of texts) if (!inside(t.box)) problems.push(`${t.what} leaves the ${w}×${h} canvas`)
   for (const b of bodies) if (!inside(b.box)) problems.push(`${b.what} leaves the ${w}×${h} canvas`)
   for (const s of wires) if (!inside(wireBox(s))) problems.push(`${s.what} leaves the ${w}×${h} canvas`)
+  for (const e of edges) if (!inside(e.box)) problems.push(`${e.what} leaves the ${w}×${h} canvas`)
 
   for (let a = 0; a < texts.length; a++) {
     for (let b = a + 1; b < texts.length; b++) {
@@ -89,6 +103,14 @@ export function layoutProblems(layout, elements, meters, show = 'i', margin = 1)
     }
     for (const s of wires) {
       if (overlaps(texts[a].box, wireBox(s))) problems.push(`${texts[a].what} sits on the ${s.what}`)
+    }
+    for (const e of edges) {
+      if (overlaps(texts[a].box, e.box)) problems.push(`${texts[a].what} sits on the ${e.what}`)
+    }
+  }
+  for (const body of bodies) {
+    for (const e of edges) {
+      if (overlaps(body.box, e.box)) problems.push(`${body.what} straddles the ${e.what}`)
     }
   }
 
