@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
-import { LabNav, NumField, PoleZeroCanvas, fmt, fmtHz, fmtNum } from '@ee-labs/ui'
+import { LabNav, NumField, PoleZeroCanvas, ReportIssue, fmt, fmtHz, fmtNum } from '@ee-labs/ui'
 import { Formula, MathPanel } from '@ee-labs/explain'
 import {
   bode,
@@ -309,6 +309,21 @@ export default function App() {
             A plant you are stuck with, a controller you get to choose, and the one point on the
             complex plane that decides whether it works.
           </p>
+          <ReportIssue
+            lab="Control Lab"
+            state={{ plantId, plantP, ctrlId, ctrlP, stepInput, lower, showPhase, lesson }}
+            summary={{
+              'Started from': lesson || '(built by hand)',
+              Plant: `${plant.label} — ${Object.entries(plantP)
+                .map(([k, v]) => `${k} = ${fmtNum(v)}`)
+                .join(', ')}`,
+              Controller: `${ctrl.label} — ${Object.entries(ctrlP)
+                .map(([k, v]) => `${k} = ${fmtNum(v)}`)
+                .join(', ')}`,
+              'Step applied to': stepInput === 'ref' ? 'the reference' : 'the plant input',
+              'Lower pane': lower,
+            }}
+          />
         </header>
 
         <section id="lessons">

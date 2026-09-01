@@ -1,5 +1,5 @@
 import React from 'react'
-import { LabNav, NumField, fmtHz } from '@ee-labs/ui'
+import { LabNav, NumField, ReportIssue, fmtHz } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { sourceMath } from '../math-parts.js'
 import { PRESET_GROUPS } from '../presets.js'
@@ -268,6 +268,23 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
         <p className="sub">
           A signal, its frequency content, and what happens when you put things in the way.
         </p>
+        <ReportIssue
+          lab="Signal Lab"
+          state={state}
+          summary={{
+            'Started from': state.presetName || '(built by hand)',
+            Sources: state.sources
+              .filter((s) => s.enabled)
+              .map((s) => `${s.type} at ${fmtHz(s.freq)}Hz`)
+              .join(', ') || 'none enabled',
+            Chain: state.blocks.length
+              ? state.blocks.map((b) => b.type + (b.bypass ? ' (bypassed)' : '')).join(' → ')
+              : 'empty',
+            'Sample rate': `${fmtHz(state.sampleRate)}Hz`,
+            'FFT size': state.fftSize,
+            Window: state.window,
+          }}
+        />
       </header>
 
       <section>

@@ -135,6 +135,30 @@ body {
   font-weight: 600;
 }
 
+/* "Something wrong or unclear?" — quieter than the nav it sits under, and
+   pushed to its own line so it reads as an offer rather than as a fourth
+   destination. Underlined on hover like the nav links, since it goes
+   somewhere too. */
+.report-issue {
+  display: inline-block;
+  margin: 0 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--dim);
+  text-decoration: none;
+  opacity: 0.75;
+}
+.report-issue::before {
+  content: '⚑ ';
+  opacity: 0.8;
+}
+.report-issue:hover,
+.report-issue:focus-visible {
+  color: var(--text);
+  opacity: 1;
+  text-decoration: underline;
+}
+
 .controls header h1 {
   margin: 0;
   font-size: 15px;

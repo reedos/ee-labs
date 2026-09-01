@@ -14,3 +14,4 @@ export { eng, fmt, parseEng, dbToLin, linToDb, dbToAmp, ampToDb } from './src/un
 export { fmtHz, fmtDb, fmtNum } from './src/format.js'
 export { buildLink, parseLink, readLocationLink, siblingUrl, homeUrl } from './src/deeplink.js'
 export { default as LabNav } from './src/LabNav.jsx'
+export { default as ReportIssue, reportUrl, issueBody } from './src/ReportIssue.jsx'

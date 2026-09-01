@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
-import { COLORS, LabNav, NumField, PoleZeroCanvas, fmt, fmtHz, fmtNum } from '@ee-labs/ui'
+import { COLORS, LabNav, NumField, PoleZeroCanvas, ReportIssue, fmt, fmtHz, fmtNum } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import {
   bode,
@@ -257,6 +257,24 @@ export default function App() {
             A circuit, the transfer function it has, and the same thing seen in frequency, in
             time, and as poles.
           </p>
+          <ReportIssue
+            lab="Circuit Lab"
+            state={{ id, params, output, tols, lower, showPhase, lesson }}
+            summary={{
+              'Started from': lesson || '(built by hand)',
+              Circuit: circuit.label,
+              'Measured at': circuit.outputs.find((o) => o.key === output)?.label || output,
+              Components: Object.entries(params)
+                .map(([k, v]) => `${k} = ${fmtNum(v)}`)
+                .join(', '),
+              Tolerances: Object.keys(tols).length
+                ? Object.entries(tols)
+                    .map(([k, v]) => `${k} ±${(v * 100).toFixed(1)}%`)
+                    .join(', ')
+                : 'exact values',
+              'Lower pane': lower,
+            }}
+          />
         </header>
 
         <section>
