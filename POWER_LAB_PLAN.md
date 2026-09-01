@@ -35,6 +35,11 @@ lets a test assert `volt-second balance = 0` rather than `≈ 0 within solver sl
 
 ### 1.2 The propagator
 
+> **Amendment (2026-09-01):** the propagator below and the event bisection of §1.3
+> are built first by Circuit Elements Lab, in `packages/network` (see
+> `CIRCUIT_ELEMENTS_LAB_PLAN.md` §1.5–1.6). `packages/switched` imports them and adds
+> what is Power Lab's own: the switch-state machine, periodic steady state, averaging.
+
 State x (e.g. `[i_L, v_C]`), constant input u within a segment:
 
     dx/dt = A x + B u
