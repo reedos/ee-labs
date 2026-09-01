@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { NumField, fmt, fmtHz, siblingUrl } from '@ee-labs/ui'
+import { NumField, fmt, fmtHz, siblingUrl, track, handOverEvent } from '@ee-labs/ui'
 import { asDigitalFilter, suggestRate, asControlPlant } from '../toSignalLab.js'
 
 // "This circuit IS that filter", made into a button.
@@ -57,7 +57,7 @@ export default function HandOver({ tf, circuitName, from = null }) {
           so a sampled copy would just count without limit, and every plot in Signal Lab would
           lie about it. Refused rather than approximated; every other circuit here crosses.
         </p>
-        <AsPlant plant={plant} circuitName={circuitName} tf={tf} />
+        <AsPlant plant={plant} circuitName={circuitName} tf={tf} from={from} />
       </>
     )
   }
@@ -214,9 +214,15 @@ export default function HandOver({ tf, circuitName, from = null }) {
         </tbody>
       </table>
 
-      <HandOverLink app="signal-lab" appName="Signal Lab" fragment={d.link} />
+      <HandOverLink
+        app="signal-lab"
+        appName="Signal Lab"
+        fragment={d.link}
+        tier={d.raw ? 'raw' : d.shape}
+        circuit={from?.id}
+      />
 
-      <AsPlant plant={plant} circuitName={circuitName} tf={tf} />
+      <AsPlant plant={plant} circuitName={circuitName} tf={tf} from={from} />
     </div>
   )
 }
@@ -231,11 +237,18 @@ export default function HandOver({ tf, circuitName, from = null }) {
  * paste flow remains — deliberately, because a link pointing at a page that is
  * not there would be worse than the paste it replaced.
  */
-function HandOverLink({ app, appName, fragment }) {
+function HandOverLink({ app, appName, fragment, tier, circuit }) {
   const [copied, setCopied] = useState(false)
   const url = siblingUrl(app, fragment)
 
+  // Which bridge, which tier, which circuit — the three numbers that say
+  // whether the hand-overs are used and whether the named tiers earn their
+  // keep. Counted BEFORE the navigation and never allowed to interfere with
+  // it: the link opens a new tab and the button's copy proceeds regardless.
+  const count = (action) => track(handOverEvent({ action, app, tier, circuit }))
+
   const copy = async () => {
+    count('copy')
     try {
       await navigator.clipboard.writeText(url || fragment)
       setCopied(true)
@@ -248,7 +261,13 @@ function HandOverLink({ app, appName, fragment }) {
   return (
     <>
       {url ? (
-        <a className="preset handover-copy" href={url} target="_blank" rel="noopener">
+        <a
+          className="preset handover-copy"
+          href={url}
+          target="_blank"
+          rel="noopener"
+          onClick={() => count('open')}
+        >
           Open in {appName} →
         </a>
       ) : null}
@@ -274,7 +293,7 @@ function HandOverLink({ app, appName, fragment }) {
  * signal" but "how much gain can I put around it before it sings". Offered only
  * where Control Lab can express the plant exactly.
  */
-function AsPlant({ plant, circuitName, tf }) {
+function AsPlant({ plant, circuitName, tf, from }) {
   // A refused bridge is a finished feature (CORE_SCOPE rule 2): when nothing
   // fits, this section STAYS and says why — it used to vanish silently. The
   // refusal is rarer now: circuits with numerator zeros cross via the raw
@@ -300,7 +319,13 @@ function AsPlant({ plant, circuitName, tf }) {
         involved — and the question changes from what it does to a signal to how much gain you
         can close around it.
       </p>
-      <HandOverLink app="control-lab" appName="Control Lab" fragment={plant.link} />
+      <HandOverLink
+        app="control-lab"
+        appName="Control Lab"
+        fragment={plant.link}
+        tier={plant.plant}
+        circuit={from?.id}
+      />
     </div>
   )
 }

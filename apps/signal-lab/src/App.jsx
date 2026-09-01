@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Controls from './components/Controls.jsx'
 import TopBar from './components/TopBar.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
@@ -21,7 +21,7 @@ import {
   runChain,
 } from './dsp/chain.js'
 import { PRESETS } from './presets.js'
-import { readLocationLink } from '@ee-labs/ui'
+import { readLocationLink, track, arrivalEvent } from '@ee-labs/ui'
 import { stateFromLink } from './fromLink.js'
 import { mathContext, mathFor } from './math.js'
 import { samplingState } from './sampling.js'
@@ -85,6 +85,13 @@ export default function App() {
     const { state, warnings: more } = stateFromLink(patch, INITIAL)
     return { state, warnings: [...warnings, ...more] }
   })
+
+  // The other half of the hand-over count: Circuit Lab counts the click, this
+  // counts the arrival, with the circuit's id when the link carried one. Once
+  // per load, and only for a load that came from a link.
+  useEffect(() => {
+    if (linked.state) track(arrivalEvent('signal-lab', linked.state.linkFrom))
+  }, [linked])
 
   const [state, setState] = useState(linked.state || INITIAL)
   // A block that arrived from a link should be open. You did not choose it, so

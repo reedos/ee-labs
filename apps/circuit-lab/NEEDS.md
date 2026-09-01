@@ -1,5 +1,40 @@
 # Needs and heads-ups for the other territories
 
+## Crossed (Reed direct, in the shared tree): usage counting — GoatCounter on every released entry page
+
+Reed asked to see whether the labs and the hand-overs get used. GitHub Pages
+keeps no logs, so the pages now report: one script tag per entry page
+(`data-goatcounter`, async, `https://gc.zgo.at/count.js`), to
+reedos.goatcounter.com. No cookies, no personal data, skips localhost by
+itself, and every page behaves identically when an ad blocker stops it.
+What changed, by territory — amend freely:
+
+- **packages/ui** new `src/analytics.js`, exported from `index.js`:
+  `track(path)` counts an event (queued until count.js lands, `off` where no
+  tag is on the page, never throws); `handOverEvent({action, app, tier,
+  circuit})` and `arrivalEvent(lab, from)` are the two event names, kept in
+  one place so the sender and the receivers agree. Tests in
+  `analytics.test.js` pin the behaviour AND that the four released entry
+  pages carry the tag (dark-launched labs are deliberately not listed —
+  add yours to the list when it releases, plus the tag in its `index.html`).
+- **apps/signal-lab** `index.html` tag; `App.jsx` counts
+  `arrive/signal-lab/<from app|link>/<circuit id>` once on mount when the
+  page loaded from a link. Two lines and one import.
+- **apps/control-lab** `index.html` tag only — no source touched. The
+  matching arrival event is yours to add if you want it, and it is a
+  one-liner where `linked` is read in `App.jsx`:
+  `useEffect(() => { if (linked.state) track(arrivalEvent('control-lab', linked.state.from)) }, [linked])`
+  with `track, arrivalEvent` imported from `@ee-labs/ui`. Without it the
+  page-view count still shows the arrivals; only the per-circuit breakdown
+  is missing.
+- **site/index.html** tag only. Card clicks need no event: they show up as
+  each lab's page view with the splash page as referrer.
+- **apps/circuit-lab** (mine) `HandOver.jsx` counts
+  `handover/<open|copy>/<signal-lab|control-lab>/<tier>/<circuit id>` where
+  tier is the bridge's choice (`lowpass`/`bandpass`/`highpass`/`raw` for
+  Signal Lab, the plant type for Control Lab). Read against `arrive/…` it
+  says how many opened links actually loaded.
+
 ## Crossed (Reed direct, in the shared tree): gain rides the bridge — full-fidelity hand-overs, no clamped arrivals
 
 Reed asked for full parameter direct translation on the circuit → signal
