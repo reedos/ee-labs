@@ -7,6 +7,8 @@ import BlockCard from './BlockCard.jsx'
 import { WAVEFORMS } from '@ee-labs/dsp'
 import { BLOCK_GROUPS, BLOCK_TYPES, makeBlockRecord } from '../dsp/blocks.js'
 import { termsFor } from '../terms.js'
+import { reportSummary } from '../report.js'
+import pkg from '../../package.json'
 
 const HZ = { k: 1e3, khz: 1e3, hz: 1 }
 
@@ -270,20 +272,9 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
         </p>
         <ReportIssue
           lab="Signal Lab"
+          version={pkg.version}
           state={state}
-          summary={{
-            'Started from': state.presetName || '(built by hand)',
-            Sources: state.sources
-              .filter((s) => s.enabled)
-              .map((s) => `${s.type} at ${fmtHz(s.freq)}Hz`)
-              .join(', ') || 'none enabled',
-            Chain: state.blocks.length
-              ? state.blocks.map((b) => b.type + (b.bypass ? ' (bypassed)' : '')).join(' → ')
-              : 'empty',
-            'Sample rate': `${fmtHz(state.sampleRate)}Hz`,
-            'FFT size': state.fftSize,
-            Window: state.window,
-          }}
+          summary={reportSummary(state)}
         />
       </header>
 

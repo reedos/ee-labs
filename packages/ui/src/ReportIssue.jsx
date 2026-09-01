@@ -68,9 +68,18 @@ function browserLine() {
  * travels readable, which is the same rule the link format itself follows.
  */
 export function issueBody({ lab, version, state, summary, cap = 6000 }) {
+  // A row is dropped when it is empty, and ALSO when it stringifies to
+  // something that is plainly a mistake in the caller rather than a fact about
+  // the reader's setup. The first real report proved both halves necessary:
+  // one lab read `.label` off a descriptor carrying `.name`, so its "which
+  // circuit is this" row vanished, and another interpolated the same missing
+  // field into a template — printing the word "undefined" into the report,
+  // which is worse than saying nothing. Neither is recoverable here; what this
+  // can do is refuse to present nonsense as information.
   const rows = Object.entries(summary || {})
-    .filter(([, v]) => v != null && v !== '')
-    .map(([k, v]) => `| ${k} | ${v} |`)
+    .map(([k, v]) => [k, v == null ? '' : String(v)])
+    .filter(([, v]) => v !== '' && !/undefined|\[object Object\]|\bNaN\b/.test(v))
+    .map(([k, v]) => `| ${k} | ${v.replace(/\|/g, '\\|')} |`)
     .join('\n')
 
   const screen =

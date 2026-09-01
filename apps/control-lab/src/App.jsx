@@ -19,6 +19,8 @@ import { loopMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { stickyDuration } from './stepAxis.js'
 import { termsFor } from './terms.js'
+import { reportSummary } from './report.js'
+import pkg from '../package.json'
 import { nextFrame } from './frame.js'
 import { readLocationLink } from '@ee-labs/ui'
 import { stateFromLink } from './fromLink.js'
@@ -311,18 +313,9 @@ export default function App() {
           </p>
           <ReportIssue
             lab="Control Lab"
+            version={pkg.version}
             state={{ plantId, plantP, ctrlId, ctrlP, stepInput, lower, showPhase, lesson }}
-            summary={{
-              'Started from': lesson || '(built by hand)',
-              Plant: `${plant.label} — ${Object.entries(plantP)
-                .map(([k, v]) => `${k} = ${fmtNum(v)}`)
-                .join(', ')}`,
-              Controller: `${ctrl.label} — ${Object.entries(ctrlP)
-                .map(([k, v]) => `${k} = ${fmtNum(v)}`)
-                .join(', ')}`,
-              'Step applied to': stepInput === 'ref' ? 'the reference' : 'the plant input',
-              'Lower pane': lower,
-            }}
+            summary={reportSummary({ plantId, plantP, ctrlId, ctrlP, stepInput, lower, lesson })}
           />
         </header>
 

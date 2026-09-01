@@ -24,6 +24,8 @@ import {
   stickySpan,
 } from './axis.js'
 import { describeRoots } from './pzText.js'
+import { reportSummary } from './report.js'
+import pkg from '../package.json'
 import Schematic from './schematics.jsx'
 import HandOver from './components/HandOver.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
@@ -259,21 +261,9 @@ export default function App() {
           </p>
           <ReportIssue
             lab="Circuit Lab"
+            version={pkg.version}
             state={{ id, params, output, tols, lower, showPhase, lesson }}
-            summary={{
-              'Started from': lesson || '(built by hand)',
-              Circuit: circuit.label,
-              'Measured at': circuit.outputs.find((o) => o.key === output)?.label || output,
-              Components: Object.entries(params)
-                .map(([k, v]) => `${k} = ${fmtNum(v)}`)
-                .join(', '),
-              Tolerances: Object.keys(tols).length
-                ? Object.entries(tols)
-                    .map(([k, v]) => `${k} ±${(v * 100).toFixed(1)}%`)
-                    .join(', ')
-                : 'exact values',
-              'Lower pane': lower,
-            }}
+            summary={reportSummary({ id, params, output, tols, lower, lesson })}
           />
         </header>
 
