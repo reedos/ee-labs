@@ -147,6 +147,7 @@ annotations for the scrub view.
 | Boost | i_L, v_C | Q on / D on | i_L→0 (DCM) |
 | Buck-boost (inverting) | i_L, v_C | Q on / D on | i_L→0 (DCM) |
 | Flyback | i_M, v_C (+ i_lk stretch) | Q on / D on | i_M→0 (DCM), clamp (stretch) |
+| Half-bridge DC-DC (isolated buck) | i_L, v_C (midpoint held at V_in/2 in v1) | Q1 on / freewheel / Q2 on / freewheel | i_L→0 (DCM) |
 | Half-wave rectifier + C | v_C | D on / hold | v_in > v_C + V_f (on), i_D→0 (off) |
 | Bridge rectifier + C | v_C | pair A / pair B / hold | conduction angles |
 | Phase-cut dimmer (triac, R load) | — | blocked / conducting | fire at α, i→0 |
@@ -159,6 +160,11 @@ Conversion-ratio closed forms to pin (K = 2Lf_s/R):
     Boost:       M = 1/(1−D)              DCM: M = (1+√(1+4D²/K))/2,   K_crit = D(1−D)²
     Buck-boost:  M = −D/(1−D)             DCM: M = −D/√K,              K_crit = (1−D)²
     Flyback:     M = n·D/(1−D)  (n = Ns/Np)
+    Half-bridge: M = n·D        (D = per-switch duty, D ∈ (0, ½): the primary sees
+                                 ±V_in/2, the rectified secondary a pulse train of
+                                 amplitude n·V_in/2 with total duty 2D — the panel
+                                 derives it from volt-second balance so the duty
+                                 convention is on screen, not in a footnote)
 
 Ripple closed forms (CCM, ideal):
 
@@ -245,7 +251,7 @@ datasheet fashion, stated in the notes:
 
 ---
 
-## 4. Curriculum — 34 experiments in 8 groups
+## 4. Curriculum — 35 experiments in 8 groups
 
 Format per experiment: **the claim** the note makes → what the reader turns → what
 is **measured** against what **formula**. Every quoted number below becomes a
@@ -309,7 +315,7 @@ pinned test the way `presets.test.js` pins Signal Lab.
   P_o exactly in DCM, and the inductor's mass budget follows. Measured: ½L(i_pk²−
   i_min²)·f_s against P_o + the CCM direct-path accounting.
 
-### Group D — Magnetics (4)
+### Group D — Magnetics (5)
 
 - **D1 · Volt-seconds are flux.** ΔB = ∫v dt/(N·A_e). Same volt-seconds at 60 Hz
   and 100 kHz differ by ~1600× in flux excursion — why the line transformer is
@@ -323,7 +329,23 @@ pinned test the way `presets.test.js` pins Signal Lab.
   energy crosses an isolation barrier and the turns ratio n rescales everything:
   M = nD/(1−D); reflected voltage n·V_o across the switch. Why it owns every
   low-power offline supply.
-- **D4 (stretch) · Leakage strikes.** The flux that does not link both windings
+- **D4 · The half-bridge: the transformer as a gearbox.** The conceptual foil to
+  D3, and the doorway to every isolated buck-derived supply. The flyback *stores*
+  each cycle's energy in the core and dumps it; the half-bridge's transformer
+  stores (ideally) nothing — energy passes *through* it while the turns ratio
+  gears the voltage, which is why the same core moves far more power in forward
+  mode than as a bucket. Two switches across a capacitor divider drive the
+  primary with ±V_in/2, the rectified secondary feeds the LC at **twice f_s**
+  (measured: ripple frequency 2f_s, so the same ripple spec costs half the
+  filter), M = n·D with D ∈ (0, ½) measured across the sweep, and each switch
+  sees only V_in — the stress row compares it against the flyback's V_in + n·V_o.
+  The freewheel intervals (both switches off, the output inductor flying through
+  both rectifier legs) are the scrub view's moment. Bonus tie to D1/D2: the
+  series capacitor path blocks DC, so the half-bridge *forgives* duty asymmetry
+  that would walk other transformers into saturation — stated, and demonstrated
+  with the asymmetry slider if the midpoint is promoted to a third state
+  (stretch; v1 holds it stiff at V_in/2 and says so).
+- **D5 (stretch) · Leakage strikes.** The flux that does not link both windings
   has nowhere to go at turn-off: the spike, and why clamps exist. Third state
   (i_lk); qualitative if the exact model proves heavy.
 
@@ -424,36 +446,69 @@ session's fidelity work, and `plant=custom` already carries coefficients exactly
   (see the caption-plate lesson).
 - **readme-claims**: splash card count, README tables, pinned as the other labs.
 
-## 7. Integration
+## 7. Integration — and the dark launch
 
-- `LabNav` LABS array + splash card (⚡, "34 experiments" pinned by test) +
-  deploy workspace entry + `report.js` summary (converter, components, toggles,
-  D, f_s, mode) + AGENT_BRIEF.md for future sessions.
-- New app + new package = naturally conflict-free territory alongside the
-  parallel session; shared-file touches (LabNav, splash, deploy config) batched
-  late and small.
+**Power Lab stays off the splash page until Reed confirms it good.** While it is
+being built it must be reachable for testing but *advertised nowhere*:
+
+- It **deploys from Phase 2 onward** at `/power-lab/` — unlinked, so browser
+  verification and Reed's own testing happen against the real deployment, not a
+  local preview. (Unlisted, not secret: the repo is public, and that is fine.)
+- The splash page, the root README's lab table, and the **other three labs'
+  `LabNav`** carry no reference to it. Power Lab's *own* LabNav may link outward
+  to the released labs — visibility is one-way while it is dark.
+- The promise is **pinned by a test**, in the suite's own style, not left as a
+  note: `apps/power-lab/RELEASE_STATUS` holds `dark`; a readme-claims-style test
+  asserts that while it says `dark`, `site/index.html`, `README.md` and `LabNav`
+  contain no `power-lab` reference — and the moment it says `released`, the SAME
+  test inverts and *requires* the splash card, the README row and the nav entry,
+  each with counts pinned. Flipping one word flips the whole contract, and
+  nothing can be half-linked.
+- Flipping that word is **Reed's action**, taken after the release gate in §8
+  passes — not a side effect of any phase completing.
+
+Everything else as usual once released: splash card (⚡, "35 experiments" pinned
+by test), deploy workspace entry, `report.js` summary (converter, components,
+toggles, D, f_s, mode), AGENT_BRIEF.md for future sessions.
+
+New app + new package = naturally conflict-free territory alongside the parallel
+session; shared-file touches (LabNav, splash, deploy config) are exactly the
+release-gated ones, so they land in one small batch at the end.
 
 ## 8. Phasing (each phase ships green and deployable)
 
 1. **Engine**: `packages/switched` propagator + events + steady state + measures,
    fully fuzzed *before any UI exists*. Exit: invariants 1–6 green under fuzz.
 2. **Buck vertical slice**: app shell, scope, math panel, meters; Groups A + B
-   (9 experiments). Exit: every B-note pinned; browser verify green.
+   (9 experiments). Exit: every B-note pinned; browser verify green; **deployed
+   dark at `/power-lab/`** with the RELEASE_STATUS test enforcing zero splash,
+   README or cross-lab-nav references.
 3. **Boost/buck-boost + conduction scrub + M(D) view**: Group C. Exit: C2 peak
    formula pinned; scrub-vs-scope sync pixel-verified.
-4. **Magnetics**: piecewise-L saturation events, B-view, flyback; Group D.
+4. **Magnetics**: piecewise-L saturation events, B-view, flyback, half-bridge
+   (D4's freewheel intervals exercise the scrub view hardest); Group D.
 5. **AC**: rectifiers + dimmer (Group E), then inverters + PWM spectra (Group F).
-6. **Losses + control bridge + integration**: Groups G, H; loss ledger,
-   efficiency sweeps, Control Lab hand-over round-trip; splash/nav/report;
-   **then the full-suite audit treatment** — the same all-angles pass the other
-   three labs got, before it ships on the splash page.
+6. **Losses + control bridge**: Groups G, H; loss ledger, efficiency sweeps,
+   Control Lab hand-over round-trip; report link; AGENT_BRIEF.
+7. **The release gate** — in order, each blocking the next:
+   1. the full-suite audit treatment: the same all-angles pass the other three
+      labs got (every option, every preset, every claim, fuzzing, both browsers,
+      pixel-level checks that measure the claim and not a proxy);
+   2. Reed's own hands-on pass against the dark deployment;
+   3. Reed flips `RELEASE_STATUS` to `released`, which makes the pinning test
+      *demand* the splash card, README row and LabNav entries — and only that
+      commit touches the shared surfaces.
 
 ## 9. Non-goals (v1, stated so they are decisions rather than omissions)
 
 Three-phase, motor drives, resonant/LLC converters, current-mode control loops
 *inside* Power Lab (the loop lives in Control Lab — that is the point of the
-bridge), EMI/layout, thermal RC networks, digital control/DPWM. Each is a
-coherent later group; none blocks the curriculum above.
+bridge), EMI/layout, thermal RC networks, digital control/DPWM. The half-bridge's
+buck-derived siblings — **forward and push-pull, and the full-bridge DC-DC** —
+are also out of v1, but deliberately cheap later: they share the half-bridge's
+segment structure and differ mainly in primary drive and switch stress, so D4's
+machinery is most of each. Each of these is a coherent later group; none blocks
+the curriculum above.
 
 ## 10. Risks, named
 
