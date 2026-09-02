@@ -94,8 +94,14 @@ export function drawScope(ctx, w, h, { wf, baseWf = null, traces, marks = [] }) 
   ctx.font = `${Math.round(10 * k)}px ${MONO}`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'bottom'
-  for (const e of wf.edges) {
+  const right = top.x + top.w
+  wf.edges.forEach((e, i) => {
     const x = sx(e.t * unit)
+    // The name is written only where it fits before the next edge or the
+    // frame: a segment of no length (the dead interval at the boundary) gets
+    // its marker and no name.
+    const next = i + 1 < wf.edges.length ? sx(wf.edges[i + 1].t * unit) : right
+    const named = x + 3 * k + ctx.measureText(e.name).width <= Math.min(next, right)
     ctx.strokeStyle = COLORS.gridMajor
     ctx.setLineDash([3 * k, 3 * k])
     ctx.lineWidth = 1
@@ -105,8 +111,8 @@ export function drawScope(ctx, w, h, { wf, baseWf = null, traces, marks = [] }) 
     ctx.stroke()
     ctx.setLineDash([])
     ctx.fillStyle = COLORS.text
-    ctx.fillText(e.name, x + 3 * k, yTop - 3 * k)
-  }
+    if (named) ctx.fillText(e.name, x + 3 * k, yTop - 3 * k)
+  })
   ctx.restore()
 
   // Spans first, under the traces.

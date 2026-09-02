@@ -70,6 +70,20 @@ describe('the scope', () => {
     for (const t of ticks) expect(t.y, t.text).toBeGreaterThan(lower.y + lower.h)
   })
 
+  it('names an edge only where the name fits before the next edge or the frame (found on the step-8 walk: B5’s zero-length dead interval put "dea" at the edge and "dead" over "on")', () => {
+    const { ctx, g, x } = scope('b5')
+    const names = new Set(x.wf.edges.map((e) => e.name))
+    const labels = texts(ctx).filter((t) => names.has(t.text))
+    expect(labels.length).toBeGreaterThan(2)
+    const right = g.strips[0].area.x + g.strips[0].area.w
+    const width = (t) => ctx.measureText(t.text).width
+    for (const t of labels) expect(t.x + width(t), `${t.text} at ${t.x}`).toBeLessThanOrEqual(right + 1)
+    const byX = [...labels].sort((a, b) => a.x - b.x)
+    for (let i = 1; i < byX.length; i++) {
+      expect(byX[i].x - byX[i - 1].x, `${byX[i - 1].text} then ${byX[i].text}`).toBeGreaterThanOrEqual(width(byX[i - 1]))
+    }
+  })
+
   it('gives one strip to an experiment showing one kind of trace', () => {
     expect(scope('a3').g.strips.map((s) => s.axis)).toEqual(['V'])
     expect(scope('b5').g.strips.map((s) => s.axis)).toEqual(['V', 'A'])
@@ -152,6 +166,22 @@ describe('the sweep', () => {
     const b = sweep('b5', { L: defaultsOf('b5').L * 1.5 })
     expect(b.g.sy(0.5)).toBe(a.g.sy(0.5))
     expect(b.g.sy(1)).toBe(a.g.sy(1))
+  })
+
+  // Whether a fillText was drawn under a rotate: the calls since the last save.
+  const rotated = (ctx, text) => {
+    const calls = ctx.calls
+    const i = calls.findIndex((c) => c.name === 'fillText' && String(c.args[0]) === text)
+    expect(i, `"${text}" is drawn`).toBeGreaterThan(-1)
+    let last = 0
+    for (let j = 0; j < i; j++) if (calls[j].name === 'save') last = j
+    return calls.slice(last, i).some((c) => c.name === 'rotate')
+  }
+
+  it('writes a one-glyph axis title upright (found on the step-8 walk: C2’s rotated η read as a stray mark)', () => {
+    expect(rotated(sweep('c2').ctx, 'η')).toBe(false)
+    // A worded title still runs down the axis, as titles do.
+    expect(rotated(sweep('c5').ctx, 'V_out (V)')).toBe(true)
   })
 
   it("marks the boost's peak on its curve, at the D it happens", () => {

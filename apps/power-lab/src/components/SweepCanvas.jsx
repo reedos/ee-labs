@@ -120,9 +120,12 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, mar
     }
     ctx.font = `${Math.round(12 * k)}px ui-sans-serif, system-ui, sans-serif`
     ctx.translate(w - 14 * k, area2.y + area2.h / 2)
-    ctx.rotate(Math.PI / 2)
+    // A worded title runs down the axis; a lone glyph (η) stays upright,
+    // since rotated it reads as a stray mark.
+    const title = ay2.unit ? `${ay2.label} (${ay2.unit})` : ay2.label
+    if (title.length > 2) ctx.rotate(Math.PI / 2)
     ctx.textAlign = 'center'
-    ctx.fillText(ay2.unit ? `${ay2.label} (${ay2.unit})` : ay2.label, 0, 0)
+    ctx.fillText(title, 0, 0)
     ctx.restore()
   }
 
