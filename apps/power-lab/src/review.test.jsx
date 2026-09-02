@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server'
 import React from 'react'
 import App, { termsFresh } from './App.jsx'
 import { termsFor } from './terms.js'
-import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, byId, defaultsOf } from './experiments.js'
+import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, byId, defaultsOf, offeredTraces } from './experiments.js'
 import { analyse } from './analysis.js'
 import { scopeRange } from './format.js'
 
@@ -124,8 +124,14 @@ describe('the opening traces show the claim (§11.6.7)', () => {
   })
   it('Group A does not offer the twelve-chip trace bar', () => {
     for (const e of EXPERIMENTS.filter((e) => e.group === GROUPS[0])) {
-      const offered = e.allTraces || (e.kind === 'buck' ? Object.keys(TRACES) : e.traces)
-      expect(offered.length, e.id).toBeLessThanOrEqual(4)
+      expect(offeredTraces(e).length, e.id).toBeLessThanOrEqual(4)
+    }
+  })
+  it('every trace pill offered is a waveform the circuit has (found on the step-8 walk: B1–B8 offered v_in, v_rect, v_D and i_R)', () => {
+    for (const e of EXPERIMENTS) {
+      const x = analyse(e, defaultsOf(e.id))
+      for (const t of offeredTraces(e)) expect(x.wf.sig[t], `${e.id} offers ${t}`).toBeDefined()
+      expect(offeredTraces(e), e.id).toEqual([...new Set(offeredTraces(e))])
     }
   })
 })

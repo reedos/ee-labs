@@ -83,6 +83,9 @@ export const TRACES = {
   iin: { label: 'i_in', axis: 'A', title: 'Current drawn from the source (phase a, for the three-phase bridge)' },
 }
 
+/** The trace pills the scope offers: the experiment's own list, else its opening traces. */
+export const offeredTraces = (exp) => exp.allTraces || exp.traces
+
 export const VIEWS = {
   measures: { label: 'Measures', title: 'Average, RMS and peak-to-peak of every waveform, and the power' },
   balance: { label: 'Balance', title: 'Volt-seconds on the inductor and coulombs on the capacitor, segment by segment' },
@@ -124,6 +127,7 @@ const buck = (over) => ({
   kind: 'buck',
   headline: 'eta',
   traces: ['vsw', 'vout', 'iL'],
+  allTraces: ['vsw', 'vout', 'vL', 'iL', 'iQ', 'iD', 'iC', 'iin'],
   views: ['measures', 'balance', 'math', 'sweep', 'losses'],
   view: 'measures',
   sweep: { x: 'D', y: 'M' },

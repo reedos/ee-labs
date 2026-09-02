@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { LabNav, NumField, ReportIssue, fmt } from '@ee-labs/ui'
 import { MathBody } from '@ee-labs/explain'
-import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, SWEEP_X, byId, defaultsOf, nextOf, prevOf, positionOf } from './experiments.js'
+import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, SWEEP_X, byId, defaultsOf, nextOf, prevOf, positionOf, offeredTraces } from './experiments.js'
 import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepFs, sweepC, sweepAlpha, sweepChopper } from './analysis.js'
 import { experimentMath } from './math.js'
 import { termsFor } from './terms.js'
@@ -193,7 +193,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
   const m = x.m
 
   const viewOptions = exp.views.map((v) => ({ id: v, ...VIEWS[v] }))
-  const traceKeys = exp.allTraces || (exp.kind === 'buck' ? Object.keys(TRACES) : exp.traces)
+  const traceKeys = offeredTraces(exp)
   const shown = [...traces].filter((t) => traceKeys.includes(t))
   const isBuck = exp.kind === 'buck'
   const clocked = isBuck || exp.kind === 'boost' || exp.kind === 'buckboost'
