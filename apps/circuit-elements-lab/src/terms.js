@@ -458,6 +458,20 @@ export const TERMS = {
       'beyond them. Two diodes tied to two references do it: outside the window one of them conducts ' +
       'and holds the output there while the series resistor absorbs the difference.',
   },
+  zener: {
+    name: 'Zener diode',
+    def:
+      'A diode built to be run backwards. Past a reverse voltage of its own choosing — V_z, from ' +
+      'a couple of volts to a couple of hundred — it conducts freely and holds that voltage, which ' +
+      'makes it the cheapest voltage reference there is.',
+  },
+  regulation: {
+    name: 'Regulation',
+    def:
+      'Holding an output steady while its supply or its load moves. A regulator only regulates ' +
+      'inside a band: take more current than its series resistor can pass and there is nothing left ' +
+      'to hold the voltage up, and it drops out.',
+  },
   bode: {
     name: 'Bode plot',
     def:
@@ -543,4 +557,6 @@ export const MATCH = {
   rectifier: /\brectifier\b/i,
   ripple: /\bripple\b/i,
   clipper: /\bclipper\b|\bclipped\b|\bclips\b/i,
+  zener: /\bZener\b/,
+  regulation: /regulat(?:e|es|ed|ion|ing)\b|out of regulation|drops? out/i,
 }

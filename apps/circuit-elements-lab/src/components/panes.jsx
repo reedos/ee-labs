@@ -53,6 +53,14 @@ const HOW = {
   SW: (r) => 'a closed switch: a wire, 0 V across it',
   OPAMP: (r) => (r.type === 'VCVS' ? 'an op-amp with finite gain: output = gain × (v₊ − v₋)' : 'an ideal op-amp: v₊ = v₋, its output current is whatever that takes'),
   VCVS: (r) => 'a controlled voltage source',
+  // A diode's row says which region it is in: the whole of Group I is that
+  // question, and "a voltage source" would hide the answer.
+  D: (r) =>
+    r.type === 'V'
+      ? 'a conducting diode: holds its forward drop, so here it is a source of V_f'
+      : r.type === 'GI'
+        ? 'a conducting diode with a slope: V_f behind r_d, stamped as a conductance and a current'
+        : 'a blocking diode: no path, bar the leak its model gives it',
   wire: (r) => 'a resistor of 0 Ω: a wire, 0 V across it',
 }
 const how = (r) => (r.wire ? HOW.wire(r) : (HOW[r.from] || HOW.V)(r))

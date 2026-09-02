@@ -1865,6 +1865,9 @@ const HEADLINE_CLOSED = {
     return top * (1 - Math.exp(-(last.t1 - last.t0) / (p.RL * p.C1)))
   },
   i7: (p) => Math.min(Math.abs(p.A), p.Vref + 0.7),
+  // Regulated at V_z while the divider would have gone above it; an ordinary
+  // divider below the knee.
+  i8: (p) => Math.max(-0.7, Math.min(p.Vz, (p.E * p.RL) / (p.RS + p.RL))),
 }
 
 const closeRel = (got, want, rel, msg) => {

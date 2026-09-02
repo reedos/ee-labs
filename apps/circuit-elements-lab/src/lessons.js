@@ -1145,4 +1145,42 @@ export const LESSONS = {
       'nothing between them. The clipped waveform is exactly the input with two horizontal lines drawn through it, ' +
       'and the corners are the instants the diodes switch — found here by bisection, not by rounding to a sample.',
   },
+  i8: {
+    see:
+      'A Zener is meant to be run backwards: past 5.1 V it conducts freely and holds the output there, whatever else ' +
+      'changes. The series resistor passes 14.7 mA, the load takes 5.10 mA of it, and the Zener swallows the other ' +
+      '9.58 mA. Change the supply and it simply takes a different share.',
+    seeReads: [
+      ['v.out', 5.1],
+      ['i.RS', 0.014681],
+      ['i.RL', 0.0051],
+      [(x) => -x.sol.i.D1, 0.009581],
+    ],
+    try: [
+      {
+        say: 'Raise the supply to 20 V: the output does not move at all. The Zener simply takes more — 26.6 mA — and the series resistor drops the difference.',
+        set: { E: 20 },
+        reads: [['v.out', 5.1], [(x) => -x.sol.i.D1, 0.026602]],
+      },
+      {
+        say: 'Drop the load to 220 Ω: it now wants more current than R_S can pass, there is none left over for the Zener, and the output falls out of regulation to 3.83 V.',
+        set: { RL: 220 },
+        reads: [['v.out', 3.8261], ['i.D1', 0]],
+      },
+      {
+        say: 'Set the load to 470 Ω: still inside the band at 5.10 V, but the Zener is down to 3.83 mA — and below about 347 Ω there is nothing left for it to give.',
+        set: { RL: 470 },
+        reads: [['v.out', 5.1], [(x) => -x.sol.i.D1, 0.00383], [(x, p) => (p.Vz * p.RS) / (p.E - p.Vz), 347.39]],
+      },
+    ],
+    why:
+      'In breakdown the Zener is a voltage source of V_z pointing the other way, so the output is held there and the ' +
+      'series resistor takes the whole of the rest: i_S = (E − V_z)/R_S, fixed by the supply alone. Whatever the load ' +
+      'does not take, the Zener does — which is how it regulates, and also why it wastes the most power when the load ' +
+      'wants the least. That only works while there is something left for it. The load draws V_z/R_L, and the moment ' +
+      'that reaches i_S the Zener is carrying nothing; below R_L = V_z·R_S/(E − V_z) — 347 Ω here — it comes out of ' +
+      'breakdown altogether and the circuit is an ordinary divider again. The sweep shows both regimes: flat while it ' +
+      'regulates, and the divider’s own curve below the knee.',
+    whyReads: [[(x, p) => (p.Vz * p.RS) / (p.E - p.Vz), 347.39]],
+  },
 }

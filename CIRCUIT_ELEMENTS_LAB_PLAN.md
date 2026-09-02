@@ -1126,7 +1126,24 @@ state, and averaging.
    so the energy integral picked the wrong propagator. Tests: `pwl.test.js` (30) and
    Group I's own claims in `experiments.test.js`; 2528 in the monorepo.
 5. **Phase 5 — Polish.** Stretch items (I8, GBW toggle) if cheap; mobile pass; the
-   equations view's progressive disclosure tuned on a phone.
+   equations view's progressive disclosure tuned on a phone. *Shipped dark
+   2026-09-02.* **I8, the Zener regulator**, was cheap — the engine already had
+   breakdown as a third region — and it earns its place: the load sweep shows the
+   output flat while it regulates and falling away below the knee at
+   `R_L = V_z R_S/(E − V_z)`, which is the lesson drawn rather than stated. Its
+   sweep re-decides the region at every load (`sweepKnob` solves through
+   `solveRegions`), and the Thévenin equivalent is now withheld from any circuit
+   with a region in it — a nonlinear circuit does not have one, and an `R_th`
+   beside that knee would be a claim the circuit does not obey. A conducting
+   diode's row in the equations pane says which region it is in rather than
+   calling itself a voltage source. **The GBW toggle is not built**, and not
+   because of time: `A(s) = ω_t/s` makes the op-amp a dynamic element, which
+   means a new stamp in the complex solve and a new state in the time solve, both
+   in the path every other experiment in Groups F–H already depends on. That is a
+   phase, not a polish item. Finite gain and the rails — the two non-idealities
+   that change the lessons — are built (E2, E3, E9); the plan's own §9 already
+   calls slew rate and offset datasheet facts, and GBW belongs with them until
+   there is an experiment that needs it.
 6. **Phase 6 — Release gate.** REVIEW_PLAYBOOK audit, screenshot pass, Reed's
    hands-on review, then Reed flips `RELEASE_STATUS`. Splash card goes first.
 7. **Then Power Lab Phase 1**, starting from `packages/network`.

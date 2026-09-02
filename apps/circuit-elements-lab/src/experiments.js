@@ -340,6 +340,29 @@ function schmittLayout() {
   }
 }
 
+
+/** Source, a series resistance, then two legs across the output. */
+function regulatorLayout() {
+  const xs = [260, 350]
+  return {
+    w: 440,
+    h: H,
+    items: [
+      ...src('V1'),
+      rail(50, 100, TOP),
+      ...top('RS', 120),
+      rail(140, xs[0], TOP),
+      node('in', 50, TOP, 't'),
+      node('out', 195, TOP, 't'),
+      ...leg('D1', xs[0], true),
+      rail(xs[0], xs[1], TOP),
+      ...leg('RL', xs[1]),
+      rail(50, xs[1], BOT),
+      gnd(115),
+    ],
+  }
+}
+
 /** A load hung from the output node: straight down to a ground of its own. */
 const outLoad = (id, x = AMP.x + 70, y = AMP.y) => [
   { wire: [x, y, x, y + 20] },
@@ -1880,6 +1903,36 @@ export const EXPERIMENTS = [
     view: 'scope',
     views: ['reading', 'equations', 'power', 'scope'],
     claim: { clipper: true },
+  },
+  {
+    id: 'i8',
+    group: GROUPS[8],
+    name: 'The Zener regulator, and where it gives up',
+    terms: ['zener', 'regulation'],
+    params: [
+      Vs('E', 'Supply V₁', 12),
+      R('RS', 'Series R_S', 470),
+      { key: 'Vz', label: 'Breakdown voltage', unit: 'V', min: 1, max: 20, scale: 'linear', default: 5.1 },
+      chips(R('RL', 'Load R_L', 1000), [220, 470, 1000]),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
+        { type: 'R', id: 'RS', nodes: ['in', 'out'], value: p.RS },
+        // Cathode at the output: it is meant to be run backwards, and holds
+        // V_z once it is.
+        { type: 'D', id: 'D1', nodes: ['gnd', 'out'], model: 'drop', vz: p.Vz },
+        { type: 'R', id: 'RL', nodes: ['out', 'gnd'], value: p.RL },
+      ],
+    }),
+    layout: regulatorLayout(),
+    show: 'i',
+    view: 'sweep',
+    views: ['reading', 'assumed', 'equations', 'power', 'sweep'],
+    port: ['out', 'gnd'],
+    sweepId: 'RL',
+    sweepY: 'v',
+    claim: { zener: true },
   },
 ]
 

@@ -123,10 +123,19 @@ export const MARKS = {
       { kind: 'segment', axis: 'left', x0: fc, y0: 0, x1: fEnd, y1: -20 * Math.log10(fEnd / fc), label: '−20 dB per decade', value: -20, unit: 'dB/decade' },
     ]
   },
+  // The regulated level, and the load below which there is nothing left for
+  // the Zener to carry.
+  i8(p) {
+    const knee = (p.Vz * p.RS) / (p.E - p.Vz)
+    return [
+      { kind: 'level', axis: 'left', y: p.Vz, label: 'held at V_z', value: p.Vz, unit: 'V' },
+      { kind: 'point', axis: 'left', x: knee, y: p.Vz, label: 'below this load it gives up', value: knee, unit: 'Ω' },
+    ]
+  },
 }
 
 /** Which plot each experiment's marks belong on. */
-export const PLOT_OF = { f3: 'scope', f4: 'scope', f6: 'scope', g4: 'scope', c3: 'sweep', d6: 'sweep', h4: 'freq', h6: 'freq' }
+export const PLOT_OF = { f3: 'scope', f4: 'scope', f6: 'scope', g4: 'scope', c3: 'sweep', d6: 'sweep', i8: 'sweep', h4: 'freq', h6: 'freq' }
 
 /** The marks for one experiment at these knobs, for the plot named (or any plot), or none. */
 export function marksFor(exp, p, x, plot = null) {
@@ -138,4 +147,5 @@ export function marksFor(exp, p, x, plot = null) {
 /** The scope's instants from the math entry, in the same shape as the data marks. */
 export function timeMarks(list) {
   return (list || []).map((m) => ({ kind: 'time', x: m.t, label: m.label, value: m.t, unit: 's' }))
+
 }

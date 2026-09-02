@@ -88,6 +88,7 @@ export const BUILDS = {
   i5: ['i4'],
   i6: ['i5', 'f3'],
   i7: ['i3', 'i4'],
+  i8: ['i3', 'd6'],
 }
 
 /** The experiments this one builds on, in course order. */

@@ -781,7 +781,9 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
   font-size: 12px;
   color: var(--dim);
 }
-.cursor-row label b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+/* The instant never breaks across two lines: "t = 216" above "ms" reads as a
+   different number for the moment it takes to see the second line. */
+.cursor-row label b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
 .cursor-row .cursor-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .cursor-row .cursor-head label { flex: 1 1 auto; min-width: 0; }
 /* The window knob beside the cursor it scales: label and entry on one line, small. */

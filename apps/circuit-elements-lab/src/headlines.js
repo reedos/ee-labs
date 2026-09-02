@@ -96,6 +96,7 @@ export const HEADLINES = {
   i4: { label: 'the average of the rectified output — its DC value', tag: 'V_dc', unit: 'V', where: 'RL', value: (x, p) => cycleMean(x, (sol) => sol.v.out, p.f) },
   i5: { label: 'the average out of the bridge — twice a half-wave’s', tag: 'V_dc', unit: 'V', where: 'RL', value: (x, p) => cycleMean(x, (sol) => sol.v.p, p.f) },
   i6: { label: 'the ripple: how far it falls between two humps', tag: 'ΔV', unit: 'V', where: 'C1', value: (x) => dischargeDrop(x) },
+  i8: { label: 'the output the Zener holds, whatever the load does', tag: 'v_out', unit: 'V', where: 'D1', value: (x) => x.sol.v.out },
   i7: { label: 'the level the output cannot pass: V_ref + V_f', tag: 'v_clip', unit: 'V', where: 'D1', value: (x) => peakAt(x, (sol) => sol.v.out) },
 }
 

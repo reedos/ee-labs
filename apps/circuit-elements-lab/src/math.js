@@ -1543,6 +1543,38 @@ const ENTRIES = {
     }
   },
 
+  i8(p, s, x) {
+    const iS = (p.E - p.Vz) / p.RS
+    const knee = (p.Vz * p.RS) / (p.E - p.Vz)
+    const divider = (p.E * p.RL) / (p.RS + p.RL)
+    // Clamped at V_z above and at a forward drop below: the same two-sided
+    // clamp as I3, one end of it in breakdown.
+    const vOut = Math.max(-0.7, Math.min(p.Vz, divider))
+    const regulating = divider > p.Vz
+    const rows = [
+      row('the output', vOut, s.v.out, 'V', 1e-9),
+      row('the series resistor’s current', (p.E - vOut) / p.RS, s.i.RS, 'A', 1e-9),
+    ]
+    // Whatever the series resistor brings and the load does not take, the
+    // Zener carries — zero when it is blocking, and the other way round if the
+    // supply is reversed and it is conducting forwards instead.
+    rows.push(row('the Zener carries the rest', (p.E - vOut) / p.RS - vOut / p.RL, -s.i.D1, 'A', 1e-6))
+    return {
+      blocks: [
+        T(
+          'In breakdown the Zener holds V_z and the series resistor takes the whole of the rest, so the current through it is fixed by the supply alone. Whatever the load does not take, the Zener does — which is how it regulates, and why it dissipates most when the load wants least.',
+        ),
+        F('i_S = \frac{E - V_z}{R_S}, \qquad i_Z = i_S - \frac{V_z}{R_L}, \qquad R_{L,min} = \frac{V_z R_S}{E - V_z}'),
+        C(rows),
+        V([
+          { label: 'held at', value: vOut, unit: 'V', note: regulating ? 'inside the band' : 'dropped out — an ordinary divider' },
+          { label: 'the load below which it gives up', value: knee, unit: 'Ω' },
+          { label: 'the Zener’s own dissipation', value: Math.abs(s.p.D1), unit: 'W', note: 'worst with no load at all' },
+        ]),
+      ],
+    }
+  },
+
   i7(p, s, x) {
     const d = diodeOf({ id: 'D1', type: 'D', model: p.model })
     const vf = d.model === 'ideal' ? 0 : d.vf
@@ -1886,7 +1918,11 @@ export function analyse(exp, p, cursor) {
   const x = { net, sol, refusal, ...(pwl || {}) }
   if (!sol) return x
   if (exp.views.includes('superposition')) x.superposition = superposition(net)
-  if (exp.port) {
+  // A Thevenin equivalent is a property of a LINEAR circuit; a diode does not
+  // have one, and drawing an R_th beside a regulator's knee would be claiming
+  // something the circuit does not obey. The sweep still runs — it re-solves
+  // at every load, region and all.
+  if (exp.port && !hasRegions(net)) {
     const portNet = exp.sweepId ? { elements: net.elements.filter((e) => e.id !== exp.sweepId) } : net
     try {
       x.thevenin = thevenin(portNet, exp.port[0], exp.port[1])
@@ -2220,7 +2256,10 @@ export function sweepKnob(exp, p, n = 241) {
     const R = knob.min * Math.pow(knob.max / knob.min, k / (n - 1))
     let s
     try {
-      s = solveDC(exp.net({ ...p, [exp.sweepId]: R }))
+      // solveRegions, not solveDC: with a diode in the circuit the sweep has to
+      // decide the region afresh at every load — which is the whole point of
+      // the regulator's curve, where the answer changes shape at drop-out.
+      s = solveRegions(exp.net({ ...p, [exp.sweepId]: R })).sol
     } catch (err) {
       if (err instanceof NetworkError) continue
       throw err
