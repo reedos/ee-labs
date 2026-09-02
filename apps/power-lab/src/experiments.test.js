@@ -620,7 +620,8 @@ describe('E3 · the price of a big capacitor', () => {
     const lastHalf = halfRs[halfRs.length - 1]
     expect(lastHalf.angle).toBeLessThan(last.angle - 3)
     expect(lastHalf.iPeak).toBeGreaterThan(last.iPeak * 1.2)
-  })
+    // Two capacitor sweeps of solved steady states: seconds, not milliseconds.
+  }, 60000)
 })
 
 describe('E4 · what the grid sees', () => {
@@ -748,16 +749,41 @@ describe('E6 · three phases, six pulses', () => {
 })
 
 describe('the sweeps', () => {
-  it('cost what a knob turn can afford', () => {
-    const t0 = performance.now()
-    sweepR(defaultsOf('b4'))
-    sweepD(defaultsOf('b2'))
-    sweepEta(defaultsOf('b6'))
-    expect(performance.now() - t0).toBeLessThan(1500)
-    const t1 = performance.now()
-    sweepC(defaultsOf('e3'), byId.e3)
-    sweepAlpha(defaultsOf('e5'))
-    expect(performance.now() - t1).toBeLessThan(1500)
-  })
+  // A budget in milliseconds is a claim about the machine, not about the code.
+  // This was one, at 1500 ms, and it passed here and failed on a CI runner
+  // three times slower. What the sweep actually has to be is cheap *relative to
+  // a solve*: it is sixty-odd steady states, so it should cost sixty-odd steady
+  // states and not six hundred. Calibrating against one solve says that, and
+  // says it the same on any machine.
+  const timeOf = (f) => {
+    const t = performance.now()
+    f()
+    return performance.now() - t
+  }
+  const solveCost = () => {
+    // Warm the JIT first, then take the best of three: the floor is the honest
+    // figure to divide by, and a first run includes compilation.
+    for (let i = 0; i < 2; i++) analyse(byId.b4, defaultsOf('b4'))
+    return Math.min(...[0, 1, 2].map(() => timeOf(() => analyse(byId.b4, defaultsOf('b4')))))
+  }
+
+  it('cost what a knob turn can afford: a sweep is worth about the solves in it', () => {
+    const one = solveCost()
+    // 163 solve points across the three, and a sweep point is cheaper than a
+    // full analyse because it builds no waveform. Measured at 65×.
+    const buck = timeOf(() => {
+      sweepR(defaultsOf('b4'))
+      sweepD(defaultsOf('b2'))
+      sweepEta(defaultsOf('b6'))
+    })
+    expect(buck / one, `buck sweeps cost ${(buck / one).toFixed(0)} solves`).toBeLessThan(150)
+
+    // 86 points, on the event-driven engine, which costs more per point.
+    const line = timeOf(() => {
+      sweepC(defaultsOf('e3'), byId.e3)
+      sweepAlpha(defaultsOf('e5'))
+    })
+    expect(line / one, `line sweeps cost ${(line / one).toFixed(0)} solves`).toBeLessThan(400)
+  }, 60000)
 })
 

@@ -79,9 +79,25 @@ describe('invariants every rectifier must satisfy in periodic steady state', () 
     expect(m.sig.vout.min).toBeGreaterThan(0)
 
     // 6. The switching rule holds inside every segment, not only at its ends.
+    //
+    //    Conducting states are compared by name, because there the name is the
+    //    circuit: it says which pair carries the current. Holding states are
+    //    compared only as holds. Every hold state has the same A and the same
+    //    drive — the capacitor alone feeding the load — and every signal but
+    //    v_rect evaluates identically; the name records which pair sits closest
+    //    to conducting, which is what v_rect follows. That name changes hands
+    //    where two line voltages cross, and there v_rect is equal either way,
+    //    so the choice is settled by the last bit of a sine. Those bits are not
+    //    identical across platforms: this asserted the label and passed here,
+    //    then failed on a runner whose Math.sin rounded the other way.
     for (const seg of ss.segments) {
-      if (seg.T <= 0) continue
-      for (const frac of [0.25, 0.5, 0.75]) expect(conv.pick(stateAt(seg, frac * seg.T))).toBe(seg.name)
+      // A segment at the event resolution has no interior to sample.
+      if (seg.T <= 1e-9 * ss.T) continue
+      for (const frac of [0.25, 0.5, 0.75]) {
+        const here = conv.pick(stateAt(seg, frac * seg.T))
+        if (seg.name.startsWith('hold')) expect(here.startsWith('hold'), `${seg.name} at ${frac} reads ${here}`).toBe(true)
+        else expect(here).toBe(seg.name)
+      }
     }
 
     // 7. Pulses: one per diode pair per period, at most.

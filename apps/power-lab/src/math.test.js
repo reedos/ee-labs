@@ -44,7 +44,7 @@ describe('the math panel', () => {
       }
     }
     expect(fails).toEqual([])
-  }, 30000) // six line-side experiments at 24 settings each: a few seconds of steady states
+  }, 120000) // twenty experiments at 24 settings each: ~9 s here, and a CI runner is several times slower
 
   it('typesets every formula', () => {
     const fails = []
