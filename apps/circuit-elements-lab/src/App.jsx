@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { LabNav, NumField, ReportIssue, Schematic } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { equations, normalize, complex as cx } from '@ee-labs/network'
@@ -21,11 +21,18 @@ import PhasorCanvas from './components/PhasorCanvas.jsx'
 import FreqCanvas from './components/FreqCanvas.jsx'
 import HandOver from './components/HandOver.jsx'
 import PlotMarks from './components/PlotMarks.jsx'
+import PlotCaption from './components/PlotCaption.jsx'
 import LiveNote from './components/LiveNote.jsx'
 import Predict from './components/Predict.jsx'
 import { Marked, DefCard, TermChips } from './components/Prose.jsx'
 import { marksFor, timeMarks } from './marks.js'
+import { captionFor } from './captions.js'
+import { familyOf, familyOfLabel } from './palette.js'
 import pkg from '../package.json'
+
+// The cursor's play: the whole window in this many milliseconds, whatever the
+// window is — a 5τ transient and a four-cycle sine both take one breath.
+const PLAY_MS = 4000
 
 const FIRST = EXPERIMENTS[0].id
 // Groups A and B read a primer above their equations: A uses the laws before
@@ -63,6 +70,8 @@ export default function App() {
   const [openTerm, setOpenTerm] = useState(null)
   // The rule of the answer picked in "predict before you turn", once picked.
   const [predicted, setPredicted] = useState(null)
+  // Whether the cursor is sweeping the window on its own (the ▶ under the schematic).
+  const [playing, setPlaying] = useState(false)
 
   const exp = byId[id]
   const uses = useMemo(() => firstUses(exp), [exp])
@@ -84,6 +93,12 @@ export default function App() {
     setPickerOpen(false)
     setOpenTerm(null)
     setPredicted(null)
+    setPlaying(false)
+  }
+  // A hand on the cursor stops the play.
+  const scrub = (t) => {
+    setPlaying(false)
+    setCursor(t)
   }
   const setParam = (key, value) => {
     setParams((p) => ({ ...p, [key]: value }))
@@ -119,6 +134,32 @@ export default function App() {
   const readable = useMemo(() => forReading(math), [math])
   const drive = useMemo(() => (x.ac && exp.out ? atDrive(exp, x) : null), [exp, x])
   const elements = useMemo(() => drawables(x.net), [x])
+  // The play: from where the cursor is (or from 0, if it is at the end) to the
+  // end of the window at PLAY_MS per window, one frame at a time; stops itself
+  // at the end. Re-arms when the window changes under it.
+  const tEnd = x.tEnd
+  const cursorRef = useRef(x.cursor)
+  cursorRef.current = x.cursor
+  useEffect(() => {
+    if (!playing || !Number.isFinite(tEnd) || !(tEnd > 0)) return undefined
+    let raf = 0
+    let start = null
+    const c0 = cursorRef.current
+    const from = Number.isFinite(c0) && c0 < tEnd * 0.999 ? c0 : 0
+    const step = (now) => {
+      if (start === null) start = now
+      const t = from + ((now - start) / PLAY_MS) * tEnd
+      if (t >= tEnd) {
+        setCursor(tEnd)
+        setPlaying(false)
+        return
+      }
+      setCursor(t)
+      raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [playing, tEnd])
   const meters = useMemo(() => (x.sol ? snapNoise(x.sol) : null), [x])
   // The drawing with its live texts: the headline's callout takes the number
   // (and steps aside when there is none), and any text marked `live` reads a
@@ -151,6 +192,11 @@ export default function App() {
 
   const viewOptions = VIEW_ORDER.filter((v) => exp.views.includes(v)).map((v) => ({ id: v, ...viewLabel(v, exp) }))
   const currentView = exp.views.includes(view) ? view : exp.view
+  // The sentence under the plot, bound to the same analysis the plot drew.
+  const caption = useMemo(() => {
+    const on = currentView === 'scope' ? marks.scope : currentView === 'sweep' ? marks.sweep : marks.freq
+    return captionFor(exp, currentView, x, params, on, drive)
+  }, [exp, currentView, x, params, marks, drive])
 
   return (
     <div className="app">
@@ -391,7 +437,7 @@ export default function App() {
                 Object.entries(meters.v)
                   .filter(([n]) => n !== 'gnd')
                   .map(([n, v]) => (
-                    <span key={n}>
+                    <span key={n} data-q="voltage">
                       v_{n} <b>{num(v, 'V', 4)}</b>
                     </span>
                   ))
@@ -400,15 +446,28 @@ export default function App() {
               )}
             </div>
           </div>
-          <div className="view-body">
+          {/* data-show lets the stylesheet give the meters the hue of what they read (palette.js). */}
+          <div className="view-body" data-show={show}>
             {/* "none" promises just the circuit, so it drops the node voltages too. */}
             <Schematic className="big" elements={elements} layout={layout} meters={show === 'none' ? null : meters} show={show} />
             {x.refusal ? <Refusal err={x.refusal} /> : null}
             {dynamic && x.tr ? (
               <div className="cursor-row" data-role="cursor">
-                <label htmlFor="cursor-slider">
-                  the meters read the circuit at <b>t = {num(x.cursor, 's', 3)}</b>
-                </label>
+                <div className="cursor-head">
+                  <label htmlFor="cursor-slider">
+                    the meters read the circuit at <b>t = {num(x.cursor, 's', 3)}</b>
+                  </label>
+                  <button
+                    type="button"
+                    className={`play${playing ? ' on' : ''}`}
+                    data-role="play"
+                    aria-pressed={playing}
+                    title={playing ? 'Stop the cursor' : 'Sweep the cursor across the window'}
+                    onClick={() => setPlaying((v) => !v)}
+                  >
+                    {playing ? '■ stop' : '▶ play'}
+                  </button>
+                </div>
                 <input
                   id="cursor-slider"
                   className="num-slider"
@@ -417,7 +476,7 @@ export default function App() {
                   max={x.tEnd}
                   step={x.tEnd / 600}
                   value={x.cursor}
-                  onChange={(e) => setCursor(Number(e.target.value))}
+                  onChange={(e) => scrub(Number(e.target.value))}
                   aria-label="Cursor time"
                 />
                 <span className="cursor-ends" aria-hidden="true">
@@ -436,7 +495,7 @@ export default function App() {
             <div className="readout">
               {currentView === 'thevenin' && x.thevenin ? (
                 <>
-                  <span>
+                  <span data-q="voltage">
                     V_oc <b>{num(x.thevenin.voc, 'V', 4)}</b>
                   </span>
                   <span>
@@ -450,7 +509,7 @@ export default function App() {
                     {exp.sweepId} now <b>{num(params[exp.sweepId], 'Ω', 3)}</b>
                   </span>
                   {exp.sweepY === 'p' ? (
-                    <span>
+                    <span data-q="power">
                       peak <b>{num(x.sweep.pMax, 'W', 3)}</b>
                       <em className="prov"> near {num(x.sweep.rOpt, 'Ω', 3)}</em>
                     </span>
@@ -459,7 +518,7 @@ export default function App() {
               ) : null}
               {currentView === 'scope' && x.tr
                 ? [...exp.scope.left.traces, ...(exp.scope.right ? exp.scope.right.traces : [])].map((q) => (
-                    <span key={`${q.q}.${q.key}`}>
+                    <span key={`${q.q}.${q.key}`} data-q={familyOf(q)}>
                       {q.label} <b>{num(x.sol[q.q][q.key], q.q === 'i' ? 'A' : q.q === 'p' ? 'W' : 'V', 4)}</b>
                     </span>
                   ))
@@ -467,24 +526,24 @@ export default function App() {
               {currentView === 'energy' && x.tr ? <EnergyReadout energy={x.energy} t={x.cursor} /> : null}
               {currentView === 'phasor' && x.ac ? (
                 <>
-                  <span>
+                  <span data-q={familyOf(exp.out)}>
                     |{exp.out.label}| <b>{num(cx.cabs(x.ac[exp.out.q][exp.out.key]), exp.out.q === 'i' ? 'A' : 'V', 4)}</b>
                   </span>
-                  <span>
+                  <span data-q="angle">
                     ∠{exp.out.label} <b>{deg(cx.carg(x.ac[exp.out.q][exp.out.key]))}</b>
                     <em className="prov"> re v_s: {deg(cx.carg(x.ac[exp.out.q][exp.out.key]) - cx.carg(x.ac.volt.V1))}</em>
                   </span>
-                  <span>
+                  <span data-q="angle">
                     turned <b>{turnedLabel(x.omega, x.cursor)}</b>
                   </span>
                 </>
               ) : null}
               {currentView === 'impedance' && drive ? (
                 <>
-                  <span>
+                  <span data-q="voltage">
                     |Z| <b>{num(cx.cabs(drive.Z), 'Ω', 4)}</b>
                   </span>
-                  <span>
+                  <span data-q="angle">
                     ∠Z <b>{deg(cx.carg(drive.Z))}</b>
                     <em className="prov"> {drive.Z[1] < -1e-9 * cx.cabs(drive.Z) ? 'capacitive' : drive.Z[1] > 1e-9 * cx.cabs(drive.Z) ? 'inductive' : 'resonant'}</em>
                   </span>
@@ -492,11 +551,11 @@ export default function App() {
               ) : null}
               {currentView === 'bode' && drive ? (
                 <>
-                  <span>
+                  <span data-q="voltage">
                     |H| <b>{(20 * Math.log10(cx.cabs(drive.H))).toFixed(2)} dB</b>
                     <em className="prov"> ×{cx.cabs(drive.H).toPrecision(4)}</em>
                   </span>
-                  <span>
+                  <span data-q="angle">
                     ∠H <b>{deg(cx.carg(drive.H))}</b>
                   </span>
                 </>
@@ -505,10 +564,10 @@ export default function App() {
               {currentView === 'damping' && x.damping ? (
                 x.damping.at ? (
                   <>
-                    <span>
+                    <span data-q={familyOfLabel('overshoot')}>
                       overshoot <b>{(100 * x.damping.at.overshoot).toFixed(1)} %</b>
                     </span>
-                    <span>
+                    <span data-q={familyOfLabel('settles in')}>
                       settles in <b>{num(x.damping.at.settle, 's', 3)}</b>
                     </span>
                   </>
@@ -533,14 +592,16 @@ export default function App() {
                 ghostLabel={exp.ghostLabel}
                 scope={exp.scope}
                 cursor={x.cursor}
-                onCursor={setCursor}
+                onCursor={scrub}
                 marks={marks.scope}
                 guides={math?.guides || []}
               />
             ) : null}
+            {currentView === 'scope' && x.tr ? <PlotCaption parts={caption} /> : null}
             {currentView === 'scope' && x.tr ? <PlotMarks marks={marks.scope} /> : null}
             {currentView === 'state' && x.tr ? <StatePane x={x} /> : null}
-            {currentView === 'phasor' && x.ac ? <PhasorCanvas exp={exp} x={x} cursor={x.cursor} onCursor={setCursor} /> : null}
+            {currentView === 'phasor' && x.ac ? <PhasorCanvas exp={exp} x={x} cursor={x.cursor} onCursor={scrub} /> : null}
+            {currentView === 'phasor' && x.ac ? <PlotCaption parts={caption} /> : null}
             {(currentView === 'impedance' || currentView === 'bode') && x.freq && drive ? (
               <FreqCanvas
                 freq={x.freq}
@@ -551,10 +612,13 @@ export default function App() {
                 marks={marks.freq}
               />
             ) : null}
+            {(currentView === 'impedance' || currentView === 'bode') && x.freq && drive ? <PlotCaption parts={caption} /> : null}
             {(currentView === 'impedance' || currentView === 'bode') && x.freq && drive ? <PlotMarks marks={marks.freq} /> : null}
             {currentView === 'acpower' && x.ac ? <AcPowerPane x={x} /> : null}
-            {currentView === 'energy' && x.tr ? <EnergyCanvas energy={x.energy} tEnd={x.tEnd} cursor={x.cursor} onCursor={setCursor} /> : null}
+            {currentView === 'energy' && x.tr ? <EnergyCanvas energy={x.energy} tEnd={x.tEnd} cursor={x.cursor} onCursor={scrub} /> : null}
+            {currentView === 'energy' && x.tr ? <PlotCaption parts={caption} /> : null}
             {currentView === 'damping' && x.damping ? <DampingCanvas exp={exp} params={params} at={x.damping.at} /> : null}
+            {currentView === 'damping' && x.damping ? <PlotCaption parts={caption} /> : null}
             {currentView === 'equations' && eq ? (
               <EquationsPane
                 eq={eq}
@@ -577,6 +641,7 @@ export default function App() {
                 marks={marks.sweep}
               />
             ) : null}
+            {currentView === 'sweep' && x.sweep ? <PlotCaption parts={caption} /> : null}
             {currentView === 'sweep' && x.sweep ? <PlotMarks marks={marks.sweep} /> : null}
             {!x.sol && currentView !== 'equations' ? (
               <p className="hint">Nothing to show until the circuit has a solution.</p>
@@ -604,10 +669,10 @@ function AcPowerReadout({ x }) {
   const apparent = cx.cabs(S)
   return (
     <>
-      <span>
+      <span data-q="power">
         P <b>{num(S[0], 'W', 4)}</b>
       </span>
-      <span>
+      <span data-q="power">
         Q <b>{num(S[1], 'var', 4)}</b>
       </span>
       <span>
@@ -626,13 +691,13 @@ function EnergyReadout({ energy, t }) {
   const q = pts[k]
   return (
     <>
-      <span>
+      <span data-q="energy">
         stored <b>{num(q.stored, 'J', 3)}</b>
       </span>
-      <span>
+      <span data-q="energy">
         dissipated <b>{num(q.dissipated, 'J', 3)}</b>
       </span>
-      <span>
+      <span data-q="energy">
         supplied <b>{num(q.supplied, 'J', 3)}</b>
       </span>
     </>

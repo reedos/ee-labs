@@ -10,7 +10,7 @@ import { MARKS, PLOT_OF, marksFor, timeMarks } from './marks.js'
 import { analyse, atDrive, dampingSweep, experimentMath, settleAnalytic, turnedLabel } from './math.js'
 import { num } from './format.js'
 import PlotMarks from './components/PlotMarks.jsx'
-import { alignZero, rightSpan, spanOf } from './components/timePlot.js'
+import { alignZero, extentOf, freqSpan, rightSpan, spanOf, sweepSpan } from './components/timePlot.js'
 import { yTick } from './components/SweepCanvas.jsx'
 
 // The marks a plot draws are data (marks.js): each one a closed form of the
@@ -308,7 +308,7 @@ describe('the plot repairs', () => {
     expect(yTick('W')(top)).toBe(fmt(top, 'W', 2))
     const sweep = src('./components/SweepCanvas.jsx')
     expect(sweep).toContain("drawRightAxis(ctx, area, w, 0, 100, (v) => `${v}%`, 'Efficiency (%)'")
-    expect(sweep).toContain('plotArea(w, h, { rightAxis: efficiency })')
+    expect(sweep).toContain('frameArea(w, h, { rightAxis: efficiency })')
   })
 
   it('H1: the cursor opens inside the transient, under 5τ; H2 reads θ as cycles plus a wrapped angle', () => {
@@ -317,5 +317,112 @@ describe('the plot repairs', () => {
     expect(byId.h1.cursor * byId.h1.window(p)).toBeGreaterThan(p.R1 * p.C1)
     expect(src('./components/PhasorCanvas.jsx')).toContain('turnedLabel(omega, tc)')
     expect(turnedLabel(2 * Math.PI * 100, 0.0325)).toBe('3 cycles + 90.0°')
+  })
+})
+
+// The feature fills the frame (student review, Phase 7): on every chart the
+// bright traces stand at least 40 % of the frame tall, measured with the very
+// span functions the canvases use. The exceptions are listed, not hidden —
+// each is a lesson the small trace teaches (a filter attenuating its drive,
+// a flat line from an ideal source) and a new one would fail here.
+describe('the features fill the frame', () => {
+  const MIN_FILL = 0.4
+  const ys = (marks, side) => Float64Array.from(marks.filter((m) => m.axis === side).flatMap((m) => (m.kind === 'level' || m.kind === 'point' ? [m.y] : m.kind === 'segment' ? [m.y0, m.y1] : [])))
+  const fillOf = ([lo, hi], series) => {
+    const [a, b] = extentOf(series)
+    return (b - a) / (hi - lo)
+  }
+
+  it('scope: every side’s bright traces fill 40 % of their scale, except where a dim drive is the tall one', () => {
+    const exempt = []
+    for (const exp of EXPERIMENTS) {
+      if (!exp.views.includes('scope')) continue
+      const p = defaultsOf(exp.id)
+      const x = analyse(exp, p)
+      const math = experimentMath(exp, p, x)
+      const marks = [...marksFor(exp, p, x, 'scope'), ...timeMarks(math?.marks)]
+      const series = (traces, t) => traces.map((q) => t.series(q.q, q.key))
+      const left = series(exp.scope.left.traces, x.tr)
+      const gLeft = x.ghost ? series(exp.scope.left.traces, x.ghost) : []
+      const guides = (math?.guides || []).map((g) => Float64Array.from(x.tr.t, (tt) => g.f(tt)))
+      const leftSpan = spanOf([...left, ...gLeft, ...guides, ys(marks, 'left')])
+      const sides = [['left', exp.scope.left.traces, left, leftSpan]]
+      if (exp.scope.right) {
+        const right = series(exp.scope.right.traces, x.tr)
+        const gRight = x.ghost ? series(exp.scope.right.traces, x.ghost) : []
+        sides.push(['right', exp.scope.right.traces, right, rightSpan(leftSpan, spanOf([...right, ...gRight, ys(marks, 'right')])).span])
+      }
+      for (const [side, traces, data, span] of sides) {
+        const bright = data.filter((_, i) => !traces[i].dim)
+        const dim = data.filter((_, i) => traces[i].dim)
+        if (!bright.length) {
+          exempt.push(`${exp.id} ${side}: no bright trace`)
+          continue
+        }
+        const fill = fillOf(span, bright)
+        if (fill >= MIN_FILL) continue
+        const [bLo, bHi] = extentOf(bright)
+        const [dLo, dHi] = dim.length ? extentOf(dim) : [0, 0]
+        // A response smaller than its drive is the lesson (F7's current, H6's filtered output), not a hidden trace.
+        if (dim.length && dHi - dLo >= bHi - bLo) {
+          exempt.push(`${exp.id} ${side}: the drive is the tall one`)
+          continue
+        }
+        expect(fill, `${exp.id} ${side}`).toBeGreaterThanOrEqual(MIN_FILL)
+      }
+    }
+    expect(exempt.sort().join('\n')).toBe(['f7 left: the drive is the tall one', 'h5 left: no bright trace', 'h6 left: the drive is the tall one'].join('\n'))
+  })
+
+  it('energy: the stack stands at least 40 % of its frame from zero, on every experiment that keeps the books', () => {
+    let n = 0
+    for (const exp of EXPERIMENTS) {
+      if (!exp.views.includes('energy')) continue
+      const x = analyse(exp, defaultsOf(exp.id))
+      const pts = x.energy.points
+      const top = pts.map((q) => q.storedEach.reduce((a, b) => a + b, 0) + q.dissipated)
+      const sup = pts.map((q) => q.supplied + x.energy.stored0)
+      const [lo, hi] = spanOf([top, sup])
+      const [a, b] = extentOf([top, sup, [0]])
+      expect((b - a) / (hi - lo), exp.id).toBeGreaterThanOrEqual(MIN_FILL)
+      n++
+    }
+    expect(n).toBeGreaterThanOrEqual(4)
+  })
+
+  it('impedance and bode: the magnitude curve fills 40 % of the rounded frame', () => {
+    let n = 0
+    for (const exp of EXPERIMENTS) {
+      for (const mode of ['impedance', 'bode']) {
+        if (!exp.views.includes(mode)) continue
+        const x = analyse(exp, defaultsOf(exp.id))
+        const series = mode === 'bode' ? x.freq.H : x.freq.Z
+        const mag = series.map((z) => (mode === 'bode' ? 20 * Math.log10(cx.cabs(z)) : Math.log10(cx.cabs(z))))
+        const { lo, hi } = freqSpan(mag, mode)
+        expect(fillOf([lo, hi], [mag]), `${exp.id} ${mode}`).toBeGreaterThanOrEqual(MIN_FILL)
+        n++
+      }
+    }
+    expect(n).toBeGreaterThanOrEqual(3)
+  })
+
+  it('sweep: the load curve fills 40 % of its frame, except the flat line an ideal source draws', () => {
+    const exempt = []
+    for (const exp of EXPERIMENTS) {
+      if (!exp.views.includes('sweep')) continue
+      const p = defaultsOf(exp.id)
+      const x = analyse(exp, p)
+      const y = exp.sweepY || 'p'
+      const data = x.sweep.points.map((q) => q[y])
+      const marks = marksFor(exp, p, x, 'sweep')
+      const span = sweepSpan(data, marks.filter((m) => m.axis !== 'right').flatMap((m) => (m.kind === 'level' || m.kind === 'point' ? [m.y] : m.kind === 'segment' ? [m.y0, m.y1] : [])))
+      const [a, b] = extentOf([data])
+      if (b - a <= 1e-9 * Math.max(Math.abs(a), Math.abs(b))) {
+        exempt.push(`${exp.id}: flat`)
+        continue
+      }
+      expect(fillOf(span, [data]), exp.id).toBeGreaterThanOrEqual(MIN_FILL)
+    }
+    expect(exempt).toEqual(['e8: flat'])
   })
 })

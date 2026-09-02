@@ -1,8 +1,10 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
 import { complex as cx } from '@ee-labs/network'
-import { MONO, SANS, drawCursor, drawLegend, fmtT } from './timePlot.js'
+import { MONO, SANS, drawCursor, drawEndLabels, fmtT, labelsFit, overlapping, textBox, trackText } from './timePlot.js'
+import { DASH_OF, HUE, shade } from '../palette.js'
 import { turnedLabel } from '../math.js'
+import { num } from '../format.js'
 
 /**
  * The phasor diagram beside the waveforms it draws.
@@ -17,20 +19,25 @@ import { turnedLabel } from '../math.js'
  * each arrow's tip straight across to its dot on the waveform: the height of
  * the tip IS the instantaneous value, which is the whole idea of a phasor.
  *
- * Every arrow is a phasor from the complex solve the meters use; nothing here
- * is fitted to the time trace.
+ * Every voltage is a shade of the voltage hue (blue), the second and third
+ * dashed their own way so the diagram's arrows and the frame's traces pair
+ * off without a legend; the current is the current hue (orange), dashed; the
+ * source is the bright text colour. Each waveform is named where it leaves
+ * the frame. Every arrow is a phasor from the complex solve the meters use;
+ * nothing here is fitted to the time trace.
  */
 export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
   const { ac, omega, tEnd } = x
   const cfg = exp.phasor
   const ref = useCanvas(
     (ctx, w, h) => {
+      trackText(ctx)
       const L = layoutOf(w, h)
       const { k, dia, frame } = L
       const tc = Math.min(tEnd, Math.max(0, cursor))
       const theta = omega * tc
 
-      const volts = cfg.volts.map((id, i) => ({ id, label: labelFor(x.net, id, 'v'), X: ac.volt[id], color: PHASOR_COLORS[i % PHASOR_COLORS.length] }))
+      const volts = cfg.volts.map((id, i) => ({ id, label: labelFor(x.net, id, 'v'), X: ac.volt[id], color: shade('voltage', i), dash: DASH_OF[Math.min(i, DASH_OF.length - 1)] }))
       const total = { id: cfg.total, label: 'v_s', X: ac.volt[cfg.total], color: COLORS.textBright }
       const I = ac.i[cfg.current]
       // Partial sums of the chain, for the diagram's extent and the dashed chain.
@@ -75,19 +82,34 @@ export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
         ctx.globalAlpha = 1
       }
       wave(total.X, 1, total.color, { width: 1.2, alpha: 0.45 })
-      wave(I, iScale, CURRENT_COLOR, { width: 1.5, alpha: 0.8, dash: [5, 4] })
-      volts.forEach((v) => wave(v.X, 1, v.color))
+      wave(I, iScale, HUE.current, { width: 1.5, alpha: 0.8, dash: [5, 4] })
+      volts.forEach((v) => wave(v.X, 1, v.color, { dash: v.dash }))
       const cxp = sx(tc)
       drawCursor(ctx, frame, cxp)
-      const dot = (X, scale, color) => {
+      const pinned = []
+      const dot = (X, scale, color, value = false) => {
+        const y = sy(scale * cx.instant(X, omega, tc))
         ctx.fillStyle = color
         ctx.beginPath()
-        ctx.arc(cxp, sy(scale * cx.instant(X, omega, tc)), 3.5 * k, 0, Math.PI * 2)
+        ctx.arc(cxp, y, 3.5 * k, 0, Math.PI * 2)
         ctx.fill()
+        if (value && labelsFit(frame)) pinned.push({ label: num(cx.instant(X, omega, tc), 'V', 3), color, x: cxp, y })
       }
       dot(total.X, 1, total.color)
-      dot(I, iScale, CURRENT_COLOR)
-      volts.forEach((v) => dot(v.X, 1, v.color))
+      dot(I, iScale, HUE.current)
+      volts.forEach((v) => dot(v.X, 1, v.color, true))
+      // Every waveform named where it leaves the frame.
+      const end = (X, scale) => sy(scale * cx.instant(X, omega, tEnd))
+      drawEndLabels(
+        ctx,
+        frame,
+        [
+          ...volts.map((v) => ({ label: v.label, color: v.color, y: end(v.X, 1) })),
+          { label: total.label, color: total.color, y: end(total.X, 1), dim: true },
+          { label: 'i (own scale)', color: HUE.current, y: end(I, iScale), dim: true },
+        ],
+        pinned,
+      )
       ctx.restore()
 
       // ---- the diagram
@@ -116,6 +138,14 @@ export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
       ctx.arc(c.x, c.y, 14 * k, 0, -wrap2pi(theta), true)
       ctx.stroke()
       ctx.globalAlpha = 1
+
+      // θ, top-left of the diagram — drawn first so the tip labels keep clear of it.
+      ctx.font = `${Math.round(11 * k)}px ${MONO}`
+      ctx.fillStyle = COLORS.text
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'top'
+      ctx.fillText(`θ = ωt = ${turnedLabel(omega, tc)}`, dia.x + 4 * k, dia.y + 2 * k)
+      ctx.fillText(`t = ${fmt(tc, 's', 3)}`, dia.x + 4 * k, dia.y + 16 * k)
 
       // Guides across to the waveform, first, so the arrows sit on them.
       if (!L.stacked) {
@@ -150,32 +180,18 @@ export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
       ctx.arc(from[0], from[1], 4.5 * k, 0, Math.PI * 2)
       ctx.stroke()
       tipLabel(ctx, k, c, tipS, total.label, total.color)
-      // Each voltage from the origin, and the current on its own scale.
+      // Each voltage from the origin (dashed the way its waveform is), and the current on its own scale.
       for (const v of volts) {
         const tip = px(rot(v.X))
-        arrow(ctx, k, [c.x, c.y], tip, v.color, { width: 2.2 })
+        arrow(ctx, k, [c.x, c.y], tip, v.color, { width: 2.2, dash: v.dash })
         tipLabel(ctx, k, c, tip, v.label, v.color)
       }
       if (iScale) {
         const tipI = px(rot(cx.cscale(I, iScale)))
-        arrow(ctx, k, [c.x, c.y], tipI, CURRENT_COLOR, { dash: [5, 4], width: 1.6 })
-        tipLabel(ctx, k, c, tipI, 'i', CURRENT_COLOR)
+        arrow(ctx, k, [c.x, c.y], tipI, HUE.current, { dash: [5, 4], width: 1.6 })
+        tipLabel(ctx, k, c, tipI, 'i', HUE.current)
       }
-
-      // θ, top-left of the diagram.
-      ctx.font = `${Math.round(11 * k)}px ${MONO}`
-      ctx.fillStyle = COLORS.text
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'top'
-      ctx.fillText(`θ = ωt = ${turnedLabel(omega, tc)}`, dia.x + 4 * k, dia.y + 2 * k)
-      ctx.fillText(`t = ${fmt(tc, 's', 3)}`, dia.x + 4 * k, dia.y + 16 * k)
       ctx.restore()
-
-      drawLegend(ctx, L.stacked ? { ...frame, y: dia.y, k } : frame, [
-        ...volts.map((v) => ({ label: v.label, color: v.color })),
-        { label: total.label, color: total.color, dim: true },
-        { label: 'i (own scale)', color: CURRENT_COLOR, dim: true },
-      ])
     },
     [exp, x, cursor],
   )
@@ -190,12 +206,6 @@ export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
   )
 }
 
-// Voltages take the scope's left-axis order after the source: the resistor
-// blue, the capacitor purple, an inductor green. The current is the scope's
-// right-axis orange, so it is the same colour in both views.
-const PHASOR_COLORS = [COLORS.response, COLORS.phase, COLORS.trace]
-const CURRENT_COLOR = COLORS.spectrum
-
 /** `v_R` for R1 when the type is unique in the circuit, `v_R1` otherwise. */
 function labelFor(net, id, q) {
   const e = net.elements.find((el) => el.id === id)
@@ -209,13 +219,14 @@ const wrap2pi = (a) => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
 /**
  * Where the diagram and the frame go. Side by side when there is room, the
  * diagram a square as tall as the frame so the two share a vertical scale;
- * stacked on a phone, the diagram above.
+ * stacked on a phone, the diagram above. The frame's left gutter is
+ * frameArea's (84·k), so a seven-character tick label clears the axis title.
  */
 export function layoutOf(w, h) {
   const k = plotArea(w, h).k
-  const top = (14 + 16) * k
+  const top = 14 * k
   const bottom = 48 * k
-  const left = 76 * k
+  const left = 84 * k
   const right = 18 * k
   if (w >= 560) {
     const side = Math.max(40, h - top - bottom)
@@ -258,17 +269,66 @@ function arrow(ctx, k, [x0, y0], [x1, y1], color, { width = 2, alpha = 1, dash =
   ctx.restore()
 }
 
-/** A label just past an arrow's tip, along its direction. */
+/**
+ * A label just past an arrow's tip, along its direction. Two arrows pointing
+ * nearly the same way would put their labels on top of each other, so the
+ * label walks further out along the arrow, then sideways, until its box is
+ * clear of every text already on the canvas (the tracked boxes).
+ */
 function tipLabel(ctx, k, c, [x1, y1], text, color) {
   const dx = x1 - c.x
   const dy = y1 - c.y
   const len = Math.hypot(dx, dy) || 1
+  const ux = dx / len
+  const uy = dy / len
   ctx.save()
   ctx.font = `${Math.round(11 * k)}px ${SANS}`
   ctx.fillStyle = color
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(text, x1 + (dx / len) * 12 * k, y1 + (dy / len) * 12 * k)
+  const taken = (ctx.canvas && ctx.canvas.__texts) || []
+  // Along the arrow, then to either side, then back beside the tip: the first
+  // clear spot wins; failing all of them, the spot that covers the least.
+  const tries = [
+    [12, 0],
+    [24, 0],
+    [12, 12],
+    [12, -12],
+    [36, 0],
+    [24, 14],
+    [24, -14],
+    [0, 14],
+    [0, -14],
+    [12, 26],
+    [12, -26],
+    [-12, 14],
+    [-12, -14],
+    [48, 0],
+  ]
+  // The canvas edge counts as taken too: a label past it is drawn clipped.
+  const cv = ctx.canvas || {}
+  const dpr = cv.__dpr || 1
+  const W = cv.clientWidth || (cv.width || Infinity) / dpr
+  const H = cv.clientHeight || (cv.height || Infinity) / dpr
+  const outside = (b) => (b.x1 - b.x0) * (b.y1 - b.y0) - Math.max(0, Math.min(b.x1, W) - Math.max(b.x0, 0)) * Math.max(0, Math.min(b.y1, H) - Math.max(b.y0, 0))
+  const covered = (box) =>
+    outside(box) +
+    overlapping([box, ...taken])
+      .filter(([a, b]) => a === box || b === box)
+      .reduce((sum, [a, b]) => sum + Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)), 0)
+  let at = [x1 + ux * 12 * k, y1 + uy * 12 * k]
+  let least = Infinity
+  for (const [along, side] of tries) {
+    const p = [x1 + ux * along * k - uy * side * k, y1 + uy * along * k + ux * side * k]
+    const box = textBox(ctx, text, p[0], p[1])
+    const area = box ? covered(box) : 0
+    if (area < least) {
+      least = area
+      at = p
+    }
+    if (area === 0) break
+  }
+  ctx.fillText(text, at[0], at[1])
   ctx.restore()
 }
 

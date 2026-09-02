@@ -121,10 +121,66 @@ const noiseOnPage = () =>
     return found
   })
 
+// No text on a chart covers other text. Every canvas records the box of every
+// fillText it made (timePlot.js trackText) in CSS pixels; read them back and
+// name any two that overlap once each is shrunk by a pixel. A chart with no
+// text at all is a chart that did not draw.
+const textOverlaps = () =>
+  page.evaluate(() => {
+    const out = []
+    for (const c of document.querySelectorAll('canvas.plot')) {
+      const boxes = c.__texts
+      if (!boxes || !boxes.length) {
+        out.push(`${c.className}: no text recorded`)
+        continue
+      }
+      const shrink = 1
+      // Boxes are in CSS pixels; a label written past the edge is drawn clipped, which no overlap test sees.
+      const cw = c.clientWidth || c.width
+      const ch = c.clientHeight || c.height
+      for (const p of boxes) if (p.x0 < -shrink || p.y0 < -shrink || p.x1 > cw + shrink || p.y1 > ch + shrink) out.push(`${c.className}: “${p.text}” runs off the canvas`)
+      for (let a = 0; a < boxes.length; a++)
+        for (let b = a + 1; b < boxes.length; b++) {
+          const p = boxes[a]
+          const q = boxes[b]
+          if (p.x0 + shrink < q.x1 - shrink && q.x0 + shrink < p.x1 - shrink && p.y0 + shrink < q.y1 - shrink && q.y0 + shrink < p.y1 - shrink)
+            out.push(`${c.className}: “${p.text}” over “${q.text}”`)
+        }
+    }
+    return out
+  })
+
+/** The sentence under the plot, if the view has a plot: its text, and whether it carries numbers. */
+const captionOn = () =>
+  page.evaluate(() => {
+    const canvas = document.querySelector('.view canvas.plot')
+    const cap = document.querySelector('[data-role=caption]')
+    return { plot: canvas !== null, caption: cap ? cap.textContent.trim() : null, bold: cap ? cap.querySelectorAll('b').length : 0 }
+  })
+
+/** Walk the plot views of the current experiment: every chart clear of overlapping text, every plot captioned. */
+async function checkPlots(label) {
+  const views = await viewButtons()
+  let plots = 0
+  for (const v of views) {
+    await page.locator('.view-switch').getByRole('button', { name: v, exact: true }).click()
+    await page.waitForTimeout(120)
+    const c = await captionOn()
+    if (!c.plot) continue
+    plots++
+    for (const o of await textOverlaps()) fail(`${label} / ${v}: ${o}`)
+    if (c.caption === null) fail(`${label} / ${v}: a plot with no caption under it`)
+    else if (!/\d/.test(c.caption) || c.bold === 0) fail(`${label} / ${v}: the caption carries no number: “${c.caption}”`)
+  }
+  return plots
+}
+
 // ------------------------------------ 1. every experiment, every panel, every view
 
 console.log(`\n1. Loading all ${names.length} experiments, opening every math panel, every view\n`)
 const marked = new Map()
+const captions = new Map()
+let plotted = 0
 for (const name of names) {
   await pick(name)
   if (await scrolls()) fail(`${name}: page scrolls`)
@@ -183,6 +239,15 @@ for (const name of names) {
     }
     if (seen?.refused && seen.callout !== null) fail(`${name} / ${v}: refused, yet a callout is drawn: “${seen.callout}”`)
     for (const t of await noiseOnPage()) fail(`${name} / ${v}: arithmetic noise on screen: “${t}”`)
+    // A plot: its text clear of itself, a sentence under it with the numbers in bold.
+    const cap = await captionOn()
+    if (cap.plot) {
+      plotted++
+      for (const o of await textOverlaps()) fail(`1920px / ${name} / ${v}: ${o}`)
+      if (cap.caption === null) fail(`${name} / ${v}: a plot with no caption under it`)
+      else if (!/\d/.test(cap.caption) || cap.bold === 0) fail(`${name} / ${v}: the caption carries no number: “${cap.caption}”`)
+      else captions.set(`${name} / ${v}`, cap.caption)
+    }
   }
   console.log(
     `   ${name.padEnd(30)} ${String(checks.filter((r) => r.mark === '✓').length).padStart(2)} ✓  ${bad.length} ✗  ` +
@@ -195,6 +260,9 @@ for (const name of names) {
 if (marked.size < 8) fail(`only ${marked.size} experiments list plot marks; marks.js declares 8`)
 const tauName = names.find((n) => /the time constant$/i.test(n))
 if (!(marked.get(tauName) || []).some((t) => /63\.2 %/.test(t))) fail(`${tauName}: the 63.2 % mark is not listed under the scope`)
+// Every plot view had a caption with numbers (the loop failed the ones that did not).
+if (plotted < 40) fail(`only ${plotted} plot views seen; the lab has more than 40`)
+console.log(`\n   ${plotted} plot views checked for overlapping text and a captioned sentence (${captions.size} captions read; failures listed at the end)`)
 
 // ------------------------------------------- 2. the meters follow the knobs
 
@@ -302,11 +370,27 @@ console.log('\n3. Meter modes: currents, voltages, powers, none\n')
 {
   await pick(kclName)
   const seen = {}
+  const hues = {}
   for (const mode of ['currents', 'voltages', 'powers', 'none']) {
     await page.getByRole('button', { name: mode, exact: true }).click()
     await settle()
     seen[mode] = await meters()
+    // The meters take the hue of the quantity they show — the same hue the plots draw it in.
+    hues[mode] = await page.evaluate((mode) => {
+      const token = { currents: '--q-current', voltages: '--q-voltage', powers: '--q-power' }[mode]
+      const el = document.querySelector('.schematic text.sch-meter')
+      if (!el || !token) return null
+      const hex = getComputedStyle(document.documentElement).getPropertyValue(token).trim()
+      const m = hex.match(/^#([0-9a-f]{6})$/i)
+      const want = m ? `rgb(${parseInt(m[1].slice(0, 2), 16)}, ${parseInt(m[1].slice(2, 4), 16)}, ${parseInt(m[1].slice(4, 6), 16)})` : hex
+      return { fill: getComputedStyle(el).fill, want }
+    }, mode)
   }
+  for (const mode of ['currents', 'voltages', 'powers']) {
+    if (!hues[mode]) fail(`${mode}: no meter to read the hue of`)
+    else if (hues[mode].fill !== hues[mode].want) fail(`${mode}: the meters are painted ${hues[mode].fill}, the plots use ${hues[mode].want}`)
+  }
+  if (hues.currents && hues.voltages && hues.currents.fill === hues.voltages.fill) fail('currents and voltages are painted the same hue')
   if (seen.none.length !== 0) fail(`"none" still shows ${seen.none.length} meters`)
   if (!seen.currents.some((t) => /A$/.test(t))) fail(`currents mode should print amperes: ${seen.currents.join(' | ')}`)
   if (!seen.voltages.some((t) => /V$/.test(t))) fail(`voltages mode should print volts: ${seen.voltages.join(' | ')}`)
@@ -421,6 +505,7 @@ const phoneFirstScreen = () =>
       .map((el) => `${el.tagName.toLowerCase()}.${(el.className || '').toString().split(' ')[0]} ${el.clientHeight}px showing ${el.scrollHeight}px`)
     return { note: top('[data-role=note]'), views: top('.view-switch'), innerScrollers }
   })
+let phonePlots = 0
 for (const name of names) {
   await pick(name)
   await page.waitForTimeout(80)
@@ -432,14 +517,17 @@ for (const name of names) {
   if (!(first.note < 844)) fail(`390px / ${name}: the note starts at ${Math.round(first.note)} px, below the first screen`)
   if (!(first.views < 844)) fail(`390px / ${name}: the Analysis view switch starts at ${Math.round(first.views)} px, below the first screen`)
   if (first.innerScrollers.length) fail(`390px / ${name}: scrolls inside the page: ${first.innerScrollers.join(', ')}`)
+  phonePlots += await checkPlots(`390px / ${name}`)
 }
 console.log(`   no sideways scroll or clipped pane at 390 px across ${names.length} experiments`)
 console.log('   the note and the Analysis view switch are in the first screen; nothing scrolls inside the page')
+console.log(`   ${phonePlots} plot views at 390 px checked for overlapping text and a caption`)
 
 // Desktop: the note begins near the top of the sidebar and the first knob is on
 // screen when the experiment opens, for every experiment.
 await page.setViewportSize({ width: 1280, height: 900 })
 await page.waitForTimeout(400)
+let deskPlots = 0
 for (const name of names) {
   await pick(name)
   await page.waitForTimeout(80)
@@ -454,8 +542,30 @@ for (const name of names) {
   // experiment's name wraps. The eight open groups put it near 700.
   if (!(m.noteTop < 230)) fail(`1280px / ${name}: the note starts at ${Math.round(m.noteTop)} px (want < 230)`)
   if (!(m.knobBottom <= 900 && m.knobTop >= 0)) fail(`1280px / ${name}: the first knob is off screen on load (${Math.round(m.knobTop)}–${Math.round(m.knobBottom)} px)`)
+  deskPlots += await checkPlots(`1280px / ${name}`)
 }
 console.log(`   1280×900: the note starts above 230 px and the first knob is on screen for all ${names.length} experiments`)
+console.log(`   ${deskPlots} plot views at 1280 px checked for overlapping text and a caption`)
+
+// The play button sweeps the cursor across the window and stops itself at
+// the end; the cursor readout follows it.
+await pick(tauName)
+const range = page.locator('.cursor-row input[type=range]')
+const tMax = parseFloat(await range.getAttribute('max'))
+const t0 = parseFloat(await range.inputValue())
+const playBtn = page.locator('[data-role=play]')
+await playBtn.click()
+await page.waitForTimeout(1500)
+const midway = parseFloat(await range.inputValue())
+if ((await playBtn.getAttribute('aria-pressed')) !== 'true') fail('play: the button does not read as pressed while playing')
+if (!(midway > t0 + tMax * 0.2 && midway < tMax)) fail(`play: after 1.5 s the cursor is at ${midway} (from ${t0}) of ${tMax}, not sweeping`)
+await page.waitForTimeout(3500)
+const atEnd = parseFloat(await range.inputValue())
+if (Math.abs(atEnd - tMax) > 1e-9 * tMax) fail(`play: the cursor stopped at ${atEnd}, not the end of the window ${tMax}`)
+if ((await playBtn.getAttribute('aria-pressed')) !== 'false') fail('play: the button did not release at the end of the window')
+const tText = await page.locator('[data-role=cursor-time] b').textContent()
+if (!/\d/.test(tText)) fail(`play: the cursor readout reads “${tText}”`)
+console.log(`   play: the cursor swept to the end of the window (t = ${tText}) and the button released`)
 await page.setViewportSize({ width: 3840, height: 2160 })
 await page.waitForTimeout(400)
 for (const name of names) {

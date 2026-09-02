@@ -972,6 +972,44 @@ state, and averaging.
    here" fold is gone, picking "12 mA" on A1's question reads as wrong, names
    the habit, sets R to 100 Ω and the meters read 120 mA, and the A2 chip
    opens A2.
+   **Step 7 — one colour per quantity, every chart captioned — shipped
+   2026-09-02:** the plots read without a legend. `palette.js` fixes one hue per
+   physical quantity — voltage blue, current orange, power green, energy gold,
+   angle purple (`HUE`, the first four the shared `COLORS` faces) — with three
+   `SHADES` each, so a second voltage is a lighter blue with a dash and never a
+   new colour; `familyOf(q)`/`familyOfLabel` classify every trace and
+   `styleTraces` hands each its shade, dash and weight (a declared dim trace is
+   thin, translucent and dotted). The schematic's meters, the readout strip
+   (`.readout [data-q] b`) and the caption's bold numbers take the same hue
+   through `--q-*` tokens, so a student who has learned "orange is current" is
+   never told otherwise. Legends are gone: every canvas names its traces where
+   they leave the frame (`drawEndLabels`, plates behind the words, the value
+   swung to the left of the dot when the right is taken) and `frameArea` widens
+   the gutters for the names. `captions.js` writes one sentence under every plot
+   view — `captionFor(exp, view, x, params, marks, drive)` binds the words to the
+   cursor's time, the bright trace's value, the energy ledger, |Z| at f, the
+   sweep's knob and value, R_crit and the settle time — so what the picture
+   shows is said in words with the live numbers in it (`PlotCaption`, ≤ 50
+   words, every number re-formatted from the engine's value). Text never sits
+   on text: `trackText(ctx)` wraps `fillText` to record every box the canvas
+   writes, `placeLabels` moves a mark's name to the nearest clear row among the
+   words already in its column (or the shorter way round), `clearRow` steps a
+   single label over what it would cover, a pinned value is skipped when a
+   labelled ring already names the point, and the phasor tip label tries
+   fourteen positions and takes the least covered. Tests (palette 7, plotText
+   14, captions 27, marks +4): the hues equal the shared faces and the CSS
+   tokens; no two bright traces of one family share colour and dash; every
+   scope trace is in its family's shades; the label placer clears, pushes apart,
+   clamps, steps the shorter way round an obstacle and out from between two;
+   every caption at the defaults and two seeded random settings names the
+   values it claims and re-formats each from `x`; the bright features fill ≥ 40
+   % of their frame on every view with three named exemptions (the drive is the
+   tall one on F7 and H6, no bright trace on H5) and E8's flat sweep. verify.mjs
+   reads back every plot canvas's recorded text boxes at 1920, 1280 and 390 px
+   across all 43 plot views — no two overlap at a 1-px shrink and none runs off
+   the canvas — requires a captioned sentence with a number under each, checks
+   the meter hue matches the mode's token, and presses play on F3 and watches the
+   cursor sweep to 5 ms and the button release.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event

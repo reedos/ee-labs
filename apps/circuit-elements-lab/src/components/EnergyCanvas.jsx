@@ -1,6 +1,8 @@
 import React from 'react'
-import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
-import { LEFT_COLORS, drawCursor, drawLegend, fmtT, scrubHandlers, spanOf } from './timePlot.js'
+import { useCanvas, COLORS, drawFrame, fmt } from '@ee-labs/ui'
+import { drawCursor, drawEndLabels, fmtT, frameArea, labelsFit, scrubHandlers, spanOf, trackText } from './timePlot.js'
+import { shade } from '../palette.js'
+import { num } from '../format.js'
 
 /**
  * Where the energy went. The stored energy of each state (½Cv², ½Li²) is
@@ -9,13 +11,15 @@ import { LEFT_COLORS, drawCursor, drawLegend, fmtT, scrubHandlers, spanOf } from
  * supplied. The bookkeeping identity — supplied = stored − stored₀ +
  * dissipated — is what the test measures; here you can see it as the line
  * riding on the top of the stack. When the stack rises above the line, the
- * circuit is giving energy back to its sources.
+ * circuit is giving energy back to its sources. Every band is a shade of the
+ * energy hue (gold), named where it leaves the frame; the cursor reads the
+ * supplied total.
  */
 export default function EnergyCanvas({ energy, tEnd, cursor, onCursor }) {
   const ref = useCanvas(
     (ctx, w, h) => {
-      const k0 = plotArea(w, h).k
-      const area = plotArea(w, h, { topInset: 16 * k0 })
+      trackText(ctx)
+      const area = frameArea(w, h)
       const k = area.k
       const pts = energy.points
       const n = pts.length
@@ -25,11 +29,11 @@ export default function EnergyCanvas({ energy, tEnd, cursor, onCursor }) {
       let acc = new Float64Array(n)
       for (let s = 0; s < nStates; s++) {
         const top = Float64Array.from(pts, (q, i) => acc[i] + q.storedEach[s])
-        stack.push({ lo: acc, hi: top, label: `stored in ${energy.states[s].id}`, color: LEFT_COLORS[s % LEFT_COLORS.length] })
+        stack.push({ lo: acc, hi: top, label: `stored in ${energy.states[s].id}`, color: shade('energy', s) })
         acc = top
       }
       const dissTop = Float64Array.from(pts, (q, i) => acc[i] + q.dissipated)
-      stack.push({ lo: acc, hi: dissTop, label: 'dissipated', color: COLORS.marker })
+      stack.push({ lo: acc, hi: dissTop, label: 'dissipated', color: shade('energy', 2) })
       const supplied = Float64Array.from(pts, (q) => q.supplied + energy.stored0)
       const [lo, hi] = spanOf([dissTop, supplied])
 
@@ -70,13 +74,32 @@ export default function EnergyCanvas({ energy, tEnd, cursor, onCursor }) {
       ctx.stroke()
       ctx.setLineDash([])
 
-      if (Number.isFinite(cursor)) drawCursor(ctx, area, sx(Math.min(tEnd, Math.max(0, cursor))))
-      ctx.restore()
+      const pinned = []
+      if (Number.isFinite(cursor)) {
+        const tc = Math.min(tEnd, Math.max(0, cursor))
+        const cx = sx(tc)
+        drawCursor(ctx, area, cx)
+        // The supplied total at the cursor, as a dot with its value.
+        let i = 0
+        while (i < n - 1 && t[i + 1] <= tc) i++
+        const f = i < n - 1 && t[i + 1] > t[i] ? (tc - t[i]) / (t[i + 1] - t[i]) : 0
+        const v = i < n - 1 ? supplied[i] + f * (supplied[i + 1] - supplied[i]) : supplied[n - 1]
+        ctx.fillStyle = COLORS.textBright
+        ctx.beginPath()
+        ctx.arc(cx, sy(v), 3.5 * k, 0, Math.PI * 2)
+        ctx.fill()
+        if (labelsFit(area)) pinned.push({ label: num(v, 'J', 3), color: COLORS.textBright, x: cx, y: sy(v) })
+      }
 
-      drawLegend(ctx, area, [
-        ...stack.map((b) => ({ label: b.label, color: b.color })),
-        { label: energy.stored0 ? 'supplied + stored₀' : 'supplied', color: COLORS.textBright },
-      ])
+      // Each band named at its right-hand end, mid-band; the supplied line at its end.
+      const mid = (b) => sy((b.lo[n - 1] + b.hi[n - 1]) / 2)
+      drawEndLabels(
+        ctx,
+        area,
+        [...stack.map((b) => ({ label: b.label, color: b.color, y: mid(b) })), { label: energy.stored0 ? 'supplied + stored₀' : 'supplied', color: COLORS.textBright, y: sy(supplied[n - 1]) }],
+        pinned,
+      )
+      ctx.restore()
     },
     [energy, tEnd, cursor],
   )
@@ -86,7 +109,7 @@ export default function EnergyCanvas({ energy, tEnd, cursor, onCursor }) {
       className="plot energy"
       role="img"
       aria-label="Energy against time: stored in each element, dissipated, and supplied by the sources; drag to move the cursor"
-      {...scrubHandlers(onCursor, tEnd, { topInset: 16 })}
+      {...scrubHandlers(onCursor, tEnd)}
     />
   )
 }

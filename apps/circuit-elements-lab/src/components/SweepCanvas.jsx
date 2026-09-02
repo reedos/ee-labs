@@ -1,6 +1,7 @@
 import React from 'react'
-import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
-import { MONO, drawDataMarks, drawRightAxis } from './timePlot.js'
+import { useCanvas, COLORS, drawFrame, fmt } from '@ee-labs/ui'
+import { MONO, drawDataMarks, drawEndLabels, drawRightAxis, frameArea, sweepSpan, trackText } from './timePlot.js'
+import { HUE } from '../palette.js'
 
 /**
  * A load sweep: one quantity at the port against the load resistance, on a
@@ -8,13 +9,14 @@ import { MONO, drawDataMarks, drawRightAxis } from './timePlot.js'
  * of the circuit with the knob at that value (math.js sweepKnob), so the curve
  * is what the circuit does, not what a formula says about it.
  *
- * `y` chooses the quantity: 'p' the load power, 'v' the load voltage. `at`
- * is the knob's current value, marked so the reader can see where on the
- * curve the schematic is sitting; `rth`, when given, marks the Thévenin
- * resistance — the peak of a power curve, the knee of a voltage curve.
- * `efficiency` draws load-over-source power dashed against a right-hand
- * 0–100 % axis. `marks` are the data marks of marks.js, their x a load
- * resistance, their y in the left unit or (axis 'right') a 0..1 efficiency.
+ * `y` chooses the quantity: 'p' the load power (green, the power hue), 'v'
+ * the load voltage (blue). `at` is the knob's current value, marked so the
+ * reader can see where on the curve the schematic is sitting; `rth`, when
+ * given, marks the Thévenin resistance — the peak of a power curve, the knee
+ * of a voltage curve. `efficiency` draws load-over-source power dashed
+ * against a right-hand 0–100 % axis, named where it leaves the frame. `marks`
+ * are the data marks of marks.js, their x a load resistance, their y in the
+ * left unit or (axis 'right') a 0..1 efficiency.
  */
 /** The left axis's tick labels: the value in the sweep's unit, two figures — 1.8 mW, not 0.0018. */
 export const yTick = (unit) => (v) => fmt(v, unit, 2)
@@ -23,19 +25,16 @@ export default function SweepCanvas({ points, y = 'p', at, rth = null, efficienc
   const ref = useCanvas(
     (ctx, w, h) => {
       if (!points.length) return
-      const area = plotArea(w, h, { rightAxis: efficiency })
+      trackText(ctx)
+      const area = frameArea(w, h, { rightAxis: efficiency })
       const k = area.k || 1
       const xs = points.map((q) => Math.log10(q.R))
       const ys = points.map((q) => q[y])
       const xMin = xs[0]
       const xMax = xs[xs.length - 1]
       const markYs = marks.filter((m) => m.axis !== 'right').flatMap((m) => (m.kind === 'level' || m.kind === 'point' ? [m.y] : m.kind === 'segment' ? [m.y0, m.y1] : []))
-      let lo = Math.min(0, ...ys, ...markYs)
-      let hi = Math.max(...ys, ...markYs)
-      if (hi === lo) hi = lo + 1
-      const pad = (hi - lo) * 0.1
-      hi += pad
-      if (lo < 0) lo -= pad
+      const [lo, hi] = sweepSpan(ys, markYs)
+      const hue = y === 'p' ? HUE.power : HUE.voltage
 
       const unit = y === 'p' ? 'W' : 'V'
       const { sx, sy } = drawFrame(
@@ -61,7 +60,7 @@ export default function SweepCanvas({ points, y = 'p', at, rth = null, efficienc
       // R_th first, underneath everything.
       if (Number.isFinite(rth) && rth > 0) {
         const x = sx(Math.log10(rth))
-        ctx.strokeStyle = COLORS.response
+        ctx.strokeStyle = COLORS.textBright
         ctx.globalAlpha = 0.6
         ctx.setLineDash([5 * k, 4 * k])
         ctx.lineWidth = 1 * k
@@ -71,7 +70,7 @@ export default function SweepCanvas({ points, y = 'p', at, rth = null, efficienc
         ctx.stroke()
         ctx.setLineDash([])
         ctx.globalAlpha = 1
-        ctx.fillStyle = COLORS.response
+        ctx.fillStyle = COLORS.textBright
         ctx.font = `${Math.round(11 * k)}px ${MONO}`
         // Named at the foot of the line: the curves are at their peak or their knee up top.
         ctx.textAlign = 'left'
@@ -82,10 +81,12 @@ export default function SweepCanvas({ points, y = 'p', at, rth = null, efficienc
       drawDataMarks(ctx, area, marks, { sx: (R) => sx(Math.log10(R)), sy, syR })
 
       // Efficiency, dashed, against the right-hand axis.
+      let effEnd = NaN
       if (syR) {
-        ctx.strokeStyle = COLORS.spectrum
+        ctx.strokeStyle = HUE.power
         ctx.setLineDash([3 * k, 3 * k])
         ctx.lineWidth = 1.2 * k
+        ctx.globalAlpha = 0.8
         ctx.beginPath()
         let pen = false
         points.forEach((q, i) => {
@@ -95,18 +96,14 @@ export default function SweepCanvas({ points, y = 'p', at, rth = null, efficienc
           if (!pen) ctx.moveTo(px, py)
           else ctx.lineTo(px, py)
           pen = true
+          effEnd = py
         })
         ctx.stroke()
         ctx.setLineDash([])
-        ctx.fillStyle = COLORS.spectrum
-        ctx.font = `${Math.round(11 * k)}px ${MONO}`
-        // Bottom right, where the load power has died away and the efficiency has climbed off.
-        ctx.textAlign = 'right'
-        ctx.textBaseline = 'bottom'
-        ctx.fillText('efficiency (dashed, right axis)', area.x + area.w - 6 * k, area.y + area.h - 4 * k)
+        ctx.globalAlpha = 1
       }
 
-      ctx.strokeStyle = COLORS.trace
+      ctx.strokeStyle = hue
       ctx.lineWidth = 2 * k
       ctx.beginPath()
       xs.forEach((x, i) => {
@@ -145,6 +142,11 @@ export default function SweepCanvas({ points, y = 'p', at, rth = null, efficienc
         ctx.textBaseline = under ? 'top' : 'bottom'
         ctx.fillText(label, px + (left ? -7 : 7) * k, py + (under ? 6 : -6) * k)
       }
+
+      drawEndLabels(ctx, area, [
+        { label: y === 'p' ? 'load power' : 'load voltage', color: hue, y: sy(ys[ys.length - 1]) },
+        ...(syR ? [{ label: 'efficiency (right axis)', color: HUE.power, y: effEnd, dim: true }] : []),
+      ])
       ctx.restore()
     },
     [points, y, at, rth, efficiency, marks],

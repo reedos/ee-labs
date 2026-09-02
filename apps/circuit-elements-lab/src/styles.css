@@ -2,6 +2,17 @@
  * from @ee-labs/ui and @ee-labs/explain; the schematic renderer from @ee-labs/ui
  * is styled here. */
 
+/* One hue per quantity family, everywhere a number appears: the meters on the
+   schematic, the readout strip, the traces and their end labels on the plots.
+   The hexes are palette.js's HUE, held equal by palette.test.js. */
+:root {
+  --q-voltage: #5fa8ff;
+  --q-current: #f0a23c;
+  --q-power: #38e0b0;
+  --q-energy: #e8c65a;
+  --q-angle: #b98cf0;
+}
+
 .preset-group { margin-bottom: 10px; }
 
 /* The lesson and circuit chips, styled as Signal Lab styles its presets —
@@ -377,12 +388,18 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
   font-style: italic;
 }
 /* Live readings on the schematic: node voltages beside their dots, element
-   readings above their symbols. Amber so they read as measurements, not labels. */
+   readings above their symbols. Each takes the hue of the quantity it reads
+   (palette.js: voltages blue, currents orange, powers green), so the meter,
+   the readout strip and the trace on the plot are one colour per quantity.
+   Node voltages are voltages whatever the element meters show. */
 .sch-meter {
-  fill: var(--amber);
+  fill: var(--q-voltage);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
 }
+.view-body[data-show='i'] text.sch-meter { fill: var(--q-current); }
+.view-body[data-show='p'] text.sch-meter { fill: var(--q-power); }
+.view-body[data-show='v'] text.sch-meter { fill: var(--q-voltage); }
 /* The voltage marks: + in the accent colour, − in the text colour, both bold
    enough to read at phone size. */
 .sch-plus, .sch-minus { font-weight: 700; }
@@ -592,11 +609,30 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
    stay two panes whatever the equations list or the tables run to. */
 .view-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .view-body .plot { flex: 1; min-height: 160px; }
-/* The time-domain plots want more height than a load sweep: two axes, a
-   legend band, and a cursor to grab. */
+/* The time-domain plots want more height than a load sweep: two axes, the
+   series named at their ends, and a cursor to grab. */
 .view-body .plot.scope, .view-body .plot.energy, .view-body .plot.damping { min-height: 220px; }
 
-/* The plot's caption: one entry per mark the canvas draws — the glyph it is
+/* The sentence under the plot (captions.js): what the picture says, its
+   numbers in bold and in the text colour. Measure ~65 characters wide. */
+.plot-caption {
+  margin: 6px 0 0;
+  padding: 0 8px;
+  max-width: 68ch;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--dim);
+}
+.plot-caption b { color: var(--text); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.95em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* The readout strip: each reading in the hue of its quantity family. */
+.readout [data-q='voltage'] b { color: var(--q-voltage); }
+.readout [data-q='current'] b { color: var(--q-current); }
+.readout [data-q='power'] b { color: var(--q-power); }
+.readout [data-q='energy'] b { color: var(--q-energy); }
+.readout [data-q='angle'] b { color: var(--q-angle); }
+
+/* The plot's mark list: one entry per mark the canvas draws — the glyph it is
    drawn with, what it means, the number it stands for. */
 .plot-marks {
   list-style: none;
@@ -634,6 +670,22 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
   color: var(--dim);
 }
 .cursor-row label b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.cursor-row .cursor-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* ▶ play sweeps the cursor over the window; ■ stop while it runs. */
+.cursor-row .play {
+  flex: none;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11.5px;
+  line-height: 1;
+  padding: 5px 9px;
+  min-width: 64px;
+}
+.cursor-row .play:hover, .cursor-row .play:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.cursor-row .play.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .cursor-row .num-slider { width: 100%; margin: 0; }
 .cursor-row .cursor-ends { display: flex; justify-content: space-between; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; }
 
@@ -645,6 +697,8 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
 @media (min-width: 1100px) {
   .cursor-row { font-size: 14px; max-width: 900px; }
   .cursor-row .cursor-ends { font-size: 12px; }
+  .cursor-row .play { font-size: 13px; padding: 6px 11px; }
+  .plot-caption { font-size: 14px; }
   .state .tex { font-size: 17px; }
   .state > .hint { font-size: 14px; }
   .toggle-knob .toggle-label { font-size: 13px; }

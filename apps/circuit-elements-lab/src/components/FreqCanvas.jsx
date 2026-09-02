@@ -1,7 +1,8 @@
 import React from 'react'
-import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
+import { useCanvas, COLORS, drawFrame, fmt } from '@ee-labs/ui'
 import { complex as cx } from '@ee-labs/network'
-import { drawDataMarks, drawLegend, drawMark, drawRightAxis } from './timePlot.js'
+import { drawDataMarks, drawEndLabels, drawMark, drawRightAxis, frameArea, freqSpan, trackText } from './timePlot.js'
+import { HUE } from '../palette.js'
 
 /**
  * The frequency response, two decades either side of the circuit's own
@@ -10,14 +11,16 @@ import { drawDataMarks, drawLegend, drawMark, drawRightAxis } from './timePlot.j
  * `freq` (math.js freqSweep — one complex solve per point, source at 1∠0);
  * the marker at the drive frequency is `at`, the same quantity from the
  * solve the meters are showing, so it sits on the curve by construction.
- * `marks` are the data marks of marks.js, their x a frequency and their y in
- * the magnitude scale's own unit (Ω or dB).
+ * The magnitude is drawn in the voltage hue (|Z| is volts per ampere seen by
+ * the source, |H| a voltage ratio), the angle in the angle hue, dashed; each
+ * is named where it leaves the frame. `marks` are the data marks of marks.js,
+ * their x a frequency and their y in the magnitude scale's own unit (Ω or dB).
  */
 export default function FreqCanvas({ freq, mode, fDrive, at, corner, marks = [] }) {
   const ref = useCanvas(
     (ctx, w, h) => {
-      const k0 = plotArea(w, h).k
-      const area = plotArea(w, h, { rightAxis: true, topInset: 16 * k0 })
+      trackText(ctx)
+      const area = frameArea(w, h, { rightAxis: true })
       const k = area.k
       const series = mode === 'bode' ? freq.H : freq.Z
       const mag = series.map((z) => (mode === 'bode' ? 20 * Math.log10(cx.cabs(z)) : Math.log10(cx.cabs(z))))
@@ -26,28 +29,8 @@ export default function FreqCanvas({ freq, mode, fDrive, at, corner, marks = [] 
       const x0 = lx[0]
       const x1 = lx[lx.length - 1]
 
-      // Magnitude span: whole decades for |Z|; a round number of dB for |H|,
-      // with the 0 dB line kept in view for a passive circuit.
-      let lo
-      let hi
-      let yStep
-      if (mode === 'bode') {
-        const mn = Math.min(...mag)
-        const mx = Math.max(...mag, 0)
-        yStep = mx - mn > 60 ? 20 : 10
-        lo = Math.floor(mn / yStep) * yStep
-        hi = Math.ceil(mx / yStep) * yStep
-        if (hi === mx) hi += yStep / 2 // headroom above a curve that touches 0 dB
-      } else {
-        lo = Math.floor(Math.min(...mag))
-        hi = Math.ceil(Math.max(...mag))
-        if (hi - lo < 1) {
-          lo -= 0.5
-          hi += 0.5
-        }
-        yStep = 1
-      }
-      const fmtY = mode === 'bode' ? (v) => `${v.toFixed(0)} dB` : (v) => fmt(10 ** v, 'Ω', 1)
+      const { lo, hi, yStep } = freqSpan(mag, mode)
+      const fmtY = mode === 'bode' ? (v) => `${v.toFixed(0)} dB` : (v) => fmt(10 ** v, 'Ω', yStep < 1 ? 2 : 1)
       const magLabel = mode === 'bode' ? '|H| = |V_out / V_s| (dB)' : '|Z| seen by the source (Ω)'
       const { sx, sy } = drawFrame(ctx, area, x0, x1, lo, hi, (v) => fmt(10 ** v, 'Hz', 1), fmtY, {
         xStep: 1,
@@ -96,10 +79,10 @@ export default function FreqCanvas({ freq, mode, fDrive, at, corner, marks = [] 
         ctx.stroke()
         ctx.setLineDash([])
       }
-      line(ang, syR, COLORS.phase, [6, 4])
-      line(mag, sy, COLORS.response)
+      line(ang, syR, HUE.angle, [6, 4])
+      line(mag, sy, HUE.voltage)
 
-      // The drive: a marker line, and a dot on each curve from the meters' solve.
+      // The drive: a marker line named at its foot, and a dot on each curve from the meters' solve.
       if (fDrive >= 10 ** x0 && fDrive <= 10 ** x1 && at) {
         const z = mode === 'bode' ? at.H : at.Z
         const mx = sx(Math.log10(fDrive))
@@ -115,16 +98,23 @@ export default function FreqCanvas({ freq, mode, fDrive, at, corner, marks = [] 
           ctx.arc(mx, y, 4 * k, 0, Math.PI * 2)
           ctx.fill()
         }
-        dot(sy(mode === 'bode' ? 20 * Math.log10(cx.cabs(z)) : Math.log10(cx.cabs(z))), COLORS.response)
-        dot(syR((cx.carg(z) * 180) / Math.PI), COLORS.phase)
+        dot(sy(mode === 'bode' ? 20 * Math.log10(cx.cabs(z)) : Math.log10(cx.cabs(z))), HUE.voltage)
+        dot(syR((cx.carg(z) * 180) / Math.PI), HUE.angle)
+        ctx.fillStyle = COLORS.marker
+        ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
+        ctx.textBaseline = 'bottom'
+        const label = `drive ${fmt(fDrive, 'Hz', 3)}`
+        const fits = mx + 5 * k + ctx.measureText(label).width < area.x + area.w - 2 * k
+        ctx.textAlign = fits ? 'left' : 'right'
+        ctx.fillText(label, mx + (fits ? 5 : -5) * k, area.y + area.h - 3 * k)
       }
-      ctx.restore()
 
-      drawLegend(ctx, area, [
-        { label: mode === 'bode' ? '|H| dB' : '|Z|', color: COLORS.response },
-        { label: 'phase', color: COLORS.phase },
-        { label: `drive ${fmt(fDrive, 'Hz', 3)}`, color: COLORS.marker, dim: true },
+      const last = (ys) => ys[ys.length - 1]
+      drawEndLabels(ctx, area, [
+        { label: mode === 'bode' ? '|H|' : '|Z|', color: HUE.voltage, y: sy(last(mag)) },
+        { label: mode === 'bode' ? '∠H' : '∠Z', color: HUE.angle, y: syR(last(ang)) },
       ])
+      ctx.restore()
     },
     [freq, mode, fDrive, at, corner, marks],
   )

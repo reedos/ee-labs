@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
-import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
-import { MONO, drawLegend, drawRightAxis } from './timePlot.js'
+import { useCanvas, COLORS, drawFrame, fmt } from '@ee-labs/ui'
+import { MONO, clearRow, drawEndLabels, drawRightAxis, frameArea, trackText } from './timePlot.js'
+import { HUE } from '../palette.js'
 import { dampingSweep } from '../math.js'
 
 /**
@@ -12,14 +13,16 @@ import { dampingSweep } from '../math.js'
  * on the engine's own transient. The two curves make the trade visible:
  * less resistance means faster first arrival but a longer ring; more means no
  * overshoot but a slow crawl. The quickest settling sits a little below
- * critical, not at it.
+ * critical, not at it. Settling time takes the power hue (green), overshoot
+ * the angle hue (purple, as a shape quantity); each is named where it leaves
+ * the frame.
  */
 export default function DampingCanvas({ exp, params, at }) {
   const sweep = useMemo(() => dampingSweep(exp, params), [exp, params.E, params.L1, params.C1])
   const ref = useCanvas(
     (ctx, w, h) => {
-      const k0 = plotArea(w, h).k
-      const area = plotArea(w, h, { rightAxis: true, topInset: 16 * k0 })
+      trackText(ctx)
+      const area = frameArea(w, h, { rightAxis: true })
       const k = area.k
       const pts = sweep.points
       const xs = pts.map((q) => Math.log10(q.R))
@@ -70,15 +73,15 @@ export default function DampingCanvas({ exp, params, at }) {
         xs.forEach((x, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, sx(x), map(ys[i])))
         ctx.stroke()
       }
-      curve(over, syR, COLORS.spectrum)
-      curve(settle, sy, COLORS.trace)
+      curve(over, syR, HUE.angle)
+      curve(settle, sy, HUE.power)
 
       // The fastest-settling point, named.
       {
         const f = sweep.fastest
         const fx = sx(Math.log10(f.R))
         const fy = sy(Math.log10(f.settle))
-        ctx.fillStyle = COLORS.trace
+        ctx.fillStyle = HUE.power
         ctx.beginPath()
         ctx.arc(fx, fy, 3 * k, 0, Math.PI * 2)
         ctx.fill()
@@ -87,7 +90,8 @@ export default function DampingCanvas({ exp, params, at }) {
         // on the curve just above it when R is near critical.
         ctx.textAlign = 'left'
         ctx.textBaseline = 'top'
-        ctx.fillText(`fastest ${fmt(f.R, 'Ω', 2)}`, fx + 6 * k, fy + 8 * k)
+        const label = `fastest ${fmt(f.R, 'Ω', 2)}`
+        ctx.fillText(label, fx + 6 * k, clearRow(ctx, label, fx + 6 * k, fy + 8 * k, area.y, area.y + area.h, k))
       }
 
       // Where the knob is now, on both curves.
@@ -102,20 +106,26 @@ export default function DampingCanvas({ exp, params, at }) {
           ctx.lineWidth = 1.5 * k
           ctx.stroke()
         }
-        dot(Math.log10(at.settle), sy, COLORS.trace)
-        dot(100 * at.overshoot, syR, COLORS.spectrum)
+        dot(Math.log10(at.settle), sy, HUE.power)
+        dot(100 * at.overshoot, syR, HUE.angle)
         ctx.fillStyle = COLORS.marker
         ctx.font = `${Math.round(11 * k)}px ${MONO}`
-        ctx.textAlign = sx(lx) > area.x + area.w * 0.6 ? 'right' : 'left'
         ctx.textBaseline = 'bottom'
-        ctx.fillText(`R = ${fmt(at.R, 'Ω', 3)}, ζ = ${at.zeta.toPrecision(3)}`, sx(lx) + (ctx.textAlign === 'left' ? 7 : -7) * k, area.y + area.h - 6 * k)
+        // At the foot of the frame, stepping up over the fastest point's name when the frame is short;
+        // written to whichever side of the dot has room for the whole of it (a phone frame is narrow).
+        const label = `R = ${fmt(at.R, 'Ω', 3)}, ζ = ${at.zeta.toPrecision(3)}`
+        const wide = ctx.measureText(label).width + 7 * k
+        ctx.textAlign = sx(lx) + wide > area.x + area.w - 2 * k ? 'right' : 'left'
+        const x = sx(lx) + (ctx.textAlign === 'left' ? 7 : -7) * k
+        ctx.fillText(label, x, clearRow(ctx, label, x, area.y + area.h - 6 * k, area.y, area.y + area.h, k))
       }
-      ctx.restore()
 
-      drawLegend(ctx, area, [
-        { label: 'settling time', color: COLORS.trace },
-        { label: 'overshoot', color: COLORS.spectrum },
+      const last = xs.length - 1
+      drawEndLabels(ctx, area, [
+        { label: 'settling time', color: HUE.power, y: sy(settle[last]) },
+        { label: 'overshoot', color: HUE.angle, y: syR(over[last]) },
       ])
+      ctx.restore()
     },
     [sweep, at],
   )
