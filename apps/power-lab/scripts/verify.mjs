@@ -470,9 +470,7 @@ async function run(browser, tag) {
   // number the experiment is about. On the step-8 walk it was scrolled out
   // of sight for B4, C1–C5 and E1–E6 at both desktop sizes: the strip
   // scrolls sideways rather than truncating, so nothing above caught it.
-  console.log('
-10b. The outcome chip of the top bar is in view at 1280, 1366 and 1440 wide
-')
+  console.log('\n10b. The outcome chip of the top bar is in view at 1280, 1366 and 1440 wide\n')
   for (const width of [1280, 1366, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     await settle(300)

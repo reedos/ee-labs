@@ -82,6 +82,13 @@
 .preset { padding: 3px 7px; }
 .controls h2 { padding: 5px 12px 4px; margin-bottom: 6px; }
 .controls .hint { margin-top: 8px; }
+/* Firefox draws a range input 20 px tall and gives buttons a 'normal' line
+   height 2 px taller than Chromium's; pinned so the first knob clears the
+   768 fold in both (step-8 verify: b1/c1/e1 ended at 775 in Firefox). */
+@media (max-width: 3399px) {
+  .preset, .chip { line-height: 12px; }
+  .controls .num-slider { height: 16px; }
+}
 .controls .report-issue { margin-top: 14px; }
 .controls h2 .sch-name {
   margin: 0;
@@ -357,6 +364,13 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .flow { overflow: hidden; }
 .flow-node { flex-shrink: 0; }
 .flow-node.is-name { display: block; flex: 0 1 auto; min-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
+/* Below 1366 the name is already at its floor and the strip still wants up
+   to 80 px more (verify 10b at 1280), so the chips' detail lines stack
+   under their headings instead of running beside them. */
+@media (min-width: 901px) and (max-width: 1365px) {
+  .flow-node:not(.is-name) { display: inline-grid; gap: 0; padding: 2px 8px; line-height: 1.25; }
+  .flow-node:not(.is-name) em { display: block; }
+}
 
 @media (max-width: 900px) {
   .views {
