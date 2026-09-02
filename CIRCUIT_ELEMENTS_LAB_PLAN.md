@@ -535,35 +535,44 @@ single loop is walked.
   gave. Measured: α vs formula; the critical `R = ½√(L/C)`. Circuit Lab's "The same
   R, the opposite effect" is this claim in frequency; the two are cross-linked.
 
-### Group H — Sinusoids and phasors (6)
+### Group H — Sinusoids and phasors (6) · built
 
-- **H1 · Sine in, the same sine out — after a while.** Drive the RC with a sinusoid.
-  The exact solution is `natural + forced`: an exponential that dies plus a sinusoid
-  at the **same frequency**, with a different amplitude and phase. Ghost traces
-  show the two parts. Measured: after 5τ the output spectrum (`@ee-labs/dsp` FFT)
-  has one line, at the input frequency; the natural part's decay = τ.
-- **H2 · The phasor: the ODE becomes algebra.** `A cos(ωt + φ) ↔ A∠φ`;
-  `d/dt ↔ ×jω`; `Z_R = R`, `Z_L = jωL`, `Z_C = 1/jωC`; the RC divider is now
-  `V_out = V_in · Z_C/(R + Z_C)`. The same circuit solved by H1's exact time solution
-  and by one complex division agree. Measured: to fp (two code paths, §1.7). At
-  `f = 1/2πτ`: `|H| = 1/√2`, `∠H = −45°` — the corner, met in time before it is met
-  in frequency.
-- **H3 · The phasor diagram, rotating.** Series RLC: `V_R` in phase with `I`, `V_L`
-  leads by 90°, `V_C` lags by 90°; tip to tail they sum to `V_s`. Scrub the cursor:
-  the whole diagram rotates and its projection draws the waveforms. At resonance
-  `V_L` and `V_C` cancel exactly. Measured: vector sum = `V_s` (fp); the angles.
-- **H4 · Impedance, resonance, and a voltage from nowhere.** Sweep ω: `|Z|` dips to
-  `R` at ω₀ where `Z` is purely real; current peaks. The capacitor voltage at
-  resonance is `Q · V_s` — a 1 V source, Q = 20, and 20 V across the capacitor.
-  Measured: `|Z(ω₀)| = R`, `∠Z(ω₀) = 0`, `|V_C(ω₀)| / |V_s| = Q`.
-- **H5 · Power in AC: mean, RMS, and the angle.** `p(t) = v·i` is a constant plus a
-  2ω term; `P = V_rms I_rms cos φ`; `Q = V_rms I_rms sin φ`; power factor. RMS
-  defined and computed as `√(mean of square)` on the exact waveform (Signal Lab's
-  oldest lesson, the "√2 for a sine" claim re-derived on a circuit). Measured: `P`
-  from the time average vs the phasor formula; pf; the 2ω line in the spectrum of p.
-- **H6 · From one frequency to all of them.** Sweep ω and plot `|H|` and `∠H`: this
-  *is* the Bode plot. The hand-over button: **Open this circuit in Circuit Lab** —
-  exact for every circuit in its catalog, and this is where Circuit Elements Lab ends.
+Every H circuit has the phasor view (arrows turning with the cursor beside the
+waveforms their tips draw, tip-to-tail sum closing on `V_s`), the scope with the
+steady state as the dashed ghost, and a hand-over to Circuit Lab (H1–H6 all map:
+RC → `rcLow`, RL → `rlLow`, series RLC → `rlcSeries`; an L above Circuit Lab's 1 H
+knob is declined with the reason, never clamped into a different circuit).
+
+- **H1 · Switching on a sine: natural dies, forced stays.** RC, 5 V at 159.2 Hz.
+  `v_C = forced + natural`, the natural part `−v_f(0)·e^(−t/τ)` existing only because
+  the forced sinusoid would not have started from zero. Measured: `tr − ghost` equals
+  `−v_f(0)e^(−t/τ)` at five instants; under 1 % of |V_C| after 5τ and under 10⁻⁹ after
+  25τ; the source phase sets the natural part's size (φ = 135° largest, 45° none) but
+  not its shape.
+- **H2 · Phasors: the arrow that draws the wave.** Each steady-state quantity as
+  `amp∠φ`, `x(t) = Im{X e^{jωt}}`. Measured: `V_R + V_C = V_s` to fp; `V_C` 90° behind
+  `I` with `|V_C| = |I|/ωC`; at the exact corner `1/(2πRC)` both arrows `|V_s|/√2` and
+  `v_C` lags exactly 45° (and the chip's 159.2 Hz to four figures).
+- **H3 · Impedance: series RLC.** `Z = R + j(ωL − 1/ωC)` at 1 kHz: `ωL = 62.8 Ω`,
+  `1/ωC = 159.2 Ω`, `X = −96.3 Ω`, `|Z| = 138.8 Ω`, current leads 43.9°, `|V_C| = 1.146 V`
+  from a 1 V source. Impedance view: `|Z|` and `∠Z` over four decades with the drive
+  marked. Measured: every number; past 1591.5 Hz the current lags and `V_L` outgrows
+  `V_C`.
+- **H4 · Resonance.** R = 5 Ω, Q = 20, `f₀ = 1591.5 Hz`. Measured: `V_L + V_C = 0` and
+  `Z = R` at ω₀ (fresh complex solve, `anyFreq`); `|V_C| = 20 V`; half-power points
+  `|Z| = √2·R` exactly 79.6 Hz apart; the build-up envelope `1 − e^(−αt)` reaching
+  `1 − 1/e` at `Q/π = 6.4` cycles and within ¼ % (not ⅕ %) in the 40th cycle.
+- **H5 · AC power: real, reactive, apparent.** RL 100 Ω / 0.3 H from 10 V peak at
+  50 Hz; `S = ½V·I*` per element in the AC-power table with Tellegen's row (ΣP = ΣQ = 0).
+  Measured: `|I| = 72.8 mA` lagging 43.3°; `P = 265 mW` all in R, `P_L` exactly 0
+  (arithmetic noise below 10⁻¹²|S| read as 0); RMS 7.07 V / 51.5 mA; 364 mVA, pf 0.728,
+  Q = 250 mvar; `p(t)` on the ghost has DC and 2f only — harmonics 1, 3, 4 below 10⁻⁹.
+- **H6 · Frequency response: one sine at a time, then all of them.** RC,
+  `H = 1/(1 + jωRC)` swept two decades either side of `f_c`: the Bode view, |H| in dB
+  and ∠H, the drive marked from the same solve the meters use. Measured: −3.01 dB and
+  −45° at `f_c`; −20 dB/decade (−19.96 for the first decade above, −19.9996 the next);
+  −89.4° at 100 f_c; all 241 sweep points equal the closed form to 10⁻¹². The
+  hand-over — **Open in Circuit Lab** — is exact and tested both ways (§8 Phase 3).
 
 ### Group I — The diode: the first nonlinear element (7 + 1 stretch)
 
@@ -689,7 +698,16 @@ state, and averaging.
    sentence measured in `experiments.test.js`.*
 3. **Phase 3 — Phasors.** Complex MNA, phasor diagram view, long-time-limit
    agreement, AC power measures, hand-over to Circuit Lab. **Group H.** Exit:
-   phasor-vs-time invariant; H6 hand-over exact and tested both ways.
+   phasor-vs-time invariant; H6 hand-over exact and tested both ways. *Shipped dark
+   2026-09-01: `complex`/`solveAC`/`readoutAC`/`acPower`/`drivingPointZ`/`sweepAC` in
+   `packages/network`, the steady-state ghost in `transient`, phasor, impedance,
+   Bode and AC-power views, H1–H6; the hand-over is `circuitLink.js` in
+   `packages/ui` (one grammar, both ends) and `incoming.js` in Circuit Lab, which
+   clamps-and-warns rather than loading a different circuit silently. The
+   phasor-vs-time invariant is measured at 64 instants for every H circuit at the
+   defaults and two random settings; the hand-over "there" (Circuit Lab's transfer
+   function equals this lab's H at all 241 sweep points, 1e-9) and "back" (the link
+   round-trips with values identical and no warning) both pass.*
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event

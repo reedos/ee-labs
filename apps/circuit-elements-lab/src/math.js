@@ -21,6 +21,12 @@ import {
   crossings,
   settleTime,
   sourceValue,
+  omegaOf,
+  solveAC,
+  sweepAC,
+  acPower,
+  drivingPointZ,
+  complex as cx,
 } from '@ee-labs/network'
 import { isDynamic } from './experiments.js'
 
@@ -1033,6 +1039,377 @@ const ENTRIES = {
       ],
     }
   },
+
+  // ---------------------------------------------------------------- H · phasors
+  // The hand side is complex arithmetic on the knobs — Z = R + j(ωL − 1/ωC),
+  // V = Z·I, division — and the measured side is the phasor solve, which never
+  // forms an impedance: it stamps admittances at s = jω and solves. The time
+  // rows then hold the phasor solve to the transient, which shares nothing
+  // with it but the netlist.
+
+  h1(p, s, x) {
+    const rc = rcHand(p, x)
+    const tc = x.cursor
+    const tau = rc.tau
+    const vC = (t) => rc.vf(t) - rc.vf(0) * Math.exp(-t / tau)
+    const natural = (t) => Math.abs(atT(x, t).sol.volt.C1 - x.ghost.at(Math.min(t, x.tEnd)).sol.volt.C1) / rc.magC
+    const rows = [
+      row('τ = RC', tau, x.state.tau, 's'),
+      row('|V_C| = A/√(1 + (ωτ)²)', rc.magC, cx.cabs(x.ac.volt.C1), 'V'),
+      row('∠V_C = φ − atan ωτ', rc.angC, cx.carg(x.ac.volt.C1), 'rad', 1e-9, 1e-12),
+      row('v_C at the cursor = forced + natural', vC(tc), atT(x, tc).sol.volt.C1, 'V', 1e-9, stiffNoise(x) * Math.abs(p.A)),
+      row('natural part = −v_f(0)·e^(−t/τ) at the cursor', -rc.vf(0) * Math.exp(-tc / tau), atT(x, tc).sol.volt.C1 - x.ghost.at(tc).sol.volt.C1, 'V', 1e-9, stiffNoise(x) * Math.abs(p.A)),
+      ...steadyRows(x),
+    ]
+    if (5 * tau <= x.tEnd) rows.push(row('natural at 5τ, of the forced amplitude', Math.exp(-5) * Math.abs(rc.vf(0)) / rc.magC, natural(5 * tau), '', 1e-6, 1e-12))
+    if (25 * tau <= x.tEnd) rows.push(row('natural at 25τ: gone', 0, natural(25 * tau), '', 0, 1e-9))
+    return {
+      blocks: [
+        T('The capacitor voltage is the forced sinusoid plus whatever natural response is needed to start it from zero. The forced part comes from the phasor solve; the natural part is F2’s exponential with its amplitude fixed by v_C(0) = 0.'),
+        F('v_C(t) = |V_C|\\sin(\\omega t + \\angle V_C) - |V_C|\\sin(\\angle V_C)\\,e^{-t/\\tau}, \\qquad V_C = \\frac{V_s}{1 + j\\omega RC}'),
+        C(rows),
+        V([
+          { label: '5τ', value: 5 * tau, unit: 's', note: `${(5 * tau * p.f).toFixed(2)} cycles` },
+          { label: '25τ', value: 25 * tau, unit: 's', note: 25 * tau > x.tEnd ? 'beyond the window — widen it' : `${(25 * tau * p.f).toFixed(2)} cycles` },
+          { label: 'forced amplitude', value: rc.magC, unit: 'V' },
+        ]),
+      ],
+      marks: 5 * tau <= x.tEnd ? [{ t: 5 * tau, label: '5τ' }] : [],
+    }
+  },
+
+  h2(p, s, x) {
+    const rc = rcHand(p, x)
+    const tc = x.cursor
+    const { ac } = x
+    const I = ac.i.R1
+    return {
+      blocks: [
+        T('Each steady-state quantity is one arrow; the diagram is KVL drawn. The resistor’s arrow is in line with the current, the capacitor’s a quarter turn behind it, and the two add tip to tail to the source.'),
+        F('V_R = R\\,I, \\qquad V_C = \\frac{I}{j\\omega C} = \\frac{|I|}{\\omega C}\\angle(\\angle I - 90^\\circ), \\qquad V_R + V_C = V_s'),
+        C([
+          row('|V_R + V_C − V_s| (KVL closes)', 0, cx.cabs(cx.csub(cx.cadd(ac.volt.R1, ac.volt.C1), ac.volt.V1)), 'V', 0, 1e-12 * Math.abs(p.A)),
+          row('∠V_C − ∠I = −90°', -Math.PI / 2, wrap(cx.carg(ac.volt.C1) - cx.carg(I)), 'rad'),
+          row('∠V_R − ∠I = 0', 0, wrap(cx.carg(ac.volt.R1) - cx.carg(I)), 'rad', 0, 1e-12),
+          row('|V_C| = |I|/ωC', cx.cabs(I) / (x.omega * p.C1), cx.cabs(ac.volt.C1), 'V'),
+          row('|V_R| = R|I|', p.R1 * cx.cabs(I), cx.cabs(ac.volt.R1), 'V'),
+          row('|V_C| by hand', rc.magC, cx.cabs(ac.volt.C1), 'V'),
+          row('∠V_C by hand', rc.angC, cx.carg(ac.volt.C1), 'rad', 1e-9, 1e-12),
+          row('height of the V_C arrow at the cursor', rc.vf(tc), x.acAt.volt.C1, 'V', 1e-9, 1e-12 * Math.abs(p.A)),
+          ...steadyRows(x),
+        ]),
+        V([
+          { label: 'f_c = 1/2πRC', value: 1 / (2 * Math.PI * rc.tau), unit: 'Hz' },
+          { label: '|V_C|/|V_s| at this f', value: rc.magC / p.A, unit: '', note: 'is 1/√2 = 0.7071 at f_c' },
+          { label: 'v_C lags v_s by', value: (-(rc.angC - rc.phi) * 180) / Math.PI, unit: '°', note: 'is 45° at f_c' },
+          { label: 'arrows have turned', value: ((x.omega * tc * 180) / Math.PI) % 360, unit: '°' },
+        ]),
+      ],
+    }
+  },
+
+  h3(p, s, x) {
+    const z = rlcHand(p, x)
+    const { ac } = x
+    const Z = drivingPointZ(ac, 'V1')
+    const I = ac.i.R1
+    return {
+      blocks: [
+        T('Impedances in series add; the current is the source over the total; each element’s voltage is its own impedance times that current. The measured column never forms Z — it solves the node equations at jω.'),
+        F('Z = R + j\\left(\\omega L - \\frac{1}{\\omega C}\\right), \\qquad I = \\frac{V_s}{Z}, \\qquad V_L = j\\omega L\\,I, \\quad V_C = \\frac{I}{j\\omega C}'),
+        C([
+          row('Re Z = R', p.R1, Z[0], 'Ω'),
+          row('Im Z = ωL − 1/ωC', z.X, Z[1], 'Ω', 1e-9, 1e-12 * p.R1),
+          row('|I| = |A|/|Z|', Math.abs(p.A) / z.magZ, cx.cabs(I), 'A'),
+          row('∠I = ∠V_s − ∠Z', wrap(srcAngle(p) - z.angZ), cx.carg(I), 'rad', 1e-9, 1e-12),
+          row('|V_L| = ωL|I|', z.XL * (Math.abs(p.A) / z.magZ), cx.cabs(ac.volt.L1), 'V'),
+          row('|V_C| = |I|/ωC', z.XC * (Math.abs(p.A) / z.magZ), cx.cabs(ac.volt.C1), 'V'),
+          row('|V_R| = R|I|', p.R1 * (Math.abs(p.A) / z.magZ), cx.cabs(ac.volt.R1), 'V'),
+          // Each voltage is a difference of node phasors, so a reactance far
+          // below R leaves an angle resolved only to ε·|V_s|/|V|.
+          row('|∠V_L − ∠V_C| = 180°', Math.PI, Math.abs(wrap(cx.carg(ac.volt.L1) - cx.carg(ac.volt.C1))), 'rad', 1e-9, (1e-13 * Math.abs(p.A)) / Math.min(cx.cabs(ac.volt.L1), cx.cabs(ac.volt.C1))),
+          row('|V_R + V_L + V_C − V_s|', 0, cx.cabs(cx.csub(cx.cadd(cx.cadd(ac.volt.R1, ac.volt.L1), ac.volt.C1), ac.volt.V1)), 'V', 0, 1e-12 * Math.abs(p.A)),
+          ...steadyRows(x),
+        ]),
+        V([
+          { label: 'X_L = ωL', value: z.XL, unit: 'Ω' },
+          { label: 'X_C = 1/ωC', value: z.XC, unit: 'Ω' },
+          { label: '|Z|', value: z.magZ, unit: 'Ω' },
+          { label: '∠Z', value: (z.angZ * 180) / Math.PI, unit: '°', note: z.X < 0 ? 'capacitive: current leads' : z.X > 0 ? 'inductive: current lags' : 'resonant: in phase' },
+          { label: 'f₀ = 1/2π√LC', value: z.f0, unit: 'Hz' },
+        ]),
+      ],
+    }
+  },
+
+  h4(p, s, x) {
+    const z = rlcHand(p, x)
+    const q = series(p)
+    const Q = Math.sqrt(p.L1 / p.C1) / p.R1
+    const A = Math.abs(p.A)
+    // The circuit at exactly ω₀, and at the two half-power frequencies, each a
+    // fresh solve: the sweep's grid need not land on them.
+    const at0 = solveAC(x.net, q.w0, { anyFreq: true })
+    // ω₁,₂ = ∓α + √(α² + ω₀²); the lower one as ω₀²/(α + √…) so a heavily
+    // damped circuit (α ≫ ω₀) does not cancel it away.
+    const hyp = Math.sqrt(q.alpha * q.alpha + q.w0 * q.w0)
+    const wHalf = [(q.w0 * q.w0) / (q.alpha + hyp), q.alpha + hyp]
+    const zHalf = wHalf.map((w) => cx.cabs(drivingPointZ(solveAC(x.net, w, { anyFreq: true }), 'V1')))
+    const Z0 = drivingPointZ(at0, 'V1')
+    const tc = x.cursor
+    // The natural part of v_C from rest under the sine: y(0) = −v_f(0), y′(0) = −v_f′(0).
+    const VC = x.ac.volt.C1
+    const nat = natural(q.alpha, q.w0, -cx.instant(VC, x.omega, 0), -x.omega * VC[0])
+    const rows = [
+      row('ω₀ = 1/√LC', q.w0, x.state.w0, 'rad/s'),
+      row('Q = (1/R)√(L/C)', Q, x.state.Q, ''),
+      row('|Z(ω₀)| = R', p.R1, cx.cabs(Z0), 'Ω'),
+      row('∠Z(ω₀) = 0', 0, cx.carg(Z0), 'rad', 0, 1e-12),
+      row('|V_C(ω₀)| = Q·|A|', Q * A, cx.cabs(at0.volt.C1), 'V'),
+      row('|V_L(ω₀)| = Q·|A|', Q * A, cx.cabs(at0.volt.L1), 'V'),
+      row('|V_L + V_C| at ω₀', 0, cx.cabs(cx.cadd(at0.volt.L1, at0.volt.C1)), 'V', 0, 1e-12 * Q * A),
+      row('|Z| at ω₀ − ½·BW = √2·R', Math.SQRT2 * p.R1, zHalf[0], 'Ω'),
+      row('|Z| at ω₀ + ½·BW = √2·R', Math.SQRT2 * p.R1, zHalf[1], 'Ω'),
+      row('|Z| at the drive by hand', z.magZ, cx.cabs(drivingPointZ(x.ac, 'V1')), 'Ω'),
+      row('natural part of v_C at the cursor', nat(tc), atT(x, tc).sol.volt.C1 - x.ghost.at(tc).sol.volt.C1, 'V', 1e-8, stiffNoise(x) * Q * A),
+      ...steadyRows(x),
+    ]
+    return {
+      blocks: [
+        T('At ω₀ the two reactances are equal and opposite, so the impedance is R alone and the current is as large as it gets. The half-power points, where |Z| = √2·R, are ω₀/Q apart.'),
+        F('\\omega_0 = \\frac{1}{\\sqrt{LC}}, \\qquad Q = \\frac{1}{R}\\sqrt{\\frac{L}{C}} = \\frac{\\omega_0 L}{R}, \\qquad \\Delta\\omega = \\frac{\\omega_0}{Q} = \\frac{R}{L}'),
+        C(rows),
+        V([
+          { label: 'f₀', value: z.f0, unit: 'Hz' },
+          { label: 'bandwidth f₀/Q', value: z.f0 / Q, unit: 'Hz' },
+          { label: '|V_C| at f₀', value: Q * A, unit: 'V', note: `${Q.toPrecision(3)} × the source` },
+          { label: 'Q/π', value: Q / Math.PI, unit: 'cycles', note: 'the 1/α build-up time' },
+          { label: 'natural part in the last cycle', value: lastCycleNatural(x) / (Q * A), unit: '', note: 'of the final amplitude, at the drive f' },
+        ]),
+      ],
+      marks: 1 / q.alpha <= x.tEnd ? [{ t: 1 / q.alpha, label: '1/α' }] : [],
+    }
+  },
+
+  h5(p, s, x) {
+    const { ac, omega: w } = x
+    const XL = w * p.L1
+    const magZ = Math.hypot(p.R1, XL)
+    const phi = Math.atan2(XL, p.R1)
+    const A = Math.abs(p.A)
+    const Im = A / magZ
+    const pw = acTable(x)
+    const R = pw.find((e) => e.id === 'R1')
+    const L = pw.find((e) => e.id === 'L1')
+    const src = pw.find((e) => e.id === 'V1')
+    // Time-domain means over one steady-state period, by the midpoint rule,
+    // which is exact for the trigonometric polynomials p(t) and v²(t) are.
+    const Tp = (2 * Math.PI) / w
+    const mean = (f) => periodMean(f, Tp, 16)
+    const g = (q, key) => (t) => x.ghost.at(t).sol[q][key]
+    const pR = g('p', 'R1')
+    const pL = g('p', 'L1')
+    const fourier = (f, k) => Math.hypot(mean((t) => 2 * f(t) * Math.cos(k * w * t)), mean((t) => 2 * f(t) * Math.sin(k * w * t)))
+    return {
+      blocks: [
+        T('The complex power S = ½V·I* packs both averages into one number: its real part is the mean of v·i, its imaginary part the amplitude of the energy that only sloshes. The resistor takes all of P; the inductor takes only Q.'),
+        F('|I| = \\frac{A}{\\sqrt{R^2 + (\\omega L)^2}}, \\quad \\varphi = \\arctan\\frac{\\omega L}{R}, \\qquad P = \\tfrac{1}{2}R|I|^2 = V_{rms}I_{rms}\\cos\\varphi, \\quad Q = \\tfrac{1}{2}\\omega L|I|^2'),
+        F('p(t) = v\\,i = P + |S|\\cos(2\\omega t - \\theta)', 'a constant plus a sinusoid at twice the frequency'),
+        C([
+          row('|I| = |A|/√(R² + (ωL)²)', Im, cx.cabs(ac.i.R1), 'A'),
+          row('current lags by φ = atan(ωL/R)', phi, wrap(cx.carg(ac.volt.V1) - cx.carg(ac.i.R1)), 'rad'),
+          row('P_R = ½R|I|²', 0.5 * p.R1 * Im * Im, R.P, 'W'),
+          row('P_L = 0', 0, L.P, 'W', 0, 1e-12 * R.P),
+          row('Q_L = ½ωL|I|²', 0.5 * XL * Im * Im, L.Q, 'var'),
+          row('Q_R = 0', 0, R.Q, 'var', 0, 1e-12 * R.P),
+          row('source supplies P and Q', -(0.5 * p.R1 * Im * Im), src.P, 'W'),
+          row('pf = R/|Z| = cos φ', p.R1 / magZ, -src.P / src.apparent, ''),
+          row('mean of p_R(t) over a period = P_R', 0.5 * p.R1 * Im * Im, mean(pR), 'W', 1e-9, stiffNoise(x) * R.P),
+          row('mean of p_L(t) over a period = 0', 0, mean(pL), 'W', 0, stiffNoise(x) * R.P),
+          row('RMS of v_s = |A|/√2', A / Math.SQRT2, Math.sqrt(mean((t) => g('v', 'in')(t) ** 2)), 'V', 1e-9, stiffNoise(x) * A),
+          row('RMS of i = |I|/√2', Im / Math.SQRT2, Math.sqrt(mean((t) => g('i', 'R1')(t) ** 2)), 'A', 1e-9, stiffNoise(x) * Im),
+          row('P = V_rms·I_rms·cos φ', (A / Math.SQRT2) * (Im / Math.SQRT2) * Math.cos(phi), R.P, 'W'),
+          row('p_R(t): amplitude of the 2ω term = |S_R|', R.apparent, fourier(pR, 2), 'W', 1e-9, stiffNoise(x) * R.P),
+          row('p_R(t): amplitude of the ω term = 0', 0, fourier(pR, 1), 'W', 0, stiffNoise(x) * R.P),
+          row('p_L(t): amplitude of the 2ω term = |Q_L|', Math.abs(L.Q), fourier(pL, 2), 'W', 1e-9, stiffNoise(x) * R.P),
+          ...steadyRows(x),
+        ]),
+        V([
+          { label: 'V_rms', value: A / Math.SQRT2, unit: 'V' },
+          { label: 'I_rms', value: Im / Math.SQRT2, unit: 'A' },
+          { label: 'apparent V_rms·I_rms', value: src.apparent, unit: 'VA' },
+          { label: 'real P', value: -src.P, unit: 'W' },
+          { label: 'reactive Q', value: -src.Q, unit: 'var' },
+          { label: 'power factor', value: -src.P / src.apparent, unit: '', note: 'lagging' },
+        ]),
+      ],
+    }
+  },
+
+  h6(p, s, x) {
+    const rc = rcHand(p, x)
+    const { ac } = x
+    const H = cx.cdiv(ac.volt.C1, ac.volt.V1)
+    const wc = 1 / rc.tau
+    const Hat = (w) => {
+      const a = solveAC(x.net, w, { anyFreq: true, sources: { V1: 1 } })
+      return cx.cdiv(a.volt.C1, a.volt.V1)
+    }
+    const magHand = (w) => 1 / Math.sqrt(1 + (w * rc.tau) ** 2)
+    const dB = (m) => 20 * Math.log10(m)
+    const Hc = Hat(wc)
+    return {
+      blocks: [
+        T('One complex number per frequency. The magnitude is drawn in decibels so that a product of stages becomes a sum, and the frequency axis is logarithmic so that a factor of ten is the same distance everywhere.'),
+        F('H(j\\omega) = \\frac{V_C}{V_s} = \\frac{1}{1 + j\\omega RC}, \\qquad |H| = \\frac{1}{\\sqrt{1 + (\\omega RC)^2}}, \\quad \\angle H = -\\arctan(\\omega RC)'),
+        C([
+          row('|H| at the drive', magHand(x.omega), cx.cabs(H), ''),
+          row('∠H at the drive', -Math.atan(x.omega * rc.tau), cx.carg(H), 'rad', 1e-9, 1e-12),
+          row('|H| at f_c = 1/√2', Math.SQRT1_2, cx.cabs(Hc), ''),
+          row('|H| at f_c in dB = −3.01', dB(Math.SQRT1_2), dB(cx.cabs(Hc)), 'dB'),
+          row('∠H at f_c = −45°', -Math.PI / 4, cx.carg(Hc), 'rad'),
+          row('|H| at 10 f_c, in dB', dB(magHand(10 * wc)), dB(cx.cabs(Hat(10 * wc))), 'dB'),
+          row('drop from 10 f_c to 100 f_c, in dB', dB(magHand(100 * wc)) - dB(magHand(10 * wc)), dB(cx.cabs(Hat(100 * wc))) - dB(cx.cabs(Hat(10 * wc))), 'dB'),
+          row('∠H at 100 f_c', -Math.atan(100), cx.carg(Hat(100 * wc)), 'rad'),
+          ...steadyRows(x),
+        ]),
+        V([
+          { label: 'f_c', value: 1 / (2 * Math.PI * rc.tau), unit: 'Hz' },
+          { label: '|H| at the drive', value: dB(cx.cabs(H)), unit: 'dB' },
+          { label: '∠H at the drive', value: (cx.carg(H) * 180) / Math.PI, unit: '°' },
+          { label: 'drop from 10 f_c to 100 f_c', value: dB(cx.cabs(Hat(100 * wc))) - dB(cx.cabs(Hat(10 * wc))), unit: 'dB', note: '→ −20 dB/decade' },
+        ]),
+      ],
+    }
+  },
+}
+
+// ------------------------------------------------------------ group H shared
+
+/** Angle to (−π, π]. */
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a))
+
+/** The source phasor's angle: the phase knob, plus a half turn when the amplitude knob is negative. */
+const srcAngle = (p) => wrap(((p.phi || 0) * Math.PI) / 180 + (p.A < 0 ? Math.PI : 0))
+
+/** The RC hand values at the drive: τ, the source phasor, |V_C|, ∠V_C and v_forced(t). */
+function rcHand(p, x) {
+  const tau = p.R1 * p.C1
+  const w = x.omega
+  const phi = srcAngle(p)
+  const magC = Math.abs(p.A) / Math.sqrt(1 + (w * tau) ** 2)
+  const angC = wrap(phi - Math.atan(w * tau))
+  return { tau, phi, magC, angC, vf: (t) => magC * Math.sin(w * t + angC) }
+}
+
+/** The series-RLC hand values at the drive: reactances, |Z|, ∠Z, f₀. */
+function rlcHand(p, x) {
+  const w = x.omega
+  const XL = w * p.L1
+  const XC = 1 / (w * p.C1)
+  const X = XL - XC
+  return { XL, XC, X, magZ: Math.hypot(p.R1, X), angZ: Math.atan2(X, p.R1), f0: 1 / (2 * Math.PI * Math.sqrt(p.L1 * p.C1)) }
+}
+
+/**
+ * The long-time-limit invariant (plan §1.7), as rows: at the cursor, the
+ * transient started in the steady state agrees with the phasor waveform for
+ * every state and for the output — two solvers, one answer.
+ */
+function steadyRows(x) {
+  const tc = x.cursor
+  const g = x.ghost.at(tc).sol
+  const a = x.acAt
+  const eps = stiffNoise(x)
+  return x.dyn.states.map((s) =>
+    s.type === 'C'
+      ? row(`steady v_${s.id}: transient vs phasor`, a.volt[s.id], g.volt[s.id], 'V', 1e-9, eps * cx.cabs(x.ac.volt[s.id]))
+      : row(`steady i_${s.id}: transient vs phasor`, a.i[s.id], g.i[s.id], 'A', 1e-9, eps * cx.cabs(x.ac.i[s.id])),
+  )
+}
+
+/**
+ * The float noise a transient carries, as a fraction of its amplitude: the
+ * matrix exponential over the window loses about ε·|λ_max|·t_end, so a circuit
+ * whose fastest root is 10⁹ times faster than the window resolves (an RLC with
+ * L/R in nanoseconds under a 1 Hz drive) agrees with the phasor solve to 1e-7,
+ * not 1e-12. Never below 1e-12.
+ */
+function stiffNoise(x) {
+  const fastest = Math.max(...x.state.roots.map((r) => Math.hypot(r.re, r.im)), 0)
+  return Math.max(1e-12, 1e-16 * fastest * x.tEnd)
+}
+
+/** The largest |natural response| of v_C over the last drive period in the window. */
+function lastCycleNatural(x) {
+  const T0 = (2 * Math.PI) / x.omega
+  let worst = 0
+  for (let k = 0; k <= 64; k++) {
+    const t = x.tEnd - T0 + (k / 64) * T0
+    if (t < 0) continue
+    worst = Math.max(worst, Math.abs(x.tr.at(t).sol.volt.C1 - x.ghost.at(t).sol.volt.C1))
+  }
+  return worst
+}
+
+/** Mean of f over one period [0, T) by the midpoint rule with n points — exact for trigonometric polynomials of degree < n/2. */
+function periodMean(f, T, n) {
+  let s = 0
+  for (let k = 0; k < n; k++) s += f(((k + 0.5) / n) * T)
+  return s / n
+}
+
+/**
+ * The AC power table for the power pane: for every element, its voltage and
+ * current phasors' magnitudes and the power measures ½V·I*. Source rows come
+ * out negative in P, as in the DC meters: they deliver. A P or Q below one
+ * part in 10¹² of that element's |S| is the arithmetic's, not the element's —
+ * an inductor's P comes back as femtowatts — and is set to exactly 0, with the
+ * power factor and φ recomputed from the snapped pair so the row agrees with
+ * itself (pf 0 and φ = ±90°, not 5.6e-17 and 90.0°).
+ */
+export function acTable(x) {
+  const { ac } = x
+  return x.net.elements.map((e) => {
+    const Vp = ac.volt[e.id]
+    const Ip = ac.i[e.id]
+    const pw = acPower(Vp, Ip)
+    const tiny = 1e-12 * pw.apparent
+    const P = Math.abs(pw.P) <= tiny ? 0 : pw.P
+    const Q = Math.abs(pw.Q) <= tiny ? 0 : pw.Q
+    const pf = pw.apparent > 0 ? P / pw.apparent : 1
+    const phi = P === 0 && Q === 0 ? 0 : Math.atan2(Q, P)
+    return { id: e.id, type: e.type, V: cx.cabs(Vp), I: cx.cabs(Ip), angV: cx.carg(Vp), angI: cx.carg(Ip), ...pw, P, Q, pf, phi }
+  })
+}
+
+/**
+ * The frequency-response point the scope is running at, for the marker on the
+ * Bode and impedance plots: H = out/V_s and the impedance the source sees, read
+ * from the same complex solve the meters use, so the marker sits on the curve
+ * by construction rather than by interpolation.
+ */
+export function atDrive(exp, x) {
+  return { H: cx.cdiv(outPhasor(exp, x.ac), x.ac.volt.V1), Z: drivingPointZ(x.ac, 'V1') }
+}
+
+/**
+ * The meters' readings with float noise read as zero: a sine sampled exactly at
+ * its zero crossing comes back as a few femtovolts, and a meter that shows
+ * "−3.67 fV" on a 5 V source is reporting the solver's arithmetic, not the
+ * circuit. Anything below one part in 10¹² of the largest reading of its kind
+ * (node voltages, currents, element voltages, powers each on their own scale)
+ * is shown as 0 — a threshold far below the KCL residual the top bar already
+ * reports, so nothing a meter could honestly resolve is lost.
+ */
+export function snapNoise(sol) {
+  const snap = (obj) => {
+    const scale = Math.max(0, ...Object.values(obj).map(Math.abs))
+    const out = {}
+    for (const [k, v] of Object.entries(obj)) out[k] = Math.abs(v) <= 1e-12 * scale ? 0 : v
+    return out
+  }
+  return { v: snap(sol.v), i: snap(sol.i), volt: snap(sol.volt), p: snap(sol.p) }
 }
 
 /**
@@ -1148,9 +1525,10 @@ export function analyseDynamic(exp, p, cursor) {
   const net = exp.net(p)
   const tEnd = exp.window(p)
   const t = Number.isFinite(cursor) ? Math.min(Math.max(cursor, 0), tEnd) : exp.cursor * tEnd
+  const points = exp.points ?? 601
   const x = { net, tEnd, cursor: t, sol: null, refusal: null, tr: null }
   try {
-    x.tr = transient(net, { tEnd, points: 601 })
+    x.tr = transient(net, { tEnd, points })
   } catch (err) {
     if (!(err instanceof NetworkError)) throw err
     x.refusal = err
@@ -1161,6 +1539,21 @@ export function analyseDynamic(exp, p, cursor) {
   x.now = x.tr.at(t)
   x.sol = x.now.sol
   x.state = stateSummary(x.dyn)
+  // A sine drive has a steady state, and the steady state has a phasor solve:
+  // the same stamps at s = jω. `ac` is every phasor; `acAt` is what those
+  // phasors say the circuit is doing at the cursor once the natural response
+  // has died. The two solvers never share a number, so their agreement in the
+  // long-time limit (the rows in h1–h6) is a real check of both.
+  const sine = net.elements.find((e) => e.wave && e.wave.kind === 'sine')
+  if (sine) {
+    x.omega = omegaOf(sine.wave)
+    try {
+      x.ac = solveAC(net, x.omega)
+      x.acAt = x.ac.at(t)
+    } catch (err) {
+      if (!(err instanceof NetworkError)) throw err
+    }
+  }
   // The energy bookkeeping integrates the exact waveform with a 7-point rule
   // on every sample interval — thousands of evaluations — so it is computed
   // the first time something asks for it (the energy view, F5, G5).
@@ -1172,13 +1565,20 @@ export function analyseDynamic(exp, p, cursor) {
       return energy
     },
   })
-  if (exp.ghost) {
+  if (exp.ghost === 'forced') {
+    // The steady state as a time trace: the same circuit started from the
+    // state the phasors say it occupies at t = 0, so no natural response is
+    // ever excited. It is a transient, not the phasor waveform drawn — that
+    // is what makes its agreement with `ac.at` a check and not a tautology.
+    if (x.ac) x.ghost = transient(net, { tEnd, points, x0: forcedState(x.dyn, x.ac, x.omega) })
+  } else if (exp.ghost) {
     try {
-      x.ghost = transient(exp.net(exp.ghost(p)), { tEnd, points: 601 })
+      x.ghost = transient(exp.net(exp.ghost(p)), { tEnd, points })
     } catch (err) {
       if (!(err instanceof NetworkError)) throw err
     }
   }
+  if (x.ac && (exp.views.includes('impedance') || exp.views.includes('bode'))) x.freq = freqSweep(exp, p, net, x.state)
   if (exp.port) {
     try {
       x.thevenin = thevenin(portNetAt(net, tEnd), exp.port[0], exp.port[1])
@@ -1202,6 +1602,47 @@ export function netPower(sol) {
   let scale = 0
   for (const w of Object.values(sol.p)) scale = Math.max(scale, Math.abs(w))
   return Math.abs(sol.pTotal) <= 1e-9 * scale ? 0 : sol.pTotal
+}
+
+/**
+ * The state vector the steady state occupies at t = 0: each capacitor's
+ * voltage phasor and each inductor's current phasor, read at t = 0. Starting
+ * the transient there excites no natural response at all.
+ */
+function forcedState(dyn, ac, omega) {
+  return dyn.states.map((s) => cx.instant(s.type === 'C' ? ac.volt[s.id] : ac.i[s.id], omega, 0))
+}
+
+/** The phasor of the experiment's output quantity, in the AC readout `ac`. */
+const outPhasor = (exp, ac) => ac[exp.out.q][exp.out.key]
+
+const FREQ_MEMO = new Map()
+
+/**
+ * The frequency response behind the impedance and Bode views: H = out/V_s and
+ * the impedance the source sees, on a log grid two decades either side of the
+ * circuit's own frequency (1/τ or ω₀), each point a fresh complex solve with
+ * the source at 1∠0. Memoized on the component values — the drive's amplitude,
+ * phase and frequency do not enter — so scrubbing the frequency knob only
+ * moves the marker.
+ */
+function freqSweep(exp, p, net, st) {
+  const key = JSON.stringify([exp.id, exp.params.filter((k) => !['A', 'f', 'phi', 'N'].includes(k.key)).map((k) => p[k.key])])
+  let out = FREQ_MEMO.get(key)
+  if (out) return out
+  const wc = st.n === 1 ? 1 / st.tau : st.w0
+  const points = 241
+  const sw = sweepAC(net, wc / 100, wc * 100, points, (ac) => ({ H: cx.cdiv(outPhasor(exp, ac), ac.volt.V1), Z: drivingPointZ(ac, 'V1') }), { sources: { V1: 1 } })
+  out = {
+    omega: sw.omega,
+    f: Float64Array.from(sw.omega, (w) => w / (2 * Math.PI)),
+    H: sw.value.map((v) => v.H),
+    Z: sw.value.map((v) => v.Z),
+    wc,
+  }
+  FREQ_MEMO.clear()
+  FREQ_MEMO.set(key, out)
+  return out
 }
 
 /**

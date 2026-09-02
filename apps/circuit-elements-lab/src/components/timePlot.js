@@ -40,8 +40,11 @@ export function alignZero([lLo, lHi], [rLo, rHi]) {
   return [-s * f0, s * (1 - f0)]
 }
 
-/** Nice ticks and a title down the right-hand side of the frame, for a second scale. */
-export function drawRightAxis(ctx, area, w, lo, hi, fmtY, title) {
+/**
+ * Nice ticks and a title down the right-hand side of the frame, for a second
+ * scale. `step` overrides the tick interval — a phase axis is read in 45°.
+ */
+export function drawRightAxis(ctx, area, w, lo, hi, fmtY, title, step = null) {
   const k = area.k || 1
   const sy = (v) => area.y + area.h - ((v - lo) / (hi - lo)) * area.h
   ctx.save()
@@ -49,7 +52,7 @@ export function drawRightAxis(ctx, area, w, lo, hi, fmtY, title) {
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
   ctx.fillStyle = COLORS.text
-  const step = niceStep(hi - lo, Math.max(2, Math.floor(area.h / (46 * k))))
+  step = step || niceStep(hi - lo, Math.max(2, Math.floor(area.h / (46 * k))))
   for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-6; v += step) {
     const y = sy(v)
     ctx.fillText(fmtY(Math.abs(v) < step * 1e-6 ? 0 : v), area.x + area.w + 8 * k, y)

@@ -302,6 +302,72 @@ export const TERMS = {
       'resistor (dissipated as heat, gone), or out of a source (supplied). Since the powers sum to ' +
       'zero at every instant, supplied = stored − stored₀ + dissipated at every instant too.',
   },
+  steadystate: {
+    name: 'Steady state (sinusoidal)',
+    def:
+      'What is left once the natural response has decayed: every voltage and current a sinusoid ' +
+      'at the drive frequency, and nothing else. It is the forced response alone; how the circuit ' +
+      'was switched on no longer matters. In this lab the dashed trace is the steady state, and ' +
+      'the solid one is the circuit getting there.',
+  },
+  phasor: {
+    name: 'Phasor',
+    def:
+      'A sinusoid at a known frequency is fixed by its amplitude and phase, so it can be written ' +
+      'as one complex number X = |X|∠φ, with x(t) = Im{X·e^(jωt)} = |X| sin(ωt + φ). Drawn as an ' +
+      'arrow, its length is the amplitude and its angle the phase; spin it at ω and the height of ' +
+      'the tip is the waveform. Adding sinusoids becomes adding arrows, and d/dt becomes ' +
+      'multiplying by jω — a quarter turn and a stretch.',
+  },
+  reactance: {
+    name: 'Reactance',
+    def:
+      'The ohms of a capacitor or inductor at one frequency: X_L = ωL and X_C = 1/ωC, with the ' +
+      'voltage a quarter cycle ahead of the current for the inductor and a quarter cycle behind ' +
+      'for the capacitor. Both are real ohms in the sense that |V| = X·|I|; they differ from ' +
+      'resistance in the 90° and in dissipating nothing.',
+  },
+  impedanceac: {
+    name: 'Impedance Z',
+    def:
+      'Ohm’s law for phasors: V = Z·I with Z complex. A resistor’s Z is R; an inductor’s jωL; a ' +
+      'capacitor’s 1/jωC = −j/ωC. Series impedances add, parallel ones combine as resistors do, ' +
+      'and the whole of steady-state analysis is nodal analysis with Z in place of R. |Z| is the ' +
+      'ratio of amplitudes and ∠Z the angle by which the voltage leads the current.',
+  },
+  resonance: {
+    name: 'Resonance',
+    def:
+      'The frequency ω₀ = 1/√LC at which an inductor’s reactance equals a capacitor’s. In series ' +
+      'their voltages cancel, the impedance drops to R alone and the current peaks; each reactive ' +
+      'voltage is Q = (1/R)√(L/C) times the source. The response is Q times narrower than it is ' +
+      'tall: the half-power bandwidth is ω₀/Q, and it takes about Q/π cycles to build up.',
+  },
+  rms: {
+    name: 'RMS value',
+    def:
+      'The root of the mean of the square: the constant that would heat a resistor as much as ' +
+      'the waveform does, because power is v²/R and heat follows the average of v². For a ' +
+      'sinusoid it is the peak over √2, so a 10 V peak sine is 7.07 V RMS — and mains "230 V" is ' +
+      'the RMS of a 325 V peak.',
+  },
+  powerfactor: {
+    name: 'Power factor',
+    def:
+      'The ratio of the power actually delivered, P, to the apparent power V_rms·I_rms that the ' +
+      'wires must carry: cos φ, with φ the angle between voltage and current. A resistor is 1; ' +
+      'a pure inductor or capacitor is 0, current flowing and heating the wires while nothing is ' +
+      'delivered. The rest, Q = V_rms·I_rms·sin φ, is reactive power — energy borrowed and ' +
+      'returned every half cycle.',
+  },
+  bode: {
+    name: 'Bode plot',
+    def:
+      'The frequency response drawn as two curves against a logarithmic frequency axis: the ' +
+      'magnitude |H| in decibels (20·log₁₀|H|) and the phase in degrees. Logarithms turn a ' +
+      'product of stages into a sum and a factor-of-ten rolloff into a straight line: a single ' +
+      'RC falls 20 dB per decade above its corner, where |H| = 1/√2 (−3 dB) and the phase is −45°.',
+  },
 }
 
 /** The definitions an experiment asks for, in the order it lists them. */

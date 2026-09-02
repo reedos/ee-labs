@@ -2,7 +2,7 @@ import React from 'react'
 import { fmt } from '@ee-labs/ui'
 import { Formula, agrees } from '@ee-labs/explain'
 import { fmtCell } from '@ee-labs/network'
-import { netPower } from '../math.js'
+import { acTable, netPower } from '../math.js'
 
 // The lower pane's views. Each takes the analysis from math.js `analyse` and
 // shows one thing about it. None of them computes physics: every number here
@@ -351,6 +351,76 @@ export function StatePane({ x }) {
         capacitors open and inductors shorted
         {before.assumed.length ? `; ${before.assumed.join(', ')} had no DC path and is taken as uncharged` : ''}. A state cannot
         jump, so x(0⁺) = x(0⁻); everything else may.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * AC power per element from the phasors: S = ½·V·I* under the passive sign
+ * convention, so P is the time-average of v·i (the resistor's heat), Q the
+ * amplitude of the power that only sloshes (the reactive element's), and the
+ * source's row comes out negative as its DC meter does. Both sums are zero —
+ * Tellegen's theorem holds for complex power too, and the last row shows it.
+ */
+export function AcPowerPane({ x }) {
+  const rows = acTable(x)
+  const sumP = rows.reduce((a, r) => a + r.P, 0)
+  const sumQ = rows.reduce((a, r) => a + r.Q, 0)
+  const scale = Math.max(1e-30, ...rows.map((r) => r.apparent))
+  const okP = Math.abs(sumP) <= 1e-12 * scale
+  const okQ = Math.abs(sumQ) <= 1e-12 * scale
+  // Wrapped to ±180°, and "−0.0°" (a resistor's φ from the rounding side of zero) reads as 0.0°.
+  const deg = (a) => `${((Math.atan2(Math.sin(a), Math.cos(a)) * 180) / Math.PI).toFixed(1).replace(/^-0\.0$/, '0.0')}°`
+  return (
+    <div className="acpower" data-role="acpower">
+      <div className="table-scroll">
+      <table className="table">
+        <caption>steady state at {fmt(x.omega / (2 * Math.PI), 'Hz', 4)} — peak phasors, S = ½·V·I*</caption>
+        <thead>
+          <tr>
+            <th>element</th>
+            <th>|V|</th>
+            <th>|I|</th>
+            <th>φ = ∠V − ∠I</th>
+            <th>P</th>
+            <th>Q</th>
+            <th>|S|</th>
+            <th>pf</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td>{r.id}</td>
+              <td className="num">{num(r.V, 'V', 4)}</td>
+              <td className="num">{num(r.I, 'A', 4)}</td>
+              <td className="num">{deg(r.phi)}</td>
+              <td className="num">{num(r.P, 'W', 4)}</td>
+              <td className="num">{num(r.Q, 'var', 4)}</td>
+              <td className="num">{num(r.apparent, 'VA', 4)}</td>
+              <td className="num">{plain(Math.abs(r.pf))}{r.type === 'V' ? '' : r.Q > 1e-15 * scale ? ' lag' : r.Q < -1e-15 * scale ? ' lead' : ''}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td>Σ over every element</td>
+            <td />
+            <td />
+            <td />
+            <td className={`num ${okP ? 'agree' : 'disagree'}`}>{okP ? '0 W' : num(sumP, 'W', 2)}</td>
+            <td className={`num ${okQ ? 'agree' : 'disagree'}`}>{okQ ? '0 var' : num(sumQ, 'var', 2)}</td>
+            <td />
+            <td />
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+      <p className="hint">
+        Peak values throughout; RMS is peak/√2 and P = V_rms·I_rms·cos φ is the same number. P is what a wattmeter averages,
+        Q the to-and-fro that heats nothing but still has to be carried, |S| = √(P² + Q²) what the wires see. A positive Q
+        (current lagging) is an inductor’s; a capacitor’s is negative.
       </p>
     </div>
   )

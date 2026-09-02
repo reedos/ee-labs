@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react'
-import { COLORS, LabNav, NumField, PoleZeroCanvas, ReportIssue, fmt, fmtHz, fmtNum } from '@ee-labs/ui'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { COLORS, LabNav, NumField, PoleZeroCanvas, ReportIssue, fmt, fmtHz, fmtNum, readCircuitLink, track, arrivalEvent } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import {
   bode,
@@ -11,6 +11,7 @@ import {
   isStable,
 } from '@ee-labs/systems'
 import { CIRCUITS, CIRCUIT_GROUPS, defaultsOf, transferOf } from './circuits.js'
+import { stateFromLink } from './incoming.js'
 import { circuitMath } from './math.js'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { TOLERANCES, responseBand, stepBand, toleranceCloud, tolsOf, spreadPct } from './tolerance.js'
@@ -34,9 +35,22 @@ import StepCanvas from './components/StepCanvas.jsx'
 const POINTS = 600
 
 export default function App() {
-  const [id, setId] = useState('rcLow')
-  const [params, setParams] = useState(() => defaultsOf('rcLow'))
-  const [output, setOutput] = useState(CIRCUITS.rcLow.outputs[0].key)
+  // A circuit handed over from Circuit Elements Lab, read once at startup and
+  // checked against the catalog (incoming.js) before it becomes state.
+  const [linked] = useState(() => {
+    const { patch, warnings } = readCircuitLink()
+    const { state, warnings: more } = stateFromLink(patch)
+    return { state, warnings: [...warnings, ...more] }
+  })
+  // The other half of the hand-over count: the sender counts the click, this
+  // counts the arrival. Once per load, and only for a load that came from a link.
+  useEffect(() => {
+    if (linked.state) track(arrivalEvent('circuit-lab', linked.state.from))
+  }, [linked])
+
+  const [id, setId] = useState(linked.state?.id ?? 'rcLow')
+  const [params, setParams] = useState(() => linked.state?.params ?? defaultsOf('rcLow'))
+  const [output, setOutput] = useState(linked.state?.output ?? CIRCUITS.rcLow.outputs[0].key)
   // How honest the parts are, PER PART: { paramKey: ±fraction }. Empty means
   // the textbook world of exact values; a board is never all one grade, and
   // which spec suffers depends on which part wobbles.
@@ -268,6 +282,22 @@ export default function App() {
         </header>
 
         <section>
+          {linked.state ? (
+            <p className="hint from-link" data-role="from-link">
+              Loaded from a link —{' '}
+              {linked.state.from?.label
+                ? `your “${linked.state.from.label}” arrived from ${linked.state.from.app === 'elements' ? 'Circuit Elements Lab' : 'another tool'} as ${CIRCUITS[linked.state.id].name}, component values exact.`
+                : `${CIRCUITS[linked.state.id].name} with the values the link carried.`}{' '}
+              Pick anything below to start over.
+            </p>
+          ) : null}
+          {linked.warnings.length ? (
+            <ul className="link-warnings" data-role="link-warnings">
+              {linked.warnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          ) : null}
           <h2>Try this</h2>
           {/* Both lists fold to their group headers — thirteen lessons and
               eight circuits were a wall of buttons that pushed the components

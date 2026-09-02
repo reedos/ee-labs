@@ -1,16 +1,19 @@
 import React, { useMemo, useState } from 'react'
 import { LabNav, NumField, ReportIssue, Schematic, fmt } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
-import { equations, normalize } from '@ee-labs/network'
+import { equations, normalize, complex as cx } from '@ee-labs/network'
 import { EXPERIMENTS, GROUPS, byId, defaultsOf, drawables, isDynamic } from './experiments.js'
-import { analyse, experimentMath, netPower } from './math.js'
+import { analyse, atDrive, experimentMath, netPower, snapNoise } from './math.js'
 import { termsFor } from './terms.js'
 import { reportSummary } from './report.js'
-import { EquationsPane, PowerPane, TheveninPane, SuperpositionPane, StatePane, Refusal } from './components/panes.jsx'
+import { EquationsPane, PowerPane, TheveninPane, SuperpositionPane, StatePane, AcPowerPane, Refusal } from './components/panes.jsx'
 import SweepCanvas from './components/SweepCanvas.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
 import EnergyCanvas from './components/EnergyCanvas.jsx'
 import DampingCanvas from './components/DampingCanvas.jsx'
+import PhasorCanvas from './components/PhasorCanvas.jsx'
+import FreqCanvas from './components/FreqCanvas.jsx'
+import HandOver from './components/HandOver.jsx'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -25,6 +28,10 @@ const VIEW_LABELS = {
   state: { label: 'State equation', title: 'ẋ = Ax + Bu as built, its roots, and the state before t = 0' },
   energy: { label: 'Energy', title: 'Where the energy went: stored, dissipated, supplied' },
   damping: { label: 'Damping sweep', title: 'Overshoot and settling time as R sweeps through critical' },
+  phasor: { label: 'Phasors', title: 'Each steady-state voltage as a turning arrow, beside the waveform its tip draws' },
+  impedance: { label: 'Impedance', title: '|Z| and ∠Z seen by the source against frequency; the marker is the drive' },
+  bode: { label: 'Bode', title: '|H| in dB and ∠H against log frequency; the marker is the drive' },
+  acpower: { label: 'AC power', title: 'P, Q, |S| and power factor per element from the phasors' },
 }
 
 /** The cursor an experiment opens at: its own fraction of its window at the defaults. */
@@ -70,8 +77,9 @@ export default function App() {
     }
   }, [x])
   const math = useMemo(() => experimentMath(exp, params, x), [exp, params, x])
+  const drive = useMemo(() => (x.ac && exp.out ? atDrive(exp, x) : null), [exp, x])
   const elements = useMemo(() => drawables(x.net), [x])
-  const meters = x.sol ? { v: x.sol.v, i: x.sol.i, volt: x.sol.volt, p: x.sol.p } : null
+  const meters = useMemo(() => (x.sol ? snapNoise(x.sol) : null), [x])
 
   const nodeCount = x.sol ? x.sol.norm.n : normalize(x.net).n
   const outcome = x.sol
@@ -185,11 +193,12 @@ export default function App() {
                 scale={p.scale}
                 hint={p.hint}
                 presets={p.presets}
-                eng
+                eng={p.eng !== false}
               />
             ),
           )}
           <MathPanel entry={math} />
+          {exp.circuitLab ? <HandOver exp={exp} params={params} /> : null}
         </section>
       </aside>
 
@@ -223,6 +232,13 @@ export default function App() {
                 <span>t</span>
                 <b>{fmt(x.cursor, 's', 3)}</b>
               </span>
+              {x.omega ? (
+                <span className="topbar-field" data-role="drive">
+                  <span>ω</span>
+                  <b>{fmt(x.omega, 'rad/s', 3)}</b>
+                  <em className="prov"> {fmt(x.omega / (2 * Math.PI), 'Hz', 3)}</em>
+                </span>
+              ) : null}
               {x.state.n === 1 ? (
                 <span className="topbar-field">
                   <span>τ</span>
@@ -276,8 +292,8 @@ export default function App() {
               ))}
             </div>
             <div className="readout">
-              {x.sol ? (
-                Object.entries(x.sol.v)
+              {meters ? (
+                Object.entries(meters.v)
                   .filter(([n]) => n !== 'gnd')
                   .map(([n, v]) => (
                     <span key={n}>
@@ -354,6 +370,43 @@ export default function App() {
                   ))
                 : null}
               {currentView === 'energy' && x.tr ? <EnergyReadout energy={x.energy} t={x.cursor} /> : null}
+              {currentView === 'phasor' && x.ac ? (
+                <>
+                  <span>
+                    |{exp.out.label}| <b>{fmt(cx.cabs(x.ac[exp.out.q][exp.out.key]), exp.out.q === 'i' ? 'A' : 'V', 4)}</b>
+                  </span>
+                  <span>
+                    ∠{exp.out.label} <b>{deg(cx.carg(x.ac[exp.out.q][exp.out.key]))}</b>
+                    <em className="prov"> re v_s: {deg(cx.carg(x.ac[exp.out.q][exp.out.key]) - cx.carg(x.ac.volt.V1))}</em>
+                  </span>
+                  <span>
+                    turned <b>{deg(x.omega * x.cursor, false)}</b>
+                  </span>
+                </>
+              ) : null}
+              {currentView === 'impedance' && drive ? (
+                <>
+                  <span>
+                    |Z| <b>{fmt(cx.cabs(drive.Z), 'Ω', 4)}</b>
+                  </span>
+                  <span>
+                    ∠Z <b>{deg(cx.carg(drive.Z))}</b>
+                    <em className="prov"> {drive.Z[1] < -1e-9 * cx.cabs(drive.Z) ? 'capacitive' : drive.Z[1] > 1e-9 * cx.cabs(drive.Z) ? 'inductive' : 'resonant'}</em>
+                  </span>
+                </>
+              ) : null}
+              {currentView === 'bode' && drive ? (
+                <>
+                  <span>
+                    |H| <b>{(20 * Math.log10(cx.cabs(drive.H))).toFixed(2)} dB</b>
+                    <em className="prov"> ×{cx.cabs(drive.H).toPrecision(4)}</em>
+                  </span>
+                  <span>
+                    ∠H <b>{deg(cx.carg(drive.H))}</b>
+                  </span>
+                </>
+              ) : null}
+              {currentView === 'acpower' && x.ac ? <AcPowerReadout x={x} /> : null}
               {currentView === 'damping' && x.damping ? (
                 x.damping.at ? (
                   <>
@@ -377,6 +430,7 @@ export default function App() {
               <ScopeCanvas
                 tr={x.tr}
                 ghost={x.ghost || null}
+                ghostLabel={exp.ghostLabel}
                 scope={exp.scope}
                 cursor={x.cursor}
                 onCursor={setCursor}
@@ -385,6 +439,17 @@ export default function App() {
               />
             ) : null}
             {currentView === 'state' && x.tr ? <StatePane x={x} /> : null}
+            {currentView === 'phasor' && x.ac ? <PhasorCanvas exp={exp} x={x} cursor={x.cursor} onCursor={setCursor} /> : null}
+            {(currentView === 'impedance' || currentView === 'bode') && x.freq && drive ? (
+              <FreqCanvas
+                freq={x.freq}
+                mode={currentView}
+                fDrive={x.omega / (2 * Math.PI)}
+                at={drive}
+                corner={{ f: x.freq.wc / (2 * Math.PI), label: x.state.n === 1 ? 'f_c' : 'f₀' }}
+              />
+            ) : null}
+            {currentView === 'acpower' && x.ac ? <AcPowerPane x={x} /> : null}
             {currentView === 'energy' && x.tr ? <EnergyCanvas energy={x.energy} tEnd={x.tEnd} cursor={x.cursor} onCursor={setCursor} /> : null}
             {currentView === 'damping' && x.damping ? <DampingCanvas exp={exp} params={params} at={x.damping.at} /> : null}
             {currentView === 'equations' && eq ? <EquationsPane eq={eq} solved={!!x.sol} /> : null}
@@ -407,6 +472,36 @@ export default function App() {
         </section>
       </main>
     </div>
+  )
+}
+
+/** Radians as degrees, one decimal; wrapped to (−180°, 180°] unless `wrap` is false (an angle turned keeps counting). */
+function deg(a, wrap = true) {
+  const v = wrap ? Math.atan2(Math.sin(a), Math.cos(a)) : a
+  return `${((v * 180) / Math.PI).toFixed(1)}°`
+}
+
+/** What the source is supplying in the steady state: P, Q and the power factor, from the AC power table. */
+function AcPowerReadout({ x }) {
+  const src = x.net.elements.find((e) => e.type === 'V' && e.wave && e.wave.kind === 'sine')
+  if (!src) return null
+  const V = x.ac.volt[src.id]
+  const I = cx.cscale(x.ac.i[src.id], -1) // delivered, not absorbed
+  const S = cx.cscale(cx.cmul(V, cx.conj(I)), 0.5)
+  const apparent = cx.cabs(S)
+  return (
+    <>
+      <span>
+        P <b>{fmt(S[0], 'W', 4)}</b>
+      </span>
+      <span>
+        Q <b>{fmt(S[1], 'var', 4)}</b>
+      </span>
+      <span>
+        pf <b>{apparent > 0 ? (S[0] / apparent).toPrecision(3) : '—'}</b>
+        <em className="prov"> {S[1] > 1e-12 * apparent ? 'lagging' : S[1] < -1e-12 * apparent ? 'leading' : 'unity'}</em>
+      </span>
+    </>
   )
 }
 

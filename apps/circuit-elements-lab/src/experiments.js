@@ -27,6 +27,7 @@ export const GROUPS = [
   'E · Op-amps',
   'F · Elements that remember',
   'G · Second order',
+  'H · Sinusoids and phasors',
 ]
 
 // ------------------------------------------------------------ knobs
@@ -37,6 +38,9 @@ const Gain = (key, label, def) => ({ key, label, unit: '', min: 1, max: 1e6, sca
 const Cap = (key, label, def, hint) => ({ key, label, unit: 'F', min: 1e-9, max: 1e-3, scale: 'log', default: def, hint })
 const Ind = (key, label, def, hint) => ({ key, label, unit: 'H', min: 1e-6, max: 10, scale: 'log', default: def, hint })
 const Per = (key, label, def, hint) => ({ key, label, unit: 's', min: 1e-6, max: 1, scale: 'log', default: def, hint })
+const Freq = (key, label, def, hint) => ({ key, label, unit: 'Hz', min: 1, max: 1e5, scale: 'log', default: def, hint })
+// Degrees, not engineering notation: "500 m°" is nobody's phase.
+const Deg = (key, label, def) => ({ key, label, unit: '°', min: -180, max: 180, scale: 'linear', default: def, eng: false })
 // The time window is measured in the circuit's own unit — time constants or
 // cycles — so that whatever the knobs, the trace shows the whole story and the
 // sample grid resolves it.
@@ -1543,7 +1547,295 @@ export const EXPERIMENTS = [
     views: ['scope', 'state', 'energy', 'equations', 'power'],
     claim: { dual: true },
   },
+
+  // ---------------------------------------------------------------- H · phasors
+  //
+  // Every source here is a sine switched on at t = 0, so the scope still shows
+  // the whole story — natural response and all — while the phasor, impedance
+  // and power views describe only the steady state the circuit settles into.
+  // `ghost: 'forced'` draws that steady state dashed under the real trace; the
+  // two must agree once the natural response has died, and math.js measures
+  // that they do. Steady-state quantities come from the complex solve
+  // (solveAC), never from reading the time trace.
+  {
+    id: 'h1',
+    group: GROUPS[7],
+    name: 'Switching on a sine: natural dies, forced stays',
+    terms: ['steadystate', 'phasor', 'timeconstant'],
+    note:
+      'Switch a sine on at t = 0 and the capacitor voltage is two things added together: a ' +
+      'steady sinusoid at the drive frequency — the forced response, dashed — and a decaying ' +
+      'exponential −v_f(0)·e^(−t/τ) that exists only because the forced sinusoid would not have ' +
+      'started from zero on its own. The exponential is the natural response, the same e^(−t/τ) ' +
+      'as F2 with τ = RC = 1 ms; the source sets its size but not its shape. After 5τ the two ' +
+      'traces differ by less than 1 % of the forced amplitude, after 25τ by less than one part ' +
+      'in 10⁹, and from then on the circuit has forgotten how it started. Everything the phasor ' +
+      'views (H2 onward) say is about that steady state alone.',
+    params: sineRCParams({ f: 159.2 }),
+    net: sineRC,
+    layout: loop(['R1', 'C1']),
+    window: cyclesWindow,
+    ghost: 'forced',
+    ghostLabel: 'steady state (dashed)',
+    cursor: 0.3,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_s', dim: true }, { q: 'volt', key: 'C1', label: 'v_C' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'R1', label: 'i' }] },
+    },
+    out: { q: 'volt', key: 'C1', label: 'v_C' },
+    show: 'v',
+    view: 'scope',
+    views: ['scope', 'phasor', 'state', 'equations', 'power'],
+    phasor: { volts: ['R1', 'C1'], total: 'V1', current: 'R1' },
+    circuitLab: rcToCircuitLab,
+    claim: { switchOn: true },
+  },
+  {
+    id: 'h2',
+    group: GROUPS[7],
+    name: 'Phasors: the arrow that draws the wave',
+    terms: ['phasor', 'reactance', 'steadystate'],
+    note:
+      'In the steady state every voltage and current is a sinusoid at the one drive frequency, ' +
+      'so each is fixed by two numbers — amplitude and phase — and can be drawn as an arrow. ' +
+      'Spin all the arrows together at ω and the height of each tip traces its waveform; the ' +
+      'slider sets how far they have turned. Arrows add like the voltages they stand for: V_R ' +
+      'and V_C laid tip to tail land exactly on V_s, which is KVL. The capacitor’s arrow lies ' +
+      '90° behind the current’s, because i = C·dv/dt puts the current a quarter cycle ahead, ' +
+      'and its length is |I|/ωC — the reactance 1/ωC plays the part of R. At the corner ' +
+      'frequency f = 1/(2πRC) = 159.2 Hz the two voltage arrows are the same length, each ' +
+      '1/√2 of the source, and v_C lags the source by exactly 45°.',
+    params: sineRCParams({ f: 159.2 }),
+    net: sineRC,
+    layout: loop(['R1', 'C1']),
+    window: cyclesWindow,
+    ghost: 'forced',
+    ghostLabel: 'steady state (dashed)',
+    cursor: 0.75,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_s', dim: true }, { q: 'volt', key: 'R1', label: 'v_R' }, { q: 'volt', key: 'C1', label: 'v_C' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'R1', label: 'i' }] },
+    },
+    out: { q: 'volt', key: 'C1', label: 'v_C' },
+    show: 'v',
+    view: 'phasor',
+    views: ['phasor', 'scope', 'state', 'equations', 'power'],
+    phasor: { volts: ['R1', 'C1'], total: 'V1', current: 'R1' },
+    circuitLab: rcToCircuitLab,
+    claim: { phasor: true },
+  },
+  {
+    id: 'h3',
+    group: GROUPS[7],
+    name: 'Impedance: series RLC',
+    terms: ['impedanceac', 'reactance', 'phasor'],
+    note:
+      'With phasors, a capacitor and an inductor obey Ohm’s law: V = Z·I with Z_C = 1/jωC ' +
+      'and Z_L = jωL. Impedances in series add like resistors, Z = R + j(ωL − 1/ωC), and the ' +
+      'current is V_s/Z — one complex division does the whole circuit. At 1 kHz the inductor ' +
+      'offers ωL = 62.8 Ω and the capacitor 1/ωC = 159.2 Ω; their arrows point opposite ways, ' +
+      'so the reactances partly cancel to −96.3 Ω and |Z| = 138.8 Ω. The current leads the ' +
+      'source by 43.9° — the capacitor is winning — and the capacitor voltage, 1.146 V, is ' +
+      'larger than the 1 V source: the inductor’s voltage is subtracted from it, not added. ' +
+      'Raise the frequency past 1591.5 Hz and the inductor wins instead; the current swings ' +
+      'to lagging and the arrows for V_L and V_C trade lengths.',
+    params: [
+      Vs('A', 'Amplitude', 1),
+      chips(Freq('f', 'Frequency', 1000), [1000, 1591.5, 2500]),
+      R('R1', 'R', 100),
+      Ind('L1', 'L', 10e-3),
+      Cap('C1', 'C', 1e-6),
+      Win('N', 'Window', 'cycles', 6),
+    ],
+    net: sineRLC,
+    layout: loop(['R1', 'L1', 'C1']),
+    window: cyclesWindow,
+    ghost: 'forced',
+    ghostLabel: 'steady state (dashed)',
+    cursor: 0.85,
+    scope: rlcSineScope(),
+    out: { q: 'volt', key: 'C1', label: 'v_C' },
+    show: 'v',
+    view: 'phasor',
+    views: ['phasor', 'impedance', 'scope', 'state', 'equations', 'power'],
+    phasor: { volts: ['R1', 'L1', 'C1'], total: 'V1', current: 'R1' },
+    circuitLab: rlcToCircuitLab,
+    claim: { impedance: true },
+  },
+  {
+    id: 'h4',
+    group: GROUPS[7],
+    name: 'Resonance',
+    terms: ['resonance', 'reactance', 'impedanceac'],
+    note:
+      'At one frequency, ω₀ = 1/√LC, the inductor’s reactance equals the capacitor’s and their ' +
+      'voltages cancel exactly: V_L + V_C = 0, the impedance collapses to plain R, and the ' +
+      'current is in phase with the source and as large as it can ever be. That is resonance, ' +
+      'here at f₀ = 1591.5 Hz. The two cancelling voltages are not small — each is Q times the ' +
+      'source, with Q = (1/R)√(L/C) = 20 at R = 5 Ω, so a 1 V drive puts 20 V across the ' +
+      'capacitor. The impedance plot shows the same thing from outside: |Z| dips to R at f₀ ' +
+      'and the phase crosses zero there, capacitive below, inductive above, with the half-power ' +
+      'points f₀/Q = 79.6 Hz apart. The scope shows what resonance costs: the amplitude builds ' +
+      'as 1 − e^(−αt) with α = R/2L, reaching 1 − 1/e after Q/π = 6.4 cycles, and only after 40 ' +
+      'cycles is it within a quarter of one percent of its final 20 V.',
+    params: [
+      Vs('A', 'Amplitude', 1),
+      chips(Freq('f', 'Frequency', 1591.5), [1400, 1591.5, 1800]),
+      chips(R('R1', 'R', 5), [5, 20, 100]),
+      Ind('L1', 'L', 10e-3),
+      Cap('C1', 'C', 1e-6),
+      Win('N', 'Window', 'cycles', 40, 1, 80),
+    ],
+    net: sineRLC,
+    layout: loop(['R1', 'L1', 'C1']),
+    window: cyclesWindow,
+    points: 1601,
+    ghost: 'forced',
+    ghostLabel: 'steady state (dashed)',
+    cursor: 0.95,
+    scope: rlcSineScope(),
+    out: { q: 'volt', key: 'C1', label: 'v_C' },
+    show: 'v',
+    view: 'impedance',
+    views: ['impedance', 'phasor', 'scope', 'state', 'equations', 'power'],
+    phasor: { volts: ['R1', 'L1', 'C1'], total: 'V1', current: 'R1' },
+    circuitLab: rlcToCircuitLab,
+    claim: { resonance: true },
+  },
+  {
+    id: 'h5',
+    group: GROUPS[7],
+    name: 'AC power: real, reactive, apparent',
+    terms: ['rms', 'powerfactor', 'steadystate'],
+    note:
+      'Drive an RL load — 100 Ω and 0.3 H, roughly a small motor — from 10 V peak at 50 Hz. ' +
+      'The current is 72.8 mA peak and lags by 43.3°. The instantaneous power p = v·i is not ' +
+      'a sinusoid at 50 Hz but a constant plus a sinusoid at 100 Hz — twice the frequency, ' +
+      'because v and i pass through zero together twice a cycle. Its average is the real power ' +
+      'P = ½R|I|² = 265 mW, all of it in the resistor: the inductor’s power swings both ways ' +
+      'and averages exactly zero, borrowing energy for a quarter cycle and giving it back. ' +
+      'With RMS values, V_rms = 10/√2 = 7.07 V and I_rms = 51.5 mA, the product ' +
+      'V_rms·I_rms = 364 mVA is the apparent power the wires must carry; only cos φ = 0.728 of ' +
+      'it — the power factor — is P. The rest, Q = 250 mvar, is reactive power: the amplitude ' +
+      'of the inductor’s to-and-fro.',
+    params: [
+      Vs('A', 'Amplitude', 10),
+      chips(Freq('f', 'Frequency', 50), [50, 60, 400]),
+      R('R1', 'R', 100),
+      Ind('L1', 'L', 0.3),
+      Win('N', 'Window', 'cycles', 2),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'sine', amp: p.A, freq: p.f } },
+        { type: 'R', id: 'R1', nodes: ['in', 'n1'], value: p.R1 },
+        { type: 'L', id: 'L1', nodes: ['n1', 'gnd'], value: p.L1 },
+      ],
+    }),
+    layout: loop(['R1', 'L1']),
+    window: cyclesWindow,
+    ghost: 'forced',
+    ghostLabel: 'steady state (dashed)',
+    cursor: 0.8,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_s', dim: true }] },
+      right: { unit: 'W', traces: [{ q: 'p', key: 'R1', label: 'p_R' }, { q: 'p', key: 'L1', label: 'p_L' }] },
+    },
+    out: { q: 'i', key: 'R1', label: 'i' },
+    show: 'p',
+    view: 'acpower',
+    views: ['acpower', 'scope', 'phasor', 'state', 'equations', 'power'],
+    phasor: { volts: ['R1', 'L1'], total: 'V1', current: 'R1' },
+    circuitLab: (p) => (p.L1 <= 1 ? { id: 'rlLow', values: [p.R1, p.L1], output: 'r' } : { decline: `Circuit Lab’s inductor knob stops at 1 H; L = ${fmt(p.L1, 'H', 3)} does not fit.` }),
+    claim: { acpower: true },
+  },
+  {
+    id: 'h6',
+    group: GROUPS[7],
+    name: 'Frequency response: one sine at a time, then all of them',
+    terms: ['bode', 'steadystate', 'phasor'],
+    note:
+      'Everything the steady state does at one frequency is a single complex number, ' +
+      'H = V_C/V_s = 1/(1 + jωRC). Sweep the frequency and that number traces a curve: this is ' +
+      'the Bode plot, |H| in decibels and the phase in degrees against a logarithmic frequency ' +
+      'axis. Below the corner f_c = 1/(2πRC) = 159.2 Hz the capacitor is nearly open and the ' +
+      'output follows the input; at the corner |H| = 1/√2, which is −3.01 dB, and the phase ' +
+      'is −45°; above it the gain falls 20 dB for every tenfold in frequency and the phase ' +
+      'heads for −90°. The marker is the frequency the scope is running at right now. Circuit ' +
+      'Lab starts from this plot — it has no time axis at all — so the hand-over below carries ' +
+      'your R and C there exactly, and its Bode plot is this one.',
+    params: sineRCParams({ f: 1000 }),
+    net: sineRC,
+    layout: loop(['R1', 'C1']),
+    window: cyclesWindow,
+    ghost: 'forced',
+    ghostLabel: 'steady state (dashed)',
+    cursor: 0.75,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_s', dim: true }, { q: 'volt', key: 'C1', label: 'v_C' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'R1', label: 'i' }] },
+    },
+    out: { q: 'volt', key: 'C1', label: 'v_C' },
+    show: 'v',
+    view: 'bode',
+    views: ['bode', 'phasor', 'scope', 'state', 'equations', 'power'],
+    phasor: { volts: ['R1', 'C1'], total: 'V1', current: 'R1' },
+    circuitLab: rcToCircuitLab,
+    claim: { bode: true },
+  },
 ]
+
+// ------------------------------------------------------------ group H shared
+function sineRCParams({ f }) {
+  return [
+    Vs('A', 'Amplitude', 5),
+    chips(Freq('f', 'Frequency', f), [15.92, 159.2, 1592]),
+    Deg('phi', 'Phase φ', 0),
+    R('R1', 'R', 1000),
+    Cap('C1', 'C', 1e-6),
+    Win('N', 'Window', 'cycles', 4),
+  ]
+}
+function sineRC(p) {
+  return {
+    elements: [
+      { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'sine', amp: p.A, freq: p.f, phase: ((p.phi || 0) * Math.PI) / 180 } },
+      { type: 'R', id: 'R1', nodes: ['in', 'n1'], value: p.R1 },
+      { type: 'C', id: 'C1', nodes: ['n1', 'gnd'], value: p.C1 },
+    ],
+  }
+}
+function sineRLC(p) {
+  return {
+    elements: [
+      { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'sine', amp: p.A, freq: p.f } },
+      { type: 'R', id: 'R1', nodes: ['in', 'n1'], value: p.R1 },
+      { type: 'C', id: 'C1', nodes: ['n2', 'gnd'], value: p.C1 },
+      { type: 'L', id: 'L1', nodes: ['n1', 'n2'], value: p.L1 },
+    ],
+  }
+}
+/** N cycles of the drive. */
+function cyclesWindow(p) {
+  return p.N / p.f
+}
+function rlcSineScope() {
+  return {
+    left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_s', dim: true }, { q: 'volt', key: 'L1', label: 'v_L' }, { q: 'volt', key: 'C1', label: 'v_C' }] },
+    right: { unit: 'A', traces: [{ q: 'i', key: 'R1', label: 'i' }] },
+  }
+}
+// The hand-over to Circuit Lab (plan §5, H6): the catalog circuit whose transfer
+// function is this experiment's, with the component values in the catalog's
+// order. Circuit Lab's knobs stop where they stop (L ≤ 1 H); a value that does
+// not fit is declined with a reason, never clamped into a different circuit.
+function rcToCircuitLab(p) {
+  return { id: 'rcLow', values: [p.R1, p.C1], output: 'c' }
+}
+function rlcToCircuitLab(p) {
+  if (p.L1 > 1) return { decline: `Circuit Lab’s inductor knob stops at 1 H; L = ${fmt(p.L1, 'H', 3)} does not fit.` }
+  return { id: 'rlcSeries', values: [p.R1, p.L1, p.C1], output: 'c' }
+}
 
 // ------------------------------------------------------------ group G shared
 function seriesRLC(p) {
@@ -1851,6 +2143,8 @@ function labelOf(e) {
         return `${e.id} ±${fmt(w.amp, unit, 3)} square`
       case 'triangle':
         return `${e.id} ±${fmt(w.amp, unit, 3)} triangle`
+      case 'sine':
+        return `${e.id} ${fmt(w.amp, unit, 3)} sine · ${fmt(w.freq, 'Hz', 4)}`
       default:
         return undefined
     }

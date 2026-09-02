@@ -1,19 +1,27 @@
 import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, byId, defaultsOf, drawables } from './experiments.js'
-import { analyse, dampingSweep, experimentMath, netPower } from './math.js'
+import { analyse, acTable, atDrive, dampingSweep, experimentMath, netPower, snapNoise } from './math.js'
 import { layoutProblems } from './layoutCheck.js'
 import { agrees } from '@ee-labs/explain'
-import { equations, extrema, solveDC, NetworkError } from '@ee-labs/network'
+import {
+  equations, extrema, solveDC, solveAC, drivingPointZ, acPower, NetworkError, complex as cx,
+} from '@ee-labs/network'
+import { buildCircuitLink, parseCircuitLink } from '@ee-labs/ui'
+import { evalAtFreq } from '@ee-labs/systems'
+import { CIRCUITS, transferOf } from '../../circuit-lab/src/circuits.js'
+import { stateFromLink } from '../../circuit-lab/src/incoming.js'
+
+const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a))
 
 // Every note makes a claim; every claim is measured here. The math panel's
 // check rows are the first line — each row is a closed form against a solve —
 // and the specific sentences of each note are the second, so the prose cannot
 // drift from the circuit without a test noticing.
 
-const at = (id, over = {}) => {
+const at = (id, over = {}, cursor) => {
   const exp = byId[id]
   const p = { ...defaultsOf(id), ...over }
-  return { exp, p, x: analyse(exp, p) }
+  return { exp, p, x: analyse(exp, p, cursor) }
 }
 
 /** A deterministic random setting inside every knob's range. */
@@ -494,16 +502,18 @@ const DYNAMIC = EXPERIMENTS.filter((e) => e.window)
 const last = (arr) => arr[arr.length - 1]
 const peaks = (tr, q, key) => extrema(tr.t, tr.series(q, key), (t) => tr.at(t).sol[q][key])
 
-describe('every dynamic experiment (F, G)', () => {
+const SECOND_ORDER = new Set(['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'h3', 'h4'])
+
+describe('every dynamic experiment (F, G, H)', () => {
   it('has a transient, a state summary, a cursor solve, and the meters read that instant', () => {
-    expect(DYNAMIC.length).toBe(14)
+    expect(DYNAMIC.length).toBe(20)
     for (const e of DYNAMIC) {
       const { x } = at(e.id)
       expect(x.tr, e.id).toBeTruthy()
       expect(x.sol, e.id).toBeTruthy()
       expect(x.cursor).toBeCloseTo(e.cursor * x.tEnd, 12)
       expect(x.sol.maxResidual, e.id).toBeLessThan(1e-9)
-      expect(x.state.n, e.id).toBe(e.id[0] === 'f' ? 1 : 2)
+      expect(x.state.n, e.id).toBe(SECOND_ORDER.has(e.id) ? 2 : 1)
       if (x.state.n === 2) expect(['overdamped', 'critical', 'underdamped', 'undamped']).toContain(x.state.face)
       // The scope's traces are all readable from the cursor solve.
       for (const q of [...e.scope.left.traces, ...(e.scope.right?.traces || [])]) expect(Number.isFinite(x.sol[q.q][q.key]), `${e.id} ${q.label}`).toBe(true)
@@ -753,5 +763,382 @@ describe('the dynamic notes, sentence by sentence', () => {
     expect(Math.abs(x.tr.at(x.tEnd).sol.v.in)).toBeLessThan(1e-3)
     expect(at('g7', { R1: 50 }).x.state.face).toBe('critical')
     expect(at('g7', { R1: 12.5 }).x.state.face).toBe('overdamped')
+  })
+})
+
+// ------------------------------------------------------------------ group H
+// The phasor-vs-time invariant (plan §1.7) is the exit test for the group: the
+// complex solve at jω and the transient started in the forced state must agree
+// at every instant, for every state, at every setting. The math panel's
+// steadyRows hold it at the cursor for every experiment (tested above at 25
+// random settings each); here it is held across whole windows, and the notes'
+// own numbers are measured.
+
+const H_IDS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+const period = (x) => (2 * Math.PI) / x.omega
+
+describe('group H: phasor against time', () => {
+  it('every H experiment has a complex solve, a forced-start ghost, and an output phasor', () => {
+    for (const id of H_IDS) {
+      const { exp, x } = at(id)
+      expect(x.ac, id).toBeTruthy()
+      expect(x.omega, id).toBeCloseTo(2 * Math.PI * defaultsOf(id).f, 9)
+      expect(x.ghost, id).toBeTruthy()
+      expect(exp.out && x.ac[exp.out.q][exp.out.key], id).toBeTruthy()
+      expect(exp.phasor.volts.every((v) => x.ac.volt[v]), id).toBe(true)
+    }
+  })
+
+  it('the ghost IS the steady state: at 64 instants across the window every state matches Im{X·e^(jωt)} from the phasor solve', () => {
+    for (const id of H_IDS) {
+      for (const seed of [0, 1, 2]) {
+        const exp = byId[id]
+        const p = seed ? randomParams(exp, 7000 + seed) : defaultsOf(id)
+        const x = analyse(exp, p)
+        // The same stiffness allowance the math panel uses: ε·|λ_max|·t_end, never under 1e-12.
+        const fastest = Math.max(...x.state.roots.map((r) => Math.hypot(r.re, r.im)))
+        const eps = Math.max(1e-12, 1e-16 * fastest * x.tEnd)
+        for (let k = 0; k <= 64; k++) {
+          const t = (x.tEnd * k) / 64
+          const g = x.ghost.at(t).sol
+          for (const s of x.dyn.states) {
+            const X = s.type === 'C' ? x.ac.volt[s.id] : x.ac.i[s.id]
+            const want = cx.instant(X, x.omega, t)
+            const got = s.type === 'C' ? g.volt[s.id] : g.i[s.id]
+            expect(Math.abs(got - want), `${id} seed ${seed} ${s.id} t=${t}`).toBeLessThanOrEqual(1e-9 * Math.abs(want) + eps * cx.cabs(X))
+          }
+        }
+      }
+    }
+  })
+
+  it('the transient forgets its start: after the natural response has decayed the real trace lies on the ghost, and it is periodic', () => {
+    for (const id of ['h1', 'h2', 'h3', 'h5', 'h6']) {
+      const { x } = at(id, { N: 12 })
+      // Slowest decay in the circuit; wait 30 of them, or as long as the window allows.
+      const slowest = Math.min(...x.state.roots.map((r) => Math.abs(r.re)))
+      const t0 = Math.min(x.tEnd - period(x), 30 / slowest)
+      const scale = Math.max(...x.dyn.states.map((s) => cx.cabs(s.type === 'C' ? x.ac.volt[s.id] : x.ac.i[s.id])))
+      const left = Math.exp(-slowest * t0)
+      for (let k = 0; k <= 16; k++) {
+        const t = t0 + (period(x) * k) / 16
+        const a = x.tr.at(t).sol
+        const g = x.ghost.at(t).sol
+        for (const s of x.dyn.states) {
+          const d = Math.abs((s.type === 'C' ? a.volt[s.id] : a.i[s.id]) - (s.type === 'C' ? g.volt[s.id] : g.i[s.id]))
+          expect(d, `${id} ${s.id} t=${t}`).toBeLessThanOrEqual(scale * (left * 10 + 1e-9))
+        }
+        // One period later the ghost repeats itself exactly.
+        const g2 = x.ghost.at(t + period(x))
+        if (t + period(x) <= x.tEnd) for (const s of x.dyn.states) expect(Math.abs((s.type === 'C' ? g2.sol.volt[s.id] : g2.sol.i[s.id]) - (s.type === 'C' ? g.volt[s.id] : g.i[s.id])), `${id} periodic`).toBeLessThan(1e-9 * scale)
+      }
+    }
+  })
+
+  it('the phasor diagram’s projection: the tip of X turned by ωt has height Im{X·e^(jωt)} = the instantaneous value', () => {
+    const { exp, x } = at('h2')
+    for (const t of [0, 0.3e-3, 1.7e-3, x.tEnd]) {
+      for (const id of [...exp.phasor.volts, exp.phasor.total]) {
+        const X = x.ac.volt[id]
+        const tip = cx.cmul(X, cx.cexpj(x.omega * t))
+        expect(tip[1]).toBeCloseTo(cx.instant(X, x.omega, t), 12)
+        expect(tip[1]).toBeCloseTo(x.ghost.at(t).sol.volt[id], 9)
+      }
+    }
+  })
+
+  it('the meters read a zero crossing as 0, not femtovolts: H6 opens at t = 3 ms, exactly three cycles of 1 kHz', () => {
+    const { x } = at('h6', {}, 3e-3)
+    expect(Math.abs(x.sol.v.in)).toBeGreaterThan(0)
+    expect(Math.abs(x.sol.v.in)).toBeLessThan(1e-13)
+    const m = snapNoise(x.sol)
+    expect(m.v.in).toBe(0)
+    expect(m.v.n1).toBe(x.sol.v.n1) // a real reading is untouched
+    expect(Object.keys(m)).toEqual(['v', 'i', 'volt', 'p'])
+    // Each kind is scaled by its own largest reading: a 1 fA current beside 1 mA is noise, beside 1 fA it is the reading.
+    expect(snapNoise({ v: {}, i: { a: 1e-15, b: 1e-3 }, volt: {}, p: {} }).i).toEqual({ a: 0, b: 1e-3 })
+    expect(snapNoise({ v: {}, i: { a: 1e-15, b: 2e-15 }, volt: {}, p: {} }).i).toEqual({ a: 1e-15, b: 2e-15 })
+  })
+})
+
+describe('the H notes, sentence by sentence', () => {
+  it('H1: τ = RC = 1 ms; the difference from the steady state is −v_f(0)e^(−t/τ); under 1 % of |V_C| after 5τ and under 10⁻⁹ after 25τ', () => {
+    const { p, x } = at('h1', { N: 8 }) // 8 cycles at 159.2 Hz ≈ 50 ms ≫ 25 ms
+    const tau = p.R1 * p.C1
+    expect(tau).toBeCloseTo(1e-3, 15)
+    expect(x.state.tau).toBeCloseTo(tau, 12)
+    const magC = cx.cabs(x.ac.volt.C1)
+    const vf0 = cx.instant(x.ac.volt.C1, x.omega, 0)
+    const natural = (t) => x.tr.at(t).sol.volt.C1 - x.ghost.at(t).sol.volt.C1
+    for (const t of [0, 0.5 * tau, tau, 2 * tau, 4 * tau]) expect(natural(t)).toBeCloseTo(-vf0 * Math.exp(-t / tau), 10)
+    expect(Math.abs(natural(5 * tau)) / magC).toBeLessThan(0.01)
+    expect(Math.abs(natural(5 * tau)) / magC).toBeCloseTo(Math.exp(-5) * Math.abs(vf0) / magC, 9)
+    expect(Math.abs(natural(25 * tau)) / magC).toBeLessThan(1e-9)
+    // "The source sets its size but not its shape": v_C lags the source by 45° at f_c, so φ = 135° puts
+    // the forced v_C at its peak at t = 0 (largest natural part, |v_f(0)| = |V_C|) and φ = 45° puts it
+    // through zero (no natural part at all). Either way the shape is the same e^(−t/τ).
+    const q = at('h1', { phi: 135, N: 8 })
+    const vf0q = cx.instant(q.x.ac.volt.C1, q.x.omega, 0)
+    expect(Math.abs(vf0q)).toBeCloseTo(cx.cabs(q.x.ac.volt.C1), 3)
+    expect(Math.abs(vf0q)).toBeGreaterThan(Math.abs(vf0))
+    expect(q.x.tr.at(0).sol.volt.C1).toBeCloseTo(0, 12)
+    for (const t of [0, tau, 3 * tau]) expect(q.x.tr.at(t).sol.volt.C1 - q.x.ghost.at(t).sol.volt.C1).toBeCloseTo(-vf0q * Math.exp(-t / tau), 10)
+    const z = at('h1', { phi: 45, N: 8 })
+    expect(Math.abs(cx.instant(z.x.ac.volt.C1, z.x.omega, 0))).toBeLessThan(1e-3 * cx.cabs(z.x.ac.volt.C1))
+    expect(Math.abs(z.x.tr.at(tau).sol.volt.C1 - z.x.ghost.at(tau).sol.volt.C1)).toBeLessThan(1e-3 * cx.cabs(z.x.ac.volt.C1))
+  })
+
+  it('H2: V_R + V_C = V_s exactly; V_C is 90° behind I; at f_c = 159.2 Hz both are |V_s|/√2 and v_C lags 45°', () => {
+    const { p, x } = at('h2')
+    const { volt, i } = x.ac
+    const sum = cx.cadd(volt.R1, volt.C1)
+    expect(cx.cabs(cx.csub(sum, volt.V1))).toBeLessThan(1e-12 * p.A)
+    expect(wrapA(cx.carg(volt.C1) - cx.carg(i.R1))).toBeCloseTo(-Math.PI / 2, 12)
+    expect(wrapA(cx.carg(volt.R1) - cx.carg(i.R1))).toBeCloseTo(0, 12)
+    expect(cx.cabs(volt.C1)).toBeCloseTo(cx.cabs(i.R1) / (x.omega * p.C1), 12)
+    // The corner: exact at f = 1/(2πRC), which the chip's 159.2 Hz is not quite — so test at the exact value too.
+    const fc = 1 / (2 * Math.PI * p.R1 * p.C1)
+    expect(fc).toBeCloseTo(159.15, 2)
+    const ex = at('h2', { f: fc }).x
+    expect(cx.cabs(ex.ac.volt.C1) / p.A).toBeCloseTo(Math.SQRT1_2, 12)
+    expect(cx.cabs(ex.ac.volt.R1) / p.A).toBeCloseTo(Math.SQRT1_2, 12)
+    expect(wrapA(cx.carg(ex.ac.volt.C1) - cx.carg(ex.ac.volt.V1))).toBeCloseTo(-Math.PI / 4, 12)
+    // At the chip's 159.2 Hz the same to four figures — the note's "exactly 45°" is about f_c, which the chip approximates.
+    expect(cx.cabs(volt.C1) / p.A).toBeCloseTo(Math.SQRT1_2, 3)
+    expect((wrapA(cx.carg(volt.C1) - cx.carg(volt.V1)) * 180) / Math.PI).toBeCloseTo(-45, 1)
+  })
+
+  it('H3: ωL = 62.8 Ω, 1/ωC = 159.2 Ω, X = −96.3 Ω, |Z| = 138.8 Ω, current leads 43.9°, |V_C| = 1.146 V > 1 V; past 1591.5 Hz the current lags and V_L outgrows V_C', () => {
+    const { p, x } = at('h3')
+    const Z = drivingPointZ(x.ac, 'V1')
+    expect(x.omega * p.L1).toBeCloseTo(62.83, 2)
+    expect(1 / (x.omega * p.C1)).toBeCloseTo(159.15, 2)
+    expect(Z[0]).toBeCloseTo(p.R1, 9)
+    expect(Z[1]).toBeCloseTo(-96.3, 1)
+    expect(cx.cabs(Z)).toBeCloseTo(138.8, 1)
+    const lead = wrapA(cx.carg(x.ac.i.R1) - cx.carg(x.ac.volt.V1))
+    expect((lead * 180) / Math.PI).toBeCloseTo(43.9, 1)
+    expect(cx.cabs(x.ac.volt.C1)).toBeCloseTo(1.146, 3)
+    expect(cx.cabs(x.ac.volt.C1)).toBeGreaterThan(p.A)
+    expect(cx.cabs(x.ac.volt.L1)).toBeLessThan(cx.cabs(x.ac.volt.C1))
+    expect(Math.abs(wrapA(cx.carg(x.ac.volt.L1) - cx.carg(x.ac.volt.C1)))).toBeCloseTo(Math.PI, 9)
+    const hi = at('h3', { f: 2500 }).x
+    expect(wrapA(cx.carg(hi.ac.i.R1) - cx.carg(hi.ac.volt.V1))).toBeLessThan(0)
+    expect(cx.cabs(hi.ac.volt.L1)).toBeGreaterThan(cx.cabs(hi.ac.volt.C1))
+    expect(1 / (2 * Math.PI * Math.sqrt(p.L1 * p.C1))).toBeCloseTo(1591.5, 1)
+  })
+
+  it('H4: at ω₀ V_L + V_C = 0, Z = R, current in phase; Q = 20 so |V_C| = 20 V; half-power points 79.6 Hz apart; 1 − 1/e at Q/π = 6.4 cycles; within ¼ % after 40', () => {
+    const { p, x } = at('h4')
+    const w0 = 1 / Math.sqrt(p.L1 * p.C1)
+    const Q = Math.sqrt(p.L1 / p.C1) / p.R1
+    expect(Q).toBeCloseTo(20, 12)
+    expect(w0 / (2 * Math.PI)).toBeCloseTo(1591.5, 1)
+    const at0 = solveAC(x.net, w0, { anyFreq: true })
+    expect(cx.cabs(cx.cadd(at0.volt.L1, at0.volt.C1))).toBeLessThan(1e-12 * Q * p.A)
+    const Z0 = drivingPointZ(at0, 'V1')
+    expect(Z0[0]).toBeCloseTo(p.R1, 9)
+    expect(Math.abs(Z0[1])).toBeLessThan(1e-9)
+    expect(wrapA(cx.carg(at0.i.R1) - cx.carg(at0.volt.V1))).toBeCloseTo(0, 9)
+    expect(cx.cabs(at0.volt.C1)).toBeCloseTo(20, 9)
+    // Half-power: |Z| = √2·R at the two frequencies; their gap is R/L in rad/s = f₀/Q in Hz.
+    const alpha = p.R1 / (2 * p.L1)
+    const hyp = Math.sqrt(alpha * alpha + w0 * w0)
+    const wA = (w0 * w0) / (alpha + hyp)
+    const wB = alpha + hyp
+    for (const w of [wA, wB]) expect(cx.cabs(drivingPointZ(solveAC(x.net, w, { anyFreq: true }), 'V1'))).toBeCloseTo(Math.SQRT2 * p.R1, 9)
+    expect((wB - wA) / (2 * Math.PI)).toBeCloseTo(79.58, 1)
+    // The impedance sweep shows the dip and the phase crossing.
+    const magZ = x.freq.Z.map(cx.cabs)
+    const kMin = magZ.indexOf(Math.min(...magZ))
+    expect(x.freq.omega[kMin] / w0).toBeCloseTo(1, 1)
+    expect(x.freq.Z[Math.max(0, kMin - 20)][1]).toBeLessThan(0) // capacitive below
+    expect(x.freq.Z[Math.min(magZ.length - 1, kMin + 20)][1]).toBeGreaterThan(0) // inductive above
+    // Build-up: the envelope of v_C grows as 1 − e^(−αt); at t = 1/α the natural part is 1/e of the forced amplitude.
+    const T = period(x) // the chip's 1591.5 Hz, which is f₀ to five figures
+    expect(1 / alpha / T).toBeCloseTo(Q / Math.PI, 3)
+    expect((1 / alpha) * (w0 / (2 * Math.PI))).toBeCloseTo(Q / Math.PI, 9)
+    expect(Q / Math.PI).toBeCloseTo(6.37, 2)
+    const naturalAmp = (t) => {
+      // Largest |natural| over one cycle around t — the envelope, not a sample of it.
+      let m = 0
+      for (let k = 0; k <= 32; k++) {
+        const tt = t + (T * k) / 32
+        m = Math.max(m, Math.abs(x.tr.at(tt).sol.volt.C1 - x.ghost.at(tt).sol.volt.C1))
+      }
+      return m
+    }
+    expect(naturalAmp(1 / alpha) / (Q * p.A)).toBeCloseTo(Math.exp(-1), 1)
+    expect(Math.abs(naturalAmp(1 / alpha) / (Q * p.A) - Math.exp(-1))).toBeLessThan(0.1 * Math.exp(-1))
+    // The last cycle of the 40-cycle window: under a quarter of one percent, and not under a fifth.
+    const lastCycle = naturalAmp(x.tEnd - T) / (Q * p.A)
+    expect(lastCycle).toBeLessThan(0.0025)
+    expect(lastCycle).toBeGreaterThan(0.002)
+    expect(x.tEnd / T).toBeCloseTo(40, 9)
+  })
+
+  it('H5: |I| = 72.8 mA lagging 43.3°; P = 265 mW all in R, P_L = 0; V_rms 7.07 V, I_rms 51.5 mA, 364 mVA, pf 0.728, Q = 250 mvar; p(t) is DC plus 2f only', () => {
+    const { p, x } = at('h5')
+    const I = x.ac.i.R1
+    expect(cx.cabs(I)).toBeCloseTo(72.8e-3, 4)
+    expect((wrapA(cx.carg(x.ac.volt.V1) - cx.carg(I)) * 180) / Math.PI).toBeCloseTo(43.3, 1)
+    const tab = acTable(x)
+    const R = tab.find((e) => e.id === 'R1')
+    const L = tab.find((e) => e.id === 'L1')
+    const V = tab.find((e) => e.id === 'V1')
+    expect(R.P).toBeCloseTo(0.265, 3)
+    // The inductor's P is arithmetic noise (femtowatts) and the table reads it as exactly 0, with pf 0 and φ = 90° to match.
+    expect(L.P).toBe(0)
+    expect(L.pf).toBe(0)
+    expect(L.phi).toBeCloseTo(Math.PI / 2, 12)
+    expect(R.Q).toBe(0)
+    expect(R.pf).toBe(1)
+    expect(R.phi).toBe(0)
+    expect(cx.cabs(cx.csub(acPower(x.ac.volt.L1, x.ac.i.L1).S, [0, L.Q]))).toBeLessThan(1e-12 * L.apparent)
+    expect(V.P).toBeCloseTo(-R.P, 12)
+    expect(V.Q).toBeCloseTo(-L.Q, 12)
+    expect(p.A / Math.SQRT2).toBeCloseTo(7.07, 2)
+    expect(cx.cabs(I) / Math.SQRT2).toBeCloseTo(51.5e-3, 4)
+    expect(V.apparent).toBeCloseTo(0.364, 3)
+    expect(-V.P / V.apparent).toBeCloseTo(0.728, 3)
+    expect(-V.Q).toBeCloseTo(0.25, 2)
+    // The instantaneous power on the ghost (steady state): mean = P, and its spectrum has DC and 2f, nothing at f or 3f.
+    const T = period(x)
+    const n = 64
+    const pR = (t) => x.ghost.at(t).sol.p.R1
+    const pL = (t) => x.ghost.at(t).sol.p.L1
+    const mean = (f) => {
+      let s = 0
+      for (let k = 0; k < n; k++) s += f((T * (k + 0.5)) / n)
+      return s / n
+    }
+    const harm = (f, m) => Math.hypot(mean((t) => 2 * f(t) * Math.cos(m * x.omega * t)), mean((t) => 2 * f(t) * Math.sin(m * x.omega * t)))
+    expect(mean(pR)).toBeCloseTo(R.P, 9)
+    expect(Math.abs(mean(pL))).toBeLessThan(1e-9 * R.P)
+    expect(harm(pR, 2)).toBeCloseTo(R.apparent, 9)
+    expect(harm(pL, 2)).toBeCloseTo(Math.abs(L.Q), 9)
+    for (const m of [1, 3, 4]) {
+      expect(harm(pR, m)).toBeLessThan(1e-9 * R.P)
+      expect(harm(pL, m)).toBeLessThan(1e-9 * R.P)
+    }
+    // Both power sums are zero for complex power, as for real.
+    expect(Math.abs(tab.reduce((a, e) => a + e.P, 0))).toBeLessThan(1e-12)
+    expect(Math.abs(tab.reduce((a, e) => a + e.Q, 0))).toBeLessThan(1e-12)
+  })
+
+  it('H6: H = 1/(1 + jωRC): −3.01 dB and −45° at f_c = 159.2 Hz, −20 dB per decade above, phase heading for −90°, the marker on the curve', () => {
+    const { p, x } = at('h6')
+    const tau = p.R1 * p.C1
+    const wc = 1 / tau
+    expect(wc / (2 * Math.PI)).toBeCloseTo(159.15, 1)
+    expect(x.freq.wc).toBeCloseTo(wc, 9)
+    const Hat = (w) => {
+      const a = solveAC(x.net, w, { anyFreq: true, sources: { V1: 1 } })
+      return cx.cdiv(a.volt.C1, a.volt.V1)
+    }
+    const dB = (z) => 20 * Math.log10(cx.cabs(z))
+    expect(dB(Hat(wc))).toBeCloseTo(-3.0103, 4)
+    expect((cx.carg(Hat(wc)) * 180) / Math.PI).toBeCloseTo(-45, 9)
+    // −20 dB per decade is the asymptote: −19.96 for the first decade above f_c, −19.9996 for the next.
+    expect(dB(Hat(100 * wc)) - dB(Hat(10 * wc))).toBeCloseTo(-20, 1)
+    expect(dB(Hat(1000 * wc)) - dB(Hat(100 * wc))).toBeCloseTo(-20, 3)
+    expect((cx.carg(Hat(100 * wc)) * 180) / Math.PI).toBeCloseTo(-89.4, 1)
+    // Well below the corner the output follows the input.
+    expect(cx.cabs(Hat(wc / 100))).toBeCloseTo(1, 4)
+    // Every sweep point is the closed form.
+    x.freq.omega.forEach((w, k) => {
+      const want = cx.cdiv(cx.C(1, 0), cx.C(1, w * tau))
+      expect(cx.cabs(cx.csub(x.freq.H[k], want))).toBeLessThan(1e-12)
+    })
+    // The drive marker is the same solve the meters use, at the drive's frequency.
+    const d = atDrive(byId.h6, x)
+    expect(cx.cabs(cx.csub(d.H, cx.cdiv(x.ac.volt.C1, x.ac.volt.V1)))).toBeLessThan(1e-15)
+    expect(dB(d.H)).toBeCloseTo(20 * Math.log10(1 / Math.sqrt(1 + (x.omega * tau) ** 2)), 9)
+  })
+})
+
+// ---------------------------------------------------------- hand-over (H6)
+// Plan §5: an exact mapping to Circuit Lab, tested both ways — the circuit that
+// arrives has this circuit's transfer function at every sweep point, and what
+// the link carries loads there without a warning and with the same values.
+
+describe('hand-over to Circuit Lab, both ways', () => {
+  const withHandOver = EXPERIMENTS.filter((e) => e.circuitLab)
+
+  it('every H experiment offers one, and the mapping names a catalog circuit with the right count of values', () => {
+    expect(withHandOver.map((e) => e.id)).toEqual(H_IDS)
+    for (const e of withHandOver) {
+      const m = e.circuitLab(defaultsOf(e.id))
+      expect(m.decline, e.id).toBeUndefined()
+      expect(CIRCUITS[m.id], `${e.id} → ${m.id}`).toBeTruthy()
+      expect(m.values.length, e.id).toBe(CIRCUITS[m.id].params.length)
+      expect(CIRCUITS[m.id].outputs.some((o) => o.key === m.output), e.id).toBe(true)
+    }
+  })
+
+  it('there: Circuit Lab’s transfer function for the mapped circuit equals this lab’s H = V_out/V_s at all 241 sweep points, to 1e-9', () => {
+    for (const e of withHandOver) {
+      for (const seed of [0, 11, 12]) {
+        const p = seed ? randomParams(e, seed) : defaultsOf(e.id)
+        const m = e.circuitLab(p)
+        if (m.decline) continue
+        const x = analyse(e, p)
+        const { state } = stateFromLink(parseCircuitLink(buildCircuitLink(m)).patch)
+        const tf = transferOf(m.id, state.params, state.output)
+        // H5's output is the current i, which Circuit Lab's RL low-pass reads as the voltage across R: v_R = R·i.
+        const scale = e.out.q === 'i' ? p.R1 : 1
+        // The sweep the impedance/Bode views draw where the experiment has one; the same grid, solved here, where it does not.
+        const wc = x.state.n === 1 ? 1 / x.state.tau : x.state.w0
+        const omega = x.freq ? x.freq.omega : Array.from({ length: 241 }, (_, k) => wc * 10 ** (-2 + (4 * k) / 240))
+        const H = x.freq ? x.freq.H : omega.map((w) => {
+          const ac = solveAC(x.net, w, { anyFreq: true, sources: { V1: 1 } })
+          return cx.cdiv(ac[e.out.q][e.out.key], ac.volt.V1)
+        })
+        expect(omega.length).toBe(241)
+        omega.forEach((w, k) => {
+          const f = w / (2 * Math.PI)
+          const theirs = evalAtFreq(tf, f)
+          const ours = cx.cscale(H[k], scale)
+          expect(cx.cabs(cx.csub(theirs, ours)), `${e.id} seed ${seed} f=${f}`).toBeLessThanOrEqual(1e-9 * cx.cabs(theirs) + 1e-15)
+        })
+      }
+    }
+  })
+
+  it('back: the link round-trips through Circuit Lab’s parser and catalog check with values identical and no warning', () => {
+    for (const e of withHandOver) {
+      for (const seed of [0, 21, 22, 23]) {
+        const p = seed ? randomParams(e, seed) : defaultsOf(e.id)
+        const m = e.circuitLab(p)
+        if (m.decline) continue
+        const frag = buildCircuitLink({ ...m, from: { app: 'elements', id: e.id, label: e.name } })
+        const parsed = parseCircuitLink(frag)
+        expect(parsed.warnings, e.id).toEqual([])
+        const { state, warnings } = stateFromLink(parsed.patch)
+        expect(warnings, `${e.id} seed ${seed}: ${frag}`).toEqual([])
+        expect(state.id).toBe(m.id)
+        expect(state.output).toBe(m.output)
+        expect(state.from).toEqual({ app: 'elements', id: e.id, label: e.name })
+        CIRCUITS[m.id].params.forEach((k, i) => expect(state.params[k.key], `${e.id} ${k.key}`).toBe(m.values[i]))
+      }
+    }
+  })
+
+  it('a value Circuit Lab’s knobs cannot hold is declined with the reason, never clamped into a different circuit', () => {
+    const m = byId.h5.circuitLab({ ...defaultsOf('h5'), L1: 2 })
+    expect(m.decline).toMatch(/1 H/)
+    expect(m.id).toBeUndefined()
+    const m3 = byId.h3.circuitLab({ ...defaultsOf('h3'), L1: 1.5 })
+    expect(m3.decline).toMatch(/1 H/)
+    // Everything else in this lab's knob ranges fits Circuit Lab's: R 1–1 MΩ, C 1 pF–1 mF, L up to 1 H.
+    for (const e of withHandOver) {
+      for (const k of e.params) {
+        if (!['Ω', 'H', 'F'].includes(k.unit)) continue
+        const c = CIRCUITS[e.circuitLab(defaultsOf(e.id)).id]
+        const knob = c.params.find((q) => q.unit === k.unit)
+        expect(k.min, `${e.id} ${k.key} min`).toBeGreaterThanOrEqual(knob.min)
+        if (k.unit !== 'H') expect(k.max, `${e.id} ${k.key} max`).toBeLessThanOrEqual(knob.max)
+      }
+    }
   })
 })

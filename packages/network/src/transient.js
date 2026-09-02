@@ -19,6 +19,13 @@
 // capacitor voltages and inductor currents are continuous — and the next
 // piece begins from it.
 //
+// A sinusoid is generated the same way: for each distinct ω among the sources
+// two more rows [c; s] = [cos ωt; sin ωt] rotate under d/dt [c; s] = [0 −ω; ω 0] [c; s],
+// and the source's amplitude and phase become the entries of B's new columns.
+// So a sine-driven circuit is still one exponential per piece, and the forced
+// response the phasor solve predicts (phasor.js) is what this converges to —
+// a comparison the tests make to floating point.
+//
 // For pre-t = 0 the circuit may differ (a switch in its `before` position);
 // dynamics.js's initialConditions solves that circuit at DC and continuity
 // does the rest: x(0⁺) = x(0⁻). That is the textbook method, in three steps
@@ -27,25 +34,40 @@
 import { NetworkError } from './netlist.js'
 import { dynamics, initialConditions } from './dynamics.js'
 import { expm, matVecMul, zeros } from './expm.js'
-import { allBreaks, sourceAffine } from './waves.js'
+import { allBreaks, pieceValue, sourceAffine } from './waves.js'
 
-/** The augmented matrix for one piece of input. */
-function augmented(dyn, U0, U1) {
+/**
+ * One piece of the input: the sources' pieces from t0, the distinct
+ * frequencies among them, the augmented matrix, and the generator vector
+ * g(t) = [1, t − t0, cos ω₁t, sin ω₁t, …] that closes z = [x; g].
+ */
+function segmentOf(dyn, pieces, t0, t1) {
   const { A, B, n, m } = dyn
-  const M = zeros(n + 2)
+  const omegas = [...new Set(pieces.flatMap((q) => q.sines.map((s) => s.omega)))].sort((a, b) => a - b)
+  const k = omegas.length
+  const M = zeros(n + 2 + 2 * k)
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) M[i][j] = A[i][j]
-    let bu0 = 0
-    let bu1 = 0
     for (let j = 0; j < m; j++) {
-      bu0 += B[i][j] * U0[j]
-      bu1 += B[i][j] * U1[j]
+      const q = pieces[j]
+      M[i][n] += B[i][j] * q.u0
+      M[i][n + 1] += B[i][j] * q.slope
+      for (const s of q.sines) {
+        const c = n + 2 + 2 * omegas.indexOf(s.omega)
+        M[i][c] += B[i][j] * s.a
+        M[i][c + 1] += B[i][j] * s.b
+      }
     }
-    M[i][n] = bu0
-    M[i][n + 1] = bu1
   }
   M[n + 1][n] = 1
-  return M
+  omegas.forEach((w, q) => {
+    const c = n + 2 + 2 * q
+    M[c][c + 1] = -w
+    M[c + 1][c] = w
+  })
+  const gen = (t) => [1, t - t0, ...omegas.flatMap((w) => [Math.cos(w * t), Math.sin(w * t)])]
+  const inputs = (t) => pieces.map((q) => pieceValue(q, t0, t))
+  return { t0, t1, pieces, omegas, M, gen, inputs }
 }
 
 const scaled = (M, t) => M.map((row) => row.map((v) => v * t))
@@ -72,17 +94,14 @@ export function transient(net, { tEnd, points = 601, x0 = null, opts = {} } = {}
   // state it starts from.
   const breaks = allBreaks(sources, tEnd)
   const segments = []
-  let z = [...ic, 1, 0]
+  let x = ic
   for (let k = 0; k + 1 < breaks.length; k++) {
     const t0 = breaks[k]
     const t1 = breaks[k + 1]
-    const pieces = sources.map((e) => sourceAffine(e, t0))
-    const U0 = pieces.map((q) => q.u0)
-    const U1 = pieces.map((q) => q.slope)
-    const M = augmented(dyn, U0, U1)
-    segments.push({ t0, t1, U0, U1, M, z0: z })
-    const zEnd = matVecMul(expm(scaled(M, t1 - t0)), z)
-    z = [...zEnd.slice(0, n), 1, 0]
+    const seg = segmentOf(dyn, sources.map((e) => sourceAffine(e, t0)), t0, t1)
+    seg.z0 = [...x, ...seg.gen(t0)]
+    segments.push(seg)
+    x = matVecMul(expm(scaled(seg.M, t1 - t0)), seg.z0).slice(0, n)
   }
 
   const segmentAt = (t) => {
@@ -90,7 +109,7 @@ export function transient(net, { tEnd, points = 601, x0 = null, opts = {} } = {}
     for (const s of segments) if (t < s.t1) return s
     return segments[segments.length - 1]
   }
-  const inputsAt = (seg, t) => seg.U0.map((u, j) => u + seg.U1[j] * (t - seg.t0))
+  const inputsAt = (seg, t) => seg.inputs(t)
 
   /** Exact state, inputs and readout at time t (t ≥ 0; a breakpoint reads from the right). */
   const at = (t, side = 'right') => {
@@ -207,13 +226,13 @@ export function energies(tr) {
         const seg = segments.find((g) => prev.t >= g.t0 - 1e-12 * tr.tEnd && s.t <= g.t1 + 1e-12 * tr.tEnd)
         if (!cache || cache.seg !== seg || Math.abs(cache.dt - dt) > 1e-12 * tr.tEnd)
           cache = { seg, dt, phis: GL_X.map((c) => expm(seg.M.map((row) => row.map((v) => v * c * dt)))) }
-        const z0 = [...prev.x, 1, prev.t - seg.t0]
+        const z0 = [...prev.x, ...seg.gen(prev.t)]
         let dr = 0
         let ds = 0
         GL_X.forEach((c, j) => {
           const zz = matVecMul(cache.phis[j], z0)
           const x = zz.slice(0, n)
-          const u = seg.U0.map((u0, q) => u0 + seg.U1[q] * (prev.t + c * dt - seg.t0))
+          const u = seg.inputs(prev.t + c * dt)
           const [pr, ps] = powerSplit(dyn.solveAt(x, u))
           dr += GL_W[j] * pr
           ds += GL_W[j] * ps

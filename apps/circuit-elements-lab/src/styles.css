@@ -85,6 +85,11 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 @media (max-width: 900px) {
   .view-head { row-gap: 6px; }
   .view-head .readout { flex-basis: 100%; }
+  /* The two panes stack and the page scrolls, so each takes its own height:
+     with the shell's equal `1fr 1fr` rows a tall lower pane (the stacked phasor
+     view) would stretch the schematic pane to match and leave a blank half-
+     screen under the slider. */
+  .views { grid-template-rows: auto auto; }
 }
 
 /* Definitions on contact, folded under the lesson note — Signal Lab's pattern. */
@@ -137,8 +142,6 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   font-size: 9px;
   font-style: italic;
 }
-/* Which component the output is measured across — the one thing about a series
-
 /* Live readings on the schematic: node voltages beside their dots, element
    readings above their symbols. Amber so they read as measurements, not labels. */
 .sch-meter {
@@ -296,4 +299,64 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 }
 @media (min-width: 1400px) {
   .cursor-row { max-width: 900px; }
+}
+
+/* Group H. The phasor canvas holds a diagram AND the waveforms it draws — side
+   by side when wide, stacked on a phone, which needs the height. */
+.view-body .plot.phasor { min-height: 320px; }
+.view-body .plot.freq { min-height: 240px; }
+@media (max-width: 559px) {
+  .view-body .plot.phasor { min-height: 560px; }
+}
+
+/* The AC power table: eight columns, so it scrolls sideways on a phone rather
+   than folding — a table that wraps its numbers is not a table. */
+.acpower { display: grid; gap: 8px; }
+.acpower .table-scroll { overflow-x: auto; }
+.acpower .table { min-width: 560px; }
+.acpower > .hint { margin: 0 8px; }
+.acpower tfoot td { border-bottom: 0; font-weight: 600; }
+@media (min-width: 1100px) {
+  .acpower > .hint { font-size: 14px; }
+}
+
+/* The hand-over to Circuit Lab, under the math panel — Circuit Lab's own
+   hand-over furniture, copied so the two ends of the bridge look alike. */
+.handover { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.handover-dest {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.handover .hint b { color: var(--text); }
+.handover-copy { width: 100%; margin-top: 8px; }
+a.handover-copy {
+  display: block;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
+  background: var(--accent);
+  color: #05221b;
+  font-weight: 600;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-size: 11.5px;
+  padding: 5px 8px;
+}
+a.handover-copy:hover { filter: brightness(1.1); }
+.handover-link {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  white-space: nowrap;
 }

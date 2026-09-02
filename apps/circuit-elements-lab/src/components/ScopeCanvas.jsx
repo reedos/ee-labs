@@ -15,7 +15,7 @@ import { LEFT_COLORS, RIGHT_COLORS, alignZero, drawCursor, drawLegend, drawMark,
  * drawn faintly under the first. `marks` are labelled instants; `guides` are
  * hand-written curves (an envelope) drawn dashed on the left axis.
  */
-export default function ScopeCanvas({ tr, ghost = null, scope, cursor, onCursor, marks = [], guides = [] }) {
+export default function ScopeCanvas({ tr, ghost = null, ghostLabel = 'from rest (dashed)', scope, cursor, onCursor, marks = [], guides = [] }) {
   const tEnd = tr.tEnd
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -37,7 +37,7 @@ export default function ScopeCanvas({ tr, ghost = null, scope, cursor, onCursor,
       const lu = scope.left.unit
       const { sx, sy } = drawFrame(ctx, area, 0, tEnd, lLo, lHi, fmtT, (v) => fmt(v, lu, 2), {
         zeroLine: true,
-        xTitle: 'Time from the step',
+        xTitle: 'Time from t = 0',
         yTitle: `${scope.left.traces.map((q) => q.label).join(', ')} (${lu})`,
       })
       const syR = scope.right
@@ -108,11 +108,11 @@ export default function ScopeCanvas({ tr, ghost = null, scope, cursor, onCursor,
       drawLegend(ctx, area, [
         ...scope.left.traces.map((q, i) => ({ label: q.label, color: LEFT_COLORS[i % LEFT_COLORS.length], dim: q.dim })),
         ...(scope.right ? scope.right.traces.map((q, i) => ({ label: q.label, color: RIGHT_COLORS[i % RIGHT_COLORS.length], dim: q.dim })) : []),
-        ...(ghost ? [{ label: 'from rest (dashed)', color: COLORS.text, dim: true }] : []),
+        ...(ghost ? [{ label: ghostLabel, color: COLORS.text, dim: true }] : []),
         ...(guides.some((g) => g.label) ? [{ label: guides.find((g) => g.label).label, color: COLORS.textBright, dim: true }] : []),
       ])
     },
-    [tr, ghost, scope, cursor, marks, guides],
+    [tr, ghost, ghostLabel, scope, cursor, marks, guides],
   )
   return (
     <canvas
