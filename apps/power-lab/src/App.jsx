@@ -378,15 +378,16 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
 
       <div className="topbar">
         <nav className="flow" aria-label="Experiment summary">
-          <span className="flow-node">
+          {/* The name may give way (it is the sidebar's title and the nav's
+              group already); the mode and the outcome never do. */}
+          <span className="flow-node is-name" title={exp.name}>
             {exp.name}
-            <em>{exp.group}</em>
           </span>
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
           <span className="flow-node">
-            {MODE_WORDS[m.mode] || m.mode}
+            {flow.mode || MODE_WORDS[m.mode] || m.mode}
             <em>{flow.mid}</em>
           </span>
           <span className="flow-arrow" aria-hidden="true">
@@ -585,14 +586,19 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
  * experiment's, so a buck before it says what it is doing in volts and duty
  * instead (`exp.symbols` lists what an experiment may use).
  */
-function flowNodes(exp, params, x) {
+/**
+ * The top bar's strip: mode → outcome, in a budget that fits beside the
+ * meters at 1366 px (FLOW_BUDGET, held by review.test.jsx). What the meters
+ * and knobs already show — V_in, V_out — is not repeated here.
+ */
+export const FLOW_BUDGET = { mid: 26, out: 34 }
+export function flowNodes(exp, params, x) {
   const m = x.m
   const saysK = (exp.symbols || []).includes('K')
   if (exp.kind === 'buck') {
     return {
-      mid: saysK
-        ? `K = ${x.formulas.K.toFixed(3)}, K_crit = ${x.formulas.Kcrit.toFixed(3)}`
-        : `${fmt(params.Vin, 'V', 3)} in, D = ${(params.D * 100).toFixed(1)} %`,
+      // B5 is where K_crit is named, so the buck's chip names it.
+      mid: saysK ? `K = ${x.formulas.K.toFixed(3)}, K_crit = ${x.formulas.Kcrit.toFixed(3)}` : `${fmt(params.Vin, 'V', 3)} in, D = ${(params.D * 100).toFixed(1)} %`,
       out: saysK ? `M = ${m.M.toFixed(4)}` : `${fmt(m.sig.vout.avg, 'V', 4)} out`,
       outSub: saysK ? `D = ${params.D.toFixed(4)}` : `M = ${m.M.toFixed(4)}`,
     }
@@ -600,16 +606,17 @@ function flowNodes(exp, params, x) {
   if (exp.kind === 'linreg') return { mid: `${fmt(params.Vin, 'V', 3)} in`, out: `η = ${(m.eta * 100).toFixed(1)} %`, outSub: 'V_out / V_in' }
   if (exp.kind === 'boost' || exp.kind === 'buckboost') {
     return {
-      mid: saysK
-        ? `${fmt(params.Vin, 'V', 3)} in, K = ${x.formulas.K.toFixed(3)} of ${x.formulas.Kcrit.toFixed(3)}`
-        : `${fmt(params.Vin, 'V', 3)} in, D = ${(params.D * 100).toFixed(1)} %`,
+      mid: saysK ? `K = ${x.formulas.K.toFixed(3)} of ${x.formulas.Kcrit.toFixed(3)}` : `${fmt(params.Vin, 'V', 3)} in, D = ${(params.D * 100).toFixed(1)} %`,
       out: `M = ${m.M.toFixed(4)}`,
-      outSub: `${fmt(m.sig.vout.avg, 'V', 4)} at D = ${params.D.toFixed(3)}`,
+      outSub: `D = ${params.D.toFixed(3)}`,
     }
   }
   if (exp.kind === 'rectifier') {
+    // The pulse count is the mode here (half-wave, bridge, six-pulse); the
+    // line's own words go under it.
     return {
-      mid: `${fmt(x.p.Vs, 'V', 3)} RMS${x.conv.threePhase ? ' × 3' : ''}, ${m.pulses} pulse${m.pulses === 1 ? '' : 's'} per cycle`,
+      mode: `${m.pulses} pulse${m.pulses === 1 ? '' : 's'} per cycle`,
+      mid: x.conv.threePhase ? 'three-phase line' : 'line frequency',
       out: `V_dc = ${fmt(m.Vdc, 'V', 4)}`,
       outSub: `of a ${fmt(x.formulas.ceiling, 'V', 3)} ceiling`,
     }

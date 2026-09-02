@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import React from 'react'
-import App, { termsFresh } from './App.jsx'
+import App, { termsFresh, flowNodes, FLOW_BUDGET } from './App.jsx'
 import { termsFor } from './terms.js'
 import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, byId, defaultsOf, offeredTraces } from './experiments.js'
 import { analyse } from './analysis.js'
@@ -126,6 +126,22 @@ describe('the opening traces show the claim (§11.6.7)', () => {
     for (const e of EXPERIMENTS.filter((e) => e.group === GROUPS[0])) {
       expect(offeredTraces(e).length, e.id).toBeLessThanOrEqual(4)
     }
+  })
+  it('the top bar’s strip fits beside the meters at 1366 px: mode and outcome inside FLOW_BUDGET, the name the only chip that gives way', () => {
+    // On the step-8 walk the outcome chip was scrolled out of view for twelve
+    // of the twenty-two at 1366 and 1440 wide. verify.mjs §10b measures it in
+    // pixels; this holds the text to the budget that measurement set.
+    for (const e of EXPERIMENTS) {
+      const p = defaultsOf(e.id)
+      const f = flowNodes(e, p, analyse(e, p))
+      expect(f.mid.length, `${e.id} mid "${f.mid}"`).toBeLessThanOrEqual(FLOW_BUDGET.mid)
+      expect(`${f.out} ${f.outSub}`.length, `${e.id} out "${f.out} ${f.outSub}"`).toBeLessThanOrEqual(FLOW_BUDGET.out)
+      if (f.mode) expect(f.mode.length, `${e.id} mode "${f.mode}"`).toBeLessThanOrEqual(FLOW_BUDGET.mid)
+    }
+    const html = render('c1')
+    const name = html.match(/<span class="flow-node is-name"[^>]*>(.*?)<\/span>/)
+    expect(name, 'the name chip').toBeTruthy()
+    expect(name[1]).not.toContain('<em>')
   })
   it('every trace pill offered is a waveform the circuit has (found on the step-8 walk: B1–B8 offered v_in, v_rect, v_D and i_R)', () => {
     for (const e of EXPERIMENTS) {

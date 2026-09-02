@@ -464,6 +464,37 @@ async function run(browser, tag) {
     console.log(`   ${width}px: ${bad ? `${bad} overflow${bad > 1 ? 's' : ''}` : 'clean'}`)
   }
 
+  // ------------------------------------- 10b. the claim chip is in view
+
+  // The top bar's strip reads name → mode → outcome, and the outcome is the
+  // number the experiment is about. On the step-8 walk it was scrolled out
+  // of sight for B4, C1–C5 and E1–E6 at both desktop sizes: the strip
+  // scrolls sideways rather than truncating, so nothing above caught it.
+  console.log('
+10b. The outcome chip of the top bar is in view at 1280, 1366 and 1440 wide
+')
+  for (const width of [1280, 1366, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    await settle(300)
+    let bad = 0
+    for (const id of ids) {
+      await pick(id)
+      const m = await page.evaluate(() => {
+        const flow = document.querySelector('.flow')
+        const out = document.querySelector('.flow-node.is-out')
+        const f = flow.getBoundingClientRect()
+        const o = out.getBoundingClientRect()
+        const cut = [...flow.querySelectorAll('.flow-node')].filter((n) => n.scrollWidth > n.clientWidth + 1 && n.style.textOverflow !== 'ellipsis' && getComputedStyle(n).textOverflow !== 'ellipsis').length
+        return { hidden: flow.scrollWidth > flow.clientWidth + 1 || o.right > f.right + 1 || o.left < f.left - 1, cut, text: out.textContent.trim() }
+      })
+      if (m.hidden || m.cut) {
+        bad++
+        F(`${width}px / ${id}: outcome chip "${m.text}" ${m.hidden ? 'is scrolled out of view' : 'is truncated'}`)
+      }
+    }
+    console.log(`   ${width}px: ${ids.length - bad}/${ids.length} experiments show their outcome chip whole`)
+  }
+
   // ---------------------------------------------------- 11. the phone
 
   console.log('\n11. 390×844: the top bar wraps and never truncates, the title appears once, the schematic is on the first screen\n')

@@ -350,6 +350,14 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    copy is the one in view. */
 .sch-phone { display: none; }
 
+/* The top bar's strip: the name chip is the one that may give way, since the
+   sidebar and the nav carry it already; mode and outcome hold their width.
+   On the step-8 walk the outcome chip was scrolled out of view for twelve of
+   the twenty-two at 1366 and 1440 wide. */
+.flow { overflow: hidden; }
+.flow-node { flex-shrink: 0; }
+.flow-node.is-name { display: block; flex: 0 1 auto; min-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
+
 @media (max-width: 900px) {
   .views {
     display: flex;
