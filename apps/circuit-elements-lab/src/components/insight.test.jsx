@@ -164,6 +164,15 @@ describe('the equations pane, folded and marked', () => {
     expect(strip(full)).toContain('Ohm’s law')
   })
 
+  // A1's first screen: Ohm's law is the one law its circuit needs. The primer
+  // says it, explains the KCL row's name in a clause, and leaves KVL for B.
+  it('the Ohm primer (A1) is one line built on Ohm’s law, and does not name KVL', () => {
+    const ohm = strip(html(<EquationsPane eq={eqOf('a1')} solved primer="ohm" />))
+    expect(ohm).toContain('Ohm’s law builds the resistor’s row')
+    expect(ohm).toContain('Group B')
+    expect(ohm).not.toContain('KVL')
+  })
+
   it('E3 ideal marks the two contradicting rows, and no row is marked once the gain is finite', () => {
     const eq = eqOf('e3')
     const marked = html(<EquationsPane eq={eq} solved={false} fold contradiction={['V1', 'U1']} />)

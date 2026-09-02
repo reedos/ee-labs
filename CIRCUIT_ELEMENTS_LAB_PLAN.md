@@ -899,6 +899,37 @@ state, and averaging.
    same-styled traces within 1e-9 normalised), and the plot repairs; `verify.mjs`
    reads every caption back, requires a number in each entry, at least eight
    experiments captioned, and F3's caption to say 63.2 %.
+   **Step 5 — content order and circuits — shipped 2026-09-02:** the words
+   arrive in the order a first student needs them and no two experiments show
+   the same picture. A1 opens on charge: the note's first two sentences define
+   voltage as energy per coulomb and current as charge per second before any
+   number, `charge` is the first term in `terms.js` and the first in A1's list,
+   and the equations pane's primer is a new one-liner `OhmLine` (`primer="ohm"`)
+   that builds the resistor's row from Ohm's law, names the KCL row as the
+   junction rule Group B takes apart, and does not say KVL; `primerFor` in
+   App.jsx picks it for A1, the brief line for the rest of A, the three-law card
+   for B. Thévenin's name arrives with D5: `VIEW_LABELS` moved into
+   experiments.js beside `viewLabel(view, exp)`, which gives every experiment
+   before D5 the tab "Seen from the load" and plain rows in `TheveninPane`
+   (`named={false}`: "the voltage with nothing connected", "the current a short
+   would draw"), so C3 uses the equivalent one experiment before it is named.
+   C4's note says why the bridge is not the textbook diamond and that each half
+   is B2's loop — two resistors in series read at the midpoint. E7 drives both
+   inputs (V₂ = 1.2 V on a stub of its own, its ground beside V₁'s) so no
+   element sits dead at the defaults; the lower row was spread (V₂ at 97, in2
+   at 140, R₃ at 190, riser at 215) so in2's name and reading clear both
+   symbols at every seed. B3 is a three-resistor loop (R₃ = 3 kΩ) so its
+   picture is not B2's, B4's source is 9 V so its picture is not A4's, and G3
+   opens at 400 Ω — on the overdamped side, chips 800/400/160/50 — so its
+   marker is not G2's critical point. Tests: no view label or title before D5
+   matches /Th[ée]venin/ and every one from D5 on is the named label; no two
+   experiments share `[layout.items, defaults]`; A1's terms start with charge
+   and its note defines voltage and current before its first digit; C4's note
+   says diamond, two dividers side by side and B2 (registered in the
+   cross-reference table as "two resistors and a source"); E7's output is
+   10·(1.2 − 1) and every |i| > 1 µA; the Ohm primer names Ohm's law and Group
+   B and not KVL; G3's zeta at the defaults is 2 and `damping.Rcrit` is a
+   quantity path the note's "200 Ω" is measured against.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event

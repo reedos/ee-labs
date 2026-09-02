@@ -7,6 +7,13 @@
 // using an undefined term.
 
 export const TERMS = {
+  charge: {
+    name: 'Charge',
+    def:
+      'The thing that moves in a circuit, in coulombs — carried by electrons, about 6.24 × 10¹⁸ of ' +
+      'them to the coulomb. Voltage is the energy given to each coulomb; current is coulombs passing ' +
+      'per second. Everything below is bookkeeping for where charge goes and what it costs to move it.',
+  },
   voltage: {
     name: 'Voltage',
     def:

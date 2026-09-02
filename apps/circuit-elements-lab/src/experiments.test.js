@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic } from './experiments.js'
+import { EXPERIMENTS, GROUPS, VIEW_ORDER, VIEW_LABELS, byId, defaultsOf, drawables, isDynamic, viewLabel } from './experiments.js'
 import { num } from './format.js'
 import { VIEW_LEADS, bridgeText, calloutStandIn, calloutText, firstSentence, headlineValue, widestValue } from './headlines.js'
 import { equivalentOf, kvlLoop, meshRows, partsFigures, powerCycle, theoremShows } from './theorems.js'
@@ -263,6 +263,55 @@ describe('every experiment', () => {
     }
   })
 
+  // A theorem's name arrives with the experiment that introduces it. C3 uses
+  // the equivalent one experiment before D5 names it, so its tab is called by
+  // what it shows; from D5 on the view has its name.
+  it('no view is called Thévenin before D5 introduces the name', () => {
+    const d5 = EXPERIMENTS.findIndex((e) => e.id === 'd5')
+    EXPERIMENTS.forEach((e, k) => {
+      for (const v of e.views) {
+        const { label, title } = viewLabel(v, e)
+        if (k < d5) {
+          expect(label, `${e.id} ${v}`).not.toMatch(/Th[ée]venin/)
+          expect(title, `${e.id} ${v}`).not.toMatch(/Th[ée]venin/)
+        } else expect(viewLabel(v, e), `${e.id} ${v}`).toBe(VIEW_LABELS[v])
+      }
+    })
+    expect(viewLabel('thevenin', byId.c3).label).toBe('Seen from the load')
+    expect(viewLabel('thevenin', byId.d5).label).toBe('Thévenin')
+  })
+
+  // Each experiment is its own picture: no two draw the same circuit with the
+  // same numbers on it (Reed's review: A4/B4 and B2/B3 looked like repeats).
+  it('no two experiments share a drawing and its defaults', () => {
+    const seen = new Map()
+    for (const e of EXPERIMENTS) {
+      const key = JSON.stringify([e.layout.items, defaultsOf(e.id)])
+      expect(seen.has(key), `${e.id} is the same picture as ${seen.get(key)}`).toBe(false)
+      seen.set(key, e.id)
+    }
+  })
+
+  // Charge is where voltage and current come from, so it is said first, on A1,
+  // not left for the capacitor's q = Cv in Group F.
+  it('A1 opens with charge: the term leads its list and its note defines voltage and current by it before any number', () => {
+    expect(byId.a1.terms[0]).toBe('charge')
+    const see = byId.a1.see
+    const firstDigit = see.search(/\d/)
+    const opening = see.slice(0, firstDigit).toLowerCase()
+    expect(opening).toMatch(/voltage is energy per unit of charge/)
+    expect(opening).toMatch(/current is charge passing per second/)
+  })
+
+  // The bridge is drawn as two dividers, not the textbook diamond (the drawing
+  // primitives are axis-aligned); the note owes the reader the reason and the
+  // correspondence.
+  it('C4 says why it is not drawn as a diamond', () => {
+    expect(byId.c4.why).toMatch(/diamond/)
+    expect(byId.c4.why).toMatch(/two dividers side by side/)
+    expect(byId.c4.why).toMatch(/B2/)
+  })
+
   // KCL/KVL are used by name in Group A's equations pane before Group B takes
   // them apart, so Group A carries the terms (and the pane carries a primer).
   it('Group A defines KCL where its equations first use it', () => {
@@ -437,6 +486,7 @@ describe('the notes, sentence by sentence', () => {
     const { x } = at('b3')
     expect(x.sol.p.R1).toBeGreaterThan(0)
     expect(x.sol.p.R2).toBeGreaterThan(0)
+    expect(x.sol.p.R3).toBeGreaterThan(0)
     expect(x.sol.p.V1).toBeLessThan(0)
     expect(Math.abs(x.sol.pTotal)).toBeLessThan(1e-12)
   })
@@ -636,7 +686,9 @@ describe('the notes, sentence by sentence', () => {
 
   it('E7: matched → (R₂/R₁)(E₂−E₁) and common mode rejected; 1 % mismatch leaks about 1 % of the differential gain', () => {
     const matched = at('e7', { R4: 10000 })
-    expect(matched.x.sol.v.out).toBeCloseTo(10 * (1.1 - 1), 12)
+    expect(matched.x.sol.v.out).toBeCloseTo(10 * (1.2 - 1), 12)
+    // Every element carries current at the defaults — the − side is not sitting dead at E₁.
+    for (const [id, i] of Object.entries(matched.x.sol.i)) expect(Math.abs(i), id).toBeGreaterThan(1e-6)
     expect(at('e7', { R4: 10000, E1: 5, E2: 5 }).x.sol.v.out).toBeCloseTo(0, 12)
     const cm = at('e7', { R4: 10100, E1: 1, E2: 1 }).x.sol.v.out
     // Common-mode gain ≈ 0.01 × differential gain × (R1/(R1+R2)) scale — order 1 % of 10.
@@ -852,7 +904,7 @@ describe('the dynamic notes, sentence by sentence', () => {
     expect(sw.fastest.settle / x.damping.at.settle).toBeLessThan(0.7)
     // The knob's own point is a member of the same measurement.
     expect(x.damping.at.R).toBe(p.R1)
-    expect(x.damping.at.zeta).toBeCloseTo(1, 12)
+    expect(x.damping.at.zeta).toBeCloseTo(2, 12) // 400 Ω: G3 opens on the overdamped side, not at G2's critical point
     expect(x.damping.at.overshoot).toBe(0)
   })
 
@@ -1328,6 +1380,7 @@ describe('what the student reads is what the solver did', () => {
     // What each reference leans on, checked against the referenced experiment itself.
     const holds = {
       'c3→E8': (t) => t.params.some((k) => k.key === 'RL') && t.views.includes('sweep'), // "why, in E8, an op-amp…": the same load sweep, buffered
+      'c4→B2': (t, p) => t.net(p).elements.filter((el) => el.type === 'R').length === 2 && t.net(p).elements.length === 3, // "B2’s loop — two resistors in series"
       'e8→C3': (t) => t.params.some((k) => k.key === 'RL') && t.views.includes('sweep'), // "Compare the same sweep in C3"
       'f2→F1': (t, p) => t.params.some((k) => k.key === 'Rs') && hasPart(t, p, 'C'), // "the role R_s played in F1"
       'f4→F3': (t, p) => t.params.map((k) => k.key).join() === 'E,R1,C1,v0,N' && isRC(t, p), // "then it IS F3: τ = RC"
@@ -1681,7 +1734,7 @@ const HEADLINE_CLOSED = {
   a4: (p) => (p.E1 - p.E2) ** 2 / p.R1,
   b1: (p) => (p.E - p.E / p.R1 / (1 / p.R1 + 1 / p.R2 + 1 / p.R3)) / p.R1,
   b2: (p) => p.E / (p.R1 + p.R2),
-  b3: (p) => -(p.E ** 2) / (p.R1 + p.R2),
+  b3: (p) => -(p.E ** 2) / (p.R1 + p.R2 + p.R3),
   b4: (p) => (p.E1 - p.E2) / p.R1,
   c1: (p) => p.R1 + p.R2 + p.R3,
   c2: (p) => par(p.R1, p.R2, p.R3),

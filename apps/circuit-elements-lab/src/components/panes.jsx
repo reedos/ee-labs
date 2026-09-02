@@ -96,7 +96,7 @@ export function EquationsPane({ eq, solved, primer = false, fold = false, contra
   const open = fold && contradiction.length > 0 ? true : undefined
   return (
     <div className="equations" data-role="equations">
-      {primer === 'brief' ? <PrimerLine /> : primer ? <LawsPrimer /> : null}
+      {primer === 'ohm' ? <OhmLine /> : primer === 'brief' ? <PrimerLine /> : primer ? <LawsPrimer /> : null}
       <Wrap className={fold ? 'eq-fold' : 'eq-open'} data-role={fold ? 'eq-fold' : undefined} open={open}>
       {fold ? (
         <summary>
@@ -243,6 +243,20 @@ export function EquationsPane({ eq, solved, primer = false, fold = false, contra
   )
 }
 
+/**
+ * A1's primer: Ohm's law, the one law its circuit needs, and where the row
+ * names come from — the two laws themselves wait for Group B.
+ */
+export function OhmLine() {
+  return (
+    <p className="eq-primer eq-primer-line" data-role="primer">
+      <b>Ohm’s law builds the resistor’s row:</b> its current is its voltage over its resistance, <T>{'i = v/R'}</T>. The
+      source’s row states the voltage it holds. The row marked KCL is the junction rule — what flows into a node flows
+      out — which Group B takes apart.
+    </p>
+  )
+}
+
 /** Group A's primer: the two laws in one line each, before Group B takes them apart. */
 export function PrimerLine() {
   return (
@@ -340,8 +354,12 @@ export function PowerPane({ sol }) {
   )
 }
 
-/** The Thévenin equivalent, three ways, with the agreement shown rather than claimed. */
-export function TheveninPane({ th, port }) {
+/**
+ * The Thévenin equivalent, three ways, with the agreement shown rather than
+ * claimed. `named` false (C3, before D5 names the theorem) says what V_oc is
+ * instead of whose it is.
+ */
+export function TheveninPane({ th, port, named = true }) {
   const rows = [
     ['V_oc / I_sc', th.rth.ratio],
     ['1 A test source, sources killed', th.rth.test],
@@ -377,11 +395,11 @@ export function TheveninPane({ th, port }) {
         <caption>the equivalent</caption>
         <tbody>
           <tr>
-            <td>V_oc (Thévenin voltage)</td>
+            <td>{named ? 'V_oc (Thévenin voltage)' : 'V_oc (the voltage with nothing connected)'}</td>
             <td className="num">{num(th.voc, 'V', 5)}</td>
           </tr>
           <tr>
-            <td>I_sc (Norton current)</td>
+            <td>{named ? 'I_sc (Norton current)' : 'I_sc (the current a short would draw)'}</td>
             <td className="num">{num(th.isc, 'A', 5)}</td>
           </tr>
           <tr>

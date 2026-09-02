@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { LabNav, NumField, ReportIssue, Schematic } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { equations, normalize, complex as cx } from '@ee-labs/network'
-import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic } from './experiments.js'
+import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic, viewLabel, VIEW_LABELS } from './experiments.js'
 import { analyse, atDrive, experimentMath, netPower, refusalReason, snapNoise, turnedLabel } from './math.js'
 import { termsFor } from './terms.js'
 import { reportSummary } from './report.js'
@@ -23,33 +23,16 @@ import { marksFor, timeMarks } from './marks.js'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
-// Groups A and B read the KCL/KVL primer above their equations: A uses the
-// laws before B takes them apart, and a name must not arrive before its meaning.
-// A gets the two laws in a line each; B, which is about them, gets the full primer.
-const primerFor = (group) => (group === GROUPS[0] ? 'brief' : group === GROUPS[1] ? 'full' : false)
+// Groups A and B read a primer above their equations: A uses the laws before
+// B takes them apart, and a name must not arrive before its meaning. A1, the
+// first screen, gets Ohm's law alone — the one law its circuit needs; the rest
+// of A gets the two laws in a line each; B, which is about them, the full primer.
+const primerFor = (exp) => (exp.id === 'a1' ? 'ohm' : exp.group === GROUPS[0] ? 'brief' : exp.group === GROUPS[1] ? 'full' : false)
 // Groups A–E open their equations folded: the headline is the lesson, the
 // solver's working is there for whoever wants it.
 const FOLDED_GROUPS = GROUPS.slice(0, 5)
 // The topbar's Σ power chip appears from the experiment that introduces power.
 const POWER_FROM = EXPERIMENTS.findIndex((e) => e.id === 'b3')
-
-const VIEW_LABELS = {
-  reading: { label: 'Reading', title: 'The one number this experiment is about, and every meter on the circuit at once' },
-  equations: { label: 'Equations', title: 'The equations the solver built: the two laws in words, each row with live values, the matrix in letters and in numbers' },
-  power: { label: 'Power', title: 'p = v × i for every element — who delivers, who absorbs, and the two totals matching' },
-  thevenin: { label: 'Thévenin', title: 'The equivalent seen at the port, found three ways' },
-  equivalent: { label: 'Equivalent', title: 'The Thévenin equivalent drawn as a circuit beside the original, and the load line both obey' },
-  superposition: { label: 'Superposition', title: 'Each source alone, and the sum' },
-  sweep: { label: 'Load sweep', title: 'The port quantity as the load resistance sweeps' },
-  scope: { label: 'Scope', title: 'Voltages and currents against time; drag to move the cursor' },
-  state: { label: 'State equation', title: 'ẋ = Ax + Bu as built, its roots, and the state before t = 0' },
-  energy: { label: 'Energy', title: 'Where the energy went: stored, dissipated, supplied' },
-  damping: { label: 'Damping sweep', title: 'Overshoot and settling time as R sweeps through critical' },
-  phasor: { label: 'Phasors', title: 'Each steady-state voltage as a turning arrow, beside the waveform its tip draws' },
-  impedance: { label: 'Impedance', title: '|Z| and ∠Z seen by the source against frequency; the marker is the drive' },
-  bode: { label: 'Bode', title: '|H| in dB and ∠H against log frequency; the marker is the drive' },
-  acpower: { label: 'AC power', title: 'P, Q, |S| and power factor per element from the phasors' },
-}
 
 /** The cursor an experiment opens at: its own fraction of its window at the defaults. */
 const cursorFor = (exp, p) => (isDynamic(exp) ? exp.cursor * exp.window(p) : null)
@@ -143,7 +126,7 @@ export default function App() {
   // as a dead circuit, so the first experiments do without it.
   const showsNetPower = EXPERIMENTS.indexOf(exp) >= POWER_FROM
 
-  const viewOptions = VIEW_ORDER.filter((v) => exp.views.includes(v)).map((v) => ({ id: v, ...VIEW_LABELS[v] }))
+  const viewOptions = VIEW_ORDER.filter((v) => exp.views.includes(v)).map((v) => ({ id: v, ...viewLabel(v, exp) }))
   const currentView = exp.views.includes(view) ? view : exp.view
 
   return (
@@ -535,13 +518,13 @@ export default function App() {
               <EquationsPane
                 eq={eq}
                 solved={!!x.sol}
-                primer={primerFor(exp.group)}
+                primer={primerFor(exp)}
                 fold={FOLDED_GROUPS.includes(exp.group)}
                 contradiction={exp.theorem?.kind === 'contradiction' && !x.sol ? exp.theorem.rows : []}
               />
             ) : null}
             {currentView === 'power' && x.sol ? <PowerPane sol={x.sol} /> : null}
-            {currentView === 'thevenin' && x.thevenin ? <TheveninPane th={x.thevenin} port={exp.port} /> : null}
+            {currentView === 'thevenin' && x.thevenin ? <TheveninPane th={x.thevenin} port={exp.port} named={viewLabel('thevenin', exp) === VIEW_LABELS.thevenin} /> : null}
             {currentView === 'superposition' && x.superposition ? <SuperpositionPane sp={x.superposition} /> : null}
             {currentView === 'sweep' && x.sweep ? (
               <SweepCanvas

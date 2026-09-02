@@ -308,7 +308,7 @@ const ENTRIES = {
   },
 
   b3(p, s) {
-    const i = p.E / (p.R1 + p.R2)
+    const i = p.E / (p.R1 + p.R2 + p.R3)
     return {
       blocks: [
         T('Passive sign convention: p = v·i with i measured into the + terminal. Resistors come out positive, the source negative, and the total is zero.'),
@@ -316,6 +316,7 @@ const ENTRIES = {
         C([
           row('p_R1 = i²R₁', i * i * p.R1, s.p.R1, 'W'),
           row('p_R2 = i²R₂', i * i * p.R2, s.p.R2, 'W'),
+          row('p_R3 = i²R₃', i * i * p.R3, s.p.R3, 'W'),
           row('p_V1 = −E·i', -p.E * i, s.p.V1, 'W'),
           row('Σ p', 0, s.pTotal, 'W', 0, 1e-12),
         ]),

@@ -62,6 +62,8 @@ export function readQuantity(x, p, path, exp) {
       return x.state[rest[0]]
     case 'thevenin':
       return rest[0] === 'rth' ? x.thevenin.rth.test : x.thevenin[rest[0]]
+    case 'damping':
+      return rest[0] === 'at' ? x.damping.at[rest[1]] : x.damping[rest[0]]
     case 'mag':
       return cx.cabs(x.ac[rest[0]][rest[1]])
     case 'deg':
@@ -103,7 +105,8 @@ const offGhost = (q, id) => (x, p) => Math.max(...x.tr.samples.map((s) => Math.a
 export const LESSONS = {
   a1: {
     see:
-      'A source that holds 12 V, and a resistor that turns it into a current: i = E/R = 12 mA. ' +
+      'Voltage is energy per unit of charge — how hard each coulomb is pushed. Current is charge passing per second. ' +
+      'Here a source holds 12 V, and a resistor turns it into a current: i = E/R = 12 mA. ' +
       'The voltage is the source’s decision; the current is the resistor’s.',
     seeReads: [['i.R1', 0.012]],
     try: [
@@ -196,11 +199,11 @@ export const LESSONS = {
   },
   b3: {
     see:
-      'Every element’s power is v × i with the current measured into its + terminal. R₁ absorbs 16 mW and R₂ 32 mW; the ' +
-      'source shows −48 mW. Negative means it delivers, and the three add to exactly zero.',
-    seeReads: [['p.R1', 0.016], ['p.R2', 0.032], ['p.V1', -0.048]],
+      'Every element’s power is v × i with the current measured into its + terminal. R₁ absorbs 4 mW, R₂ 8 mW and R₃ ' +
+      '12 mW; the source shows −24 mW. Negative means it delivers, and the four add to exactly zero.',
+    seeReads: [['p.R1', 0.004], ['p.R2', 0.008], ['p.R3', 0.012], ['p.V1', -0.024]],
     try: [
-      { say: 'Set R₂ to 500 Ω: the current rises to 8 mA; R₁ now takes 64 mW, R₂ 32 mW, and the source −96 mW — still summing to zero.', set: { R2: 500 }, reads: [['i.R1', 0.008], ['p.R1', 0.064], ['p.R2', 0.032], ['p.V1', -0.096]] },
+      { say: 'Set R₃ to 500 Ω: the current rises to 3.43 mA; R₁ now takes 11.8 mW, R₂ 23.5 mW, R₃ 5.88 mW and the source −41.1 mW — still summing to zero.', set: { R3: 500 }, reads: [['i.R1', 0.0034286], ['p.R1', 0.011755], ['p.R2', 0.02351], ['p.R3', 0.005878], ['p.V1', -0.041143]] },
       { say: 'Open the Power view: the delivered bar and the absorbed bar are the same length, element by element.' },
     ],
     why:
@@ -210,9 +213,9 @@ export const LESSONS = {
   },
   b4: {
     see:
-      'Two batteries facing the same way with a resistor between. The current, 70 mA, is set by the difference of the two ' +
-      'voltages over R and flows from the stronger source into the weaker — which shows +350 mW: it is being charged.',
-    seeReads: [['i.R1', 0.07], ['p.V2', 0.35]],
+      'Two batteries facing the same way with a resistor between. The current, 30 mA, is set by the difference of the two ' +
+      'voltages over R and flows from the stronger source into the weaker — which shows +270 mW: it is being charged.',
+    seeReads: [['i.R1', 0.03], ['p.V2', 0.27]],
     try: [
       { say: 'Raise E₂ to 15 V: the current turns round, −30 mA, and the roles swap — E₂ now delivers (−450 mW) and E₁ absorbs (+360 mW).', set: { E2: 15 }, reads: [['i.R1', -0.03], ['p.V2', -0.45], ['p.V1', 0.36]] },
       { say: 'Set E₂ equal to E₁, 12 V: no difference, no current, nothing happens at all.', set: { E2: 12 }, reads: [['i.R1', 0]] },
@@ -273,7 +276,9 @@ export const LESSONS = {
     why:
       'When R₁/R₂ = R₃/R₄ the two midpoints sit at the same voltage and the output is exactly zero — balanced, and it ' +
       'stays balanced whatever the supply does. A bridge turns a small resistance change into a voltage, which is how ' +
-      'strain gauges and thermistors are read out.',
+      'strain gauges and thermistors are read out. Textbooks draw it as a diamond, the supply across the top and bottom ' +
+      'corners and the output across the left and right; it is drawn here as two dividers side by side so that each ' +
+      'half is visibly B2’s loop — two resistors in series, read at the midpoint — the same four resistors, the same two midpoints.',
   },
   d1: {
     see:
@@ -449,11 +454,11 @@ export const LESSONS = {
   e7: {
     see:
       'Four resistors, two inputs, one output. With R₃/R₄ matched to R₁/R₂ the output is (R₂/R₁)(E₂ − E₁): ten times the ' +
-      'difference between 1.1 V and 1 V, so 1 V out, while the 1 V common to both inputs is rejected entirely.',
-    seeReads: [['v.out', 1]],
+      'difference between 1.2 V and 1 V, so 2 V out, while the 1 V common to both inputs is rejected entirely.',
+    seeReads: [['v.out', 2]],
     try: [
-      { say: 'Set E₁ = E₂ = 1.1 V: 0 V out. A signal common to both inputs does not get through.', set: { E1: 1.1 }, reads: [['v.out', 0]] },
-      { say: 'Now mismatch R₄ by one part in a hundred — 10.1 kΩ — with E₁ = E₂ = 1.1 V: 9.9 mV of common-mode input leaks through.', set: { E1: 1.1, R4: 10100 }, reads: [['v.out', 0.00991]] },
+      { say: 'Set E₁ = E₂ = 1.2 V: 0 V out. A signal common to both inputs does not get through.', set: { E1: 1.2 }, reads: [['v.out', 0]] },
+      { say: 'Now mismatch R₄ by one part in a hundred — 10.1 kΩ — with E₁ = E₂ = 1.2 V: 10.8 mV of common-mode input leaks through.', set: { E1: 1.2, R4: 10100 }, reads: [['v.out', 0.010811]] },
     ],
     why:
       'That ratio, differential gain over common-mode gain, is the CMRR, and it is set by resistor matching, not by the op-amp.',
@@ -625,6 +630,7 @@ export const LESSONS = {
       'Sweep R across its range and measure two things about the step: how far v_C overshoots E, and how long it takes ' +
       'to settle for good (within two per cent). Above 200 Ω there is no overshoot; below it the response rings. The sweep ' +
       'view draws both against R, with the marker at your R.',
+    seeReads: [['damping.Rcrit', 200]],
     try: [
       { say: 'The 50 Ω chip: 44.4 % overshoot.', set: { R1: 50 }, reads: [[(x) => 100 * x.damping.at.overshoot, 44.43]] },
       { say: 'Set R to 160 Ω, a little below critical: 1.5 % of overshoot buys the shortest settling time of all — the first peak just fits inside the band.', set: { R1: 160 }, reads: [[(x) => 100 * x.damping.at.overshoot, 1.52]] },

@@ -29,6 +29,35 @@ import { THEOREMS } from './theorems.js'
 // and the two universal views lead; the rest follow the curriculum.
 export const VIEW_ORDER = ['reading', 'equations', 'power', 'thevenin', 'equivalent', 'superposition', 'sweep', 'scope', 'state', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
 
+// What the view switch calls each view, and the hover text that says what it shows.
+export const VIEW_LABELS = {
+  reading: { label: 'Reading', title: 'The one number this experiment is about, and every meter on the circuit at once' },
+  equations: { label: 'Equations', title: 'The equations the solver built: the two laws in words, each row with live values, the matrix in letters and in numbers' },
+  power: { label: 'Power', title: 'p = v × i for every element — who delivers, who absorbs, and the two totals matching' },
+  thevenin: { label: 'Thévenin', title: 'The equivalent seen at the port, found three ways' },
+  equivalent: { label: 'Equivalent', title: 'The Thévenin equivalent drawn as a circuit beside the original, and the load line both obey' },
+  superposition: { label: 'Superposition', title: 'Each source alone, and the sum' },
+  sweep: { label: 'Load sweep', title: 'The port quantity as the load resistance sweeps' },
+  scope: { label: 'Scope', title: 'Voltages and currents against time; drag to move the cursor' },
+  state: { label: 'State equation', title: 'ẋ = Ax + Bu as built, its roots, and the state before t = 0' },
+  energy: { label: 'Energy', title: 'Where the energy went: stored, dissipated, supplied' },
+  damping: { label: 'Damping sweep', title: 'Overshoot and settling time as R sweeps through critical' },
+  phasor: { label: 'Phasors', title: 'Each steady-state voltage as a turning arrow, beside the waveform its tip draws' },
+  impedance: { label: 'Impedance', title: '|Z| and ∠Z seen by the source against frequency; the marker is the drive' },
+  bode: { label: 'Bode', title: '|H| in dB and ∠H against log frequency; the marker is the drive' },
+  acpower: { label: 'AC power', title: 'P, Q, |S| and power factor per element from the phasors' },
+}
+// Before D5 gives the equivalent its name, the view is called by what it is:
+// the circuit as the load sees it. C3 uses it that way, one experiment early.
+const UNNAMED = {
+  thevenin: { label: 'Seen from the load', title: 'What the load sees: the voltage with nothing connected, and one resistance behind it, found three ways' },
+}
+/** The label and hover text for `view` in `exp`: the name a theorem has only once the curriculum has given it. */
+export function viewLabel(view, exp) {
+  const before = EXPERIMENTS.findIndex((e) => e.id === exp.id) < EXPERIMENTS.findIndex((e) => e.id === 'd5')
+  return (before && UNNAMED[view]) || VIEW_LABELS[view]
+}
+
 export const GROUPS = [
   'A · Elements and signs',
   'B · Two laws',
@@ -142,7 +171,7 @@ export const EXPERIMENTS = [
     id: 'a1',
     group: GROUPS[0],
     name: 'A voltage source holds its voltage',
-    terms: ['voltage', 'vsource', 'resistor', 'current', 'node', 'kcl', 'kvl'],
+    terms: ['charge', 'voltage', 'current', 'vsource', 'resistor', 'node', 'kcl', 'kvl'],
     params: [Vs('E', 'Source V₁', 12), R('R1', 'R', 1000)],
     net: (p) => ({
       elements: [
@@ -303,15 +332,18 @@ export const EXPERIMENTS = [
     group: GROUPS[1],
     name: 'Power, and the sign of it',
     terms: ['passive', 'power'],
-    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000)],
+    // Three resistors, not B2's two: a loop of its own to look at, and four
+    // powers to add to zero instead of three.
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
         { type: 'R', id: 'R1', nodes: ['in', 'n1'], value: p.R1 },
-        { type: 'R', id: 'R2', nodes: ['n1', 'gnd'], value: p.R2 },
+        { type: 'R', id: 'R2', nodes: ['n1', 'n2'], value: p.R2 },
+        { type: 'R', id: 'R3', nodes: ['n2', 'gnd'], value: p.R3 },
       ],
     }),
-    layout: loop(['R1', 'R2']),
+    layout: loop(['R1', 'R2', 'R3']),
     show: 'p',
     view: 'power',
     views: ['reading', 'equations', 'power'],
@@ -322,7 +354,9 @@ export const EXPERIMENTS = [
     group: GROUPS[1],
     name: 'Two sources, one loop',
     terms: ['passive', 'power'],
-    params: [Vs('E1', 'V₁', 12), Vs('E2', 'V₂', 5), R('R1', 'R', 100)],
+    // A 12 V and a 9 V battery through 100 Ω — not A4's 12 V, 5 V and 1 kΩ,
+    // so the two loops are not the same picture twice.
+    params: [Vs('E1', 'V₁', 12), Vs('E2', 'V₂', 9), R('R1', 'R', 100)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E1 },
@@ -852,7 +886,9 @@ export const EXPERIMENTS = [
     terms: ['opamp', 'feedback', 'cmrr'],
     params: [
       Vs('E1', 'V₁ (to −)', 1),
-      Vs('E2', 'V₂ (to +)', 1.1),
+      // 1.2 V, not 1.1: with the gain of 10 that puts 2 V out and a current in
+      // every element. At 1.1 V the − input sat at exactly E₁ and R₁, R₂ read 0.
+      Vs('E2', 'V₂ (to +)', 1.2),
       R('R1', 'R₁', 1000),
       R('R2', 'R₂', 10000),
       R('R3', 'R₃', 1000),
@@ -1136,7 +1172,9 @@ export const EXPERIMENTS = [
     {
       id: 'g3',
       name: 'Damping versus speed: the R sweep',
-      R: 200,
+      // Starts on the overdamped side, so the marker is not G2's point again
+      // and the first move toward critical shows the settling time falling.
+      R: 400,
       view: 'damping',
       terms: ['damping', 'natural', 'timeconstant'],
       claim: { sweep: true },
@@ -1154,7 +1192,7 @@ export const EXPERIMENTS = [
     group: GROUPS[6],
     name: g.name,
     terms: g.terms,
-    params: [Vs('E', 'Step V₁', 1), chips(R('R1', 'R', g.R), [800, 200, 50]), Ind('L1', 'L', 10e-3), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'cycles', 5)],
+    params: [Vs('E', 'Step V₁', 1), chips(R('R1', 'R', g.R), g.id === 'g3' ? [800, 400, 160, 50] : [800, 200, 50]), Ind('L1', 'L', 10e-3), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'cycles', 5)],
     net: seriesRLC,
     layout: loop(['R1', 'L1', 'C1']),
     window: rlcWindow,
@@ -1639,20 +1677,24 @@ function differenceLayout() {
       { el: 'R2', x: 250, y: 34, dir: 'h' },
       { wire: [270, 34, 300, 34] },
       { wire: [300, 34, 300, 90] },
-      { wire: [50, 130, 50, 158] },
-      { el: 'V2', x: 75, y: 158, dir: 'h', flip: true },
-      { wire: [55, 158, 50, 158] },
-      gnd(50, 158),
-      { wire: [95, 158, 150, 158] },
-      // in2 is named under its wire: V2's + mark now sits above it.
-      node('in2', 118, 158, 'b'),
-      { el: 'R3', x: 170, y: 158, dir: 'h' },
-      { wire: [190, 158, 205, 158] },
-      { wire: [205, 158, 205, 102] },
-      { wire: [205, 102, AMP.x, 102] },
+      // Each source stands on its own ground: V1 straight down, V2 on a stub
+      // of its own along the lower row, so neither looks wired to the other.
+      { wire: [50, 130, 50, 140] },
+      gnd(50, 140),
+      gnd(67, 158),
+      { wire: [67, 158, 77, 158] },
+      { el: 'V2', x: 97, y: 158, dir: 'h', flip: true },
+      { wire: [117, 158, 170, 158] },
+      // in2 is named under its wire, which is long enough for the name and a
+      // reading to clear both V2's circle and R3's body.
+      node('in2', 140, 158, 'b'),
+      { el: 'R3', x: 190, y: 158, dir: 'h' },
+      { wire: [210, 158, 215, 158] },
+      { wire: [215, 158, 215, 102] },
+      { wire: [215, 102, AMP.x, 102] },
       // p is named on its riser: the corner is hemmed in by R3 and the amplifier's reading.
-      node('p', 205, 118, 'l'),
-      { wire: [205, 158, 270, 158] },
+      node('p', 215, 118, 'l'),
+      { wire: [215, 158, 270, 158] },
       { el: 'R4', x: 290, y: 158, dir: 'h' },
       { wire: [310, 158, 320, 158] },
       gnd(320, 158),
