@@ -173,16 +173,21 @@ export const EXPERIMENTS = [
       'The other kind of source. A current source pushes a fixed current I through itself ' +
       'and lets the circuit decide what voltage that takes. Into a resistor, Ohm’s law read ' +
       'the other way gives v = I·R: turn R up and the voltage climbs, the current does not. ' +
-      'Push R up to a million ohms and 5 mA needs 5 kV — an ideal current source into an open circuit ' +
-      'would need an infinite voltage, which is why a current source is never left ' +
-      'unconnected (the solver refuses such a circuit outright). Voltage sources are the ' +
+      'Push R up to a million ohms and 5 mA needs 5 kV. Now open the switch: 5 mA has nowhere ' +
+      'to go, no voltage is large enough, and the solver refuses the circuit and says why — an ' +
+      'ideal current source is never left unconnected. Voltage sources are the ' +
       'familiar kind — batteries, supplies — but current sources are how transistors behave, ' +
       'and the op-amp group leans on them.',
-    params: [Is('I', 'Source I', 0.005), R('R1', 'R', 1000)],
+    params: [
+      Is('I', 'Source I', 0.005),
+      R('R1', 'R', 1000),
+      Toggle('open', 'Switch', false, 'open', 'closed', 'open it and the current has no path'),
+    ],
     net: (p) => ({
       elements: [
         { type: 'I', id: 'I1', nodes: ['gnd', 'in'], value: p.I },
-        { type: 'R', id: 'R1', nodes: ['in', 'gnd'], value: p.R1 },
+        { type: 'SW', id: 'S1', nodes: ['in', 'n1'], closed: !p.open },
+        { type: 'R', id: 'R1', nodes: ['n1', 'gnd'], value: p.R1 },
       ],
     }),
     layout: {
@@ -193,11 +198,14 @@ export const EXPERIMENTS = [
         { el: 'I1', x: 50, y: MID, dir: 'v', flip: true },
         { wire: [50, TOP, 50, MID - 20] },
         { wire: [50, MID + 20, 50, BOT] },
-        rail(50, LEGS[0], TOP),
+        rail(50, 100, TOP),
+        ...top('S1', 120),
+        rail(140, LEGS[0], TOP),
         ...leg('R1', LEGS[0]),
         rail(50, LEGS[0], BOT),
         gnd(115),
         node('in', 50, TOP, 't'),
+        node('n1', LEGS[0], TOP, 't'),
       ],
     },
     show: 'v',
@@ -568,7 +576,8 @@ export const EXPERIMENTS = [
       'textbook fix is a supernode: add the two KCL equations so that current cancels, then ' +
       'use V_A − V_B = E₂ as the second equation. The matrix method does the same thing without ' +
       'the trick: it keeps the source current as an extra unknown and adds the constraint as ' +
-      'an extra row. Below, the printed system has three unknowns for two nodes.',
+      'an extra row. Below, the printed system has five unknowns: the three node voltages ' +
+      '(in, A, B) and the current through each of the two sources.',
     params: [Vs('E1', 'E₁', 12), Vs('E2', 'E₂ (floating)', 4), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
@@ -1573,7 +1582,7 @@ export const EXPERIMENTS = [
       'steady sinusoid at the drive frequency — the forced response, dashed — and a decaying ' +
       'exponential −v_f(0)·e^(−t/τ) that exists only because the forced sinusoid would not have ' +
       'started from zero on its own. The exponential is the natural response, the same e^(−t/τ) ' +
-      'as F2 with τ = RC = 1 ms; the source sets its size but not its shape. After 5τ the two ' +
+      'as F3 with τ = RC = 1 ms; the source sets its size but not its shape. After 5τ the two ' +
       'traces differ by less than 1 % of the forced amplitude, after 25τ by less than one part ' +
       'in 10⁹, and from then on the circuit has forgotten how it started. Everything the phasor ' +
       'views (H2 onward) say is about that steady state alone.',
@@ -1617,7 +1626,8 @@ export const EXPERIMENTS = [
     window: cyclesWindow,
     ghost: 'forced',
     ghostLabel: 'steady state (dashed)',
-    cursor: 0.75,
+    // 3¼ cycles in: the source at its peak, so at the corner v_R and v_C each read exactly half of it — KVL in the meters.
+    cursor: 3.25 / 4,
     scope: {
       left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_s', dim: true }, { q: 'volt', key: 'R1', label: 'v_R' }, { q: 'volt', key: 'C1', label: 'v_C' }] },
       right: { unit: 'A', traces: [{ q: 'i', key: 'R1', label: 'i' }] },
@@ -1698,7 +1708,8 @@ export const EXPERIMENTS = [
     points: 1601,
     ghost: 'forced',
     ghostLabel: 'steady state (dashed)',
-    cursor: 0.95,
+    // 38¼ cycles in: the source at its peak, deep in the steady state, not on a zero crossing.
+    cursor: 38.25 / 40,
     scope: rlcSineScope(),
     out: { q: 'volt', key: 'C1', label: 'v_C' },
     show: 'v',
@@ -1776,7 +1787,8 @@ export const EXPERIMENTS = [
     window: cyclesWindow,
     ghost: 'forced',
     ghostLabel: 'steady state (dashed)',
-    cursor: 0.75,
+    // 3¼ cycles in: the source is at its peak, not a zero crossing.
+    cursor: 3.25 / 4,
     scope: {
       left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_s', dim: true }, { q: 'volt', key: 'C1', label: 'v_C' }] },
       right: { unit: 'A', traces: [{ q: 'i', key: 'R1', label: 'i' }] },

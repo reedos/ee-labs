@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables } from './experiments.js'
-import { analyse, acTable, atDrive, dampingSweep, experimentMath, netPower, powerLedger, snapNoise } from './math.js'
+import { analyse, acTable, atDrive, dampingSweep, experimentMath, netPower, powerLedger, refusalReason, snapNoise, turned, turnedLabel } from './math.js'
 import { CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCheck.js'
 import { agrees } from '@ee-labs/explain'
 import {
-  equations, extrema, solveDC, solveAC, drivingPointZ, acPower, NetworkError, complex as cx,
+  equations, extrema, solveAC, drivingPointZ, acPower, NetworkError, complex as cx,
 } from '@ee-labs/network'
 import { buildCircuitLink, fmt, parseCircuitLink } from '@ee-labs/ui'
 import { evalAtFreq } from '@ee-labs/systems'
@@ -180,9 +180,10 @@ describe('every experiment', () => {
     // the area they replaced — the one-element experiments drop under half.
     // The rest of the screen space comes back from the pane sizing in the CSS.
     expect(framed / canvas).toBeLessThan(0.85)
-    for (const id of ['a1', 'a2']) {
+    // A1 is one element beside its source; A2 has a switch on the rail as well, so its frame is a little wider.
+    for (const [id, cap] of [['a1', 0.5], ['a2', 0.55]]) {
       const [x0, y0, x1, y1] = byId[id].layout.crop
-      expect(((x1 - x0) * (y1 - y0)) / (420 * 180), id).toBeLessThan(0.5)
+      expect(((x1 - x0) * (y1 - y0)) / (420 * 180), id).toBeLessThan(cap)
     }
   })
 
@@ -363,20 +364,20 @@ describe('the notes, sentence by sentence', () => {
     expect(x.sol.i.V1).toBeCloseTo(-x.sol.i.R1, 12)
   })
 
-  it('A2: i = I whatever R, v = I·R, 5 mA into a megohm is 5 kV, and a source with no path is refused', () => {
+  it('A2: i = I whatever R, v = I·R, 5 mA into a megohm is 5 kV, and opening the switch on screen is refused with the reason', () => {
     const { p, x } = at('a2')
     expect(x.sol.i.R1).toBeCloseTo(p.I, 12)
     expect(x.sol.v.in).toBeCloseTo(p.I * p.R1, 12)
+    expect(x.sol.v.n1).toBeCloseTo(p.I * p.R1, 12) // the closed switch is a wire
     const meg = at('a2', { R1: 1e6 }).x.sol
     expect(meg.i.R1).toBeCloseTo(p.I, 12)
     expect(meg.v.in).toBeCloseTo(5000, 9)
-    const open = { elements: [{ type: 'I', id: 'I1', nodes: ['gnd', 'in'], value: p.I }] }
-    expect(() => solveDC(open)).toThrow(NetworkError)
-    try {
-      solveDC(open)
-    } catch (err) {
-      expect(err.code).toBe('current-cutset')
-    }
+    // The note says "open the switch … the solver refuses": the knob on screen must cause it.
+    const open = at('a2', { open: true }).x
+    expect(open.sol).toBeNull()
+    expect(open.refusal).toBeInstanceOf(NetworkError)
+    expect(open.refusal.code).toBe('current-cutset')
+    expect(open.refusal.message).toMatch(/nowhere to go/)
   })
 
   it('A3: sliding V_ref moves every node voltage by exactly V_ref and nothing an element feels; V_ref carries no current', () => {
@@ -484,13 +485,17 @@ describe('the notes, sentence by sentence', () => {
     expect(eq.rows.filter((r) => r.kind === 'kcl').length).toBe(2)
   })
 
-  it('D2: the printed system has three unknowns for two floating nodes plus… wait, four — and says so', () => {
-    const { x } = at('d2')
+  it('D2: the printed system has five unknowns — three node voltages (in, A, B) and two source currents — and the note and math panel say exactly that', () => {
+    const { exp, p, x } = at('d2')
     const eq = equations(x.sol.norm, x.sol)
-    // Nodes: in, A, B → 3 voltages; currents: V1, V2 → 2. The note counts the
-    // two nodes of the supernode plus their currents; the test counts the whole.
-    expect(eq.unknowns.filter((u) => u.kind === 'v').length).toBe(3)
-    expect(eq.unknowns.filter((u) => u.kind === 'i').length).toBe(2)
+    expect(eq.unknowns.filter((u) => u.kind === 'v').map((u) => u.node).sort()).toEqual(['A', 'B', 'in'])
+    expect(eq.unknowns.filter((u) => u.kind === 'i').map((u) => u.id).sort()).toEqual(['V1', 'V2'])
+    expect(eq.unknowns.length).toBe(5)
+    expect(exp.note).toMatch(/five unknowns: the three node voltages \(in, A, B\) and the current through each of the two sources/)
+    const m = experimentMath(exp, p, x)
+    const v = m.blocks.filter((b) => b.kind === 'values').flatMap((b) => b.rows).find((r) => /unknowns/.test(r.label))
+    expect(v.value).toBe(5)
+    expect(v.note).toBe('3 node voltages + 2 source currents')
   })
 
   it('D3: the hand 2×2 matches nodal exactly, and E₂ above E₁R₂/(R₁+R₂) reverses i₂', () => {
@@ -1285,6 +1290,142 @@ describe('hand-over to Circuit Lab, both ways', () => {
         expect(k.min, `${e.id} ${k.key} min`).toBeGreaterThanOrEqual(knob.min)
         if (k.unit !== 'H') expect(k.max, `${e.id} ${k.key} max`).toBeLessThanOrEqual(knob.max)
       }
+    }
+  })
+})
+
+// Phase 0 of the student review: a claim is not only a number. Notes point at
+// other experiments, count unknowns in words, name the reason a circuit is
+// refused, and open at an instant — each of those is measured here, because
+// the numeric check rows above cannot see any of them (H1 once pointed at the
+// wrong experiment, D2 miscounted, A2's refusal was unreachable from the knobs,
+// and H2 opened with every phasor lying flat on the axis).
+describe('what the student reads is what the solver did', () => {
+  /** Everything a student can read on an experiment at its defaults: the note and the whole math panel. */
+  const prose = (e) => {
+    const p = defaultsOf(e.id)
+    const x = analyse(e, p)
+    return { p, x, text: `${e.note}\n${JSON.stringify(experimentMath(e, p, x).blocks)}` }
+  }
+  /** Experiment ids named in the prose — element ids and knob keys of the experiment itself (E1, C1…) are not references. */
+  const refsIn = (e, x, text) => {
+    const own = new Set([...x.net.elements.map((el) => el.id), ...e.params.map((k) => k.key)])
+    return [...new Set([...text.matchAll(/\b([A-H][1-9])\b/g)].map((m) => m[1]).filter((t) => !own.has(t)))]
+  }
+  const hasPart = (t, p, type) => t.net(p).elements.some((el) => el.type === type)
+  /** A first-order experiment whose time constant is its R times its C. */
+  const isRC = (t, p) => Math.abs(analyse(t, p).state.tau - p.R1 * p.C1) < 1e-9 * p.R1 * p.C1
+
+  it('every cross-reference names an experiment that exists and holds what the sentence says it holds', () => {
+    // What each reference leans on, checked against the referenced experiment itself.
+    const holds = {
+      'c3→E8': (t) => t.params.some((k) => k.key === 'RL') && t.views.includes('sweep'), // "why, in E8, an op-amp…": the same load sweep, buffered
+      'e8→C3': (t) => t.params.some((k) => k.key === 'RL') && t.views.includes('sweep'), // "Compare the same sweep in C3"
+      'f2→F1': (t, p) => t.params.some((k) => k.key === 'Rs') && hasPart(t, p, 'C'), // "the role R_s played in F1"
+      'f4→F3': (t, p) => t.params.map((k) => k.key).join() === 'E,R1,C1,v0,N' && isRC(t, p), // "then it IS F3: τ = RC"
+      'f4→D5': (t) => t.views.includes('thevenin'), // "(D5)" for the Thévenin source
+      'f7→E5': (t) => t.terms.includes('virtual'), // "The virtual ground (E5)"
+      'g2→G3': (t) => t.views.includes('damping'), // "(G3 measures overshoot)"
+      'g6→G4': (t) => t.params.every((k) => !['v0', 'i0'].includes(k.key)), // "the response from rest (G4)": no initial-state knobs
+      'h1→F3': (t, p) => hasPart(t, p, 'C') && !hasPart(t, p, 'L') && isRC(t, p), // "the same e^(−t/τ) as F3 with τ = RC"
+      'h1→H2': (t) => t.view === 'phasor', // "the phasor views (H2 onward)"
+    }
+    const seen = []
+    for (const e of EXPERIMENTS) {
+      const { x, text } = prose(e)
+      for (const ref of refsIn(e, x, text)) {
+        const target = byId[ref.toLowerCase()]
+        expect(target, `${e.id} points at ${ref}, which is not an experiment`).toBeDefined()
+        const key = `${e.id}→${ref}`
+        expect(holds[key], `${key} is a new cross-reference: say here what it leans on`).toBeDefined()
+        expect(holds[key](target, defaultsOf(target.id)), `${key}: ${ref} does not hold what ${e.id} says it does`).toBe(true)
+        seen.push(key)
+      }
+    }
+    expect(seen.sort()).toEqual(Object.keys(holds).sort())
+    // The bug this catches: F2 is the inductor experiment, so "the same e^(−t/τ) as F2 with τ = RC" was false.
+    expect(holds['h1→F3'](byId.f2, defaultsOf('f2'))).toBe(false)
+  })
+
+  it('a count of unknowns in words is the count the solver printed', () => {
+    const words = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 }
+    const found = []
+    for (const e of EXPERIMENTS) {
+      const { x, text } = prose(e)
+      if (!x.sol) continue
+      const eq = equations(x.sol.norm, x.sol)
+      for (const m of text.matchAll(/\b(one|two|three|four|five|six|seven|eight|nine|ten) unknowns?\b/gi)) {
+        const n = words[m[1].toLowerCase()]
+        found.push(`${e.id}:${n}`)
+        const before = text.slice(Math.max(0, m.index - 40), m.index)
+        if (/printed system has $/.test(before)) {
+          // Counting the printed system: every unknown in it, node voltages and source currents alike.
+          expect(n, `${e.id} says "${m[0]}" but the printed system has ${eq.unknowns.length}`).toBe(eq.unknowns.length)
+        } else if (/mesh/i.test(before)) {
+          // Counting meshes: independent loops, B − N with N the non-ground nodes.
+          expect(n, `${e.id} says "${m[0]}" of meshes`).toBe(x.net.elements.length - x.sol.norm.n)
+        } else {
+          // Counting hand nodal unknowns: node voltages not pinned to ground by a source.
+          const pinned = new Set(x.net.elements.filter((el) => el.type === 'V' && el.nodes.includes('gnd')).flatMap((el) => el.nodes))
+          expect(n, `${e.id} says "${m[0]}" of free node voltages`).toBe(x.sol.norm.nodeNames.filter((nm) => !pinned.has(nm)).length)
+        }
+      }
+    }
+    expect(found).toEqual(['d1:1', 'd1:1', 'd2:5', 'd3:2'])
+  })
+
+  it('a refusal reaches the student as a sentence, never as the machine code', () => {
+    for (const [id, over] of [['e3', {}], ['a2', { open: true }]]) {
+      const { x } = at(id, over)
+      expect(x.sol).toBeNull()
+      const reason = refusalReason(x.refusal)
+      expect(reason).toMatch(/^[A-Z].*\.$/)
+      expect(reason).not.toContain(x.refusal.code)
+      expect(reason).not.toMatch(/\b[a-z]+-[a-z]+\b/)
+      expect(x.refusal.message.startsWith(reason)).toBe(true)
+    }
+    expect(refusalReason(at('e3').x.refusal)).toBe('U1 has no feedback path from its output to either input.')
+    expect(refusalReason(at('a2', { open: true }).x.refusal)).toBe('Node in is fed only by current sources, so the current arriving there has nowhere to go.')
+    expect(refusalReason({ message: '' })).toBe('the circuit as drawn has no solution')
+  })
+
+  it('every sine experiment opens with the source well off its zero crossing; H2 and H6 at its peak', () => {
+    const sines = EXPERIMENTS.filter((q) => q.net(defaultsOf(q.id)).elements.some((el) => el.wave && el.wave.kind === 'sine'))
+    expect(sines.map((q) => q.id)).toEqual(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+    for (const e of sines) {
+      const { p, x } = at(e.id)
+      const vs = x.tr.at(x.cursor).sol.v.in
+      expect(Math.abs(vs) / p.A, `${e.id} opens at t = ${x.cursor} with v_s = ${vs}`).toBeGreaterThanOrEqual(0.5)
+    }
+    // H2 opens with the source at its peak: at the corner frequency v_R and v_C then each read half of it, so the meters show KVL as 2.5 V + 2.5 V = 5 V.
+    const h2 = at('h2')
+    expect(turned(h2.x.omega, h2.x.cursor).cycles).toBe(3)
+    expect(turned(h2.x.omega, h2.x.cursor).deg).toBeCloseTo(90, 9)
+    const m = h2.x.tr.at(h2.x.cursor).sol
+    expect(m.v.in).toBeCloseTo(h2.p.A, 9)
+    expect(m.volt.R1 / h2.p.A).toBeCloseTo(0.5, 3) // the chip's 159.2 Hz is a hair off the exact corner
+    expect(m.volt.C1 / h2.p.A).toBeCloseTo(0.5, 3)
+    const h6 = at('h6')
+    expect(turned(h6.x.omega, h6.x.cursor).cycles).toBe(3)
+    expect(turned(h6.x.omega, h6.x.cursor).deg).toBeCloseTo(90, 9)
+    expect(h6.x.tr.at(h6.x.cursor).sol.v.in).toBeCloseTo(h6.p.A, 9)
+  })
+
+  it('"turned" reads as cycles plus an angle under 360°, on screen and in the math panel', () => {
+    const w = 2 * Math.PI * 100
+    expect(turnedLabel(w, 0)).toBe('0.0°')
+    expect(turnedLabel(w, 0.00125)).toBe('45.0°')
+    expect(turnedLabel(w, 0.01125)).toBe('1 cycle + 45.0°')
+    expect(turnedLabel(w, 0.03)).toBe('3 cycles + 0.0°') // once "1080.0°"
+    expect(turnedLabel(w, 0.03 - 1e-9)).toBe('3 cycles + 0.0°') // a hair short of the cycle snaps, never "2 cycles + 360.0°"
+    const { exp, p, x } = at('h2')
+    const t = experimentMath(exp, p, x).blocks.find((b) => b.kind === 'values').rows.find((r) => r.label === 'arrows have turned')
+    expect(t.value).toBeCloseTo(90, 9)
+    expect(t.note).toBe('after 3 full cycles')
+    for (const tc of [0, 0.3, 0.75, 1].map((f) => f * exp.window(p))) {
+      const r = experimentMath(exp, p, analyse(exp, p, tc)).blocks.find((b) => b.kind === 'values').rows.find((q) => q.label === 'arrows have turned')
+      expect(r.value).toBeGreaterThanOrEqual(0)
+      expect(r.value).toBeLessThan(360)
     }
   })
 })

@@ -400,9 +400,10 @@ single loop is walked.
   E everywhere. Measured: `v_R = E`, `i = E/R`, the source current `−i` (it leaves
   the + terminal), `p_R = E²/R`; E unchanged at R = 10 Ω.
 - **A2 · A current source holds its current.** The dual: `i_R = I`, `v = I·R`. Push R
-  to a megohm and 5 mA needs 5 kV; an ideal current source into an open circuit has
-  no solution, and the solver refuses it (`current-cutset`). Measured: `i_R = I` at
-  1 kΩ and 1 MΩ, `v = 5 kV` at 1 MΩ, the refusal code for a source with no path.
+  to a megohm and 5 mA needs 5 kV; open the switch on the rail and an ideal current
+  source into an open circuit has no solution — the solver refuses it
+  (`current-cutset`) and says why. Measured: `i_R = I` at 1 kΩ and 1 MΩ, `v = 5 kV`
+  at 1 MΩ, the refusal (code and reason) with the on-screen switch open.
 - **A3 · Voltage is a difference; ground is a choice.** A divider built on top of a
   source `V_ref` instead of on ground. Slide `V_ref`: every node voltage moves by
   exactly that amount; every element voltage, current and power stays put; `V_ref`
@@ -748,6 +749,30 @@ state, and averaging.
    defaults and two random settings; the hand-over "there" (Circuit Lab's transfer
    function equals this lab's H at all 241 sweep points, 1e-9) and "back" (the link
    round-trips with values identical and no warning) both pass.*
+   *Student's-eye review 2026-09-02* (all 46 experiments scored as a new student
+   would meet them: information 6, layout 5, flow 5, plots 7 of 10; a second
+   opinion from Grok checked claim by claim against the source) set a 9.5/10 bar
+   and a remediation plan in nine steps, each its own commit, the lab staying
+   dark throughout and Group I waiting until the first three have landed:
+   0 claim bugs · 1 opening experience (knobs above the note, A1 without the
+   matrix) · 2 notes that pose a question · 3 sidebar and pane sizing · 4 copy
+   and package description · 5 plots (cursor defaults, legends, axis labels) ·
+   6 hover-lights-node and click-to-throw on the schematic · 7 per-group
+   checkpoints · 8 deep links (the parallel session's territory) · 9 final audit.
+   **Step 0 — claim bugs — shipped 2026-09-02:** A2's refusal is now reachable
+   from a switch knob on screen, not only from a test's private netlist; D2's
+   "printed system" count is five (three node voltages and two source currents,
+   the math panel computing the words from the unknown list); H1 points at F3,
+   the RC experiment, not F2 (the RL one); the topbar gives a refusal's reason
+   in words (`refusalReason`) and keeps the code for the report; H2, H4 and H6
+   open with the source at its peak instead of a zero crossing, so H2's meters
+   read KVL as 2.5 V + 2.5 V = 5 V; "turned 1080.0°" reads "3 cycles + 90.0°"
+   (`turned`/`turnedLabel`). New test classes measure what the numeric check rows
+   could not: every cross-reference in a note or math panel names an experiment
+   that exists and holds what the sentence leans on (a table that must grow when
+   a new reference appears), every count of unknowns in words equals the count
+   the solver printed, refusals reach the student as a sentence, and every sine
+   experiment opens with |v_s| ≥ A/2.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event

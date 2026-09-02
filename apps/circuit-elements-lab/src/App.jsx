@@ -3,7 +3,7 @@ import { LabNav, NumField, ReportIssue, Schematic, fmt } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { equations, normalize, complex as cx } from '@ee-labs/network'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic } from './experiments.js'
-import { analyse, atDrive, experimentMath, netPower, snapNoise } from './math.js'
+import { analyse, atDrive, experimentMath, netPower, refusalReason, snapNoise, turnedLabel } from './math.js'
 import { termsFor } from './terms.js'
 import { reportSummary } from './report.js'
 import { EquationsPane, PowerPane, TheveninPane, SuperpositionPane, StatePane, AcPowerPane, Refusal } from './components/panes.jsx'
@@ -225,7 +225,7 @@ export default function App() {
           </span>
           <span className={`flow-node ${x.sol ? 'is-out' : 'is-off'}`} data-role="outcome">
             {x.sol ? 'solved' : 'no solution'}
-            <em>{x.sol ? `current in = current out at every node, to ${fmt(x.sol.maxResidual, 'A', 2)}` : x.refusal.code}</em>
+            <em>{x.sol ? `current in = current out at every node, to ${fmt(x.sol.maxResidual, 'A', 2)}` : refusalReason(x.refusal)}</em>
           </span>
         </nav>
         <div className="topbar-controls">
@@ -383,7 +383,7 @@ export default function App() {
                     <em className="prov"> re v_s: {deg(cx.carg(x.ac[exp.out.q][exp.out.key]) - cx.carg(x.ac.volt.V1))}</em>
                   </span>
                   <span>
-                    turned <b>{deg(x.omega * x.cursor, false)}</b>
+                    turned <b>{turnedLabel(x.omega, x.cursor)}</b>
                   </span>
                 </>
               ) : null}
@@ -478,9 +478,9 @@ export default function App() {
   )
 }
 
-/** Radians as degrees, one decimal; wrapped to (−180°, 180°] unless `wrap` is false (an angle turned keeps counting). */
-function deg(a, wrap = true) {
-  const v = wrap ? Math.atan2(Math.sin(a), Math.cos(a)) : a
+/** Radians as degrees, one decimal, wrapped to (−180°, 180°]. */
+function deg(a) {
+  const v = Math.atan2(Math.sin(a), Math.cos(a))
   return `${((v * 180) / Math.PI).toFixed(1)}°`
 }
 

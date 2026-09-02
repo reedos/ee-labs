@@ -214,6 +214,11 @@ console.log('\n4. E3: the ideal comparator refuses, finite gain lifts it\n')
     if (code !== 'opamp-open-loop') fail(`E3 refusal code ${code}`)
     if (!/no feedback path/.test(text)) fail(`E3 refusal text: ${text}`)
     console.log(`   refused: ${text.replace(/\s+/g, ' ').trim().slice(0, 90)}…`)
+    // The topbar chip gives the reason in words; the machine code stays in the data attribute and the report.
+    const chip = (await outcome()).replace(/\s+/g, ' ').trim()
+    if (/opamp-open-loop|[a-z]+-[a-z]+/.test(chip)) fail(`E3 topbar shows a machine code: ${chip}`)
+    if (!/no feedback path/.test(chip)) fail(`E3 topbar should give the reason: ${chip}`)
+    else console.log(`   topbar: ${chip}`)
   }
   await setField('Gain A (0 = ideal)', '100000')
   if ((await ref.count()) !== 0) fail('E3 with A = 10⁵ should solve')

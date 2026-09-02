@@ -433,7 +433,14 @@ const ENTRIES = {
           row('V_A − V_B', p.E2, s.v.A - s.v.B, 'V'),
           row('i through E₂ (A→B)', (p.E1 - vA) / p.R1 - vA / p.R2, s.i.V2, 'A'),
         ]),
-        V([{ label: 'unknowns in the printed system', value: s.sys.unknowns.length, unit: '', note: '2 nodes + 2 source currents' }]),
+        V([
+          {
+            label: 'unknowns in the printed system',
+            value: s.sys.unknowns.length,
+            unit: '',
+            note: `${s.sys.unknowns.filter((u) => u.kind === 'v').length} node voltages + ${s.sys.unknowns.filter((u) => u.kind === 'i').length} source currents`,
+          },
+        ]),
       ],
     }
   },
@@ -1065,7 +1072,7 @@ const ENTRIES = {
     if (25 * tau <= x.tEnd) rows.push(row('natural at 25τ: gone', 0, natural(25 * tau), '', 0, 1e-9))
     return {
       blocks: [
-        T('The capacitor voltage is the forced sinusoid plus whatever natural response is needed to start it from zero. The forced part comes from the phasor solve; the natural part is F2’s exponential with its amplitude fixed by v_C(0) = 0.'),
+        T('The capacitor voltage is the forced sinusoid plus whatever natural response is needed to start it from zero. The forced part comes from the phasor solve; the natural part is F3’s exponential, e^(−t/RC), with its amplitude fixed by v_C(0) = 0.'),
         F('v_C(t) = |V_C|\\sin(\\omega t + \\angle V_C) - |V_C|\\sin(\\angle V_C)\\,e^{-t/\\tau}, \\qquad V_C = \\frac{V_s}{1 + j\\omega RC}'),
         C(rows),
         V([
@@ -1102,7 +1109,7 @@ const ENTRIES = {
           { label: 'f_c = 1/2πRC', value: 1 / (2 * Math.PI * rc.tau), unit: 'Hz' },
           { label: '|V_C|/|V_s| at this f', value: rc.magC / p.A, unit: '', note: 'is 1/√2 = 0.7071 at f_c' },
           { label: 'v_C lags v_s by', value: (-(rc.angC - rc.phi) * 180) / Math.PI, unit: '°', note: 'is 45° at f_c' },
-          { label: 'arrows have turned', value: ((x.omega * tc * 180) / Math.PI) % 360, unit: '°' },
+          { label: 'arrows have turned', value: turned(x.omega, tc).deg, unit: '°', note: `after ${turned(x.omega, tc).cycles} full cycles` },
         ]),
       ],
     }
@@ -1350,6 +1357,39 @@ function lastCycleNatural(x) {
     worst = Math.max(worst, Math.abs(x.tr.at(t).sol.volt.C1 - x.ghost.at(t).sol.volt.C1))
   }
   return worst
+}
+
+/**
+ * How far the phasor arrows have turned by time t: whole cycles plus the
+ * remaining angle in [0°, 360°), so a student reads "3 cycles + 45.0°" rather
+ * than "1125.0°". Angles within 0.05° of a whole cycle snap to 0°.
+ */
+export function turned(omega, t) {
+  const total = ((omega * t) / (2 * Math.PI)) * 360
+  let cycles = Math.floor(total / 360)
+  let deg = total - cycles * 360
+  if (360 - deg < 0.05) {
+    cycles += 1
+    deg = 0
+  }
+  return { cycles, deg }
+}
+/** The `turned` pair as the student sees it: "45.0°", "1 cycle + 45.0°", "3 cycles + 0.0°". */
+export function turnedLabel(omega, t) {
+  const { cycles, deg } = turned(omega, t)
+  const angle = `${deg.toFixed(1)}°`
+  if (cycles === 0) return angle
+  return `${cycles} ${cycles === 1 ? 'cycle' : 'cycles'} + ${angle}`
+}
+
+/**
+ * The one-line reason a refusal gets in the topbar: the first sentence of the
+ * solver's message ("U1 has no feedback path from its output to either input."),
+ * never the machine code ("opamp-open-loop"). The full message is on the panel.
+ */
+export function refusalReason(err) {
+  const m = /^(.*?[.!?])(\s|$)/.exec(err.message || '')
+  return m ? m[1] : err.message || 'the circuit as drawn has no solution'
 }
 
 /** Mean of f over one period [0, T) by the midpoint rule with n points — exact for trigonometric polynomials of degree < n/2. */
