@@ -1038,3 +1038,46 @@ after this inherits the fixes and every group built before it would need
 them retrofitted — four new topologies on the current shell would retrofit
 all of it. The lab stays dark through step 3 at the least. Each step lands as
 its own commit with its tests, pushed only when asked.
+
+### 11.8 Step 8 as walked (2026-09-02)
+
+All 22 experiments (Group B is eight since step 6) walked cold at 1366×768
+and 1440×900 in Chromium and Firefox, every trace pill clicked, every
+Analysis view opened, screenshots read one by one. Six things a student
+would trip on were left, each now a test that failed first:
+
+- **B1–B8 offered v_in, v_rect, v_D and i_R** — rectifier traces the buck has
+  no waveform for; clicking one drew nothing. The scope now offers only
+  traces the circuit has (`review.test.jsx`).
+- **The outcome chip was scrolled out of the top bar** on twelve experiments
+  at 1366 and 1440 — the strip scrolls sideways, so the overflow probe never
+  saw it. The name chip is the only one that gives way; below 1366 the chips'
+  detail lines stack under their headings. Measured against `FLOW_BUDGET` in
+  `review.test.jsx` and in the real layout at 1280/1366/1440 by verify §10b.
+- **Firefox put B1, C1 and E1's first knob 7 px below the 768 fold** — its
+  range inputs are 20 px tall and its `normal` line height 2 px taller;
+  pinned in `styles.css`, verify §8 green in both browsers.
+- **C2's rotated η axis title read as a stray mark**; a lone glyph stays
+  upright (`draw.test.js`).
+- **B5's zero-length dead interval** wrote "dea" at the frame edge and "dead"
+  over the next "on"; an edge is named only where the name fits.
+- Verify §10b had been inserted with a syntax error and never ran; fixed.
+
+Deferred, cosmetic, not a trip: the sidebar schematic is small at 1366 (the
+main-column copy is the one a reader studies); the phone sidebar's 45 vh cap
+is the shared shell's.
+
+**Re-score against the same rubric**, from the lists in 11.1–11.6 being
+green plus this walk:
+
+| Metric | Review | Now | What holds it |
+|---|---|---|---|
+| Physics rigour & correctness | 9 | 9.5 | walker vs solver at 2000/kind, 852 cells pinned or excused, sweeps continuous, one exponential (11.1 as built) |
+| Information — content | 8 | 9.5 | B6 split, A2 rebuilt on RMS, every `try` line a measured claim, reading level tested |
+| Information — delivery | 4 | 9.5 | note, schematic, first knob and Math all above the fold on all 22 in both browsers; no screen contradicts its note |
+| Layout | 5 | 9.5 | weighted split, no overflow at four widths, the strip whole at 1280–1440, 390 px passes |
+| Flow & intuition | 5 | 9 | path, intros, chips, reset — the last half-point is the newcomer's, per §11 |
+| Plots | 6 | 9.5 | two strips, legends off, anchored axes, marks the note points at, edge names that fit |
+
+The two "new student" metrics wait on Reed's hands-on pass for their last
+half-point, as §11 says a model cannot give it.
