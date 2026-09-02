@@ -1,0 +1,238 @@
+/* Power Lab's own furniture. The shell, controls and math panel come from
+ * @ee-labs/ui and @ee-labs/explain; the sidebar groups, terms and tables are
+ * the Circuit Elements Lab's, copied so the two labs read as one suite. */
+
+.preset-group { margin-bottom: 10px; }
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preset {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11.5px;
+  padding: 5px 8px;
+}
+
+.preset:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.preset.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(56, 224, 176, 0.1);
+}
+
+details.preset-group > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+details.preset-group > summary::before {
+  content: '▸';
+  font-size: 9px;
+  transition: transform 0.12s;
+}
+
+details.preset-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.preset-group > summary::-webkit-details-marker { display: none; }
+
+details.preset-group > .presets { margin: 4px 0 8px; }
+
+.group-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+}
+
+/* Pane-header controls, sized to the header row. */
+.view-head .segmented { flex: 0 0 auto; }
+.view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
+.view-head .segmented.traces { flex-wrap: wrap; }
+
+@media (max-width: 900px) {
+  .view-head { row-gap: 6px; }
+  .view-head .readout { flex-basis: 100%; }
+}
+
+/* Definitions on contact, folded under the lesson note. */
+details.terms { margin: 6px 0 2px; }
+
+details.terms > summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--accent);
+  list-style: none;
+}
+details.terms > summary::before { content: '\25B8  '; font-size: 9px; }
+details.terms[open] > summary::before { content: '\25BE  '; }
+details.terms > summary::-webkit-details-marker { display: none; }
+
+details.terms dl { margin: 6px 0 0; }
+details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
+details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+
+/* The two-position knob (diode / synchronous switch), in the NumField's slot. */
+.toggle-field .segmented { display: inline-flex; margin-top: 2px; }
+
+/* Trace chips and table rows carry the colour the scope draws them in. */
+.trace-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+/* Tables in the math-panel idiom. */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+/* Every cell centred, headings included, so a column reads as one stack. The
+   cost is that decimal points no longer line up down a column; the rules
+   between columns carry the grouping instead. */
+.table th, .table td { text-align: center; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.table th { color: var(--dim); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+/* `.num` belongs to the shared NumField (packages/ui/src/base.css), where it is
+   a block with a margin. These are table cells that happen to hold numbers, so
+   the block rule has to be undone or every cell stacks down the first column.
+   Circuit Elements Lab carries the same reset; styles.test.js pins both.
+
+   A heading takes the same class as the column it names, so the two cannot
+   drift out of alignment with each other. */
+.table td.num,
+.table th.num {
+  display: table-cell;
+  margin: 0;
+  text-align: center;
+}
+.table td.num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+/* A faint rule between columns. Six columns spread across a wide pane leave a
+   lot of air between a number and its heading, and the eye wants a line to
+   follow; dim enough that the numbers stay the loudest thing in the table. */
+.table td + td,
+.table th + th {
+  border-left: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+}
+.table td.agree { color: var(--accent); }
+.table td.disagree { color: var(--warn); }
+.table tr.total td { border-top: 1px solid var(--axis, var(--line)); font-weight: 600; }
+.table caption { text-align: left; color: var(--dim); font-size: 11px; padding: 4px 8px; }
+.pane-grid { display: grid; gap: 12px; grid-template-columns: 1fr; align-content: start; }
+@media (min-width: 1100px) { .pane-grid { grid-template-columns: 2fr 1fr; } }
+
+/* A pane whose plot must be visible without scrolling for it. The grid takes
+   the height the pane has rather than the height its tallest cell wants, so the
+   plot is sized by the window and the table beside it scrolls if it is longer. */
+.pane-grid.is-fit { height: 100%; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+.pane-grid.is-fit > * { min-height: 0; }
+.pane-grid.is-fit > .plot { height: 100%; }
+.pane-scroll { min-height: 0; overflow: auto; }
+
+/* The balance pane: the plot above, the exact areas tabled below. */
+.balance { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
+.balance .plot { flex: 1; min-height: 160px; }
+
+/* The losses pane: bars on a common scale, the load first. */
+.losses { padding: 4px 0; }
+.power-list { display: grid; gap: 6px; padding: 4px 0; }
+.power-row { display: grid; grid-template-columns: 180px 1fr 90px; gap: 10px; align-items: center; font-size: 12px; }
+.power-row .bar { position: relative; height: 12px; background: var(--panel-2); border-radius: 3px; }
+.power-row .bar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.power-row .bar i.out { background: var(--accent); }
+.power-row .bar i.loss { background: var(--amber); }
+.power-row .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-align: right; }
+.power-total { color: var(--dim); font-size: 11.5px; margin-top: 4px; line-height: 1.7; }
+.power-total b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+
+/* Desktop: the lower pane has room, and the phone-sized type read as a squint
+   at arm's length. Everything in it steps up about a third. */
+@media (min-width: 1100px) {
+  .table { font-size: 14px; }
+  .table th { font-size: 12.5px; }
+  .table caption { font-size: 13px; }
+  .power-row { font-size: 14px; grid-template-columns: 220px 1fr 110px; }
+  .power-row .bar { height: 14px; }
+  .power-total { font-size: 13.5px; }
+  .losses .hint { font-size: 14px; }
+  .view-body > .hint { font-size: 14px; }
+}
+
+/* Pane bodies scroll inside the pane rather than growing it. */
+.view-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.view-body .plot { flex: 1; min-height: 160px; }
+
+/* The schematic, in Circuit Lab's idiom: same slot in the sidebar, same
+   symbols and type, values live so the picture matches the plots. */
+.schematic {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 2px 0 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px;
+}
+.sch-label {
+  fill: var(--dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+}
+.sch-port {
+  fill: var(--text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+}
+.sch-sign {
+  fill: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+}
+.sch-note {
+  fill: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 9px;
+  font-style: italic;
+}
+
+/* The topology's name, under its drawing. */
+.sch-name {
+  margin: -6px 0 2px;
+  color: var(--text);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Where a signal is measured, in the colour the scope draws it. */
+.sch-sig {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 8px;
+}

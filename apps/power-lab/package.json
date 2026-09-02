@@ -1,0 +1,22 @@
+{
+  "name": "power-lab",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Switching power conversion from the volt-second balance up: why a switch beats a resistor, the buck converter in both conduction modes, ripple, the boundary, and where the losses go.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee-labs/explain": "*",
+    "@ee-labs/switched": "*",
+    "@ee-labs/ui": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

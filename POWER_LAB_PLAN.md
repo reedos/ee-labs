@@ -14,6 +14,12 @@ Decisions already made (Reed, 2026-09-01):
   what bent it. Ideal-vs-real is the suite's best genre; here it is the whole genre.
 - **Magnetics in scope**, including saturation and the flyback.
 - **Name: Power Lab.**
+- **Everything in v1** (Reed, 2026-09-01, on seeing the buck slice): three-phase,
+  motor drives, resonant/LLC, the forward/push-pull/full-bridge DC-DC family,
+  EMI and thermal — the things §9 once listed as non-goals — are v1 groups I–N.
+  The engine was built general enough to carry them (event-driven, n-state,
+  polyphase sources as oscillator state), so the cost is curriculum, not
+  machinery; §9 now says what is *still* out.
 
 The suite's one rule applies with no exemptions: **every explanatory sentence is a
 claim about physics, and a test must measure it.** Power electronics is unusually
@@ -250,13 +256,14 @@ datasheet fashion, stated in the notes:
 - Buck: 12 V → 5 V (D = 0.417), L = 100 µH, C = 100 µF, R = 5 Ω, f_s = 100 kHz.
 - Boost: 5 V → 12 V (D = 0.583), L = 100 µH, C = 220 µF, R = 24 Ω, f_s = 100 kHz.
 - Rectifiers: 120 V/60 Hz line, 12.6 V transformer secondary, R_s = 0.5 Ω,
-  C = 100–4700 µF, load 10 Ω–1 kΩ.
+  V_f = 0.7 V, C = 100–4700 µF, load 10 Ω–1 kΩ; the six-pulse case is the same
+  secondary per phase, so its DC output (≈ 1.35·V_LL) lands near 28 V.
 - Inverter: V_dc = 48 V full bridge, f₁ = 60 Hz, f_sw = m_f·f₁ with m_f ∈
   {15, 33, 63} (odd, triplen-avoiding options later), LC = 1 mH/10 µF.
 
 ---
 
-## 4. Curriculum — 35 experiments in 8 groups
+## 4. Curriculum — 54 experiments in 14 groups
 
 Format per experiment: **the claim** the note makes → what the reader turns → what
 is **measured** against what **formula**. Every quoted number below becomes a
@@ -354,7 +361,7 @@ pinned test the way `presets.test.js` pins Signal Lab.
   has nowhere to go at turn-off: the spike, and why clamps exist. Third state
   (i_lk); qualitative if the exact model proves heavy.
 
-### Group E — AC in: rectifiers (5)
+### Group E — AC in: rectifiers (6)
 
 - **E1 · Half-wave + capacitor.** Conduction only while v_in exceeds v_C: short
   gulps near each crest. Ripple ≈ I_load/(f·C) (first-order, and the panel says
@@ -371,6 +378,15 @@ pinned test the way `presets.test.js` pins Signal Lab.
 - **E5 · The dimmer.** Phase-cut at angle α into a resistive load:
   P/P_full = 1 − α/π + sin 2α/(2π), measured across the α sweep — plus the
   harmonic price, which is why cheap dimmers buzz.
+- **E6 · Three phases, six pulses.** Three secondaries 120° apart into a
+  six-diode bridge: the pair with the highest line voltage conducts, so the
+  output ripples at 6f with ≈ 1/6 the swing of E1's for the same C, and sits
+  near the peak *line-to-line* voltage (√3 × phase). The line current has no
+  third harmonic — the 5th and 7th are the first that survive — which is why
+  industrial rectifiers are three-phase. Measured: 6 pulses, ripple vs I/(6fC),
+  V_dc vs 1.35·V_LL, absent triplens, PIV = peak line-to-line. Uses the same
+  event engine with the source carried as oscillator state, three phases being
+  three linear forms in it.
 
 ### Group F — DC out as AC: inverters (4)
 
@@ -418,6 +434,89 @@ pinned test the way `presets.test.js` pins Signal Lab.
   ω_z = D′²R/L, measured from the switched transient's initial undershoot, then
   handed to Control Lab to see the bandwidth ceiling it imposes. The lab's best
   single moment: a nonminimum-phase zero you can watch happen in a circuit.
+
+### Group I — Three-phase out (3)
+
+- **I1 · Six-step.** Three half-bridges, 120° apart, each a square wave: the
+  line-to-line voltage is a quasi-square with a 60° gap and the phase voltage a
+  six-level staircase. Fundamental line rms = (√6/π)V_dc; no triplens on the
+  line, the 5th and 7th at 1/5 and 1/7 — measured against Fourier both ways.
+- **I2 · Sine PWM in three phases.** F2's comparator, thrice: line-line
+  fundamental peak = (√3/2)·m_a·V_dc. Adding a third-harmonic (or space-vector)
+  offset to the references raises the ceiling by 15 % without appearing on the
+  line — measured: the ceiling with and without, and the triplens that cancel.
+- **I3 · Balanced load, constant power.** A balanced three-phase load draws
+  constant instantaneous power — the DC bus sees no 2f ripple, unlike the
+  single-phase inverter's. Measured: p(t) flat to rounding, the single-phase
+  case's 2f swing beside it.
+
+### Group J — Isolated DC-DC: the half-bridge's siblings (3)
+
+- **J1 · Forward.** A buck through a transformer: M = n·D, with a reset winding
+  and D < 0.5 so the core resets — the magnetising current's own volt-second
+  balance, drawn. Measured: M, the reset interval, switch stress 2·V_in.
+- **J2 · Push-pull.** Two switches alternating into a centre-tapped primary,
+  both halves of the core's loop: M = 2·n·D, ripple at 2f_s, and the flux-walk
+  hazard when the two halves are not symmetric (a small R_on mismatch, and the
+  magnetising current drifts every cycle — measured over the drift).
+- **J3 · Full bridge.** Four switches, the primary swung both ways: the same
+  M = 2·n·D at a switch stress of V_in rather than 2·V_in. The three compared
+  on one table — stress, utilisation, parts — with every column measured.
+
+### Group K — Resonant conversion (3)
+
+- **K1 · The series resonant tank.** An LC tank driven by a square wave, loaded
+  through a rectifier: current is a sine, and above resonance it lags the
+  voltage, so the switches turn on at zero voltage. Measured: the gain curve
+  |M(f)| against the fundamental-approximation formula, and where the FHA is
+  honest (near resonance) and where it is not (well below).
+- **K2 · LLC.** Add the magnetising inductance and the gain can exceed 1 below
+  resonance: the two resonances, the load-dependent peak, ZVS everywhere on the
+  right slope. Measured: gain vs f at three loads, the peak gain's location vs
+  the L_m/L_r ratio.
+- **K3 · Why resonant.** Same power, same devices: the LLC's turn-on loss is
+  zero and its turn-off loss small; the hard-switched bridge pays the full
+  ½VI·t per edge. G1's loss crossover, redrawn with a resonant line under it.
+
+### Group L — Motor drives (3)
+
+- **L1 · The DC motor is an R–L–EMF load.** A chopper into R_a, L_a and a back
+  EMF K·ω: the armature current is the buck's inductor current with the output
+  capacitor replaced by a heavy flywheel. Mechanical time constant ≫ electrical,
+  so ω is quasi-static per period and stepped between them. Measured: torque =
+  K·⟨i_a⟩, the speed the duty commands, current ripple by the buck formula.
+- **L2 · Four quadrants.** The H-bridge: forward/reverse, motoring/braking.
+  Bipolar vs unipolar PWM — twice the ripple frequency for the same switching.
+  Regeneration: the bus sees current come back, measured as negative ⟨i_in⟩.
+- **L3 · Six-step BLDC.** Hall sensors pick two of three phases; the current
+  commutates every 60° and the torque ripples where it does. E6's pair-picking
+  rule, run backwards. Measured: commutation angles, torque ripple depth.
+
+### Group M — EMI (3)
+
+- **M1 · What the input sees.** The buck's input current is a pulse train; its
+  spectrum is E4's problem at 100 kHz. Measured: harmonic magnitudes vs the
+  closed-form pulse-train Fourier series, the input capacitor's share.
+- **M2 · The input filter.** An LC in the line: attenuation at f_s vs Circuit
+  Lab's |H|; the damping it needs so it does not resonate with the converter's
+  negative input resistance (Middlebrook's criterion, measured as the impedance
+  ratio).
+- **M3 · The switch node rings.** Parasitic inductance and the diode's
+  capacitance: an RLC at each edge, its frequency and decay measured against
+  the parasitic values, and the snubber that damps it (with its cost in G's
+  ledger).
+
+### Group N — Thermal (3)
+
+- **N1 · Loss becomes temperature.** Junction-to-ambient as a thermal
+  resistance: T_j = T_a + P·R_th. The loss ledger's total, read as degrees;
+  the derating line where T_j reaches its limit. Measured against the ledger.
+- **N2 · The thermal RC.** Foster/Cauer networks: a load step heats the die in
+  milliseconds and the heatsink in minutes — Circuit Lab's step response with
+  °C on the axis. Measured: time constants vs the network, peak T_j for a pulse.
+- **N3 · Faster is hotter.** G1's f_s sweep, finished: switching loss vs f_s
+  through R_th gives T_j vs f_s, and the frequency a given package can afford
+  for a given ripple. One curve with the whole tradeoff on it.
 
 ---
 
@@ -472,7 +571,7 @@ being built it must be reachable for testing but *advertised nowhere*:
 - Flipping that word is **Reed's action**, taken after the release gate in §8
   passes — not a side effect of any phase completing.
 
-Everything else as usual once released: splash card (⚡, "35 experiments" pinned
+Everything else as usual once released: splash card (⚡, "54 experiments" pinned
 by test), deploy workspace entry, `report.js` summary (converter, components,
 toggles, D, f_s, mode), AGENT_BRIEF.md for future sessions.
 
@@ -482,6 +581,13 @@ release-gated ones, so they land in one small batch at the end.
 
 ## 8. Phasing (each phase ships green and deployable)
 
+Built so far: the engine, Groups **A**, **B**, **E** and **C** (20 experiments,
+dark at `/power-lab/`). Group C came after E because E's event engine was the
+riskier piece and worth proving first; C then needed no new machinery, only the
+lossy CCM ratio (`ratioWithRL`, `boostPeak`) the engine now exports. Next by
+this list: **D** (magnetics) and **F** (inverters).
+
+
 1. **Engine**: `packages/switched` propagator + events + steady state + measures,
    fully fuzzed *before any UI exists*. Exit: invariants 1–6 green under fuzz.
 2. **Buck vertical slice**: app shell, scope, math panel, meters; Groups A + B
@@ -489,13 +595,24 @@ release-gated ones, so they land in one small batch at the end.
    dark at `/power-lab/`** with the RELEASE_STATUS test enforcing zero splash,
    README or cross-lab-nav references.
 3. **Boost/buck-boost + conduction scrub + M(D) view**: Group C. Exit: C2 peak
-   formula pinned; scrub-vs-scope sync pixel-verified.
+   formula pinned; scrub-vs-scope sync pixel-verified. *(Shipped without the
+   scrub, which lands with Group D's freewheel intervals — the M(D) sweep and
+   the signed inverting output carried C on their own.)*
 4. **Magnetics**: piecewise-L saturation events, B-view, flyback, half-bridge
    (D4's freewheel intervals exercise the scrub view hardest); Group D.
-5. **AC**: rectifiers + dimmer (Group E), then inverters + PWM spectra (Group F).
+5. **AC**: rectifiers + dimmer + six-pulse (Group E) — the event engine's
+   first outing: topology chosen by state, shooting on the capacitor voltage,
+   exact Fourier integrals — then inverters + PWM spectra (Group F).
 6. **Losses + control bridge**: Groups G, H; loss ledger, efficiency sweeps,
    Control Lab hand-over round-trip; report link; AGENT_BRIEF.
-7. **The release gate** — in order, each blocking the next:
+7. **Three-phase out and the isolated family**: Groups I, J — F's PWM and D4's
+   half-bridge machinery, three times over.
+8. **Resonant and motor drives**: Groups K, L — the tank and the armature are
+   both LTI per segment; K needs the output rectifier's diode events (E's
+   engine), L a slow mechanical state stepped between periods.
+9. **EMI and thermal**: Groups M, N — spectra and filters from Signal/Circuit
+   Lab's existing tools; thermal networks are Circuit Lab RCs with °C on them.
+10. **The release gate** — in order, each blocking the next:
    1. the full-suite audit treatment: the same all-angles pass the other three
       labs got (every option, every preset, every claim, fuzzing, both browsers,
       pixel-level checks that measure the claim and not a proxy);
@@ -506,14 +623,13 @@ release-gated ones, so they land in one small batch at the end.
 
 ## 9. Non-goals (v1, stated so they are decisions rather than omissions)
 
-Three-phase, motor drives, resonant/LLC converters, current-mode control loops
-*inside* Power Lab (the loop lives in Control Lab — that is the point of the
-bridge), EMI/layout, thermal RC networks, digital control/DPWM. The half-bridge's
-buck-derived siblings — **forward and push-pull, and the full-bridge DC-DC** —
-are also out of v1, but deliberately cheap later: they share the half-bridge's
-segment structure and differ mainly in primary drive and switch stress, so D4's
-machinery is most of each. Each of these is a coherent later group; none blocks
-the curriculum above.
+Current-mode control loops *inside* Power Lab (the loop lives in Control Lab —
+that is the point of the bridge), digital control/DPWM, PCB layout, magnetic
+field solvers, and device physics (reverse recovery, gate charge) beyond what a
+labelled toggle can carry. Three-phase, motor drives, resonant/LLC, the
+forward/push-pull/full-bridge family, EMI and thermal were on this list until
+2026-09-01 and are now Groups I–N; each is a coherent later group and none
+blocks the curriculum before it.
 
 ## 10. Risks, named
 
@@ -523,6 +639,11 @@ the curriculum above.
   early in Phase 2 with the caption-band rules applied from day one.
 - **Scrub-schematic authoring cost** per topology → schematic definitions data-
   driven from the same topology tables the engine uses, so a circuit and its
-  picture cannot drift apart.
+  picture cannot drift apart. *(Settled differently: the nine drawings are
+  hand-laid-out in `apps/power-lab/src/components/schematics.jsx` — a generated
+  layout produced awkward diagrams — and the drift is held by tests instead:
+  the diode count against the engine's rectifier, the freewheel symbol against
+  the sync toggle, every value against the parameters the engine ran with. The
+  sidebar slot and symbol kit follow Circuit Lab's so the two labs read alike.)*
 - **Scope creep in Group D** → D4 pre-marked stretch; saturation ships, leakage
   may slip.

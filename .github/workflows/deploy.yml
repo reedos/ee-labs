@@ -53,6 +53,8 @@ jobs:
           # Dark-launched: built and served at its URL, linked from nowhere until
           # apps/circuit-elements-lab/RELEASE_STATUS says `released`.
           cp -r apps/circuit-elements-lab/dist _site/circuit-elements-lab
+          # Same arrangement for the Power Lab: apps/power-lab/RELEASE_STATUS.
+          cp -r apps/power-lab/dist _site/power-lab
 
       - uses: actions/upload-pages-artifact@v3
         with:

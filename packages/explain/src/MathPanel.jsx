@@ -41,7 +41,16 @@ export function agrees({ predicted, measured, tol = 0.02, abs = 0 }) {
   return Math.abs(measured - predicted) <= slack
 }
 
-function Row({ label, predicted, measured, unit = '', tol = 0.02, abs = 0, unchecked = null, mark = '' }) {
+/**
+ * A row's name, set as mathematics when the caller supplies TeX for it. The
+ * label stays the plain-text one either way: it is what the tests report and
+ * what a reader gets if KaTeX fails to parse.
+ */
+function RowName({ label, tex }) {
+  return tex ? <Formula display={false}>{tex}</Formula> : label
+}
+
+function Row({ label, tex = null, predicted, measured, unit = '', tol = 0.02, abs = 0, unchecked = null, mark = '' }) {
   // A missing measurement is not a failed comparison. Without this, a value the
   // current settings never produced renders as a cross against correct physics.
   const why = unchecked || (Number.isFinite(measured) ? null : 'Not measurable with these settings.')
@@ -54,7 +63,7 @@ function Row({ label, predicted, measured, unit = '', tol = 0.02, abs = 0, unche
         : v.toFixed(4)
   return (
     <tr>
-      <th scope="row">{label}</th>
+      <th scope="row"><RowName label={label} tex={tex} /></th>
       <td>{fmt(predicted)}</td>
       <td>{why ? '—' : fmt(measured)}</td>
       {why ? (
@@ -89,7 +98,7 @@ export function Values({ rows }) {
       <tbody>
         {rows.map((r, i) => (
           <tr key={i}>
-            <th scope="row">{r.label}</th>
+            <th scope="row"><RowName label={r.label} tex={r.tex} /></th>
             <td>{fmt(r.value)}</td>
             <td className="unit">{r.unit || ''}</td>
             <td className="unit">{r.note || ''}</td>
