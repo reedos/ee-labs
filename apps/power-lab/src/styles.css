@@ -2,13 +2,41 @@
  * @ee-labs/ui and @ee-labs/explain; the sidebar groups, terms and tables are
  * the Circuit Elements Lab's, copied so the two labs read as one suite. */
 
-.preset-group { margin-bottom: 10px; }
+/* The picker: a row of group tabs, and the shown group's experiments under
+   it. Four lines tall whatever is shown, so the note, the schematic and the
+   first knob fit on the first screen with it. */
+.group-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 0 0 8px;
+  border-bottom: 1px solid var(--line);
+}
+.group-tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 0 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.group-tab:hover { color: var(--text); }
+.group-tab.is-shown { color: var(--text); border-bottom-color: var(--accent); }
+.group-tab.is-here:not(.is-shown) { color: var(--accent); }
 
 .presets {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
 }
+.presets[hidden] { display: none; }
 
 .preset {
   background: var(--panel-2);
@@ -17,7 +45,7 @@
   color: var(--text);
   cursor: pointer;
   font-size: 11.5px;
-  padding: 5px 8px;
+  padding: 4px 8px;
 }
 
 .preset:hover {
@@ -31,33 +59,22 @@
   background: rgba(56, 224, 176, 0.1);
 }
 
-details.preset-group > summary {
-  cursor: pointer;
-  list-style: none;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--dim);
-  padding: 3px 0;
-  display: flex;
-  align-items: center;
-  gap: 7px;
+/* Tighter section chrome than the shared shell: the sidebar has more to say
+   above the fold than the other labs' do. */
+.controls section { margin-top: 8px; padding-bottom: 10px; }
+.controls h2 { padding: 5px 12px 4px; margin-bottom: 8px; }
+.controls .hint { margin-top: 8px; }
+.controls .report-issue { margin-top: 14px; }
+.controls h2 .sch-name {
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 11.5px;
 }
-
-details.preset-group > summary::before {
-  content: '▸';
-  font-size: 9px;
-  transition: transform 0.12s;
-}
-
-details.preset-group[open] > summary::before {
-  transform: rotate(90deg);
-}
-
-details.preset-group > summary::-webkit-details-marker { display: none; }
-
-details.preset-group > .presets { margin: 4px 0 8px; }
+/* The sidebar's schematic is capped so the knobs under it stay in reach; the
+   drawing keeps its shape inside the cap. */
+.controls .schematic { display: block; width: 100%; max-height: 104px; }
 
 .group-active-dot {
   width: 6px;
@@ -278,3 +295,71 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .views.is-single .power-row .bar { height: 40px; }
 .views.is-single .power-list { gap: 22px; padding: 12px 0; }
 .views.is-single .power-total { font-size: 17px; margin-top: 16px; }
+
+/* Two panes, weighted: the pane the lesson is in gets the room (App.jsx sets
+   the rows inline; the reader can drag the split or click a title to swap).
+   The split is the thin line between the panes, made grabbable. */
+.pane-split {
+  background: var(--line);
+  cursor: row-resize;
+  touch-action: none;
+  position: relative;
+}
+.pane-split::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+.pane-split:hover { background: var(--dim); }
+.view-head h2[role='button'] { cursor: pointer; }
+.view-head h2[role='button']:hover { color: var(--fg); }
+.view-head h2.is-primary { color: var(--fg); }
+
+/* Knobs beyond the first four fold away; the summary names what is inside. */
+.more-knobs { margin-top: 8px; }
+.more-knobs > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--dim);
+  padding: 4px 0;
+}
+.more-knobs[open] > summary { margin-bottom: 4px; }
+
+/* The schematic's phone copy lives in the main column; on a desk the sidebar's
+   copy is the one in view. */
+.sch-phone { display: none; }
+
+@media (max-width: 900px) {
+  .views {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .views .view { min-height: 46vh; flex: 0 0 auto; }
+  .pane-split { display: none; }
+  .sch-phone {
+    display: block;
+    padding: 10px 14px 4px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+  .sch-phone .sch-name { margin: 2px 0 0; }
+  .controls section:has(> .schematic) { display: none; }
+  /* The summary wraps to a second row rather than scrolling its last node
+     off the edge; the trace chips wrap too. */
+  .flow { flex-wrap: wrap; overflow: visible; white-space: normal; row-gap: 4px; }
+  .view-head .segmented.traces { max-width: 100%; }
+  /* The regulator's bars at phone width: the desk's 300 px label column is
+     most of the screen here. */
+  .views.is-single .view-body > .losses { margin: 0; padding: 8px 0; }
+  .views.is-single .power-row { grid-template-columns: 110px 1fr 74px; font-size: 13px; gap: 10px; }
+  .views.is-single .power-row .bar { height: 22px; }
+  .views.is-single .power-list { gap: 12px; }
+  .views.is-single .power-total { font-size: 13px; }
+}
+
+/* A wider sidebar than the shell's 330 px: the note is the lesson here, and
+   the 60 px buy it two lines and keep the first knob on the first screen. */
+@media (min-width: 1200px) and (max-width: 2399px) {
+  .app { grid-template-columns: 390px 1fr; }
+}

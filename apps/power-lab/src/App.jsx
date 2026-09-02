@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { LabNav, NumField, ReportIssue, fmt } from '@ee-labs/ui'
 import { MathBody } from '@ee-labs/explain'
 import { EXPERIMENTS, GROUPS, TRACES, VIEWS, SWEEP_X, byId, defaultsOf } from './experiments.js'
@@ -15,6 +15,22 @@ import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/s
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
+
+/** How many knobs the sidebar shows before folding the rest under "More". */
+const KNOBS_SHOWN = 4
+/** The larger pane's share of the main column, until the reader drags the split. */
+const PRIMARY_SHARE = 0.62
+
+/**
+ * Which pane an experiment's lesson is in. An experiment that opens on its
+ * measures is about a waveform, so the scope leads; one that opens on a sweep,
+ * a balance table or a loss bar is about that, and the analysis pane leads.
+ * `exp.primary` overrides the rule.
+ */
+export function primaryOf(exp) {
+  if (exp.primary) return exp.primary
+  return exp.view === 'measures' ? 'scope' : 'analysis'
+}
 
 /** The one-line result of an experiment, for the top bar and the report. */
 export function outcomeOf(exp, x) {
@@ -54,7 +70,14 @@ export default function App({ initialId = FIRST, initialView = null }) {
   // Whether the note still describes what is on screen: any knob moved by hand
   // retires it, as in the other labs. The trace and view toggles are exempt.
   const [pristine, setPristine] = useState(true)
-  const [openGroups, setOpenGroups] = useState(() => new Set())
+  // Which group's experiments the picker lists: the active experiment's,
+  // unless the reader has clicked another group's tab to browse it.
+  const [browsing, setBrowsing] = useState(null)
+  // The larger pane and its share of the column. The share survives a change
+  // of experiment (the reader set it); which pane gets it is the experiment's.
+  const [primary, setPrimary] = useState(() => primaryOf(byId[start]))
+  const [share, setShare] = useState(PRIMARY_SHARE)
+  const mainRef = useRef(null)
 
   const exp = byId[id]
 
@@ -64,6 +87,26 @@ export default function App({ initialId = FIRST, initialView = null }) {
     setTraces(new Set(byId[next].traces))
     setView(byId[next].view)
     setPristine(true)
+    setPrimary(primaryOf(byId[next]))
+    setBrowsing(null)
+  }
+  const swapPrimary = () => setPrimary((p) => (p === 'scope' ? 'analysis' : 'scope'))
+  // Drag the split: the pointer's height in the column is the top pane's share.
+  const dragSplit = (e) => {
+    const el = mainRef.current
+    if (!el) return
+    e.preventDefault()
+    const move = (ev) => {
+      const r = el.getBoundingClientRect()
+      const top = Math.min(0.75, Math.max(0.25, (ev.clientY - r.top) / r.height))
+      setShare(primary === 'scope' ? top : 1 - top)
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
   }
   const setParam = (key, value) => {
     setParams((p) => ({ ...p, [key]: value }))
@@ -105,6 +148,33 @@ export default function App({ initialId = FIRST, initialView = null }) {
   const isBuck = exp.kind === 'buck'
   const clocked = isBuck || exp.kind === 'boost' || exp.kind === 'buckboost'
   const flow = flowNodes(exp, params, x)
+  const twoPanes = exp.scope !== false
+  const topShare = Math.round((primary === 'scope' ? share : 1 - share) * 100)
+  const rows = twoPanes ? { gridTemplateRows: `minmax(0,${topShare}fr) 6px minmax(0,${100 - topShare}fr)` } : undefined
+  const knobField = (p) =>
+    p.kind === 'toggle' ? (
+      <ToggleField key={p.key} knob={p} value={params[p.key]} onChange={(v) => setParam(p.key, v)} />
+    ) : (
+      <NumField
+        key={p.key}
+        label={p.label}
+        unit={p.unit}
+        // A duty is read as a percentage and stored as a fraction. The
+        // conversion belongs to the caller (NumField holds the value in
+        // state units), so it happens here and nowhere else.
+        value={p.percent ? params[p.key] * 100 : params[p.key]}
+        onChange={(v) => setParam(p.key, p.percent ? v / 100 : v)}
+        min={p.percent ? p.min * 100 : p.min}
+        max={p.percent ? p.max * 100 : p.max}
+        step={p.percent ? p.step * 100 : p.step}
+        decimals={p.percent ? 1 : undefined}
+        scale={p.scale}
+        hint={p.hint}
+        eng={!p.percent}
+      />
+    )
+  const moreKnobs = exp.params.slice(KNOBS_SHOWN)
+  const shownGroup = browsing || exp.group
 
   return (
     <div className="app">
@@ -117,41 +187,55 @@ export default function App({ initialId = FIRST, initialView = null }) {
             steady state, every formula sits beside what it predicts, and every claim in a note is
             measured.
           </p>
-          <ReportIssue
-            lab="Power Lab"
-            version={pkg.version}
-            state={{ id, params, traces: shown, view: currentView }}
-            summary={reportSummary({ id, params, traces: shown, view: currentView, outcome })}
-          />
         </header>
 
         <section>
           <h2>Experiments</h2>
-          {GROUPS.map((g) => {
-            const inGroup = EXPERIMENTS.filter((e) => e.group === g)
-            return (
-              <FoldGroup
+          {/* One row of group tabs and the chosen group's experiments under
+              it: the whole picker is four lines tall whatever is open, which
+              is what keeps the note, the schematic and the first knob on the
+              first screen. The group you are in is marked; browsing another
+              tab does not move you. */}
+          <div className="group-tabs" role="tablist" aria-label="Experiment groups">
+            {GROUPS.map((g) => (
+              <button
                 key={g}
-                sectionKey={g}
-                label={g}
-                holdsActive={inGroup.some((e) => e.id === id)}
-                openGroups={openGroups}
-                setOpenGroups={setOpenGroups}
+                type="button"
+                role="tab"
+                className={`group-tab${g === shownGroup ? ' is-shown' : ''}${g === exp.group ? ' is-here' : ''}`}
+                aria-selected={g === shownGroup}
+                aria-controls={`group-${GROUPS.indexOf(g)}`}
+                data-group={g}
+                onClick={() => setBrowsing(g === exp.group ? null : g)}
               >
-                {inGroup.map((e) => (
-                  <button
-                    type="button"
-                    key={e.id}
-                    className={`preset${e.id === id ? ' is-on' : ''}`}
-                    data-id={e.id}
-                    onClick={() => choose(e.id)}
-                  >
-                    {e.name}
-                  </button>
-                ))}
-              </FoldGroup>
-            )
-          })}
+                {g}
+                {g === exp.group ? <span className="group-active-dot" aria-hidden="true" /> : null}
+              </button>
+            ))}
+          </div>
+          {GROUPS.map((g) => (
+            <div
+              key={g}
+              id={`group-${GROUPS.indexOf(g)}`}
+              className="presets"
+              role="tabpanel"
+              aria-label={g}
+              data-group={g}
+              hidden={g !== shownGroup}
+            >
+              {EXPERIMENTS.filter((e) => e.group === g).map((e) => (
+                <button
+                  type="button"
+                  key={e.id}
+                  className={`preset${e.id === id ? ' is-on' : ''}`}
+                  data-id={e.id}
+                  onClick={() => choose(e.id)}
+                >
+                  {e.name}
+                </button>
+              ))}
+            </div>
+          ))}
           <h3 className="note-title">{exp.name}</h3>
           <p className="hint" data-role="note" data-pristine={pristine}>
             {exp.note}
@@ -175,37 +259,30 @@ export default function App({ initialId = FIRST, initialView = null }) {
         </section>
 
         <section>
-          <h2>Schematic</h2>
+          <h2>
+            Schematic
+            <span className="sch-name">{TOPOLOGY_NAMES[topologyOf(exp)]}</span>
+          </h2>
           <Schematic exp={exp} x={x} />
-          <p className="sch-name">{TOPOLOGY_NAMES[topologyOf(exp)]}</p>
         </section>
 
         <section>
           <h2>Knobs</h2>
-          {exp.params.map((p) =>
-            p.kind === 'toggle' ? (
-              <ToggleField key={p.key} knob={p} value={params[p.key]} onChange={(v) => setParam(p.key, v)} />
-            ) : (
-              <NumField
-                key={p.key}
-                label={p.label}
-                unit={p.unit}
-                // A duty is read as a percentage and stored as a fraction. The
-                // conversion belongs to the caller (NumField holds the value in
-                // state units), so it happens here and nowhere else.
-                value={p.percent ? params[p.key] * 100 : params[p.key]}
-                onChange={(v) => setParam(p.key, p.percent ? v / 100 : v)}
-                min={p.percent ? p.min * 100 : p.min}
-                max={p.percent ? p.max * 100 : p.max}
-                step={p.percent ? p.step * 100 : p.step}
-                decimals={p.percent ? 1 : undefined}
-                scale={p.scale}
-                hint={p.hint}
-                eng={!p.percent}
-              />
-            ),
-          )}
+          {exp.params.slice(0, KNOBS_SHOWN).map(knobField)}
+          {moreKnobs.length ? (
+            <details className="more-knobs">
+              <summary>More knobs ({moreKnobs.map((p) => p.label).join(', ')})</summary>
+              {moreKnobs.map(knobField)}
+            </details>
+          ) : null}
         </section>
+
+        <ReportIssue
+          lab="Power Lab"
+          version={pkg.version}
+          state={{ id, params, traces: shown, view: currentView }}
+          summary={reportSummary({ id, params, traces: shown, view: currentView, outcome })}
+        />
       </aside>
 
       <div className="topbar">
@@ -242,11 +319,17 @@ export default function App({ initialId = FIRST, initialView = null }) {
         </div>
       </div>
 
-      <main className={`views${exp.scope === false ? ' is-single' : ''}`}>
-        {exp.scope === false ? null : (
-        <section className="view">
+      <main className={`views${twoPanes ? '' : ' is-single'}`} style={rows} ref={mainRef}>
+        {/* The phone's copy of the schematic: the sidebar's is out of reach
+            there, and the picture belongs above the waveforms it explains. */}
+        <div className="sch-phone">
+          <Schematic exp={exp} x={x} />
+          <p className="sch-name">{TOPOLOGY_NAMES[topologyOf(exp)]}</p>
+        </div>
+        {twoPanes ? (
+        <section className={`view${primary === 'scope' ? ' is-primary' : ''}`}>
           <div className="view-head">
-            <h2>Scope</h2>
+            <PaneTitle primary={primary === 'scope'} onSwap={swapPrimary}>Scope</PaneTitle>
             <div className="segmented sm traces" role="group" aria-label="Traces shown on the scope">
               {traceKeys.map((key) => (
                 <button
@@ -312,11 +395,21 @@ export default function App({ initialId = FIRST, initialView = null }) {
             )}
           </div>
         </section>
-        )}
+        ) : null}
+        {twoPanes ? (
+          <div
+            className="pane-split"
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="Drag to resize the panes"
+            title="Drag to resize the panes"
+            onPointerDown={dragSplit}
+          />
+        ) : null}
 
-        <section className="view">
+        <section className={`view${twoPanes && primary === 'analysis' ? ' is-primary' : ''}`}>
           <div className="view-head">
-            <h2>Analysis</h2>
+            {twoPanes ? <PaneTitle primary={primary === 'analysis'} onSwap={swapPrimary}>Analysis</PaneTitle> : <h2>Analysis</h2>}
             <ViewSwitch value={currentView} onChange={setView} options={viewOptions} />
             <div className="readout">
               {currentView === 'sweep' && sweep ? (
@@ -463,6 +556,30 @@ function ToggleField({ knob, value, onChange }) {
   )
 }
 
+/**
+ * A pane's title, which is also the way to make that pane the larger one: the
+ * reader who wants the sweep big clicks "Analysis". The title says so on hover.
+ */
+function PaneTitle({ primary, onSwap, children }) {
+  return (
+    <h2
+      role="button"
+      tabIndex={0}
+      className={primary ? 'is-primary' : ''}
+      title={primary ? 'This is the larger pane; click to give the other pane the room' : 'Click to make this the larger pane'}
+      onClick={onSwap}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onSwap()
+        }
+      }}
+    >
+      {children}
+    </h2>
+  )
+}
+
 /** Which view a pane is showing — Signal Lab's ViewSwitch, copied. */
 function ViewSwitch({ value, onChange, options }) {
   return (
@@ -480,32 +597,5 @@ function ViewSwitch({ value, onChange, options }) {
         </button>
       ))}
     </div>
-  )
-}
-
-/**
- * One foldable sidebar group — Circuit Lab's FoldGroup, copied. The group
- * holding the active experiment cannot be folded, so where-you-are survives
- * any amount of tidying; the refusal happens on the summary click because the
- * browser folds a <details> before React hears about it.
- */
-function FoldGroup({ sectionKey, label, holdsActive, openGroups, setOpenGroups, children }) {
-  return (
-    <details
-      className="preset-group"
-      open={holdsActive || openGroups.has(sectionKey)}
-      onToggle={(e) => {
-        const next = new Set(openGroups)
-        if (e.target.open) next.add(sectionKey)
-        else next.delete(sectionKey)
-        setOpenGroups(next)
-      }}
-    >
-      <summary onClick={(e) => holdsActive && e.preventDefault()}>
-        {label}
-        {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
-      </summary>
-      <div className="presets">{children}</div>
-    </details>
   )
 }

@@ -128,3 +128,62 @@ describe('the opening traces show the claim (§11.6.7)', () => {
     }
   })
 })
+
+describe('the layout gives the lesson the room (§11.4)', () => {
+  it('every experiment says which knob it is about, and that knob is first (§11.4.4)', () => {
+    for (const e of EXPERIMENTS) {
+      expect(typeof e.about, e.id).toBe('string')
+      expect(e.params.map((p) => p.key), e.id).toContain(e.about)
+      expect(e.params[0].key, `${e.id} opens on ${e.params[0].key}, is about ${e.about}`).toBe(e.about)
+    }
+  })
+  it('shows the first four knobs and folds the rest under More (§11.4.4)', () => {
+    for (const e of EXPERIMENTS) {
+      const s = sidebar(render(e.id))
+      const knobs = s.slice(s.indexOf('<h2>Knobs</h2>'))
+      const before = knobs.indexOf('class="more-knobs"')
+      const labels = [...knobs.matchAll(/class="num-label"[^>]*>([^<]*)</g)].map((m) => m[1])
+      expect(labels[0], e.id).toBe(e.params[0].label)
+      if (e.params.length <= 4) expect(before, `${e.id} folds ${e.params.length} knobs`).toBe(-1)
+      else {
+        expect(before, e.id).toBeGreaterThan(0)
+        const shown = [...knobs.slice(0, before).matchAll(/class="num-label"/g)].length
+        expect(shown, e.id).toBe(4)
+        expect(knobs).toMatch(/<summary[^>]*>More knobs/)
+      }
+    }
+  })
+  it('marks one pane primary — the scope when the lesson is in the waveform — and weights it 62 % (§11.4.1)', () => {
+    for (const e of EXPERIMENTS) {
+      const h = render(e.id)
+      const main = h.slice(h.indexOf('<main'))
+      if (e.scope === false) {
+        expect(main, e.id).not.toContain('is-primary')
+        continue
+      }
+      const primary = [...main.matchAll(/<section class="view([^"]*)"/g)].map((m) => m[1].includes('is-primary'))
+      expect(primary.filter(Boolean).length, e.id).toBe(1)
+      const scopeFirst = e.primary ? e.primary === 'scope' : e.view === 'measures'
+      expect(primary[0], `${e.id}: ${scopeFirst ? 'scope' : 'analysis'} should lead`).toBe(scopeFirst)
+      const rows = main.match(/grid-template-rows:([^;"]*)/)[1]
+      expect(rows, e.id).toContain(scopeFirst ? 'minmax(0,62fr) 6px minmax(0,38fr)' : 'minmax(0,38fr) 6px minmax(0,62fr)')
+      expect(main, e.id).toContain('class="pane-split"')
+    }
+  })
+  it('keeps the sidebar in reading order: experiments, note, schematic, knobs (§11.4.5)', () => {
+    const s = sidebar(render('b3'))
+    const at = (t) => s.indexOf(t)
+    expect(at('<h2>Experiments</h2>')).toBeGreaterThan(-1)
+    expect(at('data-role="note"')).toBeGreaterThan(at('<h2>Experiments</h2>'))
+    expect(at('<h2>Schematic')).toBeGreaterThan(at('data-role="note"'))
+    expect(at('<h2>Knobs</h2>')).toBeGreaterThan(at('<h2>Schematic'))
+  })
+  it('puts a copy of the schematic at the top of the main column for the phone (§11.4.6)', () => {
+    const h = render('b3')
+    const main = h.slice(h.indexOf('<main'))
+    const sch = main.indexOf('class="sch-phone"')
+    expect(sch).toBeGreaterThan(-1)
+    expect(sch).toBeLessThan(main.indexOf('<section class="view'))
+    expect(main.slice(sch, main.indexOf('<section class="view'))).toContain('class="schematic"')
+  })
+})

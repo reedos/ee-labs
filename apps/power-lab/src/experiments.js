@@ -143,6 +143,7 @@ export const EXPERIMENTS = [
   // ---------------------------------------------------------- A · Why switch
   {
     id: 'a1',
+    about: 'Vo',
     group: GROUPS[0],
     name: 'The linear regulator',
     kind: 'linreg',
@@ -164,6 +165,7 @@ export const EXPERIMENTS = [
   },
   {
     id: 'a2',
+    about: 'D',
     group: GROUPS[0],
     name: 'Chop it',
     kind: 'chopper',
@@ -185,6 +187,7 @@ export const EXPERIMENTS = [
   },
   buck({
     id: 'a3',
+    about: 'C',
     group: GROUPS[0],
     name: 'Let the LC do the averaging',
     params: [Vin(), D(), L(), C(), R(), Fs()],
@@ -204,6 +207,7 @@ export const EXPERIMENTS = [
   // ---------------------------------------------------------- B · The buck
   buck({
     id: 'b1',
+    about: 'L',
     group: GROUPS[1],
     name: 'Volt-second balance',
     params: [Vin(), D(), L(), R()],
@@ -219,6 +223,7 @@ export const EXPERIMENTS = [
   }),
   buck({
     id: 'b2',
+    about: 'D',
     group: GROUPS[1],
     name: 'M = D',
     params: [D(), Vin(), R(), L(), Fs()],
@@ -235,6 +240,7 @@ export const EXPERIMENTS = [
   }),
   buck({
     id: 'b3',
+    about: 'fs',
     group: GROUPS[1],
     name: 'Ripple',
     params: [L(), C(), Fs(), D(), Vin(), R()],
@@ -250,6 +256,7 @@ export const EXPERIMENTS = [
   }),
   buck({
     id: 'b4',
+    about: 'R',
     group: GROUPS[1],
     name: 'Light load: discontinuous conduction',
     symbols: ['K'],
@@ -269,6 +276,7 @@ export const EXPERIMENTS = [
   }),
   buck({
     id: 'b5',
+    about: 'R',
     group: GROUPS[1],
     name: 'The boundary',
     symbols: ['K'],
@@ -287,6 +295,7 @@ export const EXPERIMENTS = [
   }),
   buck({
     id: 'b6',
+    about: 'Vf',
     group: GROUPS[1],
     name: 'Real parts',
     symbols: ['K'],
@@ -309,6 +318,7 @@ export const EXPERIMENTS = [
   // ------------------------------------------------ C · Boost & buck-boost
   pwm('boost', {
     id: 'c1',
+    about: 'D',
     group: GROUPS[2],
     name: 'Stacking on the source',
     note:
@@ -322,6 +332,7 @@ export const EXPERIMENTS = [
   }),
   pwm('boost', {
     id: 'c2',
+    about: 'D',
     group: GROUPS[2],
     name: 'The peak ideal theory misses',
     // The knob starts on the peak, so the screen at arrival is the one the
@@ -345,6 +356,7 @@ export const EXPERIMENTS = [
   }),
   pwm('boost', {
     id: 'c3',
+    about: 'R',
     group: GROUPS[2],
     name: 'The boost runs dry too',
     params: [Rlb(400), Vin(), D(0.5), L(), C(), Fs()],
@@ -364,6 +376,7 @@ export const EXPERIMENTS = [
   }),
   pwm('buckboost', {
     id: 'c4',
+    about: 'D',
     group: GROUPS[2],
     name: 'The inverting bucket',
     traces: ['vsw', 'vout', 'iL', 'iin'],
@@ -379,6 +392,7 @@ export const EXPERIMENTS = [
   }),
   pwm('buckboost', {
     id: 'c5',
+    about: 'R',
     group: GROUPS[2],
     name: 'All the energy through one part',
     params: [Rlb(200), Vin(), D(0.5), L(), C(), Fs()],
@@ -401,6 +415,7 @@ export const EXPERIMENTS = [
   // ---------------------------------------------------------- E · AC in
   rect('half', {
     id: 'e1',
+    about: 'C',
     group: GROUPS[3],
     name: 'Half-wave into a capacitor',
     note:
@@ -416,6 +431,7 @@ export const EXPERIMENTS = [
   }),
   rect('bridge', {
     id: 'e2',
+    about: 'C',
     group: GROUPS[3],
     name: 'The bridge',
     traces: ['vin', 'vrect', 'vout', 'iD'],
@@ -431,6 +447,7 @@ export const EXPERIMENTS = [
   }),
   rect('bridge', {
     id: 'e3',
+    about: 'C',
     group: GROUPS[3],
     name: 'The price of a big capacitor',
     params: [Cf(), Rs(), Rl(), Vs(), Vfd(), F()],
@@ -451,6 +468,7 @@ export const EXPERIMENTS = [
   }),
   rect('bridge', {
     id: 'e4',
+    about: 'C',
     group: GROUPS[3],
     name: 'What the grid sees',
     params: [Cf(), Rl(), Rs(), Vs(), Vfd(), F()],
@@ -470,6 +488,7 @@ export const EXPERIMENTS = [
   }),
   {
     id: 'e5',
+    about: 'alphaDeg',
     group: GROUPS[3],
     name: 'The dimmer',
     kind: 'dimmer',
@@ -494,6 +513,7 @@ export const EXPERIMENTS = [
   },
   rect('six', {
     id: 'e6',
+    about: 'C',
     group: GROUPS[3],
     name: 'Three phases, six pulses',
     traces: ['vin', 'vrect', 'vout', 'iin'],
@@ -510,6 +530,15 @@ export const EXPERIMENTS = [
     terms: ['six-pulse', 'harmonic', 'piv'],
   }),
 ]
+
+// The knob an experiment is about (`about`) is the first in its list, so it
+// is the first the reader meets — the rest of the list keeps its order. An
+// `about` that names no knob is a mistake in the data, caught here at load.
+for (const e of EXPERIMENTS) {
+  const i = e.params.findIndex((p) => p.key === e.about)
+  if (i < 0) throw new Error(`${e.id} is about "${e.about}", which is not one of its knobs`)
+  e.params = [e.params[i], ...e.params.slice(0, i), ...e.params.slice(i + 1)]
+}
 
 export const byId = Object.fromEntries(EXPERIMENTS.map((e) => [e.id, e]))
 

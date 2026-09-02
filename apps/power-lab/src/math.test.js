@@ -10,7 +10,11 @@ import { checkFailures, texFailures, valueRowsPretendingToCheck, inertRows } fro
 
 const build = (exp, p) => experimentMath(exp, p, analyse(exp, p))
 
-/** A deterministic random setting inside every knob's range. */
+/**
+ * A deterministic random setting inside every knob's range. The knobs are
+ * drawn in key order, not display order, so reordering the sidebar does not
+ * change which settings the test visits.
+ */
 function randomParams(exp, seed) {
   let s = seed >>> 0
   const rnd = () => {
@@ -18,7 +22,7 @@ function randomParams(exp, seed) {
     return s / 2 ** 32
   }
   const p = {}
-  for (const k of exp.params) {
+  for (const k of [...exp.params].sort((a, b) => (a.key < b.key ? -1 : 1))) {
     if (k.kind === 'toggle') p[k.key] = rnd() < 0.5 ? 0 : 1
     else if (k.scale === 'log') p[k.key] = k.min * Math.pow(k.max / k.min, rnd())
     else p[k.key] = k.min + (k.max - k.min) * rnd()

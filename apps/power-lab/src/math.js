@@ -208,8 +208,10 @@ function pwmEntry(exp, params, x) {
 
   // Ripple: the on-segment rise, from the measured output. The resistive drop
   // is taken at the current the on interval carries: the load current in CCM
-  // (the triangle is symmetric about it), half the peak in DCM (it starts
-  // from zero) — which makes the DCM form implicit, and solved.
+  // (the triangle is symmetric about it). In DCM the ramp starts from zero
+  // and the on interval with resistance is an exact exponential towards
+  // v_on/r_on, so that is what is used — a linearised drop is out by
+  // (DT/τ)²/12, which is past the row's tolerance once DT/τ nears 0.25.
   const rOn = p.Ron + p.RL
   // The buck's inductor sees V_in − V_out while the switch is on; the boost
   // and buck-boost see the whole of V_in, with the same resistive correction
@@ -218,7 +220,9 @@ function pwmEntry(exp, params, x) {
   const iOn = dcm ? m.sig.iL.max / 2 : boostLike ? m.sig.iL.avg : Iout
   const dIideal = (vOn * p.D) / (p.L * p.fs)
   const dIpred = dcm
-    ? dIideal / (1 + (rOn * p.D) / (2 * p.L * p.fs))
+    ? rOn > 0
+      ? (vOn / rOn) * (1 - Math.exp((-rOn * p.D) / (p.L * p.fs)))
+      : dIideal
     : dIideal - (iOn * rOn * p.D) / (p.L * p.fs)
   // The buck's capacitor integrates a triangle of current; the boost family's
   // is left alone with the load whenever the diode is off, so its ripple is
@@ -273,11 +277,17 @@ function pwmEntry(exp, params, x) {
   if (kind === 'boost' && p.RL > 0 && !dcm) {
     // η = M(1−D) comes from ⟨i_D⟩ = (1−D)·⟨i_L⟩, which takes the current as
     // flat across the off interval.
+    // And P_out is ⟨v_out²⟩/R, which is more than ⟨v_out⟩²/R by the
+    // square of the output's relative deviation — about (ripple/√12)² for
+    // a sawtooth, past the row's tolerance once the ripple nears 15 %.
     const ripFrac = m.sig.iL.avg > 0 ? m.sig.iL.pp / m.sig.iL.avg : Infinity
+    const vRip = m.sig.vout.pp / Math.max(1e-12, Math.abs(m.sig.vout.avg))
     const ripWhy =
       ripFrac > 0.4
         ? `The identity takes ⟨i_D⟩ as (1 − D)·⟨i_L⟩, which needs a flat current; here the ripple is ${(ripFrac * 100).toFixed(0)} % of the average.`
-        : null
+        : vRip > 0.15
+          ? `The identity takes P_out as ⟨v_out⟩²/R; it is ⟨v_out²⟩/R, which is more by the square of the output's deviation. Here the output ripples ${(vRip * 100).toFixed(0)} % of its average.`
+          : null
     rows.push(row('η = M·(1 − D)', m.M * Dp, m.eta, '', 5e-3, 0, ripWhy))
   }
   if (boostLike && dcm) {

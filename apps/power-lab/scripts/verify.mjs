@@ -76,8 +76,8 @@ async function run(browser, tag) {
   const pick = async (id) => {
     await page.evaluate((id) => {
       const btn = document.querySelector(`.preset[data-id="${id}"]`)
-      const d = btn.closest('details')
-      if (d && !d.open) d.querySelector('summary').click()
+      const panel = btn.closest('.presets')
+      if (panel && panel.hidden) document.querySelector(`.group-tab[data-group="${panel.dataset.group}"]`).click()
     }, id)
     await page.locator(`.preset[data-id="${id}"]`).click()
     await settle()
