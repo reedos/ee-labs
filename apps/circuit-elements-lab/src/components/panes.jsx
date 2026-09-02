@@ -1,15 +1,16 @@
 import React from 'react'
-import { fmt } from '@ee-labs/ui'
 import { Formula, agrees } from '@ee-labs/explain'
 import { cellLatex, fmtCell } from '@ee-labs/network'
 import { acTable, powerLedger } from '../math.js'
+import { num, scaleOf } from '../format.js'
 
 // The lower pane's views. Each takes the analysis from math.js `analyse` and
 // shows one thing about it. None of them computes physics: every number here
 // is read from a solve the engine already did, so the pane cannot disagree
 // with the schematic.
 
-const num = (v, unit, sig = 4) => (Number.isFinite(v) ? fmt(v, unit, sig) : v === Infinity ? '∞' : '—')
+// A KCL row's sum is zero up to the arithmetic; its terms are the scale that zero is judged against.
+const rowScale = (r) => scaleOf(r.terms.map((t) => t.value))
 // A dimensionless ratio (ζ, Q): no SI prefix — "0.250", never "250 m".
 const plain = (v, sig = 3) => (Number.isFinite(v) ? v.toPrecision(sig) : v === Infinity ? '∞' : '—')
 
@@ -109,11 +110,11 @@ export function EquationsPane({ eq, solved, primer = false }) {
                   {/* Display-style fractions: inline-style ones shrink R and v to a squint. */}
                   <Formula display={false}>{'\\displaystyle ' + (t.sign < 0 ? '-\\,' : j ? '+\\,' : '') + t.latex}</Formula>
                   {/* t.value already carries the term's sign: it is what this term adds to the row. */}
-                  {solved ? <span className="eq-val">{num(t.value, 'A', 3)}</span> : null}
+                  {solved ? <span className="eq-val">{num(t.value, 'A', 3, rowScale(r))}</span> : null}
                 </span>
               ))}
               <span className="eq-sum">
-                = 0{solved && r.terms.length ? <> · adds to <b>{num(r.sum, 'A', 2)}</b></> : null}
+                = 0{solved && r.terms.length ? <> · adds to <b>{num(r.sum, 'A', 2, rowScale(r))}</b></> : null}
               </span>
             </div>
           </div>
@@ -307,7 +308,7 @@ export function PowerPane({ sol }) {
       </div>
       <p className="power-total">
         Delivered <b>{num(ledger.delivered, 'W', 3)}</b> = absorbed <b>{num(ledger.absorbed, 'W', 3)}</b>
-        {ledger.net === 0 ? ' — the two bars are the same length.' : ` (net ${num(ledger.net, 'W', 2)}).`} Every watt a
+        {ledger.net === 0 ? ' — the two bars are the same length.' : ` (net ${num(ledger.net, 'W', 2, ledger.delivered)}).`} Every watt a
         source gives out is taken in somewhere else in the same circuit; that follows from KCL and KVL alone, with no
         element law needed (Tellegen’s theorem).
       </p>
@@ -365,11 +366,11 @@ export function TheveninPane({ th, port }) {
           </tr>
           <tr>
             <td>largest fit residual</td>
-            <td className="num">{num(th.fitResidual, 'V', 2)}</td>
+            <td className="num">{num(th.fitResidual, 'V', 2, th.voc)}</td>
           </tr>
           {th.points.map((q) => (
             <tr key={q.R}>
-              <td className="prov">loaded with {fmt(q.R, 'Ω', 3)}</td>
+              <td className="prov">loaded with {num(q.R, 'Ω', 3)}</td>
               <td className="num">
                 {num(q.v, 'V', 4)}, {num(q.i, 'A', 4)}
               </td>
@@ -587,7 +588,7 @@ export function AcPowerPane({ x }) {
     <div className="acpower" data-role="acpower">
       <div className="table-scroll">
       <table className="table">
-        <caption>steady state at {fmt(x.omega / (2 * Math.PI), 'Hz', 4)} — peak phasors, S = ½·V·I*</caption>
+        <caption>steady state at {num(x.omega / (2 * Math.PI), 'Hz', 4)} — peak phasors, S = ½·V·I*</caption>
         <thead>
           <tr>
             <th>element</th>

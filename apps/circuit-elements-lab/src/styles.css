@@ -563,16 +563,3 @@ a.handover-copy {
   padding: 5px 8px;
 }
 a.handover-copy:hover { filter: brightness(1.1); }
-.handover-link {
-  display: block;
-  margin-top: 6px;
-  padding: 6px 8px;
-  overflow-x: auto;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: var(--dim);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
-  white-space: nowrap;
-}

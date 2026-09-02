@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { LabNav, NumField, ReportIssue, Schematic, fmt } from '@ee-labs/ui'
+import { LabNav, NumField, ReportIssue, Schematic } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { equations, normalize, complex as cx } from '@ee-labs/network'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic } from './experiments.js'
 import { analyse, atDrive, experimentMath, netPower, refusalReason, snapNoise, turnedLabel } from './math.js'
 import { termsFor } from './terms.js'
 import { reportSummary } from './report.js'
+import { forReading, num, scaleOf } from './format.js'
 import { EquationsPane, PowerPane, TheveninPane, SuperpositionPane, StatePane, AcPowerPane, Refusal } from './components/panes.jsx'
 import SweepCanvas from './components/SweepCanvas.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
@@ -20,6 +21,8 @@ const FIRST = EXPERIMENTS[0].id
 // Groups A and B read the KCL/KVL primer above their equations: A uses the
 // laws before B takes them apart, and a name must not arrive before its meaning.
 const PRIMER_GROUPS = GROUPS.slice(0, 2)
+// The topbar's Σ power chip appears from the experiment that introduces power.
+const POWER_FROM = EXPERIMENTS.findIndex((e) => e.id === 'b3')
 
 const VIEW_LABELS = {
   equations: { label: 'Equations', title: 'The equations the solver built: the two laws in words, each row with live values, the matrix in letters and in numbers' },
@@ -89,14 +92,20 @@ export default function App() {
     }
   }, [x])
   const math = useMemo(() => experimentMath(exp, params, x), [exp, params, x])
+  // The tables the student reads: every row in the unit a first course writes (100 µA, not 1.000e-4 A).
+  const readable = useMemo(() => forReading(math), [math])
   const drive = useMemo(() => (x.ac && exp.out ? atDrive(exp, x) : null), [exp, x])
   const elements = useMemo(() => drawables(x.net), [x])
   const meters = useMemo(() => (x.sol ? snapNoise(x.sol) : null), [x])
 
   const nodeCount = x.sol ? x.sol.norm.n : normalize(x.net).n
-  const outcome = x.sol
-    ? `current in = current out at every node (KCL), largest imbalance ${fmt(x.sol.maxResidual, 'A', 2)}`
-    : `refused: ${x.refusal.code}`
+  // The residual is judged against the currents that flow: 1e-19 A of
+  // imbalance at a node carrying milliamps is the arithmetic, and reads 0 A.
+  const residual = x.sol ? num(x.sol.maxResidual, 'A', 2, scaleOf(x.sol.i)) : null
+  const outcome = x.sol ? `current in = current out at every node (KCL), largest imbalance ${residual}` : `refused: ${x.refusal.code}`
+  // Σ power is the lesson from B3 on; beside A1's 12 V and 12 mA a "0 W" reads
+  // as a dead circuit, so the first experiments do without it.
+  const showsNetPower = EXPERIMENTS.indexOf(exp) >= POWER_FROM
 
   const viewOptions = VIEW_ORDER.filter((v) => exp.views.includes(v)).map((v) => ({ id: v, ...VIEW_LABELS[v] }))
   const currentView = exp.views.includes(view) ? view : exp.view
@@ -209,7 +218,7 @@ export default function App() {
               <p className="hint">{exp.why}</p>
             </details>
           ) : null}
-          <MathPanel entry={math} />
+          <MathPanel entry={readable} />
           {exp.circuitLab ? <HandOver exp={exp} params={params} /> : null}
         </section>
       </aside>
@@ -233,7 +242,11 @@ export default function App() {
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          <span className="flow-node">
+          <span
+            className="flow-node"
+            data-role="system-size"
+            title={`Nodes are the junctions where elements meet, ground included. Unknowns are what the solver finds: one voltage per node except ground, plus the current through each element that fixes a voltage (a source, a capacitor, a wire).`}
+          >
             {nodeCount} node{nodeCount === 1 ? '' : 's'}
             <em>
               {eq ? `${eq.unknowns.length} unknown${eq.unknowns.length === 1 ? '' : 's'}` : 'no system'}
@@ -244,7 +257,7 @@ export default function App() {
           </span>
           <span className={`flow-node ${x.sol ? 'is-out' : 'is-off'}`} data-role="outcome">
             {x.sol ? 'solved' : 'no solution'}
-            <em>{x.sol ? `current in = current out at every node, to ${fmt(x.sol.maxResidual, 'A', 2)}` : refusalReason(x.refusal)}</em>
+            <em>{x.sol ? `current in = current out at every node, to ${residual}` : refusalReason(x.refusal)}</em>
           </span>
         </nav>
         <div className="topbar-controls">
@@ -252,25 +265,25 @@ export default function App() {
             <>
               <span className="topbar-field" data-role="cursor-time">
                 <span>t</span>
-                <b>{fmt(x.cursor, 's', 3)}</b>
+                <b>{num(x.cursor, 's', 3)}</b>
               </span>
               {x.omega ? (
                 <span className="topbar-field" data-role="drive">
                   <span>ω</span>
-                  <b>{fmt(x.omega, 'rad/s', 3)}</b>
-                  <em className="prov"> {fmt(x.omega / (2 * Math.PI), 'Hz', 3)}</em>
+                  <b>{num(x.omega, 'rad/s', 3)}</b>
+                  <em className="prov"> {num(x.omega / (2 * Math.PI), 'Hz', 3)}</em>
                 </span>
               ) : null}
               {x.state.n === 1 ? (
                 <span className="topbar-field">
                   <span>τ</span>
-                  <b>{x.state.tau === Infinity ? '∞' : fmt(x.state.tau, 's', 3)}</b>
+                  <b>{x.state.tau === Infinity ? '∞' : num(x.state.tau, 's', 3)}</b>
                 </span>
               ) : x.state.n === 2 ? (
                 <>
                   <span className="topbar-field">
                     <span>ω₀</span>
-                    <b>{fmt(x.state.w0, 'rad/s', 3)}</b>
+                    <b>{num(x.state.w0, 'rad/s', 3)}</b>
                   </span>
                   <span className="topbar-field" data-role="zeta">
                     <span>ζ</span>
@@ -281,10 +294,10 @@ export default function App() {
               ) : null}
             </>
           ) : null}
-          {x.sol ? (
-            <span className="topbar-field">
+          {x.sol && showsNetPower ? (
+            <span className="topbar-field" data-role="net-power">
               <span>Σ power</span>
-              <b>{fmt(netPower(x.sol), 'W', 2)}</b>
+              <b>{num(netPower(x.sol), 'W', 2, scaleOf(x.sol.p))}</b>
             </span>
           ) : null}
         </div>
@@ -319,7 +332,7 @@ export default function App() {
                   .filter(([n]) => n !== 'gnd')
                   .map(([n, v]) => (
                     <span key={n}>
-                      v_{n} <b>{fmt(v, 'V', 4)}</b>
+                      v_{n} <b>{num(v, 'V', 4)}</b>
                     </span>
                   ))
               ) : (
@@ -334,7 +347,7 @@ export default function App() {
             {dynamic && x.tr ? (
               <div className="cursor-row" data-role="cursor">
                 <label htmlFor="cursor-slider">
-                  the meters read the circuit at <b>t = {fmt(x.cursor, 's', 3)}</b>
+                  the meters read the circuit at <b>t = {num(x.cursor, 's', 3)}</b>
                 </label>
                 <input
                   id="cursor-slider"
@@ -349,7 +362,7 @@ export default function App() {
                 />
                 <span className="cursor-ends" aria-hidden="true">
                   <span>0</span>
-                  <span>{fmt(x.tEnd, 's', 2)}</span>
+                  <span>{num(x.tEnd, 's', 2)}</span>
                 </span>
               </div>
             ) : null}
@@ -364,22 +377,22 @@ export default function App() {
               {currentView === 'thevenin' && x.thevenin ? (
                 <>
                   <span>
-                    V_oc <b>{fmt(x.thevenin.voc, 'V', 4)}</b>
+                    V_oc <b>{num(x.thevenin.voc, 'V', 4)}</b>
                   </span>
                   <span>
-                    R_th <b>{fmt(x.thevenin.rth.test, 'Ω', 4)}</b>
+                    R_th <b>{num(x.thevenin.rth.test, 'Ω', 4)}</b>
                   </span>
                 </>
               ) : null}
               {currentView === 'sweep' && x.sweep ? (
                 <>
                   <span>
-                    {exp.sweepId} now <b>{fmt(params[exp.sweepId], 'Ω', 3)}</b>
+                    {exp.sweepId} now <b>{num(params[exp.sweepId], 'Ω', 3)}</b>
                   </span>
                   {exp.sweepY === 'p' ? (
                     <span>
-                      peak <b>{fmt(x.sweep.pMax, 'W', 3)}</b>
-                      <em className="prov"> near {fmt(x.sweep.rOpt, 'Ω', 3)}</em>
+                      peak <b>{num(x.sweep.pMax, 'W', 3)}</b>
+                      <em className="prov"> near {num(x.sweep.rOpt, 'Ω', 3)}</em>
                     </span>
                   ) : null}
                 </>
@@ -387,7 +400,7 @@ export default function App() {
               {currentView === 'scope' && x.tr
                 ? [...exp.scope.left.traces, ...(exp.scope.right ? exp.scope.right.traces : [])].map((q) => (
                     <span key={`${q.q}.${q.key}`}>
-                      {q.label} <b>{fmt(x.sol[q.q][q.key], q.q === 'i' ? 'A' : q.q === 'p' ? 'W' : 'V', 4)}</b>
+                      {q.label} <b>{num(x.sol[q.q][q.key], q.q === 'i' ? 'A' : q.q === 'p' ? 'W' : 'V', 4)}</b>
                     </span>
                   ))
                 : null}
@@ -395,7 +408,7 @@ export default function App() {
               {currentView === 'phasor' && x.ac ? (
                 <>
                   <span>
-                    |{exp.out.label}| <b>{fmt(cx.cabs(x.ac[exp.out.q][exp.out.key]), exp.out.q === 'i' ? 'A' : 'V', 4)}</b>
+                    |{exp.out.label}| <b>{num(cx.cabs(x.ac[exp.out.q][exp.out.key]), exp.out.q === 'i' ? 'A' : 'V', 4)}</b>
                   </span>
                   <span>
                     ∠{exp.out.label} <b>{deg(cx.carg(x.ac[exp.out.q][exp.out.key]))}</b>
@@ -409,7 +422,7 @@ export default function App() {
               {currentView === 'impedance' && drive ? (
                 <>
                   <span>
-                    |Z| <b>{fmt(cx.cabs(drive.Z), 'Ω', 4)}</b>
+                    |Z| <b>{num(cx.cabs(drive.Z), 'Ω', 4)}</b>
                   </span>
                   <span>
                     ∠Z <b>{deg(cx.carg(drive.Z))}</b>
@@ -436,12 +449,12 @@ export default function App() {
                       overshoot <b>{(100 * x.damping.at.overshoot).toFixed(1)} %</b>
                     </span>
                     <span>
-                      settles in <b>{fmt(x.damping.at.settle, 's', 3)}</b>
+                      settles in <b>{num(x.damping.at.settle, 's', 3)}</b>
                     </span>
                   </>
                 ) : (
                   <span className="flag warn">
-                    R is outside the sweep ({fmt(x.damping.lo, 'Ω', 2)} – {fmt(x.damping.hi, 'Ω', 2)})
+                    R is outside the sweep ({num(x.damping.lo, 'Ω', 2)} – {num(x.damping.hi, 'Ω', 2)})
                   </span>
                 )
               ) : null}
@@ -514,10 +527,10 @@ function AcPowerReadout({ x }) {
   return (
     <>
       <span>
-        P <b>{fmt(S[0], 'W', 4)}</b>
+        P <b>{num(S[0], 'W', 4)}</b>
       </span>
       <span>
-        Q <b>{fmt(S[1], 'var', 4)}</b>
+        Q <b>{num(S[1], 'var', 4)}</b>
       </span>
       <span>
         pf <b>{apparent > 0 ? (S[0] / apparent).toPrecision(3) : '—'}</b>
@@ -536,13 +549,13 @@ function EnergyReadout({ energy, t }) {
   return (
     <>
       <span>
-        stored <b>{fmt(q.stored, 'J', 3)}</b>
+        stored <b>{num(q.stored, 'J', 3)}</b>
       </span>
       <span>
-        dissipated <b>{fmt(q.dissipated, 'J', 3)}</b>
+        dissipated <b>{num(q.dissipated, 'J', 3)}</b>
       </span>
       <span>
-        supplied <b>{fmt(q.supplied, 'J', 3)}</b>
+        supplied <b>{num(q.supplied, 'J', 3)}</b>
       </span>
     </>
   )

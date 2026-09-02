@@ -7,7 +7,7 @@ import { agrees } from '@ee-labs/explain'
 import {
   equations, extrema, solveAC, drivingPointZ, acPower, NetworkError, complex as cx,
 } from '@ee-labs/network'
-import { buildCircuitLink, fmt, parseCircuitLink } from '@ee-labs/ui'
+import { buildCircuitLink, fmt, parseCircuitLink, schematicGeometry } from '@ee-labs/ui'
 import { evalAtFreq } from '@ee-labs/systems'
 import { CIRCUITS, transferOf } from '../../circuit-lab/src/circuits.js'
 import { stateFromLink } from '../../circuit-lab/src/incoming.js'
@@ -48,8 +48,12 @@ function randomParams(exp, seed) {
       p[k.key] = lo * Math.pow(hi / lo, rnd())
     } else {
       p[k.key] = k.min + (k.max - k.min) * rnd()
-      if (k.key === 'A' && exp.id === 'e3') p[k.key] = 100 + 1e4 * rnd()
     }
+  }
+  // E3 at random settings is the finite-gain comparator; ideal refuses.
+  if (exp.id === 'e3') {
+    p.ideal = false
+    p.A = 100 + 1e4 * rnd()
   }
   return p
 }
@@ -232,7 +236,7 @@ describe('every experiment', () => {
     for (const e of EXPERIMENTS) {
       for (const p of settings(e)) {
         // E3 refuses at its defaults; the drawing with readings needs a solve.
-        if (e.id === 'e3' && !(p.A > 0)) p.A = 1e5
+        if (e.id === 'e3' && p.ideal) Object.assign(p, { ideal: false, A: 1e5 })
         const x = analyse(e, p)
         expect(x.sol, `${e.id} did not solve`).toBeTruthy()
         const meters = { v: x.sol.v, i: x.sol.i, volt: x.sol.volt, p: x.sol.p }
@@ -270,7 +274,7 @@ describe('every experiment', () => {
   it('symbolic matrix agrees with the numeric one cell by cell, and every letter is a drawn part', () => {
     for (const e of EXPERIMENTS) {
       for (const p of [defaultsOf(e.id), randomParams(e, 5)]) {
-        if (e.id === 'e3' && !(p.A > 0)) p.A = 1e5
+        if (e.id === 'e3' && p.ideal) Object.assign(p, { ideal: false, A: 1e5 })
         const x = analyse(e, p)
         const eq = equations(x.sol.norm, x.sol)
         const { cells, rhs, rows, cols, symbols } = eq.symbolic
@@ -296,7 +300,7 @@ describe('every experiment', () => {
   it('power ledger balances, and each row is v × i', () => {
     for (const e of EXPERIMENTS) {
       const p = defaultsOf(e.id)
-      if (e.id === 'e3') p.A = 1e5
+      if (e.id === 'e3') Object.assign(p, { ideal: false, A: 1e5 })
       const { x } = at(e.id, p)
       const led = powerLedger(x.sol)
       expect(led.rows.map((r) => r.id).sort()).toEqual(x.sol.sys.effs.map((q) => q.id).sort())
@@ -594,7 +598,7 @@ describe('the notes, sentence by sentence', () => {
     expect(x.refusal.code).toBe('opamp-open-loop')
     expect(x.refusal.message).toMatch(/no feedback path/)
     expect(x.refusal.message).toMatch(/finite gain/)
-    const fin = at('e3', { A: 1e5 }).x
+    const fin = at('e3', { ideal: false, A: 1e5 }).x
     expect(fin.sol.v.out).toBeCloseTo(100, 9)
   })
 
@@ -1579,5 +1583,79 @@ describe('every lesson is measured', () => {
     const f5 = at('f5', {}, 0.01)
     const E = readQuantity(f5.x, f5.p, 'energy.supplied', f5.exp)
     expect(E).toBeCloseTo(readQuantity(f5.x, f5.p, 'energy.stored', f5.exp) + readQuantity(f5.x, f5.p, 'energy.dissipated', f5.exp), 9)
+  })
+})
+
+describe('the knobs are named after the drawing', () => {
+  // A knob label that names an element uses the drawing's name for it: V₁ for
+  // the source drawn V1, R_L for RL. The matrix still writes E₁ for the source's
+  // voltage — that is the symbol for what it holds, and the legend says so —
+  // but a knob is a handle on a part, and the part has one name.
+  const SUB = { 0: '₀', 1: '₁', 2: '₂', 3: '₃', 4: '₄', 5: '₅', 6: '₆', 7: '₇', 8: '₈', 9: '₉' }
+  const tokenOf = (id) => {
+    const { sym, sub } = schematicGeometry.labelParts({ id })
+    return sub ? (/^\d+$/.test(sub) ? sym + [...sub].map((d) => SUB[d]).join('') : `${sym}_${sub}`) : sym
+  }
+  const TOKEN = /(?<![A-Za-z])([VIRLCSE])(?:_([A-Za-z]+)|([₀-₉]+))?(?![A-Za-z])/g
+
+  it('every element token in a knob label is drawn on the schematic', () => {
+    for (const e of EXPERIMENTS) {
+      const ids = drawables(e.net(defaultsOf(e.id))).map((d) => d.id)
+      const drawn = new Set(ids.map(tokenOf))
+      const count = (letter) => ids.filter((id) => tokenOf(id)[0] === letter).length
+      for (const k of e.params) {
+        const label = k.label
+        for (const m of label.matchAll(TOKEN)) {
+          const token = m[0]
+          const plain = !m[2] && !m[3]
+          if (k.of) {
+            // A property of one element (F6's R_off of S₁): the element is named.
+            expect(drawn.has(tokenOf(k.of)), `${e.id} knob “${label}” is of ${k.of}, which is not drawn`).toBe(true)
+            expect(label.includes(tokenOf(k.of)), `${e.id} knob “${label}” should name ${tokenOf(k.of)}`).toBe(true)
+            continue
+          }
+          // A bare R, L or C is fine when the drawing has exactly one of that letter.
+          if (plain && 'RLC'.includes(token) && count(token) === 1) continue
+          expect(drawn.has(token), `${e.id} knob “${label}” names ${token}, but the drawing has ${[...drawn].join(', ')}`).toBe(true)
+        }
+      }
+    }
+  })
+
+  it('no knob is called E: the source on the drawing is V₁', () => {
+    for (const e of EXPERIMENTS) {
+      for (const k of e.params) expect(k.label, `${e.id} knob ${k.key}`).not.toMatch(/(?<![A-Za-z])E(?![A-Za-z])|E[₀-₉]/)
+    }
+  })
+
+  it('preset chips carry the knob’s unit and set exactly the value they show', () => {
+    let seen = 0
+    for (const e of EXPERIMENTS) {
+      for (const k of e.params) {
+        if (!k.presets) continue
+        for (const p of k.presets) {
+          seen++
+          expect(typeof p.value).toBe('number')
+          expect(p.value).toBeGreaterThanOrEqual(k.min)
+          expect(p.value).toBeLessThanOrEqual(k.max)
+          expect(p.label, `${e.id} ${k.key}`).toBe(fmt(p.value, k.unit, 3))
+          expect(p.label.endsWith(k.unit)).toBe(true)
+        }
+      }
+    }
+    expect(seen).toBeGreaterThanOrEqual(15)
+  })
+
+  it('E3’s op-amp is a switch, ideal by default: ideal refuses, finite gain solves with that gain', () => {
+    const e3 = byId.e3
+    const sw = e3.params.find((k) => k.key === 'ideal')
+    expect(sw.kind).toBe('toggle')
+    expect(sw.default).toBe(true)
+    expect(e3.params.find((k) => k.key === 'A').default).toBe(1e5)
+    expect(at('e3').x.refusal.code).toBe('opamp-open-loop')
+    const fin = at('e3', { ideal: false, A: 2000 }).x
+    expect(fin.sol.v.out).toBeCloseTo(2000 * 0.001, 9)
+    // Every lesson step that asks for finite gain flips the switch.
+    for (const t of e3.try) if (t.set && 'A' in t.set) expect(t.set.ideal).toBe(false)
   })
 })

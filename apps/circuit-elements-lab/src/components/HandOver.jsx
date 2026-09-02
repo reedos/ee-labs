@@ -23,7 +23,8 @@ export function describeMapping(m) {
  * so what arrives there is the Bode plot of the circuit on screen here.
  *
  * On the deployed site `labUrl` resolves and this is a link; in dev the apps
- * are on separate ports, so the fragment is offered to copy instead. A circuit
+ * are on separate ports, so the fragment is offered to copy instead (it is kept
+ * on `data-fragment`, never shown: a hash is not for reading). A circuit
  * the catalog cannot take exactly is declined with the reason, never clamped.
  */
 export default function HandOver({ exp, params }) {
@@ -53,7 +54,7 @@ export default function HandOver({ exp, params }) {
     }
   }
   return (
-    <div className="handover" data-role="handover" data-state="ready" data-circuit={m.id}>
+    <div className="handover" data-role="handover" data-state="ready" data-circuit={m.id} data-fragment={fragment}>
       <p className="handover-dest">→ Circuit Lab</p>
       <p className="hint">
         This circuit is Circuit Lab’s <b>{cat ? cat.name : m.id}</b>, output {cat ? cat.outputs[m.output] : m.output}, with{' '}
@@ -68,7 +69,6 @@ export default function HandOver({ exp, params }) {
       <button type="button" className="preset handover-copy" onClick={copy}>
         {copied ? (url ? 'link copied' : 'copied — paste after Circuit Lab’s URL') : url ? 'Copy the link' : 'Copy link for Circuit Lab'}
       </button>
-      <code className="handover-link">#{fragment}</code>
     </div>
   )
 }

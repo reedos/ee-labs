@@ -608,7 +608,7 @@ knob is declined with the reason, never clamped into a different circuit).
   Measured: `|I| = 72.8 mA` lagging 43.3°; `P = 265 mW` all in R, `P_L` exactly 0
   (arithmetic noise below 10⁻¹²|S| read as 0); RMS 7.07 V / 51.5 mA; 364 mVA, pf 0.728,
   Q = 250 mvar; `p(t)` on the ghost has DC and 2f only — harmonics 1, 3, 4 below 10⁻⁹.
-- **H6 · Frequency response: one sine at a time, then all of them.** RC,
+- **H6 · Frequency response: one sine at a time.** RC,
   `H = 1/(1 + jωRC)` swept two decades either side of `f_c`: the Bode view, |H| in dB
   and ∠H, the drive marked from the same solve the meters use. Measured: −3.01 dB and
   −45° at `f_c`; −20 dB/decade (−19.96 for the first decade above, −19.9996 the next);
@@ -794,6 +794,38 @@ state, and averaging.
    refusal (A2 open, F6 ideal), and both get one. `verify.mjs` checks the first
    screen at 390 px holds the note and the Analysis switch, and at 1280×900 the
    note starts above 230 px with the first knob on screen, for all 46.
+   **Step 4 — numbers and names (the copy and the package description) —
+   shipped 2026-09-02:** every number a student reads now comes through
+   `src/format.js`. `num(v, unit, sig, scale)` snaps a value under one part in
+   1e9 of the scale it belongs to (or under a femto with no scale) to 0, so the
+   topbar's residual reads "0 A" instead of "0.00087 fA", while E2's 9.9 nA and
+   99 pW survive because they are real against their own scale; `forReading`
+   rescales the math panel's theory/measured rows into the unit a first course
+   writes (100 µA, 20 1/ms, 898 million ×) before they reach the shared
+   `MathPanel`, which prints exponent notation outside 1e-3…1e4 and is a peer's
+   file. A prediction under its row's own floor is zero as far as the row can
+   tell (½Cv² at the end of three whole cycles is 2.7e-37 J from cos 6π), and a
+   zero prediction met within its floor shows the zero. Σ power joins the topbar
+   from B3, the experiment that introduces power; the "N nodes · M unknowns"
+   chip explains both words on hover. Knobs take the drawing's names: Source V₁,
+   V₁/V₂, I₁, Lift V₀, R_off of S₁ (`of: 'S1'`); preset chips carry their unit
+   (1.59 kHz, not 1591.5); E3's op-amp is a switch, ideal by default, with a
+   gain knob that applies when it is "finite gain" — no more "0 = ideal"; the
+   hand-over keeps its URL fragment on `data-fragment` instead of printing it;
+   H6 is "Frequency response: one sine at a time"; the package description
+   covers F–H. Deliberately not renamed: the lesson prose and the matrix symbol
+   still say E for the source's voltage (E₁ is what V₁ holds, and the legend says
+   so) — roughly five hundred sentences, which Step 6's solver-bound notes will
+   regenerate rather than hand-edit. No "non-linear elements come later" promise
+   was found in the source to remove. Tests: `format.test.js` (noise floor,
+   prefixes, agreement preserved through rescaling); every element token in a
+   knob label is drawn on the schematic (a bare R/L/C allowed only when the
+   drawing has one), no knob is called E, every preset chip is `fmt(value, unit,
+   3)` inside the knob's range, E3 ideal refuses and finite gain solves with the
+   gain set. `verify.mjs` scans every experiment × view for femto units, exponent
+   notation and `#circuit=` (0 of each), checks Σ power is absent on A1 and
+   present on B3, the size chip has its title, and every preset chip is one line
+   ending in its unit.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event

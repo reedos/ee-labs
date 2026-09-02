@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "license": "MIT",
   "type": "module",
-  "description": "Circuits from the two laws up: KVL, KCL, series and parallel, nodal and mesh analysis, the network theorems, and the op-amp as a circuit element.",
+  "description": "Circuits from the two laws up: KVL, KCL, series and parallel, nodal and mesh analysis, the network theorems, the op-amp as a circuit element, then capacitors and inductors — first- and second-order transients, phasors, AC power and frequency response.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

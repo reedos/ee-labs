@@ -55,7 +55,8 @@ const Win = (key, label, unit, def, min = 1, max = 20) => ({ key, label, unit, m
 /** A two-position knob: `on` and `off` are the texts of the two positions. */
 const Toggle = (key, label, def, on, off, hint) => ({ key, label, kind: 'toggle', default: def, on, off, hint })
 /** Resistances the note talks about, offered as chips under the knob. */
-const chips = (knob, presets) => ({ ...knob, presets })
+// Preset chips carry their unit so 1591.5 reads as 1.59 kHz, not as a bare number.
+const chips = (knob, presets) => ({ ...knob, presets: presets.map((v) => ({ value: v, label: fmt(v, knob.unit, 3) })) })
 
 // ------------------------------------------------------------ drawing
 // A 420 × 180 canvas. Rails at y = 40 (top) and y = 140 (bottom); the source
@@ -139,7 +140,7 @@ export const EXPERIMENTS = [
     group: GROUPS[0],
     name: 'A voltage source holds its voltage',
     terms: ['voltage', 'vsource', 'resistor', 'current', 'node', 'kcl', 'kvl'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R', 1000)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R', 1000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -162,7 +163,7 @@ export const EXPERIMENTS = [
     name: 'A current source holds its current',
     terms: ['isource', 'resistor', 'current', 'kcl'],
     params: [
-      Is('I', 'Source I', 0.005),
+      Is('I', 'Source I₁', 0.005),
       R('R1', 'R', 1000),
       Toggle('open', 'Switch', false, 'open', 'closed', 'open it and the current has no path'),
     ],
@@ -201,7 +202,7 @@ export const EXPERIMENTS = [
     group: GROUPS[0],
     name: 'Voltage is a difference; ground is a choice',
     terms: ['voltage', 'ground', 'node', 'kcl'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), Vs('Vref', 'Lift V_ref', 5)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), Vs('Vref', 'Lift V₀', 5)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'ref'], value: p.E },
@@ -239,7 +240,7 @@ export const EXPERIMENTS = [
     group: GROUPS[0],
     name: 'Which way is +: the passive sign convention',
     terms: ['passive', 'voltage', 'current', 'power', 'kcl', 'kvl'],
-    params: [Vs('E1', 'E₁', 12), Vs('E2', 'E₂', 5), R('R1', 'R', 1000)],
+    params: [Vs('E1', 'V₁', 12), Vs('E2', 'V₂', 5), R('R1', 'R', 1000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E1 },
@@ -260,7 +261,7 @@ export const EXPERIMENTS = [
     group: GROUPS[1],
     name: 'Current in equals current out',
     terms: ['kcl', 'node', 'passive'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R₁ (series)', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁ (series)', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -280,7 +281,7 @@ export const EXPERIMENTS = [
     group: GROUPS[1],
     name: 'Voltages around a loop add to zero',
     terms: ['kvl', 'passive'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -299,7 +300,7 @@ export const EXPERIMENTS = [
     group: GROUPS[1],
     name: 'Power, and the sign of it',
     terms: ['passive', 'power'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -318,7 +319,7 @@ export const EXPERIMENTS = [
     group: GROUPS[1],
     name: 'Two sources, one loop',
     terms: ['passive', 'power'],
-    params: [Vs('E1', 'E₁', 12), Vs('E2', 'E₂', 5), R('R1', 'R', 100)],
+    params: [Vs('E1', 'V₁', 12), Vs('E2', 'V₂', 5), R('R1', 'R', 100)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E1 },
@@ -339,7 +340,7 @@ export const EXPERIMENTS = [
     group: GROUPS[2],
     name: 'Series: one current, shared voltage',
     terms: ['series', 'kvl'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -359,7 +360,7 @@ export const EXPERIMENTS = [
     group: GROUPS[2],
     name: 'Parallel: one voltage, shared current',
     terms: ['parallel', 'kcl'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -394,7 +395,7 @@ export const EXPERIMENTS = [
     group: GROUPS[2],
     name: 'The loaded divider',
     terms: ['series', 'parallel', 'thevenin'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('RL', 'Load R_L', 10000)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('RL', 'Load R_L', 10000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -417,7 +418,7 @@ export const EXPERIMENTS = [
     group: GROUPS[2],
     name: 'The Wheatstone bridge',
     terms: ['series', 'kvl'],
-    params: [Vs('E', 'Source E', 10), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('R3', 'R₃', 1000), R('R4', 'R₄', 1010)],
+    params: [Vs('E', 'Source V₁', 10), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('R3', 'R₃', 1000), R('R4', 'R₄', 1010)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -461,7 +462,7 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'Nodal analysis: one equation per node',
     terms: ['kcl', 'node', 'nodal'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -481,7 +482,7 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'A source between two nodes: the supernode',
     terms: ['nodal', 'supernode', 'mna'],
-    params: [Vs('E1', 'E₁', 12), Vs('E2', 'E₂ (floating)', 4), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
+    params: [Vs('E1', 'V₁', 12), Vs('E2', 'V₂ (floating)', 4), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E1 },
@@ -520,7 +521,7 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'Mesh analysis: one equation per loop',
     terms: ['kvl', 'mesh'],
-    params: [Vs('E1', 'E₁', 12), Vs('E2', 'E₂', 3), R('R1', 'R₁', 1000), R('R2', 'R₂ (shared)', 2000), R('R3', 'R₃', 1000)],
+    params: [Vs('E1', 'V₁', 12), Vs('E2', 'V₂', 3), R('R1', 'R₁', 1000), R('R2', 'R₂ (shared)', 2000), R('R3', 'R₃', 1000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E1 },
@@ -561,7 +562,7 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'Superposition: one source at a time',
     terms: ['superposition', 'linear'],
-    params: [Vs('E1', 'E₁', 12), Is('I1', 'I₁', 0.005), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000)],
+    params: [Vs('E1', 'V₁', 12), Is('I1', 'I₁', 0.005), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E1 },
@@ -599,7 +600,7 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'Thévenin, three ways',
     terms: ['thevenin', 'linear'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -620,7 +621,7 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'Maximum power transfer',
     terms: ['thevenin', 'power'],
-    params: [Vs('E', 'Source E', 12), R('Rs', 'Source R_s', 500), R('RL', 'Load R_L', 500)],
+    params: [Vs('E', 'Source V₁', 12), R('Rs', 'Source R_s', 500), R('RL', 'Load R_L', 500)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -647,7 +648,7 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'A dependent source',
     terms: ['dependent', 'power'],
-    params: [Vs('E', 'Input E', 0.5), Gain('A', 'Gain A', 10), R('Rin', 'R_in', 10000), R('RL', 'Load R_L', 1000)],
+    params: [Vs('E', 'Input V₁', 0.5), Gain('A', 'Gain A', 10), R('Rin', 'R_in', 10000), R('RL', 'Load R_L', 1000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -686,7 +687,7 @@ export const EXPERIMENTS = [
     name: 'The op-amp as a black box',
     terms: ['opamp', 'ideal', 'impedance', 'active'],
     params: [
-      Vs('E', 'Input E', 0.01),
+      Vs('E', 'Input V₁', 0.01),
       R('Rs', 'Source R_s', 10000),
       Gain('A', 'Open-loop gain A', 1000),
       R('Rin', 'Input R_in', 1e6),
@@ -742,14 +743,15 @@ export const EXPERIMENTS = [
     name: 'Comparator: an op-amp with no feedback',
     terms: ['opamp', 'gain'],
     params: [
-      Vs('E', 'Input E', 0.001),
-      { key: 'A', label: 'Gain A (0 = ideal)', unit: '', min: 0, max: 1e6, scale: 'linear', default: 0, hint: 'Set 0 for an ideal op-amp' },
+      Vs('E', 'Input V₁', 0.001),
+      Toggle('ideal', 'Op-amp', true, 'ideal', 'finite gain', 'ideal: infinite gain, so any input difference saturates the output. Finite: the gain knob below applies.'),
+      Gain('A', 'Gain A', 1e5),
       R('RL', 'Load R_L', 1000),
     ],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
-        { type: 'OPAMP', id: 'U1', nodes: ['out'], ctrl: ['in', 'gnd'], gain: p.A > 0 ? p.A : Infinity },
+        { type: 'OPAMP', id: 'U1', nodes: ['out'], ctrl: ['in', 'gnd'], gain: p.ideal ? Infinity : p.A },
         { type: 'R', id: 'RL', nodes: ['out', 'gnd'], value: p.RL },
       ],
     }),
@@ -781,7 +783,7 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'The golden rules, derived',
     terms: ['opamp', 'feedback', 'gain'],
-    params: [Vs('E', 'Input E', 1), Gain('A', 'Op-amp gain A', 1000), R('Rf', 'R_f', 9000), R('Rg', 'R_g', 1000)],
+    params: [Vs('E', 'Input V₁', 1), Gain('A', 'Op-amp gain A', 1000), R('Rf', 'R_f', 9000), R('Rg', 'R_g', 1000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -801,7 +803,7 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'Inverting amplifier and the virtual ground',
     terms: ['opamp', 'feedback', 'virtual'],
-    params: [Vs('E', 'Input E', 0.5), R('Rf', 'R_f', 10000), R('Rg', 'R_g', 1000), R('RL', 'Load R_L', 10000)],
+    params: [Vs('E', 'Input V₁', 0.5), R('Rf', 'R_f', 10000), R('Rg', 'R_g', 1000), R('RL', 'Load R_L', 10000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -822,7 +824,7 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'The summing amplifier',
     terms: ['opamp', 'virtual', 'kcl'],
-    params: [Vs('E1', 'E₁', 1), Vs('E2', 'E₂', 2), R('R1', 'R₁', 10000), R('R2', 'R₂', 20000), R('Rf', 'R_f', 10000)],
+    params: [Vs('E1', 'V₁', 1), Vs('E2', 'V₂', 2), R('R1', 'R₁', 10000), R('R2', 'R₂', 20000), R('Rf', 'R_f', 10000)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in1', 'gnd'], value: p.E1 },
@@ -845,8 +847,8 @@ export const EXPERIMENTS = [
     name: 'The difference amplifier',
     terms: ['opamp', 'feedback', 'cmrr'],
     params: [
-      Vs('E1', 'E₁ (to −)', 1),
-      Vs('E2', 'E₂ (to +)', 1.1),
+      Vs('E1', 'V₁ (to −)', 1),
+      Vs('E2', 'V₂ (to +)', 1.1),
       R('R1', 'R₁', 1000),
       R('R2', 'R₂', 10000),
       R('R3', 'R₃', 1000),
@@ -874,7 +876,7 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'The buffer fixes the loaded divider',
     terms: ['opamp', 'feedback', 'thevenin'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('RL', 'Load R_L', 100)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('RL', 'Load R_L', 100)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -962,7 +964,7 @@ export const EXPERIMENTS = [
     group: GROUPS[5],
     name: 'Charging a capacitor: the time constant',
     terms: ['capacitor', 'state', 'timeconstant', 'initial'],
-    params: [Vs('E', 'Source E', 12), R('R1', 'R', 1000), Cap('C1', 'C', 1e-6), Vs('v0', 'v_C(0)', 0, 'the capacitor’s charge before the switch closes'), Win('N', 'Window', 'τ', 5)],
+    params: [Vs('E', 'Source V₁', 12), R('R1', 'R', 1000), Cap('C1', 'C', 1e-6), Vs('v0', 'v_C(0)', 0, 'the capacitor’s charge before the switch closes'), Win('N', 'Window', 'τ', 5)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -988,7 +990,7 @@ export const EXPERIMENTS = [
     group: GROUPS[5],
     name: 'Every RC circuit is one RC circuit: Thévenin sets τ',
     terms: ['thevenin', 'timeconstant', 'capacitor'],
-    params: [Vs('E', 'Step E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 500), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'τ', 5)],
+    params: [Vs('E', 'Step V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 500), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'τ', 5)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'step', from: 0, to: p.E } },
@@ -1016,7 +1018,7 @@ export const EXPERIMENTS = [
     group: GROUPS[5],
     name: 'Half the energy is lost, whatever R',
     terms: ['energy', 'capacitor', 'power'],
-    params: [Vs('E', 'Source E', 12), chips(R('R1', 'R', 1000), [100, 1000, 10000]), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'τ', 10)],
+    params: [Vs('E', 'Source V₁', 12), chips(R('R1', 'R', 1000), [100, 1000, 10000]), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'τ', 10)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
@@ -1043,11 +1045,11 @@ export const EXPERIMENTS = [
     name: 'Opening a switch on an inductor: the spark',
     terms: ['inductor', 'state', 'timeconstant'],
     params: [
-      Vs('E', 'Source E', 12),
+      Vs('E', 'Source V₁', 12),
       R('R1', 'R', 1000),
       Ind('L1', 'L', 1),
       Toggle('ideal', 'Switch', false, 'ideal', 'finite R_off', 'an ideal open switch is infinite ohms'),
-      R('Roff', 'Open-switch R_off', 1e5),
+      { ...R('Roff', 'R_off of S₁', 1e5, 'the resistance the open switch still has'), of: 'S1' },
       Win('N', 'Window', 'τ', 5),
     ],
     net: (p) => ({
@@ -1147,7 +1149,7 @@ export const EXPERIMENTS = [
     group: GROUPS[6],
     name: g.name,
     terms: g.terms,
-    params: [Vs('E', 'Step E', 1), chips(R('R1', 'R', g.R), [800, 200, 50]), Ind('L1', 'L', 10e-3), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'cycles', 5)],
+    params: [Vs('E', 'Step V₁', 1), chips(R('R1', 'R', g.R), [800, 200, 50]), Ind('L1', 'L', 10e-3), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'cycles', 5)],
     net: seriesRLC,
     layout: loop(['R1', 'L1', 'C1']),
     window: rlcWindow,
@@ -1164,7 +1166,7 @@ export const EXPERIMENTS = [
     group: GROUPS[6],
     name: 'Undamped: energy sloshes between L and C',
     terms: ['energy', 'natural', 'inductor', 'capacitor'],
-    params: [Vs('E', 'Step E', 1), Ind('L1', 'L', 10e-3), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'cycles', 3)],
+    params: [Vs('E', 'Step V₁', 1), Ind('L1', 'L', 10e-3), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'cycles', 3)],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'step', from: 0, to: p.E } },
@@ -1187,7 +1189,7 @@ export const EXPERIMENTS = [
     name: 'Initial conditions: where the circuit starts from',
     terms: ['initial', 'natural', 'state'],
     params: [
-      Vs('E', 'Step E', 1),
+      Vs('E', 'Step V₁', 1),
       R('R1', 'R', 50),
       Ind('L1', 'L', 10e-3),
       Cap('C1', 'C', 1e-6),
@@ -1219,7 +1221,7 @@ export const EXPERIMENTS = [
     name: 'Parallel RLC: the dual',
     terms: ['duality', 'damping', 'natural'],
     params: [
-      { key: 'I', label: 'Step I', unit: 'A', min: 1e-3, max: 0.1, scale: 'linear', default: 0.01 },
+      { key: 'I', label: 'Step I₁', unit: 'A', min: 1e-3, max: 0.1, scale: 'linear', default: 0.01 },
       chips(R('R1', 'R', 200), [12.5, 50, 200]),
       Ind('L1', 'L', 10e-3),
       Cap('C1', 'C', 1e-6),
@@ -1401,7 +1403,7 @@ export const EXPERIMENTS = [
   {
     id: 'h6',
     group: GROUPS[7],
-    name: 'Frequency response: one sine at a time, then all of them',
+    name: 'Frequency response: one sine at a time',
     terms: ['bode', 'steadystate', 'phasor'],
     params: sineRCParams({ f: 1000 }),
     net: sineRC,

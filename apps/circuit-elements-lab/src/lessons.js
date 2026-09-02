@@ -398,8 +398,8 @@ export const LESSONS = {
       'infinity times anything. The solver refuses and says why.',
     seeRefuses: true,
     try: [
-      { say: 'Give it a finite gain, A = 10⁵: 1 mV in, 100 V out — finite but absurd. A real op-amp would stop at its supply rails.', set: { A: 100000 }, reads: [['v.out', 100]] },
-      { say: 'Flip E to −1 mV with A = 10⁵: −100 V. The tiniest difference decides the sign — that is a comparator.', set: { A: 100000, E: -0.001 }, reads: [['v.out', -100]] },
+      { say: 'Switch the op-amp to finite gain, A = 10⁵: 1 mV in, 100 V out — finite but absurd. A real op-amp would stop at its supply rails.', set: { ideal: false, A: 100000 }, reads: [['v.out', 100]] },
+      { say: 'Flip E to −1 mV with A = 10⁵: −100 V. The tiniest difference decides the sign — that is a comparator.', set: { ideal: false, A: 100000, E: -0.001 }, reads: [['v.out', -100]] },
     ],
     why:
       'An op-amp is a dependent source with an enormous gain: v_out = A·(v₊ − v₋). Without feedback the ideal one has ' +

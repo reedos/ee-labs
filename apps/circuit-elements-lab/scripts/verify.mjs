@@ -107,6 +107,20 @@ const pick = async (name) => {
 }
 const viewButtons = () => page.$$eval('.view-switch button', (els) => els.map((e) => e.textContent.trim()))
 
+// Arithmetic noise must never reach the student: no femto-anything, no
+// exponent notation, and no raw URL hash anywhere on the page.
+const noiseOnPage = () =>
+  page.evaluate(() => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    const found = []
+    let n
+    while ((n = walker.nextNode())) {
+      const t = n.textContent
+      if (/\d\s?f(V|A|W|J|Ω)\b/.test(t) || /\de[-+]\d/.test(t) || /#circuit=/.test(t)) found.push(t.trim().slice(0, 60))
+    }
+    return found
+  })
+
 // ------------------------------------ 1. every experiment, every panel, every view
 
 console.log(`\n1. Loading all ${names.length} experiments, opening every math panel, every view\n`)
@@ -137,6 +151,7 @@ for (const name of names) {
     })
     if (!has) fail(`${name}: view "${v}" rendered nothing`)
     else rendered++
+    for (const t of await noiseOnPage()) fail(`${name} / ${v}: arithmetic noise on screen: “${t}”`)
   }
   console.log(
     `   ${name.padEnd(30)} ${String(checks.filter((r) => r.mark === '✓').length).padStart(2)} ✓  ${bad.length} ✗  ` +
@@ -224,8 +239,10 @@ console.log('\n4. E3: the ideal comparator refuses, finite gain lifts it\n')
     if (!/no feedback path/.test(chip)) fail(`E3 topbar should give the reason: ${chip}`)
     else console.log(`   topbar: ${chip}`)
   }
-  await setField('Gain A (0 = ideal)', '100000')
-  if ((await ref.count()) !== 0) fail('E3 with A = 10⁵ should solve')
+  // The op-amp is a switch: ideal refuses; "finite gain" hands over to the gain knob (default 10⁵).
+  await page.locator('[data-role=toggle][data-key=ideal]').getByRole('button', { name: 'finite gain' }).click()
+  await settle()
+  if ((await ref.count()) !== 0) fail('E3 with finite gain A = 10⁵ should solve')
   const v = si((await page.locator('.readout').first().textContent()).match(/v_out\s*([\d.]+\s*\S*)V/)?.[1])
   if (Math.abs(v - 100) > 0.01) fail(`E3 finite gain: v_out ${v}, want 100`)
   else console.log(`   A = 10⁵ -> v_out ${v} V, solved`)
@@ -351,6 +368,33 @@ for (const name of names) {
   if (await scrolls()) fail(`4K / ${name}: page scrolls`)
 }
 console.log(`   all ${names.length} experiments fit at 3840x2160`)
+
+// ------------------------------------------------ 7. numbers and names
+
+console.log('\n7. Numbers and names: Σ power arrives with B3, the size chip explains itself, chips fit one line\n')
+await page.setViewportSize({ width: 1280, height: 900 })
+await page.waitForTimeout(300)
+const topbarText = () => page.locator('.topbar').textContent()
+await pick(names[0])
+if (/Σ power/.test(await topbarText())) fail('A1: the topbar shows Σ power before power has been introduced')
+await pick(names.find((n) => /Power, and the sign of it/i.test(n)))
+if (!/Σ power/.test(await topbarText())) fail('B3: the topbar should show Σ power from the experiment that introduces power')
+const sizeTitle = await page.locator('[data-role=system-size]').getAttribute('title')
+if (!sizeTitle || !/junction/i.test(sizeTitle) || !/unknown/i.test(sizeTitle)) fail(`the nodes/unknowns chip should explain both words on hover (got “${sizeTitle}”)`)
+console.log('   Σ power absent on A1, present on B3; the size chip explains nodes and unknowns')
+
+// Every preset chip reads as one line: a value with its unit, never a wrapped
+// bare number. The chips belong to the knobs of each experiment.
+const tall = []
+for (const name of names) {
+  await pick(name)
+  const wrapped = await page.$$eval('.knobs .num-chips .chip', (els) =>
+    els.filter((b) => b.getBoundingClientRect().height > 30 || !/[A-Za-zΩ°]$/.test(b.textContent.trim())).map((b) => b.textContent.trim()),
+  )
+  for (const w of wrapped) tall.push(`${name}: “${w}”`)
+}
+for (const t of tall) fail(`preset chip wrapped or unit-less: ${t}`)
+console.log(`   every preset chip is one line and ends in its unit`)
 
 // ------------------------------------------------------------------- report
 
