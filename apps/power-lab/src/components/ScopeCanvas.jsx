@@ -1,7 +1,8 @@
 import React from 'react'
-import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
+import { useCanvas, COLORS, drawFrame, plotArea, fmt, scopeRange } from '@ee-labs/ui'
 import { TRACES } from '../experiments.js'
-import { axisFmt, fitLeftAxis, scopeRange } from '../format.js'
+import { axisFmt, fitLeftAxis } from '../format.js'
+import { markLabels } from '../marks.js'
 
 /** One colour per trace, kept apart from the axis chrome. */
 export const TRACE_COLORS = {
@@ -22,131 +23,155 @@ export const TRACE_COLORS = {
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
 /**
- * The scope: the converter's waveforms over two periods, voltages on the left
- * axis and currents on the right, each axis ranged to the traces it is
- * showing. The ranging matters: with v_sw hidden the output's few millivolts
- * of ripple fill the axis instead of drawing as a flat line under 12 V.
+ * The scope, as a pure drawing: the converter's waveforms over two periods in
+ * two strips that share a time axis — voltages above, currents below — each
+ * strip ranged on the experiment's defaults (`baseWf`) so a knob moves the
+ * curve and not the frame. With only one kind of trace shown there is one
+ * strip. Nothing is written over the traces: the legend is the row of trace
+ * chips in the pane header, in the same colours; the only text inside the
+ * frame is a mark the note asked for.
  *
  * The waveform carries both ends of every segment (steady.js), so the
  * switching edges plot vertical without any help here; the edge instants are
- * marked and named in the band above the frame.
+ * marked and named in the band above the top strip. The time axis is in
+ * microseconds for a switching period and milliseconds for a line cycle: the
+ * unit follows the period.
  *
- * The time axis is in microseconds for a switching period and milliseconds
- * for a line cycle: the unit follows the period.
+ * Returns the geometry it drew with, for tests: `strips` (axis, area, sy),
+ * `sx`, and the time range in axis units.
  */
-export default function ScopeCanvas({ wf, baseWf, traces }) {
-  const ref = useCanvas(
-    (ctx, w, h) => {
-      const shown = traces.filter((k) => wf.sig[k])
-      const volts = shown.filter((k) => TRACES[k].axis === 'V')
-      const amps = shown.filter((k) => TRACES[k].axis === 'A')
-      const k0 = plotArea(w, h).k
-      const area = plotArea(w, h, { rightAxis: amps.length > 0, topInset: 16 * k0 })
-      const k = area.k
-      const unit = wf.T >= 1e-3 ? 1e3 : 1e6
-      const us = wf.t.map((t) => t * unit)
-      const xMin = us[0]
-      const xMax = us[us.length - 1]
+export function drawScope(ctx, w, h, { wf, baseWf = null, traces, marks = [] }) {
+  const shown = traces.filter((k) => wf.sig[k])
+  const volts = shown.filter((k) => TRACES[k].axis === 'V')
+  const amps = shown.filter((k) => TRACES[k].axis === 'A')
+  const k0 = plotArea(w, h).k
+  const whole = plotArea(w, h, { topInset: 16 * k0 })
+  const k = whole.k
+  const unit = wf.T >= 1e-3 ? 1e3 : 1e6
+  const us = wf.t.map((t) => t * unit)
+  const xMin = us[0]
+  const xMax = us[us.length - 1]
+  const fmtX = (v) => fmt(v / unit, 's', 3)
 
-      const rangeOf = (keys) => scopeRange(wf, baseWf, keys)
+  const kinds = [
+    volts.length ? { axis: 'V', keys: volts } : null,
+    amps.length ? { axis: 'A', keys: amps } : null,
+  ].filter(Boolean)
+  if (!kinds.length) return { strips: [], sx: () => NaN, xMin, xMax, unit }
 
-      const [vLo, vHi] = rangeOf(volts)
-      const [aLo, aHi] = rangeOf(amps)
+  // Each strip's range and tick format; the gutter fits the widest label of
+  // either, so the two frames line up.
+  for (const s of kinds) {
+    ;[s.lo, s.hi] = scopeRange(wf, baseWf, s.keys)
+    s.fmt = axisFmt(s.lo, s.hi, s.axis)
+  }
+  const labels = kinds.flatMap((s) => [s.fmt(s.lo), s.fmt(s.hi), s.fmt((s.lo + s.hi) / 2)])
+  const framed = fitLeftAxis(ctx, whole, labels, k)
 
-      // Frame and left axis on the voltage range (or the current range when
-      // no voltage is shown).
-      const leftIsV = volts.length > 0
-      const [lLo, lHi] = leftIsV ? [vLo, vHi] : [aLo, aHi]
-      const fmtLeft = axisFmt(lLo, lHi, leftIsV ? 'V' : 'A')
-      // An axis zoomed onto millivolts of ripple needs a wider gutter than one
-      // showing whole volts, so the frame is fitted to its own labels.
-      const framed = fitLeftAxis(ctx, area, [fmtLeft(lLo), fmtLeft(lHi), fmtLeft((lLo + lHi) / 2)], k)
-      const { sx, sy } = drawFrame(
-        ctx,
-        framed,
-        xMin,
-        xMax,
-        lLo,
-        lHi,
-        (v) => fmt(v / unit, 's', 3),
-        fmtLeft,
-        { zeroLine: lLo < 0 && lHi > 0, xTitle: 'Time', yTitle: leftIsV ? 'Voltage (V)' : 'Current (A)' },
-      )
-      const area2 = framed
-      const syA = (v) => area2.y + area2.h - ((v - aLo) / (aHi - aLo)) * area2.h
+  // Two strips: split the height, a small gap between them; only the lower
+  // one carries the time labels and title.
+  const gap = kinds.length > 1 ? 26 * k : 0
+  const stripH = (framed.h - gap) / kinds.length
+  let sx = null
+  const strips = kinds.map((s, i) => {
+    const area = { ...framed, y: framed.y + i * (stripH + gap), h: stripH }
+    const last = i === kinds.length - 1
+    const r = drawFrame(ctx, area, xMin, xMax, s.lo, s.hi, last ? fmtX : () => '', s.fmt, {
+      zeroLine: s.lo < 0 && s.hi > 0,
+      xTitle: last ? 'Time' : null,
+      yTitle: s.axis === 'V' ? 'Voltage (V)' : 'Current (A)',
+    })
+    sx = r.sx
+    return { ...s, area, sy: r.sy }
+  })
+  const top = strips[0].area
+  const bottom = strips[strips.length - 1].area
+  const yTop = top.y
+  const yBottom = bottom.y + bottom.h
 
-      // Right axis for the currents, when the left is taken by voltages.
-      if (leftIsV && amps.length) {
-        ctx.save()
-        ctx.font = `${Math.round(11 * k)}px ${MONO}`
-        ctx.textAlign = 'left'
-        ctx.textBaseline = 'middle'
-        ctx.fillStyle = COLORS.text
-        const n = Math.max(2, Math.floor(area2.h / (46 * k)))
-        const fmtA = axisFmt(aLo, aHi, 'A')
-        for (let i = 0; i <= n; i++) {
-          const v = aLo + ((aHi - aLo) * i) / n
-          ctx.fillText(fmtA(v), area2.x + area2.w + 8 * k, syA(v))
-        }
-        ctx.font = `${Math.round(12 * k)}px ui-sans-serif, system-ui, sans-serif`
-        ctx.translate(w - 14 * k, area2.y + area2.h / 2)
-        ctx.rotate(Math.PI / 2)
-        ctx.textAlign = 'center'
-        ctx.fillText('Current (A)', 0, 0)
-        ctx.restore()
-      }
+  ctx.save()
+  // Edge markers, through every strip, named in the band above the top one.
+  ctx.font = `${Math.round(10 * k)}px ${MONO}`
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'bottom'
+  for (const e of wf.edges) {
+    const x = sx(e.t * unit)
+    ctx.strokeStyle = COLORS.gridMajor
+    ctx.setLineDash([3 * k, 3 * k])
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(x + 0.5, yTop)
+    ctx.lineTo(x + 0.5, yBottom)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.fillStyle = COLORS.text
+    ctx.fillText(e.name, x + 3 * k, yTop - 3 * k)
+  }
+  ctx.restore()
 
-      ctx.save()
-      // Edge markers and their names, in the band above the frame.
-      ctx.font = `${Math.round(10 * k)}px ${MONO}`
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'bottom'
-      for (const e of wf.edges) {
-        const x = sx(e.t * unit)
-        ctx.strokeStyle = COLORS.gridMajor
-        ctx.setLineDash([3 * k, 3 * k])
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.moveTo(x + 0.5, area2.y)
-        ctx.lineTo(x + 0.5, area2.y + area2.h)
-        ctx.stroke()
-        ctx.setLineDash([])
-        ctx.fillStyle = COLORS.text
-        ctx.fillText(e.name, x + 3 * k, area2.y - 3 * k)
-      }
+  // Spans first, under the traces.
+  for (const mk of marks.filter((q) => q.type === 'span')) {
+    const x0 = sx(mk.t0 * unit)
+    const x1 = sx(mk.t1 * unit)
+    ctx.save()
+    ctx.fillStyle = COLORS.traceDim
+    ctx.fillRect(x0, yTop, x1 - x0, yBottom - yTop)
+    ctx.fillStyle = COLORS.trace
+    ctx.font = `${Math.round(11 * k)}px ${MONO}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    ctx.fillText(mk.label, (x0 + x1) / 2, yTop + 4 * k)
+    ctx.restore()
+  }
 
+  for (const s of strips) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(s.area.x, s.area.y, s.area.w, s.area.h)
+    ctx.clip()
+    for (const key of s.keys) {
+      const ys = wf.sig[key]
+      ctx.strokeStyle = TRACE_COLORS[key]
+      ctx.lineWidth = 2 * k
       ctx.beginPath()
-      ctx.rect(area2.x, area2.y, area2.w, area2.h)
-      ctx.clip()
-      for (const key of shown) {
-        const ys = wf.sig[key]
-        const map = TRACES[key].axis === 'V' ? sy : leftIsV ? syA : sy
-        ctx.strokeStyle = TRACE_COLORS[key]
-        ctx.lineWidth = 2 * k
-        ctx.beginPath()
-        for (let i = 0; i < us.length; i++) {
-          if (i === 0) ctx.moveTo(sx(us[i]), map(ys[i]))
-          else ctx.lineTo(sx(us[i]), map(ys[i]))
-        }
-        ctx.stroke()
+      for (let i = 0; i < us.length; i++) {
+        if (i === 0) ctx.moveTo(sx(us[i]), s.sy(ys[i]))
+        else ctx.lineTo(sx(us[i]), s.sy(ys[i]))
       }
-      ctx.restore()
-
-      // Legend, top right of the band.
-      ctx.save()
+      ctx.stroke()
+    }
+    // Level lines the note named, on the strip whose axis they belong to.
+    for (const mk of marks.filter((q) => q.type === 'hline' && q.axis === s.axis)) {
+      const y = s.sy(mk.value)
+      ctx.strokeStyle = mk.color || COLORS.marker
+      ctx.setLineDash([6 * k, 4 * k])
+      ctx.lineWidth = 1.2 * k
+      ctx.beginPath()
+      ctx.moveTo(s.area.x, y + 0.5)
+      ctx.lineTo(s.area.x + s.area.w, y + 0.5)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.fillStyle = mk.color || COLORS.marker
       ctx.font = `${Math.round(11 * k)}px ${MONO}`
       ctx.textAlign = 'right'
       ctx.textBaseline = 'bottom'
-      let x = area2.x + area2.w
-      for (const key of [...shown].reverse()) {
-        ctx.fillStyle = TRACE_COLORS[key]
-        const label = TRACES[key].label
-        ctx.fillText(label, x, area2.y - 3 * k)
-        x -= ctx.measureText(label).width + 14 * k
-      }
-      ctx.restore()
-    },
-    [wf, baseWf, traces],
+      ctx.fillText(mk.label, s.area.x + s.area.w - 6 * k, y - 3 * k)
+    }
+    ctx.restore()
+  }
+
+  return { strips, sx, xMin, xMax, unit }
+}
+
+export default function ScopeCanvas({ wf, baseWf, traces, marks = [] }) {
+  const ref = useCanvas((ctx, w, h) => drawScope(ctx, w, h, { wf, baseWf, traces, marks }), [wf, baseWf, traces, marks])
+  return (
+    <canvas
+      ref={ref}
+      className="plot"
+      role="img"
+      aria-label="Scope: the circuit's waveforms over two periods, voltages above and currents below"
+      data-marks={markLabels(marks)}
+    />
   )
-  return <canvas ref={ref} className="plot" role="img" aria-label="Scope: the circuit's waveforms over two periods" />
 }

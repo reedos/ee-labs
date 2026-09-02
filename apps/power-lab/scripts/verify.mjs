@@ -223,12 +223,21 @@ async function run(browser, tag) {
   console.log('\n3. The ripple the note names spans ≥ 15 % of its strip at the defaults\n')
   for (const id of ['a3', 'b3']) {
     await pick(id)
+    // Only v_out on the scope, so its strip is the whole frame: the frame is
+    // the canvas less the plot's fixed gutters (plotArea: 30k above, 48k below).
+    for (const b of await page.locator('.traces button[aria-pressed=true]').all()) {
+      if ((await b.textContent()).trim() !== 'v_out') await b.click()
+    }
+    await settle()
     const e = await traceExtent(RGB.vout)
     if (!e || !e.n) F(`${id}: no v_out trace drawn`)
     else {
-      const span = e.bottom - e.top
-      if (span < 0.15) F(`${id}: v_out spans ${(span * 100).toFixed(1)} % of the canvas — a flat line, not a ripple`)
-      else console.log(`   ${id}: v_out spans ${(span * 100).toFixed(1)} % of the canvas height`)
+      const box = await page.locator('.views canvas').first().boundingBox()
+      const k = Math.max(1, Math.min(2.2, box.width / 1150))
+      const strip = box.height - 78 * k
+      const span = ((e.bottom - e.top) * box.height) / strip
+      if (span < 0.15) F(`${id}: v_out spans ${(span * 100).toFixed(1)} % of its strip — a flat line, not a ripple`)
+      else console.log(`   ${id}: v_out spans ${(span * 100).toFixed(1)} % of its strip`)
     }
   }
 
@@ -268,6 +277,17 @@ async function run(browser, tag) {
       if ((await page.locator('[data-role=note]').getAttribute('data-pristine')) !== 'true') F('reset did not restore the defaults')
       else console.log('   reset chip restores the defaults and the note')
     }
+  }
+
+  // ------------------------------------ 5b. bars sized to their pane
+
+  {
+    await pick('a1')
+    const bar = await page.locator('.power-row .bar').first().boundingBox()
+    const pane = await page.locator('.view').first().boundingBox()
+    if (!bar) F('A1: no loss bar on screen')
+    else if (bar.height < 24 || bar.width < pane.width * 0.4) F(`A1: loss bars are ${Math.round(bar.height)} px tall and ${Math.round(bar.width)} px wide in a ${Math.round(pane.width)} px pane — sized to a phone row, not to the pane`)
+    else console.log(`   A1: loss bars ${Math.round(bar.height)} px tall, ${Math.round(bar.width)} of ${Math.round(pane.width)} px wide`)
   }
 
   // ----------------------------------------------- 6. marks on the plot

@@ -244,3 +244,37 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 /* The math as a pane: the same body the sidebar fold used to hold, given the
    width it wanted. Formulas stack down the left; the check tables can spread. */
 .view-body > .math-body { max-width: 760px; padding: 4px 0; }
+
+/* A plot with its legend under it, in the DOM rather than written over the
+   curves. The canvas takes the height; the legend takes one line. */
+.plot-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.plot-wrap > .plot { flex: 1; min-height: 140px; }
+.plot-legend {
+  list-style: none;
+  margin: 0;
+  padding: 3px 8px 0 76px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--dim);
+}
+.plot-legend .swatch {
+  display: inline-block;
+  width: 18px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-top: 2px solid currentColor;
+}
+.plot-legend .swatch.dashed { border-top-style: dashed; }
+.plot-legend .swatch.dotted { border-top-style: dotted; }
+.plot-legend .swatch.fill { height: 9px; border: 0; background: currentColor; }
+
+/* The losses view alone in its column (the linear regulator) has a whole pane
+   for two bars; they are sized to it rather than to the phone-height rows. */
+.views.is-single .view-body > .losses { margin: auto 0; padding: 24px 0; }
+.views.is-single .power-row { grid-template-columns: 300px 1fr 150px; font-size: 18px; gap: 18px; }
+.views.is-single .power-row .bar { height: 40px; }
+.views.is-single .power-list { gap: 22px; padding: 12px 0; }
+.views.is-single .power-total { font-size: 17px; margin-top: 16px; }

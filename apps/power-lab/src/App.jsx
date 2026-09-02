@@ -10,6 +10,7 @@ import ScopeCanvas, { TRACE_COLORS } from './components/ScopeCanvas.jsx'
 import SweepCanvas from './components/SweepCanvas.jsx'
 import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, MODE_WORDS } from './components/panes.jsx'
 import { fmtz } from './format.js'
+import { scopeMarks, sweepMarks } from './marks.js'
 import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/schematics.jsx'
 import pkg from '../package.json'
 
@@ -27,15 +28,15 @@ export function outcomeOf(exp, x) {
 }
 
 /** Which sweep an experiment's lower pane draws, and where the knob sits on it. */
-function sweepFor(exp, params, x) {
+export function sweepFor(exp, params) {
   const s = exp.sweep
   if (!s) return null
-  if (exp.kind === 'linreg') return { points: sweepLinear(params), at: params.Vo / params.Vin, rcrit: null, label: 'η = V_out / V_in' }
-  if (s.x === 'C') return { points: sweepC(params, exp), at: params.C, rcrit: null }
-  if (s.x === 'alpha') return { points: sweepAlpha(params), at: params.alphaDeg, rcrit: null, label: 'P / P_full measured on the waveform' }
-  if (s.y === 'eta' && s.x !== 'D') return { points: sweepEta(params, exp.kind), at: params.R, rcrit: x.formulas.Rcrit }
-  if (s.x === 'D') return { points: sweepD(params, exp.kind), at: params.D, rcrit: null }
-  return { points: sweepR(params, exp.kind), at: params.R, rcrit: x.formulas.Rcrit }
+  if (exp.kind === 'linreg') return { points: sweepLinear(params), at: params.Vo / params.Vin, label: 'η = V_out / V_in' }
+  if (s.x === 'C') return { points: sweepC(params, exp), at: params.C }
+  if (s.x === 'alpha') return { points: sweepAlpha(params), at: params.alphaDeg, label: 'P / P_full measured on the waveform' }
+  if (s.y === 'eta' && s.x !== 'D') return { points: sweepEta(params, exp.kind), at: params.R }
+  if (s.x === 'D') return { points: sweepD(params, exp.kind), at: params.D }
+  return { points: sweepR(params, exp.kind), at: params.R }
 }
 
 /**
@@ -87,9 +88,14 @@ export default function App({ initialId = FIRST, initialView = null }) {
   const currentView = exp.views.includes(view) ? view : exp.view
   // Sweeps re-solve the converter across a knob's range; only when shown.
   const sweep = useMemo(
-    () => (currentView === 'sweep' ? sweepFor(exp, params, x) : null),
+    () => (currentView === 'sweep' ? sweepFor(exp, params) : null),
     [exp, params, x, currentView],
   )
+  // The same sweep at the defaults, which the sweep's axis is framed on.
+  const baseSweep = useMemo(() => (currentView === 'sweep' ? sweepFor(exp, defaultsOf(exp.id)) : null), [exp, currentView])
+  // The note's numbers, drawn where they happen (marks.js).
+  const marks = useMemo(() => scopeMarks(exp, x), [exp, x])
+  const sweepMarkList = useMemo(() => sweepMarks(exp, x, sweep), [exp, x, sweep])
   const outcome = outcomeOf(exp, x)
   const m = x.m
 
@@ -300,7 +306,7 @@ export default function App({ initialId = FIRST, initialView = null }) {
           </div>
           <div className="view-body">
             {shown.length ? (
-              <ScopeCanvas wf={x.wf} baseWf={base.wf} traces={shown} />
+              <ScopeCanvas wf={x.wf} baseWf={base.wf} traces={shown} marks={marks} />
             ) : (
               <p className="hint">No traces selected — pick one above.</p>
             )}
@@ -343,7 +349,14 @@ export default function App({ initialId = FIRST, initialView = null }) {
             {currentView === 'losses' ? <LossesPane x={x} /> : null}
             {currentView === 'spectrum' ? <SpectrumPane x={x} /> : null}
             {currentView === 'sweep' && sweep ? (
-              <SweepCanvas points={sweep.points} sweep={exp.sweep} at={sweep.at} rcrit={sweep.rcrit} label={sweep.label} />
+              <SweepCanvas
+                points={sweep.points}
+                basePoints={baseSweep ? baseSweep.points : null}
+                sweep={exp.sweep}
+                at={sweep.at}
+                marks={sweepMarkList}
+                label={sweep.label}
+              />
             ) : null}
           </div>
         </section>
