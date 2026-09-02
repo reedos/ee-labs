@@ -7,7 +7,10 @@ import { analyse, atDrive, experimentMath, netPower, refusalReason, snapNoise, t
 import { termsFor } from './terms.js'
 import { reportSummary } from './report.js'
 import { forReading, num, scaleOf } from './format.js'
+import { calloutText } from './headlines.js'
+import { theoremShows } from './theorems.js'
 import { EquationsPane, PowerPane, TheveninPane, SuperpositionPane, StatePane, AcPowerPane, Refusal } from './components/panes.jsx'
+import { Headline, Bridge, Readings, TheoremBlock, EquivalentPane } from './components/insight.jsx'
 import SweepCanvas from './components/SweepCanvas.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
 import EnergyCanvas from './components/EnergyCanvas.jsx'
@@ -20,14 +23,20 @@ import pkg from '../package.json'
 const FIRST = EXPERIMENTS[0].id
 // Groups A and B read the KCL/KVL primer above their equations: A uses the
 // laws before B takes them apart, and a name must not arrive before its meaning.
-const PRIMER_GROUPS = GROUPS.slice(0, 2)
+// A gets the two laws in a line each; B, which is about them, gets the full primer.
+const primerFor = (group) => (group === GROUPS[0] ? 'brief' : group === GROUPS[1] ? 'full' : false)
+// Groups A–E open their equations folded: the headline is the lesson, the
+// solver's working is there for whoever wants it.
+const FOLDED_GROUPS = GROUPS.slice(0, 5)
 // The topbar's Σ power chip appears from the experiment that introduces power.
 const POWER_FROM = EXPERIMENTS.findIndex((e) => e.id === 'b3')
 
 const VIEW_LABELS = {
+  reading: { label: 'Reading', title: 'The one number this experiment is about, and every meter on the circuit at once' },
   equations: { label: 'Equations', title: 'The equations the solver built: the two laws in words, each row with live values, the matrix in letters and in numbers' },
   power: { label: 'Power', title: 'p = v × i for every element — who delivers, who absorbs, and the two totals matching' },
   thevenin: { label: 'Thévenin', title: 'The equivalent seen at the port, found three ways' },
+  equivalent: { label: 'Equivalent', title: 'The Thévenin equivalent drawn as a circuit beside the original, and the load line both obey' },
   superposition: { label: 'Superposition', title: 'Each source alone, and the sum' },
   sweep: { label: 'Load sweep', title: 'The port quantity as the load resistance sweeps' },
   scope: { label: 'Scope', title: 'Voltages and currents against time; drag to move the cursor' },
@@ -97,6 +106,25 @@ export default function App() {
   const drive = useMemo(() => (x.ac && exp.out ? atDrive(exp, x) : null), [exp, x])
   const elements = useMemo(() => drawables(x.net), [x])
   const meters = useMemo(() => (x.sol ? snapNoise(x.sol) : null), [x])
+  // The drawing with its live texts: the headline's callout takes the number
+  // (and steps aside when there is none), and any text marked `live` reads a
+  // solution quantity. The frame was sized with the widest text, so nothing moves.
+  const layout = useMemo(() => {
+    const items = exp.layout.items.flatMap((it) => {
+      if (it.callout) {
+        const text = calloutText(exp.headline, x, params)
+        return text === null ? [] : [{ ...it, text }]
+      }
+      if (it.live) {
+        const v = x.sol ? x.sol[it.live.q][it.live.key] : null
+        return Number.isFinite(v) ? [{ ...it, text: it.live.prefix + num(v, it.live.unit, 3) }] : [{ ...it, text: it.live.prefix.trim() }]
+      }
+      return [it]
+    })
+    return { ...exp.layout, items }
+  }, [exp, x, params])
+  // The theorem drawings (D4's three circuits) use the drawing without the callout.
+  const plainLayout = useMemo(() => ({ ...exp.layout, items: exp.layout.items.filter((it) => !it.callout) }), [exp])
 
   const nodeCount = x.sol ? x.sol.norm.n : normalize(x.net).n
   // The residual is judged against the currents that flow: 1e-19 A of
@@ -342,7 +370,7 @@ export default function App() {
           </div>
           <div className="view-body">
             {/* "none" promises just the circuit, so it drops the node voltages too. */}
-            <Schematic className="big" elements={elements} layout={exp.layout} meters={show === 'none' ? null : meters} show={show} />
+            <Schematic className="big" elements={elements} layout={layout} meters={show === 'none' ? null : meters} show={show} />
             {x.refusal ? <Refusal err={x.refusal} /> : null}
             {dynamic && x.tr ? (
               <div className="cursor-row" data-role="cursor">
@@ -461,6 +489,11 @@ export default function App() {
             </div>
           </div>
           <div className="view-body">
+            <Headline exp={exp} x={x} params={params} />
+            <Bridge exp={exp} view={currentView} />
+            {theoremShows(exp, currentView) ? <TheoremBlock exp={exp} x={x} params={params} elements={elements} layout={plainLayout} /> : null}
+            {currentView === 'reading' && x.sol ? <Readings x={x} elements={elements} power={showsNetPower} /> : null}
+            {currentView === 'equivalent' && x.thevenin ? <EquivalentPane x={x} exp={exp} /> : null}
             {currentView === 'scope' && x.tr ? (
               <ScopeCanvas
                 tr={x.tr}
@@ -487,7 +520,15 @@ export default function App() {
             {currentView === 'acpower' && x.ac ? <AcPowerPane x={x} /> : null}
             {currentView === 'energy' && x.tr ? <EnergyCanvas energy={x.energy} tEnd={x.tEnd} cursor={x.cursor} onCursor={setCursor} /> : null}
             {currentView === 'damping' && x.damping ? <DampingCanvas exp={exp} params={params} at={x.damping.at} /> : null}
-            {currentView === 'equations' && eq ? <EquationsPane eq={eq} solved={!!x.sol} primer={PRIMER_GROUPS.includes(exp.group)} /> : null}
+            {currentView === 'equations' && eq ? (
+              <EquationsPane
+                eq={eq}
+                solved={!!x.sol}
+                primer={primerFor(exp.group)}
+                fold={FOLDED_GROUPS.includes(exp.group)}
+                contradiction={exp.theorem?.kind === 'contradiction' && !x.sol ? exp.theorem.rows : []}
+              />
+            ) : null}
             {currentView === 'power' && x.sol ? <PowerPane sol={x.sol} /> : null}
             {currentView === 'thevenin' && x.thevenin ? <TheveninPane th={x.thevenin} port={exp.port} /> : null}
             {currentView === 'superposition' && x.superposition ? <SuperpositionPane sp={x.superposition} /> : null}

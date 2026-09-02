@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic } from './experiments.js'
+import { num } from './format.js'
+import { VIEW_LEADS, bridgeText, calloutStandIn, calloutText, firstSentence, headlineValue, widestValue } from './headlines.js'
+import { equivalentOf, kvlLoop, meshRows, partsFigures, powerCycle, theoremShows } from './theorems.js'
 import { readQuantity } from './lessons.js'
-import { analyse, acTable, atDrive, dampingSweep, experimentMath, netPower, powerLedger, refusalReason, snapNoise, turned, turnedLabel } from './math.js'
+import { alternating, analyse, acTable, atDrive, dampingSweep, experimentMath, integrated, netPower, powerLedger, refusalReason, snapNoise, turned, turnedLabel } from './math.js'
 import { CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCheck.js'
 import { agrees } from '@ee-labs/explain'
 import {
-  equations, extrema, solveAC, drivingPointZ, acPower, NetworkError, complex as cx,
+  equations, extrema, normalize, solveAC, drivingPointZ, acPower, NetworkError, complex as cx,
 } from '@ee-labs/network'
 import { buildCircuitLink, fmt, parseCircuitLink, schematicGeometry } from '@ee-labs/ui'
 import { evalAtFreq } from '@ee-labs/systems'
@@ -1657,5 +1660,311 @@ describe('the knobs are named after the drawing', () => {
     expect(fin.sol.v.out).toBeCloseTo(2000 * 0.001, 9)
     // Every lesson step that asks for finite gain flips the switch.
     for (const t of e3.try) if (t.set && 'A' in t.set) expect(t.set.ideal).toBe(false)
+  })
+})
+
+// ── Phase 2: the headline, the callout, the bridge, the theorem drawings ──────
+//
+// Every experiment leads with one number. Each is restated here in closed form
+// from the knobs alone, so the headline cannot drift from the circuit; the
+// callout that carries it onto the schematic must never outgrow the stand-in
+// the layout was checked with; and each theorem drawing is measured against
+// the theorem it illustrates.
+
+const par = (...rs) => 1 / rs.reduce((a, r) => a + 1 / r, 0)
+
+/** The headline of every experiment, from the knobs — the solver never consulted. */
+const HEADLINE_CLOSED = {
+  a1: (p) => p.E / p.R1,
+  a2: (p) => p.I * p.R1,
+  a3: (p) => (p.E * p.R1) / (p.R1 + p.R2),
+  a4: (p) => (p.E1 - p.E2) ** 2 / p.R1,
+  b1: (p) => (p.E - p.E / p.R1 / (1 / p.R1 + 1 / p.R2 + 1 / p.R3)) / p.R1,
+  b2: (p) => p.E / (p.R1 + p.R2),
+  b3: (p) => -(p.E ** 2) / (p.R1 + p.R2),
+  b4: (p) => (p.E1 - p.E2) / p.R1,
+  c1: (p) => p.R1 + p.R2 + p.R3,
+  c2: (p) => par(p.R1, p.R2, p.R3),
+  c3: (p) => (p.E * par(p.R2, p.RL)) / (p.R1 + par(p.R2, p.RL)),
+  c4: (p) => (p.E * p.R4) / (p.R3 + p.R4) - (p.E * p.R2) / (p.R1 + p.R2),
+  d1: (p) => p.E / p.R1 / (1 / p.R1 + 1 / p.R2 + 1 / p.R3),
+  // Supernode {A, B} with v_B = v_A − E₂: (E₁ − v_A)/R₁ = v_A/R₂ + v_B/R₃.
+  d2: (p) => (p.E1 / p.R1 + p.E2 / p.R3) / (1 / p.R1 + 1 / p.R2 + 1 / p.R3) - p.E2,
+  // Two meshes, Cramer's rule.
+  d3: (p) => {
+    const a = p.R1 + p.R2
+    const b = -p.R2
+    const c = -p.R2
+    const d = p.R2 + p.R3
+    const det = a * d - b * c
+    return (p.E1 * d - b * -p.E2) / det
+  },
+  d4: (p) => (p.E1 / p.R1 + p.I1) / (1 / p.R1 + 1 / p.R2),
+  d5: (p) => par(p.R1, p.R2, p.R3),
+  d6: (p) => (p.E ** 2 * p.RL) / (p.Rs + p.RL) ** 2,
+  e1: (p) => p.A * p.E,
+  e2: (p) => (((p.A * p.E * p.Rin) / (p.Rs + p.Rin)) * p.RL) / (p.Rout + p.RL),
+  e3: (p) => (p.ideal ? null : p.A * p.E),
+  e4: (p) => {
+    const G = 1 + p.Rf / p.Rg
+    return (G * p.E) / (1 + G / p.A)
+  },
+  e5: (p) => (-p.Rf / p.Rg) * p.E,
+  e6: (p) => -p.Rf * (p.E1 / p.R1 + p.E2 / p.R2),
+  e7: (p) => ((p.E2 * p.R4) / (p.R3 + p.R4)) * (1 + p.R2 / p.R1) - (p.R2 / p.R1) * p.E1,
+  e8: (p) => (p.E * p.R2) / (p.R1 + p.R2),
+  f1: (p, x) => alternating((p.C1 * 4 * p.A) / p.T, p.Rs * p.C1, p.T, x.cursor),
+  f2: (p, x) => alternating((p.L1 * 4 * p.A) / p.T, p.L1 / p.Rp, p.T, x.cursor),
+  f3: (p) => p.R1 * p.C1,
+  f4: (p) => (p.R3 + par(p.R1, p.R2)) * p.C1,
+  f5: (p, x) => {
+    const vC = p.E * (1 - Math.exp(-x.cursor / (p.R1 * p.C1)))
+    return p.C1 * p.E * vC - 0.5 * p.C1 * vC ** 2
+  },
+  f6: (p) => (p.E / p.R1) * (p.ideal ? Infinity : p.Roff),
+  f7: (p, x) => integrated(p.A, p.T, p.R1 * p.C1, p.ideal ? Infinity : p.G, x.cursor),
+  g1: (p) => (p.R1 / 2) * Math.sqrt(p.C1 / p.L1),
+  g2: (p) => (p.R1 / 2) * Math.sqrt(p.C1 / p.L1),
+  g3: (p) => (p.R1 / 2) * Math.sqrt(p.C1 / p.L1),
+  g4: (p) => {
+    const d = 1 / (p.L1 * p.C1) - (p.R1 / (2 * p.L1)) ** 2
+    return d > 0 ? Math.sqrt(d) : 0 // no ringing once overdamped
+  },
+  g5: (p) => 1 / Math.sqrt(p.L1 * p.C1),
+  g6: (p) => p.v0,
+  g7: (p) => 2 * p.R1 * p.C1,
+  h1: (p) => p.R1 * p.C1,
+  h2: (p) => Math.abs(p.A) / Math.sqrt(1 + (2 * Math.PI * p.f * p.R1 * p.C1) ** 2),
+  h3: (p) => {
+    const w = 2 * Math.PI * p.f
+    return Math.sqrt(p.R1 ** 2 + (w * p.L1 - 1 / (w * p.C1)) ** 2)
+  },
+  h4: (p) => 1 / (2 * Math.PI * Math.sqrt(p.L1 * p.C1)),
+  h5: (p) => {
+    const w = 2 * Math.PI * p.f
+    return (0.5 * p.R1 * p.A ** 2) / (p.R1 ** 2 + (w * p.L1) ** 2)
+  },
+  h6: (p) => 20 * Math.log10(1 / Math.sqrt(1 + (2 * Math.PI * p.f * p.R1 * p.C1) ** 2)),
+}
+
+const closeRel = (got, want, rel, msg) => {
+  if (!Number.isFinite(want)) return expect(got, msg).toBe(want)
+  expect(Math.abs(got - want), `${msg}: got ${got}, want ${want}`).toBeLessThanOrEqual(rel * Math.max(Math.abs(want), 1e-300))
+}
+
+describe('the headline number', () => {
+  it('every experiment has one, and its closed form matches the solve at the defaults and at random settings', () => {
+    for (const exp of EXPERIMENTS) {
+      const h = exp.headline
+      expect(h, exp.id).toBeTruthy()
+      expect(h.label.length, `${exp.id} label`).toBeGreaterThan(8)
+      expect(HEADLINE_CLOSED[exp.id], `${exp.id} closed form`).toBeTypeOf('function')
+      const tol = isDynamic(exp) ? 1e-6 : 1e-9
+      const settings = [defaultsOf(exp.id), ...Array.from({ length: 25 }, (_, k) => randomParams(exp, k * 7919 + 17))]
+      for (const p of settings) {
+        const x = analyse(exp, p)
+        const want = HEADLINE_CLOSED[exp.id](p, x)
+        const got = headlineValue(h, x, p)
+        if (want === null) {
+          expect(got, `${exp.id} refuses`).toBeNull()
+          expect(h.refused, `${exp.id} explains its refusal`).toBeTypeOf('string')
+          continue
+        }
+        expect(got, `${exp.id} has a value`).not.toBeNull()
+        // Decibels are a log: a level near 0 dB carries no relative scale, so they are held to 1e-7 dB.
+        if (h.unit === 'dB') expect(Math.abs(h.value(x, p) - want), exp.id).toBeLessThanOrEqual(1e-7)
+        else closeRel(h.value(x, p), want, tol, exp.id)
+        // The printed form is the lab's own three-figure format of the same number.
+        if (h.plain) {
+          const raw = h.value(x, p)
+          if (Number.isFinite(raw)) {
+            const text = h.unit === 'dB' ? raw.toFixed(1).replace('-0.0', '0.0') : Number(raw.toPrecision(3)).toString()
+            expect(got).toBe(text.replace('-', '−') + (h.unit ? ` ${h.unit}` : ''))
+          }
+        } else expect(got).toBe(num(h.value(x, p), h.unit, 3))
+      }
+    }
+  })
+
+  it('E3 refuses at the defaults and reads A·V₁ with finite gain; F6 reads I₀·R_off', () => {
+    expect(headlineValue(byId.e3.headline, at('e3').x, at('e3').p)).toBeNull()
+    const { x, p } = at('e3', { ideal: false })
+    expect(headlineValue(byId.e3.headline, x, p)).toBe(num(p.A * p.E, 'V', 3))
+    const f6 = at('f6')
+    closeRel(f6.exp.headline.value(f6.x, f6.p), (f6.p.E / f6.p.R1) * f6.p.Roff, 1e-6, 'f6')
+    expect(headlineValue(byId.f6.headline, at('f6', { ideal: true }).x, at('f6', { ideal: true }).p)).toBeNull()
+  })
+
+  it('the callout sits on the schematic beside the element it reads, and never outgrows the stand-in the layout was checked with', () => {
+    for (const exp of EXPERIMENTS) {
+      const h = exp.headline
+      const callouts = exp.layout.items.filter((it) => it.callout)
+      if (!h.where) {
+        expect(callouts, `${exp.id} has no anchor, so no callout`).toHaveLength(0)
+        continue
+      }
+      expect(callouts, exp.id).toHaveLength(1)
+      const it = callouts[0]
+      expect(it.text).toBe(calloutStandIn(h))
+      expect(it.className).toBe('sch-callout')
+      // Inside the crop the layout was measured with.
+      const [cx0, cy0, cw, ch] = exp.layout.crop
+      expect(it.x, `${exp.id} callout x`).toBeGreaterThanOrEqual(cx0)
+      expect(it.x, `${exp.id} callout x`).toBeLessThanOrEqual(cx0 + cw)
+      expect(it.y, `${exp.id} callout y`).toBeGreaterThanOrEqual(cy0)
+      expect(it.y, `${exp.id} callout y`).toBeLessThanOrEqual(cy0 + ch)
+      const settings = [defaultsOf(exp.id), ...Array.from({ length: 25 }, (_, k) => randomParams(exp, k * 7919 + 17))]
+      for (const p of settings) {
+        const x = analyse(exp, p)
+        const live = calloutText(h, x, p)
+        if (live === null) continue
+        expect(live.startsWith(`${h.tag} = `)).toBe(true)
+        expect(live.length, `${exp.id}: "${live}" wider than "${it.text}"`).toBeLessThanOrEqual(it.text.length)
+      }
+    }
+  })
+
+  it('D3’s mesh arrows carry the live currents, in a text no wider than their stand-in', () => {
+    const d3 = byId.d3
+    const arrows = d3.layout.items.filter((it) => it.live)
+    expect(arrows.map((a) => a.live.key)).toEqual(['R1', 'R3'])
+    for (const a of arrows) expect(a.text).toBe(`${a.live.prefix}−1.23 mV`)
+    for (const p of [defaultsOf('d3'), ...Array.from({ length: 25 }, (_, k) => randomParams(d3, k * 7919 + 17))]) {
+      const x = analyse(d3, p)
+      for (const a of arrows) {
+        const text = a.live.prefix + num(x.sol[a.live.q][a.live.key], a.live.unit, 3)
+        expect(text.length, `${text} vs ${a.text}`).toBeLessThanOrEqual(a.text.length)
+      }
+    }
+  })
+
+  it('the stand-in is the widest value each unit can print', () => {
+    for (const exp of EXPERIMENTS) {
+      const h = exp.headline
+      const w = widestValue(h)
+      if (h.plain) expect(w).toBe(h.unit === 'dB' ? '−123.4 dB' : '−0.00123')
+      else {
+        expect(w).toBe(`−1.23 m${h.unit}`)
+        // Three significant figures with a prefix is never wider than the stand-in.
+        for (const v of [-1.23e-3, 9.99e-3, -123e3, 1e-12, 999e9]) expect(num(v, h.unit, 3).length).toBeLessThanOrEqual(w.length)
+      }
+    }
+  })
+})
+
+describe('the bridge and the default view', () => {
+  it('every experiment×view has a bridge: the view’s lead, then the first sentence of the lesson', () => {
+    for (const exp of EXPERIMENTS) {
+      const first = firstSentence(exp.see)
+      expect(first.length, `${exp.id} first sentence`).toBeGreaterThan(20)
+      expect(exp.see.startsWith(first)).toBe(true)
+      for (const view of exp.views) {
+        const b = bridgeText(exp, view)
+        expect(b.startsWith(VIEW_LEADS[view]), `${exp.id}/${view}`).toBe(true)
+        expect(b.endsWith(first), `${exp.id}/${view}`).toBe(true)
+      }
+    }
+    expect(firstSentence('Two states now — v_C = 1.5 V. Then more.')).toBe('Two states now — v_C = 1.5 V.')
+    expect(() => bridgeText(byId.a1, 'nonesuch')).toThrow(/no bridge lead/)
+  })
+
+  it('no experiment before Group G opens on the equations; D5 opens on the equivalent, G1 on the scope', () => {
+    for (const exp of EXPERIMENTS) {
+      expect(exp.views.includes(exp.view), exp.id).toBe(true)
+      if (GROUPS.indexOf(exp.group) < 6) expect(exp.view, exp.id).not.toBe('equations')
+    }
+    expect(byId.d5.view).toBe('equivalent')
+    expect(byId.g1.view).toBe('scope')
+    // Groups A–E all carry the reading view, first.
+    for (const exp of EXPERIMENTS) if (GROUPS.indexOf(exp.group) < 5) expect(exp.views[0], exp.id).toBe('reading')
+  })
+})
+
+describe('the theorem drawings', () => {
+  it('B2: the KVL loop’s terms sum to zero, source rise against two drops', () => {
+    for (const p of [defaultsOf('b2'), ...Array.from({ length: 25 }, (_, k) => randomParams(byId.b2, k * 7919 + 17))]) {
+      const x = analyse(byId.b2, p)
+      const loop = kvlLoop(byId.b2.theorem, x.sol)
+      expect(loop.terms.map((t) => t.id)).toEqual(['V1', 'R1', 'R2'])
+      expect(loop.terms[0].value).toBeCloseTo(p.E, 9)
+      expect(Math.abs(loop.sum)).toBeLessThan(1e-9 * Math.abs(p.E))
+    }
+    expect(theoremShows(byId.b2, 'reading')).toBe(true)
+    expect(theoremShows(byId.b2, 'power')).toBe(false)
+    expect(theoremShows(byId.a1, 'reading')).toBe(false)
+  })
+
+  it('D3: both mesh rows balance with the solved currents, and i₁ is the headline', () => {
+    for (const p of [defaultsOf('d3'), ...Array.from({ length: 25 }, (_, k) => randomParams(byId.d3, k * 7919 + 17))]) {
+      const x = analyse(byId.d3, p)
+      const m = meshRows(p, x.sol)
+      expect(m.rows).toHaveLength(2)
+      for (const r of m.rows) closeRel(r.lhs, r.rhs, 1e-9, r.latex)
+      expect(m.i1).toBe(x.sol.i.R1)
+      closeRel(m.i1, HEADLINE_CLOSED.d3(p), 1e-9, 'i1')
+      // The middle branch carries the difference.
+      closeRel(x.sol.i.R2, m.i1 - m.i2, 1e-9, 'i_R2 = i1 − i2')
+    }
+  })
+
+  it('D4: one figure per source with the other drawn dead, and the parts add to the full solve at every node', () => {
+    for (const p of [defaultsOf('d4'), ...Array.from({ length: 25 }, (_, k) => randomParams(byId.d4, k * 7919 + 17))]) {
+      const x = analyse(byId.d4, p)
+      const elements = drawables(x.net)
+      const figs = partsFigures(byId.d4, x, elements)
+      expect(figs.map((f) => f.caption)).toEqual(['V1 alone', 'I1 alone', 'both together'])
+      const dead = (fig, id) => fig.elements.find((e) => e.id === id)
+      expect(dead(figs[0], 'I1')).toMatchObject({ type: 'SW', closed: false, label: 'I1 → 0 A' })
+      expect(dead(figs[0], 'V1').type).toBe('V')
+      expect(dead(figs[1], 'V1')).toMatchObject({ type: 'SW', closed: true, label: 'V1 → 0 V' })
+      expect(dead(figs[1], 'I1').type).toBe('I')
+      for (const node of Object.keys(x.sol.v)) closeRel(figs[0].meters.v[node] + figs[1].meters.v[node], figs[2].meters.v[node], 1e-9, node)
+      closeRel(figs[2].meters.v.A, x.sol.v.A, 1e-12, 'full')
+    }
+  })
+
+  it('D5: the equivalent reads V_oc at its open port, and its load line passes through every measured point', () => {
+    for (const p of [defaultsOf('d5'), ...Array.from({ length: 25 }, (_, k) => randomParams(byId.d5, k * 7919 + 17))]) {
+      const x = analyse(byId.d5, p)
+      const eq = equivalentOf(x, ['A', 'gnd'])
+      expect(eq.elements.map((e) => e.id)).toEqual(['Vth', 'Rth'])
+      closeRel(eq.elements[0].value, (p.E * par(p.R2, p.R3)) / (p.R1 + par(p.R2, p.R3)), 1e-9, 'Vth')
+      closeRel(eq.elements[1].value, par(p.R1, p.R2, p.R3), 1e-9, 'Rth')
+      expect(eq.meters.v.A).toBe(eq.elements[0].value)
+      expect(eq.meters.volt.Vth).toBe(eq.elements[0].value)
+      expect(eq.meters.i.Rth).toBe(0)
+      expect(eq.line).not.toBeNull()
+      closeRel(eq.line.isc, eq.line.voc / eq.line.rth, 1e-9, 'isc = voc/rth')
+      expect(eq.line.points.length).toBeGreaterThanOrEqual(3)
+      for (const pt of eq.line.points) closeRel(pt.v, eq.line.voc - eq.line.rth * pt.i, 1e-9, `load ${pt.R}`)
+      expect(layoutProblems(eq.layout, eq.elements, eq.meters, 'v')).toEqual([])
+    }
+  })
+
+  it('E3: the contradiction names the two rows that fix the same node, and only while the op-amp is ideal', () => {
+    expect(byId.e3.theorem).toMatchObject({ kind: 'contradiction', rows: ['V1', 'U1'] })
+    const ideal = at('e3').x
+    expect(ideal.sol).toBeNull()
+    const eq = equations(normalize(ideal.net))
+    for (const id of byId.e3.theorem.rows) expect(eq.rows.some((r) => r.id === id), id).toBe(true)
+    expect(at('e3', { ideal: false }).x.sol).not.toBeNull()
+  })
+
+  it('H5: the triangle’s sides are P and Q, and the mean of p(t) over a cycle is P', () => {
+    for (const p of [defaultsOf('h5'), ...Array.from({ length: 25 }, (_, k) => randomParams(byId.h5, k * 7919 + 17))]) {
+      const x = analyse(byId.h5, p)
+      const c = powerCycle(x)
+      const w = 2 * Math.PI * p.f
+      const P = (0.5 * p.R1 * p.A ** 2) / (p.R1 ** 2 + (w * p.L1) ** 2)
+      const Q = (0.5 * w * p.L1 * p.A ** 2) / (p.R1 ** 2 + (w * p.L1) ** 2)
+      closeRel(c.P, P, 1e-9, 'P')
+      closeRel(c.Q, Q, 1e-9, 'Q')
+      closeRel(c.S, Math.hypot(P, Q), 1e-9, 'S')
+      closeRel(c.pf, P / Math.hypot(P, Q), 1e-9, 'pf')
+      closeRel(c.mean, P, 1e-6, 'mean p(t)')
+      closeRel(c.T, 1 / p.f, 1e-12, 'T')
+      expect(c.samples).toHaveLength(200)
+      expect(c.peak).toBeGreaterThanOrEqual(c.mean)
+    }
   })
 })

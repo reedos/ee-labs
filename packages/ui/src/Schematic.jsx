@@ -66,7 +66,7 @@ export default function Schematic({ elements, layout, meters = null, show = 'i',
           )
         if (it.text)
           return (
-            <text key={k} className="sch-note" x={it.x} y={it.y} textAnchor={it.anchor || 'middle'}>
+            <text key={k} className={it.className ? `sch-note ${it.className}` : 'sch-note'} x={it.x} y={it.y} textAnchor={it.anchor || 'middle'}>
               {it.text}
             </text>
           )

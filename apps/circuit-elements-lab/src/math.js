@@ -53,7 +53,7 @@ const square = (A, T, t) => (t - T * Math.floor(t / T) < T / 2 ? A : -A)
  * sign flipping at each corner of the triangle (T/4, 3T/4, 5T/4, …), from
  * y(0) = 0. On every piece y = target + (y_start − target)·e^(−Δt/τ).
  */
-function alternating(F, tau, T, t) {
+export function alternating(F, tau, T, t) {
   let y = 0
   let tk = 0
   let sign = +1
@@ -73,7 +73,7 @@ function alternating(F, tau, T, t) {
  * lags it by s·τ, and the rest decays. (Writing y = drive − τ·(the alternating
  * current) instead cancels catastrophically when τ ≫ T.)
  */
-function tracked(A, T, tau, t) {
+export function tracked(A, T, tau, t) {
   const s = (4 * A) / T
   let y = 0
   let tk = 0
@@ -104,7 +104,7 @@ function tracked(A, T, tau, t) {
  * Ideal: a straight ramp of slope −v_in/RC on each half. Finite gain G: on
  * each half the output heads for −G·v_in with τ = RC(G + 1) — an ordinary RC.
  */
-function integrated(A, T, RC, G, t) {
+export function integrated(A, T, RC, G, t) {
   let y = 0
   let tk = 0
   let vin = A

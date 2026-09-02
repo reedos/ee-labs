@@ -563,3 +563,125 @@ a.handover-copy {
   padding: 5px 8px;
 }
 a.handover-copy:hover { filter: brightness(1.1); }
+
+/* The headline: the one number the experiment is about, first and large at
+   the top of Analysis in every view. The label says what it is in the
+   lesson's words; the value is a measurement of the circuit (headlines.js),
+   so it moves with the knobs. A refused circuit says "no value" and why. */
+.headline {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+}
+.headline-label { font-size: 11.5px; color: var(--dim); line-height: 1.4; }
+.headline-value { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.headline-tag { font-family: KaTeX_Math, 'Times New Roman', serif; font-style: italic; font-weight: 500; font-size: 20px; color: var(--text); }
+.headline-eq { color: var(--dim); font-size: 18px; }
+.headline-value strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 24px; font-weight: 600; color: var(--accent); letter-spacing: -0.01em; }
+.headline.is-refused .headline-value strong { color: var(--amber); font-size: 18px; }
+.headline-why { font-size: 11.5px; color: var(--amber); line-height: 1.4; }
+/* The bridge: one sentence from the lesson, so the pane never opens cold. */
+.bridge { margin: 0 8px 8px; font-size: 12.5px; line-height: 1.5; color: var(--dim); max-width: 760px; }
+@media (min-width: 1100px) {
+  .headline { padding: 8px 12px 10px; }
+  .headline-label { font-size: 13.5px; }
+  .headline-tag { font-size: 26px; }
+  .headline-eq { font-size: 22px; }
+  .headline-value strong { font-size: 32px; }
+  .headline.is-refused .headline-value strong { font-size: 22px; }
+  .headline-why { font-size: 13.5px; }
+  .bridge { font-size: 14.5px; margin: 0 12px 10px; }
+}
+
+/* The callout on the schematic: the headline's number beside the part it
+   belongs to — accent, upright, the note size. */
+.sch-callout { fill: var(--accent); font-style: normal; font-weight: 600; }
+
+/* Every meter at once (the Reading view). */
+.readings { display: grid; gap: 8px; padding: 0 8px; }
+.readings .table td.num { white-space: nowrap; }
+.readings .hint { margin: 0; }
+.readings .hint b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* Groups A–E fold the solver's working: the summary is the first line the
+   reader sees; the rows and matrix open on demand. */
+.eq-fold > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 8px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  color: var(--dim);
+  font-size: 12px;
+}
+.eq-fold > summary::-webkit-details-marker { display: none; }
+.eq-fold > summary::before { content: '\25B8  '; font-size: 9px; color: var(--accent); }
+.eq-fold[open] > summary::before { content: '\25BE  '; }
+.eq-fold > summary:hover { border-color: var(--accent); color: var(--text); }
+.eq-fold[open] > summary { margin-bottom: 10px; }
+.eq-fold > .eq-step, .eq-fold > .eq-row, .eq-fold > .eq-matrix, .eq-fold > .eq-legend { margin-top: 10px; }
+.eq-fold > .eq-step:first-of-type { margin-top: 0; }
+.eq-open { display: contents; }
+.eq-primer-line { display: block; }
+/* E3: the two rows that fix one node to two values. */
+.eq-row.is-contradiction { border-color: var(--amber); box-shadow: inset 3px 0 0 var(--amber); }
+
+/* The theorem drawings. */
+.theorem { margin: 0 8px 10px; }
+.theorem.kvl {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 6px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.theorem.kvl .eq-at { color: var(--dim); font-size: 11.5px; padding-top: 4px; }
+.theorem.kvl .eq-at b { color: var(--text); display: block; font-size: 12.5px; }
+.theorem.kvl .eq-at small { display: block; font-size: 10.5px; line-height: 1.35; margin-top: 2px; max-width: 150px; }
+.theorem.mesh { display: grid; gap: 8px; }
+.theorem.mesh .eq-step { padding: 0; }
+.theorem.contradiction {
+  margin: 0 8px 10px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--amber);
+  background: var(--panel-2);
+  border-radius: 4px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.theorem.contradiction b { color: var(--text); }
+.theorem.parts { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.theorem figure, .equivalent figure { margin: 0; display: grid; gap: 4px; }
+.theorem figcaption, .equivalent figcaption { font-size: 11.5px; color: var(--dim); line-height: 1.4; text-align: center; }
+.theorem figcaption b, .equivalent figcaption b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.theorem.parts .schematic { width: 100%; padding: 6px; }
+.theorem.parts .schematic .sch-meter { font-size: 10px; }
+.theorem.triangle { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.theorem.triangle svg, .equivalent svg:not(.schematic) { display: block; width: 100%; max-width: 340px; height: auto; margin: 0 auto; overflow: visible; }
+.tri-mean-label { fill: var(--accent); }
+.theorem.triangle .sch-note, .equivalent .sch-note { font-style: normal; fill: var(--text); }
+.tri-fill { fill: var(--accent); opacity: 0.12; }
+.tri-p { stroke: var(--accent); stroke-width: 2.5; }
+.tri-q { stroke: var(--amber); stroke-width: 2.5; }
+.tri-s { stroke: var(--text); stroke-width: 1.5; }
+.tri-axis { stroke: var(--line); stroke-width: 1; }
+.tri-mean { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.tri-trace { fill: none; stroke: var(--amber); stroke-width: 1.5; }
+.tri-dot { fill: var(--amber); stroke: none; }
+.equivalent { padding: 0 8px; }
+.equivalent .schematic.big { max-width: 360px; }
+@media (min-width: 1100px) {
+  .theorem.kvl { padding: 9px 12px; gap: 16px; }
+  .theorem.kvl .eq-at { font-size: 14px; padding-top: 6px; }
+  .theorem.kvl .eq-at b { font-size: 16px; }
+  .theorem.kvl .eq-at small { font-size: 12px; max-width: 200px; }
+  .theorem.contradiction { font-size: 14.5px; max-width: 760px; }
+  .theorem figcaption, .equivalent figcaption { font-size: 13.5px; }
+  .readings .hint { font-size: 14px; }
+}

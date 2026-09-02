@@ -18,13 +18,16 @@
 // draws on which axis. Everything else is as for the resistive groups.
 
 import { fmt } from '@ee-labs/ui'
-import { layoutExtent } from './layoutCheck.js'
+import { layoutExtent, placeCallout } from './layoutCheck.js'
 import { LESSONS } from './lessons.js'
+import { HEADLINES, calloutStandIn } from './headlines.js'
+import { THEOREMS } from './theorems.js'
 
 // Every view a lower pane can show, in the order the view switch lists them —
 // the same order in every experiment, so a tab sits in the same place from one
-// to the next. The two universal views lead; the rest follow the curriculum.
-export const VIEW_ORDER = ['equations', 'power', 'thevenin', 'superposition', 'sweep', 'scope', 'state', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
+// to the next. The reading (every meter at once, the DC groups' opening view)
+// and the two universal views lead; the rest follow the curriculum.
+export const VIEW_ORDER = ['reading', 'equations', 'power', 'thevenin', 'equivalent', 'superposition', 'sweep', 'scope', 'state', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
 
 export const GROUPS = [
   'A · Elements and signs',
@@ -153,8 +156,8 @@ export const EXPERIMENTS = [
       items: [...src('V1'), rail(50, LEGS[0], TOP), ...leg('R1', LEGS[0]), rail(50, LEGS[0], BOT), gnd(115), node('in', 50, TOP, 't')],
     },
     show: 'i',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { ohm: true },
   },
   {
@@ -193,8 +196,8 @@ export const EXPERIMENTS = [
       ],
     },
     show: 'v',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { ohmOtherWay: true },
   },
   {
@@ -231,8 +234,8 @@ export const EXPERIMENTS = [
       ],
     },
     show: 'v',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { reference: true },
   },
   {
@@ -251,7 +254,7 @@ export const EXPERIMENTS = [
     layout: loop(['R1', 'V2']),
     show: 'v',
     view: 'power',
-    views: ['equations', 'power'],
+    views: ['reading', 'equations', 'power'],
     claim: { signs: true },
   },
 
@@ -272,8 +275,8 @@ export const EXPERIMENTS = [
     }),
     layout: ladder(['R2', 'R3']),
     show: 'i',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { kclAt: 'A' },
   },
   {
@@ -291,8 +294,8 @@ export const EXPERIMENTS = [
     }),
     layout: loop(['R1', 'R2']),
     show: 'v',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { kvl: ['V1', 'R1', 'R2'] },
   },
   {
@@ -311,7 +314,7 @@ export const EXPERIMENTS = [
     layout: loop(['R1', 'R2']),
     show: 'p',
     view: 'power',
-    views: ['equations', 'power'],
+    views: ['reading', 'equations', 'power'],
     claim: { tellegen: true, sourceNegative: 'V1' },
   },
   {
@@ -330,7 +333,7 @@ export const EXPERIMENTS = [
     layout: loop(['R1', 'V2']),
     show: 'p',
     view: 'power',
-    views: ['equations', 'power'],
+    views: ['reading', 'equations', 'power'],
     claim: { twoSources: true },
   },
 
@@ -351,8 +354,8 @@ export const EXPERIMENTS = [
     }),
     layout: loop(['R1', 'R2', 'R3']),
     show: 'v',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { series: true },
   },
   {
@@ -386,8 +389,8 @@ export const EXPERIMENTS = [
       ],
     },
     show: 'i',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { parallel: true },
   },
   {
@@ -407,7 +410,7 @@ export const EXPERIMENTS = [
     layout: ladder(['R2', 'RL']),
     show: 'v',
     view: 'sweep',
-    views: ['equations', 'thevenin', 'sweep'],
+    views: ['reading', 'equations', 'thevenin', 'sweep'],
     port: ['A', 'gnd'],
     sweepId: 'RL',
     sweepY: 'v',
@@ -451,8 +454,8 @@ export const EXPERIMENTS = [
       ],
     },
     show: 'v',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { bridge: true },
   },
 
@@ -473,8 +476,8 @@ export const EXPERIMENTS = [
     }),
     layout: ladder(['R2', 'R3']),
     show: 'i',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { nodalClosedForm: true },
   },
   {
@@ -512,8 +515,8 @@ export const EXPERIMENTS = [
       ],
     },
     show: 'i',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { supernode: true },
   },
   {
@@ -548,13 +551,14 @@ export const EXPERIMENTS = [
         node('in', 50, TOP, 't'),
         node('A', 180, TOP, 't'),
         node('n2', 300, TOP, 't'),
-        { text: 'i₁ ↻', x: 125, y: 112 },
-        { text: 'i₂ ↻', x: 260, y: 112 },
+        // The mesh currents, read live off R₁ and R₃ (the stand-in text sizes the frame).
+        { text: 'i₁ ↻ −1.23 mV', x: 125, y: 112, live: { prefix: 'i₁ ↻ ', q: 'i', key: 'R1', unit: 'A' } },
+        { text: 'i₂ ↻ −1.23 mV', x: 260, y: 112, live: { prefix: 'i₂ ↻ ', q: 'i', key: 'R3', unit: 'A' } },
       ],
     },
     show: 'i',
-    view: 'equations',
-    views: ['equations', 'power', 'superposition'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power', 'superposition'],
     claim: { mesh: true },
   },
   {
@@ -592,7 +596,7 @@ export const EXPERIMENTS = [
     },
     show: 'i',
     view: 'superposition',
-    views: ['equations', 'power', 'superposition'],
+    views: ['reading', 'equations', 'power', 'superposition'],
     claim: { superposition: true },
   },
   {
@@ -611,8 +615,8 @@ export const EXPERIMENTS = [
     }),
     layout: ladder(['R2', 'R3']),
     show: 'v',
-    view: 'thevenin',
-    views: ['equations', 'thevenin'],
+    view: 'equivalent',
+    views: ['reading', 'equations', 'thevenin', 'equivalent'],
     port: ['A', 'gnd'],
     claim: { theveninAgree: true },
   },
@@ -634,7 +638,7 @@ export const EXPERIMENTS = [
     },
     show: 'p',
     view: 'sweep',
-    views: ['power', 'thevenin', 'sweep'],
+    views: ['reading', 'power', 'thevenin', 'sweep'],
     port: ['A', 'gnd'],
     sweepId: 'RL',
     sweepY: 'p',
@@ -678,7 +682,7 @@ export const EXPERIMENTS = [
     },
     show: 'p',
     view: 'power',
-    views: ['equations', 'power'],
+    views: ['reading', 'equations', 'power'],
     claim: { dependent: true },
   },
   {
@@ -734,7 +738,7 @@ export const EXPERIMENTS = [
     },
     show: 'v',
     view: 'power',
-    views: ['equations', 'power'],
+    views: ['reading', 'equations', 'power'],
     claim: { blackBox: true },
   },
   {
@@ -774,8 +778,8 @@ export const EXPERIMENTS = [
       ],
     },
     show: 'v',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { comparator: true },
   },
   {
@@ -794,8 +798,8 @@ export const EXPERIMENTS = [
     }),
     layout: nonInvertingLayout(),
     show: 'v',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { goldenRules: true },
   },
   {
@@ -815,8 +819,8 @@ export const EXPERIMENTS = [
     }),
     layout: invertingLayout(),
     show: 'i',
-    view: 'equations',
-    views: ['equations', 'power'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power'],
     claim: { inverting: true },
   },
   {
@@ -837,8 +841,8 @@ export const EXPERIMENTS = [
     }),
     layout: summerLayout(),
     show: 'i',
-    view: 'equations',
-    views: ['equations', 'power', 'superposition'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power', 'superposition'],
     claim: { summer: true },
   },
   {
@@ -867,8 +871,8 @@ export const EXPERIMENTS = [
     }),
     layout: differenceLayout(),
     show: 'v',
-    view: 'equations',
-    views: ['equations', 'power', 'superposition'],
+    view: 'reading',
+    views: ['reading', 'equations', 'power', 'superposition'],
     claim: { difference: true },
   },
   {
@@ -889,7 +893,7 @@ export const EXPERIMENTS = [
     layout: bufferLayout(),
     show: 'i',
     view: 'sweep',
-    views: ['equations', 'power', 'sweep'],
+    views: ['reading', 'equations', 'power', 'sweep'],
     port: ['out', 'gnd'],
     sweepId: 'RL',
     sweepY: 'v',
@@ -1116,7 +1120,7 @@ export const EXPERIMENTS = [
       id: 'g1',
       name: 'Series RLC: the differential equation',
       R: 800,
-      view: 'state',
+      view: 'scope',
       terms: ['state', 'characteristic', 'damping', 'natural'],
       claim: { overdamped: true },
     },
@@ -1775,8 +1779,27 @@ export function defaultsOf(id) {
 // and the layout test checks at random settings that nothing leaves it. Layouts
 // are copied here because two experiments may share one drawing with
 // different parts in it.
+//
+// The headline (headlines.js) joins the drawing first: where it names an
+// element or node, a callout with the number is placed beside it, at its
+// widest text so the frame does not move when the number does, and the
+// frame is taken around the drawing with the callout in it. App.jsx swaps
+// the live number in. An experiment whose callout has no room fails here,
+// at load, not in a screenshot. The experiments that are about a theorem
+// carry its drawing instructions (theorems.js) as `theorem`.
 for (const e of EXPERIMENTS) {
-  e.layout = { ...e.layout, crop: layoutExtent(e.layout, drawables(e.net(defaultsOf(e.id)))) }
+  const headline = HEADLINES[e.id]
+  if (!headline) throw new Error(`no headline for ${e.id}`)
+  e.headline = headline
+  if (THEOREMS[e.id]) e.theorem = THEOREMS[e.id]
+  const elements = drawables(e.net(defaultsOf(e.id)))
+  if (headline.where) {
+    const text = calloutStandIn(headline)
+    const at = placeCallout(e.layout, elements, headline.where, text)
+    if (!at) throw new Error(`${e.id}: no room for the callout beside ${headline.where}`)
+    e.layout = { ...e.layout, items: [...e.layout.items, { callout: true, text, ...at, className: 'sch-callout' }] }
+  }
+  e.layout = { ...e.layout, crop: layoutExtent(e.layout, elements) }
 }
 
 /** The netlist for an experiment at these settings. */

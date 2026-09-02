@@ -138,19 +138,45 @@ for (const name of names) {
   if (!refused && m.length === 0) fail(`${name}: solved but no meters on the schematic`)
   if (refused && (await page.locator('[data-role=refusal]').count()) === 0) fail(`${name}: refused without showing why`)
 
-  // Every lower view the experiment offers renders something.
+  // The headline leads the Analysis pane in every view, the bridge follows it,
+  // and the schematic's callout reads the same number.
   const views = await viewButtons()
   let rendered = 0
   for (const v of views) {
     // Exact name: a substring match on "Power" would also pick up "AC power".
     await page.locator('.view-switch').getByRole('button', { name: v, exact: true }).click()
     await page.waitForTimeout(120)
-    const has = await page.evaluate(() => {
+    const seen = await page.evaluate(() => {
       const body = document.querySelectorAll('.view .view-body')[1]
-      return !!body && (body.querySelector('[data-role], canvas') !== null || /Nothing to show/.test(body.textContent))
+      if (!body) return null
+      const kids = [...body.children]
+      const own = body.querySelector('[data-role]:not([data-role=headline]):not([data-role=bridge]), canvas')
+      return {
+        has: own !== null || /Nothing to show/.test(body.textContent),
+        headlineFirst: kids[0]?.getAttribute('data-role') === 'headline',
+        bridgeSecond: kids[1]?.getAttribute('data-role') === 'bridge',
+        headline: [body.querySelector('.headline-tag')?.textContent, body.querySelector('.headline-value strong')?.textContent].join(' = '),
+        refused: body.querySelector('.headline.is-refused') !== null,
+        callout: document.querySelector('.schematic .sch-callout')?.textContent.trim() ?? null,
+      }
     })
-    if (!has) fail(`${name}: view "${v}" rendered nothing`)
+    if (!seen || !seen.has) fail(`${name}: view "${v}" rendered nothing`)
     else rendered++
+    if (!seen?.headlineFirst) fail(`${name} / ${v}: the headline is not the first thing in the Analysis pane`)
+    if (!seen?.bridgeSecond) fail(`${name} / ${v}: no bridge sentence under the headline`)
+    // The headline's tag is typeset (v_out reads as v with a real subscript); the
+    // callout's is plain text. Compare them letter for letter with the typesetting
+    // undone: KaTeX's zero-width joiners, its ∣ for |, subscript digits and marks.
+    const plain = (s) =>
+      (s || '')
+        .replace(/[\u200b_]/g, '')
+        .replace(/∣/g, '|')
+        .replace(/[₀₁₂₃]/g, (c) => '₀₁₂₃'.indexOf(c))
+        .replace(/⁺/g, '+')
+    if (seen && !seen.refused && seen.callout !== null && plain(seen.callout) !== plain(seen.headline)) {
+      fail(`${name} / ${v}: callout “${seen.callout}” ≠ headline “${seen.headline}”`)
+    }
+    if (seen?.refused && seen.callout !== null) fail(`${name} / ${v}: refused, yet a callout is drawn: “${seen.callout}”`)
     for (const t of await noiseOnPage()) fail(`${name} / ${v}: arithmetic noise on screen: “${t}”`)
   }
   console.log(

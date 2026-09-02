@@ -87,11 +87,23 @@ const unknownLatex = (u) => (u.kind === 'v' ? `v_{${u.node}}` : `i_{${u.id}}`)
  * cell in letters and in numbers so it is plain where each entry came from;
  * and a legend tying each letter to a part on the schematic.
  */
-export function EquationsPane({ eq, solved, primer = false }) {
+export function EquationsPane({ eq, solved, primer = false, fold = false, contradiction = [] }) {
   const { symbolic } = eq
+  // Under a fold the three steps open on demand; the fold's summary is what the
+  // reader sees first — unless rows are marked as contradicting, which is the
+  // one time the working is the point.
+  const Wrap = fold ? 'details' : 'div'
+  const open = fold && contradiction.length > 0 ? true : undefined
   return (
     <div className="equations" data-role="equations">
-      {primer ? <LawsPrimer /> : null}
+      {primer === 'brief' ? <PrimerLine /> : primer ? <LawsPrimer /> : null}
+      <Wrap className={fold ? 'eq-fold' : 'eq-open'} data-role={fold ? 'eq-fold' : undefined} open={open}>
+      {fold ? (
+        <summary>
+          The solver’s own working — {eq.rows.length} equation{eq.rows.length === 1 ? '' : 's'} in {eq.unknowns.length} unknown
+          {eq.unknowns.length === 1 ? '' : 's'}, and the matrix they make
+        </summary>
+      ) : null}
       <p className="eq-step">
         <b>1 · The equations.</b> One KCL row per node; then one row for each element that fixes a voltage. The
         amber numbers are the live values.
@@ -119,7 +131,7 @@ export function EquationsPane({ eq, solved, primer = false }) {
             </div>
           </div>
         ) : (
-          <div className="eq-row" key={k}>
+          <div className={contradiction.includes(r.id) ? 'eq-row is-contradiction' : 'eq-row'} key={k}>
             <ConstraintLabel row={symbolic.rows.find((s) => s.kind === 'constraint' && s.id === r.id) || { id: r.id, from: 'V' }} />
             <div className="eq-terms">
               <span className="eq-term">
@@ -226,7 +238,19 @@ export function EquationsPane({ eq, solved, primer = false }) {
           </ul>
         </>
       ) : null}
+      </Wrap>
     </div>
+  )
+}
+
+/** Group A's primer: the two laws in one line each, before Group B takes them apart. */
+export function PrimerLine() {
+  return (
+    <p className="eq-primer eq-primer-line" data-role="primer">
+      <b>Two laws build every row.</b> <b>KCL</b>: at every junction, what flows in flows out — one row per node.{' '}
+      <b>KVL</b>: around any loop the rises and drops add to zero — built in by writing each voltage as a difference of
+      two node voltages. Group B takes each apart.
+    </p>
   )
 }
 

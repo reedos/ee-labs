@@ -132,6 +132,69 @@ export function layoutExtent(layout, elements) {
 }
 
 /**
+ * Where a headline's callout ("R_eq = 6.00 kΩ") can sit beside the element or
+ * node `where` without touching anything the layout draws in any meter view.
+ *
+ * Candidates ring the thing the number belongs to, nearest first — under a
+ * horizontal element's label, beside a vertical one's, the side of a node its
+ * name is not on — and each is tried as a caption of `text` against every
+ * box the Schematic would draw with readings at their widest. Of the clean
+ * ones, the first that stays inside the frame the drawing already needs wins;
+ * failing that, the one that grows the frame least. Null when nothing fits.
+ */
+export function placeCallout(layout, elements, where, text) {
+  const { w = 320, h = 160, items = [] } = layout
+  const it = items.find((i) => i.el === where || i.node === where)
+  if (!it) return null
+  const widest = '−1.23 mV'
+  const stand = { reading: () => widest, nodeMeter: () => widest, label: standInLabel }
+  const taken = []
+  let extent = null
+  const grow = (b) => {
+    extent = extent ? { x0: Math.min(extent.x0, b.x0), y0: Math.min(extent.y0, b.y0), x1: Math.max(extent.x1, b.x1), y1: Math.max(extent.y1, b.y1) } : { ...b }
+  }
+  for (const show of ['i', 'v', 'p']) {
+    const { texts, bodies, wires, edges } = collect(layout, elements, {}, show, stand)
+    for (const t of texts) taken.push(t.box)
+    for (const b of bodies) taken.push(b.box)
+    for (const e of edges) taken.push(e.box)
+    for (const s of wires) taken.push({ x0: Math.min(s.x1, s.x2) - 0.75, x1: Math.max(s.x1, s.x2) + 0.75, y0: Math.min(s.y1, s.y2) - 0.75, y1: Math.max(s.y1, s.y2) + 0.75 })
+  }
+  for (const b of taken) grow(b)
+
+  // The anchor point is the element's centre or the node's dot; for an
+  // op-amp, the middle of the triangle. Candidates are a grid of baselines
+  // around it, every 8 px across and 4 px down, with the text hung from its
+  // start, middle or end, ranked by distance from the anchor.
+  const isOpamp = it.el && elements.find((e) => e.id === it.el)?.type === 'OPAMP'
+  const ax = isOpamp ? it.x + 19 : it.x
+  const ay = it.y
+  const candidates = []
+  for (let dx = -48; dx <= 48; dx += 8) {
+    for (let dy = -56; dy <= 120; dy += 4) {
+      for (const anchor of ['middle', 'start', 'end']) candidates.push({ x: ax + dx, y: ay + dy, anchor, d: Math.hypot(dx, dy) })
+    }
+  }
+  candidates.sort((a, b) => a.d - b.d)
+
+  const margin = 1
+  const overlaps = (a, b) => a.x0 < b.x1 - margin && b.x0 < a.x1 - margin && a.y0 < b.y1 - margin && b.y0 < a.y1 - margin
+  let best = null
+  for (const at of candidates) {
+    const box = G.textBox(at, text.length * G.FONT.note.cw, G.FONT.note.size)
+    if (box.x0 < CROP_PAD || box.y0 < CROP_PAD || box.x1 > w - CROP_PAD || box.y1 > h - CROP_PAD) continue
+    if (taken.some((b) => overlaps(box, b))) continue
+    const union = {
+      x0: Math.min(extent.x0, box.x0), y0: Math.min(extent.y0, box.y0), x1: Math.max(extent.x1, box.x1), y1: Math.max(extent.y1, box.y1),
+    }
+    const growth = (union.x1 - union.x0) * (union.y1 - union.y0) - (extent.x1 - extent.x0) * (extent.y1 - extent.y0)
+    if (growth === 0) return { x: at.x, y: at.y, anchor: at.anchor }
+    if (!best || growth < best.growth) best = { x: at.x, y: at.y, anchor: at.anchor, growth }
+  }
+  return best ? { x: best.x, y: best.y, anchor: best.anchor } : null
+}
+
+/**
  * An element's label with every value in it at its widest — "R1 1 kΩ" becomes
  * "R1 −1.23 mV", "V1 1 V sine · 1 kHz" becomes "V1 −1.23 mV sine · −1.23 mV",
  * a switch always reads "closed" — so the label's width does not depend on the

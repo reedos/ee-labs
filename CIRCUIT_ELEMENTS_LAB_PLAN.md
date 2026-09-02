@@ -754,11 +754,12 @@ state, and averaging.
    opinion from Grok checked claim by claim against the source) set a 9.5/10 bar
    and a remediation plan in nine steps, each its own commit, the lab staying
    dark throughout and Group I waiting until the first three have landed:
-   0 claim bugs · 1 opening experience (knobs above the note, A1 without the
-   matrix) · 2 notes that pose a question · 3 sidebar and pane sizing · 4 copy
-   and package description · 5 plots (cursor defaults, legends, axis labels) ·
-   6 hover-lights-node and click-to-throw on the schematic · 7 per-group
-   checkpoints · 8 deep links (the parallel session's territory) · 9 final audit.
+   0 claim bugs · 1 the lesson under the student's eyes (knobs above the note,
+   notes that pose a question, A1 without the matrix) · 2 the Analysis pane
+   shows the lesson's own quantity (headline, bridge, theorem drawings) · 3
+   finish the plots · 4 numbers and names · 5 content order and circuits · 6
+   notes that are alive · 7 one plot language · 8 the screen as one composition
+   (deep links are the parallel session's territory) · 9 students score it.
    **Step 0 — claim bugs — shipped 2026-09-02:** A2's refusal is now reachable
    from a switch knob on screen, not only from a test's private netlist; D2's
    "printed system" count is five (three node voltages and two source currents,
@@ -773,8 +774,8 @@ state, and averaging.
    a new reference appears), every count of unknowns in words equals the count
    the solver printed, refusals reach the student as a sentence, and every sine
    experiment opens with |v_s| ≥ A/2.
-   **Steps 1 and 2 — the opening experience and notes that pose a question —
-   shipped 2026-09-02:** the note is gone as a single block. Each experiment now
+   **Step 1 — the lesson under the student's eyes (the opening experience and
+   notes that pose a question) — shipped 2026-09-02:** the note is gone as a single block. Each experiment now
    has three registers in `src/lessons.js`: `see` (what the picture shows at the
    defaults, at most 70 words, so it and the schematic share a phone's first
    screen), `try` (two to four knob moves, each a sentence of at most 45 words
@@ -826,6 +827,40 @@ state, and averaging.
    notation and `#circuit=` (0 of each), checks Σ power is absent on A1 and
    present on B3, the size chip has its title, and every preset chip is one line
    ending in its unit.
+   **Step 2 — the Analysis pane shows the lesson's own quantity — shipped
+   2026-09-02:** every experiment names one number in `src/headlines.js` — the
+   quantity its lesson is about (v_out for the amplifiers, R_eq for the ladders,
+   τ, ζ, ω₀, |H| for the dynamic groups) — and `insight.jsx` prints it first in
+   the Analysis pane as tag = value, read off the solution, not typed in; the
+   test file carries a closed form for all 46 and checks the printed value
+   against it at the defaults and 25 random settings (1e-9 static, 1e-6 dynamic,
+   1e-7 dB absolute), and that E3 ideal and F6 ideal print a refusal in amber
+   instead. The same number sits on the schematic as a callout, placed by
+   `placeCallout` inside the crop and sized by a stand-in of the widest value the
+   headline can take, so the live text never outgrows its box (a test measures
+   both). Under the headline one "bridge" sentence joins the view to the lesson
+   (the view's lead + the lesson's first sentence, accumulated to at least 20
+   characters so F2's "The dual." is not the whole bridge). Groups A–E open on a
+   `reading` view — a table of every drawn element's voltage and current, power
+   once B3 has introduced it, then the node voltages, each column snapped to its
+   own scale so E2's femtowatts read 0 W — with the solver's matrix folded under
+   "The solver's own working — N equations in N unknowns" (a one-line KCL/KVL
+   primer for A, the three-law card for B); D5 opens on its equivalent, G1 on
+   the scope. Six experiments carry a drawing of their theorem in
+   `src/theorems.js`: B2 the loop's three voltages adding to zero, D3 the two
+   mesh rows with both sides read live, D4 one schematic per source with the
+   other drawn dead as a switch labelled "I1 → 0 A" and the parts summing to the
+   whole, D5 V_th behind R_th with the open-port meter reading beside the load
+   line, E3 the two contradicting rows marked in the matrix (the fold opens to
+   show them), H5 the power triangle with p(t) and its mean. Tags are typeset by
+   `tagLatex` (v_out → v with a real subscript; ω₀, τ as Greek). Tests:
+   `insight.test.jsx` renders every headline, bridge, table and theorem block to
+   markup and reads the numbers back; `experiments.test.js` checks every theorem
+   quantity against its closed form (B2 |Σv| < 1e-9·|E|, D3 rows balance, D4
+   parts sum, D5 V_th/R_th and load-line points, H5 P/Q/S/pf/mean). `verify.mjs`
+   walks every experiment × view: the headline is the first child of the pane,
+   the bridge the second, the callout reads the headline's number with the
+   typesetting undone, and a refusal draws no callout.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event
