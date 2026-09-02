@@ -78,13 +78,45 @@ export function steadyState(conv) {
     const x2 = x2of([0, v0])
     return { v0, r: x2[0] }
   }
-  const td = bisect((t) => trial(t).r, 0, tOff, 1e-13 * T)
+  const residual = (t) => trial(t).r
+  const runFrom = (td) =>
+    chain(conv, [
+      { state: states.on, T: tOn },
+      { state: states.off, T: td },
+      { state: states.dead, T: tOff - td },
+    ], [0, trial(td).v0])
+  // A root is the circuit's own only if the current reaches zero nowhere
+  // earlier in the off interval: when L and C ring faster than the switch,
+  // the residual has a root at every later zero of the ringing current, and
+  // each of those is an orbit with the diode conducting backwards. The
+  // crossing search ends at the root itself, up to its own resolution.
+  const physical = (td) => {
+    const c = firstDownCrossing(runFrom(td).segs[1], 0)
+    return c === null || c >= td * (1 - 1e-6)
+  }
+  let td = bisect(residual, 0, tOff, 1e-13 * T)
+  if (!physical(td)) {
+    // Scan the off interval for sign changes, earliest first, and take the
+    // first root that is physical.
+    const scan = 64
+    let lo = 0
+    let rlo = residual(0)
+    for (let k = 1; k <= scan; k++) {
+      const hi = (k / scan) * tOff
+      const rhi = residual(hi)
+      if (rlo >= 0 !== rhi >= 0) {
+        const t = bisect(residual, lo, hi, 1e-13 * T)
+        if (physical(t)) {
+          td = t
+          break
+        }
+      }
+      lo = hi
+      rlo = rhi
+    }
+  }
   const { v0 } = trial(td)
-  const run = chain(conv, [
-    { state: states.on, T: tOn },
-    { state: states.off, T: td },
-    { state: states.dead, T: tOff - td },
-  ], [0, v0])
+  const run = runFrom(td)
   // Pin the dead segment's current at exactly zero — that is the model.
   run.segs[2].x0 = [0, run.segs[2].x0[1]]
   return { mode: 'DCM', conv, T, tOn, tOff, td, x0: [0, v0], segments: run.segs }

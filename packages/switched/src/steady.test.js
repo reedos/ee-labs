@@ -162,6 +162,35 @@ describe('the ideal buck against its textbook', () => {
   })
 })
 
+describe('the diode blocks at the first zero of its current', () => {
+  // A small L and C ring faster than the switch: the off interval holds more
+  // than a resonant period, and the current would pass through zero again
+  // and again if the diode let it. The period residual then has a root for
+  // each of those zeros; only the first is a state the circuit visits, and
+  // it is where a walk from rest arrives (transient.test.js). Found by the
+  // walker: the solver had settled on a later root, with the diode carrying
+  // −11 A in between.
+  const ringing = {
+    Vin: 17.34,
+    D: 0.1352,
+    L: 5.828e-6,
+    C: 2.432e-6,
+    R: 48.97,
+    fs: 20217,
+    Ron: 0.00708,
+    RL: 0.00568,
+    ESR: 0.0641,
+  }
+  it('an off interval longer than the ringing period ends at the first zero, with no reverse current', () => {
+    const ss = steadyState(converter('buck', ringing))
+    expect(ss.mode).toBe('DCM')
+    const m = measures(ss)
+    expect(m.sig.iD.min).toBeGreaterThan(-1e-9 * m.sig.iL.max)
+    expect(m.sig.iL.min).toBeGreaterThan(-1e-9 * m.sig.iL.max)
+    expect(ss.td / ss.T).toBeLessThan(0.05)
+  })
+})
+
 describe('boost and buck-boost ideal ratios', () => {
   it.each([
     ['boost', 0.5],

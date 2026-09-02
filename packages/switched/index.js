@@ -13,6 +13,7 @@ export { stateAt, endState, integral, sample, quadrature, firstDownCrossing, bis
 export { zeros, eye, matMul, matVec, matAdd, matScale, vecAdd, vecScale, norm1, solve } from './src/linalg.js'
 export { converter, DEFAULTS, KINDS, SIGNALS, evalSignal, idealM } from './src/topologies.js'
 export { steadyState, periodMap, waveforms, measures, signalIntegral, average } from './src/steady.js'
+export { runPeriods } from './src/transient.js'
 export {
   conversionRatio,
   ratioWithRL,
