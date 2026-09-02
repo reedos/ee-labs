@@ -34,6 +34,16 @@ const scrolls = () =>
   page.evaluate(() => document.documentElement.scrollHeight > document.documentElement.clientHeight + 1)
 const scrollsX = () =>
   page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)
+// The shell clips the app at the viewport, so a pane that grew wider than the
+// screen never made the page scroll — its last buttons simply vanished. Name
+// anything in a pane header that ends past the right edge.
+const clipped = () =>
+  page.evaluate(() => {
+    const w = document.documentElement.clientWidth + 1
+    return [...document.querySelectorAll('.view, .view-head, .view-head .segmented, .view-head .readout, .schematic')]
+      .filter((el) => el.getBoundingClientRect().right > w)
+      .map((el) => `${el.tagName.toLowerCase()}.${el.className.split(' ')[0]} → ${Math.round(el.getBoundingClientRect().right)}px`)
+  })
 
 async function openAllMath() {
   const toggles = page.locator('.math-toggle[aria-expanded="false"]')
@@ -273,8 +283,10 @@ for (const name of names) {
   await pick(name)
   await page.waitForTimeout(80)
   if (await scrollsX()) fail(`390px / ${name}: page scrolls sideways`)
+  const over = await clipped()
+  if (over.length) fail(`390px / ${name}: clipped at the right edge: ${over.join(', ')}`)
 }
-console.log(`   no sideways scroll at 390 px across ${names.length} experiments`)
+console.log(`   no sideways scroll or clipped pane at 390 px across ${names.length} experiments`)
 await page.setViewportSize({ width: 3840, height: 2160 })
 await page.waitForTimeout(400)
 for (const name of names) {

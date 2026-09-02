@@ -18,76 +18,15 @@ import { fmt, schematicGeometry as G } from '@ee-labs/ui'
  * a diagram carries and only appear once the circuit is solved.
  */
 export function layoutProblems(layout, elements, meters, show = 'i', margin = 1) {
-  const byId = new Map(elements.map((e) => [e.id, e]))
-  const { w = 320, h = 160, items = [] } = layout
-  const texts = [] // { box, what }
-  const bodies = [] // { box, what }
-  const wires = [] // { x1, y1, x2, y2, what }
-  const edges = [] // { box, what } — the four sides of each dashed frame
-  const problems = []
-
-  const addText = (place, text, font, what, owner = null) => {
-    if (!text) return
-    texts.push({ box: G.textBox(place, text.length * font.cw, font.size), what: `${what} “${text}”`, owner })
-  }
-
-  for (const it of items) {
-    if (it.box) {
-      // Wires may cross a frame — that is how the device connects — but no text
-      // or symbol may straddle its edge, or the drawing lies about what is inside.
-      const [x0, y0, x1, y1] = it.box
-      const what = `frame (${x0},${y0})–(${x1},${y1})`
-      edges.push(
-        { box: { x0: x0 - 0.5, x1: x0 + 0.5, y0, y1 }, what },
-        { box: { x0: x1 - 0.5, x1: x1 + 0.5, y0, y1 }, what },
-        { box: { x0, x1, y0: y0 - 0.5, y1: y0 + 0.5 }, what },
-        { box: { x0, x1, y0: y1 - 0.5, y1: y1 + 0.5 }, what },
-      )
-    } else if (it.wire) {
-      const [x1, y1, x2, y2] = it.wire
-      wires.push({ x1, y1, x2, y2, what: `wire (${x1},${y1})→(${x2},${y2})` })
-    } else if (it.gnd) {
-      bodies.push({ box: G.gndBox(it.gnd), what: `ground at (${it.gnd[0]},${it.gnd[1]})` })
-    } else if (it.node) {
-      const volts = meters ? meters.v[it.node] : undefined
-      const place = G.nodeTextPlace(it)
-      const meter = Number.isFinite(volts) ? fmt(volts, 'V', 3) : ''
-      const width = it.node.length * G.FONT.port.cw + (meter ? 4 + meter.length * G.FONT.meter.cw : 0)
-      texts.push({ box: G.textBox(place, width, G.FONT.port.size), what: `node label “${it.node} ${meter}”` })
-      bodies.push({ box: { x0: it.x - 3, x1: it.x + 3, y0: it.y - 3, y1: it.y + 3 }, what: `node dot ${it.node}`, dot: true })
-    } else if (it.text) {
-      addText({ x: it.x, y: it.y, anchor: it.anchor || 'middle' }, it.text, G.FONT.note, 'caption')
-    } else if (it.el) {
-      const e = byId.get(it.el)
-      if (!e) {
-        problems.push(`layout draws ${it.el}, which is not in the netlist`)
-        continue
-      }
-      const reading = G.elementReading(e, meters, show)
-      if (e.type === 'OPAMP') {
-        bodies.push({ box: G.opampBodyBox(it), what: `op-amp ${e.id}` })
-        const at = G.opampTextPlaces(it)
-        addText(at.label, G.valueText(e), G.FONT.label, `${e.id} label`)
-        addText(at.reading, reading, G.FONT.meter, `${e.id} reading`)
-      } else {
-        const arrow = show === 'i' && !!reading
-        for (const box of G.elementBodyBoxes(it, e, arrow)) bodies.push({ box, what: `${e.id} symbol`, owner: e.id })
-        const at = G.elementTextPlaces(it)
-        addText(at.label, G.valueText(e), G.FONT.label, `${e.id} label`)
-        addText(at.reading, reading, G.FONT.meter, `${e.id} reading`)
-        // The + and − marks sit at the element's own terminals, so they may
-        // touch its own symbol; anything else they land on is a collision.
-        if (show === 'v' && meters) {
-          const signs = G.signPlaces(it)
-          addText(signs.plus, '+', G.FONT.sign, `${e.id} + mark`, e.id)
-          addText(signs.minus, '−', G.FONT.sign, `${e.id} − mark`, e.id)
-        }
-      }
-    }
-  }
+  const { w = 320, h = 160, crop = null } = layout
+  const { texts, bodies, wires, edges, problems } = collect(layout, elements, meters, show)
 
   const overlaps = (a, b) => a.x0 < b.x1 - margin && b.x0 < a.x1 - margin && a.y0 < b.y1 - margin && b.y0 < a.y1 - margin
-  const inside = (b) => b.x0 >= 0 && b.y0 >= 0 && b.x1 <= w && b.y1 <= h
+  // A cropped layout is judged against its frame, not the canvas it was drawn
+  // on: the frame is what the reader sees, so nothing may leave it either.
+  const [fx0, fy0, fx1, fy1] = crop || [0, 0, w, h]
+  const frame = crop ? `${fx1 - fx0}×${fy1 - fy0} frame` : `${w}×${h} canvas`
+  const inside = (b) => b.x0 >= fx0 && b.y0 >= fy0 && b.x1 <= fx1 && b.y1 <= fy1
   const wireBox = (s) => ({
     x0: Math.min(s.x1, s.x2) - 0.75,
     x1: Math.max(s.x1, s.x2) + 0.75,
@@ -95,10 +34,10 @@ export function layoutProblems(layout, elements, meters, show = 'i', margin = 1)
     y1: Math.max(s.y1, s.y2) + 0.75,
   })
 
-  for (const t of texts) if (!inside(t.box)) problems.push(`${t.what} leaves the ${w}×${h} canvas`)
-  for (const b of bodies) if (!inside(b.box)) problems.push(`${b.what} leaves the ${w}×${h} canvas`)
-  for (const s of wires) if (!inside(wireBox(s))) problems.push(`${s.what} leaves the ${w}×${h} canvas`)
-  for (const e of edges) if (!inside(e.box)) problems.push(`${e.what} leaves the ${w}×${h} canvas`)
+  for (const t of texts) if (!inside(t.box)) problems.push(`${t.what} leaves the ${frame}`)
+  for (const b of bodies) if (!inside(b.box)) problems.push(`${b.what} leaves the ${frame}`)
+  for (const s of wires) if (!inside(wireBox(s))) problems.push(`${s.what} leaves the ${frame}`)
+  for (const e of edges) if (!inside(e.box)) problems.push(`${e.what} leaves the ${frame}`)
 
   for (let a = 0; a < texts.length; a++) {
     for (let b = a + 1; b < texts.length; b++) {
@@ -149,4 +88,145 @@ export function layoutProblems(layout, elements, meters, show = 'i', margin = 1)
   }
 
   return [...new Set(problems)]
+}
+
+/** Room around the drawing inside its frame, in canvas units. */
+export const CROP_PAD = 6
+
+/**
+ * The frame a layout needs: the smallest box, padded by CROP_PAD, that holds
+ * everything the Schematic would draw in any meter view, clamped to the canvas.
+ *
+ * Every layout is drawn on the same 420 × 180 canvas so that the placement
+ * rules can be shared, but a one-element circuit fills a third of it and the
+ * rest is empty frame on the reader's screen. The Schematic shows this box
+ * instead. It must not move when a knob turns or the meters switch — a frame
+ * that breathes with the numbers is a distraction — so every reading, and every
+ * number in a label, is taken as its widest plausible text rather than the
+ * live value: with 3 significant figures a signed value with its unit is at
+ * most 8 characters ("−1.23 mV"). The layout test checks at random settings
+ * that nothing ever leaves the frame.
+ */
+export function layoutExtent(layout, elements) {
+  const { w = 320, h = 160 } = layout
+  const widest = '−1.23 mV'
+  const stand = { reading: () => widest, nodeMeter: () => widest, label: standInLabel }
+  let box = null
+  const grow = (b) => {
+    box = box ? { x0: Math.min(box.x0, b.x0), y0: Math.min(box.y0, b.y0), x1: Math.max(box.x1, b.x1), y1: Math.max(box.y1, b.y1) } : { ...b }
+  }
+  for (const show of ['i', 'v', 'p']) {
+    const { texts, bodies, wires, edges } = collect(layout, elements, {}, show, stand)
+    for (const t of texts) grow(t.box)
+    for (const b of bodies) grow(b.box)
+    for (const e of edges) grow(e.box)
+    for (const s of wires) grow({ x0: Math.min(s.x1, s.x2), x1: Math.max(s.x1, s.x2), y0: Math.min(s.y1, s.y2), y1: Math.max(s.y1, s.y2) })
+  }
+  if (!box) return [0, 0, w, h]
+  return [
+    Math.max(0, Math.floor(box.x0 - CROP_PAD)),
+    Math.max(0, Math.floor(box.y0 - CROP_PAD)),
+    Math.min(w, Math.ceil(box.x1 + CROP_PAD)),
+    Math.min(h, Math.ceil(box.y1 + CROP_PAD)),
+  ]
+}
+
+/**
+ * An element's label with every value in it at its widest — "R1 1 kΩ" becomes
+ * "R1 −1.23 mV", "V1 1 V sine · 1 kHz" becomes "V1 −1.23 mV sine · −1.23 mV",
+ * a switch always reads "closed" — so the label's width does not depend on the
+ * settings. Exported for the test that pins these examples.
+ */
+export function standInLabel(e) {
+  const text = G.valueText(e)
+  const id = text.startsWith(e.id) ? e.id : ''
+  const rest = text
+    .slice(id.length)
+    .replace(/[-−]?\d[\d.]*(\s?[A-Za-zµΩ]+)?/g, '−1.23 mV')
+    .replace(/\bopens?\b/, 'closes') // "open"/"closed", "opens at 0"/"closes at 0"
+  return id + rest
+}
+
+/**
+ * Everything a layout draws, as boxes: `texts` (labels, readings, node names,
+ * captions, +/− marks), `bodies` (symbols, node dots, grounds), `wires`, and
+ * `edges` (the four sides of each dashed frame). `stand` substitutes stand-in
+ * text for the live readings — the extent above needs the widest case, the
+ * checker the real one.
+ */
+function collect(layout, elements, meters, show, stand = null) {
+  const byId = new Map(elements.map((e) => [e.id, e]))
+  const { items = [] } = layout
+  const texts = [] // { box, what }
+  const bodies = [] // { box, what }
+  const wires = [] // { x1, y1, x2, y2, what }
+  const edges = [] // { box, what } — the four sides of each dashed frame
+  const problems = []
+
+  const addText = (place, text, font, what, owner = null) => {
+    if (!text) return
+    texts.push({ box: G.textBox(place, text.length * font.cw, font.size), what: `${what} “${text}”`, owner })
+  }
+  const readingOf = (e) => (stand ? stand.reading(e) : G.elementReading(e, meters, show))
+  const labelOf = (e) => (stand ? stand.label(e) : G.valueText(e))
+  const nodeMeterOf = (name) => {
+    if (stand) return stand.nodeMeter(name)
+    const volts = meters ? meters.v[name] : undefined
+    return Number.isFinite(volts) ? fmt(volts, 'V', 3) : ''
+  }
+
+  for (const it of items) {
+    if (it.box) {
+      // Wires may cross a frame — that is how the device connects — but no text
+      // or symbol may straddle its edge, or the drawing lies about what is inside.
+      const [x0, y0, x1, y1] = it.box
+      const what = `frame (${x0},${y0})–(${x1},${y1})`
+      edges.push(
+        { box: { x0: x0 - 0.5, x1: x0 + 0.5, y0, y1 }, what },
+        { box: { x0: x1 - 0.5, x1: x1 + 0.5, y0, y1 }, what },
+        { box: { x0, x1, y0: y0 - 0.5, y1: y0 + 0.5 }, what },
+        { box: { x0, x1, y0: y1 - 0.5, y1: y1 + 0.5 }, what },
+      )
+    } else if (it.wire) {
+      const [x1, y1, x2, y2] = it.wire
+      wires.push({ x1, y1, x2, y2, what: `wire (${x1},${y1})→(${x2},${y2})` })
+    } else if (it.gnd) {
+      bodies.push({ box: G.gndBox(it.gnd), what: `ground at (${it.gnd[0]},${it.gnd[1]})` })
+    } else if (it.node) {
+      const place = G.nodeTextPlace(it)
+      const meter = nodeMeterOf(it.node)
+      const width = it.node.length * G.FONT.port.cw + (meter ? 4 + meter.length * G.FONT.meter.cw : 0)
+      texts.push({ box: G.textBox(place, width, G.FONT.port.size), what: `node label “${it.node} ${meter}”` })
+      bodies.push({ box: { x0: it.x - 3, x1: it.x + 3, y0: it.y - 3, y1: it.y + 3 }, what: `node dot ${it.node}`, dot: true })
+    } else if (it.text) {
+      addText({ x: it.x, y: it.y, anchor: it.anchor || 'middle' }, it.text, G.FONT.note, 'caption')
+    } else if (it.el) {
+      const e = byId.get(it.el)
+      if (!e) {
+        problems.push(`layout draws ${it.el}, which is not in the netlist`)
+        continue
+      }
+      const reading = readingOf(e)
+      if (e.type === 'OPAMP') {
+        bodies.push({ box: G.opampBodyBox(it), what: `op-amp ${e.id}` })
+        const at = G.opampTextPlaces(it)
+        addText(at.label, labelOf(e), G.FONT.label, `${e.id} label`)
+        addText(at.reading, reading, G.FONT.meter, `${e.id} reading`)
+      } else {
+        const arrow = show === 'i' && !!reading
+        for (const box of G.elementBodyBoxes(it, e, arrow)) bodies.push({ box, what: `${e.id} symbol`, owner: e.id })
+        const at = G.elementTextPlaces(it)
+        addText(at.label, labelOf(e), G.FONT.label, `${e.id} label`)
+        addText(at.reading, reading, G.FONT.meter, `${e.id} reading`)
+        // The + and − marks sit at the element's own terminals, so they may
+        // touch its own symbol; anything else they land on is a collision.
+        if (show === 'v' && (meters || stand)) {
+          const signs = G.signPlaces(it)
+          addText(signs.plus, '+', G.FONT.sign, `${e.id} + mark`, e.id)
+          addText(signs.minus, '−', G.FONT.sign, `${e.id} − mark`, e.id)
+        }
+      }
+    }
+  }
+  return { texts, bodies, wires, edges, problems }
 }

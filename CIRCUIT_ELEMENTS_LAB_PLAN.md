@@ -324,6 +324,24 @@ Topbar: the circuit's headline numbers for the current experiment — e.g. `V_th
   was missing), and labels and node names are typeset in the KaTeX faces the equations
   use — `R₁ 1 kΩ` on the drawing is the `R₁` in the matrix — with the layout checker
   extended to the sign marks and its label-width estimate measured in a browser.
+
+  *Framed schematics (2026-09-01).* Every layout is drawn on the same 420 × 180 canvas
+  so the placement rules can be shared, but the pane used to show the whole canvas at
+  up to 720 px — half the screen for a one-element circuit ("taking up too much real
+  estate"). Each experiment now carries a `layout.crop`: the padded box around
+  everything it draws in any meter view, computed once with every reading and every
+  number in a label at its widest plausible text (`−1.23 mV`, a switch always "closes")
+  so the frame never moves when a knob turns; the layout test checks at random settings
+  that nothing leaves it. The Schematic shows the crop as its viewBox and publishes
+  its width and aspect ratio as CSS variables, and the pane sizes the frame at **one
+  scale** (1.71 px per unit, 2 px above 1400 px wide) within a height budget of 30 vh —
+  a one-element circuit gets a small frame and a six-element one a wide frame, with
+  the same size resistor in each. On desktop the schematic pane takes only its own
+  height (≤ 60 vh) and the Analysis pane gets the rest: at 1280 × 900 the pane went from
+  428 px to 296–390 px. On a phone the budget is the height the old frame had (150 px),
+  so nothing grew; the pane also no longer widens past the screen when its header does
+  not fit, and a wide equation row scrolls inside its track instead of pushing the prose
+  off the edge — `verify.mjs` fails on any pane, header or frame clipped at 390 px.
 - **Scope** — states and chosen branch quantities vs t, scrubbable cursor, natural
   and forced components separable as ghost traces (H1), τ-tangent and 63% marker
   (F3), envelope `±e^{−αt}` (G4). Dual y-axis (V / A). Caption band above the plot,

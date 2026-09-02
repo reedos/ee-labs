@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables } from './experiments.js'
 import { analyse, acTable, atDrive, dampingSweep, experimentMath, netPower, powerLedger, snapNoise } from './math.js'
-import { layoutProblems } from './layoutCheck.js'
+import { CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCheck.js'
 import { agrees } from '@ee-labs/explain'
 import {
   equations, extrema, solveDC, solveAC, drivingPointZ, acPower, NetworkError, complex as cx,
 } from '@ee-labs/network'
-import { buildCircuitLink, parseCircuitLink } from '@ee-labs/ui'
+import { buildCircuitLink, fmt, parseCircuitLink } from '@ee-labs/ui'
 import { evalAtFreq } from '@ee-labs/systems'
 import { CIRCUITS, transferOf } from '../../circuit-lab/src/circuits.js'
 import { stateFromLink } from '../../circuit-lab/src/incoming.js'
@@ -149,6 +149,79 @@ describe('every experiment', () => {
   // top of a neighbour's reading, with every browser probe green. So the
   // drawing is checked as geometry, with the widest texts on: readings of
   // every kind at the defaults, and at settings that make the numbers long.
+  // The frame around each drawing is cut to what it draws (Reed, 2026-09-01:
+  // the schematics were "taking up too much real estate"). Since the layout
+  // test below judges every box against `crop`, the frame is proven to hold at
+  // random settings there; this test is about the saving and the stability.
+  it('frames each drawing to its extent: within the canvas, fixed, and much smaller than the canvas overall', () => {
+    let canvas = 0
+    let framed = 0
+    for (const e of EXPERIMENTS) {
+      const { w, h, crop } = e.layout
+      expect(crop, e.id).toHaveLength(4)
+      const [x0, y0, x1, y1] = crop
+      expect(x0, e.id).toBeGreaterThanOrEqual(0)
+      expect(y0, e.id).toBeGreaterThanOrEqual(0)
+      expect(x1, e.id).toBeLessThanOrEqual(w)
+      expect(y1, e.id).toBeLessThanOrEqual(h)
+      expect(x1 - x0, e.id).toBeGreaterThan(60)
+      expect(y1 - y0, e.id).toBeGreaterThan(60)
+      canvas += w * h
+      framed += (x1 - x0) * (y1 - y0)
+      // The frame does not depend on the settings: it is computed from
+      // stand-in readings, so the same layout at any parameters gives the same box.
+      for (const k of [3, 5]) {
+        const els = drawables(e.net(randomParams(e, k)))
+        expect(layoutExtent(e.layout, els), `${e.id} seed ${k}`).toEqual(crop)
+      }
+    }
+    // The saving is honest, not dramatic: a three-leg ladder nearly fills its
+    // canvas (0.86), so across the lab the frames cover about four fifths of
+    // the area they replaced — the one-element experiments drop under half.
+    // The rest of the screen space comes back from the pane sizing in the CSS.
+    expect(framed / canvas).toBeLessThan(0.85)
+    for (const id of ['a1', 'a2']) {
+      const [x0, y0, x1, y1] = byId[id].layout.crop
+      expect(((x1 - x0) * (y1 - y0)) / (420 * 180), id).toBeLessThan(0.5)
+    }
+  })
+
+  it('stand-in labels widen every value and never depend on the setting', () => {
+    expect(standInLabel({ id: 'R1', type: 'R', value: 1000 })).toBe('R1 −1.23 mV')
+    expect(standInLabel({ id: 'R1', type: 'R', value: 254.27 })).toBe('R1 −1.23 mV')
+    expect(standInLabel({ id: 'V2', type: 'V', value: -10.7 })).toBe('V2 −1.23 mV')
+    expect(standInLabel({ id: 'V1', type: 'V', value: 1, label: 'V1 1 V sine · 1 kHz' })).toBe('V1 −1.23 mV sine · −1.23 mV')
+    expect(standInLabel({ id: 'S1', type: 'SW', closed: false })).toBe('S1 closes')
+    expect(standInLabel({ id: 'S1', type: 'SW', closed: true, label: 'S1 opens at 0' })).toBe('S1 closes at −1.23 mV')
+    expect(standInLabel({ id: 'U1', type: 'OPAMP', gain: 1e5 })).toBe('U1 A=−1.23 mV')
+    // Wider than or equal to any real label at 3 significant figures.
+    for (const v of [1, 12, 999, 1190, -10.74, 0.00123, 2.2e6]) {
+      expect(standInLabel({ id: 'R1', type: 'R', value: v }).length).toBeGreaterThanOrEqual(`R1 ${fmt(v, 'Ω', 3)}`.length)
+    }
+  })
+
+  it('the extent is the padded union of everything drawn, with readings at their widest', () => {
+    const els = [{ id: 'R1', type: 'R', value: 1000 }]
+    const one = { w: 400, h: 200, items: [{ el: 'R1', x: 200, y: 100, dir: 'v' }] }
+    const [x0, y0, x1, y1] = layoutExtent(one, els)
+    // A vertical resistor 40 tall, its current arrow on the left (strip out to
+    // x − 19), label and an 8-character reading on the right from x + 14: the
+    // box runs from the arrow to the end of the reading, and over the symbol's
+    // height, each side padded.
+    expect(x0).toBe(200 - 19 - CROP_PAD)
+    expect(x1).toBeGreaterThanOrEqual(Math.ceil(200 + 14 + 8 * 5.4 + CROP_PAD))
+    expect(y0).toBe(100 - 20 - CROP_PAD)
+    expect(y1).toBe(100 + 20 + CROP_PAD)
+    // Anything the checker would flag as leaving this frame is inside it at real readings.
+    const meters = { v: {}, i: { R1: -0.00123 }, volt: { R1: -1.23 }, p: { R1: 0.0015 } }
+    for (const show of ['i', 'v', 'p']) {
+      expect(layoutProblems({ ...one, crop: [x0, y0, x1, y1] }, els, meters, show)).toEqual([])
+    }
+    // And a reading that does not fit the stand-in's width is caught, not hidden.
+    const off = { ...one, crop: [x0, y0, x1 - 30, y1] }
+    expect(layoutProblems(off, els, meters, 'i').some((s) => /R1 reading .* leaves the .* frame/.test(s))).toBe(true)
+  })
+
   it('draws without any text on any other text, symbol or wire, and nothing off the canvas', () => {
     // Fifteen seeds, not three: "R3 3 kΩ" fits where "R3 1.19 kΩ" runs off the
     // canvas, and a negative sign is one more character on every reading.

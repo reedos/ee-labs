@@ -24,6 +24,12 @@ import { labelParts, elementReading, elementTextPlaces, opampTextPlaces, nodeTex
  *   { text, x, y }                                   a caption
  *   { box: [x0, y0, x1, y1] }                        a dashed outline — "these parts are one device"
  *
+ * A layout may also carry `crop: [x0, y0, x1, y1]`, the part of the canvas
+ * actually drawn on. The SVG then shows only that box, and publishes its width
+ * in canvas units and its aspect ratio as CSS variables (--crop-w, --ar) so a
+ * stylesheet can size every frame to the same scale: a small circuit gets a
+ * small frame, not a big frame with a small circuit in it.
+ *
  * Elements are { id, type, value, label? }; types R V I C L SW OPAMP VCVS VCCS.
  * Meters are { v: { node: volts }, i: { id: amps }, p: { id: watts } }; `show`
  * chooses which of 'i', 'v', 'p' is written on the elements (node voltages
@@ -31,11 +37,15 @@ import { labelParts, elementReading, elementTextPlaces, opampTextPlaces, nodeTex
  */
 export default function Schematic({ elements, layout, meters = null, show = 'i', className = '' }) {
   const byId = new Map(elements.map((e) => [e.id, e]))
-  const { w = 320, h = 160, items = [] } = layout
+  const { w = 320, h = 160, items = [], crop = null } = layout
+  const [cx0, cy0, cx1, cy1] = crop || [0, 0, w, h]
+  const cw = cx1 - cx0
+  const ch = cy1 - cy0
   return (
     <svg
       className={`schematic ${className}`}
-      viewBox={`0 0 ${w} ${h}`}
+      viewBox={`${cx0} ${cy0} ${cw} ${ch}`}
+      style={{ '--crop-w': cw, '--ar': cw / ch }}
       role="img"
       aria-label={`Schematic: ${elements.map((e) => e.label || e.id).join(', ')}`}
     >

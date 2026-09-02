@@ -162,12 +162,49 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .sch-plus { fill: var(--accent); }
 .sch-minus { fill: var(--text); }
 
-/* The big schematic is the upper pane: the drawing scales to the pane's width,
-   capped so 320 drawing units never blow up to a screenful of 40 px wire. */
+/* The big schematic is the upper pane. Every layout is drawn at one scale —
+   --sch-scale screen pixels per drawing unit — and the frame is cut to what
+   the layout actually draws (the Schematic publishes --crop-w and --ar from
+   its crop), so a one-element circuit gets a small frame and a six-element one
+   a wide frame, with the same size resistor in each. The width is the least
+   of: the pane, what the height budget --sch-h allows, and the drawing at
+   full scale; the height follows from the aspect ratio. Before this the
+   frame was the whole 420 × 180 canvas at up to 720 px, half the screen for
+   any circuit (Reed, 2026-09-01: "taking up too much real estate"). */
 .view .schematic.big {
-  max-width: 720px;
+  --sch-scale: 1.7143; /* 720 px / 420 units, the scale the lab was drawn at */
+  --sch-h: clamp(190px, 30vh, 320px);
+  width: min(100%, calc(var(--sch-h) * var(--ar, 2.3333)), calc(var(--crop-w, 420) * var(--sch-scale) * 1px));
   margin: 0 auto;
   padding: 10px;
+}
+@media (max-width: 900px) {
+  /* The page scrolls on a phone, so the budget is a fixed slice of it: the
+     height the old full-canvas frame had at 390 px wide (342 px of 420 × 180
+     is 147 px tall), so a small, square-ish circuit does not grow to fill
+     the room it just freed — it is still drawn larger, since its frame is
+     narrower than the canvas was. Wide layouts are limited by the width. */
+  .view .schematic.big { --sch-h: 150px; }
+}
+@media (min-width: 1400px) {
+  .view .schematic.big { --sch-scale: 2; }
+}
+
+/* Desktop: the shell gives the two panes equal halves, but the schematic
+   needs only its frame and the Analysis pane has a screenful to say. The
+   upper pane takes its own height and the lower pane gets the rest. */
+@media (min-width: 901px) {
+  .views { grid-template-rows: auto minmax(0, 1fr); }
+  .views > .view:first-child { max-height: 60vh; }
+}
+
+/* Phone: a grid item's default min-width is its content, so a pane header
+   whose title and button group do not fit side by side widened the pane past
+   the screen and clipped the last buttons. Let the pane be as wide as the
+   screen and the header wrap; a view switch with many tabs wraps too. */
+@media (max-width: 900px) {
+  .views > .view { min-width: 0; }
+  .view-head .segmented { flex-wrap: wrap; max-width: 100%; }
 }
 
 /* Refusals: the solver declined, and the pane says why in the amber the rest
@@ -187,7 +224,9 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 /* The equations pane: one KCL row per node, then the constraints, then the
    matrix. Each term shows its live value beneath so the row visibly sums to
    zero. */
-.equations { display: grid; gap: 10px; padding: 4px 0; overflow-x: auto; }
+/* minmax(0, 1fr): a wide equation row must not widen the track and push the
+   prose beside it off a phone screen — the row scrolls inside instead. */
+.equations { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 4px 0; overflow-x: auto; }
 .eq-row {
   display: grid;
   grid-template-columns: minmax(80px, auto) 1fr;
@@ -320,9 +359,6 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .power-total { font-size: 13.5px; }
   .refusal { font-size: 15px; max-width: 900px; }
   .view-body > .hint { font-size: 14px; }
-}
-@media (min-width: 1400px) {
-  .view .schematic.big { max-width: 900px; }
 }
 
 /* Pane bodies scroll inside the pane rather than growing it: the two panes

@@ -18,6 +18,7 @@
 // draws on which axis. Everything else is as for the resistive groups.
 
 import { fmt } from '@ee-labs/ui'
+import { layoutExtent } from './layoutCheck.js'
 
 // Every view a lower pane can show, in the order the view switch lists them —
 // the same order in every experiment, so a tab sits in the same place from one
@@ -2119,6 +2120,16 @@ export function defaultsOf(id) {
   const out = {}
   for (const p of byId[id].params) out[p.key] = p.default
   return out
+}
+
+// Each layout gets the frame it needs — the box around everything it draws,
+// so that a one-element circuit does not sit in a canvas sized for six. The
+// frame is fixed per experiment (the extent takes readings at their widest),
+// and the layout test checks at random settings that nothing leaves it. Layouts
+// are copied here because two experiments may share one drawing with
+// different parts in it.
+for (const e of EXPERIMENTS) {
+  e.layout = { ...e.layout, crop: layoutExtent(e.layout, drawables(e.net(defaultsOf(e.id)))) }
 }
 
 /** The netlist for an experiment at these settings. */
