@@ -1,0 +1,4 @@
+{
+  "about": "Student sittings for the Circuit Elements Lab (student review, Phase 9). Reed appends one object per sitting; src/sittings.js scores them and src/sittings.test.js checks each entry and holds SITTINGS.md's status line to the score. See SITTINGS.md for the script and the fields.",
+  "sittings": []
+}

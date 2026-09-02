@@ -1065,6 +1065,30 @@ state, and averaging.
    all 46 at 1280×900; no solver-speak on the topbar's face. Deep links between
    labs are the parallel session's (`packages/ui/src/deeplink.js`) and are not
    part of this step.
+
+   **Step 9 — students score it — built 2026-09-02, sittings Reed's:** the
+   last half point of the 9.5 is not the lab's to award itself. Three people
+   new to circuits sit with three experiments each (A1, then C2 or D5, then F3
+   or G4), on Reed's phone and a laptop, with a four-line script read as
+   written: open it; do what the lesson says; one sentence on what it showed
+   you; 1–5 for clarity. Three numbers per sitting — seconds to the first act,
+   whether the sentence matches the experiment's `see`, the rating — against
+   three targets: first act ≤ 10 s in every sitting, recall ≥ 8 of 9, clarity
+   mean ≥ 4.5 per experiment; under target anywhere blocks the 9.5 for that
+   experiment's group, becomes a fix with a test, and that sitting is repeated
+   once. `apps/circuit-elements-lab/SITTINGS.md` is the script, the seats, the
+   rules and the recording format; `sittings.json` is the record Reed appends
+   to; `src/sittings.js` validates each entry, scores the record (`score`) and
+   prints the one status line the document may carry (`statusLine`).
+   `sittings.test.js` (11) holds the record and the document to each other:
+   every entry well-formed and naming an experiment in the course, the seats
+   real experiments with a `see` to match and a first step the student acts
+   on, the scoring rules as the document states them (a slow first knob blocks
+   its group only; one recall miss allowed, a second blocks the groups the
+   misses fell in; clarity a mean per experiment), and SITTINGS.md's `Status:`
+   line equal to the computed one — so the document cannot claim what the
+   record has not measured. The record is empty until Reed sits people down;
+   the status line says so.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event
