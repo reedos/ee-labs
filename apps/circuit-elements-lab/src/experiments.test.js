@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables } from './experiments.js'
+import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic } from './experiments.js'
+import { readQuantity } from './lessons.js'
 import { analyse, acTable, atDrive, dampingSweep, experimentMath, netPower, powerLedger, refusalReason, snapNoise, turned, turnedLabel } from './math.js'
 import { CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCheck.js'
 import { agrees } from '@ee-labs/explain'
@@ -1301,11 +1302,11 @@ describe('hand-over to Circuit Lab, both ways', () => {
 // wrong experiment, D2 miscounted, A2's refusal was unreachable from the knobs,
 // and H2 opened with every phasor lying flat on the axis).
 describe('what the student reads is what the solver did', () => {
-  /** Everything a student can read on an experiment at its defaults: the note and the whole math panel. */
+  /** Everything a student can read on an experiment at its defaults: see, try, why and the whole math panel. */
   const prose = (e) => {
     const p = defaultsOf(e.id)
     const x = analyse(e, p)
-    return { p, x, text: `${e.note}\n${JSON.stringify(experimentMath(e, p, x).blocks)}` }
+    return { p, x, text: `${e.see}\n${e.try.map((t) => t.say).join('\n')}\n${e.why}\n${JSON.stringify(experimentMath(e, p, x).blocks)}` }
   }
   /** Experiment ids named in the prose — element ids and knob keys of the experiment itself (E1, C1…) are not references. */
   const refsIn = (e, x, text) => {
@@ -1427,5 +1428,156 @@ describe('what the student reads is what the solver did', () => {
       expect(r.value).toBeGreaterThanOrEqual(0)
       expect(r.value).toBeLessThan(360)
     }
+  })
+})
+
+// Phase 1 of the student review: the note became three registers — see, try,
+// why — and the middle one is a list of knob moves, each with the reading it
+// produces. A step's `set` is applied over the defaults, its `at` moves the
+// cursor, its `reads` are solved and compared, and then every number-with-unit
+// in the sentence has to be one of those readings (or a knob value, or the
+// cursor time). The same rule holds for the numbers in `see` and `why`. So a
+// lesson cannot quote a value the solver does not produce, and a knob move
+// cannot name a setting the knob cannot reach.
+describe('every lesson is measured', () => {
+  const PREFIX = { p: 1e-12, n: 1e-9, 'µ': 1e-6, u: 1e-6, m: 1e-3, k: 1e3, M: 1e6, G: 1e9, '': 1 }
+  const UNITS = /(-?\d+(?:\.\d+)?)\s*([pnµumkMG]?)(VA|var|V|A|W|Ω|s|Hz|J|°|%|dB|rad\/s)(?![A-Za-z⁰¹²³⁴⁵⁶⁷⁸⁹⁻])/g
+  /** Every number-with-unit in a sentence, as { text, value, scale } with the value in base units. */
+  const quoted = (text) =>
+    [...text.replace(/−/g, '-').matchAll(UNITS)].map((m) => ({
+      text: m[0].trim(),
+      digits: (m[1].split('.')[1] || '').length,
+      scale: PREFIX[m[2]],
+      value: Math.abs(+m[1]) * PREFIX[m[2]],
+    }))
+  /** A quoted number stands for a value when it is that value rounded to the digits printed (or within 0.6 %). */
+  const stands = (q, v) => {
+    const half = 0.5 * 10 ** -q.digits * q.scale
+    return Math.abs(q.value - Math.abs(v)) <= Math.max(0.006 * Math.abs(v), half * (1 + 1e-9))
+  }
+  const close = (got, want, tol) => (want === 0 || Math.abs(want) < 1e-12 ? Math.abs(got) <= (tol ?? 1e-9) : Math.abs(got - want) <= (tol ?? 0.006 * Math.abs(want)))
+  const words = (s) => s.trim().split(/\s+/).length
+  const knobOf = (e, key) => e.params.find((k) => k.key === key)
+
+  /** Solve one step (or the see/why register) and check its reads; returns the numbers it justifies. */
+  function measure(e, p, reads, cursor, label) {
+    const x = analyse(e, p, cursor)
+    const again = (over, t) => analyse(e, { ...p, ...over }, t ?? cursor)
+    expect(x.sol, `${label}: the circuit has no solution here (${x.refusal && x.refusal.code})`).toBeTruthy()
+    const values = []
+    for (const [q, want, tol] of reads) {
+      const name = typeof q === 'function' ? 'fn' : q
+      const got = typeof q === 'function' ? q(x, p, again, e) : readQuantity(x, p, q, e)
+      if (typeof want === 'string') expect(got, `${label}: ${name}`).toBe(want)
+      else {
+        expect(Number.isFinite(got), `${label}: ${name} is ${got}`).toBe(true)
+        expect(close(got, want, tol), `${label}: ${name} reads ${got}, the lesson says ${want}`).toBe(true)
+        values.push(want)
+      }
+    }
+    return values
+  }
+  /** Every quoted number in `text` stands for one of `values`. */
+  function justified(text, values, label) {
+    for (const q of quoted(text)) {
+      const ok = values.some((v) => stands(q, v))
+      expect(ok, `${label}: "${q.text}" is not a reading, a knob value or the cursor time (have ${values.map((v) => +v.toPrecision(5)).join(', ')})`).toBe(true)
+    }
+  }
+  const knobValues = (e) => e.params.filter((k) => k.kind !== 'toggle').map((k) => k.default)
+
+  it('every experiment has a see, two to four tries and a why, and note is see + why', () => {
+    for (const e of EXPERIMENTS) {
+      expect(typeof e.see, e.id).toBe('string')
+      expect(typeof e.why, e.id).toBe('string')
+      expect(e.try.length, `${e.id} tries`).toBeGreaterThanOrEqual(2)
+      expect(e.try.length, `${e.id} tries`).toBeLessThanOrEqual(4)
+      expect(e.note).toBe(`${e.see} ${e.why}`)
+      // The first screen on a phone holds the picture and this paragraph; keep it a paragraph.
+      expect(words(e.see), `${e.id} see is ${words(e.see)} words`).toBeLessThanOrEqual(70)
+      for (const t of e.try) expect(words(t.say), `${e.id} try "${t.say.slice(0, 30)}…" is ${words(t.say)} words`).toBeLessThanOrEqual(45)
+    }
+  })
+
+  it('the numbers in see and why are readings at the defaults, or knob values', () => {
+    for (const e of EXPERIMENTS) {
+      const p = defaultsOf(e.id)
+      const seeAt = e.seeAt ?? (isDynamic(e) ? e.cursor * e.window(p) : undefined)
+      if (e.seeRefuses) {
+        expect(analyse(e, p).sol, `${e.id} see says it refuses`).toBeNull()
+        justified(e.see, knobValues(e), `${e.id} see`)
+        justified(e.why, knobValues(e), `${e.id} why`)
+        continue
+      }
+      const seen = measure(e, p, e.seeReads || [], seeAt, `${e.id} see`)
+      justified(e.see, [...seen, ...knobValues(e), ...(e.seeAt != null ? [e.seeAt] : [])], `${e.id} see`)
+      const why = measure(e, p, e.whyReads || [], seeAt, `${e.id} why`)
+      justified(e.why, [...why, ...knobValues(e)], `${e.id} why`)
+    }
+  })
+
+  it('every try sets knobs inside their range, moves the cursor inside the window, and reads what it says', () => {
+    let steps = 0
+    let refusals = 0
+    for (const e of EXPERIMENTS) {
+      const d = defaultsOf(e.id)
+      e.try.forEach((t, i) => {
+        const label = `${e.id} try ${i + 1}`
+        const values = []
+        for (const [key, v] of Object.entries(t.set || {})) {
+          const k = knobOf(e, key)
+          expect(k, `${label} sets ${key}, which is not a knob`).toBeDefined()
+          if (k.kind === 'toggle') expect(typeof v, `${label} ${key}`).toBe('boolean')
+          else {
+            expect(v, `${label} ${key} below min`).toBeGreaterThanOrEqual(k.min)
+            expect(v, `${label} ${key} above max`).toBeLessThanOrEqual(k.max)
+            values.push(v)
+          }
+        }
+        const p = { ...d, ...(t.set || {}) }
+        if (t.at != null) {
+          expect(isDynamic(e), `${label} moves the cursor of a DC experiment`).toBe(true)
+          expect(t.at).toBeGreaterThanOrEqual(0)
+          expect(t.at, `${label} cursor past the window`).toBeLessThanOrEqual(e.window(p))
+          values.push(t.at)
+        }
+        if (t.refuses) {
+          const x = analyse(e, p, t.at)
+          expect(x.sol, `${label} says the solver refuses; it did not`).toBeNull()
+          expect(refusalReason(x.refusal)).toMatch(/^[A-Z]/)
+          refusals++
+        } else values.push(...measure(e, p, t.reads || [], t.at, label))
+        justified(t.say, [...values, ...knobValues(e)], label)
+        steps++
+      })
+    }
+    expect(steps).toBeGreaterThanOrEqual(2 * EXPERIMENTS.length)
+    expect(refusals).toBe(2) // A2 open, F6 ideal
+  })
+
+  it('readQuantity reads every kind of path, and throws on a path it does not know', () => {
+    const b1 = at('b1')
+    expect(readQuantity(b1.x, b1.p, 'v.A', b1.exp)).toBeCloseTo(b1.x.sol.v.A, 12)
+    expect(readQuantity(b1.x, b1.p, 'vd.in.A', b1.exp)).toBeCloseTo(b1.x.sol.volt.R1, 12)
+    expect(() => readQuantity(b1.x, b1.p, 'nope.A', b1.exp)).toThrow(/unknown quantity path/)
+    const h2 = at('h2')
+    expect(readQuantity(h2.x, h2.p, 'lead.volt.C1', h2.exp)).toBeCloseTo(-45, 1)
+    expect(readQuantity(h2.x, h2.p, 'deg.volt.V1', h2.exp)).toBeCloseTo(0, 9)
+    expect(readQuantity(h2.x, h2.p, 'period', h2.exp)).toBeCloseTo(1 / h2.p.f, 12)
+    const h6 = at('h6')
+    expect(readQuantity(h6.x, h6.p, 'H.mag', h6.exp)).toBeCloseTo(cx.cabs(atDrive(h6.exp, h6.x).H), 12)
+    expect(readQuantity(h6.x, h6.p, 'Z.deg', h6.exp)).toBeCloseTo((cx.carg(atDrive(h6.exp, h6.x).Z) * 180) / Math.PI, 12)
+    const h5 = at('h5')
+    const S = readQuantity(h5.x, h5.p, 'ac.S', h5.exp)
+    const P = readQuantity(h5.x, h5.p, 'ac.P', h5.exp)
+    const Q = readQuantity(h5.x, h5.p, 'ac.Q', h5.exp)
+    expect(Math.hypot(P, Q)).toBeCloseTo(S, 9)
+    expect(readQuantity(h5.x, h5.p, 'ac.pf', h5.exp)).toBeCloseTo(P / S, 12)
+    // Real power is what the resistor takes: ½R|I|²; reactive is what the inductor borrows: ½ωL|I|².
+    expect(P).toBeCloseTo(0.5 * h5.p.R1 * cx.cabs(h5.x.ac.i.R1) ** 2, 9)
+    expect(Q).toBeCloseTo(0.5 * h5.x.omega * h5.p.L1 * cx.cabs(h5.x.ac.i.R1) ** 2, 9)
+    const f5 = at('f5', {}, 0.01)
+    const E = readQuantity(f5.x, f5.p, 'energy.supplied', f5.exp)
+    expect(E).toBeCloseTo(readQuantity(f5.x, f5.p, 'energy.stored', f5.exp) + readQuantity(f5.x, f5.p, 'energy.dissipated', f5.exp), 9)
   })
 })

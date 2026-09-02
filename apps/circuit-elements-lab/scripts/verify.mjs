@@ -42,7 +42,7 @@ const clipped = () =>
     const w = document.documentElement.clientWidth + 1
     return [...document.querySelectorAll('.view, .view-head, .view-head .segmented, .view-head .readout, .schematic')]
       .filter((el) => el.getBoundingClientRect().right > w)
-      .map((el) => `${el.tagName.toLowerCase()}.${el.className.split(' ')[0]} → ${Math.round(el.getBoundingClientRect().right)}px`)
+      .map((el) => `${el.tagName.toLowerCase()}.${(el.getAttribute('class') || '').split(' ')[0]} → ${Math.round(el.getBoundingClientRect().right)}px`)
   })
 
 async function openAllMath() {
@@ -87,10 +87,14 @@ async function setField(label, value) {
 }
 
 const names = await page.$$eval('.presets .preset', (els) => els.map((e) => e.textContent.trim()))
+// The list is folded under the picker; unfold it, then the group, then click.
+// Choosing folds the list again, as it does for a student.
 const pick = async (name) => {
   const btn = page.getByRole('button', { name, exact: true })
   if (!(await btn.isVisible().catch(() => false))) {
     await page.evaluate((n) => {
+      const cur = document.querySelector('.picker-current')
+      if (cur && cur.getAttribute('aria-expanded') !== 'true') cur.click()
       for (const d of document.querySelectorAll('details.preset-group')) {
         const has = [...d.querySelectorAll('.preset')].some((b) => b.textContent.trim() === n)
         if (has && !d.open) d.querySelector('summary').click()
@@ -284,14 +288,61 @@ console.log('\nA11y: every control has a name, every plot has a label\n')
 console.log('\n6. Layout at 390 px and 4K\n')
 await page.setViewportSize({ width: 390, height: 844 })
 await page.waitForTimeout(400)
+// The phone is one page: the lesson's first line and the Analysis view switch
+// both land in the first screen, and nothing scrolls inside the page except the
+// page (the sidebar used to be a 380 px box holding a 1500 px column).
+const phoneFirstScreen = () =>
+  page.evaluate(() => {
+    const h = window.innerHeight
+    const top = (sel) => {
+      const el = document.querySelector(sel)
+      return el ? el.getBoundingClientRect().top : Infinity
+    }
+    // #root is the page's own scroller on a phone; anything inside it that
+    // scrolls a column taller than the screen is the box this rules out.
+    const innerScrollers = [...document.querySelectorAll('#root *')]
+      .filter((el) => {
+        const cs = getComputedStyle(el)
+        return /auto|scroll/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1 && el.scrollHeight > h
+      })
+      .map((el) => `${el.tagName.toLowerCase()}.${(el.className || '').toString().split(' ')[0]} ${el.clientHeight}px showing ${el.scrollHeight}px`)
+    return { note: top('[data-role=note]'), views: top('.view-switch'), innerScrollers }
+  })
 for (const name of names) {
   await pick(name)
   await page.waitForTimeout(80)
+  await page.evaluate(() => window.scrollTo(0, 0))
   if (await scrollsX()) fail(`390px / ${name}: page scrolls sideways`)
   const over = await clipped()
   if (over.length) fail(`390px / ${name}: clipped at the right edge: ${over.join(', ')}`)
+  const first = await phoneFirstScreen()
+  if (!(first.note < 844)) fail(`390px / ${name}: the note starts at ${Math.round(first.note)} px, below the first screen`)
+  if (!(first.views < 844)) fail(`390px / ${name}: the Analysis view switch starts at ${Math.round(first.views)} px, below the first screen`)
+  if (first.innerScrollers.length) fail(`390px / ${name}: scrolls inside the page: ${first.innerScrollers.join(', ')}`)
 }
 console.log(`   no sideways scroll or clipped pane at 390 px across ${names.length} experiments`)
+console.log('   the note and the Analysis view switch are in the first screen; nothing scrolls inside the page')
+
+// Desktop: the note begins near the top of the sidebar and the first knob is on
+// screen when the experiment opens, for every experiment.
+await page.setViewportSize({ width: 1280, height: 900 })
+await page.waitForTimeout(400)
+for (const name of names) {
+  await pick(name)
+  await page.waitForTimeout(80)
+  const m = await page.evaluate(() => {
+    const note = document.querySelector('[data-role=note]')
+    const knob = document.querySelector('.knobs input, .knobs .segmented button')
+    const r = knob ? knob.getBoundingClientRect() : null
+    return { noteTop: note ? note.getBoundingClientRect().top : Infinity, knobBottom: r ? r.bottom : Infinity, knobTop: r ? r.top : Infinity }
+  })
+  // Above the note: the suite nav, the title, one line of subtitle, the report
+  // link, the section cap and the one-line picker — about 200 px, 220 when the
+  // experiment's name wraps. The eight open groups put it near 700.
+  if (!(m.noteTop < 230)) fail(`1280px / ${name}: the note starts at ${Math.round(m.noteTop)} px (want < 230)`)
+  if (!(m.knobBottom <= 900 && m.knobTop >= 0)) fail(`1280px / ${name}: the first knob is off screen on load (${Math.round(m.knobTop)}–${Math.round(m.knobBottom)} px)`)
+}
+console.log(`   1280×900: the note starts above 230 px and the first knob is on screen for all ${names.length} experiments`)
 await page.setViewportSize({ width: 3840, height: 2160 })
 await page.waitForTimeout(400)
 for (const name of names) {

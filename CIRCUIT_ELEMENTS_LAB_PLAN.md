@@ -773,6 +773,27 @@ state, and averaging.
    a new reference appears), every count of unknowns in words equals the count
    the solver printed, refusals reach the student as a sentence, and every sine
    experiment opens with |v_s| ≥ A/2.
+   **Steps 1 and 2 — the opening experience and notes that pose a question —
+   shipped 2026-09-02:** the note is gone as a single block. Each experiment now
+   has three registers in `src/lessons.js`: `see` (what the picture shows at the
+   defaults, at most 70 words, so it and the schematic share a phone's first
+   screen), `try` (two to four knob moves, each a sentence of at most 45 words
+   with the setting it makes and the reading it produces) and `why` (the
+   reasoning, folded under "Deeper" in a `details`). `experiments.js` keeps no
+   prose; it takes the lesson by id and builds `note` as `see` + `why` for the
+   places that still quote one paragraph. The sidebar shows the picker, `see`,
+   the numbered `try` list and the "Deeper" fold; a phone gets a "Knobs ↓" pill
+   because the knobs sit below the plots there. The tests measure the new
+   registers the way they measured the note: every `set` names a knob and stays
+   in its range, every `at` stays in the window, every `reads` entry is solved
+   (`readQuantity` walks `v.`/`vd.`/`state.`/`thevenin.`/`mag.`/`deg.`/`lead.`/
+   `energy.`/`H.`/`Z.`/`ac.` paths, or a function of the analysis), and every
+   number-with-unit in `see`, `try` and `why` has to be one of those readings, a
+   knob default, the cursor time or a value the step just set — a lesson cannot
+   quote a number the solver does not produce. Exactly two steps ask for a
+   refusal (A2 open, F6 ideal), and both get one. `verify.mjs` checks the first
+   screen at 390 px holds the note and the Analysis switch, and at 1280×900 the
+   note starts above 230 px with the first knob on screen, for all 46.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event

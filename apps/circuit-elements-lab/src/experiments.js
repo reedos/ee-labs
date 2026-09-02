@@ -19,6 +19,7 @@
 
 import { fmt } from '@ee-labs/ui'
 import { layoutExtent } from './layoutCheck.js'
+import { LESSONS } from './lessons.js'
 
 // Every view a lower pane can show, in the order the view switch lists them —
 // the same order in every experiment, so a tab sits in the same place from one
@@ -138,15 +139,6 @@ export const EXPERIMENTS = [
     group: GROUPS[0],
     name: 'A voltage source holds its voltage',
     terms: ['voltage', 'vsource', 'resistor', 'current', 'node', 'kcl', 'kvl'],
-    note:
-      'Two elements and two wires, and already the whole idea. A voltage source is a device ' +
-      'that holds a fixed voltage E between its two terminals and supplies whatever current ' +
-      'that takes. A resistor is a device whose current is proportional to the voltage across ' +
-      'it: i = v/R (Ohm’s law). Wire the two together and the source decides the voltage, the ' +
-      'resistor decides the current: i = E/R. Turn R down and the current climbs while the ' +
-      'source’s voltage does not move by a microvolt — that is what “source” means. The ' +
-      'ideal wires between them have no voltage across them at all: the whole top wire is one ' +
-      'node — one point, electrically — and it reads E everywhere.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R', 1000)],
     net: (p) => ({
       elements: [
@@ -169,15 +161,6 @@ export const EXPERIMENTS = [
     group: GROUPS[0],
     name: 'A current source holds its current',
     terms: ['isource', 'resistor', 'current', 'kcl'],
-    note:
-      'The other kind of source. A current source pushes a fixed current I through itself ' +
-      'and lets the circuit decide what voltage that takes. Into a resistor, Ohm’s law read ' +
-      'the other way gives v = I·R: turn R up and the voltage climbs, the current does not. ' +
-      'Push R up to a million ohms and 5 mA needs 5 kV. Now open the switch: 5 mA has nowhere ' +
-      'to go, no voltage is large enough, and the solver refuses the circuit and says why — an ' +
-      'ideal current source is never left unconnected. Voltage sources are the ' +
-      'familiar kind — batteries, supplies — but current sources are how transistors behave, ' +
-      'and the op-amp group leans on them.',
     params: [
       Is('I', 'Source I', 0.005),
       R('R1', 'R', 1000),
@@ -218,16 +201,6 @@ export const EXPERIMENTS = [
     group: GROUPS[0],
     name: 'Voltage is a difference; ground is a choice',
     terms: ['voltage', 'ground', 'node', 'kcl'],
-    note:
-      'A voltage is never a property of one point. It is always the difference between two, ' +
-      'and a meter has two probes for that reason. The numbers at the nodes here are ' +
-      'measured against the node marked with the ground symbol, which the solver — like a ' +
-      'meter’s black lead — takes as 0 V. That choice is free. The two-resistor chain on the left is ' +
-      'built on top of a source V_ref instead of directly on ground: slide V_ref and every ' +
-      'node voltage moves by exactly that amount, while every element’s voltage, every ' +
-      'current and every power stays put, because an element only ever sees the difference ' +
-      'across its own two terminals. V_ref carries no current at all. It is not doing ' +
-      'anything to the circuit; it is renaming zero.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), Vs('Vref', 'Lift V_ref', 5)],
     net: (p) => ({
       elements: [
@@ -266,16 +239,6 @@ export const EXPERIMENTS = [
     group: GROUPS[0],
     name: 'Which way is +: the passive sign convention',
     terms: ['passive', 'voltage', 'current', 'power', 'kcl', 'kvl'],
-    note:
-      'Every element has two terminals, and before a single number can be written down one ' +
-      'of them must be called +. That is a label you choose, not a fact about the element. ' +
-      'Then two rules, always: the element’s voltage is v = (voltage at +) − (voltage at −), ' +
-      'and its current i is measured flowing IN at the + terminal. Here the resistor’s + is ' +
-      'its left end. With E₁ > E₂ its v and i are both positive; slide E₂ above E₁ and both ' +
-      'turn negative together — switch the meters to i and watch the arrow reverse — while ' +
-      'its power p = v·i stays positive, because a resistor only ever absorbs. The source ' +
-      'that is pushing has current LEAVING its +, so its power comes out negative. A negative ' +
-      'reading is not an error; it is the answer, with its direction attached.',
     params: [Vs('E1', 'E₁', 12), Vs('E2', 'E₂', 5), R('R1', 'R', 1000)],
     net: (p) => ({
       elements: [
@@ -297,12 +260,6 @@ export const EXPERIMENTS = [
     group: GROUPS[1],
     name: 'Current in equals current out',
     terms: ['kcl', 'node', 'passive'],
-    note:
-      'Kirchhoff’s current law: charge does not pile up at a junction, so whatever current ' +
-      'arrives at node A leaves it. The arrows are the actual directions and the numbers are ' +
-      'the actual amounts — R₁ carries exactly what R₂ and R₃ carry between them, however you ' +
-      'set the three. Try making R₂ tiny: it takes almost everything, and R₃ almost nothing, ' +
-      'but the sum never moves.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁ (series)', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
@@ -323,12 +280,6 @@ export const EXPERIMENTS = [
     group: GROUPS[1],
     name: 'Voltages around a loop add to zero',
     terms: ['kvl', 'passive'],
-    note:
-      'Kirchhoff’s voltage law: go once around any closed path adding the voltage rises and ' +
-      'subtracting the drops and you are back where you started, so the total is zero. Here ' +
-      'the source lifts by E and the two resistors drop it all again, in proportion to their ' +
-      'resistance because the same current flows through both. The + marks show which end of ' +
-      'each element is measured as positive.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000)],
     net: (p) => ({
       elements: [
@@ -348,12 +299,6 @@ export const EXPERIMENTS = [
     group: GROUPS[1],
     name: 'Power, and the sign of it',
     terms: ['passive', 'power'],
-    note:
-      'Every element’s power is v × i with the current measured INTO its + terminal — the ' +
-      'passive sign convention. A resistor’s current always enters at its higher-voltage end, ' +
-      'so its power is positive: it absorbs. The source’s current leaves its + terminal, so its ' +
-      'power comes out negative: it delivers. The negative sign is not a mistake to hide; it is ' +
-      'the bookkeeping that makes every power in the circuit add to exactly zero.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000)],
     net: (p) => ({
       elements: [
@@ -373,12 +318,6 @@ export const EXPERIMENTS = [
     group: GROUPS[1],
     name: 'Two sources, one loop',
     terms: ['passive', 'power'],
-    note:
-      'Two batteries facing the same way with a resistor between them. The current is set by ' +
-      'the DIFFERENCE of the two voltages over R, and it flows from the stronger source into ' +
-      'the weaker one — which then shows positive power: it is being charged. Raise E₂ past E₁ ' +
-      'and the arrow turns round, and the roles swap. Nothing in the algebra changed; only a ' +
-      'sign did, and the sign is the answer.',
     params: [Vs('E1', 'E₁', 12), Vs('E2', 'E₂', 5), R('R1', 'R', 100)],
     net: (p) => ({
       elements: [
@@ -400,11 +339,6 @@ export const EXPERIMENTS = [
     group: GROUPS[2],
     name: 'Series: one current, shared voltage',
     terms: ['series', 'kvl'],
-    note:
-      'Elements in series carry the same current, so they add as resistances and split the ' +
-      'voltage in proportion: v_k = E · R_k / (R₁ + R₂ + R₃). This is the voltage divider, ' +
-      'and it is nothing more than KVL plus Ohm’s law. A resistor ten times the others takes ' +
-      'ten times the voltage — and nearly all of it.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
@@ -425,11 +359,6 @@ export const EXPERIMENTS = [
     group: GROUPS[2],
     name: 'Parallel: one voltage, shared current',
     terms: ['parallel', 'kcl'],
-    note:
-      'Elements in parallel share a voltage, so their CONDUCTANCES add: 1/R_eq = 1/R₁ + 1/R₂ ' +
-      '+ 1/R₃, and the current splits in proportion to 1/R. The equivalent is always smaller ' +
-      'than the smallest branch. Watch the total current from the source: it equals E divided ' +
-      'by that equivalent, and the smallest resistor takes the biggest share.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
@@ -465,12 +394,6 @@ export const EXPERIMENTS = [
     group: GROUPS[2],
     name: 'The loaded divider',
     terms: ['series', 'parallel', 'thevenin'],
-    note:
-      'The divider formula E·R₂/(R₁+R₂) is true only with nothing connected. Hang a load R_L ' +
-      'across the output and it sits in parallel with R₂, pulling the voltage down to ' +
-      'E·(R₂∥R_L)/(R₁ + R₂∥R_L). The droop is small only while R_L is much larger than R₂ — ' +
-      'which is the real reason dividers are built from small resistors and why, in E8, an ' +
-      'op-amp buffer fixes this completely.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('RL', 'Load R_L', 10000)],
     net: (p) => ({
       elements: [
@@ -494,12 +417,6 @@ export const EXPERIMENTS = [
     group: GROUPS[2],
     name: 'The Wheatstone bridge',
     terms: ['series', 'kvl'],
-    note:
-      'Two dividers side by side, output read between their midpoints. When R₁/R₂ = R₃/R₄ the ' +
-      'two midpoints sit at the same voltage and the output is exactly zero — the bridge is ' +
-      'balanced, and it stays balanced whatever the supply does. Nudge R₄ by 1% and the output ' +
-      'moves by about E/4 × 1%: a bridge turns a tiny resistance change into a voltage you can ' +
-      'read, which is how strain gauges and thermistors are read out.',
     params: [Vs('E', 'Source E', 10), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('R3', 'R₃', 1000), R('R4', 'R₄', 1010)],
     net: (p) => ({
       elements: [
@@ -544,12 +461,6 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'Nodal analysis: one equation per node',
     terms: ['kcl', 'node', 'nodal'],
-    note:
-      'Pick a ground, name the other node voltages, and write KCL at each in terms of them: ' +
-      'every resistor’s current is (its two node voltages apart)/R. That is the whole method. ' +
-      'Here there is one unknown, V_A, and one equation; the pane below shows it, with each ' +
-      'term’s live value so you can see them sum to zero. The closed form falls out at once: ' +
-      'V_A = (E/R₁)/(1/R₁ + 1/R₂ + 1/R₃).',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
@@ -570,14 +481,6 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'A source between two nodes: the supernode',
     terms: ['nodal', 'supernode', 'mna'],
-    note:
-      'A voltage source between nodes A and B fixes their difference but says nothing about ' +
-      'the current through itself — KCL at A and at B each contain an unknown current. The ' +
-      'textbook fix is a supernode: add the two KCL equations so that current cancels, then ' +
-      'use V_A − V_B = E₂ as the second equation. The matrix method does the same thing without ' +
-      'the trick: it keeps the source current as an extra unknown and adds the constraint as ' +
-      'an extra row. Below, the printed system has five unknowns: the three node voltages ' +
-      '(in, A, B) and the current through each of the two sources.',
     params: [Vs('E1', 'E₁', 12), Vs('E2', 'E₂ (floating)', 4), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
@@ -617,13 +520,6 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'Mesh analysis: one equation per loop',
     terms: ['kvl', 'mesh'],
-    note:
-      'The other method: assign a circulating current to each window of the circuit and write ' +
-      'KVL around it. Two meshes, two unknowns: E₁ = R₁i₁ + R₂(i₁ − i₂) and 0 = R₃i₂ + E₂ + ' +
-      'R₂(i₂ − i₁). The shared resistor carries the difference i₁ − i₂. Solve the 2×2 by hand ' +
-      'and the currents match the nodal solution exactly — two methods, one circuit, one ' +
-      'answer. Make E₂ larger than E₁·R₂/(R₁+R₂) and i₂ goes negative: the right-hand loop runs ' +
-      'the other way.',
     params: [Vs('E1', 'E₁', 12), Vs('E2', 'E₂', 3), R('R1', 'R₁', 1000), R('R2', 'R₂ (shared)', 2000), R('R3', 'R₃', 1000)],
     net: (p) => ({
       elements: [
@@ -665,13 +561,6 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'Superposition: one source at a time',
     terms: ['superposition', 'linear'],
-    note:
-      'In a linear circuit the response to several sources is the sum of the responses to ' +
-      'each alone — the others set to zero, which means a voltage source becomes a wire and a ' +
-      'current source a gap. Below, every voltage and current is solved once per source and ' +
-      'summed, and the sums match the full solution to the last digit. POWER does not add: ' +
-      'i² has a cross term 2·i₁·i₂ that the two half-solutions never see. Superposition is a ' +
-      'statement about linear quantities only.',
     params: [Vs('E1', 'E₁', 12), Is('I1', 'I₁', 0.005), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000)],
     net: (p) => ({
       elements: [
@@ -710,13 +599,6 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'Thévenin, three ways',
     terms: ['thevenin', 'linear'],
-    note:
-      'Seen from any two terminals, a linear circuit is indistinguishable from one source in ' +
-      'series with one resistor. Three ways to find that resistor: divide the open-circuit ' +
-      'voltage by the short-circuit current; kill the sources and push 1 A in, reading the ' +
-      'volts; or hang several loads and fit the straight line through the (i, v) points. Below, ' +
-      'all three run live and agree — R_th = R₁∥R₂∥R₃ here — and the load line’s intercepts ' +
-      'are V_oc and I_sc.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
@@ -738,12 +620,6 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'Maximum power transfer',
     terms: ['thevenin', 'power'],
-    note:
-      'A source with internal resistance R_s delivers the most power to a load when R_L = R_s: ' +
-      'P = E²R_L/(R_s+R_L)² peaks at E²/4R_s. At that point exactly half the power is lost ' +
-      'inside the source, so the efficiency is 50% — which is why radio receivers match ' +
-      'impedances and power grids do not. Slide R_L to either side and watch the load power ' +
-      'fall while the efficiency keeps climbing toward 100% as R_L grows.',
     params: [Vs('E', 'Source E', 12), R('Rs', 'Source R_s', 500), R('RL', 'Load R_L', 500)],
     net: (p) => ({
       elements: [
@@ -771,12 +647,6 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'A dependent source',
     terms: ['dependent', 'power'],
-    note:
-      'A dependent source is an element whose value is set by a voltage or current somewhere ' +
-      'else in the circuit. This one is a voltage-controlled voltage source: v_out = A·v_in, ' +
-      'whatever load it drives. It is the first element here that can deliver more power than ' +
-      'it takes in — its power is negative while the input source barely works at all. That ' +
-      'energy comes from a supply the symbol does not show, which is exactly what an op-amp is.',
     params: [Vs('E', 'Input E', 0.5), Gain('A', 'Gain A', 10), R('Rin', 'R_in', 10000), R('RL', 'Load R_L', 1000)],
     net: (p) => ({
       elements: [
@@ -815,19 +685,6 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'The op-amp as a black box',
     terms: ['opamp', 'ideal', 'impedance', 'active'],
-    note:
-      'An operational amplifier is a packaged circuit of a few dozen transistors — active ' +
-      'devices, powered from supply pins the symbol never shows — that behaves, from outside, ' +
-      'like the box drawn here: a resistance R_in between its two inputs, a dependent source ' +
-      'that produces A times the input difference, and a resistance R_out in series with the ' +
-      'output. Nothing else about the inside matters to a circuit designer, which is the point ' +
-      'of a black box. The IDEAL op-amp has A = ∞, R_in = ∞ (its inputs draw no current), ' +
-      'R_out = 0 (its output holds its voltage into any load), no offset and no speed limit; a ' +
-      'real one has A ≈ 10⁵, R_in from 1 MΩ to 10¹² Ω, R_out of tens of ohms. Turn the three ' +
-      'knobs: the input divider R_in/(R_s + R_in) costs a little of the signal, R_out/(R_out + ' +
-      'R_L) costs a little of the output, and the ideal recovers as both go to their limits. ' +
-      'The payoff over any circuit of resistors alone: this one delivers far more power to the ' +
-      'load than the source supplies — a resistor network can only divide what it is given.',
     params: [
       Vs('E', 'Input E', 0.01),
       R('Rs', 'Source R_s', 10000),
@@ -884,13 +741,6 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'Comparator: an op-amp with no feedback',
     terms: ['opamp', 'gain'],
-    note:
-      'An op-amp is a dependent source with an enormous gain: v_out = A·(v₊ − v₋). With ' +
-      'nothing connecting the output back to an input, an IDEAL op-amp has no solution at all ' +
-      '— infinity times anything — and the solver refuses, saying so. Give it a finite gain ' +
-      'and the answer is finite but absurd: 1 mV in, 100 V out. A real op-amp would stop at its ' +
-      'supply rails; that saturation is the comparator’s job, and it arrives with the ' +
-      'non-linear elements later in this lab.',
     params: [
       Vs('E', 'Input E', 0.001),
       { key: 'A', label: 'Gain A (0 = ideal)', unit: '', min: 0, max: 1e6, scale: 'linear', default: 0, hint: 'Set 0 for an ideal op-amp' },
@@ -931,13 +781,6 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'The golden rules, derived',
     terms: ['opamp', 'feedback', 'gain'],
-    note:
-      'Connect the output back to the − input through a divider and the huge gain works FOR ' +
-      'you. Exactly: v_out = G·E / (1 + G/A) where G = 1 + R_f/R_g is the gain you built. The ' +
-      'op-amp only has to hold v₊ − v₋ = v_out/A across its inputs — microvolts. As A → ∞ that ' +
-      'difference → 0 and v_out → G·E: the two “golden rules” (no input current, equal input ' +
-      'voltages) are not axioms but the limit of this formula. Slide A and watch the gain ' +
-      'converge on G.',
     params: [Vs('E', 'Input E', 1), Gain('A', 'Op-amp gain A', 1000), R('Rf', 'R_f', 9000), R('Rg', 'R_g', 1000)],
     net: (p) => ({
       elements: [
@@ -958,12 +801,6 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'Inverting amplifier and the virtual ground',
     terms: ['opamp', 'feedback', 'virtual'],
-    note:
-      'Ground the + input and feed the signal into the − input through R_g, with R_f back ' +
-      'from the output. The golden rules make the − input sit at 0 V without being connected ' +
-      'to ground — a virtual ground — so the input current is simply E/R_g, and since none of ' +
-      'it enters the op-amp it all flows through R_f: v_out = −(R_f/R_g)·E. The source sees a ' +
-      'load of exactly R_g, and the output current comes from the op-amp, not the source.',
     params: [Vs('E', 'Input E', 0.5), R('Rf', 'R_f', 10000), R('Rg', 'R_g', 1000), R('RL', 'Load R_L', 10000)],
     net: (p) => ({
       elements: [
@@ -985,12 +822,6 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'The summing amplifier',
     terms: ['opamp', 'virtual', 'kcl'],
-    note:
-      'Two inputs into the same virtual ground. Because that node is held at 0 V, each input ' +
-      'current is set by its own resistor alone — E₁/R₁ and E₂/R₂ — and KCL at the node sends ' +
-      'the sum through R_f: v_out = −R_f(E₁/R₁ + E₂/R₂). The inputs never see each other; the ' +
-      'virtual ground is what makes addition possible without interaction. Weighted by the ' +
-      'resistor ratios, this is a digital-to-analogue converter waiting to happen.',
     params: [Vs('E1', 'E₁', 1), Vs('E2', 'E₂', 2), R('R1', 'R₁', 10000), R('R2', 'R₂', 20000), R('Rf', 'R_f', 10000)],
     net: (p) => ({
       elements: [
@@ -1013,12 +844,6 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'The difference amplifier',
     terms: ['opamp', 'feedback', 'cmrr'],
-    note:
-      'Four resistors, two inputs, one output: with R₃/R₄ matched to R₁/R₂ the output is ' +
-      '(R₂/R₁)(E₂ − E₁) and a voltage common to both inputs is rejected entirely. Mismatch the ' +
-      'ratio by 1% and a common-mode input leaks through at about 1% of the differential ' +
-      'gain’s worth — set E₁ = E₂ to see exactly how much. That ratio, differential gain over ' +
-      'common-mode gain, is the CMRR, and it is set by resistor matching, not by the op-amp.',
     params: [
       Vs('E1', 'E₁ (to −)', 1),
       Vs('E2', 'E₂ (to +)', 1.1),
@@ -1049,12 +874,6 @@ export const EXPERIMENTS = [
     group: GROUPS[4],
     name: 'The buffer fixes the loaded divider',
     terms: ['opamp', 'feedback', 'thevenin'],
-    note:
-      'C3’s divider drooped under load. Put a unity-gain buffer between them — output wired ' +
-      'straight back to the − input — and the divider sees no load at all (the op-amp input ' +
-      'draws nothing) while the load sees a source with zero resistance. The output is the ' +
-      'UNLOADED divider voltage E·R₂/(R₁+R₂) whatever R_L is; the load current comes from the ' +
-      'op-amp. Sweep R_L below and the line is flat. Compare the same sweep in C3.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('RL', 'Load R_L', 100)],
     net: (p) => ({
       elements: [
@@ -1081,17 +900,6 @@ export const EXPERIMENTS = [
     group: GROUPS[5],
     name: 'A capacitor’s current is the slope of its voltage',
     terms: ['capacitor', 'state', 'current'],
-    note:
-      'A capacitor stores charge, q = C·v, and current is charge per second, so i = C·dv/dt: a ' +
-      'capacitor’s current is proportional to how fast its voltage is CHANGING, not to the ' +
-      'voltage. Drive it with a triangle wave — voltage rising at a steady 4A/T — and the ' +
-      'current is a square wave, ±C·4A/T = ±20 mA here, flat while the voltage climbs and ' +
-      'flipping sign the instant the slope does. The small series R_s is there because an ideal ' +
-      'source wired straight to an ideal capacitor would have to supply infinite current at the ' +
-      'corners; with it the capacitor voltage lags the source by τ = R_sC = 10 µs and the ' +
-      'current settles onto its plateau in the same time. Scrub the cursor: the schematic at ' +
-      'each instant is an ordinary resistive circuit with the capacitor standing in as a voltage ' +
-      'source at its present voltage — that is exactly how the solver sees it.',
     params: [
       { key: 'A', label: 'Triangle amplitude', unit: 'V', min: 0.1, max: 24, scale: 'linear', default: 5 },
       Per('T', 'Period', 1e-3),
@@ -1123,15 +931,6 @@ export const EXPERIMENTS = [
     group: GROUPS[5],
     name: 'An inductor’s voltage is the slope of its current',
     terms: ['inductor', 'state', 'duality'],
-    note:
-      'The dual. An inductor stores flux, λ = L·i, and voltage is flux per second: v = L·di/dt. ' +
-      'Push a triangle current through it — rising at 4A/T — and the voltage is a square wave of ' +
-      '±L·4A/T = ±0.4 V, flat while the current ramps and flipping when the ramp does. The ' +
-      'parallel R_p plays the role R_s played in F1: an ideal current source into an ideal ' +
-      'inductor would need infinite voltage at each corner, and with R_p the inductor current ' +
-      'lags the source by τ = L/R_p = 1 µs. Swap v for i, C for L, series for parallel, and F1 ' +
-      'turns into this experiment word for word — that swap has a name, duality, and it runs ' +
-      'through the whole group.',
     params: [
       { key: 'A', label: 'Triangle amplitude', unit: 'A', min: 1e-3, max: 0.1, scale: 'linear', default: 0.01 },
       Per('T', 'Period', 1e-3),
@@ -1163,16 +962,6 @@ export const EXPERIMENTS = [
     group: GROUPS[5],
     name: 'Charging a capacitor: the time constant',
     terms: ['capacitor', 'state', 'timeconstant', 'initial'],
-    note:
-      'Close the switch at t = 0 and the capacitor does not jump to E: its voltage is a state, ' +
-      'and a state cannot change instantly (that would take infinite current). KVL round the ' +
-      'loop gives E = R·i + v_C with i = C·dv_C/dt — a first-order differential equation, ' +
-      'RC·dv_C/dt + v_C = E. Its solution is v_C(t) = E + (v₀ − E)e^(−t/τ) with τ = RC = 1 ms: ' +
-      'the gap to the final value shrinks by a factor e every time constant, so after one τ the ' +
-      'capacitor has covered 63.2 % of the way and after five 99.3 %. The current starts at ' +
-      '(E − v₀)/R = 12 mA the instant the switch closes — an uncharged capacitor looks like a ' +
-      'short — and dies away with the same τ. Give v_C(0) a value and the same formula holds; ' +
-      'only the starting point moves.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R', 1000), Cap('C1', 'C', 1e-6), Vs('v0', 'v_C(0)', 0, 'the capacitor’s charge before the switch closes'), Win('N', 'Window', 'τ', 5)],
     net: (p) => ({
       elements: [
@@ -1199,15 +988,6 @@ export const EXPERIMENTS = [
     group: GROUPS[5],
     name: 'Every RC circuit is one RC circuit: Thévenin sets τ',
     terms: ['thevenin', 'timeconstant', 'capacitor'],
-    note:
-      'The capacitor here sits behind a divider and a series resistor, and nothing in F3 seems ' +
-      'to apply — until you replace everything to the left of it by its Thévenin equivalent ' +
-      '(D5). Seen from the capacitor the network is a source V_th = E·R₂/(R₁+R₂) = 8 V behind ' +
-      'R_th = R₃ + R₁∥R₂ = 1.167 kΩ, and then it IS F3: v_B(t) = V_th(1 − e^(−t/τ)) with ' +
-      'τ = R_th·C = 1.167 ms. Every circuit with one capacitor is this circuit; the only work is ' +
-      'finding V_th and R_th. Node A moves too, because the charging current passes through the ' +
-      'divider: the instant the source steps, the empty capacitor is a short and A sees ' +
-      'R₂∥R₃, so it starts at 3.43 V and climbs to the divider’s own 8 V as the current dies.',
     params: [Vs('E', 'Step E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 500), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'τ', 5)],
     net: (p) => ({
       elements: [
@@ -1236,15 +1016,6 @@ export const EXPERIMENTS = [
     group: GROUPS[5],
     name: 'Half the energy is lost, whatever R',
     terms: ['energy', 'capacitor', 'power'],
-    note:
-      'Charging a capacitor from a fixed source through a resistor wastes exactly half the ' +
-      'energy, and no choice of R can change that. The source delivers E·q = C·E² = 144 µJ in ' +
-      'all; the capacitor ends up holding ½CE² = 72 µJ; the other 72 µJ is heat in the ' +
-      'resistor. Try the chips: a small R charges fast with a large current, a large R slowly ' +
-      'with a small one, and the integral of i²R over the whole charge comes out the same — ' +
-      'because the resistor’s energy is ∫(E − v_C)·i dt = ∫(E − v_C)·C dv_C, which depends only ' +
-      'on where v_C starts and ends. The energy view stacks the three as the charge proceeds; ' +
-      'after ten time constants the bars have all but stopped moving.',
     params: [Vs('E', 'Source E', 12), chips(R('R1', 'R', 1000), [100, 1000, 10000]), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'τ', 10)],
     net: (p) => ({
       elements: [
@@ -1271,16 +1042,6 @@ export const EXPERIMENTS = [
     group: GROUPS[5],
     name: 'Opening a switch on an inductor: the spark',
     terms: ['inductor', 'state', 'timeconstant'],
-    note:
-      'Before t = 0 the switch has been closed a long time, the inductor is a short at DC and ' +
-      'carries I₀ = E/R = 12 mA. Open the switch and that current has nowhere to go — but an ' +
-      'inductor’s current is a state and cannot change instantly. Something has to give. Flip ' +
-      'the switch to ideal and the solver refuses, with a reason: di/dt would be infinite and so ' +
-      'would the voltage. The real answer is that an open switch is not infinite ohms: give it ' +
-      'R_off = 100 kΩ and the moment it opens the full 12 mA is forced through it, putting ' +
-      'I₀·R_off = 1.2 kV across a gap that was at 0 V an instant before. That is the spark, and ' +
-      'the reason relay coils get a diode across them. The current then decays with ' +
-      'τ = L/(R + R_off) = 9.9 µs — a hundred times faster than the L/R = 1 ms it took to build up.',
     params: [
       Vs('E', 'Source E', 12),
       R('R1', 'R', 1000),
@@ -1314,15 +1075,6 @@ export const EXPERIMENTS = [
     group: GROUPS[5],
     name: 'The op-amp integrator',
     terms: ['opamp', 'virtual', 'capacitor', 'ideal'],
-    note:
-      'Feedback through a capacitor instead of a resistor. The virtual ground (E5) holds n at ' +
-      '0 V, so the input current is v_in/R = 100 µA exactly, and all of it must flow into the ' +
-      'capacitor: C·dv_C/dt = v_in/R. The output is −v_C, so dv_out/dt = −v_in/(RC): the output ' +
-      'is the integral of the input, scaled by −1/RC. A square wave in gives a triangle out — ' +
-      'slope 1 V/ms here for 1 V in, peak to peak A·T/(2RC) = 0.5 V. Flip the op-amp to finite ' +
-      'gain and the integrator becomes a very slow RC: the output heads for −A·v_in with ' +
-      'τ = RC(A + 1) = 100 s instead of integrating for ever, which is the leak every real ' +
-      'integrator has.',
     params: [
       { key: 'A', label: 'Square amplitude', unit: 'V', min: 0.1, max: 10, scale: 'linear', default: 1 },
       Per('T', 'Period', 1e-3),
@@ -1364,16 +1116,6 @@ export const EXPERIMENTS = [
       R: 800,
       view: 'state',
       terms: ['state', 'characteristic', 'damping', 'natural'],
-      note:
-        'Two states now — the capacitor’s voltage and the inductor’s current — and KVL round the ' +
-        'loop, E = R·i + L·di/dt + v_C with i = C·dv_C/dt, becomes a second-order differential ' +
-        'equation: LC·v_C″ + RC·v_C′ + v_C = E. The solver never writes it that way; it writes ' +
-        'the pair of first-order equations dx/dt = A·x + B·u shown underneath, whose ' +
-        'characteristic polynomial det(sI − A) = s² + (R/L)s + 1/LC is the same equation. Two ' +
-        'numbers describe everything: ω₀ = 1/√LC = 10⁴ rad/s and α = R/2L. With R = 800 Ω, ' +
-        'α = 4×10⁴ > ω₀, the roots are real, −1.27×10³ and −7.87×10⁴ s⁻¹, and the response is ' +
-        'two decaying exponentials of which the slow one sets the pace. The capacitor creeps up ' +
-        'to E and never overshoots. Try the chips for the other two faces.',
       claim: { overdamped: true },
     },
     {
@@ -1382,14 +1124,6 @@ export const EXPERIMENTS = [
       R: 200,
       view: 'scope',
       terms: ['damping', 'characteristic', 'natural'],
-      note:
-        'Lower R until α = ω₀ — R = 2√(L/C) = 200 Ω — and the two real roots merge into one, ' +
-        's = −α = −10⁴ s⁻¹, repeated. The response is then v_C = E[1 − (1 + αt)e^(−αt)]: it ' +
-        'still never overshoots, but it is the fastest response that does not (G3 measures ' +
-        'that). A hair less resistance and the roots turn complex and the capacitor voltage ' +
-        'crosses E; a hair more and the slow root slows the approach. The current ' +
-        'i = (E/L)·t·e^(−αt) peaks at t = 1/α = 100 µs, at E/(Lαe) = 3.68 mA. Nothing in the ' +
-        'circuit hints that 200 Ω is special; only the equation does.',
       claim: { critical: true },
     },
     {
@@ -1398,16 +1132,6 @@ export const EXPERIMENTS = [
       R: 200,
       view: 'damping',
       terms: ['damping', 'natural', 'timeconstant'],
-      note:
-        'Sweep R across its whole range and measure two things about the step response: how far ' +
-        'the capacitor voltage overshoots E, and how long it takes to settle within 2 % of E for ' +
-        'good. Above 200 Ω there is no overshoot at all, and the settling time falls as R does, ' +
-        'because the slow root −α + √(α² − ω₀²) speeds up. Below 200 Ω the response rings, the ' +
-        'overshoot climbs — 44 % at 50 Ω, 100 % at zero — and the settling time first keeps ' +
-        'falling and then climbs again as the ringing outlasts the decay. Critical damping is ' +
-        'the fastest response with no overshoot; the fastest settling of all lies a little below ' +
-        'it, near 160 Ω, where the first peak just fits inside the 2 % band — a 1.5 % overshoot ' +
-        'buys a settling time a third shorter.',
       claim: { sweep: true },
     },
     {
@@ -1416,15 +1140,6 @@ export const EXPERIMENTS = [
       R: 50,
       view: 'scope',
       terms: ['damping', 'natural', 'characteristic'],
-      note:
-        'With R = 50 Ω, α = 2.5×10³ < ω₀ and the roots are complex: −α ± jω_d with ' +
-        'ω_d = √(ω₀² − α²) = 9682 rad/s. The response is a decaying oscillation, ' +
-        'v_C = E[1 − e^(−αt)(cos ω_d t + (α/ω_d) sin ω_d t)]: it rings at ω_d, slightly slower ' +
-        'than ω₀, inside an envelope that shrinks as e^(−αt) — the dashed curves. The damping ' +
-        'ratio ζ = α/ω₀ = 0.25 fixes the shape whatever the scale: the first peak overshoots ' +
-        'by e^(−πζ/√(1−ζ²)) = 44.4 % of the step and arrives at t = π/ω_d = 324 µs, and each ' +
-        'following peak is that same fraction of the one before. Q = 1/2ζ = 2 says the same ' +
-        'thing another way.',
       claim: { underdamped: true },
     },
   ].map((g) => ({
@@ -1432,7 +1147,6 @@ export const EXPERIMENTS = [
     group: GROUPS[6],
     name: g.name,
     terms: g.terms,
-    note: g.note,
     params: [Vs('E', 'Step E', 1), chips(R('R1', 'R', g.R), [800, 200, 50]), Ind('L1', 'L', 10e-3), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'cycles', 5)],
     net: seriesRLC,
     layout: loop(['R1', 'L1', 'C1']),
@@ -1450,15 +1164,6 @@ export const EXPERIMENTS = [
     group: GROUPS[6],
     name: 'Undamped: energy sloshes between L and C',
     terms: ['energy', 'natural', 'inductor', 'capacitor'],
-    note:
-      'Take the resistor out entirely and α = 0: the roots are ±jω₀ and nothing decays. The ' +
-      'capacitor voltage swings for ever between 0 and 2E — v_C = E(1 − cos ω₀t) — ' +
-      'overshooting the step by a full 100 %, and the current i = E√(C/L)·sin ω₀t is 10 mA at ' +
-      'its peaks. Nothing is dissipated, so every joule the source delivers is still in the ' +
-      'circuit, moving back and forth: the capacitor holds ½Cv² when the voltage peaks and the ' +
-      'inductor holds ½Li² when the current does, a quarter cycle later, and the two together ' +
-      'exactly equal what the source has supplied so far. No real circuit does this — every ' +
-      'wire has resistance — but every real oscillator is this circuit with the losses made up.',
     params: [Vs('E', 'Step E', 1), Ind('L1', 'L', 10e-3), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'cycles', 3)],
     net: (p) => ({
       elements: [
@@ -1481,16 +1186,6 @@ export const EXPERIMENTS = [
     group: GROUPS[6],
     name: 'Initial conditions: where the circuit starts from',
     terms: ['initial', 'natural', 'state'],
-    note:
-      'The differential equation fixes the shape of the response; the initial conditions fix ' +
-      'which particular response you get. A second-order circuit needs two — the capacitor’s ' +
-      'voltage and the inductor’s current at t = 0 — because those are the two quantities that ' +
-      'cannot jump. Here they are knobs: the dim traces are the response from rest (G4), the ' +
-      'bright ones from your starting point. Both settle to the same place, E across the ' +
-      'capacitor and no current, because the forced response is set by the source alone; the ' +
-      'difference between them is a pure natural response, e^(−αt) times cosines and sines, ' +
-      'with its amplitudes chosen so that it starts at exactly v_C(0) and i_L(0). The two ' +
-      'traces differ by that natural response and by nothing else.',
     params: [
       Vs('E', 'Step E', 1),
       R('R1', 'R', 50),
@@ -1523,18 +1218,6 @@ export const EXPERIMENTS = [
     group: GROUPS[6],
     name: 'Parallel RLC: the dual',
     terms: ['duality', 'damping', 'natural'],
-    note:
-      'Swap every element for its dual — series for parallel, voltage source for current ' +
-      'source, R for 1/R — and the mathematics repeats itself exactly. KCL at the one node, ' +
-      'I = v/R + C·dv/dt + i_L with v = L·di_L/dt, is the same second-order equation with ' +
-      'α = 1/(2RC) in place of R/2L; ω₀ = 1/√LC does not change. The roles trade places: the ' +
-      'inductor current is now the state that steps from 0 to the full I = 10 mA the way v_C ' +
-      'stepped to E in the series circuit, overshooting by the same 44.4 %, and the node ' +
-      'voltage is the one that rings and dies away to zero. At R = 200 Ω this circuit is as ' +
-      'underdamped as the series one was at 50 Ω — ζ = 0.25 both times — because the critical ' +
-      'resistance is now ½√(L/C) = 50 Ω rather than 2√(L/C) = 200 Ω. In a parallel circuit a ' +
-      'LARGE R means light damping: the resistor is a leak across the tank, and a bigger leak ' +
-      'resistance leaks less.',
     params: [
       { key: 'I', label: 'Step I', unit: 'A', min: 1e-3, max: 0.1, scale: 'linear', default: 0.01 },
       chips(R('R1', 'R', 200), [12.5, 50, 200]),
@@ -1577,15 +1260,6 @@ export const EXPERIMENTS = [
     group: GROUPS[7],
     name: 'Switching on a sine: natural dies, forced stays',
     terms: ['steadystate', 'phasor', 'timeconstant'],
-    note:
-      'Switch a sine on at t = 0 and the capacitor voltage is two things added together: a ' +
-      'steady sinusoid at the drive frequency — the forced response, dashed — and a decaying ' +
-      'exponential −v_f(0)·e^(−t/τ) that exists only because the forced sinusoid would not have ' +
-      'started from zero on its own. The exponential is the natural response, the same e^(−t/τ) ' +
-      'as F3 with τ = RC = 1 ms; the source sets its size but not its shape. After 5τ the two ' +
-      'traces differ by less than 1 % of the forced amplitude, after 25τ by less than one part ' +
-      'in 10⁹, and from then on the circuit has forgotten how it started. Everything the phasor ' +
-      'views (H2 onward) say is about that steady state alone.',
     params: sineRCParams({ f: 159.2 }),
     net: sineRC,
     layout: loop(['R1', 'C1']),
@@ -1610,16 +1284,6 @@ export const EXPERIMENTS = [
     group: GROUPS[7],
     name: 'Phasors: the arrow that draws the wave',
     terms: ['phasor', 'reactance', 'steadystate'],
-    note:
-      'In the steady state every voltage and current is a sinusoid at the one drive frequency, ' +
-      'so each is fixed by two numbers — amplitude and phase — and can be drawn as an arrow. ' +
-      'Spin all the arrows together at ω and the height of each tip traces its waveform; the ' +
-      'slider sets how far they have turned. Arrows add like the voltages they stand for: V_R ' +
-      'and V_C laid tip to tail land exactly on V_s, which is KVL. The capacitor’s arrow lies ' +
-      '90° behind the current’s, because i = C·dv/dt puts the current a quarter cycle ahead, ' +
-      'and its length is |I|/ωC — the reactance 1/ωC plays the part of R. At the corner ' +
-      'frequency f = 1/(2πRC) = 159.2 Hz the two voltage arrows are the same length, each ' +
-      '1/√2 of the source, and v_C lags the source by exactly 45°.',
     params: sineRCParams({ f: 159.2 }),
     net: sineRC,
     layout: loop(['R1', 'C1']),
@@ -1645,16 +1309,6 @@ export const EXPERIMENTS = [
     group: GROUPS[7],
     name: 'Impedance: series RLC',
     terms: ['impedanceac', 'reactance', 'phasor'],
-    note:
-      'With phasors, a capacitor and an inductor obey Ohm’s law: V = Z·I with Z_C = 1/jωC ' +
-      'and Z_L = jωL. Impedances in series add like resistors, Z = R + j(ωL − 1/ωC), and the ' +
-      'current is V_s/Z — one complex division does the whole circuit. At 1 kHz the inductor ' +
-      'offers ωL = 62.8 Ω and the capacitor 1/ωC = 159.2 Ω; their arrows point opposite ways, ' +
-      'so the reactances partly cancel to −96.3 Ω and |Z| = 138.8 Ω. The current leads the ' +
-      'source by 43.9° — the capacitor is winning — and the capacitor voltage, 1.146 V, is ' +
-      'larger than the 1 V source: the inductor’s voltage is subtracted from it, not added. ' +
-      'Raise the frequency past 1591.5 Hz and the inductor wins instead; the current swings ' +
-      'to lagging and the arrows for V_L and V_C trade lengths.',
     params: [
       Vs('A', 'Amplitude', 1),
       chips(Freq('f', 'Frequency', 1000), [1000, 1591.5, 2500]),
@@ -1683,17 +1337,6 @@ export const EXPERIMENTS = [
     group: GROUPS[7],
     name: 'Resonance',
     terms: ['resonance', 'reactance', 'impedanceac'],
-    note:
-      'At one frequency, ω₀ = 1/√LC, the inductor’s reactance equals the capacitor’s and their ' +
-      'voltages cancel exactly: V_L + V_C = 0, the impedance collapses to plain R, and the ' +
-      'current is in phase with the source and as large as it can ever be. That is resonance, ' +
-      'here at f₀ = 1591.5 Hz. The two cancelling voltages are not small — each is Q times the ' +
-      'source, with Q = (1/R)√(L/C) = 20 at R = 5 Ω, so a 1 V drive puts 20 V across the ' +
-      'capacitor. The impedance plot shows the same thing from outside: |Z| dips to R at f₀ ' +
-      'and the phase crosses zero there, capacitive below, inductive above, with the half-power ' +
-      'points f₀/Q = 79.6 Hz apart. The scope shows what resonance costs: the amplitude builds ' +
-      'as 1 − e^(−αt) with α = R/2L, reaching 1 − 1/e after Q/π = 6.4 cycles, and only after 40 ' +
-      'cycles is it within a quarter of one percent of its final 20 V.',
     params: [
       Vs('A', 'Amplitude', 1),
       chips(Freq('f', 'Frequency', 1591.5), [1400, 1591.5, 1800]),
@@ -1724,17 +1367,6 @@ export const EXPERIMENTS = [
     group: GROUPS[7],
     name: 'AC power: real, reactive, apparent',
     terms: ['rms', 'powerfactor', 'steadystate'],
-    note:
-      'Drive an RL load — 100 Ω and 0.3 H, roughly a small motor — from 10 V peak at 50 Hz. ' +
-      'The current is 72.8 mA peak and lags by 43.3°. The instantaneous power p = v·i is not ' +
-      'a sinusoid at 50 Hz but a constant plus a sinusoid at 100 Hz — twice the frequency, ' +
-      'because v and i pass through zero together twice a cycle. Its average is the real power ' +
-      'P = ½R|I|² = 265 mW, all of it in the resistor: the inductor’s power swings both ways ' +
-      'and averages exactly zero, borrowing energy for a quarter cycle and giving it back. ' +
-      'With RMS values, V_rms = 10/√2 = 7.07 V and I_rms = 51.5 mA, the product ' +
-      'V_rms·I_rms = 364 mVA is the apparent power the wires must carry; only cos φ = 0.728 of ' +
-      'it — the power factor — is P. The rest, Q = 250 mvar, is reactive power: the amplitude ' +
-      'of the inductor’s to-and-fro.',
     params: [
       Vs('A', 'Amplitude', 10),
       chips(Freq('f', 'Frequency', 50), [50, 60, 400]),
@@ -1771,16 +1403,6 @@ export const EXPERIMENTS = [
     group: GROUPS[7],
     name: 'Frequency response: one sine at a time, then all of them',
     terms: ['bode', 'steadystate', 'phasor'],
-    note:
-      'Everything the steady state does at one frequency is a single complex number, ' +
-      'H = V_C/V_s = 1/(1 + jωRC). Sweep the frequency and that number traces a curve: this is ' +
-      'the Bode plot, |H| in decibels and the phase in degrees against a logarithmic frequency ' +
-      'axis. Below the corner f_c = 1/(2πRC) = 159.2 Hz the capacitor is nearly open and the ' +
-      'output follows the input; at the corner |H| = 1/√2, which is −3.01 dB, and the phase ' +
-      'is −45°; above it the gain falls 20 dB for every tenfold in frequency and the phase ' +
-      'heads for −90°. The marker is the frequency the scope is running at right now. Circuit ' +
-      'Lab starts from this plot — it has no time axis at all — so the hand-over below carries ' +
-      'your R and C there exactly, and its Bode plot is this one.',
     params: sineRCParams({ f: 1000 }),
     net: sineRC,
     layout: loop(['R1', 'C1']),
@@ -1802,6 +1424,17 @@ export const EXPERIMENTS = [
     claim: { bode: true },
   },
 ]
+
+// What the student reads lives in lessons.js: `see` (the picture at the
+// defaults), `try` (knob moves with their readings) and `why` (the reasoning).
+// `note` is the two prose registers run together, for the places that quote a
+// single paragraph per experiment (the hand-over card, the tests' word counts).
+for (const e of EXPERIMENTS) {
+  const lesson = LESSONS[e.id]
+  if (!lesson) throw new Error(`no lesson for ${e.id}`)
+  Object.assign(e, lesson)
+  e.note = `${lesson.see} ${lesson.why}`
+}
 
 // ------------------------------------------------------------ group H shared
 function sineRCParams({ f }) {

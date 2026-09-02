@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { LabNav, NumField, ReportIssue, Schematic, fmt } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { equations, normalize, complex as cx } from '@ee-labs/network'
@@ -54,8 +54,16 @@ export default function App() {
   // cursor are exempt.
   const [pristine, setPristine] = useState(true)
   const [openGroups, setOpenGroups] = useState(() => new Set())
+  // The full list of experiments, folded under the picker until asked for.
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const exp = byId[id]
+  // A new experiment shows from its top: the list the student scrolled through
+  // to reach it has folded, and the sidebar should not be left part-way down.
+  useEffect(() => {
+    const aside = document.querySelector('.controls')
+    if (aside) aside.scrollTop = 0
+  }, [id])
 
   const choose = (next) => {
     setId(next)
@@ -64,6 +72,7 @@ export default function App() {
     setView(byId[next].view)
     setCursor(cursorFor(byId[next], defaultsOf(next)))
     setPristine(true)
+    setPickerOpen(false)
   }
   const setParam = (key, value) => {
     setParams((p) => ({ ...p, [key]: value }))
@@ -98,10 +107,7 @@ export default function App() {
         <header>
           <LabNav current="circuit-elements-lab" currentLabel="Elements" />
           <h1>Circuit Elements Lab</h1>
-          <p className="sub">
-            Circuits from the two laws up. Every number on the schematic is solved, every equation is
-            the one the solver used, and every claim in a note is measured.
-          </p>
+          <p className="sub">Circuits from the two laws up — every claim measured.</p>
           <ReportIssue
             lab="Circuit Elements Lab"
             version={pkg.version}
@@ -110,41 +116,34 @@ export default function App() {
           />
         </header>
 
-        <section>
-          <h2>Experiments</h2>
-          {GROUPS.map((g) => {
-            const inGroup = EXPERIMENTS.filter((e) => e.group === g)
-            return (
-              <FoldGroup
-                key={g}
-                sectionKey={g}
-                label={g}
-                holdsActive={inGroup.some((e) => e.id === id)}
-                openGroups={openGroups}
-                setOpenGroups={setOpenGroups}
-              >
-                {inGroup.map((e) => (
-                  <button
-                    type="button"
-                    key={e.id}
-                    className={`preset${e.id === id ? ' is-on' : ''}`}
-                    onClick={() => choose(e.id)}
-                  >
-                    {e.name}
-                  </button>
-                ))}
-              </FoldGroup>
-            )
-          })}
-          <h3 className="note-title">
-            {exp.id.toUpperCase()} · {exp.name}
-          </h3>
-          <p className="hint" data-role="note" data-pristine={pristine}>
-            {exp.note}
+        <section className="lesson">
+          <h2>
+            Experiment
+            <span className="h2-aside">
+              {EXPERIMENTS.indexOf(exp) + 1} of {EXPERIMENTS.length}
+            </span>
+          </h2>
+          <Picker
+            id={id}
+            choose={choose}
+            open={pickerOpen}
+            setOpen={setPickerOpen}
+            openGroups={openGroups}
+            setOpenGroups={setOpenGroups}
+          />
+          <p className="hint see" data-role="note" data-pristine={pristine}>
+            {exp.see || exp.note}
             {pristine ? null : (
               <em className="prov"> — the note describes the defaults; you have moved away from them.</em>
             )}
           </p>
+          {exp.try && exp.try.length ? (
+            <ol className="try" data-role="try" aria-label="Try">
+              {exp.try.map((t, i) => (
+                <li key={i}>{t.say}</li>
+              ))}
+            </ol>
+          ) : null}
           {termsFor(exp.terms).length ? (
             <details className="terms">
               <summary>Terms used here</summary>
@@ -160,7 +159,7 @@ export default function App() {
           ) : null}
         </section>
 
-        <section>
+        <section className="knobs" id="knobs">
           <h2>Knobs</h2>
           {exp.params.map((p) =>
             p.kind === 'toggle' ? (
@@ -200,10 +199,30 @@ export default function App() {
               />
             ),
           )}
+        </section>
+
+        <section className="deeper">
+          <h2>Deeper</h2>
+          {exp.why ? (
+            <details className="why" data-role="why">
+              <summary>Why it works</summary>
+              <p className="hint">{exp.why}</p>
+            </details>
+          ) : null}
           <MathPanel entry={math} />
           {exp.circuitLab ? <HandOver exp={exp} params={params} /> : null}
         </section>
       </aside>
+
+      {/* Phone only (CSS): the page is one scroll, and the knobs sit below the
+          plots; this takes the reader there without touching the URL hash. */}
+      <button
+        type="button"
+        className="knobs-jump"
+        onClick={() => document.getElementById('knobs')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+      >
+        Knobs ↓
+      </button>
 
       <div className="topbar">
         <nav className="flow" aria-label="Experiment summary">
@@ -546,6 +565,85 @@ function ViewSwitch({ value, onChange, options }) {
         </button>
       ))}
     </div>
+  )
+}
+
+/**
+ * Where you are and how to move: ◂ the current experiment ▸, one line, with the
+ * whole tree folded underneath it. Before this the eight groups stood open
+ * above the note and the knobs began a screen down (student review, 2026-09-02).
+ * The buttons keep their `.preset` shape, so the harness picks experiments the
+ * way it always did.
+ */
+function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups }) {
+  const idx = EXPERIMENTS.findIndex((e) => e.id === id)
+  const exp = EXPERIMENTS[idx]
+  const prev = EXPERIMENTS[idx - 1]
+  const next = EXPERIMENTS[idx + 1]
+  const title = (e) => `${e.id.toUpperCase()} · ${e.name}`
+  return (
+    <nav className="picker" aria-label="Choose an experiment">
+      <div className="picker-row">
+        <button
+          type="button"
+          className="picker-step"
+          disabled={!prev}
+          aria-label={prev ? `Previous: ${title(prev)}` : 'This is the first experiment'}
+          title={prev ? title(prev) : ''}
+          onClick={() => prev && choose(prev.id)}
+        >
+          ◂
+        </button>
+        <button
+          type="button"
+          className="picker-current"
+          aria-expanded={open}
+          aria-controls="picker-list"
+          title={open ? 'Fold the list of experiments' : 'Show every experiment'}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <b>{exp.id.toUpperCase()}</b>
+          <span>{exp.name}</span>
+          <i aria-hidden="true">{open ? '▴' : '▾'}</i>
+        </button>
+        <button
+          type="button"
+          className="picker-step"
+          disabled={!next}
+          aria-label={next ? `Next: ${title(next)}` : 'This is the last experiment'}
+          title={next ? title(next) : ''}
+          onClick={() => next && choose(next.id)}
+        >
+          ▸
+        </button>
+      </div>
+      <div id="picker-list" className="picker-list" hidden={!open}>
+        {GROUPS.map((g) => {
+          const inGroup = EXPERIMENTS.filter((e) => e.group === g)
+          return (
+            <FoldGroup
+              key={g}
+              sectionKey={g}
+              label={g}
+              holdsActive={inGroup.some((e) => e.id === id)}
+              openGroups={openGroups}
+              setOpenGroups={setOpenGroups}
+            >
+              {inGroup.map((e) => (
+                <button
+                  type="button"
+                  key={e.id}
+                  className={`preset${e.id === id ? ' is-on' : ''}`}
+                  onClick={() => choose(e.id)}
+                >
+                  {e.name}
+                </button>
+              ))}
+            </FoldGroup>
+          )
+        })}
+      </div>
+    </nav>
   )
 }
 
