@@ -768,6 +768,47 @@ Exit: `packages/switched` invariants green under a 2 000-sample fuzz per kind
 within the CI budget; `experiments.test.js` has no measured value without a
 pin or a reason; `switched/src/expm.js` is gone.
 
+*As built (step 7):* item 1 — `runPeriods(conv, x0, {periods, settle})` in
+`switched/src/transient.js` walks the circuit from rest knowing nothing of the
+solver's answer: exact on/full-off steps through the propagator, the diode's
+zero found by scan-and-bisect on the closed-form 2×2 exponential (~8 µs a
+period), settle judged on two consecutive quiet periods against the walk's own
+scale (measured at both switching instants — a buck-boost's capacitor is nearly
+empty at the end of the on-interval). Held at 1e-8 relative, not the planned
+1e-6: nine named cases, a 150-sample seeded fuzz bounded to converters whose
+slowest mode settles within 200 000 periods, and every clocked experiment at
+its defaults (`apps/power-lab/src/transient.test.js`). The walker found the
+bug the plan feared: a ringing buck (resonant period shorter than the
+off-interval) has a multi-rooted DCM residual, and the bisection landed on a
+root where the inductor current had already gone to −11 A. `steadyState` now
+rejects any root that is not the first zero of the off-interval current and
+scans for the earliest physical one (`steady.test.js` "the diode blocks at
+the first zero of its current"). Item 2 — `space.test.js`: 2 000 seeded
+converters per kind (measures every tenth) plus the named corners with the
+mode asserted at K = 1.01/0.99 K_crit; it catches the pre-fix solver at buck
+#147. Item 3 — `pins.test.js` walks `TOPOLOGY_SIGNALS` × experiments: 852
+cells, 730 pinned to closed forms, 122 excused by named reason
+(TRANSCENDENTAL for the rectifier's output, RIPPLE for DCM extrema the
+first-order model does not place, sampled-trace extremes at 2e-5); an
+unpinned cell fails the walk. Item 4 — `sweeps.test.js`: M(D) and M(R) for
+all fourteen clocked experiments at 61 and 241 points; continuity by
+refinement (the largest step halves under 4× the points; a jump would not),
+the step at every mode change bounded by its neighbours, |M| never falling
+with R, the boundary crossed once and toward DCM, M(D) turning at most once
+and only for a boost with a winding. E3's sweep is angle and peak current
+against C (not P_out, which the E3 view never plots); angle, i_pk, ripple and
+V_dc are held smooth and monotone. A 1 % offset in DCM fails 13 of 29. Item
+5 — `oneExpm.test.js` first (500 seeded matrices, four classes, four
+durations, e^{At} and the 6×6 augmented matrix): the two agree to 1e-14 below
+‖M‖ ≈ 10 and proportionally above, where both lose the same last bits to
+squaring (≤ 5e-14 at ‖M‖ ≈ 140 against the closed form); then the retirement:
+`propagator.js` imports `expm` from `@ee-labs/network`, the Taylor lives on
+only as that test's oracle, `switched` declares the dependency, nothing was
+needed from `network`. One tolerance moved: the space fuzz's η ≤ 1 + 1e-12
+became 1 + 1e-9 (the balance's bar) — a lossless converter with RC ≈ 1e5
+periods carries ~1e-11 from the conditioning of I − Φ, and the old bar had
+passed that sample only by the retired routine's rounding.
+
 ### 11.2 Information — content — 8 → 9.5+
 
 The notes are strong; two experiments are wrong-sized and every note tells the
