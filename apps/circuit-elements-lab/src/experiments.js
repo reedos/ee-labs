@@ -431,7 +431,7 @@ export const EXPERIMENTS = [
     id: 'c3',
     group: GROUPS[2],
     name: 'The loaded divider',
-    terms: ['series', 'parallel', 'thevenin'],
+    terms: ['series', 'parallel'],
     params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 1000), R('RL', 'Load R_L', 10000)],
     net: (p) => ({
       elements: [
@@ -685,7 +685,7 @@ export const EXPERIMENTS = [
     id: 'e1',
     group: GROUPS[4],
     name: 'A dependent source',
-    terms: ['dependent', 'power'],
+    terms: ['dependent', 'gain', 'power'],
     params: [Vs('E', 'Input V₁', 0.5), Gain('A', 'Gain A', 10), R('Rin', 'R_in', 10000), R('RL', 'Load R_L', 1000)],
     net: (p) => ({
       elements: [
@@ -723,7 +723,7 @@ export const EXPERIMENTS = [
     id: 'e2',
     group: GROUPS[4],
     name: 'The op-amp as a black box',
-    terms: ['opamp', 'ideal', 'impedance', 'active'],
+    terms: ['opamp', 'gain', 'ideal', 'impedance', 'active'],
     params: [
       Vs('E', 'Input V₁', 0.01),
       R('Rs', 'Source R_s', 10000),
@@ -779,7 +779,7 @@ export const EXPERIMENTS = [
     id: 'e3',
     group: GROUPS[4],
     name: 'Comparator: an op-amp with no feedback',
-    terms: ['opamp', 'gain'],
+    terms: ['opamp', 'gain', 'feedback'],
     params: [
       Vs('E', 'Input V₁', 0.001),
       Toggle('ideal', 'Op-amp', true, 'ideal', 'finite gain', 'ideal: infinite gain, so any input difference saturates the output. Finite: the gain knob below applies.'),
@@ -941,7 +941,7 @@ export const EXPERIMENTS = [
     id: 'f1',
     group: GROUPS[5],
     name: 'A capacitor’s current is the slope of its voltage',
-    terms: ['capacitor', 'state', 'current'],
+    terms: ['capacitor', 'state', 'current', 'timeconstant'],
     params: [
       { key: 'A', label: 'Triangle amplitude', unit: 'V', min: 0.1, max: 24, scale: 'linear', default: 5 },
       Per('T', 'Period', 1e-3),
@@ -972,7 +972,7 @@ export const EXPERIMENTS = [
     id: 'f2',
     group: GROUPS[5],
     name: 'An inductor’s voltage is the slope of its current',
-    terms: ['inductor', 'state', 'duality'],
+    terms: ['inductor', 'state', 'duality', 'timeconstant'],
     params: [
       { key: 'A', label: 'Triangle amplitude', unit: 'A', min: 1e-3, max: 0.1, scale: 'linear', default: 0.01 },
       Per('T', 'Period', 1e-3),

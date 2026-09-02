@@ -4,7 +4,9 @@ import { MathPanel } from '@ee-labs/explain'
 import { equations, normalize, complex as cx } from '@ee-labs/network'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic, viewLabel, VIEW_LABELS } from './experiments.js'
 import { analyse, atDrive, experimentMath, netPower, refusalReason, snapNoise, turnedLabel } from './math.js'
-import { termsFor } from './terms.js'
+import { firstUses } from './glossary.js'
+import { predictFor } from './predict.js'
+import { GROUP_INTRO, buildsOn, introFor, leadsTo, letterOf, opensGroup } from './course.js'
 import { reportSummary } from './report.js'
 import { forReading, num, scaleOf } from './format.js'
 import { calloutText } from './headlines.js'
@@ -19,6 +21,9 @@ import PhasorCanvas from './components/PhasorCanvas.jsx'
 import FreqCanvas from './components/FreqCanvas.jsx'
 import HandOver from './components/HandOver.jsx'
 import PlotMarks from './components/PlotMarks.jsx'
+import LiveNote from './components/LiveNote.jsx'
+import Predict from './components/Predict.jsx'
+import { Marked, DefCard, TermChips } from './components/Prose.jsx'
 import { marksFor, timeMarks } from './marks.js'
 import pkg from '../package.json'
 
@@ -53,8 +58,15 @@ export default function App() {
   const [openGroups, setOpenGroups] = useState(() => new Set())
   // The full list of experiments, folded under the picker until asked for.
   const [pickerOpen, setPickerOpen] = useState(false)
+  // The one term whose definition is open, and the paragraph it was opened
+  // from ({ id, field }) — the card sits under that paragraph.
+  const [openTerm, setOpenTerm] = useState(null)
+  // The rule of the answer picked in "predict before you turn", once picked.
+  const [predicted, setPredicted] = useState(null)
 
   const exp = byId[id]
+  const uses = useMemo(() => firstUses(exp), [exp])
+  const predict = useMemo(() => predictFor(exp), [exp])
   // A new experiment shows from its top: the list the student scrolled through
   // to reach it has folded, and the sidebar should not be left part-way down.
   useEffect(() => {
@@ -70,10 +82,21 @@ export default function App() {
     setCursor(cursorFor(byId[next], defaultsOf(next)))
     setPristine(true)
     setPickerOpen(false)
+    setOpenTerm(null)
+    setPredicted(null)
   }
   const setParam = (key, value) => {
     setParams((p) => ({ ...p, [key]: value }))
     setPristine(false)
+  }
+  // A prediction made: the knob turns to the step's setting so the meters
+  // answer at once, and the cursor moves if the step named an instant.
+  const pick = (rule) => {
+    setPredicted(rule)
+    setParams((p) => ({ ...p, ...predict.set }))
+    setPristine(false)
+    const at = exp.try[predict.step].at
+    if (at != null) setCursor(at)
   }
 
   const x = useMemo(() => analyse(exp, params, cursor), [exp, params, cursor])
@@ -159,32 +182,47 @@ export default function App() {
             openGroups={openGroups}
             setOpenGroups={setOpenGroups}
           />
-          <p className="hint see" data-role="note" data-pristine={pristine}>
-            {exp.see || exp.note}
-            {pristine ? null : (
-              <em className="prov"> — the note describes the defaults; you have moved away from them.</em>
-            )}
-          </p>
-          {exp.try && exp.try.length ? (
-            <ol className="try" data-role="try" aria-label="Try">
-              {exp.try.map((t, i) => (
-                <li key={i}>{t.say}</li>
-              ))}
-            </ol>
-          ) : null}
-          {termsFor(exp.terms).length ? (
-            <details className="terms">
-              <summary>Terms used here</summary>
-              <dl>
-                {termsFor(exp.terms).map((t) => (
-                  <React.Fragment key={t.id}>
-                    <dt>{t.name}</dt>
-                    <dd>{t.def}</dd>
-                  </React.Fragment>
-                ))}
-              </dl>
+          {/* The experiment that opens a group carries the group's one sentence,
+              folded to a line so the note stays where the eye lands. */}
+          {opensGroup(exp) ? (
+            <details className="group-intro" data-role="group-intro">
+              <summary>
+                <b>Group {letterOf(exp.group)}</b> starts here — what it is for
+              </summary>
+              <p>{introFor(exp)}</p>
             </details>
           ) : null}
+          {/* The note with its numbers alive and its terms marked where they first do work. */}
+          <LiveNote
+            exp={exp}
+            x={x}
+            params={params}
+            pristine={pristine}
+            dfn={(s, i) => <Marked key={i} text={s.text} base={s.start} marks={uses.see} field="see" open={openTerm} onOpen={setOpenTerm} />}
+          >
+            {uses.unplaced.length ? <TermChips ids={uses.unplaced} field="see" open={openTerm} onOpen={setOpenTerm} /> : null}
+          </LiveNote>
+          <DefCard open={openTerm} field="see" exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
+          {exp.try && exp.try.length ? (
+            <ol className="try" data-role="try" aria-label="Try">
+              {exp.try.map((t, i) =>
+                predict && predict.step === i ? (
+                  // This step is posed as a question first; its sentence appears once answered.
+                  <li key={i} data-predict={predicted ? 'answered' : 'pending'}>
+                    <Predict q={predict} picked={predicted} onPick={pick} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
+                  </li>
+                ) : (
+                  <li key={i}>
+                    <Marked text={t.say} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
+                  </li>
+                ),
+              )}
+            </ol>
+          ) : null}
+          {openTerm && openTerm.field.startsWith('try.') ? (
+            <DefCard open={openTerm} field={openTerm.field} exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
+          ) : null}
+          <Thread id={id} choose={choose} />
         </section>
 
         <section className="knobs" id="knobs">
@@ -234,7 +272,10 @@ export default function App() {
           {exp.why ? (
             <details className="why" data-role="why">
               <summary>Why it works</summary>
-              <p className="hint">{exp.why}</p>
+              <p className="hint">
+                <Marked text={exp.why} marks={uses.why} field="why" open={openTerm} onOpen={setOpenTerm} />
+              </p>
+              <DefCard open={openTerm} field="why" exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
             </details>
           ) : null}
           <MathPanel entry={readable} />
@@ -598,6 +639,39 @@ function EnergyReadout({ energy, t }) {
   )
 }
 
+/**
+ * Where this experiment sits in the thread: what it builds on and what builds
+ * on it, each a chip that goes there. The student sees the course as a path,
+ * not a list (student review, Phase 6).
+ */
+function Thread({ id, choose }) {
+  const on = buildsOn(id)
+  const to = leadsTo(id)
+  if (!on.length && !to.length) return null
+  const chip = (target) => {
+    const e = byId[target]
+    return (
+      <button type="button" key={target} className="tag thread-chip" title={`${target.toUpperCase()} · ${e.name}`} onClick={() => choose(target)}>
+        {target.toUpperCase()}
+      </button>
+    )
+  }
+  return (
+    <p className="thread" data-role="thread">
+      {on.length ? (
+        <span className="thread-part" data-role="builds-on">
+          <span className="thread-label">builds on</span> {on.map(chip)}
+        </span>
+      ) : null}
+      {to.length ? (
+        <span className="thread-part" data-role="leads-to">
+          <span className="thread-label">leads to</span> {to.map(chip)}
+        </span>
+      ) : null}
+    </p>
+  )
+}
+
 /** Which view a pane is showing — Signal Lab's ViewSwitch, copied. */
 function ViewSwitch({ value, onChange, options }) {
   return (
@@ -676,6 +750,7 @@ function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups }) {
               sectionKey={g}
               label={g}
               holdsActive={inGroup.some((e) => e.id === id)}
+              intro={GROUP_INTRO[letterOf(g)]}
               openGroups={openGroups}
               setOpenGroups={setOpenGroups}
             >
@@ -703,7 +778,7 @@ function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups }) {
  * any amount of tidying; the refusal happens on the summary click because the
  * browser folds a <details> before React hears about it.
  */
-function FoldGroup({ sectionKey, label, holdsActive, openGroups, setOpenGroups, children }) {
+function FoldGroup({ sectionKey, label, holdsActive, intro, openGroups, setOpenGroups, children }) {
   return (
     <details
       className="preset-group"
@@ -719,6 +794,7 @@ function FoldGroup({ sectionKey, label, holdsActive, openGroups, setOpenGroups, 
         {label}
         {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
       </summary>
+      {intro ? <p className="hint group-blurb">{intro}</p> : null}
       <div className="presets">{children}</div>
     </details>
   )

@@ -136,7 +136,7 @@ export const LESSONS = {
       'A current source pushes a fixed current I through itself and lets the circuit decide what voltage that takes: turn ' +
       'R up and the voltage climbs, the current does not. An ideal current source is never left unconnected — there is no ' +
       'voltage large enough. Voltage sources are the familiar kind — batteries, supplies — but current sources are how ' +
-      'transistors behave, and the op-amp group leans on them.',
+      'transistors behave, and Group E’s op-amps lean on them.',
   },
   a3: {
     see:
@@ -144,15 +144,15 @@ export const LESSONS = {
       'V_ref = 5 V, so its nodes read 17 V and 13 V — but the resistors see 4 V and 8 V, the same as if V_ref were zero.',
     seeReads: [['v.in', 17], ['v.A', 13], ['volt.R1', 4], ['volt.R2', 8]],
     try: [
-      { say: 'Set V_ref to 0 V: every node voltage drops by 5 V; every element voltage, current and power stays put.', set: { Vref: 0 }, reads: [['v.in', 12], ['v.A', 8], ['volt.R1', 4], ['i.R1', 0.004]] },
+      { say: 'Set V_ref to 0 V: every node voltage drops by 5 V; every element voltage and current stays put.', set: { Vref: 0 }, reads: [['v.in', 12], ['v.A', 8], ['volt.R1', 4], ['i.R1', 0.004]] },
       { say: 'Take V_ref to −10 V: the nodes go negative — in reads 2 V, A reads −2 V — and nothing through the resistors changes.', set: { Vref: -10 }, reads: [['v.in', 2], ['v.A', -2], ['i.R1', 0.004]] },
       { say: 'Switch the meters to currents: V_ref carries 0 A. It is renaming zero, not doing anything.', reads: [['i.V0', 0]] },
     ],
     why:
       'A voltage is never a property of one point. It is always the difference between two, and a meter has two probes for ' +
       'that reason. The solver — like a meter’s black lead — takes the ground node as zero, and that choice is free. Slide ' +
-      'V_ref and every node voltage moves by exactly that amount, while every element’s voltage, every current and every ' +
-      'power stays put, because an element only ever sees the difference across its own two terminals.',
+      'V_ref and every node voltage moves by exactly that amount, while every element’s voltage and every current stays ' +
+      'put, because an element only ever sees the difference across its own two terminals.',
   },
   a4: {
     see:
@@ -363,7 +363,7 @@ export const LESSONS = {
     ],
     why:
       'P = E²R_L/(R_s+R_L)² peaks at E²/4R_s. At that point the efficiency is one half, and it keeps climbing toward one as ' +
-      'R_L grows while the power falls — which is why radio receivers match impedances and power grids do not.',
+      'R_L grows while the power falls — which is why radio receivers are matched to their antennas and power grids are not.',
   },
   e1: {
     see:
@@ -377,7 +377,7 @@ export const LESSONS = {
     why:
       'This is a voltage-controlled voltage source, the first element here that can deliver more power than it takes in: ' +
       'its power is negative while the input source barely works at all. That energy comes from a supply the symbol does ' +
-      'not show, which is exactly what an op-amp is.',
+      'not show, which is exactly what an op-amp (E2) is.',
   },
   e2: {
     see:
@@ -494,7 +494,8 @@ export const LESSONS = {
       'source wired straight to an ideal capacitor would have to supply infinite current at the corners; with it the ' +
       'capacitor voltage lags the source by τ = R_sC = 10 µs and the current settles onto its plateau in the same time. ' +
       'Scrub the cursor: the schematic at each instant is an ordinary resistive circuit with the capacitor standing in as ' +
-      'a voltage source at its present voltage — that is exactly how the solver sees it.',
+      'a voltage source at its present voltage — its state, the one number it carries forward — and that is exactly how ' +
+      'the solver sees it.',
   },
   f2: {
     see:
@@ -509,8 +510,9 @@ export const LESSONS = {
     why:
       'An inductor stores flux, λ = L·i, and voltage is flux per second. The parallel R_p plays the role R_s played in F1: ' +
       'an ideal current source into an ideal inductor would need infinite voltage at each corner, and with R_p the inductor ' +
-      'current lags the source by τ = L/R_p = 1 µs. Swap v for i, C for L, series for parallel, and F1 turns into this ' +
-      'experiment word for word — that swap has a name, duality, and it runs through the whole group.',
+      'current lags the source by τ = L/R_p = 1 µs. Swap v for i (the state that cannot jump is now the current), C for L, ' +
+      'series for parallel, and F1 turns into this experiment word for word — that swap has a name, duality, and it runs ' +
+      'through the whole group.',
   },
   f3: {
     see:
@@ -521,7 +523,7 @@ export const LESSONS = {
     try: [
       { say: 'Drag the cursor to 5 ms, five time constants: 99.3 % of the way, 11.92 V.', at: 0.005, reads: [['volt.C1', 11.919], [(x, p) => (100 * x.sol.volt.C1) / p.E, 99.33]] },
       { say: 'Double R to 2 kΩ: τ doubles to 2 ms; the window stretches with it and the picture does not change shape.', set: { R1: 2000 }, reads: [['state.tau', 0.002]] },
-      { say: 'Start the capacitor at v_C(0) = 6 V: the same curve, closing the same 63.2 % of a smaller gap — 9.79 V at one τ.', set: { v0: 6 }, reads: [['volt.C1', 9.7927], [(x, p) => (100 * (x.sol.volt.C1 - p.v0)) / (p.E - p.v0), 63.21]] },
+      { say: 'Give the capacitor an initial value, v_C(0) = 6 V: the same curve, closing the same 63.2 % of a smaller gap — 9.79 V at one τ.', set: { v0: 6 }, reads: [['volt.C1', 9.7927], [(x, p) => (100 * (x.sol.volt.C1 - p.v0)) / (p.E - p.v0), 63.21]] },
       { say: 'Put the cursor at the start: the current is (E − v₀)/R = 12 mA — an uncharged capacitor looks like a short.', at: 1e-6, reads: [['i.R1', 0.012]] },
     ],
     why:
@@ -608,8 +610,8 @@ export const LESSONS = {
     why:
       'E = R·i + L·di/dt + v_C with i = C·dv_C/dt, so LC·v_C″ + RC·v_C′ + v_C = E. The solver never writes it that way; ' +
       'it writes dx/dt = A·x + B·u, whose characteristic polynomial det(sI − A) = s² + (R/L)s + 1/LC is the same equation. ' +
-      'Overdamped, the roots are −1.27×10³ and −7.87×10⁴ s⁻¹ and the response is two decaying exponentials of which the ' +
-      'slow one sets the pace.',
+      'Overdamped, the roots are −1.27×10³ and −7.87×10⁴ s⁻¹ and the natural response — what the loop does on its own once ' +
+      'E is applied — is two decaying exponentials of which the slow one sets the pace.',
   },
   g2: {
     see:
@@ -762,7 +764,7 @@ export const LESSONS = {
       'the impedance collapses to plain R, and the current, 200 mA, is in phase with the source and at its largest. ' +
       'That is resonance, here at f₀ = 1591.5 Hz. The cancelling voltages are large: each is Q = 20 times the ' +
       'source — 20 V across the capacitor from a 1 V drive.',
-    seeReads: [['mag.i.R1', 0.2], [(x, p) => 1 / (2 * Math.PI * Math.sqrt(p.L1 * p.C1)), 1591.55], ['mag.volt.C1', 20], ['lead.i.R1', 0, 0.1]],
+    seeReads: [['mag.i.R1', 0.2], [(x, p) => 1 / (2 * Math.PI * Math.sqrt(p.L1 * p.C1)), 1591.55], ['state.Q', 20], ['mag.volt.C1', 20], ['lead.i.R1', 0, 0.1]],
     try: [
       { say: 'The 20 Ω chip: Q drops to 5, the capacitor sees 5 V, and the impedance dip is broader — the half-power points spread four times further apart.', set: { R1: 20 }, reads: [['mag.volt.C1', 5]] },
       { say: 'The 1400 Hz chip: the capacitor wins (1/ωC = 113.7 Ω against ωL = 88.0 Ω), |Z| jumps to 26.2 Ω and the current leads by 79.0°.', set: { f: 1400 }, reads: [[(x, p) => 1 / (x.omega * p.C1), 113.68], [(x, p) => x.omega * p.L1, 87.96], ['Z.mag', 26.2], ['lead.i.R1', 79.0]] },

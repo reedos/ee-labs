@@ -230,11 +230,70 @@ for (const [txt, r2] of [
   if (!iR2) fail(`B1 R2=${txt}: no ammeter reads i_R2 = ${want}: ${m.join(' | ')}`)
   for (const b of bad) fail(`B1 R2=${txt}: ✗ ${b.label}`)
 }
-// The note retires once a knob has moved.
+// The note retires once a knob has moved — and its numbers re-read: at R₂ = 10 kΩ
+// the written "5.45 mA" no longer stands, so the note reprints it, marked.
 {
   const pristine = await page.locator('[data-role=note]').getAttribute('data-pristine')
   if (pristine !== 'false') fail('the note should retire after a knob moves')
   else console.log('   note retired after the knob moved')
+  const changed = await page.$$eval('[data-role=note] b.live[data-changed="true"]', (els) => els.map((e) => e.textContent))
+  if (!changed.length) fail('B1 at R₂ = 10 kΩ: no number in the note re-read (expected a marked b.live)')
+  else console.log(`   live note re-read: ${changed.join(', ')}`)
+  const prov = (await page.locator('[data-role=note] .prov').textContent()).trim()
+  if (!/re-read/.test(prov)) fail(`B1 note provenance should say the numbers re-read: "${prov}"`)
+}
+
+// ------------------------------ 2b. the lesson answers back: terms, predict, thread
+
+console.log('\n2b. Terms on tap, predict before you turn, the thread\n')
+{
+  await pick(names[0]) // A1
+  // A first-use term is marked in the note and opens its card under the note.
+  const dfns = await page.$$eval('[data-role=note] dfn.term', (els) => els.map((e) => e.dataset.term))
+  if (!dfns.includes('voltage') || !dfns.includes('current')) fail(`A1 should mark voltage and current in the note: ${dfns.join(', ')}`)
+  await page.locator('[data-role=note] dfn.term[data-term=voltage]').click()
+  await settle()
+  const card = page.locator('[data-role=def][data-term=voltage]')
+  if ((await card.count()) !== 1) fail('tapping "voltage" should open its definition card')
+  else {
+    const text = await card.textContent()
+    if (!/energy/i.test(text)) fail(`the voltage card should define it: ${text.slice(0, 80)}`)
+    else console.log(`   voltage card: ${text.replace(/\s+/g, ' ').trim().slice(0, 70)}…`)
+  }
+  if ((await page.locator('details.terms').count()) !== 0) fail('the "Terms used here" fold should be gone')
+  await page.locator('[data-role=def] .def-close').click()
+  if ((await page.locator('[data-role=def]').count()) !== 0) fail('the definition card should close')
+  // Predict: three readings, the right one sets the knob and reveals the step.
+  const options = await page.$$eval('[data-role=predict] .predict-option', (els) => els.map((e) => [e.dataset.rule, e.textContent.trim()]))
+  if (options.length !== 3) fail(`A1 predict should offer three answers, got ${options.length}`)
+  const solver = options.find(([rule]) => rule === 'solver')
+  if (!solver || solver[1] !== '120 mA') fail(`A1 predict: the solver's answer should be 120 mA: ${JSON.stringify(options)}`)
+  const wrong = options.find(([rule]) => rule === 'same')
+  await page.locator(`[data-role=predict] .predict-option[data-rule=${wrong[0]}]`).click()
+  await settle()
+  const state = await page.locator('[data-role=predict]').getAttribute('data-state')
+  if (state !== 'wrong') fail(`picking "${wrong[1]}" should read as wrong, got ${state}`)
+  const reveal = (await page.locator('[data-role=predict-reveal]').textContent()).replace(/\s+/g, ' ').trim()
+  if (!/nothing would change/.test(reveal) || !/120 mA/.test(reveal)) fail(`the reveal should name the habit and the reading: ${reveal}`)
+  else console.log(`   predict wrong → ${reveal.slice(0, 80)}…`)
+  const rNow = await page.getByRole('spinbutton', { name: 'R', exact: true }).first().inputValue()
+  if (!/^100\b/.test(rNow.trim())) fail(`answering should set R to 100 Ω, the field shows "${rNow}"`)
+  const m = await meters()
+  if (!m.some((t) => /^120\s*mA$/.test(t))) fail(`after the prediction the meters should read 120 mA: ${m.join(' | ')}`)
+  // The thread: A1 leads to A2; the chip goes there.
+  const leads = await page.$$eval('[data-role=leads-to] .thread-chip', (els) => els.map((e) => e.textContent.trim()))
+  if (!leads.includes('A2')) fail(`A1 should lead to A2: ${leads.join(', ')}`)
+  await page.locator('[data-role=leads-to] .thread-chip', { hasText: 'A2' }).click()
+  await settle()
+  const now = (await page.locator('.picker-current b').textContent()).trim()
+  if (now !== 'A2') fail(`the A2 chip should open A2, now at ${now}`)
+  const builds = await page.$$eval('[data-role=builds-on] .thread-chip', (els) => els.map((e) => e.textContent.trim()))
+  if (!builds.includes('A1')) fail(`A2 should build on A1: ${builds.join(', ')}`)
+  else console.log(`   thread: A1 → A2 (builds on ${builds.join(', ')})`)
+  // The group's sentence sits, folded, on the experiment that opens the group and nowhere else.
+  if ((await page.locator('[data-role=group-intro]').count()) !== 0) fail('A2 should carry no group intro')
+  await pick(names[0])
+  if ((await page.locator('[data-role=group-intro]').count()) !== 1) fail('A1 should carry the Group A intro')
 }
 
 // -------------------------------- 3. the meter mode switches what is written

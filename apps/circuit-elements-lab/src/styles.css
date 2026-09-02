@@ -202,22 +202,139 @@ details.why .hint { margin-top: 6px; }
   .views { grid-template-rows: auto auto; }
 }
 
-/* Definitions on contact, folded under the lesson note — Signal Lab's pattern. */
-details.terms { margin: 6px 0 2px; }
-
-details.terms > summary {
-  cursor: pointer;
-  font-size: 11px;
+/* Notes that are alive (student review, Phase 6). A number in the note that
+   re-reads the solution is a <b.live>; while the author's figure still stands
+   it looks like the rest of the sentence, and once a knob has moved it past
+   that figure it reprints and is marked, so the student sees exactly which
+   words changed. */
+.hint.see b.live { font-weight: inherit; color: inherit; border-radius: 3px; transition: background 0.4s, color 0.4s; }
+.hint.see b.live[data-changed='true'] {
+  font-weight: 600;
   color: var(--accent);
-  list-style: none;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  padding: 0 3px;
+  margin: 0 -1px;
 }
-details.terms > summary::before { content: '\25B8  '; font-size: 9px; }
-details.terms[open] > summary::before { content: '\25BE  '; }
-details.terms > summary::-webkit-details-marker { display: none; }
 
-details.terms dl { margin: 6px 0 0; }
-details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
-details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+/* Terms where they first do work: a dotted word the student can tap. The
+   definition opens in a card under the paragraph that used it. */
+dfn.term {
+  font-style: normal;
+  color: inherit;
+  cursor: help;
+  border-bottom: 1px dotted var(--accent);
+  text-decoration: none;
+  padding-bottom: 1px;
+}
+dfn.term:hover, dfn.term:focus-visible { color: var(--accent); border-bottom-style: solid; outline: none; }
+dfn.term[aria-expanded='true'] { color: var(--accent); border-bottom-style: solid; background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.def-card {
+  margin: 8px 0 4px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+  border-radius: 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.def-card p { margin: 4px 0 0; }
+.def-head { display: flex; align-items: center; gap: 8px; }
+.def-head b { color: var(--text); font-size: 12px; }
+.def-close {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.def-close:hover { color: var(--text); }
+
+/* Chips: a term the prose never spells out, and the thread through the course. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--dim);
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1.5;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tag:hover, .tag:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.tag.is-on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.term-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
+.def-since { font-size: 10px; }
+.thread { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 0; font-size: 11px; color: var(--dim); }
+.thread-part { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.thread-label { margin-right: 2px; }
+.thread-chip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; }
+
+/* The group's one sentence: a folded line above the note of the experiment
+   that opens the group, and a blurb under each group in the picker. */
+details.group-intro { margin: 6px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+details.group-intro > summary { cursor: pointer; list-style: none; color: var(--amber); }
+details.group-intro > summary::before { content: '\25B8  '; font-size: 9px; }
+details.group-intro[open] > summary::before { content: '\25BE  '; }
+details.group-intro > summary::-webkit-details-marker { display: none; }
+details.group-intro > summary b { color: var(--amber); }
+details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px solid var(--amber); background: var(--panel-2); border-radius: 4px; }
+.group-blurb { margin: 2px 0 6px; font-size: 11px; line-height: 1.45; }
+
+/* Predict before you turn: the step is a question first, its answers a row of
+   readings, and its own sentence the reason once one is picked. */
+.predict { display: grid; gap: 5px; }
+.predict-ask { margin: 0; color: var(--text); }
+.predict-tag {
+  display: inline-block;
+  padding: 0 6px;
+  margin-right: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+.predict-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.predict-option {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.predict-option:not(:disabled):hover, .predict-option:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.predict-option:disabled { cursor: default; opacity: 0.5; }
+.predict-option.is-answer { opacity: 1; border-color: var(--accent); color: var(--accent); }
+.predict-option.is-picked:not(.is-answer) { opacity: 1; border-color: var(--amber); color: var(--amber); text-decoration: line-through; }
+.predict-mark { font-weight: 600; font-size: 11.5px; }
+.predict-mark.right { color: var(--accent); }
+.predict-mark.wrong { color: var(--amber); }
+.predict-reveal { margin: 0; }
+.predict-reveal em { color: var(--amber); font-style: normal; }
+.predict-reveal b { color: var(--text); }
+
+@media (min-width: 1100px) {
+  .def-card, details.group-intro { font-size: 12.5px; }
+  .predict-option { font-size: 12.5px; }
+  .thread { font-size: 11.5px; }
+}
 
 /* The schematic. Values are live, so the picture always matches the plots. */
 .schematic {

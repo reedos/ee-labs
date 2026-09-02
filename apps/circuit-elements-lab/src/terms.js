@@ -381,3 +381,61 @@ export const TERMS = {
 export function termsFor(ids = []) {
   return ids.filter((id) => TERMS[id]).map((id) => ({ id, ...TERMS[id] }))
 }
+
+/**
+ * How each term is written in a lesson's prose, so its first use can carry
+ * its definition (student review, Phase 6). Patterns are deliberately narrow:
+ * "energy" alone is a word A1 needs before F5 defines the bookkeeping, and
+ * "impedance" after "input" is E2's R_in, not H3's Z. glossary.js tests that no
+ * pattern fires in an experiment earlier than the one that introduces its term.
+ */
+export const MATCH = {
+  charge: /\bcharge\b/i,
+  voltage: /\bvoltage\b/i,
+  current: /\bcurrent\b/i,
+  vsource: /\b(?:voltage sources?|batter(?:y|ies)|sources?)\b/i,
+  isource: /\bcurrent sources?\b/i,
+  resistor: /\bresistors?\b|Ohm’s law/i,
+  ground: /\bground\b/i,
+  kcl: /\bKCL\b|Kirchhoff’s current law/,
+  kvl: /\bKVL\b|Kirchhoff’s voltage law/,
+  node: /\bnodes?\b/i,
+  passive: /sign convention|called \+|into its \+/i,
+  power: /\bpower\b/i,
+  series: /\bseries\b/i,
+  parallel: /\bparallel\b/i,
+  thevenin: /Th[eé]venin/i,
+  nodal: /\bnodal\b|write KCL at each/i,
+  supernode: /\bsupernodes?\b/i,
+  mna: /modified nodal|\bMNA\b|unknown current/i,
+  mesh: /\bmesh(?:es)?\b|circulating current/i,
+  superposition: /\bsuperposition\b|sum of the responses/i,
+  linear: /\blinear\b/i,
+  dependent: /\bdependent sources?\b/i,
+  opamp: /\bop-amp\b/i,
+  ideal: /\bideal op-amp\b|\bIdeal — A\b/i, // "ideal source" in A1 is the everyday word
+  impedance: /input (?:and output )?impedance|\bR_in\b|\bR_out\b|input resistance/i,
+  active: /\bactive\b/i,
+  gain: /\bgain\b|\bA·|\bA times\b/i,
+  feedback: /\bfeedback\b|back to (?:an|the) [−-]? ?input|back from the output/i,
+  virtual: /\bvirtual ground\b/i,
+  cmrr: /\bCMRR\b|common[- ]mode|rejected/i,
+  capacitor: /\bcapacitors?\b/i,
+  inductor: /\binductors?\b/i,
+  state: /(?<!steady[ -])\bstates?\b/i,
+  timeconstant: /time constants?|τ/,
+  initial: /initial conditions?|initial value/i,
+  natural: /\bnatural\b/i,
+  characteristic: /\bcharacteristic\b|second-order equation/i,
+  damping: /damp|ζ|α|overshoot/i,
+  duality: /\bdual\b|\bduality\b/i,
+  energy: /energy (?:bookkeeping|stored)|half the energy|\bjoules?\b|\b[µm]J\b/i,
+  steadystate: /steady[ -]state|steady sinusoid/i,
+  phasor: /\bphasors?\b|as an arrow/i,
+  reactance: /\breactance\b|\boffers\b/i,
+  impedanceac: /(?<!input |output |source |load )\bimpedances?\b|\|Z\|/i,
+  resonance: /\bresonan(?:ce|t)\b/i,
+  rms: /\bRMS\b|[VI]_rms/,
+  powerfactor: /power factor|cos ?φ/i,
+  bode: /\bBode\b/,
+}

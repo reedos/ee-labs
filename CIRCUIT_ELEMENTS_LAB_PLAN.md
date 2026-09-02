@@ -930,6 +930,48 @@ state, and averaging.
    10·(1.2 − 1) and every |i| > 1 µA; the Ohm primer names Ohm's law and Group
    B and not KVL; G3's zeta at the defaults is 2 and `damping.Rcrit` is a
    quantity path the note's "200 Ω" is measured against.
+   **Step 6 — notes that are alive — shipped 2026-09-02:** the lesson answers
+   back instead of retiring. `live.js` binds every number in a note to what it
+   measures: `quoted(see)` tokenises the unit-bearing figures (and the bare
+   ones after = or ≈), `bindSee(exp)` ties each to a knob (a symbol named just
+   before it, or its default value), to a `seeReads` path or function (with a
+   `flip` for figures written with the other sign, like −α), or to the cursor,
+   and leaves the rest literal (six allowed literals, listed in live.test.js);
+   `liveSee(exp, x, p)` re-reads each binding and keeps the author's text while
+   it still `stands` (within 0.6 % or half the last digit), reprinting it via
+   `printLike` — in the note's own style — when it does not. `LiveNote.jsx`
+   renders those segments (`b.live[data-changed]`) and the provenance line now
+   says the numbers re-read, or that the settings have left the regime the note
+   was written in (`regimeOf`: overdamped/critical/underdamped/refused). Terms
+   moved from the "Terms used here" fold to where they first do work:
+   `terms.js` gained `MATCH`, one pattern per term; `glossary.js` finds
+   `firstUses(exp)` across see → try → why (longest match wins at a shared
+   start, one placement per term), `Prose.jsx` marks each as a tappable `dfn`
+   that opens a `DefCard` under its own paragraph (with a "since A3" chip back
+   to the introducer), and terms the prose never spells out become chips under
+   the note; `earlyUses()` is empty — no experiment uses a term before the one
+   that lists it first, with the why allowed to point ahead by naming a later
+   experiment or group (`pointsAhead`). `predict.js` turns the first
+   knob-turning try step into a question posed in its place in the list:
+   `predictFor(exp)` reads the quantity at the defaults and at the step's
+   setting and offers the solver's answer beside the two nearest of a student's
+   habits (same, proportional, inverse, double, half); picking one sets the knob
+   and reveals the step's sentence with the habit named. 39 experiments pose
+   one; the seven whose first knob step is a toggle or a refusal do not.
+   `course.js` gives each group one sentence (`GROUP_INTRO`, folded on the
+   experiment that opens the group and a blurb under each group in the picker)
+   and the thread — `BUILDS`, what each experiment builds on, read the other
+   way as `leadsTo` — shown as chips under the try list. Tests (live, predict,
+   glossary, course): at the defaults every note renders as written; at five
+   settings per experiment every live segment stands for the value it re-read;
+   the right answer equals the solver at the step's setting and the three
+   options are distinct; every MATCH has a term and vice versa; the intros are
+   under thirty words; every experiment but A1 builds on an earlier one and all
+   46 are reachable from A1. verify.mjs: after B1's R₂ move a marked `b.live`
+   reprints, tapping "voltage" on A1 opens and closes its card, the "Terms used
+   here" fold is gone, picking "12 mA" on A1's question reads as wrong, names
+   the habit, sets R to 100 Ω and the meters read 120 mA, and the A2 chip
+   opens A2.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event

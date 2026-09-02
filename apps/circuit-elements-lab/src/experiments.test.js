@@ -1381,6 +1381,7 @@ describe('what the student reads is what the solver did', () => {
     const holds = {
       'c3→E8': (t) => t.params.some((k) => k.key === 'RL') && t.views.includes('sweep'), // "why, in E8, an op-amp…": the same load sweep, buffered
       'c4→B2': (t, p) => t.net(p).elements.filter((el) => el.type === 'R').length === 2 && t.net(p).elements.length === 3, // "B2’s loop — two resistors in series"
+      'e1→E2': (t) => t.terms.includes('opamp') && t.params.some((k) => k.key === 'A'), // "exactly what an op-amp (E2) is": a dependent source with a gain knob
       'e8→C3': (t) => t.params.some((k) => k.key === 'RL') && t.views.includes('sweep'), // "Compare the same sweep in C3"
       'f2→F1': (t, p) => t.params.some((k) => k.key === 'Rs') && hasPart(t, p, 'C'), // "the role R_s played in F1"
       'f4→F3': (t, p) => t.params.map((k) => k.key).join() === 'E,R1,C1,v0,N' && isRC(t, p), // "then it IS F3: τ = RC"
