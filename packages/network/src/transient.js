@@ -42,12 +42,16 @@ import { allBreaks, pieceValue, sourceAffine } from './waves.js'
  * g(t) = [1, t − t0, cos ω₁t, sin ω₁t, …] that closes z = [x; g].
  */
 function segmentOf(dyn, pieces, t0, t1) {
-  const { A, B, n, m } = dyn
+  const { A, B, c, n, m } = dyn
   const omegas = [...new Set(pieces.flatMap((q) => q.sines.map((s) => s.omega)))].sort((a, b) => a - b)
   const k = omegas.length
   const M = zeros(n + 2 + 2 * k)
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) M[i][j] = A[i][j]
+    // The affine term of a piecewise-linear region (a conducting diode's V_f,
+    // an op-amp against a rail) rides the same constant generator the sources'
+    // u0 does. It is zero for every circuit without one.
+    if (c) M[i][n] += c[i]
     for (let j = 0; j < m; j++) {
       const q = pieces[j]
       M[i][n] += B[i][j] * q.u0
@@ -73,26 +77,30 @@ function segmentOf(dyn, pieces, t0, t1) {
 const scaled = (M, t) => M.map((row) => row.map((v) => v * t))
 
 /**
- * Solve the circuit from t = 0 to tEnd.
+ * Solve the circuit from t0 (0 by default) to tEnd.
  *
  * Options: `points` on the sample grid (breakpoints are added, sampled from
  * both sides so a jump plots as a vertical line); `x0` to impose the initial
- * state instead of solving the pre-switch circuit; `opts` for the solver.
+ * state instead of solving the pre-switch circuit; `t0` to begin part-way,
+ * from a state a caller already has — how pwl.js resumes after an event, with
+ * the sources still read at absolute time so a sine keeps its phase; `opts`
+ * for the solver.
  *
  * Returns the state description, the segments, the sample grid with a full
  * readout at each point, and `at(t)` — the exact state and readout at any
  * instant, which the time cursor and every measurement use.
  */
-export function transient(net, { tEnd, points = 601, x0 = null, opts = {} } = {}) {
-  if (!(tEnd > 0)) throw new NetworkError('value', 'The time window must be positive')
+export function transient(net, { tEnd, points = 601, x0 = null, t0 = 0, opts = {} } = {}) {
+  if (!(tEnd > t0)) throw new NetworkError('value', 'The time window must be positive')
   const dyn = dynamics(net, opts)
   const { norm, states, inputs, n, m } = dyn
   const sources = inputs.map((id) => norm.elements.find((e) => e.id === id))
+  if (t0 > 0 && !x0) throw new NetworkError('value', 'A run that starts after t = 0 needs the state it starts from')
   const ic = x0 ? x0.slice() : initialConditions(norm, opts).x0
 
   // Segments between breakpoints, each with its own augmented matrix and the
   // state it starts from.
-  const breaks = allBreaks(sources, tEnd)
+  const breaks = allBreaks(sources, tEnd, t0)
   const segments = []
   let x = ic
   for (let k = 0; k + 1 < breaks.length; k++) {
@@ -105,7 +113,7 @@ export function transient(net, { tEnd, points = 601, x0 = null, opts = {} } = {}
   }
 
   const segmentAt = (t) => {
-    if (t <= 0) return segments[0]
+    if (t <= t0) return segments[0]
     for (const s of segments) if (t < s.t1) return s
     return segments[segments.length - 1]
   }
@@ -114,7 +122,7 @@ export function transient(net, { tEnd, points = 601, x0 = null, opts = {} } = {}
   /** Exact state, inputs and readout at time t (t ≥ 0; a breakpoint reads from the right). */
   const at = (t, side = 'right') => {
     let seg = segmentAt(t)
-    if (side === 'left' && t > 0) {
+    if (side === 'left' && t > t0) {
       // The piece that ends at t, for the value just before a jump.
       const prev = segments.find((s) => Math.abs(s.t1 - t) <= 1e-12 * tEnd)
       if (prev) seg = prev
@@ -165,7 +173,7 @@ export function transient(net, { tEnd, points = 601, x0 = null, opts = {} } = {}
   const series = (q, key) =>
     Float64Array.from(samples, (s) => (q === 'x' ? s.x[key] : q === 'u' ? s.u[key] : s.sol[q][key]))
 
-  return { dyn, norm, states, inputs, x0: ic, tEnd, segments, samples, t, series, at }
+  return { dyn, norm, states, inputs, x0: ic, t0, tEnd, segments, samples, t, series, at }
 }
 
 // Seven-point Gauss–Legendre on [0, 1].
@@ -195,7 +203,9 @@ export function energies(tr) {
   const { dyn, samples, segments } = tr
   const cls = (e) => {
     if (e.type === 'C' || e.type === 'L') return 'stored'
-    if (e.type === 'R' || e.type === 'SW') return 'dissipated'
+    // A diode absorbs whatever it drops times whatever it passes — heat, like
+    // a resistor, and the reason a rectifier's diodes get warm.
+    if (e.type === 'R' || e.type === 'SW' || e.type === 'D') return 'dissipated'
     return 'supplied'
   }
   const classes = dyn.norm.elements.map((e) => [e.id, cls(e)])
@@ -227,13 +237,16 @@ export function energies(tr) {
         if (!cache || cache.seg !== seg || Math.abs(cache.dt - dt) > 1e-12 * tr.tEnd)
           cache = { seg, dt, phis: GL_X.map((c) => expm(seg.M.map((row) => row.map((v) => v * c * dt)))) }
         const z0 = [...prev.x, ...seg.gen(prev.t)]
+        // Across a piecewise-linear walk the segments are not all the same
+        // circuit; each carries the state space it was solved in.
+        const segDyn = seg.dyn || dyn
         let dr = 0
         let ds = 0
         GL_X.forEach((c, j) => {
           const zz = matVecMul(cache.phis[j], z0)
           const x = zz.slice(0, n)
           const u = seg.inputs(prev.t + c * dt)
-          const [pr, ps] = powerSplit(dyn.solveAt(x, u))
+          const [pr, ps] = powerSplit(segDyn.solveAt(x, u))
           dr += GL_W[j] * pr
           ds += GL_W[j] * ps
         })
@@ -246,6 +259,34 @@ export function energies(tr) {
     out.push({ t: s.t, stored, storedEach, dissipated, supplied, gap: supplied - (stored - stored0) - dissipated })
   }
   return { points: out, stored0, states: dyn.states }
+}
+
+/**
+ * The mean and RMS of any quantity over a window, by Gauss–Legendre between
+ * consecutive samples of the exact solution. Every corner in the waveform — a
+ * source breakpoint, a diode turning on — is itself a sample, so no panel of
+ * the integral ever straddles one and the answer is exact to rounding for the
+ * sums of exponentials and sinusoids these circuits produce.
+ *
+ * `pick` reads the quantity from a readout: (sol) => number.
+ */
+export function meanRms(tr, pick, a = tr.t0 ?? 0, b = tr.tEnd) {
+  const ts = [...new Set(tr.samples.map((s) => s.t).filter((t) => t > a && t < b))].sort((x, y) => x - y)
+  const nodes = [a, ...ts, b]
+  let sum = 0
+  let sq = 0
+  for (let k = 0; k + 1 < nodes.length; k++) {
+    const t0 = nodes[k]
+    const dt = nodes[k + 1] - t0
+    if (!(dt > 0)) continue
+    GL_X.forEach((c, j) => {
+      const y = pick(tr.at(t0 + c * dt).sol)
+      sum += GL_W[j] * y * dt
+      sq += GL_W[j] * y * y * dt
+    })
+  }
+  const span = b - a
+  return { mean: sum / span, rms: Math.sqrt(sq / span), span }
 }
 
 // ------------------------------------------------------------ measures

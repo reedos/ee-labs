@@ -109,19 +109,26 @@ export function dynamics(net, opts = {}) {
     v[k] = 1
     return v
   }
+  // The derivative with every state and every source at zero. For a circuit
+  // built only from the linear elements this is exactly zero — nothing drives
+  // it — so `c` changes nothing for any circuit that has no diode in it. A
+  // conducting diode, though, holds V_f whatever the sources do: an affine
+  // term, dx/dt = A x + B u + c, and the columns below are read as differences
+  // from it so that A and B stay what they claim to be.
+  const c = derivOf(solveAt(new Array(n).fill(0), new Array(m).fill(0)))
   for (let k = 0; k < n; k++) {
     const col = derivOf(solveAt(ex(n, k), new Array(m).fill(0)))
-    for (let i = 0; i < n; i++) A[i][k] = col[i]
+    for (let i = 0; i < n; i++) A[i][k] = col[i] - c[i]
   }
   for (let j = 0; j < m; j++) {
     const col = derivOf(solveAt(new Array(n).fill(0), ex(m, j)))
-    for (let i = 0; i < n; i++) B[i][j] = col[i]
+    for (let i = 0; i < n; i++) B[i][j] = col[i] - c[i]
   }
 
   /** Energy stored in the reactive elements at state x: ½Cv² and ½Li². */
   const stored = (x) => states.map((s, k) => 0.5 * s.value * x[k] * x[k])
 
-  return { norm, states, inputs, n, m, A, B, solveAt, derivOf, stored, opts }
+  return { norm, states, inputs, n, m, A, B, c, solveAt, derivOf, stored, opts }
 }
 
 /**
@@ -154,7 +161,10 @@ export function initialConditions(net, opts = {}) {
       if (err.code === 'floating') {
         // Every unfixed capacitor in the island the floating node belongs to
         // (reachable through anything the DC picture does not open).
-        const isOpen = (e) => e.type === 'C' || (e.type === 'SW' && !switches[e.id] && !(e.roff > 0))
+        const isOpen = (e) =>
+          e.type === 'C' ||
+          (e.type === 'SW' && !switches[e.id] && !(e.roff > 0)) ||
+          (e.type === 'D' && (opts.regions?.[e.id] ?? 'off') === 'off' && !(e.roff > 0))
         const caps = norm.elements.filter(
           (e) => e.type === 'C' && !(e.id in fixed) && e.nodes.some((nd) => nd === err.detail.node || connected(norm, err.detail.node, nd, (q) => !isOpen(q))),
         )

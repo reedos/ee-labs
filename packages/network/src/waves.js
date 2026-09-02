@@ -142,9 +142,13 @@ export function sourceBreaks(e, tEnd) {
   return out.filter((t) => t > EPS * tEnd && t < tEnd * (1 - EPS))
 }
 
-/** The union of every source's breakpoints, sorted, with 0 and tEnd as the ends. */
-export function allBreaks(sources, tEnd) {
-  const set = new Set([0, tEnd])
-  for (const e of sources) for (const t of sourceBreaks(e, tEnd)) set.add(t)
+/**
+ * The union of every source's breakpoints, sorted, with the ends of the run as
+ * the outer two. A run that starts part-way (after a piecewise-linear event)
+ * keeps only the breakpoints still ahead of it.
+ */
+export function allBreaks(sources, tEnd, t0 = 0) {
+  const set = new Set([t0, tEnd])
+  for (const e of sources) for (const t of sourceBreaks(e, tEnd)) if (t > t0 + EPS * tEnd) set.add(t)
   return [...set].sort((a, b) => a - b)
 }

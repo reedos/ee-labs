@@ -32,6 +32,7 @@ export const KINDS = {
   SW: { name: 'switch', unknownCurrent: false }, // resolved to a short or an open
   C: { name: 'capacitor', unknownCurrent: false }, // open at DC; a state in time
   L: { name: 'inductor', unknownCurrent: true }, // short at DC; a state in time
+  D: { name: 'diode', unknownCurrent: false }, // resolved by its region: a source, a slope or an open
 }
 
 export class NetworkError extends Error {

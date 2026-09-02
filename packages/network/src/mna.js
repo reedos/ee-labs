@@ -13,6 +13,7 @@
 
 import { GROUND, KINDS, NetworkError, connected, incident, normalize } from './netlist.js'
 import { SingularError, solve } from './linalg.js'
+import { regionEffective, regionsOf } from './diode.js'
 
 /**
  * How a capacitor or inductor is treated in this solve.
@@ -43,6 +44,31 @@ export function effective(e, opts = {}) {
     const closed = opts.switches && e.id in opts.switches ? opts.switches[e.id] : e.closed !== false
     if (closed) return e.ron > 0 ? { ...e, type: 'R', value: e.ron, from: 'SW' } : { ...e, type: 'V', value: 0, from: 'SW' }
     return Number.isFinite(e.roff) && e.roff > 0 ? { ...e, type: 'R', value: e.roff, from: 'SW' } : { ...e, type: 'OPEN', from: 'SW' }
+  }
+  // A piecewise-linear device — a diode, or an op-amp that can hit a rail —
+  // is linear inside the region it has been assumed to be in, and that is the
+  // element stamped here. Which region is right is pwl.js's question; this
+  // file only ever solves one linear circuit.
+  if (e.type === 'D' || (e.type === 'OPAMP' && Number.isFinite(e.vsat))) {
+    const regions = regionsOf(e)
+    if (regions) {
+      const named = opts.regions && e.id in opts.regions ? opts.regions[e.id] : null
+      if (named && !regions.includes(named)) throw new NetworkError('region', `${e.id}: unknown region "${named}"`)
+      const eff = regionEffective(e, named || (e.type === 'OPAMP' ? 'linear' : 'off'))
+      if (eff.type !== 'OPAMP') return eff
+      // An op-amp in its linear region is the nullor below, rails or not.
+    } else if (e.type === 'D') {
+      // The exponential diode has no region to stamp: Newton linearises it and
+      // passes the companion in through `opts.companions`.
+      const c = opts.companions && opts.companions[e.id]
+      if (!c)
+        throw new NetworkError(
+          'exp-diode',
+          `${e.id} is an exponential diode, whose law is a curve rather than two straight pieces. That has an operating point, found by Newton's method, but no closed-form response in time — so this solve needs either a DC operating point or one of the piecewise models.`,
+          { element: e.id },
+        )
+      return { ...e, type: 'GI', g: c.g, i0: c.i0, from: 'D' }
+    }
   }
   const r = reactive(e, opts)
   if (r) return { ...e, ...r }
@@ -109,6 +135,15 @@ export function assemble(norm, opts = {}) {
       case 'I':
         inject(a, -eff.value)
         inject(b, eff.value)
+        break
+      case 'GI':
+        // The companion form, i = g·v + i0: a conductance with a current
+        // source beside it. A sloped diode and Newton's linearisation are both
+        // this, which is why neither needs a node of its own.
+        if (!(eff.g > 0)) throw new NetworkError('value', `${eff.id}: a companion conductance must be positive`)
+        addG(a, b, eff.g)
+        inject(a, -eff.i0)
+        inject(b, eff.i0)
         break
       case 'V': {
         const row = currentIdx.get(eff.id)
@@ -301,6 +336,9 @@ export function readout(norm, sys, x) {
         break
       case 'R':
         cur = vab / eff.value
+        break
+      case 'GI':
+        cur = eff.g * vab + eff.i0
         break
       case 'I':
         cur = eff.value
