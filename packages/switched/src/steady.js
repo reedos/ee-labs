@@ -13,7 +13,7 @@
 // whether i_L actually reaches zero at that t_d. That scalar residual is
 // bisected to 1e-13 of the period.
 
-import { propagator } from './expm.js'
+import { propagator } from './propagator.js'
 import { eye, matMul, matVec, matAdd, vecAdd, solve } from './linalg.js'
 import { integral, quadrature, sample, stateAt, firstDownCrossing, bisect } from './segment.js'
 import { SIGNALS, evalSignal } from './topologies.js'

@@ -1,13 +1,27 @@
 import { describe, it, expect } from 'vitest'
 import { expm as expmNetwork } from '@ee-labs/network'
-import { expm as expmSwitched, propagator } from './expm.js'
-import { matAdd, norm1 } from './linalg.js'
+import { propagator } from './propagator.js'
+import { eye, matMul, matAdd, matScale, norm1 } from './linalg.js'
 
-// Two matrix exponentials live in the monorepo: the network package's Padé-13
-// with balancing, and this package's Taylor series with scaling and squaring.
-// Before the second is retired in favour of the first, the two must agree —
-// on every damping class, and on the augmented matrices the propagator
-// actually builds, where the exponential carries φ1 and φ2 alongside e^{At}.
+// Two matrix exponentials once lived in the monorepo: the network package's
+// Padé-13 with balancing, and this package's Taylor series with scaling and
+// squaring. The propagator now uses the first; the second is retired to this
+// file as the oracle, and the two must still agree — on every damping class,
+// and on the augmented matrices the propagator actually builds, where the
+// exponential carries φ1 and φ2 alongside e^{At}.
+
+// The retired routine: scale until ‖M‖ ≤ 1/4, sixteen Taylor terms by
+// Horner (truncation ~1e-25), square back up.
+function expmSwitched(M) {
+  const n = M.length
+  const nrm = norm1(M)
+  const s = nrm > 0.25 ? Math.ceil(Math.log2(nrm / 0.25)) : 0
+  const X = matScale(M, 1 / 2 ** s)
+  let E = eye(n)
+  for (let k = 16; k >= 1; k--) E = matAdd(eye(n), matMul(X, E), 1 / k)
+  for (let i = 0; i < s; i++) E = matMul(E, E)
+  return E
+}
 
 function rng(seed) {
   let s = seed >>> 0
@@ -75,7 +89,7 @@ function augmented(A, t) {
 // as to each other (measured: ≤ 5e-14 at ‖M‖ ≈ 140 for either).
 const tol = (M) => 1e-14 * Math.max(1, norm1(M) / 10)
 
-describe('the two exponentials agree on 500 seeded matrices', () => {
+describe('the exponential in use agrees with the retired one on 500 seeded matrices', () => {
   const r = rng(2026)
   const gens = [overdamped, underdamped, critical, converterLike]
   const cases = []

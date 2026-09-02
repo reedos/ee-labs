@@ -10,7 +10,7 @@
 // Gauss–Legendre on the analytic solution with the step kept short enough
 // that its truncation sits far below rounding.
 
-import { propagator, propagator01 } from './expm.js'
+import { propagator, propagator01 } from './propagator.js'
 import { matVec, vecAdd, norm1 } from './linalg.js'
 
 export function stateAt(seg, t) {

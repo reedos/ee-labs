@@ -116,7 +116,10 @@ function checkMeasures(ss) {
   // 3. Energy: in = out + losses.
   expect(Math.abs(m.balance)).toBeLessThan(1e-9 * Math.max(m.Pin, m.Pout))
   expect(m.eta).toBeGreaterThan(0)
-  expect(m.eta).toBeLessThanOrEqual(1 + 1e-12)
+  // The same bar as the balance: a lossless converter's fixed point carries
+  // the conditioning of I − Φ, ~T/(RC) ≈ 1e-5 at the slowest, so the last
+  // few digits of a ratio of two equal powers are the solve's, not physics.
+  expect(m.eta).toBeLessThanOrEqual(1 + 1e-9)
   for (const s of Object.values(m.sig)) for (const v of Object.values(s)) expect(Number.isFinite(v)).toBe(true)
   // 5. The closed forms agree with brute-force integration of the trace.
   for (const [name, scale] of [

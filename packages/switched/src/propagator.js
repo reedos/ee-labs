@@ -1,4 +1,4 @@
-// Matrix exponential and the segment propagator built from it.
+// The segment propagator, built on the monorepo's one matrix exponential.
 //
 // Between switching events a converter is a linear circuit with a constant
 // drive, so its state moves exactly by
@@ -16,33 +16,18 @@
 // which never inverts A (so a lossless LC, a dead segment with a pinned
 // inductor current, or a plain integrator are all fine) and never meets the
 // cancellation that closed forms suffer near a repeated eigenvalue. The
-// exponential itself is Taylor with scaling and squaring: scale until
-// ‖Mt‖ ≤ 1/4, sum sixteen terms (truncation ~1e-25), square back up.
+// exponential itself is @ee-labs/network's Padé-13 with balancing, scaling
+// and squaring — the same routine the RLC lessons step with; the two labs
+// share one, and oneExpm.test.js is the record of the day they were shown
+// to agree.
 //
 // The two-state closed form the plan writes down — three cases on the
 // discriminant, the biquad's over/under/critically damped triplet — is here
 // too, as `expm2Closed`. It is the independent oracle the tests hold the
 // series against, and the formula the math panel shows.
 
-import { eye, zeros, matMul, matAdd, matScale, norm1 } from './linalg.js'
-
-const TAYLOR_TERMS = 16
-const SCALE_TARGET = 0.25
-
-export function expm(M) {
-  const n = M.length
-  const nrm = norm1(M)
-  let s = 0
-  if (nrm > SCALE_TARGET) s = Math.ceil(Math.log2(nrm / SCALE_TARGET))
-  const X = matScale(M, 1 / 2 ** s)
-  // Horner: E = I + X(I + X/2 (I + X/3 (...)))
-  let E = eye(n)
-  for (let k = TAYLOR_TERMS; k >= 1; k--) {
-    E = matAdd(eye(n), matMul(X, E), 1 / k)
-  }
-  for (let i = 0; i < s; i++) E = matMul(E, E)
-  return E
-}
+import { expm } from '@ee-labs/network'
+import { zeros } from './linalg.js'
 
 // { phi0, phi1, phi2 } for the state matrix A over a duration t.
 export function propagator(A, t) {

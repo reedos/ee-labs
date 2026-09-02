@@ -19,7 +19,7 @@
 // costs a few transcendentals where the series costs a 4×4 exponential; the
 // two are held to agree in expm.test.js.
 
-import { propagator01, expm2Closed } from './expm.js'
+import { propagator01, expm2Closed } from './propagator.js'
 import { matVec, vecAdd } from './linalg.js'
 
 /** x(t) on a segment ẋ = A x + f, by the closed form, A invertible. */

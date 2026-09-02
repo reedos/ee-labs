@@ -8,7 +8,7 @@
 // analytic solution. The textbook closed forms sit beside it so a lab can
 // show where they hold and where they don't.
 
-export { expm, propagator, propagator01, expm2Closed, cosSinhc, damping } from './src/expm.js'
+export { propagator, propagator01, expm2Closed, cosSinhc, damping } from './src/propagator.js'
 export { stateAt, endState, integral, sample, quadrature, firstDownCrossing, bisect } from './src/segment.js'
 export { zeros, eye, matMul, matVec, matAdd, matScale, vecAdd, vecScale, norm1, solve } from './src/linalg.js'
 export { converter, DEFAULTS, KINDS, SIGNALS, evalSignal, idealM } from './src/topologies.js'

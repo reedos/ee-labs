@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { expm, propagator, expm2Closed, cosSinhc, damping } from './expm.js'
+import { expm } from '@ee-labs/network'
+import { propagator, expm2Closed, cosSinhc, damping } from './propagator.js'
 import { eye, matMul, matAdd, matScale, norm1 } from './linalg.js'
 
 // A deterministic generator so a failure reproduces.
