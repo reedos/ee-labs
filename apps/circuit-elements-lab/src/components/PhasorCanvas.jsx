@@ -2,6 +2,7 @@ import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
 import { complex as cx } from '@ee-labs/network'
 import { MONO, SANS, drawCursor, drawLegend, fmtT } from './timePlot.js'
+import { turnedLabel } from '../math.js'
 
 /**
  * The phasor diagram beside the waveforms it draws.
@@ -166,7 +167,7 @@ export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
       ctx.fillStyle = COLORS.text
       ctx.textAlign = 'left'
       ctx.textBaseline = 'top'
-      ctx.fillText(`θ = ωt = ${((wrap2pi(theta) * 180) / Math.PI).toFixed(1)}°`, dia.x + 4 * k, dia.y + 2 * k)
+      ctx.fillText(`θ = ωt = ${turnedLabel(omega, tc)}`, dia.x + 4 * k, dia.y + 2 * k)
       ctx.fillText(`t = ${fmt(tc, 's', 3)}`, dia.x + 4 * k, dia.y + 16 * k)
       ctx.restore()
 

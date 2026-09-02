@@ -1,7 +1,7 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
 import { complex as cx } from '@ee-labs/network'
-import { drawLegend, drawMark, drawRightAxis } from './timePlot.js'
+import { drawDataMarks, drawLegend, drawMark, drawRightAxis } from './timePlot.js'
 
 /**
  * The frequency response, two decades either side of the circuit's own
@@ -10,8 +10,10 @@ import { drawLegend, drawMark, drawRightAxis } from './timePlot.js'
  * `freq` (math.js freqSweep — one complex solve per point, source at 1∠0);
  * the marker at the drive frequency is `at`, the same quantity from the
  * solve the meters are showing, so it sits on the curve by construction.
+ * `marks` are the data marks of marks.js, their x a frequency and their y in
+ * the magnitude scale's own unit (Ω or dB).
  */
-export default function FreqCanvas({ freq, mode, fDrive, at, corner }) {
+export default function FreqCanvas({ freq, mode, fDrive, at, corner, marks = [] }) {
   const ref = useCanvas(
     (ctx, w, h) => {
       const k0 = plotArea(w, h).k
@@ -79,6 +81,7 @@ export default function FreqCanvas({ freq, mode, fDrive, at, corner }) {
       }
       ctx.globalAlpha = 1
       if (corner && corner.f > 10 ** x0 && corner.f < 10 ** x1) drawMark(ctx, area, sx(Math.log10(corner.f)), corner.label)
+      drawDataMarks(ctx, area, marks, { sx: (f) => sx(Math.log10(f)), sy, syR, yMap: mode === 'bode' ? (y) => y : (y) => Math.log10(y) })
 
       const line = (ys, map, color, dash = null) => {
         ctx.strokeStyle = color
@@ -123,7 +126,7 @@ export default function FreqCanvas({ freq, mode, fDrive, at, corner }) {
         { label: `drive ${fmt(fDrive, 'Hz', 3)}`, color: COLORS.marker, dim: true },
       ])
     },
-    [freq, mode, fDrive, at, corner],
+    [freq, mode, fDrive, at, corner, marks],
   )
   return (
     <canvas

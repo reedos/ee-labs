@@ -40,6 +40,120 @@ export function alignZero([lLo, lHi], [rLo, rHi]) {
   return [-s * f0, s * (1 - f0)]
 }
 
+/** How much of a frame [lo, hi] the data [dLo, dHi] fills, 0..1. */
+export const fillOf = ([lo, hi], [dLo, dHi]) => (dHi - dLo) / (hi - lo)
+
+/**
+ * The right-hand scale: zero aligned with the left scale's when that leaves
+ * the right-hand traces at least `minFill` of the frame tall, otherwise the
+ * traces' own span — a ringing current a tenth of the frame high, squeezed
+ * under a voltage that never goes negative, is a hidden trace, and the plot
+ * would rather show two zero lines than lose it. `aligned` says which happened.
+ */
+export function rightSpan(leftSpan, [rLo, rHi], minFill = 0.4) {
+  const aligned = alignZero(leftSpan, [rLo, rHi])
+  if (fillOf(aligned, [rLo, rHi]) >= minFill) return { span: aligned, aligned: true }
+  return { span: [rLo, rHi], aligned: false }
+}
+
+/**
+ * The data marks (marks.js) on a frame: `sx` maps the plot's abscissa to a
+ * pixel, `sy`/`syR` the left and right scales, `yMap` any transform the left
+ * scale applies to its data first (log10 on the impedance plot). Levels and
+ * segments are dashed hairlines, points are rings, curves are dotted, each
+ * with its label beside it; time marks are the vertical hairlines the scope
+ * has always drawn. On a frame too narrow to hold the labels (a phone) the
+ * marks are drawn unlabelled and the caption under the plot names them. The
+ * caller has clipped to the frame.
+ */
+export function drawDataMarks(ctx, area, marks, { sx, sy, syR = null, yMap = (y) => y }) {
+  const k = area.k || 1
+  const color = COLORS.textBright
+  const yOf = (m, y) => (m.axis === 'right' && syR ? syR(y) : sy(yMap(y)))
+  const top = area.y
+  const right = area.x + area.w
+  ctx.save()
+  ctx.font = `${Math.round(10 * k)}px ${SANS}`
+  ctx.lineWidth = 1
+  const labelled = area.w >= 380 * k
+  const text = (label, x, y, { align = 'left', base = 'bottom' } = {}) => {
+    if (!label || !labelled) return
+    const wide = ctx.measureText(label).width
+    // Stay inside the frame: flip to the left of x when the label would run off it,
+    // and below y when it would run over the top.
+    let ax = align
+    if (ax === 'left' && x + wide > right - 2 * k) ax = 'right'
+    if (ax === 'right' && x - wide < area.x + 2 * k) ax = 'left'
+    let by = base
+    if (by === 'bottom' && y - 12 * k < top) by = 'top'
+    ctx.textAlign = ax
+    ctx.textBaseline = by
+    ctx.globalAlpha = 0.95
+    ctx.fillStyle = color
+    ctx.fillText(label, x, y)
+  }
+  for (const m of marks) {
+    if (m.kind === 'time') {
+      if (m.x > 0) drawMark(ctx, area, sx(m.x), m.label)
+      continue
+    }
+    ctx.strokeStyle = color
+    ctx.globalAlpha = 0.6
+    if (m.kind === 'level') {
+      const y = Math.round(yOf(m, m.y)) + 0.5
+      ctx.setLineDash([5 * k, 4 * k])
+      ctx.beginPath()
+      ctx.moveTo(area.x, y)
+      ctx.lineTo(right, y)
+      ctx.stroke()
+      ctx.setLineDash([])
+      text(m.label, right - 4 * k, y - 3 * k, { align: 'right' })
+    } else if (m.kind === 'segment') {
+      const x0 = sx(m.x0)
+      const x1 = sx(m.x1)
+      const y0 = yOf(m, m.y0)
+      const y1 = yOf(m, m.y1)
+      ctx.setLineDash([5 * k, 4 * k])
+      ctx.beginPath()
+      ctx.moveTo(x0, y0)
+      ctx.lineTo(x1, y1)
+      ctx.stroke()
+      ctx.setLineDash([])
+      // The label sits past the segment's midpoint, on the side away from the frame's centre.
+      const mx = (x0 + x1) / 2
+      const my = (y0 + y1) / 2
+      text(m.label, mx + 6 * k, my - 4 * k)
+    } else if (m.kind === 'point') {
+      // A ring on the frame's edge (the instant t = 0) is nudged inside so the whole ring shows.
+      const x = Math.max(area.x + 5 * k, Math.min(right - 5 * k, sx(m.x)))
+      const y = Math.max(top + 5 * k, Math.min(area.y + area.h - 5 * k, yOf(m, m.y)))
+      ctx.globalAlpha = 1
+      ctx.lineWidth = 1.5 * k
+      ctx.beginPath()
+      ctx.arc(x, y, 4 * k, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.lineWidth = 1
+      // Above and to the right; beside the ring when the frame's top is too close.
+      if (y - 18 * k < top) text(m.label, x + 8 * k, y, { base: 'middle' })
+      else text(m.label, x + 8 * k, y - 6 * k)
+    } else if (m.kind === 'curve') {
+      ctx.setLineDash([2 * k, 3 * k])
+      ctx.beginPath()
+      let best = 0
+      for (let i = 0; i < m.xs.length; i++) {
+        const y = area.y + area.h - m.ys[i] * area.h
+        if (i === 0) ctx.moveTo(sx(m.xs[i]), y)
+        else ctx.lineTo(sx(m.xs[i]), y)
+        if (m.ys[i] > m.ys[best]) best = i
+      }
+      ctx.stroke()
+      ctx.setLineDash([])
+      text(m.label, sx(m.xs[best]) + 6 * k, area.y + area.h - m.ys[best] * area.h - 4 * k)
+    }
+  }
+  ctx.restore()
+}
+
 /**
  * Nice ticks and a title down the right-hand side of the frame, for a second
  * scale. `step` overrides the tick interval — a phase axis is read in 45°.

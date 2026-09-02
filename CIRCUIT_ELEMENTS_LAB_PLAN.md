@@ -861,6 +861,44 @@ state, and averaging.
    walks every experiment × view: the headline is the first child of the pane,
    the bridge the second, the callout reads the headline's number with the
    typesetting undone, and a refusal draws no callout.
+   **Step 3 — finish the plots — shipped 2026-09-02:** the plots now carry the
+   lesson's own marks as data. `src/marks.js` gives eight experiments a list of
+   marks computed from the solution — F3 the level E, the 63.2 % point at τ and
+   the starting-slope tangent reaching E at τ; F4 the level, the exponential
+   approach and v_A(0); F6 the spark v_S1(0⁺) and the trickle E/(R + R_off), none
+   when the switch is ideal; G4 the first peak from `extrema`, the level alone
+   when the ringing is gone; C3 the unloaded divider value E·R₂/(R₁ + R₂) from
+   `x.thevenin.voc`; D6 the peak power at R_L = R_s and the 50 % efficiency
+   there; H4 |Z| = R and |H| = Q at ω₀ with a curve of the resonant peak; H6 the
+   −3.01 dB point at f_c, the −20 dB/decade asymptote and its slope — each a
+   kind (level, point, segment, curve, time) with a label naming the quantity.
+   One shared `drawDataMarks` in `timePlot.js` draws them on the scope, the
+   frequency plots and the load sweep; rings are kept inside the frame and their
+   labels move beside the ring when there is no room above; below 380 px of
+   frame the marks lose their on-canvas labels and the caption `PlotMarks` under
+   the plot names them — glyph, label, value in the plot's unit — so a phone
+   reads the same lesson. Hidden traces are gone: a dimmed second trace is thin,
+   dashed and translucent instead of a lighter copy of the first; F6's v_switch
+   is dashed over i_L, F7 no longer draws an i_in that sat under i_L; the right
+   axis takes its own span whenever zero-alignment would leave the trace under
+   40 % of the frame (`rightSpan`), with its own dashed zero line when the zeros
+   part, so G4–G7's v_C fills the frame (0.81) instead of a band. G3's damping
+   sweep draws its settling-time curve from a closed form (`settleAnalytic`,
+   bisection on the envelope's last band crossing) rather than the engine's
+   step-limited transient, so the curve is smooth and the fastest-R argument
+   sits at a real minimum inside (0.75·R_crit, R_crit); the engine still gives
+   the dot at the knob's R and the test checks both agree to six places. C3's
+   knob label ducks under the level line; D6 reads its ticks in mW and its
+   efficiency on a 0–100 % right axis; H1's cursor sits near 2τ so the natural
+   part is still visible; H2's angle reads as turns plus degrees
+   (`turnedLabel`); the DampingCanvas dot now lands on its log axis. Tests:
+   `marks.test.jsx` (18) checks every mark against the engine (F3's tangent
+   slope, F6's spark as `tr.at(0).sol.volt.S1`, D6's efficiency as p_RL/−p_V1,
+   H6's asymptote end within 0.001 dB of the real response), the caption's
+   markup, the no-hidden-trace rules across all 46 (fill ≥ 0.4, no two
+   same-styled traces within 1e-9 normalised), and the plot repairs; `verify.mjs`
+   reads every caption back, requires a number in each entry, at least eight
+   experiments captioned, and F3's caption to say 63.2 %.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event

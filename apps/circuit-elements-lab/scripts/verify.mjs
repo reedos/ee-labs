@@ -124,6 +124,7 @@ const noiseOnPage = () =>
 // ------------------------------------ 1. every experiment, every panel, every view
 
 console.log(`\n1. Loading all ${names.length} experiments, opening every math panel, every view\n`)
+const marked = new Map()
 for (const name of names) {
   await pick(name)
   if (await scrolls()) fail(`${name}: page scrolls`)
@@ -158,8 +159,12 @@ for (const name of names) {
         headline: [body.querySelector('.headline-tag')?.textContent, body.querySelector('.headline-value strong')?.textContent].join(' = '),
         refused: body.querySelector('.headline.is-refused') !== null,
         callout: document.querySelector('.schematic .sch-callout')?.textContent.trim() ?? null,
+        marks: [...body.querySelectorAll('[data-role=marks] li')].map((li) => li.textContent.trim()),
       }
     })
+    // The plot's caption: every mark the canvas draws is listed with its number.
+    for (const t of seen?.marks || []) if (!/\d/.test(t)) fail(`${name} / ${v}: a plot mark without its number: “${t}”`)
+    if (seen?.marks?.length) marked.set(name, [...(marked.get(name) || []), ...seen.marks])
     if (!seen || !seen.has) fail(`${name}: view "${v}" rendered nothing`)
     else rendered++
     if (!seen?.headlineFirst) fail(`${name} / ${v}: the headline is not the first thing in the Analysis pane`)
@@ -184,6 +189,12 @@ for (const name of names) {
       `${String(m.length).padStart(2)} meters  ${rendered}/${views.length} views  ${refused ? 'REFUSED' : out.slice(0, 30)}`,
   )
 }
+
+// The eight experiments whose plots carry data marks (marks.js) list them
+// under the plot, and the time-constant experiment names the 63.2 % point.
+if (marked.size < 8) fail(`only ${marked.size} experiments list plot marks; marks.js declares 8`)
+const tauName = names.find((n) => /the time constant$/i.test(n))
+if (!(marked.get(tauName) || []).some((t) => /63\.2 %/.test(t))) fail(`${tauName}: the 63.2 % mark is not listed under the scope`)
 
 // ------------------------------------------- 2. the meters follow the knobs
 

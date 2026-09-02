@@ -148,23 +148,42 @@ function series(p) {
 const overshootOf = (zeta) => (zeta < 1 ? Math.exp((-Math.PI * zeta) / Math.sqrt(1 - zeta * zeta)) : 0)
 
 /**
- * Settling time of a hand-written waveform to within `band` of `final`, by
- * scanning a fine grid and bisecting the last exit — the same definition the
- * engine measures, applied to the closed form instead of the propagator.
+ * The 2 % (or any `band`) settling time of a series RLC's step response from
+ * rest, by root-finding on the closed form — no grid, so the sweep's curve is
+ * smooth where the truth is smooth and has its cliffs exactly where a peak
+ * drops inside the band.
+ *
+ * Underdamped: v_C − E = −E·e^(−αt)(cos ω_d t + (α/ω_d) sin ω_d t), whose
+ * extrema sit at t_k = kπ/ω_d with |v_C − E| = |E|·e^(−αt_k) exactly, and
+ * which is monotone between them. The last peak outside the band is
+ * k* = ⌊ln(|E|/band)·ω_d/(απ)⌋; the response leaves the band for the last
+ * time between t_k* and the zero crossing that follows it, where a bisection
+ * finds the instant. At or above critical the approach is monotone and one
+ * bisection on the closed form is the whole answer.
  */
-function settleOf(f, final, band, tEnd, n = 4000) {
-  let k = n
-  while (k >= 0 && Math.abs(f((k / n) * tEnd) - final) <= band) k--
-  if (k < 0) return 0
-  if (k === n) return tEnd
-  let a = (k / n) * tEnd
-  let b = ((k + 1) / n) * tEnd
-  for (let j = 0; j < 80; j++) {
-    const m = (a + b) / 2
-    if (Math.abs(f(m) - final) > band) a = m
-    else b = m
+export function settleAnalytic(q, E, band) {
+  const mag = Math.abs(E)
+  if (!(mag > band)) return 0
+  const solve = (g, a, b) => {
+    // g is monotone on [a, b] with g(a) > 0 > g(b): the crossing.
+    for (let j = 0; j < 100; j++) {
+      const m = (a + b) / 2
+      if (g(m) > 0) a = m
+      else b = m
+    }
+    return (a + b) / 2
   }
-  return (a + b) / 2
+  if (q.zeta < 1) {
+    const dev = (t) => mag * Math.exp(-q.alpha * t) * Math.abs(Math.cos(q.wd * t) + (q.alpha / q.wd) * Math.sin(q.wd * t))
+    const kStar = Math.floor((Math.log(mag / band) * q.wd) / (q.alpha * Math.PI))
+    const tk = (kStar * Math.PI) / q.wd
+    const tz = (Math.PI * (kStar + 1) - Math.atan(q.wd / q.alpha)) / q.wd
+    return solve((t) => dev(t) - band, tk, tz)
+  }
+  const n = natural(q.alpha, q.w0, 1, 0)
+  let T = 1 / q.alpha
+  while (mag * n(T) > band) T *= 2
+  return solve((t) => mag * n(t) - band, 0, T)
 }
 
 /**
@@ -933,12 +952,11 @@ const ENTRIES = {
   },
   g3(p, s, x) {
     const q = series(p)
-    const vC = (t) => p.E + natural(q.alpha, q.w0, -p.E, 0)(t)
     const d = x.damping
     const rows = d && d.at
       ? [
           row('overshoot at this R', overshootOf(q.zeta), d.at.overshoot, '', 1e-6, 1e-9),
-          row('2 % settling time at this R', settleOf(vC, p.E, 0.02 * Math.abs(p.E), d.at.tEnd), d.at.settle, 's', 1e-6),
+          row('2 % settling time at this R', settleAnalytic(q, p.E, 0.02 * Math.abs(p.E)), d.at.settle, 's', 1e-6),
         ]
       : []
     return rlcEntry(p, x, {
@@ -1795,10 +1813,26 @@ function dampingPoint(exp, p) {
 const DAMP_MEMO = new Map()
 
 /**
+ * Overshoot and 2 % settling time of v_C for one series-RLC setting from the
+ * closed forms — overshootOf and settleAnalytic — the same two quantities
+ * dampingPoint measures on the engine's transient. Null outside the sweep's
+ * range, like dampingPoint.
+ */
+function dampingClosed(p) {
+  const q = series(p)
+  const { lo, hi } = sweepRange(q)
+  if (!(p.R1 >= lo * (1 - 1e-9) && p.R1 <= hi * (1 + 1e-9))) return null
+  return { R: p.R1, zeta: q.zeta, overshoot: overshootOf(q.zeta), settle: settleAnalytic(q, p.E, 0.02 * Math.abs(p.E)) }
+}
+
+/**
  * The damping sweep behind G3: R from R_crit/20 to 50·R_crit on a log grid,
- * each point a fresh exact transient measured for overshoot and settling
- * time. Memoized on (E, L, C) — the sweep is the same whichever R the knob is
- * at — so dragging R costs nothing after the first draw.
+ * each point the closed-form overshoot and the settling time found by
+ * root-finding on the analytic response (settleAnalytic), so the curve has no
+ * grid noise and its cliffs fall exactly where a peak drops inside the band.
+ * The knob's own point (x.damping.at) is the engine's measurement of the same
+ * two numbers, and the math entry holds the two against each other. Memoized
+ * on (E, L, C) — the sweep is the same whichever R the knob is at.
  */
 export function dampingSweep(exp, p) {
   const q = series(p)
@@ -1806,9 +1840,9 @@ export function dampingSweep(exp, p) {
   let out = DAMP_MEMO.get(key)
   if (out) return out
   const points = []
-  const n = 49
+  const n = 241
   const { lo, hi } = sweepRange(q)
-  for (let k = 0; k < n; k++) points.push(dampingPoint(exp, { ...p, R1: lo * Math.pow(hi / lo, k / (n - 1)) }))
+  for (let k = 0; k < n; k++) points.push(dampingClosed({ ...p, R1: lo * Math.pow(hi / lo, k / (n - 1)) }))
   let fastest = points[0]
   for (const d of points) if (d.settle < fastest.settle) fastest = d
   // The 2 % settling time has cliffs — where the first peak drops inside the
@@ -1818,8 +1852,8 @@ export function dampingSweep(exp, p) {
   const k = points.indexOf(fastest)
   const a = points[Math.max(0, k - 1)].R
   const b = points[Math.min(n - 1, k + 1)].R
-  for (let j = 1; j < 24; j++) {
-    const d = dampingPoint(exp, { ...p, R1: a * Math.pow(b / a, j / 24) })
+  for (let j = 1; j < 48; j++) {
+    const d = dampingClosed({ ...p, R1: a * Math.pow(b / a, j / 48) })
     points.push(d)
     if (d.settle < fastest.settle) fastest = d
   }

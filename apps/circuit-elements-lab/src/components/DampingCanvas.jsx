@@ -5,10 +5,11 @@ import { dampingSweep } from '../math.js'
 
 /**
  * The damping sweep: the series resistance walked from R_crit/20 to 50·R_crit
- * on a log axis, and for each value a fresh exact transient measured for how
- * far v_C overshoots its final value (right axis, %) and how long it takes to
- * settle inside ±2 % of it (left axis). The dashed line is R_crit = 2√(L/C);
- * the dot is where the knob is now. The two curves make the trade visible:
+ * on a log axis, and for each value how far v_C overshoots its final value
+ * (right axis, %) and how long it takes to settle inside ±2 % of it (left
+ * axis), both found on the closed-form response (math.js settleAnalytic). The
+ * dashed line is R_crit = 2√(L/C); the dot is where the knob is now, measured
+ * on the engine's own transient. The two curves make the trade visible:
  * less resistance means faster first arrival but a longer ring; more means no
  * overshoot but a slow crawl. The quickest settling sits a little below
  * critical, not at it.
@@ -101,7 +102,7 @@ export default function DampingCanvas({ exp, params, at }) {
           ctx.lineWidth = 1.5 * k
           ctx.stroke()
         }
-        dot(at.settle, sy, COLORS.trace)
+        dot(Math.log10(at.settle), sy, COLORS.trace)
         dot(100 * at.overshoot, syR, COLORS.spectrum)
         ctx.fillStyle = COLORS.marker
         ctx.font = `${Math.round(11 * k)}px ${MONO}`

@@ -18,6 +18,8 @@ import DampingCanvas from './components/DampingCanvas.jsx'
 import PhasorCanvas from './components/PhasorCanvas.jsx'
 import FreqCanvas from './components/FreqCanvas.jsx'
 import HandOver from './components/HandOver.jsx'
+import PlotMarks from './components/PlotMarks.jsx'
+import { marksFor, timeMarks } from './marks.js'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -101,6 +103,12 @@ export default function App() {
     }
   }, [x])
   const math = useMemo(() => experimentMath(exp, params, x), [exp, params, x])
+  // What the plot points at: the experiment's data marks, then the instants the math entry names.
+  const marks = useMemo(() => {
+    if (!x.sol && !x.tr) return { scope: [], freq: [], sweep: [] }
+    const on = (plot) => marksFor(exp, params, x, plot)
+    return { scope: [...on('scope'), ...timeMarks(math?.marks)], freq: on('freq'), sweep: on('sweep') }
+  }, [exp, params, x, math])
   // The tables the student reads: every row in the unit a first course writes (100 µA, not 1.000e-4 A).
   const readable = useMemo(() => forReading(math), [math])
   const drive = useMemo(() => (x.ac && exp.out ? atDrive(exp, x) : null), [exp, x])
@@ -502,10 +510,11 @@ export default function App() {
                 scope={exp.scope}
                 cursor={x.cursor}
                 onCursor={setCursor}
-                marks={math?.marks || []}
+                marks={marks.scope}
                 guides={math?.guides || []}
               />
             ) : null}
+            {currentView === 'scope' && x.tr ? <PlotMarks marks={marks.scope} /> : null}
             {currentView === 'state' && x.tr ? <StatePane x={x} /> : null}
             {currentView === 'phasor' && x.ac ? <PhasorCanvas exp={exp} x={x} cursor={x.cursor} onCursor={setCursor} /> : null}
             {(currentView === 'impedance' || currentView === 'bode') && x.freq && drive ? (
@@ -515,8 +524,10 @@ export default function App() {
                 fDrive={x.omega / (2 * Math.PI)}
                 at={drive}
                 corner={{ f: x.freq.wc / (2 * Math.PI), label: x.state.n === 1 ? 'f_c' : 'f₀' }}
+                marks={marks.freq}
               />
             ) : null}
+            {(currentView === 'impedance' || currentView === 'bode') && x.freq && drive ? <PlotMarks marks={marks.freq} /> : null}
             {currentView === 'acpower' && x.ac ? <AcPowerPane x={x} /> : null}
             {currentView === 'energy' && x.tr ? <EnergyCanvas energy={x.energy} tEnd={x.tEnd} cursor={x.cursor} onCursor={setCursor} /> : null}
             {currentView === 'damping' && x.damping ? <DampingCanvas exp={exp} params={params} at={x.damping.at} /> : null}
@@ -539,8 +550,10 @@ export default function App() {
                 at={params[exp.sweepId]}
                 rth={x.thevenin ? x.thevenin.rth.test : null}
                 efficiency={!!exp.sweepEfficiency}
+                marks={marks.sweep}
               />
             ) : null}
+            {currentView === 'sweep' && x.sweep ? <PlotMarks marks={marks.sweep} /> : null}
             {!x.sol && currentView !== 'equations' ? (
               <p className="hint">Nothing to show until the circuit has a solution.</p>
             ) : null}

@@ -1069,7 +1069,8 @@ export const EXPERIMENTS = [
     cursor: 0.2,
     scope: {
       left: { unit: 'A', traces: [{ q: 'i', key: 'L1', label: 'i_L' }] },
-      right: { unit: 'V', traces: [{ q: 'volt', key: 'S1', label: 'v_switch' }] },
+      // i_L times R_off: the same shape as the left trace, so it is dashed to stay tellable apart.
+      right: { unit: 'V', traces: [{ q: 'volt', key: 'S1', label: 'v_switch', dash: true }] },
     },
     show: 'v',
     view: 'scope',
@@ -1102,8 +1103,8 @@ export const EXPERIMENTS = [
     window: (p) => p.N * p.T,
     cursor: 0.25,
     scope: {
+      // No current trace: with a virtual ground i_in is v_in/R, the dashed trace over again.
       left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_in', dim: true }, { q: 'v', key: 'out', label: 'v_out' }] },
-      right: { unit: 'A', traces: [{ q: 'i', key: 'R1', label: 'i_in' }] },
     },
     show: 'i',
     view: 'scope',
@@ -1272,7 +1273,8 @@ export const EXPERIMENTS = [
     window: cyclesWindow,
     ghost: 'forced',
     ghostLabel: 'steady state (dashed)',
-    cursor: 0.3,
+    // About 2τ in at the defaults (τ = 1 ms, window 25 ms): the natural part is still visible and already fading.
+    cursor: 0.08,
     scope: {
       left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_s', dim: true }, { q: 'volt', key: 'C1', label: 'v_C' }] },
       right: { unit: 'A', traces: [{ q: 'i', key: 'R1', label: 'i' }] },
