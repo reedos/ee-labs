@@ -349,6 +349,30 @@ async function run(browser, tag) {
       links++
     }
     console.log(`   ${links} notes carry a next link`)
+    // The next link goes where it says.
+    await pick(ids[0])
+    await page.locator('[data-role=next-link]').click()
+    await settle(120)
+    const landed = await page.$eval('.preset.is-on', (e) => e.dataset.id)
+    if (landed !== ids[1]) F(`the note's next link from ${ids[0]} landed on ${landed}, not ${ids[1]}`)
+    else console.log(`   the note's next link walks ${ids[0]} → ${ids[1]}`)
+    // The terms line is fresh (named, in the accent) on the first visit of an
+    // experiment this session and plain on a return.
+    await page.reload({ waitUntil: 'load' })
+    await page.waitForSelector('.views')
+    const first = await page.$eval('details.terms', (d) => d.classList.contains('is-fresh'))
+    await pick('a2')
+    await pick('a1')
+    const again = await page.$eval('details.terms', (d) => d.classList.contains('is-fresh'))
+    if (!first) F('the terms line is not marked fresh on the first visit')
+    else if (again) F('the terms line is still marked fresh on a return visit')
+    else console.log('   the terms line is fresh on the first visit and plain on a return')
+    // The try line's chip puts the keyboard on the knob it names.
+    await pick('b3')
+    await page.locator('.try .knob-chip').click()
+    const focused = await page.evaluate(() => document.activeElement.closest('[data-knob]')?.dataset.knob)
+    if (focused !== 'fs') F(`B3's try chip focused ${focused}, not f_s`)
+    else console.log('   the try chip focuses the knob it names')
   }
 
   // ---------------------------------------------- 8. above the fold

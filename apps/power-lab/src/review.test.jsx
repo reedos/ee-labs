@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import React from 'react'
-import App from './App.jsx'
-import { EXPERIMENTS, GROUPS, TRACES, VIEWS, byId, defaultsOf } from './experiments.js'
+import App, { termsFresh } from './App.jsx'
+import { termsFor } from './terms.js'
+import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, byId, defaultsOf } from './experiments.js'
 import { analyse } from './analysis.js'
 import { scopeRange } from './format.js'
 
@@ -185,5 +186,110 @@ describe('the layout gives the lesson the room (§11.4)', () => {
     expect(sch).toBeGreaterThan(-1)
     expect(sch).toBeLessThan(main.indexOf('<section class="view'))
     expect(main.slice(sch, main.indexOf('<section class="view'))).toContain('class="schematic"')
+  })
+})
+
+describe('a path through the material (§11.5, §11.3.3–5)', () => {
+  it('the top bar says where you are — "n of 20" and the group — with a next and a previous (§11.5.2)', () => {
+    EXPERIMENTS.forEach((e, i) => {
+      const t = topbar(render(e.id))
+      const pos = t.match(/data-role="position"[^>]*>(.*?)<\/span>/)
+      expect(pos, `${e.id}: no position`).toBeTruthy()
+      expect(text(pos[1])).toMatch(new RegExp(`${i + 1} of ${EXPERIMENTS.length}`))
+      expect(text(pos[1].replace(/&amp;/g, '&'))).toContain(e.group)
+      const next = t.match(/<button[^>]*data-role="next"[^>]*>/)
+      const prev = t.match(/<button[^>]*data-role="prev"[^>]*>/)
+      expect(next, `${e.id}: no next`).toBeTruthy()
+      expect(prev, `${e.id}: no previous`).toBeTruthy()
+      expect(/disabled/.test(next[0]), `${e.id}: next disabled`).toBe(i === EXPERIMENTS.length - 1)
+      expect(/disabled/.test(prev[0]), `${e.id}: previous disabled`).toBe(i === 0)
+      if (i + 1 < EXPERIMENTS.length) expect(next[0]).toContain(EXPERIMENTS[i + 1].name.replace(/"/g, '&quot;'))
+    })
+  })
+  it('the first experiment says "Start here", and each group’s first experiment shows the group’s intro (§11.5.3)', () => {
+    const h = sidebar(render(EXPERIMENTS[0].id))
+    const start = h.match(/<button[^>]*class="preset is-on"[^>]*>[\s\S]*?<\/button>/)[0]
+    expect(start).toContain('Start here')
+    // On that one button and no other, from wherever the lab is looked at.
+    expect(sidebar(render('b3')).match(/Start here/g)).toHaveLength(1)
+    expect(sidebar(render('b3')).match(/data-id="a1"[^>]*>[^<]*<span class="start-here">Start here/)).toBeTruthy()
+    for (const g of GROUPS) {
+      const first = EXPERIMENTS.find((e) => e.group === g)
+      const s = sidebar(render(first.id))
+      const intro = s.match(/data-role="group-intro"[^>]*>([\s\S]*?)<\/p>/)
+      expect(intro, `${first.id}: no intro for ${g}`).toBeTruthy()
+      expect(text(intro[1].replace(/&amp;/g, '&')).replace(/\s+/g, ' ').trim()).toBe(GROUP_INTROS[g])
+      // The intro sits above the group's experiments.
+      expect(s.indexOf('data-role="group-intro"')).toBeLessThan(s.indexOf(`data-id="${first.id}"`))
+    }
+    // Deeper in a group the intro has been read, and the fold needs the lines.
+    expect(sidebar(render('b3'))).not.toContain('data-role="group-intro"')
+  })
+  it('every note ends with where it leads, as a link the top-bar button is not (§11.5.4)', () => {
+    EXPERIMENTS.forEach((e, i) => {
+      const s = sidebar(render(e.id))
+      const link = s.match(/<button[^>]*data-role="next-link"[^>]*>/)
+      if (i + 1 === EXPERIMENTS.length) {
+        expect(link, `${e.id}: the last experiment links on`).toBeNull()
+        return
+      }
+      expect(link, `${e.id}: no next link`).toBeTruthy()
+      expect(link[0]).toContain(`data-target="${EXPERIMENTS[i + 1].id}"`)
+      expect(s.indexOf('data-role="next-link"')).toBeGreaterThan(s.indexOf('data-role="note"'))
+      expect(s.indexOf('data-role="next-link"')).toBeLessThan(s.indexOf('<h2>Schematic'))
+    })
+  })
+  it('the try line is its own element under the note, with the knob as a chip that names it (§11.3.5)', () => {
+    for (const e of EXPERIMENTS) {
+      const s = sidebar(render(e.id))
+      const tr = s.match(/<p class="try"[^>]*data-role="try"[^>]*>([\s\S]*?)<\/p>/)
+      expect(tr, `${e.id}: no try element`).toBeTruthy()
+      const knob = e.params.find((p) => p.key === e.try.knob)
+      expect(tr[1]).toMatch(new RegExp(`<button[^>]*class="knob-chip"[^>]*data-knob="${e.try.knob}"[^>]*>${knob.label.replace(/_/g, '_')}<`))
+      expect(text(tr[1])).toContain(e.try.text.slice(0, 20))
+      expect(s.indexOf('data-role="try"')).toBeGreaterThan(s.indexOf('data-role="note"'))
+      expect(s.indexOf('data-role="try"')).toBeLessThan(s.indexOf('<h2>Schematic'))
+      // Every knob is addressable, so the chip can focus it.
+      for (const p of e.params) expect(s, `${e.id}: knob ${p.key}`).toContain(`data-knob="${p.key}"`)
+    }
+  })
+  it('the about knob carries its chips, labelled in the knob’s units (§11.5.5)', () => {
+    for (const e of EXPERIMENTS) {
+      const s = sidebar(render(e.id)).slice(sidebar(render(e.id)).indexOf('<h2>Knobs</h2>'))
+      const from = s.indexOf(`data-knob="${e.about}"`)
+      const to = s.indexOf('data-knob=', from + 10)
+      const first = s.slice(from, to < 0 ? undefined : to)
+      const chips = first.match(/class="chip[^"]*"/g) || []
+      expect(chips.length, `${e.id}: ${chips.length} chips on ${e.about}`).toBe(e.chips.length)
+      expect(first, `${e.id}: the default chip is on`).toContain('class="chip is-on"')
+      const k = e.params[0]
+      if (k.percent) expect(first).toMatch(/>\d+(\.\d)? %</)
+      else if (k.unit === '°') expect(first).toMatch(/>\d+°</)
+      else expect(first).toMatch(new RegExp(`>[0-9.]+ [µmkMG]?${k.unit}<`))
+    }
+  })
+  it('the retired note gets a way back: a reset chip beside it (§11.5.6)', () => {
+    const moved = { ...defaultsOf('b3'), fs: 400e3 }
+    const h = sidebar(renderToString(React.createElement(App, { initialId: 'b3', initialParams: moved })).replace(/<!--\s*-->/g, ''))
+    expect(h).toContain('data-pristine="false"')
+    expect(h).toMatch(/<button[^>]*data-role="reset"/)
+    expect(sidebar(render('b3'))).not.toContain('data-role="reset"')
+  })
+  it('the header says what the lab is for, in three sentences a newcomer can use (§11.3.3)', () => {
+    const h = sidebar(render('a1'))
+    const sub = h.match(/<p class="sub">([\s\S]*?)<\/p>/)
+    expect(text(sub[1]).replace(/\s+/g, ' ').trim()).toBe('Pick an experiment. Turn the knob it names. Watch the number the note promised.')
+    expect(text(sub[1])).not.toMatch(/steady state|engine/)
+  })
+  it('the terms line names its terms, in the accent on an experiment’s first visit (§11.3.4)', () => {
+    for (const e of EXPERIMENTS) {
+      if (!e.terms.length) continue
+      const s = sidebar(render(e.id))
+      const d = s.match(/<details class="terms is-fresh"[^>]*><summary>([\s\S]*?)<\/summary>/)
+      expect(d, `${e.id}: no fresh terms line`).toBeTruthy()
+      for (const t of termsFor(e.terms)) expect(text(d[1]), e.id).toContain(t.name)
+    }
+    expect(termsFresh(new Set(['a1']), 'a1')).toBe(false)
+    expect(termsFresh(new Set(['a1']), 'a2')).toBe(true)
   })
 })

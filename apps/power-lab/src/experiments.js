@@ -21,6 +21,24 @@
 
 export const GROUPS = ['Why switch', 'The buck', 'Boost & buck-boost', 'AC in']
 
+// What each group sets out to establish, read once at its boundary: the
+// sidebar shows it on the group's first experiment and while another group's
+// tab is being browsed. Two sentences, at most 45 words (path.test.js).
+export const GROUP_INTROS = {
+  'Why switch':
+    'A part that drops voltage while carrying current wastes their product. This group replaces it ' +
+    'with a switch, sees what the switch alone gets wrong, and adds the filter that fixes it.',
+  'The buck':
+    'One rule, volt-second balance, gives the buck its output ratio. The same rule gives its ripple, ' +
+    'what happens when it runs dry at light load, where that boundary sits, and what real parts cost.',
+  'Boost & buck-boost':
+    'Move the switch and the inductor\u2019s volt-seconds stack on the source instead of subtracting from it. ' +
+    'The ideal ratios run away as D \u2192 1; winding resistance and light load say where they really go.',
+  'AC in':
+    'Before any converter there is a rectifier and a capacitor. This group measures what they deliver, ' +
+    'what they ask of the line, and how a dimmer and a three-phase bridge compare.',
+}
+
 // ------------------------------------------------------------ knobs
 const Vin = (def = 12) => ({ key: 'Vin', label: 'V_in', unit: 'V', min: 1, max: 48, scale: 'linear', step: 0.1, default: def, hint: 'Input voltage' })
 const Vo = (def = 5) => ({ key: 'Vo', label: 'V_out', unit: 'V', min: 0.5, max: 48, scale: 'linear', step: 0.1, default: def, hint: 'The regulated output; must be below V_in' })
@@ -144,6 +162,8 @@ export const EXPERIMENTS = [
   {
     id: 'a1',
     about: 'Vo',
+    chips: [5, 9],
+    try: { knob: 'Vo', text: 'Set V_out to 9 V: efficiency rises to 75.0 %, and 5.4 W still heats the regulator.' },
     group: GROUPS[0],
     name: 'The linear regulator',
     kind: 'linreg',
@@ -166,6 +186,8 @@ export const EXPERIMENTS = [
   {
     id: 'a2',
     about: 'D',
+    chips: [5 / 12, 0.75],
+    try: { knob: 'D', text: 'Set D to 75 %: the average is 9.00 V, the RMS 10.4 V \u2014 closer, never equal.' },
     group: GROUPS[0],
     name: 'Chop it',
     kind: 'chopper',
@@ -188,6 +210,8 @@ export const EXPERIMENTS = [
   buck({
     id: 'a3',
     about: 'C',
+    chips: [100e-6, 10e-6],
+    try: { knob: 'C', text: 'Set C to 10 \u00b5F, a tenth of the 100 \u00b5F: the ripple grows tenfold to 36.5 mV and the average stays 5.000 V.' },
     group: GROUPS[0],
     name: 'Let the LC do the averaging',
     params: [Vin(), D(), L(), C(), R(), Fs()],
@@ -208,6 +232,8 @@ export const EXPERIMENTS = [
   buck({
     id: 'b1',
     about: 'L',
+    chips: [100e-6, 22e-6],
+    try: { knob: 'L', text: 'Set L to 22 \u00b5H, from 100 \u00b5H: the ripple grows to 1.33 A and the balance is still 29.2 V\u00b7\u00b5s each way.' },
     group: GROUPS[1],
     name: 'Volt-second balance',
     params: [Vin(), D(), L(), R()],
@@ -224,6 +250,8 @@ export const EXPERIMENTS = [
   buck({
     id: 'b2',
     about: 'D',
+    chips: [5 / 12, 0.75, 0.25],
+    try: { knob: 'D', text: 'Set D to 75 %: 9.000 V out, M = 0.750 \u2014 and 25 % gives 3.000 V.' },
     group: GROUPS[1],
     name: 'M = D',
     params: [D(), Vin(), R(), L(), Fs()],
@@ -241,6 +269,8 @@ export const EXPERIMENTS = [
   buck({
     id: 'b3',
     about: 'fs',
+    chips: [100e3, 400e3],
+    try: { knob: 'fs', text: 'Set f_s to 400 kHz, four times 100 kHz: 73 mA of current ripple and 0.23 mV on the output.' },
     group: GROUPS[1],
     name: 'Ripple',
     params: [L(), C(), Fs(), D(), Vin(), R()],
@@ -257,6 +287,8 @@ export const EXPERIMENTS = [
   buck({
     id: 'b4',
     about: 'R',
+    chips: [200, 5],
+    try: { knob: 'R', text: 'Set R_load to 5 \u03a9: conduction is continuous again and the output is back at 5.00 V.' },
     group: GROUPS[1],
     name: 'Light load: discontinuous conduction',
     symbols: ['K'],
@@ -277,6 +309,8 @@ export const EXPERIMENTS = [
   buck({
     id: 'b5',
     about: 'R',
+    chips: [34.2857142857, 100, 10],
+    try: { knob: 'R', text: 'Set R_load to 100 \u03a9: M climbs to 0.594 (7.13 V out); at 10 \u03a9 it holds at 0.417.' },
     group: GROUPS[1],
     name: 'The boundary',
     symbols: ['K'],
@@ -296,6 +330,8 @@ export const EXPERIMENTS = [
   buck({
     id: 'b6',
     about: 'Vf',
+    chips: [0.5, 0, 1],
+    try: { knob: 'Vf', text: 'Set V_f to 0 V: efficiency 98.5 %; at 1 V, 87.0 %. The diode is the loss.' },
     group: GROUPS[1],
     name: 'Real parts',
     symbols: ['K'],
@@ -319,6 +355,8 @@ export const EXPERIMENTS = [
   pwm('boost', {
     id: 'c1',
     about: 'D',
+    chips: [0.5, 0.75],
+    try: { knob: 'D', text: 'Set D to 75 %: M = 4.00 and 48.0 V out \u2014 the inductor now carries 9.60 A.' },
     group: GROUPS[2],
     name: 'Stacking on the source',
     note:
@@ -333,6 +371,8 @@ export const EXPERIMENTS = [
   pwm('boost', {
     id: 'c2',
     about: 'D',
+    chips: [0.9, 0.5, 0.95],
+    try: { knob: 'D', text: 'Set D to 50 %: M = 1.92 against the ideal 2.00, at 96.1 % efficiency \u2014 the winding barely matters until D is high.' },
     group: GROUPS[2],
     name: 'The peak ideal theory misses',
     // The knob starts on the peak, so the screen at arrival is the one the
@@ -357,6 +397,8 @@ export const EXPERIMENTS = [
   pwm('boost', {
     id: 'c3',
     about: 'R',
+    chips: [400, 160, 40],
+    try: { knob: 'R', text: 'Set R_load to 40 \u03a9: continuous again, M = 2.000 and 24.00 V out.' },
     group: GROUPS[2],
     name: 'The boost runs dry too',
     params: [Rlb(400), Vin(), D(0.5), L(), C(), Fs()],
@@ -377,6 +419,8 @@ export const EXPERIMENTS = [
   pwm('buckboost', {
     id: 'c4',
     about: 'D',
+    chips: [0.5, 0.75],
+    try: { knob: 'D', text: 'Set D to 75 %: M = \u22123.00, \u221236.0 V out, with 7.20 A in the inductor.' },
     group: GROUPS[2],
     name: 'The inverting bucket',
     traces: ['vsw', 'vout', 'iL', 'iin'],
@@ -393,6 +437,8 @@ export const EXPERIMENTS = [
   pwm('buckboost', {
     id: 'c5',
     about: 'R',
+    chips: [200, 100, 500],
+    try: { knob: 'R', text: 'Set R_load to 40 \u03a9: conduction is continuous and the power is 3.60 W \u2014 the budget no longer holds.' },
     group: GROUPS[2],
     name: 'All the energy through one part',
     params: [Rlb(200), Vin(), D(0.5), L(), C(), Fs()],
@@ -416,6 +462,8 @@ export const EXPERIMENTS = [
   rect('half', {
     id: 'e1',
     about: 'C',
+    chips: [1000e-6, 100e-6],
+    try: { knob: 'C', text: 'Set C to 100 \u00b5F: the diode conducts for 87.8\u00b0 and the output sags 12.4 V \u2014 too small to hold the peak.' },
     group: GROUPS[3],
     name: 'Half-wave into a capacitor',
     note:
@@ -432,6 +480,8 @@ export const EXPERIMENTS = [
   rect('bridge', {
     id: 'e2',
     about: 'C',
+    chips: [1000e-6, 100e-6, 4700e-6],
+    try: { knob: 'C', text: 'Set C to 4700 \u00b5F: 0.23 V of ripple, 1.34 A peaks, 31.7\u00b0 of conduction; at 100 \u00b5F the ripple is 6.9 V.' },
     group: GROUPS[3],
     name: 'The bridge',
     traces: ['vin', 'vrect', 'vout', 'iD'],
@@ -448,6 +498,8 @@ export const EXPERIMENTS = [
   rect('bridge', {
     id: 'e3',
     about: 'C',
+    chips: [1000e-6, 100e-6, 4700e-6],
+    try: { knob: 'Rs', text: 'Set R_s to 0.25 \u03a9: the floor drops to 28.0\u00b0 and the peak current rises to 1.60 A.' },
     group: GROUPS[3],
     name: 'The price of a big capacitor',
     params: [Cf(), Rs(), Rl(), Vs(), Vfd(), F()],
@@ -469,6 +521,8 @@ export const EXPERIMENTS = [
   rect('bridge', {
     id: 'e4',
     about: 'C',
+    chips: [1000e-6, 100e-6, 4700e-6],
+    try: { knob: 'C', text: 'Set C to 100 \u00b5F, from 1000 \u00b5F: THD falls to 91 % and the power factor rises to 0.650; at 4700 \u00b5F they are 157 % and 0.537.' },
     group: GROUPS[3],
     name: 'What the grid sees',
     params: [Cf(), Rl(), Rs(), Vs(), Vfd(), F()],
@@ -489,6 +543,8 @@ export const EXPERIMENTS = [
   {
     id: 'e5',
     about: 'alphaDeg',
+    chips: [90, 45, 135],
+    try: { knob: 'alphaDeg', text: 'Set \u03b1 to 45\u00b0: 90.9 % of the power arrives, at a power factor of 0.95 and THD 26 %.' },
     group: GROUPS[3],
     name: 'The dimmer',
     kind: 'dimmer',
@@ -514,6 +570,8 @@ export const EXPERIMENTS = [
   rect('six', {
     id: 'e6',
     about: 'C',
+    chips: [1000e-6, 100e-6],
+    try: { knob: 'C', text: 'Set C to 100 \u00b5F: 3.21 V of ripple on 28.1 V, where the single-phase bridge at 100 \u00b5F sags 6.9 V on 13.1 V.' },
     group: GROUPS[3],
     name: 'Three phases, six pulses',
     traces: ['vin', 'vrect', 'vout', 'iin'],
@@ -541,6 +599,13 @@ for (const e of EXPERIMENTS) {
 }
 
 export const byId = Object.fromEntries(EXPERIMENTS.map((e) => [e.id, e]))
+
+// The path: EXPERIMENTS order, first to last. The top bar's next and previous
+// and the note's "Next:" link all read from here, so they cannot disagree.
+const indexOf = (id) => EXPERIMENTS.findIndex((e) => e.id === id)
+export const nextOf = (id) => EXPERIMENTS[indexOf(id) + 1]?.id ?? null
+export const prevOf = (id) => (indexOf(id) > 0 ? EXPERIMENTS[indexOf(id) - 1].id : null)
+export const positionOf = (id) => ({ n: indexOf(id) + 1, of: EXPERIMENTS.length })
 
 export function defaultsOf(id) {
   const out = {}

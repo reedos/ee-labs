@@ -21,5 +21,10 @@ export function reportSummary({ id, params, traces, view, outcome }) {
     'Scope shows': shown.length ? shown.join(', ') : 'no traces',
     'Lower pane': VIEWS[view]?.label || view,
     Outcome: outcome,
+    // The lab's provenance, which the header used to carry: what the numbers
+    // on screen are, for whoever reads the report.
+    Engine:
+      'every waveform is the exact periodic steady state; every formula is evaluated beside what it predicts; ' +
+      'every claim in a note is measured by a test',
   }
 }

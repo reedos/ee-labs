@@ -56,4 +56,10 @@ describe('the report summary', () => {
     const s = reportSummary({ id: 'nope', params: {}, traces: [], view: 'x', outcome: '' })
     expect(s.Experiment).toBe('nope')
   })
+
+  it('carries the engine’s provenance, which left the header for here (§11.3.3)', () => {
+    const s = reportSummary({ id: 'a1', params: defaultsOf('a1'), traces: [], view: 'losses', outcome: 'x' })
+    expect(s.Engine).toMatch(/exact periodic steady state/)
+    expect(s.Engine).toMatch(/measured/)
+  })
 })

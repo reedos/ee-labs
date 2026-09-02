@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { LabNav, NumField, ReportIssue, fmt } from '@ee-labs/ui'
 import { MathBody } from '@ee-labs/explain'
-import { EXPERIMENTS, GROUPS, TRACES, VIEWS, SWEEP_X, byId, defaultsOf } from './experiments.js'
+import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, SWEEP_X, byId, defaultsOf, nextOf, prevOf, positionOf } from './experiments.js'
 import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepC, sweepAlpha } from './analysis.js'
 import { experimentMath } from './math.js'
 import { termsFor } from './terms.js'
@@ -30,6 +30,42 @@ const PRIMARY_SHARE = 0.62
 export function primaryOf(exp) {
   if (exp.primary) return exp.primary
   return exp.view === 'measures' ? 'scope' : 'analysis'
+}
+
+/**
+ * Whether an experiment is being visited for the first time this session.
+ * Its terms line is marked fresh then — the names it defines are shown in the
+ * accent, so the rescue is seen once — and plain on a return. The list never
+ * opens by itself: open, it is a screen of definitions above the schematic
+ * and the knobs, and the fold (§11.3.2) is the harder promise.
+ */
+export function termsFresh(seen, id) {
+  return !seen.has(id)
+}
+
+/** A chip's text on the knob it sits on: in the knob's own units. */
+function chipLabel(v, knob) {
+  if (knob.percent) return `${+(v * 100).toFixed(1)} %`
+  if (knob.unit === '°') return `${+v.toFixed(1)}°`
+  return fmt(v, knob.unit, 3)
+}
+
+/**
+ * Put the keyboard on a knob: open the fold it may be in, then focus its
+ * input. The try line's chip calls this.
+ */
+function focusKnob(key) {
+  if (typeof document === 'undefined') return
+  const el = document.querySelector(`[data-knob="${key}"]`)
+  if (!el) return
+  const fold = el.closest('details')
+  if (fold && !fold.open) fold.open = true
+  const input = el.querySelector('input, button')
+  if (input) {
+    input.focus()
+    if (input.select) input.select()
+    el.scrollIntoView({ block: 'nearest' })
+  }
 }
 
 /** The one-line result of an experiment, for the top bar and the report. */
@@ -61,15 +97,18 @@ export function sweepFor(exp, params) {
  * fault in a pane that the first experiment does not use gets caught here
  * rather than in the browser. Nothing in the app passes them.
  */
-export default function App({ initialId = FIRST, initialView = null }) {
+export default function App({ initialId = FIRST, initialView = null, initialParams = null }) {
   const start = byId[initialId] ? initialId : FIRST
   const [id, setId] = useState(start)
-  const [params, setParams] = useState(() => defaultsOf(start))
+  const [params, setParams] = useState(() => ({ ...defaultsOf(start), ...(initialParams || {}) }))
   const [traces, setTraces] = useState(() => new Set(byId[start].traces))
   const [view, setView] = useState(initialView || byId[start].view)
   // Whether the note still describes what is on screen: any knob moved by hand
   // retires it, as in the other labs. The trace and view toggles are exempt.
-  const [pristine, setPristine] = useState(true)
+  const [pristine, setPristine] = useState(() => !initialParams)
+  // Experiments already visited this session: their terms open on the first
+  // visit only (§11.3.4).
+  const seen = useRef(new Set())
   // Which group's experiments the picker lists: the active experiment's,
   // unless the reader has clicked another group's tab to browse it.
   const [browsing, setBrowsing] = useState(null)
@@ -82,6 +121,7 @@ export default function App({ initialId = FIRST, initialView = null }) {
   const exp = byId[id]
 
   const choose = (next) => {
+    seen.current.add(id)
     setId(next)
     setParams(defaultsOf(next))
     setTraces(new Set(byId[next].traces))
@@ -89,6 +129,11 @@ export default function App({ initialId = FIRST, initialView = null }) {
     setPristine(true)
     setPrimary(primaryOf(byId[next]))
     setBrowsing(null)
+  }
+  // The way back from a retired note: every knob to the experiment's defaults.
+  const reset = () => {
+    setParams(defaultsOf(id))
+    setPristine(true)
   }
   const swapPrimary = () => setPrimary((p) => (p === 'scope' ? 'analysis' : 'scope'))
   // Drag the split: the pointer's height in the column is the top pane's share.
@@ -151,12 +196,14 @@ export default function App({ initialId = FIRST, initialView = null }) {
   const twoPanes = exp.scope !== false
   const topShare = Math.round((primary === 'scope' ? share : 1 - share) * 100)
   const rows = twoPanes ? { gridTemplateRows: `minmax(0,${topShare}fr) 6px minmax(0,${100 - topShare}fr)` } : undefined
-  const knobField = (p) =>
-    p.kind === 'toggle' ? (
-      <ToggleField key={p.key} knob={p} value={params[p.key]} onChange={(v) => setParam(p.key, v)} />
+  // Every knob is wrapped in an addressable element so the try line's chip
+  // can focus it; the knob the experiment is about carries its chips.
+  const knobField = (p) => (
+    <div className="knob" data-knob={p.key} key={p.key}>
+    {p.kind === 'toggle' ? (
+      <ToggleField knob={p} value={params[p.key]} onChange={(v) => setParam(p.key, v)} />
     ) : (
       <NumField
-        key={p.key}
         label={p.label}
         unit={p.unit}
         // A duty is read as a percentage and stored as a fraction. The
@@ -171,10 +218,21 @@ export default function App({ initialId = FIRST, initialView = null }) {
         scale={p.scale}
         hint={p.hint}
         eng={!p.percent}
+        presets={p.key === exp.about ? exp.chips.map((v) => ({ value: p.percent ? v * 100 : v, label: chipLabel(v, p) })) : undefined}
       />
-    )
+    )}
+    </div>
+  )
   const moreKnobs = exp.params.slice(KNOBS_SHOWN)
   const shownGroup = browsing || exp.group
+  // The group's intro is read at the boundary: on the group's first
+  // experiment, and while another group's tab is being browsed. Deeper in,
+  // its lines are the note's.
+  const showIntro = Boolean(browsing) || EXPERIMENTS.find((e) => e.group === exp.group).id === id
+  const tryKnob = exp.params.find((k) => k.key === exp.try.knob)
+  const next = nextOf(id)
+  const prev = prevOf(id)
+  const pos = positionOf(id)
 
   return (
     <div className="app">
@@ -182,11 +240,7 @@ export default function App({ initialId = FIRST, initialView = null }) {
         <header>
           <LabNav current="power-lab" currentLabel="Power" />
           <h1>Power Lab</h1>
-          <p className="sub">
-            Switching converters from volt-second balance up. Every waveform is the exact periodic
-            steady state, every formula sits beside what it predicts, and every claim in a note is
-            measured.
-          </p>
+          <p className="sub">Pick an experiment. Turn the knob it names. Watch the number the note promised.</p>
         </header>
 
         <section>
@@ -213,6 +267,11 @@ export default function App({ initialId = FIRST, initialView = null }) {
               </button>
             ))}
           </div>
+          {showIntro ? (
+            <p className="hint group-intro" data-role="group-intro">
+              {GROUP_INTROS[shownGroup]}
+            </p>
+          ) : null}
           {GROUPS.map((g) => (
             <div
               key={g}
@@ -232,6 +291,7 @@ export default function App({ initialId = FIRST, initialView = null }) {
                   onClick={() => choose(e.id)}
                 >
                   {e.name}
+                  {e.id === FIRST ? <span className="start-here">Start here</span> : null}
                 </button>
               ))}
             </div>
@@ -240,12 +300,35 @@ export default function App({ initialId = FIRST, initialView = null }) {
           <p className="hint" data-role="note" data-pristine={pristine}>
             {exp.note}
             {pristine ? null : (
-              <em className="prov"> — the note describes the defaults; you have moved away from them.</em>
+              <>
+                <em className="prov"> — the note describes the defaults; you have moved away from them.</em>{' '}
+                <button type="button" className="chip reset" data-role="reset" onClick={reset} title="Every knob back to this experiment's defaults">
+                  Reset
+                </button>
+              </>
             )}
           </p>
+          {/* One thing to try, with the knob it names as a chip that focuses
+              it, and where the note leads after that. */}
+          <p className="try" data-role="try">
+            <span className="try-label">Try</span> {exp.try.text}{' '}
+            <button type="button" className="knob-chip" data-knob={tryKnob.key} onClick={() => focusKnob(tryKnob.key)} title={`Go to the ${tryKnob.label} knob`}>
+              {tryKnob.label}
+            </button>
+            {next ? (
+              <span className="next-line">
+                <button type="button" className="link" data-role="next-link" data-target={next} onClick={() => choose(next)}>
+                  Next: {byId[next].name}
+                  {byId[next].group !== exp.group ? <em> · {byId[next].group}</em> : null}
+                </button>
+              </span>
+            ) : null}
+          </p>
           {termsFor(exp.terms).length ? (
-            <details className="terms">
-              <summary>Terms used here</summary>
+            <details className={`terms${termsFresh(seen.current, id) ? ' is-fresh' : ''}`} key={id}>
+              <summary>
+                Terms: {termsFor(exp.terms).map((t) => t.name).join(' · ')}
+              </summary>
               <dl>
                 {termsFor(exp.terms).map((t) => (
                   <React.Fragment key={t.id}>
@@ -317,6 +400,35 @@ export default function App({ initialId = FIRST, initialView = null }) {
           </span>
           <Headline exp={exp} m={m} />
         </div>
+        {/* Where you are on the path, and the way forward and back. */}
+        <nav className="topbar-nav" aria-label="Path through the experiments">
+          <button
+            type="button"
+            className="nav-btn"
+            data-role="prev"
+            disabled={!prev}
+            title={prev ? `Previous: ${byId[prev].name}` : 'This is the first experiment'}
+            aria-label={prev ? `Previous: ${byId[prev].name}` : 'No previous experiment'}
+            onClick={() => prev && choose(prev)}
+          >
+            ‹
+          </button>
+          <span className="position" data-role="position">
+            {`${pos.n} of ${pos.of}`}
+            <em>{exp.group}</em>
+          </span>
+          <button
+            type="button"
+            className="nav-btn"
+            data-role="next"
+            disabled={!next}
+            title={next ? `Next: ${byId[next].name}` : 'This is the last experiment'}
+            aria-label={next ? `Next: ${byId[next].name}` : 'No next experiment'}
+            onClick={() => next && choose(next)}
+          >
+            ›
+          </button>
+        </nav>
       </div>
 
       <main className={`views${twoPanes ? '' : ' is-single'}`} style={rows} ref={mainRef}>

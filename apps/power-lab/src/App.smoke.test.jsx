@@ -30,7 +30,7 @@ describe('App', () => {
   it('renders the report-issue control and the terms fold', () => {
     const h = html()
     expect(h).toContain('report-issue')
-    expect(h).toContain('Terms used here')
+    expect(h).toMatch(/<details class="terms[^"]*"><summary>Terms: /)
   })
 
   it('mounts every experiment in every one of its views', () => {

@@ -828,6 +828,11 @@ that is fixed.
    report link's provenance.
 4. **Terms open on first visit** of an experiment that declares terms, closed
    thereafter (per-session state). The rescue only works if it is seen once.
+   *As built (step 5):* the list does not open by itself — open, it is a
+   screen of definitions above the schematic and the knobs, and item 2's fold
+   is the harder promise. Instead the summary always names the terms
+   ("Terms: Duty (D) · RMS · Average") and is in the accent on the first visit,
+   plain on a return. Seen once, one click away, no lines lost.
 5. **The `try` line renders as its own element** under the note, with the
    knob's name as a chip that focuses it.
 6. **The topbar's third meter is the experiment's own headline**, declared per
