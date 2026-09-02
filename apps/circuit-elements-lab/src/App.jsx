@@ -28,6 +28,8 @@ import { Marked, DefCard, TermChips } from './components/Prose.jsx'
 import { marksFor, timeMarks } from './marks.js'
 import { captionFor } from './captions.js'
 import { familyOf, familyOfLabel } from './palette.js'
+import { activeStep, advance, complete, groupArc, knobsOf, load, measurable, readsOf, save, tick, withPredicted, withSteps } from './progress.js'
+import { rereference, switchKnob } from './reference.js'
 import pkg from '../package.json'
 
 // The cursor's play: the whole window in this many milliseconds, whatever the
@@ -48,6 +50,23 @@ const POWER_FROM = EXPERIMENTS.findIndex((e) => e.id === 'b3')
 
 /** The cursor an experiment opens at: its own fraction of its window at the defaults. */
 const cursorFor = (exp, p) => (isDynamic(exp) ? exp.cursor * exp.window(p) : null)
+/** The browser's store for progress, or null where there is none (progress.js copes). */
+const storage = () => {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage
+  } catch {
+    return null
+  }
+}
+/** The experiment after this one on the path: the next in the list when it builds on this one, else the first that does, else the next. */
+const nextUp = (exp) => {
+  const seq = EXPERIMENTS[EXPERIMENTS.indexOf(exp) + 1]
+  const to = leadsTo(exp.id)
+  if (seq && to.includes(seq.id)) return seq.id
+  return to[0] || (seq ? seq.id : null)
+}
+/** The knob open when no step names one: the first in the Knobs section. */
+const firstKnob = (exp) => (exp.params.find((p) => !(p.key === 'N' && exp.window)) || {}).key
 
 export default function App() {
   const [id, setId] = useState(FIRST)
@@ -72,15 +91,40 @@ export default function App() {
   const [predicted, setPredicted] = useState(null)
   // Whether the cursor is sweeping the window on its own (the ▶ under the schematic).
   const [playing, setPlaying] = useState(false)
+  // How far along each experiment's Try list the student has come (progress.js),
+  // kept in localStorage so it survives a reload.
+  const [progress, setProgress] = useState(() => load(storage()))
+  // A step the student tapped to read in full, beside the active one.
+  const [focusStep, setFocusStep] = useState(null)
+  // The knob the student opened by hand; otherwise the active step's knob is open.
+  const [openKnob, setOpenKnob] = useState(null)
+  // The node the student tapped to take as the zero of voltage (A3's lesson).
+  const [refNode, setRefNode] = useState(null)
+  // The node or element under the pointer in the equations pane, lit on the schematic.
+  const [hover, setHover] = useState(null)
+  // Whether Deeper is unfolded; a new experiment starts with it folded.
+  const [deeperOpen, setDeeperOpen] = useState(false)
 
   const exp = byId[id]
   const uses = useMemo(() => firstUses(exp), [exp])
   const predict = useMemo(() => predictFor(exp), [exp])
+  const steps = exp.try || []
+  const done = useMemo(() => new Set((progress[id] && progress[id].steps) || []), [progress, id])
+  const active = activeStep(steps, done)
+  const activeKnobs = active >= 0 ? knobsOf(steps[active]) : []
+  const activeReads = useMemo(() => (active >= 0 ? readsOf(steps[active]) : { nodes: new Set(), elements: new Set() }), [steps, active])
+  const isComplete = complete(exp, progress[id])
+  useEffect(() => {
+    save(storage(), progress)
+  }, [progress])
   // A new experiment shows from its top: the list the student scrolled through
-  // to reach it has folded, and the sidebar should not be left part-way down.
+  // to reach it has folded, and neither the sidebar nor (on a phone, where #root
+  // scrolls the page) the page should be left part-way down.
   useEffect(() => {
     const aside = document.querySelector('.controls')
     if (aside) aside.scrollTop = 0
+    pageScroller().scrollTop = 0
+    window.scrollTo(0, 0)
   }, [id])
 
   const choose = (next) => {
@@ -94,6 +138,11 @@ export default function App() {
     setOpenTerm(null)
     setPredicted(null)
     setPlaying(false)
+    setFocusStep(null)
+    setOpenKnob(null)
+    setRefNode(null)
+    setHover(null)
+    setDeeperOpen(false)
   }
   // A hand on the cursor stops the play.
   const scrub = (t) => {
@@ -103,26 +152,72 @@ export default function App() {
   const setParam = (key, value) => {
     setParams((p) => ({ ...p, [key]: value }))
     setPristine(false)
+    setFocusStep(null)
   }
   // A prediction made: the knob turns to the step's setting so the meters
-  // answer at once, and the cursor moves if the step named an instant.
+  // answer at once, and the cursor moves if the step named an instant. The
+  // step stays open so the reveal can be read.
   const pick = (rule) => {
     setPredicted(rule)
     setParams((p) => ({ ...p, ...predict.set }))
     setPristine(false)
+    setFocusStep(predict.step)
+    setProgress((p) => withPredicted(p, id))
     const at = exp.try[predict.step].at
     if (at != null) setCursor(at)
   }
+  // A watch step ("drag the cursor and watch") ticked by hand.
+  const seen = (i) => setProgress((p) => withSteps(p, id, tick(done, steps, i)))
 
-  const x = useMemo(() => analyse(exp, params, cursor), [exp, params, cursor])
+  // The solver's analysis, then the student's: with a node tapped as the
+  // reference, every node voltage is re-read from there (reference.js).
+  const solved = useMemo(() => analyse(exp, params, cursor), [exp, params, cursor])
+  const x = useMemo(() => (exp.claim && exp.claim.reference ? rereference(solved, refNode) : solved), [exp, solved, refNode])
   const dynamic = isDynamic(exp)
   const eq = useMemo(() => {
     try {
-      return x.sol ? equations(x.sol.norm, x.sol) : equations(normalize(x.net))
+      return solved.sol ? equations(solved.sol.norm, solved.sol) : equations(normalize(solved.net))
     } catch {
       return null
     }
-  }, [x])
+  }, [solved])
+  // Where the student is on the Try list: a step is done once the screen shows
+  // what it asked for, and stays done (progress.js).
+  useEffect(() => {
+    const next = advance(done, steps, { params, cursor: x.cursor, tEnd: x.tEnd, show })
+    if (next !== done) setProgress((p) => withSteps(p, id, next))
+  }, [done, steps, params, x.cursor, x.tEnd, show, id])
+  // A new active step leads again: the knob it names opens.
+  useEffect(() => {
+    setOpenKnob(null)
+  }, [active])
+  // Tapping a node makes it the reference (where the experiment is about that);
+  // tapping a switch throws it — by its knob if one throws it, else by replaying t = 0.
+  const takesReference = !!(exp.claim && exp.claim.reference)
+  const onNode = takesReference ? (name) => setRefNode((r) => (r === name ? null : name)) : null
+  const hasSwitch = x.net.elements.some((e) => e.type === 'SW')
+  const onElement = hasSwitch
+    ? (elId) => {
+        const key = switchKnob(exp, params, elId)
+        if (key) setParam(key, !params[key])
+        else {
+          setCursor(0)
+          setPlaying(true)
+        }
+      }
+    : null
+  useEffect(() => {
+    if (refNode) setPristine(false)
+  }, [refNode])
+  // What the schematic lights: what the active step says to read, and whatever
+  // row of the equations pane the pointer is on.
+  const lit = useMemo(() => {
+    const nodes = new Set(activeReads.nodes)
+    const els = new Set(activeReads.elements)
+    if (hover && hover.node) nodes.add(hover.node)
+    if (hover && hover.el) els.add(hover.el)
+    return { nodes, elements: els }
+  }, [activeReads, hover])
   const math = useMemo(() => experimentMath(exp, params, x), [exp, params, x])
   // What the plot points at: the experiment's data marks, then the instants the math entry names.
   const marks = useMemo(() => {
@@ -191,6 +286,8 @@ export default function App() {
   const showsNetPower = EXPERIMENTS.indexOf(exp) >= POWER_FROM
 
   const viewOptions = VIEW_ORDER.filter((v) => exp.views.includes(v)).map((v) => ({ id: v, ...viewLabel(v, exp) }))
+  // The window knob (how many τ or cycles the slider spans) lives under the schematic, not among the knobs.
+  const windowKnob = exp.window ? exp.params.find((p) => p.key === 'N') : null
   const currentView = exp.views.includes(view) ? view : exp.view
   // The sentence under the plot, bound to the same analysis the plot drew.
   const caption = useMemo(() => {
@@ -227,6 +324,7 @@ export default function App() {
             setOpen={setPickerOpen}
             openGroups={openGroups}
             setOpenGroups={setOpenGroups}
+            progress={progress}
           />
           {/* The experiment that opens a group carries the group's one sentence,
               folded to a line so the note stays where the eye lands. */}
@@ -249,95 +347,155 @@ export default function App() {
             {uses.unplaced.length ? <TermChips ids={uses.unplaced} field="see" open={openTerm} onOpen={setOpenTerm} /> : null}
           </LiveNote>
           <DefCard open={openTerm} field="see" exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
-          {exp.try && exp.try.length ? (
-            <ol className="try" data-role="try" aria-label="Try">
-              {exp.try.map((t, i) =>
-                predict && predict.step === i ? (
-                  // This step is posed as a question first; its sentence appears once answered.
-                  <li key={i} data-predict={predicted ? 'answered' : 'pending'}>
-                    <Predict q={predict} picked={predicted} onPick={pick} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
+          {steps.length ? (
+            // The Try list as a path: done steps ticked, the active step in full
+            // with its knob open and its readings lit, the steps ahead one line
+            // each. Tap a step to read it in full; tick a watch step by hand.
+            <ol className="try" data-role="try" aria-label="Try" data-active={active}>
+              {steps.map((t, i) => {
+                const state = done.has(i) ? 'done' : i === active ? 'active' : 'ahead'
+                const shown = i === active || i === focusStep
+                const posed = predict && predict.step === i
+                // The posed step shows its question while unanswered and open, and its reveal while the student keeps it open.
+                const asQuestion = posed && (predicted ? focusStep === i : shown)
+                return (
+                  <li
+                    key={i}
+                    data-step={i}
+                    data-state={state}
+                    data-shown={shown || undefined}
+                    data-predict={posed ? (predicted ? 'answered' : 'pending') : undefined}
+                    onClick={(ev) => {
+                      if (ev.target.closest('button, dfn, a')) return
+                      setFocusStep(i === focusStep ? null : i)
+                    }}
+                  >
+                    <span className="step-n" aria-hidden="true">
+                      {state === 'done' ? '✓' : i + 1}
+                    </span>
+                    <span className="step-body">
+                      {asQuestion ? (
+                        // This step is posed as a question first; its sentence appears once answered.
+                        <Predict q={predict} picked={predicted} onPick={pick} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
+                      ) : posed && !predicted ? (
+                        <span className="step-text">
+                          <span className="predict-tag">predict</span> {predict.ask}
+                        </span>
+                      ) : (
+                        <span className="step-text">
+                          <Marked text={t.say} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
+                        </span>
+                      )}
+                      {state === 'active' && !measurable(t) ? (
+                        <button type="button" className="step-seen" data-role="seen" onClick={() => seen(i)} title="Tick this step off">
+                          seen ✓
+                        </button>
+                      ) : null}
+                    </span>
                   </li>
-                ) : (
-                  <li key={i}>
-                    <Marked text={t.say} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
-                  </li>
-                ),
-              )}
+                )
+              })}
             </ol>
           ) : null}
           {openTerm && openTerm.field.startsWith('try.') ? (
             <DefCard open={openTerm} field={openTerm.field} exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
           ) : null}
+          {isComplete && nextUp(exp) ? (
+            <p className="next-up" data-role="next-up">
+              <span>Every step done.</span>
+              <button type="button" className="tag is-on" onClick={() => choose(nextUp(exp))} title={`${nextUp(exp).toUpperCase()} · ${byId[nextUp(exp)].name}`}>
+                next up: {nextUp(exp).toUpperCase()} →
+              </button>
+            </p>
+          ) : null}
           <Thread id={id} choose={choose} />
         </section>
 
         <section className="knobs" id="knobs">
-          <h2>Knobs</h2>
-          {exp.params.map((p) =>
-            p.kind === 'toggle' ? (
-              <div className="toggle-knob" key={p.key} data-role="toggle" data-key={p.key}>
-                <span className="toggle-label">{p.label}</span>
-                <div className="segmented sm" role="group" aria-label={p.label}>
-                  {[
-                    [true, p.on],
-                    [false, p.off],
-                  ].map(([val, label]) => (
-                    <button
-                      key={String(val)}
-                      type="button"
-                      className={params[p.key] === val ? 'on' : ''}
-                      aria-pressed={params[p.key] === val}
-                      onClick={() => setParam(p.key, val)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {p.hint ? <p className="hint">{p.hint}</p> : null}
-              </div>
-            ) : (
-              <NumField
-                key={p.key}
-                label={p.label}
-                unit={p.unit}
-                value={params[p.key]}
-                onChange={(v) => setParam(p.key, v)}
-                min={p.min}
-                max={p.max}
-                scale={p.scale}
-                hint={p.hint}
-                presets={p.presets}
-                eng={p.eng !== false}
-              />
-            ),
-          )}
+          <h2>
+            Knobs
+            {activeKnobs.length ? <span className="h2-aside">step {active + 1} turns the lit one</span> : null}
+          </h2>
+          <div className="knob-list">
+            {exp.params
+              // The window knob sits with the cursor it scales, under the schematic.
+              .filter((p) => !(p.key === 'N' && exp.window))
+              .map((p) => {
+                const open = (openKnob ?? activeKnobs[0] ?? firstKnob(exp)) === p.key
+                return (
+                  <div
+                    className="knob-slot"
+                    key={p.key}
+                    data-key={p.key}
+                    data-open={open}
+                    data-named={activeKnobs.includes(p.key) || undefined}
+                    onFocus={() => setOpenKnob(p.key)}
+                    onClick={() => setOpenKnob(p.key)}
+                  >
+                    {p.kind === 'toggle' ? (
+                      <div className="toggle-knob" data-role="toggle" data-key={p.key}>
+                        <span className="toggle-label">{p.label}</span>
+                        <div className="segmented sm" role="group" aria-label={p.label}>
+                          {[
+                            [true, p.on],
+                            [false, p.off],
+                          ].map(([val, label]) => (
+                            <button
+                              key={String(val)}
+                              type="button"
+                              className={params[p.key] === val ? 'on' : ''}
+                              aria-pressed={params[p.key] === val}
+                              onClick={() => setParam(p.key, val)}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                        {p.hint && open ? <p className="hint">{p.hint}</p> : null}
+                      </div>
+                    ) : (
+                      <NumField
+                        label={p.label}
+                        unit={p.unit}
+                        value={params[p.key]}
+                        onChange={(v) => setParam(p.key, v)}
+                        min={p.min}
+                        max={p.max}
+                        scale={p.scale}
+                        hint={p.hint}
+                        presets={p.presets}
+                        eng={p.eng !== false}
+                        compact={!open}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+          </div>
         </section>
 
         <section className="deeper">
           <h2>Deeper</h2>
-          {exp.why ? (
-            <details className="why" data-role="why">
-              <summary>Why it works</summary>
-              <p className="hint">
-                <Marked text={exp.why} marks={uses.why} field="why" open={openTerm} onOpen={setOpenTerm} />
-              </p>
-              <DefCard open={openTerm} field="why" exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
-            </details>
-          ) : null}
-          <MathPanel entry={readable} />
-          {exp.circuitLab ? <HandOver exp={exp} params={params} /> : null}
+          {/* One fold: why it works, the solver's working with its check tables, and the hand-over. */}
+          <details className="deeper-fold" data-role="deeper" open={deeperOpen} onToggle={(e) => setDeeperOpen(e.target.open)}>
+            <summary>Why it works, and the working</summary>
+            {exp.why ? (
+              <div className="why" data-role="why">
+                <p className="hint">
+                  <Marked text={exp.why} marks={uses.why} field="why" open={openTerm} onOpen={setOpenTerm} />
+                </p>
+                <DefCard open={openTerm} field="why" exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
+              </div>
+            ) : null}
+            <MathPanel entry={readable} />
+            {exp.circuitLab ? <HandOver exp={exp} params={params} /> : null}
+          </details>
         </section>
       </aside>
 
-      {/* Phone only (CSS): the page is one scroll, and the knobs sit below the
-          plots; this takes the reader there without touching the URL hash. */}
-      <button
-        type="button"
-        className="knobs-jump"
-        onClick={() => document.getElementById('knobs')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-      >
-        Knobs ↓
-      </button>
+      {/* Phone only (CSS): the page is one scroll — lesson, circuit, plot, knobs —
+          and this bar names the four and goes to each. */}
+      <TabBar />
 
       <div className="topbar">
         <nav className="flow" aria-label="Experiment summary">
@@ -348,22 +506,25 @@ export default function App() {
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
+          {/* In the student's words (Phase 8): the solver's "unknowns" and "residual" stay in the hover text, where they are explained. */}
           <span
             className="flow-node"
             data-role="system-size"
-            title={`Nodes are the junctions where elements meet, ground included. Unknowns are what the solver finds: one voltage per node except ground, plus the current through each element that fixes a voltage (a source, a capacitor, a wire).`}
+            title={`Nodes are the junctions where elements meet, ground included. The numbers to find are the solver's unknowns: one voltage per node except ground, plus the current through each element that fixes a voltage (a source, a capacitor, a wire).`}
           >
             {nodeCount} node{nodeCount === 1 ? '' : 's'}
-            <em>
-              {eq ? `${eq.unknowns.length} unknown${eq.unknowns.length === 1 ? '' : 's'}` : 'no system'}
-            </em>
+            <em>{eq ? `${eq.unknowns.length} number${eq.unknowns.length === 1 ? '' : 's'} to find` : 'nothing to solve'}</em>
           </span>
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          <span className={`flow-node ${x.sol ? 'is-out' : 'is-off'}`} data-role="outcome">
-            {x.sol ? 'solved' : 'no solution'}
-            <em>{x.sol ? `current in = current out at every node, to ${residual}` : refusalReason(x.refusal)}</em>
+          <span
+            className={`flow-node ${x.sol ? 'is-out' : 'is-off'}`}
+            data-role="outcome"
+            title={x.sol ? `Solved: at every node the currents in add up to the currents out (KCL). The largest imbalance left by the arithmetic, the residual, is ${residual}.` : undefined}
+          >
+            {x.sol ? 'every node balances' : 'no solution'}
+            <em>{x.sol ? `current in = current out, to ${residual}` : refusalReason(x.refusal)}</em>
           </span>
         </nav>
         <div className="topbar-controls">
@@ -435,9 +596,10 @@ export default function App() {
             <div className="readout">
               {meters ? (
                 Object.entries(meters.v)
-                  .filter(([n]) => n !== 'gnd')
+                  // Ground reads 0 and is not listed — until another node is the reference and it no longer does.
+                  .filter(([n]) => n !== 'gnd' || refNode)
                   .map(([n, v]) => (
-                    <span key={n} data-q="voltage">
+                    <span key={n} data-q="voltage" data-node={n} data-lit={lit.nodes.has(n) || undefined}>
                       v_{n} <b>{num(v, 'V', 4)}</b>
                     </span>
                   ))
@@ -449,14 +611,54 @@ export default function App() {
           {/* data-show lets the stylesheet give the meters the hue of what they read (palette.js). */}
           <div className="view-body" data-show={show}>
             {/* "none" promises just the circuit, so it drops the node voltages too. */}
-            <Schematic className="big" elements={elements} layout={layout} meters={show === 'none' ? null : meters} show={show} />
+            <Schematic
+              className="big"
+              elements={elements}
+              layout={layout}
+              meters={show === 'none' ? null : meters}
+              show={show}
+              lit={lit}
+              reference={refNode}
+              onNode={onNode}
+              onElement={onElement}
+            />
+            {takesReference ? (
+              <p className="sch-hint" data-role="ref-hint">
+                {refNode ? (
+                  <>
+                    <b>{refNode}</b> is the reference: it reads 0 V and every other node is measured from it. Tap it again for ground.
+                  </>
+                ) : (
+                  <>Tap a node to make it the reference — the meter’s black lead can go anywhere.</>
+                )}
+              </p>
+            ) : null}
+            {hasSwitch ? (
+              <p className="sch-hint" data-role="switch-hint">
+                Tap the switch to throw it{dynamic ? ' — the clock restarts at t = 0' : ''}.
+              </p>
+            ) : null}
             {x.refusal ? <Refusal err={x.refusal} /> : null}
             {dynamic && x.tr ? (
               <div className="cursor-row" data-role="cursor">
                 <div className="cursor-head">
                   <label htmlFor="cursor-slider">
-                    the meters read the circuit at <b>t = {num(x.cursor, 's', 3)}</b>
+                    <span className="cursor-lead">the meters read </span>the circuit at <b>t = {num(x.cursor, 's', 3)}</b>
                   </label>
+                  {windowKnob ? (
+                    // The window knob, beside the cursor it scales: how many τ or cycles the slider spans.
+                    <NumField
+                      label={windowKnob.label.toLowerCase()}
+                      unit={windowKnob.unit}
+                      value={params[windowKnob.key]}
+                      onChange={(v) => setParam(windowKnob.key, v)}
+                      min={windowKnob.min}
+                      max={windowKnob.max}
+                      scale={windowKnob.scale}
+                      eng={windowKnob.eng !== false}
+                      compact
+                    />
+                  ) : null}
                   <button
                     type="button"
                     className={`play${playing ? ' on' : ''}`}
@@ -626,6 +828,7 @@ export default function App() {
                 primer={primerFor(exp)}
                 fold={FOLDED_GROUPS.includes(exp.group)}
                 contradiction={exp.theorem?.kind === 'contradiction' && !x.sol ? exp.theorem.rows : []}
+                onHover={setHover}
               />
             ) : null}
             {currentView === 'power' && x.sol ? <PowerPane sol={x.sol} /> : null}
@@ -737,6 +940,82 @@ function Thread({ id, choose }) {
   )
 }
 
+/**
+ * The phone's bottom bar (student review, Phase 8): the page is one scroll —
+ * lesson, circuit, plot, knobs — and the bar names the four and goes to each,
+ * lighting the one on screen. Hidden above 900 px by the stylesheet, where the
+ * sidebar and the two panes are all on screen at once.
+ */
+const TABS = [
+  ['lesson', 'Lesson', '.controls > .lesson'],
+  ['circuit', 'Circuit', '.views .view:first-child'],
+  ['plot', 'Plot', '.views .view:last-child'],
+  ['knobs', 'Knobs', '.controls > .knobs'],
+]
+/**
+ * The element that scrolls the page: on a phone base.css makes #root the
+ * scroller (html and body stay one screen tall), on a desktop nothing does.
+ */
+function pageScroller() {
+  for (let n = document.querySelector('.app'); n; n = n.parentElement) {
+    const o = getComputedStyle(n).overflowY
+    if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight + 1) return n
+  }
+  return document.scrollingElement || document.documentElement
+}
+function TabBar() {
+  const [on, setOn] = useState('lesson')
+  useEffect(() => {
+    let raf = 0
+    const read = () => {
+      raf = 0
+      // The section on screen: the last one whose top has passed a third of the way down.
+      const line = window.innerHeight * 0.35
+      let hit = TABS[0][0]
+      for (const [key, , sel] of TABS) {
+        const el = document.querySelector(sel)
+        if (el && el.getBoundingClientRect().top <= line) hit = key
+      }
+      // At the foot of a page too short to bring its last part up to the line, that part is the one on screen.
+      const sc = pageScroller()
+      const scrolls = sc.scrollHeight > sc.clientHeight + 2
+      const atEnd = sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2
+      if (scrolls && atEnd) {
+        const last = TABS.filter(([, , sel]) => document.querySelector(sel)).pop()
+        if (last) hit = last[0]
+      }
+      setOn(hit)
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(read)
+    }
+    // Scroll events do not bubble; the capture phase on the document sees every scroller's.
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true })
+    window.addEventListener('resize', onScroll)
+    read()
+    return () => {
+      document.removeEventListener('scroll', onScroll, { capture: true })
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+  const go = (sel) => {
+    const el = document.querySelector(sel)
+    if (!el) return
+    // The bar is fixed at the foot of the screen, so the top is clear; the sections' scroll-margin keeps a breath above.
+    el.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
+  return (
+    <nav className="tabbar" data-role="tabbar" aria-label="Parts of the page">
+      {TABS.map(([key, label, sel]) => (
+        <button key={key} type="button" className={on === key ? 'on' : ''} aria-current={on === key ? 'true' : undefined} data-tab={key} onClick={() => go(sel)}>
+          {label}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
 /** Which view a pane is showing — Signal Lab's ViewSwitch, copied. */
 function ViewSwitch({ value, onChange, options }) {
   return (
@@ -764,12 +1043,13 @@ function ViewSwitch({ value, onChange, options }) {
  * The buttons keep their `.preset` shape, so the harness picks experiments the
  * way it always did.
  */
-function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups }) {
+function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups, progress }) {
   const idx = EXPERIMENTS.findIndex((e) => e.id === id)
   const exp = EXPERIMENTS[idx]
   const prev = EXPERIMENTS[idx - 1]
   const next = EXPERIMENTS[idx + 1]
   const title = (e) => `${e.id.toUpperCase()} · ${e.name}`
+  const finished = EXPERIMENTS.filter((e) => complete(e, progress[e.id])).length
   return (
     <nav className="picker" aria-label="Choose an experiment">
       <div className="picker-row">
@@ -807,6 +1087,11 @@ function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups }) {
         </button>
       </div>
       <div id="picker-list" className="picker-list" hidden={!open}>
+        {finished ? (
+          <p className="picker-arc" data-role="course-arc">
+            <b>{finished}</b> of {EXPERIMENTS.length} experiments complete
+          </p>
+        ) : null}
         {GROUPS.map((g) => {
           const inGroup = EXPERIMENTS.filter((e) => e.group === g)
           return (
@@ -816,19 +1101,30 @@ function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups }) {
               label={g}
               holdsActive={inGroup.some((e) => e.id === id)}
               intro={GROUP_INTRO[letterOf(g)]}
+              arc={groupArc(inGroup, progress)}
               openGroups={openGroups}
               setOpenGroups={setOpenGroups}
             >
-              {inGroup.map((e) => (
-                <button
-                  type="button"
-                  key={e.id}
-                  className={`preset${e.id === id ? ' is-on' : ''}`}
-                  onClick={() => choose(e.id)}
-                >
-                  {e.name}
-                </button>
-              ))}
+              {inGroup.map((e) => {
+                const isDone = complete(e, progress[e.id])
+                return (
+                  <button
+                    type="button"
+                    key={e.id}
+                    className={`preset${e.id === id ? ' is-on' : ''}`}
+                    data-done={isDone || undefined}
+                    title={isDone ? `${title(e)} — every step done` : title(e)}
+                    onClick={() => choose(e.id)}
+                  >
+                    {e.name}
+                    {isDone ? (
+                      <span className="preset-done" aria-hidden="true">
+                        ✓
+                      </span>
+                    ) : null}
+                  </button>
+                )
+              })}
             </FoldGroup>
           )
         })}
@@ -843,7 +1139,7 @@ function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups }) {
  * any amount of tidying; the refusal happens on the summary click because the
  * browser folds a <details> before React hears about it.
  */
-function FoldGroup({ sectionKey, label, holdsActive, intro, openGroups, setOpenGroups, children }) {
+function FoldGroup({ sectionKey, label, holdsActive, intro, arc, openGroups, setOpenGroups, children }) {
   return (
     <details
       className="preset-group"
@@ -858,6 +1154,11 @@ function FoldGroup({ sectionKey, label, holdsActive, intro, openGroups, setOpenG
       <summary onClick={(e) => holdsActive && e.preventDefault()}>
         {label}
         {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
+        {arc && arc.done ? (
+          <span className="group-arc" data-role="group-arc" title={`${arc.done} of ${arc.total} complete`}>
+            {arc.done}/{arc.total}
+          </span>
+        ) : null}
       </summary>
       {intro ? <p className="hint group-blurb">{intro}</p> : null}
       <div className="presets">{children}</div>

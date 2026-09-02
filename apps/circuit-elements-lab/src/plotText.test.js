@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { clearRow, drawEndLabels, frameArea, overlapping, placeLabels, textBox, trackText } from './components/timePlot.js'
+import { clearRow, drawEndLabels, drawMark, frameArea, overlapping, placeLabels, textBox, trackText } from './components/timePlot.js'
 
 // The text on a chart never covers other text (student review, Phase 7). The
 // canvases keep that promise with three small pieces — a box per fillText, a
@@ -173,6 +173,26 @@ describe('a single label stepping clear', () => {
     ctx.fillText('second', 800, 50) // y 40..50
     const twice = clearRow(ctx, 'peaking at Q at f₀', 800, 36, 14, 300)
     expect(twice - 10).toBeCloseTo(52)
+  })
+
+  it('a time mark’s name at the top of the frame steps under a mark label already written there (F6’s spark over τ)', () => {
+    const ctx = fakeCtx()
+    trackText(ctx)
+    Object.assign(ctx, { setLineDash: () => {}, beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, stroke: () => {} })
+    const area = { x: 84, y: 14, w: 480, h: 300, k: 1 }
+    // The spark's label, beside a ring on the frame's top edge, spans x 97..~300 at y 14..24.
+    ctx.font = '10px x'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('the spark: v_switch(0⁺) = I₀·R_off', 97, 19)
+    drawMark(ctx, area, area.x + area.w / 5, 'τ')
+    const [spark, tau] = ctx.canvas.__texts
+    expect(tau.text).toBe('τ')
+    expect(overlapping([spark, tau])).toEqual([])
+    expect(tau.y0).toBeGreaterThanOrEqual(spark.y1)
+    // With the top row free, the name stays on it.
+    trackText(ctx)
+    drawMark(ctx, area, area.x + area.w / 5, 'τ')
+    expect(ctx.canvas.__texts[0].y0).toBeCloseTo(area.y + 3)
   })
 })
 

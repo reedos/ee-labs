@@ -34,25 +34,38 @@ import { labelParts, elementReading, elementTextPlaces, opampTextPlaces, nodeTex
  * Meters are { v: { node: volts }, i: { id: amps }, p: { id: watts } }; `show`
  * chooses which of 'i', 'v', 'p' is written on the elements (node voltages
  * appear whenever meters are given).
+ *
+ * Optional, all additive (the Elements lab's schematic answers back):
+ *   lit        { nodes, elements }: names to draw lit (Sets or arrays) — the
+ *              places a lesson step says to read, or the row under the pointer
+ *   reference  the node currently taken as the zero of voltage, when it is not
+ *              ground: that node is marked and the ground symbol steps aside
+ *   onNode     (name) => …  makes every node dot a button ("Make A the reference")
+ *   onElement  (id) => …    makes every switch a button ("Throw S1")
+ * Every node carries data-node and every element data-el whatever is passed.
  */
-export default function Schematic({ elements, layout, meters = null, show = 'i', className = '' }) {
+export default function Schematic({ elements, layout, meters = null, show = 'i', className = '', lit = null, reference = null, onNode = null, onElement = null }) {
   const byId = new Map(elements.map((e) => [e.id, e]))
   const { w = 320, h = 160, items = [], crop = null } = layout
   const [cx0, cy0, cx1, cy1] = crop || [0, 0, w, h]
   const cw = cx1 - cx0
   const ch = cy1 - cy0
+  const litNodes = toSet(lit && lit.nodes)
+  const litEls = toSet(lit && lit.elements)
+  const interactive = !!(onNode || onElement)
+  const name = `Schematic: ${elements.map((e) => e.label || e.id).join(', ')}`
   return (
     <svg
       className={`schematic ${className}`}
       viewBox={`${cx0} ${cy0} ${cw} ${ch}`}
       style={{ '--crop-w': cw, '--ar': cw / ch }}
-      role="img"
-      aria-label={`Schematic: ${elements.map((e) => e.label || e.id).join(', ')}`}
+      role={interactive ? 'group' : 'img'}
+      aria-label={name}
     >
       {items.map((it, k) => {
         if (it.box) return <Frame key={k} pts={it.box} />
         if (it.wire) return <Wire key={k} pts={it.wire} />
-        if (it.gnd) return <Gnd key={k} x={it.gnd[0]} y={it.gnd[1]} />
+        if (it.gnd) return <Gnd key={k} x={it.gnd[0]} y={it.gnd[1]} aside={!!reference && reference !== 'gnd'} />
         if (it.node)
           return (
             <NodeDot
@@ -62,6 +75,9 @@ export default function Schematic({ elements, layout, meters = null, show = 'i',
               y={it.y}
               side={it.side || 'r'}
               volts={meters ? meters.v[it.node] : undefined}
+              lit={litNodes.has(it.node)}
+              isRef={reference === it.node}
+              onTap={onNode}
             />
           )
         if (it.text)
@@ -73,12 +89,22 @@ export default function Schematic({ elements, layout, meters = null, show = 'i',
         if (it.el) {
           const e = byId.get(it.el)
           if (!e) return null
-          return <Element key={k} item={it} e={e} meters={meters} show={show} />
+          return <Element key={k} item={it} e={e} meters={meters} show={show} lit={litEls.has(e.id)} onTap={onElement} />
         }
         return null
       })}
     </svg>
   )
+}
+
+const toSet = (v) => (v instanceof Set ? v : new Set(v || []))
+
+/** Enter and space press a thing drawn as a button, as they would a real one. */
+const onKey = (fn) => (ev) => {
+  if (ev.key === 'Enter' || ev.key === ' ') {
+    ev.preventDefault()
+    fn()
+  }
 }
 
 const Wire = ({ pts: [x1, y1, x2, y2] }) => (
@@ -100,8 +126,8 @@ const Frame = ({ pts: [x0, y0, x1, y1] }) => (
   />
 )
 
-const Gnd = ({ x, y }) => (
-  <g stroke="var(--dim)" strokeWidth="1.5">
+const Gnd = ({ x, y, aside = false }) => (
+  <g stroke="var(--dim)" strokeWidth="1.5" className={aside ? 'sch-gnd is-aside' : 'sch-gnd'} data-node="gnd">
     <line x1={x} y1={y} x2={x} y2={y + 8} />
     <line x1={x - 9} y1={y + 8} x2={x + 9} y2={y + 8} />
     <line x1={x - 5} y1={y + 12} x2={x + 5} y2={y + 12} />
@@ -141,11 +167,25 @@ function Label({ e, at }) {
   )
 }
 
-function NodeDot({ name, x, y, side, volts }) {
+function NodeDot({ name, x, y, side, volts, lit = false, isRef = false, onTap = null }) {
   const at = nodeTextPlace({ x, y, side })
+  const cls = ['sch-node', lit ? 'is-lit' : '', isRef ? 'is-ref' : '', onTap ? 'is-tappable' : ''].filter(Boolean).join(' ')
+  const tap = onTap ? () => onTap(name) : undefined
   return (
-    <g>
-      <circle cx={x} cy={y} r="3" fill="var(--line-bright)" />
+    <g
+      className={cls}
+      data-node={name}
+      role={onTap ? 'button' : undefined}
+      tabIndex={onTap ? 0 : undefined}
+      aria-label={onTap ? (isRef ? `${name} is the reference` : `Make ${name} the reference`) : undefined}
+      aria-pressed={onTap ? isRef : undefined}
+      onClick={tap}
+      onKeyDown={onTap ? onKey(tap) : undefined}
+    >
+      {/* A finger-sized target behind the dot when the node can be tapped; the ring marks the reference. */}
+      {onTap ? <circle className="sch-hit" cx={x} cy={y} r="11" fill="transparent" stroke="none" /> : null}
+      {isRef ? <circle className="sch-ref" cx={x} cy={y} r="6.5" fill="none" strokeWidth="1.5" /> : null}
+      <circle className="sch-dot" cx={x} cy={y} r="3" fill="var(--line-bright)" />
       <text className="sch-port" x={at.x} y={at.y} textAnchor={at.anchor}>
         {name}
         {Number.isFinite(volts) ? (
@@ -163,9 +203,9 @@ function NodeDot({ name, x, y, side, volts }) {
  * Everything is drawn along +x from −20 to +20 and then rotated into place, so
  * the symbol code never thinks about orientation. The + terminal is at −20.
  */
-function Element({ item, e, meters, show }) {
+function Element({ item, e, meters, show, lit = false, onTap = null }) {
   const { x, y, dir = 'h', flip = false } = item
-  if (e.type === 'OPAMP') return <OpAmp item={item} e={e} meters={meters} show={show} />
+  if (e.type === 'OPAMP') return <OpAmp item={item} e={e} meters={meters} show={show} lit={lit} />
   const rot = (dir === 'v' ? 90 : 0) + (flip ? 180 : 0)
   // Text must stay upright: it is drawn in an un-rotated group at the same place.
   const { label: below, reading: above } = elementTextPlaces(item)
@@ -175,9 +215,21 @@ function Element({ item, e, meters, show }) {
   // Arrow along the element in the direction the current flows: + to − when
   // positive. In local coordinates + is at −20, so positive points along +x.
   const arrow = meters && show === 'i' && Number.isFinite(i) && Math.abs(i) > 1e-15 ? Math.sign(i) : 0
+  // Only a switch is a button: it is the one element a hand can change.
+  const tap = onTap && e.type === 'SW' ? () => onTap(e.id) : null
+  const cls = ['sch-el', lit ? 'is-lit' : '', tap ? 'is-tappable' : ''].filter(Boolean).join(' ')
   return (
-    <g>
+    <g
+      className={cls}
+      data-el={e.id}
+      role={tap ? 'button' : undefined}
+      tabIndex={tap ? 0 : undefined}
+      aria-label={tap ? `Throw ${labelParts(e).text || e.id}` : undefined}
+      onClick={tap || undefined}
+      onKeyDown={tap ? onKey(tap) : undefined}
+    >
       <g transform={`rotate(${rot} ${x} ${y}) translate(${x} ${y})`}>
+        {tap ? <rect className="sch-hit" x={-22} y={-14} width={44} height={28} fill="transparent" stroke="none" /> : null}
         <Symbol e={e} />
         {arrow ? (
           // Beside the symbol, on the side away from its label: above a
@@ -316,12 +368,12 @@ function Symbol({ e }) {
  * (x, y − 12), (x, y + 12) and (x + 38, y). Reading and label both hang
  * below, leaving the top clear for the feedback path.
  */
-function OpAmp({ item, e, meters, show }) {
+function OpAmp({ item, e, meters, show, lit = false }) {
   const { x, y, invertTop = true } = item
   const reading = elementReading(e, meters, show)
   const at = opampTextPlaces(item)
   return (
-    <g>
+    <g className={lit ? 'sch-el is-lit' : 'sch-el'} data-el={e.id}>
       <polygon
         points={`${x},${y - 22} ${x},${y + 22} ${x + 38},${y}`}
         fill="var(--panel-2)"

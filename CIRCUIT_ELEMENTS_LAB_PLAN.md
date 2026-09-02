@@ -1010,6 +1010,61 @@ state, and averaging.
    the canvas — requires a captioned sentence with a number under each, checks
    the meter hue matches the mode's token, and presses play on F3 and watches the
    cursor sweep to 5 ms and the button release.
+   **Step 8 — the screen as one composition — shipped 2026-09-02:** the
+   lesson, the knobs and the circuit are one thing on one screen. `progress.js`
+   keeps where the student is: a step is done when the screen shows what it
+   asked for (`stepMet` — a toggle exactly, a number within 0.5 %, the cursor
+   within 2 % of the window, the meters in the mode the sentence names via
+   `meterOf`), a watch step is done when the student ticks it or any later step
+   is, done is sticky, and the record lives in localStorage under
+   `ee-labs/elements/progress` (`load`/`save` shrug at a store that throws). The
+   Try list is a path: done steps ticked and dim, the active step in full, the
+   steps ahead one line each with an ellipsis and open on a tap; the posed
+   prediction is the active step's question; a "next up" chip appears when every
+   step is done; the picker ticks finished experiments (`data-done`), counts
+   each group (`.group-arc`) and the course (`.picker-arc`). Knobs are one
+   column with one knob open — the active step's, else the first — and the rest
+   compact (`NumField compact`, label and entry on one row; `.knob-slot[data-named]`
+   marks the step's knob); the window knob moved to the cursor row it scales.
+   Deeper is one fold (why, the working, the hand-over) that refolds on a new
+   experiment. The schematic answers back: `Schematic` (shared, additive props
+   `lit`, `reference`, `onNode`, `onElement`) lights what the active step reads
+   (`readsOf`) and what the pointer rests on in the Equations pane
+   (`EquationsPane onHover`, rows carry `data-node`/`data-el`); on A3 a tapped
+   node becomes the reference (`reference.js rereference` — node voltages shift
+   together, element readings do not move, ground reads minus the shift and
+   steps aside) and a tapped switch is thrown (`switchKnob` finds the toggle by
+   flipping each; a time switch restarts the clock). The topbar speaks the
+   student's words ("N numbers to find", "every node balances"; the solver's
+   "unknowns" and "residual" stay in the hover text) and its outcome gives way
+   with an ellipsis when the t / ω / τ chips crowd it. The sidebar is 380 px
+   from 1200 px: at 1280×900 the whole Knobs section is on screen for all 46
+   (before: every experiment overflowed, by 42–697 px). The phone gets a fixed
+   tab bar — Lesson · Circuit · Plot · Knobs — lit by scroll position (the last
+   part when a short page is at its foot), and a new experiment scrolls to its
+   top. On a phone base.css makes `#root` the page's scroller, not the window,
+   so the bar goes by `scrollIntoView` (with `scroll-margin-top` on its
+   targets), reads the end of the page from `pageScroller()`, and listens for
+   scroll in the capture phase on the document. The narrower plot frame put
+   F6's spark label under the τ mark's name; `drawMark` now steps its name down
+   a row through `clearRow` like every other label. At 390 px the cursor row is
+   one line — "the circuit at t = 24 ms", the window knob as "− 40 cycles +",
+   play — so the plot's view switch sits on the first screen for the fifteen
+   experiments with a window knob (they overflowed by 1–14 px once the page
+   truly scrolled to its top). Tests (progress 67,
+   reference 8, plotText +1): every lesson's every measurable step is met by
+   its own setting and by nothing at the defaults, the first step is active on
+   arrival; A3's re-reference arithmetic; every switch is a knob's or a time
+   switch and the knob really throws it; a time mark's name steps under a mark
+   label already on the top row. verify.mjs drives it: the active step's knob
+   is the marked open one and its element is lit; A1's three steps tick off by turning the knobs
+   and switching the meters, the picker marks it and a reload keeps it; a node
+   tapped on A3 reads 0 with the others shifted and the ammeters unmoved; the
+   switch on F3 restarts the sweep; Equations rows light their node and element;
+   the tab bar's Knobs and Lesson go where they say; Knobs ends above 900 px for
+   all 46 at 1280×900; no solver-speak on the topbar's face. Deep links between
+   labs are the parallel session's (`packages/ui/src/deeplink.js`) and are not
+   part of this step.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event

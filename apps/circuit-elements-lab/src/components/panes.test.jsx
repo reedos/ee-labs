@@ -19,7 +19,8 @@ const solve = (id) => {
 }
 const html = (el) => renderToStaticMarkup(el)
 const strip = (s) => s.replace(/<[^>]+>/g, '')
-const rowsOf = (h) => [...h.matchAll(/<div class="eq-row">([\s\S]*?)<\/div><\/div>/g)].map((m) => m[1])
+// Rows carry data-node / data-el so the schematic can light what a row is about (Phase 8).
+const rowsOf = (h) => [...h.matchAll(/<div class="eq-row"(?: data-(?:node|el)="[^"]*")?>([\s\S]*?)<\/div><\/div>/g)].map((m) => m[1])
 const amber = (row) => [...row.matchAll(/<span class="eq-val">([^<]*)<\/span>/g)].map((m) => m[1])
 
 describe('the equations pane', () => {

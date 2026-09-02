@@ -515,11 +515,13 @@ export function drawMark(ctx, area, x, label, color = COLORS.text) {
     ctx.fillStyle = color
     ctx.font = `${Math.round(10 * k)}px ${SANS}`
     ctx.textBaseline = 'top'
-    // Flip to the left of the line when the label would run off the frame.
+    // Flip to the left of the line when the label would run off the frame, and
+    // step down a row when a mark's label already has the top one (F6's spark).
     const wide = ctx.measureText(label).width
     const right = x + 4 * k + wide <= area.x + area.w
     ctx.textAlign = right ? 'left' : 'right'
-    ctx.fillText(label, x + (right ? 4 : -4) * k, area.y + 3 * k)
+    const lx = x + (right ? 4 : -4) * k
+    ctx.fillText(label, lx, clearRow(ctx, label, lx, area.y + 3 * k, area.y, area.y + area.h, k))
   }
   ctx.restore()
 }

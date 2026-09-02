@@ -87,8 +87,10 @@ const unknownLatex = (u) => (u.kind === 'v' ? `v_{${u.node}}` : `i_{${u.id}}`)
  * cell in letters and in numbers so it is plain where each entry came from;
  * and a legend tying each letter to a part on the schematic.
  */
-export function EquationsPane({ eq, solved, primer = false, fold = false, contradiction = [] }) {
+export function EquationsPane({ eq, solved, primer = false, fold = false, contradiction = [], onHover = null }) {
   const { symbolic } = eq
+  // Pointing at a row lights the node or element it is about on the schematic.
+  const hover = (what) => (onHover ? { onMouseEnter: () => onHover(what), onMouseLeave: () => onHover(null) } : {})
   // Under a fold the three steps open on demand; the fold's summary is what the
   // reader sees first — unless rows are marked as contradicting, which is the
   // one time the working is the point.
@@ -110,7 +112,7 @@ export function EquationsPane({ eq, solved, primer = false, fold = false, contra
       </p>
       {eq.rows.map((r, k) =>
         r.kind === 'kcl' ? (
-          <div className="eq-row" key={k}>
+          <div className="eq-row" key={k} data-node={r.node} {...hover({ node: r.node })}>
             <div className="eq-at">
               <span>KCL at</span>
               <b>{r.node}</b>
@@ -131,7 +133,7 @@ export function EquationsPane({ eq, solved, primer = false, fold = false, contra
             </div>
           </div>
         ) : (
-          <div className={contradiction.includes(r.id) ? 'eq-row is-contradiction' : 'eq-row'} key={k}>
+          <div className={contradiction.includes(r.id) ? 'eq-row is-contradiction' : 'eq-row'} key={k} data-el={r.id} {...hover({ el: r.id })}>
             <ConstraintLabel row={symbolic.rows.find((s) => s.kind === 'constraint' && s.id === r.id) || { id: r.id, from: 'V' }} />
             <div className="eq-terms">
               <span className="eq-term">

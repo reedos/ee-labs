@@ -46,6 +46,11 @@ const clipped = () =>
   })
 
 async function openAllMath() {
+  // The working sits under the Deeper fold (Phase 8); open it first.
+  await page.evaluate(() => {
+    const d = document.querySelector('[data-role=deeper]')
+    if (d && !d.open) d.open = true
+  })
   const toggles = page.locator('.math-toggle[aria-expanded="false"]')
   for (let g = 0; g < 8; g++) {
     if ((await toggles.count()) === 0) break
@@ -86,7 +91,9 @@ async function setField(label, value) {
   await settle()
 }
 
-const names = await page.$$eval('.presets .preset', (els) => els.map((e) => e.textContent.trim()))
+// A finished experiment wears a ✓ in the picker (aria-hidden, so the button's
+// name is still the experiment's); read names without it.
+const names = await page.$$eval('.presets .preset', (els) => els.map((e) => e.textContent.replace(/✓/g, '').trim()))
 // The list is folded under the picker; unfold it, then the group, then click.
 // Choosing folds the list again, as it does for a student.
 const pick = async (name) => {
@@ -96,7 +103,7 @@ const pick = async (name) => {
       const cur = document.querySelector('.picker-current')
       if (cur && cur.getAttribute('aria-expanded') !== 'true') cur.click()
       for (const d of document.querySelectorAll('details.preset-group')) {
-        const has = [...d.querySelectorAll('.preset')].some((b) => b.textContent.trim() === n)
+        const has = [...d.querySelectorAll('.preset')].some((b) => b.textContent.replace(/✓/g, '').trim() === n)
         if (has && !d.open) d.querySelector('summary').click()
       }
     }, name)
@@ -523,11 +530,36 @@ console.log(`   no sideways scroll or clipped pane at 390 px across ${names.leng
 console.log('   the note and the Analysis view switch are in the first screen; nothing scrolls inside the page')
 console.log(`   ${phonePlots} plot views at 390 px checked for overlapping text and a caption`)
 
+// The tab bar (Phase 8): four parts of the page named at the foot of the phone
+// screen; Knobs brings the knobs up, Lesson brings the note back.
+await pick(names[0])
+await page.evaluate(() => window.scrollTo(0, 0))
+const tabs = page.locator('[data-role=tabbar] button')
+if (!(await page.locator('[data-role=tabbar]').isVisible())) fail('390px: the tab bar is not visible')
+if ((await tabs.count()) !== 4) fail(`390px: the tab bar has ${await tabs.count()} buttons, not 4`)
+const inView = (sel) =>
+  page.evaluate((s) => {
+    const el = document.querySelector(s)
+    if (!el) return false
+    const r = el.getBoundingClientRect()
+    // Near the top of the screen — or, for the last section of a short page that cannot scroll it there, whole on the screen.
+    return r.top >= -1 && (r.top < window.innerHeight * 0.6 || r.bottom <= window.innerHeight)
+  }, sel)
+await tabs.filter({ hasText: 'Knobs' }).click()
+await page.waitForTimeout(900)
+if (!(await inView('.controls > .knobs'))) fail('390px: tapping Knobs did not bring the knobs into view')
+if ((await page.locator('[data-role=tabbar] button.on').textContent()) !== 'Knobs') fail('390px: the Knobs tab is not lit after going to the knobs')
+await tabs.filter({ hasText: 'Lesson' }).click()
+await page.waitForTimeout(900)
+if (!(await inView('[data-role=note]'))) fail('390px: tapping Lesson did not bring the note into view')
+console.log('   the tab bar shows four parts; Knobs and Lesson go where they say')
+
 // Desktop: the note begins near the top of the sidebar and the first knob is on
 // screen when the experiment opens, for every experiment.
 await page.setViewportSize({ width: 1280, height: 900 })
 await page.waitForTimeout(400)
 let deskPlots = 0
+let wholeSidebar = 0
 for (const name of names) {
   await pick(name)
   await page.waitForTimeout(80)
@@ -535,16 +567,29 @@ for (const name of names) {
     const note = document.querySelector('[data-role=note]')
     const knob = document.querySelector('.knobs input, .knobs .segmented button')
     const r = knob ? knob.getBoundingClientRect() : null
-    return { noteTop: note ? note.getBoundingClientRect().top : Infinity, knobBottom: r ? r.bottom : Infinity, knobTop: r ? r.top : Infinity }
+    const knobs = document.querySelector('.controls > .knobs')
+    const deeper = document.querySelector('.controls > .deeper')
+    return {
+      noteTop: note ? note.getBoundingClientRect().top : Infinity,
+      knobBottom: r ? r.bottom : Infinity,
+      knobTop: r ? r.top : Infinity,
+      knobsBottom: knobs ? knobs.getBoundingClientRect().bottom : Infinity,
+      deeperBottom: deeper ? deeper.getBoundingClientRect().bottom : Infinity,
+    }
   })
   // Above the note: the suite nav, the title, one line of subtitle, the report
   // link, the section cap and the one-line picker — about 200 px, 220 when the
   // experiment's name wraps. The eight open groups put it near 700.
   if (!(m.noteTop < 230)) fail(`1280px / ${name}: the note starts at ${Math.round(m.noteTop)} px (want < 230)`)
   if (!(m.knobBottom <= 900 && m.knobTop >= 0)) fail(`1280px / ${name}: the first knob is off screen on load (${Math.round(m.knobTop)}–${Math.round(m.knobBottom)} px)`)
+  // The screen as one composition (Phase 8): the lesson and every knob on
+  // screen at once on a laptop, so the student never scrolls to turn a knob.
+  if (!(m.knobsBottom <= 900)) fail(`1280px / ${name}: the Knobs section ends at ${Math.round(m.knobsBottom)} px, below the screen`)
+  if (m.deeperBottom <= 900) wholeSidebar++
   deskPlots += await checkPlots(`1280px / ${name}`)
 }
 console.log(`   1280×900: the note starts above 230 px and the first knob is on screen for all ${names.length} experiments`)
+console.log(`   1280×900: the whole Knobs section is on screen for all ${names.length}; the whole sidebar, Deeper included, for ${wholeSidebar}`)
 console.log(`   ${deskPlots} plot views at 1280 px checked for overlapping text and a caption`)
 
 // The play button sweeps the cursor across the window and stops itself at
@@ -587,20 +632,147 @@ await pick(names.find((n) => /Power, and the sign of it/i.test(n)))
 if (!/Σ power/.test(await topbarText())) fail('B3: the topbar should show Σ power from the experiment that introduces power')
 const sizeTitle = await page.locator('[data-role=system-size]').getAttribute('title')
 if (!sizeTitle || !/junction/i.test(sizeTitle) || !/unknown/i.test(sizeTitle)) fail(`the nodes/unknowns chip should explain both words on hover (got “${sizeTitle}”)`)
-console.log('   Σ power absent on A1, present on B3; the size chip explains nodes and unknowns')
+// The topbar speaks the student's words (Phase 8): the solver's are in the hover titles.
+const tb = (await topbarText()).replace(/\s+/g, ' ')
+if (/solved|residual|unknown/i.test(tb)) fail(`the topbar uses the solver's words on its face: “${tb}”`)
+console.log('   Σ power absent on A1, present on B3; the size chip explains nodes and unknowns; no solver-speak on the topbar')
 
 // Every preset chip reads as one line: a value with its unit, never a wrapped
-// bare number. The chips belong to the knobs of each experiment.
+// bare number. The chips belong to the knobs of each experiment; only the open
+// knob shows them, so open each in turn.
 const tall = []
 for (const name of names) {
   await pick(name)
-  const wrapped = await page.$$eval('.knobs .num-chips .chip', (els) =>
-    els.filter((b) => b.getBoundingClientRect().height > 30 || !/[A-Za-zΩ°]$/.test(b.textContent.trim())).map((b) => b.textContent.trim()),
-  )
-  for (const w of wrapped) tall.push(`${name}: “${w}”`)
+  const slots = await page.locator('.knob-slot').count()
+  for (let k = 0; k < slots; k++) {
+    await page.locator('.knob-slot').nth(k).click()
+    await page.waitForTimeout(40)
+    const wrapped = await page.$$eval('.knobs .num-chips .chip', (els) =>
+      els.filter((b) => b.getBoundingClientRect().height > 30 || !/[A-Za-zΩ°]$/.test(b.textContent.trim())).map((b) => b.textContent.trim()),
+    )
+    for (const w of wrapped) tall.push(`${name}: “${w}”`)
+  }
 }
 for (const t of tall) fail(`preset chip wrapped or unit-less: ${t}`)
 console.log(`   every preset chip is one line and ends in its unit`)
+
+// ------------------------------------------ 8. the screen as one composition
+
+console.log('\n8. The screen as one composition: the path, the lit knob, the schematic answering back\n')
+
+// Start as a new student: the sections above have already turned A1's knobs.
+await page.evaluate(() => localStorage.removeItem('ee-labs/elements/progress'))
+await page.reload({ waitUntil: 'load' })
+await page.waitForSelector('.views .schematic')
+await page.waitForTimeout(300)
+// The active step names a knob; that knob is the open one and is marked.
+await pick(names[0])
+const a1Slot = await page.evaluate(() => {
+  const li = document.querySelector('[data-role=try] li[data-state=active]')
+  const slot = document.querySelector('.knob-slot[data-named]')
+  return { step: li ? li.getAttribute('data-step') : null, key: slot ? slot.getAttribute('data-key') : null, open: slot ? slot.getAttribute('data-open') : null, opens: document.querySelectorAll('.knob-slot[data-open=true]').length }
+})
+if (a1Slot.step !== '0') fail(`A1: the active step on arrival is ${a1Slot.step}, not the first`)
+if (a1Slot.key !== 'R1' || a1Slot.open !== 'true') fail(`A1: step 1 sets R1, but the marked knob is ${a1Slot.key} (open: ${a1Slot.open})`)
+if (a1Slot.opens !== 1) fail(`A1: ${a1Slot.opens} knobs are open; one should be`)
+// What the step says to read is lit on the schematic.
+if ((await page.locator('.schematic .sch-el[data-el=R1].is-lit').count()) !== 1) fail('A1: step 1 reads i_R1, but R1 is not lit on the schematic')
+// A closed knob opens on a tap, and the sliders come back.
+await page.locator('.knob-slot[data-key=E]').click()
+await page.waitForTimeout(60)
+if ((await page.locator('.knob-slot[data-key=E][data-open=true] .num-slider').count()) !== 1) fail('A1: tapping the closed E knob did not open it with its slider')
+console.log('   A1: step 1 lights the R knob and R1; a tapped knob opens')
+
+// Walking A1's three steps: each ticks off as the screen meets it; the picker
+// marks the experiment; the next experiment is offered.
+await page.locator('[data-role=predict] .predict-option').first().click()
+await page.waitForTimeout(100)
+await setField('R', '100')
+let states = () => page.$$eval('[data-role=try] li', (els) => els.map((li) => li.getAttribute('data-state')))
+let s = await states()
+if (s[0] !== 'done' || s[1] !== 'active') fail(`A1: after R = 100 Ω the steps read ${s.join(', ')} (want done, active, ahead)`)
+await setField('Source V₁', '5')
+await page.getByRole('button', { name: 'voltages', exact: true }).click()
+await settle()
+s = await states()
+if (!s.every((v) => v === 'done')) fail(`A1: after E = 5 V and the meters on voltages the steps read ${s.join(', ')}`)
+if ((await page.locator('[data-role=next-up]').count()) !== 1) fail('A1: every step done, but no next-up offer')
+const nextText = await page.locator('[data-role=next-up] button').textContent()
+if (!/A2/.test(nextText)) fail(`A1: the next-up offer reads “${nextText}”, not A2`)
+await page.evaluate(() => document.querySelector('.picker-current').click())
+await page.waitForTimeout(80)
+const doneMarks = await page.$$eval('.presets .preset[data-done]', (els) => els.map((e) => e.textContent.replace(/✓/g, '').trim()))
+if (!doneMarks.includes(names[0])) fail(`picker: A1 is complete but not marked (marked: ${doneMarks.join(', ') || 'none'})`)
+if ((await page.locator('[data-role=course-arc]').count()) !== 1) fail('picker: no course arc after the first experiment is complete')
+const arcText = await page.locator('[data-role=group-arc]').first().textContent()
+if (!/^1\/\d+$/.test(arcText.trim())) fail(`picker: the group arc reads “${arcText}”, not 1/N`)
+await page.evaluate(() => document.querySelector('.picker-current').click())
+// Progress survives a reload.
+await page.reload({ waitUntil: 'load' })
+await page.waitForSelector('.views .schematic')
+await page.waitForTimeout(300)
+s = await states()
+if (!s.every((v) => v === 'done')) fail(`A1: after a reload the steps read ${s.join(', ')}; progress was not kept`)
+console.log('   A1: three steps ticked by turning the knobs and switching the meters; marked in the picker; kept across a reload')
+
+// A3: tap a node and it becomes the reference — it reads 0, the others shift
+// by what it read, the elements do not move. Tap again for ground.
+await pick(names.find((n) => /ground is a choice/i.test(n)))
+const readNode = (n) => page.locator(`.readout [data-node=${n}] b`).textContent().then((t) => si(t.replace(/\s*V$/, '')))
+const vA0 = await readNode('A')
+const vIn0 = await readNode('in')
+// The ammeters, read before and after: a reference is a choice about voltages
+// only. The node labels' voltages share the meter class and are left out.
+await page.getByRole('button', { name: 'currents', exact: true }).click()
+await settle()
+const ammeters = () => page.$$eval('.schematic .sch-el .sch-meter', (els) => els.map((e) => e.textContent.trim()))
+const r1Before = (await ammeters()).join(' ')
+if (!/A( |$)/.test(r1Before)) fail(`A3: no ammeters on the schematic in currents mode (${r1Before})`)
+await page.locator('.schematic [data-node=A]').click()
+await settle()
+const vA1 = await readNode('A')
+const vIn1 = await readNode('in')
+if (Math.abs(vA1) > 1e-6) fail(`A3: A tapped as reference reads ${vA1} V, not 0`)
+if (Math.abs(vIn1 - (vIn0 - vA0)) > 1e-3 * Math.abs(vIn0)) fail(`A3: with A the reference, in reads ${vIn1} V; want ${vIn0 - vA0}`)
+if ((await page.locator('.schematic [data-node=A].is-ref').count()) !== 1) fail('A3: the reference node wears no ring')
+if ((await page.locator('.schematic [data-node=gnd].is-aside').count()) !== 1) fail('A3: ground does not step aside while A is the reference')
+if (!/is the reference/.test(await page.locator('[data-role=ref-hint]').textContent())) fail('A3: the hint under the schematic does not say A is the reference')
+if ((await ammeters()).join(' ') !== r1Before) fail(`A3: element currents moved with the reference: ${r1Before} → ${(await ammeters()).join(' ')}`)
+await page.locator('.schematic [data-node=A]').click()
+await settle()
+if (Math.abs((await readNode('A')) - vA0) > 1e-3 * Math.abs(vA0)) fail('A3: tapping A again did not restore ground as the reference')
+console.log('   A3: a tapped node becomes the reference and back; element readings hold')
+
+// F3: tap the switch and the clock restarts.
+await pick(tauName)
+const rangeF3 = page.locator('.cursor-row input[type=range]')
+const tEndF3 = parseFloat(await rangeF3.getAttribute('max'))
+await page.locator('.schematic [data-el=S1]').click()
+await page.waitForTimeout(250)
+const tAfter = parseFloat(await rangeF3.inputValue())
+if (!(tAfter >= 0 && tAfter < 0.25 * tEndF3)) fail(`F3: tapping the switch left the cursor at ${tAfter} of ${tEndF3}; want a restart from 0`)
+if ((await page.locator('[data-role=play]').getAttribute('aria-pressed')) !== 'true') fail('F3: tapping the switch did not start the sweep')
+await page.locator('[data-role=play]').click()
+console.log('   F3: tapping the switch restarts the clock')
+
+// Equations view: a row under the pointer lights its node on the schematic.
+await pick(names[0])
+await page.locator('.view-switch').getByRole('button', { name: 'Equations', exact: true }).click()
+await page.waitForTimeout(150)
+// On A1 the working is folded under its summary; open it to reach the rows.
+await page.evaluate(() => {
+  const d = document.querySelector('[data-role=eq-fold]')
+  if (d && !d.open) d.open = true
+})
+await page.locator('.eq-row[data-node=in]').first().hover()
+await page.waitForTimeout(100)
+if ((await page.locator('.schematic [data-node=in].is-lit').count()) !== 1) fail('A1: hovering the KCL row for “in” does not light the node')
+await page.locator('.eq-row[data-el]').first().hover()
+await page.waitForTimeout(100)
+const litEl = await page.$$eval('.schematic .sch-el.is-lit', (els) => els.map((e) => e.getAttribute('data-el')))
+const rowEl = await page.locator('.eq-row[data-el]').first().getAttribute('data-el')
+if (!litEl.includes(rowEl)) fail(`A1: hovering the row for ${rowEl} lights ${litEl.join(', ') || 'nothing'}`)
+console.log('   A1: rows in the Equations pane light their node and element on the schematic')
 
 // ------------------------------------------------------------------- report
 

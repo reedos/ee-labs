@@ -85,6 +85,16 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   display: inline-block;
 }
 
+/* Where the student has been (student review, Phase 8): a tick on each
+   experiment whose every step is done, the count on its group, and the course
+   total at the head of the list. */
+.preset[data-done] { border-style: dashed; }
+.preset[data-done]:not(.is-on) { color: var(--dim); }
+.preset-done { margin-left: 5px; color: var(--accent); font-weight: 600; }
+.group-arc { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--accent); font-variant-numeric: tabular-nums; }
+.picker-arc { margin: 0 0 8px; font-size: 11.5px; color: var(--dim); }
+.picker-arc b { color: var(--accent); }
+
 /* The picker: ◂ [A1 · name ▾] ▸ on one line, the tree folded under it. The
    sidebar's job is the lesson and its knobs; the list of forty-six
    experiments is furniture, and stays out of the way until asked for. */
@@ -130,29 +140,92 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 /* The lesson in three registers: See (what the meters show), Try (moves to
    make, each with the reading it predicts) and, under Deeper, Why. */
 .hint.see { margin-top: 6px; color: var(--text); }
-.try { margin: 8px 0 0; padding-left: 20px; font-size: 12px; line-height: 1.5; color: var(--dim); }
-.try li { margin: 4px 0; }
-.try li::marker { color: var(--accent); font-weight: 600; }
+
+/* The Try list as a path (student review, Phase 8). Done steps carry a tick
+   and dim; the active step is in the text colour, in full; the steps ahead are
+   one line each, cut with an ellipsis, and open in full on a tap. */
+.try { margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; line-height: 1.5; color: var(--dim); }
+.try li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 0 4px; margin: 3px 0; cursor: default; }
+.try li[data-state='ahead'] { cursor: pointer; }
+.try .step-n { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.try li[data-state='done'] { opacity: 0.55; }
+.try li[data-state='done'] .step-n { color: var(--accent); }
+.try li[data-state='active'] { color: var(--text); }
+.try li[data-state='active'] .step-n { color: var(--accent); }
+.try .step-body { min-width: 0; }
+.try li:not([data-shown]) .step-text { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.try li:not([data-shown]):hover .step-text { color: var(--text); }
 .try b { color: var(--text); }
-details.why > summary {
+.try li[data-state='done'] b { color: inherit; }
+.step-seen {
+  margin: 4px 0 2px;
+  padding: 1px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.step-seen:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.next-up { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 12px; color: var(--text); }
+
+/* Deeper: one fold — why it works, the solver's working, the hand-over. */
+.deeper-fold > summary {
   cursor: pointer;
   font-size: 12px;
   color: var(--accent);
   list-style: none;
 }
-details.why > summary::before { content: '\25B8  '; font-size: 9px; }
-details.why[open] > summary::before { content: '\25BE  '; }
-details.why > summary::-webkit-details-marker { display: none; }
-details.why .hint { margin-top: 6px; }
+.deeper-fold > summary::before { content: '\25B8  '; font-size: 9px; }
+.deeper-fold[open] > summary::before { content: '\25BE  '; }
+.deeper-fold > summary::-webkit-details-marker { display: none; }
+.deeper-fold .why .hint { margin-top: 8px; }
 
-/* The jump to the knobs exists for the phone only; desktop has them on screen. */
-.knobs-jump { display: none; }
+/* The knobs, one column: the knob the active step turns is open — label, hint,
+   entry, slider, presets — and the rest are one row each, label and entry.
+   Tapping or focusing a closed knob opens it. */
+.knob-list { display: grid; gap: 2px; }
+.knob-slot { margin: 0 -8px; padding: 4px 8px; border-radius: 6px; border-left: 2px solid transparent; }
+.knob-slot[data-open='true'] { padding-top: 6px; padding-bottom: 6px; }
+.knob-slot[data-named] { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.knob-slot .num { margin-bottom: 0; }
+.knob-slot .num.is-compact { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.knob-slot .num.is-compact .num-head { margin: 0; min-width: 0; }
+.knob-slot .num.is-compact .num-hint { display: none; }
+.knob-slot .num.is-compact .num-label { color: var(--dim); }
+.knob-slot .num.is-compact .num-entry { flex: 0 0 auto; }
+.knob-slot .num:not(.is-compact) .num-head { display: block; }
+.knob-slot .num:not(.is-compact) .num-hint { display: block; text-align: left; font-family: inherit; font-size: 11px; line-height: 1.45; margin: 1px 0 5px; }
+.knob-slot .num:not(.is-compact) .num-label { color: var(--text); }
+.knob-slot .toggle-knob { margin: 0; }
+.knob-slot[data-open='false'] .toggle-knob { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.knob-slot[data-open='false'] .toggle-knob .segmented { justify-self: end; }
+
+/* The tab bar exists for the phone only; desktop has every part on screen. */
+.tabbar { display: none; }
+
+/* The topbar's flow: when the dynamic groups' t / ω / τ chips crowd it, the
+   outcome — the last, least urgent node — gives way with an ellipsis rather
+   than the strip growing a scrollbar. Its hover text carries the whole sentence. */
+.topbar .flow { overflow: hidden; }
+.topbar .flow [data-role='outcome'] { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.topbar .flow [data-role='outcome'] em { margin-left: 6px; }
+
+/* The screen as one composition: on a laptop the whole lesson and every knob
+   are on screen at once, so the student never scrolls to turn a knob. A wider
+   sidebar from 1200 px keeps the longer notes (Groups G, H) to fewer lines. */
+@media (min-width: 1200px) {
+  .app { grid-template-columns: 380px 1fr; }
+  .controls section { margin-top: 10px; }
+}
 
 @media (min-width: 1100px) {
   .picker-current { font-size: 14px; }
   .picker-current b { font-size: 13px; }
   .picker-step { font-size: 14px; }
-  .hint.see, .try, details.why > summary { font-size: 13px; }
+  .hint.see, .try, .deeper-fold > summary, .next-up { font-size: 13px; }
 }
 
 /* Phone: one page, top to bottom — title, the lesson (picker, See, Try), the
@@ -160,8 +233,8 @@ details.why .hint { margin-top: 6px; }
    keeps the sidebar as a 45vh box that scrolls inside the page (fine for the
    other labs, whose sidebars are knobs); here the sidebar dissolves
    (display: contents) so its sections become rows of the page grid, and the
-   knobs — which the plots need to be near — go under the plots with a fixed
-   button to reach them. */
+   knobs — which the plots need to be near — go under the plots. A fixed bar at
+   the foot names the four parts of the page and goes to each. */
 @media (max-width: 900px) {
   /* minmax(0, 1fr): a grid track's default minimum is its content, and the
      sections now sit in the track themselves — a knob hint or a formula that
@@ -177,22 +250,38 @@ details.why .hint { margin-top: 6px; }
   .controls > .knobs { grid-column: 1; grid-row: 5; margin: 12px 12px 0; }
   .controls > .deeper { grid-column: 1; grid-row: 6; margin: 12px 12px 72px; }
   .controls > .knobs h2, .controls > .deeper h2 { position: static; }
-  .knobs-jump {
-    display: inline-flex;
+  /* Where the tab bar's scrollIntoView lands each part: a breath under the screen's top edge. */
+  .controls > .lesson, .views .view, .controls > .knobs { scroll-margin-top: 8px; }
+  /* The cursor row on one line at 390 px: the sentence drops its lead ("the meters read") and the
+     window knob its word — "− 40 cycles +" beside the slider it spans — so the plot's view switch
+     stays on the first screen for the fifteen experiments that carry a window knob. */
+  .cursor-row .cursor-lead, .cursor-row .cursor-head .num.is-compact .num-label { display: none; }
+  .tabbar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     position: fixed;
-    right: 14px;
-    bottom: 14px;
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 5;
-    padding: 8px 14px;
-    border-radius: 999px;
-    border: 1px solid var(--accent);
-    background: var(--panel);
-    color: var(--accent);
-    font: inherit;
-    font-size: 12.5px;
-    font-weight: 600;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
   }
+  .tabbar button {
+    border: 0;
+    border-radius: 6px;
+    padding: 7px 4px;
+    background: none;
+    color: var(--dim);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tabbar button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 }
 
 /* Pane-header controls — the proximity rule from Signal Lab: a control that
@@ -405,6 +494,29 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
 .sch-plus, .sch-minus { font-weight: 700; }
 .sch-plus { fill: var(--accent); }
 .sch-minus { fill: var(--text); }
+
+/* The schematic answers back (student review, Phase 8). What the active step
+   says to read is lit — the node's dot and name, the element's symbol and
+   label — and so is whatever the pointer rests on in the Equations pane. A
+   node that takes the reference and a switch are tappable; the reference node
+   wears a ring, and ground steps aside while another node is the zero. */
+.sch-node.is-lit .sch-dot { fill: var(--accent); r: 3.6; }
+.sch-node.is-lit .sch-port { fill: var(--accent); }
+.sch-node.is-lit text.sch-meter { fill: var(--accent); }
+.sch-el.is-lit { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 70%, transparent)); }
+.sch-el.is-lit .sch-label .sch-sym, .sch-el.is-lit .sch-label .sch-sub { fill: var(--accent); }
+.sch-node.is-ref .sch-ref { stroke: var(--accent); }
+.sch-node.is-ref .sch-dot { fill: var(--accent); }
+.sch-gnd.is-aside { opacity: 0.35; }
+.is-tappable { cursor: pointer; }
+.is-tappable:hover .sch-dot, .is-tappable:focus-visible .sch-dot { fill: var(--accent); }
+.is-tappable:focus-visible { outline: none; }
+.is-tappable:focus-visible .sch-hit { stroke: var(--accent); stroke-dasharray: 3 2; }
+.sch-el.is-tappable:hover { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 50%, transparent)); }
+.sch-hint { margin: 2px 0 0; font-size: 11px; line-height: 1.45; color: var(--dim); }
+.sch-hint b { color: var(--accent); }
+.readout [data-lit] b { text-shadow: 0 0 8px color-mix(in srgb, currentColor 70%, transparent); }
+.readout [data-lit] { color: var(--text); }
 
 /* The big schematic is the upper pane. Every layout is drawn at one scale —
    --sch-scale screen pixels per drawing unit — and the frame is cut to what
@@ -671,6 +783,13 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
 }
 .cursor-row label b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .cursor-row .cursor-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cursor-row .cursor-head label { flex: 1 1 auto; min-width: 0; }
+/* The window knob beside the cursor it scales: label and entry on one line, small. */
+.cursor-row .cursor-head .num.is-compact { display: flex; align-items: center; gap: 6px; margin: 0; flex: none; }
+.cursor-row .cursor-head .num.is-compact .num-head { margin: 0; }
+.cursor-row .cursor-head .num.is-compact .num-hint { display: none; }
+.cursor-row .cursor-head .num.is-compact .num-label { font-size: 11px; color: var(--dim); }
+.cursor-row .cursor-head .num.is-compact .num-input { width: 40px; }
 /* ▶ play sweeps the cursor over the window; ■ stop while it runs. */
 .cursor-row .play {
   flex: none;
