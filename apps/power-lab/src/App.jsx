@@ -180,12 +180,15 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
   const math = useMemo(() => experimentMath(exp, params, x), [exp, params, x])
   const currentView = exp.views.includes(view) ? view : exp.view
   // Sweeps re-solve the converter across a knob's range; only when shown.
+  // Computed for the sweep view, and for the single-pane losses view that
+  // carries the sweep under it (the regulator).
+  const wantsSweep = currentView === 'sweep' || (exp.scope === false && currentView === 'losses')
   const sweep = useMemo(
-    () => (currentView === 'sweep' ? sweepFor(exp, params) : null),
-    [exp, params, x, currentView],
+    () => (wantsSweep ? sweepFor(exp, params) : null),
+    [exp, params, x, wantsSweep],
   )
   // The same sweep at the defaults, which the sweep's axis is framed on.
-  const baseSweep = useMemo(() => (currentView === 'sweep' ? sweepFor(exp, defaultsOf(exp.id)) : null), [exp, currentView])
+  const baseSweep = useMemo(() => (wantsSweep ? sweepFor(exp, defaultsOf(exp.id)) : null), [exp, wantsSweep])
   // The note's numbers, drawn where they happen (marks.js).
   const marks = useMemo(() => scopeMarks(exp, x), [exp, x])
   const sweepMarkList = useMemo(() => sweepMarks(exp, x, sweep), [exp, x, sweep])
@@ -572,6 +575,25 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                 label={sweep.label}
                 label2={sweep.label2}
               />
+            ) : null}
+            {/* An experiment with no scope has one pane for everything, and
+                its losses are two rows: read at the size of information they
+                leave most of a column empty, and blown up to fill it they read
+                as a poster. So the sweep — the claim that no setting improves
+                the loss above it — comes with them. */}
+            {!twoPanes && currentView === 'losses' && sweep ? (
+              <div className="single-companion">
+                <h3>{sweep.label}</h3>
+                <SweepCanvas
+                  points={sweep.points}
+                  basePoints={baseSweep ? baseSweep.points : null}
+                  sweep={exp.sweep}
+                  at={sweep.at}
+                  marks={sweepMarkList}
+                  label={sweep.label}
+                  label2={sweep.label2}
+                />
+              </div>
             ) : null}
           </div>
         </section>

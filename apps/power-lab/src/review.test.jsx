@@ -60,10 +60,17 @@ describe('the first screen shows the loss, not three flat lines (§11.4.2, §11.
     expect(render('a1')).not.toContain('aria-label="Scope')
     for (const e of EXPERIMENTS.filter((e) => e.id !== 'a1')) expect(render(e.id), e.id).toContain('aria-label="Scope')
   }, 60000)
-  it('A1 opens on its losses, full height', () => {
+  it('A1 opens on its losses — at the size of a reading, with the claim under them', () => {
     const h = render('a1')
     expect(h).toContain('is-single')
     expect(h).toContain('power-row')
+    // Two loss rows blown up to fill a whole column read as a poster rather
+    // than a reading (Reed, 2026-09-02: "just 2 power calculation losses
+    // taking up a massive space"). They keep the first screen — §11.6.5's 7 W
+    // is the number the lab exists to beat — and the sweep that says no
+    // setting improves it comes with them, so the column carries a picture.
+    expect(h).toContain('single-companion')
+    expect(byId.a1.view).toBe('losses')
   })
 })
 

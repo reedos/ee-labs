@@ -63,8 +63,9 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, mar
   const X = (v) => (logX ? Math.log10(v) : v)
   const xs = points.map((q) => X(q.x))
   const ys = points.map((q) => q[sweep.y])
-  const xMin = logX ? xs[0] : sweep.x === 'D' ? 0 : xs[0]
-  const xMax = logX ? xs[xs.length - 1] : sweep.x === 'D' ? 1 : xs[xs.length - 1]
+  const unitAxis = sweep.x === 'D' || sweep.x === 'ratio'
+  const xMin = logX ? xs[0] : unitAxis ? 0 : xs[0]
+  const xMax = logX ? xs[xs.length - 1] : unitAxis ? 1 : xs[xs.length - 1]
   const fmtX = (v) => (ax.fmt ? ax.fmt(v) : fmt(v, ax.unit, 2))
   // A quantity that runs over decades — the buck-boost's output power goes
   // from under two watts to three hundred — is unreadable on a linear axis:
@@ -95,7 +96,7 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, mar
   const fmtYleft = fmtY(ay, yLo, yHi, logY)
   const framed = fitLeftAxis(ctx, area, [fmtYleft(yLo), fmtYleft(yHi), fmtYleft((yLo + yHi) / 2)], k)
   const { sx, sy } = drawFrame(ctx, framed, xMin, xMax, yLo, yHi, (v) => fmtX(logX ? Math.pow(10, v) : v), fmtYleft, {
-    xStep: logX ? 1 : sweep.x === 'D' ? 0.1 : null,
+    xStep: logX ? 1 : unitAxis ? 0.1 : null,
     yStep: logY ? 1 : sweep.y === 'eta' ? 0.2 : null,
     xTitle: ax.unit ? `${ax.label} (${ax.unit})` : sweep.x === 'D' ? 'Duty D' : ax.label,
     yTitle: shared ? `${ay.label}, ${ay2.label} (${ay.unit})` : ay.unit ? `${ay.label} (${ay.unit})` : ay.label,

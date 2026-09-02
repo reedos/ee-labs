@@ -290,6 +290,37 @@ async function run(browser, tag) {
     else console.log(`   A1: loss bars ${Math.round(bar.height)} px tall, ${Math.round(bar.width)} of ${Math.round(pane.width)} px wide`)
   }
 
+  // ------------------------------------ 5c. the drawing is not letterboxed
+
+  {
+    // `max-height` on an SVG does not shrink its box, it letterboxes the
+    // picture inside it: the drawing was rendering at 69 % of its own units,
+    // floating in a slot half again as wide as it needed, which put 9 px
+    // labels on screen at 6 px. Nothing in the suite could see it — the
+    // markup was identical either way (Reed, 2026-09-02: "the circuit
+    // schematics are far too small"). This measures the scale it actually
+    // draws at, on the taller of the two desktops, where the sidebar has the
+    // room. At 1366×768 it is deliberately capped; the fold check owns that.
+    for (const id of ['a1', 'b1', 'e2']) {
+      await pick(id)
+      const m = await page.evaluate(() => {
+        const svg = document.querySelector('.controls .schematic')
+        if (!svg) return null
+        const r = svg.getBoundingClientRect()
+        const [, , w, h] = (svg.getAttribute('viewBox') || '0 0 0 0').split(/\s+/).map(Number)
+        const scale = Math.min(r.width / w, r.height / h)
+        return { drawn: Math.round(w * scale), box: Math.round(r.width), scale: +scale.toFixed(3) }
+      })
+      // The rule is legibility, not tidiness: every size in these drawings —
+      // the 9 px labels most of all — is written in the frame's own units, so
+      // a frame rendered below 1:1 is type below the size it was drawn at.
+      if (!m) F(`${id}: no schematic in the sidebar`)
+      else if (m.scale < 1)
+        F(`${id}: the drawing renders at ${m.scale}× its own units, so its 9 px labels are ${(9 * m.scale).toFixed(1)} px on screen`)
+      else console.log(`   ${id}: drawn at ${m.scale}× (${m.drawn} px of a ${m.box} px slot)`)
+    }
+  }
+
   // ----------------------------------------------- 6. marks on the plot
 
   console.log('\n6. The note\'s numbers are drawn where they happen\n')

@@ -292,13 +292,16 @@ const DRAW = {
   linreg: (p) => (
     <>
       <SrcDC x={SRC} y={MID} label={`V_in ${volts(p.Vin)}`} />
-      <Wire x1={SRC} y1={TOP} x2={112} y2={TOP} />
-      <rect x="112" y="30" width="44" height="24" rx="3" fill="var(--panel-2)" stroke="var(--text)" strokeWidth="1.5" />
-      <text className="sch-sign" x="134" y="47" textAnchor="middle">
-        pass
-      </text>
-      <Tag x={134} y={22}>{`drops ${volts(p.Vin - p.Vo)}`}</Tag>
-      <Wire x1={156} y1={TOP} x2={260} y2={TOP} />
+      <Wire x1={SRC} y1={TOP} x2={114} y2={TOP} />
+      {/* The pass element drawn as the resistor it behaves like. At any
+          operating point it is (V_in − V_out)/I of resistance, and the whole
+          lesson is that this resistance turns the drop into heat; a box
+          labelled "pass" said only that something unexplained sits here. Turn
+          V_out and the value moves — it is a resistor that adjusts itself to
+          hold the output, which is what a regulator is. */}
+      <Res x={134} y={TOP} label={`R_pass ${ohms((p.R * (p.Vin - p.Vo)) / p.Vo)}`} />
+      <Tag x={134} y={62}>{`drops ${volts(p.Vin - p.Vo)}`}</Tag>
+      <Wire x1={154} y1={TOP} x2={260} y2={TOP} />
       <Wire x1={260} y1={TOP} x2={260} y2={MID - 20} />
       <Res x={260} y={MID} vertical label={`R ${ohms(p.R)}`} side="below" />
       <Wire x1={260} y1={MID + 20} x2={260} y2={BOT} />
@@ -651,6 +654,12 @@ export default function Schematic({ exp, x }) {
     <svg
       className="schematic"
       viewBox={`0 0 ${size.w} ${size.h}`}
+      /* The frame's own size and shape, published so the stylesheet can size
+         every drawing at ONE scale rather than squeezing each into a fixed
+         box. A viewBox letterboxed into a short slot shrinks the whole
+         picture, text and all: that is how labels drawn at 9 units came to
+         render at 6 px, and why the schematics read as far too small. */
+      style={{ '--frame-w': size.w, '--frame-h': size.h, aspectRatio: `${size.w} / ${size.h}` }}
       role="img"
       aria-label={`Schematic: ${topology}`}
       data-topology={topology}

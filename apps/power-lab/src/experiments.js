@@ -99,6 +99,11 @@ export const VIEWS = {
 // sweep; SweepCanvas reads the labels and scales from here.
 export const SWEEP_X = {
   D: { label: 'D', unit: '', scale: 'linear', fmt: (v) => v.toFixed(3) },
+  // The linear regulator has no switch and no duty. Its sweep runs over the
+  // conversion ratio it is set to, which is the same number on the axis and a
+  // different quantity entirely — and on the lab's opening screen, an axis
+  // labelled "Duty D" beside a circuit with no switch in it is simply wrong.
+  ratio: { label: 'V_out / V_in', unit: '', scale: 'linear', fmt: (v) => v.toFixed(3) },
   R: { label: 'R_load', unit: 'Ω', scale: 'log' },
   C: { label: 'C', unit: 'F', scale: 'log' },
   fs: { label: 'f_s', unit: 'Hz', scale: 'log' },
@@ -180,12 +185,17 @@ export const EXPERIMENTS = [
     headline: 'eta',
     params: [Vin(), Vo(), R()],
     // A regulator has no time-domain story: its scope would be three flat
-    // lines, and the 7 W is the picture. So the losses take the whole column.
+    // lines, and §11.6.5 is right that the first screen should show the 7 W —
+    // the number the lab exists to beat. What it should NOT be is two bars
+    // blown up to fill a column, which is a poster where a reading belongs.
+    // So the bars are sized as information and the efficiency line sits under
+    // them in the same pane: the loss first, then the claim that no setting
+    // improves it.
     scope: false,
     traces: ['vsw', 'vout', 'iL'],
     views: ['losses', 'measures', 'math', 'sweep'],
     view: 'losses',
-    sweep: { x: 'D', y: 'eta' },
+    sweep: { x: 'ratio', y: 'eta' },
     note:
       'A series pass element drops the difference and carries the load current, so it dissipates their ' +
       'product. From 12 V to 5 V at 1 A: 5 W reach the load and 7 W heat the regulator. Efficiency is ' +

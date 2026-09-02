@@ -99,7 +99,22 @@
 }
 /* The sidebar's schematic is capped so the knobs under it stay in reach; the
    drawing keeps its shape inside the cap. */
-.controls .schematic { display: block; width: 100%; max-height: 104px; margin-bottom: 4px; }
+/* One scale, and a height budget that grows with the window.
+   `max-height` on an SVG letterboxes it: at 104 px the drawing was squeezed to
+   69 % and floated in a slot half again as wide as it needed, which rendered
+   the 9 px labels at 6 px — that is what "far too small" meant. But at
+   1366×768 the sidebar is already full to the fold (verify §8: the first knob
+   has three pixels to spare on B1), so the budget only opens up on a window
+   with the room: unchanged at 768, half again at 840, near twice at 950. */
+.controls .schematic { display: block; width: 100%; height: auto; max-height: 104px; margin-bottom: 4px; }
+/* 190, not 150: the type in these drawings is sized in the frame's own units,
+   so a frame rendered below 1:1 is a frame with type below the size it was
+   drawn at — 9 px labels at 6 px was the whole complaint. 190 is what the
+   tallest frame (the six-pulse bridge, 190 units) needs to reach 1:1; the
+   standard 300×150 frame is then limited by the slot's width instead, at
+   1.12×. verify §5c measures the scale each one actually draws at. */
+@media (min-height: 840px) { .controls .schematic { max-height: 190px; } }
+@media (min-height: 950px) { .controls .schematic { max-height: 220px; } }
 
 .group-active-dot {
   width: 6px;
@@ -316,13 +331,23 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .plot-legend .swatch.dotted { border-top-style: dotted; }
 .plot-legend .swatch.fill { height: 9px; border: 0; background: currentColor; }
 
-/* The losses view alone in its column (the linear regulator) has a whole pane
-   for two bars; they are sized to it rather than to the phone-height rows. */
-.views.is-single .view-body > .losses { margin: auto 0; padding: 24px 0; }
-.views.is-single .power-row { grid-template-columns: 300px 1fr 150px; font-size: 18px; gap: 18px; }
-.views.is-single .power-row .bar { height: 40px; }
-.views.is-single .power-list { gap: 22px; padding: 12px 0; }
-.views.is-single .power-total { font-size: 17px; margin-top: 16px; }
+/* The losses view alone in its column (the linear regulator). It used to be
+   centred and blown up to fill the pane — 40 px bars, 18 px type, two rows
+   floating in the middle of the screen — which read as a poster rather than a
+   reading. Sized as information now, and sitting at the top of the column
+   where a reader's eye starts. */
+.views.is-single .view-body > .losses { padding: 8px 0; }
+.views.is-single .power-row { grid-template-columns: 220px 1fr 120px; font-size: 15px; gap: 14px; }
+.views.is-single .power-row .bar { height: 26px; }
+.views.is-single .power-list { gap: 12px; padding: 6px 0; }
+.views.is-single .power-total { font-size: 15px; margin-top: 12px; }
+/* The claim under the reading: the sweep that says no setting improves the
+   loss above it. It takes the rest of the single pane. */
+.single-companion { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 4px; min-height: 0; margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+/* Not uppercased: the label is η = V_out / V_in, and uppercase turns the eta
+   into a capital Η that reads as a Latin H. */
+.single-companion h3 { margin: 0; font-size: 12px; font-weight: 600; color: var(--dim); }
+.views.is-single .view-body { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
 
 /* Two panes, weighted: the pane the lesson is in gets the room (App.jsx sets
    the rows inline; the reader can drag the split or click a title to swap).
@@ -396,7 +421,7 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
      most of the screen here. */
   .views.is-single .view-body > .losses { margin: 0; padding: 8px 0; }
   .views.is-single .power-row { grid-template-columns: 110px 1fr 74px; font-size: 13px; gap: 10px; }
-  .views.is-single .power-row .bar { height: 22px; }
+  .views.is-single .power-row .bar { height: 26px; }
   .views.is-single .power-list { gap: 12px; }
   .views.is-single .power-total { font-size: 13px; }
 }
