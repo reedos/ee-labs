@@ -11,7 +11,8 @@ import { reportSummary } from './report.js'
 import { forReading, num, scaleOf } from './format.js'
 import { calloutText } from './headlines.js'
 import { theoremShows } from './theorems.js'
-import { EquationsPane, PowerPane, TheveninPane, SuperpositionPane, StatePane, AcPowerPane, Refusal } from './components/panes.jsx'
+import { EquationsPane, PowerPane, TheveninPane, SuperpositionPane, StatePane, AcPowerPane, AssumedPane, Refusal } from './components/panes.jsx'
+import IVCanvas from './components/IVCanvas.jsx'
 import { Headline, Bridge, Readings, TheoremBlock, EquivalentPane } from './components/insight.jsx'
 import SweepCanvas from './components/SweepCanvas.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
@@ -432,14 +433,17 @@ export default function App() {
                     onFocus={() => setOpenKnob(p.key)}
                     onClick={() => setOpenKnob(p.key)}
                   >
-                    {p.kind === 'toggle' ? (
+                    {p.kind === 'toggle' || p.kind === 'choice' ? (
                       <div className="toggle-knob" data-role="toggle" data-key={p.key}>
                         <span className="toggle-label">{p.label}</span>
                         <div className="segmented sm" role="group" aria-label={p.label}>
-                          {[
+                          {/* A toggle is the two-position case of a choice: same
+                              control, so the diode's four models and F6's ideal
+                              switch look and behave alike. */}
+                          {(p.kind === 'choice' ? p.options.map((o) => [o.value, o.label]) : [
                             [true, p.on],
                             [false, p.off],
-                          ].map(([val, label]) => (
+                          ]).map(([val, label]) => (
                             <button
                               key={String(val)}
                               type="button"
@@ -786,6 +790,8 @@ export default function App() {
             <Bridge exp={exp} view={currentView} />
             {theoremShows(exp, currentView) ? <TheoremBlock exp={exp} x={x} params={params} elements={elements} layout={plainLayout} /> : null}
             {currentView === 'reading' && x.sol ? <Readings x={x} elements={elements} power={showsNetPower} /> : null}
+            {currentView === 'iv' && x.sol ? <IVCanvas exp={exp} x={x} p={params} /> : null}
+            {currentView === 'assumed' && x.assumed ? <AssumedPane tried={x.assumed} devices={x.devices} regions={x.regions} /> : null}
             {currentView === 'equivalent' && x.thevenin ? <EquivalentPane x={x} exp={exp} /> : null}
             {currentView === 'scope' && x.tr ? (
               <ScopeCanvas

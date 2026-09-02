@@ -809,6 +809,32 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
 .cursor-row .cursor-ends { display: flex; justify-content: space-between; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; }
 
 /* The state pane: the state equation, then roots and the cursor table. */
+/* The i–v plane (Group I): the diode's curve, the models over it, and the
+   load line. Each curve is named where it leaves the frame, like every other
+   chart in the lab, so there is no legend to read back and forth from. */
+.plot.iv { display: grid; gap: 6px; }
+
+/* Assume, solve, check: every combination, the survivor marked and each
+   rejection carrying the contradiction that killed it. */
+.assumed { display: grid; gap: 8px; }
+.assumed > .hint { margin: 0 8px; }
+.assumed-list { display: grid; gap: 8px; margin: 0; padding: 0 8px; list-style: none; }
+.assumed-list > li { border: 1px solid var(--line); border-left-width: 3px; border-radius: 8px; padding: 8px 10px; background: var(--panel-2); }
+.assumed-list > li.is-answer { border-left-color: var(--accent); }
+.assumed-list > li.is-rejected { border-left-color: var(--line-bright); opacity: 0.82; }
+.assumed-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.assumed-state { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--text); }
+.assumed-verdict { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dim); }
+.assumed-list > li.is-answer .assumed-verdict { color: var(--accent); }
+.assumed-why { margin: 6px 0 0; font-size: 12.5px; color: var(--dim); }
+.assumed-checks { margin: 6px 0 0; padding-left: 16px; font-size: 12.5px; color: var(--dim); }
+.assumed-checks b { color: var(--accent); }
+@media (min-width: 1100px) {
+  .assumed-state { font-size: 14px; }
+  .assumed-why, .assumed-checks { font-size: 13.5px; }
+  .iv-key { font-size: 13px; }
+}
+
 .state { display: grid; gap: 8px; }
 .state .table td sub { font-size: 0.75em; }
 .state > .hint { margin: 0 8px; }

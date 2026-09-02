@@ -14,7 +14,8 @@
 //   value   (x, p) → the number, from the analysis `x` at the knobs `p`
 //   refused what to say when the circuit has no solution to read
 
-import { complex as cx } from '@ee-labs/network'
+import { complex as cx, meanRms } from '@ee-labs/network'
+import { peakAt } from './math.js'
 import { num } from './format.js'
 
 const mag = (z) => cx.cabs(z)
@@ -88,6 +89,37 @@ export const HEADLINES = {
   h4: { label: 'the resonant frequency f₀ = 1/(2π√LC), where |Z| = R', tag: 'f₀', unit: 'Hz', where: 'C1', value: (x) => x.state.w0 / (2 * Math.PI) },
   h5: { label: 'the real power — the part that heats R', tag: 'P', unit: 'W', where: 'R1', value: (x) => realPower(x.ac.volt.R1, x.ac.i.R1) },
   h6: { label: 'the gain at this frequency, |V_C|/|V_s| in dB', tag: '|H|', unit: 'dB', plain: true, where: 'C1', value: (x) => 20 * Math.log10(mag(x.ac.volt.C1) / mag(x.ac.volt.V1)) },
+  e9: { label: 'the threshold the input has to pass to flip it', tag: 'V_trip', unit: 'V', where: 'p', value: (x) => Math.abs(x.tr.at(0).sol.v.p) },
+  i1: { label: 'the drop the diode takes, on this model', tag: 'v_D', unit: 'V', where: 'D1', value: (x) => x.sol.volt.D1 },
+  i2: { label: 'the operating point: where the curve meets the load line', tag: 'i_D', unit: 'A', where: 'D1', value: (x) => x.sol.i.D1 },
+  i3: { label: 'the node, clamped by whichever diode is conducting', tag: 'v_A', unit: 'V', where: 'A', value: (x) => x.sol.v.A },
+  i4: { label: 'the average of the rectified output — its DC value', tag: 'V_dc', unit: 'V', where: 'RL', value: (x, p) => cycleMean(x, (sol) => sol.v.out, p.f) },
+  i5: { label: 'the average out of the bridge — twice a half-wave’s', tag: 'V_dc', unit: 'V', where: 'RL', value: (x, p) => cycleMean(x, (sol) => sol.v.p, p.f) },
+  i6: { label: 'the ripple: how far it falls between two humps', tag: 'ΔV', unit: 'V', where: 'C1', value: (x) => dischargeDrop(x) },
+  i7: { label: 'the level the output cannot pass: V_ref + V_f', tag: 'v_clip', unit: 'V', where: 'D1', value: (x) => peakAt(x, (sol) => sol.v.out) },
+}
+
+/**
+ * The rectifier headlines read the waveform rather than a formula: the mean of
+ * the output over the whole window, and the peak-to-peak ripple over the last
+ * cycle of it (the steady state, not the first charge-up). Each is an integral
+ * or an extremum of the exact solution, so the number in the callout is the
+ * number the plot draws.
+ */
+/** The average over the last whole cycle: the DC a rectifier makes, whatever the window happens to be. */
+const cycleMean = (x, read, f) => meanRms(x.tr, read, Math.max(0, x.tEnd - 1 / f), x.tEnd).mean
+/**
+ * How far a smoothed output falls across the last complete gap between humps.
+ * The gap is a run of the walk with the diode blocking, and across it the
+ * capacitor sees only the load — so this is the ripple, read where the
+ * waveform actually is rather than by scanning a window that might not hold a
+ * whole discharge.
+ */
+function dischargeDrop(x) {
+  const off = x.tr.runs.filter((r) => r.regions.D1 === 'off' && r.t1 > r.t0 && r.t1 < x.tEnd)
+  const last = off[off.length - 1]
+  if (!last) return 0
+  return x.tr.at(last.t0).sol.v.out - x.tr.at(last.t1, 'left').sol.v.out
 }
 
 /**
@@ -125,6 +157,8 @@ export function calloutText(h, x, p) {
  */
 export const VIEW_LEADS = {
   reading: 'Every meter on the circuit at once, the one that matters first.',
+  iv: 'Here is the diode’s own curve, the line the rest of the circuit imposes, and where they meet.',
+  assumed: 'Here is every assumption about the diodes, and what each one said when it was solved.',
   equations: 'Here is how the solver arrived at it — the rows it wrote, and the matrix they make.',
   power: 'Here is where the power goes while it does.',
   thevenin: 'Here is the whole network folded into one source and one resistor.',

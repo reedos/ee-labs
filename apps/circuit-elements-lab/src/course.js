@@ -17,6 +17,7 @@ export const GROUP_INTRO = {
   F: 'Capacitors and inductors remember: their state cannot jump, so every switch starts a curve. One time constant describes every such circuit.',
   G: 'Two states in one loop give a second-order equation, and its two roots decide everything: creep, ring or swing for ever. Damping is the number that says which.',
   H: 'Drive with a sine and every voltage is a sine at the same frequency: a length and an angle. Phasors make Ohm’s law work for capacitors and inductors.',
+  I: 'A diode passes current one way only, so the circuit changes shape as the signal moves. Every earlier method still applies — one region at a time.',
 }
 
 /** The letter of a group name ("C · Series and parallel" → "C"). */
@@ -79,6 +80,14 @@ export const BUILDS = {
   h4: ['h3', 'g1'],
   h5: ['h3', 'b3'],
   h6: ['h3'],
+  e9: ['e3', 'e4'],
+  i1: ['a1', 'e3'],
+  i2: ['i1', 'd5'],
+  i3: ['i1', 'd1'],
+  i4: ['i3', 'h1'],
+  i5: ['i4'],
+  i6: ['i5', 'f3'],
+  i7: ['i3', 'i4'],
 }
 
 /** The experiments this one builds on, in course order. */

@@ -90,12 +90,12 @@ const RULES = {
 export function predictFor(exp) {
   const step = (exp.try || []).findIndex((t) => {
     const keys = Object.keys(t.set || {})
-    const numeric = keys.some((k) => exp.params.some((q) => q.key === k && q.kind !== 'toggle'))
+    const numeric = keys.some((k) => exp.params.some((q) => q.key === k && !q.kind))
     return numeric && !t.refuses && (t.reads || []).some((r) => typeof r[0] === 'string')
   })
   if (step < 0) return null
   const t = exp.try[step]
-  const knobKey = Object.keys(t.set).find((k) => exp.params.some((q) => q.key === k && q.kind !== 'toggle'))
+  const knobKey = Object.keys(t.set).find((k) => exp.params.some((q) => q.key === k && !q.kind))
   const knob = exp.params.find((q) => q.key === knobKey)
   const [path] = t.reads.find((r) => typeof r[0] === 'string')
   const p0 = defaultsOf(exp.id)

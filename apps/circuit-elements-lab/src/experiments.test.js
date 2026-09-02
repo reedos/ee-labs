@@ -37,9 +37,10 @@ function randomParams(exp, seed) {
   }
   const p = {}
   for (const k of exp.params) {
-    if (k.kind === 'toggle') {
-      // Toggles change the circuit's structure, not a value; the random
-      // settings exercise the default structure and the toggle tests the other.
+    if (k.kind) {
+      // A toggle or a choice changes the circuit's structure, not a value; the
+      // random settings exercise the default structure and the try steps the
+      // others.
       p[k.key] = k.default
     } else if (k.scale === 'log') {
       // Keep resistances within four decades of each other so the checks stay
@@ -77,6 +78,12 @@ describe('every experiment', () => {
         if (k.kind === 'toggle') {
           expect(typeof k.default, `${e.id}.${k.key}`).toBe('boolean')
           expect(k.on && k.off, `${e.id}.${k.key} labels`).toBeTruthy()
+          continue
+        }
+        if (k.kind === 'choice') {
+          expect(k.options.length, `${e.id}.${k.key} options`).toBeGreaterThan(2)
+          expect(k.options.map((o) => o.value), `${e.id}.${k.key} default`).toContain(k.default)
+          for (const o of k.options) expect(o.label, `${e.id}.${k.key} label`).toBeTruthy()
           continue
         }
         expect(k.default, `${e.id}.${k.key}`).toBeGreaterThanOrEqual(k.min)
@@ -134,7 +141,10 @@ describe('every experiment', () => {
     // 26 settings × 26 experiments, half of them exact transients with energy
     // integrals: a few seconds alone, longer when the whole monorepo's workers
     // share the machine.
-  }, 30000)
+  // Group I walks every rectifier through its events at 26 settings each, and
+  // an event is a fresh exact solve: real work, and slower than the rest of
+  // the suite put together.
+  }, 180000)
 
   it('prints a system whose unknown count matches the topbar claim', () => {
     for (const e of EXPERIMENTS) {
@@ -242,7 +252,10 @@ describe('every experiment', () => {
         if (e.id === 'e3' && p.ideal) Object.assign(p, { ideal: false, A: 1e5 })
         const x = analyse(e, p)
         expect(x.sol, `${e.id} did not solve`).toBeTruthy()
-        const meters = { v: x.sol.v, i: x.sol.i, volt: x.sol.volt, p: x.sol.p }
+        // The meters the app actually draws: noise snapped to zero, so the
+        // drawing is checked with "0 V" where the app shows "0 V" and not with
+        // the "0.000302 fV" a raw solve would print.
+        const meters = snapNoise(x.sol)
         for (const show of ['i', 'v', 'p']) {
           const problems = layoutProblems(e.layout, drawables(x.net), meters, show)
           expect(problems, `${e.id} (${show}) with ${JSON.stringify(p)}`).toEqual([])
@@ -710,6 +723,11 @@ describe('the notes, sentence by sentence', () => {
 
 // ------------------------------------------------------------------ dynamics
 const DYNAMIC = EXPERIMENTS.filter((e) => e.window)
+// Group I and E9 put a time axis on circuits that have no state at all: what
+// moves is which region the circuit is in, not a capacitor's charge. They are
+// dynamic in the sense that they have a window and a cursor, and the checks
+// below that are about states apply only to the ones that have states.
+const STATEFUL = DYNAMIC.filter((e) => e.net(defaultsOf(e.id)).elements.some((q) => q.type === 'C' || q.type === 'L'))
 const last = (arr) => arr[arr.length - 1]
 const peaks = (tr, q, key) => extrema(tr.t, tr.series(q, key), (t) => tr.at(t).sol[q][key])
 
@@ -717,14 +735,15 @@ const SECOND_ORDER = new Set(['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'h3', 'h
 
 describe('every dynamic experiment (F, G, H)', () => {
   it('has a transient, a state summary, a cursor solve, and the meters read that instant', () => {
-    expect(DYNAMIC.length).toBe(20)
+    expect(DYNAMIC.length).toBe(25)
+    expect(STATEFUL.length).toBe(21)
     for (const e of DYNAMIC) {
       const { x } = at(e.id)
       expect(x.tr, e.id).toBeTruthy()
       expect(x.sol, e.id).toBeTruthy()
       expect(x.cursor).toBeCloseTo(e.cursor * x.tEnd, 12)
       expect(x.sol.maxResidual, e.id).toBeLessThan(1e-9)
-      expect(x.state.n, e.id).toBe(SECOND_ORDER.has(e.id) ? 2 : 1)
+      expect(x.state.n, e.id).toBe(STATEFUL.includes(e) ? (SECOND_ORDER.has(e.id) ? 2 : 1) : 0)
       if (x.state.n === 2) expect(['overdamped', 'critical', 'underdamped', 'undamped']).toContain(x.state.face)
       // The scope's traces are all readable from the cursor solve.
       for (const q of [...e.scope.left.traces, ...(e.scope.right?.traces || [])]) expect(Number.isFinite(x.sol[q.q][q.key]), `${e.id} ${q.label}`).toBe(true)
@@ -732,7 +751,7 @@ describe('every dynamic experiment (F, G, H)', () => {
   })
 
   it('the differential equation is true at the cursor: C·dv/dt is the capacitor’s current, L·di/dt the inductor’s voltage', () => {
-    for (const e of DYNAMIC) {
+    for (const e of STATEFUL) {
       for (const frac of [0, 0.1, 0.37, 0.8, 1]) {
         const x = analyse(e, defaultsOf(e.id), frac * e.window(defaultsOf(e.id)))
         x.state.states.forEach((q, k) => {
@@ -744,7 +763,7 @@ describe('every dynamic experiment (F, G, H)', () => {
   })
 
   it('a state cannot jump: x(0⁺) is x(0⁻) for every experiment, including the ones with a switch', () => {
-    for (const e of DYNAMIC) {
+    for (const e of STATEFUL) {
       const { x } = at(e.id)
       const x0plus = x.tr.at(0).x
       x.before.x0.forEach((v, k) => expect(x0plus[k], `${e.id} state ${k}`).toBeCloseTo(v, 12))
@@ -752,7 +771,7 @@ describe('every dynamic experiment (F, G, H)', () => {
   })
 
   it('energy is conserved along every transient: stored + dissipated = stored₀ + supplied at every sample', () => {
-    for (const e of DYNAMIC) {
+    for (const e of STATEFUL) {
       const { x } = at(e.id)
       const scale = Math.max(...x.energy.points.map((q) => Math.abs(q.supplied) + q.stored)) || 1
       for (const q of x.energy.points) expect(Math.abs(q.gap) / scale, `${e.id} at t = ${q.t}`).toBeLessThan(1e-9)
@@ -1433,7 +1452,7 @@ describe('what the student reads is what the solver did', () => {
         }
       }
     }
-    expect(found).toEqual(['d1:1', 'd1:1', 'd2:5', 'd3:2'])
+    expect(found).toEqual(['d1:1', 'd1:1', 'd2:5', 'd3:2', 'i2:1', 'i2:1'])
   })
 
   it('a refusal reaches the student as a sentence, never as the machine code', () => {
@@ -1453,10 +1472,12 @@ describe('what the student reads is what the solver did', () => {
 
   it('every sine experiment opens with the source well off its zero crossing; H2 and H6 at its peak', () => {
     const sines = EXPERIMENTS.filter((q) => q.net(defaultsOf(q.id)).elements.some((el) => el.wave && el.wave.kind === 'sine'))
-    expect(sines.map((q) => q.id)).toEqual(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+    expect(sines.map((q) => q.id)).toEqual(['e9', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'i4', 'i5', 'i6', 'i7'])
     for (const e of sines) {
       const { p, x } = at(e.id)
-      const vs = x.tr.at(x.cursor).sol.v.in
+      // The source's own voltage, not a node called "in": the bridge's source
+      // floats between two nodes and has no terminal at ground.
+      const vs = x.tr.at(x.cursor).sol.volt.V1
       expect(Math.abs(vs) / p.A, `${e.id} opens at t = ${x.cursor} with v_s = ${vs}`).toBeGreaterThanOrEqual(0.5)
     }
     // H2 opens with the source at its peak: at the corner frequency v_R and v_C then each read half of it, so the meters show KVL as 2.5 V + 2.5 V = 5 V.
@@ -1545,7 +1566,7 @@ describe('every lesson is measured', () => {
       expect(ok, `${label}: "${q.text}" is not a reading, a knob value or the cursor time (have ${values.map((v) => +v.toPrecision(5)).join(', ')})`).toBe(true)
     }
   }
-  const knobValues = (e) => e.params.filter((k) => k.kind !== 'toggle').map((k) => k.default)
+  const knobValues = (e) => e.params.filter((k) => !k.kind).map((k) => k.default)
 
   it('every experiment has a see, two to four tries and a why, and note is see + why', () => {
     for (const e of EXPERIMENTS) {
@@ -1589,6 +1610,7 @@ describe('every lesson is measured', () => {
           const k = knobOf(e, key)
           expect(k, `${label} sets ${key}, which is not a knob`).toBeDefined()
           if (k.kind === 'toggle') expect(typeof v, `${label} ${key}`).toBe('boolean')
+          else if (k.kind === 'choice') expect(k.options.map((o) => o.value), `${label} ${key}`).toContain(v)
           else {
             expect(v, `${label} ${key} below min`).toBeGreaterThanOrEqual(k.min)
             expect(v, `${label} ${key} above max`).toBeLessThanOrEqual(k.max)
@@ -1799,6 +1821,50 @@ const HEADLINE_CLOSED = {
     return (0.5 * p.R1 * p.A ** 2) / (p.R1 ** 2 + (w * p.L1) ** 2)
   },
   h6: (p) => 20 * Math.log10(1 / Math.sqrt(1 + (2 * Math.PI * p.f * p.R1 * p.C1) ** 2)),
+  // ---- the piecewise groups. V_f is the diode default, 0.7 V.
+  e9: (p) => (p.Vsat * p.R1) / (p.R1 + p.R2),
+  // A blocking diode passes nothing, so the node it feeds sits at the source.
+  i1: (p) => (p.E > 0.7 ? 0.7 : p.E),
+  // The exponential has no elementary inverse; bisection on the same two
+  // equations is a genuinely different method from the solver's Newton.
+  i2: (p) => {
+    const nvt = 0.025851999786435535
+    const is = 1e-14
+    const f = (v) => is * (Math.exp(v / nvt) - 1) - (p.E - v) / p.R1
+    let a = Math.min(p.E, 0) - 1
+    let b = Math.max(p.E, 1)
+    for (let k = 0; k < 300; k++) {
+      const c = (a + b) / 2
+      if (f(a) < 0 === f(c) < 0) a = c
+      else b = c
+    }
+    return is * (Math.exp((a + b) / 2 / nvt) - 1)
+  },
+  i3: (p) => Math.max(-0.7, Math.min(0.7, p.E)),
+  // Mean of (V_p sin θ − V_f) over the window the diode conducts.
+  i4: (p) => {
+    const A = Math.abs(p.A)
+    if (A <= 0.7) return 0
+    const phi = Math.asin(0.7 / A)
+    return (2 * A * Math.cos(phi) - 0.7 * (Math.PI - 2 * phi)) / (2 * Math.PI)
+  },
+  // The same, both halves and two drops — hence twice over, and 2V_f.
+  i5: (p) => {
+    const A = Math.abs(p.A)
+    if (A <= 1.4) return 0
+    const phi = Math.asin(1.4 / A)
+    return (2 * A * Math.cos(phi) - 1.4 * (Math.PI - 2 * phi)) / Math.PI
+  },
+  // While the diode blocks, the capacitor sees only the load: the fall across
+  // that gap is exactly V_top(1 − e^(−Δt/RC)), whatever the source is doing.
+  i6: (p, x) => {
+    const off = x.tr.runs.filter((r) => r.regions.D1 === 'off' && r.t1 > r.t0 && r.t1 < x.tEnd)
+    const last = off[off.length - 1]
+    if (!last) return 0
+    const top = x.tr.at(last.t0).sol.v.out
+    return top * (1 - Math.exp(-(last.t1 - last.t0) / (p.RL * p.C1)))
+  },
+  i7: (p) => Math.min(Math.abs(p.A), p.Vref + 0.7),
 }
 
 const closeRel = (got, want, rel, msg) => {
@@ -1813,7 +1879,9 @@ describe('the headline number', () => {
       expect(h, exp.id).toBeTruthy()
       expect(h.label.length, `${exp.id} label`).toBeGreaterThan(8)
       expect(HEADLINE_CLOSED[exp.id], `${exp.id} closed form`).toBeTypeOf('function')
-      const tol = isDynamic(exp) ? 1e-6 : 1e-9
+      // i5's diodes leak by design; i6's ripple can be attovolts; i7 reads a
+      // peak off the drawn samples. Each is right to a part in ten thousand.
+      const tol = ['i5', 'i6', 'i7'].includes(exp.id) ? 1e-4 : isDynamic(exp) ? 1e-6 : 1e-9
       const settings = [defaultsOf(exp.id), ...Array.from({ length: 25 }, (_, k) => randomParams(exp, k * 7919 + 17))]
       for (const p of settings) {
         const x = analyse(exp, p)

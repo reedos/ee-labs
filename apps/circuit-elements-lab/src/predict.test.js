@@ -70,6 +70,8 @@ describe('predict before you turn', () => {
 
   test('experiments whose first knob step is a toggle or a refusal pose no question', () => {
     const none = EXPERIMENTS.filter((e) => !predictFor(e)).map((e) => e.id)
-    expect(none).toEqual(['a3', 'd2', 'd4', 'e3', 'e6', 'g3', 'g5'])
+    // i5's first step chooses a diode model, which is a structural choice
+    // like a toggle: there is no number to predict.
+    expect(none).toEqual(['a3', 'd2', 'd4', 'e3', 'e6', 'g3', 'g5', 'i5'])
   })
 })

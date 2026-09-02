@@ -46,6 +46,10 @@ export function stepMet(step, state) {
     const have = state.params[k]
     if (typeof want === 'boolean') {
       if (!!have !== want) return false
+    } else if (typeof want === 'string') {
+      // A choice — which diode model the circuit uses — is met exactly, like a
+      // toggle: there is nothing between "the curve" and "0.7 V".
+      if (have !== want) return false
     } else if (!(Math.abs(have - want) <= Math.max(0.005 * Math.abs(want), 1e-12))) return false
   }
   if (step.at != null) {

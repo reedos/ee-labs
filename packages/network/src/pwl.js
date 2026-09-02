@@ -166,6 +166,15 @@ export function pnjlim(vnew, vold, vt, vcrit) {
 export const vcritOf = (d) => d.n * d.vt * Math.log((d.n * d.vt) / (Math.SQRT2 * d.is))
 
 /**
+ * SPICE's GMIN: the smallest conductance a junction is allowed to have. Twenty
+ * volts the wrong way round makes e^(v/nV_T) underflow to nothing, and a node
+ * connected to the circuit by a conductance of exactly zero is not connected at
+ * all — the matrix says so. A real junction leaks; a picosiemens is less than
+ * any of them and enough to keep the node attached.
+ */
+export const GMIN = 1e-12
+
+/**
  * The DC operating point of a circuit with exponential diodes, by
  * Newton–Raphson on the companion linearisation, every iteration kept.
  *
@@ -192,7 +201,7 @@ export function newtonDC(net, opts = {}) {
       const vk = v.get(e.id)
       const ex = Math.exp(vk / (d.n * d.vt))
       const i = d.is * (ex - 1)
-      const g = (d.is / (d.n * d.vt)) * ex
+      const g = Math.max((d.is / (d.n * d.vt)) * ex, GMIN)
       companions[e.id] = { g, i0: i - g * vk }
       before[e.id] = { v: vk, i, g }
     }
@@ -227,7 +236,8 @@ export function newtonDC(net, opts = {}) {
   for (const { e, d } of diodes) {
     const vk = v.get(e.id)
     const ex = Math.exp(vk / (d.n * d.vt))
-    companions[e.id] = { g: (d.is / (d.n * d.vt)) * ex, i0: d.is * (ex - 1) - (d.is / (d.n * d.vt)) * ex * vk }
+    const g = Math.max((d.is / (d.n * d.vt)) * ex, GMIN)
+    companions[e.id] = { g, i0: d.is * (ex - 1) - g * vk }
   }
   return { sol: solveDC(norm, { ...opts, companions }), iters, converged, v: Object.fromEntries(v) }
 }
@@ -422,17 +432,28 @@ function firstEvent(tr, devices, regions, t0, tEnd) {
     const walls = regionMargins(d.element, regions[d.id], tr.samples[0].sol)
     for (let w = 0; w < walls.length; w++) {
       const margin = (sol) => regionMargins(d.element, regions[d.id], sol)[w].margin
+      // "Still holding" is judged against the size of the numbers in the
+      // answer, never a fixed epsilon. It matters most at a run's very first
+      // sample: the flip that began this run left the device exactly on its
+      // boundary, so its margin there is zero give or take rounding — a hair
+      // NEGATIVE as often as positive. Read as a bare sign that looks like a
+      // guard which was violated before the run began and never crosses
+      // inside it, and the event is missed entirely: in a bridge the second
+      // diode of the pair never turns on and half the output disappears.
+      const holds = (sol) => margin(sol) >= -marginTol(walls[w], solutionScale(sol))
       const f = (t) => margin(tr.at(t).sol)
       let prev = null
       for (const s of tr.samples) {
-        const m = margin(s.sol)
-        if (prev && s.t > prev.t + eps && prev.m >= 0 && m < 0) {
+        const ok = holds(s.sol)
+        if (prev && s.t > prev.t + eps && prev.ok && !ok) {
           // Bracketed: the guard held at the previous sample and does not now.
-          const t = bisect(f, prev.t, s.t, 0)
+          // When it was already sitting on the boundary there, that instant is
+          // the event and there is nothing to bisect.
+          const t = Math.abs(prev.m) <= marginTol(walls[w], solutionScale(prev.sol)) ? prev.t : bisect(f, prev.t, s.t, 0)
           if (!best || t < best.t) best = { t, id: d.id, to: flipTo(d.element, regions[d.id], walls[w].what), says: walls[w].says }
           break
         }
-        prev = { t: s.t, m }
+        prev = { t: s.t, ok, m: margin(s.sol), sol: s.sol }
       }
     }
   }
@@ -445,8 +466,14 @@ function firstEvent(tr, devices, regions, t0, tEnd) {
 
 /** One walk out of many runs: the samples in order, and `at(t)` sent to the run that owns t. */
 function stitch(runs, events, devices, tEnd) {
+  // A run of no length is the walk resolving two devices that flipped in the
+  // same instant; it holds no part of the waveform, so it contributes no
+  // samples (its one sample is the next run's first).
   const samples = []
-  for (const r of runs) for (const s of r.tr.samples) if (s.t >= r.t0 - 1e-15 && s.t <= r.t1 + 1e-15) samples.push(s)
+  for (const r of runs) {
+    if (r.t1 <= r.t0) continue
+    for (const s of r.tr.samples) if (s.t >= r.t0 - 1e-15 && s.t <= r.t1 + 1e-15) samples.push(s)
+  }
   samples.sort((a, b) => a.t - b.t)
   const runAt = (t) => {
     for (const r of runs) if (t < r.t1) return r
@@ -471,9 +498,9 @@ function stitch(runs, events, devices, tEnd) {
   // a walk that is not one thing: a conducting diode and a blocking one are
   // different circuits, and anything integrating over a segment (energies())
   // has to solve in the right one.
-  const segments = runs.flatMap((r) =>
-    r.tr.segments.filter((s) => s.t0 < r.t1 - 1e-15).map((s) => ({ ...s, dyn: r.tr.dyn, t1: Math.min(s.t1, r.t1) })),
-  )
+  const segments = runs
+    .filter((r) => r.t1 > r.t0)
+    .flatMap((r) => r.tr.segments.filter((s) => s.t0 < r.t1 - 1e-15).map((s) => ({ ...s, dyn: r.tr.dyn, t1: Math.min(s.t1, r.t1) })))
   return {
     dyn: first.dyn,
     norm: first.norm,
@@ -501,8 +528,16 @@ function stitch(runs, events, devices, tEnd) {
 export function conduction(walk, omega = null) {
   const out = {}
   for (const d of walk.devices) {
+    // Two devices flipping at the same instant leave a run of no length
+    // between them, and a conduction window can be split across it. Runs that
+    // meet end to end are one window — that is what a reader is counting.
     const spans = []
-    for (const r of walk.runs) if (r.regions[d.id] === 'on') spans.push([r.t0, r.t1])
+    for (const r of walk.runs) {
+      if (r.regions[d.id] !== 'on') continue
+      const last = spans[spans.length - 1]
+      if (last && Math.abs(last[1] - r.t0) <= 1e-12 * walk.tEnd) last[1] = r.t1
+      else spans.push([r.t0, r.t1])
+    }
     const on = spans.reduce((s, [a, b]) => s + (b - a), 0)
     out[d.id] = { on, spans, fraction: on / (walk.tEnd - (walk.runs[0]?.t0 ?? 0)) }
     if (omega) out[d.id].angle = (on * omega * 180) / Math.PI

@@ -371,7 +371,22 @@ describe('the features fill the frame', () => {
         expect(fill, `${exp.id} ${side}`).toBeGreaterThanOrEqual(MIN_FILL)
       }
     }
-    expect(exempt.sort().join('\n')).toBe(['f7 left: the drive is the tall one', 'h5 left: no bright trace', 'h6 left: the drive is the tall one'].join('\n'))
+    // A rectifier's drive is always the taller trace — the input swings both
+    // ways and the output only one — and showing it beside the output is the
+    // whole point of the picture.
+    expect(exempt.sort().join('\n')).toBe(
+      [
+        'f7 left: the drive is the tall one',
+        'h5 left: no bright trace',
+        'h6 left: the drive is the tall one',
+        'i4 left: the drive is the tall one',
+        'i5 left: the drive is the tall one',
+        'i6 left: the drive is the tall one',
+        'i7 left: the drive is the tall one',
+      ]
+        .sort()
+        .join('\n'),
+    )
   })
 
   it('energy: the stack stands at least 40 % of its frame from zero, on every experiment that keeps the books', () => {

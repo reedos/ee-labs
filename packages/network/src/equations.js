@@ -53,6 +53,19 @@ export function equations(norm, sol = null, opts = {}) {
             kind: 'ohm',
           })
           break
+        case 'GI':
+          // A diode's straight piece: a conductance with a current source
+          // beside it, so it contributes both a term in the node voltages and
+          // a constant — the same two terms a resistor and a source would.
+          terms.push({
+            sign: +1,
+            latex: `\frac{${diffSym(node, other)}}{r_{${sub(eff.id)}}}`,
+            value: val(() => eff.g * (v[node] - v[other])),
+            id: eff.id,
+            kind: 'ohm',
+          })
+          terms.push({ sign, latex: `I_{${sub(eff.id)}}`, value: val(() => sign * eff.i0), id: eff.id, kind: 'source' })
+          break
         case 'I':
           terms.push({ sign, latex: jSym(eff), value: val(() => sign * eff.value), id: eff.id, kind: 'source' })
           break
@@ -154,6 +167,20 @@ export function symbolicSystem(sys, norm) {
   for (const eff of sys.effs) {
     const [a, b] = eff.nodes
     switch (eff.type) {
+      case 'GI': {
+        const g = `\frac{1}{${symbol(`r_{${sub(eff.id)}}`, 1 / eff.g, eff, 'R')}}`
+        const ia = ix(a)
+        const ib = ix(b)
+        if (ia >= 0) put(ia, ia, +1, g, eff.g)
+        if (ib >= 0) put(ib, ib, +1, g, eff.g)
+        if (ia >= 0 && ib >= 0) {
+          put(ia, ib, -1, g, eff.g)
+          put(ib, ia, -1, g, eff.g)
+        }
+        if (ia >= 0) putR(ia, -1, `I_{${sub(eff.id)}}`, eff.i0)
+        if (ib >= 0) putR(ib, +1, `I_{${sub(eff.id)}}`, eff.i0)
+        break
+      }
       case 'R': {
         const R = symbol(rSym(eff), eff.value, eff, eff.from === 'SW' ? 'switchR' : 'R')
         const g = `\\frac{1}{${R}}`

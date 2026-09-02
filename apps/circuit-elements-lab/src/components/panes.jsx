@@ -683,6 +683,49 @@ export function AcPowerPane({ x }) {
 }
 
 /** The solver said no. The message is the lesson; show it whole. */
+/**
+ * Assume, solve, check — every combination on screen, with the contradiction
+ * that killed each one in its own words (I3).
+ *
+ * The point of showing all four rather than the answer is that this IS the
+ * method: a student who can say why "both conducting" is impossible has
+ * learned something a single correct number would not have taught them.
+ */
+export function AssumedPane({ tried, devices, regions }) {
+  if (!tried || !tried.length) return null
+  const name = (r) => devices.map((d) => `${d.id} ${r[d.id] === 'on' ? 'on' : r[d.id] === 'zener' ? 'in breakdown' : 'off'}`).join(', ')
+  const isAnswer = (r) => devices.every((d) => r[d.id] === regions[d.id])
+  return (
+    <div className="assumed" data-role="assumed">
+      <p className="hint">
+        Each row assumes a state for every diode, solves the linear circuit that assumption describes, and then checks the assumption against
+        its own answer. Exactly one survives.
+      </p>
+      <ol className="assumed-list">
+        {tried.map((row, k) => (
+          <li key={k} className={isAnswer(row.regions) ? 'is-answer' : 'is-rejected'} data-role="assumed-row">
+            <div className="assumed-head">
+              <span className="assumed-state">{name(row.regions)}</span>
+              <span className="assumed-verdict">{isAnswer(row.regions) ? 'consistent' : 'contradicts itself'}</span>
+            </div>
+            {isAnswer(row.regions) ? (
+              <ul className="assumed-checks">
+                {row.checks.map((c, j) => (
+                  <li key={j}>
+                    {c.says} <b>✓</b>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="assumed-why">{row.why}</p>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
 export function Refusal({ err }) {
   return (
     <div className="refusal" role="status" data-role="refusal" data-code={err.code}>

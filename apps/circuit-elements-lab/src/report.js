@@ -11,8 +11,14 @@ import { fmtNum } from '@ee-labs/ui'
  */
 export function reportSummary({ id, params, show, view, outcome, cursor }) {
   const exp = byId[id]
-  // A toggle knob reports its position by name; a number, as a number.
+  // A toggle knob reports its position by name, a choice (a diode's model) by
+  // the name of the position it is in, and a number as a number.
   const knob = (k, v) => {
+    if (typeof v === 'string') {
+      const def = exp?.params.find((q) => q.key === k)
+      const pick = def?.options?.find((o) => o.value === v)
+      return `${k} = ${pick ? pick.label : v}`
+    }
     if (typeof v !== 'boolean') return `${k} = ${fmtNum(v)}`
     const def = exp?.params.find((q) => q.key === k)
     return `${k} = ${def ? (v ? def.on : def.off) : v}`

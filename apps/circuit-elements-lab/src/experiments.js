@@ -27,11 +27,13 @@ import { THEOREMS } from './theorems.js'
 // the same order in every experiment, so a tab sits in the same place from one
 // to the next. The reading (every meter at once, the DC groups' opening view)
 // and the two universal views lead; the rest follow the curriculum.
-export const VIEW_ORDER = ['reading', 'equations', 'power', 'thevenin', 'equivalent', 'superposition', 'sweep', 'scope', 'state', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
+export const VIEW_ORDER = ['reading', 'iv', 'assumed', 'equations', 'power', 'thevenin', 'equivalent', 'superposition', 'sweep', 'scope', 'state', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
 
 // What the view switch calls each view, and the hover text that says what it shows.
 export const VIEW_LABELS = {
   reading: { label: 'Reading', title: 'The one number this experiment is about, and every meter on the circuit at once' },
+  iv: { label: 'i–v plane', title: 'Current against voltage: the diode’s curve, the four models of it, the load line the rest of the circuit imposes, and where they meet' },
+  assumed: { label: 'Assumed states', title: 'Every combination of diode states, each solved and then checked against its own answer — the three that contradict themselves, and the one that does not' },
   equations: { label: 'Equations', title: 'The equations the solver built: the two laws in words, each row with live values, the matrix in letters and in numbers' },
   power: { label: 'Power', title: 'p = v × i for every element — who delivers, who absorbs, and the two totals matching' },
   thevenin: { label: 'Thévenin', title: 'The equivalent seen at the port, found three ways' },
@@ -67,6 +69,7 @@ export const GROUPS = [
   'F · Elements that remember',
   'G · Second order',
   'H · Sinusoids and phasors',
+  'I · The diode',
 ]
 
 // ------------------------------------------------------------ knobs
@@ -86,6 +89,21 @@ const Deg = (key, label, def) => ({ key, label, unit: '°', min: -180, max: 180,
 const Win = (key, label, unit, def, min = 1, max = 20) => ({ key, label, unit, min, max, scale: 'linear', default: def })
 /** A two-position knob: `on` and `off` are the texts of the two positions. */
 const Toggle = (key, label, def, on, off, hint) => ({ key, label, kind: 'toggle', default: def, on, off, hint })
+/** More than two positions of the same control — the diode's four models. */
+const Choice = (key, label, def, options, hint) => ({ key, label, kind: 'choice', default: def, options, hint })
+const DIODE_MODEL = (def = 'drop', hint) =>
+  Choice(
+    'model',
+    'Diode model',
+    def,
+    [
+      { value: 'ideal', label: 'ideal' },
+      { value: 'drop', label: '0.7 V' },
+      { value: 'pwl', label: '+ r_d' },
+      { value: 'exp', label: 'curve' },
+    ],
+    hint,
+  )
 /** Resistances the note talks about, offered as chips under the knob. */
 // Preset chips carry their unit so 1591.5 reads as 1.59 kHz, not as a bare number.
 const chips = (knob, presets) => ({ ...knob, presets: presets.map((v) => ({ value: v, label: fmt(v, knob.unit, 3) })) })
@@ -103,7 +121,7 @@ const TOP = 40
 const BOT = 140
 const MID = 90
 const LEGS = [180, 270, 360]
-const leg = (id, x) => [{ el: id, x, y: MID, dir: 'v' }, { wire: [x, TOP, x, MID - 20] }, { wire: [x, MID + 20, x, BOT] }]
+const leg = (id, x, flip = false) => [{ el: id, x, y: MID, dir: 'v', flip }, { wire: [x, TOP, x, MID - 20] }, { wire: [x, MID + 20, x, BOT] }]
 const src = (id, x = 50) => leg(id, x)
 const top = (id, x) => [{ el: id, x, y: TOP, dir: 'h' }]
 const rail = (x1, x2, y) => ({ wire: [x1, y, x2, y] })
@@ -111,7 +129,7 @@ const node = (name, x, y, side = 't') => ({ node: name, x, y, side })
 const gnd = (x, y = BOT) => ({ gnd: [x, y] })
 
 /** Source on the left, a series element on top, then N legs to ground. */
-function ladder(legs, series = 'R1') {
+function ladder(legs, series = 'R1', flipped = []) {
   const xs = LEGS.slice(0, legs.length)
   const last = xs[xs.length - 1]
   return {
@@ -122,7 +140,7 @@ function ladder(legs, series = 'R1') {
       rail(50, 100, TOP),
       ...top(series, 120),
       rail(140, last, TOP),
-      ...legs.flatMap((id, k) => leg(id, xs[k])),
+      ...legs.flatMap((id, k) => leg(id, xs[k], flipped.includes(id))),
       rail(50, last, BOT),
       gnd(115),
       node('in', 50, TOP, 't'),
@@ -131,8 +149,12 @@ function ladder(legs, series = 'R1') {
   }
 }
 
-/** Source on the left, elements around one loop. */
-function loop(series) {
+/**
+ * Source on the left, elements around one loop. `names` renames the nodes
+ * between the series elements, for a circuit whose middle node has a name of
+ * its own in the netlist — a rectifier's output, say, rather than n1.
+ */
+function loop(series, names = []) {
   // series: ids along the top and down the right side, in order.
   const items = [...src('V1'), rail(50, 340, BOT), gnd(115), node('in', 50, TOP, 't')]
   const xs = [120, 230]
@@ -140,7 +162,7 @@ function loop(series) {
   series.slice(0, -1).forEach((id, k) => {
     items.push(rail(x, xs[k] - 20, TOP), ...top(id, xs[k]))
     x = xs[k] + 20
-    items.push(node(`n${k + 1}`, x + 35, TOP, 't'))
+    items.push(node(names[k] || `n${k + 1}`, x + 35, TOP, 't'))
   })
   items.push(rail(x, 340, TOP), ...leg(series[series.length - 1], 340))
   return { w: W, h: H, items }
@@ -157,6 +179,167 @@ const amp = ({ x = AMP.x, y = AMP.y, invertTop = true, side = 'r', run = 70 } = 
   { wire: [x + 38, y, x + run, y] },
   node('out', x + run, y, side),
 ]
+// ------------------------------------------------------------ group I shapes
+/**
+ * The bridge, drawn square rather than as the usual diamond: the two AC
+ * terminals face each other across the source, two diodes climb to the + rail
+ * and two climb from the − rail, and the load hangs between the rails on the
+ * right. `flip` turns a vertical diode over so its anode is the lower end,
+ * which is what makes all four point the way the current is allowed to go.
+ */
+function bridgeLayout() {
+  // Two diodes climb from each AC terminal to the + rail and two climb from
+  // the − rail to each; the load hangs on the left between the rails. `flip`
+  // turns a vertical diode over so its anode is the lower end, which is what
+  // makes all four point the way current is allowed to go.
+  //
+  // This is the one drawing wider than the usual 420: a bridge is four columns
+  // of text — two diode labels each side of a source whose own label carries an
+  // amplitude AND a frequency — and at 420 they cannot all stand clear of each
+  // other. The frame is sized from the drawing, so a wider one simply renders
+  // shorter.
+  const [xa, xb] = [130, 380]
+  const [top, bot] = [36, 150]
+  const [hi, lo] = [62, 124]
+  const arm = (id, x, y) => [
+    { el: id, x, y, dir: 'v', flip: true },
+    { wire: [x, y - 20, x, y - 26] },
+    { wire: [x, y + 20, x, y + 26] },
+  ]
+  return {
+    w: 500,
+    h: H,
+    items: [
+      ...arm('D1', xa, hi),
+      ...arm('D3', xa, lo),
+      ...arm('D2', xb, hi),
+      ...arm('D4', xb, lo),
+      { el: 'V1', x: 275, y: MID, dir: 'h' },
+      { wire: [xa, MID, 255, MID] },
+      { wire: [295, MID, xb, MID] },
+      rail(xa, xb, top),
+      rail(xa, xb, bot),
+      { wire: [xa, top, 40, top] },
+      { el: 'RL', x: 40, y: MID, dir: 'v' },
+      { wire: [40, top, 40, MID - 20] },
+      { wire: [40, MID + 20, 40, bot] },
+      { wire: [40, bot, xa, bot] },
+      gnd(200, bot),
+      node('a', 180, MID, 't'),
+      node('b', xb, MID, 'r'),
+      node('p', 250, top, 't'),
+    ],
+  }
+}
+
+/** Source with its own resistance, a diode, then whatever hangs on the output. */
+function smoothingLayout(legs) {
+  // Source, its own resistance, the diode, then the load and the reservoir
+  // side by side. The two node dots sit on the rail between the elements
+  // rather than at the corners, where a diode's own label already is.
+  // Wide apart: a reading can be as long as "0.0000151 fA" when the capacitor
+  // has run right down, and it hangs to the right of the load.
+  const xs = [290, 390]
+  const items = [
+    ...src('V1'),
+    rail(50, 100, TOP),
+    ...top('RS', 120),
+    rail(140, 210, TOP),
+    ...top('D1', 230),
+    rail(250, xs[0], TOP),
+    node('src', 50, TOP, 't'),
+    node('in', 175, TOP, 't'),
+    node('out', 285, TOP, 't'),
+  ]
+  legs.forEach((id, k) => {
+    if (k) items.push(rail(xs[k - 1], xs[k], TOP))
+    items.push(...leg(id, xs[k]))
+  })
+  items.push(rail(50, xs[legs.length - 1], BOT), gnd(115))
+  return { w: 480, h: H, items }
+}
+
+/**
+ * The clipper: the signal arrives through a resistance and two diodes stand
+ * between the node and their own reference rails, one each way up.
+ */
+function clipperLayout() {
+  // The signal arrives through a resistance and two diodes stand between the
+  // node and their own reference rails, one each way up. The branches are set
+  // well apart — every label on them hangs to the right — and the drawing is
+  // wider than the usual 420 to hold them.
+  const [xh, xl] = [280, 400]
+  // The diode high on the branch and its reference low on it, so the node
+  // between them has room for its own label.
+  const branch = (d, v, x, flip) => [
+    { el: d, x, y: 62, dir: 'v', flip },
+    { wire: [x, TOP, x, 42] },
+    { wire: [x, 82, x, 100] },
+    { el: v, x, y: 120, dir: 'v' },
+    { wire: [x, 140, x, BOT] },
+  ]
+  return {
+    w: 500,
+    h: H,
+    items: [
+      ...src('V1'),
+      rail(50, 100, TOP),
+      ...top('R1', 120),
+      rail(140, xl, TOP),
+      node('in', 50, TOP, 't'),
+      node('out', 180, TOP, 't'),
+      ...branch('D1', 'V2', xh, false),
+      ...branch('D2', 'V3', xl, true),
+      node('hi', xh, 91, 'l'),
+      node('lo', xl, 91, 'l'),
+      rail(50, xl, BOT),
+      gnd(115),
+    ],
+  }
+}
+
+/**
+ * The Schmitt trigger: the signal at the − input, the output looping back to
+ * the + one. The feedback goes under the op-amp rather than over it, so it
+ * never has to cross the input wire — the one thing this shape must not do,
+ * since a crossing on a schematic reads as a connection.
+ */
+function schmittLayout() {
+  // The triangle sits right of centre so its own reading, which hangs below
+  // it, clears the feedback's climb back up to the + input.
+  const a = { x: 250, y: 60, invertTop: true }
+  const [minus, plus] = [a.y - 12, a.y + 12]
+  const back = 150
+  // The source's label is the widest text on this drawing (an amplitude and a
+  // frequency), and it hangs to the right of the source across the middle of
+  // the picture. Everything else is placed to leave that band alone: the input
+  // runs above it, the feedback below and then up the far right of it.
+  return {
+    w: W,
+    h: H,
+    items: [
+      { el: 'V1', x: 40, y: 95, dir: 'v' },
+      { wire: [40, 75, 40, minus] },
+      { wire: [40, minus, a.x, minus] },
+      { wire: [40, 115, 40, 130] },
+      gnd(40, 130),
+      node('in', 150, minus, 't'),
+      ...amp(a),
+      { wire: [a.x + 70, a.y, a.x + 70, back] },
+      { el: 'R2', x: 270, y: back, dir: 'h' },
+      { wire: [290, back, a.x + 70, back] },
+      { wire: [250, back, 214, back] },
+      node('p', 214, back, 'b'),
+      { wire: [214, back, 214, plus] },
+      { wire: [214, plus, a.x, plus] },
+      { wire: [214, back, 180, back] },
+      { el: 'R1', x: 150, y: back, dir: 'h' },
+      { wire: [130, back, 110, back] },
+      gnd(110, back),
+    ],
+  }
+}
+
 /** A load hung from the output node: straight down to a ground of its own. */
 const outLoad = (id, x = AMP.x + 70, y = AMP.y) => [
   { wire: [x, y, x, y + 20] },
@@ -637,7 +820,7 @@ export const EXPERIMENTS = [
     id: 'd5',
     group: GROUPS[3],
     name: 'Thévenin, three ways',
-    terms: ['thevenin', 'linear'],
+    terms: ['thevenin', 'linear', 'loadline'],
     params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 3000)],
     net: (p) => ({
       elements: [
@@ -779,7 +962,7 @@ export const EXPERIMENTS = [
     id: 'e3',
     group: GROUPS[4],
     name: 'Comparator: an op-amp with no feedback',
-    terms: ['opamp', 'gain', 'feedback'],
+    terms: ['opamp', 'gain', 'feedback', 'saturation'],
     params: [
       Vs('E', 'Input V₁', 0.001),
       Toggle('ideal', 'Op-amp', true, 'ideal', 'finite gain', 'ideal: infinite gain, so any input difference saturates the output. Finite: the gain knob below applies.'),
@@ -935,6 +1118,49 @@ export const EXPERIMENTS = [
     sweepY: 'v',
     claim: { buffer: true },
   },
+  {
+    id: 'e9',
+    group: GROUPS[4],
+    name: 'Positive feedback: the Schmitt trigger',
+    terms: ['hysteresis', 'saturation', 'feedback'],
+    params: [
+      Vs('A', 'Input amplitude', 5),
+      Freq('f', 'Frequency', 50),
+      chips({ key: 'Vsat', label: 'Supply rails ±', unit: 'V', min: 1, max: 24, scale: 'linear', default: 12 }, [5, 12, 15]),
+      R('R1', 'R₁', 10000),
+      R('R2', 'R₂', 90000),
+      Win('N', 'Window', 'cycles', 2),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'sine', amp: p.A, freq: p.f } },
+        { type: 'OPAMP', id: 'U1', nodes: ['out'], ctrl: ['p', 'in'], vsat: p.Vsat },
+        { type: 'R', id: 'R1', nodes: ['p', 'gnd'], value: p.R1 },
+        { type: 'R', id: 'R2', nodes: ['out', 'p'], value: p.R2 },
+      ],
+    }),
+    layout: schmittLayout(),
+    window: cyclesWindow,
+    // Both rails are consistent at t = 0 and only history decides: this one
+    // starts high, and says so rather than letting the search pick.
+    start: { U1: 'high' },
+    cursor: 0.1,
+    scope: {
+      left: {
+        unit: 'V',
+        traces: [
+          { q: 'v', key: 'in', label: 'v_in' },
+          { q: 'v', key: 'p', label: 'threshold', dim: true },
+          { q: 'v', key: 'out', label: 'v_out' },
+        ],
+      },
+    },
+    out: { q: 'v', key: 'out', label: 'v_out' },
+    show: 'v',
+    view: 'scope',
+    views: ['reading', 'equations', 'scope'],
+    claim: { schmitt: true },
+  },
 
   // ============================================================== F
   {
@@ -1083,7 +1309,7 @@ export const EXPERIMENTS = [
     id: 'f6',
     group: GROUPS[5],
     name: 'Opening a switch on an inductor: the spark',
-    terms: ['inductor', 'state', 'timeconstant'],
+    terms: ['inductor', 'state', 'timeconstant', 'diode'],
     params: [
       Vs('E', 'Source V₁', 12),
       R('R1', 'R', 1000),
@@ -1468,6 +1694,192 @@ export const EXPERIMENTS = [
     phasor: { volts: ['R1', 'C1'], total: 'V1', current: 'R1' },
     circuitLab: rcToCircuitLab,
     claim: { bode: true },
+  },
+  // ============================================================== I
+  {
+    id: 'i1',
+    group: GROUPS[8],
+    name: 'The diode’s curve, and four ways to approximate it',
+    terms: ['diode', 'thermalvoltage'],
+    params: [Vs('E', 'Source V₁', 5), chips(R('R1', 'R', 1000), [100, 1000, 10000]), DIODE_MODEL('drop', 'which description of the diode the meters use')],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
+        { type: 'R', id: 'R1', nodes: ['in', 'n1'], value: p.R1 },
+        { type: 'D', id: 'D1', nodes: ['n1', 'gnd'], model: p.model },
+      ],
+    }),
+    layout: loop(['R1', 'D1']),
+    iv: { element: 'D1', source: 'E', series: 'R1' },
+    show: 'v',
+    view: 'iv',
+    views: ['reading', 'iv', 'equations', 'power'],
+    claim: { models: true },
+  },
+  {
+    id: 'i2',
+    group: GROUPS[8],
+    name: 'The load line, and how a simulator finds the point',
+    terms: ['loadline', 'operatingpoint', 'newton'],
+    params: [Vs('E', 'Source V₁', 5), chips(R('R1', 'R', 150), [47, 150, 470]), DIODE_MODEL('exp', 'the curve is what Newton’s method is for')],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
+        { type: 'R', id: 'R1', nodes: ['in', 'n1'], value: p.R1 },
+        { type: 'D', id: 'D1', nodes: ['n1', 'gnd'], model: p.model },
+      ],
+    }),
+    layout: loop(['R1', 'D1']),
+    iv: { element: 'D1', source: 'E', series: 'R1', iterations: true },
+    show: 'i',
+    view: 'iv',
+    views: ['reading', 'iv', 'equations', 'power'],
+    claim: { loadline: true },
+  },
+  {
+    id: 'i3',
+    group: GROUPS[8],
+    name: 'Assume, solve, check',
+    terms: ['assumedstate', 'clamp'],
+    params: [chips(Vs('E', 'Source V₁', 5), [-5, 0.5, 5]), R('R1', 'R', 1000), DIODE_MODEL('drop')],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
+        { type: 'R', id: 'R1', nodes: ['in', 'A'], value: p.R1 },
+        { type: 'D', id: 'D1', nodes: ['A', 'gnd'], model: p.model },
+        { type: 'D', id: 'D2', nodes: ['gnd', 'A'], model: p.model },
+      ],
+    }),
+    layout: ladder(['D1', 'D2'], 'R1', ['D2']),
+    show: 'v',
+    view: 'assumed',
+    views: ['reading', 'assumed', 'equations', 'power'],
+    claim: { assumed: true },
+  },
+  {
+    id: 'i4',
+    group: GROUPS[8],
+    name: 'The half-wave rectifier',
+    terms: ['rectifier', 'conduction'],
+    params: [Vs('A', 'Amplitude', 10), chips(Freq('f', 'Frequency', 50), [50, 60, 1000]), R('RL', 'R_L', 1000), DIODE_MODEL('drop'), Win('N', 'Window', 'cycles', 2)],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'sine', amp: p.A, freq: p.f } },
+        { type: 'D', id: 'D1', nodes: ['in', 'out'], model: p.model },
+        { type: 'R', id: 'RL', nodes: ['out', 'gnd'], value: p.RL },
+      ],
+    }),
+    layout: loop(['D1', 'RL'], ['out']),
+    window: cyclesWindow,
+    // A quarter cycle in: the source at its peak, the diode conducting.
+    cursor: 0.25 / 2,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_s', dim: true }, { q: 'v', key: 'out', label: 'v_out' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'D1', label: 'i' }] },
+    },
+    out: { q: 'v', key: 'out', label: 'v_out' },
+    show: 'v',
+    view: 'scope',
+    views: ['reading', 'equations', 'power', 'scope'],
+    claim: { halfwave: true },
+  },
+  {
+    id: 'i5',
+    group: GROUPS[8],
+    name: 'The full-wave bridge doubles the ripple',
+    terms: ['rectifier', 'rms', 'ripple'],
+    params: [Vs('A', 'Amplitude', 10), chips(Freq('f', 'Frequency', 50), [50, 60, 1000]), R('RL', 'R_L', 1000), DIODE_MODEL('drop'), Win('N', 'Window', 'cycles', 2)],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['a', 'b'], value: 0, wave: { kind: 'sine', amp: p.A, freq: p.f } },
+        // Every blocking diode leaks a little, and here that is not a detail:
+        // with four perfect open circuits the source's own two terminals touch
+        // nothing at all and have no voltage — the solver says so. Ten
+        // megohms is a real part's reverse resistance and 0.006 % of the load.
+        { type: 'D', id: 'D1', nodes: ['a', 'p'], model: p.model, roff: 1e7 },
+        { type: 'D', id: 'D2', nodes: ['b', 'p'], model: p.model, roff: 1e7 },
+        { type: 'D', id: 'D3', nodes: ['gnd', 'a'], model: p.model, roff: 1e7 },
+        { type: 'D', id: 'D4', nodes: ['gnd', 'b'], model: p.model, roff: 1e7 },
+        { type: 'R', id: 'RL', nodes: ['p', 'gnd'], value: p.RL },
+      ],
+    }),
+    layout: bridgeLayout(),
+    window: cyclesWindow,
+    cursor: 0.25 / 2,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'volt', key: 'V1', label: 'v_s', dim: true }, { q: 'v', key: 'p', label: 'v_out' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'RL', label: 'i_L' }] },
+    },
+    out: { q: 'v', key: 'p', label: 'v_out' },
+    show: 'v',
+    view: 'scope',
+    views: ['reading', 'equations', 'power', 'scope'],
+    claim: { bridge: true },
+  },
+  {
+    id: 'i6',
+    group: GROUPS[8],
+    name: 'Smoothing: the peak rectifier, exactly and approximately',
+    terms: ['ripple', 'conduction'],
+    params: [
+      Vs('A', 'Amplitude', 10),
+      Freq('f', 'Frequency', 50),
+      { key: 'RS', label: 'Source R_S', unit: 'Ω', min: 1, max: 100, scale: 'log', default: 5 },
+      R('RL', 'R_L', 1000),
+      chips(Cap('C1', 'C', 100e-6), [22e-6, 100e-6, 470e-6]),
+      DIODE_MODEL('drop'),
+      Win('N', 'Window', 'cycles', 12),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['src', 'gnd'], value: 0, wave: { kind: 'sine', amp: p.A, freq: p.f } },
+        { type: 'R', id: 'RS', nodes: ['src', 'in'], value: p.RS },
+        { type: 'D', id: 'D1', nodes: ['in', 'out'], model: p.model },
+        { type: 'R', id: 'RL', nodes: ['out', 'gnd'], value: p.RL },
+        { type: 'C', id: 'C1', nodes: ['out', 'gnd'], value: p.C1 },
+      ],
+    }),
+    layout: smoothingLayout(['RL', 'C1']),
+    window: cyclesWindow,
+    points: 1201,
+    cursor: 0.9,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'src', label: 'v_s', dim: true }, { q: 'v', key: 'out', label: 'v_out' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'D1', label: 'i_D' }] },
+    },
+    out: { q: 'v', key: 'out', label: 'v_out' },
+    show: 'v',
+    view: 'scope',
+    views: ['reading', 'equations', 'power', 'scope', 'energy'],
+    claim: { ripple: true },
+  },
+  {
+    id: 'i7',
+    group: GROUPS[8],
+    name: 'The clipper: a rail the signal cannot pass',
+    terms: ['clipper', 'clamp'],
+    params: [Vs('A', 'Amplitude', 10), Freq('f', 'Frequency', 50), R('R1', 'R', 1000), chips({ key: 'Vref', label: 'Reference ±', unit: 'V', min: 0.5, max: 20, scale: 'linear', default: 3 }, [1, 3, 6]), DIODE_MODEL('drop'), Win('N', 'Window', 'cycles', 2)],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'sine', amp: p.A, freq: p.f } },
+        { type: 'R', id: 'R1', nodes: ['in', 'out'], value: p.R1 },
+        { type: 'D', id: 'D1', nodes: ['out', 'hi'], model: p.model },
+        { type: 'V', id: 'V2', nodes: ['hi', 'gnd'], value: p.Vref },
+        { type: 'D', id: 'D2', nodes: ['lo', 'out'], model: p.model },
+        { type: 'V', id: 'V3', nodes: ['lo', 'gnd'], value: -p.Vref },
+      ],
+    }),
+    layout: clipperLayout(),
+    window: cyclesWindow,
+    cursor: 0.25 / 2,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_in', dim: true }, { q: 'v', key: 'out', label: 'v_out' }] },
+    },
+    out: { q: 'v', key: 'out', label: 'v_out' },
+    show: 'v',
+    view: 'scope',
+    views: ['reading', 'equations', 'power', 'scope'],
+    claim: { clipper: true },
   },
 ]
 

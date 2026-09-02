@@ -615,7 +615,7 @@ knob is declined with the reason, never clamped into a different circuit).
   −89.4° at 100 f_c; all 241 sweep points equal the closed form to 10⁻¹². The
   hand-over — **Open in Circuit Lab** — is exact and tested both ways (§8 Phase 3).
 
-### Group I — The diode: the first nonlinear element (7 + 1 stretch)
+### Group I — The diode: the first nonlinear element (7 + 1 stretch) · built
 
 - **I1 · The curve, and four ways to approximate it.** Shockley:
   `i = I_s (e^{v/nV_T} − 1)`, `V_T = kT/q = 25.85 mV`. Overlaid: the ideal switch,
@@ -655,6 +655,17 @@ knob is declined with the reason, never clamped into a different circuit).
   `V_out = V_z` while `I_z > 0`; increase the load until the Zener starves and
   regulation is lost at `R_L = V_z R_s / (V_s − V_z)`. Measured: regulated band;
   the drop-out load.
+
+*Built 2026-09-02 as I1–I7, with two changes worth naming. I3 is two diodes back
+to back across a node rather than two in series: the same four assumed states and
+the same three contradictions, but one knob walks the reader through all three
+outcomes (clamped high, clamped low, and neither conducting), and one of the
+rejections is refused by the solver itself rather than by a guard — two conducting
+diodes in opposite directions are a short. And I7 is the clipper alone; the
+clamper and the Zener are Phase 5's if they are cheap. The bridge's blocking
+diodes carry ten megohms rather than an infinite resistance, because with four
+perfect open circuits the source's own terminals connect to nothing and have no
+voltage at all — the solver says so, by name.*
 
 ---
 
@@ -1092,7 +1103,28 @@ state, and averaging.
 4. **Phase 4 — Piecewise-linear.** Regions, events by bisection, assumed-state DC,
    Newton for the exponential diode (DC only, with the refusal in time), rails on the
    op-amp, i–v plane view. **Group I, E9.** Exit: I6's exact-vs-approximate; event
-   continuity invariant.
+   continuity invariant. *Shipped dark 2026-09-02.* `packages/network/src/diode.js`
+   holds the four models (ideal switch, constant drop, V_f + r_d, Shockley), the
+   regions each device can be in and the guard that holds each one; `pwl.js` holds
+   the three ways a region is decided — `assumedState` (assume, solve, check, with
+   every rejection's own contradiction kept), `newtonDC` (SPICE's junction limiting
+   and GMIN, every iteration kept) and `pwlTransient` (exact inside a region, the
+   instant it ends found by bisection on that exact solution, the states carried
+   across). `mna.js` gains one stamp — `GI`, a conductance beside a current source —
+   which is both the sloped diode and Newton's linearisation; `dynamics.js` returns
+   the affine term a conducting diode adds, exactly zero for every circuit without
+   one. Two new views: the **i–v plane** (the curve, the four models over it, the
+   load line, the operating point, and Newton's iterates walking down to it) and
+   **assumed states** (all four combinations, three rejecting themselves). I1–I7
+   and E9 — 54 experiments. Three refusals carry their reason: an exponential diode
+   asked for a response in time, an ideal diode reaching a capacitor with nothing
+   between them, and a Schmitt trigger asked for one DC answer when it has three.
+   Two engine bugs the measured claims caught: a guard already violated at a run's
+   first sample never crossed inside it, so a bridge's second diode never turned on
+   and half the output vanished (the peak was still right — only an average over
+   more than one cycle saw it); and a stitched walk published overlapping segments,
+   so the energy integral picked the wrong propagator. Tests: `pwl.test.js` (30) and
+   Group I's own claims in `experiments.test.js`; 2528 in the monorepo.
 5. **Phase 5 — Polish.** Stretch items (I8, GBW toggle) if cheap; mobile pass; the
    equations view's progressive disclosure tuned on a phone.
 6. **Phase 6 — Release gate.** REVIEW_PLAYBOOK audit, screenshot pass, Reed's

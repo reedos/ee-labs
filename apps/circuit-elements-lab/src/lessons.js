@@ -18,11 +18,33 @@
  * source), energy.<stored|dissipated|supplied> at the cursor, omega, period,
  * H.<mag|db|deg>, Z.<mag|deg>, ac.<P|Q|S|pf>.
  */
-import { complex as cx } from '@ee-labs/network'
-import { atDrive } from './math.js'
+import { complex as cx, meanRms } from '@ee-labs/network'
+import { atDrive, peakAt } from './math.js'
 
 const DEG = 180 / Math.PI
 const wrap = (d) => ((((d + 180) % 360) + 360) % 360) - 180
+
+/**
+ * The average of a rectified output over the whole window — the DC a rectifier
+ * is built to make. Integrated on the exact solution, with every corner of the
+ * waveform (a diode turning on, the source's own breakpoints) a node of the
+ * integral rather than something a panel straddles.
+ */
+const meanOut = (x, read, f) => meanRms(x.tr, read, Math.max(0, x.tEnd - 1 / f), x.tEnd).mean
+/** One whole conduction window as an angle of the drive. */
+const oneSpan = (x) => {
+  const spans = x.conduction.D1.spans.filter(([a, b]) => a > 0 && b < x.tEnd)
+  const [a, b] = spans[0] || x.conduction.D1.spans[0]
+  return ((b - a) * x.omega * 180) / Math.PI
+}
+/**
+ * The last cycle of a smoothed output: the steady state, after the first
+ * charge-up has passed, which is the part a ripple figure is about.
+ */
+const lateOut = (x) => {
+  const f = x.tr.norm.elements.find((e) => e.wave && e.wave.kind === 'sine').wave.freq
+  return x.tr.samples.filter((s) => s.t > x.tEnd - 1 / f).map((s) => s.sol.v.out)
+}
 
 /** Linear interpolation of the energy ledger at time t. */
 function energyAt(x, t, key) {
@@ -815,5 +837,312 @@ export const LESSONS = {
       [(x, p, again, exp) => readQuantity(again({ f: 1592 }), { ...p, f: 1592 }, 'H.db', exp) - readQuantity(again({ f: 15920 }), { ...p, f: 15920 }, 'H.db', exp), 19.96],
       [(x, p, again, exp) => readQuantity(again({ f: 1e5 }), { ...p, f: 1e5 }, 'H.deg', exp), -89.91],
     ],
+  },
+  e9: {
+    see:
+      'The output feeds back to the + input, so the op-amp defends the rail it is on: the threshold moves with the ' +
+      'output. It sits at 12.0 V until the input climbs past 1.20 V, then slams to the other rail and stays there ' +
+      'until the input falls the same distance the other side of zero. That is hysteresis.',
+    seeAt: 0,
+    seeReads: [[(x) => x.tr.at(0).sol.v.out, 12], [(x) => Math.abs(x.tr.at(0).sol.v.p), 1.2]],
+    try: [
+      {
+        say: 'Set R₂ to 10 kΩ: half the output now reaches the + input, so the threshold jumps to 6.00 V — beyond the 5 V input, and the trigger never fires at all.',
+        set: { R2: 10000 },
+        reads: [['v.out', 12], [(x) => Math.abs(x.tr.at(0).sol.v.p), 6], [(x) => x.events.length, 0]],
+      },
+      {
+        say: 'Drag the cursor to 0.9 ms, just past the first crossing: the input is still climbing, but the output has already gone over to the other rail.',
+        at: 0.0009,
+        reads: [['v.out', -12]],
+      },
+      {
+        say: 'Lower the rails to ±5 V: the thresholds shrink with them, to 0.500 V, and the output still flips four times in the window.',
+        set: { Vsat: 5 },
+        reads: [[(x) => Math.abs(x.tr.at(0).sol.v.p), 0.5], [(x) => x.events.length, 4]],
+      },
+    ],
+    why:
+      'The divider R₁/(R₁ + R₂) feeds a tenth of the output back to the + input, so with the output at a rail the + ' +
+      'input sits at ±V_sat·R₁/(R₁ + R₂) — ±1.20 V here. The op-amp drives its output wherever it must to make v₊ = v₋, ' +
+      'but with the feedback going to the + input that rule pushes the output further from balance rather than towards ' +
+      'it: the balance between the rails is one the circuit falls off. Only the two rails are stable, and which one holds ' +
+      'depends on where the circuit has been — so a single noisy crossing produces a single clean transition. Asked for ' +
+      'one DC answer this circuit has three that are each consistent, and the solver says so rather than choosing.',
+    whyReads: [[(x) => Math.abs(x.tr.at(0).sol.v.p), 1.2]],
+  },
+  i1: {
+    see:
+      'A resistor’s straight line becomes a curve here: the diode’s current climbs exponentially with its voltage, so ' +
+      'it settles on its own drop rather than obeying a ratio. On the constant-drop model it takes 0.700 V and passes ' +
+      '4.30 mA; the exponential curve those models approximate says 0.693 V and 4.31 mA. Four descriptions, one curve.',
+    seeReads: [
+      ['volt.D1', 0.7],
+      ['i.D1', 0.0043],
+      [(x, p, again) => again({ model: 'exp' }).sol.volt.D1, 0.69254],
+      [(x, p, again) => again({ model: 'exp' }).sol.i.D1, 0.0043075],
+    ],
+    try: [
+      {
+        say: 'Switch the model to the ideal switch: with no drop at all, the resistor takes the whole 5 V and the current rises to 5.00 mA.',
+        set: { model: 'ideal' },
+        reads: [['i.D1', 0.005]],
+      },
+      {
+        say: 'Choose the curve and turn R up to 10 kΩ: ten times less current, 0.437 mA, and the drop falls by only 59.2 mV — a decade of current for a sliver of voltage.',
+        set: { model: 'exp', R1: 10000 },
+        reads: [
+          ['i.D1', 0.0004367],
+          [(x, p, again) => again({ model: 'exp', R1: 1000 }).sol.volt.D1 - x.sol.volt.D1, 0.05917],
+        ],
+      },
+      {
+        say: 'Switch to V_f + r_d: the battery has a slope behind it now, so the drop grows with the current — 0.743 V here, and 4.26 mA.',
+        set: { model: 'pwl' },
+        reads: [['volt.D1', 0.74264], ['i.D1', 0.0042574]],
+      },
+    ],
+    why:
+      'Shockley’s law is i = I_s(e^(v/nV_T) − 1), where V_T = kT/q is the thermal voltage — 25.9 mV at room temperature, ' +
+      'and the only constant in the diode that is not a property of the part. Because the exponent is v/V_T, every ' +
+      'factor of ten in current costs about sixty millivolts, which is why the drop looks almost fixed across a decade ' +
+      'or two and why "0.7 V" is such a useful lie. The three piecewise models are its successive approximations: the ideal switch ' +
+      'ignores the drop, the constant drop takes it as a battery, and V_f + r_d gives that battery the curve’s local ' +
+      'slope r_d = nV_T/I. Each is exact inside its own straight piece, which is what lets everything else in this lab ' +
+      'apply to a circuit with a diode in it.',
+    whyReads: [[() => 0.025851999786435535, 0.025852], ['volt.D1', 0.7]],
+  },
+  i2: {
+    see:
+      'The circuit outside the diode can only offer i = (5 V − v)/150 Ω — a straight line laid across the curve. Where ' +
+      'the two meet is the operating point: 0.741 V and 28.4 mA. A simulator finds it by Newton’s method, sliding down ' +
+      'tangents from a guess; here that takes seven of them.',
+    seeReads: [['volt.D1', 0.74129], ['i.D1', 0.0283914], [(x) => x.newton.length, 7]],
+    try: [
+      {
+        say: 'Set R to 47 Ω: the load line tilts steeper and the point slides up the curve to 90.0 mA, while the drop only reaches 0.771 V.',
+        set: { R1: 47 },
+        reads: [['i.D1', 0.0899763], ['volt.D1', 0.77111]],
+      },
+      {
+        say: 'Set R to 470 Ω instead: down to 9.12 mA and 0.712 V. A factor of ten in current, 59.2 mV in voltage — the curve’s exchange rate, seen twice.',
+        set: { R1: 470 },
+        reads: [
+          ['i.D1', 0.0091235],
+          ['volt.D1', 0.71195],
+          [(x, p, again) => again({ R1: 47 }).sol.volt.D1 - x.sol.volt.D1, 0.05916],
+        ],
+      },
+      {
+        say: 'Switch to the constant-drop model: 0.700 V assumed where the curve says 0.741 V, and the current comes out at 28.7 mA — one per cent high, for no iteration at all.',
+        set: { model: 'drop' },
+        reads: [
+          ['volt.D1', 0.7],
+          ['i.D1', 0.0286667],
+          [(x, p, again) => again({ model: 'exp' }).sol.volt.D1, 0.74129],
+        ],
+      },
+    ],
+    why:
+      'Two equations, one unknown: the diode says i = I_s(e^(v/nV_T) − 1) and KVL says i = (E − v)/R. Drawn together ' +
+      'they are a curve and a line, and the answer is where they cross — which is what a load line is for, and why it ' +
+      'moves when R or E moves. Newton’s method replaces the curve by its tangent at a guess, solves that linear ' +
+      'circuit instead, and takes the answer as the next guess. Near the solution the error squares each time, so the ' +
+      'last few steps gain everything; the early ones are slow because an exponential’s tangent overshoots badly, which ' +
+      'is why every real simulator limits the step. This is exactly what SPICE does with every diode in a netlist.',
+  },
+  i3: {
+    see:
+      'Two diodes face opposite ways across the node, and only one arrangement of them survives. Assume both conduct ' +
+      'and the algebra contradicts itself; assume neither and v_A would have to be 5 V, far past what a diode allows. ' +
+      'The consistent state is D₁ conducting, D₂ blocking, and the node clamped at 0.700 V.',
+    seeReads: [['v.A', 0.7]],
+    try: [
+      {
+        say: 'Set the source to −5 V: the mirror image. D₂ conducts, D₁ blocks, and the node clamps at −0.700 V instead.',
+        set: { E: -5 },
+        reads: [['v.A', -0.7]],
+      },
+      {
+        say: 'Set it to 0.5 V: too small for either diode to conduct, so both block and the node simply follows the source at 0.500 V.',
+        set: { E: 0.5 },
+        reads: [['v.A', 0.5]],
+      },
+      {
+        say: 'Switch to the curve: no assumed states at all, one Newton solve, and the clamp is soft — 0.693 V, and it moves with the current.',
+        set: { model: 'exp' },
+        reads: [['v.A', 0.69254]],
+      },
+    ],
+    why:
+      'A piecewise-linear element is linear inside each of its regions, so a circuit with two diodes is four ordinary ' +
+      'linear circuits and the only question is which one it is in. The method is to assume, solve, and then check the ' +
+      'assumption against its own answer: a diode assumed conducting must come out with current flowing forwards, and ' +
+      'one assumed blocking must come out with less than V_f across it. Three of the four assumptions here refuse ' +
+      'themselves — one of them so badly that the circuit it describes cannot be solved at all, because two conducting ' +
+      'diodes in opposite directions are a short across the node. Exactly one survives, and that is the answer.',
+  },
+  i4: {
+    see:
+      'The diode passes the positive half of the sine and blocks the negative, so the load sees a train of humps ' +
+      'peaking at 9.30 V — the source’s 10 V less the 0.700 V the diode keeps for itself. Averaged over the window ' +
+      'over a cycle that is 2.84 V of DC, and the diode conducts for 172° of it rather than a full half.',
+    seeReads: [
+      [(x) => peakAt(x, (s) => s.v.out), 9.3],
+      ['volt.D1', 0.7],
+      [(x, p) => meanOut(x, (s) => s.v.out, p.f), 2.8409],
+      [(x) => oneSpan(x), 171.97],
+    ],
+    try: [
+      {
+        say: 'Switch the diode to ideal: the drop vanishes, the humps reach the full 10.0 V, and the average rises to 3.18 V — V_p/π exactly.',
+        set: { model: 'ideal' },
+        reads: [
+          [(x) => peakAt(x, (s) => s.v.out), 10],
+          [(x, p) => meanOut(x, (s) => s.v.out, p.f), 3.1831],
+        ],
+      },
+      {
+        say: 'Drop the amplitude to 3 V: the same shape, but 0.700 V costs proportionally more — the peak is 2.30 V and the diode conducts for only 153° of the cycle.',
+        set: { A: 3 },
+        reads: [
+          ['volt.D1', 0.7],
+          [(x) => peakAt(x, (s) => s.v.out), 2.3],
+          [(x) => oneSpan(x), 153.01],
+        ],
+      },
+      {
+        say: 'Drag the cursor into the blocked half: the diode carries nothing, the load has nothing across it, and the whole of the source stands across the diode instead.',
+        at: 0.015,
+        reads: [['i.D1', 0], ['v.out', 0]],
+      },
+    ],
+    why:
+      'A rectifier passes current one way only. While the source is more than V_f above the output the diode is a ' +
+      'battery of V_f and the load sees v_s − V_f; ' +
+      'the rest of the time it is an open circuit and the load sees nothing. The conduction window is therefore not a ' +
+      'full half cycle but π − 2·asin(V_f/V_p) of one, and everything else follows from integrating over exactly that ' +
+      'window. With an ideal diode the mean is V_p/π and the RMS V_p/2 — the classic results, which this experiment ' +
+      'reproduces by measuring the waveform rather than by quoting them. The instants where the diode turns on and off ' +
+      'are found by bisection on the exact solution, so the conduction angle is a property of the circuit and not of ' +
+      'the sample grid.',
+  },
+  i5: {
+    see:
+      'Four diodes route both halves of the sine the same way through the load, so the humps come twice as often: the ' +
+      'lowest frequency in the output is 100 Hz, not the source’s 50 Hz. Two diodes are in the path at once, so the ' +
+      'peak is 1.40 V below the source’s 10 V, and the average doubles to 5.03 V.',
+    seeReads: [
+      [(x, p) => 2 * p.f, 100],
+      [(x) => x.sol.volt.D1 + x.sol.volt.D4, 1.4],
+      [(x, p) => meanOut(x, (s) => s.v.p, p.f), 5.0287],
+    ],
+    try: [
+      {
+        say: 'Switch the diodes to ideal: two drops of nothing, the peak reaches the full 10.0 V and the average is 6.37 V — 2V_p/π, exactly twice the half-wave’s.',
+        set: { model: 'ideal' },
+        reads: [
+          [(x) => peakAt(x, (s) => s.v.p), 10],
+          [(x, p) => meanOut(x, (s) => s.v.p, p.f), 6.3662],
+        ],
+      },
+      {
+        say: 'Drag the cursor to the negative peak of the source: the output is just as positive as it was at the positive peak, 8.60 V, because the other pair of diodes is carrying it now.',
+        at: 0.015,
+        reads: [['v.p', 8.6]],
+      },
+      {
+        say: 'Raise the frequency to 1 kHz: the humps crowd together, each keeps its shape, and the average is unchanged at 5.03 V.',
+        set: { f: 1000 },
+        reads: [[(x, p) => meanOut(x, (s) => s.v.p, p.f), 5.0287]],
+      },
+    ],
+    why:
+      'On the positive half of the source, current leaves the source’s + terminal, climbs through one diode to the top ' +
+      'rail, crosses the load downwards and returns through the diode on the other leg; on the negative half the other ' +
+      'diagonal pair does the same job, and the current still crosses the load downwards. That is the whole trick: the ' +
+      'load never sees the source’s sign. The cost is two drops in the path instead of one, and the benefit is twice ' +
+      'the average and a ripple at twice the frequency — much easier to smooth, which is what the next experiment does. ' +
+      'A blocking diode here is given ten megohms rather than an infinite resistance, because with four perfect open ' +
+      'circuits the source’s own terminals would connect to nothing and have no voltage at all.',
+  },
+  i6: {
+    see:
+      'A capacitor across the load holds the peak between humps. The output now moves between 9.14 V and 7.67 V ' +
+      'instead of falling to zero — a ripple of 1.48 V — and the diode only tops the capacitor up near each peak, ' +
+      'conducting 13.3 % of the time in bursts of current much larger than the load’s.',
+    seeReads: [
+      [(x) => Math.max(...lateOut(x)), 9.1418],
+      [(x) => Math.min(...lateOut(x)), 7.666],
+      [(x) => Math.max(...lateOut(x)) - Math.min(...lateOut(x)), 1.4758],
+      [(x) => 100 * x.conduction.D1.fraction, 13.3],
+    ],
+    try: [
+      {
+        say: 'Raise C to 470 µF: the capacitor holds harder and the ripple falls to 0.329 V. The textbook V_p/fRC would say 0.426 V — still a fifth too much.',
+        set: { C1: 470e-6 },
+        reads: [
+          ['v.out', 8.6671],
+          [(x) => Math.max(...lateOut(x)) - Math.min(...lateOut(x)), 0.329],
+          [(x, p) => p.A / (p.f * p.RL * p.C1), 0.4255],
+        ],
+      },
+      {
+        say: 'Drop it to 22 µF: the ripple grows to 4.85 V, and the diode has to conduct for 19.8 % of the cycle to replace what drained away.',
+        set: { C1: 22e-6 },
+        reads: [
+          [(x) => Math.max(...lateOut(x)) - Math.min(...lateOut(x)), 4.8512],
+          [(x) => 100 * x.conduction.D1.fraction, 19.8],
+        ],
+      },
+      {
+        say: 'Drag the cursor between two peaks: the diode carries nothing at all, and the load is running entirely on the charge the capacitor is holding.',
+        at: 0.2,
+        reads: [['i.D1', 0]],
+      },
+    ],
+    why:
+      'Between peaks the diode is blocking and the capacitor discharges through the load with time constant RC, so the ' +
+      'output falls as e^(−t/RC); when the source comes back up past the output the diode conducts again and refills it ' +
+      'in a short, tall burst. The textbook estimate ΔV ≈ V_p/(fRC) makes two approximations at once: that the ' +
+      'discharge is a straight line, and that it lasts the whole period. Both push the answer the same way, so it ' +
+      'always reads high, and the error settles at about a fifth rather than going to zero however large C grows — ' +
+      'the part it ignores is the conduction window itself. Charge only for the time the diode is off, and discharge ' +
+      'exponentially rather than linearly, and the estimate comes within a per cent of the exact answer.',
+  },
+  i7: {
+    see:
+      'Above 3.70 V the upper diode conducts and holds the output there; below −3.70 V the lower one does. Between ' +
+      'those levels neither conducts, no current flows in R, and the signal passes through untouched. So a 10 V sine ' +
+      'leaves with its peaks sliced off at the reference plus one diode’s 0.700 V.',
+    seeReads: [
+      [(x) => peakAt(x, (s) => s.v.out), 3.7],
+      ['volt.D1', 0.7],
+    ],
+    try: [
+      {
+        say: 'Raise the reference to 6 V: the window opens and the sine is only clipped at ±6.70 V, so much more of its shape survives.',
+        set: { Vref: 6 },
+        reads: [['v.out', 6.7], [(x) => peakAt(x, (s) => s.v.out), 6.7]],
+      },
+      {
+        say: 'Lower it to 1 V: a narrow window, and what leaves is very nearly a square wave between ±1.70 V.',
+        set: { Vref: 1 },
+        reads: [[(x) => peakAt(x, (s) => s.v.out), 1.7]],
+      },
+      {
+        say: 'Drop the amplitude to 2 V: now the sine never reaches either level, no diode ever conducts, and the signal passes through completely unchanged.',
+        set: { A: 2 },
+        reads: [[(x) => peakAt(x, (s) => s.v.out), 2]],
+      },
+    ],
+    why:
+      'Each diode sits between the output node and its own reference, and can only conduct when the node is a diode ' +
+      'drop beyond that reference — V_ref + V_f above it for the upper one, the same below for the lower. While ' +
+      'neither conducts, nothing draws current through R and the output simply follows the input. As soon as one ' +
+      'does, it becomes a battery holding the node at that level and R absorbs the difference, which is why the ' +
+      'resistor is essential: without it the source and the reference would be connected by a conducting diode with ' +
+      'nothing between them. The clipped waveform is exactly the input with two horizontal lines drawn through it, ' +
+      'and the corners are the instants the diodes switch — found here by bisection, not by rounding to a sample.',
   },
 }

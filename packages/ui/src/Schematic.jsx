@@ -336,6 +336,22 @@ function Symbol({ e }) {
         </g>
       )
     }
+    case 'D': {
+      // Anode at the local −20 end, so the triangle points the way current is
+      // allowed through — the same direction the arrow of the symbol means on
+      // paper, and the same as nodes[0] → nodes[1] everywhere else here. A
+      // Zener gets the bent bar that says it is meant to be run backwards.
+      const zener = Number.isFinite(e.vz) && e.vz > 0
+      const bar = zener ? 'M 7,-9 L 7,9 M 7,-9 L 2,-9 M 7,9 L 12,9' : 'M 7,-9 L 7,9'
+      return (
+        <g stroke="var(--red, #f07474)" strokeWidth="1.6" fill="none">
+          <line x1={-20} y1={0} x2={-7} y2={0} />
+          <line x1={7} y1={0} x2={20} y2={0} />
+          <polygon points="-7,-9 -7,9 7,0" fill="var(--red, #f07474)" stroke="none" />
+          <path d={bar} />
+        </g>
+      )
+    }
     case 'VCVS':
     case 'VCCS':
       return (

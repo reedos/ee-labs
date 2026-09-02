@@ -90,7 +90,7 @@ export function bindSee(exp) {
     const value = typeof q === 'function' ? q(x, p, again, exp) : readQuantity(x, p, q, exp)
     return typeof q === 'function' ? { kind: 'fn', key: k, value } : { kind: 'read', key: q, value }
   })
-  const knobs = exp.params.filter((k) => k.kind !== 'toggle')
+  const knobs = exp.params.filter((k) => !k.kind)
   const used = new Set()
   // Two numbers in one sentence rarely mean the same quantity twice, so a
   // source already claimed yields to an unclaimed one that also stands.

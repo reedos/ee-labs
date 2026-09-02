@@ -265,6 +265,31 @@ describe('the bridge doubles the ripple frequency', () => {
     const w = pwlTransient(bridge(0.7), { tEnd: 0.04, points: 1201 })
     near(Math.max(...w.series('v', 'p')), 10 - 1.4, 1e-6)
   })
+
+  it('every half-cycle rectifies, not just the first: the mean over two cycles is the closed form', () => {
+    // Real diodes leak, and with a leak the two diodes of a conducting pair no
+    // longer reach their thresholds at exactly the same instant. The one that
+    // arrives second starts its run already a rounding error past its own
+    // boundary — no crossing to find inside the run — and if that counts as a
+    // violation that never happens, the pair never completes, the bridge goes
+    // dead after its first cycle and the mean comes out at half. It is a
+    // silent failure: the peak is still right, and only an average over more
+    // than one cycle sees it.
+    const leaky = { ...bridge(0.7) }
+    leaky.elements = leaky.elements.map((e) => (e.type === 'D' ? { ...e, roff: 1e7 } : e))
+    const w = pwlTransient(leaky, { tEnd: 0.04, points: 601 })
+    const { mean } = meanRms(w, (sol) => sol.v.p, 0, 0.04)
+    // Mean of (V_p·sin φ − 2V_f) over the conduction window of each half cycle.
+    const phi = Math.asin(1.4 / 10)
+    const theory = (2 * 10 * Math.cos(phi) - 1.4 * (Math.PI - 2 * phi)) / Math.PI
+    expect(Math.abs(mean - theory) / theory).toBeLessThan(2e-3)
+    // Both diagonals do the same work, every cycle — to within the half per
+    // cent the leak itself costs: the pair does not stop conducting in the
+    // same instant, because the one still on has the leak to carry.
+    const c = conduction(w)
+    for (const id of ["D1", "D2", "D3", "D4"]) near(c[id].fraction, c.D1.fraction, 0.02)
+    expect(c.D1.spans).toHaveLength(2)
+  })
 })
 
 describe('smoothing, exactly and approximately', () => {

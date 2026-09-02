@@ -367,6 +367,97 @@ export const TERMS = {
       'delivered. The rest, Q = V_rms·I_rms·sin φ, is reactive power — energy borrowed and ' +
       'returned every half cycle.',
   },
+  saturation: {
+    name: 'Saturation',
+    def:
+      'An amplifier’s output running into the supply that feeds it and going no further. An op-amp ' +
+      'asked for 100 V from a ±12 V supply gives 12 V and stops; inside that limit it is the linear ' +
+      'element the golden rules describe, and outside it is simply a source at the rail.',
+  },
+  hysteresis: {
+    name: 'Hysteresis',
+    def:
+      'When what a circuit does now depends on where it has been, not only on its input. A Schmitt ' +
+      'trigger flips up at one threshold and back down at a lower one, so an input hovering between ' +
+      'them leaves the output where it already was — which is exactly what stops noise chattering.',
+  },
+  diode: {
+    name: 'Diode',
+    def:
+      'An element that lets current one way and blocks it the other. The arrow of its symbol points ' +
+      'the way current is allowed. Unlike a resistor it has no ratio of its own: it sets a drop of ' +
+      'about 0.7 V and lets the rest of the circuit decide the current.',
+  },
+  thermalvoltage: {
+    name: 'Thermal voltage V_T',
+    def:
+      'kT/q — 25.9 mV at room temperature — the voltage scale on which a diode’s exponential runs. ' +
+      'Everything about a junction that is not a property of the part is set by this number, ' +
+      'including the rule that ten times the current costs about 60 mV more.',
+  },
+  loadline: {
+    name: 'Load line',
+    def:
+      'The straight line the rest of the circuit imposes on a nonlinear element: with a source E ' +
+      'behind a resistance R, the element can only have i = (E − v)/R. Draw it across the element’s ' +
+      'own curve and the crossing is the answer.',
+  },
+  operatingpoint: {
+    name: 'Operating point',
+    def:
+      'The one pair of values (v, i) at which a nonlinear element and the circuit around it agree — ' +
+      'where the curve meets the load line. Everything a designer says about a diode or a transistor ' +
+      'is said about its behaviour near this point.',
+  },
+  newton: {
+    name: 'Newton’s method',
+    def:
+      'How a simulator solves a curve: replace it by its tangent at a guess, solve that linear ' +
+      'circuit, and take the answer as the next guess. Close to the solution each error is about the ' +
+      'square of the last, so the final digits arrive all at once.',
+  },
+  assumedstate: {
+    name: 'The assumed-state method',
+    def:
+      'Guess which way each diode is — conducting or blocking — solve the linear circuit that guess ' +
+      'describes, and then check the guess against its own answer. A conducting diode must come out ' +
+      'with forward current; a blocking one with less than V_f across it. One guess survives.',
+  },
+  clamp: {
+    name: 'Clamp',
+    def:
+      'To hold a node at a fixed voltage once it tries to go past it. A diode clamps because it will ' +
+      'conduct as much current as it takes to stop the node rising more than V_f beyond wherever its ' +
+      'other end is tied.',
+  },
+  conduction: {
+    name: 'Conduction angle',
+    def:
+      'How much of each cycle a rectifier’s diode is actually passing current, measured in degrees of ' +
+      'the drive. It is less than the 180° of a half cycle, because the source has to climb past V_f ' +
+      'before the diode will conduct at all, and it falls further once a smoothing capacitor is added.',
+  },
+  rectifier: {
+    name: 'Rectifier',
+    def:
+      'A circuit that turns alternating current into one-way current. Half-wave uses one diode and ' +
+      'throws away half the input; full-wave uses four and turns the other half over, giving twice ' +
+      'the average and a ripple at twice the frequency.',
+  },
+  ripple: {
+    name: 'Ripple',
+    def:
+      'What is left of the alternating input after smoothing: the peak-to-peak wobble on a supply ' +
+      'that should be flat. It falls as the smoothing capacitor grows, because the load has less ' +
+      'time to drain it between peaks.',
+  },
+  clipper: {
+    name: 'Clipper',
+    def:
+      'A circuit that lets a signal through untouched between two levels and refuses to pass it ' +
+      'beyond them. Two diodes tied to two references do it: outside the window one of them conducts ' +
+      'and holds the output there while the series resistor absorbs the difference.',
+  },
   bode: {
     name: 'Bode plot',
     def:
@@ -438,4 +529,18 @@ export const MATCH = {
   rms: /\bRMS\b|[VI]_rms/,
   powerfactor: /power factor|cos ?φ/i,
   bode: /\bBode\b/,
+  saturation: /\bsaturat/i,
+  hysteresis: /\bhysteresis\b/i,
+  diode: /\bdiodes?\b/i,
+  thermalvoltage: /thermal voltage|V_T/,
+  loadline: /\bload line\b/i,
+  operatingpoint: /operating point/i,
+  newton: /\bNewton’s method\b|\bNewton\b/,
+  assumedstate: /assumed? state|assume, solve/i,
+  // "conductance" is C2's word and must not be caught by this one.
+  clamp: /\bclamp(?:s|ed|ing)?\b/i,
+  conduction: /conduction (?:window|angle)|conducts? for|conducting \d/i,
+  rectifier: /\brectifier\b/i,
+  ripple: /\bripple\b/i,
+  clipper: /\bclipper\b|\bclipped\b|\bclips\b/i,
 }

@@ -48,6 +48,19 @@ export function valueText(e) {
       return `${e.id} ${fmt(e.value, 'H', 3)}`
     case 'SW':
       return `${e.id} ${e.closed === false ? 'open' : 'closed'}`
+    case 'D':
+      // The model is what a reader needs beside a diode — 0.7 V assumed, or a
+      // curve — since every number in the answer depends on which one it is.
+      switch (e.model || 'drop') {
+        case 'ideal':
+          return `${e.id} ideal`
+        case 'pwl':
+          return `${e.id} ${fmt(e.vf ?? 0.7, 'V', 2)} + ${fmt(e.rd ?? 10, 'Ω', 2)}`
+        case 'exp':
+          return `${e.id} I_s ${fmt(e.is ?? 1e-14, 'A', 2)}`
+        default:
+          return `${e.id} ${fmt(e.vf ?? 0.7, 'V', 2)}`
+      }
     case 'OPAMP':
       return Number.isFinite(e.gain) ? `${e.id} A=${fmt(e.gain, '', 3)}` : `${e.id} ideal`
     case 'VCVS':

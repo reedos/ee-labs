@@ -6,7 +6,7 @@ const words = (s) => s.trim().split(/\s+/).length
 
 describe('the course’s shape', () => {
   test('every group has a one-sentence intro of at most thirty words', () => {
-    expect(LETTERS).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'])
+    expect(LETTERS).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'])
     expect(Object.keys(GROUP_INTRO).sort()).toEqual(LETTERS)
     for (const [k, s] of Object.entries(GROUP_INTRO)) expect(words(s), k).toBeLessThanOrEqual(30)
     for (const e of EXPERIMENTS) expect(introFor(e)).toBe(GROUP_INTRO[e.group[0]])
@@ -15,7 +15,7 @@ describe('the course’s shape', () => {
   test('exactly one experiment opens each group — the first', () => {
     const openers = EXPERIMENTS.filter(opensGroup)
     expect(openers.map((e) => e.group)).toEqual(GROUPS)
-    expect(openers.map((e) => e.id)).toEqual(['a1', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1'])
+    expect(openers.map((e) => e.id)).toEqual(['a1', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1', 'i1'])
   })
 
   test('every experiment but the first builds on at least one earlier experiment that exists', () => {

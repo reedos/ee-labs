@@ -27,6 +27,17 @@ import {
   acPower,
   drivingPointZ,
   complex as cx,
+  solvePWL,
+  newtonDC,
+  pwlTransient,
+  conduction,
+  meanRms,
+  diodeOf,
+  shockley,
+  smallSignalR,
+  decadeSlope,
+  regionLabel,
+  VT,
 } from '@ee-labs/network'
 import { isDynamic } from './experiments.js'
 
@@ -1308,6 +1319,253 @@ const ENTRIES = {
       ],
     }
   },
+
+  // ============================================================== E9, I
+  // The piecewise groups. The hand side is the algebra of ONE region — the
+  // region the circuit is actually in — and the measured side is the solve
+  // that decided which region that is. Where a lesson quotes a textbook
+  // approximation, the exact answer is beside it with the error named, never
+  // instead of it.
+
+  e9(p, s, x) {
+    const beta = p.R1 / (p.R1 + p.R2)
+    const trip = p.Vsat * beta
+    const flips = x.events.length
+    // Every flip should happen as the input passes a threshold, alternating.
+    const worst = x.events.reduce((w, ev) => Math.max(w, Math.abs(Math.abs(x.tr.at(ev.t).sol.v.in) - trip)), 0)
+    return {
+      blocks: [
+        T(
+          'With the feedback going to the + input the op-amp cannot balance: whichever rail it is on, the divider holds the + input on the same side, and only a bigger input the other way can turn it over. So the threshold is not one level but two, and which one applies depends on where the output already is.',
+        ),
+        F('\\beta = \\frac{R_1}{R_1 + R_2}, \\qquad V_{trip} = \\pm\\beta V_{sat}, \\qquad \\Delta = 2\\beta V_{sat}'),
+        C([
+          row('β = R₁/(R₁+R₂)', beta, Math.abs(x.tr.at(0).sol.v.p) / p.Vsat, ''),
+          row('threshold βV_sat', trip, Math.abs(x.tr.at(0).sol.v.p), 'V'),
+          row('the output is at a rail', p.Vsat, Math.abs(s.v.out), 'V'),
+          row('every flip happens at a threshold', 0, worst, 'V', 1e-6, 1e-6),
+        ]),
+        V([
+          { label: 'thresholds', value: trip, unit: 'V', note: 'and the same below zero' },
+          { label: 'width of the hysteresis', value: 2 * trip, unit: 'V' },
+          { label: 'flips in this window', value: flips, unit: '', note: flips ? 'one per threshold crossing' : 'the input never reaches a threshold' },
+        ]),
+      ],
+    }
+  },
+
+  i1(p, s, x) {
+    const d = diodeOf({ id: 'D1', type: 'D', model: p.model })
+    const rows = [row('KVL: E = v_R + v_D', p.E, s.volt.R1 + s.volt.D1, 'V')]
+    // Below V_f nothing conducts, whatever the model: no current, and the
+    // whole source stands across the diode.
+    const on = p.E > d.vf
+    if (!on && p.model !== 'exp') {
+      rows.push(row('nothing conducts: i = 0', 0, s.i.D1, 'A'), row('so the source stands across the diode', p.E, s.volt.D1, 'V'))
+    } else if (p.model === 'ideal') rows.push(row('a closed switch drops nothing', 0, s.volt.D1, 'V'), row('i = E/R', p.E / p.R1, s.i.D1, 'A'))
+    else if (p.model === 'drop') rows.push(row('v_D = V_f', d.vf, s.volt.D1, 'V'), row('i = (E − V_f)/R', (p.E - d.vf) / p.R1, s.i.D1, 'A'))
+    else if (p.model === 'pwl') {
+      rows.push(
+        row('i = (E − V_f)/(R + r_d)', (p.E - d.vf) / (p.R1 + d.rd), s.i.D1, 'A'),
+        row('v_D = V_f + i·r_d', d.vf + ((p.E - d.vf) / (p.R1 + d.rd)) * d.rd, s.volt.D1, 'V'),
+      )
+    }
+    if (p.model === 'exp') {
+      rows.push(
+        row('Shockley at the answer', shockley(d, s.volt.D1).i, s.i.D1, 'A'),
+        row('r_d = nV_T/I', (d.n * d.vt) / s.i.D1, 1 / shockley(d, s.volt.D1).g, 'Ω', 1e-6),
+      )
+    }
+    return {
+      blocks: [
+        T(
+          'A resistor has a ratio; a diode has a curve, and the curve is so steep that over any ordinary range of current the drop barely moves. That is what makes the three straight-line models useful, and what makes them wrong in a way you can put a number on.',
+        ),
+        F('i = I_s\\left(e^{v/nV_T} - 1\\right), \\qquad V_T = \\frac{kT}{q}, \\qquad r_d = \\frac{nV_T}{I}'),
+        C(rows),
+        V([
+          { label: 'V_T at room temperature', value: VT, unit: 'V' },
+          { label: 'volts per decade of current', value: decadeSlope({ id: 'D1', type: 'D', model: 'exp' }), unit: 'V', note: 'nV_T ln 10' },
+          { label: 'r_d at this current', value: smallSignalR({ id: 'D1', type: 'D', model: 'exp' }, Math.abs(s.i.D1)), unit: 'Ω' },
+        ]),
+      ],
+    }
+  },
+
+  i2(p, s, x) {
+    const d = diodeOf({ id: 'D1', type: 'D', model: p.model })
+    const rows = [
+      row('the load line at the answer', (p.E - s.volt.D1) / p.R1, s.i.D1, 'A'),
+      row('KVL: E = v_R + v_D', p.E, s.volt.R1 + s.volt.D1, 'V'),
+    ]
+    if (p.model === 'exp') {
+      rows.push(
+        row('the curve at the answer', shockley(d, s.volt.D1).i, s.i.D1, 'A'),
+        row('the last Newton step is negligible', 0, x.newton[x.newton.length - 1].step, 'V', 1e-6, 1e-9),
+      )
+    }
+    return {
+      blocks: [
+        T(
+          'Two conditions, one unknown: the diode has its curve and the rest of the circuit has a straight line, i = (E − v)/R. The operating point is where they meet. A simulator gets there by replacing the curve with its tangent, solving that linear circuit, and repeating — Newton’s method, which squares its error every step once it is close.',
+        ),
+        F('i = \\frac{E - v}{R} \\quad\\text{and}\\quad i = I_s\\left(e^{v/nV_T} - 1\\right) \\;\\Rightarrow\\; v^{(k+1)} = v^{(k)} - \\frac{f(v^{(k)})}{f\'(v^{(k)})}'),
+        C(rows),
+        V([
+          { label: 'operating point', value: s.i.D1, unit: 'A', note: `at ${s.volt.D1.toFixed(3)} V` },
+          ...(p.model === 'exp'
+            ? [
+                { label: 'iterations from a standing start', value: x.newton.length, unit: '' },
+                { label: 'r_d at the point', value: smallSignalR({ id: 'D1', type: 'D', model: 'exp' }, Math.abs(s.i.D1)), unit: 'Ω' },
+              ]
+            : []),
+        ]),
+      ],
+    }
+  },
+
+  i3(p, s, x) {
+    const d = diodeOf({ id: 'D1', type: 'D', model: p.model })
+    const vf = d.model === 'ideal' ? 0 : d.vf
+    // Which way the clamp goes, from the knobs alone.
+    const vA = p.E > vf ? vf : p.E < -vf ? -vf : p.E
+    const consistent = x.assumed ? x.assumed.filter((q) => q.ok).length : 1
+    return {
+      blocks: [
+        T(
+          'Four assumptions, one of them true. Assume each diode conducting or blocking, solve the linear circuit that assumption describes, then check it against its own answer: a conducting diode must come out with forward current, a blocking one with less than V_f across it. Three assumptions here refuse themselves, and one of those cannot even be solved — two conducting diodes back to back are a short.',
+        ),
+        F('v_A = \\begin{cases} +V_f & E > V_f \\\\ E & |E| \\le V_f \\\\ -V_f & E < -V_f \\end{cases}'),
+        C([
+          row('the node, from the knobs alone', vA, s.v.A, 'V', 1e-6),
+          row('current through R', (p.E - vA) / p.R1, s.i.R1, 'A', 1e-6),
+          row('exactly one assumption survives', 1, consistent, ''),
+        ]),
+        V([
+          { label: 'the clamp', value: vA, unit: 'V', note: p.E > vf ? 'D₁ conducting' : p.E < -vf ? 'D₂ conducting' : 'neither conducting' },
+          { label: 'assumptions tried', value: x.assumed ? x.assumed.length : 1, unit: '', note: 'two diodes, two states each' },
+        ]),
+      ],
+    }
+  },
+
+  i4(p, s, x) {
+    const d = diodeOf({ id: 'D1', type: 'D', model: p.model })
+    const vf = d.model === 'ideal' ? 0 : d.vf
+    const Vp = Math.abs(p.A)
+    const phi = Math.asin(Math.min(1, vf / Vp))
+    // Mean and RMS of (A sin θ − V_f) over the window it conducts, per cycle.
+    const mean = Vp <= vf ? 0 : (2 * Vp * Math.cos(phi) - vf * (Math.PI - 2 * phi)) / (2 * Math.PI)
+    const measured = meanRms(x.tr, (q) => q.v.out, Math.max(0, x.tEnd - 1 / p.f), x.tEnd)
+    return {
+      blocks: [
+        T(
+          'The diode conducts only while the source is more than V_f above the output, so the load sees the top of each positive half and nothing else. The conduction window is therefore short of a full half cycle by the time the source spends climbing past V_f, and every average below is taken over exactly that window.',
+        ),
+        F('v_{out} = \\max(v_s - V_f,\\, 0), \\qquad \\theta_{cond} = \\pi - 2\\arcsin\\!\\frac{V_f}{V_p}, \\qquad \\langle v_{out}\\rangle = \\frac{2V_p\\cos\\varphi - V_f\\,\\theta_{cond}}{2\\pi}'),
+        C([
+          row('peak = V_p − V_f', Math.max(0, Math.abs(p.A) - vf), peakAt(x, (q) => q.v.out), 'V', 1e-9),
+          // One complete window, not the window average: a fractional number
+          // of cycles would divide a partial burst by a whole one.
+          row('conduction angle', ((Math.PI - 2 * phi) * 180) / Math.PI, spanAngle(x, 'D1'), '°', 1e-6),
+          row('mean of the output', mean, measured.mean, 'V', 1e-4),
+        ]),
+        V([
+          { label: 'mean (the DC it makes)', value: measured.mean, unit: 'V' },
+          { label: 'RMS of the output', value: measured.rms, unit: 'V' },
+          { label: 'the ideal case, V_p/π', value: Vp / Math.PI, unit: 'V', note: 'what it would be with no drop' },
+        ]),
+      ],
+    }
+  },
+
+  i5(p, s, x) {
+    const d = diodeOf({ id: 'D1', type: 'D', model: p.model })
+    const vf = d.model === 'ideal' ? 0 : d.vf
+    const Vp = Math.abs(p.A)
+    const phi = Math.asin(Math.min(1, (2 * vf) / Vp))
+    // Both halves now, so twice the half-wave mean with two drops in the path.
+    const mean = Vp <= 2 * vf ? 0 : (2 * Vp * Math.cos(phi) - 2 * vf * (Math.PI - 2 * phi)) / Math.PI
+    const measured = meanRms(x.tr, (q) => q.v.p, Math.max(0, x.tEnd - 1 / p.f), x.tEnd)
+    return {
+      blocks: [
+        T(
+          'Two diodes are in the path at any instant and the other two block, so the load current always crosses it the same way whichever way the source is pointing. The load sees |v_s| less two drops: twice as many humps, twice the average, and a ripple whose lowest frequency is twice the source’s.',
+        ),
+        F('v_{out} = \\max(|v_s| - 2V_f,\\, 0), \\qquad \\langle v_{out}\\rangle = \\frac{2V_p\\cos\\varphi - 2V_f\\,\\theta_{cond}}{\\pi}, \\qquad f_{ripple} = 2f'),
+        C([
+          row('peak = V_p − 2V_f', Math.max(0, Math.abs(p.A) - 2 * vf), peakAt(x, (q) => q.v.p), 'V', 1e-4),
+          row('mean of the output', mean, measured.mean, 'V', 1e-3),
+          // Two conducting pairs per cycle, counted over whole cycles of the
+          // drive rather than over a window that may end mid-hump.
+          ...(Math.abs(p.A) > 2 * vf ? [row('humps per cycle', 2, wholeCycleOns(x, p), '', 1e-9)] : [row('too small to turn any diode on', 0, wholeCycleOns(x, p), '', 1e-9)]),
+        ]),
+        V([
+          { label: 'mean out of the bridge', value: measured.mean, unit: 'V' },
+          { label: 'RMS of the output', value: measured.rms, unit: 'V' },
+          { label: 'lowest ripple frequency', value: 2 * p.f, unit: 'Hz', note: 'twice the drive' },
+        ]),
+      ],
+    }
+  },
+
+  i6(p, s, x) {
+    const late = x.tr.samples.filter((q) => q.t > x.tEnd - 1 / p.f).map((q) => q.sol.v.out)
+    const top = Math.max(...late)
+    const pp = top - Math.min(...late)
+    const RC = p.RL * p.C1
+    const tOff = (1 / p.f) * (1 - x.conduction.D1.fraction)
+    const simple = p.A / (p.f * p.RL * p.C1)
+    const offOnly = (p.A * tOff) / RC
+    const exponential = top * (1 - Math.exp(-tOff / RC))
+    return {
+      blocks: [
+        T(
+          'Between humps the diode blocks and the capacitor runs the load on its own charge, falling as e^(−t/RC); when the source climbs back past the output the diode refills it in a short burst. The textbook estimate discharges for the whole period and does it in a straight line, so it always reads high — and the part it leaves out is the conduction window, which is why growing C never quite closes the gap.',
+        ),
+        F('\\Delta V \\approx \\frac{V_p}{fRC} \\quad\\text{(textbook)}, \\qquad \\Delta V = V_{top}\\left(1 - e^{-t_{off}/RC}\\right) \\quad\\text{(exact discharge)}'),
+        C([
+          // The one thing that is exactly true at any setting: while the
+          // diode blocks, the capacitor sees only the load, so the fall across
+          // that gap is its own exponential. The approximations are reported
+          // below with their errors rather than asserted.
+          row('the discharge is exponential', dischargeEnd(x, p), lastOff(x) ? x.tr.at(lastOff(x).t1, 'left').sol.v.out : 0, 'V', 1e-6),
+          row('the load runs on the capacitor while the diode is off', 0, lastOff(x) ? x.tr.at((lastOff(x).t0 + lastOff(x).t1) / 2).sol.i.D1 : 0, 'A', 1e-9, 1e-9),
+        ]),
+        V([
+          { label: 'ripple, exactly', value: pp, unit: 'V' },
+          { label: 'the textbook V_p/fRC', value: simple, unit: 'V', note: `${(((simple - pp) / pp) * 100).toFixed(0)} % high` },
+          { label: 'discharging only while off', value: offOnly, unit: 'V', note: `${(((offOnly - pp) / pp) * 100).toFixed(0)} % high` },
+          { label: 'and exponentially', value: exponential, unit: 'V', note: `${(((exponential - pp) / pp) * 100).toFixed(1)} % out` },
+          { label: 'the diode conducts', value: 100 * x.conduction.D1.fraction, unit: '%', note: 'of the time' },
+        ]),
+      ],
+    }
+  },
+
+  i7(p, s, x) {
+    const d = diodeOf({ id: 'D1', type: 'D', model: p.model })
+    const vf = d.model === 'ideal' ? 0 : d.vf
+    const level = p.Vref + vf
+    const top = peakAt(x, (q) => q.v.out)
+    const clips = Math.abs(p.A) > level
+    return {
+      blocks: [
+        T(
+          'Each diode can only conduct once the output node is a drop beyond its own reference, so between the two levels neither does, no current flows in R, and the input passes through untouched. Beyond them one diode becomes a battery holding the node there while R takes the difference — which is why the resistor is not optional.',
+        ),
+        F('v_{out} = \\operatorname{clip}\\left(v_{in},\\; -(V_{ref} + V_f),\\; +(V_{ref} + V_f)\\right)'),
+        C([
+          row('the level it clips at', clips ? level : Math.abs(p.A), top, 'V', 1e-9),
+          row('and the same below', clips ? -level : -Math.abs(p.A), -peakAt(x, (q) => -q.v.out), 'V', 1e-9),
+        ]),
+        V([
+          { label: 'clipping levels', value: level, unit: 'V', note: clips ? 'reached on both peaks' : 'never reached — the signal passes whole' },
+          { label: 'the input’s own peak', value: p.A, unit: 'V' },
+        ]),
+      ],
+    }
+  },
 }
 
 // ------------------------------------------------------------ group H shared
@@ -1535,6 +1793,70 @@ function rlcEntry(p, x, { text, extra = [] }) {
 }
 
 /**
+ * The angle of one whole conduction window, in degrees of the drive: the first
+ * span that both starts and ends inside the window, so neither end is clipped.
+ */
+function spanAngle(x, id) {
+  const spans = x.conduction[id].spans.filter(([a, b]) => a > 0 && b < x.tEnd)
+  const [a, b] = spans[0] || x.conduction[id].spans[0] || [0, 0]
+  return ((b - a) * x.omega * 180) / Math.PI
+}
+
+/**
+ * The output at the instant the drive is most positive — π/2 or 3π/2 into a
+ * cycle, whichever way the amplitude points. Read there, a peak is the
+ * waveform's own and not the tallest of the samples that happened to be drawn.
+ */
+export function peakAt(x, read) {
+  const w = x.omega
+  if (!w) return Math.max(...x.tr.samples.map((s) => read(s.sol)))
+  return Math.max(read(x.tr.at(Math.PI / 2 / w).sol), read(x.tr.at(((3 * Math.PI) / 2) / w).sol))
+}
+
+/** Conduction starts per cycle, counted over the whole cycles the window holds. */
+function wholeCycleOns(x, p) {
+  const cycles = Math.floor(x.tEnd * p.f + 1e-9)
+  const until = cycles / p.f
+  const ons = x.events.filter((e) => e.to === 'on' && e.t <= until).length
+  return ons / (2 * cycles)
+}
+
+/** The last complete gap between humps: the run in which the diode is blocking. */
+function lastOff(x) {
+  const off = x.tr.runs.filter((r) => r.regions.D1 === 'off' && r.t1 > r.t0 && r.t1 < x.tEnd)
+  return off[off.length - 1] || null
+}
+/** Where that discharge ends, by hand: v(t0)·e^(−Δt/RC). */
+function dischargeEnd(x, p) {
+  const r = lastOff(x)
+  if (!r) return 0
+  return x.tr.at(r.t0).sol.v.out * Math.exp(-(r.t1 - r.t0) / (p.RL * p.C1))
+}
+
+/** Does this netlist need a region decided before it can be solved? */
+export const hasRegions = (net) => net.elements.some((e) => e.type === 'D' || (e.type === 'OPAMP' && Number.isFinite(e.vsat)))
+
+/** Is any diode here the exponential one, which is a curve rather than two straight pieces? */
+const hasCurve = (net) => net.elements.some((e) => e.type === 'D' && (e.model || 'drop') === 'exp')
+
+/**
+ * One DC answer, whichever kind of circuit this is: a plain linear solve, the
+ * assumed-state search, or Newton on the curve. The working comes back with
+ * it — `assumed` is every combination and what each one said, `newton` every
+ * iteration — because two experiments in Group I are about the method, not
+ * about the number it lands on.
+ */
+export function solveRegions(net) {
+  if (!hasRegions(net)) return { sol: solveDC(net) }
+  if (hasCurve(net)) {
+    const nw = newtonDC(net)
+    return { sol: nw.sol, newton: nw.iters, regions: {} }
+  }
+  const r = solvePWL(net)
+  return { sol: r.sol, regions: r.regions, assumed: r.tried, devices: r.devices }
+}
+
+/**
  * Everything the panes need for one experiment at one setting: the solution
  * (or the refusal), and the theorem results the experiment's views ask for.
  * Solving is cheap — a handful of unknowns — so this runs on every keystroke.
@@ -1548,13 +1870,20 @@ export function analyse(exp, p, cursor) {
   const net = exp.net(p)
   let sol = null
   let refusal = null
+  let pwl = null
   try {
-    sol = solveDC(net)
+    // A circuit with a diode in it is solved by deciding the region first —
+    // assumed states for the piecewise models, Newton for the curve. Both
+    // keep their working (`assumed`, `newton`), because for I2 and I3 the
+    // working IS the lesson; `sol` is the answer either way and every pane
+    // downstream reads it exactly as it reads a plain DC solve.
+    pwl = solveRegions(net)
+    sol = pwl.sol
   } catch (err) {
     if (err instanceof NetworkError) refusal = err
     else throw err
   }
-  const x = { net, sol, refusal }
+  const x = { net, sol, refusal, ...(pwl || {}) }
   if (!sol) return x
   if (exp.views.includes('superposition')) x.superposition = superposition(net)
   if (exp.port) {
@@ -1587,7 +1916,13 @@ export function analyseDynamic(exp, p, cursor) {
   const points = exp.points ?? 601
   const x = { net, tEnd, cursor: t, sol: null, refusal: null, tr: null }
   try {
-    x.tr = transient(net, { tEnd, points })
+    // With a diode or a rail in the circuit the walk is piecewise: exact
+    // inside a region, and the instant a region ends found on that exact
+    // solution. It returns everything a transient does, plus where the
+    // regions changed — which is what the rectifier lessons measure.
+    x.tr = hasRegions(net)
+      ? pwlTransient(net, { tEnd, points, start: exp.start })
+      : transient(net, { tEnd, points })
   } catch (err) {
     if (!(err instanceof NetworkError)) throw err
     x.refusal = err
@@ -1603,7 +1938,13 @@ export function analyseDynamic(exp, p, cursor) {
   // phasors say the circuit is doing at the cursor once the natural response
   // has died. The two solvers never share a number, so their agreement in the
   // long-time limit (the rows in h1–h6) is a real check of both.
+  // Where the regions changed, and how much of each cycle each device spent
+  // conducting — after ω is known, so a conduction time can be an angle.
   const sine = net.elements.find((e) => e.wave && e.wave.kind === 'sine')
+  if (x.tr.events) {
+    x.events = x.tr.events
+    x.conduction = conduction(x.tr, sine ? omegaOf(sine.wave) : null)
+  }
   if (sine) {
     x.omega = omegaOf(sine.wave)
     try {
