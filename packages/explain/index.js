@@ -12,4 +12,4 @@
 //
 // `./testing` carries the helpers that hold tools to that standard.
 
-export { default as MathPanel, Formula, Check, Values, agrees } from './src/MathPanel.jsx'
+export { default as MathPanel, MathBody, Formula, Check, Values, agrees } from './src/MathPanel.jsx'

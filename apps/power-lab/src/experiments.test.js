@@ -379,6 +379,14 @@ describe('C2 · the peak ideal theory misses', () => {
     expect(at('c2', { D: 0.8 }).x.m.M).toBeLessThan(x.m.M)
     expect(at('c2', { D: 0.95 }).x.m.M).toBeLessThan(x.m.M)
   })
+  it('the knob starts on the peak: 60.0 V out where theory promised 120 V, 180 W in the winding to deliver 180 W', () => {
+    const { x, p } = at('c2')
+    expect(p.D).toBeCloseTo(0.9, 12)
+    expect(x.m.sig.vout.avg).toBeCloseTo(60, 1)
+    expect(p.Vin / (1 - p.D)).toBeCloseTo(120, 9)
+    expect(x.m.Pout).toBeCloseTo(180, 1)
+    expect(x.m.loss.inductor).toBeCloseTo(180, 1)
+  })
   it('past the peak the output falls: 48.00 V at D = 0.950, with 460.8 W in the winding', () => {
     const { x } = at('c2', { D: 0.95 })
     expect(x.m.sig.vout.avg).toBeCloseTo(48, 1)

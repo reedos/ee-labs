@@ -16,8 +16,9 @@ describe('App', () => {
     const h = html()
     expect(h).toContain('Power Lab')
     expect(h).toContain('The linear regulator')
-    expect(h).toContain('Scope')
-    expect(h).toContain('Underneath')
+    // The regulator has no scope (its lesson is the loss bar); the chopper does.
+    expect(h).toContain('Analysis')
+    expect(renderToString(React.createElement(App, { initialId: 'a2' }))).toContain('Scope')
   })
 
   it('shows the linear regulator’s numbers in the top bar', () => {

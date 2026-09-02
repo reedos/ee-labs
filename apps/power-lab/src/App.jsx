@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { LabNav, NumField, ReportIssue, fmt } from '@ee-labs/ui'
-import { MathPanel } from '@ee-labs/explain'
+import { MathBody } from '@ee-labs/explain'
 import { EXPERIMENTS, GROUPS, TRACES, VIEWS, SWEEP_X, byId, defaultsOf } from './experiments.js'
 import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepC, sweepAlpha } from './analysis.js'
 import { experimentMath } from './math.js'
@@ -98,7 +98,6 @@ export default function App({ initialId = FIRST, initialView = null }) {
   const shown = [...traces].filter((t) => traceKeys.includes(t))
   const isBuck = exp.kind === 'buck'
   const clocked = isBuck || exp.kind === 'boost' || exp.kind === 'buckboost'
-  const lineSide = exp.kind === 'rectifier' || exp.kind === 'dimmer'
   const flow = flowNodes(exp, params, x)
 
   return (
@@ -147,9 +146,7 @@ export default function App({ initialId = FIRST, initialView = null }) {
               </FoldGroup>
             )
           })}
-          <h3 className="note-title">
-            {exp.id.toUpperCase()} · {exp.name}
-          </h3>
+          <h3 className="note-title">{exp.name}</h3>
           <p className="hint" data-role="note" data-pristine={pristine}>
             {exp.note}
             {pristine ? null : (
@@ -202,15 +199,14 @@ export default function App({ initialId = FIRST, initialView = null }) {
               />
             ),
           )}
-          <MathPanel entry={math} />
         </section>
       </aside>
 
       <div className="topbar">
         <nav className="flow" aria-label="Experiment summary">
           <span className="flow-node">
-            {exp.id.toUpperCase()}
-            <em>{exp.name}</em>
+            {exp.name}
+            <em>{exp.group}</em>
           </span>
           <span className="flow-arrow" aria-hidden="true">
             →
@@ -236,14 +232,12 @@ export default function App({ initialId = FIRST, initialView = null }) {
             <span>P_out</span>
             <b>{fmt(m.Pout, 'W', 3)}</b>
           </span>
-          <span className="topbar-field">
-            <span>{lineSide ? 'PF' : 'η'}</span>
-            <b>{lineSide ? m.pf.toFixed(3) : `${(m.eta * 100).toFixed(1)} %`}</b>
-          </span>
+          <Headline exp={exp} m={m} />
         </div>
       </div>
 
-      <main className="views">
+      <main className={`views${exp.scope === false ? ' is-single' : ''}`}>
+        {exp.scope === false ? null : (
         <section className="view">
           <div className="view-head">
             <h2>Scope</h2>
@@ -312,10 +306,11 @@ export default function App({ initialId = FIRST, initialView = null }) {
             )}
           </div>
         </section>
+        )}
 
         <section className="view">
           <div className="view-head">
-            <h2>Underneath</h2>
+            <h2>Analysis</h2>
             <ViewSwitch value={currentView} onChange={setView} options={viewOptions} />
             <div className="readout">
               {currentView === 'sweep' && sweep ? (
@@ -343,6 +338,7 @@ export default function App({ initialId = FIRST, initialView = null }) {
           </div>
           <div className="view-body">
             {currentView === 'measures' ? <MeasuresPane m={m} signals={signalsOf(exp)} /> : null}
+            {currentView === 'math' ? <MathBody entry={math} /> : null}
             {currentView === 'balance' && x.balance ? <BalancePane x={x} /> : null}
             {currentView === 'losses' ? <LossesPane x={x} /> : null}
             {currentView === 'spectrum' ? <SpectrumPane x={x} /> : null}
@@ -356,20 +352,30 @@ export default function App({ initialId = FIRST, initialView = null }) {
   )
 }
 
-/** The top bar's middle and output nodes, per kind of experiment. */
+/**
+ * The top bar's middle and output nodes, per experiment. A symbol appears
+ * here only once the curriculum has met it: K and K_crit are the light-load
+ * experiment's, so a buck before it says what it is doing in volts and duty
+ * instead (`exp.symbols` lists what an experiment may use).
+ */
 function flowNodes(exp, params, x) {
   const m = x.m
+  const saysK = (exp.symbols || []).includes('K')
   if (exp.kind === 'buck') {
     return {
-      mid: `K = ${x.formulas.K.toFixed(3)}, K_crit = ${x.formulas.Kcrit.toFixed(3)}`,
-      out: `M = ${m.M.toFixed(4)}`,
-      outSub: `D = ${params.D.toFixed(4)}`,
+      mid: saysK
+        ? `K = ${x.formulas.K.toFixed(3)}, K_crit = ${x.formulas.Kcrit.toFixed(3)}`
+        : `${fmt(params.Vin, 'V', 3)} in, D = ${(params.D * 100).toFixed(1)} %`,
+      out: saysK ? `M = ${m.M.toFixed(4)}` : `${fmt(m.sig.vout.avg, 'V', 4)} out`,
+      outSub: saysK ? `D = ${params.D.toFixed(4)}` : `M = ${m.M.toFixed(4)}`,
     }
   }
   if (exp.kind === 'linreg') return { mid: `${fmt(params.Vin, 'V', 3)} in`, out: `η = ${(m.eta * 100).toFixed(1)} %`, outSub: 'V_out / V_in' }
   if (exp.kind === 'boost' || exp.kind === 'buckboost') {
     return {
-      mid: `${fmt(params.Vin, 'V', 3)} in, K = ${x.formulas.K.toFixed(3)} of ${x.formulas.Kcrit.toFixed(3)}`,
+      mid: saysK
+        ? `${fmt(params.Vin, 'V', 3)} in, K = ${x.formulas.K.toFixed(3)} of ${x.formulas.Kcrit.toFixed(3)}`
+        : `${fmt(params.Vin, 'V', 3)} in, D = ${(params.D * 100).toFixed(1)} %`,
       out: `M = ${m.M.toFixed(4)}`,
       outSub: `${fmt(m.sig.vout.avg, 'V', 4)} at D = ${params.D.toFixed(3)}`,
     }
@@ -389,6 +395,37 @@ function flowNodes(exp, params, x) {
     }
   }
   return { mid: `${fmt(params.Vin, 'V', 3)} in`, out: `⟨v⟩ = ${fmt(m.sig.vout.avg, 'V', 3)}`, outSub: `RMS ${fmt(m.sig.vout.rms, 'V', 3)}` }
+}
+
+/**
+ * The top bar's third meter: the number the experiment is about. η for a
+ * converter, PF on the line side — and for the chopper, whose η is 1 by
+ * definition and whose lesson is that 1 is not the point, the RMS against
+ * the mean.
+ */
+function Headline({ exp, m }) {
+  if (exp.headline === 'rms')
+    return (
+      <span className="topbar-field">
+        <span>V_rms / ⟨v⟩</span>
+        <b>
+          {m.sig.vout.rms.toFixed(2)} V / {m.sig.vout.avg.toFixed(2)} V
+        </b>
+      </span>
+    )
+  if (exp.headline === 'pf')
+    return (
+      <span className="topbar-field">
+        <span>PF</span>
+        <b>{m.pf.toFixed(3)}</b>
+      </span>
+    )
+  return (
+    <span className="topbar-field">
+      <span>η</span>
+      <b>{(m.eta * 100).toFixed(1)} %</b>
+    </span>
+  )
 }
 
 /** A two-position knob, in the segmented idiom the pane headers use. */

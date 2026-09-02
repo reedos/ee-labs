@@ -175,23 +175,33 @@ export default function MathPanel({ entry, getEntry, label = 'The math' }) {
       >
         <span aria-hidden="true">{open ? '▾' : '▸'}</span> {label}
       </button>
-      {open && built && (
-        <div className="math-body">
-          {built.blocks.map((b, i) => {
-            if (b.kind === 'text') return <p key={i}>{b.text}</p>
-            if (b.kind === 'formula')
-              return (
-                <div key={i} className="math-formula">
-                  <Formula>{b.tex}</Formula>
-                  {b.caption ? <p className="math-caption">{b.caption}</p> : null}
-                </div>
-              )
-            if (b.kind === 'check') return <Check key={i} rows={b.rows} />
-            if (b.kind === 'values') return <Values key={i} rows={b.rows} />
-            return null
-          })}
-        </div>
-      )}
+      {open && built && <MathBody entry={built} />}
+    </div>
+  )
+}
+
+/**
+ * The panel's content without the fold: the blocks of an entry, rendered.
+ * For a lab that gives the math a pane of its own rather than a toggle under
+ * the note (Power Lab), where hiding it behind a click is the thing to avoid.
+ */
+export function MathBody({ entry }) {
+  if (!entry) return null
+  return (
+    <div className="math-body">
+      {entry.blocks.map((b, i) => {
+        if (b.kind === 'text') return <p key={i}>{b.text}</p>
+        if (b.kind === 'formula')
+          return (
+            <div key={i} className="math-formula">
+              <Formula>{b.tex}</Formula>
+              {b.caption ? <p className="math-caption">{b.caption}</p> : null}
+            </div>
+          )
+        if (b.kind === 'check') return <Check key={i} rows={b.rows} />
+        if (b.kind === 'values') return <Values key={i} rows={b.rows} />
+        return null
+      })}
     </div>
   )
 }

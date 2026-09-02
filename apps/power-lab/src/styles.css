@@ -236,3 +236,11 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 8px;
 }
+
+/* An experiment with nothing for a scope to say (the linear regulator) hands
+   the whole column to its analysis pane. */
+.views.is-single { grid-template-rows: 1fr; }
+
+/* The math as a pane: the same body the sidebar fold used to hold, given the
+   width it wanted. Formulas stack down the left; the check tables can spread. */
+.view-body > .math-body { max-width: 760px; padding: 4px 0; }

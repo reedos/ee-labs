@@ -615,7 +615,8 @@ this list: **D** (magnetics) and **F** (inverters).
 10. **The release gate** — in order, each blocking the next:
    1. the full-suite audit treatment: the same all-angles pass the other three
       labs got (every option, every preset, every claim, fuzzing, both browsers,
-      pixel-level checks that measure the claim and not a proxy);
+      pixel-level checks that measure the claim and not a proxy) — and the
+      §11 bar, which turns the 2026-09-02 review's scores into tests;
    2. Reed's own hands-on pass against the dark deployment;
    3. Reed flips `RELEASE_STATUS` to `released`, which makes the pinning test
       *demand* the splash card, README row and LabNav entries — and only that
@@ -647,3 +648,326 @@ blocks the curriculum before it.
   sidebar slot and symbol kit follow Circuit Lab's so the two labs read alike.)*
 - **Scope creep in Group D** → D4 pre-marked stretch; saturation ships, leakage
   may slip.
+
+## 11. The 9.5 bar — from the 2026-09-02 review
+
+On 2026-09-02, with Groups A, B, C and E built, the lab was walked cold as a
+new student and scored on six metrics:
+
+| Metric | Score |
+|---|---|
+| Physics rigour & correctness | 9 |
+| Information — content | 8 |
+| Information — delivery | 4 |
+| Layout | 5 |
+| Flow & intuition | 5 |
+| Plots | 6 |
+
+The finding underneath all six: **a green suite told us nothing about any of
+this.** Stacked table cells, femto-volt dust, seven dead knobs, auto-ranging
+axes, a hidden math panel — 1372 passing tests and not one was about any of
+them, because none was about a number being wrong. So the bar for 9.5 is not
+"I feel better about it". It is:
+
+> **Every complaint in the review becomes a test that fails on `d8bd978` and
+> passes after.** A metric reaches 9.5 when its list below is green *and* a cold
+> re-walk of all 20 experiments finds nothing left that a student would trip
+> on. The last half-point on the two "new student" metrics is Reed's to give,
+> from a hands-on pass — a model can't stand in for a newcomer, only for the
+> reviewer who already found these.
+
+Tests are written **first**, against the current build, and watched fail — the
+caption-plate lesson (the probe must restate the complaint, not a proxy for it).
+
+### 11.0 The independent pass (2026-09-02)
+
+A second reviewer walked the live deployment at 1366×768, 1440×900 and 390 px
+and read the A/B/C/E code, agreed with the six scores, and found defects the
+first pass missed. Each was checked against the source before it was added
+below; every one is real.
+
+**Claim bugs — the page says something the note contradicts:**
+
+- **A2's topbar reads η = 100 %.** `analysis.js` hard-codes `eta: 1` for the
+  chopper. It is true by the book's definition (P_out = ⟨v²⟩/R, P_switch = 0)
+  and it is the opposite of the lesson, which is that the chopper puts 12 W
+  into a load that wanted 5. A2's headline is **V_rms vs ⟨v⟩** (7.75 V vs
+  5.00 V); η leaves that topbar. → 11.2.2, 11.3.6.
+- **A3's 3.65 mV ripple cannot be seen.** Opening traces are `vsw` (0–12 V)
+  and `vout` (5 V ± 1.8 mV) on one voltage range — the note's whole number is
+  a flat green line. Class 5 of the audit playbook. → 11.6.1 (two strips) and
+  11.6.7 (opening traces show the claim).
+- **C4 says "watch i_in go flat" and `iin` is not an opening trace.** → 11.6.7.
+- **A3's topbar shows K and K_crit** — B5's symbols on a Group A screen,
+  because `flowNodes` shows them for every buck. → 11.3.7.
+- **C2 opens at D = 0.5**; the peak it is about is at 0.9. → 11.5.5 (a chip
+  at the peak, and the default moves there).
+- **A3's last sentence** says "the rest of this group is why it works". A3 is
+  the last experiment in its group; it means Group B. → 11.5.4.
+
+**Delivery, measured in pixels** (1440×900, sidebar 900 px tall):
+
+| | note | schematic | first knob | math toggle |
+|---|---|---|---|---|
+| A1 | in view | in view | 880 px | 1122 px |
+| B4 | in view | 805 px | 1040 px | 1531 px |
+| E1 | in view | 889 px | 1124 px | 1638 px |
+
+You can read the essay; you cannot turn the knob it names or open the panel
+that checks it without scrolling. That is 11.3.2's test, with its numbers.
+
+**Names and shell:**
+
+- The lower pane is called **Underneath**. Elements Lab renamed its pane
+  **Analysis** after its own entry-level review; the same word here, so the
+  labs read as one suite. → 11.3.8.
+- **390 px is not a pass**: the topbar truncates (`η = 4`), the title appears
+  twice, the schematic is below the fold. → 11.4.6.
+
+**Architecture:** `packages/switched/src/expm.js` is a **second exact
+exponential**. The 2026-09-01 amendment (§1.2) said Elements Lab's
+`packages/network` owns φ₀/φ₁ and Power Lab imports them; `network/src/expm.js`
+now exports `expm` and `expm2`, committed. Two scaling-and-squaring
+implementations will drift. → 11.1.5, before Group D adds a third state.
+
+The reviewer's ordering agrees with 11.7, with the claim bugs pulled into
+step 1 because they are first-screen. Stay dark through step 3.
+
+### 11.1 Physics rigour — 9 → 9.5+
+
+What 9 already means: every note number measured, every formula footnoted where
+it stops applying. The half point is the region *between* the notes: a wrong
+fixed point somewhere in the knob space no note visits.
+
+1. **Transient agreement.** Run every clocked converter from rest for N periods
+   through the same propagator and require the last period to match the closed-
+   form steady state to 1e-6 relative — at the defaults and under fuzz. A shooting
+   method that converges to the wrong orbit is the one bug the steady-state tests
+   cannot see, and this is the only test that can.
+2. **Whole-space fuzz for the PWM family** (buck/boost/buck-boost × CCM/DCM ×
+   diode/sync): seeded random knobs across every range, plus the hostile
+   corners pinned by name — D → 0.02, D → 0.98, K within 1 % of K_crit, r → 0,
+   ESR → 1 Ω. Invariants 1–6 (§1.7) hold; no NaN, no negative period, no
+   `mode` that disagrees with the diode current's sign.
+3. **Every quantity in the measures table has a closed form or a stated
+   reason it hasn't.** A test walks `TOPOLOGY_SIGNALS` × experiments and requires
+   each avg/rms/min/max/pp shown to be either pinned against a formula or listed
+   in an explicit `unpinned` set with a one-line reason. Today the table shows
+   more than the tests read.
+4. **Sweep monotonicity and continuity**: M(D) and M(R) traces have no
+   discontinuity larger than the step's own physics allows (the CCM/DCM kink is a
+   kink, never a jump); P_out(C) sweeps in E3 are smooth.
+5. **One propagator.** `switched` imports `expm`/`expm2` from `@ee-labs/network`
+   and keeps only its own `propagator`/`propagator01` wrappers (φ₁ without A⁻¹).
+   Done in two commits: first a test that the two implementations agree to
+   1e-14 on 500 random matrices across all three discriminant cases, then the
+   deletion. `packages/network` is the other session's territory — this is an
+   import, not an edit; anything it needs from `network` goes in NEEDS.md.
+
+Exit: `packages/switched` invariants green under a 2 000-sample fuzz per kind
+within the CI budget; `experiments.test.js` has no measured value without a
+pin or a reason; `switched/src/expm.js` is gone.
+
+### 11.2 Information — content — 8 → 9.5+
+
+The notes are strong; two experiments are wrong-sized and every note tells the
+reader what is true without telling them what to *do*.
+
+1. **Split B6** into three: **B6 · The diode's rent** (V_f, sync toggle: the
+   drop as a fraction of V_out, why sync wins at 5 V and doesn't at 48 V);
+   **B7 · The resistances** (R_on, R_L, ESR: M sags, ripple grows a step from ESR
+   — the step is the tell); **B8 · The edges** (t_sw: loss ∝ f_s·t_sw, the first
+   place frequency costs something). Each with a pinned number and one knob it
+   is *about*. Group B becomes 8; the splash count moves when released.
+2. **Rebuild A2.** Chopper into a resistor: v and i are proportional, so two
+   traces overlap by physics — draw one, and draw **⟨v⟩ and V_rms as labelled
+   reference lines** so the gap between them is the plot's subject. Add the
+   losses view (the switch's P = 0 while the load's is ⟨v²⟩/R) and a D sweep of
+   ⟨v⟩ and V_rms together (the straight line and the square-root curve — the
+   lesson as a picture). Pin: ⟨v⟩ = DV_in, V_rms = √D·V_in, P_load = D·V_in²/R.
+   The measures table stops listing `v_sw` and `v_out` as the same row twice.
+   **Its topbar shows V_rms against ⟨v⟩, never η** — the chopper's η = 1 is
+   true and is the opposite of the point. Test: A2's rendered topbar contains
+   `7.75` and `5.00` and does not contain `100`.
+3. **One imperative per note**, in the note's last sentence and stored as its
+   own field (`try`) so it can be rendered apart: "Set f_s to 400 kHz — the
+   ripple should drop to a quarter." B3, E3, A3, C3 each already contain the
+   experiment as a fact; every note gets one. Test: every experiment has a
+   `try`; every number in a `try` is measured like the note's.
+4. **Group intros** — two sentences per group stating what the group will
+   establish, as a `GROUP_INTROS` map rendered above the group's experiments
+   when open. Test: every group has one; word count ≤ 45.
+5. **Reading level.** Notes ≤ 100 words, sentences ≤ 20 words on average,
+   measured by test (the numbers today are 121 and 24). First use of a term in
+   a group's notes is either defined inline or in that experiment's `terms`.
+   Test: every term-of-art that appears in `terms.js` and in a note is in that
+   experiment's `terms` list.
+6. **E1's 42.9° is on the plot** (see 11.6 item 4) and the note points at it.
+
+Exit: the tests above green; A2 and B6–B8 re-walked cold and each carries one
+claim, one knob, one picture.
+
+### 11.3 Information — delivery — 4 → 9.5+
+
+The lab's thesis — the formula beside what it predicts — sits 170 px below the
+fold in a 950 px window, collapsed. Nothing else in this section matters until
+that is fixed.
+
+1. **Math becomes a lower-pane view**: Measures · Balance · **Math** · Sweep ·
+   Losses. Full width, one click, found. The sidebar's `MathPanel` goes; the
+   sidebar shortens by its longest element. Test: the math view renders for all
+   20 experiments; a Playwright probe asserts the view button is visible without
+   scrolling at 1366×768.
+2. **Above the fold, always**: at 1366×768 and 1440×900, for every experiment,
+   the note, the schematic and the first knob are inside the viewport without
+   scrolling the sidebar. Playwright asserts bounding boxes, per experiment —
+   the complaint was measured in pixels and its test is in pixels.
+3. **The header says what the lab is for**, not how the engine works: three
+   sentences a newcomer can use ("Pick an experiment. Turn the knob it names.
+   Watch the number the note promised."). The engine's fidelity moves to the
+   report link's provenance.
+4. **Terms open on first visit** of an experiment that declares terms, closed
+   thereafter (per-session state). The rescue only works if it is seen once.
+5. **The `try` line renders as its own element** under the note, with the
+   knob's name as a chip that focuses it.
+6. **The topbar's third meter is the experiment's own headline**, declared per
+   experiment (`exp.headline`): η for A1 and the converters, V_rms vs ⟨v⟩ for
+   A2, PF for the line side. Test: every experiment declares one; A2's is not η.
+7. **Symbols appear when they are taught.** K and K_crit in the top bar are
+   B5's; they show from B4 on, not on A3's first buck. `flowNodes` takes the
+   experiment, not the kind. Test: A3's rendered topbar contains no `K`.
+8. **The lower pane is "Analysis"**, Elements Lab's word, not "Underneath".
+   Test: the pane heading text, pinned like Elements Lab pins its own.
+
+Exit: the fold test green at both sizes for all 20; the math view has been
+opened in a cold walk without being looked for.
+
+### 11.4 Layout — 5 → 9.5+
+
+Both panes are 453 px whatever the experiment is about; eight of twenty open on
+a sweep that then gets the lower half.
+
+1. **Weighted split.** The pane an experiment names as its `view` gets 62 % of
+   the main height; the other 38 %. The user can drag the divider (a
+   `pane-split` state in `App`, remembered per session) or click a pane's header
+   to swap. Test: primary pane height ≥ 55 % at every experiment, 1366×768.
+2. **An experiment can declare the scope silent** (`scope: false`): A1 hands its
+   whole pane to the lesson. (A2 gets a real scope from 11.2 and keeps it.)
+   Test: A1 renders no canvas in the upper pane; every other experiment does.
+3. **Nothing overflows.** Playwright asserts `scrollWidth === clientWidth` on the
+   app and every pane at 1280, 1366, 1440 and 1920 wide, for every experiment
+   and view — the spectrum-scroll complaint, generalised.
+4. **Knob order by lesson**: the knob the experiment is about first, then its
+   supporting knobs, then the rest folded ("More"). Test: `exp.about` names a
+   knob and it is first in `exp.params`.
+5. **Sidebar order**: Experiments → note → try → Schematic → Knobs. (Math has
+   left.) Group folds keep the active group open and never auto-close the one
+   you are in.
+6. **390 px is a pass.** The topbar wraps to two rows and never truncates a
+   meter; the experiment title appears once; the schematic moves into the main
+   column above the panes on phone; A1 shows its loss bars, not lines. Test:
+   Playwright at 390×844 — no clipped text in the topbar (every meter's
+   `scrollWidth` fits), one `h3.note-title`, schematic bounding box inside the
+   first viewport.
+
+Exit: the five Playwright layout probes green at every size × experiment × view.
+
+### 11.5 Flow & intuition — 5 → 9.5+
+
+There is no path through the material and the group letters advertise a hole.
+
+1. **Drop the letters from every visible surface**: group names ("Why switch",
+   "The buck", …), the note title, the top bar. The ids stay `a1…e6` internally
+   and in deep links; `release.test.js` and the plan keep their letters. Test:
+   no rendered text matches `/\b[A-N]\d\b/` except inside `data-id`.
+2. **Next / previous** in the top bar, with "7 of 20" and the group name. The
+   sequence is `EXPERIMENTS` order. Test: from every experiment, next and
+   previous land where the list says; last has no next.
+3. **"Start here" on A1**, and the lab opens on it with the group intro shown.
+4. **Each note ends with where it leads**: a `next` hint ("Next: M = D") rendered
+   as a link, distinct from the top-bar button — the within-group arcs (A's
+   three beats, E1→E2, C1→C2) become visible as arcs. Test: every `next`
+   resolves to an existing id — and a note that says "this group" is in a
+   group with an experiment after it (A3's currently isn't: it means Group B).
+5. **Preset chips on the featured knob** — NumField already takes `presets`;
+   each experiment lists the stops its lesson lives at (E3: C = 100 µF, 1 mF,
+   4.7 mF; B3: f_s = 100 k, 400 k; C2: D = 0.5, 0.9). Test: every experiment's
+   `about` knob has ≥ 2 chips, all inside the knob's range, and each chip's
+   number appears in the note or `try`. **And the default sits where the
+   lesson is**: C2 opens at D = 0.9, on the peak, with 460.8 W in the winding —
+   the same class as Elements Lab's H2 cursor once sitting on a zero crossing.
+   Test: for every experiment, the number the note leads with is the number at
+   the defaults.
+6. **The "you have moved away from the defaults" line gets a way back**: a
+   reset chip beside it. Test: clicking it restores `defaultsOf(id)`.
+
+Exit: a cold walk from A1 to E6 using only next/previous, never the list, with
+the group intro read at each boundary, finds no "why am I here" moment. Reed's
+pass sets the last half-point.
+
+### 11.6 Plots — 6 → 9.5+
+
+Ripple, sweep and spectrum read well now. The dual-axis scope needs decoding,
+and two experiments draw pictures that don't show their claim.
+
+1. **Two strips, one time axis.** Voltages above, currents below, the time axis
+   shared, each strip with its own anchored range. Where only one kind is shown
+   the strip takes the full height. The dual-axis convention (the plan's "one
+   genuinely new UI idiom", §10) is retired: it was the idiom that needed a
+   legend to decode. Test: a pixel probe finds the current trace's colour only
+   in the lower strip and no voltage colour there.
+2. **Legends off the canvas.** Trace names live in the chips above the frame
+   (already coloured); the canvas keeps only the edge names. Test: no
+   `fillText` of a trace label in the scope's draw path.
+3. **Axis anchoring for every plot, promoted to `packages/ui`** as an additive
+   module (`anchor.js`: `niceBounds`, `traceExtent`, `scopeRange`) so the other
+   three labs can adopt it — a new file, no edits to shared files, else via
+   NEEDS.md. The sweep's y-range anchors to the defaults the way the scope does.
+   Test (already written for the scope, extended to the sweep and balance
+   panes): frame unchanged across a knob change that stays inside it.
+4. **Marks on the plot for the note's numbers**: E1's conduction angle as a
+   shaded interval labelled "42.9°"; B5's boundary as a marked point on the
+   sweep; A2's ⟨v⟩ and V_rms lines; C2's peak D marked. Test per mark: the
+   label text is drawn and its x maps to the measured value to within a pixel.
+5. **A1 draws the loss**: no scope; its pane is the losses bar with the 7 W
+   named, so the first screen shows the number the lab exists to beat.
+6. **A visual regression harness**, the piece every other lab has and this one
+   doesn't: `apps/power-lab/scripts/verify.mjs` in the suite's idiom —
+   Chromium and Firefox, every experiment × view at two sizes, with probes that
+   restate the complaints above (ripple spans ≥ 15 % of its strip at defaults;
+   frame unchanged after a knob change; table cells not stacked; no femto
+   dust in any rendered text; no overflow). Run by hand before every push, in
+   CI when the deploy workflow gains a browser step.
+7. **The opening traces show the claim.** An experiment's default trace set is
+   the one its note describes, nothing else: A3 opens on `vout` alone (so the
+   3.65 mV is the whole strip), C4 opens with `iin` (the note says to watch
+   it), and no Group A experiment offers the twelve-chip trace bar — the chips
+   are the traces the topology has *and the group has met*. Test: every signal
+   a note names is in the opening set; the ripple probe in item 6 runs on A3
+   and B3 at their defaults.
+
+Exit: `verify.mjs` green in both browsers; the review's plot complaints —
+the four from the first pass and A3's, C4's from the second — each have a
+probe that failed on `d8bd978`.
+
+### 11.7 Order and cost
+
+Sequenced so each step is deployable and the first-run experience improves
+first:
+
+| Step | Items | Buys | Size |
+|---|---|---|---|
+| 1 | 11.3.1, 11.5.1, 11.4.2, 11.6.5 — **and the claim bugs**: 11.3.6–8 (A2's topbar, K hidden until B4, "Analysis"), 11.6.7 (A3 and C4 open on the claim), 11.5.5's C2 default, A3's last sentence | Math visible; no D-hole; A1 shows its loss; no screen contradicts its note | a day |
+| 2 | 11.6.6 harness + the failing probes for every complaint (A3 ripple ≥ 15 % of its strip; math button on-screen at 1366×768; A2's topbar without `100`; the fold table of 11.0) | The bar itself; everything after is measured | a day |
+| 3 | 11.6.1–4 (two-strip scope, legends off, anchoring everywhere, marks) | Plots 6 → 9.5 | a day |
+| 4 | 11.4.1, 11.4.3–6 (split, overflow, knob order, phone) | Layout 5 → 9.5 | a day |
+| 5 | 11.5.2–6 (path, intros, chips, reset) + 11.3.2–5 | Flow and delivery | a day |
+| 6 | 11.2.1–3, 11.2.5 (B6 split, A2 rebuild, `try` lines, reading level) | Content 8 → 9.5 | a day |
+| 7 | 11.1.1–5 (transient agreement, whole-space fuzz, pin-or-reason, sweep continuity, one propagator) | Rigour 9 → 9.5 | a day |
+| 8 | Cold re-walk of all 20, re-score against the same rubric; then Reed's pass | The number | half a day |
+
+Seven and a half days; Group D waits behind it, because every group built
+after this inherits the fixes and every group built before it would need
+them retrofitted — four new topologies on the current shell would retrofit
+all of it. The lab stays dark through step 3 at the least. Each step lands as
+its own commit with its tests, pushed only when asked.

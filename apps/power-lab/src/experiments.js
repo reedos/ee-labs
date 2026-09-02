@@ -9,13 +9,17 @@
 //
 // Groups follow POWER_LAB_PLAN.md: A is why a switch beats a resistor, B the
 // buck converter — volt-second balance, M = D, ripple, discontinuous
-// conduction, the boundary between the modes, and real parts; E the line
-// side — diode rectifiers into a capacitor, what they ask of the grid, the
-// phase-cut dimmer, and the three-phase six-pulse bridge. The other groups
-// (boost and buck-boost, control, inverters, magnetics, …) are the plan's
-// later phases and are not here yet.
+// conduction, the boundary between the modes, and real parts; C the boost
+// and the buck-boost; E the line side — diode rectifiers into a capacitor,
+// what they ask of the grid, the phase-cut dimmer, and the three-phase
+// six-pulse bridge. The other groups (magnetics, inverters, control, …) are
+// the plan's later phases and are not here yet.
+//
+// The plan's letters live in the ids (a1 … e6) and nowhere the reader sees:
+// a list that runs A, B, C, E advertises the group that is not built yet,
+// and the letters said nothing a name does not.
 
-export const GROUPS = ['A · Why switch', 'B · The buck', 'C · Boost & buck-boost', 'E · AC in']
+export const GROUPS = ['Why switch', 'The buck', 'Boost & buck-boost', 'AC in']
 
 // ------------------------------------------------------------ knobs
 const Vin = (def = 12) => ({ key: 'Vin', label: 'V_in', unit: 'V', min: 1, max: 48, scale: 'linear', step: 0.1, default: def, hint: 'Input voltage' })
@@ -64,6 +68,7 @@ export const TRACES = {
 export const VIEWS = {
   measures: { label: 'Measures', title: 'Average, RMS and peak-to-peak of every waveform, and the power' },
   balance: { label: 'Balance', title: 'Volt-seconds on the inductor and coulombs on the capacitor, segment by segment' },
+  math: { label: 'Math', title: 'Every formula the note leans on, evaluated beside what the waveform measures' },
   sweep: { label: 'Sweep', title: 'One measure as one knob sweeps its range' },
   losses: { label: 'Losses', title: 'Where the input power goes' },
   spectrum: { label: 'Spectrum', title: 'The harmonics of the current drawn from the line, and what they cost in power factor' },
@@ -88,10 +93,14 @@ export const SWEEP_Y = {
   pf: { label: 'power factor', unit: '', lo: 0, hi: 1 },
 }
 
+// The top bar's third meter is the experiment's own headline — η for a
+// converter, PF on the line side, and V_rms against ⟨v⟩ for the chopper,
+// whose η is 1 by definition and the opposite of its lesson (A2).
 const buck = (over) => ({
   kind: 'buck',
+  headline: 'eta',
   traces: ['vsw', 'vout', 'iL'],
-  views: ['measures', 'balance', 'sweep', 'losses'],
+  views: ['measures', 'balance', 'math', 'sweep', 'losses'],
   view: 'measures',
   sweep: { x: 'D', y: 'M' },
   periods: 2,
@@ -103,10 +112,12 @@ const buck = (over) => ({
 // (it is where the two topologies differ most visibly).
 const pwm = (kind, over) => ({
   kind,
+  headline: 'eta',
+  symbols: ['K'],
   params: [Vin(), D(0.5), L(), C(), Rlb(), Fs()],
   traces: ['vsw', 'vout', 'iL'],
   allTraces: ['vsw', 'vout', 'vL', 'iL', 'iQ', 'iD', 'iC', 'iin'],
-  views: ['measures', 'balance', 'sweep', 'losses'],
+  views: ['measures', 'balance', 'math', 'sweep', 'losses'],
   view: 'measures',
   sweep: { x: 'D', y: 'M' },
   periods: 2,
@@ -118,10 +129,11 @@ const pwm = (kind, over) => ({
 const rect = (kind, over) => ({
   kind: 'rectifier',
   rect: kind,
+  headline: 'pf',
   params: [Vs(), Cf(), Rl(), Rs(), Vfd(), F()],
   traces: ['vin', 'vout', 'iD'],
   allTraces: ['vin', 'vrect', 'vout', 'vD', 'iD', 'iin', 'iC', 'iR'],
-  views: ['measures', 'spectrum', 'losses'],
+  views: ['measures', 'spectrum', 'math', 'losses'],
   view: 'measures',
   periods: 2,
   ...over,
@@ -134,9 +146,13 @@ export const EXPERIMENTS = [
     group: GROUPS[0],
     name: 'The linear regulator',
     kind: 'linreg',
+    headline: 'eta',
     params: [Vin(), Vo(), R()],
+    // A regulator has no time-domain story: its scope would be three flat
+    // lines, and the 7 W is the picture. So the losses take the whole column.
+    scope: false,
     traces: ['vsw', 'vout', 'iL'],
-    views: ['losses', 'measures', 'sweep'],
+    views: ['losses', 'measures', 'math', 'sweep'],
     view: 'losses',
     sweep: { x: 'D', y: 'eta' },
     note:
@@ -151,9 +167,13 @@ export const EXPERIMENTS = [
     group: GROUPS[0],
     name: 'Chop it',
     kind: 'chopper',
+    headline: 'rms',
     params: [Vin(), D(), R(), Fs()],
-    traces: ['vsw', 'iL'],
-    views: ['measures'],
+    // The current is the voltage over R — the same shape, so one trace. What
+    // the eye should compare is the mean with the RMS, and that is the headline.
+    traces: ['vsw'],
+    allTraces: ['vsw', 'iL'],
+    views: ['measures', 'math'],
     view: 'measures',
     note:
       'Replace the pass element with a switch: on for a fraction D of each period, off for the rest. It ' +
@@ -168,13 +188,16 @@ export const EXPERIMENTS = [
     group: GROUPS[0],
     name: 'Let the LC do the averaging',
     params: [Vin(), D(), L(), C(), R(), Fs()],
-    traces: ['vsw', 'vout'],
+    // The output alone: 3.65 mV on 5 V is the claim, and it is invisible on
+    // any axis that also holds the 12 V switch node (v_sw is a chip away).
+    traces: ['vout'],
+    allTraces: ['vsw', 'vout', 'iL'],
     note:
       'Put an inductor and capacitor between the chopped node and the load. The switch node still swings ' +
       '0 ↔ 12 V, but the output is 5.000 V with 3.65 mV of ripple: the filter passes the average and ' +
       'stops the rest, because its corner (1.59 kHz) is 63× below the switching frequency. The load draws ' +
       '5.00 W, the source supplies 5.00 W, and nothing heats up. This is the buck converter — a chopper ' +
-      'plus a low-pass filter — and the rest of this group is why it works.',
+      'plus a low-pass filter — and the next group is why it works.',
     terms: ['buck', 'ripple', 'switch-node'],
   }),
 
@@ -207,7 +230,7 @@ export const EXPERIMENTS = [
       '5.000 V from 12 V, and the sweep is a straight line through the origin at every load that keeps ' +
       'the inductor current from reaching zero. The formula has no L, C, R or f_s in it because ' +
       'volt-second balance has none — those set the ripple and the losses, not the ratio. (Turn R up ' +
-      'past 34 Ω and the line bends away: that is B4.)',
+      'past 34 Ω and the line bends away: that is the light-load experiment, two on from here.)',
     terms: ['conversion-ratio', 'duty'],
   }),
   buck({
@@ -229,6 +252,7 @@ export const EXPERIMENTS = [
     id: 'b4',
     group: GROUPS[1],
     name: 'Light load: discontinuous conduction',
+    symbols: ['K'],
     params: [R(200), Sync(), L(), Fs(), D(), Vin()],
     traces: ['vsw', 'iL', 'vout'],
     view: 'sweep',
@@ -247,6 +271,7 @@ export const EXPERIMENTS = [
     id: 'b5',
     group: GROUPS[1],
     name: 'The boundary',
+    symbols: ['K'],
     params: [R(34.2857142857), L(), Fs(), D(), Vin()],
     traces: ['iL', 'vsw'],
     view: 'sweep',
@@ -264,6 +289,7 @@ export const EXPERIMENTS = [
     id: 'b6',
     group: GROUPS[1],
     name: 'Real parts',
+    symbols: ['K'],
     params: [Ron(0.05), Vf(0.5), RL(0.03), ESR(0.05), Tsw(20e-9), Sync(), R(), D()],
     traces: ['vsw', 'vout', 'iL'],
     view: 'losses',
@@ -298,19 +324,23 @@ export const EXPERIMENTS = [
     id: 'c2',
     group: GROUPS[2],
     name: 'The peak ideal theory misses',
-    params: [RLw(), D(0.5), Rlb(), Vin(), L(), Fs()],
+    // The knob starts on the peak, so the screen at arrival is the one the
+    // note is about — not a well-behaved boost at D = 0.5 with the story a
+    // pane below.
+    params: [RLw(), D(0.9), Rlb(), Vin(), L(), Fs()],
     traces: ['vout', 'iL'],
-    views: ['sweep', 'measures', 'losses'],
+    views: ['sweep', 'measures', 'math', 'losses'],
     view: 'sweep',
     sweep: { x: 'D', y: 'M', y2: 'eta' },
     note:
       'Give the inductor 0.2 Ω of winding. The ideal curve still climbs forever; the real one turns over ' +
       'and comes back down. The reason is that the winding carries the load current divided by (1 − D), so ' +
       'as D → 1 the current diverges faster than the voltage: M = (1 − D)/((1 − D)² + R_L/R), which peaks ' +
-      'at M = ½·√(R/R_L) = 5.00 where 1 − D = √(R_L/R), here D = 0.900. Theory promised 10.0 there. Push ' +
-      'past it — D = 0.950 — and the output *falls* to 48.00 V while 460.8 W cooks the winding. Efficiency ' +
-      'tells the same story from the other side: η = M·(1 − D), the fraction of the promised voltage that ' +
-      'arrives, which at the peak is exactly 50 %. This is why "just increase D" ends in smoke.',
+      'at M = ½·√(R/R_L) = 5.00 where 1 − D = √(R_L/R). The knob starts there, at D = 0.900: 60.0 V out ' +
+      'where theory promised 120 V, and the winding burning 180 W to deliver 180 W. Push past it — D = 0.950 ' +
+      '— and the output *falls* to 48.00 V while 460.8 W cooks the winding. Efficiency tells the same story ' +
+      'from the other side: η = M·(1 − D), the fraction of the promised voltage that arrives, which at ' +
+      'the peak is exactly 50 %. This is why "just increase D" ends in smoke.',
     terms: ['boost', 'winding-resistance', 'efficiency'],
   }),
   pwm('boost', {
@@ -319,7 +349,7 @@ export const EXPERIMENTS = [
     name: 'The boost runs dry too',
     params: [Rlb(400), Vin(), D(0.5), L(), C(), Fs()],
     traces: ['vout', 'iL', 'iD'],
-    views: ['sweep', 'measures', 'balance'],
+    views: ['sweep', 'measures', 'math', 'balance'],
     view: 'sweep',
     sweep: { x: 'R', y: 'M' },
     note:
@@ -336,7 +366,7 @@ export const EXPERIMENTS = [
     id: 'c4',
     group: GROUPS[2],
     name: 'The inverting bucket',
-    traces: ['vsw', 'vout', 'iL'],
+    traces: ['vsw', 'vout', 'iL', 'iin'],
     note:
       'Move the diode and the output to the other side of the inductor and the source and the load never ' +
       'share a path. On: the source charges the inductor, the capacitor alone feeds the load. Off: the ' +
@@ -353,7 +383,7 @@ export const EXPERIMENTS = [
     name: 'All the energy through one part',
     params: [Rlb(200), Vin(), D(0.5), L(), C(), Fs()],
     traces: ['vout', 'iL'],
-    views: ['sweep', 'measures', 'balance'],
+    views: ['sweep', 'measures', 'math', 'balance'],
     view: 'sweep',
     sweep: { x: 'R', y: 'Pout', y2: 'Vout' },
     note:
@@ -405,7 +435,7 @@ export const EXPERIMENTS = [
     name: 'The price of a big capacitor',
     params: [Cf(), Rs(), Rl(), Vs(), Vfd(), F()],
     traces: ['vout', 'iD'],
-    views: ['sweep', 'measures', 'losses'],
+    views: ['sweep', 'measures', 'math', 'losses'],
     view: 'sweep',
     sweep: { x: 'C', y: 'angle', y2: 'iPeak' },
     note:
@@ -425,7 +455,7 @@ export const EXPERIMENTS = [
     name: 'What the grid sees',
     params: [Cf(), Rl(), Rs(), Vs(), Vfd(), F()],
     traces: ['vin', 'iin'],
-    views: ['spectrum', 'measures', 'losses'],
+    views: ['spectrum', 'measures', 'math', 'losses'],
     view: 'spectrum',
     note:
       'The line current is not a sine but two spikes a cycle, and the supply is sized for what it does ' +
@@ -443,10 +473,11 @@ export const EXPERIMENTS = [
     group: GROUPS[3],
     name: 'The dimmer',
     kind: 'dimmer',
+    headline: 'pf',
     params: [Alpha(), Vline(), Rl(), F()],
     traces: ['vin', 'vout', 'iR'],
     allTraces: ['vin', 'vout', 'vD', 'iin', 'iR'],
-    views: ['sweep', 'spectrum', 'measures'],
+    views: ['sweep', 'spectrum', 'math', 'measures'],
     view: 'sweep',
     sweep: { x: 'alpha', y: 'share' },
     periods: 2,
@@ -458,7 +489,7 @@ export const EXPERIMENTS = [
       'harmonics (THD 65 %) and its fundamental lags 32.5° (the wave’s weight has moved late): the power ' +
       'factor is 0.707, the displacement 0.844 times the distortion 0.838. Dim to 135° and 9.1 % of the ' +
       'power arrives at a power factor of 0.30. The sharp edge at every firing is the buzz in cheap ' +
-      'dimmers and the harmonics on the line; the rectifier-plus-capacitor of E4 draws worse.',
+      'dimmers and the harmonics on the line; the rectifier-plus-capacitor of the previous experiment draws worse.',
     terms: ['phase-cut', 'power-factor', 'displacement', 'thd'],
   },
   rect('six', {
