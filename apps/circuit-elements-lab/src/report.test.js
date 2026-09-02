@@ -23,7 +23,7 @@ describe('the report summary', () => {
           params: defaultsOf(e.id),
           show: e.show,
           view,
-          outcome: 'KCL holds at every node, largest residual 1.2e-16 A',
+          outcome: 'current in = current out at every node (KCL), largest imbalance 1.2e-16 A',
         })
         for (const [k, v] of Object.entries(s)) {
           expect(String(v), `${e.id}/${view} → ${k}`).not.toMatch(/undefined|NaN|\[object Object\]/)

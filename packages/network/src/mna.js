@@ -22,12 +22,14 @@ import { SingularError, solve } from './linalg.js'
  *            state derivatives (see state.js).
  */
 function reactive(e, opts) {
+  // `from` remembers what the element really is, so the printed equations can
+  // call the substituted source v_C1 or i_L1 rather than E or I.
   if (opts.states && e.id in opts.states) {
-    if (e.type === 'C') return { type: 'V', value: opts.states[e.id] }
-    if (e.type === 'L') return { type: 'I', value: opts.states[e.id] }
+    if (e.type === 'C') return { type: 'V', value: opts.states[e.id], from: 'C' }
+    if (e.type === 'L') return { type: 'I', value: opts.states[e.id], from: 'L' }
   }
-  if (e.type === 'C') return { type: 'OPEN' }
-  if (e.type === 'L') return { type: 'V', value: 0 }
+  if (e.type === 'C') return { type: 'OPEN', from: 'C' }
+  if (e.type === 'L') return { type: 'V', value: 0, from: 'L' }
   return null
 }
 
@@ -39,13 +41,13 @@ function reactive(e, opts) {
 export function effective(e, opts = {}) {
   if (e.type === 'SW') {
     const closed = opts.switches && e.id in opts.switches ? opts.switches[e.id] : e.closed !== false
-    if (closed) return e.ron > 0 ? { ...e, type: 'R', value: e.ron } : { ...e, type: 'V', value: 0 }
-    return Number.isFinite(e.roff) && e.roff > 0 ? { ...e, type: 'R', value: e.roff } : { ...e, type: 'OPEN' }
+    if (closed) return e.ron > 0 ? { ...e, type: 'R', value: e.ron, from: 'SW' } : { ...e, type: 'V', value: 0, from: 'SW' }
+    return Number.isFinite(e.roff) && e.roff > 0 ? { ...e, type: 'R', value: e.roff, from: 'SW' } : { ...e, type: 'OPEN', from: 'SW' }
   }
   const r = reactive(e, opts)
   if (r) return { ...e, ...r }
   if (e.type === 'OPAMP' && Number.isFinite(e.gain)) {
-    return { ...e, type: 'VCVS', nodes: [e.nodes[0], GROUND], gain: e.gain }
+    return { ...e, type: 'VCVS', nodes: [e.nodes[0], GROUND], gain: e.gain, from: 'OPAMP' }
   }
   // A source's value at some instant, for the time-domain engine.
   if ((e.type === 'V' || e.type === 'I') && opts.sources && e.id in opts.sources) return { ...e, value: opts.sources[e.id] }

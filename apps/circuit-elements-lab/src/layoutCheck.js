@@ -26,9 +26,9 @@ export function layoutProblems(layout, elements, meters, show = 'i', margin = 1)
   const edges = [] // { box, what } — the four sides of each dashed frame
   const problems = []
 
-  const addText = (place, text, font, what) => {
+  const addText = (place, text, font, what, owner = null) => {
     if (!text) return
-    texts.push({ box: G.textBox(place, text.length * font.cw, font.size), what: `${what} “${text}”` })
+    texts.push({ box: G.textBox(place, text.length * font.cw, font.size), what: `${what} “${text}”`, owner })
   }
 
   for (const it of items) {
@@ -71,10 +71,17 @@ export function layoutProblems(layout, elements, meters, show = 'i', margin = 1)
         addText(at.reading, reading, G.FONT.meter, `${e.id} reading`)
       } else {
         const arrow = show === 'i' && !!reading
-        for (const box of G.elementBodyBoxes(it, e, arrow)) bodies.push({ box, what: `${e.id} symbol` })
+        for (const box of G.elementBodyBoxes(it, e, arrow)) bodies.push({ box, what: `${e.id} symbol`, owner: e.id })
         const at = G.elementTextPlaces(it)
         addText(at.label, G.valueText(e), G.FONT.label, `${e.id} label`)
         addText(at.reading, reading, G.FONT.meter, `${e.id} reading`)
+        // The + and − marks sit at the element's own terminals, so they may
+        // touch its own symbol; anything else they land on is a collision.
+        if (show === 'v' && meters) {
+          const signs = G.signPlaces(it)
+          addText(signs.plus, '+', G.FONT.sign, `${e.id} + mark`, e.id)
+          addText(signs.minus, '−', G.FONT.sign, `${e.id} − mark`, e.id)
+        }
       }
     }
   }
@@ -99,6 +106,7 @@ export function layoutProblems(layout, elements, meters, show = 'i', margin = 1)
     }
     for (const body of bodies) {
       if (body.dot) continue
+      if (texts[a].owner && body.owner === texts[a].owner) continue
       if (overlaps(texts[a].box, body.box)) problems.push(`${texts[a].what} sits on ${body.what}`)
     }
     for (const s of wires) {

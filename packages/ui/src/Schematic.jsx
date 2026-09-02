@@ -1,6 +1,6 @@
 import React from 'react'
 import { fmt } from './units.js'
-import { valueText, elementReading, elementTextPlaces, opampTextPlaces, nodeTextPlace } from './schematicGeometry.js'
+import { labelParts, elementReading, elementTextPlaces, opampTextPlaces, nodeTextPlace, signPlaces } from './schematicGeometry.js'
 
 /**
  * A schematic drawn from data, with live meters.
@@ -99,6 +99,38 @@ const Gnd = ({ x, y }) => (
   </g>
 )
 
+/**
+ * An element's label, typeset like the equations: the letter in the maths
+ * italic, its subscript small, then the value upright — R₁ 1 kΩ. A custom
+ * label is written as given.
+ */
+function Label({ e, at }) {
+  const l = labelParts(e)
+  if (!l.sym) {
+    return (
+      <text className="sch-label" x={at.x} y={at.y} textAnchor={at.anchor}>
+        {l.text}
+      </text>
+    )
+  }
+  const digits = /^\d+$/.test(l.sub)
+  return (
+    <text className="sch-label" x={at.x} y={at.y} textAnchor={at.anchor} aria-label={l.text}>
+      <tspan className="sch-sym">{l.sym}</tspan>
+      {l.sub ? (
+        <tspan className={digits ? 'sch-sub' : 'sch-sub sch-sub-it'} dy="2.5">
+          {l.sub}
+        </tspan>
+      ) : null}
+      {l.value ? (
+        <tspan className="sch-val" dy={l.sub ? '-2.5' : '0'} dx="3.5">
+          {l.value}
+        </tspan>
+      ) : null}
+    </text>
+  )
+}
+
 function NodeDot({ name, x, y, side, volts }) {
   const at = nodeTextPlace({ x, y, side })
   return (
@@ -127,6 +159,7 @@ function Element({ item, e, meters, show }) {
   const rot = (dir === 'v' ? 90 : 0) + (flip ? 180 : 0)
   // Text must stay upright: it is drawn in an un-rotated group at the same place.
   const { label: below, reading: above } = elementTextPlaces(item)
+  const signs = signPlaces(item)
   const i = meters ? meters.i[e.id] : undefined
   const reading = elementReading(e, meters, show)
   // Arrow along the element in the direction the current flows: + to − when
@@ -155,19 +188,18 @@ function Element({ item, e, meters, show }) {
           </g>
         ) : null}
       </g>
-      <text className="sch-label" x={below.x} y={below.y} textAnchor={below.anchor}>
-        {valueText(e)}
-      </text>
+      <Label e={e} at={below} />
       {show === 'v' && meters ? (
-        // The + terminal, so the reader can see which way the voltage is measured.
-        <text
-          className="sch-sign sch-plus"
-          x={dir === 'v' ? x - 8 : x + (flip ? 16 : -16)}
-          y={dir === 'v' ? y + (flip ? 19 : -13) : y - 6}
-          textAnchor="middle"
-        >
-          +
-        </text>
+        // Both terminals marked, so the reader can see which way the voltage is
+        // measured: from + to −, the way the reading and the equations take it.
+        <>
+          <text className="sch-sign sch-plus" x={signs.plus.x} y={signs.plus.y} textAnchor="middle">
+            +
+          </text>
+          <text className="sch-sign sch-minus" x={signs.minus.x} y={signs.minus.y} textAnchor="middle">
+            −
+          </text>
+        </>
       ) : null}
       {reading ? (
         <text className="sch-meter" x={above.x} y={above.y} textAnchor={above.anchor}>
@@ -292,9 +324,7 @@ function OpAmp({ item, e, meters, show }) {
       <text className="sch-sign" x={x + 7} y={y + 16}>
         {invertTop ? '+' : '−'}
       </text>
-      <text className="sch-label" x={at.label.x} y={at.label.y} textAnchor={at.label.anchor}>
-        {valueText(e)}
-      </text>
+      <Label e={e} at={at.label} />
       {reading ? (
         <text className="sch-meter" x={at.reading.x} y={at.reading.y} textAnchor={at.reading.anchor}>
           {reading}

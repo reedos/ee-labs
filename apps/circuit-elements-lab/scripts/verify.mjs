@@ -114,7 +114,8 @@ for (const name of names) {
   const views = await viewButtons()
   let rendered = 0
   for (const v of views) {
-    await page.locator('.view-switch button', { hasText: v }).click()
+    // Exact name: a substring match on "Power" would also pick up "AC power".
+    await page.locator('.view-switch').getByRole('button', { name: v, exact: true }).click()
     await page.waitForTimeout(120)
     const has = await page.evaluate(() => {
       const body = document.querySelectorAll('.view .view-body')[1]
@@ -135,7 +136,7 @@ console.log('\n2. KCL at a node: the meters and the equations follow R₂\n')
 const kclName = names.find((n) => /current in equals current out/i.test(n))
 await pick(kclName)
 await openAllMath()
-await page.locator('.view-switch button', { hasText: 'Equations' }).click()
+await page.locator('.view-switch').getByRole('button', { name: 'Equations', exact: true }).click()
 for (const [txt, r2] of [
   // Typed with the displayed prefix in mind: the field shows kΩ, so a bare 500 is 500 kΩ.
   ['0.5k', 500],

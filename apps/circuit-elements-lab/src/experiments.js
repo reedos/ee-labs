@@ -19,6 +19,11 @@
 
 import { fmt } from '@ee-labs/ui'
 
+// Every view a lower pane can show, in the order the view switch lists them —
+// the same order in every experiment, so a tab sits in the same place from one
+// to the next. The two universal views lead; the rest follow the curriculum.
+export const VIEW_ORDER = ['equations', 'power', 'thevenin', 'superposition', 'sweep', 'scope', 'state', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
+
 export const GROUPS = [
   'A · Elements and signs',
   'B · Two laws',
@@ -131,7 +136,7 @@ export const EXPERIMENTS = [
     id: 'a1',
     group: GROUPS[0],
     name: 'A voltage source holds its voltage',
-    terms: ['voltage', 'vsource', 'resistor', 'current'],
+    terms: ['voltage', 'vsource', 'resistor', 'current', 'node', 'kcl', 'kvl'],
     note:
       'Two elements and two wires, and already the whole idea. A voltage source is a device ' +
       'that holds a fixed voltage E between its two terminals and supplies whatever current ' +
@@ -139,8 +144,8 @@ export const EXPERIMENTS = [
       'it: i = v/R (Ohm’s law). Wire the two together and the source decides the voltage, the ' +
       'resistor decides the current: i = E/R. Turn R down and the current climbs while the ' +
       'source’s voltage does not move by a microvolt — that is what “source” means. The ' +
-      'ideal wires between them have no voltage across them at all: the whole top rail is one ' +
-      'node, and it reads E everywhere.',
+      'ideal wires between them have no voltage across them at all: the whole top wire is one ' +
+      'node — one point, electrically — and it reads E everywhere.',
     params: [Vs('E', 'Source E', 12), R('R1', 'R', 1000)],
     net: (p) => ({
       elements: [
@@ -162,12 +167,12 @@ export const EXPERIMENTS = [
     id: 'a2',
     group: GROUPS[0],
     name: 'A current source holds its current',
-    terms: ['isource', 'resistor', 'current'],
+    terms: ['isource', 'resistor', 'current', 'kcl'],
     note:
       'The other kind of source. A current source pushes a fixed current I through itself ' +
       'and lets the circuit decide what voltage that takes. Into a resistor, Ohm’s law read ' +
       'the other way gives v = I·R: turn R up and the voltage climbs, the current does not. ' +
-      'Push R to a megohm and 5 mA needs 5 kV — an ideal current source into an open circuit ' +
+      'Push R up to a million ohms and 5 mA needs 5 kV — an ideal current source into an open circuit ' +
       'would need an infinite voltage, which is why a current source is never left ' +
       'unconnected (the solver refuses such a circuit outright). Voltage sources are the ' +
       'familiar kind — batteries, supplies — but current sources are how transistors behave, ' +
@@ -203,12 +208,12 @@ export const EXPERIMENTS = [
     id: 'a3',
     group: GROUPS[0],
     name: 'Voltage is a difference; ground is a choice',
-    terms: ['voltage', 'ground', 'node'],
+    terms: ['voltage', 'ground', 'node', 'kcl'],
     note:
       'A voltage is never a property of one point. It is always the difference between two, ' +
       'and a meter has two probes for that reason. The numbers at the nodes here are ' +
       'measured against the node marked with the ground symbol, which the solver — like a ' +
-      'meter’s black lead — takes as 0 V. That choice is free. The divider on the left is ' +
+      'meter’s black lead — takes as 0 V. That choice is free. The two-resistor chain on the left is ' +
       'built on top of a source V_ref instead of directly on ground: slide V_ref and every ' +
       'node voltage moves by exactly that amount, while every element’s voltage, every ' +
       'current and every power stays put, because an element only ever sees the difference ' +
@@ -251,7 +256,7 @@ export const EXPERIMENTS = [
     id: 'a4',
     group: GROUPS[0],
     name: 'Which way is +: the passive sign convention',
-    terms: ['passive', 'voltage', 'current', 'power'],
+    terms: ['passive', 'voltage', 'current', 'power', 'kcl', 'kvl'],
     note:
       'Every element has two terminals, and before a single number can be written down one ' +
       'of them must be called +. That is a label you choose, not a fact about the element. ' +
@@ -273,7 +278,7 @@ export const EXPERIMENTS = [
     layout: loop(['R1', 'V2']),
     show: 'v',
     view: 'power',
-    views: ['power', 'equations'],
+    views: ['equations', 'power'],
     claim: { signs: true },
   },
 
@@ -351,7 +356,7 @@ export const EXPERIMENTS = [
     layout: loop(['R1', 'R2']),
     show: 'p',
     view: 'power',
-    views: ['power', 'equations'],
+    views: ['equations', 'power'],
     claim: { tellegen: true, sourceNegative: 'V1' },
   },
   {
@@ -376,7 +381,7 @@ export const EXPERIMENTS = [
     layout: loop(['R1', 'V2']),
     show: 'p',
     view: 'power',
-    views: ['power', 'equations'],
+    views: ['equations', 'power'],
     claim: { twoSources: true },
   },
 
@@ -469,7 +474,7 @@ export const EXPERIMENTS = [
     layout: ladder(['R2', 'RL']),
     show: 'v',
     view: 'sweep',
-    views: ['sweep', 'equations', 'thevenin'],
+    views: ['equations', 'thevenin', 'sweep'],
     port: ['A', 'gnd'],
     sweepId: 'RL',
     sweepY: 'v',
@@ -642,7 +647,7 @@ export const EXPERIMENTS = [
     },
     show: 'i',
     view: 'equations',
-    views: ['equations', 'superposition', 'power'],
+    views: ['equations', 'power', 'superposition'],
     claim: { mesh: true },
   },
   {
@@ -687,7 +692,7 @@ export const EXPERIMENTS = [
     },
     show: 'i',
     view: 'superposition',
-    views: ['superposition', 'equations', 'power'],
+    views: ['equations', 'power', 'superposition'],
     claim: { superposition: true },
   },
   {
@@ -714,7 +719,7 @@ export const EXPERIMENTS = [
     layout: ladder(['R2', 'R3']),
     show: 'v',
     view: 'thevenin',
-    views: ['thevenin', 'equations'],
+    views: ['equations', 'thevenin'],
     port: ['A', 'gnd'],
     claim: { theveninAgree: true },
   },
@@ -742,7 +747,7 @@ export const EXPERIMENTS = [
     },
     show: 'p',
     view: 'sweep',
-    views: ['sweep', 'power', 'thevenin'],
+    views: ['power', 'thevenin', 'sweep'],
     port: ['A', 'gnd'],
     sweepId: 'RL',
     sweepY: 'p',
@@ -792,7 +797,7 @@ export const EXPERIMENTS = [
     },
     show: 'p',
     view: 'power',
-    views: ['power', 'equations'],
+    views: ['equations', 'power'],
     claim: { dependent: true },
   },
   {
@@ -861,7 +866,7 @@ export const EXPERIMENTS = [
     },
     show: 'v',
     view: 'power',
-    views: ['power', 'equations'],
+    views: ['equations', 'power'],
     claim: { blackBox: true },
   },
   {
@@ -990,7 +995,7 @@ export const EXPERIMENTS = [
     layout: summerLayout(),
     show: 'i',
     view: 'equations',
-    views: ['equations', 'superposition', 'power'],
+    views: ['equations', 'power', 'superposition'],
     claim: { summer: true },
   },
   {
@@ -1026,7 +1031,7 @@ export const EXPERIMENTS = [
     layout: differenceLayout(),
     show: 'v',
     view: 'equations',
-    views: ['equations', 'superposition', 'power'],
+    views: ['equations', 'power', 'superposition'],
     claim: { difference: true },
   },
   {
@@ -1053,7 +1058,7 @@ export const EXPERIMENTS = [
     layout: bufferLayout(),
     show: 'i',
     view: 'sweep',
-    views: ['sweep', 'equations', 'power'],
+    views: ['equations', 'power', 'sweep'],
     port: ['out', 'gnd'],
     sweepId: 'RL',
     sweepY: 'v',
@@ -1100,7 +1105,7 @@ export const EXPERIMENTS = [
     },
     show: 'i',
     view: 'scope',
-    views: ['scope', 'state', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state'],
     claim: { slope: true },
   },
   {
@@ -1140,7 +1145,7 @@ export const EXPERIMENTS = [
     },
     show: 'v',
     view: 'scope',
-    views: ['scope', 'state', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state'],
     claim: { slopeDual: true },
   },
   {
@@ -1176,7 +1181,7 @@ export const EXPERIMENTS = [
     },
     show: 'i',
     view: 'scope',
-    views: ['scope', 'state', 'energy', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state', 'energy'],
     claim: { tau: true },
   },
   {
@@ -1212,7 +1217,7 @@ export const EXPERIMENTS = [
     },
     show: 'v',
     view: 'scope',
-    views: ['scope', 'state', 'thevenin', 'equations', 'power'],
+    views: ['equations', 'power', 'thevenin', 'scope', 'state'],
     port: ['B', 'gnd'],
     claim: { theveninTau: true },
   },
@@ -1248,7 +1253,7 @@ export const EXPERIMENTS = [
     },
     show: 'p',
     view: 'energy',
-    views: ['energy', 'scope', 'state', 'power'],
+    views: ['power', 'scope', 'state', 'energy'],
     claim: { half: true },
   },
   {
@@ -1291,7 +1296,7 @@ export const EXPERIMENTS = [
     },
     show: 'v',
     view: 'scope',
-    views: ['scope', 'state', 'energy', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state', 'energy'],
     claim: { spark: true },
   },
   {
@@ -1334,7 +1339,7 @@ export const EXPERIMENTS = [
     },
     show: 'i',
     view: 'scope',
-    views: ['scope', 'state', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state'],
     claim: { integrator: true },
   },
 
@@ -1426,7 +1431,7 @@ export const EXPERIMENTS = [
     scope: rlcScope(),
     show: 'v',
     view: g.view,
-    views: g.id === 'g3' ? ['damping', 'scope', 'state', 'energy', 'equations'] : ['scope', 'state', 'energy', 'equations', 'power'],
+    views: g.id === 'g3' ? ['equations', 'scope', 'state', 'energy', 'damping'] : ['equations', 'power', 'scope', 'state', 'energy'],
     sweepId: g.id === 'g3' ? 'R1' : undefined,
     claim: g.claim,
   })),
@@ -1458,7 +1463,7 @@ export const EXPERIMENTS = [
     scope: rlcScope(),
     show: 'i',
     view: 'energy',
-    views: ['energy', 'scope', 'state', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state', 'energy'],
     claim: { undamped: true },
   },
   {
@@ -1500,7 +1505,7 @@ export const EXPERIMENTS = [
     ghost: (p) => ({ ...p, v0: 0, i0: 0 }),
     show: 'v',
     view: 'scope',
-    views: ['scope', 'state', 'energy', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state', 'energy'],
     claim: { initial: true },
   },
   {
@@ -1544,7 +1549,7 @@ export const EXPERIMENTS = [
     },
     show: 'i',
     view: 'scope',
-    views: ['scope', 'state', 'energy', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state', 'energy'],
     claim: { dual: true },
   },
 
@@ -1585,7 +1590,7 @@ export const EXPERIMENTS = [
     out: { q: 'volt', key: 'C1', label: 'v_C' },
     show: 'v',
     view: 'scope',
-    views: ['scope', 'phasor', 'state', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state', 'phasor'],
     phasor: { volts: ['R1', 'C1'], total: 'V1', current: 'R1' },
     circuitLab: rcToCircuitLab,
     claim: { switchOn: true },
@@ -1619,7 +1624,7 @@ export const EXPERIMENTS = [
     out: { q: 'volt', key: 'C1', label: 'v_C' },
     show: 'v',
     view: 'phasor',
-    views: ['phasor', 'scope', 'state', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state', 'phasor'],
     phasor: { volts: ['R1', 'C1'], total: 'V1', current: 'R1' },
     circuitLab: rcToCircuitLab,
     claim: { phasor: true },
@@ -1657,7 +1662,7 @@ export const EXPERIMENTS = [
     out: { q: 'volt', key: 'C1', label: 'v_C' },
     show: 'v',
     view: 'phasor',
-    views: ['phasor', 'impedance', 'scope', 'state', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state', 'phasor', 'impedance'],
     phasor: { volts: ['R1', 'L1', 'C1'], total: 'V1', current: 'R1' },
     circuitLab: rlcToCircuitLab,
     claim: { impedance: true },
@@ -1697,7 +1702,7 @@ export const EXPERIMENTS = [
     out: { q: 'volt', key: 'C1', label: 'v_C' },
     show: 'v',
     view: 'impedance',
-    views: ['impedance', 'phasor', 'scope', 'state', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state', 'phasor', 'impedance'],
     phasor: { volts: ['R1', 'L1', 'C1'], total: 'V1', current: 'R1' },
     circuitLab: rlcToCircuitLab,
     claim: { resonance: true },
@@ -1744,7 +1749,7 @@ export const EXPERIMENTS = [
     out: { q: 'i', key: 'R1', label: 'i' },
     show: 'p',
     view: 'acpower',
-    views: ['acpower', 'scope', 'phasor', 'state', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state', 'phasor', 'acpower'],
     phasor: { volts: ['R1', 'L1'], total: 'V1', current: 'R1' },
     circuitLab: (p) => (p.L1 <= 1 ? { id: 'rlLow', values: [p.R1, p.L1], output: 'r' } : { decline: `Circuit Lab’s inductor knob stops at 1 H; L = ${fmt(p.L1, 'H', 3)} does not fit.` }),
     claim: { acpower: true },
@@ -1778,7 +1783,7 @@ export const EXPERIMENTS = [
     out: { q: 'volt', key: 'C1', label: 'v_C' },
     show: 'v',
     view: 'bode',
-    views: ['bode', 'phasor', 'scope', 'state', 'equations', 'power'],
+    views: ['equations', 'power', 'scope', 'state', 'phasor', 'bode'],
     phasor: { volts: ['R1', 'C1'], total: 'V1', current: 'R1' },
     circuitLab: rcToCircuitLab,
     claim: { bode: true },
@@ -1985,7 +1990,8 @@ function differenceLayout() {
       { wire: [55, 158, 50, 158] },
       gnd(50, 158),
       { wire: [95, 158, 150, 158] },
-      node('in2', 118, 158, 't'),
+      // in2 is named under its wire: V2's + mark now sits above it.
+      node('in2', 118, 158, 'b'),
       { el: 'R3', x: 170, y: 158, dir: 'h' },
       { wire: [190, 158, 205, 158] },
       { wire: [205, 158, 205, 102] },

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { EXPERIMENTS, byId, defaultsOf, drawables } from './experiments.js'
-import { analyse, acTable, atDrive, dampingSweep, experimentMath, netPower, snapNoise } from './math.js'
+import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables } from './experiments.js'
+import { analyse, acTable, atDrive, dampingSweep, experimentMath, netPower, powerLedger, snapNoise } from './math.js'
 import { layoutProblems } from './layoutCheck.js'
 import { agrees } from '@ee-labs/explain'
 import {
@@ -168,6 +168,79 @@ describe('every experiment', () => {
       }
       expect(layoutProblems(e.layout, drawables(e.net(defaultsOf(e.id))), null, 'none'), `${e.id} bare`).toEqual([])
     }
+  })
+
+  // The view switch reads the same left to right in every experiment (Reed,
+  // 2026-09-01: "how come some examples show power first?"). The data keeps
+  // that order too, so nobody has to know the switch re-sorts.
+  it('lists its views in the one canonical order', () => {
+    for (const e of EXPERIMENTS) {
+      const sorted = VIEW_ORDER.filter((v) => e.views.includes(v))
+      expect(e.views, e.id).toEqual(sorted)
+      for (const v of e.views) expect(VIEW_ORDER, `${e.id} view ${v}`).toContain(v)
+    }
+  })
+
+  // KCL/KVL are used by name in Group A's equations pane before Group B takes
+  // them apart, so Group A carries the terms (and the pane carries a primer).
+  it('Group A defines KCL where its equations first use it', () => {
+    for (const e of EXPERIMENTS.filter((x) => x.group === GROUPS[0])) expect(e.terms, e.id).toContain('kcl')
+    expect(byId.a1.terms).toContain('kvl')
+    expect(byId.a4.terms).toContain('kvl')
+  })
+
+  // The matrix shown in letters is the matrix solved in numbers: every cell's
+  // symbolic terms add to the numeric entry, in every experiment, at the
+  // defaults and at random settings. The letters name parts on the schematic.
+  it('symbolic matrix agrees with the numeric one cell by cell, and every letter is a drawn part', () => {
+    for (const e of EXPERIMENTS) {
+      for (const p of [defaultsOf(e.id), randomParams(e, 5)]) {
+        if (e.id === 'e3' && !(p.A > 0)) p.A = 1e5
+        const x = analyse(e, p)
+        const eq = equations(x.sol.norm, x.sol)
+        const { cells, rhs, rows, cols, symbols } = eq.symbolic
+        expect(rows.length, e.id).toBe(eq.M.length)
+        expect(cols.length, e.id).toBe(eq.M.length)
+        cells.forEach((row, i) => {
+          row.forEach((terms, j) => {
+            const sum = terms.reduce((s, t) => s + t.value, 0)
+            expect(Math.abs(sum - eq.M[i][j]), `${e.id} M[${i}][${j}]`).toBeLessThanOrEqual(1e-12 * Math.max(1, Math.abs(eq.M[i][j])))
+          })
+          const rs = rhs[i].reduce((s, t) => s + t.value, 0)
+          expect(Math.abs(rs - eq.r[i]), `${e.id} r[${i}]`).toBeLessThanOrEqual(1e-12 * Math.max(1, Math.abs(eq.r[i])))
+        })
+        const drawn = new Set(drawables(x.net).map((d) => d.id))
+        for (const s of symbols) expect(drawn.has(s.id), `${e.id}: ${s.latex} names ${s.id}`).toBe(true)
+        expect(eq.symbolicLatex).toMatch(/^\\begin\{bmatrix\}/)
+      }
+    }
+  })
+
+  // The power ledger: delivered equals absorbed in every experiment, every
+  // element is on exactly one side, and p is the product of the v and i shown.
+  it('power ledger balances, and each row is v × i', () => {
+    for (const e of EXPERIMENTS) {
+      const p = defaultsOf(e.id)
+      if (e.id === 'e3') p.A = 1e5
+      const { x } = at(e.id, p)
+      const led = powerLedger(x.sol)
+      expect(led.rows.map((r) => r.id).sort()).toEqual(x.sol.sys.effs.map((q) => q.id).sort())
+      const scale = Math.max(led.delivered, led.absorbed)
+      if (scale > 0) expect(Math.abs(led.delivered - led.absorbed) / scale, e.id).toBeLessThan(1e-9)
+      for (const r of led.rows) {
+        if (r.role === 'idle') expect(r.p).toBe(0)
+        else {
+          expect(r.role, `${e.id} ${r.id}`).toBe(r.p > 0 ? 'absorbs' : 'delivers')
+          expect(Math.abs(r.v * r.i - r.p), `${e.id} ${r.id}`).toBeLessThanOrEqual(1e-12 * Math.abs(r.p))
+        }
+      }
+      expect(led.net).toBe(0)
+    }
+    // A source that delivers is the amber side; a1 at the defaults: V1 delivers everything R1 absorbs.
+    const { x } = at('a1')
+    const led = powerLedger(x.sol)
+    expect(led.rows.find((r) => r.id === 'V1').role).toBe('delivers')
+    expect(led.rows.find((r) => r.id === 'R1').role).toBe('absorbs')
   })
 
   it('the layout checker itself sees a label on a reading, a wire through a symbol and a crossing', () => {

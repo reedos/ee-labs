@@ -3,6 +3,7 @@ import {
   GROUND,
   NetworkError,
   assemble,
+  cellLatex,
   equations,
   killed,
   loadSweep,
@@ -342,6 +343,77 @@ describe('equations are what was solved', () => {
     expect(con.latex).toBe('v_{in} = E_1')
     close(con.lhs, 12)
     expect(eq.matrixLatex).toMatch(/^\\begin\{bmatrix\}/)
+  })
+
+  // The symbolic matrix is the numeric one with the letters left in. Every
+  // cell's terms must add to the number the solver used, and the letters must
+  // be the reference designators on the schematic.
+  const symbolicMatches = (norm, sol) => {
+    const eq = equations(norm, sol)
+    const { cells, rhs, rows, cols, symbols } = eq.symbolic
+    expect(cells).toHaveLength(sol.sys.M.length)
+    expect(cols.map((c) => c.latex)).toEqual(eq.unknowns.map((u) => (u.kind === 'v' ? `v_${u.node.length > 1 ? `{${u.node}}` : u.node}` : `i_{${u.id}}`)))
+    cells.forEach((row, i) => {
+      row.forEach((terms, j) => close(terms.reduce((s, t) => s + t.value, 0), sol.sys.M[i][j], 1e-12))
+      close(rhs[i].reduce((s, t) => s + t.value, 0), sol.sys.r[i], 1e-12)
+    })
+    for (const s of symbols) expect(Number.isFinite(s.value)).toBe(true)
+    return { eq, rows, cols, symbols }
+  }
+
+  it('symbolic matrix: cells carry the letters, and add to the numbers', () => {
+    const norm = normalize(divider)
+    const sol = solveDC(norm)
+    const { eq, rows, symbols } = symbolicMatches(norm, sol)
+    expect(rows.map((r) => r.kind)).toEqual(['kcl', 'kcl', 'constraint'])
+    expect(rows[2].id).toBe('V1')
+    const { cells, rhs } = eq.symbolic
+    // KCL at A: 1/R1 + 1/R2 + 1/R3 on the diagonal, -1/R1 towards in, nothing in the current column.
+    expect(cellLatex(cells[0][0])).toBe('\\frac{1}{R_1}+\\frac{1}{R_2}+\\frac{1}{R_3}')
+    expect(cellLatex(cells[0][1])).toBe('-\\frac{1}{R_1}')
+    expect(cellLatex(cells[0][2])).toBe('0')
+    // The source row v_in = E_1, and a 1 in the source current's column at node in.
+    expect(cellLatex(cells[2][1])).toBe('1')
+    expect(cellLatex(cells[1][2])).toBe('1')
+    expect(cellLatex(rhs[2])).toBe('E_1')
+    expect(cellLatex(rhs[0])).toBe('0')
+    expect(eq.symbolicLatex).toMatch(/^\\begin\{bmatrix\} \\frac\{1\}\{R_1\}/)
+    expect(symbols.map((s) => [s.latex, s.value, s.what])).toEqual([
+      ['E_1', 12, 'E'],
+      ['R_1', 1000, 'R'],
+      ['R_2', 2000, 'R'],
+      ['R_3', 3000, 'R'],
+    ])
+  })
+
+  it('symbolic matrix names substituted elements by what they are: v_C1, i_L1, R_S1, A_U1, g_G1', () => {
+    const norm = normalize({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 5 },
+        { type: 'SW', id: 'S1', nodes: ['in', 'a'], ron: 2, closed: true },
+        { type: 'C', id: 'C1', nodes: ['a', 'gnd'], value: 1e-6 },
+        { type: 'L', id: 'L1', nodes: ['a', 'b'], value: 1e-3 },
+        { type: 'R', id: 'R1', nodes: ['b', 'gnd'], value: 100 },
+        { type: 'VCCS', id: 'G1', nodes: ['b', 'gnd'], ctrl: ['a', 'gnd'], gain: 0.01 },
+        { type: 'OPAMP', id: 'U1', nodes: ['out'], ctrl: ['a', 'out'], gain: 1000 },
+        { type: 'R', id: 'R2', nodes: ['out', 'gnd'], value: 1000 },
+      ],
+    })
+    const sol = solveDC(norm, { states: { C1: 3, L1: 0.02 } })
+    const { symbols, rows } = symbolicMatches(norm, sol)
+    expect(symbols.map((s) => `${s.what}:${s.latex}`).sort()).toEqual(
+      ['E:E_1', 'switchR:R_{S1}', 'vC:v_{C1}', 'iL:i_{L1}', 'R:R_1', 'R:R_2', 'g:g_{G1}', 'A:A_{U1}'].sort(),
+    )
+    expect(symbols.find((s) => s.what === 'vC').value).toBe(3)
+    expect(symbols.find((s) => s.what === 'iL').value).toBe(0.02)
+    expect(rows.find((r) => r.id === 'C1')).toMatchObject({ kind: 'constraint', from: 'C', type: 'V' })
+    expect(rows.find((r) => r.id === 'U1')).toMatchObject({ from: 'OPAMP', type: 'VCVS' })
+    // At DC the inductor is a short: a constraint row with a bare zero on the right.
+    const dc = solveDC(norm)
+    const { eq } = symbolicMatches(norm, dc)
+    const lRow = eq.symbolic.rows.findIndex((r) => r.id === 'L1')
+    expect(eq.symbolic.rows[lRow].from).toBe('L')
+    expect(cellLatex(eq.symbolic.rhs[lRow])).toBe('0')
   })
 
   it('op-amp constraint prints the golden rule', () => {

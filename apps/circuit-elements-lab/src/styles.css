@@ -121,19 +121,26 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   padding: 4px;
 }
 
+/* Labels and node names are set in the KaTeX faces the equations use, so the
+   R₁ under a resistor is, letter for letter, the R₁ in the matrix below it.
+   KaTeX_Math is the italic maths letter, KaTeX_Main the upright text. */
 .sch-label {
   fill: var(--dim);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 9px;
+  font-family: KaTeX_Main, 'Times New Roman', serif;
+  font-size: 9.5px;
 }
+.sch-label .sch-sym { fill: var(--text); font-family: KaTeX_Math, 'Times New Roman', serif; font-style: italic; font-size: 10.5px; }
+.sch-label .sch-sub { fill: var(--text); font-size: 7.5px; }
+.sch-label .sch-sub-it { font-family: KaTeX_Math, 'Times New Roman', serif; font-style: italic; }
 .sch-port {
   fill: var(--text);
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 10px;
+  font-family: KaTeX_Math, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 10.5px;
 }
 .sch-sign {
   fill: var(--dim);
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: KaTeX_Main, 'Times New Roman', serif;
   font-size: 11px;
 }
 .sch-note {
@@ -149,7 +156,11 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
 }
-.sch-plus { fill: var(--accent); font-weight: 700; }
+/* The voltage marks: + in the accent colour, − in the text colour, both bold
+   enough to read at phone size. */
+.sch-plus, .sch-minus { font-weight: 700; }
+.sch-plus { fill: var(--accent); }
+.sch-minus { fill: var(--text); }
 
 /* The big schematic is the upper pane: the drawing scales to the pane's width,
    capped so 320 drawing units never blow up to a screenful of 40 px wire. */
@@ -189,6 +200,40 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 }
 .eq-row .eq-at { color: var(--dim); font-size: 11.5px; padding-top: 4px; }
 .eq-row .eq-at b { color: var(--text); display: block; font-size: 12.5px; }
+.eq-row .eq-at small { display: block; font-size: 10.5px; line-height: 1.35; margin-top: 2px; max-width: 150px; }
+/* The primer and the numbered steps: plain prose, the width a paragraph wants. */
+.eq-primer { display: grid; gap: 6px; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--panel-2); border-radius: 4px; }
+.eq-primer p, .eq-step { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--dim); max-width: 760px; }
+.eq-primer b, .eq-step b { color: var(--text); }
+.eq-primer .tex, .eq-step .tex, .eq-grid .tex, .eq-legend .tex, .hint .tex { font-size: 1em; }
+.eq-step { padding: 6px 0 0; }
+/* The matrix as a labelled grid: rows are the equations, columns the unknowns,
+   each cell in letters with the number it stands for beneath. */
+.eq-grid { border-collapse: collapse; font-size: 12px; }
+.eq-grid th, .eq-grid td { padding: 6px 10px; border: 1px solid var(--line); text-align: center; vertical-align: middle; }
+.eq-grid thead th { color: var(--dim); font-weight: 600; font-size: 11px; background: var(--panel-2); }
+.eq-grid thead th .tex { font-size: 14px; color: var(--text); }
+.eq-grid tbody th { text-align: left; color: var(--dim); font-weight: 500; white-space: nowrap; background: var(--panel-2); font-size: 11.5px; }
+.eq-grid tbody th b { color: var(--text); }
+.eq-grid .eq-rhs { border-left: 3px double var(--line); }
+.eq-grid .eq-cell { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+.eq-grid .eq-cell .tex { font-size: 14px; }
+.eq-grid .eq-val, .eq-legend .eq-val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; color: var(--amber); white-space: nowrap; }
+/* The table scrolls sideways inside a plain wrapper. Not on .eq-matrix itself:
+   a scrolling grid item may shrink to its padding when the pane is height-bound. */
+.eq-scroll { overflow-x: auto; }
+.eq-grid .eq-val .tex { font-size: 11px; font-family: inherit; }
+.eq-grid .eq-zero { color: var(--dim); }
+/* The two compact matrices stack; side by side, a five-unknown system clips
+   its right-hand vector at 1280 px. Only a wide desktop gets two columns. */
+.eq-compact { display: grid; gap: 10px 24px; grid-template-columns: 1fr; margin-top: 12px; }
+@media (min-width: 1500px) { .eq-compact { grid-template-columns: 1fr 1fr; } }
+.eq-compact > div { overflow-x: auto; }
+.eq-caption { display: block; color: var(--dim); font-size: 11.5px; margin-bottom: 2px; }
+.eq-legend { list-style: none; margin: 0; padding: 0 8px; display: grid; gap: 4px; }
+.eq-legend li { display: grid; grid-template-columns: 56px 110px 1fr; gap: 10px; align-items: baseline; font-size: 12px; }
+.eq-legend li .tex { font-size: 14px; }
+.eq-legend .eq-what { color: var(--dim); }
 .eq-terms { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
 .eq-term { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
 .eq-term .tex { font-size: 14px; }
@@ -199,7 +244,7 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 }
 .eq-sum { color: var(--dim); font-size: 11.5px; margin-left: 4px; white-space: nowrap; }
 .eq-sum b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.eq-matrix { padding: 8px; overflow-x: auto; }
+.eq-matrix { padding: 8px; }
 .eq-matrix .tex { font-size: 13px; }
 
 /* Thévenin and superposition panes: small tables in the math-panel idiom. */
@@ -212,22 +257,35 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .table th { color: var(--dim); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
 /* `.num` is also the NumField wrapper in @ee-labs/ui (display: block, a
    margin); a table cell has to win that back or the row falls into a stack. */
-.table td.num { display: table-cell; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-align: right; }
+.table td.num, .table th.num { display: table-cell; margin: 0; text-align: right; }
+.table td.num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .table td.agree { color: var(--accent); }
 .table td.disagree { color: var(--warn); }
 .table caption { text-align: left; color: var(--dim); font-size: 11px; padding: 4px 8px; }
 .pane-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
 @media (min-width: 1100px) { .pane-grid.two { grid-template-columns: 1fr 1fr; } }
 
-/* The power pane: bars per element, delivering to the left, absorbing right. */
-.power-list { display: grid; gap: 6px; padding: 4px 0; }
-.power-row { display: grid; grid-template-columns: 60px 1fr 90px; gap: 10px; align-items: center; font-size: 12px; }
-.power-row .bar { position: relative; height: 12px; background: var(--panel-2); border-radius: 3px; }
-.power-row .bar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
-.power-row .bar i.absorbs { background: var(--accent); }
-.power-row .bar i.delivers { background: var(--amber); }
-.power-row .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-align: right; }
-.power-total { color: var(--dim); font-size: 11.5px; margin-top: 4px; }
+/* The power pane: a ledger (v, i, p per element), then two bars of equal
+   length — what the sources deliver, what the rest absorbs — segment by element. */
+.power { display: grid; gap: 10px; padding: 4px 0; }
+/* The headers name v, i and p as the prose does: no uppercase, or p = v × i reads as P = V × I. */
+.power-table th { text-transform: none; letter-spacing: 0; font-size: 11.5px; }
+.power-table td.num { white-space: nowrap; }
+.power-table .role { color: var(--dim); }
+.power-table tr.is-delivers .role { color: var(--amber); }
+.power-table tr.is-absorbs .role { color: var(--accent); }
+.power-table tr.is-idle td { color: var(--dim); }
+.power-bars { display: grid; gap: 8px; padding: 4px 8px; }
+.power-bar { display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center; font-size: 12px; }
+.power-bar-label { color: var(--dim); }
+.power-bar-label b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+.power-bar .bar { display: flex; height: 18px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.power-bar .bar i { display: flex; align-items: center; justify-content: center; height: 100%; font-style: normal; font-size: 10.5px; color: var(--bg); overflow: hidden; border-right: 1px solid var(--bg); box-sizing: border-box; }
+.power-bar .bar i:last-child { border-right: 0; }
+.power-bar .bar i span { overflow: hidden; text-overflow: clip; white-space: nowrap; padding: 0 3px; }
+.power-bar .bar.is-absorbs i { background: var(--accent); }
+.power-bar .bar.is-delivers i { background: var(--amber); }
+.power-total { color: var(--dim); font-size: 11.5px; margin: 0 8px; line-height: 1.5; max-width: 760px; }
 .power-total b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
 
 /* Desktop: the lower pane has a screenful of room and the phone-sized type
@@ -243,11 +301,22 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .eq-sum { font-size: 14px; }
   .eq-matrix .tex { font-size: 18px; }
   .eq-matrix .hint { font-size: 14px; }
+  .eq-row .eq-at small { font-size: 12px; max-width: 200px; }
+  .eq-primer p, .eq-step { font-size: 14.5px; }
+  .eq-grid { font-size: 14px; }
+  .eq-grid thead th { font-size: 12.5px; }
+  .eq-grid thead th .tex, .eq-grid .eq-cell .tex, .eq-legend li .tex { font-size: 17px; }
+  .eq-grid tbody th { font-size: 13.5px; }
+  .eq-grid .eq-val, .eq-legend .eq-val { font-size: 12.5px; }
+  .eq-grid .eq-val .tex { font-size: 13px; }
+  .eq-caption { font-size: 13.5px; }
+  .eq-legend li { font-size: 14px; grid-template-columns: 64px 130px 1fr; }
   .table { font-size: 14px; }
   .table th { font-size: 12.5px; }
   .table caption { font-size: 13px; }
-  .power-row { font-size: 14px; grid-template-columns: 72px 1fr 110px; }
-  .power-row .bar { height: 14px; }
+  .power-bar { font-size: 14px; grid-template-columns: 190px 1fr; }
+  .power-bar .bar { height: 22px; }
+  .power-bar .bar i { font-size: 12px; }
   .power-total { font-size: 13.5px; }
   .refusal { font-size: 15px; max-width: 900px; }
   .view-body > .hint { font-size: 14px; }
@@ -290,6 +359,7 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .state { display: grid; gap: 8px; }
 .state .table td sub { font-size: 0.75em; }
 .state > .hint { margin: 0 8px; }
+.state .eq-matrix { overflow-x: auto; } /* .state does not shrink, so this item cannot collapse */
 @media (min-width: 1100px) {
   .cursor-row { font-size: 14px; max-width: 900px; }
   .cursor-row .cursor-ends { font-size: 12px; }

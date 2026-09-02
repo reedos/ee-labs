@@ -9,7 +9,7 @@
 export { GROUND, KINDS, NetworkError, normalize, connected, incident } from './src/netlist.js'
 export { SingularError, solve, solveComplex, matVec } from './src/linalg.js'
 export { assemble, diagnose, effective, readout, solveDC } from './src/mna.js'
-export { equations, matrixLatex, diffSym, vSym, iSym, fmtCell } from './src/equations.js'
+export { equations, matrixLatex, symbolicSystem, symbolicMatrixLatex, cellLatex, diffSym, vSym, iSym, fmtCell } from './src/equations.js'
 export { thevenin, superposition, loadSweep, killed, withElements, lineFit, sourcePower } from './src/theorems.js'
 
 // Time domain: capacitors and inductors as states, solved exactly.

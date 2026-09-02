@@ -1,8 +1,8 @@
 import React from 'react'
 import { fmt } from '@ee-labs/ui'
 import { Formula, agrees } from '@ee-labs/explain'
-import { fmtCell } from '@ee-labs/network'
-import { acTable, netPower } from '../math.js'
+import { cellLatex, fmtCell } from '@ee-labs/network'
+import { acTable, powerLedger } from '../math.js'
 
 // The lower pane's views. Each takes the analysis from math.js `analyse` and
 // shows one thing about it. None of them computes physics: every number here
@@ -13,39 +13,113 @@ const num = (v, unit, sig = 4) => (Number.isFinite(v) ? fmt(v, unit, sig) : v ==
 // A dimensionless ratio (ζ, Q): no SI prefix — "0.250", never "250 m".
 const plain = (v, sig = 3) => (Number.isFinite(v) ? v.toPrecision(sig) : v === Infinity ? '∞' : '—')
 
+const T = ({ children }) => <Formula display={false}>{children}</Formula>
+
 /**
- * The system of equations the solver actually built: one KCL row per node
- * with each term's live value, then the constraints from sources and op-amps,
- * then the matrix. When a term's values are shown, the row visibly sums to
- * zero — that is KCL being true, not being asserted.
+ * The two laws, said once in plain words before any row uses them. Group B
+ * takes each apart in its own experiments; this is the primer Groups A and B
+ * read above their equations, so "KCL at in" is never a name without a meaning.
  */
-export function EquationsPane({ eq, solved }) {
+export function LawsPrimer() {
+  return (
+    <div className="eq-primer" data-role="primer">
+      <p>
+        <b>Two laws build every row below.</b>
+      </p>
+      <p>
+        <b>KCL</b> — Kirchhoff’s current law. Charge cannot pile up at a junction, so at every node the currents{' '}
+        <em>leaving</em> it add to zero: what flows in flows out. Each node gets one row.
+      </p>
+      <p>
+        <b>KVL</b> — Kirchhoff’s voltage law. Around any closed loop the voltage rises and drops add to zero. Writing
+        each element’s voltage as the difference of two node voltages, <T>{'v_a - v_b'}</T>, makes every loop add to
+        zero automatically — so KVL is built into the rows rather than being one of them.
+      </p>
+      <p>
+        <b>Ohm’s law</b> turns a resistor’s voltage into its current, <T>{'i = (v_a - v_b)/R'}</T>, which is how a
+        resistor appears in a KCL row. A voltage source has no such law — its current is whatever the rest of the
+        circuit demands — so its current becomes an unknown, and it gets a row of its own stating the voltage it
+        holds.
+      </p>
+    </div>
+  )
+}
+
+const HOW = {
+  V: (r) => 'a voltage source: fixes the voltage between its ends',
+  C: (r) => 'a capacitor: holds its present voltage, so at this instant it acts as a voltage source',
+  L: (r) => (r.type === 'V' ? 'an inductor at DC: a plain wire, so 0 V across it' : 'an inductor: keeps its present current'),
+  SW: (r) => 'a closed switch: a wire, 0 V across it',
+  OPAMP: (r) => (r.type === 'VCVS' ? 'an op-amp with finite gain: output = gain × (v₊ − v₋)' : 'an ideal op-amp: v₊ = v₋, its output current is whatever that takes'),
+  VCVS: (r) => 'a controlled voltage source',
+  wire: (r) => 'a resistor of 0 Ω: a wire, 0 V across it',
+}
+const how = (r) => (r.wire ? HOW.wire(r) : (HOW[r.from] || HOW.V)(r))
+
+/** The row label for a constraint: the element and what kind of thing it is. */
+function ConstraintLabel({ row }) {
+  return (
+    <div className="eq-at">
+      <b>{row.id}</b>
+      <small>{how(row)}</small>
+    </div>
+  )
+}
+
+const SYMBOL_WHAT = {
+  R: (s) => [`resistance of ${s.id}`, 'Ω'],
+  switchR: (s) => [`resistance of the switch ${s.id} as it stands`, 'Ω'],
+  E: (s) => [`the voltage the source ${s.id} holds`, 'V'],
+  I: (s) => [`the current the source ${s.id} pushes`, 'A'],
+  vC: (s) => [`the voltage on the capacitor ${s.id} at this instant`, 'V'],
+  iL: (s) => [`the current in the inductor ${s.id} at this instant`, 'A'],
+  A: (s) => [`gain of ${s.id}`, ''],
+  g: (s) => [`transconductance of ${s.id}: output current per volt of input`, 'A/V'],
+}
+
+const unknownLatex = (u) => (u.kind === 'v' ? `v_{${u.node}}` : `i_{${u.id}}`)
+
+/**
+ * The system of equations the solver actually built, in three passes a reader
+ * can follow: the rows in words and symbols with each term's live value, so a
+ * KCL row visibly sums to zero; the same rows laid out as a matrix, with every
+ * cell in letters and in numbers so it is plain where each entry came from;
+ * and a legend tying each letter to a part on the schematic.
+ */
+export function EquationsPane({ eq, solved, primer = false }) {
+  const { symbolic } = eq
   return (
     <div className="equations" data-role="equations">
+      {primer ? <LawsPrimer /> : null}
+      <p className="eq-step">
+        <b>1 · The equations.</b> One KCL row per node; then one row for each element that fixes a voltage. The
+        amber numbers are the live values.
+      </p>
       {eq.rows.map((r, k) =>
         r.kind === 'kcl' ? (
           <div className="eq-row" key={k}>
             <div className="eq-at">
-              KCL at <b>{r.node}</b>
+              <span>KCL at</span>
+              <b>{r.node}</b>
+              <small>currents leaving node {r.node}</small>
             </div>
             <div className="eq-terms">
               {r.terms.map((t, j) => (
                 <span className="eq-term" key={j}>
                   {/* Display-style fractions: inline-style ones shrink R and v to a squint. */}
                   <Formula display={false}>{'\\displaystyle ' + (t.sign < 0 ? '-\\,' : j ? '+\\,' : '') + t.latex}</Formula>
-                  {solved ? <span className="eq-val">{num(t.sign < 0 ? -Math.abs(t.value) : t.value, 'A', 3)}</span> : null}
+                  {/* t.value already carries the term's sign: it is what this term adds to the row. */}
+                  {solved ? <span className="eq-val">{num(t.value, 'A', 3)}</span> : null}
                 </span>
               ))}
               <span className="eq-sum">
-                = 0{solved && r.terms.length ? <> · sums to <b>{num(r.sum, 'A', 2)}</b></> : null}
+                = 0{solved && r.terms.length ? <> · adds to <b>{num(r.sum, 'A', 2)}</b></> : null}
               </span>
             </div>
           </div>
         ) : (
           <div className="eq-row" key={k}>
-            <div className="eq-at">
-              <b>{r.id}</b> sets
-            </div>
+            <ConstraintLabel row={symbolic.rows.find((s) => s.kind === 'constraint' && s.id === r.id) || { id: r.id, from: 'V' }} />
             <div className="eq-terms">
               <span className="eq-term">
                 <Formula display={false}>{'\\displaystyle ' + r.latex}</Formula>
@@ -60,45 +134,182 @@ export function EquationsPane({ eq, solved }) {
           </div>
         ),
       )}
+
+      <p className="eq-step">
+        <b>2 · The same rows as a matrix.</b> Each row is one equation above; each column is one unknown. A cell holds
+        whatever multiplies that unknown in that row — an unknown that does not appear gets a 0. The right-hand side
+        holds what the sources set.
+      </p>
       <div className="eq-matrix">
-        <Formula>{eq.matrixLatex}</Formula>
+        {/* The scroll lives on a wrapper, not the grid item: a grid item that
+            scrolls may shrink to nothing when the pane's height is fixed. */}
+        <div className="eq-scroll">
+          <table className="eq-grid">
+            <thead>
+              <tr>
+                <th aria-label="equation" />
+                {symbolic.cols.map((c, j) => (
+                  <th key={j}>
+                    <T>{c.latex}</T>
+                  </th>
+                ))}
+                <th className="eq-rhs">= right side</th>
+              </tr>
+            </thead>
+            <tbody>
+              {symbolic.rows.map((row, i) => (
+                <tr key={i}>
+                  <th>
+                    {row.kind === 'kcl' ? (
+                      <>
+                        KCL at <b>{row.node}</b>
+                      </>
+                    ) : (
+                      <>
+                        <b>{row.id}</b> holds
+                      </>
+                    )}
+                  </th>
+                  {symbolic.cells[i].map((terms, j) => (
+                    <td key={j}>
+                      <Cell terms={terms} value={eq.M[i][j]} />
+                    </td>
+                  ))}
+                  <td className="eq-rhs">
+                    <Cell terms={symbolic.rhs[i]} value={eq.r[i]} unit={row.kind === 'kcl' ? 'A' : 'V'} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="eq-compact">
+          <div>
+            <span className="eq-caption">In letters — the reference designators alone:</span>
+            <Formula>{eq.symbolicLatex}</Formula>
+          </div>
+          <div>
+            <span className="eq-caption">With this circuit’s values, as the solver sees it:</span>
+            <Formula>{eq.matrixLatex}</Formula>
+          </div>
+        </div>
         <p className="hint">
-          {eq.unknowns.length} unknown{eq.unknowns.length === 1 ? '' : 's'}:{' '}
-          {eq.unknowns.map((u) => (u.kind === 'v' ? `v_${u.node}` : `i_${u.id}`)).join(', ')}. Node voltages
-          first, then one current for each element whose current Ohm’s law cannot give.
+          The {eq.unknowns.length} unknown{eq.unknowns.length === 1 ? '' : 's'}, in column order:{' '}
+          {eq.unknowns.map((u, k) => (
+            <React.Fragment key={k}>
+              {k ? ', ' : ''}
+              <T>{unknownLatex(u)}</T>
+            </React.Fragment>
+          ))}
+          . Every node voltage comes first, then one current for each element whose current Ohm’s law cannot give
+          (a voltage source, a wire, an op-amp output).
         </p>
       </div>
+
+      {symbolic.symbols.length ? (
+        <>
+          <p className="eq-step">
+            <b>3 · What the letters are.</b> Each is a part on the schematic, with its present value.
+          </p>
+          <ul className="eq-legend">
+            {symbolic.symbols.map((s) => {
+              const [what, unit] = (SYMBOL_WHAT[s.what] || SYMBOL_WHAT.R)(s)
+              return (
+                <li key={s.latex}>
+                  <T>{s.latex}</T>
+                  <span className="eq-val">= {unit ? num(s.value, unit, 4) : plain(s.value, 4)}</span>
+                  <span className="eq-what">{what}</span>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      ) : null}
     </div>
   )
 }
 
-/** Power per element under the passive sign convention, and the sum. */
-export function PowerPane({ sol }) {
-  const ids = sol.sys.effs.map((e) => e.id)
-  const max = Math.max(1e-30, ...ids.map((id) => Math.abs(sol.p[id])))
+/** One matrix cell: the letters, and the number they stand for beneath. */
+function Cell({ terms, value, unit = null }) {
+  const latex = cellLatex(terms)
+  if (latex === '0') return <span className="eq-zero">0</span>
+  // A bare ±1 from a current column is already a number; no need to say it twice.
+  const trivial = terms.length === 1 && terms[0].latex === '1'
   return (
-    <div className="power-list" data-role="power">
-      {ids.map((id) => {
-        const p = sol.p[id]
-        const frac = Math.abs(p) / max
-        return (
-          <div className="power-row" key={id}>
-            <span>{id}</span>
-            <span className="bar" aria-hidden="true">
-              <i
-                className={p >= 0 ? 'absorbs' : 'delivers'}
-                style={p >= 0 ? { left: '50%', width: `${frac * 50}%` } : { right: '50%', width: `${frac * 50}%` }}
-              />
-            </span>
-            <span className="val">
-              {num(p, 'W', 3)} <span className="prov">{p > 1e-15 ? 'absorbs' : p < -1e-15 ? 'delivers' : ''}</span>
-            </span>
-          </div>
-        )
-      })}
+    <span className="eq-cell">
+      <T>{latex}</T>
+      {trivial ? null : <span className="eq-val">{unit ? num(value, unit, 3) : <T>{fmtCell(value)}</T>}</span>}
+    </span>
+  )
+}
+
+/**
+ * Power, as a ledger. Each element's voltage (+ to −), the current flowing in
+ * at its + end, and their product; the passive sign convention makes that
+ * product positive for an element absorbing power and negative for one
+ * delivering it. The two totals sit side by side and match — Tellegen's
+ * theorem, seen rather than named.
+ */
+export function PowerPane({ sol }) {
+  const ledger = powerLedger(sol)
+  const total = Math.max(ledger.delivered, ledger.absorbed, 1e-300)
+  const WORD = { absorbs: 'absorbs', delivers: 'delivers', idle: '—' }
+  return (
+    <div className="power" data-role="power">
+      <p className="eq-step">
+        <b>p = v × i</b> for every element, with <i>v</i> measured from its + end to its − end and <i>i</i> the current
+        flowing <em>in</em> at the + end (the passive sign convention). A positive product means the element takes
+        power in; a negative one means it gives power out.
+      </p>
+      <table className="table power-table">
+        <thead>
+          <tr>
+            <th>element</th>
+            <th className="num">v (+ to −)</th>
+            <th className="num">i (in at +)</th>
+            <th className="num">p = v × i</th>
+            <th>which means it</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ledger.rows.map((r) => (
+            <tr key={r.id} className={`is-${r.role}`}>
+              <td>
+                <b>{r.id}</b>
+              </td>
+              <td className="num">{num(r.v, 'V', 3)}</td>
+              <td className="num">{num(r.i, 'A', 3)}</td>
+              <td className="num">{num(r.p, 'W', 3)}</td>
+              <td className="role">{WORD[r.role]}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="power-bars">
+        {['delivers', 'absorbs'].map((role) => {
+          const rows = ledger.rows.filter((r) => r.role === role)
+          const sum = role === 'delivers' ? ledger.delivered : ledger.absorbed
+          return (
+            <div className="power-bar" key={role}>
+              <span className="power-bar-label">
+                {role === 'delivers' ? 'delivered' : 'absorbed'} <b>{num(sum, 'W', 3)}</b>
+              </span>
+              <span className={`bar is-${role}`} aria-hidden="true">
+                {rows.map((r) => (
+                  <i key={r.id} style={{ width: `${(100 * Math.abs(r.p)) / total}%` }} title={`${r.id} ${num(Math.abs(r.p), 'W', 3)}`}>
+                    <span>{r.id}</span>
+                  </i>
+                ))}
+              </span>
+            </div>
+          )
+        })}
+      </div>
       <p className="power-total">
-        Σ p over every element = <b>{num(netPower(sol), 'W', 2)}</b> — Tellegen’s theorem, from KVL and KCL alone. Delivering to
-        the left, absorbing to the right.
+        Delivered <b>{num(ledger.delivered, 'W', 3)}</b> = absorbed <b>{num(ledger.absorbed, 'W', 3)}</b>
+        {ledger.net === 0 ? ' — the two bars are the same length.' : ` (net ${num(ledger.net, 'W', 2)}).`} Every watt a
+        source gives out is taken in somewhere else in the same circuit; that follows from KCL and KVL alone, with no
+        element law needed (Tellegen’s theorem).
       </p>
     </div>
   )

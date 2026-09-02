@@ -17,15 +17,19 @@ import { fmt } from './units.js'
  *     sideways or clear of it above and below;
  *   - an op-amp's reading and label both hang under the triangle, reading first.
  *
- * Text metrics are estimates for the fonts in styles.css: 9 px monospace
- * for labels and meters (0.6 em advance), 10 px sans for node names.
+ * Text metrics are estimates for the fonts in styles.css: labels and node
+ * names in the KaTeX faces the equations use (so R₁ on the drawing is the R₁
+ * in the maths), meters in 9 px monospace (0.6 em advance), notes in sans.
+ * The label estimate was measured in a browser against every label the
+ * elements lab draws and sits a little above the widest of them.
  */
 
 export const FONT = {
-  label: { size: 9, cw: 5.4 },
+  label: { size: 10, cw: 5.4 },
   meter: { size: 9, cw: 5.4 },
-  port: { size: 10, cw: 5.6 },
+  port: { size: 10.5, cw: 5.6 },
   note: { size: 9, cw: 5.2 },
+  sign: { size: 11, cw: 6 },
 }
 
 /** Value text for the label under a symbol. */
@@ -53,6 +57,31 @@ export function valueText(e) {
     default:
       return e.id
   }
+}
+
+/**
+ * The label split the way the equations typeset it: a letter, a subscript,
+ * then the value — so `R1 1 kΩ` draws as R₁ 1 kΩ and the reader sees the R₁
+ * of the matrix on the drawing. `text` is the whole string, for width
+ * estimates and screen readers; a custom `label` is left as written.
+ */
+export function labelParts(e) {
+  const text = valueText(e)
+  if (e.label) return { text }
+  const m = e.id.match(/^([A-Za-z]+?)(\d+|[a-z]+|[A-Z])$/)
+  const value = text.slice(e.id.length).trimStart()
+  return m ? { text, sym: m[1], sub: m[2], value } : { text, sym: e.id, sub: '', value }
+}
+
+/**
+ * The + and − marks at a two-terminal element's ends when voltages are shown.
+ * Local + is at −20; both marks sit just inside the terminals on the side away
+ * from the label (above a horizontal element, left of a vertical one).
+ */
+export function signPlaces({ x, y, dir = 'h', flip = false }) {
+  const plus = dir === 'v' ? { x: x - 8, y: y + (flip ? 17 : -11) } : { x: x + (flip ? 16 : -16), y: y - 6 }
+  const minus = dir === 'v' ? { x: x - 8, y: y + (flip ? -11 : 17) } : { x: x + (flip ? -16 : 16), y: y - 6 }
+  return { plus: { ...plus, anchor: 'middle' }, minus: { ...minus, anchor: 'middle' } }
 }
 
 /** The meter text on an element for this `show`, or null when there is none. */

@@ -56,7 +56,7 @@ export const TERMS = {
     def:
       'The currents flowing into any junction sum to exactly the currents flowing out — charge ' +
       'does not accumulate at a point. Written as "everything leaving the node sums to zero", it ' +
-      'is one equation per node, and those equations are the whole of nodal analysis.',
+      'is one equation per node, and those equations are the rows the Analysis pane writes out.',
   },
   kvl: {
     name: 'KVL (Kirchhoff’s voltage law)',

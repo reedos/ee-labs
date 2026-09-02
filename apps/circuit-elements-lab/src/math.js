@@ -266,7 +266,7 @@ const ENTRIES = {
           row('V_A', vA, s.v.A, 'V'),
           row('i_R1', (p.E - vA) / p.R1, s.i.R1, 'A'),
           row('i_R2 + i_R3', (p.E - vA) / p.R1, s.i.R2 + s.i.R3, 'A'),
-          row('KCL residual at A', 0, s.residual.A, 'A', 0, 1e-12),
+          row('current in − current out at A', 0, s.residual.A, 'A', 0, 1e-12),
         ]),
       ],
     }
@@ -413,7 +413,7 @@ const ENTRIES = {
         T('One unknown node voltage, one KCL equation, written directly in conductances.'),
         F('\\frac{V_A - E}{R_1} + \\frac{V_A}{R_2} + \\frac{V_A}{R_3} = 0'),
         F('V_A = \\frac{E/R_1}{1/R_1 + 1/R_2 + 1/R_3}'),
-        C([row('V_A', vA, s.v.A, 'V'), row('KCL residual at A', 0, s.residual.A, 'A', 0, 1e-12)]),
+        C([row('V_A', vA, s.v.A, 'V'), row('current in − current out at A', 0, s.residual.A, 'A', 0, 1e-12)]),
       ],
     }
   },
@@ -1602,6 +1602,26 @@ export function netPower(sol) {
   let scale = 0
   for (const w of Object.values(sol.p)) scale = Math.max(scale, Math.abs(w))
   return Math.abs(sol.pTotal) <= 1e-9 * scale ? 0 : sol.pTotal
+}
+
+/**
+ * The power view's ledger: every element's v, i and p = v·i in the passive
+ * sign convention, sorted into who delivers (p < 0) and who absorbs (p > 0),
+ * with the two totals. Tellegen says the totals match; the pane shows them
+ * side by side so the reader sees that they do. A power below 1e-9 of the
+ * largest is arithmetic noise and is listed as idle, not as a microwatt.
+ */
+export function powerLedger(sol) {
+  const ids = sol.sys.effs.map((e) => e.id)
+  const scale = Math.max(1e-300, ...ids.map((id) => Math.abs(sol.p[id])))
+  const rows = ids.map((id) => {
+    const p = sol.p[id]
+    const role = Math.abs(p) <= 1e-9 * scale ? 'idle' : p > 0 ? 'absorbs' : 'delivers'
+    return { id, v: sol.volt[id], i: sol.i[id], p: role === 'idle' ? 0 : p, role }
+  })
+  const delivered = rows.filter((r) => r.role === 'delivers').reduce((s, r) => s - r.p, 0)
+  const absorbed = rows.filter((r) => r.role === 'absorbs').reduce((s, r) => s + r.p, 0)
+  return { rows, delivered, absorbed, net: netPower(sol) }
 }
 
 /**

@@ -302,6 +302,28 @@ Topbar: the circuit's headline numbers for the current experiment — e.g. `V_th
   the matrix, the solution; hover links each equation to its node on the schematic.
   For dynamic circuits: the state equations, `det(sI − A)`, the roots. Progressive
   disclosure: one equation per row, expanded on demand — never a wall.
+
+  *Entry-level review (2026-09-01).* The lower pane is headed **Analysis** (was
+  "Underneath"), and the view buttons follow one canonical order (`VIEW_ORDER`:
+  equations first, then power) so no experiment shows power before the equations.
+  Groups A and B open the Equations view with a **primer** — KCL, KVL and Ohm's law in
+  plain words — so "KCL at in" is never a name without a meaning; A1–A4 list the
+  `kcl`/`kvl` terms and the suite checks Group A defines KCL where its equations first
+  use it. The pane then runs in three numbered steps: (1) the rows, each term with its
+  signed live value and the row's sum; (2) the same rows as a **labelled matrix grid**
+  — rows named "KCL at A" / "V1 holds", columns the unknowns, every cell in letters
+  (`1/R₁ + 1/R₂`, `−1/R₁`, `E₁`) with its number beneath — followed by the compact
+  matrix in letters alone (`symbolicSystem` in `@ee-labs/network`, checked cell by
+  cell against the numeric `M`/`r` for all 46 experiments at defaults and random
+  settings) and in numbers; (3) a **legend** tying every letter to a part and its
+  present value. Substituted elements keep their identity: a capacitor's row shows
+  `v_C1`, an inductor's `i_L1`, a switch `R_S1`, an op-amp `A_U1`. The **Power** view is
+  a ledger (v, i, p = v × i, "which means it delivers/absorbs") over two equal-length
+  bars, delivered against absorbed, with the Tellegen sentence. On the **schematic**,
+  the voltage meter mode draws both **+ and −** at every two-terminal element (the −
+  was missing), and labels and node names are typeset in the KaTeX faces the equations
+  use — `R₁ 1 kΩ` on the drawing is the `R₁` in the matrix — with the layout checker
+  extended to the sign marks and its label-width estimate measured in a browser.
 - **Scope** — states and chosen branch quantities vs t, scrubbable cursor, natural
   and forced components separable as ghost traces (H1), τ-tangent and 63% marker
   (F3), envelope `±e^{−αt}` (G4). Dual y-axis (V / A). Caption band above the plot,

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { LabNav, NumField, ReportIssue, Schematic, fmt } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { equations, normalize, complex as cx } from '@ee-labs/network'
-import { EXPERIMENTS, GROUPS, byId, defaultsOf, drawables, isDynamic } from './experiments.js'
+import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic } from './experiments.js'
 import { analyse, atDrive, experimentMath, netPower, snapNoise } from './math.js'
 import { termsFor } from './terms.js'
 import { reportSummary } from './report.js'
@@ -17,10 +17,13 @@ import HandOver from './components/HandOver.jsx'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
+// Groups A and B read the KCL/KVL primer above their equations: A uses the
+// laws before B takes them apart, and a name must not arrive before its meaning.
+const PRIMER_GROUPS = GROUPS.slice(0, 2)
 
 const VIEW_LABELS = {
-  equations: { label: 'Equations', title: 'The KCL rows and constraints the solver built, with live values' },
-  power: { label: 'Power', title: 'Power in every element under the passive sign convention' },
+  equations: { label: 'Equations', title: 'The equations the solver built: the two laws in words, each row with live values, the matrix in letters and in numbers' },
+  power: { label: 'Power', title: 'p = v × i for every element — who delivers, who absorbs, and the two totals matching' },
   thevenin: { label: 'Thévenin', title: 'The equivalent seen at the port, found three ways' },
   superposition: { label: 'Superposition', title: 'Each source alone, and the sum' },
   sweep: { label: 'Load sweep', title: 'The port quantity as the load resistance sweeps' },
@@ -83,10 +86,10 @@ export default function App() {
 
   const nodeCount = x.sol ? x.sol.norm.n : normalize(x.net).n
   const outcome = x.sol
-    ? `KCL holds at every node, largest residual ${fmt(x.sol.maxResidual, 'A', 2)}`
+    ? `current in = current out at every node (KCL), largest imbalance ${fmt(x.sol.maxResidual, 'A', 2)}`
     : `refused: ${x.refusal.code}`
 
-  const viewOptions = exp.views.map((v) => ({ id: v, ...VIEW_LABELS[v] }))
+  const viewOptions = VIEW_ORDER.filter((v) => exp.views.includes(v)).map((v) => ({ id: v, ...VIEW_LABELS[v] }))
   const currentView = exp.views.includes(view) ? view : exp.view
 
   return (
@@ -222,7 +225,7 @@ export default function App() {
           </span>
           <span className={`flow-node ${x.sol ? 'is-out' : 'is-off'}`} data-role="outcome">
             {x.sol ? 'solved' : 'no solution'}
-            <em>{x.sol ? `KCL residual ${fmt(x.sol.maxResidual, 'A', 2)}` : x.refusal.code}</em>
+            <em>{x.sol ? `current in = current out at every node, to ${fmt(x.sol.maxResidual, 'A', 2)}` : x.refusal.code}</em>
           </span>
         </nav>
         <div className="topbar-controls">
@@ -336,7 +339,7 @@ export default function App() {
 
         <section className="view">
           <div className="view-head">
-            <h2>Underneath</h2>
+            <h2>Analysis</h2>
             <ViewSwitch value={currentView} onChange={setView} options={viewOptions} />
             <div className="readout">
               {currentView === 'thevenin' && x.thevenin ? (
@@ -452,7 +455,7 @@ export default function App() {
             {currentView === 'acpower' && x.ac ? <AcPowerPane x={x} /> : null}
             {currentView === 'energy' && x.tr ? <EnergyCanvas energy={x.energy} tEnd={x.tEnd} cursor={x.cursor} onCursor={setCursor} /> : null}
             {currentView === 'damping' && x.damping ? <DampingCanvas exp={exp} params={params} at={x.damping.at} /> : null}
-            {currentView === 'equations' && eq ? <EquationsPane eq={eq} solved={!!x.sol} /> : null}
+            {currentView === 'equations' && eq ? <EquationsPane eq={eq} solved={!!x.sol} primer={PRIMER_GROUPS.includes(exp.group)} /> : null}
             {currentView === 'power' && x.sol ? <PowerPane sol={x.sol} /> : null}
             {currentView === 'thevenin' && x.thevenin ? <TheveninPane th={x.thevenin} port={exp.port} /> : null}
             {currentView === 'superposition' && x.superposition ? <SuperpositionPane sp={x.superposition} /> : null}
