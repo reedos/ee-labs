@@ -174,8 +174,12 @@ describe('the layout gives the lesson the room (§11.4)', () => {
   it('keeps the sidebar in reading order: experiments, note, schematic, knobs (§11.4.5)', () => {
     const s = sidebar(render('b3'))
     const at = (t) => s.indexOf(t)
-    expect(at('<h2>Experiments</h2>')).toBeGreaterThan(-1)
-    expect(at('data-role="note"')).toBeGreaterThan(at('<h2>Experiments</h2>'))
+    // The experiments section's cap is the row of group tabs, with the
+    // heading's name kept for a screen reader.
+    const cap = '<h2 class="picker-cap" data-role="experiments-cap"><span class="sr-only">Experiments</span>'
+    expect(at(cap)).toBeGreaterThan(-1)
+    expect(at('role="tablist"')).toBeGreaterThan(at(cap))
+    expect(at('data-role="note"')).toBeGreaterThan(at(cap))
     expect(at('<h2>Schematic')).toBeGreaterThan(at('data-role="note"'))
     expect(at('<h2>Knobs</h2>')).toBeGreaterThan(at('<h2>Schematic'))
   })
@@ -265,7 +269,7 @@ describe('a path through the material (§11.5, §11.3.3–5)', () => {
       const k = e.params[0]
       if (k.percent) expect(first).toMatch(/>\d+(\.\d)? %</)
       else if (k.unit === '°') expect(first).toMatch(/>\d+°</)
-      else expect(first).toMatch(new RegExp(`>[0-9.]+ [µmkMG]?${k.unit}<`))
+      else expect(first).toMatch(new RegExp(`>[0-9.]+ [nµmkMG]?${k.unit}<`))
     }
   })
   it('the retired note gets a way back: a reset chip beside it (§11.5.6)', () => {

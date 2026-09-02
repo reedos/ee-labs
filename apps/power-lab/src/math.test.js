@@ -54,7 +54,7 @@ describe('the math panel', () => {
     const fails = []
     for (const e of EXPERIMENTS) fails.push(...texFailures(build(e, defaultsOf(e.id)), e.id))
     // The lossy and DCM forms too.
-    fails.push(...texFailures(build(byId.b6, defaultsOf('b6')), 'b6'))
+    fails.push(...texFailures(build(byId.b7, defaultsOf('b7')), 'b7'))
     fails.push(...texFailures(build(byId.b4, defaultsOf('b4')), 'b4'))
     expect(fails).toEqual([])
   })
@@ -82,10 +82,10 @@ describe('the math panel', () => {
   })
 
   it('footnotes the ripple formula where its assumptions fail, rather than crossing it out', () => {
-    const rows = (p) => build(byId.b6, p).blocks.find((b) => b.kind === 'check').rows
-    const withEsr = rows(defaultsOf('b6')).find((r) => r.label === 'ΔV_out')
+    const rows = (p) => build(byId.b7, p).blocks.find((b) => b.kind === 'check').rows
+    const withEsr = rows(defaultsOf('b7')).find((r) => r.label === 'ΔV_out')
     expect(withEsr.unchecked).toMatch(/ESR/)
-    const noEsr = rows({ ...defaultsOf('b6'), ESR: 0 }).find((r) => r.label === 'ΔV_out')
+    const noEsr = rows({ ...defaultsOf('b7'), ESR: 0 }).find((r) => r.label === 'ΔV_out')
     expect(noEsr.unchecked).toBeUndefined()
     const dcm = build(byId.b4, defaultsOf('b4')).blocks.find((b) => b.kind === 'check').rows.find((r) => r.label === 'ΔV_out')
     expect(dcm.unchecked).toMatch(/dead interval/)
@@ -95,7 +95,8 @@ describe('the math panel', () => {
     const tex = (id, over = {}) => build(byId[id], { ...defaultsOf(id), ...over }).blocks.find((b) => b.kind === 'formula').tex
     expect(tex('b2')).toMatch(/M = \\frac\{V_\{out\}\}\{V_\{in\}\} = D/)
     expect(tex('b4')).toMatch(/4K\/D\^2/)
-    expect(tex('b6')).toMatch(/R_\{on\}/)
+    expect(tex('b7')).toMatch(/R_\{on\}/)
+    expect(tex('b6')).toMatch(/V_f/)
   })
 
   it('shows the DCM bookkeeping only in DCM, and the loss breakdown only with real parts', () => {

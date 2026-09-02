@@ -98,13 +98,19 @@ export const SWEEP_X = {
   D: { label: 'D', unit: '', scale: 'linear', fmt: (v) => v.toFixed(3) },
   R: { label: 'R_load', unit: 'Ω', scale: 'log' },
   C: { label: 'C', unit: 'F', scale: 'log' },
+  fs: { label: 'f_s', unit: 'Hz', scale: 'log' },
   alpha: { label: 'α', unit: '°', scale: 'linear', fmt: (v) => `${v.toFixed(0)}°` },
 }
+// A sweep's `y2` goes on a right-hand axis of its own, unless the sweep says
+// `shared: true` — then both curves share the left axis (the chopper's ⟨v⟩
+// and V_rms are both volts, and the gap between them is the lesson).
 export const SWEEP_Y = {
   M: { label: 'M = V_out / V_in', unit: '', lo: 0, hi: 1 },
   eta: { label: 'η', unit: '', lo: 0, hi: 1, percent: true },
   Pout: { label: 'P_out', unit: 'W', scale: 'log' },
   Vout: { label: 'V_out', unit: 'V', lo: 0 },
+  vavg: { label: '⟨v⟩', unit: 'V', lo: 0 },
+  vrms: { label: 'V_rms', unit: 'V', lo: 0 },
   angle: { label: 'conduction angle', unit: '°', lo: 0 },
   iPeak: { label: 'i_D peak', unit: 'A', lo: 0 },
   share: { label: 'P / P_full', unit: '', lo: 0, hi: 1 },
@@ -163,7 +169,7 @@ export const EXPERIMENTS = [
     id: 'a1',
     about: 'Vo',
     chips: [5, 9],
-    try: { knob: 'Vo', text: 'Set V_out to 9 V: efficiency rises to 75.0 %, and 5.4 W still heats the regulator.' },
+    try: { knob: 'Vo', text: 'Set V_out to 9 V: efficiency 75.0 %, and 5.4 W still heats the regulator.' },
     group: GROUPS[0],
     name: 'The linear regulator',
     kind: 'linreg',
@@ -178,40 +184,42 @@ export const EXPERIMENTS = [
     sweep: { x: 'D', y: 'eta' },
     note:
       'A series pass element drops the difference and carries the load current, so it dissipates their ' +
-      'product. From 12 V to 5 V at 1 A: 5 W reach the load, 7 W heat the regulator, and efficiency is ' +
-      '5/12 = 41.7 % — the ratio V_out/V_in, whatever the current. The sweep shows there is no setting ' +
-      'that improves it: a linear regulator is exactly as efficient as its conversion ratio.',
+      'product. From 12 V to 5 V at 1 A: 5 W reach the load and 7 W heat the regulator. Efficiency is ' +
+      '5/12 = 41.7 %, the ratio V_out/V_in at any current. The sweep shows no setting improves it: a ' +
+      'linear regulator is exactly as efficient as its ratio.',
     terms: ['efficiency', 'linear-regulator'],
   },
   {
     id: 'a2',
     about: 'D',
     chips: [5 / 12, 0.75],
-    try: { knob: 'D', text: 'Set D to 75 %: the average is 9.00 V, the RMS 10.4 V \u2014 closer, never equal.' },
+    try: { knob: 'D', text: 'Set D to 75 %: average 9.00 V, RMS 10.4 V \u2014 closer, never equal.' },
     group: GROUPS[0],
     name: 'Chop it',
     kind: 'chopper',
     headline: 'rms',
     params: [Vin(), D(), R(), Fs()],
-    // The current is the voltage over R — the same shape, so one trace. What
-    // the eye should compare is the mean with the RMS, and that is the headline.
-    traces: ['vsw'],
-    allTraces: ['vsw', 'iL'],
-    views: ['measures', 'math'],
-    view: 'measures',
+    // With no filter the output is the switch node and the load current is
+    // the same shape over R: one voltage on the scope, the current a chip
+    // away, and the measures table lists each once. The sweep is the claim —
+    // V_rms above ⟨v⟩ at every D — so it opens there.
+    traces: ['vout'],
+    allTraces: ['vout', 'iR'],
+    views: ['sweep', 'measures', 'losses', 'math'],
+    view: 'sweep',
+    sweep: { x: 'D', y: 'vavg', y2: 'vrms', shared: true },
     note:
       'Replace the pass element with a switch: on for a fraction D of each period, off for the rest. It ' +
-      'wastes nothing — an ideal switch has no voltage when on and no current when off — and the average ' +
-      'output is D·V_in = 5.00 V. But the load does not get 5 V. It gets 12 V for 41.7 % of the time and ' +
-      'nothing otherwise: RMS 7.75 V, and 12.0 W of heating instead of the 5.00 W a steady 5 V would ' +
-      'give. Average is not the same as steady; the switch alone has moved the problem, not solved it.',
+      'wastes nothing, and the average output is D·V_in = 5.00 V. But the load sees 12 V for 41.7 % of ' +
+      'the time and nothing otherwise: RMS 7.75 V, so 12.0 W of heating, not the 5.00 W a steady 5 V ' +
+      'gives. The sweep: V_rms = √D·V_in sits above ⟨v⟩ = D·V_in at every D.',
     terms: ['duty', 'rms', 'average'],
   },
   buck({
     id: 'a3',
     about: 'C',
     chips: [100e-6, 10e-6],
-    try: { knob: 'C', text: 'Set C to 10 \u00b5F, a tenth of the 100 \u00b5F: the ripple grows tenfold to 36.5 mV and the average stays 5.000 V.' },
+    try: { knob: 'C', text: 'Set C to 10 \u00b5F, from 100 \u00b5F: tenfold ripple, 36.5 mV, average still 5.000 V.' },
     group: GROUPS[0],
     name: 'Let the LC do the averaging',
     params: [Vin(), D(), L(), C(), R(), Fs()],
@@ -221,11 +229,11 @@ export const EXPERIMENTS = [
     allTraces: ['vsw', 'vout', 'iL'],
     note:
       'Put an inductor and capacitor between the chopped node and the load. The switch node still swings ' +
-      '0 ↔ 12 V, but the output is 5.000 V with 3.65 mV of ripple: the filter passes the average and ' +
-      'stops the rest, because its corner (1.59 kHz) is 63× below the switching frequency. The load draws ' +
-      '5.00 W, the source supplies 5.00 W, and nothing heats up. This is the buck converter — a chopper ' +
-      'plus a low-pass filter — and the next group is why it works.',
-    terms: ['buck', 'ripple', 'switch-node'],
+      '0 ↔ 12 V, but the output is 5.000 V with 3.65 mV of ripple. The filter passes the average and ' +
+      'stops the rest: its corner, 1.59 kHz, is 63× below the switching frequency. The load draws ' +
+      '5.00 W, the source supplies 5.00 W, and nothing heats up. This is the buck converter, and the ' +
+      'next group is why it works.',
+    terms: ['buck', 'ripple', 'switch-node', 'average'],
   }),
 
   // ---------------------------------------------------------- B · The buck
@@ -233,25 +241,24 @@ export const EXPERIMENTS = [
     id: 'b1',
     about: 'L',
     chips: [100e-6, 22e-6],
-    try: { knob: 'L', text: 'Set L to 22 \u00b5H, from 100 \u00b5H: the ripple grows to 1.33 A and the balance is still 29.2 V\u00b7\u00b5s each way.' },
+    try: { knob: 'L', text: 'Set L to 22 \u00b5H, from 100 \u00b5H: ripple 1.33 A, balance still 29.2 V\u00b7\u00b5s.' },
     group: GROUPS[1],
     name: 'Volt-second balance',
     params: [Vin(), D(), L(), R()],
     traces: ['vL', 'iL'],
     view: 'balance',
     note:
-      'In steady state the inductor current ends each period where it began, so the inductor voltage ' +
-      'averages to exactly zero: the volt-seconds it takes on while the switch is on equal the ' +
-      'volt-seconds it gives back while off. Here that is 7 V × 4.17 µs = 29.2 V·µs up and 5 V × 5.83 µs ' +
-      '= 29.2 V·µs down. Write it out — D·(V_in − V_out) = (1 − D)·V_out — and the output falls out: ' +
-      'V_out = D·V_in, with no L in it. Change L: the ripple changes, the balance and the output do not.',
-    terms: ['volt-second', 'steady-state', 'charge-balance'],
+      'In steady state the inductor current ends each period where it began, so its voltage averages ' +
+      'to zero. The volt-seconds taken on while the switch is on equal those given back while off: ' +
+      '7 V × 4.17 µs = 29.2 V·µs up, 5 V × 5.83 µs = 29.2 V·µs down. So V_out = D·V_in, with no L in ' +
+      'it. Change L: the ripple changes; the balance does not.',
+    terms: ['volt-second', 'steady-state', 'charge-balance', 'ripple'],
   }),
   buck({
     id: 'b2',
     about: 'D',
     chips: [5 / 12, 0.75, 0.25],
-    try: { knob: 'D', text: 'Set D to 75 %: 9.000 V out, M = 0.750 \u2014 and 25 % gives 3.000 V.' },
+    try: { knob: 'D', text: 'Set D to 75 %: 9.000 V out, M = 0.750; 25 % gives 3.000 V.' },
     group: GROUPS[1],
     name: 'M = D',
     params: [D(), Vin(), R(), L(), Fs()],
@@ -259,36 +266,35 @@ export const EXPERIMENTS = [
     view: 'sweep',
     sweep: { x: 'D', y: 'M' },
     note:
-      'The conversion ratio M = V_out/V_in equals the duty, and only the duty: at D = 0.417 the output is ' +
-      '5.000 V from 12 V, and the sweep is a straight line through the origin at every load that keeps ' +
-      'the inductor current from reaching zero. The formula has no L, C, R or f_s in it because ' +
-      'volt-second balance has none — those set the ripple and the losses, not the ratio. (Turn R up ' +
-      'past 34 Ω and the line bends away: that is the light-load experiment, two on from here.)',
-    terms: ['conversion-ratio', 'duty'],
+      'The conversion ratio M = V_out/V_in equals the duty, and only the duty. At D = 0.417 the output is ' +
+      '5.000 V from 12 V. The sweep is a straight line through the origin, at every load that keeps the ' +
+      'inductor current above zero. L, C, R and f_s are absent because volt-second balance has none: ' +
+      'they set the ripple and losses, not the ratio. Turn R past 34 Ω and the line bends away — the ' +
+      'light-load experiment, two on from here.',
+    terms: ['conversion-ratio', 'duty', 'volt-second', 'ripple'],
   }),
   buck({
     id: 'b3',
     about: 'fs',
     chips: [100e3, 400e3],
-    try: { knob: 'fs', text: 'Set f_s to 400 kHz, four times 100 kHz: 73 mA of current ripple and 0.23 mV on the output.' },
+    try: { knob: 'fs', text: 'Set f_s to 400 kHz, from 100 kHz: 73 mA of current ripple, 0.23 mV out.' },
     group: GROUPS[1],
     name: 'Ripple',
     params: [L(), C(), Fs(), D(), Vin(), R()],
     traces: ['iL', 'vout'],
     note:
       'The inductor current is a triangle: it rises at (V_in − V_out)/L while the switch is on and falls ' +
-      'at V_out/L while it is off, so its peak-to-peak swing is V_out·(1 − D)/(L·f_s) = 0.292 A around ' +
-      'the 1.00 A load current. The capacitor takes that triangle’s AC part and integrates it into ' +
-      '3.65 mV of output ripple, ΔI_L/(8·f_s·C). Both formulas assume the output is flat while they ' +
-      'compute how much it is not — and land within 0.03 % of the exact waveform here. Four times the ' +
-      'frequency: a quarter the current ripple and a sixteenth the voltage ripple.',
+      'at V_out/L while it is off. Its swing is V_out·(1 − D)/(L·f_s) = 0.292 A around the 1.00 A load ' +
+      'current. The capacitor integrates that triangle into 3.65 mV of output ripple, ΔI_L/(8·f_s·C). ' +
+      'Both formulas assume a flat output while computing how far from flat it is, and land within ' +
+      '0.03 % of the exact waveform here.',
     terms: ['ripple', 'small-ripple'],
   }),
   buck({
     id: 'b4',
     about: 'R',
     chips: [200, 5],
-    try: { knob: 'R', text: 'Set R_load to 5 \u03a9: conduction is continuous again and the output is back at 5.00 V.' },
+    try: { knob: 'R', text: 'Set R_load to 5 \u03a9: continuous conduction, output back at 5.00 V.' },
     group: GROUPS[1],
     name: 'Light load: discontinuous conduction',
     symbols: ['K'],
@@ -298,19 +304,18 @@ export const EXPERIMENTS = [
     sweep: { x: 'R', y: 'M' },
     periods: 2,
     note:
-      'At 200 Ω the load wants 25 mA and the ripple is 145 mA peak: the falling current reaches zero ' +
-      'before the period ends, and a diode cannot carry it negative. It blocks, the switch node floats ' +
-      'up to V_out for the rest of the period (41 % of it here), and volt-second balance now has a ' +
-      'third term. The output is 8.52 V — M = 0.710, not D = 0.417 — and it depends on the load, which ' +
-      'the sweep shows. Replace the diode with a synchronous switch and the current simply goes ' +
-      'negative (to −121 mA): conduction is continuous again and the output is back to 5.00 V.',
-    terms: ['dcm', 'ccm', 'synchronous'],
+      'At 200 Ω the load wants 25 mA and the ripple is 145 mA peak, so the current reaches zero ' +
+      'mid-period. A diode cannot carry it negative, so it blocks. The switch node floats to V_out for ' +
+      '41 % of the period, and volt-second balance gains a third term. The output is 8.52 V, M = 0.710 ' +
+      'against D = 0.417, and depends on the load. A synchronous switch lets the current go to −121 mA ' +
+      'and the output returns to 5.00 V.',
+    terms: ['dcm', 'ccm', 'synchronous', 'ripple', 'switch-node', 'volt-second'],
   }),
   buck({
     id: 'b5',
     about: 'R',
     chips: [34.2857142857, 100, 10],
-    try: { knob: 'R', text: 'Set R_load to 100 \u03a9: M climbs to 0.594 (7.13 V out); at 10 \u03a9 it holds at 0.417.' },
+    try: { knob: 'R', text: 'Set R_load to 100 \u03a9: M climbs to 0.594, 7.13 V; at 10 \u03a9, 0.417.' },
     group: GROUPS[1],
     name: 'The boundary',
     symbols: ['K'],
@@ -320,35 +325,76 @@ export const EXPERIMENTS = [
     sweep: { x: 'R', y: 'M' },
     note:
       'Conduction is continuous while the average current exceeds half the ripple. In the dimensionless ' +
-      'form K = 2·L·f_s/R that is K > 1 − D: with 100 µH at 100 kHz and D = 0.417 the boundary is ' +
-      'R_crit = 34.3 Ω, and the knob starts there — the current valley just touches zero. Either side, ' +
-      'the two formulas for M agree at the boundary and the curve is continuous, with a kink rather ' +
-      'than a step: nothing jumps when the diode first blocks for an instant. Slower switching or a ' +
-      'smaller inductor moves R_crit down; the converter stays continuous into lighter loads.',
-    terms: ['k-parameter', 'dcm', 'ccm'],
+      'form K = 2·L·f_s/R that is K > 1 − D. With 100 µH at 100 kHz and D = 0.417 the boundary is ' +
+      'R_crit = 34.3 Ω, and the knob starts there: the current valley just touches zero. The two ' +
+      'formulas for M agree at the boundary, so the curve has a kink, not a step. Nothing jumps when ' +
+      'the diode first blocks for an instant.',
+    terms: ['k-parameter', 'dcm', 'ccm', 'average', 'ripple'],
   }),
   buck({
     id: 'b6',
     about: 'Vf',
-    chips: [0.5, 0, 1],
-    try: { knob: 'Vf', text: 'Set V_f to 0 V: efficiency 98.5 %; at 1 V, 87.0 %. The diode is the loss.' },
+    chips: [0.5, 1, 0],
+    try: { knob: 'Vin', text: 'Set V_in to 48 V: the same rent on 19.7 V out, efficiency 98.5 %.' },
     group: GROUPS[1],
-    name: 'Real parts',
+    name: 'The diode’s rent',
     symbols: ['K'],
-    params: [Ron(0.05), Vf(0.5), RL(0.03), ESR(0.05), Tsw(20e-9), Sync(), R(), D()],
+    // One real part at a time (§11.2.2): the diode here, the resistances in
+    // B7, the edges in B8. Every other loss knob is off the panel, so the
+    // losses pane has one bar and the note one number to explain.
+    params: [Vf(0.5), Sync(), Vin(), D(), R()],
     traces: ['vsw', 'vout', 'iL'],
+    view: 'losses',
+    sweep: { x: 'D', y: 'eta' },
+    note:
+      'Give the diode a 0.5 V drop. It carries the inductor current for the 58 % of each period the ' +
+      'switch is off, so volt-second balance charges (1 − D)·V_f = 0.292 V. The output is 4.708 V ' +
+      '(M = 0.392), efficiency 94.2 %, 275 mW in the diode. The rent is fixed, so it matters at 5 V ' +
+      'out and not at 48 V. At V_f = 1 V efficiency is 88.3 %; at 0 V, a synchronous switch, 100 %.',
+    terms: ['efficiency', 'conduction-loss', 'synchronous', 'volt-second'],
+  }),
+  buck({
+    id: 'b7',
+    about: 'ESR',
+    chips: [0.05, 0.5, 0],
+    try: { knob: 'ESR', text: 'Set ESR to 0.5 Ω: a 132 mV step; at 0 Ω, none.' },
+    group: GROUPS[1],
+    name: 'The resistances',
+    symbols: ['K'],
+    params: [ESR(0.05), Ron(0.05), RL(0.03), R(), D(), Vin()],
+    // The output and the inductor current: the ESR step on one is the
+    // ripple current in the other, and the switch node would dwarf both.
+    traces: ['vout', 'iL'],
     view: 'losses',
     sweep: { x: 'R', y: 'eta' },
     note:
-      'Give the switch 50 mΩ, the diode 0.5 V, the inductor 30 mΩ, the capacitor 50 mΩ and each edge ' +
-      '20 ns. The output drops to 4.66 V (M = 0.388, not 0.417) and efficiency to 92.7 %. The diode ' +
-      'takes 272 mW of the 340 mW lost — its 0.5 V drop, carried for 58 % of every period — with the ' +
-      'winding 26 mW, the switching edges 23 mW, the switch 18 mW and the ESR under 1 mW. A ' +
-      'synchronous switch in place of the diode puts efficiency at 97.9 %; at 0.5 Ω (8.5 A, the ' +
-      'output sagging to 4.27 V) the resistive losses grow with I² and efficiency is 85.0 %. The input ' +
-      'power equals the output plus every conduction loss to the last digit: the engine keeps the ' +
-      'books, and they balance.',
-    terms: ['efficiency', 'conduction-loss', 'switching-loss', 'synchronous'],
+      'Give the switch 50 mΩ, the winding 30 mΩ and the capacitor 50 mΩ of ESR. Each takes I²R from ' +
+      'the 1 A load — 21, 30 and 0.3 mW — so the output sags to 4.950 V and efficiency is 99.0 %. At ' +
+      '0.5 Ω and 9.1 A, I² makes it 90.8 %. The ESR loses almost nothing, but it shows. The ripple ' +
+      'current through it adds a step, ESR·ΔI_L ≈ 14.5 mV, and 3.63 mV of ripple becomes 14.4 mV.',
+    terms: ['efficiency', 'conduction-loss', 'ripple'],
+  }),
+  buck({
+    id: 'b8',
+    about: 'tsw',
+    chips: [20e-9, 5e-9, 100e-9],
+    try: { knob: 'fs', text: 'Set f_s to 1 MHz: ripple 36.5 µV, a hundredth; the edges cost 240 mW.' },
+    group: GROUPS[1],
+    name: 'The edges',
+    symbols: ['K'],
+    params: [Tsw(20e-9), Fs(), Vin(), D(), R()],
+    // The switch node carries the edges; the inductor current is what they
+    // carry. The sweep is against f_s, the knob the edges tax.
+    traces: ['vsw', 'iL'],
+    views: ['losses', 'sweep', 'measures', 'math', 'balance'],
+    view: 'losses',
+    sweep: { x: 'fs', y: 'eta' },
+    note:
+      'Give each edge 20 ns. Between states the switch holds 12 V and 1 A at once, and ½·V·I·t per ' +
+      'edge, twice a period, is 24 mW at 100 kHz: efficiency 99.5 %. It is the first loss that charges ' +
+      'per cycle, so it grows with frequency, ∝ f_s·t_sw. At 1 MHz the same edges cost 240 mW and ' +
+      '95.4 %; at 100 ns and 100 kHz, 120 mW; at 5 ns, 6 mW. Ripple wants f_s high; the edges want it low.',
+    terms: ['efficiency', 'switching-loss', 'ripple'],
   }),
 
   // ------------------------------------------------ C · Boost & buck-boost
@@ -356,23 +402,21 @@ export const EXPERIMENTS = [
     id: 'c1',
     about: 'D',
     chips: [0.5, 0.75],
-    try: { knob: 'D', text: 'Set D to 75 %: M = 4.00 and 48.0 V out \u2014 the inductor now carries 9.60 A.' },
+    try: { knob: 'D', text: 'Set D to 75 %: M = 4.00, 48.0 V out, 9.60 A in the inductor.' },
     group: GROUPS[2],
     name: 'Stacking on the source',
     note:
-      'Swap the switch and the inductor around and the inductor charges from the source, then discharges ' +
-      'in series with it — its voltage stacks on top of V_in instead of subtracting from it. Volt-second ' +
-      'balance gives M = 1/(1 − D), so at D = 0.500 the output is 24.00 V from a 12 V source, with 60.0 mV ' +
-      'of ripple. Nothing is created: the source carries 2.400 A to deliver 1.200 A at twice the voltage, ' +
-      '28.80 W in and 28.80 W out. The sweep shows the ratio running away as D → 1, which is the promise ' +
-      'the next experiment breaks.',
-    terms: ['boost', 'volt-second', 'conversion-ratio'],
+      'Swap the switch and the inductor, and the inductor’s volt-seconds stack on V_in instead of ' +
+      'subtracting. Volt-second balance gives M = 1/(1 − D): at D = 0.500, 24.00 V from 12 V, 60.0 mV ' +
+      'of ripple. Nothing is created: 2.400 A in delivers 1.200 A at twice the voltage, 28.80 W in and ' +
+      'out. The ratio runs away as D → 1, the promise the next experiment breaks.',
+    terms: ['boost', 'volt-second', 'conversion-ratio', 'ripple'],
   }),
   pwm('boost', {
     id: 'c2',
     about: 'D',
     chips: [0.9, 0.5, 0.95],
-    try: { knob: 'D', text: 'Set D to 50 %: M = 1.92 against the ideal 2.00, at 96.1 % efficiency \u2014 the winding barely matters until D is high.' },
+    try: { knob: 'D', text: 'Set D to 50 %: M = 1.92 against the ideal 2.00, at 96.1 % efficiency.' },
     group: GROUPS[2],
     name: 'The peak ideal theory misses',
     // The knob starts on the peak, so the screen at arrival is the one the
@@ -384,14 +428,11 @@ export const EXPERIMENTS = [
     view: 'sweep',
     sweep: { x: 'D', y: 'M', y2: 'eta' },
     note:
-      'Give the inductor 0.2 Ω of winding. The ideal curve still climbs forever; the real one turns over ' +
-      'and comes back down. The reason is that the winding carries the load current divided by (1 − D), so ' +
-      'as D → 1 the current diverges faster than the voltage: M = (1 − D)/((1 − D)² + R_L/R), which peaks ' +
-      'at M = ½·√(R/R_L) = 5.00 where 1 − D = √(R_L/R). The knob starts there, at D = 0.900: 60.0 V out ' +
-      'where theory promised 120 V, and the winding burning 180 W to deliver 180 W. Push past it — D = 0.950 ' +
-      '— and the output *falls* to 48.00 V while 460.8 W cooks the winding. Efficiency tells the same story ' +
-      'from the other side: η = M·(1 − D), the fraction of the promised voltage that arrives, which at ' +
-      'the peak is exactly 50 %. This is why "just increase D" ends in smoke.',
+      'Give the inductor 0.2 Ω of winding. The ideal curve climbs forever; the real one turns over. The ' +
+      'winding carries the load current divided by (1 − D), so as D → 1 the current outruns the ' +
+      'voltage. M peaks at ½·√(R/R_L) = 5.00, where the knob starts: D = 0.900, 60.0 V where theory ' +
+      'promised 120 V, 180 W in the winding to deliver 180 W. At D = 0.950 the output falls to ' +
+      '48.00 V while 460.8 W cooks the winding.',
     terms: ['boost', 'winding-resistance', 'efficiency'],
   }),
   pwm('boost', {
@@ -408,37 +449,33 @@ export const EXPERIMENTS = [
     sweep: { x: 'R', y: 'M' },
     note:
       'Lighten the load and the boost empties its inductor too. Above R_crit = 160 Ω a third interval ' +
-      'appears — switch off, diode blocking, i_L pinned at zero — and M leaves 1/(1 − D) behind: at 400 Ω ' +
-      'it is 2.791 against the ideal 2.000, and the output has climbed to 33.50 V with the same 600 mA of ' +
-      'ripple current it always had. The closed form is M = (1 + √(1 + 4D²/K))/2 with K = 2Lf_s/R, and ' +
-      'K_crit = D(1 − D)² = 0.1250 rather than the buck\u2019s 1 − D. Note which way it goes: the buck sags in ' +
-      'DCM, the boost climbs. Both are the same statement — with no current to hold it down, the output ' +
-      'runs towards whatever the volt-seconds allow.',
-    terms: ['boost', 'dcm', 'k-parameter'],
+      'appears, i_L at zero, and M leaves 1/(1 − D) behind. At 400 Ω it is 2.791 against the ideal ' +
+      '2.000: 33.50 V out, with the same 600 mA of ripple current. The closed form is drawn dashed; ' +
+      'its boundary is K_crit = D(1 − D)² = 0.1250, not the buck\u2019s 1 − D. The buck sags in DCM; ' +
+      'the boost climbs.',
+    terms: ['boost', 'dcm', 'k-parameter', 'ripple'],
   }),
   pwm('buckboost', {
     id: 'c4',
     about: 'D',
     chips: [0.5, 0.75],
-    try: { knob: 'D', text: 'Set D to 75 %: M = \u22123.00, \u221236.0 V out, with 7.20 A in the inductor.' },
+    try: { knob: 'D', text: 'Set D to 75 %: M = \u22123.00, \u221236.0 V out, 7.20 A in the inductor.' },
     group: GROUPS[2],
     name: 'The inverting bucket',
     traces: ['vsw', 'vout', 'iL', 'iin'],
     note:
-      'Move the diode and the output to the other side of the inductor and the source and the load never ' +
-      'share a path. On: the source charges the inductor, the capacitor alone feeds the load. Off: the ' +
-      'inductor dumps into the capacitor and the load, and the source is disconnected — watch i_in go flat ' +
-      'at zero for the whole off interval, which no buck ever does. Every joule is carried across by the ' +
-      'inductor, and it arrives the other way up: M = −D/(1 − D), so D = 0.500 gives −12.00 V from +12 V, ' +
-      'and the switch node swings between +12.0 V and −12.0 V. The output is negative against ground here, ' +
-      'and the currents are drawn in the direction each part carries them.',
+      'Move the diode and output to the far side of the inductor: the source and the load never share ' +
+      'a path. On, the source charges the inductor while the capacitor feeds the load. Off, the ' +
+      'inductor dumps into both and the source is disconnected. Watch i_in sit at zero for the whole ' +
+      'off interval. Every joule crosses through the inductor and arrives the other way up, ' +
+      'M = −D/(1 − D): D = 0.500 gives −12.00 V from +12 V.',
     terms: ['buck-boost', 'inverting', 'volt-second'],
   }),
   pwm('buckboost', {
     id: 'c5',
     about: 'R',
     chips: [200, 100, 500],
-    try: { knob: 'R', text: 'Set R_load to 40 \u03a9: conduction is continuous and the power is 3.60 W \u2014 the budget no longer holds.' },
+    try: { knob: 'R', text: 'Set R_load to 40 \u03a9: continuous conduction, 3.60 W \u2014 the budget no longer holds.' },
     group: GROUPS[2],
     name: 'All the energy through one part',
     params: [Rlb(200), Vin(), D(0.5), L(), C(), Fs()],
@@ -447,14 +484,11 @@ export const EXPERIMENTS = [
     view: 'sweep',
     sweep: { x: 'R', y: 'Pout', y2: 'Vout' },
     note:
-      'In the buck, most of the power flows straight through and the inductor only smooths it. Here there ' +
-      'is no through-path at all, so the inductor must lift every joule — and in discontinuous conduction ' +
-      'that makes the books exact. It picks up ½L·i_pk² each cycle and hands over all of it: with i_pk = ' +
-      '600 mA, P_out = ½L·i_pk²·f_s = 1.800 W. The startling part is what that does not depend on. The peak ' +
-      'is set by V_in·D/(L·f_s) alone, so the power is the same at every load: 1.800 W at 100 Ω, at 200 Ω ' +
-      'and at 500 Ω, while the output climbs −13.42 → −18.97 → −30.00 V to keep it. A buck-boost in DCM is a ' +
-      'constant-power source, and the flat line on the sweep is the inductor\u2019s energy budget, not a ' +
-      'regulator doing anything clever. Below R_crit = 80 Ω conduction becomes continuous and the spell breaks.',
+      'Nothing flows straight through: the inductor lifts every joule, and in DCM the books are exact. ' +
+      'It picks up ½L·i_pk² each cycle and hands it all over: i_pk = 600 mA gives ' +
+      'P_out = ½L·i_pk²·f_s = 1.800 W. The peak depends on V_in·D/(L·f_s) alone, so the power is the ' +
+      'same at every load. It is 1.800 W at 100 Ω, 200 Ω and 500 Ω, while the output climbs ' +
+      '−13.42 → −18.97 → −30.00 V. Below R_crit = 80 Ω the spell breaks.',
     terms: ['buck-boost', 'dcm', 'inductor-energy'],
   }),
 
@@ -463,43 +497,37 @@ export const EXPERIMENTS = [
     id: 'e1',
     about: 'C',
     chips: [1000e-6, 100e-6],
-    try: { knob: 'C', text: 'Set C to 100 \u00b5F: the diode conducts for 87.8\u00b0 and the output sags 12.4 V \u2014 too small to hold the peak.' },
+    try: { knob: 'C', text: 'Set C to 100 \u00b5F: the diode conducts for 87.8\u00b0, the output sags 12.4 V.' },
     group: GROUPS[3],
     name: 'Half-wave into a capacitor',
     note:
-      'A 12.6 V RMS secondary peaks at 17.8 V. One diode and a capacitor: the diode conducts only while ' +
-      'the source exceeds the capacitor (plus its own 0.7 V), which at 1000 µF into 100 Ω is 42.9° of ' +
-      'every 360° cycle. The capacitor carries the load alone for the other 14.7 ms and sags 2.30 V — the ' +
-      'ripple. The output is 15.6 V DC, not the 5.67 V (V_p/π) a bare half-wave rectifier averages to: ' +
-      'the capacitor holds the peak, not the mean. The price is paid in current. The diode delivers the ' +
-      'load’s 156 mA as 2.03 A spikes, and the winding’s RMS current is 500 mA — 3.2× its average — so ' +
-      'it heats 10× more than a steady 156 mA would. And while it is off, the diode holds off the peak on ' +
-      'one side and the charged capacitor on the other: 33.3 V, nearly 2·V_p.',
-    terms: ['rectifier', 'conduction-angle', 'form-factor', 'piv'],
+      'A 12.6 V RMS secondary peaks at 17.8 V. The diode conducts while the source exceeds the ' +
+      'capacitor plus 0.7 V: 42.9° of each cycle at 1000 µF. The capacitor carries the load for ' +
+      '14.7 ms and sags 2.30 V, so the output is 15.6 V, not the 5.67 V a bare rectifier averages: it ' +
+      'holds the peak. The price is current: 156 mA arrives as 2.03 A spikes.',
+    terms: ['rectifier', 'conduction-angle', 'form-factor', 'piv', 'rms'],
   }),
   rect('bridge', {
     id: 'e2',
     about: 'C',
     chips: [1000e-6, 100e-6, 4700e-6],
-    try: { knob: 'C', text: 'Set C to 4700 \u00b5F: 0.23 V of ripple, 1.34 A peaks, 31.7\u00b0 of conduction; at 100 \u00b5F the ripple is 6.9 V.' },
+    try: { knob: 'C', text: 'Set C to 4700 \u00b5F: ripple 0.23 V, 1.34 A peaks; 100 \u00b5F: 6.9 V.' },
     group: GROUPS[3],
     name: 'The bridge',
     traces: ['vin', 'vrect', 'vout', 'iD'],
     note:
-      'Four diodes steer both half-cycles into the capacitor: two pulses per cycle instead of one, so it ' +
-      'holds for 6.8 ms rather than 14.7 and the ripple falls from 2.30 V to 1.07 V on the same 1000 µF. ' +
-      'Two diodes are in series at every instant and cost 1.4 V, so the ceiling is 16.4 V — yet the DC ' +
-      'output is the same 15.6 V, because it sags half as far from a ceiling 0.7 V lower. The current ' +
-      'is spread over twice the pulses: 1.30 A peaks instead of 2.03, form factor 2.57 instead of 3.2. ' +
-      'And each diode now blocks only the peak source voltage, 17.1 V, not 33 — the capacitor is on its ' +
-      'own side of the bridge. The four diodes drop 218 mW between them, 8 % of what comes in.',
-    terms: ['rectifier', 'piv', 'form-factor'],
+      'Four diodes steer both half-cycles into the capacitor: two pulses per cycle. It holds for ' +
+      '6.8 ms rather than 14.7, and the ripple falls from 2.30 V to 1.07 V on the same 1000 µF. Two ' +
+      'diodes conduct in series and cost 1.4 V, so the ceiling is 16.4 V. The output is still 15.6 V: ' +
+      'it sags half as far from a ceiling 0.7 V lower. Twice the pulses means 1.30 A peaks instead ' +
+      'of 2.03.',
+    terms: ['rectifier', 'form-factor', 'ripple'],
   }),
   rect('bridge', {
     id: 'e3',
     about: 'C',
     chips: [1000e-6, 100e-6, 4700e-6],
-    try: { knob: 'Rs', text: 'Set R_s to 0.25 \u03a9: the floor drops to 28.0\u00b0 and the peak current rises to 1.60 A.' },
+    try: { knob: 'Rs', text: 'Set R_s to 0.25 \u03a9: the floor drops to 28.0\u00b0, the peak rises to 1.60 A.' },
     group: GROUPS[3],
     name: 'The price of a big capacitor',
     params: [Cf(), Rs(), Rl(), Vs(), Vfd(), F()],
@@ -508,21 +536,18 @@ export const EXPERIMENTS = [
     view: 'sweep',
     sweep: { x: 'C', y: 'angle', y2: 'iPeak' },
     note:
-      'More capacitance, less ripple: 100 µF leaves 6.9 V, 1000 µF 1.07 V, 4700 µF 0.23 V. But the ' +
-      'diodes conduct for a shorter slice of each cycle — 67°, 33°, 32° — and must deliver the same ' +
-      'charge inside it, so the peak current climbs from 0.60 A to 1.30 to 1.34 and the form factor from ' +
-      '1.84 to 2.61. The sweep shows the two together: ripple falls without limit, the conduction angle ' +
-      'does not. It floors near 32° where R_s sets it — the winding resistance, not the capacitor, decides ' +
-      'how narrow the gulp can get. Halve R_s and the floor drops; the peak current goes up to match. ' +
-      'The power factor slides from 0.65 to 0.54 along the way: the smoother the output, the worse ' +
-      'the source is asked to supply it.',
-    terms: ['conduction-angle', 'form-factor', 'power-factor'],
+      'More capacitance, less ripple: 100 µF leaves 6.9 V, 1000 µF 1.07 V, 4700 µF 0.23 V. The diodes ' +
+      'conduct for a shorter slice, 67° → 33° → 32°, and must deliver the same charge inside it. The ' +
+      'peak current climbs 0.60 → 1.30 → 1.34 A. Ripple falls without limit; the conduction angle ' +
+      'floors near 32°, where R_s sets it. The power factor slides from 0.65 to 0.54: the smoother the ' +
+      'output, the worse it is to supply.',
+    terms: ['conduction-angle', 'form-factor', 'power-factor', 'ripple'],
   }),
   rect('bridge', {
     id: 'e4',
     about: 'C',
     chips: [1000e-6, 100e-6, 4700e-6],
-    try: { knob: 'C', text: 'Set C to 100 \u00b5F, from 1000 \u00b5F: THD falls to 91 % and the power factor rises to 0.650; at 4700 \u00b5F they are 157 % and 0.537.' },
+    try: { knob: 'C', text: 'Set C to 100 \u00b5F: THD 91 %, PF 0.650; 4700 \u00b5F: 157 %, 0.537.' },
     group: GROUPS[3],
     name: 'What the grid sees',
     params: [Cf(), Rl(), Rs(), Vs(), Vfd(), F()],
@@ -530,21 +555,18 @@ export const EXPERIMENTS = [
     views: ['spectrum', 'measures', 'math', 'losses'],
     view: 'spectrum',
     note:
-      'The line current is not a sine but two spikes a cycle, and the supply is sized for what it does ' +
-      'not use. Fourier says how much: the fundamental is 219 mA RMS of a 401 mA total — the ' +
-      'distortion factor is 0.545 and the THD 154 %, with the 3rd harmonic at 94 % of the fundamental, ' +
-      'the 5th at 81 %, the 7th at 66 %. The fundamental itself lags the voltage by only 7.6°, a ' +
-      'displacement factor of 0.991: this is not a phase-shift problem, and a capacitor across the line ' +
-      'will not fix it. Power factor is the product, 0.991 × 0.545 = 0.540, so the line carries 1.85× the ' +
-      'RMS current that 2.73 W would need as a sine. Odd orders only: both half-cycles draw the same ' +
-      'shape, which cancels every even harmonic exactly.',
-    terms: ['power-factor', 'thd', 'displacement', 'harmonic'],
+      'The line current at 1000 µF is two spikes a cycle, not a sine. The fundamental is 219 mA RMS of ' +
+      'a 401 mA total. Distortion factor 0.545, THD 154 %, the 3rd harmonic at 94 % of the fundamental. That ' +
+      'fundamental lags the voltage by only 7.6°, a displacement factor of 0.991, so this is not a ' +
+      'phase-shift problem. Power factor is the product, 0.991 × 0.545 = 0.540: the line carries 1.85× ' +
+      'the RMS current that 2.73 W would need as a sine.',
+    terms: ['power-factor', 'thd', 'displacement', 'harmonic', 'rms'],
   }),
   {
     id: 'e5',
     about: 'alphaDeg',
     chips: [90, 45, 135],
-    try: { knob: 'alphaDeg', text: 'Set \u03b1 to 45\u00b0: 90.9 % of the power arrives, at a power factor of 0.95 and THD 26 %.' },
+    try: { knob: 'alphaDeg', text: 'Set \u03b1 to 45\u00b0: 90.9 % of the power, power factor 0.95, THD 26 %.' },
     group: GROUPS[3],
     name: 'The dimmer',
     kind: 'dimmer',
@@ -557,35 +579,27 @@ export const EXPERIMENTS = [
     sweep: { x: 'alpha', y: 'share' },
     periods: 2,
     note:
-      'A triac fires at an angle α into each half-cycle and conducts to the zero crossing, so the load ' +
-      'gets the tail of every half-sine. Its share of full power is 1 − α/π + sin 2α/(2π): at 90° exactly ' +
-      'half — 72.0 W of the 144 W that 120 V puts into 100 Ω — and the sweep follows the formula to the ' +
-      'degree, from all of it at 0° to none at 180°. The current is chopped mid-sine, so it is rich in ' +
-      'harmonics (THD 65 %) and its fundamental lags 32.5° (the wave’s weight has moved late): the power ' +
-      'factor is 0.707, the displacement 0.844 times the distortion 0.838. Dim to 135° and 9.1 % of the ' +
-      'power arrives at a power factor of 0.30. The sharp edge at every firing is the buzz in cheap ' +
-      'dimmers and the harmonics on the line; the rectifier-plus-capacitor of the previous experiment draws worse.',
+      'A triac fires at an angle α into each half-cycle, so the load gets the tail of every half-sine. ' +
+      'Its share of full power is 1 − α/π + sin 2α/(2π), at 90° exactly half: 72.0 W of the full ' +
+      '144 W. The chopped current has THD 65 % and its fundamental lags 32.5°. The power factor is ' +
+      '0.707 = 0.844 × 0.838. Dim to 135° and 9.1 % of the power arrives at PF 0.30.',
     terms: ['phase-cut', 'power-factor', 'displacement', 'thd'],
   },
   rect('six', {
     id: 'e6',
     about: 'C',
     chips: [1000e-6, 100e-6],
-    try: { knob: 'C', text: 'Set C to 100 \u00b5F: 3.21 V of ripple on 28.1 V, where the single-phase bridge at 100 \u00b5F sags 6.9 V on 13.1 V.' },
+    try: { knob: 'C', text: 'Set C to 100 \u00b5F: ripple 3.21 V on 28.1 V, against the bridge\u2019s 6.9 V.' },
     group: GROUPS[3],
     name: 'Three phases, six pulses',
     traces: ['vin', 'vrect', 'vout', 'iin'],
     note:
-      'Three 12.6 V secondaries 120° apart into six diodes: at every instant the pair with the highest ' +
-      'line-to-line voltage conducts, the pair changes every 60°, and the output ripples at six times ' +
-      'the line frequency. The capacitor is charged towards the peak line voltage, √3 × 17.8 = 30.9 V ' +
-      'less two diode drops, and sits at 28.8 V — nearly twice the single-phase bridge from the same ' +
-      'secondaries, with 0.52 V of ripple at 1000 µF into the same 100 Ω. Without the capacitor it would ' +
-      'average 1.35·V_LL = 29.5 V, so the capacitor is barely doing anything: six pulses are already ' +
-      'smooth. Each diode blocks the peak line-to-line voltage, 30.2 V. And the line current has no 3rd ' +
-      'harmonic at all — the triplens cancel between three phases — so the 5th (91 %) and 7th (82 %) are ' +
-      'the first that survive, which is why industrial rectifiers are three-phase.',
-    terms: ['six-pulse', 'harmonic', 'piv'],
+      'Three 12.6 V secondaries 120° apart into six diodes: the pair with the highest line-to-line ' +
+      'voltage conducts. The output ripples at six times the line frequency. The capacitor charges ' +
+      'towards √3 × 17.8 = 30.9 V and sits at 28.8 V, nearly twice the bridge, with 0.52 V of ripple ' +
+      'at 1000 µF. Bare, it would sit at 29.5 V: six pulses are already smooth. The line current has ' +
+      'no 3rd harmonic; the 5th, at 91 %, is the first that survives.',
+    terms: ['six-pulse', 'harmonic', 'piv', 'ripple'],
   }),
 ]
 

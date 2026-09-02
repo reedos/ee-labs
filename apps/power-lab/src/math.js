@@ -356,7 +356,9 @@ function pwmEntry(exp, params, x) {
     b3: 'The current is a triangle with slopes set by the inductor voltage; the capacitor integrates the triangle’s AC part into a parabolic ripple.',
     b4: 'When the current reaches zero the diode blocks and a third interval appears, with v_L = 0. Balance then has two unknowns — V_out and the diode’s conduction time — and the closed form needs K.',
     b5: 'The boundary is where the current valley just touches zero: average equals half the ripple. In K it is K = 1 − D, and both formulas for M give D there.',
-    b6: 'Each drop enters the volt-second balance as a term; each resistance takes I²R with the RMS current; the diode takes V_f times its average current. The books balance exactly.',
+    b6: 'The diode’s drop enters the volt-second balance for the (1 − D) of each period it conducts, so the output loses (1 − D)·V_f; the diode takes V_f times its average current. The books balance exactly.',
+    b7: 'Each resistance takes I²R with the RMS current through it, and the drops they cause enter the volt-second balance. The ESR carries the inductor’s ripple current, so it adds a step to the output rather than a loss.',
+    b8: 'While an edge lasts the switch holds the blocking voltage and the inductor current at once; the energy in each edge is ½·V·I·t, charged twice a period, so the loss is proportional to f_s.',
   }[exp.id]
 
   const formula = dcm

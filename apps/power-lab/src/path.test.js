@@ -131,9 +131,21 @@ describe('what each `try` promises', () => {
     expect(x.m.sig.vout.avg).toBeCloseTo(7.13, 2)
     expect(at('b5', { R: 10 }).m.M).toBeCloseTo(0.417, 3)
   })
-  it('B6: V_f = 0 V: η = 98.5 %; V_f = 1 V: 87.0 %', () => {
-    expect(pct(at('b6', { Vf: 0 }).m.eta)).toBeCloseTo(98.5, 1)
-    expect(pct(at('b6', { Vf: 1 }).m.eta)).toBeCloseTo(87.0, 1)
+  it('B6: V_in = 48 V: the same rent on 19.7 V out, η = 98.5 %', () => {
+    const x = at('b6', { Vin: 48 })
+    expect(x.m.sig.vout.avg).toBeCloseTo(19.7, 1)
+    expect(pct(x.m.eta)).toBeCloseTo(98.5, 1)
+    expect(x.p.D * 48 - x.m.sig.vout.avg).toBeCloseTo(0.292, 2)
+  })
+  it('B7: ESR = 0.5 Ω: the step is 132 mV; ESR = 0 Ω: 3.63 mV, no step', () => {
+    expect(at('b7', { ESR: 0.5 }).m.sig.vout.pp * 1e3).toBeCloseTo(132, 0)
+    expect(at('b7', { ESR: 0 }).m.sig.vout.pp * 1e3).toBeCloseTo(3.63, 2)
+  })
+  it('B8: f_s = 1 MHz: a hundredth the ripple, 36.5 µV, and 240 mW in the edges', () => {
+    const x = at('b8', { fs: 1e6 })
+    expect(x.m.sig.vout.pp * 1e6).toBeCloseTo(36.5, 1)
+    expect(at('b8').m.sig.vout.pp / x.m.sig.vout.pp).toBeCloseTo(100, 0)
+    expect(x.m.loss.switching * 1e3).toBeCloseTo(240, 0)
   })
   it('C1: D = 75 %: M = 4.00, 48.0 V, 9.60 A in the inductor', () => {
     const x = at('c1', { D: 0.75 })

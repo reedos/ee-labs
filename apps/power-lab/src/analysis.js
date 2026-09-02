@@ -144,12 +144,17 @@ function analyseChopper(params) {
     kind: 'chopper',
     p: { Vin, D, R, fs },
     T,
-    wf: { t, T, edges, sig: { vsw: v, vout: v, iL: i, iin: i, iQ: i, iD: z, vL: z, iC: z, vC: v } },
+    // With no filter the switch node is the output, and the load current is the
+    // source current is the switch current: the same two waveforms under every
+    // name the panes might ask for. The measures table lists v_out and i_R
+    // (schematics.jsx TOPOLOGY_SIGNALS), once each.
+    wf: { t, T, edges, sig: { vsw: v, vout: v, iL: i, iin: i, iQ: i, iR: i, iD: z, vL: z, iC: z, vC: v } },
     m: {
-      sig: { vsw: vS, vout: vS, iL: iS, iin: iS, iQ: iS, iD: stat(0, 0, 0, 0), vL: stat(0, 0, 0, 0), iC: stat(0, 0, 0, 0), vC: vS },
+      sig: { vsw: vS, vout: vS, iL: iS, iin: iS, iQ: iS, iR: iS, iD: stat(0, 0, 0, 0), vL: stat(0, 0, 0, 0), iC: stat(0, 0, 0, 0), vC: vS },
       Pin: ch.P,
       Pout: ch.P,
-      loss: {},
+      // The losses pane shows the one part that could lose, losing nothing.
+      loss: { switch: 0 },
       Ploss: 0,
       eta: 1,
       M: D,
@@ -424,6 +429,34 @@ export function sweepEta(params, kind = 'buck', n = 41) {
     const ss = steadyState(converter(kind, p))
     const m = measures(ss)
     return { x: R, eta: m.eta, mode: ss.mode }
+  })
+}
+
+/**
+ * Efficiency against switching frequency, with the losses in the knobs: the
+ * edges charge per cycle, so this is where t_sw shows (B8). Across the knob's
+ * own range; at the slow end the converter may run dry, and the point says so.
+ */
+export function sweepFs(params, kind = 'buck', n = 41) {
+  const base = buckParams(params)
+  return logSpace(10e3, 2e6, n).map((fs) => {
+    const p = { ...base, fs }
+    const ss = steadyState(converter(kind, p))
+    const m = measures(ss)
+    return { x: fs, eta: m.eta, mode: ss.mode }
+  })
+}
+
+/**
+ * The chopper against its duty: the average the load gets, D·V_in, and the
+ * RMS it heats by, √D·V_in — both from the engine's closed forms (A2). No
+ * mode and no `pred`: there is no waveform to solve and nothing to predict.
+ */
+export function sweepChopper(params, n = 61) {
+  const { Vin, R } = params
+  return linSpace(0.02, 0.98, n).map((D) => {
+    const ch = chopper({ Vin, D, R })
+    return { x: D, vavg: ch.avg, vrms: ch.rms, P: ch.P }
   })
 }
 

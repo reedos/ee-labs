@@ -35,9 +35,12 @@ describe('the report summary', () => {
 
   it('lists every knob by key and value', () => {
     const s = reportSummary({ id: 'b6', params: defaultsOf('b6'), traces: ['vsw'], view: 'losses', outcome: 'x' })
-    expect(s.Settings).toMatch(/Ron = 0\.05/)
     expect(s.Settings).toMatch(/Vf = 0\.5/)
     expect(s.Settings).toMatch(/sync = 0/)
+    const r = reportSummary({ id: 'b7', params: defaultsOf('b7'), traces: ['vout'], view: 'losses', outcome: 'x' })
+    expect(r.Settings).toMatch(/ESR = 0\.05/)
+    expect(r.Settings).toMatch(/Ron = 0\.05/)
+    expect(r.Settings).toMatch(/RL = 0\.03/)
   })
 
   it('says which traces the scope shows, by their labels, and names the pane', () => {

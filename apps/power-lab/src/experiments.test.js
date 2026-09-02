@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, GROUPS, TRACES, VIEWS, SWEEP_X, SWEEP_Y, byId, defaultsOf } from './experiments.js'
-import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepC, sweepAlpha } from './analysis.js'
+import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepFs, sweepC, sweepAlpha, sweepChopper } from './analysis.js'
 import { TERMS } from './terms.js'
+import { signalsOf } from './components/schematics.jsx'
 
 // Every note makes a claim; every claim is measured here, from the same
 // analysis the panes draw. A number in a note the engine does not reproduce
@@ -104,6 +105,39 @@ describe('A2 · chop it', () => {
     const off = x.wf.edges.filter((e) => e.name === 'off').map((e) => e.t)
     expect(off[0] - on[0]).toBeCloseTo(p.D * T, 15)
     expect(p.D * 100).toBeCloseTo(41.7, 1)
+  })
+  // §11.2.2: one claim, one knob, one picture.
+  it('the sweep puts ⟨v⟩ = D·V_in and V_rms = √D·V_in on one volt axis, the RMS above the mean at every D but 1', () => {
+    expect(byId.a2.sweep).toEqual({ x: 'D', y: 'vavg', y2: 'vrms', shared: true })
+    const pts = sweepChopper(defaultsOf('a2'))
+    expect(pts.length).toBeGreaterThan(40)
+    for (const q of pts) {
+      expect(q.vavg).toBeCloseTo(q.x * 12, 12)
+      expect(q.vrms).toBeCloseTo(Math.sqrt(q.x) * 12, 12)
+      expect(q.P).toBeCloseTo((q.x * 144) / 5, 12)
+      expect(q.vrms).toBeGreaterThan(q.vavg)
+      expect(q.pred).toBeUndefined()
+    }
+    expect(pts[0].x).toBeCloseTo(0.02, 12)
+    expect(pts[pts.length - 1].x).toBeCloseTo(0.98, 12)
+  })
+  it('has a losses view: an ideal switch loses nothing, every watt drawn heats the load', () => {
+    const { x } = at('a2')
+    expect(byId.a2.views).toContain('losses')
+    expect(x.m.loss).toEqual({ switch: 0 })
+    expect(x.m.Ploss).toBe(0)
+    expect(x.m.Pin).toBeCloseTo(x.m.Pout, 12)
+    expect(x.m.Pout).toBeCloseTo((x.p.D * x.p.Vin ** 2) / x.p.R, 9)
+  })
+  it('its measures table lists each signal once: the output and the load current, not the same node under three names', () => {
+    const { x } = at('a2')
+    const rows = signalsOf(byId.a2)
+    expect(rows).toEqual(['vout', 'iR'])
+    expect(x.m.sig.iR.avg).toBeCloseTo(x.m.sig.vout.avg / 5, 12)
+    expect(x.m.sig.iR.max).toBeCloseTo(2.4, 9)
+    expect(x.wf.sig.iR.length).toBe(x.wf.t.length)
+    expect(byId.a2.traces).toEqual(['vout'])
+    expect(byId.a2.allTraces).toEqual(['vout', 'iR'])
   })
 })
 
@@ -290,49 +324,173 @@ describe('B5 · the boundary', () => {
   })
 })
 
-describe('B6 · real parts', () => {
-  it('output 4.66 V (M = 0.388), efficiency 92.7 %', () => {
-    const { x } = at('b6')
-    expect(x.m.mode).toBe('CCM')
-    expect(x.m.sig.vout.avg).toBeCloseTo(4.66, 2)
-    expect(x.m.M).toBeCloseTo(0.388, 3)
-    expect(x.m.eta * 100).toBeCloseTo(92.7, 1)
-  })
-  it('the diode takes 272 mW of 340 mW, for 58 % of every period; winding 26, edges 23, switch 18, ESR under 1 mW', () => {
+// The real-parts experiments (§11.2.1): one loss each, with the knobs it is
+// not about held ideal, so every number is that loss's alone.
+describe('B6 · the diode’s rent', () => {
+  it('is about V_f alone: the other loss knobs are not on it, and the diode is the only loss', () => {
     const { x, p } = at('b6')
-    const mW = (v) => v * 1e3
-    expect(mW(x.m.Ploss)).toBeCloseTo(340, 0)
-    expect(mW(x.m.loss.diode)).toBeCloseTo(272, 0)
-    expect(mW(x.m.loss.inductor)).toBeCloseTo(26, 0)
-    expect(mW(x.m.loss.switching)).toBeCloseTo(23, 0)
-    expect(mW(x.m.loss.switch)).toBeCloseTo(18, 0)
-    expect(mW(x.m.loss.esr)).toBeLessThan(1)
+    expect(byId.b6.params.map((k) => k.key)).not.toEqual(expect.arrayContaining(['Ron', 'RL', 'ESR', 'tsw']))
+    expect(p.Vf).toBe(0.5)
+    expect(x.m.mode).toBe('CCM')
+    const others = Object.entries(x.m.loss).filter(([k]) => k !== 'diode')
+    for (const [k, v] of others) expect(v, k).toBe(0)
+  })
+  it('the diode conducts for 58 % of each period, so the rent is (1 − D)·V_f = 0.292 V: 4.708 V out, M = 0.392, η = 94.2 %, 275 mW', () => {
+    const { x, p } = at('b6')
     expect((1 - p.D) * 100).toBeCloseTo(58, 0)
     expect(x.ss.td / x.T).toBeCloseTo(1 - p.D, 12)
+    expect((1 - p.D) * p.Vf).toBeCloseTo(0.292, 3)
+    expect(x.m.sig.vout.avg).toBeCloseTo(4.708, 3)
+    expect(x.m.sig.vout.avg).toBeCloseTo(p.D * p.Vin - (1 - p.D) * p.Vf, 3)
+    expect(x.m.M).toBeCloseTo(0.392, 3)
+    expect(x.m.eta * 100).toBeCloseTo(94.2, 1)
+    expect(x.m.loss.diode * 1e3).toBeCloseTo(275, 0)
+    expect(x.m.loss.diode).toBeCloseTo(p.Vf * x.m.sig.iD.avg, 9)
   })
-  it('a synchronous switch puts efficiency at 97.9 %; at 0.5 Ω (8.5 A, output 4.27 V) it is 85.0 %', () => {
-    expect(at('b6', { sync: 1 }).x.m.eta * 100).toBeCloseTo(97.9, 1)
-    const heavy = at('b6', { R: 0.5 })
-    expect(heavy.x.m.Iout).toBeCloseTo(8.5, 1)
-    expect(heavy.x.m.sig.vout.avg).toBeCloseTo(4.27, 2)
-    expect(heavy.x.m.eta * 100).toBeCloseTo(85.0, 1)
+  it('the rent is fixed, so it is dear at 5 V out and cheap at 48 V in: 19.7 V out at 98.5 %', () => {
+    const hi = at('b6', { Vin: 48 })
+    expect(hi.x.m.sig.vout.avg).toBeCloseTo(19.7, 1)
+    expect(hi.x.m.eta * 100).toBeCloseTo(98.5, 1)
+    // The same 0.292 V, taken from four times the output.
+    expect(hi.p.D * hi.p.Vin - hi.x.m.sig.vout.avg).toBeCloseTo(0.292, 2)
   })
-  it('resistive losses grow with I²', () => {
-    const a = at('b6', { R: 5 }).x.m
-    const b = at('b6', { R: 2.5 }).x.m
-    const ratio = (b.sig.iL.rms / a.sig.iL.rms) ** 2
-    expect(b.loss.inductor / a.loss.inductor).toBeCloseTo(ratio, 6)
+  it('V_f = 1 V: 4.42 V and 88.3 %; V_f = 0 V, or a synchronous switch: 5.000 V and 100 %', () => {
+    const one = at('b6', { Vf: 1 }).x.m
+    expect(one.sig.vout.avg).toBeCloseTo(4.42, 2)
+    expect(one.eta * 100).toBeCloseTo(88.3, 1)
+    for (const over of [{ Vf: 0 }, { sync: 1 }]) {
+      const m = at('b6', over).x.m
+      expect(m.sig.vout.avg).toBeCloseTo(5, 3)
+      expect(m.eta).toBeCloseTo(1, 9)
+      expect(m.Ploss).toBeCloseTo(0, 12)
+    }
   })
-  it('the input power equals the output plus every conduction loss to the last digit', () => {
-    for (const over of [{}, { sync: 1 }, { R: 0.5 }, { R: 500 }]) {
+  it('the sweep is η against D, rising with D because the rent is a share of D·V_in: 62.5 % at D = 0.1, 99.5 % at 0.9', () => {
+    expect(byId.b6.sweep).toEqual({ x: 'D', y: 'eta' })
+    expect(at('b6', { D: 0.1 }).x.m.eta * 100).toBeCloseTo(62.5, 1)
+    expect(at('b6', { D: 0.9 }).x.m.eta * 100).toBeCloseTo(99.5, 1)
+    const pts = sweepD(defaultsOf('b6'))
+    for (let i = 1; i < pts.length; i++) expect(pts[i].eta).toBeGreaterThan(pts[i - 1].eta)
+    // η = V_out/(D·V_in) = 1 − (1 − D)·V_f/(D·V_in): the rent over the ideal output. The closed
+    // form assumes CCM; below D ≈ 0.04 the rent exceeds the ideal output and the converter is in
+    // DCM with a few percent efficiency, so the comparison is made where the form is valid.
+    for (const q of pts.filter((q) => q.mode === 'CCM')) {
+      expect(q.eta).toBeCloseTo(1 - ((1 - q.x) * 0.5) / (q.x * 12), 6)
+    }
+    expect(pts.filter((q) => q.mode === 'CCM').length).toBeGreaterThan(pts.length * 0.8)
+  })
+  it('the input power equals the output plus the diode loss to the last digit', () => {
+    for (const over of [{}, { sync: 1 }, { R: 0.5 }, { R: 500 }, { Vin: 48 }]) {
       const { x } = at('b6', over)
       expect(Math.abs(x.m.balance)).toBeLessThan(1e-10 * x.m.Pin)
     }
   })
+})
+
+describe('B7 · the resistances', () => {
+  it('is about the ESR, with R_on and R_L beside it and no diode or edges', () => {
+    const { p } = at('b7')
+    expect(byId.b7.about).toBe('ESR')
+    expect(p).toMatchObject({ ESR: 0.05, Ron: 0.05, RL: 0.03 })
+    expect(byId.b7.params.map((k) => k.key)).not.toEqual(expect.arrayContaining(['Vf', 'tsw', 'sync']))
+  })
+  it('each takes I²R from the 1 A load — 21, 30 and 0.3 mW — so 4.950 V out and η = 99.0 %', () => {
+    const { x, p } = at('b7')
+    const mW = (v) => v * 1e3
+    expect(x.m.mode).toBe('CCM')
+    expect(x.m.Iout).toBeCloseTo(1, 1)
+    expect(mW(x.m.loss.switch)).toBeCloseTo(21, 0)
+    expect(mW(x.m.loss.inductor)).toBeCloseTo(30, 0)
+    expect(mW(x.m.loss.esr)).toBeCloseTo(0.3, 1)
+    expect(x.m.loss.diode).toBe(0)
+    expect(x.m.loss.switching).toBe(0)
+    expect(x.m.sig.vout.avg).toBeCloseTo(4.95, 3)
+    expect(x.m.eta * 100).toBeCloseTo(99.0, 1)
+    // I²R with the RMS current in each, and the switch's for D of the time.
+    expect(x.m.loss.inductor).toBeCloseTo(x.m.sig.iL.rms ** 2 * p.RL, 9)
+    expect(x.m.loss.switch).toBeCloseTo(x.m.sig.iQ.rms ** 2 * p.Ron, 9)
+    expect(x.m.loss.esr).toBeCloseTo(x.m.sig.iC.rms ** 2 * p.ESR, 9)
+  })
+  it('at 0.5 Ω and 9.1 A, I² makes it 90.8 %; the loss ratio is the current ratio squared', () => {
+    const heavy = at('b7', { R: 0.5 }).x.m
+    expect(heavy.Iout).toBeCloseTo(9.1, 1)
+    expect(heavy.sig.vout.avg).toBeCloseTo(4.54, 2)
+    expect(heavy.eta * 100).toBeCloseTo(90.8, 1)
+    const a = at('b7', { R: 5 }).x.m
+    const b = at('b7', { R: 2.5 }).x.m
+    expect(b.loss.inductor / a.loss.inductor).toBeCloseTo((b.sig.iL.rms / a.sig.iL.rms) ** 2, 6)
+  })
+  it('the ESR loses nothing, but it shows: ESR·ΔI_L = 14.5 mV of step turns 3.63 mV of ripple into 14.4 mV', () => {
+    const w = at('b7').x
+    const wo = at('b7', { ESR: 0 }).x
+    expect(w.m.loss.esr * 1e3).toBeLessThan(0.5)
+    expect(wo.m.sig.vout.pp * 1e3).toBeCloseTo(3.63, 2)
+    expect(w.m.sig.vout.pp * 1e3).toBeCloseTo(14.4, 1)
+    expect(w.p.ESR * w.m.sig.iL.pp * 1e3).toBeCloseTo(14.5, 1)
+    // The step is the ripple current through the ESR: with ten times the ESR,
+    // ten times the step, and the ripple is the step.
+    const big = at('b7', { ESR: 0.5 }).x
+    expect(big.m.sig.vout.pp * 1e3).toBeCloseTo(132, 0)
+    expect(big.m.sig.vout.pp / (big.p.ESR * big.m.sig.iL.pp)).toBeGreaterThan(0.85)
+  })
+  it('the input power equals the output plus every I²R to the last digit', () => {
+    for (const over of [{}, { R: 0.5 }, { R: 500 }, { ESR: 0.5 }]) {
+      const { x } = at('b7', over)
+      expect(Math.abs(x.m.balance)).toBeLessThan(1e-10 * x.m.Pin)
+    }
+  })
   it('the efficiency sweep is finite everywhere and lowest at the heaviest load', () => {
-    const pts = sweepEta(defaultsOf('b6'))
+    const pts = sweepEta(defaultsOf('b7'))
     for (const q of pts) expect(q.eta).toBeGreaterThan(0.5)
     expect(pts[0].eta).toBeLessThan(pts[Math.floor(pts.length / 2)].eta)
+  })
+})
+
+describe('B8 · the edges', () => {
+  it('is about t_sw alone, with f_s beside it: no conduction loss on the knobs', () => {
+    const { x, p } = at('b8')
+    expect(byId.b8.about).toBe('tsw')
+    expect(p.tsw).toBe(20e-9)
+    expect(byId.b8.params.map((k) => k.key)).toContain('fs')
+    expect(byId.b8.params.map((k) => k.key)).not.toEqual(expect.arrayContaining(['Ron', 'Vf', 'RL', 'ESR']))
+    for (const [k, v] of Object.entries(x.m.loss)) if (k !== 'switching') expect(v, k).toBe(0)
+  })
+  it('½·V·I·t per edge, twice a period: 20 ns edges cost 24 mW at 100 kHz, η = 99.5 %', () => {
+    const { x, p } = at('b8')
+    expect(x.m.loss.switching * 1e3).toBeCloseTo(24, 0)
+    expect(x.m.eta * 100).toBeCloseTo(99.5, 1)
+    // Two edges at 12 V, the current at each being the ripple's valley and peak
+    // — which sum to twice the 1 A average.
+    const edges = 0.5 * p.Vin * (x.m.sig.iL.min + x.m.sig.iL.max) * p.tsw * p.fs
+    expect(x.m.loss.switching).toBeCloseTo(edges, 9)
+    expect(x.m.loss.switching).toBeCloseTo(0.5 * 12 * 2 * 1 * 20e-9 * 100e3, 4)
+  })
+  it('the loss is ∝ f_s·t_sw: 240 mW and 95.4 % at 1 MHz, 120 mW at 100 ns, 6 mW at 5 ns', () => {
+    const base = at('b8').x.m.loss.switching
+    const fast = at('b8', { fs: 1e6 }).x
+    expect(fast.m.loss.switching * 1e3).toBeCloseTo(240, 0)
+    expect(fast.m.eta * 100).toBeCloseTo(95.4, 1)
+    expect(fast.m.loss.switching / base).toBeCloseTo(10, 2)
+    expect(at('b8', { tsw: 100e-9 }).x.m.loss.switching * 1e3).toBeCloseTo(120, 0)
+    expect(at('b8', { tsw: 5e-9 }).x.m.loss.switching * 1e3).toBeCloseTo(6, 0)
+    expect(at('b8', { tsw: 100e-9, fs: 400e3 }).x.m.loss.switching / base).toBeCloseTo(20, 2)
+  })
+  it('ripple wants f_s high and the edges want it low: the sweep is η against f_s, falling', () => {
+    expect(byId.b8.sweep).toEqual({ x: 'fs', y: 'eta' })
+    const pts = sweepFs(defaultsOf('b8'))
+    expect(pts[0].x).toBeCloseTo(10e3, 6)
+    expect(pts[pts.length - 1].x).toBeCloseTo(2e6, 6)
+    for (let i = 1; i < pts.length; i++) expect(pts[i].eta).toBeLessThan(pts[i - 1].eta)
+    // The sweep's log grid has no point at exactly 1 MHz; the curve must pass through the note's
+    // 95.4 % there, so bracket it: the neighbours on either side sit either side of it.
+    const below = pts.filter((q) => q.x <= 1e6).pop()
+    const above = pts.find((q) => q.x >= 1e6)
+    expect(below.eta * 100).toBeGreaterThan(95.4)
+    expect(above.eta * 100).toBeLessThan(95.4)
+    expect(at('b8', { fs: 1e6 }).x.m.eta * 100).toBeCloseTo(95.4, 1)
+    const slow = at('b8', { fs: 10e3 }).x.m
+    const fast = at('b8', { fs: 1e6 }).x.m
+    expect(fast.sig.vout.pp).toBeLessThan(slow.sig.vout.pp / 1000)
   })
 })
 
@@ -782,7 +940,7 @@ describe('the sweeps', () => {
     const buck = timeOf(() => {
       sweepR(defaultsOf('b4'))
       sweepD(defaultsOf('b2'))
-      sweepEta(defaultsOf('b6'))
+      sweepEta(defaultsOf('b7'))
     })
     expect(buck / one, `buck sweeps cost ${(buck / one).toFixed(0)} solves`).toBeLessThan(150)
 

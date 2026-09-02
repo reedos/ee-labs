@@ -324,11 +324,10 @@ const DRAW = {
       <Wire x1={260} y1={MID + 20} x2={260} y2={BOT} />
       <Wire x1={SRC} y1={BOT} x2={260} y2={BOT} />
       <Gnd x={143} y={BOT} />
-      <IAt sig="iin" x={70} y={TOP} dy={-6} />
-      <IAt sig="iQ" x={170} y={TOP} dy={-6} />
-      <VAt sig="vsw" x={205} y={TOP} dx={-4} dy={-6} anchor="end" />
-      <VAt sig="vout" x={232} y={TOP} dx={6} dy={-6} anchor="start" />
-      <IAt sig="iL" x={260} y={51} dir="down" dx={-6} dy={4} anchor="end" />
+      {/* No filter: the switch node is the output and the source, switch and
+          load currents are one current. One probe per distinct signal. */}
+      <VAt sig="vout" x={200} y={TOP} dy={-6} />
+      <IAt sig="iR" x={260} y={51} dir="down" dx={-6} dy={4} anchor="end" />
     </>
   ),
 
@@ -601,11 +600,14 @@ const DRAW = {
  * ones a topology has no part for with zeros — a linear regulator reports an
  * inductor voltage of 0 V and a dimmer reports a rectified voltage identical to
  * its output. Listing those is worse than useless: they are rows a reader
- * cannot find on the circuit, because they are not in the circuit.
+ * cannot find on the circuit, because they are not in the circuit. The same
+ * goes for one node under several names: the chopper's switch node is its
+ * output, and its source, switch and load currents are one current, so it
+ * lists v_out and i_R and nothing twice.
  */
 export const TOPOLOGY_SIGNALS = {
   linreg: ['vsw', 'vout', 'iL', 'iQ', 'iin'],
-  chopper: ['vsw', 'vout', 'iL', 'iQ', 'iin'],
+  chopper: ['vout', 'iR'],
   buck: ['vsw', 'vout', 'vL', 'iL', 'iD', 'iC', 'iQ', 'iin'],
   boost: ['vsw', 'vout', 'vL', 'iL', 'iD', 'iC', 'iQ', 'iin'],
   buckboost: ['vsw', 'vout', 'vL', 'iL', 'iD', 'iC', 'iQ', 'iin'],

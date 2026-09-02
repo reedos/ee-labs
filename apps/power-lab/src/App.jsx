@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react'
 import { LabNav, NumField, ReportIssue, fmt } from '@ee-labs/ui'
 import { MathBody } from '@ee-labs/explain'
 import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, SWEEP_X, byId, defaultsOf, nextOf, prevOf, positionOf } from './experiments.js'
-import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepC, sweepAlpha } from './analysis.js'
+import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepFs, sweepC, sweepAlpha, sweepChopper } from './analysis.js'
 import { experimentMath } from './math.js'
 import { termsFor } from './terms.js'
 import { reportSummary } from './report.js'
@@ -84,9 +84,14 @@ export function sweepFor(exp, params) {
   const s = exp.sweep
   if (!s) return null
   if (exp.kind === 'linreg') return { points: sweepLinear(params), at: params.Vo / params.Vin, label: 'η = V_out / V_in' }
+  if (exp.kind === 'chopper') return { points: sweepChopper(params), at: params.D, label: '⟨v⟩ = D·V_in', label2: 'V_rms = √D·V_in' }
   if (s.x === 'C') return { points: sweepC(params, exp), at: params.C }
   if (s.x === 'alpha') return { points: sweepAlpha(params), at: params.alphaDeg, label: 'P / P_full measured on the waveform' }
+  if (s.x === 'fs') return { points: sweepFs(params, exp.kind), at: params.fs }
   if (s.y === 'eta' && s.x !== 'D') return { points: sweepEta(params, exp.kind), at: params.R }
+  // η against D is a ratio sweep read for its η; the closed form it carries
+  // is for M, and would be drawn against the wrong axis.
+  if (s.x === 'D' && s.y === 'eta') return { points: sweepD(params, exp.kind).map(({ pred, ...q }) => q), at: params.D }
   if (s.x === 'D') return { points: sweepD(params, exp.kind), at: params.D }
   return { points: sweepR(params, exp.kind), at: params.R }
 }
@@ -244,29 +249,32 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
         </header>
 
         <section>
-          <h2>Experiments</h2>
-          {/* One row of group tabs and the chosen group's experiments under
-              it: the whole picker is four lines tall whatever is open, which
-              is what keeps the note, the schematic and the first knob on the
-              first screen. The group you are in is marked; browsing another
-              tab does not move you. */}
-          <div className="group-tabs" role="tablist" aria-label="Experiment groups">
-            {GROUPS.map((g) => (
-              <button
-                key={g}
-                type="button"
-                role="tab"
-                className={`group-tab${g === shownGroup ? ' is-shown' : ''}${g === exp.group ? ' is-here' : ''}`}
-                aria-selected={g === shownGroup}
-                aria-controls={`group-${GROUPS.indexOf(g)}`}
-                data-group={g}
-                onClick={() => setBrowsing(g === exp.group ? null : g)}
-              >
-                {g}
-                {g === exp.group ? <span className="group-active-dot" aria-hidden="true" /> : null}
-              </button>
-            ))}
-          </div>
+          {/* The group tabs are the section's cap: the row names the section
+              better than a heading over it would, and the heading's height
+              is what the note, the schematic and the first knob need to sit
+              on the first screen at 1366×768. The chosen group's experiments
+              go under it, three lines at most. The group you are in is
+              marked; browsing another tab does not move you. */}
+          <h2 className="picker-cap" data-role="experiments-cap">
+            <span className="sr-only">Experiments</span>
+            <span className="group-tabs" role="tablist" aria-label="Experiment groups">
+              {GROUPS.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  role="tab"
+                  className={`group-tab${g === shownGroup ? ' is-shown' : ''}${g === exp.group ? ' is-here' : ''}`}
+                  aria-selected={g === shownGroup}
+                  aria-controls={`group-${GROUPS.indexOf(g)}`}
+                  data-group={g}
+                  onClick={() => setBrowsing(g === exp.group ? null : g)}
+                >
+                  {g}
+                  {g === exp.group ? <span className="group-active-dot" aria-hidden="true" /> : null}
+                </button>
+              ))}
+            </span>
+          </h2>
           {showIntro ? (
             <p className="hint group-intro" data-role="group-intro">
               {GROUP_INTROS[shownGroup]}
@@ -561,6 +569,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                 at={sweep.at}
                 marks={sweepMarkList}
                 label={sweep.label}
+                label2={sweep.label2}
               />
             ) : null}
           </div>

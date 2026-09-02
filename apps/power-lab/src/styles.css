@@ -9,8 +9,24 @@
   display: flex;
   flex-wrap: wrap;
   gap: 2px 10px;
-  margin: 0 0 8px;
-  border-bottom: 1px solid var(--line);
+  margin: 0;
+}
+/* The tabs are the experiments section's cap (the h2), so they take the
+   heading's sticky strip instead of sitting under a heading of their own:
+   the row is the section's name. */
+.controls h2.picker-cap {
+  padding: 0 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 .group-tab {
   background: none;
@@ -21,7 +37,7 @@
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
-  padding: 3px 0 5px;
+  padding: 6px 0 5px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -62,9 +78,9 @@
 /* Tighter section chrome than the shared shell: the sidebar has more to say
    above the fold than the other labs' do. */
 .controls { padding-top: 8px; }
-.controls section { margin-top: 8px; padding-bottom: 10px; }
+.controls section { margin-top: 6px; padding-bottom: 10px; }
 .preset { padding: 3px 7px; }
-.controls h2 { padding: 5px 12px 4px; margin-bottom: 8px; }
+.controls h2 { padding: 5px 12px 4px; margin-bottom: 6px; }
 .controls .hint { margin-top: 8px; }
 .controls .report-issue { margin-top: 14px; }
 .controls h2 .sch-name {
@@ -76,7 +92,7 @@
 }
 /* The sidebar's schematic is capped so the knobs under it stay in reach; the
    drawing keeps its shape inside the cap. */
-.controls .schematic { display: block; width: 100%; max-height: 104px; }
+.controls .schematic { display: block; width: 100%; max-height: 104px; margin-bottom: 4px; }
 
 .group-active-dot {
   width: 6px;
@@ -410,7 +426,7 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .nav-btn:disabled { opacity: 0.35; cursor: default; }
 
 /* The group's intro, read at the boundary. */
-.controls .group-intro { margin: 6px 0 0; font-size: 11.5px; color: var(--dim); }
+.controls .group-intro { margin: 6px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--dim); }
 
 /* The first experiment says so. */
 .start-here {

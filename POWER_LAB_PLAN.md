@@ -807,6 +807,27 @@ reader what is true without telling them what to *do*.
 Exit: the tests above green; A2 and B6–B8 re-walked cold and each carries one
 claim, one knob, one picture.
 
+*As built (step 6):* item 1 as planned — B6 is about V_f (chips 0.5 / 1 / 0,
+sync toggle beside it, η-vs-D sweep), B7 about ESR (chips 0.05 / 0.5 / 0, the
+14.40 → 3.63 mV step, η-vs-R sweep), B8 about t_sw (chips 20 / 5 / 100 ns) with
+a new **η-vs-f_s sweep** (`sweepFs`, log axis 10 kHz – 2 MHz) so the first
+place frequency costs something is a picture. Item 2: the scope draws `v_out`
+alone (i_R is in `allTraces`, off by default, since it is v_out/R by physics);
+the reference lines were dropped in favour of the **sweep on one shared volt
+axis** (`sweep.shared`, `label2`): ⟨v⟩ = D·V_in straight, V_rms = √D·V_in
+above it at every D — the gap is the subject and it is drawn once, not
+per-trace. Measures list `v_out` and `i_R` only (`TOPOLOGY_SIGNALS.chopper`).
+Item 5 landed at ≤ 90 words (≤ 70 for a group's first experiment) and ≤ 20
+words a sentence, with `try` ≤ 16 words — tighter than the 100 planned,
+because the 1366×768 fold in 11.3 item 2 is the real arbiter and the planned
+100 did not fit under it. The term test is whole-word with explicit plural
+aliases; verbs ("ripples", "averages") are not term mentions. Even so the
+group-first experiments (intro + note) ran 48 px past the fold at 1366×768,
+so the experiments section's "Experiments" heading went: the row of group
+tabs is now the section's cap (sticky, ruled, the name kept for a screen
+reader), and the section chrome tightened by a few pixels each. verify.mjs:
+22/22 above the fold at 1366×768 and 1440×900.
+
 ### 11.3 Information — delivery — 4 → 9.5+
 
 The lab's thesis — the formula beside what it predicts — sits 170 px below the

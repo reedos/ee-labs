@@ -390,10 +390,11 @@ function BalanceCanvas({ x }) {
 /** Where the input power goes: the load, then each loss, as bars on a common scale. */
 export function LossesPane({ x }) {
   const m = x.m
-  const rows = [{ key: 'out', label: 'to the load', value: m.Pout, cls: 'out' }]
+  const chopped = m.mode === 'chopped'
+  const rows = [{ key: 'out', label: chopped ? 'to the load, ⟨v²⟩/R' : 'to the load', value: m.Pout, cls: 'out' }]
   const names = {
     pass: 'pass element (V_in − V_out)·I',
-    switch: 'switch I²R_on',
+    switch: chopped ? 'ideal switch, no drop' : 'switch I²R_on',
     diode: x.p?.sync ? 'sync switch I²R_on' : 'diode V_f·I',
     inductor: 'winding I²R_L',
     esr: 'capacitor ESR I²',

@@ -19,13 +19,13 @@ export function sweepRange(points, basePoints, key, ay, { withPred = false } = {
 }
 
 /** What the legend beside the plot lists, in drawing order. */
-export function sweepLegend(points, sweep, label = '') {
+export function sweepLegend(points, sweep, label = '', label2 = '') {
   const ay = SWEEP_Y[sweep.y]
   const ay2 = sweep.y2 ? SWEEP_Y[sweep.y2] : null
   const items = [{ color: COLORS.trace, text: label || `${ay.label} measured`, style: 'solid' }]
   if (sweep.y === 'M') items.push({ color: COLORS.response, text: 'M = D', style: 'dashed' }, { color: COLORS.spectrum, text: 'CCM/DCM formula', style: 'dotted' })
   else if (points.some((q) => Number.isFinite(q.pred))) items.push({ color: COLORS.spectrum, text: 'closed form', style: 'dashed' })
-  if (ay2) items.push({ color: COLORS.response, text: `${ay2.label} (right axis)`, style: 'solid' })
+  if (ay2) items.push({ color: COLORS.response, text: label2 || (sweep.shared ? ay2.label : `${ay2.label} (right axis)`), style: 'solid' })
   if (points.some((q) => q.mode === 'DCM')) items.push({ color: COLORS.spectrumDim, text: 'discontinuous conduction', style: 'fill' })
   return items
 }
@@ -40,8 +40,10 @@ export function sweepLegend(points, sweep, label = '') {
  * the sweep at the experiment's defaults (`basePoints`), so turning a knob
  * moves the curve inside a frame that holds still.
  *
- * `sweep` is `{ x, y, y2? }` with keys from SWEEP_X and SWEEP_Y; a `y2` is
- * drawn on a right-hand axis. `at` is the knob's current value, marked on the
+ * `sweep` is `{ x, y, y2?, shared? }` with keys from SWEEP_X and SWEEP_Y; a
+ * `y2` is drawn on a right-hand axis, or on the left one with `shared` when
+ * the two are the same quantity and the gap between them is the point (the
+ * chopper's ⟨v⟩ and V_rms). `at` is the knob's current value, marked on the
  * curve. `marks` are the note's numbers (marks.js), drawn where they happen.
  * The legend is not drawn here: `sweepLegend` lists it for the DOM.
  *
@@ -53,8 +55,9 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, mar
   const ax = SWEEP_X[sweep.x]
   const ay = SWEEP_Y[sweep.y]
   const ay2 = sweep.y2 ? SWEEP_Y[sweep.y2] : null
+  const shared = !!ay2 && !!sweep.shared
   const k0 = plotArea(w, h).k
-  const area = plotArea(w, h, { rightAxis: !!ay2, topInset: ay2 ? 16 * k0 : 0 })
+  const area = plotArea(w, h, { rightAxis: !!ay2 && !shared, topInset: ay2 ? 16 * k0 : 0 })
   const k = area.k || 1
   const logX = ax.scale === 'log'
   const X = (v) => (logX ? Math.log10(v) : v)
@@ -69,7 +72,14 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, mar
   // descriptors ask for a log axis, and the values are carried through it.
   const logY = ay.scale === 'log'
   const Y = (v) => (logY ? Math.log10(Math.max(v, 1e-12)) : v)
-  const [yLo, yHi] = sweepRange(points, basePoints, sweep.y, ay, { withPred: true })
+  // A shared axis frames both curves: the range is the union of the two.
+  const [yLo, yHi] = shared
+    ? (() => {
+        const [lo1, hi1] = sweepRange(points, basePoints, sweep.y, ay, { withPred: true })
+        const [lo2, hi2] = sweepRange(points, basePoints, sweep.y2, ay2)
+        return [Math.min(lo1, lo2), Math.max(hi1, hi2)]
+      })()
+    : sweepRange(points, basePoints, sweep.y, ay, { withPred: true })
   const fmtY = (a, lo, hi, log = false) => {
     if (log) {
       const f = axisFmt(Math.pow(10, lo), Math.pow(10, hi), a.unit, { ticks: 1 })
@@ -88,13 +98,14 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, mar
     xStep: logX ? 1 : sweep.x === 'D' ? 0.1 : null,
     yStep: logY ? 1 : sweep.y === 'eta' ? 0.2 : null,
     xTitle: ax.unit ? `${ax.label} (${ax.unit})` : sweep.x === 'D' ? 'Duty D' : ax.label,
-    yTitle: ay.unit ? `${ay.label} (${ay.unit})` : ay.label,
+    yTitle: shared ? `${ay.label}, ${ay2.label} (${ay.unit})` : ay.unit ? `${ay.label} (${ay.unit})` : ay.label,
   })
 
-  // Right axis for y2.
+  // Right axis for y2 — or the left one, shared.
   const area2 = framed
   let sy2 = null
-  if (ay2) {
+  if (shared) sy2 = (v) => sy(Y(v))
+  else if (ay2) {
     const [lo2, hi2] = sweepRange(points, basePoints, sweep.y2, ay2)
     sy2 = (v) => area2.y + area2.h - ((v - lo2) / (hi2 - lo2)) * area2.h
     ctx.save()
@@ -224,9 +235,9 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, mar
   return { sx, sy, area: area2, xMin, xMax, X, Y }
 }
 
-export default function SweepCanvas({ points, basePoints = null, sweep, at, marks = [], label = '' }) {
+export default function SweepCanvas({ points, basePoints = null, sweep, at, marks = [], label = '', label2 = '' }) {
   const ref = useCanvas((ctx, w, h) => drawSweep(ctx, w, h, { points, basePoints, sweep, at, marks }), [points, basePoints, sweep, at, marks])
-  const legend = sweepLegend(points, sweep, label)
+  const legend = sweepLegend(points, sweep, label, label2)
   return (
     <div className="plot-wrap">
       <canvas
