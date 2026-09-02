@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { EXPERIMENTS, byId, defaultsOf } from './experiments.js'
 import { analyse } from './math.js'
-import { bindingsOf, liveSee, liveText, quoted, readBinding, regimeOf, stands, REGIME_WORDS } from './live.js'
+import { bindingsOf, liveSee, liveText, provenance, quoted, readBinding, regimeOf, stands, REGIME_WORDS } from './live.js'
 
 // Numbers a note may leave unbound: the constants of the subject and the
 // zeros of a formula. Anything else in a `see` must read from the solution.
@@ -150,5 +150,28 @@ describe('notes that are alive', () => {
     expect(regimeOf(a1.x, byId.a1)).toBe(null)
     const e3 = atDefaults(byId.e3)
     expect(regimeOf(e3.x, byId.e3)).toBe('refused')
+  })
+
+  test('a diode lesson retires when a knob moves the circuit to a different arrangement of its diodes', () => {
+    // I3 is written about D₁ conducting and D₂ blocking. Reverse the supply and
+    // every number still re-reads — but the sentence naming which diode is on
+    // does not, and that is the class of defect the provenance line exists for.
+    const i3 = byId.i3
+    const p = defaultsOf('i3')
+    expect(regimeOf(analyse(i3, p), i3)).toBe('regions:D1=on,D2=off')
+    const flipped = { ...p, E: -5 }
+    const prov = provenance(i3, analyse(i3, flipped), false)
+    expect(prov).toMatch(/written for a circuit with D1 conducting and D2 blocking/)
+    expect(prov).toMatch(/at your settings it is D1 blocking and D2 conducting/)
+    expect(prov).toMatch(/the story may not hold/)
+    // Below both drops neither conducts, and that is a third arrangement.
+    expect(provenance(i3, analyse(i3, { ...p, E: 0.5 }), false)).toMatch(/D1 blocking and D2 blocking/)
+    // Untouched, the note is the note: no provenance line at all.
+    expect(provenance(i3, analyse(i3, p), true)).toBe(null)
+    // And I8's regulator, which is written about a Zener in breakdown.
+    const i8 = byId.i8
+    const d8 = defaultsOf('i8')
+    expect(regimeOf(analyse(i8, d8), i8)).toBe('regions:D1=zener')
+    expect(provenance(i8, analyse(i8, { ...d8, RL: 220 }), false)).toMatch(/written for a circuit with D1 in breakdown; at your settings it is D1 blocking/)
   })
 })

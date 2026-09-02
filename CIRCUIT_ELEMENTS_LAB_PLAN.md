@@ -1146,6 +1146,32 @@ state, and averaging.
    there is an experiment that needs it.
 6. **Phase 6 — Release gate.** REVIEW_PLAYBOOK audit, screenshot pass, Reed's
    hands-on review, then Reed flips `RELEASE_STATUS`. Splash card goes first.
+   *Audit and screenshot pass done 2026-09-02; the review and the flag are
+   Reed's.* Four defects the playbook's own classes found in Group I, each
+   fixed with the test or the picture that would have caught it:
+   **(1, sentences frozen while controls move)** a diode lesson is written
+   about one arrangement of its diodes — "D₁ conducting, D₂ blocking", "it
+   holds 5.1 V" — and a knob can move the circuit to another one. The
+   provenance line already handled the damping regimes; it now reports the
+   regions too, so I3 with its supply reversed says *written for a circuit with
+   D1 conducting; at your settings it is D1 blocking*. **(4, a fixed range the
+   content escaped)** the i–v plane started at 0 V, so a reverse-biased
+   operating point was drawn outside its own frame; the frame now opens to hold
+   it and the load line runs the width of it. **(6, rendering honesty)** the
+   ideal and constant-drop models were drawn as functions of v — zero, then the
+   top of the frame — which reads as "passes the maximum current at every
+   voltage above V_f", the opposite of what a switch does; they are drawn as
+   the two segments they are, and stop. **(4 again, axes)** the i–v plane had
+   no ticks and its one x label collided with the axis title.
+   Also from the pass: each of the four models is now named beside its own line
+   rather than in a legend, and a conducting diode's row in the equations pane
+   says which region it is in.
+
+   *What is left before the flag: Reed's own hands-on review, on a phone and a
+   laptop, and the three student sittings the 9.5 waits on (`SITTINGS.md`). The
+   splash card, the README line and the LabNav entry are written by whoever
+   flips `RELEASE_STATUS`; `release.test.js` fails while they exist and the
+   flag says `dark`, which is what keeps the two in step.*
 7. **Then Power Lab Phase 1**, starting from `packages/network`.
 
 ---

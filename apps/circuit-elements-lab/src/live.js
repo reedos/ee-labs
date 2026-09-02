@@ -184,8 +184,28 @@ export const liveText = (segments) => segments.map((s) => s.text).join('')
  * knob moves the circuit out of it, the numbers still re-read but the
  * sentence's story may not hold, and the note says so.
  */
-export const regimeOf = (x, exp) =>
-  x.refusal ? 'refused' : x.state && x.state.face && /damp|overshoot|roots|ring/i.test(exp.see) ? x.state.face : null
+export const regimeOf = (x, exp) => {
+  if (x.refusal) return 'refused'
+  // A diode lesson is written about one arrangement of its diodes — "D₁
+  // conducting, D₂ blocking", "it holds 5.1 V" — and a knob can move the
+  // circuit to another one. The numbers re-read either way; the sentence may
+  // not, and that is what the provenance line is for.
+  if (x.regions && Object.keys(x.regions).length) return `regions:${Object.entries(x.regions).sort().map(([k, v]) => `${k}=${v}`).join(',')}`
+  return x.state && x.state.face && /damp|overshoot|roots|ring/i.test(exp.see) ? x.state.face : null
+}
+
+/** The regions a diode lesson was written about, in the reader's words. */
+export function regionWords(regime) {
+  if (!regime || !regime.startsWith('regions:')) return null
+  const parts = regime
+    .slice('regions:'.length)
+    .split(',')
+    .map((q) => {
+      const [id, region] = q.split('=')
+      return `${id} ${region === 'on' ? 'conducting' : region === 'zener' ? 'in breakdown' : region === 'off' ? 'blocking' : region}`
+    })
+  return `a circuit with ${parts.join(' and ')}`
+}
 
 /** The words for a regime, as the prov line says them. */
 export const REGIME_WORDS = {
@@ -215,9 +235,11 @@ export function provenance(exp, x, pristine) {
   if (pristine) return null
   const wrote = writtenRegime(exp)
   const now = regimeOf(x, exp)
-  if (wrote !== now && REGIME_WORDS[wrote]) {
-    const is = now === 'refused' ? 'the solver refuses it' : now ? `it is ${now === 'critical' ? 'critically damped' : now}` : 'it solves'
-    return `— written for ${REGIME_WORDS[wrote]}; at your settings ${is}, so the numbers re-read but the story may not hold.`
+  const wroteWords = REGIME_WORDS[wrote] || regionWords(wrote)
+  if (wrote !== now && wroteWords) {
+    const nowWords = regionWords(now)
+    const is = now === 'refused' ? 'the solver refuses it' : nowWords ? `it is ${nowWords.replace(/^a circuit with /, '')}` : now ? `it is ${now === 'critical' ? 'critically damped' : now}` : 'it solves'
+    return `— written for ${wroteWords}; at your settings ${is}, so the numbers re-read but the story may not hold.`
   }
   if (!bindingsOf(exp).some((b) => b.kind !== 'literal')) return '— the note describes the defaults; you have moved away from them.'
   return '— the numbers re-read at your settings.'

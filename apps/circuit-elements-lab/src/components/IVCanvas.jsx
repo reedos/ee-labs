@@ -25,22 +25,37 @@ const MODELS = [
   { id: 'ideal', label: 'ideal switch', colour: 'var(--dim)', dash: [2, 3] },
 ]
 
-/** The current each model passes at v, in the same units, for drawing. */
+/**
+ * The path each model draws in the i–v plane, as points.
+ *
+ * The two switch models are not functions of v at all: at their drop they will
+ * pass whatever current the circuit asks for, which is a VERTICAL line. Drawn
+ * as a function — zero, then the top of the frame — they would read as "passes
+ * the maximum current at every voltage above V_f", which is the opposite of
+ * what a switch does. So they are drawn as the two segments they are, and stop.
+ */
 function curveOf(id, d, vs, iMax) {
-  return vs.map((v) => {
-    switch (id) {
-      case 'exp':
-        return shockley(d, v).i
-      case 'pwl':
-        return v > d.vf ? (v - d.vf) / d.rd : 0
-      default: {
-        // The two switch models are vertical lines at their drop: drawn as the
-        // step they are, up to the top of the frame.
-        const vf = id === 'ideal' ? 0 : d.vf
-        return v < vf ? 0 : iMax
-      }
-    }
-  })
+  if (id === 'ideal' || id === 'drop') {
+    const vf = id === 'ideal' ? 0 : d.vf
+    return [
+      [vs[0], 0],
+      [vf, 0],
+      [vf, iMax],
+    ]
+  }
+  return vs.map((v) => [v, id === 'exp' ? shockley(d, v).i : v > d.vf ? (v - d.vf) / d.rd : 0])
+}
+
+
+/** Four or five round ticks from zero up to `max`, in 1-2-5 steps. */
+function ticksTo(max) {
+  if (!(max > 0)) return [0]
+  const raw = max / 4
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)))
+  const step = [1, 2, 5, 10].map((q) => q * pow).find((q) => q >= raw) || 10 * pow
+  const out = []
+  for (let v = 0; v <= max * 1.0001; v += step) out.push(v)
+  return out
 }
 
 export default function IVCanvas({ exp, x, p, height = 260 }) {
@@ -54,15 +69,22 @@ export default function IVCanvas({ exp, x, p, height = 260 }) {
     // enough voltage to show the knee and the operating point.
     const iMax = Math.max(Math.abs(E) / R, Math.abs(x.sol.i[el.id])) * 1.15
     const vMax = Math.max(0.9, x.sol.volt[el.id] * 1.35, d.n * d.vt * Math.log(iMax / d.is + 1) * 1.1)
-    const vs = Array.from({ length: 241 }, (_, k) => (k / 240) * vMax)
+    // Turn the supply round and the operating point moves to a NEGATIVE
+    // voltage: the diode is blocking and standing off the whole source. A
+    // frame that started at zero would draw that point outside itself, which
+    // is the quietest kind of lie a plot can tell — so the frame opens to hold
+    // it, and the reverse side of the curve comes with it.
+    const vMin = Math.min(0, x.sol.volt[el.id] * 1.35)
+    const vs = Array.from({ length: 241 }, (_, k) => vMin + (k / 240) * (vMax - vMin))
     return {
       d,
       E,
       R,
       iMax,
+      vMin,
       vMax,
       vs,
-      curves: MODELS.map((m) => ({ ...m, ys: curveOf(m.id, d, vs, iMax), on: m.id === (el.model || 'drop') })),
+      curves: MODELS.map((m) => ({ ...m, points: curveOf(m.id, d, vs, iMax), on: m.id === (el.model || 'drop') })),
       point: { v: x.sol.volt[el.id], i: x.sol.i[el.id] },
       iters: exp.iv.iterations && x.newton ? x.newton : null,
     }
@@ -75,35 +97,50 @@ export default function IVCanvas({ exp, x, p, height = 260 }) {
     // Every label this plot writes is remembered, so the next one can step
     // clear of it rather than land on top (the lab's rule since step 7).
     trackText(ctx)
-    const pad = { l: 54 * k, r: 14 * k, t: 12 * k, b: 30 * k }
+    // Room under the frame for a row of tick labels AND the axis title.
+    const pad = { l: 58 * k, r: 14 * k, t: 12 * k, b: 46 * k }
     const area = { x: pad.l, y: pad.t, w: w - pad.l - pad.r, h: h - pad.t - pad.b }
-    const X = (v) => area.x + (v / plan.vMax) * area.w
+    const X = (v) => area.x + ((v - plan.vMin) / (plan.vMax - plan.vMin)) * area.w
     const Y = (i) => area.y + area.h - (i / plan.iMax) * area.h
     const css = getComputedStyle(ctx.canvas)
     const colour = (name) => css.getPropertyValue(name.replace(/^var\(|\)$/g, '')).trim() || '#888'
 
-    // Axes.
+    // Axes: a quantity, a unit and ticks on both, drawn before anything else
+    // so the curves sit over the grid rather than under it.
+    ctx.font = `${11 * k}px system-ui, sans-serif`
     ctx.strokeStyle = colour('var(--line)')
     ctx.lineWidth = 1 * k
+    const vTicks = ticksTo(plan.vMax).concat(plan.vMin < 0 ? ticksTo(-plan.vMin).slice(1).map((q) => -q) : [])
+    const iTicks = ticksTo(plan.iMax)
+    ctx.globalAlpha = 0.45
+    ctx.beginPath()
+    for (const v of vTicks.filter((q) => q !== plan.vMin)) {
+      ctx.moveTo(X(v), area.y)
+      ctx.lineTo(X(v), area.y + area.h)
+    }
+    for (const i of iTicks.slice(1)) {
+      ctx.moveTo(area.x, Y(i))
+      ctx.lineTo(area.x + area.w, Y(i))
+    }
+    ctx.stroke()
+    ctx.globalAlpha = 1
     ctx.beginPath()
     ctx.moveTo(area.x, area.y)
     ctx.lineTo(area.x, area.y + area.h)
     ctx.lineTo(area.x + area.w, area.y + area.h)
     ctx.stroke()
     ctx.fillStyle = colour('var(--dim)')
-    ctx.font = `${11 * k}px system-ui, sans-serif`
     ctx.textAlign = 'center'
-    ctx.fillText(`v across ${plan.d.id ?? 'the diode'} (V)`, area.x + area.w / 2, h - 8 * k)
+    ctx.fillText(`v across ${plan.d.id ?? 'the diode'} (V)`, area.x + area.w / 2, h - 6 * k)
     ctx.save()
     ctx.translate(12 * k, area.y + area.h / 2)
     ctx.rotate(-Math.PI / 2)
-    ctx.fillText('current (A)', 0, 0)
+    ctx.fillText('current through it (A)', 0, 0)
     ctx.restore()
     ctx.textAlign = 'right'
-    ctx.fillText(num(plan.iMax, 'A', 2), area.x - 6 * k, area.y + 10 * k)
-    ctx.fillText('0', area.x - 6 * k, area.y + area.h + 4 * k)
+    for (const i of iTicks) ctx.fillText(i === 0 ? '0' : num(i, 'A', 2), area.x - 6 * k, Y(i) + 4 * k)
     ctx.textAlign = 'center'
-    ctx.fillText(num(plan.vMax, 'V', 2), area.x + area.w, area.y + area.h + 16 * k)
+    for (const v of vTicks) if (v !== 0 || plan.vMin < 0) ctx.fillText(v === 0 ? '0' : num(v, 'V', 2), X(v), area.y + area.h + 16 * k)
 
     // The models, the one in use drawn bright.
     for (const c of plan.curves) {
@@ -112,9 +149,9 @@ export default function IVCanvas({ exp, x, p, height = 260 }) {
       ctx.lineWidth = (c.on ? 2 : 1.2) * k
       ctx.setLineDash(c.dash.map((q) => q * k))
       ctx.beginPath()
-      plan.vs.forEach((v, i) => {
-        const y = Math.max(area.y, Y(Math.min(c.ys[i], plan.iMax)))
-        if (i === 0) ctx.moveTo(X(v), y)
+      c.points.forEach(([v, i], n) => {
+        const y = Math.max(area.y, Y(Math.min(i, plan.iMax)))
+        if (n === 0) ctx.moveTo(X(v), y)
         else ctx.lineTo(X(v), y)
       })
       ctx.stroke()
@@ -122,22 +159,37 @@ export default function IVCanvas({ exp, x, p, height = 260 }) {
     ctx.setLineDash([])
     ctx.globalAlpha = 1
     // Named where each leaves the frame, in the lab's way — no legend.
+    // Named where each one actually ends. The two curves run off the right of
+    // the frame and are labelled there like every other chart in the lab; the
+    // two switch models are vertical lines that stop, so their names go beside
+    // the line rather than at an edge they never reach.
+    const running = plan.curves.filter((c) => c.id === 'exp' || c.id === 'pwl')
+    const upright = plan.curves.filter((c) => c.id === 'ideal' || c.id === 'drop')
     drawEndLabels(
       ctx,
       { ...area, k },
-      plan.curves.map((c) => ({ label: c.label, color: colour(c.colour), y: Math.max(area.y + 6, Y(Math.min(c.ys[c.ys.length - 1], plan.iMax))) })),
+      running.map((c) => ({ label: c.label, color: colour(c.colour), y: Math.max(area.y + 6, Y(Math.min(c.points[c.points.length - 1][1], plan.iMax))) })),
+      upright.map((c, n) => ({
+        label: c.label,
+        color: colour(c.colour),
+        x: X(c.points[c.points.length - 1][0]),
+        y: Y(plan.iMax * (n ? 0.8 : 0.58)),
+      })),
     )
 
     // The load line: i = (E − v)/R, from the current axis to the voltage axis.
     ctx.strokeStyle = colour('var(--warn)')
     ctx.lineWidth = 1.6 * k
+    // i = (E − v)/R across the whole frame: it is the circuit's own constraint,
+    // and it does not stop where the diode's curve does.
+    const line = (v) => (plan.E - v) / plan.R
     ctx.beginPath()
-    ctx.moveTo(X(0), Y(plan.E / plan.R))
-    ctx.lineTo(X(Math.min(plan.E, plan.vMax)), Y(Math.max(0, (plan.E - Math.min(plan.E, plan.vMax)) / plan.R)))
+    ctx.moveTo(X(plan.vMin), Y(line(plan.vMin)))
+    ctx.lineTo(X(plan.vMax), Y(line(plan.vMax)))
     ctx.stroke()
     ctx.fillStyle = colour('var(--warn)')
     ctx.textAlign = 'left'
-    ctx.fillText('load line', X(0) + 6 * k, Y(plan.E / plan.R) - 6 * k)
+    ctx.fillText('load line', X(plan.vMin) + 6 * k, Y(line(plan.vMin)) - 6 * k)
 
     // Newton's iterations, walking down to the answer.
     if (plan.iters) {
