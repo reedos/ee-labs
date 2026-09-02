@@ -220,6 +220,88 @@ export const TERMS = {
       'what they have in common, in dB. Ideally infinite; in a four-resistor circuit it is set by ' +
       'how well the two ratios match — 1 % mismatch gives roughly 40 dB.',
   },
+  capacitor: {
+    name: 'Capacitor',
+    def:
+      'Two plates that store charge in proportion to the voltage between them, q = C·v, with C ' +
+      'in farads (coulombs per volt). Since current is charge per second, i = C·dv/dt: it passes ' +
+      'current only while its voltage is changing, and holds ½Cv² of energy. Its voltage cannot ' +
+      'jump — that would take infinite current — so it is a state of the circuit.',
+  },
+  inductor: {
+    name: 'Inductor',
+    def:
+      'A coil that stores magnetic flux in proportion to the current through it, λ = L·i, with L ' +
+      'in henries. Since voltage is flux per second, v = L·di/dt: it has voltage across it only ' +
+      'while its current is changing, and holds ½Li² of energy. Its current cannot jump — that ' +
+      'would take infinite voltage — so it is a state of the circuit.',
+  },
+  state: {
+    name: 'State',
+    def:
+      'The set of numbers that, together with the inputs from now on, decide everything the ' +
+      'circuit does next: one voltage per capacitor and one current per inductor. Everything else ' +
+      '— resistor currents, node voltages — is found from them by an ordinary resistive solve, ' +
+      'which is why the schematic at any instant is just a DC circuit with the states standing in ' +
+      'as sources.',
+  },
+  timeconstant: {
+    name: 'Time constant τ',
+    def:
+      'For one capacitor or one inductor and a resistive network, the response to any step is ' +
+      'an exponential e^(−t/τ) with τ = RC or L/R, R being the resistance the element sees. In one ' +
+      'τ the response has gone 63.2 % of the way; in 5τ, 99.3 %. Double R or C and everything ' +
+      'takes twice as long, with the same shape.',
+  },
+  initial: {
+    name: 'Initial conditions',
+    def:
+      'The state just before the step, x(0⁻): switches where they were, sources at their old ' +
+      'values, capacitors open and inductors shorted. Because a state cannot jump, x(0⁺) = x(0⁻), ' +
+      'and that one fact fixes every voltage and current the instant after — the resistive ' +
+      'solve with the states as sources.',
+  },
+  natural: {
+    name: 'Natural response',
+    def:
+      'What the circuit does with its inputs held still, decaying from whatever state it was ' +
+      'left in: a sum of e^(st) terms, one for each root s of the characteristic polynomial. The ' +
+      'forced response is what the input drives it to; the full response is the two added, with ' +
+      'the natural part’s amplitudes chosen to meet the initial conditions.',
+  },
+  characteristic: {
+    name: 'Characteristic polynomial',
+    def:
+      'det(sI − A) for the state matrix A: for two states s² + 2αs + ω₀², where α is the neper ' +
+      'frequency (how fast things decay) and ω₀ the undamped natural frequency (how fast they ' +
+      'would ring with no loss). Its roots are the exponents of the natural response; their ' +
+      'real parts decay and their imaginary parts oscillate.',
+  },
+  damping: {
+    name: 'Damping (ζ)',
+    def:
+      'The ratio ζ = α/ω₀, which fixes the shape of a second-order response independent of its ' +
+      'speed. ζ > 1 is overdamped (two real roots, a slow creep with no overshoot); ζ = 1 is ' +
+      'critical (the quickest approach without overshoot, at R = 2√(L/C) for series RLC); ζ < 1 ' +
+      'is underdamped (a complex pair, it rings at ω_d = ω₀√(1 − ζ²) inside an e^(−αt) envelope). ' +
+      'Q = 1/2ζ says the same thing as a count of cycles to ring down.',
+  },
+  duality: {
+    name: 'Duality',
+    def:
+      'Swap voltage for current, capacitor for inductor, series for parallel, resistance for ' +
+      'conductance, KCL for KVL, and every true statement about a circuit becomes another true ' +
+      'statement about its dual. i = C·dv/dt and v = L·di/dt are the same law read twice; a series ' +
+      'RLC with 2α = R/L and a parallel RLC with 2α = 1/RC have identical waveforms.',
+  },
+  energy: {
+    name: 'Energy bookkeeping',
+    def:
+      'Power is energy per second, so integrating each element’s p = v·i over time says where ' +
+      'every joule went: into a capacitor or inductor (stored, ½Cv² or ½Li², recoverable), into a ' +
+      'resistor (dissipated as heat, gone), or out of a source (supplied). Since the powers sum to ' +
+      'zero at every instant, supplied = stored − stored₀ + dissipated at every instant too.',
+  },
 }
 
 /** The definitions an experiment asks for, in the order it lists them. */

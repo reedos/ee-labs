@@ -47,6 +47,12 @@ export function effective(e, opts = {}) {
   if (e.type === 'OPAMP' && Number.isFinite(e.gain)) {
     return { ...e, type: 'VCVS', nodes: [e.nodes[0], GROUND], gain: e.gain }
   }
+  // A source's value at some instant, for the time-domain engine.
+  if ((e.type === 'V' || e.type === 'I') && opts.sources && e.id in opts.sources) return { ...e, value: opts.sources[e.id] }
+  // A resistor of exactly zero ohms is a wire: it fixes a voltage difference of
+  // zero and its current becomes an unknown, the way a 0 V source's does. The
+  // undamped LC (R = 0) is a real circuit and gets solved as one.
+  if (e.type === 'R' && e.value === 0) return { ...e, type: 'V', value: 0, wire: true }
   return e
 }
 

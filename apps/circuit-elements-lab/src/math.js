@@ -7,7 +7,22 @@
 // mis-stamped source separates them at once. experiments.test.js runs every
 // row here at the defaults and at random settings and requires the tick.
 
-import { solveDC, superposition, thevenin, sourcePower, NetworkError } from '@ee-labs/network'
+import {
+  solveDC,
+  superposition,
+  thevenin,
+  sourcePower,
+  NetworkError,
+  transient,
+  energies,
+  initialConditions,
+  charPoly,
+  extrema,
+  crossings,
+  settleTime,
+  sourceValue,
+} from '@ee-labs/network'
+import { isDynamic } from './experiments.js'
 
 const T = (text) => ({ kind: 'text', text })
 const F = (tex, caption) => ({ kind: 'formula', tex, caption })
@@ -16,6 +31,148 @@ const V = (rows) => ({ kind: 'values', rows })
 
 const par = (...rs) => 1 / rs.reduce((s, r) => s + 1 / r, 0)
 const row = (label, predicted, measured, unit = '', tol = 1e-9, abs = 1e-12) => ({ label, predicted, measured, unit, tol, abs })
+
+// ------------------------------------------------------------ closed forms in time
+// The hand side of the dynamic groups. None of this touches the matrix
+// exponential: these are the formulas a first course writes down, evaluated.
+
+/** The exact waveform at t, clamped to the window so a row never reads past the trace. */
+const atT = (x, t) => x.tr.at(Math.min(Math.max(t, 0), x.tEnd))
+
+/** Square wave: +A for the first half of each period, −A for the second. */
+const square = (A, T, t) => (t - T * Math.floor(t / T) < T / 2 ? A : -A)
+
+/**
+ * The τ recipe on a triangle drive: a quantity obeying τ·y′ + y = ±F, the
+ * sign flipping at each corner of the triangle (T/4, 3T/4, 5T/4, …), from
+ * y(0) = 0. On every piece y = target + (y_start − target)·e^(−Δt/τ).
+ */
+function alternating(F, tau, T, t) {
+  let y = 0
+  let tk = 0
+  let sign = +1
+  let next = T / 4
+  while (t > next) {
+    y = sign * F + (y - sign * F) * Math.exp(-(next - tk) / tau)
+    tk = next
+    sign = -sign
+    next += T / 2
+  }
+  return sign * F + (y - sign * F) * Math.exp(-(t - tk) / tau)
+}
+
+/**
+ * The state itself under the triangle drive: y obeying τ·y′ + y = triangle(t)
+ * from y(0) = 0. On a piece where the drive is a + s·Δ the particular solution
+ * lags it by s·τ, and the rest decays. (Writing y = drive − τ·(the alternating
+ * current) instead cancels catastrophically when τ ≫ T.)
+ */
+function tracked(A, T, tau, t) {
+  const s = (4 * A) / T
+  let y = 0
+  let tk = 0
+  let a = 0
+  let slope = s
+  let next = T / 4
+  // y(Δ) = y·e^(−u) + a·(1 − e^(−u)) + s·τ·(u − 1 + e^(−u)),  u = Δ/τ.
+  // The last bracket is ~u²/2 for small u and would vanish in rounding if
+  // formed from its three terms; the series takes over there.
+  const piece = (dt) => {
+    const u = dt / tau
+    const e = Math.exp(-u)
+    const g = u < 1e-2 ? (u * u) / 2 - (u * u * u) / 6 + u ** 4 / 24 - u ** 5 / 120 + u ** 6 / 720 - u ** 7 / 5040 : u - 1 + e
+    return y * e - a * Math.expm1(-u) + slope * tau * g
+  }
+  while (t > next) {
+    y = piece(next - tk)
+    a += slope * (next - tk)
+    tk = next
+    slope = -slope
+    next += T / 2
+  }
+  return piece(t - tk)
+}
+
+/**
+ * The integrator's output under a square wave ±A of period T from v_out(0) = 0.
+ * Ideal: a straight ramp of slope −v_in/RC on each half. Finite gain G: on
+ * each half the output heads for −G·v_in with τ = RC(G + 1) — an ordinary RC.
+ */
+function integrated(A, T, RC, G, t) {
+  let y = 0
+  let tk = 0
+  let vin = A
+  const piece = (dt) => (Number.isFinite(G) ? -G * vin + (y + G * vin) * Math.exp(-dt / (RC * (G + 1))) : y - (vin / RC) * dt)
+  for (let next = T / 2; t > next; next += T / 2) {
+    y = piece(next - tk)
+    tk = next
+    vin = -vin
+  }
+  return piece(t - tk)
+}
+
+/**
+ * The natural response of a second-order circuit from y(0) = y0, y′(0) = dy0,
+ * in its three faces. Overdamped uses the two roots directly, the slow one
+ * computed as −ω₀²/(α + β) so that a large α does not cancel it away.
+ */
+function natural(alpha, w0, y0, dy0) {
+  const disc = alpha * alpha - w0 * w0
+  if (Math.abs(disc) <= 1e-9 * w0 * w0) return (t) => Math.exp(-alpha * t) * (y0 + (dy0 + alpha * y0) * t)
+  if (disc < 0) {
+    const wd = Math.sqrt(-disc)
+    return (t) => Math.exp(-alpha * t) * (y0 * Math.cos(wd * t) + ((dy0 + alpha * y0) / wd) * Math.sin(wd * t))
+  }
+  const beta = Math.sqrt(disc)
+  const s1 = -(w0 * w0) / (alpha + beta) // slow
+  const s2 = -(alpha + beta) // fast
+  const c1 = (dy0 - s2 * y0) / (s1 - s2)
+  const c2 = (s1 * y0 - dy0) / (s1 - s2)
+  return (t) => c1 * Math.exp(s1 * t) + c2 * Math.exp(s2 * t)
+}
+
+/** α, ω₀ and the natural-response helpers for a series RLC with the knobs p. */
+function series(p) {
+  const alpha = p.R1 / (2 * p.L1)
+  const w0 = 1 / Math.sqrt(p.L1 * p.C1)
+  const zeta = alpha / w0
+  return { alpha, w0, zeta, wd: zeta < 1 ? Math.sqrt(w0 * w0 - alpha * alpha) : 0, Rcrit: 2 * Math.sqrt(p.L1 / p.C1) }
+}
+/** Per-cent overshoot of an underdamped second-order step as a fraction of the step. */
+const overshootOf = (zeta) => (zeta < 1 ? Math.exp((-Math.PI * zeta) / Math.sqrt(1 - zeta * zeta)) : 0)
+
+/**
+ * Settling time of a hand-written waveform to within `band` of `final`, by
+ * scanning a fine grid and bisecting the last exit — the same definition the
+ * engine measures, applied to the closed form instead of the propagator.
+ */
+function settleOf(f, final, band, tEnd, n = 4000) {
+  let k = n
+  while (k >= 0 && Math.abs(f((k / n) * tEnd) - final) <= band) k--
+  if (k < 0) return 0
+  if (k === n) return tEnd
+  let a = (k / n) * tEnd
+  let b = ((k + 1) / n) * tEnd
+  for (let j = 0; j < 80; j++) {
+    const m = (a + b) / 2
+    if (Math.abs(f(m) - final) > band) a = m
+    else b = m
+  }
+  return (a + b) / 2
+}
+
+/**
+ * The peaks of a quantity in the trace — its maxima, or its minima when the
+ * drive is negative (`sign` −1) so that a step down has its "overshoot" too —
+ * each refined on the exact evaluator. Null if there are none in the window.
+ */
+function peakOf(x, q, key, sign = 1) {
+  const f = (t) => x.tr.at(t).sol[q][key]
+  const kind = sign < 0 ? 'min' : 'max'
+  const ex = extrema(x.tr.t, x.tr.series(q, key), f).filter((e) => e.kind === kind)
+  return ex.length ? ex : null
+}
+const sgn = (v) => (v < 0 ? -1 : 1)
 
 const ENTRIES = {
   a1(p, s) {
@@ -516,6 +673,429 @@ const ENTRIES = {
       ],
     }
   },
+
+  // ---------------------------------------------------------------- F
+  f1(p, s, x) {
+    const slope = (4 * p.A) / p.T
+    const tau = p.Rs * p.C1
+    const I = p.C1 * slope
+    const i = (t) => alternating(I, tau, p.T, t)
+    const vC = (t) => tracked(p.A, p.T, tau, t)
+    const t1 = Math.min(p.T / 8, x.tEnd)
+    const t2 = Math.min((3 * p.T) / 8, x.tEnd)
+    const tc = x.cursor
+    return {
+      blocks: [
+        T('Charge is C·v, current is charge per second. On each straight piece of the triangle the capacitor current heads for C times the slope, with the lag τ = R_sC.'),
+        F('i_C = C\\,\\frac{dv_C}{dt}, \\qquad v_{in} = \\pm\\frac{4A}{T}\\,t \\;\\Rightarrow\\; i_C \\to \\pm C\\,\\frac{4A}{T}'),
+        F('R_s C\\,\\frac{di_C}{dt} + i_C = C\\,\\frac{dv_{in}}{dt}, \\qquad \\tau = R_s C', 'the τ recipe, piece by piece'),
+        C([
+          row('i_C mid-rise (t = T/8)', i(t1), atT(x, t1).sol.i.C1, 'A'),
+          row('i_C mid-fall (t = 3T/8)', i(t2), atT(x, t2).sol.i.C1, 'A'),
+          row('v_C mid-rise', vC(t1), atT(x, t1).sol.volt.C1, 'V'),
+          row('C·dv_C/dt at the cursor', i(tc), p.C1 * atT(x, tc).dxdt[0], 'A'),
+        ]),
+        V([
+          { label: 'plateau ±C·4A/T', value: I, unit: 'A' },
+          { label: 'lag τ = R_sC', value: tau, unit: 's' },
+        ]),
+      ],
+      marks: [
+        { t: p.T / 4, label: 'slope flips' },
+        { t: (3 * p.T) / 4, label: 'flips back' },
+      ],
+    }
+  },
+
+  f2(p, s, x) {
+    const slope = (4 * p.A) / p.T
+    const tau = p.L1 / p.Rp
+    const Vp = p.L1 * slope
+    const vL = (t) => alternating(Vp, tau, p.T, t)
+    const iL = (t) => tracked(p.A, p.T, tau, t)
+    const t1 = Math.min(p.T / 8, x.tEnd)
+    const t2 = Math.min((3 * p.T) / 8, x.tEnd)
+    const tc = x.cursor
+    return {
+      blocks: [
+        T('Flux is L·i, voltage is flux per second. On each straight piece of the triangle the inductor voltage heads for L times the slope, with the lag τ = L/R_p — F1 with every word swapped for its dual.'),
+        F('v_L = L\\,\\frac{di_L}{dt}, \\qquad i_{in} = \\pm\\frac{4A}{T}\\,t \\;\\Rightarrow\\; v_L \\to \\pm L\\,\\frac{4A}{T}'),
+        F('\\frac{L}{R_p}\\,\\frac{dv_L}{dt} + v_L = L\\,\\frac{di_{in}}{dt}, \\qquad \\tau = \\frac{L}{R_p}'),
+        C([
+          row('v_L mid-rise (t = T/8)', vL(t1), atT(x, t1).sol.volt.L1, 'V'),
+          row('v_L mid-fall (t = 3T/8)', vL(t2), atT(x, t2).sol.volt.L1, 'V'),
+          row('i_L mid-rise', iL(t1), atT(x, t1).sol.i.L1, 'A'),
+          row('L·di_L/dt at the cursor', vL(tc), p.L1 * atT(x, tc).dxdt[0], 'V'),
+        ]),
+        V([
+          { label: 'plateau ±L·4A/T', value: Vp, unit: 'V' },
+          { label: 'lag τ = L/R_p', value: tau, unit: 's' },
+        ]),
+      ],
+      marks: [
+        { t: p.T / 4, label: 'slope flips' },
+        { t: (3 * p.T) / 4, label: 'flips back' },
+      ],
+    }
+  },
+
+  f3(p, s, x) {
+    const tau = p.R1 * p.C1
+    const v = (t) => p.E + (p.v0 - p.E) * Math.exp(-t / tau)
+    const i = (t) => ((p.E - p.v0) / p.R1) * Math.exp(-t / tau)
+    const t5 = Math.min(5 * tau, x.tEnd)
+    const tc = x.cursor
+    return {
+      blocks: [
+        T('KVL round the loop with i = C·dv_C/dt is a first-order differential equation; its solution is the final value plus the starting gap shrinking as e^(−t/τ).'),
+        F('RC\\,\\frac{dv_C}{dt} + v_C = E \\;\\Rightarrow\\; v_C(t) = E + (v_0 - E)\\,e^{-t/\\tau}, \\qquad \\tau = RC'),
+        F('i(t) = \\frac{E - v_0}{R}\\,e^{-t/\\tau}', 'the same τ; the current cannot wait'),
+        C([
+          row('v_C before the switch', p.v0, x.tr.x0[0], 'V'),
+          row('v_C(τ): 63.2 % of the way', v(tau), atT(x, tau).sol.volt.C1, 'V'),
+          row('v_C(5τ): 99.3 %', v(t5), atT(x, t5).sol.volt.C1, 'V'),
+          row('v_C at the cursor', v(tc), atT(x, tc).sol.volt.C1, 'V'),
+          row('i(0⁺) = (E − v₀)/R', i(0), atT(x, 0).sol.i.C1, 'A'),
+          row('i at the cursor', i(tc), atT(x, tc).sol.i.C1, 'A'),
+        ]),
+        V([
+          { label: 'τ = RC', value: tau, unit: 's' },
+          { label: 'covered after τ', value: 100 * (1 - Math.exp(-1)), unit: '%' },
+          { label: 'covered after 5τ', value: 100 * (1 - Math.exp(-5)), unit: '%' },
+        ]),
+      ],
+      marks: [{ t: tau, label: 'τ' }],
+    }
+  },
+
+  f4(p, s, x) {
+    const vth = (p.E * p.R2) / (p.R1 + p.R2)
+    const rth = p.R3 + par(p.R1, p.R2)
+    const tau = rth * p.C1
+    const vB = (t) => vth * (1 - Math.exp(-t / tau))
+    // Node A from the capacitor voltage: one KCL at A.
+    const vA = (t) => (p.E / p.R1 + vB(t) / p.R3) / (1 / p.R1 + 1 / p.R2 + 1 / p.R3)
+    const tc = x.cursor
+    const rows = [
+      row('V_th = E·R₂/(R₁+R₂)', vth, x.thevenin ? x.thevenin.voc : NaN, 'V'),
+      row('R_th = R₃ + R₁∥R₂', rth, x.thevenin ? x.thevenin.rth.test : NaN, 'Ω'),
+      row('v_B(τ)', vB(tau), atT(x, tau).sol.v.B, 'V'),
+      row('v_B at the cursor', vB(tc), atT(x, tc).sol.v.B, 'V'),
+      row('v_A(0⁺): A sees R₂∥R₃', vA(0), atT(x, 0).sol.v.A, 'V'),
+      row('v_A at the cursor', vA(tc), atT(x, tc).sol.v.A, 'V'),
+      row('i_C(0⁺) = V_th/R_th', vth / rth, atT(x, 0).sol.i.C1, 'A'),
+    ]
+    return {
+      blocks: [
+        T('Everything left of the capacitor is a Thévenin source; then the circuit is F3 with V_th for E and R_th for R.'),
+        F('V_{th} = E\\,\\frac{R_2}{R_1 + R_2}, \\qquad R_{th} = R_3 + \\frac{R_1 R_2}{R_1 + R_2}, \\qquad \\tau = R_{th}\\,C'),
+        F('v_B(t) = V_{th}\\left(1 - e^{-t/\\tau}\\right)'),
+        C(x.thevenin ? rows : rows.slice(2)),
+        V([
+          { label: 'τ = R_th·C', value: tau, unit: 's' },
+          { label: 'v_A settles to', value: vth, unit: 'V' },
+        ]),
+      ],
+      marks: [{ t: tau, label: 'τ' }],
+    }
+  },
+
+  f5(p, s, x) {
+    const tau = p.R1 * p.C1
+    const vC = (t) => p.E * (1 - Math.exp(-t / tau))
+    const end = x.energy.points[x.energy.points.length - 1]
+    const tEnd = x.tEnd
+    const supplied = p.C1 * p.E * vC(tEnd)
+    const stored = 0.5 * p.C1 * vC(tEnd) ** 2
+    return {
+      blocks: [
+        T('The source’s energy is E times the charge moved; the capacitor keeps ½Cv²; the resistor gets the rest. In the limit that is C·E², ½C·E² and ½C·E² — with R nowhere in any of them.'),
+        F('W_{source} = E\\,q = C E\\, v_C(t), \\qquad W_C = \\tfrac{1}{2} C v_C^2, \\qquad W_R = W_{source} - W_C'),
+        F('W_R = \\int_0^{\\infty} i^2 R\\, dt = \\int_0^{E} (E - v_C)\\, C\\, dv_C = \\tfrac{1}{2} C E^2', 'independent of R'),
+        C([
+          row('supplied so far (end of window)', supplied, end.supplied, 'J', 1e-8),
+          row('stored so far', stored, end.stored, 'J', 1e-8),
+          row('dissipated so far = ½CE²(1 − e^(−2t/τ))', 0.5 * p.C1 * p.E * p.E * (1 - Math.exp((-2 * tEnd) / tau)), end.dissipated, 'J', 1e-8),
+        ]),
+        V([
+          { label: 'the whole charge: source', value: p.C1 * p.E * p.E, unit: 'J' },
+          { label: 'capacitor, for ever', value: 0.5 * p.C1 * p.E * p.E, unit: 'J' },
+          { label: 'resistor, for ever, any R', value: 0.5 * p.C1 * p.E * p.E, unit: 'J' },
+        ]),
+      ],
+    }
+  },
+
+  f6(p, s, x) {
+    const I0 = p.E / p.R1
+    if (!x.tr) {
+      return {
+        blocks: [
+          T('An ideal open switch is an open circuit, and the inductor’s current — a state — cannot become zero in no time. The equations have no finite answer, and the solver says so rather than inventing one.'),
+          F('v_L = L\\,\\frac{di}{dt} \\to -\\infty \\quad\\text{as}\\quad i: I_0 \\to 0 \\text{ in } dt \\to 0'),
+          V([
+            { label: 'I₀ = E/R before the switch', value: I0, unit: 'A' },
+            { label: 'spike with an ideal switch', value: NaN, unit: 'V', note: 'unbounded' },
+          ]),
+        ],
+      }
+    }
+    const tau = p.L1 / (p.R1 + p.Roff)
+    const Iinf = p.E / (p.R1 + p.Roff)
+    const i = (t) => Iinf + (I0 - Iinf) * Math.exp(-t / tau)
+    const tc = x.cursor
+    return {
+      blocks: [
+        T('Before t = 0 the inductor is a short carrying E/R. After, the loop is R + R_off: the current heads for the trickle E/(R + R_off) with τ = L/(R + R_off), and the switch drops i·R_off — I₀·R_off at the first instant.'),
+        F('i(t) = I_\\infty + (I_0 - I_\\infty)\\,e^{-t/\\tau}, \\qquad I_0 = \\frac{E}{R}, \\quad I_\\infty = \\frac{E}{R + R_{off}}, \\quad \\tau = \\frac{L}{R + R_{off}}'),
+        F('v_{switch}(0^+) = I_0\\, R_{off}', 'the spark'),
+        C([
+          row('i_L before the switch opens', I0, x.tr.x0[0], 'A'),
+          row('i_L(0⁺): unchanged', I0, atT(x, 0).sol.i.L1, 'A'),
+          row('v_switch(0⁺) = I₀·R_off', I0 * p.Roff, atT(x, 0).sol.volt.S1, 'V'),
+          row('i_L(τ): 63.2 % of the way down', i(tau), atT(x, tau).sol.i.L1, 'A'),
+          row('i_L at the cursor', i(tc), atT(x, tc).sol.i.L1, 'A'),
+          row('v_switch at the cursor', i(tc) * p.Roff, atT(x, tc).sol.volt.S1, 'V'),
+        ]),
+        V([
+          { label: 'τ = L/(R + R_off)', value: tau, unit: 's' },
+          { label: 'build-up τ = L/R was', value: p.L1 / p.R1, unit: 's' },
+          { label: 'ratio', value: (p.R1 + p.Roff) / p.R1, unit: '×' },
+        ]),
+      ],
+      marks: [{ t: tau, label: 'τ' }],
+    }
+  },
+
+  f7(p, s, x) {
+    const RC = p.R1 * p.C1
+    const G = p.ideal ? Infinity : p.G
+    const vout = (t) => integrated(p.A, p.T, RC, G, t)
+    const iin = (t) => (square(p.A, p.T, t) + (Number.isFinite(G) ? vout(t) / G : 0)) / p.R1
+    const tq = Math.min(p.T / 4, x.tEnd)
+    const th = Math.min(p.T / 2, x.tEnd)
+    const tc = x.cursor
+    return {
+      blocks: [
+        T(
+          p.ideal
+            ? 'The virtual ground makes the input current v_in/R, all of it flows into the capacitor, and the output is minus the capacitor voltage — so the output is the integral of the input.'
+            : 'With finite gain the inverting input sits at −v_out/A instead of 0, and the integrator is an RC circuit with τ = RC(A + 1) heading for −A·v_in.',
+        ),
+        F('i = \\frac{v_{in}}{R} = C\\,\\frac{dv_C}{dt}, \\qquad v_{out} = -v_C \\;\\Rightarrow\\; \\frac{dv_{out}}{dt} = -\\frac{v_{in}}{RC}'),
+        F(
+          Number.isFinite(G)
+            ? 'RC\\,(A + 1)\\,\\frac{dv_{out}}{dt} + v_{out} = -A\\,v_{in}'
+            : 'v_{out}(t) = -\\frac{1}{RC}\\int_0^t v_{in}\\,dt',
+          Number.isFinite(G) ? 'the leaky integrator' : 'a square in, a triangle out',
+        ),
+        C([
+          row('v_out at T/4', vout(tq), atT(x, tq).sol.v.out, 'V'),
+          row('v_out at T/2 (the trough)', vout(th), atT(x, th).sol.v.out, 'V'),
+          row('v_out at the cursor', vout(tc), atT(x, tc).sol.v.out, 'V'),
+          row('input current at the cursor', iin(tc), atT(x, tc).sol.i.R1, 'A'),
+        ]),
+        V([
+          { label: 'slope A/RC', value: p.A / RC, unit: 'V/s' },
+          { label: 'peak to peak A·T/2RC', value: (p.A * p.T) / (2 * RC), unit: 'V', note: Number.isFinite(G) ? 'ideal case' : undefined },
+          ...(Number.isFinite(G) ? [{ label: 'leak τ = RC(A + 1)', value: RC * (G + 1), unit: 's' }] : []),
+        ]),
+      ],
+      marks: [{ t: p.T / 2, label: 'v_in flips' }],
+    }
+  },
+
+  // ---------------------------------------------------------------- G
+  g1(p, s, x) {
+    return rlcEntry(p, x, {
+      text: 'KVL round the loop, with i = C·dv_C/dt, is a second-order equation. The solver’s A matrix carries the same information: det(sI − A) is the characteristic polynomial, and its roots decide the shape.',
+      extra: [F('LC\\,\\frac{d^2 v_C}{dt^2} + RC\\,\\frac{dv_C}{dt} + v_C = E, \\qquad s^2 + \\frac{R}{L}\\,s + \\frac{1}{LC} = 0')],
+    })
+  },
+  g2(p, s, x) {
+    return rlcEntry(p, x, {
+      text: 'At α = ω₀ the roots coincide and the response is E[1 − (1 + αt)e^(−αt)]: no overshoot, and none of the slow tail an overdamped circuit has.',
+      extra: [F('v_C = E\\left[1 - (1 + \\alpha t)\\,e^{-\\alpha t}\\right], \\qquad i = \\frac{E}{L}\\,t\\,e^{-\\alpha t}', 'the critical case, α = ω₀')],
+    })
+  },
+  g3(p, s, x) {
+    const q = series(p)
+    const vC = (t) => p.E + natural(q.alpha, q.w0, -p.E, 0)(t)
+    const d = x.damping
+    const rows = d && d.at
+      ? [
+          row('overshoot at this R', overshootOf(q.zeta), d.at.overshoot, '', 1e-6, 1e-9),
+          row('2 % settling time at this R', settleOf(vC, p.E, 0.02 * Math.abs(p.E), d.at.tEnd), d.at.settle, 's', 1e-6),
+        ]
+      : []
+    return rlcEntry(p, x, {
+      text: 'Two measurements of the same step response, repeated across R in the sweep above: how far v_C overshoots E, and when it last leaves the ±2 % band around E. The quickest settling is not at critical damping but a little below it, where a small overshoot buys a faster approach.',
+      extra: [
+        F('\\text{overshoot} = e^{-\\pi\\zeta/\\sqrt{1-\\zeta^2}} \\;(\\zeta < 1), \\qquad 0 \\;(\\zeta \\ge 1)'),
+        rows.length ? C(rows) : T('This R lies outside the sweep (R_crit/20 to 50·R_crit), where the ringing outlasts any window the trace could resolve; bring R back into range for the two measurements.'),
+        V([{ label: 'critical R = 2√(L/C)', value: q.Rcrit, unit: 'Ω' }]),
+      ],
+    })
+  },
+  g4(p, s, x) {
+    const q = series(p)
+    const extra = [
+      F('v_C = E\\left[1 - e^{-\\alpha t}\\left(\\cos\\omega_d t + \\frac{\\alpha}{\\omega_d}\\sin\\omega_d t\\right)\\right], \\qquad \\omega_d = \\sqrt{\\omega_0^2 - \\alpha^2}'),
+      F('\\text{first peak: } t_p = \\frac{\\pi}{\\omega_d}, \\qquad \\frac{v_{C,max} - E}{E} = e^{-\\pi\\zeta/\\sqrt{1-\\zeta^2}}, \\qquad \\zeta = \\frac{\\alpha}{\\omega_0}'),
+    ]
+    return rlcEntry(p, x, { text: 'Complex roots: the response rings at ω_d inside an envelope e^(−αt). The damping ratio alone fixes the overshoot and the ratio of one peak to the next.', extra })
+  },
+  g5(p, s, x) {
+    const w0 = 1 / Math.sqrt(p.L1 * p.C1)
+    const vC = (t) => p.E * (1 - Math.cos(w0 * t))
+    const i = (t) => p.E * Math.sqrt(p.C1 / p.L1) * Math.sin(w0 * t)
+    const tc = x.cursor
+    const end = x.energy.points[x.energy.points.length - 1]
+    const storedEnd = 0.5 * p.C1 * vC(x.tEnd) ** 2 + 0.5 * p.L1 * i(x.tEnd) ** 2
+    const zeros = crossings(x.tr.t, x.tr.series('i', 'L1'), (t) => x.tr.at(t).sol.i.L1).filter((t) => t > 1e-9 * x.tEnd)
+    const peaks = peakOf(x, 'volt', 'C1', sgn(p.E))
+    return {
+      blocks: [
+        T('No resistance, no decay: the roots are ±jω₀ and the energy the source has delivered is all still in the circuit, swapping between ½Cv² and ½Li² every quarter cycle.'),
+        F('v_C = E\\,(1 - \\cos\\omega_0 t), \\qquad i = E\\sqrt{\\tfrac{C}{L}}\\,\\sin\\omega_0 t, \\qquad \\omega_0 = \\frac{1}{\\sqrt{LC}}'),
+        F('\\tfrac{1}{2} C v_C^2 + \\tfrac{1}{2} L i^2 = E\\, C\\, v_C = W_{source}', 'nothing is lost'),
+        C([
+          row('v_C at the cursor', vC(tc), atT(x, tc).sol.volt.C1, 'V'),
+          row('i at the cursor', i(tc), atT(x, tc).sol.i.L1, 'A'),
+          ...(peaks ? [row('peak v_C = 2E', 2 * p.E, peaks[0].y, 'V', 1e-8)] : []),
+          ...(zeros.length >= 2 ? [row('zeros of i spaced π/ω₀', Math.PI / w0, zeros[1] - zeros[0], 's', 1e-8)] : []),
+          row('stored at the end = ½Cv² + ½Li²', storedEnd, end.stored, 'J', 1e-7, 1e-15),
+          row('supplied at the end = stored', storedEnd, end.supplied, 'J', 1e-7, 1e-15),
+          row('dissipated', 0, end.dissipated, 'J', 0, 1e-15),
+        ]),
+        V([
+          { label: 'ω₀', value: w0, unit: 'rad/s' },
+          { label: 'peak current E√(C/L)', value: p.E * Math.sqrt(p.C1 / p.L1), unit: 'A' },
+          { label: 'period 2π/ω₀', value: (2 * Math.PI) / w0, unit: 's' },
+        ]),
+      ],
+      marks: [{ t: Math.PI / w0, label: 'v_C peak, i = 0' }],
+    }
+  },
+  g6(p, s, x) {
+    const q = series(p)
+    const vC = (t) => p.E + natural(q.alpha, q.w0, p.v0 - p.E, p.i0 / p.C1)(t)
+    const iL = (t) => natural(q.alpha, q.w0, p.i0, (p.E - p.v0 - p.R1 * p.i0) / p.L1)(t)
+    const own = natural(q.alpha, q.w0, p.v0, p.i0 / p.C1)
+    const tc = x.cursor
+    const th = x.tEnd / 2
+    return {
+      blocks: [
+        T('The same equation as G4 with a different starting point. The forced part, E, is the source’s; the natural part starts from the two initial conditions and dies with e^(−αt).'),
+        F('v_C(t) = E + e^{-\\alpha t}\\left[(v_0 - E)\\cos\\omega_d t + \\frac{i_0/C + \\alpha(v_0 - E)}{\\omega_d}\\sin\\omega_d t\\right]'),
+        F('v_C(0^+) = v_0, \\qquad i_L(0^+) = i_0, \\qquad \\frac{dv_C}{dt}(0^+) = \\frac{i_0}{C}, \\qquad \\frac{di_L}{dt}(0^+) = \\frac{E - v_0 - R i_0}{L}', 'what the states hand the equation'),
+        C([
+          row('v_C(0⁺) = v_C(0)', p.v0, atT(x, 0).x[0], 'V'),
+          row('i_L(0⁺) = i_L(0)', p.i0, atT(x, 0).x[1], 'A'),
+          row('v_C at the cursor', vC(tc), atT(x, tc).sol.volt.C1, 'V'),
+          row('i_L at the cursor', iL(tc), atT(x, tc).sol.i.L1, 'A'),
+          row('v_C at mid-window', vC(th), atT(x, th).sol.volt.C1, 'V'),
+          ...(x.ghost ? [row('bright − dim = natural response from (v₀, i₀)', own(tc), atT(x, tc).x[0] - x.ghost.at(Math.min(tc, x.tEnd)).x[0], 'V')] : []),
+        ]),
+        V([
+          { label: 'α = R/2L', value: q.alpha, unit: '1/s' },
+          { label: 'ω_d', value: q.wd, unit: 'rad/s' },
+          { label: 'both settle to', value: p.E, unit: 'V' },
+        ]),
+      ],
+    }
+  },
+  g7(p, s, x) {
+    const alpha = 1 / (2 * p.R1 * p.C1)
+    const w0 = 1 / Math.sqrt(p.L1 * p.C1)
+    const zeta = alpha / w0
+    const iL = (t) => p.I + natural(alpha, w0, -p.I, 0)(t)
+    const v = (t) => natural(alpha, w0, 0, p.I / p.C1)(t)
+    const tc = x.cursor
+    const peaks = zeta < 1 ? peakOf(x, 'i', 'L1', sgn(p.I)) : null
+    return {
+      blocks: [
+        T('KCL at the one node is the series loop’s KVL with every quantity swapped for its dual. The inductor current takes the role v_C had; the node voltage the role i had.'),
+        F('C\\,\\frac{dv}{dt} + \\frac{v}{R} + i_L = I, \\qquad v = L\\,\\frac{di_L}{dt} \\;\\Rightarrow\\; s^2 + \\frac{1}{RC}\\,s + \\frac{1}{LC} = 0'),
+        F('\\alpha = \\frac{1}{2RC}, \\qquad \\omega_0 = \\frac{1}{\\sqrt{LC}}, \\qquad R_{crit} = \\tfrac{1}{2}\\sqrt{L/C}', 'compare α = R/2L, R_crit = 2√(L/C) in series'),
+        C([
+          row('2α = 1/RC from det(sI − A)', 1 / (p.R1 * p.C1), x.state.poly[1], '1/s'),
+          row('ω₀² = 1/LC from det(sI − A)', w0 * w0, x.state.poly[2], '1/s²'),
+          row('ζ = α/ω₀', zeta, x.state.zeta, ''),
+          row('i_L at the cursor', iL(tc), atT(x, tc).sol.i.L1, 'A'),
+          row('v at the cursor', v(tc), atT(x, tc).sol.v.in, 'V'),
+          ...(peaks ? [row('overshoot of i_L', overshootOf(zeta), (peaks[0].y - p.I) / p.I, '', 1e-8)] : []),
+        ]),
+        V([
+          { label: 'R_crit = ½√(L/C)', value: 0.5 * Math.sqrt(p.L1 / p.C1), unit: 'Ω' },
+          { label: 'series R for the same ζ', value: 2 * zeta * Math.sqrt(p.L1 / p.C1), unit: 'Ω' },
+        ]),
+      ],
+    }
+  },
+}
+
+/**
+ * The shared body of G1–G4: the state-space numbers against the hand values,
+ * v_C and i against the three-face closed form, and whichever face-specific
+ * rows the current R makes measurable — the roots when real, the peak when
+ * critical, the overshoot and peak time when ringing.
+ */
+function rlcEntry(p, x, { text, extra = [] }) {
+  const q = series(p)
+  const vC = (t) => p.E + natural(q.alpha, q.w0, -p.E, 0)(t)
+  const i = (t) => natural(q.alpha, q.w0, 0, p.E / p.L1)(t)
+  const tc = x.cursor
+  const th = x.tEnd / 2
+  const st = x.state
+  const rows = [
+    row('2α = R/L from det(sI − A)', p.R1 / p.L1, st.poly[1], '1/s'),
+    row('ω₀² = 1/LC from det(sI − A)', q.w0 * q.w0, st.poly[2], '1/s²'),
+    row('v_C at the cursor', vC(tc), atT(x, tc).sol.volt.C1, 'V'),
+    row('i at the cursor', i(tc), atT(x, tc).sol.i.L1, 'A'),
+    row('v_C at mid-window', vC(th), atT(x, th).sol.volt.C1, 'V'),
+  ]
+  const marks = []
+  const guides = []
+  const values = [
+    { label: 'α = R/2L', value: q.alpha, unit: '1/s' },
+    { label: 'ω₀ = 1/√LC', value: q.w0, unit: 'rad/s' },
+    { label: 'ζ = α/ω₀', value: q.zeta, unit: '', note: st.face },
+  ]
+  if (st.face === 'overdamped') {
+    const beta = Math.sqrt(q.alpha * q.alpha - q.w0 * q.w0)
+    rows.push(row('slow root −ω₀²/(α+β)', -(q.w0 * q.w0) / (q.alpha + beta), st.roots[0].re, '1/s'))
+    rows.push(row('fast root −(α+β)', -(q.alpha + beta), st.roots[1].re, '1/s'))
+    const peaks = peakOf(x, 'volt', 'C1', sgn(p.E))
+    rows.push(row('overshoot: none', 0, peaks ? Math.max(0, (peaks[0].y - p.E) / p.E) : 0, '', 0, 1e-9))
+    values.push({ label: 'slow time constant', value: (q.alpha + beta) / (q.w0 * q.w0), unit: 's' })
+  } else if (st.face === 'critical') {
+    const peaks = peakOf(x, 'i', 'L1', sgn(p.E))
+    if (peaks) {
+      rows.push(row('i peaks at t = 1/α', 1 / q.alpha, peaks[0].t, 's', 1e-7))
+      rows.push(row('i peak = E/(Lαe)', p.E / (p.L1 * q.alpha * Math.E), peaks[0].y, 'A', 1e-8))
+      marks.push({ t: 1 / q.alpha, label: 'i peaks' })
+    }
+    rows.push(row('repeated root −α', -q.alpha, st.roots[0].re, '1/s', 1e-6))
+  } else {
+    const os = overshootOf(q.zeta)
+    rows.push(row('ω_d = √(ω₀² − α²)', q.wd, st.wd, 'rad/s'))
+    const peaks = peakOf(x, 'volt', 'C1', sgn(p.E))
+    if (peaks) {
+      rows.push(row('first peak at π/ω_d', Math.PI / q.wd, peaks[0].t, 's', 1e-7))
+      rows.push(row('overshoot e^(−πζ/√(1−ζ²))', os, (peaks[0].y - p.E) / p.E, '', 1e-8))
+      if (peaks.length >= 2) rows.push(row('next peak over first = overshoot²', os * os, (peaks[1].y - p.E) / (peaks[0].y - p.E), '', 1e-6))
+      marks.push({ t: Math.PI / q.wd, label: 'peak' })
+    }
+    const env = (q.w0 / q.wd) * p.E
+    guides.push({ f: (t) => p.E + env * Math.exp(-q.alpha * t), label: 'envelope' }, { f: (t) => p.E - env * Math.exp(-q.alpha * t) })
+    values.push({ label: 'Q = 1/2ζ', value: 1 / (2 * q.zeta), unit: '' }, { label: 'overshoot', value: 100 * os, unit: '%' })
+  }
+  return {
+    blocks: [T(text), ...extra, F('\\alpha = \\frac{R}{2L}, \\qquad \\omega_0 = \\frac{1}{\\sqrt{LC}}, \\qquad s = -\\alpha \\pm \\sqrt{\\alpha^2 - \\omega_0^2}'), C(rows), V(values)],
+    marks,
+    guides,
+  }
 }
 
 /**
@@ -527,7 +1107,8 @@ const ENTRIES = {
  * Thévenin equivalent is taken with it removed (the source as the load sees
  * it), and the sweep re-solves the whole circuit at each value of that knob.
  */
-export function analyse(exp, p) {
+export function analyse(exp, p, cursor) {
+  if (isDynamic(exp)) return analyseDynamic(exp, p, cursor)
   const net = exp.net(p)
   let sol = null
   let refusal = null
@@ -548,8 +1129,204 @@ export function analyse(exp, p) {
       if (!(err instanceof NetworkError)) throw err
     }
   }
-  if (exp.sweepId) x.sweep = sweepKnob(exp, p)
+  if (exp.sweepId && exp.port) x.sweep = sweepKnob(exp, p)
   return x
+}
+
+/**
+ * The dynamic groups. The window is the experiment's own — N time constants
+ * or N cycles — so the trace always resolves whatever the knobs say. The
+ * schematic's readout is the exact circuit at the cursor: `x.sol` is
+ * `tr.at(cursor).sol`, and everything that was true of a DC solve (KCL
+ * residual, powers, the printed equations) is true of it, with the states
+ * standing in as sources at their instantaneous values.
+ *
+ * `cursor` is in seconds; absent, the experiment's default fraction of the
+ * window is used (that is what the tests analyse at).
+ */
+export function analyseDynamic(exp, p, cursor) {
+  const net = exp.net(p)
+  const tEnd = exp.window(p)
+  const t = Number.isFinite(cursor) ? Math.min(Math.max(cursor, 0), tEnd) : exp.cursor * tEnd
+  const x = { net, tEnd, cursor: t, sol: null, refusal: null, tr: null }
+  try {
+    x.tr = transient(net, { tEnd, points: 601 })
+  } catch (err) {
+    if (!(err instanceof NetworkError)) throw err
+    x.refusal = err
+    return x
+  }
+  x.dyn = x.tr.dyn
+  x.before = initialConditions(net)
+  x.now = x.tr.at(t)
+  x.sol = x.now.sol
+  x.state = stateSummary(x.dyn)
+  // The energy bookkeeping integrates the exact waveform with a 7-point rule
+  // on every sample interval — thousands of evaluations — so it is computed
+  // the first time something asks for it (the energy view, F5, G5).
+  let energy = null
+  Object.defineProperty(x, 'energy', {
+    enumerable: true,
+    get() {
+      if (!energy) energy = energies(x.tr)
+      return energy
+    },
+  })
+  if (exp.ghost) {
+    try {
+      x.ghost = transient(exp.net(exp.ghost(p)), { tEnd, points: 601 })
+    } catch (err) {
+      if (!(err instanceof NetworkError)) throw err
+    }
+  }
+  if (exp.port) {
+    try {
+      x.thevenin = thevenin(portNetAt(net, tEnd), exp.port[0], exp.port[1])
+    } catch (err) {
+      if (!(err instanceof NetworkError)) throw err
+    }
+  }
+  // The one-point measurement is cheap and runs on every keystroke; the sweep
+  // across R (fifty transients) is the damping view's own, via dampingSweep().
+  if (exp.views.includes('damping')) x.damping = { at: dampingPoint(exp, p), Rcrit: series(p).Rcrit, ...sweepRange(series(p)) }
+  return x
+}
+
+/**
+ * Σ p for the meters. Tellegen says it is zero; the solver says it is zero to
+ * rounding, which on a 1 V, 10 mA circuit prints as "−0.0016 fW". A residual
+ * below 1e-9 of the largest single element power is the zero the theorem
+ * promises, not a reading, and is shown as one.
+ */
+export function netPower(sol) {
+  let scale = 0
+  for (const w of Object.values(sol.p)) scale = Math.max(scale, Math.abs(w))
+  return Math.abs(sol.pTotal) <= 1e-9 * scale ? 0 : sol.pTotal
+}
+
+/**
+ * The resistive network a capacitor sees after the step: capacitors removed,
+ * every source at its value at time t, switches in their after position.
+ */
+function portNetAt(net, t) {
+  return {
+    elements: net.elements
+      .filter((e) => e.type !== 'C')
+      .map((e) => (e.type === 'V' || e.type === 'I' ? { ...e, value: sourceValue(e, t), wave: undefined } : e)),
+  }
+}
+
+/**
+ * What the A matrix says about the circuit, in the words of the lesson:
+ * det(sI − A) and its roots; τ for one state; α, ω₀, ζ, Q, ω_d and the
+ * damping face for two.
+ */
+export function stateSummary(dyn) {
+  const { A, n } = dyn
+  const poly = charPoly(A)
+  const out = { n, A, B: dyn.B, poly, states: dyn.states, inputs: dyn.inputs }
+  if (n === 1) {
+    out.roots = [{ re: A[0][0], im: 0 }]
+    out.tau = A[0][0] < 0 ? -1 / A[0][0] : Infinity // a pure integrator has no τ
+    return out
+  }
+  if (n === 2) {
+    const alpha = poly[1] / 2
+    const w0 = Math.sqrt(Math.abs(poly[2]))
+    const disc = alpha * alpha - w0 * w0
+    out.alpha = alpha
+    out.w0 = w0
+    out.zeta = w0 > 0 ? alpha / w0 : Infinity
+    out.Q = alpha > 0 ? w0 / (2 * alpha) : Infinity
+    if (Math.abs(disc) <= 1e-9 * w0 * w0) {
+      out.face = 'critical'
+      out.roots = [{ re: -alpha, im: 0 }, { re: -alpha, im: 0 }]
+      out.wd = 0
+    } else if (disc < 0) {
+      out.face = alpha === 0 ? 'undamped' : 'underdamped'
+      out.wd = Math.sqrt(-disc)
+      out.roots = [{ re: -alpha, im: out.wd }, { re: -alpha, im: -out.wd }]
+    } else {
+      out.face = 'overdamped'
+      const beta = Math.sqrt(disc)
+      out.roots = [{ re: -(w0 * w0) / (alpha + beta), im: 0 }, { re: -(alpha + beta), im: 0 }]
+      out.wd = 0
+    }
+    return out
+  }
+  out.roots = []
+  return out
+}
+
+/** The R range the damping sweep covers: from a fortieth of critical (ζ = 0.05) to fifty times it. */
+const sweepRange = (q) => ({ lo: q.Rcrit / 20, hi: q.Rcrit * 50 })
+
+/**
+ * Overshoot (fraction of the step) and 2 % settling time of v_C for one
+ * series-RLC setting, or null outside the sweep's range: below ζ = 0.05 the
+ * ringing outlasts any window a sample grid can resolve, and the settle
+ * measurement would be reading aliasing.
+ */
+function dampingPoint(exp, p) {
+  const q = series(p)
+  const { lo, hi } = sweepRange(q)
+  if (!(p.R1 >= lo * (1 - 1e-9) && p.R1 <= hi * (1 + 1e-9))) return null
+  const net = exp.net(p)
+  const beta = q.zeta > 1 ? Math.sqrt(q.alpha * q.alpha - q.w0 * q.w0) : 0
+  const slow = q.zeta > 1 ? (q.alpha + beta) / (q.w0 * q.w0) : 1 / q.alpha
+  const tEnd = 8 * slow
+  const cycles = (tEnd * (q.wd || q.w0)) / (2 * Math.PI)
+  const points = Math.min(801, Math.max(201, Math.round(200 + 24 * cycles)))
+  const tr = transient(net, { tEnd, points })
+  const y = tr.series('volt', 'C1')
+  const f = (t) => tr.at(t).sol.volt.C1
+  const ex = extrema(tr.t, y, f).filter((e) => e.kind === (p.E < 0 ? 'min' : 'max'))
+  const peak = ex.length ? ex[0].y : p.E
+  return {
+    R: p.R1,
+    zeta: q.zeta,
+    overshoot: Math.max(0, (peak - p.E) / p.E),
+    settle: settleTime(tr.t, y, f, p.E, 0.02 * Math.abs(p.E)),
+    tEnd,
+  }
+}
+
+const DAMP_MEMO = new Map()
+
+/**
+ * The damping sweep behind G3: R from R_crit/20 to 50·R_crit on a log grid,
+ * each point a fresh exact transient measured for overshoot and settling
+ * time. Memoized on (E, L, C) — the sweep is the same whichever R the knob is
+ * at — so dragging R costs nothing after the first draw.
+ */
+export function dampingSweep(exp, p) {
+  const q = series(p)
+  const key = JSON.stringify([exp.id, p.E, p.L1, p.C1])
+  let out = DAMP_MEMO.get(key)
+  if (out) return out
+  const points = []
+  const n = 49
+  const { lo, hi } = sweepRange(q)
+  for (let k = 0; k < n; k++) points.push(dampingPoint(exp, { ...p, R1: lo * Math.pow(hi / lo, k / (n - 1)) }))
+  let fastest = points[0]
+  for (const d of points) if (d.settle < fastest.settle) fastest = d
+  // The 2 % settling time has cliffs — where the first peak drops inside the
+  // band the time falls by a third in a few ohms — so the grid's minimum is
+  // refined by a fine scan of the bracket around it. The scan's points join
+  // the curve, so the plot shows the cliff instead of a dot floating under it.
+  const k = points.indexOf(fastest)
+  const a = points[Math.max(0, k - 1)].R
+  const b = points[Math.min(n - 1, k + 1)].R
+  for (let j = 1; j < 24; j++) {
+    const d = dampingPoint(exp, { ...p, R1: a * Math.pow(b / a, j / 24) })
+    points.push(d)
+    if (d.settle < fastest.settle) fastest = d
+  }
+  points.sort((u, v) => u.R - v.R)
+  out = { points, fastest, Rcrit: q.Rcrit, lo, hi }
+  DAMP_MEMO.clear()
+  DAMP_MEMO.set(key, out)
+  return out
 }
 
 /**

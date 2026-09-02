@@ -1,6 +1,8 @@
 import React from 'react'
 import { fmt } from '@ee-labs/ui'
 import { Formula, agrees } from '@ee-labs/explain'
+import { fmtCell } from '@ee-labs/network'
+import { netPower } from '../math.js'
 
 // The lower pane's views. Each takes the analysis from math.js `analyse` and
 // shows one thing about it. None of them computes physics: every number here
@@ -8,6 +10,8 @@ import { Formula, agrees } from '@ee-labs/explain'
 // with the schematic.
 
 const num = (v, unit, sig = 4) => (Number.isFinite(v) ? fmt(v, unit, sig) : v === Infinity ? '∞' : '—')
+// A dimensionless ratio (ζ, Q): no SI prefix — "0.250", never "250 m".
+const plain = (v, sig = 3) => (Number.isFinite(v) ? v.toPrecision(sig) : v === Infinity ? '∞' : '—')
 
 /**
  * The system of equations the solver actually built: one KCL row per node
@@ -93,7 +97,7 @@ export function PowerPane({ sol }) {
         )
       })}
       <p className="power-total">
-        Σ p over every element = <b>{num(sol.pTotal, 'W', 2)}</b> — Tellegen’s theorem, from KVL and KCL alone. Delivering to
+        Σ p over every element = <b>{num(netPower(sol), 'W', 2)}</b> — Tellegen’s theorem, from KVL and KCL alone. Delivering to
         the left, absorbing to the right.
       </p>
     </div>
@@ -231,6 +235,123 @@ export function SuperpositionPane({ sp }) {
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+const FACE_WORDS = {
+  overdamped: 'overdamped — two real roots, no overshoot',
+  critical: 'critically damped — one repeated real root',
+  underdamped: 'underdamped — a complex pair, it rings',
+  undamped: 'undamped — roots on the axis, it rings forever',
+}
+
+/**
+ * The state equation the propagator integrates: ẋ = A x + B u with the
+ * matrices the engine actually built from this circuit, its characteristic
+ * polynomial and roots, and the state just before t = 0. The last table reads
+ * each state's derivative at the cursor from the exact solution and checks it
+ * against the element law (C·dv/dt is the capacitor's current, L·di/dt the
+ * inductor's voltage) — the differential equation being true at this instant,
+ * not being asserted.
+ */
+export function StatePane({ x }) {
+  const { state: s, before, now, dyn } = x
+  const xSym = s.states.map((q) => (q.type === 'C' ? `v_{${q.id}}` : `i_{${q.id}}`))
+  const uSym = s.inputs.map((id) => (dyn.norm.elements.find((e) => e.id === id)?.type === 'I' ? `I_{${id}}` : `V_{${id}}`))
+  const col = (items) => `\\begin{bmatrix} ${items.join(' \\\\ ')} \\end{bmatrix}`
+  const mat = (M) => `\\begin{bmatrix} ${M.map((row) => row.map(fmtCell).join(' & ')).join(' \\\\ ')} \\end{bmatrix}`
+  const dot = (sym) => `\\dot{${sym}}`
+  const eq = `${col(xSym.map(dot))} = ${mat(s.A)} ${col(xSym)} ${s.inputs.length ? `+ ${mat(s.B)} ${col(uSym)}` : ''}`
+  const charEq =
+    s.n === 1
+      ? `\\det(sI - A) = s ${s.poly[1] >= 0 ? '+' : '-'} ${fmtCell(Math.abs(s.poly[1]))}`
+      : `\\det(sI - A) = s^2 ${s.poly[1] >= 0 ? '+' : '-'} ${fmtCell(Math.abs(s.poly[1]))}\\,s ${s.poly[2] >= 0 ? '+' : '-'} ${fmtCell(Math.abs(s.poly[2]))}`
+  const root = (r) => (r.im ? `${num(r.re, '', 4)} ${r.im > 0 ? '+' : '−'} j${num(Math.abs(r.im), '', 4)}` : num(r.re, '', 4))
+  const rows =
+    s.n === 1
+      ? [['τ = −1/A₁₁', s.tau === Infinity ? '∞ (a pure integrator)' : num(s.tau, 's', 4)]]
+      : [
+          ['α (neper frequency)', num(s.alpha, 's⁻¹', 4)],
+          ['ω₀ (undamped natural)', num(s.w0, 'rad/s', 4)],
+          ['ζ = α/ω₀', plain(s.zeta)],
+          ['Q = ω₀/2α', plain(s.Q)],
+          ['ω_d = √(ω₀² − α²)', num(s.wd, 'rad/s', 4)],
+          ['face', FACE_WORDS[s.face] || s.face],
+        ]
+  return (
+    <div className="state" data-role="state" data-face={s.face || (s.n === 1 ? 'first-order' : '')}>
+      <div className="eq-matrix">
+        <Formula>{eq}</Formula>
+        <p className="hint">
+          {s.n} state{s.n === 1 ? '' : 's'}: {xSym.map((q) => q.replace(/[{}]/g, '')).join(', ')} — a voltage for each capacitor, a
+          current for each inductor. The resistive network in between gives A and B; the exact solution is x(t) = e^At x(0) plus the
+          driven part.
+        </p>
+        <Formula>{charEq}</Formula>
+      </div>
+      <div className="pane-grid two">
+        <table className="table">
+          <caption>{s.n === 1 ? 'the root and the time constant' : 'the roots and the damping'}</caption>
+          <tbody>
+            {s.roots.map((r, k) => (
+              <tr key={k}>
+                <td>
+                  root s{s.n > 1 ? <sub>{k + 1}</sub> : null}
+                </td>
+                <td className="num">{root(r)} s⁻¹</td>
+              </tr>
+            ))}
+            {rows.map(([label, v]) => (
+              <tr key={label}>
+                <td>{label}</td>
+                <td className="num">{v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <table className="table">
+          <caption>at the cursor, t = {num(x.cursor, 's', 3)}</caption>
+          <thead>
+            <tr>
+              <th>state</th>
+              <th>x(0⁻)</th>
+              <th>x(t)</th>
+              <th>ẋ(t)</th>
+              <th>element law</th>
+              <th aria-label="agreement" />
+            </tr>
+          </thead>
+          <tbody>
+            {s.states.map((q, k) => {
+              const isC = q.type === 'C'
+              const law = isC ? now.sol.i[q.id] / q.value : now.sol.volt[q.id] / q.value
+              const ok = agrees({ predicted: law, measured: now.dxdt[k], tol: 1e-6, abs: 1e-12 })
+              return (
+                <tr key={q.id}>
+                  <td>
+                    {isC ? 'v' : 'i'}
+                    <sub>{q.id}</sub>
+                  </td>
+                  <td className="num">{num(before.x0[k], isC ? 'V' : 'A', 4)}</td>
+                  <td className="num">{num(now.x[k], isC ? 'V' : 'A', 4)}</td>
+                  <td className="num">{num(now.dxdt[k], isC ? 'V/s' : 'A/s', 4)}</td>
+                  <td className="num">
+                    {isC ? `i_${q.id}/C` : `v_${q.id}/L`} = {num(law, isC ? 'V/s' : 'A/s', 4)}
+                  </td>
+                  <td className={ok ? 'agree' : 'disagree'}>{ok ? '✓' : '✗'}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="hint">
+        x(0⁻) is the DC picture before the step — switches in their <i>before</i> position, sources at their pre-step values,
+        capacitors open and inductors shorted
+        {before.assumed.length ? `; ${before.assumed.join(', ')} had no DC path and is taken as uncharged` : ''}. A state cannot
+        jump, so x(0⁺) = x(0⁻); everything else may.
+      </p>
     </div>
   )
 }

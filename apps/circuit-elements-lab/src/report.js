@@ -9,16 +9,24 @@ import { fmtNum } from '@ee-labs/ui'
  * it came from, and its probe passed because it counted rows without reading
  * them). `outcome` is the one-line result: the KCL residual, or the refusal.
  */
-export function reportSummary({ id, params, show, view, outcome }) {
+export function reportSummary({ id, params, show, view, outcome, cursor }) {
   const exp = byId[id]
-  return {
+  // A toggle knob reports its position by name; a number, as a number.
+  const knob = (k, v) => {
+    if (typeof v !== 'boolean') return `${k} = ${fmtNum(v)}`
+    const def = exp?.params.find((q) => q.key === k)
+    return `${k} = ${def ? (v ? def.on : def.off) : v}`
+  }
+  const out = {
     Experiment: exp ? `${exp.id.toUpperCase()} · ${exp.name}` : id,
     Group: exp?.group || '(unknown)',
     Settings: Object.entries(params || {})
-      .map(([k, v]) => `${k} = ${fmtNum(v)}`)
+      .map(([k, v]) => knob(k, v))
       .join(', '),
     'Schematic shows': { i: 'currents', v: 'voltages', p: 'powers', none: 'no readings' }[show] || show,
     'Lower pane': view,
     Outcome: outcome,
   }
+  if (Number.isFinite(cursor)) out.Cursor = `t = ${fmtNum(cursor)} s`
+  return out
 }

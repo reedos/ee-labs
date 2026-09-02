@@ -39,6 +39,21 @@ describe('the report summary', () => {
     expect(s.Settings).toMatch(/R3 = 3000/)
   })
 
+  it('names a toggle knob’s position rather than printing a boolean (F6 crashed the app on this)', () => {
+    const off = reportSummary({ id: 'f6', params: defaultsOf('f6'), show: 'v', view: 'scope', outcome: 'solved' })
+    expect(off.Settings).toMatch(/ideal = finite R_off/)
+    const on = reportSummary({ id: 'f6', params: { ...defaultsOf('f6'), ideal: true }, show: 'v', view: 'scope', outcome: 'refused' })
+    expect(on.Settings).toMatch(/ideal = ideal/)
+    expect(on.Settings).not.toMatch(/true|false/)
+  })
+
+  it('reports the cursor time for a dynamic experiment, and no cursor row for a DC one', () => {
+    const dyn = reportSummary({ id: 'f3', params: defaultsOf('f3'), show: 'v', view: 'scope', outcome: 'solved', cursor: 0.0025 })
+    expect(dyn.Cursor).toBe('t = 0.0025 s') // two significant figures, as every other setting
+    const dc = reportSummary({ id: 'b1', params: defaultsOf('b1'), show: 'i', view: 'equations', outcome: 'solved', cursor: null })
+    expect(dc.Cursor).toBeUndefined()
+  })
+
   it('says what the schematic shows in words', () => {
     const base = { id: 'b1', params: defaultsOf('b1'), view: 'equations', outcome: 'solved' }
     expect(reportSummary({ ...base, show: 'p' })['Schematic shows']).toBe('powers')

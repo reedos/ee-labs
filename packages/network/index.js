@@ -11,3 +11,9 @@ export { SingularError, solve, solveComplex, matVec } from './src/linalg.js'
 export { assemble, diagnose, effective, readout, solveDC } from './src/mna.js'
 export { equations, matrixLatex, diffSym, vSym, iSym, fmtCell } from './src/equations.js'
 export { thevenin, superposition, loadSweep, killed, withElements, lineFit, sourcePower } from './src/theorems.js'
+
+// Time domain: capacitors and inductors as states, solved exactly.
+export { expm, expm2, charPoly, matMul, matVecMul, zeros, eye } from './src/expm.js'
+export { sourceBefore, sourceValue, sourceAffine, sourceBreaks, allBreaks } from './src/waves.js'
+export { dynamics, initialConditions } from './src/dynamics.js'
+export { transient, energies, bisect, crossings, extrema, refineExtremum, settleTime } from './src/transient.js'

@@ -461,7 +461,7 @@ single loop is walked.
   output back to the *non-inverting* input: hysteresis with thresholds
   `±V_sat · R₁/(R₁ + R₂)`; a noisy input crosses cleanly once. Control Lab's "latches
   to a rail", built. Measured: both thresholds; one transition per crossing.
-### Group F — Elements that remember, and the first-order equation (7)
+### Group F — Elements that remember, and the first-order equation (7) · built
 
 - **F1 · The capacitor: current only when the voltage changes.** `i = C dv/dt`.
   Drive with a triangle: the current is a square wave, amplitude `C · slope`. Drive
@@ -496,7 +496,7 @@ single loop is walked.
   Toggle finite A: the ramp bends into an exponential toward `−A·V` — the integrator
   is a first-order low-pass with a very long τ, `τ = (A+1)RC`. Measured.
 
-### Group G — Second order: one equation, three faces (7)
+### Group G — Second order: one equation, three faces (7) · built
 
 - **G1 · The equation.** Series RLC, KVL, differentiated once:
   `L d²i/dt² + R di/dt + i/C = dv_s/dt`; or for the capacitor voltage,
@@ -683,7 +683,10 @@ state, and averaging.
    Scope, energy and sweep views. **Groups F and G** — RC, RL and RLC with the
    differential equations written out, initial conditions, and the three damping
    faces. Exit: energy and continuity
-   invariants; cross-lab pins against Circuit Lab's RK4 green.
+   invariants; cross-lab pins against Circuit Lab's RK4 green. *Shipped dark
+   2026-09-01: `dynamics`/`transient`/`energies` in `packages/network`, scope,
+   energy, state-equation and damping-sweep views, F1–F7 and G1–G7, every note
+   sentence measured in `experiments.test.js`.*
 3. **Phase 3 — Phasors.** Complex MNA, phasor diagram view, long-time-limit
    agreement, AC power measures, hand-over to Circuit Lab. **Group H.** Exit:
    phasor-vs-time invariant; H6 hand-over exact and tested both ways.

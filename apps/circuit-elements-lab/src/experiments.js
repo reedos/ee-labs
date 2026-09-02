@@ -8,7 +8,16 @@
 //
 // Groups follow the plan: A the elements themselves and what the signs mean,
 // B the two laws, C series/parallel, D the analysis methods and theorems, E
-// the op-amp as a circuit element.
+// the op-amp as a circuit element, F the capacitor and inductor — elements
+// with a state, so the circuit has a time axis — and G the second-order
+// circuit and its three damping faces.
+//
+// An experiment with a capacitor or inductor in it is dynamic: `window(p)` is
+// the span of time shown, `cursor` the fraction of it the schematic's meters
+// read at until the reader scrubs, and `scope` which waveforms the scope
+// draws on which axis. Everything else is as for the resistive groups.
+
+import { fmt } from '@ee-labs/ui'
 
 export const GROUPS = [
   'A · Elements and signs',
@@ -16,6 +25,8 @@ export const GROUPS = [
   'C · Series and parallel',
   'D · Analysis and theorems',
   'E · Op-amps',
+  'F · Elements that remember',
+  'G · Second order',
 ]
 
 // ------------------------------------------------------------ knobs
@@ -23,6 +34,17 @@ const R = (key, label, def, hint) => ({ key, label, unit: 'Ω', min: 1, max: 1e6
 const Vs = (key, label, def, hint) => ({ key, label, unit: 'V', min: -24, max: 24, scale: 'linear', default: def, hint })
 const Is = (key, label, def, hint) => ({ key, label, unit: 'A', min: -0.1, max: 0.1, scale: 'linear', default: def, hint })
 const Gain = (key, label, def) => ({ key, label, unit: '', min: 1, max: 1e6, scale: 'log', default: def })
+const Cap = (key, label, def, hint) => ({ key, label, unit: 'F', min: 1e-9, max: 1e-3, scale: 'log', default: def, hint })
+const Ind = (key, label, def, hint) => ({ key, label, unit: 'H', min: 1e-6, max: 10, scale: 'log', default: def, hint })
+const Per = (key, label, def, hint) => ({ key, label, unit: 's', min: 1e-6, max: 1, scale: 'log', default: def, hint })
+// The time window is measured in the circuit's own unit — time constants or
+// cycles — so that whatever the knobs, the trace shows the whole story and the
+// sample grid resolves it.
+const Win = (key, label, unit, def, min = 1, max = 20) => ({ key, label, unit, min, max, scale: 'linear', default: def })
+/** A two-position knob: `on` and `off` are the texts of the two positions. */
+const Toggle = (key, label, def, on, off, hint) => ({ key, label, kind: 'toggle', default: def, on, off, hint })
+/** Resistances the note talks about, offered as chips under the knob. */
+const chips = (knob, presets) => ({ ...knob, presets })
 
 // ------------------------------------------------------------ drawing
 // A 420 × 180 canvas. Rails at y = 40 (top) and y = 140 (bottom); the source
@@ -1033,7 +1055,517 @@ export const EXPERIMENTS = [
     sweepY: 'v',
     claim: { buffer: true },
   },
+
+  // ============================================================== F
+  {
+    id: 'f1',
+    group: GROUPS[5],
+    name: 'A capacitor’s current is the slope of its voltage',
+    terms: ['capacitor', 'state', 'current'],
+    note:
+      'A capacitor stores charge, q = C·v, and current is charge per second, so i = C·dv/dt: a ' +
+      'capacitor’s current is proportional to how fast its voltage is CHANGING, not to the ' +
+      'voltage. Drive it with a triangle wave — voltage rising at a steady 4A/T — and the ' +
+      'current is a square wave, ±C·4A/T = ±20 mA here, flat while the voltage climbs and ' +
+      'flipping sign the instant the slope does. The small series R_s is there because an ideal ' +
+      'source wired straight to an ideal capacitor would have to supply infinite current at the ' +
+      'corners; with it the capacitor voltage lags the source by τ = R_sC = 10 µs and the ' +
+      'current settles onto its plateau in the same time. Scrub the cursor: the schematic at ' +
+      'each instant is an ordinary resistive circuit with the capacitor standing in as a voltage ' +
+      'source at its present voltage — that is exactly how the solver sees it.',
+    params: [
+      { key: 'A', label: 'Triangle amplitude', unit: 'V', min: 0.1, max: 24, scale: 'linear', default: 5 },
+      Per('T', 'Period', 1e-3),
+      Cap('C1', 'C', 1e-6),
+      R('Rs', 'Series R_s', 10, 'small: the source’s own resistance'),
+      Win('N', 'Window', 'cycles', 2, 0.5, 10),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'triangle', amp: p.A, period: p.T } },
+        { type: 'R', id: 'Rs', nodes: ['in', 'n1'], value: p.Rs },
+        { type: 'C', id: 'C1', nodes: ['n1', 'gnd'], value: p.C1 },
+      ],
+    }),
+    layout: loop(['Rs', 'C1']),
+    window: (p) => p.N * p.T,
+    cursor: 0.0625,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_in', dim: true }, { q: 'volt', key: 'C1', label: 'v_C' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'C1', label: 'i_C' }] },
+    },
+    show: 'i',
+    view: 'scope',
+    views: ['scope', 'state', 'equations', 'power'],
+    claim: { slope: true },
+  },
+  {
+    id: 'f2',
+    group: GROUPS[5],
+    name: 'An inductor’s voltage is the slope of its current',
+    terms: ['inductor', 'state', 'duality'],
+    note:
+      'The dual. An inductor stores flux, λ = L·i, and voltage is flux per second: v = L·di/dt. ' +
+      'Push a triangle current through it — rising at 4A/T — and the voltage is a square wave of ' +
+      '±L·4A/T = ±0.4 V, flat while the current ramps and flipping when the ramp does. The ' +
+      'parallel R_p plays the role R_s played in F1: an ideal current source into an ideal ' +
+      'inductor would need infinite voltage at each corner, and with R_p the inductor current ' +
+      'lags the source by τ = L/R_p = 1 µs. Swap v for i, C for L, series for parallel, and F1 ' +
+      'turns into this experiment word for word — that swap has a name, duality, and it runs ' +
+      'through the whole group.',
+    params: [
+      { key: 'A', label: 'Triangle amplitude', unit: 'A', min: 1e-3, max: 0.1, scale: 'linear', default: 0.01 },
+      Per('T', 'Period', 1e-3),
+      Ind('L1', 'L', 10e-3),
+      R('Rp', 'Parallel R_p', 1e4, 'large: the source’s own resistance'),
+      Win('N', 'Window', 'cycles', 2, 0.5, 10),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'I', id: 'I1', nodes: ['gnd', 'in'], value: 0, wave: { kind: 'triangle', amp: p.A, period: p.T } },
+        { type: 'L', id: 'L1', nodes: ['in', 'gnd'], value: p.L1 },
+        { type: 'R', id: 'Rp', nodes: ['in', 'gnd'], value: p.Rp },
+      ],
+    }),
+    layout: tankLayout(['L1', 'Rp']),
+    window: (p) => p.N * p.T,
+    cursor: 0.0625,
+    scope: {
+      left: { unit: 'A', traces: [{ q: 'i', key: 'I1', label: 'I_in', dim: true }, { q: 'i', key: 'L1', label: 'i_L' }] },
+      right: { unit: 'V', traces: [{ q: 'volt', key: 'L1', label: 'v_L' }] },
+    },
+    show: 'v',
+    view: 'scope',
+    views: ['scope', 'state', 'equations', 'power'],
+    claim: { slopeDual: true },
+  },
+  {
+    id: 'f3',
+    group: GROUPS[5],
+    name: 'Charging a capacitor: the time constant',
+    terms: ['capacitor', 'state', 'timeconstant', 'initial'],
+    note:
+      'Close the switch at t = 0 and the capacitor does not jump to E: its voltage is a state, ' +
+      'and a state cannot change instantly (that would take infinite current). KVL round the ' +
+      'loop gives E = R·i + v_C with i = C·dv_C/dt — a first-order differential equation, ' +
+      'RC·dv_C/dt + v_C = E. Its solution is v_C(t) = E + (v₀ − E)e^(−t/τ) with τ = RC = 1 ms: ' +
+      'the gap to the final value shrinks by a factor e every time constant, so after one τ the ' +
+      'capacitor has covered 63.2 % of the way and after five 99.3 %. The current starts at ' +
+      '(E − v₀)/R = 12 mA the instant the switch closes — an uncharged capacitor looks like a ' +
+      'short — and dies away with the same τ. Give v_C(0) a value and the same formula holds; ' +
+      'only the starting point moves.',
+    params: [Vs('E', 'Source E', 12), R('R1', 'R', 1000), Cap('C1', 'C', 1e-6), Vs('v0', 'v_C(0)', 0, 'the capacitor’s charge before the switch closes'), Win('N', 'Window', 'τ', 5)],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
+        { type: 'SW', id: 'S1', nodes: ['in', 'n1'], closed: true, before: false },
+        { type: 'R', id: 'R1', nodes: ['n1', 'n2'], value: p.R1 },
+        { type: 'C', id: 'C1', nodes: ['n2', 'gnd'], value: p.C1, x0: p.v0 },
+      ],
+    }),
+    layout: loop(['S1', 'R1', 'C1']),
+    window: (p) => p.N * p.R1 * p.C1,
+    cursor: 0.2,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'volt', key: 'C1', label: 'v_C' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'C1', label: 'i_C' }] },
+    },
+    show: 'i',
+    view: 'scope',
+    views: ['scope', 'state', 'energy', 'equations', 'power'],
+    claim: { tau: true },
+  },
+  {
+    id: 'f4',
+    group: GROUPS[5],
+    name: 'Every RC circuit is one RC circuit: Thévenin sets τ',
+    terms: ['thevenin', 'timeconstant', 'capacitor'],
+    note:
+      'The capacitor here sits behind a divider and a series resistor, and nothing in F3 seems ' +
+      'to apply — until you replace everything to the left of it by its Thévenin equivalent ' +
+      '(D5). Seen from the capacitor the network is a source V_th = E·R₂/(R₁+R₂) = 8 V behind ' +
+      'R_th = R₃ + R₁∥R₂ = 1.167 kΩ, and then it IS F3: v_B(t) = V_th(1 − e^(−t/τ)) with ' +
+      'τ = R_th·C = 1.167 ms. Every circuit with one capacitor is this circuit; the only work is ' +
+      'finding V_th and R_th. Node A moves too, because the charging current passes through the ' +
+      'divider: the instant the source steps, the empty capacitor is a short and A sees ' +
+      'R₂∥R₃, so it starts at 3.43 V and climbs to the divider’s own 8 V as the current dies.',
+    params: [Vs('E', 'Step E', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), R('R3', 'R₃', 500), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'τ', 5)],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'step', from: 0, to: p.E } },
+        { type: 'R', id: 'R1', nodes: ['in', 'A'], value: p.R1 },
+        { type: 'R', id: 'R2', nodes: ['A', 'gnd'], value: p.R2 },
+        { type: 'R', id: 'R3', nodes: ['A', 'B'], value: p.R3 },
+        { type: 'C', id: 'C1', nodes: ['B', 'gnd'], value: p.C1 },
+      ],
+    }),
+    layout: dividerRCLayout(),
+    window: (p) => p.N * (p.R3 + (p.R1 * p.R2) / (p.R1 + p.R2)) * p.C1,
+    cursor: 0.2,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'A', label: 'v_A', dim: true }, { q: 'v', key: 'B', label: 'v_B' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'C1', label: 'i_C' }] },
+    },
+    show: 'v',
+    view: 'scope',
+    views: ['scope', 'state', 'thevenin', 'equations', 'power'],
+    port: ['B', 'gnd'],
+    claim: { theveninTau: true },
+  },
+  {
+    id: 'f5',
+    group: GROUPS[5],
+    name: 'Half the energy is lost, whatever R',
+    terms: ['energy', 'capacitor', 'power'],
+    note:
+      'Charging a capacitor from a fixed source through a resistor wastes exactly half the ' +
+      'energy, and no choice of R can change that. The source delivers E·q = C·E² = 144 µJ in ' +
+      'all; the capacitor ends up holding ½CE² = 72 µJ; the other 72 µJ is heat in the ' +
+      'resistor. Try the chips: a small R charges fast with a large current, a large R slowly ' +
+      'with a small one, and the integral of i²R over the whole charge comes out the same — ' +
+      'because the resistor’s energy is ∫(E − v_C)·i dt = ∫(E − v_C)·C dv_C, which depends only ' +
+      'on where v_C starts and ends. The energy view stacks the three as the charge proceeds; ' +
+      'after ten time constants the bars have all but stopped moving.',
+    params: [Vs('E', 'Source E', 12), chips(R('R1', 'R', 1000), [100, 1000, 10000]), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'τ', 10)],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
+        { type: 'SW', id: 'S1', nodes: ['in', 'n1'], closed: true, before: false },
+        { type: 'R', id: 'R1', nodes: ['n1', 'n2'], value: p.R1 },
+        { type: 'C', id: 'C1', nodes: ['n2', 'gnd'], value: p.C1, x0: 0 },
+      ],
+    }),
+    layout: loop(['S1', 'R1', 'C1']),
+    window: (p) => p.N * p.R1 * p.C1,
+    cursor: 0.1,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'volt', key: 'C1', label: 'v_C' }] },
+      right: { unit: 'W', traces: [{ q: 'p', key: 'R1', label: 'p_R' }] },
+    },
+    show: 'p',
+    view: 'energy',
+    views: ['energy', 'scope', 'state', 'power'],
+    claim: { half: true },
+  },
+  {
+    id: 'f6',
+    group: GROUPS[5],
+    name: 'Opening a switch on an inductor: the spark',
+    terms: ['inductor', 'state', 'timeconstant'],
+    note:
+      'Before t = 0 the switch has been closed a long time, the inductor is a short at DC and ' +
+      'carries I₀ = E/R = 12 mA. Open the switch and that current has nowhere to go — but an ' +
+      'inductor’s current is a state and cannot change instantly. Something has to give. Flip ' +
+      'the switch to ideal and the solver refuses, with a reason: di/dt would be infinite and so ' +
+      'would the voltage. The real answer is that an open switch is not infinite ohms: give it ' +
+      'R_off = 100 kΩ and the moment it opens the full 12 mA is forced through it, putting ' +
+      'I₀·R_off = 1.2 kV across a gap that was at 0 V an instant before. That is the spark, and ' +
+      'the reason relay coils get a diode across them. The current then decays with ' +
+      'τ = L/(R + R_off) = 9.9 µs — a hundred times faster than the L/R = 1 ms it took to build up.',
+    params: [
+      Vs('E', 'Source E', 12),
+      R('R1', 'R', 1000),
+      Ind('L1', 'L', 1),
+      Toggle('ideal', 'Switch', false, 'ideal', 'finite R_off', 'an ideal open switch is infinite ohms'),
+      R('Roff', 'Open-switch R_off', 1e5),
+      Win('N', 'Window', 'τ', 5),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
+        { type: 'R', id: 'R1', nodes: ['in', 'n1'], value: p.R1 },
+        { type: 'SW', id: 'S1', nodes: ['n1', 'n2'], closed: false, before: true, roff: p.ideal ? undefined : p.Roff },
+        { type: 'L', id: 'L1', nodes: ['n2', 'gnd'], value: p.L1 },
+      ],
+    }),
+    layout: loop(['R1', 'S1', 'L1']),
+    window: (p) => (p.N * p.L1) / (p.R1 + (p.ideal ? 0 : p.Roff)),
+    cursor: 0.2,
+    scope: {
+      left: { unit: 'A', traces: [{ q: 'i', key: 'L1', label: 'i_L' }] },
+      right: { unit: 'V', traces: [{ q: 'volt', key: 'S1', label: 'v_switch' }] },
+    },
+    show: 'v',
+    view: 'scope',
+    views: ['scope', 'state', 'energy', 'equations', 'power'],
+    claim: { spark: true },
+  },
+  {
+    id: 'f7',
+    group: GROUPS[5],
+    name: 'The op-amp integrator',
+    terms: ['opamp', 'virtual', 'capacitor', 'ideal'],
+    note:
+      'Feedback through a capacitor instead of a resistor. The virtual ground (E5) holds n at ' +
+      '0 V, so the input current is v_in/R = 100 µA exactly, and all of it must flow into the ' +
+      'capacitor: C·dv_C/dt = v_in/R. The output is −v_C, so dv_out/dt = −v_in/(RC): the output ' +
+      'is the integral of the input, scaled by −1/RC. A square wave in gives a triangle out — ' +
+      'slope 1 V/ms here for 1 V in, peak to peak A·T/(2RC) = 0.5 V. Flip the op-amp to finite ' +
+      'gain and the integrator becomes a very slow RC: the output heads for −A·v_in with ' +
+      'τ = RC(A + 1) = 100 s instead of integrating for ever, which is the leak every real ' +
+      'integrator has.',
+    params: [
+      { key: 'A', label: 'Square amplitude', unit: 'V', min: 0.1, max: 10, scale: 'linear', default: 1 },
+      Per('T', 'Period', 1e-3),
+      R('R1', 'R', 1e4),
+      Cap('C1', 'C', 100e-9),
+      Toggle('ideal', 'Op-amp', true, 'ideal', 'finite gain'),
+      Gain('G', 'Gain A', 1e5),
+      Win('N', 'Window', 'cycles', 3, 0.5, 10),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'square', amp: p.A, period: p.T } },
+        { type: 'R', id: 'R1', nodes: ['in', 'n'], value: p.R1 },
+        { type: 'C', id: 'C1', nodes: ['n', 'out'], value: p.C1, x0: 0 },
+        { type: 'OPAMP', id: 'U1', nodes: ['out'], ctrl: ['gnd', 'n'], gain: p.ideal ? Infinity : p.G },
+      ],
+    }),
+    layout: integratorLayout(),
+    window: (p) => p.N * p.T,
+    cursor: 0.25,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_in', dim: true }, { q: 'v', key: 'out', label: 'v_out' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'R1', label: 'i_in' }] },
+    },
+    show: 'i',
+    view: 'scope',
+    views: ['scope', 'state', 'equations', 'power'],
+    claim: { integrator: true },
+  },
+
+  // ============================================================== G
+  // Series RLC throughout, L = 10 mH and C = 1 µF: ω₀ = 10⁴ rad/s and the
+  // critical resistance 2√(L/C) = 200 Ω. The capacitor is listed before the
+  // inductor so the state vector reads x = [v_C, i_L], as the notes write it.
+  ...[
+    {
+      id: 'g1',
+      name: 'Series RLC: the differential equation',
+      R: 800,
+      view: 'state',
+      terms: ['state', 'characteristic', 'damping', 'natural'],
+      note:
+        'Two states now — the capacitor’s voltage and the inductor’s current — and KVL round the ' +
+        'loop, E = R·i + L·di/dt + v_C with i = C·dv_C/dt, becomes a second-order differential ' +
+        'equation: LC·v_C″ + RC·v_C′ + v_C = E. The solver never writes it that way; it writes ' +
+        'the pair of first-order equations dx/dt = A·x + B·u shown underneath, whose ' +
+        'characteristic polynomial det(sI − A) = s² + (R/L)s + 1/LC is the same equation. Two ' +
+        'numbers describe everything: ω₀ = 1/√LC = 10⁴ rad/s and α = R/2L. With R = 800 Ω, ' +
+        'α = 4×10⁴ > ω₀, the roots are real, −1.27×10³ and −7.87×10⁴ s⁻¹, and the response is ' +
+        'two decaying exponentials of which the slow one sets the pace. The capacitor creeps up ' +
+        'to E and never overshoots. Try the chips for the other two faces.',
+      claim: { overdamped: true },
+    },
+    {
+      id: 'g2',
+      name: 'Critical damping',
+      R: 200,
+      view: 'scope',
+      terms: ['damping', 'characteristic', 'natural'],
+      note:
+        'Lower R until α = ω₀ — R = 2√(L/C) = 200 Ω — and the two real roots merge into one, ' +
+        's = −α = −10⁴ s⁻¹, repeated. The response is then v_C = E[1 − (1 + αt)e^(−αt)]: it ' +
+        'still never overshoots, but it is the fastest response that does not (G3 measures ' +
+        'that). A hair less resistance and the roots turn complex and the capacitor voltage ' +
+        'crosses E; a hair more and the slow root slows the approach. The current ' +
+        'i = (E/L)·t·e^(−αt) peaks at t = 1/α = 100 µs, at E/(Lαe) = 3.68 mA. Nothing in the ' +
+        'circuit hints that 200 Ω is special; only the equation does.',
+      claim: { critical: true },
+    },
+    {
+      id: 'g3',
+      name: 'Damping versus speed: the R sweep',
+      R: 200,
+      view: 'damping',
+      terms: ['damping', 'natural', 'timeconstant'],
+      note:
+        'Sweep R across its whole range and measure two things about the step response: how far ' +
+        'the capacitor voltage overshoots E, and how long it takes to settle within 2 % of E for ' +
+        'good. Above 200 Ω there is no overshoot at all, and the settling time falls as R does, ' +
+        'because the slow root −α + √(α² − ω₀²) speeds up. Below 200 Ω the response rings, the ' +
+        'overshoot climbs — 44 % at 50 Ω, 100 % at zero — and the settling time first keeps ' +
+        'falling and then climbs again as the ringing outlasts the decay. Critical damping is ' +
+        'the fastest response with no overshoot; the fastest settling of all lies a little below ' +
+        'it, near 160 Ω, where the first peak just fits inside the 2 % band — a 1.5 % overshoot ' +
+        'buys a settling time a third shorter.',
+      claim: { sweep: true },
+    },
+    {
+      id: 'g4',
+      name: 'Underdamped: ringing',
+      R: 50,
+      view: 'scope',
+      terms: ['damping', 'natural', 'characteristic'],
+      note:
+        'With R = 50 Ω, α = 2.5×10³ < ω₀ and the roots are complex: −α ± jω_d with ' +
+        'ω_d = √(ω₀² − α²) = 9682 rad/s. The response is a decaying oscillation, ' +
+        'v_C = E[1 − e^(−αt)(cos ω_d t + (α/ω_d) sin ω_d t)]: it rings at ω_d, slightly slower ' +
+        'than ω₀, inside an envelope that shrinks as e^(−αt) — the dashed curves. The damping ' +
+        'ratio ζ = α/ω₀ = 0.25 fixes the shape whatever the scale: the first peak overshoots ' +
+        'by e^(−πζ/√(1−ζ²)) = 44.4 % of the step and arrives at t = π/ω_d = 324 µs, and each ' +
+        'following peak is that same fraction of the one before. Q = 1/2ζ = 2 says the same ' +
+        'thing another way.',
+      claim: { underdamped: true },
+    },
+  ].map((g) => ({
+    id: g.id,
+    group: GROUPS[6],
+    name: g.name,
+    terms: g.terms,
+    note: g.note,
+    params: [Vs('E', 'Step E', 1), chips(R('R1', 'R', g.R), [800, 200, 50]), Ind('L1', 'L', 10e-3), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'cycles', 5)],
+    net: seriesRLC,
+    layout: loop(['R1', 'L1', 'C1']),
+    window: rlcWindow,
+    cursor: 0.2,
+    scope: rlcScope(),
+    show: 'v',
+    view: g.view,
+    views: g.id === 'g3' ? ['damping', 'scope', 'state', 'energy', 'equations'] : ['scope', 'state', 'energy', 'equations', 'power'],
+    sweepId: g.id === 'g3' ? 'R1' : undefined,
+    claim: g.claim,
+  })),
+  {
+    id: 'g5',
+    group: GROUPS[6],
+    name: 'Undamped: energy sloshes between L and C',
+    terms: ['energy', 'natural', 'inductor', 'capacitor'],
+    note:
+      'Take the resistor out entirely and α = 0: the roots are ±jω₀ and nothing decays. The ' +
+      'capacitor voltage swings for ever between 0 and 2E — v_C = E(1 − cos ω₀t) — ' +
+      'overshooting the step by a full 100 %, and the current i = E√(C/L)·sin ω₀t is 10 mA at ' +
+      'its peaks. Nothing is dissipated, so every joule the source delivers is still in the ' +
+      'circuit, moving back and forth: the capacitor holds ½Cv² when the voltage peaks and the ' +
+      'inductor holds ½Li² when the current does, a quarter cycle later, and the two together ' +
+      'exactly equal what the source has supplied so far. No real circuit does this — every ' +
+      'wire has resistance — but every real oscillator is this circuit with the losses made up.',
+    params: [Vs('E', 'Step E', 1), Ind('L1', 'L', 10e-3), Cap('C1', 'C', 1e-6), Win('N', 'Window', 'cycles', 3)],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'step', from: 0, to: p.E } },
+        { type: 'C', id: 'C1', nodes: ['n1', 'gnd'], value: p.C1 },
+        { type: 'L', id: 'L1', nodes: ['in', 'n1'], value: p.L1 },
+      ],
+    }),
+    layout: loop(['L1', 'C1']),
+    window: rlcWindow,
+    cursor: 0.125,
+    scope: rlcScope(),
+    show: 'i',
+    view: 'energy',
+    views: ['energy', 'scope', 'state', 'equations', 'power'],
+    claim: { undamped: true },
+  },
+  {
+    id: 'g6',
+    group: GROUPS[6],
+    name: 'Initial conditions: where the circuit starts from',
+    terms: ['initial', 'natural', 'state'],
+    note:
+      'The differential equation fixes the shape of the response; the initial conditions fix ' +
+      'which particular response you get. A second-order circuit needs two — the capacitor’s ' +
+      'voltage and the inductor’s current at t = 0 — because those are the two quantities that ' +
+      'cannot jump. Here they are knobs: the dim traces are the response from rest (G4), the ' +
+      'bright ones from your starting point. Both settle to the same place, E across the ' +
+      'capacitor and no current, because the forced response is set by the source alone; the ' +
+      'difference between them is a pure natural response, e^(−αt) times cosines and sines, ' +
+      'with its amplitudes chosen so that it starts at exactly v_C(0) and i_L(0). The two ' +
+      'traces differ by that natural response and by nothing else.',
+    params: [
+      Vs('E', 'Step E', 1),
+      R('R1', 'R', 50),
+      Ind('L1', 'L', 10e-3),
+      Cap('C1', 'C', 1e-6),
+      { key: 'v0', label: 'v_C(0)', unit: 'V', min: -5, max: 5, scale: 'linear', default: 2 },
+      { key: 'i0', label: 'i_L(0)', unit: 'A', min: -0.02, max: 0.02, scale: 'linear', default: 0.005 },
+      Win('N', 'Window', 'cycles', 5),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'step', from: 0, to: p.E } },
+        { type: 'R', id: 'R1', nodes: ['in', 'n1'], value: p.R1 },
+        { type: 'C', id: 'C1', nodes: ['n2', 'gnd'], value: p.C1, x0: p.v0 },
+        { type: 'L', id: 'L1', nodes: ['n1', 'n2'], value: p.L1, x0: p.i0 },
+      ],
+    }),
+    layout: loop(['R1', 'L1', 'C1']),
+    window: rlcWindow,
+    cursor: 0.2,
+    scope: rlcScope(),
+    ghost: (p) => ({ ...p, v0: 0, i0: 0 }),
+    show: 'v',
+    view: 'scope',
+    views: ['scope', 'state', 'energy', 'equations', 'power'],
+    claim: { initial: true },
+  },
+  {
+    id: 'g7',
+    group: GROUPS[6],
+    name: 'Parallel RLC: the dual',
+    terms: ['duality', 'damping', 'natural'],
+    note:
+      'Swap every element for its dual — series for parallel, voltage source for current ' +
+      'source, R for 1/R — and the mathematics repeats itself exactly. KCL at the one node, ' +
+      'I = v/R + C·dv/dt + i_L with v = L·di_L/dt, is the same second-order equation with ' +
+      'α = 1/(2RC) in place of R/2L; ω₀ = 1/√LC does not change. The roles trade places: the ' +
+      'inductor current is now the state that steps from 0 to the full I = 10 mA the way v_C ' +
+      'stepped to E in the series circuit, overshooting by the same 44.4 %, and the node ' +
+      'voltage is the one that rings and dies away to zero. At R = 200 Ω this circuit is as ' +
+      'underdamped as the series one was at 50 Ω — ζ = 0.25 both times — because the critical ' +
+      'resistance is now ½√(L/C) = 50 Ω rather than 2√(L/C) = 200 Ω. In a parallel circuit a ' +
+      'LARGE R means light damping: the resistor is a leak across the tank, and a bigger leak ' +
+      'resistance leaks less.',
+    params: [
+      { key: 'I', label: 'Step I', unit: 'A', min: 1e-3, max: 0.1, scale: 'linear', default: 0.01 },
+      chips(R('R1', 'R', 200), [12.5, 50, 200]),
+      Ind('L1', 'L', 10e-3),
+      Cap('C1', 'C', 1e-6),
+      Win('N', 'Window', 'cycles', 5),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'I', id: 'I1', nodes: ['gnd', 'in'], value: 0, wave: { kind: 'step', from: 0, to: p.I } },
+        { type: 'R', id: 'R1', nodes: ['in', 'gnd'], value: p.R1 },
+        { type: 'C', id: 'C1', nodes: ['in', 'gnd'], value: p.C1 },
+        { type: 'L', id: 'L1', nodes: ['in', 'gnd'], value: p.L1 },
+      ],
+    }),
+    layout: tankLayout(['R1', 'L1', 'C1']),
+    window: rlcWindow,
+    cursor: 0.2,
+    scope: {
+      left: { unit: 'A', traces: [{ q: 'i', key: 'I1', label: 'I', dim: true }, { q: 'i', key: 'L1', label: 'i_L' }] },
+      right: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v' }] },
+    },
+    show: 'i',
+    view: 'scope',
+    views: ['scope', 'state', 'energy', 'equations', 'power'],
+    claim: { dual: true },
+  },
 ]
+
+// ------------------------------------------------------------ group G shared
+function seriesRLC(p) {
+  return {
+    elements: [
+      { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'step', from: 0, to: p.E } },
+      { type: 'R', id: 'R1', nodes: ['in', 'n1'], value: p.R1 },
+      { type: 'C', id: 'C1', nodes: ['n2', 'gnd'], value: p.C1 },
+      { type: 'L', id: 'L1', nodes: ['n1', 'n2'], value: p.L1 },
+    ],
+  }
+}
+/** N cycles of the undamped period 2π√LC. */
+function rlcWindow(p) {
+  return p.N * 2 * Math.PI * Math.sqrt(p.L1 * p.C1)
+}
+function rlcScope() {
+  return {
+    left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_in', dim: true }, { q: 'volt', key: 'C1', label: 'v_C' }] },
+    right: { unit: 'A', traces: [{ q: 'i', key: 'L1', label: 'i' }] },
+  }
+}
 
 // ------------------------------------------------------------ op-amp layouts
 
@@ -1205,6 +1737,83 @@ function bufferLayout() {
   }
 }
 
+/** A current source on the left pushing up into a rail, and legs hung from it. */
+function tankLayout(legs) {
+  // Three legs sit 88 apart (a ten-character label plus the next leg's current
+  // arrow) and the last at 340 so "C1 365 µF" stays on the canvas.
+  const xs = legs.length === 3 ? [164, 252, 340] : LEGS.slice(0, legs.length)
+  const last = xs[xs.length - 1]
+  return {
+    w: W,
+    h: H,
+    // The source sits at 36, not 50: its label names the waveform ("I1 ±10.0 mA
+    // triangle") and needs the extra room before the first leg.
+    items: [
+      { el: 'I1', x: 36, y: MID, dir: 'v', flip: true },
+      { wire: [36, TOP, 36, MID - 20] },
+      { wire: [36, MID + 20, 36, BOT] },
+      rail(36, last, TOP),
+      ...legs.flatMap((id, k) => leg(id, xs[k])),
+      rail(36, last, BOT),
+      gnd(100),
+      node('in', 36, TOP, 't'),
+    ],
+  }
+}
+
+function dividerRCLayout() {
+  // The C3 divider with R3 carrying on to a capacitor: A between R1 and R2, B
+  // at the capacitor.
+  return {
+    w: W,
+    h: H,
+    items: [
+      ...src('V1'),
+      rail(50, 100, TOP),
+      ...top('R1', 120),
+      rail(140, 230, TOP),
+      ...leg('R2', LEGS[0]),
+      ...top('R3', 250),
+      // The capacitor leg at 340, not 360: "C1 1.98 nF" needs the room.
+      rail(270, 340, TOP),
+      ...leg('C1', 340),
+      rail(50, 340, BOT),
+      gnd(115),
+      node('in', 50, TOP, 't'),
+      node('A', LEGS[0], TOP, 't'),
+      node('B', 305, TOP, 't'),
+    ],
+  }
+}
+
+function integratorLayout() {
+  // E5's inverting shape with the capacitor where R_f was and no load.
+  return {
+    w: W,
+    h: H,
+    items: [
+      { el: 'V1', x: 50, y: 120, dir: 'v' },
+      { wire: [50, 100, 50, 78] },
+      { wire: [50, 78, 90, 78] },
+      node('in', 50, 78, 't'),
+      { el: 'R1', x: 110, y: 78, dir: 'h' },
+      { wire: [130, 78, AMP.x, 78] },
+      node('n', 170, 78, 'b'),
+      { wire: [50, 140, 50, 150] },
+      rail(50, 190, 150),
+      gnd(120, 150),
+      { wire: [AMP.x, 102, 190, 102] },
+      { wire: [190, 102, 190, 150] },
+      { wire: [170, 78, 170, 34] },
+      { wire: [170, 34, 195, 34] },
+      { el: 'C1', x: 215, y: 34, dir: 'h' },
+      { wire: [235, 34, 300, 34] },
+      { wire: [300, 34, 300, 90] },
+      ...amp(),
+    ],
+  }
+}
+
 // ------------------------------------------------------------ lookups
 export const byId = Object.fromEntries(EXPERIMENTS.map((e) => [e.id, e]))
 
@@ -1217,7 +1826,36 @@ export function defaultsOf(id) {
 /** The netlist for an experiment at these settings. */
 export const netOf = (id, params) => byId[id].net(params)
 
-/** The elements as the schematic wants them: id, type, value/gain, and switch state. */
+/** Whether an experiment has a time axis: any capacitor or inductor makes it so. */
+export const isDynamic = (exp) => typeof exp.window === 'function'
+
+/**
+ * The elements as the schematic wants them: id, type, value/gain, switch
+ * state, and — for a source with a waveform or a switch that moves at t = 0 —
+ * a label that says so, since the value alone would not.
+ */
 export function drawables(net) {
-  return net.elements.map((e) => ({ id: e.id, type: e.type, value: e.value, gain: e.gain, closed: e.closed }))
+  return net.elements.map((e) => ({ id: e.id, type: e.type, value: e.value, gain: e.gain, closed: e.closed, label: labelOf(e) }))
+}
+
+function labelOf(e) {
+  const w = e.wave
+  if (w && w.kind !== 'dc') {
+    const unit = e.type === 'V' ? 'V' : 'A'
+    switch (w.kind) {
+      case 'step':
+        return `${e.id} step ${fmt(w.to, unit, 3)}`
+      case 'ramp':
+        return `${e.id} ramp`
+      case 'square':
+        return `${e.id} ±${fmt(w.amp, unit, 3)} square`
+      case 'triangle':
+        return `${e.id} ±${fmt(w.amp, unit, 3)} triangle`
+      default:
+        return undefined
+    }
+  }
+  if (e.type === 'SW' && e.before !== undefined && !!e.before !== (e.closed !== false))
+    return `${e.id} ${e.closed === false ? 'opens' : 'closes'} at 0`
+  return undefined
 }
