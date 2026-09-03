@@ -16,9 +16,11 @@ export const words = (s) => (s.trim() ? s.trim().split(/\s+/).length : 0)
 
 export const sentences = (s) =>
   s
-    // A sentence may start with a capital, a quote, a bracket, or a backtick —
-    // `packages/dsp/src/portable.test.js` opens one in the README.
-    .split(/[.!?](?=\s+[A-Z“"(`[\d]|\s*$)/)
+    // A sentence ends at . ! or ? followed by a space and anything that is not
+    // a lowercase letter: a capital, a digit, a quote, a bracket, a backtick,
+    // or a symbol ("|H| = 1 at every frequency", "τ = RC = 1 ms"). A decimal
+    // point has its digit hard against it, with no space, so it never ends one.
+    .split(/[.!?](?=\s+(?![a-z])|\s*$)/)
     .map((x) => x.trim())
     .filter(Boolean)
 
@@ -50,7 +52,7 @@ const colonReveals = (s) =>
  * one curve."). A longer clause-heavy sentence is never reported as one.
  */
 const VERBS =
-  /\b(is|are|was|were|be|been|being|has|have|had|do|does|did|can|cannot|could|will|would|shall|should|may|might|must|sets?|holds?|gives?|takes?|reads?|shows?|makes?|moves?|falls?|rises?|stays?|carries|carry|equals?|becomes?|opens?|closes?|drops?|adds?|needs?|means?|comes?|goes|turns?|leaves?|keeps?|puts?|draws?|runs?|works?|follows?|states?|reports?|passes|pass|starts?|ends?|costs?|dissipates?|supplies|supply|measures?|counts?|defines?|marks?|names?|lists?|uses?|applies|apply|see|set|switch|drag|tap|press|open|close|change|raise|lower|turn|read|watch|add|remove|reset|give|replace|lighten|dim|wire|connect|apply|choose|pick|load|peaks?|sags?|sits?|conducts?|charges?|floors?|lags?|leads?|climbs?|delivers?|reaches|ripples?|lifts?|splits?|says?|rings?|arrives?|decays?|oscillates?|fixes|swings?|lags?|rejects?)\b/i
+  /\b(is|are|was|were|be|been|being|has|have|had|do|does|did|can|cannot|could|will|would|shall|should|may|might|must|sets?|holds?|gives?|takes?|reads?|shows?|makes?|moves?|falls?|rises?|stays?|carries|carry|equals?|becomes?|opens?|closes?|drops?|adds?|needs?|means?|comes?|goes|turns?|leaves?|keeps?|puts?|draws?|runs?|works?|follows?|states?|reports?|passes|pass|starts?|ends?|costs?|dissipates?|supplies|supply|measures?|counts?|defines?|marks?|names?|lists?|uses?|applies|apply|see|set|switch|drag|tap|press|open|close|change|raise|lower|turn|read|watch|add|remove|reset|give|replace|lighten|dim|wire|connect|apply|choose|pick|load|peaks?|sags?|sits?|conducts?|charges?|floors?|lags?|leads?|climbs?|delivers?|reaches|ripples?|lifts?|splits?|says?|rings?|arrives?|decays?|oscillates?|fixes|swings?|lags?|rejects?|divides?|divide|multiply|subtract|brings?|sends?|pushes|invents?|cancels?|resonates?|survives?|paints?|folds?|repeats?|settles?)\b/i
 
 /** A verb by shape, for the ones the list does not name: produces, folding, settled. */
 const VERB_SHAPE = /\b[a-z]{3,}(?:es|ed|ing)\b/i

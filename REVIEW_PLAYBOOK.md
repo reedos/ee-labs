@@ -81,7 +81,7 @@ axis zoom.
   mean.
 - If a lesson says "switch the block to X", that must be one click. Use an in-place type
   select that keeps the shared params, not a delete and re-add.
-- The signal path is a picture: sources add into Σ, blocks cascade, and the output sits
+- The signal path is a picture. Sources add into Σ, blocks cascade, and the output sits
   at the end. It is a real block diagram on demand, with boxes that open their cards.
 - Transport controls behave like a player. Play at the end restarts, speed is
   adjustable, and loading a lesson resets the scrubber.

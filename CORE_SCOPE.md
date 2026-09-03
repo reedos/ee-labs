@@ -36,7 +36,7 @@ warns, and gives the reason. It does not ship the nearest approximation.
   across R or L, because the numerator carries zeros that the second-order plant cannot
   express.
 - A refusal is not a TODO. Do not leave comments suggesting the mapping be completed
-  later. The refusal message is content: it states why the mapping fails, and it needs a
+  later. The refusal message is content. It states why the mapping fails, and it needs a
   test like every other claim in the suite.
 - The instinct is to make the feature work. Here, making it work means making the
   boundary visible.
