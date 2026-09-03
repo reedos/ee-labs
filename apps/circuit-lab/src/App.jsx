@@ -890,9 +890,14 @@ function FoldGroup({ sectionKey, label, holdsActive, openGroups, setOpenGroups, 
       className="preset-group"
       open={holdsActive || openGroups.has(sectionKey)}
       onToggle={(e) => {
+        // A <details> created open fires `toggle` too. That open came from
+        // holdsActive, not the student, so it must not be remembered as a
+        // hand-open — or the group holding the opening lesson would stay
+        // unfolded under every other group for the rest of the session.
         const next = new Set(openGroups)
-        if (e.target.open) next.add(sectionKey)
-        else next.delete(sectionKey)
+        if (e.target.open) {
+          if (!holdsActive) next.add(sectionKey)
+        } else next.delete(sectionKey)
         setOpenGroups(next)
       }}
     >
