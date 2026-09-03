@@ -308,11 +308,18 @@ describe('a path through the material (§11.5, §11.3.3–5)', () => {
     expect(h).toMatch(/<button[^>]*data-role="reset"/)
     expect(sidebar(render('b3'))).not.toContain('data-role="reset"')
   })
-  it('the header says what the lab is for, in three sentences a newcomer can use (§11.3.3)', () => {
+  it('the header says what the lab is for, in words a newcomer can use (§11.3.3)', () => {
     const h = sidebar(render('a1'))
     const sub = h.match(/<p class="sub">([\s\S]*?)<\/p>/)
-    expect(text(sub[1]).replace(/\s+/g, ' ').trim()).toBe('Pick an experiment. Turn the knob it names. Watch the number the note promised.')
-    expect(text(sub[1])).not.toMatch(/steady state|engine/)
+    const line = text(sub[1]).replace(/\s+/g, ' ').trim()
+    // The claim, not the wording: it names what an experiment gives you (a
+    // circuit, a knob, a number) and keeps the engine's vocabulary out of the
+    // first thing a newcomer reads. STYLE.md holds how it is written; the
+    // wording itself is prose.test.js's business, not this file's.
+    expect(line).toMatch(/experiment/i)
+    expect(line).toMatch(/knob/i)
+    expect(line).toMatch(/number/i)
+    expect(line).not.toMatch(/steady state|engine/)
   })
   it('the terms line names its terms, in the accent on an experiment’s first visit (§11.3.4)', () => {
     for (const e of EXPERIMENTS) {

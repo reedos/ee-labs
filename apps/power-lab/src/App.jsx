@@ -248,7 +248,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
         <header>
           <LabNav current="power-lab" currentLabel="Power" />
           <h1>Power Lab</h1>
-          <p className="sub">Pick an experiment. Turn the knob it names. Watch the number the note promised.</p>
+          <p className="sub">Each experiment loads a converter, names one knob, and states the number to read.</p>
         </header>
 
         <section>
@@ -312,8 +312,8 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
             {exp.note}
             {pristine ? null : (
               <>
-                <em className="prov"> — the note describes the defaults; you have moved away from them.</em>{' '}
-                <button type="button" className="chip reset" data-role="reset" onClick={reset} title="Every knob back to this experiment's defaults">
+                <em className="prov"> The note describes the default settings. Some knobs have moved.</em>{' '}
+                <button type="button" className="chip reset" data-role="reset" onClick={reset} title="Reset every knob to this experiment's defaults">
                   Reset
                 </button>
               </>
