@@ -75,6 +75,34 @@ export function presentMargins(marg, open, lowestPlotted) {
 }
 
 /**
+ * How many gain-doublings away the boundary sits, in whichever direction
+ * actually gets there — the number the "thin margin" warning should key off.
+ *
+ * gainMargin is unsigned: it is the factor between the CURRENT gain and the
+ * gain at the boundary, crossing = current x gainMargin. Above 1 the
+ * boundary sits ABOVE the current gain, the ordinary case, where MORE gain
+ * is what breaks the loop. Below 1 the boundary sits BELOW the current
+ * gain — the unstable plant's loop, where LESS gain is what breaks it — and
+ * a small gainMargin there (0.20x, say) is the SAFE direction: the boundary
+ * is a fifth of the current gain away, not a fifth of a step from it. A
+ * raw "below 2" test read that safe 0.20x as thin, the wrong half of the
+ * plants' loudest signal pointing the wrong way. The room in whichever
+ * direction is the destabilising one is gainMargin itself when it is at
+ * least 1, and its reciprocal when it is below 1 — the two are the same
+ * distance from the boundary read from either side of it.
+ */
+export function gainMarginRoom(gm) {
+  if (gm == null || !(gm > 0)) return null
+  return gm >= 1 ? gm : 1 / gm
+}
+
+/** Does the gain margin deserve the topbar's warn styling? Below 2 doublings of room in the destabilising direction. */
+export function gainMarginWarn(gm) {
+  const room = gainMarginRoom(gm)
+  return room != null && room < 2
+}
+
+/**
  * What the top bar's "steady error" field shows.
  *
  * e_ss = 1 − T(0): positive when the output falls short of the setpoint,

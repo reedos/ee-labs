@@ -461,6 +461,14 @@ export const TERMS = {
     'derivations are written in ω because s = jω keeps the algebra clean. The plots here are in hertz, and ' +
     'fields like the lead controller’s zero and pole positions are rad/s.',
   },
+  // ---- the Math tab, on screen wherever it is open, lesson or not ---------
+  characteristicequation: {
+    name: 'Characteristic equation',
+    def:
+      '1 + L(s) = 0, where L is the open loop C(s)·P(s). Its roots are exactly the closed-loop poles, so every ' +
+    'question about stability reduces to whether one of those roots sits in the right half plane. Multiplying ' +
+    'out C and P turns the equation into one polynomial set to zero.',
+  },
 }
 
 /**
@@ -540,6 +548,7 @@ export const CUES = {
   crossover: /\bcrossover\b/i,
   steadystate: /steady[- ]state|steady error/i,
   mhz: /mHz/,
+  characteristicequation: /characteristic equation/i,
 }
 
 /** The definitions a lesson asked for, in the order it asked. */

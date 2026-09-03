@@ -40,6 +40,7 @@ import { initialState } from './boot.js'
 import { circuitFor, circuitUrl } from './toCircuitLab.js'
 import { stickyDuration } from './stepAxis.js'
 import { termsFor } from './terms.js'
+import { chromeTerms } from './chrome.js'
 import { reportSummary } from './report.js'
 import pkg from '../package.json'
 import { nextFrame } from './frame.js'
@@ -52,7 +53,7 @@ import LoopDiagram from './components/LoopDiagram.jsx'
 import LocusCanvas from './components/LocusCanvas.jsx'
 import WatchCanvas, { useWatchPosition, WATCH_SPEEDS } from './components/WatchCanvas.jsx'
 import { watchSignals } from './watch.js'
-import { verdictOf, oscillationOf, presentMargins, steadyErrorOf } from './verdict.js'
+import { verdictOf, oscillationOf, presentMargins, steadyErrorOf, gainMarginWarn } from './verdict.js'
 import { leadPeak } from './lead.js'
 import { naturalWindow, settleTime } from './stepWindow.js'
 import { simBlockReason, simCost, STEP_BUDGET } from './affordable.js'
@@ -107,6 +108,10 @@ export default function App() {
   // watch transport.
   const [loads, setLoads] = useState(0)
   const [termsOpen, setTermsOpen] = useState(false)
+  // The crossover field's rad/s twin, folded shut by default so it costs no
+  // height on a screen that already has the title-attribute hover for it —
+  // opened only on a tap, on the screens where a tap is the only way in.
+  const [crossoverOpen, setCrossoverOpen] = useState(false)
   // Which lesson groups are unfolded. The active lesson's group is always open
   // regardless, so collapsing can never hide where you are.
   const [openGroups, setOpenGroups] = useState(() => new Set())
@@ -366,15 +371,26 @@ export default function App() {
   // gain runs some branches to hundreds of rad/s, and framing every point
   // on them parked an unstable-plant loop with poles inside ±4 on a ±300
   // axis as a dot. Sticky the same way the step and frequency axes are, so
-  // dragging the gain moves the crosses and not the axis.
+  // dragging the gain moves the crosses and not the axis — but a NEW
+  // plant or controller forces an immediate reframe, the same key-checked
+  // rule durRef uses for the step window below. Without the key, the hold
+  // band (stickyDuration holds while natural stays above 1/6 of the held
+  // frame) let one plant's wide frame survive a click to a plant whose own
+  // content was a sixth the size or less, which is exactly the picker: a
+  // reader who never leaves Root Locus while clicking through plants would
+  // have kept whatever the widest one ever needed.
   const locusExtentRef = useRef(null)
+  const locusKeyRef = useRef('')
   const locusFrameExtent = useMemo(() => {
     if (lower !== 'locus') return locusExtentRef.current || 4
     const natural = locusExtent(openPz.poles, openPz.zeros, pz.poles)
-    const next = stickyExtent(locusExtentRef.current, natural)
+    const key = `${plantId}|${ctrlId}`
+    const held = locusKeyRef.current === key ? locusExtentRef.current : NaN
+    const next = stickyExtent(held, natural)
     locusExtentRef.current = next
+    locusKeyRef.current = key
     return next
-  }, [lower, openPz, pz])
+  }, [lower, openPz, pz, plantId, ctrlId])
 
   const math = useMemo(
     () => loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs),
@@ -650,7 +666,37 @@ export default function App() {
                 </p>
               ) : null}
             </div>
-          ) : null}
+          ) : (
+            // The picker state: no lesson, so no note — but the top bar's
+            // vocabulary (phase margin, gain margin, crossover, steady error)
+            // is on screen regardless, and the lower view adds its own ("-1"
+            // and the Nyquist plot; the shaded half and open- vs closed-loop
+            // poles on the locus; the characteristic equation on the Math
+            // tab). Before this, a plant or controller click cleared the
+            // lesson's terms along with the lesson, leaving no glossary at
+            // all. Same fold, same affordance, fed by what is actually on
+            // screen (chrome.js) instead of a lesson's own list.
+            <div className="lesson-body picker-terms">
+              <button
+                type="button"
+                className="terms-link"
+                aria-expanded={termsOpen}
+                onClick={() => setTermsOpen((v) => !v)}
+              >
+                {termsOpen ? '▾ terms' : '▸ terms used here'}
+              </button>
+              {termsOpen ? (
+                <dl className="terms-list">
+                  {chromeTerms(plantId, ctrlId, lower).map((t) => (
+                    <React.Fragment key={t.id}>
+                      <dt>{t.name}</dt>
+                      <dd>{t.def}</dd>
+                    </React.Fragment>
+                  ))}
+                </dl>
+              ) : null}
+            </div>
+          )}
           {/* The hand-over in reverse. Exact only: a plant with a gain, or
               component values outside Circuit Lab's knobs, draws nothing. */}
           {circuit && circuitHref ? (
@@ -892,21 +938,44 @@ export default function App() {
           </span>
           <span className="topbar-field">
             <span>gain margin</span>
-            <b className={marg.gainMargin != null && marg.gainMargin < 2 ? 'warn' : ''}>
+            <b className={gainMarginWarn(marg.gainMargin) ? 'warn' : ''}>
               {marg.gainMargin == null ? '—' : `${marg.gainMarginDb.toFixed(1)} dB`}
             </b>
           </span>
-          <span
-            className="topbar-field"
-            title={
-              marg.gainCrossover == null
-                ? 'Where the open-loop gain passes 1'
-                : `${fmt(2 * Math.PI * marg.gainCrossover, 'rad/s', 3)} — where the open-loop gain passes 1`
-            }
-          >
-            <span>crossover</span>
-            <b>{marg.gainCrossover == null ? '—' : `${fmtHz(marg.gainCrossover)}Hz`}</b>
-          </span>
+          <React.Fragment>
+            <span
+              className="topbar-field"
+              title={
+                marg.gainCrossover == null
+                  ? 'Where the open-loop gain passes 1'
+                  : `${fmt(2 * Math.PI * marg.gainCrossover, 'rad/s', 3)} — where the open-loop gain passes 1`
+              }
+            >
+              <span>crossover</span>
+              <b>{marg.gainCrossover == null ? '—' : `${fmtHz(marg.gainCrossover)}Hz`}</b>
+              {/* The title above carries the rad/s twin, which a tooltip
+                  cannot on a screen with no hover. Folded shut by default —
+                  so it costs nothing where the hover already works — this
+                  button opens it on a tap; styles.css shows it only below
+                  900px, where the hover never fires at all. */}
+              {marg.gainCrossover != null ? (
+                <button
+                  type="button"
+                  className="topbar-info"
+                  aria-expanded={crossoverOpen}
+                  aria-label="Show the crossover in rad/s"
+                  onClick={() => setCrossoverOpen((v) => !v)}
+                >
+                  ⓘ
+                </button>
+              ) : null}
+            </span>
+            {crossoverOpen && marg.gainCrossover != null ? (
+              <em className="topbar-field-note">
+                {fmt(2 * Math.PI * marg.gainCrossover, 'rad/s', 3)} — where the open-loop gain passes 1
+              </em>
+            ) : null}
+          </React.Fragment>
           <span className="topbar-field" title={errInfo.title}>
             <span>steady error</span>
             <b>{errInfo.text}</b>
@@ -1239,7 +1308,31 @@ export default function App() {
               </p>
             )
           ) : lower === 'math' ? (
-            <div className="view-body math-pane">
+            // The "[N]" footnote mark on an unmeasurable row (packages/explain's
+            // MathPanel) carries its reason in a title attribute, which a phone
+            // cannot hover — the note text itself already renders visibly
+            // below, in .math-notes, so tapping the mark scrolls that note into
+            // view and flashes it rather than requiring a scroll-and-match hunt
+            // through a pane pinned to a few hundred px (styles.css). Delegated
+            // from the pane itself: packages/explain's markup is not this app's
+            // to edit, so the reveal is a local behaviour laid over it rather
+            // than a change to the shared component.
+            <div
+              className="view-body math-pane"
+              onClick={(e) => {
+                const cell = e.target.closest?.('.math-check .unchecked[title]')
+                if (!cell) return
+                const want = cell.getAttribute('title')
+                const items = e.currentTarget.querySelectorAll('.math-notes li')
+                for (const li of items) {
+                  if (li.textContent.trim() !== want) continue
+                  li.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                  li.classList.add('is-flash')
+                  window.setTimeout(() => li.classList.remove('is-flash'), 900)
+                  break
+                }
+              }}
+            >
               <MathBody entry={math} />
             </div>
           ) : lower === 'nyquist' ? (

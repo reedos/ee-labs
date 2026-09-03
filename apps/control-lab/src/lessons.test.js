@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { TERMS } from './terms.js'
+import { chromeTermIds } from './chrome.js'
 import { watchSignals } from './watch.js'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
 import {
@@ -72,8 +73,21 @@ describe('terms — definitions on contact', () => {
     }
   })
 
-  it('every defined term is surfaced by at least one lesson', () => {
+  it('every defined term is surfaced by at least one lesson, or by the picker', () => {
+    // Two surfaces now offer definitions: a lesson's own "terms used here"
+    // fold, and the picker's (chrome.js), fed by whatever plant, controller
+    // and view are on screen with no lesson loaded. A term only the picker
+    // ever shows (characteristicequation, on screen only under the Math
+    // tab's own static prose) is still surfaced somewhere, which is the
+    // actual rule — "by a lesson" was always a stand-in for that.
     const used = new Set(LESSONS.flatMap((l) => l.terms || []))
+    for (const pid of Object.keys(PLANTS)) {
+      for (const cid of Object.keys(CONTROLLERS)) {
+        for (const view of ['step', 'watch', 'nyquist', 'locus', 'math']) {
+          for (const id of chromeTermIds(pid, cid, view)) used.add(id)
+        }
+      }
+    }
     for (const id of Object.keys(TERMS)) {
       expect(used.has(id), `"${id}" defined but never surfaced`).toBe(true)
     }

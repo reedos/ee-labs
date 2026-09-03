@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { verdictOf, oscillationOf, presentMargins, steadyErrorOf, MARGINAL_REL } from './verdict.js'
-import { PLANTS, CONTROLLERS, buildLoop } from './systems.js'
+import {
+  verdictOf,
+  oscillationOf,
+  presentMargins,
+  steadyErrorOf,
+  gainMarginRoom,
+  gainMarginWarn,
+  MARGINAL_REL,
+} from './verdict.js'
+import { PLANTS, CONTROLLERS, buildLoop, defaultsOf, ctrlDefaultsFor } from './systems.js'
 import { margins, isStable, dcGain } from '@ee-labs/systems'
 
 // The one-word judgement, pinned against the loops that shipped wrong: the
@@ -83,6 +91,94 @@ describe('presentMargins', () => {
     const out = presentMargins(belowBand, open, GRID[0])
     expect(out.gainCrossover).not.toBeNull()
     expect(out.crossoverNote).toBeNull()
+  })
+})
+
+describe('gainMarginRoom / gainMarginWarn', () => {
+  it('is the raw margin when the boundary sits above the current gain', () => {
+    expect(gainMarginRoom(11.2)).toBeCloseTo(11.2, 9)
+    expect(gainMarginWarn(11.2)).toBe(false)
+    expect(gainMarginRoom(1.2)).toBeCloseTo(1.2, 9)
+    expect(gainMarginWarn(1.2)).toBe(true)
+  })
+
+  it('is the reciprocal when the boundary sits below the current gain', () => {
+    // The unstable plant's own case: Kp = 5 against a boundary at Kp = 1,
+    // crossing = current x gainMargin, so gainMargin = 1/5 = 0.20 — the
+    // SAFE direction, four gain-halvings from the boundary, not one.
+    expect(gainMarginRoom(0.2)).toBeCloseTo(5, 9)
+    expect(gainMarginWarn(0.2)).toBe(false)
+    // Kp = 1.2 against the same boundary: crossing = 1, gainMargin = 1/1.2.
+    // That is close to the boundary — 1.2 gain-halvings away — and must warn.
+    expect(gainMarginWarn(1 / 1.2)).toBe(true)
+  })
+
+  it('has no opinion without a margin to read', () => {
+    expect(gainMarginRoom(null)).toBeNull()
+    expect(gainMarginWarn(null)).toBe(false)
+  })
+
+  it('is symmetric: a margin and its reciprocal are the same distance from the boundary', () => {
+    for (const gm of [0.05, 0.3, 0.9, 1, 1.4, 3, 20]) {
+      expect(gainMarginRoom(gm)).toBeCloseTo(gainMarginRoom(1 / gm), 9)
+    }
+  })
+
+  // The rule, pinned across the picker: 7 plants x 4 controllers, each
+  // opened at the gains the picker itself opens with (ctrlDefaultsFor, the
+  // same defaults choosePlant/chooseCtrl use). No default combination that
+  // settles should show the warn style, and moving a genuinely thin
+  // combination toward its own boundary — from either direction — must.
+  const GRID = Float64Array.from({ length: 6000 }, (_, i) => Math.pow(10, -4 + 8 * (i / 5999)))
+  const plantIds = Object.keys(PLANTS)
+  const ctrlIds = Object.keys(CONTROLLERS)
+
+  it('no default plant x controller combination that settles shows a warn-styled gain margin', () => {
+    for (const pid of plantIds) {
+      for (const cid of ctrlIds) {
+        const plantP = defaultsOf(PLANTS[pid])
+        const ctrlP = ctrlDefaultsFor(pid, plantP, cid)
+        const { open, closed } = buildLoop(pid, plantP, cid, ctrlP)
+        const marg = margins(open, GRID)
+        const verdict = verdictOf(closed, marg)
+        expect(verdict, `${pid} x ${cid} should open stable`).toBe('stable')
+        expect(
+          gainMarginWarn(marg.gainMargin),
+          `${pid} x ${cid}: gain margin ${marg.gainMargin} read as thin at the picker's own defaults`,
+        ).toBe(false)
+      }
+    }
+  })
+
+  it('the unstable plant specifically never warns at its own safe default, and does warn near its own boundary', () => {
+    for (const cid of ['pi', 'pid']) {
+      const plantP = defaultsOf(PLANTS.unstable)
+      const ctrlP = ctrlDefaultsFor('unstable', plantP, cid)
+      const { open } = buildLoop('unstable', plantP, cid, ctrlP)
+      const marg = margins(open, GRID)
+      // The defect, measured: -14 dB (0.20x) read as thin under the old
+      // "below 2" test because it never accounted for direction. The
+      // boundary for Kp = 5, Ki = 0.5 against p = 1 sits at Kp = 1, four
+      // gain-halvings below the current gain — the safe side.
+      expect(marg.gainMarginDb).toBeLessThan(-10)
+      expect(gainMarginWarn(marg.gainMargin)).toBe(false)
+    }
+    // Nudged toward the SAME boundary from the stable side (Kp = 1.5 of 1,
+    // Ki held at the default 0.5), the room shrinks to 1.5x and the warn
+    // style must actually fire — the boundary is just as real approached
+    // from below the current gain as from above it.
+    const plantP = defaultsOf(PLANTS.unstable)
+    const { open: nearBoundary } = buildLoop('unstable', plantP, 'pi', { kp: 1.5, ki: 0.5 })
+    const nearMarg = margins(nearBoundary, GRID)
+    expect(nearMarg.gainMargin).toBeLessThan(1)
+    expect(gainMarginWarn(nearMarg.gainMargin)).toBe(true)
+  })
+
+  it('an ordinary plant genuinely thin on its gain margin still warns', () => {
+    // Three lags under P, nudged to 95% of its own 11.25 boundary.
+    const { open } = buildLoop('threePole', { k: 1, t1: 1, t2: 0.5, t3: 0.25 }, 'p', { kp: 0.95 * 11.25 })
+    const marg = margins(open, GRID)
+    expect(gainMarginWarn(marg.gainMargin)).toBe(true)
   })
 })
 

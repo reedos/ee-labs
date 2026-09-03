@@ -276,6 +276,27 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .view-head .readout { flex-basis: 100%; }
 }
 
+/* The crossover field's rad/s twin: a hover-only tooltip on a phone with no
+   hover to give it. The toggle button that opens it is hidden on a wide
+   screen, where the title attribute already carries it for a mouse — and
+   the note itself only ever renders once tapped open (App.jsx), so neither
+   costs any height until a reader actually asks for it. */
+.topbar-info {
+  display: none;
+  background: none;
+  border: 0;
+  padding: 0 0 0 2px;
+  margin: 0;
+  color: var(--dim);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+.topbar-field-note { display: block; flex-basis: 100%; font-size: 10px; color: var(--dim); }
+@media (max-width: 900px) {
+  .topbar-info { display: inline; }
+}
+
 /* A margin that has run thin is worth seeing before you read the number. */
 .topbar-field b.warn { color: var(--warn); }
 
@@ -354,6 +375,12 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   padding-right: 6px;
 }
 .view-body.math-pane .math-body { border-left: 0; padding: 2px 0 8px; margin-top: 0; }
+
+/* The footnote mark's tap target, and the note it jumps to (see the
+   math-pane onClick in App.jsx) — a visible tap invitation and a visible
+   landing, so the reveal works without a mouse. */
+.view-body.math-pane .math-check .unchecked[title] { cursor: pointer; text-decoration: underline dotted; }
+.view-body.math-pane .math-notes li.is-flash { color: var(--accent); }
 
 /* Phone: the lesson's view comes FIRST in the stack, so the plot the note
    is about is in the first screen with the sidebar, and the Bode is one
@@ -480,6 +507,9 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .controls h2 .lesson-nav { margin: 0; text-transform: none; letter-spacing: 0; font-weight: 400; }
 .controls h2 .lesson-nav-step, .controls h2 .lesson-nav-reset { padding: 1px 6px; font-size: 10.5px; }
 .controls h2 .lesson-nav-count { min-width: 44px; }
+
+/* The picker's own terms fold — no note above it, so the link stands alone. */
+.picker-terms { margin: 8px 0 2px; }
 
 /* Terms as a link at the end of the note, and the definitions under it. */
 .terms-link {

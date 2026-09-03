@@ -14,7 +14,9 @@ const failures = []
 const fail = (m) => failures.push(m)
 
 const browser = await chromium.launch()
-const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 })
+// hasTouch: the item-32 probes must press with a real tap (.tap()), not a
+// mouse click standing in for one — Playwright refuses .tap() without it.
+const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1, hasTouch: true })
 
 const consoleErrors = []
 page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`))
@@ -1473,6 +1475,236 @@ console.log('\n8. Overprinting captions and labels (items 24, 25, 26, 27)\n')
       `   ${vp.width}x${vp.height} L11 "gain = 1" label: ${clashing.length ? clashing.length + ' CLASHING trace points' : 'clear of both traces'}`,
     )
   }
+}
+
+// ------------------------------------------- 28. terms reachable in the picker
+//
+// Defect 1: a plant or controller click clears the lesson, and before this
+// fix there was nowhere left to look up phase margin, gain margin, "-1",
+// the shaded half, or the characteristic equation once that happened.
+console.log('\n28. Terms reachable in the picker, no lesson loaded\n')
+{
+  await clickPreset('First order lag')
+  if (await page.locator('.hint.note').count()) fail('picker: a lesson note is still showing after a plant click')
+  const link = page.locator('.picker-terms .terms-link')
+  if (!(await link.count())) fail('picker: no "terms used here" affordance with no lesson active')
+  await link.click()
+  await page.waitForTimeout(80)
+  const dts = await page.locator('.picker-terms .terms-list dt').allTextContents()
+  if (dts.length < 5) fail(`picker: expected several terms offered, found ${dts.length}`)
+  for (const want of ['Phase margin', 'Gain margin', 'Crossover frequency', 'Steady-state error']) {
+    if (!dts.some((t) => t.trim() === want)) fail(`picker: top bar term "${want}" not offered`)
+  }
+  console.log(`   First order lag / Proportional, no lesson: ${dts.length} terms offered (${dts.slice(0, 4).join(', ')}...)`)
+
+  // The lower view adds its own vocabulary — the Nyquist view's "-1" (via
+  // the Nyquist-plot definition), the locus's shaded half and open- vs
+  // closed-loop poles, and the Math tab's characteristic equation.
+  await clickBtn('Nyquist')
+  const nyqDts = await page.locator('.picker-terms .terms-list dt').allTextContents()
+  if (!nyqDts.some((t) => /Nyquist plot/.test(t))) fail('picker: Nyquist view should offer the Nyquist-plot term')
+
+  await clickBtn('Root locus')
+  const locusDts = await page.locator('.picker-terms .terms-list dt').allTextContents()
+  if (!locusDts.some((t) => /shaded half/i.test(t))) fail('picker: root locus should offer "the shaded half"')
+  if (!locusDts.some((t) => /open-loop poles/i.test(t))) fail('picker: root locus should offer open- vs closed-loop poles')
+
+  await clickBtn('Math')
+  const mathDts = await page.locator('.picker-terms .terms-list dt').allTextContents()
+  if (!mathDts.some((t) => /characteristic equation/i.test(t))) fail('picker: the Math tab should offer the characteristic equation')
+  await clickBtn('Step')
+  console.log('   Nyquist, root locus and Math each add their own view-specific terms')
+}
+
+// --------------------------------------- 29. the gain margin points the right way
+//
+// Defect 2: the top bar warned on the unstable plant's SAFE margin
+// (~0.20x, too little gain being the safe direction there) while a loop
+// genuinely thin on its own margin must still warn.
+console.log('\n29. The gain margin warns toward the boundary, not by raw size\n')
+{
+  const gmWarn = () => page.locator('.topbar-field', { hasText: 'gain margin' }).locator('b.warn').count()
+  for (const ctrl of ['PI', 'PID']) {
+    await clickPreset('Unstable plant')
+    await clickBtn(ctrl)
+    const warn = await gmWarn()
+    const gm = (await topbar())['gain margin']
+    console.log(`   Unstable plant + ${ctrl}: gain margin ${gm}, warn styled: ${warn ? 'YES' : 'no'}`)
+    if (warn) fail(`Unstable plant + ${ctrl}: gain margin ${gm} is the safe direction and should not warn`)
+  }
+  // A loop genuinely thin on its own gain margin still must warn.
+  await clickPreset('Three lags')
+  await clickBtn('Proportional')
+  await setField('Kp', 10.7) // just inside the 11.25 boundary
+  const thinWarn = await gmWarn()
+  const thinGm = (await topbar())['gain margin']
+  console.log(`   Three lags + Proportional at Kp 10.7 (near its 11.25 boundary): gain margin ${thinGm}, warn styled: ${thinWarn ? 'yes' : 'NO'}`)
+  if (!thinWarn) fail(`a loop genuinely near its own boundary (gain margin ${thinGm}) should warn`)
+  await clickPreset('First order lag')
+}
+
+// ------------------------------------------------ 30. the root locus framing
+//
+// Defect 3 and 6: a far zero (Three lags x PI/PID) no longer sets the
+// frame, and an exactly-cancelling pole/zero (First order x Lead) is drawn
+// legibly rather than as one overlapping mark.
+console.log('\n30. Root locus framing: no far zero squeeze, cancellation legible\n')
+{
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.views canvas')
+
+  const readLocusTexts = async (act) => {
+    // Force a real redraw: useCanvas's effect fires on a genuine prop
+    // change, so the act toggles the controller away and back (same
+    // pattern as item 4's "does the view redraw" checks) rather than
+    // trying to poke the canvas directly.
+    const { texts } = await probeDraw(page, act)
+    const id = await page.evaluate(() => document.querySelector('canvas[aria-label^="Root locus"]')?.dataset.probeId)
+    return dedupeTexts(texts).filter((t) => t.canvas === id)
+  }
+
+  await clickPreset('First order lag')
+  await clickBtn('Lead')
+  await clickBtn('Root locus')
+  await settle()
+  await installProbeHooks(page)
+  const leadTexts = await readLocusTexts(async () => {
+    await clickBtn('Proportional')
+    await clickBtn('Lead')
+  })
+  const cancelLabel = leadTexts.find((t) => /cancel exactly/i.test(t.text))
+  if (!cancelLabel) fail('locus: First order x Lead should label the coincident pole and zero as cancelling')
+  else console.log(`   First order lag + Lead: "${cancelLabel.text}" drawn on the canvas`)
+
+  // The frame itself must reframe on a PLANT change while still parked on
+  // Root locus, not just on a gain drag — the bug this pinned: switching
+  // from First order lag x Lead (extent ~27, just above) straight to Three
+  // lags x PID (its own content needs ~6) without ever leaving the locus
+  // view once held the wider frame (stickyExtent's hold band reaches down
+  // to a sixth of it), which both squeezed the pole cluster AND, with the
+  // stale wide extent inflating the cancellation tolerance, mislabelled the
+  // PID's own integrator pole and its near-origin zero as an exact
+  // cancellation.
+  await clickPreset('Three lags')
+  await clickBtn('PID')
+  await clickBtn('Root locus')
+  await settle()
+  await installProbeHooks(page)
+  const threeLagsPidTexts = await readLocusTexts(async () => {
+    await clickBtn('Step')
+    await clickBtn('Root locus')
+  })
+  const wrongCancel = threeLagsPidTexts.find((t) => /cancel exactly/i.test(t.text))
+  if (wrongCancel) fail('locus: Three lags x PID should not report a cancellation — its pole and zero are merely close, not exact')
+  const axisTick = threeLagsPidTexts.find((t) => t.text === '20' || t.text === '15')
+  console.log(`   Three lags + PID reframes on the plant switch: ${wrongCancel ? 'WRONGLY reports a cancellation' : 'no false cancellation'}, real axis reaches ${axisTick ? axisTick.text : '?'} (not the stale 80)`)
+
+  // First order lag x PID: the derivative zero pair puts one zero at -9.9,
+  // well past the pole cluster's own frame (extent ~3, widened to ~8.8 on
+  // the real axis by the canvas's own aspect) — the far-zero case, distinct
+  // from Three lags x PID above, where the SAME zero (-19.8) turns out to
+  // sit just inside the aspect-widened frame and draws as an ordinary mark,
+  // which is a correct outcome too (the pole cluster, not the zero, still
+  // set the scale).
+  await clickPreset('First order lag')
+  await clickBtn('PID')
+  await clickBtn('Root locus')
+  await settle()
+  await installProbeHooks(page)
+  const pidTexts = await readLocusTexts(async () => {
+    await clickBtn('Step')
+    await clickBtn('Root locus')
+  })
+  const edgeZero = pidTexts.find((t) => /^zero at/.test(t.text))
+  if (!edgeZero) fail('locus: First order lag x PID should mark its far zero at the frame edge rather than losing it')
+  else console.log(`   First order lag + PID: far zero marked "${edgeZero.text}"`)
+}
+
+// ------------------------------------ 31. the "unstable half" label, on phone
+//
+// Defect 4: the annotation lost its last word off the right edge at 390px
+// on Three lags x PID. Fixed by fitting the longest wording that fits, the
+// same fallback ladder packages/ui's pole-zero plot uses.
+console.log('\n31. Root locus "unstable half" label does not clip at 390px\n')
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.views canvas')
+  await clickPreset('Three lags')
+  await clickBtn('PID')
+  await clickBtn('Root locus')
+  await settle()
+  await installProbeHooks(page)
+  const { texts } = await probeDraw(page, async () => {
+    await clickBtn('Nyquist')
+    await clickBtn('Root locus')
+  })
+  const locusId = await page.evaluate(() => document.querySelector('canvas[aria-label^="Root locus"]')?.dataset.probeId)
+  const box = await page.locator('.views canvas').last().boundingBox()
+  const all = dedupeTexts(texts).filter((t) => t.canvas === locusId)
+  // Any rung of the fallback ladder (LocusCanvas.jsx) counts as present —
+  // the point of the fallback is that a narrow canvas gets the SHORTER
+  // wording instead of a clipped long one, so the short form is success,
+  // not failure.
+  const label = all.find((t) => /unstable half|a pole here grows/.test(t.text))
+  if (!label) fail('locus phone: no "unstable half" annotation (any wording) drawn at 390px')
+  else {
+    const clipped = label.x + label.w > box.width + 1
+    console.log(`   390px Three lags + PID: "${label.text}" (${label.x.toFixed(0)}-${(label.x + label.w).toFixed(0)} of ${box.width.toFixed(0)}px), ${clipped ? 'CLIPPED' : 'fits'}`)
+    if (clipped) fail(`locus phone: "${label.text}" runs past the canvas's right edge`)
+  }
+  await page.setViewportSize({ width: 1440, height: 900 })
+}
+
+// --------------------------------------------- 32. hover-only explanations
+//
+// Defect 5: the crossover field's rad/s conversion and the Math tab's "[N]"
+// footnote lived only in title attributes, unreachable without a mouse.
+console.log('\n32. Hover-only explanations reachable with taps alone at 390x844\n')
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.views canvas')
+
+  await clickPreset('Three lags')
+  await clickBtn('Proportional')
+  await setField('Kp', 4)
+  const info = page.locator('.topbar-info')
+  if (!(await info.count())) fail('phone: no tap target for the crossover rad/s conversion')
+  else {
+    if (await page.locator('.topbar-field-note').count()) {
+      fail('phone: the crossover note should not render before it is tapped open')
+    }
+    await info.tap()
+    await page.waitForTimeout(80)
+    const note = page.locator('.topbar-field-note')
+    const visible = (await note.count()) && (await note.first().isVisible())
+    const text = visible ? (await note.first().textContent()) || '' : ''
+    console.log(`   crossover rad/s note at 390px, after a tap: ${visible ? 'visible' : 'HIDDEN'} ("${text.trim()}")`)
+    if (!visible) fail('phone: tapping the crossover info button did not reveal the rad/s note')
+    if (!/rad\/s/.test(text)) fail(`phone: the crossover note should carry rad/s, reads "${text}"`)
+  }
+
+  // A row the current settings make unmeasurable: Second order + Proportional
+  // has no integrator, so the rule-of-thumb row is footnoted "[1]".
+  await clickPreset('Second order')
+  await clickBtn('Proportional')
+  await clickBtn('Math')
+  await page.waitForTimeout(150)
+  const marked = page.locator('.math-check .unchecked[title]').first()
+  if (!(await marked.count())) {
+    fail('phone: expected an unchecked/footnoted math row on Second order + Proportional')
+  } else {
+    const li = page.locator('.math-notes li').first()
+    const before = await li.evaluate((el) => el.className)
+    await marked.tap()
+    await page.waitForTimeout(150)
+    const after = await li.evaluate((el) => el.className)
+    console.log(`   tapping the math "[N]" mark: note class "${before}" -> "${after}"`)
+    if (!/is-flash/.test(after)) fail('phone: tapping the footnote mark should flash its matching note into view')
+  }
+  await clickBtn('Step')
 }
 
 await browser.close()
