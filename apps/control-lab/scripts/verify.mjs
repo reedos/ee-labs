@@ -7,7 +7,7 @@
 // gain up to just under it and just over it, and requires the app to agree.
 
 import { chromium } from 'playwright'
-import { foldProbe, phoneProbe } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { foldProbe, phoneProbe, PHONE_VIEWPORT } from '@ee-labs/ui/verify/foldProbe.mjs'
 
 const URL = process.env.APP_URL || 'http://localhost:4176'
 const failures = []
@@ -148,6 +148,111 @@ const clickPreset = loadLesson
 
 const plants = ['First order lag', 'Integrator', 'Second order', 'Motor position', 'Three lags', 'Unstable plant', 'Custom H(s)']
 const ctrls = ['Proportional', 'PI', 'PID', 'Lead']
+
+/**
+ * Text-overlap probing for the canvases (items 24, 25, 27): hook
+ * fillText and lineTo on every CanvasRenderingContext2D so a probe can ask,
+ * after a redraw, exactly what text was painted where and what the traces'
+ * own pixel paths were — the only way to catch a caption printed over
+ * another caption, or over a trace, from outside the canvas.
+ *
+ * useCanvas (packages/ui) calls ctx.setTransform(dpr,...) before every draw,
+ * so fillText/lineTo coordinates ARE CSS pixels; no DPR conversion needed
+ * here. A ResizeObserver in useCanvas redraws on any element resize
+ * regardless of React's own deps, so nudging the viewport (or any layout
+ * change that resizes the canvas) is enough to force a fresh, hooked draw.
+ */
+async function installProbeHooks(page) {
+  await page.evaluate(() => {
+    window.__texts = []
+    window.__lines = []
+    if (window.__probeHooked) return
+    window.__probeHooked = true
+    let nextId = 1
+    const idOf = (canvas) => {
+      if (!canvas.dataset.probeId) canvas.dataset.probeId = String(nextId++)
+      return canvas.dataset.probeId
+    }
+    const origFillText = CanvasRenderingContext2D.prototype.fillText
+    CanvasRenderingContext2D.prototype.fillText = function (text, x, y, maxWidth) {
+      const w = this.measureText(text).width
+      const align = this.textAlign || 'start'
+      const baseline = this.textBaseline || 'alphabetic'
+      const m = /(\d+(?:\.\d+)?)px/.exec(this.font)
+      const fontPx = m ? parseFloat(m[1]) : 10
+      let left = x
+      if (align === 'center') left = x - w / 2
+      else if (align === 'right' || align === 'end') left = x - w
+      let top = y
+      if (baseline === 'middle') top = y - fontPx / 2
+      else if (baseline === 'bottom') top = y - fontPx
+      else if (baseline === 'alphabetic') top = y - fontPx * 0.8
+      window.__texts.push({ canvas: idOf(this.canvas), text, x: left, y: top, w, h: fontPx })
+      return origFillText.apply(this, arguments)
+    }
+    const origLineTo = CanvasRenderingContext2D.prototype.lineTo
+    CanvasRenderingContext2D.prototype.lineTo = function (x, y) {
+      window.__lines.push({ canvas: idOf(this.canvas), x, y, color: String(this.strokeStyle) })
+      return origLineTo.apply(this, arguments)
+    }
+  })
+}
+
+/** Force every hooked canvas to redraw (see installProbeHooks) and read back what it painted. */
+async function probeDraw(page, act) {
+  await page.evaluate(() => {
+    window.__texts = []
+    window.__lines = []
+  })
+  await act()
+  await page.waitForTimeout(250)
+  return page.evaluate(() => ({ texts: window.__texts || [], lines: window.__lines || [] }))
+}
+
+/** Do two axis-aligned boxes overlap by more than a hairline (`tol` px)? */
+function boxesOverlap(a, b, tol = 1) {
+  return a.x < b.x + b.w - tol && a.x + a.w > b.x + tol && a.y < b.y + b.h - tol && a.y + a.h > b.y + tol
+}
+
+/**
+ * useCanvas's effect calls render() once directly AND creates a fresh
+ * ResizeObserver that (per spec) fires its own initial callback for the
+ * newly-observed canvas — so every deps-triggered redraw draws everything
+ * TWICE, bit-identically. That is not the bug this probe looks for (two
+ * IDENTICAL boxes are the same paint, not an overprint), so duplicates are
+ * collapsed before anything is compared.
+ */
+function dedupeTexts(texts) {
+  const seen = new Set()
+  const out = []
+  for (const t of texts) {
+    const key = `${t.canvas}|${t.text}|${Math.round(t.x)}|${Math.round(t.y)}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(t)
+  }
+  return out
+}
+
+/** Every pair of text boxes on the SAME canvas, checked for overlap. */
+function findTextOverlaps(texts) {
+  const problems = []
+  const byCanvas = new Map()
+  for (const t of dedupeTexts(texts)) {
+    if (!byCanvas.has(t.canvas)) byCanvas.set(t.canvas, [])
+    byCanvas.get(t.canvas).push(t)
+  }
+  for (const group of byCanvas.values()) {
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        if (boxesOverlap(group[i], group[j])) {
+          problems.push(`"${group[i].text}" overlaps "${group[j].text}"`)
+        }
+      }
+    }
+  }
+  return problems
+}
 
 // ------------------------------------- 1. every plant against every controller
 
@@ -1001,10 +1106,16 @@ console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
   for (const f of res.failures) fail(`fold: ${f}`)
   console.log(`   ${res.ok ? 'every lesson\'s try line, knob, controller header and chip inside the fold' : res.failures.length + ' fold failures'}`)
 
-  // Phone: the lesson's named view in the first screen.
+  // Phone: the lesson's named view in the first screen — lessons 1, 3 and 9,
+  // spanning the step/watch/nyquist views (item 23).
+  const phoneLessons = [
+    'Proportional cannot get there', // lesson 1, step
+    'Watch the integrator take over', // lesson 3, watch
+    'Everything is about one point', // lesson 9, nyquist
+  ]
   const phone = await phoneProbe(page, {
     url: URL,
-    cases: ['Proportional cannot get there', 'Watch the integrator take over'].map((name) => ({
+    cases: phoneLessons.map((name) => ({
       name,
       load: async (pg) => {
         await pg.waitForSelector('.views canvas')
@@ -1018,6 +1129,192 @@ console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
   }
   for (const f of phone.failures) fail(`phone: ${f}`)
   console.log(`   ${phone.ok ? 'phone: the lesson\'s view is in the first screen' : phone.failures.length + ' phone failures'}`)
+
+  // Phone: the note title and try line must sit inside the SIDEBAR's own
+  // visible box — its clipped max-height (.app.has-lesson .controls, 40vh =
+  // 338px at 844px tall), not the page's full 844px. foldProbe's generic
+  // check above cannot see this bug: the PAGE never scrolls (only .controls
+  // does internally), so an element sitting past the sidebar's clipped
+  // bottom still reports a y comfortably inside 844 and would pass a plain
+  // viewport check — which is exactly how "note at y 411, try line at y 488,
+  // both past the 338px box" shipped unnoticed.
+  await page.setViewportSize(PHONE_VIEWPORT)
+  for (const name of phoneLessons) {
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.views canvas')
+    await loadLesson(name)
+    await page.evaluate(() => {
+      const el = document.querySelector('.controls')
+      if (el) el.scrollTop = 0
+      window.scrollTo(0, 0)
+    })
+    await page.waitForTimeout(60)
+    const sidebar = await page.locator('.controls').boundingBox()
+    const title = await page.locator('.note-title').first().boundingBox()
+    const tryLine = await page.locator('.try-line').first().boundingBox()
+    for (const [label, box] of [
+      ['note title', title],
+      ['try line', tryLine],
+    ]) {
+      if (!box) {
+        fail(`phone/${name}: ${label} not rendered`)
+        continue
+      }
+      if (box.y < sidebar.y - 0.5 || box.y + box.height > sidebar.y + sidebar.height + 0.5) {
+        fail(
+          `phone/${name}: ${label} outside the sidebar's visible box (${box.y.toFixed(0)}–${(box.y + box.height).toFixed(0)} vs sidebar ${sidebar.y.toFixed(0)}–${(sidebar.y + sidebar.height).toFixed(0)})`,
+        )
+      }
+    }
+    console.log(`   390x844 ${name.padEnd(34)} note title + try line inside the sidebar's ${sidebar.height.toFixed(0)}px box`)
+  }
+}
+
+// ------------------------------------------------------- 8. text overprints
+
+console.log('\n8. Overprinting captions and labels (items 24, 25, 26, 27)\n')
+
+// 24: the watch view's prose captions vs the liveValue readouts, on a
+// narrow (< 500px) canvas — "the error e (dashed) — its gain stretches it
+// into Kp·e" used to run into "Kp·e = −0.1" on the same line.
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.views canvas')
+  await loadLesson('Watch the integrator take over')
+  await installProbeHooks(page)
+  const slider = page.getByRole('slider', { name: 'Moment in the response' })
+  const { texts } = await probeDraw(page, () => slider.fill('300'))
+  const watchId = await page.evaluate(
+    () => document.querySelector('canvas[aria-label^="The loop watched"]')?.dataset.probeId,
+  )
+  const watchTexts = dedupeTexts(texts.filter((t) => t.canvas === watchId))
+  const overlaps24 = findTextOverlaps(watchTexts)
+  for (const o of overlaps24) fail(`watch view narrow captions: ${o}`)
+  console.log(
+    `   390px watch canvas: ${watchTexts.length} labels drawn, ${overlaps24.length ? overlaps24.length + ' OVERLAPS' : 'no overlaps'}`,
+  )
+}
+
+// 25: the Nyquist "−1" / GM / PM labels at the boundary gain, where the
+// curve passes through −1 exactly and all three used to land on top of
+// each other. Wide: stacked and readable. Narrow (< 500px): dropped.
+// Each viewport gets its OWN fresh navigation and its own "act" that
+// changes React state directly (clicking the crossing chip again, an
+// idempotent value that still creates new ctrlP/loop objects) — a viewport
+// resize alone is not a reliable redraw trigger here: useCanvas's
+// ResizeObserver only re-fires when the CANVAS ELEMENT's own rect actually
+// changes, and a small viewport nudge can be absorbed entirely by
+// surrounding flex layout without moving the canvas at all.
+{
+  const nyqId = () =>
+    page.evaluate(() => document.querySelector('canvas[aria-label^="Nyquist plot"]')?.dataset.probeId)
+  const setup = async (vp) => {
+    await page.setViewportSize(vp)
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.views canvas')
+    await loadLesson('Everything is about one point')
+    await page.locator('.try-line .chip', { hasText: /on the axis/ }).click()
+    await settle()
+  }
+
+  await setup({ width: 1440, height: 900 })
+  await installProbeHooks(page)
+  let { texts } = await probeDraw(page, () =>
+    page.locator('.try-line .chip', { hasText: /on the axis/ }).click(),
+  )
+  let id = await nyqId()
+  let nyqTexts = dedupeTexts(texts.filter((t) => t.canvas === id))
+  const haveGM = nyqTexts.some((t) => /^GM/.test(t.text))
+  const havePM = nyqTexts.some((t) => /^PM/.test(t.text))
+  if (!haveGM || !havePM) {
+    fail(`nyquist wide: expected GM and PM labels at the boundary gain, got [${nyqTexts.map((t) => t.text).join(', ')}]`)
+  }
+  const overlaps25 = findTextOverlaps(nyqTexts)
+  for (const o of overlaps25) fail(`nyquist 1440x900 at Kp≈11.25: ${o}`)
+  console.log(
+    `   1440x900 nyquist at the boundary gain: ${nyqTexts.map((t) => t.text).join(' / ')} — ${overlaps25.length ? overlaps25.length + ' OVERLAPS' : 'no overlaps'}`,
+  )
+
+  await setup(PHONE_VIEWPORT)
+  await installProbeHooks(page)
+  ;({ texts } = await probeDraw(page, () =>
+    page.locator('.try-line .chip', { hasText: /on the axis/ }).click(),
+  ))
+  id = await nyqId()
+  nyqTexts = dedupeTexts(texts.filter((t) => t.canvas === id))
+  if (nyqTexts.some((t) => /^GM|^PM/.test(t.text))) {
+    fail(`nyquist narrow (390px): GM/PM labels should be dropped, got [${nyqTexts.map((t) => t.text).join(', ')}]`)
+  }
+  console.log(
+    `   390px nyquist at the boundary gain: GM/PM labels dropped (left: ${nyqTexts.map((t) => t.text).join(', ') || 'none'})`,
+  )
+}
+
+// 26: the flow strip's verdict sentence must not force a clip a reader
+// never thinks to scroll for — no .flow-node (or its em) may run wider than
+// itself at phone width. (.flow itself is DELIBERATELY horizontally
+// scrollable — that is not the bug — so only the nodes inside it are
+// checked, not the strip's own container.)
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.views canvas')
+  const clipped = await page.evaluate(() =>
+    [...document.querySelectorAll('.flow-node, .flow-node em')]
+      .filter((el) => el.scrollWidth > el.clientWidth + 1)
+      .map((el) => `${el.className || el.tagName} (${el.scrollWidth} > ${el.clientWidth})`),
+  )
+  for (const c of clipped) fail(`flow strip clips at 390px: ${c}`)
+  console.log(`   390px flow strip: ${clipped.length ? clipped.length + ' CLIPPED nodes' : 'no node scrolls past its own width'}`)
+}
+
+// 27: the Bode "gain = 1" label must sit clear of both the magnitude and
+// phase traces — checked on L11 ("The plant that needs feedback", where it
+// used to overprint the phase trace, top right) at 1440x900 and on phone.
+// The redraw is forced by toggling the phase overlay off then back ON — a
+// real prop change (showPhase), not a viewport nudge the canvas might not
+// actually resize for — landing on the same showPhase=true the bug needs.
+{
+  const magColor = '#38e0b0' // COLORS.trace
+  const phaseColor = '#b98cf0' // COLORS.phase
+  for (const vp of [{ width: 1440, height: 900 }, PHONE_VIEWPORT]) {
+    await page.setViewportSize(vp)
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.views canvas')
+    await loadLesson('The plant that needs feedback')
+    const phaseGroup = page.locator('[aria-label="Phase overlay"]')
+    await phaseGroup.getByRole('button', { name: 'no phase', exact: true }).click()
+    await settle()
+    await installProbeHooks(page)
+    const { texts, lines } = await probeDraw(page, () =>
+      phaseGroup.getByRole('button', { name: 'phase', exact: true }).click(),
+    )
+    const bodeId = await page.evaluate(
+      () => document.querySelector('canvas[aria-label^="Open-loop Bode"]')?.dataset.probeId,
+    )
+    const label = dedupeTexts(texts).find((t) => t.canvas === bodeId && t.text === 'gain = 1')
+    if (!label) {
+      fail(`bode ${vp.width}x${vp.height} L11: "gain = 1" label not drawn`)
+      continue
+    }
+    const pad = 2
+    const clashing = lines.filter(
+      (l) =>
+        l.canvas === bodeId &&
+        (l.color === magColor || l.color === phaseColor) &&
+        l.x >= label.x - pad &&
+        l.x <= label.x + label.w + pad &&
+        l.y >= label.y - pad &&
+        l.y <= label.y + label.h + pad,
+    )
+    if (clashing.length) {
+      fail(`bode ${vp.width}x${vp.height} L11: "gain = 1" label overlaps a trace (${clashing.length} points)`)
+    }
+    console.log(
+      `   ${vp.width}x${vp.height} L11 "gain = 1" label: ${clashing.length ? clashing.length + ' CLASHING trace points' : 'clear of both traces'}`,
+    )
+  }
 }
 
 await browser.close()

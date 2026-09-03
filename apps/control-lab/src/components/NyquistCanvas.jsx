@@ -18,6 +18,13 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
     (ctx, w, h) => {
       const area = plotArea(w, h)
       const k = area.k || 1
+      // At the boundary gain (Kp on the imaginary-axis crossing) the curve
+      // passes through −1 exactly: gain margin -> 1.00x, phase margin -> 0.0°,
+      // and the GM/PM labels' own geometry collapses onto the −1 marker they
+      // are meant to sit beside. Below 500px there is no room to separate
+      // them from it AND from each other, so they are dropped — the same
+      // numbers are already in the topbar.
+      const narrow = w < 500
 
       // Frame the CONTENT, at true 1:1 scale. Two rules fight here: a loop
       // with an integrator runs off to infinity (so only the near-origin part
@@ -161,10 +168,16 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
         ctx.moveTo(sx(cross), py)
         ctx.lineTo(px, py)
         ctx.stroke()
-        ctx.fillStyle = COLORS.response
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'top'
-        ctx.fillText(`GM ${gainMargin.toFixed(2)}×`, (sx(cross) + px) / 2, py + 8 * k)
+        if (!narrow) {
+          ctx.fillStyle = COLORS.response
+          ctx.font = `${Math.round(12 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'top'
+          // Fixed under the −1 marker rather than at the connecting line's
+          // own midpoint: at the boundary gain that midpoint IS −1, and the
+          // label used to land right on top of the marker it is beside.
+          ctx.fillText(`GM ${gainMargin.toFixed(2)}×`, px, py + 8 * k)
+        }
       }
 
       // Phase margin: the angle from −1 round to where the curve leaves the
@@ -179,17 +192,17 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
         ctx.lineTo(sx(-Math.cos(Math.PI - a)), sy(-Math.sin(Math.PI - a)))
         ctx.stroke()
         ctx.setLineDash([])
-        ctx.fillStyle = COLORS.phase
-        ctx.textAlign = 'left'
-        ctx.textBaseline = 'middle'
-        // The label sits outside the unit circle along the ray, not at its
-        // tip: at the tip it landed on top of the GM label whenever both
-        // margins lived near −1, which is exactly when a reader needs them.
-        ctx.fillText(
-          `PM ${phaseMargin.toFixed(1)}°`,
-          sx(-1.3 * Math.cos(Math.PI - a)) + 4 * k,
-          sy(-1.3 * Math.sin(Math.PI - a)),
-        )
+        if (!narrow) {
+          ctx.fillStyle = COLORS.phase
+          ctx.font = `${Math.round(12 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'top'
+          // Stacked BELOW the GM label rather than along the ray to the
+          // crossing point: at PM near 0° that ray's own tip lands on the
+          // −1 marker (and so on GM's label too) — the exact case ("−1",
+          // "PM 0.0°", "GM 1.00×" all overprinting) this stack avoids.
+          ctx.fillText(`PM ${phaseMargin.toFixed(1)}°`, px, py + 8 * k + 16 * k)
+        }
       }
 
       ctx.restore()

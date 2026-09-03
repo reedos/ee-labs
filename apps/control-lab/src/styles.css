@@ -363,6 +363,44 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .views.is-weighted > .view.is-primary .plot { min-height: 240px; }
 }
 
+/* Phone: the "Try this" section's own two blocks reorder, Circuit Lab's
+   pattern copied verbatim. On a fresh load the note (its title, try line,
+   featured knobs) used to sit BELOW the whole lesson list — outside the
+   338 px sidebar's own visible box (.app.has-lesson .controls, below) — so
+   the first thing on screen was a list of lesson names and a plot, with no
+   note in sight until the reader scrolled the sidebar itself. The sticky
+   "Try this" cap (prev/n of N/next) stays first regardless: it is the h2,
+   order 0 by default, and both from-link banners above it are order 0 too
+   so they keep their place ahead of it. */
+@media (max-width: 900px) {
+  #lessons { display: flex; flex-direction: column; }
+  #lessons > h2 { order: 0; }
+  #lessons > .lesson-body { order: 1; }
+  #lessons > .lesson-list { order: 2; margin-top: 10px; }
+  #lessons > .hint.circuit-back { order: 3; }
+  .lesson-body .note-title { margin-top: 0; }
+  /* A few more px back from the same box: the longest note ("Watch the
+     integrator take over", two featured knobs and a long paragraph) left
+     only 3px of clearance under the try line otherwise — thin enough that a
+     different font stack could tip it over. */
+  #lessons > h2 { padding-bottom: 4px; }
+  .lesson-body .hint.note { margin-top: 4px; }
+  .lesson-body .try-line { margin-top: 4px; }
+}
+
+/* Phone: the flow strip's verdict sentence ("closed loop settles",
+   "sustained oscillation — neither settles nor runs away") used to sit
+   inside .flow's own horizontal scrollbox and clip to "stable closed loo" —
+   not a page-level clip (verify's horizontal-scroll check never saw it),
+   just a mini strip nobody thought to scroll sideways. The short verdict
+   word replaces it below 900px; textContent still carries both (harmless —
+   only the visible one is ever read as "the label"). */
+.flow-note-short { display: none; }
+@media (max-width: 900px) {
+  .flow-note-full { display: none; }
+  .flow-note-short { display: inline; }
+}
+
 /* On a short laptop screen with a lesson loaded, the subhead gives its
    52 px to the lesson: the fold probe at 1366×768 needs the try line, the
    featured knob and the controller header all inside the first screen,
@@ -377,6 +415,13 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 @media (max-width: 900px) {
   .app.has-lesson .controls { max-height: 40vh; }
   .views.is-weighted > .view.is-primary .readout [data-part] { display: none; }
+  /* Same squeeze as the short-desktop rule above, for the same reason: the
+     subhead is the one line in the box that is not part of the lesson, and
+     with the note/try line now rendering FIRST (above), it is this budget
+     that decides whether a longer note's try line — "Watch the integrator
+     take over" ran its try line to y 371, past the 338px box — clears the
+     sidebar's own visible bottom. */
+  .app.has-lesson .controls .sub { display: none; }
 }
 
 /* ---------- the fold at 1366×768 ----------

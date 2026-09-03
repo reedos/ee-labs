@@ -79,6 +79,28 @@ export default function BodeCanvas({
         },
       )
 
+      // The phase axis's own scale, hoisted here rather than computed only
+      // inside "draw the phase trace" below — the crossover markers are
+      // drawn BEFORE either trace, and need to ask where the phase trace
+      // sits at their frequency to place their own label clear of it.
+      let phaseScale = null
+      if (showPhase && phase) {
+        let plo = 0
+        let phi = 0
+        for (const arr of ghostPhase ? [phase, ghostPhase] : [phase]) {
+          for (let i = 0; i < arr.length; i++) {
+            const d = (arr[i] * 180) / Math.PI
+            if (d < plo) plo = d
+            if (d > phi) phi = d
+          }
+        }
+        plo = Math.min(-90, Math.floor(plo / 90) * 90)
+        phi = Math.max(90, Math.ceil(phi / 90) * 90)
+        const padPx = 3 * k
+        const py = (d) => area.y + padPx + ((phi - d) / (phi - plo)) * (area.h - 2 * padPx)
+        phaseScale = { plo, phi, py }
+      }
+
       ctx.save()
       ctx.beginPath()
       ctx.rect(area.x, area.y, area.w, area.h)
@@ -107,9 +129,16 @@ export default function BodeCanvas({
       const named = [...markers]
       if (crossover) named.push({ f: crossover, label: 'gain = 1' })
       if (phaseCrossover) named.push({ f: phaseCrossover, label: 'phase = −180°' })
-      // Each label on its own row: the two crossovers sit close on a
-      // three-lag loop, and side-by-side labels ran into each other.
-      let row = 0
+      // Each label sits clear of BOTH traces at its own frequency: it used to
+      // sit fixed at the top, and on a loop whose phase trace runs near the
+      // top there too (L11, "The plant that needs feedback") "gain = 1"
+      // printed right over the phase curve. Nearest-sample lookup on the
+      // shared freqs grid is exact enough at 900 points to say where each
+      // trace actually is, and the label goes on whichever side — above or
+      // below both traces — has the bigger gap; two labels stack within
+      // their own side rather than sharing one shared row counter.
+      let topRow = 0
+      let botRow = 0
       for (const m of named) {
         if (!(m.f > 0)) continue
         const x = sx(lx(m.f))
@@ -123,12 +152,31 @@ export default function BodeCanvas({
         ctx.setLineDash([])
         ctx.globalAlpha = 1
         if (m.label) {
+          let i = 0
+          let bd = Infinity
+          for (let j = 0; j < freqs.length; j++) {
+            const d = Math.abs(lx(freqs[j]) - lx(m.f))
+            if (d < bd) {
+              bd = d
+              i = j
+            }
+          }
+          const traceYs = [sy(db(mag[i]))]
+          if (phaseScale) traceYs.push(phaseScale.py((phase[i] * 180) / Math.PI))
+          const topGap = Math.min(...traceYs) - area.y
+          const botGap = area.y + area.h - Math.max(...traceYs)
           ctx.fillStyle = COLORS.marker
           ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
           ctx.textAlign = 'left'
-          ctx.textBaseline = 'top'
-          ctx.fillText(m.label, x + 4 * k, area.y + (4 + 14 * row) * k)
-          row++
+          if (topGap >= botGap) {
+            ctx.textBaseline = 'top'
+            ctx.fillText(m.label, x + 4 * k, area.y + (4 + 14 * topRow) * k)
+            topRow++
+          } else {
+            ctx.textBaseline = 'bottom'
+            ctx.fillText(m.label, x + 4 * k, area.y + area.h - (4 + 14 * botRow) * k)
+            botRow++
+          }
         }
       }
 
@@ -178,26 +226,9 @@ export default function BodeCanvas({
       ctx.stroke()
 
       if (showPhase && phase) {
-        let plo = 0
-        let phi = 0
-        for (const arr of ghostPhase ? [phase, ghostPhase] : [phase]) {
-          for (let i = 0; i < arr.length; i++) {
-            const d = (arr[i] * 180) / Math.PI
-            if (d < plo) plo = d
-            if (d > phi) phi = d
-          }
-        }
-        plo = Math.min(-90, Math.floor(plo / 90) * 90)
-        phi = Math.max(90, Math.ceil(phi / 90) * 90)
-        // A flat −90° trace (a bare integrator's controller term, an
-        // early-lesson PI) lands EXACTLY on plo, and drew right on the
-        // frame's bottom line — indistinguishable from the axis itself. A
-        // few pixels of inset keep the curve (and the tick labels, which
-        // share this py) off the frame on both edges without touching the
-        // 90°-multiple grid the ticks are drawn at.
-        const padPx = 3 * (area.k || 1)
-        const py = (d) =>
-          area.y + padPx + ((phi - d) / (phi - plo)) * (area.h - 2 * padPx)
+        // plo/phi/py were computed above (phaseScale), before the crossover
+        // markers, so their labels could already ask where this trace sits.
+        const { plo, phi, py } = phaseScale
 
         if (ghostPhase) {
           ctx.strokeStyle = COLORS.phase

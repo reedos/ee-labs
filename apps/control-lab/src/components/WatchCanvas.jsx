@@ -39,6 +39,14 @@ export default function WatchCanvas({ t, input, y, e, u, parts, kick, pos, dist,
       const sx = (i) => outer.x + (i / (t.length - 1)) * outer.w
       const ex = sx(n)
       const split = parts.length > 1
+      // Below 500px the prose caption ("the error e (dashed) — its gain
+      // stretches it into Kp·e", left-aligned) runs into the liveValue
+      // readout ("Kp·e = −0.1", right-aligned) on the SAME line — plotScale
+      // floors font size at 1x regardless of width, so the sentence does not
+      // shrink to fit. Below the threshold, draw the label alone (the short
+      // name each strip already carries) and drop the numeric echo — the
+      // same number is already on screen in the pane's readout row (App.jsx).
+      const narrow = w < 500
 
       // ---- the strip stack --------------------------------------------------
       // Every term earns its own strip (plus the sum); a solo controller is
@@ -180,10 +188,14 @@ export default function WatchCanvas({ t, input, y, e, u, parts, kick, pos, dist,
         if (s.kind === 'io') {
           label(
             s.area,
-            (dist
-              ? 'the shove d (dashed) and the output y — everything y shows IS error, to be driven back to 0'
-              : 'asked r (dashed) and delivered y — the gap between them is the error e') +
-              (diverges ? '   (axis zooming out with the runaway)' : ''),
+            narrow
+              ? dist
+                ? 'd (dashed) vs y'
+                : 'r (dashed) vs y'
+              : (dist
+                  ? 'the shove d (dashed) and the output y — everything y shows IS error, to be driven back to 0'
+                  : 'asked r (dashed) and delivered y — the gap between them is the error e') +
+                  (diverges ? '   (axis zooming out with the runaway)' : ''),
           )
           // The error HISTORY, shaded: the area between what was asked and
           // what was delivered, up to the cursor. With an integrator in the
@@ -253,15 +265,19 @@ export default function WatchCanvas({ t, input, y, e, u, parts, kick, pos, dist,
           const kickNote = kick && p.key === 'd' ? '   (+ a Kd·δ impulse at the step edge, off any axis)' : ''
           label(
             s.area,
-            (s.kind === 'solo'
-              ? `${p.rawLabel} (dashed), through the controller = u, what drives the plant`
-              : `${p.rawLabel} (dashed) — its gain stretches it into ${p.label}`) + kickNote,
+            narrow
+              ? p.label
+              : (s.kind === 'solo'
+                  ? `${p.rawLabel} (dashed), through the controller = u, what drives the plant`
+                  : `${p.rawLabel} (dashed) — its gain stretches it into ${p.label}`) + kickNote,
           )
-          liveValue(
-            s.area,
-            `${s.kind === 'solo' ? 'u' : p.label} = ${fmtNum((s.kind === 'solo' ? u : p.y)[n], 2)}`,
-            color,
-          )
+          if (!narrow) {
+            liveValue(
+              s.area,
+              `${s.kind === 'solo' ? 'u' : p.label} = ${fmtNum((s.kind === 'solo' ? u : p.y)[n], 2)}`,
+              color,
+            )
+          }
           // The raw signal and the term's answer share one scale, so the
           // gain IS the visible stretch between the curves. The raw one is
           // DASHED: at a gain of exactly 1 the two coincide, and dashes over
@@ -288,8 +304,8 @@ export default function WatchCanvas({ t, input, y, e, u, parts, kick, pos, dist,
         }
 
         if (s.kind === 'sum') {
-          label(s.area, 'their sum u — what actually drives the plant')
-          liveValue(s.area, `u = ${fmtNum(u[n], 2)}`, PART_COLORS.u)
+          label(s.area, narrow ? 'sum u' : 'their sum u — what actually drives the plant')
+          if (!narrow) liveValue(s.area, `u = ${fmtNum(u[n], 2)}`, PART_COLORS.u)
           trace(s.area, u, s.sy, PART_COLORS.u, 1.9)
           // The composition at the cursor: each part a segment laid end to
           // end from zero to u — the convolution view's product bars,

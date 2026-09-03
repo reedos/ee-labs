@@ -543,57 +543,65 @@ export default function App() {
               />
             ) : null}
           </h2>
-          {/* Grouped as a curriculum and COLLAPSED to group headers by default,
-              the same fold as Signal Lab's presets: twelve buttons were most of
-              the sidebar, and the plant and controller a lesson changes sat
-              scrolled out of sight at the moment they changed. Only the active
-              lesson's group stays open, so where-you-are survives the fold. */}
-          {LESSON_GROUPS.map((g) => {
-            const inGroup = LESSONS.filter((l) => l.group === g)
-            if (!inGroup.length) return null
-            const holdsActive = inGroup.some((l) => l.name === lesson)
-            return (
-              <details
-                className="preset-group"
-                key={g}
-                open={holdsActive || openGroups.has(g)}
-                onToggle={(e) => {
-                  // The pinned group's toggles are not the reader's: a
-                  // details element fires `toggle` when it is CREATED open,
-                  // and recording that kept the opening lesson's group open
-                  // under every other lesson — 139 px of the fold, gone.
-                  if (holdsActive) return
-                  const next = new Set(openGroups)
-                  if (e.target.open) next.add(g)
-                  else next.delete(g)
-                  setOpenGroups(next)
-                }}
-              >
-                {/* preventDefault, not just a controlled `open`: React skips
-                    rewriting an attribute whose prop value has not changed, so
-                    a native toggle would stand and the active group WOULD fold
-                    away. Blocking the click is the only reliable pin. */}
-                <summary onClick={holdsActive ? (e) => e.preventDefault() : undefined}>
-                  {g}
-                  {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
-                </summary>
-                <div className="presets">
-                  {inGroup.map((l) => (
-                    <button
-                      type="button"
-                      key={l.name}
-                      className={`preset${l.name === lesson ? ' is-on' : ''}`}
-                      onClick={() => loadLesson(l)}
-                    >
-                      {l.name}
-                    </button>
-                  ))}
-                </div>
-              </details>
-            )
-          })}
+          {/* Two blocks, same shape as Circuit Lab's lesson-list / lesson-body:
+              the fold-out group list, and the active lesson's own note/try
+              line/knobs. On a phone (styles.css) the body renders ABOVE the
+              list — a fresh load otherwise left the note and try line below
+              the 338 px sidebar's own visible box, with only a lesson list
+              and a plot on screen. */}
+          <div className="lesson-list">
+            {/* Grouped as a curriculum and COLLAPSED to group headers by default,
+                the same fold as Signal Lab's presets: twelve buttons were most of
+                the sidebar, and the plant and controller a lesson changes sat
+                scrolled out of sight at the moment they changed. Only the active
+                lesson's group stays open, so where-you-are survives the fold. */}
+            {LESSON_GROUPS.map((g) => {
+              const inGroup = LESSONS.filter((l) => l.group === g)
+              if (!inGroup.length) return null
+              const holdsActive = inGroup.some((l) => l.name === lesson)
+              return (
+                <details
+                  className="preset-group"
+                  key={g}
+                  open={holdsActive || openGroups.has(g)}
+                  onToggle={(e) => {
+                    // The pinned group's toggles are not the reader's: a
+                    // details element fires `toggle` when it is CREATED open,
+                    // and recording that kept the opening lesson's group open
+                    // under every other lesson — 139 px of the fold, gone.
+                    if (holdsActive) return
+                    const next = new Set(openGroups)
+                    if (e.target.open) next.add(g)
+                    else next.delete(g)
+                    setOpenGroups(next)
+                  }}
+                >
+                  {/* preventDefault, not just a controlled `open`: React skips
+                      rewriting an attribute whose prop value has not changed, so
+                      a native toggle would stand and the active group WOULD fold
+                      away. Blocking the click is the only reliable pin. */}
+                  <summary onClick={holdsActive ? (e) => e.preventDefault() : undefined}>
+                    {g}
+                    {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
+                  </summary>
+                  <div className="presets">
+                    {inGroup.map((l) => (
+                      <button
+                        type="button"
+                        key={l.name}
+                        className={`preset${l.name === lesson ? ' is-on' : ''}`}
+                        onClick={() => loadLesson(l)}
+                      >
+                        {l.name}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              )
+            })}
+          </div>
           {active ? (
-            <>
+            <div className="lesson-body">
               <h3 className="note-title">{active.name}</h3>
               <p className={`hint note${dirty ? ' is-dirty' : ''}`}>
                 {active.note}
@@ -641,7 +649,7 @@ export default function App() {
                   )}
                 </p>
               ) : null}
-            </>
+            </div>
           ) : null}
           {/* The hand-over in reverse. Exact only: a plant with a gain, or
               component values outside Circuit Lab's knobs, draws nothing. */}
@@ -824,12 +832,22 @@ export default function App() {
           </span>
           <span className={`flow-node ${stable ? 'is-out' : marginal ? 'is-warn' : 'is-off'}`}>
             {stable ? 'stable' : marginal ? 'ON THE BOUNDARY' : 'UNSTABLE'}
+            {/* Two renderings of the same verdict, toggled by CSS (styles.css):
+                the full sentence on a wide screen, and on phone the short
+                verdict word — the sentence used to sit inside .flow's own
+                horizontal scrollbox, invisible past "stable closed loo"
+                unless the reader thought to scroll that one mini-strip. */}
             <em>
-              {stable
-                ? 'closed loop settles'
-                : marginal
-                  ? 'sustained oscillation — neither settles nor runs away'
-                  : 'closed loop runs away'}
+              <span className="flow-note-full">
+                {stable
+                  ? 'closed loop settles'
+                  : marginal
+                    ? 'sustained oscillation — neither settles nor runs away'
+                    : 'closed loop runs away'}
+              </span>
+              <span className="flow-note-short">
+                {stable ? 'settles' : marginal ? 'oscillates' : 'runs away'}
+              </span>
             </em>
           </span>
         </nav>

@@ -182,21 +182,19 @@ your app. The Bode frequency axis may deserve the same treatment; Reed has
 not asked yet.
 
 
-## FOR THE COORDINATOR: packages/ui NumField `snap()` rounds to 3 s.f., needs 4
+## RESOLVED: packages/ui NumField `snap()` now rounds to 4 s.f.
 
 Reed typed 11.25 into the Kp field (the three-lag plant's exact boundary
 gain, and the value the "Kp -> 11.25 (on the axis)" chip already sets to
 four significant figures via lessons.js's new `round4`) and the field read
-back 11.3 — `snap()` in packages/ui rounds every typed/eng-formatted value
-to three significant figures, one fewer than this lab now needs for its own
-chip labels to round-trip through the field without drifting. Not this
-app's file to fix (control-lab's territory is `apps/control-lab/` only).
-The chip-label rounding fix on this side (round4, 4 s.f., in lessons.js —
-the "12.38 -> 12.37 after a click" defect) is done and tested; it stops
-short of the display field itself. Per the handoff, the coordinator is
-already changing `snap()` to 4 s.f. in packages/ui — this note confirms
-control-lab is ready for that (nothing here assumes 3 s.f., and nothing
-breaks going to 4).
+back 11.3 — `snap()` in packages/ui rounded every typed/eng-formatted value
+to three significant figures, one fewer than this lab needed for its own
+chip labels to round-trip through the field without drifting. The
+coordinator has since changed `snap()` to 4 s.f. in packages/ui (commit
+400606c), so the field now reads 11.25 back exactly. The chip-label
+rounding fix on this side (round4, 4 s.f., in lessons.js — the
+"12.38 -> 12.37 after a click" defect) was already done and tested; nothing
+here assumed 3 s.f., so nothing broke going to 4.
 
 
 ## Small crossing: lesson titles above their notes (Reed, uniform across apps)
