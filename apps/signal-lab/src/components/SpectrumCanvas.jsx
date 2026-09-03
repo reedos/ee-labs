@@ -6,6 +6,21 @@ import { toDb } from '@ee-labs/dsp'
 const FLOOR_DB = -100
 
 /**
+ * The right-hand end of the frequency axis.
+ *
+ * Padded 1.5% past the last bin when the view is not zoomed, so a line
+ * sitting exactly AT Nyquist — the whole of "Exactly at Nyquist" — is drawn
+ * inside the frame rather than half-clipped by the right border, where the
+ * cold walk found it. A zoomed view is left alone: the reader chose its edge.
+ */
+export const AXIS_PAD = 0.015
+
+export function axisMax(fFull, xMax = null) {
+  if (xMax != null && xMax < fFull) return xMax
+  return fFull * (1 + AXIS_PAD)
+}
+
+/**
  * Range and tick spacing for the right-hand axis.
  *
  * Phase snaps to quarter turns, because 90 degrees is a quantity with meaning and
@@ -59,6 +74,8 @@ export default function SpectrumCanvas({
   scale,
   markers,
   xMax = null,
+  // The bottom of the dB axis; a preset may lower it (see state.js).
+  floorDb = FLOOR_DB,
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -68,13 +85,14 @@ export default function SpectrumCanvas({
       // two at 500. Everything beyond xMax still exists — the clip rectangle
       // just does not show it.
       const fFull = freqs.length ? freqs[freqs.length - 1] : 1
-      const fMax = xMax != null ? Math.min(xMax, fFull) : fFull
+      const fMax = axisMax(fFull, xMax)
       const db = scale === 'db'
+      const floor = Number.isFinite(floorDb) ? floorDb : FLOOR_DB
 
       let yMin
       let yMax
       if (db) {
-        yMin = FLOOR_DB
+        yMin = floor
         // The top of the axis follows the chain. It sat fixed at +10 dB, and a
         // Q = 20 low-pass puts its resonant peak at +26 — the one feature the
         // "Resonance is Q" lesson exists to show left the plot entirely. Scan
@@ -122,7 +140,7 @@ export default function SpectrumCanvas({
         },
       )
 
-      const yOf = (a) => sy(db ? toDb(a, FLOOR_DB) : a)
+      const yOf = (a) => sy(db ? toDb(a, floor) : a)
       const k = area.k || 1
 
       ctx.save()
@@ -261,7 +279,7 @@ export default function SpectrumCanvas({
         ctx.restore()
       }
     },
-    [freqs, amps, ghostAmps, response, responseExact, overlay, scale, markers, xMax],
+    [freqs, amps, ghostAmps, response, responseExact, overlay, scale, markers, xMax, floorDb],
   )
 
   return <canvas ref={ref} className="plot" role="img" aria-label="Spectrum: amplitude against frequency, with the chain response overlaid" />

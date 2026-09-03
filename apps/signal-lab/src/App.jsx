@@ -27,7 +27,7 @@ import { mathContext, mathFor } from './math.js'
 import { samplingState } from './sampling.js'
 import { INITIAL, presetState } from './state.js'
 import { applyChip } from './chips.js'
-import { formatPeaks, spectralPeaks } from './peaks.js'
+import { allTonal, fmtAmp, formatPeaks, isBroadband, offBin, spectralPeaks } from './peaks.js'
 
 /**
  * Which side of the chain a pane is showing.
@@ -299,6 +299,21 @@ export default function App() {
       peakAmp: top ? top.amp : 0,
     }
   }, [timeBuf, freqs, amps, state.window])
+
+  // Whether the "peak"/"amp" readout means anything for what is actually
+  // playing. A noise source holds every frequency at once, so its tallest
+  // three bins are three random bins — see isBroadband's docstring in
+  // peaks.js for the cold-walk quote this replaced. allTonal is the
+  // narrower, stricter condition under which a line's HEIGHT means an
+  // amplitude at all (mixed tone + noise still names its lines, but the
+  // height is not trustworthy either).
+  const broadband = useMemo(() => isBroadband(state.sources), [state.sources])
+  const tonal = useMemo(() => allTonal(state.sources), [state.sources])
+  // Bin spacing, for the scalloping flag: a tone that falls between bin
+  // centres shares its height between them and reads low. See OFF_BIN/offBin
+  // in peaks.js.
+  const binHz = state.sampleRate / state.fftSize
+  const scalloped = tonal && offBin(stats.peakFreq, binHz)
 
   const markers = useMemo(() => {
     if (!state.showHarmonics) return []
@@ -654,15 +669,31 @@ export default function App() {
                   <span>
                     {/* Same dust rule: the argmax of a numerically-zero
                         spectrum is a random bin, not a peak — spectralPeaks
-                        returns nothing for one, and that prints as a dash. */}
-                    peak <b>{formatPeaks(stats.peaks)}</b>
+                        returns nothing for one, and that prints as a dash.
+                        A pure-noise source holds every frequency at once, so
+                        "the tallest three bins" would be three random bins —
+                        say "broadband" instead of naming them. */}
+                    peak <b>{broadband ? 'broadband' : formatPeaks(stats.peaks)}</b>
                   </span>
                   <span>
-                    amp <b>{stats.peakAmp > 1e-6 ? stats.peakAmp.toFixed(3) : '—'}</b>
+                    {/* A line's height only means an amplitude when every
+                        enabled source is a tone (allTonal) — noise in the
+                        mix makes "amp" as meaningless as the peak list. The
+                        dB figure is a nice-to-have hidden on phone (.amp-db)
+                        when the readout is fighting for room to keep both
+                        canvases at their 120 px floor — the linear number
+                        alone still answers "how tall is the line". */}
+                    amp <b>{tonal ? fmtAmp(stats.peakAmp).lin : '—'}</b>
+                    {tonal && fmtAmp(stats.peakAmp).db ? (
+                      <span className="amp-db"> ({fmtAmp(stats.peakAmp).db})</span>
+                    ) : null}
                   </span>
                   <span>
                     Nyquist <b>{state.sampleRate / 2} Hz</b>
                   </span>
+                  {scalloped ? (
+                    <span className="flag">(off-bin, reads low — scalloping)</span>
+                  ) : null}
                   {resp && !resp.exact ? (
                     <span className="flag">response covers linear blocks only</span>
                   ) : null}
@@ -709,6 +740,7 @@ export default function App() {
               scale={state.scale}
               markers={markers}
               xMax={state.specMax}
+              floorDb={state.floorDb}
             />
           )}
         </section>

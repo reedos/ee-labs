@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   captionLines,
   wrapLines,
+  scopeYStep,
   CAPTION_RECONSTRUCTION,
   CAPTION_ALIASED,
   CAPTION_AT_NYQUIST,
@@ -85,9 +86,8 @@ describe('the presets that should carry a warning do carry one', () => {
     expect(at('High-pass a square')).toContain(CAPTION_ALIASED)
   })
 
-  it('warns on the other two presets that genuinely fold', () => {
+  it('warns on the other preset that genuinely folds', () => {
     expect(at('Square = odd harmonics')).toContain(CAPTION_ALIASED)
-    expect(at('4 bits')).toContain(CAPTION_ALIASED)
   })
 
   it('stays quiet on the presets whose lesson is that nothing is lost', () => {
@@ -96,10 +96,38 @@ describe('the presets that should carry a warning do carry one', () => {
     }
   })
 
+  it('stays quiet on "4 bits" — quantization error is not a rate problem', () => {
+    // A quantizer's error is broadband and does fold, but the caption's
+    // remedy ("raise the rate") would be wrong, so the detector declines to
+    // judge a chain with an active quantizer rather than mislead the reader.
+    expect(at('4 bits')).toEqual([])
+  })
+
   it('does not call the Nyquist preset aliased, at any zoom', () => {
     const lines = at('Exactly at Nyquist')
     expect(lines).toContain(CAPTION_AT_NYQUIST)
     expect(lines).not.toContain(CAPTION_ALIASED)
+  })
+})
+
+describe('scopeYStep — the amplitude axis never shrinks to one tick', () => {
+  it('forces the ±limit step on a phone-sized pane, where the round choice gives only one tick (the zero line)', () => {
+    // 70 px of plot for a ±1.1 signal: niceStep's round choice is 2, which
+    // ticks only at 0 inside ±1.1 — an amplitude axis with one label is not
+    // an axis.
+    expect(scopeYStep(1.1, 70, 1)).toBe(1.1)
+  })
+
+  it('lets the frame choose on a laptop-sized pane, where the round step already gives 3+ ticks', () => {
+    expect(scopeYStep(1.1, 300, 1)).toBeNull()
+  })
+
+  it('scales with the canvas pixel ratio k, the same way the draw call does', () => {
+    // A high-DPI phone screen's k inflates areaH in device pixels; scopeYStep
+    // must judge the tick count in the same units drawFrame will use, not
+    // get fooled by the multiplier into thinking there is more room.
+    expect(scopeYStep(1.1, 140, 2)).toBe(1.1)
+    expect(scopeYStep(1.1, 600, 2)).toBeNull()
   })
 })
 

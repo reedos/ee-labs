@@ -878,29 +878,48 @@ console.log('\n10h. Opening the experiment math leaves the first Frequency field
 
 // ---------------- 10i. the fold: named knobs on screen at laptop sizes
 
-console.log('\n10i. Fold probe: try line, active chip and featured knob inside 1366x768 and 1440x900\n')
+console.log(`\n10i. Fold probe: all ${presetNames.length} presets — try line, chips and featured knob(s) inside 1366x768 and 1440x900\n`)
 
 {
   const fresh = (name) => async () => {
     await page.waitForSelector('.views canvas')
     await loadPreset(name)
   }
-  const cases = [
-    { name: 'Single tone', load: fresh('Single tone'), must: ['.preset.is-on', '.try-line'] },
-    { name: 'Square = odd harmonics', load: fresh('Square = odd harmonics'), must: ['.preset.is-on', '.try-line', '.featured .num'] },
-    { name: 'Exactly at Nyquist', load: fresh('Exactly at Nyquist'), must: ['.preset.is-on', '.try-line', '.featured .num'] },
-    { name: 'Resonance is Q', load: fresh('Resonance is Q'), must: ['.preset.is-on', '.try-line', '.featured .num'] },
-    { name: 'Coarse, not undersampled', load: fresh('Coarse, not undersampled'), must: ['.preset.is-on', '.try-line', '.featured .num'] },
-    { name: 'Aliasing', load: fresh('Aliasing'), must: ['.preset.is-on', '.try-line', '.featured .num'] },
-  ]
+  // Built from what each preset ACTUALLY renders — not a hand-picked few —
+  // so a preset that grows a longer note or a second featured knob after
+  // this script was written is still covered. `.chip` alone would also match
+  // a NumField's own log-scale quick-value buttons (they share the class),
+  // so every locator here is scoped under `.try-line`.
+  const cases = []
+  for (const name of presetNames) {
+    await page.waitForSelector('.views canvas')
+    await loadPreset(name)
+    const must = ['.preset.is-on', '.try-line']
+    const featuredCount = await page.locator('.featured .num').count()
+    const chipCount = await page.locator('.try-line .chip').count()
+    if (featuredCount) {
+      must.push('.featured .num')
+      if (featuredCount > 1) {
+        const lastFeatured = (p) => p.locator('.featured .num').nth(featuredCount - 1)
+        lastFeatured.label = `.featured .num[${featuredCount - 1}]`
+        must.push(lastFeatured)
+      }
+    }
+    if (chipCount) {
+      const lastChip = (p) => p.locator('.try-line .chip').nth(chipCount - 1)
+      lastChip.label = `.try-line .chip[${chipCount - 1}]`
+      must.push(lastChip)
+    }
+    cases.push({ name, load: fresh(name), must })
+  }
   const r = await foldProbe(page, { url: URL, cases, viewports: LAPTOP_VIEWPORTS })
   for (const m of r.measured) {
-    if (m.control !== '.featured .num' && m.control !== '.try-line') continue
+    if (!m.control.includes('.featured') && m.control !== '.try-line') continue
     const b = m.box ? `${(m.box.y + m.box.height).toFixed(0)} px` : 'missing'
-    console.log(`   ${m.viewport.padEnd(9)} ${m.lesson.padEnd(26)} ${m.control.padEnd(15)} bottom ${b}`)
+    console.log(`   ${m.viewport.padEnd(9)} ${m.lesson.padEnd(34)} ${m.control.padEnd(24)} bottom ${b}`)
   }
   for (const f of r.failures) fail(`fold: ${f}`)
-  if (r.ok) console.log('   every named control sits inside the viewport with the sidebar at the top')
+  if (r.ok) console.log(`   all ${cases.length} presets: every named control sits inside the viewport with the sidebar at the top`)
 }
 
 // ------------------------- 10j. phone: both plots in the first viewport
@@ -929,6 +948,67 @@ console.log('\n10j. Phone 390x844: time AND spectrum canvases above the fold\n')
   }
   for (const f of r.failures) fail(`phone: ${f}`)
   if (r.ok) console.log('   both canvases fit on a 390x844 phone')
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+// -------- 10k. phone: the lesson itself, inside the sidebar's OWN scroller
+
+console.log('\n10k. Phone 390x844: title + try line inside the sidebar box; both canvases ≥ 120 px\n')
+
+{
+  // The shared phoneProbe pins ONE scroller (#root, by contract) at the top
+  // before measuring. This lab nests a second scroller inside it — `.controls`
+  // itself, capped to keep both plots on screen (see styles.css) — and a
+  // control sitting below THAT scroller's own bottom edge is exactly as
+  // unreachable on a fresh load as one below the page fold, which the shared
+  // probe cannot see. So this one is local: it scrolls both to the top, then
+  // checks the lesson's title and try line against `.controls`' own box
+  // rather than the viewport's.
+  await page.setViewportSize({ width: 390, height: 844 })
+  const insideBox = (box, outer, label, ctx) => {
+    if (!box) { fail(`phone lesson / ${ctx}: ${label} not rendered`); return }
+    const bottom = box.y + box.height
+    const outerBottom = outer.y + outer.height
+    if (box.y < outer.y || bottom > outerBottom) {
+      fail(`phone lesson / ${ctx}: ${label} bottom ${bottom.toFixed(0)} outside sidebar box [${outer.y.toFixed(0)}, ${outerBottom.toFixed(0)}]`)
+    } else {
+      console.log(`   ${ctx.padEnd(14)} ${label.padEnd(10)} bottom ${bottom.toFixed(0)} (sidebar box to ${outerBottom.toFixed(0)})`)
+    }
+  }
+  for (const name of ['Single tone', 'Aliasing', 'Resonance is Q']) {
+    await page.goto(URL, { waitUntil: 'load' })
+    await page.waitForSelector('.views canvas')
+    await loadPreset(name)
+    await page.evaluate(() => {
+      const el = document.querySelector('.controls')
+      if (el) el.scrollTop = 0
+      window.scrollTo(0, 0)
+    })
+    await page.waitForTimeout(60)
+
+    const sidebarBox = await page.locator('.controls').boundingBox()
+    const titleBox = await page.locator('.note-title').boundingBox().catch(() => null)
+    const tryBox = await page.locator('.try-line').boundingBox().catch(() => null)
+    insideBox(titleBox, sidebarBox, 'title', name)
+    insideBox(tryBox, sidebarBox, 'try-line', name)
+
+    const canvases = page.locator('.views canvas')
+    const count = await canvases.count()
+    for (let i = 0; i < count; i++) {
+      const box = await canvases.nth(i).boundingBox()
+      const label = i === 0 ? 'time canvas' : 'spectrum canvas'
+      if (!box) { fail(`phone lesson / ${name}: ${label} not rendered`); continue }
+      const bottom = box.y + box.height
+      if (bottom > 844) fail(`phone lesson / ${name}: ${label} bottom ${bottom.toFixed(0)} > fold 844`)
+      if (box.height < 120) fail(`phone lesson / ${name}: ${label} height ${box.height.toFixed(0)} < 120`)
+      console.log(`   ${name.padEnd(14)} ${label.padEnd(16)} y ${box.y.toFixed(0)} h ${box.height.toFixed(0)} bottom ${bottom.toFixed(0)}`)
+    }
+  }
+  if (!failures.some((f) => f.startsWith('phone lesson'))) {
+    console.log('   title, try line and both ≥120px canvases all sit inside their own boxes on Single tone, Aliasing and Resonance is Q')
+  }
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto(URL, { waitUntil: 'load' })
   await page.waitForSelector('.views canvas')

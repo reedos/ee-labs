@@ -40,8 +40,12 @@ export function applyChip(state, patch) {
   return next
 }
 
+// Relative 1e-3, not 1e-9: a chip that stores Math.SQRT1_2 must light when
+// the student types 0.707 into the field beside it — that IS doing what the
+// try line says. At 1e-9 the "0.707 twice" chip never read as pressed for a
+// typed value (the cold walk).
 const same = (a, b) => {
-  if (typeof a === 'number' && typeof b === 'number') return Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a))
+  if (typeof a === 'number' && typeof b === 'number') return Math.abs(a - b) <= 1e-3 * Math.max(1, Math.abs(a))
   return a === b
 }
 

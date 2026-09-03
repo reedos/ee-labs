@@ -76,4 +76,18 @@ describe('chipMatches / activeChip', () => {
   it('is false when the record the patch addresses is missing', () => {
     expect(chipMatches({ ...st, blocks: [] }, chips[0].patch)).toBe(false)
   })
+
+  it('reads a typed 0.707 as pressing a chip stored as Math.SQRT1_2 (relative tolerance 1e-3)', () => {
+    // The chip stores the exact irrational; a student types the four-digit
+    // approximation the note prints. At 1e-9 this never lit — see the "same"
+    // comment in chips.js — because 0.707 and Math.SQRT1_2 differ in the
+    // fifth decimal (about 1.5e-4 relative), comfortably inside 1e-3.
+    const q707 = { patch: { blocks: [{ params: { q: Math.SQRT1_2 } }] } }
+    const typed = applyChip(st, { blocks: [{ params: { q: 0.707 } }] })
+    expect(chipMatches(typed, q707.patch)).toBe(true)
+    // A value a full percent off is well past the tolerance and must not
+    // read as pressed — the relative slack is generous, not infinite.
+    const farOff = applyChip(st, { blocks: [{ params: { q: 0.7 } }] })
+    expect(chipMatches(farOff, q707.patch)).toBe(false)
+  })
 })

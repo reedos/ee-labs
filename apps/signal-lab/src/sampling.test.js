@@ -58,6 +58,10 @@ describe('what the detector says about the presets it ships with', () => {
     'Ring modulator',
     'AM: the carrier returns',
     'Low-pass a square',
+    // Quantization error is broadband and does fold, but the caption's
+    // remedy — "raise the rate" — is the wrong one for rounding, so the
+    // detector declines to judge a chain with an active quantizer at all.
+    '4 bits',
   ]
 
   it.each(CLEAN)('says nothing is folding in "%s"', (name) => {
@@ -66,7 +70,7 @@ describe('what the detector says about the presets it ships with', () => {
   })
 
   // Every preset whose signal genuinely runs past Nyquist and folds.
-  const FOLDING = ['Square = odd harmonics', 'High-pass a square', '4 bits']
+  const FOLDING = ['Square = odd harmonics', 'High-pass a square']
 
   it.each(FOLDING)('says content IS folding in "%s"', (name) => {
     const s = of(name)

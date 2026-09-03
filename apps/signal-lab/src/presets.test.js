@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { PRESETS, PRESET_GROUPS } from './presets.js'
-import { TERMS } from './terms.js'
+import { TERMS, CHROME_TERMS, termsInText } from './terms.js'
 import { chainResponse, renderChain } from './dsp/chain.js'
 import { render, spectrum, sincInterp } from '@ee-labs/dsp'
 import { designBiquad, biquadResponse, designFir } from '@ee-labs/dsp'
@@ -617,8 +617,13 @@ describe('terms — definitions on contact', () => {
   })
 
   it('every defined term is referenced by at least one preset', () => {
+    // Chrome terms (FFT, bin, frame, window, window names, RMS, crest, span)
+    // are surfaced on every screen by the top bar's own "what the top bar
+    // means" block, never by an individual preset's `terms` list — see
+    // CHROME_TERMS in terms.js.
     const used = new Set(PRESETS.flatMap((p) => p.terms || []))
     for (const id of Object.keys(TERMS)) {
+      if (CHROME_TERMS.includes(id)) continue
       expect(used.has(id), `"${id}" defined but never surfaced`).toBe(true)
     }
   })
@@ -630,6 +635,26 @@ describe('terms — definitions on contact', () => {
     expect(of('Resonance is Q')).toContain('q')
     expect(of('Spectral leakage')).toContain('window')
     expect(of('Convolution, watched')).toContain('convolution')
+  })
+
+  it('every term word actually used in a preset’s note and try is in its terms list', () => {
+    // termsInText is the other half of the contract terms.js describes: a
+    // word that means a term is in play (say, "Nyquist" or "scallop") but
+    // whose id is missing from the preset's own `terms` array is a
+    // definition the student needed and was never offered — the cold walk's
+    // "forty-odd words that were never defined anywhere". Chrome terms are
+    // exempt: they are defined once, on every screen, by the top bar's own
+    // "what the top bar means" block.
+    const failures = []
+    for (const p of PRESETS) {
+      const used = new Set([...termsInText(p.note), ...termsInText(p.try)])
+      const listed = new Set(p.terms || [])
+      for (const id of used) {
+        if (listed.has(id) || CHROME_TERMS.includes(id)) continue
+        failures.push(`${p.name}: uses "${id}" (${TERMS[id].name}) but does not list it in terms`)
+      }
+    }
+    expect(failures.join('\n')).toBe('')
   })
 
   it('definitions hold to the house rules: short, and no dangling references', () => {

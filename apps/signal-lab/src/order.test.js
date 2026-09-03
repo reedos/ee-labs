@@ -45,6 +45,20 @@ describe('filter order', () => {
     }
   })
 
+  it('the same asymptote, in the other unit system — "Order is a choice" quotes both', () => {
+    // A decade is log2(10) ≈ 3.32 octaves; the preset's note rounds the
+    // per-order rule (6 dB/octave, 20 dB/decade) the same way terms.js does.
+    // Measured a decade apart rather than converting the octave figure, so
+    // the claim stands on its own rather than on an arithmetic identity.
+    // Both points well clear of SR/2 = 96 kHz — the digital biquad's zero at
+    // Nyquist would otherwise steepen the measured slope past the asymptote,
+    // same as the octave test above staying at 8-16×FC rather than the edge.
+    const qs = butterworth(4)
+    const slope = db(cascade(qs, 4 * FC)) - db(cascade(qs, 40 * FC))
+    expect(slope).toBeGreaterThan(78)
+    expect(slope).toBeLessThan(88)
+  })
+
   it('a Butterworth is -3.01 dB at its cutoff whatever its order', () => {
     // This is what pins the Q values: the definition, not a convention.
     for (const N of [2, 4, 6, 8]) {

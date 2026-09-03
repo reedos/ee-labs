@@ -7,7 +7,7 @@ import BlockCard from './BlockCard.jsx'
 import { SourceField, featuredFields } from './fields.jsx'
 import { WAVEFORMS } from '@ee-labs/dsp'
 import { BLOCK_GROUPS, BLOCK_TYPES, makeBlockRecord } from '../dsp/blocks.js'
-import { termsFor, termsSummary } from '../terms.js'
+import { CHROME_TERMS, termsFor, termsSummary } from '../terms.js'
 import { activeChip } from '../chips.js'
 import { reportSummary } from '../report.js'
 import pkg from '../../package.json'
@@ -159,6 +159,22 @@ export default function Controls({
           state={state}
           summary={reportSummary(state)}
         />
+        {/* The words the top bar and every readout use on EVERY screen — FFT,
+            bin, frame, window, the window names, RMS, crest, span — defined
+            once here rather than in each preset's own terms list (CHROME_TERMS
+            in terms.js). Folded, so it costs nothing to a student who already
+            knows them. */}
+        <details className="terms chrome-terms">
+          <summary>what the top bar means</summary>
+          <dl>
+            {termsFor(CHROME_TERMS).map((t) => (
+              <React.Fragment key={t.id}>
+                <dt>{t.name}</dt>
+                <dd>{t.def}</dd>
+              </React.Fragment>
+            ))}
+          </dl>
+        </details>
       </header>
 
       <section>
@@ -178,6 +194,16 @@ export default function Controls({
             ))}
           </ul>
         ) : null}
+        {/* Two halves, reordered by CSS on phone (≤900px): `.preset-list` is
+            the curriculum — the thing you pick FROM; `.lesson` is the one you
+            picked. On a laptop sidebar both fit and the order below (list,
+            then lesson) is the natural reading order. On a phone the sidebar
+            is a short scroller of its own (base.css stacks it under the
+            plots), and with the list first that scroller showed nothing but
+            group headers on a fresh load — the active lesson's title, try
+            line and knob were a scroll away inside a scroller inside a
+            scroller. flex `order` puts `.lesson` first there instead. */}
+        <div className="preset-list">
         <h2>Try this</h2>
         {/* Grouped as a curriculum, and COLLAPSED to group headers by default:
             thirty buttons were most of the sidebar, and the thing a preset
@@ -222,6 +248,8 @@ export default function Controls({
             </details>
           )
         })}
+        </div>
+        <div className="lesson">
         {nav ? (
           <LessonNav
             index={nav.index}
@@ -239,7 +267,6 @@ export default function Controls({
                 below was the only place the selection was legible at all —
                 and it opened mid-thought, anonymous. */}
             <h3 className="note-title">{activePreset.name}</h3>
-            <p className="hint">{activePreset.note}</p>
             <TryLine
               text={activePreset.try}
               chips={activePreset.chips || []}
@@ -248,7 +275,12 @@ export default function Controls({
             />
             {/* The knob the try line names, right under it — the same
                 control as in its card below, so "drag Q" is not a scroll
-                away at 1366×768. verify.mjs holds this at laptop sizes. */}
+                away at 1366×768. verify.mjs holds this at laptop sizes.
+                The note comes AFTER it: title → try → featured knob → note,
+                so the knob a fold probe holds is never pushed past the fold
+                by however long the note happens to run (six FIR/z-plane
+                presets' knobs still ran 40-100 px past a 1366×768 fold with
+                the note ahead of them). */}
             {featured.length ? (
               <div className="featured">
                 {featured.map((f) => (
@@ -259,6 +291,7 @@ export default function Controls({
                 ))}
               </div>
             ) : null}
+            <p className="hint">{activePreset.note}</p>
           </>
         ) : null}
         {/* The vocabulary this lesson leans on, defined where it is used. A
@@ -280,6 +313,7 @@ export default function Controls({
             </dl>
           </details>
         ) : null}
+        </div>
       </section>
 
       <section id="sources">

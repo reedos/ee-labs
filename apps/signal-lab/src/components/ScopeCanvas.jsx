@@ -1,6 +1,6 @@
 import React from 'react'
 import { useCanvas } from '@ee-labs/ui'
-import { COLORS, drawFrame, plotArea } from '@ee-labs/ui'
+import { COLORS, drawFrame, niceStep, plotArea } from '@ee-labs/ui'
 import { fmtHz } from '@ee-labs/ui'
 import { sincInterp } from '@ee-labs/dsp'
 
@@ -45,6 +45,23 @@ export function captionLines({ reconstructed, sampling }) {
   // would describe the wrong problem.
   if (sampling?.atNyquist) out.push(CAPTION_AT_NYQUIST)
   return out
+}
+
+/**
+ * The y tick step the scope asks the frame for, or null to let the frame
+ * choose.
+ *
+ * drawFrame picks a round step from the plot height, and on a phone-sized
+ * canvas (70 px of plot for a ±1.1 signal) that step is 2 — which lands on
+ * exactly one tick, the zero line, and an amplitude axis with one label is
+ * not an axis. Whenever the round choice would give fewer than three ticks,
+ * the step is the limit itself: ticks at −yLimit, 0 and +yLimit, always.
+ */
+export function scopeYStep(yLimit, areaH, k = 1) {
+  const step = niceStep(2 * yLimit, Math.max(2, Math.floor(areaH / (46 * k))))
+  let ticks = 0
+  for (let v = Math.ceil(-yLimit / step) * step; v <= yLimit + step * 1e-6; v += step) ticks++
+  return ticks >= 3 ? null : yLimit
 }
 
 /**
@@ -190,6 +207,7 @@ export default function ScopeCanvas({
         (v) => v.toFixed(Math.abs(yLimit) >= 10 ? 0 : 2),
         {
           zeroLine: true,
+          yStep: scopeYStep(yLimit, area.h, k),
           xTitle: divisionRate
             ? `Time (cycles of ${fmtHz(divisionRate)}Hz)`
             : 'Time (milliseconds)',

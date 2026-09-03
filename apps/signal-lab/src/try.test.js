@@ -5,8 +5,9 @@ import { applyChip, chipMatches } from './chips.js'
 import { formatPeaks, spectralPeaks } from './peaks.js'
 import { chainGroupDelay, chainImpulse, chainPolesZeros, chainResponse, kernelCentre, renderChain } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
-import { render, sincInterp, spectrum } from '@ee-labs/dsp'
+import { render, rms, sincInterp, spectrum } from '@ee-labs/dsp'
 import { SOURCE_FIELDS } from './components/fields.jsx'
+import { gibbsOf } from './math.js'
 
 // The try lines, chips and featured knobs.
 //
@@ -162,6 +163,40 @@ describe('the lecturing notes are one claim', () => {
       expect(words(byName(name).note), name).toBeLessThanOrEqual(55)
     }
   })
+
+  // A period followed by whitespace-or-end, which a decimal point never is
+  // (its digit follows immediately, with no space) — so "0.541" and "8.95%."
+  // both stay one token and only real sentence boundaries are counted.
+  const sentenceCount = (s) => (s.match(/[.!?]+(?=\s|$)/g) || []).length
+
+  // The words try lines legitimately open with — "Set", "Drag", "Click"…
+  // (the header's own words: "one imperative under the note"). A NOTE
+  // sentence opening the same way has strayed into the try line's job.
+  const IMPERATIVES = [
+    'Set', 'Drag', 'Switch', 'Click', 'Bypass', 'Add', 'Turn', 'Open', 'Try',
+    'Compare', 'Feed', 'Watch', 'Move', 'Untick', 'Tick', 'Enable', 'Disable',
+    'Raise', 'Lower', 'Increase', 'Decrease', 'Slide', 'Push', 'Pull', 'Mute',
+    'Unmute', 'Adjust', 'Change', 'Type', 'Enter', 'Toggle',
+  ]
+  const opensImperative = (sentence) => {
+    const first = sentence.trim().split(/\s+/)[0] || ''
+    return IMPERATIVES.includes(first)
+  }
+
+  it('every one of the 35 notes is one claim: ≤55 words, ≤3 sentences, no imperatives', () => {
+    const failures = []
+    for (const p of PRESETS) {
+      const w = words(p.note)
+      if (w > 55) failures.push(`${p.name}: ${w} words (limit 55)`)
+      const sc = sentenceCount(p.note)
+      if (sc > 3) failures.push(`${p.name}: ${sc} sentences (limit 3)`)
+      const bad = p.note
+        .split(/(?<=[.!?])\s+/)
+        .filter(opensImperative)
+      if (bad.length) failures.push(`${p.name}: imperative sentence "${bad[0]}" — that belongs to the try line`)
+    }
+    expect(failures.join('\n')).toBe('')
+  })
 })
 
 // ------------------------------------------------------- Signals and Fourier
@@ -198,6 +233,15 @@ describe('try: Corners make harmonics', () => {
     expect(tri.at(250) / tri.at(750)).toBeCloseTo(9, 0)
     expect(sq.at(250) / sq.at(750)).toBeCloseTo(3, 0)
   })
+
+  it('the note’s own "8.8 measured here": the default triangle reads 8.77, not the idealized 9', () => {
+    const st = runS(loaded('Corners make harmonics'))
+    const ratio = st.at(250) / st.at(750)
+    expect(ratio).toBeCloseTo(8.77, 1)
+    // Genuinely short of the continuous-series limit, at 32 samples per
+    // period — the sampled triangle's own correction, not rounding noise.
+    expect(9 - ratio).toBeGreaterThan(0.1)
+  })
 })
 
 describe('try: Build a square', () => {
@@ -224,6 +268,22 @@ describe('try: Build a square', () => {
     expect(b.overshoot).toBeGreaterThan(0.09)
     // Narrower, not taller: the five-term overshoot is no larger.
     expect(b.overshoot).toBeLessThanOrEqual(a.overshoot)
+  })
+
+  it("the math panel's own Gibbs measurement: 9.42% at 3 terms, 9.12% at 5, both above the 8.95% limit", () => {
+    // gibbsOf is the function "The math for this experiment" actually calls
+    // (see math.js's 'Build a square' entry) — measured here on the same two
+    // states the try line's chip produces, so the panel's numbers are pinned
+    // rather than only the shape of the waveform.
+    const st = loaded('Build a square')
+    const three = gibbsOf(st.sources, st.sampleRate)
+    const five = gibbsOf(loaded('Build a square', 'add 7th and 9th').sources, st.sampleRate)
+    expect(three.overshootPct).toBeCloseTo(9.42, 1)
+    expect(five.overshootPct).toBeCloseTo(9.12, 1)
+    // Converging toward the limit from above, never below it.
+    expect(three.overshootPct).toBeGreaterThan(8.95)
+    expect(five.overshootPct).toBeGreaterThan(8.95)
+    expect(five.overshootPct).toBeLessThan(three.overshootPct)
   })
 })
 
@@ -282,6 +342,23 @@ describe('try: Aliasing', () => {
     expect(runS(loaded('Aliasing', '4600 Hz')).readout).toBe('3400.0 Hz')
     expect(runS(loaded('Aliasing', '6000 Hz')).readout).toBe('2000.0 Hz')
   })
+
+  it('every chip’s span is exactly 40 samples, so RMS reads 0.7071 throughout', () => {
+    // 17 cycles of 3400 Hz, 23 of 4600, 30 of 6000 — all 40 samples at 8 kHz,
+    // chosen so the visible-span RMS never averages a partial cycle.
+    for (const [label, cycles] of [
+      ['3400 Hz', 17],
+      ['4600 Hz', 23],
+      ['6000 Hz', 30],
+    ]) {
+      const st = loaded('Aliasing', label)
+      expect(st.spanCycles, label).toBe(cycles)
+      const n = (st.spanCycles / st.sources[0].freq) * st.sampleRate
+      expect(n, label).toBeCloseTo(40, 9)
+      const buf = render(st.sources, Math.round(n), st.sampleRate, 0)
+      expect(rms(buf), label).toBeCloseTo(Math.SQRT1_2, 4)
+    }
+  })
 })
 
 describe('try: Turn the rate down', () => {
@@ -323,6 +400,12 @@ describe('try: Resolution needs time', () => {
     expect(two.peaks).toHaveLength(2)
     expect(two.peaks[0].freq).toBeCloseTo(250, 0)
     expect(two.peaks[1].freq).toBeCloseTo(265, 0)
+  })
+
+  it('the note’s "a low one, 0.25": the merged peak reads 0.253, not the sources summed', () => {
+    const merged = runS(loaded('Resolution needs time', 'FFT 512'))
+    expect(merged.peaks).toHaveLength(1)
+    expect(merged.peaks[0].amp).toBeCloseTo(0.25, 1)
   })
 })
 
@@ -468,6 +551,10 @@ describe('try: Everything arrives together', () => {
 })
 
 describe('try: The kernel is the filter', () => {
+  it('loads with the group-delay overlay on — the note points at "the overlay reports", not "none"', () => {
+    expect(loaded('The kernel is the filter').overlay).toBe('delay')
+  })
+
   it('61 taps move the symmetry centre and the delay to 30', () => {
     const st = loaded('The kernel is the filter', '61')
     const { h } = chainImpulse(st.blocks, 256, st.sampleRate)
@@ -483,6 +570,10 @@ describe('try: The kernel is the filter', () => {
 })
 
 describe('try: Cut it off abruptly and it rings', () => {
+  it('loads on the linear scale — the 8% ripple is 0.7 dB, invisible on the dB axis', () => {
+    expect(loaded('Cut it off abruptly and it rings').scale).toBe('linear')
+  })
+
   const overshoot = (st) => {
     const freqs = Float64Array.from({ length: 400 }, (_, i) => (i * st.blocks[0].params.freq) / 400)
     const { mag } = chainResponse(st.blocks, freqs, st.sampleRate)
@@ -519,12 +610,23 @@ describe('try: Zeros on the circle', () => {
       const deg = (Math.atan2(im, re) * 180) / Math.PI
       expect(Math.abs(deg / 60 - Math.round(deg / 60))).toBeLessThan(1e-9)
     }
-    const withLp = [...st.blocks, { id: 9, type: 'lowpass', bypass: false, params: { freq: 800, q: 4, gainDb: 0, order: '2' } }]
-    expect(chainPolesZeros(withLp, st.sampleRate).poles).toHaveLength(2)
+    // "Add a low-pass" is the try line's own remedy — go through the chip,
+    // the same one click a student has, rather than splicing a block by hand.
+    const withLp = applyChip(st, chipOf(byName('Zeros on the circle'), 'add a low-pass').patch)
+    expect(chainPolesZeros(withLp.blocks, withLp.sampleRate).poles).toHaveLength(2)
   })
 })
 
 describe('try: Comb', () => {
+  it('the note’s own numbers: τ = 4 ms is D = 32 samples, notches every 250 Hz', () => {
+    const ff = loaded('Comb', 'feedforward').blocks[0].params
+    expect(ff.delayMs).toBe(4)
+    const D = Math.round((ff.delayMs / 1000) * 8000)
+    expect(D).toBe(32)
+    const spacing = 8000 / D
+    expect(spacing).toBe(250)
+  })
+
   it('feedback turns the notches into peaks midway between', () => {
     const ff = loaded('Comb', 'feedforward').blocks[0].params
     const fb = loaded('Comb', 'feedback').blocks[0].params
@@ -572,11 +674,11 @@ describe('try: DC breaks the symmetry', () => {
 })
 
 describe('try: Two tones, one nonlinearity', () => {
-  it('bypassing the clipper removes 550, 900 and 50 Hz', () => {
+  it('bypassing the clipper removes 100, 550, 900 and 1050 Hz', () => {
     const off = runS(loaded('Two tones, one nonlinearity', 'clipper bypassed'))
-    for (const f of [550, 900, 50]) expect(off.at(f), `${f} Hz`).toBeLessThan(1e-4)
+    for (const f of [100, 550, 900, 1050]) expect(off.at(f), `${f} Hz`).toBeLessThan(1e-4)
     const on = runS(loaded('Two tones, one nonlinearity', 'clipper on'))
-    for (const f of [550, 900, 50]) expect(on.at(f), `${f} Hz`).toBeGreaterThan(0.01)
+    for (const f of [100, 550, 900, 1050]) expect(on.at(f), `${f} Hz`).toBeGreaterThan(0.01)
     expect(on.readout).toBe('250.0 and 400.0 Hz')
   })
 })

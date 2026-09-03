@@ -54,21 +54,27 @@ describe('preset groups', () => {
 })
 
 describe('under the note', () => {
-  it('renders the lesson nav with the sidebar position, then the try line, then the featured knob', () => {
+  it('renders the lesson nav, the title, the try line, the featured knob, THEN the note body', () => {
+    // title → try → featured knob → note (note last): so the knob a fold
+    // probe holds at 1366×768 is never pushed past the fold by however long
+    // the note runs. Six FIR/z-plane presets' knobs did exactly that with
+    // the note ahead of them (verify.mjs's fold probe, 10i).
     const h = html('Resonance is Q')
     const i = PRESETS.findIndex((p) => p.name === 'Resonance is Q')
     expect(h).toContain(`${i + 1} of ${PRESETS.length}`)
     const nav = h.indexOf('class="lesson-nav"')
-    const note = h.indexOf('class="note-title"')
+    const title = h.indexOf('class="note-title"')
     const tryLine = h.indexOf('class="try-line"')
     const featured = h.indexOf('class="featured"')
+    const noteBody = h.indexOf('The title is the claim')
     const sources = h.indexOf('id="sources"')
     const math = h.indexOf('id="math"')
     expect(nav).toBeGreaterThan(0)
-    expect(note).toBeGreaterThan(nav)
-    expect(tryLine).toBeGreaterThan(note)
+    expect(title).toBeGreaterThan(nav)
+    expect(tryLine).toBeGreaterThan(title)
     expect(featured).toBeGreaterThan(tryLine)
-    expect(sources).toBeGreaterThan(featured)
+    expect(noteBody).toBeGreaterThan(featured)
+    expect(sources).toBeGreaterThan(noteBody)
     // The experiment's math sits BELOW the sources and chain, so opening it
     // moves no knob.
     expect(math).toBeGreaterThan(sources)
@@ -100,6 +106,20 @@ describe('terms', () => {
     expect(h).not.toMatch(/<details class="terms" open/)
     expect(h).toContain('Terms used here: sampled, aliasing, Nyquist')
     expect(termsSummary(['q', 'groupdelay', 'zplane'])).toBe('Terms used here: Q, group delay, z-plane')
+  })
+
+  it('defines the chrome terms once, folded, on every screen — not per preset', () => {
+    for (const name of ['Single tone', 'Resonance is Q', '4 bits']) {
+      const h = html(name)
+      expect(h, name).toMatch(/<details class="terms chrome-terms">/)
+      expect(h, name).not.toMatch(/<details class="terms chrome-terms" open/)
+      expect(h, name).toContain('what the top bar means')
+      // FFT, bin, frame, window, the window names, RMS, crest, span.
+      expect(h, name).toContain('FFT (fast Fourier transform)')
+      expect(h, name).toContain('hann, hamming, blackman, none')
+      expect(h, name).toContain('Crest factor')
+      expect(h, name).toContain('Span (cycles)')
+    }
   })
 })
 

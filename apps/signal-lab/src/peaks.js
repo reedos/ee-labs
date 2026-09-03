@@ -98,3 +98,49 @@ export function formatPeaks(peaks, decimals = 1) {
   if (f.length === 1) return `${f[0]} Hz`
   return `${f.slice(0, -1).join(', ')} and ${f[f.length - 1]} Hz`
 }
+
+/** Source types with a line to name; noise has none, and an impulse or step is flat or DC. */
+const TONAL = new Set(['sine', 'square', 'triangle', 'sawtooth'])
+
+/**
+ * Whether the readout should name peaks at all.
+ *
+ * A noise source holds every frequency at once, so "the tallest three bins"
+ * are three random bins: the cold walk read "peak 27.9, 166.3 and 273.9 Hz"
+ * over white noise through a low-pass and asked what they meant. Nothing.
+ * With no tonal source enabled the readout says "broadband" instead.
+ */
+export function isBroadband(sources = []) {
+  const on = sources.filter((s) => s.enabled)
+  return on.length > 0 && !on.some((s) => TONAL.has(s.type))
+}
+
+/** Every enabled source is a tone — the only case where a line's height means an amplitude. */
+export function allTonal(sources = []) {
+  const on = sources.filter((s) => s.enabled)
+  return on.length > 0 && on.every((s) => TONAL.has(s.type))
+}
+
+/**
+ * Does a tone at `freq` sit between bin centres far enough to read low?
+ *
+ * A Hann window loses 1.42 dB at half a bin off; at 0.15 bin the loss is
+ * about 0.13 dB (1.5%), which is where a printed "amp 0.682" for a 0.7
+ * source stops being rounding and starts being a question. Below that the
+ * flag would be noise.
+ */
+export const OFF_BIN = 0.15
+
+export function offBin(freq, binHz) {
+  if (!(binHz > 0) || !(freq > 0)) return false
+  const k = freq / binHz
+  return Math.abs(k - Math.round(k)) > OFF_BIN
+}
+
+/** "0.0039" and "−48.2 dB": three significant figures, never a blind toFixed(3). */
+export function fmtAmp(a) {
+  if (!(a > 1e-6)) return { lin: '—', db: '' }
+  const lin = a >= 0.1 ? a.toFixed(3) : Number(a.toPrecision(3)).toString()
+  const db = 20 * Math.log10(a)
+  return { lin, db: `${db < 0 ? '−' : ''}${Math.abs(db).toFixed(1)} dB` }
+}

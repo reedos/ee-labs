@@ -60,6 +60,11 @@ export function samplingState({ sources, blocks, sampleRate, fftSize, window }) 
   const on = (sources || []).filter((s) => s.enabled)
   if (!on.length) return none
   if (on.some((s) => s.type === 'noise' || s.type === 'impulse')) return none
+  // A quantizer's error is broadband by construction and does fold, but the
+  // caption's remedy — "raise the rate to clear it" — is the wrong one: the
+  // steps are the signal's own rounding, and no rate un-rounds them. The
+  // walk read that caption over a 4-bit sine and went looking for aliasing.
+  if ((blocks || []).some((b) => !b.bypass && b.type === 'quantize')) return none
 
   const nyq = sampleRate / 2
   const r = renderChain(sources, blocks || [], fftSize * 2, sampleRate * 2)

@@ -1,4 +1,4 @@
-import { render, sincInterp } from '@ee-labs/dsp'
+import { render, rms, sincInterp } from '@ee-labs/dsp'
 import { applyChain, chainImpulse, convKernel } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
 
@@ -59,6 +59,46 @@ const NOTE_OFF_BIN =
 const NOTE_COARSE =
   'Fewer than 16 samples per period: the sampled waveform’s own correction differs between these two harmonics and skews the ratio away from the continuous law.'
 
+/**
+ * A row built from a block's response only holds while that block is
+ * actually running. `chainResponse`/`respAt` follow bypass honestly — a
+ * bypassed block contributes a flat |H| = 1 — so a row still comparing
+ * against the block's OWN formula would print a cross against correct
+ * physics the instant a student clicks its power button. Every |H|-shaped
+ * check row that reads `ctx.respAt` for a single block gates on this first.
+ */
+const bypassNote = (b) =>
+  b && b.bypass
+    ? 'This block is bypassed — the chain passes the signal through untouched, so |H| reads 1 (0 dB) everywhere, not this row’s formula.'
+    : null
+
+/**
+ * The Gibbs numbers for a hand-built square: the sources' partial sum
+ * evaluated on a grid 64× finer than the sample rate, against the samples the
+ * readout sees. Exported for try.test.js, which pins the note's 9.4 / 9.1 /
+ * 8.95.
+ */
+export function gibbsOf(sources, sampleRate, over = 64) {
+  const on = (sources || []).filter((s) => s.enabled && s.type === 'sine')
+  const A = on.length ? on[0].amp : 1
+  const f0 = on.length ? on[0].freq : 250
+  const n = Math.max(2, Math.round(sampleRate / f0))
+  const fine = render(on, n * over, sampleRate * over, 0)
+  const coarse = render(on, n, sampleRate, 0)
+  let finePeak = 0
+  let samplePeak = 0
+  for (const v of fine) finePeak = Math.max(finePeak, v)
+  for (const v of coarse) samplePeak = Math.max(samplePeak, v)
+  const plateau = (Math.PI / 4) * A
+  return {
+    terms: on.length,
+    plateau,
+    finePeak,
+    samplePeak,
+    overshootPct: ((finePeak - plateau) / (2 * plateau)) * 100,
+  }
+}
+
 function harmonicCheck(ctx, k) {
   const f0 = ctx.sourceFreq
   const f = k * f0
@@ -79,13 +119,20 @@ const harmonicRatioRows = (ctx) => {
   const b = ctx.blocks[0]
   if (!b) return []
   const def = BLOCK_TYPES[b.type]
+  const noSource = !ctx.sources.some((s) => s.enabled)
   return [1, 3, 5].map((k) => {
     const f = (ctx.sourceFreq || 250) * k
     return {
       label: `|H| at ${f} Hz`,
       // Numerator and denominator are the same bin of the same window, so
       // scalloping divides straight out and only Nyquist can spoil this.
-      unchecked: f >= ctx.sampleRate / 2 ? NOTE_ALIASED : null,
+      unchecked:
+        f >= ctx.sampleRate / 2
+          ? NOTE_ALIASED
+          : bypassNote(b) ||
+            (noSource
+              ? 'No source is enabled, so there is no line at this harmonic in either trace to take a ratio of.'
+              : null),
       predicted: def.response(b.params, f, ctx.sampleRate),
       measured: ctx.dryAt ? ctx.at(f) / (ctx.dryAt(f) || 1e-12) : NaN,
       tol: 0.08,
@@ -112,6 +159,31 @@ const ENTRIES = {
 
   'Sources simply add': (ctx) => {
     const [s1, s2] = ctx.sources
+    // The try line says "untick source 2". A row whose premise is that source
+    // must then footnote, not print ✗ against 1.4e-9 (the cold walk): the
+    // line is absent because the student removed it, which is the lesson.
+    const off = (s, i) =>
+      s && s.enabled === false
+        ? `Source ${i} is unticked, so there is no line at its frequency to read — the other line did not move, which is the point.`
+        : null
+    // Off a bin centre the Hann window reads the line a little low —
+    // scalloping, not a broken sum. Named on the row rather than hidden in a
+    // 3% tolerance, since the readout above the plot prints the low number.
+    const binHz = ctx.sampleRate / ctx.fftSize
+    const scallop = (s) =>
+      s && Math.abs(s.freq / binHz - Math.round(s.freq / binHz)) > 0.15
+        ? 'This tone sits between bin centres, so the tallest bin reads it a few percent low — scalloping loss; the row allows for it.'
+        : null
+    const row = (s, i) =>
+      s
+        ? {
+            label: `line at ${sig(s.freq, 4)} Hz = source ${i}’s amplitude`,
+            predicted: s.amp,
+            measured: ctx.at(s.freq),
+            tol: 0.04,
+            unchecked: off(s, i),
+          }
+        : null
     return {
       blocks: [
         T('Adding signals is exact, sample by sample, and the Fourier transform is linear:'),
@@ -123,27 +195,22 @@ const ENTRIES = {
             'other — measured here, not assumed. This is the property every linear block ' +
             'preserves and every nonlinear one destroys.',
         ),
-        C([
-          {
-            label: `line at ${sig(s1.freq, 4)} Hz = source 1’s amplitude`,
-            predicted: s1.amp,
-            measured: ctx.at(s1.freq),
-            tol: 0.03,
-          },
-          {
-            label: `line at ${sig(s2.freq, 4)} Hz = source 2’s amplitude`,
-            predicted: s2.amp,
-            measured: ctx.at(s2.freq),
-            tol: 0.03,
-          },
-        ]),
+        C([row(s1, 1), row(s2, 2)].filter(Boolean)),
+        ...(scallop(s1) || scallop(s2) ? [T(scallop(s1) || scallop(s2))] : []),
         V([
           {
             label: 'peak of the summed waveform can reach',
-            value: s1.amp + s2.amp,
+            value: (s1 ? s1.amp : 0) + (s2 && s2.enabled !== false ? s2.amp : 0),
             note: 'when the crests align — amplitudes add in time as well',
           },
         ]),
+        // What the note used to say, now beside the numbers.
+        T(
+          'Untick one source and the other’s line does not move. Superposition survives every ' +
+            'LINEAR block too — filter this pair and each line is scaled by |H| at its own ' +
+            'frequency — and it is precisely what nonlinear blocks break: see "Two tones, one ' +
+            'nonlinearity", where a clipper makes this pair breed children at new frequencies.',
+        ),
       ],
     }
   },
@@ -291,6 +358,14 @@ const ENTRIES = {
             'window). Add a clipper and the FIRST two are what break — chain(2x) is no longer ' +
             '2·chain(x), and new lines appear at frequencies the input never contained.',
         ),
+        // What the note used to say.
+        T(
+          'Drag the source’s Phase slider and watch the filtered wave slide without changing ' +
+            'shape: that is time-invariance, seen. And because an LTI chain can only scale and ' +
+            'shift a sine, a response curve fully describes a filter, spectra can be read line ' +
+            'by line, and convolution works. Every block in the Nonlinearity group is ' +
+            'interesting precisely because it breaks this.',
+        ),
       ],
     }
   },
@@ -306,12 +381,23 @@ const ENTRIES = {
       ctx.sourceType !== 'square'
         ? 'The source is no longer a square wave, so the square-wave series does not apply.'
         : null
+    // "3" and "9" band-limit the square to its first few terms (topHarmonic
+    // in the source, the try line's own chips) — a harmonic above that cap is
+    // not merely small, it is absent from the signal entirely, and the full
+    // series' 4A/kπ would be a cross against a signal that was never built.
+    const firstSrc = ctx.sources.find((s) => s.enabled)
+    const topHarmonic = firstSrc ? firstSrc.topHarmonic || 0 : 0
     const rows = [1, 3, 5].map((k) => ({
       label: `harmonic ${k} (${k * f0} Hz)`,
       predicted: ((4 * A) / (k * Math.PI)) * discreteBoost(k, N),
       measured: ctx.at(k * f0),
       tol: 0.05,
-      unchecked: notSquare || harmonicCheck(ctx, k),
+      unchecked:
+        notSquare ||
+        harmonicCheck(ctx, k) ||
+        (topHarmonic > 0 && k > topHarmonic
+          ? `The source is band-limited to the ${topHarmonic}${ord(topHarmonic)} harmonic — this one was never built, so the full series' prediction does not apply.`
+          : null),
     }))
     // Predicted exactly zero, so a relative tolerance cannot judge it. -80 dB
     // against a fundamental of 1.27 is unambiguously absent; what is actually
@@ -403,24 +489,40 @@ const ENTRIES = {
     }
   },
 
-  'Build a square': () => ({
-    blocks: [
-      T(
-        'Adding the first three odd harmonics at 1, 1/3 and 1/5 already gives something ' +
-          'square-ish. The series converges, but not uniformly: the overshoot at each corner ' +
-          'stays about 9% of the jump no matter how many terms you add, and merely gets ' +
-          'narrower. That is the Gibbs phenomenon.',
-      ),
-      F('S_M(t) = \\frac{4A}{\\pi}\\sum_{m=0}^{M} \\frac{\\sin\\bigl(2\\pi(2m+1)f_0t\\bigr)}{2m+1}'),
-      // (2/π)·Si(π) = 1.17898…: the partial sums overshoot the +A plateau by
-      // 8.95% OF THE 2A JUMP, i.e. 0.179·A. The old line printed A·1.0895 —
-      // the 8.95% applied to the wrong base, off by a factor of two, and
-      // contradicting the "9% of the jump" sentence above it.
-      F(
-        '\\lim_{M\\to\\infty} \\max_t S_M(t) = \\frac{2A}{\\pi}\\,\\mathrm{Si}(\\pi) = A\\cdot 1.17898\\ldots',
-      ),
-    ],
-  }),
+  'Build a square': (ctx) => {
+    const g = gibbsOf(ctx.sources, ctx.sampleRate)
+    return {
+      blocks: [
+        T(
+          'Adding the first three odd harmonics at 1, 1/3 and 1/5 already gives something ' +
+            'square-ish. The series converges, but not uniformly: the overshoot at each corner ' +
+            'stays about 9% of the jump no matter how many terms you add, and merely gets ' +
+            'narrower. That is the Gibbs phenomenon.',
+        ),
+        F('S_M(t) = \\frac{4A}{\\pi}\\sum_{m=0}^{M} \\frac{\\sin\\bigl(2\\pi(2m+1)f_0t\\bigr)}{2m+1}'),
+        // (2/π)·Si(π) = 1.17898…: the partial sums overshoot the +A plateau by
+        // 8.95% OF THE 2A JUMP, i.e. 0.179·A. The old line printed A·1.0895 —
+        // the 8.95% applied to the wrong base, off by a factor of two, and
+        // contradicting the "9% of the jump" sentence above it.
+        F(
+          '\\lim_{M\\to\\infty} \\max_t S_M(t) = \\frac{2A}{\\pi}\\,\\mathrm{Si}(\\pi) = A\\cdot 1.17898\\ldots',
+        ),
+        T(
+          'The sources here carry 1, 1/3, 1/5 without the 4/π, so the square they build has ' +
+            'height π/4 = 0.785 and the jump is twice that. Measured on the continuous sum, ' +
+            'evaluated 64 times per sample — the readout’s "peak" reads the 32 samples per ' +
+            'period the scope holds, and those miss the top of the overshoot lobe:',
+        ),
+        V([
+          { label: 'plateau height (π/4)·A', value: g.plateau },
+          { label: 'peak of the continuous sum (fine grid)', value: g.finePeak },
+          { label: 'peak of the samples (the readout)', value: g.samplePeak, note: 'the lobe is narrower than a sample' },
+          { label: 'overshoot, % of the jump', value: g.overshootPct, unit: '%', note: `${g.terms} term${g.terms === 1 ? '' : 's'}` },
+          { label: 'Gibbs limit', value: 8.95, unit: '%', note: 'as the number of terms grows' },
+        ]),
+      ],
+    }
+  },
 
   Beating: (ctx) => {
     const fs = ctx.sources.filter((s) => s.enabled).map((s) => s.freq)
@@ -453,11 +555,23 @@ const ENTRIES = {
     const nyq = fs / 2
     // The strongest claim on the page, measured live: reconstruct the signal
     // BETWEEN its samples and land on the continuous sine. An off-grid
-    // instant, well inside the frame so the sinc window is two-sided.
+    // instant at the centre of the frame, so the sinc window is two-sided —
+    // and a 1024-sample window either side, because the truncated sum
+    // converges slowly this close to the fold: at 3900 Hz a 256-sample window
+    // missed by 0.010 against a 0.005 tolerance and printed ✗ (the cold
+    // walk), where 1024 lands within 0.0025.
     const buf = render(ctx.sources.filter((x) => x.enabled), 4096, fs, 0)
-    const t = 1000.37
+    const t = 2048.37
     const truth = src ? src.amp * Math.sin((2 * Math.PI * f * t) / fs + src.phase) : 0
     const above = f >= nyq
+    // The readout's RMS averages the VISIBLE span. The note promises 0.707,
+    // which holds only when that span is a whole number of samples — the
+    // chips keep it so (17 cycles of 3400 Hz = 40 samples); a dragged
+    // frequency need not, and then the row says why instead of crossing.
+    const span = ctx.state && ctx.state.spanCycles
+    const nSpan = span && f > 0 ? (span / f) * fs : NaN
+    const whole = Number.isFinite(nSpan) && Math.abs(nSpan - Math.round(nSpan)) < 1e-6
+    const spanRms = whole ? rms(render(ctx.sources.filter((x) => x.enabled), Math.round(nSpan), fs, 0)) : NaN
     return {
       blocks: [
         T(
@@ -475,9 +589,9 @@ const ENTRIES = {
         ]),
         C([
           {
-            label: `x(t) between samples, t = ${t} samples`,
+            label: `x(t) between samples, t = ${t} samples (sinc sum over ±1024)`,
             predicted: truth,
-            measured: sincInterp(buf, t, 256),
+            measured: sincInterp(buf, t, 1024),
             tol: 0.01,
             abs: 0.005,
             unchecked: above
@@ -490,6 +604,17 @@ const ENTRIES = {
             measured: ctx.peakFreq,
             unit: 'Hz',
             tol: 0.02,
+          },
+          {
+            label: `RMS over the visible span (${span || '?'} cycles${whole ? `, ${Math.round(nSpan)} samples` : ''})`,
+            predicted: src ? src.amp * Math.SQRT1_2 : 0,
+            measured: spanRms,
+            tol: 0.002,
+            unchecked: !Number.isFinite(nSpan)
+              ? 'No periodic source, so no span in cycles.'
+              : !whole
+                ? `${span} cycles at this frequency is ${sig(nSpan, 4)} samples — a fraction of one, so the readout averages a partial cycle and reads off 0.707. The chips choose spans that are whole samples.`
+                : null,
           },
         ]),
         // The rest of what the note used to say, now beside the numbers.
@@ -581,6 +706,15 @@ const ENTRIES = {
             'record of where it came from.',
         ),
         C(rows),
+        // What the note used to say.
+        T(
+          'Nothing here is approximate at 16 kHz: the dots describe exactly this signal and ' +
+            'the curve through them IS it. At 2 kHz the 1875 folds to 125 as well, and only ' +
+            'the fundamental is left where it started. Notice what did NOT fail: the ' +
+            'reconstruction draws the samples faithfully at every rate. What failed is that ' +
+            'the samples stopped describing the signal you began with — and nothing in them ' +
+            'can tell you a folded line is an impostor.',
+        ),
         V([
           { label: 'sample rate', value: fs, unit: 'Hz' },
           { label: 'Nyquist', value: nyq, unit: 'Hz' },
@@ -778,6 +912,11 @@ const ENTRIES = {
             predicted: Math.abs(Math.sin(phi)) * (src ? src.amp : 1),
             measured: ctx.at(ctx.sampleRate / 2),
             tol: 0.05,
+            // At φ = 0° the theory is exactly 0 and the measurement is
+            // rounding dust (3.7e-13). A relative tolerance of zero is no
+            // tolerance; the floor is set by the signal's own scale — one
+            // part in a thousand of A — not by an unrelated constant.
+            abs: 1e-3 * (src ? src.amp : 1),
           },
         ]),
         // What the note used to add: the bound, and what the scope draws.
@@ -796,6 +935,16 @@ const ENTRIES = {
     const binHz = ctx.sampleRate / ctx.fftSize
     const fs = ctx.sources.filter((s) => s.enabled).map((s) => s.freq)
     const sep = fs.length >= 2 ? Math.abs(fs[0] - fs[1]) : 0
+    const frameMs = (1000 * ctx.fftSize) / ctx.sampleRate
+    const beatMs = sep ? 1000 / sep : Infinity
+    // The merged peak's height, live. At 512 points the frame (64 ms) is
+    // almost exactly one beat period (66.7 ms), and the Hann window weights
+    // the middle of the frame — where the two tones are in antiphase and
+    // cancel. So the one peak reads 0.25 for two 0.5 sources, and the walk
+    // had nothing to explain it. Named here, measured.
+    let top = 0
+    for (let i = 0; i < ctx.amps.length; i++) if (ctx.amps[i] > top) top = ctx.amps[i]
+    const nearBeat = Number.isFinite(beatMs) && Math.abs(frameMs - beatMs) < 0.15 * beatMs
     return {
       blocks: [
         T('A frame of N samples at rate f_s lasts T = N/f_s seconds, and its bins are'),
@@ -807,9 +956,17 @@ const ENTRIES = {
         ),
         V([
           { label: 'bin width', value: binHz, unit: 'Hz' },
-          { label: 'frame length', value: (1000 * ctx.fftSize) / ctx.sampleRate, unit: 'ms' },
+          { label: 'frame length', value: frameMs, unit: 'ms' },
           { label: 'tone separation', value: sep, unit: 'Hz' },
           { label: 'bins between them', value: sep / binHz },
+          { label: 'beat period 1/Δf', value: beatMs, unit: 'ms' },
+          {
+            label: 'height of the tallest peak',
+            value: top,
+            note: nearBeat
+              ? 'low: the frame is one beat period, and the Hann window weights its middle — where the two tones are in antiphase and cancel'
+              : 'each tone at its own amplitude once the frame holds several beats',
+          },
         ]),
       ],
     }
@@ -859,6 +1016,11 @@ const ENTRIES = {
             'is why its cousins live in edge detectors.',
         ),
         C(rows),
+        // What the note used to say.
+        T(
+          'Compare the ghost: the square is still there in dim, and the gap between the ' +
+            'traces at each harmonic IS the response curve.',
+        ),
       ],
     }
   },
@@ -877,6 +1039,11 @@ const ENTRIES = {
         ),
         F('|H(f)| = \\frac{|Y(f)|}{|X(f)|} \\quad\\text{(the gap between the traces)}'),
         C(rows),
+        // What the note used to say.
+        T(
+          'Try "Resonance is Q", where a flat (noise) input lets the trace draw the curve’s ' +
+            'exact shape instead of the input spectrum times it.',
+        ),
       ],
     }
   },
@@ -921,7 +1088,19 @@ const ENTRIES = {
                   : b.type === 'lowpass' || b.type === 'highpass'
                     ? { v: b.params.q, why: null }
                     : null
-      if (expect) {
+      if (b.bypass) {
+        // A bypassed block passes the signal through untouched (see
+        // "bypass" in terms.js), so the chain's own |H| reads flat 1 (0 dB)
+        // no matter what Q says — the peak-equals-Q claim is about the
+        // ACTIVE block, and turning it off does not make that claim false,
+        // only unmeasurable from a chain that is not running it.
+        rows.push({
+          label: 'peak |H| at cutoff',
+          predicted: NaN,
+          measured: NaN,
+          unchecked: bypassNote(b),
+        })
+      } else if (expect) {
       rows.push({
         label: expect.why ? `|H| at the corner — ${expect.why}` : 'peak |H| at cutoff',
         predicted: expect.v,
@@ -935,7 +1114,11 @@ const ENTRIES = {
           predicted: 20 * Math.log10(b.params.q),
           measured: 20 * Math.log10(peak),
           unit: 'dB',
-          tol: 0.05,
+          // A dB figure is already a log, so its honest tolerance is
+          // ABSOLUTE: the 2% the linear row allows is 0.17 dB, whatever the
+          // level. A relative 5% of "0 dB" at Q = 1 was a tolerance of
+          // nothing, and −0.009 dB printed ✗ under a ✓ on the same number.
+          abs: 0.2,
         })
       }
       } else {
@@ -1009,12 +1192,14 @@ const ENTRIES = {
             predicted: dirichlet(mid),
             measured: ctx.respAt(mid),
             tol: 0.03,
+            unchecked: bypassNote(ctx.blocks[0]),
           },
           {
             label: `|H| at the first null, ${sig(spacing, 4)} Hz`,
             predicted: 0,
             measured: ctx.respAt(spacing),
             abs: 0.02,
+            unchecked: bypassNote(ctx.blocks[0]),
           },
         ]),
         V([
@@ -1061,6 +1246,7 @@ const ENTRIES = {
             predicted: 0.5,
             measured: ctx.respAt(fc),
             tol: 0.04,
+            unchecked: bypassNote(b),
           },
         ]),
         V([
@@ -1069,6 +1255,12 @@ const ENTRIES = {
           { label: 'cutoff in dB', value: -6.02, unit: 'dB', note: 'a Q = 0.707 biquad’s is −3.01' },
           { label: 'multiply-adds per sample', value: N, note: 'a biquad needs 5' },
         ]),
+        // What the note used to say.
+        T(
+          'No filter with feedback can have a flat group delay, and no FIR with a symmetric ' +
+            `kernel can fail to. That is the entire trade: ${N} multiply-adds per sample ` +
+            'against a biquad’s 5.',
+        ),
       ],
     }
   },
@@ -1118,6 +1310,7 @@ const ENTRIES = {
             measured: ctx.respAt(0),
             tol: 0.01,
             abs: 0.01,
+            unchecked: bypassNote(ctx.blocks[0]),
           },
         ]),
         V([
@@ -1125,6 +1318,13 @@ const ENTRIES = {
           { label: 'symmetry centre', value: (N - 1) / 2, unit: 'samples' },
           { label: 'exactly zero after', value: N - 1, unit: 'samples', note: 'no tail at all' },
         ]),
+        // What the note used to say.
+        T(
+          'The stems are not a picture OF the filter — for an FIR they are the filter, the ' +
+            'numbers the design produced. And the baseline dots after the last tap are samples ' +
+            'too: exactly zero, which is the point. An FIR forgets COMPLETELY, where an IIR’s ' +
+            'baseline dots would be ringing too small to see.',
+        ),
       ],
     }
   },
@@ -1170,9 +1370,11 @@ const ENTRIES = {
             predicted: 1.0895,
             measured: top,
             tol: 0.05,
-            unchecked: tapered
-              ? 'Holds for the untapered cut. Set the window back to none — with a taper the overshoot is (by design) gone.'
-              : null,
+            unchecked:
+              bypassNote(b) ||
+              (tapered
+                ? 'Holds for the untapered cut. Set the window back to none — with a taper the overshoot is (by design) gone.'
+                : null),
           },
         ]),
         T(
@@ -1198,6 +1400,13 @@ const ENTRIES = {
       const w = (2 * Math.PI * f) / fs
       return Math.abs(Math.sin((N * w) / 2) / (N * Math.sin(w / 2)))
     }
+    // The Dirichlet formula describes the moving average ALONE. "Add a
+    // low-pass" (the try line's own chip) puts a second block in series, and
+    // the chain's own |H| — what ctx.respAt reads — is then their product,
+    // not just this kernel's.
+    const extraBlocks = ctx.blocks.length > 1
+      ? 'This describes the moving average alone — a second block has been added after it, so the chain’s |H| is now their product, not just the Dirichlet kernel above.'
+      : null
     return {
       blocks: [
         T(
@@ -1225,12 +1434,14 @@ const ENTRIES = {
             predicted: dirichlet(mid),
             measured: ctx.respAt(mid),
             tol: 0.03,
+            unchecked: bypassNote(ctx.blocks[0]) || extraBlocks,
           },
           {
             label: `a zero lands on the null at ${sig(spacing, 4)} Hz`,
             predicted: 0,
             measured: ctx.respAt(spacing),
             abs: 0.02,
+            unchecked: bypassNote(ctx.blocks[0]) || extraBlocks,
           },
         ]),
         V([
@@ -1349,6 +1560,12 @@ const ENTRIES = {
           'timing of the components, and since they are no longer aligned as they were, the ' +
           'waveform is a different shape with an identical spectrum.',
       ),
+      // What the note used to say.
+      T(
+        'Switch the overlay to group delay to see the same fact as a time: the components ' +
+          'near 400 Hz are held up by several samples more than the rest, which is precisely ' +
+          'why the waveform changes shape while its spectrum does not.',
+      ),
     ],
   }),
 
@@ -1362,16 +1579,34 @@ const ENTRIES = {
       // marked an order-4 cascade's correct physics wrong (the very trap the
       // harmonicRatioRows comment warns about).
       const same = b1.type === b2.type && JSON.stringify(b1.params) === JSON.stringify(b2.params)
+      // The try line says "bypass block 2". The theory must follow the power
+      // buttons: with one section bypassed the chain IS one section, |H|,
+      // and the row says so — it printed |H|² against |H| and crossed the
+      // student for doing what they were told (the cold walk).
+      const live = [b1, b2].filter((b) => !b.bypass).length
       for (const f of [1600, 3200]) {
         const h = def.response ? def.response(b1.params, f, ctx.sampleRate) : NaN
         rows.push({
-          label: `|H|² at ${f} Hz`,
-          predicted: h * h,
+          label: live === 2 ? `|H|² at ${f} Hz — both sections` : `|H| at ${f} Hz — one section bypassed`,
+          predicted: live === 2 ? h * h : live === 1 ? h : 1,
           measured: ctx.respAt(f),
           tol: 0.02,
-          unchecked: same
-            ? null
-            : 'The two blocks are no longer identical, so the chain is H₁·H₂ rather than a square.',
+          unchecked:
+            live === 0
+              ? 'Both sections are bypassed, so the chain does nothing here.'
+              : same
+                ? null
+                : 'The two blocks are no longer identical, so the chain is H₁·H₂ rather than a square.',
+        })
+      }
+      if (live === 2 && same) {
+        const h = def.response ? def.response(b1.params, 3200, ctx.sampleRate) : NaN
+        rows.push({
+          label: 'attenuation at 3200 Hz doubles in dB',
+          predicted: 2 * 20 * Math.log10(h),
+          measured: 20 * Math.log10(ctx.respAt(3200)),
+          unit: 'dB',
+          abs: 0.3,
         })
       }
     }
@@ -1387,6 +1622,14 @@ const ENTRIES = {
             'free win.',
         ),
         C(rows),
+        // What the note used to say.
+        T(
+          'The curve also steepens near 4 kHz for a separate reason: a digital filter has a ' +
+            'zero at Nyquist that the textbook analogue prototype does not. Two sections is a ' +
+            '4th-order filter — but not a 4th-order Butterworth, which needs a different Q in ' +
+            'each; see "Order is a choice". With noise as the source the doubling shows across ' +
+            'the whole curve, not at one point.',
+        ),
       ],
     }
   },
@@ -1406,7 +1649,7 @@ const ENTRIES = {
     // −3.01 dB would be a cross against correct physics.
     const isBw =
       qs.length === 2 &&
-      ctx.blocks.every((b) => b.type === 'lowpass' && Number(b.params.order ?? 2) === 2) &&
+      ctx.blocks.every((b) => !b.bypass && b.type === 'lowpass' && Number(b.params.order ?? 2) === 2) &&
       bw(4).every((q, i) => Math.abs(qs[i] - q) < 0.01)
 
     return {
@@ -1451,9 +1694,16 @@ const ENTRIES = {
             tol: 0.02,
             unchecked: isBw
               ? null
-              : 'This is no longer the pair of second-order Butterworth sections (the Qs or the order select moved), so −3.01 dB is not what this cascade is aiming for.',
+              : 'This is no longer the pair of second-order Butterworth sections (a Q or the order select moved, or a section is bypassed), so −3.01 dB is not what this cascade is aiming for.',
           },
         ]),
+        // What the note used to say.
+        T(
+          'The low-pass block also has an Order select: bypass one section and set the other ' +
+            'to 4th for this exact Butterworth built into one block — or to 1st, one bare pole ' +
+            'that cannot resonate at all. The source is noise so the whole curve is measured ' +
+            'at once; a single tone would only probe one point of it.',
+        ),
       ],
     }
   },
@@ -1476,6 +1726,10 @@ const ENTRIES = {
           'analysis window, because one sample of energy is being shared out across every bin. ' +
           'It is the shape that matters, not the height.',
       ),
+      V([
+        { label: 'flat level 2/N', value: 2 / ctx.fftSize },
+        { label: 'in dB', value: 20 * Math.log10(2 / ctx.fftSize), unit: 'dB', note: 'the note’s "60 dB down"' },
+      ]),
       C([
         {
           label: 'flat input level (2/N)',
@@ -1488,9 +1742,11 @@ const ENTRIES = {
           // there would be marking the window's own arithmetic wrong.
           unchecked: !ctx.dryAt
             ? 'Turn on "show pre-chain spectrum" to measure the input level.'
-            : ctx.state.window !== 'none'
-              ? 'The 2/N level holds for the rectangular window ("none"); the current window tapers to zero at the frame edge, where this impulse sits.'
-              : null,
+            : !ctx.sources.some((s) => s.enabled)
+              ? 'No source is enabled, so there is no impulse feeding the chain to measure.'
+              : ctx.state.window !== 'none'
+                ? 'The 2/N level holds for the rectangular window ("none"); the current window tapers to zero at the frame edge, where this impulse sits.'
+                : null,
         },
       ]),
     ],
@@ -1567,26 +1823,63 @@ const ENTRIES = {
     ],
   }),
 
-  'Two tones, one nonlinearity': () => ({
-    blocks: [
-      T('Put two tones through a power series and the cross terms are the whole story:'),
-      F(
-        '(\\cos\\omega_1 t + \\cos\\omega_2 t)^{3} \\;\\longrightarrow\\; ' +
-          '\\cos(2\\omega_1 \\pm \\omega_2)t,\\; \\cos(2\\omega_2 \\pm \\omega_1)t,\\;\\ldots',
-      ),
-      T('In general every product sits at'),
-      F('f = |m f_1 \\pm n f_2|, \\qquad m,n \\in \\mathbb{Z}'),
-      T(
-        'with order m + n. Third-order products are the troublesome ones: 2f₂ − f₁ lands close ' +
-          'to the originals, so no filter can remove it without removing the signal too. That ' +
-          'single fact sets the linearity requirement for most radio and optical front ends.',
-      ),
-      T(
-        'A linear system can only scale and delay the frequencies already present. Creating new ' +
-          'ones is the definition of nonlinearity, and it is what this preset makes visible.',
-      ),
-    ],
-  }),
+  'Two tones, one nonlinearity': (ctx) => {
+    const on = ctx.sources.filter((s) => s.enabled)
+    const f1 = on[0] ? on[0].freq : 250
+    const f2 = on[1] ? on[1].freq : 400
+    const live = ctx.blocks.some((b) => !b.bypass)
+    const dB = (f) => 20 * Math.log10(Math.max(ctx.at(f), 1e-12))
+    // The products, by order, measured live — the walk found the note naming
+    // 550, 900 and 50 Hz while 100 and 1050 Hz stood just as tall and 50 Hz
+    // sat 12 dB lower (it is fifth order).
+    const products = [
+      { label: '2f₁ − f₂', f: Math.abs(2 * f1 - f2), order: 3 },
+      { label: '2f₂ − f₁', f: Math.abs(2 * f2 - f1), order: 3 },
+      { label: '2f₁ + f₂', f: 2 * f1 + f2, order: 3 },
+      { label: '2f₂ + f₁', f: 2 * f2 + f1, order: 3 },
+      { label: 'f₂ − f₁', f: Math.abs(f2 - f1), order: 2 },
+      { label: 'f₂ + f₁', f: f2 + f1, order: 2 },
+      { label: '3f₁ − 2f₂', f: Math.abs(3 * f1 - 2 * f2), order: 5 },
+    ]
+    return {
+      blocks: [
+        T('Put two tones through a power series and the cross terms are the whole story:'),
+        F(
+          '(\\cos\\omega_1 t + \\cos\\omega_2 t)^{3} \\;\\longrightarrow\\; ' +
+            '\\cos(2\\omega_1 \\pm \\omega_2)t,\\; \\cos(2\\omega_2 \\pm \\omega_1)t,\\;\\ldots',
+        ),
+        T('In general every product sits at'),
+        F('f = |m f_1 \\pm n f_2|, \\qquad m,n \\in \\mathbb{Z}'),
+        T(
+          'with order m + n. Third-order products are the troublesome ones: 2f₂ − f₁ lands close ' +
+            'to the originals, so no filter can remove it without removing the signal too. That ' +
+            'single fact sets the linearity requirement for most radio and optical front ends.',
+        ),
+        T(
+          live
+            ? 'Measured on this spectrum, product by product. A symmetric clipper has only odd ' +
+              'terms in its series, so the second-order products stay far down; the ' +
+              'third-order four stand together, and the fifth-order one is well below them:'
+            : 'The clipper is bypassed, so every product below reads the window floor — the ' +
+              'chain is linear again and nothing new is made:',
+        ),
+        V(
+          products
+            .filter((p) => p.f > 0 && p.f < ctx.sampleRate / 2)
+            .map((p) => ({
+              label: `${p.label} = ${sig(p.f, 5)} Hz`,
+              value: dB(p.f),
+              unit: 'dB',
+              note: `order ${p.order}`,
+            })),
+        ),
+        T(
+          'A linear system can only scale and delay the frequencies already present. Creating new ' +
+            'ones is the definition of nonlinearity, and it is what this preset makes visible.',
+        ),
+      ],
+    }
+  },
 
   'Ring modulator': () => ({
     blocks: [
@@ -1634,25 +1927,39 @@ const ENTRIES = {
     const D = b ? Math.max(1, Math.round((b.params.delayMs / 1000) * ctx.sampleRate)) : 1
     const g = b ? Math.max(-0.95, Math.min(0.95, b.params.g)) : 0.9
     const spacing = ctx.sampleRate / D
+    const tauMs = (1000 * D) / ctx.sampleRate
+    // Two symbols for one delay: τ in seconds (so the notch spacing is 1/τ
+    // in hertz) and D in samples (so z^{-D} is a whole number of delays).
+    // One letter for both was the walk's complaint.
     return {
       blocks: [
-        T('Adding a delayed copy gives a transfer function with evenly spaced notches:'),
-        F('H(z) = 1 + g\\,z^{-D} \\qquad |H(f)| = \\bigl|1 + g\\,e^{-j2\\pi fD/f_s}\\bigr|'),
+        T(
+          'Adding a delayed copy gives a transfer function with evenly spaced notches. The ' +
+            'delay is τ seconds, which is D = τ·fₛ samples:',
+        ),
+        F('H(z) = 1 + g\\,z^{-D} \\qquad |H(f)| = \\bigl|1 + g\\,e^{-j2\\pi f\\tau}\\bigr|, \\quad D = \\tau f_s'),
         T(
           'For positive g the two terms oppose wherever the delay is an odd number of half ' +
-            'periods — every f_s/D hertz — dipping to 1 − g, a full cancel only at g = 1. ' +
+            'periods — every 1/τ = fₛ/D hertz — dipping to 1 − g, a full cancel only at g = 1. ' +
             '(Negative g swaps the pattern: the notches move to whole periods.) Feeding the ' +
             'output back instead puts the same comb in the DENOMINATOR, and a dip downstairs ' +
-            'is a peak upstairs — so the peaks land at multiples of f_s/D, midway between ' +
+            'is a peak upstairs — so the peaks land at multiples of 1/τ, midway between ' +
             'where the feed-forward notches were, not on top of them:',
         ),
         F('H(z) = \\frac{1}{1 - g\\,z^{-D}}'),
         V([
-          { label: 'delay D', value: D, unit: 'samples' },
-          { label: 'notch spacing', value: spacing, unit: 'Hz' },
+          { label: 'delay τ', value: tauMs, unit: 'ms' },
+          { label: 'delay D = τ·fₛ', value: D, unit: 'samples' },
+          { label: 'notch spacing 1/τ', value: spacing, unit: 'Hz' },
           { label: 'feed-forward notch floor |1 − |g||', value: Math.abs(1 - Math.abs(g)) },
           { label: 'feedback peak height 1/(1 − |g|)', value: 1 / (1 - Math.abs(g)) },
         ]),
+        // What the note used to say.
+        T(
+          `Open the z-plane view: this is "Zeros on the circle" again — D = ${D} of them in a ` +
+            `ring pulled just inside the rim at radius |g|^(1/D) = ${sig(Math.pow(Math.abs(g), 1 / D), 4)}, ` +
+            'and in feedback mode the same ring is poles.',
+        ),
       ],
     }
   },

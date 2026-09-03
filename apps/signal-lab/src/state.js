@@ -14,6 +14,10 @@ export const INITIAL = {
   timeSpanMs: 20,
   spanCycles: 5,
   scale: 'db',
+  // The bottom of the dB axis. −100 dB is the everyday floor; a preset whose
+  // claim lives below it (Spectral leakage's Hann floor near −147 dB) lowers
+  // it, so the number the note quotes is one the axis can show.
+  floorDb: -100,
   showHarmonics: false,
   showGhost: false,
   // Phase and group delay share one right-hand axis, so they are a choice

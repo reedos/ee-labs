@@ -6,6 +6,8 @@ import { agrees } from '@ee-labs/explain'
 import { chainResponse, renderChain } from './dsp/chain.js'
 import { render } from '@ee-labs/dsp'
 import { spectrum } from '@ee-labs/dsp'
+import { applyChip } from './chips.js'
+import { presetState } from './state.js'
 
 /** One failure per line, indented, so vitest's diff stays readable. */
 const SEP = `\n  `
@@ -15,18 +17,17 @@ const SEP = `\n  `
 // rendered here against the real signal, so a row that quietly stopped agreeing
 // fails the build rather than sitting on screen looking authoritative.
 
-/** Reproduce exactly what App feeds the panel for a given preset. */
+/**
+ * Reproduce exactly what App feeds the panel for a given preset — including
+ * the fields beyond sources/blocks/sampleRate/fftSize/window (spanCycles,
+ * scale, overlay…) that a handful of entries read straight off `ctx.state`.
+ * Built through presetState, the same function App.jsx's preset click runs,
+ * so a field this test forgot cannot silently leave a row `unchecked` forever
+ * — the "Coarse, not undersampled" RMS row did exactly that when this helper
+ * built its own bare state object without spanCycles.
+ */
 function contextFor(preset) {
-  const patch = preset.patch
-  const state = {
-    sources: patch.sources,
-    blocks: patch.blocks || [],
-    sampleRate: patch.sampleRate || 8000,
-    fftSize: patch.fftSize || 2048,
-    window: patch.window || 'hann',
-    presetName: preset.name,
-    showGhost: !!patch.showGhost,
-  }
+  const state = presetState(preset)
   const r = renderChain(state.sources, state.blocks, state.fftSize, state.sampleRate)
   const { freqs, amps } = spectrum(r.buf, state.sampleRate, state.window)
 
@@ -358,6 +359,77 @@ describe('preset math follows the controls it exposes', () => {
     const at12 = rowIn(mathFor(name, withParams(name, { taps: 12 })), '|H| at the first null')
     expect(at12.label).toContain('666.7')
     expect(at12.measured).toBeLessThan(0.02)
+  })
+})
+
+describe('the math panel through every one-click chip, and every disable/bypass', () => {
+  // The chips ARE the one-click path a student uses to do what the try line
+  // says (chips.js), and disabling a source or bypassing a block is the
+  // single most common thing a student does that a preset's own chips do not
+  // cover. Both must leave every check row either right or explicitly
+  // `unchecked` — never a cross against correct physics (playbook #1).
+  const rowFailures = (name, state) => {
+    const entry = mathFor(name, contextFor({ name, patch: state }))
+    const out = []
+    for (const b of entry.blocks) {
+      if (b.kind !== 'check') continue
+      for (const row of b.rows) {
+        if (row.unchecked) continue
+        const { predicted, measured, tol = 0.02, abs = 0 } = row
+        if (!Number.isFinite(predicted) || !Number.isFinite(measured)) {
+          out.push(`${name} / ${row.label}: non-finite (${predicted}, ${measured})`)
+          continue
+        }
+        if (!agrees({ predicted, measured, tol, abs })) {
+          out.push(
+            `${name} / ${row.label}: theory ${Number(predicted).toPrecision(5)} vs measured ` +
+              `${Number(measured).toPrecision(5)} (tol ${tol}, abs ${abs})`,
+          )
+        }
+      }
+    }
+    return out
+  }
+
+  it('never shows a wrong row after any preset’s own chip is clicked', () => {
+    const failures = []
+    for (const p of PRESETS) {
+      for (const c of p.chips || []) {
+        const state = applyChip(presetState(p), c.patch)
+        failures.push(...rowFailures(p.name, state).map((f) => `[chip "${c.label}"] ${f}`))
+      }
+    }
+    expect(failures.join(SEP)).toBe('')
+  })
+
+  it('never shows a wrong row with a source disabled', () => {
+    const failures = []
+    for (const p of PRESETS) {
+      const base = presetState(p)
+      base.sources.forEach((_, i) => {
+        const state = {
+          ...base,
+          sources: base.sources.map((s, j) => (j === i ? { ...s, enabled: false } : s)),
+        }
+        failures.push(...rowFailures(p.name, state).map((f) => `[${p.name}: source ${i + 1} off] ${f}`))
+      })
+    }
+    expect(failures.join(SEP)).toBe('')
+  })
+
+  it('never shows a wrong row with a block bypassed', () => {
+    const failures = []
+    for (const p of PRESETS) {
+      const base = presetState(p)
+      base.blocks.forEach((_, i) => {
+        const state = {
+          ...base,
+          blocks: base.blocks.map((b, j) => (j === i ? { ...b, bypass: true } : b)),
+        }
+        failures.push(...rowFailures(p.name, state).map((f) => `[block ${i + 1} bypassed] ${f}`))
+      })
+    }
+    expect(failures.join(SEP)).toBe('')
   })
 })
 

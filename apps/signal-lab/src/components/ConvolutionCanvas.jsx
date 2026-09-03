@@ -20,6 +20,21 @@ import { COLORS, plotArea, plotScale, useCanvas } from '@ee-labs/ui'
  * left edge of the signal, so the sum runs over a partial overlap. That IS what
  * filter warm-up is, shown rather than named.
  */
+/**
+ * The kernel's label suffix, when it is drawn scaled up next to the signal.
+ *
+ * Exported so the "confess the magnification" rule (playbook #6 — a mixed
+ * scale must say so, not just look tall) is checkable without a canvas: at
+ * mag ≥ 10 the factor is rounded to a whole number, below that to 2
+ * significant figures, and near 1× (0.8–1.25) nothing is drawn at all — the
+ * kernel's own scale IS the signal's, so there is nothing to confess.
+ */
+export function kernelMagLabel(mag) {
+  if (mag <= 1.25 && mag >= 0.8) return ''
+  const shown = mag >= 10 ? Math.round(mag) : Number(mag.toPrecision(2))
+  return `, drawn ×${shown} to be visible`
+}
+
 export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
   const n = Math.max(0, Math.min(x.length - 1, pos))
 
@@ -68,22 +83,25 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
         ctx.stroke()
       }
 
-      // One caption on the canvas, and it is the honest one: the kernel is
-      // drawn magnified next to the signal, and its height is a quiet lie
-      // unless the factor is named. What the two strips ARE — input with the
-      // flipped kernel, output so far — is said once in the note and the
-      // readout; three captions here fought the plot for the eye (Reed's
-      // review). Drawn above the frame, before the clip that keeps data
-      // marks inside it.
+      // The three actors, named where they are drawn — briefly, in the
+      // gutter above each strip, so they do not fight the plot for the eye
+      // the way three full captions once did (Reed's review) but a reader
+      // who has not memorised the note still knows which strip is which
+      // (the cold walk). The kernel's label carries its magnification: it is
+      // drawn scaled up next to the signal, and its height is a quiet lie
+      // unless the factor is named and the reason given.
       const mag = (peak * 1.1) / (hPeak * 1.15)
-      if (mag > 1.25 || mag < 0.8) {
-        ctx.fillStyle = COLORS.response
-        ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
-        ctx.textAlign = 'right'
-        ctx.textBaseline = 'bottom'
-        const shown = mag >= 10 ? Math.round(mag) : Number(mag.toPrecision(2))
-        ctx.fillText(`kernel drawn ×${shown}`, outer.x + outer.w - 4 * k, top.y - 4 * k)
-      }
+      ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
+      ctx.textBaseline = 'bottom'
+      ctx.textAlign = 'left'
+      ctx.fillStyle = COLORS.trace
+      ctx.fillText(`input x[m]`, outer.x, top.y - 4 * k)
+      ctx.fillStyle = COLORS.response
+      ctx.textAlign = 'right'
+      ctx.fillText(`kernel h[n−m], flipped${kernelMagLabel(mag)}`, outer.x + outer.w - 4 * k, top.y - 4 * k)
+      ctx.fillStyle = exact ? COLORS.spectrum : COLORS.marker
+      ctx.textAlign = 'left'
+      ctx.fillText(exact ? 'output y[n] = Σ h·x so far' : 'output y[n] so far — not the sum', outer.x, bot.y - 4 * k)
 
       // Everything that marks data stays inside the frame — the output dot at
       // n = 0 used to bleed past the left edge, the one canvas with no clip.
