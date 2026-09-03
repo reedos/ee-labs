@@ -238,30 +238,39 @@ knobs. If raw coefficient hand-overs ever deserve better, the fix is the
 serializer's precision (perhaps only for biquad/custom params), not anything
 in the emitters.
 
-## Open: PoleZeroCanvas tolerance cloud is too faint to read as a shape
+## Closed on the app side, still open in packages/ui: the tolerance cloud's own faintness
 
-Circuit Lab now has per-part tolerances, and its "Blame the right part"
-lesson's whole payload is the SHAPE of the pole scatter, an arc of constant
-radius when only R wobbles. The cloud rendering in
-`packages/ui/src/PoleZeroCanvas.jsx` (1.8px dots at alpha 0.28, under the
-nominal marks) is right for "there is uncertainty" and too faint for "the
-uncertainty has this shape". A 240-dot arc reads as a smear inside the X
-marker. Circuit Lab worked around it by choosing lesson parameters that
-stretch the arc across ~24° of the circle, which helps but is subtler than
-it deserves.
+Circuit Lab has per-part tolerances, and both "Real parts wobble" and "Blame
+the right part" have R at 560 Ω (an E12 value, ζ ≈ 0.89) rather than the
+100 Ω the rest of the series-RLC lessons use. That value was chosen so the
+120-build cloud sweeps an arc wide enough to read, rather than sitting inside
+the 14×14 px pole marker. This is now measured, not asserted: `course.test.js` (`lesson:
+Real parts wobble is visible`, `lesson: Blame the right part`) checks the
+cloud's pixel spread against three marker radii at a laptop pane height, and
+explicitly pins the OLD default (R = 100 Ω) as the failing case the move away
+from was for. `verify.mjs` section 8 measures the same claim in a real
+browser at 1366×768, by trace-colour ink box, on both the cloud and the
+bare-cross (exact parts) control. Both are green. The student-review item
+that asked to re-check this is closed for this app.
 
-Request, low priority: bump the cloud to ~2.5px at ~0.45 alpha, or expose a
-`cloudEmphasis` prop an app can set when the cloud IS the lesson. Keep the
-nominal marks on top.
+The upstream ask stands, and circuit-lab still cannot close it. The cloud
+rendering in `packages/ui/src/PoleZeroCanvas.jsx` (1.8px dots at alpha 0.28,
+under the nominal marks) is a parameter choice away from readable, not fixed
+at the source. A future lesson that cannot spare a component value to buy
+arc width will hit the same faintness. Request, low priority, unchanged: bump
+the cloud to ~2.5px at ~0.45 alpha, or expose a `cloudEmphasis` prop an app
+can set when the cloud IS the lesson. Keep the nominal marks on top.
 
-## Open: PoleZeroCanvas needs a `span` prop for sticky axes
+## Open, confirmed still unaddressed: PoleZeroCanvas needs a `span` prop for sticky axes
 
 Reed's tuning rule (the curve moves, not the axis, already law for Circuit
 Lab's frequency and now its step axes) can't reach the pole-zero view: the
-canvas auto-fits its span from the content on every render, so tuning C
-re-labels the axes under poles that appear pinned in place.
+canvas auto-fits its span from the content on every render (confirmed again
+by reading the current `PoleZeroCanvas.jsx`: `span` is computed from
+`poles`/`zeros`/`cloud` alone, no prop read), so tuning C re-labels the axes
+under poles that appear pinned in place.
 
-Requested contract, and Circuit Lab already passes the prop (harmlessly
+Requested contract, and Circuit Lab still passes the prop (harmlessly
 ignored today, lights up when you land it):
 
 - `span` (optional number): the half-height of the view in rad/s. When given,

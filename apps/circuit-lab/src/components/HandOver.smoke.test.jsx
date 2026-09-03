@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import React from 'react'
-import HandOver from './HandOver.jsx'
+import HandOver, { CompactHandOvers } from './HandOver.jsx'
 import { transferOf } from '../circuits.js'
 
 // A passing `vite build` only proves the modules parse (see
@@ -85,5 +85,50 @@ describe('HandOver render branches', () => {
     const d = html(transferOf('integrator', { r: 10000, c: 10e-9 }, 'out'), 'Op-amp integrator')
     expect(d).toContain('Declined')
     expect(d).toContain('Bilinear transform')
+  })
+})
+
+// The compact links surfaced beside the network (student-review item 4):
+// second order only, and only where siblingUrl can resolve a real link — a
+// bare Node render has no `window`, the same "dev port" case siblingUrl
+// itself declines, so a fake deployed `window.location` stands in for the
+// browser navigating to /circuit-lab/ the way verify.mjs does.
+describe('CompactHandOvers', () => {
+  const compactHtml = (tf, from) =>
+    renderToString(React.createElement(CompactHandOvers, { tf, from })).replace(/<!--\s*-->/g, '')
+
+  const onDeployedLayout = (fn) => {
+    const prev = globalThis.window
+    globalThis.window = { location: { pathname: '/ee-labs/circuit-lab/', origin: 'https://ee-labs.example' } }
+    try {
+      return fn()
+    } finally {
+      if (prev === undefined) delete globalThis.window
+      else globalThis.window = prev
+    }
+  }
+
+  it('renders nothing without a deployed location, even for a second-order circuit', () => {
+    const tf = transferOf('rlcSeries', { r: 100, l: 10e-3, c: 100e-9 }, 'c')
+    expect(compactHtml(tf, { app: 'circuit', id: 'rlcSeries', label: 'Series RLC' })).toBe('')
+  })
+
+  it('a second-order circuit gets both links on the deployed layout', () => {
+    const tf = transferOf('rlcSeries', { r: 100, l: 10e-3, c: 100e-9 }, 'c')
+    const h = onDeployedLayout(() => compactHtml(tf, { app: 'circuit', id: 'rlcSeries', label: 'Series RLC' }))
+    expect(h).toContain('Signal Lab')
+    expect(h).toContain('Control Lab')
+  })
+
+  it('a first-order circuit gets neither link, even on the deployed layout', () => {
+    const tf = transferOf('rcLow', { r: 1000, c: 100e-9 }, 'c')
+    const h = onDeployedLayout(() => compactHtml(tf, { app: 'circuit', id: 'rcLow', label: 'RC low-pass' }))
+    expect(h).toBe('')
+  })
+
+  it('the integrator (declined everywhere) gets neither link', () => {
+    const tf = transferOf('integrator', { r: 10000, c: 10e-9 }, 'out')
+    const h = onDeployedLayout(() => compactHtml(tf, { app: 'circuit', id: 'integrator', label: 'Op-amp integrator' }))
+    expect(h).toBe('')
   })
 })

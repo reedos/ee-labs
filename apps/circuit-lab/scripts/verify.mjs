@@ -168,7 +168,13 @@ console.log('\n0. Fresh load: the lab opens on a lesson, not as a bare instrumen
   if (!/Start with Try this, top to bottom\./.test(sub)) fail('subhead should say where to start')
   const stale = await page.locator('[data-role=note-stale]').count()
   if (stale) fail('a freshly loaded lesson must not read as stale')
+  // Student-review item 3: "2 of 15" with no explanation reads as a bug. The
+  // corner stays the opening lesson (a better first picture); one line says
+  // what lesson 1 is instead.
+  const startHint = (await page.locator('[data-role=start-hint]').textContent().catch(() => '')).trim()
+  if (!/Lesson 1.*flat divider/.test(startHint)) fail(`fresh load should explain "${count}": got "${startHint}"`)
   console.log(`   lit: ${lit.trim()} · nav ${count} · group open · Circuits below · try line present`)
+  console.log(`   start hint: "${startHint}"`)
 }
 
 // --------------------------------------------- 1. every circuit, every panel
@@ -693,9 +699,11 @@ console.log('\n5c. Next / previous / reset, and the one-click chips\n')
   await settle()
   if ((await lit()) !== LESSONS[i0 + 1].name) fail(`next should load "${LESSONS[i0 + 1].name}", got "${await lit()}"`)
   if ((await count()) !== `${i0 + 2} of ${LESSONS.length}`) fail(`count after next: ${await count()}`)
+  if (await page.locator('[data-role=start-hint]').count()) fail('the start hint should not follow past the start lesson')
   await page.getByRole('button', { name: 'Previous lesson' }).click()
   await settle()
   if ((await lit()) !== START_LESSON) fail('previous should come back')
+  if (!(await page.locator('[data-role=start-hint]').count())) fail('the start hint should return with the start lesson')
   console.log(`   next → ${LESSONS[i0 + 1].name} (${i0 + 2} of ${LESSONS.length}) → previous → ${START_LESSON}`)
   // A chip is one click and a partial patch; the lesson stays lit but is
   // flagged, and the chip that matches the setup is the lit one.
@@ -824,8 +832,11 @@ console.log('\n10. The student walk: each filed defect, re-checked on the real p
   if (!/floor is the grid/.test(note9)) fail('the notch note should say the drawn floor is the grid’s')
 
   // L13: Cf is drawn, the try line's corner is marked at 135°, gain −100.
+  // .first(): the network strip (section 1x) put a second .schematic on
+  // screen, in the main column; both draw the same circuit, so the sidebar's
+  // is representative.
   await pick('Gain is a ratio, and negative')
-  const sch = await page.locator('.schematic').textContent()
+  const sch = await page.locator('.schematic').first().textContent()
   if (!/Cf/.test(sch)) fail('the inverting schematic should draw and label Cf')
   await page.locator('.try-chips .chip', { hasText: 'Rf 100 kΩ' }).click()
   await settle()
@@ -904,6 +915,21 @@ console.log('\n10. The student walk: each filed defect, re-checked on the real p
   const titles = await page.$$eval('.flow-node', (els) => els.map((e) => e.getAttribute('title') || ''))
   if (!titles.some((t) => /half plane/.test(t))) fail('the stable/unstable node should define the half plane on hover')
   if (!titles.some((t) => /Transfer function/.test(t))) fail('the H(s) node should define the transfer function on hover')
+
+  // Student-review item 4: compact Signal/Control links beside the network,
+  // for a second-order circuit only, on the deployed layout this harness
+  // already visits (siblingUrl resolves under /circuit-lab/).
+  await pick('Series RLC')
+  const compact = await page.locator('[data-role=network-handovers] a').allTextContents()
+  if (!compact.some((t) => /Signal Lab/.test(t))) fail('Series RLC (2nd order) should get a compact Signal Lab link')
+  if (!compact.some((t) => /Control Lab/.test(t))) fail('Series RLC (2nd order) should get a compact Control Lab link')
+  console.log(`   compact hand-overs on a 2nd-order circuit: ${compact.join(', ')}`)
+  await pick('RC low-pass')
+  if (await page.locator('[data-role=network-handovers]').count()) {
+    fail('RC low-pass (1st order) should get no compact hand-over links')
+  } else {
+    console.log('   compact hand-overs absent on a 1st-order circuit, as they should be')
+  }
 }
 
 // ------------------------------------- 11. the integrator really never settles
@@ -1042,7 +1068,16 @@ console.log('\n7. Fold probe at laptop sizes: try line, featured controls, lit c
   const cases = LESSONS.map((l) => ({
     name: l.name,
     load: () => pick(l.name),
-    must: ['.try-line', ...featuredOf(l), '.presets .preset.is-on', '.lesson-nav'],
+    // Student-review item 1: the network (a compact schematic, pinned beside
+    // the plots) must be on screen at laptop sizes on every lesson, same as
+    // the try line and the featured knob — the same probe, one more locator.
+    must: [
+      '.try-line',
+      ...featuredOf(l),
+      '.presets .preset.is-on',
+      '.lesson-nav',
+      '[data-role=network-strip] .schematic',
+    ],
   }))
   const r = await foldProbe(page, { cases, url: URL })
   for (const f of r.failures) fail(`fold: ${f}`)
@@ -1061,6 +1096,11 @@ console.log('\n7. Fold probe at laptop sizes: try line, featured controls, lit c
   console.log(`   1440x900 · Q lesson · featured R bottom: ${at('1440x900', 'Q is how sharp, and R sets it', 'featured r')}`)
   console.log(`   1440x900 · biquad · Open in Signal Lab bottom: ${at('1440x900', 'This circuit is a biquad', '[data-role=featured] a.handover-copy')}`)
   console.log(`   1366x768 · wobble · every-part tolerance bottom: ${at('1366x768', 'Real parts wobble', '[data-role=featured] [data-role=tol-all]')}`)
+  // The two tallest schematics (twin-T's stacked tees, the inverting amp's
+  // extra Cf branch) are the worst case for the network row's fixed height.
+  console.log(`   1366x768 · twin-T · network schematic bottom: ${at('1366x768', 'A zero on the axis is silence', '[data-role=network-strip] .schematic')}`)
+  console.log(`   1440x900 · inverting amp · network schematic bottom: ${at('1440x900', 'Gain is a ratio, and negative', '[data-role=network-strip] .schematic')}`)
+  console.log(`   1366x768 · three filters · featured output probe bottom: ${at('1366x768', 'One circuit, three filters', '[data-role=featured] select')}`)
   for (const [k, v] of Object.entries(worst).sort((a, b) => b[1].bottom - a[1].bottom).slice(0, 4)) {
     console.log(`   lowest ${k}: ${v.bottom.toFixed(0)} px (${v.lesson})`)
   }

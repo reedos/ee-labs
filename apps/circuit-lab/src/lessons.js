@@ -133,9 +133,10 @@ export const LESSONS = [
       { label: 'across R', output: 'r' },
       { label: 'across L', output: 'l' },
     ],
-    // The chips ARE the output control here; the select in the Schematic
-    // section is the same state, a scroll below.
-    featured: [],
+    // The try line names the output probe, so the probe is featured — the
+    // one lesson where the instruction and an empty featured list used to
+    // disagree. The chips are the one-click version of the same control.
+    featured: ['output'],
     patch: { circuit: 'rlcSeries', output: 'c', view: 'step' },
     claim: { threeShapes: true, tryF0: 5033 },
   },
@@ -214,9 +215,13 @@ export const LESSONS = [
     name: 'A zero on the axis is silence',
     terms: ['twint', 'zero', 'pole', 'jw', 'tf', 'phase', 'q', 'zeta', 'damping'],
     note:
-      'The twin-T’s two tees deliver equal and opposite signals at one frequency, so the zeros of H(s) sit ON ' +
-    'the imaginary axis. That frequency is removed, not attenuated. The notch has no bottom, the plot’s floor ' +
-    'is the grid’s, not the notch’s, and the phase snaps 180° across it. Q is fixed at 1/4 by the topology.',
+      // Soft-landed (student-review item 5): the Bode's visible null comes
+      // first, and the abstract "zero on the axis" follows it rather than
+      // opening with it.
+      'One frequency vanishes from the response. It is a notch with no bottom, because the twin-T’s two tees ' +
+    'deliver equal and opposite signals at that frequency. That is a zero of H(s) on the imaginary axis. The ' +
+    'drawn floor is the grid’s, not the notch’s, and the phase snaps 180° across it. Q is fixed at 1/4 by the ' +
+    'topology.',
     try: 'Set R to 47 kΩ, the notch moves to 339 Hz, and Q still reads 0.250.',
     chips: [
       { label: 'R 10 kΩ', params: { r: 10000 } },
@@ -289,10 +294,13 @@ export const LESSONS = [
     name: 'Why active filters exist',
     terms: ['opamp', 'pole', 'jw', 'q', 'shapes', 'zeta', 'damping'],
     note:
-      'A second-order low-pass with no inductor anywhere. Two RC sections alone can only give real poles, and a ' +
-    'real pole cannot ring. The op-amp feeding the output back through C1 is what pushes the pole pair off ' +
-    'the real axis. Q then comes from ratios of components rather than their absolute size, which a chip does ' +
-    'well and a coil cannot.',
+      // Soft-landed (student-review item 5): leads with the knob and its
+      // effect (raise C1, Q climbs) rather than with "a real pole cannot
+      // ring" before the reader has touched anything.
+      'Raise C1 and Q climbs, with no resistor touched. Ratios of components set Q here, not their absolute ' +
+    'size. Two plain RC sections can only give real poles, and a real pole cannot ring. The op-amp feeding the ' +
+    'output back through C1 pushes the pole pair off the real axis, letting this filter resonate with no ' +
+    'inductor anywhere.',
     try: 'Raise C1 from 22 nF to 100 nF, Q climbs from 0.74 to 1.58 with no resistor touched.',
     chips: [
       { label: 'C1 4.7 nF', params: { c1: 4.7e-9 } },

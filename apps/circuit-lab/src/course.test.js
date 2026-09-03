@@ -149,6 +149,15 @@ describe('the course starts itself', () => {
     // The line the walk filed: it said "Tap R" beside chips reading "across R".
     expect(byName('One circuit, three filters').try).toMatch(/Tap across R/)
   })
+
+  // Student-review item 2: the try line names the output probe ("tap across
+  // R... across L"), and an empty featured list left the control it describes
+  // a scroll below in the Schematic section. The chips are a one-click
+  // version of the same control; the select itself must also be featured.
+  it('the output probe is featured on the one lesson whose try line names it', () => {
+    const l = byName('One circuit, three filters')
+    expect(l.featured).toContain('output')
+  })
 })
 
 describe('the numbers the try lines quote', () => {

@@ -63,7 +63,7 @@ import { reportSummary } from './report.js'
 import { asFraction } from './fraction.js'
 import pkg from '../package.json'
 import Schematic from './schematics.jsx'
-import HandOver, { SignalLabLink } from './components/HandOver.jsx'
+import HandOver, { SignalLabLink, CompactHandOvers } from './components/HandOver.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
 import StepCanvas from './components/StepCanvas.jsx'
 
@@ -558,6 +558,15 @@ export default function App() {
               />
             ) : null}
           </h2>
+          {/* The course opens on the corner, not the divider — a better first
+              picture, but "2 of 15" with no explanation reads as a bug. One
+              line makes the starting position legible without turning the
+              corner's own note into two claims. */}
+          {active?.name === START_LESSON ? (
+            <p className="hint start-hint" data-role="start-hint">
+              Lesson 1, the flat divider, is the baseline this corner builds on.
+            </p>
+          ) : null}
           {parked ? (
             <button
               type="button"
@@ -785,6 +794,32 @@ export default function App() {
       </div>
 
       <main className="views">
+        {/* The network, pinned beside the plots rather than a sidebar scroll
+            away (student-review item 1): a compact schematic, the output
+            probe when the circuit offers more than one, and the exact
+            second-order hand-overs — the third thing the Bode/step split was
+            missing. A fixed-height row so every circuit, tall schematics
+            (twin-T, the inverting amp) included, costs the two plot panes the
+            same handful of pixels. */}
+        {/* A class of its own, not "view" — that class (and "view-head" on
+            its header below) is how the rest of the harness counts and
+            indexes the frequency and step/poles panes; a third element
+            wearing the same class shifted every .nth(1)-style reference in
+            verify.mjs and the pane-header proximity check onto the wrong
+            pane. */}
+        <section className="network-strip" data-role="network-strip">
+          <div className="network-head">
+            <h2>Network</h2>
+          </div>
+          <div className="network-body">
+            <div className="network-schematic">
+              <Schematic id={id} params={params} output={output} />
+            </div>
+            {outputSelect ? <div className="network-output">{outputSelect}</div> : null}
+            <CompactHandOvers tf={tf} from={handOverFrom} />
+          </div>
+        </section>
+
         <section className="view">
           <div className="view-head">
             <h2>Frequency response</h2>

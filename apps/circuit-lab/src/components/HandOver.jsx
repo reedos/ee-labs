@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { NumField, fmt, fmtHz, siblingUrl, track, handOverEvent } from '@ee-labs/ui'
+import { polesZeros } from '@ee-labs/systems'
 import { asDigitalFilter, suggestRate, asControlPlant } from '../toSignalLab.js'
 import { handOverTerms } from '../terms.js'
 
@@ -293,6 +294,56 @@ export function SignalLabLink({ tf, from = null }) {
       circuit={from?.id}
       compact
     />
+  )
+}
+
+/**
+ * Two one-line links, surfaced beside the network rather than a sidebar
+ * scroll away — the hand-over the review found buried. Only for a
+ * second-order circuit (the mapping both siblings speak is exact there: a
+ * named or `custom` biquad, a named or `custom` plant, never a bilinear
+ * squeeze or a raw six-coefficient plant beyond order 2) and only a link the
+ * deployed layout can actually resolve — `siblingUrl` returns null on a bare
+ * dev port, and there is no copy-paste fallback here. The full panel with its
+ * reasoning stays where it is; this is discovery, not the whole feature.
+ */
+export function CompactHandOvers({ tf, from = null }) {
+  const secondOrder = useMemo(() => polesZeros(tf).poles.length === 2, [tf])
+  const natural = useMemo(() => asDigitalFilter(tf, { from }), [tf, from])
+  const rate = suggestRate(natural ? natural.f0 : 0)
+  const d = useMemo(() => asDigitalFilter(tf, { sampleRate: rate, from }), [tf, rate, from])
+  const plant = useMemo(() => asControlPlant(tf, from), [tf, from])
+  const signalUrl = secondOrder && d ? siblingUrl('signal-lab', d.link) : null
+  const controlUrl = secondOrder && plant ? siblingUrl('control-lab', plant.link) : null
+  if (!signalUrl && !controlUrl) return null
+
+  const open = (app, tier) => () => track(handOverEvent({ action: 'open', app, tier, circuit: from?.id }))
+
+  return (
+    <div className="network-handovers" data-role="network-handovers">
+      {signalUrl ? (
+        <a
+          className="network-handover"
+          href={signalUrl}
+          target="_blank"
+          rel="noopener"
+          onClick={open('signal-lab', d.raw ? 'raw' : d.shape)}
+        >
+          → Signal Lab
+        </a>
+      ) : null}
+      {controlUrl ? (
+        <a
+          className="network-handover"
+          href={controlUrl}
+          target="_blank"
+          rel="noopener"
+          onClick={open('control-lab', plant.plant)}
+        >
+          → Control Lab
+        </a>
+      ) : null}
+    </div>
   )
 }
 

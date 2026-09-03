@@ -242,6 +242,98 @@ a.handover-copy:hover { filter: brightness(1.1); }
 
 /* ---------- the course's furniture (student-tool review, 2026-09) ---------- */
 
+/* The network strip: a fixed-height row above the two plot panes, so the
+   schematic is co-visible with H(s) instead of a sidebar scroll below it.
+   Fixed rather than "auto" — the row costs the same handful of pixels
+   whether the schematic is the plain 130-tall frame or the twin-T's 185. */
+@media (min-width: 901px) {
+  .views {
+    grid-template-rows: 120px 1fr 1fr;
+  }
+}
+.network-strip {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  min-height: 0;
+  padding: 4px 14px 6px;
+}
+.network-head {
+  margin: 0 0 4px;
+}
+.network-head h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.network-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  flex: 1;
+  min-height: 0;
+}
+.network-schematic {
+  flex: 0 0 auto;
+  height: 92px;
+}
+/* Sized by HEIGHT, not width: the taller frames (twin-T, the inverting amp)
+   end up narrower rather than taller, which is what keeps the row's height
+   the same for every circuit. Overrides the sidebar schematic's width:100%. */
+.network-schematic .schematic {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  margin: 0;
+}
+.network-output {
+  flex: 0 0 auto;
+  min-width: 160px;
+}
+.network-output .field-label {
+  display: block;
+}
+.network-handovers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.network-handover {
+  color: var(--accent);
+  font-size: 11.5px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.network-handover:hover {
+  text-decoration: underline;
+}
+/* The network row earns its keep on a laptop or bigger; a phone's first
+   screen is already a tight fit for the note, the try line and one plot, so
+   the schematic stays the sidebar's job there rather than a claim this app
+   does not verify at 390 px. */
+@media (max-width: 900px) {
+  .views .network-strip {
+    display: none;
+  }
+}
+
+/* The one line that makes "2 of 15" legible on a fresh load: the corner is
+   the better first picture, and this says what lesson 1 is instead. Sized
+   down from the base .hint (12px/1.5) so the one lesson that carries it does
+   not lose the pixels the 1366×768 fold probe needs for the featured knob
+   below. */
+.hint.start-hint {
+  margin: 2px 0 2px;
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 /* A note whose picture has moved on: a knob changed since the lesson loaded.
    The paragraph stays (it is still the lesson you are in) but says so, and
    the reset in the nav strip above puts the described setup back. */
@@ -274,8 +366,8 @@ a.handover-copy:hover { filter: brightness(1.1); }
 /* The controls a try line names, right under it: the same fields as in the
    Components section, bound to the same state. */
 .featured {
-  margin: 8px 0 0;
-  padding: 6px 0 0;
+  margin: 4px 0 0;
+  padding: 3px 0 0;
   border-top: 1px dashed var(--line);
 }
 .featured .num:last-child, .featured .field:last-child { margin-bottom: 4px; }
@@ -287,8 +379,8 @@ details.preset-group > summary { padding: 2px 0; }
 details.preset-group > .presets { margin: 3px 0 5px; }
 .presets { gap: 4px; }
 .preset { padding: 4px 7px; font-size: 11px; }
-.note-title { margin-top: 8px; }
-.hint.note { margin-top: 6px; }
+.note-title { margin-top: 4px; }
+.hint.note { margin-top: 3px; }
 
 .featured-handover { margin-bottom: 10px; }
 .featured-handover .handover-copy { margin-top: 0; margin-bottom: 6px; }
