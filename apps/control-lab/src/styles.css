@@ -300,6 +300,17 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 /* A margin that has run thin is worth seeing before you read the number. */
 .topbar-field b.warn { color: var(--warn); }
 
+/* "...and what it costs" tells the reader to look at the margin, with
+   nothing on screen leading the eye there (student review, item 4b). The
+   lesson marks this field `is-callout` (App.jsx's `active.callout`) so the
+   ring is the nudge and the number itself is unchanged. */
+.topbar-field.is-callout {
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
 /* The marginal verdict — a sustained oscillation, neither settled nor run
    away — gets its own look: not the muted "settled" style, not the dashed
    "unstable" one. Scoped here rather than in the shared base.css, which
@@ -364,6 +375,21 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    layout — on a phone the panes stack and each takes its own height. */
 @media (min-width: 901px) {
   .views.is-weighted { grid-template-rows: minmax(0, 38fr) minmax(0, 62fr); }
+}
+
+/* On a short laptop fold (1366×768, the same shortest case the item-7 probe
+   already uses) the Bode's ordinary 38% is too much when the lesson's OWN
+   view (data-view, App.jsx's primaryView) is Watch, Nyquist or the locus —
+   each carries chrome of its own the Bode pane does not (the transport row,
+   the point −1, the branches), and Step does not need the extra room, so it
+   keeps the ordinary split (student review, item 5). The Bode gives way
+   further rather than sitting on top at full weight. */
+@media (max-height: 800px) and (min-width: 901px) {
+  .views.is-weighted[data-view='watch'],
+  .views.is-weighted[data-view='nyquist'],
+  .views.is-weighted[data-view='locus'] {
+    grid-template-rows: minmax(0, 22fr) minmax(0, 78fr);
+  }
 }
 
 /* The math as a pane, not a sidebar well: it scrolls inside its pane so the

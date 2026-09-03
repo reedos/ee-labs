@@ -11,6 +11,38 @@
 // abstraction; no term defined using an undefined term.
 
 export const TERMS = {
+  // ---- the section headers: on screen under every lesson and every picker
+  // state alike, the same permanence TOPBAR_TERMS's own comment describes
+  // (chrome.js's PLANT_DEF/CONTROLLER_DEF, App.jsx's #plant/#controller
+  // cards) --------------------------------------------------------------
+  plant: {
+    name: 'Plant (P(s))',
+    def:
+      'The system a loop is built to control, a motor, a tank, a circuit, whatever is actually out there. Its ' +
+    'input is the drive u, whatever the controller sends. Its output is the measured y, fed back to form the ' +
+    'next error. The plant is given. Only the controller is chosen.',
+  },
+  controller: {
+    name: 'Controller (C(s))',
+    def:
+      'The block a designer chooses, not the plant itself. Its input is the error, the reference r minus the ' +
+    'measured y. Its output is the drive u, computed from that gap alone. It never sees the reference or the ' +
+    'plant directly, only how far apart they are.',
+  },
+  error: {
+    name: 'Error (e = r − y)',
+    def:
+      'The gap between the reference r and the measured output y. A controller acts on this difference alone, ' +
+    'never on r or y separately. Driving it to zero, or as close as the loop\'s own limits allow, is the whole ' +
+    'job of feedback.',
+  },
+  reference: {
+    name: 'Reference (r)',
+    def:
+      'The value a loop is asked to reach or hold, the setpoint. A step lesson moves r itself. A disturbance ' +
+    'lesson leaves r fixed and shoves the plant input instead. The controller compares r against the measured ' +
+    'y to form the error.',
+  },
   db: {
     name: 'dB (decibel)',
     def:

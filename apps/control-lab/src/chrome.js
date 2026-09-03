@@ -192,6 +192,35 @@ function mathProseText(math) {
 const ALWAYS_ON_CHROME = 'Open loop L(s) = C(s)·P(s)'
 
 /**
+ * The section-header definitions (App.jsx's `#controller`/`#plant` cards):
+ * what a plant and a controller ARE, rendered unconditionally right under
+ * each `<h2>` regardless of lesson or view — NEEDS.md's own ask, and the
+ * load-bearing content is the input/output identity (u, y, r − y) that
+ * confused a reader arriving from a hand-over link. One string apiece, kept
+ * here rather than inline in App.jsx so this scan and the screen read the
+ * exact same words, the same reason ALWAYS_ON_CHROME above is not a literal
+ * repeated in two files.
+ */
+export const PLANT_DEF =
+  'The plant is the system you are stuck with, a motor, a tank, a circuit. Its input is the drive u, ' +
+  'whatever the controller sends, and its output is the measured y fed back to it.'
+export const CONTROLLER_DEF =
+  'The controller is the block you design. Its input is the error, the reference r minus the measured y, ' +
+  'and its output is the drive u sent to the plant.'
+
+/**
+ * The four ids these two definitions introduce (drive already had one:
+ * CUES.drive). Kept apart from TOPBAR_TERMS — which every LESSON also
+ * inherits via lessons.js's own `terms()` helper — because these belong to
+ * the picker's section headers specifically; folding them into TOPBAR_TERMS
+ * would widen every lesson's own "terms used here" fold by four entries no
+ * lesson asked for. chromeTermIds seeds its id set with both lists, so the
+ * picker's fold (the only one item 33's browser probe walks) offers all of
+ * them unconditionally, the same guarantee TOPBAR_TERMS gives its own four.
+ */
+export const SECTION_TERMS = ['plant', 'controller', 'error', 'reference']
+
+/**
  * The wide, 1600-point margin-measurement grid App.jsx's `wideFreqs` builds
  * (16 decades around the loop's own pole/zero geometric mean), reproduced
  * here from the open loop alone. App.jsx's version centres on
@@ -378,10 +407,12 @@ export function chromeTermIds({ plantId, plantP, ctrlId, ctrlP, view, stepInput,
     badge.short,
     joinParts(marginNote.parts),
     ALWAYS_ON_CHROME,
+    PLANT_DEF,
+    CONTROLLER_DEF,
     arrivalText,
   ].join(' ')
 
-  const ids = new Set(TOPBAR_TERMS)
+  const ids = new Set([...TOPBAR_TERMS, ...SECTION_TERMS])
   for (const [id, re] of Object.entries(CUES)) {
     if (re.test(text)) ids.add(id)
   }

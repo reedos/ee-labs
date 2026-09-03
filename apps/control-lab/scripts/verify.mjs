@@ -1473,6 +1473,13 @@ console.log('\n8. Overprinting captions and labels (items 24, 25, 26, 27)\n')
     await page.goto(URL, { waitUntil: 'networkidle' })
     await page.waitForSelector('.views canvas')
     await loadLesson('The plant that needs feedback')
+    // The lesson now LOADS at Kp = 0.5 (item 2, student review: the latch is
+    // the first picture, not a chip away) — and at that gain the open loop's
+    // DC magnitude is already 0.5, below 1 forever, so it genuinely has no
+    // gain crossover to label. Kp = 5 is the gain the original "gain = 1"
+    // overprint bug was filed against, so set it explicitly rather than
+    // leaning on whatever the lesson's own default happens to be.
+    await setField('Kp', 5)
     const phaseGroup = page.locator('[aria-label="Phase overlay"]')
     await phaseGroup.getByRole('button', { name: 'no phase', exact: true }).click()
     await settle()

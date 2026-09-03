@@ -52,13 +52,23 @@ describe('the lesson list itself', () => {
       const { open, closed } = loopOf(l)
       expect(Number.isFinite(dcGain(closed)) || dcGain(closed) === Infinity, l.name).toBe(true)
       expect(open.a.length, l.name).toBeGreaterThan(1)
-      // And a loop that BEHAVES. Every note describes a response that settles
-      // (the ones about losing stability say "drag the gain up" — from a
-      // stable start), so the loaded state itself must be stable. "...and
-      // what it costs" shipped with poles exactly on the imaginary axis: an
-      // UNSTABLE badge and a step ringing forever under a note calmly
-      // discussing margins, and nothing here looked.
-      expect(isStable(closed), `${l.name} should load a stable loop`).toBe(true)
+      // And a loop that BEHAVES, with one deliberate exception. Every OTHER
+      // note describes a response that settles (the ones about losing
+      // stability say "drag the gain up" — from a stable start), so the
+      // loaded state itself must be stable. "...and what it costs" shipped
+      // with poles exactly on the imaginary axis by ACCIDENT: an UNSTABLE
+      // badge and a step ringing forever under a note calmly discussing
+      // margins, and nothing here looked — that failure mode is still what
+      // this test guards everywhere else. "The plant that needs feedback" is
+      // the one lesson that loads unstable ON PURPOSE (Kp = 0.5, latched):
+      // its whole point is the inverted failure mode, and the student review
+      // found that mode a chip away rather than the first picture, so it now
+      // opens on it directly instead of the tame Kp = 5 rise.
+      if (l.name === 'The plant that needs feedback') {
+        expect(isStable(closed), `${l.name} should load the latched, unstable case`).toBe(false)
+      } else {
+        expect(isStable(closed), `${l.name} should load a stable loop`).toBe(true)
+      }
     }
   })
 })
@@ -244,10 +254,14 @@ describe('what each lesson claims', () => {
   it('the unstable plant fails the other way round', () => {
     const s = applyLesson(byName('The plant that needs feedback'))
     const at = (kp) => isStable(buildLoop(s.plantId, s.plantP, 'p', { kp }).closed)
-    expect(at(s.ctrlP.kp), 'stable as loaded').toBe(true)
-    // Turning the gain DOWN is what breaks it, which is the whole point.
-    expect(at(0.5)).toBe(false)
+    // Loaded at Kp = 0.5: this is the picture the lesson exists to show,
+    // latched rather than settled — the note and the picture agree.
+    expect(s.ctrlP.kp).toBe(0.5)
+    expect(at(s.ctrlP.kp), 'latched as loaded').toBe(false)
     expect(at(0.1)).toBe(false)
+    // Raising the gain is what fixes it, the inverted failure mode's point.
+    expect(at(5), 'Kp -> 5 stabilizes it').toBe(true)
+    expect(at(20)).toBe(true)
   })
 
   it('derivative action improves a resonant plant that P alone makes worse', () => {

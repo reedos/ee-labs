@@ -41,7 +41,7 @@ import { initialState } from './boot.js'
 import { circuitFor, circuitUrl } from './toCircuitLab.js'
 import { stickyDuration } from './stepAxis.js'
 import { termsFor } from './terms.js'
-import { chromeTerms, paneHeading } from './chrome.js'
+import { chromeTerms, paneHeading, PLANT_DEF, CONTROLLER_DEF } from './chrome.js'
 import { reportSummary } from './report.js'
 import pkg from '../package.json'
 import { nextFrame } from './frame.js'
@@ -198,6 +198,10 @@ export default function App() {
     setCtrlP(n.ctrlP)
     setLower(n.view)
     setStepInput(n.stepInput)
+    // Only a lesson that names its own showPhase ("...and what it costs")
+    // touches this — every other lesson leaves the overlay wherever the
+    // reader last set it, rather than resetting it on every single click.
+    if (n.showPhase !== undefined) setShowPhase(n.showPhase)
     setLesson(l.name)
     setLastLesson(null)
     setLoads((k) => k + 1)
@@ -748,6 +752,16 @@ export default function App() {
             visible. The plant is what you are stuck with; it follows. */}
         <section id="controller">
           <h2>Controller — C(s)</h2>
+          {/* Definitions on contact, at the header — not only in a lesson's
+              own terms fold. NEEDS.md asked for this so an idly-exploring
+              reader meets the input/output identity (item 3, student
+              review); PLANT_DEF/CONTROLLER_DEF live in chrome.js so this
+              text and chromeTermIds' scan of it can never drift apart.
+              Gated the same way ctrl.hint below already is: a lesson's own
+              note is doing this teaching in context, and the tight fold
+              budget at 1366×768 (verify §7) has no spare line for a second,
+              generic one stacked on top of it. */}
+          {active ? null : <p className="hint section-def">{CONTROLLER_DEF}</p>}
           <div className="presets">
             {Object.entries(CONTROLLERS).map(([key, c]) => (
               <button
@@ -800,6 +814,7 @@ export default function App() {
 
         <section id="plant">
           <h2>Plant — P(s)</h2>
+          {active ? null : <p className="hint section-def">{PLANT_DEF}</p>}
           {PLANT_GROUPS.map((g) => {
             const inGroup = Object.entries(PLANTS).filter(([, p]) => p.group === g)
             if (!inGroup.length) return null
@@ -955,7 +970,11 @@ export default function App() {
           />
         ) : null}
         <div className="topbar-controls">
-          <span className="topbar-field">
+          {/* "...and what it costs" tells the reader to look at the margin
+              with nothing on screen leading the eye there (student review).
+              `callout` names the field the active lesson is about; the ring
+              is the nudge, the number underneath is unchanged. */}
+          <span className={`topbar-field${active?.callout === 'phasemargin' ? ' is-callout' : ''}`}>
             <span>phase margin</span>
             <b className={marg.phaseMargin != null && marg.phaseMargin < 30 ? 'warn' : ''}>
               {marg.phaseMargin == null ? '—' : `${marg.phaseMargin.toFixed(1)}°`}
@@ -1008,7 +1027,11 @@ export default function App() {
         </div>
       </div>
 
-      <main className={`views${weighted ? ' is-weighted' : ''}`}>
+      {/* data-view names the lesson's OWN view (primaryView, not necessarily
+          the live `lower` — a toggle away from it) so styles.css can bias a
+          short viewport toward Watch/Nyquist/Locus, which carry extra chrome
+          of their own the Bode pane does not (item 5, student review). */}
+      <main className={`views${weighted ? ' is-weighted' : ''}`} data-view={primaryView || undefined}>
         <section className="view">
           <div className="view-head">
             <h2>Open loop L(s) = C(s)·P(s)</h2>

@@ -1,6 +1,7 @@
 import { describe, it } from 'vitest'
 import { LESSONS } from './lessons.js'
 import { TERMS } from './terms.js'
+import { PLANT_DEF, CONTROLLER_DEF } from './chrome.js'
 import { expectPlain } from '@ee-labs/prose/testing'
 
 // The house style, measured (STYLE.md).
@@ -23,4 +24,12 @@ describe('every term reads plainly', () => {
   for (const [id, t] of Object.entries(TERMS)) {
     it(id, () => expectPlain(t.def, 'term', `${id} def`))
   }
+})
+
+// The two section-header definitions (item 3, student review): on screen
+// under every lesson and every picker state, so they carry the same budget
+// a note does.
+describe('the section-header definitions read plainly', () => {
+  it('plant', () => expectPlain(PLANT_DEF, 'note', 'PLANT_DEF'))
+  it('controller', () => expectPlain(CONTROLLER_DEF, 'note', 'CONTROLLER_DEF'))
 })
