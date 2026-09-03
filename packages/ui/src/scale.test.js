@@ -64,9 +64,9 @@ describe('log scale', () => {
   })
 
   it('snaps to constant relative precision', () => {
-    expect(snap(249.3178, log)).toBe(249)
+    expect(snap(249.3178, log)).toBe(249.3)
     expect(snap(1010.4, log)).toBe(1010)
-    expect(snap(4.5678, log)).toBe(4.57)
+    expect(snap(4.5678, log)).toBe(4.568)
   })
 
   it('never leaves the range', () => {

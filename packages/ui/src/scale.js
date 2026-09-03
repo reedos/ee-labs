@@ -60,7 +60,10 @@ export function snap(value, { scale, min, max, step = 1 }) {
     case 'pow2':
       return clamp(Math.pow(2, Math.round(log2(value))), min, max)
     case 'log':
-      return clamp(Number(value.toPrecision(3)), min, max)
+      // Four figures, not three: a student who types the boundary gain 11.25
+      // must read 11.25 back, or the chip, the field and the readout disagree
+      // about whether they did what the note said.
+      return clamp(Number(value.toPrecision(4)), min, max)
     default: {
       const s = step > 0 ? step : 1
       return clamp(Math.round(value / s) * s, min, max)
