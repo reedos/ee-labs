@@ -385,7 +385,16 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
       rows.push({
         label: 'worst amplification, max |S|',
         value: sMag[iPeak],
-        note: sMag[iPeak] > 2 ? 'a thin margin, priced' : 'the sensitivity peak',
+        // Neither branch introduces a term with no sentence beside it — the
+        // cold walk's finding 5. "The sensitivity peak" used to sit here with
+        // no TERMS entry and no explanatory sentence anywhere in this pane,
+        // the one bare cue the math-pane exclusion's justification (verify.mjs
+        // item 33) had missed: it claimed EVERY term here sits beside its own
+        // sentence, and this row was the counterexample. Reworded rather than
+        // given a definition, because the row's own label already says what
+        // the number is ("worst amplification, max |S|") — a definition for
+        // "sensitivity peak" would only restate that.
+        note: sMag[iPeak] > 2 ? 'a thin margin, priced' : 'a comfortable margin, barely priced',
       })
       rows.push({ label: 'paid at', value: freqs[iPeak], unit: 'Hz' })
       blocks.push(V(rows))

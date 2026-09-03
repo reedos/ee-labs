@@ -3,7 +3,7 @@ import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
 import { TERMS } from './terms.js'
 import { chromeTermIds } from './chrome.js'
 import { watchSignals } from './watch.js'
-import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
+import { PLANTS, CONTROLLERS, buildLoop, defaultsOf, ctrlDefaultsFor } from './systems.js'
 import {
   dcGain,
   isStable,
@@ -82,9 +82,21 @@ describe('terms — definitions on contact', () => {
     // actual rule — "by a lesson" was always a stand-in for that.
     const used = new Set(LESSONS.flatMap((l) => l.terms || []))
     for (const pid of Object.keys(PLANTS)) {
+      const plantP = defaultsOf(PLANTS[pid])
       for (const cid of Object.keys(CONTROLLERS)) {
+        const ctrlP = ctrlDefaultsFor(pid, plantP, cid)
         for (const view of ['step', 'watch', 'nyquist', 'locus', 'math']) {
-          for (const id of chromeTermIds(pid, cid, view)) used.add(id)
+          for (const id of chromeTermIds({
+            plantId: pid,
+            plantP,
+            ctrlId: cid,
+            ctrlP,
+            view,
+            stepInput: 'ref',
+            arrival: false,
+          })) {
+            used.add(id)
+          }
         }
       }
     }

@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { PLANTS, CONTROLLERS } from './systems.js'
+import { margins } from '@ee-labs/systems'
+import { PLANTS, CONTROLLERS, defaultsOf, ctrlDefaultsFor, buildLoop } from './systems.js'
 import { CUES, TOPBAR_TERMS } from './terms.js'
-import { chromeTermIds, chromeTerms, VIEW_CHROME } from './chrome.js'
+import { chromeTermIds, chromeTerms, VIEW_CHROME, paneHeading } from './chrome.js'
+import { verdictOf } from './verdict.js'
 
 // Definitions on contact in the PICKER: a plant or controller click clears
 // the lesson (App.jsx's clearLesson), and before this there was nowhere left
@@ -12,13 +14,35 @@ import { chromeTermIds, chromeTerms, VIEW_CHROME } from './chrome.js'
 // shows instead — the current plant's hint, the current controller's hint,
 // and the lower view's own static chrome (VIEW_CHROME, copied verbatim from
 // what App.jsx renders there).
+//
+// Round three's fix: chromeTermIds takes the LIVE plantP/ctrlP/stepInput/
+// arrival instead of reconstructing a plausible default state — so this
+// file's helper builds those the same way App.jsx's own choosePlant/
+// chooseCtrl would (defaultsOf, ctrlDefaultsFor), but every test that needs
+// to prove the fold TRACKS a change constructs its own plantP/ctrlP/stepInput
+// away from that default, exactly as a dragged slider or a clicked toggle
+// would.
 
 const plantIds = Object.keys(PLANTS)
 const ctrlIds = Object.keys(CONTROLLERS)
 const views = ['step', 'watch', 'nyquist', 'locus', 'math']
 
+/** The picker's own default state for a plant/controller pair — what a fresh click leaves. */
+function defaultState(plantId, ctrlId, view, extra = {}) {
+  const plantP = defaultsOf(PLANTS[plantId])
+  const ctrlP = ctrlDefaultsFor(plantId, plantP, ctrlId)
+  return { plantId, plantP, ctrlId, ctrlP, view, stepInput: 'ref', arrival: false, ...extra }
+}
+
+/** 'stable' | 'marginal' | 'unstable' for a chromeTermIds-shaped state, independent of chrome.js's own internals. */
+function verdictOfLoop({ plantId, plantP, ctrlId, ctrlP }) {
+  const loop = buildLoop(plantId, plantP, ctrlId, ctrlP)
+  const grid = Float64Array.from({ length: 4000 }, (_, i) => Math.pow(10, -8 + (16 * i) / 3999))
+  return verdictOf(loop.closed, margins(loop.open, grid))
+}
+
 describe('picker terms: reachable with no lesson active', () => {
-  it('every one of the 7 x 4 x 5 = 140 states resolves every id it offers, and always offers the top bar', () => {
+  it('every one of the 7 x 4 x 5 = 140 default states resolves every id it offers, and always offers the top bar', () => {
     expect(plantIds.length).toBe(7)
     expect(ctrlIds.length).toBe(4)
     expect(views.length).toBe(5)
@@ -27,8 +51,9 @@ describe('picker terms: reachable with no lesson active', () => {
       for (const cid of ctrlIds) {
         for (const view of views) {
           states++
-          const ids = chromeTermIds(pid, cid, view)
-          const resolved = chromeTerms(pid, cid, view)
+          const state = defaultState(pid, cid, view)
+          const ids = chromeTermIds(state)
+          const resolved = chromeTerms(state)
           expect(resolved.length, `${pid} x ${cid} x ${view}: an offered id with no definition`).toBe(ids.length)
           // The top bar is on screen throughout, lesson or not.
           for (const t of TOPBAR_TERMS) {
@@ -42,24 +67,24 @@ describe('picker terms: reachable with no lesson active', () => {
 
   it('the specific defects Reed hit: no path to a definition once the lesson unloads', () => {
     // The top bar, always: phase margin, gain margin, crossover, steady error.
-    const anyState = chromeTermIds('firstOrder', 'p', 'step')
+    const anyState = chromeTermIds(defaultState('firstOrder', 'p', 'step'))
     for (const t of ['phasemargin', 'gainmargin', 'crossover', 'steadystate']) {
       expect(anyState).toContain(t)
     }
 
     // Nyquist: "-1" is explained by the Nyquist-plot definition itself
     // ("judged against the single point -1"), reached via its own cue.
-    expect(chromeTermIds('firstOrder', 'p', 'nyquist')).toContain('nyquistplot')
+    expect(chromeTermIds(defaultState('firstOrder', 'p', 'nyquist'))).toContain('nyquistplot')
 
     // Root locus: "crosses into the shaded half", and open-loop vs
     // closed-loop poles — the readout text that is on screen regardless of
     // any lesson.
-    const locus = chromeTermIds('firstOrder', 'p', 'locus')
+    const locus = chromeTermIds(defaultState('firstOrder', 'p', 'locus'))
     expect(locus).toContain('shadedhalf')
     expect(locus).toContain('closedvsopen')
 
     // Math: the characteristic equation.
-    expect(chromeTermIds('firstOrder', 'p', 'math')).toContain('characteristicequation')
+    expect(chromeTermIds(defaultState('firstOrder', 'p', 'math'))).toContain('characteristicequation')
   })
 
   it('Reed\'s cold-walk defect: dB, rad/s and Kp·e all reachable with no lesson loaded', () => {
@@ -68,7 +93,7 @@ describe('picker terms: reachable with no lesson active', () => {
     // word a prose scan of the plant/controller hints or VIEW_CHROME would
     // ever see — so both are on screen in EVERY state, not just some.
     for (const view of views) {
-      const ids = chromeTermIds('firstOrder', 'p', view)
+      const ids = chromeTermIds(defaultState('firstOrder', 'p', view))
       expect(ids, `${view}: dB`).toContain('db')
       expect(ids, `${view}: rad/s`).toContain('radpersec')
     }
@@ -76,12 +101,12 @@ describe('picker terms: reachable with no lesson active', () => {
     // Kp·e: the watch view's own readout strip, rendered only once there is
     // more than one part to split the effort into — PI and PID, not plain P
     // (one part, no strip at all) and not Lead (also one part, its own u).
-    expect(chromeTermIds('firstOrder', 'pi', 'watch')).toContain('kpe')
-    expect(chromeTermIds('secondOrder', 'pid', 'watch')).toContain('kpe')
-    expect(chromeTermIds('firstOrder', 'p', 'watch')).not.toContain('kpe')
-    expect(chromeTermIds('firstOrder', 'lead', 'watch')).not.toContain('kpe')
+    expect(chromeTermIds(defaultState('firstOrder', 'pi', 'watch'))).toContain('kpe')
+    expect(chromeTermIds(defaultState('secondOrder', 'pid', 'watch'))).toContain('kpe')
+    expect(chromeTermIds(defaultState('firstOrder', 'p', 'watch'))).not.toContain('kpe')
+    expect(chromeTermIds(defaultState('firstOrder', 'lead', 'watch'))).not.toContain('kpe')
     // And only on the watch view — Kp·e is not on screen anywhere else.
-    expect(chromeTermIds('firstOrder', 'pi', 'step')).not.toContain('kpe')
+    expect(chromeTermIds(defaultState('firstOrder', 'pi', 'step'))).not.toContain('kpe')
   })
 
   it("Reed's cold walk, round two: the boundary, the axis, \"phase never reaches −180°\" and overshoot all resolve wherever the readout actually prints them — not just the rare instance a hand patch would catch", () => {
@@ -94,7 +119,9 @@ describe('picker terms: reachable with no lesson active', () => {
     // this cue.
     for (const cid of ['pi', 'pid']) {
       for (const view of views) {
-        expect(chromeTermIds('unstable', cid, view), `unstable x ${cid} x ${view}`).toContain('boundary')
+        expect(chromeTermIds(defaultState('unstable', cid, view)), `unstable x ${cid} x ${view}`).toContain(
+          'boundary',
+        )
       }
     }
 
@@ -104,7 +131,10 @@ describe('picker terms: reachable with no lesson active', () => {
     // is far from its own boundary (Kp = 1 of 11.25) at every controller's
     // default, and still names the axis on the way there.
     for (const cid of ctrlIds) {
-      expect(chromeTermIds('threePole', cid, 'locus'), `threePole x ${cid} x locus`).toContain('imaginaryaxis')
+      expect(
+        chromeTermIds(defaultState('threePole', cid, 'locus')),
+        `threePole x ${cid} x locus`,
+      ).toContain('imaginaryaxis')
     }
 
     // "phase never reaches −180°": printed whenever the loop has no gain
@@ -114,7 +144,7 @@ describe('picker terms: reachable with no lesson active', () => {
     // even with the old, hint-only scan).
     for (const pid of ['integrator', 'secondOrder', 'custom']) {
       for (const cid of ['p', 'lead']) {
-        expect(chromeTermIds(pid, cid, 'step'), `${pid} x ${cid}`).toContain('minus180')
+        expect(chromeTermIds(defaultState(pid, cid, 'step')), `${pid} x ${cid}`).toContain('minus180')
       }
     }
 
@@ -122,14 +152,14 @@ describe('picker terms: reachable with no lesson active', () => {
     // the already-fixed Kp·e case: it exists or not depending on the loop,
     // and a hand-kept VIEW_CHROME stand-in cannot know which without running
     // the same simulation the pane itself does.
-    expect(chromeTermIds('firstOrder', 'p', 'step')).toContain('overshoot')
-    expect(chromeTermIds('motor', 'pid', 'step')).toContain('overshoot')
+    expect(chromeTermIds(defaultState('firstOrder', 'p', 'step'))).toContain('overshoot')
+    expect(chromeTermIds(defaultState('motor', 'pid', 'step'))).toContain('overshoot')
     // A single real pole never overshoots, and the unstable plant's own
     // hint never uses the word either — so its P-controller default (a
     // single real closed-loop pole at Kp = 5) must NOT offer a definition
     // the pane never prints, on the Step view or anywhere else.
     for (const view of views) {
-      expect(chromeTermIds('unstable', 'p', view), `unstable x p x ${view}`).not.toContain('overshoot')
+      expect(chromeTermIds(defaultState('unstable', 'p', view)), `unstable x p x ${view}`).not.toContain('overshoot')
     }
   })
 
@@ -140,10 +170,107 @@ describe('picker terms: reachable with no lesson active', () => {
     // without relying on chromeTermIds' own internals to grade itself.
     for (const [view, text] of Object.entries(VIEW_CHROME)) {
       if (!text) continue
-      const ids = chromeTermIds('firstOrder', 'p', view)
+      const ids = chromeTermIds(defaultState('firstOrder', 'p', view))
       for (const [id, re] of Object.entries(CUES)) {
         if (re.test(text)) expect(ids, `${view}: "${id}" cue is in its own chrome`).toContain(id)
       }
     }
+  })
+
+  // -------------------------------------------------------------------
+  // The adversarial walk's cause, not just its reported instances: the
+  // three consequences below all trace back to chromeTermIds building the
+  // loop from DEFAULTS instead of the live state — fixed by taking
+  // plantP/ctrlP/stepInput/arrival straight from the caller instead of
+  // reconstructing them.
+  // -------------------------------------------------------------------
+
+  it('consequence 1: a knob dragged past the boundary changes the fold, not just the picker-default gain', () => {
+    // Three lags x Proportional at Kp = 1 (the default) settles. The old
+    // chromeTermIds rebuilt the loop from ctrlDefaultsFor every time, so
+    // dragging Kp to 80 (still inside the slider's own 0.001..1000 range)
+    // never changed a single id it offered — the crossing gain here is
+    // 11.25 (chrome.test.js's own "the axis" case above), so 80 is well
+    // past it.
+    const atDefault = defaultState('threePole', 'p', 'step')
+    const dragged = { ...atDefault, ctrlP: { ...atDefault.ctrlP, kp: 80 } }
+
+    const idsDefault = chromeTermIds(atDefault)
+    const idsDragged = chromeTermIds(dragged)
+
+    expect(idsDefault).not.toContain('runsaway')
+    expect(idsDefault).not.toContain('boundary')
+    expect(idsDragged, 'past the boundary, the badge reads "closed loop runs away"').toContain('runsaway')
+    expect(idsDragged, 'the Bode margin sentence reads "past the boundary"').toContain('boundary')
+    expect(idsDragged).not.toEqual(idsDefault)
+
+    // And dragging it back below the boundary restores the original fold —
+    // this is not a one-way latch, it tracks the live value both ways.
+    const back = { ...atDefault, ctrlP: { ...atDefault.ctrlP, kp: 2 } }
+    expect(chromeTermIds(back)).not.toContain('runsaway')
+  })
+
+  it('consequence 2: the disturbance toggle changes the fold, on every plant and controller', () => {
+    // App.jsx's Step h2 reads "Response to a disturbance at the plant
+    // input" only when stepInput === 'dist' — a heading chromeTermIds used
+    // to have no parameter to even ask about, so "disturbance" never fired
+    // for ANY plant or controller while it was on screen.
+    for (const pid of plantIds) {
+      for (const cid of ctrlIds) {
+        const ref = defaultState(pid, cid, 'step')
+        const dist = { ...ref, stepInput: 'dist' }
+        expect(chromeTermIds(ref), `${pid} x ${cid} x step x ref`).not.toContain('disturbance')
+        expect(chromeTermIds(dist), `${pid} x ${cid} x step x dist`).toContain('disturbance')
+      }
+    }
+    // Off the step view the heading never says it, toggle or not.
+    for (const view of ['watch', 'nyquist', 'locus', 'math']) {
+      const dist = defaultState('firstOrder', 'p', view, { stepInput: 'dist' })
+      expect(chromeTermIds(dist), view).not.toContain('disturbance')
+    }
+  })
+
+  it('consequence 3: the arrival banner changes the fold when a hand-over link is live and the loop is stable', () => {
+    // #plant=integrator:1&ctrl=lead:1:1:10&from=circuit:xyz — an integrator
+    // plant under a lead controller settles with zero steady error, so the
+    // banner reads "with an integrator in the loop the error is erased
+    // exactly", and neither the Integrator plant's hint nor the Lead
+    // controller's hint contains the bare word "integrator".
+    const noLink = defaultState('integrator', 'lead', 'step')
+    const linked = { ...noLink, arrival: true }
+    expect(PLANTS.integrator.hint).not.toMatch(/\bintegrators?\b/i)
+    expect(CONTROLLERS.lead.hint).not.toMatch(/\bintegrators?\b/i)
+    expect(chromeTermIds(noLink), 'arrival false: no banner, no cue').not.toContain('integrator')
+    expect(chromeTermIds(linked), 'arrival true and stable: the banner names the integrator').toContain('integrator')
+
+    // The banner is gone the moment the live loop stops being stable — the
+    // same `stable` gate App.jsx's own JSX uses — so a dragged gain that
+    // tips it unstable must drop the cue again even with arrival still true.
+    // Unstable plant x Lead: both hints are "integrator"-free (unlike
+    // Proportional's own hint, which names it), so this isolates the
+    // banner's own contribution. k = 0.1 sits well under the 5 the plant's
+    // own ctrlDefaults opens with, and "too little gain" is this plant's
+    // failure mode (its hint), so the loop is genuinely unstable there.
+    const unstablePlantP = defaultsOf(PLANTS.unstable)
+    const unstable = {
+      ...linked,
+      plantId: 'unstable',
+      ctrlId: 'lead',
+      plantP: unstablePlantP,
+      ctrlP: { ...ctrlDefaultsFor('unstable', unstablePlantP, 'lead'), k: 0.1 },
+    }
+    expect(CONTROLLERS.lead.hint).not.toMatch(/\bintegrators?\b/i)
+    expect(verdictOfLoop(unstable)).not.toBe('stable')
+    expect(chromeTermIds(unstable)).not.toContain('integrator')
+  })
+
+  it('paneHeading matches App.jsx verbatim for every view x stepInput', () => {
+    expect(paneHeading('step', 'ref')).toBe('Closed-loop step response')
+    expect(paneHeading('step', 'dist')).toBe('Response to a disturbance at the plant input')
+    expect(paneHeading('watch', 'ref')).toBe('The loop closing the gap, watched')
+    expect(paneHeading('watch', 'dist')).toBe('The loop fighting a shove, watched')
+    expect(paneHeading('nyquist', 'ref')).toBe('Nyquist — the loop against −1')
+    expect(paneHeading('math', 'ref')).toBe('The math — theory against what this loop measures')
+    expect(paneHeading('locus', 'ref')).toBe('Root locus — the closed-loop poles, as the gain K sweeps')
   })
 })

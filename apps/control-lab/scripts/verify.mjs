@@ -1782,29 +1782,36 @@ console.log('\n32. Hover-only explanations reachable with taps alone at 390x844\
 
 // ------------------------------------- 33. every cue word on screen is defined
 //
-// Defect 2 (round one): chromeTermIds scanned the plant hint, the controller
+// Defect 2, round one: chromeTermIds scanned the plant hint, the controller
 // hint and a hand-written VIEW_CHROME string, but never the live numeric
 // readouts — so a word that only ever appears INSIDE a formatted number (the
 // top bar's "20.1 dB") or a controller-dependent readout strip ("Kp·e =
 // 0.184") never fired its cue at all. That got patched for three specific
 // ids (db, radpersec, kpe) against four hand-picked combos — and the SAME
 // hole regrew in the other branch of every readout the patch touched: the
-// ROUTINE "past the boundary" sentence (not just the marginal one), the
-// ROUTINE "crossed the axis" line (not just the marginal one), the plants
-// whose hint prose happens not to repeat "−180°", and the Step pane's
-// ordinary overshoot line — because chromeTermIds itself still only modeled
-// hint prose, not the readouts App.jsx actually renders from live margins
-// and a live simulation (now fixed: chrome.js builds the same loop
-// buildLoop/ctrlDefaultsFor would and calls the same note functions —
-// verdictBadge, bodeMarginNote, locusHereNote, overshootOf — App.jsx
-// renders from).
+// ROUTINE "past the boundary" sentence, the ROUTINE "crossed the axis" line,
+// the plants whose hint prose happens not to repeat "−180°", and the Step
+// pane's ordinary overshoot line.
+//
+// Round two fixed THAT by building the loop the picker's own default click
+// would (buildLoop + ctrlDefaultsFor) and calling the SAME note functions
+// App.jsx renders from (verdictBadge, bodeMarginNote, locusHereNote,
+// overshootOf) — and left the cause: every one of those was still computed
+// from DEFAULT gains, never the live ones a dragged slider has long since
+// moved away from, and the toggle/arrival state chromeTermIds had no
+// parameter to even receive. This section used to prove only that the 140
+// DEFAULT states resolve every cue — which cannot catch a fold that goes
+// stale the moment something changes, because nothing here ever changed
+// anything. 33a-33c below drive the interactions the cold walk found: a
+// knob past a stable loop's boundary and back, the disturbance toggle
+// across a spread of plant x controller pairs, and an arrival link.
 //
 // This scans the WHOLE cue table (terms.js's CUES), not a chosen few,
 // across every plant x every controller x all five views (7x4x5 = 140
-// states, the same spread chrome.test.js checks against the pure function)
-// with no lesson loaded — reading what the browser ACTUALLY renders and
-// requiring every match to have its definition offered, no exceptions
-// beyond the three below.
+// default states, the same spread chrome.test.js checks against the pure
+// function) with no lesson loaded — reading what the browser ACTUALLY
+// renders and requiring every match to have its definition offered, no
+// exceptions beyond the three below.
 //
 // ALLOWLIST — the only text excluded from the scan, each entry earning its
 // place because it is not concept prose at all:
@@ -1819,13 +1826,19 @@ console.log('\n32. Hover-only explanations reachable with taps alone at 390x844\
 //      a picker click remembers the lesson it just left so one click can
 //      undo it, and the opening lesson's own title starts with the word
 //      "Proportional" — a lesson NAME, not the concept-prose word.
-//   3. The Math tab's own derivation body (.math-pane): the cold walk that
-//      found this defect agreed it is out of scope, because every term
-//      loopMath prints there already sits beside its own explanatory
-//      sentence (math.js) — it is not a bare cue with nothing beside it,
-//      the actual shape of this defect. The Math view's OTHER chrome (its
-//      pane title, its "characteristic equation" readout line) is still
-//      scanned normally.
+//   3. The Math tab's own derivation body (.math-pane). NOT because every
+//      term it prints is guaranteed to sit beside its own sentence — that
+//      claim was false ("the sensitivity peak" table note had neither a
+//      sentence nor a TERMS entry anywhere, cold-walk finding 5, fixed in
+//      math.js by rewording rather than defining a term the row's own label
+//      already covers) — but because this pane is hand-audited prose, not
+//      cue-scanned prose: packages/explain renders it from loopMath's own
+//      block list, or a plot, never from a hint or a live readout string
+//      chrome.js could model, so a bare term here has to be caught by
+//      reading the pane, the way finding 5 was, not by widening this scan
+//      to a structure it was never built to check. The Math view's OTHER
+//      chrome (its pane title, its "characteristic equation" readout line)
+//      is still scanned normally.
 console.log('\n33. Every cue word on screen resolves — every plant x controller x view, no lesson loaded\n')
 {
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -1906,9 +1919,130 @@ console.log('\n33. Every cue word on screen resolves — every plant x controlle
   if (states !== plants.length * ctrls.length * views.length) {
     fail(`item 33: expected ${plants.length * ctrls.length * views.length} states, walked ${states}`)
   }
+
+  // A probe that only ever reads the 140 DEFAULT states cannot catch any of
+  // the three consequences the cold walk found — chromeTermIds went stale
+  // precisely because nothing ever moved a knob, toggled the step input, or
+  // followed a hand-over link while the fold was open. The three sections
+  // below drive exactly those three interactions and re-run the same
+  // whole-cue-table scan against what the browser actually renders.
+  let extraStates = 0
+
+  // 33a. A knob dragged past a STABLE loop's own boundary, and back — Three
+  // lags + Proportional, whose 11.25x boundary section 2 above already
+  // measured directly from the app's own gain-margin claim. Before the fix
+  // this fired the identical fold at Kp = 1 and Kp = 80 (both times the
+  // ctrlDefaultsFor default, Kp = 1) — the top bar plainly disagreeing with
+  // the picker's own glossary is exactly the "fold goes stale" defect.
+  console.log('\n   33a. A knob dragged past a stable loop\'s own boundary, and back\n')
+  await clickPreset('Three lags')
+  await clickBtn('Proportional')
+  await clickBtn('Step')
+  await setField('Kp', 1)
+  extraStates++
+  {
+    const text = await visibleChrome()
+    if (CUES.runsaway.test(text) || CUES.boundary.test(text)) {
+      fail('tuned knob (Kp = 1, stable): the fold already reads "past the boundary" before any drag — not a clean before/after')
+    }
+    const names = await offeredNames()
+    for (const id of cueIds) {
+      if (!CUES[id].test(text)) continue
+      cueMatches++
+      const termName = TERMS[id]?.name
+      if (!names.includes(termName)) fail(`tuned knob (Kp = 1): "${id}" cue is on screen but "${termName}" is not offered`)
+    }
+  }
+  await setField('Kp', 80)
+  extraStates++
+  {
+    const text = await visibleChrome()
+    const sawRunsaway = CUES.runsaway.test(text)
+    const sawBoundary = CUES.boundary.test(text)
+    if (!sawRunsaway || !sawBoundary) {
+      fail(
+        `tuned knob (Kp = 80, past the 11.25x boundary): expected "runs away" and "boundary" on screen, ` +
+          `got runsaway=${sawRunsaway} boundary=${sawBoundary} — the fold did not follow the live gain`,
+      )
+    }
+    const names = await offeredNames()
+    for (const id of cueIds) {
+      if (!CUES[id].test(text)) continue
+      cueMatches++
+      const termName = TERMS[id]?.name
+      if (!names.includes(termName)) fail(`tuned knob (Kp = 80): "${id}" cue is on screen but "${termName}" is not offered`)
+    }
+  }
+  console.log(`      Kp 1 -> stable fold, Kp 80 -> "runs away" / "boundary" both resolved`)
+  await setField('Kp', 1)
+
+  // 33b. The disturbance toggle, across a spread of plant x controller
+  // pairs — App.jsx's Step heading swaps to "Response to a disturbance at
+  // the plant input" only then, and no plant or controller hint contains
+  // the bare word "disturbance" (the toggle button's own label is excluded
+  // structurally, allowlist entry 1) to rescue it by accident.
+  console.log('\n   33b. The disturbance toggle, across every plant x controller pair\n')
+  await clickBtn('Disturbance')
+  for (const plant of plants) {
+    await clickPreset(plant)
+    for (const ctrl of ctrls) {
+      await clickBtn(ctrl)
+      await settle()
+      extraStates++
+      const text = await visibleChrome()
+      if (!CUES.disturbance.test(text)) {
+        fail(`disturbance toggle/${plant} x ${ctrl}: expected the pane heading to name "disturbance"`)
+      }
+      const names = await offeredNames()
+      for (const id of cueIds) {
+        if (!CUES[id].test(text)) continue
+        cueMatches++
+        const termName = TERMS[id]?.name
+        if (!names.includes(termName)) {
+          fail(`disturbance toggle/${plant} x ${ctrl}: "${id}" cue is on screen but "${termName}" is not offered`)
+        }
+      }
+    }
+  }
+  console.log(`      ${plants.length} plants x ${ctrls.length} controllers = ${plants.length * ctrls.length} states, "disturbance" resolved every time`)
+  await clickBtn('Reference')
+
+  // 33c. An arrival link with from=circuit: — the cold walk's own repro for
+  // consequence 3. An Integrator plant under a Lead controller settles with
+  // zero steady error, so the hand-over banner prints "with an integrator in
+  // the loop the error is erased exactly", and neither the Integrator
+  // plant's hint nor the Lead controller's hint contains the bare word.
+  console.log('\n   33c. An arrival link (from=circuit:) with no lesson loaded\n')
+  await page.goto('about:blank')
+  await page.goto(`${URL}#plant=integrator:1&ctrl=lead:1:1:10&from=circuit:xyz`, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await settle()
+  // A fresh navigation reloads the DOM, so the terms fold is collapsed again
+  // regardless of whether it was open on the page this replaced.
+  termsLinkOpened = false
+  extraStates++
+  {
+    const text = await visibleChrome()
+    if (!CUES.integrator.test(text)) {
+      fail('arrival link (from=circuit:): expected the banner to name "integrator"')
+    }
+    const names = await offeredNames()
+    for (const id of cueIds) {
+      if (!CUES[id].test(text)) continue
+      cueMatches++
+      const termName = TERMS[id]?.name
+      if (!names.includes(termName)) {
+        fail(`arrival link (from=circuit:): "${id}" cue is on screen but "${termName}" is not offered`)
+      }
+    }
+  }
+  console.log(`      #plant=integrator:1&ctrl=lead:1:1:10&from=circuit:xyz -> "integrator" resolved`)
+
   console.log(
-    `   ${plants.length} plants x ${ctrls.length} controllers x ${views.length} views = ${states} states: ` +
-      `${cueMatches} cue matches against the whole ${cueIds.length}-id table, all defined`,
+    `\n   ${plants.length} plants x ${ctrls.length} controllers x ${views.length} views = ${states} default states, ` +
+      `+ ${extraStates} driven states (a knob past its boundary and back, the disturbance toggle across ` +
+      `${plants.length * ctrls.length} pairs, one arrival link): ${cueMatches} total cue matches against the ` +
+      `whole ${cueIds.length}-id table, all defined`,
   )
   await clickBtn('Step')
   await clickPreset('First order lag')

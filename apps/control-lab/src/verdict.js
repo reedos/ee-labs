@@ -132,6 +132,25 @@ export function bodeMarginNote(marginal, gainMargin) {
 }
 
 /**
+ * The arrival banner's variable tail (App.jsx, the "Loaded from a link"
+ * orientation notice) — the one piece of that sentence that depends on the
+ * live loop rather than being fixed prose. Hoisted out of the JSX ternary it
+ * used to be so chrome.js's picker-fold scan can see the exact text a
+ * hand-over arrival renders: the third of the three consequences the cold
+ * walk found was that this sentence can print "with an integrator in the
+ * loop the error is erased exactly" for a plant/controller pair reachable
+ * ONLY through a link (e.g. an integrator plant paired with a lead
+ * controller), with neither hint anywhere near the word "integrator" —
+ * chromeTermIds had no way to know this banner was even on screen, because
+ * it never modelled the arrival state at all.
+ */
+export function arrivalErrorNote(err) {
+  return Math.abs(err) < 1e-9
+    ? 'with an integrator in the loop the error is erased exactly: steady error none.'
+    : `the ${(err * 100).toFixed(1)}% steady error in the top bar is the loop's doing — e_ss = 1/(1+L(0)) — not the circuit's. Switch to PI to erase it.`
+}
+
+/**
  * How many gain-doublings away the boundary sits, in whichever direction
  * actually gets there — the number the "thin margin" warning should key off.
  *

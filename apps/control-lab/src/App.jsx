@@ -41,7 +41,7 @@ import { initialState } from './boot.js'
 import { circuitFor, circuitUrl } from './toCircuitLab.js'
 import { stickyDuration } from './stepAxis.js'
 import { termsFor } from './terms.js'
-import { chromeTerms } from './chrome.js'
+import { chromeTerms, paneHeading } from './chrome.js'
 import { reportSummary } from './report.js'
 import pkg from '../package.json'
 import { nextFrame } from './frame.js'
@@ -62,6 +62,7 @@ import {
   gainMarginWarn,
   verdictBadge,
   bodeMarginNote,
+  arrivalErrorNote,
 } from './verdict.js'
 import { leadPeak } from './lead.js'
 import { naturalWindow, settleTime, overshootOf } from './stepWindow.js'
@@ -553,10 +554,7 @@ export default function App() {
             <p className="hint from-link">
               What the step view shows is the CLOSED LOOP — your circuit alone would settle at
               its own DC gain with nothing left over. Here the plant is driven by C(s) × the
-              error, so{' '}
-              {Math.abs(err) < 1e-9
-                ? 'with an integrator in the loop the error is erased exactly: steady error none.'
-                : `the ${(err * 100).toFixed(1)}% steady error in the top bar is the loop's doing — e_ss = 1/(1+L(0)) — not the circuit's. Switch to PI to erase it.`}
+              error, so {arrivalErrorNote(err)}
             </p>
           ) : null}
           {linked.warnings.length ? (
@@ -711,7 +709,15 @@ export default function App() {
               </button>
               {termsOpen ? (
                 <dl className="terms-list">
-                  {chromeTerms(plantId, ctrlId, lower).map((t) => (
+                  {chromeTerms({
+                    plantId,
+                    plantP,
+                    ctrlId,
+                    ctrlP,
+                    view: lower,
+                    stepInput,
+                    arrival: !!linked.state,
+                  }).map((t) => (
                     <React.Fragment key={t.id}>
                       <dt>{t.name}</dt>
                       <dd>{t.def}</dd>
@@ -1080,27 +1086,13 @@ export default function App() {
 
         <section className={`view${weighted ? ' is-primary' : ''}`}>
           <div className="view-head">
-            <h2>
-              {lower === 'step'
-                ? stepInput === 'dist'
-                  ? 'Response to a disturbance at the plant input'
-                  : 'Closed-loop step response'
-                : lower === 'watch'
-                  ? stepInput === 'dist'
-                    ? 'The loop fighting a shove, watched'
-                    : 'The loop closing the gap, watched'
-                  : lower === 'nyquist'
-                    ? 'Nyquist — the loop against −1'
-                    : lower === 'math'
-                      ? 'The math — theory against what this loop measures'
-                      : 'Root locus — the closed-loop poles, as the gain K sweeps'}
-            </h2>
+            <h2>{paneHeading(lower, stepInput)}</h2>
             {/* The view switch lives on the pane it switches — the same
                 proximity rule as Signal Lab's spectrum controls. */}
             <div className="segmented sm" role="group" aria-label="Lower view">
               {[
                 { id: 'step', label: 'Step' },
-                { id: 'watch', label: 'Watch', title: 'Scrub or play through the step and watch the error drive the controller' },
+                { id: 'watch', label: 'Watch', title: 'Drag through the step, or press play, and watch the error drive the controller' },
                 { id: 'nyquist', label: 'Nyquist' },
                 { id: 'locus', label: 'Root locus' },
                 { id: 'math', label: 'Math', title: 'Formulas beside the numbers this loop measures' },

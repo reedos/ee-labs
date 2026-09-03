@@ -1,8 +1,8 @@
 import { polesZeros, margins, stepResponse, dcGain } from '@ee-labs/systems'
-import { PLANTS, CONTROLLERS, defaultsOf, buildLoop, ctrlDefaultsFor } from './systems.js'
+import { PLANTS, CONTROLLERS, buildLoop } from './systems.js'
 import { CUES, TOPBAR_TERMS, termsFor } from './terms.js'
 import { watchPartLabels } from './watch.js'
-import { verdictOf, verdictBadge, bodeMarginNote, joinParts } from './verdict.js'
+import { verdictOf, verdictBadge, bodeMarginNote, joinParts, arrivalErrorNote } from './verdict.js'
 import { crossingGain, locusHereNote } from './lessons.js'
 import { naturalWindow, overshootOf } from './stepWindow.js'
 import { ladderUp } from './stepAxis.js'
@@ -29,16 +29,46 @@ import { simCost, simBlockReason, STEP_BUDGET } from './affordable.js'
 // prose happens not to repeat "−180°", and the step pane's ordinary
 // overshoot line.
 //
-// The fix this time is not a fourth patch: it is building the loop the
-// picker's OWN default click would (buildLoop + ctrlDefaultsFor, the exact
-// pair choosePlant/chooseCtrl call in App.jsx) and calling the SAME note
+// The second cut fixed THAT by building the loop the picker's OWN default
+// click would (buildLoop + ctrlDefaultsFor) and calling the SAME note
 // functions App.jsx renders from — verdictBadge and bodeMarginNote
-// (verdict.js), locusHereNote (lessons.js), overshootOf (stepWindow.js) —
-// so every word one of those functions can ever print is a word this scan
-// has already seen. A cue word can still go unscanned if a NEW readout is
-// added to App.jsx without also being built from a function chrome.js
-// calls — that is what verify.mjs's whole-cue-table browser probe exists to
-// catch, on the actual rendered page rather than this file's model of it.
+// (verdict.js), locusHereNote (lessons.js), overshootOf (stepWindow.js) — so
+// every word one of those functions can ever print is a word this scan has
+// already seen. It fixed every REPORTED instance and left the cause: this
+// file modelled the loop the picker leaves you at on a fresh click, not the
+// loop that is actually on screen, because it rebuilt the loop from
+// defaultsOf/ctrlDefaultsFor instead of taking the live plantP/ctrlP a
+// dragged slider has long since moved away from them. An adversarial walk
+// found three live consequences of that one gap, all from the SAME cause:
+//
+//   1. The fold goes stale the moment a knob moves. Three lags × Proportional
+//      at Kp = 1 settles; drag Kp to 80 and the top bar reads UNSTABLE with
+//      "past the boundary", both terms this file never re-derives because it
+//      was never told the gain had moved.
+//   2. The disturbance toggle was invisible to it. chromeTermIds had no
+//      stepInput parameter, so it could not model the pane heading ("Response
+//      to a disturbance at the plant input") App.jsx renders depending on
+//      it — "disturbance" never fired for any plant or controller while that
+//      heading was on screen.
+//   3. The arrival banner (App.jsx, a hand-over link's orientation notice)
+//      was not scanned at all — reachable with a link such as
+//      #plant=integrator:1&ctrl=lead:1:1:10&from=circuit:xyz, printing
+//      "integrator" with neither hint anywhere near the word.
+//
+// The fix is not a fifth patch on top of a stale model: it is passing the
+// state that is ACTUALLY on screen in, instead of reconstructing a plausible
+// one. chromeTermIds now takes the live plantP and ctrlP (so the loop it
+// builds is the loop being rendered, not the loop a fresh click would have
+// left), the live stepInput (so it can call paneHeading — hoisted below,
+// verbatim, from App.jsx's own h2 ternary — the same way it already called
+// verdictBadge and bodeMarginNote), and whether this session arrived via a
+// hand-over link (so it can call arrivalErrorNote, verdict.js, the same
+// function App.jsx's banner renders from). A cue word can still go unscanned
+// if a NEW readout is added to App.jsx without also being built from a
+// function chrome.js calls — that is what verify.mjs's whole-cue-table
+// browser probe exists to catch, on the actual rendered page rather than
+// this file's model of it, and it now DRIVES the page instead of only
+// reading its 140 default states (item 33).
 
 /**
  * The prose that is on screen for each lower view with no lesson active,
@@ -107,17 +137,24 @@ function wideFreqsFor(openPz) {
 }
 
 /**
- * Whether the Step pane's overshoot line would print at the picker's own
- * default gains, reproducing App.jsx's own duration/affordability pipeline
+ * Whether the Step pane's overshoot line would print for THIS loop, at
+ * THIS stepInput, reproducing App.jsx's own duration/affordability pipeline
  * (naturalWindow, ladderUp, simBlockReason — all already-shared pure
  * functions; only the orchestration is repeated, the same way App.jsx's
  * useMemo repeats it, because chrome.js has no React state to memoize into
  * and does not need stickyDuration's hold-still behaviour for a single
  * one-shot reading) then measuring overshootOf on the simulated trace —
  * the SAME function App.jsx calls to decide whether to print it.
+ *
+ * App.jsx only ever prints this line for a REFERENCE step (`stepInput ===
+ * 'ref'`) — a disturbance step's own destination is zero, and "overshoot"
+ * is not a question that pane asks of it. This used to run for every
+ * stepInput because chromeTermIds had nowhere to get one from at all; adding
+ * the parameter is part of the same fix as the pane heading below, not a
+ * second, unrelated change.
  */
-function stepOverviewShowsOvershoot(loop, verdict) {
-  if (verdict !== 'stable') return false
+function stepOverviewShowsOvershoot(loop, verdict, stepInput) {
+  if (stepInput !== 'ref' || verdict !== 'stable') return false
   const pz = polesZeros(loop.closed)
   const finite = pz.poles.filter(([re]) => Math.abs(re) > 1e-9).map(([re]) => Math.abs(re))
   const slow = finite.length ? Math.min(...finite) : Infinity
@@ -131,22 +168,55 @@ function stepOverviewShowsOvershoot(loop, verdict) {
 }
 
 /**
+ * The pane title App.jsx's `.view-head h2` renders for the lower view —
+ * copied verbatim from the ternary it used to live in only there (App.jsx,
+ * beside the lower-view switch) so this is the ONE place that string is
+ * written. Step and Watch are the only two views whose heading depends on
+ * `stepInput`: Step's disturbance heading is where "disturbance" actually
+ * lives on screen (cold-walk finding 2 — chromeTermIds had no stepInput
+ * parameter at all, so this heading, and the cue inside it, went unmodelled
+ * for every plant and every controller). Watch's own two headings use
+ * "shove" rather than "disturbance", so they carry no cue either way.
+ */
+export function paneHeading(view, stepInput) {
+  if (view === 'step') {
+    return stepInput === 'dist' ? 'Response to a disturbance at the plant input' : 'Closed-loop step response'
+  }
+  if (view === 'watch') {
+    return stepInput === 'dist' ? 'The loop fighting a shove, watched' : 'The loop closing the gap, watched'
+  }
+  if (view === 'nyquist') return 'Nyquist — the loop against −1'
+  if (view === 'math') return 'The math — theory against what this loop measures'
+  return 'Root locus — the closed-loop poles, as the gain K sweeps'
+}
+
+/**
  * Every term id whose cue appears in what is actually on screen for this
- * plant, controller and lower view with NO lesson loaded — at the exact
- * gains the picker itself would leave the student at (defaultsOf the plant,
- * ctrlDefaultsFor the controller: the same pair choosePlant/chooseCtrl call
- * in App.jsx). The top bar's own terms are always included — it is on
- * screen under every state, lesson or not, the same rule `terms()` in
+ * plant, controller and lower view with NO lesson loaded — at the LIVE
+ * gains (`plantP`, `ctrlP`) the sliders actually sit at, not the defaults a
+ * fresh click would leave. The top bar's own terms are always included — it
+ * is on screen under every state, lesson or not, the same rule `terms()` in
  * lessons.js already applies to every lesson.
  *
+ * Every argument here is something the student can actually change, and
+ * every one of them is read straight off React state by chromeTerms' one
+ * caller (App.jsx) — there is no default-reconstruction step left for the
+ * fold to go stale against.
+ *
  * What is scanned:
- *   - the plant hint, the controller hint, VIEW_CHROME's static stand-in —
- *     prose that never changes with the loop's numbers.
+ *   - the plant hint (a function of the LIVE plantP where the plant's hint
+ *     is one, e.g. the second-order plant's Circuit Lab cross-reference),
+ *     the controller hint, VIEW_CHROME's static stand-in — prose that never
+ *     changes with the loop's numbers.
+ *   - the pane's own h2 title (paneHeading, above) — the disturbance heading
+ *     lives here.
  *   - the verdict badge and the Bode pane's margin sentence (verdictBadge,
  *     bodeMarginNote — verdict.js), which ARE on screen regardless of the
  *     lower view (the topbar and the "Open loop" pane render unconditionally)
  *     and DO depend on the loop: whether it is marginal, and whether its
- *     gain margin is above 1, below 1, or absent entirely.
+ *     gain margin is above 1, below 1, or absent entirely — all read off the
+ *     LIVE loop, so a knob dragged past the boundary changes this exactly
+ *     when the screen does, not only at the picker's own defaults.
  *   - on the locus view, the root-locus "you are here" sentence
  *     (locusHereNote — lessons.js), in whichever of its three shapes this
  *     loop's margins actually produce.
@@ -154,16 +224,17 @@ function stepOverviewShowsOvershoot(loop, verdict) {
  *     it prints only when stepOverviewShowsOvershoot says the pane would.
  *   - on the watch view, the readout strip's part labels (watchPartLabels),
  *     as before.
+ *   - the arrival banner's variable tail (arrivalErrorNote — verdict.js),
+ *     when `arrival` says a hand-over link put this student here AND the
+ *     live loop is stable — App.jsx's own gate for rendering it at all.
  *
  * A cue word that only ever appears INSIDE a formatted number ("21.0 dB",
  * "Kp·e = 0.184") never shows up in any of that — TOPBAR_TERMS carries the
  * numeric ones that are always on screen (db, radpersec).
  */
-export function chromeTermIds(plantId, ctrlId, view) {
+export function chromeTermIds({ plantId, plantP, ctrlId, ctrlP, view, stepInput, arrival }) {
   const plant = PLANTS[plantId]
   const ctrl = CONTROLLERS[ctrlId]
-  const plantP = defaultsOf(plant)
-  const ctrlP = ctrlDefaultsFor(plantId, plantP, ctrlId)
   const plantHint = typeof plant.hint === 'function' ? plant.hint(plantP) : plant.hint
 
   const loop = buildLoop(plantId, plantP, ctrlId, ctrlP)
@@ -180,18 +251,23 @@ export function chromeTermIds(plantId, ctrlId, view) {
   const watchLabels = view === 'watch' ? watchPartLabels(ctrlId) : []
   const watchText = watchLabels.length > 1 ? watchLabels.join(' ') : ''
 
-  let viewText = VIEW_CHROME[view] || ''
+  let viewText = (VIEW_CHROME[view] || '') + ' ' + paneHeading(view, stepInput)
   if (view === 'locus') {
     const crossing = crossingGain(ctrlId, ctrlP, marg)
     viewText += ' ' + joinParts(locusHereNote(marginal, crossing).parts)
   }
-  if (view === 'step' && stepOverviewShowsOvershoot(loop, verdict)) {
+  if (view === 'step' && stepOverviewShowsOvershoot(loop, verdict, stepInput)) {
     // The literal word the readout prints ("overshoot 12.3%"), not a
     // hand-kept id — so it goes through the SAME CUES scan as everything
     // else, the discipline the "derives the list from the cue table, not a
     // hand-kept one" test (chrome.test.js) exists to hold this file to.
     viewText += ' overshoot'
   }
+
+  // The arrival banner (App.jsx: `linked.state && stable`) — a hand-over
+  // link's own orientation notice, on screen regardless of the lower view,
+  // gone the moment the live loop stops being stable.
+  const arrivalText = arrival && verdict === 'stable' ? arrivalErrorNote(1 - dcGain(loop.closed)) : ''
 
   const text = [
     plantHint,
@@ -203,6 +279,7 @@ export function chromeTermIds(plantId, ctrlId, view) {
     badge.short,
     joinParts(marginNote.parts),
     ALWAYS_ON_CHROME,
+    arrivalText,
   ].join(' ')
 
   const ids = new Set(TOPBAR_TERMS)
@@ -213,6 +290,6 @@ export function chromeTermIds(plantId, ctrlId, view) {
 }
 
 /** The definitions themselves, in the same shape the lesson's own fold renders. */
-export function chromeTerms(plantId, ctrlId, view) {
-  return termsFor(chromeTermIds(plantId, ctrlId, view))
+export function chromeTerms(state) {
+  return termsFor(chromeTermIds(state))
 }
