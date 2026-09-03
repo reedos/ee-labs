@@ -18,6 +18,7 @@ import { MathBody } from '@ee-labs/explain'
 import {
   bode,
   magnitudeAt,
+  phaseAt,
   polesZeros,
   secondOrderMetrics,
   stepResponse,
@@ -31,13 +32,15 @@ import {
   LESSONS,
   LESSON_GROUPS,
   START_LESSON,
-  applyChip,
   applyLesson,
+  chipSetup,
+  featuredId,
   matchingChip,
   sameSetup,
 } from './lessons.js'
 import { TOLERANCES, responseBand, stepBand, toleranceCloud, tolsOf, spreadPct } from './tolerance.js'
-import { termsFor } from './terms.js'
+import { TERMS, termsFor } from './terms.js'
+import { dampingWord, stepReadout } from './stepReadout.js'
 import {
   axisFreqs,
   ensureSampled,
@@ -96,6 +99,13 @@ export default function App() {
   // describes. Picking a circuit from the Circuits list is the one move that
   // leaves the course.
   const [lesson, setLesson] = useState(start.lesson)
+  // The lesson a Circuits click left: the nav strip keeps counting from it
+  // and offers the way back, so picking a circuit to poke at is a detour
+  // rather than a silent exit from the course.
+  const [lastLesson, setLastLesson] = useState(null)
+  // Bumped when a lesson loads, and part of every sticky-axis key: a lesson's
+  // defaults define its frames, whatever the previous setup had held.
+  const frameNonce = useRef(0)
   // Which sidebar groups are unfolded, keyed "section:group" since lessons and
   // circuits both fold. The active item's group is always open regardless, so
   // collapsing is never able to hide where you are — same pattern as Signal
@@ -109,6 +119,7 @@ export default function App() {
     setParams(defaultsOf(next))
     setOutput(CIRCUITS[next].outputs[0].key)
     setTols({})
+    if (lesson) setLastLesson(lesson)
     setLesson(null)
   }
   const setParam = (key, value) => setParams((p) => ({ ...p, [key]: value }))
@@ -128,20 +139,26 @@ export default function App() {
   }
   const loadLesson = (l) => {
     const next = applyLesson(l)
+    frameNonce.current++
     applySetup(next)
     setLower(next.view)
     setLesson(l.name)
+    setLastLesson(null)
   }
 
   const active = LESSONS.find((l) => l.name === lesson)
   const lessonIndex = active ? LESSONS.indexOf(active) : -1
+  const parked = !active && lastLesson ? LESSONS.find((l) => l.name === lastLesson) : null
+  const parkedIndex = parked ? LESSONS.indexOf(parked) : -1
   const setup = useMemo(() => ({ id, params, output, tols }), [id, params, output, tols])
   // "Dirty" is derived, not flagged: the setup on screen is compared with the
   // lesson's own, so a chip that lands back on the lesson's values clears it
   // as surely as the reset button does.
   const dirty = active ? !sameSetup(setup, applyLesson(active)) : false
   const activeChip = active ? matchingChip(active, setup) : null
-  const onChip = (chip) => applySetup(applyChip(setup, chip))
+  // A chip is the LESSON's setup with the chip on top — never the current
+  // one, so two chips in a row do not compound (lessons.js, chipSetup).
+  const onChip = (chip) => applySetup(chipSetup(active, chip))
 
   const tf = useMemo(() => transferOf(id, params, output), [id, params, output])
   const metrics = useMemo(() => (circuit.metrics ? circuit.metrics(params) : null), [circuit, params])
@@ -156,7 +173,7 @@ export default function App() {
   const axisRef = useRef({ key: '', centre: 0 })
   const freqs = useMemo(() => {
     const scale = metrics ? metrics.w0 / (2 * Math.PI) : naturalScale(pz.poles)
-    const key = `${id}/${output}`
+    const key = `${id}/${output}/${frameNonce.current}`
     const centre = stickyCentre(
       axisRef.current.key === key ? axisRef.current.centre : 0,
       scale,
@@ -195,7 +212,7 @@ export default function App() {
   // on screen. Both snap on a circuit or output change.
   const stepAxisRef = useRef({ key: '', duration: 0, range: null })
   const stepDuration = useMemo(() => {
-    const key = `${id}/${output}`
+    const key = `${id}/${output}/${frameNonce.current}`
     const held = stepAxisRef.current.key === key ? stepAxisRef.current.duration : 0
     const d = stickyDuration(held, naturalDuration)
     stepAxisRef.current.key = key
@@ -246,6 +263,33 @@ export default function App() {
     ]
   }, [pz, gain])
 
+  // Marks pinned to a POINT (frequency, value) — the numbers the notes are
+  // about, drawn where they happen: a first-order corner's −3.01 dB and
+  // ±45° (the inverting amplifier's 135° too), and the tank's peak, which
+  // reads R in ohms next to the dBΩ axis that hides it.
+  const isZ = output === 'z'
+  const points = useMemo(() => {
+    const out = []
+    const dbOf = (m) => 20 * Math.log10(m)
+    const minus = (t) => t.replace('-', '−')
+    if (metrics && isZ) {
+      const f0 = metrics.w0 / (2 * Math.PI)
+      const m = magnitudeAt(tf, f0)
+      out.push({ f: f0, db: dbOf(m), text: `peak = R = ${fmt(m, 'Ω', 3)} = ${dbOf(m).toFixed(1)} dBΩ` })
+    } else if (!metrics && !second && pz.poles.length === 1) {
+      const [re, im] = pz.poles[0]
+      const w = Math.hypot(re, im)
+      if (w > 1e-9) {
+        const fc = w / (2 * Math.PI)
+        const m = dbOf(magnitudeAt(tf, fc))
+        const ph = (phaseAt(tf, fc) * 180) / Math.PI
+        out.push({ f: fc, db: m, text: minus(`${m.toFixed(2)} dB`) })
+        out.push({ f: fc, deg: ph, text: minus(`${ph.toFixed(0)}°`) })
+      }
+    }
+    return out
+  }, [metrics, second, pz, tf, isZ])
+
   const math = useMemo(() => circuitMath(id, tf, params, output), [id, tf, params, output])
 
   // The scatter from building this circuit 120 times with real parts — and
@@ -282,13 +326,15 @@ export default function App() {
         if (stepEnvelope.hi[i] > hi) hi = stepEnvelope.hi[i]
       }
     }
-    const key = `${id}/${output}`
+    const key = `${id}/${output}/${frameNonce.current}`
     const prev = stepAxisRef.current.rangeKey === key ? stepAxisRef.current.range : null
-    const r = stickyRange(prev, lo, hi)
+    // Held (no shrink) while a lesson is loaded: the frame is the lesson's
+    // own, so "ten times slower" is drawn ten times shallower.
+    const r = stickyRange(prev, lo, hi, false, { hold: !!active })
     stepAxisRef.current.rangeKey = key
     stepAxisRef.current.range = r
     return r
-  }, [id, output, step, stepEnvelope])
+  }, [id, output, step, stepEnvelope, active])
   // The pole view's frame, sticky the same way — tuning C slides the poles
   // along their radius across a held axis. Delivered through PoleZeroCanvas's
   // `span` prop; until the packages agent adds it (NEEDS.md) the prop is
@@ -298,7 +344,7 @@ export default function App() {
     let m = 1
     const all = [...pz.poles, ...pz.zeros, ...(wobble.any ? wobble.cloud : [])]
     for (const [re, im] of all) m = Math.max(m, Math.abs(re) * 1.4, Math.abs(im) * 1.4)
-    const key = `${id}/${output}`
+    const key = `${id}/${output}/${frameNonce.current}`
     const prev = pzSpanRef.current.key === key ? pzSpanRef.current.span : 0
     const s = stickySpan(prev, m)
     pzSpanRef.current = { key, span: s }
@@ -398,7 +444,8 @@ export default function App() {
   // component's field, a tolerance row, the output probe, or the hand-over
   // button. "Drag R" must never point at a slider below the fold.
   const featured = (active?.featured || [])
-    .map((f) => {
+    .map((entry) => {
+      const f = featuredId(entry)
       if (f === 'tol') return tolAllRow('featured')
       if (f.startsWith('tol:')) {
         const p = circuit.params.find((q) => q.key === f.slice(4))
@@ -414,8 +461,10 @@ export default function App() {
       }
       // The value field alone, slider included ("drag R"); its tolerance
       // row stays in the Components section, where the wobble lessons
-      // feature it by name.
+      // feature it by name. A lesson may scope the slider to the range its
+      // try line names — 20 to 200 Ω was 46 px of a 1 Ω–1 MΩ log slider.
       const p = circuit.params.find((q) => q.key === f)
+      const range = typeof entry === 'object' ? entry : null
       return p ? (
         <NumField
           key={p.key}
@@ -423,8 +472,8 @@ export default function App() {
           unit={p.unit}
           value={params[p.key]}
           onChange={(v) => setParam(p.key, v)}
-          min={p.min}
-          max={p.max}
+          min={range?.min ?? p.min}
+          max={range?.max ?? p.max}
           scale={p.scale}
           hint={p.hint}
           eng
@@ -485,39 +534,67 @@ export default function App() {
                 dirty={dirty}
                 noun="lesson"
               />
+            ) : parked ? (
+              // A Circuits click used to drop the course without a word.
+              // The strip keeps the lesson's place and offers the way back.
+              <LessonNav
+                index={parkedIndex}
+                total={LESSONS.length}
+                onPrev={() => loadLesson(LESSONS[parkedIndex - 1])}
+                onNext={() => loadLesson(LESSONS[parkedIndex + 1])}
+                onReset={() => loadLesson(parked)}
+                dirty={false}
+                noun="lesson"
+              />
             ) : null}
           </h2>
+          {parked ? (
+            <button
+              type="button"
+              className="lesson-nav-back"
+              data-role="lesson-back"
+              onClick={() => loadLesson(parked)}
+              title={`Reload “${parked.name}” with the setup its note describes`}
+            >
+              ↩ back to lesson {parkedIndex + 1}: {parked.name}
+            </button>
+          ) : null}
           {/* Both lists fold to their group headers — thirteen lessons and
               eight circuits were a wall of buttons that pushed the components
               and the schematic below the fold. Only the active item's group
               stays open, so where-you-are survives any amount of tidying. */}
-          {LESSON_GROUPS.map((g) => {
-            const inGroup = LESSONS.filter((l) => l.group === g)
-            if (!inGroup.length) return null
-            return (
-              <FoldGroup
-                key={g}
-                sectionKey={`try:${g}`}
-                label={g}
-                holdsActive={inGroup.some((l) => l.name === lesson)}
-                openGroups={openGroups}
-                setOpenGroups={setOpenGroups}
-              >
-                {inGroup.map((l) => (
-                  <button
-                    type="button"
-                    key={l.name}
-                    className={`preset${l.name === lesson ? ' is-on' : ''}`}
-                    onClick={() => loadLesson(l)}
-                  >
-                    {l.name}
-                  </button>
-                ))}
-              </FoldGroup>
-            )
-          })}
+          {/* Two blocks: the list, and the active lesson's body. On a phone
+              the body comes first (styles.css reorders them) — a 30vh
+              sidebar showed seventeen buttons and no lesson at all. */}
+          <div className="lesson-list">
+            {LESSON_GROUPS.map((g) => {
+              const inGroup = LESSONS.filter((l) => l.group === g)
+              if (!inGroup.length) return null
+              return (
+                <FoldGroup
+                  key={g}
+                  sectionKey={`try:${g}`}
+                  label={g}
+                  holdsActive={inGroup.some((l) => l.name === lesson)}
+                  openGroups={openGroups}
+                  setOpenGroups={setOpenGroups}
+                >
+                  {inGroup.map((l) => (
+                    <button
+                      type="button"
+                      key={l.name}
+                      className={`preset${l.name === lesson ? ' is-on' : ''}`}
+                      onClick={() => loadLesson(l)}
+                    >
+                      {l.name}
+                    </button>
+                  ))}
+                </FoldGroup>
+              )
+            })}
+          </div>
           {active ? (
-            <>
+            <div className="lesson-body" data-role="lesson-body">
               <h3 className="note-title">
                 {active.name}
                 {dirty ? (
@@ -539,24 +616,25 @@ export default function App() {
                   {featured}
                 </div>
               ) : null}
-            </>
-          ) : null}
-          {/* The vocabulary this lesson leans on, defined where it is used —
-              Signal Lab's pattern. A student meeting "Q" or "pole" mid-note
-              should not need a second tab, and folded, the definitions cost
-              nothing to someone who already has them. */}
-          {active && termsFor(active.terms).length ? (
-            <details className="terms">
-              <summary>Terms used here</summary>
-              <dl>
-                {termsFor(active.terms).map((t) => (
-                  <React.Fragment key={t.id}>
-                    <dt>{t.name}</dt>
-                    <dd>{t.def}</dd>
-                  </React.Fragment>
-                ))}
-              </dl>
-            </details>
+              {/* The vocabulary this lesson leans on, defined where it is
+                  used — Signal Lab's pattern. A student meeting "Q" or
+                  "pole" mid-note should not need a second tab, and folded,
+                  the definitions cost nothing to someone who already has
+                  them. */}
+              {termsFor(active.terms).length ? (
+                <details className="terms">
+                  <summary>Terms used here</summary>
+                  <dl>
+                    {termsFor(active.terms).map((t) => (
+                      <React.Fragment key={t.id}>
+                        <dt>{t.name}</dt>
+                        <dd>{t.def}</dd>
+                      </React.Fragment>
+                    ))}
+                  </dl>
+                </details>
+              ) : null}
+            </div>
           ) : null}
         </section>
 
@@ -633,7 +711,7 @@ export default function App() {
 
         <section>
           <h2>Hand it to the other labs</h2>
-          <HandOver tf={tf} circuitName={circuit.name.toLowerCase()} from={handOverFrom} />
+          <HandOver tf={tf} circuitName={circuit.name} from={handOverFrom} />
         </section>
 
       </aside>
@@ -647,7 +725,9 @@ export default function App() {
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          <span className="flow-node">
+          {/* Defined on contact, on hover: the strip is on every screen and
+              "1 pole, 0 zeros" is the first jargon a student meets. */}
+          <span className="flow-node" title={`${TERMS.tf.name}: ${TERMS.tf.def}`}>
             H(s)
             <em>
               {pz.poles.length} pole{pz.poles.length === 1 ? '' : 's'}, {pz.zeros.length} zero
@@ -657,16 +737,21 @@ export default function App() {
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          <span className={`flow-node ${stable ? 'is-out' : 'is-off'}`}>
+          <span
+            className={`flow-node ${stable ? 'is-out' : 'is-off'}`}
+            title={`${TERMS.lhp.name}: ${TERMS.lhp.def}`}
+          >
             {stable ? 'stable' : 'not stable'}
             <em>{stable ? 'left half plane' : 'on or right of the axis'}</em>
           </span>
         </nav>
         <div className="topbar-controls">
           <span className="topbar-field">
-            <span>DC gain</span>
+            {/* The tank's plot is an impedance, so its DC value is ohms — "DC
+                gain 0" over a Z plot named the wrong quantity. */}
+            <span>{isZ ? 'Z at DC' : 'DC gain'}</span>
             {/* A gain is dimensionless: 0.5, not "500 m". */}
-            <b>{Number.isFinite(gain) ? fmtNum(gain, 4) : '∞'}</b>
+            <b>{Number.isFinite(gain) ? (isZ ? fmt(gain, 'Ω', 4) : fmtNum(gain, 4)) : '∞'}</b>
           </span>
           {metrics || second ? (
             <>
@@ -723,7 +808,7 @@ export default function App() {
               </span>
               {second ? (
                 <span>
-                  {second.zeta < 1 ? 'underdamped' : 'no overshoot'}
+                  {dampingWord(second.zeta)}
                   <em className="prov"> ζ = {second.zeta.toFixed(3)}</em>
                 </span>
               ) : null}
@@ -737,7 +822,8 @@ export default function App() {
             band={band}
             markers={markers}
             annotations={annotations}
-            yUnit={circuit.outputs.find((o) => o.key === output)?.key === 'z' ? 'dBΩ' : 'dB'}
+            points={points}
+            yUnit={isZ ? 'dBΩ' : 'dB'}
           />
         </section>
 
@@ -767,22 +853,7 @@ export default function App() {
             />
             <div className="readout">
               {lower === 'step' ? (
-                <>
-                  <span>
-                    final <b>{Number.isFinite(gain) ? fmtNum(gain, 4) : 'never settles'}</b>
-                  </span>
-                  {second && second.overshoot > 0 ? (
-                    <span>
-                      overshoot <b>{(second.overshoot * 100).toFixed(1)}%</b>
-                    </span>
-                  ) : null}
-                  {second ? (
-                    <span>
-                      settles in <b>{fmt(second.settling, 's', 3)}</b>
-                      <em className="prov"> to within 2%</em>
-                    </span>
-                  ) : null}
-                </>
+                <StepReadout r={stepReadout(step, gain, second, isZ ? 'Ω' : '')} />
               ) : lower === 'pz' ? (
                 <>
                   {/* The legend and the numbers in one stroke: × is a pole,
@@ -842,6 +913,39 @@ export default function App() {
         </section>
       </main>
     </div>
+  )
+}
+
+/**
+ * The step pane's readout, from stepReadout.js: final value, then EITHER the
+ * overshoot (against a non-zero final) OR the peak the trace reaches (when
+ * the final value is 0 and overshoot means nothing), then settling.
+ */
+function StepReadout({ r }) {
+  return (
+    <>
+      <span>
+        final{' '}
+        <b>{r.final != null ? (r.unit ? fmt(r.final, r.unit, 4) : fmtNum(r.final, 4)) : r.finalText}</b>
+      </span>
+      {r.overshoot != null ? (
+        <span>
+          overshoot <b>{(r.overshoot * 100).toFixed(1)}%</b>
+        </span>
+      ) : null}
+      {r.peak != null ? (
+        <span data-role="step-peak">
+          peak <b>{r.unit ? fmt(r.peak, r.unit, 3) : fmtNum(r.peak, 3)}</b>
+          <em className="prov"> — final is 0, so no overshoot to quote</em>
+        </span>
+      ) : null}
+      {r.settling != null ? (
+        <span>
+          settles in <b>{fmt(r.settling, 's', 3)}</b>
+          <em className="prov"> to within 2%</em>
+        </span>
+      ) : null}
+    </>
   )
 }
 

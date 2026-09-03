@@ -327,32 +327,45 @@ const DRAW = {
     </>
   ),
   // Inverting: the summing node is the INVERTING input, and the non-inverting
-  // one is grounded. Input and feedback both land on the same pin.
+  // one is grounded. Input and feedback both land on the same pin. Cf is
+  // DRAWN, as a second branch across Rf — a caption saying "in parallel with
+  // Rf" under a picture with no Cf in it was the picture disagreeing with
+  // the topbar's "1 pole". Taller frame (TALL) for the extra branch.
   inverting: (p) => (
     <>
-      <Port x={22} y={50} label="in" />
-      <Wire x1={22} y1={50} x2={32} y2={50} />
-      <Res x={52} y={50} label={`Rin ${ohms(p.rin)}`} />
-      <Wire x1={72} y1={50} x2={160} y2={50} />
+      <Port x={22} y={70} label="in" />
+      <Wire x1={22} y1={70} x2={32} y2={70} />
+      <Res x={52} y={70} label={`Rin ${ohms(p.rin)}`} />
+      <Wire x1={72} y1={70} x2={160} y2={70} />
 
       {/* Feedback resistor from output back to the summing node */}
-      <Wire x1={108} y1={50} x2={108} y2={26} />
-      <Wire x1={108} y1={26} x2={130} y2={26} />
-      <Res x={150} y={26} label={`Rf ${ohms(p.rf)}`} />
-      <Wire x1={170} y1={26} x2={236} y2={26} />
-      <Wire x1={236} y1={26} x2={236} y2={61} />
+      <Wire x1={108} y1={70} x2={108} y2={46} />
+      <Wire x1={108} y1={46} x2={130} y2={46} />
+      <Res x={150} y={46} label={`Rf ${ohms(p.rf)}`} />
+      <Wire x1={170} y1={46} x2={236} y2={46} />
+      <Wire x1={236} y1={46} x2={236} y2={81} />
 
-      <Amp x={160} y={61} invertTop />
-      <Wire x1={198} y1={61} x2={268} y2={61} />
-      <Port x={272} y={61} label="out" anchor="start" />
+      {/* Feedback capacitor, in parallel with Rf: the circuit's one pole */}
+      <Wire x1={108} y1={46} x2={108} y2={14} />
+      <Wire x1={108} y1={14} x2={180} y2={14} />
+      <Cap x={200} y={14} label="" />
+      <Wire x1={220} y1={14} x2={236} y2={14} />
+      <Wire x1={236} y1={14} x2={236} y2={46} />
+      <text className="sch-label" x={200} y={36} textAnchor="middle">
+        {`Cf ${farads(p.cf)}`}
+      </text>
+
+      <Amp x={160} y={81} invertTop />
+      <Wire x1={198} y1={81} x2={268} y2={81} />
+      <Port x={272} y={81} label="out" anchor="start" />
 
       {/* Non-inverting input to ground */}
-      <Wire x1={160} y1={77} x2={140} y2={77} />
-      <Wire x1={140} y1={77} x2={140} y2={90} />
-      <Gnd x={140} y={90} />
+      <Wire x1={160} y1={97} x2={140} y2={97} />
+      <Wire x1={140} y1={97} x2={140} y2={110} />
+      <Gnd x={140} y={110} />
 
-      <text className="sch-note" x={150} y={122} textAnchor="middle">
-        Cf {farads(p.cf)} in parallel with Rf
+      <text className="sch-note" x={150} y={143} textAnchor="middle">
+        Cf across Rf: one pole, corner 1/(2πRfCf) = {fmt(1 / (2 * Math.PI * p.rf * p.cf), 'Hz', 3)}
       </text>
     </>
   ),
@@ -381,9 +394,10 @@ const DRAW = {
   ),
 }
 
-// The twin-T stacks two complete tees, which no honest drawing fits into the
-// standard frame; it gets a taller one of its own.
-const TALL = { twinT: { w: 300, h: 185 } }
+// The twin-T stacks two complete tees, and the inverting amplifier carries
+// Cf as a branch above Rf; neither fits the standard frame honestly, so each
+// gets a taller one of its own.
+const TALL = { twinT: { w: 300, h: 185 }, inverting: { w: 300, h: 150 } }
 
 export default function Schematic({ id, params, output }) {
   const draw = DRAW[id]

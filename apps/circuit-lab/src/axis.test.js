@@ -128,3 +128,16 @@ describe('ensureSampled', () => {
     expect(maxOn(ensureSampled(plain, f0))).toBeCloseTo(q, 6)
   })
 })
+
+// The hold option: while a lesson is loaded the step frame never shrinks, so
+// a chip that makes the response ten times smaller draws it ten times
+// smaller instead of re-framing to the same pixels (the integrator lesson).
+describe('stickyRange with hold', () => {
+  it('still expands, but refuses to shrink', () => {
+    const big = stickyRange(null, -50, 0)
+    expect(stickyRange(big, -5, 0, false, { hold: true })).toBe(big)
+    expect(stickyRange(big, -5, 0)).not.toBe(big) // without hold: the old shrink rule
+    const grown = stickyRange(big, -80, 0, false, { hold: true })
+    expect(grown.lo).toBeLessThan(-80)
+  })
+})

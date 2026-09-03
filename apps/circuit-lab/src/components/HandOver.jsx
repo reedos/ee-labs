@@ -1,6 +1,12 @@
 import React, { useMemo, useState } from 'react'
 import { NumField, fmt, fmtHz, siblingUrl, track, handOverEvent } from '@ee-labs/ui'
 import { asDigitalFilter, suggestRate, asControlPlant } from '../toSignalLab.js'
+import { handOverTerms } from '../terms.js'
+
+// The knob's ceiling. A warning that says "raise the rate" at the top of the
+// knob asks for something the student cannot do; at the ceiling the panel
+// says what the number IS instead.
+const RATE_MAX = 192000
 
 // "This circuit IS that filter", made into a button.
 //
@@ -58,6 +64,7 @@ export default function HandOver({ tf, circuitName, from = null }) {
           lie about it. Refused rather than approximated; every other circuit here crosses.
         </p>
         <AsPlant plant={plant} circuitName={circuitName} tf={tf} from={from} />
+        <HandOverTerms />
       </>
     )
   }
@@ -146,7 +153,14 @@ export default function HandOver({ tf, circuitName, from = null }) {
         }
       />
 
-      {d.tooFast ? (
+      {d.tooFast && rate >= RATE_MAX ? (
+        <p className="hint warn" data-role="rate-ceiling">
+          At the {fmtHz(RATE_MAX)}Hz ceiling this is {d.ratio.toPrecision(3)} samples per cycle
+          at the corner — coarse but exact: the bilinear transform pre-warps the cutoff so it
+          still lands in the right place, and only the shape either side of it is squeezed.
+          There is no higher rate to ask for.
+        </p>
+      ) : d.tooFast ? (
         <p className="hint warn">
           Fewer than twenty samples per cycle at the corner. The bilinear transform pre-warps the
           cutoff so it still lands in the right place, but the shape either side of it is
@@ -223,7 +237,29 @@ export default function HandOver({ tf, circuitName, from = null }) {
       />
 
       <AsPlant plant={plant} circuitName={circuitName} tf={tf} from={from} />
+      <HandOverTerms />
     </div>
+  )
+}
+
+/**
+ * The panel's vocabulary — bilinear transform, sample rate, samples per
+ * cycle, coefficients, plant, damping ratio — in one folded line, the way
+ * the lessons define their terms on contact.
+ */
+function HandOverTerms() {
+  return (
+    <details className="terms" data-role="handover-terms">
+      <summary>Terms used here</summary>
+      <dl>
+        {handOverTerms().map((t) => (
+          <React.Fragment key={t.id}>
+            <dt>{t.name}</dt>
+            <dd>{t.def}</dd>
+          </React.Fragment>
+        ))}
+      </dl>
+    </details>
   )
 }
 

@@ -186,6 +186,7 @@ export default function StepCanvas({ t, y, final, band = null, range = null, mar
       aria-label="Step response of the circuit in time"
       data-t-max={t.length ? t[t.length - 1] : 0}
       data-y-hi={range ? range.hi : ''}
+      data-y-lo={range ? range.lo : ''}
       data-samples={sampled(t, y, 6)}
     />
   )

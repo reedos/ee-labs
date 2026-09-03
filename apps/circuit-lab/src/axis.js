@@ -66,12 +66,16 @@ export function stickyDuration(prev, natural, force = false) {
  * than 35% of the frame, so ringing that grows and shrinks under tuning
  * visibly grows and shrinks against one scale.
  */
-export function stickyRange(prev, lo, hi, force = false) {
+export function stickyRange(prev, lo, hi, force = false, { hold = false } = {}) {
   const pad = (hi - lo) * 0.12 || 0.2
   const want = { lo: lo - pad, hi: hi + pad }
   if (force || !prev) return want
   if (lo < prev.lo || hi > prev.hi) return want
-  if (hi - lo < (prev.hi - prev.lo) * 0.35) return want
+  // `hold`: never shrink. While a lesson is loaded the frame is the one its
+  // defaults set, so a chip that makes the response ten times smaller draws
+  // it ten times smaller — the integrator's "ten times slower" ramp used to
+  // re-frame to the same pixels as the fast one.
+  if (!hold && hi - lo < (prev.hi - prev.lo) * 0.35) return want
   return prev
 }
 

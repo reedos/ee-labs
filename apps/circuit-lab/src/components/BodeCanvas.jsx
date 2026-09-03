@@ -17,7 +17,14 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmtHz } from '@ee-labs/ui'
  * { magLo, magHi, phaseLo, phaseHi } on the same frequency grid — drawn as
  * shaded regions UNDER the nominal traces: the line is the circuit you asked
  * for, the shading is everywhere the drawer's parts could put it.
+ *
+ * `annotations` are captions pinned to a LEVEL ({ db, text } / { deg, text })
+ * for a response with no feature to point at; `points` are marks pinned to a
+ * POINT ({ f, db, text } / { f, deg, text }) — the corner's −3.01 dB and −45°,
+ * the tank's peak — drawn as a dot on the trace with its value beside it.
  */
+const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
+
 export default function BodeCanvas({
   freqs,
   mag,
@@ -27,6 +34,7 @@ export default function BodeCanvas({
   markers = [],
   yUnit = 'dB',
   annotations = [],
+  points = [],
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -118,24 +126,43 @@ export default function BodeCanvas({
         ctx.globalAlpha = 1
         if (m.label) {
           ctx.fillStyle = COLORS.marker
-          ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+          ctx.font = `${Math.round(11 * k)}px ${MONO}`
           ctx.textAlign = 'left'
           ctx.textBaseline = 'top'
           ctx.fillText(m.label, x + 4 * k, area.y + 4 * k)
         }
       }
 
-      // Captions pinned to a LEVEL rather than a frequency — a flat response
-      // has no corner to mark, and "no dynamics" deserves to be a labelled
-      // fact on the plot, not empty chrome: { db, text } sits just above the
-      // magnitude trace, { deg, text } just under the phase trace.
-      ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+      // Level captions stack: each takes the first free band at or below
+      // where it wants to be, so "H = 3/4 = −2.50 dB" and "phase = 0°" —
+      // 6 px apart on a divider — read as two lines instead of one smear.
+      // The y each landed on is written to the DOM for the harness.
+      const lineH = 14 * k
+      const placed = []
+      const placeAt = (top) => {
+        let y = top
+        let moved = true
+        while (moved) {
+          moved = false
+          for (const p of placed) {
+            if (y < p + lineH && y + lineH > p) {
+              y = p + lineH
+              moved = true
+            }
+          }
+        }
+        placed.push(y)
+        return y
+      }
+      ctx.font = `${Math.round(11 * k)}px ${MONO}`
       ctx.textAlign = 'right'
+      ctx.textBaseline = 'top'
       for (const a of annotations) {
         if (!Number.isFinite(a.db)) continue
         ctx.fillStyle = COLORS.marker
-        ctx.textBaseline = 'bottom'
-        ctx.fillText(a.text, area.x + area.w - 8 * k, sy(a.db) - 4 * k)
+        // Just above the magnitude trace: the caption's box is one line tall
+        // ending 4 px over the line.
+        ctx.fillText(a.text, area.x + area.w - 8 * k, placeAt(sy(a.db) - 4 * k - lineH))
       }
 
       // The 0 dB reference, where the output equals the input.
@@ -197,6 +224,51 @@ export default function BodeCanvas({
         else ctx.lineTo(x, y)
       }
       ctx.stroke()
+
+      // A point mark: a dot on the trace, its value beside it — on the side
+      // the trace leaves empty. A curve falling to the right is high on the
+      // left and low on the right, so above-right is empty and so is
+      // below-left; a rising one the mirror. First choice above/below-right;
+      // if a marker caption or another label is already there, the mirror
+      // side; failing both, the next free line down. (The inverting
+      // amplifier's 36.99 dB and 135° land on the same pixel row; on a phone
+      // the corner's −3.01 dB ran into the f_c caption.)
+      const indexAt = (f) => {
+        let i = 0
+        while (i < freqs.length - 1 && freqs[i] < f) i++
+        return i
+      }
+      const free = (top) => placed.every((p) => top >= p + lineH || top + lineH <= p)
+      const mark = (x, y, text, color, fallingRight) => {
+        ctx.fillStyle = color
+        ctx.beginPath()
+        ctx.arc(x, y, 3.2 * k, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.font = `${Math.round(11 * k)}px ${MONO}`
+        ctx.textBaseline = 'top'
+        const above = y - 5 * k - lineH
+        const below = y + 5 * k
+        const first = fallingRight ? above : below
+        const mirror = fallingRight ? below : above
+        let top
+        let left = true
+        if (free(first)) top = first
+        else if (free(mirror)) {
+          top = mirror
+          left = false
+        } else top = placeAt(first)
+        placed.push(top)
+        ctx.textAlign = left ? 'left' : 'right'
+        ctx.fillText(text, left ? x + 7 * k : x - 7 * k, top)
+      }
+      // Marker captions own the plot's top line.
+      if (markers.some((m) => m.f > 0 && m.label)) placed.push(area.y + 4 * k)
+      for (const p of points) {
+        if (!(p.f > 0) || !Number.isFinite(p.db)) continue
+        const i = indexAt(p.f)
+        const j = Math.min(mag.length - 1, i + 8)
+        mark(sx(lx(p.f)), sy(p.db), p.text, COLORS.trace, db(mag[j]) < db(mag[i]))
+      }
 
       if (showPhase && phase) {
         let plo = 0
@@ -264,18 +336,25 @@ export default function BodeCanvas({
         ctx.setLineDash([])
 
         ctx.fillStyle = COLORS.phase
-        ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+        ctx.font = `${Math.round(11 * k)}px ${MONO}`
         ctx.textAlign = 'right'
         ctx.textBaseline = 'top'
         for (const a of annotations) {
           if (!Number.isFinite(a.deg)) continue
-          ctx.fillText(a.text, area.x + area.w - 8 * k, py(a.deg) + 4 * k)
+          // Just under the phase trace — and below any caption already there.
+          ctx.fillText(a.text, area.x + area.w - 8 * k, placeAt(py(a.deg) + 4 * k))
+        }
+        for (const p of points) {
+          if (!(p.f > 0) || !Number.isFinite(p.deg)) continue
+          const i = indexAt(p.f)
+          const j = Math.min(phase.length - 1, i + 8)
+          mark(sx(lx(p.f)), py(p.deg), p.text, COLORS.phase, phase[j] < phase[i])
         }
         ctx.restore()
 
         ctx.save()
         ctx.fillStyle = COLORS.phase
-        ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+        ctx.font = `${Math.round(11 * k)}px ${MONO}`
         ctx.textAlign = 'left'
         ctx.textBaseline = 'middle'
         for (let d = plo; d <= phi + 1e-9; d += 90) {
@@ -287,11 +366,14 @@ export default function BodeCanvas({
         ctx.font = `${Math.round(12 * k)}px ui-sans-serif, system-ui, sans-serif`
         ctx.fillText('Phase', 0, 0)
         ctx.restore()
-        return
+      } else {
+        ctx.restore()
       }
-      ctx.restore()
+      // Where the level captions landed, in canvas pixels: the harness
+      // checks two captions never share a line.
+      ctx.canvas.dataset.annotationYs = placed.map((y) => Math.round(y)).join(' ')
     },
-    [freqs, mag, phase, showPhase, band, markers, yUnit, annotations],
+    [freqs, mag, phase, showPhase, band, markers, yUnit, annotations, points],
   )
 
   // What the plot says, readable from the DOM: the harness checks a corner
@@ -307,6 +389,10 @@ export default function BodeCanvas({
       data-annotations={annotations
         .filter((a) => showPhase || Number.isFinite(a.db))
         .map((a) => a.text)
+        .join(' | ')}
+      data-points={points
+        .filter((p) => showPhase || Number.isFinite(p.db))
+        .map((p) => p.text)
         .join(' | ')}
     />
   )

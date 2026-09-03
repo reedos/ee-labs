@@ -5,6 +5,8 @@ import {
   START_LESSON,
   applyLesson,
   applyChip,
+  chipSetup,
+  featuredId,
   sameSetup,
   matchingChip,
 } from './lessons.js'
@@ -12,6 +14,7 @@ import { CIRCUITS, transferOf } from './circuits.js'
 import { asDigitalFilter } from './toSignalLab.js'
 import { toleranceCloud, spreadPct, tolsOf } from './tolerance.js'
 import { magnitudeAt, phaseAt, dcGain, polesZeros, secondOrderMetrics, stepResponse } from '@ee-labs/systems'
+import { dampingWord } from './stepReadout.js'
 
 // The course, as opposed to the claims: the lab opens on a lesson, every
 // lesson has a try line with one-click chips, and every number a try line
@@ -63,10 +66,23 @@ describe('the course starts itself', () => {
         const s = after(l, c.label)
         expect(Number.isFinite(magnitudeAt(tfOfState(s), 100)), `${l.name} chip ${c.label}`).toBe(true)
       }
-      for (const f of l.featured || []) {
+      for (const entry of l.featured || []) {
+        const f = featuredId(entry)
         if (f === 'tol' || f === 'output' || f === 'handover') continue
         const key = f.startsWith('tol:') ? f.slice(4) : f
         expect(keys, `${l.name} featured ${f}`).toContain(key)
+        // A lesson-scoped slider range must hold the lesson's own value and
+        // every chip's — a chip that lands off its own slider is a lie twice.
+        if (typeof entry === 'object') {
+          expect(entry.min, `${l.name} featured ${f} min`).toBeGreaterThan(0)
+          expect(entry.max, `${l.name} featured ${f} max`).toBeGreaterThan(entry.min)
+          const inRange = (v, what) => {
+            expect(v, `${l.name} featured ${f}: ${what} below its slider`).toBeGreaterThanOrEqual(entry.min)
+            expect(v, `${l.name} featured ${f}: ${what} above its slider`).toBeLessThanOrEqual(entry.max)
+          }
+          inRange(stateOf(l).params[key], 'the lesson value')
+          for (const c of l.chips) if (c.params && key in c.params) inRange(c.params[key], `chip ${c.label}`)
+        }
       }
       // The essays were cut to one claim each; keep them that way.
       expect(l.note.split(/\s+/).length, `${l.name} note length`).toBeLessThanOrEqual(80)
@@ -100,6 +116,38 @@ describe('the course starts itself', () => {
     const onC = after(bl, 'C ±10%')
     expect(tolsOf(onC.id, onC.tols)).toEqual({ r: 0, l: 0, c: 0.1 })
     expect(matchingChip(bl, stateOf(bl))).toBe('R ±10%')
+  })
+
+  it('chips never compound: each is the lesson plus that chip, and lights only when the screen equals it', () => {
+    // The student's walk: "R 10 kΩ" then "C 10 nF" left R at 10 kΩ, lit the
+    // C chip, and the corner read 1.59 kHz against a try line promising 15.9.
+    const l = byName('Where the corner comes from')
+    const r10 = chipSetup(l, chipNamed(l, 'R 10 kΩ'))
+    expect(r10.params).toEqual({ r: 10000, c: 100e-9 })
+    const thenC = chipSetup(l, chipNamed(l, 'C 10 nF'))
+    expect(thenC.params).toEqual({ r: 1000, c: 10e-9 }) // R back at the lesson's 1 kΩ
+    expect(1 / (2 * Math.PI * thenC.params.r * thenC.params.c)).toBeCloseTo(15915, -1)
+    expect(matchingChip(l, thenC)).toBe('C 10 nF')
+    // The compounded state the old app produced lights NOTHING now.
+    const compounded = { ...thenC, params: { r: 10000, c: 10e-9 } }
+    expect(matchingChip(l, compounded)).toBeNull()
+    // And for every lesson, every chip's setup lights exactly that chip.
+    for (const lesson of LESSONS) {
+      for (const c of lesson.chips) {
+        expect(matchingChip(lesson, chipSetup(lesson, c)), `${lesson.name} / ${c.label}`).toBe(c.label)
+      }
+    }
+  })
+
+  it('a try line that says "tap X" names a chip (or the featured link) called X', () => {
+    for (const l of LESSONS) {
+      const names = new Set([...l.chips.map((c) => c.label), 'Open in Signal Lab →'])
+      for (const m of l.try.matchAll(/\b[Tt]ap ([^—,.;]+?)(?= —|,|\.|;)/g)) {
+        expect(names.has(m[1].trim()), `${l.name}: "tap ${m[1]}" names nothing on screen`).toBe(true)
+      }
+    }
+    // The line the walk filed: it said "Tap R" beside chips reading "across R".
+    expect(byName('One circuit, three filters').try).toMatch(/Tap across R/)
   })
 })
 
@@ -166,7 +214,7 @@ describe('the numbers the try lines quote', () => {
     }
   })
 
-  it('tank: R 10 kΩ → 100 kΩ takes Q 31.6 → 316 and the peak reads R', () => {
+  it('tank: R 10 kΩ → 100 kΩ takes Q 31.6 → 316 and the peak reads R — 80 dBΩ, then 100', () => {
     const l = byName('The same R, the opposite effect')
     for (const [label, r] of [['R 10 kΩ', 10000], ['R 100 kΩ', 100000]]) {
       const s = after(l, label)
@@ -174,12 +222,18 @@ describe('the numbers the try lines quote', () => {
       const m = secondOrderMetrics(tf)
       expect(m.q / l.claim.tryQ[r]).toBeCloseTo(1, 2)
       expect(magnitudeAt(tf, m.f0)).toBeCloseTo(r, 3)
+      // The y-axis says dBΩ; the try line says which ohms that is.
+      expect(db(magnitudeAt(tf, m.f0))).toBeCloseTo(l.claim.tryDbOhm[r], 4)
+      expect(l.try).toContain(`${l.claim.tryDbOhm[r]} dBΩ`)
     }
+    // And the lesson opens on the pane the note is about, not on poles.
+    expect(l.patch.view).toBe('step')
+    expect(byName('The same filter, read backwards').patch.view).toBe('step')
   })
 
-  it('seen in time: 200 / 447 / 632 Ω overshoot 35% / 4.3% / none, at ζ 0.707 and 1', () => {
+  it('seen in time: 200 / 447 / 632.46 Ω overshoot 35% / 4.3% / none, at ζ 0.707 and 1.000', () => {
     const l = byName('Resonance, seen in time')
-    for (const [label, r] of [['200 Ω', 200], ['447 Ω', 447], ['632 Ω', 632]]) {
+    for (const [label, r] of [['200 Ω', 200], ['447 Ω', 447], ['632.46 Ω', 632.46]]) {
       const s = after(l, label)
       const tf = tfOfState(s)
       const m = secondOrderMetrics(tf)
@@ -188,6 +242,16 @@ describe('the numbers the try lines quote', () => {
       expect(over).toBeCloseTo(l.claim.tryOvershoot[r], 2)
       if (l.claim.tryZeta[r]) expect(m.zeta).toBeCloseTo(l.claim.tryZeta[r], 2)
     }
+    // The critical chip is the exact 2√(L/C): ζ prints 1.000 and the pane
+    // calls it critically damped — 632 Ω read ζ = 0.999 "underdamped" beside
+    // a try line saying 1.
+    const crit = after(l, '632.46 Ω')
+    const z = secondOrderMetrics(tfOfState(crit)).zeta
+    expect(crit.params.r).toBeCloseTo(2 * Math.sqrt(crit.params.l / crit.params.c), 1)
+    expect(z.toFixed(3)).toBe('1.000')
+    expect(dampingWord(z)).toBe('critically damped')
+    expect(dampingWord(secondOrderMetrics(tfOfState(after(l, '447 Ω'))).zeta)).toBe('underdamped')
+    expect(l.try).toContain('632.46 Ω (ζ = 1.000')
   })
 
   it('twin-T: R 47 kΩ moves the notch to 339 Hz and Q stays 0.250', () => {
@@ -234,16 +298,34 @@ describe('the numbers the try lines quote', () => {
     }
   })
 
-  it('inverting: Rf = 100 kΩ gives −100, 40 dB, 180°', () => {
+  it('inverting: Rf = 100 kΩ gives −100 (40 dB) below a 1.59 kHz corner, 180° at DC and 135° there', () => {
     const l = byName('Gain is a ratio, and negative')
-    const tf = tfOfState(after(l, 'Rf 100 kΩ'))
+    const s = after(l, 'Rf 100 kΩ')
+    const tf = tfOfState(s)
     expect(dcGain(tf)).toBeCloseTo(l.claim.tryGain[100000], 9)
     expect(db(Math.abs(dcGain(tf)))).toBeCloseTo(l.claim.tryDb, 6)
-    expect(Math.abs(deg(phaseAt(tf, 0.001)))).toBeCloseTo(180, 4)
+    expect(Math.abs(deg(phaseAt(tf, 0.001)))).toBeCloseTo(l.claim.tryDcPhase, 4)
+    // The corner Cf puts there — and the phase AT it, which is not 180°.
+    // (The first try line said "still 180°"; the pole halfway up the span
+    // had it at 90° by the right edge.)
+    const fc = 1 / (2 * Math.PI * s.params.rf * s.params.cf)
+    expect(fc).toBeCloseTo(l.claim.tryCorner[100000], 0)
+    expect(deg(phaseAt(tf, fc))).toBeCloseTo(l.claim.tryCornerPhase, 6)
+    expect(db(magnitudeAt(tf, fc))).toBeCloseTo(l.claim.tryDb - 3.0103, 3)
+    // "40 dB below the corner": a decade under it the gain is 40 dB to 0.01.
+    expect(db(magnitudeAt(tf, fc / 10))).toBeCloseTo(l.claim.tryDb, 1)
+    expect(l.try).toContain('1.59 kHz')
+    expect(l.try).toContain('135°')
+    expect(l.note).toContain('Cf')
+    // One pole, as the topbar says — Cf stays in the circuit.
+    expect(polesZeros(tf).poles).toHaveLength(1)
   })
 
   it('integrator: R 10 kΩ → 100 kΩ makes the ramp ten times slower, and still a ramp', () => {
     const l = byName('A pole exactly at the origin')
+    // Opens on the step — a slope is a step-pane fact, and the poles view is
+    // identical at both R.
+    expect(l.patch.view).toBe('step')
     const slope = (s) => {
       const { t, y } = stepResponse(tfOfState(s), { duration: 10 * s.params.r * s.params.c, points: 600 })
       // Six evenly spaced samples: the slope between each pair must agree —

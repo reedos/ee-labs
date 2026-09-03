@@ -718,6 +718,24 @@ console.log('\n5c. Next / previous / reset, and the one-click chips\n')
   const markers0 = await page.locator('.views canvas').first().getAttribute('data-markers')
   if (!/f_c = 1\.592\s?kHz/.test(markers0 || '')) fail(`corner marker should read f_c = 1.592 kHz, got "${markers0}"`)
   console.log(`   chip C 10 nF → C = 10 nF, R untouched, note flagged, chip lit; marker "${markers}" → reset → "${markers0}"`)
+  // Chips never compound: "R 10 kΩ" then "C 10 nF" is the lesson at C = 10 nF
+  // — the walk found R still at 10 kΩ, the C chip lit, and the corner at
+  // 1.59 kHz under a try line promising 15.9.
+  await page.locator('.try-chips .chip', { hasText: 'R 10 kΩ' }).click()
+  await settle()
+  await page.locator('.try-chips .chip', { hasText: 'C 10 nF' }).click()
+  await settle()
+  const r2 = await page.getByRole('spinbutton', { name: 'R' }).first().inputValue()
+  const c2 = await page.getByRole('spinbutton', { name: 'C' }).first().inputValue()
+  const on2 = (await page.locator('.try-chips .chip.is-on').textContent().catch(() => '')).trim()
+  const markers2 = await page.locator('.views canvas').first().getAttribute('data-markers')
+  if (r2 !== '1') fail(`chips compounded: after R 10 kΩ then C 10 nF, R reads "${r2}" kΩ, not the lesson's 1`)
+  if (c2 !== '10') fail(`C 10 nF after R 10 kΩ should still set C = 10 nF, got "${c2}"`)
+  if (on2 !== 'C 10 nF') fail(`the C chip alone should be lit, got "${on2}"`)
+  if (!/f_c = 15\.92\s?kHz/.test(markers2 || '')) fail(`corner after the two chips should be 15.92 kHz, got "${markers2}"`)
+  console.log(`   R 10 kΩ then C 10 nF → R = ${r2} kΩ, C = ${c2} nF, lit "${on2}", marker "${markers2}" (no compounding)`)
+  await page.locator('.lesson-nav-reset').click()
+  await settle()
 }
 
 // ---------------------------------- 9. the divider's flat line is labelled
@@ -733,6 +751,159 @@ console.log('\n9. A divider has no dynamics — and the plot says so in words\n'
   const ann2 = (await page.locator('.views canvas').first().getAttribute('data-annotations')) || ''
   if (!/H = 3\/4/.test(ann2)) fail(`after R2 = 3 kΩ the caption should read H = 3/4, got "${ann2}"`)
   console.log(`   "${ann}" → chip R2 3 kΩ → "${ann2}"`)
+  // At −2.5 dB the magnitude caption and the 0° phase caption want the same
+  // line; the walk saw them drawn on top of each other. They must stack.
+  const ys = ((await page.locator('.views canvas').first().getAttribute('data-annotation-ys')) || '')
+    .split(' ')
+    .map(Number)
+  if (ys.length !== 2 || ys.some((v) => !Number.isFinite(v))) fail(`expected two caption ys, got "${ys}"`)
+  else if (Math.abs(ys[0] - ys[1]) < 12) fail(`the two captions overlap: drawn at y ${ys[0]} and ${ys[1]}`)
+  else console.log(`   captions stacked at y ${ys[0]} and ${ys[1]} px (≥ 12 apart)`)
+}
+
+// ------------------------------------ 10. what the first-year walk filed
+
+console.log('\n10. The student walk: each filed defect, re-checked on the real page\n')
+{
+  const points = async () => (await page.locator('.views canvas').first().getAttribute('data-points')) || ''
+  const lowerReadout = () => page.locator('.views .view').nth(1).locator('.readout').textContent()
+  const upperReadout = () => page.locator('.views .view').nth(0).locator('.readout').textContent()
+  const pressed = async (name) =>
+    (await page.getByRole('button', { name, exact: true }).getAttribute('aria-pressed')) === 'true'
+
+  // L2: the corner's −3.01 dB and −45° are marked on the plot itself.
+  await pick(START_LESSON)
+  let pts = await points()
+  if (!/−3\.01 dB/.test(pts) || !/−45°/.test(pts)) fail(`corner lesson should mark −3.01 dB and −45°, got "${pts}"`)
+  console.log(`   L2 points: "${pts}"`)
+
+  // L3: opens on the step (the note is about |H|), marks +45°.
+  await pick('The same filter, read backwards')
+  if (!(await pressed('Step response'))) fail('read-backwards should open on the step view, not poles')
+  pts = await points()
+  if (!/−3\.01 dB/.test(pts) || !/\b45°/.test(pts)) fail(`high-pass should mark −3.01 dB and 45°, got "${pts}"`)
+  console.log(`   L3 opens on step; points: "${pts}"`)
+
+  // L5: an output whose final value is 0 prints its peak, never an overshoot.
+  await pick('One circuit, three filters')
+  await page.locator('.try-chips .chip', { hasText: 'across R' }).click()
+  await settle()
+  let ro = await lowerReadout()
+  // A NUMBER after "overshoot" is the defect; the pane's own "no overshoot to quote" is the fix.
+  if (/overshoot\s*[\d.]+%/.test(ro)) fail(`across R: overshoot printed against a final of 0: "${ro}"`)
+  if (!/peak/.test(ro)) fail(`across R: no peak printed: "${ro}"`)
+  const pk = (await page.locator('[data-role=step-peak] b').textContent().catch(() => '')).trim()
+  if (Math.abs(parseFloat(pk) - 0.252) > 0.002) fail(`across R peak should read 0.252, got "${pk}"`)
+  console.log(`   L5 across R: ${ro.replace(/\s+/g, ' ').trim().slice(0, 80)}`)
+
+  // L7: an impedance plot names its DC value in ohms, and the peak in ohms.
+  await pick('The same R, the opposite effect')
+  if (!(await pressed('Step response'))) fail('the tank lesson should open on the step view, not poles')
+  const tb = await topbar()
+  if (!('Z at DC' in tb)) fail(`tank topbar should say "Z at DC", got keys ${Object.keys(tb).join(', ')}`)
+  else if (!/^0.*Ω$/.test(tb['Z at DC'])) fail(`Z at DC should read 0 Ω, got "${tb['Z at DC']}"`)
+  pts = await points()
+  if (!/peak = R = 10\.?0* kΩ = 80\.0 dBΩ/.test(pts)) fail(`tank should mark its peak as R in ohms and dBΩ, got "${pts}"`)
+  ro = await lowerReadout()
+  if (!/final\s*0.*Ω/.test(ro) || /overshoot\s*[\d.]+%/.test(ro)) fail(`tank step readout: "${ro}"`)
+  console.log(`   L7 topbar Z at DC = ${tb['Z at DC']}; points "${pts}"`)
+
+  // L8: the critical chip is exactly critical, and the pane says so.
+  await pick('Resonance, seen in time')
+  await page.locator('.try-chips .chip', { hasText: '632.46 Ω' }).click()
+  await settle()
+  const ur = await upperReadout()
+  if (!/critically damped/.test(ur) || !/ζ = 1\.000/.test(ur)) fail(`632.46 Ω should read critically damped, ζ = 1.000: "${ur}"`)
+  ro = await lowerReadout()
+  if (/overshoot\s*[\d.]+%/.test(ro)) fail(`632.46 Ω should show no overshoot: "${ro}"`)
+  console.log(`   L8 at 632.46 Ω: ${ur.replace(/\s+/g, ' ').trim().replace(/^span[^ ]+ [^ ]+ /, '')}`)
+
+  // L9: the note owns up to the drawn floor.
+  await pick('A zero on the axis is silence')
+  const note9 = await page.locator('[data-role=lesson-note]').textContent()
+  if (!/floor is the grid/.test(note9)) fail('the notch note should say the drawn floor is the grid’s')
+
+  // L13: Cf is drawn, the try line's corner is marked at 135°, gain −100.
+  await pick('Gain is a ratio, and negative')
+  const sch = await page.locator('.schematic').textContent()
+  if (!/Cf/.test(sch)) fail('the inverting schematic should draw and label Cf')
+  await page.locator('.try-chips .chip', { hasText: 'Rf 100 kΩ' }).click()
+  await settle()
+  pts = await points()
+  if (!/36\.99 dB/.test(pts) || !/135°/.test(pts)) fail(`inverting at Rf = 100 kΩ should mark 36.99 dB and 135° at the corner, got "${pts}"`)
+  const mk = await page.locator('.views canvas').first().getAttribute('data-markers')
+  if (!/f_c = 1\.592\s?kHz/.test(mk || '')) fail(`inverting corner should be marked at 1.592 kHz, got "${mk}"`)
+  if ((await topbar())['DC gain'] !== '-100' && (await topbar())['DC gain'] !== '−100') fail(`DC gain should read −100, got "${(await topbar())['DC gain']}"`)
+  console.log(`   L13 at Rf 100 kΩ: marker "${mk}", points "${pts}"`)
+
+  // L14: opens on the step, and the frame HOLDS across the R chips so the
+  // ten-times-slower ramp is drawn ten times shallower.
+  await pick('A pole exactly at the origin')
+  if (!(await pressed('Step response'))) fail('the integrator lesson should open on the step view')
+  const frame = () =>
+    page.evaluate(() => {
+      const c = document.querySelectorAll('.views canvas')[1]
+      const s = JSON.parse(c.dataset.samples || '[]')
+      const yHi = parseFloat(c.dataset.yHi)
+      const yLo = parseFloat(c.dataset.yLo)
+      const tMax = parseFloat(c.dataset.tMax)
+      // Slope in FRAME units: fraction of the y-range per fraction of the
+      // t-axis — proportional to pixels per pixel, whatever the pane size.
+      const a = s[0]
+      const b = s[s.length - 1]
+      const slope = ((b[1] - a[1]) / (yHi - yLo)) / ((b[0] - a[0]) / tMax)
+      return { yHi, yLo, tMax, slope }
+    })
+  const f10 = await frame()
+  await page.locator('.try-chips .chip', { hasText: 'R 100 kΩ' }).click()
+  await settle()
+  const f100 = await frame()
+  const ratio = Math.abs(f10.slope / f100.slope)
+  if (f10.yLo !== f100.yLo || f10.yHi !== f100.yHi || f10.tMax !== f100.tMax) {
+    fail(`integrator frame re-framed under the R chip: [${f10.yLo}, ${f10.yHi}] → [${f100.yLo}, ${f100.yHi}]`)
+  }
+  if (!(ratio >= 5)) fail(`integrator ramp at 100 kΩ should be drawn ≥ 5× shallower, got ${ratio.toFixed(2)}×`)
+  console.log(`   L14 frame held [${f10.yLo.toFixed(1)}, ${f10.yHi}] over ${f10.tMax}s; drawn slope ratio ${ratio.toFixed(1)}×`)
+
+  // L17: a Circuits click parks the course rather than dropping it.
+  await pick('Q is how sharp, and R sets it')
+  await pick('Twin-T notch')
+  const cnt = (await page.locator('.lesson-nav-count').textContent().catch(() => '')).trim()
+  const back = page.locator('[data-role=lesson-back]')
+  if (cnt !== '6 of 15') fail(`after a circuit click the nav should still read "6 of 15", got "${cnt}"`)
+  if (!(await back.count())) fail('after a circuit click there should be a "back to lesson" action')
+  else {
+    await back.click()
+    await settle()
+    const lit = (await page.locator('.presets .preset.is-on').first().textContent()).trim()
+    const r = await page.getByRole('spinbutton', { name: 'R' }).first().inputValue()
+    if (lit !== 'Q is how sharp, and R sets it') fail(`back to lesson should relight the Q lesson, got "${lit}"`)
+    if (r !== '20') fail(`back to lesson should reload R = 20 Ω, got "${r}"`)
+    console.log(`   circuit click kept "${cnt}" and offered a way back; back → "${lit}" at R = ${r} Ω`)
+  }
+
+  // Hand-over prose uses the display name, defines its terms, and at the
+  // rate ceiling says so instead of "raise the rate".
+  await pick('Series RLC')
+  const ho = await page.evaluate(() =>
+    [...document.querySelectorAll('.controls section')].map((s) => s.textContent).find((t) => /Signal Lab/.test(t)),
+  )
+  if (!/Series RLC is a/.test(ho || '')) fail('hand-over should name the circuit as "Series RLC"')
+  if (/series rlc/.test(ho || '')) fail('hand-over lowercases the circuit name')
+  if (!(await page.locator('[data-role=handover-terms]').count())) fail('hand-over panel should reveal its terms')
+  await pick('RC low-pass')
+  await setField('C', '1n')
+  const ceiling = await page.locator('[data-role=rate-ceiling]').count()
+  const warnText = await page.locator('.hint.warn').allTextContents()
+  if (!ceiling) fail('a 159 kHz corner at the 192 kHz ceiling should get the ceiling notice')
+  if (warnText.some((t) => /Raise the rate/.test(t))) fail('at the ceiling the panel must not ask for a higher rate')
+  console.log(`   hand-over: display name kept, terms revealed, ceiling notice at 192 kHz`)
+  await setField('C', '100n')
+
+  // The topbar strip defines H(s) and the half plane on hover.
+  const titles = await page.$$eval('.flow-node', (els) => els.map((e) => e.getAttribute('title') || ''))
+  if (!titles.some((t) => /half plane/.test(t))) fail('the stable/unstable node should define the half plane on hover')
+  if (!titles.some((t) => /Transfer function/.test(t))) fail('the H(s) node should define the transfer function on hover')
 }
 
 // ------------------------------------- 11. the integrator really never settles
@@ -849,7 +1020,8 @@ console.log('\n7. Fold probe at laptop sizes: try line, featured controls, lit c
     const out = []
     let inputs = 0
     let tols = 0
-    for (const f of l.featured || []) {
+    for (const entry of l.featured || []) {
+      const f = typeof entry === 'string' ? entry : entry.id
       if (f === 'tol') out.push('[data-role=featured] [data-role=tol-all]')
       else if (f.startsWith('tol:')) {
         const i = tols++
@@ -892,22 +1064,37 @@ console.log('\n7. Fold probe at laptop sizes: try line, featured controls, lit c
   for (const [k, v] of Object.entries(worst).sort((a, b) => b[1].bottom - a[1].bottom).slice(0, 4)) {
     console.log(`   lowest ${k}: ${v.bottom.toFixed(0)} px (${v.lesson})`)
   }
+  // The active-circuits three sat with their Terms line at 882–898 px at
+  // 1440×900: the try line and the featured knob must be comfortably above
+  // the fold there, not just inside it.
+  for (const name of ['Why active filters exist', 'Gain is a ratio, and negative', 'A pole exactly at the origin']) {
+    for (const m of r.measured.filter((x) => x.viewport === '1440x900' && x.lesson === name)) {
+      if (!m.box) continue
+      const bottom = m.box.y + m.box.height
+      if ((m.control === '.try-line' || /^featured /.test(m.control)) && bottom > 860) {
+        fail(`1440x900 · ${name} · ${m.control}: bottom ${bottom.toFixed(0)} px — not comfortably above the 900 fold`)
+      }
+    }
+  }
+  console.log('   L12–L14 at 1440x900: try line and featured knob end above 860 px')
 }
 
 // ------------------------------------------- 13. phone: Bode + the lesson's view
 
-console.log('\n13. Phone 390×844: the response and the lesson view share the first screen\n')
+console.log('\n13. Phone 390×844: the lesson text, the response and the lesson view share the first screen\n')
 {
   const canvas = (i, label) => {
     const fn = (p) => p.locator('.views canvas').nth(i)
     fn.label = label
     return fn
   }
-  const cases = ['Where the corner comes from', 'Q is how sharp, and R sets it'].map((name) => ({
-    name,
-    load: () => pick(name),
-    must: [canvas(0, 'Bode canvas'), canvas(1, 'lesson view canvas')],
-  }))
+  const cases = ['Where the corner comes from', 'Q is how sharp, and R sets it', 'This circuit is a biquad'].map(
+    (name) => ({
+      name,
+      load: () => pick(name),
+      must: [canvas(0, 'Bode canvas'), canvas(1, 'lesson view canvas')],
+    }),
+  )
   const r = await phoneProbe(page, { cases, url: URL })
   for (const f of r.failures) fail(`phone: ${f}`)
   for (const m of r.measured) {
@@ -915,6 +1102,43 @@ console.log('\n13. Phone 390×844: the response and the lesson view share the fi
       `   ${m.lesson.padEnd(32)} ${m.control.padEnd(20)} ${m.box ? `y ${m.box.y.toFixed(0)}–${(m.box.y + m.box.height).toFixed(0)} px` : 'not rendered'}`,
     )
   }
+  // The walk's phone screen showed a header and seventeen buttons and no
+  // lesson at all. On a fresh load the note's title and the try line must
+  // sit inside the sidebar's VISIBLE box (not a sidebar-scroll away), with
+  // the lesson's own view still in the first viewport.
+  await page.setViewportSize({ width: 390, height: 844 })
+  for (const c of cases) {
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await c.load()
+    await page.evaluate(() => {
+      document.querySelector('.controls').scrollTop = 0
+      document.querySelector('#root').scrollTop = 0
+      window.scrollTo(0, 0)
+    })
+    await page.waitForTimeout(80)
+    const side = await page.locator('.controls').boundingBox()
+    const inSide = (b) => b && b.y >= side.y - 1 && b.y + b.height <= side.y + side.height + 1
+    for (const [sel, what] of [['.note-title', 'note title'], ['.try-line', 'try line']]) {
+      const b = await page.locator(sel).first().boundingBox()
+      if (!inSide(b)) {
+        fail(`phone · ${c.name} · ${what}: ${b ? `y ${b.y.toFixed(0)}–${(b.y + b.height).toFixed(0)}` : 'not rendered'} is not inside the sidebar's visible ${side.y.toFixed(0)}–${(side.y + side.height).toFixed(0)} px`)
+      } else console.log(`   ${c.name.padEnd(32)} ${what.padEnd(20)} y ${b.y.toFixed(0)}–${(b.y + b.height).toFixed(0)} px, inside the ${side.height.toFixed(0)} px sidebar`)
+    }
+    const knob = await page.locator('[data-role=featured] input, [data-role=featured] a.handover-copy').first().boundingBox()
+    console.log(`   ${''.padEnd(32)} ${'featured control'.padEnd(20)} ${knob ? `y ${knob.y.toFixed(0)}–${(knob.y + knob.height).toFixed(0)} px${inSide(knob) ? '' : ' (below the sidebar’s first screen)'}` : 'not rendered'}`)
+  }
+  // The Math tab must not widen the page: the RLC's formulas and tables
+  // pushed .views to 463 px and cropped the Bode.
+  await page.goto(URL, { waitUntil: 'networkidle' })
+  await pick('Q is how sharp, and R sets it')
+  await page.getByRole('button', { name: 'Math', exact: true }).click()
+  await settle()
+  const widths = await page.evaluate(() => ({
+    doc: document.documentElement.scrollWidth,
+    views: document.querySelector('.views').getBoundingClientRect().width,
+  }))
+  if (widths.doc > 390 || widths.views > 390) fail(`phone Math tab widens the page: document ${widths.doc} px, .views ${widths.views} px`)
+  else console.log(`   Math tab on the RLC: document ${widths.doc} px wide, .views ${widths.views.toFixed(0)} px — no crop`)
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto(URL, { waitUntil: 'networkidle' })
 }

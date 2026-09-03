@@ -63,4 +63,27 @@ describe('HandOver render branches', () => {
     expect(h).toContain('crosses by name')
     expect(h).not.toContain('rides along')
   })
+
+  it('at the 192 kHz ceiling the sparse-sampling warning says so instead of "raise the rate"', () => {
+    // A 159 kHz corner: suggestRate tops out at 192 kHz, 1.2 samples per
+    // cycle, and there is no higher rate to ask for.
+    const h = html(transferOf('rcLow', { r: 1000, c: 1e-9 }, 'c'))
+    expect(h).toContain('ceiling')
+    expect(h).toContain('coarse but exact')
+    expect(h).toMatch(/1\.21 samples per cycle/)
+    expect(h).not.toContain('Raise the rate')
+  })
+
+  it('the circuit is named as the sidebar names it, and the panel defines its own terms', () => {
+    const h = html(transferOf('rlcSeries', { r: 100, l: 10e-3, c: 100e-9 }, 'c'), 'Series RLC')
+    expect(h).toContain('Series RLC is a low-pass biquad')
+    expect(h).not.toContain('series rlc')
+    for (const name of ['Bilinear transform', 'Sample rate', 'Samples per cycle', 'Coefficients', 'Plant', 'Damping ratio']) {
+      expect(h).toContain(name)
+    }
+    // The refused integrator gets the same reveal.
+    const d = html(transferOf('integrator', { r: 10000, c: 10e-9 }, 'out'), 'Op-amp integrator')
+    expect(d).toContain('Declined')
+    expect(d).toContain('Bilinear transform')
+  })
 })

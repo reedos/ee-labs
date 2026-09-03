@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
-import { TERMS } from './terms.js'
+import { TERMS, HANDOVER_TERMS, termsFor, handOverTerms } from './terms.js'
 import { CIRCUITS, transferOf, defaultsOf } from './circuits.js'
 import { asDigitalFilter } from './toSignalLab.js'
 import { responseBand, toleranceCloud, spreadPct } from './tolerance.js'
@@ -247,6 +247,23 @@ describe('the claims each lesson makes', () => {
       const m = secondOrderMetrics(transferOf('twinT', { r, c }, 'out'))
       expect(m.q, `R=${r} C=${c}`).toBeCloseTo(l.claim.qFixed, 9)
     }
+    // "no bottom" is true of H(s) and false of any drawn curve, whose floor
+    // is the nearest grid sample's; the note says so in one clause.
+    expect(l.note).toMatch(/floor is the grid/)
+  })
+
+  it('the wobble note quotes the spreads the try line measures, not a round number', () => {
+    const l = byName('Real parts wobble')
+    const s = applyLesson(l)
+    const { f0, q } = toleranceCloud(s.id, s.params, s.output, s.tols)
+    const m = CIRCUITS[s.id].metrics(s.params)
+    const f0Pct = spreadPct(f0, m.w0 / (2 * Math.PI)).toFixed(1)
+    const qPct = spreadPct(q, m.q).toFixed(1)
+    expect(l.note).toContain(`±${f0Pct}%`)
+    expect(l.note).toContain(`±${qPct}%`)
+    // ...and the panel's own number is the same one.
+    expect(f0Pct).toBe(String(l.claim.trySpread[0.05].f0))
+    expect(qPct).toBe(String(l.claim.trySpread[0.05].q))
   })
 
   it('the bridge lesson really does hand over a low-pass biquad', () => {
@@ -291,11 +308,63 @@ describe('terms — definitions on contact', () => {
   })
 
   it('definitions hold to the house rules: short, and named', () => {
-    for (const [id, t] of Object.entries(TERMS)) {
+    for (const [id, t] of Object.entries({ ...TERMS, ...HANDOVER_TERMS })) {
       expect(t.def.length, id).toBeLessThan(600)
       expect(t.def.length, id).toBeGreaterThan(120)
       expect(t.name.length, id).toBeGreaterThan(1)
     }
+  })
+
+  it('a lesson whose note or try line uses a term’s word lists that term', () => {
+    // Definition on contact means ON contact: the scan is the enforcement.
+    for (const l of LESSONS) {
+      const text = `${l.note} ${l.try}`
+      for (const [id, t] of Object.entries(TERMS)) {
+        if (t.match && t.match.test(text)) {
+          expect(l.terms, `${l.name} says "${text.match(t.match)[0]}" but does not list "${id}"`).toContain(id)
+        }
+      }
+      // ...and every listed term resolves to a definition, in order.
+      expect(termsFor(l.terms).map((t) => t.id)).toEqual(l.terms)
+    }
+  })
+
+  it('the terms the walk asked for sit on the lessons that use them', () => {
+    const of = (name) => LESSONS.find((l) => l.name === name)?.terms || []
+    const want = {
+      'A divider has no dynamics': ['db'],
+      'Where the corner comes from': ['db', 'tf', 'pole', 'lhp'],
+      'One circuit, three filters': ['s', 'shapes', 'overshoot'],
+      'Q is how sharp, and R sets it': ['zeta', 'overshoot'],
+      'The same R, the opposite effect': ['tank', 'dbohm'],
+      'Resonance, seen in time': ['zeta', 'butterworth', 'overshoot'],
+      'A zero on the axis is silence': ['twint', 'zero', 'jw', 'pole'],
+      'Real parts wobble': ['pole', 'jw'],
+      'Blame the right part': ['omega0', 'pole', 'jw'],
+      'Why active filters exist': ['opamp', 'pole', 'jw'],
+      'Gain is a ratio, and negative': ['feedback', 'db'],
+      'A pole exactly at the origin': ['rail', 'pole', 'jw'],
+      'This circuit is a biquad': ['sampled', 'biquad'],
+    }
+    for (const [name, ids] of Object.entries(want)) {
+      for (const id of ids) expect(of(name), `${name} should list "${id}"`).toContain(id)
+    }
+    // Every lesson that opens on the poles view defines pole, zero-or-jω.
+    for (const l of LESSONS) {
+      if (l.patch.view === 'pz') {
+        expect(l.terms, `${l.name} opens on poles`).toContain('pole')
+        expect(l.terms, `${l.name} opens on poles`).toContain('jw')
+      }
+    }
+    // The hand-over panel's own six, in the order the panel reveals them.
+    expect(handOverTerms().map((t) => t.id)).toEqual([
+      'bilinear',
+      'samplerate',
+      'samplespercycle',
+      'coefficients',
+      'plant',
+      'dampingratio',
+    ])
   })
 })
 

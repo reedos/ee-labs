@@ -311,15 +311,62 @@ details.preset-group > .presets { margin: 3px 0 5px; }
   padding: 2px 4px 8px;
 }
 
+/* The way back into the course after a Circuits click parked it: styled as
+   the nav strip's reset, full width under the cap. */
+.lesson-nav-back {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--line));
+  border-radius: 4px;
+  color: var(--amber);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+}
+.lesson-nav-back:hover { border-color: var(--amber); }
+
+/* The Math tab on a narrow pane: KaTeX display formulas and the check
+   tables are wider than a phone, and as grid items with min-width:auto the
+   panes grew to fit them — the whole .views widened to 463 px and cropped
+   the Bode. The pane keeps its width; the math scrolls sideways inside it. */
+.view { min-width: 0; }
+.math-pane { min-width: 0; max-width: 100%; overflow-x: auto; }
+.math-pane .math-body { min-width: 0; }
+.math-pane .katex-display { overflow-x: auto; overflow-y: hidden; }
+.math-pane table { max-width: 100%; }
+
 /* Phone: with a lesson loaded the frequency response AND the lesson's own
    lower view must both sit in the first viewport, so the sidebar takes less
    than base.css's 45vh and the canvases are pinned to a height the two can
-   share. (The sidebar still scrolls internally.) */
+   share. (The sidebar still scrolls internally.)
+
+   And the sidebar's first screen is the LESSON — note, try line, featured
+   knob — with the seventeen list buttons after it, not before: at 30vh the
+   list alone filled the box and a fresh load showed no lesson text at all.
+   The section becomes a flex column so its two blocks can swap order; the
+   sticky cap with prev / next stays first. The header is compacted (nav and
+   title on one row, the subhead dropped) to buy the note its lines. */
 @media (max-width: 900px) {
-  .controls { max-height: 30vh; }
+  .controls { max-height: 43vh; padding: 10px 12px 24px; }
+  .controls header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+  .controls header .labnav { margin: 0; }
+  .controls header h1 { margin: 0; font-size: 16px; }
+  .controls header .sub { display: none; }
+  .controls section { margin-top: 8px; }
+  .controls h2 { top: -10px; }
+  .controls section:first-of-type { display: flex; flex-direction: column; }
+  .controls section:first-of-type > h2 { order: 0; }
+  .controls section:first-of-type > .lesson-nav-back { order: 1; }
+  .controls section:first-of-type > .lesson-body { order: 1; }
+  .controls section:first-of-type > .lesson-list { order: 2; margin-top: 10px; }
+  .lesson-body .note-title { margin-top: 0; }
   .views { min-height: 0; }
   .view { padding: 4px 10px 4px; }
   .view-head h2 { display: none; }
-  .view .plot { flex: none; height: 168px; }
-  .math-pane { height: 168px; flex: none; }
+  .view .plot { flex: none; height: 144px; }
+  .math-pane { height: 144px; flex: none; }
 }
