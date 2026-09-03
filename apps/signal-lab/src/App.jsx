@@ -27,6 +27,7 @@ import { mathContext, mathFor } from './math.js'
 import { samplingState } from './sampling.js'
 import { INITIAL, presetState } from './state.js'
 import { applyChip } from './chips.js'
+import { circuitUrl } from './toCircuitLab.js'
 import { allTonal, fmtAmp, formatPeaks, isBroadband, offBin, spectralPeaks } from './peaks.js'
 
 /**
@@ -357,6 +358,15 @@ export default function App() {
     [state, freqs, amps, ghostAmps, resp, stats.peakFreq],
   )
 
+  // The hand-over out: this block, as the circuit it is — null off the one
+  // preset it is exact for, and null in dev where Circuit Lab is not deployed
+  // beside this page. See toCircuitLab.js for why this is exact rather than
+  // approximate.
+  const circuitHref = useMemo(
+    () => circuitUrl(state.blocks[0], state.presetName),
+    [state.blocks, state.presetName],
+  )
+
   return (
     <div className="app">
       <Controls
@@ -374,6 +384,9 @@ export default function App() {
         setOpenBlocks={setOpenBlocks}
         openGroups={openGroups}
         setOpenGroups={setOpenGroups}
+        onConvPlay={scrub.play}
+        convPlaying={scrub.playing}
+        circuitHref={circuitHref}
       />
 
       <TopBar

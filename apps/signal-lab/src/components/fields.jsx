@@ -1,5 +1,6 @@
 import React from 'react'
 import { NumField, fmtHz } from '@ee-labs/ui'
+import { WAVEFORMS, WINDOWS } from '@ee-labs/dsp'
 import { BLOCK_TYPES, resolve } from '../dsp/blocks.js'
 
 // The knobs, as functions of the record they edit.
@@ -16,10 +17,24 @@ const HZ = { k: 1e3, khz: 1e3, hz: 1 }
 const oddAtOrBelow = (n) => (n < 1 ? 1 : n % 2 === 1 ? n : n - 1)
 
 export const SOURCE_FIELDS = {
+  type: 'Type',
   topHarmonic: 'Highest harmonic',
   freq: 'Frequency',
   amp: 'Amplitude',
   phase: 'Phase',
+  enabled: 'Enabled',
+}
+
+/** The chain-global controls a try line can also name: not a source's or a
+ * block's own field, but a setting in the top bar or a pane header. Featured
+ * the same way — `{ field: 'fftSize' }` with no `source` or `block` — so a
+ * lesson whose knob is "FFT" or "the overlay" gets it under the try line
+ * exactly like one whose knob lives on a source or a block. */
+export const GLOBAL_FIELDS = {
+  fftSize: 'FFT',
+  sampleRate: 'Rate',
+  window: 'Window',
+  overlay: 'Overlay',
 }
 
 /**
@@ -31,6 +46,34 @@ export const SOURCE_FIELDS = {
 export function SourceField({ src, field, sampleRate, onChange }) {
   const set = (k, v) => onChange({ ...src, [k]: v })
   const nyquist = sampleRate / 2
+
+  if (field === 'type') {
+    return (
+      <label className="field">
+        <span className="field-label">{SOURCE_FIELDS.type}</span>
+        <select value={src.type} onChange={(e) => set('type', e.target.value)}>
+          {WAVEFORMS.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </label>
+    )
+  }
+
+  if (field === 'enabled') {
+    return (
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={!!src.enabled}
+          onChange={(e) => set('enabled', e.target.checked)}
+        />
+        {SOURCE_FIELDS.enabled}
+      </label>
+    )
+  }
 
   if (field === 'topHarmonic') {
     if (src.type !== 'square') return null
@@ -182,6 +225,21 @@ export function SourceField({ src, field, sampleRate, onChange }) {
  * current settings hide (Q at 4th order) explains its absence instead.
  */
 export function BlockField({ block, field, sampleRate, onChange }) {
+  // Bypass is the block's own on/off switch, not one of its type's params —
+  // the same control BlockCard's own ⏻ button flips, so "bypass block 2" can
+  // be the knob a try line features without inventing a param no block has.
+  if (field === 'bypass') {
+    return (
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={!!block.bypass}
+          onChange={(e) => onChange({ ...block, bypass: e.target.checked })}
+        />
+        Bypass
+      </label>
+    )
+  }
   const def = BLOCK_TYPES[block.type]
   if (!def) return null
   const p = def.params.find((x) => x.key === field)
@@ -240,12 +298,96 @@ export function BlockField({ block, field, sampleRate, onChange }) {
 }
 
 /**
+ * One of the chain-global settings — FFT size, sample rate, the analysis
+ * window, the spectrum overlay — mirrored from its own home (the top bar, or
+ * the frequency pane's header) so a try line that names one of these can
+ * feature it too. Same idea as SourceField/BlockField: one definition, two
+ * renderings, so the knob under the try line and the knob in its usual home
+ * never drift apart.
+ */
+export function GlobalField({ field, state, onChange }) {
+  if (field === 'fftSize') {
+    return (
+      <NumField
+        label={GLOBAL_FIELDS.fftSize}
+        value={state.fftSize}
+        onChange={onChange}
+        min={512}
+        max={16384}
+        scale="pow2"
+        decimals={0}
+        hint={`${(state.sampleRate / state.fftSize).toFixed(2)} Hz/bin`}
+      />
+    )
+  }
+  if (field === 'sampleRate') {
+    return (
+      <NumField
+        label={GLOBAL_FIELDS.sampleRate}
+        unit="Hz"
+        spoken="hertz"
+        value={state.sampleRate}
+        onChange={onChange}
+        min={1000}
+        max={96000}
+        scale="log"
+        step={1}
+        eng
+        suffixes={{ k: 1e3, khz: 1e3, hz: 1 }}
+      />
+    )
+  }
+  if (field === 'window') {
+    return (
+      <label className="field">
+        <span className="field-label">{GLOBAL_FIELDS.window}</span>
+        <select value={state.window} onChange={(e) => onChange(e.target.value)}>
+          {WINDOWS.map((v) => (
+            <option key={v} value={v}>
+              {v}
+            </option>
+          ))}
+        </select>
+      </label>
+    )
+  }
+  if (field === 'overlay') {
+    const options = [
+      { id: 'none', label: 'no overlay' },
+      { id: 'phase', label: 'phase' },
+      { id: 'delay', label: 'delay' },
+    ]
+    return (
+      <div className="segmented sm" role="group" aria-label="Overlay on the spectrum">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            className={state.overlay === o.id ? 'on' : ''}
+            aria-pressed={state.overlay === o.id}
+            onClick={() => onChange(o.id)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
+/**
  * The controls a preset declares as `featured`, resolved against live state.
  * Returns [{ key, from, node }] — `from` names the card the knob mirrors.
  * A declaration whose source or block the student has since removed yields
  * nothing: the try line then points at a knob that is genuinely gone.
+ *
+ * A `featured` entry with neither `source` nor `block` names a chain-global
+ * setting instead (`{ field: 'overlay' }`) — the try line's own knob when
+ * that knob lives in the top bar or a pane header rather than on a source or
+ * a block.
  */
-export function featuredFields(featured = [], state, { setSource, setBlock }) {
+export function featuredFields(featured = [], state, { setSource, setBlock, patch }) {
   const out = []
   for (const f of featured) {
     if (f.source != null) {
@@ -280,6 +422,12 @@ export function featuredFields(featured = [], state, { setSource, setBlock }) {
             onChange={(next) => setBlock(i, next)}
           />
         ),
+      })
+    } else if (f.field != null) {
+      out.push({
+        key: `g.${f.field}`,
+        from: 'Chain',
+        node: <GlobalField field={f.field} state={state} onChange={(v) => patch(f.field, v)} />,
       })
     }
   }

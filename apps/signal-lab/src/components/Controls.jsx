@@ -74,6 +74,9 @@ export default function Controls({
   linkWarnings = [],
   cameFromLink = false,
   linkFrom = null,
+  onConvPlay,
+  convPlaying = false,
+  circuitHref = null,
 }) {
   const patch = (k, v) => setState((s) => ({ ...s, [k]: v }))
 
@@ -141,7 +144,7 @@ export default function Controls({
 
   const activePreset = presets.find((p) => p.name === state.presetName)
   const featured = activePreset
-    ? featuredFields(activePreset.featured, state, { setSource, setBlock })
+    ? featuredFields(activePreset.featured, state, { setSource, setBlock, patch })
     : []
   const terms = activePreset ? termsFor(activePreset.terms) : []
 
@@ -281,7 +284,7 @@ export default function Controls({
                 by however long the note happens to run (six FIR/z-plane
                 presets' knobs still ran 40-100 px past a 1366×768 fold with
                 the note ahead of them). */}
-            {featured.length ? (
+            {featured.length || activePreset.playHint ? (
               <div className="featured">
                 {featured.map((f) => (
                   <div className="featured-item" key={f.key}>
@@ -289,9 +292,37 @@ export default function Controls({
                     {f.node}
                   </div>
                 ))}
+                {/* "Press play" names a canvas transport, not a source or a
+                    block field — the play button lives in the Time domain
+                    view, a full column away from this try line and easy to
+                    miss (the review's own complaint). Mirrored here rather
+                    than moved: the scrubber and speed chips stay on the
+                    canvas, where the animation they drive is visible. */}
+                {activePreset.playHint ? (
+                  <div className="featured-item" key="play">
+                    <p className="featured-from">Time domain</p>
+                    <button type="button" className="ghost try-play" onClick={onConvPlay}>
+                      {convPlaying ? '⏸ pause' : '▶ play'}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <p className="hint">{activePreset.note}</p>
+            {/* The hand-over out, the reverse of Circuit Lab's own "Open in
+                Signal Lab →": a real link only where the two apps are
+                deployed side by side (null in dev, so this renders nothing
+                there) and only on the one preset CORE_SCOPE calls exact — a
+                series RLC read across its capacitor carries the same cutoff
+                and Q this block already has, not an approximation of them. */}
+            {activePreset.handOver && circuitHref ? (
+              <p className="hint circuit-forward">
+                This is also a circuit, a series RLC with the same cutoff and Q.{' '}
+                <a href={circuitHref} title="The same corner and Q, as the circuit they describe">
+                  Open in Circuit Lab →
+                </a>
+              </p>
+            ) : null}
           </>
         ) : null}
         {/* The vocabulary this lesson leans on, defined where it is used. A

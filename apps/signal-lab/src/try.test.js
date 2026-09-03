@@ -6,7 +6,7 @@ import { formatPeaks, spectralPeaks } from './peaks.js'
 import { chainGroupDelay, chainImpulse, chainPolesZeros, chainResponse, kernelCentre, renderChain } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
 import { render, rms, sincInterp, spectrum } from '@ee-labs/dsp'
-import { SOURCE_FIELDS } from './components/fields.jsx'
+import { GLOBAL_FIELDS, SOURCE_FIELDS } from './components/fields.jsx'
 import { gibbsOf } from './math.js'
 
 // The try lines, chips and featured knobs.
@@ -102,14 +102,21 @@ describe('every preset', () => {
           expect(Object.keys(SOURCE_FIELDS), `${p.name}: field ${f.field}`).toContain(f.field)
           if (f.field === 'topHarmonic') expect(src.type).toBe('square')
           if (f.field === 'freq' || f.field === 'phase') expect(src.type).not.toBe('noise')
-        } else {
+        } else if (f.block != null) {
           const b = (p.patch.blocks || []).find((x) => x.id === f.block)
           expect(b, `${p.name}: featured block ${f.block}`).toBeTruthy()
+          // bypass is the block's own on/off switch, not one of its type's
+          // params — nothing to look up in the schema.
+          if (f.field === 'bypass') continue
           const def = BLOCK_TYPES[b.type]
           const param = def.params.find((x) => x.key === f.field)
           expect(param, `${p.name}: ${b.type} has no param ${f.field}`).toBeTruthy()
           // And it is not hidden by the preset's own settings (Q at 4th order).
           if (param.when) expect(param.when(b.params), `${p.name}: ${f.field} hidden`).toBe(true)
+        } else {
+          // A chain-global setting — FFT size, sample rate, the window, the
+          // overlay — named with neither a source nor a block.
+          expect(Object.keys(GLOBAL_FIELDS), `${p.name}: field ${f.field}`).toContain(f.field)
         }
       }
     }
@@ -117,30 +124,58 @@ describe('every preset', () => {
 
   it('features the knobs the review measured off-screen', () => {
     const want = {
+      'Single tone': { source: 1, field: 'amp' },
+      'Corners make harmonics': { source: 1, field: 'type' },
+      'Sources simply add': { source: 2, field: 'enabled' },
       'Exactly at Nyquist': { source: 1, field: 'phase' },
       'Resonance is Q': { block: 1, field: 'q' },
       'Coarse, not undersampled': { source: 1, field: 'freq' },
       Aliasing: { source: 1, field: 'freq' },
+      Beating: { field: 'fftSize' },
+      'Turn the rate down': { field: 'sampleRate' },
+      'Resolution needs time': { field: 'fftSize' },
+      'Spectral leakage': { field: 'window' },
+      'Phase is invisible here': { field: 'overlay' },
+      'Two filters are steeper': { block: 2, field: 'bypass' },
+      'Two tones, one nonlinearity': { block: 1, field: 'bypass' },
     }
     for (const [name, f] of Object.entries(want)) {
       expect(byName(name).featured, name).toContainEqual(f)
     }
+    // The two the try line names no control for at all: a compound chip
+    // action (Build a square) and a canvas transport (Convolution, watched,
+    // which gets `playHint` instead — see the describe block below).
+    expect(byName('Build a square').featured || []).toEqual([])
   })
 
   it('features a knob whenever the try line names one by its label', () => {
-    // The labels a try can name: source fields and block params.
+    // The labels a try can name: source fields, block params, the block's
+    // own bypass switch, and the chain-global settings.
     const labelsOf = (p) => {
       const out = []
       for (const f of p.featured || []) {
         if (f.source != null) out.push(SOURCE_FIELDS[f.field])
-        else {
+        else if (f.block != null) {
+          if (f.field === 'bypass') {
+            out.push('Bypass')
+            continue
+          }
           const b = p.patch.blocks.find((x) => x.id === f.block)
           out.push(BLOCK_TYPES[b.type].params.find((x) => x.key === f.field).label)
-        }
+        } else out.push(GLOBAL_FIELDS[f.field])
       }
       return out
     }
-    const knobWords = ['Frequency', 'Phase', 'Highest harmonic', 'Cutoff', 'Q ', 'Taps N', 'Threshold', 'DC offset', 'Carrier', 'Bits', 'Type']
+    // "Window" and "Overlay" are deliberately not here: a block can carry its
+    // own `window` param (the FIR design taper, "Set Window to hamming") that
+    // means something different from the chain-global analysis window this
+    // preset's own try line names — the two share an English word without
+    // sharing a field. Spectral leakage's and Phase is invisible here's
+    // featured entries are pinned instead, above, by name.
+    const knobWords = [
+      'Frequency', 'Phase', 'Highest harmonic', 'Cutoff', 'Q ', 'Taps N', 'Threshold', 'DC offset',
+      'Carrier', 'Bits', 'Type', 'Amplitude', 'Bypass', 'FFT', 'Rate',
+    ]
     for (const p of PRESETS) {
       const named = knobWords.filter((k) => new RegExp(`\\b${k.trim()}\\b`).test(p.try))
       for (const k of named) {
@@ -202,14 +237,23 @@ describe('the lecturing notes are one claim', () => {
 // ------------------------------------------------------- Signals and Fourier
 
 describe('try: Single tone', () => {
-  it('is one line, and points at the next experiment by name', () => {
+  it('is a real micro-experiment now, and still points at the next by name', () => {
     const { peaks } = runS(loaded('Single tone'))
     expect(peaks).toHaveLength(1)
     expect(peaks[0].freq).toBeCloseTo(250, 1)
     const i = PRESETS.findIndex((p) => p.name === 'Single tone')
     expect(PRESETS[i + 1].name).toBe('Square = odd harmonics')
-    expect(byName('Single tone').try).toMatch(/baseline/)
+    // A real verb, not pure navigation (the review's own complaint) — the
+    // pointer to Square survives as a trailing clause.
+    expect(byName('Single tone').try).toMatch(/Amplitude/)
     expect(byName('Single tone').try).toMatch(/Next: Square/)
+  })
+
+  it('dragging Amplitude to 0.5 drops the line 6.02 dB from the default 1', () => {
+    const full = runS(loaded('Single tone'))
+    const half = runS(loaded('Single tone', '0.5'))
+    expect(db(half.at(250) / full.at(250))).toBeCloseTo(-6.02, 1)
+    expect(byName('Single tone').featured).toContainEqual({ source: 1, field: 'amp' })
   })
 })
 
@@ -651,6 +695,11 @@ describe('try: Convolution, watched', () => {
     expect(x.length).toBe(480)
     // The chips change the ramp width, N−1.
     expect(loaded('Convolution, watched', '4 taps').blocks[0].params.taps).toBe(4)
+  })
+
+  it('"press play" names a canvas transport, so it carries playHint instead of a featured field', () => {
+    expect(byName('Convolution, watched').playHint).toBe(true)
+    expect(byName('Convolution, watched').featured || []).toEqual([])
   })
 })
 

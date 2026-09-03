@@ -890,18 +890,24 @@ console.log(`\n10i. Fold probe: all ${presetNames.length} presets — try line, 
   // this script was written is still covered. `.chip` alone would also match
   // a NumField's own log-scale quick-value buttons (they share the class),
   // so every locator here is scoped under `.try-line`.
+  //
+  // `.featured-item` rather than `.featured .num`: a featured control used to
+  // be a NumField every time, but a source's Type, a block's Bypass, the
+  // chain's Window and its Overlay are a select, a checkbox and a segmented
+  // group — every one wrapped in `.featured-item` regardless of what it
+  // renders inside, which is the one thing every featured control shares.
   const cases = []
   for (const name of presetNames) {
     await page.waitForSelector('.views canvas')
     await loadPreset(name)
     const must = ['.preset.is-on', '.try-line']
-    const featuredCount = await page.locator('.featured .num').count()
+    const featuredCount = await page.locator('.featured .featured-item').count()
     const chipCount = await page.locator('.try-line .chip').count()
     if (featuredCount) {
-      must.push('.featured .num')
+      must.push('.featured .featured-item')
       if (featuredCount > 1) {
-        const lastFeatured = (p) => p.locator('.featured .num').nth(featuredCount - 1)
-        lastFeatured.label = `.featured .num[${featuredCount - 1}]`
+        const lastFeatured = (p) => p.locator('.featured .featured-item').nth(featuredCount - 1)
+        lastFeatured.label = `.featured .featured-item[${featuredCount - 1}]`
         must.push(lastFeatured)
       }
     }
@@ -1012,6 +1018,113 @@ console.log('\n10k. Phone 390x844: title + try line inside the sidebar box; both
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto(URL, { waitUntil: 'load' })
   await page.waitForSelector('.views canvas')
+}
+
+// ---------------- 10l. Single tone: Amplitude is a real micro-experiment now
+
+console.log('\n10l. Single tone: Amplitude is a real micro-experiment now, not just a baseline\n')
+{
+  await loadPreset('Single tone')
+  const ampField = page.locator('.featured').getByRole('spinbutton', { name: 'Amplitude' })
+  if ((await ampField.count()) === 0) {
+    fail('Single tone: no featured Amplitude control under the try line')
+  } else {
+    const ampOf = (r) => (r['Frequency domain'] || []).find((s) => s.startsWith('amp')) || ''
+    const numOf = (s) => Number((s.match(/[\d.]+/) || [])[0])
+    const before = numOf(ampOf(await readout()))
+    await setField('Amplitude', 0.5)
+    const after = numOf(ampOf(await readout()))
+    console.log(`   amp before ${before}, after dragging to 0.5: ${after}`)
+    if (!(before > 0) || Math.abs(after / before - 0.5) > 0.05) {
+      fail(`Single tone: dragging Amplitude to 0.5 did not halve the readout (before ${before}, after ${after})`)
+    } else {
+      console.log('   dragging Amplitude to 0.5 halves the line — 6.02 dB down, as the try line claims')
+    }
+  }
+}
+
+// ------------------ 10m. Convolution's mirrored play button actually plays
+
+console.log("\n10m. Convolution: the mirrored play button under the try line actually plays\n")
+{
+  await loadPreset('Convolution, watched')
+  const playBtn = page.locator('.featured .try-play')
+  if ((await playBtn.count()) === 0) {
+    fail('Convolution, watched: no mirrored play button under the try line')
+  } else {
+    const before = await canvasHashes()
+    await playBtn.click()
+    await page.waitForTimeout(350)
+    const after = await canvasHashes()
+    if (JSON.stringify(before) === JSON.stringify(after)) {
+      fail('Convolution, watched: clicking the mirrored play button did not advance the animation')
+    } else {
+      console.log('   the play button mirrored under the try line advances the same scrubber as the canvas transport')
+    }
+    await playBtn.click() // pause again, tidy
+  }
+}
+
+// ------------- 10n. Bypass, featured under the try line, IS the block's own switch
+
+console.log("\n10n. Bypass featured under the try line matches the block's own switch\n")
+{
+  for (const [name, blockIndex] of [['Two filters are steeper', 1], ['Two tones, one nonlinearity', 0]]) {
+    await loadPreset(name)
+    await expandBlocks()
+    const featChk = page.locator('.featured .check input[type="checkbox"]')
+    if ((await featChk.count()) === 0) {
+      fail(`${name}: no featured bypass checkbox under the try line`)
+      continue
+    }
+    const cardIcon = page.locator('.block').nth(blockIndex).locator('.block-head .icon')
+    const before = await cardIcon.getAttribute('aria-pressed')
+    await featChk.check()
+    await settle()
+    const after = await cardIcon.getAttribute('aria-pressed')
+    if (before === after) {
+      fail(`${name}: the featured bypass toggle did not flip the block card's own switch (stayed ${after})`)
+    } else {
+      console.log(`   ${name}: featured Bypass flips the block card's own ⏻ switch (${before} → ${after})`)
+    }
+  }
+}
+
+// -------- 10o. Chain-global featured controls: FFT, Rate, Window, Overlay
+
+console.log('\n10o. Chain-global controls (FFT, Rate, Window, Overlay) featured under their try lines\n')
+{
+  const cases = [
+    { name: 'Beating', kind: 'spin', label: 'FFT' },
+    { name: 'Turn the rate down', kind: 'spin', label: 'Rate' },
+    { name: 'Resolution needs time', kind: 'spin', label: 'FFT' },
+    { name: 'Spectral leakage', kind: 'select' },
+    { name: 'Phase is invisible here', kind: 'segmented' },
+  ]
+  for (const c of cases) {
+    await loadPreset(c.name)
+    const n =
+      c.kind === 'spin'
+        ? await page.locator('.featured').getByRole('spinbutton', { name: c.label }).count()
+        : c.kind === 'select'
+          ? await page.locator('.featured select').count()
+          : await page.locator('.featured .segmented button').count()
+    if (n === 0) fail(`${c.name}: no featured ${c.kind === 'spin' ? c.label : c.kind} control under the try line`)
+    else console.log(`   ${c.name}: featured ${c.kind === 'spin' ? c.label : c.kind} control is under the try line`)
+  }
+}
+
+// --------- 10p. The one hand-over out: a real link only when deployed beside
+
+console.log('\n10p. Circuit Lab hand-over: hidden on a bare dev port, as designed\n')
+{
+  await loadPreset('Resonance is Q')
+  const link = await page.locator('.circuit-forward a').count()
+  if (link) {
+    fail('Resonance is Q: the Circuit Lab hand-over drew a link on a bare dev port — labUrl should resolve null there')
+  } else {
+    console.log('   no dev-port link for the Circuit Lab hand-over (labUrl resolves null off the deployed path)')
+  }
 }
 
 // -------------------------------------------------------------- 11. 4K fit

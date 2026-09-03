@@ -23,8 +23,18 @@ import { BLOCK_TYPES } from './dsp/blocks.js'
 //              to 1" is a click, not a search.
 //   featured — the control the try line names, rendered under it so it is on
 //              screen without scrolling (the fold probe in verify.mjs holds
-//              this for all 35 at laptop sizes). `{ source: id, field }` or
-//              `{ block: id, field }`.
+//              this for all 35 at laptop sizes). `{ source: id, field }`,
+//              `{ block: id, field }`, or `{ field }` alone for a chain-
+//              global setting (FFT size, sample rate, the window, the
+//              overlay) that lives in the top bar or a pane header rather
+//              than on a source or a block.
+//   playHint — true when the try line's verb is a canvas transport (only
+//              Convolution's "press play") rather than a field `featured`
+//              can mirror; Controls.jsx renders the play button itself
+//              under the try line instead of inventing a knob.
+//   handOver — true on the one preset (Resonance is Q) whose block crosses
+//              into Circuit Lab exactly, as a series RLC — see
+//              toCircuitLab.js and CORE_SCOPE.md's counter-rule.
 //   terms    — the vocabulary the note, try and chips lean on (terms.js).
 //              presets.test.js scans the text and refuses a word whose term
 //              is not listed.
@@ -70,20 +80,29 @@ export const PRESETS = [
     name: 'Single tone',
     terms: ['db', 'rms', 'harmonic'],
     note: 'One sine wave gives one line in the spectrum. Every other experiment is read against this baseline.',
-    try: 'This is the baseline. Next: Square adds only odd harmonics.',
+    // A real micro-experiment, not pure navigation: dragging Amplitude to 0.5
+    // (half the default 1) drops the line 6.02 dB, measured in try.test.js.
+    // The pointer to Square survives as a trailing clause, not the only verb
+    // — the walk could stare at a correct sine and not know the course had
+    // started (the review's own complaint).
+    try: 'Drag Amplitude to 0.5, the line drops 6 dB. Next: Square.',
+    chips: [src1('0.5', { amp: 0.5 }, 'Half amplitude: 6 dB down'), src1('1', { amp: 1 }, 'Back to full scale')],
+    featured: [{ source: 1, field: 'amp' }],
     patch: { sources: [mk(1, 'sine', 250, 1)], sampleRate: 8000, timeSpanMs: 20, spanCycles: 5 },
   },
   {
     group: 'Signals and Fourier',
     name: 'Square = odd harmonics',
-    terms: ['harmonic', 'nyquist', 'fold'],
+    terms: ['harmonic'],
     // The markers are already on when this loads — the old note said "turn
     // on harmonic markers", which the walk read as a control it could not
-    // find.
+    // find. One claim only: odd lines falling as 1/k. What used to sit here
+    // too — the sampling correction, and the flattening above 2 kHz being
+    // harmonics past Nyquist folding back — is in the math panel now, and
+    // folding itself belongs to the Sampling group (the review's own split).
     note:
       'A square wave is a sum of odd harmonics falling as 1/k, 4A/(kπ), plus the small sampling correction the ' +
-    'math panel carries. The harmonic markers are on: count 1st, 3rd, 5th, and nothing between them. The ' +
-    'flattening above 2 kHz is harmonics past Nyquist folding back onto the ones below.',
+    'math panel carries. The harmonic markers are on: count 1st, 3rd, 5th, and nothing between them.',
     try: 'Click 3, then 9, more odd lines appear, and nothing lands between them.',
     chips: [
       src1('3', { topHarmonic: 3 }, 'Two terms: the fundamental and the 3rd'),
@@ -116,6 +135,7 @@ export const PRESETS = [
       src1('square', { type: 'square' }),
       src1('sawtooth', { type: 'sawtooth' }),
     ],
+    featured: [{ source: 1, field: 'type' }],
     patch: {
       sources: [mk(1, 'triangle', 250, 1)],
       sampleRate: 8000,
@@ -135,6 +155,11 @@ export const PRESETS = [
       'Three odd harmonics at 1, 1/3 and 1/5 add up to a square of height π/4 = 0.785, already square-ish. The ' +
     'Gibbs overshoot at each corner is 9.4% of the jump with three terms, 9.1% with five, and 8.95% in the ' +
     'limit. It narrows as terms are added, and never shrinks away.',
+    // The try line's only verb is the chip itself — "add 7th and 9th" adds
+    // two whole sources at once, not one field of one existing source or
+    // block, so there is no single knob for `featured` to mirror. The chip
+    // already sits inline under the try line (TryLine renders it there),
+    // which is the whole of what "one click" promises here.
     try: 'Click add 7th and 9th, the edges steepen. The overshoot narrows toward 9% of the jump.',
     chips: [
       {
@@ -165,6 +190,7 @@ export const PRESETS = [
       { label: 'source 2 off', patch: { sources: [{}, { enabled: false }] } },
       { label: 'both on', patch: { sources: [{ enabled: true }, { enabled: true }] } },
     ],
+    featured: [{ source: 2, field: 'enabled' }],
     patch: {
       sources: [mk(1, 'sine', 300, 0.7), mk(2, 'sine', 1800, 0.4)],
       sampleRate: 8000,
@@ -213,6 +239,7 @@ export const PRESETS = [
       { label: 'FFT 2048', patch: { fftSize: 2048 }, title: '3.9 Hz bins: the pair is 1.3 bins apart' },
       { label: 'FFT 8192', patch: { fftSize: 8192 }, title: '0.98 Hz bins: the pair resolves' },
     ],
+    featured: [{ field: 'fftSize' }],
     patch: {
       sources: [mk(1, 'sine', 250, 0.5), mk(2, 'sine', 255, 0.5)],
       sampleRate: 8000,
@@ -281,6 +308,7 @@ export const PRESETS = [
       { label: '4 kHz', patch: { sampleRate: 4000 }, title: '3125 folds to 875' },
       { label: '2 kHz', patch: { sampleRate: 2000 }, title: '1875 folds to 125 as well' },
     ],
+    featured: [{ field: 'sampleRate' }],
     patch: {
       // 625 Hz and its odd harmonics land on an FFT bin centre at 16, 8, 4 and
       // 2 kHz alike (fs/2048 divides 625 at every one), so the lines stay
@@ -364,6 +392,7 @@ export const PRESETS = [
       { label: 'FFT 512', patch: { fftSize: 512 }, title: '15.6 Hz bins: one peak' },
       { label: 'FFT 2048', patch: { fftSize: 2048 }, title: '3.9 Hz bins: two' },
     ],
+    featured: [{ field: 'fftSize' }],
     patch: {
       sources: [mk(1, 'sine', 250, 0.5), mk(2, 'sine', 265, 0.5)],
       sampleRate: 8000,
@@ -388,6 +417,7 @@ export const PRESETS = [
       { label: 'none', patch: { window: 'none' } },
       { label: 'hann', patch: { window: 'hann' } },
     ],
+    featured: [{ field: 'window' }],
     patch: {
       sources: [mk(1, 'sine', 263, 1)],
       sampleRate: 8000,
@@ -469,6 +499,12 @@ export const PRESETS = [
       blk1('20', { q: 20 }, '+26 dB'),
     ],
     featured: [{ block: 1, field: 'q' }],
+    // The only outbound hand-over in the suite: this block is a series RLC
+    // read across its capacitor, exactly — same cutoff, same Q, the
+    // definition Circuit Lab's own resonance metric uses. CORE_SCOPE's
+    // counter-rule says an exact mapping is stated without a hedge, so this
+    // is the one preset that gets the link (toCircuitLab.js).
+    handOver: true,
     patch: {
       sources: [mk(1, 'noise', 100, 0.6)],
       blocks: [bk(1, 'lowpass', { freq: 800, q: 10 })],
@@ -489,6 +525,7 @@ export const PRESETS = [
       { label: 'phase overlay', patch: { overlay: 'phase' } },
       { label: 'delay overlay', patch: { overlay: 'delay' } },
     ],
+    featured: [{ field: 'overlay' }],
     patch: {
       sources: [mk(1, 'sine', 250, 0.6), mk(2, 'sine', 750, 0.3), mk(3, 'sine', 1250, 0.2)],
       blocks: [bk(1, 'allpass', { freq: 400, q: 2 })],
@@ -511,6 +548,7 @@ export const PRESETS = [
       { label: 'one section', patch: { blocks: [{}, { bypass: true }] } },
       { label: 'both sections', patch: { blocks: [{ bypass: false }, { bypass: false }] } },
     ],
+    featured: [{ block: 2, field: 'bypass' }],
     patch: {
       sources: [mk(1, 'noise', 100, 0.6)],
       blocks: [
@@ -525,10 +563,13 @@ export const PRESETS = [
     group: 'Filters',
     name: 'Order is a choice',
     terms: ['order', 'q', 'butterworth', 'cascade', 'cutoff', 'db', 'octave'],
+    // One claim: the visible −3 dB versus −6 dB gap at the corner. The
+    // section Qs a true 4th-order Butterworth needs (0.541 and 1.307) moved
+    // to the math panel and the chip label — a first-year who has not met
+    // Butterworth yet does not need them to see the corner sag.
     note:
-      'These two cascaded sections make a real 4th-order Butterworth, with Qs of 0.541 and 1.307 rather than ' +
-    '0.707 twice. With both at 0.707 it is still 4th order with the same far slope, 24 dB/octave (80 ' +
-    'dB/decade). The corner sags from −3 dB to −6, because a Butterworth needs a particular Q per section.',
+      'Two cascaded second-order low-pass sections make a 4th-order filter. A true Butterworth needs a specific ' +
+    'Q pair, so its corner sits at −3 dB. With both sections at the same Q instead, the corner sags to −6 dB.',
     try: 'Set both Q to 0.707, the corner sags from −3 dB to −6 dB.',
     chips: [
       {
@@ -772,6 +813,11 @@ export const PRESETS = [
       blk1('4 taps', { taps: 4 }, 'Ramps 3 samples wide'),
       blk1('8 taps', { taps: 8 }, 'Ramps 7 samples wide'),
     ],
+    // "Press play" names the canvas transport, not a source or block field —
+    // there is no knob to feature. Controls.jsx mirrors the play button
+    // itself under the try line instead, so it is not a screen-width scroll
+    // away on the one control that lives on a canvas rather than a card.
+    playHint: true,
     patch: {
       sources: [mk(1, 'square', 250, 0.8)],
       blocks: [bk(1, 'movingavg', { taps: 8 })],
@@ -833,17 +879,20 @@ export const PRESETS = [
     // The products named are the ones that are actually loudest. The old note
     // named 550, 900 and 50 Hz; the walk measured 100 Hz (−23.5 dB) and
     // 1050 Hz (−22.7 dB) as strong as those two and 50 Hz (−35.9 dB) as a
-    // fifth-order afterthought. try.test.js measures all four now.
+    // fifth-order afterthought. try.test.js measures all four now. Paced to
+    // one pair first — the review's own complaint that four products in one
+    // sentence is a wall — with the other two left to the math panel, where
+    // all four are still measured.
     note:
-      'A linear block can only change how much of a frequency there is, while a nonlinear one invents new ones. ' +
-    'Clipping 250 and 400 Hz together makes 100 Hz (2·250−400), 550 (2·400−250), 900 (2·250+400) and 1050 Hz ' +
-    '(2·400+250), the third-order intermodulation products. Avoiding them is most of why linearity is worth ' +
-    'paying for.',
+      'A linear block only changes how much of a frequency there is, while a nonlinear one invents new ones. ' +
+    'Clipping 250 and 400 Hz together makes 100 Hz (2·250−400) and 550 Hz (2·400−250) first, with two more in ' +
+    'the math panel. Avoiding them is most of why linearity is worth paying for.',
     try: 'Bypass the clipper, 100, 550, 900 and 1050 Hz all disappear.',
     chips: [
       { label: 'clipper bypassed', patch: { blocks: [{ bypass: true }] } },
       { label: 'clipper on', patch: { blocks: [{ bypass: false }] } },
     ],
+    featured: [{ block: 1, field: 'bypass' }],
     patch: {
       sources: [mk(1, 'sine', 250, 0.6), mk(2, 'sine', 400, 0.6)],
       blocks: [bk(1, 'clip', { threshold: 0.5 })],
