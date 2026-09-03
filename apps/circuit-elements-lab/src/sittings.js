@@ -84,10 +84,10 @@ export function score(data, targets = TARGETS) {
 /** The status line SITTINGS.md prints — the only claim the document makes, and it is computed. */
 export function statusLine(data, targets = TARGETS) {
   const r = score(data, targets)
-  if (!r.n) return 'Status: no sittings yet — the 9.5 is not claimed for any group.'
+  if (!r.n) return 'Status: no sittings yet. The 9.5 is not claimed for any group.'
   const knob = `first knob ${r.firstKnobMax} s (target ≤ ${targets.firstKnobSeconds})`
   const recall = `recall ${r.recall}/${r.n} (target ≥ ${targets.recallOf[0]}/${targets.recallOf[1]})`
   const clarity = `clarity ${r.clarityMean.toFixed(2)} (target ≥ ${targets.clarityMean})`
   const verdict = r.blocked.length ? `9.5 blocked for group${r.blocked.length > 1 ? 's' : ''} ${r.blocked.join(', ')}.` : r.n < targets.recallOf[1] ? `${targets.recallOf[1] - r.n} sittings to go.` : 'every target met.'
-  return `Status: ${r.n} sitting${r.n === 1 ? '' : 's'} — ${knob}, ${recall}, ${clarity} — ${verdict}`
+  return `Status: ${r.n} sitting${r.n === 1 ? '' : 's'}, ${knob}, ${recall}, ${clarity}. ${verdict[0].toUpperCase()}${verdict.slice(1)}`
 }

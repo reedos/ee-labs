@@ -25,7 +25,7 @@ export function LawsPrimer() {
   return (
     <div className="eq-primer" data-role="primer">
       <p>
-        <b>Two laws build every row below.</b>
+        <b>KVL and KCL produce every row below.</b>
       </p>
       <p>
         <b>KCL</b> — Kirchhoff’s current law. Charge cannot pile up at a junction, so at every node the currents{' '}
@@ -271,7 +271,7 @@ export function OhmLine() {
 export function PrimerLine() {
   return (
     <p className="eq-primer eq-primer-line" data-role="primer">
-      <b>Two laws build every row.</b> <b>KCL</b>: at every junction, what flows in flows out — one row per node.{' '}
+      <b>KVL and KCL produce every row.</b> <b>KCL</b>: at every junction, what flows in flows out — one row per node.{' '}
       <b>KVL</b>: around any loop the rises and drops add to zero — built in by writing each voltage as a difference of
       two node voltages. Group B takes each apart.
     </p>

@@ -128,13 +128,13 @@ describe('score', () => {
 
 describe('the status line', () => {
   it('says there are no sittings and claims nothing when the record is empty', () => {
-    expect(statusLine({ sittings: [] })).toBe('Status: no sittings yet — the 9.5 is not claimed for any group.')
+    expect(statusLine({ sittings: [] })).toBe('Status: no sittings yet. The 9.5 is not claimed for any group.')
   })
 
   it('prints the four numbers against their targets and the verdict', () => {
-    expect(statusLine(nine())).toBe('Status: 9 sittings — first knob 6 s (target ≤ 10), recall 9/9 (target ≥ 8/9), clarity 5.00 (target ≥ 4.5) — every target met.')
-    expect(statusLine({ sittings: [sitting({ firstKnobSeconds: 12 })] })).toBe('Status: 1 sitting — first knob 12 s (target ≤ 10), recall 1/1 (target ≥ 8/9), clarity 5.00 (target ≥ 4.5) — 9.5 blocked for group A.')
-    expect(statusLine({ sittings: [sitting(), sitting({ experiment: 'c2' })] })).toMatch(/— 7 sittings to go\.$/)
+    expect(statusLine(nine())).toBe('Status: 9 sittings, first knob 6 s (target ≤ 10), recall 9/9 (target ≥ 8/9), clarity 5.00 (target ≥ 4.5). Every target met.')
+    expect(statusLine({ sittings: [sitting({ firstKnobSeconds: 12 })] })).toBe('Status: 1 sitting, first knob 12 s (target ≤ 10), recall 1/1 (target ≥ 8/9), clarity 5.00 (target ≥ 4.5). 9.5 blocked for group A.')
+    expect(statusLine({ sittings: [sitting(), sitting({ experiment: 'c2' })] })).toMatch(/\. 7 sittings to go\.$/)
   })
 
   it('is the line SITTINGS.md prints — the document cannot get ahead of the record', () => {

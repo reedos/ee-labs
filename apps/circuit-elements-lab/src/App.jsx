@@ -302,7 +302,7 @@ export default function App() {
         <header>
           <LabNav current="circuit-elements-lab" currentLabel="Elements" />
           <h1>Circuit Elements Lab</h1>
-          <p className="sub">Circuits from the two laws up — every claim measured.</p>
+          <p className="sub">Circuits from KVL and KCL up to AC power and the diode.</p>
           <ReportIssue
             lab="Circuit Elements Lab"
             version={pkg.version}
@@ -403,7 +403,7 @@ export default function App() {
           ) : null}
           {isComplete && nextUp(exp) ? (
             <p className="next-up" data-role="next-up">
-              <span>Every step done.</span>
+              <span>All steps done.</span>
               <button type="button" className="tag is-on" onClick={() => choose(nextUp(exp))} title={`${nextUp(exp).toUpperCase()} · ${byId[nextUp(exp)].name}`}>
                 next up: {nextUp(exp).toUpperCase()} →
               </button>
@@ -482,7 +482,7 @@ export default function App() {
           <h2>Deeper</h2>
           {/* One fold: why it works, the solver's working with its check tables, and the hand-over. */}
           <details className="deeper-fold" data-role="deeper" open={deeperOpen} onToggle={(e) => setDeeperOpen(e.target.open)}>
-            <summary>Why it works, and the working</summary>
+            <summary>Explanation and working</summary>
             {exp.why ? (
               <div className="why" data-role="why">
                 <p className="hint">
@@ -608,7 +608,7 @@ export default function App() {
                     </span>
                   ))
               ) : (
-                <span className="flag warn">the solver refused — see below</span>
+                <span className="flag warn">no solution. The reason is below</span>
               )}
             </div>
           </div>
@@ -633,7 +633,7 @@ export default function App() {
                     <b>{refNode}</b> is the reference: it reads 0 V and every other node is measured from it. Tap it again for ground.
                   </>
                 ) : (
-                  <>Tap a node to make it the reference — the meter’s black lead can go anywhere.</>
+                  <>Tap a node to make it the reference. Any node can be the reference, as a meter’s black lead can.</>
                 )}
               </p>
             ) : null}
@@ -853,7 +853,7 @@ export default function App() {
             {currentView === 'sweep' && x.sweep ? <PlotCaption parts={caption} /> : null}
             {currentView === 'sweep' && x.sweep ? <PlotMarks marks={marks.sweep} /> : null}
             {!x.sol && currentView !== 'equations' ? (
-              <p className="hint">Nothing to show until the circuit has a solution.</p>
+              <p className="hint">No solution to plot. The reason is above.</p>
             ) : null}
           </div>
         </section>

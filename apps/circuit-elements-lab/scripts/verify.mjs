@@ -46,7 +46,7 @@ const clipped = () =>
   })
 
 async function openAllMath() {
-  // The working sits under the Deeper fold (Phase 8); open it first.
+  // The working sits under the explanation fold (Phase 8). Open it first.
   await page.evaluate(() => {
     const d = document.querySelector('[data-role=deeper]')
     if (d && !d.open) d.open = true
@@ -216,7 +216,7 @@ for (const name of names) {
       const kids = [...body.children]
       const own = body.querySelector('[data-role]:not([data-role=headline]):not([data-role=bridge]), canvas')
       return {
-        has: own !== null || /Nothing to show/.test(body.textContent),
+        has: own !== null || /No solution to plot/.test(body.textContent),
         headlineFirst: kids[0]?.getAttribute('data-role') === 'headline',
         bridgeSecond: kids[1]?.getAttribute('data-role') === 'bridge',
         headline: [body.querySelector('.headline-tag')?.textContent, body.querySelector('.headline-value strong')?.textContent].join(' = '),
@@ -717,7 +717,7 @@ console.log('   A1: three steps ticked by turning the knobs and switching the me
 
 // A3: tap a node and it becomes the reference — it reads 0, the others shift
 // by what it read, the elements do not move. Tap again for ground.
-await pick(names.find((n) => /ground is a choice/i.test(n)))
+await pick(names.find((n) => /ground a choice/i.test(n)))
 const readNode = (n) => page.locator(`.readout [data-node=${n}] b`).textContent().then((t) => si(t.replace(/\s*V$/, '')))
 const vA0 = await readNode('A')
 const vIn0 = await readNode('in')

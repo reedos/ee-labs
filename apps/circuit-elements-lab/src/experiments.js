@@ -438,7 +438,7 @@ export const EXPERIMENTS = [
   {
     id: 'a3',
     group: GROUPS[0],
-    name: 'Voltage is a difference; ground is a choice',
+    name: 'Voltage is a difference, ground a choice',
     terms: ['voltage', 'ground', 'node', 'kcl'],
     params: [Vs('E', 'Source V₁', 12), R('R1', 'R₁', 1000), R('R2', 'R₂', 2000), Vs('Vref', 'Lift V₀', 5)],
     net: (p) => ({
@@ -476,7 +476,7 @@ export const EXPERIMENTS = [
   {
     id: 'a4',
     group: GROUPS[0],
-    name: 'Which way is +: the passive sign convention',
+    name: 'The passive sign convention',
     terms: ['passive', 'voltage', 'current', 'power', 'kcl', 'kvl'],
     params: [Vs('E1', 'V₁', 12), Vs('E2', 'V₂', 5), R('R1', 'R', 1000)],
     net: (p) => ({
