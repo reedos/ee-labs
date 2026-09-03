@@ -1,4 +1,4 @@
-# Circuit Elements Lab — the plan
+# Circuit Elements Lab: the plan
 
 A lab that starts **at the very top of circuits**: charge, voltage, the two laws,
 resistive networks and their theorems, the elements that remember (C and L) and the
@@ -39,7 +39,7 @@ so the hand-derived form and the machine-solved network are two paths to one num
 
 ## 0. Two open decisions
 
-### Decision 1 — the name (settled: Circuit Elements Lab)
+### Decision 1: the name (settled: Circuit Elements Lab)
 
 The honest name for this lab would be "Circuit Lab". It is the lab about circuits *as
 circuits*, elements, laws, time, while the existing Circuit Lab is about circuits *as
@@ -61,7 +61,7 @@ needs to find it). A *rename swap* making the new lab "Circuit Lab" and the old 
 "Filter Lab" (most honest, most confusing while the current Circuit Lab carries its
 hand-over links).
 
-### Decision 2 — the splash order
+### Decision 2: the splash order
 
 When released, this is the lab to open first. Recommendation: the card goes **first**
 in the row, with a one-line kicker "Start here." Its card text names the path: "the
@@ -150,7 +150,7 @@ MNA is what detects the degenerate cases in §1.3. It also produces the circuit'
 **characteristic polynomial** from `det(sI − A)`, which is what the second-order
 experiments (§4 Group G) display and test against `s² + (R/L)s + 1/LC`.
 
-### 1.5 Exact time response — no timestep
+### 1.5 Exact time response: no timestep
 
 The state equation is solved in closed form. This is the propagator Power Lab's plan
 specifies in its §1.2, built here first and imported there:
@@ -223,7 +223,7 @@ agreement.
 Shared by schematic meters, topbar and math panel, all on exact waveforms: node
 voltages and branch currents at a time cursor. Per-element instantaneous power,
 average power, energy stored (`½Cv²`, `½Li²`) and dissipated (`∫i²R dt`, closed form
-per segment); RMS and mean by piecewise closed-form integrals. Peak, time-to-percent,
+per segment). RMS and mean by piecewise closed-form integrals. Peak, time-to-percent,
 zero crossings (for `ω_d`), successive peak ratios (for α). Phasor magnitude and
 angle; `P`, `Q`, `S`, power factor.
 
@@ -231,7 +231,7 @@ angle; `P`, `Q`, `S`, power factor.
 
 Across random values on every library circuit:
 
-1. **KCL residual** at every node = 0 (fp); **KVL** around every mesh = 0.
+1. **KCL residual** at every node = 0 (fp). **KVL** around every mesh = 0.
 2. **Tellegen**: `Σ_k v_k i_k = 0` over all elements, using KCL + KVL only.
 3. **Superposition**: response to (u₁ + u₂) = response to u₁ + response to u₂, for
    every linear circuit. And it *fails* for power, by the cross term `2 i₁ i₂ R`.
@@ -250,7 +250,7 @@ Across random values on every library circuit:
 
 ---
 
-## 2. Models — the element library
+## 2. Models: the element library
 
 | Element | Ideal law | Non-ideality toggles (each labelled) |
 | --- | --- | --- |
@@ -262,8 +262,8 @@ Across random values on every library circuit:
 | Switch | ideal make/break at `t = 0` or on a clock | `R_on`, `R_off` (finite ⇒ the spark in F6) |
 | Capacitor | `i = C dv/dt`, `q = Cv`, `w = ½Cv²` | ESR (series R). Initial voltage `v(0)` |
 | Inductor | `v = L di/dt`, `w = ½Li²` | winding R (series). Initial current `i(0)` |
-| Op-amp | nullor: `v₊ = v₋`, `i₊ = i₋ = 0`, output does what it must | finite `A` (10 … 10⁶). Rails `±V_sat`; (stretch) GBW as `A(s) = ω_t/s`, admissible in `systems`, labelled as a model |
-| Diode | ideal switch | constant drop `V_f`; PWL `V_f + r_d`. Exponential `I_s, n` (DC only, §1.6); Zener `V_z` (stretch) |
+| Op-amp | nullor: `v₊ = v₋`, `i₊ = i₋ = 0`, output does what it must | finite `A` (10 … 10⁶). Rails `±V_sat`. (stretch) GBW as `A(s) = ω_t/s`, admissible in `systems`, labelled as a model |
+| Diode | ideal switch | constant drop `V_f`. PWL `V_f + r_d`. Exponential `I_s, n` (DC only, §1.6). Zener `V_z` (stretch) |
 
 Sources: DC, step, square, triangle, sine (amplitude, frequency, phase, offset), and
 "switched at t = 0", all exact under §1.5.
@@ -307,15 +307,15 @@ Topbar: the circuit's headline numbers for the current experiment, e.g. `V_th`,
   "Underneath"), and the view buttons follow one canonical order (`VIEW_ORDER`:
   equations first, then power) so no experiment shows power before the equations.
   Groups A and B open the Equations view with a **primer**, KCL, KVL and Ohm's law in
-  plain words, so "KCL at in" is never a name without a meaning; A1–A4 list the
+  plain words, so "KCL at in" is never a name without a meaning. A1–A4 list the
   `kcl`/`kvl` terms and the suite checks Group A defines KCL where its equations first
   use it. The pane then runs in three numbered steps: (1) the rows, each term with its
-  signed live value and the row's sum; (2) the same rows as a **labelled matrix grid**
+  signed live value and the row's sum. (2) the same rows as a **labelled matrix grid**
  , rows named "KCL at A" / "V1 holds", columns the unknowns, every cell in letters
   (`1/R₁ + 1/R₂`, `−1/R₁`, `E₁`) with its number beneath, followed by the compact
   matrix in letters alone (`symbolicSystem` in `@ee-labs/network`, checked cell by
   cell against the numeric `M`/`r` for all 46 experiments at defaults and random
-  settings) and in numbers; (3) a **legend** tying every letter to a part and its
+  settings) and in numbers. (3) a **legend** tying every letter to a part and its
   present value. Substituted elements keep their identity: a capacitor's row shows
   `v_C1`, an inductor's `i_L1`, a switch `R_S1`, an op-amp `A_U1`. The **Power** view is
   a ledger (v, i, p = v × i, "which means it delivers/absorbs") over two equal-length
@@ -350,7 +350,7 @@ Topbar: the circuit's headline numbers for the current experiment, e.g. `V_th`,
   cursor. The projection onto the vertical axis is drawn out to the right *as the
   waveform*. The picture that makes phasors click, animated rather than described.
 - **i–v plane**, the diode curve (all four models overlaid on request), the load
-  line, the operating point; Newton's iterations drawn as the tangent-chasing they
+  line, the operating point. Newton's iterations drawn as the tangent-chasing they
   are.
 - **Energy**, stacked `½Cv²`, `½Li²`, `∫i²R` against energy supplied. The identity
   visible as a bar that always closes.
@@ -371,11 +371,11 @@ so a phone-width scope shows the shape:
   overdamped), 0 Ω (undamped).
 - Op-amp: `A = 10⁵`, rails ±12 V, `R_f = 10 kΩ`, `R_g = R_in = 1 kΩ` (gain 11 / −10).
 - Diode: `I_s = 1 nA`, `n = 1`, `V_T = 25.85 mV` (300 K), `V_f = 0.7 V`. Rectifiers
-  at 60 Hz, `V_p = 10 V`; LED at 2.0 V, 20 mA.
+  at 60 Hz, `V_p = 10 V`. LED at 2.0 V, 20 mA.
 
 ---
 
-## 4. Curriculum — 53 experiments in 9 groups (+2 stretch)
+## 4. Curriculum: 53 experiments in 9 groups (+2 stretch)
 
 Format: **the claim** the note makes → what the reader turns → what is **measured**
 against what **formula**. Every quoted number becomes a pinned test. Order follows a
@@ -388,20 +388,20 @@ Groups A–E are built (Phase 1, dark). Their entries below describe what shippe
 experiment ids are the ones the topbar shows (`A1 · A voltage source holds its
 voltage`). Groups F–I are the plan.
 
-### Group A — Elements and signs (4) · built
+### Group A: Elements and signs (4) · built
 
 Added after the first review: the lab opened on a three-resistor circuit and the
 reviewer wanted it to open on *one element*, with the sign convention stated before a
 single loop is walked.
 
 - **A1 · A voltage source holds its voltage.** One source, one resistor. The source
-  decides the voltage, the resistor decides the current: `i = E/R`. Turn R down and
+  fixes the voltage, the resistor fixes the current: `i = E/R`. Turn R down and
   the current climbs while E does not move. The whole top rail is one node and reads
   E everywhere. Measured: `v_R = E`, `i = E/R`, the source current `−i` (it leaves
-  the + terminal), `p_R = E²/R`; E unchanged at R = 10 Ω.
+  the + terminal), `p_R = E²/R`. E unchanged at R = 10 Ω.
 - **A2 · A current source holds its current.** The dual: `i_R = I`, `v = I·R`. Push R
-  to a megohm and 5 mA needs 5 kV; open the switch on the rail and an ideal current
-  source into an open circuit has no solution, the solver refuses it
+  to a megohm and 5 mA needs 5 kV. Open the switch on the rail and an ideal current
+  source into an open circuit has no solution, and the app reports the reason
   (`current-cutset`) and says why. Measured: `i_R = I` at 1 kΩ and 1 MΩ, `v = 5 kV`
   at 1 MΩ, the refusal (code and reason) with the on-screen switch open.
 - **A3 · Voltage is a difference. Ground is a choice.** A divider built on top of a
@@ -416,7 +416,7 @@ single loop is walked.
   negative reading is the answer with its direction attached. Measured: the sign
   flips, `p_R ≥ 0` both ways, the sign of each source's power.
 
-### Group B — Two laws (4) · built
+### Group B: Two laws (4) · built
 
 - **B1 · Current in equals current out.** KCL at node A: `i_{R₁} = i_{R₂} + i_{R₃}`
   however the three are set. Make `R₂` tiny and it takes almost everything, but the
@@ -432,7 +432,7 @@ single loop is walked.
   which absorbs. Raise `E₂` past `E₁` and it reverses. Measured: the current. Which
   source's power is negative, before and after the flip.
 
-### Group C — Series and parallel (4) · built
+### Group C: Series and parallel (4) · built
 
 - **C1 · Series: one current, shared voltage.** `V_k = E · R_k / ΣR`. A resistor ten
   times the others takes ten times the voltage. Measured: the ratio. The shares sum to E.
@@ -446,7 +446,7 @@ single loop is walked.
   when `R₁/R₂ = R₃/R₄` whatever the supply; 1 % of `R₄` moves the bridge by about
   `E/4 × 1 %`. Measured: zero at balance. The small-signal sensitivity.
 
-### Group D — Analysis and theorems (6) · built
+### Group D: Analysis and theorems (6) · built
 
 - **D1 · Nodal analysis: one equation per node.** `N − 1` KCL equations generated live
   (§1.2), assembled, solved. Measured: KCL at every node. The one-unknown hand form
@@ -459,17 +459,17 @@ single loop is walked.
   `E₂` above `E₁R₂/(R₁+R₂)` reverses `i₂`.
 - **D4 · Superposition: one source at a time.** Voltages and currents superpose to the
   last digit. Power does not, by `2·i₁·i₂·R`. Measured: both.
-- **D5 · Thévenin, three ways.** (i) `V_oc/I_sc`; (ii) kill the sources and look in;
+- **D5 · Thévenin, three ways.** (i) `V_oc/I_sc`. (ii) kill the sources and look in;
   (iii) sweep `R_L` and fit the terminal line. Measured: all three `R_th` agree with
   `R₁‖R₂‖R₃`. The load line's intercepts are `V_oc` and `I_sc`.
 - **D6 · Maximum power transfer.** `P_L` peaks at `R_L = R_s` with 50 % efficiency;
   efficiency climbs past it while power falls. Measured: argmax, peak, η.
 
-### Group E — Op-amps (8 + 1 stretch) · built
+### Group E: Op-amps (8 + 1 stretch) · built
 
 - **E1 · A dependent source.** A VCVS in a resistive network: `v_out = A·v_in`
   whatever the load. The dependent source delivers more than the input source works.
-  Measured: both; Tellegen still holds (B3's promise).
+  Measured: both. Tellegen still holds (B3's promise).
 - **E2 · The op-amp as a black box.** Added after the first review. A dashed frame
   around `R_in`, a VCVS of gain A and `R_out`, the package, with the transistors and
   supply pins left out on purpose. The IDEAL op-amp: `A = ∞`, `R_in = ∞`, `R_out = 0`,
@@ -502,7 +502,7 @@ single loop is walked.
   output back to the *non-inverting* input: hysteresis with thresholds
   `±V_sat · R₁/(R₁ + R₂)`. A noisy input crosses cleanly once. Control Lab's "latches
   to a rail", built. Measured: both thresholds. One transition per crossing.
-### Group F — Elements that remember, and the first-order equation (7) · built
+### Group F: Elements that remember, and the first-order equation (7) · built
 
 - **F1 · The capacitor: current only when the voltage changes.** `i = C dv/dt`.
   Drive with a triangle: the current is a square wave, amplitude `C · slope`. Drive
@@ -527,7 +527,7 @@ single loop is walked.
   **independent of R**, R only sets how fast. The energy view shows the bar closing
   at every R. Measured: the three energies at R = 100 Ω, 1 kΩ, 10 kΩ.
 - **F6 · The interrupted inductor: where sparks come from.** A steady 12 mA in
-  1 H; open the switch. Ideal: `di/dt → −∞`, `v → −∞`, no solution. Toggle a finite
+  1 H. Open the switch. Ideal: `di/dt → −∞`, `v → −∞`, no solution. Toggle a finite
   `R_off = 1 MΩ`: the inductor forces its 12 mA through it, a 12 kV spike, decaying
   with `τ = L/R_off = 1 µs`. Measured: `V_spike = I₀ · R_off`, `τ`. The note points
   forward: the flyback diode that Power Lab's every converter relies on is the cure.
@@ -537,7 +537,7 @@ single loop is walked.
   Toggle finite A: the ramp bends into an exponential toward `−A·V`, the integrator
   is a first-order low-pass with a very long τ, `τ = (A+1)RC`. Measured.
 
-### Group G — Second order: one equation, three faces (7) · built
+### Group G: Second order: one equation, three faces (7) · built
 
 - **G1 · The equation.** Series RLC, KVL, differentiated once:
   `L d²i/dt² + R di/dt + i/C = dv_s/dt`. Or for the capacitor voltage,
@@ -576,7 +576,7 @@ single loop is walked.
   gave. Measured: α vs formula. The critical `R = ½√(L/C)`. Circuit Lab's "The same
   R, the opposite effect" is this claim in frequency. The two are cross-linked.
 
-### Group H — Sinusoids and phasors (6) · built
+### Group H: Sinusoids and phasors (6) · built
 
 Every H circuit has the phasor view (arrows turning with the cursor beside the
 waveforms their tips draw, tip-to-tail sum closing on `V_s`), the scope with the
@@ -588,7 +588,7 @@ knob is declined with the reason, never clamped into a different circuit).
   `v_C = forced + natural`, the natural part `−v_f(0)·e^(−t/τ)` existing only because
   the forced sinusoid would not have started from zero. Measured: `tr − ghost` equals
   `−v_f(0)e^(−t/τ)` at five instants. Under 1 % of |V_C| after 5τ and under 10⁻⁹ after
-  25τ; the source phase sets the natural part's size (φ = 135° largest, 45° none) but
+  25τ. The source phase sets the natural part's size (φ = 135° largest, 45° none) but
   not its shape.
 - **H2 · Phasors: the arrow that draws the wave.** Each steady-state quantity as
   `amp∠φ`, `x(t) = Im{X e^{jωt}}`. Measured: `V_R + V_C = V_s` to fp; `V_C` 90° behind
@@ -606,7 +606,7 @@ knob is declined with the reason, never clamped into a different circuit).
 - **H5 · AC power: real, reactive, apparent.** RL 100 Ω / 0.3 H from 10 V peak at
   50 Hz; `S = ½V·I*` per element in the AC-power table with Tellegen's row (ΣP = ΣQ = 0).
   Measured: `|I| = 72.8 mA` lagging 43.3°; `P = 265 mW` all in R, `P_L` exactly 0
-  (arithmetic noise below 10⁻¹²|S| read as 0); RMS 7.07 V / 51.5 mA; 364 mVA, pf 0.728,
+  (arithmetic noise below 10⁻¹²|S| read as 0). RMS 7.07 V / 51.5 mA; 364 mVA, pf 0.728,
   Q = 250 mvar; `p(t)` on the ghost has DC and 2f only, harmonics 1, 3, 4 below 10⁻⁹.
 - **H6 · Frequency response: one sine at a time.** RC,
   `H = 1/(1 + jωRC)` swept two decades either side of `f_c`: the Bode view, |H| in dB
@@ -615,7 +615,7 @@ knob is declined with the reason, never clamped into a different circuit).
   −89.4° at 100 f_c. All 241 sweep points equal the closed form to 10⁻¹². The
   hand-over, **Open in Circuit Lab**, is exact and tested both ways (§8 Phase 3).
 
-### Group I — The diode: the first nonlinear element (7 + 1 stretch) · built
+### Group I: The diode: the first nonlinear element (7 + 1 stretch) · built
 
 - **I1 · The curve, and four ways to approximate it.** Shockley:
   `i = I_s (e^{v/nV_T} − 1)`, `V_T = kT/q = 25.85 mV`. Overlaid: the ideal switch,
@@ -646,7 +646,7 @@ knob is declined with the reason, never clamped into a different circuit).
   The textbook approximation `ΔV ≈ V_p/(fRC)` (half-wave) sits beside the exact
   event-based answer with its error shown, shrinking as RC grows (Rule 3: the
   approximation carries its guard). Measured: exact ripple. Approximation error vs
-  RC; conduction angle narrowing. This is Power Lab's rectifier group in embryo, and
+  RC. Conduction angle narrowing. This is Power Lab's rectifier group in embryo, and
   the proof that the event machinery works.
 - **I7 · Clipper and clamper.** Diode + reference clips at `±(V_ref + V_f)`. Diode +
   capacitor shifts the DC level so the waveform's peak sits at `−V_f`. Measured:
@@ -681,18 +681,18 @@ voltage at all, the solver says so, by name.*
   "2ω" and "2f" claims to be seen on a real FFT.
 - **→ Control Lab**: not directly. The RC/RLC plants already reach it through Circuit
   Lab, and this lab does not duplicate that path.
-- **→ Power Lab** (future): F6's spark → the freewheel diode; I6 → Power Lab's Group E rectifiers;
+- **→ Power Lab** (future): F6's spark → the freewheel diode. I6 → Power Lab's Group E rectifiers;
   and the engine (§1.5–1.6) itself, imported.
 
 ---
 
 ## 6. Testing discipline
 
-- **Unit** (`packages/network`): stamps against hand-assembled matrices; LU against
+- **Unit** (`packages/network`): stamps against hand-assembled matrices. LU against
   known solutions. The equation printer against expected strings. State-space
-  extraction against hand `(A, B)` for RC, RL, series and parallel RLC; the 2×2
+  extraction against hand `(A, B)` for RC, RL, series and parallel RLC. The 2×2
   propagator against series `expm` at random matrices *and* against the scalar
-  formulas. Events against analytic crossing times; Newton against a bracketing
+  formulas. Events against analytic crossing times. Newton against a bracketing
   solver. Every refusal message in §1.3.
 - **Invariants** (§1.9), fuzzed across the library.
 - **Experiments**: every quoted number in §4 pinned, the way `presets.test.js` pins
@@ -711,7 +711,7 @@ voltage at all, the solver says so, by name.*
 
 ---
 
-## 7. Integration — and the dark launch
+## 7. Integration: and the dark launch
 
 Identical to Power Lab's §7, so the two labs share one mechanism:
 
@@ -719,7 +719,7 @@ Identical to Power Lab's §7, so the two labs share one mechanism:
   and the harnesses test the real deployment. Unlisted, not secret.
 - `apps/circuit-elements-lab/RELEASE_STATUS` reads `dark`. A test asserts that while it does,
   the splash, root README, and the other labs' LabNav contain **no** reference to
-  Circuit Elements Lab; Circuit Elements Lab's own nav may link outward. Flip the word to `released`
+  Circuit Elements Lab. Circuit Elements Lab's own nav may link outward. Flip the word to `released`
   and the same test inverts: it demands the splash card (first position, "Start
   here" kicker, Decision 2), the README row, and the nav entries.
 - The flip is **Reed's action**, after the Phase 6 gate.
@@ -738,7 +738,7 @@ state, and averaging.
    ways, refusals. `packages/ui/Schematic.jsx` renderer with live meters. App shell,
    dark deploy, `RELEASE_STATUS` test. **Groups A–E (E1–E8).** Exit: KCL/KVL/Tellegen/
    superposition invariants fuzzed green. All Group A–E numbers pinned. *Shipped
-   dark 2026-08-30; Groups A and E2 added on review 2026-09-01.*
+   dark 2026-08-30. Groups A and E2 added on review 2026-09-01.*
 2. **Phase 2, Dynamics.** State-space extraction, exact propagator (n = 1, 2, ≥ 3),
    step/square/ramp/sine inputs, switch-at-t = 0 with continuity, energy measures.
    Scope, energy and sweep views. **Groups F and G**, RC, RL and RLC with the
@@ -750,7 +750,7 @@ state, and averaging.
    sentence measured in `experiments.test.js`.*
 3. **Phase 3, Phasors.** Complex MNA, phasor diagram view, long-time-limit
    agreement, AC power measures, hand-over to Circuit Lab. **Group H.** Exit:
-   phasor-vs-time invariant; H6 hand-over exact and tested both ways. *Shipped dark
+   phasor-vs-time invariant. H6 hand-over exact and tested both ways. *Shipped dark
    2026-09-01: `complex`/`solveAC`/`readoutAC`/`acPower`/`drivingPointZ`/`sweepAC` in
    `packages/network`, the steady-state ghost in `transient`, phasor, impedance,
    Bode and AC-power views, H1–H6. The hand-over is `circuitLink.js` in
@@ -772,11 +772,11 @@ state, and averaging.
    notes that are alive · 7 one plot language · 8 the screen as one composition
    (deep links are the parallel session's territory) · 9 students score it.
    **Step 0, claim bugs, shipped 2026-09-02:** A2's refusal is now reachable
-   from a switch knob on screen, not only from a test's private netlist; D2's
+   from a switch knob on screen, not only from a test's private netlist. D2's
    "printed system" count is five (three node voltages and two source currents,
-   the math panel computing the words from the unknown list); H1 points at F3,
+   the math panel computing the words from the unknown list). H1 points at F3,
    the RC experiment, not F2 (the RL one). The topbar gives a refusal's reason
-   in words (`refusalReason`) and keeps the code for the report; H2, H4 and H6
+   in words (`refusalReason`) and keeps the code for the report. H2, H4 and H6
    open with the source at its peak instead of a zero crossing, so H2's meters
    read KVL as 2.5 V + 2.5 V = 5 V; "turned 1080.0°" reads "3 cycles + 90.0°"
    (`turned`/`turnedLabel`). New test classes measure what the numeric check rows
@@ -821,7 +821,7 @@ state, and averaging.
    from B3, the experiment that introduces power. The "N nodes · M unknowns"
    chip explains both words on hover. Knobs take the drawing's names: Source V₁,
    V₁/V₂, I₁, Lift V₀, R_off of S₁ (`of: 'S1'`). Preset chips carry their unit
-   (1.59 kHz, not 1591.5); E3's op-amp is a switch, ideal by default, with a
+   (1.59 kHz, not 1591.5). E3's op-amp is a switch, ideal by default, with a
    gain knob that applies when it is "finite gain", no more "0 = ideal". The
    hand-over keeps its URL fragment on `data-fragment` instead of printing it;
    H6 is "Frequency response: one sine at a time". The package description
@@ -856,7 +856,7 @@ state, and averaging.
    once B3 has introduced it, then the node voltages, each column snapped to its
    own scale so E2's femtowatts read 0 W, with the solver's matrix folded under
    "The solver's own working, N equations in N unknowns" (a one-line KCL/KVL
-   primer for A, the three-law card for B); D5 opens on its equivalent, G1 on
+   primer for A, the three-law card for B). D5 opens on its equivalent, G1 on
    the scope. Six experiments carry a drawing of their theorem in
    `src/theorems.js`: B2 the loop's three voltages adding to zero, D3 the two
    mesh rows with both sides read live, D4 one schematic per source with the
@@ -875,12 +875,12 @@ state, and averaging.
    **Step 3, finish the plots, shipped 2026-09-02:** the plots now carry the
    lesson's own marks as data. `src/marks.js` gives eight experiments a list of
    marks computed from the solution, F3 the level E, the 63.2 % point at τ and
-   the starting-slope tangent reaching E at τ; F4 the level, the exponential
-   approach and v_A(0); F6 the spark v_S1(0⁺) and the trickle E/(R + R_off), none
-   when the switch is ideal; G4 the first peak from `extrema`, the level alone
-   when the ringing is gone; C3 the unloaded divider value E·R₂/(R₁ + R₂) from
-   `x.thevenin.voc`; D6 the peak power at R_L = R_s and the 50 % efficiency
-   there; H4 |Z| = R and |H| = Q at ω₀ with a curve of the resonant peak; H6 the
+   the starting-slope tangent reaching E at τ. F4 the level, the exponential
+   approach and v_A(0). F6 the spark v_S1(0⁺) and the trickle E/(R + R_off), none
+   when the switch is ideal. G4 the first peak from `extrema`, the level alone
+   when the ringing is gone. C3 the unloaded divider value E·R₂/(R₁ + R₂) from
+   `x.thevenin.voc`. D6 the peak power at R_L = R_s and the 50 % efficiency
+   there. H4 |Z| = R and |H| = Q at ω₀ with a curve of the resonant peak. H6 the
    −3.01 dB point at f_c, the −20 dB/decade asymptote and its slope, each a
    kind (level, point, segment, curve, time) with a label naming the quantity.
    One shared `drawDataMarks` in `timePlot.js` draws them on the scope, the
@@ -889,8 +889,8 @@ state, and averaging.
    frame the marks lose their on-canvas labels and the caption `PlotMarks` under
    the plot names them, glyph, label, value in the plot's unit, so a phone
    reads the same lesson. Hidden traces are gone. A dimmed second trace is thin,
-   dashed and translucent instead of a lighter copy of the first; F6's v_switch
-   is dashed over i_L, F7 no longer draws an i_in that sat under i_L; the right
+   dashed and translucent instead of a lighter copy of the first. F6's v_switch
+   is dashed over i_L, F7 no longer draws an i_in that sat under i_L. The right
    axis takes its own span whenever zero-alignment would leave the trace under
    40 % of the frame (`rightSpan`), with its own dashed zero line when the zeros
    part, so G4–G7's v_C fills the frame (0.81) instead of a band. G3's damping
@@ -899,9 +899,9 @@ state, and averaging.
    step-limited transient, so the curve is smooth and the fastest-R argument
    sits at a real minimum inside (0.75·R_crit, R_crit). The engine still gives
    the dot at the knob's R and the test checks both agree to six places. C3's
-   knob label ducks under the level line; D6 reads its ticks in mW and its
-   efficiency on a 0–100 % right axis; H1's cursor sits near 2τ so the natural
-   part is still visible; H2's angle reads as turns plus degrees
+   knob label ducks under the level line. D6 reads its ticks in mW and its
+   efficiency on a 0–100 % right axis. H1's cursor sits near 2τ so the natural
+   part is still visible. H2's angle reads as turns plus degrees
    (`turnedLabel`). The DampingCanvas dot now lands on its log axis. Tests:
    `marks.test.jsx` (18) checks every mark against the engine (F3's tangent
    slope, F6's spark as `tr.at(0).sol.volt.S1`, D6's efficiency as p_RL/−p_V1,
@@ -934,12 +934,12 @@ state, and averaging.
    opens at 400 Ω, on the overdamped side, chips 800/400/160/50, so its
    marker is not G2's critical point. Tests: no view label or title before D5
    matches /Th[ée]venin/ and every one from D5 on is the named label. No two
-   experiments share `[layout.items, defaults]`; A1's terms start with charge
-   and its note defines voltage and current before its first digit; C4's note
+   experiments share `[layout.items, defaults]`. A1's terms start with charge
+   and its note defines voltage and current before its first digit. C4's note
    says diamond, two dividers side by side and B2 (registered in the
-   cross-reference table as "two resistors and a source"); E7's output is
-   10·(1.2 − 1) and every |i| > 1 µA; the Ohm primer names Ohm's law and Group
-   B and not KVL; G3's zeta at the defaults is 2 and `damping.Rcrit` is a
+   cross-reference table as "two resistors and a source"). E7's output is
+   10·(1.2 − 1) and every |i| > 1 µA. The Ohm primer names Ohm's law and Group
+   B and not KVL. G3's zeta at the defaults is 2 and `damping.Rcrit` is a
    quantity path the note's "200 Ω" is measured against.
    **Step 6, notes that are alive, shipped 2026-09-02:** the lesson answers
    back instead of retiring. `live.js` binds every number in a note to what it
@@ -1065,14 +1065,14 @@ state, and averaging.
    truly scrolled to its top). Tests (progress 67,
    reference 8, plotText +1): every lesson's every measurable step is met by
    its own setting and by nothing at the defaults, the first step is active on
-   arrival; A3's re-reference arithmetic. Every switch is a knob's or a time
+   arrival. A3's re-reference arithmetic. Every switch is a knob's or a time
    switch and the knob really throws it. A time mark's name steps under a mark
    label already on the top row. verify.mjs drives it: the active step's knob
-   is the marked open one and its element is lit; A1's three steps tick off by turning the knobs
+   is the marked open one and its element is lit. A1's three steps tick off by turning the knobs
    and switching the meters, the picker marks it and a reload keeps it. A node
    tapped on A3 reads 0 with the others shifted and the ammeters unmoved. The
-   switch on F3 restarts the sweep; Equations rows light their node and element;
-   the tab bar's Knobs and Lesson go where they say; Knobs ends above 900 px for
+   switch on F3 restarts the sweep. Equations rows light their node and element;
+   the tab bar's Knobs and Lesson go where they say. Knobs ends above 900 px for
    all 46 at 1280×900. No solver-speak on the topbar's face. Deep links between
    labs are the parallel session's (`packages/ui/src/deeplink.js`) and are not
    part of this step.
@@ -1212,7 +1212,7 @@ state, and averaging.
   op-amps. Mitigation: refusals are features with tested messages (§1.3), and the
   library is fuzzed for rank before any values are touched.
 - **Scope creep toward SPICE.** The engine will be able to do more than the lessons
-  need. Mitigation: `§9` and CORE_SCOPE; a new element type needs a new experiment
+  need. Mitigation: `§9` and CORE_SCOPE. A new element type needs a new experiment
   that needs it, not the other way round.
 - **The event solver's edge cases** (grazing events, simultaneous events, chattering
   at a rail). Mitigation: bisection on exact segments has no stiffness problem. Cap

@@ -1,4 +1,4 @@
-# Prose style — the rules
+# Prose style: the rules
 
 The suite's writing standard. It applies to every word a reader can see: on-screen
 text in the five labs, the splash page, the root documents, and the plan files.

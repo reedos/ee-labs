@@ -1,10 +1,10 @@
-# Control Lab — agent brief
+# Control Lab: agent brief
 
 You are one of three agents working this repo in parallel. **Your territory is
 `apps/control-lab/` only.** Another agent owns `apps/circuit-lab/`. A third owns
 `apps/signal-lab/` and the shared `packages/*`. Reed reviews everything.
 
-## Boundaries — read first
+## Boundaries: read first
 
 - Edit only inside `apps/control-lab/`. Treat `packages/*` and the other two
   apps as **read-only**: read them for patterns as much as you like, change
@@ -86,7 +86,7 @@ classes of defect Reed personally caught in Signal Lab, generalized into an
 audit checklist. Your adversarial-audit item below MEANS working through that
 checklist against your app. Items 1–6 (sentences frozen while controls move;
 lead with the base rule. Phase beside magnitude. Axes named/united/adaptive;
-can the feature be SEEN; rendering honesty) apply to you verbatim.
+can the feature be SEEN. Rendering honesty) apply to you verbatim.
 
 ## Worklist, in order
 

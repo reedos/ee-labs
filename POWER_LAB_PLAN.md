@@ -1,4 +1,4 @@
-# Power Lab — the plan
+# Power Lab: the plan
 
 A fourth lab for the suite: **power electronics**, from "why switch at all" through
 converters, magnetics, rectifiers, inverters, losses, and closing the loop. Splash
@@ -19,7 +19,7 @@ Decisions already made (Reed, 2026-09-01):
   EMI and thermal, the things §9 once listed as non-goals, are v1 groups I–N.
   The engine was built general enough to carry them (event-driven, n-state,
   polyphase sources as oscillator state), so the cost is curriculum, not
-  machinery; §9 now says what is *still* out.
+  machinery. §9 now says what is *still* out.
 
 The suite's one rule applies with no exemptions: **every explanatory sentence is a
 claim about physics, and a test must measure it.** Power electronics is unusually
@@ -138,7 +138,7 @@ Fuzzed across the whole component/duty/frequency space, these must hold:
    Σ losses *as an identity* (losses are integrals of the same exact waveform).
 4. **Continuity**: M(D) continuous across the CCM/DCM boundary. Waveforms
    continuous across every event.
-5. **Consistency**: closed-form RMS/avg vs dense numerical integration; FFT
+5. **Consistency**: closed-form RMS/avg vs dense numerical integration. FFT
    fundamental vs analytic Fourier coefficient.
 6. **Steady state is steady**: propagating x_ss one more period returns x_ss.
 
@@ -184,17 +184,17 @@ Ripple closed forms (CCM, ideal):
     (…and the reason they differ: the buck's cap sees a triangle, the boost's cap
      sees the load current chopped away entirely during DT — see G3.)
 
-### 2.2 Non-idealities — each a toggle, each labelled
+### 2.2 Non-idealities: each a toggle, each labelled
 
 | Toggle | Enters as | The claim it bends, and how |
 |---|---|---|
 | MOSFET R_on | series R in the on-state A matrix | M droops. Conduction loss I²_rms·R_on appears |
 | Diode V_f (+ r_d) | affine offset in the diode-state B | M drops by V_f·(interval share). Loss V_f·I_avg + r_d·I²_rms. The sync-rectifier lesson |
 | Inductor ESR R_L | series R in every state | **boost's M(D) peak**: M = D′/(D′² + R_L/R), max 1/(2√(R_L/R)) at D′ = √(R_L/R), the reason D→1 gives smoke, not infinity |
-| Capacitor ESR | output v = v_C + ESR·i_C | ripple gains a square edge on top of the triangle; ESR heating I²_C,rms·ESR |
+| Capacitor ESR | output v = v_C + ESR·i_C | ripple gains a square edge on top of the triangle. ESR heating I²_C,rms·ESR |
 | Switching time t_sw | loss term ½·V·I·(t_r+t_f)·f_s (loss-model, not waveform, and the panel says so) | η vs f_s bends over. The frequency tradeoff |
 | Source/diode resistance R_s (rectifiers) | series R while conducting | conduction angle, peak-current spikes. *Load-bearing*: an ideal diode straight into a capacitor is ill-posed (infinite current), and the lesson says exactly that, the resistance is not a blemish, it is why the circuit computes |
-| Saturation I_sat, L_sat | **piecewise-linear inductance**: L above/below \|i\| = I_sat, crossing = an event | keeps the piecewise-LTI framework *exact through saturation*; the current runaway cliff in D2 |
+| Saturation I_sat, L_sat | **piecewise-linear inductance**: L above/below \|i\| = I_sat, crossing = an event | keeps the piecewise-LTI framework *exact through saturation*. The current runaway cliff in D2 |
 
 Every toggled row in the math panel switches from the ideal closed form to the
 corrected one **with the correction shown**, never a silent renumbering.
@@ -256,20 +256,20 @@ datasheet fashion, stated in the notes:
 - Buck: 12 V → 5 V (D = 0.417), L = 100 µH, C = 100 µF, R = 5 Ω, f_s = 100 kHz.
 - Boost: 5 V → 12 V (D = 0.583), L = 100 µH, C = 220 µF, R = 24 Ω, f_s = 100 kHz.
 - Rectifiers: 120 V/60 Hz line, 12.6 V transformer secondary, R_s = 0.5 Ω,
-  V_f = 0.7 V, C = 100–4700 µF, load 10 Ω–1 kΩ; the six-pulse case is the same
+  V_f = 0.7 V, C = 100–4700 µF, load 10 Ω–1 kΩ. The six-pulse case is the same
   secondary per phase, so its DC output (≈ 1.35·V_LL) lands near 28 V.
 - Inverter: V_dc = 48 V full bridge, f₁ = 60 Hz, f_sw = m_f·f₁ with m_f ∈
   {15, 33, 63} (odd, triplen-avoiding options later), LC = 1 mH/10 µF.
 
 ---
 
-## 4. Curriculum — 54 experiments in 14 groups
+## 4. Curriculum: 54 experiments in 14 groups
 
 Format per experiment: **the claim** the note makes → what the reader turns → what
 is **measured** against what **formula**. Every quoted number below becomes a
 pinned test the way `presets.test.js` pins Signal Lab.
 
-### Group A — Why switching (3)
+### Group A: Why switching (3)
 
 - **A1 · The regulator that is a resistor.** A linear regulator dropping 12 V to
   5 V at 1 A is a 7 W heater wearing a heatsink: η = V_o/V_in = 41.7%, *independent
@@ -286,13 +286,13 @@ pinned test the way `presets.test.js` pins Signal Lab.
   two decades under f_s, the ripple that leaks is the harmonics that survive.
   Measured: ripple vs the closed form. F₀ against Circuit Lab's own formula.
 
-### Group B — The buck (6)
+### Group B: The buck (6)
 
 - **B1 · Volt-second balance.** In steady state an inductor's average voltage is
   exactly zero, otherwise its current would walk. The triangle explained from
   ⟨v_L⟩ = 0: V_on·DT = V_off·D′T, i.e. (V_in−V_o)·D = V_o·(1−D). Measured: ⟨v_L⟩
   (must be 0 to fp), and the up/down slopes (V_in−V_o)/L and −V_o/L individually.
-- **B2 · V_out = D·V_in.** Drag D; the measured line sits on the prediction until
+- **B2 · V_out = D·V_in.** Drag D. The measured line sits on the prediction until
   a non-ideality toggle bends it, and the panel shows the corrected form with the
   correction visible.
 - **B3 · Ripple, priced.** ΔI_L = V_o(1−D)/(L f_s), ΔV_o = ΔI_L/(8 f_s C), the 8
@@ -310,7 +310,7 @@ pinned test the way `presets.test.js` pins Signal Lab.
   synchronous FET (R_on): the rent drops from a fixed 0.7 V to I·R_on, and the
   low-V_out story (why your phone's converters are all synchronous) tells itself.
 
-### Group C — Boost & buck-boost (5)
+### Group C: Boost & buck-boost (5)
 
 - **C1 · 1/(1−D).** The inductor charges from V_in, then *stacks on top of it*.
   M = 1/(1−D) measured. The panel derives it from ⟨v_L⟩ = 0 in two lines.
@@ -327,7 +327,7 @@ pinned test the way `presets.test.js` pins Signal Lab.
   P_o exactly in DCM, and the inductor's mass budget follows. Measured: ½L(i_pk²−
   i_min²)·f_s against P_o + the CCM direct-path accounting.
 
-### Group D — Magnetics (5)
+### Group D: Magnetics (5)
 
 - **D1 · Volt-seconds are flux.** ΔB = ∫v dt/(N·A_e). Same volt-seconds at 60 Hz
   and 100 kHz differ by ~1600× in flux excursion, why the line transformer is
@@ -361,7 +361,7 @@ pinned test the way `presets.test.js` pins Signal Lab.
   has nowhere to go at turn-off: the spike, and why clamps exist. Third state
   (i_lk). Qualitative if the exact model proves heavy.
 
-### Group E — AC in: rectifiers (6)
+### Group E: AC in: rectifiers (6)
 
 - **E1 · Half-wave + capacitor.** Conduction only while v_in exceeds v_C: short
   gulps near each crest. Ripple ≈ I_load/(f·C) (first-order, and the panel says
@@ -388,14 +388,14 @@ pinned test the way `presets.test.js` pins Signal Lab.
   event engine with the source carried as oscillator state, three phases being
   three linear forms in it.
 
-### Group F — DC out as AC: inverters (4)
+### Group F: DC out as AC: inverters (4)
 
 - **F1 · The square-wave inverter.** Signal Lab's square wave, now carrying watts:
   fundamental rms = (4/π)V_dc/√2, THD = √(π²/8 − 1) = 48.3%, measured both by
   closed-form Fourier and by FFT, which must agree. The filtering problem stated.
 - **F2 · Sine PWM.** Compare a sine at m_a to a triangle at m_f: the pulse widths
   breathe. Fundamental peak = m_a·V_dc (full bridge, m_a ≤ 1), measured across
-  the m_a sweep, and the overmodulation departure beyond m_a = 1 shown honestly.
+  the m_a sweep, and the overmodulation departure beyond m_a = 1 shown as it is.
 - **F3 · The spectrum has families.** Baseband fundamental, then sideband
   clusters around m_f, 2m_f, …, the LC filter's job is to keep the families and
   surrender the fundamental. Measured: cluster locations, filter attenuation at
@@ -404,7 +404,7 @@ pinned test the way `presets.test.js` pins Signal Lab.
   from the filter corner, and Group G will price the same sweep in switching
   loss. One tradeoff, seen from both sides.
 
-### Group G — Losses & efficiency (4)
+### Group G: Losses & efficiency (4)
 
 - **G1 · Conduction vs switching.** P_cond ∝ I²_rms·R_on (flat in f_s);
   P_sw ≈ ½V·I·(t_r+t_f)·f_s (linear in f_s): η(f_s) bends over exactly where they
@@ -421,12 +421,12 @@ pinned test the way `presets.test.js` pins Signal Lab.
   P_in − P_out as an identity. The reader toggles mechanisms and watches the
   ledger re-balance, bookkeeping as pedagogy.
 
-### Group H — Closing the loop (3)
+### Group H: Closing the loop (3)
 
 - **H1 · The averaged model.** Overlay: the smooth averaged trajectory threading
   the exact switching waveform through a load step. Where averaging is honest
   (f ≪ f_s) and where it is blind (the ripple it discards).
-- **H2 · The buck is a plant.** G_vd(s) closed form; **hand over to Control Lab**
+- **H2 · The buck is a plant.** G_vd(s) closed form. **hand over to Control Lab**
   (`plant=custom:…`, the grammar exists). Close the loop there. Come back and
   verify the closed-loop step against the switched truth.
 - **H3 · The zero in the wrong half.** Boost: step D upward and V_o *dips first*
@@ -435,7 +435,7 @@ pinned test the way `presets.test.js` pins Signal Lab.
   handed to Control Lab to see the bandwidth ceiling it imposes. The lab's best
   single moment: a nonminimum-phase zero you can watch happen in a circuit.
 
-### Group I — Three-phase out (3)
+### Group I: Three-phase out (3)
 
 - **I1 · Six-step.** Three half-bridges, 120° apart, each a square wave: the
   line-to-line voltage is a quasi-square with a 60° gap and the phase voltage a
@@ -450,7 +450,7 @@ pinned test the way `presets.test.js` pins Signal Lab.
   single-phase inverter's. Measured: p(t) flat to rounding, the single-phase
   case's 2f swing beside it.
 
-### Group J — Isolated DC-DC: the half-bridge's siblings (3)
+### Group J: Isolated DC-DC: the half-bridge's siblings (3)
 
 - **J1 · Forward.** A buck through a transformer: M = n·D, with a reset winding
   and D < 0.5 so the core resets, the magnetising current's own volt-second
@@ -463,7 +463,7 @@ pinned test the way `presets.test.js` pins Signal Lab.
   M = 2·n·D at a switch stress of V_in rather than 2·V_in. The three compared
   on one table, stress, utilisation, parts, with every column measured.
 
-### Group K — Resonant conversion (3)
+### Group K: Resonant conversion (3)
 
 - **K1 · The series resonant tank.** An LC tank driven by a square wave, loaded
   through a rectifier: current is a sine, and above resonance it lags the
@@ -478,7 +478,7 @@ pinned test the way `presets.test.js` pins Signal Lab.
   zero and its turn-off loss small. The hard-switched bridge pays the full
   ½VI·t per edge. G1's loss crossover, redrawn with a resonant line under it.
 
-### Group L — Motor drives (3)
+### Group L: Motor drives (3)
 
 - **L1 · The DC motor is an R–L–EMF load.** A chopper into R_a, L_a and a back
   EMF K·ω: the armature current is the buck's inductor current with the output
@@ -492,13 +492,13 @@ pinned test the way `presets.test.js` pins Signal Lab.
   commutates every 60° and the torque ripples where it does. E6's pair-picking
   rule, run backwards. Measured: commutation angles, torque ripple depth.
 
-### Group M — EMI (3)
+### Group M: EMI (3)
 
 - **M1 · What the input sees.** The buck's input current is a pulse train. Its
   spectrum is E4's problem at 100 kHz. Measured: harmonic magnitudes vs the
   closed-form pulse-train Fourier series, the input capacitor's share.
 - **M2 · The input filter.** An LC in the line: attenuation at f_s vs Circuit
-  Lab's |H|; the damping it needs so it does not resonate with the converter's
+  Lab's |H|. The damping it needs so it does not resonate with the converter's
   negative input resistance (Middlebrook's criterion, measured as the impedance
   ratio).
 - **M3 · The switch node rings.** Parasitic inductance and the diode's
@@ -506,7 +506,7 @@ pinned test the way `presets.test.js` pins Signal Lab.
   the parasitic values, and the snubber that damps it (with its cost in G's
   ledger).
 
-### Group N — Thermal (3)
+### Group N: Thermal (3)
 
 - **N1 · Loss becomes temperature.** Junction-to-ambient as a thermal
   resistance: T_j = T_a + P·R_th. The loss ledger's total, read as degrees;
@@ -541,7 +541,7 @@ session's fidelity work, and `plant=custom` already carries coefficients exactly
 - **Triple agreement**: closed-form steady state vs long transient vs averaged
   model, wherever each claims validity, disagreement fails the build.
 - **Independent cross-checks**: RMS/avg by piecewise closed form vs dense
-  integration; Fourier coefficients vs `@ee-labs/dsp` FFT (two codebases, one
+  integration. Fourier coefficients vs `@ee-labs/dsp` FFT (two codebases, one
   answer).
 - **Note claims pinned** like `presets.test.js`: every number in an experiment
   note is a test.
@@ -550,7 +550,7 @@ session's fidelity work, and `plant=custom` already carries coefficients exactly
   (see the caption-plate lesson).
 - **readme-claims**: splash card count, README tables, pinned as the other labs.
 
-## 7. Integration — and the dark launch
+## 7. Integration: and the dark launch
 
 **Power Lab stays off the splash page until Reed confirms it good.** While it is
 being built it must be reachable for testing but *advertised nowhere*:
@@ -583,15 +583,15 @@ release-gated ones, so they land in one small batch at the end.
 
 Built so far: the engine, Groups **A**, **B**, **E** and **C** (20 experiments,
 dark at `/power-lab/`). Group C came after E because E's event engine was the
-riskier piece and worth proving first; C then needed no new machinery, only the
+riskier piece and worth proving first. C then needed no new machinery, only the
 lossy CCM ratio (`ratioWithRL`, `boostPeak`) the engine now exports. Next by
 this list: **D** (magnetics) and **F** (inverters).
 
 
 1. **Engine**: `packages/switched` propagator + events + steady state + measures,
    fully fuzzed *before any UI exists*. Exit: invariants 1–6 green under fuzz.
-2. **Buck vertical slice**: app shell, scope, math panel, meters; Groups A + B
-   (9 experiments). Exit: every B-note pinned. Browser verify green; **deployed
+2. **Buck vertical slice**: app shell, scope, math panel, meters. Groups A + B
+   (9 experiments). Exit: every B-note pinned. Browser verify green. **deployed
    dark at `/power-lab/`** with the RELEASE_STATUS test enforcing zero splash,
    README or cross-lab-nav references.
 3. **Boost/buck-boost + conduction scrub + M(D) view**: Group C. Exit: C2 peak
@@ -599,16 +599,16 @@ this list: **D** (magnetics) and **F** (inverters).
    scrub, which lands with Group D's freewheel intervals, the M(D) sweep and
    the signed inverting output carried C on their own.)*
 4. **Magnetics**: piecewise-L saturation events, B-view, flyback, half-bridge
-   (D4's freewheel intervals exercise the scrub view hardest); Group D.
+   (D4's freewheel intervals exercise the scrub view hardest). Group D.
 5. **AC**: rectifiers + dimmer + six-pulse (Group E), the event engine's
    first outing: topology chosen by state, shooting on the capacitor voltage,
    exact Fourier integrals, then inverters + PWM spectra (Group F).
-6. **Losses + control bridge**: Groups G, H; loss ledger, efficiency sweeps,
-   Control Lab hand-over round-trip. Report link; AGENT_BRIEF.
+6. **Losses + control bridge**: Groups G, H. Loss ledger, efficiency sweeps,
+   Control Lab hand-over round-trip. Report link. AGENT_BRIEF.
 7. **Three-phase out and the isolated family**: Groups I, J, F's PWM and D4's
    half-bridge machinery, three times over.
 8. **Resonant and motor drives**: Groups K, L, the tank and the armature are
-   both LTI per segment; K needs the output rectifier's diode events (E's
+   both LTI per segment. K needs the output rectifier's diode events (E's
    engine), L a slow mechanical state stepped between periods.
 9. **EMI and thermal**: Groups M, N, spectra and filters from Signal/Circuit
    Lab's existing tools. Thermal networks are Circuit Lab RCs with °C on them.
@@ -629,7 +629,7 @@ that is the point of the bridge), digital control/DPWM, PCB layout, magnetic
 field solvers, and device physics (reverse recovery, gate charge) beyond what a
 labelled toggle can carry. Three-phase, motor drives, resonant/LLC, the
 forward/push-pull/full-bridge family, EMI and thermal were on this list until
-2026-09-01 and are now Groups I–N; each is a coherent later group and none
+2026-09-01 and are now Groups I–N. Each is a coherent later group and none
 blocks the curriculum before it.
 
 ## 10. Risks, named
@@ -649,7 +649,7 @@ blocks the curriculum before it.
 - **Scope creep in Group D** → D4 pre-marked stretch. Saturation ships, leakage
   may slip.
 
-## 11. The 9.5 bar — from the 2026-09-02 review
+## 11. The 9.5 bar: from the 2026-09-02 review
 
 On 2026-09-02, with Groups A, B, C and E built, the lab was walked cold as a
 new student and scored on six metrics:
@@ -700,7 +700,7 @@ below. Every one is real.
 - **C4 says "watch i_in go flat" and `iin` is not an opening trace.** → 11.6.7.
 - **A3's topbar shows K and K_crit**, B5's symbols on a Group A screen,
   because `flowNodes` shows them for every buck. → 11.3.7.
-- **C2 opens at D = 0.5**; the peak it is about is at 0.9. → 11.5.5 (a chip
+- **C2 opens at D = 0.5**. The peak it is about is at 0.9. → 11.5.5 (a chip
   at the peak, and the default moves there).
 - **A3's last sentence** says "the rest of this group is why it works". A3 is
   the last experiment in its group. It means Group B. → 11.5.4.
@@ -733,7 +733,7 @@ implementations will drift. → 11.1.5, before Group D adds a third state.
 The reviewer's ordering agrees with 11.7, with the claim bugs pulled into
 step 1 because they are first-screen. Stay dark through step 3.
 
-### 11.1 Physics rigour — 9 → 9.5+
+### 11.1 Physics rigour: 9 → 9.5+
 
 What 9 already means: every note number measured, every formula footnoted where
 it stops applying. The half point is the region *between* the notes: a wrong
@@ -756,7 +756,7 @@ fixed point somewhere in the knob space no note visits.
    more than the tests read.
 4. **Sweep monotonicity and continuity**: M(D) and M(R) traces have no
    discontinuity larger than the step's own physics allows (the CCM/DCM kink is a
-   kink, never a jump); P_out(C) sweeps in E3 are smooth.
+   kink, never a jump). P_out(C) sweeps in E3 are smooth.
 5. **One propagator.** `switched` imports `expm`/`expm2` from `@ee-labs/network`
    and keeps only its own `propagator`/`propagator01` wrappers (φ₁ without A⁻¹).
    Done in two commits: first a test that the two implementations agree to
@@ -809,7 +809,7 @@ became 1 + 1e-9 (the balance's bar), a lossless converter with RC ≈ 1e5
 periods carries ~1e-11 from the conditioning of I − Φ, and the old bar had
 passed that sample only by the retired routine's rounding.
 
-### 11.2 Information — content — 8 → 9.5+
+### 11.2 Information: content, 8 → 9.5+
 
 The notes are strong. Two experiments are wrong-sized and every note tells the
 reader what is true without telling them what to *do*.
@@ -817,7 +817,7 @@ reader what is true without telling them what to *do*.
 1. **Split B6** into three: **B6 · The diode's rent** (V_f, sync toggle: the
    drop as a fraction of V_out, why sync wins at 5 V and doesn't at 48 V);
    **B7 · The resistances** (R_on, R_L, ESR: M sags, ripple grows a step from ESR
-  , the step is the tell); **B8 · The edges** (t_sw: loss ∝ f_s·t_sw, the first
+  , the step is the tell). **B8 · The edges** (t_sw: loss ∝ f_s·t_sw, the first
    place frequency costs something). Each with a pinned number and one knob it
    is *about*. Group B becomes 8. The splash count moves when released.
 2. **Rebuild A2.** Chopper into a resistor: v and i are proportional, so two
@@ -845,7 +845,7 @@ reader what is true without telling them what to *do*.
    experiment's `terms` list.
 6. **E1's 42.9° is on the plot** (see 11.6 item 4) and the note points at it.
 
-Exit: the tests above green; A2 and B6–B8 re-walked cold and each carries one
+Exit: the tests above green. A2 and B6–B8 re-walked cold and each carries one
 claim, one knob, one picture.
 
 *As built (step 6):* item 1 as planned, B6 is about V_f (chips 0.5 / 1 / 0,
@@ -869,7 +869,7 @@ tabs is now the section's cap (sticky, ruled, the name kept for a screen
 reader), and the section chrome tightened by a few pixels each. verify.mjs:
 22/22 above the fold at 1366×768 and 1440×900.
 
-### 11.3 Information — delivery — 4 → 9.5+
+### 11.3 Information: delivery, 4 → 9.5+
 
 The lab's thesis, the formula beside what it predicts, sits 170 px below the
 fold in a 950 px window, collapsed. Nothing else in this section matters until
@@ -884,9 +884,9 @@ that is fixed.
    the note, the schematic and the first knob are inside the viewport without
    scrolling the sidebar. Playwright asserts bounding boxes, per experiment —
    the complaint was measured in pixels and its test is in pixels.
-3. **The header says what the lab is for**, not how the engine works: three
-   sentences a newcomer can use ("Pick an experiment. Turn the knob it names.
-   Watch the number the note promised."). The engine's fidelity moves to the
+3. **The header says what the lab is for**, not how the engine works: one
+   sentence a newcomer can use ("Each experiment loads a converter, names one
+   knob, and states the number to read."). The engine's fidelity moves to the
    report link's provenance.
 4. **Terms open on first visit** of an experiment that declares terms, closed
    thereafter (per-session state). The rescue only works if it is seen once.
@@ -899,7 +899,7 @@ that is fixed.
    knob's name as a chip that focuses it.
 6. **The topbar's third meter is the experiment's own headline**, declared per
    experiment (`exp.headline`): η for A1 and the converters, V_rms vs ⟨v⟩ for
-   A2, PF for the line side. Test: every experiment declares one; A2's is not η.
+   A2, PF for the line side. Test: every experiment declares one. A2's is not η.
 7. **Symbols appear when they are taught.** K and K_crit in the top bar are
    B5's. They show from B4 on, not on A3's first buck. `flowNodes` takes the
    experiment, not the kind. Test: A3's rendered topbar contains no `K`.
@@ -909,7 +909,7 @@ that is fixed.
 Exit: the fold test green at both sizes for all 20. The math view has been
 opened in a cold walk without being looked for.
 
-### 11.4 Layout — 5 → 9.5+
+### 11.4 Layout: 5 → 9.5+
 
 Both panes are 453 px whatever the experiment is about. Eight of twenty open on
 a sweep that then gets the lower half.
@@ -932,14 +932,14 @@ a sweep that then gets the lower half.
    you are in.
 6. **390 px is a pass.** The topbar wraps to two rows and never truncates a
    meter. The experiment title appears once. The schematic moves into the main
-   column above the panes on phone; A1 shows its loss bars, not lines. Test:
+   column above the panes on phone. A1 shows its loss bars, not lines. Test:
    Playwright at 390×844, no clipped text in the topbar (every meter's
    `scrollWidth` fits), one `h3.note-title`, schematic bounding box inside the
    first viewport.
 
 Exit: the five Playwright layout probes green at every size × experiment × view.
 
-### 11.5 Flow & intuition — 5 → 9.5+
+### 11.5 Flow & intuition: 5 → 9.5+
 
 There is no path through the material and the group letters advertise a hole.
 
@@ -958,7 +958,7 @@ There is no path through the material and the group letters advertise a hole.
    group with an experiment after it (A3's currently isn't: it means Group B).
 5. **Preset chips on the featured knob**, NumField already takes `presets`;
    each experiment lists the stops its lesson lives at (E3: C = 100 µF, 1 mF,
-   4.7 mF; B3: f_s = 100 k, 400 k; C2: D = 0.5, 0.9). Test: every experiment's
+   4.7 mF. B3: f_s = 100 k, 400 k. C2: D = 0.5, 0.9). Test: every experiment's
    `about` knob has ≥ 2 chips, all inside the knob's range, and each chip's
    number appears in the note or `try`. **And the default sits where the
    lesson is**: C2 opens at D = 0.9, on the peak, with 460.8 W in the winding —
@@ -972,7 +972,7 @@ Exit: a cold walk from A1 to E6 using only next/previous, never the list, with
 the group intro read at each boundary, finds no "why am I here" moment. Reed's
 pass sets the last half-point.
 
-### 11.6 Plots — 6 → 9.5+
+### 11.6 Plots: 6 → 9.5+
 
 Ripple, sweep and spectrum read well now. The dual-axis scope needs decoding,
 and two experiments draw pictures that don't show their claim.
@@ -993,8 +993,8 @@ and two experiments draw pictures that don't show their claim.
    Test (already written for the scope, extended to the sweep and balance
    panes): frame unchanged across a knob change that stays inside it.
 4. **Marks on the plot for the note's numbers**: E1's conduction angle as a
-   shaded interval labelled "42.9°"; B5's boundary as a marked point on the
-   sweep; A2's ⟨v⟩ and V_rms lines; C2's peak D marked. Test per mark: the
+   shaded interval labelled "42.9°". B5's boundary as a marked point on the
+   sweep. A2's ⟨v⟩ and V_rms lines. C2's peak D marked. Test per mark: the
    label text is drawn and its x maps to the measured value to within a pixel.
 5. **A1 draws the loss**: no scope. Its pane is the losses bar with the 7 W
    named, so the first screen shows the number the lab exists to beat.
@@ -1024,7 +1024,7 @@ first:
 
 | Step | Items | Buys | Size |
 |---|---|---|---|
-| 1 | 11.3.1, 11.5.1, 11.4.2, 11.6.5, **and the claim bugs**: 11.3.6–8 (A2's topbar, K hidden until B4, "Analysis"), 11.6.7 (A3 and C4 open on the claim), 11.5.5's C2 default, A3's last sentence | Math visible. No D-hole; A1 shows its loss. No screen contradicts its note | a day |
+| 1 | 11.3.1, 11.5.1, 11.4.2, 11.6.5, **and the claim bugs**: 11.3.6–8 (A2's topbar, K hidden until B4, "Analysis"), 11.6.7 (A3 and C4 open on the claim), 11.5.5's C2 default, A3's last sentence | Math visible. No D-hole. A1 shows its loss. No screen contradicts its note | a day |
 | 2 | 11.6.6 harness + the failing probes for every complaint (A3 ripple ≥ 15 % of its strip. Math button on-screen at 1366×768; A2's topbar without `100`. The fold table of 11.0) | The bar itself. Everything after is measured | a day |
 | 3 | 11.6.1–4 (two-strip scope, legends off, anchoring everywhere, marks) | Plots 6 → 9.5 | a day |
 | 4 | 11.4.1, 11.4.3–6 (split, overflow, knob order, phone) | Layout 5 → 9.5 | a day |
@@ -1033,7 +1033,7 @@ first:
 | 7 | 11.1.1–5 (transient agreement, whole-space fuzz, pin-or-reason, sweep continuity, one propagator) | Rigour 9 → 9.5 | a day |
 | 8 | Cold re-walk of all 20, re-score against the same rubric. Then Reed's pass | The number | half a day |
 
-Seven and a half days; Group D waits behind it, because every group built
+Seven and a half days. Group D waits behind it, because every group built
 after this inherits the fixes and every group built before it would need
 them retrofitted, four new topologies on the current shell would retrofit
 all of it. The lab stays dark through step 3 at the least. Each step lands as
@@ -1057,7 +1057,7 @@ would trip on were left, each now a test that failed first:
 - **Firefox put B1, C1 and E1's first knob 7 px below the 768 fold**, its
   range inputs are 20 px tall and its `normal` line height 2 px taller;
   pinned in `styles.css`, verify §8 green in both browsers.
-- **C2's rotated η axis title read as a stray mark**; a lone glyph stays
+- **C2's rotated η axis title read as a stray mark**. A lone glyph stays
   upright (`draw.test.js`).
 - **B5's zero-length dead interval** wrote "dea" at the frame edge and "dead"
   over the next "on". An edge is named only where the name fits.

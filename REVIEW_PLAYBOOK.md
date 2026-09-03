@@ -1,4 +1,4 @@
-# Review playbook — what Reed's review caught
+# Review playbook: what Reed's review caught
 
 Distilled from several days of Reed using Signal Lab as a student would and filing
 what he hit. Every item below is a **class of defect that shipped and was found by a

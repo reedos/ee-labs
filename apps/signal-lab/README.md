@@ -208,11 +208,11 @@ y[n] = Σ h[k]·x[n−k]
 ```
 
 The top strip is the input with the kernel drawn **flipped** and slid to the current
-position, h[n−m] against m, because that flip is the detail everyone trips on, and no
-amount of prose fixes it the way watching the kernel ride backwards does. It is not a
-convention: x[n−k] walks backwards as k walks forwards, so without the flip the sum would
-weight the newest input by the oldest tap. The shaded bars are the products being summed;
-the bottom strip is the output built so far, ending on the sample those bars just made.
+position, h[n−m] against m. That flip is the detail everyone trips on, and no amount of
+prose fixes it the way watching the kernel ride backwards does. The flip is forced by the
+arithmetic: x[n−k] walks backwards as k walks forwards, so without it the sum would weight
+the newest input by the oldest tap. The shaded bars are the products being summed, and the
+bottom strip is the output built so far, ending on the sample those bars just made.
 
 Why this is *the* description of filtering, rather than one of several. Any input is a
 train of scaled, shifted impulses. If the system is linear, the responses to them add. If
@@ -322,8 +322,9 @@ FFT size across those presets and requires every row to be either correct or exp
 unmeasurable, and separately requires that the escape hatch is not being used everywhere:
 a panel that checked nothing would pass the first test and teach nothing.
 
-This is not ceremony. A confidently wrong explanation is worse here than a missing
-feature: someone building intuition from it has no way to catch it. The claims that are
+The tests are the point. An explanation that is wrong but sounds right is worse here
+than a missing feature, because someone building intuition from it has no way to catch
+it. The claims that are
 easiest to get wrong are the ones that sound obviously right, that each surviving
 harmonic of a filtered square sits *on* the response curve (it does not: the square's own
 4/kπ envelope is already there, and what equals the curve is the gap between the two

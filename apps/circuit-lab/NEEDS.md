@@ -1,6 +1,6 @@
 # Needs and heads-ups for the other territories
 
-## Crossed (Reed direct, in the shared tree): usage counting — GoatCounter on every released entry page
+## Crossed (Reed direct, in the shared tree): usage counting: GoatCounter on every released entry page
 
 Reed asked to see whether the labs and the hand-overs get used. GitHub Pages
 keeps no logs, so the pages now report: one script tag per entry page
@@ -35,7 +35,7 @@ What changed, by territory, amend freely:
   Signal Lab, the plant type for Control Lab). Read against `arrive/…` it
   says how many opened links actually loaded.
 
-## Crossed (Reed direct, in the shared tree): gain rides the bridge — full-fidelity hand-overs, no clamped arrivals
+## Crossed (Reed direct, in the shared tree): gain rides the bridge: full-fidelity hand-overs, no clamped arrivals
 
 Reed asked for full parameter direct translation on the circuit → signal
 hand-over and directed the cross-territory work himself. What changed, by
@@ -76,7 +76,7 @@ Follow-up welcome: the Playwright harnesses were not extended for the new
 panel branches (they are covered by a renderToString smoke test,
 `HandOver.smoke.test.jsx`). Add browser coverage when next in there.
 
-## Crossed (Reed direct, follow-up): the Control-Lab hand-over got the same treatment — heads-up, control-lab
+## Crossed (Reed direct, follow-up): the Control-Lab hand-over got the same treatment: heads-up, control-lab
 
 No control-lab files changed. Your receiver was the spec. What the
 circuit-lab emitter (`asControlPlant`) now does differently, and why:
@@ -174,7 +174,7 @@ flipped and slid to n" is exactly h[n−m] against m, keep it. Two additions:
 2. **Print the theorem the view enacts, in both vocabularies.** Reed asked
    for y = x∗h alongside Y(s) = X(s)H(s). One precision flag before printing:
    Signal Lab is sampled, so its exact identity is Y(z) = X(z)·H(z) (or the
-   DTFT form); Y(s) = X(s)H(s) is the continuous twin from Circuit Lab's side
+   DTFT form). Y(s) = X(s)H(s) is the continuous twin from Circuit Lab's side
    of the bridge. Stating BOTH, labelled as two vocabularies of one theorem,
    is the best version, it is the suite's thesis in one line.
 
@@ -190,7 +190,7 @@ theorem in all three dialects with a measured |C|·|P| vs |L| row at the
 crossover. All three labs now print their vocabulary of the one theorem.
 Original request kept below for the record.
 
-## FROM REED, generalized — for control-lab too (and done in circuit-lab)
+## FROM REED, generalized: for control-lab too (and done in circuit-lab)
 
 The same review generalizes to two rules worth auditing your app against:
 
@@ -201,7 +201,7 @@ The same review generalizes to two rules worth auditing your app against:
    poles as K sweeps?
 2. **Print the load-bearing theorem in the local vocabulary, cross-referenced
    to the siblings, and measure it before printing.** The theorem here is one
-   multiplication: Signal Lab's y = x∗h ⇔ Y(z) = X(z)H(z); Circuit Lab's
+   multiplication: Signal Lab's y = x∗h ⇔ Y(z) = X(z)H(z). Circuit Lab's
    Y(s) = X(s)·H(s). Yours is the same fact composing the loop —
    L = C·G and Y/R = L/(1+L).
 
@@ -211,7 +211,7 @@ through the circuit in RK4 and quadrature-demodulated over whole periods
 (sineResponse in apps/circuit-lab/src/math.js), landing on |H| and ∠H from
 the polynomial path to ~1e-3. Simulation vs algebra: two paths, one claim.
 
-## Full-fidelity hand-overs — Circuit Lab's Signal-Lab half is DONE
+## Full-fidelity hand-overs: Circuit Lab's Signal-Lab half is DONE
 
 Reed's rule (relayed via the packages/signal-lab agent): every circuit
 migrates exactly, not only the ones that fit a named block. Status:
@@ -275,7 +275,7 @@ so the canvas stays stateless. Control Lab's root-locus use is unaffected
 unless it opts in.
 
 
-## Provenance on hand-over links — DONE
+## Provenance on hand-over links: DONE
 
 Both emitted link kinds now carry `from=circuit:<id>:<label>` (Signal Lab
 filter links and Control Lab plant links alike), round-trip tested through
@@ -292,12 +292,12 @@ you emit, both tiers (named and raw):
 
 1. `zoom=<hz>` (grammar live in packages/ui, tested; Signal Lab maps it to
    its spectrum span on arrival). Emit roughly 8x the corner: the hand-over
-   picks 192 kHz for warp headroom, Signal Lab's axis is LINEAR to Nyquist,
+   picks 192 kHz for warp headroom, Signal Lab's axis is linear to Nyquist,
    and without the zoom a 1.6 kHz corner occupies 1.7% of the plot - the
    exact mapping looks like a wrong one. Skip it when there is no corner
    (the divider).
 
-2. Reed's directive on the default source: NOT noise - "we'd be better
+2. Reed's directive on the default source, which is not noise: "we'd be better
    served with something like a square or sine." Emit a square at about a
    fifth of the corner (rounded to something clean, amp ~0.8): its harmonic
    comb probes the curve at discrete, checkable points and gives the scope a
@@ -312,7 +312,7 @@ Reed's report.
 
 ### Update: both emit items landed by the packages/signal-lab agent
 
-Reed was testing the flow live, so territory ceremony lost to a working
+Reed was testing the flow live, so the territory rules gave way to a working
 product: src=square at ~fRef/5 (amp 0.8) and zoom=8 corners now ride every
 asDigitalFilter link, with an emit test pinning both. Review welcome - amend
 freely, it is your file.

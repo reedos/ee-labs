@@ -1,4 +1,4 @@
-# Core scope — read before extending the suite
+# Core scope: read before extending the suite
 
 This document governs `@ee-labs/systems` and every bridge between apps. It applies to
 any future app and to changes in the existing three. If a task conflicts with this

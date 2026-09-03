@@ -13,7 +13,7 @@ says `dark`, and `src/release.test.js` fails if any of it is.
 - `package-lock.json` registers the two new workspaces (`@ee-labs/power-lab`
   and `@ee-labs/switched`) through `npm install`. No dependency versions moved.
 
-## At release — flip `RELEASE_STATUS` to `released`, then `release.test.js` demands:
+## At release: flip `RELEASE_STATUS` to `released`, then `release.test.js` demands:
 
 1. **Splash page** `site/index.html`: a lab card linking `power-lab/`, in the
    style of the Signal/Circuit/Control cards (~line 213 onward).

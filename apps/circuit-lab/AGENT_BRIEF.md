@@ -1,10 +1,10 @@
-# Circuit Lab — agent brief
+# Circuit Lab: agent brief
 
 You are one of three agents working this repo in parallel. **Your territory is
 `apps/circuit-lab/` only.** Another agent owns `apps/control-lab/`. A third owns
 `apps/signal-lab/` and the shared `packages/*`. Reed reviews everything.
 
-## Boundaries — read first
+## Boundaries: read first
 
 - Edit only inside `apps/circuit-lab/`. Treat `packages/*` and the other two
   apps as **read-only**: read them for patterns as much as you like, change
@@ -47,9 +47,9 @@ about physics, and a test must measure it**, never restate the formula that
 produced it. Where a claim is unmeasurable at the current settings, the row
 footnotes the reason. It never shows ✗ against correct physics. Predictions
 must **follow the controls the user can reach**: if a select or slider changes
-the fact, the sentence and the check change with it. Nine confidently wrong
-explanations have been caught by this discipline so far. When one of YOUR tests
-fails, first decide whether the app or the test is wrong, several times it was
+the fact, the sentence and the check change with it. Nine explanations that were
+wrong but sounded right have been caught by this discipline so far. When one of your
+tests fails, first decide whether the app or the test is wrong, several times it was
 the test, and saying so plainly in the commit matters.
 
 Commit messages here are narrative: what changed, why, and what bugs fell out.
@@ -78,7 +78,7 @@ Gotchas that have burned us:
 - No formatters/linters exist. Match surrounding style. Comment density is high
   and explanatory on purpose.
 - Layout hard rule: at 16:9 the page never scrolls and both plots stay fully
-  visible. The harness checks it at 1080p and 4K; keep those checks passing.
+  visible. The harness checks it at 1080p and 4K. Keep those checks passing.
 
 ## The review playbook
 
@@ -87,7 +87,7 @@ classes of defect Reed personally caught in Signal Lab, generalized into an
 audit checklist. Your adversarial-audit item below MEANS working through that
 checklist against your app. Items 1–6 (sentences frozen while controls move;
 lead with the base rule. Phase beside magnitude. Axes named/united/adaptive;
-can the feature be SEEN; rendering honesty) apply to you verbatim.
+can the feature be SEEN. Rendering honesty) apply to you verbatim.
 
 ## Worklist, in order
 
@@ -115,10 +115,10 @@ can the feature be SEEN; rendering honesty) apply to you verbatim.
    every note against what the screen then shows. File and fix anything wrong;
    each fix gets a test that would have caught it.
 
-5. **(Stretch) One new circuit** done completely: twin-T notch or an RC
+5. **(Stretch) One new circuit**, done completely: twin-T notch or an RC
    band-pass (two corners). Complete = schematic drawn, H(s) derived in the
    panel with the derivation note, metrics, tests for the pole/zero positions,
-   a lesson, harness coverage, and hand-over behaviour decided honestly
+   a lesson, harness coverage, and hand-over behaviour decided on the evidence
    (decline if Signal Lab / Control Lab cannot express it exactly).
 
 Do not start item 5 unless 1–4 are green and pushed.

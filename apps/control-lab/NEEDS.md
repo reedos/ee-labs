@@ -48,7 +48,7 @@ the missing piece is a registry entry:
   circuit arrives with b2 = a2 = 0).
 - Link grammar needs nothing new: `plant=custom:b2:b1:b0:a2:a1:a0` is already
   positional numbers. Extend fromLink to accept it (values span decades —
-  an RLC's a2 = LC ≈ 1e-10, so do NOT clamp these to slider ranges. The
+  an RLC's a2 = LC ≈ 1e-10, so do not clamp these to slider ranges. The
   fields are link-fed first, hand-typed second).
 - UI: plain numeric fields are fine (log sliders cannot hold signed
   coefficients spanning decades). Hint: this is the raw form every named
@@ -78,7 +78,7 @@ default `<button>`s until Reed flagged it. The block is now copied here
 verbatim, and circuit-lab looks to have the same gap. Third shared-look rule
 living in one app's stylesheet, a candidate for promotion into base.css.
 
-## Small UX finding from Reed (real confusion, worth one line of UI) — DONE
+## Small UX finding from Reed (real confusion, worth one line of UI): DONE
 
 Arriving from Circuit Lab's hand-over, Reed expected HIS CIRCUIT's step
 (settles at DC gain, zero error) and read the closed-loop 50% steady error as
@@ -98,7 +98,7 @@ at.) Claim measured per house rules if any number is printed.
 All earlier items remain resolved.
 
 
-## FROM REED: the loop diagram should show the circuit ITSELF as the plant — TIERS 1–2 DONE
+## FROM REED: the loop diagram should show the circuit ITSELF as the plant: TIERS 1–2 DONE
 
 Reed, after handing an RC low-pass over and being surprised by the closed
 loop's 50% error: "maybe we need block diagrams that represent this to
@@ -140,8 +140,8 @@ each one or two sentences in the house style. The load-bearing content is the
 INPUT/OUTPUT identity, because it is exactly what confused Reed after the
 hand-over:
 
-- PLANT: the system you are stuck with, a motor, a tank, a circuit. Its
-  input is the DRIVE u (whatever the controller sends). Its output is the
+- Plant: the system you are stuck with, a motor, a tank, a circuit. Its
+  input is the drive u, whatever the controller sends. Its output is the
   measured y that gets fed back. When a circuit arrives from Circuit Lab,
   the circuit IS the plant. Its input port becomes u, driven by the
   controller, not by your reference, and its output node becomes y. (This
@@ -178,7 +178,7 @@ y-range held inside StepCanvas via resetKey. Note for the archives: the
 first fix (hold-until-containment) FAILED its own pixel probe - growth-on-
 contain tracks the peak and the trace hugs the top at a constant pixel.
 The probe and the ladder are both in the commit. Amend freely - your file,
-your app. The Bode frequency axis may deserve the same treatment; Reed has
+your app. The Bode frequency axis may deserve the same treatment. Reed has
 not asked yet.
 
 
