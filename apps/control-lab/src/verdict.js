@@ -186,6 +186,13 @@ export function gainMarginWarn(gm) {
  * 1.25, so its error is −25%). A loop that never settles has no steady
  * state, and the field printed "200.0%", "1000.0%" and "−Infinity%" for
  * those before it learned to say so.
+ *
+ * The clause naming what a negative reading means used to say the output
+ * "overshoots its destination and stays there" — but overshoot is a
+ * transient peak that comes back down (TERMS.overshoot), and a loop that
+ * settles above its setpoint forever never comes back down at all. That
+ * sentence borrowed a defined term for a different idea instead of saying
+ * the plain thing: it sits past the target and stays there.
  */
 export function steadyErrorOf(closed, verdict) {
   if (verdict !== 'stable') {
@@ -206,6 +213,6 @@ export function steadyErrorOf(closed, verdict) {
   return {
     text: `${(err * 100).toFixed(1)}%`,
     value: err,
-    title: `e_ss = 1 − T(0) = ${(err * 100).toFixed(1)}% of the step — ${sign}; a negative steady error means the output overshoots its destination and stays there`,
+    title: `e_ss = 1 − T(0) = ${(err * 100).toFixed(1)}% of the step — ${sign}; a negative steady error means the output settles past its destination and stays there`,
   }
 }

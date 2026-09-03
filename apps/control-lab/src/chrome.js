@@ -7,6 +7,7 @@ import { crossingGain, locusHereNote } from './lessons.js'
 import { naturalWindow, overshootOf } from './stepWindow.js'
 import { ladderUp } from './stepAxis.js'
 import { simCost, simBlockReason, STEP_BUDGET } from './affordable.js'
+import { loopMath } from './math.js'
 
 // Definitions on contact for the PICKER — the state a plant or controller
 // click leaves the student in, with no lesson note and so, before this,
@@ -69,6 +70,33 @@ import { simCost, simBlockReason, STEP_BUDGET } from './affordable.js'
 // browser probe exists to catch, on the actual rendered page rather than
 // this file's model of it, and it now DRIVES the page instead of only
 // reading its 140 default states (item 33).
+//
+// Round four's own finding was the same cause wearing a fourth disguise:
+// VIEW_CHROME.math was a hand-picked stand-in for the Math tab, not built
+// from loopMath the way the other readouts here are — the fourth "fifth
+// patch" this file's own comment above already warned against, in the one
+// spot it had not yet reached. verify.mjs excused the whole pane from its
+// scan on the theory that this stand-in (or a hand audit of the pane
+// itself) covered it, and neither did: the pane's actual opening paragraph
+// names "the right half plane" and "a plot of L" — RHP and the Nyquist
+// plot — on the plainest click there is, and a plant with no integrator in
+// the loop names it too, none of it in VIEW_CHROME.math or in any hint.
+// VIEW_CHROME.math is now '', and chromeTermIds calls loopMath itself
+// (mathProseText) so a term the Math pane can print is a term this file has
+// actually read, not guessed at.
+//
+// Unblinding verify.mjs's scan (dropping the math-pane exclusion, reading
+// `title` attributes) surfaced two more instances of the SAME cause, neither
+// inside the Math tab: the topbar's own flow strip prints the plant and
+// controller's NAMES unconditionally, and this file had never scanned
+// either one, only their hints — so "Three lags" and "Integrator" fired
+// CUES.lag and CUES.integrator with nothing in this file to see them
+// whenever the hint that would normally cover the word happened to belong
+// to a DIFFERENT plant or controller. And the topbar's "⧉ diagram" button
+// carries a tooltip naming "disturbance" on every single state, a source
+// this file never modelled at all — "disturbance" is now in TOPBAR_TERMS
+// (terms.js) instead of staying a toggle-gated cue, and plant.name/ctrl.name
+// join plantHint/ctrl.hint below.
 
 /**
  * The prose that is on screen for each lower view with no lesson active,
@@ -102,9 +130,53 @@ export const VIEW_CHROME = {
     'Root locus — the closed-loop poles, as the gain K sweeps. ' +
     'Crosses into the shaded half and the loop oscillates. ' +
     'Open-loop poles and closed-loop poles.',
-  math:
-    'The math — theory against what this loop measures. ' +
-    'Setting the denominator to zero gives the characteristic equation.',
+  // Math is NOT static prose either, and a hand-picked stand-in here was
+  // wrong on the same grounds watch's was: packages/explain renders
+  // loopMath's actual blocks — text paragraphs, check-row labels,
+  // value-row labels and notes — and that derivation branches on the live
+  // loop (how many integrators, whether a crossover exists, whether the
+  // closed loop is second order, whether it is stable) exactly the way the
+  // other readouts here do. A verify.mjs audit once excused this pane from
+  // its own whole-cue-table scan on the theory that this file's stand-in
+  // covered it; the pane's REAL opening paragraph reads "a solution in the
+  // right half plane" and "the Nyquist view is a plot of L" on the plainest
+  // click there is (First order lag × Proportional), and the stand-in named
+  // neither. chromeTermIds below calls loopMath itself (mathProseText) so
+  // this file reads what the pane actually renders instead of a guess at it.
+  math: '',
+}
+
+/**
+ * The plain text loopMath's blocks would put on screen — text paragraphs,
+ * a check row's label and its footnoted reason, a value row's label and its
+ * note — reproducing what packages/explain's MathBody actually renders
+ * (Formula's own LaTeX is not prose and is skipped, the same way a `tex`-
+ * named check/value row would render as typeset math rather than the plain
+ * label MathBody falls back to; none of this app's rows use one). This is
+ * the SAME function App.jsx's math pane renders from, called with the live
+ * loop and margins, so a term the pane can print is a term this scan can see
+ * — the fix for the false premise the old .math-pane exclusion rested on.
+ */
+function mathProseText(math) {
+  if (!math) return ''
+  const bits = []
+  for (const b of math.blocks) {
+    if (b.kind === 'text') bits.push(b.text)
+    else if (b.kind === 'formula') {
+      if (b.caption) bits.push(b.caption)
+    } else if (b.kind === 'check') {
+      for (const r of b.rows) {
+        bits.push(r.label)
+        if (r.unchecked) bits.push(r.unchecked)
+      }
+    } else if (b.kind === 'values') {
+      for (const r of b.rows) {
+        bits.push(r.label)
+        if (r.note) bits.push(r.note)
+      }
+    }
+  }
+  return bits.join(' ')
 }
 
 /**
@@ -224,13 +296,23 @@ export function paneHeading(view, stepInput) {
  *     it prints only when stepOverviewShowsOvershoot says the pane would.
  *   - on the watch view, the readout strip's part labels (watchPartLabels),
  *     as before.
+ *   - on the math view, the pane's own derivation (mathProseText, calling
+ *     loopMath — math.js), in whichever shape the live loop actually gives
+ *     it: how many integrators it counts, whether a crossover exists, and
+ *     whether the closed loop is second order all change which sentences
+ *     and rows loopMath returns.
  *   - the arrival banner's variable tail (arrivalErrorNote — verdict.js),
  *     when `arrival` says a hand-over link put this student here AND the
  *     live loop is stable — App.jsx's own gate for rendering it at all.
  *
  * A cue word that only ever appears INSIDE a formatted number ("21.0 dB",
  * "Kp·e = 0.184") never shows up in any of that — TOPBAR_TERMS carries the
- * numeric ones that are always on screen (db, radpersec).
+ * numeric ones that are always on screen (db, radpersec), and now
+ * disturbance, which lives only in the topbar's own diagram-button tooltip
+ * (round four). The plant and controller's own NAMES are scanned alongside
+ * their hints, below, for the same reason: "Three lags" and "Integrator"
+ * are on screen in the topbar's flow strip whether or not either hint ever
+ * repeats the word.
  */
 export function chromeTermIds({ plantId, plantP, ctrlId, ctrlP, view, stepInput, arrival }) {
   const plant = PLANTS[plantId]
@@ -239,7 +321,8 @@ export function chromeTermIds({ plantId, plantP, ctrlId, ctrlP, view, stepInput,
 
   const loop = buildLoop(plantId, plantP, ctrlId, ctrlP)
   const openPz = polesZeros(loop.open)
-  const marg = margins(loop.open, wideFreqsFor(openPz))
+  const freqsWide = wideFreqsFor(openPz)
+  const marg = margins(loop.open, freqsWide)
   const verdict = verdictOf(loop.closed, marg)
   const marginal = verdict === 'marginal'
 
@@ -255,6 +338,9 @@ export function chromeTermIds({ plantId, plantP, ctrlId, ctrlP, view, stepInput,
   if (view === 'locus') {
     const crossing = crossingGain(ctrlId, ctrlP, marg)
     viewText += ' ' + joinParts(locusHereNote(marginal, crossing).parts)
+  }
+  if (view === 'math') {
+    viewText += ' ' + mathProseText(loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqsWide))
   }
   if (view === 'step' && stepOverviewShowsOvershoot(loop, verdict, stepInput)) {
     // The literal word the readout prints ("overshoot 12.3%"), not a
@@ -272,6 +358,19 @@ export function chromeTermIds({ plantId, plantP, ctrlId, ctrlP, view, stepInput,
   const text = [
     plantHint,
     ctrl.hint,
+    // The topbar's own flow strip prints these two NAMES unconditionally
+    // (App.jsx: "{ctrl.name} C(s) → {plant.name} P(s)"), regardless of
+    // lesson or view — and a plant or controller can be named with a cue
+    // word its own hint never repeats. "Three lags" fires CUES.lag with no
+    // help from its hint (three RC stages, never called a lag there), and
+    // "Integrator" fires CUES.integrator the same way under Lead, the one
+    // controller whose hint does not already say the word. Scanning the
+    // hint alone let both hide behind whichever OTHER plant or controller
+    // happened to repeat the word in ITS hint — round four's adversarial
+    // walk found them by testing the full matrix rather than trusting that
+    // coincidence.
+    plant.name,
+    ctrl.name,
     viewText,
     watchText,
     badge.badge,

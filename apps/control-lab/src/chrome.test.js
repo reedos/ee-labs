@@ -210,23 +210,32 @@ describe('picker terms: reachable with no lesson active', () => {
     expect(chromeTermIds(back)).not.toContain('runsaway')
   })
 
-  it('consequence 2: the disturbance toggle changes the fold, on every plant and controller', () => {
+  it('consequence 2, revisited: "disturbance" is a top-bar term now, not a toggle-gated one', () => {
     // App.jsx's Step h2 reads "Response to a disturbance at the plant
     // input" only when stepInput === 'dist' — a heading chromeTermIds used
-    // to have no parameter to even ask about, so "disturbance" never fired
-    // for ANY plant or controller while it was on screen.
+    // to have no parameter to even ask about, so round three made
+    // "disturbance" fire only once that heading was on screen. Round four's
+    // title-attribute scan (verify.mjs) found the SAME word sitting in the
+    // topbar's own "⧉ diagram" button tooltip ("...the summing junction,
+    // where the disturbance gets in..."), unconditionally, on every state —
+    // that button lives in `.topbar` itself, on screen under every lesson
+    // and every picker state alike, TOPBAR_TERMS's own definition. So
+    // "disturbance" joined TOPBAR_TERMS (terms.js), and is offered on every
+    // state below regardless of the toggle; the heading's own
+    // toggle-dependent contribution still fires too, just no longer alone.
     for (const pid of plantIds) {
       for (const cid of ctrlIds) {
         const ref = defaultState(pid, cid, 'step')
         const dist = { ...ref, stepInput: 'dist' }
-        expect(chromeTermIds(ref), `${pid} x ${cid} x step x ref`).not.toContain('disturbance')
+        expect(chromeTermIds(ref), `${pid} x ${cid} x step x ref`).toContain('disturbance')
         expect(chromeTermIds(dist), `${pid} x ${cid} x step x dist`).toContain('disturbance')
       }
     }
-    // Off the step view the heading never says it, toggle or not.
+    // Off the step view it is still there, toggle or not — TOPBAR_TERMS
+    // does not care which lower view is open.
     for (const view of ['watch', 'nyquist', 'locus', 'math']) {
       const dist = defaultState('firstOrder', 'p', view, { stepInput: 'dist' })
-      expect(chromeTermIds(dist), view).not.toContain('disturbance')
+      expect(chromeTermIds(dist), view).toContain('disturbance')
     }
   })
 
@@ -234,23 +243,34 @@ describe('picker terms: reachable with no lesson active', () => {
     // #plant=integrator:1&ctrl=lead:1:1:10&from=circuit:xyz — an integrator
     // plant under a lead controller settles with zero steady error, so the
     // banner reads "with an integrator in the loop the error is erased
-    // exactly", and neither the Integrator plant's hint nor the Lead
-    // controller's hint contains the bare word "integrator".
+    // exactly". Chosen originally because neither the Integrator plant's
+    // hint nor the Lead controller's hint contains the bare word
+    // "integrator" — but the PLANT's own NAME does, and it sits in the
+    // topbar's flow strip ("Lead C(s) → Integrator P(s)") on screen
+    // regardless of arrival, a gap chromeTermIds now closes by scanning
+    // plant.name/ctrl.name alongside their hints (round four). That makes
+    // "integrator" unconditionally offered for this plant, arrival or not,
+    // so this combo can no longer isolate the arrival gate's OWN
+    // contribution — what it still proves is that the banner keeps
+    // supplying "integrator" when it fires, and the STABLE half of the
+    // gate is isolated cleanly below, on a plant whose name carries no cue
+    // word at all.
     const noLink = defaultState('integrator', 'lead', 'step')
     const linked = { ...noLink, arrival: true }
     expect(PLANTS.integrator.hint).not.toMatch(/\bintegrators?\b/i)
     expect(CONTROLLERS.lead.hint).not.toMatch(/\bintegrators?\b/i)
-    expect(chromeTermIds(noLink), 'arrival false: no banner, no cue').not.toContain('integrator')
-    expect(chromeTermIds(linked), 'arrival true and stable: the banner names the integrator').toContain('integrator')
+    expect(chromeTermIds(noLink), "the plant's own name already supplies it").toContain('integrator')
+    expect(chromeTermIds(linked), 'arrival true and stable: the banner names it too').toContain('integrator')
 
     // The banner is gone the moment the live loop stops being stable — the
     // same `stable` gate App.jsx's own JSX uses — so a dragged gain that
     // tips it unstable must drop the cue again even with arrival still true.
-    // Unstable plant x Lead: both hints are "integrator"-free (unlike
-    // Proportional's own hint, which names it), so this isolates the
-    // banner's own contribution. k = 0.1 sits well under the 5 the plant's
-    // own ctrlDefaults opens with, and "too little gain" is this plant's
-    // failure mode (its hint), so the loop is genuinely unstable there.
+    // Unstable plant x Lead: neither the plant's NAME nor either hint
+    // contains "integrator" (unlike the Integrator plant above), so this
+    // isolates the stable/unstable half of the gate cleanly. k = 0.1 sits
+    // well under the 5 the plant's own ctrlDefaults opens with, and "too
+    // little gain" is this plant's failure mode (its hint), so the loop is
+    // genuinely unstable there.
     const unstablePlantP = defaultsOf(PLANTS.unstable)
     const unstable = {
       ...linked,
@@ -259,6 +279,7 @@ describe('picker terms: reachable with no lesson active', () => {
       plantP: unstablePlantP,
       ctrlP: { ...ctrlDefaultsFor('unstable', unstablePlantP, 'lead'), k: 0.1 },
     }
+    expect(PLANTS.unstable.name).not.toMatch(/\bintegrators?\b/i)
     expect(CONTROLLERS.lead.hint).not.toMatch(/\bintegrators?\b/i)
     expect(verdictOfLoop(unstable)).not.toBe('stable')
     expect(chromeTermIds(unstable)).not.toContain('integrator')

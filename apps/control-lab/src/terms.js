@@ -483,8 +483,25 @@ export const TERMS = {
  * word a text scan of hand-written prose would catch on its own. A picker
  * click cleared the lesson (chrome.js exists for exactly that state) and
  * left "dB" and "rad/s" on screen with no definition reachable at all.
+ *
+ * disturbance joined this list once verify.mjs learned to read `title`
+ * attributes (round four): the topbar's own "⧉ diagram" button — a sibling
+ * of the phase-margin/gain-margin fields, not gated by lesson or view —
+ * carries a tooltip naming the summing junction "where the disturbance gets
+ * in", unconditionally. The Step/Watch pane heading also names it, but only
+ * once `stepInput` is toggled to the disturbance step; the button's tooltip
+ * does it on every state, the same reason db and radpersec are here.
  */
-export const TOPBAR_TERMS = ['phasemargin', 'gainmargin', 'crossover', 'steadystate', 'mhz', 'db', 'radpersec']
+export const TOPBAR_TERMS = [
+  'phasemargin',
+  'gainmargin',
+  'crossover',
+  'steadystate',
+  'mhz',
+  'db',
+  'radpersec',
+  'disturbance',
+]
 
 /**
  * Words in a note or try line that must bring their definition with them.

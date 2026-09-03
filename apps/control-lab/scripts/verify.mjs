@@ -1811,34 +1811,51 @@ console.log('\n32. Hover-only explanations reachable with taps alone at 390x844\
 // default states, the same spread chrome.test.js checks against the pure
 // function) with no lesson loaded — reading what the browser ACTUALLY
 // renders and requiring every match to have its definition offered, no
-// exceptions beyond the three below.
+// exceptions beyond the two below.
+//
+// Round four found this scan itself had two blind spots, both from an
+// adversarial walk rather than a reported instance:
+//
+//   1. The Math tab's derivation body (.math-pane) was excluded outright,
+//      on the premise that it was hand-audited prose rather than
+//      cue-scanned prose. That premise was false: on the plainest state
+//      there is (First order lag × Proportional, Math open), the pane's own
+//      opening paragraph reads "whether that has a solution in the right
+//      half plane — which is why the Nyquist view is a plot of L", and
+//      neither "right-half-plane pole" nor "Nyquist plot" was offered.
+//      Custom H(s) × Lead read "There is no integrator in the loop" with
+//      the same gap. The exclusion is gone; .math-pane is scanned exactly
+//      like every other container below, and chrome.js's chromeTermIds now
+//      calls loopMath itself (mathProseText) instead of a hand-picked
+//      stand-in, so a term the pane can print is a term this scan and the
+//      app's own offered list agree on.
+//   2. visibleChrome() walked child nodes and text content only, so a `title`
+//      attribute was invisible to it regardless of which element carried
+//      it. verdict.js's steadyErrorOf builds the steady-error field's
+//      tooltip, ending "a negative steady error means the output overshoots
+//      its destination and stays there" — reachable only by hover, and
+//      wrong besides (overshoot is a transient peak that comes back down;
+//      this describes a loop that never does, so the sentence borrowed a
+//      defined term for a different idea). Reworded rather than newly
+//      offered, since a word reachable only by hover is invisible on a
+//      touch device regardless of whether it is defined. Every element this
+//      scan reads is now read for its `title` too, not only its text.
 //
 // ALLOWLIST — the only text excluded from the scan, each entry earning its
-// place because it is not concept prose at all:
-//   1. A button's OWN label (structural: textExcludingButtons strips every
-//      <button> element's text before scanning its container). A button
-//      names itself — "Integrator", "Three lags", "Disturbance" — and
-//      "Disturbance" alone fires CUES.disturbance sitting right inside the
-//      Step/Watch readout's own reference/disturbance toggle, with no
-//      sentence beside it to define. Doing this structurally means a NEW
-//      button can never need a new hand-typed entry either.
+// place for a STRUCTURAL reason, never because the prose was audited and
+// found sufficient (that was round four's own false premise, above):
+//   1. A button's OWN label (structural: textAndTitles strips every
+//      <button> element's text, though not its title, before scanning its
+//      container). A button names itself — "Integrator", "Three lags",
+//      "Disturbance" — and "Disturbance" alone fires CUES.disturbance
+//      sitting right inside the Step/Watch readout's own reference/
+//      disturbance toggle, with no sentence beside it to define. Doing this
+//      structurally means a NEW button can never need a new hand-typed
+//      entry either.
 //   2. The "back to lesson" link's lesson-TITLE suffix (.back-to-lesson):
 //      a picker click remembers the lesson it just left so one click can
 //      undo it, and the opening lesson's own title starts with the word
 //      "Proportional" — a lesson NAME, not the concept-prose word.
-//   3. The Math tab's own derivation body (.math-pane). NOT because every
-//      term it prints is guaranteed to sit beside its own sentence — that
-//      claim was false ("the sensitivity peak" table note had neither a
-//      sentence nor a TERMS entry anywhere, cold-walk finding 5, fixed in
-//      math.js by rewording rather than defining a term the row's own label
-//      already covers) — but because this pane is hand-audited prose, not
-//      cue-scanned prose: packages/explain renders it from loopMath's own
-//      block list, or a plot, never from a hint or a live readout string
-//      chrome.js could model, so a bare term here has to be caught by
-//      reading the pane, the way finding 5 was, not by widening this scan
-//      to a structure it was never built to check. The Math view's OTHER
-//      chrome (its pane title, its "characteristic equation" readout line)
-//      is still scanned normally.
 console.log('\n33. Every cue word on screen resolves — every plant x controller x view, no lesson loaded\n')
 {
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -1850,36 +1867,41 @@ console.log('\n33. Every cue word on screen resolves — every plant x controlle
 
   const visibleChrome = () =>
     page.evaluate(() => {
-      // A container's text with every nested <button>'s own label removed
-      // (allowlist entry 1) — the button still contributes its non-button
-      // siblings (e.g. the toggle's surrounding readout), just not its own
-      // caption.
-      const textExcludingButtons = (el) => {
-        let out = ''
+      // A container's text AND every element's `title` attribute along the
+      // way, with every nested <button>'s own label removed (allowlist
+      // entry 1) — a button still contributes its title, and its
+      // non-button siblings (e.g. the toggle's surrounding readout), just
+      // not its own caption. Reading titles is what round four added: a
+      // definition living only in a tooltip (verdict.js's steadyErrorOf,
+      // before this round reworded it) used to be invisible here no matter
+      // which container held it.
+      const textAndTitles = (el) => {
+        let out = (el.getAttribute && el.getAttribute('title')) || ''
         for (const node of el.childNodes) {
           if (node.nodeType === Node.TEXT_NODE) out += node.textContent
-          else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'BUTTON') {
-            out += textExcludingButtons(node) + ' '
+          else if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.tagName === 'BUTTON') out += ' ' + (node.getAttribute('title') || '')
+            else out += ' ' + textAndTitles(node)
           }
         }
         return out
       }
       const bits = []
       // .topbar: the verdict badge and its sentence, the phase/gain margin
-      // and crossover fields. .readout: both the Bode pane's margin
-      // sentence and the lower view's own readout. .view-head h2: each
-      // pane's own title, which repeats some of VIEW_CHROME's static text.
-      for (const sel of ['.topbar', '.readout', '.view-head h2']) {
-        for (const el of document.querySelectorAll(sel)) bits.push(textExcludingButtons(el))
+      // and crossover fields, and the steady-error field's own title.
+      // .readout: both the Bode pane's margin sentence and the lower view's
+      // own readout. .view-head h2: each pane's own title, which repeats
+      // some of VIEW_CHROME's static text. .math-pane: the Math tab's own
+      // derivation — no longer excluded (round four, above).
+      for (const sel of ['.topbar', '.readout', '.view-head h2', '.math-pane']) {
+        for (const el of document.querySelectorAll(sel)) bits.push(textAndTitles(el))
       }
       // Every .hint EXCEPT the back-to-lesson one (allowlist entry 2) — the
       // plant hint, the controller hint, and any affordability notice.
       for (const el of document.querySelectorAll('.hint')) {
         if (el.classList.contains('back-to-lesson')) continue
-        bits.push(textExcludingButtons(el))
+        bits.push(textAndTitles(el))
       }
-      // .math-pane (allowlist entry 3) is simply never selected above, so
-      // its derivation body never enters the scan at all.
       return bits.join(' \n ')
     })
 
