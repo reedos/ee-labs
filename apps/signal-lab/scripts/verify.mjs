@@ -11,6 +11,7 @@
 // Exits non-zero on the first category of failure, and prints everything.
 
 import { chromium } from 'playwright'
+import { foldProbe, phoneProbe, LAPTOP_VIEWPORTS } from '@ee-labs/ui/verify/foldProbe.mjs'
 
 const URL = process.env.APP_URL || 'http://localhost:4173'
 const failures = []
@@ -756,6 +757,181 @@ console.log('\n10f. Folded groups, order-aware hints, the signal-path diagram\n'
   await settle()
   if ((await page.locator('.fd-panel').count()) !== 0) fail('clicking a diagram box should close it')
   else console.log('   clicking a source box closes the diagram and reveals the sidebar card')
+}
+
+// ------------------------ 10g. the lesson nav, chips, and the two readouts
+
+console.log('\n10g. Next/prev/reset, one-click chips, and the readouts the review caught\n')
+
+{
+  const activeName = async () => (await page.locator('.preset.is-on').first().textContent()).trim()
+  const navCount = async () => (await page.locator('.lesson-nav-count').textContent()).trim()
+  const freqPeak = async () =>
+    ((await readout())['Frequency domain'] || []).find((s) => s.startsWith('peak')) || ''
+
+  await loadPreset('Single tone')
+  if ((await navCount()) !== `1 of ${presetNames.length}`) fail(`nav count on Single tone: ${await navCount()}`)
+  await page.locator('.lesson-nav-step', { hasText: 'next' }).click()
+  await settle()
+  const afterNext = await activeName()
+  if (afterNext !== 'Square = odd harmonics') fail(`next from Single tone landed on "${afterNext}"`)
+  else console.log(`   next -> "${afterNext}" (${await navCount()})`)
+  await page.locator('.lesson-nav-step', { hasText: 'prev' }).click()
+  await settle()
+  if ((await activeName()) !== 'Single tone') fail('prev did not return to Single tone')
+
+  // Reset appears once a knob moves, and puts the preset back.
+  if ((await page.locator('.lesson-nav-reset').count()) !== 0) fail('reset shown before anything moved')
+  await setField('Frequency', 300)
+  if ((await page.locator('.lesson-nav-reset').count()) !== 1) fail('reset did not appear after moving Frequency')
+  await page.locator('.lesson-nav-reset').click()
+  await settle()
+  const back = await page.getByRole('spinbutton', { name: 'Frequency' }).first().inputValue()
+  if (back !== '250') fail(`reset left Frequency at ${back}`)
+  else if ((await page.locator('.lesson-nav-reset').count()) !== 0) fail('reset button stayed after resetting')
+  else console.log('   moved Frequency -> reset appeared -> reset put 250 back and hid itself')
+
+  // Chips: one click does what the try line says, and reads as pressed.
+  await loadPreset('Aliasing')
+  await page.locator('.try-chips .chip', { hasText: '6000 Hz' }).click()
+  await settle()
+  const aliasPeak = await freqPeak()
+  const chipOn = await page.locator('.try-chips .chip.is-on').textContent()
+  if (!/2000\.0 Hz/.test(aliasPeak)) fail(`Aliasing chip 6000 Hz: readout "${aliasPeak}"`)
+  else if (chipOn.trim() !== '6000 Hz') fail(`active chip reads "${chipOn}"`)
+  else console.log(`   Aliasing chip 6000 Hz -> ${aliasPeak}, chip marked active`)
+
+  // The two readouts the review read against the notes.
+  await loadPreset('Beating')
+  const beat = await freqPeak()
+  if (!/250\.0 and 255\.0 Hz/.test(beat)) fail(`Beating readout names one line: "${beat}"`)
+  else console.log(`   Beating: ${beat}`)
+  // ...and straight from Beating's 8192-point frame into Nyquist.
+  await loadPreset('Exactly at Nyquist')
+  const nyq = await freqPeak()
+  const fft = await page.getByRole('spinbutton', { name: 'FFT' }).first().inputValue()
+  if (!/4000\.0 Hz/.test(nyq)) fail(`Exactly at Nyquist after Beating reads "${nyq}" (FFT ${fft})`)
+  else if (fft !== '2048') fail(`Exactly at Nyquist inherited FFT ${fft} from Beating`)
+  else console.log(`   Exactly at Nyquist after Beating: ${nyq}, FFT ${fft}`)
+
+  // Groups: moving to another group folds the one you left. The bug: React
+  // fired onToggle on the initial open render, so the first group was
+  // recorded as hand-opened and never folded again.
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await loadPreset('Resonance is Q')
+  const openAfterMove = await page.$$eval('details.preset-group[open] > summary', (els) =>
+    els.map((e) => e.textContent.trim()),
+  )
+  if (openAfterMove.some((g) => g.startsWith('Signals'))) {
+    fail(`moving to Filters left "Signals and Fourier" open: ${openAfterMove.join(', ')}`)
+  } else if (openAfterMove.length !== 1) {
+    fail(`after moving to Filters ${openAfterMove.length} groups are open: ${openAfterMove.join(', ')}`)
+  } else {
+    console.log(`   fresh load -> Resonance is Q: open groups = ${openAfterMove.join(', ')}`)
+  }
+  // A group opened by hand stays open until the next experiment loads.
+  await page.locator('details.preset-group > summary', { hasText: 'Sampling' }).click()
+  await settle()
+  const handOpened = await page.$$eval('details.preset-group[open]', (els) => els.length)
+  if (handOpened !== 2) fail(`hand-opening Sampling should give 2 open groups, got ${handOpened}`)
+  await loadPreset('Aliasing')
+  const afterAliasing = await page.$$eval('details.preset-group[open] > summary', (els) =>
+    els.map((e) => e.textContent.trim()),
+  )
+  if (afterAliasing.length !== 1 || !afterAliasing[0].startsWith('Sampling')) {
+    fail(`loading Aliasing should leave only Sampling open: ${afterAliasing.join(', ')}`)
+  } else {
+    console.log('   hand-opened Sampling, loaded Aliasing: only Sampling stays open')
+  }
+}
+
+// ---------------------- 10h. the math panel does not push the knobs away
+
+console.log('\n10h. Opening the experiment math leaves the first Frequency field in place (1440x900)\n')
+
+{
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  // Position within the sidebar's content, not the viewport: the toggle sits
+  // below the fold, and a Playwright click would scroll to it, which is not
+  // the movement this check is about. The click goes through the DOM.
+  const freqY = () =>
+    page
+      .getByRole('spinbutton', { name: 'Frequency' })
+      .first()
+      .evaluate((el) => el.getBoundingClientRect().top + document.querySelector('.controls').scrollTop)
+  const toggle = () => page.evaluate(() => document.querySelector('#math .math-toggle').click())
+  const before = await freqY()
+  await toggle()
+  await settle()
+  const opened = await page.locator('#math .math-body').count()
+  const after = await freqY()
+  const moved = Math.abs(after - before)
+  if (!opened) fail('the experiment math did not open')
+  if (moved > 1) fail(`opening the math moved the Frequency field by ${moved.toFixed(0)} px`)
+  else console.log(`   Frequency field at y=${before.toFixed(0)} in the sidebar before and y=${after.toFixed(0)} after opening the math`)
+  await toggle()
+  await settle()
+}
+
+// ---------------- 10i. the fold: named knobs on screen at laptop sizes
+
+console.log('\n10i. Fold probe: try line, active chip and featured knob inside 1366x768 and 1440x900\n')
+
+{
+  const fresh = (name) => async () => {
+    await page.waitForSelector('.views canvas')
+    await loadPreset(name)
+  }
+  const cases = [
+    { name: 'Single tone', load: fresh('Single tone'), must: ['.preset.is-on', '.try-line'] },
+    { name: 'Square = odd harmonics', load: fresh('Square = odd harmonics'), must: ['.preset.is-on', '.try-line', '.featured .num'] },
+    { name: 'Exactly at Nyquist', load: fresh('Exactly at Nyquist'), must: ['.preset.is-on', '.try-line', '.featured .num'] },
+    { name: 'Resonance is Q', load: fresh('Resonance is Q'), must: ['.preset.is-on', '.try-line', '.featured .num'] },
+    { name: 'Coarse, not undersampled', load: fresh('Coarse, not undersampled'), must: ['.preset.is-on', '.try-line', '.featured .num'] },
+    { name: 'Aliasing', load: fresh('Aliasing'), must: ['.preset.is-on', '.try-line', '.featured .num'] },
+  ]
+  const r = await foldProbe(page, { url: URL, cases, viewports: LAPTOP_VIEWPORTS })
+  for (const m of r.measured) {
+    if (m.control !== '.featured .num' && m.control !== '.try-line') continue
+    const b = m.box ? `${(m.box.y + m.box.height).toFixed(0)} px` : 'missing'
+    console.log(`   ${m.viewport.padEnd(9)} ${m.lesson.padEnd(26)} ${m.control.padEnd(15)} bottom ${b}`)
+  }
+  for (const f of r.failures) fail(`fold: ${f}`)
+  if (r.ok) console.log('   every named control sits inside the viewport with the sidebar at the top')
+}
+
+// ------------------------- 10j. phone: both plots in the first viewport
+
+console.log('\n10j. Phone 390x844: time AND spectrum canvases above the fold\n')
+
+{
+  const fresh = (name) => async () => {
+    await page.waitForSelector('.views canvas')
+    await loadPreset(name)
+  }
+  const timeCanvas = (p) => p.locator('.views canvas').nth(0)
+  timeCanvas.label = 'time canvas'
+  const specCanvas = (p) => p.locator('.views canvas').nth(1)
+  specCanvas.label = 'spectrum canvas'
+  const r = await phoneProbe(page, {
+    url: URL,
+    cases: [
+      { name: 'Single tone', load: fresh('Single tone'), must: [timeCanvas, specCanvas] },
+      { name: 'Aliasing', load: fresh('Aliasing'), must: [timeCanvas, specCanvas] },
+    ],
+  })
+  for (const m of r.measured) {
+    const b = m.box ? `${(m.box.y + m.box.height).toFixed(0)} px` : 'missing'
+    console.log(`   ${m.lesson.padEnd(14)} ${m.control.padEnd(16)} bottom ${b} (fold 844)`)
+  }
+  for (const f of r.failures) fail(`phone: ${f}`)
+  if (r.ok) console.log('   both canvases fit on a 390x844 phone')
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
 }
 
 // -------------------------------------------------------------- 11. 4K fit

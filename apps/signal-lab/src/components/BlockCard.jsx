@@ -1,8 +1,8 @@
 import React from 'react'
-import { NumField } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { blockMath } from '../math-parts.js'
-import { BLOCK_GROUPS, BLOCK_TYPES, resolve } from '../dsp/blocks.js'
+import { BLOCK_GROUPS, BLOCK_TYPES } from '../dsp/blocks.js'
+import { BlockField } from './fields.jsx'
 
 /**
  * One block in the chain. Collapsed it is a 30px summary row; expanded it renders
@@ -24,8 +24,6 @@ export default function BlockCard({
   if (!def) return null
 
   const ctx = { sampleRate, nyquist: sampleRate / 2 }
-  const setParam = (key, value) =>
-    onChange({ ...block, params: { ...block.params, [key]: value } })
 
   return (
     <div
@@ -106,64 +104,18 @@ export default function BlockCard({
               {typeof def.hint === 'function' ? def.hint(block.params) : def.hint}
             </p>
           ) : null}
-          {def.params.map((p) => {
-            if (p.when && !p.when(block.params)) {
-              // A hidden control explains its absence where it used to stand,
-              // or its disappearance reads as a bug rather than physics.
-              return p.whenHint ? (
-                <p className="param-absent" key={p.key}>
-                  {p.whenHint(block.params)}
-                </p>
-              ) : null
-            }
-            if (p.kind === 'select') {
-              return (
-                <label className="field" key={p.key}>
-                  <span className="field-label">{p.label}</span>
-                  <select
-                    value={block.params[p.key]}
-                    onChange={(e) => setParam(p.key, e.target.value)}
-                  >
-                    {p.options.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )
-            }
-            if (p.kind === 'check') {
-              return (
-                <label className="check" key={p.key}>
-                  <input
-                    type="checkbox"
-                    checked={!!block.params[p.key]}
-                    onChange={(e) => setParam(p.key, e.target.checked)}
-                  />
-                  {p.label}
-                </label>
-              )
-            }
-            return (
-              <NumField
-                key={p.key}
-                label={p.label}
-                unit={p.unit}
-                value={block.params[p.key]}
-                onChange={(v) => setParam(p.key, v)}
-                min={resolve(p.min, ctx)}
-                max={resolve(p.max, ctx)}
-                scale={p.scale}
-                step={p.step}
-                decimals={p.decimals}
-                hint={p.hint}
-                presets={resolve(p.presets, ctx)}
-                suffixes={p.unit === 'Hz' ? { k: 1e3, khz: 1e3, hz: 1 } : undefined}
-                spoken={p.unit === 'Hz' ? 'hertz' : undefined}
-              />
-            )
-          })}
+          {/* Each parameter from the schema, through the one definition the
+              featured slot under a lesson's try line also renders — so the
+              knob up there and the knob down here are the same knob. */}
+          {def.params.map((p) => (
+            <BlockField
+              key={p.key}
+              block={block}
+              field={p.key}
+              sampleRate={sampleRate}
+              onChange={onChange}
+            />
+          ))}
 
           {/* Below the parameters, not above: set fc, order and Q first,
               THEN unfold what those choices mean. The flow is the lesson. */}

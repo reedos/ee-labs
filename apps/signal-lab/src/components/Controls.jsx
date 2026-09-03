@@ -1,36 +1,22 @@
 import React from 'react'
-import { LabNav, NumField, ReportIssue, fmtHz } from '@ee-labs/ui'
+import { LabNav, LessonNav, ReportIssue, TryLine } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { sourceMath } from '../math-parts.js'
 import { PRESET_GROUPS } from '../presets.js'
 import BlockCard from './BlockCard.jsx'
+import { SourceField, featuredFields } from './fields.jsx'
 import { WAVEFORMS } from '@ee-labs/dsp'
 import { BLOCK_GROUPS, BLOCK_TYPES, makeBlockRecord } from '../dsp/blocks.js'
-import { termsFor } from '../terms.js'
+import { termsFor, termsSummary } from '../terms.js'
+import { activeChip } from '../chips.js'
 import { reportSummary } from '../report.js'
 import pkg from '../../package.json'
 
-const HZ = { k: 1e3, khz: 1e3, hz: 1 }
-
-/** 1st, 3rd, 5th, 11th — the ordinal suffix, for naming a harmonic. */
-const ord = (n) => {
-  const t = n % 100
-  if (t >= 11 && t <= 13) return 'th'
-  return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'
-}
-
-/** The largest odd number not exceeding n. */
-const oddAtOrBelow = (n) => (n < 1 ? 1 : n % 2 === 1 ? n : n - 1)
-
-function Source({ src, sampleRate, onChange, onRemove, canRemove , fftSize}) {
+function Source({ src, sampleRate, onChange, onRemove, canRemove, fftSize }) {
   const set = (k, v) => onChange({ ...src, [k]: v })
-  const nyquist = sampleRate / 2
-  const aliased = src.freq > nyquist
-  const folded = Math.abs(src.freq - Math.round(src.freq / sampleRate) * sampleRate)
-  // The highest odd harmonic of this fundamental that still lands below
-  // Nyquist. At least 1: a fundamental already past Nyquist has no harmonic
-  // that fits, and offering 0 there would mean the ideal square instead.
-  const fits = Math.max(1, oddAtOrBelow(Math.ceil(nyquist / Math.max(src.freq, 1e-9)) - 1))
+  const field = (name) => (
+    <SourceField src={src} field={name} sampleRate={sampleRate} onChange={onChange} />
+  )
 
   return (
     <div className={`source${src.enabled ? '' : ' is-off'}`}>
@@ -60,131 +46,10 @@ function Source({ src, sampleRate, onChange, onRemove, canRemove , fftSize}) {
         </button>
       </div>
 
-      {src.type === 'square' && (
-        <NumField
-          label="Highest harmonic"
-          value={src.topHarmonic || 0}
-          // Snapped DOWN to an odd number, because a square has no even
-          // harmonics to stop on: "up to the 4th" can only mean the 3rd, and
-          // silently keeping 4 would put a number on screen that names no
-          // term in the series.
-          onChange={(v) => {
-            const n = Math.max(0, Math.round(v))
-            set('topHarmonic', n === 0 ? 0 : n % 2 === 1 ? n : n - 1)
-          }}
-          min={0}
-          max={127}
-          step={2}
-          decimals={0}
-          scale="linear"
-          presets={[
-            1,
-            3,
-            5,
-            9,
-            15,
-            // A real number rather than a vague one: the highest odd harmonic
-            // that still fits under Nyquist, which is the most detailed square
-            // this rate can carry without anything folding.
-            { value: fits, label: `fits (${fits})`, title: `The highest odd harmonic below Nyquist at ${fmtHz(sampleRate)}Hz — the sharpest square this rate can hold with nothing folding` },
-            {
-              value: 0,
-              label: 'ideal',
-              title:
-                'The true square: harmonics forever. Not a bigger number — a different object, and everything above Nyquist folds back',
-            },
-          ]}
-          hint={
-            src.topHarmonic > 0
-              ? `${(src.topHarmonic + 1) / 2} term${src.topHarmonic === 1 ? '' : 's'} — odd harmonics 1 to ${
-                  src.topHarmonic
-                }, topping out at ${fmtHz(src.topHarmonic * src.freq)}Hz. Perfect reconstruction needs a rate above ${fmtHz(
-                  2 * src.topHarmonic * src.freq,
-                )}Hz${
-                  sampleRate > 2 * src.topHarmonic * src.freq
-                    ? ' — this rate clears it, so nothing folds'
-                    : ' — this rate does NOT, so the top harmonics fold back'
-                }.`
-              : 'The ideal square: harmonics forever, so something always folds. Its trace looks CLEANER than a band-limited one, not rougher — the generator samples the shape directly, so every sample sits exactly on ±A and the folded content hides inside a pristine-looking trace. Set a highest harmonic to see the series instead.'
-          }
-        />
-      )}
-
-      {src.type !== 'noise' && (
-        <NumField
-          label="Frequency"
-          unit="Hz"
-          spoken="hertz"
-          value={src.freq}
-          onChange={(v) => set('freq', v)}
-          min={1}
-          max={sampleRate}
-          scale="log"
-          step={1}
-          suffixes={HZ}
-          tone={aliased ? 'warn' : null}
-          hint={aliased ? `aliases to ${folded.toFixed(0)} Hz` : null}
-          presets={[
-            1,
-            100,
-            440,
-            1000,
-            { value: Math.round(nyquist / 2), label: 'Nyq/2' },
-            {
-              value: Math.round(nyquist),
-              label: 'Nyq',
-              title:
-                'Nyquist — the fold point. Exactly here the samples land on the same two phases ' +
-                'every cycle: at phase 0° a sine samples its zero crossings and vanishes; drag ' +
-                'Phase to 90° and it returns at full amplitude.',
-            },
-            {
-              value: Math.round(nyquist * 1.5),
-              label: 'alias',
-              title: 'Above Nyquist — watch the peak walk back down',
-            },
-          ]}
-        />
-      )}
-
-      <NumField
-        label="Amplitude"
-        value={src.amp}
-        onChange={(v) => set('amp', v)}
-        min={0}
-        max={2}
-        scale="linear"
-        step={0.01}
-        decimals={2}
-        presets={[
-          0,
-          0.25,
-          0.5,
-          { value: 0.707, label: '0.707', title: '1/√2 — a sine here reads 0.500 RMS' },
-          1,
-          1.5,
-        ]}
-      />
-
-      {src.type !== 'noise' && (
-        // Not compact: the LTI experiment says "drag the phase slider and
-        // watch the filtered wave slide without changing shape", and time-
-        // invariance deserves a control you can actually scrub. The note
-        // pointed at a slider that was not there (Reed's report).
-        <NumField
-          label="Phase"
-          unit="°"
-          spoken="degrees"
-          value={(src.phase * 180) / Math.PI}
-          onChange={(d) => set('phase', (d * Math.PI) / 180)}
-          min={0}
-          max={360}
-          scale="linear"
-          step={1}
-          coarse={15}
-          decimals={0}
-        />
-      )}
+      {field('topHarmonic')}
+      {field('freq')}
+      {field('amp')}
+      {field('phase')}
 
       <MathPanel
         label="The math for this source"
@@ -194,16 +59,22 @@ function Source({ src, sampleRate, onChange, onRemove, canRemove , fftSize}) {
   )
 }
 
-export default function Controls({ state, setState, presets, onPreset, openBlocks, setOpenBlocks,
+export default function Controls({
+  state,
+  setState,
+  presets,
+  onPreset,
+  onChip,
+  nav,
+  openBlocks,
+  setOpenBlocks,
+  openGroups,
+  setOpenGroups,
   math,
-
   linkWarnings = [],
   cameFromLink = false,
   linkFrom = null,
 }) {
-  // Which preset groups are unfolded. The active preset's group is always
-  // open regardless, so collapsing is never able to hide where you are.
-  const [openGroups, setOpenGroups] = React.useState(() => new Set())
   const patch = (k, v) => setState((s) => ({ ...s, [k]: v }))
 
   const setSource = (i, next) =>
@@ -260,7 +131,19 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
       return n
     })
 
+  const toggleGroup = (g) =>
+    setOpenGroups((o) => {
+      const n = new Set(o)
+      if (n.has(g)) n.delete(g)
+      else n.add(g)
+      return n
+    })
+
   const activePreset = presets.find((p) => p.name === state.presetName)
+  const featured = activePreset
+    ? featuredFields(activePreset.featured, state, { setSource, setBlock })
+    : []
+  const terms = activePreset ? termsFor(activePreset.terms) : []
 
   return (
     <aside className="controls">
@@ -300,31 +183,27 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
             thirty buttons were most of the sidebar, and the thing a preset
             changes - the sources and chain below - was scrolled out of sight
             at the moment it changed. Only the active preset's group stays
-            open, so where-you-are survives the fold. */}
+            open, so where-you-are survives the fold.
+
+            The <details> is fully controlled: `open` is the truth, and the
+            summary's click is intercepted BEFORE the browser toggles anything.
+            The previous version listened to onToggle instead, and React fires
+            that on the initial open render — so the group holding the first
+            preset was recorded as "opened by hand" and never folded when the
+            student moved on to another group (Reed's review). The active
+            group refuses the click outright, so it cannot be hidden. */}
         {PRESET_GROUPS.map((g) => {
           const inGroup = presets.filter((p) => p.group === g)
           if (!inGroup.length) return null
           const holdsActive = inGroup.some((p) => p.name === state.presetName)
           return (
-            <details
-              className="preset-group"
-              key={g}
-              open={holdsActive || openGroups.has(g)}
-              onToggle={(e) => {
-                const next = new Set(openGroups)
-                if (e.target.open) next.add(g)
-                else next.delete(g)
-                setOpenGroups(next)
-              }}
-            >
-              {/* The browser folds a <details> natively BEFORE React hears of
-                  it, and React will not rewrite an `open` prop that did not
-                  change (true -> true), so the controlled prop alone is a
-                  fiction: the active group could be folded away despite the
-                  promise above. Refuse the gesture at the source — keyboard
-                  activation arrives as a click too, so this covers Enter and
-                  Space. Found by the Control Lab agent's harness. */}
-              <summary onClick={holdsActive ? (e) => e.preventDefault() : undefined}>
+            <details className="preset-group" key={g} open={holdsActive || openGroups.has(g)}>
+              <summary
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (!holdsActive) toggleGroup(g)
+                }}
+              >
                 {g}
                 {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
               </summary>
@@ -343,6 +222,17 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
             </details>
           )
         })}
+        {nav ? (
+          <LessonNav
+            index={nav.index}
+            total={nav.total}
+            dirty={nav.dirty}
+            onPrev={nav.onPrev}
+            onNext={nav.onNext}
+            onReset={nav.onReset}
+            noun="experiment"
+          />
+        ) : null}
         {activePreset ? (
           <>
             {/* The note gets its title. Once the groups fold, the paragraph
@@ -350,17 +240,38 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
                 and it opened mid-thought, anonymous. */}
             <h3 className="note-title">{activePreset.name}</h3>
             <p className="hint">{activePreset.note}</p>
+            <TryLine
+              text={activePreset.try}
+              chips={activePreset.chips || []}
+              onChip={onChip}
+              activeChip={activeChip(state, activePreset.chips || [])}
+            />
+            {/* The knob the try line names, right under it — the same
+                control as in its card below, so "drag Q" is not a scroll
+                away at 1366×768. verify.mjs holds this at laptop sizes. */}
+            {featured.length ? (
+              <div className="featured">
+                {featured.map((f) => (
+                  <div className="featured-item" key={f.key}>
+                    <p className="featured-from">{f.from}</p>
+                    {f.node}
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </>
         ) : null}
         {/* The vocabulary this lesson leans on, defined where it is used. A
             student meeting "bin" or "Q" mid-note should not need a second
             tab — and folded, the definitions cost nothing to someone who
-            already has them. */}
-        {activePreset && termsFor(activePreset.terms).length ? (
+            already has them. The summary NAMES the terms, so a student can
+            see whether the word that stopped them is behind it without
+            opening a panel that would push the knobs down. */}
+        {activePreset && terms.length ? (
           <details className="terms">
-            <summary>Terms used here</summary>
+            <summary>{termsSummary(activePreset.terms)}</summary>
             <dl>
-              {termsFor(activePreset.terms).map((t) => (
+              {terms.map((t) => (
                 <React.Fragment key={t.id}>
                   <dt>{t.name}</dt>
                   <dd>{t.def}</dd>
@@ -369,7 +280,6 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
             </dl>
           </details>
         ) : null}
-        <MathPanel entry={math} />
       </section>
 
       <section id="sources">
@@ -442,6 +352,14 @@ export default function Controls({ state, setState, presets, onPreset, openBlock
             />
           ))
         )}
+      </section>
+
+      {/* The experiment's math BELOW the knobs, not between the note and the
+          sources: opened, it used to push every source and block off the
+          bottom of the sidebar (Reed's review). Down here, expanding it moves
+          nothing a student is holding. */}
+      <section id="math">
+        <MathPanel entry={math} label="The math for this experiment" />
       </section>
 
       <section>

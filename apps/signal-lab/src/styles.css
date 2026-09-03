@@ -396,3 +396,73 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   border-left: 2px solid var(--line);
   padding-left: 8px;
 }
+
+/* The knob a lesson's try line names, mirrored under it so it is on screen
+   without scrolling. The eyebrow says which card it belongs to. */
+.featured {
+  margin: 8px 0 2px;
+  padding: 8px 9px 0;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+}
+.featured-item + .featured-item { margin-top: 4px; }
+.featured-from {
+  margin: 0 0 3px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* Phone: BOTH plots in the first viewport. The sidebar becomes a short
+   scroller of its own and the page stops scrolling, so the time and the
+   frequency pane — the pairing this lab is — share the screen the way they
+   do on a laptop. base.css stacks and lets the page scroll, which put the
+   spectrum at 951 px on an 844 px screen (Reed's review). */
+@media (max-width: 900px) {
+  .app {
+    height: 100dvh;
+    min-height: 0;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  .controls {
+    max-height: 32vh;
+  }
+  .views {
+    min-height: 0;
+  }
+  .view {
+    padding: 4px 10px 4px;
+  }
+}
+
+/* The featured copy of a knob repeats its card's hint ("for a low-pass the
+   peak height is exactly Q") — the try line above it just said so. */
+.featured .num-hint { display: none; }
+
+/* Short laptops (1366×768): the try line and the knob it names must sit
+   inside the first screen with the sidebar at the top — verify.mjs's fold
+   probe holds that. The tagline goes, and the list breathes a little less;
+   nothing changes at 900 px and up, where it already fit. */
+@media (max-height: 800px) and (min-width: 901px) {
+  .controls .sub { display: none; }
+  .controls section:first-of-type h2 { margin-bottom: 6px; }
+  .preset-group { margin-bottom: 4px; }
+  details.preset-group > .presets { margin: 2px 0 4px; }
+  .lesson-nav { margin-top: 6px; }
+  .note-title { margin-top: 6px; }
+  .note-title + .hint { margin-top: 6px; }
+  .try-line { margin-top: 6px; }
+  .featured { margin-top: 6px; padding-top: 6px; }
+}
+
+/* ...and on that phone the plots get the pixels the chrome was taking: the
+   tagline and the pane titles go (the view switches name the panes), and
+   the top bar tightens. Measured: each canvas grew from ~55 px to ~100 px. */
+@media (max-width: 900px) {
+  .controls .sub { display: none; }
+  .view-head h2 { display: none; }
+  .topbar { padding: 4px 10px; gap: 8px; }
+  .topbar-controls { gap: 8px; }
+  .conv-theorem { display: none; }
+}

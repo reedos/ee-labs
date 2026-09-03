@@ -492,6 +492,14 @@ const ENTRIES = {
             tol: 0.02,
           },
         ]),
+        // The rest of what the note used to say, now beside the numbers.
+        T(
+          'Coarse is an interpolation problem; undersampled — fewer than two samples per ' +
+            'cycle — is an information problem. The sin(x)/x curve is exact mid-pane and frays ' +
+            'only at the edges, where the sum runs out of neighbours. The slow wobble in the ' +
+            'dots’ envelope is the sampling phase creeping toward the fold, the margin above ' +
+            'away — Aliasing and Exactly at Nyquist take the story from there.',
+        ),
       ],
     }
   },
@@ -623,12 +631,27 @@ const ENTRIES = {
             'x(t) = \\frac{4A}{\\pi}\\sum_{m=0}^{\\infty} \\frac{\\sin\\bigl(2\\pi(2m+1)f_0 t\\bigr)}{2m+1}',
           ),
           T(
-            'Set "Odd harmonics" to a number and the sum stops there. That is the only ' +
+            'Now look at the TRACE: it got cleaner, not rougher — corners sharp, tops flat — ' +
+              'while the spectrum filled with a forest of folded lines. That is not fewer ' +
+              'harmonics, it is more. The ideal generator samples the shape itself rather than ' +
+              'summing terms, so every sample sits exactly on ±A and all that folded content ' +
+              'hides inside a trace with nothing visibly wrong with it. Which is the real ' +
+              'lesson: aliasing is not something you can count on seeing.',
+          ),
+          T(
+            'Set "Highest harmonic" to a number and the sum stops there. That is the only ' +
               'difference between a signal the sampling theorem can serve and one it cannot.',
           ),
         ],
       }
     }
+
+    // The first odd harmonic that no longer fits: raise the field to it and
+    // it folds back between the lines. Computed from the live settings, so
+    // the number is right at any fundamental or rate.
+    let kFold = 1
+    while (kFold * f0 <= nyq && kFold < 10001) kFold += 2
+    const fFold = kFold * f0
 
     // Every harmonic in the series, checked where it actually lands.
     const rows = []
@@ -693,6 +716,17 @@ const ENTRIES = {
             'amplitude down to zero, which is what "Exactly at Nyquist" demonstrates.',
         ),
         F('f_s > 2f_{\\max}'),
+        T(
+          top < nyq
+            ? `Raise the highest harmonic to ${kFold}: that harmonic lands at ${sig(fFold, 5)} Hz, ` +
+                `past the ${sig(nyq, 5)} Hz Nyquist, and reappears at ${sig(fold(fFold), 5)} Hz — ` +
+                'between harmonics, where nothing belongs, and no measurement of the samples can ' +
+                'tell you it does not. Then press "ideal" for the real square and watch the trace ' +
+                'get cleaner as the spectrum fills.'
+            : 'The top of this series is already past Nyquist: the rows below say where each ' +
+                'harmonic that no longer fits has landed. Press "ideal" for the real square and ' +
+                'watch the trace get cleaner as the spectrum fills.',
+        ),
         V([
           {
             label: 'highest harmonic kept',
@@ -734,6 +768,10 @@ const ENTRIES = {
             'hit the zero crossings and the tone disappears completely. The sampling theorem ' +
             'requires f strictly below f_s/2 for exactly this reason.',
         ),
+        V([
+          { label: 'samples per cycle', value: src && src.freq > 0 ? ctx.sampleRate / src.freq : Infinity },
+          { label: 'phase φ', value: (phi * 180) / Math.PI, unit: '°' },
+        ]),
         C([
           {
             label: 'A·|sin φ|',
@@ -742,6 +780,14 @@ const ENTRIES = {
             tol: 0.05,
           },
         ]),
+        // What the note used to add: the bound, and what the scope draws.
+        T(
+          'Same frequency, same amplitude, any answer you like — which is why "up to half the ' +
+            'sample rate" is a bound you approach, not one you sit on. The scope’s sin(x)/x ' +
+            'reconstruction through the dots follows the phase honestly: full height at 90°, ' +
+            'a flat line at 0°. The dots are the only thing that exists after sampling; the ' +
+            'curve is the scope’s own reading of them.',
+        ),
       ],
     }
   },
@@ -918,6 +964,16 @@ const ENTRIES = {
             'bandwidth instead, as ω₀/Q.',
         ),
         C(rows),
+        // What the note used to add, beside the row that checks it.
+        T(
+          'Drag Q and watch the peak BE the number. Then open the block and use its type ' +
+            'select to switch it to band-pass: the peak stays pinned at 0 dB however hard you ' +
+            'drag, because a band-pass is normalized to 1 at its centre — there Q sets the ' +
+            'WIDTH instead. Same knob, two meanings; the low-pass is where peak height and Q ' +
+            'are the same thing. With white noise as the source, the orange trace runs ' +
+            'parallel to the blue curve — every bump and slope matching — from the noise ' +
+            'floor’s own height below it.',
+        ),
       ],
     }
   },
@@ -1181,7 +1237,14 @@ const ENTRIES = {
           { label: 'zeros on the circle', value: N - 1 },
           { label: 'angle between them', value: 360 / N, unit: '°' },
           { label: 'poles away from the origin', value: 0, note: 'so it cannot be unstable' },
+          { label: 'kernel taps, each 1/N', value: N, note: 'the stems in the time pane' },
         ]),
+        T(
+          'The time pane shows the kernel — N equal taps — which is the same object as the ' +
+            'ring of zeros: the polynomial whose coefficients are those taps has those roots. ' +
+            'Add a resonant low-pass and its poles appear as crosses, pulled toward the rim ' +
+            'as Q rises, and the kernel grows a ringing tail to match.',
+        ),
       ],
     }
   },
@@ -1243,6 +1306,17 @@ const ENTRIES = {
           'The first row is computed twice on purpose: once by the running filter, once as this ' +
             'sum against the kernel measured from an impulse. Only for a linear, time-invariant ' +
             'chain do the two agree — add a clipper and watch them separate.',
+        ),
+        // What the note used to say about the picture, and what the canvas
+        // used to caption: the strips, the flat tops, the ramps, the warm-up.
+        T(
+          'Top strip: the input x[m], with the kernel flipped and slid to n. Bottom strip: the ' +
+            'output y = x ∗ h so far. Where the window sits wholly inside a half-period the ' +
+            'average is exactly the amplitude — the flat tops. The ramps between them are the ' +
+            'window straddling an edge, and they are exactly N−1 samples wide. The first few ' +
+            'samples ramp too: that is filter warm-up, seen for what it is — partial overlap. ' +
+            'Every dot down there is one completed sum; the smooth curve those samples describe ' +
+            'belongs to the Signal view, after the arithmetic is done.',
         ),
         V([
           { label: 'kernel length N', value: N, unit: 'samples' },

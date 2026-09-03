@@ -183,6 +183,21 @@ export function sourceMath(source, ctx) {
 
   const blocks = [F(w.tex), T(w.harmonics)]
 
+  // The ideal square, said where the "Highest harmonic" field used to say it
+  // in a paragraph beside the knob: its trace looks CLEANER than a band-
+  // limited one, and that is the trap.
+  if (source.type === 'square' && K === 0) {
+    blocks.push(
+      T(
+        'This is the ideal square: harmonics forever, so at any sample rate something folds. ' +
+          'Its trace looks cleaner than a band-limited one, not rougher — the generator samples ' +
+          'the shape directly, so every sample sits exactly on ±A and the folded content hides ' +
+          'inside a pristine-looking trace. Set a highest harmonic to see the series stop, and ' +
+          'the rate it then needs.',
+      ),
+    )
+  }
+
   if (periodic) {
     blocks.push(
       T(

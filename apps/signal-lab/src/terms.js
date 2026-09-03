@@ -12,6 +12,7 @@
 export const TERMS = {
   db: {
     name: 'dB (decibel)',
+    short: 'dB',
     def:
       'A logarithmic way to state a ratio: 20·log₁₀ of an amplitude ratio, so ×10 in amplitude ' +
       'is +20 dB, ×2 is +6 dB, and half is −6 dB. This tool references everything to 1.0, so a ' +
@@ -20,6 +21,7 @@ export const TERMS = {
   },
   rms: {
     name: 'RMS (root mean square)',
+    short: 'RMS',
     def:
       'The steady (DC) level that would deliver the same power as the wiggling signal: square ' +
       'every sample, average, square-root. A ±1 sine has RMS 0.707; a ±1 square, 1.0 — it ' +
@@ -27,6 +29,7 @@ export const TERMS = {
   },
   nyquist: {
     name: 'Nyquist frequency',
+    short: 'Nyquist',
     def:
       'Half the sample rate — the boundary of what a sampled system can represent. Everything ' +
       'STRICTLY below it survives sampling; exactly AT it a sine’s amplitude depends on where ' +
@@ -36,6 +39,7 @@ export const TERMS = {
   },
   sampled: {
     name: 'Sampled display (and sin(x)/x)',
+    short: 'sampled',
     def:
       'Everything this lab shows is samples — values taken fₛ times a second — because that ' +
       'is all a computer can hold, and it is what a bench scope holds too: a modern digital ' +
@@ -47,6 +51,7 @@ export const TERMS = {
   },
   aliasing: {
     name: 'Aliasing',
+    short: 'aliasing',
     def:
       'What happens to a frequency above Nyquist: its samples are indistinguishable from those ' +
       'of a lower frequency, so it appears AS that lower frequency — folded back into range. ' +
@@ -54,6 +59,7 @@ export const TERMS = {
   },
   bin: {
     name: 'FFT bin',
+    short: 'bin',
     def:
       'One slot of the spectrum. An N-point FFT at sample rate fₛ splits 0…Nyquist into slots ' +
       'fₛ/N apart — 2048 points at 8 kHz gives 3.9 Hz per bin. Two tones closer than a couple ' +
@@ -61,6 +67,7 @@ export const TERMS = {
   },
   harmonic: {
     name: 'Harmonic',
+    short: 'harmonic',
     def:
       'A component at a whole-number multiple of a fundamental frequency: for 250 Hz that is ' +
       '250 itself (harmonic 1, as the panels count), 500, 750, 1000… Periodic shapes are built ' +
@@ -69,6 +76,7 @@ export const TERMS = {
   },
   window: {
     name: 'Window (analysis window)',
+    short: 'window',
     def:
       'A taper multiplied onto the frame before the FFT so its edges meet zero. Without one, a ' +
       'tone that does not complete whole cycles in the frame has a jump at the seam, and that ' +
@@ -77,6 +85,7 @@ export const TERMS = {
   },
   leakage: {
     name: 'Spectral leakage',
+    short: 'leakage',
     def:
       'Energy from a single tone spread across many bins because the frame cut the tone ' +
       'mid-cycle. It is an artifact of analysis, not of the signal — the tone is still pure — ' +
@@ -84,6 +93,7 @@ export const TERMS = {
   },
   q: {
     name: 'Q (quality factor)',
+    short: 'Q',
     def:
       'How resonant a 2nd-order filter is. For a low-pass it is literally the height of the ' +
       'peak at the cutoff (Q = 10 → peak 10× = +20 dB); for a band-pass it sets the width ' +
@@ -92,6 +102,7 @@ export const TERMS = {
   },
   phase: {
     name: 'Phase',
+    short: 'phase',
     def:
       'Where in its cycle a component is, in degrees or radians. The FFT magnitude plot throws ' +
       'it away, which is why two signals can share a spectrum yet look different on the scope. ' +
@@ -99,6 +110,7 @@ export const TERMS = {
   },
   groupdelay: {
     name: 'Group delay',
+    short: 'group delay',
     def:
       'How long each frequency is held up by the chain, in samples: the slope of phase versus ' +
       'frequency. Flat group delay means every component arrives together — the shape survives, ' +
@@ -107,6 +119,7 @@ export const TERMS = {
   },
   kernel: {
     name: 'Impulse response / kernel',
+    short: 'kernel',
     def:
       'Two names for one sequence. "Impulse response" is how it is measured: feed a single 1, ' +
       'record what comes out. "Kernel" is what it is for: the weights the convolution sum ' +
@@ -114,6 +127,7 @@ export const TERMS = {
   },
   convolution: {
     name: 'Convolution',
+    short: 'convolution',
     def:
       'The sum y[n] = Σ h[k]·x[n−k]: each output sample is the kernel times the recent past. ' +
       'It is the only description of filtering that covers FIR and IIR at once, and it is what ' +
@@ -121,6 +135,7 @@ export const TERMS = {
   },
   lti: {
     name: 'LTI (linear, time-invariant)',
+    short: 'LTI',
     def:
       'The two assumptions under this whole tool. Linear means superposition (responses to ' +
       'added signals add) plus scaling (double the input, double the output). Time-invariant: ' +
@@ -132,6 +147,7 @@ export const TERMS = {
   },
   superposition: {
     name: 'Superposition',
+    short: 'superposition',
     def:
       'Half of what "linear" means (the other half is scaling): the response to a sum is the ' +
       'sum of the responses. It is why sources here simply add, why each spectral line can be ' +
@@ -139,6 +155,7 @@ export const TERMS = {
   },
   zplane: {
     name: 'z-plane',
+    short: 'z-plane',
     def:
       'The complex plane where a digital filter’s poles (×) and zeros (○) live. The unit ' +
       'circle IS the frequency axis — DC at z = 1, Nyquist at z = −1 — and the response at a ' +
@@ -147,6 +164,7 @@ export const TERMS = {
   },
   order: {
     name: 'Filter order',
+    short: 'order',
     def:
       'The highest power of delay in the difference equation — the filter’s memory depth. For ' +
       'the IIR blocks here that is the number of poles, and it sets the ultimate slope: ' +
@@ -159,4 +177,15 @@ export const TERMS = {
 /** The definitions a preset asked for, in the order it asked. */
 export function termsFor(ids = []) {
   return ids.map((id) => ({ id, ...TERMS[id] })).filter((t) => t.name)
+}
+
+/**
+ * The folded summary's text: which terms wait behind it. A student who knows
+ * "aliasing" and "Nyquist" can leave it shut; one who does not sees the word
+ * that stopped them before deciding to open it. Opening it by default was
+ * the other option, and that pushes the knobs down the sidebar.
+ */
+export function termsSummary(ids = []) {
+  const shorts = termsFor(ids).map((t) => t.short || t.name)
+  return shorts.length ? `Terms used here: ${shorts.join(', ')}` : 'Terms used here'
 }

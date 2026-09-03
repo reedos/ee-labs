@@ -59,13 +59,6 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
       const syTop = (v) => mid(top) - (v / (peak * 1.1)) * (top.h / 2)
       const syBot = (v) => mid(bot) - (v / (peak * 1.1)) * (bot.h / 2)
 
-      const label = (area, text) => {
-        ctx.fillStyle = COLORS.text
-        ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
-        ctx.textAlign = 'left'
-        ctx.textBaseline = 'bottom'
-        ctx.fillText(text, area.x + 2 * k, area.y - 4 * k)
-      }
       const zero = (area, sy) => {
         ctx.strokeStyle = COLORS.grid
         ctx.lineWidth = 1 * k
@@ -75,11 +68,13 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
         ctx.stroke()
       }
 
-      // Labels above the plot frame go down first — the clip that keeps data
-      // marks inside the frame would swallow them.
-      label(top, 'input x[m], with the kernel flipped and slid to n')
-
-      // Name the magnification, or the kernel's height is a quiet lie.
+      // One caption on the canvas, and it is the honest one: the kernel is
+      // drawn magnified next to the signal, and its height is a quiet lie
+      // unless the factor is named. What the two strips ARE — input with the
+      // flipped kernel, output so far — is said once in the note and the
+      // readout; three captions here fought the plot for the eye (Reed's
+      // review). Drawn above the frame, before the clip that keeps data
+      // marks inside it.
       const mag = (peak * 1.1) / (hPeak * 1.15)
       if (mag > 1.25 || mag < 0.8) {
         ctx.fillStyle = COLORS.response
@@ -203,7 +198,6 @@ export default function ConvolutionCanvas({ x, h, y, pos, exact }) {
       // view should say so where it happens, not leave the pane title to
       // carry it. The nonlinear label keeps its refusal instead — printing
       // y = x ∗ h over an output the sum does not produce would be a lie.
-      label(bot, exact ? 'output y = x ∗ h so far — this flip, slide, multiply and sum is convolution' : 'chain output — NOT this sum: the chain is nonlinear')
       zero(bot, syBot)
 
       ctx.strokeStyle = exact ? COLORS.spectrum : COLORS.marker

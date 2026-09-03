@@ -25,31 +25,9 @@ import { readLocationLink, track, arrivalEvent } from '@ee-labs/ui'
 import { stateFromLink } from './fromLink.js'
 import { mathContext, mathFor } from './math.js'
 import { samplingState } from './sampling.js'
-
-const INITIAL = {
-  sources: [{ id: 1, type: 'sine', freq: 250, amp: 1, phase: 0, enabled: true }],
-  blocks: [],
-  sampleRate: 8000,
-  fftSize: 2048,
-  window: 'hann',
-  timeSpanMs: 20,
-  spanCycles: 5,
-  scale: 'db',
-  showHarmonics: false,
-  showGhost: false,
-  // Phase and group delay share one right-hand axis, so they are a choice
-  // rather than two toggles. See SpectrumCanvas.
-  overlay: 'none',
-  // Zoom for the spectrum's x-axis; null means the full span to Nyquist.
-  specMax: null,
-  showTransient: false,
-  // Each pane can show the chain from a different side. The signal and its
-  // spectrum are the default pair; the impulse response and the z-plane are the
-  // same filter described by its kernel and by its roots.
-  timeView: 'signal',
-  freqView: 'spectrum',
-  presetName: 'Single tone',
-}
+import { INITIAL, presetState } from './state.js'
+import { applyChip } from './chips.js'
+import { formatPeaks, spectralPeaks } from './peaks.js'
 
 /**
  * Which side of the chain a pane is showing.
@@ -94,25 +72,41 @@ export default function App() {
   }, [linked])
 
   const [state, setState] = useState(linked.state || INITIAL)
+  // The state the current experiment loaded with. `dirty` — the lesson nav's
+  // reset appears — is the state having moved away from it, compared by value
+  // so a chip clicked and clicked back is not "moved".
+  const [applied, setApplied] = useState(linked.state || INITIAL)
   // A block that arrived from a link should be open. You did not choose it, so
   // being able to see what you were handed is the first thing you want.
   const [openBlocks, setOpenBlocks] = useState(
     () => new Set((linked.state?.blocks ?? []).map((b) => b.id)),
   )
+  // Preset groups the student unfolded by hand. Cleared whenever an
+  // experiment loads, so only the group holding it is open from then on.
+  const [openGroups, setOpenGroups] = useState(() => new Set())
 
   const applyPreset = (p) => {
-    // Every toggle is re-pinned to its default before the patch lands, or settings
-    // from the previous preset leak into this one.
-    setState((s) => ({
-      ...INITIAL,
-      sources: s.sources,
-      sampleRate: s.sampleRate,
-      fftSize: s.fftSize,
-      ...p.patch,
-      presetName: p.name,
-    }))
+    const next = presetState(p)
+    setState(next)
+    setApplied(next)
     setOpenBlocks(new Set((p.patch.blocks || []).map((b) => b.id)))
+    setOpenGroups(new Set())
   }
+
+  const dirty = useMemo(() => JSON.stringify(state) !== JSON.stringify(applied), [state, applied])
+
+  // The course's spine: the sidebar's order, which presets.js is in.
+  const presetIndex = PRESETS.findIndex((p) => p.name === state.presetName)
+  const nav = {
+    index: presetIndex >= 0 ? presetIndex : null,
+    total: PRESETS.length,
+    dirty,
+    onPrev: () => presetIndex > 0 && applyPreset(PRESETS[presetIndex - 1]),
+    onNext: () => presetIndex < PRESETS.length - 1 && applyPreset(PRESETS[presetIndex + 1]),
+    onReset: () => presetIndex >= 0 && applyPreset(PRESETS[presetIndex]),
+  }
+
+  const onChip = (c) => setState((s) => applyChip(s, c.patch))
 
   const patch = (k, v) => setState((s) => ({ ...s, [k]: v }))
 
@@ -290,16 +284,21 @@ export default function App() {
     [state.sources, state.blocks, state.sampleRate, state.fftSize, state.window],
   )
 
+  // The spectral lines worth naming — every one within 6 dB of the tallest
+  // (Beating's pair, a ring modulator's two sidebands) — and the tallest of
+  // them as THE peak for the math panel and the z-plane marker. See peaks.js
+  // for the tie at Nyquist that used to read 3996.1 Hz for a 4 kHz tone.
   const stats = useMemo(() => {
-    let iMax = 0
-    for (let i = 1; i < amps.length; i++) if (amps[i] > amps[iMax]) iMax = i
+    const peaks = spectralPeaks(freqs, amps, { window: state.window })
+    const top = peaks.reduce((m, p) => (m && m.amp >= p.amp ? m : p), null)
     return {
       rms: rms(timeBuf),
       peak: peak(timeBuf),
-      peakFreq: freqs[iMax],
-      peakAmp: amps[iMax],
+      peaks,
+      peakFreq: top ? top.freq : 0,
+      peakAmp: top ? top.amp : 0,
     }
-  }, [timeBuf, freqs, amps])
+  }, [timeBuf, freqs, amps, state.window])
 
   const markers = useMemo(() => {
     if (!state.showHarmonics) return []
@@ -354,8 +353,12 @@ export default function App() {
         linkFrom={linked.state ? linked.state.linkFrom : null}
         math={math}
         onPreset={applyPreset}
+        onChip={onChip}
+        nav={nav}
         openBlocks={openBlocks}
         setOpenBlocks={setOpenBlocks}
+        openGroups={openGroups}
+        setOpenGroups={setOpenGroups}
       />
 
       <TopBar
@@ -650,8 +653,9 @@ export default function App() {
                 <>
                   <span>
                     {/* Same dust rule: the argmax of a numerically-zero
-                        spectrum is a random bin, not a peak. */}
-                    peak <b>{stats.peakAmp > 1e-6 ? `${stats.peakFreq.toFixed(1)} Hz` : '—'}</b>
+                        spectrum is a random bin, not a peak — spectralPeaks
+                        returns nothing for one, and that prints as a dash. */}
+                    peak <b>{formatPeaks(stats.peaks)}</b>
                   </span>
                   <span>
                     amp <b>{stats.peakAmp > 1e-6 ? stats.peakAmp.toFixed(3) : '—'}</b>

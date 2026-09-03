@@ -5,6 +5,7 @@ import { chainResponse, renderChain } from './dsp/chain.js'
 import { render, spectrum, sincInterp } from '@ee-labs/dsp'
 import { designBiquad, biquadResponse, designFir } from '@ee-labs/dsp'
 import { applyChain, chainGroupDelay, chainImpulse, chainPolesZeros } from './dsp/chain.js'
+import { mathFor } from './math.js'
 
 // The presets are the lessons, and each note makes a claim about physics:
 // "only odd harmonics", "the peak is Q", "neither input survives". A note that
@@ -581,8 +582,15 @@ describe('Coarse, not undersampled', () => {
     expect(p.patch.sampleRate / src.freq).toBeCloseTo(2.35, 2)
     expect(p.patch.sampleRate / 2 - src.freq).toBe(600)
     expect(p.note).toContain('2.35')
-    expect(p.note).toContain('600 Hz')
     expect(p.note).toContain('0.707')
+    // The distance to the fold moved out of the note (one claim now) into
+    // the math panel, as a live value rather than a quoted one.
+    const entry = mathFor(p.name, { sources: p.patch.sources, sampleRate: p.patch.sampleRate, peakFreq: src.freq })
+    const values = entry.blocks.filter((b) => b.kind === 'values').flatMap((b) => b.rows)
+    const margin = values.find((r) => r.label === 'margin to the fold')
+    expect(margin).toBeTruthy()
+    expect(margin.value).toBe(600)
+    expect(margin.unit).toBe('Hz')
   })
 
   it('nothing was lost: RMS holds and the reconstruction IS the original', () => {
