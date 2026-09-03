@@ -71,12 +71,20 @@ export default function PoleZeroCanvas({
       ctx.lineTo(x0, area.y + area.h)
       ctx.stroke()
       ctx.globalAlpha = 1
-      ctx.fillStyle = COLORS.marker
-      ctx.globalAlpha = 0.75
-      ctx.font = `${Math.round(11 * k)}px ui-sans-serif, system-ui, sans-serif`
+      // A region label, not a status: a first-year reads a lone red
+      // "unstable" as the verdict on the circuit in front of them. Say what
+      // the half means, in the axis colour, and let the verdict live in the
+      // chrome that measures it.
+      ctx.fillStyle = COLORS.text
+      ctx.globalAlpha = 0.8
+      ctx.font = `${Math.round(10.5 * k)}px ui-sans-serif, system-ui, sans-serif`
       ctx.textAlign = 'left'
       ctx.textBaseline = 'top'
-      ctx.fillText('unstable', x0 + 6 * k, area.y + 6 * k)
+      const room = area.x + area.w - x0 - 12 * k
+      const label = ['right half-plane: a pole here runs away', 'right half-plane: runs away', 'runs away'].find(
+        (t) => ctx.measureText(t).width <= room,
+      )
+      if (label) ctx.fillText(label, x0 + 6 * k, area.y + 6 * k)
       ctx.globalAlpha = 1
 
       // Where the closed-loop poles travel as a gain is swept. Drawn first, so
