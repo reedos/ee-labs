@@ -1055,6 +1055,164 @@ console.log('\n6. Phone width\n')
   console.log('   no horizontal scroll at 390px, watch view included')
 }
 
+// ------------------------------------------------- 6b. Reed's Math tab report
+//
+// Reed's own report: "on mobile phone, if you scroll down and click the math
+// button to the right of root locus, the plots become absurdly tall and do
+// not revert to a good shape." Two halves, both probed — a probe that only
+// checked the first would have missed the half he actually noticed:
+//   (a) opening Math must not make ANY plot (Bode's included, not just the
+//       lesson's own) absurdly tall, and
+//   (b) switching back to another view must restore that plot to (within a
+//       few px of) the height it had before Math was ever opened — including
+//       after Math has been toggled on and off more than once.
+//
+// Cause: the lower row is a CSS Grid `1fr 1fr` track inside `.views`, which
+// itself sits in a phone `.app` whose height is `auto` (min-height: 100dvh
+// is only a floor). With an indefinite container height, Grid resolves every
+// `1fr` track from the SAME flex-fraction — the largest max-content
+// contribution of ANY track's content, applied to every track alike. The
+// Math pane is real KaTeX prose, easily 1500-2000px tall on a narrow phone;
+// opening it inflated both rows to match, Bode's canvas included, though
+// Bode has no content of its own demanding that height. Switching back did
+// not revert it because useCanvas.js (packages/ui, not owned by this app)
+// burns the measured box straight into the canvas's own width/height
+// attributes, which become its intrinsic size and feed right back into the
+// same max-content calculation on the NEXT layout — so the row stayed
+// inflated even with Math gone. Fixed locally in this app's styles.css by
+// pinning every phone plot (canvas or math pane) to a flat height, so no
+// pane ever contributes indefinite content to the grid's track sizing.
+console.log('\n6b. Math tab on phone: no plot goes absurdly tall, and switching back restores it\n')
+{
+  // Four lessons, four different default ("primary") views — the weighted
+  // split hands the named view a bigger share of the row, and that share is
+  // exactly what the Math pane's real content used to blow out.
+  const phoneMathLessons = [
+    { name: 'Proportional cannot get there', view: 'Step' },
+    { name: 'Watch the integrator take over', view: 'Watch' },
+    { name: 'Everything is about one point', view: 'Nyquist' },
+    { name: 'Watch the poles cross', view: 'Root locus' },
+  ]
+  const mathViewports = [
+    { width: 390, height: 844 },
+    { width: 360, height: 800 },
+    { width: 768, height: 1024 },
+  ]
+
+  // The PRIMARY pane is whichever section carries `.is-primary` (the lower,
+  // lesson-named pane on a weighted lesson) — it is the one whose content
+  // swaps between a canvas and the Math pane. BODE is the always-on pane
+  // beside it, which should show nothing of Math's but is exactly the pane
+  // that inflated too, since a `1fr` grid track's blow-out is not confined
+  // to the track that caused it.
+  const measurePanes = () =>
+    page.evaluate(() => {
+      const out = {}
+      for (const sec of document.querySelectorAll('.views > .view')) {
+        const el = sec.querySelector('canvas.plot') || sec.querySelector('.math-pane')
+        if (!el) continue
+        const r = el.getBoundingClientRect()
+        out[sec.classList.contains('is-primary') ? 'primary' : 'bode'] = {
+          tag: el.className,
+          h: r.height,
+          w: r.width,
+        }
+      }
+      return out
+    })
+
+  const checkBound = (panes, bound, when, vp, name) => {
+    for (const key of ['primary', 'bode']) {
+      const p = panes[key]
+      if (!p) continue
+      if (p.h > bound) {
+        fail(
+          `phone math/${vp.width}x${vp.height}/${name}: ${when} the ${key} pane (${p.tag}) is ${p.h.toFixed(0)}px tall — over the ${bound.toFixed(0)}px bound (45% of the ${vp.height}px viewport)`,
+        )
+      }
+      if (p.h > p.w * 2) {
+        fail(
+          `phone math/${vp.width}x${vp.height}/${name}: ${when} the ${key} pane (${p.tag}) is ${p.h.toFixed(0)}x${p.w.toFixed(0)} — more than twice as tall as it is wide`,
+        )
+      }
+    }
+  }
+
+  for (const vp of mathViewports) {
+    await page.setViewportSize(vp)
+    const bound = vp.height * 0.45
+    for (const { name, view } of phoneMathLessons) {
+      await page.goto(URL, { waitUntil: 'networkidle' })
+      await page.waitForSelector('.views canvas')
+      await loadLesson(name)
+
+      // Reed's own path: scroll down FIRST, then open Math.
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+      await page.waitForTimeout(80)
+      const before = await measurePanes()
+      checkBound(before, bound, 'before Math', vp, name)
+
+      await clickBtn('Math')
+      await page.waitForTimeout(120)
+      const afterMath = await measurePanes()
+      checkBound(afterMath, bound, 'after opening Math', vp, name) // half (a)
+
+      await clickBtn(view)
+      await page.waitForTimeout(120)
+      const afterBack = await measurePanes()
+      checkBound(afterBack, bound, 'after switching back', vp, name)
+
+      // Repeated toggling — "does not revert" is the half a one-shot check
+      // would miss, so toggle twice more before measuring again.
+      await clickBtn('Math')
+      await clickBtn(view)
+      await clickBtn('Math')
+      await clickBtn(view)
+      await page.waitForTimeout(120)
+      const afterRepeat = await measurePanes()
+      checkBound(afterRepeat, bound, 'after repeated toggling', vp, name)
+
+      // Half (b): the shape must come BACK, not merely stay under the bound.
+      for (const [snapLabel, snap] of [
+        ['switching back once', afterBack],
+        ['toggling repeatedly', afterRepeat],
+      ]) {
+        for (const key of ['primary', 'bode']) {
+          const b0 = before[key]
+          const b1 = snap[key]
+          if (!b0 || !b1) continue
+          if (Math.abs(b1.h - b0.h) > 4) {
+            fail(
+              `phone math/${vp.width}x${vp.height}/${name}: after ${snapLabel}, the ${key} pane did not revert — was ${b0.h.toFixed(0)}px before Math, is ${b1.h.toFixed(0)}px now`,
+            )
+          }
+        }
+      }
+
+      console.log(
+        `   ${vp.width}x${vp.height} ${name.padEnd(34)} primary before ${before.primary?.h.toFixed(0)}px, ` +
+          `Math ${afterMath.primary?.h.toFixed(0)}px, reverted ${afterBack.primary?.h.toFixed(0)}px, ` +
+          `after repeat ${afterRepeat.primary?.h.toFixed(0)}px (bode held at ${before.bode?.h.toFixed(0)}/${afterMath.bode?.h.toFixed(0)}px)`,
+      )
+    }
+
+    // Reverse order, once per viewport: open Math FIRST, then scroll — the
+    // bound must hold either way round.
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.views canvas')
+    await loadLesson(phoneMathLessons[0].name)
+    await clickBtn('Math')
+    await page.waitForTimeout(120)
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    await page.waitForTimeout(80)
+    const reversePanes = await measurePanes()
+    checkBound(reversePanes, bound, 'Math opened before scrolling', vp, phoneMathLessons[0].name)
+  }
+  console.log(
+    '   Math tab on phone: no plot ever exceeds 45% of the viewport, and every plot returns to its pre-Math height on switching back — including after repeated toggling and in reverse order',
+  )
+}
+
 // ------------------------------------ 7. the fold: every lesson's knob on screen
 
 console.log('\n7. Fold probe at 1366×768 and 1440×900\n')

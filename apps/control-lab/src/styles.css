@@ -360,7 +360,45 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    scroll down rather than the other way round. */
 @media (max-width: 900px) {
   .views.is-weighted > .view.is-primary { order: -1; }
-  .views.is-weighted > .view.is-primary .plot { min-height: 240px; }
+}
+
+/* Phone: every pane in the lower row — a canvas OR the Math pane's prose —
+   gets a FIXED height, not a share of `.views`'s `1fr 1fr` grid. That grid
+   sits inside `.app`, whose phone height is `auto` (min-height: 100dvh is
+   only a floor); with an indefinite container height, CSS Grid resolves
+   every `1fr` track from the SAME flex-fraction — the largest max-content
+   contribution of any track's content, applied to all of them equally. The
+   Math pane is real KaTeX prose, often 2000px+ tall on a narrow phone, so
+   opening it inflated BOTH rows to match — the Bode canvas included, which
+   has no content of its own to demand that height. Worse, useCanvas.js
+   (packages/ui, not owned by this app) burns the measured box straight into
+   the canvas's width/height attributes; that becomes the canvas's own
+   intrinsic size, which feeds right back into the same max-content
+   calculation on the NEXT layout — so switching back to Step/Watch/
+   Nyquist/Locus inherited the inflated row instead of shrinking to fit a
+   canvas that has nothing to show. Pinning every plot's height removes the
+   indefinite content that starts the loop — Circuit Lab already carries the
+   equivalent fix for its own phone math pane.
+   Bound: 240px is under 45% of even a short 667px phone (300px), well under
+   45% of the 390x844 / 360x800 phones this suite targets, and every pane
+   here is at least ~330px wide (a 360px-wide phone, minus padding) — so no
+   plot is ever taller than it is wide. The lesson's own named view still
+   reads as the bigger of the two, capped the same way. 240px is also the
+   exact figure the OLD min-height carried for the primary pane (below) — it
+   already had to fit under the fold's tightest budget (the longest note,
+   "Watch the integrator take over", leaves only ~259px above 844px), so
+   reusing it here keeps the item-7 fold probe passing along with this one. */
+@media (max-width: 900px) {
+  .views { min-height: 0; }
+  .view .plot,
+  .view-body.math-pane {
+    flex: none;
+    height: 200px;
+  }
+  .views.is-weighted > .view.is-primary .plot,
+  .views.is-weighted > .view.is-primary .view-body.math-pane {
+    height: 240px;
+  }
 }
 
 /* Phone: the "Try this" section's own two blocks reorder, Circuit Lab's
