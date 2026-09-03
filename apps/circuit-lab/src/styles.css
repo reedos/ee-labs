@@ -239,3 +239,87 @@ a.handover-copy {
 }
 
 a.handover-copy:hover { filter: brightness(1.1); }
+
+/* ---------- the course's furniture (student-tool review, 2026-09) ---------- */
+
+/* A note whose picture has moved on: a knob changed since the lesson loaded.
+   The paragraph stays (it is still the lesson you are in) but says so, and
+   the reset in the nav strip above puts the described setup back. */
+.note-stale {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.hint.note.is-stale { opacity: 0.6; }
+
+/* The course's spine rides the sticky "Try this" cap, so prev / next / reset
+   are on screen at any scroll and cost the fold nothing. The h2's own
+   uppercase typography must not reach the buttons. */
+.controls h2 .lesson-nav {
+  margin: 0;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  gap: 4px;
+}
+.controls h2 .lesson-nav-step,
+.controls h2 .lesson-nav-reset { padding: 1px 6px; }
+.controls h2 .lesson-nav-count { min-width: 44px; }
+.controls h2 .lesson-nav-reset { margin-left: 2px; }
+
+/* The controls a try line names, right under it: the same fields as in the
+   Components section, bound to the same state. */
+.featured {
+  margin: 8px 0 0;
+  padding: 6px 0 0;
+  border-top: 1px dashed var(--line);
+}
+.featured .num:last-child, .featured .field:last-child { margin-bottom: 4px; }
+
+/* The lesson list, tightened: at 1366×768 every pixel between the list and
+   the featured knob is a pixel the note's "drag R" has to reach across. */
+details.preset-group { margin-bottom: 4px; }
+details.preset-group > summary { padding: 2px 0; }
+details.preset-group > .presets { margin: 3px 0 5px; }
+.presets { gap: 4px; }
+.preset { padding: 4px 7px; font-size: 11px; }
+.note-title { margin-top: 8px; }
+.hint.note { margin-top: 6px; }
+
+.featured-handover { margin-bottom: 10px; }
+.featured-handover .handover-copy { margin-top: 0; margin-bottom: 6px; }
+
+/* Where the math went: a pointer in the sidebar, the panel itself a tab of
+   the lower pane. The pane is a fixed-height flex column, so the body scrolls
+   inside it rather than growing the page. */
+.math-pointer b { color: var(--text); font-weight: 600; }
+
+.math-pane {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.math-pane .math-body {
+  margin-top: 0;
+  border-left: 0;
+  padding: 2px 4px 8px;
+}
+
+/* Phone: with a lesson loaded the frequency response AND the lesson's own
+   lower view must both sit in the first viewport, so the sidebar takes less
+   than base.css's 45vh and the canvases are pinned to a height the two can
+   share. (The sidebar still scrolls internally.) */
+@media (max-width: 900px) {
+  .controls { max-height: 30vh; }
+  .views { min-height: 0; }
+  .view { padding: 4px 10px 4px; }
+  .view-head h2 { display: none; }
+  .view .plot { flex: none; height: 168px; }
+  .math-pane { height: 168px; flex: none; }
+}

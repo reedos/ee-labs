@@ -18,6 +18,20 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
  * instead of the axis rescaling to pin the curve in place. Without it the
  * canvas fits the data itself, band included.
  */
+/**
+ * `n` evenly spaced (t, y) pairs off the drawn trace, as JSON — the harness
+ * reads them to check the integrator's ramp really has not flattened.
+ */
+function sampled(t, y, n) {
+  if (!t.length) return '[]'
+  const out = []
+  for (let i = 0; i < n; i++) {
+    const k = Math.round(((t.length - 1) * (i + 1)) / n)
+    out.push([t[k], y[k]])
+  }
+  return JSON.stringify(out)
+}
+
 export default function StepCanvas({ t, y, final, band = null, range = null, markers = [] }) {
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -172,6 +186,7 @@ export default function StepCanvas({ t, y, final, band = null, range = null, mar
       aria-label="Step response of the circuit in time"
       data-t-max={t.length ? t[t.length - 1] : 0}
       data-y-hi={range ? range.hi : ''}
+      data-samples={sampled(t, y, 6)}
     />
   )
 }

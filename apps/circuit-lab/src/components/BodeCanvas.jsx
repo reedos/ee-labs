@@ -26,6 +26,7 @@ export default function BodeCanvas({
   band = null,
   markers = [],
   yUnit = 'dB',
+  annotations = [],
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -122,6 +123,19 @@ export default function BodeCanvas({
           ctx.textBaseline = 'top'
           ctx.fillText(m.label, x + 4 * k, area.y + 4 * k)
         }
+      }
+
+      // Captions pinned to a LEVEL rather than a frequency — a flat response
+      // has no corner to mark, and "no dynamics" deserves to be a labelled
+      // fact on the plot, not empty chrome: { db, text } sits just above the
+      // magnitude trace, { deg, text } just under the phase trace.
+      ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+      ctx.textAlign = 'right'
+      for (const a of annotations) {
+        if (!Number.isFinite(a.db)) continue
+        ctx.fillStyle = COLORS.marker
+        ctx.textBaseline = 'bottom'
+        ctx.fillText(a.text, area.x + area.w - 8 * k, sy(a.db) - 4 * k)
       }
 
       // The 0 dB reference, where the output equals the input.
@@ -248,6 +262,15 @@ export default function BodeCanvas({
         }
         ctx.stroke()
         ctx.setLineDash([])
+
+        ctx.fillStyle = COLORS.phase
+        ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+        ctx.textAlign = 'right'
+        ctx.textBaseline = 'top'
+        for (const a of annotations) {
+          if (!Number.isFinite(a.deg)) continue
+          ctx.fillText(a.text, area.x + area.w - 8 * k, py(a.deg) + 4 * k)
+        }
         ctx.restore()
 
         ctx.save()
@@ -268,8 +291,23 @@ export default function BodeCanvas({
       }
       ctx.restore()
     },
-    [freqs, mag, phase, showPhase, band, markers, yUnit],
+    [freqs, mag, phase, showPhase, band, markers, yUnit, annotations],
   )
 
-  return <canvas ref={ref} className="plot" role="img" aria-label="Bode plot: magnitude and phase of the circuit against frequency" />
+  // What the plot says, readable from the DOM: the harness checks a corner
+  // is labelled f_c and a divider is labelled H = 1/2, which pixels cannot
+  // tell it.
+  return (
+    <canvas
+      ref={ref}
+      className="plot"
+      role="img"
+      aria-label="Bode plot: magnitude and phase of the circuit against frequency"
+      data-markers={markers.map((m) => m.label).filter(Boolean).join(' | ')}
+      data-annotations={annotations
+        .filter((a) => showPhase || Number.isFinite(a.db))
+        .map((a) => a.text)
+        .join(' | ')}
+    />
+  )
 }

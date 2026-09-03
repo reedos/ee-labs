@@ -1,4 +1,4 @@
-import { CIRCUITS } from './circuits.js'
+import { CIRCUITS, transferOf } from './circuits.js'
 import {
   magnitudeAt,
   phaseAt,
@@ -105,6 +105,33 @@ export function sineResponse(tf, f) {
     amplitude: (2 / n) * Math.hypot(re, im),
     phase: Math.atan2(im, re),
   }
+}
+
+/**
+ * The series RLC's tolerance budget, MEASURED: the log-sensitivity of f₀ and
+ * Q to each part, from the circuit re-solved at part × (1 ± h) and read
+ * through secondOrderMetrics — the polynomial path, not the closed form. The
+ * predicted column is the exponent each part carries in the formula
+ * (−½ for L and C in f₀; −1, +½, −½ for R, L, C in Q; R absent from f₀).
+ */
+function budget(p) {
+  const h = 1e-3
+  const sens = (key, pick) => {
+    const up = secondOrderMetrics(transferOf('rlcSeries', { ...p, [key]: p[key] * (1 + h) }, 'c'))
+    const dn = secondOrderMetrics(transferOf('rlcSeries', { ...p, [key]: p[key] * (1 - h) }, 'c'))
+    if (!up || !dn) return NaN
+    return (Math.log(pick(up)) - Math.log(pick(dn))) / (Math.log(1 + h) - Math.log(1 - h))
+  }
+  const f0 = (m) => m.f0
+  const q = (m) => m.q
+  return [
+    { label: 'f₀ per % of R', predicted: 0, measured: sens('r', f0), abs: 1e-6, unit: '%' },
+    { label: 'f₀ per % of L', predicted: -0.5, measured: sens('l', f0), tol: 1e-4, unit: '%' },
+    { label: 'f₀ per % of C', predicted: -0.5, measured: sens('c', f0), tol: 1e-4, unit: '%' },
+    { label: 'Q per % of R', predicted: -1, measured: sens('r', q), tol: 1e-4, unit: '%' },
+    { label: 'Q per % of L', predicted: 0.5, measured: sens('l', q), tol: 1e-4, unit: '%' },
+    { label: 'Q per % of C', predicted: -0.5, measured: sens('c', q), tol: 1e-4, unit: '%' },
+  ]
 }
 
 /** Blocks shared by every circuit: what H(s) is, and where its poles are. */
@@ -425,6 +452,15 @@ const ENTRIES = {
           'ζ = 1/2Q is the same damping ratio a control course writes for a second-order plant, ' +
             'and Q is the same Q a filter course puts on a biquad. One circuit, three vocabularies.',
         ),
+        T(
+          'The error budget. Each row is a spec’s sensitivity to one part: a 1% error in that ' +
+            'part moves the spec by this many percent. Theory is the exponent in the formula; ' +
+            'measured is the circuit re-solved with the part nudged, read off the polynomial. ' +
+            'f₀ takes a half from L and a half from C and nothing from R, which is not in it; ' +
+            'Q takes the same halves AND a full share from R — one whole extra part’s worth of ' +
+            'error, which is why a drawer of ±5% parts scatters Q about twice as far as f₀.',
+        ),
+        C(budget(p)),
         ...common(tf, p, 'rlcSeries'),
       ],
     }

@@ -1,4 +1,5 @@
-import { defaultsOf } from './circuits.js'
+import { CIRCUITS, defaultsOf } from './circuits.js'
+import { tolsOf } from './tolerance.js'
 
 // The curriculum.
 //
@@ -10,10 +11,23 @@ import { defaultsOf } from './circuits.js'
 // Every note makes a claim, and lessons.test.js renders each lesson and measures
 // whether the claim holds. That is not ceremony — the equivalent tests in Signal
 // Lab caught four confidently wrong explanations, including two I wrote myself.
+//
+// Each lesson also carries:
+//   try       one imperative, apart from the note: which knob, what should happen
+//   chips     one-click settings for that imperative — each a partial patch
+//             (params / output / tols / circuit) applied on top of the current
+//             setup, so "set R to 200 Ω" never means "find R below the fold"
+//   featured  the component fields (or the tolerance / output / hand-over
+//             control) the try line names, rendered right under it
+// Every number a try line quotes is measured in lessons.test.js like the
+// notes' own claims.
 
 const p = (id, over = {}) => ({ ...defaultsOf(id), ...over })
 
 export const LESSON_GROUPS = ['Reading a response', 'Resonance', 'Active circuits', 'One object, two names']
+
+/** The lesson the lab opens on: a curve that moves when you touch R. */
+export const START_LESSON = 'Where the corner comes from'
 
 export const LESSONS = [
   // ------------------------------------------------- Reading a response
@@ -26,8 +40,14 @@ export const LESSONS = [
       'because resistors store no energy and so nothing can depend on how fast the signal ' +
       'changes. Every other circuit here is this one with a frequency-dependent impedance in ' +
       'place of a resistor.',
+    try: 'Set R2 to 3 kΩ — H becomes 3/4 (−2.5 dB) and the phase is still 0° at every frequency.',
+    chips: [
+      { label: 'R2 1 kΩ', params: { r2: 1000 } },
+      { label: 'R2 3 kΩ', params: { r2: 3000 } },
+    ],
+    featured: ['r2'],
     patch: { circuit: 'divider', view: 'step' },
-    claim: { flat: true, gain: 0.5 },
+    claim: { flat: true, gain: 0.5, tryGain: 0.75, tryDb: -2.5 },
   },
   {
     group: 'Reading a response',
@@ -39,8 +59,16 @@ export const LESSONS = [
       'from the input in phase, and so 90° from each other, as R and C always are — which is ' +
       'why the output is 1/√2 of the input and −3.01 dB rather than −6. ' +
       'Change R or C and watch the corner move as 1/(2πRC).',
+    try: 'Drop C from 100 nF to 10 nF — the corner jumps from 1.59 kHz to 15.9 kHz: ten times less C, ten times higher.',
+    chips: [
+      { label: 'C 10 nF', params: { c: 10e-9 } },
+      { label: 'C 100 nF', params: { c: 100e-9 } },
+      { label: 'C 1 µF', params: { c: 1e-6 } },
+      { label: 'R 10 kΩ', params: { r: 10000 } },
+    ],
+    featured: ['c', 'r'],
     patch: { circuit: 'rcLow', view: 'step' },
-    claim: { cornerDb: -3.0103, cornerPhase: -45, splitDeg: 90 },
+    claim: { cornerDb: -3.0103, cornerPhase: -45, splitDeg: 90, tryCorners: { 100e-9: 1591.5, 10e-9: 15915 } },
   },
   {
     group: 'Reading a response',
@@ -51,8 +79,14 @@ export const LESSONS = [
       'low-pass becomes a high-pass. Nothing else ' +
       'changed — the same current flows through both components — so whatever one keeps, the ' +
       'other discards. Their squared magnitudes sum to exactly 1 at every frequency.',
+    try: 'Flip between the two — at 1.59 kHz both read −3.01 dB, and their squares sum to 1.',
+    chips: [
+      { label: 'low-pass, across C', circuit: 'rcLow' },
+      { label: 'high-pass, across R', circuit: 'rcHigh' },
+    ],
+    featured: ['c'],
     patch: { circuit: 'rcHigh', view: 'pz' },
-    claim: { complementary: true },
+    claim: { complementary: true, tryCorner: 1591.5, tryDb: -3.01 },
   },
   {
     group: 'Reading a response',
@@ -63,8 +97,14 @@ export const LESSONS = [
       'and yet this is the RC low-pass again with L/R in its place. Nothing downstream can tell ' +
       'them apart, which is why filters are designed as transfer functions first and built out ' +
       'of whatever is cheap second.',
+    try: 'Drop L from 100 mH to 10 mH — the corner jumps from 1.59 kHz to 15.9 kHz, exactly as the RC did for ten times less C.',
+    chips: [
+      { label: 'L 10 mH', params: { l: 10e-3 } },
+      { label: 'L 100 mH', params: { l: 100e-3 } },
+    ],
+    featured: ['l'],
     patch: { circuit: 'rlLow', view: 'step' },
-    claim: { sameAsRc: true },
+    claim: { sameAsRc: true, tryCorners: { 100e-3: 1591.5, 10e-3: 15915 } },
   },
 
   // ------------------------------------------------------------ Resonance
@@ -77,8 +117,17 @@ export const LESSONS = [
       'different filters — low-pass, band-pass, high-pass — because they share a denominator ' +
       'and differ only in how many powers of s sit on top. Those three numerators add up to the ' +
       'denominator, so the three outputs sum to the input exactly.',
+    try: 'Tap R — it becomes a band-pass; tap L — a high-pass. All three share the one resonance at 5.03 kHz.',
+    chips: [
+      { label: 'across C', output: 'c' },
+      { label: 'across R', output: 'r' },
+      { label: 'across L', output: 'l' },
+    ],
+    // The chips ARE the output control here; the select in the Schematic
+    // section is the same state, a scroll below.
+    featured: [],
     patch: { circuit: 'rlcSeries', output: 'c', view: 'step' },
-    claim: { threeShapes: true },
+    claim: { threeShapes: true, tryF0: 5033 },
   },
   {
     group: 'Resonance',
@@ -88,8 +137,15 @@ export const LESSONS = [
       'Drag R up from its 20 Ω. The resonant peak collapses, because at resonance the inductor ' +
       'and capacitor cancel exactly and only the resistor is left to limit the current. Double ' +
       'R and Q halves: Q = (1/R)√(L/C), and none of it depends on frequency.',
+    try: 'Drag R from 20 Ω to 200 Ω — Q falls from 15.8 to 1.58, halving with each doubling.',
+    chips: [
+      { label: '20 Ω', params: { r: 20 } },
+      { label: '100 Ω', params: { r: 100 } },
+      { label: '200 Ω', params: { r: 200 } },
+    ],
+    featured: ['r'],
     patch: { circuit: 'rlcSeries', params: p('rlcSeries', { r: 20 }), output: 'c', view: 'step' },
-    claim: { qInverseInR: true },
+    claim: { qInverseInR: true, tryQ: { 20: 15.8, 100: 3.16, 200: 1.58 } },
   },
   {
     group: 'Resonance',
@@ -97,11 +153,18 @@ export const LESSONS = [
     terms: ['q', 'impedance', 'resonance'],
     note:
       'The same three components in parallel. Now the impedance PEAKS at resonance where the ' +
-      'series circuit dipped, and R has swapped roles: more resistance means a sharper peak, ' +
-      'not a blunter one. Q = R√(C/L) — the reciprocal of the series case, because in one R is ' +
-      'in the current path and in the other it is the leak across it.',
+      'series circuit dipped, and R has swapped roles: more resistance means a sharper peak. ' +
+      'Q = R√(C/L), the reciprocal of the series case — there R sits in the current path; ' +
+      'here it is the leak across it.',
+    try: 'Raise R from 10 kΩ to 100 kΩ — Q climbs tenfold, 31.6 to 316, and the peak reads exactly R.',
+    chips: [
+      { label: 'R 1 kΩ', params: { r: 1000 } },
+      { label: 'R 10 kΩ', params: { r: 10000 } },
+      { label: 'R 100 kΩ', params: { r: 100000 } },
+    ],
+    featured: ['r'],
     patch: { circuit: 'rlcParallel', view: 'pz' },
-    claim: { qProportionalToR: true, peaksAtR: true },
+    claim: { qProportionalToR: true, peaksAtR: true, tryQ: { 10000: 31.6, 100000: 316 } },
   },
   {
     group: 'Resonance',
@@ -111,23 +174,37 @@ export const LESSONS = [
       'The same circuit, hit with a step. A resonance that reads as a bump on the frequency ' +
       'plot reads as overshoot and ringing here, and ζ = 1/2Q connects them. Note where the ' +
       'overshoot stops: at Q = 0.5, not at the famous 0.707, which still overshoots 4.3%.',
+    try: 'Set R to 447 Ω for ζ = 0.707 — 4.3% overshoot remains. At 632 Ω (ζ = 1) it is gone; back at 200 Ω it is 35%.',
+    chips: [
+      { label: '200 Ω', params: { r: 200 } },
+      { label: '447 Ω', params: { r: 447 } },
+      { label: '632 Ω', params: { r: 632 } },
+    ],
+    featured: ['r'],
     patch: { circuit: 'rlcSeries', params: p('rlcSeries', { r: 200 }), output: 'c', view: 'step' },
-    claim: { overshootMatchesZeta: true },
+    claim: {
+      overshootMatchesZeta: true,
+      tryOvershoot: { 200: 0.35, 447: 0.043, 632: 0 },
+      tryZeta: { 447: 0.707, 632: 1 },
+    },
   },
   {
     group: 'Resonance',
     name: 'A zero on the axis is silence',
     terms: ['zero', 'q', 'resonance'],
     note:
-      'The twin-T’s two tees deliver equal and opposite signals at exactly one frequency, so ' +
-      'the zeros of H(s) sit ON the imaginary axis — the poles view shows them riding the ' +
-      'boundary. That frequency is not attenuated but removed: the notch has no bottom, and ' +
-      'the phase snaps 180° across it. Deep but blunt — Q is fixed at 1/4 by the matched ' +
-      'topology, so the notch is always 4f₀ wide and no component choice sharpens it. The ' +
-      'integrator’s pole on this same boundary is the mirror image: one frequency the circuit ' +
-      'cannot stop, instead of one it cannot pass.',
+      'The twin-T’s two tees deliver equal and opposite signals at one frequency, so the ' +
+      'zeros of H(s) sit ON the imaginary axis. That frequency is removed, not attenuated: ' +
+      'the notch has no bottom and the phase snaps 180° across it. Q is fixed at 1/4 by the ' +
+      'topology — see Math.',
+    try: 'Set R to 47 kΩ — the notch moves to 339 Hz, and Q still reads 0.250.',
+    chips: [
+      { label: 'R 10 kΩ', params: { r: 10000 } },
+      { label: 'R 47 kΩ', params: { r: 47000 } },
+    ],
+    featured: ['r'],
     patch: { circuit: 'twinT', view: 'pz' },
-    claim: { zeroOnAxis: true, qFixed: 0.25 },
+    claim: { zeroOnAxis: true, qFixed: 0.25, tryNotch: { 47000: 339 } },
   },
 
   {
@@ -135,16 +212,27 @@ export const LESSONS = [
     name: 'Real parts wobble',
     terms: ['tolerance', 'q', 'pole'],
     note:
-      'Every number on this page has assumed exact components, and no part in a drawer is. ' +
-      'This is the series RLC built 120 times from ±5% parts: the poles view shows where the ' +
-      'poles actually scatter. The square root in 1/2π√LC halves what each part can do to f₀ ' +
-      '— but L and C both contribute, so the worst corner is still about ±5%. Q has it twice ' +
-      'as bad — not because anything escapes the square root (L and C are halved in Q by the ' +
-      'same one) but because R joins them at FULL strength: Q = (1/R)√(L/C), and R appears ' +
-      'nowhere in f₀. A whole extra part’s worth of error, so the spread reaches roughly ' +
-      'double f₀’s. That is why the Q of a filter is the spec that costs money.',
-    patch: { circuit: 'rlcSeries', view: 'pz', tol: 0.05 },
-    claim: { tolQHarderThanF0: true },
+      'No part in a drawer is exact. Here the series RLC is built 120 times from ±5% parts; ' +
+      'the poles view shows where they land. f₀ = 1/2π√LC wobbles about ±5%, Q about twice ' +
+      'that — R enters Q at full strength and f₀ not at all. Q is the spec that costs money.',
+    try: 'Switch every part to ±1% — f₀’s spread shrinks to ±0.85%, Q’s to ±1.7% (at ±5%: ±4.3% and ±8.2%).',
+    chips: [
+      { label: 'exact', tol: 0 },
+      { label: '±1%', tol: 0.01 },
+      { label: '±5%', tol: 0.05 },
+    ],
+    featured: ['tol'],
+    // R = 560 (an E12 value, ζ ≈ 0.89): the 240 sampled poles then sweep
+    // an arc some 0.3·ω₀ tall, an inch of scatter on a laptop. At the
+    // default 100 Ω the same ±5% kept every dot inside the 16 px pole
+    // marker — a wobble lesson with no visible wobble. (The pole view
+    // auto-fits its axes, so parts are the only zoom; see NEEDS.md.)
+    patch: { circuit: 'rlcSeries', params: p('rlcSeries', { r: 560 }), view: 'pz', tol: 0.05 },
+    claim: {
+      tolQHarderThanF0: true,
+      builds: 120,
+      trySpread: { 0.01: { f0: 0.85, q: 1.7 }, 0.05: { f0: 4.3, q: 8.2 } },
+    },
   },
   {
     group: 'Resonance',
@@ -152,11 +240,16 @@ export const LESSONS = [
     terms: ['tolerance', 'q', 'resonance'],
     note:
       'Give R alone ±10% and watch what does NOT happen: f₀ = 1/(2π√LC) has no R in it, so ' +
-      'not one of the 120 builds resonates anywhere else — the poles slide along a circle of ' +
-      'constant radius ω₀ while Q takes the entire hit, and the shaded band on the response ' +
-      'pinches shut at DC, where R cancels out of the gain too. A tolerance budget is ' +
-      'per-part accounting: a spec only inherits error from the parts in its own formula. ' +
-      'Move the ±10% to C instead and the circle breaks.',
+      'not one of the 120 builds resonates anywhere else. The poles slide along a circle of ' +
+      'constant radius ω₀ while Q takes the entire hit. A spec only inherits error from the ' +
+      'parts in its own formula.',
+    try: 'Move the ±10% from R to C — f₀ now wanders ±5.3% and the circle breaks. Back on R it is ±0.0%.',
+    chips: [
+      { label: 'R ±10%', tols: { r: 0.1 } },
+      { label: 'C ±10%', tols: { c: 0.1 } },
+      { label: 'L ±10%', tols: { l: 0.1 } },
+    ],
+    featured: ['tol:r', 'tol:c'],
     // R = 560 (an E12 value) sets ζ ≈ 0.89, so the ±10% builds span ζ 0.80
     // to 0.97 and the poles sweep a ~24° arc of the circle — long enough to
     // read as an arc past the pole marker. At the default 100 Ω the same
@@ -169,7 +262,7 @@ export const LESSONS = [
       view: 'pz',
       tols: { r: 0.1 },
     },
-    claim: { f0Immune: true, polesOnCircle: true },
+    claim: { f0Immune: true, polesOnCircle: true, tryF0OnC: 5.3 },
   },
   // ------------------------------------------------------- Active circuits
   {
@@ -181,8 +274,15 @@ export const LESSONS = [
       'give real poles, and a real pole cannot ring; the op-amp feeding the output back through ' +
       'C1 is what pushes the pole pair off the real axis. And Q comes from ratios of components ' +
       'rather than their absolute size — which is what a chip can do well and a coil cannot.',
+    try: 'Raise C1 from 22 nF to 100 nF — Q climbs from 0.74 to 1.58 with no resistor touched.',
+    chips: [
+      { label: 'C1 4.7 nF', params: { c1: 4.7e-9 } },
+      { label: 'C1 22 nF', params: { c1: 22e-9 } },
+      { label: 'C1 100 nF', params: { c1: 100e-9 } },
+    ],
+    featured: ['c1'],
     patch: { circuit: 'sallenKey', view: 'pz' },
-    claim: { complexPair: true, noInductor: true },
+    claim: { complexPair: true, noInductor: true, tryQ: { 22e-9: 0.74, 100e-9: 1.58 } },
   },
   {
     group: 'Active circuits',
@@ -193,8 +293,14 @@ export const LESSONS = [
       'so all the input current must flow on through the feedback resistor. The gain is −Rf/Rin: ' +
       'a ratio, which is why it depends on how well two resistors match rather than on either ' +
       'being any particular value. The minus sign is a real 180° of phase.',
+    try: 'Set R feedback to 100 kΩ — the gain becomes −100 (40 dB), and the phase is still 180°.',
+    chips: [
+      { label: 'Rf 10 kΩ', params: { rf: 10000 } },
+      { label: 'Rf 100 kΩ', params: { rf: 100000 } },
+    ],
+    featured: ['rf'],
     patch: { circuit: 'inverting', view: 'step' },
-    claim: { negativeGain: true },
+    claim: { negativeGain: true, tryGain: { 100000: -100 }, tryDb: 40 },
   },
   {
     group: 'Active circuits',
@@ -205,8 +311,14 @@ export const LESSONS = [
       'which is integration. The pole sits on the boundary rather than inside it, so this is ' +
       'the one circuit here that never settles: a step in gives a ramp out, forever. A real ' +
       'integrator needs a large resistor across C to stop it drifting into its supply rail.',
+    try: 'Set R to 100 kΩ — the ramp is ten times slower, and still never levels off.',
+    chips: [
+      { label: 'R 10 kΩ', params: { r: 10000 } },
+      { label: 'R 100 kΩ', params: { r: 100000 } },
+    ],
+    featured: ['r'],
     patch: { circuit: 'integrator', view: 'pz' },
-    claim: { poleAtOrigin: true, neverSettles: true },
+    claim: { poleAtOrigin: true, neverSettles: true, trySlowerBy: 10 },
   },
 
   // ------------------------------------------------- One object, two names
@@ -215,12 +327,15 @@ export const LESSONS = [
     name: 'This circuit is a biquad',
     terms: ['biquad', 'tf', 'q'],
     note:
-      'Open "The same filter, sampled" below. This RLC is a low-pass biquad with a cutoff of ' +
-      '5.03 kHz and a Q of 3.16 — not similar to one, the same one. Copy the link, paste it ' +
-      'after Signal Lab’s URL, and the identical filter is loaded there with noise running ' +
-      'through it. A circuit and a difference equation are one object described twice.',
+      'This RLC is a low-pass biquad with a cutoff of 5.03 kHz and a Q of 3.16 — not similar ' +
+      'to one, the same one. Open in Signal Lab → loads the identical filter there with a ' +
+      'square wave running through it. A circuit and a difference equation are one object ' +
+      'described twice.',
+    try: 'Tap Open in Signal Lab → — the same 5.03 kHz, Q 3.16 low-pass appears there, square wave through it.',
+    chips: [],
+    featured: ['handover'],
     patch: { circuit: 'rlcSeries', output: 'c', view: 'step' },
-    claim: { handsOver: 'lowpass' },
+    claim: { handsOver: 'lowpass', trySource: 'square' },
   },
 ]
 
@@ -230,11 +345,65 @@ export function applyLesson(lesson) {
   return {
     id: circuit,
     params: lesson.patch.params || defaultsOf(circuit),
-    output: lesson.patch.output || null,
+    output: lesson.patch.output || CIRCUITS[circuit].outputs[0].key,
     view: lesson.patch.view || 'step',
     // A tolerance spec: `tol` (a number) grades every part alike, `tols` (a
     // map) grades parts individually — the wobble lesson wants the first, the
     // blame lesson the second. tolsOf() normalises either.
     tols: lesson.patch.tols ?? lesson.patch.tol ?? 0,
   }
+}
+
+/**
+ * A chip applied to a setup: the partial patch on top of `{ id, params,
+ * output, tols }`, returning the same shape. Pure, so the function the app
+ * calls is the one the tests measure.
+ *
+ * A `circuit` chip keeps the component values when the two circuits share
+ * parameter keys (the RC pair does — that is the point of flipping between
+ * them) and falls back to the defaults when they do not. `tol` grades every
+ * part alike; `tols` REPLACES the per-part map, so "C ±10%" means C alone.
+ */
+export function applyChip(state, chip) {
+  let id = state.id
+  let params = state.params
+  let output = state.output
+  let tols = state.tols
+  if (chip.circuit && chip.circuit !== id) {
+    const keys = (c) => CIRCUITS[c].params.map((q) => q.key).join(',')
+    params = keys(chip.circuit) === keys(id) ? params : defaultsOf(chip.circuit)
+    id = chip.circuit
+    output = CIRCUITS[id].outputs[0].key
+    tols = tolsOf(id, tols)
+  }
+  if (chip.params) params = { ...params, ...chip.params }
+  if (chip.output) output = chip.output
+  if (chip.tol != null) tols = tolsOf(id, chip.tol)
+  if (chip.tols) tols = tolsOf(id, chip.tols)
+  return { id, params, output, tols }
+}
+
+/**
+ * Does the setup on screen still match the lesson's — or a chip's — patch?
+ * Values compare numerically (a chip's 20 and a typed 20 are the same 20);
+ * tolerances compare per part after normalising.
+ */
+export function sameSetup(a, b) {
+  if (a.id !== b.id || a.output !== b.output) return false
+  for (const q of CIRCUITS[a.id].params) {
+    const want = b.params[q.key]
+    if (!(Math.abs(a.params[q.key] - want) <= 1e-12 * Math.max(1, Math.abs(want)))) return false
+  }
+  const ta = tolsOf(a.id, a.tols)
+  const tb = tolsOf(b.id, b.tols)
+  for (const q of CIRCUITS[a.id].params) if ((ta[q.key] || 0) !== (tb[q.key] || 0)) return false
+  return true
+}
+
+/** Which of a lesson's chips the current setup matches, if any. */
+export function matchingChip(lesson, state) {
+  for (const chip of lesson.chips || []) {
+    if (sameSetup(state, applyChip(state, chip))) return chip.label
+  }
+  return null
 }

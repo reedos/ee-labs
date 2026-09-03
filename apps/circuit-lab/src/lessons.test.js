@@ -306,7 +306,8 @@ describe('lesson: Real parts wobble', () => {
   it('Q spreads roughly twice as wide as f0 at the lesson settings', () => {
     const l = LESSONS.find((x) => x.name === 'Real parts wobble')
     expect(l).toBeTruthy()
-    const params = defaultsOf(l.patch.circuit)
+    // At the lesson's OWN parts (R = 560, chosen so the cloud is visible).
+    const params = applyLesson(l).params
     const { f0, q } = toleranceCloud(l.patch.circuit, params, 'c', l.patch.tol)
     const m = CIRCUITS[l.patch.circuit].metrics(params)
     const f0Pct = spreadPct(f0, m.w0 / (2 * Math.PI))

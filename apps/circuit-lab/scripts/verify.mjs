@@ -11,13 +11,26 @@
 //   npm run verify
 
 import { chromium } from 'playwright'
+import { foldProbe, phoneProbe } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { LESSONS, START_LESSON } from '../src/lessons.js'
 
-const URL = process.env.APP_URL || 'http://localhost:4175'
+const ORIGIN = (process.env.APP_URL || 'http://localhost:4175').replace(/\/$/, '')
+// The build is served at the origin's root, but the hand-over links only
+// resolve when the page sits beside its siblings at /<lab>/ (siblingUrl reads
+// the folder off the pathname). So the harness visits /circuit-lab/ and
+// rewrites every request under it back to the root — the deployed layout,
+// served by the preview.
+const URL = `${ORIGIN}/circuit-lab/`
 const failures = []
 const fail = (m) => failures.push(m)
 
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 })
+await page.route(`${ORIGIN}/circuit-lab/**`, (route) => {
+  const u = new globalThis.URL(route.request().url())
+  const rest = u.pathname.replace(/^\/circuit-lab\/?/, '')
+  route.continue({ url: `${ORIGIN}/${rest}${u.search}` })
+})
 
 const consoleErrors = []
 page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`))
@@ -46,12 +59,14 @@ const canvasHashes = () =>
     }),
   )
 
+// The math is a view of the lower pane — a tab beside Step and Poles — so
+// "opening" it is selecting that tab. (It was a fold in the sidebar, and
+// unfolding it grew the sidebar by ~1900 px.)
 async function openAllMath() {
-  const toggles = page.locator('.math-toggle[aria-expanded="false"]')
-  for (let g = 0; g < 8; g++) {
-    if ((await toggles.count()) === 0) break
-    await toggles.first().click()
-    await page.waitForTimeout(90)
+  const tab = page.getByRole('button', { name: 'Math', exact: true })
+  if ((await tab.getAttribute('aria-pressed')) !== 'true') {
+    await tab.click()
+    await page.waitForTimeout(120)
   }
 }
 
@@ -128,6 +143,32 @@ const pick = async (name) => {
   }
   await btn.click()
   await settle()
+}
+
+// ------------------------------------------ 0. the course starts itself
+
+console.log('\n0. Fresh load: the lab opens on a lesson, not as a bare instrument\n')
+{
+  const lit = await page.locator('.presets .preset.is-on').first().textContent()
+  if (lit.trim() !== START_LESSON) fail(`fresh load should light "${START_LESSON}", got "${lit.trim()}"`)
+  const tryLine = await page.locator('.try-line').count()
+  if (!tryLine) fail('fresh load: no try line under the note')
+  const count = (await page.locator('.lesson-nav-count').textContent().catch(() => '')).trim()
+  const want = `${LESSONS.findIndex((l) => l.name === START_LESSON) + 1} of ${LESSONS.length}`
+  if (count !== want) fail(`lesson nav should read "${want}", got "${count}"`)
+  const groupOpen = await page.evaluate(() =>
+    [...document.querySelectorAll('details.preset-group')].some(
+      (d) => d.open && d.querySelector('.preset.is-on'),
+    ),
+  )
+  if (!groupOpen) fail("the start lesson's group should be unfolded")
+  const circuits = await page.locator('.controls h2', { hasText: 'Circuits' }).count()
+  if (!circuits) fail('the Circuits picker should still be there below Try this')
+  const sub = await page.locator('.controls .sub').textContent()
+  if (!/Start with Try this, top to bottom\./.test(sub)) fail('subhead should say where to start')
+  const stale = await page.locator('[data-role=note-stale]').count()
+  if (stale) fail('a freshly loaded lesson must not read as stale')
+  console.log(`   lit: ${lit.trim()} · nav ${count} · group open · Circuits below · try line present`)
 }
 
 // --------------------------------------------- 1. every circuit, every panel
@@ -222,6 +263,10 @@ console.log('\n2c. Sticky step axes: tuning moves the curve, not the frame\n')
       return { t: c?.dataset.tMax, y: c?.dataset.yHi }
     })
   await pick('RC low-pass')
+  // Section 2 left the lower pane on the Math tab; the frame under test is
+  // the step canvas.
+  await page.getByRole('button', { name: 'Step response' }).click()
+  await settle()
   await setField('R', '2.2k')
   await setField('C', '100n')
   const f0 = await frame()
@@ -315,7 +360,7 @@ console.log(`   -> ${uniq.size} distinct frequency responses from one circuit`)
 // A lesson note describes one setup, and the output probe is part of it: the
 // biquad lesson says "low-pass" in so many words, so moving the probe to L
 // must retire the note rather than leave it lying about the screen.
-console.log('\n4x. A lesson note dies when the probe moves off the setup it describes\n')
+console.log('\n4x. A lesson note is flagged stale when the probe moves off its setup\n')
 await pick('This circuit is a biquad')
 const hints = () => page.$$eval('.controls .hint', (els) => els.map((e) => e.textContent))
 const noteOn = (await hints()).some((t) => t.includes('low-pass biquad'))
@@ -330,23 +375,40 @@ if (!noteOn) fail('the biquad lesson note did not appear')
   console.log(`   terms offered under the note: ${terms.join(', ')}`)
 }
 
-// Reading order is working order: the component fields come BEFORE the math
-// panel that explains them, top to bottom.
+// The math is no longer a fold in the sidebar (unfolded, it pushed every knob
+// ~1900 px down); it is a tab of the lower pane, beside Step and Poles.
 {
-  const orderOk = await page.evaluate(() => {
-    const field = document.querySelector('.controls input[type=number], .controls [role=spinbutton]')
-    const math = document.querySelector('.math-toggle')
-    return !!field && !!math &&
-      !!(field.compareDocumentPosition(math) & Node.DOCUMENT_POSITION_FOLLOWING)
-  })
-  if (!orderOk) fail('the math panel should come after the component fields')
-  else console.log('   components precede the math panel in the sidebar')
+  const toggles = await page.locator('.controls .math-toggle').count()
+  if (toggles) fail('the sidebar should no longer carry a math fold')
+  const tab = await page.getByRole('button', { name: 'Math', exact: true }).count()
+  if (!tab) fail('the lower pane should offer a Math tab')
+  await openAllMath()
+  const rows = await readChecks()
+  if (!rows.length) fail('the Math tab should render the check rows')
+  const inPane = await page.locator('.views .math-pane .math-check').count()
+  if (!inPane) fail('the math body should render inside the lower pane')
+  // A budget row: the error budget the wobble note used to carry as prose.
+  if (!rows.some((r) => /Q per % of R/.test(r.label))) fail('the RLC math should carry the error-budget rows')
+  const bad = rows.filter((r) => r.mark === '✗')
+  for (const b of bad) fail(`Math tab: ✗ ${b.label} (theory ${b.theory}, measured ${b.measured})`)
+  console.log(`   Math tab in the lower pane: ${rows.length} check rows, ${bad.length} ✗; no sidebar fold`)
 }
 await page.locator('.controls select').first().selectOption({ label: 'across L — high-pass' })
 await settle()
-const noteAfter = (await hints()).some((t) => t.includes('low-pass biquad'))
-if (noteAfter) fail('the biquad note still claims a low-pass while the probe is on L')
-else console.log('   note shown at load, gone once the output select moved to L')
+{
+  const stale = await page.locator('[data-role=note-stale]').count()
+  const reset = await page.locator('.lesson-nav-reset').count()
+  const stillLit = (await page.locator('.presets .preset.is-on').first().textContent()).trim()
+  if (!stale) fail('moving the probe to L must flag the low-pass note stale')
+  if (!reset) fail('a stale lesson must offer a reset')
+  if (stillLit !== 'This circuit is a biquad') fail(`the lesson chip should stay lit while dirty, got "${stillLit}"`)
+  await page.locator('.lesson-nav-reset').click()
+  await settle()
+  const back = await page.locator('.controls select').first().inputValue()
+  if (back !== 'c') fail(`reset should put the probe back on C, got "${back}"`)
+  if (await page.locator('[data-role=note-stale]').count()) fail('reset should clear the stale flag')
+  console.log('   probe → L: note flagged stale, chip still lit, reset restores across C')
+}
 
 // ---------------------------------------- 4a. real parts wobble the numbers
 
@@ -369,7 +431,7 @@ else {
 const withBand = await canvasHashes()
 // The "every part at once" row, not a single part's control: the lesson set
 // every part to ±5%, so only the master row can clear them all in one click.
-await page.locator('[data-role=tol-all] button', { hasText: 'exact' }).click()
+await page.locator('[data-role=tol-all] button', { hasText: 'exact' }).first().click()
 await settle()
 if ((await spreadText()) !== '') fail('spread text should clear at exact')
 const cleared = await canvasHashes()
@@ -486,13 +548,13 @@ console.log('\n4d. Per-part tolerance: an R-only ±10% pins f₀ and frees Q\n')
   }
   // The per-part controls display the lesson's grading: R at ±10%, L and C exact.
   const stateOf = async (label) =>
-    page.getByRole('group', { name: `${label} tolerance` }).locator('button.on').textContent()
+    page.getByRole('group', { name: `${label} tolerance` }).first().locator('button.on').textContent()
   if ((await stateOf('R')) !== '±10%') fail('R control should read ±10%')
   if ((await stateOf('L')) !== 'exact') fail('L control should read exact')
   const withRBand = await canvasHashes()
   // "Move the ±10% to C instead and the circle breaks": do as the note says.
-  await page.getByRole('group', { name: 'C tolerance' }).getByRole('button', { name: '±10%' }).click()
-  await page.getByRole('group', { name: 'R tolerance' }).getByRole('button', { name: 'exact' }).click()
+  await page.getByRole('group', { name: 'C tolerance' }).first().getByRole('button', { name: '±10%' }).click()
+  await page.getByRole('group', { name: 'R tolerance' }).first().getByRole('button', { name: 'exact' }).click()
   await settle()
   const spread2 = (await page.locator('[data-role=tolerance-spread]').textContent().catch(() => '')) || ''
   const m2 = spread2.match(/±([\d.]+)%/)
@@ -502,7 +564,7 @@ console.log('\n4d. Per-part tolerance: an R-only ±10% pins f₀ and frees Q\n')
   if ((await canvasHashes())[1] === withRBand[1]) {
     fail('moving the tolerance from R to C did not redraw the poles view')
   }
-  await page.locator('[data-role=tol-all] button', { hasText: 'exact' }).click()
+  await page.locator('[data-role=tol-all] button', { hasText: 'exact' }).first().click()
   await settle()
   // The blame lesson switched the lower pane to poles & zeros; put it back,
   // or section 5's "switching to the pole-zero view redraws" is a no-op —
@@ -618,6 +680,244 @@ console.log('\n5b. Folded sidebar groups: tidy folds, the active groups refuse t
   }
 }
 
+
+// ---------------------------- 5c. the course's spine: next, previous, reset
+
+console.log('\n5c. Next / previous / reset, and the one-click chips\n')
+{
+  await pick(START_LESSON)
+  const lit = async () => (await page.locator('.presets .preset.is-on').first().textContent()).trim()
+  const count = async () => (await page.locator('.lesson-nav-count').textContent()).trim()
+  const i0 = LESSONS.findIndex((l) => l.name === START_LESSON)
+  await page.getByRole('button', { name: 'Next lesson' }).click()
+  await settle()
+  if ((await lit()) !== LESSONS[i0 + 1].name) fail(`next should load "${LESSONS[i0 + 1].name}", got "${await lit()}"`)
+  if ((await count()) !== `${i0 + 2} of ${LESSONS.length}`) fail(`count after next: ${await count()}`)
+  await page.getByRole('button', { name: 'Previous lesson' }).click()
+  await settle()
+  if ((await lit()) !== START_LESSON) fail('previous should come back')
+  console.log(`   next → ${LESSONS[i0 + 1].name} (${i0 + 2} of ${LESSONS.length}) → previous → ${START_LESSON}`)
+  // A chip is one click and a partial patch; the lesson stays lit but is
+  // flagged, and the chip that matches the setup is the lit one.
+  await page.locator('.try-chips .chip', { hasText: 'C 10 nF' }).click()
+  await settle()
+  const r = await page.getByRole('spinbutton', { name: 'R' }).first().inputValue()
+  const c = await page.getByRole('spinbutton', { name: 'C' }).first().inputValue()
+  if (c !== '10') fail(`chip C 10 nF should set C to 10 (nF), got "${c}"`)
+  if (r !== '1') fail(`chip must patch C alone; R read "${r}" kΩ`)
+  if (!(await page.locator('[data-role=note-stale]').count())) fail('a chip off the defaults should flag the note')
+  const on = (await page.locator('.try-chips .chip.is-on').textContent().catch(() => '')).trim()
+  if (on !== 'C 10 nF') fail(`the matching chip should be lit, got "${on}"`)
+  if ((await lit()) !== START_LESSON) fail('the lesson chip must stay lit while dirty')
+  // The corner marker followed: f_c with its value, on the plot.
+  const markers = await page.locator('.views canvas').first().getAttribute('data-markers')
+  if (!/f_c = 15\.92\s?kHz/.test(markers || '')) fail(`corner marker should read f_c = 15.92 kHz, got "${markers}"`)
+  await page.locator('.lesson-nav-reset').click()
+  await settle()
+  if ((await page.getByRole('spinbutton', { name: 'C' }).first().inputValue()) !== '100') fail('reset should restore C = 100 nF')
+  const markers0 = await page.locator('.views canvas').first().getAttribute('data-markers')
+  if (!/f_c = 1\.592\s?kHz/.test(markers0 || '')) fail(`corner marker should read f_c = 1.592 kHz, got "${markers0}"`)
+  console.log(`   chip C 10 nF → C = 10 nF, R untouched, note flagged, chip lit; marker "${markers}" → reset → "${markers0}"`)
+}
+
+// ---------------------------------- 9. the divider's flat line is labelled
+
+console.log('\n9. A divider has no dynamics — and the plot says so in words\n')
+{
+  await pick('A divider has no dynamics')
+  const ann = (await page.locator('.views canvas').first().getAttribute('data-annotations')) || ''
+  if (!/H = 1\/2/.test(ann)) fail(`divider plot should be captioned H = 1/2, got "${ann}"`)
+  if (!/phase = 0°/.test(ann)) fail(`divider plot should be captioned phase = 0°, got "${ann}"`)
+  await page.locator('.try-chips .chip', { hasText: 'R2 3 kΩ' }).click()
+  await settle()
+  const ann2 = (await page.locator('.views canvas').first().getAttribute('data-annotations')) || ''
+  if (!/H = 3\/4/.test(ann2)) fail(`after R2 = 3 kΩ the caption should read H = 3/4, got "${ann2}"`)
+  console.log(`   "${ann}" → chip R2 3 kΩ → "${ann2}"`)
+}
+
+// ------------------------------------- 11. the integrator really never settles
+
+console.log('\n11. Integrator: the drawn step is a ramp that has not flattened\n')
+{
+  await pick('A pole exactly at the origin')
+  await page.getByRole('button', { name: 'Step response' }).click()
+  await settle()
+  const samples = JSON.parse(
+    (await page.locator('.views canvas').nth(1).getAttribute('data-samples')) || '[]',
+  )
+  if (samples.length !== 6) fail(`expected 6 step samples, got ${samples.length}`)
+  else {
+    const slopes = []
+    for (let i = 1; i < samples.length; i++) {
+      slopes.push((samples[i][1] - samples[i - 1][1]) / (samples[i][0] - samples[i - 1][0]))
+    }
+    const mean = slopes.reduce((a, b) => a + b, 0) / slopes.length
+    const worst = Math.max(...slopes.map((s) => Math.abs(s / mean - 1)))
+    if (!(worst < 0.05)) fail(`integrator step slope varies by ${(worst * 100).toFixed(1)}% across the window — not a ramp`)
+    if (!(mean < 0)) fail('integrator ramp should head negative (inverting)')
+    console.log(`   6 samples, slope ${mean.toFixed(0)} /s, constant within ${(worst * 100).toFixed(2)}%`)
+  }
+}
+
+// ----------------------------------- 8. the wobble cloud is bigger than the X
+
+console.log('\n8. Real parts wobble: the pole cloud is a shape, not a smudge in the marker\n')
+{
+  // At the smaller laptop, where the pane is shortest.
+  await page.setViewportSize({ width: 1366, height: 768 })
+  await page.goto(URL, { waitUntil: 'networkidle' })
+  await pick('Real parts wobble')
+  // Every pixel drawn in the trace colour — the cloud's dots (trace at
+  // alpha 0.28, stacking) and the pole crosses (trace at 1) — in the UPPER
+  // half-plane, where exactly one cross lives. The test is hue, not
+  // brightness: the trace is green over both red and blue, while the grid,
+  // axes and background are blue-leaning greys, the unstable half and its
+  // caption are the marker pink, and zeros are the response colour. The
+  // bounding box of that ink is therefore the cross (14 × 14 px) plus
+  // whatever the cloud adds, and a cloud a student can see must push it
+  // well past the cross — three marker radii, 21 px.
+  const inkBox = () =>
+    page.evaluate(() => {
+      const c = document.querySelectorAll('.views canvas')[1]
+      // Read through a copy: repeated getImageData on the live canvas makes
+      // the browser warn about readback, and the harness counts warnings.
+      const off = document.createElement('canvas')
+      off.width = c.width
+      off.height = c.height
+      const ctx = off.getContext('2d', { willReadFrequently: true })
+      ctx.drawImage(c, 0, 0)
+      const { data } = ctx.getImageData(0, 0, c.width, c.height)
+      const bg = [11, 15, 20] // COLORS.bg
+      const tr = [56, 224, 176] // COLORS.trace
+      const d = [tr[0] - bg[0], tr[1] - bg[1], tr[2] - bg[2]]
+      const dd = d[0] * d[0] + d[1] * d[1] + d[2] * d[2]
+      // The real axis: plotArea pads 14 above and 48 below, so the frame's
+      // vertical centre (jω = 0, the axes being symmetric) is 14 + (h − 62)/2.
+      const axisY = 14 + (c.height - 62) / 2
+      let minX = Infinity
+      let maxX = -Infinity
+      let minY = Infinity
+      let maxY = -Infinity
+      let n = 0
+      for (let i = 0; i < data.length; i += 4) {
+        const py = Math.floor(i / 4 / c.width)
+        if (py >= axisY) continue
+        const r = data[i]
+        const g = data[i + 1]
+        const b = data[i + 2]
+        if (!(g - r > 25 && g - b > 4)) continue // not the trace's green
+        const v = [r - bg[0], g - bg[1], b - bg[2]]
+        const t = (v[0] * d[0] + v[1] * d[1] + v[2] * d[2]) / dd
+        if (t < 0.2) continue
+        const rx = v[0] - t * d[0]
+        const ry = v[1] - t * d[1]
+        const rz = v[2] - t * d[2]
+        if (rx * rx + ry * ry + rz * rz > 400) continue // off the bg→trace line
+        const px = (i / 4) % c.width
+        if (px < minX) minX = px
+        if (px > maxX) maxX = px
+        if (py < minY) minY = py
+        if (py > maxY) maxY = py
+        n++
+      }
+      return { w: c.width, h: c.height, n, box: [maxX - minX + 1, maxY - minY + 1] }
+    })
+  const ink = await inkBox()
+  console.log(
+    `   canvas ${ink.w}×${ink.h} px at 1366×768: trace-green ink in the upper half-plane ${ink.n} px, ` +
+      `box ${ink.box[0]}×${ink.box[1]} px (one pole cross is 14×14)`,
+  )
+  if (!(Math.max(...ink.box) >= 21)) fail(`wobble cloud box ${ink.box.join('×')} px is not bigger than three marker radii`)
+  // ...and turning the parts exact leaves just the cross — which also
+  // calibrates the count: the cloud must add real ink beyond the cross.
+  await page.locator('[data-role=tol-all] button', { hasText: 'exact' }).first().click()
+  await settle()
+  const bare = await inkBox()
+  console.log(`   exact parts: the same ink is ${bare.n} px in a ${bare.box.join('×')} px box — the cross alone`)
+  if (!(Math.max(...bare.box) <= 18)) fail(`with exact parts the upper-half ink should be one cross, got ${bare.box.join('×')} px`)
+  if (!(ink.n > 1.5 * bare.n)) fail(`the cloud added too little ink: ${ink.n} px with the cloud vs ${bare.n} px for the cross alone`)
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'networkidle' })
+}
+
+// --------------------------- 7. the fold: what a note names is on the screen
+
+console.log('\n7. Fold probe at laptop sizes: try line, featured controls, lit chip\n')
+{
+  // What each lesson features, as selectors inside the featured block.
+  const featuredOf = (l) => {
+    const out = []
+    let inputs = 0
+    let tols = 0
+    for (const f of l.featured || []) {
+      if (f === 'tol') out.push('[data-role=featured] [data-role=tol-all]')
+      else if (f.startsWith('tol:')) {
+        const i = tols++
+        const fn = (p) => p.locator('[data-role=featured] .field-tol').nth(i)
+        fn.label = `featured ${f}`
+        out.push(fn)
+      } else if (f === 'output') out.push('[data-role=featured] select')
+      else if (f === 'handover') out.push('[data-role=featured] a.handover-copy')
+      else {
+        const i = inputs++
+        const fn = (p) => p.locator('[data-role=featured] input').nth(i)
+        fn.label = `featured ${f}`
+        out.push(fn)
+      }
+    }
+    return out
+  }
+  const cases = LESSONS.map((l) => ({
+    name: l.name,
+    load: () => pick(l.name),
+    must: ['.try-line', ...featuredOf(l), '.presets .preset.is-on', '.lesson-nav'],
+  }))
+  const r = await foldProbe(page, { cases, url: URL })
+  for (const f of r.failures) fail(`fold: ${f}`)
+  const worst = {}
+  for (const m of r.measured) {
+    if (!m.box) continue
+    const bottom = m.box.y + m.box.height
+    const k = `${m.viewport} ${m.control}`
+    if (!worst[k] || bottom > worst[k].bottom) worst[k] = { bottom, lesson: m.lesson }
+  }
+  const at = (vp, lesson, control) => {
+    const m = r.measured.find((x) => x.viewport === vp && x.lesson === lesson && x.control === control)
+    return m && m.box ? `${(m.box.y + m.box.height).toFixed(0)} px` : 'not rendered'
+  }
+  console.log(`   ${r.measured.length} boxes measured over ${cases.length} lessons × 2 viewports; ${r.failures.length} outside the fold`)
+  console.log(`   1440x900 · Q lesson · featured R bottom: ${at('1440x900', 'Q is how sharp, and R sets it', 'featured r')}`)
+  console.log(`   1440x900 · biquad · Open in Signal Lab bottom: ${at('1440x900', 'This circuit is a biquad', '[data-role=featured] a.handover-copy')}`)
+  console.log(`   1366x768 · wobble · every-part tolerance bottom: ${at('1366x768', 'Real parts wobble', '[data-role=featured] [data-role=tol-all]')}`)
+  for (const [k, v] of Object.entries(worst).sort((a, b) => b[1].bottom - a[1].bottom).slice(0, 4)) {
+    console.log(`   lowest ${k}: ${v.bottom.toFixed(0)} px (${v.lesson})`)
+  }
+}
+
+// ------------------------------------------- 13. phone: Bode + the lesson's view
+
+console.log('\n13. Phone 390×844: the response and the lesson view share the first screen\n')
+{
+  const canvas = (i, label) => {
+    const fn = (p) => p.locator('.views canvas').nth(i)
+    fn.label = label
+    return fn
+  }
+  const cases = ['Where the corner comes from', 'Q is how sharp, and R sets it'].map((name) => ({
+    name,
+    load: () => pick(name),
+    must: [canvas(0, 'Bode canvas'), canvas(1, 'lesson view canvas')],
+  }))
+  const r = await phoneProbe(page, { cases, url: URL })
+  for (const f of r.failures) fail(`phone: ${f}`)
+  for (const m of r.measured) {
+    console.log(
+      `   ${m.lesson.padEnd(32)} ${m.control.padEnd(20)} ${m.box ? `y ${m.box.y.toFixed(0)}–${(m.box.y + m.box.height).toFixed(0)} px` : 'not rendered'}`,
+    )
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'networkidle' })
+}
 
 // ------------------------------------------------ A11Y. names for everything
 

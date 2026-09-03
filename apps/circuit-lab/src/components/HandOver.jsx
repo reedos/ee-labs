@@ -237,7 +237,30 @@ export default function HandOver({ tf, circuitName, from = null }) {
  * paste flow remains — deliberately, because a link pointing at a page that is
  * not there would be worse than the paste it replaced.
  */
-function HandOverLink({ app, appName, fragment, tier, circuit }) {
+/**
+ * The Signal Lab link by itself, for the biquad lesson's featured spot: the
+ * note says "Open in Signal Lab →", so that button sits right under the try
+ * line instead of a screenful below. Same emitter, same suggested rate as the
+ * panel's default, so the two never disagree about the filter they send.
+ */
+export function SignalLabLink({ tf, from = null }) {
+  const natural = useMemo(() => asDigitalFilter(tf, { from }), [tf, from])
+  const rate = suggestRate(natural ? natural.f0 : 0)
+  const d = useMemo(() => asDigitalFilter(tf, { sampleRate: rate, from }), [tf, rate, from])
+  if (!d) return null
+  return (
+    <HandOverLink
+      app="signal-lab"
+      appName="Signal Lab"
+      fragment={d.link}
+      tier={d.raw ? 'raw' : d.shape}
+      circuit={from?.id}
+      compact
+    />
+  )
+}
+
+function HandOverLink({ app, appName, fragment, tier, circuit, compact = false }) {
   const [copied, setCopied] = useState(false)
   const url = siblingUrl(app, fragment)
 
@@ -280,7 +303,7 @@ function HandOverLink({ app, appName, fragment, tier, circuit }) {
             ? 'Copy the link'
             : `Copy link for ${appName}`}
       </button>
-      <code className="handover-link">#{fragment}</code>
+      {compact ? null : <code className="handover-link">#{fragment}</code>}
     </>
   )
 }
