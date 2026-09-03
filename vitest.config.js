@@ -11,12 +11,18 @@ export default defineConfig({
   test: {
     include: ['packages/*/src/**/*.test.{js,jsx}', 'apps/*/src/**/*.test.{js,jsx}'],
     // Vitest's default is five seconds, which is a bet on the machine. These
-    // are numerical tests — solved steady states, fuzzed geometry, whole
-    // spectra — and several of them run seconds here and several times that on
-    // a two-core CI runner sharing itself between workers. That default was
-    // already marginal and a deploy failed on it: a test that passes here and
-    // times out there has told you nothing about the code. Thirty seconds is
-    // still short enough to catch a hang, and no assertion is weakened by it.
-    testTimeout: 30000,
+    // are numerical tests: solved steady states, fuzzed geometry, whole
+    // spectra. Several run for seconds here and several times that on a
+    // two-core CI runner sharing itself between workers. A test that passes
+    // here and times out there has told you nothing about the code.
+    //
+    // Thirty seconds held until Group I. The diode's experiments solve by
+    // Newton iteration, and three tests that walk every experiment (the
+    // drawing-collision sweep, the headline closed forms, the callout layout)
+    // now run 20 to 22 seconds here and timed out on the runner, taking a
+    // deploy with them. Ninety is sized to the slowest of them on the slower
+    // machine, and is still short enough to catch a hang. No assertion is
+    // weakened by it, and the one test that needs longer still says so itself.
+    testTimeout: 90000,
   },
 })
