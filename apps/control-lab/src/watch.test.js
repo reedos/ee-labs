@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { simulate, dcGain } from '@ee-labs/systems'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
-import { paneRange, watchSignals } from './watch.js'
+import { paneRange, watchSignals, watchPartLabels } from './watch.js'
 
 // The watch view claims to show the loop's ACTUAL internals — the error the
 // controller sees, the effort it answers with. Each claim is measured by an
@@ -208,6 +208,20 @@ describe('what the parts show is the story the lessons tell', () => {
           for (const p of w.parts) expect(p.y.length, label).toBe(w.t.length)
         }
       }
+    }
+  })
+})
+
+// chrome.js (the picker's "terms used here") asks watchPartLabels what the
+// strip WOULD print, with no plant and no simulation, so it can decide
+// whether "Kp·e" is reachable without running one. That is only honest if
+// watchPartLabels never drifts from what watchSignals actually attaches.
+describe('watchPartLabels agrees with watchSignals, for every controller', () => {
+  it('the labels match exactly, in order', () => {
+    for (const ctrlId of Object.keys(CONTROLLERS)) {
+      const loop = loopOf('firstOrder', ctrlId)
+      const w = watchSignals(loop, ctrlId, defaultsOf(CONTROLLERS[ctrlId]), 'ref', OPTS)
+      expect(watchPartLabels(ctrlId), ctrlId).toEqual(w.parts.map((p) => p.label))
     }
   })
 })

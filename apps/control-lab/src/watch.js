@@ -89,6 +89,25 @@ const interp = (t, y) => (tv) => {
 }
 
 /**
+ * The labels the watch view's readout strip will attach, for a given
+ * controller alone — no plant, no parameter values, since which parts exist
+ * (Kp·e, Ki·∫e, Kd·ė, or lead's own single u) depends only on which terms
+ * the controller HAS, never on their gains. Kept separate from
+ * watchSignals() below (which needs a real loop and duration to run the
+ * simulation) so chrome.js can ask "what would this print" without running
+ * one — the same list watchSignals itself pushes onto `parts`, checked
+ * against each other in watch.test.js, so chrome.js cannot silently offer a
+ * stale answer once this list changes.
+ */
+export function watchPartLabels(ctrlId) {
+  if (ctrlId === 'lead') return ['u = lead(e)']
+  const labels = ['Kp·e']
+  if (ctrlId === 'pi' || ctrlId === 'pid') labels.push('Ki·∫e')
+  if (ctrlId === 'pid') labels.push('Kd·ė')
+  return labels
+}
+
+/**
  * All the signals of the loop answering a unit step at `stepInput`.
  *
  * Returns { t, input, y, e, u, parts, kick }:

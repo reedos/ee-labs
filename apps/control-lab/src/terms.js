@@ -472,10 +472,19 @@ export const TERMS = {
 }
 
 /**
- * The terms the top bar leans on. It is on screen under every lesson, so
- * every lesson carries these — appended after its own.
+ * The terms the top bar, AND the open-loop pane's readout beside it, lean
+ * on. Both are on screen under every lesson and every picker state alike,
+ * whatever the lower view — so every lesson, and the picker itself
+ * (chrome.js), carries these appended after its own list.
+ *
+ * db and radpersec were missing here for years: both are printed only
+ * inside a formatted NUMBER — "21.0 dB" in the top bar's gain margin,
+ * "= 413 mrad/s" in the open-loop readout's crossover — never as the bare
+ * word a text scan of hand-written prose would catch on its own. A picker
+ * click cleared the lesson (chrome.js exists for exactly that state) and
+ * left "dB" and "rad/s" on screen with no definition reachable at all.
  */
-export const TOPBAR_TERMS = ['phasemargin', 'gainmargin', 'crossover', 'steadystate', 'mhz']
+export const TOPBAR_TERMS = ['phasemargin', 'gainmargin', 'crossover', 'steadystate', 'mhz', 'db', 'radpersec']
 
 /**
  * Words in a note or try line that must bring their definition with them.

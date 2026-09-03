@@ -8,6 +8,11 @@
 
 import { chromium } from 'playwright'
 import { foldProbe, phoneProbe, PHONE_VIEWPORT } from '@ee-labs/ui/verify/foldProbe.mjs'
+// Defect 2's own cue table, imported rather than re-typed: item 33 below
+// scans what is ACTUALLY on screen with the same CUES the app itself scans
+// lesson prose against, so a future cue word landing only inside a
+// formatted number cannot ship past this probe unnoticed a second time.
+import { CUES, TERMS } from '../src/terms.js'
 
 const URL = process.env.APP_URL || 'http://localhost:4176'
 const failures = []
@@ -168,6 +173,7 @@ async function installProbeHooks(page) {
   await page.evaluate(() => {
     window.__texts = []
     window.__lines = []
+    window.__arcs = []
     if (window.__probeHooked) return
     window.__probeHooked = true
     let nextId = 1
@@ -192,10 +198,29 @@ async function installProbeHooks(page) {
       window.__texts.push({ canvas: idOf(this.canvas), text, x: left, y: top, w, h: fontPx })
       return origFillText.apply(this, arguments)
     }
+    // lineTo/arc record through the CURRENT TRANSFORM, not the raw
+    // arguments: the root locus's cancelling/near-merge marks are drawn
+    // after a ctx.translate (LocusCanvas.jsx nudges the pole one way, the
+    // zero the other, to pull two coincident or near-coincident points
+    // apart), and that offset is invisible in the raw path arguments — it
+    // is applied by the canvas only at stroke time. Nothing else in this
+    // app's canvases rotates a line or an arc, so this is a pure
+    // translation everywhere else too (identity where nothing translated),
+    // and item 30's legibility check needs the ACTUAL screen position.
     const origLineTo = CanvasRenderingContext2D.prototype.lineTo
     CanvasRenderingContext2D.prototype.lineTo = function (x, y) {
-      window.__lines.push({ canvas: idOf(this.canvas), x, y, color: String(this.strokeStyle) })
+      const p = this.getTransform().transformPoint(new DOMPoint(x, y))
+      window.__lines.push({ canvas: idOf(this.canvas), x: p.x, y: p.y, color: String(this.strokeStyle) })
       return origLineTo.apply(this, arguments)
+    }
+    // A circle mark (root locus's open-loop zeros, among others) is drawn
+    // with ctx.arc, never ctx.lineTo — item 30's pole/zero legibility check
+    // needs to see the zero's own circle, not just the pole's cross.
+    const origArc = CanvasRenderingContext2D.prototype.arc
+    CanvasRenderingContext2D.prototype.arc = function (x, y, radius, startAngle, endAngle) {
+      const p = this.getTransform().transformPoint(new DOMPoint(x, y))
+      window.__arcs.push({ canvas: idOf(this.canvas), x: p.x, y: p.y, radius, color: String(this.strokeStyle) })
+      return origArc.apply(this, arguments)
     }
   })
 }
@@ -205,10 +230,15 @@ async function probeDraw(page, act) {
   await page.evaluate(() => {
     window.__texts = []
     window.__lines = []
+    window.__arcs = []
   })
   await act()
   await page.waitForTimeout(250)
-  return page.evaluate(() => ({ texts: window.__texts || [], lines: window.__lines || [] }))
+  return page.evaluate(() => ({
+    texts: window.__texts || [],
+    lines: window.__lines || [],
+    arcs: window.__arcs || [],
+  }))
 }
 
 /** Do two axis-aligned boxes overlap by more than a hairline (`tol` px)? */
@@ -1577,6 +1607,49 @@ console.log('\n30. Root locus framing: no far zero squeeze, cancellation legible
   if (!cancelLabel) fail('locus: First order x Lead should label the coincident pole and zero as cancelling')
   else console.log(`   First order lag + Lead: "${cancelLabel.text}" drawn on the canvas`)
 
+  // Defect 1, the walk's own repro: dragging the lead's zero away from the
+  // plant's pole at -1 by 30%, 50% and 100% (1.3, 1.5, 2.0) must never read
+  // "pole and zero cancel exactly" — the old cancelEps, a fraction of THIS
+  // frame's own wide extent (this lesson's own lead pole reaches 10-20
+  // rad/s), called all three a cancellation and stopped only at 2.0.
+  const traceColor = '#38e0b0' // COLORS.trace — the pole's own cross (ctx.lineTo)
+  const responseColor = '#5fa8ff' // COLORS.response — the zero's own circle (ctx.arc)
+  const lineCenter = (lines, canvasId, color) => {
+    const pts = lines.filter((l) => l.canvas === canvasId && l.color === color)
+    if (!pts.length) return null
+    const xs = pts.map((p) => p.x)
+    const ys = pts.map((p) => p.y)
+    return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 }
+  }
+  const arcCenter = (arcs, canvasId, color) => {
+    const a = arcs.find((a) => a.canvas === canvasId && a.color === color)
+    return a ? { x: a.x, y: a.y } : null
+  }
+  for (const zeroAt of [1.3, 1.5, 2.0]) {
+    const { texts, lines, arcs } = await probeDraw(page, () => setField('Zero at', zeroAt))
+    const locusId = await page.evaluate(() => document.querySelector('canvas[aria-label^="Root locus"]')?.dataset.probeId)
+    const dedup = dedupeTexts(texts).filter((t) => t.canvas === locusId)
+    const wrongly = dedup.find((t) => /cancel exactly/i.test(t.text))
+    if (wrongly) fail(`locus: zero at ${zeroAt} vs pole -1 (${((zeroAt - 1) * 100).toFixed(0)}% apart) is not a cancellation and must not read "cancel exactly"`)
+    // Past the threshold, the walk's second half: the two marks must still
+    // read as two, not merge into one indistinguishable blob with nothing
+    // said about it.
+    const poleC = lineCenter(lines, locusId, traceColor)
+    const zeroC = arcCenter(arcs, locusId, responseColor)
+    if (!poleC || !zeroC) {
+      fail(`locus: zero at ${zeroAt} — pole or zero mark missing from the canvas entirely`)
+    } else {
+      const d = Math.hypot(poleC.x - zeroC.x, poleC.y - zeroC.y)
+      // A mark's own radius is 7px at 1:1 scale, so two centers under 10px
+      // apart still overlap visibly; comfortably separated (both a stale
+      // raw-blob and a genuine merge-and-offset land in the teens or above)
+      // is the actual bar, not merely "not exactly the same point".
+      if (d < 10) fail(`locus: zero at ${zeroAt} vs pole -1 — the two marks still overlap on screen (${d.toFixed(1)}px apart)`)
+      console.log(`   zero at ${zeroAt} vs pole -1 (${((zeroAt - 1) * 100).toFixed(0)}% apart): ${wrongly ? 'WRONGLY labelled cancelling' : 'no false "cancel exactly"'}, marks ${d.toFixed(1)}px apart`)
+    }
+  }
+  await setField('Zero at', 1) // restored for the sections after this one
+
   // The frame itself must reframe on a PLANT change while still parked on
   // Root locus, not just on a gain drag — the bug this pinned: switching
   // from First order lag x Lead (extent ~27, just above) straight to Three
@@ -1705,6 +1778,95 @@ console.log('\n32. Hover-only explanations reachable with taps alone at 390x844\
     if (!/is-flash/.test(after)) fail('phone: tapping the footnote mark should flash its matching note into view')
   }
   await clickBtn('Step')
+}
+
+// ------------------------------------- 33. every cue word on screen is defined
+//
+// Defect 2: chromeTermIds scanned the plant hint, the controller hint and a
+// hand-written VIEW_CHROME string, but never the live numeric readouts — so
+// a word that only ever appears INSIDE a formatted number (the top bar's
+// "20.1 dB", the open-loop readout's "= 413 mrad/s") or a controller-
+// dependent readout strip ("Kp·e = 0.184") never fired its cue at all,
+// confirmed on Three lags x PI (dB, rad/s) and the watch view under PI/PID
+// (Kp·e).
+//
+// This reads the SAME cue table (terms.js's CUES) the app scans lesson
+// prose against, applied to what the browser ACTUALLY renders, but only for
+// these three ids — not the whole table. A first full-table sweep here also
+// flagged "Proportional" (from a stale "back to lesson" link naming a
+// lesson whose TITLE starts with that word), "Disturbance" (a step-toggle
+// BUTTON's own label) and "overshoot" (a live readout outside this fix's
+// scope): real words, but not concept-prose the picker's glossary is for,
+// and fixing them is outside these two defects. Restricting to db,
+// radpersec and kpe keeps the probe honest about what this fix claims,
+// while still failing loudly — using the real regex and the real term
+// name, not a hand-typed copy — if any of these three regrows the hole.
+console.log('\n33. dB, rad/s and Kp·e: reachable wherever they land on screen\n')
+{
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.views canvas')
+
+  // A spread covering all five views and, between them, the three specific
+  // misses the walk found: dB and rad/s (Three lags x PI, the exact repro),
+  // and Kp·e (any PI/PID watch strip).
+  const combos = [
+    ['First order lag', 'Proportional'],
+    ['Three lags', 'PI'],
+    ['Motor position', 'PID'],
+    ['Three lags', 'Lead'],
+  ]
+  const views = ['Step', 'Watch', 'Nyquist', 'Root locus', 'Math']
+  const mustCheck = ['db', 'radpersec', 'kpe']
+
+  const visibleChrome = () =>
+    page.evaluate(() => {
+      const bits = []
+      for (const sel of ['.topbar-controls', '.readout', '.hint']) {
+        for (const el of document.querySelectorAll(sel)) bits.push(el.innerText || el.textContent || '')
+      }
+      return bits.join(' \n ')
+    })
+
+  let termsLinkOpened = false
+  const offeredNames = async () => {
+    if (!termsLinkOpened) {
+      await page.locator('.picker-terms .terms-link').click()
+      await page.waitForTimeout(80)
+      termsLinkOpened = true
+    }
+    return (await page.locator('.picker-terms .terms-list dt').allTextContents()).map((t) => t.trim())
+  }
+
+  let cueMatches = 0
+  const covered = new Set()
+  for (const [plant, ctrl] of combos) {
+    await clickPreset(plant)
+    await clickBtn(ctrl)
+    for (const view of views) {
+      await clickBtn(view)
+      await settle()
+      const text = await visibleChrome()
+      const names = await offeredNames()
+      for (const id of mustCheck) {
+        if (!CUES[id].test(text)) continue
+        const termName = TERMS[id]?.name
+        cueMatches++
+        covered.add(id)
+        if (!names.includes(termName)) {
+          fail(`picker/${plant} x ${ctrl} x ${view}: "${id}" cue is on screen but "${termName}" is not offered`)
+        }
+      }
+    }
+  }
+  for (const must of mustCheck) {
+    if (!covered.has(must)) fail(`item 33: the "${must}" cue was never exercised by this spread — the probe proves nothing about it`)
+  }
+  console.log(
+    `   ${combos.length} combos x ${views.length} views: ${cueMatches} matches of {dB, rad/s, Kp·e} checked, all defined`,
+  )
+  await clickBtn('Step')
+  await clickPreset('First order lag')
 }
 
 await browser.close()

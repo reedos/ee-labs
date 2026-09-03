@@ -1,5 +1,6 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmtNum } from '@ee-labs/ui'
+import { findCancellations, findNearMerges } from '../locusCancel.js'
 
 /**
  * The root locus on the s-plane — this lab's own canvas, not the shared
@@ -126,36 +127,53 @@ export default function LocusCanvas({
       // Exact pole/zero cancellation (First order x Lead, Custom x Lead): a
       // controller zero placed exactly on the plant's own pole draws both
       // markers on the same point, which reads as one mark, not two — the
-      // cancellation the lesson is about becomes invisible. Detected by
-      // distance relative to the frame (a coincidence is exact algebra, not
-      // near-miss geometry, so the tolerance is generous) and drawn apart:
-      // the pole nudged one way, the zero the other, joined by a hairline
-      // so the two are still legibly the same point, with the fact said in
-      // words rather than left for the reader to infer from the overlap.
-      const cancelEps = extent * 0.02
-      const usedZero = new Set()
-      const cancelling = []
-      poles.forEach((p) => {
-        const zi = zeros.findIndex(
-          (z, j) => !usedZero.has(j) && Math.hypot(p[0] - z[0], p[1] - z[1]) <= cancelEps,
-        )
-        if (zi >= 0) {
-          usedZero.add(zi)
-          cancelling.push(p)
-        }
-      })
+      // cancellation the lesson is about becomes invisible. Decided by
+      // locusCancel.js from the PAIR ITSELF, relative to its own shared
+      // magnitude — never from this frame's extent, which is routinely set
+      // by a point with nothing to do with the pair (the lead controller's
+      // own far pole, here). Drawn apart: the pole nudged one way, the zero
+      // the other, joined by a hairline so the two are still legibly the
+      // same point, with the fact said in words rather than left for the
+      // reader to infer from the overlap.
+      const isOffFrame = (re, im) => Math.abs(re) > xMax * 1.001 || Math.abs(im) > yMax * 1.001
+      const { cancelling, usedZero } = findCancellations(poles, zeros)
+
+      // A pair locusCancel.js correctly calls DIFFERENT can still merge into
+      // one mark on screen once THIS frame is drawn — set wide by that same
+      // unrelated far pole, a zero dragged to 1.3 or 1.5 against a pole at
+      // -1 (30-50%, not a cancellation) used to render as one blob with no
+      // word said about it. Caught here in pixel space, after sx/sy are
+      // fixed for this frame — unlike the test above, this ONE is allowed
+      // to depend on it — and separated the same way, minus the caption,
+      // because for this pair "cancel exactly" would not be true.
+      //
+      // Two full mark radii (each mark is a cross or circle of radius r):
+      // centers any closer than that and the two shapes' own outlines
+      // already overlap, which is the actual visual test — "one indistinct
+      // blob" is a statement about the drawn shapes touching, not about
+      // some smaller, arbitrary pixel count.
+      const { near, usedZeroNear } = findNearMerges(
+        poles,
+        zeros,
+        cancelling,
+        usedZero,
+        (re, im) => ({ x: sx(re), y: sy(im) }),
+        r * 2,
+        isOffFrame,
+      )
 
       for (const [re, im] of poles) {
         if (cancelling.some(([pr, pi]) => pr === re && pi === im)) continue
+        if (near.some(([[pr, pi]]) => pr === re && pi === im)) continue
         cross(re, im, COLORS.trace, 2 * k)
       }
       for (let i = 0; i < zeros.length; i++) {
-        if (usedZero.has(i)) continue
+        if (usedZero.has(i) || usedZeroNear.has(i)) continue
         const [re, im] = zeros[i]
         // A zero the frame excludes (locusFrame.js never sizes to one) still
         // gets a mark: an arrow at the edge, in the zero's own direction,
         // naming the value the picture cannot reach.
-        if (Math.abs(re) > xMax * 1.001 || Math.abs(im) > yMax * 1.001) {
+        if (isOffFrame(re, im)) {
           const ang = Math.atan2(im, re)
           const ex = Math.cos(ang) || 0
           const ey = Math.sin(ang) || 0
@@ -211,6 +229,26 @@ export default function LocusCanvas({
         ctx.textAlign = 'left'
         ctx.textBaseline = 'top'
         ctx.fillText('pole and zero cancel exactly', x + d + 8 * k, y + d + 2 * k)
+      }
+      // Near-but-not-cancelling: same offset, same hairline, no caption —
+      // the two points are real and distinct, so nothing is said about them
+      // beyond drawing them so a reader can actually tell there are two.
+      for (const [p, z] of near) {
+        const d = 5 * k
+        ctx.strokeStyle = COLORS.grid
+        ctx.lineWidth = 1 * k
+        ctx.beginPath()
+        ctx.moveTo(sx(p[0]) - d, sy(p[1]) - d)
+        ctx.lineTo(sx(z[0]) + d, sy(z[1]) + d)
+        ctx.stroke()
+        ctx.save()
+        ctx.translate(-d, -d)
+        cross(p[0], p[1], COLORS.trace, 2 * k)
+        ctx.restore()
+        ctx.save()
+        ctx.translate(d, d)
+        circle(z[0], z[1], COLORS.response, 2 * k)
+        ctx.restore()
       }
       for (const [re, im] of highlight) cross(re, im, COLORS.marker, 2.4 * k)
 

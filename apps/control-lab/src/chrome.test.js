@@ -62,6 +62,28 @@ describe('picker terms: reachable with no lesson active', () => {
     expect(chromeTermIds('firstOrder', 'p', 'math')).toContain('characteristicequation')
   })
 
+  it('Reed\'s cold-walk defect: dB, rad/s and Kp·e all reachable with no lesson loaded', () => {
+    // dB (top bar gain margin) and rad/s (the open-loop pane's crossover
+    // readout) are printed only inside a formatted NUMBER — never as a bare
+    // word a prose scan of the plant/controller hints or VIEW_CHROME would
+    // ever see — so both are on screen in EVERY state, not just some.
+    for (const view of views) {
+      const ids = chromeTermIds('firstOrder', 'p', view)
+      expect(ids, `${view}: dB`).toContain('db')
+      expect(ids, `${view}: rad/s`).toContain('radpersec')
+    }
+
+    // Kp·e: the watch view's own readout strip, rendered only once there is
+    // more than one part to split the effort into — PI and PID, not plain P
+    // (one part, no strip at all) and not Lead (also one part, its own u).
+    expect(chromeTermIds('firstOrder', 'pi', 'watch')).toContain('kpe')
+    expect(chromeTermIds('secondOrder', 'pid', 'watch')).toContain('kpe')
+    expect(chromeTermIds('firstOrder', 'p', 'watch')).not.toContain('kpe')
+    expect(chromeTermIds('firstOrder', 'lead', 'watch')).not.toContain('kpe')
+    // And only on the watch view — Kp·e is not on screen anywhere else.
+    expect(chromeTermIds('firstOrder', 'pi', 'step')).not.toContain('kpe')
+  })
+
   it('derives the list from the cue table, not a hand-kept one', () => {
     // Independently re-scan each view's own static chrome with the SAME
     // table chromeTermIds uses, and require every match to appear in what
