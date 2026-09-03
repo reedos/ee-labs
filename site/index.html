@@ -12,7 +12,7 @@
     <title>REED's Engineering Labs</title>
     <meta
       name="description"
-      content="Interactive labs for the signals half of an electrical engineering curriculum: signals and DSP, circuits, and control — one transfer function shared three ways, every claim measured."
+      content="Interactive labs for the signals half of an electrical engineering curriculum: signals and DSP, circuits, and control. One transfer function, read three ways, with every claim measured by a test."
     />
     <style>
       :root {
@@ -187,16 +187,17 @@
         <h1>R<span class="ee">EE</span>D’s Engineering Labs</h1>
         <p class="kicker"><span class="ee">E</span>lectrical <span class="ee">E</span>ngineering focused.</p>
         <p class="tagline">
-          Build a signal and watch a filter reshape it. Wire a circuit and read its poles.
-          Close a loop and find its margins. The three labs trade in one currency &mdash;
-          the transfer function &mdash; so the circuit you wire in one opens in the others
-          as the exact same system: filter a signal through it in Signal Lab, steer it as
-          the plant in Control Lab. And
-          <b>every claim on every page is measured against what is drawn.</b>
+          Three interactive labs for undergraduate signals, circuits and control. Build a
+          signal and filter it, wire a circuit and read its poles, or close a loop and measure
+          its margins. All three represent a system as a transfer function, so a circuit built
+          in one lab opens in the others as the same system: as a filter in Signal Lab, as a
+          plant in Control Lab.
+          <b>Every number and every statement on screen is checked by a test against what the
+          page draws.</b>
         </p>
       </header>
 
-      <div class="scopeframe" aria-label="A live demonstration; the three dots switch between filtering demos">
+      <div class="scopeframe" aria-label="A live demonstration. The three dots switch between filtering demos">
         <div class="lights" role="tablist" aria-label="Choose a demo">
           <button class="dot signal is-on" role="tab" aria-selected="true" data-demo="0" aria-label="Low-pass a square"></button>
           <button class="dot circuit" role="tab" aria-selected="false" data-demo="1" aria-label="High-pass a square"></button>
@@ -204,7 +205,7 @@
         </div>
         <canvas id="hero"></canvas>
         <div class="scopecap">
-          <span id="cap-left">square, 3 harmonics shown of ∞</span>
+          <span id="cap-left">square wave, 3 of its harmonics shown</span>
           <span id="cap-right">low-pass f<sub>c</sub> = <b id="fc">—</b></span>
         </div>
       </div>
@@ -215,9 +216,10 @@
           <div class="body">
             <h2><span class="glyph">~Σ</span>Signal Lab</h2>
             <p>
-              Build waveforms from harmonics, sample and alias them, run them through chains of
-              biquads and FIRs. Read the result four ways: spectrum, kernel, z-plane, group delay
-              — and watch convolution happen one sample at a time.
+              Build waveforms from harmonics, sample them, and run them through chains of biquads
+              and FIR filters. Each result is shown as a spectrum, an impulse response, a z-plane
+              plot and a group-delay curve. A convolution view steps through the sum one sample
+              at a time.
             </p>
             <span class="go">35 experiments</span>
           </div>
@@ -227,9 +229,9 @@
           <div class="body">
             <h2><span class="glyph">⎓⏦</span>Circuit Lab</h2>
             <p>
-              RC, RLC, twin-T, op-amp stages. Component values become poles, Bode plots and step
-              responses — every H(s) derived where you can check it, and ±5% parts shown for
-              what they do to the promises.
+              RC, RLC, twin-T and op-amp stages. Component values set the poles, the Bode plot
+              and the step response. Each H(s) is derived on screen, and a ±5% tolerance view
+              shows how far the response moves.
             </p>
             <span class="go">15 experiments, 10 circuits</span>
           </div>
@@ -239,9 +241,9 @@
           <div class="body">
             <h2><span class="glyph">⊕→</span>Control Lab</h2>
             <p>
-              Close a loop and pay its bills: margins, root locus, Nyquist, disturbance
-              rejection, S + T = 1. Seven plants, four controllers, and the point −1 — with every
-              rule of thumb marked where it stops holding.
+              Close a feedback loop and measure it: gain and phase margins, root locus, Nyquist,
+              disturbance rejection, and S + T = 1. Seven plants and four controllers. Each rule
+              of thumb states the conditions under which it holds.
             </p>
             <span class="go">13 experiments, 7 plants</span>
           </div>
@@ -279,24 +281,23 @@
           </g>
         </svg>
         <div class="txt">
-          <h3>One object, three vocabularies</h3>
+          <h3>One circuit, three labs</h3>
           <p>
-            The labs share one spine. A series RLC in <b>Circuit Lab</b> is a biquad — hand it to
-            <b>Signal Lab</b> and the same <code>f₀</code> and <code>Q</code> filter a signal,
-            exact at the pre-warped corner. The same network is a second-order plant — hand it to
-            <b>Control Lab</b>, exactly, and ask how much gain the loop takes before it sings.
-            Not three approximations of each other: <b>the same transfer function, read three
-            ways</b> — and where a mapping cannot be exact, the suite says so instead of
-            pretending.
+            A series RLC in <b>Circuit Lab</b> is also a biquad. Hand it to <b>Signal Lab</b> and
+            the same <code>f₀</code> and <code>Q</code> filter a signal, exactly at the pre-warped
+            corner. The same network is also a second-order plant. Hand it to <b>Control Lab</b>
+            and ask how much gain the loop takes before it oscillates. <b>The three labs read one
+            transfer function three ways</b>, and where a mapping cannot be exact, the panel says
+            so and gives the reason.
           </p>
         </div>
       </section>
 
       <p class="foot">
-        open source, MIT licensed — <a href="https://github.com/reedos/ee-labs">github.com/reedos/ee-labs</a><br />
-        Something look wrong, or want an explanation that is not there?
-        <a href="https://github.com/reedos/ee-labs/issues/new">Say so</a> — inside a lab that link
-        brings your setup with it.
+        Open source, MIT licensed. <a href="https://github.com/reedos/ee-labs">github.com/reedos/ee-labs</a><br />
+        Something look wrong, or missing an explanation?
+        <a href="https://github.com/reedos/ee-labs/issues/new">Open an issue</a>. Inside a lab,
+        that link brings your setup with it.
       </p>
     </div>
 
@@ -361,7 +362,7 @@
         Math.sin(2 * Math.PI * ((i / n) * cycles)) >= 0 ? 0.6 : -0.6)
       const DEMOS = [
         { // the cutoff breathes 2.2x-14x f0: the square rounds, then sharpens
-          left: 'square, 3 harmonics shown of ∞ · low-passed',
+          left: 'square wave, 3 of its harmonics shown · low-passed',
           src: squareish,
           run(phase, n, x) {
             const mult = 2.2 + 11.8 * (0.5 - 0.5 * Math.cos(phase))
@@ -370,7 +371,7 @@
           },
         },
         { // a true square, high-passed: the flat tops die, the edges survive
-          left: 'square · high-passed: only the edges survive',
+          left: 'square wave · high-passed, leaving the edges',
           src: trueSquare,
           run(phase, n, x) {
             const mult = 1.5 + 8.5 * (0.5 - 0.5 * Math.cos(phase))
@@ -381,7 +382,7 @@
         { // fixed cutoff, Q breathes 0.9-4.8: each edge rings the resonance.
           // Input scaled to 0.72x and Q capped at 4.8: resonance amplifies the
           // harmonics near fc, and past that the ringing clips the frame.
-          left: 'square · resonant low-pass: Q is the ringing',
+          left: 'square wave · resonant low-pass, Q sets the ringing',
           src: (n, c) => squareish(n, c).map((v) => v * 0.72),
           run(phase, n, x) {
             const q = 0.9 + 3.9 * (0.5 - 0.5 * Math.cos(phase))
