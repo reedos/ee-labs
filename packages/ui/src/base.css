@@ -732,3 +732,82 @@ select {
   font-weight: 650;
   color: var(--text);
 }
+
+/* The course's spine: prev / n of N / next under the lesson list, and the
+   reset that appears once a knob has moved the picture away from the note.
+   Shared by the three released labs so stepping through Try this feels the
+   same everywhere. */
+.lesson-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.lesson-nav-step,
+.lesson-nav-reset {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.lesson-nav-step:hover:not(:disabled),
+.lesson-nav-reset:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.lesson-nav-step:disabled {
+  color: var(--line-bright);
+  cursor: default;
+}
+
+.lesson-nav-count {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  min-width: 52px;
+  text-align: center;
+}
+
+.lesson-nav-reset {
+  margin-left: auto;
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+}
+
+/* The lesson's one imperative, apart from the note, with its one-click chips.
+   The bold "Try" is the anchor the eye returns to after reading the paragraph. */
+.try-line {
+  margin: 8px 0 0;
+  padding: 7px 9px;
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border-radius: 0 4px 4px 0;
+}
+
+.try-text {
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.try-text b {
+  color: var(--accent);
+  font-weight: 700;
+  margin-right: 2px;
+}
+
+.try-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}

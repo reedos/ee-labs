@@ -7,7 +7,8 @@
   "main": "./index.js",
   "exports": {
     ".": "./index.js",
-    "./base.css": "./src/base.css"
+    "./base.css": "./src/base.css",
+    "./verify/foldProbe.mjs": "./verify/foldProbe.mjs"
   },
   "peerDependencies": {
     "react": "^18"
