@@ -12,7 +12,7 @@ import {
 } from './lessons.js'
 import { CIRCUITS, transferOf } from './circuits.js'
 import { asDigitalFilter } from './toSignalLab.js'
-import { toleranceCloud, spreadPct, tolsOf } from './tolerance.js'
+import { toleranceCloud, spreadPct, tolsOf, fmtPct, fmtHzRange } from './tolerance.js'
 import { magnitudeAt, phaseAt, dcGain, polesZeros, secondOrderMetrics, stepResponse } from '@ee-labs/systems'
 import { dampingWord } from './stepReadout.js'
 
@@ -254,6 +254,19 @@ describe('the numbers the try lines quote', () => {
     expect(l.try).toContain('632.46 Ω (ζ = 1.000')
   })
 
+  it('typing the natural rounding, 632 Ω, still reads critically damped — 600 Ω genuinely does not', () => {
+    // The try line's own chip is 632.46 Ω; a person reading "632.46" types
+    // 632. That used to read ζ = 0.999 "underdamped" beside a pane that had
+    // just called the unrounded value critical — measured here straight off
+    // the circuit, not asserted.
+    const l = byName('Resonance, seen in time')
+    const s = stateOf(l)
+    const z632 = secondOrderMetrics(tfOfState({ ...s, params: { ...s.params, r: 632 } })).zeta
+    const z600 = secondOrderMetrics(tfOfState({ ...s, params: { ...s.params, r: 600 } })).zeta
+    expect(dampingWord(z632)).toBe('critically damped')
+    expect(dampingWord(z600)).toBe('underdamped')
+  })
+
   it('twin-T: R 47 kΩ moves the notch to 339 Hz and Q stays 0.250', () => {
     const l = byName('A zero on the axis is silence')
     const s = after(l, 'R 47 kΩ')
@@ -279,6 +292,27 @@ describe('the numbers the try lines quote', () => {
     expect(toleranceCloud(exact.id, exact.params, exact.output, exact.tols).any).toBe(false)
   })
 
+  it('wobble: the ±1% try-line percentage is what the panel’s own formatter would print, to the digit', () => {
+    // toFixed(1) rounded the measured 0.850...% up to "0.9" — a number the
+    // try line does not say. fmtPct is the one formatter both the try line's
+    // claim and the live panel must agree with.
+    const l = byName('Real parts wobble')
+    const s = after(l, '±1%')
+    const { f0, q } = toleranceCloud(s.id, s.params, s.output, s.tols)
+    const m = CIRCUITS[s.id].metrics(s.params)
+    const f0Str = fmtPct(spreadPct(f0, m.w0 / (2 * Math.PI)))
+    const qStr = fmtPct(spreadPct(q, m.q))
+    expect(f0Str).toBe('0.85')
+    expect(qStr).toBe('1.7')
+    expect(l.try).toContain(`±${f0Str}%`)
+    expect(l.try).toContain(`±${qStr}%`)
+    // And the ±5% figures, unaffected since they were already ≥ 1%.
+    const s5 = after(l, '±5%')
+    const { f0: f05, q: q5 } = toleranceCloud(s5.id, s5.params, s5.output, s5.tols)
+    expect(l.try).toContain(`±${fmtPct(spreadPct(f05, m.w0 / (2 * Math.PI)))}%`)
+    expect(l.try).toContain(`±${fmtPct(spreadPct(q5, m.q))}%`)
+  })
+
   it('blame: the ±10% on C alone lets f₀ wander ±5.3%; on R alone ±0.0%', () => {
     const l = byName('Blame the right part')
     const onC = after(l, 'C ±10%')
@@ -288,6 +322,24 @@ describe('the numbers the try lines quote', () => {
     const onR = after(l, 'R ±10%')
     const r = toleranceCloud(onR.id, onR.params, onR.output, onR.tols)
     expect(spreadPct(r.f0, m.w0 / (2 * Math.PI))).toBeCloseTo(0, 6)
+  })
+
+  it('blame: the printed f₀ range never reads one endpoint coarser than the other', () => {
+    // The C-only ±10% build used to print "4.81 kHz to 5.3 kHz"; its L-only
+    // twin, same lesson and same formatter, printed "4.8 kHz to 5.3 kHz" —
+    // eng()'s significant-figure rounding stripped a trailing zero from one
+    // endpoint but not the other. fmtHzRange fixes the decimal count instead.
+    const l = byName('Blame the right part')
+    const decimalsOf = (t) => (t.match(/\.(\d+)/) || [, ''])[1].length
+    for (const label of ['C ±10%', 'L ±10%']) {
+      const s = after(l, label)
+      const { f0 } = toleranceCloud(s.id, s.params, s.output, s.tols)
+      expect(f0, label).toBeTruthy()
+      const [loText, hiText] = fmtHzRange(f0.lo, f0.hi)
+      expect(decimalsOf(loText), `${label}: "${loText}" vs "${hiText}"`).toBe(decimalsOf(hiText))
+      expect(loText).toMatch(/^\d+\.\d\d kHz$/)
+      expect(hiText).toMatch(/^\d+\.\d\d kHz$/)
+    }
   })
 
   it('Sallen–Key: C1 22 nF → 100 nF takes Q 0.74 → 1.58', () => {

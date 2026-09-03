@@ -38,7 +38,16 @@ import {
   matchingChip,
   sameSetup,
 } from './lessons.js'
-import { TOLERANCES, responseBand, stepBand, toleranceCloud, tolsOf, spreadPct } from './tolerance.js'
+import {
+  TOLERANCES,
+  responseBand,
+  stepBand,
+  toleranceCloud,
+  tolsOf,
+  spreadPct,
+  fmtPct,
+  fmtHzRange,
+} from './tolerance.js'
 import { TERMS, termsFor } from './terms.js'
 import { dampingWord, stepReadout } from './stepReadout.js'
 import {
@@ -352,6 +361,7 @@ export default function App() {
   }, [id, output, pz, wobble])
   const f0Nominal = metrics ? metrics.w0 / (2 * Math.PI) : second ? second.f0 : null
   const f0Spread = wobble.any && f0Nominal ? spreadPct(wobble.f0, f0Nominal) : null
+  const f0Range = wobble.any && f0Spread != null ? fmtHzRange(wobble.f0.lo, wobble.f0.hi) : null
   const qNominal = metrics && Number.isFinite(metrics.q) ? metrics.q : second ? second.q : null
   const qSpread = wobble.any && qNominal ? spreadPct(wobble.q, qNominal) : null
 
@@ -692,10 +702,10 @@ export default function App() {
           {tolAllRow('components')}
           {wobble.any && f0Spread != null ? (
             <p className="hint" data-role="tolerance-spread">
-              With these parts f₀ lands anywhere in {fmt(wobble.f0.lo, 'Hz', 3)} to{' '}
-              {fmt(wobble.f0.hi, 'Hz', 3)} (±{f0Spread.toFixed(1)}%)
+              With these parts f₀ lands anywhere in {f0Range[0]} to{' '}
+              {f0Range[1]} (±{fmtPct(f0Spread)}%)
               {qSpread != null
-                ? ` and Q in ${wobble.q.lo.toPrecision(3)} to ${wobble.q.hi.toPrecision(3)} (±${qSpread.toFixed(1)}%). The square root halves L's and C's errors in both — what doubles Q's spread is R, which enters Q in full and f₀ not at all.`
+                ? ` and Q in ${wobble.q.lo.toPrecision(3)} to ${wobble.q.hi.toPrecision(3)} (±${fmtPct(qSpread)}%). The square root halves L's and C's errors in both — what doubles Q's spread is R, which enters Q in full and f₀ not at all.`
                 : '.'}{' '}
               The poles view shows the scatter.
             </p>
@@ -943,6 +953,12 @@ function StepReadout({ r }) {
         <span>
           settles in <b>{fmt(r.settling, 's', 3)}</b>
           <em className="prov"> to within 2%</em>
+        </span>
+      ) : null}
+      {r.diesAway != null ? (
+        <span data-role="step-dies-away">
+          dies away in <b>{fmt(r.diesAway, 's', 3)}</b>
+          <em className="prov"> (below 2% of its peak)</em>
         </span>
       ) : null}
     </>

@@ -124,6 +124,15 @@ export const TERMS = {
       'response — ζ ≥ 1 means no overshoot at all, ζ = 0.707 still overshoots 4.3%, and ' +
       'smaller ζ rings harder and longer. One circuit, two vocabularies, one number.',
   },
+  damping: {
+    name: 'Underdamped, critically damped, overdamped',
+    match: /damped/i,
+    def:
+      'How a second-order step response behaves relative to ζ = 1. Underdamped (ζ < 1) ' +
+      'overshoots and rings before settling, critically damped (ζ = 1) arrives without ' +
+      'overshoot in the least time, and overdamped (ζ > 1) arrives slower still with no ' +
+      'ring at all.',
+  },
   overshoot: {
     name: 'Overshoot, and "settles within 2%"',
     match: /overshoot|settles|ringing/i,
@@ -269,6 +278,13 @@ export const TERMS = {
  * in TERMS because no lesson lists them — the panel is on every circuit.
  */
 export const HANDOVER_TERMS = {
+  biquad: {
+    name: 'Biquad',
+    def:
+      'A second-order digital filter section — two poles, up to two zeros, five multiplies ' +
+      'per sample. Any second-order circuit with a low-, band- or high-pass shape IS one, ' +
+      'with the same f₀ and Q — the fact this panel demonstrates rather than claims.',
+  },
   bilinear: {
     name: 'Bilinear transform',
     def:

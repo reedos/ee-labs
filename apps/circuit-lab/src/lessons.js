@@ -122,7 +122,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'One circuit, three filters',
-    terms: ['tf', 'resonance', 's', 'shapes', 'overshoot'],
+    terms: ['tf', 'resonance', 's', 'shapes', 'overshoot', 'zeta', 'damping'],
     note:
       'Switch the output between C, R and L. Same components, same resonance, three completely ' +
       'different filters — low-pass, band-pass, high-pass — because they share a denominator ' +
@@ -143,7 +143,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'Q is how sharp, and R sets it',
-    terms: ['q', 'zeta', 'resonance', 'overshoot'],
+    terms: ['q', 'zeta', 'damping', 'resonance', 'overshoot'],
     note:
       'Drag R up from its 20 Ω. The resonant peak collapses, because at resonance the inductor ' +
       'and capacitor cancel exactly and only the resistor is left to limit the current. Double ' +
@@ -161,7 +161,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'The same R, the opposite effect',
-    terms: ['tank', 'q', 'impedance', 'db', 'dbohm', 'resonance'],
+    terms: ['tank', 'q', 'impedance', 'db', 'dbohm', 'resonance', 'zeta', 'damping'],
     note:
       'The same three components in parallel. Now the impedance PEAKS at resonance where the ' +
       'series circuit dipped, and R has swapped roles: more resistance means a sharper peak. ' +
@@ -187,7 +187,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'Resonance, seen in time',
-    terms: ['zeta', 'q', 'resonance', 'overshoot', 'butterworth'],
+    terms: ['zeta', 'damping', 'q', 'resonance', 'overshoot', 'butterworth'],
     note:
       'The same circuit, hit with a step. A resonance that reads as a bump on the frequency ' +
       'plot reads as overshoot and ringing here, and ζ = 1/2Q connects them. Note where the ' +
@@ -212,7 +212,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'A zero on the axis is silence',
-    terms: ['twint', 'zero', 'pole', 'jw', 'tf', 'phase', 'q'],
+    terms: ['twint', 'zero', 'pole', 'jw', 'tf', 'phase', 'q', 'zeta', 'damping'],
     note:
       'The twin-T’s two tees deliver equal and opposite signals at one frequency, so the ' +
       'zeros of H(s) sit ON the imaginary axis. That frequency is removed, not attenuated: ' +
@@ -231,7 +231,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'Real parts wobble',
-    terms: ['tolerance', 'q', 'pole', 'jw'],
+    terms: ['tolerance', 'q', 'pole', 'jw', 'zeta', 'damping'],
     note:
       'No part in a drawer is exact. Here the series RLC is built 120 times from ±5% parts; ' +
       'the poles view shows where they land. f₀ = 1/2π√LC wobbles ±4.3%, Q ±8.2% — about ' +
@@ -259,7 +259,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'Blame the right part',
-    terms: ['tolerance', 'q', 'resonance', 'omega0', 'pole', 'jw'],
+    terms: ['tolerance', 'q', 'resonance', 'omega0', 'pole', 'jw', 'zeta', 'damping'],
     note:
       'Give R alone ±10% and watch what does NOT happen: f₀ = 1/(2π√LC) has no R in it, so ' +
       'not one of the 120 builds resonates anywhere else. The poles slide along a circle of ' +
@@ -290,7 +290,7 @@ export const LESSONS = [
   {
     group: 'Active circuits',
     name: 'Why active filters exist',
-    terms: ['opamp', 'pole', 'jw', 'q', 'shapes'],
+    terms: ['opamp', 'pole', 'jw', 'q', 'shapes', 'zeta', 'damping'],
     note:
       'A second-order low-pass with no inductor anywhere. Two RC sections alone can only ever ' +
       'give real poles, and a real pole cannot ring; the op-amp feeding the output back through ' +
@@ -364,7 +364,7 @@ export const LESSONS = [
   {
     group: 'One object, two names',
     name: 'This circuit is a biquad',
-    terms: ['biquad', 'sampled', 'tf', 'corner', 'q', 'shapes'],
+    terms: ['biquad', 'sampled', 'tf', 'corner', 'q', 'shapes', 'zeta', 'damping'],
     note:
       'This RLC is a low-pass biquad with a cutoff of 5.03 kHz and a Q of 3.16 — not similar ' +
       'to one, the same one. Open in Signal Lab → loads the identical filter there with a ' +

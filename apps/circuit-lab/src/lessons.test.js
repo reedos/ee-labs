@@ -356,8 +356,9 @@ describe('terms — definitions on contact', () => {
         expect(l.terms, `${l.name} opens on poles`).toContain('jw')
       }
     }
-    // The hand-over panel's own six, in the order the panel reveals them.
+    // The hand-over panel's own seven, in the order the panel reveals them.
     expect(handOverTerms().map((t) => t.id)).toEqual([
+      'biquad',
       'bilinear',
       'samplerate',
       'samplespercycle',
@@ -365,6 +366,27 @@ describe('terms — definitions on contact', () => {
       'plant',
       'dampingratio',
     ])
+  })
+
+  // The readout prints ζ (and its damping word) for exactly the lessons whose
+  // circuit, as loaded, is second order — secondOrderMetrics returning
+  // non-null is the SAME test App.jsx uses to decide whether to render that
+  // line (see the `{second ? ... : null}` readout in App.jsx). Deriving the
+  // list from the circuit rather than naming lessons means a future lesson
+  // that switches to a second-order circuit is caught automatically.
+  it('every lesson whose readout would print ζ lists zeta and damping', () => {
+    for (const l of LESSONS) {
+      const second = secondOrderMetrics(tfOf(l))
+      if (second) {
+        expect(l.terms, `${l.name}: second-order (ζ = ${second.zeta.toFixed(3)}), so the readout prints ζ`).toContain('zeta')
+        expect(l.terms, `${l.name}: second-order (ζ = ${second.zeta.toFixed(3)}), so the readout prints ζ`).toContain('damping')
+      }
+    }
+    // And the reverse holds for at least the first-order lessons: no bogus
+    // requirement sneaks in for a circuit whose readout never shows ζ.
+    for (const name of ['Where the corner comes from', 'Gain is a ratio, and negative']) {
+      expect(secondOrderMetrics(tfOf(byName(name)))).toBeNull()
+    }
   })
 })
 

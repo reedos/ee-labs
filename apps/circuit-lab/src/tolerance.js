@@ -2,6 +2,19 @@ import { hash01 } from '@ee-labs/dsp'
 import { bode, polesZeros, secondOrderMetrics, stepResponse } from '@ee-labs/systems'
 import { CIRCUITS, transferOf } from './circuits.js'
 
+// fmtHzRange below picks an SI prefix itself rather than importing
+// '@ee-labs/ui''s eng(): that package's index re-exports NumField.jsx, and
+// verify.mjs loads this module (via lessons.js) straight through plain
+// Node, which cannot parse JSX — the same reason circuits.js and this file
+// otherwise depend only on @ee-labs/dsp and @ee-labs/systems. Hz-only and
+// deliberately small, not a general engineering-notation formatter.
+const HZ_PREFIXES = [
+  { p: 1e9, s: 'G' },
+  { p: 1e6, s: 'M' },
+  { p: 1e3, s: 'k' },
+  { p: 1, s: '' },
+]
+
 // What real parts do to the numbers on screen.
 //
 // Every value in this tool is exact, and no part in a drawer is. A resistor is
@@ -180,4 +193,32 @@ export function spreadPct(range, centre) {
   if (!range || !(centre > 0)) return null
   const half = Math.max(range.hi - centre, centre - range.lo)
   return (100 * half) / centre
+}
+
+/**
+ * A spread percentage, printed. toFixed(1) rounded the wobble lesson's
+ * measured 0.850...% up to "±0.9%" beside a try line that (correctly) said
+ * ±0.85% — one decimal throws away the only digit that mattered below 1%.
+ * Below 1% keep two decimals; at or above, one is plenty and matches the
+ * lessons' existing ±4.3%-style prose. The try lines and the live panel both
+ * call this, so the two can never print numbers that disagree.
+ */
+export function fmtPct(v) {
+  return v < 1 ? v.toFixed(2) : v.toFixed(1)
+}
+
+/**
+ * A frequency range's two endpoints, sharing one SI prefix and one fixed
+ * decimal count. The app's own fmtHz picks that prefix per value and then
+ * rounds to a fixed number of SIGNIFICANT figures, which strips a trailing
+ * zero from whichever endpoint happens to land on one: the "Blame the right
+ * part" lesson's C-only ±10% build read "4.81 kHz to 5.3 kHz", and its
+ * L-only twin — same lesson, same formatter — read "4.8 kHz to 5.3 kHz",
+ * the low end one digit coarser than the high end for no reason a reader
+ * could see. Fixing the decimal count instead of the significant figures
+ * makes the two endpoints agree.
+ */
+export function fmtHzRange(lo, hi) {
+  const hit = HZ_PREFIXES.find((x) => Math.abs(hi) >= x.p) || HZ_PREFIXES[HZ_PREFIXES.length - 1]
+  return [`${(lo / hit.p).toFixed(2)} ${hit.s}Hz`, `${(hi / hit.p).toFixed(2)} ${hit.s}Hz`]
 }
