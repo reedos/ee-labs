@@ -1,7 +1,7 @@
 # Circuit Lab — agent brief
 
 You are one of three agents working this repo in parallel. **Your territory is
-`apps/circuit-lab/` only.** Another agent owns `apps/control-lab/`; a third owns
+`apps/circuit-lab/` only.** Another agent owns `apps/control-lab/`. A third owns
 `apps/signal-lab/` and the shared `packages/*`. Reed reviews everything.
 
 ## Boundaries — read first
@@ -24,32 +24,32 @@ You are one of three agents working this repo in parallel. **Your territory is
 
   Three agents in one tree have already crossed streams once: a `git add -A`
   from one swept another's half-finished files into an unrelated commit.
-  Also, `npm run build` builds ALL THREE apps' dist folders — in a shared
+  Also, `npm run build` builds ALL THREE apps' dist folders, in a shared
   tree that clobbers another agent's preview mid-harness.
-- **Stage by path, never `git add -A` and never `commit -a`** — even in your
+- **Stage by path, never `git add -A` and never `commit -a`**, even in your
   own clone, the habit is the protection: `git add apps/circuit-lab`.
 - Work directly on `master`. **`git pull --rebase` before every push.** Never
   rewrite pushed history. Commits already use the right author (repo-local
   config). Every push triggers CI and a live deploy to
-  https://reedos.github.io/ee-labs/ — so push only when everything below is
+  https://reedos.github.io/ee-labs/, so push only when everything below is
   green.
 
 ## The house discipline (non-negotiable)
 
 **First: read `/CORE_SCOPE.md`.** It governs `@ee-labs/systems` and every bridge
-between apps: exact rational transfer functions only in the core; a refused
-bridge is a finished feature; no approximation without a tested guard; and
+between apps: exact rational transfer functions only in the core. A refused
+bridge is a finished feature. No approximation without a tested guard. And
 exact mappings are never hedged. If a task conflicts with it, stop and flag
 rather than working around it.
 
 Every explanatory sentence in a lesson note, hint, or math panel is a **claim
-about physics, and a test must measure it** — never restate the formula that
+about physics, and a test must measure it**, never restate the formula that
 produced it. Where a claim is unmeasurable at the current settings, the row
-footnotes the reason; it never shows ✗ against correct physics. Predictions
+footnotes the reason. It never shows ✗ against correct physics. Predictions
 must **follow the controls the user can reach**: if a select or slider changes
 the fact, the sentence and the check change with it. Nine confidently wrong
 explanations have been caught by this discipline so far. When one of YOUR tests
-fails, first decide whether the app or the test is wrong — several times it was
+fails, first decide whether the app or the test is wrong, several times it was
 the test, and saying so plainly in the commit matters.
 
 Commit messages here are narrative: what changed, why, and what bugs fell out.
@@ -65,16 +65,16 @@ cd apps/circuit-lab && APP_URL=http://localhost:4300 node scripts/verify.mjs
 ```
 
 The Playwright harness is the only thing that catches wiring bugs. Extend it
-for everything you add. **Use port 4300** — other agents use other ports.
+for everything you add. **Use port 4300**, other agents use other ports.
 
 Gotchas that have burned us:
 - Engineering-notation fields read a bare number in the displayed SI prefix:
   with "1 kΩ" showing, typing 1000 means 1 MΩ. Harness code must type explicit
   prefixes ("4.7k", "100n").
 - If your shell mangles backslashes/newlines in heredocs, write files with your
-  editor tools, never via `cat <<EOF` — this corrupted TeX strings repeatedly.
+  editor tools, never via `cat <<EOF`, this corrupted TeX strings repeatedly.
   A test (`no formula contains a macro name that lost its backslash` in
-  signal-lab) shows the guard pattern; add the same guard here if you write TeX.
+  signal-lab) shows the guard pattern. Add the same guard here if you write TeX.
 - No formatters/linters exist. Match surrounding style. Comment density is high
   and explanatory on purpose.
 - Layout hard rule: at 16:9 the page never scrolls and both plots stay fully
@@ -86,7 +86,7 @@ Before the worklist, read `REVIEW_PLAYBOOK.md` at the repo root: eleven
 classes of defect Reed personally caught in Signal Lab, generalized into an
 audit checklist. Your adversarial-audit item below MEANS working through that
 checklist against your app. Items 1–6 (sentences frozen while controls move;
-lead with the base rule; phase beside magnitude; axes named/united/adaptive;
+lead with the base rule. Phase beside magnitude. Axes named/united/adaptive;
 can the feature be SEEN; rendering honesty) apply to you verbatim.
 
 ## Worklist, in order
@@ -94,19 +94,19 @@ can the feature be SEEN; rendering honesty) apply to you verbatim.
 1. **Fold the sidebar lists.** "Try this" and "Circuits" are long button walls;
    collapse them to group headers exactly like Signal Lab's preset groups
    (pattern: `details.preset-group` in
-   `apps/signal-lab/src/components/Controls.jsx` + its styles; the active
+   `apps/signal-lab/src/components/Controls.jsx` + its styles. The active
    item's group must be impossible to fold away). Update the harness the same
-   way signal-lab's was — folded buttons aren't clickable, so its `pick()`
+   way signal-lab's was, folded buttons aren't clickable, so its `pick()`
    must unfold first.
 
 2. **Phase, wherever magnitude is discussed.** Circuit hints and panels talk
    slope but rarely phase. Add it with the same lead-with-the-rule shape Reed
    asked for in Signal Lab: "a 1st-order corner costs 45° at the corner and
-   90° beyond; this circuit is order N so …". The −45°-per-order-at-corner
-   figure is exact — prove it with tests via `bode()`/`phaseAt` from
+   90° beyond. This circuit is order N so …". The −45°-per-order-at-corner
+   figure is exact, prove it with tests via `bode()`/`phaseAt` from
    `@ee-labs/systems` before printing it anywhere.
 
-3. **Slope wording audit.** Find every dB/octave claim; make each lead with
+3. **Slope wording audit.** Find every dB/octave claim. Make each lead with
    the 1st-order rule (6 dB/octave = 20 dB/decade), then multiply by the
    circuit's actual order, and state BOTH units.
 

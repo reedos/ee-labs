@@ -720,7 +720,7 @@ export default function App() {
         </section>
 
         <section>
-          <h2>Hand it to the other labs</h2>
+          <h2>Open this circuit in another lab</h2>
           <HandOver tf={tf} circuitName={circuit.name} from={handOverFrom} />
         </section>
 
@@ -839,7 +839,7 @@ export default function App() {
 
         <section className="view">
           <div className="view-head">
-            <h2>In time, as poles, and as math</h2>
+            <h2>Step response, poles, and derivation</h2>
             <ViewSwitch
               value={lower}
               onChange={setLower}
@@ -887,7 +887,7 @@ export default function App() {
               ) : (
                 <span>
                   {circuit.name}
-                  <em className="prov"> · theory beside measurement, every row live</em>
+                  <em className="prov"> · each row compares the formula with the measurement</em>
                 </span>
               )}
             </div>
@@ -946,7 +946,7 @@ function StepReadout({ r }) {
       {r.peak != null ? (
         <span data-role="step-peak">
           peak <b>{r.unit ? fmt(r.peak, r.unit, 3) : fmtNum(r.peak, 3)}</b>
-          <em className="prov"> — final is 0, so no overshoot to quote</em>
+          <em className="prov"> · final value is 0, so overshoot is undefined</em>
         </span>
       ) : null}
       {r.settling != null ? (

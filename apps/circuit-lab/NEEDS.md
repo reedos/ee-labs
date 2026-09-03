@@ -7,7 +7,7 @@ keeps no logs, so the pages now report: one script tag per entry page
 (`data-goatcounter`, async, `https://gc.zgo.at/count.js`), to
 reedos.goatcounter.com. No cookies, no personal data, skips localhost by
 itself, and every page behaves identically when an ad blocker stops it.
-What changed, by territory — amend freely:
+What changed, by territory, amend freely:
 
 - **packages/ui** new `src/analytics.js`, exported from `index.js`:
   `track(path)` counts an event (queued until count.js lands, `off` where no
@@ -20,12 +20,12 @@ What changed, by territory — amend freely:
 - **apps/signal-lab** `index.html` tag; `App.jsx` counts
   `arrive/signal-lab/<from app|link>/<circuit id>` once on mount when the
   page loaded from a link. Two lines and one import.
-- **apps/control-lab** `index.html` tag only — no source touched. The
+- **apps/control-lab** `index.html` tag only, no source touched. The
   matching arrival event is yours to add if you want it, and it is a
   one-liner where `linked` is read in `App.jsx`:
   `useEffect(() => { if (linked.state) track(arrivalEvent('control-lab', linked.state.from)) }, [linked])`
   with `track, arrivalEvent` imported from `@ee-labs/ui`. Without it the
-  page-view count still shows the arrivals; only the per-circuit breakdown
+  page-view count still shows the arrivals. Only the per-circuit breakdown
   is missing.
 - **site/index.html** tag only. Card clicks need no event: they show up as
   each lab's page view with the splash page as referrer.
@@ -39,7 +39,7 @@ What changed, by territory — amend freely:
 
 Reed asked for full parameter direct translation on the circuit → signal
 hand-over and directed the cross-territory work himself. What changed, by
-territory — amend freely:
+territory, amend freely:
 
 - **packages/dsp** `Q_MAX` 40 → 100 (the design clamp now equals the knob;
   a knob past the design clamp silently rebuilt a different filter).
@@ -47,19 +47,19 @@ territory — amend freely:
   bit-exactly (shortest round-trip decimal, `String(x)`). Twelve figures
   broke a component-extreme tank: at Q ≈ 3×10⁴ the pole pair's distance
   from instability lives past digit twelve. Also affects `plant=custom`
-  (your links get MORE exact; the round-trip test pins it).
+  (your links get MORE exact. The round-trip test pins it).
 - **signal-lab blocks** Q knob 20 → 100 (tracks Q_MAX, agreement pinned by
-  test); gain block ±126 dB (was −60/+24) so it can carry a hand-over's
+  test). Gain block ±126 dB (was −60/+24) so it can carry a hand-over's
   in-band gain up to the component box's ×10⁶. fromLink clamps source
-  frequency to [1 Hz, Nyquist] — a sub-hertz source made the cycle-counted
-  scope allocate hours of buffer (tab-killing; the emitter also never sends
+  frequency to [1 Hz, Nyquist], a sub-hertz source made the cycle-counted
+  scope allocate hours of buffer (tab-killing. The emitter also never sends
   one now).
 - **circuit-lab emitter** (`toSignalLab.js`): named tiers now carry a
   non-unity in-band gain as `b=gain:<dB>` beside the filter (the tank
-  crosses whole: band-pass, Q 31.6 on the knob, +80 dB — it used to arrive
+  crosses whole: band-pass, Q 31.6 on the knob, +80 dB, it used to arrive
   Q-clamped and normalized to peak 1). Named tier gates every knob against
   the receiving ranges (mirrored in RECEIVER, cross-checked by the
-  component-box sweep test); anything outside crosses raw, with the reason
+  component-box sweep test). Anything outside crosses raw, with the reason
   named on the panel. Raw coefficients that would clip are factored
   (largest tap → 1, scale → gain block) instead of flagged. Pre-warp is
   skipped at/above Nyquist (negative warp constant made an UNSTABLE copy of
@@ -74,32 +74,32 @@ territory — amend freely:
 
 Follow-up welcome: the Playwright harnesses were not extended for the new
 panel branches (they are covered by a renderToString smoke test,
-`HandOver.smoke.test.jsx`); add browser coverage when next in there.
+`HandOver.smoke.test.jsx`). Add browser coverage when next in there.
 
 ## Crossed (Reed direct, follow-up): the Control-Lab hand-over got the same treatment — heads-up, control-lab
 
-No control-lab files changed; your receiver was the spec. What the
+No control-lab files changed. Your receiver was the spec. What the
 circuit-lab emitter (`asControlPlant`) now does differently, and why:
 
 - **Two sign bugs fixed.** The op-amp integrator crossed as +K/s via
-  `Math.abs` — closing negative feedback around what is really an INVERTING
+  `Math.abs`, closing negative feedback around what is really an INVERTING
   integrator is positive feedback, so your loop showed stable margins in
   exactly the case the real one has none. And the inverting amplifier
   crossed as `firstOrder` with k = −10, which your k knob (floor 0.001)
   clamped into a completely different plant. Both now cross as `custom`
-  with the sign in the coefficients; the old integrator test pinned the
+  with the sign in the coefficients. The old integrator test pinned the
   bug and was rewritten saying so.
 - **Named plants are gated against your knob ranges as serialized**
-  (k 0.001…1e6, τ 1e-7…100 s, ωₙ 0.01…1e8, ζ 0.01…5 — mirrored as
+  (k 0.001…1e6, τ 1e-7…100 s, ωₙ 0.01…1e8, ζ 0.01…5, mirrored as
   CTRL_RECEIVER, cross-checked by a component-box sweep). Circuits your
   knobs cannot hold (ζ from 1.6e-4 to 1.6e7 is reachable!) fall to
-  `custom` instead of arriving clamped; the panel names the reason.
+  `custom` instead of arriving clamped. The panel names the reason.
 - **`custom` coefficients are scaled into your ±1e12 fields when needed**
-  — by a power of two, which is exact in binary floating point (a twin-T
+ , by a power of two, which is exact in binary floating point (a twin-T
   at τ = 1 ns otherwise arrives with 1/τ² = 1e24). The sweep asserts
   nothing lands within reach of your 1e-30 trimLeading epsilon either.
 - An order-2 denominator with a pole at the origin (motor-shaped, infinite
-  DC gain) used to hit an early `return null`; it now falls through to
+  DC gain) used to hit an early `return null`. It now falls through to
   `custom` exactly. No catalog circuit produces it today.
 - Verified end-to-end against your ACTUAL `stateFromLink` + `buildLoop`
   (temporary cross-app test, since removed): 270 component-box combos,
@@ -114,24 +114,24 @@ zeros (RLC across R/L, twin-T) now cross as `plant=custom:b2:b1:b0:a2:a1:a0`
 figures for raw-coefficient carriers only (b=biquad and plant=custom;
 named knobs stay at 6), which also deepened your twin-T linked notch floor
 from ~-100 dB to below -140 dB - the exact serializer change your test
-comment asked for; that comment and the decline pins were rewritten.
+comment asked for. That comment and the decline pins were rewritten.
 AsPlant's refusal now only fires for order > 2. Amend freely.
 
 ## Crossed (deep, Reed live): first-order named tier + explicit hand-over sections
 
-Reed's asks, implemented in your territory — amend freely:
+Reed's asks, implemented in your territory, amend freely:
 - `toSignalLab.js`: unity-gain first-order LP/HP now cross BY NAME
-  (`b=lowpass:<fc>:<q>:1` — trailing positional = Signal Lab's order select,
+  (`b=lowpass:<fc>:<q>:1`, trailing positional = Signal Lab's order select,
   new in fromLink.js). Exactness pinned: bilinear of the circuit ==
   designFirstOrder to 1e-12 (it IS the pre-warped bilinear of the unity-gain
   prototype). Your two raw-tier pins flipped as designed and were rewritten.
 - `HandOver.jsx`: explicit destination headers ("→ Signal Lab · as a digital
   filter" / "→ Control Lab · as a plant", `.handover-dest` in styles.css);
-  AsPlant no longer VANISHES when asControlPlant is null — it states the
+  AsPlant no longer VANISHES when asControlPlant is null, it states the
   refusal reason (numerator zeros / order > 2), per CORE_SCOPE rule 2.
 - App.jsx h2: "The same filter, sampled" → "Hand it to the other labs".
-- UNBLOCKED: control-lab's `custom` plant exists (systems.js) — your queued
-  `asControlPlant` fallback (`plant=custom:...`) can land now; the AsPlant
+- UNBLOCKED: control-lab's `custom` plant exists (systems.js), your queued
+  `asControlPlant` fallback (`plant=custom:...`) can land now. The AsPlant
   refusal copy for numerator-zero cases should then soften to the exact
   custom hand-over instead.
 
@@ -139,30 +139,30 @@ Reed's asks, implemented in your territory — amend freely:
 
 Reed picked a home-screen icon (R with EE subscript over a damped ring,
 workshopped on an artifact board). Three lines in your <head>: rel=icon,
-apple-touch-icon (both ../icon-*.png — the files live at the deployed site
+apple-touch-icon (both ../icon-*.png, the files live at the deployed site
 root, shipped from site/), and theme-color #0d1218. Dev 404s harmlessly.
 
 ## Crossed: LabNav suite navigation in your header (Reed asked live)
 
 Reed wanted one-click bounce between the labs and the splash page. Shared
 component `LabNav` now lives in `packages/ui` (exported, styled in base.css)
-and I placed `<LabNav current="circuit-lab" />` above your `<h1>` — a one-line
+and I placed `<LabNav current="circuit-lab" />` above your `<h1>`, a one-line
 insertion, no other changes. It renders only on the deployed layout
 (homeUrl/siblingUrl resolve null on a bare dev port, and the row hides).
-Restyle or move it as you see fit; the component itself is ui territory.
+Restyle or move it as you see fit. The component itself is ui territory.
 
 ## RESOLVED (9c59f3d): signal-lab named the flip-and-slide and printed its theorem
 
 Both asks shipped with the specified tests, including the failing twin
 (unpadded circular ≠ linear) that makes the passing case evidence. The
-nonlinear chain keeps its refusal — printing y = x ∗ h over an output the
+nonlinear chain keeps its refusal, printing y = x ∗ h over an output the
 sum does not produce would be a lie. Original request kept below for the
 record.
 
 ## FROM REED, for signal-lab: name the flip-and-slide, and print its theorem
 
 Reed reviewed the convolution view (relayed via the circuit-lab agent). His
-verdict on the existing labels: precise — "input x[m], with the kernel
+verdict on the existing labels: precise, "input x[m], with the kernel
 flipped and slid to n" is exactly h[n−m] against m, keep it. Two additions:
 
 1. **Say that the action IS convolution, where it happens.** The pane is
@@ -176,7 +176,7 @@ flipped and slid to n" is exactly h[n−m] against m, keep it. Two additions:
    Signal Lab is sampled, so its exact identity is Y(z) = X(z)·H(z) (or the
    DTFT form); Y(s) = X(s)H(s) is the continuous twin from Circuit Lab's side
    of the bridge. Stating BOTH, labelled as two vocabularies of one theorem,
-   is the best version — it is the suite's thesis in one line.
+   is the best version, it is the suite's thesis in one line.
 
 House discipline: "convolution in time = multiplication in frequency" is a
 measurable claim. Test it as FFT(x ∗ h) = FFT(x)·FFT(h) with zero-padding
@@ -184,7 +184,7 @@ measurable claim. Test it as FFT(x ∗ h) = FFT(x)·FFT(h) with zero-padding
 
 ## RESOLVED (0da675d): control-lab says the names and prints the multiplication
 
-Loop diagram states "in cascade: transfer functions multiply — L = C·P",
+Loop diagram states "in cascade: transfer functions multiply, L = C·P",
 the root locus names whose poles it draws, and their math panel prints the
 theorem in all three dialects with a measured |C|·|P| vs |L| row at the
 crossover. All three labs now print their vocabulary of the one theorem.
@@ -202,11 +202,11 @@ The same review generalizes to two rules worth auditing your app against:
 2. **Print the load-bearing theorem in the local vocabulary, cross-referenced
    to the siblings, and measure it before printing.** The theorem here is one
    multiplication: Signal Lab's y = x∗h ⇔ Y(z) = X(z)H(z); Circuit Lab's
-   Y(s) = X(s)·H(s); yours is the same fact composing the loop —
+   Y(s) = X(s)·H(s). Yours is the same fact composing the loop —
    L = C·G and Y/R = L/(1+L).
 
 Circuit Lab's implementation, for the pattern: every math panel now carries
-Y(s) = X(s)·H(s) with a MEASURED eigenfunction row — a sine actually run
+Y(s) = X(s)·H(s) with a MEASURED eigenfunction row, a sine actually run
 through the circuit in RK4 and quadrature-demodulated over whole periods
 (sineResponse in apps/circuit-lab/src/math.js), landing on |H| and ∠H from
 the polynomial path to ~1e-3. Simulation vs algebra: two paths, one claim.
@@ -219,9 +219,9 @@ migrates exactly, not only the ones that fit a named block. Status:
 - **Signal Lab receiver (DONE, 45b509a):** raw-coefficient `biquad` block,
   `b=biquad:b0:b1:b2:a1:a2`.
 - **Circuit Lab emitter (DONE):** `asDigitalFilter` now has two tiers —
-  named shape when exact (preferred; the knobs mean something), raw
+  named shape when exact (preferred. The knobs mean something), raw
   coefficients otherwise for any order ≤ 2, first-order and flat circuits
-  padded into the five slots. The twin-T is the showcase; the harness (4c)
+  padded into the five slots. The twin-T is the showcase. The harness (4c)
   drives it. The op-amp integrator keeps its reasoned refusal (pole at the
   origin, unbounded DC gain). Out-of-range coefficients (they grow as the
   rate drops toward the corner) are flagged with a raise-the-rate warning
@@ -229,23 +229,23 @@ migrates exactly, not only the ones that fit a named block. Status:
   arrival.
 - **Control Lab tier (WAITING on you):** the moment the `custom` plant
   lands, Circuit Lab will add the `asControlPlant` fallback
-  (`plant=custom:...`) — exact, no bilinear.
+  (`plant=custom:...`), exact, no bilinear.
 
 One observation for you, low priority: `deeplink.js` serializes every number
 at six significant figures, which prices a linked twin-T's notch floor at
 roughly −100 dB instead of −∞ (stated in Circuit Lab's tests). Fine for
-knobs; if raw coefficient hand-overs ever deserve better, the fix is the
+knobs. If raw coefficient hand-overs ever deserve better, the fix is the
 serializer's precision (perhaps only for biquad/custom params), not anything
 in the emitters.
 
 ## Open: PoleZeroCanvas tolerance cloud is too faint to read as a shape
 
 Circuit Lab now has per-part tolerances, and its "Blame the right part"
-lesson's whole payload is the SHAPE of the pole scatter — an arc of constant
+lesson's whole payload is the SHAPE of the pole scatter, an arc of constant
 radius when only R wobbles. The cloud rendering in
 `packages/ui/src/PoleZeroCanvas.jsx` (1.8px dots at alpha 0.28, under the
 nominal marks) is right for "there is uncertainty" and too faint for "the
-uncertainty has this shape": a 240-dot arc reads as a smear inside the X
+uncertainty has this shape". A 240-dot arc reads as a smear inside the X
 marker. Circuit Lab worked around it by choosing lesson parameters that
 stretch the arc across ~24° of the circle, which helps but is subtler than
 it deserves.
@@ -256,7 +256,7 @@ nominal marks on top.
 
 ## Open: PoleZeroCanvas needs a `span` prop for sticky axes
 
-Reed's tuning rule (the curve moves, not the axis — already law for Circuit
+Reed's tuning rule (the curve moves, not the axis, already law for Circuit
 Lab's frequency and now its step axes) can't reach the pole-zero view: the
 canvas auto-fits its span from the content on every render, so tuning C
 re-labels the axes under poles that appear pinned in place.
@@ -265,7 +265,7 @@ Requested contract, and Circuit Lab already passes the prop (harmlessly
 ignored today, lights up when you land it):
 
 - `span` (optional number): the half-height of the view in rad/s. When given,
-  use `max(span, autoSpan)` — the caller's frame, but never clipping content
+  use `max(span, autoSpan)`, the caller's frame, but never clipping content
   the auto-fit would have shown. When absent, behave exactly as today.
 - x stays `span * aspect` with the square scaling kept, so an angle on screen
   remains the angle in the algebra.

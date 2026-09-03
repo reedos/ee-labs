@@ -378,7 +378,7 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
           {
             label: '|T| at the crossover',
             value: magnitudeAt(loop.closed, marg.gainCrossover),
-            note: 'equal — |L| is 1 there',
+            note: 'equal, |L| is 1 there',
           },
         )
       }

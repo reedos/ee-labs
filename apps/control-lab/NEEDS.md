@@ -23,48 +23,48 @@ Also: your `custom` plant unblocked Circuit Lab's plant=custom fallback
 
 Reed picked a home-screen icon (R with EE subscript over a damped ring,
 workshopped on an artifact board). Three lines in your <head>: rel=icon,
-apple-touch-icon (both ../icon-*.png — the files live at the deployed site
+apple-touch-icon (both ../icon-*.png, the files live at the deployed site
 root, shipped from site/), and theme-color #0d1218. Dev 404s harmlessly.
 
 ## Crossed: LabNav suite navigation in your header (Reed asked live)
 
 Reed wanted one-click bounce between the labs and the splash page. Shared
 component `LabNav` now lives in `packages/ui` (exported, styled in base.css)
-and I placed `<LabNav current="control-lab" />` above your `<h1>` — a one-line
+and I placed `<LabNav current="control-lab" />` above your `<h1>`, a one-line
 insertion, no other changes. It renders only on the deployed layout
 (homeUrl/siblingUrl resolve null on a bare dev port, and the row hides).
-Restyle or move it as you see fit; the component itself is ui territory.
+Restyle or move it as you see fit. The component itself is ui territory.
 
 ## NEW TASK from Reed (via the packages/signal-lab agent): the custom plant
 
 Reed wants every Circuit Lab topology to migrate into this lab exactly. Your
-loop machinery already runs on raw {b, a} — the named plants are skins — so
+loop machinery already runs on raw {b, a}, the named plants are skins, so
 the missing piece is a registry entry:
 
 **Add plant `custom` ("Custom H(s)"):**
 - Params: six coefficients, highest power first —
-  `b2, b1, b0, a2, a1, a0` — so `tf: (p) => ({ b: [p.b2, p.b1, p.b0],
+  `b2, b1, b0, a2, a1, a0`, so `tf: (p) => ({ b: [p.b2, p.b1, p.b0],
   a: [p.a2, p.a1, p.a0] })` with leading near-zeros trimmed (a first-order
   circuit arrives with b2 = a2 = 0).
 - Link grammar needs nothing new: `plant=custom:b2:b1:b0:a2:a1:a0` is already
   positional numbers. Extend fromLink to accept it (values span decades —
-  an RLC's a2 = LC ≈ 1e-10 — so do NOT clamp these to slider ranges; the
+  an RLC's a2 = LC ≈ 1e-10, so do NOT clamp these to slider ranges. The
   fields are link-fed first, hand-typed second).
 - UI: plain numeric fields are fine (log sliders cannot hold signed
   coefficients spanning decades). Hint: this is the raw form every named
   plant reduces to, and how a circuit arrives without approximation.
 - Math panel: print H(s) with the numbers, poles via roots(), stability, DC
-  gain — with checks measured off the live loop per the house rules. Where a
+  gain, with checks measured off the live loop per the house rules. Where a
   custom plant has zeros (twin-T measured across the network), the ζ ≈ PM/100
   rule's preconditions note already covers saying so.
 - Tests: a hand-built RLC {b:[1],a:[LC, RC, 1]} through `custom` must produce
   the SAME margins/step as the same circuit through the named secondOrder
-  mapping — exactness is the whole point, so assert equality, not closeness.
+  mapping, exactness is the whole point, so assert equality, not closeness.
 
-Circuit Lab's NEEDS carries the emitting half; coordinate the param order
+Circuit Lab's NEEDS carries the emitting half. Coordinate the param order
 with them (it is specified identically in both files).
 
-**Status: accepted — in progress in control-lab** (this agent), same param
+**Status: accepted, in progress in control-lab** (this agent), same param
 order as specified.
 
 ---
@@ -72,11 +72,11 @@ order as specified.
 ## FYI for circuit-lab (and packages): the preset chips are unstyled outside Signal Lab
 
 Nothing in `packages/ui/src/base.css` styles `.presets`/`.preset` beyond 4K
-font bumps — only Signal Lab's own stylesheet draws the chip look (bordered,
+font bumps, only Signal Lab's own stylesheet draws the chip look (bordered,
 rounded, accent hover, tinted active). Control Lab's choices rendered as bare
-default `<button>`s until Reed flagged it; the block is now copied here
+default `<button>`s until Reed flagged it. The block is now copied here
 verbatim, and circuit-lab looks to have the same gap. Third shared-look rule
-living in one app's stylesheet — a candidate for promotion into base.css.
+living in one app's stylesheet, a candidate for promotion into base.css.
 
 ## Small UX finding from Reed (real confusion, worth one line of UI) — DONE
 
@@ -87,7 +87,7 @@ mental model is the circuit, not the loop. Add a one-line notice shown when
 the app loads from a link, near the step view or in the from-link banner:
 
   "This is the CLOSED LOOP's step - your circuit alone settles at its DC
-  gain; here it is driven by Kp x the error, so proportional control leaves
+  gain. Here it is driven by Kp x the error, so proportional control leaves
   1/(1+L(0)) of the input untracked. Switch to PI to erase it."
 
 (Or words to that effect - it should name the number the person is looking
@@ -103,7 +103,7 @@ All earlier items remain resolved.
 Reed, after handing an RC low-pass over and being surprised by the closed
 loop's 50% error: "maybe we need block diagrams that represent this to
 explicitly show how the actual RC circuit fits into the control lab." The
-diagram exists; what it lacks is IDENTITY - the P(s) box says "First order
+diagram exists. What it lacks is IDENTITY - the P(s) box says "First order
 lag", which is true and anonymous. Three tiers, in order:
 
 1. NOW - name the box. The link grammar carries `from=<app>:<id>:<label>`
@@ -121,7 +121,7 @@ lag", which is true and anonymous. Three tiers, in order:
 
 3. LATER (cross-territory, coordinate before starting) - a mini-schematic
    inside the P(s) box: the actual R-and-C drawing. Circuit Lab's Schematic
-   component is app-local; doing this properly means lifting a small
+   component is app-local. Doing this properly means lifting a small
    schematic renderer into packages/ui (the packages agent's territory - file
    back what you need). Do not block tiers 1-2 on this.
 
@@ -132,7 +132,7 @@ Reed asked whether plant-above-controller is the right sidebar order. It is —
 but for a reason the UI keeps to itself, so state it. Two orders exist:
 signal-flow order (r → controller → plant → y, what the diagram draws) and
 DECISION order (the plant is given, the controller is chosen in response —
-what the sidebar walks). The sidebar rightly follows decision order; one line
+what the sidebar walks). The sidebar rightly follows decision order. One line
 under each section header makes the choice legible instead of accidental.
 
 Definitions on contact, at the section headers (not only in lesson terms),
@@ -140,31 +140,31 @@ each one or two sentences in the house style. The load-bearing content is the
 INPUT/OUTPUT identity, because it is exactly what confused Reed after the
 hand-over:
 
-- PLANT: the system you are stuck with — a motor, a tank, a circuit. Its
-  input is the DRIVE u (whatever the controller sends); its output is the
+- PLANT: the system you are stuck with, a motor, a tank, a circuit. Its
+  input is the DRIVE u (whatever the controller sends). Its output is the
   measured y that gets fed back. When a circuit arrives from Circuit Lab,
-  the circuit IS the plant: its input port becomes u — driven by the
-  controller, not by your reference — and its output node becomes y. (This
+  the circuit IS the plant. Its input port becomes u, driven by the
+  controller, not by your reference, and its output node becomes y. (This
   is the other half of the arrival-orientation notice already specced.)
 - CONTROLLER: the block you get to design. Its input is the error r − y;
   its output is the drive u. It never sees the reference or the plant
-  directly — only how far apart they are.
+  directly, only how far apart they are.
 
 Add matching entries to the terms registry (plant, controller, drive u,
 error e = r−y, reference r) so lessons can reference them, with the usual
 tests: referenced ⇒ defined, defined ⇒ surfaced. Claims stay prose here —
-these are definitions, not measurements — but the u-not-r fact is the same
-one tier 2 of the diagram task annotates on the wire; keep the wording
+these are definitions, not measurements, but the u-not-r fact is the same
+one tier 2 of the diagram task annotates on the wire. Keep the wording
 consistent between the two.
 
 **Status (control-lab):** the arrival notice ships (names the live steady error,
-switches to "erased exactly" under an integrator; shown only while the loop is
+switches to "erased exactly" under an integrator. Shown only while the loop is
 stable). Tier 1 ships: `from=` provenance flows through stateFromLink, the
 banner and the P(s) box carry the circuit's label with the named plant as
 subtitle, and the identity sheds when a different plant is chosen. Tier 2
 ships: "driven by Kp·(r − y), not by r" under the plant box while P-control is
 active. Tier 3 (mini-schematic in the box) awaits the packages agent lifting a
-schematic renderer into packages/ui — not started, per the spec.
+schematic renderer into packages/ui, not started, per the spec.
 
 
 ## Landed by the packages/signal-lab agent (Reed testing live): sticky step axes
@@ -187,13 +187,13 @@ not asked yet.
 Reed typed 11.25 into the Kp field (the three-lag plant's exact boundary
 gain, and the value the "Kp -> 11.25 (on the axis)" chip already sets to
 four significant figures via lessons.js's new `round4`) and the field read
-back 11.3 — `snap()` in packages/ui rounded every typed/eng-formatted value
+back 11.3, `snap()` in packages/ui rounded every typed/eng-formatted value
 to three significant figures, one fewer than this lab needed for its own
 chip labels to round-trip through the field without drifting. The
 coordinator has since changed `snap()` to 4 s.f. in packages/ui (commit
 400606c), so the field now reads 11.25 back exactly. The chip-label
-rounding fix on this side (round4, 4 s.f., in lessons.js — the
-"12.38 -> 12.37 after a click" defect) was already done and tested; nothing
+rounding fix on this side (round4, 4 s.f., in lessons.js, the
+"12.38 -> 12.37 after a click" defect) was already done and tested. Nothing
 here assumed 3 s.f., so nothing broke going to 4.
 
 

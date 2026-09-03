@@ -410,7 +410,7 @@ console.log('\n1b. Loading every lesson through the folded groups\n')
   const ctrlOn = await page.locator('#controller .preset.is-on').textContent()
   if (ctrlOn.trim() !== 'PI') fail(`the "switch to PI" chip should select PI, selected "${ctrlOn}"`)
   const distReadout = await page.locator('.readout').last().textContent()
-  if (!/rejected completely/.test(distReadout)) fail('after the PI chip the disturbance should be erased')
+  if (!/steady-state error 0/.test(distReadout)) fail('after the PI chip the disturbance should be erased')
   const chipOn = await page.locator('.try-line .chip.is-on').textContent().catch(() => '')
   if (chipOn.trim() !== 'switch to PI') fail(`the applied chip should be highlighted, highlighted "${chipOn}"`)
   // The step toggle is the lesson's featured control, right under the chips.
@@ -510,8 +510,8 @@ if (Math.abs(distVal - 0.1) > 0.005) {
 }
 await clickBtn('PI')
 const distText = await page.locator('.readout').last().textContent()
-const erased = /rejected completely/.test(distText)
-console.log(`   disturbance under PI: ${erased ? 'rejected completely — the integrator erases it' : 'NOT erased'}`)
+const erased = /steady-state error 0/.test(distText)
+console.log(`   disturbance under PI: ${erased ? 'steady-state error 0, the integrator removes it' : 'not erased'}`)
 if (!erased) fail('PI should erase a plant-input disturbance exactly')
 await clickBtn('Reference')
 
@@ -522,11 +522,11 @@ await clickPreset('Integrator')
 await clickBtn('Proportional')
 await setField('Kp', 0.005)
 const slowText = await page.locator('.readout').last().textContent()
-const flagged = /not there yet/.test(slowText)
+const flagged = /not settled/.test(slowText)
 console.log(`   slow loop at the 400 s cap: ${flagged ? 'flagged as not settled' : 'NOT flagged'}`)
 if (!flagged) fail('a loop that cannot settle inside the plot should say so in the readout')
 await setField('Kp', 1)
-if (/not there yet/.test(await page.locator('.readout').last().textContent())) {
+if (/not settled/.test(await page.locator('.readout').last().textContent())) {
   fail('a settled loop should not carry the not-settled flag')
 }
 

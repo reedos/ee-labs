@@ -932,7 +932,7 @@ export default function App() {
                 type="button"
                 className={showPhase ? 'on' : ''}
                 aria-pressed={showPhase}
-                title="The half of the response the magnitude curve cannot show"
+                title="Phase of the open loop, on its own axis"
                 onClick={() => setShowPhase(true)}
               >
                 phase
@@ -953,7 +953,7 @@ export default function App() {
                 // The crossing chip's exact point: a gain margin of ~1× read
                 // as "room for 1.00× more gain" against a loop that IS the
                 // boundary — the sentence has to say that instead.
-                <span className="prov">no room — this gain is the boundary</span>
+                <span className="prov">gain margin 0 dB, this gain is the boundary</span>
               ) : marg.gainMargin == null ? (
                 <span className="prov">phase never reaches −180°</span>
               ) : marg.gainMargin >= 1 ? (
@@ -1053,7 +1053,7 @@ export default function App() {
                     type="button"
                     className={stepInput === 'dist' ? 'on' : ''}
                     aria-pressed={stepInput === 'dist'}
-                    title="Shove the plant's input and watch the loop fight back — the reason feedback exists"
+                    title="Apply the step at the plant input, as a disturbance"
                     onClick={() => chooseStepInput('dist')}
                   >
                     Disturbance
@@ -1092,7 +1092,7 @@ export default function App() {
                     </span>
                   ) : null}
                   {stable && step && !settlesOnScreen(step.y, dcGain(stepTf)) ? (
-                    <span className="prov">not there yet at the plot&apos;s right edge</span>
+                    <span className="prov">not settled by the plot&apos;s right edge</span>
                   ) : null}
                   {/* MEASURED off the sampled trace, the same 2% band the
                       dashed line and shaded band on the plot mark — never a
@@ -1126,7 +1126,7 @@ export default function App() {
                       })()
                     : null}
                   {stepInput === 'dist' && Math.abs(dcGain(stepTf)) < 1e-9 ? (
-                    <span className="flag">rejected completely — the integrator erases it</span>
+                    <span className="flag">steady-state error 0, the integrator removes it</span>
                   ) : null}
                   {!stable ? <span className="flag warn">never settles</span> : null}
                 </>
@@ -1143,7 +1143,7 @@ export default function App() {
                     // The crossing chip's own destination: the poles sit
                     // exactly on the axis, and "crosses"/"crossed" reads
                     // wrong for a gain that IS the crossing.
-                    <span data-role="locus-here">you are here: on the axis — sustained oscillation</span>
+                    <span data-role="locus-here">this gain: poles on the axis, sustained oscillation</span>
                   ) : crossing ? (
                     <span data-role="locus-here">
                       you are here: {crossing.label} = <b>{fmtNum(crossing.now, 3)}</b>

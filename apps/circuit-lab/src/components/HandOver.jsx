@@ -57,7 +57,7 @@ export default function HandOver({ tf, circuitName, from = null }) {
   if (!d) {
     return (
       <>
-        <h3 className="handover-dest">→ Signal Lab · the same filter, sampled</h3>
+        <h3 className="handover-dest">→ Signal Lab · this filter, sampled</h3>
         <p className="hint">
           Declined. This circuit’s DC gain is unbounded — its pole sits exactly at the origin —
           so a sampled copy would just count without limit, and every plot in Signal Lab would
@@ -79,7 +79,7 @@ export default function HandOver({ tf, circuitName, from = null }) {
 
   return (
     <div className="handover">
-      <h3 className="handover-dest">→ Signal Lab · the same filter, sampled</h3>
+      <h3 className="handover-dest">→ Signal Lab · this filter, sampled</h3>
       {d.order === 2 ? (
         <p className="hint">
           Sampled at {fmtHz(rate)}Hz, {circuitName} is a {SHAPE_LABEL[d.shape]} biquad with a
@@ -361,7 +361,7 @@ function AsPlant({ plant, circuitName, tf, from }) {
     const order = tf ? stripLeading(tf.a).length - 1 : 0
     return (
       <div className="handover as-plant">
-        <h3 className="handover-dest">→ Control Lab · the same network, as a plant</h3>
+        <h3 className="handover-dest">→ Control Lab · this network as a plant</h3>
         <p className="hint">
           Declined. At order {order}, {circuitName} exceeds even Control Lab’s raw
           six-coefficient plant, which stops at second order. Refused rather than squeezed.
@@ -372,7 +372,7 @@ function AsPlant({ plant, circuitName, tf, from }) {
 
   return (
     <div className="handover as-plant">
-      <h3 className="handover-dest">→ Control Lab · the same network, as a plant</h3>
+      <h3 className="handover-dest">→ Control Lab · this network as a plant</h3>
       <p className="hint">
         The same {circuitName} is {plant.label}. {plant.why} It crosses exactly — no transform
         involved — and the question changes from what it does to a signal to how much gain you

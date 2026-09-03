@@ -84,11 +84,10 @@ export const PLANTS = {
     name: 'First order lag',
     group: 'First order',
     hint:
-      'An RC network — a gate charging through its driver, a decoupled rail settling after a ' +
-      'load step. It has no overshoot of its own and no way ' +
-      'to become unstable: one pole costs at most 90° of lag — 45° of it already spent at its ' +
-      'corner ω = 1/τ — so however high the gain, the loop never reaches the −180° where ' +
-      'feedback turns against you. The easiest thing there is to control.',
+      'An RC network, a gate charging through its driver, a decoupled rail settling after a load step. It has ' +
+    'no overshoot of its own and no way to become unstable. One pole costs at most 90° of lag, 45° of it ' +
+    'already spent at its corner ω = 1/τ, so however high the gain, the loop never reaches the −180° where ' +
+    'feedback turns against you. The easiest thing there is to control.',
     params: [P('k', 'Gain K', 1, 0.001, 1e6), P('tau', 'Time constant τ', 1, 1e-7, 100, null, 's')],
     tf: (p) => ({ b: [p.k], a: [p.tau, 1] }),
     tex: 'P(s) = \\frac{K}{1 + \\tau s}',
@@ -117,9 +116,9 @@ export const PLANTS = {
     name: 'Integrator',
     group: 'First order',
     hint:
-      "A current source charging a capacitor — or a PLL's phase, which accumulates frequency: " +
-      'the input sets the RATE, so the output accumulates. Its pole sits at the origin, which ' +
-      'is why proportional control alone already gives zero steady-state error to a step.',
+      'A current source charging a capacitor, or a PLL\'s phase, which accumulates frequency: the input sets ' +
+    'the RATE, so the output accumulates. Its pole sits at the origin, which is why proportional control ' +
+    'alone already gives zero steady-state error to a step.',
     params: [P('k', 'Gain K', 1, 0.001, 1e6)],
     tf: (p) => ({ b: [p.k], a: [1, 0] }),
     tex: 'P(s) = \\frac{K}{s}',
@@ -196,10 +195,10 @@ export const PLANTS = {
     name: 'Motor position',
     group: 'Second order',
     hint:
-      "A DC motor under voltage drive — the EE lab's classic servo plant: the winding's lag " +
-      'sets the speed, and position is speed integrated. K/(s(1+τs)) — and impossible to ' +
-      'destabilise with proportional gain alone: the integrator holds a flat −90°, the lag ' +
-      'adds at most 90° more, so the phase approaches −180° but never arrives.',
+      'A DC motor under voltage drive, the EE lab\'s classic servo plant: the winding\'s lag sets the speed, ' +
+    'and position is speed integrated. K/(s(1+τs)), and impossible to destabilise with proportional gain ' +
+    'alone: the integrator holds a flat −90°, the lag adds at most 90° more, so the phase approaches −180° ' +
+    'but never arrives.',
     params: [P('k', 'Gain K', 1, 0.001, 1e6), P('tau', 'Time constant τ', 0.5, 1e-7, 100, null, 's')],
     tf: (p) => ({ b: [p.k], a: [p.tau, 1, 0] }),
     tex: 'P(s) = \\frac{K}{s(1 + \\tau s)}',
@@ -227,9 +226,9 @@ export const PLANTS = {
     name: 'Three lags',
     group: 'Hard to control',
     hint:
-      'Three buffered RC stages in series. Each costs up to 90° of phase — 45° of it already at ' +
-      'its corner — so together they can reach −180° while the gain is still above one, and ' +
-      'that is the condition for the loop to oscillate. Turn the gain up and watch it happen.',
+      'Three buffered RC stages in series. Each costs up to 90° of phase, 45° of it already at its corner, so ' +
+    'together they can reach −180° while the gain is still above one, and that is the condition for the loop ' +
+    'to oscillate. Turn the gain up and watch it happen.',
     params: [
       P('k', 'Gain K', 1, 0.001, 1e6),
       P('t1', 'τ₁', 1, 1e-7, 100, null, 's'),
@@ -264,11 +263,11 @@ export const PLANTS = {
     name: 'Unstable plant',
     group: 'Hard to control',
     hint:
-      'A pole in the RIGHT half plane: an op-amp wired with positive feedback, a maglev coil, ' +
-      'a tunnel diode biased in its negative-resistance region. Left alone the state runs away ' +
-      'exponentially, and feedback is not an improvement here but the only reason it works at ' +
-      'all. Too LITTLE gain is the failure mode here: the loop holds only while Kp·K > p, so ' +
-      'the controllers open at Kp = 5 — turn it down past 1 and the loop latches.',
+      'A pole in the RIGHT half plane: an op-amp wired with positive feedback, a maglev coil, a tunnel diode ' +
+    'biased in its negative-resistance region. Left alone the state runs away exponentially, and feedback is ' +
+    'not an improvement here but the only reason it works at all. Too LITTLE gain is the failure mode here. ' +
+    'The loop holds only while Kp·K > p, so the controllers open at Kp = 5, turn it down past 1 and the loop ' +
+    'latches.',
     params: [P('k', 'Gain K', 1, 0.001, 1e6), P('p', 'Unstable pole at +p', 1, 0.01, 1e6, null, '1/s')],
     tf: (p) => ({ b: [p.k], a: [1, -p.p] }),
     tex: 'P(s) = \\frac{K}{s - p}',
@@ -288,9 +287,9 @@ export const PLANTS = {
     name: 'Custom H(s)',
     group: 'Any transfer function',
     hint:
-      'The raw form every named plant reduces to — six coefficients, highest power first — and ' +
-      'how a circuit arrives from Circuit Lab without approximation: the link hands over the ' +
-      'exact polynomials, not a nearest named fit. A first-order arrival simply has b₂ = a₂ = 0.',
+      'The raw form every named plant reduces to, six coefficients, highest power first, and how a circuit ' +
+    'arrives from Circuit Lab without approximation: the link hands over the exact polynomials, not a nearest ' +
+    'named fit. A first-order arrival simply has b₂ = a₂ = 0.',
     // Coefficients are signed, span decades (an RLC arrives with a₂ = LC ≈
     // 1e-10), and are link-fed first, hand-typed second — so plain compact
     // fields with effectively-unclamped bounds, not log sliders.
@@ -311,9 +310,8 @@ export const CONTROLLERS = {
   p: {
     name: 'Proportional',
     hint:
-      'Output proportional to error, and nothing else. Simple, fast, and it cannot remove ' +
-      'steady-state error unless the plant already contains an integrator — because zero error ' +
-      'would mean zero output.',
+      'Output proportional to error, and nothing else. Simple, fast, and it cannot remove steady-state error ' +
+    'unless the plant already contains an integrator, because zero error would mean zero output.',
     params: [P('kp', 'Kp', 1, 0.001, 1000)],
     tf: (c) => ({ b: [c.kp], a: [1] }),
     tex: 'C(s) = K_p',
@@ -322,10 +320,9 @@ export const CONTROLLERS = {
   pi: {
     name: 'PI',
     hint:
-      'Adding an integrator drives steady-state error to zero: the integral keeps growing until ' +
-      'the error is gone. It costs phase — a pole at the origin is a flat −90° at every ' +
-      'frequency, not just some — so the margin shrinks and the loop becomes more willing to ' +
-      'oscillate.',
+      'Adding an integrator drives steady-state error to zero: the integral keeps growing until the error is ' +
+    'gone. It costs phase, a pole at the origin is a flat −90° at every frequency, not just some, so the ' +
+    'margin shrinks and the loop becomes more willing to oscillate.',
     params: [P('kp', 'Kp', 1, 0.001, 1000), P('ki', 'Ki', 1, 0.001, 1000)],
     tf: (c) => ({ b: [c.kp, c.ki], a: [1, 0] }),
     tex: 'C(s) = K_p + \\frac{K_i}{s} = \\frac{K_p s + K_i}{s}',
@@ -334,10 +331,9 @@ export const CONTROLLERS = {
   pid: {
     name: 'PID',
     hint:
-      "Derivative action is a zero, and zeros ADD phase — up to +90°, against the integrator's " +
-      'flat −90° — by responding to where the error is heading rather than where it is. That ' +
-      'buys back the margin the integrator spent. It also amplifies noise, which is why real ' +
-      'derivative terms are always filtered.',
+      'Derivative action is a zero, and zeros ADD phase, up to +90°, against the integrator\'s flat −90°, by ' +
+    'responding to where the error is heading rather than where it is. That buys back the margin the ' +
+    'integrator spent. It also amplifies noise, which is why real derivative terms are always filtered.',
     params: [
       P('kp', 'Kp', 1, 0.001, 1000),
       P('ki', 'Ki', 1, 0.001, 1000),
@@ -350,11 +346,10 @@ export const CONTROLLERS = {
   lead: {
     name: 'Lead',
     hint:
-      'A zero below a pole. It ADDS phase in the band between them, peaking at their geometric ' +
-      'mean — put that peak at the crossover and it is exactly what a loop short of margin ' +
-      'needs — and unlike a derivative term its high-frequency gain is bounded, so it does not ' +
-      'amplify noise without limit. (Drag the zero past the pole and it is a LAG instead: the ' +
-      'same structure now subtracts phase in the band between them.)',
+      'A zero below a pole. It ADDS phase in the band between them, peaking at their geometric mean, put that ' +
+    'peak at the crossover and it is exactly what a loop short of margin needs, and unlike a derivative term ' +
+    'its high-frequency gain is bounded, so it does not amplify noise without limit. (Drag the zero past the ' +
+    'pole and it is a LAG instead: the same structure now subtracts phase in the band between them.)',
     // Kc, not K: the plant's gain is K, and a lesson with both on screen had
     // "two things called K" (student review). The symbol follows the label
     // into the diagram box, the locus readout and the chips.

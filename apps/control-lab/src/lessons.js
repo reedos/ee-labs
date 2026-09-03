@@ -92,12 +92,12 @@ export const LESSONS = [
     group: 'What feedback buys',
     name: 'Proportional cannot get there',
     note:
-      'A plain lag under proportional control, gain already at 9. The output settles at 90% of ' +
-      'what was asked and stays there: the controller drives the plant with the error, so zero ' +
-      'error would mean zero drive, and nothing would hold it.',
+      'A plain lag under proportional control, gain already at 9. The output settles at 90% of what was asked ' +
+    'and stays there. The controller drives the plant with the error, so zero error would mean zero drive, ' +
+    'and nothing would hold it.',
     try:
-      'Kp → 12 and the gap shrinks to 7.7%; Kp → 0.5 and it is 67%. Raise it as far as you ' +
-      'like — it never closes.',
+      'Kp → 12 and the gap shrinks to 7.7%. Kp → 0.5 and it is 67%. However far it is raised, the gap never ' +
+    'closes.',
     featured: ['kp'],
     chips: [gain('kp', 0.5), gain('kp', 9), gain('kp', 12)],
     terms: terms('lag', 'proportional', 'drive', 'steadystate'),
@@ -111,13 +111,12 @@ export const LESSONS = [
     // chips then span windows from 0.4 s to 15 s (measured) — not one
     // picture a note can describe.
     note:
-      'The same plant with an integral term added — and Kp back at 1, since the gain no ' +
-      'longer has to do the holding. The error goes to exactly zero: the integral keeps ' +
-      'accumulating for as long as any error remains, and stops growing only when there is ' +
-      'nothing left to grow on.',
+      'The same plant with an integral term added, and Kp back at 1, since the gain no longer has to do the ' +
+    'holding. The error goes to exactly zero. The integral keeps accumulating for as long as any error ' +
+    'remains, and stops growing only when there is nothing left to grow on.',
     try:
-      'Ki → 0.2 settles in 30 s (the readout measures it), Ki → 5 overshoots 23% — and both ' +
-      'land on exactly 1. Back to P and the 10% gap returns.',
+      'Ki → 0.2 settles in 30 s (the readout measures it), Ki → 5 overshoots 23%, and both land on exactly 1. ' +
+    'Back to P and the 10% gap returns.',
     featured: ['ki'],
     chips: [
       gain('ki', 0.2),
@@ -132,12 +131,12 @@ export const LESSONS = [
     group: 'What feedback buys',
     name: 'Watch the integrator take over',
     note:
-      'The same handoff, watched. At first the proportional part carries all the effort — the ' +
-      'error is the whole ask; as y arrives, Kp·e falls with the gap while Ki·∫e climbs, ' +
-      'remembering every moment of error. By the end the integral holds the entire drive.',
+      'The same handoff, watched. At first the proportional part carries all the effort, because the error is ' +
+    'the whole ask. As y arrives, Kp·e falls with the gap while Ki·∫e climbs, holding every moment of error. ' +
+    'By the end the integral carries the entire drive.',
     try:
-      'scrub the cursor, or press play — it opens mid-handoff, both parts still working. Then ' +
-      'Disturbance: the same memory winds down to exactly −1.',
+      'scrub the cursor, or press play, it opens mid-handoff, both parts still working. Then Disturbance: the ' +
+    'same memory winds down to exactly −1.',
     featured: ['disturbance', 'ki'],
     // The step toggle is the featured control, so the chips carry the other
     // thing worth doing: Ki sets how soon the integral takes the drive over.
@@ -153,15 +152,15 @@ export const LESSONS = [
     group: 'What feedback buys',
     name: 'A shove at the plant input',
     note:
-      'A disturbance lands on the PLANT — a load transient, supply ripple — and the loop must ' +
-      'fight it off. Under proportional control the shove leaves a permanent offset of ' +
-      'P(0)/(1+L(0)), here 0.1: shrunk, not removed. THAT is why feedback exists.',
+      'A disturbance enters at the plant, as a load transient or supply ripple would. Under proportional ' +
+    'control it leaves a permanent offset of P(0)/(1+L(0)), which is 0.1 here. The loop reduces the ' +
+    'disturbance without removing it, and that reduction is what feedback buys.',
     // "climbs", not "winds up": windup names a specific pathology (an
     // integrator growing while the drive is stuck at a limit), and this loop
     // has no limit. The terms panel keeps the word and says what it means.
     try:
-      'switch to PI and the offset is erased exactly — the integral climbs until nothing of ' +
-      'the shove remains. Back to P and the 0.1 is back.',
+      'switch to PI and the offset is erased exactly, the integral climbs until nothing of the shove remains. ' +
+    'Back to P and the 0.1 is back.',
     featured: ['disturbance'],
     chips: [
       ctrlChip('switch to PI', 'pi', { kp: 9, ki: 3 }, 'Same Kp, plus an integral term'),
@@ -184,10 +183,9 @@ export const LESSONS = [
     // saying the phase never reaches −180° (motor + PI: it cannot). The
     // claim is the margin, measured both ways in lessons.test.js.
     note:
-      'Nothing is free — now on the motor. An integrator costs −90° of phase at every ' +
-      'frequency, and it comes out of the margin: at Kp = 2 plain proportional control has ' +
-      '52° of phase margin; add the integral term and it is 19°. Phase never reaches −180° ' +
-      'here; the crossover just sits closer.',
+      'The same integrator, now on the motor. It costs −90° of phase at every frequency, and the loop pays that ' +
+    'out of its margin. At Kp = 2, proportional control alone has 52° of phase margin, and the integral term ' +
+    'leaves 19°. The phase never reaches −180° here, so the crossover sits closer to it.',
     try:
       'Proportional at the same Kp = 2: the phase margin in the top bar climbs from 19° to 52°. ' +
       'PI, and it falls back.',
@@ -211,12 +209,12 @@ export const LESSONS = [
     // one past Kp = 11.25 the first cut described: 0.36 and 2.81× are the
     // measured gain at −180° and its reciprocal (lessons.test.js).
     note:
-      'Three lags, each costing up to 90° of phase — 45° already spent at its corner. At Kp = 4 ' +
-      'the loop gain where the phase reaches −180° is 0.36, so there is room for 2.81× more, ' +
-      'and the loop already rings 42%. 2.81× more gain and it sings.',
+      'The plant is three lags, each costing up to 90° of phase, with 45° already spent at its corner. At Kp = ' +
+    '4 the loop gain where the phase reaches −180° is 0.36, so there is room for 2.81× more, and the loop ' +
+    'already rings 42%. Apply that 2.81× and it rings without dying away.',
     try:
-      'Kp → 0.5 for the sluggish start, Kp → 8 for 71% overshoot, Kp → 12 — past the 11.25 ' +
-      'boundary — and it diverges.',
+      'Kp → 0.5 for the sluggish start, Kp → 8 for 71% overshoot, Kp → 12, past the 11.25 boundary, and it ' +
+    'diverges.',
     featured: ['kp'],
     chips: [gain('kp', 0.5), gain('kp', 4), gain('kp', 8), gain('kp', 12, 'Kp → 12 (diverges)')],
     terms: terms('lag', 'corner', 'minus180', 'boundary', 'diverges', 'rings', 'sluggish', 'overshoot', 'pole', 'phasemargin'),
@@ -226,12 +224,12 @@ export const LESSONS = [
     group: 'Losing stability',
     name: 'The margin says exactly how far',
     note:
-      'The gain margin is not a guideline. The Bode pane prints it as a factor — "room for N× ' +
-      'more gain" — and the top bar as the same number in dB. Multiply Kp by that factor and the ' +
-      'loop sits exactly on the boundary.',
+      'The gain margin is not a guideline. The Bode pane prints it as a factor, "room for N× more gain", and ' +
+    'the top bar as the same number in dB. Multiply Kp by that factor and the loop sits exactly on the ' +
+    'boundary.',
     try:
-      '0.9 × the gain margin and the verdict stays stable; 1.1 × and it flips. Both chips read ' +
-      'the live margin, so they work from wherever Kp is.',
+      '0.9 × the gain margin and the verdict stays stable. 1.1 × and it flips. Both chips read the live margin, ' +
+    'so they work from wherever Kp is.',
     featured: ['kp'],
     chips: (s, marg) => [...marginChips(s, marg), gain('kp', 1)],
     terms: terms('gainmargin', 'verdict', 'boundary', 'margin', 'db'),
@@ -241,12 +239,12 @@ export const LESSONS = [
     group: 'Losing stability',
     name: 'Watch the poles cross',
     note:
-      'The same loss of stability, seen as pole positions. Each branch traces where a ' +
-      'closed-loop pole travels as the gain sweeps; the pink crosses are the poles at this Kp. ' +
-      'Where a branch enters the shaded half, the loop starts oscillating.',
+      'The same loss of stability, seen as pole positions. Each branch traces where a closed-loop pole travels ' +
+    'as the gain sweeps, and the pink crosses are the poles at this Kp. Where a branch enters the shaded ' +
+    'half, the loop starts oscillating.',
     try:
-      'Kp → 11.25 and the crosses land on the axis; Kp → 15 and they are across it. The readout ' +
-      'names the crossing gain.',
+      'Kp → 11.25 and the crosses land on the axis. Kp → 15 and they are across it. The readout names the ' +
+    'crossing gain.',
     featured: ['kp'],
     chips: (s, marg) => [gain('kp', 4), ...crossingChip(s, marg), gain('kp', 15, 'Kp → 15 (across)')],
     terms: terms('branch', 'imaginaryaxis', 'shadedhalf', 'closedvsopen', 'oscillates', 'pole', 'rootlocus'),
@@ -261,7 +259,7 @@ export const LESSONS = [
       'The Nyquist view plots the open loop on the complex plane against −1. That point is the ' +
       'whole of stability: 1 + L = 0 means L = −1, a signal returning inverted and the same ' +
       'size it went out. The margins become distances you can see.',
-    try: 'Kp → 11.25 and the curve passes through −1 exactly; Kp → 2 and it misses by a wide margin.',
+    try: 'Kp → 11.25 and the curve passes through −1 exactly. Kp → 2 and it misses by a wide margin.',
     featured: ['kp'],
     chips: (s, marg) => [
       gain('kp', 2),
@@ -275,12 +273,12 @@ export const LESSONS = [
     group: 'Reading the loop',
     name: 'A margin thin enough to feel',
     note:
-      'Phase margin is 25° here. The rule of thumb — phase margin in degrees ≈ 100 × the ' +
-      'damping ratio — predicts ζ ≈ 0.25; the actual ζ is 0.22, overshooting 49% rather than ' +
-      'the 44% a true 0.25 gives. Close enough to design with, not an identity.',
+      'Phase margin is 25° here. The rule of thumb, phase margin in degrees ≈ 100 × the damping ratio, predicts ' +
+    'ζ ≈ 0.25. The actual ζ is 0.22, overshooting 49% rather than the 44% a true 0.25 gives. It is close ' +
+    'enough to design with, and it is not an identity.',
     try:
-      'Kp → 40 and the margin thins to 13° with 70% overshoot; Kp → 2 and it is 52° and 16%. ' +
-      'The Math tab says when the rule applies at all.',
+      'Kp → 40 and the margin thins to 13° with 70% overshoot. Kp → 2 and it is 52° and 16%. The Math tab says ' +
+    'when the rule applies at all.',
     featured: ['kp'],
     chips: [gain('kp', 2), gain('kp', 10), gain('kp', 40)],
     terms: terms('ruleofthumb', 'identity', 'margin', 'phasemargin', 'zeta', 'overshoot'),
@@ -292,12 +290,12 @@ export const LESSONS = [
     group: 'Harder plants',
     name: 'The plant that needs feedback',
     note:
-      'A pole in the right half plane: a positive-feedback stage, a maglev coil. Left alone it ' +
-      'runs away exponentially. Feedback is not an improvement here but the only reason it ' +
-      'works — and the failure mode is inverted: too little gain breaks it, not too much.',
+      'A pole in the right half plane: a positive-feedback stage, a maglev coil. Left alone it runs away ' +
+    'exponentially. Feedback is not an improvement here but the only reason it works, and the failure mode is ' +
+    'inverted: too little gain breaks it, not too much.',
     try:
-      'Kp → 0.5 and the loop latches — it runs away instead of settling. Kp → 5 and it sits at ' +
-      '1.25; Kp → 20 and it sits at 1.05.',
+      'Kp → 0.5 and the loop latches, running away instead of settling. Kp → 5 and it sits at 1.25. Kp → 20 and ' +
+    'it sits at 1.05.',
     featured: ['kp'],
     chips: [
       gain('kp', 0.5, 'Kp → 0.5 (latches)', 'Too little gain: the loop runs away to a rail'),
@@ -314,13 +312,13 @@ export const LESSONS = [
     // step's edge, the artefact the last sentence is about, and the step
     // view captions it the way the watch view marks the kick.
     note:
-      'A resonant plant that proportional control alone makes worse. Derivative action answers ' +
-      'where the error is heading, not where it is, adding phase where the loop is short of it. ' +
-      "The jump at t = 0 is the unfiltered Kd·s meeting the step's edge — real derivative " +
-      'terms are filtered; this also amplifies noise.',
+      'A resonant plant that proportional control alone makes worse. Derivative action answers where the error ' +
+    'is heading, not where it is, adding phase where the loop is short of it. The jump at t = 0 is the ' +
+    'unfiltered Kd·s meeting the step\'s edge. Real terms are filtered, because an unfiltered one amplifies ' +
+    'noise.',
     try:
-      'Kd → its floor and the margin collapses to 12° with 23% overshoot; Kd → 1 and it is 90° ' +
-      'with none. Margin and overshoot move together.',
+      'Kd → its floor and the margin collapses to 12° with 23% overshoot. Kd → 1 and it is 90° with none. ' +
+    'Margin and overshoot move together.',
     featured: ['kd'],
     chips: [gain('kd', 0.0001, 'Kd → 0.0001 (floor)'), gain('kd', 0.2), gain('kd', 1)],
     terms: terms('resonant', 'derivative', 'filtered', 'noise', 'floor', 'wn', 'zeta', 'margin', 'proportional', 'zero', 'phasemargin', 'overshoot'),
@@ -336,18 +334,17 @@ export const LESSONS = [
     group: 'Harder plants',
     name: 'Lead does it without the noise',
     note:
-      'A lead network adds phase between its zero and its pole, peaking at their geometric mean ' +
-      '— but unlike a derivative its gain stops rising above the pole, so it cannot amplify ' +
-      'noise without limit. The ghost on the Bode is this loop without the lead.',
+      'A lead network adds phase between its zero and its pole, peaking at their geometric mean. Unlike a ' +
+    'derivative, its gain stops rising above the pole, so it cannot amplify noise without limit. The ghost on ' +
+    'the Bode is this loop without the lead.',
     // The try line quotes the network's OWN number — φmax = asin((p−z)/(p+z)),
     // read out on the Bode pane — because the phase margin is not monotone
     // in the pole: it fell 63.7° → 45.7° and then ROSE to 67.7° as the pole
     // passed the zero and the network turned into a lag. Both figures are
     // measured in lessons.test.js against the controller's own phase peak.
     try:
-      'Proportional at the same gain and the margin drops from 64° to 54° — the ghost trace ' +
-      'becomes the trace. Pole 20 → 5 and the phase the lead adds, in the Bode readout, ' +
-      'falls from 64.8° to 41.8°.',
+      'Proportional at the same gain and the margin drops from 64° to 54°, the ghost trace becomes the trace. ' +
+    'Pole 20 → 5 and the phase the lead adds, in the Bode readout, falls from 64.8° to 41.8°.',
     // The pole is the knob the try line names; the zero follows it in the card.
     featured: ['p'],
     // Inside this lesson the pole cannot be dragged below the zero: that is

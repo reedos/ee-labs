@@ -42,11 +42,10 @@ export const LESSONS = [
     name: 'A divider has no dynamics',
     terms: ['db', 'impedance', 'phase'],
     note:
-      'Two resistors. The response is a flat line and the phase is zero, at every frequency, ' +
-      'because resistors store no energy and so nothing can depend on how fast the signal ' +
-      'changes. Every other circuit here is this one with a frequency-dependent impedance in ' +
-      'place of a resistor.',
-    try: 'Set R2 to 3 kΩ — H becomes 3/4 (−2.5 dB) and the phase is still 0° at every frequency.',
+      'The circuit is two resistors. The response is a flat line and the phase is zero, at every frequency, ' +
+    'because resistors store no energy and so nothing can depend on how fast the signal changes. Every other ' +
+    'circuit here is this one with a frequency-dependent impedance in place of a resistor.',
+    try: 'Set R2 to 3 kΩ, H becomes 3/4 (−2.5 dB) and the phase is still 0° at every frequency.',
     chips: [
       { label: 'R2 1 kΩ', params: { r2: 1000 } },
       { label: 'R2 3 kΩ', params: { r2: 3000 } },
@@ -60,12 +59,12 @@ export const LESSONS = [
     name: 'Where the corner comes from',
     terms: ['corner', 'db', 'phase', 'impedance', 'tf', 'pole', 'lhp'],
     note:
-      'The cutoff is not a convention: it is the frequency where the capacitor’s impedance ' +
-      'equals the resistor’s. There the two split the input evenly in magnitude — each 45° ' +
-      'from the input in phase, and so 90° from each other, as R and C always are — which is ' +
-      'why the output is 1/√2 of the input and −3.01 dB rather than −6. ' +
-      'Change R or C and watch the corner move as 1/(2πRC).',
-    try: 'Drop C from 100 nF to 10 nF — the corner jumps from 1.59 kHz to 15.9 kHz: ten times less C, ten times higher.',
+      'The cutoff is the frequency where the capacitor’s impedance equals the resistor’s. There the two split ' +
+    'the input evenly in magnitude, and each sits 45° from the input in phase, so 90° from each other, as R ' +
+    'and C always are. That is why the output is 1/√2 of the input, −3.01 dB rather than −6. Change R or C ' +
+    'and the corner moves as 1/(2πRC).',
+    try: 'Drop C from 100 nF to 10 nF, the corner jumps from 1.59 kHz to 15.9 kHz: ten times less C, ten times ' +
+    'higher.',
     chips: [
       { label: 'C 10 nF', params: { c: 10e-9 } },
       { label: 'C 100 nF', params: { c: 100e-9 } },
@@ -84,11 +83,10 @@ export const LESSONS = [
     name: 'The same filter, read backwards',
     terms: ['corner', 'db', 'phase', 'shapes'],
     note:
-      'The same two components, with the output read across the resistor instead — and the ' +
-      'low-pass becomes a high-pass. Nothing else ' +
-      'changed — the same current flows through both components — so whatever one keeps, the ' +
-      'other discards. Their squared magnitudes sum to exactly 1 at every frequency.',
-    try: 'Flip between the two — at 1.59 kHz both read −3.01 dB, and their squares sum to 1.',
+      'The same two components, with the output read across the resistor instead, and the low-pass becomes a ' +
+    'high-pass. Nothing else changed, the same current flows through both components, so whatever one keeps, ' +
+    'the other discards. Their squared magnitudes sum to exactly 1 at every frequency.',
+    try: 'Flip between the two, at 1.59 kHz both read −3.01 dB, and their squares sum to 1.',
     chips: [
       { label: 'low-pass, across C', circuit: 'rcLow' },
       { label: 'high-pass, across R', circuit: 'rcHigh' },
@@ -104,11 +102,11 @@ export const LESSONS = [
     name: 'Different physics, same algebra',
     terms: ['tau', 'corner', 'impedance', 'tf', 'shapes'],
     note:
-      'An inductor resists a change in current where a capacitor resists a change in voltage, ' +
-      'and yet this is the RC low-pass again with L/R in its place. Nothing downstream can tell ' +
-      'them apart, which is why filters are designed as transfer functions first and built out ' +
-      'of whatever is cheap second.',
-    try: 'Drop L from 100 mH to 10 mH — the corner jumps from 1.59 kHz to 15.9 kHz, exactly as the RC did for ten times less C.',
+      'An inductor resists a change in current where a capacitor resists a change in voltage. Even so, this is ' +
+    'the RC low-pass again with L/R in its place, and nothing downstream can tell them apart. Filters are ' +
+    'therefore designed as transfer functions first, and built out of whatever is cheap second.',
+    try: 'Drop L from 100 mH to 10 mH, the corner jumps from 1.59 kHz to 15.9 kHz, exactly as the RC did for ten ' +
+    'times less C.',
     chips: [
       { label: 'L 10 mH', params: { l: 10e-3 } },
       { label: 'L 100 mH', params: { l: 100e-3 } },
@@ -124,11 +122,12 @@ export const LESSONS = [
     name: 'One circuit, three filters',
     terms: ['tf', 'resonance', 's', 'shapes', 'overshoot', 'zeta', 'damping'],
     note:
-      'Switch the output between C, R and L. Same components, same resonance, three completely ' +
-      'different filters — low-pass, band-pass, high-pass — because they share a denominator ' +
-      'and differ only in how many powers of s sit on top. Those three numerators add up to the ' +
-      'denominator, so the three outputs sum to the input exactly.',
-    try: 'Tap across R — it becomes a band-pass; tap across L — a high-pass. All three share the one resonance at 5.03 kHz.',
+      'Switch the output between C, R and L. Same components, same resonance, three completely different ' +
+    'filters, low-pass, band-pass, high-pass, because they share a denominator and differ only in how many ' +
+    'powers of s sit on top. Those three numerators add up to the denominator, so the three outputs sum to ' +
+    'the input exactly.',
+    try: 'Tap across R, it becomes a band-pass. Tap across L, a high-pass. All three share the one resonance at ' +
+    '5.03 kHz.',
     chips: [
       { label: 'across C', output: 'c' },
       { label: 'across R', output: 'r' },
@@ -148,7 +147,7 @@ export const LESSONS = [
       'Drag R up from its 20 Ω. The resonant peak collapses, because at resonance the inductor ' +
       'and capacitor cancel exactly and only the resistor is left to limit the current. Double ' +
       'R and Q halves: Q = (1/R)√(L/C), and none of it depends on frequency.',
-    try: 'Drag R from 20 Ω to 200 Ω — Q falls from 15.8 to 1.58, halving with each doubling.',
+    try: 'Drag R from 20 Ω to 200 Ω, Q falls from 15.8 to 1.58, halving with each doubling.',
     chips: [
       { label: '20 Ω', params: { r: 20 } },
       { label: '100 Ω', params: { r: 100 } },
@@ -163,11 +162,11 @@ export const LESSONS = [
     name: 'The same R, the opposite effect',
     terms: ['tank', 'q', 'impedance', 'db', 'dbohm', 'resonance', 'zeta', 'damping'],
     note:
-      'The same three components in parallel. Now the impedance PEAKS at resonance where the ' +
-      'series circuit dipped, and R has swapped roles: more resistance means a sharper peak. ' +
-      'Q = R√(C/L), the reciprocal of the series case — there R sits in the current path; ' +
-      'here it is the leak across it.',
-    try: 'Raise R from 10 kΩ to 100 kΩ — Q climbs tenfold, 31.6 to 316, and the peak reads exactly R: 80 dBΩ is 10 kΩ, 100 dBΩ is 100 kΩ.',
+      'The same three components sit in parallel here. The impedance now peaks at resonance where the series ' +
+    'circuit dipped, and R has swapped roles, so more resistance means a sharper peak. Q = R√(C/L), the ' +
+    'reciprocal of the series case. There R sat in the current path, and here it is the leak across it.',
+    try: 'Raise R from 10 kΩ to 100 kΩ, Q climbs tenfold, 31.6 to 316, and the peak reads exactly R: 80 dBΩ is 10 ' +
+    'kΩ, 100 dBΩ is 100 kΩ.',
     chips: [
       { label: 'R 1 kΩ', params: { r: 1000 } },
       { label: 'R 10 kΩ', params: { r: 10000 } },
@@ -192,7 +191,8 @@ export const LESSONS = [
       'The same circuit, hit with a step. A resonance that reads as a bump on the frequency ' +
       'plot reads as overshoot and ringing here, and ζ = 1/2Q connects them. Note where the ' +
       'overshoot stops: at Q = 0.5, not at the famous 0.707, which still overshoots 4.3%.',
-    try: 'Set R to 447 Ω for ζ = 0.707 — 4.3% overshoot remains. At 632.46 Ω (ζ = 1.000) it is gone; back at 200 Ω it is 35%.',
+    try: 'Set R to 447 Ω for ζ = 0.707, 4.3% overshoot remains. At 632.46 Ω (ζ = 1.000) it is gone. Back at 200 Ω ' +
+    'it is 35%.',
     // 632.46 Ω is 2√(L/C) to five figures — ζ = 1.000007. A rounder 632 Ω
     // reads ζ = 0.999 beside a try line saying 1, and the pane called it
     // underdamped.
@@ -214,11 +214,10 @@ export const LESSONS = [
     name: 'A zero on the axis is silence',
     terms: ['twint', 'zero', 'pole', 'jw', 'tf', 'phase', 'q', 'zeta', 'damping'],
     note:
-      'The twin-T’s two tees deliver equal and opposite signals at one frequency, so the ' +
-      'zeros of H(s) sit ON the imaginary axis. That frequency is removed, not attenuated: ' +
-      'the notch has no bottom — the plot’s floor is the grid’s, not the notch’s — and the ' +
-      'phase snaps 180° across it. Q is fixed at 1/4 by the topology.',
-    try: 'Set R to 47 kΩ — the notch moves to 339 Hz, and Q still reads 0.250.',
+      'The twin-T’s two tees deliver equal and opposite signals at one frequency, so the zeros of H(s) sit ON ' +
+    'the imaginary axis. That frequency is removed, not attenuated. The notch has no bottom, the plot’s floor ' +
+    'is the grid’s, not the notch’s, and the phase snaps 180° across it. Q is fixed at 1/4 by the topology.',
+    try: 'Set R to 47 kΩ, the notch moves to 339 Hz, and Q still reads 0.250.',
     chips: [
       { label: 'R 10 kΩ', params: { r: 10000 } },
       { label: 'R 47 kΩ', params: { r: 47000 } },
@@ -233,11 +232,10 @@ export const LESSONS = [
     name: 'Real parts wobble',
     terms: ['tolerance', 'q', 'pole', 'jw', 'zeta', 'damping'],
     note:
-      'No part in a drawer is exact. Here the series RLC is built 120 times from ±5% parts; ' +
-      'the poles view shows where they land. f₀ = 1/2π√LC wobbles ±4.3%, Q ±8.2% — about ' +
-      'twice, because R enters Q at full strength and f₀ not at all. Q is the spec that ' +
-      'costs money.',
-    try: 'Switch every part to ±1% — f₀’s spread shrinks to ±0.85%, Q’s to ±1.7% (at ±5%: ±4.3% and ±8.2%).',
+      'No part in a drawer is exact. Here the series RLC is built 120 times from ±5% parts, and the poles view ' +
+    'shows where they land. f₀ = 1/2π√LC wobbles ±4.3% and Q ±8.2%, twice as far. R enters Q at full strength ' +
+    'and f₀ not at all. Q is the spec that costs money.',
+    try: 'Switch every part to ±1%, f₀’s spread shrinks to ±0.85%, Q’s to ±1.7% (at ±5%: ±4.3% and ±8.2%).',
     chips: [
       { label: 'exact', tol: 0 },
       { label: '±1%', tol: 0.01 },
@@ -261,11 +259,10 @@ export const LESSONS = [
     name: 'Blame the right part',
     terms: ['tolerance', 'q', 'resonance', 'omega0', 'pole', 'jw', 'zeta', 'damping'],
     note:
-      'Give R alone ±10% and watch what does NOT happen: f₀ = 1/(2π√LC) has no R in it, so ' +
-      'not one of the 120 builds resonates anywhere else. The poles slide along a circle of ' +
-      'constant radius ω₀ while Q takes the entire hit. A spec only inherits error from the ' +
-      'parts in its own formula.',
-    try: 'Move the ±10% from R to C — f₀ now wanders ±5.3% and the circle breaks. Back on R it is ±0.0%.',
+      'Give R alone ±10% and f₀ does not move at all. f₀ = 1/(2π√LC) has no R in it, so not one of the 120 ' +
+    'builds resonates anywhere else. The poles slide along a circle of constant radius ω₀ while Q takes the ' +
+    'entire hit. A spec only inherits error from the parts in its own formula.',
+    try: 'Move the ±10% from R to C, f₀ now wanders ±5.3% and the circle breaks. Back on R it is ±0.0%.',
     chips: [
       { label: 'R ±10%', tols: { r: 0.1 } },
       { label: 'C ±10%', tols: { c: 0.1 } },
@@ -292,11 +289,11 @@ export const LESSONS = [
     name: 'Why active filters exist',
     terms: ['opamp', 'pole', 'jw', 'q', 'shapes', 'zeta', 'damping'],
     note:
-      'A second-order low-pass with no inductor anywhere. Two RC sections alone can only ever ' +
-      'give real poles, and a real pole cannot ring; the op-amp feeding the output back through ' +
-      'C1 is what pushes the pole pair off the real axis. And Q comes from ratios of components ' +
-      'rather than their absolute size — which is what a chip can do well and a coil cannot.',
-    try: 'Raise C1 from 22 nF to 100 nF — Q climbs from 0.74 to 1.58 with no resistor touched.',
+      'A second-order low-pass with no inductor anywhere. Two RC sections alone can only give real poles, and a ' +
+    'real pole cannot ring. The op-amp feeding the output back through C1 is what pushes the pole pair off ' +
+    'the real axis. Q then comes from ratios of components rather than their absolute size, which a chip does ' +
+    'well and a coil cannot.',
+    try: 'Raise C1 from 22 nF to 100 nF, Q climbs from 0.74 to 1.58 with no resistor touched.',
     chips: [
       { label: 'C1 4.7 nF', params: { c1: 4.7e-9 } },
       { label: 'C1 22 nF', params: { c1: 22e-9 } },
@@ -311,14 +308,13 @@ export const LESSONS = [
     name: 'Gain is a ratio, and negative',
     terms: ['feedback', 'virtualearth', 'db', 'phase', 'corner', 'pole'],
     note:
-      'Negative feedback holds the inverting input at zero without connecting it to anything, ' +
-      'so all the input current must flow on through the feedback resistor. The gain is −Rf/Rin: ' +
-      'a ratio, which is why it depends on how well two resistors match rather than on either ' +
-      'being any particular value. The minus sign is a real 180° of phase — at DC; the small ' +
-      'Cf across Rf adds one pole, and above its corner gain and phase both fall.',
+      'Negative feedback holds the inverting input at zero without connecting it to anything, so all the input ' +
+    'current must flow on through the feedback resistor. The gain is −Rf/Rin, a ratio, so it depends on how ' +
+    'well two resistors match rather than on either being any particular value. The minus sign is a real 180° ' +
+    'of phase at DC. The small Cf across Rf adds one pole, and above its corner gain and phase both fall.',
     try:
-      'Set R feedback to 100 kΩ — the gain becomes −100 (40 dB) below the corner Cf puts at 1.59 kHz; ' +
-      'the phase is 180° at DC and 135° at that corner.',
+      'Set R feedback to 100 kΩ, the gain becomes −100 (40 dB) below the corner Cf puts at 1.59 kHz. The phase ' +
+    'is 180° at DC and 135° at that corner.',
     chips: [
       { label: 'Rf 10 kΩ', params: { rf: 10000 } },
       { label: 'Rf 100 kΩ', params: { rf: 100000 } },
@@ -341,11 +337,11 @@ export const LESSONS = [
     name: 'A pole exactly at the origin',
     terms: ['pole', 'jw', 'lhp', 'feedback', 'tau', 'overshoot', 'rail'],
     note:
-      'Replace the feedback resistor with a capacitor and the ratio becomes a division by s — ' +
-      'which is integration. The pole sits on the boundary rather than inside it, so this is ' +
-      'the one circuit here that never settles: a step in gives a ramp out, forever. A real ' +
-      'integrator needs a large resistor across C to stop it drifting into its supply rail.',
-    try: 'Set R to 100 kΩ — the ramp is ten times slower, and still never levels off.',
+      'Replace the feedback resistor with a capacitor and the ratio becomes a division by s, which is ' +
+    'integration. The pole sits on the boundary rather than inside it, so this is the one circuit here that ' +
+    'never settles. A step in gives a ramp out, forever. A real integrator needs a large resistor across C to ' +
+    'stop it drifting into its supply rail.',
+    try: 'Set R to 100 kΩ, the ramp is ten times slower, and still never levels off.',
     chips: [
       { label: 'R 10 kΩ', params: { r: 10000 } },
       { label: 'R 100 kΩ', params: { r: 100000 } },
@@ -366,11 +362,10 @@ export const LESSONS = [
     name: 'This circuit is a biquad',
     terms: ['biquad', 'sampled', 'tf', 'corner', 'q', 'shapes', 'zeta', 'damping'],
     note:
-      'This RLC is a low-pass biquad with a cutoff of 5.03 kHz and a Q of 3.16 — not similar ' +
-      'to one, the same one. Open in Signal Lab → loads the identical filter there with a ' +
-      'square wave running through it. A circuit and a difference equation are one object ' +
-      'described twice.',
-    try: 'Tap Open in Signal Lab → — the same 5.03 kHz, Q 3.16 low-pass appears there, square wave through it.',
+      'This RLC is a low-pass biquad with a cutoff of 5.03 kHz and a Q of 3.16, not similar to one, the same ' +
+    'one. Open in Signal Lab → loads the identical filter there with a square wave running through it. A ' +
+    'circuit and a difference equation are one object described twice.',
+    try: 'Tap Open in Signal Lab →, the same 5.03 kHz, Q 3.16 low-pass appears there, square wave through it.',
     chips: [],
     featured: ['handover'],
     patch: { circuit: 'rlcSeries', output: 'c', view: 'step' },
