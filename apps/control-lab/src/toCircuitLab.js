@@ -1,0 +1,90 @@
+import { buildCircuitLink, labUrl } from '@ee-labs/ui'
+import { PLANTS } from './systems.js'
+
+// The hand-over in reverse: this plant, as the circuit it is.
+//
+// Circuit Lab can hand a circuit here as a plant; nothing said the motor you
+// were tuning was also an RLC you could go and ring. Two named plants ARE
+// catalog circuits exactly — the second-order plant is a series RLC read
+// across the capacitor (ωₙ = 1/√(LC), ζ = (R/2)√(C/L)), the first-order lag
+// an RC low-pass (τ = RC) — so those can be sent back as the same transfer
+// function to the last bit. EXACT ONLY: a plant gain K ≠ 1 is an amplifier
+// no passive network holds, and component values outside Circuit Lab's knobs
+// would be clamped on arrival into a different circuit. Either case returns
+// null and the line is not drawn, which is better than a link that lies.
+
+// Circuit Lab's knob ranges (circuits.js R/L/C helpers). toCircuitLab.test.js
+// pins these against the catalog itself, so a change there fails here.
+export const CIRCUIT_KNOBS = {
+  r: [1, 1e6],
+  l: [1e-6, 1],
+  c: [1e-12, 1e-3],
+}
+const inRange = (v, [lo, hi]) => Number.isFinite(v) && v >= lo && v <= hi
+
+/**
+ * The catalog circuit this plant is, with component values, or null.
+ * `{ id, values, output, components, sentence }` — `values` in the catalog's
+ * own parameter order, which is what the link carries.
+ */
+export function circuitFor(plantId, plantP) {
+  if (!plantP) return null
+  if (plantId === 'secondOrder') {
+    if (plantP.k !== 1) return null
+    // Two equations, three parts: L is free. 10 mH first (the value the
+    // math panel's sentence uses), then whatever keeps C and R on the knobs.
+    for (const L of [0.01, 1e-3, 0.1, 1, 1e-4, 1e-5, 1e-6]) {
+      const C = 1 / (plantP.wn * plantP.wn * L)
+      const R = 2 * plantP.zeta * Math.sqrt(L / C)
+      if (!inRange(R, CIRCUIT_KNOBS.r) || !inRange(L, CIRCUIT_KNOBS.l) || !inRange(C, CIRCUIT_KNOBS.c)) continue
+      return {
+        id: 'rlcSeries',
+        values: [R, L, C],
+        output: 'c',
+        components: { R, L, C },
+        sentence: 'a series RLC read across its capacitor',
+      }
+    }
+    return null
+  }
+  if (plantId === 'firstOrder') {
+    if (plantP.k !== 1) return null
+    // τ = RC, one equation: R = 1 kΩ first, then whatever keeps C on its knob.
+    for (const R of [1000, 1e4, 1e5, 1e6, 100, 10, 1]) {
+      const C = plantP.tau / R
+      if (!inRange(R, CIRCUIT_KNOBS.r) || !inRange(C, CIRCUIT_KNOBS.c)) continue
+      return {
+        id: 'rcLow',
+        values: [R, C],
+        output: 'c',
+        components: { R, C },
+        sentence: 'an RC low-pass',
+      }
+    }
+    return null
+  }
+  return null
+}
+
+/** The link fragment Circuit Lab reads, with provenance naming this plant. */
+export function circuitFragment(plantId, plantP) {
+  const c = circuitFor(plantId, plantP)
+  if (!c) return null
+  return buildCircuitLink({
+    id: c.id,
+    values: c.values,
+    output: c.output,
+    from: { app: 'control', id: plantId, label: PLANTS[plantId].name },
+  })
+}
+
+/**
+ * The full URL, or null where there is nothing to link to: no exact circuit,
+ * or a dev port with no Circuit Lab beside it (the LabNav rule — a link to a
+ * page that is not there is worse than none).
+ */
+export function circuitUrl(plantId, plantP, loc = typeof window === 'undefined' ? null : window.location) {
+  const frag = circuitFragment(plantId, plantP)
+  if (!frag) return null
+  return labUrl('circuit-lab', frag, loc)
+}

@@ -12,6 +12,11 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmtHz } from '@ee-labs/ui'
  * Phase, when shown, gets its own axis on the right rather than a second pane.
  * It is the half of the response a magnitude plot cannot show, and reading it
  * against the same frequency axis is the point.
+ *
+ * An optional GHOST pair (`ghostMag`, `ghostPhase`, `ghostLabel`) draws a
+ * second, dimmed loop under the live one — the lead lesson's uncompensated
+ * L = K·P(s), so "phase added between the zero and the pole" is the gap
+ * between two curves rather than a sentence.
  */
 export default function BodeCanvas({
   freqs,
@@ -22,6 +27,9 @@ export default function BodeCanvas({
   crossover = null,
   phaseCrossover = null,
   yUnit = 'dB',
+  ghostMag = null,
+  ghostPhase = null,
+  ghostLabel = '',
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -37,11 +45,14 @@ export default function BodeCanvas({
       // decades of amplitude, where a reader expects them.
       let lo = Infinity
       let hi = -Infinity
-      for (let i = 0; i < mag.length; i++) {
-        const v = db(mag[i])
-        if (Number.isFinite(v)) {
-          if (v < lo) lo = v
-          if (v > hi) hi = v
+      // The ghost shares the frame, so the range holds both curves.
+      for (const arr of ghostMag ? [mag, ghostMag] : [mag]) {
+        for (let i = 0; i < arr.length; i++) {
+          const v = db(arr[i])
+          if (Number.isFinite(v)) {
+            if (v < lo) lo = v
+            if (v > hi) hi = v
+          }
         }
       }
       if (!Number.isFinite(lo)) {
@@ -132,6 +143,28 @@ export default function BodeCanvas({
         ctx.setLineDash([])
       }
 
+      // The ghost first, so the live trace paints over it where they meet.
+      if (ghostMag) {
+        ctx.strokeStyle = COLORS.traceGhost
+        ctx.lineWidth = 1.6 * k
+        ctx.lineJoin = 'round'
+        ctx.beginPath()
+        for (let i = 0; i < ghostMag.length; i++) {
+          const x = sx(lx(freqs[i]))
+          const y = sy(db(ghostMag[i]))
+          if (i === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        }
+        ctx.stroke()
+        if (ghostLabel) {
+          ctx.fillStyle = COLORS.text
+          ctx.font = `italic ${Math.round(10.5 * k)}px ui-sans-serif, system-ui, sans-serif`
+          ctx.textAlign = 'left'
+          ctx.textBaseline = 'bottom'
+          ctx.fillText(ghostLabel, area.x + 6 * k, area.y + area.h - 6 * k)
+        }
+      }
+
       ctx.strokeStyle = COLORS.trace
       ctx.lineWidth = 1.8 * k
       ctx.lineJoin = 'round'
@@ -147,14 +180,33 @@ export default function BodeCanvas({
       if (showPhase && phase) {
         let plo = 0
         let phi = 0
-        for (let i = 0; i < phase.length; i++) {
-          const d = (phase[i] * 180) / Math.PI
-          if (d < plo) plo = d
-          if (d > phi) phi = d
+        for (const arr of ghostPhase ? [phase, ghostPhase] : [phase]) {
+          for (let i = 0; i < arr.length; i++) {
+            const d = (arr[i] * 180) / Math.PI
+            if (d < plo) plo = d
+            if (d > phi) phi = d
+          }
         }
         plo = Math.min(-90, Math.floor(plo / 90) * 90)
         phi = Math.max(90, Math.ceil(phi / 90) * 90)
         const py = (d) => area.y + area.h - ((d - plo) / (phi - plo)) * area.h
+
+        if (ghostPhase) {
+          ctx.strokeStyle = COLORS.phase
+          ctx.globalAlpha = 0.32
+          ctx.lineWidth = 1.3 * k
+          ctx.setLineDash([6 * k, 3 * k])
+          ctx.beginPath()
+          for (let i = 0; i < ghostPhase.length; i++) {
+            const x = sx(lx(freqs[i]))
+            const y = py((ghostPhase[i] * 180) / Math.PI)
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.stroke()
+          ctx.setLineDash([])
+          ctx.globalAlpha = 1
+        }
 
         ctx.strokeStyle = COLORS.phase
         ctx.lineWidth = 1.5 * k
@@ -188,7 +240,7 @@ export default function BodeCanvas({
       }
       ctx.restore()
     },
-    [freqs, mag, phase, showPhase, markers, crossover, phaseCrossover, yUnit],
+    [freqs, mag, phase, showPhase, markers, crossover, phaseCrossover, yUnit, ghostMag, ghostPhase, ghostLabel],
   )
 
   return <canvas ref={ref} className="plot" role="img" aria-label="Open-loop Bode plot: magnitude and phase, with the stability margins marked" />

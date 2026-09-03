@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { COLORS, niceStep, plotArea, plotScale, useCanvas, fmt, fmtNum } from '@ee-labs/ui'
-import { paneRange } from '../watch.js'
+import { paneRange, openingCursor } from '../watch.js'
 
 /**
  * The loop watched working, one moment at a time.
@@ -366,12 +366,13 @@ export default function WatchCanvas({ t, input, y, e, u, parts, kick, pos, dist,
 
 /**
  * The scrub/play state. Signal Lab's convolution transport, same rules:
- * a constant sweep time at 1×, play at the end restarts, a new lesson resets
- * the story — paused at the END here, so arriving at the view shows the
- * finished response like the step view does, and play means "run it again".
+ * a constant sweep time at 1×, play at the end restarts, a new lesson (or a
+ * reset to one) rewinds the story — to the OPENING cursor a little way in,
+ * where both controller terms are still visibly at work (see openingCursor
+ * in watch.js), not to the end where the handoff has already happened.
  */
 export function useWatchPosition(length, resetKey) {
-  const [pos, setPos] = useState(length - 1)
+  const [pos, setPos] = useState(() => openingCursor(length))
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const raf = useRef(0)
@@ -381,7 +382,7 @@ export function useWatchPosition(length, resetKey) {
   useEffect(() => {
     if (started.current === resetKey) return
     started.current = resetKey
-    setPos(length - 1)
+    setPos(openingCursor(length))
     setPlaying(false)
   }, [resetKey, length])
 

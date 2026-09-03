@@ -7,6 +7,7 @@
 // gain up to just under it and just over it, and requires the app to agree.
 
 import { chromium } from 'playwright'
+import { foldProbe, phoneProbe } from '@ee-labs/ui/verify/foldProbe.mjs'
 
 const URL = process.env.APP_URL || 'http://localhost:4176'
 const failures = []
@@ -26,6 +27,26 @@ await page.waitForSelector('.views canvas')
 await page.waitForTimeout(400)
 
 const settle = () => page.waitForTimeout(240)
+
+// ------------------------------------------------- 0. what the page opens on
+
+console.log('\n0. The first minute\n')
+{
+  // A bare visit opens on the first lesson, its group open, its try line
+  // and its knob on screen — not on a solved motor with Try this folded.
+  const on = await page.locator('.preset.is-on').first().textContent().catch(() => '')
+  if (on.trim() !== 'Proportional cannot get there') fail(`the page should open on the first lesson, opened on "${on}"`)
+  const groupOpen = await page.evaluate(() => {
+    const b = document.querySelector('.preset.is-on')
+    return b ? b.closest('details.preset-group').open : false
+  })
+  if (!groupOpen) fail('the opening lesson\'s group should be open')
+  const tryLine = await page.locator('.try-line').count()
+  if (!tryLine) fail('the opening lesson should show its try line')
+  const settles = await page.locator('.readout').last().textContent()
+  if (!/settles to\s*0?\.?9|settles to\s*900 m/.test(settles)) fail(`the opening picture should settle at 0.9, readout: "${settles}"`)
+  console.log(`   opens on "${on.trim()}", group open, try line present; ${settles.trim().slice(0, 40)}`)
+}
 const scrolls = () =>
   page.evaluate(
     () => document.documentElement.scrollHeight > document.documentElement.clientHeight + 1,
@@ -61,12 +82,15 @@ const readChecks = () =>
     }),
   )
 
+// The math is a pane tab now, not a sidebar well: open it, read it, and go
+// back to the step view so the sections after can read the step readout.
 async function openMath() {
-  const t = page.locator('.math-toggle[aria-expanded="false"]')
-  if (await t.count()) {
-    await t.first().click()
-    await page.waitForTimeout(150)
-  }
+  await page.locator('[aria-label="Lower view"] button', { hasText: /^Math$/ }).click()
+  await page.waitForTimeout(150)
+}
+async function closeMath() {
+  await page.locator('[aria-label="Lower view"] button', { hasText: /^Step$/ }).click()
+  await page.waitForTimeout(120)
 }
 
 const isStable = async () => !/UNSTABLE/.test((await topbar()).verdict)
@@ -94,7 +118,7 @@ async function setField(label, value) {
   await settle()
 }
 const clickBtn = async (name) => {
-  await page.getByRole('button', { name, exact: true }).click()
+  await page.getByRole('button', { name, exact: true }).first().click()
   await settle()
 }
 
@@ -137,6 +161,7 @@ for (const p of plants) {
     const bad = (await readChecks()).filter((r) => r.mark === '✗')
     for (const b of bad) fail(`${p} + ${c}: ✗ ${b.label} (theory ${b.theory}, measured ${b.measured})`)
     if (await scrolls()) fail(`${p} + ${c}: page scrolls`)
+    await closeMath()
     row.push(`${c}:${bad.length ? bad.length + '✗' : 'ok'}`)
   }
   console.log(`   ${p.padEnd(18)} ${row.join('  ')}`)
@@ -159,6 +184,13 @@ console.log('\n1b. Loading every lesson through the folded groups\n')
     const bad = (await readChecks()).filter((r) => r.mark === '✗')
     for (const b of bad) fail(`${name}: ✗ ${b.label} (theory ${b.theory}, measured ${b.measured})`)
     if (await scrolls()) fail(`${name}: page scrolls`)
+    await closeMath()
+    // The try line, with at least one chip, under every note.
+    const tryText = (await page.locator('.try-line .try-text').textContent().catch(() => '')) || ''
+    if (!/^Try/.test(tryText.trim())) fail(`${name}: no try line under the note`)
+    if (!(await page.locator('.try-line .chip').count())) fail(`${name}: no chips on the try line`)
+    // The lesson's own knob rendered under it.
+    if (!(await page.locator('.featured').count())) fail(`${name}: no featured knob under the try line`)
     const state = await page.evaluate(() => {
       const on = document.querySelector('details.preset-group .preset.is-on')
       const group = on ? on.closest('details.preset-group') : null
@@ -173,9 +205,15 @@ console.log('\n1b. Loading every lesson through the folded groups\n')
     if (pmText !== '—' && !(Math.abs(parseFloat(pmText)) <= 180)) {
       fail(`${name}: phase margin reads ${pmText} — off the circle`)
     }
-    // Definitions on contact: every lesson offers its terms under the note.
-    const termCount = await page.locator('details.terms dt').count()
-    if (termCount < 1) fail(`${name}: no "Terms used here" definitions offered`)
+    // Definitions on contact: every lesson offers its terms from the note.
+    const termsLink = page.locator('.terms-link')
+    if (!(await termsLink.count())) fail(`${name}: no terms link on the note`)
+    await termsLink.click()
+    await page.waitForTimeout(80)
+    const termCount = await page.locator('.terms-list dt').count()
+    if (termCount < 1) fail(`${name}: no "terms used here" definitions offered`)
+    await termsLink.click()
+    await page.waitForTimeout(80)
     console.log(`   ${name.padEnd(34)} ${bad.length ? bad.length + '✗' : 'ok'}  ${termCount} terms`)
   }
 
@@ -226,16 +264,81 @@ console.log('\n1b. Loading every lesson through the folded groups\n')
   )
   if (!plantGroupOpen) fail("the active plant's group folded away when its summary was clicked")
 
-  // A lesson note describes ONE step input, so flipping the toggle must
-  // clear it — a note about following r over a plot answering d is exactly
-  // the frozen-sentence defect the review playbook opens with.
+  // A lesson note describes ONE step input. Flipping the toggle no longer
+  // clears the lesson (that un-highlighted the chip and left no way back):
+  // the lesson turns DIRTY — the note dims, a reset appears — and reset
+  // puts the toggle back and clears both.
   await loadLesson('Proportional cannot get there')
-  const noteBefore = await page.locator('.hint').first().textContent()
+  const noteBefore = await page.locator('.hint.note').first().textContent()
   if (!/90%/.test(noteBefore)) fail('expected the lesson note on screen before the toggle')
+  if (await page.locator('.lesson-nav-reset').count()) fail('a freshly loaded lesson should not offer reset')
   await clickBtn('Disturbance')
-  const noteAfter = await page.locator('.hint').first().textContent()
-  if (/90%/.test(noteAfter)) fail('flipping to Disturbance left a note describing the reference step')
-  await clickBtn('Reference')
+  if (!(await page.locator('.hint.note.is-dirty').count())) fail('flipping to Disturbance should mark the note dirty')
+  if (!(await page.locator('.lesson-nav-reset').count())) fail('a moved lesson should offer reset')
+  if (!(await page.locator('.preset.is-on').count())) fail('the lesson chip should stay highlighted while dirty')
+  await page.locator('.lesson-nav-reset').click()
+  await settle()
+  const refOnAfterReset = await page
+    .locator('[aria-label="Where the step is applied"] button.on')
+    .textContent()
+  if (refOnAfterReset.trim() !== 'Reference') fail('reset should put the step toggle back to Reference')
+  if (await page.locator('.lesson-nav-reset').count()) fail('reset should clear the dirty state')
+  if (await page.locator('.hint.note.is-dirty').count()) fail('reset should un-dim the note')
+
+  // Next / previous walk the course in order.
+  const count = await page.locator('.lesson-nav-count').textContent()
+  if (count.trim() !== '1 of 13') fail(`lesson nav should read "1 of 13" on the first lesson, reads "${count}"`)
+  await page.getByRole('button', { name: 'Next lesson' }).click()
+  await settle()
+  const second = await page.locator('.preset.is-on').first().textContent()
+  if (second.trim() !== 'The integrator closes the gap') fail(`next should load the second lesson, loaded "${second}"`)
+  await page.getByRole('button', { name: 'Previous lesson' }).click()
+  await settle()
+  const first = await page.locator('.preset.is-on').first().textContent()
+  if (first.trim() !== 'Proportional cannot get there') fail(`previous should load the first lesson again, loaded "${first}"`)
+  console.log('   step toggle marks the lesson dirty; reset restores it; next/previous walk the course')
+
+  // The chips do what their labels say, in one click.
+  await loadLesson('A shove at the plant input')
+  await page.locator('.try-line .chip', { hasText: 'switch to PI' }).click()
+  await settle()
+  const ctrlOn = await page.locator('#controller .preset.is-on').textContent()
+  if (ctrlOn.trim() !== 'PI') fail(`the "switch to PI" chip should select PI, selected "${ctrlOn}"`)
+  const distReadout = await page.locator('.readout').last().textContent()
+  if (!/rejected completely/.test(distReadout)) fail('after the PI chip the disturbance should be erased')
+  const chipOn = await page.locator('.try-line .chip.is-on').textContent().catch(() => '')
+  if (chipOn.trim() !== 'switch to PI') fail(`the applied chip should be highlighted, highlighted "${chipOn}"`)
+  // The step toggle is the lesson's featured control, right under the chips.
+  await page.locator('.featured[data-featured="disturbance"] button', { hasText: 'Reference' }).click()
+  await settle()
+  const h2Ref = await page.locator('.views .view-head h2').last().textContent()
+  if (!/step response/i.test(h2Ref)) fail(`the featured toggle should flip the step, heading reads "${h2Ref}"`)
+  console.log('   chips switch the controller; the featured toggle flips the step — one click each')
+
+  // The margin lesson's chips read the live gain margin.
+  await loadLesson('The margin says exactly how far')
+  await page.locator('.try-line .chip', { hasText: '0.9 × GM' }).click()
+  await settle()
+  if (!(await isStable())) fail('0.9 × GM should leave the loop stable')
+  await page.locator('.try-line .chip', { hasText: '1.1 × GM' }).click()
+  await settle()
+  if (await isStable()) fail('1.1 × GM should tip the loop unstable')
+  console.log('   the 0.9× / 1.1× GM chips bracket the boundary')
+
+  // The locus readout says where you are and where the branch crosses.
+  await loadLesson('Watch the poles cross')
+  const here = (await page.locator('[data-role="locus-here"]').textContent().catch(() => '')) || ''
+  if (!/you are here: Kp = 4/.test(here)) fail(`locus: expected "you are here: Kp = 4", got "${here}"`)
+  if (!/crosses the axis at Kp = 11\.25/.test(here)) fail(`locus: expected the crossing at Kp = 11.25, got "${here}"`)
+  console.log(`   locus readout: ${here.trim()}`)
+
+  // The lead lesson draws its uncompensated loop as a ghost.
+  await loadLesson('Lead does it without the noise')
+  const withLead = (await canvasHashes())[0]
+  await clickBtn('Proportional')
+  const withoutLead = (await canvasHashes())[0]
+  if (withLead === withoutLead) fail('the lead lesson should draw a ghost the proportional loop lacks')
+  console.log('   the lead lesson ghosts K·P(s) on the Bode')
 
   // Leave no lesson active so later sections start from plain plant clicks.
   await clickPreset('First order lag')
@@ -598,12 +701,39 @@ console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
   if (!/play/.test(btnNow)) fail('watch: playback should pause itself at the end')
   console.log('   play restarts from the end, sweeps at 4×, and parks itself')
 
-  // Loading a lesson resets the story (to the finished response, paused).
+  // Loading a lesson rewinds the story to the OPENING cursor — a little way
+  // in, where both controller terms are visibly still at work. It used to
+  // park at the end, where the handoff the lesson narrates was already over
+  // (Kp·e ≈ 3e-7, Ki·∫e = 1).
   await slider.fill('100')
   await settle()
   await loadLesson('Watch the integrator take over')
   const reset = Number(await slider.inputValue())
-  if (reset !== 599) fail(`watch: loading a lesson should reset the scrubber (at ${reset})`)
+  if (!(reset > 0 && reset < 599)) fail(`watch: loading a lesson should open the cursor inside the window (at ${reset})`)
+  const partValue = async (key) => {
+    const txt = (await page.locator(`.readout [data-part="${key}"] b`).textContent().catch(() => '')) || ''
+    const m = txt.match(/(-?[\d.]+)\s*([mµu]?)/)
+    return m ? parseFloat(m[1]) * ({ m: 1e-3, µ: 1e-6, u: 1e-6, '': 1 })[m[2]] : NaN
+  }
+  const pOpen = await partValue('p')
+  const iOpen = await partValue('i')
+  console.log(`   opening cursor at ${reset}/599: Kp·e = ${pOpen}, Ki·∫e = ${iOpen}`)
+  if (!(Math.abs(pOpen) > 0.05)) fail(`watch: at the opening cursor Kp·e should be visibly nonzero, reads ${pOpen}`)
+  if (!(Math.abs(iOpen) > 0.05)) fail(`watch: at the opening cursor Ki·∫e should be visibly nonzero, reads ${iOpen}`)
+  // Reset to the same lesson rewinds too.
+  await slider.fill('500')
+  await settle()
+  await page.getByRole('button', { name: 'Next lesson' }).click()
+  await settle()
+  await page.getByRole('button', { name: 'Previous lesson' }).click()
+  await settle()
+  if (Number(await slider.inputValue()) !== reset) fail('watch: coming back to the lesson should rewind to the opening cursor')
+  await slider.fill('500')
+  await settle()
+  await setField('Ki', 2)
+  await page.locator('.lesson-nav-reset').click()
+  await settle()
+  if (Number(await slider.inputValue()) !== reset) fail('watch: reset should rewind to the opening cursor')
   const heading = await page.locator('.views .view').last().locator('h2').textContent()
   if (!/watched/i.test(heading)) fail('watch: the lesson should land on the watch view')
   console.log('   a lesson load resets the transport')
@@ -641,6 +771,17 @@ console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
   const ctrlH2 = await page.locator('#controller h2').textContent()
   if (!/P\(s\)/.test(plantH2)) fail(`the Plant card should say P(s); it reads "${plantH2}"`)
   if (!/C\(s\)/.test(ctrlH2)) fail(`the Controller card should say C(s); it reads "${ctrlH2}"`)
+  // The controller card comes BEFORE the plant card: every lesson is about
+  // the controller, and the plant's Gain K must not be the first slider on
+  // a lesson that says "raise Kp".
+  const order = await page.evaluate(() => {
+    const c = document.getElementById('controller').getBoundingClientRect().top
+    const p = document.getElementById('plant').getBoundingClientRect().top
+    return c < p
+  })
+  if (!order) fail('the controller card should sit above the plant card')
+  // And the sidebar math well is gone — the math is a pane tab now.
+  if (await page.locator('.controls .math').count()) fail('the math should no longer live in the sidebar')
 
   // The custom plant's equation is defined LIVE under its coefficients:
   // type a value, see it in the typeset H(s).
@@ -726,6 +867,14 @@ console.log('\n4e. Arrival from a circuit: named, oriented, the drive labelled\n
   await settle()
   console.log('   circuit named in banner and diagram; notice tracks the controller; identity sheds on plant change')
 
+  // The reverse hand-over is exact-only AND deployed-only: on a bare dev
+  // port there is no Circuit Lab beside this page, so nothing is drawn.
+  // (The mapping itself is measured in toCircuitLab.test.js.)
+  await clickPreset('First order lag')
+  if (await page.locator('.circuit-back').count()) {
+    fail('the "Open in Circuit Lab" line should not render where the sibling URL resolves to null')
+  }
+
   // A clean page for the sections after this one (blank first, same reason).
   await page.goto('about:blank')
   await page.goto(URL, { waitUntil: 'load' })
@@ -800,6 +949,76 @@ console.log('\n6. Phone width\n')
   if (sideways2) fail('390px / watch view: the page scrolls horizontally')
   await clickBtn('Step')
   console.log('   no horizontal scroll at 390px, watch view included')
+}
+
+// ------------------------------------ 7. the fold: every lesson's knob on screen
+
+console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
+{
+  // For every lesson: the try line, the featured knob(s), the controller
+  // card's header and the active lesson chip must sit inside the viewport
+  // with the sidebar at the top — the way a student finds it.
+  const lessonNames = await page.evaluate(() =>
+    [...document.querySelectorAll('#lessons details.preset-group .preset')].map((b) => b.textContent.trim()),
+  )
+  // Each lesson's featured keys, read off the page after loading it (React
+  // renders after the click settles, so this cannot be one in-page loop).
+  const featuredOf = {}
+  for (const name of lessonNames) {
+    await loadLesson(name)
+    featuredOf[name] = await page.evaluate(() =>
+      [...document.querySelectorAll('.featured')].map((f) => f.dataset.featured),
+    )
+  }
+  // The deployed page carries the LabNav row above the title (26 px); a dev
+  // port has no siblings so it hides. Stand a placeholder in, so the fold
+  // measured here is the fold a student gets on the site.
+  const withLabNav = (pg) =>
+    pg.evaluate(() => {
+      if (document.querySelector('.labnav, .labnav-stand-in')) return
+      const h = document.querySelector('.controls header')
+      if (h) h.insertAdjacentHTML('afterbegin', '<div class="labnav-stand-in" style="height:16px;margin:0 0 10px"></div>')
+    })
+  const cases = lessonNames.map((name) => ({
+    name,
+    load: async (pg) => {
+      await pg.waitForSelector('.views canvas')
+      await withLabNav(pg)
+      await loadLesson(name)
+    },
+    must: [
+      '.try-line',
+      ...(featuredOf[name] || []).map((k) => `.featured[data-featured="${k}"]`),
+      '#controller h2',
+      '#lessons .preset.is-on',
+    ],
+  }))
+  const res = await foldProbe(page, { cases, url: URL })
+  for (const m of res.measured) {
+    if (m.viewport === '1440x900' && /data-featured/.test(m.control) && m.box) {
+      console.log(`   ${m.viewport} ${m.lesson.padEnd(34)} ${m.control.padEnd(34)} y ${m.box.y.toFixed(0)}–${(m.box.y + m.box.height).toFixed(0)}`)
+    }
+  }
+  for (const f of res.failures) fail(`fold: ${f}`)
+  console.log(`   ${res.ok ? 'every lesson\'s try line, knob, controller header and chip inside the fold' : res.failures.length + ' fold failures'}`)
+
+  // Phone: the lesson's named view in the first screen.
+  const phone = await phoneProbe(page, {
+    url: URL,
+    cases: ['Proportional cannot get there', 'Watch the integrator take over'].map((name) => ({
+      name,
+      load: async (pg) => {
+        await pg.waitForSelector('.views canvas')
+        await loadLesson(name)
+      },
+      must: ['.views .view.is-primary canvas'],
+    })),
+  })
+  for (const m of phone.measured) {
+    if (m.box) console.log(`   390x844 ${m.lesson.padEnd(34)} view canvas y ${m.box.y.toFixed(0)}–${(m.box.y + m.box.height).toFixed(0)}`)
+  }
+  for (const f of phone.failures) fail(`phone: ${f}`)
+  console.log(`   ${phone.ok ? 'phone: the lesson\'s view is in the first screen' : phone.failures.length + ' phone failures'}`)
 }
 
 await browser.close()

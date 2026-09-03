@@ -19,6 +19,21 @@ import { CONTROLLERS } from './systems.js'
 // returned as a fact for the canvas to mark, not as a fake spike.
 
 /**
+ * Where the watch cursor OPENS: a fraction of the window in, not the end.
+ *
+ * It used to open at the last sample — the finished response, like the step
+ * view — and the student review caught what that means for this view: at
+ * t = 15 s the handoff is OVER (Kp·e ≈ 3e-7, Ki·∫e = 1) and the story the
+ * pane exists to tell has already happened. Opening a little way in shows
+ * both terms still working. 0.15 rather than 0.2: on the watch lesson's own
+ * 15 s window, 0.2 lands at t = 3.0 s where Kp·e has fallen to 0.0495 — not
+ * visibly nonzero — while 0.15 lands at 2.25 s with Kp·e = 0.105 and
+ * Ki·∫e = 0.895 (measured in lessons.test.js).
+ */
+export const WATCH_OPEN_FRACTION = 0.15
+export const openingCursor = (length) => Math.round(WATCH_OPEN_FRACTION * Math.max(0, length - 1))
+
+/**
  * The vertical range of a watch pane.
  *
  * A stable loop frames its WHOLE story once and the axis never moves — the

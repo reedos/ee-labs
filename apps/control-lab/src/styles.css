@@ -293,3 +293,116 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   font-size: 11px;
   line-height: 1.5;
 }
+
+/* ---------- the lesson's own knobs, under its try line ----------
+   The student review's one damaging bug: "raise Kp" beside a visible
+   slider called Gain K — the PLANT's. A lesson names the knob it is about
+   (`featured`), and that knob renders here, above the fold, before either
+   card. The cards below keep the full set. */
+.featured { margin: 8px 0 0; }
+.featured .num { margin-bottom: 4px; }
+.featured .segmented { display: inline-flex; }
+
+/* A note whose setup has been moved away from: still true of the picture
+   it describes, no longer of the one on screen. It dims until reset. */
+.hint.note.is-dirty { opacity: 0.55; }
+
+/* The hand-over in reverse. */
+.hint.circuit-back a { color: var(--accent); white-space: nowrap; }
+
+/* ---------- the weighted split ----------
+   The pane a lesson names as its view is the lesson; the Bode is context.
+   62 % to the named pane (Power Lab's rule, §11.4.1), and only on the wide
+   layout — on a phone the panes stack and each takes its own height. */
+@media (min-width: 901px) {
+  .views.is-weighted { grid-template-rows: minmax(0, 38fr) minmax(0, 62fr); }
+}
+
+/* The math as a pane, not a sidebar well: it scrolls inside its pane so the
+   page never does, and drops the sidebar's left rule — the pane is the frame. */
+.view-body.math-pane {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+}
+.view-body.math-pane .math-body { border-left: 0; padding: 2px 0 8px; margin-top: 0; }
+
+/* Phone: the lesson's view comes FIRST in the stack, so the plot the note
+   is about is in the first screen with the sidebar, and the Bode is one
+   scroll down rather than the other way round. */
+@media (max-width: 900px) {
+  .views.is-weighted > .view.is-primary { order: -1; }
+  .views.is-weighted > .view.is-primary .plot { min-height: 240px; }
+}
+
+/* On a short laptop screen with a lesson loaded, the subhead gives its
+   52 px to the lesson: the fold probe at 1366×768 needs the try line, the
+   featured knob and the controller header all inside the first screen,
+   and the subhead is the one line that is not part of the lesson. */
+@media (max-height: 800px) and (min-width: 901px) {
+  .app.has-lesson .controls .sub { display: none; }
+}
+
+/* Phone with a lesson loaded: the sidebar gives a little height back so the
+   watch pane — header, transport row and four strips — ends inside the first
+   screen; the per-term readouts are on the canvas too, so they yield. */
+@media (max-width: 900px) {
+  .app.has-lesson .controls { max-height: 40vh; }
+  .views.is-weighted > .view.is-primary .readout [data-part] { display: none; }
+}
+
+/* ---------- the fold at 1366×768 ----------
+   Every lesson's try line, its knob, the controller header and the active
+   chip must sit inside a laptop's first screen with the sidebar at the top
+   (verify §7). The budget is tight, so: a slightly wider sidebar (this lab
+   carries more prose per lesson than the others), compact lesson chips, the
+   nav in the section cap, and the terms as a link on the note's last line. */
+@media (min-width: 901px) and (max-width: 2399px) {
+  .app { grid-template-columns: 372px 1fr; }
+}
+#lessons .preset { padding: 4px 8px; }
+#lessons .preset-group { margin-bottom: 8px; }
+#lessons details.preset-group > .presets { margin: 4px 0 6px; }
+.hint.note { font-size: 11.5px; }
+
+/* The nav rides in the section cap. The cap is a flex row already. */
+.controls h2 .lesson-nav { margin: 0; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.controls h2 .lesson-nav-step, .controls h2 .lesson-nav-reset { padding: 1px 6px; font-size: 10.5px; }
+.controls h2 .lesson-nav-count { min-width: 44px; }
+
+/* Terms as a link at the end of the note, and the definitions under it. */
+.terms-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.terms-link:hover { text-decoration: underline; }
+.terms-list { margin: 6px 0 2px; }
+.terms-list dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
+.terms-list dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+
+/* A featured knob in the controller card: a quiet accent rule says "this one". */
+#controller .featured .num-label { color: var(--accent); }
+
+/* The remaining fold budget at 1366×768, with the deployed LabNav row
+   (26 px, absent on a dev port — verify §7 stands a placeholder in for it)
+   above the title: tighter rhythm around the note and the featured knobs,
+   and on short screens the report-issue link moves to the sidebar's foot. */
+.note-title { margin: 8px 0 2px; }
+.hint.note { margin-top: 8px; }
+.try-line { padding: 6px 9px; }
+.try-chips { margin-top: 4px; }
+#lessons .preset { font-size: 11px; }
+#controller .featured .num { margin-bottom: 6px; }
+.controls-foot { margin-top: 14px; display: none; }
+@media (max-height: 800px) and (min-width: 901px) {
+  .app.has-lesson .controls { padding-top: 10px; }
+  .app.has-lesson .controls header .report-issue { display: none; }
+  .app.has-lesson .controls-foot { display: block; }
+}

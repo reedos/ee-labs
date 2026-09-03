@@ -1,6 +1,18 @@
-import React, { useMemo, useRef, useState } from 'react'
-import { LabNav, NumField, PoleZeroCanvas, ReportIssue, fmt, fmtHz, fmtNum } from '@ee-labs/ui'
-import { Formula, MathPanel } from '@ee-labs/explain'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  LabNav,
+  LessonNav,
+  NumField,
+  PoleZeroCanvas,
+  ReportIssue,
+  TryLine,
+  arrivalEvent,
+  fmt,
+  fmtHz,
+  fmtNum,
+  track,
+} from '@ee-labs/ui'
+import { Formula, MathBody } from '@ee-labs/explain'
 import {
   bode,
   evalAtFreq,
@@ -16,7 +28,18 @@ import {
 } from '@ee-labs/systems'
 import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, settlesOnScreen } from './systems.js'
 import { loopMath } from './math.js'
-import { LESSONS, LESSON_GROUPS, applyLesson } from './lessons.js'
+import {
+  LESSONS,
+  LESSON_GROUPS,
+  applyLesson,
+  applyChip,
+  activeChipOf,
+  chipsFor,
+  crossingGain,
+  isDirty,
+} from './lessons.js'
+import { initialState } from './boot.js'
+import { circuitFor, circuitUrl } from './toCircuitLab.js'
 import { stickyDuration } from './stepAxis.js'
 import { termsFor } from './terms.js'
 import { reportSummary } from './report.js'
@@ -44,19 +67,35 @@ export default function App() {
     return { state, warnings: [...warnings, ...more] }
   })
 
-  const [plantId, setPlantId] = useState(linked.state?.plantId ?? 'motor')
-  const [plantP, setPlantP] = useState(
-    () => linked.state?.plantP ?? defaultsOf(PLANTS.motor),
+  // The other half of the hand-over count: the sender counts the click, this
+  // counts the arrival. Once per load, and only for a load that came from a link.
+  useEffect(() => {
+    if (linked.state) track(arrivalEvent('control-lab', linked.state.from))
+  }, [linked])
+
+  // A bare visit opens on the first lesson, exactly as clicking it would; a
+  // link keeps its own behaviour (boot.js).
+  const [boot] = useState(() =>
+    initialState(linked.state, typeof window === 'undefined' ? '' : window.location.hash),
   )
-  const [ctrlId, setCtrlId] = useState(linked.state?.ctrlId ?? 'p')
-  const [ctrlP, setCtrlP] = useState(() => linked.state?.ctrlP ?? defaultsOf(CONTROLLERS.p))
-  const [lower, setLower] = useState('step')
+  const [plantId, setPlantId] = useState(boot.plantId)
+  const [plantP, setPlantP] = useState(boot.plantP)
+  const [ctrlId, setCtrlId] = useState(boot.ctrlId)
+  const [ctrlP, setCtrlP] = useState(boot.ctrlP)
+  const [lower, setLower] = useState(boot.view)
   // What the step is applied TO: the reference (follow a new setpoint) or the
   // plant input (shrug off a shove). Different questions, one loop.
-  const [stepInput, setStepInput] = useState('ref')
+  const [stepInput, setStepInput] = useState(boot.stepInput)
   const [showPhase, setShowPhase] = useState(true)
-  // Cleared as soon as anything is touched: the note describes one setup.
-  const [lesson, setLesson] = useState(null)
+  // The lesson stays loaded while its knobs are moved — the chip keeps its
+  // highlight and a reset appears (LessonNav) once the setup has drifted from
+  // the note's. It used to clear on the first touch, which un-highlighted the
+  // chip and left no way back but finding it in the list again.
+  const [lesson, setLesson] = useState(boot.lesson)
+  // Counts lesson loads, so a reset to the SAME lesson still rewinds the
+  // watch transport.
+  const [loads, setLoads] = useState(0)
+  const [termsOpen, setTermsOpen] = useState(false)
   // Which lesson groups are unfolded. The active lesson's group is always open
   // regardless, so collapsing can never hide where you are.
   const [openGroups, setOpenGroups] = useState(() => new Set())
@@ -87,20 +126,16 @@ export default function App() {
   const choosePlant = (id) => {
     setPlantId(id)
     setPlantP(defaultsOf(PLANTS[id]))
-    setLesson(null)
     setFromInfo(null)
   }
   const chooseCtrl = (id) => {
     setCtrlId(id)
     setCtrlP(defaultsOf(CONTROLLERS[id]))
-    setLesson(null)
   }
-  // A lesson note describes ONE step input, so flipping the toggle clears the
-  // note like any other control — a note about following r must not stand
-  // over a plot answering d.
+  // A lesson note describes ONE step input; flipping the toggle marks the
+  // lesson dirty like any other control, and the note dims until reset.
   const chooseStepInput = (which) => {
     setStepInput(which)
-    setLesson(null)
   }
 
   const loadLesson = (l) => {
@@ -112,9 +147,22 @@ export default function App() {
     setLower(n.view)
     setStepInput(n.stepInput)
     setLesson(l.name)
+    setLoads((k) => k + 1)
   }
 
   const active = LESSONS.find((l) => l.name === lesson)
+  const activeIndex = LESSONS.findIndex((l) => l.name === lesson)
+  // The state a chip or a dirtiness check reads: the loop's setup, not its view.
+  const state = { plantId, plantP, ctrlId, ctrlP, stepInput }
+  const dirty = isDirty(active, state)
+  const applyChipTo = (chip) => {
+    const next = applyChip(state, chip)
+    setCtrlId(next.ctrlId)
+    setCtrlP(next.ctrlP)
+    setStepInput(next.stepInput)
+    // A chip that flips the step input belongs to a time view.
+    if (chip.set?.stepInput && lower !== 'step' && lower !== 'watch') setLower('step')
+  }
 
   const loop = useMemo(
     () => buildLoop(plantId, plantP, ctrlId, ctrlP),
@@ -242,7 +290,7 @@ export default function App() {
         : null,
     [lower, simAffordable, loop, ctrlId, ctrlP, stepInput, duration],
   )
-  const scrub = useWatchPosition(WATCH_POINTS, lesson)
+  const scrub = useWatchPosition(WATCH_POINTS, `${lesson}#${loads}`)
 
   // The locus of closed-loop poles as the loop gain is swept, with the poles at
   // the CURRENT gain marked on it.
@@ -301,8 +349,81 @@ export default function App() {
 
   const err = 1 - dcGain(loop.closed)
 
+  const chips = useMemo(
+    () => chipsFor(active, state, marg),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [active, plantId, plantP, ctrlId, ctrlP, stepInput, marg],
+  )
+  const activeChip = activeChipOf(chips, state)
+  const crossing = crossingGain(ctrlId, ctrlP, marg)
+
+  // The lead lesson's ghost: the same loop with the lead taken out, L = K·P,
+  // so the phase the network adds is the gap between two curves.
+  const ghost = useMemo(() => {
+    if (ctrlId !== 'lead') return null
+    const bare = bode(series({ b: [ctrlP.k], a: [1] }, loop.plant), freqs)
+    return {
+      mag: bare.mag,
+      phase: bare.phase,
+      label: `ghost: K·P(s) without the lead (K = ${fmtNum(ctrlP.k, 3)})`,
+    }
+  }, [ctrlId, ctrlP, loop, freqs])
+
+  // The hand-over in reverse: only when this plant IS a catalog circuit exactly,
+  // and only where Circuit Lab is deployed beside this page (null in dev).
+  const circuit = circuitFor(plantId, plantP)
+  const circuitHref = circuitUrl(plantId, plantP)
+
+  // The knobs a lesson is about, rendered under its try line so "raise Kp"
+  // points at a slider that is on screen — not the plant's Gain K.
+  // The knobs a lesson is about. Controller knobs are not duplicated under
+  // the try line — the controller card follows it directly, with the
+  // featured knob(s) FIRST in the card (Power Lab's knob-order rule), so
+  // "raise Kp" points at the first slider on screen and not the plant's
+  // Gain K. The one featured control that is not a controller knob, the
+  // step toggle, renders under the try line itself.
+  const featuredKeys = active?.featured || []
+  // Featured first, then the card's own order — except the lead's bare gain
+  // K, which follows its zero and pole so "pole, zero, gain" reads as the
+  // network it is rather than "pole, gain, zero".
+  const featuredRank = (key, i) => {
+    const f = featuredKeys.indexOf(key)
+    if (f >= 0) return f
+    return ctrlId === 'lead' && key === 'k' ? 60 : 10 + i
+  }
+  const orderedCtrlParams = ctrl.params
+    .map((p, i) => ({ p, r: featuredRank(p.key, i) }))
+    .sort((a, b) => a.r - b.r)
+    .map((x) => x.p)
+  const renderStepToggle = () =>
+    featuredKeys.includes('disturbance') ? (
+      <div className="featured" data-featured="disturbance">
+        <div className="segmented sm" role="group" aria-label="Where the step is applied (lesson)">
+          <button
+            type="button"
+            className={stepInput === 'ref' ? 'on' : ''}
+            aria-pressed={stepInput === 'ref'}
+            onClick={() => chooseStepInput('ref')}
+          >
+            Reference
+          </button>
+          <button
+            type="button"
+            className={stepInput === 'dist' ? 'on' : ''}
+            aria-pressed={stepInput === 'dist'}
+            onClick={() => chooseStepInput('dist')}
+          >
+            Disturbance
+          </button>
+        </div>
+      </div>
+    ) : null
+
+  const primaryView = active ? active.patch.view || 'step' : null
+  const weighted = primaryView != null && primaryView !== 'bode'
+
   return (
-    <div className="app">
+    <div className={`app${active ? ' has-lesson' : ''}`}>
       <aside className="controls">
         <header>
           <LabNav current="control-lab" />
@@ -351,7 +472,23 @@ export default function App() {
               ))}
             </ul>
           ) : null}
-          <h2>Try this</h2>
+          {/* The course's spine rides in the section's sticky cap — prev /
+              n of 13 / next, and reset once a knob has moved — so it is on
+              screen wherever the sidebar is scrolled, and costs the fold
+              nothing. */}
+          <h2>
+            <span>Try this</span>
+            {active ? (
+              <LessonNav
+                index={activeIndex}
+                total={LESSONS.length}
+                dirty={dirty}
+                onPrev={() => activeIndex > 0 && loadLesson(LESSONS[activeIndex - 1])}
+                onNext={() => activeIndex < LESSONS.length - 1 && loadLesson(LESSONS[activeIndex + 1])}
+                onReset={() => loadLesson(active)}
+              />
+            ) : null}
+          </h2>
           {/* Grouped as a curriculum and COLLAPSED to group headers by default,
               the same fold as Signal Lab's presets: twelve buttons were most of
               the sidebar, and the plant and controller a lesson changes sat
@@ -367,6 +504,11 @@ export default function App() {
                 key={g}
                 open={holdsActive || openGroups.has(g)}
                 onToggle={(e) => {
+                  // The pinned group's toggles are not the reader's: a
+                  // details element fires `toggle` when it is CREATED open,
+                  // and recording that kept the opening lesson's group open
+                  // under every other lesson — 139 px of the fold, gone.
+                  if (holdsActive) return
                   const next = new Set(openGroups)
                   if (e.target.open) next.add(g)
                   else next.delete(g)
@@ -399,30 +541,105 @@ export default function App() {
           {active ? (
             <>
               <h3 className="note-title">{active.name}</h3>
-              <p className="hint">{active.note}</p>
+              <p className={`hint note${dirty ? ' is-dirty' : ''}`}>
+                {active.note}
+                {/* Definitions on contact, opened from the note's last line
+                    rather than a row of their own: the fold at 1366×768 has
+                    no 22 px to spare, and the terms cost nothing to someone
+                    who already has them. */}
+                {termsFor(active.terms).length ? (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      className="terms-link"
+                      aria-expanded={termsOpen}
+                      onClick={() => setTermsOpen((v) => !v)}
+                    >
+                      {termsOpen ? '▾ terms' : '▸ terms used here'}
+                    </button>
+                  </>
+                ) : null}
+              </p>
+              {termsOpen && termsFor(active.terms).length ? (
+                <dl className="terms-list">
+                  {termsFor(active.terms).map((t) => (
+                    <React.Fragment key={t.id}>
+                      <dt>{t.name}</dt>
+                      <dd>{t.def}</dd>
+                    </React.Fragment>
+                  ))}
+                </dl>
+              ) : null}
+              <TryLine text={active.try} chips={chips} onChip={applyChipTo} activeChip={activeChip} />
+              {renderStepToggle()}
             </>
           ) : null}
-          {/* Definitions on contact: the terms this lesson leans on, defined
-              right under the note rather than in a second tab — and folded,
-              so they cost nothing to someone who already has them. */}
-          {active && termsFor(active.terms).length ? (
-            <details className="terms">
-              <summary>Terms used here</summary>
-              <dl>
-                {termsFor(active.terms).map((t) => (
-                  <React.Fragment key={t.id}>
-                    <dt>{t.name}</dt>
-                    <dd>{t.def}</dd>
-                  </React.Fragment>
-                ))}
-              </dl>
-            </details>
+          {/* The hand-over in reverse. Exact only: a plant with a gain, or
+              component values outside Circuit Lab's knobs, draws nothing. */}
+          {circuit && circuitHref ? (
+            <p className="hint circuit-back">
+              This is also a circuit — {circuit.sentence}.{' '}
+              <a href={circuitHref} title="The same transfer function, as the circuit it is">
+                Open in Circuit Lab →
+              </a>
+            </p>
           ) : null}
         </section>
 
         {/* The section names carry the loop's symbols: the topbar strip, the
             block diagram and the math panel all speak C(s) and P(s), and the
-            sidebar should say which card is which. */}
+            sidebar should say which card is which. The controller card comes
+            FIRST: every lesson is about the controller, and the student
+            review found "raise Kp" pointing below the fold while the plant's
+            Gain K sat in reach — two things called gain, the wrong one
+            visible. The plant is what you are stuck with; it follows. */}
+        <section id="controller">
+          <h2>Controller — C(s)</h2>
+          <div className="presets">
+            {Object.entries(CONTROLLERS).map(([key, c]) => (
+              <button
+                type="button"
+                key={key}
+                className={`preset${key === ctrlId ? ' is-on' : ''}`}
+                onClick={() => chooseCtrl(key)}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+          {active ? null : (
+            <>
+              <h3 className="note-title">{ctrl.name}</h3>
+              <p className="hint">{ctrl.hint}</p>
+            </>
+          )}
+          {/* The lesson's featured knob(s) first, marked, so the slider the
+              try line names is the first one under the header. */}
+          {orderedCtrlParams.map((p) => {
+            const field = (
+              <NumField
+                key={p.key}
+                label={p.label}
+                unit={p.unit}
+                value={ctrlP[p.key]}
+                onChange={(v) => setCtrlP((s) => ({ ...s, [p.key]: v }))}
+                min={p.min}
+                max={p.max}
+                scale={p.scale}
+                eng
+              />
+            )
+            return featuredKeys.includes(p.key) ? (
+              <div className="featured" key={p.key} data-featured={p.key}>
+                {field}
+              </div>
+            ) : (
+              field
+            )
+          })}
+        </section>
+
         <section id="plant">
           <h2>Plant — P(s)</h2>
           {PLANT_GROUPS.map((g) => {
@@ -435,6 +652,7 @@ export default function App() {
                 key={g}
                 open={holdsActive || openPlantGroups.has(g)}
                 onToggle={(e) => {
+                  if (holdsActive) return
                   const next = new Set(openPlantGroups)
                   if (e.target.open) next.add(g)
                   else next.delete(g)
@@ -475,10 +693,7 @@ export default function App() {
               label={p.label}
               unit={p.unit}
               value={plantP[p.key]}
-              onChange={(v) => {
-                setPlantP((s) => ({ ...s, [p.key]: v }))
-                setLesson(null)
-              }}
+              onChange={(v) => setPlantP((s) => ({ ...s, [p.key]: v }))}
               min={p.min}
               max={p.max}
               scale={p.scale}
@@ -501,48 +716,20 @@ export default function App() {
           ) : null}
         </section>
 
-        <section id="controller">
-          <h2>Controller — C(s)</h2>
-          <div className="presets">
-            {Object.entries(CONTROLLERS).map(([key, c]) => (
-              <button
-                type="button"
-                key={key}
-                className={`preset${key === ctrlId ? ' is-on' : ''}`}
-                onClick={() => chooseCtrl(key)}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
-          {active ? null : (
-            <>
-              <h3 className="note-title">{ctrl.name}</h3>
-              <p className="hint">{ctrl.hint}</p>
-            </>
-          )}
-          {ctrl.params.map((p) => (
-            <NumField
-              key={p.key}
-              label={p.label}
-              unit={p.unit}
-              value={ctrlP[p.key]}
-              onChange={(v) => {
-                setCtrlP((s) => ({ ...s, [p.key]: v }))
-                setLesson(null)
-              }}
-              min={p.min}
-              max={p.max}
-              scale={p.scale}
-              eng
-            />
-          ))}
-          <MathPanel entry={math} />
-        </section>
-
         {/* No View section: the view controls live in the headers of the
             panes they govern, same proximity rule Reed asked of Signal Lab —
             on a phone the sidebar is a full screen away from the plots. */}
+
+        {/* On a short laptop screen with a lesson loaded the header's
+            report link yields its 19 px to the fold and reappears here. */}
+        <footer className="controls-foot">
+          <ReportIssue
+            lab="Control Lab"
+            version={pkg.version}
+            state={{ plantId, plantP, ctrlId, ctrlP, stepInput, lower, showPhase, lesson }}
+            summary={reportSummary({ plantId, plantP, ctrlId, ctrlP, stepInput, lower, lesson })}
+          />
+        </footer>
       </aside>
 
       <div className="topbar">
@@ -629,7 +816,7 @@ export default function App() {
         </div>
       </div>
 
-      <main className="views">
+      <main className={`views${weighted ? ' is-weighted' : ''}`}>
         <section className="view">
           <div className="view-head">
             <h2>Open loop L(s) = C(s)·P(s)</h2>
@@ -686,10 +873,13 @@ export default function App() {
             showPhase={showPhase}
             crossover={marg.gainCrossover}
             phaseCrossover={marg.phaseCrossover}
+            ghostMag={ghost?.mag}
+            ghostPhase={ghost?.phase}
+            ghostLabel={ghost?.label}
           />
         </section>
 
-        <section className="view">
+        <section className={`view${weighted ? ' is-primary' : ''}`}>
           <div className="view-head">
             <h2>
               {lower === 'step'
@@ -702,7 +892,9 @@ export default function App() {
                     : 'The loop closing the gap, watched'
                   : lower === 'nyquist'
                     ? 'Nyquist — the loop against −1'
-                    : 'Root locus — the closed-loop poles, as the gain K sweeps'}
+                    : lower === 'math'
+                      ? 'The math — theory against what this loop measures'
+                      : 'Root locus — the closed-loop poles, as the gain K sweeps'}
             </h2>
             {/* The view switch lives on the pane it switches — the same
                 proximity rule as Signal Lab's spectrum controls. */}
@@ -712,6 +904,7 @@ export default function App() {
                 { id: 'watch', label: 'Watch', title: 'Scrub or play through the step and watch the error drive the controller' },
                 { id: 'nyquist', label: 'Nyquist' },
                 { id: 'locus', label: 'Root locus' },
+                { id: 'math', label: 'Math', title: 'Formulas beside the numbers this loop measures' },
               ].map((v) => (
                 <button
                   key={v.id}
@@ -753,6 +946,16 @@ export default function App() {
                   <span>
                     e now <b>{fmtNum(watch.e[Math.min(scrub.pos, watch.e.length - 1)], 3)}</b>
                   </span>
+                  {/* Each term at the cursor, in the DOM as well as on the
+                      canvas — so "both parts still working" is a number a
+                      probe can read, not a picture it has to trust. */}
+                  {watch.parts.length > 1
+                    ? watch.parts.map((p) => (
+                        <span key={p.key} data-part={p.key}>
+                          {p.label} <b>{fmtNum(p.y[Math.min(scrub.pos, p.y.length - 1)], 3)}</b>
+                        </span>
+                      ))
+                    : null}
                   <span>
                     u now <b>{fmtNum(watch.u[Math.min(scrub.pos, watch.u.length - 1)], 3)}</b>
                   </span>
@@ -800,9 +1003,26 @@ export default function App() {
                   stability is a statement about one point: 1 + L = 0
                 </span>
               ) : lower === 'locus' ? (
-                <span className="prov">
-                  crosses into the shaded half and the loop oscillates
-                </span>
+                <>
+                  {/* You are here, and where the branch meets the axis — the
+                      crossing gain is the current gain times the gain
+                      margin, and the test bisects the verdict to pin it. */}
+                  {crossing ? (
+                    <span data-role="locus-here">
+                      you are here: {crossing.label} = <b>{fmtNum(crossing.now, 3)}</b>
+                      {' · '}
+                      {crossing.crossing > crossing.now ? 'crosses' : 'crossed'} the axis at{' '}
+                      {crossing.label} = <b>{fmtNum(crossing.crossing, 4)}</b>
+                    </span>
+                  ) : (
+                    <span className="prov" data-role="locus-here">
+                      never crosses — the phase never reaches −180°
+                    </span>
+                  )}
+                  <span className="prov">crosses into the shaded half and the loop oscillates</span>
+                </>
+              ) : lower === 'math' ? (
+                <span className="prov">a tick means the closed form and the live loop agree</span>
               ) : null}
             </div>
           </div>
@@ -868,6 +1088,10 @@ export default function App() {
                 {simBlocked}
               </p>
             )
+          ) : lower === 'math' ? (
+            <div className="view-body math-pane">
+              <MathBody entry={math} />
+            </div>
           ) : lower === 'nyquist' ? (
             <NyquistCanvas
               re={nyq.re}
