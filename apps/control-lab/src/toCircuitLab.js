@@ -1,5 +1,5 @@
 import { buildCircuitLink, labUrl } from '@ee-labs/ui'
-import { PLANTS } from './systems.js'
+import { PLANTS, CIRCUIT_KNOBS, rlcFor } from './systems.js'
 
 // The hand-over in reverse: this plant, as the circuit it is.
 //
@@ -13,13 +13,9 @@ import { PLANTS } from './systems.js'
 // would be clamped on arrival into a different circuit. Either case returns
 // null and the line is not drawn, which is better than a link that lies.
 
-// Circuit Lab's knob ranges (circuits.js R/L/C helpers). toCircuitLab.test.js
-// pins these against the catalog itself, so a change there fails here.
-export const CIRCUIT_KNOBS = {
-  r: [1, 1e6],
-  l: [1e-6, 1],
-  c: [1e-12, 1e-3],
-}
+// Circuit Lab's knob ranges live in systems.js now (the second-order hint
+// reads them); re-exported so nothing that imported them from here breaks.
+export { CIRCUIT_KNOBS }
 const inRange = (v, [lo, hi]) => Number.isFinite(v) && v >= lo && v <= hi
 
 /**
@@ -30,22 +26,21 @@ const inRange = (v, [lo, hi]) => Number.isFinite(v) && v >= lo && v <= hi
 export function circuitFor(plantId, plantP) {
   if (!plantP) return null
   if (plantId === 'secondOrder') {
-    if (plantP.k !== 1) return null
-    // Two equations, three parts: L is free. 10 mH first (the value the
-    // math panel's sentence uses), then whatever keeps C and R on the knobs.
-    for (const L of [0.01, 1e-3, 0.1, 1, 1e-4, 1e-5, 1e-6]) {
-      const C = 1 / (plantP.wn * plantP.wn * L)
-      const R = 2 * plantP.zeta * Math.sqrt(L / C)
-      if (!inRange(R, CIRCUIT_KNOBS.r) || !inRange(L, CIRCUIT_KNOBS.l) || !inRange(C, CIRCUIT_KNOBS.c)) continue
-      return {
-        id: 'rlcSeries',
-        values: [R, L, C],
-        output: 'c',
-        components: { R, L, C },
-        sentence: 'a series RLC read across its capacitor',
-      }
+    const built = rlcFor(plantP)
+    if (!built) return null
+    // R rounded to four significant figures: the incoming link carries six,
+    // and the R computed back from its rounded ζ came out as
+    // 100.00014798400001 Ω — noise dressed as precision. Four figures is a
+    // component value; toCircuitLab.test.js measures the rebuilt circuit
+    // against the plant to 1e-4, and to nine decimals where R is short.
+    const R = Number(built.R.toPrecision(4))
+    return {
+      id: 'rlcSeries',
+      values: [R, built.L, built.C],
+      output: 'c',
+      components: { R, L: built.L, C: built.C },
+      sentence: 'a series RLC read across its capacitor',
     }
-    return null
   }
   if (plantId === 'firstOrder') {
     if (plantP.k !== 1) return null

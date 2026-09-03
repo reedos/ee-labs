@@ -1,5 +1,37 @@
 import { PLANTS, CONTROLLERS, defaultsOf } from './systems.js'
 
+// Circuit Lab's catalog names, by id. A link's `from=circuit:rlcSeries` may
+// carry no label (the walker's arrival did), and the banner then said "came
+// from another tool" while the P(s) box printed the raw id. The catalog is
+// the other territory, so the names are a table here — fromLink.test.js
+// pins every entry against apps/circuit-lab/src/circuits.js.
+export const CIRCUIT_NAMES = {
+  divider: 'Voltage divider',
+  rcLow: 'RC low-pass',
+  rcHigh: 'RC high-pass',
+  rlLow: 'RL low-pass',
+  rlcSeries: 'Series RLC',
+  rlcParallel: 'Parallel RLC (tank)',
+  twinT: 'Twin-T notch',
+  sallenKey: 'Sallen–Key low-pass',
+  inverting: 'Inverting amplifier',
+  integrator: 'Op-amp integrator',
+}
+
+/** The app a link came from, as a person would say it. */
+export function fromAppName(from) {
+  if (!from) return null
+  return { circuit: 'Circuit Lab', signal: 'Signal Lab', control: 'Control Lab' }[from.app] || 'another tool'
+}
+
+/** What to call the thing that arrived: its own label, else the catalog name, else the id. */
+export function fromDisplayName(from) {
+  if (!from) return null
+  if (from.label) return from.label
+  if (from.app === 'circuit' && CIRCUIT_NAMES[from.id]) return CIRCUIT_NAMES[from.id]
+  return from.id
+}
+
 // Turning a link into a loop this app can close.
 //
 // Same rule as everywhere in the suite: anything that cannot be honoured is

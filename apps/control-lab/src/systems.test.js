@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, settlesOnScreen } from './systems.js'
+import {
+  PLANTS,
+  PLANT_GROUPS,
+  CONTROLLERS,
+  buildLoop,
+  defaultsOf,
+  settlesOnScreen,
+  ctrlDefaultsFor,
+  plantBandwidth,
+} from './systems.js'
 import {
   dcGain,
   magnitudeAt,
@@ -332,5 +341,59 @@ describe('the disturbance path', () => {
     }
     expect(settled('p', { kp: 9 })).toBeCloseTo(2 / 19, 4)
     expect(Math.abs(settled('pi', { kp: 2, ki: 2 }))).toBeLessThan(1e-4)
+  })
+})
+
+describe('ctrlDefaultsFor', () => {
+  it('opens every plant x controller pair stable, not just the registry defaults', () => {
+    for (const [plantId, plant] of Object.entries(PLANTS)) {
+      const plantP = defaultsOf(plant)
+      for (const ctrlId of Object.keys(CONTROLLERS)) {
+        const ctrlP = ctrlDefaultsFor(plantId, plantP, ctrlId)
+        const { closed } = buildLoop(plantId, plantP, ctrlId, ctrlP)
+        expect(isStable(closed), `${plantId} + ${ctrlId}`).toBe(true)
+      }
+    }
+  })
+
+  it('does not put the unstable plant exactly on its own boundary', () => {
+    // The registry default Kp = 1 on `unstable` (pole at p = 1, K = 1) sits
+    // exactly at Kp*K = p — the marginal boundary. The plant overrides it.
+    const plantP = defaultsOf(PLANTS.unstable)
+    expect(ctrlDefaultsFor('unstable', plantP, 'p').kp).toBe(5)
+    expect(ctrlDefaultsFor('unstable', plantP, 'lead').k).toBe(5)
+  })
+
+  it('scales Ki and Kd to the plant\'s own bandwidth, clamped to the field\'s range', () => {
+    // A series RLC handed over at 31 krad/s: the registry's Ki = 1 default put
+    // a pole at -0.5 rad/s beside a pair at 31 krad/s ("too stiff to simulate"
+    // one click after "switch to PI").
+    const fast = { k: 1, wn: 31622.8, zeta: 0.158114 }
+    const wc = plantBandwidth('secondOrder', fast)
+    expect(wc).toBeCloseTo(31622.8, 0)
+    const pi = ctrlDefaultsFor('secondOrder', fast, 'pi')
+    // The uncapped scaling (kp*wc/10 ~= 3162) sails past Ki's field max of
+    // 1000, so ctrlDefaultsFor must clamp it there rather than hand the
+    // field a value it would refuse to display.
+    const kiField = CONTROLLERS.pi.params.find((p) => p.key === 'ki')
+    expect(pi.ki).toBe(kiField.max)
+    const pid = ctrlDefaultsFor('secondOrder', fast, 'pid')
+    // Same story below the floor: kp/(10*wc) ~= 3.16e-6 sits under Kd's
+    // field min of 1e-4, so it clamps up rather than under-running it.
+    const kdField = CONTROLLERS.pid.params.find((p) => p.key === 'kd')
+    expect(pid.kd).toBe(kdField.min)
+    // And the resulting loop is affordable: RK4 sub-steps scale with
+    // duration x fastest pole, and this pairing must not blow that budget.
+    const { closed } = buildLoop('secondOrder', fast, 'pi', pi)
+    expect(isStable(closed)).toBe(true)
+    const pz = roots(closed.a)
+    const fastest = Math.max(...pz.map(([re, im]) => Math.hypot(re, im)))
+    const naturalDuration = Math.min(12 / Math.min(...pz.filter(([re]) => Math.abs(re) > 1e-9).map(([re]) => Math.abs(re))), 400)
+    expect((naturalDuration * fastest) / 0.08 + 900).toBeLessThan(2.5e6)
+  })
+
+  it('leaves the P controller\'s gain untouched by the bandwidth scaling', () => {
+    const plantP = defaultsOf(PLANTS.motor)
+    expect(ctrlDefaultsFor('motor', plantP, 'p')).toEqual(defaultsOf(CONTROLLERS.p))
   })
 })

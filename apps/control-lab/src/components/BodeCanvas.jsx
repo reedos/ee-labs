@@ -189,7 +189,15 @@ export default function BodeCanvas({
         }
         plo = Math.min(-90, Math.floor(plo / 90) * 90)
         phi = Math.max(90, Math.ceil(phi / 90) * 90)
-        const py = (d) => area.y + area.h - ((d - plo) / (phi - plo)) * area.h
+        // A flat −90° trace (a bare integrator's controller term, an
+        // early-lesson PI) lands EXACTLY on plo, and drew right on the
+        // frame's bottom line — indistinguishable from the axis itself. A
+        // few pixels of inset keep the curve (and the tick labels, which
+        // share this py) off the frame on both edges without touching the
+        // 90°-multiple grid the ticks are drawn at.
+        const padPx = 3 * (area.k || 1)
+        const py = (d) =>
+          area.y + padPx + ((phi - d) / (phi - plo)) * (area.h - 2 * padPx)
 
         if (ghostPhase) {
           ctx.strokeStyle = COLORS.phase

@@ -279,6 +279,33 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 /* A margin that has run thin is worth seeing before you read the number. */
 .topbar-field b.warn { color: var(--warn); }
 
+/* The marginal verdict — a sustained oscillation, neither settled nor run
+   away — gets its own look: not the muted "settled" style, not the dashed
+   "unstable" one. Scoped here rather than in the shared base.css, which
+   only ever styled the two-state badge. */
+.flow-node.is-warn {
+  border-color: var(--warn);
+  color: var(--warn);
+  background: var(--panel-2);
+}
+
+/* The lesson clicked away from, one button back — and the course's own dead
+   end. A distinct class from .terms-link: the two co-occur (the last lesson
+   still offers its "terms used here" toggle) and verify.mjs's locator for
+   that one must not resolve to more than one button. */
+.hint.back-to-lesson, .hint.course-end { font-size: 11.5px; }
+.lesson-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.lesson-link:hover { text-decoration: underline; }
+
 /* Arriving from another tool. */
 .hint.from-link {
   padding: 7px 9px;

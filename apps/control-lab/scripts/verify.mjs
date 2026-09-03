@@ -317,13 +317,13 @@ console.log('\n1b. Loading every lesson through the folded groups\n')
 
   // The margin lesson's chips read the live gain margin.
   await loadLesson('The margin says exactly how far')
-  await page.locator('.try-line .chip', { hasText: '0.9 × GM' }).click()
+  await page.locator('.try-line .chip', { hasText: '0.9 × gain margin' }).click()
   await settle()
-  if (!(await isStable())) fail('0.9 × GM should leave the loop stable')
-  await page.locator('.try-line .chip', { hasText: '1.1 × GM' }).click()
+  if (!(await isStable())) fail('0.9 × gain margin should leave the loop stable')
+  await page.locator('.try-line .chip', { hasText: '1.1 × gain margin' }).click()
   await settle()
-  if (await isStable()) fail('1.1 × GM should tip the loop unstable')
-  console.log('   the 0.9× / 1.1× GM chips bracket the boundary')
+  if (await isStable()) fail('1.1 × gain margin should tip the loop unstable')
+  console.log('   the 0.9× / 1.1× gain-margin chips bracket the boundary')
 
   // The locus readout says where you are and where the branch crosses.
   await loadLesson('Watch the poles cross')
@@ -674,11 +674,10 @@ console.log('\n4d. The watch view: scrub, play, and the transport rules\n')
   console.log('   scrubbing moves the readouts and the picture')
 
   // The early moment tells the lesson's story: e still substantial, far from
-  // settled. The physics: this loop pole-zero cancels to L = 1/s, e = e^-t,
-  // and slider 60 of 600 on the laddered 15 s window is t = 1.5 → e ≈ 0.223.
-  // The old threshold of 0.3 "passed" only because the readout printed
-  // "223 m" and the parse read it as 223 — a check green on the very bug the
-  // audit removed.
+  // settled — slider 60 of 600, early in whatever window the loop's own
+  // settling time earns it. The old threshold of 0.3 "passed" only because
+  // the readout printed "223 m" and the parse read it as 223 — a check
+  // green on the very bug the audit removed.
   const eEarly = parseFloat((early.match(/e now\s*(-?[\d.]+)/) || [])[1])
   if (!(eEarly > 0.15)) fail(`watch: early in the step e should still be substantial, readout says ${early}`)
 

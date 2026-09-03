@@ -1,6 +1,6 @@
 import React from 'react'
 import { stickyRange } from '../stepAxis.js'
-import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
+import { useCanvas, COLORS, drawFrame, plotArea, fmt, fmtNum } from '@ee-labs/ui'
 
 /**
  * Step response: what the circuit does to a sudden change.
@@ -10,7 +10,16 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
  * ringing, and which of the two is easier to recognise depends entirely on what
  * you are trying to decide.
  */
-export default function StepCanvas({ t, y, final, markers = [], diverges = false, resetKey = '' }) {
+export default function StepCanvas({
+  t,
+  y,
+  final,
+  reference = null,
+  markers = [],
+  diverges = false,
+  resetKey = '',
+  caption = null,
+}) {
   const heldY = React.useRef({ key: '', range: null })
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -22,6 +31,13 @@ export default function StepCanvas({ t, y, final, markers = [], diverges = false
       for (let i = 0; i < y.length; i++) {
         if (y[i] < lo) lo = y[i]
         if (y[i] > hi) hi = y[i]
+      }
+      // What was ASKED for must fit the frame even where the loop falls
+      // short of it — the whole point of a lesson like "proportional cannot
+      // get there", where the trace never reaches this line.
+      if (Number.isFinite(reference)) {
+        if (reference < lo) lo = reference
+        if (reference > hi) hi = reference
       }
       // A diverging response runs to 1e9 and squashes everything worth seeing
       // into a flat line at zero. Clamp the axis and let the trace leave the
@@ -89,6 +105,27 @@ export default function StepCanvas({ t, y, final, markers = [], diverges = false
         ctx.globalAlpha = 1
       }
 
+      // What was ASKED for, distinct from where the loop actually settles —
+      // "Proportional cannot get there" is the lesson that exists to show a
+      // gap between these two lines.
+      if (Number.isFinite(reference)) {
+        ctx.strokeStyle = COLORS.textBright
+        ctx.globalAlpha = 0.55
+        ctx.setLineDash([2 * k, 3 * k])
+        ctx.lineWidth = 1 * k
+        ctx.beginPath()
+        ctx.moveTo(area.x, sy(reference))
+        ctx.lineTo(area.x + area.w, sy(reference))
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.globalAlpha = 1
+        ctx.fillStyle = COLORS.textBright
+        ctx.font = `${Math.round(10.5 * k)}px ui-sans-serif, system-ui, sans-serif`
+        ctx.textAlign = 'left'
+        ctx.textBaseline = reference >= (final ?? reference) ? 'bottom' : 'top'
+        ctx.fillText(`asked for r = ${fmtNum(reference, 3)}`, area.x + 4 * k, sy(reference) + (ctx.textBaseline === 'bottom' ? -3 : 3) * k)
+      }
+
       for (const m of markers) {
         if (!(m.t > 0) || m.t > tMax) continue
         const x = sx(m.t)
@@ -121,9 +158,32 @@ export default function StepCanvas({ t, y, final, markers = [], diverges = false
         else ctx.lineTo(x, yy)
       }
       ctx.stroke()
+
+      // A small dashed tick and caption at t = 0, for a jump the trace makes
+      // that is not a bug — the unfiltered derivative term's kick, named
+      // the way the watch view marks it, instead of left as an unexplained
+      // discontinuity at the plot's left edge.
+      if (caption) {
+        const x0 = sx(0)
+        ctx.strokeStyle = COLORS.phase
+        ctx.globalAlpha = 0.6
+        ctx.setLineDash([2 * k, 3 * k])
+        ctx.lineWidth = 1.4 * k
+        ctx.beginPath()
+        ctx.moveTo(x0 + 1 * k, area.y)
+        ctx.lineTo(x0 + 1 * k, area.y + area.h)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.globalAlpha = 1
+        ctx.fillStyle = COLORS.phase
+        ctx.font = `italic ${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'top'
+        ctx.fillText(caption, area.x + 4 * k, area.y + 4 * k)
+      }
       ctx.restore()
     },
-    [t, y, final, markers, diverges, resetKey],
+    [t, y, final, reference, markers, diverges, resetKey, caption],
   )
 
   return <canvas ref={ref} className="plot" role="img" aria-label="Closed-loop step response in time" />

@@ -23,12 +23,12 @@ import { CONTROLLERS } from './systems.js'
  *
  * It used to open at the last sample — the finished response, like the step
  * view — and the student review caught what that means for this view: at
- * t = 15 s the handoff is OVER (Kp·e ≈ 3e-7, Ki·∫e = 1) and the story the
- * pane exists to tell has already happened. Opening a little way in shows
- * both terms still working. 0.15 rather than 0.2: on the watch lesson's own
- * 15 s window, 0.2 lands at t = 3.0 s where Kp·e has fallen to 0.0495 — not
- * visibly nonzero — while 0.15 lands at 2.25 s with Kp·e = 0.105 and
- * Ki·∫e = 0.895 (measured in lessons.test.js).
+ * the end the handoff is OVER (Kp·e ≈ 0, Ki·∫e = 1) and the story the pane
+ * exists to tell has already happened. Opening a little way in shows both
+ * terms still working: on the watch lesson's own window (8 s, sized by
+ * stepWindow.js from the trace's measured settling time, not a pole guess),
+ * 0.15 lands at t = 1.2 s with Kp·e = 0.301 and Ki·∫e = 0.699 — both
+ * substantially at work (measured in lessons.chips.test.js).
  */
 export const WATCH_OPEN_FRACTION = 0.15
 export const openingCursor = (length) => Math.round(WATCH_OPEN_FRACTION * Math.max(0, length - 1))

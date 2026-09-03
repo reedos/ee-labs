@@ -113,4 +113,16 @@ describe('this plant, as the circuit it is', () => {
       circuitUrl('motor', defaultsOf(PLANTS.motor), { origin: 'https://x', pathname: '/ee-labs/control-lab/' }),
     ).toBeNull()
   })
+
+  it('the second-order plant\'s hint never promises a link circuitFor cannot build', () => {
+    // "Open in Circuit Lab" renders only where circuitFor(...) is non-null
+    // (App.jsx: `circuit && circuitHref`); the hint text is the only other
+    // place that promise is made, and the two must agree.
+    const buildable = { k: 1, wn: 10000, zeta: 0.3 } // L = 10 mH, C = 1 uF, R = 60 ohm — all on-knob
+    const notBuildable = { k: 1, wn: 6.283, zeta: 0.3 } // the registry default: needs C = 2.5 F
+    expect(circuitFor('secondOrder', buildable)).toBeTruthy()
+    expect(PLANTS.secondOrder.hint(buildable)).toMatch(/"Open in Circuit Lab" link below builds it/)
+    expect(circuitFor('secondOrder', notBuildable)).toBeNull()
+    expect(PLANTS.secondOrder.hint(notBuildable)).not.toMatch(/link below builds it/)
+  })
 })

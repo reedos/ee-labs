@@ -1,4 +1,4 @@
-import { series, closeLoop, polyAdd, polyMul } from '@ee-labs/systems'
+import { series, closeLoop, polyAdd, polyMul, polesZeros } from '@ee-labs/systems'
 import { fmt, fmtNum } from '@ee-labs/ui'
 
 // The things being controlled, and the things doing the controlling.
@@ -29,6 +29,32 @@ const P = (key, label, value, min, max, hint, unit = '') => ({
 })
 
 export const PLANT_GROUPS = ['First order', 'Second order', 'Hard to control', 'Any transfer function']
+
+// Circuit Lab's knob ranges (circuits.js R/L/C helpers). toCircuitLab.test.js
+// pins these against the catalog itself, so a change there fails here. They
+// live in this file because the second-order plant's hint has to know
+// whether the circuit it names can actually be built next door.
+export const CIRCUIT_KNOBS = {
+  r: [1, 1e6],
+  l: [1e-6, 1],
+  c: [1e-12, 1e-3],
+}
+const onKnob = (v, [lo, hi]) => Number.isFinite(v) && v >= lo && v <= hi
+
+/**
+ * The series RLC a second-order plant is, with L chosen so C and R land on
+ * Circuit Lab's knobs — or null when no L in the catalog's range can. The
+ * hint, the math panel and the hand-over link all read this one mapping.
+ */
+export function rlcFor(p) {
+  if (p.k !== 1) return null
+  for (const L of [0.01, 1e-3, 0.1, 1, 1e-4, 1e-5, 1e-6]) {
+    const C = 1 / (p.wn * p.wn * L)
+    const R = 2 * p.zeta * Math.sqrt(L / C)
+    if (onKnob(R, CIRCUIT_KNOBS.r) && onKnob(L, CIRCUIT_KNOBS.l) && onKnob(C, CIRCUIT_KNOBS.c)) return { R, L, C }
+  }
+  return null
+}
 
 // A number as TeX, for the custom plant's live formula. Exponent form where
 // plain digits would be a wall of zeros (an RLC arrives with LC ≈ 1e-10).
@@ -117,8 +143,16 @@ export const PLANTS = {
   secondOrder: {
     name: 'Second order',
     group: 'Second order',
-    hint:
-      'The series RLC from Circuit Lab — a filter tank, a crystal, any tuned stage. It has a ' +
+    // A function of the parameters: the sentence promised Circuit Lab's RLC
+    // beside a plant whose ωₙ = 6.28 rad/s needs C = 2.5 F, four decades
+    // past the catalog's knob — so no link was drawn under a hint that
+    // named one. The hint now says which it is.
+    hint: (p) =>
+      (rlcFor(p)
+        ? 'The series RLC from Circuit Lab, exactly — the "Open in Circuit Lab" link below builds it — '
+        : 'The same shape as Circuit Lab\'s series RLC — at values outside its knobs (this ωₙ needs ' +
+          `C = ${fmt(1 / (p.wn * p.wn * 1), 'F', 2)} with L = 1 H; the catalog stops at 1 mF), so no link — `) +
+      'a filter tank, a crystal, any tuned stage. It has a ' +
       'resonance of its own before you touch it, and its pole pair spends 180° of phase in ' +
       'total, falling through −90° at ωₙ — the lighter the damping, the more abruptly. A ' +
       'controller can damp the resonance or make it very much worse.',
@@ -131,13 +165,21 @@ export const PLANTS = {
     tex: 'P(s) = \\frac{K\\omega_n^2}{s^2 + 2\\zeta\\omega_n s + \\omega_n^2}',
     circuit: {
       text: (p) => {
-        const L = 0.01
+        // The values the hand-over link would carry, when one can be built;
+        // otherwise the 10 mH pair, named as unbuildable rather than
+        // promised (the sentence once put "C = 2.5 F" beside a link that
+        // was not there).
+        const built = rlcFor(p)
+        const L = built ? built.L : 0.01
         const C = 1 / (p.wn * p.wn * L)
         const R = 2 * p.zeta * Math.sqrt(L / C)
         return (
           'Circuit Lab\'s series RLC, read across the capacitor: ωₙ = 1/√(LC) and ' +
-          `ζ = (R/2)·√(C/L). With L = 10 mH: C = ${fmt(C, 'F', 3)}, R = ${fmt(R, 'Ω', 3)}` +
-          `${p.k === 1 ? '' : `, then a ×${fmtNum(p.k, 3)} amplifier`}.`
+          `ζ = (R/2)·√(C/L). With L = ${fmt(L, 'H', 3)}: C = ${fmt(C, 'F', 3)}, R = ${fmt(R, 'Ω', 3)}` +
+          `${p.k === 1 ? '' : `, then a ×${fmtNum(p.k, 3)} amplifier`}` +
+          (built
+            ? '.'
+            : ' — outside Circuit Lab\'s knobs (C ≤ 1 mF, L ≤ 1 H), so the same shape, not a circuit it can build.')
         )
       },
       tex: 'H(s) = K\\cdot\\frac{1}{LC\\,s^2 + RC\\,s + 1}',
@@ -225,10 +267,15 @@ export const PLANTS = {
       'A pole in the RIGHT half plane: an op-amp wired with positive feedback, a maglev coil, ' +
       'a tunnel diode biased in its negative-resistance region. Left alone the state runs away ' +
       'exponentially, and feedback is not an improvement here but the only reason it works at ' +
-      'all. Note that too LITTLE gain is now the problem.',
+      'all. Too LITTLE gain is the failure mode here: the loop holds only while Kp·K > p, so ' +
+      'the controllers open at Kp = 5 — turn it down past 1 and the loop latches.',
     params: [P('k', 'Gain K', 1, 0.001, 1e6), P('p', 'Unstable pole at +p', 1, 0.01, 1e6, null, '1/s')],
     tf: (p) => ({ b: [p.k], a: [1, -p.p] }),
     tex: 'P(s) = \\frac{K}{s - p}',
+    // The registry defaults (Kp = 1) put every controller EXACTLY on this
+    // plant's boundary, Kp·K = p: four picker clicks, four marginal loops.
+    // A plant may name the gains its controllers open with.
+    ctrlDefaults: { p: { kp: 5 }, pi: { kp: 5 }, pid: { kp: 5 }, lead: { k: 5 } },
     circuitNote:
       'No passive network can be this plant: resistors, capacitors and inductors only ever ' +
       'dissipate or store, so their poles never reach the right half plane — a claim the test ' +
@@ -308,13 +355,16 @@ export const CONTROLLERS = {
       'needs — and unlike a derivative term its high-frequency gain is bounded, so it does not ' +
       'amplify noise without limit. (Drag the zero past the pole and it is a LAG instead: the ' +
       'same structure now subtracts phase in the band between them.)',
+    // Kc, not K: the plant's gain is K, and a lesson with both on screen had
+    // "two things called K" (student review). The symbol follows the label
+    // into the diagram box, the locus readout and the chips.
     params: [
-      P('k', 'Gain', 1, 0.001, 1000),
+      { ...P('k', 'Kc (gain)', 1, 0.001, 1000), symbol: 'Kc' },
       P('z', 'Zero at', 1, 0.001, 1e7, null, 'rad/s'),
       P('p', 'Pole at', 10, 0.001, 1e8, null, 'rad/s'),
     ],
     tf: (c) => ({ b: [c.k / c.z, c.k], a: [1 / c.p, 1] }),
-    tex: 'C(s) = K\\,\\frac{1 + s/z}{1 + s/p}, \\qquad z < p',
+    tex: 'C(s) = K_c\\,\\frac{1 + s/z}{1 + s/p}, \\qquad z < p',
   },
 }
 
@@ -376,5 +426,47 @@ export function settlesOnScreen(y, final) {
 export const defaultsOf = (defs) => {
   const out = {}
   for (const p of defs.params) out[p.key] = p.value
+  return out
+}
+
+/**
+ * The plant's bandwidth, as one number: the geometric mean of its nonzero
+ * pole magnitudes, in rad/s. 1 for a plant with no such pole (a bare
+ * integrator), which is also the scale the registry defaults were tuned at.
+ */
+export function plantBandwidth(plantId, plantP) {
+  const tf = PLANTS[plantId].tf(plantP)
+  const ws = polesZeros(tf)
+    .poles.map(([re, im]) => Math.hypot(re, im))
+    .filter((w) => w > 1e-9)
+  if (!ws.length) return 1
+  return Math.exp(ws.reduce((s, w) => s + Math.log(w), 0) / ws.length)
+}
+
+/**
+ * The gains a controller opens with for THIS plant — what the picker buttons
+ * and a link arrival use.
+ *
+ * The registry defaults were tuned for plants around 1 rad/s. Two things
+ * broke on plants that are not: the unstable plant's Kp = 1 sat exactly on
+ * its own boundary (Kp·K = p), and a series RLC handed over at 31 krad/s
+ * with Ki = 1 gave the loop a pole at −0.5 rad/s beside a pair at 31 krad/s
+ * — "Too stiff to simulate" one click after a banner said "switch to PI".
+ * So: a plant may override the gains (unstable: Kp = 5), and the integral
+ * and derivative gains scale with the plant's bandwidth ωc — the PI corner
+ * Ki/Kp a decade below ωc, the derivative corner Kp/Kd a decade above.
+ * systems.test.js measures every plant × controller stable at these, and
+ * the RLC arrival affordable.
+ */
+export function ctrlDefaultsFor(plantId, plantP, ctrlId) {
+  const ctrl = CONTROLLERS[ctrlId]
+  const out = { ...defaultsOf(ctrl), ...(PLANTS[plantId].ctrlDefaults?.[ctrlId] || {}) }
+  const wc = plantBandwidth(plantId, plantP)
+  const clampTo = (key, v) => {
+    const def = ctrl.params.find((p) => p.key === key)
+    return Math.min(def.max, Math.max(def.min, v))
+  }
+  if (ctrlId === 'pi' || ctrlId === 'pid') out.ki = clampTo('ki', (out.kp * wc) / 10)
+  if (ctrlId === 'pid') out.kd = clampTo('kd', out.kp / (10 * wc))
   return out
 }

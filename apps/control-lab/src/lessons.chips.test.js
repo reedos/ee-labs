@@ -9,10 +9,13 @@ import {
   crossingGain,
   gainKeyOf,
   isDirty,
+  round4,
 } from './lessons.js'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
-import { stickyDuration } from './stepAxis.js'
+import { stickyDuration, ladderUp } from './stepAxis.js'
 import { watchSignals, openingCursor, WATCH_OPEN_FRACTION } from './watch.js'
+import { verdictOf, oscillationOf } from './verdict.js'
+import { naturalWindow } from './stepWindow.js'
 import { dcGain, isStable, magnitudeAt, margins, polesZeros, secondOrderMetrics, stepResponse } from '@ee-labs/systems'
 
 // The try lines and their chips. A try line quotes numbers — "Kp → 12 and the
@@ -173,24 +176,34 @@ describe('what each try line and chip claims, measured', () => {
     const l = byName('Watch the integrator take over')
     const s = stateOf(l)
     const loop = loopOf(s)
-    // The app's own window: 12 over the slowest closed pole, on the ladder.
+    // The app's own window: sized from the trace's MEASURED settling time
+    // (naturalWindow), not a pole-only guess — the guess put the whole rise
+    // in the left fifth of a 15 s window; the settle-based window is 8 s.
     const pz = polesZeros(loop.closed)
+    const marg = margOf(s)
+    const verdict = verdictOf(loop.closed, marg)
     const slow = Math.min(...pz.poles.filter(([re]) => Math.abs(re) > 1e-9).map(([re]) => Math.abs(re)))
-    const duration = stickyDuration(NaN, Math.min(12 / slow, 400))
-    expect(duration).toBe(15)
+    const natural = naturalWindow(loop.closed, { verdict, slow, grow: 0, osc: 0 })
+    const duration = stickyDuration(NaN, natural)
+    expect(duration).toBe(8)
     const N = 600
     const w = watchSignals(loop, s.ctrlId, s.ctrlP, 'ref', { duration, points: N })
     const i = openingCursor(N)
     expect(i).toBe(Math.round(WATCH_OPEN_FRACTION * (N - 1)))
     const p = w.parts.find((x) => x.key === 'p').y[i]
     const int = w.parts.find((x) => x.key === 'i').y[i]
-    // "Both parts still working": each visibly nonzero, neither finished.
-    expect(Math.abs(p), 'Kp·e at the opening cursor').toBeGreaterThan(0.05)
-    expect(Math.abs(int), 'Ki·∫e at the opening cursor').toBeGreaterThan(0.05)
+    // "Both parts still working": each visibly nonzero, neither finished —
+    // and, at the app's own (now shorter, settle-time-sized) window, well
+    // clear of the 0.05 floor rather than sitting right at it.
+    expect(Math.abs(p), 'Kp·e at the opening cursor').toBeCloseTo(0.301, 2)
+    expect(Math.abs(int), 'Ki·∫e at the opening cursor').toBeCloseTo(0.699, 2)
+    expect(Math.abs(p)).toBeGreaterThan(0.05)
+    expect(Math.abs(int)).toBeGreaterThan(0.05)
     expect(int).toBeLessThan(0.95)
-    // And why 0.15 rather than 0.2: at 20% Kp·e has already fallen under 0.05.
-    const at20 = w.parts.find((x) => x.key === 'p').y[Math.round(0.2 * (N - 1))]
-    expect(Math.abs(at20)).toBeLessThan(0.05)
+    // By 3x further into the window (fraction 0.45) the handoff is well
+    // along: Kp·e has fallen under 0.05.
+    const later = w.parts.find((x) => x.key === 'p').y[Math.round(0.45 * (N - 1))]
+    expect(Math.abs(later)).toBeLessThan(0.05)
     // The featured toggle lands on the shove, whose memory winds to −1.
     expect(l.featured).toContain('disturbance')
     const wd = watchSignals(loop, s.ctrlId, s.ctrlP, 'dist', { duration: 60, points: 1200 })
@@ -256,12 +269,15 @@ describe('what each try line and chip claims, measured', () => {
     const l = byName('The margin says exactly how far')
     const s = stateOf(l)
     const chips = chipsOf(l)
-    const inside = chips.find((c) => c.label.startsWith('0.9 × GM'))
-    const past = chips.find((c) => c.label.startsWith('1.1 × GM'))
+    const inside = chips.find((c) => c.label.startsWith('0.9 × gain margin'))
+    const past = chips.find((c) => c.label.startsWith('1.1 × gain margin'))
     expect(inside && past).toBeTruthy()
     const gm = margOf(s).gainMargin
-    expect(inside.set.ctrlP.kp).toBeCloseTo(0.9 * gm, 9)
-    expect(past.set.ctrlP.kp).toBeCloseTo(1.1 * gm, 9)
+    // Rounded to four significant figures on the way in, not just on the way
+    // out: this is the fix for the chip label that drifted after a click
+    // (12.38 -> 12.37) — the value the chip SETS is the value it PRINTS.
+    expect(inside.set.ctrlP.kp).toBe(round4(0.9 * gm))
+    expect(past.set.ctrlP.kp).toBe(round4(1.1 * gm))
     expect(isStable(loopOf(applyChip(s, inside)).closed)).toBe(true)
     expect(isStable(loopOf(applyChip(s, past)).closed)).toBe(false)
     // From wherever Kp is: re-read at the new gain, the chips still bracket.
@@ -335,6 +351,19 @@ describe('what each try line and chip claims, measured', () => {
     expect(floor.ctrlP.kd).toBe(CONTROLLERS.pid.params.find((p) => p.key === 'kd').min)
     expect(margOf(floor).phaseMargin).toBeCloseTo(12, 0)
     expect(Math.round(overshoot(loopOf(floor).closed, 20) * 100)).toBe(23)
+    // The try line's "23%" has to match the PICTURE too, not just a d=20
+    // convenience window: the app's own window (naturalWindow, ladder-
+    // quantized the way the step plot's axis is) under-sampled the peak at
+    // 22.2% before the window was sized from the trace's own settling time
+    // rather than a pole guess. At the app's real window this reads 23%.
+    const closedFloor = loopOf(floor).closed
+    const pzFloor = polesZeros(closedFloor)
+    const margFloor = margOf(floor)
+    const verdictFloor = verdictOf(closedFloor, margFloor)
+    const slowFloor = Math.min(...pzFloor.poles.filter(([re]) => Math.abs(re) > 1e-9).map(([re]) => Math.abs(re)))
+    const appWindow = ladderUp(naturalWindow(closedFloor, { verdict: verdictFloor, slow: slowFloor, grow: 0, osc: 0 }))
+    expect(appWindow).toBe(15)
+    expect(Math.round(overshoot(closedFloor, appWindow) * 100)).toBe(23)
     const high = click(l, 'Kd → 1')
     expect(margOf(high).phaseMargin).toBeCloseTo(90, 0)
     expect(overshoot(loopOf(high).closed, 20)).toBeLessThan(0.005)

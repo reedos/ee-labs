@@ -3,7 +3,6 @@ import {
   LabNav,
   LessonNav,
   NumField,
-  PoleZeroCanvas,
   ReportIssue,
   TryLine,
   arrivalEvent,
@@ -17,7 +16,6 @@ import {
   bode,
   evalAtFreq,
   polesZeros,
-  isStable,
   margins,
   rootLocus,
   secondOrderMetrics,
@@ -26,7 +24,7 @@ import {
   series,
   closeLoop,
 } from '@ee-labs/systems'
-import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, settlesOnScreen } from './systems.js'
+import { PLANTS, PLANT_GROUPS, CONTROLLERS, buildLoop, defaultsOf, settlesOnScreen, ctrlDefaultsFor } from './systems.js'
 import { loopMath } from './math.js'
 import {
   LESSONS,
@@ -46,13 +44,19 @@ import { reportSummary } from './report.js'
 import pkg from '../package.json'
 import { nextFrame } from './frame.js'
 import { readLocationLink } from '@ee-labs/ui'
-import { stateFromLink } from './fromLink.js'
+import { stateFromLink, fromAppName, fromDisplayName } from './fromLink.js'
 import BodeCanvas from './components/BodeCanvas.jsx'
 import StepCanvas from './components/StepCanvas.jsx'
 import NyquistCanvas from './components/NyquistCanvas.jsx'
 import LoopDiagram from './components/LoopDiagram.jsx'
+import LocusCanvas from './components/LocusCanvas.jsx'
 import WatchCanvas, { useWatchPosition, WATCH_SPEEDS } from './components/WatchCanvas.jsx'
 import { watchSignals } from './watch.js'
+import { verdictOf, oscillationOf, presentMargins, steadyErrorOf } from './verdict.js'
+import { leadPeak } from './lead.js'
+import { naturalWindow, settleTime } from './stepWindow.js'
+import { simBlockReason, simCost, STEP_BUDGET } from './affordable.js'
+import { locusExtent, stickyExtent } from './locusFrame.js'
 
 const POINTS = 900
 // The watch view's time grid. Fixed, so the scrubber's range never shifts
@@ -92,6 +96,13 @@ export default function App() {
   // the note's. It used to clear on the first touch, which un-highlighted the
   // chip and left no way back but finding it in the list again.
   const [lesson, setLesson] = useState(boot.lesson)
+  // The lesson a picker click (a different plant or controller entirely,
+  // not a knob tuned in place) just stepped away from — so a "back to
+  // lesson" link can undo the click without a hunt through the list. A
+  // knob move keeps the lesson (dirty, with its own reset); a picker click
+  // clears it outright: the note it left behind was for a different setup,
+  // and it was hiding the plant/controller's own hint underneath it.
+  const [lastLesson, setLastLesson] = useState(null)
   // Counts lesson loads, so a reset to the SAME lesson still rewinds the
   // watch transport.
   const [loads, setLoads] = useState(0)
@@ -123,14 +134,30 @@ export default function App() {
   const plant = PLANTS[plantId]
   const ctrl = CONTROLLERS[ctrlId]
 
+  // A picker click clears the lesson (remembering it for "back to lesson")
+  // rather than leaving its stale note on screen over a setup it no longer
+  // describes.
+  const clearLesson = () => {
+    setLastLesson((prev) => lesson || prev)
+    setLesson(null)
+  }
   const choosePlant = (id) => {
+    const newPlantP = defaultsOf(PLANTS[id])
     setPlantId(id)
-    setPlantP(defaultsOf(PLANTS[id]))
+    setPlantP(newPlantP)
+    // The controller's OWN gains, not the bare registry defaults: the
+    // registry's Kp = 1 sits exactly on the unstable plant's boundary
+    // (Kp*K = p), and a fast plant's Ki = 1 default put a pole light-years
+    // from the rest of the loop. ctrlDefaultsFor picks gains this plant
+    // actually opens stable with.
+    setCtrlP(ctrlDefaultsFor(id, newPlantP, ctrlId))
     setFromInfo(null)
+    clearLesson()
   }
   const chooseCtrl = (id) => {
     setCtrlId(id)
-    setCtrlP(defaultsOf(CONTROLLERS[id]))
+    setCtrlP(ctrlDefaultsFor(plantId, plantP, id))
+    clearLesson()
   }
   // A lesson note describes ONE step input; flipping the toggle marks the
   // lesson dirty like any other control, and the note dims until reset.
@@ -147,6 +174,7 @@ export default function App() {
     setLower(n.view)
     setStepInput(n.stepInput)
     setLesson(l.name)
+    setLastLesson(null)
     setLoads((k) => k + 1)
   }
 
@@ -204,8 +232,21 @@ export default function App() {
     const lo = Math.log10(centre) - 8
     return Float64Array.from({ length: 1600 }, (_, i) => Math.pow(10, lo + (16 * i) / 1599))
   }, [freqs])
-  const marg = useMemo(() => margins(loop.open, wideFreqs), [loop, wideFreqs])
-  const stable = isStable(loop.closed)
+  const margRaw = useMemo(() => margins(loop.open, wideFreqs), [loop, wideFreqs])
+  // Erase the float-noise crossover of a loop whose gain is exactly 1 at DC
+  // forever (a lead cancelling the plant's own pole): "crossover 8.215 nHz,
+  // phase margin 180.0°" against correct physics — there is no crossover to
+  // measure, and the picker's own First order x Lead default is exactly
+  // this loop.
+  const marg = useMemo(() => presentMargins(margRaw, loop.open, freqs[0]), [margRaw, loop, freqs])
+  // The one-word judgement: 'stable' | 'marginal' | 'unstable'. A pole
+  // sitting exactly on the imaginary axis (the crossing chip's whole point)
+  // is neither of the other two — it is a sustained oscillation, its own
+  // state, and every pane that used to see only isStable()'s yes/no now
+  // reads this instead.
+  const verdict = verdictOf(loop.closed, marg)
+  const stable = verdict === 'stable'
+  const marginal = verdict === 'marginal'
   const second = useMemo(() => secondOrderMetrics(loop.closed), [loop])
 
   const nyq = useMemo(() => {
@@ -231,46 +272,24 @@ export default function App() {
     const slow = Math.min(
       ...pz.poles.filter(([re]) => Math.abs(re) > 1e-9).map(([re]) => Math.abs(re)),
     )
-    let natural = Number.isFinite(slow) && slow > 0 ? Math.min(12 / slow, 400) : 20
-    // An unstable loop keyed to its SLOWEST pole overflowed float range
-    // eleven samples into a 400 s window — the trace just stopped, and the
-    // "axis zooming out with the runaway" story never got to happen. Key the
-    // window to the runaway instead: ~25 growth constants fills the pane
-    // with the divergence this view exists to show, at e^25 ≈ 7e10 — big,
-    // and finite.
     const grow = Math.max(0, ...pz.poles.map(([re]) => re))
-    if (grow > 1e-9) natural = Math.min(natural, 25 / grow)
-    const key = `${plantId}|${ctrlId}|${stepInput}|${grow > 1e-9 ? 'runaway' : 'settling'}`
+    const osc = verdict === 'marginal' ? oscillationOf(loop.closed) : 0
+    // The affordability guard naturalWindow needs before it runs its OWN
+    // coarse simulation to measure a settle time: a stiff loop must not be
+    // asked to simulate itself just to find out it cannot afford to.
+    const canSim = (d) => simCost(pz.poles, d) <= STEP_BUDGET
+    const natural = naturalWindow(stepTf, { verdict, slow, grow, osc }, canSim)
+    const key = `${plantId}|${ctrlId}|${stepInput}|${verdict}`
     const dur = stickyDuration(
       durRef.current.key === key ? durRef.current.dur : NaN,
       natural,
     )
     durRef.current = { key, dur }
     return dur
-  }, [pz, plantId, ctrlId, stepInput])
+  }, [pz, plantId, ctrlId, stepInput, verdict, loop, stepTf])
 
   // The reasons a time simulation is declined, shared by step and watch.
-  // Affordability: RK4 sub-steps scale as duration × the fastest closed
-  // pole, and the two ends of that product are set independently — a slow
-  // pole stretches the window while a fast one shrinks the sub-step, and
-  // slider-interior values reached 6.4 s per keystroke (extremes: hours).
-  // Degeneracy: a custom plant with an all-zero denominator is not a system,
-  // and simulating it painted NaN strips. The frequency panes are exact
-  // regardless; only the time simulations need declining, with the reason.
-  const simBlocked = useMemo(() => {
-    if (!loop.open.a.length || !loop.open.a.some((v) => v !== 0)) {
-      return 'This H(s) has an all-zero denominator — not a system yet. Give a₂, a₁ or a₀ a value.'
-    }
-    const fastest = Math.max(0, ...pz.poles.map(([re, im]) => Math.hypot(re, im)))
-    if ((duration * fastest) / 0.08 + 900 > 2.5e6) {
-      return (
-        'Too stiff to simulate: this loop mixes a pole fast enough to set the integration ' +
-        'step with one slow enough to set the window, and the product is millions of steps ' +
-        'per frame. The frequency views above are exact regardless — they need no integration.'
-      )
-    }
-    return null
-  }, [loop, pz, duration])
+  const simBlocked = useMemo(() => simBlockReason(loop.open, pz.poles, duration), [loop, pz, duration])
   const simAffordable = simBlocked == null
 
   const step = useMemo(
@@ -342,12 +361,31 @@ export default function App() {
     return branches
   }, [lower, loop])
 
+  // The locus's own frame: fitted to the open-loop poles/zeros and the
+  // closed-loop poles AT THIS GAIN, not to the branches — a sweep to 100x
+  // gain runs some branches to hundreds of rad/s, and framing every point
+  // on them parked an unstable-plant loop with poles inside ±4 on a ±300
+  // axis as a dot. Sticky the same way the step and frequency axes are, so
+  // dragging the gain moves the crosses and not the axis.
+  const locusExtentRef = useRef(null)
+  const locusFrameExtent = useMemo(() => {
+    if (lower !== 'locus') return locusExtentRef.current || 4
+    const natural = locusExtent(openPz.poles, openPz.zeros, pz.poles)
+    const next = stickyExtent(locusExtentRef.current, natural)
+    locusExtentRef.current = next
+    return next
+  }, [lower, openPz, pz])
+
   const math = useMemo(
     () => loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs),
     [plantId, plantP, ctrlId, ctrlP, loop, marg, freqs],
   )
 
   const err = 1 - dcGain(loop.closed)
+  // The top bar's own field: '—' with a reason for a loop that never
+  // settles, rather than "200%" or "−Infinity%" printed against physics
+  // that has nothing to report.
+  const errInfo = steadyErrorOf(loop.closed, verdict)
 
   const chips = useMemo(
     () => chipsFor(active, state, marg),
@@ -444,10 +482,26 @@ export default function App() {
           {linked.state ? (
             <p className="hint from-link">
               Loaded from a link —{' '}
-              {fromInfo?.label
-                ? `your “${fromInfo.label}” arrived from ${fromInfo.app === 'circuit' ? 'Circuit Lab' : 'another tool'} as the plant.`
+              {fromInfo
+                ? `your "${fromDisplayName(fromInfo)}" arrived from ${fromAppName(fromInfo)} as the plant.`
                 : 'this plant came from another tool in the suite.'}{' '}
               Pick anything below to start over.
+            </p>
+          ) : null}
+          {/* A picker click (a different plant or controller, not a knob
+              tuned in place) clears the lesson rather than leaving its note
+              stranded over a setup it no longer describes — this is the way
+              back, in one click, without a hunt through the list. */}
+          {!active && lastLesson ? (
+            <p className="hint back-to-lesson">
+              <button
+                type="button"
+                className="lesson-link"
+                onClick={() => loadLesson(LESSONS.find((l) => l.name === lastLesson))}
+              >
+                ↩ back to lesson
+              </button>{' '}
+              — {lastLesson}
             </p>
           ) : null}
           {/* The arrival orientation Reed asked for after reading his RC's
@@ -573,6 +627,20 @@ export default function App() {
               ) : null}
               <TryLine text={active.try} chips={chips} onChip={applyChipTo} activeChip={activeChip} />
               {renderStepToggle()}
+              {/* The last lesson used to just disable Next and leave it at
+                  that — a dead end with no next move offered. */}
+              {activeIndex === LESSONS.length - 1 ? (
+                <p className="hint course-end">
+                  That is the course.{' '}
+                  {circuit && circuitHref ? (
+                    <a href={circuitHref}>Open Circuit Lab →</a>
+                  ) : (
+                    <button type="button" className="lesson-link" onClick={() => loadLesson(LESSONS[0])}>
+                      ↩ back to lesson 1
+                    </button>
+                  )}
+                </p>
+              ) : null}
             </>
           ) : null}
           {/* The hand-over in reverse. Exact only: a plant with a gain, or
@@ -617,6 +685,12 @@ export default function App() {
           {/* The lesson's featured knob(s) first, marked, so the slider the
               try line names is the first one under the header. */}
           {orderedCtrlParams.map((p) => {
+            // A lesson may clamp a knob's range tighter than the controller's
+            // own (the lead lesson keeps its pole above its zero — below it
+            // the network is a lag, a different lesson, and the note would
+            // go quietly false). The picker's own range stands outside a
+            // lesson.
+            const lessonRange = active?.ranges?.[p.key]?.(ctrlP)
             const field = (
               <NumField
                 key={p.key}
@@ -624,8 +698,8 @@ export default function App() {
                 unit={p.unit}
                 value={ctrlP[p.key]}
                 onChange={(v) => setCtrlP((s) => ({ ...s, [p.key]: v }))}
-                min={p.min}
-                max={p.max}
+                min={lessonRange?.min ?? p.min}
+                max={lessonRange?.max ?? p.max}
                 scale={p.scale}
                 eng
               />
@@ -684,7 +758,7 @@ export default function App() {
           {active ? null : (
             <>
               <h3 className="note-title">{plant.name}</h3>
-              <p className="hint">{plant.hint}</p>
+              <p className="hint">{typeof plant.hint === 'function' ? plant.hint(plantP) : plant.hint}</p>
             </>
           )}
           {plant.params.map((p) => (
@@ -748,9 +822,15 @@ export default function App() {
           <span className="flow-arrow" aria-hidden="true">
             ↻
           </span>
-          <span className={`flow-node ${stable ? 'is-out' : 'is-off'}`}>
-            {stable ? 'stable' : 'UNSTABLE'}
-            <em>{stable ? 'closed loop settles' : 'closed loop runs away'}</em>
+          <span className={`flow-node ${stable ? 'is-out' : marginal ? 'is-warn' : 'is-off'}`}>
+            {stable ? 'stable' : marginal ? 'ON THE BOUNDARY' : 'UNSTABLE'}
+            <em>
+              {stable
+                ? 'closed loop settles'
+                : marginal
+                  ? 'sustained oscillation — neither settles nor runs away'
+                  : 'closed loop runs away'}
+            </em>
           </span>
         </nav>
         <button
@@ -809,9 +889,9 @@ export default function App() {
             <span>crossover</span>
             <b>{marg.gainCrossover == null ? '—' : `${fmtHz(marg.gainCrossover)}Hz`}</b>
           </span>
-          <span className="topbar-field">
+          <span className="topbar-field" title={errInfo.title}>
             <span>steady error</span>
-            <b>{Math.abs(err) < 1e-9 ? 'none' : `${(err * 100).toFixed(1)}%`}</b>
+            <b>{errInfo.text}</b>
           </span>
         </div>
       </div>
@@ -842,7 +922,7 @@ export default function App() {
             </div>
             <div className="readout">
               {marg.phaseMargin == null ? (
-                <span className="prov">gain never reaches 1 — no crossover to measure</span>
+                <span className="prov">{marg.crossoverNote || 'gain never reaches 1 — no crossover to measure'}</span>
               ) : (
                 <span>
                   crosses 0 dB at <b>{fmtHz(marg.gainCrossover)}Hz</b>
@@ -851,7 +931,12 @@ export default function App() {
                   <em className="prov"> with {marg.phaseMargin.toFixed(1)}° to spare</em>
                 </span>
               )}
-              {marg.gainMargin == null ? (
+              {marginal ? (
+                // The crossing chip's exact point: a gain margin of ~1× read
+                // as "room for 1.00× more gain" against a loop that IS the
+                // boundary — the sentence has to say that instead.
+                <span className="prov">no room — this gain is the boundary</span>
+              ) : marg.gainMargin == null ? (
                 <span className="prov">phase never reaches −180°</span>
               ) : marg.gainMargin >= 1 ? (
                 <span>
@@ -864,6 +949,22 @@ export default function App() {
                   past the boundary — it sits at <b>{marg.gainMargin.toFixed(2)}×</b> this gain
                 </span>
               )}
+              {/* The lead network's own number — the try line quotes it,
+                  because the loop's phase margin is NOT monotone in the
+                  pole (it dips, then rises, as the pole passes the zero),
+                  while what the network itself adds is. */}
+              {ctrlId === 'lead'
+                ? (() => {
+                    const lp = leadPeak(ctrlP.z, ctrlP.p)
+                    if (!lp) return null
+                    return (
+                      <span className="prov">
+                        {lp.kind === 'lag' ? 'lag subtracts' : 'lead adds'} up to{' '}
+                        <b>{Math.abs(lp.phiMax).toFixed(1)}°</b> at √(zp) = {fmtHz(lp.f)}Hz
+                      </span>
+                    )
+                  })()
+                : null}
             </div>
           </div>
           <BodeCanvas
@@ -975,6 +1076,19 @@ export default function App() {
                   {stable && step && !settlesOnScreen(step.y, dcGain(stepTf)) ? (
                     <span className="prov">not there yet at the plot&apos;s right edge</span>
                   ) : null}
+                  {/* MEASURED off the sampled trace, the same 2% band the
+                      dashed line and shaded band on the plot mark — never a
+                      number quoted from a pole location alone. */}
+                  {stable && step
+                    ? (() => {
+                        const ts = settleTime(step.t, step.y, dcGain(stepTf))
+                        return ts != null ? (
+                          <span className="prov">
+                            settles in <b>{fmt(ts, 's', 3)}</b> (2% band)
+                          </span>
+                        ) : null
+                      })()
+                    : null}
                   {/* Overshoot MEASURED off the trace being drawn, so the
                       number and the picture cannot disagree. The ζ-only
                       closed form ignored closed-loop zeros: a PI loop drew a
@@ -1007,7 +1121,12 @@ export default function App() {
                   {/* You are here, and where the branch meets the axis — the
                       crossing gain is the current gain times the gain
                       margin, and the test bisects the verdict to pin it. */}
-                  {crossing ? (
+                  {marginal ? (
+                    // The crossing chip's own destination: the poles sit
+                    // exactly on the axis, and "crosses"/"crossed" reads
+                    // wrong for a gain that IS the crossing.
+                    <span data-role="locus-here">you are here: on the axis — sustained oscillation</span>
+                  ) : crossing ? (
                     <span data-role="locus-here">
                       you are here: {crossing.label} = <b>{fmtNum(crossing.now, 3)}</b>
                       {' · '}
@@ -1080,8 +1199,21 @@ export default function App() {
                 t={step.t}
                 y={step.y}
                 final={dcGain(stepTf)}
+                // What the loop was ASKED to do — 1, for a reference step —
+                // distinct from where it settles. A disturbance step asks
+                // for nothing; the loop's whole job there is to hold zero.
+                reference={stepInput === 'ref' ? 1 : null}
                 diverges={!stable}
                 resetKey={`${plantId}|${ctrlId}|${stepInput}`}
+                // The same unfiltered-derivative kick the watch view marks:
+                // a reference step meets Kd·ė as a jump at t = 0, and the
+                // step plot used to just show the discontinuity with no
+                // word about why.
+                caption={
+                  ctrlId === 'pid' && stepInput === 'ref' && ctrlP.kd > 0
+                    ? "unfiltered Kd·s: derivative kick at t = 0"
+                    : null
+                }
               />
             ) : (
               <p className="hint" data-role="sim-too-stiff">
@@ -1100,11 +1232,14 @@ export default function App() {
               phaseMargin={marg.phaseMargin}
             />
           ) : (
-            <PoleZeroCanvas
+            <LocusCanvas
               poles={openPz.poles}
               zeros={openPz.zeros}
               branches={locus}
               highlight={pz.poles}
+              extent={locusFrameExtent}
+              gainLabel={crossing?.label ?? (ctrlId === 'lead' ? 'Kc' : 'Kp')}
+              verdict={verdict}
             />
           )}
         </section>

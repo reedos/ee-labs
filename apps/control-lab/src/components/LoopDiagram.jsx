@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { fmt, fmtNum } from '@ee-labs/ui'
+import { fromDisplayName } from '../fromLink.js'
 
 /**
  * The classic feedback loop as a block diagram, on demand.
@@ -40,7 +41,10 @@ const summarize = (defs, values) =>
       // Engineering prefixes only where a UNIT exists (τ in seconds, poles in
       // rad/s). A dimensionless Kd = 0.2 printed as "Kd 200 m" reads as two
       // hundred, which is a thousand-fold lie in a box meant to be glanced at.
-      `${SYMBOLS[p.key] || p.label} ${p.unit ? fmt(values[p.key], p.unit, 3) : fmtNum(values[p.key], 3)}`,
+      // A param carrying its own `symbol` (the lead's gain, Kc — distinct
+      // from the plant's K, the "two things called K" the student review
+      // found) wins over the generic SYMBOLS table.
+      `${p.symbol || SYMBOLS[p.key] || p.label} ${p.unit ? fmt(values[p.key], p.unit, 3) : fmtNum(values[p.key], 3)}`,
   )
 
 export default function LoopDiagram({
@@ -244,7 +248,7 @@ export default function LoopDiagram({
                 low-pass"), the named plant demoted to the subtitle. */}
             {box(
               pX,
-              from ? `P(s) — ${from.label || from.id}` : `P(s) — ${plant.name}`,
+              from ? `P(s) — ${fromDisplayName(from)}` : `P(s) — ${plant.name}`,
               chunk(from ? [plant.name, ...summarize(plant, plantP)] : summarize(plant, plantP)),
               () => onReveal('plant'),
               'Show the plant in the sidebar',

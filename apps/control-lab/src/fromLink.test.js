@@ -1,12 +1,39 @@
 import { describe, it, expect } from 'vitest'
 import { parseLink } from '@ee-labs/ui'
-import { stateFromLink } from './fromLink.js'
+import { stateFromLink, CIRCUIT_NAMES, fromAppName, fromDisplayName } from './fromLink.js'
 import { PLANTS } from './systems.js'
 import { asControlPlant } from '../../circuit-lab/src/toSignalLab.js'
-import { transferOf, defaultsOf } from '../../circuit-lab/src/circuits.js'
+import { transferOf, defaultsOf, CIRCUITS } from '../../circuit-lab/src/circuits.js'
 import { magnitudeAt } from '@ee-labs/systems'
 
 const load = (link) => stateFromLink(parseLink(link).patch)
+
+describe('naming an arrival', () => {
+  it('every catalog entry is pinned against Circuit Lab\'s own display name', () => {
+    for (const [id, c] of Object.entries(CIRCUITS)) {
+      expect(CIRCUIT_NAMES[id], id).toBe(c.name)
+    }
+    // And nothing here names a circuit the catalog does not have.
+    for (const id of Object.keys(CIRCUIT_NAMES)) {
+      expect(CIRCUITS[id], id).toBeTruthy()
+    }
+  })
+
+  it('names the sending app as a person would say it', () => {
+    expect(fromAppName({ app: 'circuit', id: 'rcLow' })).toBe('Circuit Lab')
+    expect(fromAppName({ app: 'signal', id: 'x' })).toBe('Signal Lab')
+    expect(fromAppName(null)).toBeNull()
+  })
+
+  it('prefers the arrival\'s own label, falls back to the catalog name, then the bare id', () => {
+    expect(fromDisplayName({ app: 'circuit', id: 'rlcSeries', label: 'My RLC' })).toBe('My RLC')
+    // No label — Circuit Lab's own walker arrives this way — so the catalog
+    // name is what the banner and the P(s) box must show, not the raw id.
+    expect(fromDisplayName({ app: 'circuit', id: 'rlcSeries' })).toBe('Series RLC')
+    expect(fromDisplayName({ app: 'circuit', id: 'not-a-real-circuit' })).toBe('not-a-real-circuit')
+    expect(fromDisplayName(null)).toBeNull()
+  })
+})
 
 describe('loading a loop from a link', () => {
   it('builds the plant and controller a circuit handed over', () => {
