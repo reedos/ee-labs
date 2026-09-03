@@ -55,6 +55,34 @@ export function crossingGain(ctrlId, ctrlP, marg) {
 }
 
 /**
+ * The root-locus pane's "you are here" readout — the SAME cue-bearing prose
+ * whether the loop is a sustained oscillation (poles ON the axis), an
+ * ordinary crossing ahead of or behind the current gain (the routine case,
+ * not just the rare marginal one), or a plant/controller pair with no phase
+ * crossover at all ("never reaches −180°", so there is nothing to cross).
+ * Returns the `{ t }` / `{ b }` segment shape verdict.js's joinParts reads —
+ * App.jsx renders it, chrome.js scans it flattened, so "axis" and "−180°"
+ * can never appear in this pane with no definition offered.
+ */
+export function locusHereNote(marginal, crossing) {
+  if (marginal) {
+    return { prov: false, parts: [{ t: 'this gain: poles on the axis, sustained oscillation' }] }
+  }
+  if (crossing) {
+    return {
+      prov: false,
+      parts: [
+        { t: `you are here: ${crossing.label} = ` },
+        { b: fmtNum(crossing.now, 3) },
+        { t: ` · ${crossing.crossing > crossing.now ? 'crosses' : 'crossed'} the axis at ${crossing.label} = ` },
+        { b: fmtNum(crossing.crossing, 4) },
+      ],
+    }
+  }
+  return { prov: true, parts: [{ t: 'never crosses — the phase never reaches −180°' }] }
+}
+
+/**
  * The 0.9× / 1.1× chips read the LIVE margin, so they work from wherever the
  * gain is. They SET the four-figure value they print: the first cut set the
  * exact product and printed it rounded, and after a click the margin was

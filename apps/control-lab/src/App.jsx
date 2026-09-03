@@ -34,6 +34,7 @@ import {
   activeChipOf,
   chipsFor,
   crossingGain,
+  locusHereNote,
   isDirty,
 } from './lessons.js'
 import { initialState } from './boot.js'
@@ -53,9 +54,17 @@ import LoopDiagram from './components/LoopDiagram.jsx'
 import LocusCanvas from './components/LocusCanvas.jsx'
 import WatchCanvas, { useWatchPosition, WATCH_SPEEDS } from './components/WatchCanvas.jsx'
 import { watchSignals } from './watch.js'
-import { verdictOf, oscillationOf, presentMargins, steadyErrorOf, gainMarginWarn } from './verdict.js'
+import {
+  verdictOf,
+  oscillationOf,
+  presentMargins,
+  steadyErrorOf,
+  gainMarginWarn,
+  verdictBadge,
+  bodeMarginNote,
+} from './verdict.js'
 import { leadPeak } from './lead.js'
-import { naturalWindow, settleTime } from './stepWindow.js'
+import { naturalWindow, settleTime, overshootOf } from './stepWindow.js'
 import { simBlockReason, simCost, STEP_BUDGET } from './affordable.js'
 import { locusExtent, stickyExtent } from './locusFrame.js'
 
@@ -63,6 +72,16 @@ const POINTS = 900
 // The watch view's time grid. Fixed, so the scrubber's range never shifts
 // under the reader while gains are dragged mid-scrub.
 const WATCH_POINTS = 600
+
+/**
+ * Renders the `{ t }` / `{ b }` segment shape verdict.js's `joinParts` reads
+ * (bodeMarginNote, lessons.js's locusHereNote) — the bolded numbers as `<b>`,
+ * everything else as plain text. One renderer for every readout built from
+ * those segments, so a sentence's WORDS live in exactly one place (the note
+ * function) whether the reader sees it in JSX or chrome.js scans it as text.
+ */
+const Prose = ({ parts }) =>
+  parts.map((p, i) => (p.b != null ? <b key={i}>{p.b}</b> : <React.Fragment key={i}>{p.t}</React.Fragment>))
 
 export default function App() {
   // A loop handed over from another tool, read once at startup.
@@ -252,6 +271,11 @@ export default function App() {
   const verdict = verdictOf(loop.closed, marg)
   const stable = verdict === 'stable'
   const marginal = verdict === 'marginal'
+  // The badge word/sentence and the Bode pane's boundary sentence below,
+  // both from verdict.js so chrome.js's picker-fold scan reads the exact
+  // same text this render shows rather than a hand-kept stand-in for it.
+  const badge = verdictBadge(verdict)
+  const marginNote = bodeMarginNote(marginal, marg.gainMargin)
   const second = useMemo(() => secondOrderMetrics(loop.closed), [loop])
 
   const nyq = useMemo(() => {
@@ -877,23 +901,18 @@ export default function App() {
             ↻
           </span>
           <span className={`flow-node ${stable ? 'is-out' : marginal ? 'is-warn' : 'is-off'}`}>
-            {stable ? 'stable' : marginal ? 'ON THE BOUNDARY' : 'UNSTABLE'}
+            {badge.badge}
             {/* Two renderings of the same verdict, toggled by CSS (styles.css):
                 the full sentence on a wide screen, and on phone the short
                 verdict word — the sentence used to sit inside .flow's own
                 horizontal scrollbox, invisible past "stable closed loo"
-                unless the reader thought to scroll that one mini-strip. */}
+                unless the reader thought to scroll that one mini-strip.
+                Both come from verdictBadge() (verdict.js), the same function
+                chrome.js calls to scan this text for the picker's fold — a
+                word this span prints can no longer go unscanned. */}
             <em>
-              <span className="flow-note-full">
-                {stable
-                  ? 'closed loop settles'
-                  : marginal
-                    ? 'sustained oscillation — neither settles nor runs away'
-                    : 'closed loop runs away'}
-              </span>
-              <span className="flow-note-short">
-                {stable ? 'settles' : marginal ? 'oscillates' : 'runs away'}
-              </span>
+              <span className="flow-note-full">{badge.full}</span>
+              <span className="flow-note-short">{badge.short}</span>
             </em>
           </span>
         </nav>
@@ -1018,24 +1037,16 @@ export default function App() {
                   <em className="prov"> with {marg.phaseMargin.toFixed(1)}° to spare</em>
                 </span>
               )}
-              {marginal ? (
-                // The crossing chip's exact point: a gain margin of ~1× read
-                // as "room for 1.00× more gain" against a loop that IS the
-                // boundary — the sentence has to say that instead.
-                <span className="prov">gain margin 0 dB, this gain is the boundary</span>
-              ) : marg.gainMargin == null ? (
-                <span className="prov">phase never reaches −180°</span>
-              ) : marg.gainMargin >= 1 ? (
-                <span>
-                  room for <b>{marg.gainMargin.toFixed(2)}×</b> more gain
-                </span>
-              ) : (
-                // "Room for 0.14× more gain" read as an invitation. Below 1
-                // the margin is a debt, and the sentence must point DOWN.
-                <span>
-                  past the boundary — it sits at <b>{marg.gainMargin.toFixed(2)}×</b> this gain
-                </span>
-              )}
+              {/* bodeMarginNote (verdict.js) picks the sentence: marginal (AT
+                  the boundary), no crossover at all ("phase never reaches
+                  −180°"), room to spare, or already past it — "room for
+                  0.14× more gain" reads as an invitation, and below 1 the
+                  margin is a debt, so that sentence has to point DOWN. Same
+                  function chrome.js scans, so none of these four can print
+                  "boundary" or "−180°" with no definition reachable. */}
+              <span className={marginNote.prov ? 'prov' : undefined}>
+                <Prose parts={marginNote.parts} />
+              </span>
               {/* The lead network's own number — the try line quotes it,
                   because the loop's phase margin is NOT monotone in the
                   pole (it dips, then rises, as the pole passes the zero),
@@ -1182,12 +1193,13 @@ export default function App() {
                       29.8% peak beside a readout claiming 16.3%. */}
                   {stepInput === 'ref' && stable && step
                     ? (() => {
-                        const final = dcGain(stepTf)
-                        if (!(Math.abs(final) > 1e-12)) return null
-                        let pk = -Infinity
-                        for (let i = 0; i < step.y.length; i++) if (step.y[i] > pk) pk = step.y[i]
-                        const over = (pk - final) / Math.abs(final)
-                        return over > 0.005 ? (
+                        // overshootOf (stepWindow.js): the same measurement
+                        // chrome.js runs at the picker's own defaults, so a
+                        // bare "overshoot NN%" here can never appear with no
+                        // definition offered — the structural twin of the
+                        // Kp·e defect, on this pane instead of Watch's.
+                        const over = overshootOf(step.y, dcGain(stepTf))
+                        return over != null ? (
                           <span>
                             overshoot <b>{(over * 100).toFixed(1)}%</b>
                           </span>
@@ -1207,24 +1219,19 @@ export default function App() {
                 <>
                   {/* You are here, and where the branch meets the axis — the
                       crossing gain is the current gain times the gain
-                      margin, and the test bisects the verdict to pin it. */}
-                  {marginal ? (
-                    // The crossing chip's own destination: the poles sit
-                    // exactly on the axis, and "crosses"/"crossed" reads
-                    // wrong for a gain that IS the crossing.
-                    <span data-role="locus-here">this gain: poles on the axis, sustained oscillation</span>
-                  ) : crossing ? (
-                    <span data-role="locus-here">
-                      you are here: {crossing.label} = <b>{fmtNum(crossing.now, 3)}</b>
-                      {' · '}
-                      {crossing.crossing > crossing.now ? 'crosses' : 'crossed'} the axis at{' '}
-                      {crossing.label} = <b>{fmtNum(crossing.crossing, 4)}</b>
-                    </span>
-                  ) : (
-                    <span className="prov" data-role="locus-here">
-                      never crosses — the phase never reaches −180°
-                    </span>
-                  )}
+                      margin, and the test bisects the verdict to pin it.
+                      locusHereNote (lessons.js) picks the sentence, the same
+                      function chrome.js scans — so "axis" and "−180°" can
+                      never appear here with no definition offered, in the
+                      ROUTINE crossing case as much as the rare marginal one. */}
+                  {(() => {
+                    const note = locusHereNote(marginal, crossing)
+                    return (
+                      <span className={note.prov ? 'prov' : undefined} data-role="locus-here">
+                        <Prose parts={note.parts} />
+                      </span>
+                    )
+                  })()}
                   <span className="prov">crosses into the shaded half and the loop oscillates</span>
                 </>
               ) : lower === 'math' ? (

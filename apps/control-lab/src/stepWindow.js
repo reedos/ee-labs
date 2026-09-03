@@ -89,6 +89,23 @@ export function naturalWindow(tf, { verdict, slow, grow, osc, cap = 400 }, canSi
   return ts == null || !(ts > 0) ? guess : SETTLE_FILL * ts
 }
 
+/**
+ * How far a step response peaks past its destination, as a fraction of the
+ * step — MEASURED off the sampled trace the plot actually draws, never a
+ * closed form, so the number and the picture can never disagree (a PI loop
+ * once drew a 29.8% peak beside a readout claiming 16.3%, the ζ-only
+ * formula's fault). Null below 0.5%, the readout's own "not worth a number"
+ * floor. Shared with chrome.js so the picker's default state can offer
+ * "overshoot" only in the states where the pane will actually print it.
+ */
+export function overshootOf(y, final) {
+  if (!(Math.abs(final) > 1e-12)) return null
+  let pk = -Infinity
+  for (let i = 0; i < y.length; i++) if (y[i] > pk) pk = y[i]
+  const over = (pk - final) / Math.abs(final)
+  return over > 0.005 ? over : null
+}
+
 /** Oscillation cycles a sampled trace shows: sign changes about its mean, halved. */
 export function cyclesIn(y) {
   if (y.length < 3) return 0

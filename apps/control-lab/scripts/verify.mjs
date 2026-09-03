@@ -1782,49 +1782,91 @@ console.log('\n32. Hover-only explanations reachable with taps alone at 390x844\
 
 // ------------------------------------- 33. every cue word on screen is defined
 //
-// Defect 2: chromeTermIds scanned the plant hint, the controller hint and a
-// hand-written VIEW_CHROME string, but never the live numeric readouts — so
-// a word that only ever appears INSIDE a formatted number (the top bar's
-// "20.1 dB", the open-loop readout's "= 413 mrad/s") or a controller-
-// dependent readout strip ("Kp·e = 0.184") never fired its cue at all,
-// confirmed on Three lags x PI (dB, rad/s) and the watch view under PI/PID
-// (Kp·e).
+// Defect 2 (round one): chromeTermIds scanned the plant hint, the controller
+// hint and a hand-written VIEW_CHROME string, but never the live numeric
+// readouts — so a word that only ever appears INSIDE a formatted number (the
+// top bar's "20.1 dB") or a controller-dependent readout strip ("Kp·e =
+// 0.184") never fired its cue at all. That got patched for three specific
+// ids (db, radpersec, kpe) against four hand-picked combos — and the SAME
+// hole regrew in the other branch of every readout the patch touched: the
+// ROUTINE "past the boundary" sentence (not just the marginal one), the
+// ROUTINE "crossed the axis" line (not just the marginal one), the plants
+// whose hint prose happens not to repeat "−180°", and the Step pane's
+// ordinary overshoot line — because chromeTermIds itself still only modeled
+// hint prose, not the readouts App.jsx actually renders from live margins
+// and a live simulation (now fixed: chrome.js builds the same loop
+// buildLoop/ctrlDefaultsFor would and calls the same note functions —
+// verdictBadge, bodeMarginNote, locusHereNote, overshootOf — App.jsx
+// renders from).
 //
-// This reads the SAME cue table (terms.js's CUES) the app scans lesson
-// prose against, applied to what the browser ACTUALLY renders, but only for
-// these three ids — not the whole table. A first full-table sweep here also
-// flagged "Proportional" (from a stale "back to lesson" link naming a
-// lesson whose TITLE starts with that word), "Disturbance" (a step-toggle
-// BUTTON's own label) and "overshoot" (a live readout outside this fix's
-// scope): real words, but not concept-prose the picker's glossary is for,
-// and fixing them is outside these two defects. Restricting to db,
-// radpersec and kpe keeps the probe honest about what this fix claims,
-// while still failing loudly — using the real regex and the real term
-// name, not a hand-typed copy — if any of these three regrows the hole.
-console.log('\n33. dB, rad/s and Kp·e: reachable wherever they land on screen\n')
+// This scans the WHOLE cue table (terms.js's CUES), not a chosen few,
+// across every plant x every controller x all five views (7x4x5 = 140
+// states, the same spread chrome.test.js checks against the pure function)
+// with no lesson loaded — reading what the browser ACTUALLY renders and
+// requiring every match to have its definition offered, no exceptions
+// beyond the three below.
+//
+// ALLOWLIST — the only text excluded from the scan, each entry earning its
+// place because it is not concept prose at all:
+//   1. A button's OWN label (structural: textExcludingButtons strips every
+//      <button> element's text before scanning its container). A button
+//      names itself — "Integrator", "Three lags", "Disturbance" — and
+//      "Disturbance" alone fires CUES.disturbance sitting right inside the
+//      Step/Watch readout's own reference/disturbance toggle, with no
+//      sentence beside it to define. Doing this structurally means a NEW
+//      button can never need a new hand-typed entry either.
+//   2. The "back to lesson" link's lesson-TITLE suffix (.back-to-lesson):
+//      a picker click remembers the lesson it just left so one click can
+//      undo it, and the opening lesson's own title starts with the word
+//      "Proportional" — a lesson NAME, not the concept-prose word.
+//   3. The Math tab's own derivation body (.math-pane): the cold walk that
+//      found this defect agreed it is out of scope, because every term
+//      loopMath prints there already sits beside its own explanatory
+//      sentence (math.js) — it is not a bare cue with nothing beside it,
+//      the actual shape of this defect. The Math view's OTHER chrome (its
+//      pane title, its "characteristic equation" readout line) is still
+//      scanned normally.
+console.log('\n33. Every cue word on screen resolves — every plant x controller x view, no lesson loaded\n')
 {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(URL, { waitUntil: 'networkidle' })
   await page.waitForSelector('.views canvas')
 
-  // A spread covering all five views and, between them, the three specific
-  // misses the walk found: dB and rad/s (Three lags x PI, the exact repro),
-  // and Kp·e (any PI/PID watch strip).
-  const combos = [
-    ['First order lag', 'Proportional'],
-    ['Three lags', 'PI'],
-    ['Motor position', 'PID'],
-    ['Three lags', 'Lead'],
-  ]
   const views = ['Step', 'Watch', 'Nyquist', 'Root locus', 'Math']
-  const mustCheck = ['db', 'radpersec', 'kpe']
+  const cueIds = Object.keys(CUES)
 
   const visibleChrome = () =>
     page.evaluate(() => {
-      const bits = []
-      for (const sel of ['.topbar-controls', '.readout', '.hint']) {
-        for (const el of document.querySelectorAll(sel)) bits.push(el.innerText || el.textContent || '')
+      // A container's text with every nested <button>'s own label removed
+      // (allowlist entry 1) — the button still contributes its non-button
+      // siblings (e.g. the toggle's surrounding readout), just not its own
+      // caption.
+      const textExcludingButtons = (el) => {
+        let out = ''
+        for (const node of el.childNodes) {
+          if (node.nodeType === Node.TEXT_NODE) out += node.textContent
+          else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'BUTTON') {
+            out += textExcludingButtons(node) + ' '
+          }
+        }
+        return out
       }
+      const bits = []
+      // .topbar: the verdict badge and its sentence, the phase/gain margin
+      // and crossover fields. .readout: both the Bode pane's margin
+      // sentence and the lower view's own readout. .view-head h2: each
+      // pane's own title, which repeats some of VIEW_CHROME's static text.
+      for (const sel of ['.topbar', '.readout', '.view-head h2']) {
+        for (const el of document.querySelectorAll(sel)) bits.push(textExcludingButtons(el))
+      }
+      // Every .hint EXCEPT the back-to-lesson one (allowlist entry 2) — the
+      // plant hint, the controller hint, and any affordability notice.
+      for (const el of document.querySelectorAll('.hint')) {
+        if (el.classList.contains('back-to-lesson')) continue
+        bits.push(textExcludingButtons(el))
+      }
+      // .math-pane (allowlist entry 3) is simply never selected above, so
+      // its derivation body never enters the scan at all.
       return bits.join(' \n ')
     })
 
@@ -1839,31 +1881,34 @@ console.log('\n33. dB, rad/s and Kp·e: reachable wherever they land on screen\n
   }
 
   let cueMatches = 0
-  const covered = new Set()
-  for (const [plant, ctrl] of combos) {
+  let states = 0
+  for (const plant of plants) {
     await clickPreset(plant)
-    await clickBtn(ctrl)
-    for (const view of views) {
-      await clickBtn(view)
-      await settle()
-      const text = await visibleChrome()
-      const names = await offeredNames()
-      for (const id of mustCheck) {
-        if (!CUES[id].test(text)) continue
-        const termName = TERMS[id]?.name
-        cueMatches++
-        covered.add(id)
-        if (!names.includes(termName)) {
-          fail(`picker/${plant} x ${ctrl} x ${view}: "${id}" cue is on screen but "${termName}" is not offered`)
+    for (const ctrl of ctrls) {
+      await clickBtn(ctrl)
+      for (const view of views) {
+        await clickBtn(view)
+        await settle()
+        states++
+        const text = await visibleChrome()
+        const names = await offeredNames()
+        for (const id of cueIds) {
+          if (!CUES[id].test(text)) continue
+          const termName = TERMS[id]?.name
+          cueMatches++
+          if (!names.includes(termName)) {
+            fail(`picker/${plant} x ${ctrl} x ${view}: "${id}" cue is on screen but "${termName}" is not offered`)
+          }
         }
       }
     }
   }
-  for (const must of mustCheck) {
-    if (!covered.has(must)) fail(`item 33: the "${must}" cue was never exercised by this spread — the probe proves nothing about it`)
+  if (states !== plants.length * ctrls.length * views.length) {
+    fail(`item 33: expected ${plants.length * ctrls.length * views.length} states, walked ${states}`)
   }
   console.log(
-    `   ${combos.length} combos x ${views.length} views: ${cueMatches} matches of {dB, rad/s, Kp·e} checked, all defined`,
+    `   ${plants.length} plants x ${ctrls.length} controllers x ${views.length} views = ${states} states: ` +
+      `${cueMatches} cue matches against the whole ${cueIds.length}-id table, all defined`,
   )
   await clickBtn('Step')
   await clickPreset('First order lag')

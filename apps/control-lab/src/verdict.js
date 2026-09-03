@@ -75,6 +75,63 @@ export function presentMargins(marg, open, lowestPlotted) {
 }
 
 /**
+ * The topbar's one-word verdict and its two on-screen sentences — the badge
+ * word ('stable' / 'ON THE BOUNDARY' / 'UNSTABLE'), the full sentence a wide
+ * screen shows, and the short one phone width falls back to. One source for
+ * the JSX (App.jsx) AND for chrome.js's scan, so "ON THE BOUNDARY" and the
+ * "boundary" cue it must bring with it can never drift the way three
+ * hand-copied instances of this sentence just did.
+ */
+export function verdictBadge(verdict) {
+  if (verdict === 'stable') return { badge: 'stable', full: 'closed loop settles', short: 'settles' }
+  if (verdict === 'marginal')
+    return {
+      badge: 'ON THE BOUNDARY',
+      full: 'sustained oscillation — neither settles nor runs away',
+      short: 'oscillates',
+    }
+  return { badge: 'UNSTABLE', full: 'closed loop runs away', short: 'runs away' }
+}
+
+/**
+ * A readout sentence as prose mixed with a live number: an ordered list of
+ * `{ t: text }` (plain) and `{ b: text }` (bolded) segments. Every function
+ * below that builds a sentence with a number in it returns this shape
+ * instead of JSX directly, so App.jsx can render the segments (wrapping the
+ * `b` ones in `<b>`) while chrome.js's scan flattens the SAME segments back
+ * to plain text with `joinParts` — one sentence, read two ways, never two
+ * sentences that can drift apart.
+ */
+export function joinParts(parts) {
+  return parts.map((p) => (p.t != null ? p.t : p.b != null ? p.b : '')).join('')
+}
+
+/**
+ * The Bode pane's margin readout, directly under the crossover line — the
+ * one sentence that names the boundary from whichever side applies: a
+ * marginal loop sitting AT it (gain margin exactly 0 dB), a loop whose phase
+ * never reaches −180° so there is no boundary to measure, room to spare
+ * above it, or already past it. `gainMargin` must be the RAW value from
+ * margins() — presentMargins() only ever rewrites gainCrossover/phaseMargin,
+ * never gainMargin, so the raw number is exactly what every caller (the
+ * topbar's verdict aside) already reads. chrome.js calls this with the
+ * picker's own default-state numbers, so "boundary" and "−180°" can never
+ * appear on screen with no definition reachable — the defect was that this
+ * sentence used to exist in ONE place (here) and get scanned in NONE.
+ */
+export function bodeMarginNote(marginal, gainMargin) {
+  if (marginal) return { prov: true, parts: [{ t: 'gain margin 0 dB, this gain is the boundary' }] }
+  if (gainMargin == null) return { prov: true, parts: [{ t: 'phase never reaches −180°' }] }
+  if (gainMargin >= 1) {
+    return { prov: false, parts: [{ t: 'room for ' }, { b: `${gainMargin.toFixed(2)}×` }, { t: ' more gain' }] }
+  }
+  return {
+    prov: false,
+    parts: [{ t: 'past the boundary — it sits at ' }, { b: `${gainMargin.toFixed(2)}×` }, { t: ' this gain' }],
+  }
+}
+
+/**
  * How many gain-doublings away the boundary sits, in whichever direction
  * actually gets there — the number the "thin margin" warning should key off.
  *
