@@ -77,7 +77,8 @@ export function SourceField({ src, field, sampleRate, onChange }) {
             value: 0,
             label: 'ideal',
             title:
-              'The true square: harmonics forever. Not a bigger number — a different object, and everything above Nyquist folds back',
+              'The true square: harmonics forever. Not a bigger number, a different object, and everything ' +
+            'above Nyquist folds back',
           },
         ]}
       />
@@ -112,14 +113,14 @@ export function SourceField({ src, field, sampleRate, onChange }) {
             value: Math.round(nyquist),
             label: 'Nyq',
             title:
-              'Nyquist — the fold point. Exactly here the samples land on the same two phases ' +
-              'every cycle: at phase 0° a sine samples its zero crossings and vanishes; drag ' +
-              'Phase to 90° and it returns at full amplitude.',
+              'Nyquist, the fold point. Exactly here the samples land on the same two phases every cycle: at ' +
+            'phase 0° a sine samples its zero crossings and vanishes. Drag Phase to 90° and it returns at ' +
+            'full amplitude.',
           },
           {
             value: Math.round(nyquist * 1.5),
             label: 'alias',
-            title: 'Above Nyquist — watch the peak walk back down',
+            title: 'Above Nyquist, watch the peak walk back down',
           },
         ]}
       />

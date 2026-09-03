@@ -367,7 +367,7 @@ export default function Controls({
 
         {state.blocks.length === 0 ? (
           <p className="hint empty">
-            Nothing between the sources and the plots. Add a filter and its response
+            No blocks between the sources and the plots. Add a filter and its response
             is drawn over the spectrum.
           </p>
         ) : (

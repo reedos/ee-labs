@@ -69,7 +69,7 @@ export const PRESETS = [
     group: 'Signals and Fourier',
     name: 'Single tone',
     terms: ['db', 'rms', 'harmonic'],
-    note: 'One sine, one line. The baseline everything else is read against.',
+    note: 'One sine wave gives one line in the spectrum. Every other experiment is read against this baseline.',
     try: 'This is the baseline. Next: Square adds only odd harmonics.',
     patch: { sources: [mk(1, 'sine', 250, 1)], sampleRate: 8000, timeSpanMs: 20, spanCycles: 5 },
   },
@@ -81,11 +81,10 @@ export const PRESETS = [
     // on harmonic markers", which the walk read as a control it could not
     // find.
     note:
-      'A square wave is a sum of odd harmonics falling as 1/k — 4A/(kπ), plus the small ' +
-      'sampling correction the math panel carries. The harmonic markers are on: count 1st, ' +
-      '3rd, 5th, and nothing between them. The flattening above 2 kHz is harmonics past ' +
-      'Nyquist folding back onto the ones below.',
-    try: 'Click 3, then 9 — more odd lines appear, and nothing lands between them.',
+      'A square wave is a sum of odd harmonics falling as 1/k, 4A/(kπ), plus the small sampling correction the ' +
+    'math panel carries. The harmonic markers are on: count 1st, 3rd, 5th, and nothing between them. The ' +
+    'flattening above 2 kHz is harmonics past Nyquist folding back onto the ones below.',
+    try: 'Click 3, then 9, more odd lines appear, and nothing lands between them.',
     chips: [
       src1('3', { topHarmonic: 3 }, 'Two terms: the fundamental and the 3rd'),
       src1('9', { topHarmonic: 9 }, 'Five terms, up to the 9th'),
@@ -108,11 +107,10 @@ export const PRESETS = [
     // sampled triangle's own correction reads 8.77 at 32 samples per period,
     // and the walk caught the note claiming the round number.
     note:
-      'A triangle has the same period as a square but no sudden jumps, so its harmonics fall ' +
-      'as 1/k² instead of 1/k: the 3rd is close to a ninth of the fundamental (8.8 measured ' +
-      'here) rather than a third. The sharper the corner, the more high-frequency content it ' +
-      'takes to build it.',
-    try: 'Switch the source to square — the 3rd harmonic rises from 1/9 to 1/3 of the fundamental.',
+      'A triangle has the same period as a square but no sudden jumps, so its harmonics fall as 1/k² instead of ' +
+    '1/k. The 3rd is close to a ninth of the fundamental (8.8 measured here) rather than a third. The sharper ' +
+    'the corner, the more high-frequency content it takes to build it.',
+    try: 'Switch the source to square, the 3rd harmonic rises from 1/9 to 1/3 of the fundamental.',
     chips: [
       src1('triangle', { type: 'triangle' }),
       src1('square', { type: 'square' }),
@@ -134,11 +132,10 @@ export const PRESETS = [
     // not on the 32-per-period samples the readout's "peak" reads — those
     // miss the overshoot lobe. The math panel carries both, side by side.
     note:
-      'Three odd harmonics at 1, 1/3 and 1/5 add up to a square of height π/4 = 0.785, ' +
-      'already square-ish. The Gibbs overshoot at each corner is 9.4% of the jump with three ' +
-      'terms, 9.1% with five, and 8.95% in the limit — it narrows as terms are added, never ' +
-      'shrinks away.',
-    try: 'Click add 7th and 9th — the edges steepen; the overshoot narrows toward 9% of the jump.',
+      'Three odd harmonics at 1, 1/3 and 1/5 add up to a square of height π/4 = 0.785, already square-ish. The ' +
+    'Gibbs overshoot at each corner is 9.4% of the jump with three terms, 9.1% with five, and 8.95% in the ' +
+    'limit. It narrows as terms are added, and never shrinks away.',
+    try: 'Click add 7th and 9th, the edges steepen. The overshoot narrows toward 9% of the jump.',
     chips: [
       {
         label: 'add 7th and 9th',
@@ -160,11 +157,10 @@ export const PRESETS = [
     name: 'Sources simply add',
     terms: ['superposition', 'scalloping'],
     note:
-      'Two tones, nothing else. The scope shows their sample-by-sample sum, a shape neither ' +
-      'has alone, while the spectrum shows two clean lines, each at its own source’s ' +
-      'amplitude as if the other were not there. That is superposition: adding signals adds ' +
-      'spectra, line by line.',
-    try: 'Untick source 2 — the 300 Hz line does not move.',
+      'The chain carries two tones and nothing else. The scope shows their sample-by-sample sum, a shape ' +
+    'neither has alone, while the spectrum shows two clean lines at each source’s own amplitude. ' +
+    'Superposition means that adding signals adds spectra, line by line.',
+    try: 'Untick source 2, the 300 Hz line does not move.',
     chips: [
       { label: 'source 2 off', patch: { sources: [{}, { enabled: false }] } },
       { label: 'both on', patch: { sources: [{ enabled: true }, { enabled: true }] } },
@@ -185,11 +181,10 @@ export const PRESETS = [
     // should be one click away here as it is in the sampling lessons.
     terms: ['lti', 'superposition', 'sampled', 'phase', 'scalloping'],
     note:
-      'This chain is LINEAR — superposition plus scaling — and TIME-INVARIANT: shift the ' +
-      'input, the output shifts identically. Any such system can do exactly one thing to a ' +
-      'sine: scale it and shift it, never change its frequency or add new ones. One line in, ' +
-      'one line out, through a strongly resonant filter.',
-    try: 'Drag Phase to 180° — the filtered wave is exactly inverted; its spectrum line stays put.',
+      'This chain is linear, superposition plus scaling, and time-invariant, so shifting the input shifts the ' +
+    'output identically. Any such system can do exactly one thing to a sine: scale it and shift it, never ' +
+    'change its frequency or add new ones. One line in, one line out, through a strongly resonant filter.',
+    try: 'Drag Phase to 180°, the filtered wave is exactly inverted. Its spectrum line stays put.',
     chips: [
       src1('0°', { phase: 0 }),
       src1('90°', { phase: Math.PI / 2 }),
@@ -210,11 +205,10 @@ export const PRESETS = [
     name: 'Beating',
     terms: ['bin', 'frame', 'envelope'],
     note:
-      'Two tones 5 Hz apart. The spectrum shows two lines because the frame is 8192 samples ' +
-      'long (bins under 1 Hz) and the axis is zoomed to 500 Hz; the scope shows the other ' +
-      'truth, one tone whose envelope pulses at the 5 Hz difference. Same signal, two ' +
-      'descriptions.',
-    try: 'Set FFT to 2048 in the top bar — the two lines merge into one peak.',
+      'The chain carries two tones 5 Hz apart. The spectrum shows two lines because the frame is 8192 samples ' +
+    'long (bins under 1 Hz) and the axis is zoomed to 500 Hz. The scope shows the same signal the other way, ' +
+    'one tone whose envelope pulses at the 5 Hz difference.',
+    try: 'Set FFT to 2048 in the top bar, the two lines merge into one peak.',
     chips: [
       { label: 'FFT 2048', patch: { fftSize: 2048 }, title: '3.9 Hz bins: the pair is 1.3 bins apart' },
       { label: 'FFT 8192', patch: { fftSize: 8192 }, title: '0.98 Hz bins: the pair resolves' },
@@ -237,10 +231,10 @@ export const PRESETS = [
     // One claim. The interpolation-versus-information framing, the fraying
     // at the pane edges and the envelope wobble moved to the math panel.
     note:
-      'A 3.4 kHz sine at 8 kHz: 2.35 samples per cycle. Dot-to-dot it looks mangled, yet RMS ' +
-      'still reads 0.707 — nothing was lost. More than two samples per cycle is enough: the ' +
-      'scope’s sin(x)/x curve through the dots IS the one signal they describe.',
-    try: 'Drag Frequency to 3900 Hz — 2.05 samples per cycle, and the curve is still the sine.',
+      'A 3.4 kHz sine at 8 kHz: 2.35 samples per cycle. Dot-to-dot it looks mangled, yet RMS still reads 0.707, ' +
+    'so nothing was lost. More than two samples per cycle is enough, and the scope’s sin(x)/x curve through ' +
+    'the dots is the one signal they describe.',
+    try: 'Drag Frequency to 3900 Hz, 2.05 samples per cycle, and the curve is still the sine.',
     // Each chip also sets the span so the visible window is a WHOLE number
     // of samples: 17 cycles of 3400 Hz is exactly 40 samples, 39 cycles of
     // 3900 Hz exactly 80. Otherwise the readout's RMS — averaged over the
@@ -257,9 +251,9 @@ export const PRESETS = [
     name: 'Aliasing',
     terms: ['sampled', 'aliasing', 'nyquist', 'fold', 'scalloping'],
     note:
-      'A 3.4 kHz tone at 8 kHz behaves. Past 4 kHz — dragged there, or by a chip — the ' +
-      'peak turns around and walks back down. The signal is gone and an impostor took its place.',
-    try: 'Click 6000 Hz — the peak lands at 2000 Hz. Click 4600 — 3400 Hz, where it started.',
+      'A 3.4 kHz tone at 8 kHz behaves. Past 4 kHz, dragged there, or by a chip, the peak turns around and ' +
+    'walks back down. The signal is gone and an impostor took its place.',
+    try: 'Click 6000 Hz, the peak lands at 2000 Hz. Click 4600, 3400 Hz, where it started.',
     // Whole-sample spans, as in Coarse: 40 samples every time (17 cycles of
     // 3400, 23 of 4600, 30 of 6000), so RMS reads 0.707 at every chip and
     // "indistinguishable from the start" holds for the readout too.
@@ -280,7 +274,7 @@ export const PRESETS = [
       'sampled at 16 kHz all sit well below Nyquist, so the dots describe exactly this signal. ' +
       'At 4 kHz the 3125 Hz component no longer fits and folds to 875 Hz, a line the signal ' +
       'never contained.',
-    try: 'Set Rate to 4 kHz — the 3125 Hz line folds to 875 Hz.',
+    try: 'Set Rate to 4 kHz, the 3125 Hz line folds to 875 Hz.',
     chips: [
       { label: '16 kHz', patch: { sampleRate: 16000 } },
       { label: '8 kHz', patch: { sampleRate: 8000 } },
@@ -306,11 +300,10 @@ export const PRESETS = [
     // One claim. "A bound you approach, not one you sit on" and what the
     // reconstruction does at each phase moved to the math panel.
     note:
-      'A 4 kHz tone sampled at 8 kHz: exactly two samples per cycle, the limit the theorem ' +
-      'allows. The bright dots are the samples; the smooth curve is the scope’s sin(x)/x ' +
-      'reconstruction through them. Same frequency, same amplitude — where the samples fall ' +
-      'in the cycle decides what you read.',
-    try: 'Drag Phase to 0° — the samples land on the zero crossings and the tone vanishes.',
+      'A 4 kHz tone sampled at 8 kHz: exactly two samples per cycle, the limit the theorem allows. The bright ' +
+    'dots are the samples, and the smooth curve is the scope’s sin(x)/x reconstruction through them. The ' +
+    'frequency and amplitude are fixed, so where the samples fall in the cycle decides what you read.',
+    try: 'Drag Phase to 0°, the samples land on the zero crossings and the tone vanishes.',
     chips: [
       src1('0°', { phase: 0 }, 'Samples on the zero crossings: nothing'),
       src1('45°', { phase: Math.PI / 4 }, 'Reads 0.707'),
@@ -331,11 +324,10 @@ export const PRESETS = [
     // One claim. The 15th-harmonic fold and the ideal square's deceptively
     // clean trace moved to the math panel, where the numbers are live.
     note:
-      'Highest harmonic 9: the square’s odd series stopped after five terms, topping out at ' +
-      '2531 Hz. That is a highest frequency, and 8 kHz is more than twice it. Five lines, ' +
-      'nothing above the 9th, no floor between them: these samples are not an approximation ' +
-      'of this signal — they ARE it.',
-    try: 'Click 15 — the 15th harmonic folds from 4219 Hz to 3781 Hz, between the lines.',
+      'Highest harmonic 9: the square’s odd series stopped after five terms, topping out at 2531 Hz. That is a ' +
+    'highest frequency, and 8 kHz is more than twice it. Five lines, nothing above the 9th, no floor between ' +
+    'them: these samples are not an approximation of this signal, they ARE it.',
+    try: 'Click 15, the 15th harmonic folds from 4219 Hz to 3781 Hz, between the lines.',
     chips: [
       src1('9', { topHarmonic: 9 }, 'Five terms, all below Nyquist'),
       src1('15', { topHarmonic: 15 }, 'The 15th lands past Nyquist and folds back'),
@@ -364,11 +356,10 @@ export const PRESETS = [
     // two tones cancel. The math panel measures it; the walk read 0.253
     // against two 0.5 sources and had nothing to explain it.
     note:
-      'Two tones 15 Hz apart in a 512-point frame whose bins are 15.6 Hz wide: closer than ' +
-      'one bin, they read as one peak (and a low one, 0.25 — the math panel says why). ' +
-      'Telling two frequencies apart requires listening for long enough, and the frame ' +
-      'length IS that listening time.',
-    try: 'Set FFT to 2048 in the top bar — one peak splits into 250 and 265 Hz.',
+      'Two tones 15 Hz apart sit in a 512-point frame whose bins are 15.6 Hz wide. Closer than one bin, they ' +
+    'read as one peak, and a low one at 0.25, which the math panel explains. Telling two frequencies apart ' +
+    'takes listening for long enough, and the frame length is that listening time.',
+    try: 'Set FFT to 2048 in the top bar, one peak splits into 250 and 265 Hz.',
     chips: [
       { label: 'FFT 512', patch: { fftSize: 512 }, title: '15.6 Hz bins: one peak' },
       { label: 'FFT 2048', patch: { fftSize: 2048 }, title: '3.9 Hz bins: two' },
@@ -389,10 +380,10 @@ export const PRESETS = [
     // at 1 kHz sits near −147 dB, which the default −100 dB axis could not
     // show, so "below −140" was a number the student had to take on trust.
     note:
-      'Window is set to "none". A tone that does not complete whole cycles in the frame ' +
-      'smears across every bin; with Hann it collapses back to a line, and the floor here is ' +
-      'dropped to −160 dB so the collapse is visible.',
-    try: 'Set Window to hann — 1 kHz’s smear drops from −56 dB to below −140 dB.',
+      'Window is set to "none". A tone that does not complete whole cycles in the frame smears across every ' +
+    'bin. With Hann it collapses back to a line, and the floor here is dropped to −160 dB so the collapse is ' +
+    'visible.',
+    try: 'Set Window to hann, 1 kHz’s smear drops from −56 dB to below −140 dB.',
     chips: [
       { label: 'none', patch: { window: 'none' } },
       { label: 'hann', patch: { window: 'hann' } },
@@ -414,10 +405,9 @@ export const PRESETS = [
     name: 'Low-pass a square',
     terms: ['harmonic', 'db', 'cutoff', 'transfer'],
     note:
-      'Dim trace: the square before the filter; solid: after. The gap between them at each ' +
-      'harmonic IS the blue response curve — the 3rd gives up 3.7 dB, the 5th 11 dB, and the ' +
-      'corners round off. The peaks do not sit ON the curve, since a square’s harmonics ' +
-      'already fall as 4/kπ.',
+      'The dim trace is the square before the filter, the solid one after. The gap between them is the blue ' +
+    'response curve, and the 3rd harmonic gives up 3.7 dB, the 5th 11 dB, the corners round off. The peaks do ' +
+    'not sit on the curve, since a square’s harmonics fall as 4/kπ.',
     try: 'Drag Cutoff to 300 Hz: the 3rd harmonic drops 24 dB below the fundamental.',
     chips: [
       blk1('300 Hz', { freq: 300 }, 'Only the fundamental gets through: nearly a sine'),
@@ -440,11 +430,10 @@ export const PRESETS = [
     name: 'High-pass a square',
     terms: ['harmonic', 'cutoff'],
     note:
-      'Same square, same 700 Hz corner as Low-pass a square, opposite survivor list: the ' +
-      'fundamental is cut, the upper harmonics pass. On the scope the flat tops sag toward ' +
-      'zero (a plateau is low frequency) while each edge survives as a sharp spike (an edge ' +
-      'is the fastest change there is).',
-    try: 'Drag Cutoff to 2 kHz — the plateaus flatten to zero; only the edge spikes remain.',
+      'Same square, same 700 Hz corner as Low-pass a square, and the opposite survivor list. The fundamental is ' +
+    'cut and the upper harmonics pass. On the scope the flat tops sag toward zero, a plateau being low ' +
+    'frequency, while each edge survives as a sharp spike.',
+    try: 'Drag Cutoff to 2 kHz, the plateaus flatten to zero. Only the edge spikes remain.',
     chips: [blk1('700 Hz', { freq: 700 }), blk1('2 kHz', { freq: 2000 })],
     featured: [{ block: 1, field: 'freq' }],
     patch: {
@@ -469,11 +458,10 @@ export const PRESETS = [
     // One claim. The band-pass switch (peak pinned at 0 dB, Q sets the width)
     // and the noise-trace-parallel-to-curve remark moved to the math panel.
     note:
-      'The title is the claim: the resonant peak at the cutoff has height exactly Q — not ' +
-      'proportional to it, equal. At Q = 10 it stands 20 dB (×10) above the passband. The ' +
-      'source is white noise on purpose: it holds every frequency equally, so the spectrum ' +
-      'paints the whole filter shape at once.',
-    try: 'Drag Q to 1 — the peak flattens into the shoulder; at 20 it stands 26 dB.',
+      'The resonant peak at the cutoff has height exactly Q, not proportional to it but equal to it. At Q = 10 ' +
+    'it stands 20 dB (×10) above the passband. The source is white noise, which holds every frequency ' +
+    'equally, so the spectrum paints the whole filter shape at once.',
+    try: 'Drag Q to 1, the peak flattens into the shoulder. At 20 it stands 26 dB.',
     chips: [
       blk1('0.707', { q: Math.SQRT1_2 }, 'Butterworth: −3 dB at the corner, no peak'),
       blk1('1', { q: 1 }, '0 dB at the corner: level with the passband'),
@@ -493,11 +481,10 @@ export const PRESETS = [
     name: 'Phase is invisible here',
     terms: ['phase', 'groupdelay', 'allpass'],
     note:
-      'An all-pass changes the scope waveform completely and leaves the spectrum untouched: ' +
-      '|H| = 1 at every frequency, and the FFT throws phase away. The violet curve sweeps a ' +
-      'full 360° while the magnitude never moves — that sweep is the entire content of this ' +
-      'block.',
-    try: 'Switch the overlay to delay — near 400 Hz the chain holds components up 26 samples.',
+      'An all-pass changes the scope waveform completely and leaves the spectrum untouched. |H| = 1 at every ' +
+    'frequency, and the FFT throws phase away. The violet curve sweeps a full 360° while the magnitude never ' +
+    'moves, and that sweep is the entire content of this block.',
+    try: 'Switch the overlay to delay, near 400 Hz the chain holds components up 26 samples.',
     chips: [
       { label: 'phase overlay', patch: { overlay: 'phase' } },
       { label: 'delay overlay', patch: { overlay: 'delay' } },
@@ -516,11 +503,10 @@ export const PRESETS = [
     name: 'Two filters are steeper',
     terms: ['order', 'cascade', 'attenuation', 'bypass', 'db'],
     note:
-      'Two identical low-passes in series. Cascading multiplies the magnitudes, so the second ' +
-      'section squares the response and doubles the attenuation in dB at every frequency — ' +
-      'bypass one and the curve halves its slope. Noise is the source because it probes ' +
-      'every frequency at once.',
-    try: 'Bypass block 2 — at 3200 Hz, −78 dB becomes −39 dB: exactly half.',
+      'Two identical low-passes in series. Cascading multiplies the magnitudes, so the second section squares ' +
+    'the response and doubles the attenuation in dB at every frequency, bypass one and the curve halves its ' +
+    'slope. Noise is the source because it probes every frequency at once.',
+    try: 'Bypass block 2, at 3200 Hz, −78 dB becomes −39 dB: exactly half.',
     chips: [
       { label: 'one section', patch: { blocks: [{}, { bypass: true }] } },
       { label: 'both sections', patch: { blocks: [{ bypass: false }, { bypass: false }] } },
@@ -540,11 +526,10 @@ export const PRESETS = [
     name: 'Order is a choice',
     terms: ['order', 'q', 'butterworth', 'cascade', 'cutoff', 'db', 'octave'],
     note:
-      'These two cascaded sections make a real 4th-order Butterworth: the Qs are 0.541 and ' +
-      '1.307, NOT 0.707 twice. With both at 0.707 it is still 4th order with the same far ' +
-      'slope — 24 dB/octave (80 dB/decade) — but the corner sags from −3 dB to −6, because a ' +
-      'Butterworth needs a particular Q per section.',
-    try: 'Set both Q to 0.707 — the corner sags from −3 dB to −6 dB.',
+      'These two cascaded sections make a real 4th-order Butterworth, with Qs of 0.541 and 1.307 rather than ' +
+    '0.707 twice. With both at 0.707 it is still 4th order with the same far slope, 24 dB/octave (80 ' +
+    'dB/decade). The corner sags from −3 dB to −6, because a Butterworth needs a particular Q per section.',
+    try: 'Set both Q to 0.707, the corner sags from −3 dB to −6 dB.',
     chips: [
       {
         label: 'Butterworth 0.541 / 1.307',
@@ -574,11 +559,10 @@ export const PRESETS = [
     name: 'Impulse response',
     terms: ['impulse', 'hH', 'delta', 'kernel', 'q', 'db'],
     note:
-      'One sample, then silence. Its spectrum is flat, so whatever shape the spectrum has now ' +
-      'was put there by the filter: the orange trace is the blue curve redrawn at the ' +
-      'impulse’s own 2/N level, 60 dB down. The time view draws the impulse response itself ' +
-      '— h(t) and H(f), one object from two sides.',
-    try: 'Drag Q to 1 — the ringing dies within one cycle and the peak drops 12 dB.',
+      'The input is one sample, then silence, so its spectrum is flat and any shape it has now came from the ' +
+    'filter. The orange trace is the blue curve redrawn at the impulse’s own 2/N level, 60 dB down. The time ' +
+    'view draws the impulse response itself, h(t) and H(f), one object from two sides.',
+    try: 'Drag Q to 1, the ringing dies within one cycle and the peak drops 12 dB.',
     chips: [blk1('1', { q: 1 }), blk1('4', { q: 4 }), blk1('10', { q: 10 })],
     featured: [{ block: 1, field: 'q' }],
     patch: {
@@ -597,11 +581,10 @@ export const PRESETS = [
     name: 'Step response and ringing',
     terms: ['q', 'cutoff', 'settling', 'damping', 'butterworth'],
     note:
-      'A sudden jump, held. A gentle filter rounds the corner; a resonant one overshoots and ' +
-      'rings at its cutoff before settling — this is what Q feels like in time. The overshoot ' +
-      'stops at Q = 0.5 (critical damping), not at 0.707: the Butterworth Q is flattest in ' +
-      'frequency yet still overshoots (4.3% ideal, 4.4% here).',
-    try: 'Drag Q to 0.5 — the overshoot vanishes; at 0.707 it is still 4.4%.',
+      'The input is a sudden jump, held. A gentle filter rounds the corner, and a resonant one overshoots and ' +
+    'rings at its cutoff before settling. Overshoot stops at Q = 0.5, critical damping, not at 0.707, where ' +
+    'the Butterworth is flattest in frequency and still overshoots (4.3% ideal, 4.4% here).',
+    try: 'Drag Q to 0.5, the overshoot vanishes. At 0.707 it is still 4.4%.',
     chips: [
       blk1('0.5', { q: 0.5 }, 'Critical damping: no overshoot at all'),
       blk1('0.707', { q: Math.SQRT1_2 }, 'Butterworth: flattest in frequency, 4.4% over in time'),
@@ -626,7 +609,7 @@ export const PRESETS = [
       'makes its shape visible: deep nulls every 1000 Hz, the sample rate over 8. Summing a ' +
       'whole number of cycles of a sine gives exactly zero, so every frequency fitting whole ' +
       'cycles into the average is cancelled completely.',
-    try: 'Drag Taps N to 16 — the nulls move in to every 500 Hz.',
+    try: 'Drag Taps N to 16, the nulls move in to every 500 Hz.',
     chips: [
       blk1('4', { taps: 4 }, 'Nulls every 2000 Hz'),
       blk1('8', { taps: 8 }, 'Nulls every 1000 Hz'),
@@ -645,11 +628,10 @@ export const PRESETS = [
     name: 'Everything arrives together',
     terms: ['groupdelay', 'order', 'fir', 'taps', 'feedback', 'cutoff'],
     note:
-      'A 61-tap FIR with the overlay on group delay: a flat line at exactly 30 samples. ' +
-      'Every frequency is held up by the same amount, so the signal comes out late and ' +
-      'otherwise unchanged; a biquad’s delay instead peaks sharply at the corner, which is ' +
-      'why a filtered square rings there.',
-    try: 'Drag Taps N to 121 — the delay line rises to exactly 60 samples, still flat.',
+      'A 61-tap FIR with the overlay on group delay: a flat line at exactly 30 samples. Every frequency is held ' +
+    'up by the same amount, so the signal comes out late and otherwise unchanged. A biquad’s delay instead ' +
+    'peaks sharply at the corner, which is why a filtered square rings there.',
+    try: 'Drag Taps N to 121, the delay line rises to exactly 60 samples, still flat.',
     chips: [
       blk1('31', { taps: 31 }, '15 samples'),
       blk1('61', { taps: 61 }, '30 samples'),
@@ -672,11 +654,10 @@ export const PRESETS = [
     // The group-delay overlay is loaded, not merely mentioned: the old note
     // pointed at "the delay the overlay reports" with the overlay set to none.
     note:
-      'The top pane is the Kernel view: the impulse response, two names for ONE sequence — ' +
-      'what comes out when a single 1 goes in, and the weights convolution applies to the ' +
-      'recent past. For an FIR the 31 stems ARE the filter. Its symmetry centre, tap 15, is ' +
-      'exactly the delay the group-delay overlay reports.',
-    try: 'Drag Taps N to 61 — the symmetry centre, and the delay, move to 30.',
+      'The top pane is the Kernel view. The kernel and the impulse response are one sequence, what comes out ' +
+    'when a single 1 goes in and the weights convolution applies to the recent past. For an FIR the 31 stems ' +
+    'are the filter, and their symmetry centre, tap 15, is the delay the overlay reports.',
+    try: 'Drag Taps N to 61, the symmetry centre, and the delay, move to 30.',
     chips: [blk1('31', { taps: 31 }, 'Centre at tap 15'), blk1('61', { taps: 61 }, 'Centre at tap 30')],
     featured: [{ block: 1, field: 'taps' }],
     patch: {
@@ -697,11 +678,10 @@ export const PRESETS = [
     // pixels on the dB axis — and the walk could not see the thing the
     // lesson exists to show.
     note:
-      'The same design with the window set to none, on a linear scale. The ideal filter is a ' +
-      'sinc running to infinity, so it is cut short — and cutting short IS a rectangular ' +
-      'window, whose leakage puts 8% of overshoot beside the corner. More taps make the ' +
-      'ripple narrower, never shorter: Gibbs again.',
-    try: 'Set Taps N to 201 — the ripple narrows, not shorter. Set Window to hamming — gone.',
+      'The same design with the window set to none, on a linear scale. The ideal filter is a sinc running to ' +
+    'infinity, so it is cut short, and cutting short IS a rectangular window, whose leakage puts 8% of ' +
+    'overshoot beside the corner. More taps make the ripple narrower, never shorter: Gibbs again.',
+    try: 'Set Taps N to 201, the ripple narrows, not shorter. Set Window to hamming, gone.',
     chips: [
       blk1('101 taps', { taps: 101 }),
       blk1('201 taps', { taps: 201 }, 'Twice the taps: the same overshoot, half as wide'),
@@ -724,11 +704,10 @@ export const PRESETS = [
     // z-plane is the lesson, and twelve equal taps beside their twelve roots
     // is the pairing — a scribble of filtered noise was not (Reed's review).
     note:
-      'The bottom pane is the z-plane: for a sampled filter the frequency axis is the unit ' +
-      'circle, DC at z = 1 round to Nyquist at z = −1. The 11 circles are this 12-tap ' +
-      'average’s zeros, exactly ON the rim, evenly spaced — each one an exact null. Above it, ' +
-      'the kernel: 12 equal taps of 1/12.',
-    try: 'Drag Taps N to 6 — five zeros, 60° apart. Add a low-pass: poles, as crosses.',
+      'The bottom pane is the z-plane. For a sampled filter the frequency axis is the unit circle, DC at z = 1 ' +
+    'round to Nyquist at z = −1. The 11 circles are this 12-tap average’s zeros, exactly on the rim, evenly ' +
+    'spaced, each an exact null, above the kernel’s 12 equal taps of 1/12.',
+    try: 'Drag Taps N to 6, five zeros, 60° apart. Add a low-pass: poles, as crosses.',
     // "Add a low-pass" is a chip, not a scroll to the Chain section: the
     // walk had to leave the lesson to do what the try line said.
     chips: [
@@ -762,11 +741,10 @@ export const PRESETS = [
     // used one letter for both and the walk could not tell 1/D Hz from 1/D
     // samples.
     note:
-      'A delayed copy of the signal, added to itself, nearly cancels wherever the delay τ ' +
-      'is an odd number of half-periods: notches every 1/τ = 250 Hz for τ = 4 ms (D = 32 ' +
-      'samples), dipping to 1−g. In feedback mode the same delay resonates instead, peaks at ' +
-      'the whole-period frequencies, midway between where the notches were.',
-    try: 'Switch Type to feedback — the notches become peaks, midway between where they were.',
+      'A delayed copy of the signal, added to itself, nearly cancels wherever the delay τ is an odd number of ' +
+    'half-periods. That puts notches every 1/τ = 250 Hz for τ = 4 ms (D = 32 samples), dipping to 1−g. In ' +
+    'feedback mode the same delay resonates instead, peaking midway between those notches.',
+    try: 'Switch Type to feedback, the notches become peaks, midway between where they were.',
     chips: [
       blk1('feedforward', { mode: 'feedforward' }, 'Notches, dipping to 1−g'),
       blk1('feedback', { mode: 'feedback' }, 'Peaks of 1/(1−g), midway between the old notches'),
@@ -786,11 +764,10 @@ export const PRESETS = [
     // One claim, and it names the two strips the canvas now labels too.
     // Flat tops, ramp widths and warm-up moved to the math panel.
     note:
-      'A square through an 8-tap moving average, one output sample at a time. Top strip: the ' +
-      'input, with the kernel riding along FLIPPED — h[n−m], the detail everyone trips on; ' +
-      'bottom: the output built so far, each dot one sum of the shaded products under the ' +
-      'kernel.',
-    try: 'Press play — inside each flat top the output sits at exactly 0.8, the amplitude.',
+      'A square through an 8-tap moving average, one output sample at a time. Top strip: the input, with the ' +
+    'kernel riding along FLIPPED, h[n−m], the detail everyone trips on. Bottom: the output built so far, each ' +
+    'dot one sum of the shaded products under the kernel.',
+    try: 'Press play, inside each flat top the output sits at exactly 0.8, the amplitude.',
     chips: [
       blk1('4 taps', { taps: 4 }, 'Ramps 3 samples wide'),
       blk1('8 taps', { taps: 8 }, 'Ramps 7 samples wide'),
@@ -811,11 +788,10 @@ export const PRESETS = [
     name: 'Clipping makes harmonics',
     terms: ['harmonic', 'transfer', 'memoryless', 'lti'],
     note:
-      'Hard-clip a pure sine and odd harmonics appear — approaching 4c/(kπ) in the deep-clip ' +
-      'limit, falling away faster at a clip this gentle. No filter is involved: the ' +
-      'nonlinearity manufactures them. The response curve goes dashed because no transfer ' +
-      'function can describe this block.',
-    try: 'Drag Threshold to 1 — the clip never bites and every harmonic vanishes.',
+      'Hard-clip a pure sine and odd harmonics appear, approaching 4c/(kπ) in the deep-clip limit, falling away ' +
+    'faster at a clip this gentle. No filter is involved: the nonlinearity manufactures them. The response ' +
+    'curve goes dashed because no transfer function can describe this block.',
+    try: 'Drag Threshold to 1, the clip never bites and every harmonic vanishes.',
     chips: [
       blk1('0.1', { threshold: 0.1 }, 'Deep clip: nearly a square'),
       blk1('0.3', { threshold: 0.3 }),
@@ -836,9 +812,9 @@ export const PRESETS = [
     name: 'DC breaks the symmetry',
     terms: ['harmonic', 'operatingpoint', 'memoryless'],
     note:
-      'Same clipper, but the signal is offset first. A symmetric clip makes only odd ' +
-      'harmonics; asymmetry brings in the even ones.',
-    try: 'Drag DC offset to 0 — the even harmonics vanish.',
+      'Same clipper, but the signal is offset first. A symmetric clip makes only odd harmonics. Asymmetry ' +
+    'brings in the even ones.',
+    try: 'Drag DC offset to 0, the even harmonics vanish.',
     chips: [blk1('0', { dcOffset: 0 }, 'Symmetric: odd harmonics only'), blk1('0.3', { dcOffset: 0.3 })],
     featured: [{ block: 1, field: 'dcOffset' }],
     patch: {
@@ -859,12 +835,11 @@ export const PRESETS = [
     // 1050 Hz (−22.7 dB) as strong as those two and 50 Hz (−35.9 dB) as a
     // fifth-order afterthought. try.test.js measures all four now.
     note:
-      'A linear block can only change how much of a frequency there is; a nonlinear one ' +
-      'invents new ones. Clipping 250 and 400 Hz together makes 100 Hz (2·250−400), 550 ' +
-      '(2·400−250), 900 (2·250+400) and 1050 Hz (2·400+250): third-order intermodulation ' +
-      'products, harmonics of neither input. Avoiding them is most of why linearity is worth ' +
-      'paying for.',
-    try: 'Bypass the clipper — 100, 550, 900 and 1050 Hz all disappear.',
+      'A linear block can only change how much of a frequency there is, while a nonlinear one invents new ones. ' +
+    'Clipping 250 and 400 Hz together makes 100 Hz (2·250−400), 550 (2·400−250), 900 (2·250+400) and 1050 Hz ' +
+    '(2·400+250), the third-order intermodulation products. Avoiding them is most of why linearity is worth ' +
+    'paying for.',
+    try: 'Bypass the clipper, 100, 550, 900 and 1050 Hz all disappear.',
     chips: [
       { label: 'clipper bypassed', patch: { blocks: [{ bypass: true }] } },
       { label: 'clipper on', patch: { blocks: [{ bypass: false }] } },
@@ -882,10 +857,9 @@ export const PRESETS = [
     name: 'Ring modulator',
     terms: ['carrier', 'sidebands'],
     note:
-      'Multiply two signals and you get their sum and difference — 250 × 1000 gives 750 and ' +
-      '1250, and neither original frequency survives. Nothing was filtered; the frequencies ' +
-      'were moved.',
-    try: 'Drag Carrier to 500 Hz — the lines move to 250 and 750 Hz.',
+      'Multiply two signals and you get their sum and difference, 250 × 1000 gives 750 and 1250, and neither ' +
+    'original frequency survives. Nothing was filtered. The frequencies were moved.',
+    try: 'Drag Carrier to 500 Hz, the lines move to 250 and 750 Hz.',
     chips: [blk1('500 Hz', { freq: 500 }, '250 and 750'), blk1('1000 Hz', { freq: 1000 }, '750 and 1250')],
     featured: [{ block: 1, field: 'freq' }],
     patch: {
@@ -901,11 +875,10 @@ export const PRESETS = [
     name: 'AM: the carrier returns',
     terms: ['carrier', 'sidebands', 'dsbsc', 'modindex', 'envelope'],
     note:
-      'The ring modulator alone is suppressed-carrier: the 1000 Hz carrier is missing from ' +
-      'between its own sidebands. A DC offset before it brings the carrier back, because a ' +
-      'constant multiplied by the carrier IS the carrier — the whole difference between ' +
-      'broadcast AM and DSB-SC.',
-    try: 'Drag DC offset to 0 — the 1000 Hz carrier leaves; 750 and 1250 Hz stay.',
+      'The ring modulator alone is suppressed-carrier. The 1000 Hz carrier is missing from between its own ' +
+    'sidebands. A DC offset before it brings the carrier back, because a constant multiplied by the carrier ' +
+    'IS the carrier, the whole difference between broadcast AM and DSB-SC.',
+    try: 'Drag DC offset to 0: the 1000 Hz carrier leaves, 750 and 1250 Hz stay.',
     chips: [blk1('0', { dcOffset: 0 }, 'DSB-SC: sidebands only'), blk1('0.5', { dcOffset: 0.5 }, 'AM: the carrier is back')],
     featured: [{ block: 1, field: 'dcOffset' }],
     patch: {
@@ -925,7 +898,7 @@ export const PRESETS = [
       'noise floor. At 12 bits they sink but stay discrete, because this tone divides the ' +
       'sample rate exactly and the error repeats with it. Only dither breaks that grip: the ' +
       'spurs become the flat floor 6.02N + 1.76 dB assumed.',
-    try: 'Drag Bits to 12 — the spurs sink but stay discrete; tick Dither — a flat floor.',
+    try: 'Drag Bits to 12, the spurs sink but stay discrete. Tick Dither, a flat floor.',
     chips: [
       blk1('4 bits', { bits: 4 }),
       blk1('12 bits', { bits: 12 }, 'Smaller spurs, still discrete'),

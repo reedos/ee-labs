@@ -66,7 +66,7 @@ describe('under the note', () => {
     const title = h.indexOf('class="note-title"')
     const tryLine = h.indexOf('class="try-line"')
     const featured = h.indexOf('class="featured"')
-    const noteBody = h.indexOf('The title is the claim')
+    const noteBody = h.indexOf('The resonant peak at the cutoff')
     const sources = h.indexOf('id="sources"')
     const math = h.indexOf('id="math"')
     expect(nav).toBeGreaterThan(0)

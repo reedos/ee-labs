@@ -428,7 +428,8 @@ export function sourceMath(source, ctx) {
                 // zero (or nearly) — under the default Hann the on-screen
                 // spectrum reads the floor, not 2A/N. Say so, or the panel
                 // promises a level the plot visibly does not show.
-                note: 'every bin, equally — with the analysis window set to "none"; a taper is zero at the frame edge where this impulse sits',
+                note: 'every bin, equally, with the analysis window set to "none"; a taper is zero at the frame ' +
+                'edge where this impulse sits',
               },
               { label: 'in dB', value: 20 * Math.log10(flat), unit: 'dB' },
               { label: 'frame length N', value: fftSize, unit: 'samples' },

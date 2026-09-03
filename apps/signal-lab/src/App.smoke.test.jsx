@@ -27,7 +27,7 @@ describe('App', () => {
   })
 
   it('has a note for every preset', () => {
-    expect(html()).toContain('One sine, one line')
+    expect(html()).toContain('One sine wave gives one line in the spectrum')
   })
 
   it('renders the chain section and its add menu', () => {
@@ -36,7 +36,7 @@ describe('App', () => {
     expect(h).toContain('Low-pass')
     expect(h).toContain('Ring modulator')
     // Empty state, since no blocks are in the initial patch.
-    expect(h).toContain('Nothing between the sources and the plots')
+    expect(h).toContain('No blocks between the sources and the plots')
   })
 
   it('renders the top bar with global controls', () => {
@@ -48,7 +48,7 @@ describe('App', () => {
 
   it('gives frequency a log slider and the Nyquist chips', () => {
     const h = html()
-    expect(h).toContain('Nyquist — the fold point')
+    expect(h).toContain('Nyquist, the fold point')
     expect(h).toContain('Above Nyquist')
     // 250 Hz on a log 1..8000 slider sits past the midpoint; a linear slider
     // would put it at position 31 of 1000.

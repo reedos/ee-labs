@@ -201,7 +201,7 @@ const ENTRIES = {
           {
             label: 'peak of the summed waveform can reach',
             value: (s1 ? s1.amp : 0) + (s2 && s2.enabled !== false ? s2.amp : 0),
-            note: 'when the crests align — amplitudes add in time as well',
+            note: 'when the crests align, amplitudes add in time as well',
           },
         ]),
         // What the note used to say, now beside the numbers.
@@ -728,7 +728,7 @@ const ENTRIES = {
             label: 'rate needed to keep them all',
             value: 2 * Math.max(...on.map((s) => s.freq)),
             unit: 'Hz',
-            note: 'twice the highest — the sampling theorem, as a shopping list',
+            note: 'twice the highest, the sampling theorem, as a shopping list',
           },
         ]),
       ],
@@ -1075,7 +1075,7 @@ const ENTRIES = {
               : b.type === 'peaking'
                 ? {
                     v: Math.pow(10, (b.params.gainDb || 0) / 20),
-                    why: 'peaking: the peak is the GAIN setting, not Q — Q sets the width here',
+                    why: 'peaking: the peak is the GAIN setting, not Q, Q sets the width here',
                   }
                 : cornered
                   ? {

@@ -21,5 +21,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
-  "description": "An educational sandbox for time-domain waveforms, their frequency content, and the blocks that modify them."
+  "description": "An educational sandbox for time-domain waveforms, their frequency content, and the blocks that modify them.",
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
 }

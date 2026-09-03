@@ -25,26 +25,25 @@ export const TERMS = {
     name: 'dB (decibel)',
     short: 'dB',
     def:
-      'A logarithmic way to state a ratio: 20·log₁₀ of an amplitude ratio, so ×10 in amplitude ' +
-      'is +20 dB, ×2 is +6 dB, and half is −6 dB. This tool references everything to 1.0, so a ' +
-      'full-scale sine reads 0 dB and −40 dB means 1% of full scale. Logs are used because ' +
-      'signals of wildly different sizes — a tone and its −80 dB distortion — fit on one axis.',
+      'A logarithmic way to state a ratio: 20·log₁₀ of an amplitude ratio. So ×10 in amplitude is +20 dB, ×2 is ' +
+    '+6 dB, and half is −6 dB. This tool references everything to 1.0, so a full-scale sine reads 0 dB and ' +
+    '−40 dB means 1% of full scale. Logs let a tone and its −80 dB distortion fit on one axis.',
   },
   rms: {
     name: 'RMS (root mean square)',
     short: 'RMS',
     def:
-      'The steady (DC) level that would deliver the same power as the wiggling signal: square ' +
-      'every sample, average, square-root. A ±1 sine has RMS 0.707; a ±1 square, 1.0 — it ' +
-      'spends all its time at full amplitude. Peak divided by RMS is the crest factor.',
+      'The steady (DC) level that would deliver the same power as the wiggling signal: square every sample, ' +
+    'average, square-root. A ±1 sine has RMS 0.707. A ±1 square has 1.0, because it spends all its time at ' +
+    'full amplitude. Peak divided by RMS is the crest factor.',
   },
   crest: {
     name: 'Crest factor',
     short: 'crest factor',
     def:
-      'Peak divided by RMS — how far the highest sample stands above the signal’s effective ' +
-      'level. A sine reads 1.41, a square 1.00 (it is always at its peak), uniform noise 1.73; ' +
-      'the readout above the scope prints it beside RMS and peak.',
+      'Peak divided by RMS, how far the highest sample stands above the signal’s effective level. A sine reads ' +
+    '1.41, a square 1.00 (it is always at its peak), uniform noise 1.73. The readout above the scope prints ' +
+    'it beside RMS and peak.',
   },
   span: {
     name: 'Span (cycles)',
@@ -58,39 +57,35 @@ export const TERMS = {
     name: 'Nyquist frequency',
     short: 'Nyquist',
     def:
-      'Half the sample rate — the boundary of what a sampled system can represent. Everything ' +
-      'STRICTLY below it survives sampling; exactly AT it a sine’s amplitude depends on where ' +
-      'the samples land in its cycle (the "Exactly at Nyquist" experiment), and above it ' +
-      'frequencies fold back as aliases. At 8 kHz sampling, Nyquist is 4 kHz, and it is the ' +
-      'right-hand end of every spectrum here.',
+      'Half the sample rate, the boundary of what a sampled system can represent. Everything strictly below it ' +
+    'survives sampling. Exactly at it, a sine’s amplitude depends on where the samples land in its cycle, ' +
+    'which is the "Exactly at Nyquist" experiment. Above it, frequencies fold back as aliases. At 8 kHz ' +
+    'sampling, Nyquist is 4 kHz.',
   },
   fold: {
     name: 'The fold',
     short: 'fold',
     def:
-      'Nyquist seen as a mirror: a frequency f above it does not vanish but reappears at ' +
-      '|f − fₛ| below it, as if the axis were folded back on itself at fₛ/2. At 8 kHz a ' +
-      '6000 Hz tone folds to 2000 Hz, and nothing in the samples records which one it was.',
+      'Nyquist seen as a mirror. A frequency f above it does not vanish, but reappears at |f − fₛ| below it, as ' +
+    'if the axis were folded back at fₛ/2. At 8 kHz a 6000 Hz tone folds to 2000 Hz, and nothing in the ' +
+    'samples records which one it was.',
   },
   sampled: {
     name: 'Sampled display (and sin(x)/x)',
     short: 'sampled',
     def:
-      'Everything this lab shows is samples — values taken fₛ times a second — because that ' +
-      'is all a computer can hold, and it is what a bench scope holds too: a modern digital ' +
-      'storage oscilloscope (DSO) samples first and draws afterwards. Zoomed in far enough to ' +
-      'see the dots, the curve through them is the ideal (sin x)/x reconstruction — the one ' +
-      'bandlimited signal the samples describe, the same interpolation a real scope’s ' +
-      'sin(x)/x mode computes. Below Nyquist that reconstruction IS the continuous original; ' +
-      'above it, it is the alias.',
+      'Everything this lab shows is samples, values taken fₛ times a second. A bench scope holds the same ' +
+    'thing, since a digital storage oscilloscope samples first and draws afterwards. Zoomed in far enough to ' +
+    'see the dots, the curve through them is the ideal (sin x)/x reconstruction, the one bandlimited signal ' +
+    'they describe. Below Nyquist that is the continuous original, and above it, the alias.',
   },
   sinc: {
     name: 'sinc, or sin(x)/x',
     short: 'sinc',
     def:
-      'The curve sin(πx)/(πx): 1 at x = 0, zero at every other whole number, ringing away on ' +
-      'both sides. It is what a sampled system puts between samples — one sinc per sample, ' +
-      'each 1 at its own instant and 0 at every other — so the sum passes through every dot.',
+      'The curve sin(πx)/(πx): 1 at x = 0, zero at every other whole number, ringing away on both sides. It is ' +
+    'what a sampled system puts between samples, one sinc per sample. Each is 1 at its own instant and 0 at ' +
+    'every other, so the sum passes through every dot.',
   },
   reconstruction: {
     name: 'The reconstruction formula (Whittaker–Shannon)',
@@ -104,66 +99,65 @@ export const TERMS = {
     name: 'Bandlimited',
     short: 'bandlimited',
     def:
-      'A signal with a highest frequency — nothing at all above some fₘₐₓ. Only such a signal ' +
-      'can be sampled without loss, and the sampling theorem asks for a rate strictly above ' +
-      '2·fₘₐₓ; a square wave, with harmonics forever, is never bandlimited.',
+      'A signal with a highest frequency, nothing at all above some fₘₐₓ. Only such a signal can be sampled ' +
+    'without loss, and the sampling theorem asks for a rate strictly above 2·fₘₐₓ. A square wave, with ' +
+    'harmonics without limit, is never bandlimited.',
   },
   interpolation: {
     name: 'Interpolation',
     short: 'interpolation',
     def:
-      'Filling in values between the samples you have. Joining the dots with straight lines ' +
-      'is one interpolation and a poor one for a sine; the (sin x)/x curve is the one that ' +
-      'reproduces the original bandlimited signal, which is why the scope draws it.',
+      'Filling in values between the samples you have. Joining the dots with straight lines is one ' +
+    'interpolation and a poor one for a sine. The (sin x)/x curve is the one that reproduces the original ' +
+    'bandlimited signal, which is why the scope draws it.',
   },
   aliasing: {
     name: 'Aliasing',
     short: 'aliasing',
     def:
-      'What happens to a frequency above Nyquist: its samples are indistinguishable from those ' +
-      'of a lower frequency, so it appears AS that lower frequency — folded back into range. ' +
-      'The original is not attenuated; it is misread, and nothing downstream can tell.',
+      'What happens to a frequency above Nyquist: its samples are indistinguishable from those of a lower ' +
+    'frequency, so it appears AS that lower frequency, folded back into range. The original is not ' +
+    'attenuated. It is misread, and nothing downstream can tell.',
   },
   fft: {
     name: 'FFT (fast Fourier transform)',
     short: 'FFT',
     def:
-      'The algorithm that turns a frame of N samples into the spectrum: how much of each ' +
-      'frequency is present, in N/2 bins from 0 to Nyquist. The top-bar FFT field is that N; ' +
-      'a longer frame gives finer bins but describes a longer stretch of time.',
+      'The algorithm that turns a frame of N samples into the spectrum, showing how much of each frequency is ' +
+    'present in N/2 bins from 0 to Nyquist. The top-bar FFT field is that N. A longer frame gives finer bins, ' +
+    'but describes a longer stretch of time.',
   },
   dft: {
     name: 'DFT (discrete Fourier transform)',
     short: 'DFT',
     def:
-      'The mathematics the FFT computes: the spectrum of a finite frame of samples, which ' +
-      'treats the frame as if it repeated forever. That assumption is why a tone that does ' +
-      'not fit whole cycles into the frame leaks — the repeat has a jump at the seam.',
+      'The mathematics the FFT computes: the spectrum of a finite frame of samples, which treats the frame as ' +
+    'if it repeated forever. That assumption is why a tone that does not fit whole cycles into the frame ' +
+    'leaks. The repeat has a jump at the seam.',
   },
   bin: {
     name: 'FFT bin',
     short: 'bin',
     def:
-      'One slot of the spectrum. An N-point FFT at sample rate fₛ splits 0…Nyquist into slots ' +
-      'fₛ/N apart — 2048 points at 8 kHz gives 3.9 Hz per bin. Two tones closer than a couple ' +
-      'of bins read as one peak, which is why frequency resolution is really frame LENGTH.',
+      'One slot of the spectrum. An N-point FFT at sample rate fₛ splits 0…Nyquist into slots fₛ/N apart, 2048 ' +
+    'points at 8 kHz gives 3.9 Hz per bin. Two tones closer than a couple of bins read as one peak, which is ' +
+    'why frequency resolution is really frame LENGTH.',
   },
   frame: {
     name: 'Frame',
     short: 'frame',
     def:
-      'The stretch of N consecutive samples the FFT analyses — 2048 samples at 8 kHz is a ' +
-      '256 ms frame. Its length sets the bin width (fₛ/N), so resolving two close tones is a ' +
-      'question of how long the frame is, not of how clever the algorithm is.',
+      'The stretch of N consecutive samples the FFT analyses. At 8 kHz, 2048 samples is a 256 ms frame. Its ' +
+    'length sets the bin width (fₛ/N), so resolving two close tones is a question of frame length, not of the ' +
+    'algorithm.',
   },
   harmonic: {
     name: 'Harmonic',
     short: 'harmonic',
     def:
-      'A component at a whole-number multiple of a fundamental frequency: for 250 Hz that is ' +
-      '250 itself (harmonic 1, as the panels count), 500, 750, 1000… Periodic shapes are built ' +
-      'entirely from their harmonics, and WHICH ones a shape needs (odd only? falling as 1/k ' +
-      'or 1/k²?) is a fingerprint of the shape.',
+      'A component at a whole-number multiple of a fundamental frequency. For 250 Hz that is 250 itself ' +
+    '(harmonic 1, as the panels count), then 500, 750, 1000 and so on. Periodic shapes are built entirely ' +
+    'from their harmonics, and the set a shape needs, odd only or falling as 1/k or 1/k², is its fingerprint.',
   },
   window: {
     name: 'Window (analysis window)',
@@ -178,92 +172,88 @@ export const TERMS = {
     name: 'hann, hamming, blackman, none',
     short: 'hann / hamming / blackman',
     def:
-      'The tapers on offer in the top bar, each a different bell shape over the frame: "none" ' +
-      'is no taper (sharpest peak, sidelobes only 13 dB down), Hann is the everyday choice ' +
-      '(−31 dB), Hamming trades a little floor for a narrower peak, Blackman buys the quietest ' +
-      'floor (−58 dB) with the widest peak.',
+      'The tapers on offer in the top bar, each a different bell shape over the frame. "None" is no taper, with ' +
+    'the sharpest peak and sidelobes only 13 dB down. Hann is the everyday choice (−31 dB). Hamming trades a ' +
+    'little floor for a narrower peak, and Blackman buys the quietest floor (−58 dB) with the widest peak.',
   },
   leakage: {
     name: 'Spectral leakage',
     short: 'leakage',
     def:
-      'Energy from a single tone spread across many bins because the frame cut the tone ' +
-      'mid-cycle. It is an artifact of analysis, not of the signal — the tone is still pure — ' +
-      'and a window is the standard remedy.',
+      'Energy from a single tone spread across many bins because the frame cut the tone mid-cycle. It is an ' +
+    'artifact of analysis, not of the signal, the tone is still pure, and a window is the standard remedy.',
   },
   scalloping: {
     name: 'Scalloping loss',
     short: 'scalloping',
     def:
-      'A tone that falls between two bin centres shares its height between them, so the ' +
-      'tallest bin reads low — up to 1.4 dB (15%) with a Hann window, at exactly half a bin ' +
-      'off. The readout flags it; retune to a bin centre, or lengthen the frame, and the peak ' +
-      'reads its true amplitude.',
+      'A tone that falls between two bin centres shares its height between them, so the tallest bin reads low. ' +
+    'With a Hann window that is up to 1.4 dB (15%), at exactly half a bin off, and the readout flags it. ' +
+    'Retune to a bin centre, or lengthen the frame, and the peak reads its true amplitude.',
   },
   sidelobe: {
     name: 'Main lobe and sidelobes',
     short: 'sidelobes',
     def:
-      'What one pure tone looks like after windowing: a central peak (the main lobe, a few ' +
-      'bins wide) with a skirt of smaller ripples either side (the sidelobes). The window ' +
-      'choice trades one against the other — a narrower main lobe means taller sidelobes.',
+      'What one pure tone looks like after windowing: a central peak (the main lobe, a few bins wide) with a ' +
+    'skirt of smaller ripples either side (the sidelobes). The window choice trades one against the other, a ' +
+    'narrower main lobe means taller sidelobes.',
   },
   envelope: {
     name: 'Envelope',
     short: 'envelope',
     def:
-      'The slow outline that a fast waveform fills in — the curve you would draw through its ' +
-      'peaks. Two tones 5 Hz apart make one tone whose envelope pulses 5 times a second: ' +
-      'that pulsing is beating, and it is the same signal the spectrum shows as two lines.',
+      'The slow outline that a fast waveform fills in, the curve drawn through its peaks. Two tones 5 Hz apart ' +
+    'make one tone whose envelope pulses 5 times a second. That pulsing is beating, and it is the same signal ' +
+    'the spectrum shows as two lines.',
   },
   q: {
     name: 'Q (quality factor)',
     short: 'Q',
     def:
-      'How resonant a 2nd-order filter is. For a low-pass it is literally the height of the ' +
-      'peak at the cutoff (Q = 10 → peak 10× = +20 dB); for a band-pass it sets the width ' +
-      'instead (bandwidth = f₀/Q). High Q also means long ringing in time — the same fact in ' +
-      'the other domain.',
+      'How resonant a 2nd-order filter is. For a low-pass it is the height of the peak at the cutoff, so Q = 10 ' +
+    'gives a peak of 10×, or +20 dB. For a band-pass it sets the width instead, at bandwidth = f₀/Q. High Q ' +
+    'also means long ringing in time, the same fact in the other domain.',
   },
   cutoff: {
     name: 'Cutoff (corner frequency)',
     short: 'cutoff',
     def:
-      'The frequency where a filter changes from passing to stopping, f_c in the block’s ' +
-      'card — the corner of its response curve. For the biquads here it is where the curve ' +
-      'sits at −3 dB (Q = 0.707) or peaks (high Q); a windowed-sinc FIR puts it at −6 dB.',
+      'The frequency where a filter changes from passing to stopping, f_c in the block’s card, the corner of ' +
+    'its response curve. For the biquads here it is where the curve sits at −3 dB (Q = 0.707) or peaks (high ' +
+    'Q). A windowed-sinc FIR puts it at −6 dB.',
   },
   passband: {
     name: 'Passband and stopband',
     short: 'passband',
     def:
-      'The range of frequencies a filter lets through (passband, near 0 dB) and the range it ' +
-      'suppresses (stopband, far down the curve); the transition between them is the ' +
-      'skirt. A filter’s order sets how steep that skirt can be.',
+      'The range of frequencies a filter lets through (passband, near 0 dB) and the range it suppresses ' +
+    '(stopband, far down the curve). The transition between them is the skirt. A filter’s order sets how ' +
+    'steep that skirt can be.',
   },
   butterworth: {
     name: 'Butterworth (maximally flat)',
     short: 'Butterworth',
     def:
-      'The filter design whose passband is as flat as an all-pole response can be — no ' +
-      'ripple, no resonant bump — reaching −3 dB exactly at the cutoff whatever its order. ' +
-      'Second order needs Q = 0.707; fourth order needs two sections at Q = 0.541 and 1.307.',
+      'The filter design whose passband is as flat as an all-pole response can be, no ripple, no resonant bump, ' +
+    'reaching −3 dB exactly at the cutoff whatever its order. Second order needs Q = 0.707. Fourth order ' +
+    'needs two sections at Q = 0.541 and 1.307.',
   },
   octave: {
     name: 'Octave and decade',
     short: 'octave / decade',
     def:
-      'Two ways of stepping along a frequency axis: an octave is ×2 (250 → 500 Hz), a decade ' +
-      'is ×10 (250 → 2500 Hz). Filter slopes are quoted per step — 6 dB/octave is the same ' +
-      'slope as 20 dB/decade, one first-order pole’s worth.',
+      'Two ways of stepping along a frequency axis: an octave is ×2 (250 → 500 Hz), a decade is ×10 (250 → 2500 ' +
+    'Hz). Filter slopes are quoted per step, 6 dB/octave is the same slope as 20 dB/decade, one first-order ' +
+    'pole’s worth.',
   },
   allpass: {
     name: 'All-pass filter',
     short: 'all-pass',
     def:
-      'A filter with |H| = 1 at every frequency: it changes nothing about the spectrum’s ' +
-      'magnitude and everything about its phase. It exists to shift timing — the waveform ' +
-      'changes shape while its FFT does not move, which is the point of the experiment.',
+      'A filter with |H| = 1 at every frequency: it changes nothing about the spectrum’s magnitude and ' +
+    'everything about its phase. It exists to shift timing, the waveform changes shape while its FFT does not ' +
+    'move, which is the point of the experiment.',
   },
   phase: {
     name: 'Phase',
@@ -277,20 +267,18 @@ export const TERMS = {
     name: 'Group delay',
     short: 'group delay',
     def:
-      'How long each frequency is held up by the chain, in samples: the slope of phase versus ' +
-      'frequency. Flat group delay means every component arrives together — the shape survives, ' +
-      'merely late. A peak in it means components near that frequency lag the rest, and the ' +
-      'shape smears.',
+      'How long each frequency is held up by the chain, in samples: the slope of phase versus frequency. Flat ' +
+    'group delay means every component arrives together, the shape survives, merely late. A peak in it means ' +
+    'components near that frequency lag the rest, and the shape smears.',
   },
   order: {
     name: 'Filter order',
     short: 'order',
     def:
-      'The highest power of delay in the difference equation — the filter’s memory depth. For ' +
-      'the IIR blocks here that is the number of poles, and it sets the ultimate slope: ' +
-      '6 dB/octave (20 dB/decade) per order. (A 61-tap FIR is order 60 with no poles at all — ' +
-      'order counts delays, not poles as such.) One pole cannot resonate; two can; four rolled ' +
-      'off as a Butterworth need particular Qs per section.',
+      'The highest power of delay in the difference equation, the filter’s memory depth. For the IIR blocks ' +
+    'here that is the number of poles, and it sets the ultimate slope at 6 dB/octave (20 dB/decade) per ' +
+    'order. Order counts delays, so a 61-tap FIR is order 60 with no poles. One pole cannot resonate, two ' +
+    'can, and four as a Butterworth need particular Qs.',
   },
   cascade: {
     name: 'Cascade',
@@ -304,133 +292,130 @@ export const TERMS = {
     name: 'Attenuation',
     short: 'attenuation',
     def:
-      'How much a filter reduces a frequency, quoted as a positive number of dB below the ' +
-      'passband: −39 dB on the curve is 39 dB of attenuation, an amplitude of about 1%. ' +
-      'Two identical sections in series double it.',
+      'How much a filter reduces a frequency, quoted as a positive number of dB below the passband. So −39 dB ' +
+    'on the curve is 39 dB of attenuation, an amplitude of about 1%. Two identical sections in series double ' +
+    'it.',
   },
   bypass: {
     name: 'Bypass',
     short: 'bypass',
     def:
-      'The power button on a block card: a bypassed block passes the signal through untouched ' +
-      'but stays in the chain, so you can compare with and without it in one click. The card ' +
-      'goes dashed and the flow strip shows the block dimmed.',
+      'The power button on a block card. A bypassed block passes the signal through untouched but stays in the ' +
+    'chain, so with and without it is one click apart. The card goes dashed and the flow strip shows the ' +
+    'block dimmed.',
   },
   impulse: {
     name: 'Impulse',
     short: 'impulse',
     def:
-      'One sample of 1 followed by silence — the shortest possible signal. Its spectrum is ' +
-      'perfectly flat (every frequency in equal measure), so whatever comes out of a filter fed ' +
-      'an impulse IS that filter’s own description, in time and in frequency at once.',
+      'One sample of 1 followed by silence, the shortest possible signal. Its spectrum is perfectly flat, ' +
+    'holding every frequency in equal measure. So whatever comes out of a filter fed an impulse is that ' +
+    'filter’s own description, in time and in frequency at once.',
   },
   delta: {
     name: 'δ[n] (the unit impulse)',
     short: 'δ[n]',
     def:
-      'The symbol for the impulse as a sequence: δ[n] is 1 at n = 0 and 0 everywhere else. ' +
-      'Any signal is a train of scaled, shifted deltas — x[0]·δ[n] + x[1]·δ[n−1] + … — which ' +
-      'is the step that turns the impulse response into a recipe for every other input.',
+      'The symbol for the impulse as a sequence: δ[n] is 1 at n = 0 and 0 everywhere else. Any signal is a ' +
+    'train of scaled, shifted deltas, x[0]·δ[n] + x[1]·δ[n−1] and so on. That is the step that turns the ' +
+    'impulse response into a recipe for every other input.',
   },
   hH: {
     name: 'h(t) and H(f)',
     short: 'h(t) / H(f)',
     def:
-      'Two descriptions of one filter: h is its impulse response (what comes out over time ' +
-      'when an impulse goes in) and H its frequency response (how much of each frequency ' +
-      'passes). Each is the Fourier transform of the other, which is why the two panes agree.',
+      'Two descriptions of one filter. h is its impulse response, what comes out over time when an impulse goes ' +
+    'in. H is its frequency response, how much of each frequency passes. Each is the Fourier transform of the ' +
+    'other, which is why the two panes agree.',
   },
   kernel: {
     name: 'Impulse response / kernel',
     short: 'kernel',
     def:
-      'Two names for one sequence. "Impulse response" is how it is measured: feed a single 1, ' +
-      'record what comes out. "Kernel" is what it is for: the weights the convolution sum ' +
-      'applies to the recent past. That they coincide is a theorem, and LTI is its hypothesis.',
+      'Two names for one sequence. "Impulse response" is how it is measured. Feed a single 1, record what comes ' +
+    'out. "Kernel" is what it is for: the weights the convolution sum applies to the recent past. That they ' +
+    'coincide is a theorem, and LTI is its hypothesis.',
   },
   settling: {
     name: 'Settling',
     short: 'settling',
     def:
-      'A filter’s output arriving at its final value after a sudden change and staying there. ' +
-      'A resonant filter overshoots and rings on its way; the ringing dies as rⁿ, where r is ' +
-      'the pole radius, so high Q means slow settling.',
+      'A filter’s output arriving at its final value after a sudden change and staying there. A resonant filter ' +
+    'overshoots and rings on its way. The ringing dies as rⁿ, where r is the pole radius, so high Q means ' +
+    'slow settling.',
   },
   damping: {
     name: 'Damping ratio ζ, and critical damping',
     short: 'ζ / critical damping',
     def:
-      'The same knob as Q seen from the time side: ζ = 1/(2Q). Below ζ = 1 (Q above 0.5) a ' +
-      'step response overshoots and rings; at ζ = 1 — critical damping, Q = 0.5 — it reaches ' +
-      'the final value as fast as possible with no overshoot at all.',
+      'The same knob as Q seen from the time side: ζ = 1/(2Q). Below ζ = 1 (Q above 0.5) a step response ' +
+    'overshoots and rings. At ζ = 1, critical damping, Q = 0.5, it reaches the final value as fast as ' +
+    'possible with no overshoot at all.',
   },
   taps: {
     name: 'Taps',
     short: 'taps',
     def:
-      'The coefficients of an FIR filter, one per delayed sample it looks back at — an 8-tap ' +
-      'moving average multiplies the last 8 samples by 1/8 each and adds. More taps mean a ' +
-      'longer memory, sharper frequency shape, and more delay: (N − 1)/2 samples.',
+      'The coefficients of an FIR filter, one per delayed sample it looks back at, an 8-tap moving average ' +
+    'multiplies the last 8 samples by 1/8 each and adds. More taps mean a longer memory, sharper frequency ' +
+    'shape, and more delay: (N − 1)/2 samples.',
   },
   fir: {
     name: 'FIR and IIR',
     short: 'FIR / IIR',
     def:
-      'Finite impulse response: a filter made only of delayed copies of the INPUT, so its ' +
-      'response to an impulse ends after N taps and it can never be unstable. Infinite ' +
-      'impulse response: one with feedback from its own output — the biquads here — whose ' +
-      'ringing decays but never strictly stops.',
+      'Finite impulse response: a filter made only of delayed copies of the input. Its response to an impulse ' +
+    'ends after N taps, so it can never be unstable. Infinite impulse response: one with feedback from its ' +
+    'own output, the biquads here, whose ringing decays but never strictly stops.',
   },
   windowedsinc: {
     name: 'Windowed sinc',
     short: 'windowed sinc',
     def:
-      'The standard recipe for an FIR low-pass: take the ideal sinc kernel (which runs to ' +
-      'infinity), keep N taps of it, and taper the ends with a window so the cut is not ' +
-      'abrupt. Taper choice sets how deep and how wide the transition is.',
+      'The standard recipe for an FIR low-pass. Take the ideal sinc kernel, which runs without end, keep N taps ' +
+    'of it, and taper the ends with a window so the cut is not abrupt. The taper sets how deep and how wide ' +
+    'the transition is.',
   },
   brickwall: {
     name: 'Brick-wall filter',
     short: 'brick-wall',
     def:
-      'The ideal low-pass: passes everything below the cutoff at exactly 1 and everything ' +
-      'above at exactly 0, a rectangle in frequency. Its impulse response is a sinc that ' +
-      'never ends, so no real filter can be one — every real design is a compromise with it.',
+      'The ideal low-pass: everything below the cutoff passes at exactly 1 and everything above at exactly 0, a ' +
+    'rectangle in frequency. Its impulse response is a sinc that never ends, so no real filter can be one. ' +
+    'Every real design is a compromise with it.',
   },
   ripple: {
     name: 'Ripple',
     short: 'ripple',
     def:
-      'Wobble in a response curve where an ideal one would be flat — the bumps beside a ' +
-      'sharp corner. On a linear amplitude axis 8% ripple is plainly visible; on the dB axis ' +
-      'it is 0.7 dB, two pixels, which is why that experiment loads in linear.',
+      'Wobble in a response curve where an ideal one would be flat, the bumps beside a sharp corner. On a ' +
+    'linear amplitude axis 8% ripple is plainly visible. On the dB axis it is 0.7 dB, two pixels, which is ' +
+    'why that experiment loads in linear.',
   },
   gibbs: {
     name: 'Gibbs phenomenon',
     short: 'Gibbs',
     def:
-      'The overshoot that appears whenever something with a jump is built from a finite ' +
-      'number of smooth pieces: about 9% of the jump, and adding more pieces makes it ' +
-      'narrower but never smaller. A truncated Fourier series shows it in time; a truncated ' +
-      'sinc kernel shows it in frequency.',
+      'The overshoot that appears whenever something with a jump is built from a finite number of smooth ' +
+    'pieces. About 9% of the jump, and adding more pieces makes it narrower but never smaller. A truncated ' +
+    'Fourier series shows it in time. A truncated sinc kernel shows it in frequency.',
   },
   zplane: {
     name: 'z-plane',
     short: 'z-plane',
     def:
-      'The complex plane where a digital filter’s poles (×) and zeros (○) live. The unit ' +
-      'circle IS the frequency axis — DC at z = 1, Nyquist at z = −1 — and the response at a ' +
-      'frequency is proportional to the product of distances to zeros over distances to poles ' +
-      'from that point on the circle (an overall gain scales it). Stable means all poles inside.',
+      'The complex plane where a digital filter’s poles (×) and zeros (○) live. The unit circle is the ' +
+    'frequency axis, DC at z = 1 and Nyquist at z = −1. The response at a frequency is proportional to the ' +
+    'distances to the zeros over the distances to the poles, measured from that point on the circle. Stable ' +
+    'means all poles inside.',
   },
   poles: {
     name: 'Poles and zeros',
     short: 'poles / zeros',
     def:
-      'The roots of a filter’s transfer function: zeros are the frequencies (points on the ' +
-      'z-plane) where the numerator vanishes and the response dips, poles where the ' +
-      'denominator vanishes and it peaks. A zero ON the unit circle is an exact null; a ' +
-      'pole near it is a resonance, and a pole outside it is instability.',
+      'The roots of a filter’s transfer function. Zeros are the points on the z-plane where the numerator ' +
+    'vanishes and the response dips, poles where the denominator vanishes and it peaks. A zero on the unit ' +
+    'circle is an exact null. A pole near it is a resonance, and a pole outside it is instability.',
   },
   rootsofunity: {
     name: 'Roots of unity',
@@ -444,77 +429,73 @@ export const TERMS = {
     name: 'Comb filter',
     short: 'comb',
     def:
-      'A signal added to a delayed copy of itself. The response has evenly spaced teeth — ' +
-      'notches every 1/τ hertz for a delay of τ seconds — like a comb; with the delayed copy ' +
-      'fed back instead, the teeth point up as peaks.',
+      'A signal added to a delayed copy of itself. The response has evenly spaced teeth, notches every 1/τ ' +
+    'hertz for a delay of τ seconds, like a comb. With the delayed copy fed back instead, the teeth point up ' +
+    'as peaks.',
   },
   feedback: {
     name: 'Feedforward and feedback',
     short: 'feedforward / feedback',
     def:
-      'Feedforward: the block combines delayed copies of its INPUT (an FIR; the comb’s ' +
-      'notches). Feedback: it combines delayed copies of its own OUTPUT, so the signal ' +
-      'recirculates (an IIR; the comb’s peaks, and every biquad here).',
+      'Feedforward means the block combines delayed copies of its input, which makes an FIR and the comb’s ' +
+    'notches. Feedback means it combines delayed copies of its own output, so the signal recirculates. That ' +
+    'makes an IIR, the comb’s peaks, and every biquad here.',
   },
   notch: {
     name: 'Notch',
     short: 'notch',
     def:
-      'A narrow dip in a response curve — one frequency cut hard while its neighbours pass. ' +
-      'A zero on the unit circle makes an exact one; the comb makes a whole row of them at ' +
-      'once, one every 1/τ hertz.',
+      'A narrow dip in a response curve, one frequency cut hard while its neighbours pass. A zero on the unit ' +
+    'circle makes an exact one. The comb makes a whole row of them at once, one every 1/τ hertz.',
   },
   convolution: {
     name: 'Convolution',
     short: 'convolution',
     def:
-      'The sum y[n] = Σ h[k]·x[n−k]: each output sample is the kernel times the recent past. ' +
-      'It is the only description of filtering that covers FIR and IIR at once, and it is what ' +
-      'every LTI system does to its input — nothing more.',
+      'The sum y[n] = Σ h[k]·x[n−k]: each output sample is the kernel times the recent past. It is the only ' +
+    'description of filtering that covers FIR and IIR at once, and it is what every LTI system does to its ' +
+    'input, nothing more.',
   },
   lti: {
     name: 'LTI (linear, time-invariant)',
     short: 'LTI',
     def:
-      'The two assumptions under this whole tool. Linear means superposition (responses to ' +
-      'added signals add) plus scaling (double the input, double the output). Time-invariant: ' +
-      'shift the input, the output shifts identically. Together they force a system to treat ' +
-      'each frequency separately — a sine in gives a sine of the SAME frequency out, only ' +
-      'scaled and shifted — which is why response curves, spectra and convolution describe ' +
-      'filters completely. Clip or quantize and linearity is gone: new frequencies appear, and ' +
-      'none of those descriptions hold.',
+      'The two assumptions under this whole tool. Linear means superposition, so responses to added signals ' +
+    'add, plus scaling, so double the input doubles the output. Time-invariant means shifting the input ' +
+    'shifts the output identically. Together they make a system treat each frequency separately, so a sine in ' +
+    'gives a sine of the same frequency out, scaled and shifted. Clip or quantize and linearity is gone.',
   },
   superposition: {
     name: 'Superposition',
     short: 'superposition',
     def:
-      'Half of what "linear" means (the other half is scaling): the response to a sum is the ' +
-      'sum of the responses. It is why sources here simply add, why each spectral line can be ' +
-      'read independently, and what nonlinear blocks visibly break.',
+      'Half of what "linear" means (the other half is scaling). The response to a sum is the sum of the ' +
+    'responses. It is why sources here simply add, why each spectral line can be read independently, and what ' +
+    'nonlinear blocks visibly break.',
   },
   transfer: {
     name: 'Transfer function',
     short: 'transfer function',
     def:
-      'H(f), or H(z): the one curve that says what a linear block does to every frequency — ' +
-      'multiply in by |H|, shift by its phase. It is drawn in blue over the spectrum; a ' +
-      'nonlinear block has none, and the curve goes dashed to say so.',
+      'H(f), or H(z): the one curve that says what a linear block does to every frequency, multiply in by |H|, ' +
+    'shift by its phase. It is drawn in blue over the spectrum. A nonlinear block has none, and the curve ' +
+    'goes dashed to say so.',
   },
   memoryless: {
     name: 'Memoryless',
     short: 'memoryless',
     def:
-      'A block whose output right now depends only on the input right now — a clipper, a ' +
-      'rectifier, a quantizer — with no delayed samples inside. Memoryless blocks cannot ' +
-      'filter (no memory, no frequency preference) but can be violently nonlinear.',
+      'A block whose output right now depends only on the input right now, a clipper, a rectifier, a quantizer, ' +
+    'with no delayed samples inside. Memoryless blocks cannot filter (no memory, no frequency preference) but ' +
+    'can be violently nonlinear.',
   },
   operatingpoint: {
     name: 'Operating point',
     short: 'operating point',
     def:
-      'The steady level a signal sits around while it wiggles — its DC offset. A curve that ' +
-      'is symmetric about zero is not symmetric about 0.3, so shifting the operating point ' +
-      'changes which distortion products a nonlinearity makes.',
+      'The steady level a signal sits around while it wiggles, its DC offset. A curve that is symmetric about ' +
+    'zero is not symmetric about 0.3, so shifting the operating point changes which distortion products a ' +
+    'nonlinearity makes.',
   },
   intermod: {
     name: 'Intermodulation',
@@ -528,17 +509,16 @@ export const TERMS = {
     name: 'Carrier',
     short: 'carrier',
     def:
-      'The high, fixed-frequency sine a signal is multiplied onto so it can be moved up the ' +
-      'spectrum — 1000 Hz here, a station’s dial frequency in radio. The information rides ' +
-      'beside it as sidebands; the carrier itself carries none.',
+      'The high, fixed-frequency sine a signal is multiplied onto so it can be moved up the spectrum, 1000 Hz ' +
+    'here, a station’s dial frequency in radio. The information rides beside it as sidebands. The carrier ' +
+    'itself carries none.',
   },
   sidebands: {
     name: 'Sidebands',
     short: 'sidebands',
     def:
-      'The copies of a signal that multiplication by a carrier produces, one above the ' +
-      'carrier at f_c + f and one below at f_c − f. A 250 Hz tone on a 1000 Hz carrier makes ' +
-      '750 and 1250 Hz, and both hold the same information.',
+      'The copies of a signal that multiplication by a carrier produces, one above at f_c + f and one below at ' +
+    'f_c − f. A 250 Hz tone on a 1000 Hz carrier makes 750 and 1250 Hz. Both hold the same information.',
   },
   dsbsc: {
     name: 'DSB-SC (double-sideband, suppressed carrier)',
@@ -552,41 +532,39 @@ export const TERMS = {
     name: 'Modulation index',
     short: 'modulation index',
     def:
-      'How deeply the signal sways the carrier in AM: the ratio of the signal’s swing to the ' +
-      'constant added before the multiplier. At index 1 the envelope just touches zero; the ' +
-      'DC offset control here sets it.',
+      'How deeply the signal sways the carrier in AM: the ratio of the signal’s swing to the constant added ' +
+    'before the multiplier. At index 1 the envelope just touches zero. The DC offset control here sets it.',
   },
   quantize: {
     name: 'Quantize',
     short: 'quantize',
     def:
-      'Round every sample to the nearest of 2ᴺ allowed levels — what an N-bit converter does. ' +
-      'The rounding error is at most half a step, and for a periodic signal it repeats with ' +
-      'the signal, which is why it shows as spurs instead of hiss.',
+      'Round every sample to the nearest of 2ᴺ allowed levels, what an N-bit converter does. The rounding error ' +
+    'is at most half a step, and for a periodic signal it repeats with the signal, which is why it shows as ' +
+    'spurs instead of hiss.',
   },
   spurs: {
     name: 'Spurs',
     short: 'spurs',
     def:
-      'Narrow unwanted lines in a spectrum at frequencies the input did not contain — here ' +
-      'the harmonics of the quantization error. Discrete spurs are worse than the same power ' +
-      'as a flat floor because each one is a tone you can hear or measure.',
+      'Narrow unwanted lines in a spectrum at frequencies the input did not contain, here the harmonics of the ' +
+    'quantization error. Discrete spurs are worse than the same power as a flat floor because each one is a ' +
+    'tone you can hear or measure.',
   },
   dither: {
     name: 'Dither',
     short: 'dither',
     def:
-      'A tiny random offset added before rounding, so the rounding error no longer repeats ' +
-      'with the signal. It trades correlated spurs for an even, slightly higher noise floor — ' +
-      'the floor the SNR formula assumed all along.',
+      'A tiny random offset added before rounding, so the rounding error no longer repeats with the signal. It ' +
+    'trades correlated spurs for an even, slightly higher noise floor, the floor the SNR formula assumed all ' +
+    'along.',
   },
   snr: {
     name: 'SNR (signal-to-noise ratio)',
     short: 'SNR',
     def:
-      'Signal power over noise power, in dB. For a full-scale sine rounded to N bits with ' +
-      'dither the classic figure is 6.02·N + 1.76 dB — 25.8 dB at 4 bits, 98 dB at 16 — ' +
-      'each extra bit buying 6 dB.',
+      'Signal power over noise power, in dB. For a full-scale sine rounded to N bits with dither, the classic ' +
+    'figure is 6.02·N + 1.76 dB. That is 25.8 dB at 4 bits and 98 dB at 16, with each extra bit buying 6 dB.',
   },
   fullscale: {
     name: 'Full scale',
