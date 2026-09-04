@@ -190,6 +190,21 @@ describe('the claims each lesson makes', () => {
     expect(at(Math.SQRT1_2)).toBeCloseTo(0.043, 3)
   })
 
+  // Reed's review: the try line said "35%" for R = 200 Ω while the step
+  // pane's own readout — (overshoot * 100).toFixed(1) in App.jsx — prints
+  // "35.1%". Not wrong, but a first-year re-checks their own reading against
+  // a number the screen never shows. The try line must quote the READOUT's
+  // number, to the same one decimal, not a round figure nobody sees.
+  it('the try line at R = 200 Ω quotes the number the readout actually prints', () => {
+    const l = byName('Resonance, seen in time')
+    const printed = `${(l.claim.tryOvershoot[200] * 100).toFixed(1)}%`
+    expect(l.try).toContain(printed)
+    // ...and that printed figure really is what the running model measures.
+    const tf = transferOf('rlcSeries', { ...defaultsOf('rlcSeries'), r: 200 }, 'c')
+    const m = secondOrderMetrics(tf)
+    expect(`${(m.overshoot * 100).toFixed(1)}%`).toBe(printed)
+  })
+
   it('Sallen–Key has a complex pair and no inductor', () => {
     const l = byName('Why active filters exist')
     const { poles } = polesZeros(tfOf(l))

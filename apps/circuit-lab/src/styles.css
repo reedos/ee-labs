@@ -119,6 +119,109 @@ details.terms dl { margin: 6px 0 0; }
 details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
 details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
 
+/* A term, tapped in place — the discoverable path (student-review: two skim
+   readers scored Explanation low and reported no glossary at all, because
+   the fold above is a small, easy-to-miss link and this is not). Styled as
+   text that is obviously live — underlined, in the response colour — rather
+   than a button, since it sits mid-sentence. */
+.term-mark {
+  /* A REAL font-size line-height bump (the first cut here) clears the touch
+     floor but grows every wrapped line of the note that holds a mark, which
+     then pushes the try line and the featured knob past the 1366×768 fold
+     budget (item 7) on several lessons at once — a hidden, cumulative cost
+     nobody asked this word to pay. An invisible hit area costs the layout
+     nothing instead: position:relative plus the ::before below, the same
+     technique tapTargetProbe.mjs already credits elsewhere in the suite. */
+  position: relative;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--response);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.term-mark::before {
+  content: '';
+  position: absolute;
+  /* A -14px inset (enough to clear the suite's 44px target on its own)
+     turned out to overlap a NEIGHBOURING marked word on the same or an
+     adjacent line — two words a line apart in real note prose is closer
+     than 28px, so a tap meant for one hit the other's hit area instead.
+     -4/-3 clears the 24px floor verify.mjs holds an inline term to instead
+     (WCAG 2.2 SC 2.5.8's own "Inline" exception), with room to spare and
+     no collision at the sidebar's own line spacing. */
+  inset: -4px -3px;
+}
+.term-mark:hover, .term-mark.is-open { color: var(--accent); text-decoration-style: solid; }
+
+/* The definition a tapped term reveals, right under the note — the same
+   text "Terms used here" holds, so the two paths never disagree. */
+.term-card {
+  position: relative;
+  margin: 4px 0 0;
+  padding: 7px 26px 7px 9px;
+  background: var(--panel-2);
+  border: 1px solid var(--response);
+  border-left-width: 3px;
+  border-radius: 0 5px 5px 0;
+  color: var(--dim);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.term-card b { color: var(--text); }
+.term-card-close {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.term-card-close:hover { color: var(--text); }
+/* An invisible hit area rather than a visually bigger × — the same
+   technique the touch-target harness already credits elsewhere in the
+   suite (tapTargetProbe.mjs): the glyph stays small, the tap box does not. */
+.term-card-close::before {
+  content: '';
+  position: absolute;
+  inset: -11px;
+}
+
+/* The complex-number primer: not folded, and not only tappable — item 1 of
+   the review named this the single highest-leverage fix, and the very
+   thing two skim readers missed was a fold. Same shape as the pz pane's own
+   always-on caption below (student-review: "the complex-plane view arrives
+   with no explanation"), one screen earlier, on the lesson that first offers
+   H(s), pole and the left-half-plane vocabulary. */
+.hint.complex-caption {
+  margin: 2px 0 8px;
+  padding: 7px 9px;
+  background: var(--panel-2);
+  border-left: 2px solid var(--response);
+  border-radius: 0 4px 4px 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* Student-review item 4: the hand-over is buried a scroll below Circuits,
+   Schematic and Components, and nothing above it says it exists. One
+   quiet line, after the terms a reader just read, pointing down rather
+   than duplicating the panel itself. */
+.hint.handover-pointer {
+  margin-top: 8px;
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 /* The schematic. Values are live, so the picture always matches the plots. */
 .schematic {
   display: block;
@@ -478,4 +581,45 @@ details.preset-group > .presets { margin: 3px 0 5px; }
   .view-head h2 { display: none; }
   .view .plot { flex: none; height: 144px; }
   .math-pane { height: 144px; flex: none; }
+  /* Item 5: at 144 px the pole–zero plot is a flat smear, and "Real parts
+     wobble"'s whole claim is that the cloud gets visibly bigger. Every
+     lesson whose own lower view is poles & zeros gets the taller frame; the
+     step trace (a 1-D curve, not a 2-D cloud) keeps the shorter one. 66 px
+     more still leaves the phone-first-screen budget (item 13's harness
+     probe) with room to spare. */
+  .view-lower-pz .plot { height: 210px; }
+
+  /* Item 3, first bug: at 390 px the topbar's .flow strip (defined in
+     @ee-labs/ui/base.css) holds more content than the box, and it used to
+     just stop mid-word — reading "stable left h" — with the one thing
+     telling a student whether the circuit is okay (the verdict, always the
+     LAST node) swiped off screen and no sign there was anything to scroll
+     to. Sticky pins that node to the strip's own right edge regardless of
+     scroll position, so it is never the part that gets cut; the ellipsis
+     ahead of it marks that the strip continues to its left, so it announces
+     itself as scrollable instead of merely stopping. */
+  .topbar .flow { position: relative; }
+  .topbar .flow-node:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    background: var(--panel);
+  }
+  .topbar .flow-node:last-child::before {
+    content: '\22EF';
+    margin-right: 2px;
+    color: var(--dim);
+  }
+
+  /* Item 3, second bug: on a bare dev port siblingUrl resolves to nothing,
+     so the hand-over falls back to printing the raw link fragment as
+     `<code>` — 599 px of one unbroken hash in a 338 px box. Desktop keeps
+     the horizontal scroll (a long fragment reads fine as a copyable one-
+     liner there); the phone box instead wraps it, since there is no room to
+     scroll a codeblock sideways next to a 44 px thumb. */
+  .handover-link {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    overflow-x: visible;
+  }
 }

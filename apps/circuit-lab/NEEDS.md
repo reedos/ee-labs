@@ -333,3 +333,48 @@ The selected lesson's name now renders as an h3.note-title above its note
 paragraph (and, in circuit-lab, the circuit's name above its hint) - Reed
 asked for it in every module, so all three landed together. Style is shared
 from packages/ui base.css. Amend freely.
+
+## PACKAGES BUG (found in the shared tree, not mine to fix): parseEngField + NumField's onBlur silently drop a typed prefix on the SECOND field you touch
+
+Working the Explanation/Transfer review, `npx vite preview` + verify.mjs
+against the CURRENT uncommitted `packages/ui/src/units.js` +
+`packages/ui/src/NumField.jsx` (parseEngField's new "a bare number always
+means canonical unit" rule) turned every RC/RLC/Sallen-Key/twin-T section of
+circuit-lab's own verify.mjs into a mismatch, off by exactly a power of ten
+matching the field's own displayed prefix. Not a circuit-lab bug and not
+touched here (packages/* is this territory's read-only), but it will fail
+this app's harness (and any other app's) until it lands, so it is worth
+flagging loudly:
+
+**Repro**: on ANY eng-mode NumField, type "2.2k" and press Enter (correctly
+commits 2200 - confirmed via aria-valuenow). Then touch a SECOND field on the
+same page (a real Tab, a click elsewhere, or - as `setField()` in every
+verify.mjs in the suite already does - fill a different field next). The
+first field's `onBlur` fires (focus left it) and calls `commit(e.target.value)`
+again, against whatever the box is NOW showing after the first commit's own
+round-trip reformat - "2.2", the bare mantissa, because the prefix ("k") lives
+in the separate `.num-unit` label, never in the input's own text. Under the
+OLD parseEng rule (bare number = current displayed prefix) that second,
+redundant commit was a harmless no-op: "2.2" bare still meant 2200. Under the
+NEW rule it means literally 2.2 - the field silently reverts to a value 1000x
+smaller than what was typed and confirmed, with nothing on screen to say so.
+
+**Confirmed via direct DOM read** (`aria-valuenow` before/after touching a
+second field), isolated with no lesson, note, or app code of mine involved -
+plain "RC low-pass" circuit, R then C. Every app's `setField()` helper types a
+value then moves to the next field, so this is not a corner case; it is the
+harness's (and a real user's) ordinary path.
+
+**The fix is almost certainly in NumField.jsx**, not in units.js: `onBlur`
+should not re-commit when `draft` is null (nothing has been typed since the
+last commit - the box is only showing its own already-correct round-trip
+text, and re-parsing that text as fresh user input is the bug). Something
+like `onBlur={(e) => { if (draft != null) commit(e.target.value) }}`.
+parseEngField's new rule is fine and is exactly what the unit tests near it
+ask for; it is the redundant onBlur commit that turns a correct value into a
+wrong one immediately after.
+
+This is not something circuit-lab's own verify.mjs run can paper over (the
+sections it breaks - 2, 4b, 4c, 4d - test real physics against real typed
+values), so until this lands, expect those sections to fail through no fault
+of the app underneath them. Flagged rather than silently worked around.

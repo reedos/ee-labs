@@ -48,7 +48,7 @@ import {
   fmtPct,
   fmtHzRange,
 } from './tolerance.js'
-import { TERMS, termsFor } from './terms.js'
+import { TERMS, termsFor, markTerms } from './terms.js'
 import { dampingWord, stepReadout } from './stepReadout.js'
 import {
   axisFreqs,
@@ -108,6 +108,14 @@ export default function App() {
   // describes. Picking a circuit from the Circuits list is the one move that
   // leaves the course.
   const [lesson, setLesson] = useState(start.lesson)
+  // Which term (if any) a reader tapped inline, in the note itself — the
+  // discoverable path Reed's review asked for. Two skim readers scored
+  // Explanation low and reported finding no glossary at all; the actual
+  // glossary was there, behind a small "Terms used here" link neither of
+  // them noticed. Tapping the word itself, right where it appears, needs no
+  // discovery. Cleared on every lesson change so a stale card never survives
+  // onto a note that never mentioned it.
+  const [openTerm, setOpenTerm] = useState(null)
   // The lesson a Circuits click left: the nav strip keeps counting from it
   // and offers the way back, so picking a circuit to poke at is a detour
   // rather than a silent exit from the course.
@@ -166,9 +174,13 @@ export default function App() {
     setLower(next.view)
     setLesson(l.name)
     setLastLesson(null)
+    setOpenTerm(null)
   }
 
   const active = LESSONS.find((l) => l.name === lesson)
+  // Resolved once, reused by the note's inline marks, the tapped term card
+  // and the full "Terms used here" fold, so all three ever show the same set.
+  const activeTerms = useMemo(() => (active ? termsFor(active.terms) : []), [active])
   const lessonIndex = active ? LESSONS.indexOf(active) : -1
   const parked = !active && lastLesson ? LESSONS.find((l) => l.name === lastLesson) : null
   const parkedIndex = parked ? LESSONS.indexOf(parked) : -1
@@ -640,24 +652,56 @@ export default function App() {
                   still the lesson you are in) but says so, and the reset
                   above puts the described setup back. */}
               <p className={`hint note${dirty ? ' is-stale' : ''}`} data-role="lesson-note">
-                {active.note}
+                {/* Every word the lesson's own terms match is tappable right
+                    here, in place — the discoverable path (student-review:
+                    two skim readers reported "no glossary at all" because
+                    the fold below never caught their eye). The fold stays,
+                    for a reader who wants the whole list at once. */}
+                <Marked text={active.note} terms={activeTerms} open={openTerm} onOpen={setOpenTerm} />
               </p>
+              {openTerm && activeTerms.some((t) => t.id === openTerm) ? (
+                <TermCard
+                  term={activeTerms.find((t) => t.id === openTerm)}
+                  onClose={() => setOpenTerm(null)}
+                />
+              ) : null}
               <TryLine text={active.try} chips={active.chips} onChip={onChip} activeChip={activeChip} />
               {featured.length ? (
                 <div className="featured" data-role="featured">
                   {featured}
                 </div>
               ) : null}
+              {/* The one concept everything past this lesson leans on, said
+                  once, in the open — not behind a fold, because a fold is
+                  exactly what two skim readers missed entirely. Every
+                  lesson from here on shows H(s), a pole or the jω axis in
+                  its topbar before a word of its own note loads; this is
+                  where a reader meets s and j, at the reading level of one
+                  circuits lecture (student-review, the beginner cliff —
+                  Reed's second reader confirmed it). Placed after the
+                  try line and its knob rather than above the note: the
+                  fold-probe budget (item 7) that keeps those two on screen
+                  at 1366×768 has no room left above them, and this reads
+                  fine a beat later — the topbar's vocabulary is on screen
+                  from the first pixel regardless of where in the sidebar
+                  this paragraph sits. */}
+              {active.name === START_LESSON ? (
+                <p className="hint complex-caption" data-role="complex-caption">
+                  {TERMS.complex.def}
+                </p>
+              ) : null}
               {/* The vocabulary this lesson leans on, defined where it is
                   used — Signal Lab's pattern. A student meeting "Q" or
                   "pole" mid-note should not need a second tab, and folded,
                   the definitions cost nothing to someone who already has
-                  them. */}
-              {termsFor(active.terms).length ? (
+                  them. Tapping the word above opens the same definition
+                  without opening this at all; this stays as the complete
+                  list, in one place, for a reader who wants that instead. */}
+              {activeTerms.length ? (
                 <details className="terms">
                   <summary>Terms used here</summary>
                   <dl>
-                    {termsFor(active.terms).map((t) => (
+                    {activeTerms.map((t) => (
                       <React.Fragment key={t.id}>
                         <dt>{t.name}</dt>
                         <dd>{t.def}</dd>
@@ -666,6 +710,16 @@ export default function App() {
                   </dl>
                 </details>
               ) : null}
+              {/* Student-review item 4: the hand-over is real and well
+                  written, but for 14 of 15 lessons nothing upstream of the
+                  full panel (below, past Circuits/Schematic/Components)
+                  says it exists. One line, right after the terms a reader
+                  just read — not inside the `.featured` slot, which the
+                  try line's own knob needs. */}
+              <p className="hint handover-pointer" data-role="handover-pointer">
+                This circuit’s hand-over to Signal Lab and Control Lab sits below the schematic. It
+                says whether the mapping is exact or refused.
+              </p>
             </div>
           ) : null}
         </section>
@@ -829,7 +883,7 @@ export default function App() {
           </div>
         </section>
 
-        <section className="view">
+        <section className="view view-freq">
           <div className="view-head">
             <h2>Frequency response</h2>
             {/* Governs THIS plot, so it lives here — the sidebar's View
@@ -881,7 +935,7 @@ export default function App() {
           />
         </section>
 
-        <section className="view">
+        <section className={`view view-lower view-lower-${lower}`} data-role="view-lower">
           <div className="view-head">
             <h2>Step response, poles, and derivation</h2>
             <ViewSwitch
@@ -1062,6 +1116,49 @@ function ViewSwitch({ value, onChange, options }) {
         </button>
       ))}
     </div>
+  )
+}
+
+/**
+ * The note, with its own terms tappable in place.
+ *
+ * markTerms splits the text once; a plain run renders as-is, and a term hit
+ * renders as a real <button> (focusable and tappable, not a hover-only
+ * affordance) that opens the SAME definition the "Terms used here" fold
+ * holds, right where the reader's eye already is.
+ */
+function Marked({ text, terms, open, onOpen }) {
+  return markTerms(text, terms).map((seg, i) =>
+    // A tap target under three letters (bare "Q", "s") cannot clear even the
+    // suite's 24 px accessibility floor without padding wide enough to read
+    // as a chip rather than a word, so it stays plain here — no worse than
+    // before, since the fold below still defines it.
+    seg.term && seg.text.trim().length >= 3 ? (
+      <button
+        type="button"
+        key={i}
+        className={`term-mark${open === seg.term ? ' is-open' : ''}`}
+        aria-expanded={open === seg.term}
+        onClick={() => onOpen(open === seg.term ? null : seg.term)}
+      >
+        {seg.text}
+      </button>
+    ) : (
+      <React.Fragment key={i}>{seg.text}</React.Fragment>
+    ),
+  )
+}
+
+/** The definition a tapped term reveals, right under the note that named it. */
+function TermCard({ term, onClose }) {
+  if (!term) return null
+  return (
+    <p className="term-card" data-role="term-card" role="note">
+      <button type="button" className="term-card-close" onClick={onClose} aria-label="Close definition">
+        ×
+      </button>
+      <b>{term.name}.</b> {term.def}
+    </p>
   )
 }
 

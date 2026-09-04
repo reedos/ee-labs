@@ -1180,8 +1180,96 @@ console.log('\n13. Phone 390×844: the lesson text, the response and the lesson 
   }))
   if (widths.doc > 390 || widths.views > 390) fail(`phone Math tab widens the page: document ${widths.doc} px, .views ${widths.views} px`)
   else console.log(`   Math tab on the RLC: document ${widths.doc} px wide, .views ${widths.views.toFixed(0)} px — no crop`)
+
+  // Reed measured this himself at 390×844: the .flow strip held 431 px of
+  // content in a 366 px box, no arrow, no fade, and the swiped-off part was
+  // the verdict — the one thing telling a student whether the circuit is
+  // okay. Sticky pins the verdict (always the LAST node) to the strip's own
+  // right edge regardless of scroll position, so this guards it can never
+  // regress back to being the part that gets cut.
+  for (const name of ['Where the corner comes from', 'This circuit is a biquad']) {
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await pick(name)
+    await settle()
+    const flowBox = await page.locator('.flow').boundingBox()
+    const verdict = page.locator('.flow-node').last()
+    const verdictBox = await verdict.boundingBox()
+    const pos = await verdict.evaluate((el) => getComputedStyle(el).position)
+    const overflowPx = await page.locator('.flow').evaluate((el) => el.scrollWidth - el.clientWidth)
+    if (pos !== 'sticky') {
+      fail(`phone · ${name}: the topbar verdict is not sticky (position: ${pos}) — it can be swiped off screen again`)
+    } else if (
+      !verdictBox ||
+      !flowBox ||
+      verdictBox.x < flowBox.x - 1 ||
+      verdictBox.x + verdictBox.width > flowBox.x + flowBox.width + 1
+    ) {
+      fail(`phone · ${name}: the verdict node "${await verdict.textContent()}" is not fully inside the flow strip's own box`)
+    } else {
+      console.log(
+        `   ${name.padEnd(32)} flow overflow ${overflowPx}px, verdict "${(await verdict.textContent()).trim()}" sticky and fully visible`,
+      )
+    }
+  }
+
+  // Item 3's second bug: on a bare dev port the hand-over falls back to a
+  // raw link fragment in a <code>, 599 px of it in a 338 px box.
+  await pick('Twin-T notch')
+  await settle()
+  const linkOverflow = await page.evaluate(() => {
+    const el = document.querySelector('.handover-link')
+    return el ? el.scrollWidth - el.clientWidth : null
+  })
+  if (linkOverflow != null && linkOverflow > 4) {
+    fail(`phone: .handover-link overflows by ${linkOverflow}px instead of wrapping`)
+  } else console.log(`   .handover-link (twin-T's raw fragment) wraps at 390 px (overflow ${linkOverflow ?? 'n/a'}px)`)
+
+  // Item 5: the pole–zero canvas was 144 px tall on every lesson, and "Real
+  // parts wobble" is the one whose entire claim is that the cloud gets
+  // visibly bigger there.
+  await pick('Real parts wobble')
+  await settle()
+  const pz = await page.locator('.view-lower .plot').boundingBox()
+  if (!pz || pz.height < 180) {
+    fail(`phone: the pole-zero view is only ${pz?.height ?? 'n/a'}px tall on "Real parts wobble", still the step view's 144px`)
+  } else console.log(`   "Real parts wobble" pole-zero canvas: ${pz.height}px tall at 390 px (the step view keeps 144px)`)
+
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto(URL, { waitUntil: 'networkidle' })
+}
+
+// --------------------- 15. A term tapped in the note, and the hand-over pointer
+
+console.log("\n15. A term tapped in the note opens the fold's own definition, and a lesson always points at the hand-over\n")
+{
+  // Two skim readers scored Explanation low and said the glossary did not
+  // exist at all — it did, behind "Terms used here", a small link neither
+  // of them noticed. The fix is a word IN the note itself, tappable; this
+  // guards that the tap actually opens the same text the fold holds, closes
+  // on ×, and never survives a lesson change.
+  const mark = page.locator('[data-role=lesson-note] .term-mark').first()
+  const word = (await mark.textContent()).trim()
+  await mark.click()
+  await settle()
+  const card = (await page.locator('[data-role=term-card]').first().textContent().catch(() => '')) || ''
+  const foldDefs = await page.$$eval('details.terms dd', (els) => els.map((e) => e.textContent.trim()))
+  if (!card) fail(`tapping the note's first term ("${word}") opened no definition card`)
+  else if (!foldDefs.some((d) => card.includes(d))) fail(`tapped "${word}" card text does not match any fold definition — the two paths disagree`)
+  else console.log(`   tapped "${word}" in the note -> "${card.trim().slice(0, 60)}…" (matches the fold)`)
+  await page.locator('[data-role=term-card] button').click()
+  await settle()
+  if (await page.locator('[data-role=term-card]').count()) fail('the × on the term card did not close it')
+  await pick('Q is how sharp, and R sets it')
+  if (await page.locator('[data-role=term-card]').count()) fail('changing lesson left a stale term card open')
+  else console.log('   closes on ×, and clears on a lesson change')
+
+  // Student-review item 4: the hand-over is real but buried a scroll past
+  // Circuits, Schematic and Components, and nothing upstream said it
+  // existed for 14 of 15 lessons. One line, on every lesson, right after
+  // the terms a reader just read.
+  const pointer = ((await page.locator('[data-role=handover-pointer]').first().textContent().catch(() => '')) || '').trim()
+  if (!/Signal Lab/.test(pointer) || !/Control Lab/.test(pointer)) fail(`hand-over pointer missing or wrong: "${pointer}"`)
+  else console.log(`   hand-over pointer under the terms: "${pointer}"`)
 }
 
 // ------------------------------------------------ A11Y. names for everything
@@ -1241,20 +1329,31 @@ console.log(`   all ${circuitNames.length} circuits fit at 3840x2160`)
 // glyph small on purpose, and a checkbox's wrapping <label> in place of its
 // own tiny native box.
 //
-// One documented exception, held to the 24px HARD_FLOOR instead: a control
-// inside a PLOT pane (.views — a view switch, the network strip's own
-// controls). Its options often touch with no real gap (a true segmented
-// control), so an invisible hit area would let a thumb bridge two, and
-// growing it for real at 44 costs more of the response-and-lesson-view
-// budget (item 13) than this lab can spare — so the plot pane's own chrome
-// stays at WCAG's legal floor rather than the suite's 44px target.
+// Two documented exceptions, both held to the 24px HARD_FLOOR instead of the
+// suite's 44px target:
+//   - a control inside a PLOT pane (.views — a view switch, the network
+//     strip's own controls). Its options often touch with no real gap (a
+//     true segmented control), so an invisible hit area would let a thumb
+//     bridge two, and growing it for real at 44 costs more of the
+//     response-and-lesson-view budget (item 13) than this lab can spare.
+//   - a term tapped INLINE in a note's own prose (.term-mark — the
+//     discoverable path to "Terms used here", student-review: two skim
+//     readers said the glossary did not exist at all). WCAG 2.2 SC 2.5.8
+//     itself names this the "Inline" exception: a target inside a run of
+//     text, where enlarging it would enlarge the line. A real 44 px hit box
+//     tried here first and failed differently — at 44 px, two marked words a
+//     line apart (a real note's own density) overlapped enough that
+//     Playwright, and a thumb, could not tell which one it was tapping.
+//     24 px is comfortable at the sidebar's own line spacing and is what
+//     WCAG actually asks of running text.
 console.log('\n14. Touch targets at 390x844 (button, link, summary, role=button, checkbox)\n')
 {
   await page.setViewportSize(PHONE_VIEWPORT)
   await page.goto(URL, { waitUntil: 'load' })
   await page.waitForSelector('.views canvas')
 
-  const exceptionFloor = (el) => (el.inViews || el.inLabNav ? HARD_FLOOR : null)
+  const exceptionFloor = (el) =>
+    el.inViews || el.inLabNav || el.className.includes('term-mark') ? HARD_FLOOR : null
 
   let checked = 0
   for (const name of circuitNames) {

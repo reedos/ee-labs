@@ -57,7 +57,11 @@ export const LESSONS = [
   {
     group: 'Reading a response',
     name: 'Where the corner comes from',
-    terms: ['corner', 'db', 'phase', 'impedance', 'tf', 'pole', 'lhp', 'magnitude'],
+    // 'complex' listed first: this is the earliest lesson to offer tf, pole
+    // and lhp (the topbar shows their vocabulary from the very first pixel),
+    // so this fold is where a reader meets s and j before those terms lean
+    // on them — student-review, the beginner cliff.
+    terms: ['complex', 'corner', 'db', 'phase', 'impedance', 'tf', 'pole', 'lhp', 'magnitude'],
     note:
       'The cutoff is the frequency where the capacitor’s impedance equals the resistor’s. There the two split ' +
     'the input evenly in magnitude, and each sits 45° from the input in phase, so 90° from each other, as R ' +
@@ -100,7 +104,7 @@ export const LESSONS = [
   {
     group: 'Reading a response',
     name: 'Different physics, same algebra',
-    terms: ['tau', 'corner', 'impedance', 'tf', 'shapes', 'filter'],
+    terms: ['complex', 'tau', 'corner', 'impedance', 'tf', 'shapes', 'filter'],
     note:
       'An inductor resists a change in current where a capacitor resists a change in voltage. Even so, this is ' +
     'the RC low-pass again with L/R in its place, and nothing downstream can tell them apart. Filters are ' +
@@ -120,7 +124,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'One circuit, three filters',
-    terms: ['tf', 'resonance', 's', 'shapes', 'filter', 'overshoot', 'zeta', 'damping'],
+    terms: ['complex', 'tf', 'resonance', 's', 'shapes', 'filter', 'overshoot', 'zeta', 'damping'],
     // Soft-landed (student-review, the beginner cliff): the first sentence
     // used to open on "they share a denominator and differ only in how many
     // powers of s sit on top" — the exact line that lost a reader with one
@@ -201,7 +205,7 @@ export const LESSONS = [
       'plot reads as overshoot and ringing here, and ζ = 1/2Q connects them. Note where the ' +
       'overshoot stops: at Q = 0.5, not at the famous 0.707, which still overshoots 4.3%.',
     try: 'Set R to 447 Ω for ζ = 0.707, 4.3% overshoot remains. At 632.46 Ω (ζ = 1.000) it is gone. Back at 200 Ω ' +
-    'it is 35%.',
+    'it is 35.1%, the number the readout prints.',
     // 632.46 Ω is 2√(L/C) to five figures — ζ = 1.000007. A rounder 632 Ω
     // reads ζ = 0.999 beside a try line saying 1, and the pane called it
     // underdamped.
@@ -214,14 +218,18 @@ export const LESSONS = [
     patch: { circuit: 'rlcSeries', params: p('rlcSeries', { r: 200 }), output: 'c', view: 'step' },
     claim: {
       overshootMatchesZeta: true,
-      tryOvershoot: { 200: 0.35, 447: 0.043, 632.46: 0 },
+      // 200 Ω's own claim is now the READOUT's number (35.1%, one decimal,
+      // matching the pane's own `.toFixed(1)`) rather than a round 35% the
+      // pane never actually prints — the try line used to promise a number
+      // the screen disagreed with by a tenth of a point.
+      tryOvershoot: { 200: 0.351, 447: 0.043, 632.46: 0 },
       tryZeta: { 447: 0.707, 632.46: 1 },
     },
   },
   {
     group: 'Resonance',
     name: 'A zero on the axis is silence',
-    terms: ['twint', 'zero', 'pole', 'jw', 'tf', 'phase', 'q', 'zeta', 'damping'],
+    terms: ['complex', 'twint', 'zero', 'pole', 'jw', 'tf', 'phase', 'q', 'zeta', 'damping'],
     note:
       // Soft-landed (student-review item 5): the Bode's visible null comes
       // first, and the abstract "zero on the axis" follows it rather than
@@ -243,7 +251,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'Real parts wobble',
-    terms: ['tolerance', 'q', 'pole', 'jw', 'zeta', 'damping'],
+    terms: ['complex', 'tolerance', 'q', 'pole', 'jw', 'zeta', 'damping'],
     // Soft-landed (student-review: the complex-plane view arrives with no
     // explanation of what the plane is). The note now names the plot in its
     // first sentence rather than assuming a reader already trusts it; the
@@ -277,7 +285,7 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'Blame the right part',
-    terms: ['tolerance', 'q', 'resonance', 'omega0', 'pole', 'jw', 'zeta', 'damping'],
+    terms: ['complex', 'tolerance', 'q', 'resonance', 'omega0', 'pole', 'jw', 'zeta', 'damping'],
     note:
       'Give R alone ±10% and f₀ does not move at all. f₀ = 1/(2π√LC) has no R in it, so not one of the 120 ' +
     'builds resonates anywhere else. The poles slide along a circle of constant radius ω₀ while Q takes the ' +
@@ -313,7 +321,7 @@ export const LESSONS = [
   {
     group: 'Active circuits',
     name: 'Why active filters exist',
-    terms: ['opamp', 'pole', 'jw', 'q', 'shapes', 'zeta', 'damping', 'filter'],
+    terms: ['complex', 'opamp', 'pole', 'jw', 'q', 'shapes', 'zeta', 'damping', 'filter'],
     note:
       // Soft-landed (student-review item 5): leads with the knob and its
       // effect (raise C1, Q climbs) rather than with "a real pole cannot
@@ -335,7 +343,7 @@ export const LESSONS = [
   {
     group: 'Active circuits',
     name: 'Gain is a ratio, and negative',
-    terms: ['feedback', 'virtualearth', 'db', 'phase', 'corner', 'pole', 'gain'],
+    terms: ['complex', 'feedback', 'virtualearth', 'db', 'phase', 'corner', 'pole', 'gain'],
     // Reed's fix (phase at DC means nothing — nothing oscillates at f = 0, so
     // there is no shift to measure there). The minus sign is a real, measured
     // fact at DC: it is a NEGATIVE REAL NUMBER, not a phase shift. Written in
@@ -375,7 +383,7 @@ export const LESSONS = [
   {
     group: 'Active circuits',
     name: 'A pole exactly at the origin',
-    terms: ['pole', 'jw', 'lhp', 'feedback', 'tau', 'overshoot', 'rail'],
+    terms: ['complex', 'pole', 'jw', 'lhp', 'feedback', 'tau', 'overshoot', 'rail'],
     note:
       'Replace the feedback resistor with a capacitor and the ratio becomes a division by s, which is ' +
     'integration. The pole sits on the boundary rather than inside it, so this is the one circuit here that ' +
@@ -400,7 +408,7 @@ export const LESSONS = [
   {
     group: 'One object, two names',
     name: 'This circuit is a biquad',
-    terms: ['biquad', 'sampled', 'tf', 'corner', 'q', 'shapes', 'zeta', 'damping', 'filter'],
+    terms: ['complex', 'biquad', 'sampled', 'tf', 'corner', 'q', 'shapes', 'zeta', 'damping', 'filter'],
     note:
       'This RLC is a low-pass biquad with a cutoff of 5.03 kHz and a Q of 3.16, not similar to one, the same ' +
     'one. Open in Signal Lab → loads the identical filter there with a square wave running through it. A ' +
