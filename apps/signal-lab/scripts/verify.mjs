@@ -32,10 +32,20 @@ page.on('console', (m) => {
 await page.goto(URL, { waitUntil: 'load' })
 await page.waitForSelector('.views canvas')
 await page.waitForTimeout(400)
+await page.evaluate(() => document.fonts.ready)
 
 // ---------------------------------------------------------------- helpers
 
-const settle = () => page.waitForTimeout(220)
+// Waits out the animation frame AND lets web fonts finish loading. Text set
+// in a web font measures narrower/shorter before it swaps in — a box read
+// during that window is optimistic, and the gap is not theoretical: the
+// laptop fold probe below (10i) first reported "Order is a choice" fitting
+// at 1366x768, and only measuring after `document.fonts.ready` reproduced
+// the ~8 px overflow a real student's browser shows once its fonts settle.
+const settle = async () => {
+  await page.waitForTimeout(220)
+  await page.evaluate(() => document.fonts.ready)
+}
 
 /** Does the page scroll? Both plots must fit. */
 const scrolls = () =>

@@ -991,6 +991,16 @@ const ENTRIES = {
           value: (ctx.sourceFreq * ctx.fftSize) / ctx.sampleRate,
           note: 'a whole number means no leakage',
         },
+        {
+          // The try line's own number, read live off the spectrum this frame
+          // actually drew, rather than left for a student to pixel-guess
+          // against unlabelled 50 dB gridlines (Reed's review). Changes the
+          // moment the window chip is clicked.
+          label: 'level at 1000 Hz',
+          value: 20 * Math.log10(Math.max(ctx.at(1000), 1e-12)),
+          unit: 'dB',
+          note: `the try line's number, read live for window = ${ctx.state.window}`,
+        },
       ]),
     ],
   }),
