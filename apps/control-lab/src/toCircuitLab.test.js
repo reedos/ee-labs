@@ -93,6 +93,26 @@ describe('this plant, as the circuit it is', () => {
     }
   })
 
+  it('threePole, motor and integrator refuse structurally, not just at their defaults', () => {
+    // The check above pins this at the registry defaults. A refusal that
+    // only held there could still be a component-value accident (the way
+    // secondOrder's genuinely IS, out at wn = 6.283) rather than a real
+    // shape mismatch. Sweeping τ, gm and K shows no rescaling ever finds a
+    // catalog match: threePole is always three real poles (the catalog
+    // stops at two), motor is always a pole at the origin plus a second
+    // pole (the catalog's one pole-at-the-origin entry has no second pole),
+    // and integrator is always non-inverting (that same entry is inverting).
+    for (const t of [1e-6, 1e-3, 1, 100]) {
+      expect(circuitFor('threePole', { k: 1, t1: t, t2: t / 2, t3: t / 4 }), `threePole τ=${t}`).toBeNull()
+    }
+    for (const tau of [1e-6, 1e-3, 1, 100]) {
+      expect(circuitFor('motor', { k: 1, tau }), `motor τ=${tau}`).toBeNull()
+    }
+    for (const k of [0.001, 1, 1000, 1e6]) {
+      expect(circuitFor('integrator', { k }), `integrator K=${k}`).toBeNull()
+    }
+  })
+
   it('the link names this plant as its provenance', () => {
     const frag = circuitFragment('firstOrder', { k: 1, tau: 1 })
     const { patch } = parseCircuitLink(frag)

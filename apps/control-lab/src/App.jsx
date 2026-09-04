@@ -208,6 +208,9 @@ export default function App() {
     setLastLesson((prev) => lesson || prev)
     setLesson(null)
     setOpenTerm(null)
+    // No lesson is active, so no group needs to stay open on its own
+    // account — see the note in loadLesson below.
+    setOpenGroups(new Set())
   }
   const choosePlant = (id) => {
     const newPlantP = defaultsOf(PLANTS[id])
@@ -249,6 +252,16 @@ export default function App() {
     setLastLesson(null)
     setOpenTerm(null)
     setLoads((k) => k + 1)
+    // Only the active lesson's group stays open (the comment on the
+    // <details> map below). A manual click to reach a lesson in a folded
+    // group used to ADD that group here and nothing ever took it back out,
+    // so walking the course top to bottom left every group a reader had
+    // opened along the way still expanded once the course reached "Harder
+    // plants" — three groups deep, the controller card pushed below the
+    // fold. holdsActive already keeps the NEW active group open on its own,
+    // so clearing the manually-opened set on every load is enough: nothing
+    // outlives the lesson that needed it open.
+    setOpenGroups(new Set())
   }
 
   const active = LESSONS.find((l) => l.name === lesson)

@@ -7,7 +7,7 @@
 // gain up to just under it and just over it, and requires the app to agree.
 
 import { chromium } from 'playwright'
-import { foldProbe, phoneProbe, PHONE_VIEWPORT } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { foldProbe, phoneProbe, PHONE_VIEWPORT, LAPTOP_VIEWPORTS } from '@ee-labs/ui/verify/foldProbe.mjs'
 import { tapTargetProbe, FLOOR, HARD_FLOOR } from '@ee-labs/ui/verify/tapTargetProbe.mjs'
 // Defect 2's own cue table, imported rather than re-typed: item 33 below
 // scans what is ACTUALLY on screen with the same CUES the app itself scans
@@ -1248,6 +1248,16 @@ console.log('\n6b. Math tab on phone: no plot goes absurdly tall, and switching 
 
 // ------------------------------------ 7. the fold: every lesson's knob on screen
 
+// The deployed page carries the LabNav row above the title (26 px); a dev
+// port has no siblings so it hides. Stand a placeholder in, so the fold
+// measured here (7 and 7b both) is the fold a student gets on the site.
+const withLabNav = (pg) =>
+  pg.evaluate(() => {
+    if (document.querySelector('.labnav, .labnav-stand-in')) return
+    const h = document.querySelector('.controls header')
+    if (h) h.insertAdjacentHTML('afterbegin', '<div class="labnav-stand-in" style="height:16px;margin:0 0 10px"></div>')
+  })
+
 console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
 {
   // For every lesson: the try line, the featured knob(s), the controller
@@ -1265,15 +1275,6 @@ console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
       [...document.querySelectorAll('.featured')].map((f) => f.dataset.featured),
     )
   }
-  // The deployed page carries the LabNav row above the title (26 px); a dev
-  // port has no siblings so it hides. Stand a placeholder in, so the fold
-  // measured here is the fold a student gets on the site.
-  const withLabNav = (pg) =>
-    pg.evaluate(() => {
-      if (document.querySelector('.labnav, .labnav-stand-in')) return
-      const h = document.querySelector('.controls header')
-      if (h) h.insertAdjacentHTML('afterbegin', '<div class="labnav-stand-in" style="height:16px;margin:0 0 10px"></div>')
-    })
   const cases = lessonNames.map((name) => ({
     name,
     load: async (pg) => {
@@ -1359,6 +1360,80 @@ console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
     }
     console.log(`   390x844 ${name.padEnd(34)} note title + try line inside the sidebar's ${sidebar.height.toFixed(0)}px box`)
   }
+}
+
+// --------------------------- 7b. the fold, walked continuously like a student
+
+// foldProbe (section 7, above) loads every lesson from ITS OWN fresh
+// navigation, so the sidebar's manually-opened group set is always empty
+// going in and never accumulates across lessons — the gap that let three
+// groups stack up unnoticed (only the active lesson's group is supposed to
+// stay open). A real student never reloads between lessons: walking the
+// course opens each new group as it is reached, on top of the page's
+// existing state. This repeats section 7's own checks in ONE continuous
+// session per viewport, calling the SAME loadLesson() (it already opens a
+// lesson's group only when the button is not yet visible, exactly the
+// manual click a reader makes) so the open-group set accumulates exactly as
+// it would for a person walking lesson 1 through 13 in order.
+console.log('\n7b. Fold probe walked continuously — open groups accumulate the way a student\'s do\n')
+{
+  const lessonNames = await page.evaluate(() =>
+    [...document.querySelectorAll('#lessons details.preset-group .preset')].map((b) => b.textContent.trim()),
+  )
+  for (const vp of LAPTOP_VIEWPORTS) {
+    await page.setViewportSize(vp)
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.views canvas')
+    await withLabNav(page)
+    for (const name of lessonNames) {
+      await loadLesson(name)
+      // A student arrives with the sidebar at the top for each new lesson —
+      // the same pin foldProbe applies per case, applied here per step of
+      // the walk instead.
+      await page.evaluate(() => {
+        const el = document.querySelector('.controls')
+        if (el) el.scrollTop = 0
+        window.scrollTo(0, 0)
+      })
+      await page.waitForTimeout(60)
+      const featured = await page.evaluate(() =>
+        [...document.querySelectorAll('.featured')].map((f) => f.dataset.featured),
+      )
+      const musts = [
+        '.try-line',
+        ...featured.map((k) => `.featured[data-featured="${k}"]`),
+        '#controller h2',
+        '#lessons .preset.is-on',
+      ]
+      const openCount = await page.evaluate(
+        () => document.querySelectorAll('#lessons details.preset-group[open]').length,
+      )
+      for (const sel of musts) {
+        const box = await page.locator(sel).first().boundingBox().catch(() => null)
+        if (!box) {
+          fail(`fold(walked) ${vp.width}x${vp.height} · ${name} · ${sel}: not rendered`)
+          continue
+        }
+        const bottom = box.y + box.height
+        if (box.y < 0 || bottom > vp.height) {
+          fail(
+            `fold(walked) ${vp.width}x${vp.height} · ${name} · ${sel}: bottom ${bottom.toFixed(0)} px > fold ${vp.height} (${openCount} group${openCount === 1 ? '' : 's'} open)`,
+          )
+        }
+      }
+      if (name === 'Derivative buys the phase back' || name === 'Lead does it without the noise') {
+        console.log(`   ${vp.width}x${vp.height} ${name.padEnd(34)} ${openCount} group${openCount === 1 ? '' : 's'} open`)
+      }
+    }
+    // Walking the whole course must never leave more than one group open —
+    // the active lesson's own — however many were opened manually along the
+    // way to reach it.
+    const finalOpen = await page.evaluate(
+      () => document.querySelectorAll('#lessons details.preset-group[open]').length,
+    )
+    if (finalOpen > 1) fail(`fold(walked) ${vp.width}x${vp.height}: ${finalOpen} groups still open after walking the whole course`)
+  }
+  console.log('   walked all 13 lessons in one session per viewport; every knob stayed inside the fold, never more than one group open')
 }
 
 // ------------------------------------------------------- 8. text overprints
