@@ -471,7 +471,12 @@ describe('lesson: Blame the right part', () => {
     expect(band.magHi[1] / band.magLo[1]).toBeGreaterThan(1.1)
   })
 
-  it('moving the tolerance to C breaks the circle, as the note promises', () => {
+  // Round-three grading: the try line used to say moving the tolerance to C
+  // "breaks the circle" on screen, and a grader found the pole plot stays a
+  // crisp cross there — the radius really does change (this assertion), but
+  // by too little of the plot's own scale to read as broken. The try line
+  // now names the number that moves rather than a picture that does not.
+  it('moving the tolerance to C moves the radius, even though the plot stays crisp', () => {
     const s = setup()
     const m = CIRCUITS[s.id].metrics(s.params)
     const { cloud } = toleranceCloud(s.id, s.params, 'c', { c: 0.1 })

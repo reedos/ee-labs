@@ -559,7 +559,11 @@ console.log('\n4d. Per-part tolerance: an R-only ±10% pins f₀ and frees Q\n')
   if ((await stateOf('R')) !== '±10%') fail('R control should read ±10%')
   if ((await stateOf('L')) !== 'exact') fail('L control should read exact')
   const withRBand = await canvasHashes()
-  // "Move the ±10% to C instead and the circle breaks": do as the note says.
+  // Move the ±10% to C instead: f₀ moves (checked below), even though round
+  // three found the pole plot itself stays a crisp cross at this move — the
+  // try line now says so and points at the number instead. The canvas still
+  // redraws (the cloud's radius really does shift), which is the one thing
+  // this section can check without a screenshot.
   await page.getByRole('group', { name: 'C tolerance' }).first().getByRole('button', { name: '±10%' }).click()
   await page.getByRole('group', { name: 'R tolerance' }).first().getByRole('button', { name: 'exact' }).click()
   await settle()
@@ -918,19 +922,22 @@ console.log('\n10. The student walk: each filed defect, re-checked on the real p
   if (!titles.some((t) => /Transfer function/.test(t))) fail('the H(s) node should define the transfer function on hover')
 
   // Student-review item 4: compact Signal/Control links beside the network,
-  // for a second-order circuit only, on the deployed layout this harness
-  // already visits (siblingUrl resolves under /circuit-lab/).
+  // on the deployed layout this harness already visits (siblingUrl resolves
+  // under /circuit-lab/). Round-three grading found these gated on second
+  // order alone, leaving the six first-order circuits a sidebar scroll away
+  // from a hand-over that is exactly as exact — HandOver.jsx's own order-1
+  // branch says so. The gate is now the same non-null crossing the full
+  // panel uses, so a first-order circuit gets the shortcut too.
   await pick('Series RLC')
   const compact = await page.locator('[data-role=network-handovers] a').allTextContents()
   if (!compact.some((t) => /Signal Lab/.test(t))) fail('Series RLC (2nd order) should get a compact Signal Lab link')
   if (!compact.some((t) => /Control Lab/.test(t))) fail('Series RLC (2nd order) should get a compact Control Lab link')
   console.log(`   compact hand-overs on a 2nd-order circuit: ${compact.join(', ')}`)
   await pick('RC low-pass')
-  if (await page.locator('[data-role=network-handovers]').count()) {
-    fail('RC low-pass (1st order) should get no compact hand-over links')
-  } else {
-    console.log('   compact hand-overs absent on a 1st-order circuit, as they should be')
-  }
+  const compact1 = await page.locator('[data-role=network-handovers] a').allTextContents()
+  if (!compact1.some((t) => /Signal Lab/.test(t))) fail('RC low-pass (1st order) should also get a compact Signal Lab link')
+  if (!compact1.some((t) => /Control Lab/.test(t))) fail('RC low-pass (1st order) should also get a compact Control Lab link')
+  console.log(`   compact hand-overs on a 1st-order circuit too: ${compact1.join(', ')}`)
 }
 
 // ------------------------------------- 11. the integrator really never settles
@@ -1442,13 +1449,6 @@ console.log(`   all ${circuitNames.length} circuits fit at 3840x2160`)
 //     true segmented control), so an invisible hit area would let a thumb
 //     bridge two, and growing it for real at 44 costs more of the
 //     response-and-lesson-view budget (item 13) than this lab can spare.
-//   - the topbar's H(s) and stable pills (.flow-term — round two of the
-//     review: they carried only a hover title, no click handler, so a phone
-//     had no route to either definition; both are real buttons now). A
-//     dense, one-line strip with an arrow glyph and the next pill a few px
-//     away on either side, the same crowding that pushed the note's own
-//     inline term (below) to the 24px floor first. Held to the same
-//     HARD_FLOOR for the same reason.
 //   - the "2 of 15" start hint (.start-hint — round two of the review, also:
 //     made into a real button so it loads lesson 1 in one click instead of
 //     only naming it). This walk of `.presets .preset` also catches the
@@ -1469,6 +1469,18 @@ console.log(`   all ${circuitNames.length} circuits fit at 3840x2160`)
 // 2.5.8 itself exempts as "Inline" and which sits outside tapTargetProbe's
 // own SELECTOR (button, a, summary, [role="button"], input[type=checkbox])
 // — so it is never walked by this probe at all, at any length.
+//
+// The topbar's H(s) and stable pills (.flow-term) were a third named
+// exception through round two, held to the 24px HARD_FLOOR because a real
+// 44px inset risked bridging into the arrow glyph and the next pill a few
+// px away in this dense, one-line strip (round two: they carried only a
+// hover title, no click handler, so a phone had no route to either
+// definition; both are real buttons now). Round three grew that same inset
+// further on a phone (styles.css, -14px top/bottom) rather than the pill
+// itself — item 13's own fold budget had only about 5px of slack left in
+// this row, nowhere near the ~20px a real 44px box would add, where an
+// inset costs the layout nothing at all. The pills now clear the suite's
+// real 44px target and the exception is gone rather than widened.
 console.log('\n14. Touch targets at 390x844 (button, link, summary, role=button, checkbox)\n')
 {
   await page.setViewportSize(PHONE_VIEWPORT)
@@ -1476,9 +1488,7 @@ console.log('\n14. Touch targets at 390x844 (button, link, summary, role=button,
   await page.waitForSelector('.views canvas')
 
   const exceptionFloor = (el) =>
-    el.inViews || el.inLabNav || el.className.includes('flow-term') || el.className.includes('start-hint')
-      ? HARD_FLOOR
-      : null
+    el.inViews || el.inLabNav || el.className.includes('start-hint') ? HARD_FLOOR : null
 
   let checked = 0
   for (const name of circuitNames) {
@@ -1488,6 +1498,90 @@ console.log('\n14. Touch targets at 390x844 (button, link, summary, role=button,
     for (const f of res.failures) fail(`touch target · ${name}: ${f}`)
   }
   console.log(`   ${circuitNames.length} circuits: ${checked} interactive elements checked at 390x844, every one clears the ${FLOOR}px floor (the plot panes' own chrome held to the ${HARD_FLOOR}px floor instead)`)
+}
+
+// --------- 17. phone: the sidebar scroll resets when the lesson changes
+//
+// Round-three grading, SEVERE: `.controls` is its own scroller on a phone
+// (styles.css caps it at 43vh) and never reset its scroll position when the
+// active lesson changed. A grader scrolled to the bottom of "Real parts
+// wobble" (measured: scroll 2691 of 2729 px in a 362 px sidebar), tapped
+// next, and landed on "Blame the right part" with the scroll still at 734 —
+// the title and note both off screen, the title's own top at −620. Picking
+// a lesson straight from the list did the same (scroll 712, title at −598).
+//
+// Fixed the way Signal Lab's Controls.jsx fixed the same class of bug
+// earlier the same day (10k4 above): a ref on the lesson block, an effect
+// keyed on the active lesson that checks whether the try line's own box is
+// inside the sidebar's REAL visible box, and scrolls the lesson into view
+// only when it is not. Probed the same way too — no artificial scroll
+// reset before measuring, and BOTH broken paths covered: next, and picking
+// a lesson from the list, both after scrolling down in the lesson before.
+
+console.log('\n17. Phone 390x844: the sidebar scroll resets when the lesson changes\n')
+
+async function scrollToNearBottom() {
+  return page.evaluate(() => {
+    const el = document.querySelector('.controls')
+    // Not the true end — the grader's own reproduction stopped a little
+    // short of it (2691 of 2729), and the bug reproduces anywhere the
+    // lesson block is no longer inside the visible box, not only at the
+    // exact bottom.
+    el.scrollTop = Math.max(0, el.scrollHeight - el.clientHeight - 40)
+    return { scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }
+  })
+}
+
+async function checkLessonOnScreen(ctx, scrollBefore) {
+  const contBox = await page.locator('.controls').boundingBox()
+  const titleBox = await page.locator('.note-title').first().boundingBox().catch(() => null)
+  const tryBox = await page.locator('.try-line').boundingBox().catch(() => null)
+  const scrollAfter = await page.evaluate(() => document.querySelector('.controls').scrollTop)
+  const rel = (box) => (box ? box.y - contBox.y : null) // top relative to the sidebar's own box, negative means above it
+  console.log(
+    `   ${ctx}: scroll ${scrollBefore} -> ${scrollAfter}, title top ${titleBox ? rel(titleBox).toFixed(0) : 'n/a'} px ` +
+      `relative to the sidebar, try line top ${tryBox ? rel(tryBox).toFixed(0) : 'n/a'} px`,
+  )
+  for (const [label, box] of [['note title', titleBox], ['try line', tryBox]]) {
+    if (!box) {
+      fail(`scroll-reset / ${ctx}: ${label} not rendered`)
+      continue
+    }
+    if (box.y < contBox.y - 0.5 || box.y + box.height > contBox.y + contBox.height + 0.5) {
+      fail(
+        `scroll-reset / ${ctx}: ${label} outside the sidebar's visible box ` +
+          `[${contBox.y.toFixed(0)}, ${(contBox.y + contBox.height).toFixed(0)}], got top ${box.y.toFixed(0)}`,
+      )
+    }
+  }
+}
+
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  // Reproduction 1: scrolled to the bottom of "Real parts wobble", tap next
+  // — lands on "Blame the right part" per LESSONS' own order.
+  await pick('Real parts wobble')
+  const before1 = await scrollToNearBottom()
+  await page.waitForTimeout(60)
+  await page.getByRole('button', { name: 'Next lesson' }).click()
+  await settle()
+  await checkLessonOnScreen('next, from a bottom scroll', before1.scrollTop)
+
+  // Reproduction 2: scrolled down in one lesson, then a lesson picked
+  // straight from the list (not next/prev). `pick` opens the target's own
+  // group first if it is folded, then clicks it — same as a person's tap.
+  await pick('Why active filters exist')
+  const before2 = await scrollToNearBottom()
+  await page.waitForTimeout(60)
+  await pick('This circuit is a biquad')
+  await checkLessonOnScreen('picked from the list, from a bottom scroll', before2.scrollTop)
+
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
 }
 
 // ------------------------------------------------------------------- report

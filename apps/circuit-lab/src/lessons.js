@@ -290,13 +290,25 @@ export const LESSONS = [
       'Give R alone ±10% and f₀ does not move at all. f₀ = 1/(2π√LC) has no R in it, so not one of the 120 ' +
     'builds resonates anywhere else. The poles slide along a circle of constant radius ω₀ while Q takes the ' +
     'entire hit. A spec only inherits error from the parts in its own formula.',
-    // Skeptic's note (student-review, minor): C's cloud reads big and L's
-    // reads small at a glance, which invites "L barely matters" — false. Q
-    // depends on √L and on 1/√C, equal exponents, so a shared ±10% moves f₀
-    // by nearly the same amount either way. The try line now says so with
-    // the measured number, rather than leaving L out of the text entirely.
-    try: 'Move the ±10% from R to C, f₀ now wanders ±5.3% and the circle breaks. Back on R it is ±0.0%. On L ' +
-    'it is ±5.3% too, the same share as C, not the smaller one the picture suggests.',
+    // Round-three grading: the try line used to promise "the circle breaks"
+    // for C, and it does not — a grader reproduced this on both a laptop and
+    // a phone. R's ±10% keeps every build's radius at exactly ω₀ (the note's
+    // own claim: f₀ has no R in it), so R only rotates the pair around the
+    // circle, and course.test.js's pxSpread already measures that rotation
+    // at three marker radii or more. C and L instead move the radius itself
+    // — that IS why f₀ wanders — but by too little of the plot's own scale to
+    // read as a break: the pole cloud stays inside the marker, crisp, not
+    // smeared, while the readout above the plot still prints the honest
+    // ±5.3%. Rewritten to say what the picture DOES show (R's fixed radius
+    // vs C and L moving it too little to see) rather than tell a reader to
+    // distrust the plot generally — the earlier draft's "trust the number,
+    // not the picture" overclaimed, in a suite whose whole argument is that
+    // the picture and the number agree. Q depends on √L and on 1/√C, equal
+    // exponents, so a shared ±10% moves f₀ by nearly the same amount from
+    // either part — the try line still says so with L's own measured
+    // figure, not just C's.
+    try: 'Move the ±10% from R to C, f₀ wanders ±5.3%. L gives the same ±5.3%. R’s arc holds a fixed ' +
+    'radius. C and L move it too little to see at this scale.',
     chips: [
       { label: 'R ±10%', tols: { r: 0.1 } },
       { label: 'C ±10%', tols: { c: 0.1 } },

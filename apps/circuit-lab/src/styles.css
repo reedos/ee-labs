@@ -202,10 +202,15 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 /* Same technique as term-mark used before it became a `<dfn>`: an invisible
    ::before hit area rather than growing the pill itself, which would crowd
    the arrow glyphs and the neighbouring pill a few px away in this dense,
-   one-line strip. A real 44px inset collided with the next pill exactly the
-   way the note's own inline term did before that fix, so this is held to
-   verify.mjs's 24px HARD_FLOOR instead (WCAG 2.2 SC 2.5.8's legal minimum),
-   with -4px/-3px matching the value that inline term settled on. */
+   one-line strip. A real 44px INSET (widening the pill on every side)
+   collided with the next pill exactly the way the note's own inline term
+   did before that fix, so on the desktop-width strip this stays held to
+   verify.mjs's 24px HARD_FLOOR (WCAG 2.2 SC 2.5.8's legal minimum), with
+   -4px/-3px matching the value that inline term settled on. Round three
+   grows the phone version of this same inset further (below) rather than
+   the pill itself — a real 44px pill costs item 13's own fold budget about
+   20px it does not have to spare, where the inset costs the layout nothing
+   at all. */
 .flow-term::before {
   content: '';
   position: absolute;
@@ -735,6 +740,24 @@ details.preset-group > .presets { margin: 3px 0 5px; }
     margin-right: 2px;
     color: var(--dim);
   }
+
+  /* Round-three grading: at 390 px the H(s) and stable pills measured about
+     24.5 px tall, roughly 32 with .flow-term's own invisible ::before inset
+     (this file, above) — the smallest tap targets on this screen against
+     44 px for everything else.
+     Growing the box for REAL was the first cut here, and it does not fit:
+     item 13's own fold probe holds this phone's first screen to both plot
+     canvases fitting under 844 px, and that budget had only about 5 px of
+     slack left — a real 44px pill (adding roughly 20 px to .topbar's
+     `height: auto` row) pushed both canvases' own bottoms to 861 px,
+     failing verify.mjs. The same tension the "2 of 15" start hint hit first
+     (styles.css, item 14's comment) and answered the same way: grow the
+     INVISIBLE hit area instead, which costs the layout nothing because a
+     pseudo-element's negative inset is out of flow. Vertical only — -14px
+     top/bottom on top of the pill's own ~24.5px gives a 44px+ tap box —
+     the horizontal -3px stays exactly as round two left it, so the gap to
+     the arrow glyph and the next pill is untouched. */
+  .flow-term::before { inset: -14px -3px; }
 
   /* Item 3, second bug: on a bare dev port siblingUrl resolves to nothing,
      so the hand-over falls back to printing the raw link fragment as

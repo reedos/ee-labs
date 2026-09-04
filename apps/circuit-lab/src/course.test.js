@@ -15,6 +15,7 @@ import { asDigitalFilter } from './toSignalLab.js'
 import { toleranceCloud, spreadPct, tolsOf, fmtPct, fmtHzRange } from './tolerance.js'
 import { magnitudeAt, phaseAt, dcGain, polesZeros, secondOrderMetrics, stepResponse } from '@ee-labs/systems'
 import { dampingWord } from './stepReadout.js'
+import { stickySpan } from './axis.js'
 
 // The course, as opposed to the claims: the lab opens on a lesson, every
 // lesson has a try line with one-click chips, and every number a try line
@@ -336,8 +337,11 @@ describe('the numbers the try lines quote', () => {
   // Skeptic's note (student-review, minor): the L cloud reads small next to
   // C's, at a glance inviting "L barely matters" — Q depends on √L and on
   // 1/√C, equal exponents, so a shared ±10% moves f₀ by nearly the same
-  // amount either way. The try line now quotes L's own number so the text
-  // says what the numbers say even where the picture alone might not.
+  // amount either way. The try line quotes L's own number so the text says
+  // what the numbers say even where the picture alone might not — and round
+  // three found the picture says nothing for either part (see the pxSpread
+  // describe block below), so L's number is now the only place this fact
+  // is visible at all, not one of two.
   it('blame: the ±10% on L alone moves f₀ almost exactly as far as C, not less', () => {
     const l = byName('Blame the right part')
     const onL = after(l, 'L ±10%')
@@ -346,7 +350,7 @@ describe('the numbers the try lines quote', () => {
     const f0Pct = spreadPct(f0, m.w0 / (2 * Math.PI))
     expect(f0Pct).toBeCloseTo(l.claim.tryF0OnL, 1)
     expect(f0Pct).toBeCloseTo(l.claim.tryF0OnC, 0) // same order as C, not a fraction of it
-    expect(l.try).toContain(`On L it is ±${l.claim.tryF0OnL}%`)
+    expect(l.try).toContain(`the same ±${l.claim.tryF0OnL}%`)
   })
 
   it('blame: the printed f₀ range never reads one endpoint coarser than the other', () => {
@@ -478,5 +482,49 @@ describe('lesson: Real parts wobble is visible', () => {
   it('the blame lesson’s R-only arc clears the bar too', () => {
     const { w, h } = pxSpread(stateOf(byName('Blame the right part')))
     expect(Math.max(w, h)).toBeGreaterThan(3 * MARKER_R)
+  })
+
+  // Round-three grading: the try line used to promise the same break for a
+  // C or L tolerance, and a grader found the plot stays a crisp cross for
+  // both instead. The natural() span above is a fresh snapshot; the pole
+  // view's real axis is STICKY (axis.js's stickySpan, consumed as App.jsx's
+  // pzSpan) and does not reframe on a tolerance change alone — the try
+  // line's own move (R to C, or R to L, no circuit or output touched) HOLDS
+  // whatever span the lesson's R-loaded arc already set. Reproduced here the
+  // same way: reframe fresh for the lesson's own R-at-±10% load, then hold
+  // that span across the move, exactly as App.jsx's pzSpan key (circuit,
+  // output, frameNonce — none of which a tolerance change bumps) does.
+  const naturalOf = (s) => {
+    const tf = transferOf(s.id, s.params, s.output)
+    const { poles, zeros } = polesZeros(tf)
+    const { cloud } = toleranceCloud(s.id, s.params, s.output, s.tols)
+    let span = 1
+    for (const [re, im] of [...poles, ...zeros, ...cloud]) {
+      span = Math.max(span, Math.abs(re) * 1.4, Math.abs(im) * 1.4)
+    }
+    return { span, cloud }
+  }
+  const pxSpreadAtSpan = (cloud, span) => {
+    const pxPerUnit = PLOT_H / (2 * span)
+    const upper = cloud.filter(([, im]) => im >= 0)
+    const res = upper.map(([re]) => re)
+    const ims = upper.map(([, im]) => im)
+    return {
+      w: (Math.max(...res) - Math.min(...res)) * pxPerUnit,
+      h: (Math.max(...ims) - Math.min(...ims)) * pxPerUnit,
+    }
+  }
+
+  it('the blame lesson’s C-only and L-only shift, reached from R, stays under the bar R’s own arc clears', () => {
+    const l = byName('Blame the right part')
+    const { span: naturalR } = naturalOf(stateOf(l))
+    const heldSpan = stickySpan(0, naturalR) // the lesson's own fresh load, R at ±10%
+    for (const label of ['C ±10%', 'L ±10%']) {
+      const { span: natural, cloud } = naturalOf(after(l, label))
+      const span = stickySpan(heldSpan, natural) // held across the move, not reframed
+      expect(span).toBeCloseTo(heldSpan, 6) // confirms the hold actually applies here
+      const { w, h } = pxSpreadAtSpan(cloud, span)
+      expect(Math.max(w, h)).toBeLessThan(3 * MARKER_R)
+    }
   })
 })

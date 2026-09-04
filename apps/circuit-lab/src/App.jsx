@@ -149,6 +149,48 @@ export default function App() {
     () => new Set(CIRCUIT_GROUPS.map((g) => `circuits:${g}`)),
   )
 
+  // Round-three grading, phone only: `.controls` is its own scroller there
+  // (styles.css caps it at 43vh), and it never reset its scroll position
+  // when the active lesson changed. A grader scrolled to the bottom of
+  // "Real parts wobble" (2691 of 2729 px in a 362 px sidebar), tapped next,
+  // and landed on "Blame the right part" with the scroll still at 734 — the
+  // title and note both off screen, the title's own top measured at −620.
+  // Picking a lesson straight from the list did the same (scroll 712, title
+  // at −598), and by lesson 10 a next tap could land on a screen with no
+  // title, no note and no knob at all, just the tail of the lesson list.
+  //
+  // Signal Lab's Controls.jsx fixed this exact class earlier the same day:
+  // a ref on the lesson block, and an effect keyed on the active lesson
+  // (and the fold state, which can push the lesson block down the same way
+  // on a laptop) that checks whether the try line's own box is still inside
+  // the sidebar's REAL visible box and scrolls the lesson into view only
+  // when it is not. Copied rather than reinvented, so the two labs share one
+  // fix for one bug: `.lesson-body` here is Signal Lab's `.lesson`, and
+  // `.controls` is the same scroller-inside-a-scroller in both apps.
+  //
+  // Deliberately conditional: on every already-correct path (a laptop with
+  // one group open, a phone that has not scrolled) the try line is already
+  // inside the visible box, so nothing scrolls — prev/next behave exactly as
+  // they did before. Skipped on the very first render, since a fresh load
+  // has nothing to correct.
+  const controlsRef = useRef(null)
+  const lessonRef = useRef(null)
+  const loadedOnce = useRef(false)
+  useEffect(() => {
+    if (!loadedOnce.current) {
+      loadedOnce.current = true
+      return
+    }
+    const el = lessonRef.current
+    const container = controlsRef.current
+    if (!el || !container) return
+    const target = el.querySelector('.try-line') || el
+    const targetBox = target.getBoundingClientRect()
+    const contBox = container.getBoundingClientRect()
+    const visible = targetBox.top >= contBox.top - 0.5 && targetBox.bottom <= contBox.bottom + 0.5
+    if (!visible) el.scrollIntoView({ block: 'start' })
+  }, [lesson, openGroups])
+
   const circuit = CIRCUITS[id]
 
   const choose = (next) => {
@@ -551,7 +593,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <aside className="controls">
+      <aside className="controls" ref={controlsRef}>
         <header>
           <LabNav current="circuit-lab" />
           <h1>Circuit Lab</h1>
@@ -679,7 +721,7 @@ export default function App() {
             })}
           </div>
           {active ? (
-            <div className="lesson-body" data-role="lesson-body">
+            <div className="lesson-body" data-role="lesson-body" ref={lessonRef}>
               <h3 className="note-title">
                 {active.name}
                 {dirty ? (
