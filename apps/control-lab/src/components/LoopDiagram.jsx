@@ -44,7 +44,12 @@ const summarize = (defs, values) =>
       // A param carrying its own `symbol` (the lead's gain, Kc — distinct
       // from the plant's K, the "two things called K" the student review
       // found) wins over the generic SYMBOLS table.
-      `${p.symbol || SYMBOLS[p.key] || p.label} ${p.unit ? fmt(values[p.key], p.unit, 3) : fmtNum(values[p.key], 3)}`,
+      //
+      // Four significant figures, not three: the sidebar field beside this
+      // same live value rounds to four (packages/ui's NumField, snap() —
+      // NEEDS.md), and this box once quoted three, printing 11.3 for a gain
+      // the sidebar showed as 11.25 — one live number, two readings.
+      `${p.symbol || SYMBOLS[p.key] || p.label} ${p.unit ? fmt(values[p.key], p.unit, 4) : fmtNum(values[p.key], 4)}`,
   )
 
 export default function LoopDiagram({

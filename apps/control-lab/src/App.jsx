@@ -36,6 +36,8 @@ import {
   crossingGain,
   locusHereNote,
   isDirty,
+  firstLessonFor,
+  beforeIntro,
 } from './lessons.js'
 import { initialState } from './boot.js'
 import { circuitFor, circuitUrl } from './toCircuitLab.js'
@@ -68,6 +70,8 @@ import { leadPeak } from './lead.js'
 import { naturalWindow, settleTime, overshootOf } from './stepWindow.js'
 import { simBlockReason, simCost, STEP_BUDGET } from './affordable.js'
 import { locusExtent, stickyExtent } from './locusFrame.js'
+import { markTerms } from './noteMarks.js'
+import { MarkedNote, NoteDefCard } from './components/NoteTerms.jsx'
 
 const POINTS = 900
 // The watch view's time grid. Fixed, so the scrubber's range never shifts
@@ -128,6 +132,10 @@ export default function App() {
   // watch transport.
   const [loads, setLoads] = useState(0)
   const [termsOpen, setTermsOpen] = useState(false)
+  // Which marked term in the note is open, or null — a fresh lesson load
+  // (or leaving the lesson entirely) closes whatever the previous one left
+  // open, the same rule termsOpen already follows in spirit.
+  const [openTerm, setOpenTerm] = useState(null)
   // The crossover field's rad/s twin, folded shut by default so it costs no
   // height on a screen that already has the title-attribute hover for it —
   // opened only on a tap, on the screens where a tap is the only way in.
@@ -199,6 +207,7 @@ export default function App() {
   const clearLesson = () => {
     setLastLesson((prev) => lesson || prev)
     setLesson(null)
+    setOpenTerm(null)
   }
   const choosePlant = (id) => {
     const newPlantP = defaultsOf(PLANTS[id])
@@ -238,11 +247,32 @@ export default function App() {
     if (n.showPhase !== undefined) setShowPhase(n.showPhase)
     setLesson(l.name)
     setLastLesson(null)
+    setOpenTerm(null)
     setLoads((k) => k + 1)
   }
 
   const active = LESSONS.find((l) => l.name === lesson)
   const activeIndex = LESSONS.findIndex((l) => l.name === lesson)
+  // Where the active lesson's own listed terms first do work in its note —
+  // computed once per lesson, not per keystroke, since the note text and
+  // its term list are both fixed once a lesson is loaded.
+  const noteMarks = useMemo(() => (active ? markTerms(active.note, active.terms) : []), [active])
+  // 1-based course position of the active lesson, or null with none loaded —
+  // what beforeIntro (lessons.js) compares the Nyquist/root-locus tabs'
+  // OWN lesson number against, so those two tabs can say what they are
+  // before a reader has reached the lesson that reads them in full.
+  const activeNumber = active ? activeIndex + 1 : null
+  // The Nyquist and root-locus tabs are one click away from lesson 1
+  // onward, well before the lesson that reads either in full — a student
+  // review's single most annoying finding, not knowing whether a
+  // prerequisite was missing. One short line, only before that lesson is
+  // reached, says what the tab is and where the full reading comes from.
+  const viewIntro = (view) =>
+    beforeIntro(view, activeNumber) ? (
+      <span className="prov" data-role="view-intro">
+        This previews lesson {firstLessonFor(view)}. It reads this plot in full.
+      </span>
+    ) : null
   // The state a chip or a dirtiness check reads: the loop's setup, not its view.
   const state = { plantId, plantP, ctrlId, ctrlP, stepInput }
   const dirty = isDirty(active, state)
@@ -680,11 +710,15 @@ export default function App() {
             <div className="lesson-body">
               <h3 className="note-title">{active.name}</h3>
               <p className={`hint note${dirty ? ' is-dirty' : ''}`}>
-                {active.note}
-                {/* Definitions on contact, opened from the note's last line
-                    rather than a row of their own: the fold at 1366×768 has
-                    no 22 px to spare, and the terms cost nothing to someone
-                    who already has them. */}
+                {/* Definitions on contact (student review, item 3): the FIRST
+                    use of a listed term right in the note is a tappable word
+                    (MarkedNote, noteMarks.js), opening its definition in the
+                    card just below — not only through the "terms used here"
+                    link at the note's end, which a skim reader never
+                    noticed. A term the note never spells out, or a second
+                    use of one already marked, stays reachable from that same
+                    fold, unchanged. */}
+                <MarkedNote text={active.note} marks={noteMarks} open={openTerm} onOpen={setOpenTerm} />
                 {termsFor(active.terms).length ? (
                   <>
                     {' '}
@@ -699,6 +733,7 @@ export default function App() {
                   </>
                 ) : null}
               </p>
+              <NoteDefCard openId={openTerm} onClose={() => setOpenTerm(null)} />
               {termsOpen && termsFor(active.terms).length ? (
                 <dl className="terms-list">
                   {termsFor(active.terms).map((t) => (
@@ -1140,22 +1175,38 @@ export default function App() {
                 : null}
             </div>
           </div>
-          <BodeCanvas
-            freqs={freqs}
-            mag={open.mag}
-            phase={open.phase}
-            showPhase={showPhase}
-            crossover={marg.gainCrossover}
-            phaseCrossover={marg.phaseCrossover}
-            ghostMag={ghost?.mag}
-            ghostPhase={ghost?.phase}
-            ghostLabel={ghost?.label}
-            // The Bode reading lesson (BodeCanvas.jsx), drawn once on each
-            // margin's own first lesson — the SAME `callout` that already
-            // rings the matching topbar field, so the ring and the picture
-            // can never point at two different things.
-            teach={active?.callout === 'phasemargin' || active?.callout === 'gainmargin' ? active.callout : null}
-          />
+          {/* An undefined plant has no L(jw): evalAtFreq divides by the
+              all-zero denominator, and bode() hands back NaN magnitude at
+              every point (drawn as nothing, correctly — a canvas ignores a
+              NaN coordinate) but a PHASE of exactly 0 at every point, since
+              atan2 never ran and the array's own zero-fill stands in
+              unmarked. That drew a confident flat dashed line at 0° under a
+              readout already saying there is no system — refuse the same
+              way Nyquist, root locus, the Step/Watch panes and the Math tab
+              already do, rather than let this be the one surface that
+              still draws a picture of nothing. */}
+          {loop.reason ? (
+            <p className="hint" data-role="undefined-plant">
+              {loop.reason}
+            </p>
+          ) : (
+            <BodeCanvas
+              freqs={freqs}
+              mag={open.mag}
+              phase={open.phase}
+              showPhase={showPhase}
+              crossover={marg.gainCrossover}
+              phaseCrossover={marg.phaseCrossover}
+              ghostMag={ghost?.mag}
+              ghostPhase={ghost?.phase}
+              ghostLabel={ghost?.label}
+              // The Bode reading lesson (BodeCanvas.jsx), drawn once on each
+              // margin's own first lesson — the SAME `callout` that already
+              // rings the matching topbar field, so the ring and the picture
+              // can never point at two different things.
+              teach={active?.callout === 'phasemargin' || active?.callout === 'gainmargin' ? active.callout : null}
+            />
+          )}
         </section>
 
         <section className={`view${weighted ? ' is-primary' : ''}`}>
@@ -1291,15 +1342,22 @@ export default function App() {
                   {!stable && !loop.reason ? <span className="flag warn">never settles</span> : null}
                 </>
               ) : lower === 'nyquist' ? (
-                <span className="prov">
-                  stability is a statement about one point: 1 + L = 0
-                </span>
+                <>
+                  {viewIntro('nyquist')}
+                  <span className="prov">
+                    stability is a statement about one point: 1 + L = 0
+                  </span>
+                </>
               ) : lower === 'locus' && loop.reason ? (
-                <span className="prov" data-role="undefined-plant">
-                  {loop.reason}
-                </span>
+                <>
+                  {viewIntro('locus')}
+                  <span className="prov" data-role="undefined-plant">
+                    {loop.reason}
+                  </span>
+                </>
               ) : lower === 'locus' ? (
                 <>
+                  {viewIntro('locus')}
                   {/* You are here, and where the branch meets the axis — the
                       crossing gain is the current gain times the gain
                       margin, and the test bisects the verdict to pin it.

@@ -19,6 +19,30 @@ const phaseDegAt = (phase, freqs, f) => {
   return ((phase[i - 1] + t * (phase[i] - phase[i - 1])) * 180) / Math.PI
 }
 
+/**
+ * PM = 180° + ∠L(jω_gc) — the ONE fold this app uses for that identity,
+ * shared by every reader of it in this file rather than each keeping its own
+ * copy.
+ *
+ * This is a regression fix: the topbar's phase margin (margins(), in
+ * packages/systems, out of this app's territory) already folds this
+ * correctly at its own binding crossover — phase.test.js pins it as "reads
+ * 78.5°, not 438.5°". This panel used to recompute the SAME identity from
+ * bode()'s continuously unwrapped, per-transfer-function-anchored phase
+ * curve instead of asking the loop directly, and an anchor can sit any
+ * multiple of 360° from the principal value the fold needs — the unstable
+ * plant's own row read 447.134° beside the topbar's 87.1°, 360° off, under
+ * every controller. phaseAt() (packages/systems) returns the ordinary atan2
+ * principal value, wrapped to (−180°, 180°] with no anchoring at all, so
+ * reading it fresh at the exact crossover margins() found — rather than
+ * interpolating a plotted, anchored curve — reproduces margins()'s own
+ * arithmetic exactly instead of drifting from it.
+ */
+const phaseMarginAt = (loop, atFreq, stable) => {
+  const angleDeg = (phaseAt(loop.open, atFreq) * 180) / Math.PI
+  return (stable ? 1 : -1) * (180 - Math.abs(angleDeg))
+}
+
 const T = (text) => ({ kind: 'text', text })
 const F = (tex, caption) => ({ kind: 'formula', tex, caption })
 const C = (rows) => ({ kind: 'check', rows })
@@ -296,7 +320,13 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
         tol: 0.02,
         abs: 0.5,
       })
-      phaseShares = { phC, phP, phL }
+      // The phase MARGIN, not the raw accounting total: phL above is read
+      // off bode()'s unwrapped, anchored curve, fine for the check row it
+      // feeds (both sides share the same anchor and the offset cancels) but
+      // wrong to add 180° to directly. foldedPM reads the loop fresh, at
+      // this exact crossover, through the one fold (above) the topbar's own
+      // margin already uses.
+      phaseShares = { phC, phP, foldedPM: phaseMarginAt(loop, marg.gainCrossover, stable) }
     }
     if (ctrlId === 'pi' || ctrlId === 'pid') {
       // "A flat −90°" is a claim about the integrator term alone, and far
@@ -316,7 +346,7 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
         V([
           { label: "the controller's share ∠C", value: phaseShares.phC, unit: '°', note: phaseShares.phC > 0 ? 'adds phase' : '' },
           { label: "the plant's share ∠P", value: phaseShares.phP, unit: '°' },
-          { label: '180° + the total', value: 180 + phaseShares.phL, unit: '°', note: 'the phase margin' },
+          { label: '180° + ∠L at the crossover', value: phaseShares.foldedPM, unit: '°', note: 'the phase margin' },
         ]),
       )
     }

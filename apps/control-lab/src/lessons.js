@@ -424,6 +424,27 @@ export const LESSONS = [
   },
 ]
 
+/**
+ * The course position (1-based) of the first lesson that opens on a given
+ * lower view, or null if none does — the pointer the Nyquist and root-locus
+ * tabs need before their OWN lesson ever loads. Both views are one click
+ * away from lesson 1 onward, and a student review found this the single
+ * most annoying part of the lab: two tabs "sit on screen taunting me" with
+ * no way to tell whether a prerequisite was missing. `beforeIntro` answers
+ * that: has the reader already reached (or passed) the lesson that reads
+ * this plot in full?
+ */
+export function firstLessonFor(view) {
+  const i = LESSONS.findIndex((l) => (l.patch.view || 'step') === view)
+  return i < 0 ? null : i + 1
+}
+
+/** Has the reader reached the lesson that introduces `view`, given the active lesson's course position (1-based, or null with none loaded)? */
+export function beforeIntro(view, activeNumber) {
+  const intro = firstLessonFor(view)
+  return intro != null && (activeNumber == null || activeNumber < intro)
+}
+
 /** Apply a lesson to the app's state shape. */
 export function applyLesson(l) {
   return {

@@ -2141,7 +2141,13 @@ console.log('\n34. Touch targets at 390x844 (button, link, summary, role=button,
 console.log('\n35. The zero-denominator plant: every pane refuses, none ticks a wrong number\n')
 {
   await page.goto(`${URL}#plant=custom:0:0:1:0:0:0&ctrl=p:1`, { waitUntil: 'load' })
-  await page.waitForSelector('.views canvas')
+  // Not '.views canvas': an undefined plant now refuses on the Bode pane too
+  // (item 2 of this review), so on THIS exact hash no canvas exists anywhere
+  // on the page at all — Bode refuses, and Step (the default view) already
+  // refused before this fix. The topbar badge is what every other wait in
+  // this file settles for once a canvas exists; it is what this section
+  // reads first anyway, so it is the honest ready-signal here.
+  await page.waitForSelector('.flow-node')
   await settle()
 
   const REASON = 'This H(s) has an all-zero denominator'
@@ -2347,6 +2353,317 @@ console.log('\n39. The Bode plot marks the margin it is teaching, once per lesso
     fail(`Bode teaching: "Turn it up until it sings" should NOT carry the reading-lesson annotation, drew: ${otherTexts.join(', ')}`)
   }
   console.log(`   every other lesson's Bode plot is unchanged`)
+
+  await clickPreset('First order lag')
+}
+
+// ----------------------------- 40. the eng-field commit echo, and Reed's exact case
+
+console.log('\n40. The eng-field commit echo (silent thousand-fold reinterpretation)\n')
+{
+  // Reed's reproduction, verbatim: a proportional gain field sitting at 0.99
+  // displays "990" next to a milli prefix. Typing a bare "1.0001" (meaning a
+  // gain of about one) is read in that displayed prefix and would commit
+  // 1.0001 MILLI — 0.0010001, a thousand times too small — with nothing on
+  // screen saying so before Enter. NumField now shows what will actually
+  // land, live, before commit; this drives the field into exactly that state
+  // and requires the warning to already be on screen before Enter is pressed.
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await clickBtn('PI') // a second field (Ki) alongside Kp, for the blur checks below
+  await settle()
+
+  const kpField = page.locator('.num').filter({ has: page.getByRole('spinbutton', { name: 'Kp' }) }).first()
+  const kp = kpField.getByRole('spinbutton', { name: 'Kp' })
+  const echo = kpField.locator('.num-echo')
+  const ki = page.getByRole('spinbutton', { name: 'Ki' }).first()
+
+  await kp.fill('0.99')
+  await kp.press('Enter')
+  await settle()
+  const shownBefore = await kp.inputValue()
+  if (shownBefore !== '990') fail(`gain echo setup: expected the field to show "990" (0.99 with a milli prefix), got "${shownBefore}"`)
+
+  // Type the bare number WITHOUT committing yet.
+  await kp.fill('1.0001')
+  await page.waitForTimeout(80)
+  const stillOldValue = await kp.getAttribute('aria-valuenow')
+  if (stillOldValue !== '0.99') fail(`gain echo: typing alone should not commit — Kp read ${stillOldValue}, expected it to still read 0.99`)
+  const echoVisible = (await echo.getAttribute('data-visible')) !== null
+  if (!echoVisible) fail('gain echo: typing "1.0001" under a displayed milli prefix should show the commit echo before Enter, but nothing is visible')
+  const echoText = (await echo.textContent()) || ''
+  if (!echoText.includes('1.0001 m')) fail(`gain echo: expected the typed reading "1.0001 m" in the echo, got "${echoText}"`)
+  if (!echoText.includes('0.0010001')) fail(`gain echo: expected the full committed value "0.0010001" in the echo, got "${echoText}"`)
+  console.log(`   before Enter, echo reads: "${echoText}"`)
+
+  // Commit it, and the echo goes quiet again — it only speaks about a draft.
+  await kp.press('Enter')
+  await settle()
+  const committed = Number(await kp.getAttribute('aria-valuenow'))
+  if (!(Math.abs(committed - 0.001) < 1e-6)) fail(`gain echo: expected the reinterpreted commit to land near 0.001, got ${committed}`)
+  const echoAfterCommit = (await echo.textContent()) || ''
+  if (echoAfterCommit.trim() !== '') fail(`gain echo: should go quiet once committed, still showing "${echoAfterCommit}"`)
+  console.log(`   bare "1.0001" under a displayed milli prefix committed as ${committed} (the kept, documented rule) — and the echo warned first`)
+
+  // The interrupt this task also had to answer: does blurring an UNEDITED
+  // field ever rescale it again? Move focus off Kp with nothing further
+  // typed, twice, and require the value to hold exactly.
+  await ki.click()
+  await settle()
+  const afterFirstBlur = Number(await kp.getAttribute('aria-valuenow'))
+  await kp.click()
+  await ki.click()
+  await settle()
+  const afterSecondBlur = Number(await kp.getAttribute('aria-valuenow'))
+  if (afterFirstBlur !== committed) fail(`gain echo: blurring to another field with no edit moved Kp from ${committed} to ${afterFirstBlur}`)
+  if (afterSecondBlur !== afterFirstBlur) fail(`gain echo: a second blur with no edit moved Kp again, from ${afterFirstBlur} to ${afterSecondBlur} — re-commit is not idempotent`)
+  console.log(`   two further blurs with nothing retyped: Kp held at ${afterSecondBlur}, no repeated rescale`)
+
+  // An explicit prefix or a ratio entry has nothing to warn about — the echo
+  // stays quiet even while an active (non-unity) prefix is on display.
+  await kp.fill('5G')
+  await page.waitForTimeout(80)
+  if ((await echo.getAttribute('data-visible')) !== null) fail(`gain echo: an explicitly typed prefix ("5G") should not show the echo, saw "${await echo.textContent()}"`)
+  await kp.fill('*2')
+  await page.waitForTimeout(80)
+  if ((await echo.getAttribute('data-visible')) !== null) fail(`gain echo: a ratio entry ("*2") should not show the echo, saw "${await echo.textContent()}"`)
+  await kp.press('Escape')
+  await settle()
+  console.log('   explicit prefix and ratio entries stay quiet, as designed')
+}
+
+// ------------------------------------------- 41. the math panel's phase fold
+//
+// Regression of a bug already fixed once: phase.test.js pins "the unstable
+// plant under Kp 5 reads 78.5°, not 438.5°" for the TOPBAR's own phase
+// margin (margins(), folded at the source). The Math tab's own "phase
+// accounting" row computed the same identity, PM = 180° + ∠L at the
+// crossover, a SECOND way — reading it off bode()'s continuously unwrapped,
+// per-transfer-function-anchored curve instead of the loop's own
+// principal-value angle — and for the unstable plant under every controller
+// the panel's row sat exactly 360° off the topbar's own number (87.1° vs
+// 447.134° at Kp = 20). math.js now folds this once (phaseMarginAt) and
+// both readings come from it; this drives the actual repro in the browser.
+console.log('\n41. The math panel\'s phase-accounting row agrees with the topbar — the 360° regression\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await clickPreset('Unstable plant')
+  await clickBtn('Proportional')
+
+  const readMathValues = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('.math-values tr')].map((tr) => {
+        const c = [...tr.querySelectorAll('th,td')]
+        return {
+          label: c[0]?.textContent.trim(),
+          value: c[1]?.textContent.trim(),
+          unit: c[2]?.textContent.trim(),
+          note: c[3]?.textContent.trim(),
+        }
+      }),
+    )
+
+  for (const kp of [5, 20, 80]) {
+    await setField('Kp', kp)
+    const pmText = (await topbar())['phase margin']
+    await openMath()
+    const values = await readMathValues()
+    const panelRow = values.find((r) => r.note === 'the phase margin' && r.label !== 'phase margin')
+    await closeMath()
+    if (!panelRow) {
+      fail(`Kp ${kp}: expected the math panel's own phase-margin row ("the phase margin" note)`)
+      continue
+    }
+    const panelVal = parseFloat(panelRow.value)
+    const topbarVal = parseFloat(pmText)
+    console.log(`   Kp ${kp}: topbar ${pmText}, math panel "${panelRow.label}" = ${panelRow.value}°`)
+    if (Math.abs(panelVal) > 180.001) {
+      fail(`Kp ${kp}: math panel's phase-margin row reads ${panelRow.value}° — off the circle`)
+    }
+    if (Math.abs(panelVal - topbarVal) > 0.2) {
+      fail(`Kp ${kp}: math panel's phase-margin row (${panelRow.value}°) disagrees with the topbar (${pmText})`)
+    }
+  }
+  await clickPreset('First order lag')
+}
+
+// --------------------------------------- 42. the Bode pane on an undefined plant
+//
+// Defect: the magnitude trace correctly drew nothing for the zero-
+// denominator custom plant (bode() hands back NaN, and a canvas ignores a
+// NaN coordinate), but the phase trace drew a confident flat line at
+// exactly 0° — bode() never touches its phase array when |H| is undefined
+// at every frequency, and a Float64Array's own zero fill stood in as if it
+// were a measured value. The Bode pane now refuses the same way every
+// other pane already does (Nyquist, root locus, Step, Watch, the Math tab),
+// with the same reason, rather than drawing a picture of nothing.
+console.log('\n42. The Bode pane refuses on an undefined plant, rather than drawing a false phase line\n')
+{
+  await page.goto(`${URL}#plant=custom:0:0:1:0:0:0&ctrl=p:1`, { waitUntil: 'load' })
+  // Not '.views canvas': this is the exact state under test, where no
+  // canvas exists anywhere on the page (see item 35's own comment above,
+  // fixed the same way for the same reason).
+  await page.waitForSelector('.flow-node')
+  await settle()
+
+  const bodeCanvasCount = await page.locator('canvas[aria-label^="Open-loop Bode"]').count()
+  if (bodeCanvasCount !== 0) fail(`Bode pane: expected no canvas for an undefined plant, found ${bodeCanvasCount}`)
+
+  const bodeSection = page.locator('.views > .view').first()
+  const reasonCount = await bodeSection.locator('[data-role="undefined-plant"]').count()
+  if (!reasonCount) fail('Bode pane: expected the undefined-plant reason in place of the canvas')
+  console.log(`   Bode canvas: ${bodeCanvasCount === 0 ? 'absent' : 'STILL DRAWN'}; refusal text present: ${reasonCount > 0}`)
+
+  await clickPreset('First order lag')
+}
+
+// ------------------------------------------- 43. the loop diagram's own rounding
+//
+// Cosmetic: the diagram box rounded a gain to three significant figures
+// (11.3) while the sidebar field beside it, for the SAME live value, showed
+// four (11.25) — one number, two readings. summarize() (LoopDiagram.jsx)
+// now matches the sidebar field's own four-figure precision (packages/ui's
+// NumField, snap() — NEEDS.md).
+console.log('\n43. The loop diagram quotes a gain to the same precision as the sidebar field\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await clickPreset('Three lags')
+  await clickBtn('Proportional')
+  await setField('Kp', 11.25)
+  const fieldValue = await page.getByRole('spinbutton', { name: 'Kp' }).first().inputValue()
+  await page.getByRole('button', { name: '⧉ diagram' }).click()
+  await page.waitForTimeout(200)
+  const svgText = await page.locator('.fd-svg').textContent()
+  console.log(`   sidebar field reads "${fieldValue}", diagram box: ${svgText.includes('Kp 11.25') ? 'Kp 11.25' : 'MISMATCH'}`)
+  if (!svgText.includes('Kp 11.25')) {
+    fail(`diagram: expected "Kp 11.25" (matching the sidebar field "${fieldValue}"); the box read something else in "${svgText}"`)
+  }
+  if (svgText.includes('Kp 11.3')) fail('diagram: still rounding to three significant figures (Kp 11.3)')
+  await page.keyboard.press('Escape')
+  await settle()
+  await clickPreset('First order lag')
+}
+
+// -------------------------------------------- 44. Nyquist and root locus, introduced
+//
+// Defect: both tabs are one click away from lesson 1 onward, well before
+// their own lesson (9 and 8 respectively) ever loads — a student review's
+// single most annoying finding was not knowing whether a prerequisite was
+// missing. Each tab's pane now says what it is and where its own lesson
+// sits, until the reader has reached (or passed) it.
+console.log('\n44. Nyquist and root locus say what they are before their own lesson arrives\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  // The picker state, no lesson at all: both previews should show.
+  await clickBtn('Nyquist')
+  let intro = (await page.locator('[data-role="view-intro"]').textContent().catch(() => '')) || ''
+  if (!/lesson 9/.test(intro)) fail(`Nyquist, no lesson: expected a preview of lesson 9, read "${intro}"`)
+  console.log(`   Nyquist, no lesson: "${intro.trim()}"`)
+
+  await clickBtn('Root locus')
+  intro = (await page.locator('[data-role="view-intro"]').textContent().catch(() => '')) || ''
+  if (!/lesson 8/.test(intro)) fail(`Root locus, no lesson: expected a preview of lesson 8, read "${intro}"`)
+  console.log(`   Root locus, no lesson: "${intro.trim()}"`)
+
+  // Loaded straight to the dedicated lesson: no preview line, the lesson's
+  // own note is doing the introducing now.
+  await loadLesson('Watch the poles cross') // lesson 8, view locus
+  if (await page.locator('[data-role="view-intro"]').count()) {
+    fail('Root locus: the preview line should not show on its own lesson (8)')
+  }
+  await loadLesson('Everything is about one point') // lesson 9, view nyquist
+  if (await page.locator('[data-role="view-intro"]').count()) {
+    fail('Nyquist: the preview line should not show on its own lesson (9)')
+  }
+  console.log('   neither preview line shows once its own lesson has loaded')
+
+  // An EARLIER lesson, tab switched manually: still a preview (has not
+  // reached the dedicated lesson yet).
+  await loadLesson('Proportional cannot get there') // lesson 1
+  await clickBtn('Nyquist')
+  intro = (await page.locator('[data-role="view-intro"]').textContent().catch(() => '')) || ''
+  if (!/lesson 9/.test(intro)) fail(`Nyquist from lesson 1: expected the preview line, read "${intro}"`)
+  console.log(`   Nyquist from lesson 1 (before lesson 9): "${intro.trim()}"`)
+
+  // A LATER lesson, tab switched back: no preview (already past it).
+  await loadLesson('Lead does it without the noise') // lesson 13, the last
+  await clickBtn('Root locus')
+  if (await page.locator('[data-role="view-intro"]').count()) {
+    fail('Root locus from lesson 13: should not show the preview, already past lesson 8')
+  }
+  console.log('   no preview once a later lesson has been reached')
+
+  await clickBtn('Step')
+  await clickPreset('First order lag')
+}
+
+// ------------------------------------------------ 45. definitions on contact
+//
+// Defect, and it repeats across the suite: the terms fold sat only after
+// the WHOLE note, behind a small link a skim reader never noticed — the
+// same pattern that cost Circuit Lab two of two skim readers concluding it
+// has no glossary at all. The first use of a lesson's own listed term in
+// its note is now a tappable word (student review, item 3), the pattern
+// Circuit Elements Lab already ships (that lab's grader reported no
+// vocabulary problem under it). The "terms used here" fold stays, for
+// anything the note never spells out.
+console.log('\n45. Definitions on contact: a first-use term in the note is tappable\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  // "Everything is about one point": the note's own first sentence names
+  // the Nyquist view. A skim reader who never notices "terms used here"
+  // should still be able to tap the word itself.
+  await loadLesson('Everything is about one point')
+  const nyquistDfn = page.locator('.hint.note dfn.term[data-term="nyquistplot"]')
+  const nyquistCount = await nyquistDfn.count()
+  if (nyquistCount !== 1) {
+    fail(`terms on contact: expected exactly one marked "Nyquist" word in the note, found ${nyquistCount}`)
+  } else {
+    const before = await page.locator('[data-role="def"]').count()
+    if (before) fail('terms on contact: no definition card should be open before a tap')
+    await nyquistDfn.click()
+    await settle()
+    const card = page.locator('[data-role="def"][data-term="nyquistplot"]')
+    if ((await card.count()) !== 1) fail('terms on contact: tapping the marked word should open its definition card')
+    const cardText = (await card.textContent()) || ''
+    if (!/Nyquist plot/.test(cardText)) fail(`terms on contact: expected the Nyquist-plot definition, card read "${cardText}"`)
+    console.log(`   "Everything is about one point": tapping "Nyquist" opened its card ("${cardText.trim().slice(0, 50)}...")`)
+    // Tapping the same word again closes it.
+    await nyquistDfn.click()
+    await settle()
+    if (await card.count()) fail('terms on contact: tapping the same word again should close its card')
+    console.log('   tapping the same word again closes the card')
+  }
+  // The fold survives unchanged, for the terms the note never spells out.
+  if (!(await page.locator('.terms-link').count())) fail('terms on contact: the "terms used here" fold should still be offered')
+
+  // "The margin says exactly how far": the note's first sentence names the
+  // gain margin.
+  await loadLesson('The margin says exactly how far')
+  const gmDfn = page.locator('.hint.note dfn.term[data-term="gainmargin"]')
+  const gmCount = await gmDfn.count()
+  if (gmCount !== 1) {
+    fail(`terms on contact: expected a marked "gain margin" in the note, found ${gmCount}`)
+  } else {
+    await gmDfn.click()
+    await settle()
+    const card = page.locator('[data-role="def"][data-term="gainmargin"]')
+    if ((await card.count()) !== 1) fail('terms on contact: tapping "gain margin" should open its card')
+    console.log('   "The margin says exactly how far": tapping "gain margin" opened its card')
+  }
+
+  // Switching lessons closes whatever card the last one left open.
+  await loadLesson('A margin thin enough to feel')
+  if (await page.locator('[data-role="def"]').count()) {
+    fail("terms on contact: a fresh lesson load should not carry over the previous one's open card")
+  }
+  console.log('   loading a new lesson closes the previous one\'s open definition')
 
   await clickPreset('First order lag')
 }

@@ -590,6 +590,51 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .terms-list dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
 .terms-list dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
 
+/* Definitions on contact (student review, item 3): the first use of a term
+   in the note is a tappable word, not only a link after the whole note.
+   Pattern copied from Circuit Elements Lab, whose grader reported no
+   vocabulary problem under it. */
+dfn.term {
+  font-style: normal;
+  color: inherit;
+  cursor: help;
+  border-bottom: 1px dotted var(--accent);
+  text-decoration: none;
+  padding-bottom: 1px;
+}
+dfn.term:hover, dfn.term:focus-visible { color: var(--accent); border-bottom-style: solid; outline: none; }
+dfn.term[aria-expanded='true'] { color: var(--accent); border-bottom-style: solid; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.def-card {
+  margin: 6px 0 2px;
+  padding: 7px 9px;
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+  border-radius: 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.def-card p { margin: 4px 0 0; }
+.def-head { display: flex; align-items: center; gap: 8px; }
+.def-head b { color: var(--text); font-size: 12px; }
+.def-close {
+  position: relative;
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.def-close:hover { color: var(--text); }
+/* The glyph stays small (a bigger × would widen the def-head row); the tap
+   area reaches the suite's 44px target via an invisible hit area, the same
+   technique the topbar's ⓘ button already uses. */
+.def-close::before { content: ''; position: absolute; inset: -17px -16px; }
+
 /* A featured knob in the controller card: a quiet accent rule says "this one". */
 #controller .featured .num-label { color: var(--accent); }
 
