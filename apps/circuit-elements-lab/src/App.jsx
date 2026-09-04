@@ -96,7 +96,12 @@ function initialState() {
   const show = linked && linked.show && ['i', 'v', 'p', 'none'].includes(linked.show) ? linked.show : exp.show
   const view = linked && linked.view && exp.views.includes(linked.view) ? linked.view : exp.view
   const cursor = linked && Number.isFinite(linked.cursor) ? linked.cursor : cursorFor(exp, params)
-  return { id, params, show, view, cursor }
+  // parseHash drops anything it does not recognise rather than guessing, and
+  // names each drop here — read on arrival, and again on every hashchange
+  // below, so a mistyped or stale parameter is a line on screen rather than a
+  // silent no-op.
+  const warnings = (linked && linked.warnings) || []
+  return { id, params, show, view, cursor, warnings }
 }
 
 export default function App() {
@@ -109,6 +114,10 @@ export default function App() {
   // analysis clamps it to the window, so a knob that shrinks the window pulls
   // the cursor back with it.
   const [cursor, setCursor] = useState(initial.cursor)
+  // What the URL's own hash named that this lab could not make sense of, on
+  // the most recent arrival (mount, or a later hashchange) — see the effect
+  // below.
+  const [linkWarnings, setLinkWarnings] = useState(initial.warnings)
   // Whether the note still describes what is on screen: any knob moved by hand
   // retires it, as in the other labs. The schematic/view toggles and the
   // cursor are exempt.
@@ -179,6 +188,39 @@ export default function App() {
     setDeeperOpen(false)
     setChipOpen(null)
   }
+  // Editing only the fragment of the address bar, or pasting one of this
+  // lab's own deep links into a tab where it is already open, is a
+  // same-document navigation: the URL changes but nothing remounts, so
+  // `initialState` (a useState callback, mount-time only) never runs again
+  // and the link silently does nothing. The browser still fires its own
+  // event for exactly this. Control Lab fixed the identical bug by listening
+  // for it and re-running its own boot logic, so this does the equivalent:
+  // call `initialState` again, on the hash the event finds, and apply what
+  // it says — not a second, hand-kept copy of the parse.
+  useEffect(() => {
+    const onHashChange = () => {
+      const next = initialState()
+      setId(next.id)
+      setParams(next.params)
+      setShow(next.show)
+      setView(next.view)
+      setCursor(next.cursor)
+      setLinkWarnings(next.warnings)
+      setPristine(true)
+      setPickerOpen(false)
+      setOpenTerm(null)
+      setPredicted(null)
+      setPlaying(false)
+      setFocusStep(null)
+      setOpenKnob(null)
+      setRefNode(null)
+      setHover(null)
+      setDeeperOpen(false)
+      setChipOpen(null)
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
   // A hand on the cursor stops the play.
   const scrub = (t) => {
     setPlaying(false)
@@ -368,6 +410,13 @@ export default function App() {
         </header>
 
         <section className="lesson">
+          {linkWarnings.length ? (
+            <ul className="link-warnings">
+              {linkWarnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          ) : null}
           <h2>
             Experiment
             <span className="h2-aside">

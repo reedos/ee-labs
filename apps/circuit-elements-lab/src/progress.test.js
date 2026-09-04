@@ -209,15 +209,32 @@ describe('every lesson walks', () => {
       const defaults = defaultsOf(e.id)
       const x0 = analyse(e, defaults)
       const rest = { cursor: x0.cursor ?? 0, tEnd: x0.tEnd ?? 0, show: e.show }
+      // What the screen shows just before a step, with every earlier step's own
+      // setting already applied in order and nothing reset — the same
+      // accumulation App.jsx's `pick` does. A step whose own setting happens to
+      // match the experiment's global defaults (putting a knob an earlier step
+      // moved back where it started) must still wait for that undo to happen,
+      // not be met from a blank slate.
+      let priorParams = defaults
+      let priorCursor
       steps.forEach((t, i) => {
-        if (!measurable(t)) return
-        // Applying the step's own setting over the defaults meets it.
-        const params = { ...defaults, ...(t.set || {}) }
-        const x = analyse(e, params, t.at)
-        const state = { params, cursor: t.at != null ? x.cursor : rest.cursor, tEnd: x.tEnd ?? 0, show: meterOf(t) ?? e.show }
-        expect(stepMet(t, state), `${e.id} step ${i + 1} met by its own setting`).toBe(true)
-        // At the defaults, with the meters as the experiment opens them, the step waits for the student.
-        expect(stepMet(t, { params: defaults, ...rest }), `${e.id} step ${i + 1} not already done at the defaults`).toBe(false)
+        const xPrior = analyse(e, priorParams, priorCursor)
+        const priorState = { params: priorParams, cursor: priorCursor != null ? xPrior.cursor : rest.cursor, tEnd: xPrior.tEnd ?? 0, show: e.show }
+        if (measurable(t)) {
+          // Applying the step's own setting over the defaults meets it.
+          const params = { ...defaults, ...(t.set || {}) }
+          const x = analyse(e, params, t.at)
+          const state = { params, cursor: t.at != null ? x.cursor : rest.cursor, tEnd: x.tEnd ?? 0, show: meterOf(t) ?? e.show }
+          expect(stepMet(t, state), `${e.id} step ${i + 1} met by its own setting`).toBe(true)
+          // A step that names a knob purely to stay self-contained, at the exact
+          // value an earlier step already left it (F6's τ reading, still R_off =
+          // 1 MΩ from the step before), asks nothing new of the reader and may
+          // already be met. One that actually moves something must still wait.
+          const alreadyThere = knobsOf(t).every((k) => priorParams[k] === t.set[k]) && (t.at == null || t.at === priorCursor)
+          if (!alreadyThere) expect(stepMet(t, priorState), `${e.id} step ${i + 1} not already done before its own setting`).toBe(false)
+        }
+        priorParams = { ...priorParams, ...(t.set || {}) }
+        if (t.at != null) priorCursor = t.at
       })
       // The first step is the active one on arrival.
       expect(activeStep(steps, advance(new Set(), steps, { params: defaults, ...rest }))).toBe(0)

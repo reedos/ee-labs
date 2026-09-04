@@ -1638,6 +1638,38 @@ describe('every lesson is measured', () => {
     expect(refusals).toBe(2) // A2 open, F6 ideal
   })
 
+  // The app never resets a knob between steps: App.jsx's `pick` merges each
+  // step's `set` into whatever `params` already holds, and the cursor only
+  // moves when a step names an `at`. So a step's claim is authored and tested
+  // above as "the defaults, plus this step's own set" — but a student reads it
+  // after doing every earlier step in the same try array, in order, with
+  // nothing reset. This test plays the try array the way a student does: it
+  // carries params and cursor forward from step to step, and requires each
+  // step's own claim to still hold under that accumulated state. A step whose
+  // reading depends on a knob (or the ideal/toggle state) an earlier step
+  // touched, without setting it back itself, fails here even though the
+  // isolated test above passes.
+  it("a step's claim survives doing the earlier steps first, not just the defaults", () => {
+    let checked = 0
+    for (const e of EXPERIMENTS) {
+      let p = defaultsOf(e.id)
+      let cursor
+      e.try.forEach((t, i) => {
+        p = { ...p, ...(t.set || {}) }
+        if (t.at != null) cursor = t.at
+        const label = `${e.id} try ${i + 1}, done in order from step 1 (knobs not reset)`
+        if (t.refuses) {
+          const x = analyse(e, p, cursor)
+          expect(x.sol, `${label}: the note says the solver refuses here`).toBeNull()
+        } else {
+          measure(e, p, t.reads || [], cursor, label)
+        }
+        checked++
+      })
+    }
+    expect(checked).toBeGreaterThanOrEqual(2 * EXPERIMENTS.length)
+  })
+
   it('readQuantity reads every kind of path, and throws on a path it does not know', () => {
     const b1 = at('b1')
     expect(readQuantity(b1.x, b1.p, 'v.A', b1.exp)).toBeCloseTo(b1.x.sol.v.A, 12)

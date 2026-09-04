@@ -83,10 +83,20 @@ function si(text) {
   return parseFloat(m[1]) * (mult[m[2]] ?? 1)
 }
 
-// Knobs are in engineering mode: a bare number is read in the prefix on
-// display, so values are typed WITH a prefix the way a person would.
+// Knobs are in engineering mode. A bare number now always means the
+// canonical unit (packages/ui/src/units.js: parseEngField) — it used to be
+// read in whatever prefix the field was displaying, silently, which is the
+// bug item 41 below guards. Values are still typed WITH an explicit prefix
+// here anyway, because it keeps a reader of this file from having to know
+// what a field currently shows to know what a call sets it to.
+// Playwright's accessible-name matching is substring by default, and a
+// one-letter label like "R" is a substring of half the other knobs' names
+// ("Souce V" has no r, but "Source V₁" does) — a latent mismatch this
+// review's own A1 fix exposed, setField('R', …) silently landing on E
+// instead and clamping it. exact:true is what every label here is written
+// for.
 async function setField(label, value) {
-  const box = page.getByRole('spinbutton', { name: label }).first()
+  const box = page.getByRole('spinbutton', { name: label, exact: true }).first()
   await box.fill(String(value))
   await box.press('Enter')
   await settle()
@@ -781,18 +791,28 @@ if ((await page.locator('.knob-slot[data-key=E][data-open=true] .num-slider').co
 console.log('   A1: step 1 lights the R knob and R1; a tapped knob opens')
 
 // Walking A1's three steps: each ticks off as the screen meets it; the picker
-// marks the experiment; the next experiment is offered.
+// marks the experiment; the next experiment is offered. Step 2 also puts R
+// back to 1 kΩ — self-contained, since step 1 left it at 100 Ω — and step 3
+// is self-contained too: it re-states E = 5 V rather than trusting the
+// screen to still be at the defaults step 1 and 2 already left behind.
 await page.locator('[data-role=predict] .predict-option').first().click()
 await page.waitForTimeout(100)
 await setField('R', '100')
 let states = () => page.$$eval('[data-role=try] li', (els) => els.map((li) => li.getAttribute('data-state')))
 let s = await states()
 if (s[0] !== 'done' || s[1] !== 'active') fail(`A1: after R = 100 Ω the steps read ${s.join(', ')} (want done, active, ahead)`)
+await setField('R', '1000')
 await setField('Source V₁', '5')
 await page.getByRole('button', { name: 'voltages', exact: true }).click()
 await settle()
 s = await states()
-if (!s.every((v) => v === 'done')) fail(`A1: after E = 5 V and the meters on voltages the steps read ${s.join(', ')}`)
+if (!s.every((v) => v === 'done')) fail(`A1: after R = 1 kΩ, E = 5 V and the meters on voltages the steps read ${s.join(', ')}`)
+// The regression the review found and the fix this checks: a step with no
+// knob move of its own used to read whatever the previous step left rather
+// than the defaults its sentence assumed. Step 3 says "the whole top wire
+// reads 5 V" — read the screen itself, not just the checklist above.
+const vIn = si((await page.locator('.readout [data-node=in] b').textContent()).replace(/\s*V$/, ''))
+if (Math.abs(vIn - 5) > 0.05) fail(`A1 step 3: the screen reads ${vIn} V for the top wire; the step's own sentence says 5 V`)
 if ((await page.locator('[data-role=next-up]').count()) !== 1) fail('A1: every step done, but no next-up offer')
 const nextText = await page.locator('[data-role=next-up] button').textContent()
 if (!/A2/.test(nextText)) fail(`A1: the next-up offer reads “${nextText}”, not A2`)
@@ -923,6 +943,190 @@ console.log("\n9. Glossary: j and dB defined and linked at first use; Tellegen's
       await page.locator('.power .def-close').click()
     }
   }
+}
+
+// --------------- 41. a bare number shows a live echo of what it will commit
+//
+// Same suite-wide question as Control Lab's item 40, resolved the same way:
+// Reed considered making a bare number commit in the canonical unit always,
+// and chose otherwise. The rule stays prefix-relative — a field showing "10"
+// next to a milli prefix reads a bare "0.5" as 0.5 milli, same as a field
+// showing gigahertz reads a bare "112" as 112 GHz — because a knob's own
+// display is the reader's only anchor for what a bare number means. What
+// was actually fixed is the SILENCE: packages/ui's NumField now renders a
+// live echo while you type, naming the reading it will commit, before you
+// press Enter (units.js#engEcho). "Undamped: energy sloshes between L and
+// C" opens with L = 10 mH, so its L knob displays "10" next to a milli
+// prefix — the same milli-scale stand-in Control Lab's Kp repro uses.
+// Typing a bare "0.5" there must show "0.5 mH becomes 0.0005 H" before
+// Enter, and commit exactly that 0.0005 H once pressed — never the silent,
+// unwarned 0.0005 committed with nothing on screen to explain it.
+console.log('\n41. A bare number under a displayed prefix shows a live echo, and lands where it says\n')
+{
+  await pick(names.find((n) => /Undamped: energy sloshes between L and C/i.test(n)))
+  const lField = page.locator('.num').filter({ has: page.getByRole('spinbutton', { name: 'L', exact: true }) }).first()
+  const box = lField.getByRole('spinbutton', { name: 'L', exact: true })
+  const echo = lField.locator('.num-echo')
+  const shown = await box.inputValue()
+  const before = Number(await box.getAttribute('aria-valuenow'))
+  if (Math.abs(before - 0.01) > 1e-12) fail(`setup: L should read back 0.01 H (10 mH) before the echo check, read ${before}`)
+  if (shown !== '10') fail(`setup: expected L to display "10" (milli prefix) for 0.01 H, displayed "${shown}"`)
+
+  // Type, but do not commit yet: the echo must appear while the field is
+  // still open, reading the bare number in the prefix on display and naming
+  // what it will become in the base unit.
+  await box.fill('0.5')
+  await page.waitForTimeout(80)
+  const stillOld = await box.getAttribute('aria-valuenow')
+  if (Math.abs(Number(stillOld) - before) > 1e-12) fail(`echo: typing alone should not commit — L read ${stillOld}, expected it to still read ${before}`)
+  const echoVisible = (await echo.getAttribute('data-visible')) !== null
+  if (!echoVisible) fail('echo: typing "0.5" under a displayed milli prefix should show the commit echo before Enter, but nothing is visible')
+  const echoText = ((await echo.textContent()) || '').trim()
+  if (!/\b0\.5\s*mH\b/.test(echoText)) fail(`echo: expected the typed reading "0.5 mH" in the echo, got "${echoText}"`)
+  if (!/\b0\.0005\s*H\b/.test(echoText)) fail(`echo: expected the full committed value "0.0005 H" in the echo, got "${echoText}"`)
+  if (!/becomes/.test(echoText)) fail(`echo: expected the words "becomes" naming what the bare number turns into, got "${echoText}"`)
+  console.log(`   before Enter, echo reads: "${echoText}"`)
+
+  // Commit it: the value lands exactly where the echo said, and the echo
+  // goes quiet again — it only ever speaks about a draft.
+  await box.press('Enter')
+  await settle()
+  const after = Number(await box.getAttribute('aria-valuenow'))
+  if (Math.abs(after - 0.0005) > 1e-9) fail(`bare "0.5" typed under a displayed milli prefix should commit 0.0005 H (as the echo warned), committed ${after}`)
+  const echoAfterCommit = ((await echo.textContent()) || '').trim()
+  if (echoAfterCommit !== '') fail(`echo: should go quiet once committed, still showing "${echoAfterCommit}"`)
+  console.log(`   L committed ${after} H, matching the echo — the kept, documented rule, warned before it lands`)
+  await setField('L', '10m') // restored
+}
+
+// --------------- 42. a step's claim survives doing the earlier steps first
+//
+// The review's flagship defect: a step with no knob move of its own is
+// authored and unit-tested against the defaults, but the running app never
+// resets a knob between steps — App.jsx's `pick` merges each step's `set`
+// into whatever `params` already holds. So a student doing the steps in
+// order, as printed, could be told a number the screen no longer showed.
+// experiments.test.js now has a unit-level rule for this (every experiment,
+// solved); this is its browser-level twin, for four of the five the review's
+// own hand pass found and this fix corrected — A1, A4, C4, F6. Every knob
+// move is applied by hand, in the printed order, nothing reset except where
+// a step's own sentence says so, and each reading comes off the rendered
+// page, never out of app state. D4 is left to experiments.test.js alone: its
+// fix needs I₁, a current-source knob, put back to its default, and every
+// way of doing that by hand — the numeric field, its slider — currently
+// commits 0 regardless of what is typed or dragged, on I₁ here and on A2's
+// identical field, which is the shared numeric-entry bug another change is
+// mid-fixing, not this one.
+console.log("\n42. A step's claim survives doing the earlier steps first (A1, A4, C4, F6)\n")
+
+const elMeter = async (id) => si(await page.locator(`.schematic [data-el="${id}"] .sch-meter`).first().textContent())
+const nodeV = (n) => page.locator(`.readout [data-node="${n}"] b`).textContent().then((t) => si(t.replace(/\s*V$/, '')))
+const near = (got, want, tol = Math.max(0.01 * Math.abs(want), 1e-9)) => Math.abs(got - want) <= tol
+
+{
+  // A1 step 3: "the whole top wire reads 5 V" once R is back at 1 kΩ and E
+  // is 5 V, not the see register's 12 V — the exact reproduction the review
+  // opened with, from a clean reload so no earlier section's state leaks in.
+  await pick(names[0])
+  await page.evaluate(() => localStorage.removeItem('ee-labs/elements/progress'))
+  await page.reload({ waitUntil: 'load' })
+  await page.waitForSelector('.views .schematic')
+  await page.waitForTimeout(300)
+  await setField('R', '100') // step 1
+  await setField('R', '1000') // step 2, self-contained
+  await setField('Source V₁', '5') // step 2
+  await page.getByRole('button', { name: 'voltages', exact: true }).click() // step 3
+  await settle()
+  const vIn = await nodeV('in')
+  if (!near(vIn, 5)) fail(`A1 step 3: the screen reads ${vIn} V for the top wire; the step's own sentence says 5 V`)
+  else console.log(`   A1: step 3 reads ${vIn.toFixed(2)} V on the top wire, matching its own sentence`)
+}
+
+{
+  // A4 step 2: "the source doing the pushing shows −84 mW" — step 1 raised
+  // V₂ to 15 V; step 2 must put it back to 5 V itself for this to be true.
+  await pick(names.find((n) => /passive sign convention/i.test(n)))
+  await setField('V₂', '15') // step 1
+  await setField('V₂', '5') // step 2, self-contained
+  await page.getByRole('button', { name: 'powers', exact: true }).click()
+  await settle()
+  const pV1 = await elMeter('V1')
+  if (!near(pV1, -0.084)) fail(`A4 step 2: the screen reads ${pV1} W for V1; the step's own sentence says −84 mW`)
+  else console.log(`   A4: step 2 reads ${(pV1 * 1000).toFixed(1)} mW for V1, matching its own sentence`)
+}
+
+{
+  // C4 step 2: "double E to 20 V with R₄ still 1010 Ω and the output doubles
+  // to 49.8 mV" — step 1 balanced the bridge at R₄ = 1 kΩ; step 2 must put
+  // R₄ back to 1010 Ω itself, not trust the screen to still be there.
+  await pick(names.find((n) => /Wheatstone bridge/i.test(n)))
+  await setField('R₄', '1k') // step 1
+  await setField('R₄', '1.01k') // step 2, self-contained
+  await setField('Source V₁', '20') // step 2
+  await settle()
+  const vd = (await nodeV('R')) - (await nodeV('L'))
+  if (!near(vd, 0.049751, 0.0006)) fail(`C4 step 2: the screen reads v_R − v_L = ${vd} V; the step's own sentence says 49.8 mV`)
+  else console.log(`   C4: step 2 reads v_R − v_L = ${(vd * 1000).toFixed(1)} mV, matching its own sentence`)
+}
+
+{
+  // F6: the dynamic case, and the one the review quoted directly — "τ = 9.9
+  // µs" against a screen that read 999 ns. Step 1 flips the switch to ideal
+  // (refuses, which is its whole point); step 2 turns it back off and pushes
+  // R_off to 1 MΩ; step 3's own sentence, after the fix, is measured at
+  // exactly that state — read the State pane, not the old default-based 9.9
+  // µs.
+  await pick(names.find((n) => /Opening a switch on an inductor/i.test(n)))
+  await page.locator('.toggle-knob[data-key="ideal"] button', { hasText: 'ideal' }).click() // step 1
+  await settle()
+  await page.locator('.toggle-knob[data-key="ideal"] button', { hasText: 'finite R_off' }).click() // step 2, self-contained
+  await setField('R_off of S₁', '1M')
+  await settle()
+  await page.locator('.view-switch').getByRole('button', { name: 'State equation', exact: true }).click()
+  await settle()
+  const tauCell = page.locator('[data-role=state] .pane-grid table').first().locator('tbody tr').nth(1).locator('td').nth(1)
+  const tauText = await tauCell.textContent()
+  const tau = si(tauText)
+  if (!near(tau, 9.99e-7, 0.05e-6)) fail(`F6: the State pane reads τ = "${tauText.trim()}"; the step's own sentence (after the fix) says 999 ns`)
+  else console.log(`   F6: τ reads "${tauText.trim()}" on screen after steps 1–2, matching the fixed sentence (not the stale 9.9 µs)`)
+}
+
+// --------------- 43. a deep link takes effect in a tab that is already open
+//
+// Editing only the fragment, or pasting one of this lab's own share links
+// into a tab that already has an experiment open, is a same-document
+// navigation: the URL changes but nothing remounts, so the boot-state
+// initializer (mount-time only) never ran again and the link did nothing.
+// There was no hashchange listener. Reload on A1, then change the hash (not
+// navigate) to G4's — the schematic, title and readings must follow without
+// a reload. A fragment with a typo'd knob must not just fall back safely: it
+// must say so, on screen.
+console.log('\n43. A deep link takes effect without a reload, in a tab already open\n')
+{
+  await page.goto(URL + '#a1', { waitUntil: 'load' })
+  await page.waitForSelector('.views .schematic')
+  await page.waitForTimeout(300)
+  const before = (await page.locator('.topbar .flow-node').first().textContent()).trim()
+  if (!before.startsWith('A1')) fail(`deep link: opening #a1 shows "${before}", not A1`)
+  await page.evaluate(() => {
+    window.location.hash = '#g4'
+  })
+  await page.waitForTimeout(300)
+  const after = (await page.locator('.topbar .flow-node').first().textContent()).trim()
+  if (!after.startsWith('G4')) fail(`deep link: editing the fragment to #g4 in a tab already on A1 still shows "${after}" — no reload happened, and nothing followed`)
+  else console.log(`   deep link: #g4 edited into a tab already on A1 shows "${after}" without a reload`)
+
+  await page.evaluate(() => {
+    window.location.hash = '#a1&bogus=1'
+  })
+  await page.waitForTimeout(300)
+  const warn = await page
+    .locator('.link-warnings li')
+    .first()
+    .textContent()
+    .catch(() => null)
+  if (!warn || !/bogus/.test(warn)) fail(`deep link: "#a1&bogus=1" drops the unknown key silently; nothing named it on screen`)
+  else console.log(`   deep link: an unrecognised parameter is named on screen: "${warn.trim()}"`)
 }
 
 // ------------------------------------------------------------------- report

@@ -13,6 +13,18 @@
   --q-angle: #b98cf0;
 }
 
+/* A deep link's fragment named something this lab does not have — a typo'd
+   knob, a stale key from an old link. parseHash drops it and keeps going;
+   this is where the drop stops being silent. Same class name and rule as
+   Control Lab's, which surfaces the same kind of warning the same way. */
+.link-warnings {
+  margin: 6px 0 10px;
+  padding-left: 18px;
+  color: var(--warn);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .preset-group { margin-bottom: 10px; }
 
 /* The lesson and circuit chips, styled as Signal Lab styles its presets —
@@ -295,6 +307,19 @@ button.flow-node[aria-expanded='true'] { border-color: var(--accent); color: var
      window knob its word — "− 40 cycles +" beside the slider it spans — so the plot's view switch
      stays on the first screen for the fifteen experiments that carry a window knob. */
   .cursor-row .cursor-lead, .cursor-row .cursor-head .num.is-compact .num-label { display: none; }
+  /* Bought back for the touch-target pass (packages/ui base.css grows every
+     phone control to a 44px sidebar floor or a 24px plot-pane floor): four
+     experiments no longer cleared the Analysis view switch above the fold.
+     The view-head's own row-gap is tightened further down in this file,
+     next to the rest of the view-head phone rules — this app's one that
+     opens a group (A capacitor's current is the slope of its voltage)
+     also carries the folded group-intro line on top of its note and Try
+     list, so those get a little of their own margin back too. Nothing here
+     shrinks a touch target; only the air between rows and sections goes. */
+  details.group-intro { margin-top: 1px; }
+  .hint.see { margin-top: 2px; }
+  .try { margin-top: 2px; }
+  .controls > .lesson h2 { margin-bottom: 2px; }
   .tabbar {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -348,7 +373,14 @@ button.flow-node[aria-expanded='true'] { border-color: var(--accent); color: var
 /* Phone: pane-header control groups wrap under the title without crowding
    the readouts off the edge. */
 @media (max-width: 900px) {
-  .view-head { row-gap: 6px; }
+  /* Tightened from 6px for the touch-target pass (packages/ui base.css):
+     Resonance and AC power's Analysis pane offers six views, so the "sm"
+     segmented view switch — its buttons a few px taller now, to clear the
+     plot pane's own 24px floor — wraps onto two rows, and the row-gap
+     compounded on top of both wraps was enough on its own to push the
+     view switch past the phone fold (see styles.css's other row-gap trim,
+     below, for the four experiments this affected). */
+  .view-head { row-gap: 1px; }
   .view-head .readout { flex-basis: 100%; }
   /* The two panes stack and the page scrolls, so each takes its own height:
      with the shell's equal `1fr 1fr` rows a tall lower pane (the stacked phasor
