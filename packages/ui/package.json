@@ -8,7 +8,8 @@
   "exports": {
     ".": "./index.js",
     "./base.css": "./src/base.css",
-    "./verify/foldProbe.mjs": "./verify/foldProbe.mjs"
+    "./verify/foldProbe.mjs": "./verify/foldProbe.mjs",
+    "./verify/tapTargetProbe.mjs": "./verify/tapTargetProbe.mjs"
   },
   "peerDependencies": {
     "react": "^18"
