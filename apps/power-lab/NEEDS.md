@@ -61,3 +61,19 @@ only the sending app's name is generic.
 - No hand-over yet for rectifier spectra into Signal Lab (the plan's other
   later-phase bridge). It would need the same `handOverEvent` / `HANDOVERS`
   pattern and the same `packages/ui` gap above.
+
+## A second gap in `packages/ui`, worked around locally
+
+`drawFrame` (`packages/ui/src/plot.js`) always rotates a sweep's left-axis
+title 90°. Right for a worded title; wrong for a lone glyph — rotated, η's
+descender reads as a stray hook, not as η (Reed, 2026-09-02, on A1's sweep;
+the same bug independently on B6, B7 and B8, whose sweeps put η alone on
+that axis with no unit to go with it). `SweepCanvas.jsx`'s own right-hand
+axis already carried the fix (a title of two characters or fewer stays
+upright); `drawSweep` now applies the same rule to the left axis by
+withholding `yTitle` from `drawFrame` when the title is that short and
+drawing it upright itself, at the same position `drawFrame` would have
+used. The real fix is one `title.length > 2` guard inside `drawFrame`
+itself, so every lab's sweep gets it rather than only this one working
+around it — small enough for whichever session next touches
+`packages/ui/src/plot.js`, out of this territory today.

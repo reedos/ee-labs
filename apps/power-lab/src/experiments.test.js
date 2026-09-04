@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, GROUPS, TRACES, VIEWS, SWEEP_X, SWEEP_Y, byId, defaultsOf } from './experiments.js'
-import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepFs, sweepC, sweepAlpha, sweepChopper } from './analysis.js'
+import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepFs, sweepC, sweepAlpha, sweepChopper, linearDivider, LINREG_R_PASS } from './analysis.js'
 import { TERMS } from './terms.js'
 import { signalsOf } from './components/schematics.jsx'
+import { sweepFor } from './App.jsx'
 
 // Every note makes a claim; every claim is measured here, from the same
 // analysis the panes draw. A number in a note the engine does not reproduce
@@ -73,16 +74,73 @@ describe('every experiment', () => {
 })
 
 describe('A1 · the linear regulator', () => {
-  it('12 → 5 V at 1 A: 5 W to the load, 7 W in the regulator, η = 41.7 %', () => {
+  it('12 → 5 V at 1 A: 5 W to the load, 7 W in the resistor, η = 41.7 %', () => {
     const { x } = at('a1')
     expect(x.m.Iout).toBeCloseTo(1, 12)
     expect(x.m.Pout).toBeCloseTo(5, 12)
     expect(x.m.Ploss).toBeCloseTo(7, 12)
     expect(x.m.eta * 100).toBeCloseTo(41.7, 1)
   })
-  it('the efficiency is V_out/V_in whatever the current: the sweep is the line η = D at every load', () => {
+  it('the resistor is fixed at 7 Ω: only the 5 Ω load it was sized for lands on 5 V', () => {
+    expect(LINREG_R_PASS).toBeCloseTo(7, 12)
+    expect(linearDivider({ Vin: 12, R: 5 }).Vo).toBeCloseTo(5, 12)
+    // Strictly increasing (V_in·R_pass/(R+R_pass)² > 0 for every R > 0), so it
+    // crosses 5 V exactly once — moving the load off 5 Ω always misses it.
+    expect(linearDivider({ Vin: 12, R: 1 }).Vo).not.toBeCloseTo(5, 0)
+    expect(linearDivider({ Vin: 12, R: 20 }).Vo).not.toBeCloseTo(5, 0)
+  })
+  it('efficiency is always V_out/V_in, whatever the load: no setting in the sweep does better than the ratio it lands on', () => {
     for (const R of [0.5, 5, 500]) {
-      for (const q of sweepLinear({ Vin: 12, R })) expect(q.eta).toBeCloseTo(q.x, 12)
+      const lr = linearDivider({ Vin: 12, R })
+      expect(lr.eta).toBeCloseTo(lr.Vo / 12, 12)
+    }
+    const points = sweepLinear({ Vin: 12 })
+    for (const q of points) expect(q.eta).toBeCloseTo(q.Vout / 12, 12)
+    // Rises monotonically with the load — a lighter load always gets more of
+    // V_in, never less — so the curve has one crossing, not several.
+    for (let i = 1; i < points.length; i++) expect(points[i].Vout, `at R=${points[i].x}`).toBeGreaterThan(points[i - 1].Vout)
+  })
+  it('the sweep’s marker carries the exact divider result at the cursor, not the nearest of the 61 sampled loads', () => {
+    // 5 Ω is not one of logSpace(0.5, 1000, 61)'s own points, so a marker
+    // that reads the nearest sample instead of the setting itself disagrees
+    // with the top bar here — exactly the bug this pins (Reed, 2026-09-03:
+    // the marker read "5 Ω → 4.935 V" against a top bar, note and closed
+    // form that all say 5.000 V).
+    const { x, p } = at('a1')
+    const s = sweepFor(byId.a1, p, x)
+    expect(s.points.some((q) => Math.abs(q.x - 5) < 1e-9), 'R = 5 is not one of the sweep’s own samples').toBe(false)
+    expect(s.atY).toBeCloseTo(5, 12)
+    expect(s.atY).toBeCloseTo((12 * 5) / (5 + 7), 12)
+    expect(s.atY).toBeCloseTo(x.m.sig.vout.avg, 12)
+    // Not just the default: an off-grid load elsewhere on the curve reads
+    // its own exact value too, not whichever sample happens to be nearest.
+    const p2 = { ...p, R: 12.3456 }
+    const x2 = analyse(byId.a1, p2)
+    const s2 = sweepFor(byId.a1, p2, x2)
+    expect(s2.atY).toBeCloseTo(linearDivider({ Vin: 12, R: 12.3456 }).Vo, 9)
+    expect(s2.atY).toBeCloseTo(x2.m.sig.vout.avg, 12)
+  })
+})
+
+describe('every sweep’s marker, not only A1’s', () => {
+  it('reads the exact analysed value at an off-grid setting of the knob it is about, on every experiment with a sweep', () => {
+    for (const e of EXPERIMENTS) {
+      if (!e.sweep) continue
+      const about = e.params.find((p) => p.key === e.about)
+      // A setting nowhere near a round fraction of the sweep's own grid
+      // (linSpace/logSpace at 41–61 points), so a marker reading its
+      // nearest sample instead of the cursor would visibly disagree here.
+      const v = about.kind === 'toggle' ? about.default : about.min + (about.max - about.min) * 0.4123
+      const p = { ...defaultsOf(e.id), [about.key]: v }
+      const x = analyse(e, p)
+      const s = sweepFor(e, p, x)
+      // Every SWEEP_Y key an experiment actually sweeps has to land in
+      // exactSweepY's table (App.jsx) — an unmapped key silently falls back
+      // to the old nearest-sample marker, which is the bug this whole file
+      // exists to keep out.
+      expect(Number.isFinite(s.atY), `${e.id}: sweep.y ${e.sweep.y} has no exact marker value`).toBe(true)
+      const expected = { M: x.m.M, eta: x.m.eta, Pout: x.m.Pout, Vout: x.m.sig.vout.avg, vavg: x.m.sig.vout.avg, vrms: x.m.sig.vout.rms, angle: x.m.angle, iPeak: x.m.iPeak, share: x.m.share, pf: x.m.pf }[e.sweep.y]
+      expect(s.atY, `${e.id}: sweep.y ${e.sweep.y}`).toBeCloseTo(expected, 9)
     }
   })
 })

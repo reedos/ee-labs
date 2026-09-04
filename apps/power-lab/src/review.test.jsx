@@ -54,23 +54,26 @@ describe('no visible surface shows a group letter (§11.5.1)', () => {
   }, 60000)
 })
 
-describe('the first screen shows the loss, not three flat lines (§11.4.2, §11.6.5)', () => {
+describe('the first screen leads with the lesson a knob can perform (§11.4.2, §11.6.5, revised 2026-09-03)', () => {
   it('A1 declares its scope silent and renders no scope; every other experiment renders one', () => {
     expect(byId.a1.scope).toBe(false)
     expect(render('a1')).not.toContain('aria-label="Scope')
     for (const e of EXPERIMENTS.filter((e) => e.id !== 'a1')) expect(render(e.id), e.id).toContain('aria-label="Scope')
   }, 60000)
-  it('A1 opens on its losses — at the size of a reading, with the claim under them', () => {
+  it('A1 opens on the regulation sweep — a curve with real structure, not a poster of two bars', () => {
+    // Reed, 2026-09-03: the resistor's regulation failure is the lesson a
+    // reader can watch happen by turning the load, so it leads; efficiency
+    // (the loss bars) is one tab over, still reachable, no longer blown up
+    // to fill the whole first screen on its own.
     const h = render('a1')
     expect(h).toContain('is-single')
+    expect(h).toContain('aria-label="Sweep: one quantity against one knob')
+    expect(byId.a1.view).toBe('sweep')
+  })
+  it('the Losses tab still carries the reading, with the same sweep under it', () => {
+    const h = render('a1', 'losses')
     expect(h).toContain('power-row')
-    // Two loss rows blown up to fill a whole column read as a poster rather
-    // than a reading (Reed, 2026-09-02: "just 2 power calculation losses
-    // taking up a massive space"). They keep the first screen — §11.6.5's 7 W
-    // is the number the lab exists to beat — and the sweep that says no
-    // setting improves it comes with them, so the column carries a picture.
     expect(h).toContain('single-companion')
-    expect(byId.a1.view).toBe('losses')
   })
 })
 

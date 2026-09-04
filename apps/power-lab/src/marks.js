@@ -16,6 +16,7 @@
 
 import { fmt } from '@ee-labs/ui'
 import { COLORS } from '@ee-labs/ui'
+import { LINREG_DESIGN_R } from './analysis.js'
 
 /** Marks for the scope of `exp` at the solve `x`. */
 export function scopeMarks(exp, x) {
@@ -49,11 +50,29 @@ export function sweepMarks(exp, x, sweep) {
     const y = interpLog(points, s.y, Rc)
     if (Number.isFinite(y)) marks.push({ type: 'point', x: Rc, y, label: `boundary` })
   }
+  if (exp.kind === 'linreg' && s.y === 'Vout') {
+    // The one load the resistor was sized for: the curve crosses 5 V here and
+    // nowhere else.
+    marks.push({ type: 'vline', x: LINREG_DESIGN_R, label: `designed for ${fmt(LINREG_DESIGN_R, 'Ω', 3)}` })
+  }
   if (s.x === 'D' && s.y === 'M' && (exp.kind === 'boost' || exp.kind === 'buckboost')) {
-    let best = 0
-    for (let i = 1; i < points.length; i++) if (Math.abs(points[i].M) > Math.abs(points[best].M)) best = i
-    const q = points[best]
-    marks.push({ type: 'point', x: q.x, y: q.M, label: `peak M = ${q.M.toFixed(2)} at D = ${q.x.toFixed(2)}` })
+    // The exact peak (analysis.js's boostPeak), not the sweep grid's nearest
+    // sample to it: the same number the math panel's "the peak this R_L
+    // allows" row shows, so the two cannot disagree the way A1's marker and
+    // top bar once did.
+    const exact = Number.isFinite(x.formulas?.Mpeak) && Number.isFinite(x.formulas?.Dpeak)
+    let px
+    let py
+    if (exact) {
+      px = x.formulas.Dpeak
+      py = x.formulas.Mpeak
+    } else {
+      let best = 0
+      for (let i = 1; i < points.length; i++) if (Math.abs(points[i].M) > Math.abs(points[best].M)) best = i
+      px = points[best].x
+      py = points[best].M
+    }
+    marks.push({ type: 'point', x: px, y: py, label: `peak M = ${py.toFixed(2)} at D = ${px.toFixed(2)}` })
   }
   return marks
 }

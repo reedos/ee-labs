@@ -27,8 +27,6 @@ function randomParams(exp, seed) {
     else if (k.scale === 'log') p[k.key] = k.min * Math.pow(k.max / k.min, rnd())
     else p[k.key] = k.min + (k.max - k.min) * rnd()
   }
-  // The linear regulator needs V_out below V_in.
-  if (exp.kind === 'linreg' && p.Vo >= p.Vin) p.Vo = p.Vin * 0.5
   return p
 }
 

@@ -341,13 +341,23 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .views.is-single .power-row .bar { height: 26px; }
 .views.is-single .power-list { gap: 12px; padding: 6px 0; }
 .views.is-single .power-total { font-size: 15px; margin-top: 12px; }
-/* The claim under the reading: the sweep that says no setting improves the
-   loss above it. It takes the rest of the single pane. */
-.single-companion { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 4px; min-height: 0; margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
-/* Not uppercased: the label is η = V_out / V_in, and uppercase turns the eta
-   into a capital Η that reads as a Latin H. */
+/* The claim under the reading: the sweep that says no load in it does better
+   than V_out/V_in. It takes the rest of the single pane — `flex: 1` makes
+   that true when `.view-body` is the ordinary flex column below, the same
+   layout every other view already gets. Before this carried its own
+   `display: grid` override that only worked for the losses tab's two
+   children (the reading, then this); a single view with nothing beside it —
+   the sweep tab, math, measures — has one child, which a two-row grid leaves
+   pinned to the auto row with the 1fr row sitting empty beneath it. */
+.single-companion { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 4px; min-height: 0; flex: 1; margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
 .single-companion h3 { margin: 0; font-size: 12px; font-weight: 600; color: var(--dim); }
-.views.is-single .view-body { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+/* A single pane can reach the full window height at 1440×900 and further
+   still on a taller one. A curve with real structure earns the room (A1's
+   regulation sweep, worth about 600 px) but nothing here needs a poster's
+   worth of canvas past that, so a ceiling holds it there whatever the window
+   does; `.plot-wrap`'s own `flex: 1` still supplies the floor. */
+.views.is-single .view-body > .plot-wrap,
+.views.is-single .single-companion > .plot-wrap { max-height: 620px; }
 
 /* Two panes, weighted: the pane the lesson is in gets the room (App.jsx sets
    the rows inline; the reader can drag the split or click a title to swap).

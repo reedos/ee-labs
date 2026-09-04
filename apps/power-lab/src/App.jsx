@@ -80,21 +80,61 @@ export function outcomeOf(exp, x) {
   return `${MODE_WORDS[m.mode]}, M = ${m.M.toFixed(4)}, η = ${(m.eta * 100).toFixed(2)} %`
 }
 
+/**
+ * The exact value of a sweep's y-quantity at the state `analyse()` already
+ * solved for the current knobs — not a value read back off the sweep's own
+ * grid, which can sit a knob's-width away from the setting it is meant to
+ * read. A1's marker read "5 Ω → 4.935 V" against a top bar, a note and an
+ * exact 12·5/(5+7) that all say 5.000 V (Reed, 2026-09-03): the sweep's 61
+ * log-spaced points do not land on 5 Ω, so the marker was reading its
+ * nearest neighbour instead of the setting itself. Every SWEEP_Y key maps to
+ * one field of the same `x` the top bar and the note already read, so this
+ * cannot drift from them again.
+ */
+function exactSweepY(key, x) {
+  const m = x.m
+  switch (key) {
+    case 'M':
+      return m.M
+    case 'eta':
+      return m.eta
+    case 'Pout':
+      return m.Pout
+    case 'Vout':
+    case 'vavg':
+      return m.sig.vout.avg
+    case 'vrms':
+      return m.sig.vout.rms
+    case 'angle':
+      return m.angle
+    case 'iPeak':
+      return m.iPeak
+    case 'share':
+      return m.share
+    case 'pf':
+      return m.pf
+    default:
+      return undefined
+  }
+}
+
 /** Which sweep an experiment's lower pane draws, and where the knob sits on it. */
-export function sweepFor(exp, params) {
+export function sweepFor(exp, params, x) {
   const s = exp.sweep
   if (!s) return null
-  if (exp.kind === 'linreg') return { points: sweepLinear(params), at: params.Vo / params.Vin, label: 'η = V_out / V_in' }
-  if (exp.kind === 'chopper') return { points: sweepChopper(params), at: params.D, label: '⟨v⟩ = D·V_in', label2: 'V_rms = √D·V_in' }
-  if (s.x === 'C') return { points: sweepC(params, exp), at: params.C }
-  if (s.x === 'alpha') return { points: sweepAlpha(params), at: params.alphaDeg, label: 'P / P_full measured on the waveform' }
-  if (s.x === 'fs') return { points: sweepFs(params, exp.kind), at: params.fs }
-  if (s.y === 'eta' && s.x !== 'D') return { points: sweepEta(params, exp.kind), at: params.R }
+  const atY = exactSweepY(s.y, x)
+  const atY2 = s.y2 ? exactSweepY(s.y2, x) : undefined
+  if (exp.kind === 'linreg') return { points: sweepLinear(params), at: params.R, label: 'V_out = V_in · R_load / (R_load + R_pass)', atY, atY2 }
+  if (exp.kind === 'chopper') return { points: sweepChopper(params), at: params.D, label: '⟨v⟩ = D·V_in', label2: 'V_rms = √D·V_in', atY, atY2 }
+  if (s.x === 'C') return { points: sweepC(params, exp), at: params.C, atY, atY2 }
+  if (s.x === 'alpha') return { points: sweepAlpha(params), at: params.alphaDeg, label: 'P / P_full measured on the waveform', atY, atY2 }
+  if (s.x === 'fs') return { points: sweepFs(params, exp.kind), at: params.fs, atY, atY2 }
+  if (s.y === 'eta' && s.x !== 'D') return { points: sweepEta(params, exp.kind), at: params.R, atY, atY2 }
   // η against D is a ratio sweep read for its η; the closed form it carries
   // is for M, and would be drawn against the wrong axis.
-  if (s.x === 'D' && s.y === 'eta') return { points: sweepD(params, exp.kind).map(({ pred, ...q }) => q), at: params.D }
-  if (s.x === 'D') return { points: sweepD(params, exp.kind), at: params.D }
-  return { points: sweepR(params, exp.kind), at: params.R }
+  if (s.x === 'D' && s.y === 'eta') return { points: sweepD(params, exp.kind).map(({ pred, ...q }) => q), at: params.D, atY, atY2 }
+  if (s.x === 'D') return { points: sweepD(params, exp.kind), at: params.D, atY, atY2 }
+  return { points: sweepR(params, exp.kind), at: params.R, atY, atY2 }
 }
 
 /**
@@ -193,11 +233,11 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
   // carries the sweep under it (the regulator).
   const wantsSweep = currentView === 'sweep' || (exp.scope === false && currentView === 'losses')
   const sweep = useMemo(
-    () => (wantsSweep ? sweepFor(exp, params) : null),
+    () => (wantsSweep ? sweepFor(exp, params, x) : null),
     [exp, params, x, wantsSweep],
   )
   // The same sweep at the defaults, which the sweep's axis is framed on.
-  const baseSweep = useMemo(() => (wantsSweep ? sweepFor(exp, defaultsOf(exp.id)) : null), [exp, wantsSweep])
+  const baseSweep = useMemo(() => (wantsSweep ? sweepFor(exp, defaultsOf(exp.id), base) : null), [exp, wantsSweep, base])
   // The note's numbers, drawn where they happen (marks.js).
   const marks = useMemo(() => scopeMarks(exp, x), [exp, x])
   const sweepMarkList = useMemo(() => sweepMarks(exp, x, sweep), [exp, x, sweep])
@@ -632,6 +672,8 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                 basePoints={baseSweep ? baseSweep.points : null}
                 sweep={exp.sweep}
                 at={sweep.at}
+                atY={sweep.atY}
+                atY2={sweep.atY2}
                 marks={sweepMarkList}
                 label={sweep.label}
                 label2={sweep.label2}
@@ -650,6 +692,8 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                   basePoints={baseSweep ? baseSweep.points : null}
                   sweep={exp.sweep}
                   at={sweep.at}
+                  atY={sweep.atY}
+                  atY2={sweep.atY2}
                   marks={sweepMarkList}
                   label={sweep.label}
                   label2={sweep.label2}

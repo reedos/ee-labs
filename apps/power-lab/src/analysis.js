@@ -25,7 +25,6 @@ import {
   Rcrit,
   dcmRatio,
   predictedRatio,
-  linearRegulator,
   chopper,
   rectifier,
   rectifierSteadyState,
@@ -82,9 +81,24 @@ export function analyse(exp, params) {
   return analysePwm(params, exp)
 }
 
+// The pass element is a fixed resistor, sized once: at the design load, 5 Ω,
+// it draws 1 A and lands the output on 5 V from 12 V. R_pass = (V_in −
+// V_out)/I_out = 7/1 = 7 Ω, and it stays 7 Ω whatever the load does — there
+// is no feedback to change it.
+export const LINREG_R_PASS = 7
+export const LINREG_DESIGN_R = 5
+
+/** The output a fixed R_pass divider gives: Ohm's law, nothing held constant. */
+export function linearDivider({ Vin, R }) {
+  const Io = Vin / (LINREG_R_PASS + R)
+  const Vo = Io * R
+  return { Io, Vo, Pin: Vin * Io, Pout: Vo * Io, Pdiss: Io * Io * LINREG_R_PASS, eta: Vo / Vin }
+}
+
 function analyseLinear(params) {
-  const { Vin, Vo, R } = params
-  const lr = linearRegulator({ Vin, Vo, R })
+  const { Vin, R } = params
+  const lr = linearDivider({ Vin, R })
+  const Vo = lr.Vo
   const T = 10e-6
   const t = [0, T, 2 * T]
   const flat = (v) => t.map(() => v)
@@ -412,12 +426,17 @@ export function sweepR(params, kind = 'buck', n = 61) {
   return logSpace(0.5, 1000, n).map((R) => ({ x: R, ...ratioAt(kind, { ...base, R }, sgn) }))
 }
 
-/** Efficiency against duty for the linear regulator: it is V_out/V_in, and nothing else. */
+/**
+ * Output voltage against load resistance: a fixed R_pass, no feedback, so the
+ * output walks with the load. Efficiency is always V_out/V_in, the identity
+ * that made the note's straight line trivial before — now the curve it
+ * decorates has a shape, the divider's own.
+ */
 export function sweepLinear(params, n = 61) {
-  const { Vin, R } = params
-  return linSpace(0.02, 0.98, n).map((D) => {
-    const Vo = D * Vin
-    return { x: D, eta: linearRegulator({ Vin, Vo, R }).eta }
+  const { Vin } = params
+  return logSpace(0.5, 1000, n).map((R) => {
+    const lr = linearDivider({ Vin, R })
+    return { x: R, Vout: lr.Vo, eta: lr.eta }
   })
 }
 

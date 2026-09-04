@@ -99,10 +99,10 @@ describe('one thing to try, and chips where the lesson lives (§11.2.3, §11.3.5
 
 describe('what each `try` promises', () => {
   const pct = (x) => x * 100
-  it('A1: V_out = 9 V: η = 75.0 %, 5.4 W into the regulator', () => {
-    const x = at('a1', { Vo: 9 })
-    expect(pct(x.m.eta)).toBeCloseTo(75.0, 1)
-    expect(x.m.Ploss).toBeCloseTo(5.4, 2)
+  it('A1: R_load = 1 Ω: the output falls to 1.50 V, not the 5 V it was sized for', () => {
+    const x = at('a1', { R: 1 })
+    expect(x.m.sig.vout.avg).toBeCloseTo(1.5, 2)
+    expect(pct(x.m.eta)).toBeCloseTo(12.5, 1)
   })
   it('A2: D = 75 %: ⟨v⟩ = 9.00 V, RMS 10.4 V', () => {
     const x = at('a2', { D: 0.75 })

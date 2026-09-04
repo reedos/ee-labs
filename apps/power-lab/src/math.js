@@ -7,6 +7,7 @@
 // settings put outside a formula's assumptions is footnoted, not crossed.
 
 import { fmt } from '@ee-labs/ui'
+import { LINREG_R_PASS } from './analysis.js'
 
 
 /**
@@ -24,6 +25,8 @@ const TEX = {
   P_out: 'P_{out}',
   P_diss: 'P_{diss}',
   P_in: 'P_{in}',
+  V_out: 'V_{out}',
+  R_pass: 'R_{pass}',
   P_full: 'P_{full}',
   'η': '\\eta',
   'M = V_out/V_in': 'M = V_{out}/V_{in}',
@@ -104,12 +107,14 @@ function linearEntry(p, x) {
   const { lr } = x
   return {
     blocks: [
-      T('The pass element carries the load current and drops the difference between input and output; the product is heat. There is nothing to measure against here — the loss is the definition.'),
-      F('P_{diss} = (V_{in} - V_{out})\\,I_{out}, \\qquad \\eta = \\frac{V_{out}\\,I_{out}}{V_{in}\\,I_{out}} = \\frac{V_{out}}{V_{in}}'),
+      T('The pass element is a fixed resistor. It carries the load current and drops the rest of the voltage across itself, and the product is heat. There is nothing to measure against here: the loss is how the divider is built.'),
+      F('V_{out} = V_{in}\\,\\frac{R}{R + R_{pass}}, \\qquad P_{diss} = (V_{in} - V_{out})\\,I_{out}, \\qquad \\eta = \\frac{V_{out}}{V_{in}}'),
       V([
+        { label: 'R_pass', value: LINREG_R_PASS, unit: 'Ω' },
         { label: 'I_out', value: lr.Io, unit: 'A' },
+        { label: 'V_out', value: lr.Vo, unit: 'V' },
         { label: 'P_out', value: lr.Pout, unit: 'W' },
-        { label: 'P_diss', value: lr.Pdiss, unit: 'W', note: 'in the regulator' },
+        { label: 'P_diss', value: lr.Pdiss, unit: 'W', note: 'in the resistor' },
         { label: 'η', value: lr.eta * 100, unit: '%' },
       ]),
     ],

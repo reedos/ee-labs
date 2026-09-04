@@ -41,7 +41,6 @@ export const GROUP_INTROS = {
 
 // ------------------------------------------------------------ knobs
 const Vin = (def = 12) => ({ key: 'Vin', label: 'V_in', unit: 'V', min: 1, max: 48, scale: 'linear', step: 0.1, default: def, hint: 'Input voltage' })
-const Vo = (def = 5) => ({ key: 'Vo', label: 'V_out', unit: 'V', min: 0.5, max: 48, scale: 'linear', step: 0.1, default: def, hint: 'The regulated output; must be below V_in' })
 const D = (def = 5 / 12) => ({ key: 'D', label: 'D', unit: '%', percent: true, min: 0.02, max: 0.98, scale: 'linear', step: 0.001, default: def, hint: 'Duty: the share of each period the switch is on' })
 const L = (def = 100e-6) => ({ key: 'L', label: 'L', unit: 'H', min: 1e-6, max: 10e-3, scale: 'log', default: def, hint: 'Inductance' })
 const C = (def = 100e-6) => ({ key: 'C', label: 'C', unit: 'F', min: 1e-6, max: 10e-3, scale: 'log', default: def, hint: 'Output capacitance' })
@@ -99,11 +98,6 @@ export const VIEWS = {
 // sweep; SweepCanvas reads the labels and scales from here.
 export const SWEEP_X = {
   D: { label: 'D', unit: '', scale: 'linear', fmt: (v) => v.toFixed(3) },
-  // The linear regulator has no switch and no duty. Its sweep runs over the
-  // conversion ratio it is set to, which is the same number on the axis and a
-  // different quantity entirely — and on the lab's opening screen, an axis
-  // labelled "Duty D" beside a circuit with no switch in it is simply wrong.
-  ratio: { label: 'V_out / V_in', unit: '', scale: 'linear', fmt: (v) => v.toFixed(3) },
   R: { label: 'R_load', unit: 'Ω', scale: 'log' },
   C: { label: 'C', unit: 'F', scale: 'log' },
   fs: { label: 'f_s', unit: 'Hz', scale: 'log' },
@@ -176,31 +170,29 @@ export const EXPERIMENTS = [
   // ---------------------------------------------------------- A · Why switch
   {
     id: 'a1',
-    about: 'Vo',
-    chips: [5, 9],
-    try: { knob: 'Vo', text: 'Set V_out to 9 V: efficiency 75.0 %, and 5.4 W still heats the regulator.' },
+    about: 'R',
+    chips: [5, 1],
+    try: { knob: 'R', text: 'Set R_load to 1 Ω: output falls to 1.50 V, not 5 V.' },
     group: GROUPS[0],
     name: 'The linear regulator',
     kind: 'linreg',
     headline: 'eta',
-    params: [Vin(), Vo(), R()],
+    params: [R(), Vin()],
     // A regulator has no time-domain story: its scope would be three flat
-    // lines, and §11.6.5 is right that the first screen should show the 7 W —
-    // the number the lab exists to beat. What it should NOT be is two bars
-    // blown up to fill a column, which is a poster where a reading belongs.
-    // So the bars are sized as information and the efficiency line sits under
-    // them in the same pane: the loss first, then the claim that no setting
-    // improves it.
+    // lines. The lesson is regulation before it is efficiency, and regulation
+    // is the one a reader watches happen by turning a knob, so the sweep of
+    // V_out against the load leads (real curvature, not the straight line an
+    // artificial ratio axis used to draw) and the loss bars sit one tab over.
     scope: false,
     traces: ['vsw', 'vout', 'iL'],
-    views: ['losses', 'measures', 'math', 'sweep'],
-    view: 'losses',
-    sweep: { x: 'ratio', y: 'eta' },
+    views: ['sweep', 'losses', 'measures', 'math'],
+    view: 'sweep',
+    sweep: { x: 'R', y: 'Vout' },
     note:
-      'A series pass element drops the difference and carries the load current, so it dissipates their ' +
-      'product. From 12 V to 5 V at 1 A, the load receives 5 W and the regulator dissipates 7 W. ' +
-      'Efficiency is 5/12 = 41.7 %, the ratio V_out/V_in at any current. No setting in the sweep ' +
-      'improves it. A linear regulator is as efficient as its voltage ratio.',
+      'The pass element is a plain resistor, 7 Ω, sized for a 5 Ω load, where 1 A lands the ' +
+      'output on 5 V from 12 V. Move the load and the output moves with it. There is no feedback to ' +
+      'hold anything steady. The resistor also wastes 7 W as heat while 5 W reaches the load, and ' +
+      'efficiency is always V_out/V_in.',
     terms: ['efficiency', 'linear-regulator'],
   },
   {
