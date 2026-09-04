@@ -1565,9 +1565,10 @@ const ENTRIES = {
   },
 
   'Phase is invisible here': (ctx) => {
-    // The try line's "26 samples" is read straight off the group-delay
-    // overlay, against its own right-hand axis — never checked elsewhere on
-    // this panel. Measured here too, so the number stays live if freq or Q
+    // The try line quotes this row's own numbers (380 Hz, 25.7764 samples)
+    // rather than a separate figure read off the picture — it used to say
+    // "400 Hz" and "26 samples", a guess that did not match what this panel
+    // measures. Measured here too, so the number stays live if freq or Q
     // move, rather than sitting in prose as a value nothing recomputes.
     let peakDelay = 0
     let peakFreq = 0
@@ -1608,7 +1609,7 @@ const ENTRIES = {
         // What the note used to say.
         T(
           'Switch the overlay to group delay to see the same fact as a time. The components ' +
-            'near 400 Hz are held up well past the rest, read directly off that curve against ' +
+            'near 380 Hz are held up well past the rest, read directly off that curve against ' +
             'its own right-hand axis, which is precisely why the waveform changes shape while ' +
             'its spectrum does not.',
         ),

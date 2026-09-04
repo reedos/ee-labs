@@ -486,7 +486,16 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
     grid-template-rows: auto auto minmax(0, 1fr);
   }
   .controls {
-    max-height: 32vh;
+    max-height: 31vh;
+    padding-top: 6px;
+  }
+  /* "Order is a choice" is the one preset in the library that features two
+     knobs at once (both cascaded sections' Q, since the try line sets both).
+     Its own trio needs more room than the other 34 ever do, so it alone
+     gets more — :has() reaches the general rule precisely instead of a
+     second fixed budget everything else would have to fit too. */
+  .controls:has(.featured .featured-item ~ .featured-item) {
+    max-height: 46vh;
   }
   .views {
     min-height: 0;
@@ -499,11 +508,112 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .view {
     padding: 2px 10px 2px;
   }
+  /* The header above the lesson picker is chrome ahead of the one thing a
+     student must touch: the lab-nav (redundant with the deployed splash's
+     own nav, and absent standalone), the app's own name (redundant with the
+     lesson's own title an inch below) and the folded reference to what the
+     top bar's own controls mean (reachable from the top bar itself, and
+     rarely needed on a first look). Together they cost the featured knob a
+     lesson's try line names — the thing "ahead of chrome" means here, same
+     as the source cards below — most of its own height. */
+  .controls header nav.labnav {
+    display: none;
+  }
+  .controls header h1 {
+    display: none;
+  }
+  .controls header details.chrome-terms {
+    display: none;
+  }
+  /* The section well's own top margin and the first knob's own top margin
+     are more chrome this budget cannot spare, now that the header above them
+     is mostly gone. */
+  .controls section:first-of-type {
+    margin-top: 0;
+  }
+  .lesson-nav {
+    margin-top: 2px;
+  }
+  .note-title {
+    margin-top: 4px;
+  }
+  /* The try line's own box: padding and top margin trimmed the same way the
+     short-laptop fold trim above already does for the fold probe there —
+     the phone budget is tighter still. */
+  .try-line {
+    margin-top: 4px;
+    padding: 5px 9px;
+  }
+  .featured {
+    margin-top: 4px;
+    padding-top: 5px;
+  }
+  /* The featured mirror's own slider and label rows, tightened the same
+     way — the block card below keeps the roomier spacing unchanged. */
+  .featured .num-head {
+    margin-bottom: 1px;
+  }
+  .featured .num-slider {
+    margin: 3px 0 1px;
+  }
+  .featured-from {
+    margin: 0 0 1px;
+  }
 }
 
 /* The featured copy of a knob repeats its card's hint ("for a low-pass the
    peak height is exactly Q") — the try line above it just said so. */
 .featured .num-hint { display: none; }
+
+/* Phone: the featured knob's own quick-value chips (0.1, 0.2, 0.5 ...) cost
+   two rows of 44px touch targets — 98 px, more than a third of the control's
+   own height — duplicating a shortcut the try line's OWN chips already give
+   right above it. The card below keeps its full chips unchanged; only the
+   featured mirror drops them, and only on a phone, where that 98 px is the
+   difference between the knob fitting inside the sidebar's clipped box and
+   not (Reed's review: seven of its 226 px were visible). The slider and the
+   typed input still set any value; only the shortcut buttons go. */
+@media (max-width: 900px) {
+  .featured .num-chips { display: none; }
+}
+
+/* The sidebar's own scroll cap on a phone has no native scrollbar worth
+   trusting — a touch OS draws one only mid-gesture, so a still screen shows
+   none — and a fresh load used to look complete rather than clipped, the
+   source cards and the rest of the curriculum below the fold announcing
+   themselves to no one (Reed's review). Two parts, both gated on
+   `.has-more` (Controls.jsx measures whether the box actually has more
+   content below its own bottom edge, so neither renders once a reader has
+   scrolled to the true end):
+   - a scroll shadow painted INSIDE the box's own edge, costing no layout
+     height, so it never competes with the featured knob for room and can
+     safely sit over the last visible pixels of whatever is there;
+   - `.controls-more`, an ordinary block in the document flow rather than an
+     overlay, so it can only ever cover ground that was already about to
+     scroll past next (the top of the curriculum list below the lesson), and
+     is the first thing a small scroll reveals, labelling what the shadow
+     only implied.
+   Desktop's sidebar is not capped, so neither renders there regardless. */
+@media (max-width: 900px) {
+  .controls.has-more {
+    box-shadow: inset 0 -18px 12px -14px rgba(0, 0, 0, 0.65);
+  }
+}
+.controls-more { display: none; }
+@media (max-width: 900px) {
+  .controls-more {
+    display: block;
+    margin: 6px -14px 0;
+    padding: 3px 14px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--dim);
+    border-top: 1px dashed var(--line);
+  }
+}
 
 /* Short laptops (1366×768 AND 1440×900): the try line and the knob it names
    must sit inside the first screen with the sidebar at the top —

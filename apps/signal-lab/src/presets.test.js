@@ -2,10 +2,17 @@ import { describe, it, expect } from 'vitest'
 import { PRESETS, PRESET_GROUPS } from './presets.js'
 import { TERMS, CHROME_TERMS, termsInText } from './terms.js'
 import { chainResponse, renderChain } from './dsp/chain.js'
-import { render, spectrum, sincInterp } from '@ee-labs/dsp'
+import { render, spectrum, sincInterp, APERIODIC } from '@ee-labs/dsp'
 import { designBiquad, biquadResponse, designFir } from '@ee-labs/dsp'
 import { applyChain, chainGroupDelay, chainImpulse, chainPolesZeros } from './dsp/chain.js'
 import { mathFor } from './math.js'
+import { samplingState } from './sampling.js'
+import {
+  captionLines,
+  samplesPerPixel,
+  CAPTION_RECONSTRUCTION,
+  CAPTION_ALIASED,
+} from './components/ScopeCanvas.jsx'
 
 // The presets are the lessons, and each note makes a claim about physics:
 // "only odd harmonics", "the peak is Q", "neither input survives". A note that
@@ -652,6 +659,65 @@ describe('terms — definitions on contact', () => {
       for (const id of used) {
         if (listed.has(id) || CHROME_TERMS.includes(id)) continue
         failures.push(`${p.name}: uses "${id}" (${TERMS[id].name}) but does not list it in terms`)
+      }
+    }
+    expect(failures.join('\n')).toBe('')
+  })
+
+  it('every word a preset’s own captions can draw on the scope is in its terms list', () => {
+    // The hole the note/try check above cannot see: ScopeCanvas draws
+    // captions off the LIVE signal (sparse samples, aliasing, sitting on
+    // Nyquist), not off which lesson is loaded, so a word can appear on
+    // screen that the loaded preset never wrote and never listed. Four
+    // presets shipped exactly that — "dots are the samples; the curve is
+    // their ideal (sin x)/x reconstruction" drawn under a lesson that
+    // declared neither `sinc` nor `reconstruction`, and "the ripple riding
+    // on this shape is aliasing" under one that declared neither `aliasing`.
+    //
+    // This runs the SAME decision the canvas runs — samplesPerPixel (the
+    // zoom half) and samplingState (the signal/rate half), both already
+    // pure functions for exactly this reason — at a phone-width and a
+    // laptop-width pane, since a caption clipped at one width and shown at
+    // the other is still a word the preset can put on screen. A caption
+    // requires the vocabulary it is built from, the same contract the
+    // note/try check enforces; CAPTION_AT_NYQUIST is left alone here since
+    // it adds no word beyond what "Exactly at Nyquist" already leans on.
+    const REQUIRES = new Map([
+      [CAPTION_RECONSTRUCTION, ['sinc', 'reconstruction']],
+      [CAPTION_ALIASED, ['aliasing']],
+    ])
+    const AREA_WIDTHS_PX = [350, 1000] // a phone pane and a laptop pane
+    const failures = []
+    for (const p of PRESETS) {
+      const patch = p.patch
+      // The caption is ScopeCanvas's own. A preset that opens on the Kernel
+      // or Convolution view (App.jsx swaps the whole pane for ImpulseCanvas
+      // or ConvolutionCanvas) never renders ScopeCanvas at its default
+      // settings, so it never gets a chance to draw one.
+      if (patch.timeView === 'impulse' || patch.timeView === 'conv') continue
+      const sampleRate = patch.sampleRate || 8000
+      const f = (patch.sources || []).find((s) => s.enabled && !APERIODIC.has(s.type))
+      const divisionRate = f && f.freq > 0 ? f.freq : null
+      const spanSeconds = divisionRate ? patch.spanCycles / divisionRate : patch.timeSpanMs / 1000
+      const sampling = samplingState({
+        sources: patch.sources,
+        blocks: patch.blocks || [],
+        sampleRate,
+        fftSize: patch.fftSize || 2048,
+        window: patch.window || 'hann',
+      })
+      const listed = new Set(p.terms || [])
+      const seen = new Set()
+      for (const areaWidthPx of AREA_WIDTHS_PX) {
+        const samplesPerPx = samplesPerPixel({ sampleRate, spanSeconds, divisionRate, areaWidthPx })
+        const reconstructed = samplesPerPx < 0.5 && samplesPerPx < 1 / 9
+        for (const line of captionLines({ reconstructed, sampling })) {
+          if (seen.has(line)) continue
+          seen.add(line)
+          for (const id of REQUIRES.get(line) || []) {
+            if (!listed.has(id)) failures.push(`${p.name}: caption can read "${id}" (${TERMS[id].name}) but does not list it in terms`)
+          }
+        }
       }
     }
     expect(failures.join('\n')).toBe('')

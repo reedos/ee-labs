@@ -1021,6 +1021,118 @@ console.log('\n10k. Phone 390x844: title + try line inside the sidebar box; both
   await page.waitForSelector('.views canvas')
 }
 
+// -------- 10k2. phone: EVERY preset's title, try line AND EVERY featured
+// control, fully inside the sidebar's own clipped box — not merely in the DOM
+//
+// 10k above checks three sample presets and only the title/try-line, which is
+// exactly the gap Reed's review named: the probe held the title and the try
+// line on screen and never checked the FEATURED KNOB the try line names — the
+// one control a lesson actually asks a student to touch. That let a knob
+// render 97% clipped (7 of 226 px visible, Single tone measured) while every
+// existing check stayed green. This one holds all three, for every preset the
+// sidebar can load, against `.controls`' own box exactly as 10k does.
+
+console.log(`\n10k2. Phone 390x844: all ${presetNames.length} presets — title, try line AND every featured control inside the sidebar box\n`)
+
+{
+  await page.setViewportSize({ width: 390, height: 844 })
+  const insideBox = (box, outer, label, ctx) => {
+    if (!box) { fail(`phone featured / ${ctx}: ${label} not rendered`); return false }
+    const bottom = box.y + box.height
+    const outerBottom = outer.y + outer.height
+    // Half a pixel of slack absorbs sub-pixel layout rounding, not a real miss.
+    if (box.y < outer.y - 0.5 || bottom > outerBottom + 0.5) {
+      fail(`phone featured / ${ctx}: ${label} bottom ${bottom.toFixed(1)} outside sidebar box [${outer.y.toFixed(1)}, ${outerBottom.toFixed(1)}]`)
+      return false
+    }
+    return true
+  }
+  let allOk = true
+  for (const name of presetNames) {
+    await page.goto(URL, { waitUntil: 'load' })
+    await page.waitForSelector('.views canvas')
+    await loadPreset(name)
+    await page.evaluate(() => {
+      const el = document.querySelector('.controls')
+      if (el) el.scrollTop = 0
+      window.scrollTo(0, 0)
+    })
+    await page.waitForTimeout(60)
+
+    const sidebarBox = await page.locator('.controls').boundingBox()
+    const titleBox = await page.locator('.note-title').boundingBox().catch(() => null)
+    const tryBox = await page.locator('.try-line').boundingBox().catch(() => null)
+    let ok = insideBox(titleBox, sidebarBox, 'title', name)
+    ok = insideBox(tryBox, sidebarBox, 'try-line', name) && ok
+
+    const items = page.locator('.featured .featured-item')
+    const n = await items.count()
+    for (let i = 0; i < n; i++) {
+      const box = await items.nth(i).boundingBox()
+      ok = insideBox(box, sidebarBox, `featured[${i}]`, name) && ok
+    }
+    if (!ok) allOk = false
+  }
+  if (allOk) {
+    console.log(
+      `   all ${presetNames.length} presets: title, try line and every featured control sit fully ` +
+        "inside the sidebar's clipped box — not merely present in the DOM",
+    )
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+// -------- 10k3. phone: the sidebar scroller announces itself
+//
+// `.controls` clips to keep both plots on the first screen (styles.css), and
+// on a touch OS a native scrollbar draws only mid-gesture — invisible in a
+// still screenshot, which is how the rest of the curriculum went unannounced
+// (Reed's review). Confirms the cue is actually there while content remains,
+// and actually gone once the scroller reaches its true end — not just present
+// unconditionally, which would be its own kind of lie.
+
+console.log('\n10k3. Phone 390x844: the sidebar scroller announces itself\n')
+
+{
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await loadPreset('Single tone')
+  await page.evaluate(() => {
+    document.querySelector('.controls').scrollTop = 0
+  })
+  await page.waitForTimeout(60)
+
+  const overflowing = await page.evaluate(() => {
+    const el = document.querySelector('.controls')
+    return el.scrollHeight - el.clientHeight > 1
+  })
+  if (!overflowing) fail('phone scroller: expected .controls to overflow on Single tone — cannot check the announcement')
+
+  if (!(await page.locator('.controls.has-more').count())) {
+    fail('phone scroller: .controls has more content below but carries no .has-more — nothing announces the scroller')
+  } else {
+    console.log('   .controls carries .has-more while content remains below the clip (drives the scroll shadow)')
+  }
+
+  await page.evaluate(() => {
+    const el = document.querySelector('.controls')
+    el.scrollTop = el.scrollHeight
+  })
+  await page.waitForTimeout(80)
+  if (await page.locator('.controls.has-more').count()) {
+    fail('phone scroller: .has-more is still present after scrolling to the true end')
+  } else {
+    console.log('   .has-more clears once the scroller reaches its true end')
+  }
+
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
 // ---------------- 10l. Single tone: Amplitude is a real micro-experiment now
 
 console.log('\n10l. Single tone: Amplitude is a real micro-experiment now, not just a baseline\n')

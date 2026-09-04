@@ -220,7 +220,7 @@ export const PRESETS = [
     // ∠H(f) to state the eigenfunction result — the term itself is not
     // formally named until "Low-pass a square", experiment 15, so its
     // definition is pulled forward to where the notation is first used.
-    terms: ['lti', 'superposition', 'sampled', 'phase', 'scalloping', 'transfer'],
+    terms: ['lti', 'superposition', 'sampled', 'phase', 'scalloping', 'transfer', 'sinc', 'reconstruction'],
     note:
       'This chain is linear, superposition plus scaling, and time-invariant, so shifting the input shifts the ' +
     'output identically. Any such system can do exactly one thing to a sine: scale it and shift it, never ' +
@@ -291,7 +291,7 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Aliasing',
-    terms: ['sampled', 'aliasing', 'nyquist', 'fold', 'scalloping'],
+    terms: ['sampled', 'aliasing', 'nyquist', 'fold', 'scalloping', 'sinc', 'reconstruction'],
     note:
       'A 3.4 kHz tone at 8 kHz behaves. Past 4 kHz, dragged there, or by a chip, the peak turns around and ' +
     'walks back down. The signal is gone and an impostor took its place.',
@@ -314,7 +314,7 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Turn the rate down',
-    terms: ['sampled', 'aliasing', 'nyquist', 'fold'],
+    terms: ['sampled', 'aliasing', 'nyquist', 'fold', 'sinc', 'reconstruction'],
     note:
       'This one moves the RATE, the knob you usually have. Three sines at 625, 1875 and 3125 Hz ' +
       'sampled at 16 kHz all sit well below Nyquist, so the dots describe exactly this signal. ' +
@@ -343,7 +343,7 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Exactly at Nyquist',
-    terms: ['sampled', 'nyquist', 'phase', 'sinc'],
+    terms: ['sampled', 'nyquist', 'phase', 'sinc', 'reconstruction'],
     // One claim. "A bound you approach, not one you sit on" and what the
     // reconstruction does at each phase moved to the math panel.
     note:
@@ -367,7 +367,7 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'A square that fits',
-    terms: ['sampled', 'nyquist', 'harmonic', 'aliasing', 'fold', 'bandlimited'],
+    terms: ['sampled', 'nyquist', 'harmonic', 'aliasing', 'fold', 'bandlimited', 'sinc', 'reconstruction'],
     // One claim. The 15th-harmonic fold and the ideal square's deceptively
     // clean trace moved to the math panel, where the numbers are live.
     note:
@@ -477,7 +477,7 @@ export const PRESETS = [
   {
     group: 'Filters',
     name: 'High-pass a square',
-    terms: ['harmonic', 'cutoff'],
+    terms: ['harmonic', 'cutoff', 'aliasing'],
     note:
       'Same square, same 700 Hz corner as Low-pass a square, and the opposite survivor list. The fundamental is ' +
     'cut and the upper harmonics pass. On the scope the flat tops sag toward zero, a plateau being low ' +
@@ -539,7 +539,7 @@ export const PRESETS = [
       'An all-pass changes the scope waveform completely and leaves the spectrum untouched. |H| = 1 at every ' +
     'frequency, and the FFT throws phase away. The violet curve sweeps a full 360° while the magnitude never ' +
     'moves, and that sweep is the entire content of this block.',
-    try: 'Switch the overlay to delay, near 400 Hz the chain holds components up 26 samples.',
+    try: 'Switch the overlay to delay, near 380 Hz the chain holds components up 25.7764 samples.',
     chips: [
       { label: 'phase overlay', patch: { overlay: 'phase' } },
       { label: 'delay overlay', patch: { overlay: 'delay' } },
@@ -686,7 +686,7 @@ export const PRESETS = [
   {
     group: 'FIR and the z-plane',
     name: 'Everything arrives together',
-    terms: ['groupdelay', 'order', 'fir', 'taps', 'feedback', 'cutoff'],
+    terms: ['groupdelay', 'order', 'fir', 'taps', 'feedback', 'cutoff', 'sinc', 'reconstruction'],
     note:
       'A 61-tap FIR with the overlay on group delay: a flat line at exactly 30 samples. Every frequency is held ' +
     'up by the same amount, so the signal comes out late and otherwise unchanged. A biquad’s delay instead ' +

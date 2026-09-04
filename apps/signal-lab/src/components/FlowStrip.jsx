@@ -21,12 +21,13 @@ export default function FlowStrip({ stages, sourceCount, sampleRate, onReveal })
           type="button"
           className={`flow-node${opts.off ? ' is-off' : ''}`}
           onClick={opts.onClick}
+          title={opts.title}
         >
           {label}
           <em>{value}</em>
         </button>
       ) : (
-        <span className={`flow-node${opts.out ? ' is-out' : ''}`}>
+        <span className={`flow-node${opts.out ? ' is-out' : ''}`} title={opts.title}>
           {label}
           <em>{value}</em>
         </span>
@@ -45,9 +46,13 @@ export default function FlowStrip({ stages, sourceCount, sampleRate, onReveal })
 
   return (
     <nav className="flow" aria-label="Signal chain">
+      {/* The bare Σ names how the sources combine, without a word next to it
+          anywhere in the strip — a deliberate choice for this audience, not
+          an oversight, so it still gets a hover title rather than nothing. */}
       {node('src', `${sourceCount} source${sourceCount === 1 ? '' : 's'}`, 'Σ', {
         first: true,
         onClick: () => onReveal('sources'),
+        title: 'Σ: the enabled sources add together here',
       })}
       {node('sum', 'sum', sum ? rmsOf(sum) : '0.000')}
       {node('adc', fmtHz(sampleRate), 'Hz')}

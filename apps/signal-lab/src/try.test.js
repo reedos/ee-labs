@@ -501,18 +501,22 @@ describe('try: Resonance is Q', () => {
 })
 
 describe('try: Phase is invisible here', () => {
-  it('holds components near 400 Hz up by 26 samples', () => {
+  it('holds components near 380 Hz up by 25.7764 samples', () => {
     const st = loaded('Phase is invisible here', 'delay overlay')
     expect(st.overlay).toBe('delay')
-    const freqs = Float64Array.from({ length: 401 }, (_, i) => i * 10)
+    // Same 200-point scan the math panel itself runs (see math.js), so this
+    // is the SAME number the try line quotes, not a second one from a
+    // differently-spaced grid that happens to land close by. That mismatch —
+    // "26 samples near 400 Hz" in prose against "25.7764 samples at 380 Hz"
+    // on the panel — was the defect.
+    const freqs = Float64Array.from({ length: 200 }, (_, i) => ((i + 1) * st.sampleRate) / 2 / 200)
     const { delay } = chainGroupDelay(st.blocks, freqs, st.sampleRate)
     let mx = 0
     let at = 0
-    for (let i = 1; i < 400; i++) if (delay[i] > mx) [mx, at] = [delay[i], freqs[i]]
-    expect(mx).toBeGreaterThan(25.5)
-    expect(mx).toBeLessThan(26.5)
-    expect(Math.abs(at - 400)).toBeLessThan(25)
-    expect(delay[200]).toBeLessThan(1) // 2 kHz: barely held at all
+    for (let i = 0; i < freqs.length; i++) if (delay[i] > mx) [mx, at] = [delay[i], freqs[i]]
+    expect(at).toBe(380)
+    expect(mx).toBeCloseTo(25.7764, 3)
+    expect(delay[99]).toBeLessThan(1) // 2 kHz: barely held at all
   })
 })
 

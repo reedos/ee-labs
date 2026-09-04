@@ -153,8 +153,37 @@ export default function Controls({
     : []
   const terms = activePreset ? termsFor(activePreset.terms) : []
 
+  // The sidebar is its own scroller on a phone (capped in styles.css, so both
+  // plots keep the first screen) — a scroller inside a scroller. A phone's
+  // own scrollbar is transient (drawn only mid-gesture, on both iOS and
+  // Android), so `overflow-y: auto` alone announces nothing in a still
+  // screenshot — Reed's review found the source cards and the rest of the
+  // curriculum below the fold reading as "everything there is". `has-more`
+  // drives a CSS scroll-shadow (paint only, no layout height, so it never
+  // competes with the featured knob for room) and reveals a plain-language
+  // label at the point a small scroll would first uncover it. Measured
+  // rather than assumed, since whether there IS more depends on the preset,
+  // the open math panels and the block count, all of which resize this box.
+  const controlsRef = React.useRef(null)
+  const [moreBelow, setMoreBelow] = React.useState(false)
+  React.useLayoutEffect(() => {
+    const el = controlsRef.current
+    if (el) setMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 1)
+  })
+  React.useEffect(() => {
+    const el = controlsRef.current
+    if (!el) return
+    const check = () => setMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 1)
+    el.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('resize', check)
+    return () => {
+      el.removeEventListener('scroll', check)
+      window.removeEventListener('resize', check)
+    }
+  }, [])
+
   return (
-    <aside className="controls">
+    <aside className={`controls${moreBelow ? ' has-more' : ''}`} ref={controlsRef}>
       <header>
         <LabNav current="signal-lab" />
         <h1>Signal Lab</h1>
@@ -344,6 +373,18 @@ export default function Controls({
           </details>
         ) : null}
         </div>
+        {/* Phone only (styles.css): announces that `.controls` is its own
+            scroller — a scroller inside the page's own scroller, with no
+            native scrollbar to say so, which read as "everything there is"
+            rather than "more below" (Reed's review). Flex `order` leaves it
+            at its default (0), so it lands right after `.lesson` (order -1)
+            and before `.preset-list` (order 1): the first thing a further
+            scroll reveals, never overlapping the featured knob above it. */}
+        {moreBelow ? (
+          <div className="controls-more" aria-hidden="true">
+            ▾ more below
+          </div>
+        ) : null}
       </section>
 
       <section id="sources">
