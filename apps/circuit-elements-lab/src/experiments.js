@@ -1089,7 +1089,7 @@ export const EXPERIMENTS = [
     id: 'e7',
     group: GROUPS[4],
     name: 'The difference amplifier',
-    terms: ['opamp', 'feedback', 'cmrr'],
+    terms: ['opamp', 'feedback', 'cmrr', 'dB'],
     params: [
       Vs('E1', 'V₁ (to −)', 1),
       // 1.2 V, not 1.1: with the gain of 10 that puts 2 V out and a current in
@@ -1433,7 +1433,7 @@ export const EXPERIMENTS = [
       name: 'Underdamped: ringing',
       R: 50,
       view: 'scope',
-      terms: ['damping', 'natural', 'characteristic'],
+      terms: ['damping', 'natural', 'characteristic', 'j'],
       claim: { underdamped: true },
     },
   ].map((g) => ({
@@ -1697,7 +1697,7 @@ export const EXPERIMENTS = [
     id: 'h6',
     group: GROUPS[7],
     name: 'Frequency response: one sine at a time',
-    terms: ['bode', 'steadystate', 'phasor'],
+    terms: ['bode', 'steadystate', 'phasor', 'dB'],
     params: sineRCParams({ f: 1000 }),
     net: sineRC,
     layout: loop(['R1', 'C1']),

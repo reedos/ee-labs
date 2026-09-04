@@ -509,7 +509,8 @@ export const LESSONS = {
     why:
       'A real signal often rides on a voltage picked up by both wires alike, mains hum on a long twisted pair, ' +
     'say. This circuit amplifies the difference between its inputs and rejects whatever they share. The ratio ' +
-    'of the two gains, differential over common-mode, is the CMRR. Resistor matching sets it, not the op-amp.',
+    'of the two gains, differential over common-mode, is the CMRR, given in dB. Resistor matching sets it, ' +
+    'not the op-amp.',
   },
   e8: {
     see:

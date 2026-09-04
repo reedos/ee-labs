@@ -10,6 +10,7 @@
 //   npm run verify
 
 import { chromium } from 'playwright'
+import { foldProbe } from '@ee-labs/ui/verify/foldProbe.mjs'
 
 const URL = process.env.APP_URL || 'http://localhost:4176'
 const failures = []
@@ -620,6 +621,55 @@ for (const name of names) {
 }
 console.log(`   all ${names.length} experiments fit at 3840x2160`)
 
+// ------------------------------------ 6b. the fold: every knob on screen
+//
+// Round-trip review defect: F7's own step 3 says to flip the op-amp to finite
+// gain using the Gain knob, and at 1366×768 that knob — the last of six — sat
+// below the fold, with no visible scrollbar hinting there was more. Seven
+// more experiments (E2, G6, H1, H4, H6, I6, I7) clipped their last knob too,
+// G6's worst of all, fully off screen. The lab tested 390, 1280×900 and
+// 3840×2160 and never the laptop size students actually use. The other labs'
+// shared foldProbe (packages/ui/verify/foldProbe.mjs) is reused here rather
+// than hand-rolled, at its default 1366×768 and 1440×900.
+console.log('\n6b. Fold probe at 1366×768 and 1440×900: every knob of every experiment reachable\n')
+{
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.waitForTimeout(200)
+  // Each experiment's own knob-slot keys, read off the DOM once: this is
+  // exactly the set the sidebar renders (the window knob already lives under
+  // the schematic, not here), so the probe checks what a student would need.
+  const knobKeysOf = {}
+  for (const name of names) {
+    await pick(name)
+    knobKeysOf[name] = await page.$$eval('.knob-slot', (els) => els.map((e) => e.dataset.key))
+  }
+  const cases = names.map((name) => ({
+    name,
+    load: async (pg) => {
+      await pg.waitForSelector('.views .schematic')
+      await pick(name)
+    },
+    must: knobKeysOf[name].map((k) => `.knob-slot[data-key="${k}"]`),
+  }))
+  const res = await foldProbe(page, { cases, url: URL })
+  for (const f of res.failures) fail(`fold: ${f}`)
+  const totalKnobs = names.reduce((n, name) => n + knobKeysOf[name].length, 0)
+  console.log(
+    `   ${res.ok ? `every knob of all ${names.length} experiments (${totalKnobs} knobs) stays on screen at 1366×768 and 1440×900` : `${res.failures.length} fold failures`}`,
+  )
+  // F7's Gain knob (named by its own step 3) and G6's i_L(0) (the worst
+  // offender, fully off screen before the fix): named explicitly so a
+  // regression here reads as these two experiments, not just a count.
+  const boxOf = (lessonRe, key) =>
+    res.measured.find((m) => m.viewport === '1366x768' && lessonRe.test(m.lesson) && m.control === `.knob-slot[data-key="${key}"]`)
+  const f7 = boxOf(/op-amp integrator/i, 'G')
+  const g6 = boxOf(/Initial conditions/i, 'i0')
+  if (!f7?.box) fail('fold: F7’s Gain knob was not measured')
+  else console.log(`   F7 Gain knob at 1366×768: y ${f7.box.y.toFixed(0)}–${(f7.box.y + f7.box.height).toFixed(0)} of 768`)
+  if (!g6?.box) fail('fold: G6’s i_L(0) knob was not measured')
+  else console.log(`   G6 i_L(0) knob at 1366×768: y ${g6.box.y.toFixed(0)}–${(g6.box.y + g6.box.height).toFixed(0)} of 768`)
+}
+
 // ------------------------------------------------ 7. numbers and names
 
 console.log('\n7. Numbers and names: Σ power arrives with B3, the size chip explains itself, chips fit one line\n')
@@ -636,6 +686,53 @@ if (!sizeTitle || !/junction/i.test(sizeTitle) || !/unknown/i.test(sizeTitle)) f
 const tb = (await topbarText()).replace(/\s+/g, ' ')
 if (/solved|residual|unknown/i.test(tb)) fail(`the topbar uses the solver's words on its face: “${tb}”`)
 console.log('   Σ power absent on A1, present on B3; the size chip explains nodes and unknowns; no solver-speak on the topbar')
+
+// -------------------------- 7b. the topbar chips open on tap, not only hover
+//
+// Round-trip review defect: the node-count chip's explanation lived only in
+// a title attribute, so a phone — first-class for at least three of the
+// student sittings — could never open it, unlike the note's terms, which
+// already open on tap.
+console.log('\n7b. The node-count and outcome chips open their explanation on tap, phone width included\n')
+{
+  await pick(names[0])
+  const sizeChip = page.locator('[data-role=system-size]')
+  if ((await sizeChip.evaluate((el) => el.tagName)) !== 'BUTTON') fail('the node-count chip is not a real button — a touch screen could not open it')
+  await sizeChip.click()
+  await settle()
+  const sizePop = page.locator('[data-role=chip-pop][data-chip=size]')
+  if ((await sizePop.count()) !== 1) fail('tapping the node-count chip did not open its explanation')
+  else {
+    const text = (await sizePop.textContent()).replace(/\s+/g, ' ')
+    if (!/junction/i.test(text) || !/unknown/i.test(text)) fail(`the tapped explanation should still explain nodes and unknowns: ${text.slice(0, 90)}`)
+    else console.log(`   size chip tapped open: ${text.slice(0, 70)}…`)
+  }
+  await page.locator('.chip-pop-close').click()
+  if ((await page.locator('[data-role=chip-pop]').count()) !== 0) fail('the chip explanation did not close')
+
+  // The outcome chip carries its extra sentence (the residual) only once
+  // solved; A1 is solved at its defaults.
+  const outChip = page.locator('[data-role=outcome]')
+  if ((await outChip.evaluate((el) => el.tagName)) !== 'BUTTON') fail('the outcome chip is not a real button')
+  await outChip.click()
+  await settle()
+  const outPop = page.locator('[data-role=chip-pop][data-chip=outcome]')
+  if ((await outPop.count()) !== 1) fail('tapping the outcome chip did not open its explanation')
+  else if (!/residual/i.test(await outPop.textContent())) fail('the outcome explanation should name the residual')
+  else console.log('   outcome chip tapped open, names the residual')
+  await page.locator('.chip-pop-close').click()
+
+  // Phone width: no hover exists at all, so the tap is the only way in.
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.waitForTimeout(200)
+  await page.locator('[data-role=system-size]').click()
+  await settle()
+  if ((await page.locator('[data-role=chip-pop][data-chip=size]').count()) !== 1) fail('390px: tapping the node-count chip did not open its explanation')
+  else console.log('   390px: the node-count chip opens on tap')
+  await page.locator('.chip-pop-close').click()
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.waitForTimeout(200)
+}
 
 // Every preset chip reads as one line: a value with its unit, never a wrapped
 // bare number. The chips belong to the knobs of each experiment; only the open
@@ -773,6 +870,60 @@ const litEl = await page.$$eval('.schematic .sch-el.is-lit', (els) => els.map((e
 const rowEl = await page.locator('.eq-row[data-el]').first().getAttribute('data-el')
 if (!litEl.includes(rowEl)) fail(`A1: hovering the row for ${rowEl} lights ${litEl.join(', ') || 'nothing'}`)
 console.log('   A1: rows in the Equations pane light their node and element on the schematic')
+
+// -------------------- 9. glossary: j, dB and Tellegen defined and reachable
+//
+// Round-trip review defects: j (first named in G4's note on complex roots)
+// and dB (load-bearing from the CMRR figure E7 gives, and again from H6's
+// Bode plot) were used throughout without ever being defined; Tellegen's
+// theorem was named in A4 and B3's Power pane with no way to read what it is.
+console.log("\n9. Glossary: j and dB defined and linked at first use; Tellegen's theorem tappable in the Power pane\n")
+{
+  // G4: "the roots are complex, −α ± jω_d" — j has not been said to mean anything before this.
+  await pick(names.find((n) => /Underdamped: ringing/i.test(n)))
+  const jDfn = page.locator('[data-role=note] dfn.term[data-term=j]')
+  if ((await jDfn.count()) !== 1) fail('G4: the note should mark j on first use')
+  else {
+    await jDfn.click()
+    await settle()
+    const card = page.locator('[data-role=def][data-term=j]')
+    const text = (await card.textContent()).replace(/\s+/g, ' ')
+    if (!/current/i.test(text) || !/−1/.test(text)) fail(`G4: the j definition should say it is √−1 and that i already means current: ${text.slice(0, 90)}`)
+    else console.log(`   G4 j card: ${text.slice(0, 80)}…`)
+    await page.locator('[data-role=def] .def-close').click()
+  }
+
+  // E7: the CMRR figure is given "in dB" in the why — open Deeper to reach it.
+  await pick(names.find((n) => /difference amplifier/i.test(n)))
+  await openAllMath()
+  const dbDfn = page.locator('[data-role=why] dfn.term[data-term=dB]')
+  if ((await dbDfn.count()) !== 1) fail('E7: the why should mark dB on first use')
+  else {
+    await dbDfn.click()
+    await settle()
+    const card = page.locator('[data-role=def][data-term=dB]')
+    const text = (await card.textContent()).replace(/\s+/g, ' ')
+    if (!/log/i.test(text)) fail(`E7: the dB definition should explain the log ratio: ${text.slice(0, 90)}`)
+    else console.log(`   E7 dB card: ${text.slice(0, 80)}…`)
+    await page.locator('[data-role=def] .def-close').click()
+  }
+
+  // A4 and B3 default straight into the Power pane, where Tellegen's theorem
+  // used to be a name with nowhere to go.
+  for (const name of [names.find((n) => /passive sign convention/i.test(n)), names.find((n) => /Power, and the sign of it/i.test(n))]) {
+    await pick(name)
+    const term = page.locator('.power dfn.term[data-term=tellegen]')
+    if ((await term.count()) !== 1) fail(`${name}: the Power pane should name Tellegen's theorem as a tappable term`)
+    else {
+      await term.click()
+      await settle()
+      const card = page.locator('.power [data-role=def][data-term=tellegen]')
+      if ((await card.count()) !== 1) fail(`${name}: tapping Tellegen's theorem did not open its card`)
+      else console.log(`   ${name}: Tellegen's theorem opens its own card in the Power pane`)
+      await page.locator('.power .def-close').click()
+    }
+  }
+}
 
 // ------------------------------------------------------------------- report
 

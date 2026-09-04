@@ -213,6 +213,45 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 .topbar .flow [data-role='outcome'] { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .topbar .flow [data-role='outcome'] em { margin-left: 6px; }
 
+/* The size and outcome chips explain the solver's words ("nodes", "unknowns",
+   "residual") on hover for a mouse; a phone has no hover, so both are buttons
+   that open the same sentence in a card on tap (student review: the
+   node-count chip was unreachable on a touch screen from A1 on). */
+.topbar { position: relative; }
+button.flow-node { cursor: pointer; text-align: left; }
+button.flow-node[aria-expanded='true'] { border-color: var(--accent); color: var(--accent); }
+.chip-pop {
+  position: absolute;
+  top: 100%;
+  left: 14px;
+  z-index: 20;
+  margin: 6px 0 0;
+  padding: 8px 30px 8px 10px;
+  max-width: min(360px, calc(100vw - 28px));
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.chip-pop-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px;
+}
+.chip-pop-close:hover { color: var(--text); }
+
 /* The screen as one composition: on a laptop the whole lesson and every knob
    are on screen at once, so the student never scrolls to turn a knob. A wider
    sidebar from 1200 px keeps the longer notes (Groups G, H) to fewer lines. */
@@ -282,6 +321,22 @@ details.preset-group > .presets { margin: 4px 0 8px; }
     cursor: pointer;
   }
   .tabbar button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+}
+
+/* A 1366×768 laptop (or any desktop shorter than 820 px) has 132 px less
+   height than the 900 px this sidebar was otherwise tuned for. Six knobs plus
+   a long note pushed the last knob of eight experiments (E2, F7, G6, H1, H4,
+   H6, I6, I7) past the fold, with G6's last knob fully off screen (student
+   review round: the fold probe). Nothing is removed, only the air around it —
+   tighter section caps, knob rows and the toggle knob reclaim the height so
+   every knob stays reachable without scrolling. */
+@media (min-width: 901px) and (max-height: 820px) {
+  .controls h2 { padding: 6px 12px 4px; margin-bottom: 6px; }
+  .controls section { margin-top: 8px; }
+  .knob-slot { padding: 2px 8px; }
+  .knob-slot[data-open='true'] { padding-top: 3px; padding-bottom: 3px; }
+  .knob-slot .num:not(.is-compact) .num-hint { margin: 1px 0 3px; }
+  .toggle-knob { margin: 4px 0 6px; }
 }
 
 /* Pane-header controls — the proximity rule from Signal Lab: a control that

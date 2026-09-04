@@ -50,6 +50,17 @@ const FOLDED_GROUPS = GROUPS.slice(0, 5)
 // The topbar's Σ power chip appears from the experiment that introduces power.
 const POWER_FROM = EXPERIMENTS.findIndex((e) => e.id === 'b3')
 
+// The topbar's two chips explain themselves in words a mouse can read on
+// hover; a finger cannot. Both explanations are also a tap away (student
+// review: the node-count chip was unreachable on a phone from A1 on).
+const SIZE_EXPLAIN =
+  'Nodes are the junctions where elements meet, ground included. The numbers to find are the ' +
+  'solver’s unknowns: one voltage per node except ground, plus the current through each element ' +
+  'that fixes a voltage (a source, a capacitor, a wire).'
+const outcomeExplain = (residual) =>
+  `Solved: at every node the currents in add up to the currents out (KCL). The largest imbalance ` +
+  `left by the arithmetic, the residual, is ${residual}.`
+
 /** The cursor an experiment opens at: its own fraction of its window at the defaults. */
 const cursorFor = (exp, p) => (isDynamic(exp) ? exp.cursor * exp.window(p) : null)
 /** The browser's store for progress, or null where there is none (progress.js copes). */
@@ -125,6 +136,8 @@ export default function App() {
   const [hover, setHover] = useState(null)
   // Whether Deeper is unfolded; a new experiment starts with it folded.
   const [deeperOpen, setDeeperOpen] = useState(false)
+  // Which topbar chip's explanation is open on a tap (null, 'size' or 'outcome').
+  const [chipOpen, setChipOpen] = useState(null)
 
   const exp = byId[id]
   const uses = useMemo(() => firstUses(exp), [exp])
@@ -164,6 +177,7 @@ export default function App() {
     setRefNode(null)
     setHover(null)
     setDeeperOpen(false)
+    setChipOpen(null)
   }
   // A hand on the cursor stops the play.
   const scrub = (t) => {
@@ -552,27 +566,43 @@ export default function App() {
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          {/* In the student's words (Phase 8): the solver's "unknowns" and "residual" stay in the hover text, where they are explained. */}
-          <span
+          {/* In the student's words (Phase 8): the solver's "unknowns" and "residual"
+              are explained on hover for a mouse and on tap for a finger — the same
+              chip a phone can reach, the way the note's terms already open on tap. */}
+          <button
+            type="button"
             className="flow-node"
             data-role="system-size"
-            title={`Nodes are the junctions where elements meet, ground included. The numbers to find are the solver's unknowns: one voltage per node except ground, plus the current through each element that fixes a voltage (a source, a capacitor, a wire).`}
+            title={SIZE_EXPLAIN}
+            aria-expanded={chipOpen === 'size'}
+            onClick={() => setChipOpen((c) => (c === 'size' ? null : 'size'))}
           >
             {nodeCount} node{nodeCount === 1 ? '' : 's'}
             <em>{eq ? `${eq.unknowns.length} number${eq.unknowns.length === 1 ? '' : 's'} to find` : 'nothing to solve'}</em>
-          </span>
+          </button>
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          <span
+          <button
+            type="button"
             className={`flow-node ${x.sol ? 'is-out' : 'is-off'}`}
             data-role="outcome"
-            title={x.sol ? `Solved: at every node the currents in add up to the currents out (KCL). The largest imbalance left by the arithmetic, the residual, is ${residual}.` : undefined}
+            title={x.sol ? outcomeExplain(residual) : undefined}
+            aria-expanded={chipOpen === 'outcome'}
+            onClick={() => x.sol && setChipOpen((c) => (c === 'outcome' ? null : 'outcome'))}
           >
             {x.sol ? 'every node balances' : 'no solution'}
             <em>{x.sol ? `current in = current out, to ${residual}` : refusalReason(x.refusal)}</em>
-          </span>
+          </button>
         </nav>
+        {chipOpen ? (
+          <p className="chip-pop" data-role="chip-pop" data-chip={chipOpen}>
+            {chipOpen === 'size' ? SIZE_EXPLAIN : outcomeExplain(residual)}
+            <button type="button" className="chip-pop-close" aria-label="Close the explanation" onClick={() => setChipOpen(null)}>
+              ×
+            </button>
+          </p>
+        ) : null}
         <div className="topbar-controls">
           {dynamic && x.tr ? (
             <>
@@ -879,7 +909,7 @@ export default function App() {
                 onHover={setHover}
               />
             ) : null}
-            {currentView === 'power' && x.sol ? <PowerPane sol={x.sol} /> : null}
+            {currentView === 'power' && x.sol ? <PowerPane sol={x.sol} open={openTerm} onOpen={setOpenTerm} exp={exp} choose={choose} /> : null}
             {currentView === 'thevenin' && x.thevenin ? <TheveninPane th={x.thevenin} port={exp.port} named={viewLabel('thevenin', exp) === VIEW_LABELS.thevenin} /> : null}
             {currentView === 'superposition' && x.superposition ? <SuperpositionPane sp={x.superposition} /> : null}
             {currentView === 'sweep' && x.sweep ? (
