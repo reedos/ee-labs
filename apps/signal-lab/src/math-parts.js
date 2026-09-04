@@ -650,6 +650,7 @@ export function blockMath(block, ctx) {
             : 'H(s) = \\frac{1}{1 + s/\\omega_c} \\;\\longrightarrow\\; ' +
               'H(z) = \\frac{K + Kz^{-1}}{(K{+}1) + (K{-}1)z^{-1}}, \\quad K = \\tan(\\pi f_c/f_s)',
         ),
+        T('Here z⁻¹ still means one sample late, the same reading as every other H(z) in this rack.'),
         C([
           {
             label: `|H| at f_c = ${sig(p.freq, 5)} Hz`,
@@ -1136,6 +1137,9 @@ export function blockMath(block, ctx) {
             ? `H(z) = \\frac{1}{1 - g\\,z^{-D}}, \\qquad g = ${sig(p.g)}, \\quad D = ${D}`
             : `H(z) = 1 + g\\,z^{-D}, \\qquad g = ${sig(p.g)}, \\quad D = ${D}`,
         ),
+        // z⁻¹ means "one sample late" everywhere it appears in this lab; here
+        // the exponent D just counts how many times that delay repeats.
+        T(`z⁻ᴰ is D repeats of that one-sample delay — ${D} samples late here, not one.`),
         T(
           fb
             ? 'The delayed copy reinforces itself wherever the delay is a whole number of periods ' +

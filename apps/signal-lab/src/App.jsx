@@ -564,13 +564,25 @@ export default function App() {
                 // Gated on exact: a nonlinear chain has no H, and the canvas
                 // label above already says so. Tested (linear vs circular
                 // convolution) in views.test.js before this sentence prints.
+                //
+                // Neither s nor z is defined algebraically right here, and s
+                // is Laplace analysis, past this lab's own background of
+                // sine waves, Fourier series and j² = −1. Marked as such,
+                // not cut: a stronger student gets the real cross-reference
+                // to Circuit Lab, and a first-year is told plainly that the
+                // check row above (not this sentence) is what to trust.
                 <p className="conv-theorem">
                   One theorem, two vocabularies: y = x ∗ h in time is{' '}
                   <b>
                     Y(z) = X(z)·H(z)
                   </b>{' '}
-                  here in the sampled domain — and Y(s) = X(s)·H(s) is its
-                  continuous twin, the form Circuit Lab reads.
+                  here in the sampled domain, and Y(s) = X(s)·H(s) is its
+                  continuous twin, the form Circuit Lab reads. Both s and z
+                  stand for complex frequency, sampled for z and continuous
+                  for s. Reading either equation is optional. The math
+                  panel's check row already confirms y = x ∗ h with plain
+                  numbers, and Laplace's s sits beyond this lab's own
+                  background.
                 </p>
               )}
               {/* What this view is NOT drawing, said once. The sum produces

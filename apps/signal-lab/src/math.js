@@ -1,5 +1,5 @@
 import { render, rms, sincInterp } from '@ee-labs/dsp'
-import { applyChain, chainImpulse, convKernel } from './dsp/chain.js'
+import { applyChain, chainGroupDelay, chainImpulse, convKernel } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
 
 // What is actually happening, for the preset currently loaded.
@@ -1427,6 +1427,17 @@ const ENTRIES = {
           'H(z) = \\frac{1}{N}\\sum_{k=0}^{N-1} z^{-k} = ' +
             '\\frac{1}{N}\\,\\frac{z^{N}-1}{z^{N-1}(z-1)}',
         ),
+        // z⁻¹ is unglossed at this point in the lesson, and the jump from a
+        // sum to a ratio with roots is the one step this panel asked a
+        // student to take on faith. One sentence closes both gaps: z⁻¹ is
+        // the same one-sample delay as the difference equation, and the
+        // familiar finite geometric series is what turns the sum into a
+        // ratio whose roots are the zeros plotted below.
+        T(
+          'Here z⁻¹ means one sample late, so this sum is last experiment’s average, one delay ' +
+            'at a time. Summing that finite geometric series gives the ratio above, and the ' +
+            'ratio’s roots are exactly the zeros plotted below.',
+        ),
         T(
           'The numerator vanishes at the N-th roots of unity. One of them, z = 1, is cancelled ' +
             'by the denominator — which is why DC survives untouched — and the other N−1 are ' +
@@ -1553,31 +1564,65 @@ const ENTRIES = {
     }
   },
 
-  'Phase is invisible here': () => ({
-    blocks: [
-      T(
-        'An all-pass places each pole and zero as a mirror pair about the unit circle, so every ' +
-          'magnitude cancels and only the angle survives:',
-      ),
-      F('H(z) = \\frac{z^{-2} + a_1 z^{-1} + a_2}{1 + a_1 z^{-1} + a_2 z^{-2}}, \\qquad |H| = 1'),
-      T(
-        'The numerator is the denominator with its coefficients reversed, which is exactly the ' +
-          'condition for the magnitudes to divide out at every frequency. A second-order ' +
-          'section sweeps a full 360° of phase.',
-      ),
-      T(
-        'The FFT magnitude cannot see any of this. What phase does change is the relative ' +
-          'timing of the components, and since they are no longer aligned as they were, the ' +
-          'waveform is a different shape with an identical spectrum.',
-      ),
-      // What the note used to say.
-      T(
-        'Switch the overlay to group delay to see the same fact as a time: the components ' +
-          'near 400 Hz are held up by several samples more than the rest, which is precisely ' +
-          'why the waveform changes shape while its spectrum does not.',
-      ),
-    ],
-  }),
+  'Phase is invisible here': (ctx) => {
+    // The try line's "26 samples" is read straight off the group-delay
+    // overlay, against its own right-hand axis — never checked elsewhere on
+    // this panel. Measured here too, so the number stays live if freq or Q
+    // move, rather than sitting in prose as a value nothing recomputes.
+    let peakDelay = 0
+    let peakFreq = 0
+    const b = ctx.blocks[0]
+    if (b) {
+      const scanFreqs = Float64Array.from({ length: 200 }, (_, i) => ((i + 1) * ctx.sampleRate) / 2 / 200)
+      const { delay, any } = chainGroupDelay(ctx.blocks, scanFreqs, ctx.sampleRate)
+      if (any) {
+        for (let i = 0; i < scanFreqs.length; i++) {
+          if (delay[i] > peakDelay) {
+            peakDelay = delay[i]
+            peakFreq = scanFreqs[i]
+          }
+        }
+      }
+    }
+    return {
+      blocks: [
+        T(
+          'An all-pass places each pole and zero as a mirror pair about the unit circle, so every ' +
+            'magnitude cancels and only the angle survives:',
+        ),
+        F('H(z) = \\frac{z^{-2} + a_1 z^{-1} + a_2}{1 + a_1 z^{-1} + a_2 z^{-2}}, \\qquad |H| = 1'),
+        // z is unglossed at every earlier stop, and this is the first ENTRIES
+        // panel to print H(z) directly. One sentence names z⁻¹, matching the
+        // wording the block card already uses for a biquad's own H(z).
+        T('Here z⁻¹ means one sample late, so z⁻² means two samples late.'),
+        T(
+          'The numerator is the denominator with its coefficients reversed, which is exactly the ' +
+            'condition for the magnitudes to divide out at every frequency. A second-order ' +
+            'section sweeps a full 360° of phase.',
+        ),
+        T(
+          'The FFT magnitude cannot see any of this. What phase does change is the relative ' +
+            'timing of the components, and since they are no longer aligned as they were, the ' +
+            'waveform is a different shape with an identical spectrum.',
+        ),
+        // What the note used to say.
+        T(
+          'Switch the overlay to group delay to see the same fact as a time. The components ' +
+            'near 400 Hz are held up well past the rest, read directly off that curve against ' +
+            'its own right-hand axis, which is precisely why the waveform changes shape while ' +
+            'its spectrum does not.',
+        ),
+        V([
+          {
+            label: 'peak group delay',
+            value: peakDelay,
+            unit: 'samples',
+            note: `at ${sig(peakFreq, 3)} Hz — the curve's own peak, the number the try line names`,
+          },
+        ]),
+      ],
+    }
+  },
 
   'Two filters are steeper': (ctx) => {
     const rows = []
@@ -1662,6 +1707,19 @@ const ENTRIES = {
       ctx.blocks.every((b) => !b.bypass && b.type === 'lowpass' && Number(b.params.order ?? 2) === 2) &&
       bw(4).every((q, i) => Math.abs(qs[i] - q) < 0.01)
 
+    // The "0.707 twice" chip's own claim: with both sections at ONE shared Q
+    // the Butterworth row above rightly blanks, and the sagged corner was
+    // otherwise left to be read off gridlines. Predicted from each section's
+    // own response() at its own cutoff, squared for the cascade — a
+    // different path than ctx.respAt, which reads the drawn curve.
+    const sameSection =
+      qs.length === 2 &&
+      ctx.blocks.every((b) => !b.bypass && b.type === 'lowpass' && Number(b.params.order ?? 2) === 2) &&
+      Math.abs(qs[0] - qs[1]) < 1e-9
+    const perSection = sameSection
+      ? BLOCK_TYPES[ctx.blocks[0].type].response(ctx.blocks[0].params, fc, ctx.sampleRate)
+      : NaN
+
     return {
       blocks: [
         T(
@@ -1706,6 +1764,16 @@ const ENTRIES = {
               ? null
               : 'This is no longer the pair of second-order Butterworth sections (a Q or the order select moved, or a section is bypassed), so −3.01 dB is not what this cascade is aiming for.',
           },
+          ...(sameSection
+            ? [
+                {
+                  label: `|H| at f_c = ${fc} Hz — one shared Q = ${sig(qs[0], 4)}, squared`,
+                  predicted: perSection * perSection,
+                  measured: prod,
+                  tol: 0.02,
+                },
+              ]
+            : []),
         ]),
         // What the note used to say.
         T(
@@ -1725,6 +1793,16 @@ const ENTRIES = {
           'transform of the other:',
       ),
       F('H(f) = \\sum_{n=0}^{\\infty} h[n]\\,e^{-j2\\pi f n / f_s}'),
+      // e^{jθ} is unglossed everywhere else in the lab, and this sum is its
+      // first appearance in the panel a student reads before the FIR and
+      // z-plane group. One sentence names it, and says plainly that following
+      // the exponent is optional — the row below measures the same flat
+      // spectrum directly.
+      T(
+        'Here e^(−jθ) is Euler’s formula, cos θ − j sin θ: a point on the unit circle, one turn ' +
+          'per cycle. Following that exponent is optional. The row below measures the flat ' +
+          'spectrum it predicts directly.',
+      ),
       T(
         'A unit sample has a perfectly flat spectrum, because it is the sum of every frequency ' +
           'in equal measure. Feed it in and the output spectrum IS |H(f)|, while the time view ' +
@@ -1959,6 +2037,10 @@ const ENTRIES = {
             'delay is τ seconds, which is D = τ·fₛ samples:',
         ),
         F('H(z) = 1 + g\\,z^{-D} \\qquad |H(f)| = \\bigl|1 + g\\,e^{-j2\\pi f\\tau}\\bigr|, \\quad D = \\tau f_s'),
+        // z⁻¹ already means "one sample late" by this point in the lesson.
+        // What is new here is only that the exponent counts: D of them, one
+        // per sample of delay — the same D the time equation names.
+        T('z⁻ᴰ is that same one-sample delay repeated D times: D samples late, not one.'),
         T(
           'For positive g the two terms oppose wherever the delay is an odd number of half ' +
             'periods — every 1/τ = fₛ/D hertz — dipping to 1 − g, a full cancel only at g = 1. ' +
