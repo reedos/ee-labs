@@ -96,12 +96,15 @@ export function readCircuitLink(loc = typeof window === 'undefined' ? null : win
  * side by side under one directory on the deployed site, so the sibling is the
  * same path with the folder name swapped. Null in dev, where each app has its
  * own port and there is nothing beside it — a link to a page that is not there
- * would be worse than none. (deeplink.js's siblingUrl knows three labs; this
- * one knows every folder the suite deploys.)
+ * would be worse than none. (This is meant to know every folder the suite
+ * deploys, dark labs included — deeplink.js's siblingUrl keeps the identical
+ * list for the same reason: both recognise every deployed folder as a
+ * possible link SOURCE, which is independent of which labs' nav lists which,
+ * a decision LabNav's own `LABS` array makes instead.)
  */
 export function labUrl(app, fragment, loc = typeof window === 'undefined' ? null : window.location) {
   if (!loc) return null
-  const apps = ['signal-lab', 'circuit-lab', 'control-lab', 'circuit-elements-lab']
+  const apps = ['signal-lab', 'circuit-lab', 'control-lab', 'circuit-elements-lab', 'power-lab']
   if (!apps.includes(app)) return null
   const m = loc.pathname.match(new RegExp(`^(.*/)(${apps.join('|')})(/[^/]*)?$`))
   if (!m || m[2] === app) return null

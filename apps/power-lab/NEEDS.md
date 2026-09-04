@@ -38,25 +38,39 @@ says `dark`, and `src/release.test.js` fails if any of it is.
   `ReportIssue`, `fmtHz` and `buildLink`/`parseLink` from `@ee-labs/ui` as
   exported today, and does not import `Schematic`.
 
-## A gap in `packages/ui`, worked around locally
+## A gap in `packages/ui`, now fixed at the source
 
-The buck's averaged small-signal plant now hands over to Control Lab (a
+The buck's averaged small-signal plant hands over to Control Lab (a
 `plant=custom:…` link, `src/handover.js` and `src/components/BuckHandOver.jsx`,
-2026-09-03). `packages/ui/src/deeplink.js`'s `siblingUrl` and
-`circuitLink.js`'s `labUrl` both hard-code which app names they recognise as
-the link's SOURCE — `signal-lab`/`circuit-lab`/`control-lab` for one, those
-plus `circuit-elements-lab` for the other — so a call made from power-lab's
-own pathname returns null unconditionally, dev or deployed. `src/handover.js`
-carries a local `powerSiblingUrl`, the same algorithm with `'power-lab'` added
-to the recognised set, rather than editing either shared file from here. The
-real fix is a one-line addition to both lists (and, since Power Lab is dark,
-gating it the way `RELEASE_STATUS` already gates the splash/README/LabNav
-surfaces) — small enough to fold into whichever session next touches
-`packages/ui` for an unrelated reason, but out of this territory today.
-Control Lab itself needs no change: `fromAppName` falls back to "another
-tool" for the unrecognised `power` app, and `fromDisplayName` prefers the
-link's own `label` regardless, so the plant still arrives named correctly,
-only the sending app's name is generic.
+2026-09-03). `packages/ui/src/deeplink.js`'s `siblingUrl` (and, separately,
+`homeUrl`) and `circuitLink.js`'s `labUrl` used to hard-code which app names
+they recognise as a link's SOURCE — `signal-lab`/`circuit-lab`/`control-lab`
+for the first two, those plus `circuit-elements-lab` for the third — so a
+call made from power-lab's own pathname returned null unconditionally, dev or
+deployed. That was a routing gap, not a Power-Lab-specific rule, and it hit
+Circuit Elements Lab's own LabNav the same way (it rendered no nav row at
+all, RELEASE_STATUS aside) — so it has now been fixed in `packages/ui`
+itself: `deeplink.js` and `circuitLink.js` both recognise every folder the
+suite deploys as a possible link source, `circuit-elements-lab` and
+`power-lab` included. Recognising a name as a link SOURCE is independent of
+which labs LINK to it — LabNav's own `LABS` array is what the released labs'
+nav rows are built from, and it still lists only the three released labs, so
+neither dark lab is added to their nav. Each dark lab still names itself in
+its own row via `currentLabel`, unchanged.
+
+`src/handover.js` used to carry a local `powerSiblingUrl`, a copy of
+`siblingUrl`'s exact algorithm with `'power-lab'` added to its recognised
+set, because editing the shared file was out of this territory. Now that
+`packages/ui/src/deeplink.js`'s `siblingUrl` itself recognises `'power-lab'`,
+that copy bought nothing the shared helper doesn't already do — it has been
+deleted, and `handover.js` imports `siblingUrl` from `@ee-labs/ui` directly.
+`handover.test.js`'s dedicated `powerSiblingUrl` test went with it; the
+resolver itself is pinned in `packages/ui/src/deeplink.test.js`, and
+`handover.test.js` still checks that `buckHandOverLink` resolves a URL on the
+deployed layout. Control Lab itself needed no change: `fromAppName` falls
+back to "another tool" for the unrecognised `power` app, and
+`fromDisplayName` prefers the link's own `label` regardless, so the plant
+still arrives named correctly, only the sending app's name is generic.
 
 - No hand-over yet for rectifier spectra into Signal Lab (the plan's other
   later-phase bridge). It would need the same `handOverEvent` / `HANDOVERS`

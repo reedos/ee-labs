@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { parseLink } from '@ee-labs/ui'
 import { buckParams } from './analysis.js'
-import { buckPlant, buckHandOverLink, powerSiblingUrl } from './handover.js'
+import { buckPlant, buckHandOverLink } from './handover.js'
 
 // The one hand-over (POWER_LAB_PLAN.md §5, CORE_SCOPE.md's worked-examples
 // table): the buck's averaged small-signal plant, admitted with an fs/5
@@ -77,9 +77,9 @@ describe('the Control Lab link', () => {
     expect(a0).toBe(1)
     expect(patch.from).toEqual({ app: 'power', id: 'buck', label: 'The buck converter, averaged' })
   })
-  it('powerSiblingUrl never points at its own app', () => {
-    const loc = { origin: 'https://reedos.github.io', pathname: '/ee-labs/power-lab/' }
-    expect(powerSiblingUrl('power-lab', 'x', loc)).toBeNull()
-    expect(powerSiblingUrl('not-a-lab', 'x', loc)).toBeNull()
+  it('resolves via the shared siblingUrl, which now recognises power-lab as a link source (packages/ui/src/deeplink.test.js pins the resolver itself)', () => {
+    const p = buckParams({})
+    const deployed = { origin: 'https://reedos.github.io', pathname: '/ee-labs/power-lab/' }
+    expect(buckHandOverLink(p, deployed).url).not.toBeNull()
   })
 })

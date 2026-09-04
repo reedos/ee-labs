@@ -30,6 +30,31 @@ describe('linear scale', () => {
   it('snaps to the step', () => {
     expect(snap(0.1234, lin)).toBeCloseTo(0.12, 10)
   })
+
+  it('derives a default step from the range instead of rounding to whole units when none is given', () => {
+    // Circuit Elements Lab's D4: a current source spanning ±0.1 A, no step
+    // passed. The old flat default of 1 rounded every typed entry to the
+    // nearest whole ampere — 5 mA became 0 A, and the node it feeds read 0 V
+    // instead of the 2.5 V the lesson claims. `step` is omitted here on
+    // purpose, matching what circuit-elements-lab/src/App.jsx actually
+    // passes to NumField (no step at all).
+    const current = { scale: 'linear', min: -0.1, max: 0.1 }
+    expect(snap(0.005, current)).toBeCloseTo(0.005, 9)
+    expect(snap(0.005, current)).not.toBe(0)
+    // The derived step still respects the knob's own resolution: nothing
+    // snaps outside min..max, and the extremes remain reachable.
+    expect(snap(0.1, current)).toBeCloseTo(0.1, 9)
+    expect(snap(-0.1, current)).toBeCloseTo(-0.1, 9)
+  })
+
+  it('still honours an explicit step over the derived default', () => {
+    expect(snap(0.0033, { scale: 'linear', min: -0.1, max: 0.1, step: 0.001 })).toBeCloseTo(0.003, 9)
+  })
+
+  it('falls back to 1 when the range itself is degenerate (no span to derive from)', () => {
+    expect(snap(5, { scale: 'linear', min: 0, max: 0 })).toBe(0)
+    expect(snap(5.4, { scale: 'linear' })).toBe(5)
+  })
 })
 
 describe('log scale', () => {

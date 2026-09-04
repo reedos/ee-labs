@@ -9,8 +9,8 @@ import { buckHandOverLink } from '../handover.js'
  * apps/circuit-lab/src/components/HandOver.jsx: the explanation and the
  * guard are content and always render; only the outbound link depends on
  * the deployed layout, and is absent rather than a dead paste-fallback when
- * it does not resolve (packages/ui's siblingUrl/labUrl pattern, stood in for
- * locally — see handover.js).
+ * it does not resolve (packages/ui's own siblingUrl, which now recognises
+ * power-lab as a link source — see handover.js).
  *
  * Rendered inside a closed `<details>` in App.jsx, so it costs nothing to
  * the fold budget the rest of the sidebar is held to.

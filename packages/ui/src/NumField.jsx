@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
-import { POS_MAX, clamp, fromPos, near, snap, toPos } from './scale.js'
+import { POS_MAX, clamp, defaultLinearStep, fromPos, near, snap, toPos } from './scale.js'
 import { eng, engEcho, parseEng } from './units.js'
 
 /**
@@ -16,7 +16,7 @@ export default function NumField({
   min = 0,
   max = 1,
   scale = 'linear',
-  step = 1,
+  step,
   coarse = 10,
   unit = '',
   spoken,
@@ -40,7 +40,16 @@ export default function NumField({
   const [draft, setDraft] = useState(null)
   const [flash, setFlash] = useState(null) // 'bad' | 'clamped'
 
-  const opts = { scale, min, max, step }
+  // Resolved once here rather than left to scale.js's own fallback, because
+  // this same number also drives arrow-key/wheel/spinbutton stepping below
+  // (`stepFor`) — those must move a knob by the same amount snap() would
+  // have rounded to, or a drag and a keypress would disagree about what
+  // "one step" is. A caller-given step is always trusted; only a MISSING one
+  // is derived, and only for 'linear' — log and pow2 already snap by
+  // relative precision, so their `step` is purely a UI increment floor and
+  // keeps its long-standing default of 1.
+  const resolvedStep = step > 0 ? step : scale === 'linear' ? defaultLinearStep(min, max) : 1
+  const opts = { scale, min, max, step: resolvedStep }
 
   // Engineering mode: show the mantissa and move the prefix onto the unit, so a
   // 224 GBd symbol rate reads "224" next to "GBd" instead of twelve digits.
@@ -131,7 +140,7 @@ export default function NumField({
   // Stepping on a log scale by a fixed amount is useless at the top of the range
   // (adding 1 Hz to 8 kHz), so step proportionally there instead.
   const stepFor = (mult) =>
-    scale === 'linear' ? step * mult : Math.max(step, Math.abs(value) * 0.02) * mult
+    scale === 'linear' ? resolvedStep * mult : Math.max(resolvedStep, Math.abs(value) * 0.02) * mult
 
   const onKeyDown = (e) => {
     const mult = e.shiftKey ? coarse : 1

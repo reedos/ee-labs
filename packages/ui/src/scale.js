@@ -49,13 +49,32 @@ export function fromPos(pos, opts) {
 }
 
 /**
+ * The step a linear knob uses when nothing sensible was given for one.
+ *
+ * A flat `1` is only safe by accident: right for a knob spanning tens or
+ * hundreds of units, and silently destructive for one spanning a fraction of
+ * a unit — a ±0.1 A current source rounds every typed entry to the nearest
+ * whole ampere, i.e. to 0. There is no unit-independent constant that works
+ * for every knob, but the slider underneath every NumField already carries
+ * POS_MAX positions across min..max, so matching that grid gives a typed
+ * value the same resolution a drag already has, and it scales with the
+ * knob's own span instead of guessing at absolute units. A step that IS
+ * given, however small or large, is still trusted as-is — this only fills
+ * the gap when the caller passed none.
+ */
+export function defaultLinearStep(min, max) {
+  const span = max - min
+  return Number.isFinite(span) && span > 0 ? span / POS_MAX : 1
+}
+
+/**
  * Round a raw value to something a human would have typed.
  *
  * On a log scale that means constant *relative* precision — 250, 251 … 1000, 1010 —
  * which is what makes a log slider feel right. Rounding to a fixed decimal instead
  * would give absurd resolution at the bottom and none at the top.
  */
-export function snap(value, { scale, min, max, step = 1 }) {
+export function snap(value, { scale, min, max, step }) {
   switch (scale) {
     case 'pow2':
       return clamp(Math.pow(2, Math.round(log2(value))), min, max)
@@ -65,16 +84,16 @@ export function snap(value, { scale, min, max, step = 1 }) {
       // about whether they did what the note said.
       return clamp(Number(value.toPrecision(4)), min, max)
     default: {
-      const s = step > 0 ? step : 1
+      const s = step > 0 ? step : defaultLinearStep(min, max)
       return clamp(Math.round(value / s) * s, min, max)
     }
   }
 }
 
 /** Are two values close enough to call a preset chip "active"? */
-export function near(a, b, { scale, step = 1 }) {
+export function near(a, b, { scale, min, max, step }) {
   if (scale === 'log' || scale === 'pow2') {
     return b !== 0 && Math.abs(a - b) / Math.abs(b) < 0.001
   }
-  return Math.abs(a - b) < (step > 0 ? step : 1) / 2
+  return Math.abs(a - b) < (step > 0 ? step : defaultLinearStep(min, max)) / 2
 }

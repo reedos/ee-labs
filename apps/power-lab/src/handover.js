@@ -13,7 +13,7 @@
 // rather than hiding it — CORE_SCOPE Rule 3, no approximation ships without
 // its own applicability check.
 
-import { buildLink } from '@ee-labs/ui'
+import { buildLink, siblingUrl } from '@ee-labs/ui'
 
 /**
  * The buck's small-signal plant at its current operating point. `p` is
@@ -45,33 +45,16 @@ export function buckPlant(p) {
 }
 
 /**
- * A local stand-in for packages/ui's siblingUrl (deeplink.js) and labUrl
- * (circuitLink.js). Both hard-code which app names they recognise as the
- * SOURCE of the link — `signal-lab`/`circuit-lab`/`control-lab` for one,
- * those plus `circuit-elements-lab` for the other — so a call made from
- * power-lab's own pathname returns null unconditionally, in dev and on the
- * deployed site alike. That is a gap in packages/ui (recorded in NEEDS.md,
- * which names the one-line fix: add 'power-lab' to both lists), not a
- * routing rule to route around, so this copies their exact algorithm rather
- * than inventing a new one — the deployed site still lays every lab's folder
- * out side by side, and the same swap-the-folder-name logic applies once
- * 'power-lab' is in the recognised set.
- */
-export function powerSiblingUrl(app, fragment, loc = typeof window === 'undefined' ? null : window.location) {
-  if (!loc) return null
-  const apps = ['signal-lab', 'circuit-lab', 'control-lab', 'circuit-elements-lab', 'power-lab']
-  if (!apps.includes(app)) return null
-  const m = loc.pathname.match(new RegExp(`^(.*/)(${apps.join('|')})(/[^/]*)?$`))
-  if (!m || m[2] === app) return null
-  return `${loc.origin}${m[1]}${app}/${fragment ? '#' + fragment : ''}`
-}
-
-/**
  * The Control Lab link for a buck's current operating point: `{ plant, url }`.
  * `url` is null when the plant is declined (CORE_SCOPE Rule 2 — the guard
  * failed, so there is nothing honest to link to) or when the sibling app has
- * no resolvable URL (a bare dev port; `powerSiblingUrl` returns null there,
- * same as the shared helpers it stands in for).
+ * no resolvable URL (a bare dev port; packages/ui's `siblingUrl` returns null
+ * there). `siblingUrl` used to return null unconditionally for a call made
+ * from power-lab's own pathname — it hard-coded which three app names it
+ * recognised as a link's source, 'power-lab' not among them — which forced a
+ * local copy of its exact algorithm here (see git history / NEEDS.md for the
+ * old `powerSiblingUrl`). deeplink.js now recognises every folder the suite
+ * deploys, dark labs included, so this calls the shared helper directly.
  */
 export function buckHandOverLink(p, loc) {
   const plant = buckPlant(p)
@@ -87,5 +70,5 @@ export function buckHandOverLink(p, loc) {
     // itself still arrives named.
     from: { app: 'power', id: 'buck', label: 'The buck converter, averaged' },
   })
-  return { plant, url: powerSiblingUrl('control-lab', link, loc) }
+  return { plant, url: siblingUrl('control-lab', link, loc) }
 }
