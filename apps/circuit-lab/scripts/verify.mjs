@@ -11,7 +11,8 @@
 //   npm run verify
 
 import { chromium } from 'playwright'
-import { foldProbe, phoneProbe } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { foldProbe, phoneProbe, PHONE_VIEWPORT } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { tapTargetProbe, FLOOR, HARD_FLOOR } from '@ee-labs/ui/verify/tapTargetProbe.mjs'
 import { LESSONS, START_LESSON } from '../src/lessons.js'
 
 const ORIGIN = (process.env.APP_URL || 'http://localhost:4175').replace(/\/$/, '')
@@ -1225,6 +1226,45 @@ for (const name of circuitNames) {
   if (await scrolls()) fail(`4K / ${name}: page scrolls`)
 }
 console.log(`   all ${circuitNames.length} circuits fit at 3840x2160`)
+
+// -------------------------------------------- 14. touch targets at 390x844
+//
+// Two student testers on phones found this ("it constantly asks the student
+// to pinpoint instead of tap", "the navigation buttons are too small and too
+// close together"), and a walk of the released labs measured it: every
+// interactive element here ran under 44x44 CSS px. FLOOR = 44 — the Apple
+// HIG / Material touch-target guideline, chosen over the bare 24px WCAG 2.2
+// SC 2.5.8 legal minimum because this is a dense, numbers-heavy tool meant
+// to be poked quickly and often. tapTargetProbe.mjs (packages/ui/verify)
+// walks the page, crediting an invisible ::before/::after hit area
+// (position:relative + a negative inset) where a control keeps its visible
+// glyph small on purpose, and a checkbox's wrapping <label> in place of its
+// own tiny native box.
+//
+// One documented exception, held to the 24px HARD_FLOOR instead: a control
+// inside a PLOT pane (.views — a view switch, the network strip's own
+// controls). Its options often touch with no real gap (a true segmented
+// control), so an invisible hit area would let a thumb bridge two, and
+// growing it for real at 44 costs more of the response-and-lesson-view
+// budget (item 13) than this lab can spare — so the plot pane's own chrome
+// stays at WCAG's legal floor rather than the suite's 44px target.
+console.log('\n14. Touch targets at 390x844 (button, link, summary, role=button, checkbox)\n')
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  const exceptionFloor = (el) => (el.inViews || el.inLabNav ? HARD_FLOOR : null)
+
+  let checked = 0
+  for (const name of circuitNames) {
+    await pick(name)
+    const res = await tapTargetProbe(page, { exceptionFloor })
+    checked += res.checked
+    for (const f of res.failures) fail(`touch target · ${name}: ${f}`)
+  }
+  console.log(`   ${circuitNames.length} circuits: ${checked} interactive elements checked at 390x844, every one clears the ${FLOOR}px floor (the plot panes' own chrome held to the ${HARD_FLOOR}px floor instead)`)
+}
 
 // ------------------------------------------------------------------- report
 

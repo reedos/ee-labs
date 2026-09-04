@@ -87,6 +87,14 @@ export const TERMS = {
       'ohms, so 1 Ω is 0 dBΩ, 10 kΩ is 80 dBΩ and 100 kΩ is 100 dBΩ. The tank’s plot is ' +
       'impedance rather than gain, so its y-axis carries this unit and its peak reads R.',
   },
+  gain: {
+    name: 'Gain',
+    match: /\bgain\b/i,
+    def:
+      'How much bigger the output is than the input, as a plain ratio: a gain of 2 doubles the ' +
+      'signal, 0.5 halves it. A negative gain, like the inverting amplifier’s here, means an ' +
+      'upside-down output rather than a shrunken one.',
+  },
   corner: {
     name: 'Corner (cutoff) frequency',
     match: /\bcorner|cutoff/i,
@@ -96,6 +104,14 @@ export const TERMS = {
       'consequence: for an RC it lands at 1/(2πRC), and moving R or C moves it exactly that ' +
       'way. A resonant second-order circuit does something different at its equal-impedance ' +
       'frequency — the series RLC across C reads Q× there, not −3 dB.',
+  },
+  filter: {
+    name: 'Filter',
+    match: /\bfilters?\b/i,
+    def:
+      'A circuit built to treat some frequencies differently from others, passing some through ' +
+      'and holding others back. Every filter here does it with impedance: a resistor’s does not ' +
+      'change with frequency, a capacitor’s and an inductor’s do, so their tug-of-war shifts too.',
   },
   shapes: {
     name: 'Low-pass, band-pass, high-pass',
@@ -183,6 +199,14 @@ export const TERMS = {
       'A parallel L and C — so called because energy sloshes between them, like water in a ' +
       'tank, at the resonant frequency. Driven by a current, its impedance is the output, so ' +
       'the tank’s plot is Z(s) in ohms rather than a dimensionless gain.',
+  },
+  magnitude: {
+    name: 'Magnitude',
+    match: /\bmagnitudes?\b/i,
+    def:
+      'The size of a response with its phase set aside: how many times bigger or smaller the ' +
+      'output is than the input, at one frequency. It is the number a Bode magnitude plot ' +
+      'draws, and dB is the same number on a log scale.',
   },
   phase: {
     name: 'Phase',

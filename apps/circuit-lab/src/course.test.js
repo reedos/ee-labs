@@ -333,6 +333,22 @@ describe('the numbers the try lines quote', () => {
     expect(spreadPct(r.f0, m.w0 / (2 * Math.PI))).toBeCloseTo(0, 6)
   })
 
+  // Skeptic's note (student-review, minor): the L cloud reads small next to
+  // C's, at a glance inviting "L barely matters" — Q depends on √L and on
+  // 1/√C, equal exponents, so a shared ±10% moves f₀ by nearly the same
+  // amount either way. The try line now quotes L's own number so the text
+  // says what the numbers say even where the picture alone might not.
+  it('blame: the ±10% on L alone moves f₀ almost exactly as far as C, not less', () => {
+    const l = byName('Blame the right part')
+    const onL = after(l, 'L ±10%')
+    const m = CIRCUITS[onL.id].metrics(onL.params)
+    const { f0 } = toleranceCloud(onL.id, onL.params, onL.output, onL.tols)
+    const f0Pct = spreadPct(f0, m.w0 / (2 * Math.PI))
+    expect(f0Pct).toBeCloseTo(l.claim.tryF0OnL, 1)
+    expect(f0Pct).toBeCloseTo(l.claim.tryF0OnC, 0) // same order as C, not a fraction of it
+    expect(l.try).toContain(`On L it is ±${l.claim.tryF0OnL}%`)
+  })
+
   it('blame: the printed f₀ range never reads one endpoint coarser than the other', () => {
     // The C-only ±10% build used to print "4.81 kHz to 5.3 kHz"; its L-only
     // twin, same lesson and same formatter, printed "4.8 kHz to 5.3 kHz" —

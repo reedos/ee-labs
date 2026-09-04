@@ -421,6 +421,23 @@ details.preset-group > .presets { margin: 3px 0 5px; }
 }
 .lesson-nav-back:hover { border-color: var(--amber); }
 
+/* Touch target: full-width and block already, so growing it for real costs
+   nothing horizontally — and it only ever appears once, alone, so growing
+   it vertically cannot collide with a neighbour either. It IS tied for the
+   same flex `order` as the lesson body (styles.css, below) so it sits inside
+   the sidebar's gated first screen when present — but it is conditional (a
+   circuit handed over from Signal Lab), not the common case, so the 26px it
+   costs there is an acceptable trade for a real 44px target rather than an
+   invisible one. */
+@media (max-width: 900px) {
+  .lesson-nav-back {
+    min-height: 44px;
+    padding: 10px 8px;
+    display: flex;
+    align-items: center;
+  }
+}
+
 /* The Math tab on a narrow pane: KaTeX display formulas and the check
    tables are wider than a phone, and as grid items with min-width:auto the
    panes grew to fit them — the whole .views widened to 463 px and cropped

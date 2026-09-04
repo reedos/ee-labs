@@ -57,7 +57,7 @@ export const LESSONS = [
   {
     group: 'Reading a response',
     name: 'Where the corner comes from',
-    terms: ['corner', 'db', 'phase', 'impedance', 'tf', 'pole', 'lhp'],
+    terms: ['corner', 'db', 'phase', 'impedance', 'tf', 'pole', 'lhp', 'magnitude'],
     note:
       'The cutoff is the frequency where the capacitor’s impedance equals the resistor’s. There the two split ' +
     'the input evenly in magnitude, and each sits 45° from the input in phase, so 90° from each other, as R ' +
@@ -81,7 +81,7 @@ export const LESSONS = [
   {
     group: 'Reading a response',
     name: 'The same filter, read backwards',
-    terms: ['corner', 'db', 'phase', 'shapes'],
+    terms: ['corner', 'db', 'phase', 'shapes', 'magnitude'],
     note:
       'The same two components, with the output read across the resistor instead, and the low-pass becomes a ' +
     'high-pass. Nothing else changed, the same current flows through both components, so whatever one keeps, ' +
@@ -100,7 +100,7 @@ export const LESSONS = [
   {
     group: 'Reading a response',
     name: 'Different physics, same algebra',
-    terms: ['tau', 'corner', 'impedance', 'tf', 'shapes'],
+    terms: ['tau', 'corner', 'impedance', 'tf', 'shapes', 'filter'],
     note:
       'An inductor resists a change in current where a capacitor resists a change in voltage. Even so, this is ' +
     'the RC low-pass again with L/R in its place, and nothing downstream can tell them apart. Filters are ' +
@@ -120,12 +120,16 @@ export const LESSONS = [
   {
     group: 'Resonance',
     name: 'One circuit, three filters',
-    terms: ['tf', 'resonance', 's', 'shapes', 'overshoot', 'zeta', 'damping'],
+    terms: ['tf', 'resonance', 's', 'shapes', 'filter', 'overshoot', 'zeta', 'damping'],
+    // Soft-landed (student-review, the beginner cliff): the first sentence
+    // used to open on "they share a denominator and differ only in how many
+    // powers of s sit on top" — the exact line that lost a reader with one
+    // lecture on R and C. It now leads with the concrete, familiar move (one
+    // more part, one more place to tap) and saves the algebra for after.
     note:
-      'Switch the output between C, R and L. Same components, same resonance, three completely different ' +
-    'filters, low-pass, band-pass, high-pass, because they share a denominator and differ only in how many ' +
-    'powers of s sit on top. Those three numerators add up to the denominator, so the three outputs sum to ' +
-    'the input exactly.',
+      'Add an inductor to the RC pair, and there are three places to tap instead of two. Tap C for ' +
+    'low-pass, R for band-pass, L for high-pass, from the same three parts. All three share one ' +
+    'denominator in s, differing only in the powers of s on top.',
     try: 'Tap across R, it becomes a band-pass. Tap across L, a high-pass. All three share the one resonance at ' +
     '5.03 kHz.',
     chips: [
@@ -144,10 +148,14 @@ export const LESSONS = [
     group: 'Resonance',
     name: 'Q is how sharp, and R sets it',
     terms: ['q', 'zeta', 'damping', 'resonance', 'overshoot'],
+    // Soft-landed (student-review, one of the three worst lessons): the note
+    // used to open with the instruction itself ("Drag R up from its 20 Ω"),
+    // which duplicates the try line and delays the explanation. It now leads
+    // with the effect, then the reason, then the formula.
     note:
-      'Drag R up from its 20 Ω. The resonant peak collapses, because at resonance the inductor ' +
-      'and capacitor cancel exactly and only the resistor is left to limit the current. Double ' +
-      'R and Q halves: Q = (1/R)√(L/C), and none of it depends on frequency.',
+      'Raise R and the resonant peak collapses. At resonance the inductor and capacitor cancel ' +
+      'exactly, leaving only the resistor to limit the current. Double R and Q halves: Q = ' +
+      '(1/R)√(L/C), and none of it depends on frequency.',
     try: 'Drag R from 20 Ω to 200 Ω, Q falls from 15.8 to 1.58, halving with each doubling.',
     chips: [
       { label: '20 Ω', params: { r: 20 } },
@@ -236,10 +244,16 @@ export const LESSONS = [
     group: 'Resonance',
     name: 'Real parts wobble',
     terms: ['tolerance', 'q', 'pole', 'jw', 'zeta', 'damping'],
+    // Soft-landed (student-review: the complex-plane view arrives with no
+    // explanation of what the plane is). The note now names the plot in its
+    // first sentence rather than assuming a reader already trusts it; the
+    // "what is this plane" explanation itself lives in the pz pane's own
+    // caption (App.jsx), on screen for every lesson that opens on it, not
+    // squeezed into one 60-word-capped note.
     note:
-      'No part in a drawer is exact. Here the series RLC is built 120 times from ±5% parts, and the poles view ' +
-    'shows where they land. f₀ = 1/2π√LC wobbles ±4.3% and Q ±8.2%, twice as far. R enters Q at full strength ' +
-    'and f₀ not at all. Q is the spec that costs money.',
+      'No part in a drawer is exact, and this plot shows what that costs. The series RLC is built 120 times ' +
+    'from ±5% parts. f₀ = 1/2π√LC wobbles ±4.3% and Q ±8.2%, twice as far. R enters Q at full strength and f₀ ' +
+    'not at all. Q is the spec that costs money.',
     try: 'Switch every part to ±1%, f₀’s spread shrinks to ±0.85%, Q’s to ±1.7% (at ±5%: ±4.3% and ±8.2%).',
     chips: [
       { label: 'exact', tol: 0 },
@@ -267,7 +281,13 @@ export const LESSONS = [
       'Give R alone ±10% and f₀ does not move at all. f₀ = 1/(2π√LC) has no R in it, so not one of the 120 ' +
     'builds resonates anywhere else. The poles slide along a circle of constant radius ω₀ while Q takes the ' +
     'entire hit. A spec only inherits error from the parts in its own formula.',
-    try: 'Move the ±10% from R to C, f₀ now wanders ±5.3% and the circle breaks. Back on R it is ±0.0%.',
+    // Skeptic's note (student-review, minor): C's cloud reads big and L's
+    // reads small at a glance, which invites "L barely matters" — false. Q
+    // depends on √L and on 1/√C, equal exponents, so a shared ±10% moves f₀
+    // by nearly the same amount either way. The try line now says so with
+    // the measured number, rather than leaving L out of the text entirely.
+    try: 'Move the ±10% from R to C, f₀ now wanders ±5.3% and the circle breaks. Back on R it is ±0.0%. On L ' +
+    'it is ±5.3% too, the same share as C, not the smaller one the picture suggests.',
     chips: [
       { label: 'R ±10%', tols: { r: 0.1 } },
       { label: 'C ±10%', tols: { c: 0.1 } },
@@ -286,13 +306,13 @@ export const LESSONS = [
       view: 'pz',
       tols: { r: 0.1 },
     },
-    claim: { f0Immune: true, polesOnCircle: true, tryF0OnC: 5.3 },
+    claim: { f0Immune: true, polesOnCircle: true, tryF0OnC: 5.3, tryF0OnL: 5.3 },
   },
   // ------------------------------------------------------- Active circuits
   {
     group: 'Active circuits',
     name: 'Why active filters exist',
-    terms: ['opamp', 'pole', 'jw', 'q', 'shapes', 'zeta', 'damping'],
+    terms: ['opamp', 'pole', 'jw', 'q', 'shapes', 'zeta', 'damping', 'filter'],
     note:
       // Soft-landed (student-review item 5): leads with the knob and its
       // effect (raise C1, Q climbs) rather than with "a real pole cannot
@@ -314,15 +334,26 @@ export const LESSONS = [
   {
     group: 'Active circuits',
     name: 'Gain is a ratio, and negative',
-    terms: ['feedback', 'virtualearth', 'db', 'phase', 'corner', 'pole'],
+    terms: ['feedback', 'virtualearth', 'db', 'phase', 'corner', 'pole', 'gain'],
+    // Reed's fix (phase at DC means nothing — nothing oscillates at f = 0, so
+    // there is no shift to measure there). The minus sign is a real, measured
+    // fact at DC: it is a NEGATIVE REAL NUMBER, not a phase shift. Written in
+    // polar form that negative real number carries a 180° angle, and that
+    // angle is what the phase plot shows from DC through low frequency,
+    // becoming a genuine, measurable phase relationship as soon as an actual
+    // sinusoid exists to measure it against. Numbers unchanged — the DC gain
+    // is still negative, the plot still reads 180° there, and a single pole
+    // still takes 45° off it at the corner — only the claim about what that
+    // number IS has moved from "a shift at DC" to "a sign, read as an angle".
     note:
       'Negative feedback holds the inverting input at zero without connecting it to anything, so all the input ' +
     'current must flow on through the feedback resistor. The gain is −Rf/Rin, a ratio, so it depends on how ' +
-    'well two resistors match rather than on either being any particular value. The minus sign is a real 180° ' +
-    'of phase at DC. The small Cf across Rf adds one pole, and above its corner gain and phase both fall.',
+    'well two resistors match rather than on either being any particular value. The minus sign is 180° of ' +
+    'phase, from DC through low frequency. The small Cf across Rf adds one pole, and above its corner gain and ' +
+    'phase both fall.',
     try:
       'Set R feedback to 100 kΩ, the gain becomes −100 (40 dB) below the corner Cf puts at 1.59 kHz. The phase ' +
-    'is 180° at DC and 135° at that corner.',
+    'is 180° from DC to low frequency, and 135° at that corner.',
     chips: [
       { label: 'Rf 10 kΩ', params: { rf: 10000 } },
       { label: 'Rf 100 kΩ', params: { rf: 100000 } },
@@ -368,7 +399,7 @@ export const LESSONS = [
   {
     group: 'One object, two names',
     name: 'This circuit is a biquad',
-    terms: ['biquad', 'sampled', 'tf', 'corner', 'q', 'shapes', 'zeta', 'damping'],
+    terms: ['biquad', 'sampled', 'tf', 'corner', 'q', 'shapes', 'zeta', 'damping', 'filter'],
     note:
       'This RLC is a low-pass biquad with a cutoff of 5.03 kHz and a Q of 3.16, not similar to one, the same ' +
     'one. Open in Signal Lab → loads the identical filter there with a square wave running through it. A ' +

@@ -302,7 +302,7 @@ const ENTRIES = {
             'current. And since the two outputs share one current, they are complementary — ' +
             'their squared magnitudes sum to 1 at every frequency, and the phase LEADS by ' +
             'exactly +45° at the corner, the mirror of the low-pass’s lag, on its way from ' +
-            '+90° at DC to 0° far above.',
+            '+90° at low frequency to 0° far above.',
         ),
         F('|H_{LP}|^2 + |H_{HP}|^2 = 1'),
         C([
@@ -667,8 +667,8 @@ const ENTRIES = {
         T(
           'The gain is a ratio, so it depends on how well two resistors match rather than on ' +
             'any absolute value — which is exactly what an integrated process can do well. The ' +
-            'minus sign is a real 180° of phase, not a bookkeeping detail — but it is 180° at ' +
-            'DC only. The feedback pole then takes the 1st-order toll of 45° at its corner, ' +
+            'minus sign is 180° of phase, from DC through low frequency, not a bookkeeping ' +
+            'detail. The feedback pole then takes the 1st-order toll of 45° at its corner, ' +
             'leaving exactly 135° there and only the inversion’s last 90° far above.',
         ),
         C([

@@ -119,7 +119,20 @@ export default function App() {
   // circuits both fold. The active item's group is always open regardless, so
   // collapsing is never able to hide where you are — same pattern as Signal
   // Lab's preset groups.
-  const [openGroups, setOpenGroups] = useState(() => new Set())
+  //
+  // The Circuits groups start OPEN (student-review: two people who skipped
+  // the course and went straight to Circuits found "Second order" and
+  // "Active" folded shut — six real circuits, more than half the catalog —
+  // and one filed it as "circuits unclickable"). Chosen over a count badge
+  // or a louder chevron because it removes the obstacle outright: a picker
+  // meant for poking around should not hide most of what it holds behind a
+  // fold nobody arrives already knowing to open. The lesson list keeps
+  // folding by default, since a course is meant to be taken group by group.
+  // Folding still works either way — closing an inactive group is remembered
+  // for the session — this only changes what a fresh visitor sees first.
+  const [openGroups, setOpenGroups] = useState(
+    () => new Set(CIRCUIT_GROUPS.map((g) => `circuits:${g}`)),
+  )
 
   const circuit = CIRCUITS[id]
 
@@ -944,12 +957,23 @@ export default function App() {
               </p>
             )
           ) : lower === 'pz' ? (
-            <PoleZeroCanvas
-              poles={pz.poles}
-              zeros={pz.zeros}
-              cloud={wobble.any ? wobble.cloud : null}
-              span={pzSpan}
-            />
+            <>
+              {/* Student-review: the complex-plane view arrived with no
+                  explanation of what the plane is or why a dot's position
+                  matters — named the worst-received part of the walk once a
+                  reader hit it with no warning. One line, on every pz lesson
+                  rather than folded into a single note's word budget. */}
+              <p className="hint pz-caption" data-role="pz-caption">
+                Sideways is the real part, in s⁻¹: how fast a mode decays. Upward is jω, the
+                imaginary part: how fast it rings. A dot far from the origin moves fast either way.
+              </p>
+              <PoleZeroCanvas
+                poles={pz.poles}
+                zeros={pz.zeros}
+                cloud={wobble.any ? wobble.cloud : null}
+                span={pzSpan}
+              />
+            </>
           ) : (
             <div className="math-pane" data-role="math-pane">
               <MathBody entry={math} />
