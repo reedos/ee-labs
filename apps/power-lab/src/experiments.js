@@ -174,7 +174,7 @@ export const EXPERIMENTS = [
     chips: [5, 1],
     try: { knob: 'R', text: 'Set R_load to 1 Ω: output falls to 1.50 V, not 5 V.' },
     group: GROUPS[0],
-    name: 'The linear regulator',
+    name: 'The resistor divider',
     kind: 'linreg',
     headline: 'eta',
     params: [R(), Vin()],
@@ -189,10 +189,9 @@ export const EXPERIMENTS = [
     view: 'sweep',
     sweep: { x: 'R', y: 'Vout' },
     note:
-      'The pass element is a plain resistor, 7 Ω, sized for a 5 Ω load, where 1 A lands the ' +
-      'output on 5 V from 12 V. Move the load and the output moves with it. There is no feedback to ' +
-      'hold anything steady. The resistor also wastes 7 W as heat while 5 W reaches the load, and ' +
-      'efficiency is always V_out/V_in.',
+      'Two resistors in series: 7 Ω into a 5 Ω load, so 1 A leaves 5 V of 12 V. Move the load and ' +
+      'the output moves with it. Nothing holds it steady. A linear regulator adds feedback that does, ' +
+      'but wastes the same 7 W for the 5 W delivered. Efficiency is V_out/V_in either way.',
     terms: ['efficiency', 'linear-regulator'],
   },
   {

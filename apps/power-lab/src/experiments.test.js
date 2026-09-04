@@ -73,7 +73,7 @@ describe('every experiment', () => {
   })
 })
 
-describe('A1 · the linear regulator', () => {
+describe('A1 · the resistor divider', () => {
   it('12 → 5 V at 1 A: 5 W to the load, 7 W in the resistor, η = 41.7 %', () => {
     const { x } = at('a1')
     expect(x.m.Iout).toBeCloseTo(1, 12)

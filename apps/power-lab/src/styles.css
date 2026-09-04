@@ -297,7 +297,7 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   font-size: 8px;
 }
 
-/* An experiment with nothing for a scope to say (the linear regulator) hands
+/* An experiment with nothing for a scope to say (the resistor divider) hands
    the whole column to its analysis pane. */
 .views.is-single { grid-template-rows: 1fr; }
 
@@ -331,7 +331,7 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .plot-legend .swatch.dotted { border-top-style: dotted; }
 .plot-legend .swatch.fill { height: 9px; border: 0; background: currentColor; }
 
-/* The losses view alone in its column (the linear regulator). It used to be
+/* The losses view alone in its column (the resistor divider). It used to be
    centred and blown up to fill the pane — 40 px bars, 18 px type, two rows
    floating in the middle of the screen — which read as a poster rather than a
    reading. Sized as information now, and sitting at the top of the column

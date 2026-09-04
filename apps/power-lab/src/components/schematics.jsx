@@ -626,7 +626,7 @@ export function signalsOf(exp) {
 
 /** What the drawing is called, in the words a textbook would use. */
 export const TOPOLOGY_NAMES = {
-  linreg: 'Linear regulator',
+  linreg: 'Resistor divider',
   chopper: 'Chopper — a switch and a load, no filter',
   buck: 'Buck converter',
   boost: 'Boost converter',

@@ -15,13 +15,13 @@ describe('App', () => {
   it('renders without throwing, on the first experiment', () => {
     const h = html()
     expect(h).toContain('Power Lab')
-    expect(h).toContain('The linear regulator')
+    expect(h).toContain('The resistor divider')
     // The regulator has no scope (its lesson is the regulation sweep); the chopper does.
     expect(h).toContain('Analysis')
     expect(renderToString(React.createElement(App, { initialId: 'a2' }))).toContain('Scope')
   })
 
-  it('shows the linear regulator’s numbers in the top bar', () => {
+  it('shows the resistor divider’s numbers in the top bar', () => {
     const h = html()
     expect(h).toMatch(/41\.7 %/)
     expect(h).toMatch(/5\.000 W|5 W/)

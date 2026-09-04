@@ -17,10 +17,10 @@ export const TERMS = {
   'linear-regulator': {
     name: 'Linear regulator',
     def:
-      'A series pass element between source and load, carrying the load current and dropping the rest ' +
-      'of the voltage across itself. Its loss is (V_in − V_out) times the load current, and its ' +
-      'efficiency can never exceed V_out/V_in. A fixed resistor is the simplest one, and it has no ' +
-      'feedback to hold the output as the load changes.',
+      'A series pass element sits between source and load, carrying the load current and dropping the ' +
+      'rest of the voltage across itself. Feedback varies that drop to hold the output steady as the ' +
+      'load moves. Its loss is (V_in − V_out) times the load current, so efficiency can never exceed ' +
+      'V_out/V_in. Here a plain resistor stands in, because the waste is the same.',
   },
   duty: {
     name: 'Duty (D)',

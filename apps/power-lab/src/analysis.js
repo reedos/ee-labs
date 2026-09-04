@@ -1,6 +1,6 @@
 // From an experiment and its knobs to everything the panes draw.
 //
-// The linear regulator, the bare chopper and the dimmer have no state, so
+// The resistor divider, the bare chopper and the dimmer have no state, so
 // their waveforms and measures are written down directly. The three clocked
 // converters — buck, boost and buck-boost — go through @ee-labs/switched's
 // clocked steady state; the rectifiers through its event-driven one, where the
