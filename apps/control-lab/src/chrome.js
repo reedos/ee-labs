@@ -2,8 +2,9 @@ import { polesZeros, margins, stepResponse, dcGain } from '@ee-labs/systems'
 import { PLANTS, CONTROLLERS, buildLoop } from './systems.js'
 import { CUES, TOPBAR_TERMS, termsFor } from './terms.js'
 import { watchPartLabels } from './watch.js'
-import { verdictOf, verdictBadge, bodeMarginNote, joinParts, arrivalErrorNote } from './verdict.js'
+import { verdictOf, verdictBadge, bodeMarginNote, joinParts, arrivalErrorNote, plantInverted } from './verdict.js'
 import { crossingGain, locusHereNote } from './lessons.js'
+import { circuitFor } from './toCircuitLab.js'
 import { naturalWindow, overshootOf } from './stepWindow.js'
 import { ladderUp } from './stepAxis.js'
 import { simCost, simBlockReason, STEP_BUDGET } from './affordable.js'
@@ -358,7 +359,10 @@ export function chromeTermIds({ plantId, plantP, ctrlId, ctrlP, view, stepInput,
   // On screen regardless of the lower view: the topbar badge and the Bode
   // pane's margin sentence directly below the crossover line.
   const badge = verdictBadge(verdict)
-  const marginNote = bodeMarginNote(verdict, marg.gainMargin)
+  // Same flag App.jsx computes (verdict.js: plantInverted) — kept in sync so
+  // the picker's glossary scan sees the exact sentence the live screen shows
+  // for a plant whose own pole sits in the right half plane.
+  const marginNote = bodeMarginNote(verdict, marg.gainMargin, plantInverted(loop))
 
   const watchLabels = view === 'watch' ? watchPartLabels(ctrlId) : []
   const watchText = watchLabels.length > 1 ? watchLabels.join(' ') : ''
@@ -410,6 +414,14 @@ export function chromeTermIds({ plantId, plantP, ctrlId, ctrlP, view, stepInput,
     PLANT_DEF,
     CONTROLLER_DEF,
     arrivalText,
+    // The "This is also a circuit" spot (App.jsx, right after this section's
+    // terms fold) — on screen picker or lesson alike, whichever of the link
+    // or its refusal reason applies. circuitFor mirrors App.jsx's own gate
+    // exactly (`!circuit && plant.circuitNote`), so a cue word in a refusal
+    // (Integrator, Motor, Three lags, Custom, Unstable) is scanned the same
+    // way plantHint already is, not left to go stale the way this exact spot
+    // did before it had any text to scan at all.
+    !circuitFor(plantId, plantP) ? plant.circuitNote || '' : '',
   ].join(' ')
 
   const ids = new Set([...TOPBAR_TERMS, ...SECTION_TERMS])

@@ -84,9 +84,10 @@ export const TERMS = {
   gainmargin: {
     name: 'Gain margin',
     def:
-      'The factor by which the loop gain can rise before the loop sits on the edge of oscillation, measured ' +
-    'where the phase reaches −180°. Quoted as a ratio and in dB (11.2× = 21.0 dB), and it is exact. Multiply ' +
-    'Kp by it and the loop is marginal, a claim the harness drives the sliders to confirm.',
+      'The factor between the current loop gain and the gain at the edge of oscillation, measured where the ' +
+    'phase reaches −180°. Quoted as a ratio and in dB (11.2× = 21.0 dB). Above 1× is safe for most plants, ' +
+    'since more gain fails them. A right-half-plane pole inverts that failure: below 1× is safe there, ' +
+    'since less gain is what fails it.',
   },
   crossover: {
     name: 'Crossover frequency',

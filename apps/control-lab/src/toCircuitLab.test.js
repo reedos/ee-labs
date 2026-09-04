@@ -134,6 +134,37 @@ describe('this plant, as the circuit it is', () => {
     ).toBeNull()
   })
 
+  // CORE_SCOPE Rule 2: a refused mapping is content, not a bare null.
+  // Round-three grading found App.jsx's "This is also a circuit" spot
+  // rendered nothing at all for four of the five plants with no catalog
+  // circuit, indistinguishable from an oversight — App.jsx reads
+  // `plant.circuitNote` for exactly this spot whenever circuitFor() is null.
+  it('every plant with no catalog circuit, at every parameter, carries a reason', () => {
+    for (const id of ['integrator', 'motor', 'threePole', 'unstable', 'custom']) {
+      expect(circuitFor(id, defaultsOf(PLANTS[id])), id).toBeNull()
+      expect(typeof PLANTS[id].circuitNote, `${id}.circuitNote`).toBe('string')
+      expect(PLANTS[id].circuitNote.length, `${id}.circuitNote`).toBeGreaterThan(20)
+    }
+    // The two plants that CAN carry a catalog circuit have no need for the
+    // fallback, and should not carry one that could go stale against a real
+    // link silently taking priority over it. secondOrder's own registry
+    // default sits outside Circuit Lab's knobs (the hint test above already
+    // pins that), so it is checked at a buildable value instead.
+    expect(circuitFor('firstOrder', defaultsOf(PLANTS.firstOrder))).not.toBeNull()
+    expect(circuitFor('secondOrder', { k: 1, wn: 10000, zeta: 0.3 })).not.toBeNull()
+    for (const id of ['firstOrder', 'secondOrder']) {
+      expect(PLANTS[id].circuitNote, id).toBeUndefined()
+    }
+  })
+
+  it('each reason names the specific structural mismatch the catalog has', () => {
+    expect(PLANTS.integrator.circuitNote).toMatch(/inverts/)
+    expect(PLANTS.motor.circuitNote).toMatch(/second, finite pole/)
+    expect(PLANTS.threePole.circuitNote).toMatch(/second order/)
+    expect(PLANTS.custom.circuitNote).toMatch(/no fixed shape/)
+    expect(PLANTS.unstable.circuitNote).toMatch(/right half plane/)
+  })
+
   it('the second-order plant\'s hint never promises a link circuitFor cannot build', () => {
     // "Open in Circuit Lab" renders only where circuitFor(...) is non-null
     // (App.jsx: `circuit && circuitHref`); the hint text is the only other

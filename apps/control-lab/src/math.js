@@ -93,6 +93,12 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
     const second = secondOrderMetrics(loop.closed)
     const stable = isStable(loop.closed)
     const closedDc = dcGain(loop.closed)
+    // Does the PLANT alone, feedback cut, already carry a right-half-plane
+    // pole? That flips which side of 1x the gain margin's danger sits on
+    // (verdict.js: plantInverted). Round-three grading found "past the
+    // boundary, 0.20x this gain" beside a badge saying stable and no
+    // sentence anywhere resolving it, for exactly this plant.
+    const plantRhp = polesZeros(loop.plant).poles.some(([re]) => re > 1e-9)
 
     // An integrator anywhere in the loop is what kills steady-state error, so
     // it is worth naming rather than leaving the reader to infer it. Counted
@@ -238,6 +244,21 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
       F('\\text{GM} = \\frac{1}{|L(j\\omega_{pc})|} \\quad\\text{where}\\quad \\angle L(j\\omega_{pc}) = -180^\\circ'),
     )
 
+    // The one plant in the catalogue where this reads backwards: a pole in
+    // the right half plane means feedback is the only reason the loop holds
+    // at all, so too LITTLE gain is what breaks it. A gain margin under 1x
+    // there is not a warning. It is the expected, safe reading, and the
+    // boundary sits below the current gain rather than above it.
+    if (plantRhp) {
+      blocks.push(
+        T(
+          'This plant carries a pole in the right half plane, so it fails on too little gain ' +
+            'rather than too much. A gain margin under 1× is the safe reading here: the boundary ' +
+            'sits below the current gain, and raising the gain moves away from it, not toward it.',
+        ),
+      )
+    }
+
     const marginRows = []
     if (marg.gainCrossover != null) {
       marginRows.push({
@@ -271,7 +292,12 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
           label: 'gain margin',
           value: marg.gainMargin ?? NaN,
           unit: '×',
-          note: marg.gainMargin == null ? 'phase never reaches −180°' : '',
+          note:
+            marg.gainMargin == null
+              ? 'phase never reaches −180°'
+              : plantRhp && marg.gainMargin < 1
+                ? 'safe: this plant fails on too little gain, not too much'
+                : '',
         },
         { label: 'crossover frequency', value: marg.gainCrossover ?? NaN, unit: 'Hz' },
         // Both unit systems, always: the suite plots hertz, the textbook

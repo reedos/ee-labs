@@ -311,6 +311,29 @@ describe('picker terms: reachable with no lesson active', () => {
     }
   })
 
+  it('the "This is also a circuit" spot: a refusal\'s cue words resolve exactly where App.jsx renders them', () => {
+    // App.jsx's own gate at that spot is `!circuit && plant.circuitNote`
+    // (round three: the four plants with no catalog match rendered nothing
+    // there at all). chromeTermIds must scan the SAME text — unconditional
+    // of view, the way App.jsx renders it — or a cue word in a refusal goes
+    // unscanned exactly the way the marginNote defect once did.
+    for (const pid of ['integrator', 'motor', 'threePole', 'unstable', 'custom']) {
+      const note = PLANTS[pid].circuitNote
+      expect(note, pid).toBeTruthy()
+      for (const view of views) {
+        const ids = chromeTermIds(defaultState(pid, 'p', view))
+        for (const [id, re] of Object.entries(CUES)) {
+          if (re.test(note)) expect(ids, `${pid} x ${view}: "${id}" cue in its own circuitNote`).toContain(id)
+        }
+      }
+    }
+    // The two plants that DO get a live link never carry a circuitNote, so
+    // there is nothing for this spot to scan beyond the ordinary hint text.
+    for (const pid of ['firstOrder', 'secondOrder']) {
+      expect(PLANTS[pid].circuitNote, pid).toBeUndefined()
+    }
+  })
+
   it('paneHeading matches App.jsx verbatim for every view x stepInput', () => {
     expect(paneHeading('step', 'ref')).toBe('Closed-loop step response')
     expect(paneHeading('step', 'dist')).toBe('Response to a disturbance at the plant input')

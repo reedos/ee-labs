@@ -65,6 +65,7 @@ import {
   verdictBadge,
   bodeMarginNote,
   arrivalErrorNote,
+  plantInverted,
 } from './verdict.js'
 import { leadPeak } from './lead.js'
 import { naturalWindow, settleTime, overshootOf } from './stepWindow.js'
@@ -286,6 +287,57 @@ export default function App() {
         This previews lesson {firstLessonFor(view)}. It reads this plot in full.
       </span>
     ) : null
+  // The sidebar is its own scroller on a phone with a lesson loaded
+  // (`.app.has-lesson .controls`, capped at 40vh in styles.css) — a scroller
+  // whose OWN scroll position loadLesson never touched. Walking the course by
+  // TAPPING THE LIST, the way a phone reader actually browses it, leaves that
+  // box scrolled to wherever the tapped button sat in `.lesson-list` (order 2
+  // on phone, styles.css), with the just-loaded note, terms link, try line
+  // and featured step toggle — `.lesson-body`, order 1, above the list — off
+  // the top of the visible box. Measured across all 13 lessons tapped from
+  // the list: the note's own top sat from −518px to −211px, only lessons 1,
+  // 5 and 7 landing in view by luck of how far down their button sat. The
+  // sticky prev/next arrows in the section cap never hit this, because they
+  // never move the reader's own tap position in the list.
+  //
+  // Fixed the way Signal Lab's Controls.jsx fixes the identical trap: after
+  // a lesson loads, check whether the lesson block's own box is inside the
+  // sidebar's REAL visible box, and if it is not, scroll the lesson block
+  // back to the top of that box. Conditional, so the arrows path (already
+  // correct) and desktop (no internal scroll at all) trigger nothing.
+  //
+  // The check reads TWO edges, not one: the BLOCK's own top (the note sits
+  // right at it) must not be above the container's top, and the try line's
+  // bottom must not be below the container's bottom. Checking the try
+  // line's box alone — Signal's own check, correct there — missed a real
+  // case here: a scroll position left over from the PREVIOUS lesson (a
+  // click on a button lower in the list, which Playwright's own auto-scroll
+  // and a real tap both leave the sidebar at) can sit the try line inside
+  // the box while the note above it, this lesson's own shorter or taller
+  // one, is scrolled off — try-line-only calls that "already visible" and
+  // does nothing, which is exactly how "What feedback buys"' own four
+  // lessons kept reading a note 56-80px above the box after this fix's
+  // first draft.
+  const lessonBodyRef = useRef(null)
+  const controlsRef = useRef(null)
+  const lessonLoadedOnce = useRef(false)
+  useEffect(() => {
+    if (!lessonLoadedOnce.current) {
+      lessonLoadedOnce.current = true
+      return
+    }
+    const el = lessonBodyRef.current
+    const container = controlsRef.current
+    if (!el || !container) return
+    const tryLine = el.querySelector('.try-line') || el
+    const elBox = el.getBoundingClientRect()
+    const tryBox = tryLine.getBoundingClientRect()
+    const contBox = container.getBoundingClientRect()
+    const visible = elBox.top >= contBox.top - 0.5 && tryBox.bottom <= contBox.bottom + 0.5
+    if (!visible) el.scrollIntoView({ block: 'start' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson, loads])
+
   // The state a chip or a dirtiness check reads: the loop's setup, not its view.
   const state = { plantId, plantP, ctrlId, ctrlP, stepInput }
   const dirty = isDirty(active, state)
@@ -357,7 +409,11 @@ export default function App() {
   // both from verdict.js so chrome.js's picker-fold scan reads the exact
   // same text this render shows rather than a hand-kept stand-in for it.
   const badge = verdictBadge(verdict)
-  const marginNote = bodeMarginNote(verdict, marg.gainMargin)
+  // Whether the PLANT alone (feedback cut) already carries a right-half-plane
+  // pole — the one case where a gain margin under 1x is the safe reading
+  // rather than a warning (verdict.js: plantInverted, bodeMarginNote).
+  const inverted = useMemo(() => plantInverted(loop), [loop])
+  const marginNote = bodeMarginNote(verdict, marg.gainMargin, inverted)
   const second = useMemo(() => secondOrderMetrics(loop.closed), [loop])
 
   const nyq = useMemo(() => {
@@ -584,7 +640,7 @@ export default function App() {
 
   return (
     <div className={`app${active ? ' has-lesson' : ''}`}>
-      <aside className="controls">
+      <aside className="controls" ref={controlsRef}>
         <header>
           <LabNav current="control-lab" />
           <h1>Control Lab</h1>
@@ -720,7 +776,7 @@ export default function App() {
             })}
           </div>
           {active ? (
-            <div className="lesson-body">
+            <div className="lesson-body" ref={lessonBodyRef}>
               <h3 className="note-title">{active.name}</h3>
               <p className={`hint note${dirty ? ' is-dirty' : ''}`}>
                 {/* Definitions on contact (student review, item 3): the FIRST
@@ -814,7 +870,15 @@ export default function App() {
             </div>
           )}
           {/* The hand-over in reverse. Exact only: a plant with a gain, or
-              component values outside Circuit Lab's knobs, draws nothing. */}
+              component values outside Circuit Lab's knobs, draws nothing —
+              EXCEPT that "nothing" used to include the four plants with no
+              catalog match at all (Integrator, Motor, Three lags, Custom),
+              which rendered this whole block as blank, indistinguishable
+              from an oversight. CORE_SCOPE Rule 2: a refusal is content, so
+              a plant with no link but a reason (`circuitNote`, systems.js)
+              gets that reason right here, where the link would have sat —
+              the same fix Unstable's own circuitNote now reaches, no longer
+              stranded on the Math tab with nothing pointing at it. */}
           {circuit && circuitHref ? (
             <p className="hint circuit-back">
               This is also a circuit — {circuit.sentence}.{' '}
@@ -822,6 +886,18 @@ export default function App() {
                 Open in Circuit Lab →
               </a>
             </p>
+          ) : // The refusal is gated the SAME way PLANT_DEF/CONTROLLER_DEF and
+          // the plain plant/controller hints already are (`active ? null :
+          // ...`, above and in #controller/#plant below): a lesson's own note
+          // is doing the teaching in context, and the tight fold budget at
+          // 1366×768 has no spare line for a second one stacked under it —
+          // adding these four sentences unconditionally pushed the featured
+          // knob 18-75px past the fold on the three lessons that happen to
+          // use exactly these plants (motor, unstable, three lags). The
+          // reason stays fully reachable: click the plant with no lesson
+          // active, the same place PLANT_DEF and the plant's own hint live.
+          !active && !circuit && plant.circuitNote ? (
+            <p className="hint circuit-back is-refusal">{plant.circuitNote}</p>
           ) : null}
         </section>
 
@@ -871,6 +947,18 @@ export default function App() {
             // go quietly false). The picker's own range stands outside a
             // lesson.
             const lessonRange = active?.ranges?.[p.key]?.(ctrlP)
+            // A bare gain (no unit — Kp, Ki, Kd, Kc) has a floor above zero,
+            // and typing a negative number used to clamp there silently: the
+            // field commits 0.001 correctly (aria-valuenow confirms it) but
+            // DISPLAYS it in engineering notation as "1" beside a barely-there
+            // "m", which reads as "snapped to 1" to anyone not hunting for
+            // the prefix — round three's own finding. The fix decided here is
+            // to keep the clamp (it is the right floor, already applied) and
+            // make it legible before a reader ever needs it: a standing
+            // caption in the field's own hint slot, which costs no extra
+            // height (num-head is a row already, per @ee-labs/ui's base.css).
+            // A field with a real unit (the lead's zero/pole, rad/s) is
+            // unaffected — its own value never needs this floor called out.
             const field = (
               <NumField
                 key={p.key}
@@ -881,6 +969,7 @@ export default function App() {
                 min={lessonRange?.min ?? p.min}
                 max={lessonRange?.max ?? p.max}
                 scale={p.scale}
+                hint={p.unit ? undefined : `floor ${fmtNum(p.min, 3)}, no negative gains`}
                 eng
               />
             )

@@ -160,6 +160,16 @@ export const PLANTS = {
         return { b: [gm], a: [C, 0] }
       },
     },
+    // Why circuitFor (toCircuitLab.js) never finds a catalog match, even
+    // though the bench circuit above is real and verified: CORE_SCOPE Rule 2,
+    // a refused mapping is content, not a bare null. Round three found this
+    // plant renders NEITHER a link nor a reason where the link would sit —
+    // App.jsx reads this field for that spot, unrelated to `circuit` above,
+    // which only feeds the Math tab's "where this comes from on a bench" row.
+    circuitNote:
+      'No catalogue circuit matches this plant. The catalogue\'s only entry with a pole at the ' +
+      'origin, the op-amp integrator, inverts, H(s) = −1/(sRC), and this plant\'s gain is always ' +
+      'positive, so no value ever meets that sign flip.',
   },
 
   secondOrder: {
@@ -243,6 +253,12 @@ export const PLANTS = {
         return { b: [gm], a: polyMul([R * C, 1], [C2, 0]) }
       },
     },
+    // See the integrator's own comment above: this is the reason there is no
+    // catalog LINK, not a restatement of the bench circuit two lines up.
+    circuitNote:
+      'No catalogue circuit matches this plant. It pairs a pole at the origin with a second, ' +
+      'finite pole, and the catalogue\'s one pole-at-the-origin entry, the op-amp integrator, has ' +
+      'no second pole to be the lag.',
   },
 
   threePole: {
@@ -280,6 +296,10 @@ export const PLANTS = {
         return { b: [p.k], a: polyMul(polyMul(stage(p.t1), stage(p.t2)), stage(p.t3)) }
       },
     },
+    circuitNote:
+      'No catalogue circuit matches this plant. Three real poles need a third stage, and the ' +
+      'catalogue\'s deepest entries, the series RLC, the twin-T and the Sallen-Key, all stop at ' +
+      'second order.',
   },
 
   unstable: {
@@ -326,6 +346,9 @@ export const PLANTS = {
     ],
     tf: (p) => ({ b: trimLeading([p.b2, p.b1, p.b0]), a: trimLeading([p.a2, p.a1, p.a0]) }),
     tex: (p) => `P(s) = \\frac{${texPoly(p.b2, p.b1, p.b0)}}{${texPoly(p.a2, p.a1, p.a0)}}`,
+    circuitNote:
+      'A custom H(s) has no fixed shape to look up, so no catalogue circuit is offered. Match a ' +
+      'named plant\'s shape, such as the first- or second-order defaults, to see one.',
   },
 }
 

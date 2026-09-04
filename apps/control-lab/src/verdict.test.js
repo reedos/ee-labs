@@ -9,6 +9,7 @@ import {
   MARGINAL_REL,
   verdictBadge,
   bodeMarginNote,
+  plantInverted,
   joinParts,
 } from './verdict.js'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf, ctrlDefaultsFor } from './systems.js'
@@ -251,5 +252,55 @@ describe('bodeMarginNote', () => {
     const note = bodeMarginNote('undefined', null)
     expect(joinParts(note.parts)).toMatch(/all-zero denominator/)
     expect(joinParts(note.parts)).not.toMatch(/phase never reaches/)
+  })
+
+  // Round three's contradiction: the unstable plant under PI or PID at the
+  // default Kp = 5 read "past the boundary, it sits at 0.20x this gain"
+  // beside a badge saying stable and closed-loop step that settles. Correct
+  // arithmetic, no sentence anywhere saying this plant's failure mode runs
+  // the other way, and a first-year reader had no way to resolve it.
+  it('reads as a warning for an ordinary plant, and as safe for an inverted one, at the same 0.20x', () => {
+    const ordinary = bodeMarginNote('stable', 0.2, false)
+    expect(joinParts(ordinary.parts)).toMatch(/past the boundary/)
+    const inverted = bodeMarginNote('stable', 0.2, true)
+    expect(joinParts(inverted.parts)).toMatch(/safe/)
+    expect(joinParts(inverted.parts)).not.toMatch(/past the boundary/)
+    // Same measured number either way — only the sentence around it changes.
+    expect(joinParts(inverted.parts)).toContain('0.20×')
+  })
+
+  it('defaults to the ordinary reading when inverted is left unstated', () => {
+    expect(joinParts(bodeMarginNote('stable', 0.2).parts)).toMatch(/past the boundary/)
+  })
+
+  it('room to spare (gain margin above 1x) reads the same regardless of inverted', () => {
+    expect(joinParts(bodeMarginNote('stable', 5, true).parts)).toMatch(/room for/)
+    expect(joinParts(bodeMarginNote('stable', 5, false).parts)).toMatch(/room for/)
+  })
+})
+
+describe('plantInverted', () => {
+  it('is true for the unstable plant alone, at the loop the grading round measured', () => {
+    // Unstable plant under PI at the registry's own Kp = 5 default — the
+    // exact loop round-three grading read the contradiction on.
+    const loop = buildLoop('unstable', { k: 1, p: 1 }, 'pi', ctrlDefaultsFor('unstable', { k: 1, p: 1 }, 'pi'))
+    expect(plantInverted(loop)).toBe(true)
+  })
+
+  it('is false for every ordinary plant in the catalog', () => {
+    for (const id of Object.keys(PLANTS)) {
+      if (id === 'unstable') continue
+      const plantP = defaultsOf(PLANTS[id])
+      const loop = buildLoop(id, plantP, 'p', defaultsOf(CONTROLLERS.p))
+      expect(plantInverted(loop), id).toBe(false)
+    }
+  })
+
+  it('reads the PLANT alone: a controller cannot move it either way', () => {
+    const plantP = { k: 1, p: 1 }
+    for (const cid of Object.keys(CONTROLLERS)) {
+      const loop = buildLoop('unstable', plantP, cid, ctrlDefaultsFor('unstable', plantP, cid))
+      expect(plantInverted(loop), cid).toBe(true)
+    }
   })
 })

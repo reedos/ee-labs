@@ -284,6 +284,31 @@ describe("the math panel's phase accounting", () => {
       'This H(s) has an all-zero denominator — not a system yet. Give a₂, a₁ or a₀ a value.',
     ])
   })
+
+  // Round three: the unstable plant under PI/PID at Kp = 5 read "past the
+  // boundary, it sits at 0.20x this gain" beside a badge saying stable, with
+  // nothing on screen resolving the two. The Math tab now states the plant's
+  // own inverted failure mode plainly, and the gain-margin row's own note
+  // says the same thing right beside the number.
+  it("names the plant's inverted failure mode on the Math tab, and only there", () => {
+    const entry = entryFor('unstable', 'pi', {}, { kp: 5 })
+    const texts = entry.blocks.filter((b) => b.kind === 'text').map((b) => b.text).join(' ')
+    expect(texts).toMatch(/right half plane/)
+    expect(texts).toMatch(/too little gain/)
+    const gmRow = rowsOf(entry, 'values').find((r) => r.label === 'gain margin')
+    expect(gmRow).toBeTruthy()
+    expect(gmRow.value).toBeLessThan(1)
+    expect(gmRow.note).toMatch(/safe/)
+
+    // An ordinary plant never gets this paragraph or this row note, at any
+    // gain — the explanation is structural to the PLANT, not to a thin
+    // margin, and must not bleed into a loop that fails the ordinary way.
+    const ordinary = entryFor('motor', 'pi', {}, { kp: 5 })
+    const ordinaryTexts = ordinary.blocks.filter((b) => b.kind === 'text').map((b) => b.text).join(' ')
+    expect(ordinaryTexts).not.toMatch(/too little gain/)
+    const ordinaryGm = rowsOf(ordinary, 'values').find((r) => r.label === 'gain margin')
+    if (ordinaryGm) expect(ordinaryGm.note).not.toMatch(/safe/)
+  })
 })
 
 describe('the two doors: what the S and T prose claims', () => {

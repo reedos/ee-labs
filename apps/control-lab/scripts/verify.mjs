@@ -1330,35 +1330,64 @@ console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
   // bottom still reports a y comfortably inside 844 and would pass a plain
   // viewport check — which is exactly how "note at y 411, try line at y 488,
   // both past the 338px box" shipped unnoticed.
+  //
+  // Round three's own finding: the check above (three lessons, each from a
+  // FRESH page.goto, scroll forced to 0 before measuring) passed while a
+  // real phone reader hit the bug on 10 of 13 lessons. Two things hid it —
+  // walking only 3 of the 13 lessons, and manufacturing the one scroll
+  // position (zero) under which the note is always in view before ever
+  // measuring. Neither is honest. This walks all 13, from ONE session, by
+  // TAPPING THE LESSON LIST exactly as loadLesson() already does elsewhere
+  // in this file (not the sticky prev/next arrows, which never move the
+  // sidebar's own scroll and were never the case that broke) — the sidebar
+  // keeps whatever scroll position the previous tap left it at, the way a
+  // real reader's would, and nothing here ever sets .controls.scrollTop by
+  // hand before a measurement.
   await page.setViewportSize(PHONE_VIEWPORT)
-  for (const name of phoneLessons) {
-    await page.goto(URL, { waitUntil: 'networkidle' })
-    await page.waitForSelector('.views canvas')
+  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.views canvas')
+  const allLessonNames = await page.evaluate(() =>
+    [...document.querySelectorAll('#lessons details.preset-group .preset')].map((b) => b.textContent.trim()),
+  )
+  if (allLessonNames.length !== 13) fail(`phone walk: expected 13 lessons, found ${allLessonNames.length}`)
+  const results = []
+  for (const name of allLessonNames) {
     await loadLesson(name)
-    await page.evaluate(() => {
-      const el = document.querySelector('.controls')
-      if (el) el.scrollTop = 0
-      window.scrollTo(0, 0)
-    })
     await page.waitForTimeout(60)
     const sidebar = await page.locator('.controls').boundingBox()
     const title = await page.locator('.note-title').first().boundingBox()
     const tryLine = await page.locator('.try-line').first().boundingBox()
+    // The disturbance toggle (App.jsx's renderStepToggle) is the one
+    // "featured knob" that lives INSIDE the lesson block itself — present
+    // on the two lessons that feature it, absent (by design) elsewhere.
+    const featuredInBody = await page
+      .locator('.lesson-body [data-featured]')
+      .first()
+      .boundingBox()
+      .catch(() => null)
+    const within = (box) =>
+      !!box && box.y >= sidebar.y - 0.5 && box.y + box.height <= sidebar.y + sidebar.height + 0.5
     for (const [label, box] of [
       ['note title', title],
       ['try line', tryLine],
     ]) {
       if (!box) {
-        fail(`phone/${name}: ${label} not rendered`)
+        fail(`phone walk/${name}: ${label} not rendered`)
         continue
       }
-      if (box.y < sidebar.y - 0.5 || box.y + box.height > sidebar.y + sidebar.height + 0.5) {
+      if (!within(box)) {
         fail(
-          `phone/${name}: ${label} outside the sidebar's visible box (${box.y.toFixed(0)}–${(box.y + box.height).toFixed(0)} vs sidebar ${sidebar.y.toFixed(0)}–${(sidebar.y + sidebar.height).toFixed(0)})`,
+          `phone walk/${name}: ${label} outside the sidebar's visible box (${box.y.toFixed(0)}–${(box.y + box.height).toFixed(0)} vs sidebar ${sidebar.y.toFixed(0)}–${(sidebar.y + sidebar.height).toFixed(0)})`,
         )
       }
     }
-    console.log(`   390x844 ${name.padEnd(34)} note title + try line inside the sidebar's ${sidebar.height.toFixed(0)}px box`)
+    if (featuredInBody && !within(featuredInBody)) {
+      fail(`phone walk/${name}: the lesson's own featured control is outside the sidebar's visible box`)
+    }
+    results.push({ name, note: within(title), tryLine: within(tryLine) })
+  }
+  for (const r of results) {
+    console.log(`   390x844 ${r.name.padEnd(34)} note ${r.note ? 'in view' : 'OFF SCREEN'}, try line ${r.tryLine ? 'in view' : 'OFF SCREEN'} (tapped from the list, no scroll reset)`)
   }
 }
 

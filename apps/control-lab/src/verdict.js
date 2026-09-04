@@ -48,6 +48,26 @@ export function verdictOf(closed, marg = null) {
   return isStable(closed) ? 'stable' : 'unstable'
 }
 
+/**
+ * Does this PLANT alone, with the loop cut, already carry a pole in the
+ * right half plane?
+ *
+ * That one structural fact flips which direction of the gain margin is
+ * dangerous (TERMS.rhp). For an ordinary plant more gain is what eventually
+ * destabilises it, so a margin below 1x means the loop is already past the
+ * edge. For a plant like this, feedback is the only reason it holds at all,
+ * so LESS gain is the failure mode and a margin below 1x is the expected,
+ * safe reading — the round-three grading found exactly this plant (unstable,
+ * under PI or PID at Kp = 5) reading "past the boundary, 0.20x this gain"
+ * beside a badge saying stable, with nothing on screen resolving it.
+ * Checked on `loop.plant` alone, never `loop.open` or `loop.closed`: a
+ * controller cannot move the PLANT's own poles, only the loop's, so this
+ * stays true regardless of which controller or gain is dialled in.
+ */
+export function plantInverted(loop) {
+  return polesZeros(loop.plant).poles.some(([re]) => re > 1e-9)
+}
+
 /** The rad/s of the pole pair nearest the axis — the frequency a marginal loop sings at. */
 export function oscillationOf(closed) {
   const { poles } = polesZeros(closed)
@@ -131,13 +151,29 @@ export function joinParts(parts) {
  * picker's own default-state numbers, so "boundary" and "−180°" can never
  * appear on screen with no definition reachable — the defect was that this
  * sentence used to exist in ONE place (here) and get scanned in NONE.
+ *
+ * `inverted` (plantInverted, above) is the round-three fix: a gain margin
+ * below 1x reads as a warning ("past the boundary") for an ordinary plant,
+ * and as the SAFE reading for a plant whose own pole is already in the right
+ * half plane, where feedback is what holds it and too little gain is the
+ * failure mode. Same number either way — only the sentence around it changes.
  */
-export function bodeMarginNote(verdict, gainMargin) {
+export function bodeMarginNote(verdict, gainMargin, inverted = false) {
   if (verdict === 'undefined') return { prov: true, parts: [{ t: UNDEFINED_PLANT_REASON }] }
   if (verdict === 'marginal') return { prov: true, parts: [{ t: 'gain margin 0 dB, this gain is the boundary' }] }
   if (gainMargin == null) return { prov: true, parts: [{ t: 'phase never reaches −180°' }] }
   if (gainMargin >= 1) {
     return { prov: false, parts: [{ t: 'room for ' }, { b: `${gainMargin.toFixed(2)}×` }, { t: ' more gain' }] }
+  }
+  if (inverted) {
+    return {
+      prov: false,
+      parts: [
+        { t: 'safe here — this plant fails on too little gain, and the boundary sits at ' },
+        { b: `${gainMargin.toFixed(2)}×` },
+        { t: ' the current gain, not above it' },
+      ],
+    }
   }
   return {
     prov: false,

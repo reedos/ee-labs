@@ -541,7 +541,21 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    watch pane — header, transport row and four strips — ends inside the first
    screen; the per-term readouts are on the canvas too, so they yield. */
 @media (max-width: 900px) {
-  .app.has-lesson .controls { max-height: 40vh; }
+  .app.has-lesson .controls {
+    max-height: 40vh;
+    /* The sidebar's own scroll correction (App.jsx: the effect that scrolls
+       .lesson-body back into view after a lesson loads) sets scrollTop with
+       JS, right after the new note's height changes the layout above it.
+       The browser's own scroll anchoring then "helpfully" nudges that exact
+       scrollTop again to compensate for the same layout change, undoing the
+       correction by however much the note's height differs from the last
+       lesson's — measured moving the note 56-80px back out of the box on
+       the very next lesson load. This region is scrolled entirely by this
+       app's own code, never by a reader scrolling mid-reflow, so there is
+       nothing for anchoring to preserve here.
+    */
+    overflow-anchor: none;
+  }
   .views.is-weighted > .view.is-primary .readout [data-part] { display: none; }
   /* Same squeeze as the short-desktop rule above, for the same reason: the
      subhead is the one line in the box that is not part of the lesson, and
