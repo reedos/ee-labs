@@ -72,6 +72,31 @@ export default function BodeCanvas({
       hi = Math.ceil((hi + 3) / 20) * 20
       lo = Math.max(Math.floor((lo - 3) / 20) * 20, hi - 160)
 
+      // The phase axis's range and scale, computed here (rather than only
+      // inside the "draw the phase curve" block below) so a magnitude-level
+      // caption can tell where the phase trace sits BEFORE it is drawn — see
+      // the caption placement note below.
+      let plo = 0
+      let phi = 0
+      let py = null
+      if (showPhase && phase) {
+        const takeDeg = (rad) => {
+          const d = (rad * 180) / Math.PI
+          if (d < plo) plo = d
+          if (d > phi) phi = d
+        }
+        for (let i = 0; i < phase.length; i++) {
+          takeDeg(phase[i])
+          if (band) {
+            takeDeg(band.phaseLo[i])
+            takeDeg(band.phaseHi[i])
+          }
+        }
+        plo = Math.min(-90, Math.floor(plo / 90) * 90)
+        phi = Math.max(90, Math.ceil(phi / 90) * 90)
+        py = (d) => area.y + area.h - ((d - plo) / (phi - plo)) * area.h
+      }
+
       const { sx, sy } = drawFrame(
         ctx,
         area,
@@ -134,12 +159,20 @@ export default function BodeCanvas({
       }
 
       // Level captions stack: each takes the first free band at or below
-      // where it wants to be, so "H = 3/4 = −2.50 dB" and "phase = 0°" —
-      // 6 px apart on a divider — read as two lines instead of one smear.
+      // where it wants to be, so two magnitude captions — or a magnitude and
+      // a phase one — read as two lines instead of one smear.
       // The y each landed on is written to the DOM for the harness.
       const lineH = 14 * k
       const placed = []
-      const placeAt = (top) => {
+      // `avoid` steers clear of a LINE (not another caption): a single Y a
+      // box must not straddle, given the same lineH berth. Needed because a
+      // circuit with no dynamics (the divider) holds both H and the phase at
+      // one flat value each, so "H = 3/4 = −2.50 dB" (hugging the magnitude
+      // trace) and "phase = 0°" (hugging the phase trace) used to print
+      // straight through whichever trace was NOT their own — the two lines
+      // sit only a few px apart, and the caption stack only ever checked
+      // itself against other CAPTIONS, never against the other axis's line.
+      const placeAt = (top, avoid = []) => {
         let y = top
         let moved = true
         while (moved) {
@@ -150,19 +183,45 @@ export default function BodeCanvas({
               moved = true
             }
           }
+          for (const p of avoid) {
+            const b = p - lineH / 2
+            if (y < b + lineH && y + lineH > b) {
+              y = b + lineH
+              moved = true
+            }
+          }
         }
         placed.push(y)
         return y
       }
+      // Each trace's own Y at the caption's x (the right edge) — the OTHER
+      // axis's line a caption must clear, not its own.
+      const magLineY = mag.length ? sy(db(mag[mag.length - 1])) : null
+      const phaseLineY =
+        showPhase && phase && phase.length ? py((phase[phase.length - 1] * 180) / Math.PI) : null
+      // Is this box clear of every already-placed caption AND every line in
+      // `avoid`? Shared with the point-marker code below.
+      const free = (top, avoid = []) =>
+        placed.every((p) => top >= p + lineH || top + lineH <= p) &&
+        avoid.every((p) => {
+          const b = p - lineH / 2
+          return top >= b + lineH || top + lineH <= b
+        })
       ctx.font = `${Math.round(11 * k)}px ${MONO}`
       ctx.textAlign = 'right'
       ctx.textBaseline = 'top'
       for (const a of annotations) {
         if (!Number.isFinite(a.db)) continue
         ctx.fillStyle = COLORS.marker
-        // Just above the magnitude trace: the caption's box is one line tall
-        // ending 4 px over the line.
-        ctx.fillText(a.text, area.x + area.w - 8 * k, placeAt(sy(a.db) - 4 * k - lineH))
+        const avoid = phaseLineY != null ? [phaseLineY] : []
+        // Just above the magnitude trace, ending 4 px over the line — or, if
+        // that spot is the phase trace's (the divider: both flat and only a
+        // few px apart), just under the magnitude trace instead.
+        const above = sy(a.db) - 4 * k - lineH
+        const below = sy(a.db) + 4 * k
+        const top = free(above, avoid) ? above : free(below, avoid) ? below : placeAt(above, avoid)
+        placed.push(top)
+        ctx.fillText(a.text, area.x + area.w - 8 * k, top)
       }
 
       // The 0 dB reference, where the output equals the input.
@@ -238,7 +297,7 @@ export default function BodeCanvas({
         while (i < freqs.length - 1 && freqs[i] < f) i++
         return i
       }
-      const free = (top) => placed.every((p) => top >= p + lineH || top + lineH <= p)
+      // `free` is defined above, alongside the level captions that share it.
       const mark = (x, y, text, color, fallingRight) => {
         ctx.fillStyle = color
         ctx.beginPath()
@@ -271,24 +330,8 @@ export default function BodeCanvas({
       }
 
       if (showPhase && phase) {
-        let plo = 0
-        let phi = 0
-        const takeDeg = (rad) => {
-          const d = (rad * 180) / Math.PI
-          if (d < plo) plo = d
-          if (d > phi) phi = d
-        }
-        for (let i = 0; i < phase.length; i++) {
-          takeDeg(phase[i])
-          if (band) {
-            takeDeg(band.phaseLo[i])
-            takeDeg(band.phaseHi[i])
-          }
-        }
-        plo = Math.min(-90, Math.floor(plo / 90) * 90)
-        phi = Math.max(90, Math.ceil(phi / 90) * 90)
-        const py = (d) => area.y + area.h - ((d - plo) / (phi - plo)) * area.h
-
+        // plo, phi and py are computed above, before the magnitude captions,
+        // so a magnitude caption can already tell where this trace will sit.
         if (band) {
           const pedge = (arr) => {
             ctx.beginPath()
@@ -341,8 +384,14 @@ export default function BodeCanvas({
         ctx.textBaseline = 'top'
         for (const a of annotations) {
           if (!Number.isFinite(a.deg)) continue
-          // Just under the phase trace — and below any caption already there.
-          ctx.fillText(a.text, area.x + area.w - 8 * k, placeAt(py(a.deg) + 4 * k))
+          const avoid = magLineY != null ? [magLineY] : []
+          // Just under the phase trace — or, if that spot is the magnitude
+          // trace's (the divider), just over the phase trace instead.
+          const below = py(a.deg) + 4 * k
+          const above = py(a.deg) - 4 * k - lineH
+          const top = free(below, avoid) ? below : free(above, avoid) ? above : placeAt(below, avoid)
+          placed.push(top)
+          ctx.fillText(a.text, area.x + area.w - 8 * k, top)
         }
         for (const p of points) {
           if (!(p.f > 0) || !Number.isFinite(p.deg)) continue

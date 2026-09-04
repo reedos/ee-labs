@@ -722,16 +722,12 @@ export default function App() {
           {/* One row to grade the whole drawer at once — it reads as "on"
               only when every part agrees with it. */}
           {tolAllRow('components')}
-          {wobble.any && f0Spread != null ? (
-            <p className="hint" data-role="tolerance-spread">
-              With these parts f₀ lands anywhere in {f0Range[0]} to{' '}
-              {f0Range[1]} (±{fmtPct(f0Spread)}%)
-              {qSpread != null
-                ? ` and Q in ${wobble.q.lo.toPrecision(3)} to ${wobble.q.hi.toPrecision(3)} (±${fmtPct(qSpread)}%). The square root halves L's and C's errors in both — what doubles Q's spread is R, which enters Q in full and f₀ not at all.`
-                : '.'}{' '}
-              The poles view shows the scatter.
-            </p>
-          ) : null}
+          {/* The reading itself — f₀'s and Q's spread across the 120 builds —
+              used to print here and nowhere else, a fold away from the poles
+              view a try line sends a reader to. It now lives beside the
+              cloud it describes (the Poles & zeros pane below), so the
+              student who did open every fold still found no percentage on
+              any chart or readout: see that render for the full text. */}
           {/* The math used to unfold here, and unfolding it grew the sidebar
               by nearly two thousand pixels — every knob below it gone. It is
               a view of the circuit now, a tab beside Step and Poles. */}
@@ -931,6 +927,25 @@ export default function App() {
                   <span className={stable ? '' : 'flag warn'}>
                     {stable ? 'all in the left half plane' : 'not all in the left half plane'}
                   </span>
+                  {/* The reading a tolerance try line promises, in the same
+                      readout as the pole values — not a fold away in the
+                      sidebar. A student who opened every fold still found no
+                      percentage on any chart or readout, because this used
+                      to live only under Components, a scroll below the
+                      note, try line and this very plot. */}
+                  {wobble.any && f0Spread != null ? (
+                    <span
+                      data-role="tolerance-spread"
+                      title={`f₀ lands anywhere in ${f0Range[0]} to ${f0Range[1]} over these 120 builds`}
+                    >
+                      f₀ spread <b>±{fmtPct(f0Spread)}%</b>
+                      {qSpread != null ? (
+                        <>
+                          {' '}Q spread <b>±{fmtPct(qSpread)}%</b>
+                        </>
+                      ) : null}
+                    </span>
+                  ) : null}
                 </>
               ) : (
                 <span>

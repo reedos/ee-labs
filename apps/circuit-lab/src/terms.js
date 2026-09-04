@@ -21,9 +21,10 @@ export const TERMS = {
     name: 'Transfer function H(s)',
     match: /H\(s\)|transfer function/i,
     def:
-      'The ratio of output to input, written as a function of the complex frequency s. Put ' +
-      's = jω (a sinusoid at ω rad/s) and |H| is how much gets through while its angle is the ' +
-      'phase shift — one formula that answers every "what does this circuit do at f?" at once.',
+      'The ratio of output to input, written as a function of the complex frequency s. j is ' +
+      'the imaginary unit, √−1. Put s = jω (a sinusoid at ω rad/s) and |H| is how much gets ' +
+      'through while its angle is the phase shift — one formula that answers every "what does ' +
+      'this circuit do at f?" at once.',
   },
   s: {
     name: 's, numerator and denominator',

@@ -254,7 +254,8 @@ export const LESSONS = [
       'No part in a drawer is exact, and this plot shows what that costs. The series RLC is built 120 times ' +
     'from ±5% parts. f₀ = 1/2π√LC wobbles ±4.3% and Q ±8.2%, twice as far. R enters Q at full strength and f₀ ' +
     'not at all. Q is the spec that costs money.',
-    try: 'Switch every part to ±1%, f₀’s spread shrinks to ±0.85%, Q’s to ±1.7% (at ±5%: ±4.3% and ±8.2%).',
+    try: 'Switch every part to ±1%, and the pole cloud collapses back to two clean crosses. The ' +
+    'readout above still shows the shrink: f₀ ±0.85%, Q ±1.7%, far below ±5%’s ±4.3% and ±8.2%.',
     chips: [
       { label: 'exact', tol: 0 },
       { label: '±1%', tol: 0.01 },
