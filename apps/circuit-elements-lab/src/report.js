@@ -9,7 +9,7 @@ import { fmtNum } from '@ee-labs/ui'
  * it came from, and its probe passed because it counted rows without reading
  * them). `outcome` is the one-line result: the KCL residual, or the refusal.
  */
-export function reportSummary({ id, params, show, view, outcome, cursor }) {
+export function reportSummary({ id, params, show, view, outcome, cursor, link }) {
   const exp = byId[id]
   // A toggle knob reports its position by name, a choice (a diode's model) by
   // the name of the position it is in, and a number as a number.
@@ -34,5 +34,6 @@ export function reportSummary({ id, params, show, view, outcome, cursor }) {
     Outcome: outcome,
   }
   if (Number.isFinite(cursor)) out.Cursor = `t = ${fmtNum(cursor)} s`
+  if (link) out.Link = link
   return out
 }

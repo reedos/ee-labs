@@ -507,7 +507,9 @@ export const LESSONS = {
       { say: 'Now mismatch R₄ by one part in a hundred, 10.1 kΩ, with E₁ = E₂ = 1.2 V: 10.8 mV of common-mode input leaks through.', set: { E1: 1.2, R4: 10100 }, reads: [['v.out', 0.010811]] },
     ],
     why:
-      'That ratio, differential gain over common-mode gain, is the CMRR, and it is set by resistor matching, not by the op-amp.',
+      'A real signal often rides on a voltage picked up by both wires alike, mains hum on a long twisted pair, ' +
+    'say. This circuit amplifies the difference between its inputs and rejects whatever they share. The ratio ' +
+    'of the two gains, differential over common-mode, is the CMRR. Resistor matching sets it, not the op-amp.',
   },
   e8: {
     see:
@@ -677,7 +679,10 @@ export const LESSONS = {
       { say: 'A hair more, 210 Ω: the roots split, ζ = 1.05, and the slow one slows the approach.', set: { R1: 210 }, reads: [['state.zeta', 1.05], ['state.face', 'overdamped']] },
     ],
     why:
-      'v_C = E[1 − (1 + αt)e^(−αt)], and the current i = (E/L)·t·e^(−αt) peaks at t = 1/α.',
+      'At critical damping the equation’s two roots, which are apart everywhere else, land on top of each ' +
+    'other. A repeated root does not just decay. It decays with an extra factor of time riding along, so the ' +
+    'capacitor voltage is v_C = E[1 − (1 + αt)e^(−αt)]. The current follows the same shape and peaks at t = ' +
+    '1/α.',
   },
   g3: {
     see:
@@ -833,10 +838,10 @@ export const LESSONS = {
   },
   h5: {
     see:
-      'Drive an RL load, 100 Ω and 0.3 H, from 10 V peak at 50 Hz. The current is 72.8 mA peak and lags by ' +
-    '43.3°. The instantaneous power p = v·i is a constant plus a sinusoid at 100 Hz, twice the drive ' +
-    'frequency. Its average, the real power P = 265 mW, is all in the resistor. The inductor’s power averages ' +
-    'exactly zero.',
+      'An inductor delays the current behind the drive voltage. Drive 100 Ω and 0.3 H from 10 V peak at 50 Hz ' +
+    'and the current lags by 43.3°, its peak 72.8 mA. Power arrives at twice that frequency, 100 Hz, because ' +
+    'it depends on both v and i. Only the resistor turns any of it to heat, an average P = 265 mW. The ' +
+    'inductor’s own power averages exactly zero.',
     seeReads: [['mag.i.R1', 0.07279], ['lead.i.R1', -43.3], [(x) => x.omega / Math.PI, 100], ['ac.P', 0.2649]],
     whyReads: [[(x, p) => p.A / Math.SQRT2, 7.071], [(x) => cx.cabs(x.ac.i.R1) / Math.SQRT2, 0.05147]],
     try: [

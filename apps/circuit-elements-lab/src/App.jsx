@@ -31,6 +31,7 @@ import { captionFor } from './captions.js'
 import { familyOf, familyOfLabel } from './palette.js'
 import { activeStep, advance, complete, groupArc, knobsOf, load, measurable, readsOf, save, tick, withPredicted, withSteps } from './progress.js'
 import { rereference, switchKnob } from './reference.js'
+import { buildHash, locationFor, readLocationHash } from './deeplink.js'
 import pkg from '../package.json'
 
 // The cursor's play: the whole window in this many milliseconds, whatever the
@@ -69,15 +70,34 @@ const nextUp = (exp) => {
 /** The knob open when no step names one: the first in the Knobs section. */
 const firstKnob = (exp) => (exp.params.find((p) => !(p.key === 'N' && exp.window)) || {}).key
 
+/**
+ * The state to open on: the URL's own hash (`#a1`, `#h4&R1=5000`…) when it
+ * names an experiment this lab has, so a reload or a shared link lands back
+ * where it left off; the first experiment at its defaults otherwise. Read
+ * once, at mount — a link followed by hand-turned knobs must not keep
+ * snapping back to it.
+ */
+function initialState() {
+  const linked = readLocationHash()
+  const id = linked && byId[linked.id] ? linked.id : FIRST
+  const exp = byId[id]
+  const params = linked && linked.id === id ? linked.params : defaultsOf(id)
+  const show = linked && linked.show && ['i', 'v', 'p', 'none'].includes(linked.show) ? linked.show : exp.show
+  const view = linked && linked.view && exp.views.includes(linked.view) ? linked.view : exp.view
+  const cursor = linked && Number.isFinite(linked.cursor) ? linked.cursor : cursorFor(exp, params)
+  return { id, params, show, view, cursor }
+}
+
 export default function App() {
-  const [id, setId] = useState(FIRST)
-  const [params, setParams] = useState(() => defaultsOf(FIRST))
-  const [show, setShow] = useState(byId[FIRST].show)
-  const [view, setView] = useState(byId[FIRST].view)
+  const [initial] = useState(initialState)
+  const [id, setId] = useState(initial.id)
+  const [params, setParams] = useState(initial.params)
+  const [show, setShow] = useState(initial.show)
+  const [view, setView] = useState(initial.view)
   // The instant the schematic shows, in seconds; null for the DC groups. The
   // analysis clamps it to the window, so a knob that shrinks the window pulls
   // the cursor back with it.
-  const [cursor, setCursor] = useState(() => cursorFor(byId[FIRST], defaultsOf(FIRST)))
+  const [cursor, setCursor] = useState(initial.cursor)
   // Whether the note still describes what is on screen: any knob moved by hand
   // retires it, as in the other labs. The schematic/view toggles and the
   // cursor are exempt.
@@ -295,6 +315,20 @@ export default function App() {
     const on = currentView === 'scope' ? marks.scope : currentView === 'sweep' ? marks.sweep : marks.freq
     return captionFor(exp, currentView, x, params, on, drive)
   }, [exp, currentView, x, params, marks, drive])
+  // The URL follows the experiment, its knobs, its pane and (once at rest)
+  // its cursor, so a refresh or a pasted link lands on the same picture — the
+  // reload above already trusts this on the way in. Replaced, never pushed,
+  // so the back button still means "the experiment before this one" rather
+  // than every knob turn. Skipped while the cursor is sweeping on its own
+  // (`playing`): the number is about to change again 60 times a second, and
+  // the URL only needs to hold the place the reader stopped at.
+  useEffect(() => {
+    if (playing || typeof window === 'undefined') return
+    // buildHash always returns at least the id (empty only for an id this lab
+    // does not have, which id never is), so the hash is never cleared to '' here.
+    const want = `#${buildHash({ id, params, show, view: currentView, cursor: dynamic ? x.cursor : null })}`
+    if (window.location.hash !== want) window.history.replaceState(null, '', want)
+  }, [id, params, show, currentView, dynamic, x.cursor, playing])
 
   return (
     <div className="app">
@@ -306,8 +340,16 @@ export default function App() {
           <ReportIssue
             lab="Circuit Elements Lab"
             version={pkg.version}
-            state={{ id, params, show, view: currentView, cursor }}
-            summary={reportSummary({ id, params, show, view: currentView, outcome, cursor: dynamic ? x.cursor : null })}
+            state={{ id, params, show, view: currentView, cursor, link: locationFor({ id, params, show, view: currentView, cursor: dynamic ? x.cursor : null }) }}
+            summary={reportSummary({
+              id,
+              params,
+              show,
+              view: currentView,
+              outcome,
+              cursor: dynamic ? x.cursor : null,
+              link: locationFor({ id, params, show, view: currentView, cursor: dynamic ? x.cursor : null }),
+            })}
           />
         </header>
 

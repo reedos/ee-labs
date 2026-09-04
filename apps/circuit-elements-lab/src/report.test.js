@@ -65,6 +65,13 @@ describe('the report summary', () => {
     expect(s.Outcome).toBe('refused: opamp-open-loop')
   })
 
+  it('carries the deep link when one is given, and omits the row when there is none', () => {
+    const withLink = reportSummary({ id: 'a1', params: defaultsOf('a1'), show: 'i', view: 'reading', outcome: 'solved', link: 'https://reedos.github.io/ee-labs/circuit-elements-lab/#a1' })
+    expect(withLink.Link).toBe('https://reedos.github.io/ee-labs/circuit-elements-lab/#a1')
+    const without = reportSummary({ id: 'a1', params: defaultsOf('a1'), show: 'i', view: 'reading', outcome: 'solved' })
+    expect(without.Link).toBeUndefined()
+  })
+
   it('survives an unknown experiment rather than throwing', () => {
     const s = reportSummary({ id: 'nope', params: {}, show: 'i', view: 'x', outcome: '' })
     expect(s.Experiment).toBe('nope')
