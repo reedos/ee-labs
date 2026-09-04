@@ -21,12 +21,17 @@ function Source({ src, sampleRate, onChange, onRemove, canRemove, fftSize }) {
   return (
     <div className={`source${src.enabled ? '' : ' is-off'}`}>
       <div className="source-head">
-        <input
-          type="checkbox"
-          checked={src.enabled}
-          onChange={(e) => set('enabled', e.target.checked)}
-          aria-label="Enable source"
-        />
+        {/* Wrapped in its own label (bare before): a native checkbox's real
+            tap target is whatever label surrounds it, and this one had none —
+            the 13x13 native box was the whole target. */}
+        <label className="source-enable" title="Enable source">
+          <input
+            type="checkbox"
+            checked={src.enabled}
+            onChange={(e) => set('enabled', e.target.checked)}
+            aria-label="Enable source"
+          />
+        </label>
         <select value={src.type} onChange={(e) => set('type', e.target.value)}>
           {WAVEFORMS.map((t) => (
             <option key={t} value={t}>
@@ -156,12 +161,6 @@ export default function Controls({
         <p className="sub">
           A signal, its frequency content, and what happens when you put things in the way.
         </p>
-        <ReportIssue
-          lab="Signal Lab"
-          version={pkg.version}
-          state={state}
-          summary={reportSummary(state)}
-        />
         {/* The words the top bar and every readout use on EVERY screen — FFT,
             bin, frame, window, the window names, RMS, crest, span — defined
             once here rather than in each preset's own terms list (CHROME_TERMS
@@ -456,6 +455,20 @@ export default function Controls({
           />
           Show filter start-up transient
         </label>
+      </section>
+
+      {/* Moved out of the header, where it sat right above the experiment
+          buttons and read as one more item in that list — the impatient
+          student clicked it thinking it was an experiment. Down here, past
+          everything a student came to touch, and set off by its own rule in
+          styles.css, it reads as what it is: a way out, not a way in. */}
+      <section className="feedback">
+        <ReportIssue
+          lab="Signal Lab"
+          version={pkg.version}
+          state={state}
+          summary={reportSummary(state)}
+        />
       </section>
     </aside>
   )

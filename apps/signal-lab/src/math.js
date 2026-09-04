@@ -1139,6 +1139,16 @@ const ENTRIES = {
       blocks: [
         T('A second-order low-pass has the transfer function'),
         F('H(s) = \\frac{\\omega_0^{2}}{s^{2} + \\dfrac{\\omega_0}{Q}s + \\omega_0^{2}}'),
+        // The careful student's own complaint: s and j never get a gloss
+        // anywhere in this lab, so the substitution below reads as a magic
+        // trick rather than a step they could redo. One sentence names both,
+        // and says plainly that redoing the algebra is optional — the check
+        // table under it measures the same conclusion directly.
+        T(
+          'Here s is the complex frequency of Laplace analysis, and j is the imaginary unit, ' +
+            '√−1. Following the substitution below is optional: the check table beneath it ' +
+            'measures the same conclusion directly, that the peak equals Q.',
+        ),
         T('At s = jω₀ the first and last terms cancel exactly, leaving'),
         F('|H(j\\omega_0)| = \\frac{\\omega_0^{2}}{\\dfrac{\\omega_0}{Q}\\,\\omega_0} = Q'),
         T(
@@ -1843,18 +1853,13 @@ const ENTRIES = {
     ]
     return {
       blocks: [
-        T('Put two tones through a power series and the cross terms are the whole story:'),
-        F(
-          '(\\cos\\omega_1 t + \\cos\\omega_2 t)^{3} \\;\\longrightarrow\\; ' +
-            '\\cos(2\\omega_1 \\pm \\omega_2)t,\\; \\cos(2\\omega_2 \\pm \\omega_1)t,\\;\\ldots',
-        ),
-        T('In general every product sits at'),
-        F('f = |m f_1 \\pm n f_2|, \\qquad m,n \\in \\mathbb{Z}'),
-        T(
-          'with order m + n. Third-order products are the troublesome ones: 2f₂ − f₁ lands close ' +
-            'to the originals, so no filter can remove it without removing the signal too. That ' +
-            'single fact sets the linearity requirement for most radio and optical front ends.',
-        ),
+        // Led with the measured table, on the review's own reading: the note
+        // above already explains the idea in plain English, and the table is
+        // the clear part. The cubic expansion and the set-membership formula
+        // that used to open this panel are unglossed notation with nothing
+        // above them to lean on, so the set notation is cut in favour of
+        // plain English, and the cubic expansion moves below the table,
+        // marked optional.
         T(
           live
             ? 'Measured on this spectrum, product by product. A symmetric clipper has only odd ' +
@@ -1872,6 +1877,21 @@ const ENTRIES = {
               unit: 'dB',
               note: `order ${p.order}`,
             })),
+        ),
+        T(
+          'Every product above sits at a whole-number combination of the two source frequencies, ' +
+            'm·f₁ ± n·f₂, with order m + n. Third-order products are the troublesome ones. 2f₂ − f₁ ' +
+            'lands close to the originals, so no filter can remove it without removing the signal ' +
+            'too. That single fact sets the linearity requirement for most radio and optical front ' +
+            'ends.',
+        ),
+        T(
+          'The algebra behind that is optional. Cubing a sum of cosines multiplies pairs and ' +
+            'triples of them together, which is where these combinations come from:',
+        ),
+        F(
+          '(\\cos\\omega_1 t + \\cos\\omega_2 t)^{3} \\;\\longrightarrow\\; ' +
+            '\\cos(2\\omega_1 \\pm \\omega_2)t,\\; \\cos(2\\omega_2 \\pm \\omega_1)t,\\;\\ldots',
         ),
         T(
           'A linear system can only scale and delay the frequencies already present. Creating new ' +
@@ -1894,8 +1914,9 @@ const ENTRIES = {
       ),
       F('x(t)\\,c(t) \\;\\longleftrightarrow\\; X(f) * C(f)'),
       T(
-        'and convolving with a pair of impulses at ±f_c is exactly what copies the spectrum up ' +
-          'to sit around the carrier.',
+        'The double arrow marks a Fourier transform pair, a signal beside its own spectrum, and ' +
+          'the asterisk marks convolution, not multiplication. Convolving with a pair of impulses ' +
+          'at ±f_c is exactly what copies the spectrum up to sit around the carrier.',
       ),
     ],
   }),

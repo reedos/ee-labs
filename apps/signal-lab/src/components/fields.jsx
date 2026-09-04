@@ -212,6 +212,13 @@ export function SourceField({ src, field, sampleRate, onChange }) {
         step={1}
         coarse={15}
         decimals={0}
+        // One-click landings on the phases every lesson asks a reader to
+        // find (0, 90 and 180 hide the interesting cases; 270 completes the
+        // circle). The bare slider has no tick marks, so finding an exact
+        // 180° by dragging alone was a hunt — the impatient student's own
+        // complaint, on a control the per-lesson try-chips do not always
+        // cover.
+        presets={[0, 90, 180, 270]}
       />
     )
   }

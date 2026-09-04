@@ -740,6 +740,11 @@ export function blockMath(block, ctx) {
         F(
           'H(z) = \\frac{b_0 + b_1 z^{-1} + b_2 z^{-2}}{1 + a_1 z^{-1} + a_2 z^{-2}}',
         ),
+        // z is unglossed everywhere else in this lab, and this is its first
+        // appearance (the "Low-pass a square" preset comes first among the
+        // biquad presets). One sentence names what z^-1 means, in terms the
+        // difference equation two lines down makes concrete either way.
+        T('Here z⁻¹ means "one sample late", so z⁻² means two samples late.'),
         T('With the current settings the coefficients are'),
         F(
           `H(z) = \\frac{${sig(co.b0)} ${signed(co.b1)}z^{-1} ${signed(co.b2)}z^{-2}}` +
@@ -753,7 +758,8 @@ export function blockMath(block, ctx) {
         T(
           'The poles sit at radius r from the origin. Inside the unit circle the filter is ' +
             'stable and its ringing dies away as rⁿ; at r = 1 it would ring forever, and beyond ' +
-            'it the output would grow without limit.',
+            'it the output would grow without limit. The preset "Zeros on the circle" draws this ' +
+            'circle, with poles and zeros marked on it.',
         ),
         V([
           { label: 'pole radius r', value: r, note: isStable(co) ? 'stable (r < 1)' : 'UNSTABLE' },

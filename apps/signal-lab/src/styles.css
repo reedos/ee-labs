@@ -14,6 +14,32 @@ button.flow-node:hover {
   color: var(--accent);
 }
 
+/* ---------- feedback link, moved off the header ----------
+ * It used to sit right above the "Try this" button list and the impatient
+ * student clicked it thinking it was an experiment. Down here it is the last
+ * thing in the sidebar rather than the first, and centred rather than
+ * left-aligned like every nav control above it — no top padding comes free
+ * without an h2 (see `.controls section` in base.css), so it is added here. */
+.controls .feedback {
+  padding-top: 12px;
+  text-align: center;
+}
+
+/* ---------- top bar: rate, FFT, window and overlay read as controls ----------
+ * The impatient student's own words: these "do not look clickable and were
+ * nearly missed". Their border shared the same dim colour as every plain
+ * divider in the top bar. A brighter border, already used for the flow
+ * diagram's own wires, says "click me" without moving or resizing anything
+ * the tap-target pass elsewhere owns. */
+.topbar-controls .num-input,
+.topbar-field select {
+  border-color: var(--line-bright);
+}
+
+.view-head .segmented {
+  border-color: var(--line-bright);
+}
+
 
 
 
@@ -68,6 +94,19 @@ button.flow-node:hover {
 
 .source-head select {
   flex: 1;
+}
+
+/* The enable checkbox has no visible label text (an icon-only toggle at the
+   head of the card) — wrapped in its own <label> so it has SOME clickable
+   area at all (a bare native checkbox is ~13x13 with nothing around it to
+   extend it, unlike every other checkbox in the suite, which already wraps
+   a text label). */
+.source-enable {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  cursor: pointer;
 }
 
 /* ---------- block cards ---------- */
@@ -377,12 +416,33 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .view-head .segmented { flex: 0 0 auto; }
 .view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
 
+/* Touch target, but a narrower one than base.css's general 44x44: this
+   field lives in a plot pane's own header, sharing the spectrum pane's
+   view-head with two segmented rows already (amplitude scale, overlay) —
+   growing it to 44 tall pushed the spectrum canvas off the bottom of a
+   phone screen (measured: 888px, past the 844px fold; the two-canvases-
+   on-screen budget, item 10j, has no more to give). It stays at the
+   plot-pane exception's 24px floor, same as base.css's .views .segmented
+   button just below it in the cascade — only its WIDTH was ever actually
+   under that floor (22px), so only width grows. */
+@media (max-width: 900px) {
+  .view-head .num.is-compact .num-step {
+    width: 26px;
+  }
+}
+
 /* Phone: the topbar's global controls wrap instead of running off the right
    edge (the Window select was clipped at 390px), and pane-header control
    groups wrap under the title without crowding the readouts. */
 @media (max-width: 900px) {
   .topbar-controls { flex-wrap: wrap; row-gap: 6px; max-width: 100%; }
-  .view-head { row-gap: 6px; }
+  /* Tightened from 6px for the touch-target pass: the spectrum pane's
+     view-head now stacks FOUR wrapped rows (the view switch, amplitude
+     scale, overlay, the compact FFT field) once a segmented control's
+     options clear the plot pane's own 24px floor — a preset whose readout
+     also wraps to two lines (Aliasing's off-bin scalloping flag) needed
+     this back to keep its spectrum canvas on screen at 390x844. */
+  .view-head { row-gap: 1px; }
   .view-head .readout { flex-basis: 100%; }
 }
 
@@ -431,8 +491,13 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .views {
     min-height: 0;
   }
+  /* padding-top trimmed from 4px to 2px for the touch-target pass: the
+     spectrum pane's view-head now has to fit a segmented control's options
+     at the plot pane's own 24px floor (up from a bare 20px before), and
+     Aliasing's readout — the one preset whose flag wraps to two lines —
+     needed this back to keep its canvas inside the 390x844 fold. */
   .view {
-    padding: 4px 10px 4px;
+    padding: 2px 10px 2px;
   }
 }
 
@@ -484,7 +549,7 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
      that narrow. The row GAP, not the items, is what a phone can afford to
      give up: tightened here, the second row cost the spectrum canvas its
      120 px floor by only a few px instead of ten-plus. */
-  .readout { row-gap: 2px; }
+  .readout { row-gap: 0; }
 }
 
 /* The sidebar's own scroller (.controls, capped at 32vh above) is a scroller
@@ -507,4 +572,33 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    flexed down to a sliver is worse than a shorter sidebar. */
 @media (max-width: 900px) {
   .plot { min-height: 120px; }
+}
+
+/* ---------- touch targets: this app's own overrides ----------
+   packages/ui/src/base.css carries the shared fix and its rationale.
+   Two things here escape it because this app redeclares their sizing
+   itself: the remove-source icon button (an "×" with no text, sized by its
+   glyph) and @ee-labs/explain's math-toggle disclosure (a package this
+   suite does not own, so the fix has to live on this side of the import).
+   Neither sits in the sidebar's gated first screen — the math toggle
+   scrolls inside the math panel, the remove button in a source card below
+   the fold — so both are free to grow for real. */
+@media (max-width: 900px) {
+  .math-toggle {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .source-enable {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  /* The block card's own expand/collapse toggle (its title, doubling as a
+     disclosure button) — below the fold in the Blocks section, so free to
+     grow for real; .block-head's own min-height grows with it since it is
+     a flex row sized by its tallest child. */
+  .block-title {
+    min-height: 44px;
+    padding: 4px 0;
+  }
 }

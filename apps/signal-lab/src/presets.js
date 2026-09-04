@@ -93,7 +93,14 @@ export const PRESETS = [
   {
     group: 'Signals and Fourier',
     name: 'Square = odd harmonics',
-    terms: ['harmonic'],
+    // 'aliasing' is listed here, not just at its own lesson (experiment 9):
+    // this preset's default state is a naive, full-bandwidth square, whose
+    // ripple past Nyquist trips the scope's own aliasing caption (see
+    // sampling.js and ScopeCanvas.jsx). The caption fires off the live math,
+    // not off which lesson is loaded, so its vocabulary has to be reachable
+    // wherever it can appear, the same treatment 'scalloping' already gets on
+    // presets ahead of "Spectral leakage".
+    terms: ['harmonic', 'aliasing'],
     // The markers are already on when this loads — the old note said "turn
     // on harmonic markers", which the walk read as a control it could not
     // find. One claim only: odd lines falling as 1/k. What used to sit here
@@ -121,7 +128,11 @@ export const PRESETS = [
   {
     group: 'Signals and Fourier',
     name: 'Corners make harmonics',
-    terms: ['harmonic'],
+    // 'aliasing' listed here too: the "square" and "sawtooth" chips below load
+    // a full-bandwidth wave, and that trips the scope's own aliasing caption
+    // (see the note on "Square = odd harmonics") before the term's own lesson,
+    // experiment 9.
+    terms: ['harmonic', 'aliasing'],
     // "close to a ninth (8.8 measured here)": the continuous law says 9; the
     // sampled triangle's own correction reads 8.77 at 32 samples per period,
     // and the walk caught the note claiming the round number.
@@ -205,7 +216,11 @@ export const PRESETS = [
     // scope switches to sample dots and its (sin x)/x reconstruction — the
     // caption for that appears on the canvas, so the definition behind it
     // should be one click away here as it is in the sampling lessons.
-    terms: ['lti', 'superposition', 'sampled', 'phase', 'scalloping'],
+    // 'transfer' because the math panel below already writes |H(f)| and
+    // ∠H(f) to state the eigenfunction result — the term itself is not
+    // formally named until "Low-pass a square", experiment 15, so its
+    // definition is pulled forward to where the notation is first used.
+    terms: ['lti', 'superposition', 'sampled', 'phase', 'scalloping', 'transfer'],
     note:
       'This chain is linear, superposition plus scaling, and time-invariant, so shifting the input shifts the ' +
     'output identically. Any such system can do exactly one thing to a sine: scale it and shift it, never ' +
@@ -280,7 +295,11 @@ export const PRESETS = [
     note:
       'A 3.4 kHz tone at 8 kHz behaves. Past 4 kHz, dragged there, or by a chip, the peak turns around and ' +
     'walks back down. The signal is gone and an impostor took its place.',
-    try: 'Click 6000 Hz, the peak lands at 2000 Hz. Click 4600, 3400 Hz, where it started.',
+    // Rewritten from "Click 6000 Hz... Click 4600, 3400 Hz, where it started",
+    // which the impatient student read as ambiguous between an instruction
+    // and a description of the reading. Each sentence now names one chip to
+    // click and one number that follows from it, unmistakably.
+    try: 'Click 6000 Hz, the peak reads 2000 Hz. Click 4600 Hz, it reads 3400 Hz again.',
     // Whole-sample spans, as in Coarse: 40 samples every time (17 cycles of
     // 3400, 23 of 4600, 30 of 6000), so RMS reads 0.707 at every chip and
     // "indistinguishable from the start" holds for the readout too.
