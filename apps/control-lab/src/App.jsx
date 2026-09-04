@@ -1229,7 +1229,11 @@ export default function App() {
                   <span>
                     u now <b>{fmtWatch(watch.u[Math.min(scrub.pos, watch.u.length - 1)])}</b>
                   </span>
-                  {!stable ? <span className="flag warn">never settles</span> : null}
+                  {/* An undefined plant does not "never settle": there is no
+                      simulation at all. verdictOf returns 'undefined' rather than
+                      'unstable' precisely so nothing borrows the runaway wording,
+                      and this row was reading !stable, which is true for both. */}
+                  {!stable && !loop.reason ? <span className="flag warn">never settles</span> : null}
                 </>
               ) : null}
               {lower === 'step' ? (
@@ -1280,7 +1284,11 @@ export default function App() {
                   {stepInput === 'dist' && Math.abs(dcGain(stepTf)) < 1e-9 ? (
                     <span className="flag">steady-state error 0, the integrator removes it</span>
                   ) : null}
-                  {!stable ? <span className="flag warn">never settles</span> : null}
+                  {/* An undefined plant does not "never settle": there is no
+                      simulation at all. verdictOf returns 'undefined' rather than
+                      'unstable' precisely so nothing borrows the runaway wording,
+                      and this row was reading !stable, which is true for both. */}
+                  {!stable && !loop.reason ? <span className="flag warn">never settles</span> : null}
                 </>
               ) : lower === 'nyquist' ? (
                 <span className="prov">
