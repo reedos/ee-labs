@@ -90,6 +90,48 @@ export function snap(value, { scale, min, max, step }) {
   }
 }
 
+/**
+ * What a DIRECTLY ENTERED value becomes: typed then Enter/blur, nudged with
+ * the arrow keys, wheel, or the +/- spinner buttons. None of those are a
+ * drag — the student never passed through the slider's intermediate
+ * positions, so pulling the result onto the slider's POS_MAX grid (what
+ * `snap()` does for `fromPos`) is not rounding to a real limit, it's
+ * rounding to a UI convenience that has nothing to do with what was asked
+ * for. A ±24 V knob's grid step is ~0.048 V; committing a typed −1 mV
+ * through it lands on exactly 0 — the value the student explicitly rejected.
+ *
+ * The only things allowed to move a directly-entered value away from what
+ * was typed:
+ *   - the knob's own min/max (clamp — always applies)
+ *   - a caller-given `step` — that is the knob author's own resolution
+ *     limit (an integer channel count, a 10 ms timebase grain), not a
+ *     derived slider convenience, so it is honoured exactly as `snap()`
+ *     honours it
+ *   - pow2's rounding to the nearest power of two, which is not a UI grid
+ *     either: fft() throws on anything else, so it is a hard requirement
+ *     of the thing being modelled
+ *   - log's 4-significant-figure rounding: also not a UI-grid artifact but
+ *     a cross-component agreement — apps/control-lab's LoopDiagram
+ *     independently redraws the same live number elsewhere and its own
+ *     doc comment records that it depends on the field having already
+ *     settled to 4 figures (see LoopDiagram.jsx). Changing that needs a
+ *     coordinated edit on that side, out of scope here.
+ *
+ * A MISSING linear step, by contrast, is purely `defaultLinearStep`'s
+ * slider-drag convenience and must NOT apply here — that default existing
+ * at all is what let 5 mA and −1 mV get quantised away in the first place.
+ */
+export function commitValue(value, { scale, min, max, step }) {
+  switch (scale) {
+    case 'pow2':
+      return clamp(Math.pow(2, Math.round(log2(value))), min, max)
+    case 'log':
+      return clamp(Number(value.toPrecision(4)), min, max)
+    default:
+      return step > 0 ? clamp(Math.round(value / step) * step, min, max) : clamp(value, min, max)
+  }
+}
+
 /** Are two values close enough to call a preset chip "active"? */
 export function near(a, b, { scale, min, max, step }) {
   if (scale === 'log' || scale === 'pow2') {

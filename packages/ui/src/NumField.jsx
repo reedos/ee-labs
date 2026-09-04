@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
-import { POS_MAX, clamp, defaultLinearStep, fromPos, near, snap, toPos } from './scale.js'
+import { POS_MAX, clamp, commitValue, defaultLinearStep, fromPos, near, toPos } from './scale.js'
 import { eng, engEcho, parseEng } from './units.js'
 
 /**
@@ -50,6 +50,14 @@ export default function NumField({
   // keeps its long-standing default of 1.
   const resolvedStep = step > 0 ? step : scale === 'linear' ? defaultLinearStep(min, max) : 1
   const opts = { scale, min, max, step: resolvedStep }
+
+  // commitValue() needs to tell "the caller gave this knob a real step" apart
+  // from "nothing was given and defaultLinearStep filled the gap for the
+  // slider" — that's the whole distinction the fix hinges on. `opts.step` is
+  // always positive by the time it gets here (resolvedStep sees to that), so
+  // it can't carry that information; this one keeps the RAW, possibly-absent
+  // `step` prop instead, only for the direct-entry paths below.
+  const commitOpts = { scale, min, max, step }
 
   // Engineering mode: show the mantissa and move the prefix onto the unit, so a
   // 224 GBd symbol rate reads "224" next to "GBd" instead of twelve digits.
@@ -118,6 +126,11 @@ export default function NumField({
     return Number.isFinite(n) ? n : null
   }
 
+  // Typing and nudging are direct entry, not a drag — commitValue() clamps
+  // to range and honours a genuine resolution limit (an explicit step,
+  // pow2, log's 4 figures) but does NOT pull the result onto the slider's
+  // POS_MAX grid the way snap() does for a drag. See commitValue()'s doc
+  // comment in scale.js for why that distinction is the whole fix.
   const commit = (text) => {
     const raw = parse(text)
     if (raw == null) {
@@ -125,14 +138,14 @@ export default function NumField({
       flashFor('bad')
       return
     }
-    const next = snap(clamp(raw, min, max), opts)
+    const next = commitValue(raw, commitOpts)
     setDraft(null)
     if (Math.abs(next - raw) > Math.abs(raw) * 1e-9 + 1e-12) flashFor('clamped')
     if (next !== value) onChange(next)
   }
 
   const bump = (delta) => {
-    const next = snap(clamp(value + delta, min, max), opts)
+    const next = commitValue(value + delta, commitOpts)
     if (next !== value) onChange(next)
     setDraft(null)
   }

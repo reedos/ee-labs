@@ -441,9 +441,24 @@ console.log('\n4. E3: the ideal comparator refuses, finite gain lifts it\n')
   await page.locator('[data-role=toggle][data-key=ideal]').getByRole('button', { name: 'finite gain' }).click()
   await settle()
   if ((await ref.count()) !== 0) fail('E3 with finite gain A = 10⁵ should solve')
-  const v = si((await page.locator('.readout').first().textContent()).match(/v_out\s*([\d.]+\s*\S*)V/)?.[1])
+  const vOut = () => page.locator('.readout').first().textContent().then((t) => t.match(/v_out\s*(-?[\d.]+\s*\S*)V/)?.[1])
+  const v = si(await vOut())
   if (Math.abs(v - 100) > 0.01) fail(`E3 finite gain: v_out ${v}, want 100`)
   else console.log(`   A = 10⁵ -> v_out ${v} V, solved`)
+
+  // The grader's worst-case regression: the lesson's own step 2 (lessons.js)
+  // says "Flip E to −1 mV with A = 10⁵: −100 V." E's field is a ±24 V knob
+  // with no step given, so a typed −1 mV used to be quantised to the
+  // knob's slider-grid default (≈48 mV wide) and committed as EXACTLY 0 —
+  // v_out then read 0 V against the lesson's promised −100 V, a complete
+  // miss, on the one lesson where a small signal input is the entire point.
+  // commitValue() (packages/ui/src/scale.js) fixes this by committing a
+  // typed value as typed, clamped only, so this must now read ≈ −100 V.
+  await setField('Input V₁', '-1m')
+  await settle()
+  const v2 = si(await vOut())
+  if (Math.abs(v2 - -100) > 0.5) fail(`E3 typed E = −1 mV: v_out reads ${v2} V, want ≈ −100 V (the lesson's own step 2) — got 0 if the typed-entry fix regressed`)
+  else console.log(`   E = −1 mV (typed) -> v_out ${v2} V, matching the lesson's own step 2`)
 }
 
 // ----------------------------------------- 5. the sweep pane and the marker
@@ -1012,11 +1027,12 @@ console.log('\n41. A bare number under a displayed prefix shows a live echo, and
 // move is applied by hand, in the printed order, nothing reset except where
 // a step's own sentence says so, and each reading comes off the rendered
 // page, never out of app state. D4 is left to experiments.test.js alone: its
-// fix needs I₁, a current-source knob, put back to its default, and every
-// way of doing that by hand — the numeric field, its slider — currently
-// commits 0 regardless of what is typed or dragged, on I₁ here and on A2's
-// identical field, which is the shared numeric-entry bug another change is
-// mid-fixing, not this one.
+// fix needs I₁, a current-source knob, put back to its default. That knob's
+// own bug — typing 5 mA committed exactly 0, on I₁ here and on A2's identical
+// field — was the shared numeric-entry defect fixed in packages/ui/src/scale.js
+// (commitValue(): a typed value now commits as typed, clamped only, rather
+// than quantised to the slider's default grid); see section 4's E3 case
+// above for this file's own regression probe for that fix.
 console.log("\n42. A step's claim survives doing the earlier steps first (A1, A4, C4, F6)\n")
 
 const elMeter = async (id) => si(await page.locator(`.schematic [data-el="${id}"] .sch-meter`).first().textContent())
