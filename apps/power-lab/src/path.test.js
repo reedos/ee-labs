@@ -59,13 +59,25 @@ function spellings(v, knob) {
   ]
 }
 
+/** Every `try` step's text, whichever shape the experiment uses. */
+const tryTexts = (e) => (Array.isArray(e.try) ? e.try.map((s) => s.say) : [e.try.text])
+
 describe('one thing to try, and chips where the lesson lives (§11.2.3, §11.3.5, §11.5.5)', () => {
-  it('every experiment has a `try` naming one of its knobs, one imperative sentence of at most 30 words', () => {
+  it('every experiment has a `try` naming one of its knobs, one imperative sentence of at most 30 words (45 for a multi-step try)', () => {
     for (const e of EXPERIMENTS) {
       expect(e.try, e.id).toBeTruthy()
-      expect(e.params.some((p) => p.key === e.try.knob), `${e.id}: try names ${e.try.knob}`).toBe(true)
-      expect(e.try.text, e.id).toMatch(/^(Set|Turn|Drag|Halve|Double|Replace|Switch|Push|Lower|Raise|Move)\b/)
-      expect(words(e.try.text), `${e.id}: ${words(e.try.text)} words`).toBeLessThanOrEqual(30)
+      if (Array.isArray(e.try)) {
+        for (const [i, step] of e.try.entries()) {
+          expect(e.params.some((p) => p.key === step.knob), `${e.id} step ${i}: try names ${step.knob}`).toBe(true)
+          expect(step.say, `${e.id} step ${i}`).toMatch(/^(Set|Turn|Drag|Halve|Double|Replace|Switch|Push|Lower|Raise|Move)\b/)
+          expect(words(step.say), `${e.id} step ${i}: ${words(step.say)} words`).toBeLessThanOrEqual(45)
+          expect(Object.keys(step.set).length, `${e.id} step ${i}: names no setting`).toBeGreaterThan(0)
+        }
+      } else {
+        expect(e.params.some((p) => p.key === e.try.knob), `${e.id}: try names ${e.try.knob}`).toBe(true)
+        expect(e.try.text, e.id).toMatch(/^(Set|Turn|Drag|Halve|Double|Replace|Switch|Push|Lower|Raise|Move)\b/)
+        expect(words(e.try.text), `${e.id}: ${words(e.try.text)} words`).toBeLessThanOrEqual(30)
+      }
     }
   })
   it('the `about` knob has at least two chips, all in range, one of them the default, each spelled in the note or the try', () => {
@@ -73,7 +85,7 @@ describe('one thing to try, and chips where the lesson lives (§11.2.3, §11.3.5
       const knob = e.params[0]
       expect(knob.key).toBe(e.about)
       expect(e.chips && e.chips.length, `${e.id}: chips`).toBeGreaterThanOrEqual(2)
-      const prose = `${e.note} ${e.try ? e.try.text : ''}`
+      const prose = `${e.note} ${tryTexts(e).join(' ')}`
       for (const v of e.chips) {
         expect(v, `${e.id}: chip ${v} below ${knob.min}`).toBeGreaterThanOrEqual(knob.min)
         expect(v, `${e.id}: chip ${v} above ${knob.max}`).toBeLessThanOrEqual(knob.max)
@@ -119,17 +131,31 @@ describe('what each `try` promises', () => {
     expect(x.m.sig.iL.pp * 1e3).toBeCloseTo(73, 0)
     expect(x.m.sig.vout.pp * 1e3).toBeCloseTo(0.23, 2)
   })
-  it('B4: R = 5 Ω: continuous, 5.00 V', () => {
-    const x = at('b4', { R: 5 })
-    expect(x.m.mode).toBe('CCM')
-    expect(x.m.sig.vout.avg).toBeCloseTo(5.0, 2)
+  it('B4’s three steps: sync on → CCM at −121 mA; sync off → DCM at 8.52 V; R = 5 Ω → CCM, 5.00 V', () => {
+    const dflt = defaultsOf('b4')
+    const step1 = at('b4', { sync: 1 })
+    expect(step1.m.mode).toBe('CCM')
+    expect(step1.m.sig.iL.min * 1e3).toBeCloseTo(-121, 0)
+    expect(step1.m.sig.vout.avg).toBeCloseTo(5.0, 2)
+    const step2 = at('b4', { sync: 0 })
+    expect(step2.m.mode).toBe('DCM')
+    expect(step2.m.sig.vout.avg).toBeCloseTo(8.52, 2)
+    expect(dflt.sync).toBe(0) // step 2 is the experiment's own default
+    const step3 = at('b4', { R: 5, sync: 0 })
+    expect(step3.m.mode).toBe('CCM')
+    expect(step3.m.sig.vout.avg).toBeCloseTo(5.0, 2)
   })
-  it('B5: R = 100 Ω: M = 0.594, 7.13 V; R = 10 Ω: M = 0.417', () => {
-    const x = at('b5', { R: 100 })
-    expect(x.m.mode).toBe('DCM')
-    expect(x.m.M).toBeCloseTo(0.594, 3)
-    expect(x.m.sig.vout.avg).toBeCloseTo(7.13, 2)
-    expect(at('b5', { R: 10 }).m.M).toBeCloseTo(0.417, 3)
+  it('B5’s three steps: 34.3 Ω at the boundary; 100 Ω → DCM, M = 0.594, 7.13 V; 10 Ω → CCM, M = 0.417', () => {
+    const step1 = at('b5', { R: 34.2857142857 })
+    expect(Math.abs(step1.m.sig.iL.min)).toBeLessThan(1e-6)
+    expect(step1.m.M).toBeCloseTo(0.417, 3)
+    const step2 = at('b5', { R: 100 })
+    expect(step2.m.mode).toBe('DCM')
+    expect(step2.m.M).toBeCloseTo(0.594, 3)
+    expect(step2.m.sig.vout.avg).toBeCloseTo(7.13, 2)
+    const step3 = at('b5', { R: 10 })
+    expect(step3.m.mode).toBe('CCM')
+    expect(step3.m.M).toBeCloseTo(0.417, 3)
   })
   it('B6: V_in = 48 V: the same rent on 19.7 V out, η = 98.5 %', () => {
     const x = at('b6', { Vin: 48 })
@@ -175,10 +201,13 @@ describe('what each `try` promises', () => {
     expect(x.m.mode).toBe('CCM')
     expect(x.m.Pout).toBeCloseTo(3.6, 2)
   })
-  it('E1: C = 100 µF: conducts 87.8°, sags 12.4 V', () => {
-    const x = at('e1', { C: 100e-6 })
-    expect(x.m.angle).toBeCloseTo(87.8, 1)
-    expect(x.m.ripple).toBeCloseTo(12.4, 1)
+  it('E1’s two steps: 1000 µF (default) conducts 42.9°, holds 15.6 V; 100 µF conducts 87.8°, sags 12.4 V', () => {
+    const step1 = at('e1', { C: 1000e-6 })
+    expect(step1.m.angle).toBeCloseTo(42.9, 1)
+    expect(step1.m.Vdc).toBeCloseTo(15.6, 1)
+    const step2 = at('e1', { C: 100e-6 })
+    expect(step2.m.angle).toBeCloseTo(87.8, 1)
+    expect(step2.m.ripple).toBeCloseTo(12.4, 1)
   })
   it('E2: C = 4700 µF: 0.23 V of ripple, 1.34 A peaks, 31.7°; C = 100 µF: 6.9 V of ripple', () => {
     const x = at('e2', { C: 4700e-6 })

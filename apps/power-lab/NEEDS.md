@@ -33,11 +33,31 @@ says `dark`, and `src/release.test.js` fails if any of it is.
 
 ## Not needed
 
-- No changes to `packages/ui`, `packages/explain` or `packages/network`. The lab
-  uses `NumField`, `useCanvas`, `drawFrame`, `plotArea`, `COLORS`, `fmt`,
-  `LabNav`, `ReportIssue` and `MathPanel` as exported today, and does not import
-  `Schematic`.
-- No hand-overs to or from the other labs yet. Two are in the plan's later
-  phases: control of the buck in Control Lab, and rectifier spectra in Signal
-  Lab. Each will need `handOverEvent` entries and a `HANDOVERS` table, in the
-  pattern the Circuit hand-overs set.
+- No changes to `packages/explain` or `packages/network`. The lab uses
+  `NumField`, `useCanvas`, `drawFrame`, `plotArea`, `COLORS`, `fmt`, `LabNav`,
+  `ReportIssue`, `fmtHz` and `buildLink`/`parseLink` from `@ee-labs/ui` as
+  exported today, and does not import `Schematic`.
+
+## A gap in `packages/ui`, worked around locally
+
+The buck's averaged small-signal plant now hands over to Control Lab (a
+`plant=custom:…` link, `src/handover.js` and `src/components/BuckHandOver.jsx`,
+2026-09-03). `packages/ui/src/deeplink.js`'s `siblingUrl` and
+`circuitLink.js`'s `labUrl` both hard-code which app names they recognise as
+the link's SOURCE — `signal-lab`/`circuit-lab`/`control-lab` for one, those
+plus `circuit-elements-lab` for the other — so a call made from power-lab's
+own pathname returns null unconditionally, dev or deployed. `src/handover.js`
+carries a local `powerSiblingUrl`, the same algorithm with `'power-lab'` added
+to the recognised set, rather than editing either shared file from here. The
+real fix is a one-line addition to both lists (and, since Power Lab is dark,
+gating it the way `RELEASE_STATUS` already gates the splash/README/LabNav
+surfaces) — small enough to fold into whichever session next touches
+`packages/ui` for an unrelated reason, but out of this territory today.
+Control Lab itself needs no change: `fromAppName` falls back to "another
+tool" for the unrecognised `power` app, and `fromDisplayName` prefers the
+link's own `label` regardless, so the plant still arrives named correctly,
+only the sending app's name is generic.
+
+- No hand-over yet for rectifier spectra into Signal Lab (the plan's other
+  later-phase bridge). It would need the same `handOverEvent` / `HANDOVERS`
+  pattern and the same `packages/ui` gap above.

@@ -308,7 +308,26 @@ export const EXPERIMENTS = [
     id: 'b4',
     about: 'R',
     chips: [200, 5],
-    try: { knob: 'R', text: 'Set R_load to 5 \u03a9: continuous conduction, output back at 5.00 V.' },
+    // A multi-step try (the Circuit Elements Lab pattern): the reader flips
+    // the synchronous switch and then the load, so discontinuous conduction
+    // is something they cause and watch end, not a number to take on faith.
+    try: [
+      {
+        knob: 'sync',
+        set: { sync: 1 },
+        say: 'Turn Freewheel to synchronous switch: i_L dips to \u2212121 mA, conduction turns continuous, 5.00 V out.',
+      },
+      {
+        knob: 'sync',
+        set: { sync: 0 },
+        say: 'Turn Freewheel back to diode: i_L touches zero again, the diode blocks, 8.52 V out.',
+      },
+      {
+        knob: 'R',
+        set: { R: 5, sync: 0 },
+        say: 'Set R_load to 5 \u03a9: the heavier load keeps conduction continuous on its own, 5.00 V out.',
+      },
+    ],
     group: GROUPS[1],
     name: 'Light load: discontinuous conduction',
     symbols: ['K'],
@@ -329,7 +348,25 @@ export const EXPERIMENTS = [
     id: 'b5',
     about: 'R',
     chips: [34.2857142857, 100, 10],
-    try: { knob: 'R', text: 'Set R_load to 100 \u03a9: M rises to 0.594, 7.13 V. At 10 \u03a9, 0.417.' },
+    // A multi-step try: the reader walks R across the boundary both ways and
+    // reads M on each side, rather than being told the two formulas agree.
+    try: [
+      {
+        knob: 'R',
+        set: { R: 34.2857142857 },
+        say: 'Set R_load to 34.3 \u03a9, its default: the current valley just touches zero, M sits on both formulas.',
+      },
+      {
+        knob: 'R',
+        set: { R: 100 },
+        say: 'Set R_load to 100 \u03a9: conduction turns discontinuous, M climbs to 0.594, 7.13 V out.',
+      },
+      {
+        knob: 'R',
+        set: { R: 10 },
+        say: 'Set R_load to 10 \u03a9: conduction is continuous, M returns to D, 0.417.',
+      },
+    ],
     group: GROUPS[1],
     name: 'The boundary',
     symbols: ['K'],
@@ -338,11 +375,10 @@ export const EXPERIMENTS = [
     view: 'sweep',
     sweep: { x: 'R', y: 'M' },
     note:
-      'Conduction is continuous while the average current exceeds half the ripple. In the dimensionless ' +
-      'form K = 2·L·f_s/R that is K > 1 − D. With 100 µH at 100 kHz and D = 0.417 the boundary is ' +
-      'R_crit = 34.3 Ω, and the knob starts there: the current valley just touches zero. The two ' +
-      'formulas for M agree at the boundary, so the curve has a kink, not a step. Nothing jumps when ' +
-      'the diode first blocks for an instant.',
+      'At the default 34.3 Ω the inductor current’s valley just touches zero. That is the edge ' +
+      'between the two conduction modes, where the average current equals half the ripple. Written as ' +
+      'K = 2·L·f_s/R, the boundary is K = 1 − D. The two formulas for M agree there, so the curve bends ' +
+      'without a jump when the diode first blocks for an instant.',
     terms: ['k-parameter', 'dcm', 'ccm', 'average', 'ripple'],
   }),
   buck({
@@ -420,6 +456,10 @@ export const EXPERIMENTS = [
     try: { knob: 'D', text: 'Set D to 75 %: M = 4.00, 48.0 V out, 9.60 A in the inductor.' },
     group: GROUPS[2],
     name: 'Stacking on the source',
+    // The claim is the formula M = 1/(1 − D), same as the buck's M = D
+    // (b2): the sweep is the picture that formula draws, so it opens there
+    // rather than on a scope reading a waveform this lesson is not about.
+    view: 'sweep',
     note:
       'Swap the switch and the inductor, and the inductor’s volt-seconds stack on V_in instead of ' +
       'subtracting. Volt-second balance gives M = 1/(1 − D): at D = 0.500, 24.00 V from 12 V, 60.0 mV ' +
@@ -512,7 +552,20 @@ export const EXPERIMENTS = [
     id: 'e1',
     about: 'C',
     chips: [1000e-6, 100e-6],
-    try: { knob: 'C', text: 'Set C to 100 \u00b5F: the diode conducts for 87.8\u00b0, the output sags 12.4 V.' },
+    // A multi-step try: the reader shrinks the reservoir and reads the wider
+    // conduction angle and the bigger sag themselves.
+    try: [
+      {
+        knob: 'C',
+        set: { C: 1000e-6 },
+        say: 'Set C to 1000 \u00b5F, its default: the diode conducts 42.9\u00b0, the output holds 15.6 V.',
+      },
+      {
+        knob: 'C',
+        set: { C: 100e-6 },
+        say: 'Set C to 100 \u00b5F: the diode conducts for 87.8\u00b0, the output sags 12.4 V.',
+      },
+    ],
     group: GROUPS[3],
     name: 'Half-wave into a capacitor',
     note:
@@ -570,11 +623,10 @@ export const EXPERIMENTS = [
     views: ['spectrum', 'measures', 'math', 'losses'],
     view: 'spectrum',
     note:
-      'The line current at 1000 µF is two spikes a cycle, not a sine. The fundamental is 219 mA RMS of ' +
-      'a 401 mA total. Distortion factor 0.545, THD 154 %, the 3rd harmonic at 94 % of the fundamental. That ' +
-      'fundamental lags the voltage by only 7.6°, a displacement factor of 0.991, so this is not a ' +
-      'phase-shift problem. Power factor is the product, 0.991 × 0.545 = 0.540: the line carries 1.85× ' +
-      'the RMS current that 2.73 W would need as a sine.',
+      'The line current at 1000 µF is two narrow spikes a cycle, not a sine. Its spectrum is odd ' +
+      'harmonics only, falling from the 3rd on down. That current lags the voltage by only a few ' +
+      'degrees, so the loss is distortion, not a phase shift. Power factor still falls to 0.540, the ' +
+      'line carrying far more RMS current than the power needs.',
     terms: ['power-factor', 'thd', 'displacement', 'harmonic', 'rms'],
   }),
   {

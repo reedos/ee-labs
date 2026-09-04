@@ -275,16 +275,49 @@ describe('a path through the material (§11.5, §11.3.3–5)', () => {
   it('the try line is its own element under the note, with the knob as a chip that names it (§11.3.5)', () => {
     for (const e of EXPERIMENTS) {
       const s = sidebar(render(e.id))
-      const tr = s.match(/<p class="try"[^>]*data-role="try"[^>]*>([\s\S]*?)<\/p>/)
+      const tr = s.match(/<div class="try"[^>]*data-role="try"[^>]*>([\s\S]*?)<\/div>/)
       expect(tr, `${e.id}: no try element`).toBeTruthy()
-      const knob = e.params.find((p) => p.key === e.try.knob)
-      expect(tr[1]).toMatch(new RegExp(`<button[^>]*class="knob-chip"[^>]*data-knob="${e.try.knob}"[^>]*>${knob.label.replace(/_/g, '_')}<`))
-      expect(text(tr[1])).toContain(e.try.text.slice(0, 20))
+      if (Array.isArray(e.try)) {
+        // Only the active step (the first, on a fresh render) is on screen —
+        // the whole point of showing one at a time (see the next test).
+        const step = e.try[0]
+        const knob = e.params.find((p) => p.key === step.knob)
+        expect(tr[1]).toMatch(new RegExp(`<button[^>]*class="knob-chip"[^>]*data-knob="${step.knob}"[^>]*>${knob.label.replace(/_/g, '_')}<`))
+        expect(text(tr[1])).toContain(step.say.slice(0, 20))
+        expect(text(tr[1])).toContain(`Try 1/${e.try.length}`)
+      } else {
+        const knob = e.params.find((p) => p.key === e.try.knob)
+        expect(tr[1]).toMatch(new RegExp(`<button[^>]*class="knob-chip"[^>]*data-knob="${e.try.knob}"[^>]*>${knob.label.replace(/_/g, '_')}<`))
+        expect(text(tr[1])).toContain(e.try.text.slice(0, 20))
+      }
       expect(s.indexOf('data-role="try"')).toBeGreaterThan(s.indexOf('data-role="note"'))
       expect(s.indexOf('data-role="try"')).toBeLessThan(s.indexOf('<h2>Schematic'))
       // Every knob is addressable, so the chip can focus it.
       for (const p of e.params) expect(s, `${e.id}: knob ${p.key}`).toContain(`data-knob="${p.key}"`)
     }
+  })
+  it('a multi-step try (B4, B5, E1) has more than one step, each an in-range setting on one of the experiment’s own knobs', () => {
+    // The click-driven advance to "Try 2/3" and "Try 3/3" is a browser
+    // behaviour (doneTrySteps state, applied only through a click) — proved
+    // in verify.mjs §7b, not here. This holds the data every step needs.
+    for (const id of ['b4', 'b5', 'e1']) {
+      const e = byId[id]
+      expect(Array.isArray(e.try), id).toBe(true)
+      expect(e.try.length, id).toBeGreaterThan(1)
+      for (const [i, step] of e.try.entries()) {
+        const knob = e.params.find((p) => p.key === step.knob)
+        expect(knob, `${id} step ${i}: no such knob ${step.knob}`).toBeTruthy()
+        for (const [k, v] of Object.entries(step.set)) {
+          const p = e.params.find((q) => q.key === k)
+          if (p && p.kind !== 'toggle' && typeof v === 'number') {
+            expect(v, `${id} step ${i}: ${k}=${v} below ${p.min}`).toBeGreaterThanOrEqual(p.min)
+            expect(v, `${id} step ${i}: ${k}=${v} above ${p.max}`).toBeLessThanOrEqual(p.max)
+          }
+        }
+      }
+    }
+    // The initial render (nothing done yet) always shows step 1.
+    for (const id of ['b4', 'b5', 'e1']) expect(text(sidebar(render(id)))).toContain('Try 1/')
   })
   it('the about knob carries its chips, labelled in the knob’s units (§11.5.5)', () => {
     for (const e of EXPERIMENTS) {

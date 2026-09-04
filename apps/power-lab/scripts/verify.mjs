@@ -406,6 +406,48 @@ async function run(browser, tag) {
     else console.log('   the try chip focuses the knob it names')
   }
 
+  // ------------------------------------- 7b. a multi-step try is performed
+
+  console.log("\n7b. B4's multi-step try: each chip advances to the next step and actually flips the mode\n")
+  {
+    await pick('b4')
+    // .innerText() reflects the CSS text-transform on .try-label, so "Try"
+    // renders "TRY" — match case-insensitively rather than the source string.
+    const tryText = () => page.locator('[data-role=try]').innerText()
+    // The mode node, not the whole flow strip: B4's own NAME is "Light load:
+    // discontinuous conduction", so a substring test against the full strip
+    // would always find "discontinuous" whatever the mode actually reads.
+    const modeText = () => page.locator('.flow-node:not(.is-name):not(.is-out)').innerText()
+    const t0 = await tryText()
+    if (!/try 1\/3/i.test(t0)) F(`B4 should open on step 1 of 3: "${t0.slice(0, 40)}"`)
+    // Step 1: synchronous switch on — CCM, the current goes negative.
+    await page.locator('.try .knob-chip').click()
+    await settle()
+    const t1 = await tryText()
+    if (!/try 2\/3/i.test(t1)) F(`B4's step 1 chip should advance to step 2 of 3: "${t1.slice(0, 40)}"`)
+    const syncOn = await page.evaluate(() => document.querySelector('[data-knob="sync"] button[aria-pressed="true"]')?.textContent.trim())
+    if (syncOn !== 'synchronous switch') F(`B4 step 1 should turn Freewheel to synchronous switch, reads "${syncOn}"`)
+    const mode1 = await modeText()
+    if (!mode1.startsWith('continuous conduction')) F(`B4 step 1 (synchronous switch) should read continuous conduction: "${mode1}"`)
+    // Step 2: back to diode — DCM returns, 8.52 V.
+    await page.locator('.try .knob-chip').click()
+    await settle()
+    const t2 = await tryText()
+    if (!/try 3\/3/i.test(t2)) F(`B4's step 2 chip should advance to step 3 of 3: "${t2.slice(0, 40)}"`)
+    const mode2 = await modeText()
+    if (!mode2.startsWith('discontinuous conduction')) F(`B4 step 2 (diode restored) should read discontinuous conduction: "${mode2}"`)
+    const topbarDcm = await topbar()
+    if (!/8\.51/.test(topbarDcm)) F(`B4 step 2 (diode restored) should read close to 8.52 V out: "${topbarDcm.slice(0, 120)}"`)
+    // Step 3: R = 5 Ω — continuous conduction on its own, 5.00 V.
+    await page.locator('.try .knob-chip').click()
+    await settle()
+    const rNow = await page.evaluate(() => document.querySelector('[data-knob="R"] input')?.value)
+    if (Math.abs(Number(rNow) - 5) > 0.01) F(`B4 step 3 should set R_load to 5 Ω, reads ${rNow}`)
+    const mode3 = await modeText()
+    if (!mode3.startsWith('continuous conduction')) F(`B4 step 3 (R = 5 Ω) should read continuous conduction: "${mode3}"`)
+    console.log('   B4: step 1/3 → 2/3 → 3/3, the switch and the load each flip the mode a click asks for')
+  }
+
   // ---------------------------------------------- 8. above the fold
 
   console.log('\n8. Above the fold: note, schematic, first knob and the Math button, without scrolling\n')

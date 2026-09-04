@@ -16,7 +16,14 @@ describe('every experiment reads plainly', () => {
   for (const e of EXPERIMENTS) {
     it(`${e.id} ${e.name}`, () => {
       expectPlain(e.note, groupFirst.has(e.id) ? 'noteGroupFirst' : 'note', `${e.id} note`)
-      expectPlain(e.try.text, 'tryText', `${e.id} try`)
+      // A multi-step try (B4, B5, E1) holds every step to STYLE.md's array
+      // budget (`try`, 45 words); the rest hold the single line to `tryText`
+      // (16 words), as notes.test.js already does in word-count terms.
+      if (Array.isArray(e.try)) {
+        e.try.forEach((step, i) => expectPlain(step.say, 'try', `${e.id} try[${i}]`))
+      } else {
+        expectPlain(e.try.text, 'tryText', `${e.id} try`)
+      }
       expectPlain(e.name, 'title', `${e.id} name`)
     })
   }

@@ -12,6 +12,7 @@ import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, MODE_WORDS } from 
 import { fmtz } from './format.js'
 import { scopeMarks, sweepMarks } from './marks.js'
 import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/schematics.jsx'
+import BuckHandOver from './components/BuckHandOver.jsx'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -122,6 +123,12 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
   const [primary, setPrimary] = useState(() => primaryOf(byId[start]))
   const [share, setShare] = useState(PRIMARY_SHARE)
   const mainRef = useRef(null)
+  // A multi-step try's progress (B4, B5, E1): which step indices the reader
+  // has applied. Sticky, like Circuit Elements Lab's own steps — turning a
+  // later step's knob back through an earlier step's setting does not undo
+  // it, so two steps that toggle the same knob (B4's synchronous switch)
+  // still advance rather than trading places forever.
+  const [doneTrySteps, setDoneTrySteps] = useState(() => new Set())
 
   const exp = byId[id]
 
@@ -134,11 +141,13 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
     setPristine(true)
     setPrimary(primaryOf(byId[next]))
     setBrowsing(null)
+    setDoneTrySteps(new Set())
   }
   // The way back from a retired note: every knob to the experiment's defaults.
   const reset = () => {
     setParams(defaultsOf(id))
     setPristine(true)
+    setDoneTrySteps(new Set())
   }
   const swapPrimary = () => setPrimary((p) => (p === 'scope' ? 'analysis' : 'scope'))
   // Drag the split: the pointer's height in the column is the top pane's share.
@@ -237,7 +246,22 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
   // experiment, and while another group's tab is being browsed. Deeper in,
   // its lines are the note's.
   const showIntro = Boolean(browsing) || EXPERIMENTS.find((e) => e.group === exp.group).id === id
-  const tryKnob = exp.params.find((k) => k.key === exp.try.knob)
+  // Most experiments have one `try`, an object naming a knob. B4, B5 and E1
+  // have a multi-step try instead — an array, the Circuit Elements Lab
+  // pattern — so a student performs discontinuous conduction or the wider
+  // conduction angle rather than reading a single turned-and-believe number.
+  const trySteps = Array.isArray(exp.try) ? exp.try : null
+  const tryKnob = trySteps ? null : exp.params.find((k) => k.key === exp.try.knob)
+  const applyStep = (step, i) => {
+    setParams((p) => ({ ...p, ...step.set }))
+    setPristine(false)
+    focusKnob(step.knob)
+    setDoneTrySteps((s) => new Set(s).add(i))
+  }
+  // The step shown: the first not yet done, so applying one step's chip
+  // advances to the next. Once every step is done, the last stays shown.
+  const firstNotDone = trySteps ? trySteps.findIndex((_, i) => !doneTrySteps.has(i)) : -1
+  const activeTryStep = trySteps ? (firstNotDone === -1 ? trySteps.length - 1 : firstNotDone) : -1
   const next = nextOf(id)
   const prev = prevOf(id)
   const pos = positionOf(id)
@@ -320,12 +344,36 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
             )}
           </p>
           {/* One thing to try, with the knob it names as a chip that focuses
-              it, and where the note leads after that. */}
-          <p className="try" data-role="try">
-            <span className="try-label">Try</span> {exp.try.text}{' '}
-            <button type="button" className="knob-chip" data-knob={tryKnob.key} onClick={() => focusKnob(tryKnob.key)} title={`Go to the ${tryKnob.label} knob`}>
-              {tryKnob.label}
-            </button>
+              it, and where the note leads after that. A multi-step try (B4,
+              B5, E1) shows one step at a time — the first not yet done — so
+              the reader performs the sequence rather than reading three
+              readings at once; the same one-line footprint as every other
+              experiment's try, so the fold does not move. */}
+          <div className="try" data-role="try">
+            {trySteps ? (
+              <span className="try-step" data-role="try-step" data-step={activeTryStep + 1} data-of={trySteps.length}>
+                <span className="try-label">
+                  Try {activeTryStep + 1}/{trySteps.length}
+                </span>{' '}
+                {trySteps[activeTryStep].say}{' '}
+                <button
+                  type="button"
+                  className="knob-chip"
+                  data-knob={trySteps[activeTryStep].knob}
+                  onClick={() => applyStep(trySteps[activeTryStep], activeTryStep)}
+                  title={`Go to the ${exp.params.find((k) => k.key === trySteps[activeTryStep].knob).label} knob`}
+                >
+                  {exp.params.find((k) => k.key === trySteps[activeTryStep].knob).label}
+                </button>{' '}
+              </span>
+            ) : (
+              <>
+                <span className="try-label">Try</span> {exp.try.text}{' '}
+                <button type="button" className="knob-chip" data-knob={tryKnob.key} onClick={() => focusKnob(tryKnob.key)} title={`Go to the ${tryKnob.label} knob`}>
+                  {tryKnob.label}
+                </button>{' '}
+              </>
+            )}
             {next ? (
               <span className="next-line">
                 <button type="button" className="link" data-role="next-link" data-target={next} onClick={() => choose(next)}>
@@ -334,7 +382,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                 </button>
               </span>
             ) : null}
-          </p>
+          </div>
           {termsFor(exp.terms).length ? (
             <details className={`terms${termsFresh(seen.current, id) ? ' is-fresh' : ''}`} key={id}>
               <summary>
@@ -370,6 +418,19 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
             </details>
           ) : null}
         </section>
+
+        {isBuck ? (
+          <section>
+            {/* Closed by default: the hand-over costs nothing to the fold
+                budget the rest of the sidebar is held to (§11.3.2), the same
+                reason Circuit Elements Lab's own hand-over sits inside a
+                closed "Deeper" details rather than in the open flow. */}
+            <details className="handover-fold" data-role="handover-fold">
+              <summary>Hand over to Control Lab</summary>
+              <BuckHandOver x={x} />
+            </details>
+          </section>
+        ) : null}
 
         <ReportIssue
           lab="Power Lab"

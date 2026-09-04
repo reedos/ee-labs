@@ -35,7 +35,17 @@ describe('reading level (§11.2.5)', () => {
     }
   })
   it('the try line is at most sixteen words: two lines beside its chip', () => {
-    for (const e of EXPERIMENTS) expect(words(e.try.text), `${e.id}: ${words(e.try.text)} words`).toBeLessThanOrEqual(16)
+    for (const e of EXPERIMENTS) {
+      if (Array.isArray(e.try)) continue // a multi-step try: the next test holds its own budget
+      expect(words(e.try.text), `${e.id}: ${words(e.try.text)} words`).toBeLessThanOrEqual(16)
+    }
+  })
+  it('a multi-step try (B4, B5, E1): each step is at most forty-five words, STYLE.md’s try[].say budget', () => {
+    for (const e of EXPERIMENTS) {
+      if (!Array.isArray(e.try)) continue
+      expect(e.try.length, `${e.id}: one step is not "multi"`).toBeGreaterThan(1)
+      for (const [i, step] of e.try.entries()) expect(words(step.say), `${e.id} step ${i}: ${words(step.say)} words`).toBeLessThanOrEqual(45)
+    }
   })
 })
 

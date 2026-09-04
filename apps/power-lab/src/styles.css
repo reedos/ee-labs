@@ -378,6 +378,45 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 }
 .more-knobs[open] > summary { margin-bottom: 4px; }
 
+/* A multi-step try (B4, B5, E1): one step shown at a time, the same
+   one-line footprint as every other experiment's try so the fold does not
+   move, and "Try 2/3" says where the reader is in the sequence. */
+.try-step .try-label { margin-right: 4px; }
+
+/* The hand-over to Control Lab: closed by default (§11.3.2's fold budget),
+   so it costs nothing until opened. */
+.handover-fold { margin-top: 8px; }
+.handover-fold > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--dim);
+  padding: 4px 0;
+}
+.handover-fold[open] > summary { margin-bottom: 4px; color: var(--text); }
+.handover-dest {
+  margin: 6px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.handover .hint.warn { color: var(--warn); }
+a.handover-copy {
+  display: block;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
+  background: var(--accent);
+  color: #05221b;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+a.handover-copy:hover { filter: brightness(1.1); }
+
 /* The schematic's phone copy lives in the main column; on a desk the sidebar's
    copy is the one in view. */
 .sch-phone { display: none; }
