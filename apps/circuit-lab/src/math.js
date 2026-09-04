@@ -177,11 +177,14 @@ function common(tf, p, id) {
     F('Y(s) = X(s)\\,H(s)'),
     T(
       'One multiplication is the whole story. Whatever comes in, its transform is multiplied ' +
-        'by H(s): the frequency pane draws that multiplier against jω, the step pane is the ' +
-        'same product with X = 1/s, and in the time domain the product is a convolution with ' +
-        'the impulse response — the flip-and-slide Signal Lab animates. Sines show it plainest: ' +
-        'a sine in comes out a sine, |H| times as large and ∠H shifted — measured below by ' +
-        'actually running this circuit in time, not by re-reading the formula.',
+        'by H(s). The frequency pane draws that multiplier against jω. The step pane draws the ' +
+        'same product with X = 1/s. In the time domain the same fact looks different. The ' +
+        'impulse response is what the circuit outputs when a single sharp spike drives it. ' +
+        'Convolution is the sum that weights the input’s recent history by that impulse ' +
+        'response, one shift at a time. Signal Lab’s Convolution, watched experiment animates ' +
+        'that sum sliding across the input. Sines show the frequency-domain story plainest. A ' +
+        'sine in comes out a sine, scaled by |H| and shifted by ∠H, measured below by actually ' +
+        'running this circuit in time rather than by re-reading the formula.',
     ),
     C([
       {

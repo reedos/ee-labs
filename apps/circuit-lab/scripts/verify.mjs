@@ -1263,6 +1263,43 @@ console.log("\n15. A term tapped in the note opens the fold's own definition, an
   if (await page.locator('[data-role=term-card]').count()) fail('changing lesson left a stale term card open')
   else console.log('   closes on ×, and clears on a lesson change')
 
+  // Round two of the review: the length filter that used to exclude any
+  // match under three characters is gone, and the mark is a `<dfn>`
+  // (App.jsx's Marked, Control Lab's NoteTerms.jsx pattern) rather than a
+  // `<button>` — so a bare "Q", "dB" or "ζ", the exact symbols a first-year
+  // reader is least likely to know, must be tappable too, keyboard
+  // reachable, and structurally outside the touch-target probe rather than
+  // merely clearing a smaller floor.
+  const shortMarks = [
+    { lesson: 'Q is how sharp, and R sets it', word: 'Q' },
+    { lesson: 'Where the corner comes from', word: 'dB' },
+    { lesson: 'Resonance, seen in time', word: 'ζ' },
+  ]
+  for (const { lesson, word } of shortMarks) {
+    await pick(lesson)
+    const marks = page.locator('[data-role=lesson-note] .term-mark')
+    const texts = await marks.allTextContents()
+    const idx = texts.findIndex((t) => t.trim() === word)
+    if (idx < 0) fail(`"${lesson}": no inline mark reads exactly "${word}" (marks found: ${texts.join(', ') || 'none'})`)
+    else {
+      const el = marks.nth(idx)
+      const tag = await el.evaluate((n) => n.tagName.toLowerCase())
+      if (tag !== 'dfn') fail(`"${lesson}": "${word}" mark is a <${tag}>, not a <dfn> — it would re-enter the touch-target probe`)
+      // Keyboard: focus it directly (no visible caret to Tab through) and
+      // open with Enter, same as a screen-reader or keyboard-only reader
+      // would, rather than only ever clicking it.
+      await el.focus()
+      await page.keyboard.press('Enter')
+      await settle()
+      const opened = ((await page.locator('[data-role=term-card]').first().textContent().catch(() => '')) || '').trim()
+      if (!opened) fail(`"${lesson}": pressing Enter on "${word}" opened no definition card`)
+      else console.log(`   "${lesson}": bare "${word}" is a <dfn>, Enter opens -> "${opened.slice(0, 50)}…"`)
+      await page.keyboard.press('Enter')
+      await settle()
+      if (await page.locator('[data-role=term-card]').count()) fail(`"${lesson}": pressing Enter again on "${word}" did not close it`)
+    }
+  }
+
   // Student-review item 4: the hand-over is real but buried a scroll past
   // Circuits, Schematic and Components, and nothing upstream said it
   // existed for 14 of 15 lessons. One line, on every lesson, right after
@@ -1270,6 +1307,75 @@ console.log("\n15. A term tapped in the note opens the fold's own definition, an
   const pointer = ((await page.locator('[data-role=handover-pointer]').first().textContent().catch(() => '')) || '').trim()
   if (!/Signal Lab/.test(pointer) || !/Control Lab/.test(pointer)) fail(`hand-over pointer missing or wrong: "${pointer}"`)
   else console.log(`   hand-over pointer under the terms: "${pointer}"`)
+}
+
+// ------------ 16. round two: topbar term taps, TOL labels, the math scroll cue
+
+console.log('\n16. Round two follow-ups: topbar term taps, distinguishable TOL labels, the math scroll cue\n')
+{
+  // Item 3: H(s) and "stable" are the first jargon on screen, before any
+  // lesson note has loaded, and used to carry only a hover title with no
+  // click handler — no route to either definition on a phone at all.
+  const tfPill = page.locator('.flow-term').first()
+  const tfLabel = (await tfPill.textContent()).trim()
+  await tfPill.click()
+  await settle()
+  let card = ((await page.locator('[data-role=topbar-term-card]').first().textContent().catch(() => '')) || '').trim()
+  if (!card) fail(`tapping the topbar's "${tfLabel}" pill opened no definition`)
+  else console.log(`   tapped topbar "${tfLabel}" -> "${card.slice(0, 50)}…"`)
+  const stablePill = page.locator('.flow-term').nth(1)
+  const stableLabel = (await stablePill.textContent()).trim()
+  await stablePill.click()
+  await settle()
+  card = ((await page.locator('[data-role=topbar-term-card]').first().textContent().catch(() => '')) || '').trim()
+  if (!card) fail(`tapping the topbar's "${stableLabel}" pill opened no definition`)
+  else console.log(`   tapped topbar "${stableLabel}" -> "${card.slice(0, 50)}…"`)
+  await page.locator('.topbar-term-close').click()
+  await settle()
+  if (await page.locator('[data-role=topbar-term-card]').count()) fail('the topbar term card did not close on ×')
+
+  // Item 4: "Blame the right part" moves the same ±10% from R to C, and both
+  // rows used to read only "TOL" on screen, told apart solely by an
+  // aria-label a sighted reader never hears.
+  await pick('Blame the right part')
+  const tolTags = await page.locator('[data-role=featured] .tol-tag').allTextContents()
+  const tolTrim = tolTags.map((t) => t.trim())
+  if (!tolTrim.some((t) => /^R\s+tol$/i.test(t))) fail(`"Blame the right part": no visible "R tol" tag (got: ${tolTrim.join(', ')})`)
+  if (!tolTrim.some((t) => /^C\s+tol$/i.test(t))) fail(`"Blame the right part": no visible "C tol" tag (got: ${tolTrim.join(', ')})`)
+  if (new Set(tolTrim).size !== tolTrim.length) fail(`"Blame the right part": two TOL rows still read identically on screen: ${tolTrim.join(', ')}`)
+  else console.log(`   "Blame the right part" TOL rows read: ${tolTrim.join(', ')}`)
+
+  // Item 5: the Math tab often runs two or three screens past the fold with
+  // no cue that a theory-versus-measured table continues below. A shorter
+  // viewport forces the overflow reliably; the cue must show while there is
+  // more below, and clear once the pane is scrolled to its own bottom.
+  await page.setViewportSize({ width: 1366, height: 650 })
+  let sawCue = false
+  for (const name of circuitNames) {
+    await pick(name)
+    await openAllMath()
+    await page.waitForTimeout(150)
+    const overflow = await page
+      .locator('[data-role=math-pane]')
+      .evaluate((el) => el.scrollHeight - el.clientHeight)
+    if (overflow > 20) {
+      sawCue = true
+      if (!(await page.locator('[data-role=math-scroll-cue]').count())) {
+        fail(`"${name}": the math pane overflows by ${overflow}px with no scroll cue shown`)
+      }
+      await page.locator('[data-role=math-pane]').evaluate((el) => {
+        el.scrollTop = el.scrollHeight
+      })
+      await page.waitForTimeout(150)
+      if (await page.locator('[data-role=math-scroll-cue]').count()) {
+        fail(`"${name}": the scroll cue is still shown after scrolling the math pane to its own bottom`)
+      } else console.log(`   "${name}": math pane overflows ${overflow}px, the cue shows and clears at the bottom`)
+      break
+    }
+  }
+  if (!sawCue) fail("no circuit's math pane overflowed at 1366x650 — the scroll cue was never exercised")
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'networkidle' })
 }
 
 // ------------------------------------------------ A11Y. names for everything
@@ -1336,16 +1442,33 @@ console.log(`   all ${circuitNames.length} circuits fit at 3840x2160`)
 //     true segmented control), so an invisible hit area would let a thumb
 //     bridge two, and growing it for real at 44 costs more of the
 //     response-and-lesson-view budget (item 13) than this lab can spare.
-//   - a term tapped INLINE in a note's own prose (.term-mark — the
-//     discoverable path to "Terms used here", student-review: two skim
-//     readers said the glossary did not exist at all). WCAG 2.2 SC 2.5.8
-//     itself names this the "Inline" exception: a target inside a run of
-//     text, where enlarging it would enlarge the line. A real 44 px hit box
-//     tried here first and failed differently — at 44 px, two marked words a
-//     line apart (a real note's own density) overlapped enough that
-//     Playwright, and a thumb, could not tell which one it was tapping.
-//     24 px is comfortable at the sidebar's own line spacing and is what
-//     WCAG actually asks of running text.
+//   - the topbar's H(s) and stable pills (.flow-term — round two of the
+//     review: they carried only a hover title, no click handler, so a phone
+//     had no route to either definition; both are real buttons now). A
+//     dense, one-line strip with an arrow glyph and the next pill a few px
+//     away on either side, the same crowding that pushed the note's own
+//     inline term (below) to the 24px floor first. Held to the same
+//     HARD_FLOOR for the same reason.
+//   - the "2 of 15" start hint (.start-hint — round two of the review, also:
+//     made into a real button so it loads lesson 1 in one click instead of
+//     only naming it). This walk of `.presets .preset` also catches the
+//     LESSON buttons visible on a fresh load, so it reaches this one too.
+//     A real 44px grew the box itself and pushed the try line past the
+//     sidebar's own first-screen budget (item 13); it sits one line under
+//     the sticky "Try this" nav strip, so a wider inset risks bridging into
+//     that strip's own prev/next/reset buttons. Same HARD_FLOOR answer.
+//
+// A term tapped INLINE in a note's own prose (student-review: two skim
+// readers said the glossary did not exist at all) used to be a third named
+// exception here — a `<button>` under three characters (bare "Q", "s")
+// could not clear even 24px without padding wide enough to read as a chip,
+// so notes silently dropped their mark on exactly the symbols (Q, dB, ζ)
+// a first-year reader is least likely to know. Round two of the review
+// fixed the cause instead of widening the exception: the mark is a `<dfn>`
+// now (App.jsx's Marked, Control Lab's NoteTerms.jsx pattern), which WCAG
+// 2.5.8 itself exempts as "Inline" and which sits outside tapTargetProbe's
+// own SELECTOR (button, a, summary, [role="button"], input[type=checkbox])
+// — so it is never walked by this probe at all, at any length.
 console.log('\n14. Touch targets at 390x844 (button, link, summary, role=button, checkbox)\n')
 {
   await page.setViewportSize(PHONE_VIEWPORT)
@@ -1353,7 +1476,9 @@ console.log('\n14. Touch targets at 390x844 (button, link, summary, role=button,
   await page.waitForSelector('.views canvas')
 
   const exceptionFloor = (el) =>
-    el.inViews || el.inLabNav || el.className.includes('term-mark') ? HARD_FLOOR : null
+    el.inViews || el.inLabNav || el.className.includes('flow-term') || el.className.includes('start-hint')
+      ? HARD_FLOOR
+      : null
 
   let checked = 0
   for (const name of circuitNames) {

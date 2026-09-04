@@ -87,6 +87,7 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   text-transform: uppercase;
   color: var(--dim);
   opacity: 0.7;
+  white-space: nowrap;
 }
 
 /* Pane-header controls — the proximity rule from Signal Lab: a control that
@@ -121,41 +122,31 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 
 /* A term, tapped in place — the discoverable path (student-review: two skim
    readers scored Explanation low and reported no glossary at all, because
-   the fold above is a small, easy-to-miss link and this is not). Styled as
-   text that is obviously live — underlined, in the response colour — rather
-   than a button, since it sits mid-sentence. */
+   the fold above is a small, easy-to-miss link and this is not). Rendered
+   as `<dfn>`, not `<button>` — Control Lab's NoteTerms.jsx pattern. A mark
+   is a few characters inside a running sentence, and WCAG 2.5.8's own
+   Target Size rule exempts exactly this case ("inline: the target ... is
+   otherwise constrained by the line-height of non-target text"). A button
+   role would enrol it in this app's own 44px touch-target probe
+   (verify.mjs item 14), which a two-letter word like "Q" or "dB" can never
+   clear without padding wide enough to read as a chip. The dfn tag sits
+   outside tapTargetProbe's SELECTOR entirely, so every match is tappable
+   regardless of length — no exception, no invisible hit area, no length
+   floor excluding the exact symbols (Q, dB, ζ, ω₀) a first-year reader is
+   least likely to already know. */
 .term-mark {
-  /* A REAL font-size line-height bump (the first cut here) clears the touch
-     floor but grows every wrapped line of the note that holds a mark, which
-     then pushes the try line and the featured knob past the 1366×768 fold
-     budget (item 7) on several lessons at once — a hidden, cumulative cost
-     nobody asked this word to pay. An invisible hit area costs the layout
-     nothing instead: position:relative plus the ::before below, the same
-     technique tapTargetProbe.mjs already credits elsewhere in the suite. */
-  position: relative;
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
+  font-style: normal;
   color: var(--response);
   text-decoration: underline dotted;
   text-underline-offset: 2px;
   cursor: pointer;
 }
-.term-mark::before {
-  content: '';
-  position: absolute;
-  /* A -14px inset (enough to clear the suite's 44px target on its own)
-     turned out to overlap a NEIGHBOURING marked word on the same or an
-     adjacent line — two words a line apart in real note prose is closer
-     than 28px, so a tap meant for one hit the other's hit area instead.
-     -4/-3 clears the 24px floor verify.mjs holds an inline term to instead
-     (WCAG 2.2 SC 2.5.8's own "Inline" exception), with room to spare and
-     no collision at the sidebar's own line spacing. */
-  inset: -4px -3px;
+/* Keyboard focus keeps base.css's [tabindex]:focus-visible ring (outline:
+   2px solid var(--accent)) — not overridden here. */
+.term-mark:hover, .term-mark.is-open, .term-mark:focus-visible {
+  color: var(--accent);
+  text-decoration-style: solid;
 }
-.term-mark:hover, .term-mark.is-open { color: var(--accent); text-decoration-style: solid; }
 
 /* The definition a tapped term reveals, right under the note — the same
    text "Terms used here" holds, so the two paths never disagree. */
@@ -190,6 +181,74 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    technique the touch-target harness already credits elsewhere in the
    suite (tapTargetProbe.mjs): the glyph stays small, the tap box does not. */
 .term-card-close::before {
+  content: '';
+  position: absolute;
+  inset: -11px;
+}
+
+/* The topbar's H(s) and stable pills, the first vocabulary a reader meets,
+   on every screen, before any lesson has loaded. They carried only a hover
+   title (student-review round two: no click handler, so a phone has no
+   route to either definition). Now real buttons that toggle the card below.
+   Anchored to .topbar (position:relative, added here since base.css leaves
+   it unpositioned) rather than to .flow, which scrolls its own overflow-x
+   and would clip a taller card mid-height. */
+.topbar { position: relative; }
+
+.flow-term {
+  position: relative;
+  cursor: pointer;
+}
+/* Same technique as term-mark used before it became a `<dfn>`: an invisible
+   ::before hit area rather than growing the pill itself, which would crowd
+   the arrow glyphs and the neighbouring pill a few px away in this dense,
+   one-line strip. A real 44px inset collided with the next pill exactly the
+   way the note's own inline term did before that fix, so this is held to
+   verify.mjs's 24px HARD_FLOOR instead (WCAG 2.2 SC 2.5.8's legal minimum),
+   with -4px/-3px matching the value that inline term settled on. */
+.flow-term::before {
+  content: '';
+  position: absolute;
+  inset: -4px -3px;
+}
+.flow-term:hover, .flow-term.is-open { border-color: var(--accent); }
+.flow-term.is-open { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+.topbar-term-card {
+  position: absolute;
+  top: 100%;
+  left: 14px;
+  z-index: 30;
+  margin-top: 6px;
+  max-width: min(420px, calc(100vw - 28px));
+  padding: 8px 28px 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--response);
+  border-left-width: 3px;
+  border-radius: 0 6px 6px 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color: var(--dim);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.topbar-term-card b { color: var(--text); }
+.topbar-term-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.topbar-term-close:hover { color: var(--text); }
+/* Same 22px-glyph-plus-11px-inset formula as .term-card-close, which already
+   clears the suite's real 44px floor — no exception needed here either. */
+.topbar-term-close::before {
   content: '';
   position: absolute;
   inset: -11px;
@@ -429,12 +488,46 @@ a.handover-copy:hover { filter: brightness(1.1); }
    the better first picture, and this says what lesson 1 is instead. Sized
    down from the base .hint (12px/1.5) so the one lesson that carries it does
    not lose the pixels the 1366×768 fold probe needs for the featured knob
-   below. */
+   below. A second review pass judged the plain sentence a cost on its own —
+   a first visit implying missed material — so this is now a real button
+   that loads lesson 1 in one click, carrying more than it said before
+   without adding a second element. */
 .hint.start-hint {
+  position: relative;
+  display: block;
+  width: 100%;
   margin: 2px 0 2px;
+  padding: 0;
+  background: none;
+  border: none;
   color: var(--dim);
+  font: inherit;
   font-size: 11px;
   line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+.hint.start-hint:hover { color: var(--text); }
+.hint.start-hint:hover .start-hint-cta { color: var(--accent); }
+.start-hint-cta {
+  color: var(--response);
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* item 14's Circuits sweep (`.presets .preset`) also matches the LESSON
+   buttons visible on a fresh load, so this button is walked by the phone
+   touch-target probe too. A REAL 44px minimum (the first cut here, growing
+   the box itself) pushed the try line past the sidebar's own first-screen
+   budget (item 13's fold probe) — the same fold-vs-floor tension the note's
+   own inline term hit first. Same answer: an invisible ::before hit area
+   that costs the layout nothing, held to verify.mjs's 24px HARD_FLOOR
+   (WCAG 2.2 SC 2.5.8's legal minimum) rather than the suite's 44px target,
+   since it sits one line under the sticky "Try this" nav strip and a wider
+   inset risks bridging into its prev/next/reset buttons. */
+.hint.start-hint::before {
+  content: '';
+  position: absolute;
+  inset: -7px 0;
 }
 
 /* A note whose picture has moved on: a knob changed since the lesson loaded.
@@ -493,6 +586,16 @@ details.preset-group > .presets { margin: 3px 0 5px; }
    inside it rather than growing the page. */
 .math-pointer b { color: var(--text); font-weight: 600; }
 
+/* The shell that carries the scroll cue below (item 5): a relative wrapper
+   so the cue can sit as an overlay pinned to the pane's own bottom edge
+   rather than as one more row the flex column has to find height for. */
+.math-pane-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
 .math-pane {
   flex: 1;
   min-height: 0;
@@ -504,6 +607,26 @@ details.preset-group > .presets { margin: 3px 0 5px; }
   margin-top: 0;
   border-left: 0;
   padding: 2px 4px 8px;
+}
+
+/* Announces that the theory-versus-measured table continues below — shown
+   only while the pane is genuinely short of its own bottom (App.jsx's
+   checkMathScroll), so a circuit whose math already fits never shows a
+   promise with nothing behind it. Fades into the pane's own background
+   rather than a hard edge, and ignores pointer events so it never steals a
+   click meant for the table underneath. */
+.math-scroll-cue {
+  position: absolute;
+  left: 0;
+  right: 6px;
+  bottom: 0;
+  padding: 14px 0 4px;
+  background: linear-gradient(to bottom, transparent, var(--bg) 60%);
+  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  pointer-events: none;
 }
 
 /* The way back into the course after a Circuits click parked it: styled as
@@ -546,6 +669,7 @@ details.preset-group > .presets { margin: 3px 0 5px; }
    panes grew to fit them — the whole .views widened to 463 px and cropped
    the Bode. The pane keeps its width; the math scrolls sideways inside it. */
 .view { min-width: 0; }
+.math-pane-shell { min-width: 0; max-width: 100%; }
 .math-pane { min-width: 0; max-width: 100%; overflow-x: auto; }
 .math-pane .math-body { min-width: 0; }
 .math-pane .katex-display { overflow-x: auto; overflow-y: hidden; }
@@ -580,6 +704,7 @@ details.preset-group > .presets { margin: 3px 0 5px; }
   .view { padding: 4px 10px 4px; }
   .view-head h2 { display: none; }
   .view .plot { flex: none; height: 144px; }
+  .math-pane-shell { height: 144px; flex: none; }
   .math-pane { height: 144px; flex: none; }
   /* Item 5: at 144 px the pole–zero plot is a flat smear, and "Real parts
      wobble"'s whole claim is that the cloud gets visibly bigger. Every

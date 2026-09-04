@@ -116,6 +116,13 @@ export default function App() {
   // discovery. Cleared on every lesson change so a stale card never survives
   // onto a note that never mentioned it.
   const [openTerm, setOpenTerm] = useState(null)
+  // Which topbar pill (if any) is tapped open. Separate from openTerm: the
+  // strip is on every screen regardless of lesson, and H(s) / stable are the
+  // very first vocabulary a reader meets, before any note has loaded — a
+  // hover title alone did nothing on a phone (student-review: touch found no
+  // route to either definition). Not cleared on a lesson change; the strip
+  // itself does not change when the lesson does.
+  const [topbarTerm, setTopbarTerm] = useState(null)
   // The lesson a Circuits click left: the nav strip keeps counting from it
   // and offers the way back, so picking a circuit to poke at is a detour
   // rather than a silent exit from the course.
@@ -326,6 +333,26 @@ export default function App() {
 
   const math = useMemo(() => circuitMath(id, tf, params, output), [id, tf, params, output])
 
+  // Item 5, first bug: the Math tab often runs two or three screens past the
+  // fold — a theory-versus-measured table with no cue that more of it sits
+  // below the visible pane. Same discipline as the topbar's ⋯-before-the-
+  // sticky-node fix on a phone (styles.css): announce that a box scrolls
+  // instead of just letting it stop. `mathMore` is true only while the pane
+  // is genuinely NOT at its own bottom, so a circuit whose math already fits
+  // never shows a cue with nothing left to promise.
+  const mathPaneRef = useRef(null)
+  const [mathMore, setMathMore] = useState(false)
+  const checkMathScroll = () => {
+    const el = mathPaneRef.current
+    if (!el) return setMathMore(false)
+    setMathMore(el.scrollHeight - el.scrollTop - el.clientHeight > 4)
+  }
+  useEffect(() => {
+    if (lower !== 'math') return
+    const raf = requestAnimationFrame(checkMathScroll)
+    return () => cancelAnimationFrame(raf)
+  }, [lower, math])
+
   // The scatter from building this circuit 120 times with real parts — and
   // the same builds as an envelope on each plot: shaded regions for where the
   // response and the step could land, the pole cloud for where the poles do.
@@ -413,9 +440,14 @@ export default function App() {
       {tolRow(p)}
     </React.Fragment>
   )
+  // The tag itself carries the part's own label, not just "tol" — two
+  // tolerance rows featured together (the "Blame the right part" lesson
+  // moves the same ±10% from R to C) used to both read only "TOL" on
+  // screen, told apart solely by an aria-label a sighted reader never
+  // hears. "R tol" and "C tol" can be told apart by looking.
   const tolRow = (p) => (
     <div className="field-tol" role="group" aria-label={`${p.label} tolerance`} key={`tol:${p.key}`}>
-      <span className="tol-tag">tol</span>
+      <span className="tol-tag">{p.label} tol</span>
       <div className="segmented sm">
         {TOLERANCES.map((t) => (
           <button
@@ -586,11 +618,20 @@ export default function App() {
           {/* The course opens on the corner, not the divider — a better first
               picture, but "2 of 15" with no explanation reads as a bug. One
               line makes the starting position legible without turning the
-              corner's own note into two claims. */}
+              corner's own note into two claims. A second review pass judged
+              a passive line a cost on its own (a first visit implying missed
+              material), so the line is now the way back: one click loads
+              lesson 1 rather than only naming it. */}
           {active?.name === START_LESSON ? (
-            <p className="hint start-hint" data-role="start-hint">
-              Lesson 1, the flat divider, is the baseline this corner builds on.
-            </p>
+            <button
+              type="button"
+              className="hint start-hint"
+              data-role="start-hint"
+              onClick={() => loadLesson(LESSONS[0])}
+            >
+              Lesson 1, the flat divider, is the baseline this corner builds on
+              <span className="start-hint-cta"> →</span>
+            </button>
           ) : null}
           {parked ? (
             <button
@@ -807,26 +848,58 @@ export default function App() {
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          {/* Defined on contact, on hover: the strip is on every screen and
-              "1 pole, 0 zeros" is the first jargon a student meets. */}
-          <span className="flow-node" title={`${TERMS.tf.name}: ${TERMS.tf.def}`}>
+          {/* Defined on contact — the strip is on every screen and "1 pole,
+              0 zeros" is the first jargon a student meets, before any note
+              has loaded. A hover title alone left a phone with no route to
+              it at all (student-review), so this is a real button: tap or
+              click opens the same definition below, keyboard-reachable, and
+              the title still answers a desktop hover instantly. */}
+          <button
+            type="button"
+            className={`flow-node flow-term${topbarTerm === 'tf' ? ' is-open' : ''}`}
+            aria-expanded={topbarTerm === 'tf'}
+            title={`${TERMS.tf.name}: ${TERMS.tf.def}`}
+            onClick={() => setTopbarTerm(topbarTerm === 'tf' ? null : 'tf')}
+          >
             H(s)
             <em>
               {pz.poles.length} pole{pz.poles.length === 1 ? '' : 's'}, {pz.zeros.length} zero
               {pz.zeros.length === 1 ? '' : 's'}
             </em>
-          </span>
+          </button>
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          <span
-            className={`flow-node ${stable ? 'is-out' : 'is-off'}`}
+          <button
+            type="button"
+            className={`flow-node flow-term ${stable ? 'is-out' : 'is-off'}${topbarTerm === 'lhp' ? ' is-open' : ''}`}
+            aria-expanded={topbarTerm === 'lhp'}
             title={`${TERMS.lhp.name}: ${TERMS.lhp.def}`}
+            onClick={() => setTopbarTerm(topbarTerm === 'lhp' ? null : 'lhp')}
           >
             {stable ? 'stable' : 'not stable'}
             <em>{stable ? 'left half plane' : 'on or right of the axis'}</em>
-          </span>
+          </button>
         </nav>
+        {/* Outside .flow, deliberately: .flow scrolls its own overflow-x (the
+            item 3 fix above), and a descendant positioned inside an
+            overflow:auto ancestor clips to that ancestor's own box even when
+            its containing block is further up — the card would be cut off
+            mid-height on a narrow phone strip. Anchored to .topbar itself
+            instead. */}
+        {topbarTerm ? (
+          <div className="topbar-term-card" data-role="topbar-term-card" role="note">
+            <button
+              type="button"
+              className="topbar-term-close"
+              aria-label="Close definition"
+              onClick={() => setTopbarTerm(null)}
+            >
+              ×
+            </button>
+            <b>{TERMS[topbarTerm].name}.</b> {TERMS[topbarTerm].def}
+          </div>
+        ) : null}
         <div className="topbar-controls">
           <span className="topbar-field">
             {/* The tank's plot is an impedance, so its DC value is ohms — "DC
@@ -1044,8 +1117,20 @@ export default function App() {
               />
             </>
           ) : (
-            <div className="math-pane" data-role="math-pane">
-              <MathBody entry={math} />
+            <div className="math-pane-shell">
+              <div
+                className="math-pane"
+                data-role="math-pane"
+                ref={mathPaneRef}
+                onScroll={checkMathScroll}
+              >
+                <MathBody entry={math} />
+              </div>
+              {mathMore ? (
+                <div className="math-scroll-cue" data-role="math-scroll-cue" aria-hidden="true">
+                  more below ↓
+                </div>
+              ) : null}
             </div>
           )}
         </section>
@@ -1123,30 +1208,48 @@ function ViewSwitch({ value, onChange, options }) {
  * The note, with its own terms tappable in place.
  *
  * markTerms splits the text once; a plain run renders as-is, and a term hit
- * renders as a real <button> (focusable and tappable, not a hover-only
- * affordance) that opens the SAME definition the "Terms used here" fold
- * holds, right where the reader's eye already is.
+ * renders as a `<dfn>`, not a `<button>` — deliberately, matching Control
+ * Lab's NoteTerms.jsx. A marked word sits a few characters INSIDE a running
+ * sentence, and WCAG 2.5.8's own Target Size rule exempts exactly this case
+ * ("inline: the target ... is otherwise constrained by the line-height of
+ * non-target text"). A button role would also enrol it in this app's OWN
+ * touch-target probe (verify.mjs item 14, packages/ui's tapTargetProbe —
+ * SELECTOR is `button, a, summary, [role="button"], input[type="checkbox"]`,
+ * which a bare `<dfn>` never matches), which a two-letter word like "Q" or
+ * "dB" can never clear without padding wide enough to read as a chip rather
+ * than a word.
+ *
+ * The earlier version excluded any match under three characters for exactly
+ * that reason — but that silently dropped the inline mark from precisely the
+ * symbols a first-year reader is least likely to know: Q, dB, ζ, ω₀, on
+ * every Resonance lesson. Rendering as a `<dfn>` removes the tension outright
+ * instead of trading it away: every match is tappable regardless of length,
+ * `tabIndex` and the keydown handler below still make it keyboard reachable,
+ * and it never enters the probe it could never pass.
  */
 function Marked({ text, terms, open, onOpen }) {
-  return markTerms(text, terms).map((seg, i) =>
-    // A tap target under three letters (bare "Q", "s") cannot clear even the
-    // suite's 24 px accessibility floor without padding wide enough to read
-    // as a chip rather than a word, so it stays plain here — no worse than
-    // before, since the fold below still defines it.
-    seg.term && seg.text.trim().length >= 3 ? (
-      <button
-        type="button"
+  return markTerms(text, terms).map((seg, i) => {
+    if (!seg.term) return <React.Fragment key={i}>{seg.text}</React.Fragment>
+    const isOpen = open === seg.term
+    const toggle = () => onOpen(isOpen ? null : seg.term)
+    return (
+      <dfn
         key={i}
-        className={`term-mark${open === seg.term ? ' is-open' : ''}`}
-        aria-expanded={open === seg.term}
-        onClick={() => onOpen(open === seg.term ? null : seg.term)}
+        className={`term-mark${isOpen ? ' is-open' : ''}`}
+        tabIndex={0}
+        aria-expanded={isOpen}
+        onClick={toggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            toggle()
+          }
+        }}
       >
         {seg.text}
-      </button>
-    ) : (
-      <React.Fragment key={i}>{seg.text}</React.Fragment>
-    ),
-  )
+      </dfn>
+    )
+  })
 }
 
 /** The definition a tapped term reveals, right under the note that named it. */
