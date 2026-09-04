@@ -1,4 +1,5 @@
 import { polesZeros, isStable, dcGain } from '@ee-labs/systems'
+import { UNDEFINED_PLANT_REASON } from './systems.js'
 
 // The one-word judgement the top bar prints, and the numbers that must agree
 // with it.
@@ -10,6 +11,15 @@ import { polesZeros, isStable, dcGain } from '@ee-labs/systems'
 // review filed all four from one screen. A loop on the boundary is its own
 // state: a sustained oscillation that neither settles nor runs away, and
 // every pane should call it that.
+//
+// A fourth state sits beside those three, not among them: 'undefined'. A
+// closed-loop denominator that is identically zero has no characteristic
+// equation to have roots of, so it is not "unstable" — a claim about roots
+// in the right half plane — it is not a system at all. buildLoop's own
+// refusal (systems.js: an all-zero plant denominator) hands verdictOf
+// exactly this shape, and the check below is the same "degenerate
+// denominator" test isStable() already makes, read as its own verdict
+// instead of folded into "unstable".
 
 /** A pole this close to the axis, relative to its own scale, is on it. */
 export const MARGINAL_REL = 1e-6
@@ -21,7 +31,7 @@ export const MARGINAL_GM = 1e-3
  * second witness: a gain margin within 0.1% of 1× is the boundary too.
  */
 export function verdictOf(closed, marg = null) {
-  if (!closed.a.length || !closed.a.some((v) => v !== 0)) return 'unstable'
+  if (!closed.a.length || !closed.a.some((v) => v !== 0)) return 'undefined'
   const { poles } = polesZeros(closed)
   if (!poles.length) return isStable(closed) ? 'stable' : 'unstable'
   const scale = Math.max(...poles.map(([re, im]) => Math.hypot(re, im)), Number.MIN_VALUE)
@@ -90,6 +100,8 @@ export function verdictBadge(verdict) {
       full: 'sustained oscillation — neither settles nor runs away',
       short: 'oscillates',
     }
+  if (verdict === 'undefined')
+    return { badge: 'NOT A SYSTEM', full: UNDEFINED_PLANT_REASON, short: 'not a system' }
   return { badge: 'UNSTABLE', full: 'closed loop runs away', short: 'runs away' }
 }
 
@@ -111,7 +123,8 @@ export function joinParts(parts) {
  * one sentence that names the boundary from whichever side applies: a
  * marginal loop sitting AT it (gain margin exactly 0 dB), a loop whose phase
  * never reaches −180° so there is no boundary to measure, room to spare
- * above it, or already past it. `gainMargin` must be the RAW value from
+ * above it, or already past it, or — the fourth verdict, ahead of all of
+ * those — no loop to measure at all. `gainMargin` must be the RAW value from
  * margins() — presentMargins() only ever rewrites gainCrossover/phaseMargin,
  * never gainMargin, so the raw number is exactly what every caller (the
  * topbar's verdict aside) already reads. chrome.js calls this with the
@@ -119,8 +132,9 @@ export function joinParts(parts) {
  * appear on screen with no definition reachable — the defect was that this
  * sentence used to exist in ONE place (here) and get scanned in NONE.
  */
-export function bodeMarginNote(marginal, gainMargin) {
-  if (marginal) return { prov: true, parts: [{ t: 'gain margin 0 dB, this gain is the boundary' }] }
+export function bodeMarginNote(verdict, gainMargin) {
+  if (verdict === 'undefined') return { prov: true, parts: [{ t: UNDEFINED_PLANT_REASON }] }
+  if (verdict === 'marginal') return { prov: true, parts: [{ t: 'gain margin 0 dB, this gain is the boundary' }] }
   if (gainMargin == null) return { prov: true, parts: [{ t: 'phase never reaches −180°' }] }
   if (gainMargin >= 1) {
     return { prov: false, parts: [{ t: 'room for ' }, { b: `${gainMargin.toFixed(2)}×` }, { t: ' more gain' }] }
@@ -202,7 +216,9 @@ export function steadyErrorOf(closed, verdict) {
       title:
         verdict === 'marginal'
           ? 'does not settle — the loop oscillates forever at this gain, so it has no steady state'
-          : 'does not settle — the loop runs away, so it has no steady state',
+          : verdict === 'undefined'
+            ? UNDEFINED_PLANT_REASON
+            : 'does not settle — the loop runs away, so it has no steady state',
     }
   }
   const err = 1 - dcGain(closed)

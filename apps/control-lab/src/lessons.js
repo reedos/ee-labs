@@ -277,6 +277,12 @@ export const LESSONS = [
     featured: ['kp'],
     chips: (s, marg) => [...marginChips(s, marg), gain('kp', 1)],
     terms: terms('gainmargin', 'verdict', 'boundary', 'margin', 'db'),
+    // The Bode pane's own reading lesson for THIS margin (BodeCanvas.jsx):
+    // the gap between the magnitude trace and 0 dB, at the frequency where
+    // the phase has already reached −180°. Same field App.jsx already used
+    // to ring "phase margin" for its own first lesson — this is gain
+    // margin's turn.
+    callout: 'gainmargin',
     patch: { plant: 'threePole', plantP: pp('threePole'), ctrl: 'p', ctrlP: cp('p', { kp: 1 }), view: 'step' },
   },
   {

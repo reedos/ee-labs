@@ -58,6 +58,11 @@ function ruleOfThumbBlocker(marg, second, loop, integrators, pz) {
 
 export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
   try {
+    // buildLoop (systems.js) refuses before this pane ever sees a number:
+    // an all-zero plant denominator carries `reason` instead of a loop, and
+    // computing steady-state error or a DC gain from it would print a tick
+    // beside a division by zero rather than the check it claims to be.
+    if (loop.reason) return { blocks: [T(loop.reason)] }
     const plant = PLANTS[plantId]
     const ctrl = CONTROLLERS[ctrlId]
     const pz = polesZeros(loop.closed)

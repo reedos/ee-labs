@@ -248,6 +248,13 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 
 .conv-bar .ghost { white-space: nowrap; }
 
+/* Bought back for the touch-target pass, same reason as .view-head's
+   row-gap above: the play button and the speed chips both grew a couple
+   of px to clear the plot pane's 24px floor. */
+@media (max-width: 900px) {
+  .conv-bar { padding: 0 0 2px; gap: 8px; }
+}
+
 .conv-speed { flex: 0 0 auto; }
 .conv-speed button { padding: 2px 9px; white-space: nowrap; }
 
@@ -272,7 +279,13 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    pane-header control groups wrap under the title without crowding. */
 @media (max-width: 900px) {
   .topbar-controls { flex-wrap: wrap; row-gap: 6px; max-width: 100%; }
-  .view-head { row-gap: 6px; }
+  /* Bought back for the touch-target pass: the view tabs and the readout's
+     own Reference/Disturbance toggle both grew a few px taller (packages/ui
+     base.css) to clear the plot pane's 24px floor, so this row-gap gives
+     some of it back — the watch view's transport row (conv-bar, below)
+     stacks on top of both and needed the room to keep its canvas on
+     screen at 390x844. */
+  .view-head { row-gap: 3px; }
   .view-head .readout { flex-basis: 100%; }
 }
 
@@ -294,7 +307,17 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 }
 .topbar-field-note { display: block; flex-basis: 100%; font-size: 10px; color: var(--dim); }
 @media (max-width: 900px) {
-  .topbar-info { display: inline; }
+  /* Touch target: the mark stays a small glyph (a bigger "i" would cost the
+     topbar row height every field on the bar shares) but its own tap area
+     reaches 44px via an invisible hit area — nothing else on the bar sits
+     within reach of it (it is the only button on the row; its neighbours
+     are plain text), so there is no adjacent control for a thumb to bridge. */
+  .topbar-info { display: inline; position: relative; }
+  .topbar-info::before {
+    content: '';
+    position: absolute;
+    inset: -17px -16px;
+  }
 }
 
 /* A margin that has run thin is worth seeing before you read the number. */
@@ -337,6 +360,20 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   white-space: nowrap;
 }
 .lesson-link:hover { text-decoration: underline; }
+
+/* Touch target: an inline text link at the end of the course, alone on its
+   own line with nothing tappable near it — an invisible hit area reaches
+   44 with no visual change and no neighbour for a thumb to bridge. */
+@media (max-width: 900px) {
+  .lesson-link {
+    position: relative;
+  }
+  .lesson-link::before {
+    content: '';
+    position: absolute;
+    inset: -14px;
+  }
+}
 
 /* Arriving from another tool. */
 .hint.from-link {
@@ -571,4 +608,16 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .app.has-lesson .controls { padding-top: 10px; }
   .app.has-lesson .controls header .report-issue { display: none; }
   .app.has-lesson .controls-foot { display: block; }
+}
+
+/* Touch target: @ee-labs/explain's math-toggle disclosure, inside the Math
+   pane, is a package this suite does not own — the fix lives here instead.
+   It scrolls inside its own pane (.view-body.math-pane), not the sidebar's
+   gated first screen, so it is free to grow for real. */
+@media (max-width: 900px) {
+  .math-toggle {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }

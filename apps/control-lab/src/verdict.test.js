@@ -7,6 +7,9 @@ import {
   gainMarginRoom,
   gainMarginWarn,
   MARGINAL_REL,
+  verdictBadge,
+  bodeMarginNote,
+  joinParts,
 } from './verdict.js'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf, ctrlDefaultsFor } from './systems.js'
 import { margins, isStable, dcGain } from '@ee-labs/systems'
@@ -45,6 +48,20 @@ describe('verdictOf', () => {
     // (relative to its own scale) reads marginal.
     expect(verdictOf(closed)).toBe('marginal')
     expect(MARGINAL_REL).toBeLessThan(1e-3)
+  })
+
+  // The shipped defect: Custom H(s) with b0 = 1 and a2 = a1 = a0 = 0 is
+  // P(s) = 1/0. buildLoop refuses (systems.js) rather than hand closeLoop's
+  // polyAdd an all-zero denominator to fold into a spurious T(s) = 1 — the
+  // old code's "stable, closed loop settles" beside a steady error of
+  // "none". 'undefined' is its own verdict, not 'unstable': a closed loop
+  // with no characteristic equation has not run away, it has no system to
+  // have run away in.
+  it('is undefined — not unstable, not stable — for an all-zero plant denominator', () => {
+    const { closed, open } = buildLoop('custom', { b2: 0, b1: 0, b0: 1, a2: 0, a1: 0, a0: 0 }, 'p', { kp: 1 })
+    expect(verdictOf(closed, margins(open, GRID))).toBe('undefined')
+    // Never the manufactured constant loop the old code built.
+    expect(dcGain(closed)).not.toBe(1)
   })
 })
 
@@ -206,5 +223,33 @@ describe('steadyErrorOf', () => {
     const marginal = steadyErrorOf({ b: [1], a: [1, 0, 1] }, 'marginal')
     expect(marginal.text).toBe('—')
     expect(marginal.title).toMatch(/oscillates forever/)
+  })
+
+  // The shipped defect's own wording: the tooltip used to say "an integrator
+  // in the loop erases the error exactly" for a plant with no integrator and
+  // no denominator at all. An undefined loop gets its own reason, never the
+  // "runs away" text an actually-unstable loop earns.
+  it('refuses for an undefined loop, and does not borrow the unstable wording', () => {
+    const info = steadyErrorOf({ b: [1], a: [0] }, 'undefined')
+    expect(info.text).toBe('—')
+    expect(info.value).toBeNull()
+    expect(info.title).toMatch(/all-zero denominator/)
+    expect(info.title).not.toMatch(/runs away/)
+  })
+})
+
+describe('verdictBadge', () => {
+  it('names the undefined verdict its own way, not as UNSTABLE', () => {
+    const badge = verdictBadge('undefined')
+    expect(badge.badge).not.toBe('UNSTABLE')
+    expect(badge.full).toMatch(/all-zero denominator/)
+  })
+})
+
+describe('bodeMarginNote', () => {
+  it('gives the undefined verdict its own sentence ahead of "phase never reaches"', () => {
+    const note = bodeMarginNote('undefined', null)
+    expect(joinParts(note.parts)).toMatch(/all-zero denominator/)
+    expect(joinParts(note.parts)).not.toMatch(/phase never reaches/)
   })
 })

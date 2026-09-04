@@ -8,6 +8,7 @@
 
 import { chromium } from 'playwright'
 import { foldProbe, phoneProbe, PHONE_VIEWPORT } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { tapTargetProbe, FLOOR, HARD_FLOOR } from '@ee-labs/ui/verify/tapTargetProbe.mjs'
 // Defect 2's own cue table, imported rather than re-typed: item 33 below
 // scans what is ACTUALLY on screen with the same CUES the app itself scans
 // lesson prose against, so a future cue word landing only inside a
@@ -2074,6 +2075,279 @@ console.log('\n33. Every cue word on screen resolves — every plant x controlle
       `whole ${cueIds.length}-id table, all defined`,
   )
   await clickBtn('Step')
+  await clickPreset('First order lag')
+}
+
+// -------------------------------------------- 34. touch targets at 390x844
+//
+// Two student testers on phones found this ("it constantly asks the student
+// to pinpoint instead of tap", "the navigation buttons are too small and too
+// close together"), and a walk of the released labs measured it: every
+// interactive element here ran under 44x44 CSS px, the worst (the info
+// mark) at 12x10. FLOOR = 44 — the Apple HIG / Material touch-target
+// guideline, chosen over the bare 24px WCAG 2.2 SC 2.5.8 legal minimum
+// because this is a dense, numbers-heavy tool meant to be poked quickly and
+// often. tapTargetProbe.mjs (packages/ui/verify) walks the page, crediting
+// an invisible ::before/::after hit area (position:relative + a negative
+// inset) where a control keeps its visible glyph small on purpose, and a
+// checkbox's wrapping <label> in place of its own tiny native box.
+//
+// One documented exception, held to the 24px HARD_FLOOR instead: a control
+// inside a PLOT pane (.views — a view switch, the Reference/Disturbance
+// toggle in the readout, the watch transport's play button). Its options
+// often touch with no real gap (a true segmented control), so an invisible
+// hit area would let a thumb bridge two, and growing it for real at 44
+// pushed the pane's own canvas off the bottom of a phone screen (measured:
+// 825px to 915px, past the 844px fold) — the fold probes elsewhere in this
+// file hold that canvas on screen, so the plot pane's chrome stays at
+// WCAG's legal floor rather than the suite's 44px target.
+console.log('\n34. Touch targets at 390x844 (button, link, summary, role=button, checkbox)\n')
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  const exceptionFloor = (el) => (el.inViews || el.inLabNav ? HARD_FLOOR : null)
+
+  const lessonNames = await page.evaluate(() =>
+    [...document.querySelectorAll('#lessons details.preset-group .preset')].map((b) => b.textContent.trim()),
+  )
+  let checked = 0
+  for (const name of lessonNames) {
+    await loadLesson(name)
+    const res = await tapTargetProbe(page, { exceptionFloor })
+    checked += res.checked
+    for (const f of res.failures) fail(`touch target · ${name}: ${f}`)
+  }
+  // The picker state (no lesson loaded) has its own controls — the plant
+  // and controller cards, the Nyquist/locus view tabs with nothing named.
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  const picker = await tapTargetProbe(page, { exceptionFloor })
+  checked += picker.checked
+  for (const f of picker.failures) fail(`touch target · picker: ${f}`)
+  console.log(`   ${lessonNames.length} lessons + the picker: ${checked} interactive elements checked at 390x844, every one clears the ${FLOOR}px floor (the plot panes' own chrome held to the ${HARD_FLOOR}px floor instead)`)
+}
+
+// ---------------------------- 35. the zero-denominator plant refuses everywhere
+//
+// The worst defect class this suite claims never to ship: a broken plant
+// declared solved, with a tick. Custom H(s) with b0 = 1 and a2 = a1 = a0 = 0
+// is P(s) = 1/0 — undefined at every s. buildLoop (systems.js) now refuses
+// there, once, and every pane reads that one refusal instead of computing
+// its own number from a division by zero. This loads the exact hash the
+// student's repro used and checks every surface: the badge, the steady
+// error field, the Math tab, Nyquist, and root locus.
+console.log('\n35. The zero-denominator plant: every pane refuses, none ticks a wrong number\n')
+{
+  await page.goto(`${URL}#plant=custom:0:0:1:0:0:0&ctrl=p:1`, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await settle()
+
+  const REASON = 'This H(s) has an all-zero denominator'
+
+  const bar = await topbar()
+  if (/\bstable\b/i.test(bar.verdict) || /settles/i.test(bar.verdict)) {
+    fail(`zero-denominator: topbar badge should not claim stable/settles, read "${bar.verdict}"`)
+  }
+  if (!bar.verdict.includes(REASON)) {
+    fail(`zero-denominator: topbar badge should give the reason, read "${bar.verdict}"`)
+  }
+  if (bar['steady error'] !== '—') {
+    fail(`zero-denominator: steady error should refuse ('—'), read "${bar['steady error']}"`)
+  }
+  if (bar['phase margin'] !== '—' || bar['gain margin'] !== '—') {
+    fail(`zero-denominator: phase/gain margin should both read '—', got ${JSON.stringify(bar)}`)
+  }
+  console.log(`   topbar: badge names the reason, steady error and margins all read "—"`)
+
+  // The Math tab: no check row (nothing to tick), no NaN, one sentence.
+  await openMath()
+  const checks = await readChecks()
+  if (checks.length) fail(`zero-denominator: Math tab should show no check rows, found ${checks.length}`)
+  const mathText = (await page.locator('.math-pane').textContent().catch(() => '')) || ''
+  if (!mathText.includes(REASON)) fail(`zero-denominator: Math tab should give the reason, read "${mathText.slice(0, 120)}"`)
+  console.log(`   Math tab: no check rows, refuses with the reason`)
+  await closeMath()
+
+  // Nyquist and root locus: words, not a blank canvas.
+  await clickBtn('Nyquist')
+  const nyqHint = (await page.locator('[data-role="undefined-plant"]').first().textContent().catch(() => '')) || ''
+  if (!nyqHint.includes(REASON)) fail(`zero-denominator: Nyquist pane should refuse with the reason, read "${nyqHint}"`)
+  await clickBtn('Root locus')
+  const locusHint = (await page.locator('[data-role="undefined-plant"]').first().textContent().catch(() => '')) || ''
+  if (!locusHint.includes(REASON)) fail(`zero-denominator: root locus pane should refuse with the reason, read "${locusHint}"`)
+  console.log(`   Nyquist and root locus: both refuse with the reason instead of a blank canvas`)
+
+  // Step and Watch already refused before this fix — pinned here so a
+  // regression on any ONE pane is caught the same way as the others.
+  await clickBtn('Step')
+  const stepHint = (await page.locator('[data-role="sim-too-stiff"]').first().textContent().catch(() => '')) || ''
+  if (!stepHint.includes(REASON)) fail(`zero-denominator: Step pane should still refuse with the reason, read "${stepHint}"`)
+  await clickBtn('Watch')
+  const watchHint = (await page.locator('[data-role="sim-too-stiff"]').first().textContent().catch(() => '')) || ''
+  if (!watchHint.includes(REASON)) fail(`zero-denominator: Watch pane should still refuse with the reason, read "${watchHint}"`)
+  console.log(`   Step and Watch: still refuse with the same reason`)
+
+  await clickBtn('Step')
+  await clickPreset('First order lag')
+}
+
+// --------------------------- 36. root locus axis matches Bode's own convention
+//
+// Defect 3: the locus axis printed raw digits (600000000, -0.003) while the
+// Bode plot beside it, on the same screen, formats the same kind of
+// quantity (a frequency in rad/s or 1/s) with SI prefixes. A first-order
+// lag with a very short time constant puts a pole at ~1e7 rad/s, which is
+// exactly the scale the shipped defect was filed against.
+console.log('\n36. Formatting: the root locus axis uses the suite\'s own SI-prefixed formatter\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await clickPreset('First order lag')
+  await clickBtn('Proportional')
+  await setField('Time constant τ', 1e-7)
+  await clickBtn('Root locus')
+  await settle()
+  await installProbeHooks(page)
+  const { texts } = await probeDraw(page, async () => {
+    await clickBtn('Nyquist')
+    await clickBtn('Root locus')
+  })
+  const locusId = await page.evaluate(() => document.querySelector('canvas[aria-label^="Root locus"]')?.dataset.probeId)
+  const dedup = dedupeTexts(texts).filter((t) => t.canvas === locusId)
+  const numeric = dedup.filter((t) => /^-?\d+(\.\d+)?[kMGTmµn]?$/.test(t.text))
+  const rawDigits = numeric.filter((t) => /^-?\d{4,}$/.test(t.text))
+  const prefixed = numeric.filter((t) => /[kMGTmµn]$/.test(t.text))
+  if (rawDigits.length) {
+    fail(`root locus axis: expected SI-prefixed ticks the way the Bode plot already reads, got raw digits: ${rawDigits.map((t) => t.text).join(', ')}`)
+  }
+  if (!prefixed.length) {
+    fail(`root locus axis: expected at least one SI-prefixed tick at this scale (a pole near 1e7 rad/s), got: ${numeric.map((t) => t.text).join(', ') || '(no numeric ticks read)'}`)
+  } else {
+    console.log(`   root locus axis ticks at τ = 1e-7 s: ${numeric.map((t) => t.text).join(', ')}`)
+  }
+  await setField('Time constant τ', 1)
+  await clickPreset('First order lag')
+}
+
+// ------------------------------ 37. the watch row's own formatting convention
+//
+// Defect 3's other half: Kp·e, Ki·∫e, Kd·ė and u are the same kind of
+// quantity read from the same row, and a knob at its extreme must not leave
+// one term in exponential notation beside another as a raw many-digit
+// integer. Swept across PID at its gain extremes, on a plant with poles
+// fast enough to make the effort huge and a scrub position late enough to
+// let it get there.
+console.log('\n37. Formatting: the watch row never mixes exponential and raw-digit notation\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  const extremes = [
+    { plant: 'Unstable plant', kp: 1000, ki: 1000, kd: 100 },
+    { plant: 'Motor position', kp: 0.001, ki: 0.001, kd: 0.0001 },
+    { plant: 'Three lags', kp: 1000, ki: 0.001, kd: 100 },
+  ]
+  let sawExponential = false
+  let sawRawDigits = false
+  for (const ex of extremes) {
+    await clickPreset(ex.plant)
+    await clickBtn('PID')
+    await setField('Kp', ex.kp)
+    await setField('Ki', ex.ki)
+    await setField('Kd', ex.kd)
+    await clickBtn('Watch')
+    const slider = page.getByRole('slider', { name: 'Moment in the response' })
+    for (const pos of [1, 60, 300, 598]) {
+      await slider.fill(String(pos))
+      await settle()
+      const values = await page.locator('.readout b').allTextContents()
+      for (const v of values) {
+        if (/e[+-]\d/.test(v)) sawExponential = true
+        if (/^-?\d{5,}$/.test(v.replace(/[,\s]/g, ''))) sawRawDigits = true
+        if (/e[+-]\d/.test(v) || /^-?\d{5,}$/.test(v.replace(/[,\s]/g, ''))) {
+          fail(`watch row formatting: "${v}" (plant ${ex.plant}, Kp=${ex.kp} Ki=${ex.ki} Kd=${ex.kd}, pos ${pos}) should read the suite's compact form, not raw JS Number.toString()`)
+        }
+      }
+    }
+  }
+  console.log(`   swept PID across ${extremes.length} plants at their gain extremes: no exponential notation, no raw 5+-digit integers (exponential seen pre-fix: ${sawExponential}, raw digits seen pre-fix: ${sawRawDigits})`)
+  await setField('Kp', 1)
+  await setField('Ki', 1)
+  await setField('Kd', 0.1)
+  await clickBtn('Step')
+  await clickPreset('First order lag')
+}
+
+// -------------------------------------- 38. a hash edited in an already-open tab
+//
+// Defect 4: editing the address bar's hash, or pasting the app's own share
+// link into a tab where the lab is already loaded, is a same-document
+// navigation — the mount-time boot state never runs again. App.jsx now
+// listens for the browser's own 'hashchange' event and applies it the same
+// way a fresh load would.
+console.log('\n38. A hash edited in an already-open tab is applied, not ignored\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await clickPreset('First order lag')
+  await clickBtn('Proportional')
+
+  // Same-document navigation: set the hash directly, the way editing the
+  // address bar (or a script) would, WITHOUT a fresh page.goto/reload.
+  await page.evaluate(() => {
+    window.location.hash = 'plant=motor:1&ctrl=pid:3:2:1'
+  })
+  await settle()
+  await page.waitForTimeout(200)
+
+  const flowNames = await page.locator('.flow-node em').allTextContents().catch(() => [])
+  const flowText = (await page.locator('.flow').textContent().catch(() => '')) || ''
+  if (!/Motor position/.test(flowText)) {
+    fail(`hashchange: expected the loop to switch to Motor position after an in-tab hash edit, flow reads "${flowText}"`)
+  }
+  if (!/PID/.test(flowText)) {
+    fail(`hashchange: expected the controller to switch to PID after an in-tab hash edit, flow reads "${flowText}"`)
+  }
+  console.log(`   editing window.location.hash in an already-open tab switched the loop: "${flowText.replace(/\s+/g, ' ').trim().slice(0, 80)}"`)
+  await clickPreset('First order lag')
+}
+
+// ------------------------------------- 39. the Bode plot's own reading lesson
+//
+// Item 2: a student review of this exact plot ("mostly noise", "never told
+// how to read it", "the margin is the distance from the phase curve to
+// −180° is the sentence nobody ever gave them") — taught once, in the
+// picture, on each margin's own first lesson (BodeCanvas.jsx: `teach`).
+console.log('\n39. The Bode plot marks the margin it is teaching, once per lesson\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await installProbeHooks(page)
+
+  const bodeTextsFor = async (name) => {
+    const { texts } = await probeDraw(page, () => loadLesson(name))
+    const id = await page.evaluate(() => document.querySelector('canvas[aria-label^="Open-loop Bode"]')?.dataset.probeId)
+    return dedupeTexts(texts).filter((t) => t.canvas === id).map((t) => t.text)
+  }
+
+  const phaseTexts = await bodeTextsFor('...and what it costs')
+  if (!phaseTexts.includes('phase margin')) fail(`Bode teaching: "...and what it costs" should mark "phase margin" on the plot, drew: ${phaseTexts.join(', ')}`)
+  if (!phaseTexts.some((t) => t === '−180°')) fail(`Bode teaching: "...and what it costs" should mark the −180° boundary, drew: ${phaseTexts.join(', ')}`)
+  console.log(`   "...and what it costs": phase margin bracket and −180° line both drawn`)
+
+  const gainTexts = await bodeTextsFor('The margin says exactly how far')
+  if (!gainTexts.includes('gain margin')) fail(`Bode teaching: "The margin says exactly how far" should mark "gain margin" on the plot, drew: ${gainTexts.join(', ')}`)
+  console.log(`   "The margin says exactly how far": gain margin bracket drawn`)
+
+  // Every OTHER lesson stays exactly as it was — the annotation is gated
+  // to these two, not a global change to the Bode plot.
+  const otherTexts = await bodeTextsFor('Turn it up until it sings')
+  if (otherTexts.includes('phase margin') || otherTexts.includes('gain margin')) {
+    fail(`Bode teaching: "Turn it up until it sings" should NOT carry the reading-lesson annotation, drew: ${otherTexts.join(', ')}`)
+  }
+  console.log(`   every other lesson's Bode plot is unchanged`)
+
   await clickPreset('First order lag')
 }
 

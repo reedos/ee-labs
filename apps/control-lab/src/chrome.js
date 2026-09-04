@@ -358,7 +358,7 @@ export function chromeTermIds({ plantId, plantP, ctrlId, ctrlP, view, stepInput,
   // On screen regardless of the lower view: the topbar badge and the Bode
   // pane's margin sentence directly below the crossover line.
   const badge = verdictBadge(verdict)
-  const marginNote = bodeMarginNote(marginal, marg.gainMargin)
+  const marginNote = bodeMarginNote(verdict, marg.gainMargin)
 
   const watchLabels = view === 'watch' ? watchPartLabels(ctrlId) : []
   const watchText = watchLabels.length > 1 ? watchLabels.join(' ') : ''

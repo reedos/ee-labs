@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { simulate, dcGain } from '@ee-labs/systems'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
-import { paneRange, watchSignals, watchPartLabels } from './watch.js'
+import { paneRange, watchSignals, watchPartLabels, fmtWatch } from './watch.js'
 
 // The watch view claims to show the loop's ACTUAL internals — the error the
 // controller sees, the effort it answers with. Each claim is measured by an
@@ -223,5 +223,43 @@ describe('watchPartLabels agrees with watchSignals, for every controller', () =>
       const w = watchSignals(loop, ctrlId, defaultsOf(CONTROLLERS[ctrlId]), 'ref', OPTS)
       expect(watchPartLabels(ctrlId), ctrlId).toEqual(w.parts.map((p) => p.label))
     }
+  })
+})
+
+// The shipped defect: Kp·e, Ki·∫e, Kd·ė and u are the SAME kind of quantity,
+// read from the SAME row, so a slider at one knob's extreme must not leave
+// one term in exponential notation ("3e-9") beside another as a raw
+// many-digit integer ("12300000000000") — the JS Number.toString() split
+// fmtNum falls through to past its own comfortable range.
+describe('fmtWatch: one convention at either extreme, in the ordinary range too', () => {
+  it('matches fmtNum in the range this pane ordinarily shows', () => {
+    expect(fmtWatch(0.301)).toBe('0.301')
+    expect(fmtWatch(-0.699)).toBe('-0.699')
+    expect(fmtWatch(0)).toBe('0')
+  })
+
+  it('never falls through to a bare exponential string', () => {
+    expect(fmtWatch(3.14e-9)).not.toMatch(/e[+-]/)
+    expect(fmtWatch(-2.7e-8)).not.toMatch(/e[+-]/)
+  })
+
+  it('never falls through to a raw many-digit integer', () => {
+    const big = fmtWatch(1.23e13)
+    expect(big).not.toMatch(/^-?\d{5,}$/)
+    const alsoBig = fmtWatch(-9.6e6)
+    expect(alsoBig).not.toMatch(/^-?\d{5,}$/)
+  })
+
+  it('the same two conventions never appear side by side in one row', () => {
+    const row = [fmtWatch(3.14e-9), fmtWatch(-9.6e6), fmtWatch(0.301)]
+    for (const v of row) {
+      expect(v).not.toMatch(/e[+-]/)
+      expect(v).not.toMatch(/^-?\d{5,}$/)
+    }
+  })
+
+  it('is null-safe for a loop that never settles', () => {
+    expect(fmtWatch(NaN)).toBe('—')
+    expect(fmtWatch(Infinity)).toBe('—')
   })
 })

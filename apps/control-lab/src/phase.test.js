@@ -218,6 +218,24 @@ describe("the math panel's phase accounting", () => {
     // firstOrder at Kp 1 never reaches |L| = 1: no crossover, no price row.
     expect(has(entryFor('firstOrder', 'p'))).toBe(false)
   })
+
+  // The shipped defect: Custom H(s) with b0 = 1 and a2 = a1 = a0 = 0 is
+  // P(s) = 1/0, undefined at every s. The old panel still printed "steady
+  // state error" theory 0.0000 against measured 0.0000 and marked it with a
+  // tick — a confident wrong number, because it never asked buildLoop
+  // whether it had a system to describe. It must refuse instead: no check
+  // row (nothing to tick), no value row (nothing measured), one sentence
+  // naming why.
+  it('an undefined plant refuses instead of ticking a division by zero', () => {
+    const entry = entryFor('custom', 'p', { b2: 0, b1: 0, b0: 1, a2: 0, a1: 0, a0: 0 })
+    expect(entry).toBeTruthy()
+    expect(rowsOf(entry, 'check')).toEqual([])
+    expect(rowsOf(entry, 'values')).toEqual([])
+    const texts = entry.blocks.filter((b) => b.kind === 'text').map((b) => b.text)
+    expect(texts).toEqual([
+      'This H(s) has an all-zero denominator — not a system yet. Give a₂, a₁ or a₀ a value.',
+    ])
+  })
 })
 
 describe('the two doors: what the S and T prose claims', () => {

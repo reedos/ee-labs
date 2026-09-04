@@ -53,7 +53,7 @@ import NyquistCanvas from './components/NyquistCanvas.jsx'
 import LoopDiagram from './components/LoopDiagram.jsx'
 import LocusCanvas from './components/LocusCanvas.jsx'
 import WatchCanvas, { useWatchPosition, WATCH_SPEEDS } from './components/WatchCanvas.jsx'
-import { watchSignals } from './watch.js'
+import { watchSignals, fmtWatch } from './watch.js'
 import {
   verdictOf,
   oscillationOf,
@@ -86,7 +86,7 @@ const Prose = ({ parts }) =>
 
 export default function App() {
   // A loop handed over from another tool, read once at startup.
-  const [linked] = useState(() => {
+  const [linked, setLinked] = useState(() => {
     const { patch, warnings } = readLocationLink()
     const { state, warnings: more } = stateFromLink(patch)
     return { state, warnings: [...warnings, ...more] }
@@ -143,6 +143,40 @@ export default function App() {
   // plant is still that arrival — tuning its params keeps the identity,
   // choosing a different plant sheds it.
   const [fromInfo, setFromInfo] = useState(linked.state?.from ?? null)
+
+  // Editing the address bar's hash, or pasting one of this app's own share
+  // links into a tab where the lab is ALREADY open, is a same-document
+  // navigation: the URL changes but nothing remounts, so the boot-state
+  // initializer above (a useState callback, mount-time only) never runs
+  // again and the link silently does nothing. The browser still fires its
+  // own event for exactly this, so listening for it and re-running the same
+  // parse/apply steps `boot` used is the fix — not a second, hand-kept copy
+  // of that logic, but `initialState` itself, called again.
+  useEffect(() => {
+    const onHashChange = () => {
+      const { patch, warnings } = readLocationLink()
+      const { state, warnings: more } = stateFromLink(patch)
+      if (!state) return
+      const next = initialState(state, window.location.hash)
+      setPlantId(next.plantId)
+      setPlantP(next.plantP)
+      setCtrlId(next.ctrlId)
+      setCtrlP(next.ctrlP)
+      setLower(next.view)
+      setStepInput(next.stepInput)
+      setLesson(next.lesson)
+      setLastLesson(null)
+      setFromInfo(state.from ?? null)
+      // A fresh arrival, the same way a lesson load counts as one: the watch
+      // transport keys off this so a link arriving mid-scrub restarts it.
+      setLoads((k) => k + 1)
+      setLinked({ state, warnings: [...warnings, ...more] })
+      track(arrivalEvent('control-lab', state.from))
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Scroll a sidebar card into view, for clicks on the diagram's boxes.
   const reveal = (id) => {
@@ -280,7 +314,7 @@ export default function App() {
   // both from verdict.js so chrome.js's picker-fold scan reads the exact
   // same text this render shows rather than a hand-kept stand-in for it.
   const badge = verdictBadge(verdict)
-  const marginNote = bodeMarginNote(marginal, marg.gainMargin)
+  const marginNote = bodeMarginNote(verdict, marg.gainMargin)
   const second = useMemo(() => secondOrderMetrics(loop.closed), [loop])
 
   const nyq = useMemo(() => {
@@ -980,7 +1014,7 @@ export default function App() {
               {marg.phaseMargin == null ? '—' : `${marg.phaseMargin.toFixed(1)}°`}
             </b>
           </span>
-          <span className="topbar-field">
+          <span className={`topbar-field${active?.callout === 'gainmargin' ? ' is-callout' : ''}`}>
             <span>gain margin</span>
             <b className={gainMarginWarn(marg.gainMargin) ? 'warn' : ''}>
               {marg.gainMargin == null ? '—' : `${marg.gainMarginDb.toFixed(1)} dB`}
@@ -1056,7 +1090,17 @@ export default function App() {
               </button>
             </div>
             <div className="readout">
-              {marg.phaseMargin == null ? (
+              {/* An undefined plant refuses here first — before the
+                  crossover fallback below, which would otherwise print
+                  "gain never reaches 1" against a P(s) that has no value at
+                  any frequency, and before bodeMarginNote's own sentence,
+                  which already says the same reason (verdict.js) but need
+                  not be repeated twice on one line. */}
+              {loop.reason ? (
+                <span className="prov" data-role="undefined-plant">
+                  {loop.reason}
+                </span>
+              ) : marg.phaseMargin == null ? (
                 <span className="prov">{marg.crossoverNote || 'gain never reaches 1 — no crossover to measure'}</span>
               ) : (
                 <span>
@@ -1073,14 +1117,16 @@ export default function App() {
                   margin is a debt, so that sentence has to point DOWN. Same
                   function chrome.js scans, so none of these four can print
                   "boundary" or "−180°" with no definition reachable. */}
-              <span className={marginNote.prov ? 'prov' : undefined}>
-                <Prose parts={marginNote.parts} />
-              </span>
+              {loop.reason ? null : (
+                <span className={marginNote.prov ? 'prov' : undefined}>
+                  <Prose parts={marginNote.parts} />
+                </span>
+              )}
               {/* The lead network's own number — the try line quotes it,
                   because the loop's phase margin is NOT monotone in the
                   pole (it dips, then rises, as the pole passes the zero),
                   while what the network itself adds is. */}
-              {ctrlId === 'lead'
+              {!loop.reason && ctrlId === 'lead'
                 ? (() => {
                     const lp = leadPeak(ctrlP.z, ctrlP.p)
                     if (!lp) return null
@@ -1104,6 +1150,11 @@ export default function App() {
             ghostMag={ghost?.mag}
             ghostPhase={ghost?.phase}
             ghostLabel={ghost?.label}
+            // The Bode reading lesson (BodeCanvas.jsx), drawn once on each
+            // margin's own first lesson — the SAME `callout` that already
+            // rings the matching topbar field, so the ring and the picture
+            // can never point at two different things.
+            teach={active?.callout === 'phasemargin' || active?.callout === 'gainmargin' ? active.callout : null}
           />
         </section>
 
@@ -1158,20 +1209,25 @@ export default function App() {
               {lower === 'watch' && watch ? (
                 <>
                   <span>
-                    e now <b>{fmtNum(watch.e[Math.min(scrub.pos, watch.e.length - 1)], 3)}</b>
+                    e now <b>{fmtWatch(watch.e[Math.min(scrub.pos, watch.e.length - 1)])}</b>
                   </span>
                   {/* Each term at the cursor, in the DOM as well as on the
                       canvas — so "both parts still working" is a number a
-                      probe can read, not a picture it has to trust. */}
+                      probe can read, not a picture it has to trust.
+                      fmtWatch (watch.js): the same row's terms must share
+                      one convention at either extreme, not fall through to
+                      whichever of exponential or raw-digit notation JS's
+                      own Number.toString() happens to pick for THAT term's
+                      current magnitude. */}
                   {watch.parts.length > 1
                     ? watch.parts.map((p) => (
                         <span key={p.key} data-part={p.key}>
-                          {p.label} <b>{fmtNum(p.y[Math.min(scrub.pos, p.y.length - 1)], 3)}</b>
+                          {p.label} <b>{fmtWatch(p.y[Math.min(scrub.pos, p.y.length - 1)])}</b>
                         </span>
                       ))
                     : null}
                   <span>
-                    u now <b>{fmtNum(watch.u[Math.min(scrub.pos, watch.u.length - 1)], 3)}</b>
+                    u now <b>{fmtWatch(watch.u[Math.min(scrub.pos, watch.u.length - 1)])}</b>
                   </span>
                   {!stable ? <span className="flag warn">never settles</span> : null}
                 </>
@@ -1230,6 +1286,10 @@ export default function App() {
                 <span className="prov">
                   stability is a statement about one point: 1 + L = 0
                 </span>
+              ) : lower === 'locus' && loop.reason ? (
+                <span className="prov" data-role="undefined-plant">
+                  {loop.reason}
+                </span>
               ) : lower === 'locus' ? (
                 <>
                   {/* You are here, and where the branch meets the axis — the
@@ -1249,6 +1309,10 @@ export default function App() {
                   })()}
                   <span className="prov">crosses into the shaded half and the loop oscillates</span>
                 </>
+              ) : lower === 'math' && loop.reason ? (
+                <span className="prov" data-role="undefined-plant">
+                  {loop.reason}
+                </span>
               ) : lower === 'math' ? (
                 <span className="prov">a tick means the closed form and the live loop agree</span>
               ) : null}
@@ -1358,12 +1422,32 @@ export default function App() {
               <MathBody entry={math} />
             </div>
           ) : lower === 'nyquist' ? (
-            <NyquistCanvas
-              re={nyq.re}
-              im={nyq.im}
-              gainMargin={marg.gainMargin}
-              phaseMargin={marg.phaseMargin}
-            />
+            // An undefined plant has no L(jw) to plot: evalAtFreq divides by
+            // the all-zero denominator and hands the canvas NaN at every
+            // point, which used to draw as an unexplained blank frame next
+            // to a topbar still claiming "stable". Refuse in words instead,
+            // the same reason buildLoop (systems.js) already decided.
+            loop.reason ? (
+              <p className="hint" data-role="undefined-plant">
+                {loop.reason}
+              </p>
+            ) : (
+              <NyquistCanvas
+                re={nyq.re}
+                im={nyq.im}
+                gainMargin={marg.gainMargin}
+                phaseMargin={marg.phaseMargin}
+              />
+            )
+          ) : loop.reason ? (
+            // Root locus sweeps k over L = C·P: with P undefined the swept
+            // characteristic polynomial degenerates to a constant at every
+            // gain (no poles to root), and the frame that used to fit those
+            // empty branches autoscaled to whatever locusExtent's zero-point
+            // fallback produced — a nonsensical window under a blank plot.
+            <p className="hint" data-role="undefined-plant">
+              {loop.reason}
+            </p>
           ) : (
             <LocusCanvas
               poles={openPz.poles}
