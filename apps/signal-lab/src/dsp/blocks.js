@@ -339,8 +339,8 @@ export const BLOCK_TYPES = {
     group: 'FIR',
     hint:
       'A designed FIR: the ideal brick-wall filter is a sinc that runs forever, so it gets cut ' +
-      'off and tapered. Cutting it off abruptly is itself a rectangular window, and the ripple ' +
-      'that produces does not shrink as taps are added — only narrows. Set the window to none ' +
+      'off and tapered. Cutting it off abruptly is itself a rectangular taper, and the ripple ' +
+      'that produces does not shrink as taps are added — only narrows. Set the taper to none ' +
       'to see it. The phase is exactly linear whatever you choose.',
     nonlinear: false,
     defaults: { taps: 41, freq: 1000, mode: 'lowpass', window: 'hamming' },
@@ -359,8 +359,15 @@ export const BLOCK_TYPES = {
       cutoff(),
       { key: 'mode', label: 'Shape', kind: 'select', options: ['lowpass', 'highpass'] },
       {
+        // Labelled "Taper", not "Window": the chain-global analysis window
+        // in the top bar (GLOBAL_FIELDS.window) shares this control's four
+        // option names, and a note reading "Window is set to none" could
+        // mean either one. try.test.js used to carve "Window" out of its
+        // generic knob check for exactly this reason (Reed's review) — the
+        // key stays `window` (every preset's block patch already spells it
+        // that way), only the on-screen name changes.
         key: 'window',
-        label: 'Window',
+        label: 'Taper',
         kind: 'select',
         options: ['none', 'hann', 'hamming', 'blackman'],
         hint: 'Trades transition width against stopband depth. "none" is the untapered cut.',

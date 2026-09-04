@@ -166,15 +166,16 @@ describe('every preset', () => {
       }
       return out
     }
-    // "Window" and "Overlay" are deliberately not here: a block can carry its
-    // own `window` param (the FIR design taper, "Set Window to hamming") that
-    // means something different from the chain-global analysis window this
-    // preset's own try line names — the two share an English word without
-    // sharing a field. Spectral leakage's and Phase is invisible here's
-    // featured entries are pinned instead, above, by name.
+    // "Window" no longer needs an exclusion here: the FIR block's own design
+    // taper used to share the word "Window" with the chain-global analysis
+    // window this preset's try line names, and a note naming "the window"
+    // could mean either control (Reed's review). The FIR param is relabelled
+    // "Taper" (dsp/blocks.js), so "Window" in a try line is unambiguous
+    // again. "Overlay" stays excluded: Spectral leakage's and Phase is
+    // invisible here's featured entries are pinned instead, above, by name.
     const knobWords = [
       'Frequency', 'Phase', 'Highest harmonic', 'Cutoff', 'Q ', 'Taps N', 'Threshold', 'DC offset',
-      'Carrier', 'Bits', 'Type', 'Amplitude', 'Bypass', 'FFT', 'Rate',
+      'Carrier', 'Bits', 'Type', 'Amplitude', 'Bypass', 'FFT', 'Rate', 'Window',
     ]
     for (const p of PRESETS) {
       const named = knobWords.filter((k) => new RegExp(`\\b${k.trim()}\\b`).test(p.try))

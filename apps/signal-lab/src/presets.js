@@ -73,6 +73,15 @@ export const PRESET_GROUPS = [
   'Nonlinearity',
 ]
 
+// A group whose own experiments step up past the lab's stated background,
+// named once in the group header so a student can see it before opening the
+// group — not hidden until the terms panel of its first lesson. Every term
+// this group leans on is still self-contained (terms.js), which is why this
+// is a signpost rather than a rewrite.
+export const GROUP_SIGNPOSTS = {
+  'FIR and the z-plane': 'goes further than the rest of this lab',
+}
+
 export const PRESETS = [
   // --------------------------------------------------- Signals and Fourier
   {
@@ -427,11 +436,16 @@ export const PRESETS = [
     // The floor is dropped to −160 dB for this preset alone: the Hann floor
     // at 1 kHz sits near −147 dB, which the default −100 dB axis could not
     // show, so "below −140" was a number the student had to take on trust.
+    //
+    // The try line used to read "1 kHz's smear", which sends a student
+    // looking for a 1 kHz tone that is not on this screen — the source is
+    // 263 Hz, and 1 kHz is only the frequency where the leakage floor is
+    // read (Reed's review). Reworded to name the reading, not a signal.
     note:
-      'Window is set to "none". A tone that does not complete whole cycles in the frame smears across every ' +
-    'bin. With Hann it collapses back to a line, and the floor here is dropped to −160 dB so the collapse is ' +
-    'visible.',
-    try: 'Set Window to hann, 1 kHz’s smear drops from −56 dB to below −140 dB.',
+      'Window is set to "none". The 263 Hz tone does not complete whole cycles in the frame and smears across ' +
+    'every bin. With Hann it collapses back to a line, and the floor here is dropped to −160 dB so the ' +
+    'collapse is visible.',
+    try: 'Set Window to hann, the 1 kHz floor falls from −56 to below −140 dB.',
     chips: [
       { label: 'none', patch: { window: 'none' } },
       { label: 'hann', patch: { window: 'hann' } },
@@ -733,15 +747,24 @@ export const PRESETS = [
   {
     group: 'FIR and the z-plane',
     name: 'Cut it off abruptly and it rings',
-    terms: ['window', 'windownames', 'sinc', 'windowedsinc', 'brickwall', 'leakage', 'ripple', 'gibbs', 'taps', 'cutoff'],
+    terms: ['sinc', 'windowedsinc', 'brickwall', 'leakage', 'ripple', 'gibbs', 'taps', 'cutoff'],
     // Loads on the LINEAR amplitude scale: the 8% ripple is 0.7 dB — two
     // pixels on the dB axis — and the walk could not see the thing the
     // lesson exists to show.
+    //
+    // "Window" and "taper" here name this FIR block's OWN param, not the
+    // chain-global analysis window in the top bar — the two controls used
+    // to share the one word "Window", so a note reading "the window is set
+    // to none" left no way to tell which one it meant (Reed's review: the
+    // top bar plainly read hann while this block's own field said none).
+    // The block's field is relabelled "Taper" (dsp/blocks.js) and this
+    // preset's own text follows, so "window"/"windownames" no longer belong
+    // in its terms list — that pair describes the top bar's control.
     note:
-      'The same design with the window set to none, on a linear scale. The ideal filter is a sinc running to ' +
-    'infinity, so it is cut short, and cutting short IS a rectangular window, whose leakage puts 8% of ' +
+      'The same design with the taper set to none, on a linear scale. The ideal filter is a sinc running to ' +
+    'infinity, so it is cut short, and cutting short IS a rectangular taper, whose leakage puts 8% of ' +
     'overshoot beside the corner. More taps make the ripple narrower, never shorter: Gibbs again.',
-    try: 'Set Taps N to 201, the ripple narrows, not shorter. Set Window to hamming, gone.',
+    try: 'Set Taps N to 201, the ripple narrows, not shorter. Set Taper to hamming, gone.',
     chips: [
       blk1('101 taps', { taps: 101 }),
       blk1('201 taps', { taps: 201 }, 'Twice the taps: the same overshoot, half as wide'),

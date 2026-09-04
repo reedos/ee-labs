@@ -2,7 +2,7 @@ import React from 'react'
 import { LabNav, LessonNav, ReportIssue, TryLine } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { sourceMath } from '../math-parts.js'
-import { PRESET_GROUPS } from '../presets.js'
+import { GROUP_SIGNPOSTS, PRESET_GROUPS } from '../presets.js'
 import BlockCard from './BlockCard.jsx'
 import { SourceField, featuredFields } from './fields.jsx'
 import { WAVEFORMS } from '@ee-labs/dsp'
@@ -152,6 +152,7 @@ export default function Controls({
     ? featuredFields(activePreset.featured, state, { setSource, setBlock, patch })
     : []
   const terms = activePreset ? termsFor(activePreset.terms) : []
+  const handOverNames = presets.filter((p) => p.handOver).map((p) => p.name)
 
   // The sidebar is its own scroller on a phone (capped in styles.css, so both
   // plots keep the first screen) — a scroller inside a scroller. A phone's
@@ -166,6 +167,52 @@ export default function Controls({
   // the open math panels and the block count, all of which resize this box.
   const controlsRef = React.useRef(null)
   const [moreBelow, setMoreBelow] = React.useState(false)
+
+  // The sidebar is a scroller inside a scroller (`.controls` on top of the
+  // page), and the ACTIVE lesson — `.lesson`, the title/try/featured block a
+  // student came to touch — can sit anywhere inside it depending on how many
+  // groups happen to be open and how far down the list its own preset lives.
+  // A tap on a preset several groups down leaves `.controls` scrolled to
+  // wherever that button was, with the lesson it just loaded off screen
+  // above the fold (Reed's review measured 495 px on a phone tapping Ring
+  // modulator). Opening a further group without tapping anything can do the
+  // same thing from the other side: on a laptop `.preset-list` sits ABOVE
+  // `.lesson` in the DOM, so every group left open by "browsing ahead"
+  // pushes the ALREADY active lesson further down the pane, with the scroll
+  // position never having moved (measured: the try line 413 px into a
+  // 2048 px tall pane with the window still at the top). Prev and next read
+  // as airtight only because a fresh load always leaves one group open —
+  // fold the same content into that little room and the same bug is there.
+  //
+  // Fixed by checking, not assuming: after a preset loads OR a group's own
+  // open/closed set changes, if `.lesson`'s own top edge is no longer inside
+  // `.controls`' visible box, scroll it back to the top of that box. The
+  // check is what keeps prev/next exactly as they were — on a normal single-
+  // group screen the lesson is already in view, so nothing moves; the two
+  // measured cases above are the ones where it actually fires. Skipped on
+  // the very first render, since the initial load has nothing to correct.
+  //
+  // The check reads the TRY LINE's own box, not `.lesson`'s: `.lesson` runs
+  // from the lesson nav down through the note and its terms, so its own top
+  // edge can still be inside the visible box while the try line and the
+  // featured knob a little further down it are not — exactly the case that
+  // slipped through an earlier version of this check.
+  const lessonRef = React.useRef(null)
+  const loadedOnce = React.useRef(false)
+  React.useEffect(() => {
+    if (!loadedOnce.current) {
+      loadedOnce.current = true
+      return
+    }
+    const el = lessonRef.current
+    const container = controlsRef.current
+    if (!el || !container) return
+    const target = el.querySelector('.try-line') || el
+    const targetBox = target.getBoundingClientRect()
+    const contBox = container.getBoundingClientRect()
+    const visible = targetBox.top >= contBox.top - 0.5 && targetBox.bottom <= contBox.bottom + 0.5
+    if (!visible) el.scrollIntoView({ block: 'start' })
+  }, [state.presetName, openGroups])
   React.useLayoutEffect(() => {
     const el = controlsRef.current
     if (el) setMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 1)
@@ -262,6 +309,7 @@ export default function Controls({
                 }}
               >
                 {g}
+                {GROUP_SIGNPOSTS[g] ? <span className="group-signpost">{GROUP_SIGNPOSTS[g]}</span> : null}
                 {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
               </summary>
               <div className="presets">
@@ -280,7 +328,7 @@ export default function Controls({
           )
         })}
         </div>
-        <div className="lesson">
+        <div className="lesson" ref={lessonRef}>
         {nav ? (
           <LessonNav
             index={nav.index}
@@ -371,6 +419,22 @@ export default function Controls({
               ))}
             </dl>
           </details>
+        ) : null}
+        {/* Said once, honestly: which experiments cross into another lab.
+            CORE_SCOPE's rule is deliberate — no link where the mapping is
+            not exact — so most experiments stand alone, and nothing said
+            so before now. Placed at the END of the lesson block (after the
+            note and its terms) rather than near the try line: anything
+            earlier here pushes the try line and the featured knob down,
+            and the fold probe holds both at 1366x768. Skipped on the one
+            preset that already carries its own "Open in Circuit Lab" line,
+            so nothing repeats itself. Computed from the data, not a
+            hand-written name, so a second exact hand-over stays covered
+            without a second edit here. */}
+        {activePreset && !activePreset.handOver && handOverNames.length ? (
+          <p className="hint transfer-note">
+            {handOverNames.join(', ')} carries an exact match into another lab. Every other experiment here stands alone.
+          </p>
         ) : null}
         </div>
         {/* Phone only (styles.css): announces that `.controls` is its own

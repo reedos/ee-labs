@@ -1133,6 +1133,139 @@ console.log('\n10k3. Phone 390x844: the sidebar scroller announces itself\n')
   await page.waitForSelector('.views canvas')
 }
 
+// -------- 10k4. the sidebar returns to the lesson after a real tap, not
+// only after prev/next
+//
+// 10k/10k2/10k3 above all force `.controls.scrollTop = 0` before measuring —
+// which is exactly why the pane's own scroll position surviving a sidebar
+// tap went uncaught (Reed's review). A student does the opposite of that
+// reset: opens a folded group and taps a preset inside it, and Playwright's
+// own `.click()` scrolls the button into view first, precisely mirroring
+// where a person's tap would leave the pane. Nothing here re-homes the
+// scroll afterward — the app itself has to, on load. Two cases: a phone,
+// where the sidebar is its own short scroller, and a laptop with more than
+// one group left open by "browsing ahead", the review's other measured
+// case (1500+ px, no page scrollbar to hint at it).
+
+console.log('\n10k4. Tapping a lesson deep in the list lands the try line and every featured control on screen — no scroll reset first\n')
+
+async function checkLessonVisible(ctx) {
+  const sidebarBox = await page.locator('.controls').boundingBox()
+  const tryBox = await page.locator('.try-line').boundingBox().catch(() => null)
+  const items = page.locator('.featured .featured-item')
+  const n = await items.count()
+  const boxes = [{ label: 'try-line', box: tryBox }]
+  for (let i = 0; i < n; i++) boxes.push({ label: `featured[${i}]`, box: await items.nth(i).boundingBox() })
+  let ok = true
+  for (const { label, box } of boxes) {
+    if (!box) {
+      fail(`tap-nav / ${ctx}: ${label} not rendered`)
+      ok = false
+      continue
+    }
+    const bottom = box.y + box.height
+    const outerBottom = sidebarBox.y + sidebarBox.height
+    console.log(
+      `   ${ctx.padEnd(28)} ${label.padEnd(12)} top ${box.y.toFixed(0)} bottom ${bottom.toFixed(0)}` +
+        ` (sidebar [${sidebarBox.y.toFixed(0)}, ${outerBottom.toFixed(0)}])`,
+    )
+    if (box.y < sidebarBox.y - 0.5 || bottom > outerBottom + 0.5) {
+      fail(
+        `tap-nav / ${ctx}: ${label} outside the sidebar's visible box [${sidebarBox.y.toFixed(0)}, ` +
+          `${outerBottom.toFixed(0)}], got [${box.y.toFixed(0)}, ${bottom.toFixed(0)}]`,
+      )
+      ok = false
+    }
+  }
+  return ok
+}
+
+{
+  // Phone: open Nonlinearity by hand-scrolling the list, then tap Ring
+  // modulator — the review's own example (495 px above the fold before the
+  // fix).
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await loadPreset('Ring modulator')
+  await page.waitForTimeout(80)
+  if (await checkLessonVisible('phone / Ring modulator')) {
+    console.log('   phone: Ring modulator, tapped after opening Nonlinearity, lands inside the sidebar box')
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+{
+  // 1440x900: hand-open a second group ahead of the active one — "browsing
+  // ahead", which the review calls a normal way to use the sidebar — then
+  // tap a preset in a third, later group while the second is still open.
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await loadPreset('Single tone')
+  await page.evaluate(() => {
+    for (const d of document.querySelectorAll('details.preset-group')) {
+      if (d.querySelector('summary')?.childNodes[0]?.textContent.trim() === 'Filters' && !d.open) {
+        d.querySelector('summary').click()
+      }
+    }
+  })
+  await page.waitForTimeout(80)
+  const heightsBefore = await page.evaluate(() => {
+    const el = document.querySelector('.controls')
+    return { scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }
+  })
+  console.log(
+    `   1440x900: Signals-and-Fourier + Filters both open, .controls scrollHeight ${heightsBefore.scrollHeight}` +
+      ` vs clientHeight ${heightsBefore.clientHeight}`,
+  )
+  await loadPreset('Ring modulator')
+  await page.waitForTimeout(80)
+  if (await checkLessonVisible('1440x900 / Ring modulator')) {
+    console.log('   1440x900: Ring modulator, tapped with a second group already open, lands inside the sidebar box')
+  }
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+{
+  // 1440x900, no tap at all: Single tone stays loaded and every OTHER group
+  // gets opened by hand, one at a time — the review's "browsing ahead"
+  // case. `.preset-list` sits above `.lesson` in the DOM at this width, so
+  // this alone pushes the still-active lesson down the pane with the
+  // scroll position never moving (measured before the fix: the try line at
+  // 937-1011 px and the featured knob at 1024-1131 px, both below a 900 px
+  // sidebar box whose scrollHeight had grown to 2164).
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await loadPreset('Single tone')
+  await page.evaluate(() => {
+    for (const d of document.querySelectorAll('details.preset-group')) {
+      const label = d.querySelector('summary')?.childNodes[0]?.textContent.trim()
+      if (['Sampling', 'Filters', 'FIR and the z-plane', 'Nonlinearity'].includes(label) && !d.open) {
+        d.querySelector('summary').click()
+      }
+    }
+  })
+  await page.waitForTimeout(80)
+  const heights = await page.evaluate(() => {
+    const el = document.querySelector('.controls')
+    return { scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }
+  })
+  console.log(
+    `   1440x900: Single tone stays loaded, every other group hand-opened, .controls scrollHeight ` +
+      `${heights.scrollHeight} vs clientHeight ${heights.clientHeight}`,
+  )
+  if (await checkLessonVisible('1440x900 / Single tone, groups opened by hand')) {
+    console.log('   1440x900: Single tone stays fully visible while every other group is opened, no tap at all')
+  }
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
 // ---------------- 10l. Single tone: Amplitude is a real micro-experiment now
 
 console.log('\n10l. Single tone: Amplitude is a real micro-experiment now, not just a baseline\n')

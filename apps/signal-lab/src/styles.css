@@ -335,6 +335,19 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   display: inline-block;
 }
 
+/* A group whose own lessons step up past the lab's stated background, named
+   in the header itself (GROUP_SIGNPOSTS in presets.js) rather than left for
+   a student to discover mid-lesson. Lowercase and unbolded against the
+   summary's own uppercase, bold label, so it reads as an aside, not a
+   second heading. */
+.group-signpost {
+  text-transform: none;
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--dim);
+  opacity: 0.8;
+}
+
 /* ---------- the signal-path diagram ---------- */
 .fd-open { white-space: nowrap; }
 
