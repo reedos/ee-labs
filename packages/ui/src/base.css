@@ -221,6 +221,9 @@ body {
 .num {
   display: block;
   margin-bottom: 10px;
+  /* Anchors .num-echo, which is positioned out of flow on purpose — see its
+     own rule below. */
+  position: relative;
 }
 
 .num-head {
@@ -298,6 +301,41 @@ body {
   color: var(--dim);
   font-size: 11px;
   min-width: 16px;
+}
+
+/* The "what this will actually commit" line for engineering fields (see
+   NumField's engEcho use, units.js#engEcho). It only has something to say
+   while a bare number is mid-type into a field with an active prefix — a
+   milli-scale field reading a typed "1.0001" as 0.0010001 is the case this
+   exists to surface — and is empty the rest of the time. It stays
+   position:absolute and hidden-by-default REGARDLESS of content so it never
+   costs layout: every lab's fold probes require the try line and the
+   featured knob on screen at 1366x768, and this must not be able to push
+   either one down, whether it is empty, mid-fade, or showing three figures'
+   worth of correction. */
+.num-echo {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 5;
+  margin-top: 2px;
+  padding: 3px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.num-echo[data-visible] {
+  opacity: 1;
+  visibility: visible;
 }
 
 .num-slider {

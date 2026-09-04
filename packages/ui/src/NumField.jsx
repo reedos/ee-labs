@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
 import { POS_MAX, clamp, fromPos, near, snap, toPos } from './scale.js'
-import { eng, parseEng } from './units.js'
+import { eng, engEcho, parseEng } from './units.js'
 
 /**
  * A number you can type, drag, step, scroll, or click a preset for.
@@ -57,6 +57,14 @@ export default function NumField({
         })
 
   const unitLabel = engMode ? `${engParts.prefix}${unit}` : unit
+
+  // What a bare number mid-type will actually commit, given the prefix this
+  // field currently has on display — see units.js#engEcho for the full case
+  // this exists for (a milli-scale field reading a typed "1.0001" as 0.0010001
+  // with nothing on screen saying so). `draft` is null except while the field
+  // is actively being edited, so this is silent again the moment it commits,
+  // blurs, or Escapes — no separate focus tracking needed.
+  const echo = engMode && draft != null ? engEcho(draft, value, unit) : null
 
   const flashFor = (kind) => {
     setFlash(kind)
@@ -225,6 +233,7 @@ export default function NumField({
           aria-valuemax={max}
           aria-valuetext={`${fmt(value)}${spoken ? ` ${spoken}` : ''}`}
           aria-invalid={flash === 'bad' || undefined}
+          aria-describedby={engMode ? `${id}-echo` : undefined}
           value={shown}
           onChange={(e) => setDraft(e.target.value)}
           onFocus={(e) => e.target.select()}
@@ -247,6 +256,20 @@ export default function NumField({
           +
         </button>
       </div>
+
+      {/* Out of flow on purpose: this can appear mid-keystroke, and the fold
+          probes in every lab require the try line and the featured knob to
+          stay on screen at 1366x768 and up. An absolutely positioned line
+          costs zero layout whether it is empty, showing, or hidden by a
+          reduced-motion setting — nothing here reflows the page. The element
+          itself always exists so aria-live has something to announce a
+          change into; it just sits empty until there's a bare number to
+          re-read. */}
+      {engMode && (
+        <div className="num-echo" id={`${id}-echo`} aria-live="polite" data-visible={echo ? '' : undefined}>
+          {echo ? echo.text : ''}
+        </div>
+      )}
 
       {!compact && (
         <input
