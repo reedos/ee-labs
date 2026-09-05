@@ -357,8 +357,8 @@ for these three labs still read "to write" in the Plan column, and the director 
 that edit.
 
 - `APPLIED_ANALOG_LAB_PLAN.md` (tier 2, 45 experiments, 9 groups). Waits on
-  Electronics Lab Groups A, C, F, G, I, J, L, M and O, on `lab/electronics-lab`. Its
-  Phase 1 engine work needs none of them and can start now.
+  Electronics Lab Groups A, C, D, F, G, I, J, L, M and O, on `lab/electronics-lab`.
+  Its Phase 1 engine work needs none of them and can start now.
 - Applied Analog's specification pane and the DSP Lab's filter group need the same
   canvas at the same time. `PROGRAM.md` §4 names Applied Analog as its first lab and
   the DSP Lab as its second, and the DSP Lab is building on `lab/dsp-lab` today. The
@@ -369,8 +369,8 @@ that edit.
 - Applied Analog H5 and D4 need Power Lab Group N's thermal network, which has no
   overseer.
 - `ANALOG_IC_LAB_PLAN.md` (tier 3, 45 experiments, 10 groups). Waits on Electronics
-  Lab Groups C, D, F, G, I, J, K, L, M and O, and on the Applied Analog Lab's Phase 1
-  for `monteCarlo` and `sensitivity`. Its Phase 1 device work needs only the `M`
+  Lab Groups C, D, F, G, H, I, J, K, L, M, N and O, and on the Applied Analog Lab's
+  Phase 1 for `monteCarlo` and `sensitivity`. Its Phase 1 device work needs only the `M`
   element's companion from `lab/electronics-lab`.
 - Analog IC D4's switched-capacitor common-mode sensor waits on the Mixed-Signal
   Lab's Group B. It ships as the continuous version with a note until then.

@@ -117,7 +117,7 @@ branch it is being built on. `BACKLOG.md` carries the same rows.
 | Switched-capacitor common-mode feedback | D4 | Mixed-Signal Lab Group B | **dependency, tier 4** |
 
 Three things the map shows that this plan does not fix, so that they are decisions
-rather than omissions. **Eight of the Electronics Lab's groups gate this lab**, and
+rather than omissions. **Twelve of the Electronics Lab's fifteen groups gate this lab**, and
 the phasing in §9 starts after that gate. **Two of the Applied Analog Lab's engine
 functions are reused here**, so tier 2's Phase 1 gates this lab's Group J. **The
 switched-capacitor common-mode feedback circuit** is the Mixed-Signal Lab's, and D4
@@ -822,8 +822,8 @@ The mechanism is the one Power Lab and the Elements lab share, unchanged.
 
 Each phase ships green and deployable dark. Phase 0 is a gate rather than work.
 
-0. **The Electronics Lab gate.** Groups C, D, F, G, I, J, K, L, M and O built and
-   merged. Exit: `smallSignal`, `transferOf`, `returnRatio` and `noise.js` merged and
+0. **The Electronics Lab gate.** Groups C, D, F, G, H, I, J, K, L, M, N and O built
+   and merged. Exit: `smallSignal`, `transferOf`, `returnRatio` and `noise.js` merged and
    fuzzed green, with the `M` element's companion in place.
 1. **The device engine.** `ekv.js`, `pelgrom.js`, `sizeFor`. Invariants 1 to 5 fuzzed
    green before any UI exists. Exit: the four rows of §4.3 pinned, and EKV's two limits
@@ -876,7 +876,8 @@ Each phase ships green and deployable dark. Phase 0 is a gate rather than work.
 
 ## 11. Risks, named
 
-- **The dependency chain is two labs deep.** Ten of the Electronics Lab's groups and
+- **The dependency chain is two labs deep.** Twelve of the Electronics Lab's groups
+  and
   one of the Applied Analog Lab's phases gate this one. Mitigation: §1 lists them by
   id, `BACKLOG.md` mirrors them, and Phase 1 is device work that needs only the `M`
   element's companion.

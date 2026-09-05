@@ -130,9 +130,9 @@ test fails on any lesson that references an experiment which does not exist.
 | The chopper as a sampled system | C4 | Mixed-Signal Lab Group G | **dependency, tier 4** |
 
 Three things the map shows that this plan does not fix, so that they are decisions
-rather than omissions. **The whole of Electronics Lab's Groups A, C, F, G, I, J, L, M
-and O gate this lab.** Nothing in Groups A to H below can be built before them, and
-the phasing in §9 starts after that gate. **The thermal network** has no overseer, and
+rather than omissions. **Ten of the Electronics Lab's fifteen groups gate
+this lab**, which are A, C, D, F, G, I, J, L, M and O. Nothing in Groups A to H below
+can be built before them, and the phasing in §9 starts after that gate. **The thermal network** has no overseer, and
 only H5 and D4 need it, so both carry a note naming Power Lab Group N. **The chopper's
 exact switched form** is the Mixed-Signal Lab's, and C4 here ships the labelled
 averaged model with its guard, as `ANALOG_ROADMAP.md` §2 requires.
@@ -837,8 +837,8 @@ The mechanism is the one Power Lab and the Elements lab share, unchanged.
 
 Each phase ships green and deployable dark. Phase 0 is a gate rather than work.
 
-0. **The Electronics Lab gate.** Groups A, C, F, G, I, J, L, M and O built and merged.
-   Nothing below starts before it. Exit: `smallSignal`, `transferOf`, `returnRatio`,
+0. **The Electronics Lab gate.** Groups A, C, D, F, G, I, J, L, M and O built and
+   merged. Nothing below starts before it. Exit: `smallSignal`, `transferOf`, `returnRatio`,
    `noise.js` and the op-amp macro all merged and fuzzed green.
 1. **The method engine.** `specify`, `corners`, `monteCarlo`, `sensitivity`,
    `parts.js`. Invariants 1 to 9 fuzzed green before any UI exists. Exit: the
@@ -889,7 +889,7 @@ Each phase ships green and deployable dark. Phase 0 is a gate rather than work.
 
 ## 11. Risks, named
 
-- **The dependency is the whole of Electronics Lab.** Nine of its fifteen groups gate
+- **The dependency is the whole of Electronics Lab.** Ten of its fifteen groups gate
   this one. Mitigation: §1 lists them by id, `BACKLOG.md` mirrors them, and the
   progression test fails on a reference to an unbuilt experiment rather than shipping
   a broken link. Phase 1 is engine work that needs none of them, so it can start
