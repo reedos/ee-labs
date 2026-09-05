@@ -25,7 +25,7 @@ order the nav will fold to (`ELECTRONICS_LAB_PLAN.md` Decision 5).
 | --- | --- | --- | --- | --- |
 | 1 | Circuit Elements Lab | Circuits I | 58 | built, dark |
 | 2 | Circuit Lab | Circuits II, the frequency-domain half | 16 | released |
-| 3 | Electronics Lab | Electronics I and II | 43 of 77 | built in part, dark |
+| 3 | Electronics Lab | Electronics I and II | 75 of 77 | built in part, dark |
 | 4 | Signal Lab | Signals and Systems, DSP | 35 | released |
 | 5 | Control Lab | Control | 13 | released |
 | 6 | Power Lab | Power electronics | 34 of 56 | built in part, dark |
@@ -68,7 +68,7 @@ What it assumes at the start: dB, impedance and phase, defined on contact. What 
 introduces without an experiment: the complex frequency s, poles and zeros, as term
 definitions (see §3, seam 1).
 
-### Step 3: Electronics Lab (43 of 77)
+### Step 3: Electronics Lab (75 of 77)
 
 `ELECTRONICS_LAB_PLAN.md` §1 carries this lab's own map, row by row, against what is
 built. The groups, in order:
@@ -84,12 +84,12 @@ built. The groups, in order:
 | G · Ports | the test source, the two-port and loading | 2 | built |
 | H · Single-stage amplifiers | CE, degeneration, CC, CB, CS, CD and CG, swing | 7 | built |
 | I · Mirrors and stacking | the mirror, Widlar, the active load, the cascode, loading | 5 | built |
-| J · The differential pair | steering, the half-circuit, CMRR, mismatch, the active load | 5 | planned |
-| K · Frequency response | the device's capacitors, the low end, Miller, OCTC, no Miller, the cascode's bandwidth | 6 | planned |
-| L · Feedback | the loop broken, desensitivity, gain-bandwidth, the ports, stability, the buffer | 6 | planned |
-| M · Inside the op-amp | the two-stage op-amp, compensation, phase margin, slew, offset, the output stage | 6 | planned |
-| N · Oscillators | Wien at the threshold, amplitude, relaxation, LC (stretch) | 4 | planned |
-| O · Noise | a density, thermal, shot, referred to the input, SNR after gain | 5 | planned |
+| J · The differential pair | steering, the half-circuit, CMRR, mismatch, the active load | 5 | built |
+| K · Frequency response | the device's capacitors, the low end, Miller, OCTC, no Miller, the cascode's bandwidth | 6 | built |
+| L · Feedback | the loop broken, desensitivity, gain-bandwidth, the ports, stability, the buffer | 6 | built |
+| M · Inside the op-amp | the two-stage op-amp, compensation, phase margin, slew, offset, the output stage | 6 | built |
+| N · Oscillators | Wien at the threshold, amplitude, relaxation, LC (stretch) | 4 | built |
+| O · Noise | a density, thermal, shot, referred to the input, SNR after gain | 5 | built |
 
 ### Step 4: Signal Lab (35, released)
 

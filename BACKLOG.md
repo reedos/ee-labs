@@ -19,7 +19,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Control Lab | built | | | |
 | Power Lab | built in part, dark | merged, Groups A to G | Groups H to N unassigned | `POWER_LAB_PLAN.md` |
 | The two seams and the progression test | built, merged | | | `CURRICULUM.md` §3, §6 |
-| Electronics Lab | built in part, dark | merged, Groups A and C to I | Groups J to O, in flight since 2026-09-05 | `ELECTRONICS_LAB_PLAN.md` |
+| Electronics Lab | built in part, dark | merged, Groups A and C to O | Group B, which is Elements I9 and I10 by Decision 3 | `ELECTRONICS_LAB_PLAN.md` |
 | Logic Lab | built, dark | merged | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
 | DSP Lab | built, dark | merged | | `DSP_LAB_PLAN.md` |
 | Random Signals Lab | built, dark | merged | Electronics O1 for one cross-reference | `RANDOM_LAB_PLAN.md` |
@@ -231,6 +231,43 @@ append, rather than edited into a file this branch does not carry.
 - **Nobody has looked at Groups D to I in a browser.** Thirty-three drawings
   and the device-curve pane were checked as geometry only. The harness wave
   covers the Electronics Lab last, after its lanes have merged.
+- **Groups J to O are built and merged, 2026-09-05.** The second wave of three
+  lanes, each built and then reviewed, took the lab from 43 experiments to 75
+  over fourteen groups. Only Group B remains, and it is Elements I9 and I10 by
+  Decision 3. The entries above that wait on Group O or on a later Electronics
+  group can now be taken up.
+- **K5 is the follower alone.** The plan's K5 is the follower and the common
+  base, and the lane built half of it without saying so until the review
+  caught it. One experiment cannot swap its topology while its layout is a
+  fixed object. Reed decides whether the plan's line moves or a K7 is added.
+  Item 7 of the J and K section in `NEEDS.md`.
+- **The plan's section 5 still carries the planned numbers.** Eleven moved in J
+  and K, five in L and M, and the lanes tabulated each with the engine's value
+  in their sections of `NEEDS.md`. The plan is the director's to bring into
+  line, and it is not done yet.
+- **The two-stage op-amp reaches a gain of 3 240, not the plan's 100 000.** Its
+  second stage is loaded by a resistor rather than by a current source, so the
+  numbers in M1 to M5 are measured against the smaller gain. Reopens with
+  Group I's mirror used a second time as the load.
+- **`pwlTransient` records an event whose new region is the one it just left.**
+  Where a crossing lands exactly on a sample of the walk's grid, the settle
+  returns the same region. About one amplitude in a few dozen of M6 then ends
+  in the chatter refusal after a few seconds. The fix is two lines in
+  `packages/network/src/pwl.js`, which is the Electronics overseer's.
+- **`loop.js` declines an op-amp by type**, so N1's return ratio at the
+  oscillation frequency is measured as the Wien network's transfer rather
+  than as the loop's own ratio. Item 15 of the N and O section in `NEEDS.md`.
+- **The Control Lab hand-over beside L5 and M3 is not wired.** The margins are
+  measured and printed, and the deep link needs a pane and a view-registry
+  entry, both outside any lane.
+- **The director resolved nine more term collisions at the second wave's
+  merge.** J and K redefined six terms that D, E, H and I introduce. L and M
+  redefined the test source, the mirror and Miller. G1 says oscillator first
+  and M6 says total harmonic distortion first, so they list those terms. N's
+  oscillation threshold and distortion patterns were narrowed to N's own
+  phrasing, because D4 and H2 use the same words for other quantities.
+- **M1's drawing is 840 by 530.** At a phone width its labels scale to about 5
+  px. It is the first thing to look at in a browser.
 
 ### Random Signals Lab
 
@@ -728,7 +765,7 @@ already exists, and tells the agent to read what is there first.
 | Work | Branches | Script, and its args | Left on the branch |
 | --- | --- | --- | --- |
 | Electronics Groups D to I | `lab/electronics-de`, `-fg`, `-hi` | `electronics-lanes` with `["de","fg","hi"]` | merged 2026-09-05, 33 experiments, three lanes each reviewed |
-| Electronics Groups J to O | `lab/electronics-jk`, `-lm`, `-no` | `electronics-lanes` with `["jk","lm","no"]` | in flight since 2026-09-05 |
+| Electronics Groups J to O | `lab/electronics-jk`, `-lm`, `-no` | `electronics-lanes` with `["jk","lm","no"]` | merged 2026-09-05, 32 experiments, three lanes each reviewed |
 | Power Lab Groups H to N | `lab/power-hi`, `-jk`, `-lmn` | `power-h-to-n` | untested `loop.js`, `threePhase.js`, `resonant.js`, and the three isolated siblings with a commit |
 | RF A to D, System A, Photonics A, C to F | `lab/rf-lab`, `lab/system-lab`, `lab/photonics-lab` | `rf-system-photonics` | the RF brief, `packages/rf`'s exact core, an untested Smith canvas; the Photonics brief, package and first app files |
 | Harnesses, nine labs that have one | `verify/<slug>` | `verify-harnesses` | Elements: two fixes; Circuit Lab: fixes to the axis, the step readout and two canvases, untested |
@@ -741,10 +778,10 @@ each branch a reviewer marks mergeable before the next tier starts.
 
 Waiting behind those, with what each waits on:
 
-- the Applied Analog, Analog IC and Mixed-Signal labs, on the Electronics lanes;
-- RF Groups E to H and System Phases 2 to 6, on Electronics K and O;
-- Photonics Group B, on Electronics O;
-- the Machines Lab's drives, on Power Lab Group L.
+- the Applied Analog, Analog IC and Mixed-Signal labs, on the Electronics lanes, all merged on 2026-09-05, so they wait on nothing now;
+- RF Groups E to H and System Phases 2 to 6, on Electronics K and O, both merged;
+- Photonics Group B, on Electronics O, merged;
+- the Machines Lab's drives, on Power Lab Group L, in flight since 2026-09-05.
 
 ## 4. Planner entries
 
