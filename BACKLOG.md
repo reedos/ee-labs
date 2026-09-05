@@ -17,7 +17,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Circuit Lab | built | | | |
 | Signal Lab | built | | | |
 | Control Lab | built | | | |
-| Power Lab | built in part | | Groups D, F to N unassigned | `POWER_LAB_PLAN.md` |
+| Power Lab | built in part, building | `lab/power-lab-dfg` | Groups H to N unassigned | `POWER_LAB_PLAN.md` |
 | The two seams and the progression test | building | `lab/seams` | | `CURRICULUM.md` §3, §6 |
 | Electronics Lab | built in part, dark | merged, Groups A and C | the transistor symbol in `Schematic.jsx` for Groups D to O | `ELECTRONICS_LAB_PLAN.md` |
 | Logic Lab | built, dark | merged | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
@@ -28,19 +28,19 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Fields Lab | building | `lab/fields-lab` | | to write |
 | Energy Lab | built, dark | merged | Machines Lab for the wind group | `ENERGY_LAB_PLAN.md` |
 | Machines Lab | built, dark | merged | Power Lab F for the drives group | `MACHINES_LAB_PLAN.md` |
-| Communications Lab | waiting | | Random Signals Lab | `COMMUNICATIONS_LAB_PLAN.md` |
-| Information Lab | waiting | | Communications Lab | `INFORMATION_LAB_PLAN.md` |
+| Communications Lab | building | `lab/comms-lab` | | `COMMUNICATIONS_LAB_PLAN.md` |
+| Information Lab | building | `lab/info-lab` | Communications Lab for Group F and B4 | `INFORMATION_LAB_PLAN.md` |
 | Applied Analog Lab | waiting | | Electronics L, M | `APPLIED_ANALOG_LAB_PLAN.md` |
 | Analog IC Lab | waiting | | Electronics H to M | `ANALOG_IC_LAB_PLAN.md` |
 | Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | `MIXED_SIGNAL_LAB_PLAN.md` |
 | RF Lab | waiting | | Analog IC Lab, Fields Lab's line | `RF_LAB_PLAN.md` |
 | System Lab | waiting | | RF Lab | `SYSTEM_LAB_PLAN.md` |
 | VLSI Lab | waiting | | Logic Lab, Analog IC Lab | `VLSI_LAB_PLAN.md` |
-| Computer Lab | waiting | | Logic Lab | `COMPUTER_LAB_PLAN.md` |
+| Computer Lab | building | `lab/computer-lab` | | `COMPUTER_LAB_PLAN.md` |
 | Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | `INTERFACES_LAB_PLAN.md` |
-| Grid Lab | waiting | | Machines Lab, Electronics companion Newton | `GRID_LAB_PLAN.md` |
+| Grid Lab | building | `lab/grid-lab` | Power Lab I3 and D1 for two cross-references | `GRID_LAB_PLAN.md` |
 | Photonics Lab | waiting | | Electronics O, Applied Analog Lab | `PHOTONICS_LAB_PLAN.md` |
-| Devices Lab | waiting | | Electronics C | `DEVICES_LAB_PLAN.md` |
+| Devices Lab | building | `lab/devices-lab` | | `DEVICES_LAB_PLAN.md` |
 | Signal Integrity | out of this repo | | | |
 
 ## 2. Deferred items, by lab
