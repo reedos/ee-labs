@@ -105,6 +105,54 @@ export {
   vbeSlope,
 } from './src/junction.js'
 
+// The same file, one level down: the profiles the four closed forms summarise,
+// the MOS capacitor, and the three devices that stand on them. The Devices Lab
+// is what needs these, and nothing above changed to make room for them.
+export {
+  C_LIGHT,
+  DEGENERATE,
+  EPS_OX,
+  E_AVALANCHE,
+  E_ZENER,
+  GATES,
+  H_PLANCK,
+  MATERIALS,
+  N_C_SI,
+  N_V_SI,
+  bodyEffect,
+  breakdown,
+  bulkPotential,
+  carriers,
+  channelIntegral,
+  cvCurve,
+  debyeLength,
+  degenerate,
+  dopingFromRatio,
+  doseFor,
+  drainCurrent,
+  driftDiffusion,
+  earlyVoltage,
+  emission,
+  flatBand,
+  gapFrom,
+  gummel,
+  implantDoping,
+  implantFor,
+  intrinsicAt,
+  mosCap,
+  niFrom,
+  oxideCap,
+  peakField,
+  photovoltaic,
+  profile,
+  saturationCurrent,
+  subthreshold,
+  surfaceDepletion,
+  surfacePotential,
+  threshold,
+  velocitySaturation,
+} from './src/junction.js'
+
 // Frequency domain: the same stamps at s = jω, phasors as [re, im].
 export * as complex from './src/complex.js'
 export { assembleAC, solveAC, readoutAC, sourcePhasor, phasorMeasures, acPower, drivingPointZ, sweepAC } from './src/phasor.js'
