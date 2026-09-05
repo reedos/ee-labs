@@ -116,7 +116,9 @@ export const iirDesign = memoise(
 export function tapsOf(text) {
   const parts = String(text)
     .split(',')
-    .map((s) => Number(s.trim()))
+    .map((s) => s.trim())
+    .filter((s) => s !== '')
+    .map((s) => Number(s))
     .filter((v) => Number.isFinite(v))
   return Float64Array.from(parts.length ? parts : [1])
 }
@@ -498,6 +500,19 @@ export const BLOCK_TYPES = {
         presets: [0.99, 0.999, 1],
         when: (p) => p.algorithm === 'rls',
       },
+      {
+        key: 'delta',
+        label: 'Regularization',
+        scale: 'log',
+        min: 0.0001,
+        max: 10,
+        step: 0.0001,
+        decimals: 4,
+        presets: [0.001, 0.01, 0.1],
+        when: (p) => p.algorithm === 'rls',
+        whenHint: 'Only RLS inverts a matrix that needs a starting point away from singular.',
+        hint: 'Sets the initial P = I/delta. A small delta starts confident, fast, and initially noisy.',
+      },
       { key: 'plant', label: 'Plant taps', kind: 'text' },
       {
         key: 'noiseAmp',
@@ -622,6 +637,17 @@ export const BLOCK_TYPES = {
         hint: 'The step is 2^-(bits - 1 - integer bits), and every coefficient lands on it.',
       },
       {
+        key: 'coeffInt',
+        label: 'Coefficient integer bits',
+        scale: 'linear',
+        min: 0,
+        max: 8,
+        step: 1,
+        decimals: 0,
+        presets: [1, 2, 3],
+        hint: 'How many of the coefficient bits sit above the binary point. The rest are the step.',
+      },
+      {
         key: 'stateBits',
         label: 'State bits',
         scale: 'linear',
@@ -631,6 +657,19 @@ export const BLOCK_TYPES = {
         decimals: 0,
         presets: [0, 10, 12, 16],
         hint: 'Zero keeps the state in float64, which is the exactly linear case.',
+      },
+      {
+        key: 'stateInt',
+        label: 'State integer bits',
+        scale: 'linear',
+        min: 0,
+        max: 8,
+        step: 1,
+        decimals: 0,
+        presets: [1, 2, 3],
+        when: (p) => p.stateBits > 0,
+        whenHint: 'The state is float64 while stateBits is 0, so no grid to place a point on.',
+        hint: 'How many of the state bits sit above the binary point.',
       },
       { key: 'rounding', label: 'Rounding', kind: 'select', options: ['round', 'truncate'] },
       {

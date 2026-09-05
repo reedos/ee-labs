@@ -960,3 +960,33 @@ one stretch item and one request.
 - **`progression.test.js` needs the last four ids.** `NEEDS.md` §2 now reads
   `a1` to `a5`, `b1` to `b4`, `c1` to `c5`, `d1` to `d5`, `e1` to `e3`, `f1` to
   `f3`, and 25 of 25.
+The director's ledger for the program in `PROGRAM.md`. Every item an overseer
+defers gets a line under its lab's heading, with the dependency that reopens it.
+This file does not exist yet on `lab/dsp-lab`, so this overseer starts it with
+only its own section. The director folds it into the shared ledger at merge.
+
+## Deferred items, by lab
+
+### DSP Lab
+
+- **Groups C, D, E and F are not built.** `DSP_LAB_PLAN.md` §5 names six groups:
+  A (rate) and B (design to a specification) ship in this pass. C (adaptive
+  filters), D (spectral estimation), E (fixed point) and F (the transform's own
+  cost) do not. The engine already carries every function they need:
+  `adaptive.js`, `estimate.js`, `fixpoint.js`, and the `plant`, `adaptive` and
+  `fixedbiquad` blocks. What remains is lessons, pinned claims and one canvas
+  each (`WeightCanvas`, `DensityCanvas`, `PoleGridCanvas`, `ButterflyCanvas`),
+  per `apps/dsp-lab/AGENT_BRIEF.md` lanes 4 to 6.
+- **The Random Signals Lab gap.** `DSP_LAB_PLAN.md` §1 names two rows with no
+  built prerequisite: group D leans on a periodogram bin's distribution, and
+  group C's Wiener filter is stated instead as the solution of a linear system.
+  Both are written to need no unbuilt fact. When the Random Signals Lab lands,
+  both become cross-references.
+- **`packages/ui` promotion candidates**, copied from Signal Lab into
+  `apps/dsp-lab/src/components/` rather than shared: `ScopeCanvas.jsx`,
+  `SpectrumCanvas.jsx`, `Controls.jsx`. `SpecPane.jsx` is new, not copied, and
+  is itself the promotion candidate `PROGRAM.md` §4 names for the Applied
+  Analog Lab and this lab together. Full detail in `apps/dsp-lab/NEEDS.md`.
+- **`scripts/verify.mjs` (the Playwright harness) is not written.** The brief
+  asks for it in lane 2. This overseer's instructions excluded Playwright, so
+  the harness is deferred rather than written and left unrun.
