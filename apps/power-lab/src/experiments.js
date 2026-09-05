@@ -21,7 +21,9 @@
 // a list that runs A, B, C, E advertises the group that is not built yet,
 // and the letters said nothing a name does not.
 
-export const GROUPS = ['Why switch', 'The buck', 'Boost & buck-boost', 'Magnetics', 'AC in', 'Inverters', 'Losses']
+import { HI_GROUPS, HI_GROUP_INTROS, HI_EXPERIMENTS, HI_TRACES, HI_VIEWS, HI_SWEEP_Y } from './groups/hi.js'
+
+export const GROUPS = ['Why switch', 'The buck', 'Boost & buck-boost', 'Magnetics', 'AC in', 'Inverters', 'Losses', ...HI_GROUPS]
 
 // What each group sets out to establish, read once at its boundary: the
 // sidebar shows it on the group's first experiment and while another group's
@@ -48,6 +50,7 @@ export const GROUP_INTROS = {
   Losses:
     'Every loss so far has been one bar on a chart. This group prices them against frequency, against ' +
     'load, and against each other in a ledger that has to add up.',
+  ...HI_GROUP_INTROS,
 }
 
 // ------------------------------------------------------------ knobs
@@ -111,6 +114,7 @@ export const TRACES = {
   iQ: { label: 'i_Q', axis: 'A', title: 'Current in the switch' },
   iD: { label: 'i_D', axis: 'A', title: 'Current in the diode (or synchronous switch)' },
   iin: { label: 'i_in', axis: 'A', title: 'Current drawn from the source (phase a, for the three-phase bridge)' },
+  ...HI_TRACES,
 }
 
 /** The trace pills the scope offers: the experiment's own list, else its opening traces. */
@@ -126,6 +130,7 @@ export const VIEWS = {
   flux: { label: 'Flux', title: 'Flux density over one period, against the ceiling the core sets' },
   scrub: { label: 'Scrub', title: 'The conducting path at one instant, scrubbed through the period' },
   ledger: { label: 'Ledger', title: 'Every loss mechanism, its formula, and the residual the identity leaves' },
+  ...HI_VIEWS,
 }
 
 // What a sweep can put on its axes. `sweepFor` in App.jsx runs the matching
@@ -160,6 +165,7 @@ export const SWEEP_Y = {
   pf: { label: 'power factor', unit: '', lo: 0, hi: 1 },
   v1: { label: 'fundamental, peak', unit: 'V', lo: 0 },
   thd: { label: 'THD of v_out', unit: '', lo: 0, percent: true },
+  ...HI_SWEEP_Y,
 }
 
 // The top bar's third meter is the experiment's own headline — η for a
@@ -910,6 +916,7 @@ export const EXPERIMENTS = [
       'efficiency. Turn R_on to 200 mΩ and the switch’s row grows to 71.3 mW.',
     terms: ['efficiency', 'conduction-loss', 'switching-loss'],
   }),
+  ...HI_EXPERIMENTS,
 ]
 
 // The knob an experiment is about (`about`) is the first in its list, so it

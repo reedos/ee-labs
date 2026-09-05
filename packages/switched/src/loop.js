@@ -301,8 +301,20 @@ export function stepAgreement(conv0, conv1, { periods = 40, n = 24, out = OUT } 
   const av = averagedStep(conv0, conv1, { periods, n })
   let worst = 0
   let at = 0
-  const pairs = sw.cycles.map((q) => {
-    const smooth = interp(av.t, av.sig[out], q.t)
+  // Both columns are the same functional of their own curve: the mean over
+  // one period. Reading the smooth curve at the middle of the period instead
+  // is a second-order approximation of its mean, and it is not small when
+  // the model's own fast mode decays inside one switching period.
+  const steps = Math.max(2, Math.round(n))
+  const ay = av.sig[out]
+  const cycleMean = (k) => {
+    const i0 = k * steps
+    let acc = 0
+    for (let i = 0; i < steps; i++) acc += (ay[i0 + i] + ay[i0 + i + 1]) / 2
+    return acc / steps
+  }
+  const pairs = sw.cycles.map((q, k) => {
+    const smooth = k * steps + steps < ay.length ? cycleMean(k) : interp(av.t, ay, q.t)
     return { t: q.t, exact: q[out], averaged: smooth, gap: q[out] - smooth }
   })
   const span = Math.max(1e-12, Math.abs(av.to[out] - av.from[out]))

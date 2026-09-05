@@ -9,6 +9,9 @@ import { reportSummary } from './report.js'
 import ScopeCanvas, { TRACE_COLORS } from './components/ScopeCanvas.jsx'
 import SweepCanvas from './components/SweepCanvas.jsx'
 import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, FluxPane, ScrubPane, LedgerPane, MODE_WORDS } from './components/panes.jsx'
+import { StepPane, PlantPane, PowerPane } from './components/hiPanes.jsx'
+import { threePhaseOutcome, threePhaseFlow } from './groups/hi.js'
+import { sweepMa3 } from './groups/hiAnalysis.js'
 import { fmtz } from './format.js'
 import { scopeMarks, sweepMarks } from './marks.js'
 import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/schematics.jsx'
@@ -76,6 +79,7 @@ export function outcomeOf(exp, x) {
   if (exp.kind === 'rectifier')
     return `V_dc = ${fmt(m.Vdc, 'V', 4)}, ripple ${fmt(m.ripple, 'V', 3)}, ${m.angle.toFixed(1)}° × ${m.pulses}, PF ${m.pf.toFixed(3)}`
   if (exp.kind === 'dimmer') return `P/P_full = ${m.share.toFixed(4)} at α = ${((x.p.alpha * 180) / Math.PI).toFixed(0)}°, PF ${m.pf.toFixed(3)}`
+  if (x.threePhase) return threePhaseOutcome(x)
   if (m.mode === 'inverter')
     return `fundamental ${fmt(m.V1, 'V', 4)} rms, THD ${(m.thd * 100).toFixed(1)} %, ${x.conv.mf === 1 ? 'two edges' : `m_f = ${x.conv.mf}`}`
   return `${MODE_WORDS[m.mode]}, M = ${m.M.toFixed(4)}, η = ${(m.eta * 100).toFixed(2)} %`
@@ -88,6 +92,8 @@ export function sweepFor(exp, params) {
   const opts = sweepOpts(exp, params)
   if (exp.kind === 'linreg') return { points: sweepLinear(params), at: params.Vo / params.Vin, label: 'η = V_out / V_in' }
   if (exp.kind === 'chopper') return { points: sweepChopper(params), at: params.D, label: '⟨v⟩ = D·V_in', label2: 'V_rms = √D·V_in' }
+  if (s.x === 'ma' && s.y === 'vll1')
+    return { points: sweepMa3(params), at: params.ma, label: 'plain sine', label2: 'with the third-harmonic offset' }
   if (s.x === 'ma') return { points: sweepMa(params), at: params.ma, label: 'peak of the bridge’s fundamental' }
   if (s.x === 'fsw') return { points: sweepFsw(params), at: params.fsw, label: 'THD of the load voltage' }
   if (s.x === 'C') return { points: sweepC(params, exp), at: params.C }
@@ -583,6 +589,9 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
               <ScrubPane x={x} exp={exp} at={scrubAt} onScrub={setScrub} signals={signalsOf(exp)} />
             ) : null}
             {currentView === 'ledger' ? <LedgerPane x={x} /> : null}
+            {currentView === 'step' && x.step ? <StepPane x={x} exp={exp} /> : null}
+            {currentView === 'plant' && x.plant ? <PlantPane x={x} exp={exp} /> : null}
+            {currentView === 'power' && x.threePhase ? <PowerPane x={x} /> : null}
             {currentView === 'math' ? <MathBody entry={math} /> : null}
             {currentView === 'balance' && x.balance ? <BalancePane x={x} /> : null}
             {currentView === 'losses' ? <LossesPane x={x} /> : null}
@@ -654,6 +663,7 @@ export function flowNodes(exp, params, x) {
       outSub: `D = ${x.formulas.switching.D.toFixed(3)}`,
     }
   }
+  if (x.threePhase) return threePhaseFlow(exp, params, x)
   if (m.mode === 'inverter') {
     return {
       mode: x.conv.mf === 1 ? 'square wave' : `carrier × ${x.conv.mf}`,

@@ -18,6 +18,11 @@ export const TRACE_COLORS = {
   iQ: '#ffd166',
   iD: '#8ecae6',
   iin: COLORS.textBright,
+  vao: COLORS.spectrum,
+  vab: COLORS.phase,
+  van: COLORS.trace,
+  ia: COLORS.response,
+  idc: COLORS.marker,
 }
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'

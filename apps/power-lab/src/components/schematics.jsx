@@ -27,6 +27,8 @@ const FRAMES = {
   halfbridge: { w: 390, h: 200 },
   square: { w: 350, h: 226 },
   spwm: { w: 350, h: 226 },
+  sixstep: { w: 400, h: 210 },
+  spwm3: { w: 400, h: 210 },
 }
 
 // The standard frame's rails and mid-line.
@@ -805,6 +807,56 @@ const DRAW = {
     </>
   ),
 
+
+  // Three legs across one bus, and a wye of three windings.
+  //
+  // A three-phase bridge into a wye load is K(3,3) with the source across it,
+  // so no arrangement of it on paper is free of crossings. The three-phase
+  // rectifier next door meets the same wall and answers it the same way: the
+  // legs carry named ports, the load carries the matching names, and the
+  // wires between them are the reader's to make. Nothing crosses, and nothing
+  // is hidden.
+  threephase: (p, live, opts = {}) => (
+    <>
+      <SrcDC x={30} y={100} label={`V_dc ${volts(p.Vdc)}`} />
+      <Wire x1={30} y1={40} x2={30} y2={70} />
+      <Wire x1={30} y1={130} x2={30} y2={160} />
+      <Wire x1={30} y1={40} x2={196} y2={40} />
+      <Wire x1={30} y1={160} x2={196} y2={160} />
+      {[84, 140, 196].map((x, i) => (
+        <g key={x}>
+          <Switch x1={x} y1={40} x2={x} y2={86} />
+          <Wire x1={x} y1={86} x2={x} y2={114} />
+          <Switch x1={x} y1={114} x2={x} y2={160} />
+          <Dot x={x} y={100} />
+          <Wire x1={x} y1={100} x2={x + 16} y2={100} />
+          <circle cx={x + 16} cy={100} r="3" fill="var(--line-bright)" />
+          <Tag x={x + 16} y={92} cls="sch-port">{'abc'[i]}</Tag>
+        </g>
+      ))}
+      <Tag x={120} y={24}>{opts.caption || 'three legs, one bus'}</Tag>
+      {[52, 100, 148].map((y, i) => (
+        <g key={y}>
+          <circle cx={256} cy={y} r="3" fill="var(--line-bright)" />
+          <Tag x={248} y={y + 4} anchor="end" cls="sch-port">{'abc'[i]}</Tag>
+          <Wire x1={256} y1={y} x2={268} y2={y} />
+          <Ind x={294} y={y} />
+          <Wire x1={320} y1={y} x2={326} y2={y} />
+          <Res x={348} y={y} />
+          <Wire x1={368} y1={y} x2={382} y2={y} />
+        </g>
+      ))}
+      <Wire x1={382} y1={52} x2={382} y2={148} />
+      <Dot x={382} y={100} />
+      <Tag x={382} y={168} cls="sch-port">n</Tag>
+      <Tag x={318} y={192}>{`each winding: L ${henries(p.L)}, R ${ohms(p.R)}`}</Tag>
+      <IAt sig="idc" x={60} y={40} dy={-6} />
+      <VAt sig="vao" x={100} y={100} dx={0} dy={-14} />
+      <VAcross sig="vab" x1={156} y1={100} x2={212} y2={100} dy={22} />
+      <VAcross sig="van" x1={268} y1={52} x2={378} y2={52} dy={-10} />
+      <IAt sig="ia" x={278} y={52} dy={-10} />
+    </>
+  ),
   dimmer: (p) => (
     <>
       <SrcAC x={SRC} y={MID} label={`V_s ${volts(p.Vs)}`} />
@@ -856,6 +908,8 @@ export const TOPOLOGY_SIGNALS = {
   bridge: ['vin', 'vrect', 'vout', 'vD', 'iD', 'iC', 'iR', 'iin'],
   six: ['vin', 'vrect', 'vout', 'vD', 'iD', 'iC', 'iR', 'iin'],
   dimmer: ['vin', 'vout', 'vD', 'iR', 'iin'],
+  sixstep: ['vao', 'vab', 'van', 'ia', 'idc'],
+  spwm3: ['vao', 'vab', 'van', 'ia', 'idc'],
 }
 
 /** The signals an experiment's circuit carries. */
@@ -878,6 +932,8 @@ export const TOPOLOGY_NAMES = {
   bridge: 'Single-phase full-wave bridge rectifier',
   six: 'Three-phase six-pulse bridge rectifier',
   dimmer: 'Phase-cut dimmer, triac into a resistive load',
+  sixstep: 'Three-phase bridge, six-step',
+  spwm3: 'Three-phase bridge, sine PWM',
 }
 
 /** Which drawing an experiment gets: its converter, or which bridge it is. */
@@ -891,6 +947,12 @@ const bridgeInv = DRAW.bridgeInv
 delete DRAW.bridgeInv
 DRAW.square = (p, live) => bridgeInv(p, live, { caption: 'one diagonal for half a cycle, then the other' })
 DRAW.spwm = (p, live) => bridgeInv(p, live, { caption: 'a sine against a triangle picks the diagonal' })
+// The two three-phase modulators are the same bridge, as the two
+// single-phase ones are; only the caption differs.
+const threeLeg = DRAW.threephase
+delete DRAW.threephase
+DRAW.sixstep = (p, live) => threeLeg(p, live, { caption: 'each leg once a cycle, 120\u00b0 apart' })
+DRAW.spwm3 = (p, live) => threeLeg(p, live, { caption: 'three references, one carrier' })
 
 export const TOPOLOGIES = Object.keys(DRAW)
 

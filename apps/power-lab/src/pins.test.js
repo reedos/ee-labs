@@ -734,6 +734,73 @@ function dimmer(x, p) {
   return { pins, unpinned: {} }
 }
 
+
+// ------------------------------------------------------------- Three-phase
+
+const SUMMED =
+  'a winding current is the sum over every harmonic the bridge leaves, through an impedance that falls with order, so its RMS and its extremes have no closed form; the fundamental is pinned against (\u221a6/\u03c0)\u00b7V_dc and (\u221a3/2)\u00b7m_a\u00b7V_dc in hi.test.js'
+const PWM_RMS =
+  'the share of each cycle a two-level leg spends at either rail is set by the comparator, so the total RMS of the switched voltages is a sum over the modulator\u2019s own edges rather than a closed form; six-step has one and is pinned'
+
+/**
+ * The three-phase bridge into a balanced wye.
+ *
+ * The switched voltages are exact: a leg is ±V_dc/2, a line-to-line is one
+ * of three levels, and a phase voltage is one of five, whatever the
+ * modulator. Six-step also fixes how long each is held, so its RMS values are
+ * closed too. What the load does with them is a harmonic sum.
+ */
+function threePhasePins(x, params) {
+  const { sig } = x.m
+  const Vdc = x.p.Vdc
+  const six = x.kind === 'sixstep'
+  const pins = {}
+  const unpinned = {}
+  // The leg: a square wave between the two rails, half the period at each.
+  pins['vao.avg'] = zero(Vdc)
+  pins['vao.rms'] = ex(Vdc / 2)
+  pins['vao.min'] = ex(-Vdc / 2)
+  pins['vao.max'] = ex(Vdc / 2)
+  pins['vao.pp'] = ex(Vdc)
+  // Line-to-line: 0 or ±V_dc, and half-wave symmetry makes its average zero.
+  pins['vab.avg'] = zero(Vdc)
+  pins['vab.min'] = ex(-Vdc)
+  pins['vab.max'] = ex(Vdc)
+  pins['vab.pp'] = ex(2 * Vdc)
+  // Phase: the floating neutral leaves five levels, 0 and ±V_dc/3, ±2V_dc/3.
+  pins['van.avg'] = zero(Vdc)
+  pins['van.min'] = ex((-2 * Vdc) / 3)
+  pins['van.max'] = ex((2 * Vdc) / 3)
+  pins['van.pp'] = ex((4 * Vdc) / 3)
+  if (six) {
+    // Six-step holds |v_ab| = V_dc for two thirds of the cycle and |v_an| at
+    // V_dc/3 for two thirds and 2V_dc/3 for the rest.
+    pins['vab.rms'] = ex(Vdc * Math.sqrt(2 / 3))
+    pins['van.rms'] = ex((Math.SQRT2 * Vdc) / 3)
+  } else {
+    unpinned['vab.rms'] = PWM_RMS
+    unpinned['van.rms'] = PWM_RMS
+  }
+  // The winding current: zero average by half-wave symmetry, and a harmonic
+  // sum otherwise.
+  pins['ia.avg'] = zero(Math.max(1e-9, sig.ia.max))
+  for (const s of ['rms', 'min', 'max', 'pp']) unpinned[`ia.${s}`] = SUMMED
+  // The bus current: its average is the load's own dissipation over V_dc,
+  // which is the energy identity, and it is bounded by the phase current it
+  // is switched from.
+  pins['idc.avg'] = ex(x.m.Pout / Vdc, Math.max(1e-9, sig.ia.max))
+  // At every instant the bus carries the currents of the legs tied to the
+  // upper rail, and the three sum to zero, so it is one phase current or the
+  // negative of another. Its extremes are inside their swing, and the slack
+  // is the sampled trace's own grid.
+  const top = Math.max(Math.abs(sig.ia.max), Math.abs(sig.ia.min)) * (1 + 1e-6)
+  pins['idc.min'] = { lo: -top, hi: top }
+  pins['idc.max'] = { lo: -top, hi: top }
+  pins['idc.pp'] = { lo: 0, hi: 2 * top }
+  unpinned['idc.rms'] = SUMMED
+  return { pins, unpinned }
+}
+
 // ---------------------------------------------------------------- The walk
 
 function pinsFor(exp, x, params) {
@@ -743,6 +810,7 @@ function pinsFor(exp, x, params) {
   if (t === 'dimmer') return dimmer(x, params)
   if (['half', 'bridge', 'six'].includes(t)) return rect(t, x, params)
   if (['square', 'spwm'].includes(t)) return inverterPins(x)
+  if (['sixstep', 'spwm3'].includes(t)) return threePhasePins(x, params)
   if (t === 'flyback') return flybackCCM(x, params)
   if (t === 'halfbridge') return halfBridgeCCM(x)
   return pwm(t, x, params)
