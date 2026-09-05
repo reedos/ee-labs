@@ -40,6 +40,12 @@ describe(`release status "${status}"`, () => {
     it('the page carries no usage counter while dark: the tag joins at release', () => {
       expect(read('apps/energy-lab/index.html')).not.toMatch(/data-goatcounter|gc\.zgo\.at/)
     })
+    it('the deploy line the workflow will need is written down where the director looks', () => {
+      // Recorded rather than asserted against `deploy.yml` itself, for the
+      // reason at the head of this file. A requirement nobody wrote down is
+      // the failure that costs a release, so the test holds the note instead.
+      expect(read('apps/energy-lab/NEEDS.md')).toMatch(/cp -r apps\/energy-lab\/dist _site\/energy-lab/)
+    })
   } else {
     for (const p of PUBLIC) {
       it(`${p} links the lab`, () => {
