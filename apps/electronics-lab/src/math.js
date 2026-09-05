@@ -138,6 +138,12 @@ export function analyse(exp, p, cursor) {
   // Group C: the closed forms, evaluated at the bias the circuit settled on.
   if (exp.junction) x.junction = junctionOf(exp, p, x)
 
+  // Group D onward: the device's curve family, the load line across it and the
+  // point where they meet. The experiment builds it, because what is stepped
+  // and what is swept is the experiment's own question, and every point on it
+  // is a solve of the same circuit at another setting.
+  if (exp.curves) x.curves = exp.curves(p, x)
+
   // The quasi-static sweep: one exact solve per point, which is what the
   // transfer characteristic and the harmonic distortion are read from.
   if (exp.sweepOver) x.sweep = quasiStatic(exp, p)
