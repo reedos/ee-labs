@@ -1,0 +1,24 @@
+{
+  "name": "info-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Entropy, capacity, and the codes that reach them: the source coder and its bound, the syndrome, Viterbi's trellis walked one step at a time, and belief propagation on a Tanner graph.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee-labs/codes": "*",
+    "@ee-labs/random": "*",
+    "@ee-labs/ui": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}
