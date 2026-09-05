@@ -75,7 +75,8 @@ the app draws is four million samples.
 ## 1. The progression map
 
 Every idea this lab leans on, the experiment that teaches it, and whether that
-experiment is built. A "gap" row names the group in this plan that closes it.
+experiment is built. The rows this plan opened as gaps are the rows this lab has
+since closed, and each names the group that closed it.
 
 | Idea the lab leans on | Needed by | Taught at | Status |
 | --- | --- | --- | --- |
@@ -85,16 +86,16 @@ experiment is built. A "gap" row names the group in this plan that closes it.
 | A filter, its corner, its magnitude response | F1, F2, F4, I1 | Signal Lab, Filters group | built |
 | The impulse response, and convolution | F4, H1, I1 | Signal Lab, FIR group | built |
 | Noise as a source in a chain | A1, E1 | Signal Lab, the `noise` waveform | built |
-| A random signal has a density, not a spectrum | E, F | nowhere | **gap, A1** |
-| Probability, a density, a distribution function | everything | nowhere | **gap, A** |
-| Expectation, variance, the moments | B onward | nowhere | **gap, B** |
-| The Gaussian, and why it appears | C, G, H | nowhere | **gap, C** |
-| Autocorrelation, and Wiener-Khinchin | D, E, F, I | nowhere | **gap, D** |
-| The averaged periodogram, and its interval | E, F | nowhere | **gap, E** |
-| Thermal noise, `4kTR`, and `kT/C` | F3 | Electronics O2, not built | **gap, F3** |
+| A random signal has a density, not a spectrum | E, F | A1, this lab | built |
+| Probability, a density, a distribution function | everything | Group A, this lab | built |
+| Expectation, variance, the moments | B onward | Group B, this lab | built |
+| The Gaussian, and why it appears | C, G, H | Group C, this lab | built |
+| Autocorrelation, and Wiener-Khinchin | D, E, F, I | Group D, this lab | built |
+| The averaged periodogram, and its interval | E, F | Group E, this lab | built |
+| Thermal noise, `4kTR`, and `kT/C` | F3 | F3, this lab | built from the density |
 | The transfer function as `H(s)`, poles | I2 hand-over | Circuit Lab, 15 built | built |
 | State, and a plant with memory | I2 | Control Lab, 13 built | built |
-| The Q function and detection | H | nowhere | **gap, H** |
+| The Q function and detection | H | Group H, this lab | built |
 
 Two consequences follow, and both are decisions rather than omissions.
 
@@ -569,6 +570,14 @@ and **Measured** naming what `experiments.test.js` pins.
   function of the knobs, never as a typed constant. Among them 6.4550 µV/√Hz,
   2.035 µV, 0.03170, 760.77 Hz, 0.21533, 7.7267 × 10⁻⁴, 0.0751, 1.9600 and
   0.62444.
+- **The second route**, `apps/random-lab/src/secondRoute.js`. Some of those
+  numbers are ones a reader looks up. A table value typed into a claim stops
+  being true when a knob moves. The failure it then reports is the wrong one. So
+  this file computes each from the knobs, by a method the engine does not use.
+  The Gaussian tail comes from quadrature. The chi-square comes from a finite
+  sum, exact at an even number of degrees of freedom. The table values live in
+  its own test. Two claims had drifted in the seventh digit under a loose
+  tolerance, and both now hold to 10⁻⁹.
 - **Prose**: `prose.test.js` over every `see`, `try`, `why`, term and chrome
   string, and `npm run lint:prose` over the markdown.
 - **Release**: `release.test.js`, adapted from Circuit Elements Lab, enforcing
@@ -596,19 +605,29 @@ Reed alone changes `RELEASE_STATUS`, and the release commit is the director's.
 
 ## 9. Phasing
 
+Six steps. Five are done and the sixth is the one gate left before a release.
+Each exit was met before the next step began.
+
 1. **The engine.** `packages/random`, fuzzed green against §3 before any user
-   interface exists. Exit: the six invariants pass.
+   interface existed. **Done.** The six invariants pass in
+   `packages/random/src/invariants.test.js`, with the two the rest rest on.
 2. **The shell and the ensemble view.** The app skeleton, `RELEASE_STATUS`, the
-   release test, and the one new canvas with the Monte Carlo props. Exit: a stub
-   experiment renders at 390 px.
+   release test, and the one new canvas with the Monte Carlo props. **Done.**
+   `band` and `count` are in `EnsembleCanvas.jsx` from its first commit, and
+   `EnsembleCanvas.test.jsx` draws it at the phone width.
 3. **Groups A to C.** The probability half, which needs the histogram and the
-   ensemble views only. Exit: 10 experiments pinned.
+   ensemble views only. **Done.** Ten experiments pinned.
 4. **Groups D to F.** The process half, which needs the correlation and density
-   views. Exit: 22 experiments pinned, and `kT/C` within 0.1 %.
+   views. **Done.** Twenty-two experiments pinned, and `kT/C` at 2.035 µV.
 5. **Groups G to I.** Estimation and detection, which need the outcome and error
-   rate views. Exit: 30 experiments pinned.
+   rate views. **Done.** Thirty experiments pinned, every claim resolved against
+   the live analysis rather than against a constant.
 6. **The harness and the walk.** `scripts/verify.mjs` extended for every view,
-   and a cold walk against `REVIEW_PLAYBOOK.md`.
+   and a cold walk against `REVIEW_PLAYBOOK.md`. **Not done.** The script is
+   written and covers every experiment, every view, the fold and the phone
+   width. The environment that built this lab has no browser, so the script has
+   never run and no screenshot has been read as a student would read it.
+   `BACKLOG.md` carries this, and it reopens with anyone who has a browser.
 
 ---
 
