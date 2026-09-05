@@ -340,3 +340,27 @@ instrument, and what that instrument's own floor is.
 Past these the ground changes. Electromagnetics, device physics, reliability and
 process technology are neighbouring disciplines with no exact form the suite could
 state, and §5 keeps them out.
+
+---
+
+## 8. Found missing, and where each goes
+
+Checked against a full analog syllabus (2026-09-05). None of these is a tier. Each
+is one group, one experiment or one method, and each has a home.
+
+| Missing | Home | Note |
+| --- | --- | --- |
+| Crystal oscillators, the Pierce | tier 1, Group N | the quartz crystal is an RLC with a Q in the tens of thousands, exact and admissible |
+| Timers and monostables, the 555 | tier 2 | comparators and an RC, piecewise-linear and exact |
+| The lock-in amplifier | tier 2 | a mixer and a low-pass recovering a signal below the noise, the best use of tier 1's Group O |
+| Thermal runaway, the `V_BE` multiplier, the safe operating area | tier 2, audio group | with Power Lab's Group N thermal network |
+| Sensitivity analysis | §3, first in tier 2 | the derivative of any output with respect to any part, exact from the solve. Circuit Lab's "Blame the right part" is one instance |
+| Trimming and calibration | tiers 3 and 4 | offset trim on the chip, digital calibration of converter errors |
+| The extra element theorem | tier 3 | Middlebrook's method for adding one part to a known circuit |
+| The canon: 741, 555, LM317, NE5532 | a thread through tiers 1 to 3 | real parts as case studies, the datasheet's numbers reproduced by the model |
+| Chua's circuit | tier 1, end of Group N | chaos from a piecewise-linear resistor, exact under the event engine. A curiosity, one experiment |
+
+Beyond tier 6 the next subjects are product engineering (requirements, cost,
+manufacturing test, yield economics) and the tools themselves. Neither is analog
+electronics. The one thing the suite can do past tier 6 within its rules is make its own
+engine content, "how the simulator works", which Elements I2 already begins.
