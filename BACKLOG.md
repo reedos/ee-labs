@@ -969,24 +969,52 @@ only its own section. The director folds it into the shared ledger at merge.
 
 ### DSP Lab
 
-- **Groups C, D, E and F are not built.** `DSP_LAB_PLAN.md` §5 names six groups:
-  A (rate) and B (design to a specification) ship in this pass. C (adaptive
-  filters), D (spectral estimation), E (fixed point) and F (the transform's own
-  cost) do not. The engine already carries every function they need:
-  `adaptive.js`, `estimate.js`, `fixpoint.js`, and the `plant`, `adaptive` and
-  `fixedbiquad` blocks. What remains is lessons, pinned claims and one canvas
-  each (`WeightCanvas`, `DensityCanvas`, `PoleGridCanvas`, `ButterflyCanvas`),
-  per `apps/dsp-lab/AGENT_BRIEF.md` lanes 4 to 6.
+- **All six groups are built, and the report is 40 experiments.** `A` 7, `B` 8,
+  `C` 7, `D` 7, `E` 6, `F` 5, in `DSP_LAB_PLAN.md` §5's order. Nothing from §5
+  is missing. What follows is what the lab does not yet have.
+- **`scripts/verify.mjs` (the Playwright harness) is not written.** The brief
+  asks for it in lane 2. The six views this lab now has are exactly what a unit
+  test cannot check: a canvas that stopped redrawing, a pane fed stale state, a
+  prop not passed. Two passes of this lab have excluded Playwright, so
+  the harness and its screenshots at 390 px and 1280 by 900 are still deferred.
+  It is the largest single gap before a release gate.
 - **The Random Signals Lab gap.** `DSP_LAB_PLAN.md` §1 names two rows with no
   built prerequisite: group D leans on a periodogram bin's distribution, and
-  group C's Wiener filter is stated instead as the solution of a linear system.
-  Both are written to need no unbuilt fact. When the Random Signals Lab lands,
-  both become cross-references.
+  group C's Wiener solution is stated instead as the answer to a linear system.
+  Both are written to need no unbuilt fact. D1 measures the scatter rather than
+  quoting a theorem about it, and C1 derives the normal equations from an
+  average. When the Random Signals Lab lands, both become cross-references and
+  each becomes one sentence shorter.
+- **E5 states overflow at the section's own word length, not at eight bits.**
+  `DSP_LAB_PLAN.md` §5 quotes a range of -1 to 0.9921875 and a value of 1.2
+  saturating and wrapping. An eight-bit state with no bits above the point
+  cannot hold this section's numerator at all: the whole of b0 x is under half a
+  step, so the filter produces zeros rather than overflowing. The lesson makes
+  the same two claims at twelve bits with one bit above the point, where the
+  section asks for 2.530 and the range stops at 1.999. The plan's numbers are
+  still correct about the quantiser and wrong about the filter.
+- **E6's noise gain reads 10502, not the plan's 10433.8.** The plan computed it
+  from the exact coefficients and the lab computes it from the sixteen-bit ones
+  the block actually runs. The lab's figure is the filter that exists.
+- **Group C runs at a frame of 8192 and group D at 16384.** The lab's default is
+  4096 (Decision 2), which is right for a spectrum and too short for a settled
+  average or a slow convergence. Both are set per experiment and the reason is
+  in each group's header comment. A reader who changes the frame changes the
+  numbers, and every pin is computed from the frame rather than typed.
+- **D3 reaches K of 256 by shortening the segment, not by lengthening the
+  record.** The plan's table runs to 65536 samples. The frame control stops at
+  16384, so at K of 256 the segments are 64 samples and the bin is 750 Hz. The
+  scatter still lands within 4 % of one over root K, which is the claim.
 - **`packages/ui` promotion candidates**, copied from Signal Lab into
   `apps/dsp-lab/src/components/` rather than shared: `ScopeCanvas.jsx`,
-  `SpectrumCanvas.jsx`, `Controls.jsx`. `SpecPane.jsx` is new, not copied, and
-  is itself the promotion candidate `PROGRAM.md` §4 names for the Applied
-  Analog Lab and this lab together. Full detail in `apps/dsp-lab/NEEDS.md`.
-- **`scripts/verify.mjs` (the Playwright harness) is not written.** The brief
-  asks for it in lane 2. This overseer's instructions excluded Playwright, so
-  the harness is deferred rather than written and left unrun.
+  `SpectrumCanvas.jsx`, `Controls.jsx`. Four canvases are new and app-local
+  until a second lab needs them: `WeightCanvas`, `PoleGridCanvas`,
+  `DensityCanvas`, `ButterflyCanvas`. `SpecPane.jsx` is the one candidate with a
+  second lab already named, and it ships to the Applied Analog Lab's contract.
+  Full detail in `apps/dsp-lab/NEEDS.md`.
+- **The non-goals of `DSP_LAB_PLAN.md` §10 are all still non-goals.** Filter
+  banks and wavelets. Arbitrary rational rate changes. Kaiser and
+  Dolph-Chebyshev windows, elliptic filters, lattice and coupled structures.
+  The affine projection algorithm, multitaper estimation, radix-4 and
+  split-radix. Fixed point on the whole chain, and a free-form design tool.
+  None became cheaper to add while the six groups were built.

@@ -79,13 +79,15 @@ with the Applied Analog Lab's props from the first commit**, and listed in
 `apps/dsp-lab/NEEDS.md` as the `packages/ui` promotion candidate.
 `APPLIED_ANALOG_LAB_PLAN.md` §4.3 states the contract, and §4.2 below repeats it.
 
-### Decision 5: how many groups ship in the first release
+### Decision 5: how many groups ship in the first release (settled: all six)
 
-Six groups and about forty experiments is the whole course. The phasing in §9 ships
-them in three tranches, and each is a course a reader can finish. Recommended:
-**Reed decides the release point at the end of phase 3**. By then the rate group and
-the design group are pinned, and the specification pane has been read by someone
-other than its author.
+Six groups and forty experiments is the whole course. All six are now built and
+pinned. The recommendation was that Reed decide the release point at the end of
+phase 3, when the rate group and the design group were pinned. That is now a
+different question. What stands between the lab and the flip is the release gate in
+§9 rather than the group count. **Reed decides the flip after that gate**, and what
+the gate waits on is the Playwright harness, which no pass has been allowed to
+write.
 
 ---
 
@@ -593,14 +595,22 @@ budgets.
   the range is -1 to 0.9921875. A value of 1.2 saturates to 0.9921875 or wraps to
   -0.796875, and inside a recursive filter that wrap comes back round the loop.
   Measured: both results, the range from the word length, and the output of the same
-  filter under each rule.
+  filter under each rule. **Built at twelve bits instead**, for the reason below.
 - **E6 · Rounding noise, and the guard on its model.** One rounding is an error of
   at most half a step, and the white model puts its power at `delta^2/12`. Through
-  this section's `1/A(z)` the noise gain is 10433.8, so a 2.819e-4 rms rounding
-  becomes 2.880e-2 at the output, an amplification of 40.2 dB. The model holds
+  this section's `1/A(z)` the noise gain is 10433.8 from the exact coefficients. It
+  is **10502 from the sixteen-bit ones the block runs**, so a 2.819e-4 rms rounding
+  becomes 2.889e-2 at the output, an amplification of 40.2 dB. The model holds
   within a factor of two for a signal that exercises many codes and fails by more
   than ten for one that exercises three. Measured: the gain, both rms figures, and
   the model against measurement on both signals.
+
+**E5 as built.** An eight-bit state with no bits above the point cannot hold this
+section's numerator. The whole of b0 x is under half a step, so the filter produces
+zeros rather than overflowing. The lesson makes the same two claims at twelve bits
+with one bit above the point. The range is then -2 to 1.999, the section asks for
+2.530, saturating gives 1.999 and wrapping gives -1.470. The line at 600 Hz falls
+from 1.923 to 0.734 between the two rules.
 
 ### Group F: The transform itself (5)
 
@@ -708,25 +718,31 @@ group depends on it, and it is the one part that cannot be built group by group.
    `estimate.js`, `complexChain.js` and their tests. Invariants 1 to 18 fuzzed green
    before any UI exists. **Done**, at 1459 package tests.
 2. **The app shell and the specification pane.** `RELEASE_STATUS`, the release test,
-   the block registry, the views, and `SpecPane` with both prop forms. Exit: the
-   shell loads a stub lesson at 390 px and the release test passes dark.
-3. **Rate and design.** **Groups A and B** (15). The response-and-mask view, the
-   specification pane in use. Exit: every A and B number pinned, invariants 1 to 7
-   exercised from the app's own registry.
-4. **Fixed point.** **Group E** (6). The pole grid view, the quantised biquad block.
-   Exit: E numbers pinned, the dead-band count of 81 measured from the app's
-   defaults.
-5. **Adaptive.** **Group C** (7). The weight view, the unknown-plant block. Exit: C
-   numbers pinned, and the block proved to carry no H(z).
-6. **Estimation and the transform.** **Groups D and F** (12). The density view and
-   the butterfly view. Exit: D and F numbers pinned.
-7. **The release gate**, in order, each blocking the next. The full audit, every
-   preset and every claim, both browsers. The student sittings. Reed's own pass
-   against the dark deployment. Then the flip.
+   the block registry, the views, and `SpecPane` with both prop forms. **Done.**
+   `SpecPane` carries both the scalar and the mask form, and `NEEDS.md` lists it as
+   the `packages/ui` candidate with the Applied Analog Lab as its second consumer.
+3. **Rate and design.** **Groups A and B** (15). **Done.** The response-and-mask
+   view and the specification pane in use, with every A and B number pinned.
+4. **Fixed point.** **Group E** (6). **Done.** `PoleGridCanvas` and the quantised
+   biquad block. The dead band measures 81 steps at 10, 12, 14 and 16 bits from the
+   app's own defaults.
+5. **Adaptive.** **Group C** (7). **Done.** `WeightCanvas` and the unknown-plant
+   block. The block returns null from `response` and carries its reason as a
+   sentence, and the weight view draws the sequence of filters instead.
+6. **Estimation and the transform.** **Groups D and F** (12). **Done.**
+   `DensityCanvas` and `ButterflyCanvas`, a two-pole source block for the all-pole
+   model to be fitted to, and a `record` field for the one lesson that asks the
+   transform to pad.
+7. **The release gate**, in order, each blocking the next. The Playwright harness,
+   which is written before the audit and is the one part of this plan no pass has
+   been allowed to build. Then the full audit, every preset and every claim, both
+   browsers. Then the student sittings. Then Reed's own pass against the dark
+   deployment. Then the flip. **This is where the lab now stands.**
 
-Phases 3 to 6 are independent of each other once phase 2 lands, so they can run in
-parallel or be cut at any boundary. The plan's own rule is that fewer groups fully
-pinned beats more groups half done.
+Phases 3 to 6 were independent of each other once phase 2 landed. They were built in
+the order 3, 4, 5, 6 by one overseer rather than in parallel by four workers. The
+plan's own rule was that fewer groups fully pinned beats more groups half done, and
+it did not have to be used.
 
 ---
 

@@ -39,12 +39,17 @@ Commit messages are narrative. Read `git log` for the register.
 
 | Lane | Work | Owns | Starts | Exit |
 | --- | --- | --- | --- | --- |
-| 1 | The engine | `packages/dsp/src/{multirate,design,adaptive,fixpoint,estimate,complexChain}.js` and their tests, plus the export block in `index.js` | done | invariants 1 to 18 fuzzed green, contracts in §3 met |
-| 2 | The app shell and the specification pane | everything in `apps/dsp-lab/` not owned by lanes 3 to 6, `RELEASE_STATUS`, `release.test.js`, `components/SpecPane.jsx`, `scripts/verify.mjs` | after lane 1 | the shell loads a lesson at 390 px, the release test passes dark |
-| 3 | Rate and design | `src/groups/{a,b}.js`, `src/lessons/{a,b}.js`, `components/MaskCanvas.jsx` | after lane 2's shell commit | A1 to A7 and B1 to B8 pinned |
-| 4 | Fixed point | `src/groups/e.js`, `src/lessons/e.js`, `components/PoleGridCanvas.jsx` | after lane 2 | E1 to E6 pinned |
-| 5 | Adaptive | `src/groups/c.js`, `src/lessons/c.js`, `components/WeightCanvas.jsx` | after lane 2 | C1 to C7 pinned |
-| 6 | Estimation and the transform | `src/groups/{d,f}.js`, `src/lessons/{d,f}.js`, `components/{DensityCanvas,ButterflyCanvas}.jsx` | after lane 2 | D1 to D7 and F1 to F5 pinned |
+| 1 | The engine (**done**) | `packages/dsp/src/{multirate,design,adaptive,fixpoint,estimate,complexChain}.js` and their tests, plus the export block in `index.js` | done | invariants 1 to 18 fuzzed green, contracts in §3 met |
+| 2 | The app shell and the specification pane (**done**) | everything in `apps/dsp-lab/` not owned by lanes 3 to 6, `RELEASE_STATUS`, `release.test.js`, `components/SpecPane.jsx`, `scripts/verify.mjs` | after lane 1 | the shell loads a lesson at 390 px, the release test passes dark |
+| 3 | Rate and design (**done**) | `src/groups/{a,b}.js`, `src/lessons/{a,b}.js`, `components/MaskCanvas.jsx` | after lane 2's shell commit | A1 to A7 and B1 to B8 pinned |
+| 4 | Fixed point (**done**) | `src/groups/e.js`, `src/lessons/e.js`, `components/PoleGridCanvas.jsx` | after lane 2 | E1 to E6 pinned |
+| 5 | Adaptive (**done**) | `src/groups/c.js`, `src/lessons/c.js`, `components/WeightCanvas.jsx` | after lane 2 | C1 to C7 pinned |
+| 6 | Estimation and the transform (**done**) | `src/groups/{d,f}.js`, `src/lessons/{d,f}.js`, `components/{DensityCanvas,ButterflyCanvas}.jsx` | after lane 2 | D1 to D7 and F1 to F5 pinned |
+
+Every lane is built and pinned. `scripts/verify.mjs` is the one item of lane 2 that
+is not, and `NEEDS.md` carries it. What follows is the record of the contracts the
+lanes were built to, kept because the next pass extends them rather than replaces
+them.
 
 **The gate.** Lanes 3 to 6 need lane 2's shell commit, which lands
 `src/blocks.js`, `src/chain.js`, `src/experiments.js`, `src/state.js`, `src/App.jsx`
@@ -73,14 +78,15 @@ apps/dsp-lab/
   src/chain.js               createChain(BLOCK_TYPES), as Signal Lab's
   src/state.js               INITIAL and presetState
   src/chips.js               one-click settings, copied from Signal Lab
-  src/experiments.js         merges groups/*.js in plan order, no prose
-  src/lessons.js             merges lessons/*.js
+  src/experiments.js         merges groups/*.js and lessons/*.js in plan order
+  src/measure.js             the quantity paths, and measure.test.js under them
   src/groups/{a,b,c,d,e,f}.js    one file per group, owned by that group's lane
+  src/groups/{c,d,e,f}.test.js   that group's pins, one file per lane
   src/lessons/{a,b,c,d,e,f}.js   see / try / why, same owner
-  src/terms.js               definitions on contact, one registry
-  src/spec.js                the specification rows a lesson names
+  src/terms.js               merges terms/*.js, plus the words scanner
+  src/terms/{ab,c,d,e,f}.js  definitions on contact, one file per group
   src/release.test.js  experiments.test.js  prose.test.js  terms.test.js
-  src/components/            SpecPane, MaskCanvas, WeightCanvas, PoleGridCanvas,
+  src/components/            SpecPane, WeightCanvas, PoleGridCanvas,
                              DensityCanvas, ButterflyCanvas, and the Signal Lab
                              components this lab copies (§6)
 ```
