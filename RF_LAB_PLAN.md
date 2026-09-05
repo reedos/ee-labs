@@ -102,7 +102,7 @@ group that teaches it, and whether that experiment exists today.
 | Resonance, Q, the tank | C4, H1 | Elements H5, Circuit Lab | built |
 | H(s), poles and zeros, dB, the Bode plot | D, E | Circuit Lab, 15 built | built |
 | Complex arithmetic and the AC solve | the whole engine | `packages/network` `complex.js`, `phasor.js` | built |
-| The small-signal netlist, `g_m`, `r_o`, `C_π`, `C_μ` | D2, E1 | Electronics Group F, Group K | being built, `lab/electronics-lab` |
+| The small-signal netlist, `g_m`, `r_o`, `C_π`, `C_μ` | E1, E4 | Electronics Group F, Group K | being built, `lab/electronics-lab` |
 | `f_T` and the Miller effect | E1, E4 | Electronics K1, K3 | being built, `lab/electronics-lab` |
 | Junction capacitance as the varactor | C5 | Electronics C2 | being built, `lab/electronics-lab` |
 | Noise as a density, thermal and shot sources | F1, F2 | Electronics Group O | being built, `lab/electronics-lab` |
@@ -111,7 +111,7 @@ group that teaches it, and whether that experiment exists today.
 | Ring modulation and AM as multiplication | G1, G2 | Signal Lab, Nonlinearity group | built |
 | The FFT, harmonics, spectra | G3, G4 | `packages/dsp` and Signal Lab | built |
 | The telegrapher's equations, `Z_0`, `γ`, the bounce diagram | A1, A2, A5 | Fields Lab, transmission-line group | being built, `lab/fields-lab` |
-| Antenna gain and the Friis equation | none here, G4 cites it | Fields Lab, antenna group | being built, `lab/fields-lab` |
+| Antenna gain and the Friis equation | none here, §6 names the seam | Fields Lab, antenna group | being built, `lab/fields-lab` |
 | Noise as a random process, the averaged periodogram | F1 cites it | Random Signals Lab, noise group | being built, `lab/random-lab` |
 | The Gilbert cell as a multiplier | G1 | Analog IC Lab, translinear group | mapped only, not started |
 | Matched devices, mirror error, Pelgrom | none in v1 | Analog IC Lab, devices group | mapped only, not started |

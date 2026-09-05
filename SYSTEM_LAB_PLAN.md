@@ -109,7 +109,7 @@ today.
 | Noise as a random process, the confidence interval | B5 cites it | Random Signals Lab, estimation group | being built, `lab/random-lab` |
 | Antenna gain, the Friis equation, free-space loss | E1, E2 | Fields Lab, antenna group | being built, `lab/fields-lab` |
 | Noise figure, Friis's cascade, IP3 from two tones | B, C | RF Lab Groups F and G | planned here, `RF_LAB_PLAN.md` |
-| The mixer, the image, phase noise | D5, and the chain's blocks | RF Lab Groups G and H | planned here, `RF_LAB_PLAN.md` |
+| The mixer, the image, phase noise | F2, and the chain's blocks | RF Lab Groups G and H | planned here, `RF_LAB_PLAN.md` |
 | The converter's dynamic errors and its jitter | D4 | Mixed-Signal Lab, converters group | mapped only, not started |
 | Bit error rate against `E_b/N_0`, the Q function | E4 cites it | Communications Lab, channel group | proposed only, not started |
 
@@ -158,7 +158,7 @@ is what the app does when the reader breaks that assumption.
 | Budget | Stance | The assumption | The guard |
 | --- | --- | --- | --- |
 | Cumulative gain and level | admitted, exact | every interface is matched, so gain is available gain | mismatch loss is computed from the two `Γ` values and shown as a separate column when either is non-zero |
-| Cascaded noise figure (Friis) | admitted, exact | available gain between matched stages, and one noise temperature of 290 K | the pane warns when any interface `|Γ| > 0.33`, which is VSWR 2.000, and prints the mismatch term |
+| Cascaded noise figure (Friis) | admitted, exact | available gain between matched stages, and one noise temperature of 290 K | the pane warns when any interface reflects more than 0.33 in magnitude, which is VSWR 2.000, and prints the mismatch term |
 | Noise figure of a passive block | admitted, exact | the block is at the reference temperature | the physical temperature is a knob, and NF is recomputed from it rather than fixed at the loss |
 | Cascaded input IP3 | guarded | the third-order products from each stage add in voltage with aligned phase | the pane states the worst case, and offers the power-addition and random-phase cases as two other columns with their own totals |
 | IP3 of one block from two tones | guarded | third-order extrapolation from a drive well below compression | the RF Lab's guard, warn within 10 dB of P1dB and decline within 3 dB |
