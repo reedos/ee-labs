@@ -41,6 +41,8 @@
  *   word.<prefix>.<n>.<t>              q(n-1)..q0 at time t, as the number
  *   tmin  fmax  holdslack              the clock period in ps, f_max in hertz
  *   period  setupslack                 the period this run is clocked at
+ *   tpd  skew                          the logic term of the period, and the
+ *                                      skew it was closed at
  *   violations                         how many setup or hold violations
  *   violation.<k>.<kind|slack|actual|required|t>
  *   states  srows  sbits  unused       the state machine's counts
@@ -173,6 +175,10 @@ export function readQuantity(x, p, path, exp) {
       return need(x.closing && x.closing.period, path)
     case 'setupslack':
       return needNumber(x.closing && x.closing.setupSlack, path)
+    case 'tpd':
+      return needNumber(x.closing && x.closing.terms.tpd, path)
+    case 'skew':
+      return needNumber(x.closing && x.closing.terms.skew, path)
     case 'violations':
       return x.res.violations.length
     case 'violation': {

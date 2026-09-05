@@ -6,7 +6,7 @@
 // same object, so the timing diagram and the topbar can never disagree about
 // when an event happened.
 
-import { criticalPath, EventsError, fMax, fsmEquations, initialValue, minimalCover, mtbf, normalize, primeImplicants, pulsesOf, settlingFor, simulate, timingPaths, truthTable } from '@ee-labs/events'
+import { criticalPath, EventsError, fMax, fsmEquations, initialValue, minimalCover, mtbf, normalize, primeImplicants, pulsesOf, settlingFor, simulate, synchroniser, timingPaths, truthTable } from '@ee-labs/events'
 
 /**
  * The same netlist with every driven source held still.
@@ -78,6 +78,14 @@ export function analyse(exp, p) {
       if (want === 'minimise') out.minimise = minimiseOf(out.held || (out.held = heldOf(out.norm)), exp.minimiseOf || (out.norm.outputs || [])[0])
       if (want === 'rate') out.rate = mtbf(exp.rate(p))
       if (want === 'settling') out.settling = settlingFor(exp.settling(p))
+      if (want === 'sync') {
+        // A chain of n flip-flops gives each stage a whole clock period less
+        // the setup and clock-to-Q times to settle in. One flip-flop gives it
+        // none at all, and the rate that follows is the point of H2.
+        const s = synchroniser(exp.sync(p))
+        out.rate = s
+        out.settling = s.tr
+      }
     } catch (e) {
       if (!(e instanceof EventsError)) throw e
       // A refusal an experiment is about (E1's ring) is the answer, not a

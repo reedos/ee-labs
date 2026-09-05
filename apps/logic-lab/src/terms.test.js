@@ -68,6 +68,7 @@ describe('the glossary', () => {
       2 * cell('nand', 2),
       FLOP.tcq + FLOP.tsu,
       FLOP.tcq + carryBit + FLOP.tsu,
+      FLOP.tcq + cell('xor', 2) + 2 * carryBit + FLOP.tsu,
       FLOP.tcq + cell('xor', 2) + 4 * carryBit + FLOP.tsu,
     ])
     const quoted = Object.entries(TERMS).flatMap(([id, t]) => [...t.def.matchAll(/(\d+)\s*ps/g)].map((m) => ({ id, ps: +m[1] })))
