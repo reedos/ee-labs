@@ -16,6 +16,9 @@
 // with `sweep(p)` gets a frequency view, drawn from one complex solve per point.
 
 export * from './kit.js'
+// The view labels are re-exported above and read below, and `export *` makes no
+// local binding, so the name is imported as well as passed on.
+import { VIEW_LABELS } from './kit.js'
 import { LESSONS } from './lessons.js'
 import { GROUP_A } from './groups/a.js'
 import { GROUP_B } from './groups/b.js'
