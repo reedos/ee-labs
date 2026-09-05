@@ -568,3 +568,6 @@ export const MATCH = {
   acresistance: /\bdirect-current value\b/i,
   crowding: /\bcrowded\b|\bcrowding\b/i,
 }
+
+/** The definitions an experiment's `terms` list names, in that order, for the sidebar's fold. */
+export const termsFor = (ids = []) => ids.map((id) => ({ id, ...TERMS[id] })).filter((t) => t.name)
