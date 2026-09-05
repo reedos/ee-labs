@@ -18,23 +18,21 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Signal Lab | built | | | |
 | Control Lab | built | | | |
 | Power Lab | built in part, dark | merged, Groups A to G | Groups H to N unassigned | `POWER_LAB_PLAN.md` |
-| The two seams and the progression test | building | `lab/seams` | | `CURRICULUM.md` §3, §6 |
+| The two seams and the progression test | built, merged | | | `CURRICULUM.md` §3, §6 |
 | Electronics Lab | built in part, dark | merged, Groups A and C | the transistor symbol in `Schematic.jsx` for Groups D to O | `ELECTRONICS_LAB_PLAN.md` |
 | Logic Lab | built, dark | merged | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
-| DSP Lab | building | `lab/dsp-lab` | | to write |
+| DSP Lab | built, dark | merged | | `DSP_LAB_PLAN.md` |
 | Random Signals Lab | built, dark | merged | Electronics O1 for one cross-reference | `RANDOM_LAB_PLAN.md` |
-| Control Lab II | building | `lab/control-lab-ii` | | to write |
+| Control Lab II | built, dark | merged | | `CONTROL_LAB_II_PLAN.md` |
 | Random Signals Lab | building | `lab/random-lab` | Electronics O1 for one cross-reference | to write |
 | Control Lab II | building | `lab/control-lab-ii` | | `CONTROL_LAB_II_PLAN.md` |
-| Instruments Lab | building | `lab/instruments-lab` | RF Lab for the network analyser group | to write |
+| Instruments Lab | built, dark | merged | RF Lab for the network analyser group | `INSTRUMENTS_LAB_PLAN.md` |
 | Instruments Lab | building | `lab/instruments-lab` | RF Lab for the network analyser group | `INSTRUMENTS_LAB_PLAN.md` |
-| Fields Lab | building | `lab/fields-lab` | | to write |
+| Fields Lab | built, dark | merged | | `FIELDS_LAB_PLAN.md` |
 | Energy Lab | built, dark | merged | Machines Lab for the wind group | `ENERGY_LAB_PLAN.md` |
 | Machines Lab | built, dark | merged | Power Lab L for the drives group, F now merged | `MACHINES_LAB_PLAN.md` |
 | Communications Lab | built, dark | merged | | `COMMUNICATIONS_LAB_PLAN.md` |
 | Information Lab | built, dark | merged | | `INFORMATION_LAB_PLAN.md` |
-| Communications Lab | built, dark | `lab/comms-lab` | Electronics O and the RF Lab for one cross-reference | `COMMUNICATIONS_LAB_PLAN.md` |
-| Information Lab | waiting | | | `INFORMATION_LAB_PLAN.md` |
 | Applied Analog Lab | waiting | | Electronics L, M | `APPLIED_ANALOG_LAB_PLAN.md` |
 | Analog IC Lab | waiting | | Electronics H to M | `ANALOG_IC_LAB_PLAN.md` |
 | Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | `MIXED_SIGNAL_LAB_PLAN.md` |

@@ -66,6 +66,10 @@ jobs:
           cp -r apps/devices-lab/dist _site/devices-lab
           cp -r apps/grid-lab/dist _site/grid-lab
           cp -r apps/computer-lab/dist _site/computer-lab
+          cp -r apps/dsp-lab/dist _site/dsp-lab
+          cp -r apps/control-lab-ii/dist _site/control-lab-ii
+          cp -r apps/instruments-lab/dist _site/instruments-lab
+          cp -r apps/fields-lab/dist _site/fields-lab
 
       - uses: actions/upload-pages-artifact@v3
         with:
