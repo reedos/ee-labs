@@ -70,6 +70,22 @@ export { blackman, marginsOf, returnRatio, returnRatioAt } from './src/loop.js'
 // elements this package already stamps, at normalize, before anything solves.
 export { expandMacros, expandOpAmp, isMacro, MACRO_FIELDS } from './src/macro.js'
 
+// Noise: the two densities that are physics, the third that is a datasheet
+// fact, and the sum of what each of them makes of the output.
+export {
+  firstOrderFraction,
+  flickerCurrent,
+  ktOverC,
+  noiseBandwidth,
+  noiseDensity,
+  noiseRms,
+  noiseSources,
+  perRootHz,
+  shotCurrent,
+  thermalCurrent,
+  thermalVoltageDensity,
+} from './src/noise.js'
+
 // The junction: where the exponential, the two capacitances and the
 // temperature law come from, as closed forms rather than datasheet facts.
 export {

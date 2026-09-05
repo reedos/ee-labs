@@ -36,6 +36,13 @@ import { labelParts, elementReading, elementTextPlaces, opampTextPlaces, nodeTex
  * appear whenever meters are given).
  *
  * Optional, all additive (the Elements lab's schematic answers back):
+ *   overlay    { mode: 'dc' | 'ac' | 'both', v: { node: amplitude } }: the
+ *              Electronics lab's two circuits on one drawing. In 'dc' the node
+ *              text is the operating point, as everywhere else. In 'ac' it is
+ *              the signal amplitude the app measured, written with the sine it
+ *              rides on ("0.184 V·sin"). In 'both' the node carries the sum it
+ *              really is, "5.00 V + 0.184 V·sin". What an AC meter reads is
+ *              the app's to decide: this draws what it is given.
  *   lit        { nodes, elements }: names to draw lit (Sets or arrays) — the
  *              places a lesson step says to read, or the row under the pointer
  *   reference  the node currently taken as the zero of voltage, when it is not
@@ -44,7 +51,7 @@ import { labelParts, elementReading, elementTextPlaces, opampTextPlaces, nodeTex
  *   onElement  (id) => …    makes every switch a button ("Throw S1")
  * Every node carries data-node and every element data-el whatever is passed.
  */
-export default function Schematic({ elements, layout, meters = null, show = 'i', className = '', lit = null, reference = null, onNode = null, onElement = null }) {
+export default function Schematic({ elements, layout, meters = null, show = 'i', className = '', overlay = null, lit = null, reference = null, onNode = null, onElement = null }) {
   const byId = new Map(elements.map((e) => [e.id, e]))
   const { w = 320, h = 160, items = [], crop = null } = layout
   const [cx0, cy0, cx1, cy1] = crop || [0, 0, w, h]
@@ -75,6 +82,7 @@ export default function Schematic({ elements, layout, meters = null, show = 'i',
               y={it.y}
               side={it.side || 'r'}
               volts={meters ? meters.v[it.node] : undefined}
+              overlay={overlay}
               lit={litNodes.has(it.node)}
               isRef={reference === it.node}
               onTap={onNode}
@@ -167,7 +175,25 @@ function Label({ e, at }) {
   )
 }
 
-function NodeDot({ name, x, y, side, volts, lit = false, isRef = false, onTap = null }) {
+/**
+ * The node's own text: its name, then what it reads.
+ *
+ * With no overlay that is the solved voltage. With one it is whichever of the
+ * two circuits the reader asked for, or both of them written as the sum they
+ * are — which is the whole content of "signal and bias take different paths".
+ */
+function nodeMeter(name, volts, overlay) {
+  const dc = Number.isFinite(volts) ? fmt(volts, 'V', 3) : null
+  if (!overlay) return dc
+  const ac = overlay.v ? overlay.v[name] : undefined
+  const acText = Number.isFinite(ac) ? `${fmt(ac, 'V', 3)}·sin` : null
+  if (overlay.mode === 'ac') return acText
+  if (overlay.mode === 'both') return dc && acText ? `${dc} + ${acText}` : dc || acText
+  return dc
+}
+
+function NodeDot({ name, x, y, side, volts, overlay = null, lit = false, isRef = false, onTap = null }) {
+  const meter = nodeMeter(name, volts, overlay)
   const at = nodeTextPlace({ x, y, side })
   const cls = ['sch-node', lit ? 'is-lit' : '', isRef ? 'is-ref' : '', onTap ? 'is-tappable' : ''].filter(Boolean).join(' ')
   const tap = onTap ? () => onTap(name) : undefined
@@ -188,9 +214,9 @@ function NodeDot({ name, x, y, side, volts, lit = false, isRef = false, onTap = 
       <circle className="sch-dot" cx={x} cy={y} r="3" fill="var(--line-bright)" />
       <text className="sch-port" x={at.x} y={at.y} textAnchor={at.anchor}>
         {name}
-        {Number.isFinite(volts) ? (
-          <tspan className="sch-meter" dx="4">
-            {fmt(volts, 'V', 3)}
+        {meter ? (
+          <tspan className={overlay && overlay.mode === 'ac' ? 'sch-meter is-ac' : 'sch-meter'} dx="4">
+            {meter}
           </tspan>
         ) : null}
       </text>

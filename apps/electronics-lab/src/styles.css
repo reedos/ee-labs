@@ -1022,3 +1022,88 @@ a.handover-copy:hover { filter: brightness(1.1); }
   .theorem figcaption, .equivalent figcaption { font-size: 13.5px; }
   .readings .hint { font-size: 14px; }
 }
+
+/* ---------- the lower pane ----------
+   Every view is one canvas or one set of tables, filling the pane it is given.
+   A canvas sizes itself from its box (useCanvas redraws on resize), so the
+   rules here are about the box rather than about the drawing. */
+.view-body > .pane-canvas,
+.pane-split > .pane-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+}
+
+.pane-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+
+.pane-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  overflow-y: auto;
+}
+
+.pane-empty {
+  margin: 12px 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--amber);
+  background: var(--panel-2);
+  border-radius: 4px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.pane-reading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.pane-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pane-table caption {
+  text-align: left;
+  padding-bottom: 4px;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.pane-table th,
+.pane-table td {
+  padding: 1px 10px 1px 0;
+  text-align: left;
+  font-weight: 500;
+}
+
+.pane-table th { color: var(--dim); }
+.pane-table td { color: var(--q-voltage); }
+
+.pane-equations { overflow-y: auto; min-height: 0; font-size: 12px; }
+.pane-equations h3 { margin: 6px 0 4px; font-size: 12px; color: var(--dim); font-weight: 600; }
+
+/* The cursor, beside the view it moves. */
+.cursor-knob { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dim); }
+.cursor-knob input { width: 140px; }
+.cursor-knob b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* The signal's own colour on the schematic, so the two circuits on one drawing
+   are told apart by hue as well as by wording. */
+text.sch-meter.is-ac { fill: var(--q-current); }
+.view-body[data-show='v'] text.sch-meter.is-ac { fill: var(--q-current); }

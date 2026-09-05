@@ -122,6 +122,12 @@ export function analyse(exp, p, cursor) {
       // with `probe`, and the rest are read where the response is still flat.
       x.probe = typeof exp.probe === 'function' ? exp.probe(p) : (exp.probe ?? exp.at ?? 1)
       x.hAt = evalTF(x.tf, [0, 2 * Math.PI * x.probe])
+      // What an AC meter reads: the tangent's own netlist driven by the
+      // experiment's signal source at that frequency, node by node, as
+      // amplitudes. The schematic's overlay draws these; the renderer is told
+      // the numbers rather than asked to work them out.
+      const ac = solveAC({ elements: x.ss.elements }, 2 * Math.PI * x.probe)
+      x.ac = { omega: 2 * Math.PI * x.probe, v: Object.fromEntries(Object.entries(ac.v).map(([n, z]) => [n, cx.cabs(z)])) }
     } catch (err) {
       if (!(err instanceof NetworkError)) throw err
       x.signalRefusal = err
