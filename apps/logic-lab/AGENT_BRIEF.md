@@ -79,6 +79,8 @@ apps/logic-lab/
   src/format.js           picoseconds, nanoseconds and hertz for a reader
   src/report.js           the issue link's summary
   src/release.test.js  experiments.test.js  prose.test.js  terms.test.js
+  src/App.smoke.test.jsx  groups/{a..h}.test.js  (one pin file per group pair
+                          the plan phases together, beside the group it pins)
   src/components/         TimingCanvas, GateCanvas, StateCanvas, panes.jsx
                           (the truth table, the Karnaugh map, the path list,
                           the event table and the refusal, which are markup
@@ -395,7 +397,7 @@ rather than typed in.
 | 4, Group B | 6 primes, a cover of 3 cubes and 6 literals, `a'b' + bc' + ac`. 7 gates and 180 ps against the canonical 12 gates, 18 literals and 260 ps. 50 ps against 100 ps for De Morgan. The multiplexer at 2 cubes and 4 literals |
 | 5, Group C | 170 ps and 140 ps for the multiplexer. 100 ps and 70 ps for the decoder. 90 ps and 70 ps for the half adder. 180 ps and 230 ps for the full adder. 650 ps, 600 ps and 180 ps for the 4-bit adder, 20 gates, 140 ps a bit, and every one of 256 sums |
 | 5, Group D | 140 ps and 170 ps for the two paths. A 30 ps pulse at 240 ps, and the settled 1. No event with the consensus term, and 80 ps for the 3-input OR. One swallowed pulse under inertial delay. 1180, 1230, 1370 and 1510 ps for the adder's sum bits |
-| 6, Group E | The `combinational-loop` refusal and the ring it names. 350 ps and 400 ps for the latch. 5 gates for the D latch, 11 for the flip-flop, and 100 ps to Q. A violation window from 461 ps to 519 ps, 59 ps of the 60 ps of `t_su + t_h` |
+| 6, Group E | The `combinational-loop` refusal and the ring it names. 350 ps and 400 ps for the latch. 5 gates for the D latch, 11 for the flip-flop, 100 ps to a rising Q and 150 ps to a falling one. A violation window from 461 ps to 519 ps, 59 ps of the 60 ps of `t_su + t_h` |
 | 6, Group F | 6 gates and 4 flip-flops for the counter, 350 ps, and 70 ps a bit. 6 rows, 2 state bits, 1 unused code, Mealy. `d1 = q0x'`, `d0 = x`, `y = q1x`. 6 gates and 230 ps for the built machine, and its output on all eight clocks |
 | 7, Group G | 770 ps as 80 + 650 + 40, and 1.2987 GHz. 1330, 2450 and 4690 ps at eight, sixteen and thirty-two bits. 490 ps and 2.0408 GHz pipelined, a factor of 1.571. 720 ps and 150 ps of hold slack at 50 ps of skew, and hold failing at 201 ps |
 | 7, Group H | 1.10 s, 24 260 s and 16.93 years at 200, 400 and 600 ps. A factor of e per 20 ps. 880 ps and 2.036 × 10⁷ years for two flip-flops. 681.6 ps for a thousand years |
@@ -441,10 +443,17 @@ npx vite preview --outDir apps/logic-lab/dist --port 432N --strictPort &
 cd apps/logic-lab && APP_URL=http://localhost:432N node scripts/verify.mjs
 ```
 
-The harness catches what unit tests cannot: a prop not passed, a pane fed stale
-state, a canvas that stopped redrawing. Extend it for every view you add.
-Screenshot every view at 390 px and at 1280 × 900, and read the screenshots as a
-student would, per `/REVIEW_PLAYBOOK.md` §11.
+`scripts/verify.mjs` is **not written yet**, and `BACKLOG.md` carries it. The
+last line above is what to write, not what to run. Until it exists, two of the
+three things it catches are covered without a browser. `App.smoke.test.jsx`
+mounts every pane of every experiment against that experiment's own analysis,
+so a pane fed something it cannot draw fails in the suite.
+`components/canvases.test.jsx` measures every canvas prop against the geometry
+it produces, so a prop that is passed and not drawn fails there.
+
+What is left uncovered is the app end to end and the layout. Screenshot every
+view at 390 px and at 1280 × 900 when the harness lands, and read the
+screenshots as a student would, per `/REVIEW_PLAYBOOK.md` §11.
 
 ## 8. Gotchas this suite has already paid for
 
