@@ -139,6 +139,34 @@ export default function App() {
   const [focusStep, setFocusStep] = useState(null)
   // The knob the student opened by hand; otherwise the active step's knob is open.
   const [openKnob, setOpenKnob] = useState(null)
+  // Whether a pointer (mouse or touch) is currently pressed down, anywhere.
+  // A knob-slot's own click opens it, which changes that slot from a compact
+  // row to a full one and reflows every slot after it. Opening on focus alone
+  // used to run that reflow between mousedown and mouseup — mousedown moves
+  // focus onto the control under the pointer, before the button is released —
+  // so a button that was not already in the open slot had its hit box move
+  // out from under the pointer and swallowed the click. Gating focus-driven
+  // opening on "no pointer is currently down" defers it to the click that
+  // follows mouseup, by which point the browser has already resolved that
+  // click against the still-stable layout. A keyboard Tab still opens the
+  // slot immediately, since no pointer is down while tabbing.
+  const pointerDownRef = useRef(false)
+  useEffect(() => {
+    const down = () => {
+      pointerDownRef.current = true
+    }
+    const up = () => {
+      pointerDownRef.current = false
+    }
+    window.addEventListener('pointerdown', down, true)
+    window.addEventListener('pointerup', up, true)
+    window.addEventListener('pointercancel', up, true)
+    return () => {
+      window.removeEventListener('pointerdown', down, true)
+      window.removeEventListener('pointerup', up, true)
+      window.removeEventListener('pointercancel', up, true)
+    }
+  }, [])
   // The node the student tapped to take as the zero of voltage (A3's lesson).
   const [refNode, setRefNode] = useState(null)
   // The node or element under the pointer in the equations pane, lit on the schematic.
@@ -535,7 +563,11 @@ export default function App() {
                     data-key={p.key}
                     data-open={open}
                     data-named={activeKnobs.includes(p.key) || undefined}
-                    onFocus={() => setOpenKnob(p.key)}
+                    // Focus alone opens the slot, unless a pointer is mid-press: see
+                    // pointerDownRef above for why that case waits for the click.
+                    onFocus={() => {
+                      if (!pointerDownRef.current) setOpenKnob(p.key)
+                    }}
                     onClick={() => setOpenKnob(p.key)}
                   >
                     {p.kind === 'toggle' || p.kind === 'choice' ? (

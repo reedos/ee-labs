@@ -1158,6 +1158,70 @@ console.log('\n43. A deep link takes effect without a reload, in a tab already o
   else console.log(`   deep link: an unrecognised parameter is named on screen: "${warn.trim()}"`)
 }
 
+// A knob that is not the featured one renders compact; opening it (a click
+// or a focus anywhere in its slot) switches it to its full layout, which
+// reflows the slots around it. Reed's round-four grader found that reflow
+// landing between mousedown and mouseup on a cold knob's own control, so the
+// mouseup (and the click it would have started) hit empty space in the new
+// layout instead of the button the pointer went down on. A probe that only
+// checks the control renders passes whether or not this is fixed, because
+// rendering was never the defect. This one performs one real click on one
+// real button inside a knob proven closed beforehand, on each of the three
+// control shapes the grader reproduced it on, and reads back the state the
+// click was supposed to change.
+console.log("\n44. The first click on a knob's own control is not eaten\n")
+
+/** Force `otherKey`'s slot open so `targetKey`'s slot is provably the cold, closed one. */
+async function closeKnob(otherKey, targetKey) {
+  await page.locator(`.knob-slot[data-key="${otherKey}"]`).click()
+  await settle()
+  const openAttr = await page.locator(`.knob-slot[data-key="${targetKey}"]`).getAttribute('data-open')
+  if (openAttr === 'true') fail(`${targetKey}: setup could not close its knob to test a cold click on it`)
+}
+
+{
+  // A2's switch toggle: a two-position control, closed by default.
+  await pick('A current source holds its current')
+  await closeKnob('I', 'open')
+  const btn = page.locator('.knob-slot[data-key="open"] .segmented button').filter({ hasText: /^open$/ })
+  const before = await btn.boundingBox()
+  await btn.click()
+  await settle()
+  const after = await btn.boundingBox()
+  const pressed = await btn.getAttribute('aria-pressed')
+  if (pressed !== 'true') fail(`A2: a cold click on the Switch's "open" button left aria-pressed="${pressed}" — the click was eaten`)
+  else console.log(`   A2: cold click on the closed Switch knob's "open" button registered (hit box x ${Math.round(before.x)} → ${Math.round(after.x)})`)
+}
+
+{
+  // I3's diode-model choice: four positions, same control family as a toggle.
+  await pick('Assume, solve, check')
+  await closeKnob('E', 'model')
+  const btn = page.locator('.knob-slot[data-key="model"] .segmented button').filter({ hasText: /^ideal$/ })
+  const before = await btn.boundingBox()
+  await btn.click()
+  await settle()
+  const after = await btn.boundingBox()
+  const pressed = await btn.getAttribute('aria-pressed')
+  if (pressed !== 'true') fail(`I3: a cold click on the Diode model's "ideal" button left aria-pressed="${pressed}" — the click was eaten`)
+  else console.log(`   I3: cold click on the closed Diode model knob's "ideal" button registered (hit box x ${Math.round(before.x)} → ${Math.round(after.x)})`)
+}
+
+{
+  // A1's plain "+" stepper on a NumField, the third control shape the grader named.
+  await pick('A voltage source holds its voltage')
+  await closeKnob('R1', 'E')
+  const input = page.locator('.knob-slot[data-key="E"] input.num-input')
+  const before = Number(await input.inputValue())
+  const btn = page.locator('.knob-slot[data-key="E"] button[aria-label^="Increase"]')
+  const box = await btn.boundingBox()
+  await btn.click()
+  await settle()
+  const after = Number(await input.inputValue())
+  if (!(after > before)) fail(`A1: a cold click on the E field's "+" stepper left the value at ${before} (was ${before}) — the click was eaten`)
+  else console.log(`   A1: cold click on the closed E knob's "+" stepper registered (${before} → ${after} V, hit box at x ${Math.round(box.x)})`)
+}
+
 // ------------------------------------------------------------------- report
 
 await browser.close()

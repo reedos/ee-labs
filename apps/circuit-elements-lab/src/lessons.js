@@ -830,7 +830,7 @@ export const LESSONS = {
     try: [
       { say: 'The 20 Ω chip: Q drops to 5, the capacitor sees 5 V, and the impedance dip is broader, the half-power points spread four times further apart.', set: { R1: 20 }, reads: [['mag.volt.C1', 5]] },
       { say: 'Set R back to 5 Ω. Choose the 1400 Hz chip: the capacitor wins (1/ωC = 113.7 Ω against ωL = 88.0 Ω), |Z| jumps to 26.2 Ω and the current leads by 79.0°.', set: { R1: 5, f: 1400 }, reads: [[(x, p) => 1 / (x.omega * p.C1), 113.68], [(x, p) => x.omega * p.L1, 87.96], ['Z.mag', 26.2], ['lead.i.R1', 79.0]] },
-      { say: 'Set f back to 1591.5 Hz. Watch the scope: the amplitude builds as 1 − e^(−αt), and only after 40 cycles is it within a quarter of one per cent of its final 20 V.', set: { f: 1591.5 }, reads: [['mag.volt.C1', 20]] },
+      { say: 'Set f back to 1591.5 Hz. The ringing from the last step dies out. The capacitor returns to its resonant peak, 20 V.', set: { f: 1591.5 }, reads: [['mag.volt.C1', 20]] },
     ],
     why:
       'Q = (1/R)√(L/C). The impedance plot shows resonance from outside: |Z| dips to R at f₀ and the phase crosses zero ' +
@@ -848,7 +848,7 @@ export const LESSONS = {
     try: [
       { say: 'Set L to 1 µH, all but nothing: the current comes into phase, 100 mA, P rises to 500 mW and there is no reactive power to speak of.', set: { L1: 1e-6 }, reads: [['mag.i.R1', 0.1], ['lead.i.R1', 0, 0.01], ['ac.P', 0.5]] },
       { say: 'Set L back to 0.3 H and the 400 Hz chip: ωL = 754 Ω swamps R. The current falls to 13.15 mA lagging 82.4°, and of the 65.7 mVA the source carries, only 8.65 mW is real.', set: { L1: 0.3, f: 400 }, reads: [[(x, p) => x.omega * p.L1, 754], ['mag.i.R1', 0.013148], ['lead.i.R1', -82.45], ['ac.S', 0.06574], ['ac.P', 0.008644]] },
-      { say: 'Set f back to 50 Hz and open the AC power view: V_rms·I_rms = 364 mVA is the apparent power the wires must carry. Cos φ = 0.728 of it is P, and Q = 250 mvar is the amplitude of the inductor’s to-and-fro.', set: { f: 50 }, reads: [['ac.S', 0.36397], ['ac.pf', 0.7278], ['ac.Q', 0.24965]] },
+      { say: 'Set f back to 50 Hz. V_rms·I_rms = 364 mVA is the apparent power the wires must carry. Cos φ = 0.728 of it is P, and Q = 250 mvar is the amplitude of the inductor’s to-and-fro.', set: { f: 50 }, reads: [['ac.S', 0.36397], ['ac.pf', 0.7278], ['ac.Q', 0.24965]] },
     ],
     why:
       'P = ½R|I|² = V_rms·I_rms·cos φ, with V_rms = 10/√2 = 7.07 V and I_rms = 51.5 mA here. The product ' +
