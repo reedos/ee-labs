@@ -82,3 +82,5 @@ export {
   RECT_DEFAULTS,
   RECT_KINDS,
 } from './src/rectifier.js'
+export { averagedModel, gvd, gvdAt, gvdClosedForm, rhpZero, averagingGuard, AVERAGING_RATIO, switchedStep, averagedStep, stepAgreement, dcGainMeasured } from './src/loop.js'
+export { threePhase, threePhaseSteadyState, threePhaseMeasures, threePhaseWaveform, triplenRatio, referencePeak, legReference, legEdges, sixStepLineRms, sixStepLinePeak, sixStepPhaseRms, sixStepPhaseTotalRms, sixStepLineTotalRms, spwmLinePeak, spwmPhasePeak, injectionHeadroom, singlePhaseBusRipple, INJECTION, THREE_PHASE_KINDS, THREE_PHASE_DEFAULTS, THREE_PHASE_SIGNALS } from './src/threePhase.js'
