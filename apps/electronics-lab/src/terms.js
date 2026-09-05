@@ -9,9 +9,11 @@
 // defined using an undefined term.
 
 import { MATCH_J, TERMS_J } from './groups/j.terms.js'
+import { MATCH_K, TERMS_K } from './groups/k.terms.js'
 
 export const TERMS = {
   ...TERMS_J,
+  ...TERMS_K,
   opampmacro: {
     name: 'The op-amp macro',
     def:
@@ -157,6 +159,7 @@ export const TERMS = {
 /** Every term's pattern, tried in the order the prose is read. */
 export const MATCH = {
   ...MATCH_J,
+  ...MATCH_K,
   opampmacro: /\bop-amp macro\b|\bmacro\b/i,
   offset: /\boffset voltage\b|\boffset\b/i,
   loopgain: /\bloop(?: gain| has)\b|\bclosed[- ]loop gain\b/i,

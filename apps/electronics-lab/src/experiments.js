@@ -17,6 +17,7 @@ export * from './knobs.js'
 import { GROUP_A } from './groups/a.js'
 import { GROUP_C } from './groups/c.js'
 import { GROUP_J } from './groups/j.js'
+import { GROUP_K } from './groups/k.js'
 
 // Every view a lower pane can show, in the order the view switch lists them —
 // the same order in every experiment, so a tab sits in the same place from one
@@ -38,12 +39,12 @@ export const VIEW_LABELS = {
 /** The label and hover text for a view. */
 export const viewLabel = (view) => VIEW_LABELS[view]
 
-export const GROUPS = ['A · The op-amp as a user meets it', 'C · Inside the junction', 'J · The differential pair']
+export const GROUPS = ['A · The op-amp as a user meets it', 'C · Inside the junction', 'J · The differential pair', 'K · Frequency response']
 
 // ------------------------------------------------------------ the list
 
 /** Every group's experiments, in the plan's order. */
-const RAW = [...GROUP_A, ...GROUP_C, ...GROUP_J]
+const RAW = [...GROUP_A, ...GROUP_C, ...GROUP_J, ...GROUP_K]
 
 /**
  * The experiments, with each one's lesson merged onto it. `note` is see + why,

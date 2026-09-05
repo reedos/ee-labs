@@ -29,6 +29,7 @@ import { clipOf, meanOf, peakOf, slopeOf } from './math.js'
 import { LESSONS_A } from './lessons/a.js'
 import { LESSONS_C } from './lessons/c.js'
 import { LESSONS_J } from './lessons/j.js'
+import { LESSONS_K } from './lessons/k.js'
 
 const DEG = 180 / Math.PI
 
@@ -77,4 +78,4 @@ export function readQuantity(x, p, path, exp) {
   }
 }
 
-export const LESSONS = { ...LESSONS_A, ...LESSONS_C, ...LESSONS_J }
+export const LESSONS = { ...LESSONS_A, ...LESSONS_C, ...LESSONS_J, ...LESSONS_K }
