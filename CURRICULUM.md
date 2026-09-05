@@ -28,7 +28,7 @@ order the nav will fold to (`ELECTRONICS_LAB_PLAN.md` Decision 5).
 | 3 | Electronics Lab | Electronics I and II | 77 | planned |
 | 4 | Signal Lab | Signals and Systems, DSP | 35 | released |
 | 5 | Control Lab | Control | 13 | released |
-| 6 | Power Lab | Power electronics | 22 of 54 | built in part, dark |
+| 6 | Power Lab | Power electronics | 34 of 56 | built in part, dark |
 
 Signal Lab's first group needs only sines, so it can be opened after step 1's Group H.
 §5 gives the earliest point each group can be opened, for a reader who wants to
@@ -117,19 +117,23 @@ What it assumes: a transfer function, its poles, and the Bode plot, all from Cir
 Lab. A first-order lag, from Elements F. What it gives back: margins and the root
 locus, which Electronics L5, M3 and N1 hand their loops to.
 
-### Step 6: Power Lab (22 of 54)
+### Step 6: Power Lab (34 of 56)
 
 | Group | Teaches | Count | Status |
 | --- | --- | --- | --- |
 | A · Why switching | the resistor's loss, the switch, the ideal converter | 3 | built |
 | B · The buck | volt-second balance, ripple, CCM and DCM, the boundary | 8 | built |
 | C · Boost and buck-boost | the two other topologies, the peak, the inverting output | 5 | built |
-| D · Magnetics | volt-seconds are flux, saturation, the flyback, the half-bridge, leakage | 5 | planned |
+| D · Magnetics | volt-seconds are flux, saturation, the flyback, the half-bridge | 4 | built |
+| D5 · Leakage | the flux that links one winding only, and the clamp | 1 | planned |
 | E · Rectifiers | half and full wave, the capacitor, the dimmer, six-pulse | 6 | built |
-| F to N | inverters, losses, the loop, three-phase, isolated, resonant, drives, EMI, thermal | 27 | planned |
+| F · Inverters | the square wave, the comparator, the harmonic clusters, overmodulation | 4 | built |
+| G · Losses | the frequency crossover, peak efficiency, the capacitor's RMS, the ledger | 4 | built |
+| H to N | the loop, three-phase, isolated, resonant, drives, EMI, thermal | 21 | planned |
 
 What it assumes: C, L and the RLC from Elements F and G, and the diode from Elements
 I. The switch is Elements F6. Its Group H assumes Control Lab.
+The plan's 54 became 56 when the buck grew from six experiments to eight.
 
 ---
 
