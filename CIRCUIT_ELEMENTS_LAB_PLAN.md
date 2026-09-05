@@ -1183,7 +1183,7 @@ state, and averaging.
   an editor earns its keep, and it will be a large day.
 - **Transistors** (BJT, MOSFET). That is the next lab, Electronics, and it reuses
   this engine (DC Newton for the bias point, then small-signal LTI) plus one more
-  nonlinear element type. Not here.
+  nonlinear element type. Not here. Its plan is `ELECTRONICS_LAB_PLAN.md`.
 - **The exponential diode in the time domain** (§1.6). Refused with the reason.
 - **Coupled inductors / transformers**, Power Lab's Group D.
 - **Three-phase, wire resistance, noise, temperature.**
