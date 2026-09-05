@@ -22,7 +22,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Electronics Lab | building | `lab/electronics-lab` | | `ELECTRONICS_LAB_PLAN.md` |
 | Logic Lab | building | `lab/logic-lab` | Electronics D6 for one cross-reference | to write |
 | DSP Lab | building | `lab/dsp-lab` | | to write |
-| Random Signals Lab | building | `lab/random-lab` | Electronics O1 for one cross-reference | to write |
+| Random Signals Lab | building | `lab/random-lab` | | `RANDOM_LAB_PLAN.md` |
 | Control Lab II | building | `lab/control-lab-ii` | | to write |
 | Instruments Lab | building | `lab/instruments-lab` | RF Lab for the network analyser group | to write |
 | Fields Lab | building | `lab/fields-lab` | | to write |
@@ -70,6 +70,53 @@ dependency or decision that reopens it.
 
 - Group B lives in Elements as I9 and I10 (Decision 3).
 - Groups D to O wait on lane 1's gate, inside the lab's own brief.
+- **Group O should import `@ee-labs/random`** rather than write a second
+  generator or a second periodogram. O1 calls `whiteNoise` and
+  `averagedPeriodogram`, O2 calls `capacitorNoise`, O3 calls `shotDensity`. The
+  contracts are frozen in `apps/random-lab/AGENT_BRIEF.md` §3.5 and §3.6, and
+  the numbers are in `apps/random-lab/NEEDS.md` §5.
+- **O1's cross-reference to the Random Signals Lab is pending.** That lab's A1
+  now teaches "a random signal has a density, not a spectrum", so O1 references
+  A1 by id instead of teaching it. Reopens when Electronics Group O is built.
+- **O2's cross-reference to F3 is pending**, on the same terms. F3 is the
+  `kT/C` experiment, and both labs call one function for the number.
+
+### Random Signals Lab
+
+Built on `lab/random-lab`. Thirty experiments in nine groups, all pinned. The
+engine is `packages/random`, fuzzed green against the plan's §3 before any user
+interface existed.
+
+Deferred, with what reopens each:
+
+- **The Playwright harness has not been run.** `apps/random-lab/scripts/verify.mjs`
+  is written and covers every experiment, every view, the fold and the phone
+  width. This environment has no browser. Reopens with anyone who has one.
+- **No screenshots were read as a student would read them**
+  (`REVIEW_PLAYBOOK.md` §11). Nearly half the defects that playbook records were
+  invisible to a test suite and obvious in a picture. This lab has had no such
+  pass. Reopens with the harness.
+- **F3 derives `kT/C` from the density rather than from a netlist**, because
+  Electronics O2 is not built. The formula is stated as physics with its
+  constants named. Reopens when Electronics Group O lands, at which point O2
+  solves the netlist and the two labs cross-reference each other.
+- **Spectral estimation by a fitted model is out**, meaning the autoregressive
+  spectrum. It belongs to the DSP Lab, which owns `packages/dsp`. E4's note says
+  so. Reopens if the DSP Lab wants it earlier.
+- **The multivariate Kalman filter is out.** This lab's is scalar, and Control
+  Lab II owns the vector form. I2 is the door.
+- **A deep link to or from another lab.** Nothing crosses yet, because the two
+  labs that would receive one (Communications, Control Lab II) are not built.
+  The plan's §6 names the four hand-overs.
+
+Needed from elsewhere, mirrored in `apps/random-lab/NEEDS.md`:
+
+- The `deploy.yml` line, `cp -r apps/random-lab/dist _site/random-lab`.
+- The progression-test ids and counts, 30 experiments in 9 groups.
+- A decision on the ensemble canvas's data props at promotion. This lab passes
+  `ensemble`, `x` and `y`. The Applied Analog Lab's plan passes `runs`,
+  `summary` and `axes`. The `band` and `count` props the director asked for are
+  identical in both and are carried here from the first commit.
 
 ### Machines Lab
 
