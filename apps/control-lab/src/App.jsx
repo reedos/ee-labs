@@ -915,58 +915,6 @@ export default function App() {
               ) : null}
             </div>
           )}
-          {/* The hand-over in reverse. Exact only: a plant with a gain, or
-              component values outside Circuit Lab's knobs, draws nothing —
-              EXCEPT that "nothing" used to include the four plants with no
-              catalog match at all (Integrator, Motor, Three lags, Custom),
-              which rendered this whole block as blank, indistinguishable
-              from an oversight. CORE_SCOPE Rule 2: a refusal is content, so
-              a plant with no link but a reason (`circuitNote`, systems.js)
-              gets that reason right here, where the link would have sat —
-              the same fix Unstable's own circuitNote now reaches, no longer
-              stranded on the Math tab with nothing pointing at it. */}
-          {circuit && circuitHref ? (
-            <p className="hint circuit-back">
-              This is also a circuit — {circuit.sentence}.{' '}
-              <a href={circuitHref} title="The same transfer function, as the circuit it is">
-                Open in Circuit Lab →
-              </a>
-            </p>
-          ) : // Round-four grading: the six lessons on motor or three lags
-          // print a fully verified bench circuit on the Math tab (math.js)
-          // and never say the catalogue has no match for it, and this is
-          // the ONLY other spot that reason could reach a lesson in
-          // progress — everywhere else it was gated on `!active`, so the
-          // one way to it was abandoning the lesson by clicking the plant,
-          // which also resets the gains. The reader's need for the reason
-          // is highest exactly during the lesson that hid it, so this now
-          // shows during one too — but as a one-line pointer to the Math
-          // tab, not the full reason: printing the full circuitNote
-          // unconditionally is the change that once pushed the featured
-          // knob 18-75px past the fold on these same plants (motor,
-          // unstable, three lags), which is why it was gated to `!active`
-          // in the first place. A pointer costs one short line instead of
-          // the reason's own two or three, and the reason itself is no
-          // longer stranded on the Math tab now that it prints there for
-          // real — this line's whole job is pointing at it, and
-          // chrome.js's cue scan already covers the words IN circuitNote
-          // unconditionally of `active`, so this shorter line introduces
-          // no cue word that scan does not already resolve.
-          //
-          // Suppressed on the LAST lesson specifically: its own "That is
-          // the course" paragraph (below the try line, same section) now
-          // carries the identical one-line pointer already — a second copy
-          // stacked right under it would say the same thing twice on one
-          // screen for nothing, and that screen is the tightest fold budget
-          // in the course (the try line, chips and knobs of the very last
-          // lesson), with no room to spend on a repeated sentence.
-          !circuit && plant.circuitNote && !(active && activeIndex === LESSONS.length - 1) ? (
-            <p className="hint circuit-back is-refusal">
-              {active
-                ? 'No catalogue circuit matches this plant — see Math for why.'
-                : plant.circuitNote}
-            </p>
-          ) : null}
         </section>
 
         {/* The section names carry the loop's symbols: the topbar strip, the
@@ -1127,6 +1075,72 @@ export default function App() {
             </div>
           ) : null}
         </section>
+
+        {/* The hand-over in reverse. Exact only: a plant with a gain, or
+            component values outside Circuit Lab's knobs, draws nothing —
+            EXCEPT that "nothing" used to include the four plants with no
+            catalog match at all (Integrator, Motor, Three lags, Custom),
+            which rendered this whole block as blank, indistinguishable
+            from an oversight. CORE_SCOPE Rule 2: a refusal is content, so
+            a plant with no link but a reason (`circuitNote`, systems.js)
+            gets that reason right here, where the link would have sat —
+            the same fix Unstable's own circuitNote now reaches, no longer
+            stranded on the Math tab with nothing pointing at it.
+
+            Moved below the controller and plant cards, out of `#lessons`
+            (round five's fold fix): it is a "where next" pointer, not part
+            of the lesson, and sitting inside `#lessons` pushed every
+            featured knob down by its own height — the deployed fold probe
+            at 1366×768 measured "Watch the integrator take over" landing
+            its Ki knob at bottom 799, 31px past the 768px fold, with this
+            block and the deployed LabNav row (absent on a bare dev port,
+            present here) the only two things a bare-preview run never
+            priced in. CSS `order` cannot move an element out of its own
+            parent, so this moved in the DOM instead — a phone reader still
+            reaches it by scrolling the sidebar, now past both cards rather
+            than past the lesson list alone. */}
+        {circuit && circuitHref ? (
+          <p className="hint circuit-back">
+            This is also a circuit — {circuit.sentence}.{' '}
+            <a href={circuitHref} title="The same transfer function, as the circuit it is">
+              Open in Circuit Lab →
+            </a>
+          </p>
+        ) : // Round-four grading: the six lessons on motor or three lags
+        // print a fully verified bench circuit on the Math tab (math.js)
+        // and never say the catalogue has no match for it, and this is
+        // the ONLY other spot that reason could reach a lesson in
+        // progress — everywhere else it was gated on `!active`, so the
+        // one way to it was abandoning the lesson by clicking the plant,
+        // which also resets the gains. The reader's need for the reason
+        // is highest exactly during the lesson that hid it, so this now
+        // shows during one too — but as a one-line pointer to the Math
+        // tab, not the full reason: printing the full circuitNote
+        // unconditionally is the change that once pushed the featured
+        // knob 18-75px past the fold on these same plants (motor,
+        // unstable, three lags), which is why it was gated to `!active`
+        // in the first place. A pointer costs one short line instead of
+        // the reason's own two or three, and the reason itself is no
+        // longer stranded on the Math tab now that it prints there for
+        // real — this line's whole job is pointing at it, and
+        // chrome.js's cue scan already covers the words IN circuitNote
+        // unconditionally of `active`, so this shorter line introduces
+        // no cue word that scan does not already resolve.
+        //
+        // Suppressed on the LAST lesson specifically: its own "That is
+        // the course" paragraph (in `#lessons`, above) now carries the
+        // identical one-line pointer already — a second copy stacked
+        // right under it would say the same thing twice on one screen for
+        // nothing, and that screen is the tightest fold budget in the
+        // course (the try line, chips and knobs of the very last lesson),
+        // with no room to spend on a repeated sentence.
+        !circuit && plant.circuitNote && !(active && activeIndex === LESSONS.length - 1) ? (
+          <p className="hint circuit-back is-refusal">
+            {active
+              ? 'No catalogue circuit matches this plant — see Math for why.'
+              : plant.circuitNote}
+          </p>
+        ) : null}
 
         {/* No View section: the view controls live in the headers of the
             panes they govern, same proximity rule Reed asked of Signal Lab —

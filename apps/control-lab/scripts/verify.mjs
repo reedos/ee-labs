@@ -1013,11 +1013,47 @@ console.log('\n4e. Arrival from a circuit: named, oriented, the drive labelled\n
   console.log('   circuit named in banner and diagram; notice tracks the controller; identity sheds on plant change')
 
   // The reverse hand-over is exact-only AND deployed-only: on a bare dev
-  // port there is no Circuit Lab beside this page, so nothing is drawn.
-  // (The mapping itself is measured in toCircuitLab.test.js.)
+  // port there is no Circuit Lab beside this page, so `circuitUrl()`
+  // resolves null and nothing is drawn. (The mapping itself is measured in
+  // toCircuitLab.test.js.)
+  //
+  // This used to assert only that absence, and it was only ever run against
+  // `vite preview` on a bare port, where that absence is the whole story.
+  // Served under a real `/control-lab/` path the same page draws a real
+  // link, and nothing here had ever measured it — that is how this lab
+  // shipped a 115x16 px hand-over link on a phone while section 34 reported
+  // every element clearing the 44 px floor: the link was not in the DOM on
+  // the port that probe ran against. So the assertion now branches on which
+  // layout it is looking at, the way Signal Lab's own verify.mjs (section
+  // 10p) fixed the identical defect: on a bare port, no link, because there
+  // is no sibling to point at; on the deployed path, a link that resolves
+  // to Circuit Lab AND carries a 44px box, checked here rather than left to
+  // section 34, so this one cannot go back to being measured only when
+  // someone remembers to.
   await clickPreset('First order lag')
-  if (await page.locator('.circuit-back').count()) {
-    fail('the "Open in Circuit Lab" line should not render where the sibling URL resolves to null')
+  const deployed = /\/(signal|circuit|control|circuit-elements|power)-lab\/?$/.test(new global.URL(URL).pathname)
+  const backLink = page.locator('.circuit-back a').first()
+  const backCount = await backLink.count()
+
+  if (!deployed) {
+    if (backCount) fail('the "Open in Circuit Lab" line should not render where the sibling URL resolves to null')
+    else console.log('   bare port: no link, as designed (circuitUrl resolves null off the deployed path)')
+  } else if (!backCount) {
+    fail('First order lag: the hand-over drew NO link on the deployed path — circuitUrl should resolve a sibling there')
+  } else {
+    const href = await backLink.getAttribute('href')
+    if (!/circuit-lab\//.test(href || '')) fail(`First order lag: hand-over href does not point at Circuit Lab: ${href}`)
+
+    await page.setViewportSize(PHONE_VIEWPORT)
+    await settle()
+    const box = await backLink.boundingBox()
+    if (!box) fail('First order lag: the deployed hand-over link has no box to measure')
+    else if (box.height < FLOOR || box.width < FLOOR) {
+      fail(`First order lag: deployed hand-over link is ${Math.round(box.width)}x${Math.round(box.height)}px, under the ${FLOOR}px floor`)
+    } else {
+      console.log(`   deployed: link to ${href}, ${Math.round(box.width)}x${Math.round(box.height)}px at 390x844`)
+    }
+    await page.setViewportSize({ width: 1920, height: 1080 })
   }
 
   // A clean page for the sections after this one (blank first, same reason).

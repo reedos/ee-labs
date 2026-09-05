@@ -406,6 +406,24 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 /* The hand-over in reverse. */
 .hint.circuit-back a { color: var(--accent); white-space: nowrap; }
 
+/* Touch target: the suite's one exact cross-lab hand-over out of this lab,
+   "Open in Circuit Lab →" — measured on the deployed site (a bare dev
+   preview draws no link at all: circuitUrl() resolves null with no sibling
+   beside it) at 115x16, the smallest tap target found here. Signal Lab hit
+   the identical defect on its own reverse-direction link and fixed it the
+   same way: inline-flex lets the padding grow the link's own box instead
+   of only widening the line of text around it. This sits below the plant
+   and controller cards now (App.jsx, round five's fold fix), not a tight
+   plot pane, so it is free to grow for real. */
+@media (max-width: 900px) {
+  .hint.circuit-back a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 4px 2px;
+  }
+}
+
 /* ---------- the weighted split ----------
    The pane a lesson names as its view is the lesson; the Bode is context.
    62 % to the named pane (Power Lab's rule, §11.4.1), and only on the wide
@@ -499,13 +517,16 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    note in sight until the reader scrolled the sidebar itself. The sticky
    "Try this" cap (prev/n of N/next) stays first regardless: it is the h2,
    order 0 by default, and both from-link banners above it are order 0 too
-   so they keep their place ahead of it. */
+   so they keep their place ahead of it.
+   `.hint.circuit-back` used to be a fourth item here (order: 3) — it moved
+   out of `#lessons` entirely (App.jsx, round five's fold fix), to below the
+   controller and plant cards, so there is nothing left in this flow for it
+   to reorder. */
 @media (max-width: 900px) {
   #lessons { display: flex; flex-direction: column; }
   #lessons > h2 { order: 0; }
   #lessons > .lesson-body { order: 1; }
   #lessons > .lesson-list { order: 2; margin-top: 10px; }
-  #lessons > .hint.circuit-back { order: 3; }
   .lesson-body .note-title { margin-top: 0; }
   /* A few more px back from the same box: the longest note ("Watch the
      integrator take over", two featured knobs and a long paragraph) left
