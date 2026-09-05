@@ -245,3 +245,98 @@ impulse lesson, and `packages/ui/src/progression.test.js`.
   every lab's own list, its group names, and its plan file. A lab that adds ids to
   `CURRICULUM.md` without a row here is not checked at all. That file belongs to the
   seams (`PROGRAM.md` §5), so the request comes through this file.
+
+## Groups D and E
+
+The lane that built `groups/d.js`, `groups/e.js`, their terms, their math
+entries and their lessons. Everything below is a file this lane does not own.
+
+### 7. `layoutCheck.js` does not know the transistor geometry
+
+`packages/ui/src/schematicGeometry.js` exports `transistorPinPlaces`,
+`transistorBodyBox` and `transistorTextPlaces`, and item 4 above says wiring
+them into a layout checker is for whichever lab draws a transistor first. That
+is this one, and `apps/electronics-lab/src/layoutCheck.js` still routes a `Q`
+or an `M` through the two-terminal branch.
+
+The checker models a transistor as a symbol on (−20, 0)…(20, 0), ±9 across. It
+puts the label 24 below and the reading 24 above. The renderer draws the glyph
+±20 on both axes, with the label 34 below and an output pin at (x + 12,
+y + 20). The two disagree in one place that matters. The checker's label band
+runs from y + 16 to y + 26.5. The output pin sits at y + 20, inside it. So every
+lead leaving a transistor is reported as sitting on the label.
+
+The workaround here is a `labels` entry on every transistor, giving its
+designator alone. `Q1` is 11 px wide and clears the lead at x + 12. The cost is
+that the polarity is no longer written beside the glyph. Wiring the three
+exports in would let a transistor carry its own label again. It would also make
+the check mean what it says for thirteen drawings it currently only
+approximates.
+
+### 8. Two panes in the shell had no producer
+
+`components/panes.jsx` reads `x.curves` and `x.spectrum`, and `math.js` set
+neither. `CurvesCanvas` was written against a shape that nothing filled, namely
+`family`, `load`, `point`, `xLabel` and `yLabel`. So the device-curve view said
+that the experiment carried no device whose curves could be drawn, on every
+experiment in the lab.
+
+This lane added one line to `analyse`. It sits beside the two that were already
+there for the junction and the quasi-static sweep, and it reads `if
+(exp.curves) x.curves = exp.curves(p, x)`. The experiment builds the family.
+What is stepped and what is swept is the experiment's own question, and every
+point is a solve of the same circuit at another setting. `x.spectrum` still has
+no producer. The first group that needs harmonic distortion will want the same
+hook.
+
+### 9. Four merge points, one import line each
+
+`experiments.js`, `lessons.js`, `terms.js` and `mathEntries.js` each gained an
+import per group and a spread into the object they already export. The math
+entries are the one that was not in the brief. `experiments.test.js` requires a
+math panel for every experiment, and `ENTRIES` is a literal in a file lane 6
+owns. Groups D and E put theirs in `groups/d.math.js` and `groups/e.math.js`
+and merge them the way the terms merge, so that the next lane adds two lines
+rather than editing a growing literal.
+
+### 10. Numbers that moved, against the plan and the brief
+
+Every one of these is the engine's, computed before it was written.
+
+- **The plan's E3 gives 0.92 to 1.05 mA over β from 50 to 200.** The circuit
+  gives 0.902 to 1.042 mA. The plan's formula, (V_BB − 0.7)/(R_E + R_B/(β + 1)),
+  is the emitter current. The collector takes β/(β + 1) of it.
+- **The brief's common-source stage puts V_DS at zero.** With V_DD = 5 V,
+  R_D = 10 kΩ and R_S = 2.5 kΩ at I_D = 0.4 mA, the drain and the source both
+  sit at 1 V. E5 uses R_D = 5 kΩ, which puts V_DS at 2.00 V and leaves the
+  device saturated, where the experiment needs it.
+- **The plan's E6 says I_C moves under 1 % over β from 50 to 200.** It moves
+  under 1 % either side of its β = 100 value, and the spread across the whole
+  range is 1.4 %, because α itself moves from 0.980 to 0.995. Temperature moves
+  it by eight parts in a million over 50 K.
+- **β read off a curve tracer is not β_F.** D2 measures i_C/i_B = 105 at
+  V_CE = 5 V for a device whose β_F is 100, because the Early factor multiplies
+  the collector current and not the base current. Group F's r_π = β/g_m should
+  say which β it means.
+- **The plan's D3 says the two models disagree by more than 10 % inside 0.3 V
+  of the knee.** They disagree by exactly v_CE/V_A in the active region, which
+  is 1.0 % at 1 V and 4.8 % at 5 V. Below V_CE(sat) the three-region model has
+  no answer at all rather than a poor one, because its saturated state pins
+  v_CE and the source is setting it too. D3 shows that refusal instead.
+- **D7 turns the base current rather than v_BE.** The plan turns v_BE, which
+  the three-region model cannot take from a voltage source without two sources
+  setting one voltage. A base current lets both models run on the same drawing,
+  and the three-region model then reaches exactly 0.2 V at the saturated end,
+  which is the number the plan quotes.
+
+### 11. For `BACKLOG.md`, under `### Electronics Lab` (append only)
+
+- **Groups D and E are built**, 13 experiments, with the transistor symbol on
+  every drawing. The lab is 19 experiments over four groups. The entry above
+  saying Groups D to O wait on the symbol is superseded for D and E.
+- **C4's cross-reference to Group E can be restored.** E4 is built, and it is
+  the bias point's drift with temperature. The sentence is in
+  `apps/electronics-lab/src/lessons/c.js`.
+- **No screenshot has been read as a student would.** This environment has no
+  browser, so `REVIEW_PLAYBOOK.md` §11 is unmet for thirteen new drawings and
+  for the device-curve pane, which nothing had drawn before this lane.
