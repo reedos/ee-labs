@@ -237,10 +237,15 @@ export function sourceMath(source, ctx) {
         {
           label: 'bins per period',
           value: f0 / binHz,
+          // Worded without the term "leakage" on purpose: this row prints for
+          // every periodic source in every preset (a shared math-panel row,
+          // not preset-authored text), and "leakage" is defined only in the
+          // dedicated Spectral leakage lesson. A reader who has not reached
+          // that lesson still gets the fact, just not its name.
           note:
             Math.abs(f0 / binHz - Math.round(f0 / binHz)) < 1e-6
-              ? 'a whole number, so no leakage'
-              : 'not a whole number, so this tone leaks',
+              ? 'a whole number of cycles fit, so nothing smears'
+              : 'not a whole number of cycles, so this tone smears',
         },
         // Counted only for waveforms that HAVE a harmonic series, and only
         // the harmonics their series contains: a sine got "15" here once —
@@ -379,9 +384,12 @@ export function sourceMath(source, ctx) {
           // it: the honest tolerance is the first folded coefficient, not a
           // pretence that the continuous value survives sampling untouched.
           abs: 1.5 * A * w.coeff(kFold),
+          // Worded without "leakage" for the same reason as the row above:
+          // this check runs for every square/triangle/sawtooth preset, most
+          // of which never declare that term.
           unchecked: centred
             ? null
-            : 'this tone leaks in the measuring frame, smearing the peak — retune to a bin centre to see the comparison',
+            : 'this tone does not sit on a bin centre here, so the peak reads low. Retune to a bin centre to see the comparison.',
         },
       ]),
     )

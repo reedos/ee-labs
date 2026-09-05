@@ -1,8 +1,76 @@
 import React from 'react'
-import { NumField } from '@ee-labs/ui'
+import { NumField, homeUrl, siblingUrl } from '@ee-labs/ui'
 import FlowStrip from './FlowStrip.jsx'
 import FlowDiagram from './FlowDiagram.jsx'
 import { WINDOWS } from '@ee-labs/dsp'
+
+const SUITE_SIBLINGS = [
+  { id: 'circuit-lab', label: 'Circuit Lab' },
+  { id: 'control-lab', label: 'Control Lab' },
+]
+
+/**
+ * Phone's way out of this lab: the suite home, and both sibling labs.
+ *
+ * The sidebar's own LabNav row carries this on a laptop, but at phone widths
+ * styles.css hides that whole row to buy the featured knob back its vertical
+ * budget — and hiding it left no route to the suite at all, a student sealed
+ * inside Signal Lab with no way out (Reed's review; a regression from the fix
+ * that bought the space back). This is the same three links, folded behind
+ * one compact icon in the TOP bar instead of the sidebar, so restoring them
+ * costs the sidebar nothing. Null wherever LabNav itself would be null: a
+ * bare dev port with no siblings deployed beside this page.
+ */
+function SuiteNavCompact() {
+  const [open, setOpen] = React.useState(false)
+  React.useEffect(() => {
+    if (!open) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+  const home = homeUrl()
+  if (!home) return null
+  return (
+    <div className="suite-nav">
+      <button
+        type="button"
+        className="ghost suite-nav-open"
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-label="Suite navigation: home and the other labs"
+        onClick={() => setOpen((o) => !o)}
+      >
+        ⌂ Labs
+      </button>
+      {open ? (
+        <>
+          {/* A SIBLING of the panel, not its parent: the panel is
+              position:absolute and needs `.suite-nav` (position:relative,
+              a small box right around the trigger) as its containing block.
+              Wrapping the panel inside a position:fixed backdrop made the
+              backdrop itself the containing block instead — full-viewport,
+              so "top: 100%" measured from the SCREEN's own height and the
+              panel rendered entirely below the 390x844 fold. */}
+          <div className="suite-nav-backdrop" onClick={() => setOpen(false)} />
+          <nav
+            className="suite-nav-panel"
+            aria-label="REED's Engineering Labs suite"
+          >
+            <a href={home}>Suite home</a>
+            {SUITE_SIBLINGS.map((lab) => (
+              <a key={lab.id} href={siblingUrl(lab.id, '')}>
+                {lab.label}
+              </a>
+            ))}
+          </nav>
+        </>
+      ) : null}
+    </div>
+  )
+}
 
 /**
  * CHAIN-GLOBAL settings only: sample rate, frame length, analysis window —
@@ -83,6 +151,7 @@ export default function TopBar({ state, patch, stages, onReveal }) {
             ))}
           </select>
         </label>
+        <SuiteNavCompact />
       </div>
     </div>
   )

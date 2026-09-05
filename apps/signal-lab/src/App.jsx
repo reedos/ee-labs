@@ -85,6 +85,12 @@ export default function App() {
   // Preset groups the student unfolded by hand. Cleared whenever an
   // experiment loads, so only the group holding it is open from then on.
   const [openGroups, setOpenGroups] = useState(() => new Set())
+  // Which try-line chip the student actually clicked last, so activeChip
+  // (chips.js) can prefer it over array order when a later chip's partial
+  // patch still happens to match too (clicking "12 bits" then "dither" left
+  // "12 bits" lit, since its patch never checks dither — Reed's review).
+  // Cleared on every preset load, same as the other per-lesson UI state above.
+  const [lastChip, setLastChip] = useState(null)
 
   const applyPreset = (p) => {
     const next = presetState(p)
@@ -92,6 +98,7 @@ export default function App() {
     setApplied(next)
     setOpenBlocks(new Set((p.patch.blocks || []).map((b) => b.id)))
     setOpenGroups(new Set())
+    setLastChip(null)
   }
 
   const dirty = useMemo(() => JSON.stringify(state) !== JSON.stringify(applied), [state, applied])
@@ -107,7 +114,10 @@ export default function App() {
     onReset: () => presetIndex >= 0 && applyPreset(PRESETS[presetIndex]),
   }
 
-  const onChip = (c) => setState((s) => applyChip(s, c.patch))
+  const onChip = (c) => {
+    setState((s) => applyChip(s, c.patch))
+    setLastChip(c.label)
+  }
 
   const patch = (k, v) => setState((s) => ({ ...s, [k]: v }))
 
@@ -379,6 +389,7 @@ export default function App() {
         math={math}
         onPreset={applyPreset}
         onChip={onChip}
+        lastChip={lastChip}
         nav={nav}
         openBlocks={openBlocks}
         setOpenBlocks={setOpenBlocks}

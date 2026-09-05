@@ -957,6 +957,13 @@ console.log('\n10j. Phone 390x844: time AND spectrum canvases above the fold\n')
     cases: [
       { name: 'Single tone', load: fresh('Single tone'), must: [timeCanvas, specCanvas] },
       { name: 'Aliasing', load: fresh('Aliasing'), must: [timeCanvas, specCanvas] },
+      // The one preset with two featured knobs at once (see styles.css):
+      // its mobile sidebar budget grew to fit both stacked and never
+      // checked what that took from the spectrum canvas below — 887 px on
+      // an 844 px phone, 43 px permanently unreachable (Reed's review).
+      // Neither of the two cases above has a second featured item, so
+      // neither could ever have caught it.
+      { name: 'Order is a choice', load: fresh('Order is a choice'), must: [timeCanvas, specCanvas] },
     ],
   })
   for (const m of r.measured) {

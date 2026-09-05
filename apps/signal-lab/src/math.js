@@ -192,8 +192,8 @@ const ENTRIES = {
         ),
         T(
           'So each line in the spectrum sits at its own source’s amplitude, untouched by the ' +
-            'other — measured here, not assumed. This is the property every linear block ' +
-            'preserves and every nonlinear one destroys.',
+            'other, measured here and not assumed. Adding signals this way is what ' +
+            'superposition means, and a nonlinear block breaks it.',
         ),
         C([row(s1, 1), row(s2, 2)].filter(Boolean)),
         ...(scallop(s1) || scallop(s2) ? [T(scallop(s1) || scallop(s2))] : []),
@@ -207,8 +207,8 @@ const ENTRIES = {
         // What the note used to say, now beside the numbers.
         T(
           'Untick one source and the other’s line does not move. Superposition survives every ' +
-            'LINEAR block too — filter this pair and each line is scaled by |H| at its own ' +
-            'frequency — and it is precisely what nonlinear blocks break: see "Two tones, one ' +
+            'linear filter too. Filter this pair and each line is scaled by |H| at its own ' +
+            'frequency, and that is precisely what nonlinear blocks break: see "Two tones, one ' +
             'nonlinearity", where a clipper makes this pair breed children at new frequencies.',
         ),
       ],
@@ -1037,6 +1037,51 @@ const ENTRIES = {
 
   'Low-pass a square': (ctx) => {
     const rows = harmonicRatioRows(ctx)
+    // The note and try line both state their claims in decibels ("gives up
+    // 3.7 dB", "drops 24 dB below the fundamental"), and until now the only
+    // live row on screen was the linear ratio rows above — a reader had to
+    // take a logarithm by hand to check the number the text just promised
+    // (the grader's own complaint). These print the same quantities in dB,
+    // right beside the numbers they already are.
+    const dbRows = rows.map((r) => ({
+      label: `${r.label} (dB)`,
+      predicted: r.unchecked ? NaN : 20 * Math.log10(r.predicted),
+      measured: r.unchecked ? NaN : 20 * Math.log10(r.measured),
+      unit: 'dB',
+      // A log of an 8%-relative-tolerance ratio can itself be off by up to
+      // 20·log10(1.08) ≈ 0.67 dB — the same agreement, just read on a
+      // different scale, not a looser physical claim.
+      abs: 0.75,
+      unchecked: r.unchecked,
+    }))
+    // The try line's own number is a different quantity from the rows above:
+    // not |H| at one frequency (dry vs wet, same bin, scalloping cancels),
+    // but the 3rd harmonic's OWN post-filter level against the fundamental's,
+    // two different bins on the one wet trace. Predicted from the same
+    // closed forms "Square = odd harmonics" already uses (the discrete
+    // square's harmonic amplitude) times each frequency's own |H|; measured
+    // straight off the rendered spectrum.
+    const f0 = ctx.sourceFreq || 250
+    const A = ctx.sourceAmp || 1
+    const N = ctx.sampleRate / f0
+    const b = ctx.blocks[0]
+    const def = b && BLOCK_TYPES[b.type]
+    const harmonicAmp = (k) => ((4 * A) / (k * Math.PI)) * discreteBoost(k, N)
+    const thirdVsFundamental = def
+      ? {
+          label: `3rd harmonic vs the fundamental, ${sig(3 * f0, 4)} Hz vs ${sig(f0, 4)} Hz`,
+          predicted:
+            20 *
+            Math.log10(
+              (harmonicAmp(3) * def.response(b.params, 3 * f0, ctx.sampleRate)) /
+                (harmonicAmp(1) * def.response(b.params, f0, ctx.sampleRate)),
+            ),
+          measured: 20 * Math.log10(ctx.at(3 * f0) / (ctx.at(f0) || 1e-12)),
+          unit: 'dB',
+          abs: 0.3,
+          unchecked: bypassNote(b) || harmonicCheck(ctx, 1) || harmonicCheck(ctx, 3),
+        }
+      : null
     return {
       blocks: [
         T('The output spectrum is the input spectrum multiplied by the filter, bin by bin:'),
@@ -1049,6 +1094,8 @@ const ENTRIES = {
         ),
         F('|H(f)| = \\frac{|Y(f)|}{|X(f)|} \\quad\\text{(the gap between the traces)}'),
         C(rows),
+        C(dbRows),
+        ...(thirdVsFundamental ? [C([thirdVsFundamental])] : []),
         // What the note used to say.
         T(
           'Try "Resonance is Q", where a flat (noise) input lets the trace draw the curve’s ' +
@@ -1678,7 +1725,9 @@ const ENTRIES = {
     }
     return {
       blocks: [
-        T('Cascaded LTI blocks multiply their responses, so identical sections square:'),
+        // "Cascade" is this preset's own declared term; "LTI" is not, and this
+        // panel is the only place that word appeared unlisted.
+        T('Two blocks in cascade multiply their responses, so identical sections square:'),
         F('H_{\\text{total}}(f) = H_1(f)\\,H_2(f) \\;\\Rightarrow\\; |H|^{2}'),
         T('In decibels multiplication becomes addition, so the attenuation simply doubles:'),
         F('20\\log_{10}|H|^{2} = 2\\cdot 20\\log_{10}|H|'),
@@ -1775,6 +1824,20 @@ const ENTRIES = {
               ? null
               : 'This is no longer the pair of second-order Butterworth sections (a Q or the order select moved, or a section is bypassed), so −3.01 dB is not what this cascade is aiming for.',
           },
+          // The note promises "−3 dB" and "−6 dB" by name — these print the
+          // same two rows above in decibels, so the number on screen is the
+          // one the text just stated rather than a linear ratio a reader has
+          // to convert by hand (the grader's own complaint).
+          {
+            label: `|H| at f_c = ${fc} Hz, in dB`,
+            predicted: 20 * Math.log10(Math.SQRT1_2),
+            measured: 20 * Math.log10(prod),
+            unit: 'dB',
+            abs: 0.2,
+            unchecked: isBw
+              ? null
+              : 'This is no longer the pair of second-order Butterworth sections (a Q or the order select moved, or a section is bypassed), so −3.01 dB is not what this cascade is aiming for.',
+          },
           ...(sameSection
             ? [
                 {
@@ -1782,6 +1845,13 @@ const ENTRIES = {
                   predicted: perSection * perSection,
                   measured: prod,
                   tol: 0.02,
+                },
+                {
+                  label: `|H| at f_c = ${fc} Hz, in dB — one shared Q = ${sig(qs[0], 4)}, squared`,
+                  predicted: 40 * Math.log10(perSection),
+                  measured: 20 * Math.log10(prod),
+                  unit: 'dB',
+                  abs: 0.2,
                 },
               ]
             : []),

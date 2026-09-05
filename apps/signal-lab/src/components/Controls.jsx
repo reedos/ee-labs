@@ -70,6 +70,7 @@ export default function Controls({
   presets,
   onPreset,
   onChip,
+  lastChip = null,
   nav,
   openBlocks,
   setOpenBlocks,
@@ -350,7 +351,7 @@ export default function Controls({
               text={activePreset.try}
               chips={activePreset.chips || []}
               onChip={onChip}
-              activeChip={activeChip(state, activePreset.chips || [])}
+              activeChip={activeChip(state, activePreset.chips || [], lastChip)}
             />
             {/* The knob the try line names, right under it — the same
                 control as in its card below, so "drag Q" is not a scroll

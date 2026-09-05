@@ -504,11 +504,31 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   }
   /* "Order is a choice" is the one preset in the library that features two
      knobs at once (both cascaded sections' Q, since the try line sets both).
-     Its own trio needs more room than the other 34 ever do, so it alone
-     gets more — :has() reaches the general rule precisely instead of a
-     second fixed budget everything else would have to fit too. */
+     A first fix grew the sidebar budget to 46vh so both knobs' full trio
+     (label, slider, chips) would fit stacked — and never checked what that
+     took from `.views` below: the spectrum canvas needs 120px plus its own
+     ~97px of header chrome regardless of how tall the sidebar is allowed to
+     be, and 46vh left it 887px, 43px past the 844px fold (Reed's review, and
+     the phone probe below now holds it). The fix is not a bigger budget, it
+     is a shorter one: side by side, both knobs together need barely more
+     height than any other preset's single knob, so the special case gets a
+     modest bump instead of a large one, and the spectrum canvas keeps the
+     same room the other 34 lessons already fit it in. */
   .controls:has(.featured .featured-item ~ .featured-item) {
-    max-height: 46vh;
+    max-height: 33vh;
+  }
+  /* Two knobs side by side instead of stacked: the trio each one needs
+     (label, slider, chips) no longer costs a second row's worth of sidebar
+     height, which is what the fold budget above actually buys back. Gated on
+     the same two-item selector, so every other preset's single featured knob
+     is untouched. */
+  .controls:has(.featured .featured-item ~ .featured-item) .featured {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 10px;
+  }
+  .controls:has(.featured .featured-item ~ .featured-item) .featured-item + .featured-item {
+    margin-top: 0;
   }
   .views {
     min-height: 0;
@@ -522,13 +542,15 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
     padding: 2px 10px 2px;
   }
   /* The header above the lesson picker is chrome ahead of the one thing a
-     student must touch: the lab-nav (redundant with the deployed splash's
-     own nav, and absent standalone), the app's own name (redundant with the
-     lesson's own title an inch below) and the folded reference to what the
-     top bar's own controls mean (reachable from the top bar itself, and
-     rarely needed on a first look). Together they cost the featured knob a
-     lesson's try line names — the thing "ahead of chrome" means here, same
-     as the source cards below — most of its own height. */
+     student must touch: the lab-nav (its full row costs more height than a
+     phone's featured-knob budget can spare — TopBar's compact `.suite-nav`
+     below carries the same three links instead, so hiding this row is no
+     longer a dead end), the app's own name (redundant with the lesson's own
+     title an inch below) and the folded reference to what the top bar's own
+     controls mean (reachable from the top bar itself, and rarely needed on
+     a first look). Together they cost the featured knob a lesson's try line
+     names — the thing "ahead of chrome" means here, same as the source
+     cards below — most of its own height. */
   .controls header nav.labnav {
     display: none;
   }
@@ -571,6 +593,90 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   }
   .featured-from {
     margin: 0 0 1px;
+  }
+}
+
+/* ---------- phone's way out: the compact suite nav in the top bar ----------
+ * TopBar.jsx's SuiteNavCompact — the suite home and both sibling labs, folded
+ * behind one button, so the sidebar's LabNav row can stay hidden on a phone
+ * (above) without sealing a student inside this lab. Desktop already has the
+ * full LabNav row, so this stays hidden there.
+ *
+ * Two things had to be undone to get here, both found by measuring against
+ * an assembled copy standing in for the deployed site (a standalone preview
+ * never renders this at all — homeUrl() resolves null off a bare dev port,
+ * same as LabNav). First: TopBar.jsx renders it as the LAST child of
+ * `.topbar-controls`, not a sibling of that whole group. `.topbar-controls`
+ * already fills its row edge to edge at 390px (Rate + FFT alone leave under
+ * 10px of slack), so a new item ANYWHERE before FFT evicts FFT onto Window's
+ * own short row, turning a 26px row into a 62px one — a cost that has
+ * nothing to do with the new item's own size. Tucked in after Window
+ * instead, it shares Window's existing row inside Window's own slack (239px
+ * of it), so `.topbar`'s measured height is unchanged to the pixel.
+ * Second: the trigger is a `.ghost`, and base.css's OWN phone rule grows
+ * every `.ghost` to a real 44x44, which — even sharing Window's row — still
+ * pushed both plot canvases past the 390x844 fold (item 10j/10k's own
+ * budget). `min-height`/`min-width`/`padding` are reset back down here, and
+ * the button gets the OTHER technique base.css documents for exactly this
+ * kind of control (the suite nav, "report issue", the lesson nav's
+ * prev/next/reset): keep the visible glyph small and add an invisible
+ * `::after` hit area instead — credited by tapTargetProbe's own pseudo-
+ * element reader, so it reaches the suite's 44px floor without moving or
+ * resizing anything on screen. */
+.suite-nav { display: none; }
+@media (max-width: 900px) {
+  .suite-nav {
+    display: inline-flex;
+    position: relative;
+  }
+  .suite-nav-open {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 0;
+    min-width: 0;
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  .suite-nav-open::after {
+    content: '';
+    position: absolute;
+    inset: -14px -6px;
+  }
+  .suite-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 7, 10, 0.55);
+    z-index: 40;
+  }
+  .suite-nav-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 41;
+    display: flex;
+    flex-direction: column;
+    min-width: 160px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    padding: 4px;
+  }
+  .suite-nav-panel a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .suite-nav-panel a:hover {
+    background: var(--panel-2);
+    color: var(--accent);
   }
 }
 
@@ -730,13 +836,14 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 
 /* ---------- touch targets: this app's own overrides ----------
    packages/ui/src/base.css carries the shared fix and its rationale.
-   Two things here escape it because this app redeclares their sizing
+   Three things here escape it because this app redeclares their sizing
    itself: the remove-source icon button (an "×" with no text, sized by its
-   glyph) and @ee-labs/explain's math-toggle disclosure (a package this
-   suite does not own, so the fix has to live on this side of the import).
-   Neither sits in the sidebar's gated first screen — the math toggle
-   scrolls inside the math panel, the remove button in a source card below
-   the fold — so both are free to grow for real. */
+   glyph), @ee-labs/explain's math-toggle disclosure (a package this suite
+   does not own, so the fix has to live on this side of the import), and the
+   Circuit Lab hand-over link below. None sit in the sidebar's gated first
+   screen — the math toggle scrolls inside the math panel, the remove button
+   in a source card below the fold, the hand-over link at the end of the
+   lesson block — so all three are free to grow for real. */
 @media (max-width: 900px) {
   .math-toggle {
     display: flex;
@@ -754,5 +861,19 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .block-title {
     min-height: 44px;
     padding: 4px 0;
+  }
+  /* The suite's one exact cross-lab hand-over: "Open in Circuit Lab →", a
+     plain inline link at the tail of a sentence, measured at 115x16 — the
+     smallest tap target in the lab, on the one control that carries the
+     suite's single exact hand-over. inline-flex lets the padding actually
+     grow the link's own box instead of only widening the line of text
+     around it. Held to the suite's 44px floor, not the 24px plot-pane
+     exception below: this sits in the sidebar's `.lesson` block, not a
+     tight plot pane, so there is no budget it would compete with. */
+  .circuit-forward a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 4px 2px;
   }
 }

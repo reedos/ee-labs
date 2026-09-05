@@ -5,7 +5,9 @@ import { chainResponse, renderChain } from './dsp/chain.js'
 import { render, spectrum, sincInterp, APERIODIC } from '@ee-labs/dsp'
 import { designBiquad, biquadResponse, designFir } from '@ee-labs/dsp'
 import { applyChain, chainGroupDelay, chainImpulse, chainPolesZeros } from './dsp/chain.js'
-import { mathFor } from './math.js'
+import { mathContext, mathFor } from './math.js'
+import { sourceMath } from './math-parts.js'
+import { presetState } from './state.js'
 import { samplingState } from './sampling.js'
 import {
   captionLines,
@@ -718,6 +720,70 @@ describe('terms — definitions on contact', () => {
             if (!listed.has(id)) failures.push(`${p.name}: caption can read "${id}" (${TERMS[id].name}) but does not list it in terms`)
           }
         }
+      }
+    }
+    expect(failures.join('\n')).toBe('')
+  })
+
+  it('the shared math-panel rows cannot reintroduce "leakage" or "LTI" un-declared', () => {
+    // The hole the note/try/caption scans above cannot see: math-parts.js's
+    // sourceMath is a SHARED renderer that runs for every source card
+    // regardless of which preset is loaded, and math.js's own per-preset
+    // ENTRIES are generated text too, neither authored as preset copy. Two
+    // words shipped exactly this way: "leakage" printed on ~30 presets that
+    // never declared it (sourceMath's "bins per period" row, one ordinary
+    // click into the math panel on "Single tone"), and "LTI" printed under
+    // "Two filters are steeper", which declares "cascade" but not "lti".
+    // Both rows are now worded without the term. This is not the same sweep
+    // as the two scans above — a full scan of every word every math panel
+    // can print turns up a long tail of pre-existing, unrelated vocabulary
+    // (block-level panels routinely say "poles" or "passband" without a
+    // per-preset declaration, which is a separate, much larger question)
+    // — so this one is scoped to the exact two words that actually shipped
+    // wrong, the same way a regression test is scoped to the bug it guards.
+    const GUARDED_TERMS = ['leakage', 'lti']
+    const collectStrings = (entry) => {
+      const out = []
+      if (!entry) return out
+      for (const b of entry.blocks) {
+        if (b.kind === 'text') out.push(b.text)
+        else if (b.kind === 'formula') {
+          if (b.caption) out.push(b.caption)
+        } else if (b.kind === 'check' || b.kind === 'values') {
+          for (const r of b.rows) {
+            if (r.label) out.push(r.label)
+            if (r.note) out.push(r.note)
+            if (r.unchecked) out.push(r.unchecked)
+          }
+        }
+      }
+      return out
+    }
+    /** The same live context math.test.js builds, so mathFor's entry is real. */
+    const fullContextFor = (preset) => {
+      const state = presetState(preset)
+      const r = renderChain(state.sources, state.blocks, state.fftSize, state.sampleRate)
+      const { freqs, amps } = spectrum(r.buf, state.sampleRate, state.window)
+      const dry = render(state.sources, state.fftSize, state.sampleRate)
+      const ghostAmps = spectrum(dry, state.sampleRate, state.window).amps
+      const resp = state.blocks.length ? chainResponse(state.blocks, freqs, state.sampleRate) : null
+      let iMax = 0
+      for (let i = 1; i < amps.length; i++) if (amps[i] > amps[iMax]) iMax = i
+      return { state, ctx: mathContext({ state, freqs, amps, ghostAmps, resp, peakFreq: freqs[iMax] }) }
+    }
+    const failures = []
+    for (const p of PRESETS) {
+      const listed = new Set(p.terms || [])
+      const { state, ctx } = fullContextFor(p)
+      const texts = []
+      for (const s of state.sources) {
+        texts.push(...collectStrings(sourceMath(s, { sampleRate: state.sampleRate, fftSize: state.fftSize })))
+      }
+      texts.push(...collectStrings(mathFor(p.name, ctx)))
+      const used = new Set(texts.flatMap((t) => termsInText(t)))
+      for (const id of GUARDED_TERMS) {
+        if (!used.has(id) || listed.has(id) || CHROME_TERMS.includes(id)) continue
+        failures.push(`${p.name}: math panel can print "${id}" (${TERMS[id].name}) but does not list it in terms`)
       }
     }
     expect(failures.join('\n')).toBe('')
