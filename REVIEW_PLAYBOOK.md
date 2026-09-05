@@ -114,7 +114,38 @@ settle time, and when even the cap truncates, say so in the readout. Generally:
 wherever two numbers are shown as equal, ask what could make them differ silently, then
 remove the cause or surface it.
 
-## 11. Process
+## 11. Probes that pass over an empty set
+
+A probe that finds no instances of a thing reports no failures, which reads exactly
+like the thing being correct. **A count of zero is a result to check, not a pass.**
+
+Every lab's `verify.mjs` ran against `vite preview`. That serves one lab alone at the
+root of a bare port. The deployed site is `_site/`, where each lab sits under its own
+folder with its siblings beside it. `deeplink.js`'s `siblingUrl()` and `homeUrl()` both
+resolve null on a bare port by design. So every piece of cross-lab chrome is absent
+under `vite preview`, including LabNav's row, every lab's HandOver link, and Signal's
+suite-nav popover.
+
+Signal Lab therefore shipped a hand-over link measuring 115x16 px on a phone. Its own
+touch-target probe reported all 4075 elements clearing the 44 px floor. Nothing was on
+an exception list. The link was not in the DOM. Served at a real `/signal-lab/` path,
+the unmodified probe failed on its first run, and the page carried 4111 elements. The
+36 that appear only when deployed had never been measured.
+
+Run the harnesses against the layout a student loads:
+
+```
+npm run site:serve                                    # assembles _site, serves :47600
+APP_URL=http://localhost:47600/signal-lab/ node apps/signal-lab/scripts/verify.mjs
+```
+
+`scripts/assemble-site.mjs` mirrors `.github/workflows/deploy.yml`'s assembly step. If
+that step changes, change this with it. Both layouts must pass: a section whose claim
+differs between them branches and asserts something real in each, as signal-lab's
+section 10p does. Audit: for every probe that iterates a selector, log the count, and
+ask what a zero would have looked like.
+
+## 12. Process
 
 - **Screenshot, then read it as a student would.** Nearly half of these defects were
   invisible to the test suite and obvious in a picture. Shoot every view configuration

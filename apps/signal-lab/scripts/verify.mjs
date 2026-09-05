@@ -1378,15 +1378,59 @@ console.log('\n10o. Chain-global controls (FFT, Rate, Window, Overlay) featured 
 }
 
 // --------- 10p. The one hand-over out: a real link only when deployed beside
+//
+// This section used to assert one thing only — that no link is drawn — and it
+// was run only against `vite preview` on a bare port, where labUrl() resolves
+// null and there is nothing to draw. So it passed by describing the fallback
+// and never once looked at the link a student actually gets.
+//
+// That is how Signal Lab shipped a 115x16 px hand-over link on a phone while
+// section 12 below reported every element clearing the 44 px floor. Nothing
+// was on an exception list. The link was not in the DOM to be measured, and a
+// probe over an empty set passes. Served under a real `/signal-lab/` path the
+// same unmodified probe failed on its first run, and the deployed layout puts
+// 4111 interactive elements on the page against a bare port's 4075 — 36 that
+// no run had ever measured.
+//
+// So the assertion now depends on which layout it is looking at, and each
+// branch is a real claim. On a bare port: no link, because there is no sibling
+// to point at. On the deployed path: a link that resolves to the sibling AND
+// carries a thumb-sized box, checked here rather than left to section 12, so
+// this one cannot go back to being measured only when someone remembers to.
+//
+// Run it against the deployed layout with:
+//   node scripts/assemble-site.mjs --serve
+//   APP_URL=http://localhost:47600/signal-lab/ node apps/signal-lab/scripts/verify.mjs
 
-console.log('\n10p. Circuit Lab hand-over: hidden on a bare dev port, as designed\n')
+console.log('\n10p. Circuit Lab hand-over: absent on a bare port, thumb-sized when deployed\n')
 {
   await loadPreset('Resonance is Q')
-  const link = await page.locator('.circuit-forward a').count()
-  if (link) {
-    fail('Resonance is Q: the Circuit Lab hand-over drew a link on a bare dev port — labUrl should resolve null there')
+  // The deployed site serves each lab from its own folder beside its
+  // siblings; `vite preview` serves one lab at the root of a bare port. That
+  // is exactly the condition deeplink.js keys on, so it is what we key on.
+  const deployed = /\/(signal|circuit|control|circuit-elements|power)-lab\/?$/.test(new global.URL(URL).pathname)
+  const link = page.locator('.circuit-forward a').first()
+  const count = await link.count()
+
+  if (!deployed) {
+    if (count) fail('Resonance is Q: the hand-over drew a link on a bare dev port — labUrl should resolve null there')
+    else console.log('   bare port: no link, as designed (labUrl resolves null off the deployed path)')
+  } else if (!count) {
+    fail('Resonance is Q: the hand-over drew NO link on the deployed path — labUrl should resolve a sibling there')
   } else {
-    console.log('   no dev-port link for the Circuit Lab hand-over (labUrl resolves null off the deployed path)')
+    const href = await link.getAttribute('href')
+    if (!/circuit-lab\//.test(href || '')) fail(`Resonance is Q: hand-over href does not point at Circuit Lab: ${href}`)
+
+    await page.setViewportSize(PHONE_VIEWPORT)
+    await page.evaluate(() => document.fonts.ready)
+    const box = await link.boundingBox()
+    if (!box) fail('Resonance is Q: the deployed hand-over link has no box to measure')
+    else if (box.height < 44 || box.width < 44) {
+      fail(`Resonance is Q: deployed hand-over link is ${Math.round(box.width)}x${Math.round(box.height)}px, under the 44px floor`)
+    } else {
+      console.log(`   deployed: link to ${href}, ${Math.round(box.width)}x${Math.round(box.height)}px at 390x844`)
+    }
+    await page.setViewportSize({ width: 1280, height: 900 })
   }
 }
 

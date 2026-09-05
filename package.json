@@ -12,7 +12,9 @@
     "test": "vitest run",
     "build": "npm run build --workspaces --if-present",
     "dev": "npm run dev --workspace apps/signal-lab",
-    "lint:prose": "node packages/prose/bin/lint.mjs"
+    "lint:prose": "node packages/prose/bin/lint.mjs",
+    "site": "node scripts/assemble-site.mjs",
+    "site:serve": "node scripts/assemble-site.mjs --serve"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.1",
