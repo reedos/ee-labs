@@ -146,3 +146,65 @@ Each line below is a dependency, what it blocks, and what unblocks it.
   emission wavelengths hand to the Photonics Lab, which is waiting.
 - `deploy.yml` and `progression.test.js` entries for `/devices-lab/`: through
   `NEEDS.md`, as every dark lab.
+
+### Planner: VLSI, Computer, Interfaces
+
+Three plans written on branch `plan/digital-upper`, from `PROGRAM.md` §3 item 1.
+`VLSI_LAB_PLAN.md`, `COMPUTER_LAB_PLAN.md` and `INTERFACES_LAB_PLAN.md`, thirty
+experiments each. No overseer for any of the three yet. The ledger rows in §1 stay
+"waiting", and the plan column changes from "to write" to the three file names.
+
+Dependencies, by what unblocks them.
+
+- **`packages/events` from the Logic Lab.** All three plans state an assumed API in
+  their §2.3 and mark it a contract to reconcile against the Logic Lab's brief when
+  that brief exists. Reconciliation is a phase boundary in each plan, not an
+  assumption carried through the build. The VLSI Lab needs `simulate` and
+  `criticalPath`. The Computer Lab needs the same plus exact rational event times.
+  The Interfaces Lab needs a net driven by more than one gate, for the open-drain
+  bus, and its invariant 4 is the test for that.
+- **Two canvases from the Logic Lab.** The timing diagram and the state machine
+  diagram, per `PROGRAM.md` §4. The Computer Lab claims both as second lab. The
+  Interfaces Lab claims the timing diagram with one added prop, which is a line drawn
+  as its analog waveform with two threshold levels and a measurement cursor pair.
+  The VLSI Lab reuses the timing diagram unchanged. The director promotes both to
+  `packages/ui` when the Logic Lab ships them.
+- **Three new modules under `packages/events`**, each owned by the lab that needs it
+  and each requested through that lab's `NEEDS.md`. `extract.js` for the VLSI Lab's
+  delay-extraction bridge. `cache.js` and `datapath.js` for the Computer Lab.
+  `pin.js` and `protocol.js` for the Interfaces Lab. The Logic Lab owns the package
+  under `PROGRAM.md` §5, so the director resolves each request once.
+- **Electronics D5 and D6.** All three plans cross-reference the switch and the CMOS
+  inverter by id, and the progression test fails on a reference to an experiment that
+  does not exist. Each plan's Group A restates the results from its own model card so
+  the group stands alone, and the cross-reference lands in the release commit once
+  the Electronics Lab ships those two.
+- **Electronics lane 1's MOSFET element.** The VLSI Lab and the Interfaces Lab both
+  use the `switch` model of `apps/electronics-lab/AGENT_BRIEF.md` §3.1. Neither adds
+  a field to that schema.
+- **The Analog IC Lab's subthreshold model**, for VLSI E4's leakage. That lab has no
+  plan. VLSI Decision 4 states leakage here from a stated 80 mV per decade as a
+  labelled one-parameter model. Reopens when the Analog IC Lab is planned.
+- **The Mixed-Signal Lab's converters**, for the Interfaces Lab's F4. That lab has no
+  plan. Interfaces Decision 5 models the converter as a timing budget rather than a
+  circuit, quoting only times and impedances. Reopens when the Mixed-Signal Lab is
+  planned, and the two models do not overlap in the meantime.
+- **The VLSI Lab, for the Computer Lab's gate delays.** Computer Decision 5 quotes
+  them from the VLSI model card and pins them as functions of two unit values. A test
+  compares both labs once both exist.
+- **Signal Lab's Sampling group**, for Interfaces F5. Built today, so this is the one
+  cross-lab link in the three plans that works now.
+- **The Computer Lab's G2, for Interfaces G2.** The interrupt's cost in cycles is the
+  Computer Lab's and the jitter it causes is the Interfaces Lab's. Cross-referenced
+  by id in both directions.
+
+Deferred inside the three plans.
+
+- The VLSI Lab's gate-level half, Groups F and G, waits on `events`. Phases 1 to 4
+  are twenty-three experiments and ship without it.
+- The Computer Lab has one group that ships without `events`, which is the cache.
+  The other twenty-four experiments wait.
+- The Interfaces Lab's Groups B to E wait on `events`. Groups A and F, ten
+  experiments, ship without it.
+- Every plan's §10 lists what it declines rather than defers. Those lines are
+  decisions and are not backlog items.
