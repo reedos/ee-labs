@@ -231,11 +231,21 @@ export function gainMarginWarn(gm) {
 /**
  * What the top bar's "steady error" field shows.
  *
- * e_ss = 1 − T(0): positive when the output falls short of the setpoint,
+ * Round four found the topbar reading the REFERENCE closed loop no matter
+ * which step the Step pane itself was showing: with Disturbance selected the
+ * pane's own "settles to" already switches to `stepTf` (loop.disturbance),
+ * so the topbar must read the SAME transfer function, not always
+ * `loop.closed` — otherwise the two numbers describe two different
+ * questions and only look like they disagree. `tf` is now whichever
+ * transfer function the caller (App.jsx's `stepTf`) is showing, and `mode`
+ * says which ideal it is being measured against: a reference step asks the
+ * output to reach 1, a disturbance step asks it to stay at 0.
+ *
+ * e_ss = target − G(0): positive when the output falls short of the ideal,
  * NEGATIVE when it sits above it (the unstable plant under P settles at
- * 1.25, so its error is −25%). A loop that never settles has no steady
- * state, and the field printed "200.0%", "1000.0%" and "−Infinity%" for
- * those before it learned to say so.
+ * 1.25 against a target of 1, so its error is −25%). A loop that never
+ * settles has no steady state, and the field printed "200.0%", "1000.0%"
+ * and "−Infinity%" for those before it learned to say so.
  *
  * The clause naming what a negative reading means used to say the output
  * "overshoots its destination and stays there" — but overshoot is a
@@ -244,7 +254,7 @@ export function gainMarginWarn(gm) {
  * sentence borrowed a defined term for a different idea instead of saying
  * the plain thing: it sits past the target and stays there.
  */
-export function steadyErrorOf(closed, verdict) {
+export function steadyErrorOf(tf, verdict, mode = 'ref') {
   if (verdict !== 'stable') {
     return {
       text: '—',
@@ -257,11 +267,28 @@ export function steadyErrorOf(closed, verdict) {
             : 'does not settle — the loop runs away, so it has no steady state',
     }
   }
-  const err = 1 - dcGain(closed)
-  const sign = err > 0 ? 'the output falls short of what was asked' : 'the output settles ABOVE what was asked'
+  const dist = mode === 'dist'
+  const target = dist ? 0 : 1
+  const err = target - dcGain(tf)
   if (Math.abs(err) < 1e-9) {
-    return { text: 'none', value: 0, title: 'e_ss = 1 − T(0) = 0: an integrator in the loop erases the error exactly' }
+    return dist
+      ? {
+          text: 'none',
+          value: 0,
+          title: 'e_ss = 0 − Gd(0) = 0: an integrator in the loop erases the disturbance exactly',
+        }
+      : { text: 'none', value: 0, title: 'e_ss = 1 − T(0) = 0: an integrator in the loop erases the error exactly' }
   }
+  if (dist) {
+    const sign =
+      err > 0 ? 'the output settles below its undisturbed value' : 'the output settles ABOVE its undisturbed value'
+    return {
+      text: `${(err * 100).toFixed(1)}%`,
+      value: err,
+      title: `e_ss = 0 − Gd(0) = ${(err * 100).toFixed(1)}% of the disturbance step — ${sign}; a negative steady error means the output settles past its undisturbed value and stays there`,
+    }
+  }
+  const sign = err > 0 ? 'the output falls short of what was asked' : 'the output settles ABOVE what was asked'
   return {
     text: `${(err * 100).toFixed(1)}%`,
     value: err,

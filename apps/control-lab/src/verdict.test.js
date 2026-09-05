@@ -237,6 +237,34 @@ describe('steadyErrorOf', () => {
     expect(info.title).toMatch(/all-zero denominator/)
     expect(info.title).not.toMatch(/runs away/)
   })
+
+  // Round four's own repro: the topbar always read loop.closed (the
+  // reference loop) no matter which step the pane below was showing, so with
+  // Disturbance picked the two numbers described two different questions.
+  // Pinned at plant gain 5 — NOT the 1 that lesson 4 uses, where the
+  // reference and disturbance answers happen to coincide (1/(1+L(0)) equals
+  // K/(1+L(0)) only when K = 1) and the mismatch has nowhere to show up.
+  it('the reference and disturbance readings differ when the plant gain is not 1', () => {
+    const loop = buildLoop('firstOrder', { k: 5, tau: 1 }, 'p', { kp: 9 })
+    const ref = steadyErrorOf(loop.closed, 'stable', 'ref')
+    const dist = steadyErrorOf(loop.disturbance, 'stable', 'dist')
+    // L(0) = 45, T(0) = 45/46 -> e_ss = 1/46 = 2.2%.
+    expect(ref.text).toBe('2.2%')
+    // Gd(0) = 5/46 against a target of 0, not 1 -> e_ss = -5/46 = -10.9%.
+    expect(dist.text).toBe('-10.9%')
+    expect(ref.value).not.toBeCloseTo(dist.value, 2)
+    // The field's magnitude is exactly what the Step pane's own "settles
+    // to" shows for the disturbance step: dcGain(loop.disturbance).
+    expect(Math.abs(dist.value)).toBeCloseTo(dcGain(loop.disturbance), 6)
+  })
+
+  it('says none for a plant-input disturbance an integrator erases exactly', () => {
+    const loop = buildLoop('firstOrder', { k: 5, tau: 1 }, 'pi', { kp: 9, ki: 3 })
+    const info = steadyErrorOf(loop.disturbance, 'stable', 'dist')
+    expect(info.text).toBe('none')
+    expect(info.value).toBe(0)
+    expect(info.title).toMatch(/erases the disturbance exactly/)
+  })
 })
 
 describe('verdictBadge', () => {

@@ -199,7 +199,20 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
           },
         ]),
       )
-    } else if (plant.circuitNote) {
+    }
+    // A bench circuit and a catalogue refusal are not mutually exclusive:
+    // integrator, motor and threePole each carry BOTH `circuit` (the real
+    // network above, verified against the plant) and `circuitNote` (why
+    // that network is still not anything Circuit Lab's catalogue holds).
+    // The original `if (plant.circuit) {...} else if (plant.circuitNote)`
+    // let the first branch win outright for all three, so the refusal was
+    // dead code across the six lessons (46% of the course) that use motor
+    // or three lags — the panel printed a fully verified circuit and three
+    // ticks and never said the catalogue has no match for it. This second,
+    // independent `if` runs regardless of whether the block above ran, so a
+    // plant with no bench circuit at all (unstable, custom) still gets the
+    // refusal alone, exactly as before, while one with both gets both.
+    if (plant.circuitNote) {
       blocks.push(T(plant.circuitNote))
     }
 

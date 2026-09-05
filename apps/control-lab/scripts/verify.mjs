@@ -1359,6 +1359,17 @@ console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
     await loadLesson(name)
     await page.waitForTimeout(60)
     const sidebar = await page.locator('.controls').boundingBox()
+    // The Lessons section's own cap ("Try this", prev/n of N/next) is
+    // `position: sticky` (packages/ui) and PAINTS OVER whatever sits above
+    // its own bottom edge, opaque. Round four found "inside the sidebar's
+    // visible box" passing while the title sat entirely BEHIND this header
+    // — being scrolled to the container's top and being unpainted-over are
+    // different claims, and this probe used to check only the first one.
+    // safeTop is the lower of the sidebar's own top and the header's own
+    // bottom, so a state with no header rendered (none here) degrades to
+    // the old check exactly.
+    const header = await page.locator('#lessons > h2').boundingBox()
+    const safeTop = header ? Math.max(sidebar.y, header.y + header.height) : sidebar.y
     const title = await page.locator('.note-title').first().boundingBox()
     const tryLine = await page.locator('.try-line').first().boundingBox()
     // The disturbance toggle (App.jsx's renderStepToggle) is the one
@@ -1370,7 +1381,7 @@ console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
       .boundingBox()
       .catch(() => null)
     const within = (box) =>
-      !!box && box.y >= sidebar.y - 0.5 && box.y + box.height <= sidebar.y + sidebar.height + 0.5
+      !!box && box.y >= safeTop - 0.5 && box.y + box.height <= sidebar.y + sidebar.height + 0.5
     for (const [label, box] of [
       ['note title', title],
       ['try line', tryLine],
@@ -1381,12 +1392,12 @@ console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
       }
       if (!within(box)) {
         fail(
-          `phone walk/${name}: ${label} outside the sidebar's visible box (${box.y.toFixed(0)}–${(box.y + box.height).toFixed(0)} vs sidebar ${sidebar.y.toFixed(0)}–${(sidebar.y + sidebar.height).toFixed(0)})`,
+          `phone walk/${name}: ${label} outside the sidebar's visible box or under the sticky header (${box.y.toFixed(0)}–${(box.y + box.height).toFixed(0)} vs safe area ${safeTop.toFixed(0)}–${(sidebar.y + sidebar.height).toFixed(0)})`,
         )
       }
     }
     if (featuredInBody && !within(featuredInBody)) {
-      fail(`phone walk/${name}: the lesson's own featured control is outside the sidebar's visible box`)
+      fail(`phone walk/${name}: the lesson's own featured control is outside the sidebar's visible box or under the sticky header`)
     }
     results.push({ name, note: within(title), tryLine: within(tryLine) })
   }
@@ -2772,6 +2783,88 @@ console.log('\n45. Definitions on contact: a first-use term in the note is tappa
     fail("terms on contact: a fresh lesson load should not carry over the previous one's open card")
   }
   console.log('   loading a new lesson closes the previous one\'s open definition')
+
+  await clickPreset('First order lag')
+}
+
+// ---------------------------------------------------------------------------
+// 46. The catalogue refusal is no longer dead code under motor / three lags
+//
+// Round-four grading: `if (plant.circuit) {...} else if (plant.circuitNote)`
+// (math.js) let the bench-circuit branch win outright for the three plants
+// that carry BOTH fields (integrator, motor, threePole), so the refusal
+// never printed for any of the six lessons (46% of the course) that use
+// motor or three lags. This is the grader's own live check, reproduced: load
+// one of those six lessons, open the Math tab, and require the refusal text
+// to be there. Before the fix this found ZERO occurrences; the assertion
+// below is written to fail on that build and pass once math.js prints both
+// blocks — confirmed both ways before this file's edits were called done.
+console.log('\n46. The catalogue refusal prints beside the bench circuit under motor / three lags\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  const REFUSAL = 'No catalogue circuit matches this plant'
+
+  // "Turn it up until it sings" — three lags, one of the six silent lessons
+  // the grader named directly.
+  await loadLesson('Turn it up until it sings')
+  await openMath()
+  const mathText = (await page.locator('.math-pane').textContent().catch(() => '')) || ''
+  if (!mathText.includes(REFUSAL)) {
+    fail(`"Turn it up until it sings": Math tab should print the catalogue refusal, found none in "${mathText.slice(0, 160)}..."`)
+  } else if (!mathText.includes('Where a plant like this comes from on a bench')) {
+    fail('"Turn it up until it sings": Math tab should still print the bench circuit alongside the refusal')
+  } else {
+    console.log('   "Turn it up until it sings": Math tab prints the bench circuit AND "' + REFUSAL + '..."')
+  }
+  await closeMath()
+
+  // The sidebar's own refusal spot, reachable now WITHOUT abandoning the
+  // lesson (the gains stay put, unlike clicking the plant button): a short
+  // pointer during a lesson rather than the full reason, to protect the
+  // fold budget an earlier round already fought to win back.
+  const sidebarHint = (await page.locator('.circuit-back.is-refusal').textContent().catch(() => '')) || ''
+  if (!/see Math for why/.test(sidebarHint)) {
+    fail(`"Turn it up until it sings": sidebar should point at the Math tab mid-lesson, read "${sidebarHint}"`)
+  } else {
+    console.log(`   sidebar mid-lesson: "${sidebarHint.trim()}"`)
+  }
+
+  // A second of the six, a different plant (motor) — the defect was not
+  // specific to three lags.
+  await loadLesson('A margin thin enough to feel')
+  await openMath()
+  const motorMathText = (await page.locator('.math-pane').textContent().catch(() => '')) || ''
+  if (!motorMathText.includes(REFUSAL)) {
+    fail(`"A margin thin enough to feel" (motor): Math tab should print the catalogue refusal, found none`)
+  } else {
+    console.log('   "A margin thin enough to feel" (motor): Math tab prints the refusal too')
+  }
+  await closeMath()
+
+  // The course's last screen — "That is the course" — uses three lags too,
+  // so it is one of the six. It must now say a reason exists (four words:
+  // this exact screen is the tightest fold budget in the course, so it
+  // points at the Math tab rather than repeating the reason itself) instead
+  // of silently offering only "back to lesson 1".
+  await loadLesson('Lead does it without the noise')
+  const courseEnd = (await page.locator('.course-end').textContent().catch(() => '')) || ''
+  if (!/no link/i.test(courseEnd) || !/Math/.test(courseEnd)) {
+    fail(`course end: should say why there is no bridge to Circuit Lab, read "${courseEnd}"`)
+  } else if (!/back to lesson 1/.test(courseEnd)) {
+    fail(`course end: should still offer the way back, read "${courseEnd}"`)
+  } else {
+    console.log(`   course end: "${courseEnd.trim()}"`)
+  }
+  // And the reason it points at really is there, on the same lesson's own
+  // Math tab — not a pointer to nothing.
+  await openMath()
+  const finalMathText = (await page.locator('.math-pane').textContent().catch(() => '')) || ''
+  if (!finalMathText.includes(REFUSAL)) {
+    fail(`"Lead does it without the noise": Math tab should carry the reason the course-end pointer promises`)
+  }
+  await closeMath()
 
   await clickPreset('First order lag')
 }

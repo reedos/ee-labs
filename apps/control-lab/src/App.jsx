@@ -329,12 +329,37 @@ export default function App() {
     const el = lessonBodyRef.current
     const container = controlsRef.current
     if (!el || !container) return
+    // packages/ui's `.controls h2` is `position: sticky` — the Lessons
+    // section's own cap ("Try this", prev/n of N/next) stays pinned to the
+    // container's own top edge and PAINTS OVER whatever scrolls under it.
+    // The container's top edge is therefore not the line content is safe to
+    // land on; `contBox.top + headerH` is. Round four found the lesson
+    // title masked on every tap from the list: this check used to compare
+    // `elBox.top` against `contBox.top` alone, which is true even with the
+    // title entirely behind the opaque header, because "scrolled to the
+    // container's top" and "not painted over" are different claims and only
+    // the first one was tested. Measured, not assumed, since the header's
+    // own height depends on the loaded font and the lesson nav's width.
+    // +2px clearance past the header's own measured height: scrollIntoView
+    // snaps to an integer scrollTop, and landing the title EXACTLY on the
+    // header's own bottom edge measured a 0.3px sliver still behind it on a
+    // subpixel layout — a hairline, but "not painted over" should not ride
+    // on a rounding coin flip.
+    const header = container.querySelector('#lessons > h2')
+    const headerH = header ? header.getBoundingClientRect().height + 2 : 0
     const tryLine = el.querySelector('.try-line') || el
     const elBox = el.getBoundingClientRect()
     const tryBox = tryLine.getBoundingClientRect()
     const contBox = container.getBoundingClientRect()
-    const visible = elBox.top >= contBox.top - 0.5 && tryBox.bottom <= contBox.bottom + 0.5
-    if (!visible) el.scrollIntoView({ block: 'start' })
+    const safeTop = contBox.top + headerH
+    const visible = elBox.top >= safeTop - 0.5 && tryBox.bottom <= contBox.bottom + 0.5
+    if (!visible) {
+      // scroll-margin-top makes scrollIntoView stop headerH short of the
+      // container's own top, landing the title just below the sticky cap
+      // instead of behind it.
+      el.style.scrollMarginTop = `${headerH}px`
+      el.scrollIntoView({ block: 'start' })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lesson, loads])
 
@@ -562,8 +587,12 @@ export default function App() {
   const err = 1 - dcGain(loop.closed)
   // The top bar's own field: '—' with a reason for a loop that never
   // settles, rather than "200%" or "−Infinity%" printed against physics
-  // that has nothing to report.
-  const errInfo = steadyErrorOf(loop.closed, verdict)
+  // that has nothing to report. Read off `stepTf`, the SAME transfer
+  // function the Step pane's own "settles to" already reads — not always
+  // `loop.closed` — so the two numbers can never name two different
+  // questions (round four: with Disturbance selected the pane settled at
+  // 0.1087 while this field kept reading the reference loop's 2.2%).
+  const errInfo = steadyErrorOf(stepTf, verdict, stepInput)
 
   const chips = useMemo(
     () => chipsFor(active, state, marg),
@@ -823,9 +852,26 @@ export default function App() {
                   {circuit && circuitHref ? (
                     <a href={circuitHref}>Open Circuit Lab →</a>
                   ) : (
-                    <button type="button" className="lesson-link" onClick={() => loadLesson(LESSONS[0])}>
-                      ↩ back to lesson 1
-                    </button>
+                    <>
+                      {/* This lesson's plant (three lags) is one of the six
+                          the course closes on with no catalogue circuit —
+                          the exact moment a reader decides whether to leave
+                          is the wrong place to go silent about why there is
+                          no bridge to Circuit Lab. Four words, not even the
+                          one-line pointer used below (let alone the full
+                          two-sentence reason in systems.js): this exact
+                          paragraph is the tightest fold budget in the
+                          course (this lesson's own try line, chips and
+                          knobs already leave it 7px of slack at 1366×768),
+                          and the reason itself is no longer stranded on the
+                          Math tab now that it prints there for real — this
+                          only has to name that a reason exists and point at
+                          it, which four words already do. */}
+                      {plant.circuitNote ? 'No link — see Math. ' : ''}
+                      <button type="button" className="lesson-link" onClick={() => loadLesson(LESSONS[0])}>
+                        ↩ back to lesson 1
+                      </button>
+                    </>
                   )}
                 </p>
               ) : null}
@@ -886,18 +932,40 @@ export default function App() {
                 Open in Circuit Lab →
               </a>
             </p>
-          ) : // The refusal is gated the SAME way PLANT_DEF/CONTROLLER_DEF and
-          // the plain plant/controller hints already are (`active ? null :
-          // ...`, above and in #controller/#plant below): a lesson's own note
-          // is doing the teaching in context, and the tight fold budget at
-          // 1366×768 has no spare line for a second one stacked under it —
-          // adding these four sentences unconditionally pushed the featured
-          // knob 18-75px past the fold on the three lessons that happen to
-          // use exactly these plants (motor, unstable, three lags). The
-          // reason stays fully reachable: click the plant with no lesson
-          // active, the same place PLANT_DEF and the plant's own hint live.
-          !active && !circuit && plant.circuitNote ? (
-            <p className="hint circuit-back is-refusal">{plant.circuitNote}</p>
+          ) : // Round-four grading: the six lessons on motor or three lags
+          // print a fully verified bench circuit on the Math tab (math.js)
+          // and never say the catalogue has no match for it, and this is
+          // the ONLY other spot that reason could reach a lesson in
+          // progress — everywhere else it was gated on `!active`, so the
+          // one way to it was abandoning the lesson by clicking the plant,
+          // which also resets the gains. The reader's need for the reason
+          // is highest exactly during the lesson that hid it, so this now
+          // shows during one too — but as a one-line pointer to the Math
+          // tab, not the full reason: printing the full circuitNote
+          // unconditionally is the change that once pushed the featured
+          // knob 18-75px past the fold on these same plants (motor,
+          // unstable, three lags), which is why it was gated to `!active`
+          // in the first place. A pointer costs one short line instead of
+          // the reason's own two or three, and the reason itself is no
+          // longer stranded on the Math tab now that it prints there for
+          // real — this line's whole job is pointing at it, and
+          // chrome.js's cue scan already covers the words IN circuitNote
+          // unconditionally of `active`, so this shorter line introduces
+          // no cue word that scan does not already resolve.
+          //
+          // Suppressed on the LAST lesson specifically: its own "That is
+          // the course" paragraph (below the try line, same section) now
+          // carries the identical one-line pointer already — a second copy
+          // stacked right under it would say the same thing twice on one
+          // screen for nothing, and that screen is the tightest fold budget
+          // in the course (the try line, chips and knobs of the very last
+          // lesson), with no room to spend on a repeated sentence.
+          !circuit && plant.circuitNote && !(active && activeIndex === LESSONS.length - 1) ? (
+            <p className="hint circuit-back is-refusal">
+              {active
+                ? 'No catalogue circuit matches this plant — see Math for why.'
+                : plant.circuitNote}
+            </p>
           ) : null}
         </section>
 
