@@ -50,6 +50,14 @@ export {
   isolatedM,
   ISOLATED_KINDS,
   ISOLATED_DEFAULTS,
+  forward,
+  pushPull,
+  fullBridge,
+  forwardReset,
+  fluxWalk,
+  isolatedStress,
+  ISOLATED_FAMILY,
+  ISOLATED_PULSES,
 } from './src/isolated.js'
 export { chainPlan, clockedSteadyState, fourierAt, spectrumOf, statsOf, meanProduct, isPiecewiseConstant } from './src/clocked.js'
 export {

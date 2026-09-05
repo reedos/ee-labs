@@ -1,18 +1,35 @@
 import { describe, it, expect } from 'vitest'
-import { flyback, halfBridge, isolated, isolatedM, ISOLATED_KINDS } from './isolated.js'
+import {
+  flyback,
+  halfBridge,
+  forward,
+  pushPull,
+  fullBridge,
+  forwardReset,
+  fluxWalk,
+  isolatedStress,
+  ISOLATED_FAMILY,
+  isolated,
+  isolatedM,
+  ISOLATED_KINDS,
+} from './isolated.js'
 import { steadyState, measures, average, periodMap, waveforms } from './steady.js'
 import { endState, firstDownCrossing } from './segment.js'
+import { propagator } from './propagator.js'
+import { matVec, vecAdd } from './linalg.js'
+import { clockedSteadyState } from './clocked.js'
 import { runPeriods } from './transient.js'
 import { lossLedger } from './ledger.js'
 
-// The two isolated converters, held to the same invariants as the three bare
+// The five isolated converters, held to the same invariants as the three bare
 // ones: volt-second balance on the magnetising or output inductance, charge
 // balance on the capacitor, the segments joining, one more period returning
 // the same state, and the books closing to floating point.
 //
-// The claim each is about is its ratio. M = n·D/(1−D) for the flyback and
-// M = n·D for the half-bridge, both from volt-second balance and both quoted
-// against a solved waveform that never saw the formula.
+// The claim each is about is its ratio. M = n·D/(1−D) for the flyback,
+// M = n·D for the forward and the half-bridge, M = 2·n·D for the push-pull
+// and the full bridge, every one of them from volt-second balance and every
+// one quoted against a solved waveform that never saw the formula.
 
 function rng(seed) {
   let s = seed >>> 0
@@ -144,8 +161,12 @@ describe('the invariants, across both isolated converters', () => {
         kind,
         {
           Vin: logU(r, 6, 48),
-          D: kind === 'halfbridge' ? 0.02 + 0.46 * r() : 0.05 + 0.85 * r(),
-          n: logU(r, kind === 'halfbridge' ? 0.3 : 0.1, 2),
+          // Every converter but the flyback puts a pulse on an output
+          // inductor, and each of those has its own ceiling on the duty: half
+          // the period for the three that share the core between two
+          // switches, and the reset winding's share for the forward.
+          D: kind === 'flyback' ? 0.05 + 0.85 * r() : 0.02 + 0.44 * r(),
+          n: logU(r, kind === 'flyback' ? 0.1 : 0.3, 2),
           L: logU(r, 10e-6, 1e-3),
           C: logU(r, 10e-6, 2.2e-3),
           R: logU(r, 1, 500),
@@ -234,9 +255,9 @@ describe('the half-bridge’s own boundary', () => {
 })
 
 describe('the shapes the app leans on', () => {
-  it('names both kinds and refuses anything else', () => {
-    expect(ISOLATED_KINDS).toEqual(['flyback', 'halfbridge'])
-    expect(() => isolated('forward', {})).toThrow(/unknown isolated converter/)
+  it('names every kind and refuses anything else', () => {
+    expect(ISOLATED_KINDS).toEqual(['flyback', 'halfbridge', 'forward', 'pushpull', 'fullbridge'])
+    expect(() => isolated('cuk', {})).toThrow(/unknown isolated converter/)
   })
   it('carries every signal the panes ask for, in every state', () => {
     for (const kind of ISOLATED_KINDS) {
@@ -247,5 +268,183 @@ describe('the shapes the app leans on', () => {
         }
       }
     }
+  })
+})
+
+// ------------------------------------------------- the half-bridge's siblings
+
+describe('the forward converter', () => {
+  const p = { Vin: 48, D: 0.4, n: 0.25, nr: 1, L: 100e-6, C: 100e-6, R: 5, fs: 100e3, Lm: 2e-3 }
+  const conv = forward(p)
+  const ss = steadyState(conv)
+  const m = measures(ss)
+  const reset = forwardReset(conv, { IL: m.Iout })
+
+  it('is a buck fed from n·V_in, so M = n·D and the pulse runs once a period', () => {
+    expect(isolatedM('forward', p.D, p.n)).toBeCloseTo(0.1, 15)
+    expect(conv.T).toBeCloseTo(1 / p.fs, 15)
+    expect(conv.p.D).toBeCloseTo(p.D, 15)
+    expect(m.M).toBeCloseTo(0.1, 6)
+    expect(m.sig.vout.avg).toBeCloseTo(4.8, 6)
+    for (const D of [0.1, 0.25, 0.45]) {
+      expect(measures(steadyState(forward({ ...p, D }))).M, `D=${D}`).toBeCloseTo(p.n * D, 6)
+    }
+  })
+
+  it('gives the reset winding N_p/N_r as long again to take the volt-seconds back', () => {
+    // The branch's own balance: what the rail put in comes back out.
+    expect(reset.vsOn + reset.vsReset).toBeCloseTo(0, 12)
+    expect(reset.tReset).toBeCloseTo((p.D * p.nr) / p.fs, 12)
+    expect(reset.tOn + reset.tReset + reset.tIdle).toBeCloseTo(conv.T, 12)
+    expect(reset.ipk).toBeCloseTo((p.Vin * p.D) / (p.Lm * p.fs), 12)
+    // Halve the reset winding and it stands at twice the voltage, so the
+    // reset takes half as long and the duty may run further.
+    const fast = forward({ ...p, nr: 0.5 })
+    expect(forwardReset(fast, { IL: m.Iout }).tReset).toBeCloseTo(reset.tReset / 2, 12)
+    expect(fast.Dmax).toBeCloseTo(2 / 3, 12)
+  })
+
+  it('charges the switch the rail plus the reset winding’s reflection', () => {
+    expect(conv.blocking()).toBeCloseTo(2 * p.Vin, 12)
+    expect(forward({ ...p, nr: 0.5 }).blocking()).toBeCloseTo(3 * p.Vin, 12)
+    expect(reset.blocking).toBeCloseTo(conv.blocking(), 12)
+  })
+
+  it('says when the duty is too long for the core to reset', () => {
+    expect(conv.resets).toBe(true)
+    expect(conv.Dmax).toBeCloseTo(0.5, 12)
+    const over = forward({ ...p, D: 0.6 })
+    expect(over.resets).toBe(false)
+    expect(forwardReset(over, { IL: 1 }).resets).toBe(false)
+  })
+})
+
+describe('push-pull and full bridge', () => {
+  const p = { Vin: 24, D: 0.4, n: 0.5, L: 100e-6, C: 100e-6, R: 5, fs: 100e3 }
+
+  it('both swing the primary twice a period, so M = 2·n·D', () => {
+    for (const kind of ['pushpull', 'fullbridge']) {
+      const conv = isolated(kind, p)
+      const m = measures(steadyState(conv))
+      expect(isolatedM(kind, p.D, p.n), kind).toBeCloseTo(0.4, 15)
+      expect(m.M, kind).toBeCloseTo(0.4, 6)
+      expect(m.sig.vout.avg, kind).toBeCloseTo(9.6, 5)
+      expect(conv.T, kind).toBeCloseTo(1 / (2 * p.fs), 15)
+    }
+  })
+
+  it('differ only in what the switches pay: 2·V_in on two of them, or V_in on four', () => {
+    expect(pushPull(p).blocking()).toBeCloseTo(2 * p.Vin, 12)
+    expect(fullBridge(p).blocking()).toBeCloseTo(p.Vin, 12)
+    expect(pushPull(p).switches).toBe(1)
+    expect(fullBridge(p).switches).toBe(2)
+  })
+
+  it('charges the full bridge twice the conduction loss, because two switches carry the primary', () => {
+    const Ron = 0.05
+    const pp = measures(steadyState(pushPull({ ...p, Ron })))
+    const fb = measures(steadyState(fullBridge({ ...p, Ron })))
+    // Two switches in the path, each carrying the whole primary current.
+    expect(fb.loss.switch).toBeCloseTo(2 * Ron * fb.sig.iQ.rms ** 2, 12)
+    expect(pp.loss.switch).toBeCloseTo(Ron * pp.sig.iQ.rms ** 2, 12)
+    // The ratio is a little under two, because the second drop takes a little
+    // of the output with it and the current falls with it.
+    expect(fb.loss.switch / pp.loss.switch).toBeGreaterThan(1.98)
+    expect(fb.loss.switch / pp.loss.switch).toBeLessThan(2)
+    // And the ledger still closes on both.
+    for (const m of [pp, fb]) expect(Math.abs(lossLedger(m).residual)).toBeLessThan(1e-9 * m.Pin)
+  })
+
+  it('puts the same total volt-amps on the switches whichever way they are arranged', () => {
+    const a = isolatedStress('pushpull', { Vin: 24, n: 0.5, D: 0.4 })
+    const b = isolatedStress('fullbridge', { Vin: 24, n: 0.5, D: 0.4 })
+    expect(a.switchVA).toBe(4)
+    expect(b.switchVA).toBe(4)
+    expect(a.blocking).toBeCloseTo(48, 12)
+    expect(b.blocking).toBeCloseTo(24, 12)
+    expect(a.M).toBeCloseTo(b.M, 15)
+    const f = isolatedStress('forward', { Vin: 24, n: 0.5, D: 0.4 })
+    expect(f.switchVA).toBe(2)
+    expect(f.M).toBeCloseTo(0.2, 15)
+    expect(Object.keys(ISOLATED_FAMILY)).toEqual(['forward', 'halfbridge', 'pushpull', 'fullbridge'])
+  })
+})
+
+describe('the push-pull’s flux walk', () => {
+  const p = { Vin: 24, D: 0.4, n: 0.5, L: 100e-6, C: 100e-6, R: 5, fs: 100e3, Lm: 2e-3, Ron: 0.05 }
+
+  it('walks by the volt-second remainder the mismatch leaves, every cycle', () => {
+    const w = fluxWalk({ ...p, Ron2: 0.06 })
+    expect(w.perCycle / w.driftForm).toBeCloseTo(1, 3)
+    expect(w.perCycle).toBeGreaterThan(0)
+    // The first hundred periods are nearly a straight line: the drift barely
+    // changes while the offset is far from where it settles.
+    const step = w.trace[100].iM - w.trace[99].iM
+    expect(step / w.perCycle).toBeGreaterThan(0.9)
+  })
+
+  it('settles where the same asymmetry balances it, and the algebra agrees', () => {
+    const w = fluxWalk({ ...p, Ron2: 0.06 }, { periods: 8000 })
+    expect(w.settles).toBe(true)
+    expect(w.offsetSolved / w.offsetForm).toBeCloseTo(1, 4)
+    // The walk arrives there rather than being told. The approach is the
+    // L_m/R the two switches make between them, over the share of the period
+    // they conduct for, which is about 4 500 periods here.
+    expect(w.trace[8000].iM / w.offsetSolved).toBeGreaterThan(0.8)
+    expect(w.trace[1000].iM / w.offsetSolved).toBeLessThan(0.3)
+    // The offset is (R_B − R_A)·n·I_out/(R_A + R_B): twice the mismatch on a
+    // slightly larger sum moves it by the ratio of the two.
+    const wider = fluxWalk({ ...p, Ron2: 0.07 })
+    // The load current moves a little with the extra resistance, so the two
+    // ratios agree to a part in a few thousand rather than exactly.
+    expect(wider.offsetForm / w.offsetForm).toBeCloseTo(0.02 / 0.12 / (0.01 / 0.11), 3)
+  })
+
+  it('does not walk at all when the two halves match', () => {
+    const w = fluxWalk({ ...p, Ron2: p.Ron })
+    expect(Math.abs(w.perCycle)).toBeLessThan(1e-15 * w.Iout)
+    expect(Math.abs(w.offsetSolved)).toBeLessThan(1e-15 * w.Iout)
+    expect(w.settles).toBe(true)
+  })
+
+  it('declines to name a resting place when there is no resistance to make one', () => {
+    const w = fluxWalk({ ...p, Ron: 0, Ron2: 0 })
+    expect(w.balanced).toBe(true)
+    expect(w.settles).toBe(false)
+    expect(w.offsetSolved).toBe(Infinity)
+  })
+
+  it('moves the flux and not the output: the ratio stays the balanced one', () => {
+    const w = fluxWalk({ ...p, Ron2: 0.06 })
+    const mid = measures(steadyState(pushPull({ ...p, Ron: 0.055 })))
+    expect(w.Mbalanced).toBeCloseTo(mid.M, 12)
+    // The asymmetric solve's own output average, against the balanced one.
+    const fixed = clockedSteadyState(w.plan, 3)
+    let vs = 0
+    for (const seg of fixed.segments) {
+      const { phi1, phi2 } = propagator(seg.A, seg.T)
+      const ix = vecAdd(matVec(phi1, seg.x0), matVec(phi2, seg.f))
+      vs += ix[1]
+    }
+    expect(vs / w.T / p.Vin / w.Mbalanced).toBeCloseTo(1, 4)
+  })
+})
+
+describe('the walk from rest, across the siblings', () => {
+  const cases = [
+    ['forward', { Vin: 48, D: 0.4, n: 0.25, L: 100e-6, C: 100e-6, R: 5, fs: 100e3 }],
+    ['forward light', { Vin: 48, D: 0.4, n: 0.25, L: 100e-6, C: 100e-6, R: 400, fs: 100e3 }],
+    ['pushpull', { Vin: 24, D: 0.4, n: 0.5, L: 100e-6, C: 100e-6, R: 5, fs: 100e3 }],
+    ['fullbridge', { Vin: 24, D: 0.4, n: 0.5, L: 100e-6, C: 100e-6, R: 5, fs: 100e3 }],
+    ['fullbridge light', { Vin: 24, D: 0.4, n: 0.5, L: 100e-6, C: 100e-6, R: 600, fs: 100e3 }],
+  ]
+  it.each(cases)('%s', (name, p) => {
+    const conv = isolated(name.split(' ')[0], p)
+    const ss = steadyState(conv)
+    const r = runPeriods(conv, [0, 0], { periods: 200000, settle: 1e-13 })
+    expect(r.periods).toBeLessThan(200000)
+    expect(Math.abs(r.x[0] - ss.x0[0]) / Math.max(1e-9, r.scale[0])).toBeLessThan(1e-8)
+    expect(Math.abs(r.x[1] - ss.x0[1]) / Math.max(1e-9, r.scale[1])).toBeLessThan(1e-8)
+    expect(r.mode).toBe(ss.mode)
   })
 })
