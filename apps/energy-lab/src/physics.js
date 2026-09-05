@@ -114,7 +114,7 @@ export function isAt(is, n, T) {
  * carrier pair or it does not, and the rate does not depend on what the
  * terminals are doing, so the photocurrent is proportional to the irradiance
  * exactly. The short-circuit current inherits that proportionality to within
- * what the shunt takes, which is A6's whole point.
+ * what the shunt takes, which is A7's whole point.
  */
 export const iphAt = (iph, G) => (G / G_REF) * iph
 
@@ -137,9 +137,9 @@ export const vtAt = (T) => thermalVoltage(T)
  * microsiemens, a thousand times more, and the same solver then converges
  * over the whole curve in two to eight iterations.
  *
- * What it costs is measured rather than assumed, and A5 quotes it: on the
- * standard cell the open-circuit voltage falls by 0.31 µV and the maximum
- * power by 0.0035 %. The toggle drops it to 5 Ω, where the same two figures
+ * What it costs is measured rather than assumed, and A6 quotes it: on the
+ * standard cell the open-circuit voltage falls by 0.325 µV and the maximum
+ * power by 0.001157 %. The toggle drops it to 5 Ω, where the same two figures
  * become visible ones.
  */
 export const SHUNT_DEFAULT = 1e4
