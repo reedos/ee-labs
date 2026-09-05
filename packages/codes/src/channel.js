@@ -75,6 +75,20 @@ export function symmetric(bits, { p, seed = 1 } = {}) {
   }
 }
 
+/**
+ * Received levels from a set of beliefs, in this lab's own convention.
+ *
+ * A decoder here measures the squared distance to ±1, with 0 sent as +1. A
+ * belief is `log P(0|y) / P(1|y)`, which on this channel is `2y/σ²`, so the
+ * level that belief stands for is `σ² L / 2`. The map is linear and positive,
+ * so the path it picks is the path the beliefs pick.
+ *
+ * This is how the Communications Lab's `softMetric` reaches Viterbi. That
+ * lab sends bit 0 as −1 and this one sends it as +1, and taking the belief
+ * rather than the sample is what makes the difference not matter.
+ */
+export const levelsFromLlr = (llr, sigma2 = 1) => Array.from(llr, (v) => (sigma2 * v) / 2)
+
 /** How many places two bit strings differ in. */
 export function errorCount(a, b) {
   if (a.length !== b.length) throw new CodesError('channel-length', `${a.length} bits cannot be compared with ${b.length}`)

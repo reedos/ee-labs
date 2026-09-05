@@ -102,4 +102,19 @@ export { L12, L12_CHECKS, L102, arrayLdpc, fourCycles, hardOf, matrixOf, rateOf,
 
 export { RS15, RS255, RS_DECODER_STATUS, rsCheckMatrix, rsCode, rsEncode, rsErasureDecode, rsIsCodeword, rsMessageOf, rsSyndromes } from './src/rs.js'
 
-export { bitStream, crossoverFor, demodulate, errorCount, esN0Db, gaussian, modulate, sigmaFor, symbolStream, symmetric } from './src/channel.js'
+export { bitStream, crossoverFor, demodulate, errorCount, esN0Db, gaussian, levelsFromLlr, modulate, sigmaFor, symbolStream, symmetric } from './src/channel.js'
+
+export {
+  asymptoticHard,
+  asymptoticSoft,
+  channelBer,
+  crossover,
+  ebN0AtBer,
+  gainCurve,
+  hardBlockBer,
+  hardConvBound,
+  pairwiseHard,
+  realGain,
+  softConvBound,
+  uncodedBer,
+} from './src/gain.js'

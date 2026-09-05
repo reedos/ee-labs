@@ -10,5 +10,8 @@
   },
   "dependencies": {
     "@ee-labs/random": "*"
+  },
+  "devDependencies": {
+    "@ee-labs/comms": "*"
   }
 }
