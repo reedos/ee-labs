@@ -696,6 +696,41 @@ Phase 1 is six experiments and needs nothing from the Logic Lab. If that lab sli
 this one still ships a fifth of itself dark, and the cache group stands alone as a
 lesson.
 
+### What the build did, and where the numbers moved
+
+Phases 1 to 6 are built and the lab is dark. All seven groups and all thirty
+experiments are on `lab/computer-lab`, so the phases landed in one sitting
+rather than six. Phase 7, the release gate, is Reed's.
+
+Five things this section records, because the build measured what §4.3 stated
+and the two did not always agree.
+
+- **The time grid is 10 fs rather than one picosecond.** A NAND2 driving one
+  NAND2 input is 37.65 ps, which is not a whole picosecond, and the engine's
+  times are integers. On a grid of one hundred-trillionth of a second the same
+  delay is the integer 3765 and nothing rounds. Everything else in the card is
+  a whole multiple of that number or of the inverter's 22.59 ps.
+- **The two adders are measured rather than stated.** Group A builds both for
+  `@ee-labs/events` and the engine times them. The ripple carry is 64 gate
+  delays, the two-level lookahead is 8, a four-bit lookahead block is 4, and
+  the factor between the two carries is 8.00. Each of those is §4.3's number.
+- **Three numbers in §4.3 are wrong, and the built lab uses its own.** The
+  even-split pipeline period is 444.3 ps rather than 414.1, because §4.3
+  divided the single-cycle path rather than the sum of the five stage delays.
+  The multicycle count is 4.05 cycles an instruction rather than 4.35, from the
+  five-state machine D2 walks. And E3's dependence chain costs four stall
+  cycles without forwarding rather than three, because the schedule puts the
+  second dependent instruction where it puts it.
+- **Invariant 7 of §2.8 is false.** A counter-example is pinned in the engine's
+  test and `apps/computer-lab/NEEDS.md` §5 states the correction.
+- **Carry select is not built.** §4.3 quotes it and no experiment in §5
+  measures it, so Group A builds the two adders A1 and A2 need.
+
+One layout decision differs from §4.1. The datapath is not on screen in every
+group, because Groups A, B, F and G have no datapath to draw. Each experiment
+names its own first pane instead, and the datapath is that pane wherever a
+program runs.
+
 ---
 
 ## 10. Non-goals (v1, stated so they are decisions rather than omissions)

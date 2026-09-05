@@ -399,6 +399,50 @@ below.
   omission. The two most likely to be asked for are a dispatch with a loss
   formula and a second machine for multi-machine stability, and both are named
   there with the reason.
+### Computer Lab
+
+All seven groups are built, 30 experiments, and the app is dark. The engine, the
+app and the two documents are on `lab/computer-lab`. What is left is Reed's
+release gate (`COMPUTER_LAB_PLAN.md` §9, phase 7) and the items below.
+
+- **The browser harness**, `apps/computer-lab/scripts/verify.mjs`, is not
+  written. The plan's §7 names it. Two of the three things it would catch are
+  covered without a browser. `App.smoke.test.jsx` mounts every pane of every
+  experiment against that experiment's own analysis.
+  `components/canvases.test.jsx` measures every canvas prop through the
+  geometry it produces. It checks that no two datapath blocks overlap and that
+  every block fits inside 390 px. What is left uncovered is the app end to end
+  and the layout as a picture. Deferred to the sitting that does the
+  REVIEW_PLAYBOOK audit, because the audit needs the screenshots anyway.
+- **Invariant 7 of the plan is false**, and the correction is in
+  `apps/computer-lab/NEEDS.md` §5. A fully associative cache with least
+  recently used replacement can miss more than a direct-mapped one of the same
+  size, and the fuzzer found a four-reference trace that does it. The
+  counter-example is pinned in `engine/engine.test.js`, and what does hold is
+  tested beside it. The plan's §2.8 needs the wording changed.
+- **The model card's ALU entry is 8 gate delays and the netlist measures 17**,
+  which `NEEDS.md` §5 puts to the director. Both numbers are on screen in A3
+  and the difference is named there. Making the card follow the netlist would
+  move the clock period and change every number in Groups C and E.
+- **The VLSI Lab's gate delays** are quoted rather than extracted (plan
+  Decision 5). The card states 37.65 ps for a NAND2 and 22.59 ps for an
+  inverter, and every other delay in the lab is a whole multiple of one of
+  them. Invariant 10 compares the two labs' cards, and it waits for that lab.
+  Nothing else in this lab waits for anything.
+- **The two canvases are copied rather than imported.** `TimingCanvas` and
+  `StateCanvas` are the Logic Lab's, and `PROGRAM.md` §4 names this lab as
+  their second claimant. `NEEDS.md` §3 asks the director to promote both into
+  `packages/ui`, and this app deletes its copies when that lands.
+- **Three plan numbers moved**, because this lab computes them rather than
+  quoting them. The even-split pipeline period is 444.3 ps against the plan's
+  414.1, because the plan divided the single-cycle path rather than the five
+  stage delays. The multicycle count is 4.05 cycles an instruction against
+  4.35, from the five-state machine the lab actually walks. And E3's chain
+  costs four stall cycles without forwarding rather than three, because the
+  second dependent instruction meets the first one where the schedule puts it.
+- **Carry select is specified and not built.** The plan's §4.3 quotes it at 13
+  gate delays and no experiment in §5 measures it. Group A builds the ripple
+  carry and the two-level lookahead, which are the two A1 and A2 need.
 
 ## 3. The director's queue
 
