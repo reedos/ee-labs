@@ -55,6 +55,8 @@ jobs:
           cp -r apps/circuit-elements-lab/dist _site/circuit-elements-lab
           # Same arrangement for the Power Lab: apps/power-lab/RELEASE_STATUS.
           cp -r apps/power-lab/dist _site/power-lab
+          # Dark-launched labs of the EE Labs program, each gated by its own RELEASE_STATUS.
+          cp -r apps/machines-lab/dist _site/machines-lab
 
       - uses: actions/upload-pages-artifact@v3
         with:

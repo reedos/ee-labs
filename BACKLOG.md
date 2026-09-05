@@ -27,7 +27,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Instruments Lab | building | `lab/instruments-lab` | RF Lab for the network analyser group | to write |
 | Fields Lab | building | `lab/fields-lab` | | to write |
 | Energy Lab | building | `lab/energy-lab` | Machines Lab for the wind group | to write |
-| Machines Lab | building | `lab/machines-lab` | Power Lab F for the drives group | to write |
+| Machines Lab | built, dark | merged | Power Lab F for the drives group | `MACHINES_LAB_PLAN.md` |
 | Communications Lab | waiting | | Random Signals Lab | `COMMUNICATIONS_LAB_PLAN.md` |
 | Information Lab | waiting | | Communications Lab | `INFORMATION_LAB_PLAN.md` |
 | Applied Analog Lab | waiting | | Electronics L, M | `APPLIED_ANALOG_LAB_PLAN.md` |
