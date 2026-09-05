@@ -138,8 +138,8 @@ export const LESSONS = {
       'and the voltage is, so raising the voltage buys power. Above it the exponential has taken over and ' +
       'the current is falling faster than the voltage rises. The resistance that sits there is V_mpp/I_mpp, ' +
       'which is 0.11572 Ω for this cell. It is not a property of the load. It is a property of the light, ' +
-      'the temperature and the junction, and every one of those moves during a day. That is why Group C ' +
-      'exists.',
+      'the temperature and the junction, and every one of those moves during a day, carrying the maximum ' +
+      'power point with them. Group C tracks that moving point rather than a fixed one.',
     whyReads: [['pv.rmpp', 0.11572]],
   },
 
@@ -311,7 +311,7 @@ export const LESSONS = {
       'carrier pair or does not, at a rate that has nothing to do with the terminals. So I_sc follows the ' +
       'light linearly. V_oc is n·V_T·ln(I_ph/I_s + 1), and a logarithm of a linear thing is not linear. ' +
       'Each halving of the light costs n·V_T·ln 2, and each decade costs n·V_T·ln 10. That is why a panel ' +
-      'in poor light still reads nearly its full voltage while delivering hardly any current, and why an ' +
+      'in poor light still reads nearly its full voltage while delivering hardly any current. An ' +
       'open-circuit voltmeter is a bad way to tell whether the sun is out.',
     whyReads: [
       ['pv.halving', 0.017809],
@@ -501,7 +501,7 @@ export const LESSONS = {
       'difference has to go somewhere, and the only place left is backwards through that cell. Its junction ' +
       'reverses, and the cell stops being a source and becomes a load on the other eleven. That is why the ' +
       'curve now has a step in it rather than a knee. Below the shaded cell’s photocurrent all twelve ' +
-      'behave; above it, eleven of them are pushing current through the twelfth. What that costs is the ' +
+      'behave. Above it, eleven of them are pushing current through the twelfth, and what that costs is the ' +
       'next experiment.',
   },
 
@@ -588,9 +588,9 @@ export const LESSONS = {
     why:
       'Above the shaded cell’s photocurrent the diode conducts, the shaded cell is bypassed, and the ' +
       'string is eleven cells instead of twelve. Below it the diode blocks and all twelve are in circuit. ' +
-      'Those are two different curves, and the P–V curve of the pair has a maximum on each. That is the ' +
-      'trouble a tracker meets: a rule that only walks uphill will stop on whichever hump it started ' +
-      'nearest, and the smaller one is a third of the larger. A real module carries one diode per group of ' +
+      'Those are two different curves, and the P–V curve of the pair has a maximum on each. A tracker that ' +
+      'only walks uphill stops on whichever hump it started nearest, and the smaller one is a third of the ' +
+      'larger. A real module carries one diode per group of ' +
       'cells, so a real curve can have several humps, and finding the tallest is a search rather than a ' +
       'climb.',
   },
@@ -752,7 +752,7 @@ export const LESSONS = {
       'Steps to arrive go as one over the step size, and the loss once there goes as the step size ' +
       'squared. Quarter the step and the walk takes four times as long and loses a sixteenth as much. ' +
       'Neither end is free. A tracker with a coarse step follows a passing cloud and wastes power in ' +
-      'steady sun, and one with a fine step is nearly perfect in steady sun and is still walking when the ' +
+      'steady sun. One with a fine step is nearly perfect in steady sun and is still walking when the ' +
       'cloud has gone. Real trackers vary the step, taking large ones while the power is changing fast and ' +
       'small ones when it is not.',
   },
@@ -882,7 +882,7 @@ export const LESSONS = {
     ],
     why:
       'The trick is the straight-line fit. Over the band where the open-circuit voltage rises linearly with ' +
-      'the state of charge, OCV = V₀ + k·z, and z is charge over capacity, so the open-circuit source and ' +
+      'the state of charge, OCV = V₀ + k·z, and z is charge over capacity. So the open-circuit source and ' +
       'the charge store are one capacitor of Q/k farads. That makes the whole cell a linear circuit, which ' +
       'is why every number in this group is exact rather than stepped. The fit is labelled data and it has ' +
       'a band, from 0.1 to 0.9. Outside it a real cell’s curve turns over at both ends and this one ' +
@@ -892,8 +892,8 @@ export const LESSONS = {
   d3: {
     see:
       'Over 1200 s at 1.000 A the terminal delivers 4478.45 J and the three resistances turn 56.3349 J into ' +
-      'heat. That is 1.242 % of what left the cell, and it is the whole of the difference between the ' +
-      'charge taken out and the energy received.',
+      'heat. That is 1.242 % of what left the cell. It is the whole difference between the charge taken ' +
+      'out and the energy received.',
     seeReads: [
       ['batt.out', 4478.45],
       ['batt.heat', 56.3349],

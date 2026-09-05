@@ -111,7 +111,7 @@ export const TERMS = {
   },
   internalresistance: {
     term: 'Internal resistance',
-    def: 'The resistance between a cell’s store and its terminals. It is not one number: a step shows R₀ alone, and a settled current shows all of it. Here that is 25 mΩ against 50 mΩ.',
+    def: 'The resistance between a cell’s store and its terminals. A step shows R₀ alone, and a settled current shows all of it, which here is 25 mΩ against 50 mΩ.',
   },
   timeconstant: {
     term: 'Time constant',
