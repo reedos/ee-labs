@@ -1,0 +1,26 @@
+{
+  "name": "dsp-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "node scripts/verify.mjs",
+    "numbers": "node scripts/numbers.mjs"
+  },
+  "dependencies": {
+    "@ee-labs/dsp": "*",
+    "@ee-labs/ui": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "description": "The second DSP course: rate changes, filter design to a specification, adaptive filters, spectral estimation and fixed point.",
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}
