@@ -15,7 +15,7 @@
  * hiding the check rather than making it.
  */
 import React from 'react'
-import { fmt } from '@ee-labs/ui'
+import { fmt, fmtNum } from '@ee-labs/ui'
 import { nz } from '../format.js'
 
 const Row = ({ label, value, unit, digits = 5, note = null }) =>
@@ -25,7 +25,9 @@ const Row = ({ label, value, unit, digits = 5, note = null }) =>
         {label}
         {note ? <em className="prov"> {note}</em> : null}
       </th>
-      <td className="num">{fmt(value, unit, digits)}</td>
+      {/* A count and a share have no unit, and an engineering prefix on one
+          reads as a unit it has not got. */}
+      <td className="num">{unit === '' ? fmtNum(value, digits) : fmt(value, unit, digits)}</td>
     </tr>
   ) : null
 

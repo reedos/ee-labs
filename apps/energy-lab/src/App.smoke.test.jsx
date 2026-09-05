@@ -72,6 +72,24 @@ describe('App', () => {
     }
   }, 120000)
 
+  it('never puts an engineering prefix on a number with no unit', () => {
+    // A fill factor of 0.83478 through the engineering formatter reads
+    // "834.78 m", which is a prefix for a unit the number has not got, and a
+    // state of charge of 0.5 reads "500 m". `fmtNum` exists in the shared
+    // package for exactly this, with the same complaint in its comment.
+    // "56 mkWh" is the other shape of it: a prefix on a prefixed unit.
+    const dangling = /\d\s*(?:m|k|M|G|µ|n|p)\s*(?:<|$)/
+    for (const e of EXPERIMENTS) {
+      for (const v of e.views) {
+        const h = html({ initialId: e.id, initialView: v })
+        expect(h, `${e.id} ${v}`).not.toMatch(/m(?:kWh|Wh|mΩ|kΩ)/)
+        for (const cell of h.matchAll(/<td[^>]*>([^<]*)<\/td>/g)) {
+          expect(dangling.test(cell[1]), `${e.id} ${v}: "${cell[1]}"`).toBe(false)
+        }
+      }
+    }
+  }, 300000)
+
   it('asks the shared palette only for colours it has', () => {
     const dir = join(here, 'components')
     let asked = 0

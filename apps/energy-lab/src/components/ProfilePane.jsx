@@ -17,7 +17,10 @@ import { fmt } from '@ee-labs/ui'
 import { shortfallOf } from '../analysis.js'
 import { CELSIUS } from '../physics.js'
 
-const KWH = 3.6e6
+// Watt-hours rather than kilowatt-hours: an hour of this bus moves a few
+// hundred of them, and the shared formatter turns 0.35 kWh into "350 mkWh",
+// which is a prefix on a prefixed unit.
+const WH = 3600
 
 export default function ProfilePane({ x }) {
   const rows = x.g.rows
@@ -58,7 +61,7 @@ export default function ProfilePane({ x }) {
                 <td className="num">{fmt(r.T - CELSIUS, '°C', 4)}</td>
                 <td className="num">{fmt(r.load, 'W', 3)}</td>
                 <td className="num">{fmt(r.pv, 'W', 5)}</td>
-                <td className="num">{fmt(r.toBank / KWH, 'kWh', 3)}</td>
+                <td className="num">{fmt(r.toBank / WH, 'Wh', 3)}</td>
                 <td className="num">{r.z.toFixed(4)}</td>
                 <td className={short ? 'flag warn' : ''}>{short}</td>
               </tr>

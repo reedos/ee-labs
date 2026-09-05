@@ -280,7 +280,9 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
           decimals={kb.percent ? 1 : undefined}
           scale={kb.scale}
           hint={kb.hint}
-          eng={!kb.percent}
+          // A knob with no unit says `eng: false`, and the shared field would
+          // otherwise show a state of charge of 0.5 as "500 m".
+          eng={kb.eng !== false && !kb.percent}
         />
       )}
     </div>

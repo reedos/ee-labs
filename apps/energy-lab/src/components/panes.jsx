@@ -5,13 +5,26 @@
  * does, so nothing here is a second measurement of anything.
  */
 import React from 'react'
-import { fmt } from '@ee-labs/ui'
+import { fmt, fmtNum } from '@ee-labs/ui'
 
 const Row = ({ label, value, unit, digits = 4 }) =>
   Number.isFinite(value) ? (
     <tr>
       <th scope="row">{label}</th>
       <td className="num">{fmt(value, unit, digits)}</td>
+    </tr>
+  ) : null
+
+/**
+ * A reading with no unit: a fill factor, a state of charge, a count. The
+ * engineering formatter would print 0.83478 as "834.78 m", which is a prefix
+ * for a unit the number has not got, so these go through `fmtNum` instead.
+ */
+const Plain = ({ label, value, digits = 5 }) =>
+  Number.isFinite(value) ? (
+    <tr>
+      <th scope="row">{label}</th>
+      <td className="num">{fmtNum(value, digits)}</td>
     </tr>
   ) : null
 
@@ -23,7 +36,7 @@ export function ReadingPane({ exp, x }) {
           <tbody>
             <Row label="Terminal voltage" value={x.at.v} unit="V" />
             <Row label="Terminal current" value={x.at.i} unit="A" />
-            <Row label="State of charge" value={x.at.z} unit="" digits={5} />
+            <Plain label="State of charge" value={x.at.z} />
             <Row label="Open-circuit voltage here" value={x.at.v !== undefined ? x.ocv0 : NaN} unit="V" />
             <Row label="τ₁ = R₁C₁" value={x.tau1} unit="s" />
             <Row label="τ₂ = R₂C₂" value={x.tau2} unit="s" />
@@ -41,7 +54,7 @@ export function ReadingPane({ exp, x }) {
           <tbody>
             <Row label="This hour, array" value={x.at.pv} unit="W" />
             <Row label="This hour, load" value={x.at.load} unit="W" />
-            <Row label="State of charge" value={x.at.z} unit="" digits={5} />
+            <Plain label="State of charge" value={x.at.z} />
             <Row label="Bank voltage" value={x.g.bankV} unit="V" />
             <Row label="Bank energy, full" value={x.g.bankE / 3.6e6} unit="kWh" />
             <Row label="Served" value={x.served * 100} unit="%" />
@@ -59,7 +72,7 @@ export function ReadingPane({ exp, x }) {
           <Row label="V_mpp" value={x.fig.vmpp} unit="V" />
           <Row label="I_mpp" value={x.fig.impp} unit="A" />
           <Row label="P_mpp" value={x.fig.pmpp} unit="W" />
-          <Row label="Fill factor" value={x.fig.ff} unit="" digits={5} />
+          <Plain label="Fill factor" value={x.fig.ff} />
           <Row label="R_mpp" value={x.fig.rmpp} unit="Ω" />
           <Row label="Operating V" value={x.at.v} unit="V" />
           <Row label="Operating I" value={x.at.i} unit="A" />
@@ -86,9 +99,9 @@ export function LedgerPane({ exp, x }) {
             <Row label="Served" value={(g.eLoad - g.unserved) / KWH} unit="kWh" />
             <Row label="Unserved" value={g.unserved / KWH} unit="kWh" />
             <Row label="Curtailed" value={g.curtailed / KWH} unit="kWh" />
-            <Row label="Turned to heat in the bank" value={g.lost / KWH} unit="kWh" />
+            <Row label="Turned to heat in the bank" value={g.lost / 3600} unit="Wh" />
             <Row label="Net stored" value={g.stored / KWH} unit="kWh" />
-            <Row label="Ended at, state of charge" value={g.zEnd} unit="" digits={5} />
+            <Plain label="Ended at, state of charge" value={g.zEnd} />
             <tr className="total">
               <th scope="row">Residual: in − (served + stored + curtailed)</th>
               <td className="num">{fmt(g.residual, 'J', 2)}</td>
@@ -110,9 +123,9 @@ export function LedgerPane({ exp, x }) {
               <Row label="Heat, discharging" value={x.round.heatOut} unit="J" />
               <Row label="Heat, charging" value={x.round.heatIn} unit="J" />
               <Row label="Round-trip efficiency" value={x.round.eta * 100} unit="%" />
-              <Row label="State of charge, start" value={x.round.zStart} unit="" digits={5} />
-              <Row label="State of charge, low point" value={x.round.zLow} unit="" digits={5} />
-              <Row label="State of charge, end" value={x.round.zEnd} unit="" digits={5} />
+              <Plain label="State of charge, start" value={x.round.zStart} />
+              <Plain label="State of charge, low point" value={x.round.zLow} />
+              <Plain label="State of charge, end" value={x.round.zEnd} />
             </>
           ) : (
             <>
