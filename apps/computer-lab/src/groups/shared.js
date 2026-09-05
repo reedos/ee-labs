@@ -23,12 +23,6 @@ export const Choice = (key, label, def, options, hint) => ({ key, label, kind: '
 /** A two-position switch, on or off. */
 export const Switch = (key, label, def, on = 'on', off = 'off', hint) => ({ key, label, kind: 'bit', default: def, on, off, hint })
 
-/** A size in bytes, on a power-of-two field. */
-export const Bytes = (key, label, def, min, max, hint) => ({ key, label, unit: 'B', min, max, step: 1, scale: 'log', decimals: 0, default: def, hint })
-
-/** A plain number a reader turns, such as a miss penalty in cycles. */
-export const Number_ = (key, label, def, min, max, step = 1, hint) => ({ key, label, unit: '', min, max, step, scale: 'linear', decimals: step < 1 ? 2 : 0, default: def, hint })
-
 /** The forwarding switch, in the one wording every group uses. */
 export const FORWARDING = (def = 1) => Switch('forwarding', 'Forwarding', def, 'on', 'off')
 
@@ -38,17 +32,6 @@ export const RESOLVE = (def = 'execute') =>
     { value: 'execute', label: 'execute' },
     { value: 'decode', label: 'decode' },
   ])
-
-/** The two operand patterns Group A's adders are measured on. */
-export const OPERANDS = (def = 'propagate') =>
-  Choice('operands', 'Operands', def, [
-    { value: 'propagate', label: 'all propagate' },
-    { value: 'generate', label: 'all generate' },
-    { value: 'small', label: 'small numbers' },
-  ])
-
-/** The operand pair one of those settings stands for. */
-export const operandsOf = (which) => (which === 'generate' ? { a: -1, b: -1 } : which === 'small' ? { a: 5, b: 9 } : { a: -1, b: 0 })
 
 /**
  * A quantity entry, so a group file reads as a list of readings.

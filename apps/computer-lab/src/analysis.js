@@ -130,5 +130,3 @@ export const kindOf = (path) => path.split('.')[0]
 
 /** Every quantity an experiment produces, in the order it declared them. */
 export const quantitiesOf = (x) => Object.entries(x.q).map(([path, entry]) => ({ path, ...entry, read: valueOf(path, entry.value) }))
-
-export { amat, amat2, cacheRun, runDatapath, runPipeline }
