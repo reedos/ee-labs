@@ -271,7 +271,7 @@ const PROFILES = {
     cut: 0,
     from: -p.len,
     to: p.len,
-    scalar: { read: (t) => F.solenoidOnAxis(p.a, p.len, p.N, p.I, t), label: 'Flux density on axis', unit: 'T' },
+    scalar: { read: (t) => F.solenoidOnAxis(p.a, p.len, p.N, p.I, t).B, label: 'Flux density on axis', unit: 'T' },
     regions: [
       { from: -p.len / 2, to: p.len / 2, label: 'winding' },
     ],
@@ -317,13 +317,19 @@ function plateProfile(p) {
 
 function radialProfile(p, kind) {
   const geometry = { kind, a: p.a, b: p.b, epsr: p.epsr }
-  const scalar = radialPotential(geometry, p.V)
+  // An experiment about a resistance (D2, D3) has no voltage knob, because its
+  // answer does not depend on one. Its profile is drawn at one volt, which is
+  // the convention `mapPropsFor` already uses for the same geometries: the
+  // shape of the potential is what the view is about, and the shape is the
+  // same at every voltage.
+  const V = p.V ?? 1
+  const scalar = radialPotential(geometry, V)
   // The field along the same cut: one over r in a cylinder, one over r
   // squared in a sphere — Gauss's law on the two surfaces, restated in A4.
   const field =
     kind === 'coax'
-      ? (r) => p.V / (r * Math.log(p.b / p.a))
-      : (r) => (p.V * p.a * p.b) / (r * r * (p.b - p.a))
+      ? (r) => V / (r * Math.log(p.b / p.a))
+      : (r) => (V * p.a * p.b) / (r * r * (p.b - p.a))
   return {
     axis: 'x',
     cut: 0,

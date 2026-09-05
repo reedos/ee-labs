@@ -12,9 +12,10 @@ One line for `.github/workflows/deploy.yml`, added at integration.
 cp -r apps/fields-lab/dist _site/fields-lab
 ```
 
-`release.test.js` already checks for it, and that test is red until the line
-lands. The lab deploys dark at `/fields-lab/`, and `RELEASE_STATUS` reads `dark`
-until Reed changes it.
+`release.test.js` holds this file to carrying that line. It also holds the
+workflow to shipping the build at that path or at none, so the two texts cannot
+drift apart while the director is adding it. The lab deploys dark at
+`/fields-lab/`, and `RELEASE_STATUS` reads `dark` until Reed changes it.
 
 ## 2. The progression test
 

@@ -55,9 +55,9 @@ export const LESSONS_D = {
 
   d3: {
     see:
-      'The same coaxial geometry. Its resistance is 188.9 GΩ and its capacitance 105.4 pF/m, and their product is ' +
-      '19.92 s. That product is ε over σ, and it does not depend on the shape at all.',
-    seeReads: [['rc', 19.922]],
+      'This is the coaxial geometry of D2. Its resistance is 188.9 GΩ and its capacitance 105.4 pF/m, and their ' +
+      'product is 19.92 s. That product is ε over σ, and it does not depend on the shape at all.',
+    seeReads: [['R.value', 1.8887e11], ['C.perMetre', 1.0542e-10], ['rc', 19.922]],
     try: [
       {
         say: 'Set the dielectric to 1. The product falls to 8.854 s, in the ratio of the two permittivities.',
@@ -84,6 +84,7 @@ export const LESSONS_D = {
       'pair. On a 5 mm block that reads 3.142 Ω·cm. The same reading on a thin film would mean something else ' +
       'entirely.',
     seeReads: [['fourPoint.resistivity', 0.031416]],
+    whyReads: [['fourPoint.sheetCoefficient', 4.53236]],
     try: [
       {
         say: 'Set the thickness to 1 µm. The sample is now a sheet, and the reading is 22.66 Ω per square.',
@@ -104,8 +105,8 @@ export const LESSONS_D = {
     why:
       'The four-point probe forces current through the outer pair and senses voltage on the inner pair, which draws ' +
       'no current and so carries no contact resistance. What that voltage means depends on where the current went. ' +
-      'In a thick block it spreads into a hemisphere and the resistivity is 2πs times V/I, which carries the ' +
-      'spacing. In a thin film it spreads in the plane, and the sheet resistance is π/ln 2 times V/I, which does ' +
+      'In a thick block it fans out into a hemisphere, and that spreading resistance makes the resistivity 2πs ' +
+      'times V/I, which carries the spacing. In a thin film it spreads in the plane, and the sheet resistance is π/ln 2 times V/I, which does ' +
       'not carry the spacing at all. The coefficient 4.532 is the same for every probe ever built. Between the two ' +
       'regimes a correction factor is needed, and this lab quotes neither number rather than the nearer one.',
   },

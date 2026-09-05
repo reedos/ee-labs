@@ -5,7 +5,7 @@
 // transformer group assumes. E5 and E6 are the seam to that lab.
 
 import { circlePath, loopOnAxis, MU0 } from '@ee-labs/fields'
-import { Amp, Area, Deg, Len, Mu, Ratio, Turns } from '../knobs.js'
+import { Amp, Area, Deg, Eps, Gap, Len, Mu, Pos, Ratio, Turns } from '../knobs.js'
 
 export const GROUP = 'E · Magnetostatics'
 
@@ -21,7 +21,7 @@ export const E = [
     params: [
       Len('a', 'Loop radius', 0.05),
       Amp('I', 'Current', 3),
-      Len('z', 'Height on the axis', 0),
+      Pos('z', 'Height on the axis', 0, undefined, -0.5, 0.5),
       Ratio('sides', 'Sides of the polygon', 720, 'How finely the loop is cut', 6, 2880),
     ],
     path: (p) => circlePath(p.a, { sides: Math.round(p.sides) }),
@@ -41,7 +41,7 @@ export const E = [
     params: [
       Amp('I', 'Current', 10),
       Len('r', 'Contour radius', 0.02),
-      Len('off', 'Contour offset', 0, 'Move the contour off the wire'),
+      Pos('off', 'Contour offset', 0, 'Move the contour off the wire', -0.2, 0.2),
     ],
     path: () => [
       [0, 0, -1e5],
@@ -65,7 +65,7 @@ export const E = [
       Len('len', 'Length', 0.2),
       Turns('N', 'Turns', 400),
       Amp('I', 'Current', 2),
-      Len('z', 'Position from the centre', 0, 'Move to the end to see it halve'),
+      Pos('z', 'Position from the centre', 0, 'Move to the end to see it halve', -0.5, 0.5),
     ],
     solenoid: (p) => [p.a, p.len, p.N, p.I, p.z],
     view: 'profile',
@@ -84,8 +84,9 @@ export const E = [
       Len('b', 'Shield radius', 1.475e-3),
       Mu('mur', 'Relative permeability', 1),
       Ratio('internal', 'Count the conductor field', 0, 'Set to 1 to add mu over eight pi', 0, 1),
+      Eps('epsr', 'Dielectric', 2.25, 'The polyethylene of B2, so both per-metre figures are the same cable'),
     ],
-    geometry: (p) => ({ kind: 'coax', a: p.a, b: p.b, mur: p.mur, length: 1 }),
+    geometry: (p) => ({ kind: 'coax', a: p.a, b: p.b, mur: p.mur, epsr: p.epsr, length: 1 }),
     view: 'numbers',
     views: ['numbers', '2d', 'profile'],
     headline: (x) => ({ value: x.L.perMetre, unit: 'H/m', label: 'Inductance per metre' }),
@@ -101,7 +102,7 @@ export const E = [
       Len('mean', 'Mean path length', 0.2),
       Area('area', 'Core cross-section', 4e-4),
       Mu('mur', 'Core permeability', 2000),
-      Len('gap', 'Air gap', 1e-3),
+      Gap('gap', 'Air gap', 1e-3, 'Close it to nothing and the core is unbroken'),
       Turns('N', 'Turns', 200),
       Amp('I', 'Current', 1),
     ],
@@ -116,7 +117,7 @@ export const E = [
     group: GROUP,
     kind: 'magnetics',
     name: 'The transformer, from the reluctance up',
-    terms: ['mutualinductance', 'coupling', 'leakage', 'turnsratio'],
+    terms: ['mutualinductance', 'coupling', 'leakageflux', 'turnsratio'],
     params: [
       Len('mean', 'Mean path length', 0.2),
       Area('area', 'Core cross-section', 4e-4),

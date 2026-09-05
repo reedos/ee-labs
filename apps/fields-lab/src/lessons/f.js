@@ -57,7 +57,7 @@ export const LESSONS_F = {
   f3: {
     see:
       'A 0.35 mm lamination of silicon steel at 1.2 T and 50 Hz loses 1543 W/m³ to eddy currents. The loss follows ' +
-      'the square of the thickness, which is why a core is built from thin sheets rather than one solid block.',
+      'the square of the thickness. That is why a core is built from thin sheets and not from one solid block.',
     seeReads: [['eddy.P', 1543.4]],
     try: [
       {
@@ -74,7 +74,7 @@ export const LESSONS_F = {
     why:
       'A changing flux drives a current round any conducting loop it threads, and a solid core is nothing but ' +
       'loops. The emf round a loop of half-width x grows with x and so does the path, so the power grows as x ' +
-      'squared and the total over a sheet of thickness d comes to π²B²f²d² over 6ρ. Slicing the core into ' +
+      'squared. Over a sheet of thickness d that totals π²B²f²d² over 6ρ. Slicing the core into ' +
       'insulated sheets shortens every loop. This formula assumes the induced currents do not push the field out ' +
       'of the sheet, which holds while the thickness is a fraction of the skin depth. The panel reports that ratio ' +
       'against a threshold of one half.',

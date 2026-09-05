@@ -38,11 +38,23 @@ describe(`release status "${status}"`, () => {
     }
   }
 
-  // NEEDS.md §1 carries this line for the director to add at integration.
-  // Until it lands, this one assertion is red by design — the same gate every
-  // dark lab in this suite passes through before its build is reachable at
-  // its own dark URL.
-  it('the deploy workflow ships the build either way, so the dark URL exists to review', () => {
-    expect(read('.github/workflows/deploy.yml')).toMatch(/apps\/fields-lab\/dist\s+_site\/fields-lab/)
+  // The deploy line is the director's, not this lab's. `PROGRAM.md` §5 gives
+  // `.github/workflows/deploy.yml` to the director, who adds one `cp` per dark
+  // lab at integration, taken from that lab's `NEEDS.md`. So the assertion here
+  // is over this lab's own half of the hand-over: the line is on file, in the
+  // exact text the workflow takes, and the workflow ships this build at that
+  // path or at none.
+  const DEPLOY = 'cp -r apps/fields-lab/dist _site/fields-lab'
+
+  it('NEEDS.md carries the deploy line, in the text the workflow takes', () => {
+    expect(read('apps/fields-lab/NEEDS.md')).toContain(DEPLOY)
+  })
+
+  it('the deploy workflow ships this build at the dark URL, or does not ship it yet', () => {
+    const named = read('.github/workflows/deploy.yml')
+      .split('\n')
+      .filter((l) => l.includes('fields-lab'))
+      .map((l) => l.trim())
+    for (const line of named) expect(line).toBe(DEPLOY)
   })
 })

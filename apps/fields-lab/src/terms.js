@@ -31,7 +31,7 @@ export const TERMS = {
     name: 'Permittivity',
     def:
       'How much charge a material lets you store for a given field, in farads per metre. Vacuum has ε₀ = 8.854 × ' +
-      '10⁻¹² F/m. A material is quoted by its relative permittivity, which multiplies that: polyethylene is 2.25 ' +
+      '10⁻¹² F/m. A material is quoted by its relative permittivity, which multiplies that. Polyethylene is 2.25 ' +
       'and glass epoxy 3.9.',
   },
   superposition: {
@@ -207,8 +207,8 @@ export const TERMS = {
     name: 'Staircase boundary',
     def:
       'A curved conductor drawn as a set of square cells, so its edge is a flight of steps. The steps do not shrink ' +
-      'in proportion as the mesh is refined, which is why a circle on a square mesh converges at first order rather ' +
-      'than second.',
+      'in proportion as the mesh is refined. That is why a circle on a square mesh converges at first order and ' +
+      'not at second.',
   },
   safetyfactor: {
     name: 'Safety factor',
@@ -228,8 +228,8 @@ export const TERMS = {
     name: 'Divergence theorem',
     def:
       'The flux out of a closed surface equals the integral of the divergence inside it. On a grid it becomes an ' +
-      'exact identity between the flux across a block’s faces and the sum of the charges in its cells, which is ' +
-      'why those two numbers agree to the solver’s residual.',
+      'exact identity between the flux across a block’s faces and the charges in its cells. That is why those two ' +
+      'numbers agree to the solver’s residual.',
   },
   currentdensity: {
     name: 'Current density',
@@ -289,15 +289,15 @@ export const TERMS = {
   biotsavart: {
     name: 'Biot-Savart law',
     def:
-      'Each short piece of current makes a field falling as one over the square of the distance, at right angles ' +
-      'to both the piece and the line to the field point. A whole wire is the sum of its pieces, and one straight ' +
-      'piece has a closed form.',
+      'Each short piece of current makes a field falling as one over the square of the distance. It points at ' +
+      'right angles to both the piece and the line to the field point. A whole wire is the sum of its pieces, and ' +
+      'one straight piece has a closed form.',
   },
   fluxdensity: {
     name: 'Magnetic flux density',
     def:
-      'The magnetic field B, in tesla. A tesla is a large unit: the earth’s field is about 50 µT and a 50 mm loop ' +
-      'carrying 3 A gives 37.7 µT at its centre. A transformer core runs near 1.2 T.',
+      'The magnetic field B, in tesla. A tesla is a large unit. The earth’s field is about 50 µT, a 50 mm loop ' +
+      'carrying 3 A gives 37.7 µT at its centre, and a transformer core runs near 1.2 T.',
   },
   permeability: {
     name: 'Permeability',
@@ -528,13 +528,13 @@ export const MATCH = {
   divergence: /\bdivergence theorem\b/i,
   currentdensity: /\bcurrent density\b/i,
   conductivity: /\bconductivit/i,
-  ohmpoint: /Ohm’s law at a point|\bat a point\b/i,
+  ohmpoint: /\bOhm(’s law)? at a point\b|\bpoint form\b/i,
   resistivity: /\bresistivit/i,
   leakage: /\bleak/i,
   relaxationtime: /\brelaxation time\b/i,
   fourpoint: /\bfour-point probe\b|\bfour probes\b/i,
   sheetresistance: /\bsheet resistance\b|\bper square\b/i,
-  spreading: /\bspreads?\b/i,
+  spreading: /\bspreading\b/i,
   biotsavart: /Biot-Savart/i,
   fluxdensity: /\bflux density\b/i,
   permeability: /\bpermeabilit/i,
@@ -549,7 +549,7 @@ export const MATCH = {
   internalinductance: /\binternal\b/i,
   reluctance: /\breluctance/i,
   mmf: /\bmagnetomotive force\b/i,
-  airgap: /\bair gap\b|\bgap\b/i,
+  airgap: /\bair gap\b/i,
   fringing: /\bfringing\b/i,
   mutualinductance: /\bmutual inductance\b|\bmutual\b/i,
   coupling: /\bcoupling\b/i,

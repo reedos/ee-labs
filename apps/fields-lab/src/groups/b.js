@@ -4,7 +4,7 @@
 // one. Every number here is exact, so no experiment in this group carries a
 // guard and none of the notes hedge.
 
-import { Area, Eps, Len, Volt } from '../knobs.js'
+import { Area, Dist, Eps, Len, Volt } from '../knobs.js'
 
 export const GROUP = 'B · Capacitance'
 
@@ -14,7 +14,7 @@ export const B = [
     group: GROUP,
     kind: 'capacitance',
     name: 'A parallel plate holds eps A over d',
-    terms: ['capacitance', 'permittivity', 'field', 'uniformfield'],
+    terms: ['capacitance', 'permittivity', 'field', 'uniformfield', 'breakdown', 'fringing'],
     params: [
       Area('area', 'Plate area', 1e-4),
       Len('gap', 'Gap', 1e-3),
@@ -59,7 +59,7 @@ export const B = [
     terms: ['capacitance', 'gauss', 'isolatedsphere'],
     params: [
       Len('a', 'Sphere radius', 0.05),
-      Len('b', 'Shell radius', 0.06),
+      Dist('b', 'Shell radius', 0.06, 'Push it far away and the sphere stands alone'),
       Eps('epsr', 'Dielectric', 1),
       Volt('V', 'Voltage', 100),
     ],

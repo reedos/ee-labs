@@ -5,7 +5,7 @@
 // number on that, and D4 is the measurement that cannot be read at all without
 // knowing which object is under the probe.
 
-import { Amp, Area, Eps, Len, Rho, Sigma, Volt } from '../knobs.js'
+import { Amp, Area, Dist, Eps, Len, Rho, Sigma, Volt } from '../knobs.js'
 import { SIGMA_CU } from '@ee-labs/fields'
 
 export const GROUP = 'D · Current and resistance'
@@ -19,7 +19,7 @@ export const D = [
     terms: ['currentdensity', 'conductivity', 'ohmpoint', 'resistivity'],
     params: [
       Rho('rho', 'Resistivity', 1 / SIGMA_CU, 'Annealed copper at 20 degrees'),
-      Len('len', 'Bar length', 1),
+      Dist('len', 'Bar length', 1),
       Area('area', 'Cross-section', 1e-6),
       Volt('V', 'Voltage across it', 0.05),
     ],
@@ -73,8 +73,8 @@ export const D = [
     terms: ['fourpoint', 'sheetresistance', 'spreading', 'resistivity'],
     params: [
       Len('s', 'Probe spacing', 1e-3),
-      Volt('V', 'Voltage across the inner pair', 5e-3),
-      Amp('I', 'Current through the outer pair', 1e-3),
+      Volt('V', 'Inner-pair voltage', 5e-3, 'What the sense probes read'),
+      Amp('I', 'Outer-pair current', 1e-3, 'What the force probes drive'),
       Len('t', 'Sample thickness', 5e-3, 'Thick is a block, thin is a sheet'),
     ],
     fourPoint: (p) => ({ spacing: p.s, voltage: p.V, current: p.I, thickness: p.t }),

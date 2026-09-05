@@ -9,7 +9,7 @@
 // finest mesh of 80, and one of 48 means 192.
 
 import { capacitancePerMetre, valueAt } from '@ee-labs/fields'
-import { Cells, Eps, Len, Volt } from '../knobs.js'
+import { Cells, Eps, Len, Ratio, Volt } from '../knobs.js'
 
 export const GROUP = 'C · Laplace on a grid'
 
@@ -56,7 +56,7 @@ export const C = [
     group: GROUP,
     kind: 'grid',
     name: 'Relaxation finds a potential no formula gives',
-    terms: ['laplace', 'relaxation', 'boundarycondition', 'meanvalue'],
+    terms: ['laplace', 'relaxation', 'boundarycondition', 'meanvalue', 'meshguard'],
     params: [
       Len('w', 'Trough side', 0.1),
       Volt('V', 'Top side', 100),
@@ -64,7 +64,11 @@ export const C = [
       Len('py', 'Probe up', 0.075),
       Cells('n', 'Cells across', 20, 'The coarsest of the three meshes'),
     ],
-    gridKey: (p) => [p.w, p.V, p.n],
+    // The cache key is every knob the SOLVE and the READ both depend on. The
+    // probe is in it because `read` evaluates the solution there: leaving it
+    // out returns the report solved for the previous probe, which is a moved
+    // knob that changes nothing on screen.
+    gridKey: (p) => [p.w, p.V, p.n, p.px, p.py],
     spec: troughSpec,
     cells: (p) => p.n,
     threshold: 1e-3,
@@ -79,7 +83,7 @@ export const C = [
     group: GROUP,
     kind: 'grid',
     name: 'The guard is the change between two meshes',
-    terms: ['convergence', 'meshguard', 'richardson', 'order'],
+    terms: ['convergence', 'meshguard', 'richardson', 'order', 'safetyfactor'],
     params: [
       Len('w', 'Trough side', 0.1),
       Volt('V', 'Top side', 100),
@@ -87,7 +91,11 @@ export const C = [
       Len('py', 'Probe up', 0.075),
       Cells('n', 'Cells across', 20),
     ],
-    gridKey: (p) => [p.w, p.V, p.n],
+    // The cache key is every knob the SOLVE and the READ both depend on. The
+    // probe is in it because `read` evaluates the solution there: leaving it
+    // out returns the report solved for the previous probe, which is a moved
+    // knob that changes nothing on screen.
+    gridKey: (p) => [p.w, p.V, p.n, p.px, p.py],
     spec: troughSpec,
     cells: (p) => p.n,
     threshold: 1e-3,
@@ -142,7 +150,7 @@ export const C = [
       Len('a', 'Inner radius', 1e-3),
       Len('b', 'Shield radius', 3.5e-3),
       Cells('n', 'Cells across', 48),
-      Len('box', 'Contour, as a fraction of the shield', 0.45),
+      Ratio('box', 'Contour fraction', 0.45, 'How much of the shield the Gauss contour encloses', 0.1, 0.9),
     ],
     gridKey: (p) => [p.a, p.b, p.n],
     spec: coaxSpec,

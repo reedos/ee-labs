@@ -94,7 +94,7 @@ export function MeshPane({ x }) {
       {x.compare ? (
         <p className="hint">
           {x.compare.name} gives {num(x.compare.value, x.headline?.unit)}, {' '}
-          {(100 * Math.abs(g.value - x.compare.value) / Math.abs(x.compare.value)).toPrecision(3)} % from the grid.
+          {(100 * x.compare.error).toPrecision(3)} % from the grid.
         </p>
       ) : null}
     </div>

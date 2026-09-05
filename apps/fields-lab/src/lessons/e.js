@@ -26,10 +26,10 @@ export const LESSONS_E = {
     ],
     why:
       'Biot-Savart says each short piece of current makes a field that falls as one over the square of the ' +
-      'distance and points at right angles to both the piece and the line to the field point. A whole wire is the ' +
+      'distance. That field points at right angles to both the piece and the line to the field point. A whole wire is the ' +
       'sum of its pieces, and one straight piece has a closed form. So the app draws any shape as a polyline and ' +
-      'adds. A polygon of s sides differs from the circle it stands for by a term of order one over s squared, ' +
-      'which is why 12 sides is 2.3 per cent out and 720 sides is not. Nothing here is a special case for a loop.',
+      'adds. A polygon of s sides differs from the circle it stands for by a term of order one over s squared. ' +
+      'That is why 12 sides is 2.3 per cent out and 720 sides is not. Nothing here is a special case for a loop.',
   },
 
   e2: {
@@ -88,12 +88,13 @@ export const LESSONS_E = {
       'The RG-58 geometry once more, now for its inductance. The field between the conductors gives 237.4 nH/m. ' +
       'Together with the 105.4 pF/m of B2 that is everything a transmission line needs, which is where group I ' +
       'starts.',
-    seeReads: [['L.perMetre', 2.3743e-7]],
+    seeReads: [['L.perMetre', 2.3743e-7], ['C.perMetre', 1.0542e-10]],
+    whyReads: [['L.internalPerMetre', 5.0e-8]],
     try: [
       {
         say: 'Set the internal knob to 1, which counts the field inside the inner conductor. It adds 50.00 nH/m.',
         set: { internal: 1 },
-        reads: [['L.perMetre', 2.8743e-7]],
+        reads: [['L.perMetre', 2.8743e-7], ['L.internalPerMetre', 5.0e-8]],
       },
       {
         say: 'Set the relative permeability to 100. The inductance rises a hundredfold to 23.74 µH/m.',
@@ -105,7 +106,7 @@ export const LESSONS_E = {
       'Inductance is flux linkage over current. Ampère gives B = µI/2πr between the conductors, and integrating ' +
       'that from a to b gives the flux one metre of line links, so L′ is µ/2π times ln(b/a). The internal term is ' +
       'the flux inside the solid inner conductor, which links only part of the current. It works out to µ₀/8π ' +
-      'exactly, 50 nH/m, whatever the wire’s radius. At any frequency where the current has crowded to the surface ' +
+      'exactly, 50 nH/m, whatever the wire’s radius. At any frequency where the current has moved to the surface ' +
       'that term has gone, which is what F4 is about, so it is off by default.',
   },
 
@@ -114,6 +115,8 @@ export const LESSONS_E = {
       'A core of relative permeability 2000, a 200 mm path, 400 mm² of iron, and a 1 mm air gap. Two hundred turns ' +
       'at 1 A give 18.29 mH. The gap is half a per cent of the path and takes 90.95 per cent of the drive.',
     seeReads: [['circuit.inductance', 0.018287], ['circuit.gapShare', 0.9095]],
+    whyAt: { gap: 0 },
+    whyReads: [['circuit.Bcore', 2.5133]],
     try: [
       {
         say: 'Close the gap. The inductance rises to 201.1 mH, eleven times what it was.',

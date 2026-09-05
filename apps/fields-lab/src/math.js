@@ -46,7 +46,32 @@ export const clearCache = () => CACHE.clear()
 export function analyse(exp, p) {
   const fn = KINDS[exp.kind]
   if (!fn) throw new Error(`No analysis for kind ${exp.kind} (experiment ${exp.id})`)
-  return { kind: exp.kind, exp, p, ...fn(exp, p) }
+  try {
+    return { kind: exp.kind, exp, p, ...fn(exp, p) }
+  } catch (err) {
+    if (err && err.name === 'FieldsError') return declined(exp, p, err)
+    throw err
+  }
+}
+
+/**
+ * A setting the engine will not describe.
+ *
+ * An inner radius larger than an outer one is not clamped back into a valid
+ * geometry. `FIELDS_LAB_PLAN.md` §2.1 says why: it is a different object, and
+ * `describeGeometry` throws a message naming the dimension and what it must be.
+ * The app shows that sentence where the headline would be, rather than the last
+ * answer that happened to work, so a knob taken past what a geometry allows
+ * reads as a refusal and not as a number.
+ */
+function declined(exp, p, err) {
+  return {
+    kind: exp.kind,
+    exp,
+    p,
+    declined: { says: err.message, field: err.field },
+    headline: { value: NaN, unit: '', label: 'Declined' },
+  }
 }
 
 const KINDS = {
@@ -125,7 +150,7 @@ function analyseCapacitance(exp, p) {
     out.energy = F.fieldEnergy(geometry, p.V ?? 1)
     out.peakField = F.peakField(geometry, p.V ?? 1)
   }
-  if (F.hasClosedForm(geometry.kind, 'inductance')) out.L = F.inductance(geometry, { internal: p.internal > 0.5 })
+  if (F.hasClosedForm(geometry.kind, 'inductance')) out.L = withInternal(geometry, p)
   if (F.hasClosedForm(geometry.kind, 'resistance') && p.sigma) out.R = F.resistance(geometry, p.sigma)
   if (exp.radial) out.radial = exp.radial(out, p)
   out.headline = exp.headline(out, p)
@@ -146,7 +171,13 @@ function analyseGrid(exp, p) {
     return report
   })
   const out = { grid: solved, sol: solved.solution }
-  if (exp.compare) out.compare = exp.compare(p)
+  if (exp.compare) {
+    out.compare = exp.compare(p)
+    // The true error, where there is something exact to measure against. The
+    // guard's band is what the report defends without knowing this number; C3's
+    // whole point is that the band holds it.
+    out.compare.error = Math.abs(solved.value - out.compare.value) / Math.abs(out.compare.value)
+  }
   if (exp.contour) {
     const c = exp.contour(out.sol, p)
     out.flux = {
@@ -201,12 +232,27 @@ function analyseMagnetics(exp, p) {
   if (exp.geometry) {
     const geometry = exp.geometry(p)
     out.geometry = geometry
-    if (F.hasClosedForm(geometry.kind, 'inductance')) out.L = F.inductance(geometry, { internal: p.internal > 0.5 })
+    if (F.hasClosedForm(geometry.kind, 'inductance')) out.L = withInternal(geometry, p)
+    // The same geometry's capacitance, where it has one. E4's note leans on it:
+    // an inductance per metre and a capacitance per metre are between them
+    // everything a transmission line needs, which is where group I starts.
+    if (F.hasClosedForm(geometry.kind, 'capacitance')) out.C = F.capacitance(geometry)
   }
   if (exp.circuit) out.circuit = F.magneticCircuit(exp.circuit(p))
   if (exp.transformer) out.xfmr = F.transformer(exp.transformer(p))
   out.headline = exp.headline(out, p)
   return out
+}
+
+/**
+ * The inductance, with the field inside the conductors counted or not, and the
+ * difference between the two named. That difference is mu over 8 pi per
+ * conductor whatever the radius, which is E4's claim and F4's starting point,
+ * so it is a number the engine produces rather than one a lesson asserts.
+ */
+function withInternal(geometry, p) {
+  const L = F.inductance(geometry, { internal: p.internal > 0.5 })
+  return { ...L, internalPerMetre: F.inductance(geometry, { internal: true }).perMetre - F.inductance(geometry, { internal: false }).perMetre }
 }
 
 // ------------------------------------------------------------------- group F
@@ -334,11 +380,15 @@ export function guardOf(x) {
     const holder = x[key]
     if (holder && holder.guard) return holder.guard
   }
+  // A transformer's magnetic circuit is nested under it, and it is the same
+  // approximation with the same guard, so E6 flies the flag E5 does.
+  if (x.xfmr && x.xfmr.circuit && x.xfmr.circuit.guard) return x.xfmr.circuit.guard
   return null
 }
 
 /** The refusal an experiment is showing, if its whole point is one. */
 export function refusalOf(x) {
+  if (x.declined) return x.declined.says
   if (x.available && !x.available.ok) return x.available.says
   return null
 }

@@ -9,8 +9,22 @@
 /** A length in metres, entered on a logarithmic slider. */
 export const Len = (key, label, def, hint) => ({ key, label, unit: 'm', min: 1e-6, max: 1, scale: 'log', default: def, hint })
 
+/**
+ * A position on an axis, signed, on a linear scale. A length is a size and
+ * cannot be zero or negative; a probe's height above a loop is a coordinate and
+ * is usually zero, so the two are different knobs.
+ */
+export const Pos = (key, label, def, hint, min = -1, max = 1) => ({ key, label, unit: 'm', min, max, scale: 'linear', default: def, hint })
+
 /** A larger length, for a line or a link. */
 export const Dist = (key, label, def, hint) => ({ key, label, unit: 'm', min: 1e-3, max: 1e5, scale: 'log', default: def, hint })
+
+/**
+ * A gap, which is a length that may be closed. Zero is a real setting here and
+ * not a degenerate one: an ungapped core is the case E5 measures the gapped one
+ * against, so the knob's range starts at it.
+ */
+export const Gap = (key, label, def, hint, max = 0.02) => ({ key, label, unit: 'm', min: 0, max, scale: 'linear', default: def, hint })
 
 /** An area in square metres. */
 export const Area = (key, label, def, hint) => ({ key, label, unit: 'm²', min: 1e-9, max: 1, scale: 'log', default: def, hint })

@@ -23,7 +23,7 @@ export const LESSONS_C = {
     ],
     why:
       'Laplace’s equation says the potential has no local maximum or minimum anywhere charge is absent. In two ' +
-      'dimensions that has a sharp form: the value at a point is the average of the values around it on any circle ' +
+      'dimensions it has a sharp form. The value at a point is the average of the values around it on any circle ' +
       'drawn about it. Relaxation is that statement used as an instruction. Sweep the grid, replace each free node ' +
       'by the average of its four neighbours, and repeat until nothing moves. The centre of a square trough reads a ' +
       'quarter of the top side at every mesh, because the four sides can be superposed and each contributes the ' +
@@ -60,7 +60,8 @@ export const LESSONS_C = {
       'The same solver on a round coaxial line, meshed on a square grid. It gives 44.1 pF/m against the closed ' +
       'form’s 44.41 pF/m. The observed order has fallen to 0.81, and 46.3 per cent of the conductor boundary steps ' +
       'across the mesh rather than following it.',
-    seeReads: [['grid.value', 4.4096e-11], ['compare.value', 4.4408e-11], ['grid.staircase', 0.46278]],
+    seeReads: [['grid.value', 4.4096e-11], ['compare.value', 4.4408e-11], ['grid.order', 0.80774], ['grid.staircase', 0.46278]],
+    whyReads: [['grid.safety', 3]],
     try: [
       {
         say: 'Widen the shield to 7 mm. The grid gives 28.4 pF/m against the closed form’s 28.59 pF/m.',
@@ -69,7 +70,7 @@ export const LESSONS_C = {
       },
       {
         say: 'Read the error band, 2.62 per cent. The true error against the closed form is 0.703 per cent.',
-        reads: [['grid.band', 0.026157]],
+        reads: [['grid.band', 0.026157], ['compare.error', 0.0070268]],
       },
     ],
     why:
@@ -78,7 +79,7 @@ export const LESSONS_C = {
       'the extrapolation the guard uses is less reliable. The guard measures that rather than assuming it. It walks ' +
       'the conductor boundary and counts the nodes exposed on two perpendicular sides, which is what a step is. A ' +
       'rectangle has four of those however fine the mesh. A circle has them all the way round. When the fraction is ' +
-      'high the safety factor goes from 1.25 to three, and the band widens to hold the error it cannot pin down.',
+      'high the safety factor goes from one and a quarter to three, and the band widens to hold the error it cannot pin down.',
   },
 
   c4: {
@@ -113,6 +114,7 @@ export const LESSONS_C = {
       'guard is the whole warrant. The last halving moved the answer by 0.118 per cent, past the 0.1 per cent ' +
       'threshold, so it is quoted to two figures as 48 pF/m.',
     seeReads: [['grid.change', 0.0011763], ['grid.value', 4.7832e-11]],
+    whyReads: [['grid.staircase', 0.015873], ['grid.order', 1.343], ['grid.safety', 3]],
     try: [
       {
         say: 'Widen the inner conductor to 3 mm. The change falls to 0.0994 per cent and the guard is met.',
@@ -126,10 +128,10 @@ export const LESSONS_C = {
     ],
     why:
       'This geometry has no closed form, which is the ordinary case once a shape stops being a plate, a cylinder or ' +
-      'a sphere. The boundary follows the mesh here, so the staircase fraction is small and the safety factor stays ' +
-      'at 1.25. What holds the order below two is the re-entrant corner at each edge of the inner conductor. The ' +
-      'field there is singular, the discretisation cannot follow it, and the error picks up a term that falls more ' +
-      'slowly than the square of the cell size. The guard notices without being told, because it measures the ' +
-      'answer and not the geometry.',
+      'a sphere. The boundary follows the mesh here, so only 1.59 per cent of it steps. What holds the order down ' +
+      'to 1.343 is the re-entrant corner at each edge of the inner conductor. The field there is singular, the ' +
+      'discretisation cannot follow it, and the error picks up a term that falls more slowly than the square of ' +
+      'the cell size. An order that far below two earns the wide safety factor of three. The guard reaches that by ' +
+      'measuring the answer, not by looking at the geometry.',
   },
 }

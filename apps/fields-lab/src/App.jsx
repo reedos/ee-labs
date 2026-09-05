@@ -230,9 +230,17 @@ export default function App({ initialId = FIRST, initialView = null }) {
             {refusal ? <span className="flag warn" data-role="refusal-note">{refusal}</span> : null}
           </div>
           <div className="view-body">
-            {currentView === '2d' ? <FieldMapCanvas {...mapPropsFor(exp, params, x)} /> : null}
-            {currentView === 'profile' ? <FieldMapCanvas mode="profile" profile={profilePropsFor(exp, params, x)} /> : null}
-            {PaneComponent ? <PaneComponent exp={exp} x={x} p={params} /> : null}
+            {x.declined ? (
+              <p className="hint fields-declined" data-role="declined">
+                {x.declined.says}
+              </p>
+            ) : (
+              <>
+                {currentView === '2d' ? <FieldMapCanvas {...mapPropsFor(exp, params, x)} /> : null}
+                {currentView === 'profile' ? <FieldMapCanvas mode="profile" profile={profilePropsFor(exp, params, x)} /> : null}
+                {PaneComponent ? <PaneComponent exp={exp} x={x} p={params} /> : null}
+              </>
+            )}
           </div>
         </section>
       </main>

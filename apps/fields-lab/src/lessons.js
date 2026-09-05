@@ -127,6 +127,7 @@ export function readQuantity(x, p, path) {
       return need(x.solenoid[rest[0]], path)
     case 'circuit':
       if (rest[0] === 'reluctance') return need(x.circuit.reluctance[rest[1]], path)
+      if (rest[0] === 'guard') return need(x.circuit.guard[rest[1]], path)
       return need(x.circuit[rest[0]], path)
     case 'xfmr':
       return need(x.xfmr[rest[0]], path)

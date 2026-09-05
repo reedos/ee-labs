@@ -92,7 +92,7 @@ export const LESSONS_B = {
 
   b4: {
     see:
-      'Two wires of 0.4 mm radius, 6 mm between their centres, hold 10.29 pF/m. The map shows the field crowding ' +
+      'Two wires of 0.4 mm radius, 6 mm between their centres, hold 10.29 pF/m. The map shows the field bunching ' +
       'on the facing sides of the two wires, where it reaches 52.87 kV/m at 100 V.',
     seeReads: [['C.perMetre', 1.0289e-11], ['E.peak', 52872]],
     try: [
