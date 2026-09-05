@@ -8,6 +8,8 @@
 // rest why it matters here; concrete numbers over abstraction; no term
 // defined using an undefined term.
 
+import { MATCH_F, TERMS_F } from './groups/f.terms.js'
+
 export const TERMS = {
   opampmacro: {
     name: 'The op-amp macro',
@@ -149,6 +151,7 @@ export const TERMS = {
       'rise, about −1.7 mV per kelvin near 0.7 V. It is the same law as I_S(T), read the other way round. A ' +
       'bias point built from a diode drop drifts with temperature unless something compensates it.',
   },
+  ...TERMS_F,
 }
 
 /** Every term's pattern, tried in the order the prose is read. */
@@ -173,4 +176,5 @@ export const MATCH = {
   transitfreq: /\btransition frequency\b|\bf_T\b/,
   saturationcurrent: /\bsaturation current\b|\bI_S\b/i,
   tempco: /\btemperature coefficient\b|\bmV\/K\b|dV_BE\/dT/i,
+  ...MATCH_F,
 }
