@@ -137,6 +137,27 @@ export const PROGRAMS = {
     ],
     note: 'Sixty-four words in address order, which is the trace a block size is worth the most on.',
   },
+  each: {
+    name: 'One of every opcode',
+    for: ['c1', 'd1'],
+    regs: [0, 6, 7],
+    mem: memWithScalar(),
+    code: [
+      r('add', 3, 1, 2), //         0
+      r('sub', 4, 1, 2), //         1
+      r('and', 5, 1, 2), //         2
+      r('or', 6, 1, 2), //          3
+      r('slt', 7, 1, 2), //         4
+      i('addi', 8, 1, 5), //        5
+      i('andi', 9, 1, 12), //       6
+      i('lw', 10, 0, 8), //         7
+      i('sw', 10, 0, 40), //        8
+      i('beq', 0, 1, 0), //         9  not taken, because r1 is not zero
+      i('bne', 1, 1, 0), //        10  not taken, because a register equals itself
+      j('j', 12), //               11  past the end, which is where the run stops
+    ],
+    note: 'One instruction of each of the twelve opcodes, so every field and every control signal appears once.',
+  },
   save: {
     name: 'Sixteen registers saved',
     for: ['g2'],
