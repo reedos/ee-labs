@@ -157,26 +157,66 @@ nothing moves between two events in a logic netlist.
 
 ### 2.2 The netlist of gates
 
-One driver per signal, and the signal carries the driver's name. A gate named
-`p` drives the signal `p`, and every gate that lists `p` among its inputs reads
-it. A `wire` is a driver with no logic that copies one signal to another after a
-delay, which is how clock skew and interconnect are written.
+A **net** is a wire with a name. A **driver** is a source, a gate, a wire or a
+flip-flop, and it drives one net. A driver's `out` names that net and defaults
+to the driver's own id, so the common case reads as "the gate `p` drives the
+signal `p`" with nothing extra written down. A `wire` is a driver with no logic,
+which is how clock skew and interconnect are written.
 
 ```js
 {
   name: 'the static-1 hazard',
+  unit: { num: 1, den: 1e12 },   // the time grid, an exact rational of a second
   sources: [{ id: 'a', kind: 'input', value: 1 },              // held, and enumerable
              { id: 'clk', kind: 'clock', period: 1000, high: 500, phase: 0 },
              { id: 'x', kind: 'step', at: 100, from: 1, to: 0 },
              { id: 'd', kind: 'pattern', period: 200, bits: [0, 1, 1, 0], repeat: false }],
-  gates: [{ id: 'p', kind: 'and', in: ['a', 'b'], delay: 70, tr: 70, tf: 70, init: null }],
+  gates: [{ id: 'p', kind: 'and', in: ['a', 'b'], out: 'p', delay: 70, tr: 70, tf: 70, init: null }],
   wires: [{ id: 'clk2', from: 'clk', delay: 50 }],
   flops: [{ id: 'q', d: 'p', clk: 'clk', edge: 'rising', tcq: 80, tsu: 40, th: 20, init: 0 }],
   outputs: ['q'],
-  delayMode: 'transport',        // or 'inertial' (Decision 3)
-  lib: {}                        // per-kind delay overrides
+  resolve: { sda: 'wired-and' },  // per net: 'single' (the default), 'wired-and', 'wired-or'
+  delayMode: 'transport',         // or 'inertial' (Decision 3)
+  lib: {},                        // per-kind delay overrides
+  cells: {}                       // cells this netlist registers of its own
 }
 ```
+
+### 2.2a A net with more than one driver
+
+Two devices on one open-drain line each either pull it low or release it, and a
+pull-up holds it high when nobody pulls. That net is the conjunction of what its
+drivers do, and `resolve` says so. Three rules, and each is exact.
+
+- `wired-and`, the open-drain bus the Interfaces Lab needs.
+- `wired-or`, its dual.
+- `single`, the default. Drivers that agree give their common value. Drivers
+  that disagree produce a **conflict event**, with the net, the drivers and
+  their values, rather than a silently chosen winner. The truth table declines a
+  net in that state and names it.
+
+### 2.2b The time grid
+
+Every time is an integer count of the netlist's `unit`, and the unit is an exact
+rational number of seconds. One picosecond is the default, and this lab uses it
+throughout.
+
+A lab whose natural time is not a round number of picoseconds picks its own.
+A 9600 baud bit time is 1/9600 of a second, which is not a whole number of
+picoseconds. On a grid of one three-hundred-billionth of a second it is
+31 250 000 units, and a 30 ps gate beside it is 9 units. Both exact, both whole,
+in one run. That is what lets the Interfaces Lab put a protocol and a gate in
+the same netlist without either drifting.
+
+### 2.2c What a consumer may register
+
+`packages/events` stays general. A lab that needs a cell this library has no
+entry for registers it on its own netlist, as
+`{ name, fanIn: [lo, hi], fn, delay: { [fanIn]: units } }`. The VLSI Lab's
+extracted cells and the Interfaces Lab's pin models are registered that way.
+Neither they nor an extraction module, a cache model, a datapath or a protocol
+checker become this package's business. Those belong to the labs that need
+them.
 
 ### 2.3 One instant, in three steps
 
@@ -266,6 +306,21 @@ hold:   t_cq + t_pd(min) ≥ t_h + t_skew
 The hold inequality does not contain T. A hold failure is not fixed by slowing
 the clock, and the test pins that by giving the same design two periods and
 requiring the same hold slack.
+
+### 2.8a Where this engine measures setup and hold
+
+**At the flip-flop's terminals.** The setup time is how long D had been still
+when the clock edge arrived, and the hold time is how long it stays still after.
+Both are read off the event list, and the violation carries the measured time,
+the required time and the slack between them.
+
+The VLSI Lab's plan defines the same two times inside the cell, as the storage
+node reaching its trip point before the gate closes. The two agree when the
+cell's own internal delays are folded into `t_su` and `t_h`, which is what a
+characterised library does. The difference is where the boundary is drawn, not
+what is being claimed. This lab takes `t_su` and `t_h` as given numbers of the
+cell. The VLSI Lab derives them and hands them back. `NEEDS.md` records the
+seam so the director reconciles it once.
 
 ### 2.9 Metastability, the one model that is not exact
 
@@ -462,15 +517,16 @@ with `see`, `try` and `why` in the Elements lab's three registers.
   50 ps and the inverted-inputs OR is two levels at 100 ps. Measured: the tables
   agree, and the two delays.
 - **B3 · The canonical sum of products.** `f = Σ(0, 1, 2, 5, 6, 7)` written
-  straight from its minterms: 6 terms, 18 literals, 10 gates. Measured: the gate
-  count, the literal count, and the table.
+  straight from its minterms: 6 terms, 18 literals, 12 gates and 260 ps. Six
+  terms do not fit one OR cell, so the last level is a tree of them. Measured:
+  the gate count, the literal count, the delay, and the table.
 - **B4 · The Karnaugh map, and the loops on it.** The same function on a
   three-variable map in Gray-code order. Six prime implicants, and a minimum
   cover of 3 cubes and 6 literals: `a'b' + bc' + ac`. Measured: the prime count,
   the cover, and the literal count.
 - **B5 · The minimised circuit, built and timed.** The cover of B4 built as
-  gates: 7 gates and 180 ps against B3's 10 gates. The truth table is unchanged.
-  Measured: both gate counts, the delay, and that the tables agree.
+  gates: 7 gates and 180 ps against B3's 12 gates and 260 ps. The truth table is
+  unchanged. Measured: both gate counts, both delays, and that the tables agree.
 - **B6 · The multiplexer, minimised.** The multiplexer's own table reduced to
   `bs + as'`, 2 cubes and 4 literals, which is the circuit C1 already draws.
   Measured: the minterms, the cover, and the literal count.

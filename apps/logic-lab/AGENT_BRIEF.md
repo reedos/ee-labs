@@ -96,22 +96,28 @@ beside it, written before the implementation.
 
 ### 3.1 The netlist of gates (lane 1, `packages/events/src/netlist.js`)
 
+A **net** is a wire with a name. A **driver** is a source, a gate, a wire or a
+flip-flop, and it drives one net. `out` names that net and defaults to the
+driver's own id.
+
 ```js
 {
   name: 'the static-1 hazard',
-  // One driver per signal, and the signal carries the driver's name.
+  unit: { num: 1, den: 1e12 },   // the time grid, an exact rational of a second
   sources: [
     { id: 'a', kind: 'input', value: 0 | 1 },                      // held, and enumerable
-    { id: 'x', kind: 'step', at: 100, from: 1, to: 0 },            // whole picoseconds
+    { id: 'x', kind: 'step', at: 100, from: 1, to: 0 },            // whole units
     { id: 'clk', kind: 'clock', period: 1000, high: 500, phase: 0, init: 0 },
     { id: 'd', kind: 'pattern', period: 200, bits: [0, 1, 1, 0], at: 0, repeat: false },
   ],
-  gates: [{ id: 'p', kind: 'and', in: ['a', 'b'], delay: 70, tr: 70, tf: 70, init: null }],
+  gates: [{ id: 'p', kind: 'and', in: ['a', 'b'], out: 'p', delay: 70, tr: 70, tf: 70, init: null }],
   wires: [{ id: 'clk2', from: 'clk', delay: 10 }],                 // a driver with no logic
   flops: [{ id: 'q', d: 'p', clk: 'clk', edge: 'rising', tcq: 80, tsu: 40, th: 20, init: 0 }],
   outputs: ['q'],
-  delayMode: 'transport',        // or 'inertial'
-  lib: { and: { 2: 60 } },       // per-kind, per-fan-in delay overrides
+  resolve: { sda: 'wired-and' },  // per net: 'single' (default), 'wired-and', 'wired-or'
+  delayMode: 'transport',         // or 'inertial'
+  lib: { and: { 2: 60 } },        // per-kind, per-fan-in delay overrides
+  cells: {},                      // cells this netlist registers of its own
 }
 ```
 
@@ -120,8 +126,46 @@ Kinds and their fan-in. `not` and `buf` take 1 input. `and`, `or`, `nand` and
 delay for is refused, because a delay this package cannot state is a number it
 must not invent.
 
+`tpLH` and `tpHL` are read as `tr` and `tf`, and `tPcq`, `tSetup` and `tHold`
+as `tcq`, `tsu` and `th`. The three track D plans wrote their calls that way
+(`VLSI_LAB_PLAN.md` §2.3 and the two beside it), and reading both spellings
+costs one line each.
+
+**Several drivers on one net.** An open-drain bus is two devices on one line,
+each either pulling it low or releasing it. `resolve` says how they combine.
+`wired-and` is that bus, `wired-or` its dual, and `single` is the default.
+Under `single`, drivers that agree give their common value and drivers that
+disagree produce a **conflict event** carrying the net, the drivers and their
+values. Nothing picks a winner, and `truthTable` declines the net and names it.
+
+**The time grid.** Every time is a whole number of the netlist's `unit`, and the
+unit is an exact rational number of seconds. One picosecond is the default and
+this lab uses it. A 9600 baud bit time is 1/9600 of a second, which is not a
+whole number of picoseconds. On a grid of one three-hundred-billionth of a
+second it is 31 250 000 units and a 30 ps gate is 9 units, both exact, in one
+netlist.
+
+**What a consumer may register.** `cells` adds kinds to one netlist, as
+`{ name, fanIn: [lo, hi], fn: (v) => 0 | 1, delay: { [fanIn]: units } }`. That
+is how a lab adds a cell this library does not have, and it is the only way. A
+lab-specific module (an extraction, a cache, a datapath, a pin, a protocol
+checker) belongs to that lab and not to `packages/events`.
+
 Test: `simulate.test.js` checks every default, every refusal message, and each
-kind's law at every row of its own table.
+kind's law at every row of its own table. `contract.test.js` checks every
+promise in this section, one case per requirement the three plans stated.
+
+### 3.1a Setup and hold, as this engine defines them
+
+**At the flip-flop's terminals.** The setup time is how long D had been still
+when the clock edge arrived. The hold time is how long it stays still after.
+Both are read off the event list, and a violation carries the measured time, the
+required time and the slack between them.
+
+The VLSI Lab's plan defines the same two times inside the cell, as the storage
+node reaching its trip point before the gate closes. The two agree once the
+cell's internal delays are folded into `tsu` and `th`. This lab takes them as
+given numbers, and that lab derives them. `NEEDS.md` records the seam.
 
 ### 3.2 The event queue (lane 1, `queue.js`)
 
@@ -144,26 +188,35 @@ batch", and the determinism fuzz that shuffles the gate list.
 
 ### 3.3 `simulate` (lane 1, `simulate.js`)
 
+Two call shapes. The second is the one the three track D plans wrote.
+
 ```js
-/**
- * @param net   a netlist, or the result of normalize(net)
- * @param opts  { tEnd } in picoseconds, { maxEvents }
- */
-export function simulate(net, opts = {}) => ({
-  tEnd, signals: string[],
-  events: [{ t, signal, from, to, by, delay, cause: { signal, t } | null }],
-  waves: { [signal]: { t: number[], v: number[] } },   // v[i] holds from t[i] to t[i+1]
-  final: { [signal]: 0 | 1 },
+simulate(net, { tEnd })                     // this lab
+simulate(design, stim, { until })           // stim is [{ t, net, value }]
+
+// The result, either way:
+{
+  tEnd, unit, signals: string[], nets: string[],
+  events: [{ t, signal, net, from, to, value, by, delay, cause: { signal, t } | null }],
+  waves: { [net]: { t: number[], v: number[] } },   // v[i] holds from t[i] to t[i+1]
+  at: (t) => Record<net, 0 | 1>,
+  waveform: (net) => [{ t, value }],
+  final: { [net]: 0 | 1 },
   violations: [{ kind: 'setup' | 'hold', flop, t, actual, required, slack, d }],
-  swallowed: [{ signal, at, to, width, mode, dropped: [{ t, value }] }],
+  swallowed: [{ signal, net, by, at, to, width, mode, dropped: [{ t, value }] }],
+  conflicts: [{ t, net, drivers, values }],  // drivers that disagree under 'single'
   settled: boolean,          // the state at t = 0 was consistent with itself
   steps: number,
-})
+}
 
 export function valueAt(res, signal, t)     // 0 or 1
 export function edgesOf(res, signal)        // [{ t, from, to }]
-export function relax(norm)                 // { value: Map, settled }
+export function relax(norm)                 // { value, contrib, settled, conflicts }
 ```
+
+`from` on an event is the value the net held before, and `cause` is the event
+that produced it. The three plans wrote `from` for the causing net, so read
+`cause.signal` for that and `from` for the previous value.
 
 Test: an inverter's single event with `t === cause.t + delay`. The hazard's two
 events 30 ps apart. Both delay models on a 20 ps pulse into a 60 ps gate.
@@ -252,6 +305,8 @@ accident.
   busses={[{ label: 'sum', signals: ['s3', 's2', 's1', 's0'] }]}  // one numeric row
   marks={[{ t: 240, label: 'y falls' }]}
   spans={[{ from: 240, to: 270, label: 'the glitch', signal: 'y' }]}
+  analog={[{ label: 'the pin', samples: [{ t, v }], vLow: 0.8, vHigh: 2.0, unit: 'V' }]}
+  cursors={[240, 270]}                  // two read lines, with the interval printed
   causes                                // draw the line from each event to its cause
   window={[0, 1000]} cursor={500} onCursor={fn}
 />
@@ -265,9 +320,16 @@ accident.
 />
 ```
 
-`busses` and `spans` are the Interfaces Lab's needs and `causes` is the VLSI
-Lab's, written now so that promoting the component into `packages/ui` later is a
-move rather than a rewrite (plan Decision 5). `outputs` is the Computer Lab's.
+`busses`, `spans`, `analog` and `cursors` are the Interfaces Lab's needs.
+`causes` is the VLSI Lab's and `outputs` is the Computer Lab's. All of them are
+written now, so that promoting the component into `packages/ui` later is a move
+rather than a rewrite (plan Decision 5).
+
+`analog` is the one row that is not a logic signal. It draws a real-valued
+trace against two threshold levels. That is the Interfaces Lab's pin between its
+input low and its input high (`PROGRAM.md` §4). This lab has no analog signal,
+so a test drives the prop with a synthetic trace. It checks that the two
+threshold lines and the cursor pair land where they were asked to.
 
 Test: `components/TimingCanvas.test.jsx` renders a known run and checks the
 geometry of each row against `schematicGeometry`'s conventions, as the Elements
@@ -322,7 +384,7 @@ rather than typed in.
 | Lane | Pins |
 | --- | --- |
 | 4, Group A | 30 ps for an inverter, 70 ps for an AND, 50 ps for a NAND, 80 ps for a NAND and an inverter against the library's 70 ps. Four NAND gates and 150 ps for an exclusive-or against 90 ps. Eight rows for three inputs, 40 ps for a buffer and 10 ps for a wire |
-| 4, Group B | 6 primes, a cover of 3 cubes and 6 literals, `a'b' + bc' + ac`. 7 gates and 180 ps against the canonical 10 gates and 18 literals. 50 ps against 100 ps for De Morgan. The multiplexer at 2 cubes and 4 literals |
+| 4, Group B | 6 primes, a cover of 3 cubes and 6 literals, `a'b' + bc' + ac`. 7 gates and 180 ps against the canonical 12 gates, 18 literals and 260 ps. 50 ps against 100 ps for De Morgan. The multiplexer at 2 cubes and 4 literals |
 | 5, Group C | 170 ps and 140 ps for the multiplexer. 100 ps and 70 ps for the decoder. 90 ps and 70 ps for the half adder. 180 ps and 230 ps for the full adder. 650 ps, 600 ps and 180 ps for the 4-bit adder, 20 gates, 140 ps a bit, and every one of 256 sums |
 | 5, Group D | 140 ps and 170 ps for the two paths. A 30 ps pulse at 240 ps, and the settled 1. No event with the consensus term, and 80 ps for the 3-input OR. One swallowed pulse under inertial delay. 1180, 1230, 1370 and 1510 ps for the adder's sum bits |
 | 6, Group E | The `combinational-loop` refusal and the ring it names. 350 ps and 400 ps for the latch. 5 gates for the D latch, 11 for the flip-flop, and 100 ps to Q. A violation window from 461 ps to 519 ps, 59 ps of the 60 ps of `t_su + t_h` |
