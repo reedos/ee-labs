@@ -117,6 +117,11 @@ export function analyse(exp, p, cursor) {
       x.zeros = zerosOf(x.tf).sort((a, b) => a.hz - b.hz)
       x.corner = corners(x.tf, { at: 2 * Math.PI * (exp.at ?? 1) })
       x.gain = evalTF(x.tf, [0, 1e-9])[0]
+      // The response at one frequency: the Bode pane's readout, and what the
+      // H paths quote. An experiment names the frequency it is interested in
+      // with `probe`, and the rest are read where the response is still flat.
+      x.probe = typeof exp.probe === 'function' ? exp.probe(p) : (exp.probe ?? exp.at ?? 1)
+      x.hAt = evalTF(x.tf, [0, 2 * Math.PI * x.probe])
     } catch (err) {
       if (!(err instanceof NetworkError)) throw err
       x.signalRefusal = err
@@ -198,11 +203,21 @@ export function quasiStatic(exp, p) {
   return { key, xs, ys }
 }
 
-/** Σ p for the meters: a residual below a part in a billion of the largest is the zero Tellegen promises. */
+/**
+ * Σ p for the meters, which Tellegen says is zero.
+ *
+ * The floor is the engine's own (invariant 8): a circuit carrying current is
+ * judged against its own volts times its own amps. A circuit carrying almost
+ * none — a junction held in reverse, every branch a few femtoamps — has no
+ * current scale to be judged against, and what is left is the rounding of the
+ * matrix solve on its voltages, which the second term covers.
+ */
 export function netPower(sol) {
-  let scale = 0
-  for (const w of Object.values(sol.p)) scale = Math.max(scale, Math.abs(w))
-  return Math.abs(sol.pTotal) <= 1e-9 * scale ? 0 : sol.pTotal
+  let power = 0
+  let volts = 0
+  for (const w of Object.values(sol.p)) power = Math.max(power, Math.abs(w))
+  for (const v of Object.values(sol.v)) volts = Math.max(volts, Math.abs(v))
+  return Math.abs(sol.pTotal) <= Math.max(1e-9 * power, 1e-15 * volts * volts) ? 0 : sol.pTotal
 }
 
 /** A refusal as a sentence, for the pane that has nothing to draw. */
@@ -252,16 +267,26 @@ export function clipOf(x, node) {
 }
 
 /**
- * The slope of a trace between two instants, in volts per second. The two
- * instants are a tenth and a half of the window unless the experiment says
- * otherwise, so the measurement sits inside the ramp rather than across its
- * corners.
+ * The two instants a slope is measured between.
+ *
+ * A ramp ends at an event: the instant a limited source catches up with what
+ * the loop is asking of it. Measuring past that instant averages the ramp
+ * with the settling that follows and reads a slope that is neither. So the
+ * window is a fraction of the ramp rather than a fraction of the plot, and it
+ * falls back to the whole window for a trace that has no event in it.
  */
+export function rampWindow(x) {
+  const [f1, f2] = x.exp.slopeAt || [0.05, 0.25]
+  const end = x.tr && x.tr.events.length ? x.tr.events[0].t : x.tEnd
+  return [f1 * end, f2 * end]
+}
+
+/** The slope of a trace between those two instants, in volts per second. */
 export function slopeOf(x, node, a = null, b = null) {
   if (!x.tr) return null
-  const [f1, f2] = x.exp.slopeAt || [0.05, 0.25]
-  const t1 = a ?? f1 * x.tEnd
-  const t2 = b ?? f2 * x.tEnd
+  const [w1, w2] = rampWindow(x)
+  const t1 = a ?? w1
+  const t2 = b ?? w2
   return (x.tr.at(t2).sol.v[node] - x.tr.at(t1).sol.v[node]) / (t2 - t1)
 }
 

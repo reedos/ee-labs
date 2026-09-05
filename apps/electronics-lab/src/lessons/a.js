@@ -27,7 +27,7 @@ export const LESSONS_A = {
       },
     ],
     why:
-      'An offset voltage is a mismatch inside the input stage, and from outside it looks like a battery of a ' +
+      'This toggle sits on the op-amp macro. An offset voltage is a mismatch inside the input stage, and from outside it looks like a battery of a ' +
       'millivolt or so in series with one input. The output therefore carries A₀V_OS/(1 + A₀β), which for any ' +
       'useful loop gain is the closed-loop gain times V_OS. Two consequences follow. A stage with a large gain ' +
       'has a large output offset, so the offset sets a floor under the smallest signal that stage can measure. ' +
@@ -63,10 +63,10 @@ export const LESSONS_A = {
       'The inputs of a bipolar op-amp are the bases of two transistors, and a base draws current. That ' +
       'current has to flow through whatever the input is connected to, and the voltage it makes there is ' +
       'indistinguishable from a signal. Making the two inputs see the same resistance makes them see the same ' +
-      'voltage, and a difference amplifier ignores what its two inputs share. The cancellation is exact only ' +
-      'when the two bias currents match. The difference between them is the input offset current, and it is ' +
-      'about a tenth of the bias current in a real part, so the balancing resistor buys about a factor of ten ' +
-      'rather than a clean zero.',
+      'voltage. A difference amplifier ignores what its two inputs share. The cancellation is exact only ' +
+      'when the two bias currents match. The difference between them is the input offset current. It is ' +
+      'about a tenth of the bias current in a real part, so the balancing resistor buys a factor of ten, ' +
+      'not a clean zero.',
   },
 
   a3: {
@@ -136,9 +136,9 @@ export const LESSONS_A = {
         reads: [['peak.out', 0.94188048]],
       },
       {
-        say: 'Drag the cursor to 10 µs. The output reads 4.78 V, halfway up a ramp that started at nothing.',
+        say: 'Drag the cursor to 10 µs. The output reads 5.00 V, halfway up a ramp that started at nothing.',
         at: 10e-6,
-        reads: [['v.out', 4.7797]],
+        reads: [['v.out', 4.9984295]],
       },
     ],
     why:
@@ -156,7 +156,10 @@ export const LESSONS_A = {
       'Two ceilings sit above the output and the lower one decides. The rails are at 12 V and the resistors ' +
       'ask for 11.0 V. The output current limit gets there first, and 25 mA into what the output sees stops ' +
       'it at 2.48 V.',
-    seeReads: [['v.out', 2.4774775]],
+    seeReads: [
+      ['v.out', 2.4774775],
+      [(x, p) => (1 + p.Rf / p.Rg) * p.E, 11],
+    ],
     try: [
       {
         say: 'Raise R_L to 10 kΩ. The same 25 mA is now more current than the load needs, and the output reaches 11.0 V.',
@@ -180,9 +183,10 @@ export const LESSONS_A = {
       'load the rail is what the reader meets. Into a heavy one the current limit arrives long before the ' +
       'rail does, and the output clips at a level that depends on the load rather than on the supply. ' +
       'Common-mode rejection is the third number on the same datasheet page. A voltage applied to both ' +
-      'inputs at once should do nothing, and at 90 dB of rejection five volts of it looks like 158 µV of ' +
+      'inputs at once should do nothing, and at 90 dB of rejection one volt of it looks like 31.6 µV of ' +
       'signal. That error is referred to the input, so a stage with a gain of 11 shows eleven times as much ' +
       'of it at the output.',
+    whyReads: [[(x, p) => p.E / 10 ** (p.cmrr / 20), 3.1623e-5]],
   },
 
   a6: {
@@ -206,8 +210,8 @@ export const LESSONS_A = {
         reads: [['peak.out', 0.099992]],
       },
       {
-        say: 'Drag the cursor to 1.25 ms, in the blocked half. The output reads 0 V and the amplifier sits at −12.0 V.',
-        at: 1.25e-3,
+        say: 'Drag the cursor to 0.75 ms, in the blocked half. The output reads 0 V and the amplifier sits at −12.0 V.',
+        at: 0.75e-3,
         reads: [
           ['v.out', 0, 1e-9],
           ['v.x', -12],

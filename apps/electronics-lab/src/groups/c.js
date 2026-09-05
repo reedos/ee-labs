@@ -15,7 +15,7 @@
 // The doping is the plan's: 10¹⁷ and 10¹⁶ cm⁻³, written here in m⁻³ because
 // that is what the formulas take.
 
-import { Cap, Dope, Is, R, Temp, Vs, W, H, TOP, BOT, chips, gnd, leg, node, wire } from '../knobs.js'
+import { Cap, Dope, Is, R, SatI, Temp, Vs, W, H, TOP, BOT, chips, gnd, leg, node, wire } from '../knobs.js'
 
 const GROUP = 'C · Inside the junction'
 
@@ -56,7 +56,7 @@ function voltageLayout() {
       wire(60, BOT, 260, BOT),
       gnd(160, BOT),
       node('in', 60, TOP, 't'),
-      node('a', 260, 70, 'r'),
+      node('a', 260, 40, 't'),
     ],
   }
 }
@@ -73,13 +73,13 @@ function currentLayout() {
       wire(260, 110, 260, BOT),
       wire(120, BOT, 260, BOT),
       gnd(190, BOT),
-      node('a', 260, 70, 'r'),
+      node('a', 260, 40, 't'),
     ],
   }
 }
 
 const DOPING = [chips(Dope('na', 'Acceptors N_A', JUNCTION.na), [1e22, 1e23, 1e24]), chips(Dope('nd', 'Donors N_D', JUNCTION.nd), [1e21, 1e22, 1e23])]
-const SAT = Is('is', 'Saturation current I_S', JUNCTION.is)
+const SAT = SatI('is', 'Saturation current I_S', JUNCTION.is)
 const TEMP = Temp('T', 'Temperature T', 300)
 
 export const GROUP_C = [

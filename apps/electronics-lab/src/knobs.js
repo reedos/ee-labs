@@ -10,6 +10,9 @@ export const R = (key, label, def, hint) => ({ key, label, unit: 'Ω', min: 1, m
 export const Vs = (key, label, def, hint) => ({ key, label, unit: 'V', min: -24, max: 24, scale: 'linear', default: def, hint })
 export const Amp = (key, label, def, hint) => ({ key, label, unit: 'V', min: 1e-6, max: 12, scale: 'log', default: def, hint })
 export const Is = (key, label, def, hint) => ({ key, label, unit: 'A', min: 1e-9, max: 0.1, scale: 'log', default: def, hint })
+// A saturation current is twelve decades below a bias current, so it gets its
+// own range rather than sharing the one a bias current uses.
+export const SatI = (key, label, def, hint) => ({ key, label, unit: 'A', min: 1e-18, max: 1e-9, scale: 'log', default: def, hint })
 export const Cap = (key, label, def, hint) => ({ key, label, unit: 'F', min: 1e-15, max: 1e-3, scale: 'log', default: def, hint })
 export const Freq = (key, label, def, hint) => ({ key, label, unit: 'Hz', min: 0.1, max: 1e9, scale: 'log', default: def, hint })
 export const Gain = (key, label, def, hint) => ({ key, label, unit: '', min: 1, max: 1e7, scale: 'log', default: def, hint })

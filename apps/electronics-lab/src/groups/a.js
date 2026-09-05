@@ -34,106 +34,125 @@ export const opamp = (on, over = {}) => ({
   ...over,
 })
 
-/** The non-inverting amplifier, drawn once and shared by A1, A3, A4 and A5. */
+/**
+ * The non-inverting amplifier, drawn once and shared by A1, A3, A4 and A5.
+ *
+ * The Elements lab's idiom: the source is a leg on the left, the signal runs
+ * along the top rail into the + input, and the feedback network comes back
+ * along a rail low enough to clear the amplifier's own label. R_g goes on to
+ * ground at the same height, so the divider reads left to right the way it is
+ * written, R_g then R_f then the output.
+ */
 export function nonInverting() {
   return {
     w: W,
     h: H,
     items: [
-      ...leg('V1', 50),
-      wire(50, TOP, 105, TOP),
-      wire(105, TOP, 105, 82),
-      wire(105, 82, 150, 82),
-      { el: 'U1', x: 150, y: 70 },
-      wire(150, 58, 130, 58),
-      wire(130, 58, 130, 18),
-      wire(130, 18, 170, 18),
-      { el: 'Rf', x: 190, y: 18, dir: 'h' },
-      wire(210, 18, 250, 18),
-      wire(250, 18, 250, 70),
-      wire(188, 70, 250, 70),
-      wire(250, 70, 330, 70),
-      wire(130, 58, 90, 58),
-      wire(90, 58, 90, 85),
-      { el: 'Rg', x: 90, y: 105, dir: 'v' },
-      wire(90, 125, 90, BOT),
-      wire(330, 70, 330, 85),
-      { el: 'RL', x: 330, y: 105, dir: 'v' },
-      wire(330, 125, 330, BOT),
-      wire(50, BOT, 330, BOT),
-      gnd(190, BOT),
-      node('in', 50, TOP, 't'),
-      node('n', 130, 58, 'b'),
-      node('out', 250, 70, 't'),
+      { el: 'V1', x: 50, y: 100, dir: 'v' },
+      wire(50, 80, 50, 40),
+      wire(50, 120, 50, 145),
+      wire(50, 145, 70, 145),
+      node('in', 50, 40, 't'),
+      wire(50, 40, 215, 40),
+      wire(215, 40, 215, 48),
+      wire(215, 48, 230, 48),
+      { el: 'U1', x: 230, y: 60, invertTop: false },
+      wire(268, 60, 320, 60),
+      node('out', 320, 60, 'r'),
+      wire(320, 60, 320, 80),
+      { el: 'RL', x: 320, y: 100, dir: 'v' },
+      gnd(320, 120),
+      wire(290, 60, 290, 145),
+      wire(290, 145, 255, 145),
+      { el: 'Rf', x: 235, y: 145, dir: 'h' },
+      wire(215, 145, 170, 145),
+      node('n', 170, 145, 'b'),
+      wire(170, 145, 170, 72),
+      wire(170, 72, 230, 72),
+      wire(170, 145, 140, 145),
+      { el: 'Rg', x: 120, y: 145, dir: 'h' },
+      wire(100, 145, 70, 145),
+      gnd(70, 145),
     ],
   }
 }
 
-/** The inverting amplifier of A2, with a balancing resistor at the + input. */
+/**
+ * The inverting amplifier of A2, with a balancing resistor at the + input.
+ * The signal chain is the top rail, R_g into the summing node, and the
+ * feedback returns along the same rail from the output's riser. R_p hangs
+ * from the + input on the far side of the amplifier's label.
+ */
 function inverting() {
   return {
     w: W,
     h: H,
     items: [
-      ...leg('V1', 50),
-      wire(50, TOP, 70, TOP),
-      wire(70, TOP, 70, 58),
-      { el: 'Rg', x: 95, y: 58, dir: 'h' },
-      wire(115, 58, 150, 58),
-      { el: 'U1', x: 150, y: 70 },
-      wire(130, 58, 130, 18),
-      wire(130, 18, 170, 18),
-      { el: 'Rf', x: 190, y: 18, dir: 'h' },
-      wire(210, 18, 250, 18),
-      wire(250, 18, 250, 70),
-      wire(188, 70, 250, 70),
-      wire(150, 82, 120, 82),
-      wire(120, 82, 120, 95),
-      { el: 'Rp', x: 120, y: 115, dir: 'v' },
-      wire(120, 135, 120, BOT),
-      wire(250, 70, 330, 70),
-      wire(330, 70, 330, 85),
-      { el: 'RL', x: 330, y: 105, dir: 'v' },
-      wire(330, 125, 330, BOT),
-      wire(50, BOT, 330, BOT),
-      gnd(190, BOT),
-      node('in', 50, TOP, 't'),
-      node('n', 130, 58, 't'),
-      node('p', 120, 82, 'l'),
-      node('out', 250, 70, 't'),
+      { el: 'V1', x: 50, y: 95, dir: 'v' },
+      wire(50, 75, 50, 40),
+      wire(50, 115, 50, 155),
+      node('in', 50, 40, 't'),
+      wire(50, 40, 90, 40),
+      { el: 'Rg', x: 110, y: 40, dir: 'h' },
+      wire(130, 40, 170, 40),
+      node('n', 170, 40, 't'),
+      wire(170, 40, 170, 83),
+      wire(170, 83, 230, 83),
+      { el: 'U1', x: 230, y: 95, invertTop: true },
+      wire(230, 107, 150, 107),
+      node('p', 150, 107, 't'),
+      wire(150, 107, 150, 115),
+      { el: 'Rp', x: 150, y: 135, dir: 'v' },
+      wire(150, 155, 50, 155),
+      gnd(100, 155),
+      wire(268, 95, 320, 95),
+      node('out', 320, 95, 'r'),
+      wire(320, 95, 320, 40),
+      wire(320, 40, 270, 40),
+      { el: 'Rf', x: 250, y: 40, dir: 'h' },
+      wire(230, 40, 170, 40),
+      wire(320, 95, 320, 115),
+      { el: 'RL', x: 320, y: 135, dir: 'v' },
+      gnd(320, 155),
     ],
   }
 }
 
-/** The precision rectifier of A6: the diode inside the loop. */
+/**
+ * The precision rectifier of A6: the diode inside the loop, and the feedback
+ * taken from the load rather than from the amplifier's own output. The return
+ * runs over the top, because underneath is where the pull-down hangs.
+ */
 function rectifier() {
   return {
     w: W,
     h: H,
     items: [
-      ...leg('V1', 50),
-      wire(50, TOP, 105, TOP),
-      wire(105, TOP, 105, 58),
-      wire(105, 58, 150, 58),
-      { el: 'U1', x: 150, y: 70 },
-      wire(188, 70, 215, 70),
-      { el: 'D1', x: 245, y: 70, dir: 'h' },
-      wire(275, 70, 340, 70),
-      wire(340, 70, 340, 85),
-      { el: 'RL', x: 340, y: 105, dir: 'v' },
-      wire(340, 125, 340, BOT),
-      wire(215, 70, 215, 85),
-      { el: 'Rx', x: 215, y: 105, dir: 'v' },
-      wire(215, 125, 215, BOT),
-      wire(150, 82, 128, 82),
-      wire(128, 82, 128, 120),
-      wire(128, 120, 285, 120),
-      wire(285, 120, 285, 70),
-      wire(50, BOT, 340, BOT),
-      gnd(180, BOT),
-      node('in', 50, TOP, 't'),
+      { el: 'V1', x: 50, y: 90, dir: 'v' },
+      wire(50, 70, 50, 40),
+      wire(50, 110, 50, 140),
+      node('in', 50, 40, 't'),
+      wire(50, 40, 105, 40),
+      wire(105, 40, 105, 82),
+      wire(105, 82, 150, 82),
+      { el: 'U1', x: 150, y: 70, invertTop: true },
+      wire(188, 70, 245, 70),
       node('x', 215, 70, 't'),
-      node('out', 285, 70, 't'),
+      { el: 'D1', x: 265, y: 70, dir: 'h' },
+      wire(285, 70, 340, 70),
+      node('out', 340, 70, 'r'),
+      wire(340, 70, 340, 90),
+      { el: 'RL', x: 340, y: 110, dir: 'v' },
+      wire(340, 130, 340, 140),
+      wire(215, 70, 215, 100),
+      { el: 'Rx', x: 215, y: 120, dir: 'v' },
+      wire(215, 140, 215, 140),
+      wire(50, 140, 340, 140),
+      gnd(130, 140),
+      wire(285, 70, 285, 25),
+      wire(285, 25, 128, 25),
+      wire(128, 25, 128, 58),
+      wire(128, 58, 150, 58),
     ],
   }
 }
@@ -146,7 +165,7 @@ export const GROUP_A = [
     id: 'a1',
     group: GROUP,
     name: 'Offset voltage, and what it does to gain',
-    terms: ['opampmacro', 'offset', 'looopgain'],
+    terms: ['opampmacro', 'offset', 'loopgain'],
     params: [Vs('E', 'Input V₁', 0), ...GAIN_KNOBS, LOAD, chips(Amp('vos', 'Offset V_OS', 1e-3), [1e-4, 1e-3, 5e-3])],
     net: (p) => ({
       elements: [
@@ -256,11 +275,13 @@ export const GROUP_A = [
       R('Rg', 'R_g', 1000),
       chips(R('RL', 'Load R_L', 100), [100, 1000, 10000]),
       chips(Is('imax', 'Output limit I_max', 25e-3), [5e-3, 25e-3, 100e-3]),
+      chips(Vs('vsat', 'Rails ±V_sat', 12), [5, 12, 15]),
+      chips(Gain('cmrr', 'Rejection CMRR', 90, 'in decibels'), [60, 90, 120]),
     ],
     net: (p) => ({
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E, small: true },
-        opamp(['cmrr'], { imax: p.imax }),
+        opamp([], { cmrr: p.cmrr, imax: p.imax, vsat: p.vsat }),
         { type: 'R', id: 'Rf', nodes: ['out', 'n'], value: p.Rf },
         { type: 'R', id: 'Rg', nodes: ['n', 'gnd'], value: p.Rg },
         { type: 'R', id: 'RL', nodes: ['out', 'gnd'], value: p.RL },
@@ -276,7 +297,7 @@ export const GROUP_A = [
     id: 'a6',
     group: GROUP,
     name: 'The precision rectifier',
-    terms: ['precision', 'looopgain'],
+    terms: ['precision', 'loopgain'],
     params: [
       chips(Amp('amp', 'Input amplitude', 0.01), [0.001, 0.01, 0.1]),
       Freq('f', 'Input frequency', 1000),
