@@ -51,9 +51,9 @@ export const TERMS_F = {
   amplitudeguard: {
     name: 'The amplitude guard',
     def:
-      'The drive amplitude past which this lab stops presenting the tangent as the answer, 5.00 mV of peak on ' +
-      'a bipolar base. The second harmonic there is already 4.4 % of the fundamental. Past 20.0 mV the small ' +
-      'signal view is declined outright, because the stage has stopped being an amplifier.',
+      'The drive past which this lab stops presenting the straight line as the answer, 4.14 mV on a bipolar ' +
+      'base. The second harmonic the series predicts is 4 % of the fundamental there. Past the guard the math ' +
+      'panel footnotes the straight line with that reason rather than checking it.',
   },
   squarelaw: {
     name: 'The square law',

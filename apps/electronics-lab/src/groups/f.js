@@ -24,7 +24,8 @@
 // for the collector current asked of it, so a chip labelled 1.00 mA puts
 // 1.00 mA in the collector whatever I_S, V_A and V_CE are set to.
 
-import { newtonDC, normalize, sourceValue, thermalVoltage } from '@ee-labs/network'
+import { newtonDC, normalize, pointsOf, sourceValue, thermalVoltage } from '@ee-labs/network'
+import { fmt } from '@ee-labs/ui'
 import { Amp, Gain, Is, R, W, H, TOP, BOT, MID, chips, gnd, node, wire } from '../knobs.js'
 
 export const GROUP_F_NAME = 'F · Small signals, the tangent at the point'
@@ -265,11 +266,27 @@ const PHASES = 64
  * here rather than imported because `math.js` reaches this file through the
  * math panel, and a group file that imported it back would close the ring.
  */
-function dcAt(exp, p) {
+function solveAt(exp, p) {
   const norm = normalize(exp.net(p))
   const sources = {}
   for (const e of norm.elements) if (e.type === 'V' || e.type === 'I') sources[e.id] = sourceValue(e, 0)
-  return newtonDC(norm, { sources }).sol
+  const op = newtonDC(norm, { sources })
+  return { norm, op, sol: op.sol }
+}
+
+/** The same, as the solution alone. */
+const dcAt = (exp, p) => solveAt(exp, p).sol
+
+/**
+ * The bench stage with its drive at zero: where the collector sits, and the
+ * slope of the tangent taken there. The straight line the guard governs is
+ * this pair, so both come off one solve of the same circuit.
+ */
+export function biasTangent(exp, p) {
+  const { norm, op, sol } = solveAt(exp, { ...p, drive: 0 })
+  const q = pointsOf(norm, op).Q1
+  const rl = (p.RC * q.ro) / (p.RC + q.ro)
+  return { vc: sol.v.c, slope: -q.gm * rl, q }
 }
 
 /** The amplitude of the nth harmonic of a waveform sampled over one cycle. */
@@ -298,6 +315,18 @@ export function hd2Of(exp, p, key, base, amp, read = (sol) => sol.v.c) {
   return harmonic(ys, 2) / harmonic(ys, 1)
 }
 
+// ------------------------------------------------------------ the guard
+// The tangent is an approximation, so it carries a threshold and the panel
+// changes at it. The exponential's second harmonic is v̂/(4V_T) of its
+// fundamental, and the guard is the drive at which that reaches four per
+// cent. It is written as a function of V_T rather than as a millivolt, so it
+// follows the temperature the device is held at.
+
+export const HD2_GUARD = 0.04
+
+/** The drive past which the panel footnotes the tangent instead of checking it. */
+export const driveGuard = (vt = VT) => 4 * vt * HD2_GUARD
+
 // ------------------------------------------------------------ the knobs
 
 const BIAS_CHIPS = [vbeFor(0.25e-3), VBE1, vbeFor(4e-3)]
@@ -311,7 +340,7 @@ export const GROUP_F = [
     terms: ['smallsignalslope', 'operatingpoint'],
     params: [
       chips(Is('i', 'Junction current I', 1e-3), [0.25e-3, 1e-3, 4e-3]),
-      chips(Vbias('vbe', 'Base voltage V_BE', VBE1, 'the chips are the base voltages that put 0.25, 1 and 4 mA in the collector'), BIAS_CHIPS),
+      chips(Vbias('vbe', 'Base voltage V_BE', VBE1, 'the chips put 0.25, 1 and 4 mA in the collector at V_CE = 5 V and V_A = 100 V'), BIAS_CHIPS),
       Volt('vce', 'Collector voltage V_CE', VCE0),
       Volt('va', 'Early voltage V_A', VA),
     ],
@@ -394,6 +423,7 @@ export const GROUP_F = [
       chips(Amp('drive', 'Drive amplitude', 5e-3), [1e-3, 5e-3, 10e-3, 20e-3]),
       chips(Vbias('vbe', 'Base voltage V_BE', VBE1), BIAS_CHIPS),
       LOAD,
+      chips(Volt('va', 'Early voltage V_A', VA, 'the collector’s own voltage feeds back through this term, and a larger V_A feeds back less'), [100, 200]),
     ],
     net: bench,
     labels: TRANSISTOR_LABELS,
@@ -476,6 +506,17 @@ const muCarries = (pt, r) =>
     ? 'The collector junction has begun to conduct at this bias, so r_μ from base to collector carries a share of the signal that the two-element formula leaves out.'
     : null
 
+/**
+ * Why the tangent's own prediction is footnoted rather than checked, or null
+ * while the drive is inside the guard. The threshold is `driveGuard`, and the
+ * message names it, so a reader who crosses it is told the number as well as
+ * the reason.
+ */
+const overdriven = (p) =>
+  p.drive >= driveGuard()
+    ? `The drive is past the amplitude guard at ${fmt(driveGuard(), 'V', 3)}, where the series puts the second harmonic at ${100 * HD2_GUARD} % of the fundamental. The straight line is not what this stage does here.`
+    : null
+
 /** The same for the square law. */
 const notSaturated = (pt) => (pt && pt.region === 'saturation' ? null : `The MOSFET is in ${pt ? pt.region : 'no region'} here, and the saturation formulas below do not describe it.`)
 
@@ -554,6 +595,9 @@ export const MATH_F = {
   f5(p, x) {
     const q = x.point.Q1
     const rl = (p.RC * q.ro) / (p.RC + q.ro)
+    // Where the collector sits with the drive at zero, which is the point the
+    // tangent is taken at and the foot of the straight line below.
+    const bias = biasTangent(x.exp, p)
     return {
       blocks: [
         T('The tangent is taken where the base is now. Push the base up and the slope is steeper, because the exponential is steeper there, and a signal large enough to move along the curve carries a second harmonic.'),
@@ -561,10 +605,13 @@ export const MATH_F = {
         C([
           row('the tangent where the base now sits', -q.gm * rl, x.gain, '', 1e-6, { unchecked: notActive(q) || tooFaint(q) || muCarries(q, rl) }),
           row('the collector’s bias', VCC - q.ic * p.RC, x.sol.v.c, 'V', 1e-8, { abs: 1e-6 }),
+          row('the collector’s change, from the straight line', bias.slope * p.drive, x.sol.v.c - bias.vc, 'V', 0.1, {
+            unchecked: notActive(q) || tooFaint(q) || muCarries(q, rl) || overdriven(p),
+          }),
         ]),
         V([
           { label: 'the second harmonic this drive predicts', value: p.drive / (4 * VT), unit: '', note: 'the leading term of the series, as a fraction of the fundamental' },
-          { label: 'the drive the guard warns at', value: 5e-3, unit: 'V', note: 'where the estimate reaches 4.8 %' },
+          { label: 'the drive the guard warns at', value: driveGuard(), unit: 'V', note: `where that estimate reaches ${100 * HD2_GUARD} %` },
         ]),
       ],
     }

@@ -4,12 +4,18 @@
 // from `vbeFor` and `vgsFor`, which invert each device's own law.
 
 import { thermalVoltage } from '@ee-labs/network'
-import { hd2Of, vbeFor, vgsFor } from '../groups/f.js'
+import { HD2_GUARD, driveGuard, hd2Of, vbeFor, vgsFor } from '../groups/f.js'
 
 const VT = thermalVoltage(300)
 
 /** The second harmonic of the drive now set, as a percentage of the fundamental. */
 const hd2 = (x, p, again, e) => 100 * hd2Of(e, p, 'drive', 0, p.drive)
+/** What the leading term of the series predicts for that harmonic, as a percentage. */
+const estimate = (x, p) => (100 * p.drive) / (4 * VT)
+/** The drive the amplitude guard warns at, in volts. */
+const guardDrive = () => driveGuard()
+/** The slope of the straight line, taken with the drive at zero. */
+const biasGain = (x, p, again) => again({ drive: 0 }).gain
 /** Where the tangent taken at the bias says the collector would be at this drive. */
 const tangentAt = (x, p, again) => {
   const bias = again({ drive: 0 })
@@ -101,17 +107,21 @@ export const LESSONS_F = {
         set: { vbe: vbeFor(4e-3) },
         reads: [
           ['v.c', 0.0370436029],
+          ['op.Q1.region', 'saturation'],
           [(x) => x.ac.v.c, 0.00109227137],
         ],
       },
     ],
+    whyReads: [['gain', -184.617334]],
     why:
       'A bias and a signal share one wire and are read apart because the response to the signal is linear. ' +
       'Superposition is that statement. The DC solve finds where the base and the collector sit with the ' +
       'signal switched off. The tangent taken there is a netlist of resistors and one controlled source, ' +
-      'which the phasor solve answers on its own. The two answers are added at the meter. The split is only as ' +
-      'good as the tangent underneath it. The transistor’s law is an exponential, so a signal large enough to ' +
-      'bend it puts power at frequencies no linear answer has room for, and F5 measures where that begins.',
+      'which the phasor solve answers on its own. The two answers are added at the meter. The AC meters print ' +
+      'amplitudes, and the gain of −184.6 carries the sign they do not. The collector falls as the base ' +
+      'rises. The split is only as good as the tangent underneath it. The transistor’s law is an ' +
+      'exponential, so a signal large enough to bend it puts power at frequencies no linear answer has room ' +
+      'for, and F5 measures where that begins.',
   },
 
   f3: {
@@ -223,16 +233,19 @@ export const LESSONS_F = {
   f5: {
     see:
       'The drive knob puts the base at the top of its swing. At 5.00 mV the collector reads 3.991 V, where ' +
-      'the tangent taken at the bias says 4.077 V. The slope where the base now sits is −219.7 against the ' +
-      '−184.6 at the bias. A sine of that amplitude leaves a second harmonic 4.4 % of its fundamental.',
+      'the straight line taken at the bias says 4.077 V. The slope where the base now sits is −219.7, against ' +
+      '−184.6 at the bias. This drive is past the amplitude guard at 4.14 mV, and the panel footnotes the ' +
+      'straight line rather than checking it.',
     seeReads: [
       ['v.c', 3.99138509],
       [tangentAt, 4.07691333],
-      [hd2, 4.38703351],
+      ['gain', -219.727748],
+      [biasGain, -184.617334],
+      [guardDrive, 0.00413631997],
     ],
     try: [
       {
-        say: 'Cut the drive to 1.00 mV. The collector reads 4.812 V, and the second harmonic is 0.879 % of the fundamental.',
+        say: 'Cut the drive to 1.00 mV, inside the guard. The collector reads 4.812 V. The second harmonic is 0.879 % of the fundamental.',
         set: { drive: 1e-3 },
         reads: [
           ['v.c', 4.81210236],
@@ -248,23 +261,37 @@ export const LESSONS_F = {
         ],
       },
       {
-        say: 'Raise it to 20.0 mV. The collector runs down to 99.96 mV, past the amplitude guard, and what the tangent says no longer describes this stage.',
+        say: 'Raise it to 20.0 mV. The collector runs down to 99.96 mV and the transistor saturates. Every row written against the active-region tangent is footnoted with that reason.',
         set: { drive: 20e-3 },
-        reads: [['v.c', 0.0999570131]],
+        reads: [
+          ['v.c', 0.0999570131],
+          ['op.Q1.region', 'saturation'],
+        ],
+      },
+      {
+        say: 'Set V_A to 200 V. The second harmonic rises to 4.60 %, towards the 4.84 % the series predicts, because doubling V_A halves how much the collector feeds back.',
+        set: { va: 200 },
+        reads: [
+          [hd2, 4.60217421],
+          [estimate, 4.83521588],
+        ],
       },
     ],
     whyReads: [
       [hd2, 4.38703351],
-      [(x, p) => (100 * p.drive) / (4 * VT), 4.83521588],
+      [estimate, 4.83521588],
+      [guardDrive, 0.00413631997],
+      [() => 100 * HD2_GUARD, 4],
     ],
     why:
       'An exponential driven by a sine returns a sine at every harmonic of it. The second one is the first ' +
       'that matters, and its size is about the drive divided by four thermal voltages. At this drive that ' +
-      'estimate is 4.84 % and the measured figure is 4.39 %, nine per cent apart, because the estimate keeps ' +
-      'only the leading term of a series. Both rise with the drive. The guard sits at 5.00 mV, where the ' +
-      'tangent still describes the curve to within a few per cent. The small-signal view is declined past ' +
-      '20.0 mV, where the collector has run out of room. Nothing here is an approximate solution. Every point ' +
-      'is an exact DC solve, and the approximation being measured is the straight line.',
+      'estimate is 4.84 % and the measured figure is 4.39 %. The gap is the Early effect rather than the ' +
+      'series. The collector’s own voltage falls as its current rises, and that takes a fixed share off the ' +
+      'harmonic at any drive. Raise V_A and the two figures close. The guard sits at 4.14 mV, where the ' +
+      'estimate reaches 4 % of the fundamental. Past it the panel footnotes the straight line instead of ' +
+      'checking it. Nothing here is an approximate solution. Every point is an exact DC solve, and the ' +
+      'approximation being measured is the straight line.',
   },
 
   f6: {
