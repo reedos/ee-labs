@@ -38,7 +38,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | RF Lab | waiting | | Analog IC Lab, Fields Lab's line | `RF_LAB_PLAN.md` |
 | System Lab | waiting | | RF Lab | `SYSTEM_LAB_PLAN.md` |
 | VLSI Lab | waiting | | Logic Lab, Analog IC Lab | `VLSI_LAB_PLAN.md` |
-| Computer Lab | building | `lab/computer-lab` | | `COMPUTER_LAB_PLAN.md` |
+| Computer Lab | built, dark | merged | | `COMPUTER_LAB_PLAN.md` |
 | Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | `INTERFACES_LAB_PLAN.md` |
 | Grid Lab | built, dark | merged | Power Lab I3 and D1 for two cross-references | `GRID_LAB_PLAN.md` |
 | Photonics Lab | waiting | | Electronics O, Applied Analog Lab | `PHOTONICS_LAB_PLAN.md` |
@@ -452,6 +452,8 @@ Items that cross labs and land at integration.
 - `progression.test.js`: every new lab's ids and counts, from each lab's `NEEDS.md`.
 - Shared canvases promoted to `packages/ui` when a second lab claims them
   (`PROGRAM.md` §4).
+- `TimingCanvas` and `StateCanvas` now have their second claimant, the Computer Lab,
+  which carries copies with provenance comments. Promotion is due.
 - The nav fold (`ELECTRONICS_LAB_PLAN.md` Decision 5) in the first release commit
   that makes a sixth lab public.
 - Three decisions raised by the Grid and Devices planner, for Reed. The suite's
