@@ -128,7 +128,7 @@ locus, which Electronics L5, M3 and N1 hand their loops to.
 | E · Rectifiers | half and full wave, the capacitor, the dimmer, six-pulse | 6 | built |
 | F · Inverters | the square wave, the comparator, the harmonic clusters, overmodulation | 4 | built |
 | G · Losses | the frequency crossover, peak efficiency, the capacitor's RMS, the ledger | 4 | built |
-| The leakage spike, and H to N | the flux that links one winding only, the loop, three-phase, isolated, resonant, drives, EMI, thermal | 22 | planned |
+| H to N, and the leakage spike | the loop, three-phase, isolated, resonant, drives, EMI, thermal, and the flux that links one winding only | 22 | planned |
 
 What it assumes: C, L and the RLC from Elements F and G, and the diode from Elements
 I. The switch is Elements F6. Its Group H assumes Control Lab.
