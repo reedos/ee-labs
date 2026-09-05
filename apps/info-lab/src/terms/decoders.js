@@ -122,6 +122,22 @@ export const DECODER_TERMS = {
     name: 'Cycle',
     def: 'A loop in the Tanner graph, along which a belief can travel and return. A returning belief looks like new evidence and is not. Every code worth using has cycles, so belief propagation is always approximate on one.',
   },
+  uncoded: {
+    name: 'Uncoded curve',
+    def: 'The error rate of the same link with no code on it, `Q(√(2 E_b/N_0))` for an antipodal signal. It is the line every gain in this lab is measured from. The Communications Lab computes it, and this lab draws that function rather than a copy of it.',
+  },
+  harddecision: {
+    name: 'Hard decision',
+    def: 'A detector output reduced to one bit, the sign of the sample. It is what a decoder reads when the receiver throws away how sure it was. On a Gaussian channel that loss is worth over a decibel of energy per bit.',
+  },
+  crossoverpoint: {
+    name: 'Crossover point',
+    def: 'The energy per bit at which a coded curve meets the uncoded one. Above it the code is the better of the two, and below it the code is worse than sending nothing. A code with a larger correction radius crosses at a lower ratio.',
+  },
+  threshold: {
+    name: 'Capacity threshold',
+    def: 'The signal-to-noise ratio at which a channel’s capacity reaches a stated rate. No code of that rate works below it, whatever its length. The soft and hard thresholds at rate one half are 1.585 dB apart.',
+  },
   maximumlikelihood: {
     name: 'Maximum likelihood',
     def: 'The decoding that returns the codeword most likely to have been sent. Viterbi is one for a convolutional code, and exhaustive search is one for a block code. Belief propagation on a graph with cycles is not one.',

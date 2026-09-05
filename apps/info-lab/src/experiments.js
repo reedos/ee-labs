@@ -8,12 +8,14 @@
 //
 // Groups follow the plan: A entropy and source coding, B capacity and the
 // Shannon limit, C block codes, D convolutional codes and Viterbi, E LDPC and
-// belief propagation. Group F measures the coding gain against the
-// Communications Lab's curve, and waits on that lab (BACKLOG.md).
+// belief propagation, F the coding gain measured. Group F and B4 read the
+// Communications Lab's closed form and its soft metric, which is the one
+// dependency this lab has on another (INFORMATION_LAB_PLAN.md §6).
 
 import { LESSONS } from './lessons.js'
 import { A } from './groups/a.js'
 import { B } from './groups/b.js'
+import { B4, F } from './groups/f.js'
 import { C } from './groups/c.js'
 import { D } from './groups/d.js'
 import { E } from './groups/e.js'
@@ -22,12 +24,13 @@ import { GROUPS } from './groups/shared.js'
 export { GROUPS }
 
 /** Every pane a view switch can show, in the order it lists them. */
-export const VIEW_ORDER = ['source', 'tree', 'curve', 'table', 'weights', 'field', 'trellis', 'tanner', 'decode', 'channel']
+export const VIEW_ORDER = ['source', 'tree', 'curve', 'gain', 'table', 'weights', 'field', 'trellis', 'tanner', 'decode', 'channel']
 
 export const VIEW_LABELS = {
   source: { label: 'Source', title: 'Each symbol with its probability, its ideal length and its codeword' },
   tree: { label: 'Code tree', title: 'The Huffman tree, and the arithmetic coder’s interval below it' },
   curve: { label: 'Curve', title: 'The quantity this experiment sweeps, with the present setting marked' },
+  gain: { label: 'Error rate', title: 'The uncoded curve, the coded one, and the distance between them' },
   table: { label: 'Code table', title: 'The generator matrix, the parity checks and the syndrome table' },
   weights: { label: 'Weights', title: 'How many words have each weight, with the two radii marked' },
   field: { label: 'Field', title: 'The powers of the primitive element, and the Reed-Solomon code over them' },
@@ -37,7 +40,7 @@ export const VIEW_LABELS = {
   channel: { label: 'Channel', title: 'The channel’s own numbers, and the capacity that follows from them' },
 }
 
-const RAW = [...A, ...B, ...C, ...D, ...E]
+const RAW = [...A, ...B, B4, ...C, ...D, ...E, ...F]
 
 /** Each experiment with its lesson merged on, so the app reads one object. */
 export const EXPERIMENTS = RAW.map((e) => ({ ...e, ...(LESSONS[e.id] || {}) }))

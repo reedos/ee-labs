@@ -40,12 +40,11 @@ import { fmtBits, fmtDb, fmtPercent } from './format.js'
 // so changing a code moves the expectation with the lesson or fails.
 
 /**
- * What this sitting has built, as the two counts the sidebar shows and
- * `NEEDS.md` gives the progression test. The plan names 25 experiments in 6
- * groups. Group F and B4 wait on the Communications Lab (BACKLOG.md), so the
- * count below moves when that lab lands and not before.
+ * What this lab has built, as the two counts the sidebar shows and `NEEDS.md`
+ * gives the progression test. The plan names 25 experiments in 6 groups, and
+ * the Communications Lab landing closed the last four.
  */
-const BUILT = { groups: 5, experiments: 21, planned: 25, plannedGroups: 6 }
+const BUILT = { groups: 6, experiments: 25, planned: 25, plannedGroups: 6 }
 
 const at = (id, over = {}) => {
   const exp = byId[id]
@@ -81,7 +80,7 @@ describe('every experiment', () => {
     for (const e of EXPERIMENTS) {
       const { x } = at(e.id)
       expect(x.refusal, `${e.id}: ${x.refusal && x.refusal.message}`).toBeNull()
-      const parts = ['source', 'capacity', 'block', 'field', 'conv', 'ldpc'].filter((k) => x[k])
+      const parts = ['source', 'capacity', 'block', 'field', 'conv', 'ldpc', 'gain', 'chain'].filter((k) => x[k])
       expect(parts.length, `${e.id} computes nothing`).toBeGreaterThan(0)
       if (e.curve) {
         expect(x.curve.points.length, `${e.id} curve`).toBeGreaterThan(1)
@@ -530,8 +529,16 @@ describe('every lesson is measured', () => {
   const UNIT = /(-?\d+(?:\.\d+)?)\s*(bit\/s\/Hz|bits?|dB|%)(?![A-Za-z])/g
   const NOUN =
     /(-?\d+(?:\.\d+)?)\s*(?:message |channel |symbol |failed |nonzero |further )?(symbols?|states?|branches?|checks?|edges?|codewords?|words?|paths?|steps?|operations?|iterations?|errors?|erasures?|elements?|cosets?|blocks?|wrong)(?![A-Za-z])/g
+  // "the error rate to 10⁻³" names a target rather than a value, and the
+  // superscript is not a digit this reads, so `rate` is matched only where a
+  // plain number follows it.
   const OF =
-    /(?:rate|distance|weight|rank|metric|remainder|syndrome|crossover|efficiency|capacity|entropy|probabilit(?:y|ies))\s+(?:is|of|to|reads|at|are)?\s*(-?\d+(?:\.\d+)?)/g
+    /(?:rate|distance|weight|rank|metric|remainder|syndrome|crossover|efficiency|capacity|entropy|probabilit(?:y|ies))\s+(?:is|of|to|reads|at|are)?\s*(-?\d+(?:\.\d+)?)(?!\d)(?!\.\d)(?!\s*[⁻×])/g
+  // An error rate is written the way it is read, as a mantissa times a power of
+  // ten. Both halves are checked, so "1.170 × 10⁻⁴" stands or falls against the
+  // reading the same way "9.174 dB" does.
+  const SCI = /(-?\d+(?:\.\d+)?)\s*×\s*10(⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g
+  const SUP = { '⁻': '-', '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' }
 
   /** Every number a sentence quotes, in the units a reading uses. */
   const quoted = (text) => {
@@ -541,6 +548,11 @@ describe('every lesson is measured', () => {
     for (const m of s.matchAll(UNIT)) push(m[1], m)
     for (const m of s.matchAll(NOUN)) push(m[1], m)
     for (const m of s.matchAll(OF)) push(m[1], m)
+    for (const m of s.matchAll(SCI)) {
+      const exponent = Number([...m[2]].map((ch) => SUP[ch]).join(''))
+      const value = Math.abs(Number(m[1])) * 10 ** exponent
+      out.push({ text: m[0].trim(), digits: (m[1].split('.')[1] || '').length - exponent, value })
+    }
     return out
   }
   /** A quoted number stands for a value when it is that value rounded to the digits printed. */
@@ -679,7 +691,7 @@ describe('the chrome names what it shows', () => {
     expect(GROUPS.length).toBe(BUILT.plannedGroups)
     expect(built.length).toBe(BUILT.groups)
     expect(EXPERIMENTS.length).toBe(BUILT.experiments)
-    expect(BUILT.planned - BUILT.experiments).toBe(4)
+    expect(BUILT.planned - BUILT.experiments).toBe(0)
   })
 
   it('formats a number the way a reader reads it', () => {

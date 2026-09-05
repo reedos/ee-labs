@@ -77,6 +77,21 @@ export function DecodePane({ x }) {
   const b = x.block
   const v = x.conv
   const g = x.ldpc
+  const chain = x.chain
+  if (chain)
+    return (
+      <div className="readouts">
+        <Row label="Sent by the other lab" value={`${chain.sent.bits.length} bits at ${chain.ebN0Db} dB`} />
+        <Row label="Beliefs read" value={`${chain.llr.length}, the strongest ${Math.max(...chain.llr.map((l) => Math.abs(l))).toFixed(2)}`} />
+        <Row label="Channel bits wrong" value={String(chain.flips)} tone={chain.flips ? 'warn' : null} />
+        <Row label="Soft decode wrong" value={String(chain.softErrors)} tone={chain.softErrors ? 'warn' : null} />
+        <Row label="Hard decode wrong" value={String(chain.hardErrors)} tone={chain.hardErrors ? 'warn' : null} />
+        <p className="pane-note">
+          The Communications Lab maps these bits, adds the noise and returns one log-likelihood ratio per bit. This lab turns each belief into the level it
+          stands for and walks the trellis. That lab sends a zero as −1 and this one sends it as +1, and a decoder that reads beliefs never sees the difference.
+        </p>
+      </div>
+    )
   if (b)
     return (
       <div className="readouts">

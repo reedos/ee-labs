@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest'
-import { GF16, GF256, capacityBSC, crossoverForCapacity, encoder, CONV_CODES, golayCode, hammingCode, minimumDistance, SHANNON_FLOOR_DB } from '@ee-labs/codes'
+import {
+  GF16,
+  GF256,
+  CONV_CODES,
+  SHANNON_FLOOR_DB,
+  capacityBSC,
+  crossoverForCapacity,
+  encoder,
+  esN0ForBiAwgnCapacity,
+  esN0ForBscCapacity,
+  golayCode,
+  hammingCode,
+  minimumDistance,
+} from '@ee-labs/codes'
 import { TERMS } from './terms.js'
 import { EXPERIMENTS } from './experiments.js'
 
@@ -75,6 +88,9 @@ describe('the glossary', () => {
       Math.abs(SHANNON_FLOOR_DB),
       crossoverForCapacity(0.5),
       crossoverForCapacity(0),
+      // What soft decisions are worth at rate one half, which is the distance
+      // between the two capacity thresholds.
+      esN0ForBscCapacity(0.5) - esN0ForBiAwgnCapacity(0.5),
       capacityBSC(0.5),
     ])
     const stands = (value) => [...known].some((v) => Math.abs(v - value) <= Math.max(1e-6, 5e-4 * Math.abs(v)))

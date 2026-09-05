@@ -7,9 +7,22 @@
 // table, the trellis walker and the topbar can never disagree about what was
 // decoded.
 
+import { awgn, berClosed, ebN0For, mapBits, noiseVariance, softMetric } from '@ee-labs/comms'
 import {
   CodesError,
   addVec,
+  asymptoticHard,
+  asymptoticSoft,
+  correctionRadius as radiusOf,
+  crossover as crossoverOf,
+  ebN0AtBer,
+  gainCurve,
+  hardBlockBer,
+  hardConvBound,
+  levelsFromLlr,
+  realGain,
+  softConvBound,
+  uncodedBer,
   arithmeticEncode,
   biAwgnCapacity,
   binaryEntropy,
@@ -18,9 +31,13 @@ import {
   capacityBEC,
   capacityBSC,
   codeFromParity,
+  CONV_CODES,
   convEncode,
+  encoder as encoderOf,
   correctionRadius,
   crossoverForCapacity,
+  esN0ForBiAwgnCapacity,
+  esN0ForBscCapacity,
   decode as blockDecode,
   describe,
   encode as blockEncode,
@@ -66,7 +83,7 @@ import { errorPattern, messageBits } from './groups/shared.js'
  * }} each part present only when the experiment asked for it.
  */
 export function analyse(exp, p) {
-  const out = { exp, p, refusal: null, source: null, capacity: null, block: null, field: null, conv: null, ldpc: null, curve: null }
+  const out = { exp, p, refusal: null, source: null, capacity: null, block: null, field: null, conv: null, ldpc: null, gain: null, chain: null, curve: null }
   try {
     if (exp.source) out.source = sourceOf(exp, p)
     if (exp.capacity) out.capacity = capacityOf(exp, p)
@@ -74,6 +91,8 @@ export function analyse(exp, p) {
     if (exp.field) out.field = fieldOf(exp, p)
     if (exp.conv) out.conv = convOf(exp, p)
     if (exp.ldpc) out.ldpc = ldpcOf(exp, p)
+    if (exp.gain) out.gain = gainOf(exp, p)
+    if (exp.chain) out.chain = chainOf(exp, p)
     if (exp.curve) out.curve = exp.curve(p, out)
   } catch (e) {
     if (!(e instanceof CodesError)) throw e
@@ -134,6 +153,13 @@ function capacityOf(exp, p) {
   if (spec.efficiency !== undefined) {
     out.limitDb = shannonLimitDb(spec.efficiency)
     out.floorDb = SHANNON_FLOOR_DB
+  }
+  if (spec.thresholds !== undefined) {
+    // The ratio per channel use at which each channel reaches that capacity.
+    // The difference between them is what soft decisions are worth.
+    out.softDb = esN0ForBiAwgnCapacity(spec.thresholds)
+    out.hardDb = esN0ForBscCapacity(spec.thresholds)
+    out.softOver = out.hardDb - out.softDb
   }
   out.half = crossoverForCapacity(0.5)
   if (spec.esN0Db !== undefined) out.bi = biAwgnCapacity(spec.esN0Db)
@@ -264,7 +290,123 @@ function ldpcOf(exp, p) {
   }
 }
 
+/**
+ * The two curves Group F measures between, and the distances between them.
+ *
+ * The uncoded curve is the Communications Lab's closed form. The coded one is
+ * this lab's, from the code's own parameters. Neither is stored, and every
+ * number below is read off the two by bisection.
+ */
+function gainOf(exp, p) {
+  const spec = exp.gain(p)
+  const scheme = spec.scheme || 'bpsk'
+  const uncoded = (db) => berClosed(scheme, 10 ** (db / 10))
+  const out = {
+    ...spec,
+    scheme,
+    uncoded,
+    limitDb: shannonLimitDb(spec.efficiency),
+    atUncoded: ebN0For(scheme, spec.target),
+    coded: null,
+    bound: false,
+  }
+  out.gap = out.atUncoded - out.limitDb
+  if (spec.block) {
+    const code = spec.block
+    const found = minimumDistance(code)
+    const d = found.d
+    const t = radiusOf(d)
+    out.code = code
+    out.d = d
+    out.t = t
+    out.detect = d - 1
+    // The weight view draws the same distribution Group C draws, so a reader
+    // who follows the gain back to the code sees the picture they left.
+    out.weights = found.weights
+    out.rate = code.k / code.n
+    out.coded = (db) => hardBlockBer({ n: code.n, k: code.k, t }, db).ber
+    out.asymptotic = asymptoticHard(out.rate, t)
+  }
+  if (spec.conv) {
+    const { enc, dFree, spectrum } = spec.conv
+    out.enc = enc
+    out.dFree = dFree
+    out.rate = enc.rate
+    out.bound = true
+    out.spectrumA = spectrum.a
+    const soft = (db) => softConvBound({ rate: enc.rate, spectrum, dFree }, db).ber
+    const hard = (db) => hardConvBound({ rate: enc.rate, spectrum, dFree }, db).ber
+    out.coded = spec.decision === 'hard' ? hard : soft
+    out.other = spec.decision === 'hard' ? soft : hard
+    out.asymptotic = asymptoticSoft(enc.rate, dFree)
+    out.atSoft = ebN0AtBer(soft, spec.target)
+    out.atHard = ebN0AtBer(hard, spec.target)
+    out.softOver = out.atHard - out.atSoft
+  }
+  if (out.coded) {
+    const g = realGain({ coded: out.coded, uncoded, target: spec.target, bound: out.bound })
+    out.atCoded = g.coded
+    out.real = g.gain
+    out.difference = out.asymptotic - g.gain
+    out.direction = g.direction
+    try {
+      const x = crossoverOf({ coded: out.coded, uncoded, lo: -2, hi: 14 })
+      out.crossoverDb = x.ebN0Db
+      out.crossoverBer = x.ber
+    } catch (e) {
+      if (!(e instanceof CodesError)) throw e
+      out.crossoverDb = null
+      out.crossoverRefusal = e
+    }
+  }
+  // The two rates where the reader is looking, for the pane and for a lesson
+  // that quotes them.
+  if (spec.at !== undefined) {
+    out.at = spec.at
+    out.uncodedAt = uncoded(spec.at)
+    out.codedAt = out.coded ? out.coded(spec.at) : null
+  }
+  out.curve = gainCurve({ coded: out.coded || uncoded, uncoded, from: 0, to: 12, step: 0.25, target: spec.target })
+  return out
+}
+
+/**
+ * One block through the Communications Lab's chain and back through this lab's
+ * decoder, so the hand-over between the two is a thing on screen rather than a
+ * promise in a document.
+ *
+ * That lab maps the bits, adds the noise and returns a belief per bit. This lab
+ * turns each belief into the level it stands for and walks the trellis.
+ */
+function chainOf(exp, p) {
+  const spec = exp.chain(p)
+  const enc = encoderOf(CONV_CODES[spec.K])
+  const bits = bitStream(spec.bits, 3)
+  const sent = convEncode(enc, bits)
+  const syms = mapBits('bpsk', Int8Array.from(sent.bits))
+  const { sigma2 } = noiseVariance({ ebN0Db: spec.ebN0Db, bitsPerSymbol: 1 })
+  const noisy = awgn(syms, { ebN0Db: spec.ebN0Db, bitsPerSymbol: 1, seed: spec.seed })
+  const llr = Array.from(softMetric('bpsk', noisy.out, sigma2))
+  const hard = llr.map((v) => (v < 0 ? 1 : 0))
+  const soft = viterbi(enc, levelsFromLlr(llr, sigma2), { soft: true })
+  const hardOut = viterbi(enc, hard)
+  return {
+    enc,
+    bits,
+    sent,
+    llr,
+    sigma2,
+    ebN0Db: spec.ebN0Db,
+    hard,
+    flips: errorCount(hard, sent.bits),
+    softErrors: errorCount(soft.bits, bits),
+    hardErrors: errorCount(hardOut.bits, bits),
+    viterbi: soft,
+  }
+}
+
 // ---------- the objects the groups reach for ----------
+
 
 export { L12, L102, bitStream, gaussian, symmetric, binaryEntropy }
 

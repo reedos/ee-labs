@@ -8,6 +8,7 @@ import { reportSummary } from './report.js'
 import { fmtBits, fmtRate } from './format.js'
 import { ChannelPane, CodeTable, DecodePane, EncoderTable, FieldPane, GraphPane, Refusal, SourcePane } from './components/panes.jsx'
 import CurveCanvas from './components/CurveCanvas.jsx'
+import GainCanvas from './components/GainCanvas.jsx'
 import TannerCanvas from './components/TannerCanvas.jsx'
 import TreeCanvas from './components/TreeCanvas.jsx'
 import TrellisCanvas from './components/TrellisCanvas.jsx'
@@ -233,9 +234,24 @@ function Pane({ view, x, step }) {
   if (view === 'decode') return <DecodePane x={x} />
   if (view === 'field') return <FieldPane x={x} />
   if (view === 'curve') return x.curve ? <CurveCanvas curve={x.curve} /> : <p className="pane-empty">This experiment sweeps nothing.</p>
+  if (view === 'gain') {
+    const g = x.gain
+    if (!g) return <p className="pane-empty">This experiment measures no gain.</p>
+    return (
+      <GainCanvas
+        curve={g.curve}
+        target={g.target}
+        limits={[{ ebN0Db: g.limitDb, label: `limit at ${g.efficiency} bit/s/Hz` }]}
+        marks={g.crossoverDb === null || g.crossoverDb === undefined ? [] : [{ ebN0Db: g.crossoverDb, ber: g.crossoverBer, label: 'the curves cross' }]}
+        gain={g.real === undefined ? null : { real: g.real, coded: g.atCoded, uncoded: g.atUncoded }}
+      />
+    )
+  }
   if (view === 'tree') return x.source ? <TreeCanvas code={x.source.code} arith={x.source.arith} /> : <p className="pane-empty">This experiment has no source.</p>
   if (view === 'weights') {
     if (x.block) return <WeightCanvas weights={x.block.weights || []} d={x.block.d} t={x.block.t} detect={x.block.detect} label="codewords" />
+    if (x.gain && x.gain.weights) return <WeightCanvas weights={x.gain.weights} d={x.gain.d} t={x.gain.t} detect={x.gain.detect} label="codewords" />
+    if (x.gain && x.gain.spectrumA) return <WeightCanvas weights={x.gain.spectrumA} d={x.gain.dFree} label="error events" />
     if (x.conv && x.conv.spectrum) return <WeightCanvas weights={x.conv.spectrum.a} d={x.conv.dfree} label="error events" />
     if (x.conv) return <p className="pane-empty">The spectrum is drawn for the reference code.</p>
     return <p className="pane-empty">This experiment has no weights.</p>

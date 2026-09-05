@@ -60,6 +60,18 @@
  *     weight.<i>            the syndrome weight after iteration i
  *     iteration  converged  iterations
  *
+ *   the coding gain
+ *     gain.<real|asymptotic|difference>   the two gains, and the gap between them
+ *     gain.<coded|uncoded>                where each curve reaches the target
+ *     gain.<limit|gap|target|efficiency>  the Shannon limit and the distance to it
+ *     gain.<crossover|crossber>           where the two curves meet, and at what rate
+ *     gain.<codedat|uncodedat>            both rates where the reader is looking
+ *     gain.<soft|hard>                    the asymptotic gain of the code
+ *     gain.<atsoft|athard|softover>       where each decision reaches the target
+ *     gain.<rate|d|t|dfree>               the code the gain is of
+ *     chain.<soft|hard|flips|bits|sent|ebn0>  that lab's chain, decoded here
+ *     softdb  harddb  softover            the two capacity thresholds
+ *
  *   the curve
  *     curve.<x>             the curve's y at that x
  *     curve.mark            the y at the present setting
@@ -77,8 +89,9 @@ import { B_LESSONS } from './lessons/b.js'
 import { C_LESSONS } from './lessons/c.js'
 import { D_LESSONS } from './lessons/d.js'
 import { E_LESSONS } from './lessons/e.js'
+import { F_LESSONS } from './lessons/f.js'
 
-export const LESSONS = { ...A_LESSONS, ...B_LESSONS, ...C_LESSONS, ...D_LESSONS, ...E_LESSONS }
+export const LESSONS = { ...A_LESSONS, ...B_LESSONS, ...C_LESSONS, ...D_LESSONS, ...E_LESSONS, ...F_LESSONS }
 
 /** One reading of an analysis, by path. */
 export function readQuantity(x, p, path) {
@@ -147,20 +160,28 @@ export function readQuantity(x, p, path) {
       return needNumber(c && c.floorDb, path)
     case 'half':
       return need(c && c.half, path)
+    case 'softdb':
+      return needNumber(c && c.softDb, path)
+    case 'harddb':
+      return needNumber(c && c.hardDb, path)
+    case 'softover':
+      return needNumber(c && c.softOver, path)
     case 'bi':
       return need(c && c.bi && c.bi[rest[0]], path)
 
     // ---- the block code ----
+    // The code on screen, wherever this experiment keeps it. Group F holds it
+    // inside the gain, and it is the same code with the same numbers.
     case 'n':
-      return need(b ? b.n : g && g.n, path)
+      return need(b ? b.n : g ? g.n : code(x) && code(x).n, path)
     case 'k':
-      return need(b ? b.k : g && g.code && g.code.k, path)
+      return need(b ? b.k : g && g.code ? g.code.k : code(x) && code(x).k, path)
     case 'rate':
-      return need(b ? b.rate : g && g.rate, path)
+      return need(b ? b.rate : g ? g.rate : x.gain && x.gain.rate, path)
     case 'd':
-      return need(b ? b.d : g && g.d, path)
+      return need(b ? b.d : g ? g.d : x.gain && x.gain.d, path)
     case 't':
-      return need(b ? b.t : g && g.t, path)
+      return need(b ? b.t : g ? g.t : x.gain && x.gain.t, path)
     case 'detect':
       return need(b && b.detect, path)
     case 'cosets':
@@ -246,12 +267,6 @@ export function readQuantity(x, p, path) {
       return needNumber(v && v.spectrum && v.spectrum.a[Number(rest[0])], path)
     case 'bits':
       return needNumber(v && v.spectrum && v.spectrum.b[Number(rest[0])], path)
-    case 'gain': {
-      if (rest[0] === 'soft') return need(v ? v.gain : b && 10 * Math.log10(b.rate * b.d), path)
-      if (rest[0] === 'hard') return need(b && 10 * Math.log10(b.rate * (b.t + 1)), path)
-      throw new Error(`${path}: a gain is soft or hard`)
-    }
-
     // ---- the graph and its decode ----
     case 'edges':
       return need(g && g.graph.edges.length, path)
@@ -287,6 +302,50 @@ export function readQuantity(x, p, path) {
     case 'iterations':
       return need(g && g.bp && g.bp.iterations.length, path)
 
+    // ---- the coding gain ----
+    case 'gain': {
+      const key = rest[0]
+      // The asymptotic gains are a property of the code, and Groups C and D
+      // read them without a pair of curves. `gain.soft` means the same thing
+      // on every screen of the lab (STYLE.md S11).
+      if (key === 'soft' && !x.gain) return need(v ? v.gain : b && 10 * Math.log10(b.rate * b.d), path)
+      if (key === 'hard' && !x.gain) return need(b && 10 * Math.log10(b.rate * (b.t + 1)), path)
+      const g = need(x.gain, path)
+      if (key === 'soft') return needNumber(g.rate && g.dFree ? 10 * Math.log10(g.rate * g.dFree) : 10 * Math.log10(g.rate * g.d), path)
+      if (key === 'hard') return needNumber(10 * Math.log10(g.rate * (g.t + 1)), path)
+      if (key === 'real') return needNumber(g.real, path)
+      if (key === 'asymptotic') return needNumber(g.asymptotic, path)
+      if (key === 'difference') return needNumber(g.difference, path)
+      if (key === 'coded') return needNumber(g.atCoded, path)
+      if (key === 'uncoded') return needNumber(g.atUncoded, path)
+      if (key === 'limit') return needNumber(g.limitDb, path)
+      if (key === 'gap') return needNumber(g.gap, path)
+      if (key === 'crossover') return need(g.crossoverDb, path)
+      if (key === 'crossber') return need(g.crossoverBer, path)
+      if (key === 'codedat') return need(g.codedAt, path)
+      if (key === 'uncodedat') return need(g.uncodedAt, path)
+      if (key === 'atsoft') return needNumber(g.atSoft, path)
+      if (key === 'athard') return needNumber(g.atHard, path)
+      if (key === 'softover') return needNumber(g.softOver, path)
+      if (key === 'rate') return need(g.rate, path)
+      if (key === 'target') return need(g.target, path)
+      if (key === 'efficiency') return need(g.efficiency, path)
+      if (key === 'dfree') return need(g.dFree, path)
+      if (key === 'd') return need(g.d, path)
+      if (key === 't') return needNumber(g.t, path)
+      throw new Error(`${path}: the gain has no reading called "${key}"`)
+    }
+    case 'chain': {
+      const c = need(x.chain, path)
+      if (rest[0] === 'soft') return needNumber(c.softErrors, path)
+      if (rest[0] === 'hard') return needNumber(c.hardErrors, path)
+      if (rest[0] === 'flips') return needNumber(c.flips, path)
+      if (rest[0] === 'bits') return need(c.bits.length, path)
+      if (rest[0] === 'sent') return need(c.sent.bits.length, path)
+      if (rest[0] === 'ebn0') return needNumber(c.ebN0Db, path)
+      throw new Error(`${path}: the chain reads its soft errors, its hard errors, its flips or its counts`)
+    }
+
     // ---- the curve ----
     case 'curve': {
       const curve = need(x.curve, path)
@@ -303,6 +362,9 @@ export function readQuantity(x, p, path) {
       throw new Error(`unknown quantity path: ${path}`)
   }
 }
+
+/** The block code an experiment is about, wherever it keeps it. */
+const code = (x) => (x.block && x.block.code) || (x.gain && x.gain.code) || null
 
 const valueOfBits = (v) => (v ? v.reduce((acc, b) => acc * 2 + b, 0) : null)
 const weightOfBits = (v) => (v ? v.reduce((acc, b) => acc + b, 0) : null)

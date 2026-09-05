@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ee-labs/codes": "*",
+    "@ee-labs/comms": "*",
     "@ee-labs/random": "*",
     "@ee-labs/ui": "*",
     "react": "^18.3.1",
