@@ -694,6 +694,32 @@ The mechanism Power Lab and the Elements lab share, unchanged.
 
 ## 9. Phasing
 
+**Built (2026-09-05).** Phases 1 to 8 are done, on `lab/devices-lab`. All seven
+groups ship, 30 experiments, and the app is dark. Phase 9, the release gate, is
+what is left, and it is Reed's.
+
+Three things about the phasing turned out differently, and they are recorded
+here rather than rewritten above.
+
+- **Phase 2 did not need a stub.** The profile view is `ProfileCanvas.jsx` in
+  the app, written against the props the Fields Lab's overseer was sent, so
+  Groups B and G ship behind a real canvas rather than behind a stub. It merges
+  into that lab's field map at promotion, and `apps/devices-lab/NEEDS.md` §4
+  carries the merge.
+- **The engine landed as one commit rather than four.** The director's ruling
+  gave this lab `packages/network/src/junction.js` and named one file. So the
+  MOS capacitor did not get the sibling `mos.js` of Decision 2, and phases 1, 2,
+  4, 6 and 7 have no engine work left to separate. Invariants 1 to 12 are fuzzed
+  in `junction.devices.test.js`, with invariant 6 first in the file.
+- **Five of §4.3's numbers moved when they were computed** rather than rounded.
+  `apps/devices-lab/NEEDS.md` §5 lists each one with the reason, and the lessons
+  and tests carry the measured values. The three breakdown voltages keep the
+  `1/N_A` term the one-sided form drops. The Early voltage is 69.954 V. `n_i` at
+  250 and 400 K follows the constant Decision 1 pins. The depletion
+  approximation's edge error is 16.4 per cent, from each side's own Debye
+  length. And invariant 5's `n ≈ N_D` tolerance is 10⁻⁴ at 100 `n_i` rather than
+  10⁻⁶.
+
 Each phase ships green and deployable dark.
 
 1. **Carriers.** `carriers.js`, the app shell, the band diagram, the cross-section, the

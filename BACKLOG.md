@@ -313,6 +313,43 @@ rather than rounded away and each for the director:
   leaves 3.66e-4. The app defaults to 41 and the lesson quotes both.
 - **H1's cascaded noise figure.** Friis over the two stages the plan names gives
   1.784 dB and 4.071 dB, against the plan's 1.944 and 4.166.
+### Devices Lab
+
+All seven groups are built, 30 experiments, and the app is dark. The engine
+landed whole, so nothing after Group A waited on anything, and the plan's
+phasing is updated to say so. What is left is Reed's release gate
+(`DEVICES_LAB_PLAN.md` §9) and the items below.
+
+- **The Playwright harness**, `apps/devices-lab/scripts/verify.mjs`, is not
+  written, and no one has read a screenshot of this lab as a student would
+  (`REVIEW_PLAYBOOK.md` §11). This environment has no browser. What the harness
+  would catch and the unit tests do not is the app end to end and the 390 px
+  layout. Deferred to the sitting that does the audit, because the audit needs
+  the screenshots anyway.
+- **`ProfileCanvas` is app-local and merges into the Fields Lab's field map.**
+  It is written against the props that overseer was sent, listed in
+  `apps/devices-lab/NEEDS.md` §4, so the merge is a rename rather than a
+  rewrite. Reopens when `lab/fields-lab` lands the one-dimensional mode.
+- **The hand-overs of the plan's §6 name no experiment by id.** Electronics
+  Group C is built and Groups D and E are not. So B3, B5, C5, D2 and E2 name
+  the other lab in words and cite nothing. `experiments.test.js` refuses a
+  reference to an experiment this lab does not carry. The day those groups land
+  the director restores five sentences and the deep links with them.
+- **Five of the plan's quoted numbers moved when they were computed** rather
+  than rounded. They are the three breakdown voltages, the Early voltage, `n_i`
+  at 250 and 400 K, the depletion approximation's edge error, and invariant 5's
+  stated tolerance. `apps/devices-lab/NEEDS.md` §5 gives each one and why. The
+  plan's §4.3 is left as written, because the measured numbers are in the
+  lessons and the tests.
+- **`mos.js` was folded into `junction.js`** by the director's ruling, which
+  named one file. The plan's Decision 2 asked for a sibling. `junction.js` is
+  now 830 lines and splitting it is a refactor its owner can take at any time.
+- **The sittings script is not written and Decision 6 is unsettled.** The plan
+  asks two of three seats to enter at Group B and at Group C, to settle which
+  entry point a reader prefers. That waits on the same sitting as the audit.
+- **`npm ci` does not run on this branch.** `package-lock.json` is out of sync
+  with six workspaces that are not this lab's. The director regenerates it once
+  at integration.
 
 ## 3. The director's queue
 
