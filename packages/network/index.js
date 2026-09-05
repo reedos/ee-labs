@@ -8,7 +8,7 @@
 
 export { GROUND, KINDS, NetworkError, normalize, connected, incident } from './src/netlist.js'
 export { SingularError, solve, solveComplex, matVec } from './src/linalg.js'
-export { assemble, diagnose, effective, readout, solveDC } from './src/mna.js'
+export { assemble, diagnose, effective, readout, solveDC, stampsOf } from './src/mna.js'
 export { equations, matrixLatex, symbolicSystem, symbolicMatrixLatex, cellLatex, diffSym, vSym, iSym, fmtCell } from './src/equations.js'
 export { thevenin, superposition, loadSweep, killed, withElements, lineFit, sourcePower } from './src/theorems.js'
 
@@ -37,11 +37,52 @@ export {
   regionLabel,
   regionMargins,
   regionsOf,
+  restingRegion,
   shockley,
   smallSignalR,
   thermalVoltage,
 } from './src/diode.js'
-export { assumedState, conduction, newtonDC, pnjlim, pwlTransient, solvePWL, solutionScale, vcritOf } from './src/pwl.js'
+export { assumedState, conduction, newtonDC, GMIN, pnjlim, pwlTransient, solvePWL, solutionScale, vcritOf } from './src/pwl.js'
+
+// The two transistors, and the companion interface Newton iterates over.
+export { BJT_DEFAULTS, BJT_MODELS, BJT_REGIONS, bjtCompanion, bjtCurrents, bjtOf, bjtSlopes } from './src/bjt.js'
+export { MOSFET_DEFAULTS, MOSFET_MODELS, mosfetCompanion, mosfetCurrent, mosfetOf } from './src/mosfet.js'
+export {
+  companion,
+  companionElements,
+  controlsOf,
+  guessFor,
+  hasCompanion,
+  operatingPoint,
+  readControls,
+  stampCurrents,
+  terminalLaw,
+} from './src/companion.js'
+export { limitTo, vcrit } from './src/physics.js'
+
+// Macros: one element that stands for several. The op-amp with a speed, a slew
+// rate, an offset, a bias current and an output current limit expands into
+// elements this package already stamps, at normalize, before anything solves.
+export { expandMacros, expandOpAmp, isMacro, MACRO_FIELDS } from './src/macro.js'
+
+// The junction: where the exponential, the two capacitances and the
+// temperature law come from, as closed forms rather than datasheet facts.
+export {
+  EG_SI,
+  EPS_0,
+  EPS_SI,
+  N_I_300,
+  builtIn,
+  depletionWidth,
+  diffusionCap,
+  doubling,
+  isAt,
+  junctionCap,
+  niAt,
+  transitFreq,
+  transitLimit,
+  vbeSlope,
+} from './src/junction.js'
 
 // Frequency domain: the same stamps at s = jω, phasors as [re, im].
 export * as complex from './src/complex.js'

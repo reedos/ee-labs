@@ -19,20 +19,32 @@
 //
 //   Ground is the node named 'gnd' (or '0'). Exactly one is required.
 
+import { expandMacros } from './macro.js'
+
 export const GROUND = 'gnd'
 
-/** Element kinds and which of them carry an MNA current unknown. */
+/**
+ * Element kinds: how many nodes each names, and which of them carry an MNA
+ * current unknown. `nodes` is the count `normalize` requires, and the order is
+ * the datasheet's — a transistor's three terminals are not interchangeable, so
+ * the count is checked per kind rather than assumed to be two.
+ */
 export const KINDS = {
-  R: { name: 'resistor', unknownCurrent: false },
-  V: { name: 'voltage source', unknownCurrent: true },
-  I: { name: 'current source', unknownCurrent: false },
-  VCVS: { name: 'voltage-controlled voltage source', unknownCurrent: true },
-  VCCS: { name: 'voltage-controlled current source', unknownCurrent: false },
-  OPAMP: { name: 'op-amp', unknownCurrent: true },
-  SW: { name: 'switch', unknownCurrent: false }, // resolved to a short or an open
-  C: { name: 'capacitor', unknownCurrent: false }, // open at DC; a state in time
-  L: { name: 'inductor', unknownCurrent: true }, // short at DC; a state in time
-  D: { name: 'diode', unknownCurrent: false }, // resolved by its region: a source, a slope or an open
+  R: { name: 'resistor', unknownCurrent: false, nodes: 2 },
+  V: { name: 'voltage source', unknownCurrent: true, nodes: 2 },
+  I: { name: 'current source', unknownCurrent: false, nodes: 2 },
+  VCVS: { name: 'voltage-controlled voltage source', unknownCurrent: true, nodes: 2 },
+  VCCS: { name: 'voltage-controlled current source', unknownCurrent: false, nodes: 2 },
+  OPAMP: { name: 'op-amp', unknownCurrent: true, nodes: 1 }, // the output; the inputs are ctrl
+  SW: { name: 'switch', unknownCurrent: false, nodes: 2 }, // resolved to a short or an open
+  C: { name: 'capacitor', unknownCurrent: false, nodes: 2 }, // open at DC; a state in time
+  L: { name: 'inductor', unknownCurrent: true, nodes: 2 }, // short at DC; a state in time
+  D: { name: 'diode', unknownCurrent: false, nodes: 2 }, // resolved by its region: a source, a slope or an open
+  CCCS: { name: 'current-controlled current source', unknownCurrent: false, nodes: 2 }, // `over` names the branch it reads
+  // The two transistors. Neither carries a current unknown: each is stamped as
+  // conductances and controlled sources, in a region or at its tangent.
+  Q: { name: 'BJT', unknownCurrent: false, nodes: 3 }, // [collector, base, emitter]
+  M: { name: 'MOSFET', unknownCurrent: false, nodes: 3 }, // [drain, gate, source]
 }
 
 export class NetworkError extends Error {
@@ -52,15 +64,22 @@ const isGround = (n) => n === GROUND || n === '0' || n === 0
  * the solver and printer both consume.
  */
 export function normalize(net) {
-  const elements = (net.elements || []).map((e, k) => {
+  // Macros first: an element that stands for several (the op-amp with a speed,
+  // a slew limit and an offset) becomes those several here, before anything is
+  // numbered. Every solver and the equations view then see ordinary elements,
+  // and neither has a case for the macro.
+  const elements = expandMacros(net.elements || []).map((e, k) => {
     if (!e.type || !KINDS[e.type]) throw new NetworkError('kind', `Unknown element type "${e.type}"`)
     const id = e.id || `${e.type}${k + 1}`
     const nodes = (e.nodes || []).map((n) => (isGround(n) ? GROUND : String(n)))
-    const need = e.type === 'OPAMP' ? 1 : 2
-    if (nodes.length < need) throw new NetworkError('nodes', `${id} needs ${need} node(s)`)
+    const need = KINDS[e.type].nodes
+    if (nodes.length < need) throw new NetworkError('nodes', `${id} needs ${need} node${need === 1 ? '' : 's'}`)
     const ctrl = (e.ctrl || []).map((n) => (isGround(n) ? GROUND : String(n)))
     if ((e.type === 'VCVS' || e.type === 'VCCS' || e.type === 'OPAMP') && ctrl.length !== 2)
       throw new NetworkError('ctrl', `${id} needs two controlling nodes`)
+    // A current-controlled source reads a branch rather than a node pair, so
+    // it names the element whose current it multiplies.
+    if (e.type === 'CCCS' && !e.over) throw new NetworkError('ctrl', `${id} needs \`over\`, the id of the branch whose current it reads`)
     return { ...e, id, nodes, ctrl }
   })
 
