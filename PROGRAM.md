@@ -33,7 +33,8 @@ pushes.
 
 Stage by path. `git add apps/logic-lab packages/events`, never `git add -A`, never
 `commit -a`. Commit messages are narrative, in the register of `git log`. No model
-names in commits or files.
+names in files. A commit's attribution trailer is the session's, and it is the one
+place a model's name appears.
 
 ## 3. What every lab delivers, in order
 

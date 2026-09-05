@@ -81,6 +81,15 @@ Items that cross labs and land at integration.
   (`PROGRAM.md` §4).
 - The nav fold (`ELECTRONICS_LAB_PLAN.md` Decision 5) in the first release commit
   that makes a sixth lab public.
+- Three decisions raised by the Grid and Devices planner, for Reed. The suite's
+  `n_i` pin is 1.5 × 10¹⁰ cm⁻³, and the band-edge densities give 1.08 × 10¹⁰, a
+  20.7 mV shift in `V_0` if changed. The MOSFET threshold is 0.7 V in Electronics and
+  0.32 V derived, which the Devices plan closes with a threshold implant. The Grid
+  plan recommends `packages/grid` owning its own power-flow Newton.
+- The one-line diagram canvas goes to `packages/ui` on its first build. The Energy
+  Lab's props go in its signature (Grid plan, Decision 3).
+- The Fields Lab's field-map canvas needs a one-dimensional profile mode for the
+  Devices Lab. Sent to the Fields overseer as a need.
 
 ## 4. Planner entries
 
