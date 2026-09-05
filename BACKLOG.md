@@ -29,7 +29,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Energy Lab | built, dark | merged | Machines Lab for the wind group | `ENERGY_LAB_PLAN.md` |
 | Machines Lab | built, dark | merged | Power Lab F for the drives group | `MACHINES_LAB_PLAN.md` |
 | Communications Lab | built, dark | merged | | `COMMUNICATIONS_LAB_PLAN.md` |
-| Information Lab | building | `lab/info-lab` | Communications Lab for Group F and B4 | `INFORMATION_LAB_PLAN.md` |
+| Information Lab | built in part, dark | merged, 21 of 25 | the Communications Lab's BER canvas for Group F and B4, now merged | `INFORMATION_LAB_PLAN.md` |
 | Communications Lab | built, dark | `lab/comms-lab` | Electronics O and the RF Lab for one cross-reference | `COMMUNICATIONS_LAB_PLAN.md` |
 | Information Lab | waiting | | | `INFORMATION_LAB_PLAN.md` |
 | Applied Analog Lab | waiting | | Electronics L, M | `APPLIED_ANALOG_LAB_PLAN.md` |
