@@ -24,13 +24,16 @@
  *   peak.<node>  mean.<node>
  *   junction.<v0|w|xp|xn|cj|cd|is|slope|fT|doubling|gm>
  *   osc.<period|f|f0|sigma|amp|high|low|thd|hd2|growthRate>
+ *   noise.<density|rms|measured|flatness|nf|f|shot>  noise.<snr|snrdb|gain>.<node>
  */
 import { complex as cx } from '@ee-labs/network'
 import { clipOf, meanOf, peakOf, slopeOf } from './math.js'
 import { LESSONS_A } from './lessons/a.js'
 import { LESSONS_C } from './lessons/c.js'
 import { LESSONS_N } from './lessons/n.js'
+import { LESSONS_O } from './lessons/o.js'
 import { oscOf } from './groups/n.js'
+import { noiseOf } from './groups/o.js'
 
 const DEG = 180 / Math.PI
 
@@ -77,6 +80,11 @@ export function readQuantity(x, p, path, exp) {
     // groups/n.js off the walk the solver made.
     case 'osc':
       return oscOf(x)[rest[0]]
+    // Group O's noise: a density at one frequency, an rms over a stated band,
+    // a noise figure, and the signal-to-noise ratio at a named node. Measured
+    // in groups/o.js, on the tangent the experiment's circuit has.
+    case 'noise':
+      return rest.reduce((o, k) => (o == null ? o : o[k]), noiseOf(x))
     case 'cursor':
       return x.cursor
     default:
@@ -84,4 +92,4 @@ export function readQuantity(x, p, path, exp) {
   }
 }
 
-export const LESSONS = { ...LESSONS_A, ...LESSONS_C, ...LESSONS_N }
+export const LESSONS = { ...LESSONS_A, ...LESSONS_C, ...LESSONS_N, ...LESSONS_O }

@@ -245,3 +245,121 @@ impulse lesson, and `packages/ui/src/progression.test.js`.
   every lab's own list, its group names, and its plan file. A lab that adds ids to
   `CURRICULUM.md` without a row here is not checked at all. That file belongs to the
   seams (`PROGRAM.md` §5), so the request comes through this file.
+
+## Groups N and O
+
+Oscillators and noise, built as one lane. Both groups are in the app and
+green. What follows is what the lane could not do inside its own files, and
+what it decided differently from the plan.
+
+### 7. The dependency Group O needed, and where it went
+
+`apps/electronics-lab/package.json` gained `"@ee-labs/random": "*"`, which is
+item 3 of this document arriving. O1 calls `whiteNoise` and
+`averagedPeriodogram` from it and reads `asd`, `integral`, `flatness` and
+`relativeSe`, which is the shape that lab's `psd.js` froze for this caller.
+Nothing else in the group imports it. The sources side is `packages/network`'s
+`noise.js`, unchanged.
+
+### 8. Registry files the two groups had to touch
+
+A group cannot be reached from the app without an entry in each registry. The
+lane owns `groups/n.js`, `groups/o.js`, their terms and math files, the two
+lesson files and `components/NoiseCanvas.jsx`. Everything below is one import
+line and one entry per group in a file the lane does not own, and the director
+should check that no other lane wrote the same lines.
+
+- `src/experiments.js`: two imports, two `GROUPS` entries, two spreads into
+  `RAW`, and the `noise` view added to `VIEW_ORDER` and `VIEW_LABELS`.
+- `src/lessons.js`: two imports of the lesson files, two of the measuring
+  functions, two spreads into `LESSONS`, and two cases in `readQuantity` for
+  the `osc.` and `noise.` paths. Both cases delegate to the group's own file,
+  so no physics moved into `lessons.js`.
+- `src/terms.js` and `src/mathEntries.js`: one import and one spread each.
+- `src/components/panes.jsx`: one import and one entry in `PANES`, for the
+  noise view.
+
+`src/math.js` is untouched. Every quantity the two groups measure is computed
+in `groups/n.js` or `groups/o.js` from the analysis object, so `analyse` did
+not have to learn about oscillators or noise.
+
+### 9. The transistor geometry `layoutCheck.js` still does not know
+
+`packages/ui` has the transistor symbol (item 4 above), and
+`schematicGeometry.js` exports `transistorPinPlaces`, `transistorBodyBox` and
+`transistorTextPlaces` for it. `apps/electronics-lab/src/layoutCheck.js` does
+not use them. It sends a `Q` or an `M` through `elementBodyBoxes` and
+`elementTextPlaces`, which describe a two-terminal symbol. That is a box of
+±20 by ±9 rather than ±20 by ±20, and a label 24 below rather than 34. A
+layout carrying a transistor would pass the geometry test while the drawing
+overlapped on screen.
+
+Neither group draws one. Groups N and O are op-amps, passives and controlled
+sources throughout, and Group O's amplifiers are drawn as their own tangent
+(item 11). Whichever lane draws the first transistor should wire those three
+exports into `collect` in `layoutCheck.js`. Until then the check is quietly
+weaker than it looks.
+
+### 10. The progression test entry, updated
+
+`packages/ui/src/progression.test.js` belongs to the seams overseer. The
+Electronics Lab's entry becomes **19 experiments in 4 groups**:
+
+- Group A, "the op-amp as a user meets it", ids `a1` to `a6`.
+- Group C, "inside the junction", ids `c1` to `c4`.
+- Group N, "oscillators", ids `n1` to `n4`.
+- Group O, "noise", ids `o1` to `o5`.
+
+No lesson in either group cites an experiment by id outside the four groups
+built here, so the progression test stays green.
+
+### 11. Three places the engine disagreed with the plan, or the lane did
+
+**N4's transistor is drawn as its tangent.** The plan's N4 is a Colpitts with
+the three-region BJT and is marked a stretch, for the reason §2.8 gives. The
+exponential device has no closed-form answer in time. The lane built the same
+tank driven by a transconductance with a current limit, which is what
+`smallSignal` makes of the transistor, and the limit is piecewise-linear so
+`pwlTransient` solves the amplitude exactly. The frequency, the tap fraction
+and the growth rate are all measured against closed forms. What is not built
+is the device's own curvature, and reopening it needs the transistor geometry
+of item 9.
+
+**N2's limiter is the rails rather than a diode pair.** The plan allows
+either. The rails are exact under `pwlTransient`, and the amplitude comes out
+as the supply to floating point. The distortion then runs from 0.73 % at a
+gain of 3.02 to 24.1 % at four, which is the trade the experiment exists to
+show. A diode limiter would need two more elements on a drawing that is
+already 480 units wide.
+
+**O4 and O5 draw the hybrid-π rather than the transistor.** A noise density is
+a small-signal quantity and the sources sit on the small-signal netlist, so
+the circuit on screen is the netlist the stack is a stack over. This is also
+what `packages/network`'s own `noise.test.js` does for the same stage. The
+figures agree with it: 1.1105, or 0.455 dB, at a source resistance of 258.5 Ω,
+which is the number item 5 of this document already records.
+
+### 12. Two canvases the plan asked for, one of them built
+
+The plan's §4.2 lists a spectrum pane and a noise pane. The lane built the
+noise pane, `components/NoiseCanvas.jsx`, in the two shapes Group O needs. The
+spectrum pane is still the app shell's stub. `panes.jsx` draws `x.spectrum`
+and nothing sets it. N2's and N3's harmonics are measured in `groups/n.js` by
+correlating whole settled periods against their own fundamental, and the
+distortion is printed in the math panel, but there is no picture of the
+harmonics. Whoever builds Group M's output stage will want that pane, and the
+numbers are already there to draw.
+
+### 13. What the sittings should look at first
+
+- **The noise pane has not been read as a student would.** No browser has run
+  in this environment. Its data is checked, and its geometry is not. Every
+  curve is finite, the pane renders, and the numbers agree with the panel.
+- **Two layouts are 480 by 190 rather than the lab's 420 by 180.** N1 and N2
+  carry eight elements and five named nodes, and at 420 a reading lands on a
+  symbol. On a 390 px phone that is a 23 % shrink of every label. If it reads
+  badly, the fix is to move the Wien network's parallel arm onto a second row
+  rather than to widen the canvas further.
+- **N2's frequency is 1562.5 Hz where the network alone would set 1591.5 Hz.**
+  That is the rail-limited loop and the lesson states it, but it is the one
+  number in the two groups a reader is most likely to query.

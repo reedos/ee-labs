@@ -17,11 +17,12 @@ export * from './knobs.js'
 import { GROUP_A } from './groups/a.js'
 import { GROUP_C } from './groups/c.js'
 import { GROUP_N } from './groups/n.js'
+import { GROUP_O } from './groups/o.js'
 
 // Every view a lower pane can show, in the order the view switch lists them —
 // the same order in every experiment, so a tab sits in the same place from one
 // to the next.
-export const VIEW_ORDER = ['reading', 'scope', 'curves', 'transfer', 'bode', 'pz', 'spectrum', 'junction', 'equations']
+export const VIEW_ORDER = ['reading', 'scope', 'curves', 'transfer', 'bode', 'pz', 'spectrum', 'noise', 'junction', 'equations']
 
 export const VIEW_LABELS = {
   reading: { label: 'Reading', title: 'The operating point, every meter on the circuit at once, and the headline number' },
@@ -31,6 +32,7 @@ export const VIEW_LABELS = {
   bode: { label: 'Bode', title: '|H| in dB and ∠H against log frequency, from the exact polynomials' },
   pz: { label: 'Poles and zeros', title: 'The poles and zeros of the small-signal transfer function, as numbers on the plane' },
   spectrum: { label: 'Spectrum', title: 'The output’s harmonics, with the second-harmonic distortion beside them' },
+  noise: { label: 'Noise', title: 'The output’s noise density against frequency, one line per source, with the rms over the band beside it' },
   junction: { label: 'Junction', title: 'The depletion region drawn to scale against the bias, with its capacitance beside it' },
   equations: { label: 'Equations', title: 'The small-signal netlist printed as elements, then the rows the solver built' },
 }
@@ -38,12 +40,12 @@ export const VIEW_LABELS = {
 /** The label and hover text for a view. */
 export const viewLabel = (view) => VIEW_LABELS[view]
 
-export const GROUPS = ['A · The op-amp as a user meets it', 'C · Inside the junction', 'N · Oscillators']
+export const GROUPS = ['A · The op-amp as a user meets it', 'C · Inside the junction', 'N · Oscillators', 'O · Noise']
 
 // ------------------------------------------------------------ the list
 
 /** Every group's experiments, in the plan's order. */
-const RAW = [...GROUP_A, ...GROUP_C, ...GROUP_N]
+const RAW = [...GROUP_A, ...GROUP_C, ...GROUP_N, ...GROUP_O]
 
 /**
  * The experiments, with each one's lesson merged onto it. `note` is see + why,
