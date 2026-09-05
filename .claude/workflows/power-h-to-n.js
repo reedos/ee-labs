@@ -64,7 +64,7 @@ VERIFY before you report: npx vitest run apps/power-lab packages/switched --maxW
     if (!built) { log(`lane ${lane.key}: no result`); return null }
     log(`lane ${lane.key}: ok=${built.ok}; ${built.built}`)
     return agent(`You are an adversarial REVIEWER in the EE Labs program, checking one lane of the Power Lab: Groups ${lane.groups}, on branch ${built.branch}. Default to finding fault.
-SETUP: you are in your own git worktree created from master. First run: git checkout ${built.branch} && npm ci --no-audit --no-fund. You may commit fixes by path on this branch. NEVER push.
+SETUP: you are in your own git worktree created from master. First run: git checkout --ignore-other-worktrees ${built.branch} && npm ci --no-audit --no-fund. You may commit fixes by path on this branch. NEVER push.
 ${RULES}
 The builder reported: ${JSON.stringify(built)}.
 READ: POWER_LAB_PLAN.md section 1, section 2, section 4 for Groups ${lane.groups}, section 6 and section 11 in full, apps/power-lab/AGENT_BRIEF_DFG.md and the lane's own brief, CORE_SCOPE.md, STYLE.md, REVIEW_PLAYBOOK.md, and every file the lane added or changed (git diff ${INTEGRATION}...${built.branch} --stat, then read them).

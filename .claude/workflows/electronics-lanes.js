@@ -68,7 +68,7 @@ VERIFY: npx vitest run apps/electronics-lab --maxWorkers=4 green (existing group
     if (!built) { log(`lane ${lane.key}: no result`); return null }
     log(`lane ${lane.key}: ok=${built.ok}; ${built.built}`)
     return agent(`You are an adversarial REVIEWER in the EE Labs program, checking one lane of the Electronics Lab: Groups ${lane.groups}, on branch ${built.branch}. Default to finding fault.
-SETUP: you are in your own git worktree created from master. First run: git checkout ${built.branch} && npm ci --no-audit --no-fund. You may commit fixes by path on this branch. NEVER push.
+SETUP: you are in your own git worktree created from master. First run: git checkout --ignore-other-worktrees ${built.branch} && npm ci --no-audit --no-fund. You may commit fixes by path on this branch. NEVER push.
 ${RULES}
 The builder reported: ${JSON.stringify(built)}.
 READ: ELECTRONICS_LAB_PLAN.md section 5 for Groups ${lane.groups} and section 4.3, apps/electronics-lab/AGENT_BRIEF.md section 4 to section 6, CORE_SCOPE.md, STYLE.md, REVIEW_PLAYBOOK.md, and every file the lane added or changed (git diff ${INTEGRATION}...${built.branch} --stat, then read them).
