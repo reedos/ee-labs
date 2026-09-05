@@ -58,33 +58,33 @@ export const LESSONS_O = {
     see:
       'A kilohm at room temperature makes 4.07 nV per root hertz of thermal noise, and it makes it at every ' +
       'frequency alike. The capacitor rolls that off at 159 kHz. What sits on the capacitor over the whole ' +
-      'band is 2.03 µV of rms.',
+      'band is 2.04 µV of rms.',
     seeReads: [
       ['noise.density', 4.07035478e-9],
-      ['noise.rms', 2.03446466e-6],
+      ['noise.rms', 2.03516443e-6],
       [(x, p) => cornerOf(p), 159154.943],
     ],
     try: [
       {
-        say: 'Set R₁ to 100 kΩ. The density rises tenfold to 40.7 nV per root hertz, and the rms does not move from 2.03 µV.',
+        say: 'Set R₁ to 100 kΩ. The density rises tenfold to 40.7 nV per root hertz, and the rms does not move from 2.04 µV.',
         set: { R1: 100000 },
         reads: [
           ['noise.density', 4.07035397e-8],
-          ['noise.rms', 2.03446466e-6],
+          ['noise.rms', 2.03516443e-6],
         ],
       },
       {
-        say: 'Set R₁ to 100 Ω. The density falls to 1.29 nV per root hertz, and the rms is still 2.03 µV.',
+        say: 'Set R₁ to 100 Ω. The density falls to 1.29 nV per root hertz, and the rms is still 2.04 µV.',
         set: { R1: 100 },
         reads: [
           ['noise.density', 1.2871592e-9],
-          ['noise.rms', 2.03446466e-6],
+          ['noise.rms', 2.03516443e-6],
         ],
       },
       {
-        say: 'Set C₁ to 10 nF. Ten times the capacitance is √10 less rms, and it reads 643 nV.',
+        say: 'Set C₁ to 10 nF. Ten times the capacitance is √10 less rms, and it reads 644 nV.',
         set: { C1: 10e-9 },
-        reads: [['noise.rms', 6.43354216e-7]],
+        reads: [['noise.rms', 6.43575502e-7]],
       },
     ],
     why:
@@ -144,9 +144,9 @@ export const LESSONS_O = {
 
   o4: {
     see:
-      'Three sources arrive at the collector. The source resistance makes 364 nV per root hertz of it, the ' +
-      'base current 81.4 nV and the collector current 89.5 nV. Together they come to 383 nV, and the noise ' +
-      'figure that works out to is 0.455 dB.',
+      'Three sources set this stage’s own noise figure. The source resistance makes 364 nV per root hertz at ' +
+      'the collector, the base current 81.4 nV and the collector current 89.5 nV. Together they come to ' +
+      '383 nV, and the figure works out to 0.455 dB.',
     seeReads: [
       [(x) => noiseOf(x).stack.Rs, 3.63883626e-7],
       [(x) => noiseOf(x).stack.rpi, 8.13668526e-8],
@@ -219,13 +219,13 @@ export const LESSONS_O = {
       'own noise arrives at the output divided by that, and its power by the square of it. What it costs the ' +
       'ratio is 0.00002 dB. The rule that follows is the one every receiver is built on. Put the quietest ' +
       'stage first and give it enough gain, because nothing downstream recovers a ratio the front end has ' +
-      'already lost. The source resistance alone would allow 61.78 dB in this band. The chain gives back ' +
-      '60.93 dB, and almost all of that 0.855 dB of loss belongs to the first stage.',
+      'already lost. The source resistance alone would allow 61.79 dB in this band. The chain gives back ' +
+      '60.93 dB, and almost all of that 0.859 dB of loss belongs to the first stage.',
     whyReads: [
       ['noise.snrdb.d', 60.9277139],
       [(x) => noiseOf(x).snrdb.c - noiseOf(x).snrdb.d, 2.06e-5, 1e-6],
-      [(x, p) => sourceOnly(p), 61.7823],
-      [(x, p) => sourceOnly(p) - noiseOf(x).snrdb.d, 0.8546],
+      [(x, p) => sourceOnly(p), 61.7869720],
+      [(x, p) => sourceOnly(p) - noiseOf(x).snrdb.d, 0.859258053],
     ],
   },
 }

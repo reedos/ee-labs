@@ -34,6 +34,19 @@ export function ceFigure(p) {
   return 1 + (base + coll) / ref
 }
 
+/**
+ * The figure O4 would read if the collector resistor were counted too.
+ *
+ * `g_m` is an ideal current source, so the impedance at the collector is R_C
+ * and R_C's own thermal noise arrives there as 4kTR_C of power. Adding that
+ * to the three the stack carries, over the source resistance's own share, is
+ * the whole of the difference.
+ */
+export function withLoad(p, n) {
+  const ref = n.powers && n.powers.Rs > 0 ? n.powers.Rs : NaN
+  return 10 * Math.log10(n.f + (4 * K_B * p.T * p.RC) / ref)
+}
+
 /** The signal-to-noise ratio the source resistance alone would allow, in decibels. */
 export const sourceLimit = (p) =>
   20 * Math.log10(p.vsig / Math.SQRT2 / (thermalDensity(p.Rs, p.T) * Math.sqrt(Math.max(p.bw - 1, 1e-30))))
@@ -79,12 +92,12 @@ export const MATH_O = {
         F('v_n = \\sqrt{4kTR}, \\qquad B_n = \\frac{\\pi}{2}f_c = \\frac{1}{4RC}, \\qquad v_{n,rms} = \\sqrt{\\frac{kT}{C}}'),
         C([
           row('the density, √(4kTR)', thermalDensity(p.R1, p.T), n.density, 'V', 1e-6, { unchecked: flat }),
-          row('the rms over the band, √(kT/C)', ktOverC(p.C1, p.T), n.rms, 'V', 2e-3),
+          row('the rms over the band, √(kT/C)', ktOverC(p.C1, p.T), n.rms, 'V', 1e-4),
           row('the noise bandwidth the two imply', noiseBandwidth(fc), n.density > 0 ? (n.rms / n.density) ** 2 : NaN, 'Hz', 5e-3, { unchecked: flat }),
         ]),
         V([
           { label: 'the −3 dB corner', value: fc, unit: 'Hz', note: 'the noise bandwidth is π/2 of it' },
-          { label: 'the band the integral ran over', value: n.band[1], unit: 'Hz', note: 'from a ten-thousandth of the corner, which leaves 0.064 % of the power in each tail' },
+          { label: 'the band the integral ran over', value: n.band[1], unit: 'Hz', note: 'five decades either side of the corner, which leaves 0.00064 % of the power in each tail' },
         ]),
       ],
     }
@@ -141,6 +154,16 @@ export const MATH_O = {
           { label: 'the optimum source resistance, √β/g_m', value: best, unit: 'Ω' },
           { label: 'the figure in decibels', value: n.nf, unit: 'dB', note: 'ten times the log of the factor above' },
           { label: 'the transconductance the bias sets', value: gm, unit: 'A/V' },
+          // R_C is on the drawing and makes thermal noise like any resistor.
+          // The figure above is the figure of the stage, so the stack leaves
+          // it out, and the number it would have added is printed here rather
+          // than left for a reader to wonder about.
+          {
+            label: 'R_C’s own noise, which the figure leaves out',
+            value: thermalDensity(p.RC, p.T),
+            unit: 'V',
+            note: `per root hertz at the collector, and counting it would move the figure to ${withLoad(p, n).toFixed(3)} dB`,
+          },
         ]),
       ],
     }

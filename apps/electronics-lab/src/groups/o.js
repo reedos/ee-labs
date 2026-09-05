@@ -383,9 +383,12 @@ export const GROUP_O = [
       kind: 'sources',
       output: 'out',
       at: () => 1,
-      // The band the plan's invariant 9 states: four decades below the corner
-      // to three above it, which leaves 0.064 % of the power in each tail.
-      band: (p) => [cornerOf(p) / 1e4, 1000 * cornerOf(p)],
+      // Five decades either side of the corner. A first-order response puts
+      // f_c·10⁻⁵ of its power below the lower end and the same above the upper
+      // one, so each tail holds 10⁻⁵/(π/2) of the total, 0.00064 %. The rms
+      // then lands on √(kT/C) to seven digits and the row below is checked
+      // rather than hedged.
+      band: (p) => [cornerOf(p) / 1e5, 1e5 * cornerOf(p)],
       perDecade: 60,
     },
     headline: { path: 'noise.rms', label: 'v_n rms', unit: 'V' },
