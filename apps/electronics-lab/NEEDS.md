@@ -221,6 +221,14 @@ impulse lesson, and `packages/ui/src/progression.test.js`.
   that one of the two should go. Both files belong to the Elements lab rather than to
   this lane.
 
+- **Power Lab has three tests that a shared machine can fail.** `experiments.test.js`
+  compares a sweep's cost against one solve, and `App.smoke.test.jsx` mounts every
+  experiment inside sixty seconds. Six worktrees ran vitest at once on four cores here.
+  The sweep ratio came out 427 against a cap of 400 on one run and 186 against 150 on
+  the next. Both smoke tests timed out once and passed once. None of the three reads a
+  file this lane touched. The ratio is the one to look at first, since it is only fair
+  when both halves meet the same load.
+
 - **A row per new lab in `packages/ui/src/progression.test.js`.** Its `LABS` table names
   every lab's own list, its group names, and its plan file. A lab that adds ids to
   `CURRICULUM.md` without a row here is not checked at all. That file belongs to the

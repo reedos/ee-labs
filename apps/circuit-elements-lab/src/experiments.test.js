@@ -138,13 +138,15 @@ describe('every experiment', () => {
         }
       }
     }
-    // 26 settings × 26 experiments, half of them exact transients with energy
-    // integrals: a few seconds alone, longer when the whole monorepo's workers
-    // share the machine.
-  // Group I walks every rectifier through its events at 26 settings each, and
-  // an event is a fresh exact solve: real work, and slower than the rest of
-  // the suite put together.
-  }, 180000)
+    // Twenty-six settings for each of 58 experiments, half of them exact
+    // transients with energy integrals, and Group I's rectifiers solve afresh
+    // at every event: real work, and slower than the rest of the suite put
+    // together. It runs in about 210 seconds alone on this four-core machine
+    // and longer again when the monorepo's own workers share it, which is why
+    // 180 seconds ran out. A budget in milliseconds is a claim about the
+    // machine and not about the code, so this one is three times the measured
+    // cost — still short enough that a hang is a failure and not a wait.
+  }, 600000)
 
   it('prints a system whose unknown count matches the topbar claim', () => {
     for (const e of EXPERIMENTS) {
@@ -2049,9 +2051,9 @@ describe('the headline number', () => {
       }
     }
     // Twenty-six settings for each of 58 experiments, a third of them exact
-    // transients walked event by event. The same headroom the math-panel walk
-    // above takes, and for the same reason.
-  }, 240000)
+    // transients walked event by event: about 200 seconds alone. The same
+    // headroom the math-panel walk above takes, and for the same reason.
+  }, 600000)
 
   it('E3 refuses at the defaults and reads A·V₁ with finite gain; F6 reads I₀·R_off', () => {
     expect(headlineValue(byId.e3.headline, at('e3').x, at('e3').p)).toBeNull()
