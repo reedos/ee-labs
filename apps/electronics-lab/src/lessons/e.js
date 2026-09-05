@@ -103,11 +103,12 @@ export const LESSONS_E = {
   e3: {
     see:
       'The divider holds the base at 1.700 V, and the emitter resistor takes what is left after the ' +
-      'junction’s drop. The emitter sits at 1.000 V, so the current is 990.4 µA. β now enters only through ' +
-      'R_B/(β + 1), which the divider keeps small beside R_E.',
+      'junction’s drop. The emitter sits at 1.000 V, so R_E carries 1.000 mA. The collector takes α of ' +
+      'that, 990.4 µA, and β now enters only through R_B/(β + 1).',
     seeReads: [
       ['v.b', 1.7003215],
       ['v.e', 1.0003215],
+      [(x, p) => x.sol.v.e / p.RE, 1.0003215e-3],
       ['op.Q1.ic', 9.9041737e-4],
     ],
     try: [
@@ -201,7 +202,7 @@ export const LESSONS_E = {
 
   e5: {
     see:
-      'The gate draws nothing at all, so the divider holds it at 1.900 V and the source resistor sets what ' +
+      'The gate draws nothing at all, so V_G holds it at 1.900 V and the source resistor sets what ' +
       'is left. The drain passes 400.0 µA with 200.0 mV of overdrive, and sits at 3.000 V. The source ' +
       'resistor is what makes that current stable against the part in hand.',
     seeReads: [
@@ -260,7 +261,7 @@ export const LESSONS_E = {
         reads: [['op.Q1.ic', 9.9529296e-4]],
       },
       {
-        say: 'Raise the temperature to 350 K. The current reads 990.6 µA, unmoved to five figures, because α carries no temperature in it.',
+        say: 'Raise the temperature to 350 K. The current reads 990.6 µA, unmoved to four figures, because α carries no temperature in it.',
         set: { T: 350 },
         reads: [['op.Q1.ic', 9.9062811e-4]],
       },

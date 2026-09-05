@@ -105,6 +105,22 @@ export const ENTRIES_E = {
     const hp = hot && hot.point.Q1
     const cp = cold && cold.point.Q1
     const shift = hp && cp ? -(hp.vbe - cp.vbe) / (p.RE + rb / (p.beta + 1)) : NaN
+    // The shift formula divides by the resistance in the emitter loop alone.
+    // The junction carries an incremental resistance of its own, r_e = V_T/I_E,
+    // in series with that, and the form the plan and every textbook write
+    // leaves it out. So the form is an approximation, its relative error is
+    // about r_e/(R_E + R_B/(β + 1)), and under CORE_SCOPE's rule 3 it needs a
+    // threshold. The row is checked while that ratio is under a twentieth,
+    // which at the defaults it is by a factor of two, and footnoted with the
+    // ratio otherwise. The tolerance is what the threshold allows plus the
+    // second-order term the twenty kelvin themselves contribute.
+    const rLoop = p.RE + rb / (p.beta + 1)
+    const re = pt.ie < 0 ? vtT / -pt.ie : Infinity
+    const NEGLECT = 0.05
+    const degenerate =
+      re <= NEGLECT * rLoop
+        ? null
+        : `The junction’s own slope r_e = V_T/I_E is ${(re / rLoop).toPrecision(2)} of the resistance under the emitter, past the twentieth this form may neglect, so the device rather than the resistor sets the shift here.`
     return {
       blocks: [
         T('Temperature enters through I_S alone. At a fixed current the junction needs less voltage as it warms, and whatever V_BE gives up the emitter resistor takes as current.'),
@@ -114,14 +130,15 @@ export const ENTRIES_E = {
             unchecked: pt.ic > 1e-12 ? notActive(pt) : 'The collector current here is below a picoamp, so its logarithm is the solver’s floor rather than a reading.',
           }),
           row('the base loop closes on V_BB', vbb, pt.ib * rb + pt.vbe - pt.ie * p.RE, 'V', 1e-6, { unchecked: notActive(pt) }),
-          row('ΔI_C over 20 K, from ΔV_BE', shift, hp && cp ? hp.ic - cp.ic : NaN, 'A', 0.05, {
-            unchecked: hp && cp ? notActive(hp) || notActive(cp) : 'The circuit has no answer ten kelvin either side of this one.',
+          row('ΔI_C over 20 K, from ΔV_BE', shift, hp && cp ? hp.ic - cp.ic : NaN, 'A', 0.08, {
+            unchecked: hp && cp ? notActive(hp) || notActive(cp) || degenerate : 'The circuit has no answer ten kelvin either side of this one.',
           }),
         ]),
         V([
           { label: 'I_S at this temperature', value: isT, unit: 'A', note: 'from the same law Group C measured' },
           { label: 'thermal voltage V_T here', value: vtT, unit: 'V' },
-          { label: 'what the shift divides by, R_E + R_B/(β + 1)', value: p.RE + rb / (p.beta + 1), unit: 'Ω' },
+          { label: 'what the shift divides by, R_E + R_B/(β + 1)', value: rLoop, unit: 'Ω' },
+          { label: 'the junction’s own slope, V_T/I_E', value: re, unit: 'Ω', note: 'the form above holds while this is under a tenth of the row before it' },
         ]),
       ],
     }
@@ -139,7 +156,7 @@ export const ENTRIES_E = {
     const triode = pt.region === 'triode' ? 'The drain has fallen below V_OV, so the device is in triode and the saturation form does not describe it.' : null
     return {
       blocks: [
-        T('The gate draws no current, so the divider holds it wherever it is set. The source resistor then subtracts the drain current from the overdrive, which is what keeps a threshold shift from squaring itself into the answer.'),
+        T('The gate draws no current, so a source sets it and a divider of the same open-circuit voltage would set the same thing. The source resistor then subtracts the drain current from the overdrive, which is what keeps a threshold shift from squaring itself into the answer.'),
         F('I_D = \\tfrac12 k_n V_{OV}^2, \\qquad V_{OV} = V_G - V_t - I_D R_S, \\qquad V_{DS} = V_{DD} - I_D(R_D + R_S)'),
         C([
           row('drain current from the square law', id, pt.id_, 'A', 1e-6, { unchecked: off || triode }),
