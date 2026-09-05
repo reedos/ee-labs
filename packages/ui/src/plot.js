@@ -52,14 +52,41 @@ export function plotArea(w, h, opts = {}) {
   return { x: l, y: t, w: Math.max(1, w - l - r), h: Math.max(1, h - t - b), k }
 }
 
-/** A round tick interval near `range / target`. */
+/**
+ * A round tick interval near `range / target`, and never wider than the axis
+ * it has to divide.
+ *
+ * The rounding here goes UP to the next round number, which can overshoot the
+ * whole range when `raw` lands just past a cutoff. Signal Lab's phone layout
+ * found it: three presets load an overlay, whose right-hand axis reserves 64px
+ * of gutter instead of 18, which at 390px leaves the frequency canvas about
+ * 230px and a tick target of 2. A 4060 Hz range then gives raw 2030 and norm
+ * 2.03, a hair over the `<= 2` cutoff, so it rounds into the 5 bucket and
+ * returns 5000 — wider than the 4060 Hz axis it is meant to divide. The tick
+ * loop's second value already exceeds xMax, so the axis drew a single label,
+ * "0.0k", for its entire length, on lessons whose try lines name a frequency
+ * the student is supposed to find on that very axis.
+ *
+ * So the rounded-up step is capped by the largest round number that still fits
+ * inside `range`. That guarantees at least one interval, and it only ever
+ * changes the cases that were previously drawing no interval at all.
+ */
 export function niceStep(range, target) {
   if (range <= 0) return 1
   const raw = range / Math.max(1, target)
   const mag = Math.pow(10, Math.floor(Math.log10(raw)))
   const norm = raw / mag
   const step = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10
-  return step * mag
+  const chosen = step * mag
+
+  // The largest round number that fits in the range, found the same way and
+  // rounded DOWN instead. `fitNorm` is in [1, 10), so this is 1, 2 or 5 times
+  // the range's own magnitude.
+  const fitMag = Math.pow(10, Math.floor(Math.log10(range)))
+  const fitNorm = range / fitMag
+  const fit = (fitNorm >= 5 ? 5 : fitNorm >= 2 ? 2 : 1) * fitMag
+
+  return Math.min(chosen, fit)
 }
 
 /**
