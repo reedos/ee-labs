@@ -321,11 +321,14 @@ export default function App() {
   const lessonBodyRef = useRef(null)
   const controlsRef = useRef(null)
   const lessonLoadedOnce = useRef(false)
-  useEffect(() => {
-    if (!lessonLoadedOnce.current) {
-      lessonLoadedOnce.current = true
-      return
-    }
+  // Shared by the lesson-change effect below and the breakpoint-crossing
+  // listener further down: the same "is the try line actually inside the
+  // sidebar's visible box" check, applied wherever the sidebar's own layout
+  // can have just changed under it. A ref, not a useCallback, because it
+  // reads refs and the live DOM at call time and closes over nothing that
+  // changes per render — one function is correct for a mount effect, a
+  // lesson-change effect and a resize listener alike.
+  const syncLessonScroll = useRef(() => {
     const el = lessonBodyRef.current
     const container = controlsRef.current
     if (!el || !container) return
@@ -360,8 +363,42 @@ export default function App() {
       el.style.scrollMarginTop = `${headerH}px`
       el.scrollIntoView({ block: 'start' })
     }
+  })
+  useEffect(() => {
+    if (!lessonLoadedOnce.current) {
+      lessonLoadedOnce.current = true
+      return
+    }
+    syncLessonScroll.current()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lesson, loads])
+
+  // The bug this effect exists for: none of the above reruns on a LIVE
+  // resize. `.app.has-lesson .controls` only clips to 40vh below 900px
+  // (styles.css), so a page that loaded wide (no cap, no correction needed)
+  // and is then narrowed past that breakpoint gets the cap applied to
+  // whatever scrollTop the sidebar already had — 0 on a page that never
+  // needed to scroll it, which is exactly the desktop default. The lesson
+  // body's try line then sits below the newly-clipped box with nothing
+  // having ever checked it, because [lesson, loads] did not change. A
+  // devtools device-toggle or a laptop window drag crosses this live; a
+  // fresh phone load never does, which is why no probe had caught it
+  // (`document.fonts.ready` is not the gap here — no probe here ever
+  // resizes without first navigating).
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)')
+    const onChange = (e) => {
+      if (!e.matches) return
+      // The resize and the CSS cap both apply synchronously with the
+      // viewport change; the container's own box is already correct by the
+      // time the 'change' event fires, so no extra frame wait is needed —
+      // but one is cheap insurance against a browser that reflows a tick
+      // later, and this runs at most once per breakpoint crossing.
+      requestAnimationFrame(() => syncLessonScroll.current())
+    }
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   // The state a chip or a dirtiness check reads: the loop's setup, not its view.
   const state = { plantId, plantP, ctrlId, ctrlP, stepInput }

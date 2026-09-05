@@ -1516,6 +1516,86 @@ console.log('\n7b. Fold probe walked continuously — open groups accumulate the
   console.log('   walked all 13 lessons in one session per viewport; every knob stayed inside the fold, never more than one group open')
 }
 
+// ---------------------- 7c. the fold across a LIVE breakpoint crossing
+
+// Item 11's own trap, found in this lab: every probe above (7 and 7b) calls
+// setViewportSize and THEN navigates, so every phone measurement in this
+// file — and in phoneProbe/foldProbe themselves (packages/ui) — is a fresh
+// load at a fixed size. None of them ever resizes a page that is already
+// open. A student narrowing a laptop window, or a devtools device toggle,
+// does exactly that: crosses from the desktop layout (`.controls` unclipped)
+// to the phone layout (`.app.has-lesson .controls`, capped at 40vh,
+// styles.css) without a reload in between. The effect that scrolls the
+// active lesson into view (App.jsx) used to run only on mount and on lesson
+// change — never on this resize — so a lesson loaded wide, where the sidebar
+// never needed correcting, kept scrollTop 0 after being narrowed, and the
+// try line's last chip landed below the newly-clipped fold with nothing
+// having ever checked it.
+//
+// This walks all 13 lessons, each from its own fresh load at a LAPTOP size
+// (no cap, so loading the lesson there needs no scroll correction and
+// leaves scrollTop at whatever it already was), then resizes LIVE to the
+// phone viewport — the one crossing no probe here had made before — and
+// requires the try line's last chip to end up inside the sidebar's own
+// visible box, the same "not scrolled past, not painted over by the sticky
+// header" test section 7's phone walk already applies.
+console.log('\n7c. Fold probe across a live desktop-to-phone resize (no reload)\n')
+{
+  const lessonNames = await page.evaluate(() =>
+    [...document.querySelectorAll('#lessons details.preset-group .preset')].map((b) => b.textContent.trim()),
+  )
+  if (lessonNames.length !== 13) fail(`live-resize walk: expected 13 lessons, found ${lessonNames.length}`)
+  let affected = 0
+  for (const name of lessonNames) {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await page.evaluate(() => document.fonts.ready)
+    await page.waitForSelector('.views canvas')
+    await loadLesson(name)
+    // The live crossing itself — no navigation, no forced scrollTop, so
+    // whatever the desktop load left the sidebar at is what the resize
+    // acts on.
+    await page.setViewportSize(PHONE_VIEWPORT)
+    await page.waitForTimeout(200)
+    await page.evaluate(() => document.fonts.ready)
+    const info = await page.evaluate(() => {
+      const container = document.querySelector('.controls')
+      const header = document.querySelector('#lessons > h2')
+      const chips = [...document.querySelectorAll('.try-line .chip')]
+      const chip = chips[chips.length - 1]
+      if (!container || !chip) return null
+      const cbox = container.getBoundingClientRect()
+      const hbox = header ? header.getBoundingClientRect() : null
+      // Same sticky-header allowance as section 7's phone walk: the header
+      // paints over whatever is scrolled under it, so "inside the box" means
+      // below the header's own bottom edge, not just below the box's top.
+      const safeTop = hbox ? Math.max(cbox.top, hbox.bottom) : cbox.top
+      const box = chip.getBoundingClientRect()
+      return {
+        scrollTop: container.scrollTop,
+        top: box.top,
+        bottom: box.bottom,
+        safeTop,
+        contBottom: cbox.bottom,
+        within: box.top >= safeTop - 0.5 && box.bottom <= cbox.bottom + 0.5,
+      }
+    })
+    if (!info) {
+      fail(`live-resize fold/${name}: try line's last chip or sidebar not rendered after the crossing`)
+      continue
+    }
+    if (!info.within) {
+      affected++
+      fail(
+        `live-resize fold/${name}: try line's last chip at ${info.top.toFixed(0)}-${info.bottom.toFixed(0)} outside the sidebar's visible box ${info.safeTop.toFixed(0)}-${info.contBottom.toFixed(0)} after a live resize left scrollTop ${info.scrollTop}`,
+      )
+    }
+  }
+  console.log(
+    `   ${affected === 0 ? 'all 13 lessons: last chip inside the sidebar box after a live desktop-to-phone resize' : affected + ' of 13 lessons left the last chip outside the sidebar box after a live resize'}`,
+  )
+}
+
 // ------------------------------------------------------- 8. text overprints
 
 console.log('\n8. Overprinting captions and labels (items 24, 25, 26, 27)\n')
