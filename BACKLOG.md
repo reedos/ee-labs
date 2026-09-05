@@ -26,7 +26,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Control Lab II | building | `lab/control-lab-ii` | | to write |
 | Instruments Lab | building | `lab/instruments-lab` | RF Lab for the network analyser group | to write |
 | Fields Lab | building | `lab/fields-lab` | | to write |
-| Energy Lab | building | `lab/energy-lab` | Machines Lab for the wind group | to write |
+| Energy Lab | built, dark | merged | Machines Lab for the wind group | `ENERGY_LAB_PLAN.md` |
 | Machines Lab | built, dark | merged | Power Lab F for the drives group | `MACHINES_LAB_PLAN.md` |
 | Communications Lab | waiting | | Random Signals Lab | `COMMUNICATIONS_LAB_PLAN.md` |
 | Information Lab | waiting | | Communications Lab | `INFORMATION_LAB_PLAN.md` |
@@ -159,6 +159,35 @@ synchronous-machine contract, which is met rather than deferred.
   `senseBranch`) is offered to whoever writes Elements F8. Two stamps it would
   make unnecessary, a current-controlled current source and a coupled
   inductor, are offered to `packages/network`, both named in `NEEDS.md`.
+
+### Energy Lab"
+
+`BACKLOG.md` is not on this branch. The entry is written here for the director
+to paste at integration, rather than added to a file this branch does not
+carry.
+
+### Energy Lab
+
+- **The wind group.** Not started. A turbine's electrical half is a machine,
+  and no lab in the suite teaches machines yet, so it waits on the Machines
+  Lab. What it needs from there is a generator with a torque input and
+  electrical terminals. Until it exists, this lab's sources are the
+  photovoltaic cell and the battery, and the plan says so as a decision rather
+  than an omission.
+- **A starting point for `newtonDC`.** Deferred, and §4 above is the contract.
+  The lab is complete without it. The current drive converges everywhere, and
+  the reason it is the primitive is a sentence the lab teaches.
+- **No small-signal model offered to `packages/systems`.** A cell is
+  exponential and a string is twelve of them, so it is inadmissible under Rule
+  1 of `CORE_SCOPE.md`. The small-signal resistance at an operating point would
+  be admissible, and no experiment here needs one. That is a decision rather
+  than a gap.
+- **The reverse branch has no breakdown.** The model's only reverse path is the
+  shunt resistance, so a shaded cell's reverse voltage is the model's rather
+  than a real cell's. `src/guards.js` carries the sentence that says so, and
+  the pane prints it under every picture that shows a reverse voltage. Adding
+  a breakdown region would be a new element in `packages/network`, and no
+  experiment here needs the exact volts.
 
 ## 3. The director's queue
 
