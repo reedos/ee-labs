@@ -41,6 +41,10 @@ export const Cap = (key, label, def, hint) => ({ key, label, unit: 'F', min: 1e-
 export const Ind = (key, label, def, hint) => ({ key, label, unit: 'H', min: 1e-6, max: 10, scale: 'log', default: def, hint })
 export const Freq = (key, label, def, hint) => ({ key, label, unit: 'Hz', min: 1, max: 1e7, scale: 'log', default: def, hint })
 export const Amp = (key, label, def, hint) => ({ key, label, unit: 'V', min: 1e-4, max: 10, scale: 'log', default: def, hint })
+/** A current a source pushes, from a nanoamp of leakage to ten amps through a shunt. */
+export const Cur = (key, label, def, hint) => ({ key, label, unit: 'A', min: 1e-9, max: 10, scale: 'log', default: def, hint })
+/** A transconductance, in amps per volt. */
+export const Gm = (key, label, def, hint) => ({ key, label, unit: 'A/V', min: 1e-6, max: 1, scale: 'log', default: def, hint })
 // Degrees, not engineering notation: "500 m°" is nobody's phase.
 export const Deg = (key, label, def, hint) => ({ key, label, unit: '°', min: -180, max: 180, scale: 'linear', default: def, eng: false, hint })
 export const Pct = (key, label, def, hint) => ({ key, label, unit: '%', min: 0, max: 20, scale: 'linear', default: def, eng: false, hint })

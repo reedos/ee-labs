@@ -415,19 +415,35 @@ const CLAIMS = {
       V([val('the instrument shows', rin, 'Ω'), val('in parallel with', cin, 'F')]),
     ]
   },
-  // A3: the compensated divider is flat, exactly.
+  // A3: the divider, and the one setting at which it is flat.
   flat: (exp, p, x) => {
     const dc = p.R2 / (p.R1 + p.R2)
     const hf = p.C1 / (p.C1 + p.C2)
+    // The exact magnitude of the divider at any C₁: Z₂/(Z₁+Z₂) with each leg a
+    // resistor and a capacitor in parallel. The two agree at every frequency
+    // only when R₁C₁ = R₂C₂, which is what the flatness row below measures.
+    const hand = (f) => {
+      const w = TWO_PI * f
+      const leg = (r, c) => cx.cdiv(cx.C(r), cx.C(1, w * r * c))
+      const z1 = leg(p.R1, p.C1)
+      const z2 = leg(p.R2, p.C2)
+      return cx.cabs(cx.cdiv(z2, cx.cadd(z1, z2)))
+    }
     const decades = [1, 1e2, 1e4, 1e6, 1e8]
+    const mags = decades.map((f) => magAt(exp, p, f))
     return [
       F('\\frac{V_{in}}{V_{tip}} = \\frac{R_2 \\parallel 1/sC_2}{R_1 \\parallel 1/sC_1 + R_2 \\parallel 1/sC_2}', 'flat at every frequency when R₁C₁ = R₂C₂'),
       C([
-        row('the ratio at DC, R₂/(R₁+R₂)', dc, magAt(exp, p, 1e-3), '', 1e-9),
-        row('the ratio at high frequency, C₁/(C₁+C₂)', hf, magAt(exp, p, 1e9), '', 1e-9),
-        ...decades.map((f) => row(`|H| at ${f >= 1e6 ? `${f / 1e6} MHz` : f >= 1e3 ? `${f / 1e3} kHz` : `${f} Hz`}`, dc, magAt(exp, p, f), '', 1e-6)),
+        row('the ratio at DC, R₂/(R₁+R₂)', dc, magAt(exp, p, 1e-6), '', 1e-9),
+        row('the ratio at high frequency, C₁/(C₁+C₂)', hf, magAt(exp, p, 1e12), '', 1e-9),
+        ...decades.map((f, k) => row(`|H| at ${f >= 1e6 ? `${f / 1e6} MHz` : f >= 1e3 ? `${f / 1e3} kHz` : `${f} Hz`}`, hand(f), mags[k], '', 1e-9)),
       ]),
-      V([val('the two time constants', p.R1 * p.C1, 's', `R₂·C₂ is ${(p.R2 * p.C2).toExponential(4)} s`)]),
+      V([
+        val('the probe’s time constant, R₁C₁', p.R1 * p.C1, 's'),
+        val('the scope’s time constant, R₂C₂', p.R2 * p.C2, 's'),
+        val('the flattest and the least flat of the five', Math.min(...mags), '', `the largest is ${Math.max(...mags).toPrecision(6)}`),
+        val('C₁ that would make them equal, R₂C₂/R₁', (p.R2 * p.C2) / p.R1, 'F'),
+      ]),
     ]
   },
   // A4: the step of a mis-compensated probe, both ends and the time between.
@@ -445,7 +461,10 @@ const CLAIMS = {
     return [
       F('v(0^+) = \\frac{C_1}{C_1 + C_2}\\,v_{tip}, \\qquad v(\\infty) = \\frac{R_2}{R_1 + R_2}\\,v_{tip}', 'the capacitors share the edge, the resistors share the settled value'),
       C([
-        row('just after the edge', settled + (edge - settled) * Math.exp(-tFast / tau), x.tr.at(tFast).sol.v.in, 'V', 1e-5),
+        // The guard: the fast mode is 2 x 10^-9 of the step twenty of its own
+        // time constants in, and what is left is the slow mode moving by the
+        // ratio of the two, R_cal over R1 in parallel with R2.
+        row('just after the edge', settled + (edge - settled) * Math.exp(-tFast / tau), x.tr.at(tFast).sol.v.in, 'V', Math.max(1e-6, (0.5 * p.Rcal) / par(p.R1, p.R2))),
         row('settled', settled, x.tr.at(0.45 / p.fc).sol.v.in, 'V', 1e-6),
         row('the time constant between them, (R₁∥R₂)(C₁+C₂)', tau, tauFromStep(x, settled, edge), 's', 5e-3),
       ]),

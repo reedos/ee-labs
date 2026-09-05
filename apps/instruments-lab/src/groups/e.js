@@ -13,7 +13,7 @@
 // cos x is sin(x + π/2), and −cos x is sin(x + 3π/2), which is how the two
 // sources below carry their phases.
 
-import { Amp, BOT, Cap, Deg, Freq, GROUPS, H, R, TOP, Win, chips, gnd, leg, node, rail, src } from '../kit.js'
+import { Amp, BOT, Cap, Deg, Gm, Freq, GROUPS, H, R, TOP, Win, chips, gnd, leg, node, rail, src } from '../kit.js'
 
 /** M, the amplitude of each of the mixer's two terms. */
 export const mixerM = (p) => (p.A * p.Vr) / (2 * p.Vu)
@@ -79,10 +79,12 @@ export const GROUP_E = [
       Amp('A', 'Signal', 0.01),
       Amp('Vr', 'Reference', 1),
       Amp('Vu', 'Mixer unit', 1, 'the volts the multiplier divides by, so its output is in volts'),
-      Freq('fs', 'Signal frequency', 1000),
-      Freq('fr', 'Reference frequency', 1000),
+      // The reference sitting on the signal is the premise of E1 to E3, not a
+      // setting, so the try steps move it and the fuzzer leaves it alone.
+      { ...Freq('fs', 'Signal frequency', 1000), fixed: true },
+      { ...Freq('fr', 'Reference frequency', 1000), fixed: true },
       Deg('phi', 'Signal phase', 0),
-      Amp('gm', 'Transconductance', 1e-3),
+      Gm('gm', 'Transconductance', 1e-3),
       R('Rf', 'Filter R', 1000),
       chips(Cap('Cf', 'Filter C', 1e-6), [1e-6, 1e-5, 1e-4]),
       Win('N', 'Window', 'τ', 10, 4, 30),
@@ -117,10 +119,12 @@ export const GROUP_E = [
       Amp('A', 'Signal', 0.01),
       Amp('Vr', 'Reference', 1),
       Amp('Vu', 'Mixer unit', 1),
-      Freq('fs', 'Signal frequency', 1000),
-      Freq('fr', 'Reference frequency', 1000),
+      // The reference sitting on the signal is the premise of E1 to E3, not a
+      // setting, so the try steps move it and the fuzzer leaves it alone.
+      { ...Freq('fs', 'Signal frequency', 1000), fixed: true },
+      { ...Freq('fr', 'Reference frequency', 1000), fixed: true },
       Deg('phi', 'Signal phase', 0),
-      Amp('gm', 'Transconductance', 1e-3),
+      Gm('gm', 'Transconductance', 1e-3),
       chips(R('Rf', 'Filter R', 1000), [1000, 10000]),
       chips(Cap('Cf', 'Filter C', 1e-6), [1e-6, 1e-5, 1e-4]),
       Win('N', 'Window', 'τ', 10, 4, 30),
@@ -147,10 +151,12 @@ export const GROUP_E = [
       Amp('A', 'Signal', 0.01),
       Amp('Vr', 'Reference', 1),
       Amp('Vu', 'Mixer unit', 1),
-      Freq('fs', 'Signal frequency', 1000),
-      Freq('fr', 'Reference frequency', 1000),
+      // The reference sitting on the signal is the premise of E1 to E3, not a
+      // setting, so the try steps move it and the fuzzer leaves it alone.
+      { ...Freq('fs', 'Signal frequency', 1000), fixed: true },
+      { ...Freq('fr', 'Reference frequency', 1000), fixed: true },
       chips(Deg('phi', 'Signal phase', 0), [0, 60, 90, 180]),
-      Amp('gm', 'Transconductance', 1e-3),
+      Gm('gm', 'Transconductance', 1e-3),
       R('Rf', 'Filter R', 1000),
       Cap('Cf', 'Filter C', 1e-6),
       Win('N', 'Window', 'τ', 10, 4, 30),
@@ -177,10 +183,10 @@ export const GROUP_E = [
       Amp('A', 'Signal', 0.01),
       Amp('Vr', 'Reference', 1),
       Amp('Vu', 'Mixer unit', 1),
-      chips(Freq('fs', 'Signal frequency', 1200), [1050, 1200, 1500]),
-      Freq('fr', 'Reference frequency', 1000),
+      chips({ ...Freq('fs', 'Signal frequency', 1200), fixed: true }, [1050, 1200, 1500]),
+      { ...Freq('fr', 'Reference frequency', 1000), fixed: true },
       Deg('phi', 'Signal phase', 0),
-      Amp('gm', 'Transconductance', 1e-3),
+      Gm('gm', 'Transconductance', 1e-3),
       R('Rf', 'Filter R', 1000),
       chips(Cap('Cf', 'Filter C', 1e-6), [1e-6, 1e-5, 1e-4]),
       Win('N', 'Window', 'beats', 6, 2, 12),

@@ -100,7 +100,7 @@ export const GROUP_C = [
       Vs('E', 'Source V₁', 10),
       chips(R('R1', 'R₁', 1e6), [1e4, 1e6]),
       chips(R('R2', 'R₂', 1e6), [1e4, 1e6]),
-      chips(R('Rm', 'Meter R_in', 1e7), [1e6, 1e7, 1e9]),
+      chips(R('Rm', 'Meter R_in', 1e7), [1e6, 1e7, 1e8]),
     ],
     net: (p) => ({
       elements: [

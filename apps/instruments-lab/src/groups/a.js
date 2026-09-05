@@ -7,7 +7,7 @@
 // rise time to bandwidth.
 
 import { complex as cx } from '@ee-labs/network'
-import { Amp, BOT, Cap, Freq, GROUPS, H, R, TOP, Win, chips, gnd, leg, node, rail, src, top } from '../kit.js'
+import { Amp, BOT, Cap, Cur, Freq, GROUPS, H, R, TOP, Win, chips, gnd, leg, node, rail, src, top } from '../kit.js'
 
 const SCOPE_R = R('R2', 'Scope R_in', 1e6, 'the resistance the scope shows at DC')
 const SCOPE_C = Cap('C2', 'Scope C_in', 15e-12, 'the capacitance across it, cable included')
@@ -45,7 +45,7 @@ function probeLayout(feedId, feedNode) {
       ...top(feedId, 110),
       rail(130, x0, TOP),
       node(feedNode, 44, TOP, 't'),
-      node('tip', x0, TOP, 't'),
+      node('tip', 155, TOP, 't'),
       // R1 on the rail, C1 on a branch below it, meeting again at `in`.
       rail(x0, x0 + 20, TOP),
       ...top('R1', x0 + 40),
@@ -88,7 +88,7 @@ export const GROUP_A = [
       SCOPE_R,
       SCOPE_C,
       chips(Freq('f', 'Frequency', 1000), [1000, 10610.3, 1e6]),
-      Amp('I', 'Test current', 1e-6, 'pushed into the input, so the volts read as ohms'),
+      Cur('I', 'Test current', 1e-6, 'pushed into the input, so the volts read as ohms'),
       Win('N', 'Window', 'cycles', 6),
     ],
     net: (p) => ({
@@ -182,7 +182,7 @@ export const GROUP_A = [
       items: [
         ...src('V1', 44),
         rail(44, 120, TOP),
-        node('tip', 120, TOP, 't'),
+        node('tip', 95, TOP, 't'),
         rail(120, 140, TOP),
         ...top('R1', 160),
         rail(180, 240, TOP),

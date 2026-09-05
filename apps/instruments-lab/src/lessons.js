@@ -47,6 +47,11 @@ export function readQuantity(x, p, path, exp) {
       return cx.cabs(x.ac[rest[0]][rest[1]])
     case 'deg':
       return cx.carg(x.ac[rest[0]][rest[1]]) * DEG
+    case 'thevenin':
+      // R_th is the test-source figure: kill the sources, push 1 A in, read the
+      // volts. The other two ways theorems.js computes it agree, and Elements D5
+      // is where that agreement is the lesson.
+      return rest[0] === 'rth' ? x.thevenin.rth.test : x.thevenin[rest[0]]
     case 'omega':
       return x.omega
     case 'period':

@@ -8,7 +8,7 @@
 // generated anywhere in this lab.
 
 import { solveDC } from '@ee-labs/network'
-import { Amp, BOT, Cap, Choice, GROUPS, H, Pct, R, TOP, Vs, chips, gnd, leg, node, rail, src, top } from '../kit.js'
+import { Amp, BOT, Cap, Choice, Cur, GROUPS, H, Pct, R, TOP, Vs, chips, gnd, leg, node, rail, src, top } from '../kit.js'
 import { meterOf, sensitivities } from '../math.js'
 
 /** Source, one series resistance, then the legs across the output. */
@@ -142,7 +142,7 @@ export const GROUP_F = [
       { key: 'T', label: 'Temperature', unit: 'K', min: 4, max: 400, scale: 'linear', default: 300, eng: false },
       Choice('counts', 'A meter, for comparison', 1999, METERS),
       chips(Amp('range', 'Its range', 20), [2, 20, 200]),
-      Amp('I', 'Test current', 1e-6),
+      Cur('I', 'Test current', 1e-6),
       { key: 'f', label: 'Frequency', unit: 'Hz', min: 1, max: 1e7, scale: 'log', default: 1000 },
     ],
     net: (p) => ({

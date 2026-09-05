@@ -28,6 +28,7 @@ const filterLayout = (twoTone) => ({
     rail(260, 340, TOP),
     node('out', 300, TOP, 't'),
     ...leg('R1', 340),
+    node('in', 78, TOP, 't'),
     ...(twoTone
       ? [node('m1', 80, BOT, 't'), rail(46, 119, BOT), { el: 'V2', x: 130, y: BOT, dir: 'h' }, rail(141, 340, BOT), gnd(240)]
       : [rail(46, 340, BOT), gnd(150)]),
@@ -55,6 +56,8 @@ const oneTone = (p) => ({
 })
 
 const FILTER = [Ind('L', 'Filter L', L0), Cap('C', 'Filter C', C0), chips(R('R', 'Filter R', R100), [R100, 10 * R100])]
+/** The same three knobs, with the two that set the width held: D3 and D4 vary the tuning only. */
+const HELD = FILTER.map((k) => (k.key === 'C' ? k : { ...k, fixed: true }))
 const around = (p) => {
   const { f0 } = bandpass(p)
   return { from: f0 / 4, to: f0 * 4, mode: 'bode', points: 801 }
@@ -98,11 +101,14 @@ export const GROUP_D = [
     name: 'Two tones need a bandwidth narrower than their spacing',
     terms: [],
     params: [
-      ...FILTER,
+      ...HELD,
       Amp('A', 'Each tone', 1),
-      chips(Freq('fa', 'Lower tone', 9900), [9900, 9950]),
-      chips(Freq('fb', 'Upper tone', 10100), [10050, 10100]),
-      Win('N', 'Window', 'beats', 24, 4, 40),
+      // Two tones that differ, and a filter whose width is what the experiment
+      // is about, are the premise rather than a setting: the try steps move
+      // them and the fuzzer leaves them alone.
+      chips({ ...Freq('fa', 'Lower tone', 9900), fixed: true }, [9900, 9950]),
+      chips({ ...Freq('fb', 'Upper tone', 10100), fixed: true }, [10050, 10100]),
+      Win('N', 'Window', 'beats', 24, 12, 40),
     ],
     net: (p) => ({
       elements: [
@@ -119,7 +125,9 @@ export const GROUP_D = [
     window: (p) => p.N / Math.abs(p.fb - p.fa),
     points: 3001,
     cursor: 0.9,
-    detect: (p) => ({ of: (sol) => sol.v.out, over: Math.floor(p.N / 2) / Math.abs(p.fb - p.fa) }),
+    // The detector reads the last third, a whole number of beat periods in,
+    // by which time the filter's own natural response is gone.
+    detect: (p) => ({ of: (sol) => sol.v.out, over: Math.floor(p.N / 3) / Math.abs(p.fb - p.fa) }),
     scope: { left: { unit: 'V', traces: [{ q: 'v', key: 'out', label: 'v_out' }] } },
     sweep: (p) => ({ ...around(p), of: (ac) => cx.cscale(ac.v.out, 1 / p.A) }),
     show: 'v',
@@ -134,13 +142,14 @@ export const GROUP_D = [
     name: 'A filter that narrow needs time',
     terms: [],
     params: [
-      ...FILTER,
+      ...HELD,
       Amp('A', 'Tone', 1),
-      Freq('f', 'Tone frequency', 1e4),
       Freq('span', 'Span to sweep', 2000, 'how wide a band the analyser is asked to cover'),
       Win('N', 'Window', 'τ', 10, 4, 20),
     ],
-    net: oneTone,
+    // The analyser is tuned to the tone, so the tone sits at the filter's own
+    // centre whatever L and C are set to.
+    net: (p) => oneTone({ ...p, f: 1 / (2 * Math.PI * Math.sqrt(p.L * p.C)) }),
     layout: filterLayout(false),
     window: (p) => (p.N * 2 * p.L) / p.R,
     points: 6001,
