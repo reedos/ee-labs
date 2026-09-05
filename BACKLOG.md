@@ -17,7 +17,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Circuit Lab | built | | | |
 | Signal Lab | built | | | |
 | Control Lab | built | | | |
-| Power Lab | built in part, building | `lab/power-lab-dfg` | Groups H to N unassigned | `POWER_LAB_PLAN.md` |
+| Power Lab | built in part, dark | merged, Groups A to G | Groups H to N unassigned | `POWER_LAB_PLAN.md` |
 | The two seams and the progression test | building | `lab/seams` | | `CURRICULUM.md` §3, §6 |
 | Electronics Lab | built in part, dark | merged, Groups A and C | the transistor symbol in `Schematic.jsx` for Groups D to O | `ELECTRONICS_LAB_PLAN.md` |
 | Logic Lab | built, dark | merged | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
@@ -27,7 +27,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Instruments Lab | building | `lab/instruments-lab` | RF Lab for the network analyser group | to write |
 | Fields Lab | building | `lab/fields-lab` | | to write |
 | Energy Lab | built, dark | merged | Machines Lab for the wind group | `ENERGY_LAB_PLAN.md` |
-| Machines Lab | built, dark | merged | Power Lab F for the drives group | `MACHINES_LAB_PLAN.md` |
+| Machines Lab | built, dark | merged | Power Lab L for the drives group, F now merged | `MACHINES_LAB_PLAN.md` |
 | Communications Lab | built, dark | merged | | `COMMUNICATIONS_LAB_PLAN.md` |
 | Information Lab | built, dark | merged | | `INFORMATION_LAB_PLAN.md` |
 | Communications Lab | built, dark | `lab/comms-lab` | Electronics O and the RF Lab for one cross-reference | `COMMUNICATIONS_LAB_PLAN.md` |
