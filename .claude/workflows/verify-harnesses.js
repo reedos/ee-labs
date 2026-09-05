@@ -6,7 +6,7 @@ export const meta = {
   ],
 }
 
-const RULES = `HOUSE RULES (binding). Reed owns the repo. Read PROGRAM.md, CORE_SCOPE.md, STYLE.md, REVIEW_PLAYBOOK.md (§11 especially: screenshot, then read it as a student would) before touching a file. Commit by path only (never git add -A, never commit -a). NEVER push. No model names in files. Narrative commit messages in the register of git log. Run unit tests in the FOREGROUND with the Bash tool's timeout parameter at 600000 ms and pipe through tail -20; never wait on a monitor for a test. The ONE thing you may run in the background is the preview server, and you must kill it before you finish. Run SCOPED tests only (this lab and the packages it touches), never the whole suite. Fix only files inside this lab's directory; anything a fix needs elsewhere goes into the lab's NEEDS.md and your result's needs.`
+const RULES = `HOUSE RULES (binding). Reed owns the repo. Read PROGRAM.md, CORE_SCOPE.md, STYLE.md, REVIEW_PLAYBOOK.md (section 11 especially: screenshot, then read it as a student would) before touching a file. Commit by path only (never git add -A, never commit -a). NEVER push. No model names in files. Narrative commit messages in the register of git log. Run unit tests in the FOREGROUND with the Bash tool's timeout parameter at 600000 ms and pipe through tail -20; never wait on a monitor for a test. The ONE thing you may run in the background is the preview server, and you must kill it before you finish. Run SCOPED tests only (this lab and the packages it touches), never the whole suite. Fix only files inside this lab's directory; anything a fix needs elsewhere goes into the lab's NEEDS.md and your result's needs.`
 
 const LABS = [
   { slug: 'circuit-elements-lab', port: 4401 },
