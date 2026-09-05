@@ -12,5 +12,8 @@
   },
   "peerDependencies": {
     "react": "^18"
+  },
+  "devDependencies": {
+    "@ee-labs/events": "*"
   }
 }
