@@ -22,6 +22,10 @@ drift apart while the director is adding it. The lab deploys dark at
 `packages/ui/src/progression.test.js` belongs to the seams overseer. These are
 this lab's ids and counts for it.
 
+These are the ids that exist today. The slug is `fields-lab` and the total is
+36. Groups I to L are planned and not built. Their ids are listed apart, and
+they do not go into the progression test until they land.
+
 | Group | Ids | Count |
 | --- | --- | --- |
 | A Charge and the field | a1 to a5 | 5 |
@@ -32,12 +36,16 @@ this lab's ids and counts for it.
 | F Induction | f1 to f4 | 4 |
 | G Maxwell and the plane wave | g1 to g4 | 4 |
 | H Reflection at an interface | h1 to h3 | 3 |
+
+Not built. `FIELDS_LAB_PLAN.md` §9.1 says which sitting each of these waits for,
+and `BACKLOG.md` carries them under this lab's heading.
+
+| Group | Ids | Count |
+| --- | --- | --- |
 | I Transmission lines | i1 to i7 | 7 |
 | J The lossy line | j1, j2 | 2 |
 | K Waveguides and the cavity | k1 to k3 | 3 |
 | L Antennas | l1 to l5 | 5 |
-
-The slug is `fields-lab` and the total is 53.
 
 Cross-references this lab makes into other labs, which the progression test
 should hold:
@@ -46,16 +54,18 @@ should hold:
 | --- | --- | --- |
 | b1 | Circuit Elements Lab F | the capacitor as an element, given a value here |
 | e4 | Circuit Elements Lab F | the inductor as an element, given a value here |
-| i5 | Circuit Lab | the same sweep with length on the axis |
-| j1 | Circuit Lab | frequency response, on a line instead of a network |
+
+Two more arrive with group I and are not to be added before it. One is i5 into
+Circuit Lab, for the same sweep with length on the axis. The other is j1 into
+that lab, for a frequency response on a line instead of on a network.
 
 Cross-references other labs will make into this one, once they are built:
 
 | From | To | What it needs |
 | --- | --- | --- |
-| RF Lab | i1 to i7 | the whole transmission-line group |
-| System Lab | l5 | Friis, and the link budget |
-| Power Lab group D | e5, e6 | the magnetic circuit it assumes |
+| RF Lab | i1 to i7 | the transmission-line group, which is not built |
+| System Lab | l5 | Friis and the link budget, which is not built |
+| Power Lab group D | e5, e6 | the magnetic circuit it assumes, which is built |
 | Devices Lab B1 | a3 | Gauss's law, which that lab states and this one derives |
 
 ## 3. Promotion candidates
@@ -96,24 +106,27 @@ export it from `packages/ui/index.js`, and move
 `components/FieldMapCanvas.test.jsx` beside it. The canvas imports nothing from
 this app. It takes readers and data, and it draws what it is given.
 
-### 3.2 The Smith chart, `src/components/SmithCanvas.jsx`
+### 3.2 The Smith chart, not drawn yet
 
-First lab in the map: RF Lab. `PROGRAM.md` §4 lists the Fields Lab and the
-Instruments Lab as second. The RF Lab is not built and is blocked on this lab's
-group I, so the chart could not be borrowed and was built here instead.
+The RF Lab owns the Smith chart in `PROGRAM.md` §4, with the Fields Lab and the
+Instruments Lab second. The RF Lab is not built and is blocked on this lab's
+group I, so the chart cannot be borrowed.
 
-This is a minimal chart. It draws the two circle families, one load marker, and
-the rotation towards the generator. It does not draw matching networks,
-admittance overlays or constant-Q arcs, which are the RF Lab's work.
+**Nothing is drawn yet.** Group I is not built either, and the chart belongs to
+it. This entry is here so the decision is taken before the drawing exists rather
+than after.
 
-The arithmetic is already in the package and not in the canvas.
+The arithmetic is already in the package and will not be in the canvas.
 `packages/fields/src/line.js` holds `zToGamma`, `gammaToZ`, `normalise`,
-`resistanceCircle`, `reactanceCircle` and `towardsGenerator`. The RF Lab
-inherits the mathematics whatever it does with the drawing.
+`resistanceCircle`, `reactanceCircle` and `towardsGenerator`, all tested. The RF
+Lab inherits the mathematics whatever it does with the drawing.
 
-**The director's decision.** Either the RF Lab adopts this canvas when it is
-built, or it builds its own and this one is deleted. Two charts in the suite
-would be two sets of circles that drift apart.
+**The director's decision.** Either this lab draws a minimal chart in group I's
+sitting and the RF Lab adopts it, or this lab draws none and waits for the RF
+Lab's. The plan recommends the first. Minimal means the two circle families, one
+load marker and the rotation towards the generator, and nothing of matching
+networks, admittance overlays or constant-Q arcs. Two charts in the suite would
+be two sets of circles that drift apart.
 
 ## 4. The events package
 
@@ -125,7 +138,8 @@ parallel, so `@ee-labs/events` was not available for this sitting.
 is about seventy lines. A wave record is `{ amp, dir, launchedAt, arrivesAt,
 from, xStart }`, which is the shape an events queue carries, so the swap is a
 rewrite of the loop and not of the module. Nothing in the app or the lessons
-touches the loop directly.
+touches the loop directly, and group I is not built yet, so today the loop has
+no caller outside its own tests.
 
 **What this lab asks for.** When `@ee-labs/events` lands, the director decides
 whether the bounce diagram moves onto it. The behaviour must not change. The
@@ -138,7 +152,16 @@ time. The last of those is the one a general events engine may not have. The
 line's answer at a point is the sum of the waves that have reached it, rather
 than the value of a signal at that instant.
 
-## 5. Nothing else
+## 5. The field map, if a third lab wants it
+
+Every picture groups G and H draw is the field map's profile mode. A plane wave
+against distance, a standing wave in front of a boundary, and two Fresnel
+coefficients against an angle are each one scalar against one axis with regions
+marked. That is worth knowing before the canvas is promoted, because it says the
+profile mode is not a favour to the Devices Lab. It is the shape most
+one-dimensional pictures in this suite already have.
+
+## 6. Nothing else
 
 This lab needs no new element in `packages/network`, no change to
 `packages/ui`'s existing components, and no experiment from another lab. Its

@@ -46,6 +46,22 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Grid Lab | built, dark | merged | Power Lab I3 and D1 for two cross-references | `GRID_LAB_PLAN.md` |
 | Photonics Lab | waiting | | Electronics O, Applied Analog Lab | `PHOTONICS_LAB_PLAN.md` |
 | Devices Lab | built, dark | merged | | `DEVICES_LAB_PLAN.md` |
+| Fields Lab | building | `lab/fields-lab` | Groups I to L unbuilt | `FIELDS_LAB_PLAN.md` |
+| Energy Lab | building | `lab/energy-lab` | Machines Lab for the wind group | to write |
+| Machines Lab | building | `lab/machines-lab` | Power Lab F for the drives group | to write |
+| Communications Lab | waiting | | Random Signals Lab | to write |
+| Information Lab | waiting | | Communications Lab | to write |
+| Applied Analog Lab | waiting | | Electronics L, M | to write |
+| Analog IC Lab | waiting | | Electronics H to M | to write |
+| Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | to write |
+| RF Lab | waiting | | Analog IC Lab, Fields Lab's line | to write |
+| System Lab | waiting | | RF Lab | to write |
+| VLSI Lab | waiting | | Logic Lab, Analog IC Lab | to write |
+| Computer Lab | waiting | | Logic Lab | to write |
+| Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | to write |
+| Grid Lab | waiting | | Machines Lab, Electronics companion Newton | to write |
+| Photonics Lab | waiting | | Electronics O, Applied Analog Lab | to write |
+| Devices Lab | waiting | | Electronics C | to write |
 | Signal Integrity | out of this repo | | | |
 
 ## 2. Deferred items, by lab
@@ -597,6 +613,36 @@ Thirty-two of the plan's thirty-five experiments are built, dark, on
   `PhaseCanvas.jsx` is a separate case and is ready to move the day the Machines
   Lab claims it, with no change to its interface. **Reopens when a third lab
   copies one, or when Machines Lab starts.**
+
+### Fields Lab
+
+Built and dark. 36 experiments in groups A to H, on `packages/fields`, which is
+complete for the whole lab and not only for the built half. `FIELDS_LAB_PLAN.md`
+§9.1 says what shipped in each sitting.
+
+- **Group I, transmission lines, i1 to i7.** Not built. Nothing blocks it. The
+  engine is done and tested, `line.js` and `bounce.js` both, and the app's
+  analysis and quantity paths are wired for it. It is a sitting's work, and it
+  is the one the RF Lab waits on.
+- **Group J, the lossy line, j1 and j2.** Not built, and it follows group I in
+  the same sitting. J2 is the lab's second refusal, a lossy line in time, which
+  `refuseLossyTime` already declines with its reason and a test.
+- **Groups K and L, waveguides and antennas, k1 to k3 and l1 to l5.** Not built.
+  `waveguide.js` and `antenna.js` are done and tested. The System Lab's link
+  budget waits on L5.
+- **The Smith chart.** Not drawn. It belongs to group I's sitting, and
+  `apps/fields-lab/NEEDS.md` §3.2 puts the decision to the director before the
+  drawing exists rather than after.
+- **The bounce diagram on `@ee-labs/events`.** The loop is self-contained inside
+  `packages/fields/src/bounce.js` because the Logic Lab was building that package
+  in parallel. `NEEDS.md` §4 says what the swap would need. Reopens when the
+  package lands.
+- **The field map's promotion to `packages/ui`.** Waits on the Devices Lab
+  claiming it. `NEEDS.md` §3.1 carries the requirement, and the profile mode is
+  built to it.
+- **`scripts/verify.mjs`.** Written and not run. It needs a browser and a served
+  build, and no Playwright ran in these sittings. A first run reviews the script
+  as much as the page.
 
 ## 3. The director's queue
 
