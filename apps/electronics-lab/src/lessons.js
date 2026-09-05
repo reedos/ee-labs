@@ -23,11 +23,14 @@
  *   clip.<high|low>               the scope's flat tops, in volts
  *   peak.<node>  mean.<node>
  *   junction.<v0|w|xp|xn|cj|cd|is|slope|fT|doubling|gm>
+ *   osc.<period|f|f0|sigma|amp|high|low|thd|hd2|growthRate>
  */
 import { complex as cx } from '@ee-labs/network'
 import { clipOf, meanOf, peakOf, slopeOf } from './math.js'
 import { LESSONS_A } from './lessons/a.js'
 import { LESSONS_C } from './lessons/c.js'
+import { LESSONS_N } from './lessons/n.js'
+import { oscOf } from './groups/n.js'
 
 const DEG = 180 / Math.PI
 
@@ -69,6 +72,11 @@ export function readQuantity(x, p, path, exp) {
       return meanOf(x, rest[0])
     case 'junction':
       return x.junction[rest[0]]
+    // Group N's oscillators: the period, the frequency and the distortion of
+    // the settled waveform, and the pole pair's own rate, all measured in
+    // groups/n.js off the walk the solver made.
+    case 'osc':
+      return oscOf(x)[rest[0]]
     case 'cursor':
       return x.cursor
     default:
@@ -76,4 +84,4 @@ export function readQuantity(x, p, path, exp) {
   }
 }
 
-export const LESSONS = { ...LESSONS_A, ...LESSONS_C }
+export const LESSONS = { ...LESSONS_A, ...LESSONS_C, ...LESSONS_N }
