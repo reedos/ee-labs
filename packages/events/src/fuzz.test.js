@@ -232,11 +232,11 @@ describe('invariant 4: perturbing a gate delay inside the slack changes no regis
     // path that spends it is the one through t3.
     const closing = fMax(base)
     const slack = period - closing.tMin
-    expect(closing.path.path).toContain('t3')
+    expect(closing.path.path).toContain('e3')
     expect(slack).toBeGreaterThan(0)
-    const inside = { ...base, gates: base.gates.map((g) => (g.id === 't3' ? { ...g, delay: libDelay('and', 3) + slack } : g)) }
+    const inside = { ...base, gates: base.gates.map((g) => (g.id === 'e3' ? { ...g, delay: libDelay('and', 2) + slack } : g)) }
     expect(captured(inside, { period, cycles })).toEqual(want)
-    const outside = { ...base, gates: base.gates.map((g) => (g.id === 't3' ? { ...g, delay: libDelay('and', 3) + slack + 1 } : g)) }
+    const outside = { ...base, gates: base.gates.map((g) => (g.id === 'e3' ? { ...g, delay: libDelay('and', 2) + slack + 1 } : g)) }
     const broken = captured(outside, { period, cycles })
     expect(broken.violations.length).toBeGreaterThan(0)
     expect(broken.violations[0].kind).toBe('setup')

@@ -137,11 +137,49 @@ export function expressionOf(cover, names) {
 }
 
 /**
+ * `ins` gathered into one signal named `id` by gates of kind `kind`, in as few
+ * levels as the library's fan-in allows.
+ *
+ * A cell has a largest fan-in, so a term of six literals is two levels of gate
+ * and not one. The tree is balanced, and each level's cost is the library's own
+ * delay for the fan-in it used. Gates are appended to `gates` and the id of the
+ * signal that carries the result is returned.
+ */
+export function treeOf(kind, ins, id, gates, max = 4) {
+  let level = ins
+  let depth = 0
+  while (level.length > 1) {
+    depth++
+    if (level.length <= max) {
+      gates.push({ id, kind, in: level })
+      return id
+    }
+    const groups = Math.ceil(level.length / max)
+    const per = Math.ceil(level.length / groups)
+    const next = []
+    for (let g = 0; g * per < level.length; g++) {
+      const slice = level.slice(g * per, (g + 1) * per)
+      if (slice.length === 1) {
+        next.push(slice[0])
+        continue
+      }
+      const name = `${id}_${depth}_${g + 1}`
+      gates.push({ id: name, kind, in: slice })
+      next.push(name)
+    }
+    level = next
+  }
+  return level[0]
+}
+
+/**
  * The two-level AND-OR netlist a cover builds: one inverter per complemented
  * variable, one AND per cube, one OR over them.
  *
  * A cube of one literal needs no AND, and a cover of one cube needs no OR, so
- * the gate count this returns is the gate count a reader would draw.
+ * the gate count this returns is the gate count a reader would draw. A cube or
+ * a cover wider than the library's largest cell becomes a tree of them, which
+ * is a second level of gate and a second helping of delay.
  */
 export function netFromCover(cover, names, opts = {}) {
   const n = names.length
@@ -160,15 +198,9 @@ export function netFromCover(cover, names, opts = {}) {
       const s = names[n - 1 - k]
       ins.push(((c.bits >> k) & 1) ? s : `n_${s}`)
     }
-    if (ins.length === 1) {
-      terms.push(ins[0])
-      return
-    }
-    const id = `p${i + 1}`
-    gates.push({ id, kind: 'and', in: ins })
-    terms.push(id)
+    terms.push(treeOf('and', ins, `p${i + 1}`, gates))
   })
   if (terms.length === 1) gates.push({ id: out, kind: 'buf', in: [terms[0]] })
-  else gates.push({ id: out, kind: 'or', in: terms })
+  else treeOf('or', terms, out, gates)
   return { name: opts.name || 'a cover', sources, gates, outputs: [out] }
 }

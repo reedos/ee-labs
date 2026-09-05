@@ -61,9 +61,9 @@ describe('the netlist', () => {
     }
   })
 
-  it('refuses a time that is not a whole picosecond, because the exactness rests on it', () => {
+  it('refuses a time that is not a whole unit, because the exactness rests on it', () => {
     const net = { sources: [{ id: 'a', kind: 'step', at: 12.5, to: 1 }], gates: [{ id: 'y', kind: 'not', in: ['a'] }], outputs: ['y'] }
-    expect(() => normalize(net)).toThrow(/whole picoseconds/)
+    expect(() => normalize(net)).toThrow(/whole number of units/)
   })
 
   it('names the ring a latch is made of, and does not call it an error', () => {

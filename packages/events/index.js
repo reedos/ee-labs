@@ -31,17 +31,20 @@
 // is what a real cell does. Neither is an approximation of the other, and the
 // waveform pane says which one produced the picture.
 
-export { PS, ns, seconds, KINDS, KIND_ORDER, WIRE_DELAY, FLOP, libDelay, evalKind } from './src/library.js'
-export { EventsError, normalize, topoOrder, findLoop } from './src/netlist.js'
+export { PS, PS_UNIT, ns, seconds, KINDS, KIND_ORDER, WIRE_DELAY, FLOP, kindsOf, libDelay, evalKind } from './src/library.js'
+export { EventsError, RESOLUTIONS, normalize, topoOrder, findLoop, resolveValues, unitOf, secondsOf } from './src/netlist.js'
 export { EventQueue } from './src/queue.js'
 export { initialValue, transitions } from './src/sources.js'
 export { simulate, relax, valueAt, edgesOf } from './src/simulate.js'
 export { evaluate, truthTable, pulsesOf, hazardOf, timingPaths, criticalPath, fMax } from './src/analyse.js'
-export { grayOrder, cubeMinterms, literals, primeImplicants, minimalCover, expressionOf, netFromCover } from './src/boolean.js'
+export { grayOrder, cubeMinterms, literals, primeImplicants, minimalCover, expressionOf, netFromCover, treeOf } from './src/boolean.js'
 export { META, mtbf, settlingFor, synchroniser } from './src/metastability.js'
 export {
   oneGate,
   nandOnly,
+  identityNet,
+  IDENTITIES,
+  chain,
   hazardNet,
   mux2,
   decoder24,

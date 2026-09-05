@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { cubeMinterms, expressionOf, grayOrder, literals, minimalCover, netFromCover, primeImplicants } from './boolean.js'
-import { evaluate, truthTable } from './analyse.js'
-import { fsmEquations, fsmNet, fsmTable, mux2 } from './build.js'
+import { cubeMinterms, expressionOf, grayOrder, literals, minimalCover, netFromCover, primeImplicants, treeOf } from './boolean.js'
+import { criticalPath, evaluate, timingPaths, truthTable } from './analyse.js'
+import { chain, fsmEquations, fsmNet, fsmTable, identityNet, IDENTITIES, mux2, nandOnly } from './build.js'
+import { KINDS, libDelay } from './library.js'
 import { simulate } from './simulate.js'
 
 describe('the Karnaugh map', () => {
@@ -160,5 +161,59 @@ describe('a state machine from its specification', () => {
     expect(net.gates.some((g) => g.id === 'd0')).toBe(true)
     const table = fsmTable(toggle)
     expect(table.type).toBe('Moore')
+  })
+})
+
+describe('a term wider than the library, and the identities', () => {
+  it('gathers a wide term into a tree, because a cell has a largest fan-in', () => {
+    const gates = []
+    const id = treeOf('or', ['a', 'b', 'c', 'd', 'e', 'f'], 'y', gates)
+    expect(id).toBe('y')
+    expect(gates.map((g) => `${g.kind}${g.in.length}`)).toEqual(['or3', 'or3', 'or2'])
+    expect(gates[gates.length - 1].id).toBe('y')
+  })
+
+  it('leaves a term the library can hold as one gate', () => {
+    const gates = []
+    expect(treeOf('and', ['a', 'b', 'c'], 'p', gates)).toBe('p')
+    expect(gates).toEqual([{ id: 'p', kind: 'and', in: ['a', 'b', 'c'] }])
+    expect(treeOf('and', ['a'], 'p', gates)).toBe('a')
+    expect(gates.length).toBe(1)
+  })
+
+  it('the canonical form of a six-minterm function is two levels of OR, and the minimum is one', () => {
+    const f = [0, 1, 2, 5, 6, 7]
+    const canonical = netFromCover(
+      f.map((m) => ({ mask: 0b111, bits: m })),
+      ['a', 'b', 'c'],
+    )
+    expect(canonical.gates.length).toBe(12)
+    expect(truthTable(canonical).minterms.y).toEqual(f)
+    const { cover } = minimalCover(f, primeImplicants(f, 3), 3)
+    const minimal = netFromCover(cover, ['a', 'b', 'c'])
+    expect(minimal.gates.length).toBe(7)
+    expect(truthTable(minimal).minterms.y).toEqual(f)
+  })
+
+  it('both sides of every identity agree in every row, at different gate counts', () => {
+    for (const which of Object.keys(IDENTITIES)) {
+      const net = identityNet(which)
+      const t = truthTable(net)
+      for (const r of t.rows) expect(r.out[0], `${which} row ${r.index}`).toBe(r.out[1])
+      expect(net.gates.length, which).toBeGreaterThan(2)
+    }
+  })
+
+  it('NAND alone costs more than the cell it replaces, every time', () => {
+    for (const which of ['not', 'and', 'or', 'xor']) {
+      const net = nandOnly(which, { reference: true })
+      const ends = Object.fromEntries(timingPaths(net).endpoints.map((e) => [e.signal, e.long]))
+      expect(ends.y, which).toBeGreaterThan(ends.ref)
+      expect(ends.ref, which).toBe(libDelay(which, KINDS[which].fanIn[0]))
+    }
+  })
+
+  it('a chain is the sum of its gates, however long', () => {
+    for (const n of [1, 2, 4, 8]) expect(criticalPath(chain(n)).delay, `${n} buffers`).toBe(n * libDelay('buf', 1))
   })
 })

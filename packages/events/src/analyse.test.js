@@ -172,11 +172,14 @@ describe('the clock period', () => {
     expect(slow.holdSlack).toBe(fast.holdSlack)
   })
 
-  it('the counter closes faster than the adder, because its longest path is shorter', () => {
+  it('the counter closes faster than the adder, because its chain is one AND per bit and not two gates', () => {
     const c = fMax(counter(4))
-    expect(c.terms.tpd).toBe(D.and3 + D.xor2)
-    expect(c.tMin).toBe(FLOP.tcq + D.and3 + D.xor2 + FLOP.tsu)
+    // q0 through two ANDs of the enable chain, then the exclusive-or at bit 3.
+    expect(c.terms.tpd).toBe(2 * D.and2 + D.xor2)
+    expect(c.tMin).toBe(FLOP.tcq + 2 * D.and2 + D.xor2 + FLOP.tsu)
     expect(c.tMin).toBeLessThan(fMax(pipelinedAdder(4)).tMin)
+    // One more bit is one more AND, where the adder's is an AND and an OR.
+    expect(fMax(counter(5)).tMin - c.tMin).toBe(D.and2)
   })
 
   it('declines a netlist with no flip-flop in it, and one whose flip-flops never talk to each other', () => {

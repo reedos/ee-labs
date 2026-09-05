@@ -21,8 +21,14 @@ export function oneGate(kind, { ins = ['a', 'b'], values = [0, 0], id = 'y', del
   }
 }
 
-/** NAND as the only gate there is: NOT, AND, OR and XOR built from it. */
-export function nandOnly(which, { a = 0, b = 0 } = {}) {
+/**
+ * NAND as the only gate there is: NOT, AND, OR and XOR built from it.
+ *
+ * With `reference` the library's own cell for the same function is put in the
+ * same netlist as `ref`, so one run measures both the built gate and the cell
+ * it replaces.
+ */
+export function nandOnly(which, { a = 0, b = 0, reference = false } = {}) {
   const nets = {
     not: { gates: [{ id: 'y', kind: 'nand', in: ['a', 'a'] }], ins: ['a'] },
     and: { gates: [{ id: 'n1', kind: 'nand', in: ['a', 'b'] }, { id: 'y', kind: 'nand', in: ['n1', 'n1'] }], ins: ['a', 'b'] },
@@ -39,7 +45,73 @@ export function nandOnly(which, { a = 0, b = 0 } = {}) {
   }
   const spec = nets[which]
   const values = { a, b }
-  return { name: `${which.toUpperCase()} from NAND gates`, sources: spec.ins.map((s) => input(s, values[s])), gates: spec.gates, outputs: ['y'] }
+  const gates = [...spec.gates]
+  if (reference) gates.push({ id: 'ref', kind: which, in: spec.ins })
+  return {
+    name: `${which.toUpperCase()} from NAND gates`,
+    sources: spec.ins.map((s) => input(s, values[s])),
+    gates,
+    outputs: reference ? ['y', 'ref'] : ['y'],
+  }
+}
+
+/**
+ * The two sides of one Boolean identity, in one netlist, so a single run
+ * measures both truth tables and both delays.
+ *
+ * `lhs` and `rhs` are the two outputs. The identity is true when the two agree
+ * in every row, and the point of each is that they agree while costing
+ * different gates.
+ */
+export const IDENTITIES = {
+  absorption: { law: 'a + a·b = a', vars: ['a', 'b'] },
+  distribution: { law: 'a·(b + c) = a·b + a·c', vars: ['a', 'b', 'c'] },
+  demorgan: { law: "(a·b)' = a' + b'", vars: ['a', 'b'] },
+  consensus: { law: "a·b + a'·c = a·b + a'·c + b·c", vars: ['a', 'b', 'c'] },
+}
+
+export function identityNet(which, values = {}) {
+  const spec = IDENTITIES[which]
+  if (!spec) throw new Error(`this engine has no identity called "${which}"`)
+  const sources = spec.vars.map((s) => input(s, values[s] ?? 0))
+  const gates = {
+    absorption: [
+      { id: 'ab', kind: 'and', in: ['a', 'b'] },
+      { id: 'lhs', kind: 'or', in: ['a', 'ab'] },
+      { id: 'rhs', kind: 'buf', in: ['a'] },
+    ],
+    distribution: [
+      { id: 'bc', kind: 'or', in: ['b', 'c'] },
+      { id: 'lhs', kind: 'and', in: ['a', 'bc'] },
+      { id: 'ab', kind: 'and', in: ['a', 'b'] },
+      { id: 'ac', kind: 'and', in: ['a', 'c'] },
+      { id: 'rhs', kind: 'or', in: ['ab', 'ac'] },
+    ],
+    demorgan: [
+      { id: 'lhs', kind: 'nand', in: ['a', 'b'] },
+      { id: 'na', kind: 'not', in: ['a'] },
+      { id: 'nb', kind: 'not', in: ['b'] },
+      { id: 'rhs', kind: 'or', in: ['na', 'nb'] },
+    ],
+    consensus: [
+      { id: 'na', kind: 'not', in: ['a'] },
+      { id: 'p', kind: 'and', in: ['a', 'b'] },
+      { id: 'q', kind: 'and', in: ['na', 'c'] },
+      { id: 'lhs', kind: 'or', in: ['p', 'q'] },
+      { id: 'r', kind: 'and', in: ['b', 'c'] },
+      { id: 'rhs', kind: 'or', in: ['p', 'q', 'r'] },
+    ],
+  }[which]
+  return { name: spec.law, sources, gates, outputs: ['lhs', 'rhs'] }
+}
+
+/**
+ * A chain of `n` gates of one kind, with a step at its head. The output's
+ * arrival is the sum of the delays along it, which is the only thing D1 claims.
+ */
+export function chain(n = 4, { kind = 'buf', at = 200, from = 0, to = 1, delay } = {}) {
+  const gates = Array.from({ length: n }, (_, i) => ({ id: `g${i + 1}`, kind, in: [i === 0 ? 'a' : `g${i}`], ...(delay ? { delay } : {}) }))
+  return { name: `a chain of ${n} ${kind} gates`, sources: [{ id: 'a', kind: 'step', at, from, to }], gates, outputs: [`g${n}`] }
 }
 
 /**
@@ -284,18 +356,23 @@ export function ring(n = 3, { delay } = {}) {
   return { name: `a ring of ${n} inverters`, sources: [], gates, outputs: ['i0'] }
 }
 
-/** A synchronous binary counter, `n` bits, counting every rising edge. */
+/**
+ * A synchronous binary counter, `n` bits, counting every rising edge.
+ *
+ * Bit i toggles when every bit below it is 1, and that condition is carried up
+ * the counter one AND at a time: `e(i) = e(i-1) · q(i-1)`. It is the ripple
+ * adder's carry chain in another shape, and it grows by one AND per bit for
+ * the same reason.
+ */
 export function counter(n = 4, { period = 1000 } = {}) {
   const gates = []
   const flops = []
   for (let i = 0; i < n; i++) flops.push({ id: `q${i}`, d: `d${i}`, clk: 'clk', init: 0 })
+  // Bit 0 toggles every clock, so its enable is a constant and needs no gate.
   gates.push({ id: 'd0', kind: 'not', in: ['q0'] })
-  for (let i = 1; i < n; i++) {
-    const below = Array.from({ length: i }, (_, k) => `q${k}`)
-    if (below.length === 1) gates.push({ id: `t${i}`, kind: 'buf', in: below })
-    else gates.push({ id: `t${i}`, kind: 'and', in: below })
-    gates.push({ id: `d${i}`, kind: 'xor', in: [`q${i}`, `t${i}`] })
-  }
+  const enable = (i) => (i === 1 ? 'q0' : `e${i}`)
+  for (let i = 2; i < n; i++) gates.push({ id: `e${i}`, kind: 'and', in: [enable(i - 1), `q${i - 1}`] })
+  for (let i = 1; i < n; i++) gates.push({ id: `d${i}`, kind: 'xor', in: [`q${i}`, enable(i)] })
   return {
     name: `a ${n}-bit synchronous counter`,
     sources: [{ id: 'clk', kind: 'clock', period, high: Math.round(period / 2) }],

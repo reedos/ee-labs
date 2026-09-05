@@ -7,27 +7,37 @@
 // state to equal it for every input vector, and neither one is derived from
 // the other.
 
-import { EventsError, normalize, topoOrder } from './netlist.js'
-import { evalKind } from './library.js'
+import { EventsError, normalize, resolveValues, topoOrder } from './netlist.js'
 import { simulate } from './simulate.js'
 
 /**
  * The steady state of a combinational netlist for one input vector, by
- * evaluating each gate once in topological order. No time, no events.
+ * evaluating each gate once in topological order and resolving each net from
+ * everything driving it. No time, no events.
  *
  * @param vector  { [input]: 0 | 1 }
- * @returns { [signal]: 0 | 1 }
+ * @returns { [net]: 0 | 1 }
  */
 export function evaluate(net, vector) {
   const norm = net.drivers ? net : normalize(net)
   if (norm.flops.length) throw new EventsError('has-memory', `this netlist has ${norm.flops.length} flip-flops, and a flip-flop's output depends on when, not only on what`, { flops: norm.flops.map((f) => f.id) })
   const order = topoOrder(norm)
+  const contrib = new Map(norm.nets.map((n) => [n, new Map()]))
   const v = {}
+  const settle = (name) => {
+    const r = resolveValues(norm.resolve.get(name), [...contrib.get(name).values()])
+    if (r.conflict) throw new EventsError('driver-conflict', `the drivers of "${name}" disagree, and it resolves as "single"`, { net: name, drivers: [...contrib.get(name).keys()] })
+    v[name] = r.value
+  }
   for (const s of norm.sources) {
     if (s.kind !== 'input') throw new EventsError('driven-input', `"${s.id}" is a ${s.kind} source, and a truth table needs inputs it can hold still`, { id: s.id, kind: s.kind })
-    v[s.id] = vector[s.id] ?? s.value
+    contrib.get(s.out).set(s.id, vector[s.out] ?? s.value)
   }
-  for (const c of order) v[c.id] = c.kind === 'wire' ? v[c.from] : evalKind(c.kind, c.in.map((s) => v[s]))
+  for (const name of norm.nets) if (contrib.get(name).size) settle(name)
+  for (const c of order) {
+    contrib.get(c.out).set(c.id, c.kind === 'wire' ? v[c.from] : c.fn(c.in.map((s) => v[s])))
+    settle(c.out)
+  }
   return v
 }
 
@@ -104,9 +114,8 @@ export function hazardOf(net, { input, from, to, output, at = 100, tEnd }) {
   const stepped = {
     ...norm,
     sources: norm.sources.map((s) => (s.id === input ? { ...s, kind: 'step', at, from, to } : s)),
-    drivers: new Map(norm.drivers),
+    drivers: new Map([...norm.drivers].map(([name, ds]) => [name, ds.map((d) => (d.id === input ? { ...d, kind: 'step', at, from, to } : d))])),
   }
-  for (const s of stepped.sources) stepped.drivers.set(s.id, { ...s, role: 'source' })
   const result = simulate(stepped, { tEnd: tEnd ?? at + 20 * maxDelay(norm) + 100 })
   const pulses = pulsesOf(result, output).filter((p) => p.from >= at)
   const glitch = before === after ? pulses.find((p) => p.value !== before) : null
@@ -141,8 +150,23 @@ export function timingPaths(net, opts = {}) {
   // clocked design is left out rather than counted as arriving at zero. That
   // is what a clock period is about, and it is what `fMax` asks for.
   const outside = opts.starts === 'flops'
-  for (const s of norm.sources) arrival[s.id] = outside ? { long: -Infinity, short: Infinity, viaLong: null, viaShort: null } : { long: 0, short: 0, viaLong: null, viaShort: null }
-  for (const f of norm.flops) arrival[f.id] = { long: f.tcq, short: f.tcq, viaLong: null, viaShort: null }
+  // A net's arrival is the latest of everything driving it, and its shortest is
+  // the earliest, so a wired bus is timed the way a reader would time it.
+  const merge = (name, a) => {
+    const had = arrival[name]
+    if (!had) {
+      arrival[name] = a
+      return
+    }
+    arrival[name] = {
+      long: Math.max(had.long, a.long),
+      short: Math.min(had.short, a.short),
+      viaLong: a.long > had.long ? a.viaLong : had.viaLong,
+      viaShort: a.short < had.short ? a.viaShort : had.viaShort,
+    }
+  }
+  for (const s of norm.sources) merge(s.out, outside ? { long: -Infinity, short: Infinity, viaLong: null, viaShort: null } : { long: 0, short: 0, viaLong: null, viaShort: null })
+  for (const f of norm.flops) merge(f.out, { long: f.tcq, short: f.tcq, viaLong: null, viaShort: null })
   for (const c of order) {
     const ins = c.kind === 'wire' ? [c.from] : c.in
     const up = Math.max(c.tr, c.tf)
@@ -162,7 +186,7 @@ export function timingPaths(net, opts = {}) {
         viaShort = s
       }
     }
-    arrival[c.id] = { long, short, viaLong, viaShort }
+    merge(c.out, { long, short, viaLong, viaShort })
   }
   const trace = (signal, key) => {
     const path = [signal]
