@@ -523,7 +523,7 @@ describe('try: Phase is invisible here', () => {
 
 describe('try: Two filters are steeper', () => {
   it('one section is −39 dB at 3200 Hz, both are −78: exactly half', () => {
-    const one = loaded('Two filters are steeper', 'one section')
+    const one = loaded('Two filters are steeper', 'bypass block 2')
     const both = loaded('Two filters are steeper', 'both sections')
     expect(one.blocks[1].bypass).toBe(true)
     expect(db(H(one, 3200))).toBeCloseTo(-39.06, 1)

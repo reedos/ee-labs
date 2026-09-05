@@ -385,7 +385,8 @@ export default function Controls({
                 ) : null}
               </div>
             ) : null}
-            <p className="hint">{activePreset.note}</p>
+            <p className="hint lesson-note">{activePreset.note}</p>
+            {activePreset.why ? <p className="hint lesson-why">{activePreset.why}</p> : null}
             {/* The hand-over out, the reverse of Circuit Lab's own "Open in
                 Signal Lab →": a real link only where the two apps are
                 deployed side by side (null in dev, so this renders nothing

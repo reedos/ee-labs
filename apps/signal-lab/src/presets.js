@@ -119,6 +119,9 @@ export const PRESETS = [
     note:
       'A square wave is a sum of odd harmonics falling as 1/k, 4A/(kπ), plus the small sampling correction the ' +
     'math panel carries. The harmonic markers are on: count 1st, 3rd, 5th, and nothing between them.',
+    why:
+      "EMI compliance testing checks a digital clock's own board at multiples of its clock frequency, exactly " +
+    "where a square wave's harmonics land.",
     try: 'Click 3, then 9, more odd lines appear, and nothing lands between them.',
     chips: [
       src1('3', { topHarmonic: 3 }, 'Two terms: the fundamental and the 3rd'),
@@ -205,6 +208,9 @@ export const PRESETS = [
       'The chain carries two tones and nothing else. The scope shows their sample-by-sample sum, a shape ' +
     'neither has alone, while the spectrum shows two clean lines at each source’s own amplitude. ' +
     'Superposition means that adding signals adds spectra, line by line.',
+    why:
+      "A mixing console's summing bus adds every channel the same way. One channel's fader never touches any " +
+    "other channel's own level.",
     try: 'Untick source 2, the 300 Hz line does not move.',
     chips: [
       { label: 'source 2 off', patch: { sources: [{}, { enabled: false }] } },
@@ -258,6 +264,7 @@ export const PRESETS = [
       'The chain carries two tones 5 Hz apart. The spectrum shows two lines because the frame is 8192 samples ' +
     'long (bins under 1 Hz) and the axis is zoomed to 500 Hz. The scope shows the same signal the other way, ' +
     'one tone whose envelope pulses at the 5 Hz difference.',
+    why: 'A piano tuner listens for exactly this pulse, slowing it toward zero to bring two strings into tune.',
     try: 'Set FFT to 2048 in the top bar, the two lines merge into one peak.',
     chips: [
       { label: 'FFT 2048', patch: { fftSize: 2048 }, title: '3.9 Hz bins: the pair is 1.3 bins apart' },
@@ -304,6 +311,9 @@ export const PRESETS = [
     note:
       'A 3.4 kHz tone at 8 kHz behaves. Past 4 kHz, dragged there, or by a chip, the peak turns around and ' +
     'walks back down. The signal is gone and an impostor took its place.',
+    why:
+      'An audio interface filters out everything above half its sample rate for exactly this reason, before ' +
+    'this fold can happen.',
     // Rewritten from "Click 6000 Hz... Click 4600, 3400 Hz, where it started",
     // which the impatient student read as ambiguous between an instruction
     // and a description of the reading. Each sentence now names one chip to
@@ -329,6 +339,9 @@ export const PRESETS = [
       'sampled at 16 kHz all sit well below Nyquist, so the dots describe exactly this signal. ' +
       'At 4 kHz the 3125 Hz component no longer fits and folds to 875 Hz, a line the signal ' +
       'never contained.',
+    why:
+      'Early digital telephone systems sampled voice at 8 kHz for this reason, enough to cover a 4 kHz voice ' +
+    'band without folding.',
     try: 'Set Rate to 4 kHz, the 3125 Hz line folds to 875 Hz.',
     chips: [
       { label: '16 kHz', patch: { sampleRate: 16000 } },
@@ -445,6 +458,9 @@ export const PRESETS = [
       'Window is set to "none". The 263 Hz tone does not complete whole cycles in the frame and smears across ' +
     'every bin. With Hann it collapses back to a line, and the floor here is dropped to −160 dB so the ' +
     'collapse is visible.',
+    why:
+      'Every FFT-based spectrum analyzer applies a window for this reason, or a pure tone would smear across ' +
+    'its display.',
     try: 'Set Window to hann, the 1 kHz floor falls from −56 to below −140 dB.',
     chips: [
       { label: 'none', patch: { window: 'none' } },
@@ -496,6 +512,9 @@ export const PRESETS = [
       'Same square, same 700 Hz corner as Low-pass a square, and the opposite survivor list. The fundamental is ' +
     'cut and the upper harmonics pass. On the scope the flat tops sag toward zero, a plateau being low ' +
     'frequency, while each edge survives as a sharp spike.',
+    why:
+      'An oscilloscope left on AC coupling does exactly this to a square wave test signal, sagging its flat ' +
+    'tops toward zero.',
     try: 'Drag Cutoff to 2 kHz, the plateaus flatten to zero. Only the edge spikes remain.',
     chips: [blk1('700 Hz', { freq: 700 }), blk1('2 kHz', { freq: 2000 })],
     featured: [{ block: 1, field: 'freq' }],
@@ -524,6 +543,9 @@ export const PRESETS = [
       'The resonant peak at the cutoff has height exactly Q, not proportional to it but equal to it. At Q = 10 ' +
     'it stands 20 dB (×10) above the passband. The source is white noise, which holds every frequency ' +
     'equally, so the spectrum paints the whole filter shape at once.',
+    why:
+      "A radio tuner's selectivity is set by its Q, sharp enough to reject the next station without cutting " +
+    'the one you want.',
     try: 'Drag Q to 1, the peak flattens into the shoulder. At 20 it stands 26 dB.',
     chips: [
       blk1('0.707', { q: Math.SQRT1_2 }, 'Butterworth: −3 dB at the corner, no peak'),
@@ -576,9 +598,18 @@ export const PRESETS = [
       'Two identical low-passes in series. Cascading multiplies the magnitudes, so the second section squares ' +
     'the response and doubles the attenuation in dB at every frequency, bypass one and the curve halves its ' +
     'slope. Noise is the source because it probes every frequency at once.',
+    why:
+      'A receiver or a crossover cascades plain sections like these instead of one complicated filter, buying ' +
+    'steepness one stage at a time.',
     try: 'Bypass block 2, at 3200 Hz, −78 dB becomes −39 dB: exactly half.',
+    // Round-six grading (Doing): the try line's own words, "Bypass block 2",
+    // shared no word with either chip below ("one section" / "both
+    // sections"), the only preset in the library where that happens. The
+    // featured checkbox still does the work, but a student following the
+    // try line's own wording found no matching one-click chip. Renamed the
+    // chip that bypasses block 2 to say so directly.
     chips: [
-      { label: 'one section', patch: { blocks: [{}, { bypass: true }] } },
+      { label: 'bypass block 2', patch: { blocks: [{}, { bypass: true }] } },
       { label: 'both sections', patch: { blocks: [{ bypass: false }, { bypass: false }] } },
     ],
     featured: [{ block: 2, field: 'bypass' }],
@@ -636,6 +667,9 @@ export const PRESETS = [
       'The input is one sample, then silence, so its spectrum is flat and any shape it has now came from the ' +
     'filter. The orange trace is the blue curve redrawn at the impulse’s own 2/N level, 60 dB down. The time ' +
     'view draws the impulse response itself, h(t) and H(f), one object from two sides.',
+    why:
+      "A reverb plugin starts by recording exactly this, a room's own impulse response, then applies it to " +
+    'any other recording.',
     try: 'Drag Q to 1, the ringing dies within one cycle and the peak drops 12 dB.',
     chips: [blk1('1', { q: 1 }), blk1('4', { q: 4 }), blk1('10', { q: 10 })],
     featured: [{ block: 1, field: 'q' }],
@@ -658,6 +692,9 @@ export const PRESETS = [
       'The input is a sudden jump, held. A gentle filter rounds the corner, and a resonant one overshoots and ' +
     'rings at its cutoff before settling. Overshoot stops at Q = 0.5, critical damping, not at 0.707, where ' +
     'the Butterworth is flattest in frequency and still overshoots (4.3% ideal, 4.4% here).',
+    why:
+      "A power supply's transient response spec is measured exactly this way, a sudden load step and a trace " +
+    'of the overshoot.',
     try: 'Drag Q to 0.5, the overshoot vanishes. At 0.707 it is still 4.4%.',
     chips: [
       blk1('0.5', { q: 0.5 }, 'Critical damping: no overshoot at all'),
@@ -683,6 +720,9 @@ export const PRESETS = [
       'makes its shape visible: deep nulls every 1000 Hz, the sample rate over 8. Summing a ' +
       'whole number of cycles of a sine gives exactly zero, so every frequency fitting whole ' +
       'cycles into the average is cancelled completely.',
+    why:
+      "A stock chart's moving average line runs the identical calculation, smoothing fast wiggles out of a " +
+    'noisy series.',
     try: 'Drag Taps N to 16, the nulls move in to every 500 Hz.',
     chips: [
       blk1('4', { taps: 4 }, 'Nulls every 2000 Hz'),
@@ -764,6 +804,9 @@ export const PRESETS = [
       'The same design with the taper set to none, on a linear scale. The ideal filter is a sinc running to ' +
     'infinity, so it is cut short, and cutting short IS a rectangular taper, whose leakage puts 8% of ' +
     'overshoot beside the corner. More taps make the ripple narrower, never shorter: Gibbs again.',
+    why:
+      'The ringing beside a hard edge in a compressed photograph is this same overshoot, one dimension ' +
+    'flattened into two.',
     try: 'Set Taps N to 201, the ripple narrows, not shorter. Set Taper to hamming, gone.',
     chips: [
       blk1('101 taps', { taps: 101 }),
@@ -827,6 +870,9 @@ export const PRESETS = [
       'A delayed copy of the signal, added to itself, nearly cancels wherever the delay τ is an odd number of ' +
     'half-periods. That puts notches every 1/τ = 250 Hz for τ = 4 ms (D = 32 samples), dipping to 1−g. In ' +
     'feedback mode the same delay resonates instead, peaking midway between those notches.',
+    why:
+      'A flanger pedal is built from exactly this, a signal mixed with a slowly sweeping delayed copy of ' +
+    'itself.',
     try: 'Switch Type to feedback, the notches become peaks, midway between where they were.',
     chips: [
       blk1('feedforward', { mode: 'feedforward' }, 'Notches, dipping to 1−g'),
@@ -879,6 +925,9 @@ export const PRESETS = [
       'Hard-clip a pure sine and odd harmonics appear, approaching 4c/(kπ) in the deep-clip limit, falling away ' +
     'faster at a clip this gentle. No filter is involved: the nonlinearity manufactures them. The response ' +
     'curve goes dashed because no transfer function can describe this block.',
+    why:
+      'A guitar distortion pedal runs this experiment on purpose, clipping a clean sine into the harmonics ' +
+    'that give it an edge.',
     try: 'Drag Threshold to 1, the clip never bites and every harmonic vanishes.',
     chips: [
       blk1('0.1', { threshold: 0.1 }, 'Deep clip: nearly a square'),
@@ -929,6 +978,9 @@ export const PRESETS = [
       'A linear block only changes how much of a frequency there is, while a nonlinear one invents new ones. ' +
     'Clipping 250 and 400 Hz together makes 100 Hz (2·250−400) and 550 Hz (2·400−250) first, with two more in ' +
     'the math panel. Avoiding them is most of why linearity is worth paying for.',
+    why:
+      'A two-tone test is the standard lab measurement of amplifier linearity, and these same products are ' +
+    'what it looks for.',
     try: 'Bypass the clipper, 100, 550, 900 and 1050 Hz all disappear.',
     chips: [
       { label: 'clipper bypassed', patch: { blocks: [{ bypass: true }] } },
@@ -950,6 +1002,9 @@ export const PRESETS = [
     note:
       'Multiply two signals and you get their sum and difference, 250 × 1000 gives 750 and 1250, and neither ' +
     'original frequency survives. Nothing was filtered. The frequencies were moved.',
+    why:
+      'A radio transmitter shifts a signal onto its carrier with this identical multiplication, only the ' +
+    'carrier frequency stays fixed.',
     try: 'Drag Carrier to 500 Hz, the lines move to 250 and 750 Hz.',
     chips: [blk1('500 Hz', { freq: 500 }, '250 and 750'), blk1('1000 Hz', { freq: 1000 }, '750 and 1250')],
     featured: [{ block: 1, field: 'freq' }],
@@ -989,6 +1044,9 @@ export const PRESETS = [
       'noise floor. At 12 bits they sink but stay discrete, because this tone divides the ' +
       'sample rate exactly and the error repeats with it. Only dither breaks that grip: the ' +
       'spurs become the flat floor 6.02N + 1.76 dB assumed.',
+    why:
+      'Mastering engineers dither a 24-bit mix down to a 16-bit CD for this reason, trading spurs like these ' +
+    'for a flat floor.',
     try: 'Drag Bits to 12, the spurs sink but stay discrete. Tick Dither, a flat floor.',
     chips: [
       blk1('4 bits', { bits: 4 }),

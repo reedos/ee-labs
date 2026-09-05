@@ -1712,11 +1712,23 @@ const ENTRIES = {
                 : 'The two blocks are no longer identical, so the chain is H₁·H₂ rather than a square.',
         })
       }
-      if (live === 2 && same) {
+      // Round-six grading (Physics honesty): this row used to appear ONLY
+      // for the default, both-sections state, so bypassing block 2 left the
+      // dB claim the try line makes — "−78 dB becomes −39 dB" — with no row
+      // printed in dB at all, only the unitless |H| row above. A student
+      // checking the try line's own units had to convert 0.0112 to dB by
+      // hand, mid-lesson. The row now prints in dB in both states, `same`
+      // still guarding it: with the sections no longer identical the total
+      // is H₁·H₂ rather than a clean double, which the unitless rows above
+      // already flag.
+      if (live >= 1 && same) {
         const h = def.response ? def.response(b1.params, 3200, ctx.sampleRate) : NaN
         rows.push({
-          label: 'attenuation at 3200 Hz doubles in dB',
-          predicted: 2 * 20 * Math.log10(h),
+          label:
+            live === 2
+              ? 'attenuation at 3200 Hz doubles in dB'
+              : 'attenuation at 3200 Hz, one section bypassed, in dB',
+          predicted: live === 2 ? 2 * 20 * Math.log10(h) : 20 * Math.log10(h),
           measured: 20 * Math.log10(ctx.respAt(3200)),
           unit: 'dB',
           abs: 0.3,

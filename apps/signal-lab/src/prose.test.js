@@ -14,6 +14,7 @@ describe('every preset reads plainly', () => {
     it(p.name, () => {
       expectPlain(p.note, 'note', `${p.name} note`)
       if (p.try) expectPlain(p.try, 'tryText', `${p.name} try`)
+      if (p.why) expectPlain(p.why, 'why', `${p.name} why`)
       expectPlain(p.name, 'title', `${p.name} name`)
     })
   }

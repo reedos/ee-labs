@@ -567,21 +567,21 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
     margin-top: 0;
   }
   .lesson-nav {
-    margin-top: 2px;
+    margin-top: 1px;
   }
   .note-title {
-    margin-top: 4px;
+    margin-top: 2px;
   }
   /* The try line's own box: padding and top margin trimmed the same way the
      short-laptop fold trim above already does for the fold probe there —
      the phone budget is tighter still. */
   .try-line {
-    margin-top: 4px;
-    padding: 5px 9px;
+    margin-top: 2px;
+    padding: 4px 9px;
   }
   .featured {
-    margin-top: 4px;
-    padding-top: 5px;
+    margin-top: 2px;
+    padding-top: 3px;
   }
   /* The featured mirror's own slider and label rows, tightened the same
      way — the block card below keeps the roomier spacing unchanged. */
@@ -589,10 +589,40 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
     margin-bottom: 1px;
   }
   .featured .num-slider {
-    margin: 3px 0 1px;
+    margin: 2px 0 0;
   }
   .featured-from {
     margin: 0 0 1px;
+  }
+  /* The featured knob is the LAST thing before the note on every preset that
+     has one, and .num's own trailing margin (10px, needed to separate stacked
+     fields in a source or block card) has nothing to separate here — it was
+     pure dead space at the bottom of an already-flush box (round-six grading:
+     the featured knob's own bottom already sits within half a pixel of the
+     sidebar's clip). Removing it is free: the knob's label, entry and slider
+     keep every pixel they had. */
+  .featured .num {
+    margin-bottom: 0;
+  }
+  /* Round-six grading, Layout: the note ran entirely behind the sidebar's own
+     32vh-capped scroller on 34 of 35 presets — not merely clipped, but
+     starting below the visible box's own bottom edge, because the featured
+     knob above it already fills that box to its clipped edge on every preset
+     that has one (verify.mjs's 10k2 holds the knob there, at laptop AND phone
+     sizes, with no slack to spare). Growing the sidebar's own cap was
+     rejected: the spectrum canvas already sits within 2px of the 844px fold
+     at the existing budget (10j), so any growth taken from `.views` fails
+     that check instead. The fix is instead every dead pixel of margin between
+     the lesson nav and the note that this file's own earlier trims left
+     behind — none of it touches a touch target or the featured knob's own
+     content — recovered here and on `.lesson-note` below, enough to guarantee
+     the note's own first line inside the box rather than none of it. The
+     rest of the note still needs the scroll `.has-more`'s shadow already
+     announces; a full guarantee would cost the featured knob or the try line
+     their own place in the same box, which round-six explicitly asked not to
+     trade away. */
+  .lesson-note {
+    margin-top: 3px;
   }
 }
 

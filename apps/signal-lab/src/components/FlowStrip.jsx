@@ -54,7 +54,15 @@ export default function FlowStrip({ stages, sourceCount, sampleRate, onReveal })
         onClick: () => onReveal('sources'),
         title: 'Σ: the enabled sources add together here',
       })}
-      {node('sum', 'sum', sum ? rmsOf(sum) : '0.000')}
+      {/* "sum" is the first word past the enabled-sources button, and it is
+          on screen the moment a student loads "Single tone" — the suite's own
+          terms-on-contact rule applies here as much as it does to a note. A
+          hover title, not a terms.js registry entry, matching Σ's own choice
+          just above: it names the same combined signal, read as an RMS
+          number rather than left as a symbol. */}
+      {node('sum', 'sum', sum ? rmsOf(sum) : '0.000', {
+        title: 'sum: the RMS level here, after the sources add together.',
+      })}
       {node('adc', fmtHz(sampleRate), 'Hz')}
       {rest.map((s) =>
         node(s.id, s.label, s.bypassed ? 'bypassed' : rmsOf(s), {

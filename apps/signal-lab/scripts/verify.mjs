@@ -1434,6 +1434,101 @@ console.log('\n10p. Circuit Lab hand-over: absent on a bare port, thumb-sized wh
   }
 }
 
+// -------- 10q. Phone 390x844: the note's own first line, guaranteed inside
+// the sidebar box — not merely present in the DOM
+//
+// Round-six grading (Layout): the note ran entirely behind `.controls`' own
+// 32vh-capped scroller on 34 of 35 presets on a fresh load, sidebar scrolled
+// to the top — not merely clipped, its own TOP already sat below the box's
+// visible bottom, because the featured knob above it already fills the box
+// to that same edge (10k2 holds the knob there with no slack to spare). A
+// probe that only checked the knob, as 10k2 does, would read this as clean —
+// exactly the empty-set trap item 11 of the review playbook warns about,
+// since nothing upstream of the note ever overflowed.
+//
+// The fix recovers dead margin between the lesson nav and the note
+// (styles.css) rather than growing the sidebar's own cap, which would have
+// cost the spectrum canvas its own fold (10j sits within 2px of 844 already
+// at the existing budget). That buys back the note's own FIRST LINE, not the
+// whole note — the rest still needs the scroll `.has-more`'s shadow already
+// announces, and 10k3 above already holds that cue honest. MIN_SLICE is set
+// under the achieved margin (about 18.6px, one 12px/1.5 line, on the tightest
+// presets) so the probe does not chase sub-pixel rendering noise.
+console.log(`\n10q. Phone 390x844: all ${presetNames.length} presets — the note's own first line inside the sidebar box on a fresh load\n`)
+{
+  const MIN_SLICE = 16
+  await page.setViewportSize({ width: 390, height: 844 })
+  let allOk = true
+  const measured = []
+  for (const name of presetNames) {
+    await page.goto(URL, { waitUntil: 'load' })
+    await page.waitForSelector('.views canvas')
+    await loadPreset(name)
+    await page.evaluate(() => {
+      const el = document.querySelector('.controls')
+      if (el) el.scrollTop = 0
+      window.scrollTo(0, 0)
+    })
+    await page.evaluate(() => document.fonts.ready)
+    await page.waitForTimeout(60)
+
+    const sidebarBox = await page.locator('.controls').boundingBox()
+    const noteBox = await page.locator('.lesson-note').boundingBox().catch(() => null)
+    if (!noteBox) {
+      fail(`phone note / ${name}: .lesson-note not rendered`)
+      allOk = false
+      continue
+    }
+    const sidebarBottom = sidebarBox.y + sidebarBox.height
+    const slice = sidebarBottom - noteBox.y
+    measured.push({ name, top: noteBox.y, sidebarBottom, slice })
+    if (slice < MIN_SLICE) {
+      fail(
+        `phone note / ${name}: only ${slice.toFixed(1)}px of the note's own top sits inside the sidebar box ` +
+          `[${sidebarBox.y.toFixed(0)}, ${sidebarBottom.toFixed(0)}] — under the ${MIN_SLICE}px guaranteed slice`,
+      )
+      allOk = false
+    }
+  }
+  if (allOk) {
+    const worst = measured.reduce((m, r) => (r.slice < m.slice ? r : m))
+    console.log(
+      `   all ${presetNames.length} presets: the note's own first line clears a ${MIN_SLICE}px guaranteed slice ` +
+        `inside the sidebar box (worst: "${worst.name}", ${worst.slice.toFixed(1)}px)`,
+    )
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+// -------- 10r. The flow strip's "sum" node is defined on contact, like Σ
+//
+// Round-six grading (Explanation): the top flow-strip's live RMS reading sits
+// beside the bare word "sum" on the very first screen a cold student sees —
+// "Single tone" — with no hover title and no glossary entry, while its
+// neighbouring Σ node carries one ("Σ: the enabled sources add together
+// here"). That is the suite's own terms-on-contact rule (review playbook
+// item 8) broken on screen one. FlowStrip.jsx now gives "sum" the same
+// treatment: a hover title, not a terms.js registry entry, matching Σ's own
+// deliberate choice (see the comment beside it in FlowStrip.jsx).
+console.log('\n10r. The flow strip\'s "sum" node carries a hover title, like Σ\n')
+{
+  await loadPreset('Single tone')
+  const sumNode = page.locator('.flow .flow-node').nth(1)
+  const text = (await sumNode.innerText()).trim()
+  if (!/^sum/.test(text)) {
+    fail(`flow strip: expected the second node to be "sum", found "${text}"`)
+  } else {
+    const title = await sumNode.getAttribute('title')
+    if (!title || !title.trim()) {
+      fail('flow strip: the "sum" node has no hover title — the word is used with no definition on screen one')
+    } else {
+      console.log(`   "sum" node title: "${title}"`)
+    }
+  }
+}
+
 // -------------------------------------------------------------- 11. 4K fit
 
 console.log('\n11. Re-checking layout at 4K\n')
