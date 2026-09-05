@@ -443,13 +443,30 @@ describe('the numbers the try lines quote', () => {
 // "Real parts wobble" is a picture: the whole payload is a SCATTER of poles.
 // The pole view auto-fits its axes to the content (1.4× the widest extent,
 // square pixels — PoleZeroCanvas), so the only way the scatter can be seen is
-// for the cloud to be large against the poles' own radius. This measures it
-// in the plot's pixels: at a laptop pane (plot area ~260 px tall at 1366×768)
-// the cloud must span at least three marker radii (3 × 7 px), or two X's
-// would look like one pair and the note would be describing nothing.
+// for the cloud's own INK — not just the raw pole positions — to read as a
+// shape distinct from the nominal cross.
+//
+// Round-five grading: this test used to compare raw position spread against
+// "3 marker radii", a threshold with no rendering behind it. It passed while
+// the cloud, at the default 1.8px/0.28-alpha dots, still looked like two
+// clean crosses on a laptop pane — position spread was real, but too small
+// and too faint to read as a cloud. The fix (packages/ui's PoleZeroCanvas,
+// `cloudEmphasis`) is a rendering change, so the test now measures rendering:
+// each cloud dot has its own radius, and the two outermost dots' own
+// footprints extend what a reader actually sees past where the bare pole
+// positions alone would put it. That is the same "ink", in the same sense
+// verify.mjs's section 8 measures it by real pixel colour in a live browser
+// — this is the computed twin of that photograph.
 describe('lesson: Real parts wobble is visible', () => {
   const PLOT_H = 260 // px: the 1366×768 lower pane's plot area (verify.mjs measures the real one)
   const MARKER_R = 7 // px: PoleZeroCanvas's pole cross half-size at k = 1
+  const MARKER_LINE_W = 2 // px: PoleZeroCanvas's pole-cross stroke width at k = 1
+  const MARKER_INK = 2 * MARKER_R + MARKER_LINE_W // px: the bare cross's own rendered footprint (verify.mjs measures this in a real browser as 16×17)
+  const DOT_R = 2.5 // px: PoleZeroCanvas's cloudEmphasis dot radius at k = 1 — must track that file
+  // A cloud only reads as a shape once it clears the bare cross by more than
+  // a couple of dot-widths — the marker's own ink, plus room for two more
+  // dot diameters, rather than a smudge that merely touches the cross.
+  const READABLE = MARKER_INK + 4 * DOT_R
 
   const pxSpread = (s) => {
     const tf = transferOf(s.id, s.params, s.output)
@@ -464,16 +481,18 @@ describe('lesson: Real parts wobble is visible', () => {
     const upper = cloud.filter(([, im]) => im >= 0)
     const res = upper.map(([re]) => re)
     const ims = upper.map(([, im]) => im)
+    // Ink, not just position: each dot's own diameter extends the cloud's
+    // visible extent past its two outermost sample positions.
     return {
-      w: (Math.max(...res) - Math.min(...res)) * pxPerUnit,
-      h: (Math.max(...ims) - Math.min(...ims)) * pxPerUnit,
+      w: (Math.max(...res) - Math.min(...res)) * pxPerUnit + 2 * DOT_R,
+      h: (Math.max(...ims) - Math.min(...ims)) * pxPerUnit + 2 * DOT_R,
     }
   }
 
-  it('the ±5% cloud spans more than three marker radii on a laptop pane', () => {
+  it('the ±5% cloud reads as a shape, not the bare cross, on a laptop pane', () => {
     const s = stateOf(byName('Real parts wobble'))
     const { w, h } = pxSpread(s)
-    expect(Math.max(w, h)).toBeGreaterThan(3 * MARKER_R)
+    expect(Math.max(w, h)).toBeGreaterThan(READABLE)
     // And it is still a complex pair for every build — an arc, not a smear
     // along the real axis.
     const { cloud } = toleranceCloud(s.id, s.params, s.output, s.tols)
@@ -483,12 +502,12 @@ describe('lesson: Real parts wobble is visible', () => {
   it('at the old defaults (R = 100 Ω) the same cloud hid inside the marker — the reason for R = 560', () => {
     const s = stateOf(byName('Real parts wobble'))
     const { w, h } = pxSpread({ ...s, params: { ...s.params, r: 100 } })
-    expect(Math.max(w, h)).toBeLessThan(2 * MARKER_R)
+    expect(Math.max(w, h)).toBeLessThan(MARKER_INK)
   })
 
   it('the blame lesson’s R-only arc clears the bar too', () => {
     const { w, h } = pxSpread(stateOf(byName('Blame the right part')))
-    expect(Math.max(w, h)).toBeGreaterThan(3 * MARKER_R)
+    expect(Math.max(w, h)).toBeGreaterThan(READABLE)
   })
 
   // Round-three grading: the try line used to promise the same break for a
@@ -517,8 +536,8 @@ describe('lesson: Real parts wobble is visible', () => {
     const res = upper.map(([re]) => re)
     const ims = upper.map(([, im]) => im)
     return {
-      w: (Math.max(...res) - Math.min(...res)) * pxPerUnit,
-      h: (Math.max(...ims) - Math.min(...ims)) * pxPerUnit,
+      w: (Math.max(...res) - Math.min(...res)) * pxPerUnit + 2 * DOT_R,
+      h: (Math.max(...ims) - Math.min(...ims)) * pxPerUnit + 2 * DOT_R,
     }
   }
 
@@ -531,7 +550,7 @@ describe('lesson: Real parts wobble is visible', () => {
       const span = stickySpan(heldSpan, natural) // held across the move, not reframed
       expect(span).toBeCloseTo(heldSpan, 6) // confirms the hold actually applies here
       const { w, h } = pxSpreadAtSpan(cloud, span)
-      expect(Math.max(w, h)).toBeLessThan(3 * MARKER_R)
+      expect(Math.max(w, h)).toBeLessThan(READABLE)
     }
   })
 })

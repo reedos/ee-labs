@@ -1200,6 +1200,7 @@ export default function App() {
                 poles={pz.poles}
                 zeros={pz.zeros}
                 cloud={wobble.any ? wobble.cloud : null}
+                cloudEmphasis={!!active?.cloudEmphasis}
                 span={pzSpan}
               />
             </>

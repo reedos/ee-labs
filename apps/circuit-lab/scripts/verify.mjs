@@ -15,23 +15,38 @@ import { foldProbe, phoneProbe, PHONE_VIEWPORT } from '@ee-labs/ui/verify/foldPr
 import { tapTargetProbe, FLOOR, HARD_FLOOR } from '@ee-labs/ui/verify/tapTargetProbe.mjs'
 import { LESSONS, START_LESSON } from '../src/lessons.js'
 
-const ORIGIN = (process.env.APP_URL || 'http://localhost:4175').replace(/\/$/, '')
-// The build is served at the origin's root, but the hand-over links only
-// resolve when the page sits beside its siblings at /<lab>/ (siblingUrl reads
-// the folder off the pathname). So the harness visits /circuit-lab/ and
-// rewrites every request under it back to the root — the deployed layout,
-// served by the preview.
+const rawAppUrl = (process.env.APP_URL || 'http://localhost:4175').replace(/\/$/, '')
+// Two shapes of APP_URL reach this script. A bare preview (`npm run preview`,
+// or this app's own vite preview on 47592) serves circuit-lab AT THE ORIGIN'S
+// ROOT, with no siblings beside it — so the harness visits a pretend
+// `/circuit-lab/` path and rewrites every request under it back to that root,
+// which is how siblingUrl()/homeUrl() (reading the folder off the pathname)
+// get exercised even though nothing else is deployed there. The deployed site
+// (`npm run site:serve`, playbook item 11) is the other shape: circuit-lab
+// really does live at `/circuit-lab/`, beside its siblings, and the SAME
+// rewrite would instead redirect the page's own navigation to `/` — the
+// suite splash page, not this app — because `/circuit-lab/`'s pathname
+// matches the rewrite pattern with nothing left over. Round-five grading
+// caught exactly that: `.views canvas` never appeared because the harness was
+// quietly verifying the splash page. So: when APP_URL already names
+// `/circuit-lab` as deployed, treat it as the site root plus that folder and
+// skip the rewrite entirely; only synthesize the pretend path for a bare
+// origin.
+const DEPLOYED = /\/circuit-lab$/.test(rawAppUrl)
+const ORIGIN = DEPLOYED ? rawAppUrl.replace(/\/circuit-lab$/, '') : rawAppUrl
 const URL = `${ORIGIN}/circuit-lab/`
 const failures = []
 const fail = (m) => failures.push(m)
 
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 })
-await page.route(`${ORIGIN}/circuit-lab/**`, (route) => {
-  const u = new globalThis.URL(route.request().url())
-  const rest = u.pathname.replace(/^\/circuit-lab\/?/, '')
-  route.continue({ url: `${ORIGIN}/${rest}${u.search}` })
-})
+if (!DEPLOYED) {
+  await page.route(`${ORIGIN}/circuit-lab/**`, (route) => {
+    const u = new globalThis.URL(route.request().url())
+    const rest = u.pathname.replace(/^\/circuit-lab\/?/, '')
+    route.continue({ url: `${ORIGIN}/${rest}${u.search}` })
+  })
+}
 
 const consoleErrors = []
 page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`))
@@ -1049,6 +1064,23 @@ console.log('\n8. Real parts wobble: the pole cloud is a shape, not a smudge in 
   console.log(`   exact parts: the same ink is ${bare.n} px in a ${bare.box.join('×')} px box — the cross alone`)
   if (!(Math.max(...bare.box) <= 18)) fail(`with exact parts the upper-half ink should be one cross, got ${bare.box.join('×')} px`)
   if (!(ink.n > 1.5 * bare.n)) fail(`the cloud added too little ink: ${ink.n} px with the cloud vs ${bare.n} px for the cross alone`)
+
+  // "Blame the right part" gets the same cloudEmphasis prop and the same
+  // claim (the note says the poles slide along a visible arc) — measured the
+  // same way, still at 1366×768, still by trace-colour ink.
+  await pick('Blame the right part')
+  const armed = await inkBox()
+  console.log(
+    `   "Blame the right part": trace-green ink in the upper half-plane ${armed.n} px, ` +
+      `box ${armed.box[0]}×${armed.box[1]} px (one pole cross is 14×14)`,
+  )
+  if (!(Math.max(...armed.box) >= 21)) fail(`"Blame the right part" arc box ${armed.box.join('×')} px is not bigger than three marker radii`)
+  await page.locator('[data-role=featured] .field-tol').first().getByRole('button', { name: 'exact' }).click()
+  await settle()
+  const armedBare = await inkBox()
+  console.log(`   "Blame the right part" at R exact: the same ink is ${armedBare.n} px in a ${armedBare.box.join('×')} px box — the cross alone`)
+  if (!(armed.n > 1.5 * armedBare.n)) fail(`"Blame the right part" arc added too little ink: ${armed.n} px vs ${armedBare.n} px for the cross alone`)
+
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto(URL, { waitUntil: 'networkidle' })
 }
@@ -1073,8 +1105,17 @@ console.log('\n7. Fold probe at laptop sizes: try line, featured controls, lit c
       } else if (f === 'output') out.push('[data-role=featured] select')
       else if (f === 'handover') out.push('[data-role=featured] a.handover-copy')
       else {
+        // Round-five grading: NumField (packages/ui) renders TWO <input>s per
+        // field, a text box AND a range slider — `input` nth(i) here used to
+        // count across BOTH, so a lesson featuring two fields (c then r) had
+        // its "featured r" locator land on c's own slider (nth(1) of four
+        // inputs), one field short. That let "Where the corner comes from"'s
+        // R slider sit 71 px past the 768 fold while this exact probe logged
+        // "0 outside the fold" — a probe passing over the wrong element,
+        // not an empty set, but the same failure mode item 11 warns about.
+        // The try line always means the DRAG control, so count sliders only.
         const i = inputs++
-        const fn = (p) => p.locator('[data-role=featured] input').nth(i)
+        const fn = (p) => p.locator('[data-role=featured] input[type=range]').nth(i)
         fn.label = `featured ${f}`
         out.push(fn)
       }

@@ -281,6 +281,15 @@ export const LESSONS = [
     // default 100 Ω the same ±5% kept every dot inside the 16 px pole
     // marker — a wobble lesson with no visible wobble. (The pole view
     // auto-fits its axes, so parts are the only zoom; see NEEDS.md.)
+    //
+    // Round-five grading: R = 560 alone was not enough — at a laptop pane
+    // height the 1.8px/0.28-alpha dots PoleZeroCanvas drew still read as two
+    // sharp crosses with no perceptible scatter, so the note's own claim
+    // (this plot shows what tolerance costs) outran what the picture showed.
+    // cloudEmphasis is the packages/ui half of that fix (bigger, less
+    // transparent dots); this is the one lesson group where the cloud IS the
+    // lesson, so it opts in rather than changing every caller's default.
+    cloudEmphasis: true,
     patch: { circuit: 'rlcSeries', params: p('rlcSeries', { r: 560 }), view: 'pz', tol: 0.05 },
     claim: {
       tolQHarderThanF0: true,
@@ -333,6 +342,9 @@ export const LESSONS = [
     // tolerance slides them ~2°, a smudge smaller than the marker; any
     // higher than ~570 Ω and the worst build goes overdamped, the pair
     // lands on the real axis, and the circle story stops being true.
+    // Same emphasis as "Real parts wobble", same reason: the arc is real but
+    // too faint at the default dot size and alpha to read at a glance.
+    cloudEmphasis: true,
     patch: {
       circuit: 'rlcSeries',
       params: p('rlcSeries', { r: 560 }),

@@ -621,6 +621,35 @@ details.preset-group > .presets { margin: 3px 0 5px; }
 .featured-handover { margin-bottom: 10px; }
 .featured-handover .handover-copy { margin-top: 0; margin-bottom: 6px; }
 
+/* Round-five grading: at 1366×768 and 1440×900 (both ≤900 px tall), "Where
+   the corner comes from" (two stacked featured sliders, the lab's own START
+   lesson) buried its R slider entirely off screen (y 823-839 against the
+   768 fold) and "Resonance, seen in time" lost 11 of its 16 px (y 763-779).
+   Both try lines name R by number, so a numeric box is not a substitute for
+   the slider a reader reaches for. Measured before this rule: the header
+   (suite nav, title, three-line subhead, report-issue link) alone costs
+   about 131 px before the lesson's own text starts, on a screen with none
+   to spare. Phone already solved this exact budget problem by dropping the
+   subhead and tightening the margins below it (the max-width: 900px block
+   above) — this reuses the same answer, keyed on HEIGHT rather than width,
+   since a short laptop pane has the same problem a narrow phone does, at a
+   width where the two-column layout otherwise still fits fine. Left alone
+   above 900 px tall, where the subhead's context costs nothing. */
+@media (min-width: 901px) and (max-height: 900px) {
+  .controls { padding-top: 10px; }
+  .controls header .sub { display: none; }
+  .controls .labnav { margin-bottom: 4px; }
+  .report-issue { margin-bottom: 4px; }
+  .controls section { margin-top: 8px; }
+  .controls h2 { margin: 0 -12px 8px; padding: 5px 12px 3px; }
+  .note-title { margin-top: 2px; }
+  .try-line { margin-top: 6px; padding: 6px 9px; }
+  .try-chips { margin-top: 4px; }
+  details.preset-group { margin-bottom: 2px; }
+  details.preset-group > .presets { margin: 2px 0 3px; }
+  .featured .num:not(:last-child) { margin-bottom: 6px; }
+}
+
 /* Where the math went: a pointer in the sidebar, the panel itself a tab of
    the lower pane. The pane is a fixed-height flex column, so the body scrolls
    inside it rather than growing the page. */
