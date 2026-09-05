@@ -30,9 +30,9 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Machines Lab | building | `lab/machines-lab` | Power Lab F for the drives group | to write |
 | Communications Lab | waiting | | Random Signals Lab | `COMMUNICATIONS_LAB_PLAN.md` |
 | Information Lab | waiting | | Communications Lab | `INFORMATION_LAB_PLAN.md` |
-| Applied Analog Lab | waiting | | Electronics L, M | to write |
-| Analog IC Lab | waiting | | Electronics H to M | to write |
-| Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | to write |
+| Applied Analog Lab | waiting | | Electronics L, M | `APPLIED_ANALOG_LAB_PLAN.md` |
+| Analog IC Lab | waiting | | Electronics H to M | `ANALOG_IC_LAB_PLAN.md` |
+| Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | `MIXED_SIGNAL_LAB_PLAN.md` |
 | RF Lab | waiting | | Analog IC Lab, Fields Lab's line | `RF_LAB_PLAN.md` |
 | System Lab | waiting | | RF Lab | `SYSTEM_LAB_PLAN.md` |
 | VLSI Lab | waiting | | Logic Lab, Analog IC Lab | `VLSI_LAB_PLAN.md` |
