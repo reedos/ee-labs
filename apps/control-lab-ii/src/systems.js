@@ -91,13 +91,13 @@ export const PLANTS = {
   },
 
   threePoleResonant: {
-    name: 'Three lags, and a resonance',
+    name: 'Lags with a resonance',
     group: 'Hard to control',
     hint:
-      'The same three lags with a lightly damped resonance riding on top of them, three times the plant\'s own ' +
-      'crossing frequency. D5 puts it there on purpose: the describing function is built on the hypothesis that ' +
-      'the linear part filters out the harmonics the saturation creates, and a peak sitting where the third ' +
-      'harmonic lands is the one place that hypothesis fails.',
+      'The same three lags with a lightly damped resonance riding on top of them, at three times the plant\'s ' +
+      'own crossing frequency. D5 puts it there on purpose. The describing function is built on the ' +
+      'hypothesis that the linear part filters out the harmonics the saturation creates. A peak sitting ' +
+      'where the third harmonic lands is the one place that hypothesis fails.',
     params: [
       P('k', 'Gain K', 1, 0.001, 1e6),
       P('t1', 'τ₁', 1, 1e-4, 100, 's'),
@@ -247,8 +247,8 @@ export const CONTROLLERS = {
   p: {
     name: 'Proportional',
     hint:
-      'Output proportional to error. In Group B it is the whole controller, because a plant with one pole and ' +
-      'a proportional gain is the simplest loop a computer can break.',
+      'The output is proportional to the error. In Group B it is the whole controller, because a plant with ' +
+      'one pole and a proportional gain is the simplest loop a computer can break.',
     params: [P('kp', 'Kp', 1, 0.001, 1000, '', 'linear')],
     tf: (c) => ({ b: [c.kp], a: [1] }),
     ss: (c) => ({ A: [], B: [], C: [], D: c.kp, n: 0 }),
@@ -257,9 +257,9 @@ export const CONTROLLERS = {
   lag: {
     name: 'Filtered gain',
     hint:
-      'A gain with a first-order filter on it, which is what a real controller has so that measurement noise ' +
-      'does not reach the actuator. Its own pole is what B7 emulates three ways, because a fast pole is where ' +
-      'the three rules stop agreeing with each other.',
+      'A gain with a first-order filter on it. A real controller has one so that measurement noise does not ' +
+      'reach the actuator. Its own pole is what B7 emulates three ways, because a fast pole is where the ' +
+      'three rules stop agreeing.',
     params: [P('kc', 'Kc', 1, 0.001, 1000, '', 'linear'), P('p', 'Filter pole', 100, 0.1, 1e5, 'rad/s')],
     tf: (c) => ({ b: [c.kc * c.p], a: [1, c.p] }),
     ss: (c) => ({ A: [[-c.p]], B: [c.p], C: [c.kc], D: 0, n: 1 }),
@@ -268,8 +268,8 @@ export const CONTROLLERS = {
   pi: {
     name: 'PI',
     hint:
-      'A proportional term and an integrator. The integrator drives the steady-state error to zero and gives ' +
-      'the loop a state of its own, which is the second axis of Group C\'s phase plane.',
+      'It adds a proportional term to an integrator. The integrator drives the steady-state error to zero and ' +
+      'gives the loop a state of its own, which is the second axis of Group C\'s phase plane.',
     params: [P('kp', 'Kp', 2, 0.001, 1000, '', 'linear'), P('ki', 'Ki', 4, 0.001, 1000, '', 'linear')],
     tf: (c) => ({ b: [c.kp, c.ki], a: [1, 0] }),
     ss: (c) => ({ A: [[0]], B: [1], C: [c.ki], D: c.kp, n: 1 }),

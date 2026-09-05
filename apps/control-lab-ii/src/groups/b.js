@@ -11,6 +11,14 @@ const cp = (id, over = {}) => ({ ...defaultsOf(CONTROLLERS[id]), ...over })
 
 export const GROUP_B = 'The sampled loop'
 
+// The gain that puts the closed-loop pole exactly at the origin of the
+// z-plane, for the lag and sample time B5 uses. Written as the closed form
+// rather than as the 9.50833 the plan quotes, because a rounded gain leaves
+// the pole a little off the origin and the response a little short of
+// deadbeat, which is the one thing B5 is claiming.
+const DEADBEAT_ALPHA = Math.exp(-0.1 / 1)
+const DEADBEAT_KP = DEADBEAT_ALPHA / (1 - DEADBEAT_ALPHA)
+
 const lagAt = (Ts, kp, over = {}) => ({
   mode: 'sampled',
   plantId: 'firstOrder',
@@ -31,8 +39,8 @@ export default [
     name: 'What the loop sees',
     see:
       'A lag with τ = 1 s under proportional control, read every 100 ms. The output is a smooth curve, the ' +
-      'sample instants are marked on it, and the drive below is a staircase. The controller sees only the ' +
-      'marks. The plant sees only the staircase.',
+      'sample instants are marked on it, and the drive below is a staircase. The controller reads only the ' +
+      'marks, and the plant is driven only by the staircase.',
     try: [
       { say: 'Raise the sample time to 400 ms. The staircase coarsens and the output lags it.', set: { Ts: 0.4 } },
       { say: 'Lower it to 20 ms. The staircase becomes the curve again.', set: { Ts: 0.02 } },
@@ -53,7 +61,7 @@ export default [
       return [
         { name: 'the pole in z is e to the minus T over tau', value: s.alpha, want: alpha, tol: 1e-12 },
         { name: 'the numerator is K times one minus that', value: s.Pz.b[1], want: k * (1 - alpha), tol: 1e-12 },
-        { name: 'the sampled step matches the continuous one', value: s.disagreement, wantBelow: 1e-9 },
+        { name: 'the sampled plant matches the continuous one at every instant', value: s.plantDisagreement, wantBelow: 1e-12 },
       ]
     },
   },
@@ -126,8 +134,8 @@ export default [
     group: GROUP_B,
     name: 'Sampling breaks a loop that cannot break',
     see:
-      'One pole and one gain. In continuous time this loop is stable at every gain there is, up to a million ' +
-      'and past it. Sampled at 100 ms it goes unstable at Kp = 20.0167. The verdict badge flips while the ' +
+      'The loop is one pole and one gain. In continuous time it is stable at every gain there is, up to a ' +
+      'million and past it. Sampled at 100 ms it goes unstable at Kp = 20.0167. The verdict badge flips while the ' +
       'continuous one beside it does not.',
     try: [
       { say: 'Set Kp to 20. The digital loop still holds, barely.', set: { kp: 20 } },
@@ -182,7 +190,7 @@ export default [
       'which is infinite gain. Sampling makes finite-time settling reachable with a finite gain. The price is ' +
       'that the drive at the first sample is the whole correction at once, which a real actuator may not have.',
     terms: ['deadbeat', 'zplane', 'unitcircle', 'steadystate'],
-    patch: lagAt(0.1, 9.50833, { view: 'zplane' }),
+    patch: lagAt(0.1, DEADBEAT_KP, { view: 'zplane' }),
     claim: (a) => {
       const s = a.sampled
       const tau = a.state.plantP.tau
@@ -212,7 +220,7 @@ export default [
     ],
     why:
       'Emulation replaces s by a difference operator, which makes a different object from the controller it ' +
-      'came from. The suite labels it one. Every emulated controller carries a flag saying so, its rule and ' +
+      'came from. The suite gives it that label. Every emulated controller carries a flag, its rule and ' +
       'its sample time. The guard is twenty samples per cycle at the loop’s crossover, the same ' +
       'threshold the sampled-filter link already refuses below. The disagreement is proportional to the ' +
       'sample time, which is what a half-sample delay predicts, so halving the rate doubles it.',
@@ -223,7 +231,7 @@ export default [
       plantP: pp('twoLag', { t1: 1, t2: 0.2 }),
       ctrlId: 'pi',
       ctrlP: cp('pi', { kp: 2, ki: 4 }),
-      Ts: 1 / (0.35588127 * 20),
+      perCycle: 20,
       emulation: 'tustin',
       duration: 12,
       view: 'sampled',
@@ -261,15 +269,40 @@ export default [
     patch: {
       mode: 'sampled',
       plantId: 'firstOrder',
-      plantP: pp('firstOrder', { tau: 0.01 }),
-      ctrlId: 'p',
-      ctrlP: cp('p', { kp: 1 }),
+      plantP: pp('firstOrder', { tau: 1 }),
+      ctrlId: 'lag',
+      ctrlP: cp('lag', { kc: 1, p: 100 }),
       Ts: 0.02,
       emulation: 'forward',
       duration: 0.5,
       view: 'zplane',
     },
-    claim: () => [],
-    euler: true,
+    claim: (a) => {
+      const s = a.sampled
+      // The controller's own pole, and the bound the plan names. Forward Euler
+      // maps a pole at -1/tau to 1 - Ts/tau, which leaves the unit circle at
+      // Ts = 2 tau exactly.
+      const tau = 1 / a.state.ctrlP.p
+      return [
+        { name: 'the trapezoid rule stays stable', value: s.rules.tustin.stable ? 1 : 0, want: 1, tol: 0 },
+        { name: 'the backward rule stays stable', value: s.rules.backward.stable ? 1 : 0, want: 1, tol: 0 },
+        { name: 'forward Euler does not', value: s.rules.forward.stable ? 1 : 0, want: 0, tol: 0 },
+        { name: 'the sample time is at or past twice the time constant', value: s.Ts, want: 2 * tau, tol: 1e-12 },
+        { name: 'and the forward pole has left the unit circle', value: Math.abs(s.rules.forward.poles[0][0]), wantAbove: 1 - 1e-12 },
+      ]
+    },
+    sweep: {
+      knob: 'Ts',
+      at: [0.005, 0.01, 0.05],
+      claim: (a) => {
+        const tau = 1 / a.state.ctrlP.p
+        const past = a.state.Ts >= 2 * tau
+        return [
+          { name: 'the trapezoid rule holds at every rate', value: a.sampled.rules.tustin.stable ? 1 : 0, want: 1, tol: 0 },
+          { name: 'the backward rule holds at every rate', value: a.sampled.rules.backward.stable ? 1 : 0, want: 1, tol: 0 },
+          { name: 'forward Euler holds below twice the time constant and not above', value: a.sampled.rules.forward.stable ? 1 : 0, want: past ? 0 : 1, tol: 0 },
+        ]
+      },
+    },
   },
 ]

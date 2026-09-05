@@ -24,6 +24,7 @@ import {
   pwlOscillationOf,
   pwlTrajectory,
   roots,
+  similarity,
   sOfZ,
   ssTrajectory,
   stepDiscreteTF,
@@ -31,6 +32,7 @@ import {
   switchingLines,
   toStateSpace,
   toTransferFunction,
+  zohGain,
 } from '@ee-labs/systems'
 import { PLANTS, CONTROLLERS, buildLoop } from './systems.js'
 
@@ -131,11 +133,22 @@ function stateAnalysis(state) {
   const ctrl = controllability(ss)
   const obs = observability(ss)
   const design = state.design || {}
+  // The same motor with its speed measured in degrees a second rather than
+  // radians a second. That is a change of coordinates and nothing else, and
+  // it is what A3 is about. The controllable canonical form is NOT a second
+  // basis for this plant: for the motor it comes out equal to the physical
+  // one, which is a coincidence of that plant rather than a general truth, and
+  // a lesson built on it would be claiming something false.
+  const T = design.T || [[1, 0], [0, Math.PI / 180]]
+  const rotated = ss.n === T.length ? similarity(ss, T) : null
+
   const out = {
     ss,
     canonical,
+    rotated,
     fromSs: toTransferFunction(ss),
     fromCanonical: toTransferFunction(canonical),
+    fromRotated: rotated ? toTransferFunction(rotated) : null,
     ctrl,
     obs,
     place: null,
@@ -214,12 +227,20 @@ function sampledAnalysis(state) {
   const plant = PLANTS[state.plantId].tf(state.plantP)
   const ctrl = CONTROLLERS[state.ctrlId].tf(state.ctrlP)
   const { open } = buildLoop(state.plantId, state.plantP, state.ctrlId, state.ctrlP)
-  const Ts = state.Ts
+  const marg = margins(open, GRID)
+  // A reader thinks in samples per cycle at crossover, not in milliseconds,
+  // and the guard's threshold is written in those units too. So a state may
+  // set either, and setting the rate computes the sample time the loop's own
+  // crossover asks for rather than making the lesson carry a hand-computed
+  // constant.
+  const Ts =
+    state.perCycle && marg.gainCrossover > 0
+      ? 1 / (marg.gainCrossover * state.perCycle)
+      : state.Ts
   const method = state.emulation || 'tustin'
   const controllerZ = emulate(ctrl, Ts, method)
   const loop = discreteLoop(plant, controllerZ, Ts)
   const Pz = loop.plant
-  const marg = margins(open, GRID)
   const guard = emulationGuard(marg.gainCrossover, Ts)
   const contClosed = closeLoop(open)
   const steps = Math.max(8, Math.round((state.duration ?? 4) / Ts) + 1)
@@ -228,6 +249,28 @@ function sampledAnalysis(state) {
   let worst = 0
   for (let k = 0; k < steps; k++) worst = Math.max(worst, Math.abs(digital.y[k] - continuous.y[k]))
   const zPoles = roots(loop.closed.a)
+  // The PLANT under its hold, against the continuous plant at the same
+  // instants. This is the exact one, and it is a different number from the
+  // loop's disagreement below, which carries the emulated controller's error
+  // as well. B1 reads this one and B6 reads that one.
+  const plantSteps = stepDiscreteTF(Pz, steps)
+  // Exact, by the same matrix exponential the hold itself uses, rather than
+  // by the RK4 integrator. Comparing the sampled model with a numerically
+  // integrated curve would measure the integrator's error and call it the
+  // hold's.
+  const plantCont = ssTrajectory(toStateSpace(plant), () => 1, {
+    duration: Ts * (steps - 1),
+    points: steps,
+  })
+  let plantWorst = 0
+  for (let k = 0; k < steps; k++) plantWorst = Math.max(plantWorst, Math.abs(plantSteps.y[k] - plantCont.y[k]))
+  // All three rules on the same controller, so B7 can put the verdicts side by
+  // side rather than reloading the experiment three times.
+  const rules = {}
+  for (const rule of ['tustin', 'backward', 'forward']) {
+    const cz = emulate(ctrl, Ts, rule)
+    rules[rule] = { ...cz, stable: isStableDiscrete(cz), poles: roots(cz.a) }
+  }
   return {
     plant,
     ctrl,
@@ -248,6 +291,10 @@ function sampledAnalysis(state) {
     digital,
     continuous,
     disagreement: worst,
+    plantDisagreement: plantWorst,
+    plantSteps,
+    plantCont,
+    rules,
     zPoles,
     plantZ: { poles: roots(Pz.a), zeros: roots(Pz.b) },
     sOfPoles: zPoles.map((z) => sOfZ(z, Ts)),
@@ -311,6 +358,7 @@ function nonlinearAnalysis(state) {
     const P = lyapunov(A0, [[1, 0], [0, 1]])
     if (P) {
       out.lyapunov = {
+        A: A0,
         P,
         eigenvalues: roots([1, -(P[0][0] + P[1][1]), P[0][0] * P[1][1] - P[0][1] * P[1][0]]),
         along: trajectory.x
@@ -416,4 +464,118 @@ export function analyse(state) {
   if (state.mode === 'fit') return { ...base, fit: fitAnalysis(state) }
   if (state.mode === 'filter') return { ...base, filter: filterAnalysis(state) }
   return base
+}
+
+// ---------------------------------------------------------- quantity paths
+
+/**
+ * The dotted names a lesson's `reads` pair may quote, resolved against one
+ * analysis.
+ *
+ * `AGENT_BRIEF.md` section 4 lists them. They exist so a try step can name the
+ * number it expects to change without the note and the test computing it two
+ * different ways. A path that does not resolve throws rather than returning
+ * undefined, because a `reads` pair quietly reading nothing is exactly the
+ * defect this seam was built to stop.
+ *
+ * `pole.N.re` indexes the pole list, so `place.pole.0.im` is the imaginary
+ * part of the first placed pole.
+ */
+export function readPath(a, path) {
+  const parts = String(path).split('.')
+  const at = (list, i, which) => {
+    const p = list?.[Number(i)]
+    if (!p) return undefined
+    return which === 'im' ? p[1] : which === 'mag' ? Math.hypot(p[0], p[1]) : which === 'arg' ? Math.atan2(p[1], p[0]) : p[0]
+  }
+  const [head, ...rest] = parts
+  const key = rest.join('.')
+
+  if (head === 'ss') {
+    const s = a.state_
+    if (!s) return undefined
+    if (key === 'rank') return s.ctrl.rank
+    if (key === 'condition') return s.ctrl.condition
+    if (key === 'controllable') return s.ctrl.controllable
+    if (key === 'observable') return s.obs.observable
+    if (key === 'n') return s.ss.n
+  }
+  if (head === 'place' || head === 'lqr') {
+    const d = head === 'place' ? a.state_?.place : a.state_?.lqr
+    if (!d) return undefined
+    if (key === 'k1') return d.K[0]
+    if (key === 'k2') return d.K[1]
+    if (key === 'overshoot') return a.state_.overshoot
+    if (key === 'dcgain') return a.state_.dcGain
+    if (key === 'residual') return d.relResidual
+    if (key === 'cost') return d.cost ? d.cost([1, 0]) : undefined
+    if (rest[0] === 'pole') return at(d.poles || d.achieved, rest[1], rest[2])
+  }
+  if (head === 'obs') {
+    const o = a.state_?.observer
+    if (!o) return undefined
+    if (key === 'l1') return o.L[0]
+    if (key === 'l2') return o.L[1]
+    if (key === 'settling') {
+      const re = o.achieved?.[0]?.[0]
+      return re < 0 ? -4 / re : undefined
+    }
+    if (rest[0] === 'pole') return at(o.achieved, rest[1], rest[2])
+  }
+  if (head === 'z') {
+    const s = a.sampled
+    if (!s) return undefined
+    if (key === 'alpha') return s.alpha
+    if (key === 'b1') return s.Pz.b[s.Pz.b.length - 1]
+    if (key === 'stable') return s.stableDiscrete
+    if (key === 'disagreement') return s.disagreement
+    if (rest[0] === 'pole') return at(s.zPoles, rest[1], rest[2])
+  }
+  if (head === 'hold') {
+    const s = a.sampled
+    if (!s) return undefined
+    if (key === 'delay') return s.holdDelay
+    if (key === 'lagdeg') return s.holdLagDeg
+    if (key === 'gain') return zohGain(s.Ts, 2 * Math.PI * s.margins.gainCrossover)
+  }
+  if (head === 'guard') {
+    if (a.sampled) {
+      if (key === 'perCycle') return a.sampled.guard.samplesPerCycle
+      if (key === 'threshold') return a.sampled.guard.threshold
+      if (key === 'holds') return a.sampled.guard.holds
+    }
+    if (a.nonlinear?.predicted) {
+      if (key === 'ratio') return a.nonlinear.predicted.harmonicRatio
+      if (key === 'threshold') return a.nonlinear.predicted.threshold
+      if (key === 'holds') return a.nonlinear.predicted.holds
+    }
+    if (a.fit && key === 'residual') return a.fit.first.relResidual
+  }
+  if (head === 'nl') {
+    const n = a.nonlinear
+    if (!n) return undefined
+    if (key === 'predicted') return n.predicted?.amplitude
+    if (key === 'measured') return n.measured?.amplitude
+    if (key === 'amplitude') return n.measured?.amplitude ?? n.predicted?.amplitude
+    if (key === 'omega') return n.measured?.omega ?? n.predicted?.omega
+    if (key === 'N') return n.predicted?.N
+    if (key === 'error') return n.error?.amplitude
+  }
+  if (head === 'phase') {
+    const n = a.nonlinear
+    if (!n) return undefined
+    if (key === 'wind') return n.wind
+    if (key === 'peak') return n.peak
+    if (key === 'events') return n.trajectory.events.length
+    if (key === 'equilibria') return n.equilibria.filter((e) => e.real).length
+  }
+  if (head === 'fit') {
+    const f = a.fit
+    if (!f) return undefined
+    if (key === 'improvement') return f.improvement
+    const which = rest[0] === 'second' ? f.second : f.first
+    const field = rest[0] === 'second' || rest[0] === 'first' ? rest[1] : rest[0]
+    if (field in which) return which[field]
+  }
+  throw new Error(`unknown quantity path: ${path}`)
 }

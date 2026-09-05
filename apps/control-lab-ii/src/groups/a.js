@@ -23,8 +23,15 @@ export default [
       'rotor already turning at 1 rad/s. The position traces separate and stay separate, and nothing in the ' +
       'input accounts for the difference.',
     try: [
-      { say: 'Set the second run\'s starting speed to 2 rad/s. The gap doubles.', set: { compare: 2 } },
-      { say: 'Set it to zero. The two traces lie on top of each other.', set: { compare: 0 } },
+      {
+        say: 'Set the second run to start at 2 rad/s. The gap doubles.',
+        set: { compareStates: [[0, 0], [0, 2]] },
+        reads: { 'ss.n': 2 },
+      },
+      {
+        say: 'Set it to rest as well. The two traces lie on top of each other.',
+        set: { compareStates: [[0, 0], [0, 0]] },
+      },
     ],
     why:
       'The state is what the system carries from its past into its future. For this motor it is two numbers, ' +
@@ -106,19 +113,22 @@ export default [
     group: GROUP_A,
     name: 'Two views, one object',
     see:
-      'The motor in two bases. On the left, position and speed, which are quantities with units. On the right, ' +
-      'the controllable canonical form, whose states are not anything in particular. The two A matrices differ. ' +
-      'Both convert to 2/(s² + 2s).',
+      'The same motor is written down twice. On the left its speed is measured in radians a second, and on ' +
+      'the right in degrees a second. The state matrix changes and so does the drive matrix. The transfer function is ' +
+      '2/(s² + 2s) in both.',
     try: [
-      { say: 'Set τ to 0.25 s. Both A matrices change, and both still give the same H(s).', set: { tau: 0.25 } },
+      { say: 'Set τ to 0.25 s. Both bases change again, and both still give one H(s).', set: { tau: 0.25 } },
       { say: 'Set τ back to 0.5 s.', set: { tau: 0.5 } },
     ],
     why:
-      'A change of coordinates x = Tz turns A into T⁻¹AT and leaves the transfer function alone. So ' +
-      'the state is a choice and the transfer function is not. That is why a plant can be handed between two ' +
-      'tools as six coefficients, and why two engineers writing the same motor down can disagree about A ' +
-      'without either being wrong. What they cannot disagree about is where the poles are.',
-    terms: ['statespace', 'similarity', 'canonicalform', 'transferfunction'],
+      'A change of coordinates x = Tz turns A into T⁻¹AT and leaves the transfer function alone. Measuring ' +
+      'speed in degrees rather than radians is exactly such a change. So the state is a choice and the ' +
+      'transfer function is not. That is why a plant can be handed between two tools as six coefficients, and ' +
+      'why two engineers writing the same motor down can disagree about A without either being wrong. What ' +
+      'they cannot disagree about is where the poles are. The controllable canonical form is a third basis, ' +
+      'and for this motor it happens to come out equal to the physical one. That is a fact about this plant ' +
+      'rather than a rule.',
+    terms: ['state', 'statespace', 'statematrix', 'similarity', 'canonicalform', 'transferfunction', 'controllability'],
     patch: {
       mode: 'state',
       plantId: 'motor',
@@ -130,18 +140,30 @@ export default [
     },
     claim: (a) => {
       const phys = a.state_.fromSs
-      const canon = a.state_.fromCanonical
-      const norm = (tf) => tf.b.map((v) => v / tf.a[0])
+      const other = a.state_.fromRotated
+      const norm = (tf) => ({ b: tf.b.map((v) => v / tf.a[0]), a: tf.a.map((v) => v / tf.a[0]) })
       const rows = []
       const pb = norm(phys)
-      const cb = norm(canon)
-      for (let i = 0; i < pb.length; i++) {
-        rows.push({ name: `numerator ${i} agrees`, value: pb[i], want: cb[i], tol: 1e-9 })
+      const ob = norm(other)
+      for (let i = 0; i < pb.b.length; i++) {
+        rows.push({ name: `numerator ${i} agrees`, value: pb.b[i], want: ob.b[i], tol: 1e-9 })
       }
+      for (let i = 0; i < pb.a.length; i++) {
+        rows.push({ name: `denominator ${i} agrees`, value: pb.a[i], want: ob.a[i], tol: 1e-9 })
+      }
+      // And the two descriptions really are different descriptions. A test
+      // that only checked the transfer functions would pass on two copies of
+      // the same matrix, which is the defect A3 originally shipped with.
+      const A = a.state_.ss.A
+      const B = a.state_.rotated.A
+      let worst = 0
+      for (let i = 0; i < A.length; i++) {
+        for (let j = 0; j < A.length; j++) worst = Math.max(worst, Math.abs(A[i][j] - B[i][j]))
+      }
+      rows.push({ name: 'the two state matrices differ', value: worst, wantAbove: 0.5 })
       rows.push({
-        name: 'the two A matrices are not the same matrix',
-        value: Math.abs(a.state_.ss.A[0][0] - a.state_.canonical.A[0][0]) +
-          Math.abs(a.state_.ss.A[1][1] - a.state_.canonical.A[1][1]),
+        name: 'and so do the drive matrices',
+        value: Math.abs(a.state_.ss.B[1] - a.state_.rotated.B[1]),
         wantAbove: 0.5,
       })
       return rows
@@ -165,9 +187,9 @@ export default [
       'Controllability asks whether the input can reach every state, and the answer is the rank of ' +
       '[B, AB, ..., Aⁿ⁻¹B]. Full rank means every state is reachable in finite time, and it is ' +
       'the exact condition for pole placement to have a solution. The rank alone is a blunt reading. Two ' +
-      'sections a tenth of a per cent apart are reachable in principle and need a gain four thousand times ' +
-      'larger in one direction than the other, which the condition number says and the rank does not.',
-    terms: ['controllability', 'rank', 'conditionnumber', 'singularvalue'],
+      'sections a tenth of a per cent apart are reachable in principle, and they need a gain four thousand ' +
+      'times larger in one direction than the other. The condition number says that and the rank does not.',
+    terms: ['controllability', 'rank', 'conditionnumber', 'singularvalue', 'statespace', 'statefeedback'],
     patch: {
       mode: 'state',
       plantId: 'twin',
@@ -262,7 +284,7 @@ export default [
       'system (Aᵀ, Cᵀ) and transposing the answer gives L, which is why one routine serves both. The ' +
       'condition is observability rather than controllability, and it fails exactly when a mode leaves no ' +
       'trace in the output.',
-    terms: ['observer', 'observability', 'duality', 'statefeedback'],
+    terms: ['observer', 'observability', 'duality', 'statefeedback', 'controllability', 'conditionnumber'],
     patch: {
       mode: 'state',
       plantId: 'motor',
@@ -312,7 +334,7 @@ export default [
       'knob rather than a pole pair a designer has to guess, and the answer is always a stable loop. The ' +
       'Riccati residual is printed beside the gain, because a gain whose residual is not small is not the ' +
       'optimal gain.',
-    terms: ['lqr', 'riccati', 'statefeedback', 'cost'],
+    terms: ['lqr', 'riccati', 'statefeedback', 'cost', 'quadraticform', 'residual'],
     patch: {
       mode: 'state',
       plantId: 'motor',
