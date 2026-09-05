@@ -1,0 +1,28 @@
+{
+  "name": "energy-lab",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "The sources power electronics converts: the photovoltaic cell as a current source behind a diode, its maximum power point and the tracker that finds it, the battery as an equivalent circuit, and a day of energy balance on one bus.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "numbers": "node scripts/numbers.mjs",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@ee-labs/explain": "*",
+    "@ee-labs/network": "*",
+    "@ee-labs/switched": "*",
+    "@ee-labs/ui": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}
