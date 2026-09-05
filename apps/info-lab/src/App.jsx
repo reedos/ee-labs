@@ -249,8 +249,16 @@ function Pane({ view, x, step }) {
   if (view === 'trellis') {
     const v = x.conv
     if (!v) return <p className="pane-empty">This experiment has no trellis.</p>
+    // A trellis of 64 states or more has no picture in it at this size, so the
+    // pane says which code it draws rather than drawing a smear of them.
+    if (v.enc.states > 32)
+      return (
+        <p className="pane-empty">
+          A trellis of {v.enc.states} states does not fit a screen. Set the constraint length to 3 or 5 to walk one.
+        </p>
+      )
     const states = Array.from({ length: v.enc.states }, (_, s) => stateText(v.enc, s))
-    return <TrellisCanvas states={states} steps={v.viterbi.steps} path={v.viterbi.path} step={step} />
+    return <TrellisCanvas states={states} steps={v.viterbi.steps} path={v.viterbi.path} step={step} height={Math.max(220, Math.min(420, 26 * v.enc.states))} />
   }
   if (view === 'tanner') {
     const g = x.ldpc

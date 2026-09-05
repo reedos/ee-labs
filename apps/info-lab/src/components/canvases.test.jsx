@@ -126,6 +126,20 @@ describe('the Tanner graph', () => {
     expect(flipped.length).toBeGreaterThan(0)
   })
 
+  it('shrinks its nodes as the graph grows, and drops the digit inside them', () => {
+    // Twelve bits read as labelled circles. A hundred read as points, because
+    // a 9-pixel circle every 6 pixels is a smear (REVIEW_PLAYBOOK §6).
+    const small = tannerScene({ graph, width: 640 })
+    expect(small.radius.variable).toBe(9)
+    expect(small.labelled).toBe(true)
+    const big = tannerScene({ graph: { ...graph, n: 102, m: 51, edges: graph.edges }, width: 640 })
+    expect(big.radius.variable).toBeLessThan(small.radius.variable)
+    expect(big.labelled).toBe(false)
+    // Nodes never overlap: the spacing is at least the diameter.
+    const spacing = (scene) => scene.vars[1].x - scene.vars[0].x
+    expect(spacing(big)).toBeGreaterThan(2 * big.radius.variable)
+  })
+
   it('fills the checks the word fails, and no others', () => {
     const failing = H.map((row) => row.reduce((acc, b, i) => acc ^ (b & channel.bits[i]), 0))
     const scene = tannerScene({ graph, bits: channel.bits, failing })

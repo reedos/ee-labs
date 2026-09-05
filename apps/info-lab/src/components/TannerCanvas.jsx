@@ -10,8 +10,10 @@ import { COLORS, useCanvas } from '@ee-labs/ui'
 // width of the line is the size of the belief. A check that the word fails is
 // drawn filled.
 
-const RV = 9
-const RC = 9
+// A node is drawn as large as the row it sits in allows, so a graph of twelve
+// bits reads as circles and one of a hundred reads as points rather than as an
+// overlapping smear (REVIEW_PLAYBOOK §6).
+const radiusFor = (count, width) => Math.max(2.5, Math.min(9, (width - 48) / (2.6 * Math.max(1, count))))
 
 /**
  * The picture as data.
@@ -24,6 +26,8 @@ const RC = 9
  */
 export function sceneOf({ graph, beliefs = null, bits = null, failing = null, width = 640, height = 260 }) {
   const pad = { l: 24, r: 24, t: 34, b: 40 }
+  const RV = radiusFor(graph.n, width)
+  const RC = radiusFor(graph.m, width)
   const vStep = graph.n > 1 ? (width - pad.l - pad.r) / (graph.n - 1) : 0
   const cStep = graph.m > 1 ? (width - pad.l - pad.r) / (graph.m - 1) : 0
   const yV = height - pad.b
@@ -55,7 +59,7 @@ export function sceneOf({ graph, beliefs = null, bits = null, failing = null, wi
       b: checks[e.check],
     }
   })
-  return { vars, checks, edges, radius: { variable: RV, check: RC }, width, height, strongest }
+  return { vars, checks, edges, radius: { variable: RV, check: RC }, labelled: RV >= 6, width, height, strongest }
 }
 
 export default function TannerCanvas({ graph, beliefs = null, bits = null, failing = null, height = 260 }) {
@@ -80,25 +84,33 @@ export default function TannerCanvas({ graph, beliefs = null, bits = null, faili
       ctx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
+      const rc = scene.radius.check
+      const rv = scene.radius.variable
       for (const c of scene.checks) {
         ctx.beginPath()
-        ctx.rect(c.x - RC, c.y - RC, 2 * RC, 2 * RC)
+        ctx.rect(c.x - rc, c.y - rc, 2 * rc, 2 * rc)
         ctx.fillStyle = c.failing ? COLORS.marker : COLORS.bg
         ctx.fill()
         ctx.strokeStyle = c.failing ? COLORS.marker : COLORS.axis
         ctx.stroke()
-        ctx.fillStyle = c.failing ? COLORS.bg : COLORS.text
-        ctx.fillText('+', c.x, c.y + 1)
+        if (scene.labelled) {
+          ctx.fillStyle = c.failing ? COLORS.bg : COLORS.text
+          ctx.fillText('+', c.x, c.y + 1)
+        }
       }
       for (const v of scene.vars) {
         ctx.beginPath()
-        ctx.arc(v.x, v.y, RV, 0, 2 * Math.PI)
-        ctx.fillStyle = COLORS.bg
+        ctx.arc(v.x, v.y, rv, 0, 2 * Math.PI)
+        // A bit the decoder reads as a one is filled, so the word is legible
+        // even where the graph is too dense to carry a digit in each node.
+        ctx.fillStyle = v.bit ? COLORS.spectrum : COLORS.bg
         ctx.fill()
         ctx.strokeStyle = COLORS.axis
         ctx.stroke()
-        ctx.fillStyle = v.bit === null ? COLORS.text : v.bit ? COLORS.spectrum : COLORS.textBright
-        ctx.fillText(v.bit === null ? String(v.index + 1) : String(v.bit), v.x, v.y + 1)
+        if (scene.labelled) {
+          ctx.fillStyle = v.bit === null ? COLORS.text : v.bit ? COLORS.bg : COLORS.textBright
+          ctx.fillText(v.bit === null ? String(v.index + 1) : String(v.bit), v.x, v.y + 1)
+        }
       }
 
       ctx.fillStyle = COLORS.text
