@@ -40,7 +40,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | VLSI Lab | waiting | | Logic Lab, Analog IC Lab | `VLSI_LAB_PLAN.md` |
 | Computer Lab | building | `lab/computer-lab` | | `COMPUTER_LAB_PLAN.md` |
 | Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | `INTERFACES_LAB_PLAN.md` |
-| Grid Lab | building | `lab/grid-lab` | Power Lab I3 and D1 for two cross-references | `GRID_LAB_PLAN.md` |
+| Grid Lab | built, dark | merged | Power Lab I3 and D1 for two cross-references | `GRID_LAB_PLAN.md` |
 | Photonics Lab | waiting | | Electronics O, Applied Analog Lab | `PHOTONICS_LAB_PLAN.md` |
 | Devices Lab | built, dark | merged | | `DEVICES_LAB_PLAN.md` |
 | Signal Integrity | out of this repo | | | |
@@ -425,6 +425,11 @@ Items that cross labs and land at integration.
 - `createComplexChain` lives in `packages/comms` for now, built against the plan's
   signature because `packages/dsp` had not gained it. It moves to `dsp` when a second
   consumer appears.
+- House policy on a guard's fuzzed promise (Grid Lab, E1 and E2): the DC power
+  flow's error is promised against the network's largest flow, while the lessons
+  quote it per branch. One of the two becomes the rule.
+- The Grid plan's §5 had its group letters crossed between protection and the
+  machine. The build follows the letters. Reed confirms.
 - Two Elements experiment walks (the Newton diode sweeps in `experiments.test.js`)
   exceed the 90 s timeout on a loaded four-core machine. Their owner chooses a
   longer timeout, a shorter sweep, or a split, before CI gates on one command.

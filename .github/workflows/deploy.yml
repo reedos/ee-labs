@@ -64,6 +64,7 @@ jobs:
           cp -r apps/comms-lab/dist _site/comms-lab
           cp -r apps/info-lab/dist _site/info-lab
           cp -r apps/devices-lab/dist _site/devices-lab
+          cp -r apps/grid-lab/dist _site/grid-lab
 
       - uses: actions/upload-pages-artifact@v3
         with:
