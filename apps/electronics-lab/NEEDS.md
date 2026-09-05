@@ -248,6 +248,28 @@ Neither of these stopped the work, and both would tidy it.
   Group K's between 460 × 270 and 640 × 330. A phone renders them at about the
   height Group A's drawings reach.
 
+### 7. Half of K5, and where the other half went
+
+`ELECTRONICS_LAB_PLAN.md` §5 names K5 "no Miller effect: the follower and the
+common base", and asks for the dominant poles of H3 and H4 against H1's. This
+lane built the follower alone. Two reasons, and the director should decide
+whether the plan's line or the built experiment moves.
+
+- Group H is not built, so H1, H3 and H4 cannot be cited. `experiments.test.js`
+  fails on a lesson that names an experiment this lab does not carry, which is
+  the rule working. K5 therefore compares itself against K3's common emitter,
+  solved at K5's own knobs rather than quoted.
+- A second topology inside one experiment needs a layout that follows the
+  netlist. `e.layout` is one object and `e.net` is a function of the knobs, so
+  a choice knob that swapped the follower for a common base would draw the
+  wrong circuit. The test that every element solved is drawn catches it.
+
+The common base is not absent from the group. K6's cascode is a common base
+standing on a common emitter, and its lesson measures what the lower collector
+sees because of it. What is missing is the direct comparison of a common base
+against the same device as a common emitter, at the same source resistance.
+Reopens with Group H, or as a seventh experiment in this group.
+
 ## At release: flip `RELEASE_STATUS` to `released`, then `release.test.js` demands
 
 1. **Splash page** `site/index.html`: a lab card linking `electronics-lab/`, in

@@ -6,7 +6,9 @@ import { CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCh
 import { num } from './format.js'
 import { TERMS } from './terms.js'
 import { agrees } from '@ee-labs/explain'
-import { NetworkError, normalize, equations } from '@ee-labs/network'
+import { NetworkError, normalize, equations, thermalVoltage } from '@ee-labs/network'
+import { cmrr, cmrrDb, gainD, linearityShortfall, offsetOf, shareQ1, solverFor } from './groups/j.js'
+import { SPACING, ceSeenBy, dominant, magAt, millerOf, octcOf, poleSpacing, sctcOf, unityGain } from './groups/k.js'
 
 // Every note makes a claim, and every claim is measured here.
 //
@@ -562,5 +564,180 @@ describe('Group C: inside the junction', () => {
     const lower = at('c4', { i: 0.12e-3 }).x
     expect(lower.junction.v).toBeLessThan(x.junction.v)
     expect(lower.junction.slope).toBeLessThan(x.junction.slope)
+  })
+})
+
+describe('Group J: the differential pair', () => {
+  it('J1: the tail divides by the steering law, and the share does not depend on the tail', () => {
+    const vt = thermalVoltage(300)
+    for (const n of [-2, -1, 0, 1, 2, 4]) {
+      const ideal = 100 / (1 + Math.exp(-n))
+      const { x } = at('j1', { vid: n * vt })
+      expect(shareQ1(x), `${n} V_T`).toBeCloseTo(ideal, 0)
+      // The law is a ratio and has no tail current in it. The circuit's share
+      // moves a little with the tail all the same, because the tail sets the
+      // two collector voltages and those set the Early factors. It moves
+      // towards the ideal ratio as the tail falls, and stays inside 5 %.
+      const quarter = shareQ1(at('j1', { vid: n * vt, itail: 0.25e-3 }).x)
+      expect(quarter / shareQ1(x), `${n} V_T at a quarter of the tail`).toBeCloseTo(1, 1)
+      if (n !== 0) expect(Math.abs(quarter - ideal), `${n} V_T nearer the law`).toBeLessThan(Math.abs(shareQ1(x) - ideal))
+    }
+    // Four thermal voltages put almost all of it in one side, and one thermal
+    // voltage of drive already falls short of the tangent at the origin.
+    const four = at('j1', { vid: 4 * vt })
+    expect(shareQ1(four.x)).toBeGreaterThan(98)
+    const { x, p } = at('j1')
+    expect(linearityShortfall(x, p, solverFor(x, p))).toBeGreaterThan(5)
+  })
+
+  it('J2: the differential gain is −g_m(R_C ∥ r_o), and one collector gives half of it', () => {
+    for (const rc of [1000, 2500, 5000]) {
+      const { x, p } = at('j2', { rc })
+      const q = x.point.Q1
+      expect(x.gain / -(q.gm * ((rc * q.ro) / (rc + q.ro))), `R_C = ${rc}`).toBeCloseTo(1, 2)
+      const again = solverFor(x, p)
+      const single = (again({ vid: 1e-4 }).sol.v.c1 - again({ vid: -1e-4 }).sol.v.c1) / 2e-4
+      expect(single / gainD(x, p, again), `one collector at R_C = ${rc}`).toBeCloseTo(0.5, 3)
+    }
+  })
+
+  it('J2: the half-circuit row is footnoted once the pair is steered rather than balanced', () => {
+    const vt = thermalVoltage(300)
+    const rowOf = (vid) => {
+      const { x, p } = at('j2', { vid })
+      const rows = experimentMath(byId.j2, p, x)
+        .blocks.filter((b) => b.kind === 'check')
+        .flatMap((b) => b.rows)
+      return rows.find((r) => r.label === 'the differential gain')
+    }
+    expect(rowOf(vt).unchecked, 'balanced').toBeNull()
+    expect(rowOf(3 * vt).unchecked, 'steered').toMatch(/steered/)
+  })
+
+  it('J3: the rejection is 2 g_m R_EE while the tail resistance is what limits it', () => {
+    for (const ree of [1e4, 1e5]) {
+      const { x, p } = at('j3', { ree })
+      const again = solverFor(x, p)
+      expect(cmrr(x, p, again) / (2 * x.point.Q1.gm * ree), `R_EE = ${ree}`).toBeCloseTo(1, 1)
+      expect(cmrrDb(x, p, again)).toBeCloseTo(20 * Math.log10(cmrr(x, p, again)), 9)
+    }
+    // Past a few hundred kilohms r_o limits the rejection instead, so the two
+    // closed forms are footnoted rather than marked wrong.
+    const rowsAt = (ree) => {
+      const { x, p } = at('j3', { ree })
+      return experimentMath(byId.j3, p, x)
+        .blocks.filter((b) => b.kind === 'check')
+        .flatMap((b) => b.rows)
+    }
+    expect(
+      rowsAt(1e5).every((r) => !r.unchecked),
+      'at 100 kΩ',
+    ).toBe(true)
+    for (const r of rowsAt(1e6)) expect(r.unchecked, `${r.label} at 1 MΩ`).toMatch(/runs ahead/)
+    // And the footnote has the direction right: past the threshold the circuit
+    // rejects more than 2 g_m R_EE, not less, and by more as R_EE climbs.
+    const ratio = (ree) => {
+      const { x, p } = at('j3', { ree })
+      return cmrr(x, p, solverFor(x, p)) / (2 * x.point.Q1.gm * ree)
+    }
+    expect(ratio(1e6), 'at 1 MΩ').toBeGreaterThan(1)
+    expect(ratio(1e7), 'at 10 MΩ').toBeGreaterThan(ratio(1e6))
+  })
+
+  it('J4: the offset is V_T ln(1 + Δ), and two mismatches add', () => {
+    const vt = thermalVoltage(300)
+    const off = (a) => offsetOf(a.x, a.p, solverFor(a.x, a.p))
+    for (const drc of [1, 5, 10]) {
+      const a = at('j4', { drc })
+      expect(off(a) / -(vt * Math.log(1 + drc / 100)), `ΔR_C = ${drc} %`).toBeCloseTo(1, 3)
+    }
+    const one = at('j4', { drc: 1, dis: 0 })
+    const other = at('j4', { drc: 0, dis: 1 })
+    const both = at('j4', { drc: 1, dis: 1 })
+    expect(off(both) / (off(one) + off(other))).toBeCloseTo(1, 3)
+    // The textbook's first term is high by about half the mismatch, which is
+    // why the lesson quotes the logarithm rather than V_T ΔR_C/R_C.
+    expect((vt * 0.01) / Math.abs(off(one))).toBeGreaterThan(1.004)
+  })
+
+  it('J5: the mirror load gives g_m(r_o2 ∥ r_o4), and the bias moves while the gain does not', () => {
+    const { x } = at('j5')
+    const q2 = x.point.Q2
+    const q4 = x.point.Q4
+    expect(x.gain / (q2.gm * ((q2.ro * q4.ro) / (q2.ro + q4.ro)))).toBeCloseTo(1, 3)
+    // No single stage beats one device's own intrinsic gain.
+    expect(x.gain).toBeLessThan(q2.gm * q2.ro)
+    const lean = at('j5', { betap: 25 }).x
+    const rich = at('j5', { betap: 400 }).x
+    expect(Math.abs(rich.sol.v.c2 - lean.sol.v.c2), 'the resting output moves by volts').toBeGreaterThan(1)
+    expect(rich.gain / lean.gain, 'the small-signal answer does not').toBeCloseTo(1, 2)
+  })
+})
+
+describe('Group K: frequency response', () => {
+  it('K1: f_T is g_m over the two capacitances, and the fall is one pole', () => {
+    for (const ic of [0.25e-3, 1e-3, 1.5e-3]) {
+      const { x, p } = at('k1', { ic })
+      const fT = unityGain(x.tf)
+      expect(fT / (x.point.Q1.gm / (2 * Math.PI * (p.cpi + p.cmu))), `I_C = ${ic}`).toBeCloseTo(1, 2)
+      // One pole: 20 dB a decade, 6 dB an octave, both measured below f_T.
+      expect(20 * Math.log10(magAt(x.tf, fT / 10) / magAt(x.tf, fT))).toBeCloseTo(20, 0)
+      expect(20 * Math.log10(magAt(x.tf, fT / 2) / magAt(x.tf, fT))).toBeCloseTo(6, 1)
+    }
+  })
+
+  it('K2: the bypass capacitor sees the least and sets the corner it is raised for', () => {
+    const { x } = at('k2')
+    const s = sctcOf(x)
+    const byCap = Object.fromEntries(s.taus.map((t) => [t.id, t]))
+    expect(byCap.CE.r, 'the bypass sees the smaller resistance').toBeLessThan(byCap.CC.r)
+    expect(s.worst.id, 'and therefore sets the highest corner').toBe('CE')
+    // Raising the one that dominates moves the corner. Raising the other by a
+    // larger factor barely does, which is the lesson's whole claim.
+    const bypass = at('k2', { ce: 470e-6 }).x.corner.low
+    const coupling = at('k2', { cc: 100e-6 }).x.corner.low
+    expect(bypass / x.corner.low).toBeLessThan(0.2)
+    expect(coupling / x.corner.low).toBeGreaterThan(0.9)
+  })
+
+  it('K3, K4: both estimates are labelled, and withdrawn where the two poles crowd', () => {
+    const { x, p } = at('k3')
+    // Neither estimate is presented as the answer: one lands above the exact
+    // pole and one below, and both errors are printed (CORE_SCOPE Rule 3).
+    expect(millerOf(x, p).fh).toBeGreaterThan(dominant(x))
+    expect(octcOf(x).fh).toBeLessThan(dominant(x))
+    expect(poleSpacing(x)).toBeGreaterThan(SPACING)
+    const noteOf = (id, over) => {
+      const a = at(id, over)
+      return experimentMath(byId[id], a.p, a.x)
+        .blocks.filter((b) => b.kind === 'values')
+        .flatMap((b) => b.rows)
+        .find((r) => r.label.startsWith('how far') && r.label.includes('exact pole')).note
+    }
+    expect(noteOf('k3'), 'the Miller estimate at the defaults').not.toMatch(/read the exact pole/)
+    expect(noteOf('k4'), 'the sum at the defaults').not.toMatch(/read the exact pole/)
+    // A setting the knobs reach where the second pole is close enough to spoil
+    // both estimates. The note changes, and the error is what it warns about.
+    const crowd = { ic: 1e-4, rs: 100, cpi: 70e-12, cmu: 1e-12 }
+    const near = at('k3', crowd)
+    expect(poleSpacing(near.x), 'the poles crowd').toBeLessThan(SPACING)
+    expect(Math.abs(millerOf(near.x, near.p).fh / dominant(near.x) - 1), 'and the estimate costs').toBeGreaterThan(0.15)
+    expect(noteOf('k3', crowd)).toMatch(/read the exact pole/)
+    expect(noteOf('k4', crowd)).toMatch(/read the exact pole/)
+  })
+
+  it('K5, K6: neither the follower nor the cascode carries the gain across C_µ that K3 does', () => {
+    const ce = at('k3')
+    const seen = ceSeenBy(ce.p, 'Q1.cmu')
+    const seenIn = (x) => octcOf(x).taus.find((t) => t.id === 'Q1.cmu').r
+    const follower = at('k5')
+    const cascode = at('k6')
+    expect(seenIn(follower.x), 'the follower').toBeLessThan(seen / 100)
+    expect(seenIn(cascode.x), 'the cascode').toBeLessThan(seen / 50)
+    // The follower gives up the voltage gain to get there. The cascode keeps it.
+    expect(follower.x.gain).toBeLessThan(1)
+    expect(Math.abs(cascode.x.gain) / Math.abs(ce.x.gain)).toBeGreaterThan(0.95)
+    expect(dominant(follower.x) / dominant(ce.x)).toBeGreaterThan(10)
+    expect(cascode.x.corner.high / dominant(ce.x)).toBeGreaterThan(10)
   })
 })
