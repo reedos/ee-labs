@@ -348,3 +348,43 @@ waits, with the plan's own section named beside each.
 - The modulated high-speed link, the eye diagram and jitter stay with the private
   `waveform-simulator`. This is a boundary rather than a wait, and no dependency
   reopens it.
+
+### Planner: analog upper
+
+The three upper-tier analog plans are written, and none of the three labs can be
+built yet. One line per plan, with the dependency that reopens it. The ledger rows
+for these three labs still read "to write" in the Plan column, and the director owns
+that edit.
+
+- `APPLIED_ANALOG_LAB_PLAN.md` (tier 2, 45 experiments, 9 groups). Waits on
+  Electronics Lab Groups A, C, F, G, I, J, L, M and O, on `lab/electronics-lab`. Its
+  Phase 1 engine work needs none of them and can start now.
+- Applied Analog's specification pane and the DSP Lab's filter group need the same
+  canvas at the same time. `PROGRAM.md` §4 names Applied Analog as its first lab and
+  the DSP Lab as its second, and the DSP Lab is building on `lab/dsp-lab` today. The
+  contract is in that plan's §4.3, and the director picks which lab lands it.
+- Applied Analog's Monte Carlo needs the Random Signals Lab's ensemble view with two
+  extra props, a spec band and a yield count. The Random Signals Lab is building on
+  `lab/random-lab` today, and the props are stated in that plan's §4.3.
+- Applied Analog H5 and D4 need Power Lab Group N's thermal network, which has no
+  overseer.
+- `ANALOG_IC_LAB_PLAN.md` (tier 3, 45 experiments, 10 groups). Waits on Electronics
+  Lab Groups C, D, F, G, I, J, K, L, M and O, and on the Applied Analog Lab's Phase 1
+  for `monteCarlo` and `sensitivity`. Its Phase 1 device work needs only the `M`
+  element's companion from `lab/electronics-lab`.
+- Analog IC D4's switched-capacitor common-mode sensor waits on the Mixed-Signal
+  Lab's Group B. It ships as the continuous version with a note until then.
+- Analog IC's `GmIdView` is an app-local canvas whose second lab is the VLSI Lab. It
+  moves to `packages/ui` when that lab claims it, and its `extra` prop is written for
+  that lab's leakage group.
+- `MIXED_SIGNAL_LAB_PLAN.md` (tier 4, 40 experiments, 7 groups). Waits on three
+  labs. Electronics Lab Groups D, M and O, the Applied Analog Lab's Phase 1 with C4
+  and E5, and the Analog IC Lab's Groups A, C, E and F.
+- The charge-conservation event needs `packages/switched` to depend on
+  `packages/network`. `PROGRAM.md` §5 records `packages/switched`'s owner as the
+  Power Lab owner, who is not in this program, so the director settles ownership
+  before that work starts. The event is self-contained and worth building before the
+  lab it belongs to.
+- Mixed-Signal D5's eye diagram waits on the Communications Lab, which owns that
+  canvas and has no plan file. The experiment ships with the sampled-output view
+  alone until then.
