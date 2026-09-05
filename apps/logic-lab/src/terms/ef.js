@@ -114,4 +114,103 @@ export const EF_TERMS = {
       'value the input held before the edge and says in the report that it did so. A real flip-flop may sit between ' +
       'the two levels instead, and how long it does is Group H.',
   },
+  register: {
+    name: 'Register',
+    def:
+      'Several flip-flops on one clock, holding a word. Every bit of it changes at the same instant, one clock-to-Q ' +
+      'after the edge. Nothing inside a register can race, because each stage samples what its neighbour held before ' +
+      'the edge rather than what it takes after it.',
+  },
+  shift: {
+    name: 'Shift register',
+    def:
+      'A register whose stages are fed from each other rather than from outside. A word put in at one end appears at ' +
+      'the far end one clock per stage later. With no logic between the stages, it is the fastest a design of these ' +
+      'flip-flops can be clocked.',
+  },
+  tmin: {
+    name: 'The closing period',
+    def:
+      'The shortest clock period a design works at. It is the launching flip-flop’s clock-to-Q, plus the longest ' +
+      'path of logic, plus the capturing flip-flop’s setup time. With no logic at all it is 120 ps here, which is ' +
+      'the floor every other design is measured from.',
+  },
+  counter: {
+    name: 'Counter',
+    def:
+      'A register whose next value is its present value plus one. Bit 0 changes every clock. Every other bit changes ' +
+      'only on the clocks where all the bits below it are 1, which is the same carry the adder of group C computes.',
+  },
+  toggle: {
+    name: 'Toggle',
+    def:
+      'To take the complement of what is held. A flip-flop toggles when its data input is the complement of its own ' +
+      'output, which is one exclusive-or away. That is how each bit of a counter is built.',
+  },
+  wrap: {
+    name: 'Wrap',
+    def:
+      'What a counter of n bits does after its largest value. It goes back to 0, because the carry out of the top ' +
+      'bit has nowhere to go. A 4-bit counter walks 0 to 15 and then starts again.',
+  },
+  enable: {
+    name: 'Enable chain',
+    def:
+      'The gates that work out which bits of a counter should toggle this clock. Each one is the one before it ANDed ' +
+      'with one more bit, so the chain grows by one AND per bit. It is the adder’s carry chain in another shape, and ' +
+      'it is what sets the counter’s closing period.',
+  },
+  statemachine: {
+    name: 'State machine',
+    def:
+      'A design that holds which of a few named states it is in, and moves between them on each clock. What it moves ' +
+      'to is a function of the state it is in and what its inputs are. Everything sequential in this lab past the ' +
+      'counter is one of these.',
+  },
+  state: {
+    name: 'State',
+    def:
+      'One of the situations a machine can be in, named rather than numbered. Two states are different when the ' +
+      'machine has to do something different from them. The state is held in flip-flops, one per bit of its code.',
+  },
+  nextstate: {
+    name: 'Next-state logic',
+    def:
+      'The gates that compute what the state will be after the next clock edge. Their inputs are the present state ' +
+      'and the machine’s own inputs, and their outputs feed the flip-flops. They are ordinary combinational logic, ' +
+      'so groups B to D apply to them unchanged.',
+  },
+  mealy: {
+    name: 'Mealy and Moore',
+    def:
+      'Two kinds of machine, told apart by what the output reads. A Moore output is a function of the state alone. ' +
+      'A Mealy output reads the inputs as well, so it can change between clock edges. Which one a machine is falls ' +
+      'out of its own table, row by row, rather than out of what it was called.',
+  },
+  encoding: {
+    name: 'Encoding',
+    def:
+      'Which bit pattern stands for which state. Three states need two bits, and the choice of which code goes with ' +
+      'which state changes how big the logic comes out. This lab numbers them in order and then minimises.',
+  },
+  statebit: {
+    name: 'State bit',
+    def:
+      'One flip-flop of the register that holds the state. A machine of n states needs at least as many bits as it ' +
+      'takes to count them. Each bit has its own next-state equation.',
+  },
+  dontcare: {
+    name: 'Unused code',
+    def:
+      'A bit pattern the state register can hold but the machine never reaches. Three states in two bits leave one. ' +
+      'The minimiser is free to make the logic say anything at all for that row, and it uses that freedom to make ' +
+      'the cover smaller.',
+  },
+  detector: {
+    name: 'Sequence detector',
+    def:
+      'A machine that raises its output on the clock where the last few inputs were a pattern it is looking for. ' +
+      'This lab builds the one that looks for 1, 0, 1. It counts overlapping matches, because its state after a ' +
+      'match is the state that has just seen a 1.',
+  },
 }

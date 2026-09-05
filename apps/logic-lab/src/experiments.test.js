@@ -30,7 +30,7 @@ const D = {
  * `NEEDS.md` gives the progression test. The plan names 45 experiments in 8
  * groups, and this number moves when a group lands and not before.
  */
-const BUILT = { groups: 5, experiments: 30 }
+const BUILT = { groups: 6, experiments: 37 }
 
 const at = (id, over = {}) => {
   const exp = byId[id]
@@ -419,8 +419,10 @@ describe('every lesson is measured', () => {
       expect(close(got, want), `${label}: ${path} reads ${got}, the lesson says ${want}`).toBe(true)
       values.push(want)
       // A reading taken at an instant justifies that instant too, the way the
-      // other labs let a cursor time stand for itself.
+      // other labs let a cursor time stand for itself. A word read off several
+      // signals at once is the same kind of reading, with the instant last.
       if (path.startsWith('at.')) values.push(Number(path.split('.')[2]))
+      if (path.startsWith('word.')) values.push(Number(path.split('.')[3]))
     }
     return values
   }

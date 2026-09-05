@@ -44,6 +44,8 @@
  *   violations                         how many setup or hold violations
  *   violation.<k>.<kind|slack|actual|required|t>
  *   states  srows  sbits  unused       the state machine's counts
+ *   machine                            Moore or Mealy, as the word
+ *   expr.<name>                        one minimised equation, as its text
  *   eqliterals.<name>  eqcubes.<name>  one equation's literal and cube counts
  *   mtbf  settling                     both in picoseconds, like every time
  *   mtbfyears                          the same mean time, in years
@@ -186,6 +188,10 @@ export function readQuantity(x, p, path, exp) {
       return need(x.fsm && x.fsm.table.bits, path)
     case 'unused':
       return needNumber(x.fsm && x.fsm.table.unused, path)
+    case 'machine':
+      return need(x.fsm && x.fsm.table.type, path)
+    case 'expr':
+      return need(x.fsm && x.fsm.equations[rest[0]] && x.fsm.equations[rest[0]].expression, path)
     case 'eqliterals':
       return need(x.fsm && x.fsm.equations[rest[0]] && x.fsm.equations[rest[0]].literals, path)
     case 'eqcubes':
