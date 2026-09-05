@@ -55,8 +55,14 @@ const pairCore = (p) => [
   { type: 'I', id: 'Itail', nodes: ['e', 'gnd'], value: p.itail },
   { type: 'Q', id: 'Q1', nodes: ['c1', 'b1', 'e'], model: 'exp', beta: p.beta, va: p.va, is: 1e-14 * (1 + (p.dis ?? 0) / 100) },
   { type: 'Q', id: 'Q2', nodes: ['c2', 'b2', 'e'], model: 'exp', beta: p.beta, va: p.va, is: 1e-14 },
-  { type: 'V', id: 'Vb1', nodes: ['b1', 'gnd'], value: p.vcm + p.vid / 2, small: true },
-  { type: 'V', id: 'Vb2', nodes: ['b2', 'gnd'], value: p.vcm - p.vid / 2 },
+  { type: 'V', id: 'Vb1', nodes: ['b1', 'gnd'], value: p.vcm + p.vid / 2, wave: { kind: 'sine', amp: 1e-4, freq: 1000, offset: p.vcm + p.vid / 2 } },
+  // The two bases are driven in antiphase, so the drive on the schematic's
+  // signal overlay is the balanced one the half-circuit of J2 describes and
+  // the shared emitter node reads the zero that lesson claims for it. The
+  // antiphase is a negative amplitude rather than a phase of π, because
+  // sin(π) is not zero in floating point and the bias would carry the
+  // remainder into every DC reading on the drawing.
+  { type: 'V', id: 'Vb2', nodes: ['b2', 'gnd'], value: p.vcm - p.vid / 2, wave: { kind: 'sine', amp: -1e-4, freq: 1000, offset: p.vcm - p.vid / 2 } },
 ]
 
 /** The resistively loaded pair of J1 to J4. */
@@ -473,6 +479,7 @@ export const GROUP_J = [
     show: 'dc',
     view: 'reading',
     views: ['reading', 'equations'],
+    at: 1000,
     signal: { input: 'Vb1', output: { across: ['c1', 'c2'] } },
     headline: { path: 'gain', label: 'A_d', unit: '' },
   },
@@ -526,6 +533,7 @@ export const GROUP_J = [
     show: 'dc',
     view: 'reading',
     views: ['reading', 'equations'],
+    at: 1000,
     signal: { input: 'Vb1', output: 'c2' },
     headline: { path: 'gain', label: 'A_d', unit: '' },
   },
