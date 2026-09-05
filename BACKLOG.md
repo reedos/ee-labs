@@ -28,7 +28,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Fields Lab | building | `lab/fields-lab` | | to write |
 | Energy Lab | built, dark | merged | Machines Lab for the wind group | `ENERGY_LAB_PLAN.md` |
 | Machines Lab | built, dark | merged | Power Lab F for the drives group | `MACHINES_LAB_PLAN.md` |
-| Communications Lab | building | `lab/comms-lab` | | `COMMUNICATIONS_LAB_PLAN.md` |
+| Communications Lab | built, dark | merged | | `COMMUNICATIONS_LAB_PLAN.md` |
 | Information Lab | building | `lab/info-lab` | Communications Lab for Group F and B4 | `INFORMATION_LAB_PLAN.md` |
 | Communications Lab | built, dark | `lab/comms-lab` | Electronics O and the RF Lab for one cross-reference | `COMMUNICATIONS_LAB_PLAN.md` |
 | Information Lab | waiting | | | `INFORMATION_LAB_PLAN.md` |
@@ -336,6 +336,9 @@ Items that cross labs and land at integration.
 - The ensemble canvas's data props at promotion. The Random Signals Lab passes
   `ensemble`, `x`, `y`, and the Applied Analog plan's §4.3 passes `runs`, `summary`,
   `axes`. The `band` and `count` props agree. One shape is chosen at promotion.
+- `createComplexChain` lives in `packages/comms` for now, built against the plan's
+  signature because `packages/dsp` had not gained it. It moves to `dsp` when a second
+  consumer appears.
 - Two Elements experiment walks (the Newton diode sweeps in `experiments.test.js`)
   exceed the 90 s timeout on a loaded four-core machine. Their owner chooses a
   longer timeout, a shorter sweep, or a split, before CI gates on one command.
