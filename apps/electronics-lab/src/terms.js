@@ -8,7 +8,12 @@
 // rest why it matters here; concrete numbers over abstraction; no term
 // defined using an undefined term.
 
+import { TERMS_D, MATCH_D } from './groups/d.terms.js'
+import { TERMS_E, MATCH_E } from './groups/e.terms.js'
+
 export const TERMS = {
+  ...TERMS_D,
+  ...TERMS_E,
   opampmacro: {
     name: 'The op-amp macro',
     def:
@@ -153,6 +158,8 @@ export const TERMS = {
 
 /** Every term's pattern, tried in the order the prose is read. */
 export const MATCH = {
+  ...MATCH_D,
+  ...MATCH_E,
   opampmacro: /\bop-amp macro\b|\bmacro\b/i,
   offset: /\boffset voltage\b|\boffset\b/i,
   loopgain: /\bloop(?: gain| has)\b|\bclosed[- ]loop gain\b/i,

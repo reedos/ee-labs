@@ -6,7 +6,8 @@ import { CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCh
 import { num } from './format.js'
 import { TERMS } from './terms.js'
 import { agrees } from '@ee-labs/explain'
-import { NetworkError, normalize, equations } from '@ee-labs/network'
+import { NetworkError, bjtOf, normalize, equations, thermalVoltage } from '@ee-labs/network'
+import { inverterMargins } from './groups/d.js'
 
 // Every note makes a claim, and every claim is measured here.
 //
@@ -562,5 +563,369 @@ describe('Group C: inside the junction', () => {
     const lower = at('c4', { i: 0.12e-3 }).x
     expect(lower.junction.v).toBeLessThan(x.junction.v)
     expect(lower.junction.slope).toBeLessThan(x.junction.slope)
+  })
+})
+
+// The plan's §5 numbers for Groups D and E, each written from the knobs the
+// experiment carries rather than typed in. A default that moves moves the
+// expectation with it, which is what stops a pin from becoming a snapshot of
+// one afternoon's solver.
+
+/**
+ * The device a group's netlist carries, with the element defaults filled in,
+ * so that V_BE(on) and V_CE(sat) are read off the model rather than retyped
+ * beside it. A netlist that names neither still gets the model's own numbers.
+ */
+const deviceOf = (e, p) => bjtOf(e.net(p).elements.find((el) => el.type === 'Q'))
+
+describe('Group D: the transistor as a controlled source', () => {
+  it('D1: α is β/(β + 1), and β is what the base keeps back', () => {
+    const { x, p } = at('d1')
+    const pt = x.point.Q1
+    const alpha = p.beta / (p.beta + 1)
+    expect(pt.ic / -pt.ie).toBeCloseTo(alpha, 6)
+    expect(pt.ic / pt.ib).toBeCloseTo(p.beta, 6)
+    // The drive sets the collector current and β sets only how much of it the
+    // base has to supply, so halving β doubles i_B and leaves i_C alone.
+    const half = at('d1', { beta: p.beta / 2 }).x.point.Q1
+    expect(half.ic).toBeCloseTo(pt.ic, 12)
+    expect(half.ib / pt.ib).toBeCloseTo(2, 7)
+    // The exponential, read the other way: V_T ln 10 of extra drive is a decade.
+    const vt = thermalVoltage(300)
+    const decade = at('d1', { vbe: p.vbe + vt * Math.LN10 }).x.point.Q1
+    expect(decade.ic / pt.ic).toBeCloseTo(10, 3)
+  })
+
+  it('D2: the Early slope is r_o = (V_A + V_CE)/I_C, and every curve runs back to −V_A', () => {
+    const { x, p } = at('d2')
+    const pt = x.point.Q1
+    expect(pt.ro / ((p.va + pt.vce) / pt.ic)).toBeCloseTo(1, 6)
+    // Two points on one curve, extrapolated back to no current at all.
+    const lo = at('d2', { vcc: p.vcc / 2 }).x.point.Q1
+    const hi = at('d2', { vcc: 2 * p.vcc }).x.point.Q1
+    const slope = (hi.ic - lo.ic) / (hi.vce - lo.vce)
+    expect(lo.vce - lo.ic / slope).toBeCloseTo(-p.va, 6)
+    // i_C/i_B is larger than β_F by the Early factor, because the base current
+    // carries no v_CE in it. The device sold as β = 100 measures more.
+    expect(pt.ic / pt.ib).toBeCloseTo(p.beta * (1 + pt.vce / p.va), 3)
+    expect(pt.ic / pt.ib).toBeGreaterThan(p.beta)
+  })
+
+  it('D3: the two models differ by exactly v_CE/V_A, and the flat one has no answer past its knee', () => {
+    const { x, exp, p } = at('d3')
+    const flat = at('d3', { model: 'regions' }).x
+    expect(flat.point.Q1.ic).toBeCloseTo(p.beta * p.ib, 9)
+    expect(x.point.Q1.ic / flat.point.Q1.ic - 1).toBeCloseTo(p.vce / p.va, 6)
+    // The knee, read off the model rather than typed: below V_CE(sat) the
+    // three-region model's saturated state pins v_CE and the source sets it
+    // too, so the circuit has no operating point at all.
+    const vcesat = deviceOf(exp, p).vcesat
+    const below = analyse(exp, { ...defaultsOf('d3'), model: 'regions', vce: vcesat / 2 })
+    expect(below.sol, 'the flat model refuses below its own knee').toBeNull()
+    expect(refusalReason(below.refusal)).toMatch(/^[A-Z].*\.$/)
+    // The curve has an answer there, and it is well under the flat model's.
+    const curveBelow = analyse(exp, { ...defaultsOf('d3'), model: 'exp', vce: vcesat / 2 })
+    expect(curveBelow.sol, 'the curve has an answer there').not.toBeNull()
+    expect(curveBelow.point.Q1.ic).toBeLessThan(flat.point.Q1.ic)
+  })
+
+  it('D4: I_D is ½k_n V_OV²(1 + λv_DS), and the boundary is the parabola through the knees', () => {
+    const { x, p } = at('d4')
+    const pt = x.point.M1
+    const vov = p.vgs - p.vt
+    expect(pt.vov).toBeCloseTo(vov, 9)
+    expect(pt.id_).toBeCloseTo(0.5 * p.kn * vov * vov * (1 + p.lam * p.vds), 9)
+    // With λ off the curve is flat, and the current is the square law alone.
+    const flat = at('d4', { lam: 0 }).x.point.M1
+    expect(flat.id_).toBeCloseTo(0.5 * p.kn * vov * vov, 12)
+    // The slope is λ: r_o = 1/(λ I_D) at the same overdrive.
+    expect(pt.ro).toBeCloseTo(1 / (p.lam * 0.5 * p.kn * vov * vov), 5)
+    // At v_DS exactly V_OV the two pieces meet, and the boundary drawn on the
+    // pane passes through that knee.
+    const knee = at('d4', { vds: vov }).x
+    expect(knee.point.M1.id_).toBeCloseTo(0.5 * p.kn * vov * vov * (1 + p.lam * vov), 9)
+    // The boundary is a curve on its own grid, so it is read where the knee
+    // falls between two of its points rather than at the nearest one.
+    const edge = knee.curves.load
+    const k = edge.xs.findIndex((v) => v >= vov - 1e-12)
+    const j = Math.max(1, k)
+    const f = (vov - edge.xs[j - 1]) / (edge.xs[j] - edge.xs[j - 1])
+    expect(edge.ys[j - 1] + f * (edge.ys[j] - edge.ys[j - 1])).toBeCloseTo(knee.point.M1.id_, 5)
+    // The boundary stops where the family's own knees stop, so it cannot set
+    // the frame's height at a current no curve on the plane reaches.
+    expect(Math.max(...edge.ys)).toBeLessThanOrEqual(Math.max(...knee.curves.family.flatMap((c) => c.ys)) * 1.001)
+  })
+
+  it('D5: the forced β is the load current over the base current, and the drop is V_CE(sat)', () => {
+    const { x, exp, p } = at('d5')
+    const pt = x.point.Q1
+    const q = deviceOf(exp, p)
+    const ib = (p.vin - q.vbe) / p.RB
+    const iSat = (p.vcc - q.vcesat) / p.RC
+    expect(pt.ib).toBeCloseTo(ib, 12)
+    expect(pt.ic).toBeCloseTo(iSat, 12)
+    expect(pt.vce).toBeCloseTo(q.vcesat, 12)
+    expect(pt.ic / pt.ib).toBeCloseTo(iSat / ib, 9)
+    // The forced β is far below the device's own, which is what saturation means.
+    expect(pt.ic / pt.ib).toBeLessThan(p.beta / 4)
+    // The base needs more than I_C/β. Give it less and the device stays active,
+    // and the collector then sits at V_CC − βI_B R_C instead of at the knee.
+    const needed = iSat / p.beta
+    const starved = at('d5', { RB: (p.vin - q.vbe) / (needed / 2) }).x.point.Q1
+    expect(starved.region).toBe('active')
+    expect(starved.vce).toBeCloseTo(p.vcc - p.beta * starved.ib * p.RC, 9)
+    // Below V_BE(on) nothing conducts and the collector sits at the supply.
+    const off = at('d5', { vin: q.vbe / 2 }).x.point.Q1
+    expect(off.region).toBe('cutoff')
+    expect(off.vce).toBeCloseTo(p.vcc, 9)
+  })
+
+  it('D6: V_M is V_DD/2, the margins are (3V_DD ± 2V_t)/8, and the ends draw nothing', () => {
+    const { x, p } = at('d6')
+    const vdd = x.sol.v.vdd
+    const m = inverterMargins(p)
+    expect(m.vm).toBeCloseTo(vdd / 2, 9)
+    expect(m.vil).toBeCloseTo((3 * vdd + 2 * p.vt) / 8, 4)
+    expect(m.vih).toBeCloseTo((5 * vdd - 2 * p.vt) / 8, 4)
+    // Neither margin carries k_n, because the two matched devices divide it out.
+    const stronger = inverterMargins({ ...p, kn: 4 * p.kn })
+    expect(stronger.vil).toBeCloseTo(m.vil, 6)
+    expect(stronger.vih).toBeCloseTo(m.vih, 6)
+    // A higher threshold moves both margins inward, by the same 2/8 either side.
+    const raised = inverterMargins({ ...p, vt: p.vt + 0.2 })
+    expect(raised.vil - m.vil).toBeCloseTo(0.2 / 4, 4)
+    expect(m.vih - raised.vih).toBeCloseTo(0.2 / 4, 4)
+    // No current at either end, which is the door to digital.
+    for (const vin of [0, vdd]) expect(Math.abs(at('d6', { vin }).x.sol.i.VDD)).toBeLessThan(1e-12)
+    // The output is symmetric about the midpoint on a matched pair.
+    const low = at('d6', { vin: 0 }).x.sol.v.out
+    const high = at('d6', { vin: vdd }).x.sol.v.out
+    expect(low).toBeCloseTo(vdd, 6)
+    expect(high).toBeCloseTo(0, 6)
+  })
+
+  it('D7: the point sits on the load line, and the swing runs from V_CC to V_CE(sat)', () => {
+    const { x, exp, p } = at('d7')
+    const pt = x.point.Q1
+    // Ohm's law for everything outside the transistor, to floating point.
+    expect(pt.ic).toBeCloseTo((p.vcc - pt.vce) / p.RC, 12)
+    expect(pt.ic).toBeCloseTo(p.beta * p.ib, 9)
+    // The two ends of the line. Drive it hard and it stops at the knee, drive
+    // it not at all and it stops at the supply.
+    const q = deviceOf(exp, p)
+    const hard = at('d7', { ib: (4 * p.vcc) / (p.RC * p.beta) }).x.point.Q1
+    expect(hard.vce).toBeCloseTo(q.vcesat, 9)
+    expect(hard.ic).toBeCloseTo((p.vcc - q.vcesat) / p.RC, 9)
+    const soft = at('d7', { ib: 1e-9 }).x.point.Q1
+    expect(soft.vce).toBeCloseTo(p.vcc - p.beta * 1e-9 * p.RC, 9)
+    expect(p.vcc - soft.vce).toBeLessThan(1e-3 * p.vcc)
+    // The line moves only with the supply and the resistor, and the curve the
+    // drive picks moves only with the drive.
+    const steeper = at('d7', { RC: p.RC / 2 })
+    expect(steeper.x.point.Q1.ic).toBeCloseTo(pt.ic, 9)
+    expect(steeper.x.point.Q1.vce).toBeCloseTo(p.vcc - pt.ic * (p.RC / 2), 9)
+    expect(steeper.x.curves.load.ys[0]).toBeCloseTo(p.vcc / (p.RC / 2), 12)
+    // Under the curve model the same base current lands higher, by the Early
+    // factor the flat model leaves out.
+    const curve = at('d7', { model: 'exp' }).x.point.Q1
+    expect(curve.ic).toBeGreaterThan(pt.ic)
+    expect(curve.ic).toBeCloseTo(p.beta * p.ib * (1 + curve.vce / p.va), 3)
+  })
+
+  it('D5 and D7 draw the device’s own curve, not the supply that was turned', () => {
+    // The x of a curve is the device's measured v_CE. A point drawn at the
+    // source's value on an axis named v_CE is a curve of the supply wearing
+    // the device's label, and it was one until this was pinned.
+    for (const id of ['d5', 'd7']) {
+      const { x, exp, p } = at(id)
+      const lit = x.curves.family.find((c) => c.lit)
+      expect(lit, `${id} has a lit curve`).toBeTruthy()
+      // A three-region curve is flat at β i_B across the whole active span, so
+      // a curve whose x were the supply would slope instead.
+      const level = lit.ys[lit.ys.length - 1]
+      for (const y of lit.ys) expect(y / level, `${id}: the curve is flat in the active region`).toBeCloseTo(1, 6)
+      expect(level, `${id}: the flat level is β i_B`).toBeCloseTo(p.beta * x.point.Q1.ib, 6)
+      // Every x is a v_CE the device could have had, never the supply above it.
+      expect(Math.max(...lit.xs), `${id}: v_CE stays under the supply`).toBeLessThanOrEqual(p.vcc)
+      // The point sits on the load line, which is the picture's whole claim.
+      expect(x.curves.point.y, `${id}: the point is on the load line`).toBeCloseTo((p.vcc - x.curves.point.x) / p.RC, 9)
+      // Active, the point is on its own curve. Saturated, the load line has
+      // stopped it below the curve, and that gap is what D5 exists to show.
+      const q = deviceOf(exp, p)
+      if (x.point.Q1.region === 'active') expect(x.curves.point.y, `${id}: the point is on its own curve`).toBeCloseTo(level, 6)
+      else {
+        expect(x.curves.point.y).toBeLessThan(level)
+        expect(x.curves.point.x).toBeCloseTo(q.vcesat, 9)
+      }
+    }
+  })
+})
+
+describe('Group E: signal and bias take different paths', () => {
+  it('E1: no DC crosses the capacitor, and the corner is 1/(2πR_in C_C)', () => {
+    const { x, p } = at('e1')
+    expect(Math.abs(x.sol.i.CC)).toBeLessThan(1e-12)
+    // The base sits where the divider alone puts it, whatever the source does.
+    const louder = at('e1', { amp: 10 * p.amp }).x
+    expect(louder.sol.v.b).toBeCloseTo(x.sol.v.b, 12)
+    const rb = (p.R1 * p.R2) / (p.R1 + p.R2)
+    expect(x.sol.v.b).toBeCloseTo(((p.vcc * p.R2) / (p.R1 + p.R2)) - x.point.Q1.ib * rb, 6)
+    // One capacitor, one pole, and the pole moves as 1/C_C.
+    const fL = x.poles[0].hz
+    const smaller = at('e1', { CC: p.CC / 100 }).x
+    expect(smaller.poles[0].hz / fL).toBeCloseTo(100, 6)
+    // The one-pole magnitude, at the frequency the knob names.
+    const mag = Math.hypot(...x.hAt)
+    expect(mag).toBeCloseTo(1 / Math.sqrt(1 + (fL / p.f) ** 2), 9)
+    // At the corner itself the loss is 3 dB, by construction.
+    const atCorner = at('e1', { f: fL }).x
+    expect(Math.hypot(...atCorner.hAt)).toBeCloseTo(Math.SQRT1_2, 6)
+  })
+
+  it('E2: I_C is β(V_CC − V_BE)/R_B, and the point slides into saturation as β rises', () => {
+    const { x, exp, p } = at('e2')
+    const q = deviceOf(exp, p)
+    const ib = (p.vcc - q.vbe) / p.RB
+    expect(x.point.Q1.ib).toBeCloseTo(ib, 12)
+    expect(x.point.Q1.ic).toBeCloseTo(p.beta * ib, 12)
+    // β straight into the answer: the base current does not move, the
+    // collector current is proportional to β.
+    for (const beta of [p.beta / 2, 2 * p.beta]) {
+      const s = at('e2', { beta }).x.point.Q1
+      expect(s.ib).toBeCloseTo(ib, 12)
+      const asked = beta * ib
+      const ceiling = (p.vcc - q.vcesat) / p.RC
+      if (asked < ceiling) expect(s.ic).toBeCloseTo(asked, 12)
+      else {
+        expect(s.region).toBe('saturation')
+        expect(s.ic).toBeCloseTo(ceiling, 12)
+        expect(s.vce).toBeCloseTo(q.vcesat, 12)
+      }
+    }
+    // The whole four-to-one range of β is a four-to-one range of current,
+    // until the load line stops it.
+    const lo = at('e2', { beta: 50, RC: p.RC / 10 }).x.point.Q1
+    const hi = at('e2', { beta: 200, RC: p.RC / 10 }).x.point.Q1
+    expect(hi.ic / lo.ic).toBeCloseTo(4, 9)
+  })
+
+  it('E3: I_C is β(V_BB − V_BE)/(R_B + (β + 1)R_E), and β moves it by a seventh', () => {
+    const { x, exp, p } = at('e3')
+    const q = deviceOf(exp, p)
+    const vbb = (p.vcc * p.R2) / (p.R1 + p.R2)
+    const rb = (p.R1 * p.R2) / (p.R1 + p.R2)
+    const ic = (beta) => (beta * (vbb - q.vbe)) / (rb + (beta + 1) * p.RE)
+    expect(x.point.Q1.ic).toBeCloseTo(ic(p.beta), 9)
+    const lo = at('e3', { beta: 50 }).x.point.Q1.ic
+    const hi = at('e3', { beta: 200 }).x.point.Q1.ic
+    expect(lo).toBeCloseTo(ic(50), 9)
+    expect(hi).toBeCloseTo(ic(200), 9)
+    // Four to one in β is well under a fifth in the current, against the
+    // factor of four fixed bias gives on the same range.
+    expect(hi / lo).toBeLessThan(1.2)
+    expect(hi / lo).toBeGreaterThan(1)
+    // The rule the note states, and the circuit it is stated about.
+    expect(rb).toBeLessThanOrEqual(0.1 * (p.beta + 1) * p.RE)
+    // Break the rule and β comes back into the answer. R₁ and R₂ go up
+    // together, so V_BB does not move and only R_B does.
+    const weak = { R1: 20 * p.R1, R2: 20 * p.R2 }
+    expect(20 * rb).toBeGreaterThan(0.1 * (p.beta + 1) * p.RE)
+    const wlo = at('e3', { ...weak, beta: 50 }).x.point.Q1
+    const whi = at('e3', { ...weak, beta: 200 }).x.point.Q1
+    expect(wlo.region).toBe('active')
+    expect(whi.region).toBe('active')
+    expect(whi.ic / wlo.ic).toBeGreaterThan(hi / lo)
+  })
+
+  it('E4: the shift is ΔV_BE/(R_E + R_B/(β + 1)), so it divides by the emitter resistor', () => {
+    const { x, p } = at('e4')
+    const dT = 50
+    const warm = at('e4', { T: p.T + dT }).x.point.Q1
+    // The junction gives up voltage as it warms, at the slope Group C measured.
+    const dvbe = warm.vbe - x.point.Q1.vbe
+    expect(dvbe).toBeLessThan(0)
+    expect(dvbe / dT).toBeGreaterThan(-2.5e-3)
+    expect(dvbe / dT).toBeLessThan(-1.5e-3)
+    // What the emitter resistor takes, to the accuracy the form claims.
+    const rb = (p.R1 * p.R2) / (p.R1 + p.R2)
+    const rLoop = p.RE + rb / (p.beta + 1)
+    const shift = warm.ic - x.point.Q1.ic
+    expect(shift / (-dvbe / rLoop)).toBeCloseTo(1, 1)
+    // Four times the emitter resistor, a quarter of the shift in amps.
+    const stiff = at('e4', { RE: 4 * p.RE })
+    const stiffShift = at('e4', { RE: 4 * p.RE, T: p.T + dT }).x.point.Q1.ic - stiff.x.point.Q1.ic
+    expect(stiffShift / shift).toBeGreaterThan(0.2)
+    expect(stiffShift / shift).toBeLessThan(0.3)
+    // Take the resistor away and the point runs off the load line.
+    const bare = { RE: 10, R2: 4200 }
+    const hot = at('e4', { ...bare, T: p.T + dT }).x.point.Q1
+    expect(hot.ic / at('e4', bare).x.point.Q1.ic).toBeGreaterThan(1.5)
+    expect(hot.region).toBe('saturation')
+  })
+
+  it('E5: R_S holds the current against a threshold shift, and without it the square law squares it', () => {
+    const { x, p } = at('e5')
+    const pt = x.point.M1
+    // The square law with a source resistor, written as the quadratic it is.
+    const solve = (q) => {
+      const over = q.vg - q.vt
+      const u = (2 * over) / (1 + Math.sqrt(1 + 2 * q.kn * q.RS * over))
+      return 0.5 * q.kn * u * u
+    }
+    expect(pt.id_).toBeCloseTo(solve(p), 9)
+    expect(pt.vov).toBeCloseTo(p.vg - p.vt - pt.id_ * p.RS, 9)
+    expect(pt.vds).toBeCloseTo(p.vdd - pt.id_ * (p.RD + p.RS), 9)
+    // The device is saturated at the defaults, which is where the experiment
+    // needs it: v_DS is above the overdrive with room to spare.
+    expect(pt.region).toBe('saturation')
+    expect(pt.vds).toBeGreaterThan(pt.vov)
+    // A tenth of a volt of threshold, with the source resistor and without.
+    const dvt = 0.1
+    const held = at('e5', { vt: p.vt + dvt }).x.point.M1.id_
+    const bare = { RS: 1, vg: 0.9 }
+    const loose = at('e5', bare).x.point.M1.id_
+    const looseShifted = at('e5', { ...bare, vt: p.vt + dvt }).x.point.M1.id_
+    expect(1 - held / pt.id_).toBeGreaterThan(0.05)
+    expect(1 - held / pt.id_).toBeLessThan(0.12)
+    expect(1 - looseShifted / loose).toBeGreaterThan(0.7)
+    // Without R_S the overdrive halves and the square law squares that.
+    expect(looseShifted / loose).toBeCloseTo(((bare.vg - p.vt - dvt) / (bare.vg - p.vt)) ** 2, 2)
+  })
+
+  it('E6: only α is left in the answer, so β and temperature move it by parts in a hundred', () => {
+    const { x, p } = at('e6')
+    const alpha = (beta) => beta / (beta + 1)
+    expect(-x.point.Q1.ie).toBeCloseTo(p.ie, 9)
+    // α to two figures, and above it by the Early factor the curve model
+    // carries, which is the only other thing left in the answer.
+    expect(x.point.Q1.ic / p.ie).toBeCloseTo(alpha(p.beta), 2)
+    expect(x.point.Q1.ic / p.ie).toBeGreaterThan(alpha(p.beta))
+    // Over the whole four-to-one range of β the answer moves by what α moves by.
+    const lo = at('e6', { beta: 50 }).x.point.Q1.ic
+    const hi = at('e6', { beta: 200 }).x.point.Q1.ic
+    expect(hi / lo - 1).toBeCloseTo(alpha(200) / alpha(50) - 1, 2)
+    // The plan says the answer moves under 1 % over this range. It moves 1.4 %
+    // across the whole of it, because α itself moves that far, and under 1 %
+    // either side of the β = 100 value. Both are pinned rather than rounded.
+    expect(hi / lo - 1).toBeGreaterThan(0.01)
+    expect(hi / lo - 1).toBeLessThan(0.015)
+    // Either side of the β = 100 value it is under a percent, which is the
+    // plan's claim read the way the circuit can meet it.
+    expect(Math.abs(lo / x.point.Q1.ic - 1)).toBeLessThan(0.01)
+    expect(Math.abs(hi / x.point.Q1.ic - 1)).toBeLessThan(0.01)
+    // Fifty kelvin does not appear at all, because α carries no temperature.
+    const warm = at('e6', { T: p.T + 50 }).x.point.Q1.ic
+    expect(Math.abs(warm / x.point.Q1.ic - 1)).toBeLessThan(1e-4)
+    // The current the source sets is the one thing that does move it.
+    // The current the source sets is the one thing that does move it, and it
+    // moves it proportionally, less what the Early factor changes as the
+    // collector falls.
+    const twice = at('e6', { ie: 2 * p.ie }).x
+    expect(twice.point.Q1.ic).toBeGreaterThan(x.point.Q1.ic)
+    // Proportional while the device is active. Past that the collector has run
+    // out of supply to drop across R_C, and the load line rather than the
+    // source is setting the current.
+    if (twice.point.Q1.region === 'active') expect(twice.point.Q1.ic / x.point.Q1.ic).toBeCloseTo(2, 2)
+    else expect(twice.point.Q1.ic * p.RC).toBeCloseTo(p.vcc - twice.sol.v.c, 9)
   })
 })
