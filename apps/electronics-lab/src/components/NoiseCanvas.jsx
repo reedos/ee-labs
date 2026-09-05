@@ -16,6 +16,10 @@ import { num } from '../format.js'
  * Both axes are logarithmic and both are named with their units. A density is
  * volts per root hertz, which is not volts, and the axis says so.
  */
+
+/** One colour per source, in the order `noiseSources` returns them. */
+const PART_COLOURS = [COLORS.response, COLORS.spectrum, COLORS.phase, COLORS.marker]
+
 export default function NoiseCanvas({ x }) {
   const n = x.sol && x.exp.noise ? noiseOf(x) : null
   const ref = useCanvas(
@@ -100,8 +104,26 @@ export default function NoiseCanvas({ x }) {
         ctx.stroke()
         ctx.setLineDash([])
       } else {
-        for (const line of Object.values(c.parts)) stroke(Array.from(line), COLORS.traceGhost, 1.1)
+        // One line per source, each in its own colour and named in the same
+        // colour, because the pane exists to say which source is making the
+        // noise. Drawn in one weight and one colour they are three lines a
+        // reader cannot tell apart.
+        // The loudest first, so the ones a reader is looking for are the ones
+        // that get a colour. A pane this size holds four names and no more.
+        const ids = Object.keys(c.parts).sort((a, b) => (n.stack[b] || 0) - (n.stack[a] || 0))
+        const named = ids.slice(0, PART_COLOURS.length)
+        for (const id of ids.slice(PART_COLOURS.length)) stroke(Array.from(c.parts[id]), COLORS.traceGhost, 1.1)
+        named.forEach((id, k) => stroke(Array.from(c.parts[id]), PART_COLOURS[k], 1.1))
         stroke(Array.from(c.asd), COLORS.trace, 1.8)
+        ctx.font = `${Math.round(11 * area.k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+        ctx.textAlign = 'left'
+        const line = (text, colour, k) => {
+          ctx.fillStyle = colour
+          ctx.fillText(text, area.x + 8, area.y + 14 + k * 14)
+        }
+        line('total', COLORS.trace, 0)
+        named.forEach((id, k) => line(id, PART_COLOURS[k], k + 1))
+        if (ids.length > named.length) line(`${ids.length - named.length} more, in the list`, COLORS.text, named.length + 1)
       }
     },
     [x, n],

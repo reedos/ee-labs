@@ -21,6 +21,19 @@ import { reportSummary } from './report.js'
  * every number on screen is read out of what it returns, by the same
  * `readQuantity` paths the tests check the prose against.
  */
+
+/**
+ * A group's subject, without its letter, for the sidebar's one line.
+ *
+ * The line reads off `GROUPS`, so it follows the lab rather than describing a
+ * version of it. A sentence beside a list that the list has outgrown is the
+ * first item of the review playbook.
+ */
+const subjectOf = (group) => {
+  const name = group.replace(/^[A-Z]\s*·\s*/, '')
+  return name.charAt(0).toLowerCase() + name.slice(1)
+}
+
 export default function App() {
   const [id, setId] = useState(EXPERIMENTS[0].id)
   const exp = byId[id]
@@ -70,7 +83,8 @@ export default function App() {
           <LabNav current="electronics-lab" currentLabel="Electronics" />
           <h1>Electronics Lab</h1>
           <p className="sub">
-            {EXPERIMENTS.length} experiments, from the op-amp a user meets to the junction underneath it.
+            {EXPERIMENTS.length} experiments in {GROUPS.length} groups, from {subjectOf(GROUPS[0])} to{' '}
+            {subjectOf(GROUPS[GROUPS.length - 1])}.
           </p>
         </header>
 
