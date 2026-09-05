@@ -490,6 +490,29 @@ release gate (`COMPUTER_LAB_PLAN.md` §9, phase 7) and the items below.
   gate delays and no experiment in §5 measures it. Group A builds the ripple
   carry and the two-level lookahead, which are the two A1 and A2 need.
 
+### Seams
+
+The two seams of `CURRICULUM.md` §3 and the progression test of its §6.
+
+- The hand-over half of §6, "every hand-over this document names has a test at both
+  ends", is not measured. Seam 3 has no far end until the Electronics Lab is built and
+  seam 5 none until Power Lab's Group H is. Reopens with either.
+- Circuit Lab's step view draws the step and not h(t). The note reads h(t) as the step
+  curve's own slope, and the test measures that slope against the closed form, so the
+  claim is checked and the picture is one trace short. Reopens when the step view takes
+  a second trace, which is the Circuit Lab owner's file rather than the seams overseer's.
+- Elements H7 reads its two roots as numbers, in the state view and as two distances in
+  the math panel. It does not draw them on a plane. `PoleZeroCanvas` in `packages/ui` is
+  the picture the experiment wants. Reopens when the director grants that canvas an
+  Elements view.
+- I9 and I10 pose no predict question. Their knob steps move a number, but what they
+  promise is a mean over the last cycle and a cycle's peak. `readQuantity` has a path for
+  neither, so no answer card can print one. Reopens when those two quantities have paths.
+- The progression test carries the plan file for Power Lab in its own table, because §2's
+  Power section names no plan. The Electronics section does name one, and the test checks
+  that the two agree. Reopens if the director gives every planned lab's section the same
+  sentence.
+
 ## 3. The director's queue
 
 Items that cross labs and land at integration.

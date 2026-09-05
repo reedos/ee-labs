@@ -163,3 +163,44 @@ append, rather than edited into a file this branch does not carry.
   Elements Lab's deferred GBW toggle and Circuit Lab's gain-bandwidth knob are
   both `gbw` on the `OPAMP` element, which expands at `normalize` and needs no
   change in either lab's solver.
+
+## Seams overseer
+
+Lanes 4, 5 and 7 of `AGENT_BRIEF.md` §1: Elements H7, I9 and I10, the Circuit Lab
+impulse lesson, and `packages/ui/src/progression.test.js`.
+
+- **A second trace on Circuit Lab's step view**, so the impulse lesson can draw h(t)
+  beside the step it is the slope of. Owned by `apps/circuit-lab/src/components/` and
+  `stepReadout.js`, neither of which the seams overseer owns. Meanwhile the note says
+  h(t) is the step's own slope and `lessons.test.js` measures a centred difference of
+  the drawn step against the closed form, so the claim holds without the picture.
+
+- **Quantity paths for a mean over a cycle and for a cycle's peak**, so that Elements
+  I9 and I10 can pose a predict question. `readQuantity` in the Elements `lessons.js`
+  would gain the paths, and `unitOf` and `nameOf` in `predict.js` would have to name
+  them. That second file is not the seams overseer's. Meanwhile `predict.test.js` lists
+  the two as posing no question and says why.
+
+- **An s-plane view for Elements H7.** `PoleZeroCanvas` is in `packages/ui` and the
+  experiment's roots are exactly what it draws. A new Elements view is a change to the
+  app's view registry and its components, outside this lane. Meanwhile H7 reads the
+  roots as numbers in the state view and as two distances in the math panel, and the
+  test pins them against Circuit Lab's own poles to 1e-9.
+
+- **A sentence in `CURRICULUM.md` §2's Power Lab section naming `POWER_LAB_PLAN.md`,**
+  as the Electronics section names its own plan. The progression test needs a plan file
+  for every lab with a planned row. It reads the Electronics one out of the document and
+  checks that the two agree. It carries Power's in its own table, because the document
+  does not say it. Only the Elements and Circuit Lab counts in that document are the
+  seams overseer's.
+
+- **A decision on Electronics Group B.** The brief's lane 4 built the clamper and the
+  doubler as Elements I9 and I10, and `ELECTRONICS_LAB_PLAN.md` still specifies them as
+  B1 and B2 inside the Electronics total of 77. The progression test is satisfied either
+  way, because a planned row need only be specified in a plan. Until the director says
+  which lab owns them, the two circuits are counted twice.
+
+- **A row per new lab in `packages/ui/src/progression.test.js`.** Its `LABS` table names
+  every lab's own list, its group names, and its plan file. A lab that adds ids to
+  `CURRICULUM.md` without a row here is not checked at all. That file belongs to the
+  seams (`PROGRAM.md` §5), so the request comes through this file.
