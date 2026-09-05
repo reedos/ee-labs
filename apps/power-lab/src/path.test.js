@@ -175,6 +175,66 @@ describe('what each `try` promises', () => {
     expect(x.m.mode).toBe('CCM')
     expect(x.m.Pout).toBeCloseTo(3.6, 2)
   })
+  it('D1: f_s = 10 kHz: 186 mT of flux swing, ten times as far', () => {
+    const x = at('d1', { fs: 10e3 })
+    expect(x.formulas.dB * 1e3).toBeCloseTo(186, 0)
+    expect(x.formulas.dB / at('d1').formulas.dB).toBeGreaterThan(10)
+    expect(x.formulas.dB / at('d1').formulas.dB).toBeLessThan(10.5)
+  })
+  it('D2: R = 2 Ω: the peak falls to 2.65 A, under the knee', () => {
+    const x = at('d2', { R: 2 })
+    expect(x.m.sig.iL.max).toBeCloseTo(2.65, 2)
+    expect(x.m.sig.iL.max).toBeLessThan(x.formulas.Isat)
+    expect(x.ss.mode).toBe('CCM')
+  })
+  it('D3: D = 75 %: M = 1.50 and 36.0 V out', () => {
+    const x = at('d3', { D: 0.75 })
+    expect(x.m.M).toBeCloseTo(1.5, 2)
+    expect(x.m.sig.vout.avg).toBeCloseTo(36.0, 0)
+  })
+  it('D4: D = 25 %: M = 0.0625 and 3.00 V out', () => {
+    const x = at('d4', { D: 0.25 })
+    expect(x.m.M).toBeCloseTo(0.0625, 6)
+    expect(x.m.sig.vout.avg).toBeCloseTo(3.0, 4)
+  })
+  it('F1: V_dc = 24 V: 21.6 V of fundamental, and the same 48.3 % THD', () => {
+    const x = at('f1', { Vdc: 24 })
+    expect(x.m.Vsw1).toBeCloseTo(21.6, 1)
+    expect(pct(x.m.thdSw)).toBeCloseTo(48.3, 1)
+  })
+  it('F2: m_a = 120 %: 53.0 V of fundamental, short of the 57.6 V commanded', () => {
+    const x = at('f2', { ma: 1.2 })
+    expect(x.m.Vsw1 * Math.SQRT2).toBeCloseTo(53.0, 1)
+    expect(x.m.Vsw1 * Math.SQRT2).toBeLessThan(57.6)
+  })
+  it('F3: f_sw = 1.98 kHz: the attenuation is 0.736 and the THD 81 %', () => {
+    const x = at('f3', { fsw: 1980 })
+    expect(x.m.attenuation).toBeCloseTo(0.736, 3)
+    expect(pct(x.m.thd)).toBeCloseTo(81, 0)
+  })
+  it('F4: f_sw = 7.74 kHz: the THD falls to 4.8 %', () => {
+    const x = at('f4', { fsw: 7740 })
+    expect(pct(x.m.thd)).toBeCloseTo(4.8, 1)
+  })
+  it('G1: f_s = 2 MHz: 469 mW in the edges, efficiency 89.1 %', () => {
+    const x = at('g1', { fs: 2e6 })
+    expect(x.m.loss.switching * 1e3).toBeCloseTo(469, 0)
+    expect(pct(x.m.eta)).toBeCloseTo(89.1, 1)
+  })
+  it('G2: R_load = 1 kΩ: efficiency 53.2 %, on 25.0 mW delivered', () => {
+    const x = at('g2', { R: 1000 })
+    expect(pct(x.m.eta)).toBeCloseTo(53.2, 1)
+    expect(x.m.Pout * 1e3).toBeCloseTo(25.0, 1)
+  })
+  it('G3: ESR = 200 mΩ: 196 mW of heat; at 0 Ω, none', () => {
+    expect(at('g3', { ESR: 0.2 }).m.loss.esr * 1e3).toBeCloseTo(196, 0)
+    expect(at('g3', { ESR: 0 }).m.loss.esr).toBe(0)
+  })
+  it('G4: R_on = 0 Ω: the switch’s row empties and efficiency reaches 93.1 %', () => {
+    const x = at('g4', { Ron: 0 })
+    expect(x.m.loss.switch).toBe(0)
+    expect(pct(x.m.eta)).toBeCloseTo(93.1, 1)
+  })
   it('E1: C = 100 µF: conducts 87.8°, sags 12.4 V', () => {
     const x = at('e1', { C: 100e-6 })
     expect(x.m.angle).toBeCloseTo(87.8, 1)

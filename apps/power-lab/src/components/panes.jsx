@@ -1,7 +1,9 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
+import { lossLedger, stateAtTime } from '@ee-labs/switched'
 import { TRACES } from '../experiments.js'
 import { TRACE_COLORS } from './ScopeCanvas.jsx'
+import Schematic from './schematics.jsx'
 import { Formula } from '@ee-labs/explain'
 import { fmtz, nz, statScale, axisFmt, niceBounds } from '../format.js'
 
@@ -116,10 +118,12 @@ export function MeasuresPane({ m, signals }) {
 export const MODE_WORDS = {
   CCM: 'continuous conduction',
   DCM: 'discontinuous conduction',
+  SAT: 'saturating part of the period',
   linear: 'linear regulation',
   chopped: 'chopped, no filter',
   line: 'line-frequency, diode-steered',
   dimmer: 'phase-cut, resistive load',
+  inverter: 'DC in, AC out',
 }
 
 /**
@@ -132,49 +136,94 @@ export const MODE_WORDS = {
 export function SpectrumPane({ x }) {
   const m = x.m
   const hs = m.harmonics || []
+  // The line side draws a current spectrum and an inverter a voltage one, so
+  // the unit and the caption come from the measure rather than from here.
+  const sp = m.spectrum || { unit: 'A', of: 'i_in' }
+  const volts = sp.unit === 'V'
+  const first = volts ? m.harmonics[0].rms : m.I1
   return (
     <div className="pane-grid is-fit">
-      <SpectrumCanvas harmonics={hs} I1={m.I1} phases={x.conv?.threePhase ? 3 : 1} />
+      <SpectrumCanvas harmonics={hs} I1={first} phases={x.conv?.threePhase ? 3 : 1} unit={sp.unit} />
       <div className="pane-scroll">
       <table className="table">
-        <caption>{m.mode === 'dimmer' ? 'Load current, one line cycle' : x.conv?.threePhase ? 'Phase-a line current, one line cycle' : 'Line current, one line cycle'}</caption>
+        <caption>
+          {sp.caption ||
+            (m.mode === 'dimmer' ? 'Load current, one line cycle' : x.conv?.threePhase ? 'Phase-a line current, one line cycle' : 'Line current, one line cycle')}
+        </caption>
         <tbody>
-          <tr>
-            <td>I_rms</td>
-            <td className="num">{fmt(m.Irms, 'A', 4)}</td>
-          </tr>
-          <tr>
-            <td>I₁ (fundamental, RMS)</td>
-            <td className="num">{fmt(m.I1, 'A', 4)}</td>
-          </tr>
-          <tr>
-            <td>THD = √(I_rms² − I₁²) / I₁</td>
-            <td className="num">{(m.thd * 100).toFixed(1)} %</td>
-          </tr>
-          <tr>
-            <td><Eq>{'\\text{distortion } I_1/I_{rms}'}</Eq></td>
-            <td className="num">{m.distortion.toFixed(4)}</td>
-          </tr>
-          <tr>
-            <td>φ₁ (fundamental vs voltage)</td>
-            <td className="num">{((m.phi1 * 180) / Math.PI).toFixed(2)}°</td>
-          </tr>
-          <tr>
-            <td><Eq>{'\\text{displacement } \\cos\\varphi_1'}</Eq></td>
-            <td className="num">{m.displacement.toFixed(4)}</td>
-          </tr>
-          <tr>
-            <td><Eq>{'\\lambda = \\cos\\varphi_1 \\cdot I_1/I_{rms}'}</Eq></td>
-            <td className="num">{m.pf.toFixed(4)}</td>
-          </tr>
-          <tr>
-            <td>P</td>
-            <td className="num">{fmt(m.Pin, 'W', 4)}</td>
-          </tr>
-          <tr>
-            <td><Eq>{m.sLabel || 'S = V_{rms} I_{rms}'}</Eq></td>
-            <td className="num">{fmt(m.S, 'VA', 4)}</td>
-          </tr>
+          {volts ? (
+            <>
+              <tr>
+                <td>V_rms of the bridge</td>
+                <td className="num">{fmt(m.VswRms, 'V', 4)}</td>
+              </tr>
+              <tr>
+                <td>V₁ of the bridge (RMS)</td>
+                <td className="num">{fmt(m.Vsw1, 'V', 4)}</td>
+              </tr>
+              <tr>
+                <td>THD of the bridge</td>
+                <td className="num">{(m.thdSw * 100).toFixed(1)} %</td>
+              </tr>
+              <tr>
+                <td>V₁ at the load (RMS)</td>
+                <td className="num">{fmt(m.V1, 'V', 4)}</td>
+              </tr>
+              <tr>
+                <td>THD at the load</td>
+                <td className="num">{(m.thd * 100).toFixed(1)} %</td>
+              </tr>
+              {m.carrier ? (
+                <tr>
+                  <td>the filter at harmonic {m.carrier.k}</td>
+                  <td className="num">×{m.attenuation.toFixed(4)}</td>
+                </tr>
+              ) : null}
+              <tr>
+                <td>P at the load</td>
+                <td className="num">{fmt(m.Pout, 'W', 4)}</td>
+              </tr>
+            </>
+          ) : (
+            <>
+              <tr>
+                <td>I_rms</td>
+                <td className="num">{fmt(m.Irms, 'A', 4)}</td>
+              </tr>
+              <tr>
+                <td>I₁ (fundamental, RMS)</td>
+                <td className="num">{fmt(m.I1, 'A', 4)}</td>
+              </tr>
+              <tr>
+                <td>THD = √(I_rms² − I₁²) / I₁</td>
+                <td className="num">{(m.thd * 100).toFixed(1)} %</td>
+              </tr>
+              <tr>
+                <td><Eq>{'\\text{distortion } I_1/I_{rms}'}</Eq></td>
+                <td className="num">{m.distortion.toFixed(4)}</td>
+              </tr>
+              <tr>
+                <td>φ₁ (fundamental vs voltage)</td>
+                <td className="num">{((m.phi1 * 180) / Math.PI).toFixed(2)}°</td>
+              </tr>
+              <tr>
+                <td><Eq>{'\\text{displacement } \\cos\\varphi_1'}</Eq></td>
+                <td className="num">{m.displacement.toFixed(4)}</td>
+              </tr>
+              <tr>
+                <td><Eq>{'\\lambda = \\cos\\varphi_1 \\cdot I_1/I_{rms}'}</Eq></td>
+                <td className="num">{m.pf.toFixed(4)}</td>
+              </tr>
+              <tr>
+                <td>P</td>
+                <td className="num">{fmt(m.Pin, 'W', 4)}</td>
+              </tr>
+              <tr>
+                <td><Eq>{m.sLabel || 'S = V_{rms} I_{rms}'}</Eq></td>
+                <td className="num">{fmt(m.S, 'VA', 4)}</td>
+              </tr>
+            </>
+          )}
         </tbody>
       </table>
       </div>
@@ -182,16 +231,16 @@ export function SpectrumPane({ x }) {
   )
 }
 
-function SpectrumCanvas({ harmonics, I1, phases }) {
+function SpectrumCanvas({ harmonics, I1, phases, unit = 'A' }) {
   const ref = useCanvas(
     (ctx, w, h) => {
       const area = plotArea(w, h)
       const k = area.k
       const kMax = harmonics.length ? harmonics[harmonics.length - 1].k : 25
       const top = Math.max(1e-12, ...harmonics.map((q) => q.rms))
-      const { sx, sy } = drawFrame(ctx, area, 0, kMax + 1, 0, top * 1.1, (v) => `${v.toFixed(0)}`, axisFmt(0, top * 1.1, 'A'), {
+      const { sx, sy } = drawFrame(ctx, area, 0, kMax + 1, 0, top * 1.1, (v) => `${v.toFixed(0)}`, axisFmt(0, top * 1.1, unit), {
         xTitle: 'Harmonic order',
-        yTitle: 'RMS current (A)',
+        yTitle: unit === 'V' ? 'RMS voltage (V)' : 'RMS current (A)',
       })
       const bw = Math.max(2 * k, (sx(1) - sx(0)) * 0.6)
       ctx.save()
@@ -203,7 +252,7 @@ function SpectrumCanvas({ harmonics, I1, phases }) {
         const y = sy(q.rms)
         ctx.fillStyle = q.k === 1 ? COLORS.trace : COLORS.spectrum
         ctx.fillRect(x - bw / 2, y, bw, sy(0) - y)
-        if (q.k === 1 || (q.rms > 0.05 * I1 && q.k <= 13)) {
+        if (q.k === 1 || (q.rms > 0.25 * I1 && q.k <= kMax)) {
           ctx.fillStyle = COLORS.textBright
           ctx.fillText(`${((100 * q.rms) / I1).toFixed(0)} %`, x, y - 2 * k)
         }
@@ -215,7 +264,7 @@ function SpectrumCanvas({ harmonics, I1, phases }) {
       ctx.fillText(phases === 3 ? 'phase a, as % of the fundamental' : 'as % of the fundamental', area.x + area.w - 4 * k, area.y + 4 * k)
       ctx.restore()
     },
-    [harmonics, I1, phases],
+    [harmonics, I1, phases, unit],
   )
   return <canvas ref={ref} className="plot" role="img" aria-label="Harmonic spectrum of the line current" />
 }
@@ -385,6 +434,302 @@ function BalanceCanvas({ x }) {
     [wf, balance, T],
   )
   return <canvas ref={ref} className="plot" role="img" aria-label="Volt-second and charge balance over one period" />
+}
+
+/**
+ * Flux density over one period, against the ceiling the core sets.
+ *
+ * The ceiling is the whole point of the plot, so it is drawn as a pair of
+ * lines at ±B_sat and the y-range always contains them: a flux trace framed on
+ * its own extent looks the same whether it is a tenth of the way to saturation
+ * or through it.
+ */
+export function FluxPane({ x }) {
+  const f = x.formulas
+  const core = x.core
+  return (
+    <div className="balance">
+      <FluxCanvas x={x} />
+      <table className="table">
+        <caption>
+          The core is N turns on A_e of area, and B = L·i/(N·A_e). The swing over the period is{' '}
+          <Eq>{'\\Delta B = \\frac{1}{N A_e}\\int v_L\\,dt'}</Eq>
+        </caption>
+        <thead>
+          <tr>
+            <th>quantity</th>
+            <th className="num">measured</th>
+            <th className="num">from the core</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>N·A_e</td>
+            <td className="num">{fmt(f.coreArea, 'Wb/T', 4)}</td>
+            <td className="num">
+              {fmt(core.N, '', 3)} turns × {fmt(core.Ae * 1e6, 'mm²', 3)}
+            </td>
+          </tr>
+          <tr>
+            <td><Eq>{'\\int v_L\\,dt\\;\\text{while the switch is on}'}</Eq></td>
+            <td className="num">{fmtVs(f.onVs)}</td>
+            <td className="num">—</td>
+          </tr>
+          <tr>
+            <td>ΔB over the period</td>
+            <td className="num">{fmt(f.dB, 'T', 4)}</td>
+            <td className="num">{fmt(f.dBideal, 'T', 4)}</td>
+          </tr>
+          <tr>
+            <td>peak B</td>
+            <td className="num">{fmt(f.Bpk, 'T', 4)}</td>
+            <td className={`num ${f.Bpk >= f.Bsat ? 'disagree' : 'agree'}`}>{fmt(f.Bsat, 'T', 3)} ceiling</td>
+          </tr>
+          <tr>
+            <td><Eq>{'I_{sat} = B_{sat} N A_e / L'}</Eq></td>
+            <td className="num">{fmt(f.Isat, 'A', 4)}</td>
+            <td className="num">peak i_L {fmt(x.m.sig.iL.max, 'A', 4)}</td>
+          </tr>
+          <tr className="total">
+            <td>inductance</td>
+            <td className="num">{fmt(x.p.L, 'H', 3)}</td>
+            <td className="num">
+              {f.satShare > 0
+                ? `${fmt(f.Lsat, 'H', 3)} for ${(f.satShare * 100).toFixed(1)} % of the period`
+                : 'under the knee all period'}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="hint">{SATURATION_NOTE}</p>
+    </div>
+  )
+}
+
+// CORE_SCOPE.md rule 3: an approximation ships with the sentence that says it
+// is one, wherever it is shown.
+const SATURATION_NOTE =
+  'The knee is a model of iron rather than a law. Below I_sat the inductance is L and above it L divided ' +
+  'by the collapse ratio, and each piece is solved exactly.'
+
+function FluxCanvas({ x }) {
+  const { flux, T } = x
+  const ref = useCanvas(
+    (ctx, w, h) => {
+      const area = plotArea(w, h, { topInset: 16 * plotArea(w, h).k })
+      const k = area.k
+      const n = flux.t.findIndex((t) => t > T * (1 + 1e-9))
+      const end = n < 0 ? flux.t.length : n
+      const ts = flux.t.slice(0, end).map((t) => t * 1e6)
+      const B = flux.B.slice(0, end)
+      // The ceiling is always in frame, and so is the trace.
+      const top = Math.max(flux.Bsat * 1.15, ...B.map(Math.abs)) * 1.05
+      const [lo, hi] = niceBounds(-top, top)
+      const { sx, sy } = drawFrame(ctx, area, 0, T * 1e6, lo, hi, (v) => fmt(v * 1e-6, 's', 3), axisFmt(lo, hi, 'T'), {
+        zeroLine: true,
+        xTitle: 'Time, one period',
+        yTitle: 'Flux density (T)',
+      })
+      ctx.save()
+      // The ceiling, both ways.
+      ctx.strokeStyle = COLORS.marker
+      ctx.setLineDash([6 * k, 4 * k])
+      ctx.lineWidth = 1.2 * k
+      for (const level of [flux.Bsat, -flux.Bsat]) {
+        ctx.beginPath()
+        ctx.moveTo(area.x, sy(level) + 0.5)
+        ctx.lineTo(area.x + area.w, sy(level) + 0.5)
+        ctx.stroke()
+      }
+      ctx.setLineDash([])
+      ctx.font = `${Math.round(11 * k)}px ${MONO}`
+      ctx.fillStyle = COLORS.marker
+      ctx.textAlign = 'right'
+      ctx.textBaseline = 'bottom'
+      ctx.fillText(`B_sat ${fmt(flux.Bsat, 'T', 3)}`, area.x + area.w - 6 * k, sy(flux.Bsat) - 3 * k)
+      ctx.restore()
+
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(area.x, area.y, area.w, area.h)
+      ctx.clip()
+      ctx.strokeStyle = TRACE_COLORS.iL
+      ctx.lineWidth = 2 * k
+      ctx.beginPath()
+      for (let i = 0; i < ts.length; i++) {
+        if (i === 0) ctx.moveTo(sx(ts[i]), sy(B[i]))
+        else ctx.lineTo(sx(ts[i]), sy(B[i]))
+      }
+      ctx.stroke()
+      ctx.restore()
+    },
+    [flux, T],
+  )
+  return <canvas ref={ref} className="plot" role="img" aria-label="Flux density over one period, against the core's ceiling" />
+}
+
+/**
+ * The conduction scrub: the circuit at one instant, with the parts that carry
+ * current lit, and every reading at that instant beside it.
+ *
+ * The question a student asks silently at every waveform is which parts are
+ * conducting right now. The scope answers it in a shape; this answers it on
+ * the circuit, and the cursor on the scope marks the same instant.
+ */
+export function ScrubPane({ x, exp, at, onScrub, signals }) {
+  const here = stateAtTime(x.ss, Math.min(at, x.T * (1 - 1e-12)))
+  const seg = here.seg
+  const rows = ORDER.filter((k) => x.m.sig[k] && (!signals || signals.includes(k)) && seg.state.signals[k])
+  const live = x.ss.segments.filter((s) => s.T > 0)
+  return (
+    <div className="scrub">
+      <div className="scrub-picture">
+        <Schematic exp={exp} x={x} live={{ state: seg.name, conducting: conductingIn(seg.name) }} />
+      </div>
+      <div className="scrub-readout">
+        <label className="scrub-slider">
+          <span>Instant</span>
+          <input
+            type="range"
+            min="0"
+            max="1000"
+            value={Math.round((at / x.T) * 1000)}
+            onChange={(e) => onScrub(Number(e.target.value) / 1000)}
+            aria-label="Instant within the period"
+          />
+          <b>{fmt(at, 's', 3)}</b>
+        </label>
+        <p className="scrub-state" data-role="scrub-state">
+          <b>{seg.name}</b> from {fmt(seg.t0, 's', 3)} for {fmt(seg.T, 's', 3)}
+        </p>
+        <table className="table">
+          <caption>Every signal at that instant, from the exact solution</caption>
+          <thead>
+            <tr>
+              <th>signal</th>
+              <th className="num">now</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((key) => (
+              <tr key={key}>
+                <td>
+                  <span className="trace-dot" style={{ background: TRACE_COLORS[key] }} aria-hidden="true" />
+                  {TRACES[key].label}
+                </td>
+                <td className="num">{fmtz(evalAt(seg, key, here.x), TRACES[key].axis, 4, statScale(x.m.sig[key]))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <ol className="scrub-events">
+          {live.map((s, i) => (
+            <li key={`${s.name}-${i}`} className={s === seg ? 'is-here' : ''}>
+              <button type="button" onClick={() => onScrub((s.t0 + s.T / 2) / x.T)}>
+                {s.name}
+              </button>
+              <em>{fmt(s.t0, 's', 3)}</em>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  )
+}
+
+const evalAt = (seg, name, state) => {
+  const f = seg.state.signals[name]
+  return f.c[0] * state[0] + f.c[1] * state[1] + f.d
+}
+
+/**
+ * Which drawn parts carry current in a named switch state. The names come from
+ * the engine's own states, so a topology that gains a state gains a row here
+ * or lights nothing, and schematics.test.jsx holds the two together.
+ */
+export function conductingIn(name) {
+  const n = String(name)
+  if (n.startsWith('on')) return ['Q', 'L', 'C', 'R']
+  if (n.startsWith('off')) return ['D', 'L', 'C', 'R']
+  if (n.startsWith('Q1')) return ['Q1', 'T', 'D1', 'L', 'C', 'R']
+  if (n.startsWith('Q2')) return ['Q2', 'T', 'D2', 'L', 'C', 'R']
+  if (n === 'freewheel') return ['D1', 'D2', 'L', 'C', 'R']
+  if (n === 'dead') return ['C', 'R']
+  // The bridge closes one diagonal at a time; the filter carries current
+  // either way.
+  if (n.startsWith('+')) return ['QA', 'L', 'C', 'R']
+  if (n.startsWith('\u2212')) return ['QB', 'L', 'C', 'R']
+  return ['C', 'R']
+}
+
+/**
+ * The loss ledger: every mechanism, its formula, its watts and its share, and
+ * the residual the identity leaves.
+ *
+ * P_in − P_out − Σ conduction losses is zero because every term is an integral
+ * of one waveform. The residual row is the only line in the table that is not
+ * a measurement, and it reads zero.
+ */
+export function LedgerPane({ x }) {
+  const led = lossLedger(x.m)
+  const scale = Math.max(1e-12, led.Psource)
+  return (
+    <div className="ledger">
+      <table className="table">
+        <caption>Where the source’s power goes, over one period</caption>
+        <thead>
+          <tr>
+            <th>mechanism</th>
+            <th className="num">formula</th>
+            <th className="num">watts</th>
+            <th className="num">share</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>to the load</td>
+            <td className="num"><Eq>{'\\langle v_{out}^2 \\rangle / R'}</Eq></td>
+            <td className="num">{fmtz(led.Pout, 'W', 4, scale)}</td>
+            <td className="num">{(led.outShare * 100).toFixed(2)} %</td>
+          </tr>
+          {led.rows.map((r) => (
+            <tr key={r.key}>
+              <td>
+                {r.label}
+                {r.model ? <em className="prov"> a model, not a waveform</em> : null}
+              </td>
+              <td className="num">{r.formula ? <Eq>{r.formula}</Eq> : '—'}</td>
+              <td className="num">{fmtz(r.watts, 'W', 4, scale)}</td>
+              <td className="num">{(r.share * 100).toFixed(2)} %</td>
+            </tr>
+          ))}
+          <tr className="total">
+            <td>from the source</td>
+            <td className="num"><Eq>{'V_{in} \\langle i_{in} \\rangle + P_{sw}'}</Eq></td>
+            <td className="num">{fmtz(led.Psource, 'W', 4, scale)}</td>
+            <td className="num">{(led.eta * 100).toFixed(2)} % out</td>
+          </tr>
+          <tr className={`total ${nz(led.residual, scale) === 0 ? 'agree' : 'disagree'}`}>
+            <td><Eq>{'P_{in} - P_{out} - \\sum \\text{conduction}'}</Eq></td>
+            <td className="num">an identity</td>
+            <td className="num" data-role="ledger-residual">{fmtz(led.residual, 'W', 2, scale)}</td>
+            <td className="num" />
+          </tr>
+        </tbody>
+      </table>
+      <div className="power-list">
+        {[{ key: 'out', label: 'to the load', value: led.Pout, cls: 'out' }, ...led.rows.map((r) => ({ key: r.key, label: r.label, value: r.watts, cls: 'loss' }))].map((r) => (
+          <div className="power-row" key={r.key}>
+            <span>{r.label}</span>
+            <span className="bar">
+              <i className={r.cls} style={{ left: 0, width: `${Math.min(100, (100 * Math.max(0, r.value)) / scale)}%` }} />
+            </span>
+            <span className="val">{fmt(r.value, 'W', 3)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /** Where the input power goes: the load, then each loss, as bars on a common scale. */

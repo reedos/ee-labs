@@ -2,13 +2,13 @@ import React, { useMemo, useRef, useState } from 'react'
 import { LabNav, NumField, ReportIssue, fmt } from '@ee-labs/ui'
 import { MathBody } from '@ee-labs/explain'
 import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, SWEEP_X, byId, defaultsOf, nextOf, prevOf, positionOf, offeredTraces } from './experiments.js'
-import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepFs, sweepC, sweepAlpha, sweepChopper } from './analysis.js'
+import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepFs, sweepC, sweepAlpha, sweepChopper, sweepMa, sweepFsw, sweepOpts } from './analysis.js'
 import { experimentMath } from './math.js'
 import { termsFor } from './terms.js'
 import { reportSummary } from './report.js'
 import ScopeCanvas, { TRACE_COLORS } from './components/ScopeCanvas.jsx'
 import SweepCanvas from './components/SweepCanvas.jsx'
-import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, MODE_WORDS } from './components/panes.jsx'
+import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, FluxPane, ScrubPane, LedgerPane, MODE_WORDS } from './components/panes.jsx'
 import { fmtz } from './format.js'
 import { scopeMarks, sweepMarks } from './marks.js'
 import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/schematics.jsx'
@@ -76,6 +76,8 @@ export function outcomeOf(exp, x) {
   if (exp.kind === 'rectifier')
     return `V_dc = ${fmt(m.Vdc, 'V', 4)}, ripple ${fmt(m.ripple, 'V', 3)}, ${m.angle.toFixed(1)}° × ${m.pulses}, PF ${m.pf.toFixed(3)}`
   if (exp.kind === 'dimmer') return `P/P_full = ${m.share.toFixed(4)} at α = ${((x.p.alpha * 180) / Math.PI).toFixed(0)}°, PF ${m.pf.toFixed(3)}`
+  if (m.mode === 'inverter')
+    return `fundamental ${fmt(m.V1, 'V', 4)} rms, THD ${(m.thd * 100).toFixed(1)} %, ${x.conv.mf === 1 ? 'two edges' : `m_f = ${x.conv.mf}`}`
   return `${MODE_WORDS[m.mode]}, M = ${m.M.toFixed(4)}, η = ${(m.eta * 100).toFixed(2)} %`
 }
 
@@ -83,17 +85,20 @@ export function outcomeOf(exp, x) {
 export function sweepFor(exp, params) {
   const s = exp.sweep
   if (!s) return null
+  const opts = sweepOpts(exp, params)
   if (exp.kind === 'linreg') return { points: sweepLinear(params), at: params.Vo / params.Vin, label: 'η = V_out / V_in' }
   if (exp.kind === 'chopper') return { points: sweepChopper(params), at: params.D, label: '⟨v⟩ = D·V_in', label2: 'V_rms = √D·V_in' }
+  if (s.x === 'ma') return { points: sweepMa(params), at: params.ma, label: 'peak of the bridge’s fundamental' }
+  if (s.x === 'fsw') return { points: sweepFsw(params), at: params.fsw, label: 'THD of the load voltage' }
   if (s.x === 'C') return { points: sweepC(params, exp), at: params.C }
   if (s.x === 'alpha') return { points: sweepAlpha(params), at: params.alphaDeg, label: 'P / P_full measured on the waveform' }
-  if (s.x === 'fs') return { points: sweepFs(params, exp.kind), at: params.fs }
-  if (s.y === 'eta' && s.x !== 'D') return { points: sweepEta(params, exp.kind), at: params.R }
+  if (s.x === 'fs') return { points: sweepFs(params, exp.kind, 41, opts), at: params.fs }
+  if (s.y === 'eta' && s.x !== 'D') return { points: sweepEta(params, exp.kind, 41, opts), at: params.R }
   // η against D is a ratio sweep read for its η; the closed form it carries
   // is for M, and would be drawn against the wrong axis.
-  if (s.x === 'D' && s.y === 'eta') return { points: sweepD(params, exp.kind).map(({ pred, ...q }) => q), at: params.D }
-  if (s.x === 'D') return { points: sweepD(params, exp.kind), at: params.D }
-  return { points: sweepR(params, exp.kind), at: params.R }
+  if (s.x === 'D' && s.y === 'eta') return { points: sweepD(params, exp.kind, 61, opts).map(({ pred, ...q }) => q), at: params.D }
+  if (s.x === 'D') return { points: sweepD(params, exp.kind, 61, opts), at: params.D }
+  return { points: sweepR(params, exp.kind, 61, opts), at: params.R }
 }
 
 /**
@@ -121,6 +126,8 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
   // of experiment (the reader set it); which pane gets it is the experiment's.
   const [primary, setPrimary] = useState(() => primaryOf(byId[start]))
   const [share, setShare] = useState(PRIMARY_SHARE)
+  // Where the conduction scrub's cursor sits, as a fraction of one period.
+  const [scrub, setScrub] = useState(0.25)
   const mainRef = useRef(null)
 
   const exp = byId[id]
@@ -134,6 +141,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
     setPristine(true)
     setPrimary(primaryOf(byId[next]))
     setBrowsing(null)
+    setScrub(0.25)
   }
   // The way back from a retired note: every knob to the experiment's defaults.
   const reset = () => {
@@ -190,7 +198,14 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
   // The same sweep at the defaults, which the sweep's axis is framed on.
   const baseSweep = useMemo(() => (wantsSweep ? sweepFor(exp, defaultsOf(exp.id)) : null), [exp, wantsSweep])
   // The note's numbers, drawn where they happen (marks.js).
-  const marks = useMemo(() => scopeMarks(exp, x), [exp, x])
+  // The conduction scrub's cursor, as a fraction of one period, and the same
+  // instant marked on the scope so the two panes read together.
+  const scrubbing = currentView === 'scrub'
+  const scrubAt = scrub * x.T
+  const marks = useMemo(
+    () => [...scopeMarks(exp, x), ...(scrubbing ? [{ type: 'cursor', t: scrubAt, label: fmt(scrubAt, 's', 3) }] : [])],
+    [exp, x, scrubbing, scrubAt],
+  )
   const sweepMarkList = useMemo(() => sweepMarks(exp, x, sweep), [exp, x, sweep])
   const outcome = outcomeOf(exp, x)
   const m = x.m
@@ -403,8 +418,10 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
         </nav>
         <div className="topbar-controls">
           <span className="topbar-field">
-            <span>{exp.kind === 'dimmer' ? 'V_rms' : 'V_out'}</span>
-            <b>{exp.kind === 'dimmer' ? fmt(m.sig.vout.rms, 'V', 4) : fmt(m.sig.vout.avg, 'V', 4)}</b>
+            {/* An inverter's output averages zero by design, so what its
+                meter shows is the RMS the load actually sees. */}
+            <span>{exp.kind === 'dimmer' || m.mode === 'inverter' ? 'V_rms' : 'V_out'}</span>
+            <b>{exp.kind === 'dimmer' || m.mode === 'inverter' ? fmt(m.sig.vout.rms, 'V', 4) : fmt(m.sig.vout.avg, 'V', 4)}</b>
           </span>
           <span className="topbar-field">
             <span>P_out</span>
@@ -561,6 +578,11 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
           </div>
           <div className="view-body">
             {currentView === 'measures' ? <MeasuresPane m={m} signals={signalsOf(exp)} /> : null}
+            {currentView === 'flux' && x.flux ? <FluxPane x={x} /> : null}
+            {currentView === 'scrub' ? (
+              <ScrubPane x={x} exp={exp} at={scrubAt} onScrub={setScrub} signals={signalsOf(exp)} />
+            ) : null}
+            {currentView === 'ledger' ? <LedgerPane x={x} /> : null}
             {currentView === 'math' ? <MathBody entry={math} /> : null}
             {currentView === 'balance' && x.balance ? <BalancePane x={x} /> : null}
             {currentView === 'losses' ? <LossesPane x={x} /> : null}
@@ -617,6 +639,29 @@ export const FLOW_BUDGET = { mid: 26, out: 34 }
 export function flowNodes(exp, params, x) {
   const m = x.m
   const saysK = (exp.symbols || []).includes('K')
+  if (x.saturating) {
+    return {
+      mode: x.ss.mode === 'SAT' ? 'saturating' : MODE_WORDS[m.mode],
+      mid: `B up to ${fmt(x.formulas.Bpk, 'T', 3)}`,
+      out: `ΔB = ${fmt(x.formulas.dB, 'T', 3)}`,
+      outSub: `I_sat ${fmt(x.formulas.Isat, 'A', 3)}`,
+    }
+  }
+  if (x.isolated) {
+    return {
+      mid: `${fmt(params.Vin, 'V', 3)} in, ${x.formulas.Np}:1`,
+      out: `M = ${m.M.toFixed(4)}`,
+      outSub: `D = ${x.formulas.switching.D.toFixed(3)}`,
+    }
+  }
+  if (m.mode === 'inverter') {
+    return {
+      mode: x.conv.mf === 1 ? 'square wave' : `carrier × ${x.conv.mf}`,
+      mid: `${fmt(x.p.Vdc, 'V', 3)} rail`,
+      out: `V₁ = ${fmt(m.V1, 'V', 4)}`,
+      outSub: `THD ${(m.thd * 100).toFixed(1)} %`,
+    }
+  }
   if (exp.kind === 'buck') {
     return {
       // B5 is where K_crit is named, so the buck's chip names it.
@@ -674,6 +719,15 @@ function Headline({ exp, m }) {
       <span className="topbar-field">
         <span>PF</span>
         <b>{m.pf.toFixed(3)}</b>
+      </span>
+    )
+  // An inverter's efficiency is close to one and says nothing; what it is
+  // judged by is how much of its output is the fundamental it was asked for.
+  if (exp.headline === 'thd')
+    return (
+      <span className="topbar-field">
+        <span>THD</span>
+        <b>{(m.thd * 100).toFixed(1)} %</b>
       </span>
     )
   return (

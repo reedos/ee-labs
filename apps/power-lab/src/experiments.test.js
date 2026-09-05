@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, GROUPS, TRACES, VIEWS, SWEEP_X, SWEEP_Y, byId, defaultsOf } from './experiments.js'
-import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepFs, sweepC, sweepAlpha, sweepChopper } from './analysis.js'
+import { analyse, sweepD, sweepR, sweepLinear, sweepEta, sweepFs, sweepC, sweepAlpha, sweepChopper, sweepMa, sweepFsw } from './analysis.js'
+import { lossLedger, switchingCrossover, peakEfficiencyLoad, capacitorRms } from '@ee-labs/switched'
 import { TERMS } from './terms.js'
 import { signalsOf } from './components/schematics.jsx'
 
@@ -911,6 +912,368 @@ describe('E6 · three phases, six pulses', () => {
     expect(rel(9)).toBeLessThan(1e-9)
     expect(rel(5) * 100).toBeCloseTo(91, 0)
     expect(rel(7) * 100).toBeCloseTo(82, 0)
+  })
+})
+
+describe('D1 · volt-seconds are flux', () => {
+  it('29.2 V·µs on 40 turns of 40 mm² is 18.2 mT of swing, peaking at 165 mT', () => {
+    const { x } = at('d1')
+    const f = x.formulas
+    expect(x.core.N).toBe(40)
+    expect(x.core.Ae * 1e6).toBeCloseTo(40, 9)
+    expect(f.onVs * 1e6).toBeCloseTo(29.17, 2)
+    expect(f.coreArea).toBeCloseTo(40 * 40e-6, 12)
+    expect(f.dB * 1e3).toBeCloseTo(18.23, 2)
+    expect(f.dB).toBeCloseTo(f.onVs / f.coreArea, 15)
+    expect(f.Bpk * 1e3).toBeCloseTo(165.4, 1)
+    // The flux is L·i/(N·A_e) below the knee, and the knee is far above.
+    expect(f.Bpk).toBeCloseTo((100e-6 * x.m.sig.iL.max) / f.coreArea, 12)
+    expect(x.m.sig.iL.max).toBeLessThan(f.Isat)
+    expect(x.m.sig.vout.avg).toBeCloseTo(5, 6)
+  })
+  it('a tenth the frequency is ten times the volt-seconds, and the flux follows', () => {
+    const slow = at('d1', { fs: 10e3 }).x.formulas
+    const fast = at('d1').x.formulas
+    expect(slow.onVs / fast.onVs).toBeCloseTo(10.2, 1)
+    expect(slow.dB * 1e3).toBeCloseTo(186.1, 1)
+    // The closed form scales as 1/f_s with no remainder; the exact figure is
+    // a little more, because the output moves across a longer interval.
+    expect(slow.dBideal / fast.dBideal).toBeCloseTo(10, 6)
+    expect(slow.dB / fast.dB).toBeGreaterThan(10)
+    // Still under the ceiling: the cliff is the next experiment's.
+    expect(slow.Bpk).toBeLessThan(slow.Bsat)
+    expect(slow.Bpk * 1e3).toBeCloseTo(249.3, 1)
+  })
+})
+
+describe('D2 · saturation, as an event', () => {
+  it('saturates at B_sat·N·A_e/L = 4.80 A, which the 1 Ω load crosses', () => {
+    const { x, p } = at('d2')
+    const f = x.formulas
+    expect(f.Isat).toBeCloseTo((x.core.Bsat * x.core.N * x.core.Ae) / p.L, 12)
+    expect(f.Isat).toBeCloseTo(4.8, 6)
+    expect(x.ss.mode).toBe('SAT')
+    expect(x.m.sig.iL.avg).toBeCloseTo(5.0, 3)
+    expect(f.iSat).toBeCloseTo(f.Isat, 6)
+    expect(f.tSat * 1e6).toBeCloseTo(2.9, 1)
+    expect(f.satShare * 100).toBeCloseTo(30.4, 0)
+  })
+  it('the inductance falls from 100 µH to 5 µH, and the ripple multiplies', () => {
+    const { x, p } = at('d2')
+    expect(x.formulas.Lsat * 1e6).toBeCloseTo(5, 6)
+    expect(p.L / x.formulas.Lsat).toBeCloseTo(20, 9)
+    expect(x.m.sig.iL.pp).toBeCloseTo(1.98, 2)
+    expect(x.m.sig.iL.max).toBeCloseTo(6.58, 2)
+    // The same converter with the core out of reach keeps the plain triangle.
+    const linear = at('d2', { R: 2 }).x
+    expect(linear.ss.mode).toBe('CCM')
+    expect(linear.m.sig.iL.pp).toBeCloseTo(0.292, 3)
+    expect(x.m.sig.iL.pp / linear.m.sig.iL.pp).toBeGreaterThan(6)
+  })
+  it('the flux reaches 306 mT and goes almost no further, and the output is still D·V_in', () => {
+    const { x, p } = at('d2')
+    expect(x.formulas.Bpk * 1e3).toBeCloseTo(305.6, 1)
+    expect(x.formulas.Bpk).toBeGreaterThan(p.Bsat)
+    // Past the knee the current buys flux twenty times more slowly.
+    expect((x.formulas.Bpk - p.Bsat) / p.Bsat).toBeLessThan(0.03)
+    expect(x.m.sig.vout.avg).toBeCloseTo(5, 3)
+    expect(x.m.M).toBeCloseTo(p.D, 3)
+  })
+  it('at 2 Ω the peak is 2.65 A, under the knee', () => {
+    const { x } = at('d2', { R: 2 })
+    expect(x.m.sig.iL.max).toBeCloseTo(2.65, 2)
+    expect(x.m.sig.iL.max).toBeLessThan(x.formulas.Isat)
+    expect(x.formulas.satShare).toBe(0)
+  })
+})
+
+describe('D3 · the flyback', () => {
+  it('M = n·D/(1 − D): a 2:1 transformer at D = 50 % turns 24 V into 12.0 V', () => {
+    const { x, p } = at('d3')
+    expect(p.Np).toBe(2)
+    expect(x.formulas.n).toBeCloseTo(0.5, 12)
+    expect(x.formulas.M).toBeCloseTo((0.5 * 0.5) / 0.5, 12)
+    expect(x.m.M).toBeCloseTo(0.5, 3)
+    expect(x.m.sig.vout.avg).toBeCloseTo(11.99, 2)
+    expect(x.ss.mode).toBe('CCM')
+  })
+  it('the secondary carries the magnetising current divided by n, and the load’s average', () => {
+    const { x, p } = at('d3')
+    expect(x.m.sig.iD.max).toBeCloseTo(x.m.sig.iL.max / x.formulas.n, 9)
+    expect(x.m.sig.iD.avg).toBeCloseTo(x.m.Iout, 6)
+    expect(x.m.sig.iL.pp).toBeCloseTo((p.Vin * p.D) / (p.L * p.fs), 3)
+  })
+  it('the switch blocks 48.0 V: the rail plus the output reflected back', () => {
+    const { x, p } = at('d3')
+    expect(x.formulas.blocking).toBeCloseTo(p.Vin + x.m.sig.vout.avg / x.formulas.n, 9)
+    expect(x.formulas.blocking).toBeCloseTo(48.0, 1)
+    expect(x.formulas.blocking / p.Vin).toBeCloseTo(2, 2)
+    expect(x.m.sig.vsw.max).toBeCloseTo(48.0, 1)
+  })
+  it('D = 75 % gives M = 1.50 and 36.0 V, which is the buck-boost’s runaway with the turns on it', () => {
+    const { x } = at('d3', { D: 0.75 })
+    expect(x.m.M).toBeCloseTo(1.5, 2)
+    expect(x.m.sig.vout.avg).toBeCloseTo(36.0, 0)
+    expect(x.ss.mode).toBe('CCM')
+  })
+})
+
+describe('D4 · the half-bridge', () => {
+  it('M = n·D exactly: 48 V through a 4:1 transformer at D = 41.7 % is 5.000 V', () => {
+    const { x, p } = at('d4')
+    expect(p.Np).toBe(4)
+    expect(x.formulas.n).toBeCloseTo(0.25, 12)
+    expect(x.formulas.M).toBeCloseTo(0.25 * (5 / 12), 12)
+    expect(x.m.M).toBeCloseTo(0.104167, 6)
+    expect(x.m.sig.vout.avg).toBeCloseTo(5, 6)
+    expect(x.formulas.vpulse).toBeCloseTo(6, 9)
+    expect(at('d4', { D: 0.25 }).x.m.sig.vout.avg).toBeCloseTo(3, 6)
+  })
+  it('the filter is fed twice a switching period, so the ripple runs at 200 kHz', () => {
+    const { x, p } = at('d4')
+    expect(x.formulas.switching.fs).toBe(p.fs)
+    expect(x.T).toBeCloseTo(1 / (2 * p.fs), 15)
+    expect(x.formulas.ripplePulses).toBe(2)
+    expect(x.m.sig.iL.pp * 1e3).toBeCloseTo(41.7, 1)
+    expect(x.m.sig.vout.pp * 1e6).toBeCloseTo(260, 0)
+    // The same filter fed once a period would carry twice the ripple.
+    expect(x.formulas.dVatFs * 1e6).toBeCloseTo(521, 0)
+    expect(x.formulas.dVatFs / x.m.sig.vout.pp).toBeCloseTo(2, 2)
+  })
+  it('each switch blocks the rail, where the flyback’s blocks twice its own', () => {
+    const { x, p } = at('d4')
+    expect(x.formulas.blocking).toBeCloseTo(48, 12)
+    expect(x.formulas.blocking).toBeCloseTo(p.Vin, 12)
+    const fly = at('d3').x
+    expect(fly.formulas.blocking / fly.p.Vin).toBeCloseTo(2, 2)
+  })
+  it('nothing is stored in the core: the rail delivers exactly what the load takes', () => {
+    const { x } = at('d4')
+    expect(x.m.Pin).toBeCloseTo(x.m.Pout, 9)
+    expect(x.m.Pout).toBeCloseTo(5, 6)
+    expect(x.m.sig.iQ.max).toBeCloseTo(x.formulas.n * x.m.sig.iL.max, 9)
+  })
+})
+
+describe('F1 · the square-wave inverter', () => {
+  it('the fundamental is (4/π)·V_dc/√2 = 43.2 V and the THD is √(π²/8 − 1) = 48.3 %', () => {
+    const { x, p } = at('f1')
+    expect(x.conv.mf).toBe(1)
+    expect(x.m.Vsw1).toBeCloseTo((4 / Math.PI) * p.Vdc * Math.SQRT1_2, 9)
+    expect(x.m.Vsw1).toBeCloseTo(43.215, 3)
+    expect(x.m.thdSw).toBeCloseTo(Math.sqrt(Math.PI ** 2 / 8 - 1), 9)
+    expect(x.m.thdSw * 100).toBeCloseTo(48.34, 2)
+    expect(x.m.sig.vsw.rms).toBeCloseTo(48, 6)
+  })
+  it('halving the rail halves the fundamental and leaves the distortion alone', () => {
+    const { x } = at('f1', { Vdc: 24 })
+    expect(x.m.Vsw1).toBeCloseTo(21.608, 3)
+    expect(x.m.thdSw * 100).toBeCloseTo(48.34, 2)
+  })
+  it('the filter cannot help: its corner is at 1.59 kHz and the third harmonic is at 180 Hz', () => {
+    const { x, p } = at('f1')
+    expect(x.formulas.fo).toBeCloseTo(1591.5, 0)
+    expect(x.formulas.Hthird).toBeGreaterThan(0.99)
+    expect(3 * p.f1).toBe(180)
+    expect(x.m.thd * 100).toBeCloseTo(48.16, 1)
+  })
+})
+
+describe('F2 · sine PWM', () => {
+  it('the fundamental is m_a·V_dc: 38.4 V peak at 80 % of the carrier’s height', () => {
+    const { x, p } = at('f2')
+    expect(x.conv.mf).toBe(63)
+    expect(x.m.Vsw1 * Math.SQRT2).toBeCloseTo(p.ma * p.Vdc, 6)
+    expect(x.m.Vsw1 * Math.SQRT2).toBeCloseTo(38.4, 3)
+    expect(x.m.thd * 100).toBeCloseTo(21.19, 1)
+  })
+  it('at 40 % the fundamental halves, whatever the carrier does', () => {
+    for (const fsw of [1980, 3780]) {
+      const { x } = at('f2', { ma: 0.4, fsw })
+      expect(x.m.Vsw1 * Math.SQRT2, `fsw ${fsw}`).toBeCloseTo(19.2, 3)
+    }
+  })
+  it('past 100 % the fundamental falls behind the line: 120 % buys 53.0 V, not 57.6 V', () => {
+    const { x, p } = at('f2', { ma: 1.2 })
+    expect(x.m.Vsw1 * Math.SQRT2).toBeCloseTo(53.0, 1)
+    expect(x.m.Vsw1 * Math.SQRT2).toBeLessThan(1.2 * p.Vdc)
+    expect(1.2 * p.Vdc).toBeCloseTo(57.6, 9)
+    expect(x.m.Vsw1 * Math.SQRT2).toBeGreaterThan(p.Vdc)
+  })
+})
+
+describe('F3 · the spectrum has families', () => {
+  it('nothing between the fundamental and the cluster at the 63rd harmonic', () => {
+    const { x } = at('f3')
+    const h = x.m.harmonics
+    const first = h[0].rms
+    const baseband = Math.max(...h.filter((q) => q.k > 1 && q.k <= x.conv.mf - 5).map((q) => q.rms))
+    expect(baseband / first).toBeLessThan(2e-4)
+    expect(x.m.carrier.k).toBe(63)
+    expect((100 * x.m.carrier.rms) / first).toBeCloseTo(102, 0)
+    // Half-wave symmetry: m_f is odd, so no even harmonic survives.
+    for (const q of h) if (q.k % 2 === 0) expect(q.rms).toBeLessThan(1e-9 * first)
+  })
+  it('the filter takes the 63rd down by 0.192, which is |H| at 3.78 kHz', () => {
+    const { x } = at('f3')
+    expect(x.formulas.fsw).toBe(3780)
+    expect(x.m.attenuation).toBeCloseTo(x.formulas.Hcarrier, 6)
+    expect(x.m.attenuation).toBeCloseTo(0.1918, 4)
+    expect(x.m.thd * 100).toBeCloseTo(21.19, 1)
+  })
+  it('a slower carrier lands nearer the corner, and the filter does less with it', () => {
+    const { x } = at('f3', { fsw: 1980 })
+    expect(x.conv.mf).toBe(33)
+    expect(x.m.attenuation).toBeCloseTo(0.7357, 4)
+    expect(x.m.attenuation).toBeCloseTo(x.formulas.Hcarrier, 6)
+    expect(x.m.thd * 100).toBeCloseTo(81.3, 0)
+  })
+})
+
+describe('F4 · distortion against effort', () => {
+  it('the THD falls as the carrier climbs past the 1.59 kHz corner', () => {
+    const thd = [900, 1980, 3780, 7740].map((fsw) => at('f4', { fsw }).x.m.thd * 100)
+    expect(thd[0]).toBeCloseTo(135.5, 1)
+    expect(thd[1]).toBeCloseTo(81.3, 1)
+    expect(thd[2]).toBeCloseTo(21.2, 1)
+    expect(thd[3]).toBeCloseTo(4.8, 1)
+    for (let i = 1; i < thd.length; i++) expect(thd[i], `step ${i}`).toBeLessThan(thd[i - 1])
+  })
+  it('at 900 Hz the carrier is below the corner, and the filter lifts it rather than cutting it', () => {
+    const { x } = at('f4', { fsw: 900 })
+    expect(x.formulas.fsw).toBeLessThan(x.formulas.fo)
+    expect(x.formulas.Hcarrier).toBeGreaterThan(1)
+    expect(x.m.thd).toBeGreaterThan(1)
+  })
+  it('the sweep is the same curve, one solved fundamental period a point', () => {
+    const pts = sweepFsw(defaultsOf('f4'))
+    expect(pts.length).toBeGreaterThan(15)
+    for (const q of pts) {
+      expect(Number.isFinite(q.thd)).toBe(true)
+      expect(q.mf % 2).toBe(1)
+    }
+    // The carrier is locked to an odd multiple, so the curve is a staircase
+    // that never rises as the carrier does.
+    const above = pts.filter((q) => q.mf * 60 > 2000)
+    for (let i = 1; i < above.length; i++) expect(above[i].thd).toBeLessThanOrEqual(above[i - 1].thd * 1.01)
+  })
+})
+
+describe('G1 · conduction against switching', () => {
+  it('the two cross at R_on·I/(V·t_sw) = 488 kHz, where each costs 114 mW', () => {
+    const { x, p } = at('g1')
+    const led = lossLedger(x.m)
+    const fstar = switchingCrossover({ Ron: p.Ron, Iout: x.m.Iout, Vblk: x.m.Vblk, tsw: p.tsw })
+    expect(fstar / 1e3).toBeCloseTo(488, 0)
+    expect(p.fs).toBe(488e3)
+    expect(led.conduction * 1e3).toBeCloseTo(114, 0)
+    expect(led.switching * 1e3).toBeCloseTo(114, 0)
+    expect(Math.abs(led.switching / led.conduction - 1)).toBeLessThan(0.01)
+    expect(led.eta * 100).toBeCloseTo(95.4, 1)
+  })
+  it('conduction does not follow the frequency and the edges do', () => {
+    const slow = lossLedger(at('g1', { fs: 100e3 }).x.m)
+    const fast = lossLedger(at('g1', { fs: 2e6 }).x.m)
+    expect(slow.switching * 1e3).toBeCloseTo(23.4, 0)
+    expect(slow.eta * 100).toBeCloseTo(97.2, 1)
+    expect(fast.switching * 1e3).toBeCloseTo(469, 0)
+    expect(fast.eta * 100).toBeCloseTo(89.1, 1)
+    // The conduction loss is the same watt at twenty times the frequency.
+    expect(Math.abs(fast.conduction / slow.conduction - 1)).toBeLessThan(0.01)
+    // And the edges are charged in proportion.
+    expect(fast.switching / slow.switching).toBeCloseTo(20, 0)
+  })
+})
+
+describe('G2 · the efficiency curve', () => {
+  it('the peak sits at √12·L·f_s/(1 − D) = 13.1 Ω, which is √3 times the boundary', () => {
+    const { x, p } = at('g2')
+    const Rstar = peakEfficiencyLoad(p)
+    expect(Rstar).toBeCloseTo(13.06, 2)
+    expect(p.R).toBeCloseTo(Rstar, 9)
+    expect(Rstar / ((2 * p.L * p.fs) / (1 - p.D))).toBeCloseTo(Math.sqrt(3), 12)
+    expect((2 * p.L * p.fs) / (1 - p.D)).toBeCloseTo(7.543, 3)
+    expect(x.m.eta * 100).toBeCloseTo(97.7, 1)
+  })
+  it('there the ripple’s share of the loss equals the load’s', () => {
+    const { x, p } = at('g2')
+    const Rt = p.Ron + p.RL
+    const load = Rt * x.m.Iout ** 2
+    const ripple = Rt * (x.m.sig.iL.rms ** 2 - x.m.Iout ** 2)
+    expect(ripple * 1e3).toBeCloseTo(22.0, 1)
+    expect(load * 1e3).toBeCloseTo(21.5, 1)
+    expect(Math.abs(ripple / load - 1)).toBeLessThan(0.03)
+  })
+  it('and it is a peak: heavier and lighter loads both cost efficiency', () => {
+    const peak = at('g2').x.m.eta
+    for (const R of [1, 3, 40, 1000]) expect(at('g2', { R }).x.m.eta, `at ${R} Ω`).toBeLessThan(peak)
+    expect(at('g2', { R: 1 }).x.m.eta * 100).toBeCloseTo(86.9, 1)
+    expect(at('g2', { R: 1000 }).x.m.eta * 100).toBeCloseTo(53.2, 1)
+  })
+})
+
+describe('G3 · the capacitor’s hidden heater', () => {
+  it('the boost’s capacitor carries 1.003 A where a buck’s would carry 0.173 A', () => {
+    const { x, p } = at('g3')
+    const dI = x.m.sig.iL.pp
+    expect(dI).toBeCloseTo(0.6, 3)
+    expect(x.m.sig.iC.rms).toBeCloseTo(1.003, 3)
+    expect(x.m.sig.iC.rms).toBeCloseTo(capacitorRms('boost', { D: p.D, Iout: x.m.Iout, dI }), 2)
+    const buckLike = capacitorRms('buck', { D: p.D, Iout: x.m.Iout, dI })
+    expect(buckLike).toBeCloseTo(0.173, 3)
+    expect(buckLike).toBeCloseTo(dI / Math.sqrt(12), 12)
+    expect(x.m.sig.iC.rms / buckLike).toBeGreaterThan(5)
+  })
+  it('heat goes as the square, so 50 mΩ makes 50.3 mW here and 1.5 mW there', () => {
+    const { x, p } = at('g3')
+    const dI = x.m.sig.iL.pp
+    const buckLike = capacitorRms('buck', { D: p.D, Iout: x.m.Iout, dI })
+    expect(x.m.loss.esr * 1e3).toBeCloseTo(50.3, 1)
+    expect(p.ESR * buckLike ** 2 * 1e3).toBeCloseTo(1.5, 1)
+    expect(x.m.loss.esr / (p.ESR * buckLike ** 2)).toBeGreaterThan(30)
+    expect(x.m.sig.vout.avg).toBeCloseTo(23.95, 2)
+  })
+  it('turning the ESR up turns it into heat and a step of ripple, and to nothing at zero', () => {
+    expect(at('g3', { ESR: 0.2 }).x.m.loss.esr * 1e3).toBeCloseTo(196, 0)
+    expect(at('g3', { ESR: 0 }).x.m.loss.esr).toBe(0)
+    expect(at('g3', { ESR: 0 }).x.m.sig.vout.pp * 1e3).toBeCloseTo(22.7, 1)
+  })
+})
+
+describe('G4 · where the watts went', () => {
+  it('the five mechanisms, and a residual of zero', () => {
+    const { x } = at('g4')
+    const led = lossLedger(x.m)
+    const mw = (k) => led.rows.find((r) => r.key === k).watts * 1e3
+    expect(led.rows.map((r) => r.key)).toEqual(['switch', 'diode', 'inductor', 'esr', 'switching'])
+    expect(mw('switch')).toBeCloseTo(18.3, 1)
+    expect(mw('diode')).toBeCloseTo(272, 0)
+    expect(mw('inductor')).toBeCloseTo(26.3, 1)
+    expect(mw('esr')).toBeCloseTo(0.374, 2)
+    expect(mw('switching')).toBeCloseTo(23.3, 1)
+    expect(led.Pout).toBeCloseTo(4.345, 3)
+    expect(led.Psource).toBeCloseTo(4.685, 3)
+    expect(led.eta * 100).toBeCloseTo(92.7, 1)
+    // The identity, which is the pane's whole subject.
+    expect(Math.abs(led.residual)).toBeLessThan(1e-12 * led.Pin)
+    expect(led.Pout + led.conduction + led.switching).toBeCloseTo(led.Psource, 12)
+  })
+  it('the switching row is the one that is a model rather than a waveform', () => {
+    const led = lossLedger(at('g4').x.m)
+    expect(led.rows.filter((r) => r.model).map((r) => r.key)).toEqual(['switching'])
+    expect(led.Psource).toBeCloseTo(led.Pin + led.switching, 12)
+  })
+  it('turning R_on up grows one row and leaves the others where they were', () => {
+    const base = lossLedger(at('g4').x.m)
+    const more = lossLedger(at('g4', { Ron: 0.2 }).x.m)
+    const mw = (led, k) => led.rows.find((r) => r.key === k).watts * 1e3
+    expect(mw(more, 'switch')).toBeCloseTo(71.3, 1)
+    expect(Math.abs(mw(more, 'diode') / mw(base, 'diode') - 1)).toBeLessThan(0.02)
+    expect(Math.abs(mw(more, 'inductor') / mw(base, 'inductor') - 1)).toBeLessThan(0.03)
+    expect(Math.abs(more.residual)).toBeLessThan(1e-12 * more.Pin)
+    const none = lossLedger(at('g4', { Ron: 0 }).x.m)
+    expect(mw(none, 'switch')).toBe(0)
+    expect(none.eta * 100).toBeCloseTo(93.1, 1)
   })
 })
 

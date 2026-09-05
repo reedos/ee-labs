@@ -250,6 +250,70 @@ export const TERMS = {
       'peak line-to-line voltage, √3 times a phase peak, and its line current has no triplen ' +
       'harmonics.',
   },
+  'flux-density': {
+    name: 'Flux density',
+    def:
+      'The flux the core carries, over its cross-section, in tesla. For an inductor it is B = L·i/(N·A_e), ' +
+      'so 1.15 A on 40 turns of 40 mm² with 100 µH is 72 mT. Its swing over a period is the volt-seconds ' +
+      'divided by N·A_e, which is why a slower converter needs a bigger core.',
+  },
+  saturation: {
+    name: 'Saturation',
+    def:
+      'Past a flux density of B_sat the core holds almost no more, and the inductance collapses. The ' +
+      'current at which that happens is I_sat = B_sat·N·A_e/L, 4.80 A here. This lab models the collapse ' +
+      'as a knee, one inductance below it and a smaller one above, which is a model of iron rather than ' +
+      'a law.',
+  },
+  'turns-ratio': {
+    name: 'Turns ratio',
+    def:
+      'The primary turns over the secondary turns, N_p:N_s. Volts scale down by it and amps scale up by ' +
+      'it, so the power through an ideal winding pair is the same on both sides. A 4:1 transformer on a ' +
+      '48 V rail hands its secondary 12 V.',
+  },
+  isolation: {
+    name: 'Isolation',
+    def:
+      'Input and output share no conducting path, only a magnetic one. A fault on one side cannot put ' +
+      'its voltage on the other, which is what every supply plugged into a wall socket needs. The price ' +
+      'is a transformer, and a switch that stands off the reflected output as well as the rail.',
+  },
+  flyback: {
+    name: 'Flyback',
+    def:
+      'A buck-boost whose inductor has a second winding. It stores the cycle’s energy in the core while ' +
+      'the switch is on and hands it to the secondary when the switch opens. Its ratio is n·D/(1 − D), ' +
+      'and its switch blocks the rail plus the output reflected back.',
+  },
+  'half-bridge': {
+    name: 'Half-bridge',
+    def:
+      'Two switches across a capacitor divider, driving a transformer primary with ±V_in/2. Energy ' +
+      'passes through the core rather than being stored in it, so the ratio is the turns ratio times ' +
+      'the duty. The rectified output is fed twice a period, so its ripple runs at 2·f_s.',
+  },
+  inverter: {
+    name: 'Inverter',
+    def:
+      'A bridge that turns a DC rail into AC. Four switches put ±V_dc across the output, and the ' +
+      'modulator decides when. What comes out is a fundamental at the wanted frequency plus everything ' +
+      'the switching left behind, which the output filter has to remove.',
+  },
+  'modulation-index': {
+    name: 'Modulation index',
+    def:
+      'The height of the reference against the height of the carrier, m_a. Below 1 the fundamental of ' +
+      'the bridge output is m_a·V_dc exactly. Above it the reference spends part of each half cycle ' +
+      'outside the carrier, pulses go missing, and the fundamental falls short of what the number says.',
+  },
+  carrier: {
+    name: 'Carrier',
+    def:
+      'The triangle the reference is compared against, at m_f times the output frequency. It sets where ' +
+      'the switching energy lands: clusters around m_f and its multiples, with the band below them ' +
+      'empty. A faster carrier moves those clusters further above the filter’s corner.',
+  },
 }
 
 export function termsFor(ids = []) {

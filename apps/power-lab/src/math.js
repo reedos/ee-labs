@@ -97,7 +97,254 @@ export function experimentMath(exp, params, x) {
   if (exp.kind === 'chopper') return chopperEntry(params, x)
   if (exp.kind === 'rectifier') return rectifierEntry(exp, params, x)
   if (exp.kind === 'dimmer') return dimmerEntry(exp, params, x)
+  if (x.m.mode === 'inverter') return inverterEntry(exp, params, x)
+  if (x.isolated) return isolatedEntry(exp, params, x)
+  if (x.saturating) return coreEntry(exp, params, x)
   return pwmEntry(exp, params, x)
+}
+
+// ------------------------------------------------------------ magnetics
+
+/**
+ * The core's own panel: flux from the current, flux from the volt-seconds,
+ * and the current at which the two stop agreeing.
+ *
+ * The two definitions of flux linkage — λ = L·i and λ = ∫v dt — are the same
+ * statement, and the panel puts one against the other because they are
+ * computed along different routes: the algebraic map, and the propagator's
+ * exact integral of the inductor voltage.
+ */
+function coreEntry(exp, params, x) {
+  const p = x.p
+  const m = x.m
+  const f = x.formulas
+  const core = x.core
+  const sat = x.ss.mode === 'SAT'
+  const dcm = x.ss.mode === 'DCM'
+  const satWhy = sat
+    ? `Past the knee the inductance is ${fmt(f.Lsat, 'H', 3)}, so the slope multiplies part-way through the interval and this form, which has one L in it, does not describe the whole ramp.`
+    : null
+  // Volt-second balance has no inductance in it, so M = D holds through
+  // saturation. Running dry is a different matter: the ratio then depends on
+  // the inductance, and a saturating core has two of them.
+  const ratioWhy = dcm && sat
+    ? 'In discontinuous conduction the ratio depends on the inductance, and this core runs on two of them. There is no single-L form to compare against.'
+    : null
+  const Mpred = dcm ? f.Mdcm : p.D
+  // The on interval's ramp, from the output the converter actually holds.
+  const dIpred = ((p.Vin - m.sig.vout.avg) * p.D) / (p.L * p.fs)
+  // Both the ramp and the volt-seconds take the output as the flat number the
+  // period averages to, and what drives the inductor is the difference
+  // between the input and that number. The ripple is measured against the
+  // difference rather than against the output, because that is what it is a
+  // share of.
+  const drive = Math.abs(p.Vin - m.sig.vout.avg)
+  const sag = m.sig.vout.pp / Math.max(1e-12, drive)
+  const sagWhy = sag > 0.01
+    ? `The form drives the inductor with V_in − V_out = ${fmt(drive, 'V', 3)}. The output ripples ${fmt(m.sig.vout.pp, 'V', 3)} across the interval, which is ${(sag * 100).toFixed(0)} % of that, so what the inductor sees is not what the period averages.`
+    : null
+  // The flux the on interval's volt-seconds buy, added to where the period
+  // started: an independent route to the peak the current implies.
+  const Bstart = fluxOf(f, x.ss.x0[0])
+  const rows = [
+    row('ΔB over the on interval', f.dBideal, f.dB, 'T', 5e-3, 0, sagWhy),
+    row('peak B, from ∫v dt', Bstart + f.dB, f.Bpk, 'T', 5e-3),
+    row('M = V_out/V_in', Mpred, m.M, '', dcm ? 1e-2 : 5e-3, 0, ratioWhy),
+    row('⟨v_L⟩ over a period', 0, m.sig.vL.avg, 'V', 0, 1e-9 * p.Vin),
+    row('⟨i_C⟩ over a period', 0, m.sig.iC.avg, 'A', 0, 1e-9 * Math.max(1e-3, m.sig.iL.max)),
+    row('ΔI_L', dIpred, m.sig.iL.pp, 'A', 1e-2, 0, satWhy || sagWhy),
+    row('P_in = P_out + conduction losses', m.Pout + m.Pcond, m.Pin, 'W', 1e-7),
+  ]
+  const values = [
+    { label: 'N·A_e', value: f.coreArea, unit: 'Wb/T', note: `${fmt(core.N, '', 3)} turns on ${fmt(core.Ae * 1e6, 'mm²', 3)}` },
+    { label: 'I_sat', value: f.Isat, unit: 'A', note: 'B_sat·N·A_e/L' },
+    { label: 'i_L peak', value: m.sig.iL.max, unit: 'A', note: sat ? 'over the knee' : 'under the knee' },
+    { label: 'peak B', value: f.Bpk, unit: 'T', note: `against a ceiling of ${fmt(f.Bsat, 'T', 3)}` },
+    { label: 'L past the knee', value: f.Lsat, unit: 'H', note: `L divided by ${(p.L / f.Lsat).toFixed(0)}` },
+    { label: 'the period spent saturated', value: f.satShare * 100, unit: '%', note: sat ? `first crossing at ${fmt(f.tSat, 's', 3)}` : 'the core stays under the knee' },
+    { label: 'mode', value: sat ? 0 : 1, unit: '', note: sat ? '0 = part of the period saturated' : '1 = linear all period' },
+    { label: 'η', value: m.eta * 100, unit: '%' },
+  ]
+  const intro = {
+    d1: 'Flux linkage is L·i, and it is also the integral of the voltage across the winding. Divide by N turns and A_e of core and both give the flux density, so the volt-seconds a converter takes each period are its flux excursion.',
+    d2: 'Below the knee the inductance is L; above it the core takes almost no more flux, and what is left is a much smaller inductance. The crossing is at the current whose flux is B_sat, and it is placed as an event rather than stepped over.',
+  }[exp.id]
+  return {
+    blocks: [
+      T(intro),
+      F('B = \\frac{L\\,i}{N A_e}, \\qquad \\Delta B = \\frac{1}{N A_e}\\int v_L\\,dt, \\qquad I_{sat} = \\frac{B_{sat} N A_e}{L}', 'the core, in three statements'),
+      F(SAT_TEX, 'the piecewise-linear knee, which is a model of iron rather than a law'),
+      C(rows),
+      V(values),
+    ],
+  }
+}
+
+const SAT_TEX = 'L(i) = \\begin{cases} L & |i| < I_{sat} \\\\ L/h & |i| > I_{sat}\\end{cases}'
+
+/** The flux density a current implies, in the same piecewise map the engine uses. */
+function fluxOf(f, i) {
+  const s = Math.sign(i) || 1
+  const a = Math.abs(i)
+  if (a <= f.Isat) return (f.Isat > 0 ? (f.Bsat * i) / f.Isat : 0)
+  return s * (f.Bsat + (f.Lsat * (a - f.Isat)) / f.coreArea)
+}
+
+// ------------------------------------------------------------ isolated
+
+/**
+ * The flyback and the half-bridge: volt-second balance with the turns in it,
+ * and the stress that isolation costs the switch.
+ */
+function isolatedEntry(exp, params, x) {
+  const p = x.p
+  const m = x.m
+  const f = x.formulas
+  const fly = x.kind === 'flyback'
+  const dcm = x.ss.mode === 'DCM'
+  const sw = f.switching
+  const dcmWhy = dcm
+    ? 'The core empties before the period ends, so a third interval appears and the ratio leaves the duty behind. The continuous-conduction form does not apply here.'
+    : null
+  // The flyback's capacitor is alone with the load while the switch is on,
+  // and in discontinuous conduction for the dead interval as well.
+  const tAlone = dcm ? x.T - x.ss.td : p.D * x.T
+  const dVpred = fly ? (Math.abs(m.Iout) * tAlone) / (p.C || x.base.C) : f.dV
+  // The form gives the capacitor a steady load current for exactly the
+  // interval it is alone. The output sags across that interval, so the
+  // current it supplies falls with it.
+  const dvOver = m.sig.vout.pp > 0 ? dVpred / m.sig.vout.pp - 1 : 0
+  const sagFrac = m.sig.vout.pp / Math.max(1e-12, Math.abs(m.sig.vout.avg))
+  const dVwhy = dcmWhy || (Math.abs(dvOver) > 0.02
+    ? `The form gives the capacitor a steady ${fmt(Math.abs(m.Iout), 'A', 3)} for the whole interval it is alone. Here the output sags ${(sagFrac * 100).toFixed(0)} % across it, so the current falls with the voltage and the form is out by ${(Math.abs(dvOver) * 100).toFixed(1)} %.`
+    : null)
+  const rows = [
+    row('M = V_out/V_in', f.M, m.M, '', 5e-3, 0, dcmWhy),
+    row('⟨v_L⟩ over a period', 0, m.sig.vL.avg, 'V', 0, 1e-9 * p.Vin),
+    row('⟨i_C⟩ over a period', 0, m.sig.iC.avg, 'A', 0, 1e-9 * Math.max(1e-3, m.sig.iL.max)),
+    row('⟨i_D⟩ = I_out', Math.abs(m.Iout), m.sig.iD.avg, 'A', 5e-3, 0, fly ? null : 'The rectifier carries the output inductor’s current in both intervals, so its average is the load’s and this row is the same statement twice.'),
+    row('ΔI', f.dI, m.sig.iL.pp, 'A', 1e-2, 0, dcmWhy),
+    row('ΔV_out', dVpred, m.sig.vout.pp, 'V', 3e-2, 0, dVwhy),
+    row('P_in = P_out + conduction losses', m.Pout + m.Pcond, m.Pin, 'W', 1e-7),
+  ]
+  if (fly) {
+    rows.push(
+      row('the switch blocks V_in + (V_out + V_f)/n', f.blocking, m.sig.vsw.max, 'V', 1e-2, 0, dcm ? 'In discontinuous conduction the drain rings down to V_in once the secondary stops, and the peak is still the reflected one.' : null),
+    )
+  }
+  const values = [
+    { label: 'turns ratio n = N_s/N_p', value: f.n, unit: '', note: `${fmt(f.Np, '', 3)}:1 primary to secondary` },
+    { label: 'V_out', value: m.sig.vout.avg, unit: 'V', note: `M·V_in with M = ${f.M.toFixed(4)}` },
+    { label: 'I_out', value: m.Iout, unit: 'A' },
+    { label: 'i_L peak', value: m.sig.iL.max, unit: 'A', note: fly ? 'in the magnetising inductance, on the primary side' : 'in the output inductor' },
+    { label: 'i_D peak', value: m.sig.iD.max, unit: 'A', note: fly ? `the primary current divided by n` : 'the output inductor’s own' },
+    { label: 'the switch blocks', value: f.blocking, unit: 'V', note: fly ? `${(f.blocking / p.Vin).toFixed(2)}× the rail` : 'the rail, and no more' },
+    { label: 'R_crit', value: f.Rcrit, unit: 'Ω', note: 'the core empties above this load' },
+    { label: 'ripple pulses per switching period', value: f.ripplePulses, unit: '', note: fly ? 'one, at f_s' : `two, at ${fmt(2 * sw.fs, 'Hz', 3)}` },
+    { label: 'η', value: m.eta * 100, unit: '%' },
+  ]
+  if (!fly) {
+    values.push(
+      { label: 'the secondary pulse n·V_in/2', value: f.vpulse, unit: 'V', note: `for ${(sw.D * 200).toFixed(1)} % of each period in total` },
+      { label: 'ΔV_out if it were fed at f_s', value: f.dVatFs, unit: 'V', note: 'twice what the doubled rate leaves' },
+    )
+  }
+  const intro = {
+    d3: 'The switch puts V_in across the primary and the magnetising current rises; when it opens, the winding reverses and the secondary delivers what the core stored. Volt-second balance across the two intervals gives the ratio, with the turns ratio scaling the second one.',
+    d4: 'The primary sees ±V_in/2 while a switch is on and nothing while neither is, so the rectified secondary is a pulse train of amplitude n·V_in/2 at twice the switching frequency. Volt-second balance on the output inductor turns that into n·D.',
+  }[exp.id]
+  return {
+    blocks: [
+      T(intro),
+      F(
+        fly
+          ? 'V_{in} D = \\frac{V_{out} + V_f}{n}(1 - D) \\;\\Rightarrow\\; M = \\frac{n D}{1 - D}'
+          : '\\left(\\frac{n V_{in}}{2} - V_{out}\\right) D = V_{out}\\left(\\tfrac{1}{2} - D\\right) \\;\\Rightarrow\\; M = n D',
+        'volt-second balance, with the turns in it',
+      ),
+      F(
+        fly
+          ? '\\Delta I_M = \\frac{V_{in} D}{L f_s}, \\qquad \\Delta V_{out} = \\frac{I_{out} D}{C f_s}'
+          : '\\Delta I_L = \\frac{(n V_{in}/2 - V_{out})D}{L f_s}, \\qquad \\Delta V_{out} = \\frac{\\Delta I_L}{8 (2 f_s) C}',
+        'the ripples, in the small-ripple approximation',
+      ),
+      C(rows),
+      V(values),
+    ],
+  }
+}
+
+// ------------------------------------------------------------ inverters
+
+/**
+ * The inverter's panel: the fundamental the modulator commanded against the
+ * one the bridge produced, and what the filter did to the rest.
+ */
+function inverterEntry(exp, params, x) {
+  const p = x.p
+  const m = x.m
+  const f = x.formulas
+  const square = x.kind === 'square'
+  const over = !square && p.ma > 1
+  const overWhy = over
+    ? `Past m_a = 1 the reference spends part of each half cycle outside the carrier, so pulses go missing and the fundamental stops following m_a·V_dc. It is ${((1 - (m.Vsw1 * Math.SQRT2) / (p.ma * p.Vdc)) * 100).toFixed(1)} % short of the line here.`
+    : null
+  // The lowest sideband of the carrier's cluster sits at m_f − 2. At m_f = 3
+  // that is the fundamental itself, and below m_f = 9 it is near enough to
+  // add to it, so the fundamental stops being m_a·V_dc alone.
+  const crowded = !square && f.mf < 9
+    ? `The carrier's lowest sideband is at harmonic ${f.mf - 2}, which is too near the fundamental to be separated from it at m_f = ${f.mf}. The identity needs a carrier well clear of the output frequency.`
+    : null
+  const rows = [
+    square
+      ? row('V₁ of the bridge = (4/π)·V_dc/√2', f.V1ideal, m.Vsw1, 'V', 1e-6)
+      : row('peak V₁ of the bridge = m_a·V_dc', f.peakIdeal, m.Vsw1 * Math.SQRT2, 'V', 1e-5, 0, overWhy || crowded),
+    row('⟨v_L⟩ over a period', 0, m.sig.vL.avg, 'V', 0, 1e-9 * p.Vdc),
+    row('⟨i_C⟩ over a period', 0, m.sig.iC.avg, 'A', 0, 1e-9 * Math.max(1e-3, Math.abs(m.sig.iL.max))),
+    row('P_in = P_out + conduction losses', m.Pout + m.Pcond, m.Pin, 'W', 1e-6),
+  ]
+  if (square) {
+    rows.push(row('THD of the bridge = √(π²/8 − 1)', f.thdIdeal, m.thdSw, '', 1e-6))
+  } else if (m.carrier && Number.isFinite(m.attenuation)) {
+    rows.push(
+      row(`the filter at harmonic ${m.carrier.k}`, f.Hcarrier, m.attenuation, '', 5e-3, 0,
+        Math.abs(m.carrier.k * p.f1 - f.fsw) > 1e-6
+          ? `The largest component of the cluster is at harmonic ${m.carrier.k} rather than at m_f itself, and the row compares the filter there.`
+          : null),
+    )
+  }
+  const values = [
+    { label: 'V_dc', value: p.Vdc, unit: 'V' },
+    { label: 'm_f', value: f.mf, unit: '', note: square ? 'two edges a cycle' : `carrier at ${fmt(f.fsw, 'Hz', 4)}` },
+    { label: 'V₁ of the bridge', value: m.Vsw1, unit: 'V', note: `peak ${fmt(m.Vsw1 * Math.SQRT2, 'V', 4)}` },
+    { label: 'THD of the bridge', value: m.thdSw * 100, unit: '%' },
+    { label: 'V₁ at the load', value: m.V1, unit: 'V' },
+    { label: 'THD at the load', value: m.thd * 100, unit: '%' },
+    { label: 'f_0 of the LC', value: f.fo, unit: 'Hz', note: `Q = ${f.Q.toFixed(2)}` },
+    { label: '|H| at the third harmonic', value: f.Hthird, unit: '', note: `at ${fmt(3 * p.f1, 'Hz', 3)}` },
+    { label: 'P at the load', value: m.Pout, unit: 'W' },
+  ]
+  if (!square) values.push({ label: '|H| at the carrier', value: f.Hcarrier, unit: '', note: `at ${fmt(f.fsw, 'Hz', 4)}` })
+  const intro = {
+    f1: 'Two edges a cycle give a square wave, whose fundamental is (4/π)·V_dc and whose remaining harmonics are the odd ones at 1/k. They start at three times the output frequency, which is too close to it for a filter to separate.',
+    f2: 'A comparator against a triangle sets the pulse widths, and the average over each carrier period follows the reference. That is why the fundamental is m_a·V_dc, and why it stops being so once the reference leaves the carrier behind.',
+    f3: 'Switching at m_f times the output frequency puts the energy it leaves behind in clusters at m_f and its multiples, with nothing in between. The filter then has a whole decade to work in rather than one octave.',
+    f4: 'The filter is second order, so what it does to a cluster depends on where the cluster sits against its corner. Moving the carrier up moves every cluster with it, and the distortion left at the load falls with the square of the ratio.',
+  }[exp.id]
+  return {
+    blocks: [
+      T(intro),
+      F(
+        square
+          ? 'V_1 = \\frac{4}{\\pi}\\frac{V_{dc}}{\\sqrt2}, \\qquad \\mathrm{THD} = \\sqrt{\\frac{\\pi^2}{8} - 1} = 48.34\\,\\%'
+          : '\\hat{v}_1 = m_a V_{dc} \\;(m_a \\le 1), \\qquad m_f = \\text{odd},\\; f_{sw} = m_f f_1',
+        square ? 'the square wave, whatever the rail' : 'the modulator, whatever the carrier',
+      ),
+      F('|H(f)| = \\left|\\frac{1}{1 - \\omega^2 LC + j\\omega L/R}\\right|, \\qquad f_0 = \\frac{1}{2\\pi\\sqrt{LC}}', 'the output filter, which decides what survives'),
+      C(rows),
+      V(values),
+    ],
+  }
 }
 
 function linearEntry(p, x) {
@@ -240,12 +487,21 @@ function pwmEntry(exp, params, x) {
   // say the size of what it left out rather than only that it left something.
   const dvOver = m.sig.vout.pp > 0 ? dVpred / m.sig.vout.pp - 1 : 0
   const dvMiss = `${Math.abs(dvOver * 100).toFixed(1)} %`
-  const dIwhy = slow
+  // The ramp is a straight line only while the resistive drop across it is a
+  // small share of the driving voltage; past that it is an exponential and
+  // the linearised correction is not enough.
+  const curved = (rOn * p.D) / (p.L * p.fs) > 0.05
+  const curvedWhy = `The on interval is ${((rOn * p.D) / (p.L * p.fs)).toFixed(2)} time constants long, so the current curves towards its own limit rather than ramping, and a straight-line form cannot describe it.`
+  const dIwhy = curved
+    ? curvedWhy
+    : slow
     ? slowWhy
     : dcm && p.ESR > 0
       ? 'With ESR the output the inductor sees carries a step of ESR·i_C; over a DCM on interval, starting from zero current, it does not average out.'
       : null
-  const dVwhy = p.ESR > 0
+  const dVwhy = curved
+    ? curvedWhy
+    : p.ESR > 0
     ? 'With ESR the ripple is capacitive plus a step of ESR·ΔI_L; the two do not simply add.'
     : boostLike
       ? Math.abs(dvOver) > 0.02
