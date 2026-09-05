@@ -84,6 +84,51 @@ export function linearRegulator({ Vin, Vo, R }) {
   return { Io, Pout: Vo * Io, Pdiss: (Vin - Vo) * Io, Pin: Vin * Io, eta: Vo / Vin }
 }
 
+/**
+ * The RMS current the output capacitor carries, in CCM with a flat load.
+ *
+ * The buck's capacitor sees the inductor's triangle and nothing else, so its
+ * RMS is the triangle's, ΔI/√12. The boost and the buck-boost hand their
+ * capacitor the whole load current for the D of each period the diode is
+ * off, and the inductor's ripple for the rest, so its RMS is larger by the
+ * ratio of the two currents rather than by a correction. That gap is why the
+ * same load and the same ripple specification buy very different capacitors.
+ */
+export function capacitorRms(kind, { D, Iout, dI }) {
+  if (kind === 'buck') return Math.abs(dI) / Math.sqrt(12)
+  const Dp = 1 - D
+  return Math.sqrt((D * Iout * Iout) / Dp + (Dp * dI * dI) / 12)
+}
+
+/**
+ * The switching frequency at which the edges cost what conduction costs.
+ *
+ * Conduction takes I²·R_on and does not follow f_s. Each edge costs
+ * ½·V·I·t_sw and is charged twice a period, so the switching loss is
+ * V·I·t_sw·f_s for a current that barely ripples. The two are equal at
+ * f* = R_on·I/(V·t_sw).
+ */
+export function switchingCrossover({ Ron, Iout, Vblk, tsw }) {
+  if (!(tsw > 0) || !(Vblk > 0)) return Infinity
+  return (Ron * Iout) / (Vblk * tsw)
+}
+
+/**
+ * The load at which a converter's efficiency peaks: where the loss that does
+ * not follow the load equals the loss that follows its square.
+ *
+ * In CCM the RMS current is √(I_out² + ΔI²/12), so the resistive loss splits
+ * into an I_out² term and a ripple term no load can move. They are equal at
+ * I_out = ΔI/√12, and a loss merely proportional to I_out (a diode drop, the
+ * switching edges) does not move the peak. With ΔI = V_out(1 − D)/(L·f_s)
+ * that current is V_out(1 − D)/(√12·L·f_s), so the load resistance at the
+ * peak is √12·L·f_s/(1 − D). It carries no V_out at all, and it is √3 times
+ * the load at the CCM boundary.
+ */
+export function peakEfficiencyLoad({ L, fs, D }) {
+  return (Math.sqrt(12) * L * fs) / (1 - D)
+}
+
 // A switch chopping V_in into a bare resistor at duty D: the average scales
 // with D but the power (and the RMS) do not — the load sees full V_in for a
 // fraction D of the time.
