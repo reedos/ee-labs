@@ -174,8 +174,8 @@ export const LESSONS_F = {
       'slope to a part in a million. The two laws differ in shape rather than in kind. The exponential’s ' +
       'derivative is proportional to the function itself, so the slope follows the current. The square law’s ' +
       'derivative is a straight line, so the slope follows the square root of the current. This MOSFET would ' +
-      'need 7.24 mA to reach the bipolar device’s slope at 440 µA, sixteen times the current for the same ' +
-      'job. That ratio is why a bipolar input stage is still chosen where gain per milliamp is what matters.',
+      'need 7.24 mA to reach the bipolar device’s slope at 440 µA, over sixteen times the current for the ' +
+      'same job. That ratio is why a bipolar input stage is still chosen where gain per milliamp matters.',
   },
 
   f4: {
@@ -338,7 +338,7 @@ export const LESSONS_F = {
       'The gate sits on an oxide, so no current crosses it and the model has no resistance from gate to ' +
       'source. That is the reason for the device and the whole of its advantage as an input. The price is the ' +
       'slope. At 423 µA this device gives 4.231 mA/V where a bipolar transistor at the same current gives ' +
-      '16.4 mA/V, four times as much, and F3 measures both. The output resistance comes from ' +
+      '16.4 mA/V, nearly four times as much, and F3 measures both. The output resistance comes from ' +
       'channel-length modulation alone. ' +
       'With λ at zero the drain current in saturation would not depend on the drain voltage at all. The ' +
       'output resistance would then be infinite, and the gain would be the slope times R_D.',

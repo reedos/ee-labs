@@ -21,7 +21,7 @@ export const LESSONS_G = {
         reads: [['gain', 1000]],
       },
       {
-        say: 'Set g to −10.0 mA/V. The port reads −111.1 Ω, and the scope shows the voltage running backwards against the current pushed in.',
+        say: 'Set g to −10.0 mA/V. The port reads −111.1 Ω. The port’s voltage is −111.1 mV while the test source pushes 1.00 mA into it.',
         set: { g: -0.01 },
         reads: [
           ['gain', -111.111111],

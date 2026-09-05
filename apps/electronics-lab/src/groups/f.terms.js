@@ -73,8 +73,8 @@ export const TERMS_F = {
     name: 'Channel-length modulation, λ',
     def:
       'The slow rise of drain current with drain voltage in saturation, written as a factor of 1 + λv_DS. It ' +
-      'gives the device a finite output resistance of 1/(λI_D), 125.0 kΩ at λ = 0.02 V⁻¹ and 400 µA. With λ ' +
-      'at zero the current in saturation would not depend on the drain at all.',
+      'gives the device a finite output resistance of 1/(λI_D), where I_D is the current the square law gives ' +
+      'before that factor. At λ = 0.02 V⁻¹ and 400 µA that is 125.0 kΩ.',
   },
 }
 
