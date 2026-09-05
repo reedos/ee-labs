@@ -476,7 +476,7 @@ Elements I7 built the clipper alone and deferred the clamper. These two complete
 first course's diode chapter and need nothing this lab adds (Decision 3).
 
 - **B1 · The clamper.** A diode and a capacitor shift the DC level, so the waveform's
-  peak sits at `−V_f` and its mean at `V_p − V_f`. The capacitor charges once and the
+  lowest point sits at `−V_f` and its mean at `V_p − V_f`. The capacitor charges once and the
   diode then never conducts, and the events view shows exactly one conduction.
   Measured: the peak, the mean, and the conduction count.
 - **B2 · The voltage doubler.** A clamper into a peak rectifier. `2V_p − 2V_f =
