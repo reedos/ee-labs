@@ -244,8 +244,13 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   .controls > header, .controls > section { min-width: 0; }
   .controls > header { grid-column: 1; grid-row: 1; padding: 12px 14px 0; background: var(--panel); }
   .controls > .lesson { grid-column: 1; grid-row: 2; margin: 0; padding: 0 12px 12px; border-width: 0 0 1px; border-radius: 0; background: var(--panel); }
-  .controls > .lesson h2 { position: static; margin: 0 -12px 8px; background: var(--panel); border-radius: 0; border-bottom: 0; padding-bottom: 0; }
+  .controls > .lesson h2 { position: static; margin: 0 -12px 4px; background: var(--panel); border-radius: 0; border-bottom: 0; padding-bottom: 0; }
   .topbar { grid-row: 3; }
+  /* The live scalars are a row of "name value" pairs that does not shrink. On
+     the four experiments that carry five of them — ζ with the word for what it
+     means, and Σ power — the row ran 120 px past a 390 px screen and those two
+     were simply not on it. Let the row wrap under itself. */
+  .topbar-controls { flex-wrap: wrap; row-gap: 4px; }
   .views { grid-row: 4; min-height: 0; }
   .controls > .knobs { grid-column: 1; grid-row: 5; margin: 12px 12px 0; }
   .controls > .deeper { grid-column: 1; grid-row: 6; margin: 12px 12px 72px; }
@@ -254,8 +259,11 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   .controls > .lesson, .views .view, .controls > .knobs { scroll-margin-top: 8px; }
   /* The cursor row on one line at 390 px: the sentence drops its lead ("the meters read") and the
      window knob its word — "− 40 cycles +" beside the slider it spans — so the plot's view switch
-     stays on the first screen for the fifteen experiments that carry a window knob. */
+     stays on the first screen for the fifteen experiments that carry a window knob. What is left
+     of the sentence, "the circuit at t = 2.01 ms", is held on one line: wrapped, it cost the row
+     eleven more pixels. */
   .cursor-row .cursor-lead, .cursor-row .cursor-head .num.is-compact .num-label { display: none; }
+  .cursor-row .cursor-head label { white-space: nowrap; }
   .tabbar {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -293,8 +301,22 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 /* Phone: pane-header control groups wrap under the title without crowding
    the readouts off the edge. */
 @media (max-width: 900px) {
-  .view-head { row-gap: 6px; }
+  .view-head { row-gap: 4px; }
   .view-head .readout { flex-basis: 100%; }
+  /* The pane's name and its buttons share the first row, as they do on a
+     laptop: the name is as wide as its words and the buttons take the rest of
+     the row from the right. Five experiments ended the first screen before the
+     Analysis view switch because the switch was a second row under the word
+     "Analysis". The group still wraps inside itself when six tabs will not fit,
+     so nothing runs off the edge. */
+  .view-head h2 { flex: 0 0 auto; }
+  .view-head .segmented { margin-left: auto; }
+  /* The node voltages in the schematic pane's header are the numbers the
+     drawing already prints beside each node dot. On a phone that second copy
+     costs a row of the first screen, so the drawing keeps them and the header
+     does not. The Analysis pane's readouts are its own and stay. */
+  .views > .view:first-child .view-head .readout { display: none; }
+  .views > .view { padding: 6px 12px 4px; }
   /* The two panes stack and the page scrolls, so each takes its own height:
      with the shell's equal `1fr 1fr` rows a tall lower pane (the stacked phasor
      view) would stretch the schematic pane to match and leave a blank half-
