@@ -1,6 +1,6 @@
 import React from 'react'
 import { expressionOf, grayOrder, cubeMinterms } from '@ee-labs/events'
-import { ps } from '../format.js'
+import { hz, ps, span } from '../format.js'
 
 // The panes that are tables rather than drawings: the truth table, the Karnaugh
 // map, the path list and the event list. Each reads the one analysis object the
@@ -184,6 +184,59 @@ export function EventTable({ x }) {
           {ps(-Math.min(...x.res.violations.map((v) => v.slack)))}. The value each one sampled is the model’s assumption and not a measurement.
         </p>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * The metastability model, with everything it rests on printed beside its
+ * answer.
+ *
+ * Everything else in this lab is exact, because a gate with a delay is exact.
+ * This is not, and CORE_SCOPE Rule 3 says what that costs: the four parameters
+ * and the three assumptions are on the page with the number, every time, so a
+ * reader never meets the mean time without meeting what it was computed from.
+ */
+export function RatePane({ x }) {
+  if (!x.rate) return <Empty>This experiment does not use the rate model.</Empty>
+  const { tr, tau, t0, fClk, fData } = x.rate.terms
+  return (
+    <div className="pane-scroll">
+      <p className="rate-law">1 / MTBF = T0 · f_clk · f_data · exp(−t_r / τ)</p>
+      <table className="paths">
+        <tbody>
+          <tr>
+            <td>settling time, t_r</td>
+            <td className="num">{ps(tr)}</td>
+          </tr>
+          <tr>
+            <td>regeneration, τ</td>
+            <td className="num">{ps(tau)}</td>
+          </tr>
+          <tr>
+            <td>aperture, T0</td>
+            <td className="num">{ps(t0)}</td>
+          </tr>
+          <tr>
+            <td>clock rate, f_clk</td>
+            <td className="num">{hz(fClk)}</td>
+          </tr>
+          <tr>
+            <td>data rate, f_data</td>
+            <td className="num">{hz(fData)}</td>
+          </tr>
+          <tr className="is-critical">
+            <td>mean time between failures</td>
+            <td className="num">{span(x.rate.mtbf)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="pane-note is-warn">This is the one model in the lab that is not exact. It holds only while all three of these hold.</p>
+      <ul className="assumptions">
+        {x.rate.assumptions.map((a) => (
+          <li key={a}>{a}</li>
+        ))}
+      </ul>
     </div>
   )
 }

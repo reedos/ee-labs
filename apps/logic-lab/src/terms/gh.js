@@ -47,4 +47,44 @@ export const GH_TERMS = {
       'raises the second and does not lower the first. Two stages of 490 ps take longer than one of 770 ps, and ' +
       'they finish an addition twice as often.',
   },
+  metastable: {
+    name: 'Metastable',
+    def:
+      'What a flip-flop can be when its input changed inside the window. Its output sits between the two levels ' +
+      'instead of at one of them, and how long it stays there is a random variable. Everything else in this lab is ' +
+      'exact, and this is not.',
+  },
+  settling: {
+    name: 'Settling time',
+    def:
+      'How long a flip-flop that came out metastable is given before anything reads it. It is the one term in the ' +
+      'rate law a designer chooses. Every extra 20 ps of it here multiplies the mean time between failures by e.',
+  },
+  mtbf: {
+    name: 'Mean time to failure',
+    def:
+      'The average time between two occasions on which a metastable output is read before it settled. It is one ' +
+      'over the failure rate. It is a statistical statement about many runs and not a prediction about the next one.',
+  },
+  tau: {
+    name: 'The two parameters',
+    def:
+      'τ is how fast a flip-flop that is metastable resolves, and T0 is the width of the window in which an edge ' +
+      'can upset it. This lab takes both as 20 ps. They belong to a real cell and a measurement, and the Analog IC ' +
+      'Lab is where they would come from.',
+  },
+  synchroniser: {
+    name: 'Synchroniser',
+    def:
+      'Two flip-flops in a row, both on the same clock, used to bring in a signal that is not clocked by it. ' +
+      'The first one may come out metastable, and the second is not read until a whole clock period later. ' +
+      'That period is the settling time the rate law asks for.',
+  },
+  asynchronous: {
+    name: 'Asynchronous input',
+    def:
+      'A signal whose changes have nothing to do with the clock that samples it. Its edges can land anywhere, ' +
+      'including inside the window. No amount of care in the design removes that, which is why the answer is a ' +
+      'rate rather than a guarantee.',
+  },
 }

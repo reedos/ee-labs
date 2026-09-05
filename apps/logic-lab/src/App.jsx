@@ -5,7 +5,7 @@ import { analyse, valueOf } from './analysis.js'
 import { TERMS } from './terms.js'
 import { reportSummary } from './report.js'
 import { ps } from './format.js'
-import { EventTable, KarnaughMap, PathList, Refusal, TruthTable } from './components/panes.jsx'
+import { EventTable, KarnaughMap, PathList, RatePane, Refusal, TruthTable } from './components/panes.jsx'
 import GateCanvas from './components/GateCanvas.jsx'
 import TimingCanvas from './components/TimingCanvas.jsx'
 import StateCanvas from './components/StateCanvas.jsx'
@@ -303,6 +303,7 @@ export default function App() {
                 {currentView === 'table' ? <TruthTable x={x} /> : null}
                 {currentView === 'kmap' ? <KarnaughMap x={x} /> : null}
                 {currentView === 'paths' ? <PathList x={x} /> : null}
+                {currentView === 'rate' ? <RatePane x={x} /> : null}
                 {currentView === 'events' ? <EventTable x={x} /> : null}
                 {x.refusal ? <Refusal refusal={x.refusal} /> : null}
               </>

@@ -30,7 +30,7 @@ const D = {
  * `NEEDS.md` gives the progression test. The plan names 45 experiments in 8
  * groups, and this number moves when a group lands and not before.
  */
-const BUILT = { groups: 7, experiments: 42 }
+const BUILT = { groups: 8, experiments: 45 }
 
 const at = (id, over = {}) => {
   const exp = byId[id]
@@ -376,7 +376,9 @@ describe('every lesson is measured', () => {
   // netlist's own unit, which is the picosecond. A frequency is in hertz and a
   // count carries the word it counts.
   const SCALE = { p: 1, n: 1e3, 'µ': 1e6, u: 1e6, m: 1e9, '': 1e12 }
-  const TIME = /(-?\d+(?:\.\d+)?)\s*([pnµum]?)s(?![A-Za-z])/g
+  // Digits may carry a space as a thousands separator, the way the plans write
+  // 31 250 000 and 24 260, so a quoted time reads the same as a quoted count.
+  const TIME = /(-?\d[\d ]*(?:\.\d+)?)\s*([pnµum]?)s(?![A-Za-z])/g
   const FREQ = /(-?\d+(?:\.\d+)?)\s*([kMG]?)Hz(?![A-Za-z])/g
   const COUNT = /(-?\d[\d\s]*(?:\.\d+)?)\s*(million\s+|billion\s+)?(gates?|literals?|rows?|terms?|inputs?|bits?|levels?|cubes?|primes?|years?|flip-flops?|stages?|states?|codes?)(?![A-Za-z])/g
   const HZ = { k: 1e3, M: 1e6, G: 1e9, '': 1 }
@@ -385,7 +387,8 @@ describe('every lesson is measured', () => {
   const quoted = (text) => {
     const s = text.replace(/−/g, '-')
     const out = []
-    for (const m of s.matchAll(TIME)) out.push({ text: m[0].trim(), digits: (m[1].split('.')[1] || '').length, scale: SCALE[m[2]], value: Math.abs(+m[1]) * SCALE[m[2]] })
+    for (const m of s.matchAll(TIME))
+      out.push({ text: m[0].trim(), digits: (m[1].split('.')[1] || '').length, scale: SCALE[m[2]], value: Math.abs(+m[1].replace(/ /g, '')) * SCALE[m[2]] })
     for (const m of s.matchAll(FREQ)) out.push({ text: m[0].trim(), digits: (m[1].split('.')[1] || '').length, scale: HZ[m[2]], value: Math.abs(+m[1]) * HZ[m[2]] })
     // A count may carry a magnitude word, so "20 million years" is the same
     // reading as the number of years itself.

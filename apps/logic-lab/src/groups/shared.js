@@ -50,3 +50,6 @@ export const Period = (key, label, def, min = 100, max = 5000, hint) => ({ key, 
 
 /** A rate in hertz, on a logarithmic field. */
 export const Rate = (key, label, def, min = 1e3, max = 1e10, hint) => ({ key, label, unit: 'Hz', min, max, step: 1, scale: 'log', decimals: 3, default: def, hint })
+
+/** A target mean time, in years, on a logarithmic field. */
+export const Years = (key, label, def, min = 1, max = 1000000, hint) => ({ key, label, unit: 'years', min, max, step: 1, scale: 'log', decimals: 0, default: def, hint })

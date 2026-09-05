@@ -25,7 +25,7 @@ import { GROUPS } from './groups/shared.js'
 export { GROUPS }
 
 /** Every pane a view switch can show, in the order it lists them. */
-export const VIEW_ORDER = ['timing', 'gates', 'state', 'table', 'kmap', 'paths', 'events']
+export const VIEW_ORDER = ['timing', 'gates', 'state', 'table', 'kmap', 'paths', 'rate', 'events']
 
 export const VIEW_LABELS = {
   timing: { label: 'Timing', title: 'Every signal against time, drawn as the instants it changed at' },
@@ -33,6 +33,7 @@ export const VIEW_LABELS = {
   state: { label: 'States', title: 'The machine as states and arcs, with the state it is in lit' },
   table: { label: 'Truth table', title: 'Every row of the netlist’s truth table, with the present input vector lit' },
   kmap: { label: 'Karnaugh map', title: 'The map in Gray-code order, with the minimum cover drawn as loops' },
+  rate: { label: 'Rate', title: 'The metastability model, its four parameters and the three things it assumes' },
   paths: { label: 'Paths', title: 'Every endpoint’s longest and shortest arrival, and the gates along the path' },
   events: { label: 'Events', title: 'The event list: what changed, when, and which event caused it' },
 }
