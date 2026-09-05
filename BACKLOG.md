@@ -20,7 +20,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Power Lab | built in part | | Groups D, F to N unassigned | `POWER_LAB_PLAN.md` |
 | The two seams and the progression test | building | `lab/seams` | | `CURRICULUM.md` §3, §6 |
 | Electronics Lab | building | `lab/electronics-lab` | | `ELECTRONICS_LAB_PLAN.md` |
-| Logic Lab | building | `lab/logic-lab` | Electronics D6 for one cross-reference | to write |
+| Logic Lab | building, dark | `lab/logic-lab` | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
 | DSP Lab | building | `lab/dsp-lab` | | to write |
 | Random Signals Lab | built, dark | merged | Electronics O1 for one cross-reference | `RANDOM_LAB_PLAN.md` |
 | Control Lab II | building | `lab/control-lab-ii` | | to write |
@@ -191,24 +191,38 @@ carry.
 
 ### Logic Lab
 
-- Groups E to H are specified in `LOGIC_LAB_PLAN.md` §5. They cover the latch
-  and the flip-flop, registers and counters and the built machine, the clock
-  and `f_max`, and metastability. None is built this sitting, and nothing
-  blocks them. The next sitting continues from Group E, against lane 3's
-  `StateCanvas`.
-- The 101 detector, Group F, names Electronics D6, the CMOS inverter. D6 is
-  not built. No lesson names it yet, so `release.test.js` never sees the
-  reference it refuses by design. Group F's own lesson picks it up once D6
-  ships.
-- `TimingCanvas` and `StateCanvas` are built now. Both carry the Interfaces,
-  VLSI and Computer Labs' props in their signatures already, named in
-  `AGENT_BRIEF.md` §3.7 and `NEEDS.md` §3. Promotion to `packages/ui` waits
-  for the first of those three labs to start.
-- The engine contract differs from `VLSI_LAB_PLAN.md`, `COMPUTER_LAB_PLAN.md`
-  and `INTERFACES_LAB_PLAN.md` §2.3 in three ways. They are naming, the
-  meaning of `from` on an event, and where setup and hold are measured. None
-  blocks a lab, and each of the three plans already says it changes to match.
-  `apps/logic-lab/NEEDS.md` §4 reconciles all three.
+All eight groups are built, 45 experiments, and the app is dark. What is left
+is Reed's release gate (`LOGIC_LAB_PLAN.md` §9, phase 6) and the four items
+below.
+
+- **The Playwright harness**, `apps/logic-lab/scripts/verify.mjs`, is not
+  written. The plan's §7 names it and nothing else in the lab depends on it.
+  Two of the three things it would catch are now covered by
+  `src/components/canvases.test.jsx`, which measures every canvas prop against
+  the geometry it produces. What is left uncovered is the app end to end and
+  the 390 px layout. Deferred to the sitting that does the REVIEW_PLAYBOOK
+  audit, because the audit needs the screenshots anyway.
+- **The Electronics D6 cross-reference.** Track D opens after the CMOS
+  inverter, which is not built. A1 states the two-level abstraction as this
+  lab's own starting point instead (Decision 7), and no lesson names D6.
+  `release.test.js` takes the experiment ids that exist and refuses a reference
+  to anything else, so the day D6 lands the director reopens one sentence in A1
+  and one hand-over link. No experiment moves.
+- **`TimingCanvas` and `StateCanvas` wait for a second lab.** Both carry the
+  Interfaces, VLSI and Computer Labs' props already, named in
+  `AGENT_BRIEF.md` §3.7 and `NEEDS.md` §3, and both compute their geometry as
+  data so the tests move with them. Promotion to `packages/ui` waits for the
+  first of those three labs to start. `RatePane` is a third candidate and a
+  weaker one, and `NEEDS.md` §3 says why.
+- **The engine contract differs from the three track D plans** in three ways:
+  naming, the meaning of `from` on an event, and where setup and hold are
+  measured. None blocks a lab, and each of the three plans already says it
+  changes to match. `apps/logic-lab/NEEDS.md` §4 reconciles all three, and
+  `packages/events/src/contract.test.js` holds every promise that was met.
+- **`τ` and `T0` are this lab's parameters, not a measurement** (Decision 4).
+  Group H prints both with every answer and names the three assumptions the
+  law rests on. The Analog IC Lab's latch replaces them when it exists, and
+  nothing in Group H changes but two numbers.
 
 ## 3. The director's queue
 

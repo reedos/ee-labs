@@ -460,7 +460,12 @@ longest path, the gate count, and the delay model in use.
   literal count beside it.
 - **Path list.** Every endpoint with its longest and shortest arrival, and the
   gates along the path.
-- **Events.** The event list as a table, with cause, delay and time.
+- **Events.** The event list as a table, with cause, delay and time. A run that
+  reported a setup or hold violation says so under it, with the worst slack and
+  a note that the sampled value is the model's assumption.
+- **Rate.** Group H's model: the law, its four parameters, the mean time, and
+  the three assumptions the law rests on. CORE_SCOPE Rule 3 is why all four are
+  on the page rather than one of them.
 
 ### 4.3 Numbers
 
@@ -592,9 +597,12 @@ with `see`, `try` and `why` in the Elements lab's three registers.
   the gate is high and holding while it is low. Five gates. Measured: the
   following, the holding, and the gate count.
 - **E4 · The flip-flop is two latches.** Eleven gates, master on the low phase
-  and slave on the high. `q` moves 100 ps after the clock edge, once per edge,
-  whatever `d` did in between. Measured: the event count per edge, and the
-  100 ps.
+  and slave on the high. A rising `q` moves 100 ps after the clock edge and a
+  falling one 150 ps, because clearing the slave reaches `q` through `qn` and
+  setting it does not. Once per edge, whatever `d` did in between, unless `d`
+  moved within a setup time of the edge and the clock closed the master
+  mid-change. Measured: both delays, the event count per edge, and that the
+  master's last move before a chattering edge was inside `t_su` of it.
 - **E5 · Setup and hold, as one window.** The flip-flop primitive, with its
   clock edge at 500 ps and the D step swept past it. Every step from 461 ps to
   519 ps is reported as a violation, which is 59 of the 60 picoseconds of
@@ -613,9 +621,11 @@ with `see`, `try` and `why` in the Elements lab's three registers.
   inputs has no path from one flip-flop to another, and `fMax` declines it by
   name rather than timing a path that is not there. Measured: the four
   arrivals, and `t_min` of 120 ps with no logic between.
-- **F2 · The counter counts.** Four bits, 6 gates, 4 flip-flops. Bit 0 toggles
-  every clock, and bit i toggles when every bit below it is 1. Measured: all
-  sixteen counts in order, and the wrap.
+- **F2 · The counter counts.** Four bits, 6 gates, 4 flip-flops, clocked at
+  800 ps. Bit 0 toggles every clock, and bit i toggles when every bit below it
+  is 1. The period is 800 ps and not 400 because a 6-bit counter's enable chain
+  closes at 490 ps, and a counter clocked faster than it closes does not count.
+  Measured: all sixteen counts in order at every width, and the wrap.
 - **F3 · The enable chain is the carry chain.** The counter's longest path is
   `q0` through two ANDs to `d3`, at 230 ps of logic. It grows 70 ps a bit:
   210 ps at two bits, 350 ps at four, 630 ps at eight. Measured: `t_min` at three
@@ -632,8 +642,10 @@ with `see`, `try` and `why` in the Elements lab's three registers.
   the literal counts.
 - **F7 · The machine, built and run.** Six gates and two flip-flops, and the
   built machine raises `y` on the fourth bit and the seventh of `01011010`.
-  `t_min` is 230 ps. Measured: the output on all eight clocks, the gate count,
-  and `t_min`.
+  `t_min` is 230 ps, which is the clock-to-Q, one AND, the buffer that drives
+  the state bit, and the setup time. Measured: the output on all eight clocks
+  of six different input words, against the specification walked by hand, plus
+  the gate count and `t_min`.
 
 ### Group G: The clock (5)
 
@@ -669,9 +681,11 @@ with `see`, `try` and `why` in the Elements lab's three registers.
   1000 ps period that is 880 ps, and the mean time goes from 124 ns to
   2.036 × 10⁷ years. Measured: both settling times, and both mean times.
 - **H3 · Designing to a target.** A mean time of 1000 years at 1 GHz and 1 MHz
-  asks for 681.6 ps of settling. The panel names what the answer rests on, and
-  the note says `τ` comes from a latch this suite has not built. Measured: the
-  settling time, and that it reproduces the target.
+  asks for 681.6 ps of settling. The grid is whole picoseconds, so the answer
+  rounds up and the mean time comes out a little above the target rather than
+  below it. The panel names what the answer rests on, and the note says `τ`
+  comes from a latch this suite has not built. Measured: the settling time, that
+  it reproduces the target, and which side of the target the rounding lands on.
 
 ---
 
@@ -711,9 +725,14 @@ with `see`, `try` and `why` in the Elements lab's three registers.
   suite while D6 is not built, which is Decision 7's enforcement.
 - **Prose**: `prose.test.js` over every `see`, `try`, `why`, term and chrome
   string. `npm run lint:prose` over this plan and the brief.
-- **Playwright harness** (`scripts/verify.mjs`): the timing diagram redraws when
-  a delay knob moves. The critical path highlight follows the netlist. The
-  Karnaugh map's loops follow the cover. No horizontal scroll at 390 px.
+- **Playwright harness** (`scripts/verify.mjs`): not built. It is the one item
+  of this section that is deferred, and `BACKLOG.md` carries it. What it would
+  catch is a prop not passed, a pane fed stale state, and a canvas that stopped
+  redrawing. Two of those three are now covered by `components/canvases.test.jsx`,
+  which measures every prop against the geometry it produces rather than against
+  the pixels. What is left uncovered is the app end to end and the 390 px
+  layout, and Reed's own pass against the dark deployment is where those are
+  read until the harness exists.
 - **REVIEW_PLAYBOOK audit** before release, all eleven classes, with a screenshot
   pass at 390 px and at 1280 × 900.
 
@@ -756,10 +775,15 @@ Each phase ships green and deployable dark.
 6. **The release gate**, in order, each blocking the next. The full audit. The
    student sittings. Reed's own pass against the dark deployment. Then the flip.
 
-**What this sitting shipped**: phases 1 to 3, which is the engine and the
-combinational half with its timing. That is 24 of the 45 experiments, in groups A
-to D. Groups E to H are specified above and are not built. `BACKLOG.md` carries
-them with the phase named.
+**What is built.** Phases 1 to 5, which is the engine and all 45 experiments in
+all eight groups. Phase 6, the release gate, is the only one left, and every
+step of it is Reed's rather than an overseer's.
+
+The three sittings, for the record. The first shipped the engine and phases 2
+and 3, which is groups A to D. The second shipped the app shell and the two new
+canvases. The third shipped groups E to H, and it changed four numbers this plan
+had stated before the engine was asked (§5's F1, F2, F7 and E4). Each change is
+in the group's own commit message with the reading that forced it.
 
 ---
 
