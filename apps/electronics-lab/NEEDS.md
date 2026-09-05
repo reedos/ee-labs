@@ -200,6 +200,14 @@ impulse lesson, and `packages/ui/src/progression.test.js`.
   way, because a planned row need only be specified in a plan. Until the director says
   which lab owns them, the two circuits are counted twice.
 
+- **Three counts outside `CURRICULUM.md` are now behind the code.** `EE_LABS_MAP.md`
+  §1 says 55 for the Elements lab and 15 for Circuit Lab, `ANALOG_ROADMAP.md`'s tier 0
+  row says "55 + 15, plus two seam experiments", and `PROSE_REWRITE_PROPOSAL.md` says
+  55 lessons. The right numbers are 58 and 16, and the two seam experiments are no
+  longer a promise. All three are the director's maps and roadmaps, and only the
+  Elements and Circuit Lab counts in `CURRICULUM.md` are this lane's. The progression
+  test reads `CURRICULUM.md` alone, so it cannot catch these.
+
 - **A row per new lab in `packages/ui/src/progression.test.js`.** Its `LABS` table names
   every lab's own list, its group names, and its plan file. A lab that adds ids to
   `CURRICULUM.md` without a row here is not checked at all. That file belongs to the
