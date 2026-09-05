@@ -125,11 +125,10 @@ locus, which Electronics L5, M3 and N1 hand their loops to.
 | B · The buck | volt-second balance, ripple, CCM and DCM, the boundary | 8 | built |
 | C · Boost and buck-boost | the two other topologies, the peak, the inverting output | 5 | built |
 | D · Magnetics | volt-seconds are flux, saturation, the flyback, the half-bridge | 4 | built |
-| D5 · Leakage | the flux that links one winding only, and the clamp | 1 | planned |
 | E · Rectifiers | half and full wave, the capacitor, the dimmer, six-pulse | 6 | built |
 | F · Inverters | the square wave, the comparator, the harmonic clusters, overmodulation | 4 | built |
 | G · Losses | the frequency crossover, peak efficiency, the capacitor's RMS, the ledger | 4 | built |
-| H to N | the loop, three-phase, isolated, resonant, drives, EMI, thermal | 21 | planned |
+| The leakage spike, and H to N | the flux that links one winding only, the loop, three-phase, isolated, resonant, drives, EMI, thermal | 22 | planned |
 
 What it assumes: C, L and the RLC from Elements F and G, and the diode from Elements
 I. The switch is Elements F6. Its Group H assumes Control Lab.
