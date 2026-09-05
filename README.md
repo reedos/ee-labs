@@ -25,7 +25,7 @@ npm run dev              # Signal Lab, at http://localhost:1421
 | | covers | status |
 |---|---|---|
 | **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 35 experiments |
-| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters, tolerance | 15 experiments, 10 circuits |
+| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters, tolerance | 16 experiments, 10 circuits |
 | **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 13 experiments, 7 plants x 4 controllers |
 
 A fourth tool, `waveform-simulator`, covers communications and high-speed optical

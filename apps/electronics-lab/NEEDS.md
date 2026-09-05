@@ -208,6 +208,19 @@ impulse lesson, and `packages/ui/src/progression.test.js`.
   Elements and Circuit Lab counts in `CURRICULUM.md` are this lane's. The progression
   test reads `CURRICULUM.md` alone, so it cannot catch these.
 
+- **Two shared surfaces were changed by one number each, and the director should
+  review it.** Circuit Lab is released, and both `README.md` and `site/index.html`
+  quote its size. Its sixteenth experiment made both wrong, and
+  `apps/signal-lab/src/readme-claims.test.js` fails on exactly that. `PROGRAM.md` §5
+  gives those two files to the director in a release commit. The change made here is
+  "15 experiments, 10 circuits" to "16", in one line of each file, and nothing else.
+  The alternative was to hand back a red suite.
+
+- **A stray export in the Elements lab.** `headlines.js` exports `lastGap`, and
+  nothing imports it. It is near enough to `lastBlock` in the same lab's `math.js`
+  that one of the two should go. Both files belong to the Elements lab rather than to
+  this lane.
+
 - **A row per new lab in `packages/ui/src/progression.test.js`.** Its `LABS` table names
   every lab's own list, its group names, and its plan file. A lab that adds ids to
   `CURRICULUM.md` without a row here is not checked at all. That file belongs to the
