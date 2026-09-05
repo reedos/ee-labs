@@ -145,11 +145,12 @@ export const LESSONS_M = {
     ],
     try: [
       {
-        say: 'Set C_c to 30 pF. The crossover comes in to 1.41 MHz, the margin rises to 73.6°, and the closed-loop poles are real, so nothing rings at all.',
+        say: 'Set C_c to 30 pF. The crossover comes in to 1.41 MHz, the margin rises to 73.6°, and the damping reaches 0.979, so a step overshoots by less than a millionth of its own size.',
         set: { cc: 30e-12 },
         reads: [
           [fcOf, 1414690],
           [pmOf, 73.64],
+          [(x) => ringOf(x.poles).zeta, 0.97911],
         ],
       },
       {
@@ -294,6 +295,11 @@ export const LESSONS_M = {
           [(x, p) => power(x, p).supply, 0.056504],
           [(x, p) => power(x, p).efficiency, 70.066],
         ],
+      },
+      {
+        say: 'Set the drive to 5 V and the supplies to ±3 V. There is no answer to draw, and the pane gives the reason. A saturated transistor and its own rail set the same voltage twice.',
+        set: { amp: 5, vsup: 3 },
+        refuses: true,
       },
     ],
     why:
