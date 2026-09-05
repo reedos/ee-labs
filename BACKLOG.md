@@ -350,6 +350,55 @@ phasing is updated to say so. What is left is Reed's release gate
 - **`npm ci` does not run on this branch.** `package-lock.json` is out of sync
   with six workspaces that are not this lab's. The director regenerates it once
   at integration.
+### Grid Lab
+
+All ten groups are built, 42 experiments, and the app is dark. Group I ships
+with the rest, because the Machines Lab's synchronous machine is merged and
+`packages/grid`'s `stability` imports it rather than writing a second one. What
+is left is Reed's release gate (`GRID_LAB_PLAN.md` §9, phase 9) and the items
+below.
+
+- **The Playwright harness**, `apps/grid-lab/scripts/verify.mjs`, is not
+  written. The plan's §7 names it and nothing else in the lab depends on it.
+  Every number is covered by `src/experiments.test.js`, and every canvas draws
+  from geometry the tests can read. What is left uncovered is the app end to
+  end and the 390 px layout, including the sequence pane, which is the widest
+  picture in the suite and stacks vertically below 500 px. Deferred to the
+  sitting that does the REVIEW_PLAYBOOK audit, because the audit needs the
+  screenshots anyway.
+- **Two cross-references to Power Lab stay deferred.** B5 names Power Lab I3
+  for the inverter that produces a balanced three-phase set, and C4 names Power
+  Lab D1 for the magnetic core a transformer winding sits on. Both groups are
+  planned with no overseer. Neither reference is a link today, so nothing is
+  red on their account, and `src/release.test.js` carries both as data so they
+  can be found without reading the lessons. Each reopens when its Power Lab
+  group lands.
+- **Group G runs on a textbook machine rather than the Machines Lab's.** The
+  reactances in `library.js`'s `FAULT_NETWORK` are the plan's §4.3 set. Wiring
+  the fault study to the imported machine's own subtransient reactance is one
+  line in `faults.js`, and it waits for the release audit so the numbers move
+  once rather than twice.
+- **The DC power flow's guard is written on one network.** The thresholds are
+  10° to warn, 30° to decline the flow arrows, `R/X` above 0.25, and a
+  magnitude outside 0.95 to 1.05 pu. `invariants.test.js` fuzzes them across
+  120 random networks and holds the promise that nothing inside the guard errs
+  by more than 5 % of the largest flow the network carries. That measure is
+  against the largest flow rather than per branch, because a branch carrying a
+  hundredth of a per unit can be wholly wrong in relative terms and nearly
+  right in megawatts. The per-branch reading is what E1 and E2 quote.
+- **Six numbers differ from `GRID_LAB_PLAN.md`**, each recomputed from the
+  engine and listed with its reason in `apps/grid-lab/NEEDS.md` §6. Three are
+  substantive. The closed-form clearing time at zero transfer is 0.146827 s
+  rather than 0.172761 s. The integrator's guard fires at a 50 ms step rather
+  than at 1 ms, because fourth-order Runge–Kutta is already accurate there.
+  The shunt that restores 1.00 pu is 63.2051 Mvar rather than 40 Mvar. The
+  plan's §5 also crosses the Group H and Group I letters, and the ids here
+  follow the group letters.
+- **No optimal power flow, no unit commitment, no state estimation.** The
+  plan's §10 lists ten non-goals and each is a decision rather than an
+  omission. The two most likely to be asked for are a dispatch with a loss
+  formula and a second machine for multi-machine stability, and both are named
+  there with the reason.
 
 ## 3. The director's queue
 

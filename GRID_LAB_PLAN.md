@@ -675,21 +675,25 @@ registers, within the STYLE.md budgets.
 
 ### Group H: Protection (4)
 
-- **I1 · The inverse-time overcurrent relay.** `t = TDS · K/(M^α − 1)`, with `M` the
+The ids below were written as I1 to I4 and the machine group's as H1 to H4, which
+crossed the two groups' letters. The build follows the letters, so protection is H1 to
+H4 and the machine is I1 to I5. Nothing else about either group moved.
+
+- **H1 · The inverse-time overcurrent relay.** `t = TDS · K/(M^α − 1)`, with `M` the
   fault current over the pickup. At a 400 A pickup and `TDS = 0.1` the IEC very inverse
   curve gives 1.35 s at 800 A, 0.45 s at 1600 A and 0.15 s at 4000 A. A bigger fault
   clears sooner, which is what the word inverse names. Measured: the three times, and
   the curve's slope on log axes.
-- **I2 · Coordination is a margin in seconds.** A downstream relay at `TDS = 0.1`
+- **H2 · Coordination is a margin in seconds.** A downstream relay at `TDS = 0.1`
   operates in 0.45 s at 1600 A. An upstream relay needs 0.30 s more, so its `TDS` is
   0.16667 and it operates in 0.75 s. Raise the downstream setting and the upstream one
   has to follow. Measured: both times, the margin, and the `TDS` the margin requires.
-- **I3 · Distance, and the two zones.** A relay divides its voltage by its current,
+- **H3 · Distance, and the two zones.** A relay divides its voltage by its current,
   which gives the impedance to the fault. On a 40 Ω line, zone 1 reaches 32 Ω and trips
   at once, and zone 2 reaches 48 Ω and waits. A fault 60 km along looks like 24 Ω,
   inside zone 1. Measured: the two reaches, the apparent impedance at three fault
   positions, and which zone each falls in.
-- **I4 · Infeed lengthens the reach.** A second source feeding the fault from the
+- **H4 · Infeed lengthens the reach.** A second source feeding the fault from the
   remote bus raises the current through the fault without raising it through the relay.
   With 50 % remote infeed the 60 km fault looks like 36 Ω, which is outside zone 1, so
   the relay waits when it should not. Measured: the apparent impedance with and without
@@ -697,19 +701,19 @@ registers, within the STYLE.md budgets.
 
 ### Group I: The machine on the grid, and stability (5)
 
-- **H1 · The machine as a source behind a reactance.** The Machines Lab's synchronous
+- **I1 · The machine as a source behind a reactance.** The Machines Lab's synchronous
   machine, in steady state, is `E∠δ` behind `jX_d'`. Power transferred is
   `P = (E V / X) sin δ`, so the angle is the throttle. Measured: the transfer at four
   angles, and the maximum at 90°.
-- **H2 · The swing equation.** `M d²δ/dt² = P_m − P_e` with `M = 2H/ω_s`. At
+- **I2 · The swing equation.** `M d²δ/dt² = P_m − P_e` with `M = 2H/ω_s`. At
   `H = 4.0 MJ/MVA` and 60 Hz that is 0.0212207 pu·s²/rad. Disturb the machine and it
   swings at 1.15523 Hz, a period of 0.865629 s. Measured: `M`, the small-signal
   frequency, and the period.
-- **H3 · Equal areas.** A fault cuts transfer to 0.5 pu and clearing leaves 1.5 pu. The
+- **I3 · Equal areas.** A fault cuts transfer to 0.5 pu and clearing leaves 1.5 pu. The
   machine accelerates from 30.000° and must decelerate before 138.190°. The two areas
   are equal at `δ_cr = 70.2924°`, and each is 0.43883275 pu·rad. Measured: both angles,
   the critical angle, and the two areas agreeing to 10⁻¹⁴.
-- **H4 · From an angle to a time.** The critical clearing angle is a closed form. The
+- **I4 · From an angle to a time.** The critical clearing angle is a closed form. The
   critical clearing *time* is not, so it comes from integrating the swing equation, and
   the pane names the method and the step. Here it is 0.206114 s, or 12.367 cycles. If
   the fault had cut transfer to zero, the closed form would give 0.172761 s. Measured:
@@ -812,6 +816,15 @@ The mechanism Power Lab and the Elements lab share, unchanged.
 
 Each phase ships green and deployable dark.
 
+**Where this stands.** Phases 1 to 8 are built and merged on `lab/grid-lab`.
+`packages/grid` carries every module §2 names, and its invariants are fuzzed
+across 120 random networks. All ten groups ship, 42 experiments, with every
+number pinned as a function of the knobs. Phase 7 did not have to wait, because
+the Machines Lab's synchronous machine landed before this lab started and
+`swing.js` imports it. What is left is phase 9, the release gate, which is
+Reed's. `apps/grid-lab/NEEDS.md` §6 lists six numbers this build computed
+differently from §2 and §4.3, each with its reason.
+
 1. **Per unit and three phase.** `perUnit.js`, `sequence.js`, the app shell, the
    one-line canvas in `packages/ui` with the Energy Lab's props, the dark deploy and
    the `RELEASE_STATUS` test. **Groups A, B** (9). Exit: invariants 3, 4 and 5 fuzzed
@@ -838,9 +851,16 @@ Each phase ships green and deployable dark.
 9. **The release gate**, in order, each blocking the next. The full audit. The student
    sittings. Reed's own pass against the dark deployment. Then the flip.
 
-Phase 7 is the only phase that waits on another lab. Phases 1 to 6 and 8 are a complete
-first power-systems course on their own, and they ship whether or not the Machines Lab
-has landed.
+Phase 7 was the only phase that waited on another lab, and it no longer waits.
+Phases 1 to 6 and 8 are a complete first power-systems course on their own, and they
+ship whether or not the Machines Lab has landed.
+
+Two things named in the phases above are deferred rather than done, and both are in
+`BACKLOG.md` under **Grid Lab**. The Playwright harness §7 asks for is not written.
+Every number it would check is already pinned in `experiments.test.js`, so what is left
+is the 390 px layout, and the release audit needs those screenshots anyway. Group G
+runs on §4.3's textbook reactances rather than on the imported machine's own
+subtransient reactance, so those numbers move once at the audit rather than twice.
 
 ---
 
