@@ -115,6 +115,26 @@ export const LESSONS = [
     patch: { circuit: 'rlLow', view: 'step' },
     claim: { sameAsRc: true, tryCorners: { 100e-3: 1591.5, 10e-3: 15915 } },
   },
+  {
+    group: 'Reading a response',
+    name: 'The impulse response, and why the step is its integral',
+    terms: ['impulse', 'convolution', 'tau'],
+    note:
+      'h(t) is the impulse response, what this circuit gives back to a single, infinitely narrow spike. It ' +
+    'equals (1/τ)e^{−t/τ}, 10 000 at t = 0 here, falling by a factor of e every 100 µs. That curve is also ' +
+    'the step response’s own slope at every instant, so integrating h(t) hands the step back exactly. A ' +
+    'square wave is shifted steps added with alternating sign, and convolution is exactly that sum, weighted ' +
+    'by h(t).',
+    try: 'Drop R to 100 Ω. τ falls tenfold to 10.0 µs and h(0) rises tenfold to 100 000, and the derivative of ' +
+    'the drawn step curve still lands on it exactly.',
+    chips: [
+      { label: 'R 100 Ω', params: { r: 100 } },
+      { label: 'R 1 kΩ', params: { r: 1000 } },
+    ],
+    featured: [{ id: 'r', min: 100, max: 100000 }],
+    patch: { circuit: 'rcLow', view: 'step' },
+    claim: { h0: 10000, tauUs: 100, tryH0: 100000, tryTauUs: 10, derivMatchesH: true, squareIsShiftedSteps: true },
+  },
 
   // ------------------------------------------------------------ Resonance
   {

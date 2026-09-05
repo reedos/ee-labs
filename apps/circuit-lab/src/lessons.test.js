@@ -11,6 +11,7 @@ import {
   polesZeros,
   secondOrderMetrics,
   stepResponse,
+  simulate,
 } from '@ee-labs/systems'
 
 // Every lesson makes a claim, so every claim is rendered and measured.
@@ -122,6 +123,59 @@ describe('the claims each lesson makes', () => {
       expect(magnitudeAt(rl, f), `${f} Hz`).toBeCloseTo(magnitudeAt(rc, f), 12)
       expect(phaseAt(rl, f), `${f} Hz`).toBeCloseTo(phaseAt(rc, f), 12)
     }
+  })
+
+  it('the impulse response is (1/τ)e^{−t/τ}, and it is the drawn step curve’s own slope', () => {
+    const l = byName('The impulse response, and why the step is its integral')
+    const s = applyLesson(l)
+    const tau = s.params.r * s.params.c
+    expect(1 / tau).toBeCloseTo(l.claim.h0, 6)
+    expect(tau * 1e6).toBeCloseTo(l.claim.tauUs, 6)
+
+    const tf = tfOf(l)
+    const duration = 5 * tau
+    const points = 4001
+    const step = stepResponse(tf, { duration, points })
+    const dt = step.t[1] - step.t[0]
+    const h = (t) => (1 / tau) * Math.exp(-t / tau)
+
+    // A centred finite difference of the RK4-drawn step, compared with the
+    // closed-form h(t) — not restating the claim, since the step curve never
+    // touches h(t) in its own computation.
+    let maxRel = 0
+    for (let i = 1; i < points - 1; i++) {
+      const deriv = (step.y[i + 1] - step.y[i - 1]) / (2 * dt)
+      maxRel = Math.max(maxRel, Math.abs(deriv - h(step.t[i])) / h(step.t[i]))
+    }
+    expect(maxRel).toBeLessThan(1e-4)
+  })
+
+  it('a square wave’s response really is the sum of shifted, sign-flipped steps', () => {
+    const l = byName('The impulse response, and why the step is its integral')
+    const s = applyLesson(l)
+    const tau = s.params.r * s.params.c
+    const tf = tfOf(l)
+    // A period comparable to τ, so several shifted copies overlap and the sum
+    // is doing real work rather than tracking one step in isolation.
+    const T = 2 * tau
+    const square = (t) => (Math.floor(t / (T / 2)) % 2 === 0 ? 1 : -1)
+    const analyticStep = (t) => (t < 0 ? 0 : 1 - Math.exp(-t / tau))
+    const bySuperposition = (t) => {
+      let y = analyticStep(t)
+      let k = 1
+      let shift = T / 2
+      while (shift < t + 1e-12) {
+        y += 2 * (k % 2 === 1 ? -1 : 1) * analyticStep(t - shift)
+        shift += T / 2
+        k++
+      }
+      return y
+    }
+    const points = 8000
+    const { t, y } = simulate(tf, square, { duration: 5 * T, points })
+    let maxErr = 0
+    for (let i = 0; i < points; i++) maxErr = Math.max(maxErr, Math.abs(y[i] - bySuperposition(t[i])))
+    expect(maxErr).toBeLessThan(0.002)
   })
 
   it('one circuit really does give three different filters', () => {

@@ -201,6 +201,23 @@ export const TERMS = {
       'resistor-capacitor, L/R for an inductor). After 5τ the step has effectively arrived. ' +
       'Its reciprocal is the corner in rad/s — the same number governing both domains.',
   },
+  impulse: {
+    name: 'Impulse response h(t)',
+    match: /impulse/i,
+    def:
+      'What a circuit gives back to a single, infinitely narrow, infinitely tall spike at t = 0 — its ' +
+      'response with no help from an input still arriving. Every other response is built from copies of ' +
+      'h(t), shifted to when the input pushed and scaled by how hard, which is what makes it worth knowing ' +
+      'on its own.',
+  },
+  convolution: {
+    name: 'Convolution',
+    match: /convolution/i,
+    def:
+      'Building a response by adding up shifted, scaled copies of the impulse response, one for every ' +
+      'instant the input pushed. Signal Lab runs the same sum over discrete taps; here time is continuous, ' +
+      'so the sum becomes an integral.',
+  },
   tolerance: {
     name: 'Part tolerance',
     match: /tolerance|±\d/,
