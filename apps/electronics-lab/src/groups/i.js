@@ -363,6 +363,11 @@ export const GROUP_I = [
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
     signal: { input: 'Vs', output: 'c' },
+    // The tangent netlist here carries no capacitors, so its response is the
+    // same at every frequency. Reading it at zero is what lets the AC overlay
+    // show the signal at each node: a source that holds a DC value excites the
+    // phasor solve at no other frequency.
+    probe: 0,
     sweepOver: { key: 'vin', from: -0.004, to: 0.004, label: 'v_in' },
     small: 'Vs',
     headline: { path: 'gain', label: 'A_v', unit: '' },
@@ -387,6 +392,11 @@ export const GROUP_I = [
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
     signal: { input: 'Vs', output: 'c' },
+    // The tangent netlist here carries no capacitors, so its response is the
+    // same at every frequency. Reading it at zero is what lets the AC overlay
+    // show the signal at each node: a source that holds a DC value excites the
+    // phasor solve at no other frequency.
+    probe: 0,
     sweepOver: { key: 'vin', from: -0.03, to: 0.03, label: 'v_in' },
     small: 'Vs',
     headline: { path: 'gain', label: 'A_v', unit: '' },
@@ -411,6 +421,9 @@ export const GROUP_I = [
     view: 'reading',
     views: ['reading', 'equations'],
     signal: { input: 'Vs', output: 'c2' },
+    // The coupling capacitor puts a corner near two hertz into this one, so
+    // the gain is read a kilohertz above it rather than at DC, where the
+    // capacitor is an open and the pair has no gain at all.
     probe: 1000,
     at: 1000,
     small: 'Vs',

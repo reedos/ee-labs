@@ -404,6 +404,11 @@ export const GROUP_H = [
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
     signal: { input: 'Vs', output: 'c' },
+    // The tangent netlist here carries no capacitors, so its response is the
+    // same at every frequency. Reading it at zero is what lets the AC overlay
+    // show the signal at each node: a source that holds a DC value excites the
+    // phasor solve at no other frequency.
+    probe: 0,
     sweepOver: { key: 'vin', from: -0.04, to: 0.04, label: 'v_in' },
     small: 'Vs',
     headline: { path: 'gain', label: 'A_v', unit: '' },
@@ -429,6 +434,11 @@ export const GROUP_H = [
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
     signal: { input: 'Vs', output: 'c' },
+    // The tangent netlist here carries no capacitors, so its response is the
+    // same at every frequency. Reading it at zero is what lets the AC overlay
+    // show the signal at each node: a source that holds a DC value excites the
+    // phasor solve at no other frequency.
+    probe: 0,
     sweepOver: { key: 'vin', from: -0.1, to: 0.1, label: 'v_in' },
     small: 'Vs',
     headline: { path: 'gain', label: 'A_v', unit: '' },
@@ -446,6 +456,11 @@ export const GROUP_H = [
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
     signal: { input: 'Vs', output: 'out' },
+    // The tangent netlist here carries no capacitors, so its response is the
+    // same at every frequency. Reading it at zero is what lets the AC overlay
+    // show the signal at each node: a source that holds a DC value excites the
+    // phasor solve at no other frequency.
+    probe: 0,
     sweepOver: { key: 'vin', from: -1, to: 1, label: 'v_in' },
     small: 'Vs',
     headline: { path: 'gain', label: 'A_v', unit: '' },
@@ -463,6 +478,11 @@ export const GROUP_H = [
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
     signal: { input: 'Vs', output: 'c' },
+    // The tangent netlist here carries no capacitors, so its response is the
+    // same at every frequency. Reading it at zero is what lets the AC overlay
+    // show the signal at each node: a source that holds a DC value excites the
+    // phasor solve at no other frequency.
+    probe: 0,
     sweepOver: { key: 'vin', from: -0.05, to: 0.05, label: 'v_in' },
     small: 'Vs',
     headline: { path: 'gain', label: 'A_v', unit: '' },
@@ -480,6 +500,11 @@ export const GROUP_H = [
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
     signal: { input: 'Vs', output: 'd' },
+    // The tangent netlist here carries no capacitors, so its response is the
+    // same at every frequency. Reading it at zero is what lets the AC overlay
+    // show the signal at each node: a source that holds a DC value excites the
+    // phasor solve at no other frequency.
+    probe: 0,
     sweepOver: { key: 'vin', from: -0.2, to: 0.2, label: 'v_in' },
     small: 'Vs',
     headline: { path: 'gain', label: 'A_v', unit: '' },
@@ -497,6 +522,11 @@ export const GROUP_H = [
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
     signal: { input: 'Vs', output: 'out' },
+    // The tangent netlist here carries no capacitors, so its response is the
+    // same at every frequency. Reading it at zero is what lets the AC overlay
+    // show the signal at each node: a source that holds a DC value excites the
+    // phasor solve at no other frequency.
+    probe: 0,
     sweepOver: { key: 'vin', from: -0.4, to: 0.4, label: 'v_in' },
     small: 'Vs',
     headline: { path: 'gain', label: 'A_v', unit: '' },
