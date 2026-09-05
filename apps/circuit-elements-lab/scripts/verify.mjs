@@ -10,12 +10,22 @@
 //   npm run verify
 
 import { chromium } from 'playwright'
+import { existsSync } from 'node:fs'
 
 const URL = process.env.APP_URL || 'http://localhost:4176'
 const failures = []
 const fail = (m) => failures.push(m)
 
-const browser = await chromium.launch()
+// Playwright asks for the chromium build its own version pins, by revision
+// number. A machine that carries one chromium for every tool has a different
+// revision, and the launch fails with a message telling you to download a
+// browser you are not allowed to download. CHROMIUM_PATH names the binary, and
+// so does the `chromium` link the shared browser directory keeps beside its
+// revisions. Either one is used before the pinned revision is asked for.
+const linked = process.env.PLAYWRIGHT_BROWSERS_PATH ? `${process.env.PLAYWRIGHT_BROWSERS_PATH}/chromium` : null
+const executablePath = [process.env.CHROMIUM_PATH, linked].find((p) => p && existsSync(p))
+if (executablePath) console.log(`chromium: ${executablePath}`)
+const browser = await chromium.launch(executablePath ? { executablePath } : {})
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 })
 
 const consoleErrors = []
