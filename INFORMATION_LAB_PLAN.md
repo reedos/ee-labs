@@ -607,32 +607,56 @@ The mechanism is the one Power Lab and the Elements lab share, unchanged:
 ## 9. Phasing
 
 Each phase ships green and deployable dark. The order is by dependency, and Group F
-is last because it is the only group that waits on another lab.
+is last because it is the only group that waits on another lab. Phases 1 to 5 are
+**built** on `lab/info-lab`, in one sitting rather than five, because each phase's
+engine module is independent of the others and the app shell landed first.
 
-1. **The field and the block codes.** `gf2.js`, `gfm.js`, `block.js`. App shell, the
-   code table and the weight view, dark deploy and the `RELEASE_STATUS` test.
-   **Group C** (5). Exit: invariants 1 to 7 fuzzed green, every C number pinned, and
-   C5 stating what Decision 4 leaves out.
-2. **Entropy and source coding.** `entropy.js`, `source.js`, the code tree view.
-   **Group A** (5). Exit: invariant 11 green, and A2's three sources pinned.
-3. **Capacity, without the plot.** The rest of `entropy.js` and B1 to B3. **Group B**
-   (3 of 4). Exit: every capacity pinned and the Shannon limit computed at five rates.
-   B4 waits on phase 6.
-4. **The trellis.** `conv.js`, the trellis walker view. **Group D** (5). Exit:
-   invariants 8 and 9 green, the free distance computed rather than quoted, and D3's
-   operation counts pinned.
-5. **The graph.** `ldpc.js`, the Tanner graph view. **Group E** (3). Exit: invariant
-   10 green, and E3's non-converging decode reproducible from its seed.
+1. **The field and the block codes.** Built. `gf2.js`, `gfm.js`, `block.js`, `rs.js`.
+   App shell, the code table and the weight view, and the `RELEASE_STATUS` test.
+   **Group C** (5). Exit met: invariants 1 to 6 fuzzed green, every C number pinned,
+   and C5 printing what Decision 4 leaves out.
+2. **Entropy and source coding.** Built. `entropy.js`, `source.js`, the code tree
+   view. **Group A** (5). Exit met: invariant 10 green over 200 random sources and
+   10 000 arithmetic streams, and A2's three sources pinned.
+3. **Capacity, without the plot.** Built. The rest of `entropy.js` and B1 to B3.
+   **Group B** (3 of 4). Exit met: every capacity pinned, the Shannon limit computed
+   at four rates and at its floor, and the binary-input integral reporting its own
+   convergence. B4 waits on phase 6.
+4. **The trellis.** Built. `conv.js`, the trellis walker view. **Group D** (5). Exit
+   met: invariants 7 and 8 green, the free distance searched for rather than quoted at
+   all four constraint lengths, and D3's operation counts pinned.
+5. **The graph.** Built. `ldpc.js`, the Tanner graph view. **Group E** (3). Exit met:
+   invariant 9 green over 300 channels, and E3's non-converging decode reproducible
+   from its seed.
 6. **The gain.** `gain.js`, the BER plot imported from the Communications Lab, B4 and
-   **Group F** (3 plus B4). Exit: invariants 12 and 13 green, the crossover pinned at
-   5.862 dB, and both cross-lab tests passing. This phase waits on the Communications
-   Lab's Group D.
+   **Group F** (3 plus B4). Exit: invariants 11 and 12 green, the crossover pinned at
+   5.862 dB, and both cross-lab tests passing. **Waiting**, on the Communications
+   Lab's Group D. That lab has no package on the integration branch, so the two
+   contracts it owes this one are written into `apps/info-lab/NEEDS.md` §3 and the
+   four experiments are in `BACKLOG.md`.
 7. **The release gate**, in order, each blocking the next. The full audit (every
    option, every preset, every claim, fuzzing, both browsers). The student sittings.
    Reed's own pass against the dark deployment. Then the flip.
 
-Phases 1 to 5 are 21 of the 25 experiments and need nothing that is not built today.
-That is the argument for building this lab earlier than the map's order suggests.
+The invariant numbers above are §2.10's, which the first draft of this section had
+off by one from phase 2 onward.
+
+Phases 1 to 5 are 21 of the 25 experiments and needed nothing that was not built.
+That was the argument for building this lab earlier than the map's order suggests.
+It held. The only thing the lab could not build is the group that reads another
+lab's curve.
+
+Three things phases 1 to 5 settled that the earlier sections state differently.
+
+- The twelve-bit LDPC code of §3 has rate five twelfths rather than one third. Two
+  checks per bit makes every column of `H` even, so its rows sum to zero and its rank
+  is 7. E1 measures the design rate and the true rate together, which is a better
+  lesson than the one this plan wrote.
+- The `(5,1)` repetition code is perfect, like `(7,4)` Hamming and `(23,12)` Golay.
+  C3 offers it as the third of them rather than as a counter-example.
+- Nothing in a lesson quotes the `(3,6)` threshold of 1.11 dB. §10 names it as a
+  literature value with no test behind it, and a number no test measures does not go
+  on a student's screen.
 
 ---
 

@@ -640,3 +640,51 @@ that edit.
 - Mixed-Signal D5's eye diagram waits on the Communications Lab, which owns that
   canvas and has no plan file. The experiment ships with the sampled-output view
   alone until then.
+
+### Information Lab
+
+Built on `lab/info-lab`: `packages/codes`, `apps/info-lab` dark, and 21 of the 25
+experiments in five of the six groups (`INFORMATION_LAB_PLAN.md` §9, phases 1 to 5).
+The lines below are what is not built, and what reopens each one.
+
+- **Group F, the coding gain measured (3 experiments), and B4**: wait on the
+  Communications Lab, which has no package on the integration branch. Two things are
+  needed and both are written as code in `apps/info-lab/NEEDS.md` §3. The BER canvas
+  with its `limits` prop, which that plan's Decision 3 builds with this lab named as
+  its second user. And the uncoded curve as a function, so a gain is measured as a
+  distance between two curves rather than read off a picture. Reopens when
+  `packages/comms` lands.
+- **The uncoded closed form is available today**, which narrows that dependency.
+  `@ee-labs/random` exports `errorRateAntipodal(ebN0)`, the `Q(√(2 E_b/N_0))` those
+  four experiments need. What is missing is the canvas and the agreement between the
+  two labs, not the arithmetic. The director may prefer to unblock Group F with a
+  canvas in `packages/ui` rather than wait for the whole of the Communications Lab.
+- **The soft metric seam.** E2 and E3 read a per-bit log-likelihood ratio, and this
+  lab computes its own in `packages/codes/src/channel.js` rather than waiting. Bit 0
+  is sent as +1 and the belief is `2y/σ²`. When the Communications Lab lands
+  `detect.js`, one test compares the two over a seeded run and this lab drops its own.
+  A detector with the other sign convention would give a decoder here the wrong answer
+  with no error message, which is why the contract is written down.
+- **The Reed-Solomon error decoder** is a stretch (Decision 4). C5 shows the distance,
+  the erasure decoder and the field arithmetic, and the pane prints what is missing.
+  Berlekamp-Massey or the Euclidean algorithm reopens it in a second version.
+- **`gain.js` is not written.** It belongs with Group F, because every function in it
+  is a distance between two curves and one of the two curves is the other lab's.
+- **The `(3,6)` LDPC threshold of 1.11 dB** is quoted from Richardson and Urbanke in
+  the plan's §10 and no test pins it, so no lesson in this lab quotes it. Density
+  evolution over message densities is a lab of its own.
+- **Two numbers of the plan moved under measurement**, and the director settles both.
+  The twelve-bit LDPC code has rate five twelfths rather than one third. Two checks
+  per bit leaves the eight rows dependent, and E1 now measures the design rate and the
+  true rate together. The `(5,1)` repetition code is perfect, so C3 offers it as a
+  third perfect code rather than as a counter-example.
+- **No Playwright harness.** The four checks this lab wants from one are in
+  `INFORMATION_LAB_PLAN.md` §7 and in `apps/info-lab/NEEDS.md` §5. Until there is one,
+  the screenshot pass is the only check on a pane fed stale state.
+- **`deploy.yml` and `progression.test.js` entries for `/info-lab/`**: through
+  `NEEDS.md`, as every dark lab. The app's own release test fails until the deploy
+  line exists, which is how the request stays on the record.
+- **The trellis walker and the Tanner graph** stay in the app under `PROGRAM.md` §4,
+  because no second lab claims either. Both are built against the Logic Lab's state
+  diagram prop shape. Both compute their picture as data before drawing it, so a
+  promotion to `packages/ui` is a move that carries its own tests.
