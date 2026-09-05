@@ -229,10 +229,14 @@ function outputLayout() {
       ...vleg('RL', 500, 250, 340),
       gnd(500, 340),
       ...vleg('Rep', 312, 250, 330, true),
-      wire(312, 330, 312, 350),
-      wire(312, 350, 288, 350),
-      wire(288, 350, 288, 370),
-      node('ep', 288, 360, 'l'),
+      // The jog to the pnp's emitter runs at 338 rather than 350, and the
+      // node sits at 366 rather than 360. Q_p's reading is written 34 px
+      // above its centre, which is a band from 349 to 358 across the width of
+      // the number, and both the wire and the label were inside it.
+      wire(312, 330, 312, 338),
+      wire(312, 338, 288, 338),
+      wire(288, 338, 288, 370),
+      node('ep', 288, 366, 'l'),
       { el: 'Qp', x: 300, y: 390, dir: 'h', flip: true },
       wire(288, 410, 288, 460),
       wire(288, 460, 560, 460),

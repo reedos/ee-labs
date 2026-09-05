@@ -33,7 +33,11 @@ export const MATH_M = {
     return {
       blocks: [
         T('The mirror turns the pair’s two collector currents into one, so the whole of g_m1 arrives at the second stage’s base. That stage turns it into a voltage across its own load, and the two gains multiply.'),
-        F('A_0 = g_{m1}\\,(r_{o2} \\parallel r_{o4} \\parallel r_{\\pi5}) \\times g_{m5}\\,(R_C \\parallel r_{o5})'),
+        F(
+          'A_0 \\approx g_{m1}\\,(r_{o2} \\parallel r_{o4} \\parallel r_{\\pi5}) \\times g_{m5}\\,(R_C \\parallel r_{o5})',
+          'Two stages multiplied is an estimate, not an identity. It cuts the circuit at the second stage’s base, where the mirror and that base both carry current.' +
+            (Number.isFinite(x.gain) && x.gain !== 0 ? ` Here it sits ${(100 * ((stage1 * stage2) / Math.abs(x.gain) - 1)).toFixed(1)} % above the solve.` : ''),
+        ),
         C([
           row('the output resistance, by test source', rOut, portResistance(tangent(x).elements, 'out'), 'Ω', 1e-3),
           row('the gain, the two stages multiplied', stage1 * stage2, Math.abs(x.gain), '', 0.12),
@@ -76,7 +80,11 @@ export const MATH_M = {
     return {
       blocks: [
         T('The capacitor across the second stage is multiplied by that stage’s gain, so the node in front of it sees a very large capacitance and the amplifier gets one pole far below every other.'),
-        F('f_t = \\frac{g_{m1}}{2\\pi C_c}, \\qquad f_p = \\frac{f_t}{A_0}, \\qquad f_{p2} = \\frac{g_{m5}}{2\\pi C_L}'),
+        F(
+          'f_t \\approx \\frac{g_{m1}}{2\\pi C_c}, \\qquad f_p \\approx \\frac{f_t}{A_0}, \\qquad f_{p2} \\approx \\frac{g_{m5}}{2\\pi C_L}',
+          'All three are the pole-split result, which holds while the second stage’s gain is large and the two poles are decades apart.' +
+            (Number.isFinite(gbw) ? ` Here the product sits ${(100 * (ft / gbw - 1)).toFixed(1)} % above the measured one.` : ''),
+        ),
         C([
           row('the gain-bandwidth product', ft, gbw, 'Hz', 0.14, { unchecked: weak || tight }),
           row('the dominant pole, f_t over the gain', ft / Math.abs(x.gain), ps[0] ? ps[0].hz : NaN, 'Hz', 0.14, { unchecked: weak || tight }),
@@ -202,7 +210,10 @@ export const MATH_M = {
     return {
       blocks: [
         T('Two input transistors that differ in saturation current need a voltage between their bases to carry the same current. From outside the amplifier that voltage is indistinguishable from a signal.'),
-        F('V_{OS} = V_T \\ln r, \\qquad I_B = \\frac{I_{tail}}{2\\,(1 + \\beta_{eff})}, \\qquad \\beta_{eff} = \\beta\\left(1 + \\frac{|V_{CE}|}{V_A}\\right)'),
+        F(
+          'V_{OS} \\approx V_T \\ln r, \\qquad I_B \\approx \\frac{I_{tail}}{2\\,(1 + \\beta_{eff})}, \\qquad \\beta_{eff} = \\beta\\left(1 + \\frac{|V_{CE}|}{V_A}\\right)',
+          'Both hold for a pair sharing its tail evenly. Once the two sides are mismatched they carry slightly different currents, and each estimate then sits beside the solve rather than on it.',
+        ),
         C([
           row('the input offset the mismatch asks for', vt * Math.log(p.ratio), vos, 'V', 0.06, { abs: 1e-9, unchecked: big }),
           row('the base current, the tail shared out', ib, Math.abs(q.Q1.ib), 'A', 0.03, { unchecked: lopsided }),
@@ -242,8 +253,19 @@ export const MATH_M = {
     const h = x.tr ? harmonics(x, 'out', p.f) : null
     return {
       blocks: [
-        T('Neither transistor conducts until the drive clears its own turn-on voltage, so the output is flat while the input passes through zero. The dead band is a fixed number of volts, which is why small signals suffer most.'),
-        F('v_{out} = \\frac{R_L}{R_L + R_E}\\,(|v_{in}| - d)\\,\\mathrm{sgn}(v_{in}), \\qquad d = 0.7\\,\\mathrm{V} - V_{bias}'),
+        // The text and the formula follow the bias knob, because the knob is
+        // what decides which of the two regimes the stage is in. Written for
+        // the dead band alone, they would contradict the prediction beside
+        // them as soon as the bias closed it.
+        overlap
+          ? T('The bias holds both transistors on at rest, so one of them carries the load at every instant of the cycle. There is no dead band left to flatten the crossing, and the load is driven through the two ballast resistors in parallel.')
+          : T('Neither transistor conducts until the drive clears its own turn-on voltage, so the output is flat while the input passes through zero. The dead band is a fixed number of volts, which is why small signals lose the largest share of themselves.'),
+        overlap
+          ? F(
+              'v_{out} = \\frac{R_L}{R_L + R_E/2}\\,v_{in}, \\qquad d = 0.7\\,\\mathrm{V} - V_{bias} \\leq 0',
+              'Both devices conduct, so the two ballast resistors act in parallel and the dead band term is gone.',
+            )
+          : F('v_{out} = \\frac{R_L}{R_L + R_E}\\,(|v_{in}| - d)\\,\\mathrm{sgn}(v_{in}), \\qquad d = 0.7\\,\\mathrm{V} - V_{bias}'),
         C([
           row('the peak the load reaches', peak, x.tr ? Math.max(...x.tr.samples.map((s) => s.sol.v.out)) : NaN, 'V', 0.01, { unchecked: silent || clipped || partly }),
           row('the fundamental left after the dead band', fundamental, h ? h[0] : NaN, 'V', 0.02, { unchecked: silent || clipped || partly }),
