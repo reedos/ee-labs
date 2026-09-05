@@ -10,6 +10,8 @@
 
 import { niAt, thermalVoltage } from '@ee-labs/network'
 import { rampWindow, slopeOf } from './math.js'
+import { MATH_L } from './groups/l.math.js'
+import { MATH_M } from './groups/m.math.js'
 
 const T = (text) => ({ kind: 'text', text })
 const F = (tex, caption) => ({ kind: 'formula', tex, caption })
@@ -21,6 +23,9 @@ const row = (label, predicted, measured, unit = '', tol = 0.02, extra = {}) => (
 const closedGain = (p) => 1 + p.Rf / p.Rg
 
 export const ENTRIES = {
+  ...MATH_L,
+  ...MATH_M,
+
   a1(p, x) {
     const A0 = 1e5
     const beta = p.Rg / (p.Rf + p.Rg)
