@@ -18,8 +18,9 @@
  * @param {number} gain   dcGain(tf) — the final value, or ±Infinity/NaN
  * @param {object|null} second   secondOrderMetrics(tf), or null for first order
  * @param {string} [unit]   'Ω' for an impedance output, '' otherwise
+ * @param {{b:number[],a:number[]}|null} [tf]   the transfer function, for h(0)
  */
-export function stepReadout(step, gain, second, unit = '') {
+export function stepReadout(step, gain, second, unit = '', tf = null) {
   const finite = Number.isFinite(gain)
   const finalIsZero = finite && Math.abs(gain) < 1e-9
   let peak = null
@@ -49,7 +50,55 @@ export function stepReadout(step, gain, second, unit = '') {
     peak,
     settling: !finalIsZero && second && Number.isFinite(second.settling) ? second.settling : null,
     diesAway,
+    slope0: initialSlope(tf),
   }
+}
+
+/** Coefficients with the leading zeros dropped, so the degree is the degree. */
+function trimLeading(c) {
+  const out = Array.from(c || [])
+  while (out.length > 1 && out[0] === 0) out.shift()
+  return out
+}
+
+/**
+ * h(0⁺), which is the drawn step's slope at t = 0.
+ *
+ * The impulse response is the step response's derivative, so the number the
+ * "impulse response" lesson asks a reader to check — 1/τ = 10 000 s⁻¹ for a
+ * 100 µs RC — is a slope they can see on the trace in front of them. It was
+ * claimed in the note and printed nowhere.
+ *
+ * It is a finite, non-trivial number only when the denominator's degree
+ * exceeds the numerator's by exactly one, where h(0⁺) = lim s·H(s) = b₀/a₀:
+ *
+ * - excess 0 (a divider, a high-pass): the output jumps at t = 0. h carries a
+ *   delta there and the drawn curve has no slope to compare it with.
+ * - excess ≥ 2 (Sallen–Key, the RLC across C): h(0⁺) is 0. True, and it says
+ *   nothing about the curve.
+ *
+ * Both are declined by returning null rather than printed as a number that
+ * does not mean what the row's label says.
+ */
+export function initialSlope(tf) {
+  if (!tf || !tf.b || !tf.a) return null
+  const b = trimLeading(tf.b)
+  const a = trimLeading(tf.a)
+  if (!b.length || !a.length || !a[0]) return null
+  if (a.length - b.length !== 1) return null
+  return b[0] / a[0]
+}
+
+/**
+ * The step pane's y-axis title.
+ *
+ * The axis said "Output" and nothing else, while the readout under it said
+ * "peak 308 Ω" — the tank's step response is an impedance, and its axis ran
+ * 200 / 0 / −200 with no unit at all. Every other axis in the lab names its
+ * unit, so this one does too, in the same unit the readout prints.
+ */
+export function stepYTitle(unit = '') {
+  return unit ? `Output (${unit})` : 'Output (V/V)'
 }
 
 /**

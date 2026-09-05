@@ -49,7 +49,7 @@ import {
   fmtHzRange,
 } from './tolerance.js'
 import { TERMS, termsFor } from './terms.js'
-import { dampingWord, stepReadout } from './stepReadout.js'
+import { dampingWord, stepReadout, stepYTitle } from './stepReadout.js'
 import {
   axisFreqs,
   ensureSampled,
@@ -388,9 +388,14 @@ export default function App() {
       {tolRow(p)}
     </React.Fragment>
   )
-  const tolRow = (p) => (
+  // `named` spells the part out in the tag. In the Components section the row
+  // sits under the field it grades, so "tol" is unambiguous. Under a try line
+  // it does not: "Blame the right part" features R's row and C's row one above
+  // the other, both read "TOL", and its instruction — move the ±10% from R to
+  // C — pointed at two rows a reader could not tell apart.
+  const tolRow = (p, named = false) => (
     <div className="field-tol" role="group" aria-label={`${p.label} tolerance`} key={`tol:${p.key}`}>
-      <span className="tol-tag">tol</span>
+      <span className="tol-tag">{named ? `tol ${p.label}` : 'tol'}</span>
       <div className="segmented sm">
         {TOLERANCES.map((t) => (
           <button
@@ -459,7 +464,7 @@ export default function App() {
       if (f === 'tol') return tolAllRow('featured')
       if (f.startsWith('tol:')) {
         const p = circuit.params.find((q) => q.key === f.slice(4))
-        return p ? tolRow(p) : null
+        return p ? tolRow(p, true) : null
       }
       if (f === 'output') return outputSelect
       if (f === 'handover') {
@@ -863,7 +868,7 @@ export default function App() {
             />
             <div className="readout">
               {lower === 'step' ? (
-                <StepReadout r={stepReadout(step, gain, second, isZ ? 'Ω' : '')} />
+                <StepReadout r={stepReadout(step, gain, second, isZ ? 'Ω' : '', tf)} />
               ) : lower === 'pz' ? (
                 <>
                   {/* The legend and the numbers in one stroke: × is a pole,
@@ -900,6 +905,7 @@ export default function App() {
                 final={gain}
                 band={stepEnvelope}
                 range={stepRange}
+                yTitle={stepYTitle(isZ ? 'Ω' : '')}
               />
             ) : (
               <p className="hint" data-role="step-too-stiff">
@@ -914,6 +920,12 @@ export default function App() {
               zeros={pz.zeros}
               cloud={wobble.any ? wobble.cloud : null}
               span={pzSpan}
+              // σ and jω are the two parts of one number, and the readout
+              // beside the plot prints that number in s⁻¹. The canvas's own
+              // defaults named the same quantity three ways — "1/s" across
+              // the bottom, "rad/s" up the side, "s⁻¹" in the legend.
+              xTitle="Real  σ  (s⁻¹)"
+              yTitle="Imaginary  jω  (s⁻¹)"
             />
           ) : (
             <div className="math-pane" data-role="math-pane">
@@ -959,6 +971,16 @@ function StepReadout({ r }) {
         <span data-role="step-dies-away">
           dies away in <b>{fmt(r.diesAway, 's', 3)}</b>
           <em className="prov"> (below 2% of its peak)</em>
+        </span>
+      ) : null}
+      {/* The impulse response, where a reader can see it: h(0) is this
+          curve's slope at t = 0, and the "impulse response" lesson asks for
+          exactly that number. Shown only where the slope is what h(0) means
+          (see initialSlope). */}
+      {r.slope0 != null ? (
+        <span data-role="step-slope0">
+          h(0) <b>{fmt(r.slope0, r.unit ? `${r.unit}/s` : '/s', 3)}</b>
+          <em className="prov"> · this curve’s slope at t = 0</em>
         </span>
       ) : null}
     </>

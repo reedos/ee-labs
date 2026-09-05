@@ -866,11 +866,19 @@ console.log('\n10. The student walk: each filed defect, re-checked on the real p
   console.log(`   L14 frame held [${f10.yLo.toFixed(1)}, ${f10.yHi}] over ${f10.tMax}s; drawn slope ratio ${ratio.toFixed(1)}×`)
 
   // L17: a Circuits click parks the course rather than dropping it.
+  //
+  // The claim is that the click PRESERVES the reader's place, so the count is
+  // read before and after and compared. It used to be pinned as the literal
+  // "6 of 15", which measured the size of the course instead: the sixteenth
+  // lesson landed and the check failed with the parking working perfectly.
   await pick('Q is how sharp, and R sets it')
+  const before = (await page.locator('.lesson-nav-count').textContent().catch(() => '')).trim()
+  const wantCnt = `${LESSONS.findIndex((l) => l.name === 'Q is how sharp, and R sets it') + 1} of ${LESSONS.length}`
+  if (before !== wantCnt) fail(`the Q lesson should read "${wantCnt}", got "${before}"`)
   await pick('Twin-T notch')
   const cnt = (await page.locator('.lesson-nav-count').textContent().catch(() => '')).trim()
   const back = page.locator('[data-role=lesson-back]')
-  if (cnt !== '6 of 15') fail(`after a circuit click the nav should still read "6 of 15", got "${cnt}"`)
+  if (cnt !== before) fail(`after a circuit click the nav should still read "${before}", got "${cnt}"`)
   if (!(await back.count())) fail('after a circuit click there should be a "back to lesson" action')
   else {
     await back.click()
@@ -1088,20 +1096,41 @@ console.log('\n13. Phone 390×844: the lesson text, the response and the lesson 
     fn.label = label
     return fn
   }
-  const cases = ['Where the corner comes from', 'Q is how sharp, and R sets it', 'This circuit is a biquad'].map(
-    (name) => ({
-      name,
-      load: () => pick(name),
-      must: [canvas(0, 'Bode canvas'), canvas(1, 'lesson view canvas')],
-    }),
-  )
+  // Every lesson, not the three that happened to fit. Three of sixteen is how
+  // "the featured knob is a screen away" survived: the lessons with the long
+  // notes were never asked.
+  const cases = LESSONS.map((l) => ({
+    name: l.name,
+    load: () => pick(l.name),
+    must: [canvas(0, 'Bode canvas'), canvas(1, 'lesson view canvas')],
+  }))
   const r = await phoneProbe(page, { cases, url: URL })
   for (const f of r.failures) fail(`phone: ${f}`)
-  for (const m of r.measured) {
+  for (const m of r.measured.slice(0, 8)) {
     console.log(
       `   ${m.lesson.padEnd(32)} ${m.control.padEnd(20)} ${m.box ? `y ${m.box.y.toFixed(0)}–${(m.box.y + m.box.height).toFixed(0)} px` : 'not rendered'}`,
     )
   }
+  console.log(`   ${cases.length} lessons × 2 canvases measured at 390×844; ${r.failures.length} outside the screen`)
+
+  // ...and in every view the lower pane offers. Poles & zeros carries a
+  // readout one row taller than the step view's, and against a pane whose
+  // plot height was fixed that row pushed the canvas 44 px off the bottom of
+  // the screen — on the view whose whole content is where the marks sit.
+  await page.setViewportSize({ width: 390, height: 844 })
+  for (const name of ['Q is how sharp, and R sets it', 'Blame the right part', 'A zero on the axis is silence']) {
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await pick(name)
+    for (const view of ['Step response', 'Poles & zeros', 'Math']) {
+      await page.getByRole('button', { name: view, exact: true }).click()
+      await page.waitForTimeout(200)
+      const b = await page.locator('.views canvas, .views .math-pane').nth(1).boundingBox()
+      if (!b || b.y + b.height > 845) {
+        fail(`phone · ${name} · ${view}: the lower pane ends at ${b ? (b.y + b.height).toFixed(0) : 'nothing'} px, past the 844 px screen`)
+      }
+    }
+  }
+  console.log('   step, poles & zeros and math each end inside the 844 px screen')
   // The walk's phone screen showed a header and seventeen buttons and no
   // lesson at all. On a fresh load the note's title and the try line must
   // sit inside the sidebar's VISIBLE box (not a sidebar-scroll away), with
@@ -1124,8 +1153,29 @@ console.log('\n13. Phone 390×844: the lesson text, the response and the lesson 
         fail(`phone · ${c.name} · ${what}: ${b ? `y ${b.y.toFixed(0)}–${(b.y + b.height).toFixed(0)}` : 'not rendered'} is not inside the sidebar's visible ${side.y.toFixed(0)}–${(side.y + side.height).toFixed(0)} px`)
       } else console.log(`   ${c.name.padEnd(32)} ${what.padEnd(20)} y ${b.y.toFixed(0)}–${(b.y + b.height).toFixed(0)} px, inside the ${side.height.toFixed(0)} px sidebar`)
     }
-    const knob = await page.locator('[data-role=featured] input, [data-role=featured] a.handover-copy').first().boundingBox()
-    console.log(`   ${''.padEnd(32)} ${'featured control'.padEnd(20)} ${knob ? `y ${knob.y.toFixed(0)}–${(knob.y + knob.height).toFixed(0)} px${inSide(knob) ? '' : ' (below the sidebar’s first screen)'}` : 'not rendered'}`)
+    // The knob the try line names belongs on the first screen, not in a note
+    // about the first screen. This was measured and only PRINTED — "(below
+    // the sidebar's first screen)" — for every lesson in the course, which
+    // reports the defect rather than checking for it.
+    // "One circuit, three filters" features nothing — it is read, not driven —
+    // so there is no knob to place.
+    const knobs = page.locator(
+      '[data-role=featured] input, [data-role=featured] a.handover-copy, [data-role=featured] button, [data-role=featured] select',
+    )
+    if (!(await knobs.count())) {
+      console.log(`   ${''.padEnd(32)} ${'featured control'.padEnd(20)} none — this lesson names no knob`)
+      continue
+    }
+    const knob = await knobs.first().boundingBox()
+    if (!inSide(knob)) {
+      fail(
+        `phone · ${c.name} · featured control: ${knob ? `y ${knob.y.toFixed(0)}–${(knob.y + knob.height).toFixed(0)}` : 'not rendered'} is not inside the sidebar's visible ${side.y.toFixed(0)}–${(side.y + side.height).toFixed(0)} px`,
+      )
+    } else {
+      console.log(
+        `   ${''.padEnd(32)} ${'featured control'.padEnd(20)} y ${knob.y.toFixed(0)}–${(knob.y + knob.height).toFixed(0)} px, inside the sidebar`,
+      )
+    }
   }
   // The Math tab must not widen the page: the RLC's formulas and tables
   // pushed .views to 463 px and cropped the Bode.
@@ -1141,6 +1191,70 @@ console.log('\n13. Phone 390×844: the lesson text, the response and the lesson 
   else console.log(`   Math tab on the RLC: document ${widths.doc} px wide, .views ${widths.views.toFixed(0)} px — no crop`)
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto(URL, { waitUntil: 'networkidle' })
+}
+
+// ------------------ 14. axes carry their units, and h(0) is on the screen
+
+console.log('\n14. The step axis names its unit, h(0) is printed, tolerance rows name their part\n')
+{
+  const yTitle = () => page.locator('.views canvas').nth(1).getAttribute('data-y-title')
+  const slope = async () => {
+    const el = page.locator('[data-role=step-slope0]')
+    return (await el.count()) ? (await el.textContent()).trim() : null
+  }
+
+  // The tank's step response is an impedance. The axis ran 200 / 0 / −200
+  // with no unit while the readout beside it said "peak 308 Ω".
+  await pick('Parallel RLC (tank)')
+  const zTitle = await yTitle()
+  if (zTitle !== 'Output (Ω)') fail(`the tank's step axis should be titled "Output (Ω)", got "${zTitle}"`)
+
+  await pick('RC low-pass')
+  const vTitle = await yTitle()
+  if (vTitle !== 'Output (V/V)') fail(`a voltage output's step axis should be titled "Output (V/V)", got "${vTitle}"`)
+
+  // h(0) is the drawn curve's slope at t = 0, which is the number "The
+  // impulse response" asks a reader to check and used to print nowhere. It
+  // must FOLLOW R: 1/(RC) is 10 000 s⁻¹ at 1 kΩ · 100 nF and ten times that
+  // at 100 Ω. Measured against the drawn samples, not just read back.
+  await pick('The impulse response, and why the step is its integral')
+  const s10k = await slope()
+  if (!/10\.0 ?k\/s/.test(s10k || '')) fail(`h(0) at R = 1 kΩ should read 10.0 k/s, got "${s10k}"`)
+  const drawn = () =>
+    page.evaluate(() => {
+      const c = document.querySelectorAll('.views canvas')[1]
+      const s = JSON.parse(c.dataset.samples || '[]')
+      // The first sample pair off the drawn trace: rise over run.
+      return s.length > 1 ? (s[0][1] - 0) / (s[0][0] - 0) : NaN
+    })
+  const d10k = await drawn()
+  if (!(Math.abs(d10k / 10000 - 1) < 0.35)) {
+    fail(`the drawn curve's own slope near t = 0 is ${d10k.toFixed(0)} /s, nowhere near the 10 000 /s h(0) claims`)
+  }
+  await page.locator('.try-chips .chip', { hasText: 'R 100 Ω' }).click()
+  await settle()
+  const s100 = await slope()
+  if (!/100 ?k\/s/.test(s100 || '')) fail(`h(0) at R = 100 Ω should read 100 k/s, got "${s100}"`)
+  console.log(`   impulse lesson: ${s10k} at 1 kΩ, ${s100} at 100 Ω; drawn slope ${(d10k / 1000).toFixed(1)} k/s`)
+
+  // A divider's output jumps at t = 0, so its step has no slope for h(0) to
+  // equal — the row is absent rather than printing a zero that would read as
+  // "the impulse response starts at nothing".
+  await pick('Voltage divider')
+  if ((await slope()) !== null) fail('a divider has no finite h(0); the row should not be printed')
+  await pick('Sallen–Key low-pass')
+  if ((await slope()) !== null) fail('a two-pole low-pass has h(0) = 0; the row should not be printed')
+  console.log('   divider and Sallen–Key: no h(0) row, because the slope is not h(0) there')
+
+  // Two tolerance rows under one try line, both reading "TOL", left "move
+  // the ±10% from R to C" pointing at rows a reader could not tell apart.
+  await pick('Blame the right part')
+  const tags = await page.locator('[data-role=featured] .tol-tag').allTextContents()
+  const want = ['tol R', 'tol C']
+  if (tags.join(' | ') !== want.join(' | ')) {
+    fail(`the featured tolerance rows should read "${want.join('", "')}", got "${tags.join('", "')}"`)
+  }
+  console.log(`   featured tolerance rows: ${tags.join(', ')}`)
 }
 
 // ------------------------------------------------ A11Y. names for everything

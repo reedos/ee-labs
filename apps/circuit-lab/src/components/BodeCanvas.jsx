@@ -1,5 +1,6 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmtHz } from '@ee-labs/ui'
+import { yTickBudget } from '../axis.js'
 
 /**
  * Magnitude against frequency, on a log axis, with optional phase.
@@ -83,7 +84,11 @@ export default function BodeCanvas({
         (v) => v.toFixed(0),
         {
           xStep: 1,
-          yStep: Math.max(20, Math.ceil((hi - lo) / 8 / 20) * 20),
+          // Whole 20 dB steps, but no more of them than the pane is tall
+          // enough to label: on a phone the pane is ~70 px of plot, and eight
+          // ticks put 11 px between two 11 px labels, which reads as a smear
+          // rather than an axis.
+          yStep: Math.max(20, Math.ceil((hi - lo) / yTickBudget(area, k) / 20) * 20),
           xTitle: 'Frequency (Hz)',
           yTitle: `Magnitude (${yUnit})`,
         },

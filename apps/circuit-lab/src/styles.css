@@ -351,7 +351,7 @@ details.preset-group > .presets { margin: 3px 0 5px; }
    sticky cap with prev / next stays first. The header is compacted (nav and
    title on one row, the subhead dropped) to buy the note its lines. */
 @media (max-width: 900px) {
-  .controls { max-height: 43vh; padding: 10px 12px 24px; }
+  .controls { max-height: 53vh; padding: 10px 12px 24px; }
   .controls header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
   .controls header .labnav { margin: 0; }
   .controls header h1 { margin: 0; font-size: 16px; }
@@ -364,9 +364,44 @@ details.preset-group > .presets { margin: 3px 0 5px; }
   .controls section:first-of-type > .lesson-body { order: 1; }
   .controls section:first-of-type > .lesson-list { order: 2; margin-top: 10px; }
   .lesson-body .note-title { margin-top: 0; }
+  .lesson-body .hint.note { line-height: 1.42; }
+  /* The featured knob is what the try line points at, so it has to be on the
+     first screen with the note. Its slider is the row that does not fit: the
+     entry field beside it sets the same value, the chips set it in one tap,
+     and a 340 px-wide range control is a poor way to reach 100 nF anyway. */
+  .featured .num-slider { display: none; }
+  .featured .num { margin-bottom: 6px; }
+  .featured { margin-top: 5px; padding-top: 4px; }
   .views { min-height: 0; }
   .view { padding: 4px 10px 4px; }
   .view-head h2 { display: none; }
-  .view .plot { flex: none; height: 144px; }
-  .math-pane { height: 144px; flex: none; }
+  /* The pole readout ("× poles -28 k ± j14.7 k s⁻¹ ...") wrapped to a
+     second row that the step view's readout did not need, and the extra row
+     came straight off the canvas below it. Tighter here, so every view's
+     header is the same height and every plot the same size. */
+  .view-head .readout { font-size: 10px; gap: 3px 10px; }
+  /* The two panes share what the sidebar leaves, rather than each holding a
+     fixed 144 px. Poles & zeros carries a readout one line taller than the
+     step view's, and against a fixed height that line pushed the lower canvas
+     44 px past the bottom of the screen. */
+  .app { height: 100dvh; min-height: 0; }
+  .views { grid-template-rows: 1fr 1fr; min-height: 0; }
+  .view .plot { flex: 1 1 auto; height: auto; min-height: 76px; }
+  .math-pane { flex: 1 1 auto; height: auto; min-height: 76px; }
+}
+
+/* Short laptops (1366×768 is the commonest): the same rule as the phone, for
+   the same reason. The list of sixteen lesson buttons cost 233 px above the
+   note, and the featured knob a note names ("drag R") landed 80 px below the
+   fold. The lesson comes first here too, and the three-line subhead — read
+   once, on the first visit — gives up its rows to it. */
+@media (min-width: 901px) and (max-height: 820px) {
+  .controls { padding-top: 10px; }
+  .controls header .sub { display: none; }
+  .controls section:first-of-type { display: flex; flex-direction: column; }
+  .controls section:first-of-type > h2 { order: 0; }
+  .controls section:first-of-type > .lesson-nav-back { order: 1; }
+  .controls section:first-of-type > .lesson-body { order: 1; }
+  .controls section:first-of-type > .lesson-list { order: 2; margin-top: 10px; }
+  .lesson-body .note-title { margin-top: 0; }
 }

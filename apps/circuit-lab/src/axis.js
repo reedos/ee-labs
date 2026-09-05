@@ -116,3 +116,19 @@ export function ensureSampled(freqs, f) {
   if (out[i] !== f) out.splice(i, 0, f)
   return out
 }
+
+/**
+ * How many labelled y ticks a plot of this height can carry.
+ *
+ * The dB axis picks whole 20 dB steps, and eight of them is right on a
+ * 1080p pane. On a phone the same pane is about seventy pixels of plot, and
+ * eight ticks put eleven pixels between two eleven-pixel labels: the axis
+ * reads as a smear. One label per 30 device-independent pixels keeps them
+ * apart, and the caller coarsens the step to suit.
+ */
+export const Y_TICK_PITCH = 30
+
+export function yTickBudget(area, k = 1) {
+  const h = area && Number.isFinite(area.h) ? area.h : 0
+  return Math.max(2, Math.floor(h / (Y_TICK_PITCH * (k || 1))))
+}

@@ -32,7 +32,7 @@ function sampled(t, y, n) {
   return JSON.stringify(out)
 }
 
-export default function StepCanvas({ t, y, final, band = null, range = null, markers = [] }) {
+export default function StepCanvas({ t, y, final, band = null, range = null, markers = [], yTitle = 'Output (V/V)' }) {
   const ref = useCanvas(
     (ctx, w, h) => {
       const area = plotArea(w, h)
@@ -74,7 +74,7 @@ export default function StepCanvas({ t, y, final, band = null, range = null, mar
         hi,
         (v) => fmt(v, '', 3),
         (v) => (Math.abs(hi - lo) > 20 ? v.toFixed(0) : v.toFixed(2)),
-        { zeroLine: true, xTitle: 'Time (seconds)', yTitle: 'Output' },
+        { zeroLine: true, xTitle: 'Time (seconds)', yTitle },
       )
 
       ctx.save()
@@ -172,7 +172,7 @@ export default function StepCanvas({ t, y, final, band = null, range = null, mar
       ctx.stroke()
       ctx.restore()
     },
-    [t, y, final, band, range, markers],
+    [t, y, final, band, range, markers, yTitle],
   )
 
   // The frame, readable from the DOM: the harness asserts the axes hold
@@ -188,6 +188,7 @@ export default function StepCanvas({ t, y, final, band = null, range = null, mar
       data-y-hi={range ? range.hi : ''}
       data-y-lo={range ? range.lo : ''}
       data-samples={sampled(t, y, 6)}
+      data-y-title={yTitle}
     />
   )
 }
