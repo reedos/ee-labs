@@ -50,7 +50,25 @@
 
 import { CONVENTIONS } from './dq.js'
 
-/** A 400 V 50 Hz 4-pole round-rotor synchronous motor, filled in by `syncOf`. */
+/**
+ * A 400 V 50 Hz 4-pole round-rotor synchronous motor, filled in by `syncOf`.
+ *
+ * The four reactances past `Xq` are for a machine on a network rather than a
+ * machine on a bench. A fault or a switching event is not a steady state, and
+ * the flux trapped in the rotor's windings holds the internal voltage up for a
+ * while. So the machine is drawn behind a different reactance depending on how
+ * long after the event the question is asked. `reactance()` names the four.
+ *
+ *   Xd    steady state, seconds after the event
+ *   Xdp   transient, the first cycles, behind which the swing equation runs
+ *   Xdpp  subtransient, the first cycle, which is what a breaker sees
+ *   X2    negative sequence, for an unbalanced fault
+ *   X0    zero sequence, for a fault involving the ground
+ *
+ * `H` is the inertia constant in MJ/MVA, which is seconds, and `Pm` is the
+ * mechanical power in per unit on the machine's own base. Both are the swing
+ * model's, and `swing()` is where they are used.
+ */
 export const SYNC_DEFAULTS = {
   V: 400 / Math.sqrt(3), // phase voltage, rms V
   f: 50,
@@ -62,6 +80,16 @@ export const SYNC_DEFAULTS = {
   Ra: 0, // armature resistance, Ω per phase
   salient: false,
   delta: (20 * Math.PI) / 180, // power angle, radians
+  // The network model. Per unit on the machine's own base, or ohms, as long as
+  // one unit is used throughout. The defaults are a common set for a generator.
+  Xdp: 0.3, // transient reactance
+  Xdpp: 0.2, // subtransient reactance
+  X2: 0.2, // negative-sequence reactance
+  X0: 0.05, // zero-sequence reactance
+  H: 4, // inertia constant, MJ/MVA, which is seconds
+  Pm: 1, // mechanical power, pu on the machine's base
+  Sbase: 100e6, // VA, three phase
+  Vbase: 400, // V, line to line
 }
 
 export function syncOf(spec = {}) {
@@ -69,10 +97,114 @@ export function syncOf(spec = {}) {
   if (!(m.Xs > 0)) throw new Error('Xs: a synchronous reactance must be positive')
   if (!(m.Xd > 0) || !(m.Xq > 0)) throw new Error('Xd and Xq: both reactances must be positive')
   if (!(m.poles >= 2) || m.poles % 2) throw new Error('poles: an even number of poles, two or more')
+  for (const key of ['Xdp', 'Xdpp', 'X2', 'X0']) if (!(m[key] > 0)) throw new Error(`${key}: a reactance must be positive`)
+  if (!(m.H > 0)) throw new Error('H: an inertia constant must be positive')
   m.omega = 2 * Math.PI * m.f
+  // Two synchronous speeds, and they differ by the pole pairs. The mechanical
+  // one turns the shaft. The electrical one is the one the swing equation's
+  // angle is measured in, and M = 2H/ω_elec because δ is an electrical angle.
+  m.omegaElec = m.omega
   m.omegaSync = (2 * m.omega) / m.poles
   m.rpmSync = (120 * m.f) / m.poles
+  m.Zbase = (m.Vbase * m.Vbase) / m.Sbase
+  m.Ibase = m.Sbase / (Math.sqrt(3) * m.Vbase)
   return m
+}
+
+/** The four reactances by name, for the question being asked. */
+export const REACTANCES = {
+  steady: { key: 'Xd', when: 'seconds after the event' },
+  transient: { key: 'Xdp', when: 'the first cycles, and the swing equation' },
+  subtransient: { key: 'Xdpp', when: 'the first cycle, and the breaker' },
+  negative: { key: 'X2', when: 'an unbalanced fault' },
+  zero: { key: 'X0', when: 'a fault through the ground' },
+}
+
+/** One of them, with the sentence saying which question it answers. */
+export function reactance(spec = {}, kind = 'steady') {
+  const r = REACTANCES[kind]
+  if (!r) throw new Error(`unknown reactance "${kind}"`)
+  const m = syncOf(spec)
+  return { kind, value: m[r.key], when: r.when, machine: m }
+}
+
+/**
+ * The internal voltage behind a chosen reactance, from a terminal condition.
+ *
+ * Given the terminal voltage `V` and the power `P + jQ` the machine puts into
+ * the network, the current is `(P − jQ)/V*` and the internal voltage is
+ * `V + jX I`. Everything here is in one consistent unit, per unit or volts and
+ * amperes, and the result carries the reactance it was taken behind.
+ */
+export function internalEmf(spec = {}, { V = 1, P = 1, Q = 0, kind = 'transient' } = {}) {
+  const X = reactance(spec, kind).value
+  if (!(V > 0)) throw new Error('V: a terminal voltage must be positive')
+  const I = [P / V, -Q / V] // V taken on the real axis
+  const E = [V - X * I[1], X * I[0]]
+  return { E, mag: Math.hypot(E[0], E[1]), delta: Math.atan2(E[1], E[0]), I, X, kind }
+}
+
+/**
+ * The swing model: one rotor angle, one speed deviation, and the equation
+ * between them.
+ *
+ *     M d²δ/dt² = P_m − P_max sin δ,      M = 2H / ω_elec
+ *
+ * δ is an electrical angle, which is why `M` divides by the electrical
+ * synchronous speed rather than the mechanical one. At `H = 4 MJ/MVA` and
+ * 60 Hz, `M` is 0.0212207 pu·s² per radian.
+ *
+ * Two objects come out, and they are of different kinds. `accel` is the
+ * nonlinear equation, for a caller with its own integrator and its own guard.
+ * `plant` is its exact linearisation about the equilibrium, a second-order
+ * rational transfer function from a small change in mechanical power to a
+ * small change in angle, which crosses to Control Lab with no hedge. The
+ * synchronising coefficient `K = P_max cos δ₀` is its stiffness, and the
+ * small-signal swing frequency is `√(K/M)`.
+ *
+ * `damping` is `D` in `M δ̈ + D δ̇ = P_m − P_max sin δ`, and it is zero unless
+ * a governor or a damper winding is being modelled.
+ *
+ * @param spec  a machine, for `H` and `f`
+ * @param opts  { Pmax, Pm, damping } — the transfer through the network, the
+ *              mechanical power, and any damping, all in per unit
+ */
+export function swing(spec = {}, { Pmax = 2, Pm = null, damping = 0 } = {}) {
+  const m = syncOf(spec)
+  const P = Pm === null ? m.Pm : Pm
+  if (!(Pmax > 0)) throw new Error('Pmax: the transfer through the network must be positive')
+  if (damping < 0) throw new Error('damping: cannot be negative')
+  const M = (2 * m.H) / m.omegaElec
+  const stable = Math.abs(P) <= Pmax
+  const delta0 = stable ? Math.asin(P / Pmax) : NaN
+  const K = stable ? Pmax * Math.cos(delta0) : NaN
+  const wn = stable ? Math.sqrt(K / M) : NaN
+  return {
+    machine: m,
+    H: m.H,
+    M,
+    Pm: P,
+    Pmax,
+    damping,
+    stable,
+    delta0,
+    deltaMax: stable ? Math.PI - delta0 : NaN,
+    K,
+    wn,
+    fn: wn / (2 * Math.PI),
+    period: (2 * Math.PI) / wn,
+    zeta: damping / (2 * Math.sqrt(K * M)),
+    /** The nonlinear equation as a first-order pair, [dδ/dt, dω/dt]. */
+    accel: (delta, omegaDev = 0, PmNow = P, PmaxNow = Pmax) => [
+      omegaDev,
+      (PmNow - PmaxNow * Math.sin(delta) - damping * omegaDev) / M,
+    ],
+    /** The exact linearisation about δ₀, as a plant for Control Lab. */
+    plant: { b: [1 / M], a: [1, damping / M, K / M], label: 'Δδ / ΔP_m' },
+    /** The energy relation the equal-area criterion integrates, per radian. */
+    area: (from, to, PmNow = P, PmaxNow = Pmax) =>
+      PmNow * (to - from) + PmaxNow * (Math.cos(to) - Math.cos(from)),
+  }
 }
 
 /**

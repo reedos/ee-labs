@@ -70,7 +70,11 @@ export {
 } from './src/dq.js'
 export {
   SYNC_DEFAULTS,
+  REACTANCES,
   syncOf,
+  reactance,
+  internalEmf,
+  swing,
   syncPhasor,
   powerAngle,
   pullOut,
