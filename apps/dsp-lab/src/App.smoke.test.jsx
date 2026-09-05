@@ -26,6 +26,19 @@ describe('App', () => {
     for (const e of EXPERIMENTS) expect(h, e.id).toContain(e.name)
     expect(h).toContain('Changing the rate')
     expect(h).toContain('Designing to a specification')
+    expect(h).toContain('The arithmetic a processor has')
+  })
+
+  it('names only views the app can draw', () => {
+    // A patch that asks for a view nobody renders leaves a reader on a blank
+    // pane with the switch showing something else. The set is small and it is
+    // checked rather than trusted.
+    const TIME = new Set(['signal'])
+    const FREQ = new Set(['spectrum', 'zplane', 'polegrid'])
+    for (const e of EXPERIMENTS) {
+      if (e.patch.timeView) expect(TIME.has(e.patch.timeView), `${e.id} ${e.patch.timeView}`).toBe(true)
+      if (e.patch.freqView) expect(FREQ.has(e.patch.freqView), `${e.id} ${e.patch.freqView}`).toBe(true)
+    }
   })
 
   it('opens on the first experiment, with its three registers on screen', () => {

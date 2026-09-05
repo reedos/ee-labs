@@ -171,6 +171,16 @@ canvas.plot {
   height: 260px;
 }
 
+/* A refusal in a view, where the block that would fill it declines to. */
+.pane .refusal {
+  font-size: 12px;
+  line-height: 1.45;
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
+  margin: 12px 0;
+  color: var(--text);
+}
+
 /* ---------- the readout ---------- */
 
 .readout dl {

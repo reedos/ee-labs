@@ -5,10 +5,12 @@ import Controls from './components/Controls.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
 import SpectrumCanvas from './components/SpectrumCanvas.jsx'
 import SpecPane from './components/SpecPane.jsx'
+import PoleGridCanvas from './components/PoleGridCanvas.jsx'
 import { EXPERIMENTS, GROUPS } from './experiments.js'
 import { INITIAL, experimentState } from './state.js'
 import { applyChip } from './chips.js'
 import { chainPolesZeros, chainRefusals, chainResponse, chainSpec, renderChain } from './chain.js'
+import { POLE_BOXES, poleBoxes } from './measure.js'
 import { readoutRows } from './measure.js'
 import { CHROME_TERMS, TERMS } from './terms.js'
 
@@ -102,9 +104,27 @@ export default function App() {
     }
   }, [experiment, state])
 
+  // The pole grid is offered only where there is a quantised section to draw
+  // one for, and only up to the word length whose grid can be computed. A view
+  // with nothing behind it is not offered rather than shown empty.
+  const grid = useMemo(() => {
+    if (state.freqView !== 'polegrid') return null
+    try {
+      return poleBoxes(state)
+    } catch (err) {
+      return { error: String(err.message ?? err) }
+    }
+  }, [state])
+
+  const hasGrid = useMemo(
+    () => state.blocks.some((b) => !b.bypass && b.type === 'fixedbiquad'),
+    [state.blocks],
+  )
+
   const freqOptions = [
     { id: 'spectrum', label: 'Spectrum' },
     { id: 'zplane', label: 'z-plane' },
+    ...(hasGrid ? [{ id: 'polegrid', label: 'Pole grid' }] : []),
   ]
 
   return (
@@ -185,7 +205,23 @@ export default function App() {
                 options={freqOptions}
               />
             </div>
-            {state.freqView === 'zplane' ? (
+            {state.freqView === 'polegrid' && grid ? (
+              grid.error ? (
+                <p className="refusal">{grid.error}</p>
+              ) : (
+                <PoleGridCanvas
+                  points={grid.points}
+                  boxes={[
+                    { ...POLE_BOXES.dense, side: POLE_BOXES.side },
+                    { ...POLE_BOXES.sparse, side: POLE_BOXES.side },
+                  ]}
+                  counts={[grid.dense, grid.sparse]}
+                  exact={pz.exactPoles}
+                  poles={pz.poles}
+                  note={`${grid.total} positions the coefficients can reach`}
+                />
+              )
+            ) : state.freqView === 'zplane' ? (
               <ZPlaneCanvas poles={pz.poles} zeros={pz.zeros} sampleRate={state.sampleRate} />
             ) : (
               <SpectrumCanvas

@@ -14,6 +14,8 @@ import {
   misadjustment,
   multirateCost,
   periodogram,
+  poleGrid,
+  quantizer,
   roundingNoise,
   spectrum,
   tailPower,
@@ -45,6 +47,8 @@ import { chainSpec, renderChain, runChain } from './chain.js'
 //   lms.<error|settled|floor|ratio|echo|residual|erle|cost>
 //   fix.<delta|stateDelta|radius|moved|stable|top|bottom>
 //   fix.<deadband|deadbandUnits|period|noiseGain|rmsIn|rmsOut|gainDb>
+//   fix.<gridTotal|gridDense|gridSparse|gridRatio|measured|modelRatio>
+//   fix.<over|saturated|wrapped>
 //   psd.<mean|cv|df|segments|n>
 //   ar.<a1|a2|sigma2|peak|aic|mdl>
 //   fft.<butterflies|direct|ratio|stages|n>
@@ -232,6 +236,88 @@ export function deadBandOf(state) {
   return { ...cyc, steps: Math.round(cyc.amplitude / d), delta: d }
 }
 
+/**
+ * The largest output the section asks for, with its state in float64.
+ *
+ * This is the headroom the accumulator has to hold. A word length that cannot
+ * hold it has to do something about it, and the two things a processor can do
+ * are the whole of E5.
+ */
+export function headroomOf(state) {
+  const f = fixedOf(state)
+  if (!f) throw new Error('headroom with no fixed-point block')
+  const x = inputTo(state, f.block.id)
+  const exact = makeFixedBiquad(f.exact, { coeffQ: f.qs.coeff, stateQ: null })
+  let peak = 0
+  for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(exact(x[i])))
+  return peak
+}
+
+/**
+ * The rounding noise a run actually produced, against the model's prediction.
+ *
+ * The same section is run twice over the same input, once with the state on the
+ * grid and once with it in float64. The difference is the rounding, measured
+ * rather than modelled, and it is the only honest way to check a model whose
+ * assumption is that the error looks like noise. `roundingNoise` predicts the
+ * rms; this returns what came out, and the ratio between them is the guard
+ * CORE_SCOPE asks an approximation to carry.
+ */
+export function roundingMeasured(state) {
+  const f = fixedOf(state)
+  if (!f || !f.qs.state) throw new Error('no state quantiser, so there is no rounding to measure')
+  const x = inputTo(state, f.block.id)
+  const rounded = makeFixedBiquad(f.exact, { coeffQ: f.qs.coeff, stateQ: f.qs.state })
+  const exact = makeFixedBiquad(f.exact, { coeffQ: f.qs.coeff, stateQ: null })
+  let acc = 0
+  for (let i = 0; i < x.length; i++) {
+    const d = rounded(x[i]) - exact(x[i])
+    acc += d * d
+  }
+  return Math.sqrt(acc / Math.max(1, x.length))
+}
+
+/**
+ * Two boxes of equal area on the z-plane, and the pole positions in each.
+ *
+ * A direct-form section's poles sit where r^2 is a1's grid and cos(theta) is
+ * -a1 over 2r, so the reachable points crowd where that mapping is flat and thin
+ * out where it is steep. The first box is on the diagonal at 45 degrees and the
+ * second is against the real axis just inside z of 1, which is exactly where a
+ * low-frequency resonator needs to be. Both are a tenth square, so the counts
+ * are comparable and their ratio is the lesson.
+ *
+ * The grid has (2/delta)^2 candidates, so it is computed only up to the twelve
+ * bits where that is under a million. Past that the resolver declines rather
+ * than freezing the page for a picture nobody can read anyway.
+ */
+export const POLE_BOXES = {
+  dense: { re: 0.65, im: 0.65 },
+  sparse: { re: 0.9, im: 0 },
+  side: 0.1,
+}
+export const POLE_GRID_MAX_BITS = 12
+
+export function poleBoxes(state) {
+  const f = fixedOf(state)
+  if (!f) throw new Error('pole grid with no fixed-point block')
+  const bits = f.block.params.coeffBits
+  if (bits > POLE_GRID_MAX_BITS) {
+    throw new Error(
+      `the pole grid is drawn up to ${POLE_GRID_MAX_BITS} bits, and this section has ${bits}`,
+    )
+  }
+  const pts = poleGrid(f.qs.coeff)
+  const count = ({ re, im }) =>
+    pts.filter(
+      (p) =>
+        p[0] >= re && p[0] < re + POLE_BOXES.side && p[1] >= im && p[1] < im + POLE_BOXES.side,
+    ).length
+  const dense = count(POLE_BOXES.dense)
+  const sparse = count(POLE_BOXES.sparse)
+  return { points: pts, total: pts.length, dense, sparse, ratio: dense / Math.max(1, sparse) }
+}
+
 /** The estimate the density view draws, from the state's own estimator. */
 export function psdOf(state) {
   const { buf } = renderChain(state.sources, state.blocks, state.fftSize, state.sampleRate)
@@ -368,6 +454,25 @@ export function resolvePath(path, state, rendered = null) {
     }
     if (parts[1] === 'rmsIn') return Math.sqrt((f.qs.state ?? f.qs.coeff).noisePower)
     if (parts[1] === 'rmsOut') return roundingNoise(f.q.coeffs, f.qs.state ?? f.qs.coeff).rmsOut
+    if (parts[1] === 'over') return headroomOf(state)
+    if (parts[1] === 'saturated' || parts[1] === 'wrapped') {
+      const q = quantizer({
+        bits: f.block.params.stateBits || f.block.params.coeffBits,
+        intBits: f.block.params.stateBits ? f.block.params.stateInt : f.block.params.coeffInt,
+        rounding: f.block.params.rounding,
+        overflow: parts[1] === 'wrapped' ? 'wrap' : 'saturate',
+      })
+      return q(headroomOf(state))
+    }
+    if (parts[1] === 'measured') return roundingMeasured(state)
+    if (parts[1] === 'modelRatio') {
+      const model = roundingNoise(f.q.coeffs, f.qs.state ?? f.qs.coeff).rmsOut
+      return roundingMeasured(state) / model
+    }
+    if (parts[1] === 'gridTotal') return poleBoxes(state).total
+    if (parts[1] === 'gridDense') return poleBoxes(state).dense
+    if (parts[1] === 'gridSparse') return poleBoxes(state).sparse
+    if (parts[1] === 'gridRatio') return poleBoxes(state).ratio
     if (parts[1] === 'gainDb') {
       return 10 * Math.log10(roundingNoise(f.q.coeffs, f.qs.state ?? f.qs.coeff).noiseGain)
     }

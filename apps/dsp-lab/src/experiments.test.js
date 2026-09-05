@@ -40,13 +40,15 @@ const rendered = (id) => runState(state(id))
 const db = (x) => 20 * Math.log10(x)
 
 describe('the course, as a course', () => {
-  it('is fifteen experiments in two groups, in plan order', () => {
-    expect(EXPERIMENTS).toHaveLength(15)
+  it('is twenty-one experiments in three groups, in plan order', () => {
+    expect(EXPERIMENTS).toHaveLength(21)
     expect(EXPERIMENTS.filter((e) => e.group === GROUPS[0])).toHaveLength(7)
     expect(EXPERIMENTS.filter((e) => e.group === GROUPS[1])).toHaveLength(8)
+    expect(EXPERIMENTS.filter((e) => e.group === GROUPS[2])).toHaveLength(6)
     expect(EXPERIMENTS.map((e) => e.id)).toEqual([
       'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7',
       'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8',
+      'e1', 'e2', 'e3', 'e4', 'e5', 'e6',
     ])
   })
 
