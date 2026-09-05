@@ -1,0 +1,25 @@
+{
+  "name": "devices-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Semiconductor devices from the carriers up: doping and the Fermi level, the junction's charge, field and potential, the MOS capacitor and its C–V curve, the MOSFET derived from it, the transistor from two junctions, the solar cell and the LED, and the fabrication sequence that sets each number.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee-labs/explain": "*",
+    "@ee-labs/network": "*",
+    "@ee-labs/ui": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}

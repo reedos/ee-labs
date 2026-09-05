@@ -428,10 +428,23 @@ export function oxideCap({ tox, epsOx = EPS_OX }) {
   return epsOx / tox
 }
 
-/** The bulk potential φ_F = (kT/q) ln(N_A/n_i), volts, positive on p-type. */
+/**
+ * The bulk potential φ_F = (kT/q) ln(N_A/n_i), volts, positive on p-type.
+ *
+ * A substrate whose doping has fallen to n_i is not p-type any more, and every
+ * expression built on φ_F takes a square root of it. So the boundary is a
+ * refusal with a reason rather than a NaN passed downstream, and it is the same
+ * boundary the carriers experiment walks by warming a lightly doped sample.
+ */
 export function bulkPotential({ na, T = T_ROOM, ni = null, eg = EG_SI }) {
   if (!(na > 0)) throw new NetworkError('value', 'The substrate doping must be positive')
   const n_i = ni ?? niAt(T, { eg })
+  if (na <= n_i)
+    throw new NetworkError(
+      'substrate-intrinsic',
+      `A substrate doped ${(na / 1e6).toPrecision(3)} cm⁻³ has gone intrinsic at ${T.toPrecision(4)} K, where n_i is ${(n_i / 1e6).toPrecision(3)} cm⁻³. It is not p-type any more, so it has no bulk potential and no inversion to reach. Dope it more heavily or cool it.`,
+      { na, ni: n_i, T },
+    )
   return thermalVoltage(T) * Math.log(na / n_i)
 }
 
@@ -602,7 +615,7 @@ export function cvCurve(process, { from = -3, to = 3, points = 241, frequency = 
  * ratio climbs monotonically with doping. The oxide thickness has to be known,
  * and it is what C_ox has already given.
  */
-export function dopingFromRatio({ ratio, tox, T = T_ROOM, ni = null, eg = EG_SI, eps = EPS_SI, epsOx = EPS_OX, lo = 1e19, hi = 1e25 }) {
+export function dopingFromRatio({ ratio, tox, T = T_ROOM, ni = null, eg = EG_SI, eps = EPS_SI, epsOx = EPS_OX, lo = 1e16, hi = 1e28 }) {
   if (!(ratio > 0) || !(ratio < 1)) throw new NetworkError('value', 'C_min/C_ox is between zero and one')
   const at = (na) => threshold({ na, tox, T, ni, eg, eps, epsOx }).ratio
   let a = lo
