@@ -1636,7 +1636,7 @@ export const EXPERIMENTS = [
     id: 'h4',
     group: GROUPS[7],
     name: 'Resonance',
-    terms: ['resonance', 'reactance', 'impedanceac'],
+    terms: ['resonance', 'reactance', 'impedanceac', 'qualityfactor'],
     params: [
       Vs('A', 'Amplitude', 1),
       chips(Freq('f', 'Frequency', 1591.5), [1400, 1591.5, 1800]),
@@ -1788,7 +1788,7 @@ export const EXPERIMENTS = [
     id: 'i4',
     group: GROUPS[8],
     name: 'The half-wave rectifier',
-    terms: ['rectifier', 'conduction'],
+    terms: ['rectifier', 'conduction', 'bisection'],
     params: [Vs('A', 'Amplitude', 10), chips(Freq('f', 'Frequency', 50), [50, 60, 1000]), R('RL', 'R_L', 1000), DIODE_MODEL('drop'), Win('N', 'Window', 'cycles', 2)],
     net: (p) => ({
       elements: [

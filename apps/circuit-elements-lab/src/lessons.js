@@ -197,11 +197,11 @@ export const LESSONS = {
   b1: {
     see:
       'Kirchhoff’s current law: charge does not pile up at a junction, so whatever current arrives at node A leaves it. ' +
-      '5.45 mA arrives through R₁ and leaves as 3.27 mA through R₂ and 2.18 mA through R₃.',
+      '5.455 mA arrives through R₁ and leaves as 3.273 mA through R₂ and 2.182 mA through R₃.',
     seeReads: [['i.R1', 0.0054545], ['i.R2', 0.0032727], ['i.R3', 0.0021818]],
     try: [
-      { say: 'Make R₂ tiny, 10 Ω: R₁ now carries 11.9 mA, R₂ takes 11.8 mA of it and R₃ only 39.5 µA. The sum has not moved from what arrives.', set: { R2: 10 }, reads: [['i.R1', 0.011882], ['i.R2', 0.011842], ['i.R3', 0.0000395]] },
-      { say: 'Set R₂ back to 2 kΩ and push R₃ to 1 MΩ: it all but leaves the circuit, and R₂ takes 4.00 mA of the 4.01 mA arriving. R₃ takes 8.0 µA.', set: { R2: 2000, R3: 1e6 }, reads: [['i.R1', 0.004005], ['i.R2', 0.003997], ['i.R3', 0.000008]] },
+      { say: 'Make R₂ tiny, 10 Ω: R₁ now carries 11.88 mA, R₂ takes 11.84 mA of it and R₃ only 39.5 µA. The sum has not moved from what arrives.', set: { R2: 10 }, reads: [['i.R1', 0.011882], ['i.R2', 0.011842], ['i.R3', 0.0000395]] },
+      { say: 'Set R₂ back to 2 kΩ and push R₃ to 1 MΩ: it all but leaves the circuit, and R₂ takes 3.997 mA of the 4.005 mA arriving. R₃ takes 8 µA.', set: { R2: 2000, R3: 1e6 }, reads: [['i.R1', 0.004005], ['i.R2', 0.003997], ['i.R3', 0.000008]] },
     ],
     why:
       'The arrows are the actual directions and the numbers are the actual amounts. R₁ carries exactly what R₂ ' +
@@ -215,7 +215,7 @@ export const LESSONS = {
     seeReads: [['volt.R1', 4], ['volt.R2', 8]],
     try: [
       { say: 'Make R₁ 2 kΩ, equal to R₂: the drops become 6 V and 6 V. The same current flows through both, so the split follows the resistances.', set: { R1: 2000 }, reads: [['volt.R1', 6], ['volt.R2', 6]] },
-      { say: 'Set R₁ back to 1 kΩ and drop E to 5 V: the resistors drop 1.67 V and 3.33 V, the proportion holds.', set: { R1: 1000, E: 5 }, reads: [['volt.R1', 1.6667], ['volt.R2', 3.3333]] },
+      { say: 'Set R₁ back to 1 kΩ and drop E to 5 V: the resistors drop 1.667 V and 3.333 V, the proportion holds.', set: { R1: 1000, E: 5 }, reads: [['volt.R1', 1.6667], ['volt.R2', 3.3333]] },
     ],
     why:
       'The source lifts by E and the two resistors drop it all again, in proportion to their resistance because ' +
@@ -228,7 +228,7 @@ export const LESSONS = {
     'and R₃ 12 mW. The source shows −24 mW. Negative means it delivers, and the four add to exactly zero.',
     seeReads: [['p.R1', 0.004], ['p.R2', 0.008], ['p.R3', 0.012], ['p.V1', -0.024]],
     try: [
-      { say: 'Set R₃ to 500 Ω: the current rises to 3.43 mA. R₁ now takes 11.8 mW, R₂ 23.5 mW, R₃ 5.88 mW and the source −41.1 mW, still summing to zero.', set: { R3: 500 }, reads: [['i.R1', 0.0034286], ['p.R1', 0.011755], ['p.R2', 0.02351], ['p.R3', 0.005878], ['p.V1', -0.041143]] },
+      { say: 'Set R₃ to 500 Ω: the current rises to 3.429 mA. R₁ now takes 11.75 mW, R₂ 23.51 mW, R₃ 5.878 mW and the source −41.14 mW, still summing to zero.', set: { R3: 500 }, reads: [['i.R1', 0.0034286], ['p.R1', 0.011755], ['p.R2', 0.02351], ['p.R3', 0.005878], ['p.V1', -0.041143]] },
       { say: 'Open the Power view: the delivered bar and the absorbed bar are the same length, element by element.' },
     ],
     why:
@@ -258,12 +258,13 @@ export const LESSONS = {
     'more.',
     seeReads: [['volt.R1', 2], ['volt.R2', 4], ['volt.R3', 6]],
     try: [
-      { say: 'Make R₃ ten times the others, 30 kΩ: it takes 10.9 V of the 12 V, nearly all of it.', set: { R3: 30000 }, reads: [['volt.R3', 10.909]] },
+      { say: 'Make R₃ ten times the others, 30 kΩ: it takes 10.91 V of the 12 V, nearly all of it.', set: { R3: 30000 }, reads: [['volt.R3', 10.909]] },
       { say: 'Make R₃ nearly a wire, 1 Ω: it drops 4 mV, and the other two share the source in their 1 : 2 ratio, 4 V and 8 V.', set: { R3: 1 }, reads: [['volt.R3', 0.004], ['volt.R1', 4.0], ['volt.R2', 8.0]] },
     ],
     why:
       'v_k = E · R_k / (R₁ + R₂ + R₃). The same current through every element, each drop proportional to its ' +
-    'own resistance, and the drops summing to E. That is all a divider is.',
+    'own resistance, and the drops summing to E. That is all a divider is. The same ratio returns as E2’s ' +
+    'own input and output dividers, R_in/(R_s + R_in) and R_out/(R_out + R_L).',
   },
   c2: {
     see:
@@ -273,21 +274,22 @@ export const LESSONS = {
     seeReads: [['i.R1', 0.012], ['i.R2', 0.006], ['i.R3', 0.004], ['i.V1', -0.022]],
     try: [
       { say: 'Drop R₁ to 100 Ω: it takes 120 mA and the source total jumps to 130 mA. The other two still take 6 mA and 4 mA, unchanged.', set: { R1: 100 }, reads: [['i.R1', 0.12], ['i.V1', -0.13], ['i.R2', 0.006], ['i.R3', 0.004]] },
-      { say: 'Set R₁ back to 1 kΩ and push R₂ to 1 MΩ: it takes 12 µA and has all but left. The source total falls to 16.0 mA.', set: { R1: 1000, R2: 1e6 }, reads: [['i.R2', 0.000012], ['i.V1', -0.01601]] },
+      { say: 'Set R₁ back to 1 kΩ and push R₂ to 1 MΩ: it takes 12 µA and has all but left. The source total falls to 16.01 mA.', set: { R1: 1000, R2: 1e6 }, reads: [['i.R2', 0.000012], ['i.V1', -0.01601]] },
     ],
     why:
       '1/R_eq = 1/R₁ + 1/R₂ + 1/R₃. The equivalent is always smaller than the smallest branch, and the total current from ' +
-      'the source is E divided by it.',
+      'the source is E divided by it. The same sum returns as D5’s Thévenin resistance, R₁∥R₂∥R₃ seen from ' +
+      'its port with the source killed.',
   },
   c3: {
     see:
-      'The divider formula E·R₂/(R₁+R₂) gives 6 V. With a 10 kΩ load hung across the output it reads 5.71 V, ' +
+      'The divider formula E·R₂/(R₁+R₂) gives 6 V. With a 10 kΩ load hung across the output it reads 5.714 V, ' +
     'because the load sits in parallel with R₂ and pulls the output down. The load sweep draws the droop ' +
     'against R_L.',
     seeReads: [['thevenin.voc', 6], ['v.A', 5.7143]],
     try: [
       { say: 'Load it with 1 kΩ, equal to R₂: the output falls to 4 V, a third of the way to nothing.', set: { RL: 1000 }, reads: [['v.A', 4]] },
-      { say: 'Push R_L to 1 MΩ: 6.00 V, the formula’s value. The droop is small only while the load is much larger than R₂.', set: { RL: 1e6 }, reads: [['v.A', 5.997]] },
+      { say: 'Push R_L to 1 MΩ: 5.997 V, close to the formula’s 6 V. The droop is small only while the load is much larger than R₂.', set: { RL: 1e6 }, reads: [['v.A', 5.997]] },
     ],
     why:
       'The unloaded formula is true only with nothing connected. Loaded, the output is E·(R₂∥R_L)/(R₁ + ' +
@@ -315,12 +317,12 @@ export const LESSONS = {
   d1: {
     see:
       'Pick a ground, name the other node voltages, and write KCL at each in terms of them. Every resistor’s ' +
-    'current is (its two node voltages apart)/R. Here there is one unknown, V_A = 6.55 V, and one equation. ' +
+    'current is (its two node voltages apart)/R. Here there is one unknown, V_A = 6.545 V, and one equation. ' +
     'The Equations view shows it, each term with its live value.',
     seeReads: [['v.A', 6.5455]],
     try: [
-      { say: 'Push R₁ to 1 MΩ: node A is nearly cut off from the source and V_A falls to 14.4 mV.', set: { R1: 1e6 }, reads: [['v.A', 0.014383]] },
-      { say: 'Set R₁ back to 1 kΩ. Push R₂ and R₃ both to 1 MΩ: nothing is left to pull A down and it reads 12.0 V, the source’s own voltage.', set: { R1: 1000, R2: 1e6, R3: 1e6 }, reads: [['v.A', 11.976]] },
+      { say: 'Push R₁ to 1 MΩ: node A is nearly cut off from the source and V_A falls to 14.38 mV.', set: { R1: 1e6 }, reads: [['v.A', 0.014383]] },
+      { say: 'Set R₁ back to 1 kΩ. Push R₂ and R₃ both to 1 MΩ: nothing is left to pull A down and it reads 11.98 V, close to the source’s own 12 V.', set: { R1: 1000, R2: 1e6, R3: 1e6 }, reads: [['v.A', 11.976]] },
     ],
     why:
       'That is the whole method, and every experiment in this lab is solved this way. The closed form falls out at once: ' +
@@ -329,12 +331,12 @@ export const LESSONS = {
   d2: {
     see:
       'A voltage source between nodes A and B fixes their difference, E₂ = 4 V, but says nothing about the ' +
-    'current through itself. KCL at A and at B each contain an unknown current. A and B read 7.27 V and 3.27 ' +
+    'current through itself. KCL at A and at B each contain an unknown current. A and B read 7.273 V and 3.273 ' +
     'V, 4 V apart, as promised.',
     seeReads: [['v.A', 7.2727], ['v.B', 3.2727]],
     try: [
-      { say: 'Set E₂ to 0 V: A and B become one node at 6.55 V, the nodal experiment’s answer.', set: { E2: 0 }, reads: [['v.A', 6.5455], ['v.B', 6.5455]] },
-      { say: 'Flip E₂ to −4 V: B now sits 4 V above A, 9.82 V against 5.82 V, and the source current reverses.', set: { E2: -4 }, reads: [['v.B', 9.8182], ['v.A', 5.8182]] },
+      { say: 'Set E₂ to 0 V: A and B become one node at 6.545 V, the nodal experiment’s answer.', set: { E2: 0 }, reads: [['v.A', 6.5455], ['v.B', 6.5455]] },
+      { say: 'Flip E₂ to −4 V: B now sits 4 V above A, 9.818 V against 5.818 V, and the source current reverses.', set: { E2: -4 }, reads: [['v.B', 9.8182], ['v.A', 5.8182]] },
     ],
     why:
       'The textbook fix is a supernode: add the two KCL equations so that current cancels, then use V_A − V_B = ' +
@@ -365,7 +367,7 @@ export const LESSONS = {
     try: [
       { say: 'Turn I₁ off (0 A): A reads 6 V, the voltage source alone, a plain divider.', set: { I1: 0 }, reads: [['v.A', 6]] },
       { say: 'Turn I₁ back on and set E₁ to 0 V instead: A reads 2.5 V, 5 mA into the two resistors in parallel.', set: { I1: 0.005, E1: 0 }, reads: [['v.A', 2.5]] },
-      { say: 'Set E₁ back to 12 V and switch the meters to powers: R₂ absorbs 72.3 mW, far more than the two halves’ powers added. Power does not add.', set: { E1: 12 }, reads: [['p.R2', 0.07225]] },
+      { say: 'Set E₁ back to 12 V and switch the meters to powers: R₂ absorbs 72.25 mW, far more than the two halves’ powers added. Power does not add.', set: { E1: 12 }, reads: [['p.R2', 0.07225]] },
     ],
     why:
       'Setting a source to zero means a voltage source becomes a wire and a current source a gap. Every voltage ' +
@@ -376,11 +378,11 @@ export const LESSONS = {
   d5: {
     see:
       'Seen from any two terminals, a linear circuit is indistinguishable from one source in series with one resistor. ' +
-      'From node A this one is V_th = 6.55 V behind R_th = 545 Ω. The Thévenin view finds that resistor three ways, and they agree.',
+      'From node A this one is V_th = 6.545 V behind R_th = 545.5 Ω. The Thévenin view finds that resistor three ways, and they agree.',
     seeReads: [['thevenin.voc', 6.5455], ['thevenin.rth', 545.45]],
     try: [
-      { say: 'Push R₁ to 1 MΩ: V_th collapses to 14.4 mV and R_th becomes R₂∥R₃ = 1.2 kΩ, the source is barely connected.', set: { R1: 1e6 }, reads: [['thevenin.voc', 0.014383], ['thevenin.rth', 1198.6]] },
-      { say: 'Set R₁ back to 1 kΩ and remove the two shunts (1 MΩ each): V_th → 12.0 V and R_th → 1 kΩ, R₁ alone.', set: { R1: 1000, R2: 1e6, R3: 1e6 }, reads: [['thevenin.voc', 11.976], ['thevenin.rth', 998]] },
+      { say: 'Push R₁ to 1 MΩ: V_th collapses to 14.38 mV and R_th falls to 1.199 kΩ, close to R₂∥R₃ now that R₁ is barely connected.', set: { R1: 1e6 }, reads: [['thevenin.voc', 0.014383], ['thevenin.rth', 1198.6]] },
+      { say: 'Set R₁ back to 1 kΩ and remove the two shunts (1 MΩ each): V_th → 11.98 V and R_th → 998 Ω, close to R₁ alone.', set: { R1: 1000, R2: 1e6, R3: 1e6 }, reads: [['thevenin.voc', 11.976], ['thevenin.rth', 998]] },
     ],
     why:
       'Three ways to find R_th: divide the open-circuit voltage by the short-circuit current. Kill the sources ' +
@@ -395,7 +397,7 @@ export const LESSONS = {
     'draws load power against R_L.',
     seeReads: [['p.RL', 0.072]],
     try: [
-      { say: 'Slide R_L to 2 kΩ: the load power falls to 46.1 mW, but the efficiency climbs to 80 %.', set: { RL: 2000 }, reads: [['p.RL', 0.04608], [(x) => (100 * x.sol.p.RL) / -x.sol.p.V1, 80]] },
+      { say: 'Slide R_L to 2 kΩ: the load power falls to 46.08 mW, but the efficiency climbs to 80 %.', set: { RL: 2000 }, reads: [['p.RL', 0.04608], [(x) => (100 * x.sol.p.RL) / -x.sol.p.V1, 80]] },
       { say: 'Drop R_L to 100 Ω: 40 mW, and only 16.7 % of what the source produces reaches the load.', set: { RL: 100 }, reads: [['p.RL', 0.04], [(x) => (100 * x.sol.p.RL) / -x.sol.p.V1, 16.667]] },
     ],
     why:
@@ -425,9 +427,9 @@ export const LESSONS = {
     'R_in/(R_s + R_in) costs a little at the input, and R_out/(R_out + R_L) a little at the output.',
     seeReads: [['v.out', 9.4295]],
     try: [
-      { say: 'Drop R_in to 10 kΩ, equal to R_s: the input divider now takes half the signal, v₊ = 5 mV, and the output falls to 4.76 V.', set: { Rin: 10000 }, reads: [['v.p', 0.005], ['v.out', 4.7619]] },
-      { say: 'Set R_in back to 1 MΩ and R_out to 1 Ω: the output holds 9.89 V into the 1 kΩ load.', set: { Rin: 1e6, Rout: 1 }, reads: [['v.out', 9.891]] },
-      { say: 'Set R_out back to 50 Ω and switch to powers: the load takes 88.9 mW and the source only 99 pW. A resistor network could only divide what it is given.', set: { Rout: 50 }, reads: [['p.RL', 0.08892], ['p.V1', -9.9e-11]] },
+      { say: 'Drop R_in to 10 kΩ, equal to R_s: the input divider now takes half the signal, v₊ = 5 mV, and the output falls to 4.762 V.', set: { Rin: 10000 }, reads: [['v.p', 0.005], ['v.out', 4.7619]] },
+      { say: 'Set R_in back to 1 MΩ and R_out to 1 Ω: the output holds 9.891 V into the 1 kΩ load.', set: { Rin: 1e6, Rout: 1 }, reads: [['v.out', 9.891]] },
+      { say: 'Set R_out back to 50 Ω and switch to powers: the load takes 88.92 mW and the source only 99 pW. A resistor network could only divide what it is given.', set: { Rout: 50 }, reads: [['p.RL', 0.08892], ['p.V1', -9.9e-11]] },
     ],
     why:
       'An operational amplifier is a packaged circuit of a few dozen transistors, active devices, powered from ' +
@@ -455,7 +457,7 @@ export const LESSONS = {
   e4: {
     see:
       'Connect the output back to the − input through a divider and the huge gain becomes useful. Then v_out = ' +
-    'G·E/(1 + G/A), with G = 1 + R_f/R_g = 10. With A = 1000 the output is 9.90 V, and the op-amp holds only ' +
+    'G·E/(1 + G/A), with G = 1 + R_f/R_g = 10. With A = 1000 the output is 9.901 V, and the op-amp holds only ' +
     '9.9 mV between its inputs.',
     seeReads: [['v.out', 9.901], ['vd.in.n', 0.0099]],
     try: [
@@ -471,11 +473,11 @@ export const LESSONS = {
     see:
       'Ground the + input and feed the signal into the − input through R_g, with R_f back from the output. The ' +
     '− input sits at 0 V without being wired to ground, which is the virtual ground. The input current is ' +
-    'therefore E/R_g = 0.5 mA, all of it flows on through R_f, and v_out = −(R_f/R_g)·E = −5 V.',
+    'therefore E/R_g = 500 µA, all of it flows on through R_f, and v_out = −(R_f/R_g)·E = −5 V.',
     seeReads: [['v.n', 0], ['i.Rg', 0.0005], ['v.out', -5]],
     try: [
       { say: 'Double R_f to 20 kΩ: −10 V. The gain is the ratio of two resistors and nothing else.', set: { Rf: 20000 }, reads: [['v.out', -10]] },
-      { say: 'Set R_f back to 10 kΩ. Load the output with 100 Ω: still −5 V, and the 50 mA it takes comes from the op-amp, not the source, which still supplies 0.5 mA.', set: { Rf: 10000, RL: 100 }, reads: [['v.out', -5], ['i.RL', -0.05], ['i.V1', -0.0005]] },
+      { say: 'Set R_f back to 10 kΩ. Load the output with 100 Ω: still −5 V, and the 50 mA it takes comes from the op-amp, not the source, which still supplies 500 µA.', set: { Rf: 10000, RL: 100 }, reads: [['v.out', -5], ['i.RL', -0.05], ['i.V1', -0.0005]] },
     ],
     why:
       'The golden rules make the − input follow the grounded + input, and since no current enters the op-amp ' +
@@ -504,7 +506,7 @@ export const LESSONS = {
     seeReads: [['v.out', 2]],
     try: [
       { say: 'Set E₁ = E₂ = 1.2 V: 0 V out. A signal common to both inputs does not get through.', set: { E1: 1.2 }, reads: [['v.out', 0]] },
-      { say: 'Now mismatch R₄ by one part in a hundred, 10.1 kΩ, with E₁ = E₂ = 1.2 V: 10.8 mV of common-mode input leaks through.', set: { E1: 1.2, R4: 10100 }, reads: [['v.out', 0.010811]] },
+      { say: 'Now mismatch R₄ by one part in a hundred, 10.1 kΩ, with E₁ = E₂ = 1.2 V: 10.81 mV of common-mode input leaks through.', set: { E1: 1.2, R4: 10100 }, reads: [['v.out', 0.010811]] },
     ],
     why:
       'A real signal often rides on a voltage picked up by both wires alike, mains hum on a long twisted pair, ' +
@@ -519,7 +521,7 @@ export const LESSONS = {
     'into 100 Ω, the unloaded divider voltage, with the 60 mA coming from the op-amp.',
     seeReads: [['v.out', 6], ['i.RL', 0.06]],
     try: [
-      { say: 'Drop R_L to 10 Ω: still 6.00 V, now 600 mA from the op-amp. The divider still carries its own 6 mA.', set: { RL: 10 }, reads: [['v.out', 6], ['i.RL', 0.6], ['i.R1', 0.006]] },
+      { say: 'Drop R_L to 10 Ω: still 6 V, now 600 mA from the op-amp. The divider still carries its own 6 mA.', set: { RL: 10 }, reads: [['v.out', 6], ['i.RL', 0.6], ['i.R1', 0.006]] },
       { say: 'Open the Load sweep: the line is flat. Compare the same sweep in C3.' },
     ],
     why:
@@ -549,13 +551,13 @@ export const LESSONS = {
   f2: {
     see:
       'The inductor is the dual of the capacitor. Its voltage is the slope of its current, v = L·di/dt. Push a ' +
-    'triangle current through it and the voltage is a square wave, ±0.4 V, flat while the current ramps and ' +
+    'triangle current through it and the voltage is a square wave, ±400 mV, flat while the current ramps and ' +
     'flipping when the ramp does.',
     seeReads: [['volt.L1', 0.4]],
     whyReads: [[(x, p) => p.L1 / p.Rp, 0.000001]],
     try: [
-      { say: 'Double L to 20 mH: ±0.8 V for the same current.', set: { L1: 0.02 }, reads: [['volt.L1', 0.8]] },
-      { say: 'Set L back to 10 mH and halve the period to 0.5 ms: the ramp is twice as steep and the voltage doubles to ±0.8 V.', set: { L1: 0.01, T: 0.0005 }, reads: [['volt.L1', 0.8]] },
+      { say: 'Double L to 20 mH: ±800 mV for the same current.', set: { L1: 0.02 }, reads: [['volt.L1', 0.8]] },
+      { say: 'Set L back to 10 mH and halve the period to 0.5 ms: the ramp is twice as steep and the voltage doubles to ±800 mV.', set: { L1: 0.01, T: 0.0005 }, reads: [['volt.L1', 0.8]] },
     ],
     why:
       'An inductor stores flux, λ = L·i, and voltage is flux per second. The parallel R_p plays the role R_s ' +
@@ -568,12 +570,12 @@ export const LESSONS = {
     see:
       'Close the switch at t = 0 and the capacitor does not jump to 12 V. Its voltage is a state, and a state ' +
     'cannot change instantly. It climbs as E(1 − e^(−t/τ)) with τ = RC = 1 ms. At the cursor, one τ in, it ' +
-    'has covered 63.2 % of the way: 7.59 V.',
+    'has covered 63.2 % of the way: 7.585 V.',
     seeReads: [['state.tau', 0.001], ['volt.C1', 7.5854], [(x, p) => (100 * x.sol.volt.C1) / p.E, 63.21]],
     try: [
       { say: 'Drag the cursor to 5 ms, five time constants: 99.3 % of the way, 11.92 V.', at: 0.005, reads: [['volt.C1', 11.919], [(x, p) => (100 * x.sol.volt.C1) / p.E, 99.33]] },
       { say: 'Double R to 2 kΩ: τ doubles to 2 ms. The window stretches with it and the picture does not change shape.', set: { R1: 2000 }, reads: [['state.tau', 0.002]] },
-      { say: 'Set R back to 1 kΩ. Give the capacitor an initial value, v_C(0) = 6 V: the same curve, closing the same 63.2 % of a smaller gap, 9.79 V at one τ.', set: { R1: 1000, v0: 6 }, at: 0.001, reads: [['volt.C1', 9.7927], [(x, p) => (100 * (x.sol.volt.C1 - p.v0)) / (p.E - p.v0), 63.21]] },
+      { say: 'Set R back to 1 kΩ. Give the capacitor an initial value, v_C(0) = 6 V: the same curve, closing the same 63.2 % of a smaller gap, 9.793 V at one τ.', set: { R1: 1000, v0: 6 }, at: 0.001, reads: [['volt.C1', 9.7927], [(x, p) => (100 * (x.sol.volt.C1 - p.v0)) / (p.E - p.v0), 63.21]] },
       { say: 'Put v₀ back to 0 V and the cursor at the start: the current is (E − v₀)/R = 12 mA, an uncharged capacitor looks like a short.', set: { v0: 0 }, at: 1e-6, reads: [['i.R1', 0.012]] },
     ],
     why:
@@ -586,12 +588,12 @@ export const LESSONS = {
   f4: {
     see:
       'The capacitor sits behind a divider and a series resistor, so nothing in F3 seems to apply. Replace ' +
-    'everything to its left by its Thévenin equivalent (D5), which is 8 V behind 1.17 kΩ. The circuit is then ' +
-    'F3 again, with τ = R_th·C = 1.17 ms.',
+    'everything to its left by its Thévenin equivalent (D5), which is 8 V behind 1.167 kΩ. The circuit is then ' +
+    'F3 again, with τ = R_th·C = 1.167 ms.',
     seeReads: [['thevenin.voc', 8], ['thevenin.rth', 1166.7], ['state.tau', 0.0011667]],
     try: [
-      { say: 'Push R₂ to 1 MΩ: the divider disappears, V_th → 12.0 V and R_th → R₁ + R₃ = 1.5 kΩ, so τ = 1.5 ms.', set: { R2: 1e6 }, reads: [['thevenin.voc', 11.988], ['thevenin.rth', 1499], ['state.tau', 0.001499]] },
-      { say: 'Set R₂ back to 2 kΩ and put the cursor at the start: the empty capacitor is a short, so node A sees R₂∥R₃ and reads 3.43 V. It climbs to the divider’s 8 V as the charging current dies.', set: { R2: 2000 }, at: 1e-7, reads: [['v.A', 3.4286], ['thevenin.voc', 8]] },
+      { say: 'Push R₂ to 1 MΩ and the divider disappears. V_th → 11.99 V and R_th → 1.499 kΩ, close to R₁ + R₃ now that R₂ is large, so τ = 1.499 ms.', set: { R2: 1e6 }, reads: [['thevenin.voc', 11.988], ['thevenin.rth', 1499], ['state.tau', 0.001499]] },
+      { say: 'Set R₂ back to 2 kΩ and put the cursor at the start: the empty capacitor is a short, so node A sees R₂∥R₃ and reads 3.429 V. It climbs to the divider’s 8 V as the charging current dies.', set: { R2: 2000 }, at: 1e-7, reads: [['v.A', 3.4286], ['thevenin.voc', 8]] },
     ],
     why:
       'Seen from the capacitor the network is a source V_th = E·R₂/(R₁+R₂) behind R_th = R₃ + R₁∥R₂, and then ' +
@@ -638,11 +640,11 @@ export const LESSONS = {
     see:
       'Feedback through a capacitor instead of a resistor. The virtual ground (E5) holds n at 0 V, so the input ' +
     'current is v_in/R = 100 µA exactly and all of it flows into the capacitor. The output is the integral of ' +
-    'the input. A square wave in gives a triangle out, swinging 0.25 V either side of zero.',
+    'the input. A square wave in gives a triangle out, swinging 250 mV either side of zero.',
     seeReads: [['v.n', 0], ['i.R1', -0.0001], ['v.out', -0.25]],
     try: [
-      { say: 'Double the input to 2 V: the slope doubles and the triangle grows to 0.5 V either side.', set: { A: 2 }, reads: [['v.out', -0.5]] },
-      { say: 'Set the input back to 1 V and double C to 0.2 µF: the same current fills a bigger capacitor, and the triangle halves to 0.125 V.', set: { A: 1, C1: 2e-7 }, reads: [['v.out', -0.125]] },
+      { say: 'Double the input to 2 V: the slope doubles and the triangle grows to 500 mV either side.', set: { A: 2 }, reads: [['v.out', -0.5]] },
+      { say: 'Set the input back to 1 V and double C to 0.2 µF: the same current fills a bigger capacitor, and the triangle halves to 125 mV.', set: { A: 1, C1: 2e-7 }, reads: [['v.out', -0.125]] },
       { say: 'Set C back to 0.1 µF. Flip the op-amp to finite gain (the Gain knob, 10⁵): a very slow RC, τ = RC(A + 1) = 100 s, the leak every real integrator has.', set: { C1: 100e-9, ideal: false }, reads: [['state.tau', 100.001]] },
     ],
     why:
@@ -675,7 +677,7 @@ export const LESSONS = {
     'the circuit hints that 200 Ω is special. Only the equation does.',
     seeReads: [['state.alpha', 10000], ['state.zeta', 1]],
     try: [
-      { say: 'Drag the cursor to 100 µs, t = 1/α: the current is at its peak, E/(Lαe) = 3.68 mA.', at: 0.0001, reads: [['i.R1', 0.0036788]] },
+      { say: 'Drag the cursor to 100 µs, t = 1/α: the current is at its peak, E/(Lαe) = 3.679 mA.', at: 0.0001, reads: [['i.R1', 0.0036788]] },
       { say: 'A hair less resistance, 190 Ω, and the roots turn complex (ζ = 0.95). The capacitor voltage will cross E, if only by a hair.', set: { R1: 190 }, reads: [['state.zeta', 0.95], ['state.face', 'underdamped']] },
       { say: 'A hair more, 210 Ω: the roots split, ζ = 1.05, and the slow one slows the approach.', set: { R1: 210 }, reads: [['state.zeta', 1.05], ['state.face', 'overdamped']] },
     ],
@@ -700,11 +702,13 @@ export const LESSONS = {
       'Above critical the settling time falls as R does, because the slow root −α + √(α² − ω₀²) speeds up. ' +
     'Below it the overshoot climbs, toward a full step’s worth at zero resistance, and the settling time ' +
     'first keeps falling and then climbs again as the ringing outlasts the decay. Critical damping is the ' +
-    'fastest response with no overshoot. The fastest settling of all lies a little below it.',
+    'fastest response with no overshoot. The fastest settling of all lies a little below it. The same ' +
+    'trade-off tunes a car’s shock absorbers and a door closer. Too little damping rings and rattles. Too ' +
+    'much closes too slowly.',
   },
   g4: {
     see:
-      'With R = 50 Ω, α = 2.5 krad/s < ω₀ and the roots are complex, −α ± jω_d with ω_d = 9.68 krad/s. The ' +
+      'With R = 50 Ω, α = 2.5 krad/s < ω₀ and the roots are complex, −α ± jω_d with ω_d = 9.682 krad/s. The ' +
     'response rings at ω_d inside an envelope that shrinks as e^(−αt), the dashed curves. The damping ratio ζ ' +
     '= α/ω₀ = 0.25 fixes the shape whatever the scale.',
     seeReads: [['state.alpha', 2500], ['state.wd', 9682.5], ['state.zeta', 0.25]],
@@ -715,7 +719,7 @@ export const LESSONS = {
     why:
       'v_C = E[1 − e^(−αt)(cos ω_d t + (α/ω_d) sin ω_d t)] with ω_d = √(ω₀² − α²): it rings at ω_d, slightly slower than ' +
       'ω₀. The first peak overshoots by e^(−πζ/√(1−ζ²)) of the step and each following peak is that same fraction of the ' +
-      'one before. Q = 1/2ζ says the same thing another way.',
+      'one before. The reciprocal 1/(2ζ) is what H4 calls Q, the quality factor.',
   },
   g5: {
     see:
@@ -779,7 +783,7 @@ export const LESSONS = {
     try: [
       { say: 'The 15.92 Hz chip: a period of 62.8 ms against τ = 1 ms. The natural part dies before the first cycle is a tenth done, and the capacitor voltage follows the source.', set: { f: 15.92 }, reads: [['period', 0.06283], ['state.tau', 0.001]] },
       { say: 'Set the frequency back to 159.2 Hz. Drag the cursor to 5 ms: the bright and dashed traces are already within 0.476 % of the forced amplitude of each other.', set: { f: 159.2 }, at: 0.005, reads: [[(x) => (100 * Math.abs(x.sol.volt.C1 - x.acAt.volt.C1)) / cx.cabs(x.ac.volt.C1), 0.476]] },
-      { say: 'The 1592 Hz chip: the period, 0.628 ms, is shorter than τ = 1 ms. The exponential now takes eight cycles to fade, and the forced sinusoid is small, 0.498 V, because the capacitor cannot follow.', set: { f: 1592 }, reads: [['period', 0.0006281], ['mag.volt.C1', 0.4975]] },
+      { say: 'The 1592 Hz chip: the period, 0.628 ms, is shorter than τ = 1 ms. The exponential now takes eight cycles to fade, and the forced sinusoid is small, 497.5 mV, because the capacitor cannot follow.', set: { f: 1592 }, reads: [['period', 0.0006281], ['mag.volt.C1', 0.4975]] },
     ],
     why:
       'The natural response is −v_f(0)·e^(−t/τ). The source sets its size but not its shape. Everything the ' +
@@ -789,14 +793,14 @@ export const LESSONS = {
     see:
       'In the steady state every voltage and current is a sinusoid at the drive frequency, fixed by amplitude ' +
     'and phase. Each can therefore be drawn as an arrow. The height of its spinning tip traces the waveform. ' +
-    'At the corner frequency f = 1/(2πRC) = 159.2 Hz the two voltage arrows are the same length, 3.54 V each, ' +
+    'At the corner frequency f = 1/(2πRC) = 159.2 Hz the two voltage arrows are the same length, 3.535 V each, ' +
     'and v_C lags the source by 45°.',
     seeReads: [[(x, p) => 1 / (2 * Math.PI * p.R1 * p.C1), 159.15], ['mag.volt.R1', 3.5355], ['mag.volt.C1', 3.5355], ['lead.volt.C1', -45]],
     whyReads: [[(x) => wrap((cx.carg(x.ac.i.R1) - cx.carg(x.ac.volt.C1)) * DEG), 90]],
     try: [
-      { say: 'The 15.92 Hz chip: the capacitor’s arrow grows to 4.98 V and swings to only 5.7° behind the source, at low frequency the capacitor has time to follow.', set: { f: 15.92 }, reads: [['mag.volt.C1', 4.975], ['lead.volt.C1', -5.71]] },
+      { say: 'The 15.92 Hz chip: the capacitor’s arrow grows to 4.975 V and swings to only 5.7° behind the source, at low frequency the capacitor has time to follow.', set: { f: 15.92 }, reads: [['mag.volt.C1', 4.975], ['lead.volt.C1', -5.71]] },
       { say: 'Drag the slider: V_R and V_C laid tip to tail always land on V_s, KVL, drawn.' },
-      { say: 'The 1592 Hz chip: 0.498 V and 84.3° behind, the current’s arrow, 90° ahead of V_C, now nearly lines up with the source.', set: { f: 1592 }, reads: [['mag.volt.C1', 0.4975], ['lead.volt.C1', -84.29], [(x) => wrap((cx.carg(x.ac.i.R1) - cx.carg(x.ac.volt.C1)) * DEG), 90]] },
+      { say: 'The 1592 Hz chip: 497.5 mV and 84.3° behind, the current’s arrow, 90° ahead of V_C, now nearly lines up with the source.', set: { f: 1592 }, reads: [['mag.volt.C1', 0.4975], ['lead.volt.C1', -84.29], [(x) => wrap((cx.carg(x.ac.i.R1) - cx.carg(x.ac.volt.C1)) * DEG), 90]] },
     ],
     why:
       'Arrows add like the voltages they stand for, which is KVL. The capacitor’s arrow lies 90° behind the ' +
@@ -807,13 +811,13 @@ export const LESSONS = {
     see:
       'With phasors a capacitor and an inductor obey Ohm’s law, V = Z·I, with Z_C = 1/jωC and Z_L = jωL. In ' +
     'series they add: Z = R + j(ωL − 1/ωC). At 1 kHz the inductor offers 62.8 Ω and the capacitor 159.2 Ω. ' +
-    'Pointing opposite ways they partly cancel, |Z| = 138.8 Ω, and the current, 7.20 mA, leads the source by ' +
+    'Pointing opposite ways they partly cancel, |Z| = 138.8 Ω, and the current, 7.202 mA, leads the source by ' +
     '43.9°, the capacitor is winning.',
     seeReads: [[(x, p) => x.omega * p.L1, 62.83], [(x, p) => 1 / (x.omega * p.C1), 159.15], ['Z.mag', 138.85], ['mag.i.R1', 0.0072021], ['lead.i.R1', 43.93]],
     whyReads: [[(x, p) => 1 / (2 * Math.PI * Math.sqrt(p.L1 * p.C1)), 1591.55]],
     try: [
       { say: 'The 2500 Hz chip: now ωL = 157.1 Ω beats 1/ωC = 63.7 Ω, the current swings to lagging (43.1°) and the arrows for V_L and V_C trade lengths.', set: { f: 2500 }, reads: [[(x, p) => x.omega * p.L1, 157.08], [(x, p) => 1 / (x.omega * p.C1), 63.66], ['lead.i.R1', -43.05]] },
-      { say: 'Set the frequency back to 1 kHz. Read V_C from the arrows: 1.146 V, larger than the 1 V source, the inductor’s 0.453 V is subtracted from it, not added.', set: { f: 1000 }, reads: [['mag.volt.C1', 1.1462], ['mag.volt.L1', 0.4525]] },
+      { say: 'Set the frequency back to 1 kHz. Read V_C from the arrows: 1.146 V, larger than the 1 V source, the inductor’s 452.5 mV is subtracted from it, not added.', set: { f: 1000 }, reads: [['mag.volt.C1', 1.1462], ['mag.volt.L1', 0.4525]] },
       { say: 'The 1591.5 Hz chip: the two reactances are equal, 100 Ω each, and cancel. Z is then just R, and the current, 10 mA, is in phase, which is the next experiment.', set: { f: 1591.5 }, reads: [[(x, p) => x.omega * p.L1, 100], [(x, p) => 1 / (x.omega * p.C1), 100], ['mag.i.R1', 0.01], ['lead.i.R1', 0, 0.01]] },
     ],
     why:
@@ -840,15 +844,15 @@ export const LESSONS = {
   h5: {
     see:
       'An inductor delays the current behind the drive voltage. Drive 100 Ω and 0.3 H from 10 V peak at 50 Hz ' +
-    'and the current lags by 43.3°, its peak 72.8 mA. Power arrives at twice that frequency, 100 Hz, because ' +
-    'it depends on both v and i. Only the resistor turns any of it to heat, an average P = 265 mW. The ' +
+    'and the current lags by 43.3°, its peak 72.79 mA. Power arrives at twice that frequency, 100 Hz, because ' +
+    'it depends on both v and i. Only the resistor turns any of it to heat, an average P = 264.9 mW. The ' +
     'inductor’s own power averages exactly zero.',
     seeReads: [['mag.i.R1', 0.07279], ['lead.i.R1', -43.3], [(x) => x.omega / Math.PI, 100], ['ac.P', 0.2649]],
     whyReads: [[(x, p) => p.A / Math.SQRT2, 7.071], [(x) => cx.cabs(x.ac.i.R1) / Math.SQRT2, 0.05147]],
     try: [
       { say: 'Set L to 1 µH, all but nothing: the current comes into phase, 100 mA, P rises to 500 mW and there is no reactive power to speak of.', set: { L1: 1e-6 }, reads: [['mag.i.R1', 0.1], ['lead.i.R1', 0, 0.01], ['ac.P', 0.5]] },
-      { say: 'Set L back to 0.3 H and the 400 Hz chip: ωL = 754 Ω swamps R. The current falls to 13.15 mA lagging 82.4°, and of the 65.7 mVA the source carries, only 8.65 mW is real.', set: { L1: 0.3, f: 400 }, reads: [[(x, p) => x.omega * p.L1, 754], ['mag.i.R1', 0.013148], ['lead.i.R1', -82.45], ['ac.S', 0.06574], ['ac.P', 0.008644]] },
-      { say: 'Set f back to 50 Hz. V_rms·I_rms = 364 mVA is the apparent power the wires must carry. Cos φ = 0.728 of it is P, and Q = 250 mvar is the amplitude of the inductor’s to-and-fro.', set: { f: 50 }, reads: [['ac.S', 0.36397], ['ac.pf', 0.7278], ['ac.Q', 0.24965]] },
+      { say: 'Set L back to 0.3 H and the 400 Hz chip: ωL = 754 Ω swamps R. The current falls to 13.15 mA lagging 82.4°, and of the 65.74 mVA the source carries, only 8.644 mW is real.', set: { L1: 0.3, f: 400 }, reads: [[(x, p) => x.omega * p.L1, 754], ['mag.i.R1', 0.013148], ['lead.i.R1', -82.45], ['ac.S', 0.06574], ['ac.P', 0.008644]] },
+      { say: 'Set f back to 50 Hz. V_rms·I_rms = 364 mVA is the apparent power the wires must carry. Cos φ = 0.728 of it is P, and Q = 249.7 mvar is the amplitude of the inductor’s to-and-fro.', set: { f: 50 }, reads: [['ac.S', 0.36397], ['ac.pf', 0.7278], ['ac.Q', 0.24965]] },
     ],
     why:
       'P = ½R|I|² = V_rms·I_rms·cos φ, with V_rms = 10/√2 = 7.07 V and I_rms = 51.5 mA here. The product ' +
@@ -881,14 +885,14 @@ export const LESSONS = {
   },
   e9: {
     see:
-      'The output feeds back to the + input, so the threshold moves with the output. The output sits at 12.0 V ' +
-    'until the input climbs past 1.20 V. It then swings to the other rail and stays there until the input ' +
+      'The output feeds back to the + input, so the threshold moves with the output. The output sits at 12 V ' +
+    'until the input climbs past 1.2 V. It then swings to the other rail and stays there until the input ' +
     'falls the same distance the other side of zero. That gap between the two thresholds is hysteresis.',
     seeAt: 0,
     seeReads: [[(x) => x.tr.at(0).sol.v.out, 12], [(x) => Math.abs(x.tr.at(0).sol.v.p), 1.2]],
     try: [
       {
-        say: 'Set R₂ to 10 kΩ: half the output now reaches the + input. The threshold jumps to 6.00 V, beyond the ' +
+        say: 'Set R₂ to 10 kΩ: half the output now reaches the + input. The threshold jumps to 6 V, beyond the ' +
         '5 V input, so the trigger never fires.',
         set: { R2: 10000 },
         reads: [['v.out', 12], [(x) => Math.abs(x.tr.at(0).sol.v.p), 6], [(x) => x.events.length, 0]],
@@ -900,26 +904,27 @@ export const LESSONS = {
         reads: [['v.out', -12]],
       },
       {
-        say: 'Lower the rails to ±5 V: the thresholds shrink with them, to 0.500 V, and the output still flips four times in the window.',
+        say: 'Lower the rails to ±5 V: the thresholds shrink with them, to 500 mV, and the output still flips four times in the window.',
         set: { R2: 90000, Vsat: 5 },
         reads: [[(x) => Math.abs(x.tr.at(0).sol.v.p), 0.5], [(x) => x.events.length, 4]],
       },
     ],
     why:
       'The divider R₁/(R₁ + R₂) feeds a tenth of the output back to the + input. With the output at a rail the ' +
-    '+ input sits at ±V_sat·R₁/(R₁ + R₂), which is ±1.20 V here. The op-amp drives its output wherever it ' +
+    '+ input sits at ±V_sat·R₁/(R₁ + R₂), which is ±1.2 V here. The op-amp drives its output wherever it ' +
     'must to make v₊ = v₋. With the feedback going to the + input, that rule pushes the output further from ' +
     'balance rather than towards it, so the balance point between the rails is unstable. Only the two rails ' +
     'are stable, and which one holds depends on where the circuit has been. A single noisy crossing therefore ' +
     'produces a single clean transition. Asked for one DC answer, this circuit has three that are each ' +
-    'consistent, and the app lists all three rather than picking one.',
+    'consistent, and the app lists all three rather than picking one. This is the trick behind a debounced ' +
+    'button or a line receiver, turning one noisy crossing into a single clean edge.',
     whyReads: [[(x) => Math.abs(x.tr.at(0).sol.v.p), 1.2]],
   },
   i1: {
     see:
       'A resistor’s straight line becomes a curve here. The diode’s current climbs exponentially with its ' +
     'voltage, so it settles on its own drop rather than obeying a ratio. On the constant-drop model it takes ' +
-    '0.700 V and passes 4.30 mA. The exponential curve those models approximate gives 0.693 V and 4.31 mA. ' +
+    '700 mV and passes 4.3 mA. The exponential curve those models approximate gives 692.5 mV and 4.307 mA. ' +
     'All four models describe this one curve.',
     seeReads: [
       ['volt.D1', 0.7],
@@ -929,8 +934,8 @@ export const LESSONS = {
     ],
     try: [
       {
-        say: 'Choose the curve and turn R up to 10 kΩ. The current falls tenfold to 0.437 mA while the drop falls ' +
-        'by only 59.2 mV, a decade of current for a sliver of voltage.',
+        say: 'Choose the curve and turn R up to 10 kΩ. The current falls tenfold to 436.7 µA while the drop falls ' +
+        'by only 59.17 mV, a decade of current for a sliver of voltage.',
         set: { model: 'exp', R1: 10000 },
         reads: [
           ['i.D1', 0.0004367],
@@ -938,13 +943,13 @@ export const LESSONS = {
         ],
       },
       {
-        say: 'Set R back to 1 kΩ and switch the model to the ideal switch. With no drop at all, the resistor takes the whole 5 V and the current rises to 5.00 mA.',
+        say: 'Set R back to 1 kΩ and switch the model to the ideal switch. With no drop at all, the resistor takes the whole 5 V and the current rises to 5 mA.',
         set: { model: 'ideal', R1: 1000 },
         reads: [['i.D1', 0.005]],
       },
       {
         say: 'Set R back to 1 kΩ. Switch to V_f + r_d: the battery has a slope behind it now, so the drop grows with the current, ' +
-        '0.743 V here, and 4.26 mA.',
+        '742.6 mV here, and 4.257 mA.',
         set: { R1: 1000, model: 'pwl' },
         reads: [['volt.D1', 0.74264], ['i.D1', 0.0042574]],
       },
@@ -953,7 +958,7 @@ export const LESSONS = {
       'Shockley’s law is i = I_s(e^(v/nV_T) − 1). Here V_T = kT/q is the thermal voltage, 25.9 mV at room ' +
     'temperature, and it is the only constant in the diode that is not a property of the part. Because the ' +
     'exponent is v/V_T, every factor of ten in current costs about sixty millivolts. That is why the drop ' +
-    'looks almost fixed across a decade or two, and why 0.7 V is a useful approximation. The three piecewise ' +
+    'looks almost fixed across a decade or two, and why 700 mV is a useful approximation. The three piecewise ' +
     'models are successive approximations to it. The ideal switch ignores the drop, the constant drop takes ' +
     'it as a battery, and V_f + r_d gives that battery the curve’s local slope r_d = nV_T/I. Each is exact ' +
     'inside its own straight piece, which lets everything else in this lab apply to a circuit with a diode in ' +
@@ -963,17 +968,17 @@ export const LESSONS = {
   i2: {
     see:
       'The circuit outside the diode can only offer i = (5 V − v)/150 Ω, a straight line laid across the curve. ' +
-    'Where the two meet is the operating point: 0.741 V and 28.4 mA. A simulator finds it by Newton’s method, ' +
+    'Where the two meet is the operating point: 741.3 mV and 28.39 mA. A simulator finds it by Newton’s method, ' +
     'sliding down tangents from a guess. Here that takes seven of them.',
     seeReads: [['volt.D1', 0.74129], ['i.D1', 0.0283914], [(x) => x.newton.length, 7]],
     try: [
       {
-        say: 'Set R to 47 Ω: the load line tilts steeper and the point slides up the curve to 90.0 mA, while the drop only reaches 0.771 V.',
+        say: 'Set R to 47 Ω: the load line tilts steeper and the point slides up the curve to 89.98 mA, while the drop only reaches 771.1 mV.',
         set: { R1: 47 },
         reads: [['i.D1', 0.0899763], ['volt.D1', 0.77111]],
       },
       {
-        say: 'Set R to 470 Ω instead: down to 9.12 mA and 0.712 V. A factor of ten in current, 59.2 mV in voltage, ' +
+        say: 'Set R to 470 Ω instead: down to 9.123 mA and 711.9 mV. A factor of ten in current, 59.16 mV in voltage, ' +
         'the curve’s exchange rate, seen twice.',
         set: { R1: 470 },
         reads: [
@@ -983,8 +988,8 @@ export const LESSONS = {
         ],
       },
       {
-        say: 'Set R back to 150 Ω and switch to the constant-drop model: it assumes 0.700 V where the curve gives 0.741 V. The current ' +
-        'comes out at 28.7 mA, one per cent high, with no iteration at all.',
+        say: 'Set R back to 150 Ω and switch to the constant-drop model: it assumes 700 mV where the curve gives 741.3 mV. The current ' +
+        'comes out at 28.67 mA, one per cent high, with no iteration at all.',
         set: { R1: 150, model: 'drop' },
         reads: [
           ['volt.D1', 0.7],
@@ -1006,21 +1011,21 @@ export const LESSONS = {
     see:
       'Two diodes face opposite ways across the node, and only one arrangement of them survives. Assume both ' +
     'conduct and the algebra contradicts itself. Assume neither and v_A would have to be 5 V, far past what a ' +
-    'diode allows. The consistent state is D₁ conducting, D₂ blocking, and the node clamped at 0.700 V.',
+    'diode allows. The consistent state is D₁ conducting, D₂ blocking, and the node clamped at 700 mV.',
     seeReads: [['v.A', 0.7]],
     try: [
       {
-        say: 'Set the source to −5 V: the mirror image. D₂ conducts, D₁ blocks, and the node clamps at −0.700 V instead.',
+        say: 'Set the source to −5 V: the mirror image. D₂ conducts, D₁ blocks, and the node clamps at −700 mV instead.',
         set: { E: -5 },
         reads: [['v.A', -0.7]],
       },
       {
-        say: 'Set it to 0.5 V: too small for either diode to conduct, so both block and the node simply follows the source at 0.500 V.',
+        say: 'Set it to 0.5 V: too small for either diode to conduct, so both block and the node simply follows the source at 500 mV.',
         set: { E: 0.5 },
         reads: [['v.A', 0.5]],
       },
       {
-        say: 'Set the source back to 5 V. Switch to the curve: no assumed states at all, one Newton solve, and the clamp is soft, 0.693 V, and ' +
+        say: 'Set the source back to 5 V. Switch to the curve: no assumed states at all, one Newton solve, and the clamp is soft, 692.5 mV, and ' +
         'it moves with the current.',
         set: { E: 5, model: 'exp' },
         reads: [['v.A', 0.69254]],
@@ -1038,8 +1043,8 @@ export const LESSONS = {
   i4: {
     see:
       'The diode passes the positive half of the sine and blocks the negative. The load sees a train of humps ' +
-    'peaking at 9.30 V, which is the source’s 10 V less the 0.700 V the diode takes. Averaged over a cycle ' +
-    'that is 2.84 V of DC, and the diode conducts for 172° rather than a full half.',
+    'peaking at 9.3 V, which is the source’s 10 V less the 700 mV the diode takes. Averaged over a cycle ' +
+    'that is 2.841 V of DC, and the diode conducts for 172° rather than a full half.',
     seeReads: [
       [(x) => peakAt(x, (s) => s.v.out), 9.3],
       ['volt.D1', 0.7],
@@ -1048,7 +1053,7 @@ export const LESSONS = {
     ],
     try: [
       {
-        say: 'Drop the amplitude to 3 V: the same shape, but 0.700 V costs proportionally more, the peak is 2.30 V ' +
+        say: 'Drop the amplitude to 3 V: the same shape, but 700 mV costs proportionally more, the peak is 2.3 V ' +
         'and the diode conducts for only 153° of the cycle.',
         set: { model: 'drop', A: 3 },
         reads: [
@@ -1058,8 +1063,8 @@ export const LESSONS = {
         ],
       },
       {
-        say: 'Set the amplitude back to 10 V and switch the diode to ideal. The drop vanishes, the humps reach the full 10.0 V, and the average rises ' +
-        'to 3.18 V, V_p/π exactly.',
+        say: 'Set the amplitude back to 10 V and switch the diode to ideal. The drop vanishes, the humps reach the full 10 V, and the average rises ' +
+        'to 3.183 V, V_p/π exactly.',
         set: { model: 'ideal', A: 10 },
         reads: [
           [(x) => peakAt(x, (s) => s.v.out), 10],
@@ -1085,7 +1090,7 @@ export const LESSONS = {
     see:
       'Four diodes route both halves of the sine the same way through the load, so the humps come twice as ' +
     'often. The lowest frequency in the output is 100 Hz, not the source’s 50 Hz. Two diodes are in the path ' +
-    'at once. The peak is therefore 1.40 V below the source’s 10 V, and the average doubles to 5.03 V.',
+    'at once. The peak is therefore 1.4 V below the source’s 10 V, and the average doubles to 5.029 V.',
     seeReads: [
       [(x, p) => 2 * p.f, 100],
       [(x) => x.sol.volt.D1 + x.sol.volt.D4, 1.4],
@@ -1094,13 +1099,13 @@ export const LESSONS = {
     try: [
       {
         say: 'Raise the frequency to 1 kHz: the humps crowd together, each keeps its shape, and the average is ' +
-        'unchanged at 5.03 V. The period shrinks with it, to 1 ms.',
+        'unchanged at 5.029 V. The period shrinks with it, to 1 ms.',
         set: { f: 1000 },
         reads: [[(x, p) => meanOut(x, (s) => s.v.p, p.f), 5.0287], ['period', 0.001]],
       },
       {
         say: 'Set the frequency back to 50 Hz. Switch the diodes to ideal: two drops of nothing, the peak reaches ' +
-        'the full 10.0 V and the average is 6.37 V, 2V_p/π, exactly twice the half-wave’s.',
+        'the full 10 V and the average is 6.366 V, 2V_p/π, exactly twice the half-wave’s.',
         set: { f: 50, model: 'ideal' },
         reads: [
           [(x) => peakAt(x, (s) => s.v.p), 10],
@@ -1109,7 +1114,7 @@ export const LESSONS = {
       },
       {
         say: 'Set the diodes back to the constant-drop model and drag the cursor to the negative peak of the source. The output is as positive as it was at the ' +
-        'positive peak, 8.60 V, because the other pair of diodes carries it now.',
+        'positive peak, 8.6 V, because the other pair of diodes carries it now.',
         set: { model: 'drop' },
         at: 0.015,
         reads: [['v.p', 8.6]],
@@ -1173,21 +1178,21 @@ export const LESSONS = {
   },
   i7: {
     see:
-      'Above 3.70 V the upper diode conducts and holds the output there. Below −3.70 V the lower one does. ' +
+      'Above 3.7 V the upper diode conducts and holds the output there. Below −3.7 V the lower one does. ' +
     'Between those levels neither conducts, no current flows in R, and the signal passes through untouched. ' +
-    'So a 10 V sine leaves with its peaks sliced off at the reference plus one diode’s 0.700 V.',
+    'So a 10 V sine leaves with its peaks sliced off at the reference plus one diode’s 700 mV.',
     seeReads: [
       [(x) => peakAt(x, (s) => s.v.out), 3.7],
       ['volt.D1', 0.7],
     ],
     try: [
       {
-        say: 'Raise the reference to 6 V: the window opens and the sine is only clipped at ±6.70 V, so much more of its shape survives.',
+        say: 'Raise the reference to 6 V: the window opens and the sine is only clipped at ±6.7 V, so much more of its shape survives.',
         set: { Vref: 6 },
         reads: [['v.out', 6.7], [(x) => peakAt(x, (s) => s.v.out), 6.7]],
       },
       {
-        say: 'Lower it to 1 V: a narrow window, and what leaves is very nearly a square wave between ±1.70 V.',
+        say: 'Lower it to 1 V: a narrow window, and what leaves is very nearly a square wave between ±1.7 V.',
         set: { Vref: 1 },
         reads: [[(x) => peakAt(x, (s) => s.v.out), 1.7]],
       },
@@ -1210,8 +1215,8 @@ export const LESSONS = {
   i8: {
     see:
       'A Zener is meant to be run backwards: past 5.1 V it conducts freely and holds the output there, whatever else ' +
-      'changes. The series resistor passes 14.7 mA, the load takes 5.10 mA of it, and the Zener swallows the other ' +
-      '9.58 mA. Change the supply and it simply takes a different share.',
+      'changes. The series resistor passes 14.68 mA, the load takes 5.1 mA of it, and the Zener swallows the other ' +
+      '9.581 mA. Change the supply and it simply takes a different share.',
     seeReads: [
       ['v.out', 5.1],
       ['i.RS', 0.014681],
@@ -1227,12 +1232,12 @@ export const LESSONS = {
       },
       {
         say: 'Set the supply back to 12 V and drop the load to 220 Ω: it now needs more current than R_S can pass. Nothing is left for the Zener, ' +
-        'and the output falls out of regulation to 3.83 V.',
+        'and the output falls out of regulation to 3.826 V.',
         set: { E: 12, RL: 220 },
         reads: [['v.out', 3.8261], ['i.D1', 0]],
       },
       {
-        say: 'Set the load to 470 Ω: still inside the band at 5.10 V, but the Zener is down to 3.83 mA. Below ' +
+        say: 'Set the load to 470 Ω: still inside the band at 5.1 V, but the Zener is down to 3.83 mA. Below ' +
         'about 347 Ω there is nothing left for it to carry.',
         set: { RL: 470 },
         reads: [['v.out', 5.1], [(x) => -x.sol.i.D1, 0.00383], [(x, p) => (p.Vz * p.RS) / (p.E - p.Vz), 347.39]],

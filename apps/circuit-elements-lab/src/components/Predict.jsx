@@ -1,8 +1,14 @@
 import React from 'react'
 import { Marked } from './Prose.jsx'
 
-// What each wrong pick says about the habit behind it.
-const HABIT = {
+// What each wrong pick says about the habit behind it. Exported so
+// predict.test.js can assemble the exact reveal sentence for all 55
+// experiments' wrong options without a browser, rather than sampling a few
+// live — the sentence itself is built once, here, from this map plus the
+// answer's own printed text and the step's own sentence, so it never
+// branches per experiment; what varies is only the data these three pieces
+// carry, which is what the assembled-sentence test checks.
+export const HABIT = {
   same: 'You guessed nothing would change.',
   proportional: 'You guessed it scales with the knob.',
   inverse: 'You guessed it scales the other way.',

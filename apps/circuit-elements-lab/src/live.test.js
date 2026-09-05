@@ -116,12 +116,12 @@ describe('notes that are alive', () => {
     const p = { ...defaultsOf('b3'), E: 6 }
     const s = liveSee(b3, analyse(b3, p), p).filter((t) => t.live)
     expect(s.at(-1).text).toBe('−6 mW') // the source still delivers
-    // F7's "swinging 0.25 V either side" is a magnitude: it reads 0.25 V whichever way the triangle points.
+    // F7's "swinging 250 mV either side" is a magnitude: it reads 250 mV whichever way the triangle points.
     const f7 = byId.f7
     const p7 = defaultsOf('f7')
     for (const t of [0.25, 0.75].map((f) => f * f7.window(p7))) {
       const x7 = analyse(f7, p7, t)
-      expect(liveText(liveSee(f7, x7, p7)), `t = ${t}`).toContain('swinging 0.25 V either side')
+      expect(liveText(liveSee(f7, x7, p7)), `t = ${t}`).toContain('swinging 250 mV either side')
     }
   })
 

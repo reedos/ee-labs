@@ -1222,6 +1222,84 @@ async function closeKnob(otherKey, targetKey) {
   else console.log(`   A1: cold click on the closed E knob's "+" stepper registered (${before} → ${after} V, hit box at x ${Math.round(box.x)})`)
 }
 
+// ----------------------------- 45. precision: the note quotes the live readout, digit for digit
+//
+// Round-six review defect: hand-authored numbers in see/why/try quoted three
+// significant figures while the live readouts this lab shows for the SAME
+// quantity — the Thévenin panel, the node/element readout row, the State
+// pane — print four. Nothing was wrong numerically (11.976 read as "12.0 V"
+// is not false), but a reader comparing the sentence to the screen saw two
+// different numbers for one quantity and doubted themselves. A sweep of all
+// 55 experiments found the class in 34 of them; this reproduces three of
+// them (D5's see, F3's see, F4's own step 1) as a standing regression guard.
+//
+// The check reads the actual rendered text on both sides of the comparison
+// and never recomputes an "expected" value — a check built from a copy of
+// the formatter would pass today even if a future edit put the coarser
+// rounding back, exactly the failure this review's own memory warns against
+// (a probe whose pass condition is a proxy for the claim, not the claim
+// itself). Reverting D5's fix (545.5 -> 545 Ω) locally reproduces this
+// section failing, which is how it was proven to catch the defect it
+// targets before this comment was written.
+console.log('\n45. Precision: the note quotes exactly what the live readout renders\n')
+{
+  const UNIT_RE = /(-?\d+(?:\.\d+)?)\s?([pnµumkMGT]?)(VA|var|V|A|W|Ω|s)(?![A-Za-z⁰¹²³⁴⁵⁶⁷⁸⁹⁻])/g
+  const SCALE = { p: 1e-12, n: 1e-9, 'µ': 1e-6, u: 1e-6, m: 1e-3, k: 1e3, M: 1e6, G: 1e9, T: 1e12, '': 1 }
+  const numToks = (text) =>
+    [...String(text).replace(/−/g, '-').matchAll(UNIT_RE)].map((m) => ({
+      text: m[0].trim(),
+      unit: m[3],
+      value: Math.abs(parseFloat(m[1])) * SCALE[m[2]],
+    }))
+  const readoutToks = async () => numToks((await page.$$eval('.readout b', (els) => els.map((e) => e.textContent).join(' '))) || '')
+  /**
+   * Every quoted number in `text` that a readout also shows must print
+   * identically to it. "Also shows" is decided by best fit, not the first
+   * candidate within some tolerance: the schematic's own v_in sits at a
+   * fixed 12 V throughout F4's step 1 while V_th climbs toward it (both are
+   * volts), so a flat percentage band pairs the note's "11.99 V" with the
+   * wrong, merely-nearby 12 V unless the genuinely-closer match wins.
+   */
+  function checkAgainst(label, text, readouts) {
+    for (const q of numToks(text)) {
+      const candidates = readouts.filter((r) => r.unit === q.unit)
+      if (!candidates.length) continue
+      const best = candidates.reduce((a, b) => (Math.abs(a.value - q.value) <= Math.abs(b.value - q.value) ? a : b))
+      const relErr = Math.abs(best.value - q.value) / Math.max(Math.abs(q.value), 1e-12)
+      if (relErr > 0.05) continue // not plausibly the same quantity; nothing to check
+      if (best.text !== q.text) fail(`45/${label}: the note says "${q.text}" but the live readout shows "${best.text}" for the same quantity`)
+    }
+  }
+
+  await pick(names.find((n) => /Th[ée]venin, three ways/i.test(n))) // D5
+  await page.locator('.view-switch').getByRole('button', { name: 'Thévenin', exact: false }).click()
+  await settle()
+  checkAgainst('D5 see', await page.locator('[data-role=note]').textContent(), await readoutToks())
+
+  await pick(tauName) // F3
+  checkAgainst('F3 see', await page.locator('[data-role=note]').textContent(), await readoutToks())
+
+  await pick(names.find((n) => /Th[ée]venin sets τ/i.test(n))) // F4
+  await page.locator('.view-switch').getByRole('button', { name: 'Thévenin', exact: false }).click()
+  await settle()
+  // Step 1 sits behind a predict gate; answering it correctly (the solver's
+  // own reading) both sets R₂ to 1 MΩ and reveals the step's sentence in
+  // data-role=predict-reveal, the same mechanism section 2b exercises on A1.
+  await page.locator('[data-role=try] .predict-option[data-rule=solver]').first().click()
+  // The click commits R₂ = 1 MΩ and re-solves; wait for the readout to show
+  // it rather than a fixed pause, so a slow or loaded machine cannot read
+  // the pre-click values and report a false mismatch.
+  await page
+    .waitForFunction(() => [...document.querySelectorAll('.readout b')].some((b) => /1\.499\s*k?Ω/.test(b.textContent)), { timeout: 5000 })
+    .catch(() => {})
+  await settle()
+  const step1Text = await page.locator('[data-role=predict-reveal]').textContent()
+  checkAgainst('F4 try 1', step1Text, await readoutToks())
+
+  if (failures.some((f) => f.startsWith('45/'))) console.log(`   ${failures.filter((f) => f.startsWith('45/')).length} precision mismatch(es) found`)
+  else console.log('   D5, F3 and F4’s own step 1 quote exactly what their live readouts render')
+}
+
 // ------------------------------------------------------------------- report
 
 await browser.close()

@@ -71,8 +71,13 @@ const storage = () => {
     return null
   }
 }
-/** The experiment after this one on the path: the next in the list when it builds on this one, else the first that does, else the next. */
-const nextUp = (exp) => {
+/**
+ * The experiment after this one on the path: the next in the list when it
+ * builds on this one, else the first that does, else the next. Exported so
+ * course.test.js can walk it for all 55 experiments without a browser — the
+ * live app only exercises the one path a student actually clicks through.
+ */
+export const nextUp = (exp) => {
   const seq = EXPERIMENTS[EXPERIMENTS.indexOf(exp) + 1]
   const to = leadsTo(exp.id)
   if (seq && to.includes(seq.id)) return seq.id

@@ -1409,6 +1409,8 @@ describe('what the student reads is what the solver did', () => {
   it('every cross-reference names an experiment that exists and holds what the sentence says it holds', () => {
     // What each reference leans on, checked against the referenced experiment itself.
     const holds = {
+      'c1→E2': (t) => t.params.some((k) => k.key === 'Rin') && t.params.some((k) => k.key === 'Rout'), // "the same ratio returns as E2's own input and output dividers"
+      'c2→D5': (t, p) => t.views.includes('thevenin') && t.net(p).elements.filter((el) => el.type === 'R').length === 3, // "the same sum returns as D5's Thévenin resistance"
       'c3→E8': (t) => t.params.some((k) => k.key === 'RL') && t.views.includes('sweep'), // "why, in E8, an op-amp…": the same load sweep, buffered
       'c4→B2': (t, p) => t.net(p).elements.filter((el) => el.type === 'R').length === 2 && t.net(p).elements.length === 3, // "B2’s loop — two resistors in series"
       'e1→E2': (t) => t.terms.includes('opamp') && t.params.some((k) => k.key === 'A'), // "exactly what an op-amp (E2) is": a dependent source with a gain knob
@@ -1418,6 +1420,7 @@ describe('what the student reads is what the solver did', () => {
       'f4→D5': (t) => t.views.includes('thevenin'), // "(D5)" for the Thévenin source
       'f7→E5': (t) => t.terms.includes('virtual'), // "The virtual ground (E5)"
       'g2→G3': (t) => t.views.includes('damping'), // "(G3 measures overshoot)"
+      'g4→H4': (t) => t.terms.includes('qualityfactor'), // "what H4 calls Q, the quality factor"
       'g6→G4': (t) => t.params.every((k) => !['v0', 'i0'].includes(k.key)), // "the response from rest (G4)": no initial-state knobs
       'h1→F3': (t, p) => hasPart(t, p, 'C') && !hasPart(t, p, 'L') && isRC(t, p), // "the same e^(−t/τ) as F3 with τ = RC"
       'h1→H2': (t) => t.view === 'phasor', // "the phasor views (H2 onward)"
