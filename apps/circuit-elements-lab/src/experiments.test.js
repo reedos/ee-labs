@@ -5,7 +5,7 @@ import { VIEW_LEADS, bridgeText, calloutStandIn, calloutText, firstSentence, hea
 import { equivalentOf, kvlLoop, meshRows, partsFigures, powerCycle, theoremShows } from './theorems.js'
 import { readQuantity } from './lessons.js'
 import { alternating, analyse, acTable, atDrive, dampingSweep, experimentMath, integrated, netPower, powerLedger, refusalReason, snapNoise, turned, turnedLabel } from './math.js'
-import { CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCheck.js'
+import { CALLOUT_FONT, CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCheck.js'
 import { agrees } from '@ee-labs/explain'
 import {
   equations, extrema, meanRms, normalize, solveAC, drivingPointZ, acPower, NetworkError, complex as cx,
@@ -413,6 +413,25 @@ describe('every experiment', () => {
     // Off the canvas.
     const off = { w: 100, h: 100, items: [{ el: 'R1', x: 5, y: 50, dir: 'v' }] }
     expect(layoutProblems(off, els, null, 'none').some((s) => /leaves the 100×100 canvas/.test(s))).toBe(true)
+  })
+
+  it('the callout is measured in the bolder face it is drawn in, not as a plain caption', () => {
+    // styles.css draws `.sch-callout` at weight 600, which runs wider than the
+    // note the rest of a caption is set in. Measuring it as a note let the
+    // placer pack it against a neighbour, and the browser then drew it over
+    // the top. A callout and a caption of the same text must not measure the
+    // same, and the wider one must be the callout.
+    expect(CALLOUT_FONT.cw).toBeGreaterThan(schematicGeometry.FONT.note.cw)
+    const els = [{ id: 'R1', type: 'R', value: 1000 }]
+    const text = 'i = −1.23 mA'
+    // A vertical resistor at x = 100, its label on the right, and the same
+    // text laid to its left from x = 28. At the note's advance that text ends
+    // clear of the symbol; at the callout's own advance it runs into it.
+    const at = { x: 28, y: 60, anchor: 'start' }
+    const plain = { w: 200, h: 120, items: [{ el: 'R1', x: 100, y: 60, dir: 'v' }, { text, ...at }] }
+    const callout = { w: 200, h: 120, items: [{ el: 'R1', x: 100, y: 60, dir: 'v' }, { text, callout: true, ...at }] }
+    expect(layoutProblems(plain, els, null, 'none')).toEqual([])
+    expect(layoutProblems(callout, els, null, 'none')).toEqual(['callout “i = −1.23 mA” sits on R1 symbol'])
   })
 
   it('the layout checker sees a caption on a frame edge and a symbol straddling one, and lets a wire cross', () => {

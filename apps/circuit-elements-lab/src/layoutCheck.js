@@ -94,6 +94,22 @@ export function layoutProblems(layout, elements, meters, show = 'i', margin = 1)
 export const CROP_PAD = 6
 
 /**
+ * The face the headline's callout is drawn in.
+ *
+ * A caption on a layout is a note: 9 px in the sans stack, 5.2 px a
+ * character. The callout is the same size at weight 600 (styles.css,
+ * `.sch-callout`), and bold runs wider than that. Measuring it as a note
+ * understated it by up to 9 px, which is a character and a half, so the
+ * placer packed it against a neighbour and the browser drew it over the top:
+ * on A1 the callout covered "R1 1 kΩ", on F3 it covered "C1 1 µF". Measured
+ * in a browser over the stand-in of every headline in the lab, the widest
+ * advance is 6.04 px a character ("P = −1.23 mW"); 6.2 sits a little above
+ * it, as the label estimate in schematicGeometry.js sits above its widest
+ * label.
+ */
+export const CALLOUT_FONT = { size: 9, cw: 6.2 }
+
+/**
  * The frame a layout needs: the smallest box, padded by CROP_PAD, that holds
  * everything the Schematic would draw in any meter view, clamped to the canvas.
  *
@@ -181,7 +197,7 @@ export function placeCallout(layout, elements, where, text) {
   const overlaps = (a, b) => a.x0 < b.x1 - margin && b.x0 < a.x1 - margin && a.y0 < b.y1 - margin && b.y0 < a.y1 - margin
   let best = null
   for (const at of candidates) {
-    const box = G.textBox(at, text.length * G.FONT.note.cw, G.FONT.note.size)
+    const box = G.textBox(at, text.length * CALLOUT_FONT.cw, CALLOUT_FONT.size)
     if (box.x0 < CROP_PAD || box.y0 < CROP_PAD || box.x1 > w - CROP_PAD || box.y1 > h - CROP_PAD) continue
     if (taken.some((b) => overlaps(box, b))) continue
     const union = {
@@ -262,7 +278,7 @@ function collect(layout, elements, meters, show, stand = null) {
       texts.push({ box: G.textBox(place, width, G.FONT.port.size), what: `node label “${it.node} ${meter}”` })
       bodies.push({ box: { x0: it.x - 3, x1: it.x + 3, y0: it.y - 3, y1: it.y + 3 }, what: `node dot ${it.node}`, dot: true })
     } else if (it.text) {
-      addText({ x: it.x, y: it.y, anchor: it.anchor || 'middle' }, it.text, G.FONT.note, 'caption')
+      addText({ x: it.x, y: it.y, anchor: it.anchor || 'middle' }, it.text, it.callout ? CALLOUT_FONT : G.FONT.note, it.callout ? 'callout' : 'caption')
     } else if (it.el) {
       const e = byId.get(it.el)
       if (!e) {
