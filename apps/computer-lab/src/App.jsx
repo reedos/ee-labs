@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { LabNav, LessonNav, NumField, ReportIssue, TryLine } from '@ee-labs/ui'
+import { LabNav, LessonNav, NumField, ReportIssue, StateCanvas, TimingCanvas, TryLine } from '@ee-labs/ui'
 import { EXPERIMENTS, GROUPS, VIEW_LABELS, VIEW_ORDER, byId, defaultsOf, signalsOf, bussesOf } from './experiments.js'
 import { analyse, quantitiesOf } from './analysis.js'
 import { TERMS } from './terms.js'
@@ -9,8 +9,6 @@ import { BudgetPane, ControlTable, CountsPane, PathList, ProgramPane, Refusal, T
 import DatapathCanvas from './components/DatapathCanvas.jsx'
 import ScheduleCanvas from './components/ScheduleCanvas.jsx'
 import CacheCanvas from './components/CacheCanvas.jsx'
-import TimingCanvas from './components/TimingCanvas.jsx'
-import StateCanvas from './components/StateCanvas.jsx'
 import pkg from '../package.json'
 
 // The shell. One experiment at a time: its machine runs once (analysis.js's
@@ -262,7 +260,7 @@ export function Pane({ which, x, exp, params, cursor = 0, pinned = [], onPin = n
     case 'budget':
       return <BudgetPane x={x} />
     case 'timing':
-      return <TimingCanvas res={x.res} signals={signalsOf(exp, params)} busses={bussesOf(exp, params)} cursor={null} />
+      return <TimingCanvas res={x.res} signals={signalsOf(exp, params)} busses={bussesOf(exp, params)} cursor={null} fmtTime={time} />
     case 'state':
       return x.machine ? <StateCanvas states={x.machine.states} edges={x.machine.edges} encoding={x.machine.encoding} active={x.q['text.state'] ? x.q['text.state'].value : null} outputs /> : null
     case 'paths':

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { TimingCanvas, StateCanvas } from '@ee-labs/ui'
 import { EXPERIMENTS } from './experiments.js'
 import { TERMS } from './terms.js'
 
@@ -68,16 +69,13 @@ describe(`release status "${status}"`, () => {
     expect(prose.length).toBeGreaterThan(EXPERIMENTS.length * 3)
   })
 
-  it('keeps the two copied canvases where their provenance is written down', () => {
-    // `TimingCanvas` and `StateCanvas` are the Logic Lab's, copied because
-    // neither has been promoted into `packages/ui` yet. The copy is a debt,
-    // and the debt is named in three places so it cannot be forgotten.
-    for (const file of ['TimingCanvas', 'StateCanvas']) {
-      const src = read(`apps/computer-lab/src/components/${file}.jsx`)
-      expect(src, `${file} says where it came from`).toMatch(/COPIED from apps\/logic-lab/)
-    }
-    expect(read('apps/computer-lab/NEEDS.md')).toMatch(/TimingCanvas/)
-    expect(read('apps/computer-lab/AGENT_BRIEF.md')).toMatch(/TimingCanvas/)
+  it('imports the two promoted canvases from @ee-labs/ui rather than a local copy', () => {
+    // `TimingCanvas` and `StateCanvas` were the Logic Lab's, copied here until
+    // `packages/ui` promoted them (NEEDS.md §3). The copy and the comment that
+    // recorded its provenance are gone. The import resolving is what is left
+    // to check.
+    expect(TimingCanvas).toBeTypeOf('function')
+    expect(StateCanvas).toBeTypeOf('function')
   })
 
   it('adds no file to the events package, which is the Logic Lab’s', () => {

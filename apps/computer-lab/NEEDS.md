@@ -61,6 +61,13 @@ rewrite, because each computes its whole picture as data first
 them through those two functions. When the director promotes them, this app
 deletes its copies and imports them.
 
+**Landed.** Both canvases are promoted to `packages/ui/src`. This app deleted
+its copies, imports `TimingCanvas` and `StateCanvas` from `@ee-labs/ui`, and
+passes its own `time` formatter through the new `fmtTime` prop, since this
+lab's engine ticks on a finer grid than the Logic Lab's. `release.test.js`
+now checks the import resolves instead of checking the copy's provenance
+comment.
+
 Three canvases this lab built are its own, and no second lab claims them yet
 (`PROGRAM.md` §4). They stay in the app.
 
