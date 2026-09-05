@@ -972,6 +972,33 @@ Phases 1 to 3 are 21 experiments and need nothing that is not built today. Phase
 is the one that waits. If the Random Signals Lab slips, phases 5 to 7 can be built
 ahead of it, because only Group D reads the Q function.
 
+### What shipped, on `lab/comms-lab`
+
+Phases 1 to 7 are built and green. That is all eight groups and all 50
+experiments, in one sitting rather than seven, because the Random Signals Lab
+landed first and Group D never had to wait. The lab reads `dark`, and
+`apps/comms-lab/RELEASE_STATUS` is the word Reed changes.
+
+What was not built is phase 8, which is Reed's. Two items inside it are recorded
+in `BACKLOG.md` rather than done. The Playwright harness is not written, because
+this environment has no browser, and no screenshot pass has been made against
+`REVIEW_PLAYBOOK.md` §11. The canvas geometry is covered instead by
+`src/components/canvases.test.jsx`, which measures every prop against the shape
+it produces.
+
+Three decisions inside the phases moved.
+
+- `createComplexChain` is in `packages/comms/src/chain.js` rather than in
+  `packages/dsp`, which is the fallback Decision 5 and §11 both name. The
+  contract is in `apps/comms-lab/NEEDS.md` §4 for the director to resolve.
+- The constellation and eye canvases are in the app rather than in
+  `packages/ui`. Both carry the Mixed-Signal Lab's two props from their first
+  commit, as Decision 3 requires, and promotion waits for that lab to start.
+- Group G ships a 41-tap equaliser rather than the 21 taps G3 names. At 21 the
+  residual is 1.17 × 10⁻², which is ten times what G3 asks for, and 41 taps
+  reach 3.66 × 10⁻⁴. `BACKLOG.md` records this with two other numbers that did
+  not reproduce.
+
 ---
 
 ## 10. Non-goals (v1, stated so they are decisions rather than omissions)

@@ -30,6 +30,8 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Machines Lab | built, dark | merged | Power Lab F for the drives group | `MACHINES_LAB_PLAN.md` |
 | Communications Lab | building | `lab/comms-lab` | | `COMMUNICATIONS_LAB_PLAN.md` |
 | Information Lab | building | `lab/info-lab` | Communications Lab for Group F and B4 | `INFORMATION_LAB_PLAN.md` |
+| Communications Lab | built, dark | `lab/comms-lab` | Electronics O and the RF Lab for one cross-reference | `COMMUNICATIONS_LAB_PLAN.md` |
+| Information Lab | waiting | | | `INFORMATION_LAB_PLAN.md` |
 | Applied Analog Lab | waiting | | Electronics L, M | `APPLIED_ANALOG_LAB_PLAN.md` |
 | Analog IC Lab | waiting | | Electronics H to M | `ANALOG_IC_LAB_PLAN.md` |
 | Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | `MIXED_SIGNAL_LAB_PLAN.md` |
@@ -248,6 +250,69 @@ below.
   Group H prints both with every answer and names the three assumptions the
   law rests on. The Analog IC Lab's latch replaces them when it exists, and
   nothing in Group H changes but two numbers.
+
+### Communications Lab
+
+Built on `lab/comms-lab`. All eight groups, 50 experiments, all pinned. The
+engine is `packages/comms`, fuzzed green against the plan's §2.11 before any
+user interface existed. The app is dark.
+
+Deferred, with what reopens each:
+
+- **The Playwright harness has not been written or run.** The plan's §7 names
+  one. This environment has no browser, and the Logic and Random Signals labs
+  record the same deferral. What the tests do not reach is the app end to end
+  and the 390 px layout. `src/components/canvases.test.jsx` measures every
+  canvas prop against the geometry it produces, which covers two of the three
+  classes the harness would find. Reopens with anyone who has a browser.
+- **No screenshots have been read as a student would read them**
+  (`REVIEW_PLAYBOOK.md` §11). Nearly half the defects that playbook records were
+  invisible to a test suite and obvious in a picture. Reopens with the harness.
+- **`createComplexChain` is in `packages/comms` rather than in `packages/dsp`.**
+  The plan's Decision 5 asks the DSP Lab overseer for it. It does not exist
+  there, so this lab built it against the signature the plan states, which is
+  the fallback the plan's §11 names. Nothing in `dsp` was edited. Reopens when
+  the director decides whether the move is worth making, and the contract is in
+  `apps/comms-lab/NEEDS.md` §4.
+- **The constellation and eye canvases are in the app.** Both carry the
+  Mixed-Signal Lab's two props already, a decision grid that is not a
+  constellation and a per-trace colour key, and both compute their geometry as
+  data so the tests move with them. Promotion to `packages/ui` waits for that
+  lab to start. The error rate canvas stays in the app under `PROGRAM.md` §4,
+  because only the Information Lab claims it, and it takes the `limits` prop
+  that lab needs from its first commit.
+- **Group H assumes a noise figure rather than deriving one.** The RF Lab owns
+  the front end and the Electronics Lab's Group O owns `4kTR`. H1 names both and
+  states its constants. Reopens when either lands.
+- **The hard-decision loss in H4 is a parameter, not a measurement.** Measuring
+  it needs a decoder that reads soft metrics, which is the Information Lab's.
+  `detect.js` ships the soft metric that decoder will read.
+- **No deep link crosses to another lab.** The four hand-overs are named in the
+  plan's §6, and three of the four receiving labs are not built.
+- **Coding, MIMO, spread spectrum and the high-speed serial link are out**, as
+  the plan's §10 states. Group D's uncoded curve is the baseline the Information
+  Lab measures against, and the private simulator keeps the serial link.
+
+Needed from elsewhere, mirrored in `apps/comms-lab/NEEDS.md`:
+
+- The `deploy.yml` line, `cp -r apps/comms-lab/dist _site/comms-lab`.
+- The progression-test ids and counts, 50 experiments in 8 groups.
+- A decision on promoting the two canvases when the Mixed-Signal Lab starts, and
+  on whether `createComplexChain` moves to `packages/dsp`.
+
+Three numbers the plan quotes that the engine does not reproduce, each recorded
+rather than rounded away and each for the director:
+
+- **The residual ISI figures** in §2.3 and C6 are the nearest-neighbour measure.
+  `residualIsi` returns that as `near`, beside `peak` over every symbol lag and
+  `sum` over all of them. The three differ by more than an order of magnitude at
+  a span of 12, and `near` reproduces the plan exactly. The plan's sentence
+  should say which of the three it quotes.
+- **G3's equaliser length.** A 21-tap zero-forcing equaliser leaves 1.17e-2 on
+  the two-ray channel rather than the 1e-3 the plan asks for. At 41 taps it
+  leaves 3.66e-4. The app defaults to 41 and the lesson quotes both.
+- **H1's cascaded noise figure.** Friis over the two stages the plan names gives
+  1.784 dB and 4.071 dB, against the plan's 1.944 and 4.166.
 
 ## 3. The director's queue
 
