@@ -367,6 +367,13 @@ constant.
 Run `node packages/random/scripts/pins.mjs` to see every one of these produced
 from the engine. That script is the source, and the plan quotes it.
 
+A number a reader would look up rather than derive still gets computed. The mass
+a two-sigma band holds, the chi-square multipliers and the error rate at 7 dB all
+come from `src/secondRoute.js`, which reaches them from the knobs by a method the
+engine does not use. Import from there rather than typing the table value. Its
+own test is where the looked-up values belong, and it is the only file in this
+lab that carries one.
+
 ## 7. Verify before handing back
 
 ```

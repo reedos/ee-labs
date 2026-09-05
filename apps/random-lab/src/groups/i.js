@@ -126,10 +126,16 @@ export default [
         atMost: 'kalman.oneShotMmse',
       },
       {
-        label: 'by leaving 62.44 % of its error',
+        label: 'by leaving the ratio the Riccati root and the scalar Wiener form give',
         path: 'kalman.memoryWorth',
-        formula: () => 0.6244434,
-        tol: 1e-5,
+        formula: (p) => {
+          const b = p.r * (1 - p.kalmanA * p.kalmanA) - p.q
+          const prior = (-b + Math.sqrt(b * b + 4 * p.q * p.r)) / 2
+          const posterior = (prior * p.r) / (prior + p.r)
+          const varX = p.q / (1 - p.kalmanA * p.kalmanA)
+          return posterior / ((varX * p.r) / (varX + p.r))
+        },
+        tol: 1e-12,
       },
     ],
   },

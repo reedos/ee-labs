@@ -1,4 +1,9 @@
 // Group E: the periodogram and its averages.
+//
+// The chi-square multipliers are computed from the knobs by `secondRoute.js`,
+// not read off a table. Change the averages or the level and the claim moves
+// with the pane.
+import { psdIntervalFactors } from '../secondRoute.js'
 
 export const GROUP_E = 'The periodogram and its averages'
 
@@ -26,7 +31,7 @@ export default [
       {
         label: 'one frame has two degrees of freedom',
         path: 'psd.dof',
-        formula: () => 2,
+        formula: (p) => 2 * p.averages,
         tol: 1e-12,
       },
       {
@@ -38,7 +43,7 @@ export default [
       {
         label: 'and the predicted spread is the root of two over the degrees of freedom',
         path: 'psd.relativeSe',
-        formula: () => 1,
+        formula: (p) => Math.sqrt(2 / (2 * p.averages)),
         tol: 1e-12,
       },
     ],
@@ -82,16 +87,16 @@ export default [
         tol: 1e-12,
       },
       {
-        label: 'the lower multiplier is 0.8297',
+        label: 'the lower multiplier is dof over the upper chi-square quantile',
         path: 'psd.ci.lo',
-        formula: () => 0.8296757,
-        tol: 1e-5,
+        formula: (p) => psdIntervalFactors(2 * p.averages, p.level).lo,
+        tol: 1e-9,
       },
       {
-        label: 'and the upper is 1.2290',
+        label: 'and the upper is dof over the lower quantile, which is further from one',
         path: 'psd.ci.hi',
-        formula: () => 1.2290385,
-        tol: 1e-5,
+        formula: (p) => psdIntervalFactors(2 * p.averages, p.level).hi,
+        tol: 1e-9,
       },
       {
         label: 'the interval is wider above than below, as a chi-square is skewed',

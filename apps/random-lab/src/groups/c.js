@@ -1,4 +1,9 @@
 // Group C: the Gaussian, and why it keeps appearing.
+//
+// The three masses and the three tail values are computed by quadrature in
+// `secondRoute.js` rather than typed from a table. The table values live in
+// that file's own test, where they are the subject rather than a shortcut.
+import { insideSigma, gaussianTail } from '../secondRoute.js'
 
 export const GROUP_C = 'The Gaussian, and why it keeps appearing'
 
@@ -60,9 +65,9 @@ export default [
     views: ['histogram'],
     featured: { field: 'level' },
     claims: [
-      { label: 'one sigma holds 68.27 %', path: 'closed.insideOneSigma', formula: () => 0.6826894921, tol: 1e-8 },
-      { label: 'two sigma holds 95.45 %', path: 'closed.insideTwoSigma', formula: () => 0.9544997361, tol: 1e-8 },
-      { label: 'three sigma holds 99.73 %', path: 'closed.insideThreeSigma', formula: () => 0.9973002039, tol: 1e-8 },
+      { label: 'one sigma holds 68.27 %', path: 'closed.insideOneSigma', formula: () => insideSigma(1), tol: 1e-9 },
+      { label: 'two sigma holds 95.45 %', path: 'closed.insideTwoSigma', formula: () => insideSigma(2), tol: 1e-9 },
+      { label: 'three sigma holds 99.73 %', path: 'closed.insideThreeSigma', formula: () => insideSigma(3), tol: 1e-9 },
       // Counted, not restated. The closed form is 1 - 2Q(k), and these are the
       // draws that fell inside, with the count's own interval as the tolerance.
       { label: 'and the count inside one sigma agrees', path: 'tail.1.counted', against: 'tail.1.closed', tol: 0.01 },
@@ -88,9 +93,9 @@ export default [
     claims: [
       // The textbook values of Q, reached through the mass identity so that the
       // number checked is the one the pane prints.
-      { label: 'Q(1) is 0.158655', path: 'closed.insideOneSigma', formula: () => 1 - 2 * 0.15865525393145705, tol: 1e-12 },
-      { label: 'Q(2) is 0.0227501', path: 'closed.insideTwoSigma', formula: () => 1 - 2 * 0.022750131948179195, tol: 1e-12 },
-      { label: 'Q(3) is 0.00134990', path: 'closed.insideThreeSigma', formula: () => 1 - 2 * 0.0013498980316300933, tol: 1e-12 },
+      { label: 'Q(1) is 0.158655', path: 'closed.insideOneSigma', formula: () => 1 - 2 * gaussianTail(1), tol: 1e-9 },
+      { label: 'Q(2) is 0.0227501', path: 'closed.insideTwoSigma', formula: () => 1 - 2 * gaussianTail(2), tol: 1e-9 },
+      { label: 'Q(3) is 0.00134990', path: 'closed.insideThreeSigma', formula: () => 1 - 2 * gaussianTail(3), tol: 1e-9 },
       { label: 'and the counted tail beyond two sigma agrees', path: 'tail.2.counted', against: 'tail.2.closed', tol: 0.01 },
     ],
   },

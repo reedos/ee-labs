@@ -1,4 +1,11 @@
 // Group H: detection.
+//
+// The mismatch loss and the error rate are functions of the pulse and of
+// Eb/N0, so they are computed here from those knobs rather than quoted from a
+// table. `secondRoute.js` reaches both without calling the engine's own
+// route to them.
+import { PULSES, energy } from '@ee-labs/random'
+import { gaussianTail, mismatchFraction } from '../secondRoute.js'
 
 export const GROUP_H = 'Detection'
 
@@ -26,9 +33,9 @@ export default [
         tol: 1e-12,
       },
       {
-        label: 'and its height is the pulse energy, which is one',
+        label: 'and its height is the pulse energy, which these pulses normalise to one',
         path: 'snr.peak',
-        formula: () => 1,
+        formula: (p) => energy(PULSES[p.pulse](p.pulseLength)),
         tol: 1e-9,
       },
       {
@@ -37,10 +44,12 @@ export default [
         atMost: 'snr.snr',
       },
       {
-        label: 'by 0.911 decibels',
+        label: 'by the decibels the squared correlation between the two shapes costs',
         path: 'snr.mismatchLossDb',
-        formula: () => 0.9112262,
-        tol: 1e-5,
+        formula: (p) =>
+          -10 *
+          Math.log10(mismatchFraction(PULSES[p.pulse](p.pulseLength), PULSES.rect(p.pulseLength))),
+        tol: 1e-9,
       },
     ],
   },
@@ -111,9 +120,9 @@ export default [
     featured: { field: 'ebN0Db' },
     claims: [
       {
-        label: 'the closed form at 7 dB',
+        label: 'the closed form is the Gaussian tail at root two Eb over N zero',
         path: 'ber.predicted',
-        formula: () => 7.726748154e-4,
+        formula: (p) => gaussianTail(Math.sqrt(2 * 10 ** (p.ebN0Db / 10))),
         tol: 1e-8,
       },
       {
