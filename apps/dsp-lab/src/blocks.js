@@ -627,6 +627,91 @@ export const BLOCK_TYPES = {
     },
   },
 
+
+  // -------------------------------------------------------- Estimation
+
+  allpole: {
+    label: 'Two-pole source',
+    group: 'Estimation',
+    hint:
+      'White noise through one all-pole section, which is the process an AR model is a model of. ' +
+      'It is exactly rational, so it keeps its own H(f) and its poles are printed. Group D fits a ' +
+      'model to what comes out and compares the fit against these two numbers.',
+    nonlinear: false,
+    defaults: { a1: -1.6, a2: 0.9, gain: 1 },
+    params: [
+      {
+        key: 'a1',
+        label: 'a1',
+        scale: 'linear',
+        min: -2,
+        max: 2,
+        step: 0.001,
+        decimals: 4,
+        presets: [-1.9, -1.6, -1, 0],
+        hint: 'The first denominator coefficient, which sets where the pair of poles sits along with a2.',
+      },
+      {
+        key: 'a2',
+        label: 'a2',
+        scale: 'linear',
+        min: -0.999,
+        max: 0.999,
+        step: 0.001,
+        decimals: 4,
+        presets: [0.5, 0.8, 0.9, 0.98],
+        hint: 'The second denominator coefficient puts the poles at a radius whose square is itself, so 0.9 gives 0.9487.',
+      },
+      {
+        key: 'gain',
+        label: 'Gain',
+        scale: 'linear',
+        min: 0.01,
+        max: 4,
+        step: 0.01,
+        decimals: 2,
+        presets: [0.25, 1, 2],
+      },
+    ],
+    summary: (p) => {
+      const r = allPolePz(p)
+      return `r ${Math.hypot(r.poles[0][0], r.poles[0][1]).toFixed(4)}${r.stable ? '' : ' · UNSTABLE'}`
+    },
+    make: (p) => {
+      let y1 = 0
+      let y2 = 0
+      return {
+        process: (x) => {
+          const y = p.gain * x - p.a1 * y1 - p.a2 * y2
+          y2 = y1
+          y1 = y
+          return y
+        },
+        // A pole radius of r decays by r a sample, so a millionth takes this.
+        settle: (() => {
+          const r = Math.sqrt(Math.abs(p.a2))
+          return r > 0 && r < 1 ? Math.ceil(Math.log(1e-6) / Math.log(r)) : 4096
+        })(),
+      }
+    },
+    // 1 / |A(e^{jw})|, which is the exact response of an exactly rational
+    // object, so nothing here is hedged.
+    response: (p, f, sampleRate) => {
+      const w = (2 * Math.PI * f) / sampleRate
+      const re = 1 + p.a1 * Math.cos(w) + p.a2 * Math.cos(2 * w)
+      const im = -(p.a1 * Math.sin(w) + p.a2 * Math.sin(2 * w))
+      return p.gain / Math.hypot(re, im)
+    },
+    phase: (p, f, sampleRate) => {
+      const w = (2 * Math.PI * f) / sampleRate
+      const re = 1 + p.a1 * Math.cos(w) + p.a2 * Math.cos(2 * w)
+      const im = -(p.a1 * Math.sin(w) + p.a2 * Math.sin(2 * w))
+      return -Math.atan2(im, re)
+    },
+    pz: (p) => allPolePz(p),
+    model: (p) => ({ a: [1, p.a1, p.a2], gain: p.gain }),
+  },
+
   // ------------------------------------------------------ Fixed point
 
   fixedbiquad: {
@@ -758,6 +843,29 @@ export const BLOCK_TYPES = {
   },
 }
 
+/**
+ * The poles of 1 + a1 z^-1 + a2 z^-2, in closed form.
+ *
+ * The roots of z^2 + a1 z + a2. A negative discriminant gives the conjugate
+ * pair a resonator has, and a non-negative one gives two real poles, which is
+ * the over-damped case a reader reaches by turning a1 to zero.
+ */
+function allPolePz(p) {
+  const disc = p.a1 * p.a1 - 4 * p.a2
+  const poles =
+    disc < 0
+      ? [
+          [-p.a1 / 2, Math.sqrt(-disc) / 2],
+          [-p.a1 / 2, -Math.sqrt(-disc) / 2],
+        ]
+      : [
+          [(-p.a1 + Math.sqrt(disc)) / 2, 0],
+          [(-p.a1 - Math.sqrt(disc)) / 2, 0],
+        ]
+  const stable = poles.every((z) => Math.hypot(z[0], z[1]) < 1)
+  return { poles, zeros: [], stable }
+}
+
 /** Memoised, because the summary, the response and the z-plane all ask for it. */
 const quantized = memoise(
   (p, sampleRate) =>
@@ -785,7 +893,7 @@ function hash(n) {
   return ((x ^ (x >>> 14)) >>> 0) / 4294967296
 }
 
-export const BLOCK_GROUPS = ['Rate', 'Design', 'Adaptive', 'Fixed point']
+export const BLOCK_GROUPS = ['Rate', 'Design', 'Adaptive', 'Estimation', 'Fixed point']
 
 /** A new block record of `type`, with its defaults. */
 export function makeBlockRecord(type, id) {

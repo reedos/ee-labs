@@ -52,7 +52,9 @@ import { chainSpec, renderChain, runChain } from './chain.js'
 //   fix.<deadband|deadbandUnits|period|noiseGain|rmsIn|rmsOut|gainDb>
 //   fix.<gridTotal|gridDense|gridSparse|gridRatio|measured|modelRatio>
 //   fix.<over|saturated|wrapped>
-//   psd.<mean|cv|df|segments|n>
+//   psd.<mean|cv|df|segments|n|used|power|true|predicted>
+//   psd.peaks.<from>.<to>            lines in a band, separated by 3 dB
+//   psd.resolved.<from>.<to>         whether that count is two
 //   ar.<a1|a2|sigma2|peak|aic|mdl>
 //   fft.<butterflies|direct|ratio|stages|n>
 
@@ -331,6 +333,42 @@ export function psdOf(state) {
 }
 
 /**
+ * The lines in a band of an estimate, counted.
+ *
+ * A local maximum counts as a line when the deepest valley between it and the
+ * previous one is at least `DIP_DB` below the smaller of the two. Two tones a
+ * bin apart make one hump and count once; two tones many bins apart make two.
+ * This is what D5 measures when it says the average merged them.
+ */
+export const DIP_DB = 3
+
+export function linesIn(est, from, to) {
+  const idx = []
+  for (let k = 0; k < est.freqs.length; k++) if (est.freqs[k] >= from && est.freqs[k] <= to) idx.push(k)
+  const peaks = []
+  for (let i = 1; i < idx.length - 1; i++) {
+    const k = idx[i]
+    if (est.psd[k] > est.psd[k - 1] && est.psd[k] >= est.psd[k + 1]) peaks.push(k)
+  }
+  if (peaks.length < 2) return peaks.length
+  // Keep the tallest, then any other peak with a deep enough valley between it
+  // and every peak already kept.
+  peaks.sort((a, b) => est.psd[b] - est.psd[a])
+  const kept = [peaks[0]]
+  for (const k of peaks.slice(1)) {
+    const ok = kept.every((j) => {
+      const [lo, hi] = k < j ? [k, j] : [j, k]
+      let valley = Infinity
+      for (let m = lo; m <= hi; m++) valley = Math.min(valley, est.psd[m])
+      const smaller = Math.min(est.psd[k], est.psd[j])
+      return 10 * Math.log10(smaller / Math.max(1e-300, valley)) >= DIP_DB
+    })
+    if (ok) kept.push(k)
+  }
+  return kept.length
+}
+
+/**
  * The all-pole model the state's order asks for, fitted to the chain's output.
  *
  * `peak` is where the model's response is largest, which is the frequency a
@@ -499,6 +537,26 @@ export function resolvePath(path, state, rendered = null) {
     if (parts[1] === 'df') return est.df
     if (parts[1] === 'segments') return est.segments
     if (parts[1] === 'n') return est.n
+    if (parts[1] === 'used') {
+      // How many samples of the record the estimate actually read. Abutting
+      // segments read all of them; overlapping ones reach the same segment
+      // count from fewer, which is the whole of why Welch overlaps.
+      const step = Math.max(1, Math.round(est.n * (1 - (est.overlap ?? 0))))
+      return est.n + (est.segments - 1) * step
+    }
+    if (parts[1] === 'peaks' || parts[1] === 'resolved') {
+      const n = linesIn(est, Number(parts[2]), Number(parts[3]))
+      return parts[1] === 'peaks' ? n : n >= 2
+    }
+    // The scatter K segments are predicted to reach, which is one over root K.
+    if (parts[1] === 'predicted') return 1 / Math.sqrt(Math.max(1, est.segments))
+    if (parts[1] === 'power' || parts[1] === 'true') {
+      const { buf } = renderChain(state.sources, state.blocks, state.fftSize, state.sampleRate)
+      const p = power(buf)
+      // A one-sided density holds all the power below Nyquist, so it is twice
+      // the two-sided one: 2 var / fs for a flat spectrum.
+      return parts[1] === 'power' ? p : (2 * p) / state.sampleRate
+    }
     // The band the scatter is read over excludes DC and the last bin, where the
     // one-sided fold is not two and a mean would mix two scalings.
     const st = bandStats(est, est.df, state.sampleRate / 2 - est.df)

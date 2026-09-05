@@ -7,6 +7,7 @@ import SpectrumCanvas from './components/SpectrumCanvas.jsx'
 import SpecPane from './components/SpecPane.jsx'
 import PoleGridCanvas from './components/PoleGridCanvas.jsx'
 import WeightCanvas from './components/WeightCanvas.jsx'
+import DensityCanvas from './components/DensityCanvas.jsx'
 import { EXPERIMENTS, GROUPS } from './experiments.js'
 import { INITIAL, experimentState } from './state.js'
 import { applyChip } from './chips.js'
@@ -18,7 +19,7 @@ import {
   chainSpec,
   renderChain,
 } from './chain.js'
-import { POLE_BOXES, poleBoxes } from './measure.js'
+import { POLE_BOXES, arOf, poleBoxes, psdOf } from './measure.js'
 import { readoutRows } from './measure.js'
 import { CHROME_TERMS, TERMS } from './terms.js'
 
@@ -147,8 +148,19 @@ export default function App() {
     ...(hasWeights ? [{ id: 'weights', label: 'Weights' }] : []),
   ]
 
+  // The density, and the all-pole model drawn over it. Both are computed only
+  // where the view asks for them, because a 16384-point Welch estimate is not
+  // free and four of the five groups never open this view.
+  const density = useMemo(() => {
+    if (state.freqView !== 'density') return null
+    const est = psdOf(state)
+    const model = state.blocks.some((b) => !b.bypass && b.type === 'allpole') ? arOf(state) : null
+    return { est, model }
+  }, [state])
+
   const freqOptions = [
     { id: 'spectrum', label: 'Spectrum' },
+    { id: 'density', label: 'Density' },
     { id: 'zplane', label: 'z-plane' },
     ...(hasGrid ? [{ id: 'polegrid', label: 'Pole grid' }] : []),
   ]
@@ -247,7 +259,15 @@ export default function App() {
                 options={freqOptions}
               />
             </div>
-            {state.freqView === 'polegrid' && grid ? (
+            {state.freqView === 'density' && density ? (
+              <DensityCanvas
+                est={density.est}
+                model={density.model}
+                label={`${state.estimator}, ${density.est.segments} segment${
+                  density.est.segments === 1 ? '' : 's'
+                } of ${density.est.n}${density.model ? `, with an order ${density.model.order} model` : ''}`}
+              />
+            ) : state.freqView === 'polegrid' && grid ? (
               grid.error ? (
                 <p className="refusal">{grid.error}</p>
               ) : (

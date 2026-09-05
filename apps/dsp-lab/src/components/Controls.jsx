@@ -260,6 +260,43 @@ export default function Controls({ state, setState, openBlocks, setOpenBlocks })
           </select>
           <small>A radix-2 transform needs a power of two, which is F5.</small>
         </label>
+        <label className="field select">
+          <span>Estimator</span>
+          <select
+            value={state.estimator}
+            onChange={(e) => setState((s) => ({ ...s, estimator: e.target.value }))}
+          >
+            {['periodogram', 'bartlett', 'welch'].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          <small>What the density view draws. One transform, or an average of many.</small>
+        </label>
+        <NumField
+          label="Segments"
+          value={state.segments}
+          onChange={(v) => setState((s) => ({ ...s, segments: Math.max(1, Math.round(v)) }))}
+          min={1}
+          max={256}
+          scale="log"
+          step={1}
+          presets={[1, 4, 16, 64, 256]}
+          hint="How many pieces the record is cut into before the pieces are averaged."
+          compact
+        />
+        <NumField
+          label="Model order"
+          value={state.arOrder}
+          onChange={(v) => setState((s) => ({ ...s, arOrder: Math.max(1, Math.round(v)) }))}
+          min={1}
+          max={24}
+          step={1}
+          presets={[2, 4, 8, 12]}
+          hint="How many poles the all-pole model is given, which D7 is about choosing."
+          compact
+        />
         <NumField
           label="dB floor"
           value={state.floorDb}
