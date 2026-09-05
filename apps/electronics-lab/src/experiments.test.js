@@ -8,6 +8,7 @@ import { TERMS } from './terms.js'
 import { agrees } from '@ee-labs/explain'
 import { NetworkError, bjtOf, normalize, equations, thermalVoltage } from '@ee-labs/network'
 import { inverterMargins } from './groups/d.js'
+import { HD2_GUARD, driveGuard, hd2Of, vbeFor, vgsFor } from './groups/f.js'
 
 // Every note makes a claim, and every claim is measured here.
 //
@@ -927,5 +928,225 @@ describe('Group E: signal and bias take different paths', () => {
     // source is setting the current.
     if (twice.point.Q1.region === 'active') expect(twice.point.Q1.ic / x.point.Q1.ic).toBeCloseTo(2, 2)
     else expect(twice.point.Q1.ic * p.RC).toBeCloseTo(p.vcc - twice.sol.v.c, 9)
+  })
+})
+
+// Groups F and G: the plan's §5 numbers, each written as a function of the
+// knobs it depends on rather than as the value it takes at the defaults. A
+// default that moves has to move these with it, which is the difference
+// between a pin and a transcription.
+describe('Group F: small signals, the tangent at the point', () => {
+  const VT = thermalVoltage(300)
+
+  it('F1: r_d and 1/g_m are both V_T over the current the device carries', () => {
+    for (const i of [0.25e-3, 1e-3, 4e-3]) {
+      const { x, p } = at('f1', { i, vbe: vbeFor(i) })
+      expect(x.point.D1.rd / (VT / p.i), `r_d at ${i} A`).toBeCloseTo(1, 6)
+      // The chip is a function of the device's own law, so it delivers the
+      // current it names rather than the one a table remembered.
+      expect(x.point.Q1.ic / i, `${i} A in the collector`).toBeCloseTo(1, 6)
+      expect(x.point.D1.rd * x.point.Q1.gm, 'one exponential, read twice').toBeCloseTo(1, 6)
+    }
+    // Both knobs that move the collector current move the base voltage that
+    // current asks for, because the law is inverted for each setting.
+    for (const [vce, va] of [
+      [10, 100],
+      [5, 200],
+    ]) {
+      const { x } = at('f1', { vce, va, vbe: vbeFor(1e-3, { vce, va }) })
+      expect(x.point.Q1.ic / 1e-3, `V_CE ${vce}, V_A ${va}`).toBeCloseTo(1, 6)
+    }
+  })
+
+  it('F2: the AC part of the quasi-static waveform is g_m v_be (R_C ∥ r_o)', () => {
+    const bias = at('f2').x.sol.v.c
+    for (const amp of [1e-4, 1e-3, 5e-3]) {
+      for (const RC of [1000, 5000]) {
+        const { x, p } = at('f2', { amp, RC })
+        const q = x.point.Q1
+        const rl = (p.RC * q.ro) / (p.RC + q.ro)
+        // The phasor solve against the tangent's own closed form.
+        expect(x.ac.v.c / (q.gm * amp * rl), `${amp} V into ${RC} Ω`).toBeCloseTo(1, 4)
+        // And the tangent against the curve: half the swing of two exact
+        // solves either side of the bias, which is the plan's 1 %.
+        const up = at('f2', { amp, RC, vbe: p.vbe + amp }).x.sol.v.c
+        const down = at('f2', { amp, RC, vbe: p.vbe - amp }).x.sol.v.c
+        const swing = Math.abs((down - up) / 2) / x.ac.v.c
+        expect(Math.abs(swing - 1), `${amp} V, quasi-static`).toBeLessThan(0.01)
+      }
+      // The bias is what the DC solve found with the signal switched off, so
+      // it does not move when the signal does.
+      expect(at('f2', { amp }).x.sol.v.c).toBeCloseTo(bias, 12)
+    }
+  })
+
+  it('F3: the exponential’s slope follows the current, the square law’s its square root', () => {
+    const { x, p } = at('f3')
+    const q = x.point.Q1
+    const m = x.point.M1
+    expect(q.gm).toBeCloseTo(q.ic / VT, 9)
+    expect(m.gm).toBeCloseTo((2 * m.id_) / m.vov, 9)
+    // The slope is a derivative, and it is measured as one on both devices.
+    const slope = (key, read) => {
+      const d = defaultsOf('f3')[key]
+      return (read(at('f3', { [key]: d + 5e-5 }).x) - read(at('f3', { [key]: d - 5e-5 }).x)) / 1e-4
+    }
+    expect(Math.abs(slope('vbe', (y) => y.point.Q1.ic) / q.gm - 1), 'the bipolar slope').toBeLessThan(1e-6)
+    expect(Math.abs(slope('vgs', (y) => y.point.M1.id_) / m.gm - 1), 'the square-law slope').toBeLessThan(1e-6)
+    // Double the current in each device. The exponential's slope doubles and
+    // the square law's grows by √2, which is the whole comparison.
+    const twiceQ = at('f3', { vbe: vbeFor(2 * q.ic) }).x
+    const twiceM = at('f3', { vgs: vgsFor(2 * m.id_) }).x
+    expect(twiceQ.point.Q1.gm / q.gm).toBeCloseTo(2, 4)
+    expect(twiceM.point.M1.gm / m.gm).toBeCloseTo(Math.SQRT2, 4)
+    // At the same current the bipolar slope is larger by V_OV/(2V_T).
+    expect(q.ic / m.id_).toBeCloseTo(1, 6)
+    expect(q.gm / m.gm).toBeCloseTo(m.vov / (2 * VT), 6)
+    expect(m.gm).toBeCloseTo(Math.sqrt(2 * p.kn * m.id_ * (1 + 0.02 * m.vds)), 9)
+  })
+
+  it('F4: the hybrid-π’s three numbers are derivatives, and its gain is the sweep’s slope', () => {
+    for (const over of [{}, { RC: 1000 }, { beta: 200 }, { va: 200 }]) {
+      const { x, p } = at('f4', over)
+      const q = x.point.Q1
+      const rl = (p.RC * q.ro) / (p.RC + q.ro)
+      // r_π is β/g_m at the current gain the device really has, and r_o is
+      // (V_A + V_CE)/I_C rather than the textbook's V_A/I_C.
+      expect(q.rpi / (q.ic / q.ib / q.gm)).toBeCloseTo(1, 6)
+      expect(q.ro / ((p.va + q.vce) / q.ic)).toBeCloseTo(1, 6)
+      expect(q.ro).toBeGreaterThan(p.va / q.ic)
+      expect(x.gain / (-q.gm * rl)).toBeCloseTo(1, 6)
+      // The printed netlist's gain against the slope of the quasi-static curve.
+      const up = at('f4', { ...over, vbe: p.vbe + 5e-5 }).x.sol.v.c
+      const down = at('f4', { ...over, vbe: p.vbe - 5e-5 }).x.sol.v.c
+      // The central difference carries its own step error, which is what the
+      // note's part in a million is measured against.
+      expect(Math.abs((up - down) / 1e-4 / x.gain - 1), 'the sweep’s slope').toBeLessThan(1e-6)
+    }
+    // β sets r_π and nothing else here, because the base is driven by a source
+    // with no resistance in it.
+    const one = at('f4').x
+    const two = at('f4', { beta: 2 * defaultsOf('f4').beta }).x
+    expect(two.point.Q1.rpi / one.point.Q1.rpi).toBeCloseTo(2, 3)
+    expect(two.gain / one.gain).toBeCloseTo(1, 6)
+  })
+
+  it('F5: the guard is 4 % of the fundamental, and it changes what the panel checks', () => {
+    const guard = driveGuard()
+    expect(guard).toBeCloseTo(4 * VT * HD2_GUARD, 15)
+    const lineAt = (drive) => {
+      const { exp, p, x } = at('f5', { drive })
+      const rows = experimentMath(exp, p, x)
+        .blocks.filter((b) => b.kind === 'check')
+        .flatMap((b) => b.rows)
+      return rows.find((r) => r.label.includes('straight line'))
+    }
+    // Inside the guard the straight line is checked and it agrees. Past it the
+    // row is footnoted, and the footnote names the drive it warns at.
+    const inside = lineAt(guard * 0.9)
+    expect(inside.unchecked).toBeNull()
+    expect(agrees(inside), 'the line describes the curve inside the guard').toBe(true)
+    const outside = lineAt(guard * 1.01)
+    expect(outside.unchecked).toMatch(/4\.14 mV/)
+    // The estimate the guard is written against, measured. At the default
+    // drive the two are within the plan's 10 %, and the gap grows with it.
+    const hd2At = (drive, over = {}) => 100 * hd2Of(byId.f5, { ...defaultsOf('f5'), ...over, drive }, 'drive', 0, drive)
+    const estimate = (drive) => (100 * drive) / (4 * VT)
+    const gapAt = (drive) => Math.abs(estimate(drive) - hd2At(drive)) / estimate(drive)
+    const drive = defaultsOf('f5').drive
+    expect(gapAt(drive)).toBeLessThan(0.1)
+    expect(gapAt(20e-3)).toBeGreaterThan(gapAt(10e-3))
+    expect(gapAt(10e-3)).toBeGreaterThan(gapAt(1e-3))
+    // The gap is the Early effect rather than the series. A truncated series
+    // would lose its error as the drive fell, and this gap is the same at a
+    // fiftieth of the drive.
+    expect(gapAt(1e-4) / gapAt(drive), 'the gap at a fiftieth of the drive').toBeCloseTo(1, 1)
+    // It halves when V_A doubles, because 1 + V_CE/V_A is where it comes from.
+    const gapWith = (va) => Math.abs(estimate(drive) - hd2At(drive, { va })) / estimate(drive)
+    const va = defaultsOf('f5').va
+    expect(hd2At(drive, { va: 2 * va })).toBeGreaterThan(hd2At(drive))
+    expect(gapWith(2 * va) / gapWith(va), 'the gap against V_A').toBeCloseTo(0.5, 1)
+  })
+
+  it('F6: two elements and no third, with the gate current exactly zero', () => {
+    for (const over of [{}, { RD: 10000 }, { lambda: 0.04 }, { vgs: 0.95 }]) {
+      const { x, p } = at('f6', over)
+      const m = x.point.M1
+      const rl = (p.RD * m.ro) / (p.RD + m.ro)
+      expect(m.gm).toBeCloseTo((2 * m.id_) / m.vov, 9)
+      // r_o is 1/(λ I_D0), where I_D0 is what the square law gives with the
+      // drain at zero rather than the current the device is carrying.
+      expect(m.ro).toBeCloseTo(1 / (p.lambda * 0.5 * p.kn * m.vov * m.vov), 6)
+      expect(x.gain / (-m.gm * rl)).toBeCloseTo(1, 6)
+      expect(x.point.M1.region).toBe('saturation')
+      // No current crosses the oxide, at any bias. Exactly zero, not small.
+      expect(x.sol.i.VG).toBe(0)
+    }
+  })
+})
+
+describe('Group G: ports, and what loads them', () => {
+  const rowsOf = (a) =>
+    experimentMath(a.exp, a.p, a.x)
+      .blocks.filter((b) => b.kind === 'check')
+      .flatMap((b) => b.rows)
+
+  it('G1: the port is R/(1 + gR), on both sides of zero', () => {
+    for (const R1 of [100, 1000, 10000]) {
+      for (const g of [-0.01, -0.001, 0, 0.001, 0.01]) {
+        // The one pair this sweep cannot ask for is the cancellation itself,
+        // where the port has no finite resistance. The test below covers it.
+        if (Math.abs(1 + g * R1) < 0.01) continue
+        const { x } = at('g1', { R1, g })
+        const port = R1 / (1 + g * R1)
+        expect(x.gain / port, `R1 ${R1}, g ${g}`).toBeCloseTo(1, 6)
+        // The reading is v over i at the terminals, whichever way it points.
+        expect(x.sol.v.x / x.sol.i.It).toBeCloseTo(port, 6)
+        expect(Math.sign(x.sol.v.x / x.sol.i.It)).toBe(Math.sign(port))
+      }
+    }
+    // Killing the independent source leaves the dependent one alive, so the
+    // resistors-alone answer is right only where g is zero.
+    const { x, p } = at('g1')
+    expect(x.gain).toBeLessThan(p.R1)
+    expect(at('g1', { g: 0 }).x.gain).toBeCloseTo(p.R1, 6)
+  })
+
+  it('G1: the panel declines the port where the dependent source cancels the resistor', () => {
+    const R1 = 1000
+    // Just off the cancellation the port is still finite, and still right.
+    const g = -1 / R1 + 1e-5
+    const near = at('g1', { R1, g })
+    expect(rowsOf(near)[0].unchecked).toBeNull()
+    expect(near.x.gain).toBeCloseTo(R1 / (1 + g * R1), 6)
+    // At the cancellation itself there is no finite resistance to check, and
+    // the panel gives the reason in a sentence rather than showing a cross.
+    const open = at('g1', { R1, g: -1 / R1 })
+    if (open.x.sol) for (const r of rowsOf(open)) expect(r.unchecked, 'the cancelled port').toMatch(/^[A-Z].*\.$/)
+    else expect(refusalReason(open.x.refusal)).toMatch(/^[A-Z].*\.$/)
+  })
+
+  it('G2: the three numbers read at the terminals, and the loading rule at both ends', () => {
+    for (const Rs of [100, 1000, 10000]) {
+      for (const RL of [1000, 10000, 1e6]) {
+        const { x, p } = at('g2', { Rs, RL })
+        // R_in as v over i at the input port, A_vo across the source inside,
+        // and R_out from the divider the load makes with it.
+        expect(x.sol.v.p / x.sol.i.Rs).toBeCloseTo(p.Rin, 6)
+        expect(x.sol.v.o / x.sol.v.p).toBeCloseTo(p.A, 9)
+        const rout = (RL * (x.sol.v.o - x.sol.v.out)) / x.sol.v.out
+        expect(rout / p.Rout, `R_out at R_s ${Rs}, R_L ${RL}`).toBeCloseTo(1, 6)
+        // The gain from the source is the open-circuit gain times both
+        // fractions, and neither fraction may be dropped.
+        const inDiv = p.Rin / (p.Rin + Rs)
+        const outDiv = RL / (RL + p.Rout)
+        expect(x.gain).toBeCloseTo(p.A * inDiv * outDiv, 9)
+        expect(Math.abs(x.gain)).toBeLessThan(p.A)
+      }
+    }
+    // The load that halves the open-circuit output is R_out itself.
+    const { x, p } = at('g2', { RL: defaultsOf('g2').Rout })
+    expect(p.RL).toBe(p.Rout)
+    expect(x.sol.v.out / x.sol.v.o).toBeCloseTo(0.5, 12)
   })
 })

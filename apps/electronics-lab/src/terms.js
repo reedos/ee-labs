@@ -10,6 +10,8 @@
 
 import { TERMS_D, MATCH_D } from './groups/d.terms.js'
 import { TERMS_E, MATCH_E } from './groups/e.terms.js'
+import { MATCH_F, TERMS_F } from './groups/f.terms.js'
+import { MATCH_G, TERMS_G } from './groups/g.terms.js'
 
 export const TERMS = {
   ...TERMS_D,
@@ -154,6 +156,8 @@ export const TERMS = {
       'rise, about −1.7 mV per kelvin near 0.7 V. It is the same law as I_S(T), read the other way round. A ' +
       'bias point built from a diode drop drifts with temperature unless something compensates it.',
   },
+  ...TERMS_F,
+  ...TERMS_G,
 }
 
 /** Every term's pattern, tried in the order the prose is read. */
@@ -180,4 +184,6 @@ export const MATCH = {
   transitfreq: /\btransition frequency\b|\bf_T\b/,
   saturationcurrent: /\bsaturation current\b|\bI_S\b/i,
   tempco: /\btemperature coefficient\b|\bmV\/K\b|dV_BE\/dT/i,
+  ...MATCH_F,
+  ...MATCH_G,
 }

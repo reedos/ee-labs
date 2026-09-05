@@ -26,10 +26,12 @@ overseer's to take.
 Electronics Lab's entry today is:
 
 - Slug `electronics-lab`, splash glyph `⊳`, short nav name **Electronics**.
-- **19 experiments in 4 groups.** Group A, "the op-amp as a user meets it", ids
+- **27 experiments in 6 groups.** Group A, "the op-amp as a user meets it", ids
   `a1` to `a6`. Group C, "inside the junction", ids `c1` to `c4`. Group D, "the
   transistor as a controlled source", ids `d1` to `d7`. Group E, "signal and
-  bias take different paths", ids `e1` to `e6`.
+  bias take different paths", ids `e1` to `e6`. Group F, "small signals, the
+  tangent at the point", ids `f1` to `f6`. Group G, "ports, and what loads
+  them", ids `g1` and `g2`.
 - No cross-lab reference by id in either direction yet. The lab's own
   `experiments.test.js` fails on a lesson that cites an experiment id this lab
   does not carry, so the references the plan lists for Groups F to O arrive
@@ -132,6 +134,109 @@ many agents at once. The owning labs decide whether to lengthen the limit,
 shorten the walk or split it. Nothing in this lab's own suite is near a limit:
 `packages/network` runs in 99 s and `apps/electronics-lab` in 9 s.
 
+## Groups F and G
+
+The lane owns `src/groups/{f,g}.js`, `src/lessons/{f,g}.js` and the two terms
+files. Everything below is outside those files.
+
+### 7. `layoutCheck.js` does not know the transistor geometry
+
+`collect()` sends a `Q` or an `M` through `elementBodyBoxes` and
+`elementTextPlaces`. A transistor is then checked as a 40 × 18 two-terminal
+body with its text 24 above and below. `Schematic.jsx` draws a 40 × 40 glyph
+with its text at 34. The checker also adds `+` and `−` marks at `signPlaces`,
+which the `Transistor` component does not draw. Item 4 above names this as the
+first transistor lab's to wire in. The three exports it needs are
+`transistorBodyBox`, `transistorPinPlaces` and `transistorTextPlaces`.
+
+The lane's eight drawings were checked against both geometries before they
+were committed, and they are clean under both. The crop frame was checked as well:
+`layoutExtent` uses the same wrong boxes, and the frame it returns still holds
+every layout's true drawing. So the defect is latent rather than visible, and
+it belongs to whoever owns `layoutCheck.js`.
+
+### 8. A transistor's label has to be its id alone
+
+`valueText` writes "Q1 npn" centred 34 below the device while the emitter's
+lead comes down 12 to the right of that centre. Any label wider than three
+characters is written across the lead, under the true geometry as well as the
+checked one. Group F passes `labels: { Q1: 'Q1', M1: 'M1' }` and loses the
+polarity from the drawing. A transistor-aware label place, or a convention that
+puts the text on the base side, would let the polarity stay on it.
+
+### 9. A transistor's schematic reading is a dash
+
+`elementReading` looks up `meters.i[e.id]` and `meters.volt[e.id]`. A
+companion-stamped device puts its currents under `Q1.g0`, `Q1.m0` and so on, so
+neither key resolves. The schematic prints a dash on the one element the lesson
+is about. Item 4 promised a per-device meter, the collector or drain current by
+default. Until it lands the topbar's operating-point label and the reading pane
+carry I_C and V_CE instead.
+
+### 10. Two imports in `mathEntries.js`
+
+`MATH_F` and `MATH_G` are exported from the two group files this lane owns, and
+`experiments.test.js` requires every experiment to have a math entry with at
+least one check row. `ENTRIES` is one flat registry, so the edit is one import
+line and one spread each. The lane made it, because the alternative was a red
+suite on its own commit.
+
+### 11. Quantity paths the brief's §4 lists that `readQuantity` does not resolve
+
+`ss.gain`, `ss.rin`, `ss.rout`, `hd2`, `thd` and `vn.*` all appear in the
+brief's list and none of them resolves. Group G reads a port resistance through
+the `gain` path, which is exact: `transferOf` from a current source gives a
+transimpedance in ohms. Group F reads AC node amplitudes and HD2 through
+`reads` functions instead. A path for the AC amplitudes, `x.ac`, would let a
+headline follow a signal amplitude. F2's headline is the collector's bias
+today, because nothing in a quantity path moves with an AC drive.
+
+### 12. The transfer view draws no tangent, and its title says it does
+
+`VIEW_LABELS.transfer` reads "Output against input from the quasi-static sweep,
+with the tangent at the point". `TransferCanvas` draws the curve alone. F4 and
+F5 both open on that view, and F5's whole lesson is the distance between the
+curve and the straight line at the same drive. The numbers are in the reading
+pane and in the math panel, so the claim is measured, but the picture does not
+carry it. Either the canvas gains the line and the point, or the title stops
+promising them.
+
+### 13. The scope's y axis is volts, so a current cannot share it
+
+`ScopeCanvas` titles its y axis "volts (V)" and formats every trace with `V`. A
+trace with `q: 'i'` would be drawn against the wrong unit and the wrong name.
+G1 wanted the test current beside the port voltage, to show a negative
+resistance as two traces rather than as a ratio. The note reads the two numbers
+instead. A second axis, or a per-trace unit, would let a current on the scope.
+
+### 14. Two of the plan's numbers moved, and the measured ones are used
+
+- **r_π is 2.714 kΩ, not the plan's 2.59 kΩ, and r_o is 105.0 kΩ, not 100.0.**
+  The tangent of the exponential device carries the Early effect in the base
+  current as well as the collector current. The current gain at V_CE = 5 V is
+  then 105 rather than the 100 the knob names, and r_o is (V_A + V_CE)/I_C.
+  This is the same effect item 5 above records for the CE stage's poles. F4's
+  note states both figures and the reason.
+- **F3 compares 17.02 mA/V against 4.400 mA/V at 440 µA**, where the plan
+  quotes 15.5 and 4.0 at 0.4 mA. The square law's λ raises the drain current
+  and its slope by 1 + λV_DS at V_DS = 5 V. The bipolar device is then read at
+  the same 440 µA. The plan's 125 kΩ for r_o is unchanged. That figure is
+  1/(λI_D) at the current the square law gives before the λ factor.
+
+### 15. `knobs.js`'s `leg()` stops 10 short of these rails
+
+`leg(id, x, y)` draws its wires from `y − 40` to `y − 20` and from `y + 20` to
+`y + 40`. Group C's two layouts use it against rails at 40 and 140, so each leg
+is drawn with a 10 px gap at both ends where the circuit has a wire. Nothing
+tests connectivity, so the suite cannot see it. Groups F and G use a local
+`legTo` that reaches the rails it is given.
+
+### 16. `experiments.test.js` gained a block per group
+
+Lanes 2 and 3 left a `describe` block per group in that file, and Groups F and
+G now have theirs. They are appended in group order, so two lanes that both
+append meet at the end of one file. The director resolves the order.
+
 ## At release: flip `RELEASE_STATUS` to `released`, then `release.test.js` demands
 
 1. **Splash page** `site/index.html`: a lab card linking `electronics-lab/`, in
@@ -173,6 +278,27 @@ append, rather than edited into a file this branch does not carry.
   screenshots of the Elements lab caught. No one has read a screenshot of this
   lab as a student would (`REVIEW_PLAYBOOK.md` §11). Reopens with anyone who
   has a browser.
+- **F5 measures its second harmonic without a spectrum.** `math.js` computes no
+  `x.spectrum`, so the spectrum pane has no data source and no experiment lists
+  it. F5 maps a sine through the stage's own DC characteristic instead, 64
+  exact solves and a Fourier projection. That is route 2 of the plan's §2.8,
+  read for its second harmonic. Reopens with the spectrum pane.
+- **F5's guard is a footnote rather than an amber ghost.** The plan asks for
+  one on a scope. The exponential model in time is declined by the plan's §2.8,
+  so no experiment past Group C can carry a scope with a transistor on that
+  model.
+- **The device-curves pane is empty for every experiment.** `math.js` computes
+  no `x.curves`, so nothing can list the view. Group D is where the load line
+  and the family of curves belong, and its lane needs the producer.
+- **G2 measures the loading rule at both ends of one box, not across two.** The
+  plan's G2 asks for two boxes in cascade against the direct solve. Nine
+  elements and six vertical legs do not fit the 420-wide canvas once each label
+  and reading is placed, since a leg needs about 75 px of clear space to its
+  right. Group I5 is where the two-stage case belongs.
+- **Nobody has looked at Groups F and G in a browser.** This environment has no
+  browser, so the eight drawings were checked as geometry, under the checker in
+  `layoutCheck.js` and again under the transistor geometry `Schematic.jsx`
+  really draws. Reopens with anyone who has a browser.
 - **The op-amp macro is ready for the two labs that asked for it.** Circuit
   Elements Lab's deferred GBW toggle and Circuit Lab's gain-bandwidth knob are
   both `gbw` on the `OPAMP` element, which expands at `normalize` and needs no
