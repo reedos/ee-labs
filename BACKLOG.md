@@ -189,6 +189,27 @@ carry.
   a breakdown region would be a new element in `packages/network`, and no
   experiment here needs the exact volts.
 
+### Logic Lab
+
+- Groups E to H are specified in `LOGIC_LAB_PLAN.md` §5. They cover the latch
+  and the flip-flop, registers and counters and the built machine, the clock
+  and `f_max`, and metastability. None is built this sitting, and nothing
+  blocks them. The next sitting continues from Group E, against lane 3's
+  `StateCanvas`.
+- The 101 detector, Group F, names Electronics D6, the CMOS inverter. D6 is
+  not built. No lesson names it yet, so `release.test.js` never sees the
+  reference it refuses by design. Group F's own lesson picks it up once D6
+  ships.
+- `TimingCanvas` and `StateCanvas` are built now. Both carry the Interfaces,
+  VLSI and Computer Labs' props in their signatures already, named in
+  `AGENT_BRIEF.md` §3.7 and `NEEDS.md` §3. Promotion to `packages/ui` waits
+  for the first of those three labs to start.
+- The engine contract differs from `VLSI_LAB_PLAN.md`, `COMPUTER_LAB_PLAN.md`
+  and `INTERFACES_LAB_PLAN.md` §2.3 in three ways. They are naming, the
+  meaning of `from` on an event, and where setup and hold are measured. None
+  blocks a lab, and each of the three plans already says it changes to match.
+  `apps/logic-lab/NEEDS.md` §4 reconciles all three.
+
 ## 3. The director's queue
 
 Items that cross labs and land at integration.
