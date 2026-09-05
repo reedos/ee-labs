@@ -26,13 +26,14 @@ overseer's to take.
 Electronics Lab's entry today is:
 
 - Slug `electronics-lab`, splash glyph `⊳`, short nav name **Electronics**.
-- **43 experiments in 8 groups.** Group A, "the op-amp as a user meets it", ids
-  `a1` to `a6`. Group C, "inside the junction", ids `c1` to `c4`. Group D, "the
-  transistor as a controlled source", ids `d1` to `d7`. Group E, "signal and
-  bias take different paths", ids `e1` to `e6`. Group F, "small signals, the
-  tangent at the point", ids `f1` to `f6`. Group G, "ports, and what loads
-  them", ids `g1` and `g2`. Group H, "single-stage amplifiers", ids `h1` to
-  `h7`. Group I, "mirrors, active loads, and stacking", ids `i1` to `i5`.
+- **54 experiments in 10 groups.** Ids `a1` to `a6`, `c1` to `c4`, `d1` to `d7`,
+  `e1` to `e6`, `f1` to `f6`, `g1` and `g2`, `h1` to `h7`, `i1` to `i5`, `j1` to
+  `j5` and `k1` to `k6`.
+- The groups in order are A, "the op-amp as a user meets it". C, "inside the
+  junction". D, "the transistor as a controlled source". E, "signal and bias take
+  different paths". F, "small signals, the tangent at the point". G, "ports, and
+  what loads them". H, "single-stage amplifiers". I, "mirrors, active loads, and
+  stacking". J, "the differential pair". K, "frequency response".
 - No cross-lab reference by id in either direction yet. The lab's own
   `experiments.test.js` fails on a lesson that cites an experiment id this lab
   does not carry, so the references the plan lists for Groups F to O arrive
@@ -310,6 +311,145 @@ time. So H7 measures both flat tops on the three-region model, and its third
 try step reads the refusal instead. The two routes meet in the transfer
 pane, where the quasi-static sweep solves the exponential exactly at every
 point.
+## Groups J and K
+
+Five differential-pair experiments and six on frequency response, on branch
+`lab/electronics-jk`. The lane owns `src/groups/{j,k}.js`, `src/groups/{j,k}.terms.js`
+and `src/lessons/{j,k}.js`, plus one import line each in `experiments.js`,
+`lessons.js`, `terms.js` and `mathEntries.js`.
+
+### 1. `layoutCheck.js` does not know what a transistor is
+
+`apps/electronics-lab/src/layoutCheck.js` collects a `Q` or an `M` through
+`elementBodyBoxes` and `elementTextPlaces`. Those are the two-terminal rules,
+and a transistor is not a two-terminal element. `schematicGeometry.js` gives it
+a body of ±20 on both axes rather than ±20 by ±9. It puts the label and the
+reading 34 off the centre rather than 24. The checker therefore measures the
+wrong boxes on every drawing in these two groups. A real collision between a
+lead and its own reading would pass.
+
+The eleven layouts here were checked against both geometries, by a script that
+repeats `layoutProblems`' rules with `transistorPinPlaces`, `transistorBodyBox`
+and `transistorTextPlaces` in place of the two-terminal ones. All eleven are
+clean under both. The fix is three lines in `collect`, beside the `OPAMP`
+branch that already exists:
+
+```js
+} else if (e.type === 'Q' || e.type === 'M') {
+  bodies.push({ box: G.transistorBodyBox(it), what: `${e.id} symbol`, owner: e.id })
+  const at = G.transistorTextPlaces(it)
+  addText(at.label, labelOf(e), G.FONT.label, `${e.id} label`)
+  addText(at.reading, reading, G.FONT.meter, `${e.id} reading`)
+}
+```
+
+That file belongs to the app shell rather than to a group lane, so the change is
+recorded here. `apps/circuit-elements-lab/src/layoutCheck.js` needs the same
+three lines whenever that lab draws a device.
+
+### 2. A wire that crosses another and does not join it
+
+`Schematic.jsx` draws every wire as a straight segment, so two crossing wires
+meet on screen with nothing to say they are not connected. `layoutProblems`
+reports the crossing rather than drawing it, which is the right default. J5's
+mirror needs one crossing that no planar arrangement removes, because the two
+load devices have their bases on the far side from everything they connect to.
+It is drawn as a gap in the crossing wire, which is one of the two conventions
+a schematic uses. The other, a semicircular hop, would be a renderer change and
+would read better. `layoutProblems` would need to know that a hop is not a
+junction.
+
+### 3. The progression test
+
+`packages/ui/src/progression.test.js` belongs to the seams overseer. These two
+groups add, after Group C:
+
+- Group J, "the differential pair", ids `j1` to `j5`.
+- Group K, "frequency response", ids `k1` to `k6`.
+
+The lab's entry becomes **21 experiments in 4 groups**. No lesson here names an
+experiment outside the lab, and the only ids cited are `a5`, `k3` and each
+group's own.
+
+### 4. Numbers that moved from the plan
+
+Each of these is the engine's answer at the plan's own component values, and
+each is what the lesson quotes. `ELECTRONICS_LAB_PLAN.md` §5 should carry the
+measured column when it is next revised.
+
+| Plan §5 | Measured | Why |
+| --- | --- | --- |
+| J1, 98.2 % of the tail at 4V_T | 98.12 % | the two collectors sit at different voltages, so the Early factor differs between the sides |
+| J1, linear within 7.6 % out to ±V_T | 7.14 % | the tangent is measured on the circuit, and the Early effect adds to the slope at the origin |
+| J2, g_m = 19.3 mA/V, A_d = 96.7 | 19.16 mA/V, 93.67 | I_C is α times half the tail, and the collector load is R_C ∥ r_o |
+| J3, CMRR 3868, 71.8 dB | 3793, 71.58 dB | the same two corrections |
+| J4, V_OS = V_T ΔR_C/R_C = 0.26 mV | 0.2572 mV | the exact law is V_T ln(1 + ΔR_C/R_C), of which V_T ΔR_C/R_C is the first term. A mismatch of I_S gives the same expression |
+| J5, A_d = 1934 | 2034 | r_o is (V_A + V_CE)/I_C, not V_A/I_C |
+| K1, f_T = 280 MHz | 280.0 MHz | agrees |
+| K2, bypass sees 34.6 Ω, corner near 98 Hz | 33.87 Ω, 99.98 Hz | the divider settles at 1.035 mA rather than 1 mA |
+| K3, f_H 548 kHz, estimate 3.2 % high | 539.5 kHz, 3.17 % | the tangent carries the Early effect in r_π and r_o, as `NEEDS.md` §5 already records |
+| K4, Σ τ = 291 ns, 0.16 % | 295.5 ns, 0.16 % | the same tangent |
+| K6, f_H about 9.2 MHz, seventeen times | 7.712 MHz, 14.3 times | the cascode's own base resistance and the Early effect at the middle node |
+
+### 5. Two shapes the app's contracts do not carry
+
+Neither of these stopped the work, and both would tidy it.
+
+- **A quantity path for a derived number.** `readQuantity` resolves paths
+  against the analysis, and a rejection ratio or an f_T is neither a node
+  voltage nor a pole. J3's headline is therefore one collector voltage and K1's
+  is the corner of the current gain, while the numbers those experiments are
+  about are read in the lesson steps by a function. A `derived.<name>` path,
+  filled by the group file, would let the topbar print what the experiment is
+  named for.
+- **`mathEntries.js` merges a fourth group file.** `experiments.js`,
+  `lessons.js` and `terms.js` each take one import line per group by design.
+  `ENTRIES` now does too, and the entries for a group live beside its netlists
+  rather than in one file that every lane would edit.
+
+### 6. What these groups changed about the brief's netlists
+
+- **Group J's two inputs are two sources to ground.** `Vb1` sits at
+  v_cm + v_id/2 and `Vb2` at v_cm − v_id/2, in place of the brief's floating
+  `Vid` between the bases. The two are the same circuit at every setting, and
+  the node names the brief fixes are unchanged. A floating source between the
+  two bases needs a wire from one base across to the other. That wire has to
+  cross the emitters, and no arrangement of these symbols avoids it.
+- **The tail returns to ground** rather than to a negative rail, so the drawing
+  carries one supply. The emitters sit at −0.63 V, which an ideal sink allows.
+- **`REE` beside the tail source** is that source's own output resistance. It
+  is a knob in J3 and absent elsewhere.
+- **K1's collector is held through a one-ohm sense resistor.** Without it C_π
+  and C_μ lie across the same pair of nodes and `dynamics` refuses the netlist,
+  with the state-loop message. The same reason puts 100 Ω in the cascode's base
+  bias in K6.
+- **The drawings are larger than 420 × 180.** A transistor's label and reading
+  hang 34 above and below its centre, so a device needs a clear band of ±42 and
+  a row of them costs eighty pixels of height. Group J's are 540 × 340 and
+  Group K's between 460 × 270 and 640 × 330. A phone renders them at about the
+  height Group A's drawings reach.
+
+### 7. Half of K5, and where the other half went
+
+`ELECTRONICS_LAB_PLAN.md` §5 names K5 "no Miller effect: the follower and the
+common base", and asks for the dominant poles of H3 and H4 against H1's. This
+lane built the follower alone. Two reasons, and the director should decide
+whether the plan's line or the built experiment moves.
+
+- Group H is not built, so H1, H3 and H4 cannot be cited. `experiments.test.js`
+  fails on a lesson that names an experiment this lab does not carry, which is
+  the rule working. K5 therefore compares itself against K3's common emitter,
+  solved at K5's own knobs rather than quoted.
+- A second topology inside one experiment needs a layout that follows the
+  netlist. `e.layout` is one object and `e.net` is a function of the knobs, so
+  a choice knob that swapped the follower for a common base would draw the
+  wrong circuit. The test that every element solved is drawn catches it.
+
+The common base is not absent from the group. K6's cascode is a common base
+standing on a common emitter, and its lesson measures what the lower collector
+sees because of it. What is missing is the direct comparison of a common base
+against the same device as a common emitter, at the same source resistance.
+Reopens with Group H, or as a seventh experiment in this group.
 
 ## At release: flip `RELEASE_STATUS` to `released`, then `release.test.js` demands
 

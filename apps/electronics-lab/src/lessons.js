@@ -34,6 +34,8 @@ import { LESSONS_F } from './lessons/f.js'
 import { LESSONS_G } from './lessons/g.js'
 import { LESSONS_H } from './lessons/h.js'
 import { LESSONS_I } from './lessons/i.js'
+import { LESSONS_J } from './lessons/j.js'
+import { LESSONS_K } from './lessons/k.js'
 
 const DEG = 180 / Math.PI
 
@@ -82,4 +84,4 @@ export function readQuantity(x, p, path, exp) {
   }
 }
 
-export const LESSONS = { ...LESSONS_A, ...LESSONS_C, ...LESSONS_D, ...LESSONS_E, ...LESSONS_F, ...LESSONS_G, ...LESSONS_H, ...LESSONS_I }
+export const LESSONS = { ...LESSONS_A, ...LESSONS_C, ...LESSONS_D, ...LESSONS_E, ...LESSONS_F, ...LESSONS_G, ...LESSONS_H, ...LESSONS_I, ...LESSONS_J, ...LESSONS_K }
