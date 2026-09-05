@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { EXPERIMENTS, GROUPS, GROUP_INTROS, VIEW_LABELS, VIEW_ORDER, byId, byGroup, defaultsOf } from './experiments.js'
+import { EXPERIMENTS, GROUPS, GROUP_INTROS, PANEL_VIEWS, PLOT_VIEWS, VIEW_LABELS, VIEW_ORDER, byId, byGroup, defaultsOf, isPlot } from './experiments.js'
 import { analyse, cellOf, curveOf, figuresOf, humps, powerAt, readQuantity, shadeOf } from './analysis.js'
 import { BACKOFF, CELL_DEFAULTS, atI, atV, openCircuit, shortCircuit, vocFormula } from './physics.js'
 import { TERMS } from './terms.js'
@@ -76,6 +76,18 @@ describe('every experiment', () => {
       expect(VIEW_LABELS[v], v).toBeTruthy()
       expect(VIEW_LABELS[v].label.split(/\s+/).length, `${v} label`).toBeLessThanOrEqual(4)
       expect(VIEW_LABELS[v].title.length, `${v} title`).toBeGreaterThan(20)
+    }
+  })
+
+  it('offers a picture and a panel, because the screen shows one of each at once', () => {
+    // Every view is one or the other, and the two lists between them are the
+    // whole of VIEW_ORDER, so a view added later cannot fall between them.
+    expect([...PLOT_VIEWS, ...PANEL_VIEWS].sort()).toEqual([...VIEW_ORDER].sort())
+    for (const v of PLOT_VIEWS) expect(isPlot(v), v).toBe(true)
+    for (const v of PANEL_VIEWS) expect(isPlot(v), v).toBe(false)
+    for (const e of EXPERIMENTS) {
+      expect(e.views.filter(isPlot).length, `${e.id} has a picture`).toBeGreaterThan(0)
+      expect(e.views.filter((v) => !isPlot(v)).length, `${e.id} has a panel`).toBeGreaterThan(0)
     }
   })
 

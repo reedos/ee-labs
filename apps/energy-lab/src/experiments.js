@@ -80,6 +80,14 @@ const BYPASS_ON = bypassKnob(true)
 
 export const VIEW_ORDER = ['iv', 'pv', 'string', 'track', 'scope', 'day', 'ledger', 'reading', 'math']
 
+// A view is either a picture or a table of numbers, and the screen shows one
+// of each at once: the plot above, the panel below, as ENERGY_LAB_PLAN.md
+// §3.1 lays the app out. Every experiment therefore offers at least one of
+// each, which `experiments.test.js` checks rather than assumes.
+export const PLOT_VIEWS = ['iv', 'pv', 'string', 'track', 'scope', 'day']
+export const PANEL_VIEWS = ['ledger', 'reading', 'math']
+export const isPlot = (v) => PLOT_VIEWS.includes(v)
+
 export const VIEW_LABELS = {
   iv: { label: 'I–V', title: 'Current against terminal voltage, one exact solve per point, with the load line and the maximum power rectangle' },
   pv: { label: 'P–V', title: 'Power against terminal voltage, with the maximum marked' },
