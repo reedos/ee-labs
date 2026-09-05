@@ -29,7 +29,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Energy Lab | built, dark | merged | Machines Lab for the wind group | `ENERGY_LAB_PLAN.md` |
 | Machines Lab | built, dark | merged | Power Lab F for the drives group | `MACHINES_LAB_PLAN.md` |
 | Communications Lab | built, dark | merged | | `COMMUNICATIONS_LAB_PLAN.md` |
-| Information Lab | built in part, dark | merged, 21 of 25 | the Communications Lab's BER canvas for Group F and B4, now merged | `INFORMATION_LAB_PLAN.md` |
+| Information Lab | built, dark | merged | | `INFORMATION_LAB_PLAN.md` |
 | Communications Lab | built, dark | `lab/comms-lab` | Electronics O and the RF Lab for one cross-reference | `COMMUNICATIONS_LAB_PLAN.md` |
 | Information Lab | waiting | | | `INFORMATION_LAB_PLAN.md` |
 | Applied Analog Lab | waiting | | Electronics L, M | `APPLIED_ANALOG_LAB_PLAN.md` |
@@ -452,6 +452,9 @@ Items that cross labs and land at integration.
 - `progression.test.js`: every new lab's ids and counts, from each lab's `NEEDS.md`.
 - Shared canvases promoted to `packages/ui` when a second lab claims them
   (`PROGRAM.md` §4).
+- One error-rate canvas on a log axis for `packages/ui`, with `counts` and `gain`
+  props, would serve both the Communications and Information labs, which each drew
+  their own. Shapes are in the Information Lab's `NEEDS.md` §4.
 - `TimingCanvas` and `StateCanvas` now have their second claimant, the Computer Lab,
   which carries copies with provenance comments. Promotion is due.
 - The nav fold (`ELECTRONICS_LAB_PLAN.md` Decision 5) in the first release commit
