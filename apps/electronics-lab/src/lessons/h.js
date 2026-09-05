@@ -80,8 +80,8 @@ export const LESSONS_H = {
     see:
       'A hundred ohms in the emitter costs most of the gain. The stage reads −39.0 where one ohm there ' +
       'read −178, and its input resistance rises from 2.82 kΩ to 12.8 kΩ. The distortion falls ' +
-      'further than the gain does. The second harmonic is 0.196 % at a 5 mV drive, against 4.08 % without ' +
-      'the resistor.',
+      'further than the gain does. The second harmonic is 0.196 % at a 5 mV drive, against 4.08 % with one ' +
+      'ohm in its place.',
     seeReads: [
       ['gain', -39.0322],
       [rin('b', ['Vs']), 12813.9],
