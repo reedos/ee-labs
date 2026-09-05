@@ -147,6 +147,82 @@ Each line below is a dependency, what it blocks, and what unblocks it.
 - `deploy.yml` and `progression.test.js` entries for `/devices-lab/`: through
   `NEEDS.md`, as every dark lab.
 
+### Planner: Communications, Information
+
+Two plans, written together on `plan/comms-info`. `COMMUNICATIONS_LAB_PLAN.md` is 50
+experiments in eight groups. `INFORMATION_LAB_PLAN.md` is 25 experiments in six
+groups. Each line below is a dependency, what it blocks, and what unblocks it.
+
+**Communications Lab.**
+
+- Group D, the AWGN channel and the bit error rate (8 experiments): waits on the
+  Random Signals Lab, which is being built. Four objects are needed. The Q function as
+  the tail of a Gaussian, a seeded Gaussian generator, the power spectral density, and
+  the matched filter's `2E/N_0`. Reopens when `lab/random-lab` lands them. Nothing
+  else in this lab reads any of the four.
+- `createComplexChain(registry)` in `packages/dsp`: the chain runs one real number per
+  sample and a constellation needs two. The contract is a mirror of `createChain` over
+  an interleaved `Float64Array` of length `2n`, about eighty lines, changing nothing
+  that exists. `packages/dsp` belongs to the DSP Lab overseer under `PROGRAM.md` §5,
+  so this goes into `apps/comms-lab/NEEDS.md` and the director resolves it once. Phase
+  1 needs none of it, and phases 2 to 7 all do. This is the plan's Decision 5.
+- The constellation and eye canvases: new in `packages/ui`, with the Mixed-Signal Lab
+  named as the second user (`PROGRAM.md` §4). Their props carry that lab's needs from
+  the first commit, which are a decision grid that is not a constellation and a
+  per-trace colour key. The director's queue item is the promotion.
+- The BER canvas takes a `limits` prop from its first commit, because the Information
+  Lab is its second user. That link is the only thing the two plans share.
+- Group E's loops hand to Control Lab II, which is being built. The reference is to
+  that lab rather than to one of its experiments, so the progression test allows it
+  before that lab ships.
+- Group H names the System Lab, which is waiting with no plan file. The four link
+  budget experiments compute the noise floor, the path loss, one margin and one
+  implementation-loss table. Antenna patterns, a real front end's cascaded noise
+  figure and interference budgets are that lab's. The progression test fails on the
+  reference until the System Lab exists.
+- G5's LMS equaliser is the DSP Lab's adaptive filter, used rather than rebuilt. That
+  lab is being built on `lab/dsp-lab`.
+- H1's `4kTR` cross-references the Electronics Lab's Group O, which is planned and not
+  built. The noise figure is assumed here rather than derived.
+- The private `waveform-simulator` boundary (Decision 2): this lab models the link at
+  the symbol rates its own chain renders and declines the high-speed serial and
+  optical link, as `README.md` records. Reed's word settles where the line sits.
+- `deploy.yml` and `progression.test.js` entries for `/comms-lab/`: through
+  `NEEDS.md`, as every dark lab.
+- The counted BER's hollow-point threshold, 30 errors, and the root raised cosine's
+  span guard at 6 symbols are set on the defaults of §4.3. They move if the fuzz finds
+  a case where the printed interval and the measured spread disagree.
+
+**Information Lab.**
+
+- Group F, the coding gain measured (3 experiments), and B4: wait on the
+  Communications Lab's Group D, which waits on the Random Signals Lab. The contract is
+  one function, the uncoded BER closed form, and one canvas, the BER plot with its
+  `limits` prop. Reopens when the Communications Lab lands Group D.
+- E2 and F3 read the soft metric, the per-bit log-likelihood ratio from the
+  Communications Lab's `detect.js`. Same dependency, same reopening.
+- Phases 1 to 5 build 21 of the 25 experiments and need nothing that is not built
+  today. `EE_LABS_MAP.md` §4 puts this lab in step 11 with a note that it can slot in
+  earlier, and this plan is the evidence that it can. The build order is the first
+  decision for the director.
+- Reed-Solomon's decoder is a stretch (Decision 4). C5 shows the code's distance and
+  its erasure correction from the field arithmetic alone. The Berlekamp-Massey or
+  Euclidean decoder reopens in a second version.
+- The regular `(3,6)` LDPC threshold of 1.11 dB is quoted from Richardson and Urbanke
+  and is not computed. Density evolution over message densities is a lab of its own,
+  and no test pins the number.
+- The trellis walker stays in the app under `PROGRAM.md` §4, because no second lab
+  claims it. It is built against the Logic Lab's state machine prop shape, so a later
+  promotion to `packages/ui` is a move rather than a rewrite. The Computer Lab is the
+  candidate second user.
+- Turbo codes and iterative demapping: declined by both plans. They need this lab's
+  decoder and the Communications Lab's demapper iterating across two engines and two
+  apps. Recorded as a seam, and it reopens only if a director decides the two apps
+  should share a runtime.
+- `deploy.yml` and `progression.test.js` entries for `/info-lab/`: through `NEEDS.md`,
+  as every dark lab. No other shared surface changes, which is the smallest
+  integration footprint in the map.
+
 ### Planner: VLSI, Computer, Interfaces
 
 Three plans written on branch `plan/digital-upper`, from `PROGRAM.md` §3 item 1.
