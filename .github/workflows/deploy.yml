@@ -59,6 +59,8 @@ jobs:
           cp -r apps/machines-lab/dist _site/machines-lab
           cp -r apps/random-lab/dist _site/random-lab
           cp -r apps/energy-lab/dist _site/energy-lab
+          cp -r apps/electronics-lab/dist _site/electronics-lab
+          cp -r apps/logic-lab/dist _site/logic-lab
 
       - uses: actions/upload-pages-artifact@v3
         with:

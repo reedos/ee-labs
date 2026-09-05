@@ -19,8 +19,8 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Control Lab | built | | | |
 | Power Lab | built in part | | Groups D, F to N unassigned | `POWER_LAB_PLAN.md` |
 | The two seams and the progression test | building | `lab/seams` | | `CURRICULUM.md` §3, §6 |
-| Electronics Lab | building | `lab/electronics-lab` | | `ELECTRONICS_LAB_PLAN.md` |
-| Logic Lab | building, dark | `lab/logic-lab` | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
+| Electronics Lab | built in part, dark | merged, Groups A and C | the transistor symbol in `Schematic.jsx` for Groups D to O | `ELECTRONICS_LAB_PLAN.md` |
+| Logic Lab | built, dark | merged | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
 | DSP Lab | building | `lab/dsp-lab` | | to write |
 | Random Signals Lab | built, dark | merged | Electronics O1 for one cross-reference | `RANDOM_LAB_PLAN.md` |
 | Control Lab II | building | `lab/control-lab-ii` | | to write |
@@ -68,8 +68,33 @@ dependency or decision that reopens it.
 
 ### Electronics Lab
 
-- Group B lives in Elements as I9 and I10 (Decision 3).
-- Groups D to O wait on lane 1's gate, inside the lab's own brief.
+`BACKLOG.md` is not on this branch. Its text is here for the director to
+append, rather than edited into a file this branch does not carry.
+
+- **Groups D to O are not built.** They wait on a transistor symbol in
+  `packages/ui/src/Schematic.jsx`, which is a shared surface (item 4 above).
+  The engine they need is built and green: `Q` and `M`, the companion
+  interface, `smallSignal`, `transferOf`, `returnRatio`, `macro.js`,
+  `junction.js` and `noise.js`, with invariants 1 to 9 of the plan's §2.12
+  fuzzed. Reopens with the symbol.
+- **Elements I9, I10 and H7 are the seams overseer's**, and this lab's Group B
+  is I9 and I10 by Decision 3. Nothing here references them by id, so the
+  progression test stays green until they land.
+- **C4's cross-reference to Group E** was removed rather than left dangling.
+  Its note named E4, the bias point's drift with temperature, which is not
+  built. Reopens with Group E, and the sentence to restore is in
+  `apps/electronics-lab/src/lessons/c.js`.
+- **The Playwright harness has not been run.** `scripts/verify.mjs` is not
+  written either. This environment has no browser. The layout is checked as
+  geometry instead, in `layoutCheck.js`, which catches what the first
+  screenshots of the Elements lab caught. No one has read a screenshot of this
+  lab as a student would (`REVIEW_PLAYBOOK.md` §11). Reopens with anyone who
+  has a browser.
+- **The op-amp macro is ready for the two labs that asked for it.** Circuit
+  Elements Lab's deferred GBW toggle and Circuit Lab's gain-bandwidth knob are
+  both `gbw` on the `OPAMP` element, which expands at `normalize` and needs no
+  change in either lab's solver.
+
 - **Group O should import `@ee-labs/random`** rather than write a second
   generator or a second periodogram. O1 calls `whiteNoise` and
   `averagedPeriodogram`, O2 calls `capacitorNoise`, O3 calls `shotDensity`. The
