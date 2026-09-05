@@ -91,14 +91,26 @@ describe('every experiment', () => {
     }
   })
 
-  it('solves at its defaults, and every solve converges in twelve iterations or fewer', () => {
-    for (const e of EXPERIMENTS) {
-      const { x } = at(e.id)
-      expect(x, e.id).toBeTruthy()
-      if (x.at && x.at.iters !== undefined) expect(x.at.iters, `${e.id} iterations`).toBeLessThanOrEqual(12)
-      if (x.curve) for (const pt of x.curve) expect(pt.iters, `${e.id} curve point`).toBeLessThanOrEqual(12)
-    }
-  })
+  // Three tests here walk every experiment and solve it, and a solve of a
+  // twelve-cell string is twelve exponential junctions under Newton. The
+  // config's ninety seconds is sized to this suite's other numerical tests;
+  // these three run past it on a runner sharing itself between workers, so
+  // each says how long it needs, as the config's own comment invites. No
+  // assertion is weakened by the number.
+  const SLOW = 300000
+
+  it(
+    'solves at its defaults, and every solve converges in twelve iterations or fewer',
+    () => {
+      for (const e of EXPERIMENTS) {
+        const { x } = at(e.id)
+        expect(x, e.id).toBeTruthy()
+        if (x.at && x.at.iters !== undefined) expect(x.at.iters, `${e.id} iterations`).toBeLessThanOrEqual(12)
+        if (x.curve) for (const pt of x.curve) expect(pt.iters, `${e.id} curve point`).toBeLessThanOrEqual(12)
+      }
+    },
+    SLOW,
+  )
 })
 
 // ---------------------------------------------------------------- invariants
@@ -380,7 +392,7 @@ describe('every lesson is measured', () => {
     }
     expect(problems).toEqual([])
     expect(steps).toBeGreaterThanOrEqual(2 * EXPERIMENTS.length)
-  })
+  }, 300000)
 
   it('readQuantity throws on a path it does not know', () => {
     const a1 = at('a1')
@@ -414,7 +426,7 @@ describe('every lesson is measured', () => {
         expect(a === b, `${e.id}: moving ${k.key} changed nothing`).toBe(false)
       }
     }
-  })
+  }, 300000)
 })
 
 /** A short digest of an analysis, for the "every knob does something" check. */

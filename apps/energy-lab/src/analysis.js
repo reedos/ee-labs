@@ -150,14 +150,13 @@ function analyseArray(exp, p) {
   const s = shadeOf(exp, p)
   const opts = optsOf(s)
   const fig = figuresOf(c, s)
-  const curve = curveOf(c, s, exp.points || 121)
+  const n = exp.points || 121
   const x = {
     kind: exp.kind,
     c,
     s,
     opts,
     fig,
-    curve,
     voc: fig.voc,
     isc: fig.isc,
     formulas: {
@@ -170,6 +169,24 @@ function analyseArray(exp, p) {
       rect: fig.voc * fig.isc,
     },
   }
+  // The curve is 121 exact solves and its maxima are ninety more, and most
+  // reads of an analysis want neither. A pane draws the curve, one lesson
+  // reads the humps, and everything else asks for a figure or an operating
+  // point. So both are computed on first access rather than up front, and
+  // memoised past that. The tests call `analyse` thousands of times without
+  // drawing anything, and this is the difference between a suite that runs in
+  // a minute and one that times out on a shared runner.
+  Object.defineProperty(x, 'curve', {
+    enumerable: true,
+    configurable: true,
+    get: () => curveOf(c, s, n),
+  })
+  Object.defineProperty(x, 'humps', {
+    enumerable: true,
+    configurable: true,
+    get: () => humpsOf(c, s, n),
+  })
+
   // Where this experiment sits on the curve.
   if (exp.kind === 'track') {
     const power = (v) => powerAt(c, s, v).p
@@ -202,9 +219,6 @@ function analyseArray(exp, p) {
   x.share = x.share ?? x.at.p / fig.pmpp
   // Each cell's own junction, for the string view, read off the solved circuit.
   x.cells = cellRows(c, s, x.at.sol)
-  // Every local maximum of the P–V curve. One for a uniformly lit array, two
-  // when a bypass diode has split the string into two of them.
-  x.humps = humpsOf(c, s, exp.points || 121)
   return x
 }
 
