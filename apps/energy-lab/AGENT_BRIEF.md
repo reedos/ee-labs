@@ -310,7 +310,7 @@ a student would, per `/REVIEW_PLAYBOOK.md` §11.
 
 - **Cost.** Every curve point is a Newton solve. A tracker run is a bisection
   over them at every step. Memoise `power(v)` by voltage in lane 4, and keep
-  test runs short and scans coarse. The plan's §10 says what a slow pane must
+  test runs short and scans coarse. The plan's §11 says what a slow pane must
   do.
 - **A refusal can be physics.** A string driven past its worst cell's
   photocurrent has no operating point in this model, and `newtonDC` says so.

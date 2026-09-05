@@ -260,6 +260,15 @@ group, the state of charge for the battery, and the served share for the day.
   what came in.
 - **Day.** Twenty-four hourly bars for array, load and store. The state of
   charge runs over them as a line. Curtailed and unserved hours are shaded.
+- **Walk.** The tracker's own numbers, which the P–V picture cannot measure:
+  where the walk started, which step turned round, what it settles between,
+  and the share of the maximum that leaves. For the converter experiment the
+  same pane carries the duty, the resistance it makes, and both input
+  currents with the difference between them printed.
+- **Hours.** The day as a table, hour by hour. The three data rows are marked
+  as data in the column heads, and the solves sit beside them. The hour the
+  readout is on is marked, and so is every hour the bus curtailed or could
+  not serve.
 - **Math.** Every formula a note leans on, evaluated beside what the solve
   measures.
 
@@ -547,7 +556,31 @@ exist.
 
 ---
 
-## 9. Non-goals, stated so they are decisions
+## 9. Phasing, and where each sitting stopped
+
+The lab is built group by group, and a sitting stops at a group boundary
+rather than part way through one. A half-built group leaves lessons quoting
+numbers no pane shows, which is the one failure the progression test cannot
+catch on its own.
+
+| Phase | What lands | State |
+| --- | --- | --- |
+| 1 | The physics, the analysis and `numbers.mjs` | built, fuzzed green |
+| 2 | The plan and the brief | built |
+| 3 | The app shell, both panes, the four canvases, the release gate | built, dark |
+| 4 | Groups A and B, with the reverse branch's guard on screen | built, pinned |
+| 5 | Groups C and D, with the walk pane and the two input currents | built, pinned |
+| 6 | Group E, with the hourly table and the profiles named as data | built, pinned |
+| 7 | The wind group | not started, waiting on the Machines Lab |
+
+Phase 7 is the only one with a dependency outside this lab, and `BACKLOG.md`
+carries it under "### Energy Lab". Everything phases 1 to 6 needed was already
+in `packages/network` and `packages/switched`, and neither package was
+touched.
+
+---
+
+## 10. Non-goals, stated so they are decisions
 
 - **Wind.** A turbine's electrical half is a machine. `BACKLOG.md` carries it
   under "### Energy Lab", where it waits on the Machines Lab.
@@ -565,7 +598,7 @@ exist.
 
 ---
 
-## 10. Risks, named
+## 11. Risks, named
 
 - **The shading model's reverse branch.** §2.4's guard is the mitigation, and
   it must appear wherever a reverse voltage is printed. Quoted without it, the

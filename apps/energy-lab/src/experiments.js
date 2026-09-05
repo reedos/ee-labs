@@ -78,14 +78,14 @@ const BYPASS_ON = bypassKnob(true)
 
 // ------------------------------------------------------------ views
 
-export const VIEW_ORDER = ['iv', 'pv', 'string', 'track', 'scope', 'day', 'ledger', 'reading', 'math']
+export const VIEW_ORDER = ['iv', 'pv', 'string', 'track', 'scope', 'day', 'walk', 'profiles', 'ledger', 'reading', 'math']
 
 // A view is either a picture or a table of numbers, and the screen shows one
 // of each at once: the plot above, the panel below, as ENERGY_LAB_PLAN.md
 // §3.1 lays the app out. Every experiment therefore offers at least one of
 // each, which `experiments.test.js` checks rather than assumes.
 export const PLOT_VIEWS = ['iv', 'pv', 'string', 'track', 'scope', 'day']
-export const PANEL_VIEWS = ['ledger', 'reading', 'math']
+export const PANEL_VIEWS = ['walk', 'profiles', 'ledger', 'reading', 'math']
 export const isPlot = (v) => PLOT_VIEWS.includes(v)
 
 export const VIEW_LABELS = {
@@ -95,6 +95,8 @@ export const VIEW_LABELS = {
   track: { label: 'Tracker', title: 'The perturb-and-observe walk drawn on the P–V curve it is climbing' },
   scope: { label: 'Scope', title: 'Terminal voltage, current and state of charge against time' },
   day: { label: 'Day', title: 'Twenty-four hours of array, load and store, with the state of charge over them' },
+  walk: { label: 'Walk', title: 'The tracker’s own numbers, or the converter’s duty and both of its input currents' },
+  profiles: { label: 'Hours', title: 'The day hour by hour, with the three data rows and the solves beside them' },
   ledger: { label: 'Ledger', title: 'Where the energy went, summing to what came in' },
   reading: { label: 'Reading', title: 'Every meter this experiment has at once' },
   math: { label: 'Math', title: 'Every formula the note leans on, evaluated beside what the solve measures' },
@@ -139,7 +141,7 @@ const track = (over) => ({
   kind: 'track',
   headline: 'share',
   params: [Step(), Start(), Steps(), G(), Tc()],
-  views: ['track', 'pv', 'reading', 'math'],
+  views: ['track', 'pv', 'walk', 'reading', 'math'],
   view: 'track',
   show: 'p',
   cell: { Ns: 12 },
@@ -318,7 +320,7 @@ export const EXPERIMENTS = [
       G(),
     ],
     cell: { Ns: 12 },
-    views: ['pv', 'iv', 'reading', 'math'],
+    views: ['pv', 'iv', 'walk', 'reading', 'math'],
     view: 'pv',
     show: 'p',
     claim: { buck: true },
@@ -379,8 +381,8 @@ export const EXPERIMENTS = [
     terms: ['labelleddata', 'irradiance'],
     headline: 'served',
     params: [Hour(), Modules(), Bank()],
-    views: ['day', 'ledger', 'reading', 'math'],
-    view: 'day',
+    views: ['day', 'profiles', 'ledger', 'reading', 'math'],
+    view: 'profiles',
     show: 'p',
     claim: { profiles: true },
   },
@@ -392,7 +394,7 @@ export const EXPERIMENTS = [
     terms: ['curtailment', 'labelleddata'],
     headline: 'served',
     params: [Modules(), Bank(), Hour()],
-    views: ['ledger', 'day', 'reading', 'math'],
+    views: ['ledger', 'day', 'profiles', 'reading', 'math'],
     view: 'ledger',
     show: 'p',
     claim: { balance: true },
@@ -405,7 +407,7 @@ export const EXPERIMENTS = [
     terms: ['curtailment', 'unserved'],
     headline: 'served',
     params: [Bank(), Modules(), Hour()],
-    views: ['day', 'ledger', 'reading', 'math'],
+    views: ['day', 'profiles', 'ledger', 'reading', 'math'],
     view: 'day',
     show: 'p',
     claim: { store: true },

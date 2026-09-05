@@ -6,6 +6,7 @@
  */
 import React, { useMemo } from 'react'
 import { COLORS, drawFrame, plotArea, useCanvas, fmt } from '@ee-labs/ui'
+import { shortfallOf } from '../analysis.js'
 
 export default function DayCanvas({ x, height = 320 }) {
   const rows = x && x.g ? x.g.rows : []
@@ -30,13 +31,13 @@ export default function DayCanvas({ x, height = 320 }) {
     const barW = (areaP.w / n) * 0.38
     rows.forEach((r, i) => {
       const cx = sx(i)
-      // Curtailed or unserved hours get a hatched backdrop, so what the bus
-      // could not do reads as clearly as what it did.
-      if (r.net > 0 && r.toBank * 3600 < r.net * 3600 - 1e-6) {
-        ctx.fillStyle = COLORS.spectrumDim
-        ctx.fillRect(cx - areaP.w / n / 2, areaP.y, areaP.w / n, areaP.h)
-      } else if (r.net < 0 && -r.toBank * 3600 < -r.net * 3600 - 1e-6) {
-        ctx.fillStyle = COLORS.traceGhost
+      // Curtailed or unserved hours get a backdrop, so what the bus could not
+      // do reads as clearly as what it did. The two are told apart by which
+      // way the hour was short, and the test lives in analysis.js so this and
+      // the hourly table cannot disagree about which hours they were.
+      const short = shortfallOf(r)
+      if (short) {
+        ctx.fillStyle = short === 'curtailed' ? COLORS.spectrumDim : COLORS.traceGhost
         ctx.fillRect(cx - areaP.w / n / 2, areaP.y, areaP.w / n, areaP.h)
       }
       ctx.fillStyle = COLORS.trace

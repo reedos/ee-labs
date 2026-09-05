@@ -11,6 +11,8 @@ import StringCanvas from './components/StringCanvas.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
 import DayCanvas from './components/DayCanvas.jsx'
 import { ReadingPane, LedgerPane } from './components/panes.jsx'
+import TrackPane from './components/TrackPane.jsx'
+import ProfilePane from './components/ProfilePane.jsx'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -162,6 +164,8 @@ function ViewBody({ view, exp, x }) {
   if (view === 'string') return <StringCanvas x={x} />
   if (view === 'scope') return <ScopeCanvas x={x} />
   if (view === 'day') return <DayCanvas x={x} />
+  if (view === 'walk') return <TrackPane exp={exp} x={x} />
+  if (view === 'profiles') return <ProfilePane x={x} />
   if (view === 'ledger') return <LedgerPane exp={exp} x={x} />
   if (view === 'reading') return <ReadingPane exp={exp} x={x} />
   return null

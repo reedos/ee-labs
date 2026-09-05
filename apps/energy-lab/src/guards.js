@@ -8,7 +8,7 @@
  *   the reverse branch — a shaded cell driven backwards has only the shunt
  *     resistance to conduct through, because the model has no breakdown, so
  *     the reverse voltage is the model's rather than a real cell's
- *     (ENERGY_LAB_PLAN.md §2.4, and §10 names it as the lab's first risk);
+ *     (ENERGY_LAB_PLAN.md §2.4, and §11 names it as the lab's first risk);
  *   the fit's band — the open-circuit voltage rises linearly with the state
  *     of charge only from z = 0.1 to z = 0.9, and the knobs can leave it
  *     (§2.7). The circuit is still solvable outside, so the panel warns

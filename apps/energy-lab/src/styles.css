@@ -111,6 +111,18 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .table td.num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .table tr.total td { border-top: 1px solid var(--line-bright); font-weight: 600; }
 .view-body-inner { max-width: 640px; }
+/* The hourly table has eight columns and wants the room. */
+.view-body-inner.is-wide { max-width: none; overflow-x: auto; }
+
+/* The day, hour by hour. The column heads carry which of them are the data
+   and which are solved, so the distinction is in the table and not only in
+   the paragraph above it. */
+.profile-table { font-variant-numeric: tabular-nums; }
+.profile-table th[scope='col'] { white-space: nowrap; vertical-align: bottom; }
+.profile-table th[scope='col'] .prov { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.profile-table td, .profile-table th { padding: 2px 8px; }
+.profile-table tr.is-here { background: rgba(56, 224, 176, 0.08); }
+.profile-table tr.is-here th[scope='row'] { color: var(--accent); }
 
 .more-knobs { margin-top: 8px; }
 .more-knobs > summary { cursor: pointer; font-size: 12px; color: var(--dim); padding: 4px 0; }

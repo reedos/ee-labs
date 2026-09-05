@@ -327,6 +327,19 @@ function cccvTrace(r, p) {
   return [...cc, ...cv]
 }
 
+/**
+ * What one hour of the day could not do, in a word. `toBank` is the energy
+ * the bank actually took or gave over the hour, and `net` is the power the
+ * hour had spare or short, so the two are compared over the hour's own 3600
+ * seconds. An hour that moved everything it had returns the empty string.
+ */
+export function shortfallOf(r) {
+  const wanted = r.net * 3600
+  if (r.net > 0 && r.toBank < wanted - 1e-6) return 'curtailed'
+  if (r.net < 0 && r.toBank > wanted + 1e-6) return 'unserved'
+  return ''
+}
+
 /** The day, with the bank size as the knob. */
 function analyseDay(exp, p) {
   const b = { ...BATTERY_DEFAULTS }
