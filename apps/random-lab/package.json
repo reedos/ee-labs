@@ -1,0 +1,25 @@
+{
+  "name": "random-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Probability and random processes for electrical engineers: a random variable as a seeded source, its histogram against its density, autocorrelation and the power spectral density as one object, noise through a filter, and the estimators that carry their own confidence intervals.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@ee-labs/dsp": "*",
+    "@ee-labs/random": "*",
+    "@ee-labs/ui": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}
