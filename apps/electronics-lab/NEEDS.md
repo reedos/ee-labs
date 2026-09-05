@@ -26,11 +26,13 @@ overseer's to take.
 Electronics Lab's entry today is:
 
 - Slug `electronics-lab`, splash glyph `⊳`, short nav name **Electronics**.
-- **10 experiments in 2 groups.** Group A, "the op-amp as a user meets it", ids
-  `a1` to `a6`. Group C, "inside the junction", ids `c1` to `c4`.
+- **19 experiments in 4 groups.** Group A, "the op-amp as a user meets it", ids
+  `a1` to `a6`. Group C, "inside the junction", ids `c1` to `c4`. Group D, "the
+  transistor as a controlled source", ids `d1` to `d7`. Group E, "signal and
+  bias take different paths", ids `e1` to `e6`.
 - No cross-lab reference by id in either direction yet. The lab's own
   `experiments.test.js` fails on a lesson that cites an experiment id this lab
-  does not carry, so the references the plan lists for Groups D to O arrive
+  does not carry, so the references the plan lists for Groups F to O arrive
   with those groups.
 
 The count moves as groups land. Whoever adds Group D onward updates this entry
@@ -328,6 +330,31 @@ Every one of these is the engine's, computed before it was written.
   setting one voltage. A base current lets both models run on the same drawing,
   and the three-region model then reaches exactly 0.2 V at the saturated end,
   which is the number the plan quotes.
+- **E5's gate is held by a source, not by a divider.** The plan says a divider.
+  A MOSFET gate draws no current, so a divider and a source of the same
+  open-circuit voltage set the same gate voltage and the same drain current.
+  One source is one part on a phone-width drawing where a divider is two. The
+  note and the math panel say which is drawn.
+- **The plan's E4 gives 83 mV over 50 K and a 75 µA shift.** The circuit gives
+  89.1 mV and 80.1 µA. C4's 1.66 mV/K is the slope at 0.7 V, and this junction
+  sits at 0.655 V, where the slope is steeper. The shift formula leaves out the
+  junction's own r_e = V_T/I_E, so the math row carries a threshold for it.
+  Item 12 has the threshold.
+
+### 12. What the review changed in files this lane does not own
+
+`experiments.test.js` is lane 6's. It gained a `describe` block for Group D and
+one for Group E, in the shape the Group A and Group C blocks already have. The
+brief's §6 asks every lane to pin the plan's numbers there, and those two
+blocks are the precedent. Twenty-four pins, each written from the knobs rather
+than typed. Every default in both groups was perturbed to confirm the pins move
+with them. Two imports came with the block, `bjtOf` from `@ee-labs/network` and
+`inverterMargins` from `groups/d.js`.
+
+`groups/e.math.js` and `lessons/e.js` are this lane's. Three claims in them did
+not follow their circuit and are corrected in place: E5's divider, E6's fifth
+figure, and E3's milliamp read as a collector current. E4's temperature row is
+an approximation and now carries the threshold CORE_SCOPE rule 3 asks for.
 
 ### 11. For `BACKLOG.md`, under `### Electronics Lab` (append only)
 
