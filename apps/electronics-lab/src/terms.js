@@ -9,6 +9,7 @@
 // defined using an undefined term.
 
 import { MATCH_F, TERMS_F } from './groups/f.terms.js'
+import { MATCH_G, TERMS_G } from './groups/g.terms.js'
 
 export const TERMS = {
   opampmacro: {
@@ -152,6 +153,7 @@ export const TERMS = {
       'bias point built from a diode drop drifts with temperature unless something compensates it.',
   },
   ...TERMS_F,
+  ...TERMS_G,
 }
 
 /** Every term's pattern, tried in the order the prose is read. */
@@ -177,4 +179,5 @@ export const MATCH = {
   saturationcurrent: /\bsaturation current\b|\bI_S\b/i,
   tempco: /\btemperature coefficient\b|\bmV\/K\b|dV_BE\/dT/i,
   ...MATCH_F,
+  ...MATCH_G,
 }
