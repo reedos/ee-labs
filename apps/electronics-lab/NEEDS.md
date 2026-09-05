@@ -360,6 +360,12 @@ numbers are already there to draw.
   symbol. On a 390 px phone that is a 23 % shrink of every label. If it reads
   badly, the fix is to move the Wien network's parallel arm onto a second row
   rather than to widen the canvas further.
+- **The sidebar's one-line summary no longer describes the lab.** `App.jsx`
+  says "19 experiments, from the op-amp a user meets to the junction
+  underneath it", and the lab now also carries the oscillators and the noise.
+  That file belongs to the app shell's lane, so the sentence is recorded here
+  rather than edited. It is the first item of `REVIEW_PLAYBOOK.md`, a sentence
+  that stopped following what it describes.
 - **N2's frequency is 1562.5 Hz where the network alone would set 1591.5 Hz.**
   That is the rail-limited loop and the lesson states it, but it is the one
   number in the two groups a reader is most likely to query.
