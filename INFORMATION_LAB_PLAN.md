@@ -338,8 +338,9 @@ thing. This is the equivalent of the Electronics Lab's element library.
 | Code `RS15` | Reed-Solomon `(15,11)` over `GF(2⁴)` | `d = 5`, `t = 2`, rate 0.733333 |
 | Code `K3` | convolutional, `K = 3`, generators 5 and 7 | 4 states, `d_free = 5` |
 | Code `K7` | convolutional, `K = 7`, generators 133 and 171 | 64 states, `d_free = 10` |
-| Code `L12` | LDPC, 12 bits, 8 checks, `d_v = 2`, `d_c = 3` | rate 0.3333, drawable |
-| Code `L1008` | LDPC `(3,6)`, length 1008 | rate 0.5, 3024 edges |
+| Code `R5` | repetition `(5,1)`, `d = 5`, `t = 2` | rate 0.2, perfect |
+| Code `L12` | LDPC, 12 bits, 8 checks, `d_v = 2`, `d_c = 3` | design rate 0.3333, true rate 0.4167 |
+| Code `L102` | LDPC `(3,6)`, 102 bits, 51 checks | design rate 0.5, true rate 0.5196, 306 edges |
 
 The `K3` trellis in full, because it fits and because the walker view draws it:
 
@@ -353,6 +354,25 @@ The `K3` trellis in full, because it fits and because the walker view draws it:
 | 10 | 1 | 11 | 10 |
 | 11 | 0 | 01 | 10 |
 | 11 | 1 | 11 | 01 |
+
+Two of those numbers were settled by building the lab rather than by the script
+that wrote this table.
+
+**`L12`'s rate is five twelfths.** Every bit of a `d_v = 2` code sits in two
+checks, so every column of `H` has even weight and the eight rows sum to zero.
+The rank is 7 rather than 8, and no code with two checks per bit can have all
+its rows independent. The design rate 0.3333 is what the degrees promise, and E1
+measures both numbers side by side.
+
+**The `(5,1)` repetition code is perfect.** Its spheres of radius 2 hold 16 words
+each, and 2 codewords cover all 32 words of five bits. C3 offers it as the third
+perfect code beside `(7,4)` Hamming and `(23,12)` Golay rather than as a
+counter-example to them.
+
+**`L1008` is not built.** The iteration experiments run on `L102`, from the array
+construction, whose girth is six by its own arithmetic rather than by a search. A
+code of 1008 bits draws as a smear at any width a phone has, and the numbers E3
+quotes are the same shape at either length.
 
 **Preset description.** As Signal Lab: each experiment is a `patch` naming a source,
 a channel and a code, with a `note`, a `try`, chips, a `featured` control and a
@@ -606,57 +626,65 @@ The mechanism is the one Power Lab and the Elements lab share, unchanged:
 
 ## 9. Phasing
 
-Each phase ships green and deployable dark. The order is by dependency, and Group F
-is last because it is the only group that waits on another lab. Phases 1 to 5 are
-**built** on `lab/info-lab`, in one sitting rather than five, because each phase's
-engine module is independent of the others and the app shell landed first.
+Each phase ships green and deployable dark. The order was by dependency, and
+Group F was last because it was the only group that waited on another lab. **All
+seven phases of engine and curriculum are built** on `lab/info-lab`. Phases 1 to
+5 landed in one sitting, and phase 6 landed in a second once the Communications
+Lab merged.
 
-1. **The field and the block codes.** Built. `gf2.js`, `gfm.js`, `block.js`, `rs.js`.
-   App shell, the code table and the weight view, and the `RELEASE_STATUS` test.
-   **Group C** (5). Exit met: invariants 1 to 6 fuzzed green, every C number pinned,
-   and C5 printing what Decision 4 leaves out.
+1. **The field and the block codes.** Built. `gf2.js`, `gfm.js`, `block.js`,
+   `rs.js`. App shell, the code table and the weight view, and the
+   `RELEASE_STATUS` test. **Group C** (5). Exit met: invariants 1 to 6 fuzzed
+   green, every C number pinned, and C5 printing what Decision 4 leaves out.
 2. **Entropy and source coding.** Built. `entropy.js`, `source.js`, the code tree
-   view. **Group A** (5). Exit met: invariant 10 green over 200 random sources and
-   10 000 arithmetic streams, and A2's three sources pinned.
+   view. **Group A** (5). Exit met: invariant 10 green over 200 random sources
+   and 10 000 arithmetic streams, and A2's three sources pinned.
 3. **Capacity, without the plot.** Built. The rest of `entropy.js` and B1 to B3.
-   **Group B** (3 of 4). Exit met: every capacity pinned, the Shannon limit computed
-   at four rates and at its floor, and the binary-input integral reporting its own
-   convergence. B4 waits on phase 6.
-4. **The trellis.** Built. `conv.js`, the trellis walker view. **Group D** (5). Exit
-   met: invariants 7 and 8 green, the free distance searched for rather than quoted at
-   all four constraint lengths, and D3's operation counts pinned.
-5. **The graph.** Built. `ldpc.js`, the Tanner graph view. **Group E** (3). Exit met:
-   invariant 9 green over 300 channels, and E3's non-converging decode reproducible
-   from its seed.
-6. **The gain.** `gain.js`, the BER plot imported from the Communications Lab, B4 and
-   **Group F** (3 plus B4). Exit: invariants 11 and 12 green, the crossover pinned at
-   5.862 dB, and both cross-lab tests passing. **Waiting**, on the Communications
-   Lab's Group D. That lab has no package on the integration branch, so the two
-   contracts it owes this one are written into `apps/info-lab/NEEDS.md` §3 and the
-   four experiments are in `BACKLOG.md`.
+   **Group B** (3 of 4). Exit met: every capacity pinned, the Shannon limit
+   computed at four rates and at its floor, and the binary-input integral
+   reporting its own convergence.
+4. **The trellis.** Built. `conv.js`, the trellis walker view. **Group D** (5).
+   Exit met: invariants 7 and 8 green, the free distance searched for rather than
+   quoted at all four constraint lengths, and D3's operation counts pinned.
+5. **The graph.** Built. `ldpc.js`, the Tanner graph view. **Group E** (3). Exit
+   met: invariant 9 green over 300 channels, and E3's non-converging decode
+   reproducible from its seed.
+6. **The gain.** Built. `gain.js`, the error rate view, B4 and **Group F** (3
+   plus B4). Exit met: invariants 11 and 12 green, the crossover pinned at
+   5.862 dB where both curves read 2.741 × 10⁻³, and both cross-lab tests
+   passing. The uncoded curve is `berClosed` from `@ee-labs/comms` and equals
+   this lab's own form to floating point at every point of the grid. F3's decoder
+   reads that lab's `softMetric` rather than a copy of it.
 7. **The release gate**, in order, each blocking the next. The full audit (every
-   option, every preset, every claim, fuzzing, both browsers). The student sittings.
-   Reed's own pass against the dark deployment. Then the flip.
+   option, every preset, every claim, fuzzing, both browsers). The student
+   sittings. Reed's own pass against the dark deployment. Then the flip.
 
-The invariant numbers above are §2.10's, which the first draft of this section had
-off by one from phase 2 onward.
+The invariant numbers above are §2.10's, which the first draft of this section
+had off by one from phase 2 onward.
 
-Phases 1 to 5 are 21 of the 25 experiments and needed nothing that was not built.
-That was the argument for building this lab earlier than the map's order suggests.
-It held. The only thing the lab could not build is the group that reads another
-lab's curve.
+Phases 1 to 5 were 21 of the 25 experiments and needed nothing that was not
+built. That was the argument for building this lab earlier than the map's order
+suggests. It held, and the four experiments that waited took one sitting once
+the lab they waited on had landed.
 
-Three things phases 1 to 5 settled that the earlier sections state differently.
+Four things the building settled that the earlier sections state differently.
 
-- The twelve-bit LDPC code of §3 has rate five twelfths rather than one third. Two
-  checks per bit makes every column of `H` even, so its rows sum to zero and its rank
-  is 7. E1 measures the design rate and the true rate together, which is a better
-  lesson than the one this plan wrote.
-- The `(5,1)` repetition code is perfect, like `(7,4)` Hamming and `(23,12)` Golay.
-  C3 offers it as the third of them rather than as a counter-example.
+- The twelve-bit LDPC code of §3 has rate five twelfths rather than one third,
+  and the `(5,1)` repetition code is perfect. §3 now says both.
+- The hard-decision block curve of §2.8 weights a decoding failure by `(i + t)/n`
+  rather than by `i/n`. A bounded-distance decoder that fails does not leave the
+  block alone. It believes a syndrome and adds a pattern of weight up to `t` of
+  its own. That weighting is the one that reproduces this plan's own F1 and F2
+  numbers, which is how it was found.
 - Nothing in a lesson quotes the `(3,6)` threshold of 1.11 dB. §10 names it as a
-  literature value with no test behind it, and a number no test measures does not go
-  on a student's screen.
+  literature value with no test behind it, and a number no test measures does not
+  go on a student's screen.
+- The error rate view is this lab's own, not the Communications Lab's BER canvas.
+  That canvas draws one closed form against its counted points, and its subject
+  is the agreement between the two. This one draws two closed forms and measures
+  the distance between them, which is what a coding gain is. It takes `limits` in
+  the shape that canvas takes it, so the two become one canvas the day a third
+  lab wants both pictures (`apps/info-lab/NEEDS.md` §4).
 
 ---
 

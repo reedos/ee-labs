@@ -825,3 +825,43 @@ The lines below are what is not built, and what reopens each one.
   because no second lab claims either. Both are built against the Logic Lab's state
   diagram prop shape. Both compute their picture as data before drawing it, so a
   promotion to `packages/ui` is a move that carries its own tests.
+
+### Information Lab, closed
+
+The Communications Lab merged, and the four experiments that waited on it are
+built. `packages/codes` gains `gain.js`, the app gains B4 and Group F, and the
+lab is 25 of 25 in six of six groups. What follows is what remains, which is now
+one stretch item and one request.
+
+- **Group F and B4 are built.** The uncoded curve is `berClosed` from
+  `@ee-labs/comms`, and a test compares it with this lab's own form at every
+  point of the grid. The two agree to floating point, so the lab draws that
+  lab's function rather than a copy of it.
+- **The soft metric hand-over is a thing on screen.** F3 sends its bits through
+  that lab's mapper, channel and detector, reads the beliefs back, and decodes
+  them here. The two labs map a zero to opposite levels and write a belief the
+  same way, so `levelsFromLlr` is the whole of the conversion. That is recorded
+  in `packages/codes/src/crosslab.test.js`, which fails if either convention
+  moves.
+- **The plan's own F1 and F2 numbers found a defect in this lab's first
+  arithmetic.** A hard-decision block curve weights a decoding failure by
+  `(i + t)/n` rather than `i/n`, because a bounded-distance decoder that fails
+  adds its own error pattern. The optimistic weighting reached 10⁻⁵ at 9.000 dB
+  and the plan said 9.174 dB. The plan was right, and the engine now is.
+- **The error rate view is this lab's own canvas**, not the Communications Lab's
+  BER plot. The two draw different pictures of the same axes, and they should
+  become one canvas in `packages/ui` when a third lab wants either. The request
+  is in `apps/info-lab/NEEDS.md` §4, with the prop shapes both would need. Until
+  a director takes it, the duplication is one log axis and one `limits` prop.
+- **The Reed-Solomon error decoder** is still a stretch (Decision 4). C5 shows
+  the distance, the erasure decoder and the field arithmetic, and the pane prints
+  what is missing. Berlekamp-Massey or the Euclidean algorithm reopens it.
+- **The `(3,6)` threshold of 1.11 dB** is still quoted from Richardson and
+  Urbanke in the plan's §10, and still no lesson quotes it. Density evolution
+  over message densities is a lab of its own.
+- **No Playwright harness.** The four checks this lab wants from one are in
+  `INFORMATION_LAB_PLAN.md` §7 and in `apps/info-lab/NEEDS.md` §5. The screenshot
+  pass is the only check on those four.
+- **`progression.test.js` needs the last four ids.** `NEEDS.md` §2 now reads
+  `a1` to `a5`, `b1` to `b4`, `c1` to `c5`, `d1` to `d5`, `e1` to `e3`, `f1` to
+  `f3`, and 25 of 25.
