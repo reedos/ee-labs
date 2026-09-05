@@ -36,9 +36,9 @@ export const TERMS_N = {
   thd: {
     name: 'Total harmonic distortion',
     def:
-      'The root of the summed power in every harmonic above the first, divided by the first. A pure sine reads ' +
-      'zero. A square wave reads 43.8 %, because its harmonics fall only as one over the harmonic number. It is ' +
-      'quoted here over the first twelve harmonics, which is where the energy is.',
+      'The root of the summed power in the harmonics above the first, divided by the first. A pure sine reads ' +
+      'zero. It is counted here over the first twelve harmonics, and a square wave counted that way reads ' +
+      '43.9 %. Every harmonic past the twelfth adds a little more.',
   },
   relaxation: {
     name: 'Relaxation oscillator',

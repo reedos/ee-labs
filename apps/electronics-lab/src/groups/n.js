@@ -22,8 +22,8 @@
 // capacitor (`x0`), because a circuit sitting exactly at its own unstable
 // equilibrium stays there, and a real one never does.
 
-import { charPoly, crossings, dynamics, normalize, polesOf } from '@ee-labs/network'
-import { Amp, Cap, Freq, Gain, Is, R, Vs, chips, gnd, node, wire } from '../knobs.js'
+import { charPoly, complex as cx, crossings, dynamics, normalize, polesOf, solveAC } from '@ee-labs/network'
+import { Amp, Cap, Gain, Is, R, chips, gnd, node, wire } from '../knobs.js'
 
 const GROUP = 'N · Oscillators'
 
@@ -91,6 +91,40 @@ const colpittsNet = (p) => ({
     { type: 'R', id: 'Rb', nodes: ['p', 'gnd'], value: p.Rb },
   ],
 })
+
+/**
+ * What the Wien network alone sends back to the + input, per volt at the
+ * output, as [re, im].
+ *
+ * Barkhausen's condition is a statement about the loop, so the loop has to be
+ * broken to measure it. `returnRatio` breaks a loop at a controlled source and
+ * declines an `OPAMP` by type, so the break is made here instead: the two arms
+ * are driven by a one-volt source where the amplifier's output sits, and what
+ * arrives at the + input is read. The op-amp's own input draws no current in
+ * this circuit, so the network loaded by it is the network alone. An input
+ * resistance on `U1` would change that, and the row below would have to move
+ * on to the return ratio.
+ */
+export function wienBeta(p, hz) {
+  const net = {
+    elements: [
+      { type: 'V', id: 'Vd', nodes: ['out', 'gnd'], value: 1 },
+      { type: 'R', id: 'Rs', nodes: ['out', 'w'], value: p.Rw },
+      { type: 'C', id: 'Cs', nodes: ['w', 'p'], value: p.Cw },
+      { type: 'R', id: 'Rp', nodes: ['p', 'gnd'], value: p.Rw },
+      { type: 'C', id: 'Cp', nodes: ['p', 'gnd'], value: p.Cw },
+    ],
+  }
+  const ac = solveAC(net, 2 * Math.PI * hz, { sources: { Vd: [1, 0] } })
+  return ac.v.p
+}
+
+/** The magnitude of that, and its phase in degrees. */
+export const wienBetaMag = (p, hz) => cx.cabs(wienBeta(p, hz))
+export const wienBetaDeg = (p, hz) => {
+  const b = wienBeta(p, hz)
+  return (Math.atan2(b[1], b[0]) * 180) / Math.PI
+}
 
 /** The Colpitts tank's series capacitance, C₁C₂/(C₁ + C₂). */
 export const seriesC = (p) => (p.C1 * p.C2) / (p.C1 + p.C2)
@@ -424,7 +458,7 @@ export const GROUP_N = [
       chips(Cap('Cw', 'Wien C', 10e-9), [1e-9, 10e-9, 100e-9]),
       Gain('A0', 'Open-loop gain A₀', 1e5),
       chips(Rail('vsat', 'Rails ±V_sat', 12), [3, 6, 12]),
-      Amp('kick', 'Starting charge on C_p', 1e-3),
+      Amp('kick', 'Starting voltage on C_p', 1e-3),
     ],
     net: (p) => wienNet(p, false),
     labels: LABELS,
@@ -450,7 +484,7 @@ export const GROUP_N = [
       chips(R('R1', 'Threshold R₁', 10000), [3333, 10000, 30000]),
       R('R2', 'Threshold R₂', 10000),
       chips(Rail('vsat', 'Rails ±V_sat', 12), [5, 12, 15]),
-      Amp('kick', 'Starting charge on C_t', 1e-3),
+      Amp('kick', 'Starting voltage on C_t', 1e-3),
     ],
     net: relaxNet,
     labels: LABELS,
@@ -477,7 +511,7 @@ export const GROUP_N = [
       chips(Gs('g', 'Transconductance g_m', 1e-3), [3e-4, 1e-3, 3e-3]),
       chips(Is('ilim', 'Current limit I_max', 2e-4), [1e-4, 2e-4, 1e-3]),
       chips(R('Rb', 'Tank loss R_b', 3000), [1000, 3000, 10000]),
-      Amp('kick', 'Starting charge on C₂', 1e-3),
+      Amp('kick', 'Starting voltage on C₂', 1e-3),
     ],
     net: colpittsNet,
     labels: LABELS,
@@ -507,6 +541,31 @@ export function swingAt(x, key, settle = 0.5) {
   const high = Math.max(...ys)
   const low = Math.min(...ys)
   return { high, low, amp: (high - low) / 2, mean: (high + low) / 2 }
+}
+
+/**
+ * The time constant of the stretch between the last two edges, from the walk.
+ *
+ * Between two events the circuit is one linear circuit and the capacitor's
+ * voltage is one exponential. Three samples equally spaced inside that stretch
+ * give the time constant without needing the level it is heading for, because
+ * the ratio of the two differences is e^{Δ/τ} whatever that level is. The
+ * samples are taken an eighth of the stretch clear of both edges, so a solve
+ * exactly on an event never lands in the fit.
+ */
+export function decayConstant(x, key) {
+  const ev = (x.tr && x.tr.events) || []
+  for (let k = ev.length - 1; k > 0; k--) {
+    const a = ev[k - 1].t
+    const b = ev[k].t
+    if (!(b - a > 0) || b > x.tEnd) continue
+    const inset = (b - a) / 8
+    const dt = (b - a - 2 * inset) / 2
+    const f = (t) => x.tr.at(t).sol.v[key]
+    const r = (f(a + inset) - f(a + inset + dt)) / (f(a + inset + dt) - f(a + inset + 2 * dt))
+    if (r > 0 && Number.isFinite(r) && Math.abs(r - 1) > 1e-9) return dt / Math.log(r)
+  }
+  return NaN
 }
 
 /** The Schmitt trigger's feedback fraction, R₁/(R₁ + R₂). */

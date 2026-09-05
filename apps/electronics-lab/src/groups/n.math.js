@@ -8,7 +8,7 @@
 // or the poles have gone real — the row is footnoted with the reason instead
 // of being crossed out.
 
-import { colpittsF0, gainOf, oscOf, relaxPeriod, seriesC, swingAt, betaOf, wienF0 } from './n.js'
+import { colpittsF0, decayConstant, gainOf, oscOf, relaxPeriod, seriesC, swingAt, betaOf, wienBetaDeg, wienBetaMag, wienF0 } from './n.js'
 
 const T = (text) => ({ kind: 'text', text })
 const F = (tex, caption) => ({ kind: 'formula', tex, caption })
@@ -74,9 +74,17 @@ export const MATH_N = {
     const real = !q ? 'The gain is far enough from three that the two poles are real, so there is no pair to read a frequency off.' : null
     return {
       blocks: [
-        T('The Wien network passes a third of the output at one frequency and passes it with no phase shift. The amplifier makes up the other three, and where its gain sits decides which side of the axis the poles are on.'),
+        T('The Wien network passes a third of the output at one frequency and passes it with no phase shift. The amplifier makes up the other three, and where its gain sits sets which side of the axis the poles are on.'),
         F('s^2 + \\frac{(3 - G) + G^2/A_0}{RC}\\,s + \\frac{1}{(RC)^2} = 0, \\qquad G = 1 + \\frac{R_f}{R_g}'),
+        F('\\beta(j\\omega_0) = \\frac{v_p}{v_{out}} = \\frac{1}{3}, \\qquad \\angle\\beta(j\\omega_0) = 0^\\circ'),
         C([
+          // Barkhausen's condition, measured rather than asserted. The two
+          // arms are driven from the amplifier's output and what comes back to
+          // the + input is read, which is the loop broken at the one place it
+          // can be broken without the op-amp in it. `returnRatio` declines an
+          // OPAMP element by type, so the return ratio itself is not on offer.
+          row('what the network passes back at f₀', 1 / 3, wienBetaMag(p, wienF0(p)), '', 1e-9),
+          row('the phase it passes it with', 0, wienBetaDeg(p, wienF0(p)), '°', 1e-9, { abs: 1e-9 }),
           row('the pair’s distance from the origin, 1/RC', wn, q ? Math.hypot(q.re, q.im) : NaN, 'rad/s', 1e-6, { unchecked: real }),
           row('the frequency that is, 1/(2πRC)', wienF0(p), q ? Math.hypot(q.re, q.im) / (2 * Math.PI) : NaN, 'Hz', 1e-6, { unchecked: real }),
           row('the growth rate σ', wienSigma(p), q ? q.re : NaN, 'rad/s', 2e-3, { abs: 1e-4 * wn, unchecked: real }),
@@ -121,6 +129,7 @@ export const MATH_N = {
     const o = oscOf(x)
     const b = betaOf(p)
     const swing = swingAt(x, 'p', 0.2)
+    const tau = decayConstant(x, 'n')
     const running = settled(x, o) ? null : 'This window holds less than one whole cycle, so what it shows is the start-up and not the steady oscillation.'
     return {
       blocks: [
@@ -130,10 +139,17 @@ export const MATH_N = {
           row('the period', relaxPeriod(p), o.period, 's', 1e-6, { unchecked: running }),
           row('the threshold, βV_sat', b * p.vsat, swing ? swing.high : NaN, 'V', 1e-6, { unchecked: running }),
           row('the output’s own level', p.vsat, o.high, 'V', 1e-6, { unchecked: running }),
+          // The sentence above says the capacitor's voltage between edges is
+          // one exponential of time constant R_tC_t. Three samples inside one
+          // stretch measure that constant without the level it heads for.
+          row('the time constant between edges, R_tC_t', p.Rt * p.Ct, tau, 's', 1e-6, {
+            unchecked: Number.isFinite(tau) ? null : 'This window holds no stretch between two edges, so there is no exponential to fit a time constant to.',
+          }),
         ]),
         V([
           { label: 'the feedback fraction β', value: b, unit: '', note: 'the same fraction sets both thresholds' },
           { label: 'the time constant R_tC_t', value: p.Rt * p.Ct, unit: 's', note: 'the period is 2 ln((1+β)/(1−β)) of it' },
+          { label: 'distortion of the square wave', value: 100 * o.thd, unit: '%', note: 'over the first twelve harmonics, and every harmonic past them adds a little more' },
         ]),
       ],
     }

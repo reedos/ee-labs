@@ -2,7 +2,7 @@
 // the solver by experiments.test.js, and every knob move names a setting the
 // knob can reach.
 
-import { oscOf, swingAt, wienF0 } from '../groups/n.js'
+import { decayConstant, oscOf, swingAt, wienF0 } from '../groups/n.js'
 
 /** Distortion as the percentage the prose quotes, from the settled waveform. */
 const thdPct = (x) => 100 * oscOf(x).thd
@@ -137,9 +137,13 @@ export const LESSONS_N = {
       'same fraction β of the rail the output sits at, so the share of the exponential the capacitor has to ' +
       'cover does not depend on the rail. Neither does the period. That independence is why the circuit is used ' +
       'as a clock. Its output is a square wave, and a square wave’s harmonics fall only as one over the ' +
-      'harmonic number, which comes to 43.8 % of distortion. A resonant oscillator puts almost all of its ' +
-      'energy into one line. This one spreads it, and the two are chosen for different jobs.',
-    whyReads: [[thdPct, 43.8394549]],
+      'harmonic number. Counted over the first twelve of them that is 43.9 % of distortion. A resonant ' +
+      'oscillator puts almost all of its energy into one line. This one spreads it, and the two are chosen ' +
+      'for different jobs.',
+    whyReads: [
+      [thdPct, 43.8601400],
+      [(x) => decayConstant(x, 'n'), 4.55e-4],
+    ],
   },
 
   n4: {

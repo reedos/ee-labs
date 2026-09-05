@@ -6,6 +6,7 @@ import { CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCh
 import { num } from './format.js'
 import { TERMS } from './terms.js'
 import { agrees } from '@ee-labs/explain'
+import { texFailures } from '@ee-labs/explain/testing'
 import { NetworkError, normalize, equations } from '@ee-labs/network'
 
 // Every note makes a claim, and every claim is measured here.
@@ -154,6 +155,19 @@ describe('every experiment', () => {
       }
     }
   }, 180000)
+
+  // A formula that KaTeX cannot parse renders as red literal text, and a
+  // formula that lost a backslash on its way through an editor renders as the
+  // macro's own letters. Both have shipped in this suite before, so both are
+  // checked here rather than read off a screenshot.
+  it('typesets every formula in its math panel', () => {
+    const fails = []
+    for (const e of EXPERIMENTS) {
+      const m = experimentMath(e, defaultsOf(e.id), analyse(e, defaultsOf(e.id)))
+      if (m) fails.push(...texFailures(m, e.id))
+    }
+    expect(fails).toEqual([])
+  })
 
   it('prints its equations, and the rows count the unknowns the circuit has', () => {
     for (const e of EXPERIMENTS) {
