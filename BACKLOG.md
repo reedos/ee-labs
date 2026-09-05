@@ -117,6 +117,11 @@ Needed from elsewhere, mirrored in `apps/random-lab/NEEDS.md`:
   `ensemble`, `x` and `y`. The Applied Analog Lab's plan passes `runs`,
   `summary` and `axes`. The `band` and `count` props the director asked for are
   identical in both and are carried here from the first commit.
+- A fix for two timeouts in `apps/circuit-elements-lab/src/experiments.test.js`,
+  which are the only failures in a whole-suite run on this branch. They sit
+  behind the branch point and this branch touches nothing they use. The lab that
+  owns the file decides whether to lengthen the timeout, shorten the sweep or
+  split the three walks.
 
 ### Machines Lab
 

@@ -104,7 +104,25 @@ None. `@ee-labs/random` is this lab's own package and is complete against the
 plan's §3. `@ee-labs/dsp` is used unchanged, for `fft` and `windowFn` only, and
 this lab has not edited it.
 
-## 5. Notes for the Electronics overseer
+## 5. What the whole-suite run needs, which is not this lab's
+
+`npx vitest run` from the root is not green on this branch. The two failures are
+in `apps/circuit-elements-lab/src/experiments.test.js` and both are timeouts.
+They are the tests that walk every experiment and solve a diode by Newton
+iteration. `vitest.config.js` raised the timeout to ninety seconds for exactly
+these, and its comment names them. On the machine this lab was built on, one of
+them needs longer than that even with nothing else running.
+
+This branch touches neither that lab, nor that file, nor any package it imports,
+and the failures sit behind the branch point. It is recorded here because the
+director runs the whole suite at integration and will meet them. The lab that
+owns the file decides the fix. A longer timeout, a shorter sweep, or the three
+walks split into one test each are the three shapes it could take.
+
+Everything this lab owns is green. `npx vitest run packages/random
+apps/random-lab` is 16 files and 529 tests.
+
+## 6. Notes for the Electronics overseer
 
 Group O should import `@ee-labs/random` rather than writing a second generator
 or a second periodogram.
