@@ -57,6 +57,7 @@ jobs:
           cp -r apps/power-lab/dist _site/power-lab
           # Dark-launched labs of the EE Labs program, each gated by its own RELEASE_STATUS.
           cp -r apps/machines-lab/dist _site/machines-lab
+          cp -r apps/random-lab/dist _site/random-lab
 
       - uses: actions/upload-pages-artifact@v3
         with:
