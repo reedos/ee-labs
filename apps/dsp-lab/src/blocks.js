@@ -456,6 +456,8 @@ export const BLOCK_TYPES = {
       delta: 0.01,
       plant: '0.4,-0.3,0.25,0.1,-0.05,0.02,0.01,0',
       noiseAmp: 0,
+      nearAmp: 0,
+      nearFreq: 300,
       output: 'error',
     },
     params: [
@@ -525,6 +527,28 @@ export const BLOCK_TYPES = {
         hint: 'The floor the error cannot go below, because it is not correlated with the input.',
       },
       {
+        key: 'nearAmp',
+        label: 'Near-end talker',
+        scale: 'linear',
+        min: 0,
+        max: 0.5,
+        step: 0.005,
+        presets: [0, 0.1, 0.2],
+        hint: 'A second voice added to what was wanted. It is not in the input, so no filter of the input can produce it.',
+      },
+      {
+        key: 'nearFreq',
+        label: 'Near-end frequency',
+        scale: 'log',
+        min: 100,
+        max: 4000,
+        step: 1,
+        decimals: 0,
+        presets: [300, 1000],
+        when: (p) => p.nearAmp > 0,
+        whenHint: 'There is no near-end talker to give a frequency to while its amplitude is zero.',
+      },
+      {
         key: 'output',
         label: 'Output',
         kind: 'select',
@@ -555,6 +579,7 @@ export const BLOCK_TYPES = {
           }
           li = li === plant.length - 1 ? 0 : li + 1
           if (p.noiseAmp > 0) want += p.noiseAmp * (2 * hash(n) - 1)
+          if (p.nearAmp > 0) want += p.nearAmp * Math.sin((2 * Math.PI * p.nearFreq * n) / sampleRate)
           n++
           const r = f.update(x, want)
           return p.output === 'estimate' ? r.y : p.output === 'wanted' ? want : r.e
@@ -572,9 +597,20 @@ export const BLOCK_TYPES = {
      * different sequence from the one the run used.
      */
     run: (p, buf, sampleRate, opts = {}) => {
-      const noise =
-        p.noiseAmp > 0
-          ? Float64Array.from({ length: buf.length }, (_, i) => p.noiseAmp * (2 * hash(i) - 1))
+      // What was wanted carries two things the input cannot explain: a
+      // measurement noise floor, and a near-end talker. Both are added to the
+      // wanted signal and neither is in the input, so no filter of the input can
+      // produce either, and what is left in the error is exactly them.
+      const extra =
+        p.noiseAmp > 0 || p.nearAmp > 0
+          ? Float64Array.from(
+              { length: buf.length },
+              (_, i) =>
+                (p.noiseAmp > 0 ? p.noiseAmp * (2 * hash(i) - 1) : 0) +
+                (p.nearAmp > 0
+                  ? p.nearAmp * Math.sin((2 * Math.PI * p.nearFreq * i) / sampleRate)
+                  : 0),
+            )
           : null
       const r = runAdaptive({
         x: buf,
@@ -584,10 +620,10 @@ export const BLOCK_TYPES = {
         mu: p.mu,
         lambda: p.lambda,
         delta: p.delta,
-        noise,
+        noise: extra,
         stride: opts.stride ?? Math.max(1, Math.round(buf.length / 256)),
       })
-      return { ...r, noise, plant: tapsOf(p.plant) }
+      return { ...r, noise: extra, plant: tapsOf(p.plant) }
     },
   },
 

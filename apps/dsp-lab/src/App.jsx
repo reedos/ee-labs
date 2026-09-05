@@ -6,10 +6,18 @@ import ScopeCanvas from './components/ScopeCanvas.jsx'
 import SpectrumCanvas from './components/SpectrumCanvas.jsx'
 import SpecPane from './components/SpecPane.jsx'
 import PoleGridCanvas from './components/PoleGridCanvas.jsx'
+import WeightCanvas from './components/WeightCanvas.jsx'
 import { EXPERIMENTS, GROUPS } from './experiments.js'
 import { INITIAL, experimentState } from './state.js'
 import { applyChip } from './chips.js'
-import { chainPolesZeros, chainRefusals, chainResponse, chainSpec, renderChain } from './chain.js'
+import {
+  chainAdaptiveRun,
+  chainPolesZeros,
+  chainRefusals,
+  chainResponse,
+  chainSpec,
+  renderChain,
+} from './chain.js'
 import { POLE_BOXES, poleBoxes } from './measure.js'
 import { readoutRows } from './measure.js'
 import { CHROME_TERMS, TERMS } from './terms.js'
@@ -121,6 +129,24 @@ export default function App() {
     [state.blocks],
   )
 
+  // The adaptive run, for the weight view. It is the block's own `run`, at the
+  // stride a plot wants, so the sequence drawn is the sequence measured.
+  const weights = useMemo(() => {
+    if (state.timeView !== 'weights') return null
+    const { buf } = renderChain(state.sources, [], state.fftSize, state.sampleRate)
+    return chainAdaptiveRun(state.blocks, buf, state.sampleRate)
+  }, [state])
+
+  const hasWeights = useMemo(
+    () => state.blocks.some((b) => !b.bypass && b.type === 'adaptive'),
+    [state.blocks],
+  )
+
+  const timeOptions = [
+    { id: 'signal', label: 'Signal' },
+    ...(hasWeights ? [{ id: 'weights', label: 'Weights' }] : []),
+  ]
+
   const freqOptions = [
     { id: 'spectrum', label: 'Spectrum' },
     { id: 'zplane', label: 'z-plane' },
@@ -188,13 +214,29 @@ export default function App() {
 
         <section className="views">
           <div className="pane">
-            <h3>Time domain</h3>
-            <ScopeCanvas
-              buf={run.buf}
-              sampleRate={state.sampleRate}
-              spanMs={state.timeSpanMs}
-              label={`${fmtHz(state.sampleRate)}Hz`}
-            />
+            <div className="pane-head">
+              <h3>Time domain</h3>
+              <ViewSwitch
+                value={state.timeView}
+                onChange={(v) => setState((s) => ({ ...s, timeView: v }))}
+                options={timeOptions}
+              />
+            </div>
+            {state.timeView === 'weights' && weights ? (
+              <WeightCanvas
+                history={weights.history}
+                stride={weights.stride}
+                plant={weights.plant}
+                label={`${weights.history[0]?.length ?? 0} taps, one row every ${weights.stride} samples`}
+              />
+            ) : (
+              <ScopeCanvas
+                buf={run.buf}
+                sampleRate={state.sampleRate}
+                spanMs={state.timeSpanMs}
+                label={`${fmtHz(state.sampleRate)}Hz`}
+              />
+            )}
           </div>
           <div className="pane">
             <div className="pane-head">

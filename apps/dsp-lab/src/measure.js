@@ -5,6 +5,7 @@ import {
   bandStats,
   bartlett,
   designBiquad,
+  autocorr,
   convolveFir,
   fftCost,
   firResponse,
@@ -21,6 +22,7 @@ import {
   tailPower,
   weightError,
   welch,
+  wiener,
 } from '@ee-labs/dsp'
 import { BLOCK_TYPES, firDesign, iirDesign, cascadeResponse, tapsOf } from './blocks.js'
 import { chainSpec, renderChain, runChain } from './chain.js'
@@ -45,6 +47,7 @@ import { chainSpec, renderChain, runChain } from './chain.js'
 //   guard.<hz>                       the anti-alias filter's response there
 //   lms.<power|bound|boundMean|misadjustment|reach|converged|diverged>
 //   lms.<error|settled|floor|ratio|echo|residual|erle|cost>
+//   lms.<wiener|rdiag|near>
 //   fix.<delta|stateDelta|radius|moved|stable|top|bottom>
 //   fix.<deadband|deadbandUnits|period|noiseGain|rmsIn|rmsOut|gainDb>
 //   fix.<gridTotal|gridDense|gridSparse|gridRatio|measured|modelRatio>
@@ -433,6 +436,18 @@ export function resolvePath(path, state, rendered = null) {
       return 10 * Math.log10(tailPower(r.d, r.tail) / Math.max(1e-300, tailPower(r.e, r.tail)))
     }
     if (parts[1] === 'cost') return costPerSample(p.algorithm, p.taps)
+    if (parts[1] === 'wiener') {
+      // The best fixed filter of the same length, from the same input and the
+      // same wanted signal, so the adaptive run has something to be compared to.
+      return weightError(wiener(r.x, r.d, p.taps).w, r.plant)
+    }
+    if (parts[1] === 'rdiag') return autocorr(r.x, p.taps)[0]
+    if (parts[1] === 'near') {
+      // The near-end talker's own power, which is the floor an echo canceller
+      // leaves behind on purpose.
+      const a = p.nearAmp ?? 0
+      return (a * a) / 2
+    }
     throw new Error(`unknown lms path: ${path}`)
   }
 

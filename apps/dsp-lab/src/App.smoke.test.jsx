@@ -33,7 +33,7 @@ describe('App', () => {
     // A patch that asks for a view nobody renders leaves a reader on a blank
     // pane with the switch showing something else. The set is small and it is
     // checked rather than trusted.
-    const TIME = new Set(['signal'])
+    const TIME = new Set(['signal', 'weights'])
     const FREQ = new Set(['spectrum', 'zplane', 'polegrid'])
     for (const e of EXPERIMENTS) {
       if (e.patch.timeView) expect(TIME.has(e.patch.timeView), `${e.id} ${e.patch.timeView}`).toBe(true)
