@@ -1,0 +1,135 @@
+// Group A: the DC machine.
+//
+// One netlist with two states, and everything a drives course predicts from
+// the straight line those two states settle on. Nothing here has any prose in
+// it. The three registers are in lessons/a.js, and the numbers they quote are
+// checked against these experiments' own solves.
+
+import { DC, DC_FLYWHEEL } from '../machines.js'
+import { Constant, Friction, Henry, Inertia, Ohm, Plain, Torque, Volt, chips } from '../knobs.js'
+
+export const GROUP = 'A · The DC machine'
+
+const armature = () => [
+  chips(Volt('Va', 'Armature voltage', DC.Va, 1, 60), [8, 16, 24]),
+  Ohm('Ra', 'Armature resistance', DC.Ra, 0.1, 50),
+  Henry('La', 'Armature inductance', DC.La, 1e-4, 1),
+  Constant('k', 'Machine constant', DC.k, 0.005, 1),
+  Inertia('J', 'Rotor inertia', DC.J, 1e-5, 1),
+  Friction('B', 'Viscous friction', DC.B, 0, 0.01),
+  Torque('TL', 'Load torque', DC.TL, 0, 1.2),
+]
+
+export const EXPERIMENTS = [
+  {
+    id: 'a1',
+    group: GROUP,
+    kind: 'dc',
+    name: 'The armature is an R–L with a speed',
+    terms: ['backemf', 'state', 'shaft', 'inertia'],
+    params: armature(),
+    view: 'state',
+    views: ['reading', 'state', 'torquespeed'],
+    claim: { states: 2 },
+  },
+  {
+    id: 'a2',
+    group: GROUP,
+    kind: 'dc',
+    name: 'Back-EMF, the voltage the shaft makes',
+    terms: ['backemf', 'machineconstant'],
+    params: armature(),
+    view: 'reading',
+    views: ['reading', 'torquespeed', 'state'],
+    claim: { split: true },
+  },
+  {
+    id: 'a3',
+    group: GROUP,
+    kind: 'dc',
+    name: 'Torque is the same constant',
+    terms: ['machineconstant', 'torque', 'gyrator'],
+    params: [...armature(), Constant('kt', 'Torque constant', DC.k, 0.005, 1)],
+    machine: { ...DC, kt: DC.k },
+    time: true,
+    windows: 24,
+    cursor: 1,
+    view: 'power',
+    views: ['reading', 'power', 'torquespeed', 'scope'],
+    claim: { coupling: true },
+  },
+  {
+    id: 'a4',
+    group: GROUP,
+    kind: 'dc',
+    name: 'The torque–speed line',
+    terms: ['torquespeedline', 'stalltorque', 'noloadspeed', 'operatingpoint'],
+    params: armature(),
+    view: 'torquespeed',
+    views: ['torquespeed', 'reading', 'state'],
+    claim: { line: true },
+  },
+  {
+    id: 'a5',
+    group: GROUP,
+    kind: 'dc',
+    name: 'Starting current, and what limits it',
+    terms: ['startingcurrent', 'backemf', 'timeconstant'],
+    params: [
+      chips(Volt('Va', 'Armature voltage', DC.Va, 1, 60), [8, 24]),
+      chips(Ohm('Ra', 'Armature resistance', DC_FLYWHEEL.Ra, 0.1, 50), [1.2, 4.8]),
+      Henry('La', 'Armature inductance', DC.La, 1e-4, 1),
+      Constant('k', 'Machine constant', DC.k, 0.005, 1),
+      Inertia('J', 'Rotor plus flywheel', DC_FLYWHEEL.J, 1e-5, 1),
+      Friction('B', 'Viscous friction', DC.B, 0, 0.01),
+      Torque('TL', 'Load torque', 0, 0, 1.2),
+      Plain('window', 'Window in slow constants', 0.5, 0.05, 4),
+    ],
+    machine: DC_FLYWHEEL,
+    time: true,
+    points: 2401,
+    cursor: 1,
+    view: 'scope',
+    views: ['scope', 'reading', 'torquespeed'],
+    claim: { starting: true },
+  },
+  {
+    id: 'a6',
+    group: GROUP,
+    kind: 'dc',
+    name: 'The two time constants',
+    terms: ['timeconstant', 'state', 'phaseplane'],
+    params: [...armature(), Plain('window', 'Window in slow constants', 12, 1, 40)],
+    time: true,
+    energy: true,
+    points: 1201,
+    cursor: 1,
+    view: 'phaseplane',
+    views: ['phaseplane', 'scope', 'state', 'power'],
+    claim: { roots: true },
+  },
+  {
+    id: 'a7',
+    group: GROUP,
+    kind: 'dc',
+    name: 'Speed control by armature voltage',
+    terms: ['torquespeedline', 'noloadspeed'],
+    params: armature(),
+    control: { volts: [8, 16, 24] },
+    view: 'torquespeed',
+    views: ['torquespeed', 'reading'],
+    claim: { armature: true },
+  },
+  {
+    id: 'a8',
+    group: GROUP,
+    kind: 'dc',
+    name: 'Speed control by field, and its cost',
+    terms: ['fieldweakening', 'torquespeedline', 'stalltorque'],
+    params: [...armature(), chips(Plain('field', 'Flux, fraction of rated', 1, 0.2, 1), [1, 0.7, 0.5])],
+    control: { fields: [1, 0.7, 0.5] },
+    view: 'torquespeed',
+    views: ['torquespeed', 'reading'],
+    claim: { field: true },
+  },
+]

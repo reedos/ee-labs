@@ -1,0 +1,26 @@
+{
+  "name": "machines-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Electric machines from the circuit up: the DC machine as an R-L with a speed in it, the transformer as a machine that does not turn, the rotating field and the induction machine, the synchronous and permanent-magnet machines and the dq transform, then losses, efficiency and the thermal limit that sets a rating.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "verify": "node scripts/verify.mjs",
+    "numbers": "node scripts/numbers.mjs"
+  },
+  "dependencies": {
+    "@ee-labs/machines": "*",
+    "@ee-labs/network": "*",
+    "@ee-labs/ui": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}
