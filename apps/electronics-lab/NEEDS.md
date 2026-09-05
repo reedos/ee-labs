@@ -26,7 +26,7 @@ overseer's to take.
 Electronics Lab's entry today is:
 
 - Slug `electronics-lab`, splash glyph `⊳`, short nav name **Electronics**.
-- **39 experiments in 8 groups.** Group A, "the op-amp as a user meets it", ids
+- **43 experiments in 8 groups.** Group A, "the op-amp as a user meets it", ids
   `a1` to `a6`. Group C, "inside the junction", ids `c1` to `c4`. Group D, "the
   transistor as a controlled source", ids `d1` to `d7`. Group E, "signal and
   bias take different paths", ids `e1` to `e6`. Group F, "small signals, the

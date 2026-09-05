@@ -25,7 +25,7 @@ order the nav will fold to (`ELECTRONICS_LAB_PLAN.md` Decision 5).
 | --- | --- | --- | --- | --- |
 | 1 | Circuit Elements Lab | Circuits I | 58 | built, dark |
 | 2 | Circuit Lab | Circuits II, the frequency-domain half | 16 | released |
-| 3 | Electronics Lab | Electronics I and II | 77 | planned |
+| 3 | Electronics Lab | Electronics I and II | 43 of 77 | built in part, dark |
 | 4 | Signal Lab | Signals and Systems, DSP | 35 | released |
 | 5 | Control Lab | Control | 13 | released |
 | 6 | Power Lab | Power electronics | 34 of 56 | built in part, dark |
@@ -68,28 +68,28 @@ What it assumes at the start: dB, impedance and phase, defined on contact. What 
 introduces without an experiment: the complex frequency s, poles and zeros, as term
 definitions (see §3, seam 1).
 
-### Step 3: Electronics Lab (77, planned)
+### Step 3: Electronics Lab (43 of 77)
 
 `ELECTRONICS_LAB_PLAN.md` §1 carries this lab's own map, row by row, against what is
 built. The groups, in order:
 
-| Group | Teaches | Count |
-| --- | --- | --- |
-| A · The op-amp as a user meets it | offset, bias current, gain-bandwidth, slew, CMRR, output limits, the precision rectifier | 6 |
-| B · Diode circuits, finished | the clamper, the doubler | 2 |
-| C · Inside the junction | where the exponential comes from, junction and diffusion capacitance, temperature | 4 |
-| D · The transistor as a controlled source | two junctions, the curves, three regions, the MOSFET, the switch, the CMOS inverter, the load line | 7 |
-| E · Signal and bias take different paths | the coupling capacitor, four bias schemes, temperature | 6 |
-| F · Small signals | the tangent again, DC plus AC, `g_m`, the hybrid-π, how small is small, the MOSFET | 6 |
-| G · Ports | the test source, the two-port and loading | 2 |
-| H · Single-stage amplifiers | CE, degeneration, CC, CB, CS, CD and CG, swing | 7 |
-| I · Mirrors and stacking | the mirror, Widlar, the active load, the cascode, loading | 5 |
-| J · The differential pair | steering, the half-circuit, CMRR, mismatch, the active load | 5 |
-| K · Frequency response | the device's capacitors, the low end, Miller, OCTC, no Miller, the cascode's bandwidth | 6 |
-| L · Feedback | the loop broken, desensitivity, gain-bandwidth, the ports, stability, the buffer | 6 |
-| M · Inside the op-amp | the two-stage op-amp, compensation, phase margin, slew, offset, the output stage | 6 |
-| N · Oscillators | Wien at the threshold, amplitude, relaxation, LC (stretch) | 4 |
-| O · Noise | a density, thermal, shot, referred to the input, SNR after gain | 5 |
+| Group | Teaches | Count | Status |
+| --- | --- | --- | --- |
+| A · The op-amp as a user meets it | offset, bias current, gain-bandwidth, slew, CMRR, output limits, the precision rectifier | 6 | built |
+| B · Diode circuits, finished | the clamper, the doubler | 2 | planned |
+| C · Inside the junction | where the exponential comes from, junction and diffusion capacitance, temperature | 4 | built |
+| D · The transistor as a controlled source | two junctions, the curves, three regions, the MOSFET, the switch, the CMOS inverter, the load line | 7 | built |
+| E · Signal and bias take different paths | the coupling capacitor, four bias schemes, temperature | 6 | built |
+| F · Small signals | the tangent again, DC plus AC, `g_m`, the hybrid-π, how small is small, the MOSFET | 6 | built |
+| G · Ports | the test source, the two-port and loading | 2 | built |
+| H · Single-stage amplifiers | CE, degeneration, CC, CB, CS, CD and CG, swing | 7 | built |
+| I · Mirrors and stacking | the mirror, Widlar, the active load, the cascode, loading | 5 | built |
+| J · The differential pair | steering, the half-circuit, CMRR, mismatch, the active load | 5 | planned |
+| K · Frequency response | the device's capacitors, the low end, Miller, OCTC, no Miller, the cascode's bandwidth | 6 | planned |
+| L · Feedback | the loop broken, desensitivity, gain-bandwidth, the ports, stability, the buffer | 6 | planned |
+| M · Inside the op-amp | the two-stage op-amp, compensation, phase margin, slew, offset, the output stage | 6 | planned |
+| N · Oscillators | Wien at the threshold, amplitude, relaxation, LC (stretch) | 4 | planned |
+| O · Noise | a density, thermal, shot, referred to the input, SNR after gain | 5 | planned |
 
 ### Step 4: Signal Lab (35, released)
 
@@ -196,7 +196,7 @@ leave it out.
 | Continuous-time convolution | Signals | Circuit Lab, seam 2 | one experiment |
 | Steady-state error constants, lag compensation, state space, discrete control | Control | Control Lab's own plan, when there is one | outside the analog path this document was written for |
 | PLLs, data converters, switched-capacitor circuits | Mixed-signal | a later lab, if any | Signal Lab's side of the boundary, and no plan names them |
-| Digital logic past the inverter | Digital | none | Electronics D6 is the door, and the room behind it is not the signals half of the curriculum |
+| Digital logic past the inverter | Digital | none | The Electronics Lab's CMOS inverter is the door, and the room behind it is not the signals half of the curriculum |
 | Transmission lines | Fields, high-speed | none | declined at the `systems` boundary by `CORE_SCOPE.md` |
 
 `ANALOG_ROADMAP.md` names the labs that would take the mixed-signal and high-frequency

@@ -19,7 +19,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Control Lab | built | | | |
 | Power Lab | built in part, dark | merged, Groups A to G | Groups H to N unassigned | `POWER_LAB_PLAN.md` |
 | The two seams and the progression test | built, merged | | | `CURRICULUM.md` §3, §6 |
-| Electronics Lab | built in part, dark | merged, Groups A and C | the transistor symbol in `Schematic.jsx` for Groups D to O | `ELECTRONICS_LAB_PLAN.md` |
+| Electronics Lab | built in part, dark | merged, Groups A and C to I | Groups J to O, in flight since 2026-09-05 | `ELECTRONICS_LAB_PLAN.md` |
 | Logic Lab | built, dark | merged | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
 | DSP Lab | built, dark | merged | | `DSP_LAB_PLAN.md` |
 | Random Signals Lab | built, dark | merged | Electronics O1 for one cross-reference | `RANDOM_LAB_PLAN.md` |
@@ -195,6 +195,42 @@ append, rather than edited into a file this branch does not carry.
   A1 by id instead of teaching it. Reopens when Electronics Group O is built.
 - **O2's cross-reference to F3 is pending**, on the same terms. F3 is the
   `kT/C` experiment, and both labs call one function for the number.
+- **Groups D to I are built and merged, 2026-09-05.** Three lanes, each built
+  and then reviewed by a second agent that fixed what it found, took the lab
+  from 10 experiments to 43 over eight groups. The first entry above, which
+  says Groups D to O wait on the symbol, is superseded for D to I. Groups J to
+  O are in flight on `lab/electronics-jk`, `lab/electronics-lm` and
+  `lab/electronics-no`.
+- **The director resolved six term collisions at the merge.** Four terms were
+  defined by two lanes, and the earlier group keeps each. Output resistance is
+  now D2's and matching is D6's, because both words did work there before the
+  lane that defined them. The numbers a term's definition quotes are still
+  measured by no test, which the file's owner should take up.
+- **C4's cross-reference to Group E can be restored.** E4 is built, and the
+  sentence is in `apps/electronics-lab/src/lessons/c.js`, which no lane owned
+  this wave.
+- **`layoutCheck.js` still checks a transistor as a two-terminal element.** The
+  real boxes are exported by `schematicGeometry.js`, and every lane worked
+  around it with a designator-only label. Item 7 of each lane's section in
+  `NEEDS.md` has the arithmetic.
+- **`readQuantity` resolves none of the brief's small-signal paths.** Groups F
+  to I read their gains and port resistances through functions instead, and a
+  transistor's schematic reading is a dash because a companion-stamped device
+  files its currents under `Q1.g0`. Items 9 and 11 of the F and G section in
+  `NEEDS.md`.
+- **`math.js` produces `x.curves` since the D lane, and still no `x.spectrum`.**
+  F5 and H2 measure their second harmonic through the quasi-static
+  characteristic instead. The first group that needs distortion from a
+  spectrum wants the same hook.
+- **G2 measures the loading rule at both ends of one box, not across two.** Nine
+  elements and six legs do not fit the 420-wide canvas. I5 carries the
+  two-stage case now.
+- **The transfer view draws no tangent while its title promises one.** The
+  scope's y axis is volts only, so G1 cannot show its test current beside the
+  port voltage. Items 12 and 13 of the F and G section in `NEEDS.md`.
+- **Nobody has looked at Groups D to I in a browser.** Thirty-three drawings
+  and the device-curve pane were checked as geometry only. The harness wave
+  covers the Electronics Lab last, after its lanes have merged.
 
 ### Random Signals Lab
 
@@ -691,8 +727,8 @@ already exists, and tells the agent to read what is there first.
 
 | Work | Branches | Script, and its args | Left on the branch |
 | --- | --- | --- | --- |
-| Electronics Groups D to I | `lab/electronics-de`, `-fg`, `-hi` | `electronics-lanes` with `["de","fg","hi"]` | nothing yet |
-| Electronics Groups J to O | `lab/electronics-jk`, `-lm`, `-no` | `electronics-lanes` with `["jk","lm","no"]` | nothing yet |
+| Electronics Groups D to I | `lab/electronics-de`, `-fg`, `-hi` | `electronics-lanes` with `["de","fg","hi"]` | merged 2026-09-05, 33 experiments, three lanes each reviewed |
+| Electronics Groups J to O | `lab/electronics-jk`, `-lm`, `-no` | `electronics-lanes` with `["jk","lm","no"]` | in flight since 2026-09-05 |
 | Power Lab Groups H to N | `lab/power-hi`, `-jk`, `-lmn` | `power-h-to-n` | untested `loop.js`, `threePhase.js`, `resonant.js`, and the three isolated siblings with a commit |
 | RF A to D, System A, Photonics A, C to F | `lab/rf-lab`, `lab/system-lab`, `lab/photonics-lab` | `rf-system-photonics` | the RF brief, `packages/rf`'s exact core, an untested Smith canvas; the Photonics brief, package and first app files |
 | Harnesses, nine labs that have one | `verify/<slug>` | `verify-harnesses` | Elements: two fixes; Circuit Lab: fixes to the axis, the step readout and two canvases, untested |

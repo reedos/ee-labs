@@ -7,6 +7,7 @@ import { LESSONS as CIRCUIT, LESSON_GROUPS as CIRCUIT_GROUPS } from '../../../ap
 import { PRESETS as SIGNAL, PRESET_GROUPS as SIGNAL_GROUPS } from '../../../apps/signal-lab/src/presets.js'
 import { LESSONS as CONTROL, LESSON_GROUPS as CONTROL_GROUPS } from '../../../apps/control-lab/src/lessons.js'
 import { EXPERIMENTS as POWER } from '../../../apps/power-lab/src/experiments.js'
+import { EXPERIMENTS as ELECTRONICS } from '../../../apps/electronics-lab/src/experiments.js'
 
 // The progression test (CURRICULUM.md §6).
 //
@@ -45,7 +46,8 @@ const DOC = readFileSync(join(ROOT, 'CURRICULUM.md'), 'utf8')
  * document's group cell names, which is an exact group name everywhere except
  * Power Lab: its tabs carry short names ("The buck") while the document and
  * the ids carry letters (B · The buck, b1 to b8), so there the letter joins
- * them. `plan` is where a row marked planned must be specified.
+ * them. The Electronics Lab is joined the same way, because the document
+ * shortens its group names. `plan` is where a row marked planned must be specified.
  */
 const LABS = {
   'Circuit Elements Lab': {
@@ -54,7 +56,13 @@ const LABS = {
     ids: ELEMENTS.map((e) => e.id),
   },
   'Circuit Lab': { list: CIRCUIT, groups: CIRCUIT_GROUPS, ids: [] },
-  'Electronics Lab': { list: null, groups: null, ids: [], plan: 'ELECTRONICS_LAB_PLAN.md' },
+  'Electronics Lab': {
+    list: ELECTRONICS,
+    groups: null,
+    ids: ELECTRONICS.map((e) => e.id),
+    plan: 'ELECTRONICS_LAB_PLAN.md',
+    membersOf: (cell) => ELECTRONICS.filter((e) => letters(cell).includes(e.id[0].toUpperCase())).length,
+  },
   'Signal Lab': { list: SIGNAL, groups: SIGNAL_GROUPS, ids: [] },
   'Control Lab': { list: CONTROL, groups: CONTROL_GROUPS, ids: [] },
   'Power Lab': {
