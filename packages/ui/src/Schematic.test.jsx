@@ -65,3 +65,46 @@ describe('the DC and AC overlay', () => {
     expect(svg).toContain('184 mV·sin')
   })
 })
+
+describe('transistor glyphs', () => {
+  // A CE stage's own transistor and a MOSFET switch's, side by side: one Q
+  // and one M, both drawn from the same layout item shape as any other
+  // element and both reading the collector or drain current by default.
+  const qm = [
+    { id: 'Q1', type: 'Q', nodes: ['c', 'b', 'e'], polarity: 'npn' },
+    { id: 'M1', type: 'M', nodes: ['d', 'g', 's'], polarity: 'n' },
+  ]
+  const layout = {
+    w: 220,
+    h: 120,
+    items: [
+      { el: 'Q1', x: 60, y: 60, dir: 'h' },
+      { el: 'M1', x: 160, y: 60, dir: 'h' },
+    ],
+  }
+  const meters = { v: {}, i: { Q1: 2.5e-3, M1: -1.2e-3 }, p: { Q1: 0, M1: 0 }, volt: {} }
+
+  it('draws both glyphs and labels them with their polarity', () => {
+    const svg = renderToStaticMarkup(<Schematic elements={qm} layout={layout} />)
+    expect(svg).toContain('data-el="Q1"')
+    expect(svg).toContain('data-el="M1"')
+    expect(svg).toContain('Q1 npn')
+    expect(svg).toContain('M1 nmos')
+  })
+
+  it('reads the collector or drain current by default, from the same meters.i slot every element uses', () => {
+    const svg = renderToStaticMarkup(<Schematic elements={qm} layout={layout} meters={meters} show="i" />)
+    expect(svg).toContain('2.5 mA')
+    expect(svg).toContain('1.2 mA')
+  })
+
+  it('draws the MOSFET’s gate plate, held off the channel by a gap the BJT has no reason to have', () => {
+    // Symbols are drawn in the local −20…20 frame and rotated into place by
+    // the enclosing group's transform, so the gate plate's local x = −9
+    // shows up in the markup whatever the item's own (x, y).
+    const oneM = renderToStaticMarkup(<Schematic elements={[qm[1]]} layout={{ w: 220, h: 120, items: [{ el: 'M1', x: 160, y: 60 }] }} />)
+    const oneQ = renderToStaticMarkup(<Schematic elements={[qm[0]]} layout={{ w: 220, h: 120, items: [{ el: 'Q1', x: 160, y: 60 }] }} />)
+    expect(oneM).toContain('x1="-9"')
+    expect(oneQ).not.toContain('x1="-9"')
+  })
+})

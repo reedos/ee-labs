@@ -83,6 +83,18 @@ The contract, which is the plan's §3 and needs a test and a second lab named
 Until it lands, the lab ships Groups A and C, which need no transistor on the
 drawing.
 
+The transistor symbol has landed in `Schematic.jsx` and `schematicGeometry.js`.
+Four glyphs draw from `e.type` (`Q` or `M`) and `e.polarity`: NPN, PNP, NMOS
+and PMOS, one row per glyph in a shared table. The layout item is unchanged,
+`{ el, x, y, dir, flip }`, with `dir` and `flip` rotating and mirroring it
+like any other element. `meters.i[id]` gives the collector or drain current
+by default. `schematicGeometry.js` exports `transistorPinPlaces`,
+`transistorBodyBox` and `transistorTextPlaces` for a layout checker to use.
+Pin coordinates for all four glyphs under every dir and flip are pinned in
+`schematicGeometry.test.js`, and one Q and one M render together in
+`Schematic.test.jsx`. Wiring these exports into `layoutCheck.js` is for
+whichever lab draws a transistor first.
+
 ### 5. Numbers this lab found that other plans quote
 
 Two figures move, and the labs that quote them should quote the measured ones:

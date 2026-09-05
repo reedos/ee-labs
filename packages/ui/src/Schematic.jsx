@@ -1,6 +1,14 @@
 import React from 'react'
 import { fmt } from './units.js'
-import { labelParts, elementReading, elementTextPlaces, opampTextPlaces, nodeTextPlace, signPlaces } from './schematicGeometry.js'
+import {
+  labelParts,
+  elementReading,
+  elementTextPlaces,
+  opampTextPlaces,
+  nodeTextPlace,
+  signPlaces,
+  transistorTextPlaces,
+} from './schematicGeometry.js'
 
 /**
  * A schematic drawn from data, with live meters.
@@ -30,10 +38,19 @@ import { labelParts, elementReading, elementTextPlaces, opampTextPlaces, nodeTex
  * stylesheet can size every frame to the same scale: a small circuit gets a
  * small frame, not a big frame with a small circuit in it.
  *
- * Elements are { id, type, value, label? }; types R V I C L SW OPAMP VCVS VCCS.
+ * Elements are { id, type, value, label? }; types R V I C L SW OPAMP VCVS VCCS
+ * Q M. A Q (BJT) or M (MOSFET) also carries `polarity`: 'npn' | 'pnp' for a Q,
+ * 'n' | 'p' for an M. Its nodes are three, [collector, base, emitter] or
+ * [drain, gate, source], and its layout item is the same { el, x, y, dir,
+ * flip } shape — the base or gate sits on the left at (x − 20, y), the
+ * collector or drain at (x + 12, y − 20), the emitter or source at
+ * (x + 12, y + 20), so a vertical device stacks between two rails.
  * Meters are { v: { node: volts }, i: { id: amps }, p: { id: watts } }; `show`
  * chooses which of 'i', 'v', 'p' is written on the elements (node voltages
- * appear whenever meters are given).
+ * appear whenever meters are given). A transistor's default current reading
+ * is `meters.i[id]`, the collector or drain current, the same slot every
+ * other element reads from; a caller that measures more than one terminal
+ * passes those values in through the same map under whichever id it likes.
  *
  * Optional, all additive (the Elements lab's schematic answers back):
  *   overlay    { mode: 'dc' | 'ac' | 'both', v: { node: amplitude } }: the
@@ -232,6 +249,7 @@ function NodeDot({ name, x, y, side, volts, overlay = null, lit = false, isRef =
 function Element({ item, e, meters, show, lit = false, onTap = null }) {
   const { x, y, dir = 'h', flip = false } = item
   if (e.type === 'OPAMP') return <OpAmp item={item} e={e} meters={meters} show={show} lit={lit} />
+  if (e.type === 'Q' || e.type === 'M') return <Transistor item={item} e={e} meters={meters} show={show} lit={lit} />
   const rot = (dir === 'v' ? 90 : 0) + (flip ? 180 : 0)
   // Text must stay upright: it is drawn in an un-rotated group at the same place.
   const { label: below, reading: above } = elementTextPlaces(item)
@@ -399,9 +417,121 @@ function Symbol({ e }) {
           )}
         </g>
       )
+    case 'Q':
+    case 'M':
+      return <TransistorGlyph e={e} />
     default:
       return <line x1={-20} y1={0} x2={20} y2={0} stroke="var(--text)" />
   }
+}
+
+/**
+ * The four transistor glyphs, one row each. Both device kinds share the same
+ * control lead and the same pair of output leads (schematicGeometry's
+ * `transistorPinPlaces`); a row says only which body the control lead meets —
+ * a BJT's solid bar, or a MOSFET's bar held off by a gap, since the gate is
+ * capacitive and never touches the channel — and which way the arrowhead on
+ * the lower lead points. A fifth glyph, a JFET or an IGBT, is one more row.
+ */
+const TRANSISTOR_GLYPHS = {
+  'Q:npn': { shape: 'bjt', arrow: 'out' }, // current leaves at the emitter
+  'Q:pnp': { shape: 'bjt', arrow: 'in' }, // current enters at the emitter
+  'M:n': { shape: 'mosfet', arrow: 'out' }, // current leaves at the source
+  'M:p': { shape: 'mosfet', arrow: 'in' }, // current enters at the source
+}
+
+/** A small triangle at the midpoint of (x1,y1)–(x2,y2), tip toward (x2,y2) when `out`, back toward (x1,y1) otherwise. */
+function leadArrow(x1, y1, x2, y2, out) {
+  const [dx, dy] = [x2 - x1, y2 - y1]
+  const len = Math.hypot(dx, dy)
+  const [ux, uy] = [dx / len, dy / len]
+  const [px, py] = [-uy, ux]
+  const [mx, my] = [(x1 + x2) / 2, (y1 + y2) / 2]
+  const s = out ? 1 : -1
+  const [tipX, tipY] = [mx + ux * 4 * s, my + uy * 4 * s]
+  const [bx, by] = [mx - ux * 4 * s, my - uy * 4 * s]
+  return `${tipX},${tipY} ${bx + px * 3},${by + py * 3} ${bx - px * 3},${by - py * 3}`
+}
+
+/**
+ * The BJT and MOSFET glyphs. The control lead runs from the local −20 end to
+ * the bar (a BJT) or to the gate plate held off from the bar by a gap (a
+ * MOSFET); the bar meets the two output leads, which splay to (12, −20) and
+ * (12, 20) — the same points `transistorPinPlaces` names `hi` and `lo`. The
+ * arrowhead on the lower lead is the one textbook mark that says which way is
+ * npn or pnp, n-channel or p-channel: it points the way conventional current
+ * actually flows through that terminal.
+ */
+function TransistorGlyph({ e }) {
+  const row = TRANSISTOR_GLYPHS[`${e.type}:${e.polarity}`]
+  if (!row) return null
+  const isMosfet = row.shape === 'mosfet'
+  const barX = isMosfet ? -6 : -8
+  const leadEnd = isMosfet ? -9 : barX
+  const arrow = leadArrow(barX, 6, 12, 20, row.arrow === 'out')
+  return (
+    <g stroke="var(--text)" strokeWidth="1.5" fill="none">
+      <line x1={-20} y1={0} x2={leadEnd} y2={0} />
+      {isMosfet ? <line x1={-9} y1={-10} x2={-9} y2={10} /> : null}
+      <line x1={barX} y1={-10} x2={barX} y2={10} />
+      <line x1={barX} y1={-6} x2={12} y2={-20} />
+      <line x1={barX} y1={6} x2={12} y2={20} />
+      <polygon points={arrow} fill="var(--text)" stroke="none" />
+    </g>
+  )
+}
+
+/**
+ * A three-terminal device: control lead at the local −20 end, output leads
+ * splayed to (12, −20) and (12, 20) as `Symbol`'s `TransistorGlyph` draws
+ * them. `dir` and `flip` rotate and mirror it about (x, y) exactly as they do
+ * a two-terminal element; the label and reading hang further off because the
+ * glyph spans the full ±20 on both axes, not just along its length.
+ *
+ * Example, a common-emitter stage between two rails — Vcc at the top,
+ * ground at the bottom, R_C from Vcc down to the collector, R_E from the
+ * emitter down to ground, the base fed from a bias node on the left. Q1 at
+ * (100, 90), dir 'h', puts its base at (80, 90), its collector at (112, 70)
+ * and its emitter at (112, 110); R_C and R_E are short one wire on each side
+ * because their own ±20 leads fall a little short of the rail and the pin:
+ *
+ *   const layout = {
+ *     w: 200, h: 180,
+ *     items: [
+ *       { wire: [40, 20, 160, 20] },             // the Vcc rail
+ *       { wire: [112, 20, 112, 25] },            // Vcc down to R_C
+ *       { el: 'RC', x: 112, y: 45, dir: 'v' },
+ *       { wire: [112, 65, 112, 70] },            // R_C down to the collector
+ *       { el: 'Q1', x: 100, y: 90, dir: 'h' },
+ *       { el: 'RB', x: 60, y: 90, dir: 'h' },    // its right lead meets the base at (80, 90)
+ *       { node: 'bias', x: 40, y: 90, side: 'l' },
+ *       { wire: [112, 110, 112, 115] },          // the emitter down to R_E
+ *       { el: 'RE', x: 112, y: 135, dir: 'v' },
+ *       { wire: [112, 155, 112, 160] },          // R_E down to the ground rail
+ *       { wire: [40, 160, 160, 160] },           // the ground rail
+ *       { gnd: [100, 160] },
+ *     ],
+ *   }
+ *   // Q1: { id: 'Q1', type: 'Q', polarity: 'npn', nodes: ['c', 'b', 'e'] }
+ */
+function Transistor({ item, e, meters, show, lit = false }) {
+  const { x, y, dir = 'h', flip = false } = item
+  const rot = (dir === 'v' ? 90 : 0) + (flip ? 180 : 0)
+  const reading = elementReading(e, meters, show)
+  const { label: below, reading: above } = transistorTextPlaces(item)
+  return (
+    <g className={lit ? 'sch-el is-lit' : 'sch-el'} data-el={e.id}>
+      <g transform={`rotate(${rot} ${x} ${y}) translate(${x} ${y})`}>
+        <Symbol e={e} />
+      </g>
+      <Label e={e} at={below} />
+      {reading ? (
+        <text className="sch-meter" x={above.x} y={above.y} textAnchor={above.anchor}>
+          {reading}
+        </text>
+      ) : null}
+    </g>
+  )
 }
 
 /**
