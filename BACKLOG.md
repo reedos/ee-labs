@@ -284,3 +284,69 @@ Deferred inside the three plans.
   experiments, ship without it.
 - Every plan's §10 lists what it declines rather than defers. Those lines are
   decisions and are not backlog items.
+
+## 4. Planner reports
+
+### Planner: RF, System, Photonics
+
+Three plan files landed on `plan/rf-system-photonics` for labs whose dependencies are
+not all built. `RF_LAB_PLAN.md`, `SYSTEM_LAB_PLAN.md` and `PHOTONICS_LAB_PLAN.md`.
+Each lists what it can build today and what it waits on. The lines below are the
+waits, with the plan's own section named beside each.
+
+**RF Lab.**
+
+- Groups A and B derive `Z_0` and `γ` from a term panel until the Fields Lab's
+  transmission-line group ships. Reopens on `lab/fields-lab`. Plan Decision 3.
+- Group E needs the Electronics Lab's `smallSignal` and its Group K for `f_T` and the
+  Miller effect. Reopens on `lab/electronics-lab`. Plan §9 phase 4.
+- Group F needs the Electronics Lab's Group O for thermal and shot densities. Reopens
+  on `lab/electronics-lab`. Plan §9 phase 5.
+- Group H's oscillator needs the Electronics Lab's Group N amplitude limit. Reopens on
+  `lab/electronics-lab`. Plan §9 phase 7.
+- G1 ships with an ideal multiplier and a switching mixer. The Gilbert cell waits on
+  the Analog IC Lab's translinear group, which is mapped and not started.
+- H3 covers classes A through C. Class E and class F wait on Power Lab's Group F and
+  the switched engine.
+- `SmithCanvas.jsx` and the S-parameter view go into `packages/ui` with the Fields Lab
+  and the Instruments Lab named as second users. Director's queue, `PROGRAM.md` §4.
+- `packages/rf` is a new package and needs a row in `EE_LABS_MAP.md` §3. Director's
+  queue, `PROGRAM.md` §5.
+
+**System Lab.**
+
+- Groups B, C and D need `budget.js` and `linearity.js` in `packages/rf`, which the RF
+  Lab's overseer owns. Reopens at the RF Lab's phases 5 and 6. Plan Decision 3.
+- Group E needs antenna gain and the Friis equation from the Fields Lab's antenna
+  group. Until then both gains are numbers in a term panel. Reopens on
+  `lab/fields-lab`.
+- A1 and F1 need the Electronics Lab's Group G for port measurements and its M6 for
+  the efficiency ceiling. Reopens on `lab/electronics-lab`.
+- D4 uses the ideal `6.02N + 1.76` law with jitter as a second term. The converter as
+  a circuit waits on the Mixed-Signal Lab, which is mapped and not started.
+- E4 stops at `E_b/N_0` and a margin. The bit error rate waits on the Communications
+  Lab's channel group. Plan Decision 5.
+- The budget table stays in the app until a second lab claims it. The Applied Analog
+  Lab's specification pane is the likely claimant. Director's queue, `PROGRAM.md` §4.
+
+**Photonics Lab.**
+
+- Groups A and C need the Electronics Lab's Group C for the junction's closed forms.
+  Reopens on `lab/electronics-lab`. Plan §9 phase 3.
+- Group B needs the Electronics Lab's Group O for shot and thermal densities. Reopens
+  on `lab/electronics-lab`. Plan §9 phase 4.
+- B2 and B3 model the receiver as a photodiode into a load resistance. The
+  transimpedance amplifier waits on the Applied Analog Lab's front-end group, which is
+  mapped and not started. Plan §1.
+- B4 stops at the Q factor. The bit error rate waits on the Communications Lab's
+  channel group.
+- E4 and F1 cite the Fields Lab's wave group for the refractive index and reflection
+  at an interface. Reopens on `lab/fields-lab`.
+- E5's waterfall is the System Lab's with optical units. Either the System Lab lands
+  it first or this lab keeps a local copy, and the director decides which. Plan §9
+  phase 5.
+- `packages/photonics` is a new package and needs a row in `EE_LABS_MAP.md` §3.
+  Director's queue, `PROGRAM.md` §5.
+- The modulated high-speed link, the eye diagram and jitter stay with the private
+  `waveform-simulator`. This is a boundary rather than a wait, and no dependency
+  reopens it.
