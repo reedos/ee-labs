@@ -168,13 +168,15 @@ export function readQuantity(x, p, path) {
     // ------------------------------------------------------- the second half
 
     case 'wave':
-      return need(x.wave[rest[0]], path)
+      return need(walk(x.wave, rest), path)
     case 'pol':
-      return need(x.pol[rest[0]], path)
+      return need(walk(x.pol, rest), path)
     case 'refl':
-      return need(x.refl[rest[0]], path)
+      // `reflectNormal` keeps the two media's waves under `wave1` and `wave2`,
+      // so 'refl.wave2.etaMag' reads the impedance the reflection came from.
+      return need(walk(x.refl, rest), path)
     case 'standing':
-      return need(x.standing[rest[0]], path)
+      return need(walk(x.standing, rest), path)
     case 'oblique':
       // `reflectOblique` keeps the two polarisations under their own names, so
       // 'oblique.parallel.mag' reads the one the lesson is talking about.

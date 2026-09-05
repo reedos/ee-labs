@@ -804,12 +804,50 @@ the Smith chart canvas and the bounce diagram.
 
 **Sitting 3, the guide and the antenna.** Groups K and L, 8 experiments.
 
-**What shipped in this sitting.** See §9.1 below, which is written at the end of
-the sitting and not before.
-
 ### 9.1 What shipped
 
-Written at the end of the sitting. See the final report and `BACKLOG.md`.
+Written at each boundary, and this is the second one.
+
+**Sitting 1 shipped in full.** `packages/fields` is complete for the whole lab
+and not only for the first half. Every one of §2.9's ten invariants has a named
+test. The wave, the line, the bounce diagram, the waveguide and the antenna are
+all in the package with their tests, ahead of the app that will use them. The
+app is dark, with 29 experiments in groups A to F, the field map canvas in both
+of its modes, and the three registers on every experiment.
+
+Sitting 1 also delivered what it had left implicit. `experiments.test.js`
+recomputes every number in every `see`, `try` and `why` from the engine at the
+settings the step names. `prose.test.js` measures how those sentences are
+written and `terms.test.js` holds a word to being defined where it first does
+work. `components/panes.test.js` renders every view every experiment offers, and
+`scripts/verify.mjs` is written and not run. Eight faults surfaced in the
+writing of them and are fixed. The report names each.
+
+**Sitting 2 shipped in part, and stopped at a group boundary.** Groups G and H
+are built, 7 experiments, with the wave and interface panes and 24 new terms.
+Their pictures come from the field map's profile mode rather than from a new
+canvas. A plane wave against distance, a standing wave in front of a boundary,
+and the two Fresnel coefficients against the angle are all one scalar against
+one axis with regions marked. That is what the mode takes. The polarisation
+ellipse is the one picture it cannot draw, being a path in the transverse plane,
+and it has its own small canvas inside the wave pane.
+
+H3 carries the group's refusal. Oblique incidence onto a conducting medium is
+declined with its reason, the second medium's conductivity is a toggle that
+reaches it, and the third `try` step is that refusal.
+
+**Groups I to L are not built.** The plan for sitting 2 was groups G to J. It
+stopped after H because the line is a whole argument and half of one is worse
+than none. `BACKLOG.md` carries I, J, K and L with what each needs. Nothing in a
+built lesson references them, and the sidebar shows no tab for a group with
+nothing in it.
+
+**Revised phasing.** Sitting 3 is groups I and J with the Smith chart and the
+bounce diagram, 9 experiments. Sitting 4 is groups K and L, 8 experiments. The
+seams both sittings build into are landed and green. The group, lesson and term
+files merge from one file per group. `readQuantity` reads the line, the bounce
+diagram, the guide and the antenna by name, and the panes they draw in are wired
+to their views.
 
 ---
 

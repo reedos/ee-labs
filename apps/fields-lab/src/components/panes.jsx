@@ -1,5 +1,5 @@
 import React from 'react'
-import { num, gridNum } from '../format.js'
+import { deg, gridNum, num, pct } from '../format.js'
 import { guardOf } from '../math.js'
 
 /**
@@ -62,6 +62,56 @@ export function NumbersPane({ exp, x, p }) {
       {x.wire ? <Row label="Resistance over its direct-current value">{x.wire.ratio.toFixed(4)}</Row> : null}
       {x.tube ? <Row label="The tube formula gives">{x.tube.R.toExponential(4)} Ω/m</Row> : null}
       {x.gauss ? <Row label="Charge the flux implies">{num(x.gauss.impliedCharge, 'C')}</Row> : null}
+      {x.force != null ? <Row label="Force between the charges">{num(x.force, 'N')}</Row> : null}
+      {x.atProbe ? <Row label="Field at the probe">{num(Math.hypot(...x.atProbe), 'V/m')}</Row> : null}
+      {x.vAtProbe != null && Number.isFinite(x.vAtProbe) ? <Row label="Potential at the probe">{num(x.vAtProbe, 'V')}</Row> : null}
+      {x.lineField != null ? <Row label="A line of charge gives">{num(x.lineField, 'V/m')}</Row> : null}
+      {x.sheetField != null ? <Row label="A sheet of charge gives">{num(x.sheetField, 'V/m')}</Row> : null}
+      {x.ring ? <Row label="On the ring's axis" formula="closed form, then a sum over 720 charges">{num(x.ring.closed, 'V/m')} <em>{num(x.ring.byParts, 'V/m')}</em></Row> : null}
+      {x.curve ? <Row label="The traced equipotential">{num(x.curve.level, 'V')} <em>held to {pct(x.curve.worstRelative)} over {x.curve.points.length} points</em></Row> : null}
+      {x.displacement ? (
+        <>
+          <Row label="Current through the wire" formula="I = C dV/dt">{num(x.displacement.conduction, 'A')}</Row>
+          <Row label="Displacement current in the gap" formula="J = ε dE/dt, times the area">{num(x.displacement.through, 'A')}</Row>
+          <Row label="Difference between them">{num(x.displacement.difference, 'A')}</Row>
+          <Row label="Displacement current density">{num(x.displacement.density, 'A/m²')}</Row>
+        </>
+      ) : null}
+      {x.wave ? (
+        <>
+          <Row label="Intrinsic impedance" formula="η = √(µ/ε)">{num(x.wave.etaMag, 'Ω')}{x.wave.lossless ? null : <em> ∠ {deg(x.wave.etaDeg)}</em>}</Row>
+          <Row label="Wavelength">{num(x.wave.lambda, 'm')}</Row>
+          <Row label="Phase velocity">{num(x.wave.vp, 'm/s')}</Row>
+          <Row label="Attenuation constant">{x.wave.lossless ? 'exactly 0' : num(x.wave.alpha, 'Np/m')}</Row>
+          <Row label="Loss tangent">{x.wave.lossTangent === 0 ? 'exactly 0' : x.wave.lossTangent.toPrecision(4)}</Row>
+          <Row label="Penetration depth">{x.wave.penetration === Infinity ? '∞' : num(x.wave.penetration, 'm')}</Row>
+        </>
+      ) : null}
+      {x.pol ? (
+        <>
+          <Row label="Polarisation">{x.pol.kind}, {x.pol.sense}</Row>
+          <Row label="Axial ratio">{x.pol.axialRatio === Infinity ? '∞' : x.pol.axialRatio.toPrecision(4)} <em>{x.pol.axialRatioDb === Infinity ? '∞' : `${x.pol.axialRatioDb.toPrecision(4)} dB`}</em></Row>
+          <Row label="Tilt of the long axis">{deg(x.pol.tiltDeg)}</Row>
+        </>
+      ) : null}
+      {x.refl ? (
+        <>
+          <Row label="Reflected field" formula="Γ = (η₂ − η₁) / (η₂ + η₁)">{x.refl.mag.toPrecision(4)} <em>∠ {deg(x.refl.deg)}</em></Row>
+          <Row label="Transmitted field" formula="τ = 1 + Γ">{x.refl.tauMag.toPrecision(4)}</Row>
+          <Row label="Power reflected and transmitted">{pct(x.refl.powerReflected)} <em>{pct(x.refl.powerTransmitted)}</em></Row>
+        </>
+      ) : null}
+      {x.standing ? <Row label="Standing-wave ratio">{x.standing.swr === Infinity ? '∞' : x.standing.swr.toPrecision(4)} <em>first minimum at {num(x.standing.firstMinAt, 'm')}</em></Row> : null}
+      {x.oblique ? (
+        <>
+          <Row label="Angle of incidence">{deg(x.oblique.thetaDeg)}</Row>
+          <Row label="Transmitted angle">{x.oblique.total ? 'none, the wave is evanescent' : deg(x.oblique.transmittedDeg)}</Row>
+          <Row label="Reflected field, parallel">{x.oblique.parallel.mag.toPrecision(4)}</Row>
+          <Row label="Reflected field, perpendicular">{x.oblique.perpendicular.mag.toPrecision(4)}</Row>
+          <Row label="Brewster angle">{deg(x.oblique.brewsterDeg)}</Row>
+          <Row label="Critical angle">{x.oblique.criticalDeg == null ? 'none going this way' : deg(x.oblique.criticalDeg)}</Row>
+        </>
+      ) : null}
       {x.grid ? <Row label="The grid's answer">{gridNum(x.grid, x.grid.value, x.headline?.unit)}</Row> : null}
       <Guard g={guard} />
     </div>

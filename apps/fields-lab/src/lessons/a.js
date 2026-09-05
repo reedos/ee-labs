@@ -55,7 +55,7 @@ export const LESSONS_A = {
       'would make alone, and no charge changes what another one does. On the midplane between an opposed pair the ' +
       'two contributions point the same way, so they add to twice one of them. Turn the right charge positive and ' +
       'the horizontal parts cancel instead. That is why the reading falls by a factor of five rather than staying ' +
-      'put. Superposition holds because Maxwell’s equations are linear in the sources.',
+      'put. Superposition holds because the field equations are linear in the sources.',
   },
 
   a3: {
