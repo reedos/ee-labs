@@ -17,6 +17,7 @@ export { buildLink, parseLink, readLocationLink, siblingUrl, homeUrl } from './s
 export { buildCircuitLink, parseCircuitLink, readCircuitLink, labUrl } from './src/circuitLink.js'
 export { default as LabNav } from './src/LabNav.jsx'
 export { default as Schematic } from './src/Schematic.jsx'
+export { default as OneLineCanvas, branchGeometry, balanceRows, tintOf } from './src/OneLineCanvas.jsx'
 export * as schematicGeometry from './src/schematicGeometry.js'
 export { default as ReportIssue, reportUrl, issueBody } from './src/ReportIssue.jsx'
 export { track, handOverEvent, arrivalEvent, GOATCOUNTER_ENDPOINT } from './src/analytics.js'
