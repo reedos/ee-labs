@@ -4,6 +4,7 @@ import {
   arYuleWalker,
   bandStats,
   bartlett,
+  butterfly,
   designBiquad,
   autocorr,
   convolveFir,
@@ -57,6 +58,10 @@ import { chainSpec, renderChain, runChain } from './chain.js'
 //   psd.resolved.<from>.<to>         whether that count is two
 //   ar.<a1|a2|sigma2|peak|aic|mdl>
 //   fft.<butterflies|direct|ratio|stages|n>
+//   fft.<twiddleRe|twiddleIm|twiddleDeg>
+//   psd.<record|padded|naive>        the samples read, the transform they went into,
+//                                    and the bin spacing the record alone suggests
+//   psd.peakHz.<from>.<to>           the frequency of the largest bin in a band
 
 /** Render an experiment's state exactly as the app does. */
 export function runState(state) {
@@ -325,7 +330,12 @@ export function poleBoxes(state) {
 
 /** The estimate the density view draws, from the state's own estimator. */
 export function psdOf(state) {
-  const { buf } = renderChain(state.sources, state.blocks, state.fftSize, state.sampleRate)
+  const full = renderChain(state.sources, state.blocks, state.fftSize, state.sampleRate).buf
+  // A record that is not a power of two is padded up to one by the transform,
+  // which moves every bin centre. F5 is the lesson about that, and `record` is
+  // how it asks for a frame the radix-2 transform cannot take as it stands.
+  const buf =
+    state.record && state.record < full.length ? full.slice(0, Math.round(state.record)) : full
   const K = Math.max(1, Math.round(state.segments ?? 1))
   if (state.estimator === 'welch') return welch(buf, state.sampleRate, { segments: K })
   if (state.estimator === 'bartlett') return bartlett(buf, state.sampleRate, { segments: K })
@@ -537,6 +547,27 @@ export function resolvePath(path, state, rendered = null) {
     if (parts[1] === 'df') return est.df
     if (parts[1] === 'segments') return est.segments
     if (parts[1] === 'n') return est.n
+    if (parts[1] === 'record') {
+      return state.record && state.record < state.fftSize ? Math.round(state.record) : state.fftSize
+    }
+    if (parts[1] === 'padded') return est.n
+    if (parts[1] === 'naive') {
+      // The bin spacing a reader gets from the record alone. It is the right
+      // answer only when the record is already a power of two.
+      const rec = state.record && state.record < state.fftSize ? Math.round(state.record) : state.fftSize
+      return state.sampleRate / rec
+    }
+    if (parts[1] === 'peakHz') {
+      const from = Number(parts[2])
+      const to = Number(parts[3])
+      let best = -1
+      for (let k = 0; k < est.freqs.length; k++) {
+        if (est.freqs[k] < from || est.freqs[k] > to) continue
+        if (best < 0 || est.psd[k] > est.psd[best]) best = k
+      }
+      if (best < 0) throw new Error(`no bins in that band: ${path}`)
+      return est.freqs[best]
+    }
     if (parts[1] === 'used') {
       // How many samples of the record the estimate actually read. Abutting
       // segments read all of them; overlapping ones reach the same segment
@@ -586,6 +617,13 @@ export function resolvePath(path, state, rendered = null) {
 
   if (parts[0] === 'fft') {
     const c = fftCost(state.fftSize)
+    if (parts[1].startsWith('twiddle')) {
+      const w = butterfly([1, 0], [1, 0], state.twiddleK ?? 0, c.n).twiddle
+      if (parts[1] === 'twiddleRe') return w[0]
+      if (parts[1] === 'twiddleIm') return w[1]
+      if (parts[1] === 'twiddleDeg') return (Math.atan2(w[1], w[0]) * 180) / Math.PI
+      throw new Error(`unknown fft path: ${path}`)
+    }
     if (parts[1] in c) return c[parts[1]]
     throw new Error(`unknown fft path: ${path}`)
   }

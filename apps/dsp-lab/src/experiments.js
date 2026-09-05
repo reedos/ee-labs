@@ -3,11 +3,13 @@ import { EXPERIMENTS as B } from './groups/b.js'
 import { EXPERIMENTS as C } from './groups/c.js'
 import { EXPERIMENTS as D } from './groups/d.js'
 import { EXPERIMENTS as E } from './groups/e.js'
+import { EXPERIMENTS as F } from './groups/f.js'
 import { LESSONS as LA } from './lessons/a.js'
 import { LESSONS as LB } from './lessons/b.js'
 import { LESSONS as LC } from './lessons/c.js'
 import { LESSONS as LD } from './lessons/d.js'
 import { LESSONS as LE } from './lessons/e.js'
+import { LESSONS as LF } from './lessons/f.js'
 
 // The course, group by group, in the order DSP_LAB_PLAN.md §5 gives.
 //
@@ -15,12 +17,10 @@ import { LESSONS as LE } from './lessons/e.js'
 // where they meet. An experiment with no lesson, or a lesson with no experiment,
 // fails here rather than rendering an empty panel.
 //
-// The array is in sidebar order, so "n of 35" in the lesson nav is the position
+// The array is in sidebar order, so "n of 40" in the lesson nav is the position
 // the reader sees, and experiments.test.js pins that.
 //
-// The order is DSP_LAB_PLAN.md §5's, over the groups that are built. Group F is
-// not, so nothing after E appears yet, and it lands in its own place when it
-// does rather than being appended.
+// The order is DSP_LAB_PLAN.md §5's, and all six groups are built.
 
 export const GROUPS = [
   'Changing the rate',
@@ -28,9 +28,10 @@ export const GROUPS = [
   'Filters that learn',
   'Estimating a spectrum',
   'The arithmetic a processor has',
+  'The transform itself',
 ]
 
-const LESSONS = { ...LA, ...LB, ...LC, ...LD, ...LE }
+const LESSONS = { ...LA, ...LB, ...LC, ...LD, ...LE, ...LF }
 
 const merge = (list) =>
   list.map((e) => {
@@ -39,7 +40,7 @@ const merge = (list) =>
     return { ...e, ...lesson }
   })
 
-export const EXPERIMENTS = merge([...A, ...B, ...C, ...D, ...E])
+export const EXPERIMENTS = merge([...A, ...B, ...C, ...D, ...E, ...F])
 
 /** The lesson ids that have no experiment, which is the other half of the check. */
 export const ORPHAN_LESSONS = Object.keys(LESSONS).filter(

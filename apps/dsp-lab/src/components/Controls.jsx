@@ -287,6 +287,17 @@ export default function Controls({ state, setState, openBlocks, setOpenBlocks })
           compact
         />
         <NumField
+          label="Twiddle k"
+          value={state.twiddleK}
+          onChange={(v) => setState((s) => ({ ...s, twiddleK: Math.max(0, Math.round(v)) }))}
+          min={0}
+          max={4096}
+          step={1}
+          presets={[0, 128, 256, 512]}
+          hint="Which twiddle the butterfly view draws, as k of the frame's own N."
+          compact
+        />
+        <NumField
           label="Model order"
           value={state.arOrder}
           onChange={(v) => setState((s) => ({ ...s, arOrder: Math.max(1, Math.round(v)) }))}

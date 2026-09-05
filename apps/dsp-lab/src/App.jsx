@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { LabNav, LessonNav, ReportIssue, TryLine, ZPlaneCanvas, fmtHz } from '@ee-labs/ui'
-import { spectrum } from '@ee-labs/dsp'
+import { butterfly, fftCost, spectrum } from '@ee-labs/dsp'
 import Controls from './components/Controls.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
 import SpectrumCanvas from './components/SpectrumCanvas.jsx'
@@ -8,6 +8,7 @@ import SpecPane from './components/SpecPane.jsx'
 import PoleGridCanvas from './components/PoleGridCanvas.jsx'
 import WeightCanvas from './components/WeightCanvas.jsx'
 import DensityCanvas from './components/DensityCanvas.jsx'
+import ButterflyCanvas from './components/ButterflyCanvas.jsx'
 import { EXPERIMENTS, GROUPS } from './experiments.js'
 import { INITIAL, experimentState } from './state.js'
 import { applyChip } from './chips.js'
@@ -158,9 +159,21 @@ export default function App() {
     return { est, model }
   }, [state])
 
+  // One butterfly, at the twiddle the state names. The inputs are fixed at 1 so
+  // the outputs are 1 + W and 1 - W, which is the twiddle read off the drawing.
+  const wing = useMemo(() => {
+    if (state.freqView !== 'butterfly') return null
+    const n = fftCost(state.fftSize).n
+    const k = Math.max(0, Math.min(n - 1, Math.round(state.twiddleK ?? 0)))
+    const a = [1, 0]
+    const b = [1, 0]
+    return { a, b, k, n, out: butterfly(a, b, k, n) }
+  }, [state])
+
   const freqOptions = [
     { id: 'spectrum', label: 'Spectrum' },
     { id: 'density', label: 'Density' },
+    { id: 'butterfly', label: 'Butterfly' },
     { id: 'zplane', label: 'z-plane' },
     ...(hasGrid ? [{ id: 'polegrid', label: 'Pole grid' }] : []),
   ]
@@ -259,7 +272,16 @@ export default function App() {
                 options={freqOptions}
               />
             </div>
-            {state.freqView === 'density' && density ? (
+            {state.freqView === 'butterfly' && wing ? (
+              <ButterflyCanvas
+                a={wing.a}
+                b={wing.b}
+                out={wing.out}
+                twiddle={wing.out.twiddle}
+                k={wing.k}
+                n={wing.n}
+              />
+            ) : state.freqView === 'density' && density ? (
               <DensityCanvas
                 est={density.est}
                 model={density.model}

@@ -35,6 +35,12 @@ export const INITIAL = {
   // it that both criteria have somewhere to be wrong.
   arOrder: 2,
   arMaxOrder: 12,
+  // How many samples of the frame an estimate reads. Null means all of them,
+  // which is every lesson but F5, where a record that is not a power of two is
+  // the whole point.
+  record: null,
+  // Which twiddle the butterfly view draws, as k of the frame's own N.
+  twiddleK: 0,
   experimentId: 'a1',
 }
 
