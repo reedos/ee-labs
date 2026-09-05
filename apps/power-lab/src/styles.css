@@ -89,6 +89,21 @@
   .preset, .chip { line-height: 12px; }
   .controls .num-slider { height: 16px; }
 }
+/* The deployed page carries a LabNav row (home + the two sibling labs) above
+   the title — about 26 px this sidebar's own budget never accounted for,
+   because a standalone dev/preview port has no siblings beside it and the
+   row does not render there at all (verify.mjs's withLabNav stands a
+   placeholder in to measure the real thing). At 1366×768 the sidebar was
+   already at its fold with none to spare (see the schematic comment below),
+   so those 26 px pushed the first knob of b1, b2, b4, c1, c5 and e1 (the
+   longer notes) below the fold outright. Trimmed back here, at short
+   viewports only — 1440×900 and taller already had the room. */
+@media (max-height: 820px) and (min-width: 901px) {
+  .controls header .sub { display: none; }
+  .controls section { margin-top: 4px; padding-bottom: 6px; }
+  .controls h2 { padding: 3px 12px 2px; margin-bottom: 4px; }
+  .controls .hint { margin-top: 5px; }
+}
 .controls .report-issue { margin-top: 14px; }
 .controls h2 .sch-name {
   margin: 0;

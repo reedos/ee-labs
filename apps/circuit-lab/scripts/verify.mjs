@@ -43,7 +43,15 @@ await page.goto(URL, { waitUntil: 'load' })
 await page.waitForSelector('.views canvas')
 await page.waitForTimeout(400)
 
-const settle = () => page.waitForTimeout(220)
+// Waits out the animation frame AND lets web fonts finish loading. Text set
+// in a web font measures narrower/shorter before it swaps in — a box read
+// during that window is optimistic (Signal Lab's verify.mjs found the ~8 px
+// reproduction this comment is copied from). Every fold/tap measurement in
+// this file goes through this settle(), so none of them can be taken early.
+const settle = async () => {
+  await page.waitForTimeout(220)
+  await page.evaluate(() => document.fonts.ready)
+}
 
 const scrolls = () =>
   page.evaluate(

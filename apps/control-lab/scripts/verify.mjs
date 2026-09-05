@@ -7,7 +7,7 @@
 // gain up to just under it and just over it, and requires the app to agree.
 
 import { chromium } from 'playwright'
-import { foldProbe, phoneProbe, PHONE_VIEWPORT, LAPTOP_VIEWPORTS } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { foldProbe, phoneProbe, withLabNav, PHONE_VIEWPORT, LAPTOP_VIEWPORTS } from '@ee-labs/ui/verify/foldProbe.mjs'
 import { tapTargetProbe, FLOOR, HARD_FLOOR } from '@ee-labs/ui/verify/tapTargetProbe.mjs'
 // Defect 2's own cue table, imported rather than re-typed: item 33 below
 // scans what is ACTUALLY on screen with the same CUES the app itself scans
@@ -34,7 +34,15 @@ await page.goto(URL, { waitUntil: 'load' })
 await page.waitForSelector('.views canvas')
 await page.waitForTimeout(400)
 
-const settle = () => page.waitForTimeout(240)
+// Waits out the animation frame AND lets web fonts finish loading. Text set
+// in a web font measures narrower/shorter before it swaps in — a box read
+// during that window is optimistic (Signal Lab's verify.mjs found the ~8 px
+// reproduction this comment is copied from). Every fold/tap measurement in
+// this file goes through this settle(), so none of them can be taken early.
+const settle = async () => {
+  await page.waitForTimeout(240)
+  await page.evaluate(() => document.fonts.ready)
+}
 
 // ------------------------------------------------- 0. what the page opens on
 
@@ -1249,14 +1257,11 @@ console.log('\n6b. Math tab on phone: no plot goes absurdly tall, and switching 
 // ------------------------------------ 7. the fold: every lesson's knob on screen
 
 // The deployed page carries the LabNav row above the title (26 px); a dev
-// port has no siblings so it hides. Stand a placeholder in, so the fold
-// measured here (7 and 7b both) is the fold a student gets on the site.
-const withLabNav = (pg) =>
-  pg.evaluate(() => {
-    if (document.querySelector('.labnav, .labnav-stand-in')) return
-    const h = document.querySelector('.controls header')
-    if (h) h.insertAdjacentHTML('afterbegin', '<div class="labnav-stand-in" style="height:16px;margin:0 0 10px"></div>')
-  })
+// port has no siblings so it hides. withLabNav (packages/ui/verify/foldProbe.mjs)
+// stands a placeholder in, so the fold measured here (7 and 7b both) is the
+// fold a student gets on the site. foldProbe() now applies it automatically
+// for every case below; 7b's continuous walk does not go through foldProbe,
+// so it still calls withLabNav directly.
 
 console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
 {
@@ -1279,7 +1284,6 @@ console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
     name,
     load: async (pg) => {
       await pg.waitForSelector('.views canvas')
-      await withLabNav(pg)
       await loadLesson(name)
     },
     must: [

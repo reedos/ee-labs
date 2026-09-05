@@ -48,6 +48,12 @@ const SELECTOR = 'button, a, summary, [role="button"], input[type="checkbox"]'
  * @returns {Promise<{ok:boolean, failures:string[], checked:number, sizes:object[]}>}
  */
 export async function tapTargetProbe(page, { floor = FLOOR, hardFloor = HARD_FLOOR, exceptionFloor } = {}) {
+  // Text set in a web font measures narrower/shorter before it swaps in, and
+  // a tap target sized to its own text (padding plus content) can measure a
+  // few px bigger than it will once fonts settle — the same optimism
+  // foldProbe.mjs guards against. Waited here, not left to each caller, so a
+  // caller that forgets its own settle() still measures the real thing.
+  await page.evaluate(() => document.fonts.ready)
   const raw = await page.evaluate((selector) => {
     const parsePx = (v) => (!v || v === 'auto' ? 0 : parseFloat(v) || 0)
 

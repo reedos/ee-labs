@@ -13,6 +13,7 @@
 //                                     BROWSERS=chromium,firefox to add Firefox)
 
 import { chromium, firefox } from 'playwright'
+import { withLabNav } from '@ee-labs/ui/verify/foldProbe.mjs'
 
 const URL = process.env.APP_URL || 'http://localhost:4500/'
 const BROWSERS = (process.env.BROWSERS || 'chromium').split(',').map((s) => s.trim()).filter(Boolean)
@@ -65,7 +66,16 @@ async function run(browser, tag) {
   await page.goto(URL, { waitUntil: 'load' })
   await page.waitForSelector('.views')
   await page.waitForTimeout(400)
-  const settle = (ms = 160) => page.waitForTimeout(ms)
+  // Waits out the animation frame AND lets web fonts finish loading. Text set
+  // in a web font measures narrower/shorter before it swaps in — a box read
+  // during that window is optimistic (Signal Lab's verify.mjs found the ~8 px
+  // reproduction this comment is copied from). Every fold/overflow
+  // measurement in this file goes through this settle(), so none of them
+  // can be taken early.
+  const settle = async (ms = 160) => {
+    await page.waitForTimeout(ms)
+    await page.evaluate(() => document.fonts.ready)
+  }
 
   // -------------------------------------------------------------- helpers
 
@@ -574,6 +584,11 @@ async function run(browser, tag) {
   for (const vp of DESKTOP) {
     await page.setViewportSize(vp)
     await settle(300)
+    // The deployed page carries the LabNav row above the title (~26 px);
+    // this bare preview has no siblings beside it, so the row never
+    // renders. Stand a placeholder in so the fold checked below matches
+    // what a student actually gets.
+    await withLabNav(page)
     let bad = 0
     for (const id of ids) {
       await pick(id)

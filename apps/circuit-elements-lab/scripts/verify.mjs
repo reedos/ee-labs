@@ -10,7 +10,7 @@
 //   npm run verify
 
 import { chromium } from 'playwright'
-import { foldProbe } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { foldProbe, withLabNav } from '@ee-labs/ui/verify/foldProbe.mjs'
 
 const URL = process.env.APP_URL || 'http://localhost:4176'
 const failures = []
@@ -29,7 +29,15 @@ await page.goto(URL, { waitUntil: 'load' })
 await page.waitForSelector('.views .schematic')
 await page.waitForTimeout(400)
 
-const settle = () => page.waitForTimeout(200)
+// Waits out the animation frame AND lets web fonts finish loading. Text set
+// in a web font measures narrower/shorter before it swaps in — a box read
+// during that window is optimistic (Signal Lab's verify.mjs found the ~8 px
+// reproduction this comment is copied from). Every fold/tap measurement in
+// this file goes through this settle(), so none of them can be taken early.
+const settle = async () => {
+  await page.waitForTimeout(200)
+  await page.evaluate(() => document.fonts.ready)
+}
 
 const scrolls = () =>
   page.evaluate(() => document.documentElement.scrollHeight > document.documentElement.clientHeight + 1)
@@ -584,6 +592,11 @@ console.log('   the tab bar shows four parts; Knobs and Lesson go where they say
 // screen when the experiment opens, for every experiment.
 await page.setViewportSize({ width: 1280, height: 900 })
 await page.waitForTimeout(400)
+// The deployed page carries the LabNav row above the title (~26 px); this
+// bare preview has no siblings beside it, so the row never renders. Stand a
+// placeholder in so the absolute pixel budget checked below (noteTop,
+// knobBottom, knobsBottom) matches what a student actually gets.
+await withLabNav(page)
 let deskPlots = 0
 let wholeSidebar = 0
 for (const name of names) {

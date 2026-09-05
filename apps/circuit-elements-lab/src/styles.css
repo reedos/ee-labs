@@ -107,10 +107,24 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 .picker-arc { margin: 0 0 8px; font-size: 11.5px; color: var(--dim); }
 .picker-arc b { color: var(--accent); }
 
+/* The deployed page carries a LabNav row (home + the two sibling labs) above
+   the title — ~26 px real on the deployed site, invisible on a standalone
+   preview (no siblings beside it to link to). App.jsx's own header comment
+   already counts "the suite nav" into the ~200–230 px budget for how close
+   to the top the note appears, but that budget was tuned against a preview
+   that never actually rendered the row — verify.mjs's withLabNav now stands
+   a placeholder in to measure the real thing, and a few longer experiment
+   names pushed past 230 px once it did. Trimmed back here, unconditionally
+   (every viewport, not just the short-height query below): the report-issue
+   link, the Experiment heading and the picker's own margin each give back a
+   few px that add up to the labnav's own height. */
+.controls header .report-issue { margin: 0 0 2px; }
+.controls .lesson > h2 { margin-bottom: 4px; padding-bottom: 2px; }
+
 /* The picker: ◂ [A1 · name ▾] ▸ on one line, the tree folded under it. The
    sidebar's job is the lesson and its knobs; the list of forty-six
    experiments is furniture, and stays out of the way until asked for. */
-.picker { margin: 0 0 8px; }
+.picker { margin: 0 0 4px; }
 .picker-row {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) 30px;
@@ -354,8 +368,16 @@ button.flow-node[aria-expanded='true'] { border-color: var(--accent); color: var
    H6, I6, I7) past the fold, with G6's last knob fully off screen (student
    review round: the fold probe). Nothing is removed, only the air around it —
    tighter section caps, knob rows and the toggle knob reclaim the height so
-   every knob stays reachable without scrolling. */
+   every knob stays reachable without scrolling.
+   The deployed page also carries a LabNav row above the title (~26 px) that
+   this budget never accounted for — a standalone preview has no siblings
+   beside it, so the row never rendered there (verify.mjs's withLabNav stands
+   a placeholder in to measure the real thing). That 26 px reopened the same
+   gap for F7 and G6 with none of the trims above changed, so the one-line
+   subtitle under the title — chrome the fold budget can least afford — is
+   dropped here too rather than tightening every knob row a second time. */
 @media (min-width: 901px) and (max-height: 820px) {
+  .controls header .sub { display: none; }
   .controls h2 { padding: 6px 12px 4px; margin-bottom: 6px; }
   .controls section { margin-top: 8px; }
   .knob-slot { padding: 2px 8px; }
