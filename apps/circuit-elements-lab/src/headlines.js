@@ -89,6 +89,11 @@ export const HEADLINES = {
   h4: { label: 'the resonant frequency f₀ = 1/(2π√LC), where |Z| = R', tag: 'f₀', unit: 'Hz', where: 'C1', value: (x) => x.state.w0 / (2 * Math.PI) },
   h5: { label: 'the real power — the part that heats R', tag: 'P', unit: 'W', where: 'R1', value: (x) => realPower(x.ac.volt.R1, x.ac.i.R1) },
   h6: { label: 'the gain at this frequency, |V_C|/|V_s| in dB', tag: '|H|', unit: 'dB', plain: true, where: 'C1', value: (x) => 20 * Math.log10(mag(x.ac.volt.C1) / mag(x.ac.volt.V1)) },
+  h7: {
+    label: 'the gain here, ω₀² over the two distances to the roots',
+    tag: '|H|', unit: 'dB', plain: true, where: 'C1',
+    value: (x) => 20 * Math.log10(mag(x.ac.volt.C1) / mag(x.ac.volt.V1)),
+  },
   e9: { label: 'the threshold the input has to pass to flip it', tag: 'V_trip', unit: 'V', where: 'p', value: (x) => Math.abs(x.tr.at(0).sol.v.p) },
   i1: { label: 'the drop the diode takes, on this model', tag: 'v_D', unit: 'V', where: 'D1', value: (x) => x.sol.volt.D1 },
   i2: { label: 'the operating point: where the curve meets the load line', tag: 'i_D', unit: 'A', where: 'D1', value: (x) => x.sol.i.D1 },
@@ -98,6 +103,37 @@ export const HEADLINES = {
   i6: { label: 'the ripple: how far it falls between two humps', tag: 'ΔV', unit: 'V', where: 'C1', value: (x) => dischargeDrop(x) },
   i8: { label: 'the output the Zener holds, whatever the load does', tag: 'v_out', unit: 'V', where: 'D1', value: (x) => x.sol.v.out },
   i7: { label: 'the level the output cannot pass: V_ref + V_f', tag: 'v_clip', unit: 'V', where: 'D1', value: (x) => peakAt(x, (sol) => sol.v.out) },
+  i9: { label: 'the level the output is held at, one drop below ground', tag: 'v_min', unit: 'V', where: 'D1', value: (x) => clampLevel(x) },
+  i10: { label: 'the doubled output at its peak', tag: 'v_peak', unit: 'V', where: 'C2', value: (x) => settledPeak(x) },
+}
+
+/**
+ * The level a clamper holds its output at: v_out read inside the last window
+ * where the diode conducts, which is where the diode is setting it. Falls back
+ * to the lowest sample when the signal never reaches the diode at all.
+ */
+function clampLevel(x) {
+  const on = x.tr.runs.filter((r) => r.regions.D1 === 'on' && r.t1 > r.t0)
+  const last = on[on.length - 1]
+  if (!last) return Math.min(...x.tr.samples.map((s) => s.sol.v.out))
+  return x.tr.at((last.t0 + last.t1) / 2).sol.v.out
+}
+
+/**
+ * The doubled output at its peak: v_out where the last complete gap between
+ * humps begins, since the reservoir only ever falls across such a gap. Read on
+ * the exact solution at the event time rather than off the drawn samples,
+ * which need not land on the peak.
+ */
+function settledPeak(x) {
+  const gap = lastGap(x)
+  return gap ? x.tr.at(gap.t0).sol.v.out : Math.max(...x.tr.samples.map((s) => s.sol.v.out))
+}
+
+/** The last complete run with D2 blocking: the reservoir alone with the load. */
+export function lastGap(x) {
+  const off = x.tr.runs.filter((r) => r.regions.D2 === 'off' && r.t1 > r.t0 && r.t1 < x.tEnd)
+  return off[off.length - 1] || null
 }
 
 /**

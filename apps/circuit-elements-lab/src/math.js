@@ -1320,6 +1320,57 @@ const ENTRIES = {
     }
   },
 
+  h7(p, s, x) {
+    const { alpha, w0, roots } = x.state
+    const w = x.omega
+    const H = cx.cdiv(x.ac.volt.C1, x.ac.volt.V1)
+    // The distance from the drive point jω to each root, and the angle of the
+    // vector that joins them. Both are read off the roots the state equation
+    // produced, never off the phasor solve they are compared with.
+    const d = roots.map((r) => Math.hypot(r.re, w - r.im))
+    const ang = roots.map((r) => Math.atan2(w - r.im, -r.re))
+    // s² + (R/L)s + 1/LC at each root: zero, which is what "root" means. The
+    // residual is reported against the largest of the three terms, because a
+    // heavily overdamped circuit has a far root where s² and (R/L)s are each
+    // 10¹⁸ and cancel — an absolute residual there says nothing.
+    const atRoot = roots.map((r) => {
+      const re = r.re * r.re - r.im * r.im + (p.R1 / p.L1) * r.re + 1 / (p.L1 * p.C1)
+      const im = 2 * r.re * r.im + (p.R1 / p.L1) * r.im
+      const size = Math.max(r.re * r.re + r.im * r.im, (p.R1 / p.L1) * Math.hypot(r.re, r.im), 1 / (p.L1 * p.C1))
+      return Math.hypot(re, im) / size
+    })
+    return {
+      blocks: [
+        T(
+          'The characteristic equation G1 found by trying e^{st} is the denominator of H(s). Its two roots are therefore the poles, and H(s) can be written as a constant over the product of two factors. On the jω axis each factor is the distance from the drive point to one root, so the whole Bode magnitude is one number divided by two lengths.',
+        ),
+        F(
+          's^2 + \\frac{R}{L}s + \\frac{1}{LC} = 0, \\qquad H(s) = \\frac{\\omega_0^2}{(s - s_1)(s - s_2)}, ' +
+            '\\qquad |H(j\\omega)| = \\frac{\\omega_0^2}{|j\\omega - s_1|\\;|j\\omega - s_2|}',
+        ),
+        C([
+          row('α = R/2L', p.R1 / (2 * p.L1), alpha, 'rad/s'),
+          row('ω₀ = 1/√(LC)', 1 / Math.sqrt(p.L1 * p.C1), w0, 'rad/s'),
+          // Scaled by ω₀², which is the size of the constant term the two other
+          // terms have to cancel.
+          row('each root solves the characteristic equation', 0, Math.max(...atRoot), '', 0, 1e-9),
+          row('|H| = ω₀² / (d₁·d₂)', (w0 * w0) / (d[0] * d[1]), cx.cabs(H), '', 1e-9, 1e-12),
+          // Compared as a residual rather than as two angles: a sum that lands
+          // either side of ±π is the same angle, and subtracting first says so.
+          row('∠H + φ₁ + φ₂ = 0', 0, wrap(cx.carg(H) + ang[0] + ang[1]), 'rad', 0, 1e-9),
+          ...steadyRows(x),
+        ]),
+        V([
+          { label: 'the roots, real part', value: roots[0].re, unit: 'rad/s', note: x.state.face },
+          { label: 'and imaginary part', value: Math.abs(roots[0].im), unit: 'rad/s', note: 'the other root is its mirror' },
+          { label: 'distance to the nearer root', value: Math.min(d[0], d[1]), unit: 'rad/s' },
+          { label: 'distance to the further root', value: Math.max(d[0], d[1]), unit: 'rad/s' },
+          { label: '|H| at the drive', value: cx.cabs(H), unit: '' },
+        ]),
+      ],
+    }
+  },
+
   // ============================================================== E9, I
   // The piecewise groups. The hand side is the algebra of ONE region — the
   // region the circuit is actually in — and the measured side is the solve
@@ -1598,6 +1649,96 @@ const ENTRIES = {
       ],
     }
   },
+
+  i9(p, s, x) {
+    const vf = dropOf(p)
+    const level = clampedAt(x, 'D1')
+    const gap = lastBlock(x, 'D1')
+    const late = x.tr.samples.filter((q) => q.t > x.tEnd - 1 / p.f).map((q) => q.sol.v.out)
+    const mean = meanRms(x.tr, (sol) => sol.v.out, Math.max(0, x.tEnd - 1 / p.f), x.tEnd).mean
+    const ideal = Math.abs(p.A) - vf
+    return {
+      blocks: [
+        T(
+          'The capacitor is in series, so it passes every change through and adds whatever DC it is holding. The diode fixes that DC. It conducts whenever the output tries to go below one drop under ground, tops the capacitor up, and stops, so the trough of the output can never pass that level.',
+        ),
+        F('v_{out}(t) = v_{in}(t) - v_{C}, \\qquad \\min v_{out} = -V_f, \\qquad \\overline{v_{out}} \\to V_p - V_f'),
+        C([
+          row('the diode holds the trough one drop below ground', -vf, level, 'V', 1e-9, 1e-9),
+          row('KVL at the output: v_out = v_in − v_C', s.v.in - s.volt.C1, s.v.out, 'V'),
+          row('between windows the diode carries nothing', 0, gap ? x.tr.at((gap.t0 + gap.t1) / 2).sol.i.D1 : 0, 'A', 0, 1e-12),
+        ]),
+        V([
+          { label: 'the lowest point', value: Math.min(...late), unit: 'V' },
+          { label: 'the highest point', value: Math.max(...late), unit: 'V' },
+          { label: 'the mean over the last cycle', value: mean, unit: 'V' },
+          // The textbook answer assumes the capacitor holds its charge between
+          // windows. It does not quite, so the ideal is reported with its error
+          // rather than asserted (CORE_SCOPE Rule 3).
+          { label: 'V_p − V_f, with no droop', value: ideal, unit: 'V', note: `${(((ideal - mean) / mean) * 100).toFixed(2)} % high` },
+          { label: 'the diode conducts', value: 100 * x.conduction.D1.fraction, unit: '%', note: 'of the time' },
+        ]),
+      ],
+    }
+  },
+
+  i10(p, s, x) {
+    const vf = dropOf(p)
+    const gap = lastBlock(x, 'D2')
+    const top = gap ? x.tr.at(gap.t0).sol.v.out : 0
+    const bottom = gap ? x.tr.at(gap.t1, 'left').sol.v.out : 0
+    const late = x.tr.samples.filter((q) => q.t > x.tEnd - 1 / p.f).map((q) => q.sol.v.out)
+    const ideal = 2 * (Math.abs(p.A) - vf)
+    const reached = Math.max(...late)
+    return {
+      blocks: [
+        T(
+          'The first half is I9’s clamper, so node x is the whole sine lifted until its trough sits one drop below ground and its peak reaches nearly twice the source peak. The second diode and its capacitor are I6’s peak rectifier reading that node. Two stages, one drop each, and an output near twice the source peak.',
+        ),
+        F('v_{x} \\in [-V_f,\\; 2V_p - V_f], \\qquad v_{out} \\to 2V_p - 2V_f, \\qquad v_{out}(t) = V_{top}\\,e^{-t/R_LC_2} \\;\\text{while } D_2 \\text{ blocks}'),
+        C([
+          row('the clamper holds x one drop below ground', -vf, clampedAt(x, 'D1'), 'V', 1e-9, 1e-9),
+          // While D2 blocks, the reservoir sees only the load: the fall across
+          // that gap is its own exponential, whatever the source is doing.
+          row('the reservoir falls as e^(−t/R_L·C₂)', gap ? top * Math.exp(-(gap.t1 - gap.t0) / (p.RL * p.C2)) : 0, bottom, 'V', 1e-6),
+          row('and the second diode carries nothing across it', 0, gap ? x.tr.at((gap.t0 + gap.t1) / 2).sol.i.D2 : 0, 'A', 0, 1e-12),
+        ]),
+        V([
+          { label: 'the output, at its highest', value: reached, unit: 'V' },
+          { label: 'twice V_p less two drops', value: ideal, unit: 'V', note: `${(((ideal - reached) / ideal) * 100).toFixed(2)} % above what this load allows` },
+          { label: 'the ripple left on it', value: Math.max(...late) - Math.min(...late), unit: 'V' },
+          { label: 'node x at its highest', value: Math.max(...x.tr.samples.map((q) => q.sol.v.x)), unit: 'V' },
+        ]),
+      ],
+    }
+  },
+}
+
+// ------------------------------------------------------------ group I shared
+
+/** The forward drop of the diode model the experiment is running on. */
+const dropOf = (p) => {
+  const d = diodeOf({ id: 'D1', type: 'D', model: p.model })
+  return d.model === 'ideal' ? 0 : d.vf
+}
+
+/**
+ * The level a diode is holding its node at: read inside the last window where
+ * it conducts, on the exact solution rather than off the drawn samples. Null
+ * settings (the signal never reaches the diode) fall back to the lowest sample.
+ */
+function clampedAt(x, id) {
+  const node = id === 'D1' && x.tr.norm.elements.find((e) => e.id === 'D2') ? 'x' : 'out'
+  const on = x.tr.runs.filter((r) => r.regions[id] === 'on' && r.t1 > r.t0)
+  const last = on[on.length - 1]
+  if (!last) return Math.min(...x.tr.samples.map((s) => s.sol.v[node]))
+  return x.tr.at((last.t0 + last.t1) / 2).sol.v[node]
+}
+
+/** The last complete run in which `id` blocks: the gap between two conduction windows. */
+function lastBlock(x, id) {
+  const off = x.tr.runs.filter((r) => r.regions[id] === 'off' && r.t1 > r.t0 && r.t1 < x.tEnd)
+  return off[off.length - 1] || null
 }
 
 // ------------------------------------------------------------ group H shared

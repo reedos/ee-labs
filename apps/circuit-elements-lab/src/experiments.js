@@ -81,6 +81,9 @@ const Cap = (key, label, def, hint) => ({ key, label, unit: 'F', min: 1e-9, max:
 const Ind = (key, label, def, hint) => ({ key, label, unit: 'H', min: 1e-6, max: 10, scale: 'log', default: def, hint })
 const Per = (key, label, def, hint) => ({ key, label, unit: 's', min: 1e-6, max: 1, scale: 'log', default: def, hint })
 const Freq = (key, label, def, hint) => ({ key, label, unit: 'Hz', min: 1, max: 1e5, scale: 'log', default: def, hint })
+// A supply frequency: the same knob from 50 Hz up, for the two circuits whose
+// reservoir must not empty between peaks (I9 and I10).
+const MAINS = (key, label, def, hint) => ({ key, label, unit: 'Hz', min: 50, max: 1e5, scale: 'log', default: def, hint })
 // Degrees, not engineering notation: "500 m°" is nobody's phase.
 const Deg = (key, label, def) => ({ key, label, unit: '°', min: -180, max: 180, scale: 'linear', default: def, eng: false })
 // The time window is measured in the circuit's own unit — time constants or
@@ -232,8 +235,13 @@ function bridgeLayout() {
   }
 }
 
-/** Source with its own resistance, a diode, then whatever hangs on the output. */
-function smoothingLayout(legs) {
+/**
+ * Source with its own resistance, one more series element, then whatever hangs
+ * on the output. `series` names the two elements along the top (the smoothing
+ * circuit's R_S and diode, or the clamper's R_S and capacitor) and `flipped`
+ * the legs drawn anode-down.
+ */
+function smoothingLayout(legs, series = ['RS', 'D1'], flipped = []) {
   // Source, its own resistance, the diode, then the load and the reservoir
   // side by side. The two node dots sit on the rail between the elements
   // rather than at the corners, where a diode's own label already is.
@@ -243,9 +251,9 @@ function smoothingLayout(legs) {
   const items = [
     ...src('V1'),
     rail(50, 100, TOP),
-    ...top('RS', 120),
+    ...top(series[0], 120),
     rail(140, 210, TOP),
-    ...top('D1', 230),
+    ...top(series[1], 230),
     rail(250, xs[0], TOP),
     node('src', 50, TOP, 't'),
     node('in', 175, TOP, 't'),
@@ -253,10 +261,50 @@ function smoothingLayout(legs) {
   ]
   legs.forEach((id, k) => {
     if (k) items.push(rail(xs[k - 1], xs[k], TOP))
-    items.push(...leg(id, xs[k]))
+    items.push(...leg(id, xs[k], flipped.includes(id)))
   })
   items.push(rail(50, xs[legs.length - 1], BOT), gnd(115))
   return { w: 480, h: H, items }
+}
+
+/**
+ * The doubler: the clamper's series capacitor and shunt diode, then a second
+ * diode carrying the lifted waveform on to its own reservoir and the load.
+ * Three legs behind two series elements do not fit the 420 the rest of the
+ * lab uses, so the canvas is wider and the frame crops it back.
+ */
+function doublerLayout() {
+  // Five columns of text — a source, two series elements and three legs, each
+  // label hanging to the right of what it names — so the canvas is the widest
+  // in the lab. The frame is taken from the drawing, so a wide one renders
+  // shorter rather than clipped. The node dots sit on the legs they belong to,
+  // where the only text above the rail is their own.
+  const [xd1, xc2, xrl] = [290, 490, 580]
+  return {
+    w: 660,
+    h: H,
+    items: [
+      ...src('V1'),
+      rail(50, 100, TOP),
+      ...top('RS', 120),
+      rail(140, 210, TOP),
+      ...top('C1', 230),
+      rail(250, xd1, TOP),
+      ...leg('D1', xd1, true),
+      rail(xd1, 380, TOP),
+      ...top('D2', 400),
+      rail(420, xc2, TOP),
+      ...leg('C2', xc2),
+      rail(xc2, xrl, TOP),
+      ...leg('RL', xrl),
+      rail(50, xrl, BOT),
+      gnd(115),
+      node('src', 50, TOP, 't'),
+      node('in', 175, TOP, 't'),
+      node('x', xd1, TOP, 't'),
+      node('out', xc2, TOP, 't'),
+    ],
+  }
 }
 
 /**
@@ -1718,6 +1766,41 @@ export const EXPERIMENTS = [
     circuitLab: rcToCircuitLab,
     claim: { bode: true },
   },
+  {
+    // The seam to Circuit Lab (CURRICULUM.md §3, seam 1). G1 found the roots
+    // of s² + (R/L)s + 1/LC by trying e^{st}; H6 read H(jω) one sine at a
+    // time. This experiment says they are the same two numbers, and measures
+    // |H| as ω₀² over the product of the distances from jω to them. R = 50 Ω
+    // puts the pair at −2500 ± j9682 rad/s, close enough to the axis for the
+    // peak to be plain and far enough for the sweep to resolve it.
+    id: 'h7',
+    group: GROUPS[7],
+    name: 'The roots are the poles',
+    terms: ['pole', 'splane', 'characteristic'],
+    params: [
+      Vs('A', 'Amplitude', 1),
+      chips(Freq('f', 'Frequency', 1591.5), [159.15, 1591.5, 15915]),
+      chips(R('R1', 'R', 50), [5, 50, 800]),
+      Ind('L1', 'L', 10e-3),
+      Cap('C1', 'C', 1e-6),
+      Win('N', 'Window', 'cycles', 6),
+    ],
+    net: sineRLC,
+    layout: loop(['R1', 'L1', 'C1']),
+    window: cyclesWindow,
+    ghost: 'forced',
+    ghostLabel: 'steady state (dashed)',
+    // 5¼ cycles in: the source at its peak, well past the natural response.
+    cursor: 5.25 / 6,
+    scope: rlcSineScope(),
+    out: { q: 'volt', key: 'C1', label: 'v_C' },
+    show: 'v',
+    view: 'bode',
+    views: ['equations', 'power', 'scope', 'state', 'phasor', 'bode'],
+    phasor: { volts: ['R1', 'L1', 'C1'], total: 'V1', current: 'R1' },
+    circuitLab: rlcToCircuitLab,
+    claim: { roots: true },
+  },
   // ============================================================== I
   {
     id: 'i1',
@@ -1933,6 +2016,101 @@ export const EXPERIMENTS = [
     sweepId: 'RL',
     sweepY: 'v',
     claim: { zener: true },
+  },
+  // The two circuits the Electronics plan calls its Group B, built here
+  // because they are diodes and capacitors and nothing else (ELECTRONICS_LAB
+  // brief §5). Both need the source's own resistance: with an ideal source, an
+  // ideal capacitor and a conducting constant-drop diode, three voltage
+  // sources meet in one loop and the circuit has no solution.
+  //
+  // The knob ranges are narrower than Group I's elsewhere, and each narrowing
+  // is a physical guard. Under about 1 V of peak the diode never conducts and
+  // there is nothing to clamp, so the amplitude starts at 2 V. Below 10 µF
+  // into 10 kΩ the capacitor empties between peaks and the clamp is lost, so
+  // the load and the reservoir start there. The frequency starts at 50 Hz for
+  // the same reason.
+  {
+    id: 'i9',
+    group: GROUPS[8],
+    name: 'The clamper: one wave, a new DC level',
+    terms: ['clamper', 'clamp', 'conduction'],
+    params: [
+      { key: 'A', label: 'Amplitude', unit: 'V', min: 2, max: 24, scale: 'linear', default: 10 },
+      chips(MAINS('f', 'Frequency', 60), [50, 60, 1000]),
+      { key: 'RS', label: 'Source R_S', unit: 'Ω', min: 1, max: 100, scale: 'log', default: 5 },
+      chips({ key: 'C1', label: 'C', unit: 'F', min: 1e-5, max: 1e-3, scale: 'log', default: 10e-6 }, [10e-6, 100e-6]),
+      { key: 'RL', label: 'Load R_L', unit: 'Ω', min: 1e4, max: 1e6, scale: 'log', default: 1e6 },
+      DIODE_MODEL('drop'),
+      Win('N', 'Window', 'cycles', 4),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['src', 'gnd'], value: 0, wave: { kind: 'sine', amp: p.A, freq: p.f } },
+        { type: 'R', id: 'RS', nodes: ['src', 'in'], value: p.RS },
+        { type: 'C', id: 'C1', nodes: ['in', 'out'], value: p.C1, x0: 0 },
+        // Anode at ground: the diode conducts only when the output tries to go
+        // below ground, which is what holds the lowest point at −V_f.
+        { type: 'D', id: 'D1', nodes: ['gnd', 'out'], model: p.model },
+        { type: 'R', id: 'RL', nodes: ['out', 'gnd'], value: p.RL },
+      ],
+    }),
+    layout: smoothingLayout(['D1', 'RL'], ['RS', 'C1'], ['D1']),
+    window: cyclesWindow,
+    // 3¼ cycles in: the source at its peak, two clamping events behind it.
+    cursor: 3.25 / 4,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'src', label: 'v_s', dim: true }, { q: 'v', key: 'out', label: 'v_out' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'D1', label: 'i_D' }] },
+    },
+    out: { q: 'v', key: 'out', label: 'v_out' },
+    show: 'v',
+    view: 'scope',
+    views: ['reading', 'equations', 'power', 'scope'],
+    claim: { clamper: true },
+  },
+  {
+    id: 'i10',
+    group: GROUPS[8],
+    name: 'The voltage doubler',
+    terms: ['doubler', 'clamper', 'ripple'],
+    params: [
+      { key: 'A', label: 'Amplitude', unit: 'V', min: 2, max: 24, scale: 'linear', default: 10 },
+      chips(MAINS('f', 'Frequency', 60), [50, 60, 1000]),
+      { key: 'RS', label: 'Source R_S', unit: 'Ω', min: 1, max: 100, scale: 'log', default: 5 },
+      { key: 'C1', label: 'C₁', unit: 'F', min: 1e-5, max: 1e-3, scale: 'log', default: 10e-6 },
+      { key: 'C2', label: 'C₂', unit: 'F', min: 1e-5, max: 1e-3, scale: 'log', default: 10e-6 },
+      { key: 'RL', label: 'Load R_L', unit: 'Ω', min: 1e4, max: 1e6, scale: 'log', default: 1e6 },
+      DIODE_MODEL('drop'),
+      Win('N', 'Window', 'cycles', 10, 1, 40),
+    ],
+    net: (p) => ({
+      elements: [
+        { type: 'V', id: 'V1', nodes: ['src', 'gnd'], value: 0, wave: { kind: 'sine', amp: p.A, freq: p.f } },
+        { type: 'R', id: 'RS', nodes: ['src', 'in'], value: p.RS },
+        { type: 'C', id: 'C1', nodes: ['in', 'x'], value: p.C1, x0: 0 },
+        { type: 'D', id: 'D1', nodes: ['gnd', 'x'], model: p.model },
+        { type: 'D', id: 'D2', nodes: ['x', 'out'], model: p.model },
+        { type: 'C', id: 'C2', nodes: ['out', 'gnd'], value: p.C2, x0: 0 },
+        { type: 'R', id: 'RL', nodes: ['out', 'gnd'], value: p.RL },
+      ],
+    }),
+    layout: doublerLayout(),
+    window: cyclesWindow,
+    // A hundred samples a cycle, as I6 uses: the conduction bursts are a
+    // fraction of a cycle wide, and the energy ledger integrates between
+    // samples.
+    points: 1001,
+    // 9¼ cycles in: the source at its peak, the output settled.
+    cursor: 9.25 / 10,
+    scope: {
+      left: { unit: 'V', traces: [{ q: 'v', key: 'src', label: 'v_s', dim: true }, { q: 'v', key: 'x', label: 'v_x' }, { q: 'v', key: 'out', label: 'v_out' }] },
+      right: { unit: 'A', traces: [{ q: 'i', key: 'D2', label: 'i_D2' }] },
+    },
+    out: { q: 'v', key: 'out', label: 'v_out' },
+    show: 'v',
+    view: 'scope',
+    views: ['reading', 'equations', 'power', 'scope'],
+    claim: { doubler: true },
   },
 ]
 
