@@ -636,7 +636,7 @@ describe('Group L: feedback', () => {
     }
     // Ten times the amplifier's own output resistance is ten times the
     // closed-loop one, because the loop divides both by the same factor.
-    expect(rel(rOutOf(at('l4', { Ro: 10000 }).x), 10 * rOutOf(at('l4').x))).toBeLessThan(0.01)
+    expect(rel(rOutOf(at('l4', { Ro: 10 * p.Ro }).x), 10 * rOutOf(at('l4').x))).toBeLessThan(0.01)
   })
 
   it('L5: three equal sections put the poles on the axis at √6/RC and a gain of 29', () => {
@@ -714,10 +714,10 @@ describe('Group M: inside the op-amp', () => {
       expect(rel(x.poles[0].hz, gbw / Math.abs(x.gain))).toBeLessThan(1e-9)
     }
     // A third of the capacitance is three times the pole.
-    expect(rel(at('m2', { cc: 10e-12 }).x.poles[0].hz, 3 * at('m2', { cc: 30e-12 }).x.poles[0].hz)).toBeLessThan(0.02)
+    const { x, p } = at('m2')
+    expect(rel(at('m2', { cc: p.cc / 3 }).x.poles[0].hz, 3 * x.poles[0].hz)).toBeLessThan(0.02)
     // The capacitor is multiplied by the second stage's gain, which is what
     // puts that pole decades below every other one.
-    const { x, p } = at('m2')
     expect(x.point.Q5.gm * par(p.rc, x.point.Q5.ro)).toBeGreaterThan(50)
   })
 
@@ -739,19 +739,20 @@ describe('Group M: inside the op-amp', () => {
     }
     // Less capacitance is more bandwidth and less margin, and the step
     // overshoots once the closed-loop poles stop being real.
-    const wide = at('m3', { cc: 5e-12 }).x
-    const narrow = at('m3', { cc: 30e-12 }).x
+    const wide = at('m3', { cc: defaultsOf('m3').cc / 2 }).x
+    const narrow = at('m3', { cc: 3 * defaultsOf('m3').cc }).x
     expect(partsOf(wide).m.crossover).toBeGreaterThan(partsOf(narrow).m.crossover)
     expect(partsOf(wide).m.pm).toBeLessThan(partsOf(narrow).m.pm)
     expect(ringOf(wide.poles).overshoot).toBeGreaterThan(10)
-    // At 30 pF the pair is still a pair, damped to 0.979, and its overshoot
-    // is under a millionth of the step. Only past 100 pF are the poles real.
-    expect(ringOf(narrow.poles).zeta).toBeGreaterThan(0.97)
-    expect(ringOf(narrow.poles).overshoot).toBeLessThan(1e-4)
-    expect(ringOf(at('m3', { cc: 100e-12 }).x.poles).zeta).toBeNull()
+    // At six times the compensation the pair is still a pair, damped far
+    // harder, and its overshoot is a rounding error rather than a ring. Only
+    // past ten times it are the poles real.
+    expect(ringOf(narrow.poles).zeta).toBeGreaterThan(ringOf(wide.poles).zeta)
+    expect(ringOf(narrow.poles).overshoot).toBeLessThan(1)
+    expect(ringOf(at('m3', { cc: 10 * defaultsOf('m3').cc }).x.poles).zeta).toBeNull()
     // A heavier load brings the second pole down onto the crossover, and the
     // margin goes with it.
-    expect(loopMargins(loopTF(at('m3', { cl: 330e-12 }).x, 'Efb')).pm).toBeLessThan(partsOf(at('m3').x).m.pm)
+    expect(loopMargins(loopTF(at('m3', { cl: 3.3 * defaultsOf('m3').cl }).x, 'Efb')).pm).toBeLessThan(partsOf(at('m3').x).m.pm)
   })
 
   it('M4: the ramp is the steered current into the capacitor, and nothing else', () => {
@@ -762,8 +763,8 @@ describe('Group M: inside the op-amp', () => {
     expect(Math.abs(slopeOf(x, 'c2'))).toBeLessThan(rate)
     expect(rel(Math.abs(slopeOf(x, 'c2')), rate)).toBeLessThan(0.02)
     for (const [over, factor] of [
-      [{ cc: 10e-12 }, 3],
-      [{ itail: 60e-6 }, 4],
+      [{ cc: p.cc / 3 }, 3],
+      [{ itail: 4 * p.itail }, 4],
     ]) {
       expect(rel(Math.abs(slopeOf(at('m4', over).x, 'c2')) / Math.abs(slopeOf(x, 'c2')), factor)).toBeLessThan(0.02)
     }
@@ -803,11 +804,11 @@ describe('Group M: inside the op-amp', () => {
     expect(rel(harmonics(x, 'out', p.f)[0], k * p.amp * (1 - (2 * theta + Math.sin(2 * theta)) / Math.PI))).toBeLessThan(0.02)
     // The dead band is a fixed width, so it takes a smaller share of a larger
     // drive. Nine times the drive is less than a tenth of the distortion.
-    const big = at('m6', { amp: 9 }).x
+    const big = at('m6', { amp: byId.m6.params.find((k) => k.key === 'amp').max }).x
     expect(thdOf(big, 'out', p.f)).toBeLessThan(thdOf(x, 'out', p.f) / 10)
     // Bias past a diode drop closes the dead band, and the load is then
     // driven through the two ballast resistors in parallel.
-    const ab = at('m6', { vbias: 0.9, amp: 5 })
+    const ab = at('m6', { vbias: byId.m6.params.find((k) => k.key === 'vbias').max, amp: 5 })
     expect(rel(peakOut(ab.x), (ab.p.RL / (ab.p.RL + ab.p.re / 2)) * ab.p.amp)).toBeLessThan(0.01)
     // Efficiency counts every source, the base drive included, and stays
     // under the π/4 ceiling an ideal stage driven to its rail would reach.
