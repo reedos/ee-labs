@@ -28,19 +28,19 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Fields Lab | building | `lab/fields-lab` | | to write |
 | Energy Lab | building | `lab/energy-lab` | Machines Lab for the wind group | to write |
 | Machines Lab | building | `lab/machines-lab` | Power Lab F for the drives group | to write |
-| Communications Lab | waiting | | Random Signals Lab | to write |
-| Information Lab | waiting | | Communications Lab | to write |
+| Communications Lab | waiting | | Random Signals Lab | `COMMUNICATIONS_LAB_PLAN.md` |
+| Information Lab | waiting | | Communications Lab | `INFORMATION_LAB_PLAN.md` |
 | Applied Analog Lab | waiting | | Electronics L, M | to write |
 | Analog IC Lab | waiting | | Electronics H to M | to write |
 | Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | to write |
-| RF Lab | waiting | | Analog IC Lab, Fields Lab's line | to write |
-| System Lab | waiting | | RF Lab | to write |
-| VLSI Lab | waiting | | Logic Lab, Analog IC Lab | to write |
-| Computer Lab | waiting | | Logic Lab | to write |
-| Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | to write |
-| Grid Lab | waiting | | Machines Lab, Electronics companion Newton | to write |
-| Photonics Lab | waiting | | Electronics O, Applied Analog Lab | to write |
-| Devices Lab | waiting | | Electronics C | to write |
+| RF Lab | waiting | | Analog IC Lab, Fields Lab's line | `RF_LAB_PLAN.md` |
+| System Lab | waiting | | RF Lab | `SYSTEM_LAB_PLAN.md` |
+| VLSI Lab | waiting | | Logic Lab, Analog IC Lab | `VLSI_LAB_PLAN.md` |
+| Computer Lab | waiting | | Logic Lab | `COMPUTER_LAB_PLAN.md` |
+| Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | `INTERFACES_LAB_PLAN.md` |
+| Grid Lab | waiting | | Machines Lab, Electronics companion Newton | `GRID_LAB_PLAN.md` |
+| Photonics Lab | waiting | | Electronics O, Applied Analog Lab | `PHOTONICS_LAB_PLAN.md` |
+| Devices Lab | waiting | | Electronics C | `DEVICES_LAB_PLAN.md` |
 | Signal Integrity | out of this repo | | | |
 
 ## 2. Deferred items, by lab
@@ -284,8 +284,6 @@ Deferred inside the three plans.
   experiments, ship without it.
 - Every plan's §10 lists what it declines rather than defers. Those lines are
   decisions and are not backlog items.
-
-## 4. Planner reports
 
 ### Planner: RF, System, Photonics
 

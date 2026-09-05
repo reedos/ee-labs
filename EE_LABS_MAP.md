@@ -357,7 +357,7 @@ approximation gives.
 
 ## 3. The engine roadmap
 
-The suite has six packages today. The map needs seven more, and most labs need
+The suite has six packages today. The map needs eight more, and most labs need
 none of them.
 
 | Package | Provides | First lab | CORE_SCOPE stance |
@@ -371,6 +371,7 @@ none of them.
 | `fields` | closed-form geometries, a relaxation solver with convergence, the lossless line on `events` | Fields | closed forms exact, grid guarded |
 | `grid` | per-unit, sequence networks, power flow on `network`'s Newton, the swing equation | Grid | exact at convergence, DC flow guarded |
 | `rf` | S-parameters, the Smith chart, the line per frequency | RF | exact per frequency |
+| `photonics` | junction light sources and detectors, the laser rate equations, fibre and the cavity | Photonics | steady state exact, the linearisation guarded |
 | `switched` extended | charge conservation at a switch event, exact H(z) of an SC network | Mixed-Signal | exact |
 | `systems` extended | state space, the discrete loop, the describing function | Control Lab II | exact, describing function guarded |
 | `dsp` extended | multirate, adaptive, fixed point, a quantiser | DSP Lab | exact, adaptive shown as a sequence |
