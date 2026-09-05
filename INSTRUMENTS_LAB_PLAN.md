@@ -619,6 +619,31 @@ Six sittings, each ending green.
 Groups A, C, D, E and F are independent of each other and can be taken in parallel by
 five agents once phase 1 lands. Group B leans on Group A's front end and follows it.
 
+### Where the phases actually landed, 2026-09-05
+
+Phases 2 to 5 were built by earlier sittings, and the shell of phase 1 was not. The
+lab had `main.jsx` importing an `App.jsx` nobody had written. So the twenty-five
+circuits were solved and measured by tests without ever being drawn, and this sitting
+closed phase 6 and then phase 1, in that order.
+
+| Phase | State | Where it stands |
+| --- | --- | --- |
+| 1 | done, last | `App.jsx`, `components/panes.jsx`, the two new canvases, `app.test.jsx`, and the build. Elements' progress, predict, headline, marks and caption modules were not carried over; the shell shows the lesson's three registers and the seven views without them |
+| 2 to 5 | done, earlier | Groups A to E, their lessons, and invariants 1 to 8 |
+| 6 | done | Group F's four lessons, the error bar and the contributions views, and the five test files the brief names |
+
+Three things the plan had not allowed for, each settled in this sitting rather than
+deferred. A5's probe is compensated by construction, since compensation is a relation
+between four values. Only then is the closed form beside it one pole. A4's settled and
+time-constant rows step aside when the calibrator is too fast for the probe, which is
+a setting the defaults never reach and the fuzzer does. And the lock-in's detector
+averages a whole number of the mixer's sum-term periods, so the mean it reports is the
+one the lesson quotes.
+
+What phase 1 still owes is recorded in `BACKLOG.md`. The browser harness has been
+written and not run. The progress path through the try steps is a click rather than a
+measured advance, and the headline callout on the schematic is not drawn.
+
 ---
 
 ## 10. Non-goals, stated so they are decisions rather than omissions

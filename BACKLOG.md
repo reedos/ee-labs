@@ -27,6 +27,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Random Signals Lab | building | `lab/random-lab` | Electronics O1 for one cross-reference | to write |
 | Control Lab II | building | `lab/control-lab-ii` | | `CONTROL_LAB_II_PLAN.md` |
 | Instruments Lab | building | `lab/instruments-lab` | RF Lab for the network analyser group | to write |
+| Instruments Lab | building | `lab/instruments-lab` | RF Lab for the network analyser group | `INSTRUMENTS_LAB_PLAN.md` |
 | Fields Lab | building | `lab/fields-lab` | | to write |
 | Energy Lab | built, dark | merged | Machines Lab for the wind group | `ENERGY_LAB_PLAN.md` |
 | Machines Lab | built, dark | merged | Power Lab L for the drives group, F now merged | `MACHINES_LAB_PLAN.md` |
@@ -115,6 +116,31 @@ Deferred, with what reopens each:
   `npm install --no-save`. Nothing in this lab needs a new dependency, and the
   lock file was not touched. Reopens at integration, where the director's
   `npm install` regenerates it.
+
+### Instruments Lab
+
+- **The network-analyser group.** Four experiments the plan names and does not build.
+  A reflection coefficient read on a mismatched line, a one-port measured against a
+  known standard, the two-port that a through and a reflect calibrate, and the Smith
+  chart the whole group is read on. It waits on the RF Lab for the line model and the
+  chart, per Decision 2 of the plan. Nothing in the built lab references any of it.
+- **The browser harness is written and unrun.** `apps/instruments-lab/scripts/verify.mjs`
+  drives the built page, reads every check row off the screen, switches every view and
+  holds the page to 390 px. Reed's instruction for the sitting that wrote it was no
+  Playwright, so the first run belongs to the next sitting. `app.test.jsx` renders the
+  shell and the panes on the server in the meantime, which is what found the missing
+  export the harness would have found first.
+- **Elements' progress path, prediction, headlines, marks and captions.** The shell was
+  built without those five modules. A try step is a button that turns its knobs rather
+  than a step that ticks itself off when the screen shows what it asked for. The
+  schematic carries no callout and the plots carry no caption. Each is a copy of an
+  Elements module and a sitting of its own, and none of them changes a number.
+- **The sample-and-hold, aperture time and hold droop.** Decision 4 of the plan. They
+  need scheduled switch events in `packages/network`, and the contract is in
+  `NEEDS.md`.
+- **A four-quadrant multiplier as an element.** Not needed here: the lock-in's mixer is
+  written as the two sinusoids its product is, exactly. Group E is the second consumer
+  to name if another lab asks for the element itself.
 
 ### Electronics Lab
 
