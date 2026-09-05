@@ -196,6 +196,9 @@ leave it out.
 | Digital logic past the inverter | Digital | none | Electronics D6 is the door, and the room behind it is not the signals half of the curriculum |
 | Transmission lines | Fields, high-speed | none | declined at the `systems` boundary by `CORE_SCOPE.md` |
 
+`ANALOG_ROADMAP.md` names the labs that would take the mixed-signal and high-frequency
+rows. They are tiers 4 and 5 of the path to industry-level analog.
+
 ---
 
 ## 5. Reading order, and the earliest point for each lab
