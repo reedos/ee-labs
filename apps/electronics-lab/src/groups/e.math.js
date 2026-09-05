@@ -172,17 +172,26 @@ export const ENTRIES_E = {
   e6(p, x) {
     const pt = x.point.Q1
     const alpha = p.beta / (p.beta + 1)
+    // The α a curve-model device shows is not β_F/(β_F + 1). The Early factor
+    // multiplies the collector current and not the base current, so the gain
+    // in the ratio is β_F(1 + v_CE/V_A), the same reading D2 measures on a
+    // curve tracer. Written with β_F alone the row is out by 1.6 % at β = 10
+    // on a 24 V supply, which is inside the knobs. Written this way it is
+    // exact, and the textbook α stays below where the reader can compare them.
+    const betaEff = p.beta * (1 + pt.vce / (p.va ?? 100))
+    const alphaEff = betaEff / (betaEff + 1)
     return {
       blocks: [
         T('The source sets the emitter current, and the emitter current is the sum of the other two. So the collector takes α of a number that no property of the device appears in.'),
         F('I_E = I_{source}, \\qquad I_C = \\alpha I_E = \\frac{\\beta}{\\beta + 1} I_E, \\qquad v_C = V_{CC} - I_C R_C'),
         C([
           row('emitter current the source sets', p.ie, -pt.ie, 'A', 1e-5, { abs: 1e-15 }),
-          row('collector current, α of it', alpha * p.ie, pt.ic, 'A', 0.01, { unchecked: notActive(pt) }),
+          row('collector current, α of it', alphaEff * p.ie, pt.ic, 'A', 1e-3, { unchecked: notActive(pt) }),
           row('collector voltage across R_C', p.vcc - pt.ic * p.RC, x.sol.v.c, 'V', 1e-9, { abs: 1e-12 }),
         ]),
         V([
           { label: 'α = β/(β + 1)', value: alpha, unit: '', note: 'the only device property left in the answer' },
+          { label: 'α measured, with the Early factor in β', value: alphaEff, unit: '', note: 'β_F(1 + v_CE/V_A) is the gain a curve tracer reads, and it is what the row above divides' },
           { label: 'base voltage, −i_B R_B', value: -pt.ib * p.RB, unit: 'V', note: 'the base current still has to come from somewhere' },
         ]),
       ],

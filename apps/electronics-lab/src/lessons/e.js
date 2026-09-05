@@ -7,22 +7,29 @@ export const LESSONS_E = {
     see:
       'The capacitor between the source and the base passes the signal and blocks the bias. At DC it carries ' +
       'no current at all, so the divider alone holds the base at 1.700 V while the source node sits at zero. ' +
-      'At 1.00 kHz the base receives 0.99999 of what the source offers.',
+      'At 1.00 kHz the base receives 0.99999 of what the source offers, and leads it by 0.100°.',
     seeReads: [
       ['v.b', 1.6996383],
       ['i.CC', 0],
       ['H.mag', 0.99999847],
+      ['H.deg', 0.10012972],
     ],
     try: [
       {
-        say: 'Drop the signal frequency to 1.75 Hz. The capacitor’s impedance has climbed to match what it drives, and the base receives 0.707 of the source.',
+        say: 'Drop the signal frequency to 1.75 Hz. The capacitor’s impedance has climbed to match what it drives, and the base receives 0.707 of the source. The lead is 45.0° there, which is what one pole gives at its own corner.',
         set: { f: 1.7476 },
-        reads: [['H.mag', 0.70710776]],
+        reads: [
+          ['H.mag', 0.70710776],
+          ['H.deg', 44.999781],
+        ],
       },
       {
-        say: 'Set it to 10.0 Hz, well above that corner. The base receives 0.985 of the source, and by 1.00 kHz the loss is a part in a million.',
+        say: 'Set it to 10.0 Hz, well above that corner. The base receives 0.985 of the source and leads it by 9.91°, and by 1.00 kHz both have almost gone.',
         set: { f: 10 },
-        reads: [['H.mag', 0.98507067]],
+        reads: [
+          ['H.mag', 0.98507067],
+          ['H.deg', 9.9128756],
+        ],
       },
       {
         say: 'Cut the capacitor to 0.100 µF. Its corner climbs a hundredfold, to 174.8 Hz, and the loss at 1.00 kHz is back to 0.985.',
