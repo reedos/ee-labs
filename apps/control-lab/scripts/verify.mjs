@@ -2985,6 +2985,141 @@ console.log('\n46. The catalogue refusal prints beside the bench circuit under m
   await clickPreset('First order lag')
 }
 
+// ---------------------------------------------------------------------------
+// 47. The loop diagram: the named blocks are actually ON SCREEN at phone
+// width, not merely present in the DOM
+//
+// Round-six grading (Layout, Seeing): the SVG carried a fixed 720px width,
+// independent of the viewport, inside a 358.8px dialog at 390x844 — `.fd-
+// scroll` measured clientWidth 329 against scrollWidth 720, so 54% of the
+// drawing (the P(s) box, the output y, the disturbance entry) sat past the
+// edge with no scrollbar, arrow or peek. A presence check (`.count()` or
+// `.textContent()`) passed on that exact build regardless: the elements were
+// IN THE DOM, just laid out past the edge of a scrollbox nobody thought to
+// scroll sideways (item 11's own lesson — a check that cannot see a zero
+// reads as a pass). This checks POSITION: every named block's own bounding
+// box must fall inside the dialog's visible box on arrival, page untouched.
+console.log('\n47. The loop diagram: every named block is inside the visible box on arrival (390x844)\n')
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await page.evaluate(() => document.fonts.ready)
+  await page.getByRole('button', { name: '⧉ diagram' }).click()
+  await page.waitForTimeout(200)
+
+  const visible = await page.locator('.fd-scroll').boundingBox()
+  if (!visible) fail('diagram: .fd-scroll did not render')
+
+  const portBox = (text) =>
+    page.evaluate((want) => {
+      const el = [...document.querySelectorAll('.fd-port')].find((t) => t.textContent.trim() === want)
+      if (!el) return null
+      const r = el.getBoundingClientRect()
+      return { x: r.x, y: r.y, width: r.width, height: r.height }
+    }, text)
+
+  const checkInside = (box, label) => {
+    if (!box) {
+      fail(`diagram at 390x844: ${label} not found`)
+      return
+    }
+    const clipped =
+      box.x < visible.x - 0.5 ||
+      box.y < visible.y - 0.5 ||
+      box.x + box.width > visible.x + visible.width + 0.5 ||
+      box.y + box.height > visible.y + visible.height + 0.5
+    if (clipped) {
+      fail(
+        `diagram at 390x844: ${label} is outside the visible box on arrival ` +
+          `(element ${box.x.toFixed(0)}–${(box.x + box.width).toFixed(0)} x ${box.y.toFixed(0)}–${(box.y + box.height).toFixed(0)}, ` +
+          `visible box ${visible.x.toFixed(0)}–${(visible.x + visible.width).toFixed(0)} x ${visible.y.toFixed(0)}–${(visible.y + visible.height).toFixed(0)})`,
+      )
+    }
+    return !clipped
+  }
+
+  const cBox = await page.locator('.fd-box[aria-label*="controller"]').boundingBox()
+  const pBox = await page.locator('.fd-box[aria-label*="plant"]').boundingBox()
+  const yPort = await portBox('y')
+  const dPort = await portBox('d')
+
+  const results = [
+    checkInside(cBox, 'the C(s) box'),
+    checkInside(pBox, 'the P(s) box'),
+    checkInside(yPort, 'the output y'),
+    checkInside(dPort, 'the disturbance entry (d)'),
+  ]
+  if (results.every(Boolean)) {
+    console.log('   C(s), P(s), the output y and the disturbance entry are all inside the visible box on arrival')
+  }
+  await page.keyboard.press('Escape')
+  await settle()
+}
+
+// ---------------------------------------------------------------------------
+// 48. The topbar verdict strip never needs a sideways scroll to be read, in
+// EVERY verdict a lesson or the picker can reach — not just the two common
+// ones
+//
+// Round-six grading (Layout, Seeing): lessons 8 and 9's own marginal Kp
+// state ("ON THE BOUNDARY" + "oscillates") measured .flow's scrollWidth at
+// 422px inside a 366px clientWidth, 56px over; the zero-denominator plant
+// from the picker ("NOT A SYSTEM" + "not a system") measured 418px, 52px
+// over — `.flow-note-full`'s computed display was already `none`, so this
+// was never the old full-sentence clip (item 26 above, which checks that no
+// .flow-node's OWN text runs past its own width) recurring. The two common
+// verdicts fit with 0-3px to spare and are included below as the control,
+// not skipped as redundant — a fix that widened the strip only for the rare
+// states and silently broke the common ones would pass a probe that only
+// ever checked the rare ones.
+console.log('\n48. The verdict strip never needs a sideways scroll, in every state (390x844)\n')
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+
+  const flowOverflow = async (label) => {
+    await page.waitForSelector('.flow-node')
+    await settle()
+    const { clientWidth, scrollWidth } = await page.evaluate(() => {
+      const flow = document.querySelector('.flow')
+      return { clientWidth: flow.clientWidth, scrollWidth: flow.scrollWidth }
+    })
+    if (scrollWidth > clientWidth + 1) {
+      fail(`flow strip at 390px, ${label}: scrollWidth ${scrollWidth} > clientWidth ${clientWidth} (${scrollWidth - clientWidth}px over)`)
+    } else {
+      console.log(`   ${label}: scrollWidth ${scrollWidth} <= clientWidth ${clientWidth}`)
+    }
+  }
+
+  // The two common verdicts, as the control: they already fit.
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await flowOverflow('stable ("stable" / "settles")')
+
+  await page.goto(`${URL}#plant=threePole&ctrl=p:80`, { waitUntil: 'load' })
+  await flowOverflow('UNSTABLE ("UNSTABLE" / "runs away")')
+
+  // The marginal state, lessons 8 and 9's own chip — the exact reproduction
+  // the grader gave.
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await loadLesson('Watch the poles cross')
+  await page.locator('.try-line .chip', { hasText: /on the axis/ }).click()
+  await flowOverflow('marginal, lesson 8 ("ON THE BOUNDARY" / "oscillates")')
+
+  await loadLesson('Everything is about one point')
+  await page.locator('.try-line .chip', { hasText: /on the axis/ }).click()
+  await flowOverflow('marginal, lesson 9 ("ON THE BOUNDARY" / "oscillates")')
+
+  // The zero-denominator plant, from the picker.
+  await page.goto(`${URL}#plant=custom:0:0:1:0:0:0&ctrl=p:1`, { waitUntil: 'load' })
+  await flowOverflow('zero-denominator ("NOT A SYSTEM" / "not a system")')
+
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await clickPreset('First order lag')
+}
+
 await browser.close()
 
 console.log('\n' + '='.repeat(64))

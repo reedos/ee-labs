@@ -190,6 +190,7 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .fd-head span em { color: var(--text); font-style: normal; font-weight: 600; }
 
 .fd-scroll { overflow-x: auto; }
+.fd-svg { display: block; }
 
 .fd-box rect {
   fill: var(--panel-2);
@@ -548,6 +549,25 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 @media (max-width: 900px) {
   .flow-note-full { display: none; }
   .flow-note-short { display: inline; }
+}
+
+/* Phone: the verdict PILL can still be wider than the strip has room for,
+   even with the short word above swapped in. Round six measured two states
+   past the edge: lessons 8 and 9's own marginal Kp ("ON THE BOUNDARY" +
+   "oscillates", 422px into a 366px .flow, 56px over) and the zero-
+   denominator plant from the picker ("NOT A SYSTEM" + "not a system", 418px,
+   52px over). Same root cause as the diagram dialog — overflow-x:auto sized
+   for the common case, with no visual cue that the rest scrolls — and
+   neither state is unreachable, just undiscoverable: nobody thought to
+   scroll a 14px-tall strip.
+   The two common verdicts ("stable" + "settles", "UNSTABLE" + "runs away")
+   are short enough to fit the strip with room to spare, so wrapping the
+   strip costs them nothing — flex-wrap only wraps a line that does not
+   already fit. Letting the LAST node drop to its own line, rather than
+   widening the whole topbar or shrinking the two other nodes, keeps the
+   C(s)/P(s) pills at their normal width and touches no other row's fold. */
+@media (max-width: 900px) {
+  .flow { flex-wrap: wrap; row-gap: 4px; }
 }
 
 /* On a short laptop screen with a lesson loaded, the subhead gives its
