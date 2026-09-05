@@ -18,6 +18,21 @@ import { Amp, BOT, Cap, Deg, Gm, Freq, GROUPS, H, R, TOP, Win, chips, gnd, leg, 
 /** M, the amplitude of each of the mixer's two terms. */
 export const mixerM = (p) => (p.A * p.Vr) / (2 * p.Vu)
 
+/**
+ * How long the detector averages, and from when.
+ *
+ * A whole number of periods of the mixer's sum term, so that term's mean over
+ * the span is zero rather than nearly zero; at most two reference periods, so
+ * the reading is quick; and at most a quarter of the window, so what is
+ * averaged is the settled output rather than the rise to it. At the defaults
+ * that is four periods of the 2 kHz term, 2 ms, ending 8 time constants in.
+ */
+export const detectOver = (p) => {
+  const period = 1 / (p.fs + p.fr)
+  const want = Math.min(2 / p.fr, (p.N * p.Rf * p.Cf) / 4)
+  return Math.max(1, Math.floor(want / period)) * period
+}
+
 /** The lock-in's netlist: the mixer as two sources, a VCCS, and the output RC. */
 export function lockinNet(p) {
   const M = mixerM(p)
@@ -94,7 +109,7 @@ export const GROUP_E = [
     window: (p) => p.N * p.Rf * p.Cf,
     points: 2401,
     cursor: 0.9,
-    detect: (p) => ({ of: (sol) => sol.v.out, over: Math.min(p.N * p.Rf * p.Cf, 2 / p.fr) }),
+    detect: (p) => ({ of: (sol) => sol.v.out, over: detectOver(p) }),
     scope: {
       left: {
         unit: 'V',
@@ -134,7 +149,7 @@ export const GROUP_E = [
     window: (p) => p.N * p.Rf * p.Cf,
     points: 2401,
     cursor: 0.9,
-    detect: (p) => ({ of: (sol) => sol.v.out, over: Math.min(p.N * p.Rf * p.Cf, 2 / p.fr) }),
+    detect: (p) => ({ of: (sol) => sol.v.out, over: detectOver(p) }),
     scope: { left: { unit: 'V', traces: [{ q: 'v', key: 'out', label: 'v_out' }] } },
     show: 'v',
     view: 'scope',
@@ -166,7 +181,7 @@ export const GROUP_E = [
     window: (p) => p.N * p.Rf * p.Cf,
     points: 2401,
     cursor: 0.9,
-    detect: (p) => ({ of: (sol) => sol.v.out, over: Math.min(p.N * p.Rf * p.Cf, 2 / p.fr) }),
+    detect: (p) => ({ of: (sol) => sol.v.out, over: detectOver(p) }),
     scope: { left: { unit: 'V', traces: [{ q: 'v', key: 'out', label: 'v_out' }] } },
     show: 'v',
     view: 'scope',

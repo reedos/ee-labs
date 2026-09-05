@@ -403,8 +403,13 @@ const CLAIMS = {
     const rs = p.Rs
     const dcNet = { elements: exp.net(p).elements.map((e) => (e.wave ? { ...e, wave: undefined, value: 1 } : e)) }
     const dc = solveDC({ elements: dcNet.elements.filter((e) => e.type !== 'C') })
+    // A compensated probe in front of the input is exactly one pole: the two
+    // resistors in series, the two capacitors in series, and the same time
+    // constant as either leg on its own. The experiment supplies C₁, because
+    // it is the one that holds the compensation (groups/a.js).
+    const c1 = exp.probeC1 ? exp.probeC1(p) : p.C1
     const rin = exp.probeIn ? p.R1 + p.R2 : p.R2
-    const cin = exp.probeIn ? (p.C1 * p.C2) / (p.C1 + p.C2) : p.C2
+    const cin = exp.probeIn ? (c1 * p.C2) / (c1 + p.C2) : p.C2
     const div = exp.probeIn ? (p.R2 / (p.R1 + p.R2)) * (rin / (rs + rin)) : rin / (rs + rin)
     return [
       F('f_3 = \\frac{1}{2\\pi (R_s \\parallel R_{in}) C_{in}}', 'the source resistance and the instrument’s own capacitance, in parallel'),
@@ -458,6 +463,15 @@ const CLAIMS = {
     const settled = (amp * p.R2) / (p.Rcal + p.R1 + p.R2)
     const tau = par(p.R1, p.R2) * (p.C1 + p.C2)
     const tFast = 20 * p.Rcal * (p.C1 + p.C2)
+    // Both of the last two rows are read inside one half period of the
+    // calibrator, at 0.45 of its period, and what is left of the transient
+    // there is exp(−t/τ) of the step. They are honest only while that is well
+    // under their own tolerance, which wants the reading sixteen time
+    // constants in; at the defaults it is thirty. A calibrator too fast for
+    // the probe in front of it never shows a settled value, and the panel says
+    // so rather than checking a number the waveform does not contain.
+    const tRead = 0.45 / p.fc
+    const settles = tRead > 16.2 * tau
     return [
       F('v(0^+) = \\frac{C_1}{C_1 + C_2}\\,v_{tip}, \\qquad v(\\infty) = \\frac{R_2}{R_1 + R_2}\\,v_{tip}', 'the capacitors share the edge, the resistors share the settled value'),
       C([
@@ -468,10 +482,23 @@ const CLAIMS = {
         // knob range puts the actual error at up to 1.7 times it, so the
         // guard carries a margin of three.
         row('just after the edge', settled + (edge - settled) * Math.exp(-tFast / tau), x.tr.at(tFast).sol.v.in, 'V', Math.max(1e-6, (3 * p.Rcal) / par(p.R1, p.R2))),
-        row('settled', settled, x.tr.at(0.45 / p.fc).sol.v.in, 'V', 1e-6),
-        row('the time constant between them, (R₁∥R₂)(C₁+C₂)', tau, tauFromStep(x, settled, edge), 's', 5e-3),
+        ...(settles
+          ? [
+              row('settled', settled, x.tr.at(tRead).sol.v.in, 'V', 1e-6),
+              // The step is the calibrator's, so both readings live inside one
+              // half period of it and the search for the time constant is
+              // bounded there. Past that the square wave turns over, and a
+              // search that ran on would find the next edge and call it a time
+              // constant.
+              row('the time constant between them, (R₁∥R₂)(C₁+C₂)', tau, tauFromStep(x, settled, edge, tRead), 's', 5e-3),
+            ]
+          : []),
       ]),
-      V([val('the value the edge lands at', edge, 'V'), val('the overshoot', 100 * (edge / settled - 1), '%')]),
+      V([
+        val('the value the edge lands at', edge, 'V'),
+        val('the overshoot', 100 * (edge / settled - 1), '%'),
+        ...(settles ? [] : [val('the calibrator’s half period', 0.5 / p.fc, 's', `too few of the probe’s ${tau.toPrecision(3)} s time constants to settle in, so the settled value is not read`)]),
+      ]),
     ]
   },
   // A6: rise time and bandwidth are one number.
@@ -499,9 +526,10 @@ const CLAIMS = {
     // sin(2πkm − x) = −sin(x). Above the fold the two are the same sequence.
     const sign = a.folded ? -1 : 1
     // The source is switched on at t = 0, so the front end's own natural
-    // response rides on the first few samples. Twenty time constants in it is
-    // 2 × 10⁻⁹ of the step, and the identity is all that is left.
-    const settled = 20 * par(p.Rs, p.R2) * p.C2
+    // response rides on the first few samples. The identity below is claimed
+    // to a part in 10¹², and e⁻³⁰ is 9 × 10⁻¹⁴ of the step, so thirty time
+    // constants in there is nothing left of the switch-on but the tone.
+    const settled = 30 * par(p.Rs, p.R2) * p.C2
     let worst = 0
     let counted = 0
     for (let k = 0; k < x.samples.t.length; k++) {
@@ -514,11 +542,20 @@ const CLAIMS = {
       F('A\\sin(2\\pi f\\,k/f_s + \\theta) = \\pm A\\sin(2\\pi (f - m f_s)\\,k/f_s \\pm \\theta)', 'because 2πmk is a whole number of turns'),
       C([
         row('the alias frequency', a.f, Math.abs(p.f - a.m * p.fs), 'Hz', 1e-12),
-        row('worst gap between the two sampled sequences', 0, worst, 'V', 1, 1e-12 * (A || 1)),
+        // A window too short, or a sample rate too slow, can leave no sample
+        // at all after the switch-on has died. Then there is no sequence to
+        // compare and the row says so by not being there.
+        // The identity is exact algebra, and at the defaults the two sequences
+        // agree to a part in 10¹⁴. What this row compares is the solver's
+        // sampled output against it, so it also carries the transient's own
+        // floor: a sweep of every knob's range puts that at 6 × 10⁻¹² of the
+        // tone by a few hundred cycles in, and the row is judged at 10⁻¹⁰.
+        ...(counted >= 4 ? [row('worst gap between the two sampled sequences', 0, worst, 'V', 1, 1e-10 * (A || 1))] : []),
       ]),
       V([
         val('the tone at the input', A, 'V'),
         val('samples compared', counted, '', a.folded ? 'the fold turns the phase over' : 'below the fold, its own representative'),
+        ...(counted >= 4 ? [] : [val('the window, in the front end’s own time constants', tEndOf(x) / par(p.Rs, p.R2) / p.C2, '', 'too few samples clear of the switch-on to compare the two sequences')]),
       ]),
     ]
   },
@@ -636,7 +673,9 @@ const CLAIMS = {
       F('|H(f)| = \\left[1 + Q^2\\left(\\frac{f}{f_0} - \\frac{f_0}{f}\\right)^2\\right]^{-1/2}', 'the band-pass magnitude, exactly'),
       C([
         row('at the tone', rlc(p.f), cx.cabs(x.ac.v.out) / p.A, '', 1e-9),
-        ...[50, 200, 1000].map((d) => row(`${d} Hz above the centre`, rlc(f0 + d), magAt(exp, { ...p, f: f0 + d }, f0 + d) / p.A, '', 1e-6)),
+        // `magAt` reads the sweep's own quantity, which is already the ratio to
+        // the drive; dividing by the amplitude again would measure 1/A².
+        ...[50, 200, 1000].map((d) => row(`${d} Hz above the centre`, rlc(f0 + d), magAt(exp, { ...p, f: f0 + d }, f0 + d), '', 1e-6)),
       ]),
       V([val('the resolution bandwidth', f0 / q, 'Hz'), val('the tone is off centre by', p.f - f0, 'Hz')]),
     ]
@@ -688,7 +727,12 @@ const CLAIMS = {
       F('\\tau = \\frac{2L}{R} = \\frac{1}{\\pi\\,\\Delta f}', 'the envelope of a band-pass rises with twice the energy time constant'),
       C([
         row('the decay rate the state matrix carries, R/2L', 1 / tau, alpha, '1/s', 1e-9),
-        row('the settled envelope', settled, peaks.length ? peaks[peaks.length - 1].y : NaN, 'V', 1e-3),
+        // The envelope of a band-pass driven at its own centre is the settled
+        // amplitude times 1 − e^(−t/τ), so the last peak is checked where it
+        // stands rather than against a value a short window never reaches.
+        // The departure from that shape is first order in 1/Q, which is the
+        // threshold, the same one the 90 % row carries.
+        row('the envelope at the last peak, (1 − e^(−t/τ)) of the settled value', settled * (1 - Math.exp(-(peaks.length ? peaks[peaks.length - 1].t : NaN) / tau)), peaks.length ? peaks[peaks.length - 1].y : NaN, 'V', 3 / q),
         // The envelope reaches 90 % at τ·ln 10 for a first-order rise. The
         // ringing one here departs from that by about 1/Q, which is the
         // threshold the row is judged against and the number the note states.
@@ -715,7 +759,18 @@ const CLAIMS = {
       worst = Math.max(worst, Math.abs(prod - sum))
     }
     const rows = [row('the product against its two-term sum', 0, worst, 'V', 1, 1e-14)]
-    if (p.fs === p.fr) rows.push(row('the settled output, M cos φ', M * gain * Math.cos(phi), x.detector.mean, 'V', 2e-3))
+    // On tune the difference term is a step through one pole, so the mean the
+    // detector reports over [a, b] is M·G·cos φ times the mean of 1 − e^(−t/τ)
+    // over that span, exactly. The row states that mean rather than the
+    // asymptote, and is left off entirely when the span starts so early that
+    // the sum term's own switch-on has not gone either.
+    if (p.fs === p.fr && x.detector) {
+      const tau = p.Rf * p.Cf
+      const a = x.detector.from
+      const b = x.tEnd
+      const rise = 1 - (tau / (b - a)) * (Math.exp(-a / tau) - Math.exp(-b / tau))
+      if (a >= 6 * tau) rows.push(row('the detector’s mean, M cos φ over the filter’s rise', M * gain * Math.cos(phi) * rise, x.detector.mean, 'V', 2e-3))
+    }
     return [
       F('A\\sin(\\omega_s t + \\varphi)\\,V_r\\sin(\\omega_r t)/V_u = M[\\cos((\\omega_s-\\omega_r)t+\\varphi) - \\cos((\\omega_s+\\omega_r)t+\\varphi)]', 'M = A·V_r/2V_u, and the identity is exact'),
       C(rows),
@@ -819,13 +874,15 @@ const CLAIMS = {
 /**
  * The time constant of a mis-compensated probe's step, read off the exact
  * solution: the instant the gap to the settled value has fallen by a factor e.
+ * `until` bounds the search, and it has to: the drive is a square wave, so the
+ * response is monotone only until the calibrator turns over.
  */
-function tauFromStep(x, settled, edge) {
+function tauFromStep(x, settled, edge, until = null) {
   if (Math.abs(edge - settled) < 1e-12 * Math.abs(settled)) return NaN
   const target = settled + (edge - settled) / Math.E
   const f = (t) => x.tr.at(t).sol.v.in
   let lo = 0
-  let hi = x.tEnd / 2
+  let hi = Math.min(until ?? Infinity, x.tEnd / 2)
   for (let k = 0; k < 200; k++) {
     const mid = (lo + hi) / 2
     const above = (f(mid) - target) * Math.sign(edge - settled) > 0
@@ -834,6 +891,9 @@ function tauFromStep(x, settled, edge) {
   }
   return (lo + hi) / 2
 }
+
+/** How long a dynamic experiment's window is, for a note that needs to say so. */
+const tEndOf = (x) => x.tEnd
 
 /** The maxima of a quantity along a transient, which is its envelope. */
 export function envelope(tr, pick) {

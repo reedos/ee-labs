@@ -70,7 +70,7 @@ export const LESSONS_C = {
         reads: [['v.tap', 2]],
       },
       {
-        say: 'Switch to the 200 V range. The tap gives 20 mV, a tenth of full scale, so the reading uses a tenth of the display’s counts.',
+        say: 'Switch to the 200 V range. The tap gives 20 mV, a tenth of full scale, so the reading uses a tenth of the display’s span.',
         set: { range: 200 },
         reads: [['v.tap', 0.02], [(x, p) => p.range, 200]],
       },
@@ -88,7 +88,7 @@ export const LESSONS_C = {
       'converter of 1 MΩ across that is C1’s problem again, and it costs 9.008 % of the reading. The ' +
       'buffer draws no input current, so the tap sees an open circuit and the divider keeps its ratio. ' +
       'That is why the input resistance is the chain’s and not the converter’s, and why it is the same ' +
-      'on every range. Elements E4 builds the same follower.',
+      'on every range. Elements E4 builds the same follower around one op-amp.',
     whyReads: [
       [(x, p) => ((p.Rtot - (p.Rtot * p.vfs) / p.range) * ((p.Rtot * p.vfs) / p.range)) / p.Rtot, 99000],
       [
@@ -142,7 +142,7 @@ export const LESSONS_C = {
       'The shunt is in series with the load, so the current is E/(R_L + R_sh) rather than E/R_L, and the ' +
       'error is R_sh/(R_L + R_sh). The voltage the meter reads is that current times the shunt, and it ' +
       'is subtracted from whatever the circuit had. A meter’s range fixes the shunt: 100 mV of full ' +
-      'scale for 10 A needs 10 mΩ, which turns 1 W into heat at full scale. Smaller shunts disturb the ' +
+      'scale for 10 A needs 10 mΩ. That turns 1 W into heat at full scale. Smaller shunts disturb the ' +
       'circuit less and give the converter less to read, and that is the whole trade.',
     whyReads: [
       [(x, p) => p.vfs / p.ifs, 0.01],
@@ -155,8 +155,8 @@ export const LESSONS_C = {
   c4: {
     see:
       'Force 1 mA down a pair of leads into a 1 Ω resistor and read the voltage at the instrument. The ' +
-      'answer is 1.2 Ω, high by 20 %, because the two 100 mΩ leads carried the same current and are ' +
-      'inside the reading.',
+      'answer is 1.2 Ω, high by 20 %. The two 100 mΩ leads carried the same current as the resistor, ' +
+      'so their drop is inside the reading.',
     seeReads: [
       [(x, p) => x.sol.v.f1 / p.Itest, 1.2],
       [(x, p) => (100 * (x.sol.v.f1 / p.Itest - p.Rx)) / p.Rx, 20],

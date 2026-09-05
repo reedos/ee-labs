@@ -39,8 +39,8 @@ export const TERMS = {
     name: 'Bandwidth',
     def:
       'The frequency at which a response has fallen to 1/√2 of its low-frequency value, which is 3.01 dB ' +
-      'down. For one pole it is 1/(2πRC). A 10 % to 90 % rise time and a bandwidth are the same number ' +
-      'twice, because t_r · f₃ = ln 9/2π = 0.3497.',
+      'down. For one pole it is 1/(2πRC). It also fixes the fastest edge an instrument can show, since ' +
+      't_r · f₃ = ln 9/2π = 0.3497.',
   },
   risetime: {
     name: 'Rise time',
@@ -67,8 +67,8 @@ export const TERMS = {
     name: 'Anti-alias filter',
     def:
       'A low-pass filter in front of a sampler, there to make sure nothing above half the sample rate ' +
-      'arrives. One pole is 40 dB down only a hundred times past its corner, so a scope samples far above ' +
-      'its own analog bandwidth rather than filtering harder.',
+      'arrives. One pole is 40 dB down only a hundred times past its corner. So a scope samples far ' +
+      'above its own analog bandwidth rather than filtering harder.',
   },
   shunt: {
     name: 'Shunt',
@@ -89,7 +89,7 @@ export const TERMS = {
     def:
       'An op-amp wired so its output follows its input and draws almost no current from it. It is what lets ' +
       'a meter’s divider set the input resistance instead of the converter behind it. Elements E5 builds ' +
-      'the same circuit.',
+      'the same circuit around one op-amp.',
   },
   fourwire: {
     name: 'Four-wire measurement',
@@ -187,11 +187,11 @@ export const MATCH = {
   shunt: /\bshunts?\b/i,
   burden: /\bburden voltage\b/i,
   buffer: /\bbuffers?\b/i,
-  fourwire: /\bfour[- ]wire\b/i,
+  fourwire: /\bfour[- ]wires?\b/i,
   rbw: /\bresolution bandwidth\b/i,
   detector: /\bdetectors?\b/i,
   lockin: /\block-in\b/i,
-  mixer: /\bmixer\b|\bmultipl(?:y|ier|ies)\b/i,
+  mixer: /\bmixer\b/i,
   quadrature: /\bquadrature\b/i,
   enbw: /\bequivalent noise bandwidth\b/i,
   count: /\bcounts?\b/i,

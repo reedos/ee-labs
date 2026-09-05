@@ -13,12 +13,12 @@ export const VIEW_ORDER = ['reading', 'equations', 'scope', 'bode', 'impedance',
 
 export const VIEW_LABELS = {
   reading: { label: 'Reading', title: 'The one number this experiment is about, and every meter on the circuit at once' },
-  equations: { label: 'Equations', title: 'The equations the solver built: one row per node, one per element that fixes a voltage, with live values' },
-  scope: { label: 'Scope', title: 'Voltages and currents against time; drag to move the cursor' },
-  bode: { label: 'Response', title: '|H| in dB and ∠H against log frequency; the marker is the drive' },
-  impedance: { label: 'Impedance', title: '|Z| and ∠Z the instrument shows against frequency; the marker is the drive' },
+  equations: { label: 'Equations', title: 'One row per node, one per element that fixes a voltage, with live values' },
+  scope: { label: 'Scope', title: 'Voltages and currents against time, with a cursor to drag' },
+  bode: { label: 'Response', title: '|H| in dB and ∠H against log frequency, with the drive marked' },
+  impedance: { label: 'Impedance', title: '|Z| and ∠Z the instrument shows against frequency, with the drive marked' },
   errorbar: { label: 'Error bar', title: 'The true value, the reading, what the display shows, and the accuracy claimed around it' },
-  contrib: { label: 'Contributions', title: 'One bar per input: its sensitivity times its tolerance, against the quadrature sum and the worst case' },
+  contrib: { label: 'Contributions', title: 'One bar per input: its sensitivity times its tolerance, against the two sums' },
 }
 
 export const GROUPS = [
@@ -41,6 +41,8 @@ export const Cap = (key, label, def, hint) => ({ key, label, unit: 'F', min: 1e-
 export const Ind = (key, label, def, hint) => ({ key, label, unit: 'H', min: 1e-6, max: 10, scale: 'log', default: def, hint })
 export const Freq = (key, label, def, hint) => ({ key, label, unit: 'Hz', min: 1, max: 1e7, scale: 'log', default: def, hint })
 export const Amp = (key, label, def, hint) => ({ key, label, unit: 'V', min: 1e-4, max: 10, scale: 'log', default: def, hint })
+/** A meter's full-scale range, in volts: the decades a bench instrument switches between. */
+export const Range = (key, label, def, hint) => ({ key, label, unit: 'V', min: 0.2, max: 1000, scale: 'log', default: def, hint })
 /** A current a source pushes, from a nanoamp of leakage to ten amps through a shunt. */
 export const Cur = (key, label, def, hint) => ({ key, label, unit: 'A', min: 1e-9, max: 10, scale: 'log', default: def, hint })
 /** A transconductance, in amps per volt. */

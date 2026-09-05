@@ -36,7 +36,7 @@ export const LESSONS_B = {
 
   b2: {
     see:
-      'Put a bandwidth limit at 20.00 kHz in front of the sampler. A 5 kHz signal keeps 0.9701 of its ' +
+      'Put an anti-alias filter at 20.00 kHz in front of the sampler. A 5 kHz signal keeps 0.9701 of its ' +
       'amplitude. A 95 kHz interferer keeps 0.2060, and at a 100 kSa/s sample rate it aliases onto ' +
       '5 kHz, on top of the signal.',
     seeReads: [

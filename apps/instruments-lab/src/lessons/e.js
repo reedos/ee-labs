@@ -44,12 +44,13 @@ export const LESSONS_E = {
       },
     ],
     why:
-      'The product of two sinusoids is exactly two sinusoids, at the difference of their frequencies and ' +
-      'at their sum, each of half the amplitude product. That identity is where this lab does its one ' +
-      'line of algebra by hand, and the math panel checks it at four hundred instants. With the ' +
+      'The product of two sinusoids is exactly two sinusoids, at the difference of their frequencies ' +
+      'and at their sum. Each carries half the amplitude product. That identity is where this lab does ' +
+      'its one line of algebra by hand, and the math panel checks it at four hundred instants. With the ' +
       'reference on the signal the difference term is at 0 Hz, so it is a constant the filter passes ' +
-      'whole. Everything else in the product is at 2 kHz, twelve times the filter’s own corner, and the ' +
-      'filter takes it down by a factor of 12.6.',
+      'whole. Everything else in the product is at 2 kHz, twelve times the filter’s own corner. The ' +
+      'filter takes it down by a factor of 12.6. A lock-in is that mixer and that filter, and little ' +
+      'else.',
     whyReads: [
       [(x, p) => p.fs + p.fr, 2000],
       [(x, p) => 1 / pass(p, p.fs + p.fr), 12.6061],
@@ -58,9 +59,9 @@ export const LESSONS_E = {
 
   e2: {
     see:
-      'The output filter does two jobs at once. Its 1 ms time constant is how long the reading takes to ' +
-      'settle, and its rejection at 2 kHz is what leaves 397 µV of ripple on a 5 mV reading. Its ' +
-      'equivalent noise bandwidth, 250 Hz, is the band the instrument is listening in.',
+      'The output filter does two jobs at once. Its 1 ms time constant is how long the reading takes ' +
+      'to settle. Its rejection at 2 kHz leaves 397 µV of ripple on a 5 mV reading. Its equivalent ' +
+      'noise bandwidth, 250 Hz, is the band the instrument is listening in.',
     seeReads: [
       [(x, p) => TAU(p), 1e-3],
       [(x, p) => M(p) * pass(p, p.fs + p.fr), 3.96633e-4],
@@ -99,7 +100,7 @@ export const LESSONS_E = {
     why:
       'One pole passes 1/√(1 + (f/f₃)²), so the ripple at twice the reference falls in proportion to the ' +
       'time constant. The same pole passes noise over an equivalent bandwidth of 1/(4RC), which is π/2 ' +
-      'times its −3 dB frequency exactly. Narrowing the filter by ten therefore improves both the ' +
+      'times its own corner frequency exactly. Narrowing the filter by ten therefore improves both the ' +
       'ripple and the noise by ten, and costs ten times the settling time. A lock-in on a slow ' +
       'experiment uses seconds of time constant and reads a band under a hertz wide.',
     whyReads: [
@@ -146,7 +147,7 @@ export const LESSONS_E = {
   e4: {
     see:
       'Move the signal 200 Hz off the reference and the difference term is no longer a constant. It is ' +
-      'a 200 Hz beat, which the 1 ms filter passes at 0.6227, so the output swings ±3.11 mV every 5 ms ' +
+      'a 200 Hz beat, which the 1 ms filter passes at 0.6227. The output swings ±3.11 mV every 5 ms ' +
       'instead of standing still.',
     seeReads: [
       [(x, p) => Math.abs(p.fs - p.fr), 200],
@@ -159,6 +160,7 @@ export const LESSONS_E = {
         say: 'Move the signal to 1.05 kHz, only 50 Hz off. The filter passes the beat at 0.954, so the swing is ±4.77 mV and slower, once every 20 ms.',
         set: { fs: 1050 },
         reads: [
+          [(x, p) => Math.abs(p.fs - p.fr), 50],
           [(x, p) => pass(p, Math.abs(p.fs - p.fr)), 0.954028],
           [(x, p) => M(p) * pass(p, Math.abs(p.fs - p.fr)), 0.00477014],
           [(x, p) => 1 / Math.abs(p.fs - p.fr), 0.02],
@@ -168,26 +170,32 @@ export const LESSONS_E = {
         say: 'Raise the filter capacitor a hundred times with the signal 200 Hz off. The swing collapses to 39.8 µV, and the band is now 2.5 Hz wide.',
         set: { Cf: 1e-4 },
         reads: [
+          [(x, p) => Math.abs(p.fs - p.fr), 200],
           [(x, p) => M(p) * pass(p, Math.abs(p.fs - p.fr)), 3.97883e-5],
           [(x, p) => ENBW(p), 2.5],
         ],
       },
       {
-        say: 'Move the signal to 1.5 kHz with the fast filter back. The swing is 793 µV, and a signal that far off is all but gone.',
+        say: 'Move the signal to 1.5 kHz with the fast filter back. The difference term is 500 Hz, which the filter passes at 0.303, so the swing is ±1.517 mV instead of the 5 mV on tune.',
         set: { fs: 1500 },
-        reads: [[(x, p) => M(p) * pass(p, Math.abs(p.fs - p.fr)), 7.93267e-4]],
+        reads: [
+          [(x, p) => Math.abs(p.fs - p.fr), 500],
+          [(x, p) => pass(p, Math.abs(p.fs - p.fr)), 0.303311],
+          [(x, p) => M(p) * pass(p, Math.abs(p.fs - p.fr)), 1.516557e-3],
+          [(x, p) => M(p), 0.005],
+        ],
       },
     ],
     why:
       'The difference term sits at |f_s − f_r| whatever that is, and the output filter treats it like ' +
       'any other signal. So the instrument answers only within its own equivalent noise bandwidth of ' +
-      'the reference, which is 250 Hz here and 2.5 Hz with a hundred times the capacitor. That band is ' +
-      'the whole point. It is why a lock-in finds a signal buried under noise a thousand times larger, ' +
-      'and why the reference has to come from whatever is driving the experiment rather than from a ' +
-      'separate oscillator.',
+      'the reference. That is 250 Hz here, and 2.5 Hz with a hundred times the capacitor. The band is ' +
+      'why a lock-in finds a signal buried under noise a thousand times larger. It is also why the ' +
+      'reference has to come from whatever drives the experiment rather than from a separate ' +
+      'oscillator.',
     whyReads: [
       [(x, p) => ENBW(p), 250],
-      [() => 2.5, 2.5],
+      [(x, p) => ENBW({ ...p, Cf: 1e-4 }), 2.5],
     ],
   },
 }

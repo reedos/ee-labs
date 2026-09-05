@@ -220,7 +220,9 @@ describe('the lab’s invariants', () => {
       const A = cx.cabs(x.ac.v.in)
       const th = cx.carg(x.ac.v.in)
       const sign = a.folded ? -1 : 1
-      const settled = 20 * par(p.Rs, p.R2) * p.C2
+      // Thirty time constants past the switch-on, e⁻³⁰ of the step is 9 × 10⁻¹⁴,
+      // which is below the part in 10¹² this identity is claimed to.
+      const settled = 30 * par(p.Rs, p.R2) * p.C2
       let counted = 0
       for (let k = 0; k < x.samples.t.length; k++) {
         const t = x.samples.t[k]

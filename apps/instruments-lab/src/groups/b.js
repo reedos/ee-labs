@@ -35,7 +35,7 @@ export const GROUP_B = [
     id: 'b1',
     group: GROUPS[1],
     instrument: 'scope',
-    name: 'A tone above half the sample rate arrives as another tone',
+    name: 'Above half the sample rate, a tone arrives as another',
     terms: ['samplerate', 'alias'],
     params: [
       chips(Freq('f', 'Tone', 9000), [4000, 9000, 19000]),

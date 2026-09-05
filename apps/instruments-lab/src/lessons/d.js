@@ -52,7 +52,7 @@ export const LESSONS_D = {
     why:
       'A series RLC read across R has magnitude [1 + Q²(f/f₀ − f₀/f)²]^(−1/2), with f₀ = 1/(2π√(LC)) and ' +
       'Q = ω₀L/R. The bracket is zero at f₀ and one at the two frequencies where the reactance equals ' +
-      'R, so those are the half-power points and their gap is f₀/Q exactly. Their geometric mean is f₀, ' +
+      'R. Those are the half-power points, and their gap is f₀/Q exactly. Their geometric mean is f₀, ' +
       'not ' +
       'their average, because the response is symmetric in log frequency rather than in frequency. The ' +
       'analyser quotes that gap as its resolution bandwidth, and every claim about resolving two lines ' +
@@ -96,8 +96,8 @@ export const LESSONS_D = {
       'The analyser has one filter and one detector, and the trace is the detector’s reading against ' +
       'where the filter is tuned. A tone at one frequency therefore draws the filter’s magnitude ' +
       'reversed, and a narrower filter draws a narrower line. A real analyser sweeps the filter past a ' +
-      'fixed tone rather than the tone past a fixed filter, and the two functions differ in the skirts ' +
-      'by about Δf/f₀. At the peak and at the half-power points they agree, so the width on the screen is ' +
+      'fixed tone rather than the tone past a fixed filter. The two functions differ in the skirts by ' +
+      'about Δf/f₀. At the peak and at the half-power points they agree, so the width on the screen is ' +
       'the same number either way.',
     whyReads: [['rbw', 100]],
   },

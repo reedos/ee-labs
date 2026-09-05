@@ -59,7 +59,10 @@ function ohmLayout(four) {
   ]
   if (!four) {
     // Two wires: the meter hangs across the pair the current was forced down.
-    items.push({ wire: [115, TOP, 115, 84] }, { el: 'Rm', x: 115, y: 104, dir: 'v' }, { wire: [115, 124, 115, RET] })
+    // The meter hangs at 140 rather than closer in: the forcing source's own
+    // label runs to about x = 115 once its reading is a milliamp wide, and a
+    // label on a symbol is what the geometry test calls a collision.
+    items.push({ wire: [140, TOP, 140, 84] }, { el: 'Rm', x: 140, y: 104, dir: 'v' }, { wire: [140, 124, 140, RET] })
     return { w: 560, h: 180, items }
   }
   items.push(
@@ -95,7 +98,7 @@ export const GROUP_C = [
     group: GROUPS[2],
     instrument: 'dmm',
     name: 'A voltmeter is a resistor across the circuit',
-    terms: ['loading', 'inputz'],
+    terms: [],
     params: [
       Vs('E', 'Source V₁', 10),
       chips(R('R1', 'R₁', 1e6), [1e4, 1e6]),
@@ -158,7 +161,10 @@ export const GROUP_C = [
         ...top('Rtop', 100),
         rail(120, 164, TOP),
         node('in', 40, TOP, 't'),
-        node('tap', 148, TOP, 't'),
+        // The tap's label is the widest text on this drawing, so its dot sits at
+      // the junction itself rather than back along the rail, where the label
+      // would reach over R_top's symbol.
+      node('tap', 164, TOP, 't'),
         ...leg('Rbot', 164),
         rail(40, 164, BOT),
         gnd(84),
@@ -192,7 +198,7 @@ export const GROUP_C = [
     id: 'c3',
     group: GROUPS[2],
     instrument: 'dmm',
-    name: 'An ammeter is a shunt, and burden voltage is the cost',
+    name: 'A shunt reads current, and burden voltage is the cost',
     terms: ['shunt', 'burden'],
     params: [
       Vs('E', 'Supply V₁', 5),

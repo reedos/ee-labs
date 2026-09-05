@@ -32,7 +32,7 @@ export const LESSONS_A = {
     ],
     why:
       'A resistor and a capacitor in parallel have admittance 1/R + jωC, so the impedance is ' +
-      '(1/R² + (ωC)²)^(−1/2). Below the corner the conductance is the larger term and the input is a ' +
+      '(1/R² + (ωC)²)^(−1/2). Below the corner the conductance is the larger term and the input impedance ' +
       'megohm. Above it the susceptance is, and the input falls as 1/ωC, by a factor of ten for every ' +
       'factor of ten in frequency. The corner between them is 10.61 kHz. Nothing about the instrument ' +
       'changes there. What changes is how much current the circuit under test has to supply, and a ' +
@@ -43,8 +43,9 @@ export const LESSONS_A = {
   a2: {
     see:
       'Connect a source of 100 kΩ straight to that input. At DC the scope reads 0.909 of the true ' +
-      'voltage, because 100 kΩ and 1 MΩ are a divider. The response is down by √2 at 116.7 kHz, and the ' +
-      'time constant behind that is R_s in parallel with R_in, not R_in alone.',
+      'voltage, because 100 kΩ and 1 MΩ are a divider. The input is loading the source, and both ' +
+      'numbers say so. The response is down by √2 at 116.7 kHz, and the time constant behind that is ' +
+      'R_s in parallel with R_in, not R_in alone.',
     seeReads: [
       ['H.mag', 0.909091],
       ['corner', 116714],
@@ -114,9 +115,9 @@ export const LESSONS_A = {
       'Each leg of the divider is a resistor and a capacitor in parallel, so each has impedance ' +
       'R/(1 + sRC). The ratio of the two legs is R₂(1 + sR₁C₁) over R₁(1 + sR₂C₂) plus R₂(1 + sR₁C₁). ' +
       'When R₁C₁ equals R₂C₂ the two brackets are the same factor and cancel, leaving R₂/(R₁+R₂) at ' +
-      'every frequency. That is why the trimmer exists, and it is the only setting at which the probe ' +
-      'divides by ten. Everywhere else the divider has a pole and a zero at different places, and the ' +
-      'trace tilts between them.',
+      'every frequency. The trimmer is there to make that equality hold, and it is the only setting at ' +
+      'which the probe divides by ten. Everywhere else the divider has a pole and a zero at different ' +
+      'places, and the trace tilts between them.',
   },
 
   a4: {
@@ -191,19 +192,18 @@ export const LESSONS_A = {
           ['H.mag', 0.0909089],
           ['corner', 116714],
           [(x, p) => 1 / (2 * Math.PI * ((p.Rs * p.R2) / (p.Rs + p.R2)) * p.C2), 21220.7],
-          [(x, p) => (((p.Rs * p.R2) / (p.Rs + p.R2)) * p.C2) / (((p.Rs * (p.R1 + p.R2)) / (p.Rs + p.R1 + p.R2)) * ((p.C1 * p.C2) / (p.C1 + p.C2))), 5.5],
+          [(x, p) => (((p.Rs * p.R2) / (p.Rs + p.R2)) * p.C2) / (((p.Rs * (p.R1 + p.R2)) / (p.Rs + p.R1 + p.R2)) * ((p.R2 * p.C2) / (p.R1 + p.R2))), 5.5],
         ],
       },
     ],
     why:
-      'Two capacitors in series present their series combination, which is 1.5 pF here rather than ' +
-      '15 pF, and two resistors in series present 10 MΩ. So the probe divides the signal by ten and ' +
-      'divides the loading by ten as well. The bandwidth into a 100 kΩ source goes up by 9.18 times, ' +
-      'not by ten, because the source resistance is no longer negligible against the input. The ten ' +
-      'times smaller signal is the price, and it is why a probe is switched to 1× for small signals ' +
-      'and left at 10× for everything else.',
+      'Two capacitors in series present their series combination, 1.5 pF here rather than 15 pF. Two ' +
+      'resistors in series present 10 MΩ. So the probe divides the signal by ten, and divides the ' +
+      'loading by ten as well. The bandwidth into a 100 kΩ source goes up by 9.18 times rather than ' +
+      'by ten, because the source resistance is no longer small against the input. The ten times ' +
+      'smaller signal is the price, and it is why a probe is switched to 1× for small signals.',
     whyReads: [
-      [(x, p) => (1 / (2 * Math.PI * ((p.Rs * (p.R1 + p.R2)) / (p.Rs + p.R1 + p.R2)) * ((p.C1 * p.C2) / (p.C1 + p.C2)))) / (1 / (2 * Math.PI * ((p.Rs * p.R2) / (p.Rs + p.R2)) * p.C2)), 9.18182],
+      [(x, p) => (1 / (2 * Math.PI * ((p.Rs * (p.R1 + p.R2)) / (p.Rs + p.R1 + p.R2)) * ((p.R2 * p.C2) / (p.R1 + p.R2)))) / (1 / (2 * Math.PI * ((p.Rs * p.R2) / (p.Rs + p.R2)) * p.C2)), 9.18182],
     ],
   },
 

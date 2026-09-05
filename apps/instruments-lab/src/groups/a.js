@@ -80,13 +80,22 @@ const probe = (p) => [
 const sine = (amp, freq) => ({ kind: 'sine', amp, freq })
 const cycles = (p) => (p.N / p.f)
 
+/**
+ * A5's probe is compensated by construction. Compensation is a relation
+ * between four values, R₁C₁ = R₂C₂, and A5 is not about breaking it — A3 and
+ * A4 are. So C₁ is derived from the other three rather than offered as a
+ * knob, and every setting of the other three is exactly one pole, which is
+ * what the closed form beside it claims.
+ */
+export const compensatedC1 = (p) => (p.R2 * p.C2) / p.R1
+
 export const GROUP_A = [
   {
     id: 'a1',
     group: GROUPS[0],
     instrument: 'scope',
     name: 'The scope input is a resistor and a capacitor',
-    terms: ['inputz', 'bandwidth'],
+    terms: ['inputz'],
     params: [
       SCOPE_R,
       SCOPE_C,
@@ -128,7 +137,7 @@ export const GROUP_A = [
     group: GROUPS[0],
     instrument: 'scope',
     name: 'A probe loads what it measures',
-    terms: ['loading', 'probe'],
+    terms: ['loading'],
     params: [
       chips(R('Rs', 'Source R_s', 1e5), [1e3, 1e5, 1e6]),
       SCOPE_R,
@@ -167,7 +176,7 @@ export const GROUP_A = [
     group: GROUPS[0],
     instrument: 'scope',
     name: 'The 10× probe is a divider that can be flat',
-    terms: ['compensation'],
+    terms: ['probe'],
     params: [
       R('R1', 'Probe R₁', 9e6),
       chips(Cap('C1', 'Probe C₁', 1.6666666666666667e-12), [1e-12, 1.6666666666666667e-12, 3e-12]),
@@ -214,7 +223,7 @@ export const GROUP_A = [
     group: GROUPS[0],
     instrument: 'scope',
     name: 'Compensation, on a square wave',
-    terms: [],
+    terms: ['compensation'],
     params: [
       chips(Cap('C1', 'Probe C₁', 1e-12), [1e-12, 1.6666666666666667e-12, 3e-12]),
       R('R1', 'Probe R₁', 9e6),
@@ -256,11 +265,10 @@ export const GROUP_A = [
     group: GROUPS[0],
     instrument: 'scope',
     name: 'What the probe buys, and what it costs',
-    terms: [],
+    terms: ['bandwidth'],
     params: [
       chips(R('Rs', 'Source R_s', 1e5), [1e3, 1e5, 1e6]),
       R('R1', 'Probe R₁', 9e6),
-      Cap('C1', 'Probe C₁', 1.6666666666666667e-12),
       SCOPE_R,
       SCOPE_C,
       Amp('A', 'Amplitude', 1),
@@ -270,12 +278,13 @@ export const GROUP_A = [
       elements: [
         { type: 'V', id: 'V1', nodes: ['src', 'gnd'], value: 0, wave: sine(p.A, p.f) },
         { type: 'R', id: 'Rs', nodes: ['src', 'tip'], value: p.Rs },
-        ...probe(p),
+        ...probe({ ...p, C1: compensatedC1(p) }),
         ...scopeIn(p),
       ],
     }),
     layout: probeLayout('Rs', 'src'),
     probeIn: true,
+    probeC1: compensatedC1,
     sweep: (p) => ({ from: 1, to: 1e8, mode: 'bode', of: (ac) => cx.cscale(ac.v.in, 1 / p.A) }),
     show: 'v',
     view: 'bode',

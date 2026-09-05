@@ -8,7 +8,7 @@
 // generated anywhere in this lab.
 
 import { solveDC } from '@ee-labs/network'
-import { Amp, BOT, Cap, Choice, Cur, GROUPS, H, Pct, R, TOP, Vs, chips, gnd, leg, node, rail, src, top } from '../kit.js'
+import { BOT, Cap, Choice, Cur, GROUPS, H, Pct, R, Range, TOP, Vs, chips, gnd, leg, node, rail, src, top } from '../kit.js'
 import { meterOf, sensitivities } from '../math.js'
 
 /** Source, one series resistance, then the legs across the output. */
@@ -57,7 +57,7 @@ const METER_KNOBS = [
   chips(R('R2', 'R₂', 1e6), [1e4, 1e6]),
   chips(R('Rm', 'Meter R_in', 1e7), [1e6, 1e7, 1e9]),
   Choice('counts', 'Display', 1999, METERS, 'how many counts the display has'),
-  chips(Amp('range', 'Range', 20), [2, 20, 200]),
+  chips(Range('range', 'Range', 20), [2, 20, 200]),
 ]
 
 export const GROUP_F = [
@@ -141,7 +141,7 @@ export const GROUP_F = [
       chips(Cap('C2', 'Input C', 15e-12), [15e-12, 1e-9]),
       { key: 'T', label: 'Temperature', unit: 'K', min: 4, max: 400, scale: 'linear', default: 300, eng: false },
       Choice('counts', 'A meter, for comparison', 1999, METERS),
-      chips(Amp('range', 'Its range', 20), [2, 20, 200]),
+      chips(Range('range', 'Its range', 20), [2, 20, 200]),
       Cur('I', 'Test current', 1e-6),
       { key: 'f', label: 'Frequency', unit: 'Hz', min: 1, max: 1e7, scale: 'log', default: 1000 },
     ],

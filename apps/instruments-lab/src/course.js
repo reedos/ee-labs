@@ -8,7 +8,7 @@ import { EXPERIMENTS, GROUPS } from './experiments.js'
 
 /** One sentence per group, keyed by its letter: what the group is for. */
 export const GROUP_INTRO = {
-  A: 'A scope reading is a divider between the circuit and the scope. The input is a resistor and a capacitor, and the probe in front of it is a second pair.',
+  A: 'A scope reading is a divider between the circuit and the scope. The input is a resistor and a capacitor, and the probe in front is a second pair.',
   B: 'The front end is analog and the display is not. Between samples a digital instrument knows nothing, and two tones can leave the same numbers behind.',
   C: 'A meter is three circuits behind one pair of leads. Each of them changes the thing it measures, and by how much is arithmetic.',
   D: 'An analyser is a tuned filter, a detector and a sweep. The width of a line on its screen belongs to the filter, not to the signal.',
