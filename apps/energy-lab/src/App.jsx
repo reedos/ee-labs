@@ -5,6 +5,7 @@ import { EXPERIMENTS, GROUPS, GROUP_INTROS, VIEW_LABELS, byId, byGroup, defaults
 import { analyse } from './analysis.js'
 import { experimentMath } from './math.js'
 import { termsFor } from './terms.js'
+import { guardsFor } from './guards.js'
 import IVCanvas from './components/IVCanvas.jsx'
 import StringCanvas from './components/StringCanvas.jsx'
 import ScopeCanvas from './components/ScopeCanvas.jsx'
@@ -84,6 +85,25 @@ function ChoiceField({ knob, value, onChange }) {
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+/**
+ * The sentences the models are not allowed to be read without: the reverse
+ * branch's bound, the open-circuit fit's band, and the day's profiles named
+ * as data. `guards.js` decides which apply; the pane only places them.
+ */
+function Guards({ x }) {
+  const guards = guardsFor(x)
+  if (!guards.length) return null
+  return (
+    <div className="guards">
+      {guards.map((g) => (
+        <p key={g.text.slice(0, 24)} className={`guard is-${g.level}`} data-role="guard">
+          {g.text}
+        </p>
+      ))}
     </div>
   )
 }
@@ -382,6 +402,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
           <div className="view-body">
             <ViewBody view={currentPlot} exp={exp} x={x} />
             {x.kind === 'battery' ? <CursorRow x={x} onScrub={setCursor} /> : null}
+            <Guards x={x} />
           </div>
         </section>
 

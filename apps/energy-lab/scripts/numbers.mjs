@@ -41,6 +41,7 @@ import {
   vocFormula,
   vtAt,
 } from '../src/physics.js'
+import { humpsOf } from '../src/analysis.js'
 
 const f = (x, d = 4) => (Number.isFinite(x) ? Number(x.toPrecision(d)) : x)
 const head = (s) => console.log(`\n=== ${s}`)
@@ -132,10 +133,17 @@ console.log('power lost          ', f((1 - shaded.pmpp / clear.pmpp) * 100, 4), 
 {
   const x = atI(SHADE, shaded.impp, shade(0.3))
   console.log('at the shaded MPP the shaded cell holds', f(x.sol.volt.D0_0, 5), 'V and the other eleven each', f(x.sol.volt.D0_1, 5), 'V')
-  const y = atI(SHADE, clear.impp, shade(0.3))
+  // The forcing current is the string's own maximum power current at the
+  // nominal shunt, which is the number the rest of the lab quotes and the
+  // current B4's knob opens at. The 5 Ω shunt of this group is a stand-in for
+  // a reverse branch the model has not got, so it does not get to set what
+  // "the clear string's maximum" means.
+  const forced = figures({ ...C, Ns: 12 }).impp
+  const y = atI(SHADE, forced, shade(0.3))
   const vShaded = y.sol.v.s0n1
-  console.log('driven at the clear MPP current instead, the shaded cell holds', f(vShaded, 5), 'V across itself')
-  console.log('   and turns', f(-vShaded * clear.impp, 5), 'W into heat, in one cell — the hot spot')
+  console.log('driven at the clear string’s MPP current of', f(forced, 6), 'A, the shaded cell holds', f(vShaded, 5), 'V across itself')
+  console.log('   its reverse current is', f(forced - 0.3 * C.iph, 6), 'A, all of it through the 5 Ω shunt')
+  console.log('   and turns', f(-vShaded * forced, 5), 'W into heat, in one cell — the hot spot')
   console.log('   the string terminal is then at', f(y.v, 5), 'V')
 }
 
@@ -153,12 +161,13 @@ console.log('still short of clear', f((1 - withByp.pmpp / clear.pmpp) * 100, 4),
 
 head('B · the two humps')
 {
-  const isc = shortCircuit(SHADE, byp)
-  const n = 600
-  const pts = Array.from({ length: n + 1 }, (_, k) => atI(SHADE, (isc * (1 - 1e-4) * k) / n, byp))
-  const peaks = []
-  for (let k = 1; k < n; k++) if (pts[k].p > pts[k - 1].p && pts[k].p >= pts[k + 1].p) peaks.push(pts[k])
-  console.log('local maxima on the P–V curve:', peaks.map((x) => `${f(x.v, 5)} V / ${f(x.p, 5)} W`).join('    |    '))
+  // The app's own search, so the plan and the panel cannot disagree: a scan
+  // says which brackets hold a maximum, and a golden section says where in
+  // the bracket it is. A scan alone reads the nearest sample rather than the
+  // maximum, which on the lower hump is a tenth of a volt out.
+  const peaks = humpsOf(SHADE, { shade: { k: 0, G: 0.3 * G_REF }, bypass: [0] })
+  console.log('local maxima on the P–V curve:', peaks.map((x) => `${f(x.v, 6)} V / ${f(x.p, 6)} W`).join('    |    '))
+  console.log('the lower one is the string’s own maximum with the diode out:', f(shaded.pmpp, 6), 'W at', f(shaded.vmpp, 6), 'V')
 }
 
 head('C · a fixed resistor cannot follow the sun')

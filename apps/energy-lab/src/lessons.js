@@ -574,14 +574,19 @@ export const LESSONS = {
         ],
       },
       {
-        say: 'Look at the P–V curve. It has two maxima now, 26.5964 W at 5.7072 V and 10.3010 W at 7.0736 V.',
+        say: 'Look at the P–V curve. It has two maxima now, 26.5964 W at 5.70504 V and 10.3057 W at 7.19759 V. The lower one is the string’s own maximum with the diode out.',
         set: { bypass: true },
         reads: [
-          [(x) => Math.max(...x.humps.map((h) => h.p)), 26.5964, 0.01],
-          [(x) => Math.min(...x.humps.map((h) => h.p)), 10.301, 0.01],
-          [(x) => x.humps.find((h) => h.p > 20).v, 5.7072, 0.005],
-          [(x) => x.humps.find((h) => h.p < 20).v, 7.0736, 0.005],
+          [(x) => Math.max(...x.humps.map((h) => h.p)), 26.5964],
+          [(x) => Math.min(...x.humps.map((h) => h.p)), 10.3057],
+          [(x) => x.humps.find((h) => h.p > 20).v, 5.70504],
+          [(x) => x.humps.find((h) => h.p < 20).v, 7.19759],
           [(x) => x.humps.length, 2],
+          // The lower hump is not merely near the undioded string's maximum.
+          // It is that maximum, because below the shaded cell's photocurrent
+          // the diode blocks and the circuit is the same one.
+          [(x, p, again) => again({ bypass: false }).fig.pmpp, 10.3057],
+          [(x, p, again) => again({ bypass: false }).fig.vmpp, 7.19759],
         ],
       },
     ],

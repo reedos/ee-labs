@@ -119,6 +119,12 @@ search per point. It buys a curve with no holes in it. It is worth saying on
 screen, because it is the same sentence as the physics. Ask a string what
 current it is carrying, not what voltage it is at.
 
+A maximum of that curve is found in two steps. A coarse scan says which
+bracket of the current holds one. A golden section on the exact solve then
+says where in the bracket it is. That second step makes B5's two humps the
+model's own, rather than the nearest of 121 samples. On the lower hump the
+difference is a tenth of a volt.
+
 ### 2.3 The temperature law, stated
 
 The photocurrent is proportional to the irradiance exactly:
@@ -143,16 +149,17 @@ carries this law, labelled, and reports the coefficient the law produces.
 A shaded cell in a string is asked to carry more current than its light makes.
 Its junction is driven backwards. A real cell then breaks down near −15 V, and
 this model has no breakdown. Its only reverse path is the shunt resistance.
-With `R_sh` at 5 Ω, a reverse current of 3.28 A puts −15.885 V across the
-shaded cell. That cell turns 74.295 W into heat, which is the hot spot bypass
+With `R_sh` at 5 Ω, a reverse current of 3.27793 A puts −16.390 V across the
+shaded cell. That cell turns 78.31 W into heat, which is the hot spot bypass
 diodes exist to prevent.
 
 Under Rule 3 of `CORE_SCOPE.md` that number carries a guard, and the guard is
 concrete. The model stands in for the real reverse branch only while the shaded
 cell's voltage stays above about −15 V. Below that a real cell breaks down and
-this one does not. Group B's notes state the threshold, and the panel shows the
-reverse voltage against it. The claim a reader takes away is the size of the
-heat and its mechanism, not the exact volts.
+this one does not. B4's own default is past that bound, by design.
+`src/guards.js` holds the sentence that says so, and the panel prints it under
+every picture that shows a reverse voltage. The claim a reader takes away is
+the size of the heat and its mechanism, not the exact volts.
 
 ### 2.5 The tracker
 
@@ -348,18 +355,21 @@ constant.
   cell of twelve. The other eleven are untouched and still make their power.
   They cannot deliver it. Measured: the new maximum, the string current, and
   each junction's own voltage.
-- **B4 · The hot spot.** Drive the shaded string at the clear string's maximum
-  power current of 4.77793 A. The shaded cell is pushed backwards to −15.885 V.
-  It turns 74.295 W into heat, more than twice what the whole clear string
-  makes. The terminal has gone to −9.8151 V, so the string is now a load.
-  Measured: the reverse voltage, the dissipation and the terminal. Each is
-  printed beside §2.4's guard.
+- **B4 · The hot spot.** Drive the shaded string at 4.77793 A, which is the
+  string's own maximum power current at the nominal shunt. The shaded cell
+  cannot make it, so it is pushed backwards to −16.390 V. Its reverse current
+  of 3.27793 A goes through the 5 Ω shunt and nothing else. It turns 78.31 W
+  into heat, which is more than twice what the whole clear string makes. The
+  terminal has gone to −10.494 V, so the string is now a load. Measured: the
+  reverse voltage, the dissipation and the terminal. Each is printed beside
+  §2.4's guard.
 - **B5 · The bypass diode.** Put a diode across the shaded cell, anode at its
   bottom. Above the shaded cell's photocurrent it conducts, and the string's
-  current goes round. P_mpp rises from 10.306 W to 26.596 W, which is 158.1 %
-  more. The shaded cell now holds −0.3839 V instead of −15.885 V. The P–V curve
-  has two maxima, at 7.2008 V with 10.306 W and at 5.7078 V with 26.596 W. A
-  tracker that only walks uphill can settle on the wrong one.
+  current goes round. P_mpp rises from 10.3057 W to 26.5964 W, which is
+  158.1 % more, and the shaded cell holds −0.3839 V rather than volts. The P–V
+  curve now has two maxima, at 5.70504 V with 26.5964 W and at 7.19759 V with
+  10.3057 W. The lower one is the string's own maximum with the diode out, to
+  six figures. A tracker that only walks uphill can settle on it.
 
 ### Group C: Tracking the maximum power point (5)
 

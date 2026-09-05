@@ -204,7 +204,7 @@ function analyseArray(exp, p) {
   x.cells = cellRows(c, s, x.at.sol)
   // Every local maximum of the P–V curve. One for a uniformly lit array, two
   // when a bypass diode has split the string into two of them.
-  x.humps = humps(curve)
+  x.humps = humpsOf(c, s, exp.points || 121)
   return x
 }
 
@@ -457,10 +457,62 @@ export function shuntSlope(x) {
   return (b.i - a.i) / (b.v - a.v)
 }
 
-/** Every local maximum of the P–V curve, in order of voltage. */
-export function humps(curve) {
-  const pts = [...curve].sort((a, b) => a.v - b.v)
+/**
+ * Every local maximum of the P–V curve, in order of voltage.
+ *
+ * The scan finds which brackets hold one, and `refine` then finds where in
+ * the bracket it is. Without that second step a hump's voltage is the nearest
+ * of 121 sample points, which on B5's lower hump is a tenth of a volt out —
+ * a reading off the grid rather than off the model. `refine(a, b)` maximises
+ * the power over a bracket of the current and returns the point.
+ */
+export function humps(curve, refine = null) {
+  // Current-ascending, which is the order the sweep solved them in.
+  const pts = [...curve].sort((a, b) => a.i - b.i)
   const out = []
-  for (let k = 1; k < pts.length - 1; k++) if (pts[k].p > pts[k - 1].p && pts[k].p >= pts[k + 1].p) out.push(pts[k])
-  return out
+  for (let k = 1; k < pts.length - 1; k++) {
+    if (pts[k].p > pts[k - 1].p && pts[k].p >= pts[k + 1].p) {
+      out.push(refine ? refine(pts[k - 1].i, pts[k + 1].i) : pts[k])
+    }
+  }
+  return out.sort((a, b) => a.v - b.v)
 }
+
+/**
+ * Golden-section maximisation of the power over a bracket of the current,
+ * every point of it an exact solve. `physics.js` does the same for the one
+ * maximum a lit array has; this is the same search over a bracket the scan
+ * chose, so a shaded array's second hump is as exact as its first.
+ */
+function refineHump(c, s, a, b) {
+  const opts = optsOf(s)
+  const f = (I) => atI(c, I, opts)
+  const phi = (Math.sqrt(5) - 1) / 2
+  let lo = a
+  let hi = b
+  let c1 = hi - phi * (hi - lo)
+  let c2 = lo + phi * (hi - lo)
+  let f1 = f(c1)
+  let f2 = f(c2)
+  for (let k = 0; k < 60 && hi - lo > 1e-12 * (b - a + 1); k++) {
+    if (f1.p > f2.p) {
+      hi = c2
+      c2 = c1
+      f2 = f1
+      c1 = hi - phi * (hi - lo)
+      f1 = f(c1)
+    } else {
+      lo = c1
+      c1 = c2
+      f1 = f2
+      c2 = lo + phi * (hi - lo)
+      f2 = f(c2)
+    }
+  }
+  const best = f1.p > f2.p ? f1 : f2
+  return { v: best.v, i: best.i, p: best.p, iters: best.iters }
+}
+
+/** The refined humps of one array, memoised: the search costs about ninety solves. */
+export const humpsOf = (c, s, n = 121) =>
+  memo(`hump${keyOf(c, s)}|${n}`, () => humps(curveOf(c, s, n), (a, b) => refineHump(c, s, a, b)))

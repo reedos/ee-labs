@@ -145,6 +145,21 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .view-body { display: flex; flex-direction: column; min-height: 0; }
 .view-body > .plot { flex: 1 1 auto; min-height: 0; }
 
+/* The bound a guarded number carries, under the picture that prints it. A
+   warning is the same sentence in the warning hue: the model has left the
+   range it stands in for, and the reader is told rather than stopped. */
+.guards { flex: 0 0 auto; }
+.guard {
+  margin: 8px 0 0;
+  padding: 6px 9px;
+  border-left: 2px solid var(--line-bright);
+  background: var(--panel-2);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.guard.is-warn { border-left-color: var(--warn); color: var(--text); }
+
 /* Which instant of a battery run the meters read. */
 .cursor-row { flex: 0 0 auto; padding: 6px 2px 2px; }
 .cursor-head {
