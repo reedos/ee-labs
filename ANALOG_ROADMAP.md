@@ -322,7 +322,7 @@ Group H seen from the chip. High voltage and isolation on tier 2's protection gr
 Analog computing and current-mode circuits on tier 3's translinear group. None of
 these needs a new lab or a new engine.
 
-**Two further tiers, if wanted.**
+**One further tier, if wanted.**
 
 - **Tier 6, the system.** The whole chain from antenna or sensor to bits: cascaded
   noise figure, linearity and dynamic-range budgets, power allocation across blocks,
@@ -330,12 +330,12 @@ these needs a new lab or a new engine.
   does not. Signal Lab's chain model, sources into a cascade of blocks, already fits
   it, so the engine cost is low. Its objects are budgets over exact block models, all
   admitted.
-- **Tier 7, the bench.** Every claim in the suite is checked against its own model.
-  The last step checks it against a real circuit: a breadboard, a scope and a
-  generator, read into the lab over WebUSB or from a file. The measurement is drawn
-  on the model's plot and the gap is explained. It is the founding rule taken one step
-  further. It is also where a reader learns what a real measurement cannot resolve,
-  which is the instrument's own floor from tier 2's bench notes.
+
+**Not a tier: the bench.** The suite does not load measurements from real instruments
+(Reed, 2026-09-05). Every claim is checked by its own test, nothing is installed, and
+a lab stays a model a reader can trust without owning a scope. The bench appears only
+as tier 2's note on each experiment: how the number would be measured, with which
+instrument, and what that instrument's own floor is.
 
 Past these the ground changes. Electromagnetics, device physics, reliability and
 process technology are neighbouring disciplines with no exact form the suite could
