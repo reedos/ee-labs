@@ -54,11 +54,13 @@ an experiment that exists:
 built here because Control Lab II is being built in parallel and was not
 available (plan Decision 5). It is minimal on purpose. Two states, one
 trajectory, the equilibrium marked, and a `direction` prop that draws a
-direction field and is off by default. Control Lab II's needs that are already
-in its props: an arbitrary pair of states rather than current against speed,
-and the equilibrium as a given rather than a computed operating point. What it
-lacks and Control Lab II will want: a nullcline overlay, a limit cycle drawn as
-a closed orbit, and more than one trajectory at once.
+direction field and is off by default.
+
+Control Lab II's needs are already in its props. It can pass an arbitrary pair
+of states rather than current against speed, and the equilibrium as a given
+rather than a computed operating point. What it lacks and Control Lab II will
+want: a nullcline overlay, a limit cycle drawn as a closed orbit, and more than
+one trajectory at once.
 
 **The torque–speed canvas** and **the rotating-field canvas** stay in the app.
 No second lab is named for either. The Energy Lab's wind group and the Grid
@@ -83,8 +85,8 @@ F: { name: 'CCCS', unknownCurrent: false },   // { type: 'F', nodes: [a, b], ove
 // carries a current unknown (V, VCVS, OPAMP, or L in the AC solve).
 ```
 
-Test to ship with it: the ideal transformer built with `F` and the one built
-with a sense branch agree to floating point, and Tellegen across both is zero.
+Test to ship with it. The ideal transformer built with `F` and the one built
+with a sense branch agree to floating point. Tellegen across both is zero.
 
 **A coupled-inductor element.** Power Lab's Group D and this lab's B3 both draw
 a transformer with leakage. Both build it from an ideal transformer with series

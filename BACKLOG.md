@@ -71,6 +71,25 @@ dependency or decision that reopens it.
 - Group B lives in Elements as I9 and I10 (Decision 3).
 - Groups D to O wait on lane 1's gate, inside the lab's own brief.
 
+### Machines Lab
+
+- The drives group, four experiments specified in `MACHINES_LAB_PLAN.md`
+  Decision 4: a chopper into the DC machine, an inverter into the induction
+  machine, and a field-oriented drive. All four wait on Power Lab's Groups F
+  and L, which have no overseer. No lesson in this lab references them.
+- Three-phase from the circuits side has no home in the suite. C1 and C2 carry
+  the Y and Δ relations as term definitions and one experiment, because the
+  rotating field cannot be shown without them. Power Lab Group I is the
+  recommended home once it is built, and the director then picks one owner.
+- The phase-plane canvas (`apps/machines-lab/src/components/canvases.jsx`,
+  `PhasePlaneCanvas`) is offered for promotion to `packages/ui` once Control
+  Lab II needs it. It is minimal by Decision 5, and `NEEDS.md` records what
+  Control Lab II's fuller version will still want.
+- The ideal transformer construction (`packages/machines/src/port.js`,
+  `senseBranch`) is offered to whoever writes Elements F8. Two stamps it would
+  make unnecessary, a current-controlled current source and a coupled
+  inductor, are offered to `packages/network`, both named in `NEEDS.md`.
+
 ## 3. The director's queue
 
 Items that cross labs and land at integration.
