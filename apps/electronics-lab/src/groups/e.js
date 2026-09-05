@@ -17,8 +17,8 @@
 // has no temperature in it and no tangent to take.
 
 import { isAt, thermalVoltage } from '@ee-labs/network'
-import { Amp, Cap, Freq, Gain, Is, R, Temp, Vs, W, chips, gnd, node, wire } from '../knobs.js'
-import { Early, H, Kn, tryPoint } from './d.js'
+import { Amp, Cap, Freq, Gain, Is, R, Temp, W, chips, gnd, node, wire } from '../knobs.js'
+import { Early, Gate, H, Kn, Rail, Thresh, benchCurve, tryPoint } from './d.js'
 
 const GROUP = 'E · Signal and bias take different paths'
 
@@ -261,28 +261,16 @@ const sourceLayout = () => ({
 const POINTS = 33
 const span = (lo, hi, n = POINTS) => Array.from({ length: n }, (_, k) => lo + ((hi - lo) * k) / (n - 1))
 
-/** The device of `make(p)`, put on a bench and swept in v_CE at a fixed base current. */
-function benchCurve(q, ib, xs) {
-  const out = { xs: [], ys: [] }
-  for (const v of xs) {
-    const r = tryPoint({
-      elements: [
-        { type: 'I', id: 'IB', nodes: ['gnd', 'b'], value: Math.max(ib, 1e-12) },
-        { type: 'V', id: 'VCE', nodes: ['c', 'gnd'], value: v },
-        { ...q, nodes: ['c', 'b', 'gnd'] },
-      ],
-    })
-    if (!r || !r.point.Q1) continue
-    out.xs.push(v)
-    out.ys.push(Math.max(0, r.point.Q1.ic))
-  }
-  return out
-}
-
 /**
  * A family of curves, one per setting of the knob the experiment varies, each
  * at the base current that setting's own bias circuit delivers, with the DC
  * load line the supply and the two resistors draw.
+ *
+ * The line is written in the collector current, because that is the plane's
+ * own axis, and the emitter resistor carries the emitter current instead. So
+ * R_E enters as R_E(β + 1)/β. Drawn with a bare R_E the line misses the
+ * operating point by a part in six hundred, on the one picture whose message
+ * is that the point lies on it.
  */
 function biasCurves(make, key, values, p, x) {
   const xs = span(0, p.vcc)
@@ -294,7 +282,8 @@ function biasCurves(make, key, values, p, x) {
     const el = make(q).elements.find((e) => e.type === 'Q')
     family.push({ ...benchCurve(el, bias.point.Q1.ib, xs), lit: value === p[key] })
   }
-  const load = { xs: [0, p.vcc], ys: [p.vcc / (p.RC + (p.RE ?? 0)), 0] }
+  const rLoad = p.RC + ((p.RE ?? 0) * (p.beta + 1)) / p.beta
+  const load = { xs: [0, p.vcc], ys: [p.vcc / rLoad, 0] }
   return { family, load, point: x.point.Q1 ? { x: x.point.Q1.vce, y: x.point.Q1.ic } : null, xLabel: 'v_CE (V)', yLabel: 'i_C (A)' }
 }
 
@@ -305,7 +294,10 @@ const tempCurves = (p, x) => biasCurves(dividerCurve, 'T', [250, 300, 350, 400],
 // ------------------------------------------------------------ the knobs
 
 const BETA = chips(Gain('beta', 'Current gain β', 100), [50, 100, 200])
-const VCC = (def) => chips(Vs('vcc', 'Supply V_CC', def), [5, 10, 15])
+// A supply is a rail rather than a signal, so its range is the range a rail
+// has. The random settings the math panel is checked at then stay inside the
+// circuit the experiment describes.
+const VCC = (def) => chips(Rail('vcc', 'Supply V_CC', def), [5, 10, 15])
 const QLABEL = { Q1: 'Q1' }
 const MLABEL = { M1: 'M1' }
 
@@ -404,12 +396,12 @@ export const GROUP_E = [
     name: 'MOSFET bias and the threshold spread',
     terms: ['thresholdspread'],
     params: [
-      chips(Vs('vt', 'Threshold V_t', 0.7), [0.7, 0.8, 0.9]),
+      chips(Thresh('vt', 'Threshold V_t', 0.7), [0.7, 0.8, 0.9]),
       chips(R('RS', 'Source resistor R_S', 2500), [1, 1000, 2500]),
-      chips(Vs('vg', 'Gate voltage V_G', 1.9), [0.9, 1.4, 1.9]),
+      chips(Gate('vg', 'Gate voltage V_G', 1.9), [0.9, 1.4, 1.9]),
       chips(R('RD', 'Drain resistor R_D', 5000), [2000, 5000, 10000]),
       chips(Kn('kn', 'Transconductance k_n', 20e-3), [5e-3, 20e-3, 80e-3]),
-      chips(Vs('vdd', 'Supply V_DD', 5), [5, 10, 15]),
+      chips(Rail('vdd', 'Supply V_DD', 5), [5, 10, 15]),
     ],
     net: mosBias,
     layout: mosLayout(),

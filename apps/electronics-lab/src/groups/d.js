@@ -310,14 +310,45 @@ const inverterLayout = () => ({
 const POINTS = 33
 const span = (lo, hi, n = POINTS) => Array.from({ length: n }, (_, k) => lo + ((hi - lo) * k) / (n - 1))
 
-/** i_C against v_CE for one setting of the base drive, as far as the circuit solves. */
+/**
+ * i_C against v_CE for one setting of the base drive, as far as the circuit
+ * solves. The x written down is the device's own measured v_CE and not the
+ * source that was turned, because a bench holds the two equal and a circuit
+ * with a load in it does not. A point drawn at the source's value on an axis
+ * named v_CE would be a curve of the supply wearing the device's label.
+ */
 function collectorCurve(make, p, over, xs) {
   const out = { xs: [], ys: [] }
   for (const v of xs) {
     const r = tryPoint(make({ ...p, ...over, vcc: v, vce: v }))
     if (!r) continue
-    out.xs.push(v)
-    out.ys.push(Math.max(0, r.point.Q1 ? r.point.Q1.ic : r.point.M1.id_))
+    const pt = r.point.Q1 || r.point.M1
+    out.xs.push(r.point.Q1 ? pt.vce : pt.vds)
+    out.ys.push(Math.max(0, r.point.Q1 ? pt.ic : pt.id_))
+  }
+  return out
+}
+
+/**
+ * The device of a circuit put on a bench, swept in v_CE at a fixed base
+ * current. This is what a curve tracer draws, and it is the only way to reach
+ * the flat part of a curve whose own circuit never takes it there. Settings
+ * the model has no answer for are left out rather than guessed at, so the
+ * three-region model's curve begins at its own knee.
+ */
+export function benchCurve(q, ib, xs) {
+  const out = { xs: [], ys: [] }
+  for (const v of xs) {
+    const r = tryPoint({
+      elements: [
+        { type: 'I', id: 'IB', nodes: ['gnd', 'b'], value: Math.max(ib, 1e-12) },
+        { type: 'V', id: 'VCE', nodes: ['c', 'gnd'], value: v },
+        { ...q, nodes: ['c', 'b', 'gnd'] },
+      ],
+    })
+    if (!r || !r.point.Q1) continue
+    out.xs.push(r.point.Q1.vce)
+    out.ys.push(Math.max(0, r.point.Q1.ic))
   }
   return out
 }
@@ -364,28 +395,44 @@ function mosFamily(p, x) {
     return out
   })
   // v_DS = V_OV is where every curve turns, and on that line i_D is ½k_n v_DS².
+  // It is drawn only as far as the largest overdrive in the family, because
+  // past that no curve has a knee for it to pass through. Carried further it
+  // climbs as the square while the curves stay flat, and it would set the
+  // frame's height at a current no curve on the plane reaches.
+  const ovMax = Math.min(Math.max(...xs), Math.max(0, ...steps.map((vgs) => vgs - p.vt)))
   const edge = { xs: [], ys: [] }
-  for (const v of xs) {
+  for (const v of span(0, ovMax, 17)) {
     edge.xs.push(v)
     edge.ys.push(0.5 * p.kn * v * v * (1 + p.lam * v))
   }
   return { family, load: edge, point: x.point.M1 ? { x: x.point.M1.vds, y: x.point.M1.id_ } : null, xLabel: 'v_DS (V)', yLabel: 'i_D (A)' }
 }
 
-/** D5 and D7: the curve family, and the resistor's straight line across it. */
-function loadLineCurves(make, p, x, steps) {
+/**
+ * D5 and D7: the curve family, and the resistor's straight line across it.
+ *
+ * The curves come off the same device on a bench, one per base current, over
+ * the whole span the supply allows. Sweeping the circuit's own supply instead
+ * would trace only the part of each curve that supply can reach, which for a
+ * saturated switch is the vertical edge alone. The line is Ohm's law for
+ * everything outside the device, so the two meet where the circuit sits.
+ */
+function loadLineCurves(make, p, x, currents) {
   const xs = span(0, p.vcc)
-  const family = steps.map((over) => ({ ...collectorCurve(make, p, over, xs), lit: !!over.lit }))
+  const q = make(p).elements.find((e) => e.type === 'Q')
+  const family = currents.map(({ ib, lit }) => ({ ...benchCurve(q, ib, xs), lit: !!lit }))
   const load = { xs: [0, p.vcc], ys: [p.vcc / p.RC, 0] }
   return { family, load, point: x.point.Q1 ? { x: x.point.Q1.vce, y: x.point.Q1.ic } : null, xLabel: 'v_CE (V)', yLabel: 'i_C (A)' }
 }
 
 // A curve of the switch is taken at a base current rather than a base voltage,
-// because that is what the drive resistor delivers.
+// because that is what the drive resistor delivers. The family is stepped in
+// fractions of that current rather than of the drive, so that it spans the
+// load line instead of stacking four saturated curves on top of each other.
 const switchCurves = (p, x) => {
   const ib = Math.max(1e-9, (p.vin - 0.7) / p.RB)
-  const steps = [0.25, 0.5, 1, 2].map((k) => ({ vin: 0.7 + k * (p.vin - 0.7), lit: k === 1 }))
-  return { ...loadLineCurves((q) => switched(q), p, x, steps), ib }
+  const steps = [0.05, 0.1, 0.25, 1].map((k) => ({ ib: k * ib, lit: k === 1 }))
+  return { ...loadLineCurves(switched, p, x, steps), ib }
 }
 
 const loadLineD7 = (p, x) => loadLineCurves(loaded, p, x, [0.25, 0.5, 1, 2, 3].map((k) => ({ ib: k * p.ib, lit: k === 1 })))
