@@ -99,6 +99,25 @@ Two figures move, and the labs that quote them should quote the measured ones:
   through `R_s` alone and in the circuit `r_π` sits across the same node. The
   System Lab and the Photonics Lab quote this figure.
 
+### 6. Four failures in other labs, all of them clocks
+
+A whole-suite run on this branch is green except for four tests in two files
+this lab does not touch. None of them is an assertion about physics.
+
+- `apps/circuit-elements-lab/src/experiments.test.js`, three tests: the math
+  panel walk, the headline walk and the callout walk. Each fails with "test
+  timed out", at 180 s, 90 s and 90 s. The callout walk alone takes 112 s on
+  this machine. The Random Signals overseer recorded the same file's timeouts
+  in `BACKLOG.md` before this branch existed.
+- `apps/power-lab/src/experiments.test.js`, one test: "a sweep is worth about
+  the solves in it" measures a ratio of wall-clock times and wants it under
+  150. It reads 209 here.
+
+Both are measurements of how fast this machine is, and this machine is running
+many agents at once. The owning labs decide whether to lengthen the limit,
+shorten the walk or split it. Nothing in this lab's own suite is near a limit:
+`packages/network` runs in 99 s and `apps/electronics-lab` in 9 s.
+
 ## At release: flip `RELEASE_STATUS` to `released`, then `release.test.js` demands
 
 1. **Splash page** `site/index.html`: a lab card linking `electronics-lab/`, in
