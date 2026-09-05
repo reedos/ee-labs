@@ -426,11 +426,15 @@ export const GROUP_I = [
     labels: IDS,
     show: 'dc',
     view: 'reading',
-    views: ['reading', 'equations'],
+    views: ['reading', 'bode', 'equations'],
     signal: { input: 'Vs', output: 'c2' },
     // The coupling capacitor puts a corner near two hertz into this one, so
     // the gain is read a kilohertz above it rather than at DC, where the
-    // capacitor is an open and the pair has no gain at all.
+    // capacitor is an open and the pair has no gain at all. That corner is
+    // the one response in these two groups with a shape to it, so this is
+    // the one experiment that offers the Bode view: the reading is a
+    // magnitude at one frequency, and the pane is where its phase and the
+    // corner it sits above can be seen.
     probe: 1000,
     at: 1000,
     small: 'Vs',

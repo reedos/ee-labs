@@ -195,6 +195,15 @@ source port is 229 Ohm rather than 250 Ohm. I3's active load reaches
 per cent of bias mismatch moves its output by 522 mV rather than by a
 volt. I5's pair reaches 81.9 dB.
 
+One claim of the plan is not measured as the plan asks. H7 says the two
+routes to a large signal agree within the model's stated error. They cannot
+be compared here, because `pwlTransient` declines the exponential model with
+a reason: a curve has an operating point but no closed-form response in
+time. So H7 measures both flat tops on the three-region model, and its third
+try step reads the refusal instead. The two routes meet in the transfer
+pane, where the quasi-static sweep solves the exponential exactly at every
+point.
+
 ## At release: flip `RELEASE_STATUS` to `released`, then `release.test.js` demands
 
 1. **Splash page** `site/index.html`: a lab card linking `electronics-lab/`, in

@@ -133,12 +133,13 @@ export const LESSONS_I = {
     ],
     why:
       'An active load is a current source used as a resistor. A resistor that large would drop far more ' +
-      'voltage than the supply has, and a current source drops whatever is left over. So one stage reaches ' +
-      'its intrinsic gain, g_m r_o, which is V_A over V_T and depends on the device rather than on anything ' +
-      'a designer picks. The price is the bias. Two currents face each other at one node whose resistance ' +
-      'is tens of kilohms. A per cent of mismatch moves the output by half a volt, and a few per cent puts ' +
-      'it against a rail. Every real circuit built this way closes a feedback loop around it to hold ' +
-      'the point.',
+      'voltage than the supply has, and a current source drops whatever is left over. So one stage comes ' +
+      'within a factor of two of the intrinsic gain g_m r_o, because the load’s own r_o sits across the ' +
+      'output as well. That ceiling is near V_A over V_T, and it belongs to the device rather than to a ' +
+      'value a designer picks. The price is the bias. Two currents face each other at one node whose ' +
+      'resistance is tens of kilohms. A per cent of mismatch moves the output by half a volt, and a few ' +
+      'per cent puts it against a rail. Every real circuit built this way closes a feedback loop around ' +
+      'it to hold the point.',
   },
 
   i4: {
@@ -187,13 +188,17 @@ export const LESSONS_I = {
     see:
       'Two common emitters in a row do not multiply their unloaded gains. The first stage’s output ' +
       'resistance is 4.77 kΩ and the second stage’s input resistance is 2.58 kΩ, so the first delivers 64.8 ' +
-      'rather than 185. With the second stage’s 193 the pair reaches 81.9 dB.',
+      'rather than 185. With the second stage’s 193 the pair reaches 81.9 dB at a kilohertz.',
     seeReads: [
       [(x) => portR(x, 'c1', ['CC']), 4772.73],
       [(x) => portR(x, 'b2', ['CC']), 2578.41],
       ['H.db', 81.9341],
       [(x) => gainFrom(x, 'b2', 'c2', ['CC', 'Vs']), -192.947],
       [(x) => x.point.Q1.gm * portR(x, 'c1', ['CC']), 184.617],
+      // The loaded first stage, taken out of the pair rather than predicted:
+      // the whole response divided by the second stage's own gain. This is
+      // the plan's check that the product of loaded gains is the direct solve.
+      [(x) => Math.hypot(x.hAt[0], x.hAt[1]) / Math.abs(gainFrom(x, 'b2', 'c2', ['CC', 'Vs'])), 64.7544],
     ],
     try: [
       {

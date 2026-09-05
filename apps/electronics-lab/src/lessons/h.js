@@ -13,6 +13,18 @@ import { gainFrom, hd2Of, portR } from '../groups/h.js'
 const rin = (node, drop) => (x) => portR(x, node, drop)
 const rout = (node, drop = []) => (x) => portR(x, node, drop)
 
+/**
+ * The slope of the quasi-static sweep where it crosses zero input, which is
+ * the gain a stage with no capacitor in it has. It is read off the sweep the
+ * transfer pane already draws, rather than off the tangent, because H7's
+ * three-region model has no tangent to take.
+ */
+const sweepSlope = (x) => {
+  const { xs, ys } = x.sweep
+  const k = xs.findIndex((v) => v >= 0)
+  return (ys[k + 1] - ys[k - 1]) / (xs[k + 1] - xs[k - 1])
+}
+
 export const LESSONS_H = {
   h1: {
     see:
@@ -66,8 +78,8 @@ export const LESSONS_H = {
 
   h2: {
     see:
-      'A hundred ohms in the emitter costs most of the gain. The stage reads −39.0 where the grounded ' +
-      'emitter read −178, and its input resistance rises from 2.82 kΩ to 12.8 kΩ. The distortion falls ' +
+      'A hundred ohms in the emitter costs most of the gain. The stage reads −39.0 where one ohm there ' +
+      'read −178, and its input resistance rises from 2.82 kΩ to 12.8 kΩ. The distortion falls ' +
       'further than the gain does. The second harmonic is 0.196 % at a 5 mV drive, against 4.08 % without ' +
       'the resistor.',
     seeReads: [
@@ -80,7 +92,7 @@ export const LESSONS_H = {
     ],
     try: [
       {
-        say: 'Set R_E to 1 Ω. The emitter is grounded again for all practical purposes, the gain returns to −178, and the second harmonic is back at 4.08 %.',
+        say: 'Set R_E to 1 Ω. One ohm is a fortieth of 1/g_m, so the gain climbs to −178 and the second harmonic returns to 4.08 %.',
         set: { RE: 1 },
         reads: [
           ['gain', -177.981],
@@ -105,10 +117,24 @@ export const LESSONS_H = {
     why:
       'Emitter degeneration is feedback built out of one resistor. The emitter follows the base, so R_E takes ' +
       'back part of the input before it reaches the junction, and what is left is smaller by 1 + g_m R_E. The ' +
-      'gain falls by that factor and the input resistance rises by it. The distortion falls by the square of ' +
+      'gain falls by that factor and the input resistance rises by it. The distortion falls by very nearly the square of ' +
       'it, because the exponential sees a smaller drive and the loop divides what curvature is left by the ' +
       'same factor again. That is the trade a designer makes over and over. Gain is cheap, since another ' +
       'stage supplies more of it, and linearity is not, since nothing downstream can take a harmonic back out.',
+    // The square, measured. The closed form drops the base current and the
+    // Early factor, and the tangent carries both, so the two sit about five
+    // per cent apart at these settings rather than on top of each other.
+    whyReads: [
+      [
+        (x, p, again, e) => {
+          const hd = (RE) => hd2Of(e, { ...p, RE }, { key: 'vin', amp: p.amp, node: 'c' })
+          const factor = (a) => 1 + a.point.Q1.gm * a.p.RE
+          return hd(1) / hd(p.RE) / (factor(x) / factor(again({ RE: 1 }))) ** 2
+        },
+        1,
+        0.06,
+      ],
+    ],
   },
 
   h3: {
@@ -208,6 +234,12 @@ export const LESSONS_H = {
       ['op.M1.id_', 4.07407e-4],
       ['op.M1.gm', 4.07407e-3],
       ['gain', -37.7229],
+      // The gate current, and the port that carries it. The first is the
+      // current the input source passes, and it is a machine zero. The
+      // second is the port with its two bias sources lifted off, which the
+      // solver cannot answer for at all, and that is what infinite means.
+      ['i.Vs', 0],
+      [(x) => 1 / portR(x, 'g', ['Vs', 'VGG']), 0],
     ],
     try: [
       {
@@ -248,7 +280,7 @@ export const LESSONS_H = {
     see:
       'The source follower delivers 0.812 into 1 kΩ. A test source at the output reads 229 Ω, and that is ' +
       '1/g_m. The same port driven rather than loaded is the common gate’s input, and it reads the same 229 Ω. ' +
-      'That is ten times the bipolar follower’s, at a similar current.',
+      'The bipolar follower’s port at a milliamp is tens of ohms, and this one is hundreds.',
     seeReads: [
       ['gain', 0.812439],
       [rout('out', ['RL']), 228.61],
@@ -295,6 +327,10 @@ export const LESSONS_H = {
       ['v.c', 5],
       ['clip.high.c', 10],
       ['clip.low.c', 0.2],
+      // The gain the sentence quotes, off the sweep rather than off a
+      // formula: v_BE is pinned on this model, so R_B alone sets the base
+      // current and β times it sets the collector current.
+      [sweepSlope, -185.185],
     ],
     try: [
       {
