@@ -884,6 +884,22 @@ Each phase ships green and deployable dark. The bridges come first, because a re
 arriving from the Elements lab meets them first. Two of them (the op-amp macro, the
 junction) are cheap, and the third (the transistor) is the engine's work.
 
+**What has shipped (2026-09-05).** Phases 1 and 2, and the app they need. The
+engine is complete and fuzzed: `Q` and `M`, the companion interface, `smallSignal`,
+`transferOf`, `returnRatio`, `macro.js`, `junction.js` and `noise.js`, with
+invariants 1 to 9 of §2.12 green. The app is dark, with **Groups A and C**, ten
+experiments, every number in every register measured against the solver, the terms
+defined where they first do work, and the drawings checked as geometry. Group B
+belongs to the Elements lab as I9 and I10 (Decision 3) and is the seams overseer's.
+
+**Groups D to O are not built, and what stops them is a drawing.** The engine they
+need is done. `packages/ui/src/Schematic.jsx` has no transistor symbol, a
+transistor is on screen in every experiment past Group C, and that file is a shared
+surface this lab's overseer does not own. The contract for the four glyphs is in
+`apps/electronics-lab/NEEDS.md` §4, with the two labs that need them next. The
+phases below are unchanged, and phase 3 resumes at Group D on the day the symbol
+lands.
+
 1. **The op-amp's limits and the last diodes.** The macro of §2.2, the current-limited
    VCCS, `junction.js`. App shell, schematic with both overlays, dark deploy and the
    `RELEASE_STATUS` test. **Groups A, B, C** (12). Exit: invariant 7 green, every A
