@@ -317,7 +317,7 @@ export function atR(c, R, opts = {}) {
  * the refinement only polishes what the scan chose. That is what makes B5's
  * double hump land on the taller peak rather than the nearer one.
  */
-export function maxPower(c, { scan = 96, opts = {} } = {}) {
+export function maxPower(c, { scan = 48, opts = {} } = {}) {
   const isc = nearShort(shortCircuit(c, opts))
   const pts = []
   let best = { p: -Infinity, k: 0 }
@@ -332,7 +332,7 @@ export function maxPower(c, { scan = 96, opts = {} } = {}) {
 }
 
 /** Golden-section maximisation of p over a bracket of the current. */
-function refineMax(f, a, b, iters = 120) {
+function refineMax(f, a, b, iters = 70) {
   const phi = (Math.sqrt(5) - 1) / 2
   let lo = a
   let hi = b
