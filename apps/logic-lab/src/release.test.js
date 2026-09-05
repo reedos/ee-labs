@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { EXPERIMENTS } from './experiments.js'
+import { TERMS } from './terms.js'
 
 // The dark launch, enforced. RELEASE_STATUS is one word — `dark` or
 // `released` — and Reed alone changes it. While it says `dark`, the lab is
@@ -47,15 +49,24 @@ describe(`release status "${status}"`, () => {
     expect(read('apps/logic-lab/NEEDS.md')).toMatch(line)
   })
 
-  it('no lesson references an experiment in a lab that is not built', () => {
-    // Track D opens after Electronics D6, the CMOS inverter, which is not
-    // built (LOGIC_LAB_PLAN.md Decision 7). A reference to it fails here by
-    // design, and the backlog carries the deferral.
-    const prose = ['src/lessons/a.js', 'src/lessons/b.js', 'src/lessons/c.js', 'src/lessons/d.js', 'src/terms.js'].map((p) => read(`apps/logic-lab/${p}`)).join('\n')
-    expect(prose).not.toMatch(/\bD6\b(?!\s*·)/)
-    expect(prose).not.toMatch(/Electronics [A-O]\d/)
-    // Nor an experiment of this lab's own groups E to H, which are specified
-    // and not built.
-    expect(prose).not.toMatch(/\b[EFGH][1-9]\b/)
+  it('no lesson references an experiment that is not built, here or in another lab', () => {
+    // Two rules, and one test for both. Track D opens after Electronics D6,
+    // the CMOS inverter, which is not built (LOGIC_LAB_PLAN.md Decision 7), so
+    // no sentence may name an Electronics experiment at all. And a sentence
+    // that points at one of this lab's own experiments has to point at one
+    // that exists, which is what makes an unbuilt group's heading safe to
+    // list in the sidebar.
+    const ids = new Set(EXPERIMENTS.map((e) => e.id.toUpperCase()))
+    const prose = [
+      ...EXPERIMENTS.flatMap((e) => [e.name, e.see, e.why, ...(e.try || []).map((t) => t.say)]),
+      ...Object.values(TERMS).flatMap((t) => [t.name, t.def]),
+    ]
+    for (const text of prose) {
+      expect(text, text.slice(0, 40)).not.toMatch(/\b(?:Electronics|Analog IC|VLSI|Computer|Interfaces)\s+[A-O]\d/)
+      for (const m of String(text).matchAll(/\b([A-H])(\d)\b/g)) {
+        expect(ids.has(m[0]), `"${m[0]}" in "${text.slice(0, 40)}…" is not an experiment this lab has built`).toBe(true)
+      }
+    }
+    expect(prose.length).toBeGreaterThan(EXPERIMENTS.length * 3)
   })
 })

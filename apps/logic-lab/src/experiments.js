@@ -8,31 +8,36 @@
 //
 // Groups follow the plan: A the gate and its truth table, B Boolean algebra and
 // the Karnaugh map, C the multiplexer, the decoder and the adder, D propagation
-// delay and the glitch. Groups E to H are specified in the plan and are not
-// built (LOGIC_LAB_PLAN.md §9).
+// delay and the glitch, E the latch and the flip-flop, F registers and counters
+// and the built machine, G the clock, H metastability.
 
 import { LESSONS } from './lessons.js'
 import { A } from './groups/a.js'
 import { B } from './groups/b.js'
 import { C } from './groups/c.js'
 import { D } from './groups/d.js'
+import { E } from './groups/e.js'
+import { F } from './groups/f.js'
+import { G } from './groups/g.js'
+import { H } from './groups/h.js'
 import { GROUPS } from './groups/shared.js'
 
 export { GROUPS }
 
 /** Every pane a view switch can show, in the order it lists them. */
-export const VIEW_ORDER = ['timing', 'gates', 'table', 'kmap', 'paths', 'events']
+export const VIEW_ORDER = ['timing', 'gates', 'state', 'table', 'kmap', 'paths', 'events']
 
 export const VIEW_LABELS = {
   timing: { label: 'Timing', title: 'Every signal against time, drawn as the instants it changed at' },
   gates: { label: 'Gates', title: 'The netlist as gates and wires, with each signal’s present value' },
+  state: { label: 'States', title: 'The machine as states and arcs, with the state it is in lit' },
   table: { label: 'Truth table', title: 'Every row of the netlist’s truth table, with the present input vector lit' },
   kmap: { label: 'Karnaugh map', title: 'The map in Gray-code order, with the minimum cover drawn as loops' },
   paths: { label: 'Paths', title: 'Every endpoint’s longest and shortest arrival, and the gates along the path' },
   events: { label: 'Events', title: 'The event list: what changed, when, and which event caused it' },
 }
 
-const RAW = [...A, ...B, ...C, ...D]
+const RAW = [...A, ...B, ...C, ...D, ...E, ...F, ...G, ...H]
 
 /** Each experiment with its lesson merged on, so the app reads one object. */
 export const EXPERIMENTS = RAW.map((e) => ({ ...e, ...(LESSONS[e.id] || {}) }))

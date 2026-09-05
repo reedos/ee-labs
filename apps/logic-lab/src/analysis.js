@@ -6,7 +6,7 @@
 // same object, so the timing diagram and the topbar can never disagree about
 // when an event happened.
 
-import { criticalPath, EventsError, fMax, initialValue, minimalCover, mtbf, normalize, primeImplicants, pulsesOf, simulate, timingPaths, truthTable } from '@ee-labs/events'
+import { criticalPath, EventsError, fMax, fsmEquations, initialValue, minimalCover, mtbf, normalize, primeImplicants, pulsesOf, settlingFor, simulate, timingPaths, truthTable } from '@ee-labs/events'
 
 /**
  * The same netlist with every driven source held still.
@@ -41,13 +41,14 @@ export function heldOf(norm) {
  *   net, norm, res,          // the netlist, its normal form, and the run
  *   table, paths, closing,   // the truth table, the arrivals, and f_max, where they apply
  *   minimise,                // the prime implicants and the minimum cover, where asked for
- *   rate,                    // the metastability model, where asked for
+ *   fsm,                     // the state table and its minimised equations
+ *   rate, settling,          // the metastability model, where asked for
  *   refusal                  // the EventsError an experiment expects, or null
  * }}
  */
 export function analyse(exp, p) {
   const net = exp.net(p)
-  const out = { net, exp, p, refusal: null, table: null, paths: null, closing: null, minimise: null, rate: null }
+  const out = { net, exp, p, refusal: null, table: null, paths: null, closing: null, minimise: null, fsm: null, rate: null, settling: null }
   try {
     out.norm = normalize(net)
   } catch (e) {
@@ -64,9 +65,19 @@ export function analyse(exp, p) {
         out.paths = timingPaths(out.norm)
         out.critical = criticalPath(out.norm)
       }
-      if (want === 'closing') out.closing = fMax(out.norm, { skew: p.skew || 0 })
+      if (want === 'closing') {
+        out.closing = fMax(out.norm, { skew: p.skew || 0 })
+        // The period is the knob, and the setup slack is what it has left over
+        // the path. The hold slack has no period in it at all, which is G5's
+        // whole point, so `fMax` computes that one and this does not.
+        const period = exp.period ? exp.period(p) : (p.period ?? null)
+        out.closing.period = period
+        out.closing.setupSlack = period == null ? null : period - out.closing.tMin
+      }
+      if (want === 'fsm') out.fsm = fsmEquations(exp.spec(p))
       if (want === 'minimise') out.minimise = minimiseOf(out.held || (out.held = heldOf(out.norm)), exp.minimiseOf || (out.norm.outputs || [])[0])
       if (want === 'rate') out.rate = mtbf(exp.rate(p))
+      if (want === 'settling') out.settling = settlingFor(exp.settling(p))
     } catch (e) {
       if (!(e instanceof EventsError)) throw e
       // A refusal an experiment is about (E1's ring) is the answer, not a

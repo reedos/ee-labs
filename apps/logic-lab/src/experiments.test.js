@@ -25,6 +25,13 @@ const D = {
   xor2: libDelay('xor', 2),
 }
 
+/**
+ * What this sitting has built, as the two counts the sidebar shows and
+ * `NEEDS.md` gives the progression test. The plan names 45 experiments in 8
+ * groups, and this number moves when a group lands and not before.
+ */
+const BUILT = { groups: 4, experiments: 24 }
+
 const at = (id, over = {}) => {
   const exp = byId[id]
   const p = { ...defaultsOf(id), ...over }
@@ -501,13 +508,17 @@ describe('the chrome names what it shows', () => {
     }
   })
 
-  it('every group heading names its content, and every experiment belongs to one', () => {
-    for (const g of GROUPS) {
-      expect(g, g).toMatch(/^[A-H] · /)
-      expect(EXPERIMENTS.filter((e) => e.group === g).length, g).toBeGreaterThan(0)
-    }
-    expect(GROUPS.length).toBe(4)
-    expect(EXPERIMENTS.length).toBe(24)
+  it('every group heading names its content, and every experiment belongs to a built one', () => {
+    // Eight headings, because the plan names eight groups (LOGIC_LAB_PLAN.md
+    // §5) and the sidebar lists what the lab is, not what this sitting got to.
+    // A heading with nothing under it is a group that is specified and not
+    // built, and the count below says how many of those are left.
+    const built = GROUPS.filter((g) => EXPERIMENTS.some((e) => e.group === g))
+    for (const g of GROUPS) expect(g, g).toMatch(/^[A-H] · /)
+    for (const e of EXPERIMENTS) expect(built, e.id).toContain(e.group)
+    expect(GROUPS.length).toBe(8)
+    expect(built.length).toBe(BUILT.groups)
+    expect(EXPERIMENTS.length).toBe(BUILT.experiments)
   })
 
   it('formats a time in the unit a reader reads, and a rate as a rate', () => {

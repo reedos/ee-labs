@@ -32,14 +32,32 @@
  *   canon.<cubes|literals>             the same two for the canonical form
  *   swallowed  swallow.<k>.<width>     the pulses the delay model rejected
  *   refusal                            the code of the refusal, as a string
+ *   flops                              how many flip-flops
+ *   word.<prefix>.<n>.<t>              q(n-1)..q0 at time t, as the number
+ *   tmin  fmax  holdslack              the clock period in ps, f_max in hertz
+ *   period  setupslack                 the period this run is clocked at
+ *   violations                         how many setup or hold violations
+ *   violation.<k>.<kind|slack|actual|required|t>
+ *   states  srows  sbits  unused       the state machine's counts
+ *   eqliterals.<name>  eqcubes.<name>  one equation's literal and cube counts
+ *   mtbf  settling                     both in picoseconds, like every time
+ *   mtbfyears                          the same mean time, in years
+ *
+ * Every time a path returns is in picoseconds, the mean time between failures
+ * included, because the register test reads every quoted time in the netlist's
+ * own unit. A sentence that says "16.93 years" reads `mtbfyears` instead.
  */
 import { levelsOf, valueOf } from './analysis.js'
 import { A_LESSONS } from './lessons/a.js'
 import { B_LESSONS } from './lessons/b.js'
 import { C_LESSONS } from './lessons/c.js'
 import { D_LESSONS } from './lessons/d.js'
+import { E_LESSONS } from './lessons/e.js'
+import { F_LESSONS } from './lessons/f.js'
+import { G_LESSONS } from './lessons/g.js'
+import { H_LESSONS } from './lessons/h.js'
 
-export const LESSONS = { ...A_LESSONS, ...B_LESSONS, ...C_LESSONS, ...D_LESSONS }
+export const LESSONS = { ...A_LESSONS, ...B_LESSONS, ...C_LESSONS, ...D_LESSONS, ...E_LESSONS, ...F_LESSONS, ...G_LESSONS, ...H_LESSONS }
 
 const edges = (x, signal) => x.res.events.filter((e) => e.signal === signal)
 
@@ -115,6 +133,50 @@ export function readQuantity(x, p, path, exp) {
     }
     case 'refusal':
       return x.refusal ? x.refusal.code : null
+    case 'flops':
+      return x.norm.flops.length
+    case 'word': {
+      const n = Number(rest[1])
+      const t = Number(rest[2])
+      let acc = 0
+      for (let i = n - 1; i >= 0; i--) acc = acc * 2 + valueOf(x, `${rest[0]}${i}`, t)
+      return acc
+    }
+    case 'tmin':
+      return need(x.closing && x.closing.tMin, path)
+    case 'fmax':
+      return need(x.closing && x.closing.fMax, path)
+    case 'holdslack':
+      return needNumber(x.closing && x.closing.holdSlack, path)
+    case 'period':
+      return need(x.closing && x.closing.period, path)
+    case 'setupslack':
+      return needNumber(x.closing && x.closing.setupSlack, path)
+    case 'violations':
+      return x.res.violations.length
+    case 'violation': {
+      const v = x.res.violations[Number(rest[0]) - 1]
+      if (!v) throw new Error(`${path}: this run reported ${x.res.violations.length} violations`)
+      return rest[1] === 'kind' ? v.kind : need(v[rest[1]], path)
+    }
+    case 'states':
+      return need(x.fsm && x.fsm.table.states.length, path)
+    case 'srows':
+      return need(x.fsm && x.fsm.table.rows.length, path)
+    case 'sbits':
+      return need(x.fsm && x.fsm.table.bits, path)
+    case 'unused':
+      return needNumber(x.fsm && x.fsm.table.unused, path)
+    case 'eqliterals':
+      return need(x.fsm && x.fsm.equations[rest[0]] && x.fsm.equations[rest[0]].literals, path)
+    case 'eqcubes':
+      return need(x.fsm && x.fsm.equations[rest[0]] && x.fsm.equations[rest[0]].cubes, path)
+    case 'mtbf':
+      return need(x.rate && x.rate.mtbf, path) * 1e12
+    case 'mtbfyears':
+      return need(x.rate && x.rate.mtbf, path) / (365.25 * 24 * 3600)
+    case 'settling':
+      return need(x.settling, path)
     default:
       throw new Error(`unknown quantity path: ${path}`)
   }
@@ -122,5 +184,11 @@ export function readQuantity(x, p, path, exp) {
 
 const need = (v, path) => {
   if (v == null) throw new Error(`${path}: this experiment did not ask for that analysis`)
+  return v
+}
+
+/** The same, for a reading whose right answer can be 0 or negative. */
+const needNumber = (v, path) => {
+  if (typeof v !== 'number' || !Number.isFinite(v)) throw new Error(`${path}: this experiment did not ask for that analysis`)
   return v
 }

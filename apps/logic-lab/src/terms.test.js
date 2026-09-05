@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { FLOP, KIND_ORDER, WIRE_DELAY, libDelay } from '@ee-labs/events'
 import { TERMS } from './terms.js'
 import { EXPERIMENTS } from './experiments.js'
 
@@ -44,8 +45,32 @@ describe('the glossary', () => {
   it('quotes the library’s own delays where a definition quotes one', () => {
     // A definition that names a number names one this lab produces, so the
     // glossary cannot drift from the library the way prose drifts from physics.
+    // The set below is built from the library rather than typed out: every
+    // cell at every fan-in it has, the wire, the flip-flop's three times, and
+    // the sums the curriculum quotes. Change the inverter and this set moves.
+    const cell = (k, n) => libDelay(k, n)
+    const carryBit = cell('and', 2) + cell('or', 2)
+    const known = new Set([
+      // Every cell in the library, at every fan-in it has.
+      ...KIND_ORDER.flatMap((k) => [1, 2, 3, 4].map((n) => cell(k, n))).filter((d) => d != null),
+      WIRE_DELAY,
+      // The flip-flop's three times, and the window the two of them make.
+      FLOP.tcq,
+      FLOP.tsu,
+      FLOP.th,
+      FLOP.tsu + FLOP.th,
+      // The sums the curriculum quotes, each written as the sum it is.
+      carryBit,
+      cell('nand', 2) + cell('not', 1),
+      3 * cell('nand', 2),
+      cell('not', 1) + cell('and', 2) + cell('or', 2),
+      2 * cell('nor', 2),
+      2 * cell('nand', 2),
+      FLOP.tcq + FLOP.tsu,
+      FLOP.tcq + carryBit + FLOP.tsu,
+      FLOP.tcq + cell('xor', 2) + 4 * carryBit + FLOP.tsu,
+    ])
     const quoted = Object.entries(TERMS).flatMap(([id, t]) => [...t.def.matchAll(/(\d+)\s*ps/g)].map((m) => ({ id, ps: +m[1] })))
-    const known = new Set([30, 40, 50, 70, 80, 90, 10, 140, 100, 150, 180, 260, 600, 650, 1210])
     for (const q of quoted) expect(known.has(q.ps), `${q.id} quotes ${q.ps} ps, which is not one of this lab's numbers`).toBe(true)
     expect(quoted.length).toBeGreaterThan(8)
   })

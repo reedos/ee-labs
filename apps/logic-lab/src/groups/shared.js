@@ -9,6 +9,10 @@ export const GROUPS = [
   'B · Boolean algebra and the map',
   'C · The blocks a datapath is made of',
   'D · Delay, glitches and hazards',
+  'E · The latch and the flip-flop',
+  'F · Registers, counters and the machine',
+  'G · The clock',
+  'H · Metastability',
 ]
 
 /** A one-bit knob, drawn as a two-position switch. */
@@ -40,3 +44,9 @@ export const MODE = (def = 'transport') =>
     { value: 'transport', label: 'transport' },
     { value: 'inertial', label: 'inertial' },
   ])
+
+/** A clock period in picoseconds. Whole numbers only, like every other time. */
+export const Period = (key, label, def, min = 100, max = 5000, hint) => ({ key, label, unit: 'ps', min, max, step: 10, scale: 'linear', decimals: 0, default: def, hint })
+
+/** A rate in hertz, on a logarithmic field. */
+export const Rate = (key, label, def, min = 1e3, max = 1e10, hint) => ({ key, label, unit: 'Hz', min, max, step: 1, scale: 'log', decimals: 3, default: def, hint })
