@@ -81,3 +81,59 @@ Items that cross labs and land at integration.
   (`PROGRAM.md` §4).
 - The nav fold (`ELECTRONICS_LAB_PLAN.md` Decision 5) in the first release commit
   that makes a sixth lab public.
+
+## 4. Planner entries
+
+### Planner: Grid, Devices
+
+Two plans, written together on `plan/grid-devices`. `GRID_LAB_PLAN.md` is 42
+experiments in ten groups. `DEVICES_LAB_PLAN.md` is 30 experiments in seven groups.
+Each line below is a dependency, what it blocks, and what unblocks it.
+
+**Grid Lab.**
+
+- Group I, the machine on the grid and stability (5 experiments): waits on the Machines
+  Lab's synchronous machine, which is being built. The contract is a steady-state model
+  behind a transient reactance, a fault model behind a subtransient reactance,
+  negative- and zero-sequence reactances, an inertia constant and a mechanical power.
+  Reopens when `lab/machines-lab` lands that model.
+- `packages/grid`'s power flow: leans on the Electronics Lab's companion interface for
+  its shape (`AGENT_BRIEF.md` §3.2), which is planned and not built. The Grid Lab owns
+  its own polar Newton (Decision 2), so this is a shape dependency and not a code one.
+  Reopens if the Electronics contract changes.
+- B5's cross-reference to Power Lab I3, and C4's to Power Lab D1: both groups are
+  planned with no overseer. The progression test fails on each reference until they
+  exist, by design.
+- The one-line diagram with power-flow arrows: new in `packages/ui`, with the Energy
+  Lab named as the second user (`PROGRAM.md` §4). Its props carry that lab's needs from
+  the first commit. The director's queue item is the promotion.
+- `deploy.yml` and `progression.test.js` entries for `/grid-lab/`: through `NEEDS.md`,
+  as every dark lab.
+- The DC power flow's guard thresholds (10° warn, 30° refuse, `R/X` 0.25, magnitude
+  0.95 to 1.05 pu) are set on one three-bus system. They move if the fuzz finds more
+  than 5 % of branch-flow error inside the guard.
+
+**Devices Lab.**
+
+- `junction.js` additions: the file is owned by the Electronics Lab's lane 3
+  (`PROGRAM.md` §5). The additions are new exports and no existing signature changes.
+  The contract goes into `apps/devices-lab/NEEDS.md` and the director resolves it once.
+  Reopens when Electronics lane 3 lands.
+- Every group: leans on Electronics Group C's four closed forms, which are planned and
+  not built. Cross-references rather than copies, so the progression test fails on each
+  until Group C exists.
+- The 1-D profile view: adapts the Fields Lab's field map, which is being built. The
+  props needed are a one-dimensional mode, a stacked triple of charge density, field
+  and potential on one position axis, and a bias knob that redraws all three. Phase 2
+  runs against a local stub, and no group ships behind the stub. Reopens when
+  `lab/fields-lab` lands the canvas.
+- The value of `n_i`: `AGENT_BRIEF.md` §3.7 pins 1.5 × 10¹⁰ cm⁻³, and the band-edge
+  densities give 1.079 × 10¹⁰ cm⁻³. Keeping the pin is Decision 1 and needs Reed's word.
+  Changing it moves `V_0` by 20.7 mV and every Electronics C number with it.
+- The threshold voltage: derived here as 321.769 mV, used in the Electronics Lab as
+  700 mV. Decision 4 closes the gap with a threshold-adjust implant of
+  8.1519 × 10¹¹ cm⁻². The cross-lab pin in phase 5 fails if the two labs disagree.
+- F1 and F2 hand the photovoltaic cell to the Energy Lab, which is being built. F3's
+  emission wavelengths hand to the Photonics Lab, which is waiting.
+- `deploy.yml` and `progression.test.js` entries for `/devices-lab/`: through
+  `NEEDS.md`, as every dark lab.
