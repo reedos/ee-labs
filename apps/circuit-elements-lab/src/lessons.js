@@ -444,8 +444,8 @@ export const LESSONS = {
     'that, and names the ideal model as the cause.',
     seeRefuses: true,
     try: [
-      { say: 'Switch the op-amp to finite gain, A = 10⁵: 1 mV in, 100 V out, finite but absurd. A real op-amp would stop at its supply rails.', set: { ideal: false, A: 100000 }, reads: [['v.out', 100]] },
-      { say: 'Flip E to −1 mV with A = 10⁵: −100 V. The tiniest difference decides the sign, that is a comparator.', set: { ideal: false, A: 100000, E: -0.001 }, reads: [['v.out', -100]] },
+      { say: 'Switch the op-amp to finite gain and flip E to −1 mV: A = 10⁵ gives −100 V, finite but absurd. A real op-amp would stop at its supply rails.', set: { ideal: false, E: -0.001 }, reads: [['v.out', -100]] },
+      { say: 'Flip E back to +1 mV, still at A = 10⁵: 100 V. The tiniest difference decides the sign, that is a comparator.', set: { ideal: false, E: 0.001 }, reads: [['v.out', 100]] },
     ],
     why:
       'An op-amp is a dependent source with an enormous gain: v_out = A·(v₊ − v₋). Without feedback the ideal ' +
@@ -459,7 +459,7 @@ export const LESSONS = {
     '9.9 mV between its inputs.',
     seeReads: [['v.out', 9.901], ['vd.in.n', 0.0099]],
     try: [
-      { say: 'Turn A up to 10⁶: 9.9999 V, the gain converges on G, and the input difference falls to 10 µV.', set: { A: 1e6 }, reads: [['v.out', 9.9999], ['vd.in.n', 0.00001]] },
+      { say: 'Turn A up to 10⁵: 9.999 V, the gain converges on G, and the input difference falls to 100 µV, still one digit apart on the node readout.', set: { A: 1e5 }, reads: [['v.out', 9.999], ['vd.in.n', 0.0001]] },
       { say: 'Drop A to 10: the output is only 5 V. The gain you built is 10, but the op-amp’s own gain is no longer huge next to it.', set: { A: 10 }, reads: [['v.out', 5]] },
     ],
     why:
@@ -692,7 +692,7 @@ export const LESSONS = {
     'response rings. The sweep view draws both against R, with the marker at your R.',
     seeReads: [['damping.Rcrit', 200]],
     try: [
-      { say: 'The 50 Ω chip: 44.4 % overshoot.', set: { R1: 50 }, reads: [[(x) => 100 * x.damping.at.overshoot, 44.43]] },
+      { say: 'The 50 Ω chip: 44.4 % overshoot, settling in 1.41 ms.', set: { R1: 50 }, reads: [[(x) => 100 * x.damping.at.overshoot, 44.43], ['damping.at.settle', 0.0014117]] },
       { say: 'Set R to 160 Ω, a little below critical: 1.5 % of overshoot buys the shortest settling time of all, the first peak just fits inside the band.', set: { R1: 160 }, reads: [[(x) => 100 * x.damping.at.overshoot, 1.52]] },
       { say: 'The 800 Ω chip: no overshoot, but the slow root drags the settling out.', set: { R1: 800 }, reads: [[(x) => x.damping.at.overshoot, 0]] },
     ],
@@ -725,9 +725,9 @@ export const LESSONS = {
     'moving between L and C.',
     seeReads: [[peak('volt', 'C1'), 2], [overshootPct('volt', 'C1', (p) => p.E), 100], [peak('i', 'L1'), 0.01]],
     try: [
-      { say: 'Drag the cursor to 314 µs, half a cycle in. The capacitor is at its 2 V peak, the current passes through zero, and the energy view shows all 2 µJ of it in C.', at: 0.00031416, reads: [['volt.C1', 2], ['i.L1', 0, 1e-6], ['energy.stored', 0.000002]] },
+      { say: 'Double the step to 2 V: the swing doubles, 0 to 4 V, and so does the current, 20 mA, the frequency, 1592 Hz, does not move.', set: { E: 2 }, reads: [[peak('volt', 'C1'), 4], [peak('i', 'L1'), 0.02], [(x) => x.state.w0 / (2 * Math.PI), 1591.5], ['state.w0', 10000]] },
+      { say: 'Set E back to 1 V. Drag the cursor to 314 µs, half a cycle in. The capacitor is at its 2 V peak, the current passes through zero, and the energy view shows all 2 µJ of it in C.', set: { E: 1 }, at: 0.00031416, reads: [['volt.C1', 2], ['i.L1', 0, 1e-6], ['energy.stored', 0.000002]] },
       { say: 'Now 157 µs, a quarter cycle: v_C = E = 1 V and the current is at its 10 mA peak. The inductor holds ½Li² = 0.5 µJ, exactly what the capacitor holds, ½Cv² = 0.5 µJ: 1 µJ stored, 1 µJ supplied.', at: 0.00015708, reads: [['volt.C1', 1], ['i.L1', 0.01], [(x, p) => 0.5 * p.L1 * x.sol.i.L1 ** 2, 5e-7], [(x, p) => 0.5 * p.C1 * x.sol.volt.C1 ** 2, 5e-7], ['energy.stored', 0.000001], ['energy.supplied', 0.000001]] },
-      { say: 'Double the step to 2 V: the swing doubles, 0 to 4 V, and so does the current, 20 mA, the frequency, 1592 Hz, does not move.', set: { E: 2 }, reads: [[peak('volt', 'C1'), 4], [peak('i', 'L1'), 0.02], [(x) => x.state.w0 / (2 * Math.PI), 1591.5]] },
     ],
     why:
       'v_C = E(1 − cos ω₀t) and i = E√(C/L)·sin ω₀t. The capacitor holds ½Cv² when the voltage peaks and the ' +
@@ -794,8 +794,8 @@ export const LESSONS = {
     seeReads: [[(x, p) => 1 / (2 * Math.PI * p.R1 * p.C1), 159.15], ['mag.volt.R1', 3.5355], ['mag.volt.C1', 3.5355], ['lead.volt.C1', -45]],
     whyReads: [[(x) => wrap((cx.carg(x.ac.i.R1) - cx.carg(x.ac.volt.C1)) * DEG), 90]],
     try: [
-      { say: 'Drag the slider: V_R and V_C laid tip to tail always land on V_s, KVL, drawn.' },
       { say: 'The 15.92 Hz chip: the capacitor’s arrow grows to 4.98 V and swings to only 5.7° behind the source, at low frequency the capacitor has time to follow.', set: { f: 15.92 }, reads: [['mag.volt.C1', 4.975], ['lead.volt.C1', -5.71]] },
+      { say: 'Drag the slider: V_R and V_C laid tip to tail always land on V_s, KVL, drawn.' },
       { say: 'The 1592 Hz chip: 0.498 V and 84.3° behind, the current’s arrow, 90° ahead of V_C, now nearly lines up with the source.', set: { f: 1592 }, reads: [['mag.volt.C1', 0.4975], ['lead.volt.C1', -84.29], [(x) => wrap((cx.carg(x.ac.i.R1) - cx.carg(x.ac.volt.C1)) * DEG), 90]] },
     ],
     why:
@@ -812,8 +812,8 @@ export const LESSONS = {
     seeReads: [[(x, p) => x.omega * p.L1, 62.83], [(x, p) => 1 / (x.omega * p.C1), 159.15], ['Z.mag', 138.85], ['mag.i.R1', 0.0072021], ['lead.i.R1', 43.93]],
     whyReads: [[(x, p) => 1 / (2 * Math.PI * Math.sqrt(p.L1 * p.C1)), 1591.55]],
     try: [
-      { say: 'Read V_C from the arrows: 1.146 V, larger than the 1 V source, the inductor’s 0.453 V is subtracted from it, not added.', reads: [['mag.volt.C1', 1.1462], ['mag.volt.L1', 0.4525]] },
       { say: 'The 2500 Hz chip: now ωL = 157.1 Ω beats 1/ωC = 63.7 Ω, the current swings to lagging (43.1°) and the arrows for V_L and V_C trade lengths.', set: { f: 2500 }, reads: [[(x, p) => x.omega * p.L1, 157.08], [(x, p) => 1 / (x.omega * p.C1), 63.66], ['lead.i.R1', -43.05]] },
+      { say: 'Set the frequency back to 1 kHz. Read V_C from the arrows: 1.146 V, larger than the 1 V source, the inductor’s 0.453 V is subtracted from it, not added.', set: { f: 1000 }, reads: [['mag.volt.C1', 1.1462], ['mag.volt.L1', 0.4525]] },
       { say: 'The 1591.5 Hz chip: the two reactances are equal, 100 Ω each, and cancel. Z is then just R, and the current, 10 mA, is in phase, which is the next experiment.', set: { f: 1591.5 }, reads: [[(x, p) => x.omega * p.L1, 100], [(x, p) => 1 / (x.omega * p.C1), 100], ['mag.i.R1', 0.01], ['lead.i.R1', 0, 0.01]] },
     ],
     why:
@@ -865,7 +865,7 @@ export const LESSONS = {
     seeReads: [['H.db', -16.07], ['H.deg', -80.96]],
     try: [
       { say: 'The 159.2 Hz chip is the corner f_c = 1/(2πRC): |H| = 1/√2, which is −3.01 dB, and the phase is −45°.', set: { f: 159.2 }, reads: [[(x, p) => 1 / (2 * Math.PI * p.R1 * p.C1), 159.15], ['H.db', -3.011], ['H.deg', -45.01]] },
-      { say: 'The 15.92 Hz chip, a decade below: −0.043 dB and −5.7°, the capacitor is nearly open and the output follows the input.', set: { f: 15.92 }, reads: [['H.db', -0.0432], ['H.deg', -5.71]] },
+      { say: 'The 15.92 Hz chip, a decade below: −0.04 dB and −5.7°, the capacitor is nearly open and the output follows the input.', set: { f: 15.92 }, reads: [['H.db', -0.0432], ['H.deg', -5.71]] },
       { say: 'The 1592 Hz chip, a decade above: −20.0 dB and −84.3°, and each further tenfold in frequency costs another 20 dB.', set: { f: 1592 }, reads: [['H.db', -20.046], ['H.deg', -84.29], [(x, p, again, exp) => readQuantity(x, p, 'H.db', exp) - readQuantity(again({ f: 10 * p.f }), { ...p, f: 10 * p.f }, 'H.db', exp), 19.96]] },
     ],
     why:
@@ -1093,9 +1093,15 @@ export const LESSONS = {
     ],
     try: [
       {
-        say: 'Switch the diodes to ideal: two drops of nothing, the peak reaches the full 10.0 V and the average ' +
-        'is 6.37 V, 2V_p/π, exactly twice the half-wave’s.',
-        set: { model: 'ideal' },
+        say: 'Raise the frequency to 1 kHz: the humps crowd together, each keeps its shape, and the average is ' +
+        'unchanged at 5.03 V. The period shrinks with it, to 1 ms.',
+        set: { f: 1000 },
+        reads: [[(x, p) => meanOut(x, (s) => s.v.p, p.f), 5.0287], ['period', 0.001]],
+      },
+      {
+        say: 'Set the frequency back to 50 Hz. Switch the diodes to ideal: two drops of nothing, the peak reaches ' +
+        'the full 10.0 V and the average is 6.37 V, 2V_p/π, exactly twice the half-wave’s.',
+        set: { f: 50, model: 'ideal' },
         reads: [
           [(x) => peakAt(x, (s) => s.v.p), 10],
           [(x, p) => meanOut(x, (s) => s.v.p, p.f), 6.3662],
@@ -1107,11 +1113,6 @@ export const LESSONS = {
         set: { model: 'drop' },
         at: 0.015,
         reads: [['v.p', 8.6]],
-      },
-      {
-        say: 'Raise the frequency to 1 kHz: the humps crowd together, each keeps its shape, and the average is unchanged at 5.03 V.',
-        set: { f: 1000 },
-        reads: [[(x, p) => meanOut(x, (s) => s.v.p, p.f), 5.0287]],
       },
     ],
     why:

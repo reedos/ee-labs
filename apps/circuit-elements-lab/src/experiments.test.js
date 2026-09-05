@@ -1292,11 +1292,18 @@ describe('the H notes, sentence by sentence', () => {
 // arrives has this circuit's transfer function at every sweep point, and what
 // the link carries loads there without a warning and with the same values.
 
+// Every plain RC or series-RLC experiment outside H offers the same exact
+// hand-over: F3, F5 and G1–G4 share H's transfer function, component for
+// component, and the round-four review asked that the bridge reach them too.
+// F4's port sees a divider ahead of its RC, which scales the source by
+// R₂/(R₁+R₂) — Circuit Lab's RC template has no such knob, so F4 stays bare.
+const HANDOVER_IDS = ['f3', 'f5', 'g1', 'g2', 'g3', 'g4', ...H_IDS]
+
 describe('hand-over to Circuit Lab, both ways', () => {
   const withHandOver = EXPERIMENTS.filter((e) => e.circuitLab)
 
-  it('every H experiment offers one, and the mapping names a catalog circuit with the right count of values', () => {
-    expect(withHandOver.map((e) => e.id)).toEqual(H_IDS)
+  it('every eligible experiment offers one, and the mapping names a catalog circuit with the right count of values', () => {
+    expect(withHandOver.map((e) => e.id)).toEqual(HANDOVER_IDS)
     for (const e of withHandOver) {
       const m = e.circuitLab(defaultsOf(e.id))
       expect(m.decline, e.id).toBeUndefined()
@@ -1316,13 +1323,17 @@ describe('hand-over to Circuit Lab, both ways', () => {
         const { state } = stateFromLink(parseCircuitLink(buildCircuitLink(m)).patch)
         const tf = transferOf(m.id, state.params, state.output)
         // H5's output is the current i, which Circuit Lab's RL low-pass reads as the voltage across R: v_R = R·i.
-        const scale = e.out.q === 'i' ? p.R1 : 1
+        // Every other experiment's output is a plain element voltage — the one the mapping's own output key names
+        // (c → C1, r → R1, l → L1) when the experiment does not already say so with `out`.
+        const outQ = e.out ? e.out.q : 'volt'
+        const outKey = e.out ? e.out.key : { c: 'C1', r: 'R1', l: 'L1' }[m.output]
+        const scale = outQ === 'i' ? p.R1 : 1
         // The sweep the impedance/Bode views draw where the experiment has one; the same grid, solved here, where it does not.
         const wc = x.state.n === 1 ? 1 / x.state.tau : x.state.w0
         const omega = x.freq ? x.freq.omega : Array.from({ length: 241 }, (_, k) => wc * 10 ** (-2 + (4 * k) / 240))
         const H = x.freq ? x.freq.H : omega.map((w) => {
           const ac = solveAC(x.net, w, { anyFreq: true, sources: { V1: 1 } })
-          return cx.cdiv(ac[e.out.q][e.out.key], ac.volt.V1)
+          return cx.cdiv(ac[outQ][outKey], ac.volt.V1)
         })
         expect(omega.length).toBe(241)
         omega.forEach((w, k) => {

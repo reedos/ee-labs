@@ -1272,6 +1272,7 @@ export const EXPERIMENTS = [
     show: 'i',
     view: 'scope',
     views: ['equations', 'power', 'scope', 'state', 'energy'],
+    circuitLab: rcToCircuitLab,
     claim: { tau: true },
   },
   {
@@ -1326,6 +1327,7 @@ export const EXPERIMENTS = [
     show: 'p',
     view: 'energy',
     views: ['power', 'scope', 'state', 'energy'],
+    circuitLab: rcToCircuitLab,
     claim: { half: true },
   },
   {
@@ -1451,6 +1453,9 @@ export const EXPERIMENTS = [
     view: g.view,
     views: g.id === 'g3' ? ['equations', 'scope', 'state', 'energy', 'damping'] : ['equations', 'power', 'scope', 'state', 'energy'],
     sweepId: g.id === 'g3' ? 'R1' : undefined,
+    // The same series RLC Circuit Lab draws, so its Bode and pole-zero views
+    // are this circuit's, whatever step response is on screen here.
+    circuitLab: rlcToCircuitLab,
     claim: g.claim,
   })),
   {
@@ -1997,6 +2002,10 @@ function rcToCircuitLab(p) {
 function rlcToCircuitLab(p) {
   if (p.L1 > 1) return { decline: `Circuit Lab’s inductor knob stops at 1 H; L = ${fmt(p.L1, 'H', 3)} does not fit.` }
   return { id: 'rlcSeries', values: [p.R1, p.L1, p.C1], output: 'c' }
+}
+function rlToCircuitLab(p) {
+  if (p.L1 > 1) return { decline: `Circuit Lab’s inductor knob stops at 1 H; L = ${fmt(p.L1, 'H', 3)} does not fit.` }
+  return { id: 'rlLow', values: [p.R1, p.L1], output: 'r' }
 }
 
 // ------------------------------------------------------------ group G shared

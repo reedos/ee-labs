@@ -68,10 +68,14 @@ describe('predict before you turn', () => {
     expect(nameOf('state.alpha')).toBe('α')
   })
 
-  test('experiments whose first knob step is a toggle or a refusal pose no question', () => {
+  test('every experiment poses a question — round four gave the last ten (A3, D2, D4, E3, E6, G3, G5, H2, H3, I5) a step the reader can predict', () => {
     const none = EXPERIMENTS.filter((e) => !predictFor(e)).map((e) => e.id)
-    // i5's first step chooses a diode model, which is a structural choice
-    // like a toggle: there is no number to predict.
-    expect(none).toEqual(['a3', 'd2', 'd4', 'e3', 'e6', 'g3', 'g5', 'i5'])
+    expect(none).toEqual([])
+  })
+
+  test('the ten experiments round four fixed now open with the quiz already posed, not buried after a watch step', () => {
+    for (const id of ['a3', 'd2', 'd4', 'e3', 'e6', 'g3', 'g5', 'h2', 'h3', 'i5']) {
+      expect(predictFor(byId[id]).step, id).toBe(0)
+    }
   })
 })

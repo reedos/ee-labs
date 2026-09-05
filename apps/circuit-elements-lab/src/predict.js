@@ -100,12 +100,23 @@ export function predictFor(exp) {
   const [path] = t.reads.find((r) => typeof r[0] === 'string')
   const p0 = defaultsOf(exp.id)
   const p1 = { ...p0, ...t.set }
+  // Some experiments refuse at their bare defaults (E3's ideal op-amp, open
+  // loop). The "before" reading then has to come from the structural choice
+  // this step already makes (its toggle or choice keys), holding the knob
+  // under test at its own default, rather than from the pure defaults, which
+  // have no reading at all.
+  let p0ref = p0
   let now, correct
   try {
-    const x0 = analyse(exp, p0, t.at)
+    let x0 = analyse(exp, p0ref, t.at)
+    if (!x0.sol) {
+      const structural = Object.fromEntries(Object.entries(t.set).filter(([k]) => exp.params.some((q) => q.key === k && q.kind)))
+      p0ref = { ...p0, ...structural }
+      x0 = analyse(exp, p0ref, t.at)
+    }
     const x1 = analyse(exp, p1, t.at)
     if (!x0.sol || !x1.sol) return null
-    now = readQuantity(x0, p0, path, exp)
+    now = readQuantity(x0, p0ref, path, exp)
     correct = readQuantity(x1, p1, path, exp)
   } catch {
     return null
@@ -116,10 +127,16 @@ export function predictFor(exp) {
   const answer = { text: printQ(correct, unit), value: correct, rule: 'solver' }
   const seen = new Set([answer.text])
   const wrong = []
+  // "proportional" and "inverse" are guesses about how the reading scales with
+  // the knob, so they need a finite, nonzero ratio to mean anything (a knob
+  // driven to zero makes "scales with it" undefined, not "skip every guess").
+  // "same", "double" and "half" do not depend on the ratio at all.
+  const needsRatio = { proportional: true, inverse: true }
   for (const [rule, f] of Object.entries(RULES)) {
+    if (needsRatio[rule] && (!Number.isFinite(ratio) || ratio === 0)) continue
     const v = f(now, ratio)
     const text = printQ(v, unit)
-    if (!Number.isFinite(v) || seen.has(text) || !Number.isFinite(ratio) || ratio === 0) continue
+    if (!Number.isFinite(v) || seen.has(text)) continue
     seen.add(text)
     wrong.push({ text, value: v, rule })
     if (wrong.length === 2) break
