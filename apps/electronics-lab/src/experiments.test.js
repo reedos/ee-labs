@@ -6,12 +6,13 @@ import { CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCh
 import { num } from './format.js'
 import { TERMS } from './terms.js'
 import { agrees } from '@ee-labs/explain'
-import { BJT_DEFAULTS, NetworkError, bjtOf, normalize, equations, thermalVoltage } from '@ee-labs/network'
+import { BJT_DEFAULTS, NetworkError, bjtOf, blackman, equations, normalize, polesOf, solveDC, thermalVoltage, zerosOf } from '@ee-labs/network'
 import { inverterMargins } from './groups/d.js'
 import { HD2_GUARD, driveGuard, hd2Of, vbeFor, vgsFor } from './groups/f.js'
 import { VCC, VT, gainFrom, portR } from './groups/h.js'
 import { cmrr, cmrrDb, gainD, linearityShortfall, offsetOf, shareQ1, solverFor } from './groups/j.js'
 import { SPACING, ceSeenBy, dominant, magAt, millerOf, octcOf, poleSpacing, sctcOf, unityGain } from './groups/k.js'
+import { harmonics, loopMargins, loopT, loopTF, portResistance, powerOver, ringOf, tangent, thdOf } from './groups/l.js'
 
 // Every note makes a claim, and every claim is measured here.
 //
@@ -1507,5 +1508,301 @@ describe('Group K: frequency response', () => {
     expect(Math.abs(cascode.x.gain) / Math.abs(ce.x.gain)).toBeGreaterThan(0.95)
     expect(dominant(follower.x) / dominant(ce.x)).toBeGreaterThan(10)
     expect(cascode.x.corner.high / dominant(ce.x)).toBeGreaterThan(10)
+  })
+})
+
+// Groups L and M, pinned the way `AGENT_BRIEF.md` §6 asks: every number the
+// plan's §5 quotes for these groups is written here from the knobs, never
+// typed in, so that moving a default moves both sides of the comparison. The
+// lesson registers above already check what a sentence says against the
+// solver. What these blocks add is the law behind each number.
+const rel = (got, want) => Math.abs(got / want - 1)
+
+describe('Group L: feedback', () => {
+  const rInOf = (x) => 1 / -solveDC(x.norm, { sources: { V1: 1, It: 0 } }).i.V1
+  const rOutOf = (x) => solveDC(x.norm, { sources: { V1: 0, It: 1 } }).v.out
+
+  it('L1: T is A₀β, and Blackman’s three numbers reproduce the direct solve', () => {
+    for (const Rf of [1000, 9000, 90000]) {
+      const { x, p } = at('l1', { Rf })
+      const beta = p.Rg / (Rf + p.Rg)
+      expect(rel(loopT(x, 'E1'), p.A0 * beta)).toBeLessThan(1e-9)
+      expect(x.sol.v.out).toBeCloseTo((p.A0 * p.E) / (1 + p.A0 * beta), 9)
+      // A∞ is the divider read backwards, d is nothing at all, and those two
+      // with T give the answer the solver gives.
+      const bl = blackman(tangent(x), 'E1', { input: 'V1', output: 'out' })
+      expect(rel(bl.Ainf[0], 1 + Rf / p.Rg)).toBeLessThan(1e-9)
+      expect(Math.abs(bl.d[0])).toBeLessThan(1e-12)
+      expect(bl.closed[0] * p.E).toBeCloseTo(x.sol.v.out, 9)
+    }
+  })
+
+  it('L2: a fractional change in A₀ arrives at the output divided by 1 + T', () => {
+    for (const A0 of [1e3, 1e4, 1e5]) {
+      const { x, p } = at('l2', { A0 })
+      const T = A0 * (p.Rg / (p.Rf + p.Rg))
+      const moved = at('l2', { A0: 1.01 * A0 }).x.sol.v.out / x.sol.v.out - 1
+      // Exactly, a hundredth divided by one plus the raised loop gain. The
+      // rule of thumb divides by 1 + T instead, which is the same answer to
+      // one part in a hundred.
+      expect(rel(moved * (1 + 1.01 * T), 0.01)).toBeLessThan(1e-9)
+      expect(rel(moved, 0.01 / (1 + T))).toBeLessThan(0.011)
+    }
+  })
+
+  it('L3: the closed-loop pole is f_p(1 + T), and gain × bandwidth is f_t + G·f_p', () => {
+    for (const Rf of [1000, 10000, 100000]) {
+      const { x, p } = at('l3', { Rf })
+      const fp = p.ft / p.A0
+      const beta = p.Rg / (Rf + p.Rg)
+      const G = 1 + Rf / p.Rg
+      expect(rel(x.corner.high, fp * (1 + p.A0 * beta))).toBeLessThan(1e-6)
+      // Measured gain times measured corner is the amplifier's own f_t. Read
+      // with the gain the resistors ask for it is f_t + G·f_p instead.
+      expect(rel(x.gain * x.corner.high, p.ft)).toBeLessThan(1e-6)
+      expect(rel(G * x.corner.high, p.ft + G * fp)).toBeLessThan(1e-6)
+    }
+    // Ten times the transition frequency is ten times every corner.
+    expect(rel(at('l3', { ft: 1e7 }).x.corner.high, 10 * at('l3').x.corner.high)).toBeLessThan(1e-9)
+  })
+
+  it('L4: the loop multiplies one port by 1 + T and divides the other by it', () => {
+    const dead = at('l4', { A0: 0 }).x
+    const { p } = at('l4')
+    // Dead is a gain of zero. Both ports are then the resistors alone: R_i in
+    // series with the divider, and R_o against the feedback network.
+    expect(rel(rInOf(dead), p.Ri + 1 / (1 / p.Rg + 1 / (p.Rf + p.Ro)))).toBeLessThan(1e-9)
+    expect(rel(rOutOf(dead), 1 / (1 / p.Ro + 1 / (p.Rf + 1 / (1 / p.Rg + 1 / p.Ri))))).toBeLessThan(1e-9)
+    for (const A0 of [1, 1e3, 1e5]) {
+      const { x } = at('l4', { A0 })
+      const T = loopT(x, 'E1')
+      expect(rel(rInOf(x), rInOf(dead) * (1 + T))).toBeLessThan(1e-6)
+      expect(rel(rOutOf(x), rOutOf(dead) / (1 + T))).toBeLessThan(1e-6)
+    }
+    // Ten times the amplifier's own output resistance is ten times the
+    // closed-loop one, because the loop divides both by the same factor.
+    expect(rel(rOutOf(at('l4', { Ro: 10 * p.Ro }).x), 10 * rOutOf(at('l4').x))).toBeLessThan(0.01)
+  })
+
+  it('L5: three equal sections put the poles on the axis at √6/RC and a gain of 29', () => {
+    const { x, p } = at('l5', { A0: 29 })
+    const f0 = Math.sqrt(6) / (p.R * p.C) / (2 * Math.PI)
+    const pair = x.poles.filter((q) => Math.abs(q.im) > 1e-9)
+    expect(pair.length).toBe(2)
+    expect(rel(pair[0].hz, f0)).toBeLessThan(1e-6)
+    expect(Math.abs(pair[0].re) / (2 * Math.PI * f0)).toBeLessThan(1e-6)
+    expect(Math.abs(loopMargins(loopTF(x, 'Efb')).pm)).toBeLessThan(0.02)
+    // Only the constant term of D(s) + A₀ carries the gain, so the three
+    // poles keep the ladder's own sum however hard the loop is driven.
+    const sum = (y) => y.poles.reduce((s, q) => s + q.re, 0)
+    for (const A0 of [4, 8, 40]) expect(rel(sum(at('l5', { A0 }).x), sum(x))).toBeLessThan(1e-6)
+    expect(rel(sum(x), -5 / (p.R * p.C))).toBeLessThan(1e-6)
+    // Below 29 the pair stays left of the axis, above it the pair is right of it.
+    expect(Math.max(...at('l5', { A0: 8 }).x.poles.map((q) => q.re))).toBeLessThan(0)
+    expect(Math.max(...at('l5', { A0: 40 }).x.poles.map((q) => q.re))).toBeGreaterThan(0)
+  })
+
+  it('L6: a follower divides its own output resistance by 1 + A₀', () => {
+    for (const A0 of [1e3, 1e4, 1e5]) {
+      for (const rout of [10, 75, 1000]) {
+        const { x } = at('l6', { A0, rout })
+        expect(rel(rOutOf(x), rout / (1 + A0))).toBeLessThan(1e-6)
+      }
+    }
+    // The plan's §5 writes this as 75 Ω over 1 + T and quotes 7.5 mΩ, which
+    // is a return ratio of 10⁴. A follower feeds all of its output back, so T
+    // is the whole open-loop gain and the number is 750 µΩ.
+    const { x, p } = at('l6')
+    expect(rel(rOutOf(x), p.rout / (1 + p.A0))).toBeLessThan(1e-6)
+    expect(rOutOf(x)).toBeLessThan(1e-3)
+  })
+})
+
+describe('Group M: inside the op-amp', () => {
+  const par = (...rs) => 1 / rs.reduce((s, r) => s + 1 / r, 0)
+  const rInOf = (x) => portResistance(tangent(x).elements, 'inp', ['Vin'])
+  const peakOut = (x) => Math.max(...x.tr.samples.map((s) => s.sol.v.out))
+
+  it('M1: the gain is the two stages multiplied, and each port is its own node', () => {
+    const { x, p } = at('m1')
+    const q = x.point
+    const stage1 = q.Q1.gm * par(q.Q2.ro, q.Q4.ro, q.Q5.rpi)
+    const stage2 = q.Q5.gm * par(p.rc, q.Q5.ro)
+    expect(rel(Math.abs(x.gain), stage1 * stage2)).toBeLessThan(0.02)
+    expect(rel(portResistance(tangent(x).elements, 'out'), par(p.rc, q.Q5.ro))).toBeLessThan(1e-3)
+    // The input port is the two r_π in series, less the share the pair's own
+    // output resistances and the mirror carry, so the estimate sits above it.
+    expect(rInOf(x)).toBeLessThan(2 * q.Q1.rpi)
+    expect(rel(rInOf(x), 2 * q.Q1.rpi)).toBeLessThan(0.15)
+    // Four times the tail is four times the transconductance, so the input
+    // port falls to a quarter and the gain rises with it.
+    const four = at('m1', { itail: 4 * p.itail }).x
+    expect(rel(four.point.Q1.gm, 4 * q.Q1.gm)).toBeLessThan(0.02)
+    expect(rel(rInOf(four), rInOf(x) / 4)).toBeLessThan(0.02)
+    expect(Math.abs(four.gain)).toBeGreaterThan(Math.abs(x.gain))
+    // Twice the second stage's load is twice its output resistance, because
+    // R_C sits well below r_o5 at these settings.
+    const wide = at('m1', { rc: 2 * p.rc }).x
+    expect(rel(portResistance(tangent(wide).elements, 'out'), 2 * portResistance(tangent(x).elements, 'out'))).toBeLessThan(0.02)
+  })
+
+  it('M2: the transition frequency is g_m1 over 2πC_c, and one capacitor sets it', () => {
+    const base = at('m1').x
+    for (const cc of [5e-12, 10e-12, 30e-12]) {
+      const { x } = at('m2', { cc })
+      const ft = x.point.Q1.gm / (2 * Math.PI * cc)
+      const gbw = Math.abs(x.gain) * x.poles[0].hz
+      expect(rel(gbw, ft)).toBeLessThan(0.06)
+      // The gain is the same amplifier's, so the capacitor buys bandwidth by
+      // moving the pole and nothing else.
+      expect(rel(Math.abs(x.gain), Math.abs(base.gain))).toBeLessThan(1e-6)
+      expect(rel(x.poles[0].hz, gbw / Math.abs(x.gain))).toBeLessThan(1e-9)
+    }
+    // A third of the capacitance is three times the pole.
+    const { x, p } = at('m2')
+    expect(rel(at('m2', { cc: p.cc / 3 }).x.poles[0].hz, 3 * x.poles[0].hz)).toBeLessThan(0.02)
+    // The capacitor is multiplied by the second stage's gain, which is what
+    // puts that pole decades below every other one.
+    expect(x.point.Q5.gm * par(p.rc, x.point.Q5.ro)).toBeGreaterThan(50)
+  })
+
+  it('M3: the margin is what the second pole and the zero leave at the crossover', () => {
+    const deg = (r) => (Math.atan(r) * 180) / Math.PI
+    const partsOf = (x) => {
+      const tf = loopTF(x, 'Efb')
+      const m = loopMargins(tf)
+      const p2 = polesOf(tf).sort((a, b) => a.hz - b.hz)[1]
+      const z1 = zerosOf(tf).sort((a, b) => a.hz - b.hz)[0]
+      return { m, z1, parts: 90 - deg(m.crossover / p2.hz) - deg(m.crossover / z1.hz) }
+    }
+    for (const cc of [5e-12, 10e-12, 30e-12]) {
+      const { m, z1, parts } = partsOf(at('m3', { cc }).x)
+      expect(Math.abs(parts - m.pm)).toBeLessThan(0.1)
+      // The zero the compensation capacitor makes is in the right half plane,
+      // so it subtracts phase where a left-plane zero would add it.
+      expect(z1.re).toBeGreaterThan(0)
+    }
+    // Less capacitance is more bandwidth and less margin, and the step
+    // overshoots once the closed-loop poles stop being real.
+    const wide = at('m3', { cc: defaultsOf('m3').cc / 2 }).x
+    const narrow = at('m3', { cc: 3 * defaultsOf('m3').cc }).x
+    expect(partsOf(wide).m.crossover).toBeGreaterThan(partsOf(narrow).m.crossover)
+    expect(partsOf(wide).m.pm).toBeLessThan(partsOf(narrow).m.pm)
+    expect(ringOf(wide.poles).overshoot).toBeGreaterThan(10)
+    // At six times the compensation the pair is still a pair, damped far
+    // harder, and its overshoot is a rounding error rather than a ring. Only
+    // past ten times it are the poles real.
+    expect(ringOf(narrow.poles).zeta).toBeGreaterThan(ringOf(wide.poles).zeta)
+    expect(ringOf(narrow.poles).overshoot).toBeLessThan(1)
+    expect(ringOf(at('m3', { cc: 10 * defaultsOf('m3').cc }).x.poles).zeta).toBeNull()
+    // A heavier load brings the second pole down onto the crossover, and the
+    // margin goes with it.
+    expect(loopMargins(loopTF(at('m3', { cl: 3.3 * defaultsOf('m3').cl }).x, 'Efb')).pm).toBeLessThan(partsOf(at('m3').x).m.pm)
+  })
+
+  it('M4: the ramp is the steered current into the capacitor, and nothing else', () => {
+    const { x, p } = at('m4')
+    const rate = ((p.beta / (p.beta + 1)) * p.itail) / p.cc
+    // The bias resistor drains a share on the way up, so the measured slope
+    // sits just under the bare rate rather than on it.
+    expect(Math.abs(slopeOf(x, 'c2'))).toBeLessThan(rate)
+    expect(rel(Math.abs(slopeOf(x, 'c2')), rate)).toBeLessThan(0.02)
+    for (const [over, factor] of [
+      [{ cc: p.cc / 3 }, 3],
+      [{ itail: 4 * p.itail }, 4],
+    ]) {
+      expect(rel(Math.abs(slopeOf(at('m4', over).x, 'c2')) / Math.abs(slopeOf(x, 'c2')), factor)).toBeLessThan(0.02)
+    }
+    // The climb ends at an event, inside the window, at about the swing over
+    // the rate.
+    expect(x.tr.events.length).toBeGreaterThan(0)
+    expect(x.tr.events[0].t).toBeLessThan(x.tEnd)
+    expect(rel(x.tr.events[0].t, 10.5 / rate)).toBeLessThan(0.1)
+  })
+
+  it('M5: the offset is V_T ln r and the base current is the tail over 2(1 + β_eff)', () => {
+    const vt = thermalVoltage(300)
+    const matched = at('m5', { ratio: 1 }).x
+    for (const ratio of [1.01, 1.05]) {
+      const { x } = at('m5', { ratio })
+      const vos = -(x.sol.v.out - matched.sol.v.out) / x.gain
+      expect(rel(vos, vt * Math.log(ratio))).toBeLessThan(0.06)
+    }
+    const { x, p } = at('m5')
+    const early = 1 + Math.abs(x.point.Q1.vce) / p.va
+    expect(rel(Math.abs(x.point.Q1.ib), p.itail / (2 * (1 + p.beta * early)))).toBeLessThan(0.03)
+    // The textbook's I_tail/2β leaves the Early effect out of the current
+    // gain, so it sits above the measured base current.
+    expect(Math.abs(x.point.Q1.ib)).toBeLessThan(p.itail / (2 * p.beta))
+    // Four times the tail is four times the base current, and half the β is
+    // twice as much of it.
+    expect(rel(Math.abs(at('m5', { itail: 4 * p.itail }).x.point.Q1.ib), 4 * Math.abs(x.point.Q1.ib))).toBeLessThan(0.02)
+    expect(rel(Math.abs(at('m5', { beta: p.beta / 2 }).x.point.Q1.ib), 2 * Math.abs(x.point.Q1.ib))).toBeLessThan(0.02)
+  })
+
+  it('M6: the dead band sets the peak, the fundamental, the distortion and the efficiency', () => {
+    const { x, p } = at('m6')
+    const dead = 0.7 - p.vbias
+    const k = p.RL / (p.RL + p.re)
+    expect(rel(peakOut(x), k * (p.amp - dead))).toBeLessThan(0.01)
+    const theta = Math.asin(dead / p.amp)
+    expect(rel(harmonics(x, 'out', p.f)[0], k * p.amp * (1 - (2 * theta + Math.sin(2 * theta)) / Math.PI))).toBeLessThan(0.02)
+    // The dead band is a fixed width, so it takes a smaller share of a larger
+    // drive. Nine times the drive is less than a tenth of the distortion.
+    const big = at('m6', { amp: byId.m6.params.find((k) => k.key === 'amp').max }).x
+    expect(thdOf(big, 'out', p.f)).toBeLessThan(thdOf(x, 'out', p.f) / 10)
+    // Bias past a diode drop closes the dead band, and the load is then
+    // driven through the two ballast resistors in parallel.
+    const ab = at('m6', { vbias: byId.m6.params.find((k) => k.key === 'vbias').max, amp: 5 })
+    expect(rel(peakOut(ab.x), (ab.p.RL / (ab.p.RL + ab.p.re / 2)) * ab.p.amp)).toBeLessThan(0.01)
+    // Efficiency counts every source, the base drive included, and stays
+    // under the π/4 ceiling an ideal stage driven to its rail would reach.
+    const w = powerOver(big, { load: 'RL', supplies: ['VCC', 'VEE', 'Vin', 'Vbn', 'Vbp'], freq: p.f })
+    expect(w.efficiency).toBeLessThan(25 * Math.PI)
+    expect(w.efficiency).toBeGreaterThan(60)
+    // Past the supply the three-region model has no answer, and the pane
+    // gives the reason rather than drawing one.
+    const past = at('m6', { amp: 5, vsup: 3 }).x
+    expect(past.sol).toBeNull()
+    expect(refusalReason(past.refusal)).toMatch(/^[A-Z].*\.$/)
+  })
+
+  it('footnotes a row its settings cannot show, at a setting the knobs reach', () => {
+    /** The reasons the math panel gives for the rows it does not compare. */
+    const notes = (id, over = {}) => {
+      const { exp, p, x } = at(id, over)
+      return experimentMath(exp, p, x)
+        .blocks.filter((b) => b.kind === 'check')
+        .flatMap((b) => b.rows)
+        .filter((r) => r.unchecked)
+        .map((r) => r.unchecked)
+        .join(' ')
+    }
+    /** A guard counts only when a reader can reach the setting that fires it. */
+    const reach = (id, over) => {
+      for (const [key, v] of Object.entries(over)) {
+        const k = byId[id].params.find((q) => q.key === key)
+        expect(k, `${id} has no knob ${key}`).toBeDefined()
+        expect(v, `${id}.${key} below its knob`).toBeGreaterThanOrEqual(k.min)
+        expect(v, `${id}.${key} above its knob`).toBeLessThanOrEqual(k.max)
+      }
+      return over
+    }
+    // Every panel opens with all of its rows compared, except M3's second
+    // pole. Its default load capacitor puts that pole inside three times the
+    // transition frequency, and the panel says so rather than comparing two
+    // numbers the pole split no longer separates.
+    for (const id of ['l1', 'l2', 'l3', 'l4', 'l5', 'l6', 'm1', 'm2', 'm4', 'm5', 'm6']) expect(notes(id), id).toBe('')
+    expect(notes('m3')).toMatch(/within three times the transition frequency/)
+
+    expect(notes('l2', reach('l2', { E: 0 }))).toMatch(/no input applied/)
+    expect(notes('l3', reach('l3', { Rf: 1000, ft: 100 }))).toMatch(/one hertz/)
+    expect(notes('l5', reach('l5', { C3: 1e-12 }))).toMatch(/three decades apart/)
+    expect(notes('m2', reach('m2', { rc: 2000 }))).toMatch(/gain of only/)
+    expect(notes('m2', reach('m2', { cl: 1e-9 }))).toMatch(/within three times/)
+    expect(notes('m3', reach('m3', { cc: 100e-12 }))).toMatch(/no ringing to put a damping ratio on/)
+    expect(notes('m4', reach('m4', { rc: 1e5 }))).toMatch(/exponential rather than a ramp/)
+    expect(notes('m5', reach('m5', { ratio: 1.1 }))).toMatch(/five per cent/)
+    expect(notes('m6', reach('m6', { amp: 0.5 }))).toMatch(/never clears the dead band/)
   })
 })

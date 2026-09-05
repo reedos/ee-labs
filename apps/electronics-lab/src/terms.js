@@ -16,12 +16,16 @@ import { MATCH_H, TERMS_H } from './groups/h.terms.js'
 import { MATCH_I, TERMS_I } from './groups/i.terms.js'
 import { MATCH_J, TERMS_J } from './groups/j.terms.js'
 import { MATCH_K, TERMS_K } from './groups/k.terms.js'
+import { MATCH_L, TERMS_L } from './groups/l.terms.js'
+import { MATCH_M, TERMS_M } from './groups/m.terms.js'
 
 export const TERMS = {
   ...TERMS_D,
   ...TERMS_E,
   ...TERMS_J,
   ...TERMS_K,
+  ...TERMS_L,
+  ...TERMS_M,
   opampmacro: {
     name: 'The op-amp macro',
     def:
@@ -174,6 +178,8 @@ export const MATCH = {
   ...MATCH_E,
   ...MATCH_J,
   ...MATCH_K,
+  ...MATCH_L,
+  ...MATCH_M,
   opampmacro: /\bop-amp macro\b|\bmacro\b/i,
   offset: /\boffset voltage\b|\boffset\b/i,
   loopgain: /\bloop(?: gain| has)\b|\bclosed[- ]loop gain\b/i,

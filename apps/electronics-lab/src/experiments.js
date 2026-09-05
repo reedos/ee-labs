@@ -24,6 +24,8 @@ import { GROUP_H } from './groups/h.js'
 import { GROUP_I } from './groups/i.js'
 import { GROUP_J } from './groups/j.js'
 import { GROUP_K } from './groups/k.js'
+import { GROUP_L } from './groups/l.js'
+import { GROUP_M } from './groups/m.js'
 
 // Every view a lower pane can show, in the order the view switch lists them —
 // the same order in every experiment, so a tab sits in the same place from one
@@ -56,12 +58,14 @@ export const GROUPS = [
   'I · Mirrors, active loads, and stacking',
   'J · The differential pair',
   'K · Frequency response',
+  'L · Feedback',
+  'M · Inside the op-amp',
 ]
 
 // ------------------------------------------------------------ the list
 
 /** Every group's experiments, in the plan's order. */
-const RAW = [...GROUP_A, ...GROUP_C, ...GROUP_D, ...GROUP_E, ...GROUP_F, ...GROUP_G, ...GROUP_H, ...GROUP_I, ...GROUP_J, ...GROUP_K]
+const RAW = [...GROUP_A, ...GROUP_C, ...GROUP_D, ...GROUP_E, ...GROUP_F, ...GROUP_G, ...GROUP_H, ...GROUP_I, ...GROUP_J, ...GROUP_K, ...GROUP_L, ...GROUP_M]
 
 /**
  * The experiments, with each one's lesson merged onto it. `note` is see + why,

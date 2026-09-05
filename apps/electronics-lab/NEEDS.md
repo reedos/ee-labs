@@ -26,14 +26,15 @@ overseer's to take.
 Electronics Lab's entry today is:
 
 - Slug `electronics-lab`, splash glyph `⊳`, short nav name **Electronics**.
-- **54 experiments in 10 groups.** Ids `a1` to `a6`, `c1` to `c4`, `d1` to `d7`,
-  `e1` to `e6`, `f1` to `f6`, `g1` and `g2`, `h1` to `h7`, `i1` to `i5`, `j1` to
-  `j5` and `k1` to `k6`.
+- **66 experiments in 12 groups.** Ids `a1` to `a6`, `c1` to `c4`, `d1` to `d7`,
+  `e1` to `e6`, `f1` to `f6` and `g1` and `g2`. Then `h1` to `h7`, `i1` to `i5`,
+  `j1` to `j5`, `k1` to `k6`, `l1` to `l6` and `m1` to `m6`.
 - The groups in order are A, "the op-amp as a user meets it". C, "inside the
   junction". D, "the transistor as a controlled source". E, "signal and bias take
   different paths". F, "small signals, the tangent at the point". G, "ports, and
   what loads them". H, "single-stage amplifiers". I, "mirrors, active loads, and
-  stacking". J, "the differential pair". K, "frequency response".
+  stacking". J, "the differential pair". K, "frequency response". L, "feedback".
+  M, "inside the op-amp".
 - No cross-lab reference by id in either direction yet. The lab's own
   `experiments.test.js` fails on a lesson that cites an experiment id this lab
   does not carry, so the references the plan lists for Groups F to O arrive
@@ -467,6 +468,185 @@ Reopens with Group H, or as a seventh experiment in this group.
 4. **Usage counter** `apps/electronics-lab/index.html`: the GoatCounter tag the
    other labs carry. Add the page to the pinned list in
    `packages/ui/src/analytics.test.js` at the same time.
+
+## Groups L and M
+
+Feedback and the inside of the op-amp are built, twelve experiments, and the
+lab's own suite is green. Nine things the lane found belong outside it.
+
+### 7. `mathEntries.js` gained two import lines
+
+The lane's brief gives it one import line each in `experiments.js`,
+`lessons.js` and `terms.js`. `experiments.test.js` also requires a math-panel
+entry for every experiment, and `experimentMath` looks entries up in
+`mathEntries.js` alone, so that file gained the same two lines and two spreads.
+The entries themselves are in `groups/l.math.js` and `groups/m.math.js`, which
+the lane owns. A lab that wanted a group to carry its own math panel without
+touching a shared file would put a `math` field on the experiment and have
+`experimentMath` prefer it.
+
+### 8. `layoutCheck.js` still does not know a transistor
+
+`Schematic.jsx` draws a three-terminal glyph spanning the full ±20 on both
+axes, with its label 34 px below the centre. `layoutCheck.js` measures every
+element with `elementBodyBoxes` and `elementTextPlaces`. Those describe a
+two-terminal symbol ±20 along and ±9 across, with its label 24 px below. A
+drawing that carries a transistor is therefore checked against the wrong box in
+both places. Item 4 above already asked for the three transistor exports to be
+wired in, and Group M is the first drawing that needs them. Meanwhile this
+lane's eleven transistors are placed from the pin coordinates the contract
+gives, and the wires are routed to those points by hand.
+
+One thing the wrong box hides. A transistor's default label, `Q1 npn`, is 32 px
+wide and centred on the device, while its collector and emitter leads leave 12
+px either side of that centre. Any wire continuing straight down from the
+emitter therefore runs through the label. Group M gives each device a label of
+its id alone so the two clear each other, and the polarity is left to the
+arrowhead. A shorter default, or a label placed to one side, would fix it for
+every lab.
+
+The same geometry, run over this lane's six drawings by hand, found one live
+collision and eleven waiting. The live one was M6's pnp, whose reading band
+runs from y 349 to y 358 and held both the jog to its emitter and that node's
+label. Both have been moved.
+
+The eleven that wait are every transistor's reading, once `meters.i[id]`
+carries a current (item 10 below). A reading of `−1.23 mA` is 43 px wide and
+centred on the device. The collector lead leaves at 12 px, so the number lands
+on the wire that continues from that pin. No layout can avoid that while
+`transistorTextPlaces` centres the reading over the glyph. It wants the
+treatment the op-amp's texts have, hung to one side or offset past the lead.
+That is a `packages/ui` change rather than a lane's.
+
+### 9. Two panes have nothing to draw anywhere in the lab
+
+`components/panes.jsx` has a `CurvesCanvas` reading `x.curves` and a
+`SpectrumCanvas` reading `x.spectrum`. `analyse` in `math.js` sets neither, so
+both panes show their empty state in every experiment that lists them. Groups
+L and M therefore list neither view, and Group M's distortion figures are
+computed from the walk in `groups/l.js` rather than from a spectrum pane. The
+device curves belong to Group D and the spectrum to Group H, and whichever
+lane builds those adds the two to `analyse`.
+
+### 10. A transistor shows no meter reading
+
+`elementReading` reads `meters.i[id]`, and a `Q` element has no unknown current
+of its own, so `sol.i` carries `Q1.be` and `Q1.ce` and nothing under `Q1`. The
+result is that a transistor is the one element on the schematic with no number
+beside it in any of the three meter views. Item 4 above says `meters.i[id]`
+gives the collector current by default, and it does not yet. The fix is in
+whatever assembles `sol.i`, or in `elementReading`, and neither is this lane's.
+
+It is worse than nothing in two of the three views. In the voltage view
+`elementReading` falls through to `fmt(meters.volt[id], 'V', 3)`, and a
+transistor has no entry there either. `fmt` returns its own placeholder dash
+for a value that is not finite, so the schematic writes a dash and a volt sign
+over every transistor. The power view writes a dash and a watt sign the same
+way. Five of those sit on M1's drawing. Until the collector current arrives,
+returning null for a device with no reading would leave the space empty
+instead.
+
+### 11. `pwlTransient` can find the same event for ever
+
+`packages/network/src/pwl.js` detects an event when a region's margin crosses
+zero, flips the region, and calls `settle`. Where the crossing lands exactly on
+a sample of the walk's own grid, `settle` puts the device straight back into
+the region it just left. The event record then reads `active -> active`, and
+the loop makes no progress until `EVENT_LIMIT` stops it 2000 events later.
+
+It is reproducible. Take M6's output stage at `amp = 3.4`, `vbias = 0`,
+`RL = 10 kΩ`, `re = 10 Ω`, `f = 1 kHz`, `vsup = 10 V` and `beta = 100`. Over
+two cycles at 601 points its npn turns off at exactly the 28th sample, and the
+walk takes about ninety seconds to reach the chatter refusal. That refusal is
+correct and it names a reason. What is wrong is that `to === from` counts as an
+event at all.
+
+Two lines in `pwlTransient` would fix it. When `settle` returns the region the
+event came from, record no event and step past that instant. Until then M6
+walks at 201 points rather than 601, so a setting that hits the alignment costs
+seconds rather than minutes, and the pane shows the refusal.
+
+### 12. Two numbers this lane measured
+
+- **The two-stage op-amp's open-loop gain is 3 240, not 10⁵.** Its second stage
+  is loaded by a resistor rather than by a current source. A resistor small
+  enough to hold the output near the middle of the supply is also small enough
+  to cap the gain. The first stage's own gain is 50.9 and the second's is 64.3.
+  The missing factor of thirty is a current-source load on that second stage,
+  which is Group I's mirror used again. The Analog IC Lab and the VLSI Lab both
+  plan around this circuit and should quote the measured pair.
+- **The base current of an input transistor is 67.2 nA, not 75 nA.** The
+  textbook writes it as `I_tail/2β`. The Early effect raises the current gain to
+  `β(1 + |V_CE|/V_A)`, which is 110 at these collector voltages, and the tail is
+  shared between two collectors and two bases, so the number is
+  `I_tail/(2(1 + β_eff))`. Group A's `I_B = 100 nA` is a datasheet figure and
+  needs no change.
+
+### 13. A hand-over to Control Lab, and a link this lane could not make
+
+L5's loop gain and M3's are exactly what Control Lab reads as a plant. The plan
+asks for the link (`plant=custom`, `ctrl=p:1`) beside the loop view. Making it
+needs `deeplink.js` or `circuitLink.js` wired into a pane and a view registry
+entry, and both are outside this lane. Meanwhile the phase margin is measured
+here by `marginsOf`, on the same polynomials Control Lab would receive. M3's
+panel checks it against the crossover, the second pole and the zero, and the
+three account for it to a hundredth of a degree.
+
+### 14. Two claims of the plan's Group L that are not built
+
+- **L2's second half.** The plan asks for the CE stage's second-harmonic
+  distortion falling by 1 + T inside a loop. It is not here. The only local
+  feedback one stage has is its emitter resistor, and that resistor sets the
+  bias current as well as the loop. No knob moves one without the other. A
+  diode inside an op-amp's loop was tried instead. Its own small-signal
+  resistance is tens of milliohms, so it shunts the loop to nothing. The claim
+  needs a forward stage whose bias and whose feedback are separately reachable,
+  which is Group H's cascade. L2 measures desensitivity alone, at three loop
+  gains.
+- **L5's Bode view.** The closed-loop response peaks rather than falling. The
+  −3 dB reading `corners` takes against the response at one hertz then has
+  nothing to measure, and the shared Bode check fails on it correctly. L5 shows
+  the poles and the reading pane instead. A Bode pane that reports a peak rather
+  than a corner would let it back in, and Group K will want the same thing.
+
+### 15. The two-stage op-amp's drawing is 840 × 530
+
+Every other schematic in the lab fits the 420 × 180 grid. Five transistors, two
+supplies, a tail source, a load, two capacitors and a feedback block do not.
+The drawing passes the geometry checks and crops to 798 × 474, which at a phone
+width of 390 px scales the 10 px labels to about 5. Nobody has read a
+screenshot of it, because this environment has no browser. It is the first
+thing to look at in a review.
+### 16. Five more places where the plan and the built groups differ
+
+Each is a claim of `ELECTRONICS_LAB_PLAN.md` §5 that the lane did not build as
+written. All five are recorded here rather than left for a reader to find.
+
+- **L6's number is 750 µΩ, not 7.5 mΩ.** The plan writes it as 75 Ω over
+  1 + T and quotes 7.5 mΩ, which is a return ratio of 10⁴. A follower feeds
+  all of its output back, so T is the whole open-loop gain of 10⁵ and the
+  answer is ten times smaller. `experiments.test.js` pins the ratio at nine
+  settings of the gain and the resistance.
+- **L4's four topologies are prose, not a table.** The plan asks for the four
+  on one table, each with a circuit already in the lab. Three of those four
+  circuits are in groups that are not built, and a table of one measured row
+  and three promises is worse than the paragraph L4's `why` carries. Reopens
+  with Group H, whose emitter resistor is the series-series case.
+- **M1 does not check A's macro against the transistors.** The plan asks for
+  invariant 7, the macro given the same numbers agreeing at DC. The macro's
+  gain is a knob and the transistor circuit's is 3 240, so feeding one to the
+  other compares a number with itself. It becomes a real check when Group I's
+  mirror lifts the second stage and the two gains are arrived at separately.
+- **M2 does not print the ω_t/s fold's error at 10 f_p.** The plan asks for
+  the single-pole fold to be labelled with its error there. The panel prints
+  the measured unity-gain frequency beside the estimate instead, which is the
+  same information at the frequency that decides the margin. The fold itself
+  is Group A's A3.
+- **M6's largest drive is 9 V, not the plan's 10 V.** The supplies are ±10 V
+  and a class B stage cannot swing to its own rail, so a 10 V drive has no
+  operating point. The distortion reads 4.61 % at 9 V against the plan's
+  4.3 % at 10 V. The knob's own maximum is 9 V for the same reason, and past
+  the supply the model refuses. M6's fourth try step shows that refusal.
 
 ## For `BACKLOG.md`, under `### Electronics Lab` (append only)
 
