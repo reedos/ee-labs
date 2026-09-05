@@ -145,8 +145,6 @@ export const TERMS = {
       'I_S ∝ T³e^{−E_g/kT}. Because the exponential dominates, I_S very nearly doubles for every 4.5 K near ' +
       'room temperature. That is why a forward-biased junction left to itself runs away.',
   },
-  ...TERMS_H,
-  ...TERMS_I,
   tempco: {
     name: 'V_BE’s temperature coefficient',
     def:
@@ -154,6 +152,8 @@ export const TERMS = {
       'rise, about −1.7 mV per kelvin near 0.7 V. It is the same law as I_S(T), read the other way round. A ' +
       'bias point built from a diode drop drifts with temperature unless something compensates it.',
   },
+  ...TERMS_H,
+  ...TERMS_I,
 }
 
 /** Every term's pattern, tried in the order the prose is read. */

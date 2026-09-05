@@ -23,9 +23,6 @@ const row = (label, predicted, measured, unit = '', tol = 0.02, extra = {}) => (
 const closedGain = (p) => 1 + p.Rf / p.Rg
 
 export const ENTRIES = {
-  ...MATH_H,
-  ...MATH_I,
-
   a1(p, x) {
     const A0 = 1e5
     const beta = p.Rg / (p.Rf + p.Rg)
@@ -269,4 +266,11 @@ export const ENTRIES = {
       ],
     }
   },
+
+  // Groups H and I keep their entries beside their circuits, because each one
+  // measures a port with the same function the group's lessons quote. They
+  // land here in plan order, since this file is the only place a math entry
+  // can be registered and experiments.test.js requires one per experiment.
+  ...MATH_H,
+  ...MATH_I,
 }
