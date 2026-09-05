@@ -4,7 +4,7 @@
 // which is the tangent measured on the circuit rather than asserted about it.
 
 import { thermalVoltage } from '@ee-labs/network'
-import { cmrrDb, gainCM, gainD, linearityShortfall, offsetOf, shareQ1 } from '../groups/j.js'
+import { cmrrDb, gainCM, gainD, linearityShortfall, offsetOf, resistiveGain, shareQ1 } from '../groups/j.js'
 
 const VT = thermalVoltage(300)
 
@@ -121,8 +121,8 @@ export const LESSONS_J = {
   j3: {
     see:
       'R_EE beside the tail source is that source’s own output resistance, 100 kΩ here. A signal applied to both ' +
-      'bases together reaches one collector with a gain of 0.02455. A difference between them reaches it with ' +
-      '93.09. The ratio of the two is 71.58 dB of common-mode rejection.',
+      'bases together reaches one collector with a gain of 0.02455. A difference between them reaches the two ' +
+      'collectors together with a gain of 93.09. The ratio of the two is 71.58 dB of common-mode rejection.',
     seeReads: [
       [gainCM, -0.024545123],
       [gainD, -93.092273],
@@ -161,8 +161,8 @@ export const LESSONS_J = {
       'voltage over twice that resistance. With an ideal source it would be nothing at all. The rejection is ' +
       'the differential gain over this one, and R_C cancels out of the ratio. What is left is twice the ' +
       'transconductance times the tail resistance, 71.58 dB here. A5 measured the same ratio on the op-amp ' +
-      'box, where a data sheet had already fixed it. The tail is where an operational amplifier’s input ' +
-      'stage spends its money. A plain resistor cannot reach these numbers, because the same resistor would ' +
+      'box, where a data sheet had already fixed it. An operational amplifier’s input stage therefore uses a ' +
+      'transistor as its tail. A plain resistor cannot reach these numbers, because the same resistor would ' +
       'have to carry the bias current from the supply.',
   },
 
@@ -241,6 +241,7 @@ export const LESSONS_J = {
     whyReads: [
       ['gain', 2034.2288],
       [(x) => x.point.Q2.gm * x.point.Q2.ro, 4214.9006],
+      [(x, p) => resistiveGain({ ...p, rc: 5000 }), -93.672929],
     ],
     why:
       'A current mirror as a load does two jobs at once. It converts the pair’s two collector currents into one ' +

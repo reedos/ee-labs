@@ -269,6 +269,22 @@ export function linearityShortfall(x, p, again) {
 }
 
 /**
+ * The differential gain of the resistively loaded pair at these knobs.
+ *
+ * J5 compares its mirror load against the two collector resistors of J2, and
+ * the comparison is solved on J2's netlist here rather than carried across as
+ * a constant. A knob the two experiments share then moves both sides of it.
+ */
+export function resistiveGain(p) {
+  const again = (over) => {
+    const norm = normalize(pairNet({ ...p, ...over }))
+    const sol = newtonDC(norm, {}).sol
+    return { sol, point: pointsOf(norm, { sol }) }
+  }
+  return slopeAgainst(again, 'vid', p.vid, STEP.vid, vod)
+}
+
+/**
  * A stand-in for the harness's `again`, for a math entry, which is handed the
  * analysis and the knobs and nothing else. It solves the same netlist at
  * changed knobs, which is what every finite difference above needs, and
@@ -327,7 +343,13 @@ export const MATH_J = {
           row('the tail the two emitters share', p.itail, -(q1.ie + q2.ie), 'A', 1e-9),
         ]),
         V([
-          { label: 'the share in Q1', value: shareQ1(x), unit: '%', note: 'the same fraction whatever the tail current is' },
+          // The steering law alone is a ratio, and a ratio has no tail current
+          // in it. The circuit's share does move with the tail, because the
+          // tail sets the two collector voltages and those set the Early
+          // factors. It is 12.29 % at one milliamp against 11.96 % at a tenth
+          // of that, both at −2V_T, so the note names the cause rather than
+          // claiming an independence the knob disproves.
+          { label: 'the share in Q1', value: shareQ1(x), unit: '%', note: 'set by v_id, and moved a little by the tail through the two collector voltages' },
           { label: 'the Early correction to the ratio', value: early, unit: '', note: 'the two collectors sit at different voltages, so their currents are scaled differently' },
         ]),
       ],
@@ -382,14 +404,16 @@ export const MATH_J = {
     // Both expressions are written for a balanced pair with no Early effect
     // in them. Steer the pair and the two sides stop sharing the tail, so the
     // current a common-mode input makes no longer divides evenly. Raise the
-    // tail resistance past a few hundred kilohms and r_o, not R_EE, is what
-    // limits the rejection. Each case is named rather than crossed out.
+    // tail resistance past a few hundred kilohms and the circuit rejects more
+    // than the forms predict, not less: the ratio of measured to predicted is
+    // 0.996 at 100 kΩ, 1.08 at 1 MΩ and 6.4 at 10 MΩ. Each case is named
+    // rather than crossed out.
     const why = !allActive(x)
       ? OFF_REGION
       : Math.abs(p.vid) > vt / 4
         ? 'The pair is steered here rather than balanced, so a common-mode current no longer divides evenly between the two sides and these expressions describe neither.'
         : p.ree > 3e5
-          ? 'Past a few hundred kilohms the tail resistance is no longer what limits the rejection. The Early effect inside each transistor is, and these two closed forms do not carry it.'
+          ? 'Past a few hundred kilohms the measured rejection runs ahead of these two closed forms. They carry the tail resistance and not the Early effect inside each device, and above this tail resistance that second term is the larger one.'
           : null
     return {
       blocks: [

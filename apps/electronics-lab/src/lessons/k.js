@@ -3,12 +3,18 @@
 // polynomials, and the two hand methods are read beside them with the error
 // each one carries, rather than in place of them.
 
-import { cePoleFor, dominant, magAt, millerOf, octcOf, sctcOf, second, unityGain } from '../groups/k.js'
+import { cePoleFor, ceSeenBy, dominant, magAt, millerOf, octcOf, relativeAt, sctcOf, second, unityGain } from '../groups/k.js'
 
 /** The frequency at which the short-circuit current gain reaches one. */
 const fT = (x) => unityGain(x.tf)
 /** How far the current gain falls over the decade below that frequency. */
 const decadeSlope = (x) => 20 * Math.log10(magAt(x.tf, fT(x) / 10) / magAt(x.tf, fT(x)))
+/** The same fall over the octave below it, which is the other unit courses use. */
+const octaveSlope = (x) => 20 * Math.log10(magAt(x.tf, fT(x) / 2) / magAt(x.tf, fT(x)))
+/** How far the response is below the midband gain at the dominant pole. */
+const dropAtPole = (x) => relativeAt(x, dominant(x)).db
+/** How far the phase has fallen behind the midband value there. */
+const lagAtPole = (x) => -relativeAt(x, dominant(x)).deg
 /** The corner the sum of the open-circuit time constants estimates. */
 const octcCorner = (x) => octcOf(x).fh
 /** How far that estimate lands from the exact dominant pole, as a percentage. */
@@ -24,6 +30,8 @@ const lowSeenBy = (id) => (x) => sctcOf(x).taus.find((t) => t.id === id).r
 const lowCorner = (id) => (x) => sctcOf(x).taus.find((t) => t.id === id).hz
 /** The common emitter's dominant pole at the same device and source. */
 const cePole = (rc) => (x, p) => cePoleFor({ ...p, rc: rc ?? p.rc })
+/** What the same capacitance sees in that common emitter, at these knobs. */
+const ceSeen = (rc) => (x, p) => ceSeenBy({ ...p, rc: rc ?? p.rc }, 'Q1.cmu')
 
 export const LESSONS_K = {
   k1: {
@@ -63,12 +71,14 @@ export const LESSONS_K = {
       [fT, 279986190],
       [(x, p) => x.point.Q1.gm / (2 * Math.PI * (p.cpi + p.cmu)), 279833160],
       [decadeSlope, 19.926111],
+      [octaveSlope, 5.9926511],
     ],
     why:
       'Hold the collector still and the device has one job left. It charges its own capacitances. The base ' +
       'current divides between them and r_π. Above the corner where their impedance falls below r_π, almost ' +
-      'all of it goes to the capacitors. The gain then falls at 19.93 dB per decade, which is the one-pole ' +
-      'slope. Multiply the low-frequency gain by the corner and r_π cancels. What is left is g_m over the two ' +
+      'all of it goes to the capacitors. One pole costs 6 dB per octave, which is 20 dB per decade. This one ' +
+      'measures 5.99 dB per octave and 19.93 dB per decade. Multiply the low-frequency gain by the corner and ' +
+      'r_π cancels. What is left is g_m over the two ' +
       'capacitances. That product is 279.8 MHz here, against the 280.0 MHz the polynomials give. The small ' +
       'gap is the zero the collector capacitance also makes. f_T is the number a data sheet quotes, and every ' +
       'corner in this group is some fraction of it.',
@@ -150,6 +160,13 @@ export const LESSONS_K = {
         reads: [
           ['pole.1.hz', 112214.6],
           ['zero.1.hz', 615638810],
+        ],
+      },
+      {
+        say: 'Read the response at that pole rather than the pole itself. The magnitude is 3.01 dB under the midband gain, and the phase has fallen 45.1° behind it.',
+        reads: [
+          [dropAtPole, -3.010311],
+          [lagAtPole, 45.101908],
         ],
       },
     ],
@@ -258,7 +275,7 @@ export const LESSONS_K = {
         say: 'Read what the collector capacitance sees here. It is 998.0 Ω, against the 140.4 kΩ the same capacitance sees in K3.',
         reads: [
           [seenBy('Q1.cmu'), 998.03685],
-          [(x, p) => 140418.49, 140418.49],
+          [ceSeen(5000), 140418.49],
         ],
       },
     ],
@@ -294,7 +311,7 @@ export const LESSONS_K = {
         reads: [
           [seenBy('Q1.cmu'), 1540.4439],
           [tau('Q1.cmu'), 3.0808877e-9],
-          [() => 140418.49, 140418.49],
+          [ceSeen(), 140418.49],
         ],
       },
       {

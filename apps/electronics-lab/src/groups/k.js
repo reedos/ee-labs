@@ -467,6 +467,38 @@ export function cePoleFor(p) {
   return tf ? Math.min(...polesFor(tf)) : NaN
 }
 
+/**
+ * What one capacitance of that same common-emitter stage sees, by the
+ * open-circuit method, at this experiment's own device and source.
+ *
+ * K5 and K6 both quote the resistance K3's collector capacitance looks into,
+ * because the whole point of a follower and of a cascode is how much smaller
+ * their own is. The number is solved on K3's netlist at the knobs in front of
+ * the reader rather than carried across as a constant, so turning a knob these
+ * three experiments share moves both sides of the comparison.
+ */
+export function ceSeenBy(p, id) {
+  const norm = normalize(ceNet(p))
+  const o = octcOf({ ss: smallSignalOf(norm, newtonDC(norm, {})) })
+  const t = o && o.taus.find((c) => c.id === id)
+  return t ? t.r : NaN
+}
+
+/**
+ * |H| in decibels and ∠H in degrees at one frequency, both against the
+ * midband value, so a phase reads as the lag the poles have added rather than
+ * as the 180° an inverting stage starts from.
+ */
+export function relativeAt(x, f) {
+  if (!x.tf) return { db: NaN, deg: NaN }
+  const a = evalTF(x.tf, [0, 1e-9])
+  const b = evalTF(x.tf, [0, 2 * Math.PI * f])
+  return {
+    db: 20 * Math.log10(Math.hypot(b[0], b[1]) / Math.hypot(a[0], a[1])),
+    deg: ((Math.atan2(b[1], b[0]) - Math.atan2(a[1], a[0])) * 180) / Math.PI,
+  }
+}
+
 // These three are here so that `cePoleFor` reads as one sentence, and so that
 // a change to how a stage is linearised happens in one place.
 const smallSignalOf = (norm, op) => smallSignal(norm, op, { caps: true })
@@ -491,6 +523,33 @@ const row = (label, predicted, measured, unit = '', tol = 0.02, extra = {}) => (
 
 const OFF_REGION =
   'The device has left its active region at this setting, and the small-signal model of a saturated transistor is a different circuit.'
+
+/**
+ * How far apart the two poles have to be for a one-pole estimate of the high
+ * corner to be worth reading.
+ *
+ * Both hand methods in this group put the whole of the input time constant on
+ * the lowest pole. The second pole holds some of it back, so an estimate is
+ * worth what the spacing leaves it. At the defaults the two poles are 624
+ * apart and both estimates are inside 3.2 per cent. At 17 apart both are
+ * within 5.6 per cent. At 6.7 apart the Miller estimate is 31 per cent high
+ * and the sum of the time constants 13 per cent low, and the knobs reach 3.3.
+ * Ten is the line between those two behaviours. Under it the panel says to
+ * read the exact pole instead, rather than printing a number the reader would
+ * take at face value. That is the threshold CORE_SCOPE.md's Rule 3 asks an
+ * approximation to carry, and `experiments.test.js` crosses it both ways.
+ */
+export const SPACING = 10
+
+/** How many times the second pole sits above the first. */
+export const poleSpacing = (x) => second(x) / dominant(x)
+
+/** The note an estimate of the high corner carries at this pole spacing. */
+export function spacingNote(x, far) {
+  const s = poleSpacing(x)
+  if (!Number.isFinite(s)) return far
+  return s < SPACING ? `the two poles are ${s.toFixed(1)} apart, under the ${SPACING} this estimate needs, so read the exact pole above` : far
+}
 
 /** Why a small-signal row cannot be checked here, or null. */
 const signalWhy = (x) => (!allActive(x) ? OFF_REGION : !x.tf ? 'This circuit has no polynomials at this setting, so there is nothing to read the poles off.' : null)
@@ -582,7 +641,12 @@ export const MATH_K = {
           { label: 'the Miller multiplier, 1 + g_m R_L', value: m ? m.multiplier : NaN, unit: '' },
           { label: 'the input capacitance it makes', value: m ? m.cin : NaN, unit: 'F' },
           { label: 'the corner that estimate gives', value: m ? m.fh : NaN, unit: 'Hz' },
-          { label: 'how far above the exact pole it lands', value: m ? m.fh / exact - 1 : NaN, unit: '', note: 'the estimate keeps only one pole, and drops the second one’s pull on the first' },
+          {
+            label: 'how far above the exact pole it lands',
+            value: m ? m.fh / exact - 1 : NaN,
+            unit: '',
+            note: spacingNote(x, 'the estimate keeps only one pole, and drops the second one’s pull on the first'),
+          },
         ]),
       ],
     }
@@ -605,8 +669,13 @@ export const MATH_K = {
         ]),
         V([
           { label: 'the corner the sum estimates', value: o ? o.fh : NaN, unit: 'Hz' },
-          { label: 'how far below the exact pole it lands', value: o ? o.fh / exact - 1 : NaN, unit: '', note: 'the estimate spends the whole sum on one pole, and the second pole has some of it' },
-          { label: 'how far apart the two poles are', value: second(x) / exact, unit: '', note: 'the closer they come, the more the estimate costs' },
+          {
+            label: 'how far below the exact pole it lands',
+            value: o ? o.fh / exact - 1 : NaN,
+            unit: '',
+            note: spacingNote(x, 'the estimate spends the whole sum on one pole, and the second pole has some of it'),
+          },
+          { label: 'how far apart the two poles are', value: poleSpacing(x), unit: '', note: `under ${SPACING} the row above says to read the exact pole instead` },
         ]),
       ],
     }
