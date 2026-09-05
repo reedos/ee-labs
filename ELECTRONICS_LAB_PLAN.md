@@ -111,7 +111,8 @@ Two things the map shows that this plan does not fix, so that they are decisions
 not omissions. **Coupled inductors and transformers** have no built home. Power Lab's
 Group D is their plan, and only N4 here would use them. **Laplace transforms as a
 topic** were declined by the Elements plan, and Circuit Lab is the door to H(s). This
-lab uses H(s) throughout and adds nothing about the transform itself.
+lab uses H(s) throughout and adds nothing about the transform itself. The map across
+all six labs, with the seams between them, is `CURRICULUM.md`.
 
 The order of the groups follows the map. Nothing in a group leans on an experiment
 that comes later in this lab or in a lab that is not built. The four bridging groups
