@@ -26,8 +26,11 @@ overseer's to take.
 Electronics Lab's entry today is:
 
 - Slug `electronics-lab`, splash glyph `⊳`, short nav name **Electronics**.
-- **10 experiments in 2 groups.** Group A, "the op-amp as a user meets it", ids
-  `a1` to `a6`. Group C, "inside the junction", ids `c1` to `c4`.
+- **22 experiments in 4 groups.** Group A, "the op-amp as a user meets it", ids
+  `a1` to `a6`. Group C, "inside the junction", ids `c1` to `c4`. Group L,
+  "feedback", ids `l1` to `l6`. Group M, "inside the op-amp", ids `m1` to `m6`.
+  Groups L and M sit after C in the app's list, because the plan's order is the
+  progression map's and the groups between them are not built.
 - No cross-lab reference by id in either direction yet. The lab's own
   `experiments.test.js` fails on a lesson that cites an experiment id this lab
   does not carry, so the references the plan lists for Groups D to O arrive
@@ -183,6 +186,19 @@ its id alone so the two clear each other, and the polarity is left to the
 arrowhead. A shorter default, or a label placed to one side, would fix it for
 every lab.
 
+The same geometry, run over this lane's six drawings by hand, found one live
+collision and eleven waiting. The live one was M6's pnp, whose reading band
+runs from y 349 to y 358 and held both the jog to its emitter and that node's
+label. Both have been moved.
+
+The eleven that wait are every transistor's reading, once `meters.i[id]`
+carries a current (item 10 below). A reading of `−1.23 mA` is 43 px wide and
+centred on the device. The collector lead leaves at 12 px, so the number lands
+on the wire that continues from that pin. No layout can avoid that while
+`transistorTextPlaces` centres the reading over the glyph. It wants the
+treatment the op-amp's texts have, hung to one side or offset past the lead.
+That is a `packages/ui` change rather than a lane's.
+
 ### 9. Two panes have nothing to draw anywhere in the lab
 
 `components/panes.jsx` has a `CurvesCanvas` reading `x.curves` and a
@@ -201,6 +217,15 @@ result is that a transistor is the one element on the schematic with no number
 beside it in any of the three meter views. Item 4 above says `meters.i[id]`
 gives the collector current by default, and it does not yet. The fix is in
 whatever assembles `sol.i`, or in `elementReading`, and neither is this lane's.
+
+It is worse than nothing in two of the three views. In the voltage view
+`elementReading` falls through to `fmt(meters.volt[id], 'V', 3)`, and a
+transistor has no entry there either. `fmt` returns its own placeholder dash
+for a value that is not finite, so the schematic writes a dash and a volt sign
+over every transistor. The power view writes a dash and a watt sign the same
+way. Five of those sit on M1's drawing. Until the collector current arrives,
+returning null for a device with no reading would leave the space empty
+instead.
 
 ### 11. `pwlTransient` can find the same event for ever
 
@@ -273,6 +298,37 @@ The drawing passes the geometry checks and crops to 798 × 474, which at a phone
 width of 390 px scales the 10 px labels to about 5. Nobody has read a
 screenshot of it, because this environment has no browser. It is the first
 thing to look at in a review.
+### 16. Five more places where the plan and the built groups differ
+
+Each is a claim of `ELECTRONICS_LAB_PLAN.md` §5 that the lane did not build as
+written. All five are recorded here rather than left for a reader to find.
+
+- **L6's number is 750 µΩ, not 7.5 mΩ.** The plan writes it as 75 Ω over
+  1 + T and quotes 7.5 mΩ, which is a return ratio of 10⁴. A follower feeds
+  all of its output back, so T is the whole open-loop gain of 10⁵ and the
+  answer is ten times smaller. `experiments.test.js` pins the ratio at nine
+  settings of the gain and the resistance.
+- **L4's four topologies are prose, not a table.** The plan asks for the four
+  on one table, each with a circuit already in the lab. Three of those four
+  circuits are in groups that are not built, and a table of one measured row
+  and three promises is worse than the paragraph L4's `why` carries. Reopens
+  with Group H, whose emitter resistor is the series-series case.
+- **M1 does not check A's macro against the transistors.** The plan asks for
+  invariant 7, the macro given the same numbers agreeing at DC. The macro's
+  gain is a knob and the transistor circuit's is 3 240, so feeding one to the
+  other compares a number with itself. It becomes a real check when Group I's
+  mirror lifts the second stage and the two gains are arrived at separately.
+- **M2 does not print the ω_t/s fold's error at 10 f_p.** The plan asks for
+  the single-pole fold to be labelled with its error there. The panel prints
+  the measured unity-gain frequency beside the estimate instead, which is the
+  same information at the frequency that decides the margin. The fold itself
+  is Group A's A3.
+- **M6's largest drive is 9 V, not the plan's 10 V.** The supplies are ±10 V
+  and a class B stage cannot swing to its own rail, so a 10 V drive has no
+  operating point. The distortion reads 4.61 % at 9 V against the plan's
+  4.3 % at 10 V. The knob's own maximum is 9 V for the same reason, and past
+  the supply the model refuses. M6's fourth try step shows that refusal.
+
 ## For `BACKLOG.md`, under `### Electronics Lab` (append only)
 
 `BACKLOG.md` is not on this branch. Its text is here for the director to
