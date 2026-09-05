@@ -581,11 +581,33 @@ release-gated ones, so they land in one small batch at the end.
 
 ## 8. Phasing (each phase ships green and deployable)
 
-Built so far: the engine, Groups **A**, **B**, **E** and **C** (20 experiments,
-dark at `/power-lab/`). Group C came after E because E's event engine was the
-riskier piece and worth proving first. C then needed no new machinery, only the
-lossy CCM ratio (`ratioWithRL`, `boostPeak`) the engine now exports. Next by
-this list: **D** (magnetics) and **F** (inverters).
+Built so far: the engine, Groups **A**, **B**, **E**, **C**, **D**, **F** and
+**G** (34 experiments, dark at `/power-lab/`). Group C came after E because E's
+event engine was the riskier piece and worth proving first. C then needed no new
+machinery, only the lossy CCM ratio (`ratioWithRL`, `boostPeak`) the engine now
+exports.
+
+D, F and G landed together after §11, so they inherited the bar rather than
+needing it retrofitted. The lab's order on screen is now the plan's own,
+A to G. Each group brought its own machinery.
+
+D brought the piecewise-linear core, in `magnetics.js` and `saturating.js`.
+The knee is an event bisected on the exact solution, and the fixed point is
+found by Newton with a backtracked step. D also brought the flyback and the
+half-bridge as converter-shaped state machines, in `isolated.js`. The
+half-bridge is solved over half a switching period at twice the duty, which
+is the symmetry rather than an approximation. The flux view and the
+conduction scrub came with them, and the scrub lights the parts the engine's
+own switch state names.
+
+F brought the fixed-pattern solver and the exact Fourier machinery, in
+`clocked.js`, and the PWM comparator and the two bridges, in `inverter.js`.
+G brought the loss ledger, in `ledger.js`, and the three closed forms it
+quotes: `capacitorRms`, `switchingCrossover` and `peakEfficiencyLoad`.
+
+**D5, the leakage spike, is deferred.** It needs a third state and a clamp,
+which is a new state variable rather than a new lesson. Next by this list is
+**H**, closing the loop, then I to N.
 
 
 1. **Engine**: `packages/switched` propagator + events + steady state + measures,
@@ -600,11 +622,16 @@ this list: **D** (magnetics) and **F** (inverters).
    the signed inverting output carried C on their own.)*
 4. **Magnetics**: piecewise-L saturation events, B-view, flyback, half-bridge
    (D4's freewheel intervals exercise the scrub view hardest). Group D.
+   *(Shipped, with the scrub. D5's leakage spike is deferred.)*
 5. **AC**: rectifiers + dimmer + six-pulse (Group E), the event engine's
    first outing: topology chosen by state, shooting on the capacitor voltage,
    exact Fourier integrals, then inverters + PWM spectra (Group F).
+   *(Both shipped. F's pattern is fixed before its state is, so it is a linear
+   solve over one fundamental period rather than a shooting problem.)*
 6. **Losses + control bridge**: Groups G, H. Loss ledger, efficiency sweeps,
    Control Lab hand-over round-trip. Report link. AGENT_BRIEF.
+   *(G shipped, with the ledger and the two efficiency sweeps. H is next, and
+   is the first thing in this list that needs another lab.)*
 7. **Three-phase out and the isolated family**: Groups I, J, F's PWM and D4's
    half-bridge machinery, three times over.
 8. **Resonant and motor drives**: Groups K, L, the tank and the armature are

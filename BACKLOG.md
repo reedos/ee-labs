@@ -65,8 +65,54 @@ dependency or decision that reopens it.
 
 ### Power Lab
 
-- Groups D, F to N: no overseer in this program. The Machines Lab's drives group and
-  the Energy Lab's inverters wait on F and L.
+Groups **D** (magnetics), **F** (inverters) and **G** (losses) are built on
+`lab/power-lab-dfg`, twelve experiments on top of the twenty-two the lab
+already carried. The lab now runs in the plan's own order, A to G, at
+thirty-four experiments, and stays dark. `packages/switched` gained the
+piecewise-linear core and its shooting solver, the flyback and the
+half-bridge, the fixed-pattern solver with exact Fourier integrals, the PWM
+comparator, the two inverter bridges and the loss ledger. Every existing
+signature stands. One line moved, and `apps/power-lab/AGENT_BRIEF_DFG.md`
+names it.
+
+Deferred, with what reopens each:
+
+- **D5, the leakage spike, is not built.** It is the plan's own stretch
+  (§4, §10). The flux that does not link both windings needs a third state
+  and a clamp, which is a new state variable rather than a new lesson. Every
+  other experiment in the group works without it. Reopens with anyone
+  extending `packages/switched/src/isolated.js` to three states.
+- **The half-bridge holds its divider midpoint stiff at V_in/2**, as the plan
+  says v1 would. So it carries no magnetising current and stores nothing by
+  construction, and the duty-asymmetry demonstration D4 mentions has nothing
+  to walk. The drawing puts the blocking capacitor in the primary loop, which
+  is the part that does the forgiving. Reopens with the midpoint as a third
+  state.
+- **`verify.mjs` has not been run against the new groups.** This environment
+  has no browser. The three new panes (flux, scrub, ledger), the two new
+  sweeps and the four new drawings have been held as geometry and as rendered
+  markup rather than as pixels. Nobody has read a screenshot of them as a
+  student would (`REVIEW_PLAYBOOK.md` §11). The group tab row is now seven
+  wide, which is the first thing a browser pass should measure against the
+  1366×768 fold. Reopens with anyone who has a browser.
+- **The half-bridge declines rather than solving** where its secondary pulse
+  n·V_in/2 is smaller than its rectifier's drop. The output inductor is then
+  never fed and the model's assumption fails. `conv.deliverable` and
+  `conv.headroom` carry it, and the app's knob ranges keep a reader clear of
+  it. A gate message on screen is the missing half. Reopens with the first
+  experiment that lets a reader reach it.
+- **Groups H to N have no overseer in this program.** H, closing the loop,
+  needs Control Lab's `plant=custom` round trip, which is a hand-over rather
+  than machinery. I, J, K, L, M and N are curriculum on machinery that now
+  exists. I and J sit on D4's half-bridge and F's comparator, K and L on E's
+  diode events, M and N on Signal and Circuit Lab's own tools. The Machines
+  Lab's drives group and the Energy Lab's inverters wait on F and L. F is now
+  built, so the inverter half of that wait is over.
+- **`npm ci` does not run on this branch.** `package-lock.json` is missing
+  `random-lab`, so `npm ci` refuses and the worktree was installed with
+  `npm install --no-save`. Nothing in this lab needs a new dependency, and the
+  lock file was not touched. Reopens at integration, where the director's
+  `npm install` regenerates it.
 
 ### Electronics Lab
 

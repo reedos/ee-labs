@@ -5,9 +5,10 @@ twenty-two the lab already carries, and five additions to `packages/switched`
 that carry them. `POWER_LAB_PLAN.md` §4 is the curriculum, §2 the models, §11
 the quality bar every group built after 2026-09-02 inherits.
 
-This brief is the contract. Every number below was computed by `pins.mjs`
-against the engine before a word of the notes was written, and every one of
-them is a test in `experiments.test.js`, `pins.test.js` or `path.test.js`.
+This brief is the contract. Every number below was computed by
+`apps/power-lab/scripts/pins-dfg.mjs` against the engine before a word of the
+notes was written, and every one of them is a test in `experiments.test.js`,
+`pins.test.js` or `path.test.js`.
 
 ---
 
@@ -166,7 +167,7 @@ converters.
 
 ## 4. The pins, computed before they were written
 
-Every figure below came out of `pins.mjs` run against the engine.
+Every figure below came out of `scripts/pins-dfg.mjs` run against the engine.
 
 ### Group D
 
