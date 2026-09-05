@@ -562,13 +562,21 @@ export const BLOCK_TYPES = {
         settle: plant.length,
       }
     },
-    /** The whole run, for the weight view. Never the block's own private state. */
-    run: (p, buf, sampleRate) => {
+    /**
+     * The whole run, for the weight view. Never the block's own private state.
+     *
+     * The view wants about 256 rows of weight history and a measurement wants
+     * every one, so the stride is an option rather than a constant. `noise` is
+     * returned beside the run because the floor the filter cannot cancel is the
+     * noise's own power, and a measurement that recomputed it would be using a
+     * different sequence from the one the run used.
+     */
+    run: (p, buf, sampleRate, opts = {}) => {
       const noise =
         p.noiseAmp > 0
           ? Float64Array.from({ length: buf.length }, (_, i) => p.noiseAmp * (2 * hash(i) - 1))
           : null
-      return runAdaptive({
+      const r = runAdaptive({
         x: buf,
         plant: tapsOf(p.plant),
         algorithm: p.algorithm,
@@ -577,8 +585,9 @@ export const BLOCK_TYPES = {
         lambda: p.lambda,
         delta: p.delta,
         noise,
-        stride: Math.max(1, Math.round(buf.length / 256)),
+        stride: opts.stride ?? Math.max(1, Math.round(buf.length / 256)),
       })
+      return { ...r, noise, plant: tapsOf(p.plant) }
     },
   },
 

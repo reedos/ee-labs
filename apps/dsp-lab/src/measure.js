@@ -1,6 +1,27 @@
-import { spectrum, firResponse, multirateCost } from '@ee-labs/dsp'
-import { BLOCK_TYPES, firDesign, iirDesign, cascadeResponse } from './blocks.js'
-import { chainSpec, renderChain } from './chain.js'
+import {
+  arOrderCriteria,
+  arSpectrum,
+  arYuleWalker,
+  bandStats,
+  bartlett,
+  designBiquad,
+  convolveFir,
+  fftCost,
+  firResponse,
+  findLimitCycle,
+  lmsStepBound,
+  makeFixedBiquad,
+  misadjustment,
+  multirateCost,
+  periodogram,
+  roundingNoise,
+  spectrum,
+  tailPower,
+  weightError,
+  welch,
+} from '@ee-labs/dsp'
+import { BLOCK_TYPES, firDesign, iirDesign, cascadeResponse, tapsOf } from './blocks.js'
+import { chainSpec, renderChain, runChain } from './chain.js'
 
 // The quantity paths, resolved once.
 //
@@ -20,6 +41,13 @@ import { chainSpec, renderChain } from './chain.js'
 //   spec.<band>.<marginDb|maxDb|minDb|atHz|met>
 //   spec.worst
 //   guard.<hz>                       the anti-alias filter's response there
+//   lms.<power|bound|boundMean|misadjustment|reach|converged|diverged>
+//   lms.<error|settled|floor|ratio|echo|residual|erle|cost>
+//   fix.<delta|stateDelta|radius|moved|stable|top|bottom>
+//   fix.<deadband|deadbandUnits|period|noiseGain|rmsIn|rmsOut|gainDb>
+//   psd.<mean|cv|df|segments|n>
+//   ar.<a1|a2|sigma2|peak|aic|mdl>
+//   fft.<butterflies|direct|ratio|stages|n>
 
 /** Render an experiment's state exactly as the app does. */
 export function runState(state) {
@@ -77,6 +105,157 @@ export function designOf(state) {
 export function holdDroop(hz, M, sampleRate) {
   const x = (Math.PI * hz * M) / sampleRate
   return x === 0 ? 1 : Math.sin(x) / x
+}
+
+
+/** The adaptive block in the chain, or null. */
+export function adaptiveBlock(state) {
+  return firstBlock(state, (b) => b.type === 'adaptive') ?? null
+}
+
+/** The fixed-point block in the chain, or null. */
+export function fixedBlock(state) {
+  return firstBlock(state, (b) => b.type === 'fixedbiquad') ?? null
+}
+
+/**
+ * The buffer arriving at a block, which is the stage before it.
+ *
+ * `runChain` keeps one stage per block plus the sum it started from, so the
+ * input to `blocks[i]` is `stages[i]`. Reading it here rather than re-rendering
+ * the sources means a measurement sees exactly what the block saw, including
+ * anything a block ahead of it did.
+ */
+export function inputTo(state, id) {
+  const { stages } = runChain(state.sources, state.blocks, state.fftSize, state.sampleRate)
+  const i = state.blocks.findIndex((b) => b.id === id)
+  return stages[Math.max(0, i)].buf
+}
+
+/** Mean square of a buffer, which is its power per sample. */
+export const power = (buf) => tailPower(buf, buf.length)
+
+/**
+ * The adaptive block's whole run, at stride 1 so a convergence count is exact.
+ *
+ * Everything Group C reads comes from this one run: the weights it ended at,
+ * the error it settled to, and the noise floor that error cannot go below. Held
+ * against the last state seen, because four claims on one experiment would
+ * otherwise run the same eight-tap filter over 4096 samples four times.
+ */
+let lastAdaptive = { key: null, value: null }
+export function adaptiveOf(state) {
+  const b = adaptiveBlock(state)
+  if (!b) return null
+  const key = JSON.stringify([b.params, state.sources, state.fftSize, state.sampleRate])
+  if (lastAdaptive.key === key) return lastAdaptive.value
+  const x = inputTo(state, b.id)
+  const r = BLOCK_TYPES.adaptive.run(b.params, x, state.sampleRate, { stride: 1 })
+  const plant = tapsOf(b.params.plant)
+  const clean = convolveFir(x, plant)
+  const tail = Math.max(1, Math.round(x.length / 4))
+  const value = {
+    block: b,
+    x,
+    plant,
+    ...r,
+    inputPower: power(x),
+    // The floor is the part of what was wanted that no filter of the input can
+    // produce, which is the added noise itself.
+    floor: r.noise ? power(r.noise) : 0,
+    clean,
+    tail,
+  }
+  lastAdaptive = { key, value }
+  return value
+}
+
+/**
+ * The first sample at which the weights are within `frac` of the plant.
+ *
+ * The history is one row a sample here, so this is a sample count and not a
+ * multiple of a stride. A run that never gets there returns the run's length,
+ * which is a lower bound rather than a fiction, and `lms.converged` says which
+ * of the two happened.
+ */
+export function reachAt(run, frac = 0.1) {
+  for (let i = 0; i < run.history.length; i++) {
+    if (weightError(run.history[i], run.plant) <= frac) return i
+  }
+  return run.history.length
+}
+
+/** Multiplies a sample, by algorithm. The cost that buys the convergence. */
+export function costPerSample(algorithm, taps) {
+  const N = Math.max(1, Math.round(taps))
+  if (algorithm === 'rls') return N * N
+  return algorithm === 'nlms' ? 3 * N : 2 * N
+}
+
+/** The fixed-point block's quantisers and the section they act on. */
+export function fixedOf(state) {
+  const b = fixedBlock(state)
+  if (!b) return null
+  const def = BLOCK_TYPES.fixedbiquad
+  return {
+    block: b,
+    exact: designBiquad({ mode: b.params.mode, freq: b.params.freq, q: b.params.q }, state.sampleRate),
+    q: def.quantised(b.params, state.sampleRate),
+    qs: def.quantisers(b.params),
+  }
+}
+
+/**
+ * The dead band, measured rather than predicted.
+ *
+ * The section is started from four tenths of full scale with no input at all and
+ * run until its state repeats. In float64 it would decay to nothing. With the
+ * state on a grid the decay stops where a step of the recursion rounds back to
+ * where it started, and what it sits on from then on is the limit cycle. Its
+ * amplitude divided by the step is the count a lesson quotes, and it is the same
+ * count at every word length because the coefficients set it and the word length
+ * sets only the size of a step.
+ *
+ * The starting level is a level rather than a count of steps, so the same number
+ * means the same thing at 10 bits and at 16. With no state quantiser there is no
+ * dead band at all, and the resolver says so by returning zero.
+ */
+export const DEAD_BAND_START = 0.4
+
+export function deadBandOf(state) {
+  const f = fixedOf(state)
+  if (!f || !f.qs.state) return { steps: 0, amplitude: 0, period: 0, found: false, delta: 0 }
+  const step = makeFixedBiquad(f.exact, { coeffQ: f.qs.coeff, stateQ: f.qs.state })
+  const d = f.qs.state.delta
+  const start = f.qs.state(DEAD_BAND_START)
+  const cyc = findLimitCycle(step, { start: [0, 0, start, start] })
+  return { ...cyc, steps: Math.round(cyc.amplitude / d), delta: d }
+}
+
+/** The estimate the density view draws, from the state's own estimator. */
+export function psdOf(state) {
+  const { buf } = renderChain(state.sources, state.blocks, state.fftSize, state.sampleRate)
+  const K = Math.max(1, Math.round(state.segments ?? 1))
+  if (state.estimator === 'welch') return welch(buf, state.sampleRate, { segments: K })
+  if (state.estimator === 'bartlett') return bartlett(buf, state.sampleRate, { segments: K })
+  return periodogram(buf, state.sampleRate, { window: state.window ?? 'none' })
+}
+
+/**
+ * The all-pole model the state's order asks for, fitted to the chain's output.
+ *
+ * `peak` is where the model's response is largest, which is the frequency a
+ * reader compares against the line the average shows.
+ */
+export function arOf(state) {
+  const { buf } = renderChain(state.sources, state.blocks, state.fftSize, state.sampleRate)
+  const order = Math.max(1, Math.round(state.arOrder ?? 2))
+  const m = arYuleWalker(buf, order)
+  const freqs = Float64Array.from({ length: 512 }, (_, i) => (i * state.sampleRate) / 2 / 511)
+  const mag = arSpectrum(m, freqs, state.sampleRate)
+  let bi = 0
+  for (let i = 1; i < mag.length; i++) if (mag[i] > mag[bi]) bi = i
+  return { ...m, freqs, mag, peak: freqs[bi], buf, order }
 }
 
 /** Resolve one quantity path against a state and its rendered spectrum. */
@@ -143,6 +322,94 @@ export function resolvePath(path, state, rendered = null) {
     if (!band) throw new Error(`unknown band: ${path}`)
     if (parts[2] in band) return band[parts[2]]
     throw new Error(`unknown spec path: ${path}`)
+  }
+
+  if (parts[0] === 'lms') {
+    const r = adaptiveOf(state)
+    if (!r) throw new Error(`lms path with no adaptive block: ${path}`)
+    const p = r.block.params
+    if (parts[1] === 'power') return r.inputPower
+    if (parts[1] === 'bound') return lmsStepBound({ taps: p.taps, inputPower: r.inputPower }).meanSquare
+    if (parts[1] === 'boundMean') return lmsStepBound({ taps: p.taps, inputPower: r.inputPower }).mean
+    if (parts[1] === 'misadjustment') {
+      return misadjustment({ mu: p.mu, taps: p.taps, inputPower: r.inputPower })
+    }
+    if (parts[1] === 'reach') return reachAt(r)
+    if (parts[1] === 'converged') return reachAt(r) < r.history.length
+    if (parts[1] === 'diverged') return !Number.isFinite(weightError(r.w, r.plant))
+    if (parts[1] === 'error') return weightError(r.w, r.plant)
+    if (parts[1] === 'settled') return tailPower(r.e, r.tail)
+    if (parts[1] === 'floor') return r.floor
+    if (parts[1] === 'ratio') return tailPower(r.e, r.tail) / Math.max(1e-300, r.floor)
+    if (parts[1] === 'echo') return tailPower(r.d, r.tail)
+    if (parts[1] === 'residual') return tailPower(r.e, r.tail)
+    if (parts[1] === 'erle') {
+      return 10 * Math.log10(tailPower(r.d, r.tail) / Math.max(1e-300, tailPower(r.e, r.tail)))
+    }
+    if (parts[1] === 'cost') return costPerSample(p.algorithm, p.taps)
+    throw new Error(`unknown lms path: ${path}`)
+  }
+
+  if (parts[0] === 'fix') {
+    const f = fixedOf(state)
+    if (!f) throw new Error(`fix path with no fixed-point block: ${path}`)
+    if (parts[1] === 'delta') return f.qs.coeff.delta
+    if (parts[1] === 'stateDelta') return f.qs.state ? f.qs.state.delta : 0
+    if (parts[1] === 'radius') return f.q.radius
+    if (parts[1] === 'moved') return Math.max(...f.q.moved.filter(Number.isFinite))
+    if (parts[1] === 'stable') return f.q.stable
+    if (parts[1] === 'top') return (f.qs.state ?? f.qs.coeff).top
+    if (parts[1] === 'bottom') return (f.qs.state ?? f.qs.coeff).bottom
+    if (parts[1] === 'deadband') return deadBandOf(state).steps
+    if (parts[1] === 'deadbandUnits') return deadBandOf(state).amplitude
+    if (parts[1] === 'period') return deadBandOf(state).period
+    if (parts[1] === 'noiseGain') {
+      return roundingNoise(f.q.coeffs, f.qs.state ?? f.qs.coeff).noiseGain
+    }
+    if (parts[1] === 'rmsIn') return Math.sqrt((f.qs.state ?? f.qs.coeff).noisePower)
+    if (parts[1] === 'rmsOut') return roundingNoise(f.q.coeffs, f.qs.state ?? f.qs.coeff).rmsOut
+    if (parts[1] === 'gainDb') {
+      return 10 * Math.log10(roundingNoise(f.q.coeffs, f.qs.state ?? f.qs.coeff).noiseGain)
+    }
+    throw new Error(`unknown fix path: ${path}`)
+  }
+
+  if (parts[0] === 'psd') {
+    const est = psdOf(state)
+    if (parts[1] === 'df') return est.df
+    if (parts[1] === 'segments') return est.segments
+    if (parts[1] === 'n') return est.n
+    // The band the scatter is read over excludes DC and the last bin, where the
+    // one-sided fold is not two and a mean would mix two scalings.
+    const st = bandStats(est, est.df, state.sampleRate / 2 - est.df)
+    if (parts[1] === 'mean') return st.mean
+    if (parts[1] === 'cv') return st.cv
+    throw new Error(`unknown psd path: ${path}`)
+  }
+
+  if (parts[0] === 'ar') {
+    if (parts[1] === 'aic' || parts[1] === 'mdl') {
+      const { buf } = renderChain(state.sources, state.blocks, state.fftSize, state.sampleRate)
+      const c = arOrderCriteria(buf, Math.max(2, Math.round(state.arMaxOrder ?? 12)))
+      return parts[1] === 'aic' ? c.aicOrder : c.mdlOrder
+    }
+    const m = arOf(state)
+    if (parts[1] === 'sigma2') return m.sigma2
+    if (parts[1] === 'peak') return m.peak
+    if (/^a[0-9]+$/.test(parts[1])) {
+      // levinson returns a[0] = 1 and the model's own coefficients after it, so
+      // `ar.a1` is a[1]. The prediction filter is 1 + a1 z^-1 + a2 z^-2.
+      const k = Number(parts[1].slice(1))
+      if (!(k >= 1 && k < m.a.length)) throw new Error(`no such AR coefficient: ${path}`)
+      return m.a[k]
+    }
+    throw new Error(`unknown ar path: ${path}`)
+  }
+
+  if (parts[0] === 'fft') {
+    const c = fftCost(state.fftSize)
+    if (parts[1] in c) return c[parts[1]]
+    throw new Error(`unknown fft path: ${path}`)
   }
 
   throw new Error(`unknown quantity path: ${path}`)

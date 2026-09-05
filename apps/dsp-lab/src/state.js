@@ -30,6 +30,11 @@ export const INITIAL = {
   // The estimator the density view uses, and its segment count.
   estimator: 'periodogram',
   segments: 16,
+  // The all-pole model's order, and how far the order criteria search. Two is
+  // the order the lesson's source actually has, and twelve is far enough past
+  // it that both criteria have somewhere to be wrong.
+  arOrder: 2,
+  arMaxOrder: 12,
   experimentId: 'a1',
 }
 
