@@ -83,6 +83,48 @@ describe('the hybrid-π, printed', () => {
     expect(withC.elements.find((e) => e.id === 'Q1.cmu').nodes).toEqual(['b', 'c'])
   })
 
+  // The brief's §3.3 contract, in the numbers it states: r_π = 2585.2 Ω,
+  // g_m = 38.682 mA/V, r_o = 100 kΩ, and a gain of −184.2 at 1 kHz. Those are
+  // the textbook's hybrid-π, written with V_A/I_C for r_o and β/g_m for r_π.
+  // The tangent of the exponential device carries the Early effect in both,
+  // and the gap is a factor of (V_A + V_CE)/V_A in each. Both are measured
+  // here, and the factor between them is stated rather than hidden.
+  it('is the contract’s hybrid-π, and gives −184.2 into R_C ∥ r_o at 1 kHz', () => {
+    const { net, op } = reference({ va: 100 })
+    const ss = smallSignal(net, op)
+    const pt = ss.point.Q1
+    expect(pt.ic * 1e3).toBeCloseTo(1.0, 6)
+    expect(pt.gm * 1e3).toBeCloseTo(38.682, 3)
+
+    // The contract's three numbers, from the point the solver settled on.
+    const rpiBook = 100 / pt.gm
+    const roBook = 100 / pt.ic
+    expect(rpiBook).toBeCloseTo(2585.2, 1)
+    expect(roBook / 1e3).toBeCloseTo(100, 6)
+    const av = -pt.gm * ((5000 * roBook) / (5000 + roBook))
+    expect(av).toBeCloseTo(-184.2, 1)
+
+    // The tangent's own two, each larger by (V_A + V_CE)/V_A.
+    const early = (100 + pt.vce) / 100
+    expect(pt.rpi / rpiBook).toBeCloseTo(early, 6)
+    expect(pt.ro / roBook).toBeCloseTo(early, 6)
+    expect(pt.rpi).toBeCloseTo(2714.5, 1)
+    expect(pt.ro / 1e3).toBeCloseTo(105, 3)
+
+    // The stage measured rather than quoted is a quarter of a per cent
+    // steeper, because r_o is 105 kΩ and not 100 kΩ.
+    const measured = -pt.gm * ((5000 * pt.ro) / (5000 + pt.ro))
+    expect(measured).toBeCloseTo(-184.62, 1)
+    expect(measured / av - 1).toBeCloseTo(0.00228, 4)
+
+    // And that is what the phasor solve reads at 1 kHz, driving the base
+    // through nothing, with only resistors and one controlled source left.
+    const elements = ss.elements.map((e) => (e.id === 'Vs' ? { ...e, nodes: ['b', 'gnd'] } : e)).filter((e) => e.id !== 'Rs')
+    const ac = solveAC({ elements }, 2 * Math.PI * 1000, { sources: { Vs: 1, VCC: 0 } })
+    expect(ac.v.c[0]).toBeCloseTo(measured, 1)
+    expect(cabs(ac.v.c)).toBeCloseTo(Math.abs(measured), 1)
+  })
+
   it('refuses to take a tangent without an operating point to take it at', () => {
     const { net } = reference()
     expect(() => smallSignal(net, {})).toThrow(NetworkError)

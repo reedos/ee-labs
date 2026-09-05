@@ -1,16 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { CHECK_TOL, compare, corners, evalTF, polesOf, rootsOf, transferOf, zerosOf } from './transfer.js'
-import { blackman, marginsOf, returnRatio, returnRatioAt } from './loop.js'
 import { smallSignal } from './smallSignal.js'
 import { newtonDC } from './pwl.js'
-import { solveAC } from './phasor.js'
 import { NetworkError } from './netlist.js'
 import { bisect } from './transient.js'
-import { cabs, csub } from './complex.js'
+import { VT } from './physics.js'
 
-// H(s) as polynomials, and the loop gain read off it. Every pole here is a
-// number the recurrence produced, checked against the phasor solve at 241
-// points before it was returned.
+// H(s) as polynomials. Every pole here is a number the recurrence produced,
+// checked against the phasor solve at 241 points before it was returned. The
+// loop gain read off the same polynomials is in loop.test.js.
 
 describe('transferOf, against the polynomials written by hand', () => {
   it('gives the RC low-pass exactly, coefficient for coefficient', () => {
@@ -184,6 +182,92 @@ function ceStage(over = {}) {
   return { net, vs, op: newtonDC(net), ss: smallSignal(net, newtonDC(net), { caps: true }) }
 }
 
+/**
+ * The hybrid-π a textbook writes for the plan's stage, drawn as a netlist by
+ * hand: g_m = I_C/V_T at exactly 1 mA, r_π = β/g_m, and r_o = V_A/I_C with the
+ * collector voltage dropped, which is the rounding every course makes. It is
+ * the circuit the brief's §3.4 contract quotes its poles for, and it is not
+ * quite the tangent the engine takes of the exponential device (that one
+ * carries r_o = (V_A + V_CE)/I_C, and its poles are a per cent away).
+ */
+function handHybridPi({ ic = 1e-3, beta = 100, va = 100, rc = 5000, rs = 1000, cpi = 20e-12, cmu = 2e-12 } = {}) {
+  const gm = ic / VT
+  return {
+    gm,
+    rpi: beta / gm,
+    ro: va / ic,
+    elements: [
+      { type: 'V', id: 'Vs', nodes: ['s', 'gnd'], value: 1, small: true },
+      { type: 'R', id: 'Rs', nodes: ['s', 'b'], value: rs },
+      { type: 'R', id: 'rpi', nodes: ['b', 'gnd'], value: beta / gm },
+      { type: 'C', id: 'cpi', nodes: ['b', 'gnd'], value: cpi },
+      { type: 'C', id: 'cmu', nodes: ['b', 'c'], value: cmu },
+      { type: 'VCCS', id: 'gm', nodes: ['c', 'gnd'], ctrl: ['b', 'gnd'], gain: gm },
+      { type: 'R', id: 'ro', nodes: ['c', 'gnd'], value: va / ic },
+      { type: 'R', id: 'RC', nodes: ['vcc', 'c'], value: rc },
+      { type: 'V', id: 'VCC', nodes: ['vcc', 'gnd'], value: 0 },
+    ],
+  }
+}
+
+// The brief's §3.4 contract, in the numbers it states: the CE stage with
+// C_π = 20 pF, C_μ = 2 pF and R_s = 1 kΩ has poles at 547.76 kHz and
+// 336.69 MHz and a zero at 3.0782 GHz. Each is checked against the hand
+// expression it comes from as well as against the figure, so the contract is
+// a claim about the circuit rather than three constants.
+describe('the contract: the CE stage’s poles, to five figures', () => {
+  it('gives 547.76 kHz, 336.69 MHz and a zero at 3.0782 GHz', () => {
+    const hand = handHybridPi()
+    const tf = transferOf({ elements: hand.elements }, { input: 'Vs', output: 'c' })
+    expect(tf.check).toBeLessThan(CHECK_TOL)
+    const poles = polesOf(tf)
+      .map((p) => p.hz)
+      .sort((a, b) => a - b)
+    const zeros = zerosOf(tf)
+    expect(poles.length).toBe(2)
+    expect(poles[0] / 1e3).toBeCloseTo(547.76, 2)
+    expect(poles[1] / 1e6).toBeCloseTo(336.69, 2)
+    expect(zeros.length).toBe(1)
+    expect(zeros[0].hz / 1e9).toBeCloseTo(3.0782, 4)
+    expect(zeros[0].hz).toBeCloseTo(hand.gm / (2 * Math.PI * 2e-12), 6)
+
+    // The same two poles from the quadratic a hand analysis writes: the two
+    // resistances the capacitances see, and the Miller term between them.
+    const R1 = (1000 * hand.rpi) / (1000 + hand.rpi)
+    const RL = (5000 * hand.ro) / (5000 + hand.ro)
+    const b1 = 20e-12 * R1 + 2e-12 * (R1 + RL + hand.gm * R1 * RL)
+    const b2 = 20e-12 * 2e-12 * R1 * RL
+    const disc = Math.sqrt(b1 * b1 - 4 * b2)
+    expect(poles[0]).toBeCloseTo((b1 - disc) / (2 * b2) / (2 * Math.PI), 3)
+    expect(poles[1]).toBeCloseTo((b1 + disc) / (2 * b2) / (2 * Math.PI), 0)
+    // The midband gain the plan quotes as −184 is the same three numbers.
+    // The midband gain the plan quotes as −184 is the same three numbers:
+    // the divider into r_π, then g_m into R_C ∥ r_o.
+    const av = evalTF(tf, [0, 1e-9])[0]
+    expect(av).toBeCloseTo(-hand.gm * RL * (hand.rpi / (1000 + hand.rpi)), 6)
+    expect(av).toBeCloseTo(-132.82, 2)
+    // From the base rather than from the source it is the plan's −184.2, which
+    // is g_m times the collector's load and nothing else.
+    expect(-hand.gm * RL).toBeCloseTo(-184.2, 1)
+  })
+
+  it('makes the Miller estimate 3.2 % high and the time-constant sum 0.16 % low', () => {
+    const hand = handHybridPi()
+    const tf = transferOf({ elements: hand.elements }, { input: 'Vs', output: 'c' })
+    const exact = Math.min(...polesOf(tf).map((p) => p.hz))
+    const R1 = (1000 * hand.rpi) / (1000 + hand.rpi)
+    const RL = (5000 * hand.ro) / (5000 + hand.ro)
+    const cin = 20e-12 + 2e-12 * (1 + hand.gm * RL)
+    const miller = 1 / (2 * Math.PI * R1 * cin)
+    const octc = 1 / (2 * Math.PI * (20e-12 * R1 + 2e-12 * (R1 + RL + hand.gm * R1 * RL)))
+    expect(cin * 1e12).toBeCloseTo(390.4, 1)
+    expect(miller / 1e3).toBeCloseTo(565.37, 1)
+    expect(miller / exact - 1).toBeCloseTo(0.0321, 3)
+    expect(octc / 1e3).toBeCloseTo(546.87, 1)
+    expect(octc / exact - 1).toBeCloseTo(-0.00162, 4)
+  })
+})
+
 describe('K3: the Miller effect, and the estimate’s error', () => {
   it('puts the exact poles where the state space says, and the zero at g_m/C_μ', () => {
     const { ss } = ceStage()
@@ -245,123 +329,5 @@ describe('the roots the polynomials are read with', () => {
     const withOrigin = rootsOf([1, 3, 0])
     expect(withOrigin.length).toBe(2)
     expect(withOrigin.some((r) => Math.abs(r[0]) < 1e-12 && Math.abs(r[1]) < 1e-12)).toBe(true)
-  })
-})
-
-describe('L1: the loop, broken', () => {
-  /** The non-inverting amplifier on a plain controlled source. */
-  const amp = (A = 1e5, Rf = 9000, Rg = 1000) => ({
-    elements: [
-      { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 1 },
-      { type: 'VCVS', id: 'E1', nodes: ['out', 'gnd'], ctrl: ['in', 'n'], gain: A },
-      { type: 'R', id: 'Rf', nodes: ['out', 'n'], value: Rf },
-      { type: 'R', id: 'Rg', nodes: ['n', 'gnd'], value: Rg },
-    ],
-  })
-
-  it('gives T = A₀β, and the closed-loop gain A/(1 + T)', () => {
-    const T = returnRatioAt(amp(), 'E1')[0]
-    expect(T).toBeCloseTo(1e5 * 0.1, 6)
-    const b = blackman(amp(), 'E1', { input: 'V1', output: 'out' })
-    expect(b.Ainf[0]).toBeCloseTo(10, 9)
-    expect(b.d[0]).toBeCloseTo(0, 12)
-    expect(b.closed[0]).toBeCloseTo(9.999, 3)
-  })
-
-  it('closes to floating point: Blackman’s form is the direct solve', () => {
-    for (const [A, Rf, Rg] of [
-      [1e5, 9000, 1000],
-      [1e3, 10000, 1000],
-      [1e6, 1000, 1000],
-      [50, 9000, 1000],
-    ]) {
-      const b = blackman(amp(A, Rf, Rg), 'E1', { input: 'V1', output: 'out' })
-      expect(Math.abs(b.closed[0] / b.direct[0] - 1), `A = ${A}`).toBeLessThan(1e-9)
-      // A_∞ came from two other gains and T from the broken loop, so the
-      // agreement is a check of both rather than an identity.
-      expect(Math.abs(b.fromGains[0] / b.T[0] - 1), `T at A = ${A}`).toBeLessThan(1e-6)
-      expect(b.Ainf[0]).toBeCloseTo(1 + Rf / Rg, 6)
-    }
-  })
-
-  it('halves the loop gain and moves the closed loop by a part in ten thousand', () => {
-    const full = blackman(amp(1e5), 'E1', { input: 'V1', output: 'out' })
-    const half = blackman(amp(5e4), 'E1', { input: 'V1', output: 'out' })
-    const change = Math.abs(half.direct[0] / full.direct[0] - 1)
-    expect(change).toBeGreaterThan(0.5e-4)
-    expect(change).toBeLessThan(1.5e-4)
-    // Desensitivity: the closed loop moves by 1/(1 + T) of what A moved by.
-    expect(change).toBeCloseTo(0.5 / (1 + full.T[0] / 2), 6)
-  })
-
-  it('declines to break the loop at an ideal op-amp, and says why', () => {
-    const ideal = {
-      elements: [
-        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 1 },
-        { type: 'OPAMP', id: 'U1', nodes: ['out'], ctrl: ['in', 'n'] },
-        { type: 'R', id: 'Rf', nodes: ['out', 'n'], value: 9000 },
-        { type: 'R', id: 'Rg', nodes: ['n', 'gnd'], value: 1000 },
-      ],
-    }
-    expect(() => returnRatioAt(ideal, 'U1')).toThrow(/infinite/)
-    expect(() => returnRatioAt(ideal, 'Rf')).toThrow(/controlled source/)
-  })
-})
-
-describe('L3: gain-bandwidth from the loop’s side', () => {
-  /** A single-pole amplifier written out, so its loop can be broken at the transconductance. */
-  const paced = (Rf = 10000, Rg = 1000, A0 = 1e5, ft = 1e6) => {
-    const rint = 1e6
-    const g = A0 / rint
-    return {
-      elements: [
-        { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'sine', amp: 1, freq: 1000 } },
-        { type: 'VCCS', id: 'G1', nodes: ['gnd', 'x'], ctrl: ['in', 'n'], gain: g },
-        { type: 'R', id: 'Rp', nodes: ['x', 'gnd'], value: rint },
-        { type: 'C', id: 'Cp', nodes: ['x', 'gnd'], value: g / (2 * Math.PI * ft) },
-        { type: 'VCVS', id: 'E1', nodes: ['out', 'gnd'], ctrl: ['x', 'gnd'], gain: 1 },
-        { type: 'R', id: 'Rf', nodes: ['out', 'n'], value: Rf },
-        { type: 'R', id: 'Rg', nodes: ['n', 'gnd'], value: Rg },
-      ],
-    }
-  }
-
-  it('gives T(s) one pole, at f_p, with T(0) = A₀β', () => {
-    const T = returnRatio(paced(), 'G1')
-    expect(T.check).toBeLessThan(CHECK_TOL)
-    expect(polesOf(T)[0].hz).toBeCloseTo(10, 6)
-    expect(evalTF(T, [0, 1e-9])[0]).toBeCloseTo(1e5 / 11, 3)
-  })
-
-  it('puts the closed-loop pole at (1 + T)f_p at three gains', () => {
-    for (const [Rf, G] of [
-      [10000, 11],
-      [100000, 101],
-      [1000, 2],
-    ]) {
-      const T = returnRatio(paced(Rf), 'G1')
-      const T0 = evalTF(T, [0, 1e-9])[0]
-      const closed = transferOf(paced(Rf), { input: 'V1', output: 'out' })
-      expect(polesOf(closed)[0].hz).toBeCloseTo((1 + T0) * 10, 2)
-      expect(polesOf(closed)[0].hz).toBeCloseTo(10 * (1 + 1e5 / G), 2)
-    }
-  })
-
-  it('reads a crossover and a phase margin off the loop gain', () => {
-    const T = returnRatio(paced(), 'G1')
-    const m = marginsOf((f) => evalTF(T, [0, 2 * Math.PI * f]))
-    // One pole: the crossover is where |T| = 1, and a single pole can only
-    // ever cost 90°, so the margin is nearly the whole 90.
-    expect(m.crossover / 1e3).toBeCloseTo(90.909, 2)
-    expect(m.pm).toBeGreaterThan(89.9)
-    expect(m.pm).toBeLessThan(90.01)
-  })
-
-  it('agrees with the phasor solve at the crossover, so T is measurable there', () => {
-    const T = returnRatio(paced(), 'G1')
-    const f = 90.909e3
-    const fromPoly = evalTF(T, [0, 2 * Math.PI * f])
-    const fromSolve = returnRatioAt(paced(), 'G1', 2 * Math.PI * f)
-    expect(cabs(csub(fromPoly, fromSolve)) / cabs(fromSolve)).toBeLessThan(1e-9)
   })
 })

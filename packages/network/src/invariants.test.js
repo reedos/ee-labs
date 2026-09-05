@@ -14,7 +14,8 @@ import { VT } from './physics.js'
 
 // The plan's §2.12, fuzzed. Every circuit the curriculum leans on, at random
 // component values and bias settings, checked against the eight invariants
-// that have to hold before any of it goes on screen.
+// that have to hold before any of it goes on screen. Invariant 7 is here in
+// its fuzzed form; macro.test.js states it in the Elements lab's own numbers.
 //
 // The hostile corners are in the list on purpose: the active load's knife
 // edge, an op-amp with its loop open, β = 1000 and V_A → ∞.
@@ -383,6 +384,44 @@ describe('invariant 6: feedback closes', () => {
       // Negative feedback: the loop opposes its own drive, so T is positive.
       expect(b.T[0], `#${k}`).toBeGreaterThan(0)
       expect(returnRatioAt({ elements: ss.elements }, entry.loop)[0]).toBeCloseTo(b.T[0], 6)
+    }
+  })
+})
+
+describe('invariant 7: the macro is the black box', () => {
+  // The macro exists so that Group A's toggles sit on Circuit Elements Lab's
+  // E2 box rather than beside it. macro.test.js states the invariant against
+  // E2 drawn from discrete elements. The fuzz here states the other half of
+  // it: giving the op-amp a speed expands it into four elements and a node,
+  // and at DC that expansion has to read exactly what the box read, at random
+  // gains, output resistances and loads.
+  it('changes nothing at DC when the op-amp is given a pole', () => {
+    for (let k = 0; k < 4 * DRAWS; k++) {
+      const r = rng(k * 6491 + 29)
+      const gain = logBetween(r(), 1e2, 1e6)
+      const rout = logBetween(r(), 1, 1000)
+      const Rf = logBetween(r(), 1000, 100000)
+      const Rg = logBetween(r(), 100, 10000)
+      const RL = logBetween(r(), 100, 100000)
+      const E = -1 + 2 * r()
+      const build = (over) => ({
+        elements: [
+          { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: E },
+          { type: 'OPAMP', id: 'U1', nodes: ['out'], ctrl: ['in', 'n'], gain, vsat: 1e6, rout, ...over },
+          { type: 'R', id: 'Rf', nodes: ['out', 'n'], value: Rf },
+          { type: 'R', id: 'Rg', nodes: ['n', 'gnd'], value: Rg },
+          { type: 'R', id: 'RL', nodes: ['out', 'gnd'], value: RL },
+        ],
+      })
+      const box = solveDC(build({}))
+      const paced = solveDC(build({ gbw: logBetween(r(), 1e5, 1e7) }))
+      expect(Math.abs(paced.v.out - box.v.out), `#${k}`).toBeLessThanOrEqual(1e-9 * Math.abs(box.v.out) + 1e-15)
+      expect(Math.abs(paced.v.n - box.v.n), `#${k}`).toBeLessThanOrEqual(1e-9 * Math.abs(box.v.n) + 1e-15)
+      // And the number both of them are: A₀ into the feedback divider, with
+      // the network round the loop loading the output through r_out.
+      const beta = Rg / (Rf + Rg)
+      const load = ((Rf + Rg) * RL) / (Rf + Rg + RL)
+      expect(box.v.out, `#${k}`).toBeCloseTo((E * gain * load) / (load + rout + gain * beta * load), 9)
     }
   })
 })
