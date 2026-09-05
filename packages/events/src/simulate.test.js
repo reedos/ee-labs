@@ -4,7 +4,8 @@ import { EventsError, normalize } from './netlist.js'
 import { KINDS, libDelay } from './library.js'
 import { initialValue, transitions } from './sources.js'
 import { edgesOf, relax, simulate, valueAt } from './simulate.js'
-import { hazardNet, masterSlave, mux2, oneGate, ring, srLatch } from './build.js'
+import { hazardNet, masterSlave, mux2, oneFlop, oneGate, ring, shiftRegister, srLatch } from './build.js'
+import { FLOP } from './library.js'
 
 // The engine's own arithmetic, before any lesson leans on it. Every number
 // here is the library's delay added up, so a change to the library moves the
@@ -267,6 +268,60 @@ describe('the flip-flop primitive, and what it reports', () => {
     const res = simulate(net({ at: 500 }), { tEnd: 3000 })
     expect(res.violations.map((v) => v.kind).sort()).toEqual(['hold', 'setup'])
     expect(res.violations.every((v) => v.slack < 0)).toBe(true)
+  })
+})
+
+describe('the setup and hold window, swept', () => {
+  // Setup and hold are measured at the flip-flop's terminals: how long D had
+  // been still when the edge arrived, and how long it stays still after. So
+  // the window a swept D step walks through is the two times laid end to end,
+  // less the one instant that belongs to both of them.
+  const edge = 500
+
+  it('is every instant from one setup time before the edge to one hold time after it', () => {
+    const bad = []
+    for (let at = edge - 2 * FLOP.tsu; at <= edge + 2 * FLOP.th; at++) {
+      const res = simulate(oneFlop({ at, phase: edge }), { tEnd: 3000 })
+      if (res.violations.length) bad.push(at)
+    }
+    expect(bad[0]).toBe(edge - FLOP.tsu + 1)
+    expect(bad[bad.length - 1]).toBe(edge + FLOP.th - 1)
+    expect(bad.length).toBe(FLOP.tsu + FLOP.th - 1)
+  })
+
+  it('carries the measured time, the required time and the slack between them', () => {
+    const early = simulate(oneFlop({ at: edge - FLOP.tsu + 1, phase: edge }), { tEnd: 3000 })
+    expect(early.violations).toEqual([{ kind: 'setup', flop: 'q', t: edge, actual: FLOP.tsu - 1, required: FLOP.tsu, slack: -1, d: 'd' }])
+    const late = simulate(oneFlop({ at: edge + FLOP.th - 1, phase: edge }), { tEnd: 3000 })
+    expect(late.violations).toEqual([{ kind: 'hold', flop: 'q', t: edge, actual: FLOP.th - 1, required: FLOP.th, slack: -1, d: 'd' }])
+  })
+
+  it('reports nothing at all on either side of the window, and Q moves one clock-to-Q after the edge', () => {
+    const clear = simulate(oneFlop({ at: edge - FLOP.tsu, phase: edge }), { tEnd: 3000 })
+    expect(clear.violations).toEqual([])
+    expect(edgesOf(clear, 'q')).toEqual([{ t: edge + FLOP.tcq, from: 0, to: 1 }])
+    expect(simulate(oneFlop({ at: edge + FLOP.th, phase: edge }), { tEnd: 3000 }).violations).toEqual([])
+  })
+})
+
+describe('the shift register, which is the register with nothing between its stages', () => {
+  it('moves every stage one clock-to-Q after the edge, and one stage per clock', () => {
+    const period = 1000
+    const first = period / 2
+    const res = simulate(shiftRegister(4, { period, bits: [1, 0, 0, 0, 0, 0] }), { tEnd: 8000 })
+    expect(res.violations).toEqual([])
+    for (let i = 0; i < 4; i++) expect(edgesOf(res, `q${i}`)[0].t, `q${i}`).toBe(first + i * period + FLOP.tcq)
+  })
+
+  it('lets nothing race, because a stage samples what its neighbour held before the edge', () => {
+    // Every stage changes at the same instant, and each takes the value the one
+    // before it had rather than the one it is taking now. A register that
+    // sampled after the edge would shift the whole word along in one clock.
+    const res = simulate(shiftRegister(4, { period: 1000, bits: [1, 1, 0, 0, 0, 0] }), { tEnd: 8000 })
+    const word = (t) => [0, 1, 2, 3].map((i) => valueAt(res, `q${i}`, t)).join('')
+    expect(word(2499)).toBe('1100')
+    expect(word(3499)).toBe('0110')
+    expect(word(4499)).toBe('0011')
   })
 })
 

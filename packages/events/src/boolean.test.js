@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { cubeMinterms, expressionOf, grayOrder, literals, minimalCover, netFromCover, primeImplicants, treeOf } from './boolean.js'
 import { criticalPath, evaluate, timingPaths, truthTable } from './analyse.js'
-import { chain, fsmEquations, fsmNet, fsmTable, identityNet, IDENTITIES, mux2, nandOnly } from './build.js'
+import { chain, DETECTOR_101, fsmEquations, fsmNet, fsmTable, identityNet, IDENTITIES, mux2, nandOnly } from './build.js'
 import { KINDS, libDelay } from './library.js'
 import { simulate } from './simulate.js'
 
@@ -108,15 +108,9 @@ describe('the netlist a cover builds', () => {
 
 describe('a state machine from its specification', () => {
   // The sequence detector every course sets: y is 1 on the clock where the
-  // last three inputs were 1, 0, 1.
-  const detector = {
-    name: 'the 101 detector',
-    inputs: ['x'],
-    states: ['s0', 's1', 's2'],
-    reset: 's0',
-    next: (s, v) => (s === 's0' ? (v.x ? 's1' : 's0') : s === 's1' ? (v.x ? 's1' : 's2') : v.x ? 's1' : 's0'),
-    out: (s, v) => ({ y: s === 's2' && v.x ? 1 : 0 }),
-  }
+  // last three inputs were 1, 0, 1. The specification lives in build.js so
+  // that the app builds the machine these tests run, and not a copy of it.
+  const detector = DETECTOR_101
 
   it('enumerates the state table, names it Mealy, and counts the unused codes', () => {
     const t = fsmTable(detector)

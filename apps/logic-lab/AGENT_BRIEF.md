@@ -398,8 +398,9 @@ Built by `@ee-labs/events`. A lane does not write its own copy of one of these.
 
 ```js
 import { hazardNet, mux2, decoder24, halfAdder, fullAdder, rippleAdder,
-         srLatch, dLatch, masterSlave, ring, counter, onePath,
-         pipelinedAdder, oneGate, nandOnly, fsmNet } from '@ee-labs/events'
+         srLatch, dLatch, masterSlave, ring, counter, onePath, oneFlop,
+         shiftRegister, pipelinedAdder, oneGate, nandOnly, fsmNet,
+         DETECTOR_101 } from '@ee-labs/events'
 
 hazardNet({ a, b, c, consensus })   // a, b, c, na, p, q, r (consensus only), y
 mux2({ a, b, s })                   // a, b, s, ns, m0, m1, y
@@ -411,6 +412,9 @@ dLatch({ d, g, q })                 // d, g, nd, sa, ra, q, qn
 masterSlave({ d, period, q })       // clk, d, nclk, nd, ma, mb, m, mn, nm, sa, sb, q, qn
 ring(n, { delay })                  // i0 .. i(n-1), starting alternating
 counter(n, { period })              // clk, q0.., d0.., e2..  (the enable chain)
+oneFlop({ period, phase, at })      // clk, d, q; the edge is at `phase`
+shiftRegister(n, { period, bits })  // clk, din, q0..; no logic between stages
+fsmNet(DETECTOR_101, { period })    // clk, x, q0, q1, d0, d1, y
 onePath({ period, skew, logic })    // clk, clk2, din, q1, mid, q2
 pipelinedAdder(n, { period, a, b, skew })  // the adder's, plus ra0.., rb0.., r0.., rc
 ```

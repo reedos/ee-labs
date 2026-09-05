@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { libDelay, FLOP } from './library.js'
 import { criticalPath, evaluate, fMax, hazardOf, pulsesOf, timingPaths, truthTable } from './analyse.js'
 import { simulate } from './simulate.js'
-import { counter, decoder24, fullAdder, halfAdder, hazardNet, mux2, nandOnly, pipelinedAdder, rippleAdder, srLatch } from './build.js'
+import { counter, decoder24, fullAdder, halfAdder, hazardNet, mux2, nandOnly, pipelinedAdder, rippleAdder, shiftRegister, srLatch } from './build.js'
 
 const D = {
   not: libDelay('not', 1),
@@ -180,6 +180,19 @@ describe('the clock period', () => {
     expect(c.tMin).toBeLessThan(fMax(pipelinedAdder(4)).tMin)
     // One more bit is one more AND, where the adder's is an AND and an OR.
     expect(fMax(counter(5)).tMin - c.tMin).toBe(D.and2)
+  })
+
+  it('is a clock-to-Q and a setup time when there is no logic at all between the stages', () => {
+    // The floor. A shift register puts nothing between one flip-flop and the
+    // next, so the period it closes at is the two times the cell itself costs
+    // and nothing else, and every design with logic in it is that plus the
+    // logic. Its hold margin is the same clock-to-Q less the hold time, which
+    // is why a register with no logic in it still holds.
+    const f = fMax(shiftRegister(4))
+    expect(f.terms.tpd).toBe(0)
+    expect(f.tMin).toBe(FLOP.tcq + FLOP.tsu)
+    expect(f.holdSlack).toBe(FLOP.tcq - FLOP.th)
+    expect(f.tMin).toBeLessThan(fMax(counter(4)).tMin)
   })
 
   it('declines a netlist with no flip-flop in it, and one whose flip-flops never talk to each other', () => {

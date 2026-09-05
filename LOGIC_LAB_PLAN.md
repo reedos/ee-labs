@@ -410,6 +410,8 @@ The library netlists, with the names every lesson reads:
 | The decoder | `a1`, `a0`, `d0` to `d3` | `decoder24()` |
 | The full adder | `a`, `b`, `cin`, `x`, `s`, `g`, `p`, `cout` | `fullAdder()` |
 | The ripple adder | `a0…`, `b0…`, `x0…`, `s0…`, `c1…`, `cout` | `rippleAdder(n)` |
+| One flip-flop | `clk`, `d`, `q` | `oneFlop({ at, phase })` |
+| The register | `clk`, `din`, `q0…` | `shiftRegister(n)` |
 | The latch | `s`, `r`, `q`, `qn` | `srLatch()` |
 | The D latch | `d`, `g`, `q`, `qn` | `dLatch()` |
 | The flip-flop from gates | `clk`, `d`, `m`, `mn`, `q`, `qn` | `masterSlave()` |
@@ -593,9 +595,10 @@ with `see`, `try` and `why` in the Elements lab's three registers.
   and slave on the high. `q` moves 100 ps after the clock edge, once per edge,
   whatever `d` did in between. Measured: the event count per edge, and the
   100 ps.
-- **E5 · Setup and hold, as one window.** The flip-flop primitive, with the D
-  step swept past the edge. Every step from 461 ps to 519 ps is reported as a
-  violation, which is 59 of the 60 picoseconds of `t_su + t_h`. Measured: the
+- **E5 · Setup and hold, as one window.** The flip-flop primitive, with its
+  clock edge at 500 ps and the D step swept past it. Every step from 461 ps to
+  519 ps is reported as a violation, which is 59 of the 60 picoseconds of
+  `t_su + t_h`. Measured: the
   window's two edges, and its width against the sum.
 - **E6 · A violated setup time is not a value.** One run inside the window. The
   report gives the kind, the slack and the flip-flop, and the panel says the
@@ -604,8 +607,11 @@ with `see`, `try` and `why` in the Elements lab's three registers.
 
 ### Group F: Registers, counters and the machine (7)
 
-- **F1 · The register.** Four flip-flops on one clock. Everything moves together,
-  80 ps after the edge, and nothing between them can race. Measured: the four
+- **F1 · The register.** Four flip-flops on one clock, each fed from the one
+  before, which is `shiftRegister(4)`. Everything moves together, 80 ps after
+  the edge, and nothing between them can race. A register fed from primary
+  inputs has no path from one flip-flop to another, and `fMax` declines it by
+  name rather than timing a path that is not there. Measured: the four
   arrivals, and `t_min` of 120 ps with no logic between.
 - **F2 · The counter counts.** Four bits, 6 gates, 4 flip-flops. Bit 0 toggles
   every clock, and bit i toggles when every bit below it is 1. Measured: all
@@ -625,7 +631,7 @@ with `see`, `try` and `why` in the Elements lab's three registers.
   literals, one literal and two literals. Measured: the three expressions, and
   the literal counts.
 - **F7 · The machine, built and run.** Six gates and two flip-flops, and the
-  built machine raises `y` on the third bit and the seventh of `01011010`.
+  built machine raises `y` on the fourth bit and the seventh of `01011010`.
   `t_min` is 230 ps. Measured: the output on all eight clocks, the gate count,
   and `t_min`.
 
@@ -766,9 +772,11 @@ them with the phase named.
 - **A rise time, a voltage, or a noise margin** (§2.10, Decision 7).
 - **Power.** Dynamic power is `CV²f` and it needs a capacitance, which needs a
   transistor. The VLSI Lab is its home.
-- **Tri-state, open-drain and buses with more than one driver.** One driver per
-  signal is the netlist's rule. The Interfaces Lab's buses need the exception,
-  and it is that lab's to add.
+- **Tri-state, and a third logic value.** A net has two values here. A driver
+  that has let go of a net is not one of them, so a bus modelled as high, low
+  and released is the Interfaces Lab's to add. What this engine does build is
+  the resolved net of §2.2a: several drivers on one net, combining by a rule
+  the net names. That much the three track D plans asked for, and it ships.
 - **Asynchronous sequential design past the latch.** Group E builds the latch and
   Group D shows why a synchronous design tolerates a glitch. A full treatment of
   flow tables and races is a graduate course.

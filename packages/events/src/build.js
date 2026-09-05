@@ -357,6 +357,50 @@ export function ring(n = 3, { delay } = {}) {
 }
 
 /**
+ * One flip-flop, its clock, and a D that steps at a time the caller picks.
+ *
+ * The clock's first rising edge is at `phase`, so a step swept through that
+ * instant walks D across the setup and hold window and the run reports every
+ * violation it makes. Nothing else is in the netlist, so the only numbers that
+ * decide the window are the flip-flop's own three times.
+ */
+export function oneFlop({ period = 1000, phase = 500, at = 300, from = 0, to = 1, tcq = FLOP.tcq, tsu = FLOP.tsu, th = FLOP.th } = {}) {
+  return {
+    name: 'one flip-flop and its clock',
+    sources: [{ id: 'clk', kind: 'clock', period, high: Math.round(period / 2), phase, init: 0 }, { id: 'd', kind: 'step', at, from, to }],
+    flops: [{ id: 'q', d: 'd', clk: 'clk', tcq, tsu, th, init: from }],
+    outputs: ['q'],
+  }
+}
+
+/**
+ * A shift register of `n` flip-flops on one clock: the register with nothing
+ * between its stages.
+ *
+ * Every stage moves one clock-to-Q after the edge and none of them can race,
+ * because the value a stage samples is the value its neighbour held before the
+ * edge rather than the one it takes after it. With no logic in between, the
+ * period the design closes at is a clock-to-Q and a setup time and nothing
+ * else, which is the floor every synchronous design is measured against.
+ *
+ * The clock's first edge is half a period in, so each edge falls in the middle
+ * of a bit rather than on the instant the bit changes. A design whose data
+ * moves on its own clock edge is a setup and hold violation, and Group E is
+ * where that is the subject rather than an accident of the stimulus.
+ */
+export function shiftRegister(n = 4, { period = 1000, bits = [1, 0, 1, 1, 0, 0, 0, 0], tcq = FLOP.tcq, tsu = FLOP.tsu, th = FLOP.th } = {}) {
+  return {
+    name: `a ${n}-bit shift register`,
+    sources: [
+      { id: 'clk', kind: 'clock', period, high: Math.round(period / 2), phase: Math.round(period / 2), init: 0 },
+      { id: 'din', kind: 'pattern', period, at: 0, bits, repeat: false },
+    ],
+    flops: Array.from({ length: n }, (_, i) => ({ id: `q${i}`, d: i === 0 ? 'din' : `q${i - 1}`, clk: 'clk', tcq, tsu, th, init: 0 })),
+    outputs: Array.from({ length: n }, (_, i) => `q${i}`),
+  }
+}
+
+/**
  * A synchronous binary counter, `n` bits, counting every rising edge.
  *
  * Bit i toggles when every bit below it is 1, and that condition is carried up
@@ -482,6 +526,23 @@ export function fsmNet(spec, opts = {}) {
     return { id: `q${bit}`, d: `d${bit}`, clk: 'clk', init: (start >> bit) & 1 }
   })
   return { name: spec.name || 'a state machine', sources, gates, flops, outputs: [...table.outputs, ...flops.map((f) => f.id)], spec, table }
+}
+
+/**
+ * The sequence detector every digital logic course sets: `y` is 1 on the clock
+ * whose last three inputs were 1, 0, 1, counting overlaps.
+ *
+ * It lives here rather than in a lesson so that the engine's own tests run the
+ * same specification the app builds, and so that a change to `fsmNet` that
+ * breaks the machine fails in this package rather than in an app.
+ */
+export const DETECTOR_101 = {
+  name: 'the 101 detector',
+  inputs: ['x'],
+  states: ['s0', 's1', 's2'],
+  reset: 's0',
+  next: (s, v) => (s === 's0' ? (v.x ? 's1' : 's0') : s === 's1' ? (v.x ? 's1' : 's2') : v.x ? 's1' : 's0'),
+  out: (s, v) => ({ y: s === 's2' && v.x ? 1 : 0 }),
 }
 
 /** The truth table of a built netlist, for the test that the build kept the specification. */
