@@ -459,7 +459,7 @@ export const LESSONS = {
     '9.9 mV between its inputs.',
     seeReads: [['v.out', 9.901], ['vd.in.n', 0.0099]],
     try: [
-      { say: 'Turn A up to 10⁵: 9.999 V, the gain converges on G, and the input difference falls to 100 µV, still one digit apart on the node readout.', set: { A: 1e5 }, reads: [['v.out', 9.999], ['vd.in.n', 0.0001]] },
+      { say: 'Turn A up to 10⁵: 9.999 V, the gain converges on G, and the input difference falls to 100 µV. The node readout shows v_in at 1 V and v_n at 999.9 mV.', set: { A: 1e5 }, reads: [['v.out', 9.999], ['vd.in.n', 0.0001], ['v.n', 0.9999]] },
       { say: 'Drop A to 10: the output is only 5 V. The gain you built is 10, but the op-amp’s own gain is no longer huge next to it.', set: { A: 10 }, reads: [['v.out', 5]] },
     ],
     why:
@@ -626,9 +626,9 @@ export const LESSONS = {
     seeAt: 1e-9,
     seeReads: [['i.L1', 0.012], ['volt.S1', 1200]],
     try: [
-      { say: 'Flip the switch to ideal: the circuit has no solution, and the app gives the reason, because di/dt would be infinite and so would the voltage.', set: { ideal: true }, refuses: true },
-      { say: 'Set the switch back off ideal and make the open one 1 MΩ: 12 kV. The better the switch, the bigger the spark, the reason relay coils get a diode across them.', set: { ideal: false, Roff: 1e6 }, at: 1e-9, reads: [['volt.S1', 12000]] },
+      { say: 'Push R_off to 1 MΩ: 12 kV. The better the switch, the bigger the spark, the reason relay coils get a diode across them.', set: { Roff: 1e6 }, at: 1e-9, reads: [['volt.S1', 12000]] },
       { say: 'The current then dies with τ = L/(R + R_off) = 999 ns, a thousand times faster than the L/R = 1 ms it took to build up.', set: { Roff: 1e6 }, reads: [['state.tau', 0.000000999], [(x, p) => p.L1 / p.R1, 0.001]] },
+      { say: 'Flip the switch to ideal: the circuit has no solution, and the app gives the reason, because di/dt would be infinite and so would the voltage.', set: { ideal: true }, refuses: true },
     ],
     why:
       'Something has to give, and the real answer is that an open switch is not infinite ohms. The moment it ' +
@@ -742,8 +742,8 @@ export const LESSONS = {
     'because those are the two quantities that cannot jump. Here they are knobs. The dim traces are the ' +
     'response from rest (G4), the bright ones from v_C(0) = 2 V and i_L(0) = 5 mA.',
     try: [
-      { say: 'Set both to zero: bright and dim traces coincide.', set: { v0: 0, i0: 0 }, reads: [[offGhost('volt', 'C1'), 0], [offGhost('i', 'L1'), 0]] },
       { say: 'Start the capacitor at 1 V, already at E, with no current: nothing needs to change, and nothing does, the trace is flat at 1 V.', set: { v0: 1, i0: 0 }, reads: [[(x, p) => Math.max(...x.tr.samples.map((s) => Math.abs(s.sol.volt.C1 - p.E))), 0], ['volt.C1', 1]] },
+      { say: 'Set both to zero: bright and dim traces coincide.', set: { v0: 0, i0: 0 }, reads: [[offGhost('volt', 'C1'), 0], [offGhost('i', 'L1'), 0]] },
       { say: 'Set v_C(0) back to 2 V and i_L(0) to 5 mA, then move the cursor to the start: it reads exactly where the knobs said.', set: { v0: 2, i0: 0.005 }, at: 1e-9, reads: [['volt.C1', 2], ['i.L1', 0.005]] },
       { say: 'Cursor to 3 ms: both traces have settled to the same place. That is 1 V across the capacitor with the current down to microamps, because the source alone sets the forced response.', at: 0.003, reads: [['volt.C1', 1]] },
     ],
@@ -777,8 +777,8 @@ export const LESSONS = {
     'τ = RC = 1 ms. Five time constants later the circuit has forgotten how it started.',
     seeReads: [['state.tau', 0.001]],
     try: [
-      { say: 'Drag the cursor to 5 ms: the bright and dashed traces are already within 0.476 % of the forced amplitude of each other.', at: 0.005, reads: [[(x) => (100 * Math.abs(x.sol.volt.C1 - x.acAt.volt.C1)) / cx.cabs(x.ac.volt.C1), 0.476]] },
       { say: 'The 15.92 Hz chip: a period of 62.8 ms against τ = 1 ms. The natural part dies before the first cycle is a tenth done, and the capacitor voltage follows the source.', set: { f: 15.92 }, reads: [['period', 0.06283], ['state.tau', 0.001]] },
+      { say: 'Set the frequency back to 159.2 Hz. Drag the cursor to 5 ms: the bright and dashed traces are already within 0.476 % of the forced amplitude of each other.', set: { f: 159.2 }, at: 0.005, reads: [[(x) => (100 * Math.abs(x.sol.volt.C1 - x.acAt.volt.C1)) / cx.cabs(x.ac.volt.C1), 0.476]] },
       { say: 'The 1592 Hz chip: the period, 0.628 ms, is shorter than τ = 1 ms. The exponential now takes eight cycles to fade, and the forced sinusoid is small, 0.498 V, because the capacitor cannot follow.', set: { f: 1592 }, reads: [['period', 0.0006281], ['mag.volt.C1', 0.4975]] },
     ],
     why:
@@ -929,11 +929,6 @@ export const LESSONS = {
     ],
     try: [
       {
-        say: 'Switch the model to the ideal switch: with no drop at all, the resistor takes the whole 5 V and the current rises to 5.00 mA.',
-        set: { model: 'ideal' },
-        reads: [['i.D1', 0.005]],
-      },
-      {
         say: 'Choose the curve and turn R up to 10 kΩ. The current falls tenfold to 0.437 mA while the drop falls ' +
         'by only 59.2 mV, a decade of current for a sliver of voltage.',
         set: { model: 'exp', R1: 10000 },
@@ -941,6 +936,11 @@ export const LESSONS = {
           ['i.D1', 0.0004367],
           [(x, p, again) => again({ model: 'exp', R1: 1000 }).sol.volt.D1 - x.sol.volt.D1, 0.05917],
         ],
+      },
+      {
+        say: 'Set R back to 1 kΩ and switch the model to the ideal switch. With no drop at all, the resistor takes the whole 5 V and the current rises to 5.00 mA.',
+        set: { model: 'ideal', R1: 1000 },
+        reads: [['i.D1', 0.005]],
       },
       {
         say: 'Set R back to 1 kΩ. Switch to V_f + r_d: the battery has a slope behind it now, so the drop grows with the current, ' +
@@ -1048,22 +1048,22 @@ export const LESSONS = {
     ],
     try: [
       {
-        say: 'Switch the diode to ideal: the drop vanishes, the humps reach the full 10.0 V, and the average rises ' +
-        'to 3.18 V, V_p/π exactly.',
-        set: { model: 'ideal' },
-        reads: [
-          [(x) => peakAt(x, (s) => s.v.out), 10],
-          [(x, p) => meanOut(x, (s) => s.v.out, p.f), 3.1831],
-        ],
-      },
-      {
-        say: 'Set the diode back to the constant-drop model. Drop the amplitude to 3 V: the same shape, but 0.700 V costs proportionally more, the peak is 2.30 V ' +
+        say: 'Drop the amplitude to 3 V: the same shape, but 0.700 V costs proportionally more, the peak is 2.30 V ' +
         'and the diode conducts for only 153° of the cycle.',
         set: { model: 'drop', A: 3 },
         reads: [
           ['volt.D1', 0.7],
           [(x) => peakAt(x, (s) => s.v.out), 2.3],
           [(x) => oneSpan(x), 153.01],
+        ],
+      },
+      {
+        say: 'Set the amplitude back to 10 V and switch the diode to ideal. The drop vanishes, the humps reach the full 10.0 V, and the average rises ' +
+        'to 3.18 V, V_p/π exactly.',
+        set: { model: 'ideal', A: 10 },
+        reads: [
+          [(x) => peakAt(x, (s) => s.v.out), 10],
+          [(x, p) => meanOut(x, (s) => s.v.out, p.f), 3.1831],
         ],
       },
       {

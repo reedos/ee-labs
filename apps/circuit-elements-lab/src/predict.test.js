@@ -30,13 +30,18 @@ describe('predict before you turn', () => {
     }
   })
 
-  test('the question names the knob and the quantity, and the reason is the step’s own sentence', () => {
+  test('the question names the knob (or the cursor) and the quantity, and the reason is the step’s own sentence', () => {
     for (const [id, q] of ITEMS) {
       const e = byId[id]
-      const knob = e.params.find((k) => k.key === q.knob)
-      expect(q.ask, id).toContain(knob.label)
       expect(q.ask, id).toContain(nameOf(q.path))
-      expect(q.ask, id).toMatch(/^Set .+ to .+: what does .+ read\?$/)
+      if (q.knob) {
+        const knob = e.params.find((k) => k.key === q.knob)
+        expect(q.ask, id).toContain(knob.label)
+        expect(q.ask, id).toMatch(/^Set .+ to .+: what does .+ read\?$/)
+      } else {
+        // A step that only drags the cursor: the "knob" being turned is time.
+        expect(q.ask, id).toMatch(/^Drag the cursor to .+: what does .+ read\?$/)
+      }
       expect(q.reason, id).toBe(e.try[q.step].say)
     }
   })
@@ -76,6 +81,35 @@ describe('predict before you turn', () => {
   test('the ten experiments round four fixed now open with the quiz already posed, not buried after a watch step', () => {
     for (const id of ['a3', 'd2', 'd4', 'e3', 'e6', 'g3', 'g5', 'h2', 'h3', 'i5']) {
       expect(predictFor(byId[id]).step, id).toBe(0)
+    }
+  })
+
+  // Round five: these eight opened on a try step whose only move was the
+  // cursor (F3, G2, G4) or that could not become a question at all (F6's
+  // refusal demo, G6 and H1's non-numeric first reading, I1 and I4's model
+  // switch) — so predictFor picked their second step and step 0 sat there
+  // with no quiz on cold open. F3, G2 and G4 now widen the question to the
+  // cursor itself, comparing the reading at the experiment's own resting
+  // position to the reading at the step's `at`; F6, G6, H1, I1 and I4 had
+  // their try array reordered so a knob-turning step leads.
+  test('the eight experiments round five fixed now open with the quiz already posed on the first try', () => {
+    for (const id of ['f3', 'f6', 'g2', 'g4', 'g6', 'h1', 'i1', 'i4']) {
+      expect(predictFor(byId[id]).step, id).toBe(0)
+    }
+  })
+
+  test('a cursor-only question compares the reading at the experiment’s resting cursor to the reading at the step’s at, against the running engine', () => {
+    for (const id of ['f3', 'g2', 'g4']) {
+      const e = byId[id]
+      const q = predictFor(e)
+      expect(q.knob, id).toBeNull()
+      const p = defaultsOf(id)
+      const restAt = e.cursor * e.window(p)
+      const x0 = analyse(e, p, restAt)
+      const x1 = analyse(e, p, e.try[q.step].at)
+      expect(q.now, id).toBeCloseTo(readQuantity(x0, p, q.path, e), 9)
+      expect(q.correct, id).toBeCloseTo(readQuantity(x1, p, q.path, e), 9)
+      expect(q.now, id).not.toBeCloseTo(q.correct, 3)
     }
   })
 })

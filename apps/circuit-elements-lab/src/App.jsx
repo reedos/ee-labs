@@ -616,10 +616,11 @@ export default function App() {
         </section>
 
         <section className="deeper">
-          <h2>Deeper</h2>
-          {/* One fold: why it works, the solver's working with its check tables, and the hand-over. */}
+          {/* One fold: why it works, the solver's working with its check tables, and the hand-over.
+              The summary carries the section's own name (Deeper), rather than a separate heading
+              above it repeating the same idea in a second row. */}
           <details className="deeper-fold" data-role="deeper" open={deeperOpen} onToggle={(e) => setDeeperOpen(e.target.open)}>
-            <summary>Explanation and working</summary>
+            <summary>Deeper: explanation and working</summary>
             {exp.why ? (
               <div className="why" data-role="why">
                 <p className="hint">
