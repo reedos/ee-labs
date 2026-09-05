@@ -197,10 +197,23 @@ export function bjtRegionOf(d, { vbe, vbc }) {
 export function bjtPoint(d, dev, cur, sl, s) {
   const vce = dev.vbe - dev.vbc
   const region = bjtRegionOf(d, dev)
-  const gm = sl.gm
+  // The hybrid-π is the tangent EXACTLY, not to a part in a few thousand, and
+  // the algebra that makes it so is worth stating. The model measures v_CE
+  // across r_o and v_BC across r_μ, while the law is written in v_BE and v_BC,
+  // and v_CE is v_BE − v_BC. Matching the two coefficient by coefficient gives
+  //
+  //   1/r_o = −(∂i_C/∂v_BC + 1/r_μ),  g_m = ∂i_C/∂v_BE + ∂i_C/∂v_BC + 1/r_μ.
+  //
+  // In the active region r_μ is nothing, and what is left is I_C/V_T for g_m
+  // and (V_A + V_CE)/I_C for r_o. In saturation r_μ is not nothing, and a
+  // hybrid-π without it would be describing a different circuit.
+  const gmu = Math.max(sl.gmu, GMIN)
+  const go = sl.gobc + gmu
+  const gm = sl.gm + go
   const rpi = sl.gpi > 0 ? 1 / sl.gpi : Infinity
-  const ro = sl.gobc < 0 ? -1 / sl.gobc : Infinity
-  return { ic: s * cur.ic, ib: s * cur.ib, ie: s * cur.ie, vbe: s * dev.vbe, vbc: s * dev.vbc, vce: s * vce, region, gm, rpi, ro, beta: d.beta }
+  const rmu = 1 / gmu
+  const ro = go < 0 ? -1 / go : Infinity
+  return { ic: s * cur.ic, ib: s * cur.ib, ie: s * cur.ie, vbe: s * dev.vbe, vbc: s * dev.vbc, vce: s * vce, region, gm, rpi, rmu, ro, beta: d.beta }
 }
 
 // ------------------------------------------------------------ three regions
@@ -296,6 +309,7 @@ export function bjtRegionPoint(e, region, sol) {
     region,
     gm,
     rpi: gm > 0 ? d.beta / gm : Infinity,
+    rmu: Infinity,
     ro: Number.isFinite(d.va) && s * ic > 0 ? (d.va + s * (sol.v[c] - sol.v[em])) / (s * ic) : Infinity,
     beta: d.beta,
   }

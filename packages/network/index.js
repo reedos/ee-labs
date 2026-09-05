@@ -60,6 +60,11 @@ export {
 } from './src/companion.js'
 export { limitTo, vcrit } from './src/physics.js'
 
+// Linearisation is a netlist, and a linear netlist has exact polynomials.
+export { AMPLITUDE_GUARD, amplitudeCheck, hd2Estimate, isSignal, labelOf, pointsOf, smallSignal } from './src/smallSignal.js'
+export { CHECK_BAND, CHECK_POINTS, CHECK_TOL, compare, corners, evalTF, polesOf, readOutput, readOutputAC, rootsOf, transferOf, zerosOf } from './src/transfer.js'
+export { blackman, marginsOf, returnRatio, returnRatioAt } from './src/loop.js'
+
 // Macros: one element that stands for several. The op-amp with a speed, a slew
 // rate, an offset, a bias current and an output current limit expands into
 // elements this package already stamps, at normalize, before anything solves.
