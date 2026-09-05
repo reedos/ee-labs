@@ -263,7 +263,11 @@ describe('every experiment', () => {
       }
       expect(layoutProblems(e.layout, drawables(e.net(defaultsOf(e.id))), null, 'none'), `${e.id} bare`).toEqual([])
     }
-  })
+    // Sixteen settings for each of 58 experiments, drawn three ways, and the
+    // three new ones each solve a transient event by event. The ninety seconds
+    // the config allows every test ran out here first; this is the headroom the
+    // other two whole-experiment walks already take, for the same reason.
+  }, 240000)
 
   // The view switch reads the same left to right in every experiment (Reed,
   // 2026-09-01: "how come some examples show power first?"). The data keeps

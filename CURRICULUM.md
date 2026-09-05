@@ -23,8 +23,8 @@ order the nav will fold to (`ELECTRONICS_LAB_PLAN.md` Decision 5).
 
 | Step | Lab | Course it mirrors | Experiments | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Circuit Elements Lab | Circuits I | 55 | built, dark |
-| 2 | Circuit Lab | Circuits II, the frequency-domain half | 15 | released |
+| 1 | Circuit Elements Lab | Circuits I | 58 | built, dark |
+| 2 | Circuit Lab | Circuits II, the frequency-domain half | 16 | released |
 | 3 | Electronics Lab | Electronics I and II | 77 | planned |
 | 4 | Signal Lab | Signals and Systems, DSP | 35 | released |
 | 5 | Control Lab | Control | 13 | released |
@@ -38,7 +38,7 @@ interleave.
 
 ## 2. The path, group by group
 
-### Step 1: Circuit Elements Lab (55, built)
+### Step 1: Circuit Elements Lab (58, built)
 
 | Group | Teaches | Count |
 | --- | --- | --- |
@@ -49,17 +49,17 @@ interleave.
 | E · Op-amps | the dependent source, the black box, the golden rules, the four circuits, the Schmitt trigger | 9 |
 | F · Elements that remember | C and L, the first-order equation, energy, the spark, the integrator | 7 |
 | G · Second order | the characteristic equation, three dampings, the LC | 7 |
-| H · Sinusoids and phasors | natural and forced, phasors, impedance, resonance, AC power, one sine at a time | 6 |
-| I · The diode | four models, the load line and Newton, assumed state, rectifiers, clipper, Zener | 8 |
+| H · Sinusoids and phasors | natural and forced, phasors, impedance, resonance, AC power, one sine at a time, the roots as poles | 7 |
+| I · The diode | four models, the load line and Newton, assumed state, rectifiers, clipper, Zener, clamper, doubler | 10 |
 
 What it gives at the end: `H(jω)` read one sine at a time, and the Bode view of an RC.
 The same circuit hands over to Circuit Lab.
 
-### Step 2: Circuit Lab (15, released)
+### Step 2: Circuit Lab (16, released)
 
 | Group | Teaches | Count |
 | --- | --- | --- |
-| Reading a response | a divider has no dynamics, where the corner comes from, the high-pass, RL is RC | 4 |
+| Reading a response | a divider has no dynamics, where the corner comes from, the high-pass, RL is RC, the impulse response | 5 |
 | Resonance | three filters from one RLC, Q, series against parallel, resonance in time, the notch, tolerance, which part | 7 |
 | Active circuits | why active filters exist, the inverting gain, the pole at the origin | 3 |
 | One object, two names | the RLC is a biquad, and the hand-over to Signal Lab and Control Lab | 1 |

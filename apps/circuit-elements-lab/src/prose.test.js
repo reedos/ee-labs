@@ -8,7 +8,7 @@ import { expectPlain } from '@ee-labs/prose/testing'
 // experiments.test.js already measures what a lesson CLAIMS: every number in
 // see, try and why is a value the solver produces. This file measures how the
 // claim is written — one claim a sentence, no dash for emphasis, no colon
-// reveal, no personified solver — so 55 experiments stay in one voice.
+// reveal, no personified solver — so 58 experiments stay in one voice.
 //
 // The lessons are read off EXPERIMENTS rather than LESSONS: experiments.js
 // merges each lesson onto its experiment at load, and importing lessons.js

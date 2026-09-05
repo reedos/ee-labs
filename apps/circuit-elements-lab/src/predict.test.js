@@ -68,10 +68,16 @@ describe('predict before you turn', () => {
     expect(nameOf('state.alpha')).toBe('α')
   })
 
-  test('experiments whose first knob step is a toggle or a refusal pose no question', () => {
+  test('an experiment poses no question when no knob step reads a quantity path', () => {
     const none = EXPERIMENTS.filter((e) => !predictFor(e)).map((e) => e.id)
     // i5's first step chooses a diode model, which is a structural choice
     // like a toggle: there is no number to predict.
-    expect(none).toEqual(['a3', 'd2', 'd4', 'e3', 'e6', 'g3', 'g5', 'i5'])
+    //
+    // i9 and i10 are the other kind. Their knob steps do move a number, but
+    // what they promise is a mean over the last cycle and a cycle's peak,
+    // and neither is a quantity path readQuantity knows. A question can only
+    // be asked about a reading the answer cards can print, so these two are
+    // read rather than predicted. Give either quantity a path and they join.
+    expect(none).toEqual(['a3', 'd2', 'd4', 'e3', 'e6', 'g3', 'g5', 'i5', 'i9', 'i10'])
   })
 })

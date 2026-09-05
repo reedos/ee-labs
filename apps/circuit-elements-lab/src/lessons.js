@@ -1354,7 +1354,7 @@ export const LESSONS = {
         reads: [[(x, p) => cyclePeak(x, p, 8), 18.4593], [(x, p) => (100 * cyclePeak(x, p, 8)) / (2 * (p.A - 0.7)), 99.24]],
       },
       {
-        say: 'Set C₂ to 100 µF: there is ten times as much to fill and the same charge arriving each cycle, so after ten cycles the output is only at 10.98 V.',
+        say: 'Set C₂ to 100 µF: ten times as much to fill, the same charge each cycle, so after ten cycles the output has only reached 10.98 V.',
         set: { C2: 100e-6 },
         reads: [[(x, p) => meanOut(x, (sol) => sol.v.out, p.f), 10.9787]],
       },
