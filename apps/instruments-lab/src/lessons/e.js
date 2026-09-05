@@ -26,6 +26,7 @@ export const LESSONS_E = {
         reads: [
           [(x) => x.sol.v.out, 0.00314],
           [(x, p) => M(p) * (1 - Math.exp(-1)), 0.0031606],
+          [(x, p) => M(p), 0.005],
         ],
       },
       {
@@ -47,11 +48,11 @@ export const LESSONS_E = {
       'at their sum, each of half the amplitude product. That identity is where this lab does its one ' +
       'line of algebra by hand, and the math panel checks it at four hundred instants. With the ' +
       'reference on the signal the difference term is at 0 Hz, so it is a constant the filter passes ' +
-      'whole. Everything else in the product is at 2 kHz or above, and the filter takes it down by more ' +
-      'than a hundred.',
+      'whole. Everything else in the product is at 2 kHz, twelve times the filter’s own corner, and the ' +
+      'filter takes it down by a factor of 12.6.',
     whyReads: [
       [(x, p) => p.fs + p.fr, 2000],
-      [(x, p) => 1 / pass(p, p.fs + p.fr), 125.668],
+      [(x, p) => 1 / pass(p, p.fs + p.fr), 12.6061],
     ],
   },
 

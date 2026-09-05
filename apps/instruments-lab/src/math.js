@@ -463,8 +463,11 @@ const CLAIMS = {
       C([
         // The guard: the fast mode is 2 x 10^-9 of the step twenty of its own
         // time constants in, and what is left is the slow mode moving by the
-        // ratio of the two, R_cal over R1 in parallel with R2.
-        row('just after the edge', settled + (edge - settled) * Math.exp(-tFast / tau), x.tr.at(tFast).sol.v.in, 'V', Math.max(1e-6, (0.5 * p.Rcal) / par(p.R1, p.R2))),
+        // ratio of the two, R_cal over R1 in parallel with R2. That ratio is
+        // the small parameter of the approximation, and a sweep of the whole
+        // knob range puts the actual error at up to 1.7 times it, so the
+        // guard carries a margin of three.
+        row('just after the edge', settled + (edge - settled) * Math.exp(-tFast / tau), x.tr.at(tFast).sol.v.in, 'V', Math.max(1e-6, (3 * p.Rcal) / par(p.R1, p.R2))),
         row('settled', settled, x.tr.at(0.45 / p.fc).sol.v.in, 'V', 1e-6),
         row('the time constant between them, (R₁∥R₂)(C₁+C₂)', tau, tauFromStep(x, settled, edge), 's', 5e-3),
       ]),

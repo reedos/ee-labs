@@ -201,7 +201,12 @@ describe('the lab’s invariants', () => {
       const settled = (p.A * p.R2) / (p.Rcal + p.R1 + p.R2)
       const tau = par(p.R1, p.R2) * (p.C1 + p.C2)
       const tFast = 20 * p.Rcal * (p.C1 + p.C2)
-      expect(x.tr.at(tFast).sol.v.in).toBeCloseTo(settled + (edge - settled) * Math.exp(-tFast / tau), 8)
+      // The prediction assumes the fast mode carries the whole initial jump,
+      // which is exact only as Rcal/(R1∥R2) → 0. The same guard as the math
+      // panel's row bounds how far short of exact that leaves it.
+      const guard = Math.max(1e-6, (3 * p.Rcal) / par(p.R1, p.R2))
+      const predicted = settled + (edge - settled) * Math.exp(-tFast / tau)
+      expect(Math.abs(x.tr.at(tFast).sol.v.in - predicted), `C1=${C1}`).toBeLessThan(guard * Math.abs(predicted))
       expect(x.tr.at(0.45 / p.fc).sol.v.in / settled).toBeCloseTo(1, 8)
     }
   })

@@ -34,10 +34,10 @@ function inputLayout({ srcId = 'V1', series = null, seriesLabel = null, srcNode 
  * parallel below it, and a dashed frame round the pair.
  */
 function probeLayout(feedId, feedNode) {
-  const [x0, x1] = [180, 300]
-  const legs = [380, 470]
+  const [x0, x1] = [200, 320]
+  const legs = [400, 490]
   return {
-    w: 580,
+    w: 600,
     h: H,
     items: [
       ...src('V1', 44),
@@ -45,7 +45,10 @@ function probeLayout(feedId, feedNode) {
       ...top(feedId, 110),
       rail(130, x0, TOP),
       node(feedNode, 44, TOP, 't'),
-      node('tip', 155, TOP, 't'),
+      // `tip` sits well clear of the feed resistor's body on one side and
+      // R1's on the other — both symbols are ±20 wide and the widest reading
+      // this node ever carries ("−1.23 mV") needs about 32 either way.
+      node('tip', 170, TOP, 't'),
       // R1 on the rail, C1 on a branch below it, meeting again at `in`.
       rail(x0, x0 + 20, TOP),
       ...top('R1', x0 + 40),
@@ -56,7 +59,7 @@ function probeLayout(feedId, feedNode) {
       { wire: [x0 + 60, 100, x1, 100] },
       { wire: [x1, 100, x1, TOP] },
       rail(x1, legs[0], TOP),
-      node('in', 340, TOP, 't'),
+      node('in', 360, TOP, 't'),
       ...leg('R2', legs[0]),
       rail(legs[0], legs[1], TOP),
       ...leg('C2', legs[1]),
