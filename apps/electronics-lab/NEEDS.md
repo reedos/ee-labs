@@ -360,12 +360,47 @@ numbers are already there to draw.
   symbol. On a 390 px phone that is a 23 % shrink of every label. If it reads
   badly, the fix is to move the Wien network's parallel arm onto a second row
   rather than to widen the canvas further.
-- **The sidebar's one-line summary no longer describes the lab.** `App.jsx`
-  says "19 experiments, from the op-amp a user meets to the junction
-  underneath it", and the lab now also carries the oscillators and the noise.
-  That file belongs to the app shell's lane, so the sentence is recorded here
-  rather than edited. It is the first item of `REVIEW_PLAYBOOK.md`, a sentence
-  that stopped following what it describes.
 - **N2's frequency is 1562.5 Hz where the network alone would set 1591.5 Hz.**
   That is the rail-limited loop and the lesson states it, but it is the one
   number in the two groups a reader is most likely to query.
+- **O1's circuit is a prop.** The generator and its load are drawn and solved,
+  and nothing the pane or the lesson quotes comes off that solve. The density,
+  the spread and the integral are all properties of the record
+  `@ee-labs/random` makes. `R_L` therefore changes no number the experiment
+  states. Whoever reads this one on screen should decide whether the drawing
+  earns its place or whether the load should set something.
+
+### 14. What the review changed, and in whose files
+
+The lane's own files carry the fixes. Three edits landed outside them, all in
+the app shell's lane and none in a shared surface.
+
+- `src/App.jsx`: the sidebar's one line read "19 experiments, from the op-amp
+  a user meets to the junction underneath it", which stopped describing the
+  lab when the oscillators and the noise landed. It reads off `GROUPS` now, so
+  it follows the registry. That is the first item of `REVIEW_PLAYBOOK.md`.
+- `src/experiments.test.js`: the lab had no KaTeX check on its math panel, so
+  a formula that lost a backslash would have shipped as red literal text. One
+  test now typesets every entry, for Groups A and C as well.
+- `src/components/NoiseCanvas.jsx` is the lane's own, and its per-source lines
+  were all one colour with no names. The loudest four take a colour each and
+  are named in the canvas.
+
+### 15. Two claims the engine cannot yet measure
+
+- **`returnRatio` declines an `OPAMP` by type.**
+  `packages/network/src/loop.js` refuses to break a loop at an `OPAMP` element.
+  It says "give it a finite gain, the macro's A₀, and the loop has a number".
+  N1's op-amp already carries `A₀ = 10⁵`, so the message names a fix that is
+  already in place, and the plan's N1 pin of "T at f₀" cannot be read.
+
+  The Wien network's own β is measured instead. The two arms are driven from
+  where the output sits, which is exact only while the + input draws no
+  current. `packages/network` is the Electronics overseer's, so this is a
+  request rather than an edit. The change wanted is for `loopSource` to accept
+  an `OPAMP` whose gain is finite, keeping the refusal for the ideal one.
+- **The distortion is counted over twelve harmonics.** A square wave's own
+  figure is 48.3 % and twelve harmonics of one make 43.9 %. The term, the why
+  and the panel now all say which is quoted. Counting further needs
+  `harmonics` in `groups/n.js` to take the count from the experiment, and a
+  waveform sampled fine enough to carry them.
