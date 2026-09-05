@@ -6,9 +6,10 @@ import { CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCh
 import { num } from './format.js'
 import { TERMS } from './terms.js'
 import { agrees } from '@ee-labs/explain'
-import { NetworkError, bjtOf, normalize, equations, thermalVoltage } from '@ee-labs/network'
+import { BJT_DEFAULTS, NetworkError, bjtOf, normalize, equations, thermalVoltage } from '@ee-labs/network'
 import { inverterMargins } from './groups/d.js'
 import { HD2_GUARD, driveGuard, hd2Of, vbeFor, vgsFor } from './groups/f.js'
+import { VCC, VT, gainFrom, portR } from './groups/h.js'
 
 // Every note makes a claim, and every claim is measured here.
 //
@@ -1148,5 +1149,186 @@ describe('Group G: ports, and what loads them', () => {
     const { x, p } = at('g2', { RL: defaultsOf('g2').Rout })
     expect(p.RL).toBe(p.Rout)
     expect(x.sol.v.out / x.sol.v.o).toBeCloseTo(0.5, 12)
+  })
+})
+
+// Groups H and I: the relations the sentences assert, rather than the values
+// they quote. The values are pinned by the lesson registers above and by the
+// math panel's check rows at 25 random settings each. What is left is the
+// physics a sentence states as a rule - the gain falls by the factor the
+// input resistance rises by, a follower's gain never reaches one, the boost
+// follows the current gain - and every one of these is written from the knobs.
+
+/** Two resistances in parallel, with an infinite one costing nothing. */
+const par = (a, b) => 1 / (1 / a + 1 / b)
+
+describe('Group H: the single-stage amplifiers', () => {
+  it('H1: the gain is -g_m(R_C || r_o), and the Early toggle is a control the sentence follows', () => {
+    const { x, p } = at('h1')
+    const q = x.point.Q1
+    expect(x.gain / (-q.gm * par(p.RC, q.ro))).toBeCloseTo(1, 6)
+    expect(portR(x, 'c') / par(p.RC, q.ro)).toBeCloseTo(1, 6)
+    expect(q.gm / (p.ic / VT)).toBeCloseTo(1, 3)
+    // With r_o gone the collector sees R_C alone and the base sees beta/g_m,
+    // so both numbers the see quotes change when the toggle moves.
+    const off = at('h1', { early: false })
+    const qo = off.x.point.Q1
+    expect(Number.isFinite(qo.ro), 'r_o with the Early effect off').toBe(false)
+    expect(off.x.gain / (-qo.gm * p.RC)).toBeCloseTo(1, 6)
+    expect(qo.rpi / (p.beta / qo.gm)).toBeCloseTo(1, 6)
+    expect(portR(off.x, 'c') / p.RC).toBeCloseTo(1, 6)
+  })
+
+  it('H2: the gain falls by the factor the input resistance rises by, at every R_E', () => {
+    const flat = at('h2', { RE: 1 })
+    for (const RE of [100, 1000]) {
+      const { x } = at('h2', { RE })
+      const fell = flat.x.gain / x.gain
+      const rose = portR(x, 'b', ['Vs']) / portR(flat.x, 'b', ['Vs'])
+      // The two factors are the same one, within two per cent. What separates
+      // them is r_o, which carries part of the collector's current back into
+      // the emitter and so is not in either textbook form.
+      expect(Math.abs(fell / rose - 1), `R_E = ${RE}`).toBeLessThan(0.03)
+      // And the factor itself is 1 + g_m R_E: what the emitter takes back is
+      // its own drop, and that drop is g_m R_E of the input.
+      expect(fell / ((1 + x.point.Q1.gm * RE) / (1 + flat.x.point.Q1.gm * 1)), `R_E = ${RE}`).toBeCloseTo(1, 1)
+    }
+  })
+
+  it('H3: a follower gain is under one at every load, and the base sees the load multiplied', () => {
+    // Every load the supply can carry: at the top of the knob's range the
+    // emitter would have to sit above V_CC, and the circuit says so instead.
+    let last = 0
+    for (const RL of [10, 200, 1000, 3000, 5000]) {
+      const { x, p } = at('h3', { RL })
+      const av = gainFrom(x, 'b', 'out', ['Vs', 'Rs'])
+      expect(av, `R_L = ${RL}`).toBeLessThan(1)
+      expect(av, `R_L = ${RL}`).toBeGreaterThan(last)
+      last = av
+      expect(portR(x, 'b', ['Rs']), `R_L = ${RL}`).toBeGreaterThan(x.point.Q1.rpi)
+    }
+    // Looking in at the base, the load appears multiplied by beta + 1. That
+    // is a slope rather than a value, because r_pi sits under it, so it is
+    // measured as one: two kilohms of extra load buys 101 times as much at
+    // the base, within the couple of per cent r_o takes.
+    const [a, b] = [at('h3', { RL: 1000 }), at('h3', { RL: 3000 })]
+    const perOhm = (portR(b.x, 'b', ['Rs']) - portR(a.x, 'b', ['Rs'])) / (b.p.RL - a.p.RL)
+    expect(perOhm / (a.p.beta + 1)).toBeCloseTo(1, 1)
+    // At the top of the knob's range the emitter would have to sit above
+    // V_CC to pass the current the bias asks for. There is no operating
+    // point there, and the pane carries the reason rather than a number.
+    const knob = byId.h3.params.find((k) => k.key === 'RL')
+    const tooMuch = analyse(byId.h3, { ...defaultsOf('h3'), RL: knob.max })
+    expect(tooMuch.sol, 'a follower into ten megohms').toBeNull()
+    expect(refusalReason(tooMuch.refusal)).toMatch(/^[A-Z].*[a-z]/)
+  })
+
+  it('H4: the emitter port is 1/g_m, and what a source delivers is its own divider', () => {
+    const { x, p } = at('h4')
+    const rin = portR(x, 'e', ['Rs'])
+    expect(rin / (1 / x.point.Q1.gm)).toBeCloseTo(1, 1)
+    // The stage's gain from the source is the gain at the emitter times the
+    // divider R_in/(R_s + R_in), so a 1 kOhm source keeps almost none of it.
+    expect(x.gain / (gainFrom(x, 'e', 'c', ['Rs', 'Vs']) * (rin / (p.Rs + rin)))).toBeCloseTo(1, 2)
+  })
+
+  it('H5: the square law makes g_m rise as the square root of the drain current', () => {
+    for (const vov of [0.1, 0.15, 0.2]) {
+      const { x, p } = at('h5', { vov })
+      const m = x.point.M1
+      // g_m is k_n V_OV and I_D is half k_n V_OV squared, so g_m is exactly
+      // the square root of twice k_n I_D once the channel-modulation factor
+      // is put back. That factor is all that stands between the slope and the
+      // plain square root, and it is under four per cent over these
+      // overdrives, which is what "climbs with the square root" means here.
+      expect(m.gm / (Math.sqrt(2 * p.kn * m.id_) * Math.sqrt(1 + p.lambda * m.vds)), `V_OV = ${vov}`).toBeCloseTo(1, 9)
+      expect(Math.abs(m.gm / Math.sqrt(2 * p.kn * m.id_) - 1), `V_OV = ${vov}`).toBeLessThan(0.04)
+      // And the gate passes no current at all, at any setting.
+      expect(x.sol.i.Vs, `V_OV = ${vov}`).toBe(0)
+    }
+  })
+
+  it('H7: the load line has the supply and the saturation voltage at its ends, whatever the drive', () => {
+    for (const amp of [0.03, 0.1]) {
+      const { x } = at('h7', { amp })
+      const c = clipOf(x, 'c')
+      expect(c.high, `amp = ${amp}`).toBeCloseTo(VCC, 9)
+      expect(c.low, `amp = ${amp}`).toBeCloseTo(BJT_DEFAULTS.vcesat, 9)
+    }
+    // A small drive reaches neither end, and then the swing is the gain times
+    // the drive about the quiescent point.
+    const { x, p } = at('h7', { amp: 0.01 })
+    const c = clipOf(x, 'c')
+    expect(c.high).toBeLessThan(VCC)
+    expect((c.high - c.low) / (2 * p.amp * ((p.beta * p.RC) / p.RB))).toBeCloseTo(1, 2)
+  })
+})
+
+describe('Group I: mirrors, active loads, and stacking', () => {
+  /** The current the reference resistor passes, read off the solve. */
+  const iref = (x, p, e) => (VCC - x.sol.v.ref) / e.net(p).elements.find((el) => el.id === 'Rref').value
+
+  it('I1: with the Early effect off the copy is I_ref/(1 + 2/beta) exactly, at every beta', () => {
+    for (const beta of [50, 100, 1000]) {
+      const { x, p, exp } = at('i1', { beta, early: false })
+      expect(x.point.Q2.ic / iref(x, p, exp), `beta = ${beta}`).toBeCloseTo(1 / (1 + 2 / beta), 6)
+    }
+    // With it on, the two collectors sit at different voltages and the ratio
+    // carries (V_A + V_CE2)/(V_A + V_CE1) as well.
+    const { x, p, exp } = at('i1')
+    const [q1, q2] = [x.point.Q1, x.point.Q2]
+    const early = (p.va + q2.vce) / (p.va + q1.vce)
+    expect(x.point.Q2.ic / iref(x, p, exp)).toBeCloseTo(early / (1 + 2 / p.beta), 3)
+  })
+
+  it('I2: the two base-emitter voltages differ by exactly the drop across R_E', () => {
+    for (const RE of [2000, 11906, 40000]) {
+      const { x } = at('i2', { RE })
+      const [q1, q2] = [x.point.Q1, x.point.Q2]
+      expect(q1.vbe - q2.vbe, `R_E = ${RE}`).toBeCloseTo(x.sol.v.e2, 12)
+      // And the currents come out in the ratio that drop asks for through the
+      // exponential, within the per cent the two Early terms cost.
+      expect((VT * Math.log(q1.ic / q2.ic)) / x.sol.v.e2, `R_E = ${RE}`).toBeCloseTo(1, 1)
+    }
+  })
+
+  it('I3: a per cent of mismatch moves the output by that current into the node resistance', () => {
+    const { x, p } = at('i3')
+    const [q1, q3] = [x.point.Q1, x.point.Q3]
+    const rnode = par(q1.ro, q3.ro)
+    expect(portR(x, 'c') / rnode).toBeCloseTo(1, 3)
+    for (const trim of [0.99, 1.01]) {
+      const moved = at('i3', { trim }).x.sol.v.c - x.sol.v.c
+      expect(moved / (-(trim - 1) * q1.ic * rnode), `trim = ${trim}`).toBeCloseTo(1, 1)
+    }
+    // The ceiling one transistor has is (V_A + V_CE)/V_T, and the stage sits a
+    // factor of two under it because the load's own r_o is across the node.
+    expect((q1.gm * q1.ro) / ((p.va + q1.vce) / VT)).toBeCloseTo(1, 2)
+    expect(Math.abs(x.gain) / (q1.gm * q1.ro)).toBeCloseTo(rnode / q1.ro, 2)
+  })
+
+  it('I4: the boost the upper transistor gives follows beta', () => {
+    const hundred = at('i4', { beta: 100 })
+    const fifty = at('i4', { beta: 50 })
+    const rout = (a) => portR(a.x, 'c', ['RC'])
+    expect(rout(fifty) / rout(hundred)).toBeCloseTo(0.5, 1)
+    // And the pair's output resistance is r_o multiplied by that boost, so a
+    // cascode is worth about beta common emitters at the same current.
+    expect(rout(hundred) / hundred.x.point.Q1.ro / hundred.p.beta).toBeCloseTo(1, 0)
+  })
+
+  it('I5: the response is the loaded first stage times the second, not the product of the two alone', () => {
+    for (const RC of [1000, 3000, 5000]) {
+      const { x } = at('i5', { RC })
+      const total = Math.hypot(x.hAt[0], x.hAt[1])
+      const rout1 = portR(x, 'c1', ['CC'])
+      const rin2 = portR(x, 'b2', ['CC'])
+      const second = Math.abs(gainFrom(x, 'b2', 'c2', ['CC', 'Vs']))
+      const first = x.point.Q1.gm * par(rout1, rin2)
+      expect(total / (first * second), `R_C = ${RC}`).toBeCloseTo(1, 2)
+      // The unloaded product would be larger by the divider, which is the
+      // whole point of the lesson.
+      expect(x.point.Q1.gm * rout1 * second, `R_C = ${RC}`).toBeGreaterThan(total)
+    }
   })
 })

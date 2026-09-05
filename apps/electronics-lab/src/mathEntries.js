@@ -14,6 +14,8 @@ import { ENTRIES_D } from './groups/d.math.js'
 import { ENTRIES_E } from './groups/e.math.js'
 import { MATH_F } from './groups/f.js'
 import { MATH_G } from './groups/g.js'
+import { MATH_H } from './groups/h.math.js'
+import { MATH_I } from './groups/i.math.js'
 
 const T = (text) => ({ kind: 'text', text })
 const F = (tex, caption) => ({ kind: 'formula', tex, caption })
@@ -272,4 +274,11 @@ export const ENTRIES = {
       ],
     }
   },
+
+  // Groups H and I keep their entries beside their circuits, because each one
+  // measures a port with the same function the group's lessons quote. They
+  // land here in plan order, since this file is the only place a math entry
+  // can be registered and experiments.test.js requires one per experiment.
+  ...MATH_H,
+  ...MATH_I,
 }
