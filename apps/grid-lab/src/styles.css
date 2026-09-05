@@ -1,0 +1,234 @@
+/* Grid Lab's own furniture. The shell, controls and math panel come from
+ * @ee-labs/ui and @ee-labs/explain. The sidebar groups, terms and tables are
+ * the Energy Lab's, copied so the labs read as one suite. What is added here
+ * is the one-line diagram's styling, which lives with the lab that draws it
+ * rather than in the shared canvas, so a second lab can dress it its own way. */
+
+/* The picker: a row of group tabs, and the shown group's experiments under
+   it. */
+.group-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 0;
+}
+.controls h2.picker-cap {
+  padding: 0 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.group-tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 0 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.group-tab:hover { color: var(--text); }
+.group-tab.is-shown { color: var(--text); border-bottom-color: var(--accent); }
+.group-tab.is-here:not(.is-shown) { color: var(--accent); }
+
+.presets { display: flex; flex-wrap: wrap; gap: 5px; }
+.presets[hidden] { display: none; }
+
+.preset {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11.5px;
+  padding: 3px 7px;
+}
+.preset:hover { border-color: var(--accent); color: var(--accent); }
+.preset.is-on { border-color: var(--accent); color: var(--accent); background: rgba(56, 224, 176, 0.1); }
+
+.controls { padding-top: 8px; }
+.controls section { margin-top: 6px; padding-bottom: 10px; }
+.controls h2 { padding: 5px 12px 4px; margin-bottom: 6px; }
+.controls .hint { margin-top: 8px; }
+.controls .report-issue { margin-top: 14px; }
+
+.group-active-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+.view-head .segmented { flex: 0 0 auto; }
+.view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
+
+/* Definitions on contact, folded under the note. */
+details.terms { margin: 6px 0 2px; }
+details.terms > summary { cursor: pointer; font-size: 11px; color: var(--accent); list-style: none; }
+details.terms > summary::before { content: '\25B8  '; font-size: 9px; }
+details.terms[open] > summary::before { content: '\25BE  '; }
+details.terms > summary::-webkit-details-marker { display: none; }
+details.terms dl { margin: 6px 0 0; }
+details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
+details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+
+/* Toggle and choice knobs, in the NumField's slot. */
+.toggle-field .segmented,
+.choice-field .segmented { display: inline-flex; margin-top: 2px; }
+
+/* One thing to try, per step, with the button that applies it. */
+.controls .try {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--accent);
+  background: rgba(56, 224, 176, 0.06);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.try-label {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+.chip.reset { vertical-align: 1px; margin-left: 2px; }
+
+/* Tables in the math-panel idiom: the reading and the ledger. */
+.table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.table th, .table td { text-align: center; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.table th { color: var(--dim); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; text-align: left; }
+.table td.num, .table th.num { display: table-cell; margin: 0; text-align: center; }
+.table td.num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.table tr.total td { border-top: 1px solid var(--line-bright); font-weight: 600; }
+.view-body-inner { max-width: 640px; }
+/* The hourly table has eight columns and wants the room. */
+.view-body-inner.is-wide { max-width: none; overflow-x: auto; }
+
+/* The day, hour by hour. The column heads carry which of them are the data
+   and which are solved, so the distinction is in the table and not only in
+   the paragraph above it. */
+.profile-table { font-variant-numeric: tabular-nums; }
+.profile-table th[scope='col'] { white-space: nowrap; vertical-align: bottom; }
+.profile-table th[scope='col'] .prov { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.profile-table td, .profile-table th { padding: 2px 8px; }
+.profile-table tr.is-here { background: rgba(56, 224, 176, 0.08); }
+.profile-table tr.is-here th[scope='row'] { color: var(--accent); }
+
+.more-knobs { margin-top: 8px; }
+.more-knobs > summary { cursor: pointer; font-size: 12px; color: var(--dim); padding: 4px 0; }
+.more-knobs[open] > summary { margin-bottom: 4px; }
+
+.start-here {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #05221b;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
+.controls .group-intro { margin: 6px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--dim); }
+
+/* The math view, given the width it wants rather than the sidebar's fold. */
+.view-body > .math-body { max-width: 760px; padding: 4px 0; }
+
+/* A wider sidebar than the shell's 330 px, matching the other labs. */
+@media (min-width: 1200px) and (max-width: 2399px) {
+  .app { grid-template-columns: 390px 1fr; }
+}
+
+/* The picture takes the larger share of the column, because it is what the
+   note is about; the analysis under it is a table and wants less. */
+.views { grid-template-rows: 1.35fr 1fr; }
+.view-body { display: flex; flex-direction: column; min-height: 0; }
+.view-body > .plot { flex: 1 1 auto; min-height: 0; }
+
+/* The bound a guarded number carries, under the picture that prints it. A
+   warning is the same sentence in the warning hue: the model has left the
+   range it stands in for, and the reader is told rather than stopped. */
+.guards { flex: 0 0 auto; }
+.guard {
+  margin: 8px 0 0;
+  padding: 6px 9px;
+  border-left: 2px solid var(--line-bright);
+  background: var(--panel-2);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.guard.is-warn { border-left-color: var(--warn); color: var(--text); }
+
+/* On a phone the two panes stack and each needs a workable height of its own,
+   as they do in the other labs. */
+@media (max-width: 900px) {
+  .views { display: flex; flex-direction: column; gap: 0; }
+  .views .view { min-height: 46vh; flex: 0 0 auto; }
+}
+
+/* The refusal a guard prints where a picture would have been. */
+.guard.is-refuse { border-left-color: var(--bad, #ff5c7a); color: var(--text); }
+.guard.is-note { border-left-color: var(--line-bright); }
+.empty { color: var(--dim); font-size: 12px; padding: 16px; }
+
+/* The one-line diagram. The canvas is @ee-labs/ui's and draws what it is
+   given; every colour and weight below is this lab's dressing of it. */
+.one-line { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+.one-line-svg { width: 100%; flex: 1 1 auto; min-height: 180px; }
+.ol-line { stroke: var(--line-bright); stroke-width: 2; fill: none; }
+.ol-branch.is-lit .ol-line { stroke: var(--accent); }
+.ol-branch.is-over .ol-line { stroke: var(--warn); stroke-dasharray: 5 3; }
+.ol-flow { fill: var(--dim); font-size: 9px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.ol-arrow line { stroke-width: 2; fill: none; }
+.ol-arrow.q-out line, .ol-arrow.q-out polygon { stroke: var(--accent); fill: var(--accent); }
+.ol-arrow.q-in line, .ol-arrow.q-in polygon { stroke: #f0a23c; fill: #f0a23c; }
+.ol-bar {
+  stroke-width: 6;
+  stroke-linecap: round;
+  /* The tint runs from a low bus to a high one, so a reader sees a voltage
+     profile without reading a number. */
+  stroke: color-mix(in srgb, var(--text) 70%, var(--warn) calc(30% * (1 - var(--tint))));
+}
+.ol-bus.is-lit .ol-bar { stroke: var(--accent); }
+.ol-name { fill: var(--text); font-size: 10px; }
+.ol-volts { fill: var(--dim); font-size: 9px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.ol-marker line, .ol-marker circle, .ol-marker rect { stroke: var(--line-bright); fill: none; stroke-width: 1.5; }
+.ol-marker.is-load polygon { fill: var(--line-bright); stroke: none; }
+.ol-marker.is-storage .ol-soc { fill: var(--accent); stroke: none; }
+.ol-soc-text { fill: var(--dim); font-size: 9px; }
+.ol-rays line { stroke: #f0a23c; stroke-width: 1; }
+.one-line-cursor { fill: var(--dim); font-size: 10px; }
+.one-line-refusal { fill: var(--warn); font-size: 10px; }
+.one-line-balance {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 2px 10px;
+  margin: 0;
+  font-size: 11px;
+}
+.one-line-balance dt { color: var(--dim); }
+.one-line-balance dd { margin: 0; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* The table and reading panels. */
+.rows { padding: 4px 2px; overflow-y: auto; }
+.rows-caption { color: var(--dim); font-size: 11px; margin: 0 0 6px; }
+.rows dl { display: grid; grid-template-columns: minmax(140px, 1fr) 2fr; gap: 3px 12px; margin: 0; font-size: 11.5px; }
+.rows dt { color: var(--dim); }
+.rows dd { margin: 0; color: var(--text); font-variant-numeric: tabular-nums; }
+.rows dd.has-note { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.row-note { color: var(--dim); font-size: 10.5px; }
