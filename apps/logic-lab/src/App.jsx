@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { LabNav, LessonNav, NumField, ReportIssue, TryLine } from '@ee-labs/ui'
+import { LabNav, LessonNav, NumField, ReportIssue, StateCanvas, TimingCanvas, TryLine } from '@ee-labs/ui'
 import { EXPERIMENTS, GROUPS, VIEW_LABELS, VIEW_ORDER, bussesOf, byId, defaultsOf, signalsOf } from './experiments.js'
 import { analyse, valueOf } from './analysis.js'
 import { TERMS } from './terms.js'
@@ -7,8 +7,6 @@ import { reportSummary } from './report.js'
 import { ps } from './format.js'
 import { EventTable, KarnaughMap, PathList, RatePane, Refusal, TruthTable } from './components/panes.jsx'
 import GateCanvas from './components/GateCanvas.jsx'
-import TimingCanvas from './components/TimingCanvas.jsx'
-import StateCanvas from './components/StateCanvas.jsx'
 import pkg from '../package.json'
 
 // The shell. One experiment at a time: its netlist runs once (analysis.js's

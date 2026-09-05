@@ -73,6 +73,9 @@ its answer, which is what CORE_SCOPE Rule 3 asks of every inexact model in the
 suite. It is written for this lab's rate law and it is not general, so it is
 named here as a shape rather than as a request.
 
+**Landed.** Both canvases moved to `packages/ui/src`, with `geometryOf`,
+`sceneOf` and their tests, and this app now imports them from `@ee-labs/ui`.
+
 ## 4. The engine contract, reconciled with the three track D plans
 
 `packages/events` is this lab's, and `VLSI_LAB_PLAN.md`, `COMPUTER_LAB_PLAN.md`

@@ -4,10 +4,9 @@ import React from 'react'
 import App from './App.jsx'
 import { EXPERIMENTS, VIEW_LABELS, bussesOf, defaultsOf, signalsOf } from './experiments.js'
 import { analyse } from './analysis.js'
+import { StateCanvas, TimingCanvas } from '@ee-labs/ui'
 import { EventTable, KarnaughMap, PathList, RatePane, Refusal, TruthTable } from './components/panes.jsx'
 import GateCanvas from './components/GateCanvas.jsx'
-import StateCanvas from './components/StateCanvas.jsx'
-import TimingCanvas from './components/TimingCanvas.jsx'
 
 // A passing `vite build` only proves the modules parse. This mounts the real
 // component tree, and then every pane of every experiment, so a render-phase
