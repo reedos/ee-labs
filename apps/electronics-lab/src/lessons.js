@@ -23,6 +23,8 @@
  *   clip.<high|low>               the scope's flat tops, in volts
  *   peak.<node>  mean.<node>
  *   junction.<v0|w|xp|xn|cj|cd|is|slope|fT|doubling|gm>
+ *   osc.<period|f|f0|sigma|amp|high|low|thd|hd2|growthRate>
+ *   noise.<density|rms|measured|flatness|nf|f|shot>  noise.<snr|snrdb|gain>.<node>
  */
 import { complex as cx } from '@ee-labs/network'
 import { clipOf, meanOf, peakOf, slopeOf } from './math.js'
@@ -38,6 +40,10 @@ import { LESSONS_J } from './lessons/j.js'
 import { LESSONS_K } from './lessons/k.js'
 import { LESSONS_L } from './lessons/l.js'
 import { LESSONS_M } from './lessons/m.js'
+import { LESSONS_N } from './lessons/n.js'
+import { LESSONS_O } from './lessons/o.js'
+import { oscOf } from './groups/n.js'
+import { noiseOf } from './groups/o.js'
 
 const DEG = 180 / Math.PI
 
@@ -79,6 +85,16 @@ export function readQuantity(x, p, path, exp) {
       return meanOf(x, rest[0])
     case 'junction':
       return x.junction[rest[0]]
+    // Group N's oscillators: the period, the frequency and the distortion of
+    // the settled waveform, and the pole pair's own rate, all measured in
+    // groups/n.js off the walk the solver made.
+    case 'osc':
+      return oscOf(x)[rest[0]]
+    // Group O's noise: a density at one frequency, an rms over a stated band,
+    // a noise figure, and the signal-to-noise ratio at a named node. Measured
+    // in groups/o.js, on the tangent the experiment's circuit has.
+    case 'noise':
+      return rest.reduce((o, k) => (o == null ? o : o[k]), noiseOf(x))
     case 'cursor':
       return x.cursor
     default:
@@ -86,4 +102,4 @@ export function readQuantity(x, p, path, exp) {
   }
 }
 
-export const LESSONS = { ...LESSONS_A, ...LESSONS_C, ...LESSONS_D, ...LESSONS_E, ...LESSONS_F, ...LESSONS_G, ...LESSONS_H, ...LESSONS_I, ...LESSONS_J, ...LESSONS_K, ...LESSONS_L, ...LESSONS_M }
+export const LESSONS = { ...LESSONS_A, ...LESSONS_C, ...LESSONS_D, ...LESSONS_E, ...LESSONS_F, ...LESSONS_G, ...LESSONS_H, ...LESSONS_I, ...LESSONS_J, ...LESSONS_K, ...LESSONS_L, ...LESSONS_M, ...LESSONS_N, ...LESSONS_O }

@@ -2,6 +2,7 @@ import React from 'react'
 import { COLORS, drawFrame, plotArea, useCanvas, fmt } from '@ee-labs/ui'
 import { equations } from '@ee-labs/network'
 import { bodePoints } from '../math.js'
+import NoiseCanvas from './NoiseCanvas.jsx'
 import { num } from '../format.js'
 
 /**
@@ -485,6 +486,7 @@ const PANES = {
   bode: BodeCanvas,
   pz: PZCanvas,
   spectrum: SpectrumCanvas,
+  noise: NoiseCanvas,
   junction: JunctionCanvas,
   equations: EquationsPane,
 }

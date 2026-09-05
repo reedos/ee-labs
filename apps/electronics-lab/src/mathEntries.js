@@ -20,6 +20,8 @@ import { MATH_J } from './groups/j.js'
 import { MATH_K } from './groups/k.js'
 import { MATH_L } from './groups/l.math.js'
 import { MATH_M } from './groups/m.math.js'
+import { MATH_N } from './groups/n.math.js'
+import { MATH_O } from './groups/o.math.js'
 
 const T = (text) => ({ kind: 'text', text })
 const F = (tex, caption) => ({ kind: 'formula', tex, caption })
@@ -39,6 +41,8 @@ export const ENTRIES = {
   ...MATH_K,
   ...MATH_L,
   ...MATH_M,
+  ...MATH_N,
+  ...MATH_O,
   a1(p, x) {
     const A0 = 1e5
     const beta = p.Rg / (p.Rf + p.Rg)

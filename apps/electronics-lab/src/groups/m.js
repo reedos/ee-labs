@@ -393,7 +393,7 @@ export const GROUP_M = [
     id: 'm6',
     group: GROUP,
     name: 'The output stage, and its dead band',
-    terms: ['classb', 'crossoverdist', 'efficiency'],
+    terms: ['classb', 'crossoverdist', 'efficiency', 'thd'],
     params: [
       chips(Amp0('amp', 'Drive amplitude', 1), [1, 5, 9]),
       chips({ key: 'vbias', label: 'Bias per side', unit: 'V', min: 0, max: 0.9, scale: 'linear', default: 0 }, [0, 0.35, 0.69]),

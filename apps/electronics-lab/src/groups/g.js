@@ -119,7 +119,7 @@ export const GROUP_G = [
     id: 'g1',
     group: GROUP_G_NAME,
     name: 'A port with a dependent source inside',
-    terms: ['port', 'testsource', 'negativeresistance'],
+    terms: ['port', 'testsource', 'negativeresistance', 'oscillator'],
     params: [
       chips(Gm('g', 'Source g', 0.01, 'zero switches the dependent source off, and the port is then the resistor alone'), [-0.01, 0, 0.01]),
       chips(R('R1', 'Resistor R₁', 1000), [100, 1000, 10000]),

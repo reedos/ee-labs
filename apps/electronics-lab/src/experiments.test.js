@@ -13,6 +13,7 @@ import { VCC, VT, gainFrom, portR } from './groups/h.js'
 import { cmrr, cmrrDb, gainD, linearityShortfall, offsetOf, shareQ1, solverFor } from './groups/j.js'
 import { SPACING, ceSeenBy, dominant, magAt, millerOf, octcOf, poleSpacing, sctcOf, unityGain } from './groups/k.js'
 import { harmonics, loopMargins, loopT, loopTF, portResistance, powerOver, ringOf, tangent, thdOf } from './groups/l.js'
+import { texFailures } from '@ee-labs/explain/testing'
 
 // Every note makes a claim, and every claim is measured here.
 //
@@ -160,6 +161,19 @@ describe('every experiment', () => {
       }
     }
   }, 180000)
+
+  // A formula that KaTeX cannot parse renders as red literal text, and a
+  // formula that lost a backslash on its way through an editor renders as the
+  // macro's own letters. Both have shipped in this suite before, so both are
+  // checked here rather than read off a screenshot.
+  it('typesets every formula in its math panel', () => {
+    const fails = []
+    for (const e of EXPERIMENTS) {
+      const m = experimentMath(e, defaultsOf(e.id), analyse(e, defaultsOf(e.id)))
+      if (m) fails.push(...texFailures(m, e.id))
+    }
+    expect(fails).toEqual([])
+  })
 
   it('prints its equations, and the rows count the unknowns the circuit has', () => {
     for (const e of EXPERIMENTS) {
