@@ -131,7 +131,14 @@ describe('every experiment', () => {
         }
       }
     }
-  }, 600000)
+  // Six hundred seconds was the budget while the panel's rows were algebra over
+  // one solve. Several are not: A4 bisects the exact step for its time constant,
+  // D1 and D2 search the solver itself for a peak and its two half-power points,
+  // D4 walks an envelope, and the lock-in averages a transient of three thousand
+  // points. Twenty-six settings of twenty-five experiments takes 350 s here and
+  // twice that on a runner sharing two cores, so the cap is sized to the slower
+  // machine. No assertion is weakened by it.
+  }, 900000)
 
   it('draws cleanly: no text on any other text, symbol or wire, at the defaults and at 8 random settings', () => {
     for (const e of EXPERIMENTS) {
