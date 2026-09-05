@@ -24,6 +24,8 @@ entry and a named blocker. **Mapped** has a map entry only.
 | DSP Lab | building | `lab/dsp-lab` | | to write |
 | Random Signals Lab | built, dark | merged | Electronics O1 for one cross-reference | `RANDOM_LAB_PLAN.md` |
 | Control Lab II | building | `lab/control-lab-ii` | | to write |
+| Random Signals Lab | building | `lab/random-lab` | Electronics O1 for one cross-reference | to write |
+| Control Lab II | building | `lab/control-lab-ii` | | `CONTROL_LAB_II_PLAN.md` |
 | Instruments Lab | building | `lab/instruments-lab` | RF Lab for the network analyser group | to write |
 | Fields Lab | building | `lab/fields-lab` | | to write |
 | Energy Lab | built, dark | merged | Machines Lab for the wind group | `ENERGY_LAB_PLAN.md` |
@@ -535,6 +537,40 @@ The two seams of `CURRICULUM.md` §3 and the progression test of its §6.
   Power section names no plan. The Electronics section does name one, and the test checks
   that the two agree. Reopens if the director gives every planned lab's section the same
   sentence.
+
+### Control Lab II
+
+Thirty-two of the plan's thirty-five experiments are built, dark, on
+`lab/control-lab-ii`. Groups A to F, with F at two of five. What is not built:
+
+- **F3, F4 and F5, the Kalman filter's statistical half.** The covariance
+  recursion, the steady state it settles to, and the ensemble that shows the
+  spread landing on the covariance the recursion predicted. Each needs a noise
+  model with a variance and a way to run many realisations, which is the Random
+  Signals Lab's `random` package. Decision 4 of the plan split the group for
+  this reason, and F1 and F2 are the deterministic half and stand on their own.
+  **Reopens when `random` lands.** No text in this lab names that lab until it
+  does, so nothing has to be unsaid when it arrives.
+- **The Kalman and Random Signals cross-reference.** The same dependency read
+  the other way. Once both labs are built, F1's note should point at the
+  ensemble that makes the covariance visible, and the Random Signals Lab's
+  estimation group should point back at F2's duality. Neither pointer exists
+  yet, and neither should until both ends do. **Reopens with the same
+  dependency.**
+- **The Playwright harness, `apps/control-lab-ii/scripts/verify.mjs`.** Four
+  checks were planned and two are now held by unit tests instead. The phase
+  canvas's whole drawing plan is arithmetic in `phaseGeometry.js` and is tested
+  there. `verdict.test.js` walks every experiment and fails any mode that shows
+  an approximation without its guard. The two that remain are the layout ones,
+  that no view scrolls sideways at 390 px and that the guard banner sits where a
+  reader will see it. Both need a browser. **Reopens at the release gate**,
+  phase 7 of the plan, which is the only phase outstanding.
+- **The step and loop canvases, promoted.** `StepCanvas.jsx` and
+  `LoopDiagram.jsx` are second copies of Control Lab's. `PROGRAM.md` section 4
+  makes a third copy the signal to promote, and `NEEDS.md` records both.
+  `PhaseCanvas.jsx` is a separate case and is ready to move the day the Machines
+  Lab claims it, with no change to its interface. **Reopens when a third lab
+  copies one, or when Machines Lab starts.**
 
 ## 3. The director's queue
 

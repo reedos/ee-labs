@@ -104,7 +104,10 @@ Lab's sampling group, then this lab from A to F.
 
 Built and merged. `packages/systems` gains six modules, all additions. No existing
 signature changed, and every existing consumer stays green. Circuit Lab, Control Lab
-and Signal Lab were run against the extended package with no edits.
+and Signal Lab were run against the extended package with no edits. Section 3 of the
+brief is also a test in its own right, `contract.test.js`. It holds every promised
+name to being exported, and every guarded return shape to carrying its guard on every
+call rather than on the calls some other test happened to make.
 
 ### 2.1 Where each object sits in `CORE_SCOPE.md`
 
@@ -382,11 +385,13 @@ giving the same shape at different sizes. This group gives that idea its algebra
   it cannot jump. The inductor current is a state for the same reason. Measured: the
   poles of `det(sI − A)` equal the roots of the circuit's own denominator, and
   `toTransferFunction` returns the H(s) Circuit Lab computes.
-- **A3 · Two views, one object.** The motor in the physical basis, and the same
-  motor in the controllable canonical form. The A matrices differ. The transfer
-  function does not. Measured: `2/(s² + 2s)` from both bases to 1e-9, and that a
-  similarity transform changes A by more than a tenth while changing H(s) by
-  nothing.
+- **A3 · Two views, one object.** The motor with its speed in radians a second,
+  and the same motor with its speed in degrees a second. A and B both change and
+  the transfer function does not. Measured: `2/(s² + 2s)` from both bases to
+  1e-9, and that the change of coordinates moves A by more than a tenth while H(s)
+  does not move at all. The controllable canonical form is **not** the second basis
+  here. For this motor it comes out equal to the physical one, so an experiment built
+  on it measures zero against zero and passes. That was the first cut.
 - **A4 · Controllability is a rank.** Two identical lags driven by one input and
   read as their difference. The controllability matrix has rank 1 of 2, and its
   smallest singular value is exactly zero. Detune one lag by 0.1 per cent and the
@@ -514,10 +519,12 @@ off.
   cent at Kp = 40.
 - **D4 · The filter hypothesis, with its threshold.** The discrepancy is not an
   accident. It is the harmonic content the method threw away. At Kp = 20 the third
-  harmonic returns at 1.43 per cent of the fundamental, and the amplitude is 1.33 per
-  cent wrong. Across the sweep the ratio of those two numbers stays between 0.7 and
-  1.5. Measured: that ratio at 16 fuzzed settings, and the threshold of five per cent
-  it justifies.
+  harmonic returns at 1.43 per cent of the fundamental and the amplitude is 1.32 per
+  cent wrong. Measured twice. In the engine, over 16 settings with gains and limits
+  fuzzed together, the ratio of those two stays between 0.7 and 1.5. In the
+  experiment, across gains alone at one limit, it runs from 0.46 to 1.32. So the
+  experiment pins what holds there. The error never exceeds 1.5 times the ratio and
+  never falls below 0.4 of it.
 - **D5 · Where the prediction is not usable.** Put a lightly damped resonance at
   three times the crossing frequency. The third harmonic now returns at 67.6 per
   cent of the fundamental, far above the threshold. The pane shows the reason instead
@@ -534,10 +541,13 @@ fitted to it. The residual is the whole of the honesty in this group.
   the model over the data and the residual below. Measured: the two parameters and
   the residual.
 - **E2 · Fitting a second order, and what a wrong order looks like.** A resonant
-  plant with ωₙ = 3 rad/s and ζ = 0.35. The second-order fit returns all three
-  parameters exactly. The first-order fit returns τ = 0.362 s and a residual of 13.4
-  per cent of the gain, because a first-order model has no way to overshoot.
-  Measured: both fits, both residuals, and their ratio of 6.4e-9.
+  plant with ωₙ = 3 rad/s and ζ = 0.35, over a five-second window. The second-order
+  fit returns all three parameters exactly. The first-order fit returns τ = 0.3615 s
+  and a residual of 13.4 per cent of the gain, because a first-order model has no way
+  to overshoot. Measured: both fits, both residuals, and their ratio of 1.6e-8. The
+  window is part of the measurement rather than a detail. A longer one dilutes the
+  ringing with settled trace and the first-order residual falls with it, to 9.0 per
+  cent at twelve seconds.
 - **E3 · Which order the data supports.** The same lag as E1, with noise at 1, 2 and
   5 per cent of the gain. The residual lands on the noise, at 1.03, 2.05 and 5.13 per
   cent. Adding a second pole takes 0.03 per cent off it, because there is nothing
@@ -550,11 +560,11 @@ fitted to it. The residual is the whole of the honesty in this group.
 - **E5 · Identify, then control.** Two lags at 0.7 s and 0.13 s. The second-order fit
   recovers both poles exactly, at −1.4286 and −7.6923. The first-order fit gives τ =
   0.875 s with a residual of 2.37 per cent, which looks small. Design a PI on each for
-  a crossover at 8 rad/s. The design from the first-order fit predicts 92.4 degrees
-  of phase margin and no overshoot, and on the real plant it gets 52.0 degrees and
-  13.4 per cent. The design from the second-order fit predicts 48.3 degrees and 17.2
-  per cent, and gets exactly that. Measured: both fits, both designs, and the four
-  margins.
+  a crossing at 8 rad/s, the integral time cancelling the model's slowest pole. The
+  first-order design cancels a pole the plant does not have. On its own model it
+  predicts 90.0 degrees and no overshoot, and on the plant it gets 49.3 degrees and
+  17.7 per cent. The second-order design predicts 43.9 degrees and 24.5 per cent, and
+  gets them.
 
 ### Group F: The Kalman filter (5, two now)
 
@@ -622,9 +632,12 @@ Waiting on the Random Signals Lab, per Decision 4 and `BACKLOG.md`:
   with direct feedthrough. Each message is pinned by a test.
 - **Cross-lab pins**: A2's circuit poles against Circuit Lab's, and the deep link
   from Control Lab round-tripping.
-- **Playwright harness**, in `scripts/verify.mjs`. The phase canvas redraws when the
-  limit moves. The guard banner appears below the threshold and not above. The fit
-  view prints a residual for every dataset. No view scrolls sideways at 390 px.
+- **Playwright harness**, in `scripts/verify.mjs`. **Deferred**, and in `BACKLOG.md`
+  with its reason. Two of its four checks are held by unit tests instead.
+  `PhaseCanvas.test.jsx` holds the canvas's whole drawing plan, because the geometry
+  was written apart from the drawing so that a test could read it. `verdict.test.js`
+  walks every experiment and fails any mode that shows an approximation without its
+  guard. The two that remain are the layout ones, and they need a browser.
 - **`REVIEW_PLAYBOOK.md` audit** before release, all eleven classes, with a
   screenshot pass. Class 4 matters most here, because the phase plane's axes are two
   states and both need a name and a unit.
@@ -654,19 +667,26 @@ The mechanism the other labs share, unchanged.
 Each phase ships green and deployable dark.
 
 1. **The engine.** All six modules, ten invariants fuzzed green, before any UI
-   exists. **Done.** Exit met.
+   exists. **Done.** Exit met, and the brief's contracts are a test as well.
 2. **The app shell and Group A.** `RELEASE_STATUS`, `release.test.js`, the step and
-   poles views, the state pane. Exit: A1 to A7 pinned, the shell at 390 px.
-3. **Group B.** The z-plane view, the sampling section, the guard banner. Exit: B1
-   to B7 pinned, the guard tested at both sides.
+   poles views, the state pane. **Done.** A1 to A7 pinned. A3 was rewritten at this
+   point, for the reason §5 now records.
+3. **Group B.** The z-plane view, the sampling section, the guard banner. **Done.**
+   B1 to B7 pinned, the guard tested at both sides of twenty samples per cycle. The
+   sample rate became a knob in its own right here, because two experiments were
+   carrying hand-computed sample times with the loop's own crossover baked into them.
 4. **Groups C and D.** The phase canvas with the props of §4.3, the nonlinearity
-   section, the prediction pane. Exit: C1 to C6 and D1 to D5 pinned, the discrepancy
-   on screen.
-5. **Group E.** The fit view. Exit: E1 to E5 pinned, the residual on screen for
-   every dataset.
-6. **Group F's first half.** Exit: F1 and F2 pinned, F3 to F5 in `BACKLOG.md`.
+   section, the prediction pane. **Done.** C1 to C6 and D1 to D5 pinned, the
+   discrepancy on screen with its guard beside it. Group C's prose was rewritten
+   here, because it had never been through the lint.
+5. **Group E.** The fit view. **Done.** E1 to E5 pinned, the residual on screen for
+   every dataset. The ensemble and the design were added to `analysis.js` for E4 and
+   E5, which the earlier phases had not needed.
+6. **Group F's first half.** **Done.** F1 and F2 pinned, F3 to F5 in `BACKLOG.md`.
 7. **The release gate.** The full audit, the harness, the sittings, Reed's own pass
-   against the dark deployment. Then the flip.
+   against the dark deployment. Then the flip. **Outstanding**, and the only phase
+   that is. It needs the deploy line from the director (`NEEDS.md` §1), a browser for
+   the two layout checks the unit tests cannot make, and Reed.
 
 ---
 
