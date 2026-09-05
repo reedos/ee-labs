@@ -48,8 +48,9 @@ describe(`release status "${status}"`, () => {
     )
   })
 
-  it('does not edit the deploy workflow itself, which the director owns', () => {
-    // If this ever fails, an overseer has touched a shared surface.
-    expect(read('.github/workflows/deploy.yml')).not.toMatch(/comms-lab/)
+  it('the deploy workflow ships the build either way, so the dark URL exists to review', () => {
+    // The director adds this line at integration (PROGRAM.md §5). Dark means
+    // unlinked, not unbuilt: the Elements and Power labs set the convention.
+    expect(read('.github/workflows/deploy.yml')).toMatch(/apps\/comms-lab\/dist\s+_site\/comms-lab/)
   })
 })
