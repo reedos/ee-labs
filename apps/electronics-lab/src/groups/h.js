@@ -77,10 +77,11 @@ const killed = (e) => (e.type === 'V' || e.type === 'I' ? { ...e, value: 0, wave
  * first, so that "the resistance looking into the base" is not measured with
  * the source resistance wired across it.
  *
- * A port with nothing conductive on it has no solution, and that is the
- * answer rather than a failure: an ideal current source looking out of a
- * collector has an infinite output resistance, and I1 with the Early effect
- * switched off is exactly that circuit.
+ * A port the solver cannot answer for has an infinite resistance, and that is
+ * the answer rather than a failure. An ideal current source looking out of a
+ * collector is one such port, and I1 with the Early effect switched off is
+ * exactly that circuit. A device driven into cutoff leaves its own terminals
+ * unattached, which is the same case seen from the other side.
  */
 export function portR(x, at, drop = []) {
   const els = tangent(x)
@@ -90,7 +91,7 @@ export function portR(x, at, drop = []) {
   try {
     return solveDC(normalize({ elements: els })).v[at]
   } catch (err) {
-    if (err instanceof NetworkError && err.code === 'singular') return Infinity
+    if (err instanceof NetworkError) return Infinity
     throw err
   }
 }
@@ -143,8 +144,8 @@ const Kn = (key, label, def, hint) => ({ key, label, unit: 'A/V²', min: 1e-4, m
 const IC = () => chips(Is('ic', 'Collector current I_C', 1e-3), [0.25e-3, 1e-3, 1.5e-3])
 const BETA = () => chips(Gain('beta', 'Current gain β', NPN.beta), [50, 100, 200])
 const VA = () => chips(Gain('va', 'Early voltage V_A', NPN.va, 'in volts'), [25, 100, 1000])
-const RCK = () => chips(R('RC', 'Collector R_C', 5000), [1000, 5000, 20000])
-const DRIVE = () => Vs('vin', 'Input v_in', 0, 'the signal, riding on the bias')
+const RCK = () => chips(R('RC', 'Collector R_C', 5000), [1000, 5000, 8000])
+const DRIVE = (span = 0.5) => ({ key: 'vin', label: 'Input v_in', unit: 'V', min: -span, max: span, scale: 'linear', default: 0, hint: 'the signal, riding on the bias' })
 const VTK = () => Vs('vt', 'Threshold V_t', 0.7)
 const KNK = () => chips(Kn('kn', 'Transconductance k_n', 20e-3), [5e-3, 20e-3, 80e-3])
 const VOV = (presets = [0.1, 0.2, 0.4]) => chips(Amp('vov', 'Overdrive V_OV', 0.2), presets)
@@ -394,10 +395,11 @@ export const GROUP_H = [
     id: 'h1',
     group: GROUP,
     name: 'The common emitter, and its three numbers',
-    terms: ['commonemitter', 'transconductance', 'inputresistance', 'outputresistance'],
+    terms: ['commonemitter', 'inputresistance', 'outputresistance'],
     params: [IC(), RCK(), BETA(), VA(), Toggle('early', 'Early effect', true, 'on', 'off', 'with it off, r_o is infinite and the tangent is the textbook’s'), DRIVE()],
     net: (p) => ceStage(p),
     layout: ceLayout(false),
+    labels: IDS,
     show: 'dc',
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
@@ -422,6 +424,7 @@ export const GROUP_H = [
     ],
     net: (p) => ceStage(p, p.RE),
     layout: ceLayout(true),
+    labels: IDS,
     show: 'dc',
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
@@ -438,6 +441,7 @@ export const GROUP_H = [
     params: [chips(R('RL', 'Load R_L', 1000), [200, 1000, 3000]), chips(R('Rs', 'Source R_s', 1000), [10, 1000, 4000]), IC(), BETA(), VA(), DRIVE()],
     net: follower,
     layout: followerLayout(),
+    labels: IDS,
     show: 'dc',
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
@@ -454,6 +458,7 @@ export const GROUP_H = [
     params: [chips(R('Rs', 'Source R_s', 1000), [10, 1000, 3000]), RCK(), IC(), BETA(), VA(), DRIVE()],
     net: commonBase,
     layout: commonBaseLayout(),
+    labels: IDS,
     show: 'dc',
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
@@ -470,6 +475,7 @@ export const GROUP_H = [
     params: [chips(R('RD', 'Drain R_D', 10000), [2000, 10000, 20000]), VOV([0.1, 0.15, 0.2]), KNK(), VTK(), LAM(), DRIVE()],
     net: commonSource,
     layout: csLayout(false),
+    labels: IDS,
     show: 'dc',
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
@@ -482,10 +488,11 @@ export const GROUP_H = [
     id: 'h6',
     group: GROUP,
     name: 'One port, two names: follower out, gate in',
-    terms: ['sourcefollower'],
+    terms: ['commongate'],
     params: [chips(R('RL', 'Load R_L', 1000), [100, 1000, 10000]), VOV(), KNK(), VTK(), LAM(), DRIVE()],
     net: sourceFollower,
     layout: csLayout(true),
+    labels: IDS,
     show: 'dc',
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
@@ -498,7 +505,7 @@ export const GROUP_H = [
     id: 'h7',
     group: GROUP,
     name: 'Swing, and the two ends it runs into',
-    terms: ['swing', 'clipping'],
+    terms: ['loadline', 'quiescent'],
     params: [
       chips(Amp('amp', 'Drive amplitude', 0.03), [0.01, 0.03, 0.1]),
       chips(R('RB', 'Base R_B', 2700), [1000, 2700, 10000]),
@@ -507,7 +514,7 @@ export const GROUP_H = [
       BETA(),
       VA(),
       { key: 'f', label: 'Frequency', unit: 'Hz', min: 100, max: 1e5, scale: 'log', default: 1000 },
-      Vs('vin', 'Bias shift', 0, 'moves the operating point along the load line'),
+      { key: 'vin', label: 'Bias shift', unit: 'V', min: -0.2, max: 0.2, scale: 'linear', default: 0, hint: 'moves the operating point along the load line' },
       {
         key: 'model',
         label: 'Transistor model',
@@ -522,6 +529,7 @@ export const GROUP_H = [
     ],
     net: clipper,
     layout: clipLayout(),
+    labels: IDS,
     show: 'dc',
     view: 'scope',
     views: ['reading', 'scope', 'transfer', 'equations'],

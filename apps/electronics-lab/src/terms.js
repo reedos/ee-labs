@@ -8,6 +8,9 @@
 // rest why it matters here; concrete numbers over abstraction; no term
 // defined using an undefined term.
 
+import { MATCH_H, TERMS_H } from './groups/h.terms.js'
+import { MATCH_I, TERMS_I } from './groups/i.terms.js'
+
 export const TERMS = {
   opampmacro: {
     name: 'The op-amp macro',
@@ -142,6 +145,8 @@ export const TERMS = {
       'I_S ∝ T³e^{−E_g/kT}. Because the exponential dominates, I_S very nearly doubles for every 4.5 K near ' +
       'room temperature. That is why a forward-biased junction left to itself runs away.',
   },
+  ...TERMS_H,
+  ...TERMS_I,
   tempco: {
     name: 'V_BE’s temperature coefficient',
     def:
@@ -173,4 +178,6 @@ export const MATCH = {
   transitfreq: /\btransition frequency\b|\bf_T\b/,
   saturationcurrent: /\bsaturation current\b|\bI_S\b/i,
   tempco: /\btemperature coefficient\b|\bmV\/K\b|dV_BE\/dT/i,
+  ...MATCH_H,
+  ...MATCH_I,
 }

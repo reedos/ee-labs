@@ -122,7 +122,7 @@ const IREF = () => chips(Is('iref', 'Reference current I_ref', 1e-3), [0.25e-3, 
 const BETA = () => chips(Gain('beta', 'Current gain β', NPN.beta), [50, 100, 1000])
 const VA = () => chips(Gain('va', 'Early voltage V_A', NPN.va, 'in volts'), [25, 100, 1000])
 const VOUT = () => chips(Vs('vout', 'Output voltage', 5), [1, 5, 9])
-const DRIVE = () => Vs('vin', 'Input v_in', 0, 'the signal, riding on the bias')
+const DRIVE = (span = 0.2) => ({ key: 'vin', label: 'Input v_in', unit: 'V', min: -span, max: span, scale: 'linear', default: 0, hint: 'the signal, riding on the bias' })
 
 // ------------------------------------------------------------ drawings
 //
@@ -330,6 +330,7 @@ export const GROUP_I = [
     params: [IREF(), VOUT(), BETA(), VA(), Toggle('early', 'Early effect', true, 'on', 'off', 'with it off the two collector currents differ only by the base currents')],
     net: mirror,
     layout: mirrorLayout(false),
+    labels: IDS,
     show: 'dc',
     view: 'reading',
     views: ['reading', 'equations'],
@@ -343,6 +344,7 @@ export const GROUP_I = [
     params: [chips(R('RE', 'Emitter R_E', 11906), [2000, 11906, 40000]), IREF(), VOUT(), BETA(), VA()],
     net: widlar,
     layout: mirrorLayout(true),
+    labels: IDS,
     show: 'dc',
     view: 'reading',
     views: ['reading', 'equations'],
@@ -353,9 +355,10 @@ export const GROUP_I = [
     group: GROUP,
     name: 'An active load reaches the intrinsic gain',
     terms: ['activeload', 'intrinsicgain'],
-    params: [IREF(), { key: 'trim', label: 'Bias trim', unit: '', min: 0.97, max: 1.03, scale: 'linear', default: 1, hint: 'the npn’s current against the mirror’s' }, BETA(), VA(), DRIVE()],
+    params: [IREF(), { key: 'trim', label: 'Bias trim', unit: '', min: 0.97, max: 1.03, scale: 'linear', default: 1, hint: 'the npn’s current against the mirror’s' }, BETA(), VA(), DRIVE(0.02)],
     net: activeLoad,
     layout: activeLoadLayout(),
+    labels: IDS,
     show: 'dc',
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
@@ -379,6 +382,7 @@ export const GROUP_I = [
     ],
     net: cascode,
     layout: cascodeLayout(),
+    labels: IDS,
     show: 'dc',
     view: 'reading',
     views: ['reading', 'transfer', 'equations'],
@@ -391,7 +395,7 @@ export const GROUP_I = [
     id: 'i5',
     group: GROUP,
     name: 'Two stages, and what the second one loads',
-    terms: ['loading'],
+    terms: ['cascade'],
     params: [
       chips(R('RC', 'Collector R_C', 5000), [1000, 3000, 5000]),
       chips(Is('ic', 'Collector current I_C', 1e-3), [0.25e-3, 1e-3, 1.5e-3]),
@@ -402,6 +406,7 @@ export const GROUP_I = [
     ],
     net: twoStage,
     layout: twoStageLayout(),
+    labels: IDS,
     show: 'dc',
     view: 'reading',
     views: ['reading', 'equations'],
