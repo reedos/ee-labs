@@ -73,6 +73,24 @@ dependency or decision that reopens it.
 
 ### Machines Lab
 
+**Built.** `packages/machines`, and `apps/machines-lab` dark with 35 experiments
+in five groups. A the DC machine (8), B the transformer (6), C the rotating
+field and the induction machine (9), D the synchronous and permanent-magnet
+machines (7), E losses and the thermal limit (5).
+
+Every number a lesson quotes is a `reads` pair measured against the model in
+`experiments.test.js`, and a sentence carrying a figure nothing pinned fails
+that file. The plan's seven invariants are fuzzed in
+`packages/machines/src/invariants.test.js`. `RELEASE_STATUS` reads `dark`, and
+`release.test.js` holds the three public surfaces clear of the lab.
+
+**Needed from elsewhere.** `apps/machines-lab/NEEDS.md` carries all of it. The
+deploy line, the progression ids and counts, the phase plane offered to
+`packages/ui`, two stamps offered to `packages/network`, and the Grid Lab's
+synchronous-machine contract, which is met rather than deferred.
+
+**Deferred.**
+
 - The drives group, four experiments specified in `MACHINES_LAB_PLAN.md`
   Decision 4: a chopper into the DC machine, an inverter into the induction
   machine, and a field-oriented drive. All four wait on Power Lab's Groups F

@@ -704,22 +704,28 @@ contract of Decision 3.
 
 ## 9. Phasing
 
-Each phase ships green and deployable on its own.
+Each phase ships green and deployable on its own. Six of the seven are built.
+The seventh is deferred, and its dependency is named.
 
-1. **The engine.** `packages/machines` with the seven invariants fuzzed green.
-   No app exists.
+1. **The engine.** `packages/machines` with the seven invariants of §2.11
+   fuzzed green in `invariants.test.js`. Built.
 2. **The plan and the brief.** This file and `apps/machines-lab/AGENT_BRIEF.md`.
+   Built.
 3. **The app shell, dark.** `RELEASE_STATUS`, `release.test.js`, the picker, the
-   schematic, the note, the view switch, and one experiment.
-4. **Group A, then Group B.** The torque–speed canvas lands with A4 and the
-   phase plane with A6. Group B needs no new canvas.
-5. **Group C.** The rotating-field canvas lands with C1.
-6. **Group D, then Group E.** The dq view lands with D5.
+   schematic, the note, the view switch. Built.
+4. **Group A, then Group B.** The torque–speed canvas landed with A4 and the
+   phase plane with A6. Group B needed no new canvas. Built, 8 and 6.
+5. **Group C.** The rotating-field canvas landed with C1. Built, 9.
+6. **Group D, then Group E.** The dq view landed with D5. Built, 7 and 5.
 7. **The drives group.** Waits on Power Lab Groups F and L. Not in this lab's
    scope, and recorded in `BACKLOG.md`.
 
-Groups A and B need only Elements, so they can be built in parallel by two
-agents. Group C needs Group B's transformer, which is why the brief gates it.
+Groups A and B need only Elements, so they were built in parallel. Group C needs
+Group B's transformer, which is why the brief gated it.
+
+The lab stops at the boundary after Group E, which is where the built
+dependencies run out. All 35 experiments are pinned in `experiments.test.js`,
+and no lesson names an experiment the drives group would add.
 
 ---
 
