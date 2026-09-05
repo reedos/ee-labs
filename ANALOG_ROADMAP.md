@@ -305,3 +305,38 @@ boundary is.
 Each plan, when written, takes the shape of the existing ones. That shape is the
 engine, the models, the app, the curriculum with every number computed, the
 hand-overs, the tests, the dark launch, the phasing, the non-goals, and the risks.
+
+---
+
+## 7. Beyond tier 5
+
+After the radio, analog electronics as a subject is covered. What remains is of two
+kinds.
+
+**Applications, added as groups to the tiers that own them.** Audio (preamps, RIAA,
+power amplifiers, class D handing to Power Lab) in tier 2. Biomedical front ends (the
+neural amplifier, the ECG instrumentation amplifier, electrode impedance) in tiers 2
+and 3. Optical receivers and laser drivers on tier 2's transimpedance amplifier, with
+the link itself in the private waveform simulator. Power management ICs as Power Lab's
+Group H seen from the chip. High voltage and isolation on tier 2's protection group.
+Analog computing and current-mode circuits on tier 3's translinear group. None of
+these needs a new lab or a new engine.
+
+**Two further tiers, if wanted.**
+
+- **Tier 6, the system.** The whole chain from antenna or sensor to bits: cascaded
+  noise figure, linearity and dynamic-range budgets, power allocation across blocks,
+  and where to put the gain. This is what a lead engineer does that a block designer
+  does not. Signal Lab's chain model, sources into a cascade of blocks, already fits
+  it, so the engine cost is low. Its objects are budgets over exact block models, all
+  admitted.
+- **Tier 7, the bench.** Every claim in the suite is checked against its own model.
+  The last step checks it against a real circuit: a breadboard, a scope and a
+  generator, read into the lab over WebUSB or from a file. The measurement is drawn
+  on the model's plot and the gap is explained. It is the founding rule taken one step
+  further. It is also where a reader learns what a real measurement cannot resolve,
+  which is the instrument's own floor from tier 2's bench notes.
+
+Past these the ground changes. Electromagnetics, device physics, reliability and
+process technology are neighbouring disciplines with no exact form the suite could
+state, and §5 keeps them out.
