@@ -210,6 +210,9 @@ function unitsFor(exp) {
 
 /** The FieldMapCanvas props for an experiment's profile view, per-id where the plan names a specific cut. */
 export function profilePropsFor(exp, p, x) {
+  // A group may carry its own cut in its own file, which is how a lane that
+  // owns `groups/<letter>.js` gets a profile without editing this one.
+  if (exp.profile) return exp.profile(p, x)
   const byId = PROFILES[exp.id]
   if (byId) return byId(p, x)
   return genericProfile(exp, p, x)

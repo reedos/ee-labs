@@ -43,6 +43,12 @@ import { LESSONS_C } from './lessons/c.js'
 import { LESSONS_D } from './lessons/d.js'
 import { LESSONS_E } from './lessons/e.js'
 import { LESSONS_F } from './lessons/f.js'
+import { LESSONS_G } from './lessons/g.js'
+import { LESSONS_H } from './lessons/h.js'
+import { LESSONS_I } from './lessons/i.js'
+import { LESSONS_J } from './lessons/j.js'
+import { LESSONS_K } from './lessons/k.js'
+import { LESSONS_L } from './lessons/l.js'
 
 export const LESSONS = {
   ...LESSONS_A,
@@ -51,7 +57,16 @@ export const LESSONS = {
   ...LESSONS_D,
   ...LESSONS_E,
   ...LESSONS_F,
+  ...LESSONS_G,
+  ...LESSONS_H,
+  ...LESSONS_I,
+  ...LESSONS_J,
+  ...LESSONS_K,
+  ...LESSONS_L,
 }
+
+/** Walk an object by a list of keys, stopping at the first thing that is not there. */
+const walk = (obj, keys) => keys.reduce((v, k) => (v == null ? undefined : v[k]), obj)
 
 const need = (v, path) => {
   if (v === undefined) throw new Error(`No quantity at path ${path}`)
@@ -83,8 +98,12 @@ export function readQuantity(x, p, path) {
     case 'ring':
       return need(x.ring[rest[0]], path)
     case 'line':
+      // Group A's line of charge, and groups I and J's transmission line. The
+      // two never appear in one analysis, so the head is read against whichever
+      // the experiment has.
       if (rest[0] === 'field') return need(x.lineField, path)
-      return need(undefined, path)
+      if (x.at && x.at[rest[0]] !== undefined) return x.at[rest[0]]
+      return need(x.line && x.line[rest[0]], path)
     case 'sheet':
       if (rest[0] === 'field') return need(x.sheetField, path)
       return need(undefined, path)
@@ -145,7 +164,66 @@ export function readQuantity(x, p, path) {
       return need(x.tube[rest[0]], path)
     case 'headline':
       return need(x.headline.value, path)
-    default:
+
+    // ------------------------------------------------------- the second half
+
+    case 'wave':
+      return need(x.wave[rest[0]], path)
+    case 'pol':
+      return need(x.pol[rest[0]], path)
+    case 'refl':
+      return need(x.refl[rest[0]], path)
+    case 'standing':
+      return need(x.standing[rest[0]], path)
+    case 'oblique':
+      // `reflectOblique` keeps the two polarisations under their own names, so
+      // 'oblique.parallel.mag' reads the one the lesson is talking about.
+      return need(walk(x.oblique, rest), path)
+    case 'zin': {
+      const Z = x.zin.Z
+      const [re, im] = Array.isArray(Z) ? Z : [Z, 0]
+      if (rest[0] === 're') return re
+      if (rest[0] === 'im') return im
+      if (rest[0] === 'mag') return Math.hypot(re, im)
+      if (rest[0] === 'deg') return (Math.atan2(im, re) * 180) / Math.PI
+      return need(walk(x.zin, rest), path)
+    }
+    case 'gamma': {
+      const [re, im] = x.gamma
+      if (rest[0] === 'mag') return Math.hypot(re, im)
+      if (rest[0] === 'deg') return (Math.atan2(im, re) * 180) / Math.PI
+      if (rest[0] === 're') return re
+      if (rest[0] === 'im') return im
       return need(undefined, path)
+    }
+    case 'sw':
+      return need(x.sw[rest[0]], path)
+    case 'qw':
+      return need(x.qw[rest[0]], path)
+    case 'bounce':
+      return need(walk(x.diagram, rest), path)
+    case 'guide':
+      // The described guide, then the mode at this frequency, then the band.
+      if (x.mode && x.mode[rest[0]] !== undefined) return x.mode[rest[0]]
+      if (x.band && x.band[rest[0]] !== undefined) return x.band[rest[0]]
+      return need(walk(x.guide, rest), path)
+    case 'cavity':
+      return need(walk(x.cavity, rest), path)
+    case 'ant':
+      // Whichever antenna this experiment is about: the two never overlap.
+      for (const holder of [x.dipole, x.hertzian, x.array, x.gain]) {
+        if (holder && holder[rest[0]] !== undefined) return holder[rest[0]]
+      }
+      return need(undefined, path)
+    case 'array':
+      return need(walk(x.array, rest), path)
+    case 'friis':
+      return need(walk(x.friis, rest), path)
+
+    default:
+      // Anything else is read off the analysis by its own path, so a lane that
+      // needs a quantity nobody named above is not blocked on this file. It
+      // still throws when the path names nothing, which is the point.
+      return need(walk(x, parts), path)
   }
 }

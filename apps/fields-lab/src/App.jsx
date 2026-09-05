@@ -8,6 +8,9 @@ import { num } from './format.js'
 import { reportSummary } from './report.js'
 import FieldMapCanvas from './components/FieldMapCanvas.jsx'
 import { CircuitPane, FluxPane, MeshPane, NumbersPane } from './components/panes.jsx'
+import { InterfacePane, WavePane } from './components/wavePanes.jsx'
+import { BouncePane, LinePane, SmithPane, SweepPane } from './components/linePanes.jsx'
+import { GuidePane, PatternPane } from './components/guidePanes.jsx'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -18,6 +21,14 @@ const PANE_OF = {
   mesh: MeshPane,
   flux: FluxPane,
   circuit: CircuitPane,
+  wave: WavePane,
+  interface: InterfacePane,
+  bounce: BouncePane,
+  line: LinePane,
+  smith: SmithPane,
+  sweep: SweepPane,
+  guide: GuidePane,
+  pattern: PatternPane,
 }
 
 const KNOBS_SHOWN = 4

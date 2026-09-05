@@ -14,6 +14,12 @@ import { C } from './groups/c.js'
 import { D } from './groups/d.js'
 import { E } from './groups/e.js'
 import { F_GROUP } from './groups/f.js'
+import { G_GROUP } from './groups/g.js'
+import { H_GROUP } from './groups/h.js'
+import { I_GROUP } from './groups/i.js'
+import { J_GROUP } from './groups/j.js'
+import { K_GROUP } from './groups/k.js'
+import { L_GROUP } from './groups/l.js'
 import { LESSONS } from './lessons.js'
 
 /** Every view a lower pane can show, in the order the view switch lists them. */
@@ -37,17 +43,28 @@ export const VIEW_LABELS = {
   pattern: { label: 'Pattern', title: 'The radiation pattern in polar form, with the beamwidth marked' },
 }
 
-/** The groups, in the order the sidebar lists them. */
-export const GROUPS = [
+// The groups, in the order the sidebar lists them. A group whose lane has not
+// landed yet contributes nothing, and the sidebar does not offer an empty tab:
+// a reader never meets a heading with no experiments under it.
+const ALL_GROUPS = [
   'A · Charge and the field',
   'B · Capacitance',
   'C · Laplace on a grid',
   'D · Current and resistance',
   'E · Magnetostatics',
   'F · Induction',
+  'G · Maxwell and the plane wave',
+  'H · Reflection at an interface',
+  'I · Transmission lines',
+  'J · The lossy line',
+  'K · Waveguides and the cavity',
+  'L · Antennas',
 ]
 
-const RAW = [...A, ...B, ...C, ...D, ...E, ...F_GROUP]
+const RAW = [...A, ...B, ...C, ...D, ...E, ...F_GROUP, ...G_GROUP, ...H_GROUP, ...I_GROUP, ...J_GROUP, ...K_GROUP, ...L_GROUP]
+
+/** The groups that have experiments in them, in plan order. */
+export const GROUPS = ALL_GROUPS.filter((g) => RAW.some((e) => e.group === g))
 
 /** Every experiment, with its lesson merged on. */
 export const EXPERIMENTS = RAW.map((e) => ({ ...e, ...(LESSONS[e.id] || {}) }))

@@ -6,7 +6,17 @@
 // defined using an undefined term. terms.test.js checks the last of those by
 // walking the experiments in order.
 
-export const TERMS = {
+import { MATCH_G, TERMS_G } from './terms/g.js'
+import { MATCH_H, TERMS_H } from './terms/h.js'
+import { MATCH_I, TERMS_I } from './terms/i.js'
+import { MATCH_J, TERMS_J } from './terms/j.js'
+import { MATCH_K, TERMS_K } from './terms/k.js'
+import { MATCH_L, TERMS_L } from './terms/l.js'
+
+// Groups A to F are defined here. Each of the second half's groups keeps its
+// own definitions in `terms/<letter>.js` and they are merged on below, so that
+// two lanes writing at once are writing in two files.
+const TERMS_AF = {
   charge: {
     name: 'Charge',
     def:
@@ -491,7 +501,9 @@ export const TERMS = {
 }
 
 /** The word or phrase in a note that a term is offered under. */
-export const MATCH = {
+export const TERMS = { ...TERMS_AF, ...TERMS_G, ...TERMS_H, ...TERMS_I, ...TERMS_J, ...TERMS_K, ...TERMS_L }
+
+const MATCH_AF = {
   charge: /\bcharges?\b/i,
   coulomb: /Coulomb’s law/i,
   field: /\bfields?\b/i,
@@ -568,6 +580,8 @@ export const MATCH = {
   acresistance: /\bdirect-current value\b/i,
   crowding: /\bcrowded\b|\bcrowding\b/i,
 }
+
+export const MATCH = { ...MATCH_AF, ...MATCH_G, ...MATCH_H, ...MATCH_I, ...MATCH_J, ...MATCH_K, ...MATCH_L }
 
 /** The definitions an experiment's `terms` list names, in that order, for the sidebar's fold. */
 export const termsFor = (ids = []) => ids.map((id) => ({ id, ...TERMS[id] })).filter((t) => t.name)

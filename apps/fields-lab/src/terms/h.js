@@ -1,0 +1,5 @@
+// The terms group H introduces, and the patterns that recognise them in prose.
+// Written by its lane, in the shape of the A to F definitions in ../terms.js.
+
+export const TERMS_H = {}
+export const MATCH_H = {}

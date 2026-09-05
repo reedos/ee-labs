@@ -226,6 +226,19 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    would be. It is content, not an error state, so it reads as a note. */
 .fields-declined { color: var(--warn); max-width: 52ch; margin: auto; text-align: center; }
 
+/* The shapes the second half's panes draw in. A pane that needs a picture puts
+   a canvas in .fields-plot, which sizes it to the pane and leaves room for the
+   legend under it. .fields-split is the two-column readout a wave or a line
+   uses: the picture on one side and its numbers on the other. */
+.fields-plot { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.fields-plot canvas { width: 100%; height: auto; display: block; border-radius: 4px; background: var(--panel); }
+.fields-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; align-items: start; }
+.fields-legend { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--dim); }
+.fields-chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+@media (max-width: 900px) {
+  .fields-split { grid-template-columns: minmax(0, 1fr); }
+}
+
 .fields-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 8px; }
 .fields-table th, .fields-table td { text-align: center; padding: 4px 8px; border-bottom: 1px solid var(--line); }
 .fields-table th { color: var(--dim); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
