@@ -1,0 +1,25 @@
+{
+  "name": "comms-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "A communications link a reader can watch: AM and FM on the real chain, the constellation and the eye, the matched filter, the bit error rate against Eb/N0 with the closed form beside the count, the two recovery loops, OFDM and the cyclic prefix, multipath and the link budget.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee-labs/comms": "*",
+    "@ee-labs/dsp": "*",
+    "@ee-labs/random": "*",
+    "@ee-labs/ui": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}
