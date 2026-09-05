@@ -6,7 +6,7 @@ export const meta = {
   ],
 }
 
-const RULES = `HOUSE RULES (binding). Reed owns the repo. Read /home/user/ee-labs/PROGRAM.md, CORE_SCOPE.md, STYLE.md, REVIEW_PLAYBOOK.md (§11 especially: screenshot, then read it as a student would) before touching a file. Commit by path only (never git add -A, never commit -a). NEVER push. No model names in files. Narrative commit messages in the register of git log. Run unit tests in the FOREGROUND with the Bash tool's timeout parameter at 600000 ms and pipe through tail -20; never wait on a monitor for a test. The ONE thing you may run in the background is the preview server, and you must kill it before you finish. Run SCOPED tests only (this lab and the packages it touches), never the whole suite. Fix only files inside this lab's directory; anything a fix needs elsewhere goes into the lab's NEEDS.md and your result's needs.`
+const RULES = `HOUSE RULES (binding). Reed owns the repo. Read PROGRAM.md, CORE_SCOPE.md, STYLE.md, REVIEW_PLAYBOOK.md (§11 especially: screenshot, then read it as a student would) before touching a file. Commit by path only (never git add -A, never commit -a). NEVER push. No model names in files. Narrative commit messages in the register of git log. Run unit tests in the FOREGROUND with the Bash tool's timeout parameter at 600000 ms and pipe through tail -20; never wait on a monitor for a test. The ONE thing you may run in the background is the preview server, and you must kill it before you finish. Run SCOPED tests only (this lab and the packages it touches), never the whole suite. Fix only files inside this lab's directory; anything a fix needs elsewhere goes into the lab's NEEDS.md and your result's needs.`
 
 const LABS = [
   { slug: 'circuit-elements-lab', port: 4401 },
@@ -43,7 +43,7 @@ const RESULT = {
 const INTEGRATION = 'claude/advanced-analog-labs-5eh3qd'
 
 phase('Verify')
-const results = await pipeline(LABS, (lab) => agent(`You are a VERIFIER in the EE Labs program, assigned one lab: apps/${lab.slug}. Every overseer deferred this step believing there was no browser. There is: Chromium is installed for Playwright at /opt/pw-browsers (PLAYWRIGHT_BROWSERS_PATH is set; never run "playwright install").
+const results = await pipeline(LABS, (lab) => agent(`You are a VERIFIER in the EE Labs program, assigned one lab: apps/${lab.slug}. Every overseer deferred this step believing there was no browser. There is: Chromium is installed for Playwright in its default browsers cache (never run "playwright install").
 SETUP: you are in your own git worktree created from master, which is behind. First: (git checkout -b verify/${lab.slug} ${INTEGRATION} 2>/dev/null || git checkout verify/${lab.slug}) && npm ci --no-audit --no-fund. If the branch already existed it carries an earlier sitting's partial work, cut off part way: read git log ${INTEGRATION}..verify/${lab.slug} --stat and every file it added before you continue, and finish that work rather than restart it.
 ${RULES}
 READ FIRST: apps/${lab.slug}/scripts/verify.mjs (the harness: what it loads, what it checks, what it expects in APP_URL), apps/${lab.slug}/AGENT_BRIEF.md if present, the lab's plan file at the root if present, apps/${lab.slug}/src (experiments or presets or lessons, App.jsx, components), and REVIEW_PLAYBOOK.md in full.

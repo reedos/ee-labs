@@ -7,7 +7,7 @@ export const meta = {
   ],
 }
 
-const RULES = `HOUSE RULES (binding). Reed owns the repo. Read /home/user/ee-labs/PROGRAM.md, CORE_SCOPE.md, STYLE.md, REVIEW_PLAYBOOK.md before touching a file. Commit by path only (never git add -A, never commit -a). NEVER push. No model names in files. Narrative commit messages in the register of git log. Run tests in the FOREGROUND with the Bash tool's timeout parameter at 600000 ms and pipe through tail -30; never background a run or wait on a monitor. Run SCOPED tests only (the app and package you touch), never the whole suite, and always pass --maxWorkers=2 to vitest because ten agents share four cores. Every explanatory sentence is a claim about physics with a test that measures it; every number pinned as a function of the knobs, never typed as a constant; prose passes node packages/prose/bin/lint.mjs on every .md you touch. Never edit a shared surface (site/, README.md, packages/ui/src/LabNav.jsx, .github/workflows/deploy.yml, CURRICULUM.md, packages/ui/src/progression.test.js, PROGRAM.md): write what they need into the lab's NEEDS.md. Commit early and after every group, so nothing is lost if you are cut off.`
+const RULES = `HOUSE RULES (binding). Reed owns the repo. Read PROGRAM.md, CORE_SCOPE.md, STYLE.md, REVIEW_PLAYBOOK.md before touching a file. Commit by path only (never git add -A, never commit -a). NEVER push. No model names in files. Narrative commit messages in the register of git log. Run tests in the FOREGROUND with the Bash tool's timeout parameter at 600000 ms and pipe through tail -30; never background a run or wait on a monitor. Run SCOPED tests only (the app and package you touch), never the whole suite, and always pass --maxWorkers=4 to vitest because up to a dozen agents share this machine. Every explanatory sentence is a claim about physics with a test that measures it; every number pinned as a function of the knobs, never typed as a constant; prose passes node packages/prose/bin/lint.mjs on every .md you touch. Never edit a shared surface (site/, README.md, packages/ui/src/LabNav.jsx, .github/workflows/deploy.yml, CURRICULUM.md, packages/ui/src/progression.test.js, PROGRAM.md): write what they need into the lab's NEEDS.md. Commit early and after every group, so nothing is lost if you are cut off.`
 
 const SETUP = (branch, from) => `SETUP: you are in your own git worktree created from master, which is behind. First run: (git checkout -b ${branch} ${from} 2>/dev/null || git checkout ${branch}) && npm ci --no-audit --no-fund. Work only in this worktree. If the branch already existed it carries an earlier sitting's partial work, cut off part way: read git log ${from}..${branch} --stat and every file it added before you continue, and finish that work rather than restart it.`
 const SETUP2 = (branch) => `SETUP: you are in your own git worktree created from master, which is behind. First run: git checkout ${branch} && (npm ci --no-audit --no-fund || npm install --no-audit --no-fund). Work only in this worktree.`
@@ -55,7 +55,7 @@ const LABS = [
     first: 'the transistor-level half, Phases 1 and 2: the bridge without events (extractGate against the transient, Group A, 5, from Electronics D6), then the library and its efforts (the six gates, the quasi-static sweep, Group B, 4, and Group C, 5)',
     second: 'Phases 3 to 6: wires (elmore, wireOf, the wire view, Group D, 4), power (the power view, the short-circuit integral, the leakage model, Group E, 5), the clock on events (Group F, 3), and memory (the butterfly view, the SRAM and DRAM cells, Group G, 4)',
     firstGroups: 'A, B and C', secondGroups: 'D, E, F and G', allGroups: 'A to G',
-    tests: 'npx vitest run apps/vlsi-lab --maxWorkers=2', build: 'npm run build --workspace apps/vlsi-lab',
+    tests: 'npx vitest run apps/vlsi-lab --maxWorkers=4', build: 'npm run build --workspace apps/vlsi-lab',
   },
   {
     key: 'interfaces', slug: 'interfaces-lab', name: 'Interfaces Lab', plan: 'INTERFACES_LAB_PLAN.md',
@@ -63,7 +63,7 @@ const LABS = [
     first: 'Phases 1 and 2: the pin without events (pinDrive, the pin view, the scope, Group A, 5, from Electronics D5 and D6), then the analog side (the ripple expression, the cascade, the sampler\'s budget, Group F, 5)',
     second: 'Phases 3 to 6: the frame on events (Group B, 4), the two-wire bus (the multi-driver net, the pull-up window view, Group C, 5), the other two buses (the trace-delay model, the differential receiver, Groups D, 3, and E, 4), and time and the switch (the timer, the jitter model, the bounce pattern, Group G, 4)',
     firstGroups: 'A and F', secondGroups: 'B, C, D, E and G', allGroups: 'A to G',
-    tests: 'npx vitest run apps/interfaces-lab --maxWorkers=2', build: 'npm run build --workspace apps/interfaces-lab',
+    tests: 'npx vitest run apps/interfaces-lab --maxWorkers=4', build: 'npm run build --workspace apps/interfaces-lab',
   },
 ]
 
