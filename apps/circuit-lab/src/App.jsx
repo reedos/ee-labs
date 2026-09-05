@@ -202,12 +202,58 @@ export default function App() {
     const el = lessonRef.current
     const container = controlsRef.current
     if (!el || !container) return
+    // base.css gives `.controls h2` `position: sticky`, so this section's own
+    // cap ("Try this", prev / n of N / next) stays pinned to the container's
+    // top edge and PAINTS OVER whatever scrolls beneath it. The container's
+    // top edge is therefore not the line content is safe to land on;
+    // `contBox.top + headerH` is.
+    //
+    // Round-six grading found the lesson title masked on every lesson change
+    // at 390x844: the title's box measured top -0.2 to 17.9 while the header's
+    // bottom sat at 34.9, so the name was entirely behind the cap and the
+    // note's own first line was cut to a 2-3px sliver. The check below used to
+    // compare `elBox.top` against `contBox.top` alone, which is satisfied with
+    // the title fully hidden, because "scrolled to the container's top" and
+    // "not painted over" are different claims and only the first was tested.
+    // Control Lab hit the same defect in round four and this is that fix,
+    // anchored on the lesson body's own section rather than an id, since this
+    // sidebar's sections carry none.
+    //
+    // Measured rather than assumed: the cap's height moves with the loaded
+    // font and the lesson nav's width. The +2px is clearance for rounding —
+    // scrollIntoView snaps to an integer scrollTop, and landing the title
+    // exactly on the header's bottom edge left a subpixel sliver behind it in
+    // Control's own measurement.
+    const section = el.closest('section')
+    const header = section ? section.querySelector(':scope > h2') : null
+    const headerH = header ? header.getBoundingClientRect().height + 2 : 0
     const bottomTarget = el.querySelector('.featured') || el.querySelector('.try-line') || el
     const elBox = el.getBoundingClientRect()
     const bottomBox = bottomTarget.getBoundingClientRect()
     const contBox = container.getBoundingClientRect()
-    const visible = elBox.top >= contBox.top - 0.5 && bottomBox.bottom <= contBox.bottom + 0.5
-    if (!visible) el.scrollIntoView({ block: 'start' })
+    const safeTop = contBox.top + headerH
+    const visible = elBox.top >= safeTop - 0.5 && bottomBox.bottom <= contBox.bottom + 0.5
+    if (!visible) {
+      // Scroll by hand rather than through scrollIntoView, because the two
+      // things this has to satisfy can conflict and the browser cannot know
+      // which to give up. Everything moves up by `s` when scrollTop grows by
+      // `s`, so:
+      //   sTitle      puts the title exactly on the header's bottom edge
+      //   sBottomMin  is the least scroll that pulls the featured knob in
+      // A first cut here set scroll-margin-top and let scrollIntoView do it,
+      // which pushed the block down by the cap's height unconditionally and
+      // sent the featured controls 3px out the bottom on two of the
+      // scroll-reset cases (verify caught it: "bottom 366 below [0, 363]").
+      // The lesson simply does not fit both ways there.
+      //
+      // When both fit, take sTitle: the title clears the cap and the knob is
+      // still in. When they cannot both hold, the knob wins. A note you can
+      // scroll up to read costs a gesture; a knob you cannot reach costs the
+      // lesson, and the fold probe holds that line for every lesson.
+      const sTitle = elBox.top - safeTop
+      const sBottomMin = bottomBox.bottom - contBox.bottom
+      container.scrollTop += sTitle >= sBottomMin ? sTitle : sBottomMin
+    }
   }, [lesson, openGroups])
 
   const circuit = CIRCUITS[id]

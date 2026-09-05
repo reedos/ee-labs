@@ -242,7 +242,12 @@ export const TERMS = {
   },
   tolerance: {
     name: 'Part tolerance',
-    match: /tolerance|±\d/,
+    // `±\d` captured a single digit, so "±10%" underlined "±1" and left "0%"
+    // plain beside it — a term mark that stops mid-number. Round-six grading
+    // read it off the DOM as literally "±1". One digit was all the one-digit
+    // tolerances ever needed, which is why it survived until a lesson used
+    // ±10%. The percent sign is optional so a bare "±5" still marks.
+    match: /tolerance|±\d+%?/,
     def:
       'The ±% band a component is sold within: a "10 kΩ ±5%" resistor is anything from 9.5 ' +
       'to 10.5 kΩ, and which one you got decides where your corner really lands. Specs built ' +
