@@ -400,6 +400,13 @@ export const TERMS = {
       'reaching −180 degrees. Sixty degrees is comfortable and thirty rings visibly. A hold spends it at ' +
       '−ωT/2, which is what makes sampling cost margin.',
   },
+  gainmargin: {
+    name: 'Gain margin',
+    def:
+      'The factor the loop gain can rise by before the loop sits on the edge of oscillation, read where the ' +
+      'phase reaches −180 degrees. The three lags of Group D have 11.25 at unit gain. Past that a linear loop ' +
+      'diverges, and a saturating one settles into a limit cycle instead.',
+  },
   crossover: {
     name: 'Crossover frequency',
     def:
@@ -509,6 +516,17 @@ export const CUES = {
  * put three ids into fifty term arrays that no note had asked for.
  */
 export const TOPBAR_TERMS = ['stability', 'phasemargin', 'guard']
+
+/**
+ * The definitions a picker owes, rather than a note.
+ *
+ * The deadzone is in the nonlinearity registry and its hint is on screen
+ * wherever that picker is, and no experiment names it: Groups C and D are both
+ * about the saturation. A word a reader can select and cannot look up is the
+ * defect this list exists to stop, so the picker offers its definition the way
+ * an experiment offers its own.
+ */
+export const PICKER_TERMS = ['deadzone']
 
 /** The definitions an experiment asked for, in the order it asked. */
 export function termsFor(ids = []) {

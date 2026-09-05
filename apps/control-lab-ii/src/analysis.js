@@ -6,11 +6,14 @@ import {
   discretize,
   emulate,
   emulationGuard,
+  eigenvalues,
   equilibria,
+  fitFirstOrder,
   fitStep,
   isStable,
   isStableDiscrete,
   loopRegions,
+  magnitudeAt,
   lqr,
   lyapunov,
   lyapunovRate,
@@ -23,9 +26,12 @@ import {
   predictionError,
   pwlOscillationOf,
   pwlTrajectory,
+  polyMul,
   roots,
   similarity,
   sOfZ,
+  saturationDescribing,
+  saturationHarmonic,
   ssTrajectory,
   stepDiscreteTF,
   stepResponse,
@@ -373,6 +379,26 @@ function nonlinearAnalysis(state) {
     const osc = pwlOscillationOf(trajectory.t, trajectory.u, { tailFraction: 0.25 })
     out.measured = osc
     out.error = predictionError(pred.predicted, osc)
+    // N(A) as a curve, with the harmonic the method threw away drawn beside
+    // it. D1 is about the gain of the nonlinearity on its own, before any loop
+    // is closed around it, so the curve is computed from delta and nothing
+    // else.
+    const delta = state.delta
+    const ratios = []
+    const points = 120
+    for (let i = 0; i <= points; i++) {
+      const r = 1 + (24 * i) / points
+      const A = r * delta
+      const fundamental = saturationHarmonic(delta, A, 1)
+      const third = saturationHarmonic(delta, A, 3)
+      ratios.push({
+        ratio: r,
+        amplitude: A,
+        N: saturationDescribing(delta, A),
+        harmonic: fundamental === 0 ? 0 : Math.abs(third / fundamental),
+      })
+    }
+    out.describingCurve = ratios
   }
   return out
 }
@@ -389,13 +415,79 @@ function fitAnalysis(state) {
   const noise = noiseSeries(points, state.seed ?? 1234)
   const y = Float64Array.from(clean.y, (v, i) => v + sigma * Math.abs(gain) * noise[i])
   const fits = fitStep(clean.t, y)
-  return {
+  const out = {
     plant,
     data: { t: clean.t, y, clean: clean.y },
     sigma,
     ...fits,
     truePoles: polesZeros(plant).poles,
+    ensemble: null,
+    design: null,
   }
+
+  // E4: the same measurement made many times. One fit gives a number; forty
+  // give the number and how much to trust it, which is the question E4 asks.
+  if (state.seeds) {
+    const taus = []
+    for (let seed = 1; seed <= state.seeds; seed++) {
+      const noisy = Float64Array.from(clean.y, (v, i) => v + sigma * Math.abs(gain) * noiseSeries(points, seed * 7919)[i])
+      taus.push(fitFirstOrder(clean.t, noisy).tau)
+    }
+    const mean = taus.reduce((acc, v) => acc + v, 0) / taus.length
+    const spread = Math.sqrt(taus.reduce((acc, v) => acc + (v - mean) ** 2, 0) / (taus.length - 1))
+    out.ensemble = { n: taus.length, taus, mean, spread, sigma }
+  }
+
+  // E5: a controller designed on the fit, and then run against the plant the
+  // fit came from. The gap between what it predicts and what it gets is the
+  // whole of that experiment, so both are computed here rather than one being
+  // computed and the other quoted.
+  if (state.design?.crossover) {
+    const wc = state.design.crossover
+    out.design = {
+      crossover: wc,
+      first: designOn({ b: [fits.first.K], a: [fits.first.tau, 1] }, fits.first.tau, wc, plant),
+      second: designOn(fits.second.tf, slowestOf(fits.second.poles), wc, plant),
+    }
+  }
+  return out
+}
+
+/** The slowest time constant a pole list carries, in seconds. */
+function slowestOf(poles) {
+  return Math.max(...poles.map(([re]) => 1 / Math.max(Math.abs(re), 1e-12)))
+}
+
+/**
+ * A PI designed on one model and then run against another.
+ *
+ * The integral time cancels the model's slowest pole and the proportional gain
+ * is whatever puts the open loop's crossing at `wc`. It is the textbook
+ * recipe, chosen because it is the one a reader who has just fitted a model
+ * would actually reach for.
+ *
+ * `predicted` is that loop on the model it was designed on, which is what the
+ * designer would have seen. `measured` is the same controller on the real
+ * plant. E5 exists because those two are not the same picture.
+ */
+function designOn(model, Ti, wc, plant) {
+  const shape = { b: [Ti, 1], a: [Ti, 0] }
+  const unit = { b: polyMul(shape.b, model.b), a: polyMul(shape.a, model.a) }
+  const Kp = 1 / magnitudeAt(unit, wc / (2 * Math.PI))
+  const ctrl = { b: [Kp * Ti, Kp], a: [Ti, 0] }
+  const on = (target) => {
+    const open = { b: polyMul(ctrl.b, target.b), a: polyMul(ctrl.a, target.a) }
+    const marg = margins(open, GRID)
+    const step = stepResponse(closeLoop(open), { duration: 4 / wc * 12, points: 1500 })
+    return {
+      open,
+      phaseMargin: marg.phaseMargin,
+      crossover: marg.gainCrossover == null ? null : 2 * Math.PI * marg.gainCrossover,
+      overshoot: overshootOf(step.y, 1),
+      step,
+    }
+  }
+  return { Kp, Ti, ctrl, predicted: on(model), measured: on(plant) }
 }
 
 // --------------------------------------------------------------- group F
@@ -421,14 +513,47 @@ function filterAnalysis(state) {
   const solved = lqr(dual, Q, rv)
   const L = [...solved.K]
   const Aobs = ss.A.map((row, i) => row.map((v, j) => v - L[i] * ss.C[j]))
+  // The duality, measured. The regulator solved its own Riccati equation on
+  // the transposed system. The claim F2 makes is that the SAME P also solves
+  // the filter's equation, A P + P A' - P C' R^-1 C P + Q = 0, which is a
+  // different equation with different matrices in it. Computing that residual
+  // is a measurement; asserting that L equals K when L was assigned from K
+  // would be a restatement.
+  const P = solved.P
+  const filterResidual = (() => {
+    let worst = 0
+    let scale = 0
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        let v = Q[i][j]
+        for (let k = 0; k < n; k++) v += ss.A[i][k] * P[k][j] + P[i][k] * ss.A[j][k]
+        let ci = 0
+        let cj = 0
+        for (let k = 0; k < n; k++) {
+          ci += P[i][k] * ss.C[k]
+          cj += P[j][k] * ss.C[k]
+        }
+        v -= (ci * cj) / rv
+        worst = Math.max(worst, Math.abs(v))
+        scale = Math.max(scale, Math.abs(P[i][j]))
+      }
+    }
+    return { absolute: worst, relative: worst / Math.max(scale, 1e-300) }
+  })()
+  // And the error poles, found from A - LC directly rather than taken from the
+  // dual's own list. Two routes to the same eigenvalues.
+  const obsPoles = eigenvalues(Aobs)
   return {
     ss,
     dual,
+    P,
     L,
     Aobs,
     poles: solved.poles,
+    obsPoles,
     residual: solved.residual,
     relResidual: solved.relResidual,
+    filterResidual,
     qw,
     rv,
     ratio: qw / rv,

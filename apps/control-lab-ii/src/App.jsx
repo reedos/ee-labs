@@ -8,7 +8,7 @@ import { analyse } from './analysis.js'
 import { experimentMath } from './math.js'
 import { reportSummary } from './report.js'
 import { topbar } from './verdict.js'
-import { termsFor, TERMS, TOPBAR_TERMS } from './terms.js'
+import { termsFor, PICKER_TERMS, TOPBAR_TERMS } from './terms.js'
 import StepCanvas from './components/StepCanvas.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
 import PhaseCanvas from './components/PhaseCanvas.jsx'
@@ -44,7 +44,9 @@ const VIEWS_FOR = {
   state: ['state', 'step', 'poles'],
   sampled: ['sampled', 'zplane', 'bode'],
   phase: ['phase', 'step', 'poles'],
-  describing: ['phase', 'bode', 'step'],
+  // Group D's loops carry three states or more, so the plane is declined
+  // rather than projected and these two views are what is left.
+  describing: ['bode', 'step'],
   fit: ['fit', 'poles'],
   filter: ['state', 'poles'],
 }
@@ -312,6 +314,17 @@ export default function App() {
               ))}
             </div>
             <p className="hint">{NONLINEARITIES[state.nlId]?.hint}</p>
+            <details className="terms">
+              <summary>Words in this picker</summary>
+              <dl>
+                {termsFor(PICKER_TERMS).map((t) => (
+                  <React.Fragment key={t.id}>
+                    <dt>{t.name}</dt>
+                    <dd>{t.def}</dd>
+                  </React.Fragment>
+                ))}
+              </dl>
+            </details>
             {state.nlId !== 'none' ? (
               <NumField
                 label="Limit δ"
@@ -393,6 +406,22 @@ export default function App() {
 
 /** The numbers beside a pane's own heading. */
 function readoutFor(view, a) {
+  if (view === 'state' && a.filter) {
+    // The filter's own pane: the same matrices, with L in place of K and the
+    // residual of the equation it solved beside it.
+    return (
+      <StatePane
+        ss={a.filter.ss}
+        states={plant.states}
+        ctrl={{ rank: a.filter.ss.n, n: a.filter.ss.n, condition: 1 }}
+        obs={{ rank: a.filter.ss.n, n: a.filter.ss.n, condition: 1 }}
+        place={null}
+        lqr={null}
+        observer={{ L: a.filter.L }}
+        declined={null}
+      />
+    )
+  }
   if (view === 'state' && a.state_) {
     return (
       <>
@@ -439,6 +468,7 @@ function readoutFor(view, a) {
     )
   }
   if (view === 'fit' && a.fit) {
+    const d = a.fit.design
     return (
       <>
         <span>
@@ -446,6 +476,41 @@ function readoutFor(view, a) {
         </span>
         <span>
           residual <b>{fmtNum(100 * a.fit.first.relResidual, 3)} %</b>
+        </span>
+        {a.fit.ensemble ? (
+          <span>
+            over <b>{a.fit.ensemble.n}</b> runs, mean <b>{fmtNum(a.fit.ensemble.mean, 5)} s</b>, spread{' '}
+            <b>{fmtNum(a.fit.ensemble.spread, 3)} s</b>
+          </span>
+        ) : null}
+        {d ? (
+          <span>
+            {/* Both halves, always. A design's predicted margin without the
+                one it actually got is the defect E5 is about. */}
+            first-order design predicts <b>{fmtNum(d.first.predicted.phaseMargin, 4)}°</b>, gets{' '}
+            <b>{fmtNum(d.first.measured.phaseMargin, 4)}°</b>
+          </span>
+        ) : null}
+        {d ? (
+          <span>
+            second-order design predicts <b>{fmtNum(d.second.predicted.phaseMargin, 4)}°</b>, gets{' '}
+            <b>{fmtNum(d.second.measured.phaseMargin, 4)}°</b>
+          </span>
+        ) : null}
+      </>
+    )
+  }
+  if (view === 'state' && a.filter) {
+    return (
+      <>
+        <span>
+          L <b>[{a.filter.L.map((v) => fmtNum(v, 5)).join(', ')}]</b>
+        </span>
+        <span>
+          model over measurement <b>{fmtNum(a.filter.ratio, 4)}</b>
+        </span>
+        <span>
+          filter residual <b>{a.filter.filterResidual.relative.toExponential(1)}</b>
         </span>
       </>
     )

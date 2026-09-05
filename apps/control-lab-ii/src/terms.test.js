@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS } from './experiments.js'
-import { CUES, TERMS, TOPBAR_TERMS, termsFor } from './terms.js'
+import { CUES, PICKER_TERMS, TERMS, TOPBAR_TERMS, termsFor } from './terms.js'
 
 // Definitions on contact.
 //
@@ -19,6 +19,10 @@ describe('the cue table itself', () => {
 
   it("the top bar's own terms are defined", () => {
     for (const id of TOPBAR_TERMS) expect(TERMS[id], id).toBeTruthy()
+  })
+
+  it("the picker's own terms are defined", () => {
+    for (const id of PICKER_TERMS) expect(TERMS[id], id).toBeTruthy()
   })
 
   it('every definition names the thing it defines', () => {
@@ -58,12 +62,12 @@ describe('every experiment defines the words it leans on', () => {
     // nothing measures. The exceptions are the terms the groups not yet
     // written will claim; those are listed here by name so the list shrinks
     // visibly as the groups land rather than being waved through.
-    const claimed = new Set([...TOPBAR_TERMS, ...EXPERIMENTS.flatMap((e) => e.terms)])
+    const claimed = new Set([...TOPBAR_TERMS, ...PICKER_TERMS, ...EXPERIMENTS.flatMap((e) => e.terms)])
     const waiting = Object.keys(TERMS).filter((id) => !claimed.has(id))
     const groupsBuilt = new Set(EXPERIMENTS.map((e) => e.id[0]))
     const forLaterGroups = {
       describingfunction: 'D', filterhypothesis: 'D', harmonic: 'D', harmonicratio: 'D',
-      limitcycle: 'D', deadzone: 'D',
+      limitcycle: 'D',
       identification: 'E', fit: 'E', residual: 'E', noise: 'E', order: 'E',
       kalman: 'F',
     }
