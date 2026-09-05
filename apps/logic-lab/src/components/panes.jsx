@@ -178,6 +178,12 @@ export function EventTable({ x }) {
       ) : (
         <p className="pane-note">{events.length} events, and no pulse was removed by the delay model.</p>
       )}
+      {x.res.violations.length ? (
+        <p className="pane-note is-warn">
+          {x.res.violations.length} setup or hold violation{x.res.violations.length > 1 ? 's' : ''}. The worst is {x.res.violations[0].kind} on {x.res.violations[0].flop} by{' '}
+          {ps(-Math.min(...x.res.violations.map((v) => v.slack)))}. The value each one sampled is the model’s assumption and not a measurement.
+        </p>
+      ) : null}
     </div>
   )
 }

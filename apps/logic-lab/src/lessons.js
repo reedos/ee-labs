@@ -22,6 +22,9 @@
  *   edge.<signal>.<k>                  the time of the k-th transition, k from 1
  *   edges.<signal>                     how many times it changed
  *   first.<signal>  last.<signal>      the first and last transition times
+ *   gap.<a>.<i>.<b>.<j>                how long after b's j-th transition a's
+ *                                      i-th happened, which is the delay from
+ *                                      one signal to another
  *   pulse.<signal>.<width|from|to>     the first pulse on that signal
  *   path.<long|short>                  the longest and shortest arrival
  *   arrive.<net>                       that net's longest arrival
@@ -33,6 +36,8 @@
  *   swallowed  swallow.<k>.<width>     the pulses the delay model rejected
  *   refusal                            the code of the refusal, as a string
  *   flops                              how many flip-flops
+ *   flop.<tcq|tsu|th|window>           the first flip-flop's own three times,
+ *                                      and the two of them that make a window
  *   word.<prefix>.<n>.<t>              q(n-1)..q0 at time t, as the number
  *   tmin  fmax  holdslack              the clock period in ps, f_max in hertz
  *   period  setupslack                 the period this run is clocked at
@@ -42,12 +47,14 @@
  *   eqliterals.<name>  eqcubes.<name>  one equation's literal and cube counts
  *   mtbf  settling                     both in picoseconds, like every time
  *   mtbfyears                          the same mean time, in years
+ *   window.<width|first|last>          the swept knob values that report a
+ *                                      violation, and the two ends of them
  *
  * Every time a path returns is in picoseconds, the mean time between failures
  * included, because the register test reads every quoted time in the netlist's
  * own unit. A sentence that says "16.93 years" reads `mtbfyears` instead.
  */
-import { levelsOf, valueOf } from './analysis.js'
+import { analyse, levelsOf, valueOf } from './analysis.js'
 import { A_LESSONS } from './lessons/a.js'
 import { B_LESSONS } from './lessons/b.js'
 import { C_LESSONS } from './lessons/c.js'
@@ -76,6 +83,13 @@ export function readQuantity(x, p, path, exp) {
     }
     case 'edges':
       return edges(x, rest[0]).length
+    case 'gap': {
+      const one = edges(x, rest[0])[Number(rest[1]) - 1]
+      const two = edges(x, rest[2])[Number(rest[3]) - 1]
+      if (!one) throw new Error(`${path}: ${rest[0]} changed ${edges(x, rest[0]).length} times`)
+      if (!two) throw new Error(`${path}: ${rest[2]} changed ${edges(x, rest[2]).length} times`)
+      return one.t - two.t
+    }
     case 'first': {
       const e = edges(x, rest[0])[0]
       if (!e) throw new Error(`${path}: ${rest[0]} never changed`)
@@ -135,6 +149,11 @@ export function readQuantity(x, p, path, exp) {
       return x.refusal ? x.refusal.code : null
     case 'flops':
       return x.norm.flops.length
+    case 'flop': {
+      const f = x.norm.flops[0]
+      if (!f) throw new Error(`${path}: this netlist has no flip-flop`)
+      return rest[0] === 'window' ? f.tsu + f.th : need(f[rest[0]], path)
+    }
     case 'word': {
       const n = Number(rest[1])
       const t = Number(rest[2])
@@ -177,6 +196,22 @@ export function readQuantity(x, p, path, exp) {
       return need(x.rate && x.rate.mtbf, path) / (365.25 * 24 * 3600)
     case 'settling':
       return need(x.settling, path)
+    case 'window': {
+      // The one reading that is a sweep rather than a run. An experiment that
+      // asks for it names the knob to sweep and the range, and this walks that
+      // range one whole unit at a time and collects the settings that report a
+      // violation. So the window's width is measured on the same engine that
+      // draws it, and it moves when the flip-flop's two times move.
+      if (!exp || !exp.sweep) throw new Error(`${path}: this experiment names no knob to sweep`)
+      const [lo, hi] = exp.sweepRange(p)
+      const hits = []
+      for (let v = lo; v <= hi; v++) if (analyse(exp, { ...p, [exp.sweep]: v }).res.violations.length) hits.push(v)
+      if (!hits.length) throw new Error(`${path}: nothing between ${lo} and ${hi} reports a violation`)
+      if (rest[0] === 'first') return hits[0]
+      if (rest[0] === 'last') return hits[hits.length - 1]
+      if (rest[0] === 'width') return hits.length
+      throw new Error(`${path}: a window reads its width, its first or its last`)
+    }
     default:
       throw new Error(`unknown quantity path: ${path}`)
   }

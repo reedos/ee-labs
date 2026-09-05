@@ -30,7 +30,7 @@ const D = {
  * `NEEDS.md` gives the progression test. The plan names 45 experiments in 8
  * groups, and this number moves when a group lands and not before.
  */
-const BUILT = { groups: 4, experiments: 24 }
+const BUILT = { groups: 5, experiments: 30 }
 
 const at = (id, over = {}) => {
   const exp = byId[id]
@@ -69,7 +69,11 @@ describe('every experiment', () => {
   it('runs at its defaults, and every signal it draws is a net of its own netlist', () => {
     for (const e of EXPERIMENTS) {
       const { x, p } = at(e.id)
-      expect(x.refusal, `${e.id}: ${x.refusal && x.refusal.message}`).toBeNull()
+      // An experiment whose subject is a refusal says which one it expects, and
+      // the refusal is then the answer rather than a failure. E1 is the ring
+      // that has no truth table, which is what memory is.
+      if (e.expects) expect(x.refusal && x.refusal.code, e.id).toBe(e.expects)
+      else expect(x.refusal, `${e.id}: ${x.refusal && x.refusal.message}`).toBeNull()
       expect(x.res, e.id).toBeTruthy()
       expect(x.res.settled, `${e.id} settles at t = 0`).toBe(true)
       expect(x.res.conflicts, `${e.id} has no driver conflict`).toEqual([])
@@ -399,10 +403,18 @@ describe('every lesson is measured', () => {
   /** Solve one register and check its reads; returns the numbers it justifies. */
   function measure(e, p, reads, label) {
     const x = analyse(e, p)
-    expect(x.refusal, `${label}: ${x.refusal && x.refusal.message}`).toBeNull()
+    if (e.expects) expect(x.refusal && x.refusal.code, label).toBe(e.expects)
+    else expect(x.refusal, `${label}: ${x.refusal && x.refusal.message}`).toBeNull()
     const values = []
     for (const [path, want] of reads) {
       const got = readQuantity(x, p, path, e)
+      // A reading can be a word rather than a number: the code of a refusal,
+      // or the kind of a violation. It is checked exactly and it justifies no
+      // digits, because there are none in it.
+      if (typeof want === 'string') {
+        expect(got, `${label}: ${path} reads ${got}, the lesson says ${want}`).toBe(want)
+        continue
+      }
       expect(Number.isFinite(got), `${label}: ${path} is ${got}`).toBe(true)
       expect(close(got, want), `${label}: ${path} reads ${got}, the lesson says ${want}`).toBe(true)
       values.push(want)
@@ -536,7 +548,10 @@ describe('the chrome names what it shows', () => {
       const { x } = at(e.id)
       if (!x.paths) continue
       expect(criticalPath(x.norm).delay, e.id).toBe(x.paths.long.delay)
-      expect(levelsOf(x.norm), e.id).toBeGreaterThan(0)
+      // A netlist of flip-flops and nothing else is zero gates deep, which is
+      // the right answer and the floor every other design is measured from.
+      if (x.norm.gates.length) expect(levelsOf(x.norm), e.id).toBeGreaterThan(0)
+      else expect(levelsOf(x.norm), e.id).toBe(0)
     }
   })
 })

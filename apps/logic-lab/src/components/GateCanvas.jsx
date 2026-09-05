@@ -2,8 +2,12 @@ import React from 'react'
 import { COLORS, useCanvas } from '@ee-labs/ui'
 import { ps } from '../format.js'
 
-// The netlist drawn as gates and wires, with each net's present value beside it
-// and the critical path lit.
+// The netlist drawn as gates, flip-flops and wires, with each net's present
+// value beside it and the critical path lit.
+//
+// A flip-flop sits at depth 0 beside the sources, because a path starts at one
+// rather than passing through it, and its two inputs are drawn back to
+// whatever drives them. So a counter's loop reads as a loop on the page.
 //
 // The layout is computed rather than hand-drawn, because an experiment's
 // netlist is a function of its knobs and a hand layout would go stale the
@@ -74,7 +78,7 @@ export default function GateCanvas({ x, height }) {
       for (const n of layout.nodes) {
         const d = driverOf(n.name)
         if (!d || d.role === 'source') continue
-        const ins = d.role === 'wire' ? [d.from] : d.in || []
+        const ins = d.role === 'wire' ? [d.from] : d.role === 'flop' ? [d.d, d.clk] : d.in || []
         for (const s of ins) {
           const from = at[s]
           if (!from) continue
@@ -107,7 +111,15 @@ export default function GateCanvas({ x, height }) {
         ctx.fillText(n.name, n.x, n.y - 1)
         ctx.font = '10px ui-monospace, monospace'
         ctx.fillStyle = COLORS.text
-        const kind = !d ? '' : d.role === 'source' ? d.kind : d.role === 'wire' ? `wire ${ps(d.delay)}` : `${d.kind} ${ps(d.delay)}`
+        const kind = !d
+          ? ''
+          : d.role === 'source'
+            ? d.kind
+            : d.role === 'wire'
+              ? `wire ${ps(d.delay)}`
+              : d.role === 'flop'
+                ? `dff ${ps(d.tcq)}`
+                : `${d.kind} ${ps(d.delay)}`
         ctx.fillText(kind, n.x, n.y + 11)
         if (value != null) {
           ctx.fillStyle = value === 1 ? COLORS.trace : COLORS.text

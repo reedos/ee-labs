@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { LabNav, LessonNav, NumField, ReportIssue, TryLine } from '@ee-labs/ui'
 import { EXPERIMENTS, GROUPS, VIEW_LABELS, VIEW_ORDER, bussesOf, byId, defaultsOf, signalsOf } from './experiments.js'
-import { analyse } from './analysis.js'
+import { analyse, valueOf } from './analysis.js'
 import { TERMS } from './terms.js'
 import { reportSummary } from './report.js'
 import { ps } from './format.js'
 import { EventTable, KarnaughMap, PathList, Refusal, TruthTable } from './components/panes.jsx'
 import GateCanvas from './components/GateCanvas.jsx'
 import TimingCanvas from './components/TimingCanvas.jsx'
+import StateCanvas from './components/StateCanvas.jsx'
 import pkg from '../package.json'
 
 // The shell. One experiment at a time: its netlist runs once (analysis.js's
@@ -19,6 +20,22 @@ import pkg from '../package.json'
 // below it with a switch over the rest of the views a group needs.
 
 const FIRST = EXPERIMENTS[0].id
+
+/** Every arc of the state table, as the diagram draws them. */
+const arcsOf = (x) => x.fsm.table.rows.map((r) => ({ from: r.state, to: r.next, label: `${x.fsm.table.inputs.map((s) => `${s} = ${r.in[s]}`).join(', ')}`, out: r.out }))
+
+/**
+ * The state the machine is in at the read line, by the code its flip-flops
+ * hold there. The diagram lights that circle, so moving the cursor along the
+ * timing diagram walks the machine.
+ */
+function stateNow(x, cursor) {
+  const t = cursor ?? 0
+  const bits = x.fsm.table.bits
+  let code = 0
+  for (let i = bits - 1; i >= 0; i--) code = code * 2 + valueOf(x, `q${i}`, t)
+  return x.fsm.table.states.find((s) => x.fsm.table.code[s] === code) ?? null
+}
 
 /** The spans a view asks for, which (unlike signals and busses) are a function of the run, not the knobs. */
 const spansOf = (e, x) => (typeof e.spans === 'function' ? e.spans(x) : e.spans || [])
@@ -274,6 +291,15 @@ export default function App() {
                   </>
                 ) : null}
                 {currentView === 'gates' ? <GateCanvas x={x} /> : null}
+                {currentView === 'state' && x.fsm ? (
+                  <StateCanvas
+                    states={x.fsm.table.states}
+                    edges={arcsOf(x)}
+                    encoding={Object.fromEntries(x.fsm.table.states.map((st) => [st, x.fsm.table.code[st].toString(2).padStart(x.fsm.table.bits, '0')]))}
+                    active={stateNow(x, cursor)}
+                    outputs
+                  />
+                ) : null}
                 {currentView === 'table' ? <TruthTable x={x} /> : null}
                 {currentView === 'kmap' ? <KarnaughMap x={x} /> : null}
                 {currentView === 'paths' ? <PathList x={x} /> : null}
