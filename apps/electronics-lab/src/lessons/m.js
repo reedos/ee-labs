@@ -2,6 +2,7 @@
 // circuit on screen, and the group's whole purpose is that each one of them
 // is a number Group A carried as a datasheet fact.
 
+import { polesOf, zerosOf } from '@ee-labs/network'
 import { harmonics, loopMargins, loopTF, portResistance, powerOver, ringOf, tangent, thdOf, unityGain } from '../groups/l.js'
 
 /** The gain-bandwidth product, read as the open-loop gain times its dominant pole. */
@@ -15,13 +16,28 @@ const rOut = (x) => portResistance(tangent(x).elements, 'out')
 const fcOf = (x) => loopMargins(loopTF(x, 'Efb')).crossover
 const pmOf = (x) => loopMargins(loopTF(x, 'Efb')).pm
 
+/**
+ * How far the second pole and the right-half-plane zero, counted at the
+ * crossover, fall short of the measured phase margin, in degrees. The two
+ * arctangents are the whole of the margin a single-pole loop does not keep,
+ * and what is left over is what the poles above them cost.
+ */
+const pmGap = (x) => {
+  const tf = loopTF(x, 'Efb')
+  const m = loopMargins(tf)
+  const p2 = polesOf(tf).sort((a, b) => a.hz - b.hz)[1]
+  const z1 = zerosOf(tf).sort((a, b) => a.hz - b.hz)[0]
+  const deg = (r) => (Math.atan(r) * 180) / Math.PI
+  return Math.abs(90 - deg(m.crossover / p2.hz) - deg(m.crossover / z1.hz) - m.pm)
+}
+
 /** The input offset: the shift the mismatch makes at the output, referred back through the gain. */
 const vosOf = (x, p, again) => -(x.sol.v.out - again({ ratio: 1 }).sol.v.out) / x.gain
 
 /** The output stage's fundamental, its distortion, and where its power goes. */
 const fundOf = (x, p) => harmonics(x, 'out', p.f)[0]
 const thd = (x, p) => thdOf(x, 'out', p.f)
-const power = (x, p) => powerOver(x, { load: 'RL', supplies: ['VCC', 'VEE'], freq: p.f })
+const power = (x, p) => powerOver(x, { load: 'RL', supplies: ['VCC', 'VEE', 'Vin', 'Vbn', 'Vbp'], freq: p.f })
 
 export const LESSONS_M = {
   m1: {
@@ -160,9 +176,10 @@ export const LESSONS_M = {
       'takes some away. The second pole, set by the second stage’s transconductance into the load capacitor, ' +
       'takes the arctangent of the crossover over its own frequency. So does the right-half-plane zero the ' +
       'compensation capacitor makes, and that one subtracts phase where a left-plane zero would add it. Those ' +
-      'three terms account for the measured margin to a hundredth of a degree. Lowering the capacitor buys ' +
+      'three terms account for the measured margin to 0.02°. Lowering the capacitor buys ' +
       'bandwidth and spends margin, because the crossover moves out toward poles that were harmless while they ' +
       'sat above it.',
+    whyReads: [[pmGap, 0.0227]],
   },
 
   m4: {
@@ -270,12 +287,12 @@ export const LESSONS_M = {
         ],
       },
       {
-        say: 'Raise the drive to 9 V with that bias still on. The load takes 39.6 mW from 56.1 mW of supply, which is an efficiency of 70.6 %.',
+        say: 'Raise the drive to 9 V with that bias still on. The load takes 39.6 mW from 56.5 mW of supply, which is an efficiency of 70.1 %.',
         set: { amp: 9, vbias: 0.69 },
         reads: [
           [(x, p) => power(x, p).load, 0.03959],
-          [(x, p) => power(x, p).supply, 0.056068],
-          [(x, p) => power(x, p).efficiency, 70.61],
+          [(x, p) => power(x, p).supply, 0.056504],
+          [(x, p) => power(x, p).efficiency, 70.066],
         ],
       },
     ],
@@ -285,11 +302,12 @@ export const LESSONS_M = {
       'middle of every waveform, and it is worst for the small signals a listener notices most. Two ' +
       'forward-biased diodes between the bases hold each device just on, which closes the dead band and turns ' +
       'the stage into class AB at the cost of a small idling current. The ceiling on efficiency is π/4, which is ' +
-      '78.5 %, and it belongs to an ideal stage driven all the way to its rail. This one reaches 70.6 % at nine ' +
-      'volts into a kilohm, and the shortfall is the volt the transistors keep for themselves.',
+      '78.5 %, and it belongs to an ideal stage driven all the way to its rail. This one reaches 70.1 % at nine ' +
+      'volts into a kilohm. It swings 8.90 V out of a 10 V rail, not the whole of it.',
     whyReads: [
       [() => 25 * Math.PI, 78.53982],
-      [(x, p, again) => power(again({ amp: 9, vbias: 0.69 }), { ...p, amp: 9, vbias: 0.69 }).efficiency, 70.61],
+      [(x, p, again) => power(again({ amp: 9, vbias: 0.69 }), { ...p, amp: 9, vbias: 0.69 }).efficiency, 70.066],
+      [(x, p, again) => Math.max(...again({ amp: 9, vbias: 0.69 }).tr.samples.map((s) => s.sol.v.out)), 8.901],
     ],
   },
 }

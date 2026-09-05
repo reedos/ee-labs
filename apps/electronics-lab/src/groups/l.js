@@ -102,8 +102,19 @@ export function thdOf(x, node, freq) {
 }
 
 /**
- * Power delivered to a load over one cycle, and power taken from the two
- * supplies, both as means over that cycle. Efficiency is the ratio.
+ * Power delivered to a load over one cycle, and power taken from the sources
+ * that feed the stage, both as means over that cycle. Efficiency is the ratio.
+ *
+ * `supplies` names every source, not only the two rails. A bipolar output
+ * stage takes its base current from whatever drives it rather than from the
+ * rails, so a tally of the rails alone misses a share of 1/(β + 1) of the load
+ * current and reports an efficiency above what the stage reaches. At β = 10
+ * that share is nine per cent of the answer, and the figure then passes the
+ * π/4 ceiling the class B term states.
+ *
+ * A source's power is signed: `sol.p` is positive into an element, so what a
+ * source delivers is −p. Summing that rather than its absolute value keeps an
+ * instant where a source takes power back a subtraction.
  */
 export function powerOver(x, { load, supplies, freq, points = 512 }) {
   const T = 1 / freq
@@ -113,7 +124,7 @@ export function powerOver(x, { load, supplies, freq, points = 512 }) {
   for (let k = 0; k < points; k++) {
     const sol = x.tr.at(t0 + (k * T) / points).sol
     out += Math.abs(sol.p[load])
-    for (const s of supplies) inn += Math.abs(sol.p[s])
+    for (const s of supplies) inn -= sol.p[s]
   }
   return { load: out / points, supply: inn / points, efficiency: (100 * out) / inn }
 }

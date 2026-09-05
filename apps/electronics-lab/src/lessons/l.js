@@ -19,9 +19,15 @@ const rIn = (x) => 1 / -solveDC(x.norm, { sources: { V1: 1, It: 0 } }).i.V1
 /** The resistance at the output port, from the voltage a unit test current makes. */
 const rOut = (x) => solveDC(x.norm, { sources: { V1: 0, It: 1 } }).v.out
 
-/** The same two ports with the controlled source dead, which is the loop opened. */
-const rInDead = (x, p, again) => 1 / -solveDC(again({ A0: 1 }).norm, { sources: { V1: 1, It: 0 } }).i.V1
-const rOutDead = (x, p, again) => solveDC(again({ A0: 1 }).norm, { sources: { V1: 0, It: 1 } }).v.out
+/**
+ * The same two ports with the controlled source dead, which is the loop
+ * opened. Dead means a gain of zero, the reference Blackman's impedance form
+ * is written against and the one the math panel's own rows use. A gain of one
+ * is not dead: it still returns a ninth of the output and raises the input
+ * port by nine per cent.
+ */
+const rInDead = (x, p, again) => 1 / -solveDC(again({ A0: 0 }).norm, { sources: { V1: 1, It: 0 } }).i.V1
+const rOutDead = (x, p, again) => solveDC(again({ A0: 0 }).norm, { sources: { V1: 0, It: 1 } }).v.out
 
 /** The loop's phase margin, and the pole of the loop itself. */
 const pmOf = (source) => (x) => loopMargins(loopTF(x, source)).pm
@@ -165,18 +171,18 @@ export const LESSONS_L = {
 
   l4: {
     see:
-      'The source sees 1.09 MΩ with the loop dead and 9.09 GΩ with it closed. Series mixing puts the fed-back ' +
+      'The source sees 1.00 MΩ with the loop dead and 9.09 GΩ with it closed. Series mixing puts the fed-back ' +
       'voltage in series with the input, so the source has to push against 1 + T times as much. A load sees ' +
-      '833 Ω dead and 100 mΩ closed, because shunt sampling lowers that port by the same factor.',
+      '909 Ω dead and 100 mΩ closed, because shunt sampling lowers that port by the same factor.',
     seeReads: [
       [rIn, 9091910000],
       [rOut, 0.100079],
-      [rInDead, 1091818],
-      [rOutDead, 833.3888],
+      [rInDead, 1000909],
+      [rOutDead, 909.0827],
     ],
     try: [
       {
-        say: 'Set A₀ to 1. With almost no loop gain left, the input port falls back to 1.09 MΩ and the output port rises to 833 Ω, which is what the resistors alone give.',
+        say: 'Set A₀ to 1. Almost no loop gain is left, so the input port reads 1.09 MΩ and the output port 833 Ω, both within a tenth of what the resistors alone give.',
         set: { A0: 1 },
         reads: [
           [rIn, 1091818],
