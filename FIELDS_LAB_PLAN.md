@@ -351,7 +351,7 @@ q = 2, 1.67787 at q = 4 and 3.09445 at q = 8. The tables give 1.0779, 1.678 and
 3.094.
 
 The tube formula is then guarded against that solve, not against a rule. At 1
-MHz a 1 mm copper wire has a ratio of 7.822 and the tube formula is high by 3.28
+MHz a 1 mm copper wire has a ratio of 7.822 and the tube formula is high by 3.27
 per cent. At 10 kHz it is wrong by 31.3 per cent, and the guard reports the
 radius as 0.756 skin depths against its threshold of 3.
 
@@ -615,7 +615,7 @@ what `experiments.test.js` measures.
   4.000, because the loss follows the square of the thickness.
 - **F4 The skin depth.** Copper is 9.346 mm deep at 50 Hz, 66.09 micrometres at
   1 MHz and 2090 nm at 1 GHz. A 1 mm wire at 1 MHz has 7.822 times its
-  direct-current resistance. The tube formula is high by 3.28 per cent there and
+  direct-current resistance. The tube formula is high by 3.27 per cent there and
   wrong by 31.3 per cent at 10 kHz, where its guard refuses it.
 
 ### Group G: Maxwell and the plane wave (4)
