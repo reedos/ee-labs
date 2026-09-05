@@ -279,6 +279,27 @@ append, rather than edited into a file this branch does not carry.
   screenshots of the Elements lab caught. No one has read a screenshot of this
   lab as a student would (`REVIEW_PLAYBOOK.md` §11). Reopens with anyone who
   has a browser.
+- **F5 measures its second harmonic without a spectrum.** `math.js` computes no
+  `x.spectrum`, so the spectrum pane has no data source and no experiment lists
+  it. F5 maps a sine through the stage's own DC characteristic instead, 64
+  exact solves and a Fourier projection. That is route 2 of the plan's §2.8,
+  read for its second harmonic. Reopens with the spectrum pane.
+- **F5's guard is a footnote rather than an amber ghost.** The plan asks for
+  one on a scope. The exponential model in time is declined by the plan's §2.8,
+  so no experiment past Group C can carry a scope with a transistor on that
+  model.
+- **The device-curves pane is empty for every experiment.** `math.js` computes
+  no `x.curves`, so nothing can list the view. Group D is where the load line
+  and the family of curves belong, and its lane needs the producer.
+- **G2 measures the loading rule at both ends of one box, not across two.** The
+  plan's G2 asks for two boxes in cascade against the direct solve. Nine
+  elements and six vertical legs do not fit the 420-wide canvas once each label
+  and reading is placed, since a leg needs about 75 px of clear space to its
+  right. Group I5 is where the two-stage case belongs.
+- **Nobody has looked at Groups F and G in a browser.** This environment has no
+  browser, so the eight drawings were checked as geometry, under the checker in
+  `layoutCheck.js` and again under the transistor geometry `Schematic.jsx`
+  really draws. Reopens with anyone who has a browser.
 - **The op-amp macro is ready for the two labs that asked for it.** Circuit
   Elements Lab's deferred GBW toggle and Circuit Lab's gain-bandwidth knob are
   both `gbw` on the `OPAMP` element, which expands at `normalize` and needs no
