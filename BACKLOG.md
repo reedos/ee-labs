@@ -681,24 +681,30 @@ Items that cross labs and land at integration.
   exceed the 90 s timeout on a loaded four-core machine. Their owner chooses a
   longer timeout, a shorter sweep, or a split, before CI gates on one command.
 
-### In flight, 2026-09-05
+### Cut off at the session limit, 2026-09-05 19:50 UTC
 
-Lanes running as workflows, each an Opus builder followed by an Opus reviewer who
-commits fixes on the same branch. The director integrates the branches the reviewers
-mark mergeable, in this order, and then runs the whole suite once.
+Every lane below ran as a workflow of Opus agents. Every agent fell to the
+account's session limit within its first hour. What each left is committed on its
+branch, so a fresh sitting continues it rather than restarts it. The workflow
+scripts are in `.claude/workflows/`. Each one's setup checks the branch out if it
+already exists, and tells the agent to read what is there first.
 
-| Work | Branches | Run |
-| --- | --- | --- |
-| Electronics Groups D to I | `lab/electronics-de`, `-fg`, `-hi` | `wf_24c95795-7a8` |
-| Electronics Groups J to O | `lab/electronics-jk`, `-lm`, `-no` | `wf_0294d467-036` |
-| Power Lab Groups H to N | `lab/power-hi`, `-jk`, `-lmn` | `wf_53dfff51-cb0` |
-| RF Lab A to D, System Lab A, Photonics A, C to F | `lab/rf-lab`, `lab/system-lab`, `lab/photonics-lab` | `wf_3a04f893-136` |
-| Browser harnesses for the nine labs that have one | `verify/<slug>` | `wf_c19e5501-bd2` |
+| Work | Branches | Script, and its args | Left on the branch |
+| --- | --- | --- | --- |
+| Electronics Groups D to I | `lab/electronics-de`, `-fg`, `-hi` | `electronics-lanes` with `["de","fg","hi"]` | nothing yet |
+| Electronics Groups J to O | `lab/electronics-jk`, `-lm`, `-no` | `electronics-lanes` with `["jk","lm","no"]` | nothing yet |
+| Power Lab Groups H to N | `lab/power-hi`, `-jk`, `-lmn` | `power-h-to-n` | untested `loop.js`, `threePhase.js`, `resonant.js`, and the three isolated siblings with a commit |
+| RF A to D, System A, Photonics A, C to F | `lab/rf-lab`, `lab/system-lab`, `lab/photonics-lab` | `rf-system-photonics` | the RF brief, `packages/rf`'s exact core, an untested Smith canvas; the Photonics brief, package and first app files |
+| Harnesses, nine labs that have one | `verify/<slug>` | `verify-harnesses` | Elements: two fixes; Circuit Lab: fixes to the axis, the step readout and two canvases, untested |
+| VLSI and Interfaces | `lab/vlsi-lab`, `lab/interfaces-lab` | `vlsi-interfaces` | not started |
+| Harnesses, the ten labs without one | `verify/<slug>` | `harness-wave-2`, args a list of slugs, `electronics-lab` last | not started |
+
+Each script runs at most two agents at once on a four-core box, and every agent
+throttles vitest to two workers. Run the scripts in the table's order, and integrate
+each branch a reviewer marks mergeable before the next tier starts.
 
 Waiting behind those, with what each waits on:
 
-- the VLSI and Interfaces labs, buildable now and held for the box's four cores;
-- browser harnesses for the ten labs without one, held the same way;
 - the Applied Analog, Analog IC and Mixed-Signal labs, on the Electronics lanes;
 - RF Groups E to H and System Phases 2 to 6, on Electronics K and O;
 - Photonics Group B, on Electronics O;

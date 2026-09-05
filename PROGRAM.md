@@ -34,7 +34,9 @@ pushes.
 Stage by path. `git add apps/logic-lab packages/events`, never `git add -A`, never
 `commit -a`. Commit messages are narrative, in the register of `git log`. No model
 names in files. A commit's attribution trailer is the session's, and it is the one
-place a model's name appears.
+place a model's name appears. The one exception is the model tier a workflow
+script in `.claude/workflows/` sets on each agent. That is a setting, not a
+signature.
 
 ## 3. What every lab delivers, in order
 
