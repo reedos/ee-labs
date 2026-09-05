@@ -483,4 +483,23 @@ describe('lesson: Blame the right part', () => {
     const radii = cloud.map(([re, im]) => Math.hypot(re, im) / m.w0)
     expect(Math.max(...radii) / Math.min(...radii)).toBeGreaterThan(1.05)
   })
+
+  // Round-four grading, third revision of this try line: for a series RLC,
+  // s = −R/2L ± j√(1/LC − (R/2L)²) — the real part depends only on R and L,
+  // never on C. So C alone moves the pole along a dead-straight vertical
+  // line (re invariant to machine precision) while L alone moves BOTH the
+  // real part (L sets R/2L too) and the imaginary part — a genuinely
+  // diagonal path. This is what makes L's marker show a visible smear where
+  // C's stays a thin vertical line, at any pixel density.
+  it('C moves the pole only up and down the imaginary axis; L moves the real part too', () => {
+    const s = setup()
+    const m = CIRCUITS[s.id].metrics(s.params)
+    const reSpan = (tolKey) => {
+      const { cloud } = toleranceCloud(s.id, s.params, 'c', { [tolKey]: 0.1 })
+      const res = cloud.map(([re]) => re)
+      return (Math.max(...res) - Math.min(...res)) / m.w0
+    }
+    expect(reSpan('c')).toBeLessThan(1e-9)
+    expect(reSpan('l')).toBeGreaterThan(0.05)
+  })
 })

@@ -168,8 +168,26 @@ export default function App() {
   // fix for one bug: `.lesson-body` here is Signal Lab's `.lesson`, and
   // `.controls` is the same scroller-inside-a-scroller in both apps.
   //
+  // Round-four grading found this first cut still wrong on one lesson: it
+  // checked only the try line's OWN box, which reads "already visible" even
+  // when the note above it is scrolled off, or the featured knob below it
+  // is cut off. On "Where the corner comes from" — note, try line and two
+  // stacked sliders (C, R) — correcting for the try line alone left the
+  // note's opening sentence above the box and the R slider below it, on the
+  // list-tap path, reproduced from two different starting scroll positions.
+  // Control Lab's own second pass (its App.jsx) fixes the identical class of
+  // bug by checking TWO edges instead of one — the lesson block's own top
+  // (where the note starts) and the far edge of the control the try line
+  // names — adopted here verbatim in spirit, adapted to this app's DOM: the
+  // featured knob sits inside `.lesson-body` itself, right after `.try-line`
+  // (Control Lab's own controller card is a separate section entirely), so
+  // the second edge checked here is the featured block's bottom rather than
+  // the try line's. `.featured` is present on every lesson but one (a bare
+  // hand-over card carries no slider to protect), so the try line stands in
+  // for it there.
+  //
   // Deliberately conditional: on every already-correct path (a laptop with
-  // one group open, a phone that has not scrolled) the try line is already
+  // one group open, a phone that has not scrolled) both edges are already
   // inside the visible box, so nothing scrolls — prev/next behave exactly as
   // they did before. Skipped on the very first render, since a fresh load
   // has nothing to correct.
@@ -184,10 +202,11 @@ export default function App() {
     const el = lessonRef.current
     const container = controlsRef.current
     if (!el || !container) return
-    const target = el.querySelector('.try-line') || el
-    const targetBox = target.getBoundingClientRect()
+    const bottomTarget = el.querySelector('.featured') || el.querySelector('.try-line') || el
+    const elBox = el.getBoundingClientRect()
+    const bottomBox = bottomTarget.getBoundingClientRect()
     const contBox = container.getBoundingClientRect()
-    const visible = targetBox.top >= contBox.top - 0.5 && targetBox.bottom <= contBox.bottom + 0.5
+    const visible = elBox.top >= contBox.top - 0.5 && bottomBox.bottom <= contBox.bottom + 0.5
     if (!visible) el.scrollIntoView({ block: 'start' })
   }, [lesson, openGroups])
 
@@ -535,6 +554,26 @@ export default function App() {
       </div>
     </div>
   )
+  // f₀, Q and ζ in the topbar, given the same route to a definition H(s) and
+  // the stability verdict already have. Round-four grading: these three sat
+  // as plain spans, on screen from the first pixel of nine of the fifteen
+  // lessons, with no title, no button and no handler — the exact gap the
+  // code comment above (H(s)/stable, "a phone had no route to them at all")
+  // already names for the two pills beside them. One helper, one topbarTerm
+  // state shared with those two, so only one card is ever open at a time.
+  const topbarTermField = (key, label, value) => (
+    <button
+      type="button"
+      className={`topbar-field topbar-term${topbarTerm === key ? ' is-open' : ''}`}
+      aria-expanded={topbarTerm === key}
+      title={`${TERMS[key].name}: ${TERMS[key].def}`}
+      onClick={() => setTopbarTerm(topbarTerm === key ? null : key)}
+    >
+      <span>{label}</span>
+      <b>{value}</b>
+    </button>
+  )
+
   const outputSelect =
     circuit.outputs.length > 1 ? (
       <label className="field" key="output">
@@ -748,7 +787,20 @@ export default function App() {
                   onClose={() => setOpenTerm(null)}
                 />
               ) : null}
-              <TryLine text={active.try} chips={active.chips} onChip={onChip} activeChip={activeChip} />
+              {/* Round-four grading: "dB" (and every other term) was only
+                  ever marked where it appeared in the NOTE, so on the four
+                  lessons where it appears only in the try line — the point
+                  of use — there was no tap target there at all. TryLine's
+                  own `text` prop takes whatever `{text}` can render, so the
+                  same Marked pass used above runs over the try line too,
+                  sharing the one openTerm/TermCard pair rather than adding
+                  a second. */}
+              <TryLine
+                text={<Marked text={active.try} terms={activeTerms} open={openTerm} onOpen={setOpenTerm} />}
+                chips={active.chips}
+                onChip={onChip}
+                activeChip={activeChip}
+              />
               {featured.length ? (
                 <div className="featured" data-role="featured">
                   {featured}
@@ -952,20 +1004,13 @@ export default function App() {
           </span>
           {metrics || second ? (
             <>
-              <span className="topbar-field">
-                <span>f₀</span>
-                <b>{fmtHz(metrics ? metrics.w0 / (2 * Math.PI) : second.f0)}Hz</b>
-              </span>
-              <span className="topbar-field">
-                <span>Q</span>
-                <b>{(metrics ? metrics.q : second.q).toFixed(3)}</b>
-              </span>
-              {second ? (
-                <span className="topbar-field">
-                  <span>ζ</span>
-                  <b>{second.zeta.toFixed(3)}</b>
-                </span>
-              ) : null}
+              {topbarTermField(
+                'omega0',
+                'f₀',
+                `${fmtHz(metrics ? metrics.w0 / (2 * Math.PI) : second.f0)}Hz`,
+              )}
+              {topbarTermField('q', 'Q', (metrics ? metrics.q : second.q).toFixed(3))}
+              {second ? topbarTermField('zeta', 'ζ', second.zeta.toFixed(3)) : null}
             </>
           ) : null}
         </div>

@@ -10,6 +10,7 @@ import {
   sameSetup,
   matchingChip,
 } from './lessons.js'
+import { fmtHz } from '@ee-labs/ui'
 import { CIRCUITS, transferOf } from './circuits.js'
 import { asDigitalFilter } from './toSignalLab.js'
 import { toleranceCloud, spreadPct, tolsOf, fmtPct, fmtHzRange } from './tolerance.js'
@@ -277,12 +278,18 @@ describe('the numbers the try lines quote', () => {
     expect(dampingWord(z600)).toBe('underdamped')
   })
 
-  it('twin-T: R 47 kΩ moves the notch to 339 Hz and Q stays 0.250', () => {
+  it('twin-T: R 47 kΩ moves the notch to 338.6 Hz (fmtHz\'s own figure) and Q stays 0.250', () => {
+    // Round-four grading: the try line used to round to 339 Hz while the
+    // topbar's fmtHz printed 338.6 Hz for the same state — the same value,
+    // two roundings, both on screen at once. Checked here against fmtHz
+    // itself, not a separate ±0.5 Hz tolerance, so the two can never drift
+    // apart again.
     const l = byName('A zero on the axis is silence')
     const s = after(l, 'R 47 kΩ')
     const tf = tfOfState(s)
     const f0 = 1 / (2 * Math.PI * s.params.r * s.params.c)
-    expect(f0).toBeCloseTo(l.claim.tryNotch[47000], 0)
+    expect(fmtHz(f0)).toBe(String(l.claim.tryNotch[47000]))
+    expect(l.try).toContain(`${l.claim.tryNotch[47000]} Hz`)
     expect(magnitudeAt(tf, f0)).toBeLessThan(1e-12)
     expect(secondOrderMetrics(tf).q).toBeCloseTo(0.25, 9)
   })

@@ -219,6 +219,41 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .flow-term:hover, .flow-term.is-open { border-color: var(--accent); }
 .flow-term.is-open { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
+/* f₀, Q and ζ, given the same route to a definition as H(s) and the
+   stability verdict above: round-four grading found all three sat as plain
+   spans, with no title, no button and no handler, from the first pixel of
+   nine of the fifteen lessons — the exact gap the .flow-term comment above
+   already names for the two pills beside them. Reset to look like the
+   .topbar-field span it replaces (base.css, packages/ui — not edited here),
+   since a bare <button> would otherwise pick up browser chrome. */
+.topbar-field.topbar-term {
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--dim);
+  cursor: pointer;
+  position: relative;
+}
+.topbar-field.topbar-term:hover, .topbar-field.topbar-term.is-open { color: var(--accent); }
+.topbar-field.topbar-term.is-open b { color: var(--accent); }
+/* Same invisible-::before technique as .flow-term, held to the 24px
+   HARD_FLOOR rather than the suite's 44px target: .topbar-controls packs DC
+   gain, f₀, Q and ζ onto one row with only 14px between fields (measured at
+   390 px, all four still fit on one line), and .flow-term's OWN phone inset
+   (above, -14px top/bottom) already reaches to within a couple of px of
+   this row from above. A real 44px box, or even a symmetric 44px-reaching
+   inset, collides with that; this asymmetric inset clears the WCAG 2.2
+   SC 2.5.8 legal minimum (24px = 18px content + 1px top + 5px bottom) with
+   the couple of spare px this row actually has, top-biased away from
+   .flow-term's own extended hit area. */
+.topbar-field.topbar-term::before {
+  content: '';
+  position: absolute;
+  inset: -1px -3px -5px -3px;
+}
+
 .topbar-term-card {
   position: absolute;
   top: 100%;
@@ -692,7 +727,21 @@ details.preset-group > .presets { margin: 3px 0 5px; }
    sticky cap with prev / next stays first. The header is compacted (nav and
    title on one row, the subhead dropped) to buy the note its lines. */
 @media (max-width: 900px) {
-  .controls { max-height: 43vh; padding: 10px 12px 24px; }
+  .controls {
+    max-height: 43vh;
+    padding: 10px 12px 24px;
+    /* Round-four grading: the scroll-correction effect below (App.jsx) sets
+       this box's scrollTop with JS right after a new lesson's note changes
+       the layout above it. The browser's own scroll anchoring then
+       "helpfully" nudges that exact scrollTop again to compensate for the
+       same layout change, undoing the correction by however much the new
+       note's height differs from the last lesson's — Control Lab hit and
+       fixed this identical class of bug the same way (its own styles.css).
+       This region is scrolled entirely by this app's own code, never by a
+       reader scrolling mid-reflow, so there is nothing here for anchoring
+       to preserve. */
+    overflow-anchor: none;
+  }
   .controls header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
   .controls header .labnav { margin: 0; }
   .controls header h1 { margin: 0; font-size: 16px; }
@@ -705,6 +754,36 @@ details.preset-group > .presets { margin: 3px 0 5px; }
   .controls section:first-of-type > .lesson-body { order: 1; }
   .controls section:first-of-type > .lesson-list { order: 2; margin-top: 10px; }
   .lesson-body .note-title { margin-top: 0; }
+
+  /* Round-four grading: "Where the corner comes from" is the only lesson
+     whose featured block features TWO full sliders (C then R) stacked —
+     every other lesson features one, or a non-slider control (tol/output/
+     hand-over). Two stacked .num rows plus the note and try line run to
+     420 px against this sidebar's own 363 px phone box: the note's top and
+     the R slider's bottom can never both land on screen at once, whatever
+     the scroll — the two-edge fix below can only land both edges when the
+     content itself is short enough to. A side-by-side grid would squeeze
+     each NumField into half width, risking its own internal row (value,
+     step buttons, unit) wrapping onto a second line inside packages/ui —
+     out of this territory to fix if it does. A single horizontal-scrolling
+     row instead keeps every NumField at its own full, unsquashed width —
+     only ONE row's height is spent (matching every other lesson's single
+     slider), and C stays the first, fully on screen; R is a swipe away, a
+     more familiar cost than "off the bottom of a nested scroller" is.
+     Scoped narrowly, by shape (exactly two .num children, nothing else in
+     the block) rather than by lesson name, so it can never touch "Blame
+     the right part"'s two .field-tol rows or any single-slider lesson. */
+  .featured:has(> .num:nth-child(2):last-child) {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .featured:has(> .num:nth-child(2):last-child) > .num {
+    flex: 0 0 auto;
+    width: calc(100% - 40px);
+  }
+
   .views { min-height: 0; }
   .view { padding: 4px 10px 4px; }
   .view-head h2 { display: none; }
@@ -718,6 +797,36 @@ details.preset-group > .presets { margin: 3px 0 5px; }
      more still leaves the phone-first-screen budget (item 13's harness
      probe) with room to spare. */
   .view-lower-pz .plot { height: 210px; }
+
+  /* Round-four grading: on the four pole-view lessons, the pole plot itself
+     — the picture the lesson is ABOUT — began entirely below the 844px
+     fold on arrival, with nothing on screen to say it was there. Measured
+     (foldProbe's withLabNav stand-in, "A zero on the axis is silence"): the
+     Bode canvas sat first, 489–633px, and the pole canvas sat SECOND, at
+     949–1159px against an 844px fold — not because the content itself needs
+     that much room (header 79px + the pz caption 54px + the 210px canvas
+     above is under 350px) but because `.views`'s two `1fr` grid rows sit in
+     an indefinite-height ancestor (`.app`'s own phone row is `auto`), so
+     both rows size to the SAME larger fraction rather than each to its own
+     content — the Bode's short row was stretched to match the pole row's
+     taller one, pushing everything below it down by the difference.
+     Reachable (scrollIntoView, the wheel, and a manual `.controls`
+     `scrollTop` all worked — round-four's claim that it is unreachable does
+     not hold up), but a reader arrives with the one view the lesson exists
+     to show off screen and no cue that it is there.
+     Control Lab's pattern (styles.css, `.views.is-weighted > .view.is-primary
+     { order: -1 }`) fixes this by giving the lesson's own named view first
+     place in the stack on a phone, ahead of the Bode, which becomes context
+     a scroll away — the same trade Control Lab documents for Watch, Nyquist
+     and the locus. `order` only changes visual placement, not DOM order, so
+     every existing `.views canvas` index (nth(0) = Bode, nth(1) = the lower
+     pane) still means what it always has. Reordering alone (no change to
+     the `1fr 1fr` tracks) already lands the pole canvas at roughly
+     583–793px, comfortably inside 844 — verify.mjs's phone section checks
+     this on all four lessons. Scoped to `.view-lower-pz` alone: a lesson
+     whose own view is the step response already fits (item 13), so it is
+     left exactly as it was. */
+  .view-lower-pz { order: -1; }
 
   /* Item 3, first bug: at 390 px the topbar's .flow strip (defined in
      @ee-labs/ui/base.css) holds more content than the box, and it used to

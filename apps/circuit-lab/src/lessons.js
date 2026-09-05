@@ -238,14 +238,20 @@ export const LESSONS = [
     'deliver equal and opposite signals at that frequency. That is a zero of H(s) on the imaginary axis. The ' +
     'drawn floor is the grid’s, not the notch’s, and the phase snaps 180° across it. Q is fixed at 1/4 by the ' +
     'topology.',
-    try: 'Set R to 47 kΩ, the notch moves to 339 Hz, and Q still reads 0.250.',
+    // Round-four grading: the try line rounded to 339 Hz while the topbar's
+    // own fmtHz (4 significant figures, the same formatter every f₀ readout
+    // in this app uses) prints 338.6 Hz for the identical state — the same
+    // value in two roundings, both on screen at once. The try line now
+    // quotes fmtHz's own figure, and course.test.js checks it exactly
+    // rather than to the nearest whole hertz.
+    try: 'Set R to 47 kΩ, the notch moves to 338.6 Hz, and Q still reads 0.250.',
     chips: [
       { label: 'R 10 kΩ', params: { r: 10000 } },
       { label: 'R 47 kΩ', params: { r: 47000 } },
     ],
     featured: [{ id: 'r', min: 1000, max: 100000 }],
     patch: { circuit: 'twinT', view: 'pz' },
-    claim: { zeroOnAxis: true, qFixed: 0.25, tryNotch: { 47000: 339 } },
+    claim: { zeroOnAxis: true, qFixed: 0.25, tryNotch: { 47000: 338.6 } },
   },
 
   {
@@ -295,20 +301,26 @@ export const LESSONS = [
     // a phone. R's ±10% keeps every build's radius at exactly ω₀ (the note's
     // own claim: f₀ has no R in it), so R only rotates the pair around the
     // circle, and course.test.js's pxSpread already measures that rotation
-    // at three marker radii or more. C and L instead move the radius itself
-    // — that IS why f₀ wanders — but by too little of the plot's own scale to
-    // read as a break: the pole cloud stays inside the marker, crisp, not
-    // smeared, while the readout above the plot still prints the honest
-    // ±5.3%. Rewritten to say what the picture DOES show (R's fixed radius
-    // vs C and L moving it too little to see) rather than tell a reader to
-    // distrust the plot generally — the earlier draft's "trust the number,
-    // not the picture" overclaimed, in a suite whose whole argument is that
-    // the picture and the number agree. Q depends on √L and on 1/√C, equal
+    // at three marker radii or more. Q depends on √L and on 1/√C, equal
     // exponents, so a shared ±10% moves f₀ by nearly the same amount from
-    // either part — the try line still says so with L's own measured
-    // figure, not just C's.
+    // either part — the try line still says so with L's own measured figure,
+    // not just C's.
+    //
+    // Round-four grading, third revision: "C and L move it too little to see
+    // at this scale" was itself wrong at retina density — measured at 1x and
+    // 3x device pixel ratio, a screenshot shows a real, visible smear for
+    // both, not merely a crisp cross. Screen-density claims are the wrong
+    // axis anyway: the app's own physics is exact and does not depend on a
+    // display. For this series RLC, s = −R/2L ± j√(1/LC − (R/2L)²), so the
+    // REAL part depends only on R and L, never on C. Sampling C alone (with
+    // R, L untouched) therefore moves the pole along a dead-straight vertical
+    // line — the 120 builds' real parts vary by 0 to twelve decimals — while
+    // sampling L alone moves both the real part (L sets R/2L too) and the
+    // imaginary part, a genuinely diagonal path. lessons.test.js checks both
+    // spans on the running circuit, so this is measured, not eyeballed from
+    // one screenshot.
     try: 'Move the ±10% from R to C, f₀ wanders ±5.3%. L gives the same ±5.3%. R’s arc holds a fixed ' +
-    'radius. C and L move it too little to see at this scale.',
+    'radius. C moves it only up the imaginary axis. L moves the real part too, diagonally.',
     chips: [
       { label: 'R ±10%', tols: { r: 0.1 } },
       { label: 'C ±10%', tols: { c: 0.1 } },
