@@ -42,6 +42,46 @@ export function rowsOf({ res, signals = [], busses = [], analog = [] }) {
 /** The height the diagram needs for these rows. */
 export const heightOf = (rows) => TOP + rows.length * (ROW + GAP) + BOTTOM
 
+/**
+ * Where everything lands, before anything is drawn.
+ *
+ * The draw call reads this and nothing else, so what a test measures is what
+ * the reader sees. An analog row carries the two threshold levels as the y
+ * they map to, and the cursor pair carries its two x positions and the
+ * interval between them, because those are the numbers those props promise.
+ */
+export function geometryOf({ rows = [], width, height, window: win = [0, 1000], cursors = [], marks = [], spans = [] }) {
+  const [t0, t1] = win
+  const plotW = Math.max(40, width - LEFT - RIGHT)
+  const sx = (t) => LEFT + ((t - t0) / Math.max(1, t1 - t0)) * plotW
+  const h = height || heightOf(rows)
+  const placed = rows.map((row, i) => {
+    const top = TOP + i * (ROW + GAP)
+    const bot = top + ROW
+    const box = { ...row, index: i, top, bot, mid: (top + bot) / 2, labelX: LEFT - 10 }
+    if (row.kind !== 'analog') return box
+    const a = row.analog
+    const lo = a.min ?? 0
+    const hi = a.max ?? Math.max(a.vHigh ?? 1, ...(a.samples || []).map((s) => s.v))
+    const sy = (v) => bot - 4 - ((v - lo) / Math.max(1e-12, hi - lo)) * (bot - top - 8)
+    return { ...box, lo, hi, sy, high: a.vHigh == null ? null : sy(a.vHigh), low: a.vLow == null ? null : sy(a.vLow), unit: a.unit || '' }
+  })
+  return {
+    left: LEFT,
+    right: RIGHT,
+    top: TOP,
+    plotW,
+    height: h,
+    window: [t0, t1],
+    sx,
+    rows: placed,
+    marks: marks.map((m) => ({ ...m, x: sx(m.t) })),
+    spans: spans.map((sp) => ({ ...sp, from: sp.from, to: sp.to, x1: sx(sp.from), x2: sx(sp.to), width: sp.to - sp.from })),
+    cursors: cursors.map((t) => ({ t, x: sx(t) })),
+    interval: cursors.length === 2 ? Math.abs(cursors[1] - cursors[0]) : null,
+  }
+}
+
 /** The value of `signal` at `t`, off the run's waveform. */
 function valueAt(res, signal, t) {
   const w = res.waves[signal]
@@ -73,8 +113,9 @@ export default function TimingCanvas({
 
   const ref = useCanvas(
     (ctx, w) => {
-      const plotW = Math.max(40, w - LEFT - RIGHT)
-      const sx = (t) => LEFT + ((t - t0) / Math.max(1, t1 - t0)) * plotW
+      const geo = geometryOf({ rows, width: w, height: h, window: [t0, t1], cursors, marks, spans })
+      const plotW = geo.plotW
+      const sx = geo.sx
       ctx.fillStyle = COLORS.bg
       ctx.fillRect(0, 0, w, h)
 
@@ -100,17 +141,16 @@ export default function TimingCanvas({
       }
 
       // The rows.
-      const yOf = (i) => TOP + i * (ROW + GAP)
-      rows.forEach((row, i) => {
-        const top = yOf(i)
-        const bot = top + ROW
+      const yOf = (i) => geo.rows[i].top
+      geo.rows.forEach((row) => {
+        const { top, bot } = row
         ctx.textAlign = 'right'
         ctx.fillStyle = COLORS.textBright
         ctx.font = '12px ui-monospace, monospace'
-        ctx.fillText(row.label, LEFT - 10, top + ROW / 2 + 4)
+        ctx.fillText(row.label, row.labelX, row.mid + 4)
         if (row.kind === 'signal') drawSignal(ctx, res, row.signal, sx, top, bot, t0, t1)
         if (row.kind === 'bus') drawBus(ctx, res, row.signals, sx, top, bot, t0, t1)
-        if (row.kind === 'analog') drawAnalog(ctx, row.analog, sx, top, bot, t0, t1)
+        if (row.kind === 'analog') drawAnalog(ctx, row, sx, t0, t1)
       })
 
       // A cause line joins an event to the event that produced it.
@@ -132,8 +172,8 @@ export default function TimingCanvas({
 
       // A span, with the width it measures written above it.
       ctx.textAlign = 'center'
-      for (const sp of spans) {
-        const i = rows.findIndex((r) => r.signal === sp.signal)
+      for (const sp of geo.spans) {
+        const i = geo.rows.findIndex((r) => r.signal === sp.signal)
         const y = i >= 0 ? yOf(i) - 4 : TOP - 4
         ctx.strokeStyle = COLORS.marker
         ctx.beginPath()
@@ -150,29 +190,29 @@ export default function TimingCanvas({
       }
 
       // Named instants.
-      for (const m of marks) {
+      for (const m of geo.marks) {
         ctx.strokeStyle = COLORS.response
         ctx.setLineDash([2, 4])
         ctx.beginPath()
-        ctx.moveTo(sx(m.t), TOP - 6)
-        ctx.lineTo(sx(m.t), h - BOTTOM + 6)
+        ctx.moveTo(m.x, TOP - 6)
+        ctx.lineTo(m.x, h - BOTTOM + 6)
         ctx.stroke()
         ctx.setLineDash([])
         ctx.fillStyle = COLORS.response
-        ctx.fillText(m.label, sx(m.t), h - BOTTOM + 20)
+        ctx.fillText(m.label, m.x, h - BOTTOM + 20)
       }
 
       // The cursor pair, with the interval between them.
-      if (cursors.length === 2) {
-        for (const t of cursors) {
+      if (geo.cursors.length === 2) {
+        for (const c of geo.cursors) {
           ctx.strokeStyle = COLORS.spectrum
           ctx.beginPath()
-          ctx.moveTo(sx(t), TOP - 6)
-          ctx.lineTo(sx(t), h - BOTTOM + 6)
+          ctx.moveTo(c.x, TOP - 6)
+          ctx.lineTo(c.x, h - BOTTOM + 6)
           ctx.stroke()
         }
         ctx.fillStyle = COLORS.spectrum
-        ctx.fillText(ps(Math.abs(cursors[1] - cursors[0])), (sx(cursors[0]) + sx(cursors[1])) / 2, h - BOTTOM + 20)
+        ctx.fillText(ps(geo.interval), (geo.cursors[0].x + geo.cursors[1].x) / 2, h - BOTTOM + 20)
       }
 
       if (cursor != null) {
@@ -243,27 +283,28 @@ function drawBus(ctx, res, signals, sx, top, bot, t0, t1) {
   }
 }
 
-function drawAnalog(ctx, a, sx, top, bot, t0, t1) {
-  const lo = a.min ?? 0
-  const hi = a.max ?? Math.max(a.vHigh ?? 1, ...(a.samples || []).map((s) => s.v))
-  const sy = (v) => bot - 4 - ((v - lo) / Math.max(1e-12, hi - lo)) * (bot - top - 8)
-  for (const [level, colour] of [
-    [a.vHigh, COLORS.response],
-    [a.vLow, COLORS.marker],
+function drawAnalog(ctx, row, sx, t0, t1) {
+  // The one row that is not a logic signal. Its two threshold lines are the
+  // Interfaces Lab's input low and input high, and the trace between them is
+  // the only thing in this diagram that is interpolated, because a real pin
+  // does pass through the levels in between.
+  for (const [y, colour] of [
+    [row.high, COLORS.response],
+    [row.low, COLORS.marker],
   ]) {
-    if (level == null) continue
+    if (y == null) continue
     ctx.strokeStyle = colour
     ctx.setLineDash([4, 4])
     ctx.beginPath()
-    ctx.moveTo(sx(t0), sy(level))
-    ctx.lineTo(sx(t1), sy(level))
+    ctx.moveTo(sx(t0), y)
+    ctx.lineTo(sx(t1), y)
     ctx.stroke()
     ctx.setLineDash([])
   }
   ctx.strokeStyle = COLORS.phase
   ctx.lineWidth = 1.6
   ctx.beginPath()
-  ;(a.samples || []).forEach((s, i) => (i ? ctx.lineTo(sx(s.t), sy(s.v)) : ctx.moveTo(sx(s.t), sy(s.v))))
+  ;(row.analog.samples || []).forEach((s, i) => (i ? ctx.lineTo(sx(s.t), row.sy(s.v)) : ctx.moveTo(sx(s.t), row.sy(s.v))))
   ctx.stroke()
   ctx.lineWidth = 1
 }

@@ -79,8 +79,10 @@ apps/logic-lab/
   src/format.js           picoseconds, nanoseconds and hertz for a reader
   src/report.js           the issue link's summary
   src/release.test.js  experiments.test.js  prose.test.js  terms.test.js
-  src/components/         TimingCanvas, GateCanvas, StateCanvas, TruthTable,
-                          KarnaughCanvas, PathList, EventTable, panes.jsx
+  src/components/         TimingCanvas, GateCanvas, StateCanvas, panes.jsx
+                          (the truth table, the Karnaugh map, the path list,
+                          the event table and the refusal, which are markup
+                          rather than a canvas), canvases.test.jsx
 ```
 
 `release.test.js` is the Elements file with the paths changed, copied rather than
@@ -331,9 +333,16 @@ input low and its input high (`PROGRAM.md` §4). This lab has no analog signal,
 so a test drives the prop with a synthetic trace. It checks that the two
 threshold lines and the cursor pair land where they were asked to.
 
-Test: `components/TimingCanvas.test.jsx` renders a known run and checks the
-geometry of each row against `schematicGeometry`'s conventions, as the Elements
-lab checks its layouts. No text overlaps another.
+Each canvas computes its whole picture as data first, and the draw call reads
+that and nothing else. `geometryOf` places every row, the span, the cursor pair
+and each threshold level, and `sceneOf` places every state and says which
+circle and which arc are lit. A prop nothing draws is a prop that is wrong the
+day the second lab needs it, so each one is measured through those two
+functions rather than through the pixels.
+
+Test: `components/canvases.test.jsx` runs the hazard netlist and the 101
+detector through both components, checks every row lands inside the height it
+asked for, and checks each prop against the geometry it produces.
 
 ### 3.8 The stub the app lanes build against
 

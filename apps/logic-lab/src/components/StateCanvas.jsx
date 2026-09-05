@@ -30,59 +30,92 @@ export function layoutOf(states, w, h) {
   )
 }
 
+/**
+ * The whole picture as data, before anything is drawn: where each state sits,
+ * what is written inside its circle, which circle is lit, and which arc was
+ * last taken.
+ *
+ * The draw call reads this and nothing else, so a test of the three props the
+ * Computer Lab asked for measures what the reader sees. `outputs` puts a Moore
+ * output inside the circle, `encoding` prints the state's bits under it, and
+ * `taken` lights one arc.
+ */
+export function sceneOf({ states = [], edges = [], encoding = null, active = null, taken = null, outputs = false, width = 480, height = 260 }) {
+  const at = layoutOf(states, width, height)
+  return {
+    radius: R,
+    states: states.map((name) => {
+      const p = at[name] || { x: 0, y: 0 }
+      // A Moore output belongs to the state, so it is the same on every arc
+      // leaving it. A Mealy machine's output is on the arc, and this draws
+      // nothing inside the circle for it.
+      const leaving = edges.filter((e) => e.from === name && e.out)
+      const same = leaving.length > 0 && leaving.every((e) => JSON.stringify(e.out) === JSON.stringify(leaving[0].out))
+      const out = outputs && same ? leaving[0].out : null
+      return {
+        name,
+        x: p.x,
+        y: p.y,
+        lit: name === active,
+        out,
+        text: out
+          ? Object.entries(out)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(' ')
+          : null,
+        code: encoding && encoding[name] != null ? String(encoding[name]) : null,
+      }
+    }),
+    edges: edges.map((e) => ({
+      ...e,
+      self: e.from === e.to,
+      lit: !!(taken && taken.from === e.from && taken.to === e.to),
+      a: at[e.from] || null,
+      b: at[e.to] || null,
+    })),
+  }
+}
+
 export default function StateCanvas({ states = [], edges = [], encoding = null, active = null, taken = null, outputs = false, height = 260 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
       ctx.fillStyle = COLORS.bg
       ctx.fillRect(0, 0, w, h)
-      const at = layoutOf(states, w, h)
+      const scene = sceneOf({ states, edges, encoding, active, taken, outputs, width: w, height: h })
 
       // The arcs first, so a circle always sits over its own edges.
-      for (const e of edges) {
-        const a = at[e.from]
-        const b = at[e.to]
-        if (!a || !b) continue
-        const lit = taken && taken.from === e.from && taken.to === e.to
-        ctx.strokeStyle = lit ? COLORS.marker : COLORS.axis
-        ctx.fillStyle = lit ? COLORS.marker : COLORS.text
-        ctx.lineWidth = lit ? 2 : 1
-        if (e.from === e.to) drawSelf(ctx, a, e.label)
-        else drawArc(ctx, a, b, e.label)
+      for (const e of scene.edges) {
+        if (!e.a || !e.b) continue
+        ctx.strokeStyle = e.lit ? COLORS.marker : COLORS.axis
+        ctx.fillStyle = e.lit ? COLORS.marker : COLORS.text
+        ctx.lineWidth = e.lit ? 2 : 1
+        if (e.self) drawSelf(ctx, e.a, e.label)
+        else drawArc(ctx, e.a, e.b, e.label)
       }
 
       ctx.lineWidth = 1
       ctx.textAlign = 'center'
-      for (const s of states) {
-        const p = at[s]
-        if (!p) continue
-        const lit = s === active
+      for (const st of scene.states) {
         ctx.beginPath()
-        ctx.arc(p.x, p.y, R, 0, 2 * Math.PI)
-        ctx.fillStyle = lit ? 'rgba(56, 224, 176, 0.18)' : COLORS.bg
+        ctx.arc(st.x, st.y, R, 0, 2 * Math.PI)
+        ctx.fillStyle = st.lit ? 'rgba(56, 224, 176, 0.18)' : COLORS.bg
         ctx.fill()
-        ctx.strokeStyle = lit ? COLORS.trace : COLORS.axis
-        ctx.lineWidth = lit ? 2 : 1
+        ctx.strokeStyle = st.lit ? COLORS.trace : COLORS.axis
+        ctx.lineWidth = st.lit ? 2 : 1
         ctx.stroke()
         ctx.lineWidth = 1
-        ctx.fillStyle = lit ? COLORS.trace : COLORS.textBright
+        ctx.fillStyle = st.lit ? COLORS.trace : COLORS.textBright
         ctx.font = '13px ui-monospace, monospace'
-        const out = outputs && edges.find((e) => e.from === s && e.out)
-        ctx.fillText(s, p.x, p.y + (out ? -1 : 4))
-        if (out) {
+        ctx.fillText(st.name, st.x, st.y + (st.text ? -1 : 4))
+        if (st.text) {
           ctx.font = '10px ui-monospace, monospace'
           ctx.fillStyle = COLORS.spectrum
-          ctx.fillText(
-            Object.entries(out.out)
-              .map(([k, v]) => `${k}=${v}`)
-              .join(' '),
-            p.x,
-            p.y + 12,
-          )
+          ctx.fillText(st.text, st.x, st.y + 12)
         }
-        if (encoding && encoding[s]) {
+        if (st.code) {
           ctx.font = '10px ui-monospace, monospace'
           ctx.fillStyle = COLORS.text
-          ctx.fillText(encoding[s], p.x, p.y + R + 14)
+          ctx.fillText(st.code, st.x, st.y + R + 14)
         }
       }
     },
