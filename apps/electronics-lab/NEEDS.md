@@ -26,15 +26,18 @@ overseer's to take.
 Electronics Lab's entry today is:
 
 - Slug `electronics-lab`, splash glyph `⊳`, short nav name **Electronics**.
-- **10 experiments in 2 groups.** Group A, "the op-amp as a user meets it", ids
-  `a1` to `a6`. Group C, "inside the junction", ids `c1` to `c4`.
+- **22 experiments in 4 groups.** Group A, "the op-amp as a user meets it",
+  ids `a1` to `a6`. Group C, "inside the junction", ids `c1` to `c4`. Group
+  H, "single-stage amplifiers", ids `h1` to `h7`. Group I, "mirrors, active
+  loads, and stacking", ids `i1` to `i5`.
 - No cross-lab reference by id in either direction yet. The lab's own
   `experiments.test.js` fails on a lesson that cites an experiment id this lab
   does not carry, so the references the plan lists for Groups D to O arrive
   with those groups.
 
-The count moves as groups land. Whoever adds Group D onward updates this entry
-in the same commit.
+The count moves as groups land. Whoever adds a group updates this entry in the
+same commit. Groups D to G are still unbuilt, so nothing in H or I cites an
+experiment from them, and the lab's own `experiments.test.js` enforces that.
 
 ### 3. `@ee-labs/random`, for Group O
 
@@ -129,6 +132,63 @@ Both are measurements of how fast this machine is, and this machine is running
 many agents at once. The owning labs decide whether to lengthen the limit,
 shorten the walk or split it. Nothing in this lab's own suite is near a limit:
 `packages/network` runs in 99 s and `apps/electronics-lab` in 9 s.
+
+### 7. `layoutCheck.js` still checks a transistor as a two-terminal element
+
+`apps/electronics-lab/src/layoutCheck.js` sends every element that is not
+an op-amp through `elementBodyBoxes` and `elementTextPlaces`. For a `Q` or
+an `M` those are the wrong boxes. The glyph spans the full ±20 on both
+axes rather than ±9 across, its label hangs 34 below the centre rather
+than 24, and its reading hangs 34 above rather than 24. Item 4 above
+records that `schematicGeometry.js` now exports `transistorPinPlaces`,
+`transistorBodyBox` and `transistorTextPlaces` for exactly this.
+
+Groups H and I were checked against both geometries as they were drawn. A
+scratch harness added the real transistor boxes by hand, and all twelve
+drawings came out clean under both. The app's own test knows only the
+two-terminal boxes. Whoever draws a transistor next should wire the three
+exports in and run it again. The file belongs to this app rather than to
+this lane.
+
+### 8. Two panes have no data behind them
+
+`components/panes.jsx` draws `CurvesCanvas` from `x.curves` and
+`SpectrumCanvas` from `x.spectrum`, and `analyse` in `math.js` sets
+neither. Both panes therefore say they have nothing to draw, whatever the
+experiment. Groups H and I list neither view for that reason, and H2's
+second harmonic is measured by mapping a sine through the quasi-static
+characteristic in `groups/h.js` instead of by reading a spectrum. Device
+curves are Group D's subject and the spectrum is Group F's, so whichever
+lane builds those groups adds the two to `analyse`.
+
+### 9. Three quantity paths of the brief are not in `readQuantity`
+
+`AGENT_BRIEF.md` section 4 lists `ss.gain`, `ss.rin` and `ss.rout`.
+`lessons.js` resolves none of them. A port resistance is a method rather
+than a reading, so Groups H and I measure it with `portR` in
+`groups/h.js`, a function read that every lesson quoting one names.
+That works, and it keeps the headline path for those experiments on
+`gain` or on the operating point. A lane that wants `R_in` in the topbar
+needs the paths.
+
+### 10. Numbers Groups H and I measured, against the plan's
+
+The plan's section 5 quotes the textbook hybrid-π, with `r_pi` as
+`beta/g_m` and `r_o` as `V_A/I_C`. The tangent of the exponential device
+carries a factor of `(V_A + V_CE)/V_A` in both. So the common emitter at
+1 mA and 5 V reads 2.71 kOhm at its base rather than 2.59 kOhm, its
+output resistance is 4.77 kOhm, and its gain is −184.6 rather than −184.
+Switching the Early effect off gives the plan's numbers exactly: 2.585
+kOhm and −193.4.
+
+Four more figures moved. H2's second harmonic falls by the square of
+1 + g_m R_E rather than by the factor itself, from 4.08 % to 0.196 %, a
+ratio of 20.8 against the plan's 4.87. H3's follower reads 34.7 Ohm at
+its emitter and 112 kOhm at its base, against 35.8 Ohm and 104 kOhm. H6's
+source port is 229 Ohm rather than 250 Ohm. I3's active load reaches
+−2030 with an intrinsic gain of 4108, against −1934 and 3868, and one
+per cent of bias mismatch moves its output by 522 mV rather than by a
+volt. I5's pair reaches 81.9 dB.
 
 ## At release: flip `RELEASE_STATUS` to `released`, then `release.test.js` demands
 
