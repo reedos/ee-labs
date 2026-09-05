@@ -1,0 +1,25 @@
+{
+  "name": "photonics-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Light as an engineer meets it: the photon and its energy, the photodiode as a reverse-biased junction the solver treats like any other, the fibre's attenuation and dispersion, the link budget, and the Fabry-Perot cavity that has no transfer function.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "pins": "node scripts/pins.mjs"
+  },
+  "dependencies": {
+    "@ee-labs/network": "*",
+    "@ee-labs/photonics": "*",
+    "@ee-labs/ui": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}
