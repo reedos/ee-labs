@@ -42,7 +42,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | `INTERFACES_LAB_PLAN.md` |
 | Grid Lab | building | `lab/grid-lab` | Power Lab I3 and D1 for two cross-references | `GRID_LAB_PLAN.md` |
 | Photonics Lab | waiting | | Electronics O, Applied Analog Lab | `PHOTONICS_LAB_PLAN.md` |
-| Devices Lab | building | `lab/devices-lab` | | `DEVICES_LAB_PLAN.md` |
+| Devices Lab | built, dark | merged | | `DEVICES_LAB_PLAN.md` |
 | Signal Integrity | out of this repo | | | |
 
 ## 2. Deferred items, by lab
