@@ -90,6 +90,43 @@ export const PLANTS = {
     tex: 'P(s) = \\frac{K}{(1+\\tau_1 s)(1+\\tau_2 s)(1+\\tau_3 s)}',
   },
 
+  threePoleResonant: {
+    name: 'Three lags, and a resonance',
+    group: 'Hard to control',
+    hint:
+      'The same three lags with a lightly damped resonance riding on top of them, three times the plant\'s own ' +
+      'crossing frequency. D5 puts it there on purpose: the describing function is built on the hypothesis that ' +
+      'the linear part filters out the harmonics the saturation creates, and a peak sitting where the third ' +
+      'harmonic lands is the one place that hypothesis fails.',
+    params: [
+      P('k', 'Gain K', 1, 0.001, 1e6),
+      P('t1', 'τ₁', 1, 1e-4, 100, 's'),
+      P('t2', 'τ₂', 0.5, 1e-4, 100, 's'),
+      P('t3', 'τ₃', 0.25, 1e-4, 100, 's'),
+      P('wn', 'Resonance ωₙ', 3 * Math.sqrt(14), 1e-3, 1e4, 'rad/s'),
+      P('zeta', 'Resonance ζ', 0.01, 1e-4, 20, '', 'linear'),
+    ],
+    tf: (p) => {
+      const three = polyMul(polyMul([p.t1, 1], [p.t2, 1]), [p.t3, 1])
+      const reso = [1 / (p.wn * p.wn), (2 * p.zeta) / p.wn, 1]
+      return { b: [p.k], a: polyMul(three, reso) }
+    },
+    ss: (p) => {
+      const three = polyMul(polyMul([p.t1, 1], [p.t2, 1]), [p.t3, 1])
+      const reso = [1 / (p.wn * p.wn), (2 * p.zeta) / p.wn, 1]
+      return toStateSpace({ b: [p.k], a: polyMul(three, reso) })
+    },
+    states: [
+      { name: 'State 1', symbol: 'x₁', unit: '' },
+      { name: 'State 2', symbol: 'x₂', unit: '' },
+      { name: 'State 3', symbol: 'x₃', unit: '' },
+      { name: 'State 4', symbol: 'x₄', unit: '' },
+      { name: 'State 5', symbol: 'x₅', unit: '' },
+    ],
+    tex:
+      'P(s) = \\frac{K}{(1+\\tau_1 s)(1+\\tau_2 s)(1+\\tau_3 s)\\left(1 + \\frac{2\\zeta}{\\omega_n}s + \\frac{s^2}{\\omega_n^2}\\right)}',
+  },
+
   twoLag: {
     name: 'Two lags',
     group: 'Two states',
@@ -117,6 +154,28 @@ export const PLANTS = {
       { name: 'Second stage', symbol: 'x₂', unit: '' },
     ],
     tex: 'P(s) = \\frac{K}{(1+\\tau_1 s)(1+\\tau_2 s)}',
+  },
+
+  resonant: {
+    name: 'Resonant pair',
+    group: 'Two states',
+    hint:
+      'A lightly damped second-order plant, with a genuine overshoot in its own step. Group E fits a first-order ' +
+      'model to it as well as a second-order one, because a first-order model has no way to overshoot and the ' +
+      'residual says so.',
+    params: [
+      P('k', 'Gain K', 1, 0.001, 1e6),
+      P('wn', 'Natural frequency ωₙ', 3, 1e-3, 1e4, 'rad/s'),
+      P('zeta', 'Damping ζ', 0.35, 0.01, 20, '', 'linear'),
+    ],
+    tf: (p) => ({ b: [p.k * p.wn * p.wn], a: [1, 2 * p.zeta * p.wn, p.wn * p.wn] }),
+    ss: (p) =>
+      toStateSpace({ b: [p.k * p.wn * p.wn], a: [1, 2 * p.zeta * p.wn, p.wn * p.wn] }),
+    states: [
+      { name: 'State 1', symbol: 'x₁', unit: '' },
+      { name: 'State 2', symbol: 'x₂', unit: '' },
+    ],
+    tex: 'P(s) = \\frac{K\\omega_n^2}{s^2 + 2\\zeta\\omega_n s + \\omega_n^2}',
   },
 
   twin: {
