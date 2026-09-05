@@ -227,7 +227,14 @@ function activeLoadLayout() {
   ], labels: IDS }
 }
 
-/** The cascode: the common base standing on the common emitter. */
+/**
+ * The cascode: the common base standing on the common emitter.
+ *
+ * The two devices share one column, so the gap between their centres has to
+ * carry the lower one's reading and the upper one's label. Each hangs 34 off
+ * its own centre, and the two boxes are about ten tall between them, so 75
+ * put the label on the reading and 80 is the least that reads cleanly.
+ */
 function cascodeLayout() {
   return { w: 560, h: 250, items: [
     { el: 'VCC', x: 45, y: 60, dir: 'v' },
@@ -245,7 +252,7 @@ function cascodeLayout() {
     { el: 'Q2', x: 400, y: 105, dir: 'h' },
     wire(412, 85, 430, 85),
     wire(412, 125, 430, 125),
-    wire(430, 125, 430, 160),
+    wire(430, 125, 430, 166),
     node('c1', 430, 145, 'r'),
     wire(380, 105, 350, 105),
     node('b2', 350, 105, 't'),
@@ -254,21 +261,21 @@ function cascodeLayout() {
     wire(270, 105, 240, 105),
     wire(240, 105, 240, 225),
     gnd(240, 225),
-    { el: 'Q1', x: 400, y: 180, dir: 'h' },
-    wire(412, 160, 430, 160),
-    wire(412, 200, 412, 215),
+    { el: 'Q1', x: 400, y: 186, dir: 'h' },
+    wire(412, 166, 430, 166),
+    wire(412, 206, 412, 215),
     wire(412, 215, 460, 215),
     gnd(460, 215),
-    wire(380, 180, 350, 180),
-    node('b', 350, 180, 't'),
-    { el: 'Vs', x: 310, y: 180, dir: 'h' },
-    wire(330, 180, 350, 180),
-    node('bb', 266, 180, 't'),
-    wire(240, 180, 290, 180),
-    { el: 'VBB', x: 180, y: 180, dir: 'h' },
-    wire(200, 180, 240, 180),
-    wire(160, 180, 130, 180),
-    wire(130, 180, 130, 225),
+    wire(380, 186, 350, 186),
+    node('b', 350, 186, 't'),
+    { el: 'Vs', x: 310, y: 186, dir: 'h' },
+    wire(330, 186, 350, 186),
+    node('bb', 266, 186, 't'),
+    wire(240, 186, 290, 186),
+    { el: 'VBB', x: 180, y: 186, dir: 'h' },
+    wire(200, 186, 240, 186),
+    wire(160, 186, 130, 186),
+    wire(130, 186, 130, 225),
     gnd(130, 225),
   ], labels: IDS }
 }

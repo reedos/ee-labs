@@ -143,12 +143,17 @@ than 24, and its reading hangs 34 above rather than 24. Item 4 above
 records that `schematicGeometry.js` now exports `transistorPinPlaces`,
 `transistorBodyBox` and `transistorTextPlaces` for exactly this.
 
-Groups H and I were checked against both geometries as they were drawn. A
-scratch harness added the real transistor boxes by hand, and all twelve
-drawings came out clean under both. The app's own test knows only the
-two-terminal boxes. Whoever draws a transistor next should wire the three
-exports in and run it again. The file belongs to this app rather than to
-this lane.
+Groups H and I are checked against both geometries. A scratch harness adds
+the real transistor boxes by hand, and all twelve drawings come out clean
+under both.
+
+The cascode was not, on the first pass. Its two transistors shared a column
+75 apart, and the upper one's label landed on the lower one's reading in the
+voltage and power views. Two devices in one column need about 80 between
+their centres, because each hangs its writing 34 off its own centre. The
+app's own test knows only the two-terminal boxes and caught none of it.
+Whoever draws a transistor next should wire the three exports in and run it
+again. The file belongs to this app rather than to this lane.
 
 ### 8. Two panes have no data behind them
 
