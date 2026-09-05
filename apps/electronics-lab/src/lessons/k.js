@@ -127,7 +127,8 @@ export const LESSONS_K = {
       'over the transconductance plus a share of the base circuit, 33.87 Ω. At 47.0 µF that gives 99.98 Hz, ' +
       'nineteen times higher, and the exact corner of 103.6 Hz follows it. A course often raises the ' +
       'wrong capacitor first and sees almost nothing change. The one to raise is the one seeing the smallest ' +
-      'resistance, and on a stage like this that is always the bypass.',
+      'resistance, and on a stage like this that is always the bypass. The two capacitances inside the device ' +
+      'are left out of this circuit, so the curve above stays flat to the top of the axis. K3 puts them back.',
   },
 
   k3: {
