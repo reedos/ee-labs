@@ -115,7 +115,7 @@ the start. The plan says which those are.
 | `packages/network` | the Electronics overseer, then by request | a lab that needs a new element writes the contract in its `NEEDS.md` |
 | `packages/dsp` | the DSP Lab overseer | as above |
 | `packages/systems` | the Control Lab II overseer | as above |
-| `packages/switched` | the Power Lab owner (not in this program yet) | as above |
+| `packages/switched` | the Power Lab lanes, Groups H to N, then by request | as above |
 | `packages/ui`, `packages/explain` | director, by request | a new prop or canvas comes with its test and its second lab named |
 | a new package | the overseer whose lab creates it | listed in `EE_LABS_MAP.md` §3 |
 

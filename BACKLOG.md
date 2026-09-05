@@ -681,6 +681,29 @@ Items that cross labs and land at integration.
   exceed the 90 s timeout on a loaded four-core machine. Their owner chooses a
   longer timeout, a shorter sweep, or a split, before CI gates on one command.
 
+### In flight, 2026-09-05
+
+Lanes running as workflows, each an Opus builder followed by an Opus reviewer who
+commits fixes on the same branch. The director integrates the branches the reviewers
+mark mergeable, in this order, and then runs the whole suite once.
+
+| Work | Branches | Run |
+| --- | --- | --- |
+| Electronics Groups D to I | `lab/electronics-de`, `-fg`, `-hi` | `wf_24c95795-7a8` |
+| Electronics Groups J to O | `lab/electronics-jk`, `-lm`, `-no` | `wf_0294d467-036` |
+| Power Lab Groups H to N | `lab/power-hi`, `-jk`, `-lmn` | `wf_53dfff51-cb0` |
+| RF Lab A to D, System Lab A, Photonics A, C to F | `lab/rf-lab`, `lab/system-lab`, `lab/photonics-lab` | `wf_3a04f893-136` |
+| Browser harnesses for the nine labs that have one | `verify/<slug>` | `wf_c19e5501-bd2` |
+
+Waiting behind those, with what each waits on:
+
+- the VLSI and Interfaces labs, buildable now and held for the box's four cores;
+- browser harnesses for the ten labs without one, held the same way;
+- the Applied Analog, Analog IC and Mixed-Signal labs, on the Electronics lanes;
+- RF Groups E to H and System Phases 2 to 6, on Electronics K and O;
+- Photonics Group B, on Electronics O;
+- the Machines Lab's drives, on Power Lab Group L.
+
 ## 4. Planner entries
 
 ### Planner: Grid, Devices
