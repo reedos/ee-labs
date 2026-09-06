@@ -52,7 +52,7 @@ interleave.
 | H · Sinusoids and phasors | natural and forced, phasors, impedance, resonance, AC power, one sine at a time, the roots as poles, branched KCL and coupled states | 8 |
 | I · The diode | four models, the load line and Newton, assumed state, rectifiers, clipper, Zener, clamper, doubler | 10 |
 
-F1, G1 and H1 introduce the necessary notation and arithmetic in their opening
+Circuit Elements F1, G1 and H1 introduce the necessary notation and arithmetic in their opening
 Start here views. H8 precedes H6/H7, so branched circuit analysis comes before
 frequency response.
 

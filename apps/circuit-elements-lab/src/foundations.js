@@ -89,14 +89,16 @@ export function foundationSteps(id, x) {
 function phasorSteps(x) {
   const source = x.net.elements.find(e => e.id === 'V1').wave
   const R = x.net.elements.find(e => e.id === 'R1').value, C = x.net.elements.find(e => e.id === 'C1').value
-  const w = x.omega, f = w / (2 * Math.PI), phase = source.phase || 0
-  const V = cx.polar(source.amp, phase), Z = [R, -1 / (w * C)], I = cx.cdiv(V, Z)
+  const w = x.omega, f = w / (2 * Math.PI), peak = Math.abs(source.amp)
+  const phase = (source.phase || 0) + (source.amp < 0 ? Math.PI : 0)
+  const V = cx.polar(peak, phase), Z = [R, -1 / (w * C)], I = cx.cdiv(V, Z)
   const denominator = Z[0] ** 2 + Z[1] ** 2
   const steps = [{ title: 'Read amplitude, frequency and phase before using complex numbers',
     text: 'The source is a sine wave. Its peak amplitude is in volts, frequency f is in cycles per second, angular frequency omega is in radians per second, and phase phi tells where the wave starts. The period T is the time for one cycle.',
     latex: [String.raw`v_s(t)=A_{\mathrm{pk}}\sin(\omega t+\varphi),\qquad \omega=2\pi f,\quad T=1/f`,
-      String.raw`A_{\mathrm{pk}}=` + qty(source.amp, 'V') + String.raw`,\quad f=` + qty(f, 'Hz') + String.raw`,\quad T=` + qty(1 / f, 's'),
-      String.raw`v_s(t)=` + String.raw`${n(source.amp)}\sin(${n(w)}t+${par(phase)})\,\mathrm V`] },
+      String.raw`A_{\mathrm{pk}}=` + qty(peak, 'V') + String.raw`,\quad f=` + qty(f, 'Hz') + String.raw`,\quad T=` + qty(1 / f, 's'),
+      String.raw`v_s(t)=` + String.raw`${n(peak)}\sin(${n(w)}t+${par(phase)})\,\mathrm V`],
+    note: 'The amplitude control can be signed. A negative setting is represented here by a positive peak amplitude and a phase shifted by 180 degrees. It is the same physical waveform.' },
   { title: 'Represent one complex number in two forms',
     text: 'The imaginary unit j satisfies j squared equals minus one. Rectangular form a + jb gives horizontal and vertical components. Polar form gives a magnitude and an angle. They represent the same number. atan2 chooses the angle in the correct quadrant; an ordinary arctangent of b/a alone can choose the wrong one.',
     latex: [String.raw`j^2=-1,\qquad z=a+jb=M(\cos\theta+j\sin\theta)=Me^{j\theta}`,
@@ -121,5 +123,5 @@ function phasorSteps(x) {
   { title: 'Choose the next calculation',
     text: 'The phasor current gives amplitude and phase after the natural response has decayed. The State equation route also includes startup from the capacitor’s initial voltage. Equations uses the state at the cursor to solve that particular instant. Open Phasors next to calculate every voltage and compare the arrows with their waveforms.',
     latex: [String.raw`i_{\mathrm{ss}}(t)=|I|\sin(\omega t+\arg I)`, String.raw`v_C(t)=v_{C,\mathrm{ss}}(t)+[v_C(0^+)-v_{C,\mathrm{ss}}(0)]e^{-t/(RC)}`] }]
-  return { steps, V, Z, I }
+  return { steps, V, Z, I, peak, phase }
 }

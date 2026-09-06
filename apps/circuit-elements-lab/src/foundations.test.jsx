@@ -49,3 +49,13 @@ it('checks the foundational arithmetic against the live circuit and state solver
     }
   }
 })
+
+it('keeps peak amplitude nonnegative and reconstructs signed and zero-amplitude sources', () => {
+  for(const A of [-5, 0, 5]) {
+    const x=analyse(byId.h1,{...defaultsOf('h1'),A,phi:45})
+    const work=foundationSteps('h1',x)
+    expect(work.peak).toBe(Math.abs(A))
+    for(const t of [0,.001,.002]) close(work.peak*Math.sin(x.omega*t+work.phase),x.ac.at(t).volt.V1)
+    close(cx.cabs(cx.csub(work.I,x.ac.i.R1)),0)
+  }
+})
