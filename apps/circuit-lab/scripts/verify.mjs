@@ -54,7 +54,7 @@ page.on('console', (m) => {
   if (m.type() === 'error' || m.type() === 'warning') consoleErrors.push(`${m.type()}: ${m.text()}`)
 })
 
-await page.goto(URL, { waitUntil: 'load' })
+await page.goto(`${URL}?course=frequency`, { waitUntil: 'load' })
 await page.waitForSelector('.views canvas')
 await page.waitForTimeout(400)
 
@@ -993,7 +993,7 @@ console.log('\n8. Real parts wobble: the pole cloud is a shape, not a smudge in 
 {
   // At the smaller laptop, where the pane is shortest.
   await page.setViewportSize({ width: 1366, height: 768 })
-  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.goto(`${URL}?course=frequency`, { waitUntil: 'networkidle' })
   await pick('Real parts wobble')
   // Every pixel drawn in the trace colour — the cloud's dots (trace at
   // alpha 0.28, stacking) and the pole crosses (trace at 1) — in the UPPER
@@ -1082,7 +1082,7 @@ console.log('\n8. Real parts wobble: the pole cloud is a shape, not a smudge in 
   if (!(armed.n > 1.5 * armedBare.n)) fail(`"Blame the right part" arc added too little ink: ${armed.n} px vs ${armedBare.n} px for the cross alone`)
 
   await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.goto(`${URL}?course=frequency`, { waitUntil: 'networkidle' })
 }
 
 // --------------------------- 7. the fold: what a note names is on the screen
@@ -1205,7 +1205,7 @@ console.log('\n13. Phone 390×844: the lesson text, the response and the lesson 
   // the lesson's own view still in the first viewport.
   await page.setViewportSize({ width: 390, height: 844 })
   for (const c of cases) {
-    await page.goto(URL, { waitUntil: 'networkidle' })
+    await page.goto(`${URL}?course=frequency`, { waitUntil: 'networkidle' })
     await c.load()
     await page.evaluate(() => {
       document.querySelector('.controls').scrollTop = 0
@@ -1226,7 +1226,7 @@ console.log('\n13. Phone 390×844: the lesson text, the response and the lesson 
   }
   // The Math tab must not widen the page: the RLC's formulas and tables
   // pushed .views to 463 px and cropped the Bode.
-  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.goto(`${URL}?course=frequency`, { waitUntil: 'networkidle' })
   await pick('Q is how sharp, and R sets it')
   await page.getByRole('button', { name: 'Math', exact: true }).click()
   await settle()
@@ -1244,7 +1244,7 @@ console.log('\n13. Phone 390×844: the lesson text, the response and the lesson 
   // right edge regardless of scroll position, so this guards it can never
   // regress back to being the part that gets cut.
   for (const name of ['Where the corner comes from', 'This circuit is a biquad']) {
-    await page.goto(URL, { waitUntil: 'networkidle' })
+    await page.goto(`${URL}?course=frequency`, { waitUntil: 'networkidle' })
     await pick(name)
     await settle()
     const flowBox = await page.locator('.flow').boundingBox()
@@ -1307,7 +1307,7 @@ console.log('\n13. Phone 390×844: the lesson text, the response and the lesson 
     'Blame the right part',
     'Why active filters exist',
   ]) {
-    await page.goto(URL, { waitUntil: 'networkidle' })
+    await page.goto(`${URL}?course=frequency`, { waitUntil: 'networkidle' })
     await pick(name)
     await page.evaluate(() => {
       document.querySelector('.controls').scrollTop = 0
@@ -1330,7 +1330,7 @@ console.log('\n13. Phone 390×844: the lesson text, the response and the lesson 
   }
 
   await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.goto(`${URL}?course=frequency`, { waitUntil: 'networkidle' })
 }
 
 // --------------------- 15. A term tapped in the note, and the hand-over pointer
@@ -1516,7 +1516,7 @@ console.log('\n16. Round two follow-ups: topbar term taps, distinguishable TOL l
   }
   if (!sawCue) fail("no circuit's math pane overflowed at 1366x650 — the scroll cue was never exercised")
   await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.goto(`${URL}?course=frequency`, { waitUntil: 'networkidle' })
 }
 
 // ------------------------------------------------ A11Y. names for everything
@@ -1626,7 +1626,7 @@ console.log(`   all ${circuitNames.length} circuits fit at 3840x2160`)
 console.log('\n14. Touch targets at 390x844 (button, link, summary, role=button, checkbox)\n')
 {
   await page.setViewportSize(PHONE_VIEWPORT)
-  await page.goto(URL, { waitUntil: 'load' })
+  await page.goto(`${URL}?course=frequency`, { waitUntil: 'load' })
   await page.waitForSelector('.views canvas')
 
   const exceptionFloor = (el) =>
@@ -1702,7 +1702,7 @@ async function checkLessonOnScreen(ctx, scrollBefore) {
 
 {
   await page.setViewportSize(PHONE_VIEWPORT)
-  await page.goto(URL, { waitUntil: 'load' })
+  await page.goto(`${URL}?course=frequency`, { waitUntil: 'load' })
   await page.waitForSelector('.views canvas')
 
   // Reproduction 1: scrolled to the bottom of "Real parts wobble", tap next
@@ -1724,7 +1724,7 @@ async function checkLessonOnScreen(ctx, scrollBefore) {
   await checkLessonOnScreen('picked from the list, from a bottom scroll', before2.scrollTop)
 
   await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto(URL, { waitUntil: 'load' })
+  await page.goto(`${URL}?course=frequency`, { waitUntil: 'load' })
   await page.waitForSelector('.views canvas')
 }
 
@@ -1776,7 +1776,7 @@ async function checkNoteAndFeaturedOnScreen(ctx, scrollBefore) {
 
 {
   await page.setViewportSize(PHONE_VIEWPORT)
-  await page.goto(URL, { waitUntil: 'load' })
+  await page.goto(`${URL}?course=frequency`, { waitUntil: 'load' })
   await page.waitForSelector('.views canvas')
 
   // Starting position 1: scrolled to near the bottom of the sidebar in a
@@ -1801,7 +1801,7 @@ async function checkNoteAndFeaturedOnScreen(ctx, scrollBefore) {
   await checkNoteAndFeaturedOnScreen('picked from the list (biquad -> corner), from a mid scroll', before4.scrollTop)
 
   await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto(URL, { waitUntil: 'load' })
+  await page.goto(`${URL}?course=frequency`, { waitUntil: 'load' })
   await page.waitForSelector('.views canvas')
 }
 

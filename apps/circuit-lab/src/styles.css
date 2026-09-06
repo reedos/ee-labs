@@ -1,6 +1,48 @@
 /* Circuit Lab's own furniture. The shell, controls and math panel come from
  * @ee-labs/ui and @ee-labs/explain. */
 
+.phasor-course { height: 100dvh; display: flex; flex-direction: column; }
+.phasor-course-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.phasor-course-header h1 { font-size: 20px; margin: 0; }
+.phasor-course-header p { margin: 2px 0; color: var(--dim); }
+.phasor-course-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 310px minmax(0, 1fr); }
+.phasor-course-controls, .phasor-course-body { overflow-y: auto; min-width: 0; padding: 20px; }
+.phasor-course-controls { background: var(--panel); border-right: 1px solid var(--line); }
+.phasor-course-controls h2 { margin: 12px 0; font-size: 16px; }
+.phasor-course-controls nav a { display: block; padding: 10px; margin: 5px 0; border: 1px solid var(--line); border-radius: 5px; text-decoration: none; }
+.phasor-course-controls a[aria-current] { border-color: var(--accent); background: var(--panel-2); }
+.phasor-course a, .phasor-return { color: var(--accent); }
+.phasor-return { display: inline-flex; align-items: center; min-height: 44px; font-size: 12px; }
+.phasor-course p { line-height: 1.65; max-width: 90ch; }
+.phasor-course-body > section { margin: 18px 0; }
+.phasor-course-body h2 { margin-top: 0; }
+.phasor-course-body h3 { font-size: 16px; }
+.phasor-method, .phasor-practice { border: 1px solid var(--line); border-radius: 6px; padding: 14px; background: var(--panel); }
+.phasor-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0; }
+.phasor-course button, .phasor-actions a { border: 1px solid var(--line-bright); background: var(--panel-2); color: var(--accent); border-radius: 5px; padding: 10px 12px; min-height: 44px; font: inherit; cursor: pointer; }
+.phasor-course-link { display: block; margin: 16px 0; }
+.phasor-circuit .schematic { display: block; width: 100%; max-width: 650px; height: auto; max-height: none; margin: 0 auto; }
+.phasor-vector-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.phasor-vectors { margin: 0; border: 1px solid var(--line); padding: 12px; border-radius: 6px; }
+.phasor-vectors svg { width: 100%; max-height: 290px; }
+.phasor-vectors text { fill: var(--dim); font-size: 12px; }
+.phasor-vectors ul { padding-left: 18px; font-size: 13px; }
+.phasor-worked > section { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.phasor-math { overflow-x: auto; padding: 8px 0; }
+.phasor-math .katex-display { text-align: left; margin: 8px 0; }
+.phasor-math .katex-display > .katex { text-align: left; }
+.phasor-table { overflow-x: auto; }
+.phasor-table table { border-collapse: collapse; width: 100%; }
+.phasor-table th, .phasor-table td { text-align: right; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.phasor-table th:first-child { text-align: left; }
+@media (max-width: 800px) {
+  .phasor-course { overflow-y: auto; display: block; }
+  .phasor-course-header { flex-wrap: wrap; }
+  .phasor-course-layout { display: block; }
+  .phasor-course-controls, .phasor-course-body { overflow: visible; padding: 16px; }
+  .phasor-vector-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 .preset-group { margin-bottom: 10px; }
 
 /* The lesson and circuit chips, styled as Signal Lab styles its presets —

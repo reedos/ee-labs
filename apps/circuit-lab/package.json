@@ -11,9 +11,11 @@
     "preview": "vite preview",
     "test": "vitest run",
     "verify": "node scripts/verify.mjs",
+    "verify:phasors": "node scripts/verify-phasors.mjs",
     "shots": "node scripts/shoot.mjs --all"
   },
   "dependencies": {
+    "@ee-labs/network": "*",
     "@ee-labs/dsp": "*",
     "@ee-labs/explain": "*",
     "@ee-labs/systems": "*",

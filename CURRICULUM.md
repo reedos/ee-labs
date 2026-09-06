@@ -24,7 +24,7 @@ order the nav will fold to (`ELECTRONICS_LAB_PLAN.md` Decision 5).
 | Step | Lab | Course it mirrors | Experiments | Status |
 | --- | --- | --- | --- | --- |
 | 1 | Circuit Elements Lab | Circuits I | 58 | released |
-| 2 | Circuit Lab | Circuits II, the frequency-domain half | 16 | released |
+| 2 | Circuit Lab | Circuits II, phasors and frequency response | 20 | released |
 | 3 | Electronics Lab | Electronics I and II | 75 of 77 | built in part, dark |
 | 4 | Signal Lab | Signals and Systems, DSP | 35 | released |
 | 5 | Control Lab | Control | 13 | released |
@@ -55,18 +55,21 @@ interleave.
 What it gives at the end: `H(jω)` read one sine at a time, and the Bode view of an RC.
 The same circuit hands over to Circuit Lab.
 
-### Step 2: Circuit Lab (16, released)
+### Step 2: Circuit Lab (20, released)
 
 | Group | Teaches | Count |
 | --- | --- | --- |
+| Phasor analysis | complex arithmetic, series KVL, branched KCL, AC power | 4 |
 | Reading a response | a divider has no dynamics, where the corner comes from, the high-pass, RL is RC, the impulse response | 5 |
 | Resonance | three filters from one RLC, Q, series against parallel, resonance in time, the notch, tolerance, which part | 7 |
 | Active circuits | why active filters exist, the inverting gain, the pole at the origin | 3 |
 | One object, two names | the RLC is a biquad, and the hand-over to Signal Lab and Control Lab | 1 |
 
-What it assumes at the start: dB, impedance and phase, defined on contact. What it
-introduces without an experiment: the complex frequency s, poles and zeros, as term
-definitions (see §3, seam 1).
+The new entry group assumes Kirchhoff's laws and the capacitor and inductor laws.
+It introduces peak-amplitude sine phasors before solving circuit equations.
+The existing frequency-response lessons remain available directly.
+The next rollout groups add state equations and Laplace methods before those lessons.
+`CIRCUITS_I_II_BUILDOUT.md` records the remaining course scope and dependencies.
 
 ### Step 3: Electronics Lab (75 of 77)
 

@@ -684,8 +684,9 @@ export default function App() {
           <h1>Circuit Lab</h1>
           <p className="sub">
             A circuit, the transfer function it has, and the same thing seen in frequency, in
-            time, and as poles. Start with Try this, top to bottom.
+            time, and as poles. Explore the frequency-response lessons below.
           </p>
+          <a className="phasor-return" href="#phasors=complex">Start with phasor analysis</a>
           <ReportIssue
             lab="Circuit Lab"
             version={pkg.version}

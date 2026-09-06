@@ -3,7 +3,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { EXPERIMENTS as ELEMENTS, GROUPS as ELEMENT_GROUPS } from '../../../apps/circuit-elements-lab/src/experiments.js'
-import { LESSONS as CIRCUIT, LESSON_GROUPS as CIRCUIT_GROUPS } from '../../../apps/circuit-lab/src/lessons.js'
+import { LESSONS as FREQUENCY, LESSON_GROUPS as FREQUENCY_GROUPS } from '../../../apps/circuit-lab/src/lessons.js'
+import { PHASOR_LESSONS } from '../../../apps/circuit-lab/src/phasorCourse.js'
 import { PRESETS as SIGNAL, PRESET_GROUPS as SIGNAL_GROUPS } from '../../../apps/signal-lab/src/presets.js'
 import { LESSONS as CONTROL, LESSON_GROUPS as CONTROL_GROUPS } from '../../../apps/control-lab/src/lessons.js'
 import { EXPERIMENTS as POWER } from '../../../apps/power-lab/src/experiments.js'
@@ -35,6 +36,8 @@ import { EXPERIMENTS as ELECTRONICS } from '../../../apps/electronics-lab/src/ex
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 const DOC = readFileSync(join(ROOT, 'CURRICULUM.md'), 'utf8')
+const CIRCUIT = [...PHASOR_LESSONS.map(l => ({ ...l, group: 'Phasor analysis' })), ...FREQUENCY]
+const CIRCUIT_GROUPS = ['Phasor analysis', ...FREQUENCY_GROUPS]
 
 // ------------------------------------------------------------ the labs
 
