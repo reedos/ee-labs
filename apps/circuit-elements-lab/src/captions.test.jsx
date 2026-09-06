@@ -183,7 +183,7 @@ describe('the sentence under the plot', () => {
     const level = marks.scope.find((m) => m.kind === 'level')
     const point = marks.scope.find((m) => m.kind === 'point')
     const seg = marks.scope.find((m) => m.kind === 'segment')
-    expect(text).toContain(`E = ${num(level.value, 'V', 3)}`)
+    expect(text).toContain(`V₁ = ${num(level.value, 'V', 3)}`)
     expect(text).toContain('63.2 %')
     expect(text).toContain(num(point.value, 'V', 3))
     expect(text).toContain(`τ = ${num(seg.value, 's', 3)}`)

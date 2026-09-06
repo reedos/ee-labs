@@ -216,12 +216,12 @@ const ENTRIES = {
     return {
       blocks: [
         T('The source fixes the voltage across the resistor; Ohm’s law then fixes the current. The source supplies exactly that current.'),
-        F('v_R = E, \\qquad i = \\frac{v_R}{R} = \\frac{E}{R}'),
+        F('v_R = V_1, \\qquad i = \\frac{v_R}{R} = \\frac{V_1}{R}'),
         C([
-          row('v_R = E', p.E, s.volt.R1, 'V'),
-          row('i = E / R', i, s.i.R1, 'A'),
+          row('v_R = V₁', p.E, s.volt.R1, 'V'),
+          row('i = V₁ / R', i, s.i.R1, 'A'),
           row('source current (out of +)', -i, s.i.V1, 'A'),
-          row('p_R = E²/R', (p.E * p.E) / p.R1, s.p.R1, 'W'),
+          row('p_R = V₁²/R', (p.E * p.E) / p.R1, s.p.R1, 'W'),
         ]),
       ],
     }
@@ -250,8 +250,8 @@ const ENTRIES = {
     return {
       blocks: [
         T('Every node voltage carries V_ref; every difference between two nodes does not. Elements see only differences.'),
-        F('v_{in} = V_{ref} + E, \\qquad v_A = V_{ref} + E\\,\\frac{R_2}{R_1 + R_2}, \\qquad v_{ref} = V_{ref}'),
-        F('v_{R_1} = v_{in} - v_A = E\\,\\frac{R_1}{R_1 + R_2}', 'no V_ref in it'),
+        F('v_{in} = V_{ref} + V_1, \\qquad v_A = V_{ref} + V_1\\,\\frac{R_2}{R_1 + R_2}, \\qquad v_{ref} = V_{ref}'),
+        F('v_{R_1} = v_{in} - v_A = V_1\\,\\frac{R_1}{R_1 + R_2}', 'no V_ref in it'),
         C([
           row('v_in', p.Vref + p.E, s.v.in, 'V'),
           row('v_A', vA, s.v.A, 'V'),
@@ -270,8 +270,8 @@ const ENTRIES = {
     return {
       blocks: [
         T('The resistor’s + is its left end, at node in. Its voltage is in minus n1; its current is measured into the left end. Both flip sign together, so their product never does.'),
-        F('v_R = v_{in} - v_{n_1} = E_1 - E_2, \\qquad i_R = \\frac{v_R}{R}, \\qquad p_R = v_R\\, i_R = \\frac{(E_1 - E_2)^2}{R} \\ge 0'),
-        F('p_{V_1} = -E_1 i_R', 'negative while V₁ pushes: current leaves its +'),
+        F('v_R = v_{in} - v_{n_1} = V_1 - V_2, \\qquad i_R = \\frac{v_R}{R}, \\qquad p_R = v_R\\, i_R = \\frac{(V_1 - V_2)^2}{R} \\ge 0'),
+        F('p_{V_1} = -V_1 i_R', 'negative while V₁ pushes: current leaves its +'),
         C([
           row('v_R', v, s.volt.R1, 'V'),
           row('i_R', i, s.i.R1, 'A'),
@@ -291,7 +291,7 @@ const ENTRIES = {
       blocks: [
         T('KCL at node A: the current arriving through R₁ equals the current leaving through R₂ and R₃.'),
         F('i_{R_1} = i_{R_2} + i_{R_3}'),
-        F('V_A = E\\,\\frac{R_2 \\parallel R_3}{R_1 + R_2 \\parallel R_3}', 'the node voltage, from the series–parallel reduction'),
+        F('V_A = V_1\\,\\frac{R_2 \\parallel R_3}{R_1 + R_2 \\parallel R_3}', 'the node voltage, from the series–parallel reduction'),
         C([
           row('V_A', vA, s.v.A, 'V'),
           row('i_R1', (p.E - vA) / p.R1, s.i.R1, 'A'),
@@ -307,7 +307,7 @@ const ENTRIES = {
     return {
       blocks: [
         T('KVL around the loop: the rise across the source equals the sum of the drops across the resistors.'),
-        F('E - i R_1 - i R_2 = 0 \\quad\\Rightarrow\\quad i = \\frac{E}{R_1 + R_2}'),
+        F('V_1 - i R_1 - i R_2 = 0 \\quad\\Rightarrow\\quad i = \\frac{V_1}{R_1 + R_2}'),
         C([
           row('loop current', i, s.i.R1, 'A'),
           row('v_R1', i * p.R1, s.volt.R1, 'V'),
@@ -328,7 +328,7 @@ const ENTRIES = {
           row('p_R1 = i²R₁', i * i * p.R1, s.p.R1, 'W'),
           row('p_R2 = i²R₂', i * i * p.R2, s.p.R2, 'W'),
           row('p_R3 = i²R₃', i * i * p.R3, s.p.R3, 'W'),
-          row('p_V1 = −E·i', -p.E * i, s.p.V1, 'W'),
+          row('p_V1 = −V₁·i', -p.E * i, s.p.V1, 'W'),
           row('Σ p', 0, s.pTotal, 'W', 0, 1e-12),
         ]),
       ],
@@ -340,8 +340,8 @@ const ENTRIES = {
     return {
       blocks: [
         T('One loop, two sources. KVL gives the current from the difference of the two voltages; the sign of each source’s power says which is delivering.'),
-        F('i = \\frac{E_1 - E_2}{R}'),
-        F('p_{V_1} = -E_1 i, \\qquad p_{V_2} = +E_2 i', 'the weaker source absorbs when i > 0'),
+        F('i = \\frac{V_1 - V_2}{R}'),
+        F('p_{V_1} = -V_1 i, \\qquad p_{V_2} = +V_2 i', 'the weaker source absorbs when i > 0'),
         C([
           row('i', i, s.i.R1, 'A'),
           row('p_V1', -p.E1 * i, s.p.V1, 'W'),
@@ -358,9 +358,9 @@ const ENTRIES = {
     return {
       blocks: [
         T('Series: one current, so resistances add and voltage divides in proportion.'),
-        F('R_{eq} = R_1 + R_2 + R_3, \\qquad v_k = E\\,\\frac{R_k}{R_{eq}}'),
+        F('R_{eq} = R_1 + R_2 + R_3, \\qquad v_k = V_1\\,\\frac{R_k}{R_{eq}}'),
         C([
-          row('i = E / R_eq', i, s.i.R1, 'A'),
+          row('i = V₁ / R_eq', i, s.i.R1, 'A'),
           row('v_R1', (p.E * p.R1) / rs, s.volt.R1, 'V'),
           row('v_R2', (p.E * p.R2) / rs, s.volt.R2, 'V'),
           row('v_R3', (p.E * p.R3) / rs, s.volt.R3, 'V'),
@@ -376,9 +376,9 @@ const ENTRIES = {
     return {
       blocks: [
         T('Parallel: one voltage, so conductances add and current divides in proportion to 1/R.'),
-        F('\\frac{1}{R_{eq}} = \\frac{1}{R_1} + \\frac{1}{R_2} + \\frac{1}{R_3}, \\qquad i_k = \\frac{E}{R_k}'),
+        F('\\frac{1}{R_{eq}} = \\frac{1}{R_1} + \\frac{1}{R_2} + \\frac{1}{R_3}, \\qquad i_k = \\frac{V_1}{R_k}'),
         C([
-          row('total current E / R_eq', p.E / req, -s.i.V1, 'A'),
+          row('total current V₁ / R_eq', p.E / req, -s.i.V1, 'A'),
           row('i_R1', p.E / p.R1, s.i.R1, 'A'),
           row('i_R2', p.E / p.R2, s.i.R2, 'A'),
           row('i_R3', p.E / p.R3, s.i.R3, 'A'),
@@ -398,7 +398,7 @@ const ENTRIES = {
     return {
       blocks: [
         T('The load sits in parallel with R₂, so the divider’s bottom leg shrinks and the output drops.'),
-        F('V_{A} = E\\,\\frac{R_2 \\parallel R_L}{R_1 + R_2 \\parallel R_L} \\;<\\; E\\,\\frac{R_2}{R_1 + R_2}'),
+        F('V_{A} = V_1\\,\\frac{R_2 \\parallel R_L}{R_1 + R_2 \\parallel R_L} \\;<\\; V_1\\,\\frac{R_2}{R_1 + R_2}'),
         C([
           row('V_A loaded', loaded, s.v.A, 'V'),
           row('droop from unloaded', unloaded - loaded, unloaded - s.v.A, 'V'),
@@ -421,7 +421,7 @@ const ENTRIES = {
     return {
       blocks: [
         T('Two dividers; the output is the difference of their midpoints. It is zero exactly when the ratios match.'),
-        F('v_{out} = v_R - v_L = E\\left(\\frac{R_4}{R_3 + R_4} - \\frac{R_2}{R_1 + R_2}\\right)'),
+        F('v_{out} = v_R - v_L = V_1\\left(\\frac{R_4}{R_3 + R_4} - \\frac{R_2}{R_1 + R_2}\\right)'),
         C([
           row('v_L', vL, s.v.L, 'V'),
           row('v_R', vR, s.v.R, 'V'),
@@ -430,7 +430,7 @@ const ENTRIES = {
         V([
           { label: 'R₄ for balance', value: r4bal, unit: 'Ω' },
           { label: '∂v_out/∂R₄ at balance', value: sens, unit: 'V/Ω' },
-          { label: 'per 1 % of R₄', value: sens * r4bal * 0.01, unit: 'V', note: '≈ E/4 × 1 % when all four are equal' },
+          { label: 'per 1 % of R₄', value: sens * r4bal * 0.01, unit: 'V', note: '≈ V₁/4 × 1 % when all four are equal' },
         ]),
       ],
     }
@@ -442,8 +442,8 @@ const ENTRIES = {
     return {
       blocks: [
         T('One unknown node voltage, one KCL equation, written directly in conductances.'),
-        F('\\frac{V_A - E}{R_1} + \\frac{V_A}{R_2} + \\frac{V_A}{R_3} = 0'),
-        F('V_A = \\frac{E/R_1}{1/R_1 + 1/R_2 + 1/R_3}'),
+        F('\\frac{V_A - V_1}{R_1} + \\frac{V_A}{R_2} + \\frac{V_A}{R_3} = 0'),
+        F('V_A = \\frac{V_1/R_1}{1/R_1 + 1/R_2 + 1/R_3}'),
         C([row('V_A', vA, s.v.A, 'V'), row('current in − current out at A', 0, s.residual.A, 'A', 0, 1e-12)]),
       ],
     }
@@ -455,14 +455,14 @@ const ENTRIES = {
     const vA = vB + p.E2
     return {
       blocks: [
-        T('KCL at A and at B each contain the unknown current through E₂. Add them and it cancels — that is the supernode — and V_A − V_B = E₂ closes the system.'),
-        F('\\frac{V_A - E_1}{R_1} + \\frac{V_A}{R_2} + \\frac{V_B}{R_3} = 0, \\qquad V_A - V_B = E_2'),
-        F('V_B = \\frac{E_1/R_1 - E_2(1/R_1 + 1/R_2)}{1/R_1 + 1/R_2 + 1/R_3}', 'the hand solution'),
+        T('KCL at A and at B each contain the unknown current through V₂. Add them and it cancels — that is the supernode — and V_A − V_B = V₂ closes the system.'),
+        F('\\frac{V_A - V_1}{R_1} + \\frac{V_A}{R_2} + \\frac{V_B}{R_3} = 0, \\qquad V_A - V_B = V_2'),
+        F('V_B = \\frac{V_1/R_1 - V_2(1/R_1 + 1/R_2)}{1/R_1 + 1/R_2 + 1/R_3}', 'the hand solution'),
         C([
           row('V_A', vA, s.v.A, 'V'),
           row('V_B', vB, s.v.B, 'V'),
           row('V_A − V_B', p.E2, s.v.A - s.v.B, 'V'),
-          row('i through E₂ (A→B)', (p.E1 - vA) / p.R1 - vA / p.R2, s.i.V2, 'A'),
+          row('i through V₂ (A→B)', (p.E1 - vA) / p.R1 - vA / p.R2, s.i.V2, 'A'),
         ]),
         V([
           {
@@ -487,13 +487,13 @@ const ENTRIES = {
     return {
       blocks: [
         T('One circulating current per window; KVL around each. The shared resistor carries i₁ − i₂.'),
-        F('\\begin{bmatrix} R_1 + R_2 & -R_2 \\\\ -R_2 & R_2 + R_3 \\end{bmatrix}\\begin{bmatrix} i_1 \\\\ i_2 \\end{bmatrix} = \\begin{bmatrix} E_1 \\\\ -E_2 \\end{bmatrix}'),
+        F('\\begin{bmatrix} R_1 + R_2 & -R_2 \\\\ -R_2 & R_2 + R_3 \\end{bmatrix}\\begin{bmatrix} i_1 \\\\ i_2 \\end{bmatrix} = \\begin{bmatrix} V_1 \\\\ -V_2 \\end{bmatrix}'),
         C([
           row('i₁ (= i_R1)', i1, s.i.R1, 'A'),
           row('i₂ (= i_R3)', i2, s.i.R3, 'A'),
           row('i₁ − i₂ (= i_R2)', i1 - i2, s.i.R2, 'A'),
         ]),
-        V([{ label: 'E₂ that stops i₂', value: (p.E1 * p.R2) / (p.R1 + p.R2), unit: 'V', note: 'above this the right loop reverses' }]),
+        V([{ label: 'V₂ that stops i₂', value: (p.E1 * p.R2) / (p.R1 + p.R2), unit: 'V', note: 'above this the right loop reverses' }]),
       ],
     }
   },
@@ -507,9 +507,9 @@ const ENTRIES = {
     return {
       blocks: [
         T('Each source alone, then the sum. Voltages and currents add; the power in R₂ does not, because (i₁ + i₂)² ≠ i₁² + i₂².'),
-        F('V_A = \\underbrace{E_1\\frac{R_2}{R_1+R_2}}_{V_1\\text{ alone}} + \\underbrace{I_1\\,(R_1 \\parallel R_2)}_{I_1\\text{ alone}}'),
+        F('V_A = \\underbrace{V_1\\frac{R_2}{R_1+R_2}}_{V_1\\text{ alone}} + \\underbrace{I_1\\,(R_1 \\parallel R_2)}_{I_1\\text{ alone}}'),
         C([
-          row('V_A from E₁ alone', vA_E, sp.parts.find((q) => q.id === 'V1').sol.v.A, 'V'),
+          row('V_A from V₁ alone', vA_E, sp.parts.find((q) => q.id === 'V1').sol.v.A, 'V'),
           row('V_A from I₁ alone', vA_I, sp.parts.find((q) => q.id === 'I1').sol.v.A, 'V'),
           row('sum = full V_A', vA_E + vA_I, s.v.A, 'V'),
           row('p_R2 full − Σ parts = 2 i₁ i₂ R₂', 2 * iE * iI * p.R2, s.p.R2 - sp.sumP.R2, 'W'),
@@ -528,7 +528,7 @@ const ENTRIES = {
         F('R_{th} = \\frac{V_{oc}}{I_{sc}} = \\left.\\frac{v}{1\\,\\mathrm{A}}\\right|_{\\text{sources killed}} = -\\frac{dv}{di}\\Big|_{\\text{load line}}'),
         C([
           row('V_oc', voc, th.voc, 'V'),
-          row('I_sc = E / R₁', p.E / p.R1, th.isc, 'A'),
+          row('I_sc = V₁ / R₁', p.E / p.R1, th.isc, 'A'),
           row('R_th by ratio', rth, th.rth.ratio, 'Ω'),
           row('R_th by test source', rth, th.rth.test, 'Ω'),
           row('R_th by load-line fit', rth, th.rth.fit, 'Ω', 1e-6),
@@ -543,7 +543,7 @@ const ENTRIES = {
     return {
       blocks: [
         T('Load power against load resistance has one maximum, at R_L = R_s, where half the power is lost inside the source.'),
-        F('P_L = \\frac{E^2 R_L}{(R_s + R_L)^2}, \\qquad P_{max} = \\frac{E^2}{4R_s} \\text{ at } R_L = R_s'),
+        F('P_L = \\frac{V_1^2 R_L}{(R_s + R_L)^2}, \\qquad P_{max} = \\frac{V_1^2}{4R_s} \\text{ at } R_L = R_s'),
         F('\\eta = \\frac{R_L}{R_s + R_L}', '50 % at the maximum'),
         C([
           row('P_L', pl, s.p.RL, 'W'),
@@ -561,7 +561,7 @@ const ENTRIES = {
     return {
       blocks: [
         T('The controlled source copies A times its control voltage to its output whatever is connected — and pays for it with power the symbol does not show.'),
-        F('v_{out} = A\\,v_{in}, \\qquad p_{E_1} = -\\frac{(A E)^2}{R_L}'),
+        F('v_{out} = A\\,v_{in}, \\qquad p_{E_1} = -\\frac{(A V_1)^2}{R_L}'),
         C([
           row('v_out', vout, s.v.out, 'V'),
           row('p_E1 (delivered)', -(vout * vout) / p.RL, s.p.E1, 'W'),
@@ -584,19 +584,19 @@ const ENTRIES = {
     return {
       blocks: [
         T('Two dividers and a gain. R_in loads the source through R_s; R_out loads the dependent source through R_L; the ideal op-amp loses neither.'),
-        F('v_p = E\\,\\frac{R_{in}}{R_s + R_{in}}, \\qquad v_{out} = A\\,v_p\\,\\frac{R_L}{R_{out} + R_L}'),
-        F('\\frac{v_{out}}{E} \\;\\xrightarrow{\\;R_{in}\\to\\infty,\\;R_{out}\\to 0\\;}\\; A', 'the ideal black box'),
+        F('v_p = V_1\\,\\frac{R_{in}}{R_s + R_{in}}, \\qquad v_{out} = A\\,v_p\\,\\frac{R_L}{R_{out} + R_L}'),
+        F('\\frac{v_{out}}{V_1} \\;\\xrightarrow{\\;R_{in}\\to\\infty,\\;R_{out}\\to 0\\;}\\; A', 'the ideal black box'),
         C([
           row('v_p', vp, s.v.p, 'V'),
           row('v_out', vout, s.v.out, 'V'),
-          row('input current E/(R_s + R_in)', p.E / (p.Rs + p.Rin), -s.i.V1, 'A'),
+          row('input current V₁/(R_s + R_in)', p.E / (p.Rs + p.Rin), -s.i.V1, 'A'),
           row('power into the load', pLoad, s.p.RL, 'W'),
           row('power from the source', pSource, -s.p.V1, 'W'),
         ]),
         V([
           { label: 'input loss R_in/(R_s+R_in)', value: kin, unit: '', note: '1 when R_in = ∞' },
           { label: 'output loss R_L/(R_out+R_L)', value: kout, unit: '', note: '1 when R_out = 0' },
-          { label: 'shortfall from ideal A·E', value: 100 * (1 - kin * kout), unit: '%' },
+          { label: 'shortfall from ideal A·V₁', value: 100 * (1 - kin * kout), unit: '%' },
           { label: 'power gain, load over source', value: pLoad / pSource, unit: '×', note: 'a resistor network cannot exceed 1' },
         ]),
       ],
@@ -607,7 +607,7 @@ const ENTRIES = {
     if (!s) {
       return {
         blocks: [
-          T('With A = ∞ and no feedback, v_out = A·(E − 0) has no finite value. The solver refuses rather than invent one — see the message above.'),
+          T('With A = ∞ and no feedback, v_out = A·(V₁ − 0) has no finite value. The solver refuses rather than invent one — see the message above.'),
           F('v_{out} = A\\,(v_+ - v_-) \\to \\infty'),
         ],
       }
@@ -615,7 +615,7 @@ const ENTRIES = {
     return {
       blocks: [
         T('With finite gain and no feedback the output is simply A times the input — a number, but not a useful one until the rails clip it.'),
-        F('v_{out} = A\\,(v_+ - v_-) = A\\,E'),
+        F('v_{out} = A\\,(v_+ - v_-) = A\\,V_1'),
         C([row('v_out', p.A * p.E, s.v.out, 'V')]),
       ],
     }
@@ -627,7 +627,7 @@ const ENTRIES = {
     return {
       blocks: [
         T('Feedback divides the output by G = 1 + R_f/R_g and hands it to the − input; the op-amp amplifies the remaining difference by A. Solve the loop exactly:'),
-        F('v_{out} = A\\left(E - \\frac{v_{out}}{G}\\right) \\;\\Rightarrow\\; v_{out} = \\frac{G E}{1 + G/A}'),
+        F('v_{out} = A\\left(V_1 - \\frac{v_{out}}{G}\\right) \\;\\Rightarrow\\; v_{out} = \\frac{G V_1}{1 + G/A}'),
         F('v_+ - v_- = \\frac{v_{out}}{A} \\xrightarrow{A\\to\\infty} 0', 'golden rule 2, as a limit'),
         C([
           row('v_out', vout, s.v.out, 'V'),
@@ -647,13 +647,13 @@ const ENTRIES = {
     const vout = -(p.Rf / p.Rg) * p.E
     return {
       blocks: [
-        T('The − input is held at 0 V by feedback, so the input current is E/R_g and all of it continues through R_f.'),
-        F('v_n = 0, \\qquad i = \\frac{E}{R_g} = \\frac{0 - v_{out}}{R_f} \\;\\Rightarrow\\; v_{out} = -\\frac{R_f}{R_g}E'),
+        T('The − input is held at 0 V by feedback, so the input current is V₁/R_g and all of it continues through R_f.'),
+        F('v_n = 0, \\qquad i = \\frac{V_1}{R_g} = \\frac{0 - v_{out}}{R_f} \\;\\Rightarrow\\; v_{out} = -\\frac{R_f}{R_g}V_1'),
         C([
           row('v_n (virtual ground)', 0, s.v.n, 'V', 0, 1e-12),
           row('v_out', vout, s.v.out, 'V'),
           row('i_Rg = i_Rf', p.E / p.Rg, s.i.Rf, 'A'),
-          row('input resistance E / i_in', p.Rg, p.E / -s.i.V1, 'Ω'),
+          row('input resistance V₁ / i_in', p.Rg, p.E / -s.i.V1, 'Ω'),
           // KCL at the output: what the op-amp sources feeds R_L and pulls back through R_f.
           row('op-amp output current', vout / p.RL - p.E / p.Rg, -s.i.U1, 'A'),
         ]),
@@ -666,11 +666,11 @@ const ENTRIES = {
     return {
       blocks: [
         T('KCL at the virtual ground: the two input currents, each set by its own resistor, sum into R_f.'),
-        F('\\frac{E_1}{R_1} + \\frac{E_2}{R_2} = \\frac{0 - v_{out}}{R_f} \\;\\Rightarrow\\; v_{out} = -R_f\\left(\\frac{E_1}{R_1} + \\frac{E_2}{R_2}\\right)'),
+        F('\\frac{V_1}{R_1} + \\frac{V_2}{R_2} = \\frac{0 - v_{out}}{R_f} \\;\\Rightarrow\\; v_{out} = -R_f\\left(\\frac{V_1}{R_1} + \\frac{V_2}{R_2}\\right)'),
         C([
           row('v_n', 0, s.v.n, 'V', 0, 1e-12),
-          row('i_R1 = E₁/R₁', p.E1 / p.R1, s.i.R1, 'A'),
-          row('i_R2 = E₂/R₂', p.E2 / p.R2, s.i.R2, 'A'),
+          row('i_R1 = V₁/R₁', p.E1 / p.R1, s.i.R1, 'A'),
+          row('i_R2 = V₂/R₂', p.E2 / p.R2, s.i.R2, 'A'),
           row('v_out', vout, s.v.out, 'V'),
         ]),
       ],
@@ -686,9 +686,9 @@ const ENTRIES = {
     const gcm = (p.R4 / (p.R3 + p.R4)) * (1 + p.R2 / p.R1) - p.R2 / p.R1
     return {
       blocks: [
-        T('The + input is a divider of E₂; the − side is an inverting amplifier of E₁ plus a non-inverting amplifier of v₊. Superpose:'),
-        F('v_{out} = \\frac{R_4}{R_3 + R_4}\\left(1 + \\frac{R_2}{R_1}\\right)E_2 - \\frac{R_2}{R_1}E_1'),
-        F('\\frac{R_3}{R_4} = \\frac{R_1}{R_2} \\;\\Rightarrow\\; v_{out} = \\frac{R_2}{R_1}(E_2 - E_1)', 'the matched case'),
+        T('The + input is a divider of V₂; the − side is an inverting amplifier of V₁ plus a non-inverting amplifier of v₊. Superpose:'),
+        F('v_{out} = \\frac{R_4}{R_3 + R_4}\\left(1 + \\frac{R_2}{R_1}\\right)V_2 - \\frac{R_2}{R_1}V_1'),
+        F('\\frac{R_3}{R_4} = \\frac{R_1}{R_2} \\;\\Rightarrow\\; v_{out} = \\frac{R_2}{R_1}(V_2 - V_1)', 'the matched case'),
         C([
           row('v₊', vp, s.v.p, 'V'),
           row('v₋ = v₊', vp, s.v.n, 'V'),
@@ -708,7 +708,7 @@ const ENTRIES = {
     return {
       blocks: [
         T('Output wired to − makes v_out = v₊ = V_A, and the op-amp’s input draws no current, so the divider is unloaded whatever hangs on the output.'),
-        F('v_{out} = V_A = E\\,\\frac{R_2}{R_1 + R_2}, \\qquad i_{R_L} = \\frac{v_{out}}{R_L} \\text{ from the op-amp}'),
+        F('v_{out} = V_A = V_1\\,\\frac{R_2}{R_1 + R_2}, \\qquad i_{R_L} = \\frac{v_{out}}{R_L} \\text{ from the op-amp}'),
         C([
           row('v_out = unloaded divider', unloaded, s.v.out, 'V'),
           row('divider current unchanged', p.E / (p.R1 + p.R2), s.i.R1, 'A'),
@@ -792,14 +792,14 @@ const ENTRIES = {
     return {
       blocks: [
         T('KVL round the loop with i = C·dv_C/dt is a first-order differential equation; its solution is the final value plus the starting gap shrinking as e^(−t/τ).'),
-        F('RC\\,\\frac{dv_C}{dt} + v_C = E \\;\\Rightarrow\\; v_C(t) = E + (v_0 - E)\\,e^{-t/\\tau}, \\qquad \\tau = RC'),
-        F('i(t) = \\frac{E - v_0}{R}\\,e^{-t/\\tau}', 'the same τ; the current cannot wait'),
+        F('RC\\,\\frac{dv_C}{dt} + v_C = V_1 \\;\\Rightarrow\\; v_C(t) = V_1 + (v_0 - V_1)\\,e^{-t/\\tau}, \\qquad \\tau = RC'),
+        F('i(t) = \\frac{V_1 - v_0}{R}\\,e^{-t/\\tau}', 'the same τ; the current cannot wait'),
         C([
           row('v_C before the switch', p.v0, x.tr.x0[0], 'V'),
           row('v_C(τ): 63.2 % of the way', v(tau), atT(x, tau).sol.volt.C1, 'V'),
           row('v_C(5τ): 99.3 %', v(t5), atT(x, t5).sol.volt.C1, 'V'),
           row('v_C at the cursor', v(tc), atT(x, tc).sol.volt.C1, 'V'),
-          row('i(0⁺) = (E − v₀)/R', i(0), atT(x, 0).sol.i.C1, 'A'),
+          row('i(0⁺) = (V₁ − v₀)/R', i(0), atT(x, 0).sol.i.C1, 'A'),
           row('i at the cursor', i(tc), atT(x, tc).sol.i.C1, 'A'),
         ]),
         V([
@@ -821,7 +821,7 @@ const ENTRIES = {
     const vA = (t) => (p.E / p.R1 + vB(t) / p.R3) / (1 / p.R1 + 1 / p.R2 + 1 / p.R3)
     const tc = x.cursor
     const rows = [
-      row('V_th = E·R₂/(R₁+R₂)', vth, x.thevenin ? x.thevenin.voc : NaN, 'V'),
+      row('V_th = V₁·R₂/(R₁+R₂)', vth, x.thevenin ? x.thevenin.voc : NaN, 'V'),
       row('R_th = R₃ + R₁∥R₂', rth, x.thevenin ? x.thevenin.rth.test : NaN, 'Ω'),
       row('v_B(τ)', vB(tau), atT(x, tau).sol.v.B, 'V'),
       row('v_B at the cursor', vB(tc), atT(x, tc).sol.v.B, 'V'),
@@ -831,8 +831,8 @@ const ENTRIES = {
     ]
     return {
       blocks: [
-        T('Everything left of the capacitor is a Thévenin source; then the circuit is F3 with V_th for E and R_th for R.'),
-        F('V_{th} = E\\,\\frac{R_2}{R_1 + R_2}, \\qquad R_{th} = R_3 + \\frac{R_1 R_2}{R_1 + R_2}, \\qquad \\tau = R_{th}\\,C'),
+        T('Everything left of the capacitor is a Thévenin source; then the circuit is F3 with V_th for V₁ and R_th for R.'),
+        F('V_{th} = V_1\\,\\frac{R_2}{R_1 + R_2}, \\qquad R_{th} = R_3 + \\frac{R_1 R_2}{R_1 + R_2}, \\qquad \\tau = R_{th}\\,C'),
         F('v_B(t) = V_{th}\\left(1 - e^{-t/\\tau}\\right)'),
         C(x.thevenin ? rows : rows.slice(2)),
         V([
@@ -853,13 +853,13 @@ const ENTRIES = {
     const stored = 0.5 * p.C1 * vC(tEnd) ** 2
     return {
       blocks: [
-        T('The source’s energy is E times the charge moved; the capacitor keeps ½Cv²; the resistor gets the rest. In the limit that is C·E², ½C·E² and ½C·E² — with R nowhere in any of them.'),
-        F('W_{source} = E\\,q = C E\\, v_C(t), \\qquad W_C = \\tfrac{1}{2} C v_C^2, \\qquad W_R = W_{source} - W_C'),
-        F('W_R = \\int_0^{\\infty} i^2 R\\, dt = \\int_0^{E} (E - v_C)\\, C\\, dv_C = \\tfrac{1}{2} C E^2', 'independent of R'),
+        T('The source’s energy is V₁ times the charge moved; the capacitor keeps ½Cv²; the resistor gets the rest. In the limit that is C·V₁², ½C·V₁² and ½C·V₁² — with R nowhere in any of them.'),
+        F('W_{source} = V_1\\,q = C V_1\\, v_C(t), \\qquad W_C = \\tfrac{1}{2} C v_C^2, \\qquad W_R = W_{source} - W_C'),
+        F('W_R = \\int_0^{\\infty} i^2 R\\, dt = \\int_0^{V_1} (V_1 - v_C)\\, C\\, dv_C = \\tfrac{1}{2} C V_1^2', 'independent of R'),
         C([
           row('supplied so far (end of window)', supplied, end.supplied, 'J', 1e-8),
           row('stored so far', stored, end.stored, 'J', 1e-8),
-          row('dissipated so far = ½CE²(1 − e^(−2t/τ))', 0.5 * p.C1 * p.E * p.E * (1 - Math.exp((-2 * tEnd) / tau)), end.dissipated, 'J', 1e-8),
+          row('dissipated so far = ½CV₁²(1 − e^(−2t/τ))', 0.5 * p.C1 * p.E * p.E * (1 - Math.exp((-2 * tEnd) / tau)), end.dissipated, 'J', 1e-8),
         ]),
         V([
           { label: 'the whole charge: source', value: p.C1 * p.E * p.E, unit: 'J' },
@@ -878,7 +878,7 @@ const ENTRIES = {
           T('An ideal open switch is an open circuit, and the inductor’s current — a state — cannot become zero in no time. The equations have no finite answer, and the solver says so rather than inventing one.'),
           F('v_L = L\\,\\frac{di}{dt} \\to -\\infty \\quad\\text{as}\\quad i: I_0 \\to 0 \\text{ in } dt \\to 0'),
           V([
-            { label: 'I₀ = E/R before the switch', value: I0, unit: 'A' },
+            { label: 'I₀ = V₁/R before the switch', value: I0, unit: 'A' },
             { label: 'spike with an ideal switch', value: NaN, unit: 'V', note: 'unbounded' },
           ]),
         ],
@@ -890,8 +890,8 @@ const ENTRIES = {
     const tc = x.cursor
     return {
       blocks: [
-        T('Before t = 0 the inductor is a short carrying E/R. After, the loop is R + R_off: the current heads for the trickle E/(R + R_off) with τ = L/(R + R_off), and the switch drops i·R_off — I₀·R_off at the first instant.'),
-        F('i(t) = I_\\infty + (I_0 - I_\\infty)\\,e^{-t/\\tau}, \\qquad I_0 = \\frac{E}{R}, \\quad I_\\infty = \\frac{E}{R + R_{off}}, \\quad \\tau = \\frac{L}{R + R_{off}}'),
+        T('Before t = 0 the inductor is a short carrying V₁/R. After, the loop is R + R_off: the current heads for the trickle V₁/(R + R_off) with τ = L/(R + R_off), and the switch drops i·R_off — I₀·R_off at the first instant.'),
+        F('i(t) = I_\\infty + (I_0 - I_\\infty)\\,e^{-t/\\tau}, \\qquad I_0 = \\frac{V_1}{R}, \\quad I_\\infty = \\frac{V_1}{R + R_{off}}, \\quad \\tau = \\frac{L}{R + R_{off}}'),
         F('v_{switch}(0^+) = I_0\\, R_{off}', 'the spark'),
         C([
           row('i_L before the switch opens', I0, x.tr.x0[0], 'A'),
@@ -953,13 +953,13 @@ const ENTRIES = {
   g1(p, s, x) {
     return rlcEntry(p, x, {
       text: 'KVL round the loop, with i = C·dv_C/dt, is a second-order equation. The solver’s A matrix carries the same information: det(sI − A) is the characteristic polynomial, and its roots decide the shape.',
-      extra: [F('LC\\,\\frac{d^2 v_C}{dt^2} + RC\\,\\frac{dv_C}{dt} + v_C = E, \\qquad s^2 + \\frac{R}{L}\\,s + \\frac{1}{LC} = 0')],
+      extra: [F('LC\\,\\frac{d^2 v_C}{dt^2} + RC\\,\\frac{dv_C}{dt} + v_C = V_1, \\qquad s^2 + \\frac{R}{L}\\,s + \\frac{1}{LC} = 0')],
     })
   },
   g2(p, s, x) {
     return rlcEntry(p, x, {
-      text: 'At α = ω₀ the roots coincide and the response is E[1 − (1 + αt)e^(−αt)]: no overshoot, and none of the slow tail an overdamped circuit has.',
-      extra: [F('v_C = E\\left[1 - (1 + \\alpha t)\\,e^{-\\alpha t}\\right], \\qquad i = \\frac{E}{L}\\,t\\,e^{-\\alpha t}', 'the critical case, α = ω₀')],
+      text: 'At α = ω₀ the roots coincide and the response is V₁[1 − (1 + αt)e^(−αt)]: no overshoot, and none of the slow tail an overdamped circuit has.',
+      extra: [F('v_C = V_1\\left[1 - (1 + \\alpha t)\\,e^{-\\alpha t}\\right], \\qquad i = \\frac{V_1}{L}\\,t\\,e^{-\\alpha t}', 'the critical case, α = ω₀')],
     })
   },
   g3(p, s, x) {
@@ -972,7 +972,7 @@ const ENTRIES = {
         ]
       : []
     return rlcEntry(p, x, {
-      text: 'Two measurements of the same step response, repeated across R in the sweep above: how far v_C overshoots E, and when it last leaves the ±2 % band around E. The quickest settling is not at critical damping but a little below it, where a small overshoot buys a faster approach.',
+      text: 'Two measurements of the same step response, repeated across R in the sweep above: how far v_C overshoots V₁, and when it last leaves the ±2 % band around V₁. The quickest settling is not at critical damping but a little below it, where a small overshoot buys a faster approach.',
       extra: [
         F('\\text{overshoot} = e^{-\\pi\\zeta/\\sqrt{1-\\zeta^2}} \\;(\\zeta < 1), \\qquad 0 \\;(\\zeta \\ge 1)'),
         rows.length ? C(rows) : T('This R lies outside the sweep (R_crit/20 to 50·R_crit), where the ringing outlasts any window the trace could resolve; bring R back into range for the two measurements.'),
@@ -983,8 +983,8 @@ const ENTRIES = {
   g4(p, s, x) {
     const q = series(p)
     const extra = [
-      F('v_C = E\\left[1 - e^{-\\alpha t}\\left(\\cos\\omega_d t + \\frac{\\alpha}{\\omega_d}\\sin\\omega_d t\\right)\\right], \\qquad \\omega_d = \\sqrt{\\omega_0^2 - \\alpha^2}'),
-      F('\\text{first peak: } t_p = \\frac{\\pi}{\\omega_d}, \\qquad \\frac{v_{C,max} - E}{E} = e^{-\\pi\\zeta/\\sqrt{1-\\zeta^2}}, \\qquad \\zeta = \\frac{\\alpha}{\\omega_0}'),
+      F('v_C = V_1\\left[1 - e^{-\\alpha t}\\left(\\cos\\omega_d t + \\frac{\\alpha}{\\omega_d}\\sin\\omega_d t\\right)\\right], \\qquad \\omega_d = \\sqrt{\\omega_0^2 - \\alpha^2}'),
+      F('\\text{first peak: } t_p = \\frac{\\pi}{\\omega_d}, \\qquad \\frac{v_{C,max} - V_1}{V_1} = e^{-\\pi\\zeta/\\sqrt{1-\\zeta^2}}, \\qquad \\zeta = \\frac{\\alpha}{\\omega_0}'),
     ]
     return rlcEntry(p, x, { text: 'Complex roots: the response rings at ω_d inside an envelope e^(−αt). The damping ratio alone fixes the overshoot and the ratio of one peak to the next.', extra })
   },
@@ -1000,12 +1000,12 @@ const ENTRIES = {
     return {
       blocks: [
         T('No resistance, no decay: the roots are ±jω₀ and the energy the source has delivered is all still in the circuit, swapping between ½Cv² and ½Li² every quarter cycle.'),
-        F('v_C = E\\,(1 - \\cos\\omega_0 t), \\qquad i = E\\sqrt{\\tfrac{C}{L}}\\,\\sin\\omega_0 t, \\qquad \\omega_0 = \\frac{1}{\\sqrt{LC}}'),
-        F('\\tfrac{1}{2} C v_C^2 + \\tfrac{1}{2} L i^2 = E\\, C\\, v_C = W_{source}', 'nothing is lost'),
+        F('v_C = V_1\\,(1 - \\cos\\omega_0 t), \\qquad i = V_1\\sqrt{\\tfrac{C}{L}}\\,\\sin\\omega_0 t, \\qquad \\omega_0 = \\frac{1}{\\sqrt{LC}}'),
+        F('\\tfrac{1}{2} C v_C^2 + \\tfrac{1}{2} L i^2 = V_1\\, C\\, v_C = W_{source}', 'nothing is lost'),
         C([
           row('v_C at the cursor', vC(tc), atT(x, tc).sol.volt.C1, 'V'),
           row('i at the cursor', i(tc), atT(x, tc).sol.i.L1, 'A'),
-          ...(peaks ? [row('peak v_C = 2E', 2 * p.E, peaks[0].y, 'V', 1e-8)] : []),
+          ...(peaks ? [row('peak v_C = 2V₁', 2 * p.E, peaks[0].y, 'V', 1e-8)] : []),
           ...(zeros.length >= 2 ? [row('zeros of i spaced π/ω₀', Math.PI / w0, zeros[1] - zeros[0], 's', 1e-8)] : []),
           row('stored at the end = ½Cv² + ½Li²', storedEnd, end.stored, 'J', 1e-7, 1e-15),
           row('supplied at the end = stored', storedEnd, end.supplied, 'J', 1e-7, 1e-15),
@@ -1013,7 +1013,7 @@ const ENTRIES = {
         ]),
         V([
           { label: 'ω₀', value: w0, unit: 'rad/s' },
-          { label: 'peak current E√(C/L)', value: p.E * Math.sqrt(p.C1 / p.L1), unit: 'A' },
+          { label: 'peak current V₁√(C/L)', value: p.E * Math.sqrt(p.C1 / p.L1), unit: 'A' },
           { label: 'period 2π/ω₀', value: (2 * Math.PI) / w0, unit: 's' },
         ]),
       ],
@@ -1029,9 +1029,9 @@ const ENTRIES = {
     const th = x.tEnd / 2
     return {
       blocks: [
-        T('The same equation as G4 with a different starting point. The forced part, E, is the source’s; the natural part starts from the two initial conditions and dies with e^(−αt).'),
-        F('v_C(t) = E + e^{-\\alpha t}\\left[(v_0 - E)\\cos\\omega_d t + \\frac{i_0/C + \\alpha(v_0 - E)}{\\omega_d}\\sin\\omega_d t\\right]'),
-        F('v_C(0^+) = v_0, \\qquad i_L(0^+) = i_0, \\qquad \\frac{dv_C}{dt}(0^+) = \\frac{i_0}{C}, \\qquad \\frac{di_L}{dt}(0^+) = \\frac{E - v_0 - R i_0}{L}', 'what the states hand the equation'),
+        T('The same equation as G4 with a different starting point. The forced part, V₁, is the source’s; the natural part starts from the two initial conditions and dies with e^(−αt).'),
+        F('v_C(t) = V_1 + e^{-\\alpha t}\\left[(v_0 - V_1)\\cos\\omega_d t + \\frac{i_0/C + \\alpha(v_0 - V_1)}{\\omega_d}\\sin\\omega_d t\\right]'),
+        F('v_C(0^+) = v_0, \\qquad i_L(0^+) = i_0, \\qquad \\frac{dv_C}{dt}(0^+) = \\frac{i_0}{C}, \\qquad \\frac{di_L}{dt}(0^+) = \\frac{V_1 - v_0 - R i_0}{L}', 'what the states hand the equation'),
         C([
           row('v_C(0⁺) = v_C(0)', p.v0, atT(x, 0).x[0], 'V'),
           row('i_L(0⁺) = i_L(0)', p.i0, atT(x, 0).x[1], 'A'),
@@ -1410,17 +1410,17 @@ const ENTRIES = {
 
   i1(p, s, x) {
     const d = diodeOf({ id: 'D1', type: 'D', model: p.model })
-    const rows = [row('KVL: E = v_R + v_D', p.E, s.volt.R1 + s.volt.D1, 'V')]
+    const rows = [row('KVL: V₁ = v_R + v_D', p.E, s.volt.R1 + s.volt.D1, 'V')]
     // Below V_f nothing conducts, whatever the model: no current, and the
     // whole source stands across the diode.
     const on = p.E > d.vf
     if (!on && p.model !== 'exp') {
       rows.push(row('nothing conducts: i = 0', 0, s.i.D1, 'A'), row('so the source stands across the diode', p.E, s.volt.D1, 'V'))
-    } else if (p.model === 'ideal') rows.push(row('a closed switch drops nothing', 0, s.volt.D1, 'V'), row('i = E/R', p.E / p.R1, s.i.D1, 'A'))
-    else if (p.model === 'drop') rows.push(row('v_D = V_f', d.vf, s.volt.D1, 'V'), row('i = (E − V_f)/R', (p.E - d.vf) / p.R1, s.i.D1, 'A'))
+    } else if (p.model === 'ideal') rows.push(row('a closed switch drops nothing', 0, s.volt.D1, 'V'), row('i = V₁/R', p.E / p.R1, s.i.D1, 'A'))
+    else if (p.model === 'drop') rows.push(row('v_D = V_f', d.vf, s.volt.D1, 'V'), row('i = (V₁ − V_f)/R', (p.E - d.vf) / p.R1, s.i.D1, 'A'))
     else if (p.model === 'pwl') {
       rows.push(
-        row('i = (E − V_f)/(R + r_d)', (p.E - d.vf) / (p.R1 + d.rd), s.i.D1, 'A'),
+        row('i = (V₁ − V_f)/(R + r_d)', (p.E - d.vf) / (p.R1 + d.rd), s.i.D1, 'A'),
         row('v_D = V_f + i·r_d', d.vf + ((p.E - d.vf) / (p.R1 + d.rd)) * d.rd, s.volt.D1, 'V'),
       )
     }
@@ -1450,7 +1450,7 @@ const ENTRIES = {
     const d = diodeOf({ id: 'D1', type: 'D', model: p.model })
     const rows = [
       row('the load line at the answer', (p.E - s.volt.D1) / p.R1, s.i.D1, 'A'),
-      row('KVL: E = v_R + v_D', p.E, s.volt.R1 + s.volt.D1, 'V'),
+      row('KVL: V₁ = v_R + v_D', p.E, s.volt.R1 + s.volt.D1, 'V'),
     ]
     if (p.model === 'exp') {
       rows.push(
@@ -1461,9 +1461,9 @@ const ENTRIES = {
     return {
       blocks: [
         T(
-          'Two conditions, one unknown: the diode has its curve and the rest of the circuit has a straight line, i = (E − v)/R. The operating point is where they meet. A simulator gets there by replacing the curve with its tangent, solving that linear circuit, and repeating — Newton’s method, which squares its error every step once it is close.',
+          'Two conditions, one unknown: the diode has its curve and the rest of the circuit has a straight line, i = (V₁ − v)/R. The operating point is where they meet. A simulator gets there by replacing the curve with its tangent, solving that linear circuit, and repeating — Newton’s method, which squares its error every step once it is close.',
         ),
-        F('i = \\frac{E - v}{R} \\quad\\text{and}\\quad i = I_s\\left(e^{v/nV_T} - 1\\right) \\;\\Rightarrow\\; v^{(k+1)} = v^{(k)} - \\frac{f(v^{(k)})}{f\'(v^{(k)})}'),
+        F('i = \\frac{V_1 - v}{R} \\quad\\text{and}\\quad i = I_s\\left(e^{v/nV_T} - 1\\right) \\;\\Rightarrow\\; v^{(k+1)} = v^{(k)} - \\frac{f(v^{(k)})}{f\'(v^{(k)})}'),
         C(rows),
         V([
           { label: 'operating point', value: s.i.D1, unit: 'A', note: `at ${s.volt.D1.toFixed(3)} V` },
@@ -1489,7 +1489,7 @@ const ENTRIES = {
         T(
           'Four assumptions, one of them true. Assume each diode conducting or blocking, solve the linear circuit that assumption describes, then check it against its own answer: a conducting diode must come out with forward current, a blocking one with less than V_f across it. Three assumptions here refuse themselves, and one of those cannot even be solved — two conducting diodes back to back are a short.',
         ),
-        F('v_A = \\begin{cases} +V_f & E > V_f \\\\ E & |E| \\le V_f \\\\ -V_f & E < -V_f \\end{cases}'),
+        F('v_A = \\begin{cases} +V_f & V_1 > V_f \\\\ V_1 & |V_1| \\le V_f \\\\ -V_f & V_1 < -V_f \\end{cases}'),
         C([
           row('the node, from the knobs alone', vA, s.v.A, 'V', 1e-6),
           row('current through R', (p.E - vA) / p.R1, s.i.R1, 'A', 1e-6),
@@ -1618,7 +1618,7 @@ const ENTRIES = {
         T(
           'In breakdown the Zener holds V_z and the series resistor takes the whole of the rest, so the current through it is fixed by the supply alone. Whatever the load does not take, the Zener does — which is how it regulates, and why it dissipates most when the load wants least.',
         ),
-        F('i_S = \frac{E - V_z}{R_S}, \qquad i_Z = i_S - \frac{V_z}{R_L}, \qquad R_{L,min} = \frac{V_z R_S}{E - V_z}'),
+        F('i_S = \\frac{V_1 - V_z}{R_S}, \\qquad i_Z = i_S - \\frac{V_z}{R_L}, \\qquad R_{L,min} = \\frac{V_z R_S}{V_1 - V_z}'),
         C(rows),
         V([
           { label: 'held at', value: vOut, unit: 'V', note: regulating ? 'inside the band' : 'dropped out — an ordinary divider' },
@@ -1943,7 +1943,7 @@ function rlcEntry(p, x, { text, extra = [] }) {
     const peaks = peakOf(x, 'i', 'L1', sgn(p.E))
     if (peaks) {
       rows.push(row('i peaks at t = 1/α', 1 / q.alpha, peaks[0].t, 's', 1e-7))
-      rows.push(row('i peak = E/(Lαe)', p.E / (p.L1 * q.alpha * Math.E), peaks[0].y, 'A', 1e-8))
+      rows.push(row('i peak = V₁/(Lαe)', p.E / (p.L1 * q.alpha * Math.E), peaks[0].y, 'A', 1e-8))
       marks.push({ t: 1 / q.alpha, label: 'i peaks' })
     }
     rows.push(row('repeated root −α', -q.alpha, st.roots[0].re, '1/s', 1e-6))

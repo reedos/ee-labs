@@ -403,8 +403,8 @@ export const TERMS = {
   loadline: {
     name: 'Load line',
     def:
-      'The straight line the rest of the circuit imposes on a nonlinear element. With a source E behind a ' +
-    'resistance R, the element can only have i = (E − v)/R. Draw it across the element’s own curve, and the ' +
+      'The straight line the rest of the circuit imposes on a nonlinear element. With a source V₁ behind a ' +
+    'resistance R, the element can only have i = (V₁ − v)/R. Draw it across the element’s own curve, and the ' +
     'crossing is the answer.',
   },
   operatingpoint: {

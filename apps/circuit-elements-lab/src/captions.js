@@ -94,7 +94,7 @@ function scope(exp, x, params, marks) {
   const seg = marks.find((m) => m.kind === 'segment')
   switch (exp.id) {
     case 'f3':
-      return say(...head, '; v_C is heading for E = ', n(level.value, 'V'), ' (dashed); the ring at τ = ', n(seg.value, 's'), ' is 63.2 % of the way, ', n(point.value, 'V'), ', where the starting slope (slanted) would have arrived.')
+      return say(...head, '; v_C is heading for V₁ = ', n(level.value, 'V'), ' (dashed); the ring at τ = ', n(seg.value, 's'), ' is 63.2 % of the way, ', n(point.value, 'V'), ', where the starting slope (slanted) would have arrived.')
     case 'f4':
       return say(...head, '; v_B settles at the dashed line V_th = ', n(level.value, 'V'), ' and v_A began at ', n(point.value, 'V'), ', where the resistors alone put it.')
     case 'f6':
@@ -102,7 +102,7 @@ function scope(exp, x, params, marks) {
       return say(...head, '; the ring at t = 0 is the spark, ', n(point.value, 'V'), ' across the opening switch, and the dashed line is the trickle ', n(level.value, 'A'), ' the current falls to.')
     case 'g4':
       if (!point) break
-      return say(...head, ', heading for E = ', n(level.value, 'V'), ' (dashed) — the ring is the first peak, ', n(point.value, 'V'), ', ', pct(point.value / level.value - 1), ' over.')
+      return say(...head, ', heading for V₁ = ', n(level.value, 'V'), ' (dashed) — the ring is the first peak, ', n(point.value, 'V'), ', ', pct(point.value / level.value - 1), ' over.')
     default:
       break
   }
