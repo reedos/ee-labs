@@ -85,6 +85,16 @@ describe('the experiments, as a set', () => {
     expect(GROUPS.map((g) => groupOf(g).length)).toEqual([5, 4, 5, 5])
   })
 
+  it('matching and two-ports both offer the equations pane, which is what this phase delivers', () => {
+    // `RF_LAB_PLAN.md` §9.3 ships the equations pane with Groups C and D. It
+    // was written and tested and Group C did not list it, so no reader could
+    // reach it there. C1's note says the element values are solved rather than
+    // searched for, and this is the view that shows the solving.
+    for (const e of EXPERIMENTS.filter((q) => ['C', 'D'].includes(letterOf(q)))) {
+      expect(e.views, `${e.id} offers no equations view`).toContain('equations')
+    }
+  })
+
   it('no lesson names an experiment this tree does not hold', () => {
     const known = new Set(EXPERIMENTS.map((e) => e.id.toUpperCase()))
     for (const e of EXPERIMENTS) {
