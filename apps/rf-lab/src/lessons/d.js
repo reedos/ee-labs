@@ -238,10 +238,16 @@ export const LESSONS_D = {
     why:
       'Reciprocity is S12 equal to S21, and every network of ordinary resistors, inductors and capacitors has ' +
       'it. A network of inductors and capacitors alone loses nothing, so S†S is the identity and the matrix is ' +
-      'unitary. Unitary is a stronger statement than reciprocal. It says the four entries carry every watt that ' +
-      'arrives, and the squared magnitudes down any column sum to one. Add a resistor and that sum falls by the ' +
-      'fraction the resistor took, which is the dissipation. The largest singular value of S is at most one for ' +
-      'any passive two-port, and it reaches one exactly when nothing is lost. So one number says whether a ' +
-      'measured two-port could have come off a passive bench at all.',
+      'unitary. The two properties are independent. A unitary matrix carries every watt that arrives, and the ' +
+      'squared magnitudes down any column sum to one. Add a resistor and that sum falls by the fraction the ' +
+      'resistor took, which is the dissipation. The largest singular value of S is at most one for any passive ' +
+      'two-port. It stays at 1.0000 with 25 Ω in the series branch, because one pair of incident waves drives no ' +
+      'current through that resistor. So the singular value says only that a two-port could have come off a ' +
+      'passive bench, and the dissipation says how much it takes.',
+    whyAt: { Rs: 25 },
+    whyReads: [
+      ['power.largest', 1],
+      ['p.Rs', 25],
+    ],
   },
 }

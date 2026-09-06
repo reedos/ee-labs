@@ -154,6 +154,26 @@ describe('the S-matrix of a circuit the suite solves', () => {
     expect(largestSingular(spR)).toBeLessThan(1 + 1e-11)
   })
 
+  it('a two-port that dissipates can still have a largest singular value of one', () => {
+    // The claim D5's note used to make, measured and found false. A singular
+    // value of one is necessary for passivity and is not sufficient for
+    // losslessness. Here the resistance is in the series branch, so the pair of
+    // incident waves that holds the two port voltages equal drives no current
+    // through it and loses nothing, whatever the resistance is.
+    for (const R of [1, 5, 25, 200]) {
+      const net = {
+        elements: [
+          { type: 'R', id: 'Rs', nodes: ['p1', 'm'], value: R },
+          { type: 'L', id: 'L1', nodes: ['m', 'p2'], value: 8e-9 },
+          { type: 'C', id: 'C1', nodes: ['p2', 'gnd'], value: 1.6e-12 },
+        ],
+      }
+      const sp = sFromNetlist(net, ['p1', 'p2'], F, { z0: Z0 })
+      expect(dissipated(sp), `${R} ohms dissipates nothing`).toBeGreaterThan(1e-3)
+      close(largestSingular(sp), 1, 1e-11)
+    }
+  })
+
   it('a circuit carrying its own source is declined, with the reason', () => {
     const net = { elements: [{ type: 'V', id: 'V1', nodes: ['p1', 'gnd'], value: 1 }, { type: 'R', id: 'R1', nodes: ['p1', 'p2'], value: 10 }] }
     expect(() => sFromNetlist(net, ['p1', 'p2'], F)).toThrow(RfError)

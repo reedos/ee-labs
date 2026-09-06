@@ -68,8 +68,8 @@ export const TERMS_D = {
     name: 'Unitary matrix',
     def:
       'A matrix whose conjugate transpose times itself is the identity. A lossless two-port has a unitary ' +
-      'S-matrix, so the squared magnitudes down any column sum to one. It is a stronger statement than ' +
-      'reciprocity, and it fails as soon as any resistor is added.',
+      'S-matrix, so the squared magnitudes down any column sum to one. Unitarity and reciprocity are separate ' +
+      'properties, and unitarity fails as soon as any resistor is added.',
   },
   dissipation: {
     name: 'Dissipation',
