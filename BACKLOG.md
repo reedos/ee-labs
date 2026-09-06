@@ -1303,3 +1303,81 @@ only its own section. The director folds it into the shared ledger at merge.
   modelled. Antennas, modulation, vendor S-parameter files and a free-form
   layout editor. None became cheaper to add while the first two groups were
   built.
+
+### System Lab
+
+- **The first sitting is built, and it is four experiments.** `A` 4, in
+  `SYSTEM_LAB_PLAN.md` §5's order, which is that plan's phase 1 in full. The
+  engine is `packages/rf/src/budget.js`, added to the RF Lab's package under
+  plan Decision 3, holding the block record, `cascade`, `combine`, `levels`,
+  `passiveNf`, `noiseFloorDbm`, `bypass` and `reorder`. The plan's invariants 1,
+  2, 3, 4, 7 and 9 are fuzzed over random chains of two to eight blocks. The app
+  ships dark at `/system-lab/` with three views: the budget table, the levels
+  plot and the closed forms. What follows is what the lab does not yet have.
+- **Groups B to F are not built, which is five of the plan's six and 21 of its
+  25 experiments.** Each waits for work in another lab.
+  `apps/system-lab/NEEDS.md` §3 names the dependency and the overseer for every
+  one. B and C wait for the RF Lab's phase 5, and D for its phase 6. E waits for
+  the Fields Lab's group L, and F for the Electronics Lab's M6 and the RF Lab's
+  group H. Nothing in the plan's phase 1 was cut.
+- **Invariants 5, 6, 8, 10, 11 and 12 are not checked.** Each is named where a
+  reader looks for it. `packages/rf/src/budgetInvariants.test.js` ends with the
+  list and the module each waits for, so the six that are green are not mistaken
+  for all of them. The two that matter most are 5 and 6, which check the budget
+  against a simulation of the same chain. Until they run, this lab's noise figure
+  and input IP3 are arithmetic that agrees with a hand computation and with the
+  closed form. Neither yet agrees with a signal.
+- **The third IP3 addition rule is not written.** `cascade` returns the
+  aligned-phase total and the power-addition total, and never quotes the worst
+  case alone. The plan's C4 wants a random-phase total beside them, and
+  invariant 7 wants the power sum bracketed between the other two. Half of that
+  bracket is green today and the test says which half.
+- **Two of the plan's own §4.3 figures did not survive the pin script.** Every
+  link figure in that section was computed with `k T_0 = −174 dBm/Hz`, where the
+  same plan's §2.5 requires the −173.975 the constant gives. So each link's
+  floor, ratio and margin is 0.0251 dB out. The 100 m link's ratio is 38.9129 dB
+  and not 38.938, its margin 18.9129 dB and not 18.938, and `C/N_0` is
+  111.923 dB-Hz and not 111.950.
+- **The 900 MHz link's stated margin of 29.457 dB assumes a required ratio of
+  12 dB**, which the plan never names. `apps/system-lab/scripts/pins.mjs` states
+  the requirement and uses the exact constant, and
+  `apps/system-lab/AGENT_BRIEF.md` §7 tells lanes 4 to 6 to take the script's
+  figures rather than the plan's. **The director decides one of two things.**
+  Either §4.3 is corrected, or the plan says that its link figures are quoted to
+  the rounded constant. Every dynamic-range and reciprocal-mixing figure in §4.3
+  does survive the script.
+- **`scripts/verify.mjs`, the Playwright harness, is not written.** The plan's
+  §7 asks for four checks. The hardest is that nothing scrolls sideways at
+  390 px on a table of six rows by four columns. What exists instead is
+  `src/App.smoke.test.jsx`, which server-renders every experiment in every one
+  of its views. It holds the two halves of the phone layout together. Every
+  table cell carries the `data-label` the card layout draws in front of it, and
+  only the chain strip and the table may scroll inside themselves.
+- **No screenshot pass has been made.** The smoke test catches a prop the shell
+  forgot to pass, and a rule that drifted from its markup. It does not catch a
+  pane that stopped redrawing.
+- **The block record is a record, and no block links to a circuit.** Plan
+  Decision 4 gives every block a `fromCircuit` and a `linksTo`, and every block
+  in this lab carries `null` in both. The RF Lab's groups E and F, the
+  Electronics Lab's group H and Circuit Lab hold the circuits those links go to,
+  and a lesson may not name an experiment that does not exist. The field is in
+  the record from the first commit so that filling it is one line per block.
+- **The budget table is in the app, not in `packages/ui`.** `PROGRAM.md` §4 says
+  a canvas is promoted when a second lab needs it, and no second lab has claimed
+  this one. `view.js`'s `tablePropsFor` already returns the table as data and
+  the pane draws what it is given, so promotion is a file move.
+  `apps/system-lab/NEEDS.md` §5 names the Applied Analog Lab's specification
+  pane as the claim that would trigger it.
+- **Group A carries no guard, and a test says so.** Every object these four
+  experiments touch is exact, and `CORE_SCOPE.md`'s counter-rule says an exact
+  mapping is never hedged. The one approximation the engine holds is the
+  cascaded input IP3. Its guard is a sentence beside the number in every view
+  that shows it, tested at all three of its cases: no contributing stage, one,
+  and several. The knobs Group A offers cannot reach a refusal, and a test
+  asserts that rather than leaving it unsaid. The refusal channel is driven
+  instead by a chain the knobs cannot build.
+- **The non-goals of `SYSTEM_LAB_PLAN.md` §10 are all still non-goals.** Bit
+  error rate and modulation. The converter as a circuit. Propagation models.
+  Automatic gain control as a loop. Frequency planning and spur tables.
+  Optimisation. Thermal, mechanical, cost and area budgets. Transmitters, and a
+  free-form chain editor. None became cheaper to add while Group A was built.
