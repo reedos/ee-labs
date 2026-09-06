@@ -1654,6 +1654,38 @@ await page.waitForTimeout(400)
 await page.setViewportSize({ width: 390, height: 844 })
 await page.waitForTimeout(300)
 
+// -------- 10t. The z-plane frame says what it left out
+//
+// A 31-tap blackman-windowed sinc puts a zero near |z| = 15. The frame grew
+// to hold it, and the unit circle — the frequency axis, the whole subject of
+// the view — collapsed to about 8 px across on a laptop and to nothing on a
+// phone. Playbook #10: what a frame hides it must say.
+console.log('\n10t. The z-plane frame says what it left out\n')
+await page.setViewportSize({ width: 1440, height: 900 })
+await page.waitForTimeout(400)
+{
+  await loadPreset('The kernel is the filter')
+  await page.locator('.view-switch button', { hasText: 'z-plane' }).first().click()
+  await settle()
+  const flags = await page.$$eval('.views .readout .flag', (e) => e.map((x) => x.textContent.trim()))
+  const dropped = flags.find((f) => /beyond \|z\|/.test(f))
+  if (!dropped) {
+    fail(`The kernel is the filter: the z-plane frame drops roots without saying so (flags: ${flags.join(' | ') || 'none'})`)
+  } else {
+    console.log(`   z-plane says what it left out: "${dropped}"`)
+  }
+
+  // And a filter whose roots all fit must not carry that line.
+  await loadPreset('Zeros on the circle')
+  await settle()
+  const clean = await page.$$eval('.views .readout .flag', (e) => e.map((x) => x.textContent.trim()))
+  if (clean.some((f) => /beyond \|z\|/.test(f))) {
+    fail('Zeros on the circle: every zero is on the circle, yet the frame claims to have dropped some')
+  } else {
+    console.log('   a 12-tap average keeps all eleven zeros, and says nothing about dropping any')
+  }
+}
+
 // -------------------------------------------------------------- 11. 4K fit
 
 console.log('\n11. Re-checking layout at 4K\n')

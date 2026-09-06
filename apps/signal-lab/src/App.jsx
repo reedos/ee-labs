@@ -17,8 +17,10 @@ import {
   kernelCentre,
   chainPolesZeros,
   chainResponse,
+  framedRoots,
   renderChain,
   runChain,
+  ZPLANE_MAX_R,
 } from './dsp/chain.js'
 import { PRESETS } from './presets.js'
 import { readLocationLink, track, arrivalEvent } from '@ee-labs/ui'
@@ -253,6 +255,12 @@ export default function App() {
     return chainPolesZeros(state.blocks, state.sampleRate)
   }, [state.freqView, state.blocks, state.sampleRate])
 
+  // What the canvas is allowed to frame. The readout keeps counting all of
+  // them — see framedRoots for why an outlier must not set the scale.
+  const pzFramed = useMemo(
+    () => (pz ? framedRoots(pz.poles, pz.zeros) : null),
+    [pz],
+  )
 
   // Where a linear-phase kernel's centre of symmetry is, and so its delay.
   const impulseCentre = useMemo(
@@ -762,6 +770,11 @@ export default function App() {
                       {pz.tooMany} delay taps — too many roots to draw
                     </span>
                   ) : null}
+                  {pzFramed && pzFramed.hidden ? (
+                    <span className="flag">
+                      {pzFramed.hidden} beyond |z| = {ZPLANE_MAX_R}, off this frame
+                    </span>
+                  ) : null}
                   {pz && !pz.exact && !pz.tooMany ? (
                     <span className="flag">nonlinear blocks have no roots to show</span>
                   ) : null}
@@ -771,8 +784,8 @@ export default function App() {
           </div>
           {state.freqView === 'zplane' && pz ? (
             <ZPlaneCanvas
-              poles={pz.poles}
-              zeros={pz.zeros}
+              poles={pzFramed.poles}
+              zeros={pzFramed.zeros}
               markerFreq={stats.peakFreq}
               sampleRate={state.sampleRate}
             />

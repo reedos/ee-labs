@@ -60,6 +60,38 @@ export function chainPolesZeros(blocks, sampleRate) {
 }
 
 /**
+ * How far out the z-plane view is willing to frame, in radii of the unit
+ * circle.
+ *
+ * ZPlaneCanvas sizes its axes to hold every root it is handed, which is right
+ * for a pole that has escaped the circle and wrong for an FIR's outliers. A
+ * 31-tap windowed sinc puts three of its 28 zeros near |z| = 15, and the frame
+ * grew to match: the unit circle — the frequency axis, the whole subject of
+ * the view — collapsed to about 8 px across on a laptop and to nothing on a
+ * phone, with 25 zeros crushed into one blob on its rim. The lesson's own
+ * claim, zeros sitting ON the circle, could not be seen at all.
+ *
+ * Two radii of margin is enough to show an unstable pole just outside the
+ * circle, which is the case the growth was there to protect, and everything
+ * further out is counted rather than drawn. Playbook #10: what the frame drops
+ * is stated in the readout, never dropped quietly.
+ */
+export const ZPLANE_MAX_R = 2
+
+/**
+ * Split roots into the ones the z-plane frame can show and a count of the rest.
+ *
+ * Returns `{ poles, zeros, hidden }`, where `hidden` is how many roots of
+ * either kind sit further from the origin than `rMax`.
+ */
+export function framedRoots(poles, zeros, rMax = ZPLANE_MAX_R) {
+  const near = ([re, im]) => Math.hypot(re, im) <= rMax
+  const p = poles.filter(near)
+  const z = zeros.filter(near)
+  return { poles: p, zeros: z, hidden: poles.length - p.length + (zeros.length - z.length) }
+}
+
+/**
  * The chain's impulse response — its kernel.
  *
  * Fed a single 1 followed by silence, an LTI chain emits exactly the sequence it

@@ -7,7 +7,9 @@ import {
   chainPolesZeros,
   chainResponse,
   convKernel,
+  framedRoots,
   kernelCentre,
+  ZPLANE_MAX_R,
 } from './chain.js'
 import { makeBlockRecord } from './blocks.js'
 
@@ -250,6 +252,65 @@ describe('poles and zeros', () => {
     const { tooMany, exact } = chainPolesZeros([b], 48000)
     expect(tooMany).toBeGreaterThan(256)
     expect(exact).toBe(false)
+  })
+
+  // Playbook #4 and #5: the frame must be sized to its content, and the
+  // content here is the unit circle. ZPlaneCanvas grows its axes to hold every
+  // root it is handed, which is right for a pole that has escaped the circle
+  // and wrong for an FIR's far outliers.
+  describe('what the z-plane frame will show', () => {
+    it('a windowed sinc throws zeros far enough out to destroy the frame', () => {
+      // THE DEFECT, measured. A 31-tap windowed sinc's furthest zero sets the
+      // axis, and the unit circle then occupies a fraction of the pane.
+      const b = blk('fir', { taps: 31, freq: 900, mode: 'lowpass', window: 'blackman' })
+      const { zeros } = chainPolesZeros([b], FS)
+      const far = Math.max(...zeros.map(([re, im]) => Math.hypot(re, im)))
+      expect(far).toBeGreaterThan(5)
+      // ZPlaneCanvas's own span rule, applied to the unframed set: the circle
+      // would be under a fifth of the half-height it deserves.
+      const span = Math.max(1.35, far * 1.15)
+      expect(1 / span).toBeLessThan(0.2)
+    })
+
+    it('framing keeps the circle worth looking at, and says what it dropped', () => {
+      const b = blk('fir', { taps: 31, freq: 900, mode: 'lowpass', window: 'blackman' })
+      const { poles, zeros } = chainPolesZeros([b], FS)
+      const f = framedRoots(poles, zeros)
+      expect(f.hidden).toBeGreaterThan(0)
+      expect(f.zeros.length + f.hidden).toBe(zeros.length)
+      const far = Math.max(...f.zeros.map(([re, im]) => Math.hypot(re, im)))
+      expect(far).toBeLessThanOrEqual(ZPLANE_MAX_R)
+      // The circle now gets at least a third of the half-height.
+      expect(1 / Math.max(1.35, far * 1.15)).toBeGreaterThan(0.33)
+    })
+
+    it('keeps every root of a moving average — they are all on the circle', () => {
+      // "Zeros on the circle" must be untouched: the lesson IS the eleven
+      // zeros of a 12-tap average, and every one sits at |z| = 1.
+      const b = blk('movingavg', { taps: 12 })
+      const { poles, zeros } = chainPolesZeros([b], FS)
+      const f = framedRoots(poles, zeros)
+      expect(f.hidden).toBe(0)
+      expect(f.zeros).toHaveLength(zeros.length)
+    })
+
+    it('keeps an unstable pole just outside the circle, which is the point', () => {
+      expect(framedRoots([[1.4, 0]], []).hidden).toBe(0)
+      expect(framedRoots([[1.4, 0]], []).poles).toHaveLength(1)
+    })
+
+    it('counts poles and zeros alike when they are too far out', () => {
+      const f = framedRoots([[9, 0]], [[0, 9]])
+      expect(f.hidden).toBe(2)
+      expect(f.poles).toHaveLength(0)
+      expect(f.zeros).toHaveLength(0)
+    })
+
+    it('measures distance from the origin, not along one axis', () => {
+      // (1.6, 1.6) is inside the box |re| <= 2 and outside the disc |z| <= 2.
+      expect(framedRoots([], [[1.6, 1.6]]).hidden).toBe(1)
+      expect(framedRoots([], [[1.4, 1.4]]).hidden).toBe(0)
+    })
   })
 
   it('reports that a nonlinear block has no roots to show', () => {
