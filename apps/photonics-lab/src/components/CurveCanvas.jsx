@@ -1,5 +1,6 @@
 import React from 'react'
-import { useCanvas, COLORS, plotArea, drawFrame, fmt } from '@ee-labs/ui'
+import { useCanvas, COLORS, plotArea, drawFrame } from '@ee-labs/ui'
+import { num } from '../format.js'
 
 /**
  * One quantity against the knob it depends on, drawn from the engine.
@@ -63,6 +64,10 @@ export function draw(ctx, w, h, curve) {
       return [lo - pad, hi + pad]
     }
     const pad = 0.08 * (hi - lo)
+    // An axis must not offer a value the quantity cannot take. A photon
+    // lifetime axis padded below its smallest sample printed a tick at
+    // −17.9 ps, which is a number a reader has to know to discount.
+    if (lo >= 0 && lo - pad < 0) return [0, hi + pad]
     return [lo - pad, hi + pad]
   }
 
@@ -74,8 +79,12 @@ export function draw(ctx, w, h, curve) {
   const px = (v) => (curve.x.log ? Math.log10(v) : v)
   const py = (v) => (curve.yLog ? Math.log10(v) : v)
 
-  const fmtX = (v) => fmt(curve.x.log ? Math.pow(10, v) : v, curve.x.unit, 3)
-  const fmtY = (v) => (curve.yLog ? fmt(Math.pow(10, v), curve.yUnit, 3) : curve.yPlain ? `${Number(v).toPrecision(3)}` : fmt(v, curve.yUnit, 3))
+  // The tick labels go through this lab's own formatter and not the shared
+  // engineering one. A facet reflectance axis running 0.02 to 0.99 came out
+  // labelled "200 m" to "800 m", because a prefix letter with no unit behind it
+  // is read as a unit. `num` prints a unitless tick in plain digits.
+  const fmtX = (v) => num(curve.x.log ? Math.pow(10, v) : v, curve.x.unit, 3)
+  const fmtY = (v) => (curve.yLog ? num(Math.pow(10, v), curve.yUnit, 3) : curve.yPlain ? `${Number(v).toPrecision(3)}` : num(v, curve.yUnit, 3))
 
   const { sx, sy } = drawFrame(ctx, area, xMin, xMax, yMin, yMax, fmtX, fmtY, {
     xTitle: `${curve.x.label}${curve.x.unit ? ` (${curve.x.unit})` : ''}`,
@@ -96,7 +105,7 @@ export function draw(ctx, w, h, curve) {
     ctx.textBaseline = 'middle'
     for (let j = 0; j <= 4; j++) {
       const v = rMin + ((rMax - rMin) * j) / 4
-      ctx.fillText(fmt(v, curve.rightUnit, 3), area.x + area.w + 8 * k, ry(v))
+      ctx.fillText(num(v, curve.rightUnit, 3), area.x + area.w + 8 * k, ry(v))
     }
     ctx.save()
     ctx.translate(area.x + area.w + 56 * k, area.y + area.h / 2)

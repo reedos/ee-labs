@@ -64,8 +64,15 @@ export const Index = (key, label, def, hint, min = 1, max = 4) => ({ key, label,
 /** A core radius in metres, read in micrometres. */
 export const Radius = (key, label, def, hint) => ({ key, label, unit: 'm', min: 1e-6, max: 1e-4, scale: 'log', default: def, hint })
 
-/** A power reflectance, which is a fraction that may not quite reach one. */
-export const Reflectance = (key, label, def, hint) => ({ key, label, unit: '', min: 0.01, max: 0.999, scale: 'linear', default: def, hint, eng: false })
+/**
+ * A power reflectance, which is a fraction that may not quite reach one.
+ *
+ * Five decimals, because the default is computed from the index rather than
+ * typed and a cleaved facet of index 3.5 gives 0.308641975308642. The field
+ * shows the five figures the lessons quote, and the value behind it stays the
+ * one the cavity gives.
+ */
+export const Reflectance = (key, label, def, hint) => ({ key, label, unit: '', min: 0.01, max: 0.999, scale: 'linear', default: def, hint, eng: false, decimals: 5 })
 
 /** A cavity length in metres, read in micrometres or millimetres. */
 export const CavityLength = (key, label, def, hint) => ({ key, label, unit: 'm', min: 10e-6, max: 0.1, scale: 'log', default: def, hint })

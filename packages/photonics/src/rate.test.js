@@ -428,7 +428,9 @@ describe('the large-signal solution in time is declined, with the reason', () =>
     expect(says).toMatch(/cannot be told apart from physics/)
     expect(says).toMatch(/steady state/)
     expect(says).toMatch(/declines to draw a large-signal solution/)
-    expect(says).toContain('the turn-on transient')
+    // The sentence goes on a pane, so it starts as a sentence does.
+    expect(says).toContain('The turn-on transient')
+    expect(says.slice(0, 1)).toBe(says.slice(0, 1).toUpperCase())
     expect(largeSignalAvailable()).toBe(says)
   })
 

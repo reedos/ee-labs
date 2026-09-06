@@ -30,7 +30,11 @@ export function schematicFor(x) {
   const layout = {
     w: 350,
     h: 170,
-    crop: [16, 14, 336, 154],
+    // The crop is the viewBox, so anything outside it is not drawn at all. It
+    // used to be the wires' own box, which cut the meter above R_L in half and
+    // took the last letters off both node labels. Measured against the rendered
+    // content and given room for a longer reading than the defaults produce.
+    crop: [-6, -3, 396, 150],
     items: [
       { box: [196, 52, 326, 120] },
       { wire: [50, 40, 120, 40] },
@@ -69,7 +73,9 @@ function junctionSchematic(x) {
   const layout = {
     w: 320,
     h: 170,
-    crop: [16, 14, 306, 154],
+    // As above: measured against what the drawing actually covers, not against
+    // where the wires run.
+    crop: [-16, -3, 356, 153],
     items: [
       { wire: [50, 40, 120, 40] },
       { wire: [160, 40, 260, 40] },

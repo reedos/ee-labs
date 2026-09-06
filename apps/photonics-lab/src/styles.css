@@ -247,6 +247,18 @@ canvas.plot { flex: 1; width: 100%; min-height: 240px; display: block; border-ra
 .eqn-terms tbody th { color: var(--dim); font-weight: 500; width: 32%; }
 .eqn-terms td.f { color: var(--dim); font-size: 11px; font-style: italic; width: 18%; white-space: nowrap; }
 .eqn-terms td.bar { width: 28%; position: relative; }
+/* The line the caption says each equation balances about. Without it the bars
+   are placed against a centre nothing draws, and the sentence names something
+   that is not on the screen. */
+.eqn-terms td.bar::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 1px;
+  bottom: 1px;
+  width: 1px;
+  background: var(--line-bright);
+}
 .eqn-terms td.bar span { display: block; height: 8px; border-radius: 2px; min-width: 1px; }
 .eqn-terms td.bar span.is-in { background: var(--accent); }
 .eqn-terms td.bar span.is-out { background: var(--line-bright); }

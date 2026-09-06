@@ -286,7 +286,13 @@ export function CavityPane({ x }) {
 
 /** The channel grid across the band, with the source's own width beside one channel. */
 export function SpectrumPane({ x, p }) {
-  const shown = Math.min(x.band.channels, 24)
+  // Draw every channel the band holds, up to what the analysis carries. The cap
+  // used to be twenty-four, which drew the twenty-four nearest the long end and
+  // left the short third of the axis empty while the caption named the whole
+  // band. A caption has to describe the picture under it, so both the cap and
+  // the sentence now come from the channels actually drawn.
+  const shown = Math.min(x.band.channels, x.centres.length)
+  const drawn = x.centres.slice(0, shown)
   const from = p.from
   const to = p.to
   const px = (l) => (100 * (l - from)) / (to - from)
@@ -294,14 +300,15 @@ export function SpectrumPane({ x, p }) {
   return (
     <div className="spectrum">
       <svg viewBox="0 0 100 60" preserveAspectRatio="none" role="img" aria-label="The channel grid across the band">
-        {x.centres.slice(0, shown).map((l, k) => (
+        {drawn.map((l, k) => (
           <rect key={k} className="chan" x={Math.max(0, px(l) - wide / 2)} y="14" width={Math.max(0.25, wide * 0.8)} height="30" />
         ))}
-        <rect className="source" x={Math.max(0, px(x.centres[Math.floor(shown / 2)] || (from + to) / 2) - (wide * x.widthRatio) / 2)} y="8" width={Math.max(0.2, wide * x.widthRatio)} height="42" />
+        <rect className="source" x={Math.max(0, px(drawn[Math.floor(shown / 2)] || (from + to) / 2) - (wide * x.widthRatio) / 2)} y="8" width={Math.max(0.2, wide * x.widthRatio)} height="42" />
         <line className="spec-axis" x1="0" y1="50" x2="100" y2="50" />
       </svg>
       <p className="caption">
-        {shown} of {x.band.channels} channels, from {nm(from)} to {nm(to)}. The taller bar is the source’s own width.
+        {shown} of {x.band.channels} channels, from {nm(Math.min(...drawn))} to {nm(Math.max(...drawn))}. The taller
+        bar is the source’s own width.
       </p>
       <dl className="readouts" data-role="spectrum-readouts">
         <div>
@@ -411,8 +418,16 @@ export function EquationsPane({ x }) {
  */
 export function ModulationPane({ x }) {
   const sm = x.sm
-  const from = Math.log10(sm.f3db / 300)
-  const to = Math.log10(sm.f3db * 3)
+  // The axis is anchored on the two frequencies the lesson is about rather than
+  // on a fixed span. Three hundred below the 3 dB point put the peak in the last
+  // seventh of the width, where the feature the pane exists to show was a spike
+  // against an edge. A decade and a half below the lower of the two, to half a
+  // decade above the higher, puts the peak near two thirds along with the
+  // roll-off after it.
+  const lo = Math.min(sm.fr, sm.f3db)
+  const hi = Math.max(sm.fr, sm.f3db)
+  const from = Math.log10(lo / 30)
+  const to = Math.log10(hi * 3)
   const top = Math.max(6, sm.peakDb + 4)
   const bottom = -24
   const px = (f) => (100 * (Math.log10(f) - from)) / (to - from)
@@ -433,8 +448,9 @@ export function ModulationPane({ x }) {
       </svg>
       <p className="caption">
         Response in decibels against modulation frequency, over {plain(to - from)} decades from{' '}
-        {num(Math.pow(10, from), 'Hz')} to {num(Math.pow(10, to), 'Hz')}. The first dashed line is the peak and the
-        second is where the response is 3 dB down.
+        {num(Math.pow(10, from), 'Hz')} to {num(Math.pow(10, to), 'Hz')}. The vertical range runs from{' '}
+        {db(bottom)} to {db(top)}, with the solid line at 0 dB. The first dashed line is the peak and the second is
+        where the response is 3 dB down.
       </p>
       <dl className="readouts" data-role="modulation-readouts">
         <div>
@@ -491,7 +507,7 @@ export function StepPane({ x }) {
   const g = x.guard
   const step = x.step
   const t1 = step.t[step.t.length - 1]
-  const { lo, span } = stepResolution(x)
+  const { lo, hi, span } = stepResolution(x)
   const px = (t) => (100 * t) / t1
   const py = (v) => 62 - (54 * (v - lo)) / span
   const measured = step.t.map((t, k) => `${px(t)},${py(step.trace[k])}`).join(' ')
@@ -506,7 +522,8 @@ export function StepPane({ x }) {
       </svg>
       <p className="caption">
         Photon density against time, over {num(t1, 's')}, after the drive current steps up by {pct(g.depth)}. The
-        solid curve is the pair integrated and the dashed one is what the linearisation predicted.
+        vertical range runs from {num(lo, 'm⁻³')} to {num(hi, 'm⁻³')}. The solid curve is the pair integrated and
+        the dashed one is what the linearisation predicted.
       </p>
       <dl className="readouts" data-role="step-readouts">
         <div>

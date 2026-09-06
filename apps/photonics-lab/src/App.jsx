@@ -85,6 +85,7 @@ export default function App({ initialId = FIRST, initialView = null }) {
         max={k.max}
         scale={k.scale}
         hint={k.hint}
+        decimals={k.decimals}
         eng={k.eng !== false}
       />
     </div>

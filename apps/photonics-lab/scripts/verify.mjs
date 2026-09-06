@@ -70,8 +70,11 @@ const clipped = () =>
 /** Set a knob by its key, through the field the shell renders for it. */
 async function setKnob(key, value) {
   const box = page.locator(`.knob[data-knob="${key}"] input`).first()
-  if (!(await box.count())) {
-    // The knob may be folded under "More knobs".
+  // A knob past the first four is inside the closed "More knobs" fold, where it
+  // is in the DOM and not on the screen. Counting it finds it and filling it
+  // does not, which is REVIEW_PLAYBOOK.md §7's own trap. So the test is
+  // visibility, and the harness opens the fold the way a person would.
+  if (!(await box.count()) || !(await box.isVisible())) {
     await page.evaluate(() => {
       const d = document.querySelector('details.more-knobs')
       if (d && !d.open) d.open = true
@@ -122,21 +125,30 @@ for (const exp of EXPERIMENTS) {
     if (over.length) fail(`${exp.id} ${view}: clipped at the right edge — ${over.join(', ')}`)
   }
 
-  // Every try step, applied through the chip the reader clicks, with the
-  // headline read back after each. A step whose knobs do not reach the page
-  // leaves the headline where it was.
-  const before = await text('[data-role=headline]')
+  // Every try step, applied through the chip the reader clicks, with the main
+  // area read back after each. A step whose knobs do not reach the page leaves
+  // everything on it where it was.
+  //
+  // The probe is the headline AND the pane under it, not the headline alone. An
+  // experiment may teach that its own headline does not move: C4's headline is
+  // the threshold current, and its third step exists to show that raising the
+  // differential efficiency changes the slope and leaves the threshold where it
+  // is. A headline-only probe reads that lesson as a broken knob.
+  const shown = async () => `${await text('[data-role=headline]')}‖${await text('.view-body')}`
+  const before = await shown()
   let moved = false
   for (let i = 0; i < exp.try.length; i++) {
     await page.locator('.try-line button, .try-line .chip').first().click()
     await settle()
-    if ((await text('[data-role=headline]')) !== before) moved = true
-    const next = page.locator('[data-role=lesson-next], .lesson-nav button[aria-label="Next step"]').first()
-    if (await next.count()) await next.click()
+    if ((await shown()) !== before) moved = true
+    // The step navigation disables its own next button on the last step, so a
+    // click there waits thirty seconds for an element that will never enable.
+    const next = page.locator('.lesson-nav button[aria-label="Next step"]').first()
+    if ((await next.count()) && (await next.isEnabled())) await next.click()
     await settle()
   }
   if (!moved && exp.try.some((t) => Object.keys(t.set || {}).length)) {
-    fail(`${exp.id}: no try step moved the headline off "${before}"`)
+    fail(`${exp.id}: no try step changed anything the headline or the pane shows`)
   }
 }
 console.log('   every experiment loads, and every view it offers draws something')

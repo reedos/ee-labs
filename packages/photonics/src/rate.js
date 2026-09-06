@@ -368,8 +368,9 @@ export const DEPTH_DECLINE = 0.3
  * the integrated one, with the difference reported as the error it is.
  *
  * The integrator is fourth-order Runge-Kutta at a step of one fiftieth of the
- * fastest time constant in the pair, and it stops one relaxation period after
- * the first maximum of the photon density.
+ * fastest time constant in the pair, and it runs for six relaxation periods,
+ * which is far enough past the first maximum for the ringing to be visible and
+ * for the pair to have settled towards its new steady state.
  */
 export function stepOvershoot(spec = {}, current, depth) {
   const before = steadyState({ ...spec, current })
@@ -503,7 +504,7 @@ export function depthGuard(spec = {}, current, depth) {
  */
 export function refuseLargeSignal(what = 'the turn-on transient') {
   throw new PhotonicsError(
-    `${what} needs the two rate equations integrated in time, and a timestep solver's error cannot be told apart from physics. This package returns the steady state exactly at every current and the linearised response exactly about it, and declines to draw a large-signal solution as though it were measured.`,
+    `${what.slice(0, 1).toUpperCase()}${what.slice(1)} needs the two rate equations integrated in time, and a timestep solver's error cannot be told apart from physics. This package returns the steady state exactly at every current and the linearised response exactly about it, and declines to draw a large-signal solution as though it were measured.`,
     { field: 'time' },
   )
 }

@@ -38,7 +38,10 @@ export function num(v, unit = '', sig = 5, scale = 0) {
   if (!Number.isFinite(v)) return '—'
   const value = isNoise(v, scale) ? 0 : v
   if (!unit) return bare(value, sig)
-  if (unit === '%') return `${Number(Number(value).toPrecision(sig))} %`
+  // A unit a datasheet states whole takes no prefix either. Nobody writes a
+  // loss in millidecibels a kilometre, and "500 mdB" on an axis is a reading a
+  // reader has to translate before it means anything.
+  if (WHOLE.has(unit)) return `${Number(Number(value).toPrecision(sig))} ${unit}`
   // Past the prefix table's own ends there is no prefix to use, and forcing one
   // gives nine digits in front of a tera. A photon density of 4.9793e20 per
   // cubic metre is not "497930000 Tm⁻³": it is a mantissa and a power of ten,
@@ -47,6 +50,9 @@ export function num(v, unit = '', sig = 5, scale = 0) {
   if (mag >= 1e15 || (mag > 0 && mag < 1e-15)) return `${bare(value, sig)} ${unit}`
   return fmt(value, unit, sig)
 }
+
+/** The units this lab prints whole, with no engineering prefix in front of them. */
+const WHOLE = new Set(['%', 'dB', 'dBm', 'dB/km', 'ps/(nm·km)'])
 
 /** The digits of a superscript exponent, so a power of ten reads as one. */
 const SUPERSCRIPT = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' }
