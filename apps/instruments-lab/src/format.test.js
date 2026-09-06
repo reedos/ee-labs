@@ -30,7 +30,21 @@ describe('num: the one formatter the student reads', () => {
   it('prints ordinary values as fmt does', () => {
     expect(num(0.012, 'A', 3)).toBe('12 mA')
     expect(num(1591.549, 'Hz', 4)).toBe('1.592 kHz')
-    expect(num(0.25, '', 3)).toBe('250 m')
+    expect(num(4.07e-9, 'V/√Hz', 3)).toBe('4.07 nV/√Hz')
+  })
+
+  it('gives a ratio, a per cent and a multiple no SI prefix, since there is no unit to multiply', () => {
+    // F3's topbar carried "500 m%" for half a per cent, and A3's "100 m" for a
+    // ratio of a tenth. Both are the milli prefix on a unit that is not there.
+    expect(num(0.5, '%', 4)).toBe('0.5 %')
+    expect(num(0.7071068, '%', 4)).toBe('0.7071 %')
+    expect(num(-1.2e-5, '%', 3)).toBe('-0.000012 %')
+    expect(num(0.1, '', 4)).toBe('0.1')
+    expect(num(0.25, '', 3)).toBe('0.25')
+    expect(num(5.43, '×', 3)).toBe('5.43 ×')
+    expect(num(898, 'million ×', 3)).toBe('898 million ×')
+    // A quantity that does take a prefix still gets one.
+    expect(num(0.1, 'V', 4)).toBe('100 mV')
   })
 
   it('scaleOf is the largest magnitude of a reading set, ignoring gaps', () => {

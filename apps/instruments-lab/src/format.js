@@ -14,12 +14,26 @@ const ABS = 1e-15
 /** Whether `v` is arithmetic noise against `scale` (the largest value of its kind on screen). */
 export const isNoise = (v, scale = 0) => Math.abs(v) < Math.max(REL * Math.abs(scale), ABS)
 
+/**
+ * Units that take no SI prefix, because there is no unit for the prefix to
+ * multiply. A per-cent is already a ratio, and 0.5 % printed as "500 m%" reads
+ * as a milli-per-cent; a bare ratio of 0.1 printed as "100 m" reads as
+ * millimetres. Both shipped, on the topbar of F3 and A3. A ratio, a per cent
+ * and a multiple are written as the plain numbers they are.
+ */
+const NO_PREFIX = /^(|%|°|dB|dBm|×|(thousand|million|billion) ×)$/
+
 /** A value with its unit in engineering notation — noise snapped to 0, ∞ and NaN spelled out. */
 export function num(v, unit = '', sig = 4, scale = 0) {
   if (v === Infinity) return '∞'
   if (v === -Infinity) return '−∞'
   if (!Number.isFinite(v)) return '—'
-  return fmt(isNoise(v, scale) ? 0 : v, unit, sig)
+  const x = isNoise(v, scale) ? 0 : v
+  if (NO_PREFIX.test(unit)) {
+    const plain = Number(x.toPrecision(sig)).toString()
+    return unit ? `${plain} ${unit}` : plain
+  }
+  return fmt(x, unit, sig)
 }
 
 /** The largest magnitude among some readings: the scale their noise is measured against. */
