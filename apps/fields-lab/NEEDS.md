@@ -161,9 +161,65 @@ marked. That is worth knowing before the canvas is promoted, because it says the
 profile mode is not a favour to the Devices Lab. It is the shape most
 one-dimensional pictures in this suite already have.
 
-## 6. Nothing else
+## 6. Three findings from the first verification sitting
 
-This lab needs no new element in `packages/network`, no change to
-`packages/ui`'s existing components, and no experiment from another lab. Its
-only external dependencies are Circuit Elements Lab and Circuit Lab, and both
-are built.
+The Playwright harness had never been run against a browser. Running it, and
+reading a screenshot of every view as a student would, turned up three things
+this lab cannot fix inside its own directory.
+
+### 6.1 The lab is in no suite list, so it deploys with no way back
+
+`REVIEW_PLAYBOOK.md` §11 says to run each harness against the layout a student
+loads. Assembled and served at `/fields-lab/`, this lab's page carries exactly
+the same 162 elements as the bare preview does, because it is in neither list
+the cross-lab chrome reads:
+
+- `packages/ui/src/deeplink.js`'s `APPS` is `['signal-lab', 'circuit-lab',
+  'control-lab', 'circuit-elements-lab', 'power-lab']`. With `fields-lab`
+  absent, `homeUrl()` and `siblingUrl()` both return null on the deployed path
+  as well as on a bare port, so `LabNav` renders nothing at all. A reader who
+  lands on the Fields Lab has no link back to the splash page and no link to a
+  sibling.
+- `scripts/assemble-site.mjs`'s `LABS` does not list `fields-lab` either, while
+  `.github/workflows/deploy.yml` already carries the `cp` line §1 asks for. The
+  playbook says that script mirrors the workflow's assembly step and the two
+  move together. They have drifted. Assembling this lab today needs
+  `--labs fields-lab` on the command line.
+
+Both files are the director's. Adding `fields-lab` to both is one edit each,
+and it is what makes §1's deploy line reach a reader.
+
+### 6.2 A bare number typed into a metres field can be read a thousand-fold out
+
+`packages/ui/src/NumField.jsx` in engineering mode reads a bare number in the
+prefix on display. That is right, and `engEcho` announces what it did. The trap
+is the unit strip in `parseEng`. The caller's own unit is stripped before the
+prefix is read. So a field whose unit is `m` reads a typed "1.475m" as bare
+1.475, and then reads that in the prefix already on screen. In a field showing
+micrometres the result is 1.475 µm, a thousand times out. The echo line says
+nothing, because it sees no typed prefix.
+
+Every length knob in this lab has the unit `m`, so every one of them is
+exposed. `parseEng`'s own comment says a unit that collides with a prefix
+letter has to be spelled out by the caller. Here `m` is that collision. Two
+fixes are open to the director. Strip the caller's unit only when what remains
+still parses, or have a field whose unit is a prefix letter pass a spelled-out
+name.
+
+### 6.3 The phone has no tab bar
+
+Circuit Elements Lab's phone layout ends with a fixed bar naming the four parts
+of the page. The knobs are one tap away from the plot there. This lab copied
+the dissolved sidebar and not the bar. At 390 px its note, its try line and its
+view switch are now all in the first screen. That is the released lab's own
+standard, and `verify.mjs` measures it. The first knob is still a scroll below
+the view.
+
+The bar is four buttons and a `scrollIntoView`. It names the same four parts in
+every lab, so it is a candidate for `packages/ui` rather than a fourth copy.
+
+## 7. Nothing else
+
+This lab needs no new element in `packages/network` and no experiment from
+another lab. Its only external dependencies are Circuit Elements Lab and
+Circuit Lab, and both are built.
