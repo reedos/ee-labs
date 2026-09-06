@@ -14,12 +14,18 @@
 //     images of lines and circles under a Möbius map (smith.js); the uniform
 //     line's chain matrix at a frequency, in complex hyperbolic functions
 //     (line.js); the L network and the quarter-wave transformer, which are two
-//     equations in two unknowns solved in closed form (match.js).
+//     equations in two unknowns solved in closed form (match.js); the cascade of
+//     noise figures over available gains, the level walk in decibels and the
+//     noise floor kTB (budget.js).
 //
 //   APPROXIMATE, and never without a guard carrying a threshold:
-//     nothing yet. The unilateral approximation, the third-order
-//     extrapolation of IP3 and Leeson's phase-noise model arrive with their
-//     own guards in later phases, and the plan states each threshold.
+//     the cascaded input IP3 (budget.js), which adds each stage's third-order
+//     product as a voltage with its phase aligned. That is the worst case
+//     rather than the answer, so `cascade` returns the power-addition total
+//     beside it and labels which rule produced which. The unilateral
+//     approximation, the third-order extrapolation of IP3 from two tones and
+//     Leeson's phase-noise model arrive with their own guards in later
+//     phases, and the plan states each threshold.
 //
 //   DECLINED, with the reason as content:
 //     the line as a rational H(s). e^(-gamma l) is transcendental, with no
@@ -31,6 +37,8 @@
 //     than returned as a large number: an ideal transformer has a finite
 //     S-matrix and no Z-matrix, and the message says which description is the
 //     one it does not have.
+//     The DC power of a block that does not state one (budget.js). It is null
+//     and reads as unknown, and a chain holding one has no power total.
 //
 // See /CORE_SCOPE.md and /RF_LAB_PLAN.md §2.2, which is this table object by
 // object.
@@ -160,3 +168,31 @@ export {
   sweepQuarterWave,
   transformerPath,
 } from './src/match.js'
+// The budgets, added by the System Lab's first sitting under
+// `SYSTEM_LAB_PLAN.md` Decision 3, which puts them here rather than in a
+// package of their own because the RF Lab's Groups F and G use the same
+// formulas. `src/budget.js` states its own class list, object by object: the
+// cascade of noise figures and the level walk are exact, the cascaded input IP3
+// is the aligned-phase worst case and ships with the power-addition total
+// beside it, and a block whose DC power is not stated reads as unknown rather
+// than as zero.
+export {
+  BOLTZMANN,
+  IIP3_RULES,
+  KT0_DBM_HZ,
+  PASSIVE_KINDS,
+  T0,
+  blockOf,
+  bypass,
+  cascade,
+  chainOf,
+  combine,
+  fromDbPower,
+  fromDbm,
+  levels,
+  noiseFloorDbm,
+  passiveNf,
+  reorder,
+  toDbPower,
+  toDbm,
+} from './src/budget.js'
