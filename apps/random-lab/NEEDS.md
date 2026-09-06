@@ -143,3 +143,35 @@ or a second periodogram.
   for a sampled filter should print it.
 
 The contracts are frozen in `apps/random-lab/AGENT_BRIEF.md` §3.5 and §3.6.
+
+## 7. Two hazards in `packages/ui`, found by running this lab in a browser
+
+Both are worked around inside this lab. Neither is fixed here, because
+`packages/ui` belongs to the director.
+
+### `fmtNum(v, 0)` throws
+
+`format.js`'s `fmtNum` calls `Number.prototype.toPrecision`, which accepts 1 to
+100 and throws a `RangeError` on 0. Nine readouts and eight axis tick
+formatters in this lab asked for zero significant figures, meaning a whole
+number, and the throw landed inside React's commit phase. The app rendered an
+empty page for all thirty experiments while 305 unit tests passed.
+
+This lab now formats counts with its own `src/format.js`. A guard in `fmtNum`
+itself would be better, either treating 0 as "a whole number" or throwing a
+message that names the caller. No other app passes a literal 0 to it today,
+checked by grep across `apps` and `packages`, so this is a hazard rather than a
+second live defect.
+
+### `niceStep` can leave one tick on an axis
+
+`plot.js`'s `niceStep` rounds the interval UP to the next round number and then
+caps it at the widest round number the range holds. For a range of 8.6 it asks
+for 2.15, rounds to 5, and caps at 5. The only multiple of 5 inside is zero, so
+the Kalman view's y-axis carried one label reading "0" and told a reader
+nothing about the scale.
+
+This lab now sizes its own ticks in `src/axis.js`, which takes the interval
+nearest the ideal on the same ladder and narrows only far enough to leave three
+ticks. That function is the candidate if the director wants it shared. Its own
+test walks four hundred ranges of every magnitude.
