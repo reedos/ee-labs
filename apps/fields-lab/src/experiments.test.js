@@ -160,6 +160,54 @@ describe('every experiment analyses, at its defaults and off them', () => {
     }
   })
 
+  it('every conductor and every charge a map draws is inside the map', () => {
+    // B1's domain was not centred on the origin while its plates were drawn
+    // about it, so both plates sat in the bottom-left corner with the lower
+    // one entirely off the picture. The colour field made it obvious; nothing
+    // in the suite measured it.
+    let drawn = 0
+    for (const e of EXPERIMENTS) {
+      if (!e.views.includes('2d')) continue
+      const { p, x } = at(e.id)
+      const props = mapPropsFor(e, p, x)
+      const d = props.domain
+      const x0 = d.centre ? -d.width / 2 : 0
+      const y0 = d.centre ? -d.height / 2 : 0
+      const inside = (ax, ay) =>
+        ax >= x0 - 1e-12 && ax <= x0 + d.width + 1e-12 && ay >= y0 - 1e-12 && ay <= y0 + d.height + 1e-12
+      for (const c of props.conductors || []) {
+        drawn++
+        for (const [px, py] of c.path) {
+          expect(inside(px, py), `${e.id}: a conductor reaches (${px}, ${py}), outside a domain of ${d.width} by ${d.height}`).toBe(true)
+        }
+      }
+      for (const q of props.charges || []) {
+        drawn++
+        expect(inside(q.at[0], q.at[1]), `${e.id}: a charge sits at (${q.at.join(', ')}), outside the map`).toBe(true)
+      }
+    }
+    expect(drawn, 'no conductor or charge was measured at all').toBeGreaterThan(10)
+  })
+
+  it('the plate map and the plate profile agree about which plate is at V', () => {
+    // The map labelled the upper plate V and painted the potential rising
+    // downwards, and the profile did the same, so both disagreed with the
+    // labels the map itself drew.
+    const { p, x } = at('b1')
+    const props = mapPropsFor(byId.b1, p, x)
+    const midY = (c) => c.path.reduce((sum, pt) => sum + pt[1], 0) / c.path.length
+    const live = props.conductors.find((c) => c.potential === p.V)
+    const earthed = props.conductors.find((c) => c.potential === 0)
+    expect(midY(live), 'the plate held at V is not the upper one').toBeGreaterThan(midY(earthed))
+    expect(props.scalar(0, p.gap / 2), 'the colour at the upper plate').toBeCloseTo(p.V, 9)
+    expect(props.scalar(0, -p.gap / 2), 'the colour at the earthed plate').toBeCloseTo(0, 9)
+    // Outside the plates the closed form says nothing, and nothing is painted.
+    expect(Number.isFinite(props.scalar(0, p.gap)), 'a potential painted outside the plates').toBe(false)
+    const pr = profilePropsFor(byId.b1, p, x)
+    expect(pr.scalar.read(p.gap / 2), 'the profile at the upper plate').toBeCloseTo(p.V, 9)
+    expect(pr.scalar.read(-p.gap / 2), 'the profile at the earthed plate').toBeCloseTo(0, 9)
+  })
+
   it('the report link carries the experiment, its knobs, its view and its headline', () => {
     for (const e of EXPERIMENTS) {
       const { p, x } = at(e.id)

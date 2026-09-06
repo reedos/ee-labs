@@ -81,13 +81,16 @@ function radialPotential(geometry, V) {
   const { kind, a, b } = geometry
   if (kind === 'parallelPlate') {
     // The same idealisation the closed form is: the field is uniform between
-    // the plates and nothing is outside them. `capacitance().neglects` names
-    // the fringing this leaves out, and B1's note repeats it.
+    // the plates and there is none outside them. `capacitance().neglects`
+    // names the fringing this leaves out, and B1's note repeats it. Outside
+    // that region the closed form says nothing, so nothing is painted rather
+    // than a flat colour a reader would take for a potential.
     const gap = geometry.gap
+    const half = Math.sqrt(geometry.area) / 2
     return (x, y) => {
-      if (Math.abs(x) > Math.sqrt(geometry.area) / 2) return 0
-      const t = 0.5 - y / gap
-      return V * Math.min(1, Math.max(0, t))
+      if (Math.abs(x) > half || Math.abs(y) > gap / 2) return NaN
+      // The plate at +gap/2 is the one `conductorsFor` labels V.
+      return V * (0.5 + y / gap)
     }
   }
   if (kind === 'coax') {
@@ -348,7 +351,10 @@ function plateProfile(p) {
     cut: 0,
     from: -p.gap / 2,
     to: p.gap / 2,
-    scalar: { read: (y) => p.V * (0.5 - y / p.gap), label: 'Potential', unit: 'V' },
+    // Up from the earthed plate to the one held at V, which is the way the map
+    // draws it. The two disagreed: the map put V on the top plate and the
+    // profile put it at the bottom.
+    scalar: { read: (y) => p.V * (0.5 + y / p.gap), label: 'Potential', unit: 'V' },
     regions: [
       { from: -p.gap / 2, to: p.gap / 2, label: 'dielectric' },
     ],

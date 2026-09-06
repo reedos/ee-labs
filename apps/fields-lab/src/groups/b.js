@@ -25,7 +25,10 @@ export const B = [
     view: 'numbers',
     views: ['numbers', 'profile', '2d'],
     headline: (x) => ({ value: x.C.value, unit: 'F', label: 'Capacitance' }),
-    domain: (p) => ({ width: Math.sqrt(p.area), height: p.gap * 3 }),
+    // The plates are drawn about the origin, as every geometry in this lab is,
+    // so the domain has to be centred on it too. Without `centre` the map put
+    // both plates in the bottom-left corner with half of each off the edge.
+    domain: (p) => ({ width: Math.sqrt(p.area) * 1.4, height: p.gap * 3, centre: true }),
   },
   {
     id: 'b2',
