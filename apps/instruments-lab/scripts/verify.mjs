@@ -88,32 +88,38 @@ const canvasesPainted = () =>
     }),
   )
 
+/** Open every folded group in the picker, the way a reader does. */
+async function unfoldGroups() {
+  const groups = page.locator('.picker-row[aria-expanded="false"]')
+  for (let g = 0; g < 12; g++) {
+    if ((await groups.count()) === 0) break
+    await groups.first().click()
+    await page.waitForTimeout(40)
+  }
+}
+
 /** Choose an experiment by id through the picker. */
 async function choose(id) {
   await page.locator('.picker-current').click()
   await settle()
   // Its group may be folded; open every group, then take the row.
-  const groups = page.locator('.picker-row[aria-expanded="false"]')
-  for (let g = 0; g < 8; g++) {
-    if ((await groups.count()) === 0) break
-    await groups.first().click()
-    await page.waitForTimeout(40)
-  }
+  await unfoldGroups()
   await page.locator(`.preset:has(b:text-is("${id.toUpperCase()}"))`).first().click()
   await page.waitForSelector('.views .schematic')
   await settle()
 }
 
-const ids = await page.evaluate(() => {
-  // The picker holds every experiment, so the list comes from the page itself.
-  document.querySelector('.picker-current').click()
-  const open = () => [...document.querySelectorAll('.picker-row[aria-expanded="false"]')].forEach((b) => b.click())
-  open()
-  open()
-  const out = [...document.querySelectorAll('.preset b')].map((b) => b.textContent.trim().toLowerCase())
-  document.querySelector('.picker-current').click()
-  return out
-})
+// The picker holds every experiment, so the list comes from the page itself.
+// Every click has to be awaited. The list and each group's rows are rendered
+// after the click that opens them, so a synchronous click-and-read inside one
+// evaluate() reads the picker before React has drawn a single row, and comes
+// back with nothing.
+await page.locator('.picker-current').click()
+await settle()
+await unfoldGroups()
+const ids = (await page.locator('.preset b').allTextContents()).map((t) => t.trim().toLowerCase())
+await page.locator('.picker-current').click()
+await settle()
 if (ids.length !== 25) fail(`the picker lists ${ids.length} experiments, expected 25`)
 
 for (const id of ids) {
@@ -126,6 +132,21 @@ for (const id of ids) {
   const m = await meters()
   if (!m.length) fail(`${id}: the schematic shows no meters`)
   if (m.some((t) => !t || t === 'NaN' || /undefined/.test(t))) fail(`${id}: a meter reads "${m.find((t) => !t || /NaN|undefined/.test(t))}"`)
+  // A schematic where every meter reads zero is a picture of a dead circuit.
+  // Six experiments shipped that way: solveDC evaluates a sine at t = 0, and a
+  // sine is zero there, so A3, A5, B2, D1, D2 and F4 all opened at 0 V.
+  if (m.every((t) => /^-?0(\.0+)?\s/.test(t))) fail(`${id}: every meter on the schematic reads zero (${m[0]})`)
+
+  // Every try step is readable where it is drawn. The step button is not a
+  // block box by default, so it grew past its cell and the lesson card clipped
+  // the sentence mid-word with no ellipsis to say that it had.
+  const cut = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-role=try-step]')]
+      .map((b, i) => ({ i, right: b.getBoundingClientRect().right, edge: b.closest('.lesson').getBoundingClientRect().right, over: b.scrollWidth > b.clientWidth + 1 }))
+      .filter((r) => r.right > r.edge + 1 || r.over)
+      .map((r) => `step ${r.i + 1} runs ${Math.round(r.right - r.edge)}px past the card`),
+  )
+  if (cut.length) fail(`${id}: a try step is cut off (${cut.join(', ')})`)
 
   // 2. Every check row in the math panel ticks, on screen and not only in a test.
   await openAllMath()
@@ -146,14 +167,21 @@ for (const id of ids) {
     if (over.length) fail(`${id}: the ${label} view is clipped (${over.join(', ')})`)
   }
 
-  // 4. A try step turns its knobs and the meters follow.
+  // 4. A try step turns its knobs and the first screen answers.
+  //
+  // It used to compare the schematic's meters alone, which is a proxy and not
+  // the claim. A4's first step moves the trimmer, and the calibrator's edge
+  // changes while the settled meters do not; F1's steps change the display and
+  // not the circuit at all. What a step promises is that a number the reader is
+  // looking at moves, so the meters and the topbar's own readings are compared
+  // together, and the failure names which of them was asked.
   const stepCount = await page.locator('[data-role=try-step]').count()
   if (stepCount < 2) fail(`${id}: ${stepCount} try steps, expected at least two`)
-  const before = (await meters()).join('|')
+  const firstScreen = async () => [...(await meters()), '|', ...(await page.locator('[data-role=headline]').allTextContents())].join('|')
+  const before = await firstScreen()
   await page.locator('[data-role=try-step]').first().click()
   await settle()
-  const after = (await meters()).join('|')
-  if (before === after) fail(`${id}: the first try step moved nothing on the schematic`)
+  if (before === (await firstScreen())) fail(`${id}: the first try step moved no meter and no headline reading`)
   if (!/balances/.test(await page.locator('[data-role=outcome]').textContent())) fail(`${id}: the first try step left the circuit unsolvable`)
 
   await page.screenshot({ path: `${SHOTS}/${id}-wide.png`, fullPage: true })
