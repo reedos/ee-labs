@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { locusExtent, stickyExtent, LOCUS_UNIT, LOCUS_X_TITLE, LOCUS_Y_TITLE } from './locusFrame.js'
+import {
+  locusExtent,
+  stickyExtent,
+  locusTickStep,
+  LOCUS_UNIT,
+  LOCUS_X_TITLE,
+  LOCUS_Y_TITLE,
+} from './locusFrame.js'
 import { polesZeros } from '@ee-labs/systems'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf, ctrlDefaultsFor } from './systems.js'
 
@@ -110,5 +117,53 @@ describe('the two axes of the s-plane carry one unit', () => {
     expect(LOCUS_X_TITLE).toContain('σ')
     expect(LOCUS_Y_TITLE).toContain('Imaginary')
     expect(LOCUS_Y_TITLE).toContain('jω')
+  })
+})
+
+describe('locusTickStep', () => {
+  // The labels an axis of half-range h would carry at this step.
+  const ticksIn = (half, step) => {
+    const out = []
+    for (let v = Math.ceil(-half / step) * step; v <= half + step * 1e-6; v += step) out.push(v)
+    return out
+  }
+
+  it('the 390px pane that had zero as its only label now has three', () => {
+    // Measured: the locus canvas at 390x844 leaves about 230x130 of plot,
+    // and "Watch the poles cross" holds at a half-extent of 8, so the frame
+    // is x +/-14.2 by y +/-8. The height allowed two divisions, which rounds
+    // to a step of 10, and both 10 and -10 are outside the frame — zero was
+    // the only label on either axis.
+    const step = locusTickStep(14.2, 8, 230, 130, 1)
+    expect(step).toBeLessThanOrEqual(8)
+    expect(ticksIn(8, step).length).toBeGreaterThanOrEqual(3)
+    expect(ticksIn(14.2, step).length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('a wide pane keeps the density it already had', () => {
+    // 1280x900: about 880x560 of plot, the same frame. The size rule is
+    // already finer than the floor there, so the floor changes nothing.
+    expect(locusTickStep(14.2, 8, 880, 560, 1)).toBe(2)
+  })
+
+  it('always leaves a label either side of zero, at every extent and pane', () => {
+    for (const half of [0.003, 0.5, 8, 240, 6e6]) {
+      for (const pane of [[230, 130], [420, 200], [880, 560], [1800, 900]]) {
+        const w = pane[0]
+        const h = pane[1]
+        const xHalf = half * Math.max(1, w / h)
+        const step = locusTickStep(xHalf, half, w, h, 1)
+        expect(step, `half ${half} pane ${w}x${h}`).toBeLessThanOrEqual(half * (1 + 1e-9))
+        expect(ticksIn(half, step).length, `half ${half} pane ${w}x${h}`).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
+  it('is a 1-2-5 step, so the labels read as round numbers', () => {
+    for (const half of [0.003, 0.5, 8, 240, 6e6]) {
+      const step = locusTickStep(half * 1.8, half, 880, 560, 1)
+      const m = step / Math.pow(10, Math.floor(Math.log10(step)))
+      expect([1, 2, 5], `step ${step}`).toContain(Math.round(m))
+    }
   })
 })

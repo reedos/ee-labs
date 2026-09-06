@@ -1,7 +1,7 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmtHz } from '@ee-labs/ui'
 import { findCancellations, findNearMerges } from '../locusCancel.js'
-import { LOCUS_X_TITLE, LOCUS_Y_TITLE } from '../locusFrame.js'
+import { LOCUS_X_TITLE, LOCUS_Y_TITLE, locusTickStep } from '../locusFrame.js'
 
 /**
  * The root locus on the s-plane — this lab's own canvas, not the shared
@@ -36,6 +36,7 @@ export default function LocusCanvas({
       const aspect = area.w / area.h
       const yMax = extent * Math.max(1, 1 / aspect)
       const xMax = extent * Math.max(1, aspect)
+      const tickStep = locusTickStep(xMax, yMax, area.w, area.h, k)
 
       // Real σ and imaginary jω both carry a unit, and the SAME one
       // (locusFrame.js) — unlike the
@@ -52,7 +53,15 @@ export default function LocusCanvas({
         yMax,
         (v) => fmtHz(v),
         (v) => fmtHz(v),
-        { zeroLine: true, xTitle: LOCUS_X_TITLE, yTitle: LOCUS_Y_TITLE },
+        {
+          // One step for both axes, with a floor under it so a short pane
+          // cannot end up with zero as its only label (locusFrame.js).
+          xStep: tickStep,
+          yStep: tickStep,
+          zeroLine: true,
+          xTitle: LOCUS_X_TITLE,
+          yTitle: LOCUS_Y_TITLE,
+        },
       )
 
       ctx.save()

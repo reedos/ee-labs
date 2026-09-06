@@ -29,6 +29,51 @@ export const LOCUS_UNIT = 'rad/s'
 export const LOCUS_X_TITLE = `Real  σ  (${LOCUS_UNIT})`
 export const LOCUS_Y_TITLE = `Imaginary  jω  (${LOCUS_UNIT})`
 
+/** The largest 1-2-5 step not exceeding v. */
+function stepDown(v) {
+  if (!(v > 0)) return 1
+  const d = Math.pow(10, Math.floor(Math.log10(v)))
+  for (const m of [5, 2, 1]) if (m * d <= v * (1 + 1e-12)) return m * d
+  return d / 2
+}
+
+/** The smallest 1-2-5 step not below v. */
+function stepUp(v) {
+  if (!(v > 0)) return 1
+  const d = Math.pow(10, Math.floor(Math.log10(v)))
+  for (const m of [1, 2, 5]) if (m * d >= v * (1 - 1e-12)) return m * d
+  return 10 * d
+}
+
+/**
+ * The tick step for both axes of the s-plane.
+ *
+ * The shared frame picks its own step from the pane's size, and on a short
+ * pane that rule left the plot with no scale at all. Measured at 390x844 on
+ * "Watch the poles cross": one tick on each axis, both labelled 0, on the one
+ * view whose whole subject is WHERE the poles are. The height allowed two
+ * divisions over a ±8 range, which rounds to a step of 10, and both 10 and
+ * −10 fall outside the frame. Zero was the only label left, and an axis with
+ * one number on it is an axis with none.
+ *
+ * So the density rule stays and gains a floor. `step` is the finer of what
+ * each axis's own size asks for, and never coarser than the SHORT axis's own
+ * half-range — which is what guarantees a labelled tick either side of zero
+ * on the axis that has the least room. A wide pane is unaffected, because
+ * the density rule is already finer there than the floor.
+ *
+ * One step for both axes, not two: the plane is drawn at 1:1, so a square
+ * grid is the honest one.
+ */
+export function locusTickStep(xHalf, yHalf, areaW, areaH, k = 1) {
+  const divisions = (px, per) => Math.max(2, Math.floor(px / (per * k)))
+  const byWidth = stepUp((2 * xHalf) / divisions(areaW, 90))
+  const byHeight = stepUp((2 * yHalf) / divisions(areaH, 46))
+  const dense = Math.min(byWidth, byHeight)
+  const floor = stepDown(Math.min(xHalf, yHalf))
+  return Math.min(dense, floor)
+}
+
 /**
  * The half-extent the content needs: 1.35 × the farthest OPEN- or
  * CLOSED-loop POLE. A zero never sets the scale.
