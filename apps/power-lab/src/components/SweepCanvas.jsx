@@ -22,15 +22,43 @@ export function atLabel(sweep, at, atY) {
   return `${xTxt} → ${yTxt}`
 }
 
-/** The y-range for one swept quantity, anchored on the sweep at the defaults. */
+/** The share of the declared frame a curve has to fill to keep it. */
+export const FRAME_SHARE = 0.25
+
+/**
+ * The y-range for one swept quantity, anchored on the sweep at the defaults.
+ *
+ * The declared frame in SWEEP_Y — an efficiency runs 0 to 100 %, a ratio 0 to
+ * 1 — is the right one while the curve uses a fair share of it. B7, B8, G1,
+ * G3 and G4 all sweep an efficiency that never leaves the top tenth, and D4's
+ * half-bridge steps 48 V down by four, so its M never passes a quarter. Each
+ * of those drew a line pinned along one edge of a frame whose other nine
+ * tenths were empty, and the fall the lesson is about — 99.5 % to 95.4 % as
+ * B8's switching frequency rises — moved four pixels. The lesson's own
+ * feature has to be visible (REVIEW_PLAYBOOK.md classes 4 and 5).
+ *
+ * So the declared frame is kept while the curve fills at least FRAME_SHARE of
+ * it, and the data frames the plot otherwise. The decision is taken on the
+ * sweep at the defaults, like the range itself, so turning a knob moves the
+ * curve and never the frame.
+ */
 export function sweepRange(points, basePoints, key, ay, { withPred = false } = {}) {
   const pick = (qs) => (qs || []).map((q) => q[key])
   const preds = (qs) => (withPred ? (qs || []).map((q) => q.pred) : [])
-  return anchoredRange([...pick(points), ...preds(points)], [...pick(basePoints), ...preds(basePoints)], {
-    lo: ay.lo,
-    hi: ay.hi,
+  const values = [...pick(points), ...preds(points)]
+  const base = [...pick(basePoints), ...preds(basePoints)]
+  const anchor = (base.length ? base : values).filter((v) => Number.isFinite(v) && (ay.scale !== 'log' || v > 0))
+  const declared = Number.isFinite(ay.lo) && Number.isFinite(ay.hi) ? ay.hi - ay.lo : 0
+  const fills = declared > 0 && anchor.length ? (Math.max(...anchor) - Math.min(...anchor)) / declared : 1
+  const keep = fills >= FRAME_SHARE
+  return anchoredRange(values, base, {
+    lo: keep ? ay.lo : null,
+    hi: keep ? ay.hi : null,
     log: ay.scale === 'log',
-    floor: key === 'M' ? 1 : null,
+    // M's unity line is a reference the curve is read against, and it stays on
+    // the chart — but only while the declared frame does. A 4:1 transformer's
+    // M does not reach a quarter, and unity says nothing about it.
+    floor: key === 'M' && keep ? 1 : null,
   })
 }
 

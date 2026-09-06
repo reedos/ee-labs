@@ -7,12 +7,12 @@
 // complaint as a measurement.
 
 import { describe, it, expect } from 'vitest'
-import { EXPERIMENTS, TRACES, byId, defaultsOf } from '../experiments.js'
+import { EXPERIMENTS, TRACES, SWEEP_Y, byId, defaultsOf } from '../experiments.js'
 import { analyse } from '../analysis.js'
 import { sweepFor } from '../App.jsx'
 import { scopeMarks, sweepMarks } from '../marks.js'
 import { drawScope } from './ScopeCanvas.jsx'
-import { drawSweep, sweepLegend, atLabel } from './SweepCanvas.jsx'
+import { drawSweep, sweepLegend, atLabel, sweepRange, FRAME_SHARE } from './SweepCanvas.jsx'
 import { drawFlux, drawSpectrum } from './panes.jsx'
 import { fakeCtx, texts, textBox, overlaps } from './fakeCanvas.js'
 
@@ -451,15 +451,89 @@ describe('no label is drawn on top of another, or off the plot', () => {
     }
   }, 120000)
 
-  it("draws B8's marker reading, which the frame's ceiling used to swallow", () => {
-    const { s, ctx, g } = sweepAt('b8', 850, 360)
-    // The efficiency at the defaults plots within a few pixels of the top of
-    // the frame, which is where the label used to be drawn and clipped.
-    expect(g.sy(s.atY) - g.area.y).toBeLessThan(0.03 * g.area.h)
-    const label = texts(ctx).find((t) => t.text === atLabel(byId.b8.sweep, s.at, s.atY))
+  it('draws a marker reading that sits on the ceiling, which the frame used to swallow', () => {
+    // B8's efficiency rode the top of a 0 to 100 % frame, and its label, drawn
+    // above a point two pixels under the ceiling, fell outside the clip: a dot
+    // and no number. The frame is the curve's own now, so put the marker back
+    // on the ceiling by hand and check the reading survives there.
+    const { exp, p, x, base } = at('b8')
+    const s = sweepFor(exp, p, x)
+    const b = sweepFor(exp, defaultsOf('b8'), base)
+    const [, hi] = sweepRange(s.points, b.points, 'eta', SWEEP_Y.eta)
+    const ctx = fakeCtx()
+    const g = drawSweep(ctx, 850, 360, { points: s.points, basePoints: b.points, sweep: exp.sweep, at: s.at, atY: hi, marks: [] })
+    expect(g.sy(g.Y(hi)) - g.area.y).toBeLessThan(1)
+    const label = texts(ctx).find((t) => t.text === atLabel(exp.sweep, s.at, hi))
     expect(label, 'the marker carries its reading').toBeTruthy()
-    const b = textBox(label)
-    expect(b.y0).toBeGreaterThanOrEqual(g.area.y - 1)
-    expect(b.y1).toBeLessThanOrEqual(g.area.y + g.area.h + 1)
+    const box = textBox(label)
+    expect(box.y0).toBeGreaterThanOrEqual(g.area.y - 1)
+    expect(box.y1).toBeLessThanOrEqual(g.area.y + g.area.h + 1)
+  })
+})
+// REVIEW_PLAYBOOK.md classes 4 and 5: a fixed range that the content cannot
+// fill hides the feature the lesson exists to show. Six of the lab's sweeps
+// drew a line pinned along one edge of an empty frame. B8's efficiency runs
+// 99.5 % down to 95.4 % as its switching frequency rises, which is the whole
+// of "The edges", and on a 0 to 100 % axis that fall was four pixels of four
+// hundred. B7, G1, G3 and G4 sweep the same quantity the same way. D4's
+// half-bridge steps 48 V down by four, so its M never passes a quarter of the
+// unity its axis was framed on.
+describe('a sweep spends its frame on the curve', () => {
+  /** How much of the frame's height the curve covers. */
+  const fill = (id) => {
+    const { s, g } = sweepAt(id, 850, 360)
+    const ys = s.points.map((q) => q[byId[id].sweep.y]).filter(Number.isFinite).map((v) => g.sy(g.Y(v)))
+    return (Math.max(...ys) - Math.min(...ys)) / g.area.h
+  }
+
+  it('gives every sweep at least a third of its frame', () => {
+    for (const e of EXPERIMENTS) {
+      if (!e.sweep) continue
+      expect(fill(e.id), `${e.id}: ${e.sweep.x} against ${e.sweep.y}`).toBeGreaterThan(0.33)
+    }
+  }, 120000)
+
+  it('lets go of the declared 0 to 100 % where the curve cannot fill it', () => {
+    // The five efficiency sweeps that never leave the top of the range.
+    for (const id of ['b7', 'b8', 'g1', 'g3', 'g4']) {
+      const { s } = sweepAt(id, 850, 360)
+      const etas = s.points.map((q) => q.eta).filter(Number.isFinite)
+      expect(Math.max(...etas) - Math.min(...etas), id).toBeLessThan(FRAME_SHARE)
+      const [lo, hi] = sweepRange(s.points, s.points, 'eta', SWEEP_Y.eta)
+      expect(hi - lo, id).toBeLessThan(1)
+      expect(lo, id).toBeGreaterThan(0)
+    }
+    // And keeps it where the curve does fill it: B6 sweeps efficiency from
+    // nothing to 94 %, and G2's runs 53 % to 98 %.
+    for (const id of ['b6', 'g2']) {
+      const { s } = sweepAt(id, 850, 360)
+      expect(sweepRange(s.points, s.points, 'eta', SWEEP_Y.eta)).toEqual([0, 1])
+    }
+  })
+
+  it("drops M's unity line only when unity is not a number the converter reaches", () => {
+    // The half-bridge's M is n*D with a 4:1 transformer.
+    const { s } = sweepAt('d4', 850, 360)
+    const [, hi] = sweepRange(s.points, s.points, 'M', SWEEP_Y.M, { withPred: true })
+    expect(Math.max(...s.points.map((q) => q.M))).toBeLessThan(0.25)
+    expect(hi).toBeLessThan(0.25)
+    // The buck reaches unity at D = 1, and its axis keeps it.
+    const b = sweepAt('b3', 850, 360)
+    expect(sweepRange(b.s.points, b.s.points, 'M', SWEEP_Y.M, { withPred: true })[1]).toBeGreaterThanOrEqual(1)
+  })
+
+  it('frames on the sweep at the defaults, so a knob never re-frames the plot', () => {
+    // The share that decides the framing is read off the defaults, like the
+    // range itself: G1 at its own switching frequency and at four times it.
+    const base = sweepAt('g1', 850, 360)
+    const moved = (() => {
+      const exp = byId.g1
+      const p = { ...defaultsOf('g1'), fs: defaultsOf('g1').fs * 4 }
+      const x2 = analyse(exp, p)
+      const s2 = sweepFor(exp, p, x2)
+      const b2 = sweepFor(exp, defaultsOf('g1'), analyse(exp, defaultsOf('g1')))
+      return sweepRange(s2.points, b2.points, 'eta', SWEEP_Y.eta)
+    })()
+    expect(moved).toEqual(sweepRange(base.s.points, base.s.points, 'eta', SWEEP_Y.eta))
   })
 })

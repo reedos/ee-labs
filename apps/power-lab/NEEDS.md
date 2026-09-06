@@ -109,3 +109,42 @@ used. The real fix is one `title.length > 2` guard inside `drawFrame`
 itself, so every lab's sweep gets it rather than only this one working
 around it — small enough for whichever session next touches
 `packages/ui/src/plot.js`, out of this territory today.
+
+## A third gap in `packages/ui`, worked around locally
+
+`drawFrame` sizes its tick step from the room the plot has. It hands that to
+`niceStep`, which rounds up to 1, 2 or 5 times a power of ten. On a short
+frame the step can come back as wide as the range itself. The axis then gets
+one tick label, or none.
+
+Forty of this lab's scope strips did (2026-09-05 review). G4's output strip
+said "4.65 V" over a 4.63 to 4.69 V window. D1's flux said "0 T" over a range
+of 400 mT each way. `format.js` now carries `tickStep` and `logTickStep`, and
+this app's three plots take their steps from those.
+
+The rule is not this lab's. Any lab that splits a canvas into strips, or
+frames a ripple on a level, meets it. One guard inside `drawFrame` would give
+every lab's plots a scale: ask `niceStep` for more divisions until at least
+three ticks land inside the range. This app's callers could then drop the
+argument. Out of this territory today.
+
+## Open in the app, for Reed to decide
+
+Two sweeps are framed by a runaway asymptote. The numbers their own notes name
+then plot on the axis line.
+
+- **D3, the flyback.** M = n·D/(1 − D) reaches 24.5 at D = 0.98, so the axis
+  runs 0 to 30. The note's "M = 0.500" sits at 2 % of the frame and the try
+  line's "M rises to 1.50" at 5 %. The curve is flat along the bottom until
+  D = 0.9.
+- **C4, the inverting buck-boost.** The same shape downward, to −50.
+
+The declared-frame rule added on 2026-09-05 catches neither. The data does
+span the frame. It is the useful part of the data that does not.
+
+There are three ways out. A log ratio axis for these two sweeps, where the
+descriptor already supports `scale: 'log'` and C4's negative M does not. A
+duty range that stops short of the asymptote. Or a frame that lets the curve
+leave the top, which reverses `anchoredRange`'s rule that the bound gives way
+rather than the curve. Which one is right is a curriculum decision about what
+these two sweeps are for.
