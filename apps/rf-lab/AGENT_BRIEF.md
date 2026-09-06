@@ -155,6 +155,10 @@ is about digits. A two-by-two inverse keeps about that fraction of the sixteen
 digits it starts with, so `1e-10` leaves the eight this package's round trips
 are stated to.
 
+That floor is where a conversion is refused, and it is not the accuracy of
+the ones that go through. Invariant 1 holds those to the plan's `1e-12`, and
+the worst residual the fuzzer reaches is 1.359e-13.
+
 Test (`convert.test.js`): a series impedance has the chain matrix `[[1, Z], [0,
 1]]` and no Z-matrix. A shunt admittance has `[[1, 0], [Y, 1]]` and no Y-matrix.
 An ideal transformer of ratio 2 has `S11 = 3/5` and no Z-matrix at all, and the

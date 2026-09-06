@@ -78,6 +78,13 @@ const SEEDS = 240
 // -------------------------------------------------------------- invariant 1
 
 describe('invariant 1: conversion round-trips', () => {
+  // `RF_LAB_PLAN.md` §2.13.1 promises 1e-12 relative, and that is the number
+  // held to here. The worst residual over these seeds is 1.359e-13 on a single
+  // hop and 1.316e-13 on the long route, so the claim has a factor of seven in
+  // hand. A looser bound would pass a round trip that had lost three digits
+  // while the plan beside it still said twelve.
+  const ROUND_TRIP = 1e-12
+
   it('S to Z to S, S to Y to S and S to ABCD to S all return the input', () => {
     const r = rng(20260905)
     let checked = 0
@@ -102,7 +109,7 @@ describe('invariant 1: conversion round-trips', () => {
           refused++
           continue
         }
-        expect(mdiff(back(mid, z0), sp.s), `seed ${k}, through ${what}, at ${f.toExponential(2)} Hz`).toBeLessThan(1e-9)
+        expect(mdiff(back(mid, z0), sp.s), `seed ${k}, through ${what}, at ${f.toExponential(2)} Hz`).toBeLessThan(ROUND_TRIP)
         checked++
       }
     }
@@ -123,7 +130,7 @@ describe('invariant 1: conversion round-trips', () => {
         const Z = sToZ(sp.s, z0)
         const M = sToAbcd(zToS(Z, z0), z0)
         const Y = sToY(abcdToS(M, z0), z0)
-        expect(mdiff(yToS(Y, z0), sp.s), `seed ${k}`).toBeLessThan(1e-8)
+        expect(mdiff(yToS(Y, z0), sp.s), `seed ${k}`).toBeLessThan(ROUND_TRIP)
         checked++
       } catch (err) {
         expect(err).toBeInstanceOf(RfError)
