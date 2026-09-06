@@ -226,6 +226,21 @@ describe('bandwidth is the price of the transformation', () => {
     expect(near(low.vswr, 2, 1e-6)).toBe(true)
   })
 
+  it('which side has no edge follows the topology, and the two differ', () => {
+    // The low-pass network hands the load through below its design frequency,
+    // so at a ratio of two it has an upper edge and no lower one. The high-pass
+    // one does the same above it, and has a lower edge and no upper one. A
+    // label that named the same missing side for both would be wrong for one.
+    const highpass = lMatch({ RS: 50, ZL: 100, f: F0, pick: 'highpass' }).chosen
+    const low = matchBandwidth(wide, 100, 50, F0, { vswr: 2 })
+    const high = matchBandwidth(highpass, 100, 50, F0, { vswr: 2 })
+    expect(low.bounded || high.bounded).toBe(false)
+    expect(low.lower).toBe(null)
+    expect(low.upper).toBeGreaterThan(F0)
+    expect(high.upper).toBe(null)
+    expect(high.lower).toBeLessThan(F0)
+  })
+
   it('a bandwidth to a ratio the network already fails is declined with the reason', () => {
     expect(() => bandwidthOf(() => 0.9, F0, { vswr: 1.5 })).toThrow(/does not reach a standing-wave ratio/)
     expect(() => bandwidthOf(() => 0, F0, { vswr: 1 })).toThrow(/above one/)
@@ -322,6 +337,41 @@ describe('the quarter-wave transformer', () => {
     // symmetric about the quarter wave.
     const deg = (f) => (90 * f) / F0
     expect(near(deg(line.lower) + deg(line.upper), 180, 1e-6)).toBe(true)
+  })
+
+  it('its band is searched over the interval the section itself allows', () => {
+    // The two sides need different limits. Above the design frequency the
+    // response repeats at `v_p / 2l`, so the search has to stop short of the
+    // repeat. Below it nothing repeats, and an edge can sit well under half the
+    // design frequency. A search of the same width on both sides missed that
+    // edge and reported no band where there is one.
+    const band = qw.band(1.8)
+    expect(band.bounded, 'a ratio of 1.8 is held over a band').toBe(true)
+    expect(band.to, 'the search stops short of the repeat').toBeLessThan(qw.repeat)
+    // The lower edge is below half the design frequency, which is what a search
+    // of the same width as the upper one would not have reached.
+    expect(band.lower).toBeLessThan(F0 / 2)
+    for (const f of [band.lower, band.upper]) {
+      const mag = qw.read(f)
+      expect(near((1 + mag) / (1 - mag), 1.8, 1e-6), `${f}`).toBe(true)
+    }
+  })
+
+  it('a ratio the section never reaches has no edge on either side, and the answer says where it looked', () => {
+    // The worst the section does is hand the load through, at every even
+    // multiple of the design frequency and in the limit of no length at all.
+    // So the ratio it never exceeds is the load's own against the source.
+    const worst = cabs(reflection(100, 50))
+    const worstVswr = (1 + worst) / (1 - worst)
+    const none = qw.band(worstVswr * 1.01)
+    expect(none.bounded).toBe(false)
+    expect(none.lower).toBe(null)
+    expect(none.upper).toBe(null)
+    expect(none.from).toBeLessThan(F0)
+    expect(none.to).toBeGreaterThan(F0)
+    // And just inside that ratio there is a band, with both edges.
+    const some = qw.band(worstVswr * 0.99)
+    expect(some.bounded).toBe(true)
   })
 
   it('its path along the section starts at the load and ends at the centre', () => {

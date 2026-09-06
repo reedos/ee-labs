@@ -317,7 +317,11 @@ function analyseQuarterWave(exp, p) {
   const at = qw.at(p.f)
   const m = R.mismatch(at.Z, p.RS)
   const target = p.target ?? 1.2222
-  const bw = R.bandwidthOf(qw.read, p.f, { vswr: target, span: 1.99 })
+  // The section's own search limits, which are not the same either side of the
+  // design frequency. `quarterWaveMatch` sets them from the repeat it computes,
+  // because a symmetric search walked past the repeat above and stopped short
+  // of the edge below.
+  const bw = qw.band(target)
   const lumped = R.lMatch({ RS: p.RS, ZL: p.RL, f: p.f })
   const lumpedBw = R.matchBandwidth(lumped.chosen, p.RL, p.RS, p.f, { vswr: target })
   const sweepRange = designWindow(exp, p)
@@ -335,7 +339,7 @@ function analyseQuarterWave(exp, p) {
     lumped,
     lumpedBw,
     wider: bw.fractional / lumpedBw.fractional,
-    repeat: R.repeatFrequency(qw.line, p.f),
+    repeat: qw.repeat,
     repeats: R.quarterWaveRepeats(p.f, sweepRange.to),
     sweep,
     sweepRange,

@@ -30,7 +30,7 @@ import { complex as cx } from '@ee-labs/network'
 import { RfError, positive, require_ } from './const.js'
 import { chainAbcd, elementAbcd } from './cascade.js'
 import { mismatch, reflection, toComplex } from './sparam.js'
-import { inputImpedance, phaseVelocity, quarterWaveZ0, uniformLine } from './line.js'
+import { inputImpedance, phaseVelocity, quarterWaveZ0, repeatFrequency, uniformLine } from './line.js'
 
 const { cabs, cadd, cdiv, cmul } = cx
 
@@ -282,8 +282,17 @@ export function sweepMatch(sol, ZL, RS, { from, to, points = 161, log = false } 
  * sweep drew. `span` is how far out the search looks, as a ratio of the design
  * frequency, and a response that never crosses inside it is reported as
  * unbounded rather than clamped to the edge.
+ *
+ * The two sides take their own limits, `down` and `up`, because a response is
+ * not symmetric about its design frequency. A length of line repeats, so the
+ * band above the design frequency ends at the repeat and a search that walked
+ * past it would find a crossing belonging to the next copy. Below the design
+ * frequency the same section shortens towards nothing and nothing repeats, so
+ * an edge can sit decades down. A single symmetric limit is wrong on one side
+ * whichever value it takes, and `from` and `to` in the answer say where the
+ * search actually looked.
  */
-export function bandwidthOf(read, f0, { vswr = 2, span = 40, steps = 400 } = {}) {
+export function bandwidthOf(read, f0, { vswr = 2, span = 40, down = span, up = span, steps = 400 } = {}) {
   positive(f0, 'f0')
   require_(vswr > 1, `A bandwidth is measured to a standing-wave ratio above one, and this one asks for ${vswr}.`, { field: 'vswr' })
   const target = (vswr - 1) / (vswr + 1)
@@ -292,10 +301,12 @@ export function bandwidthOf(read, f0, { vswr = 2, span = 40, steps = 400 } = {})
 
   /** Walk out until the response crosses, then bisect between the last two. */
   const edge = (dir) => {
+    const reach = dir < 0 ? down : up
+    require_(reach > 1, `A search walks out from the design frequency, and this one is asked to walk by a factor of ${reach}.`, { field: 'span' })
     let lo = f0
     let hi = null
     for (let k = 1; k <= steps; k++) {
-      const f = f0 * Math.pow(span, (dir * k) / steps)
+      const f = f0 * Math.pow(reach, (dir * k) / steps)
       if (!(f > 0)) return null
       if (over(f) > 0) {
         hi = f
@@ -314,8 +325,9 @@ export function bandwidthOf(read, f0, { vswr = 2, span = 40, steps = 400 } = {})
 
   const lower = edge(-1)
   const upper = edge(1)
-  if (lower === null || upper === null) return { vswr, f0, lower, upper, width: Infinity, fractional: Infinity, bounded: false }
-  return { vswr, f0, lower, upper, width: upper - lower, fractional: (upper - lower) / f0, bounded: true }
+  const searched = { from: f0 / down, to: f0 * up }
+  if (lower === null || upper === null) return { vswr, f0, lower, upper, ...searched, width: Infinity, fractional: Infinity, bounded: false }
+  return { vswr, f0, lower, upper, ...searched, width: upper - lower, fractional: (upper - lower) / f0, bounded: true }
 }
 
 /** The bandwidth of one L network, measured on its own exact response. */
@@ -343,7 +355,17 @@ export function quarterWaveMatch({ RS = 50, RL = 100, f0 = 1e9, epsr = 2.1, alph
     const m = mismatch(Z, RS)
     return { f, Z, gamma: m.gamma, mag: m.mag, vswr: m.vswr, returnLossDb: m.returnLossDb }
   }
-  return { RS, RL, f0, Z0, epsr, len, vp, line, at, read: (f) => at(f).mag }
+  const read = (f) => at(f).mag
+  // The section's response repeats every `v_p / 2l`, which is twice the design
+  // frequency, so the band above the design frequency ends inside one repeat
+  // and the search stops just short of it. Below the design frequency nothing
+  // repeats. The section shortens towards nothing and hands the load through,
+  // so the lower edge can sit decades down and the search walks six of them.
+  // A symmetric search missed that edge and reported no band where there is
+  // one, which is the defect this method exists to prevent repeating.
+  const repeat = repeatFrequency(line, f0)
+  const band = (vswr, opts = {}) => bandwidthOf(read, f0, { vswr, up: 0.999 * (repeat / f0), down: 1e6, ...opts })
+  return { RS, RL, f0, Z0, epsr, len, vp, line, at, read, repeat, band }
 }
 
 /** The frequencies a quarter-wave transformer matches at: every odd multiple of its design frequency. */
