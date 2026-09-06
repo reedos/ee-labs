@@ -1226,3 +1226,80 @@ only its own section. The director folds it into the shared ledger at merge.
   The affine projection algorithm, multitaper estimation, radix-4 and
   split-radix. Fixed point on the whole chain, and a free-form design tool.
   None became cheaper to add while the six groups were built.
+
+### RF Lab
+
+- **The first sitting is built, and it is nine experiments.** `A` 5 and `B` 4,
+  in `RF_LAB_PLAN.md` §5's order, which is that plan's phase 2 in full. The
+  engine's exact core is `packages/rf`, and it is `sparam.js`, `convert.js`,
+  `cascade.js`, `smith.js` and `line.js` with the plan's invariants 1, 2, 3, 5,
+  6 and 7 fuzzed over 240 seeds each. The Smith chart is
+  `packages/ui/src/SmithCanvas.jsx`, promoted on the first commit with the
+  Fields Lab's and the Instruments Lab's props in it. What follows is what the
+  lab does not yet have.
+- **Groups C to H are not built, which is six of the plan's eight.** Each waits
+  for a named module, and `apps/rf-lab/NEEDS.md` §2 lists them with the ids they
+  will claim. C and D wait for `match.js` and the S-parameter view, and neither
+  needs anything outside the suite. G and H wait for `linearity.js`, `mixer.js`,
+  `leeson.js` and `pa.js`, and neither needs anything outside the suite either.
+  Those four groups could be built beside each other today.
+- **E and F are the two that are gated.** They need the Electronics Lab's
+  `smallSignal` with its capacitances, its `transitFreq`, and its Group O noise
+  densities. Plan Decision 4 generates the two curated S-parameter sets from a
+  small-signal netlist this suite solves rather than from a vendor file, so the
+  gate is the netlist and not the data. `apps/rf-lab/NEEDS.md` §4 states each
+  dependency by function name.
+- **Invariants 4 and 8 to 13 are not checked, and each is named where a reader
+  looks for it.** `packages/rf/src/invariants.test.js` ends with the list and
+  the module each waits for, so the six that are green are not mistaken for all
+  of them.
+- **`scripts/verify.mjs`, the Playwright harness, is not written.** The plan's
+  §7 asks for three checks. A dragged point on the chart moves the topbar
+  reading. The stability circle shades the correct side. Nothing scrolls
+  sideways at 390 px. The first needs a drag handler the chart does not have
+  yet, and the second needs Group E. What exists instead is a server-rendered
+  mount of every experiment in every one of its views, in
+  `components/panes.test.jsx`, which catches a prop the shell forgot to pass but
+  not a canvas that stopped redrawing.
+- **The chart has no drag.** A reader moves a point by turning the load knobs.
+  The plan's §4.2 wants a point dragged in the impedance plane, and the canvas's
+  props carry no pointer handler yet. It is one prop and a hit test, and it
+  belongs with the matching lane, because dragging matters most where a reader
+  is designing a network rather than reading one.
+- **The line's loss is the same at every frequency.** `uniformLine` puts the
+  attenuation in as R and G per metre with R over L equal to G over C, which
+  makes γ exactly α + jω/v_p and Z_0 exactly real. That is the distortionless
+  line, and it is a definition rather than an approximation. A real conductor's
+  α rises as the square root of frequency, which the plan's §3 lists as a
+  labelled non-ideality, and A4's `why` says which line is on the bench. The
+  skin-effect model arrives when a group needs it.
+- **Nothing in Groups A and B carries a guard, and a test says so.** Every
+  object these two groups touch is exact, and `CORE_SCOPE.md`'s counter-rule
+  says an exact mapping is never hedged. The first guarded object in this lab is
+  the unilateral approximation in Group E, and the first labelled model is
+  Leeson's in Group H.
+- **Two cross-references into the Fields Lab are written and not made.** A3
+  would cite where the characteristic impedance and the propagation constant
+  come from, and A5 would cite the bounce diagram as the time-domain answer that
+  does exist. That lab's transmission-line group is not built, and a lesson may
+  not name an experiment that does not exist, so Group A defines both terms in
+  its own panel instead. Decision 3 anticipated exactly this.
+- **`budget.js` is not written, and the System Lab is its second user.** Plan
+  Decision 2 puts the cascaded noise figure and the cascaded IP3 in
+  `packages/rf` rather than in a package of their own, which makes the System
+  Lab depend on a package this overseer owns. The director resolves that the way
+  `PROGRAM.md` §5 resolves every shared package.
+- **The two numerical corners this sitting paid for.** The largest singular
+  value of a lossless S-matrix read 1 + 5e-9 through the trace and the
+  determinant, because those two terms are equal there and eight digits cancel.
+  And the two cascade routes do not agree to a flat epsilon, because the chain
+  matrix divides by S21 on the way in and multiplies it back on the way out.
+  Both are written up in `apps/rf-lab/AGENT_BRIEF.md` §9 so the next lane does
+  not pay for them again.
+- **The non-goals of `RF_LAB_PLAN.md` §10 are all still non-goals.**
+  Electromagnetic field solving. Microstrip synthesis from physical dimensions.
+  A Padé model of the line. Distributed matching with stubs. Filter synthesis
+  tables. Class E and class F amplifiers. Phase noise derived rather than
+  modelled. Antennas, modulation, vendor S-parameter files and a free-form
+  layout editor. None became cheaper to add while the first two groups were
+  built.
