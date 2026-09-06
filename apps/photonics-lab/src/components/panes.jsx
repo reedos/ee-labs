@@ -467,6 +467,13 @@ export function ModulationPane({ x }) {
  * pair integrated and the dashed one is what the linearisation predicted, and
  * the number under them is the difference. Past the decline threshold the
  * dashed curve is not drawn at all, which is the guard on screen.
+ *
+ * The resolution arithmetic REVIEW_PLAYBOOK.md §5 asks for. The two peaks
+ * differ by the error over one plus the overshoot, so at the default depth of
+ * five per cent that is 2.78 per cent of the drawn range, or about 4 px of the
+ * 190 px the pane is tall. At thirty per cent it is 14 per cent of the range.
+ * Four pixels is thin, which is why the difference is also a printed number in
+ * the readouts below and not only a gap between two curves.
  */
 export function StepPane({ x }) {
   const g = x.guard

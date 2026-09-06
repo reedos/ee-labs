@@ -820,8 +820,11 @@ Deferred, with what reopens each:
   the page.
 - **The step pane draws a solution in time, and that needs a person's eye.** The
   integration is legitimate because it is drawn beside the prediction it is
-  measuring, and never on its own. Whether the picture reads that way at 390 px
-  is a screenshot question, not a test question, and it is open.
+  measuring, and never on its own. The resolution arithmetic
+  `REVIEW_PLAYBOOK.md` §5 asks for was done. At the default depth of 5 % the two
+  peaks differ by about 4 px of the 190 px the pane is tall, and at 30 % by
+  about 21 px. Four pixels is thin. Whether the picture carries its point at
+  390 px is a screenshot question rather than a test question, and it is open.
 - **D4 has no curve of error against depth.** Each point on one is a
   Runge-Kutta pass, and a hundred and sixty of them would be slower than a
   reader's patience. The five depths the plan names are rows on the numbers pane
