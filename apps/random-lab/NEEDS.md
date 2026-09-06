@@ -4,6 +4,18 @@ Everything this lab needs that it does not own. `PROGRAM.md` §1 says two
 overseers who need the same thing write it here, and the director resolves it
 once. Nothing in this file has been changed outside this lab.
 
+## Bounded verification, 2026-09-06
+
+The saved branch recovers from the count-format crash and renders all 30
+experiments on desktop and phone in Chromium and Firefox. This is not full
+curriculum or release acceptance. See [VERIFICATION.md](VERIFICATION.md) for
+commands, counts, screenshots, and the remaining caption and F4 lesson findings.
+
+Browser evidence includes the director's path registry (`f4b2dda`) and navigation
+wrapping (`4bdc478`). Without the former, `cf90dda` hides Random's suite navigation
+even under its assembled path. No new shared implementation was authored here.
+The two shared formatter/axis hazards in section 7 still have app-local workarounds.
+
 ## 1. The deploy line
 
 One `cp` line in `.github/workflows/deploy.yml`, added by the director at
