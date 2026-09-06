@@ -168,6 +168,85 @@ export function rationalAvailable(line, f) {
 }
 
 /**
+ * The standing wave along the line, at one frequency.
+ *
+ * With the incident wave taken as one at the load, the voltage a distance d
+ * back towards the source is
+ *
+ *   V(d) = e^{gamma d} + Gamma_L e^{-gamma d}
+ *
+ * and the current is the same expression with the sign of the reflected term
+ * reversed, divided by Z0. Both are exact at every d, and the pattern they make
+ * is what the line view draws.
+ *
+ * The extrema are not searched for. On a lossless line the largest voltage is
+ * 1 + |Gamma| where the reflected wave arrives in phase, and the smallest is
+ * 1 − |Gamma| half a wavelength further, so their positions come out of the
+ * angle of Gamma in closed form. With loss the envelope decays towards the
+ * source, and the two positions reported are the ones nearest the load.
+ */
+export function standingWave(line, ZL, f, { points = 129, length } = {}) {
+  const at = lineAt(line, f)
+  const len = length === undefined ? at.line.len : length
+  const zl = ZL === Infinity ? Infinity : Array.isArray(ZL) ? ZL : C(ZL)
+  const gL = zl === Infinity ? C(1) : cx.cdiv(cx.csub(zl, at.Z0), cx.cadd(zl, at.Z0))
+  const mag = cabs(gL)
+  const theta = Math.atan2(gL[1], gL[0])
+
+  const V = (d) => {
+    const gd = cscale(at.gamma, d)
+    const up = ccosh(gd)
+    const down = csinh(gd)
+    // e^{gamma d} = cosh + sinh, e^{-gamma d} = cosh − sinh.
+    const forward = cx.cadd(up, down)
+    const back = cmul(gL, cx.csub(up, down))
+    return { v: cx.cadd(forward, back), i: cx.cdiv(cx.csub(forward, back), at.Z0) }
+  }
+
+  // Each sample carries the LOCAL reflection magnitude as well as the voltage.
+  // A wave reflected at the load crosses the line twice before it is seen a
+  // distance d back, so |Gamma(d)| is |Gamma_L| exp(-2 alpha d), and that is
+  // the number the pattern's depth follows. On a lossless line it does not
+  // move, which is why the standing wave there has the same ripple everywhere.
+  const samples = []
+  for (let k = 0; k < points; k++) {
+    const d = (len * k) / (points - 1)
+    const { v, i } = V(d)
+    const g = mag * Math.exp(-2 * at.alpha * d)
+    samples.push({ d, v: cabs(v), i: cabs(i) * at.Z0mag, g, swr: g >= 1 ? Infinity : (1 + g) / (1 - g) })
+  }
+
+  // The first maximum is where 2 beta d − theta is zero, and the first minimum
+  // a quarter wavelength past it. The pattern repeats every HALF wavelength,
+  // not every wavelength, because the reflected wave crosses the same distance
+  // twice, so that is the period the two positions are wrapped into.
+  const quarter = Math.PI / (2 * at.beta)
+  const period = 2 * quarter
+  const wrap = (d) => {
+    const m = ((d % period) + period) % period
+    // A position one whole period along is the same position, and the modulo
+    // of two floats that differ in the last bit returns the period rather than
+    // zero. The snap is relative to the period, never an absolute epsilon.
+    return period - m < 1e-9 * period ? 0 : m
+  }
+  const dMax = wrap(theta / (2 * at.beta))
+  const dMin = wrap(dMax + quarter)
+  return {
+    at,
+    length: len,
+    gammaLoad: gL,
+    mag,
+    samples,
+    dMax,
+    dMin,
+    vmax: cabs(V(dMax).v),
+    vmin: cabs(V(dMin).v),
+    swr: mag >= 1 ? Infinity : (1 + mag) / (1 - mag),
+    quarter,
+  }
+}
+
+/**
  * The frequency spacing at which a line's response repeats, exactly: v_p / 2l.
  *
  * Adding that much to the frequency adds j pi to gamma l, and tanh is periodic

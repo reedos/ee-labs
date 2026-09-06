@@ -14,6 +14,7 @@ import {
   rationalAvailable,
   refuseRational,
   repeatFrequency,
+  standingWave,
   sweepLine,
   uniformLine,
 } from './line.js'
@@ -227,5 +228,65 @@ describe('the line has no transfer function, and the sweep is what there is inst
 
   it('a sweep of one point is declined, because a sweep needs two', () => {
     expect(() => sweepLine(lossless, 100, { from: 1e9, to: 2e9, points: 1 })).toThrow(RfError)
+  })
+})
+
+describe('the standing wave along the line', () => {
+  const line = uniformLine({ Z0, epsr: EPSR, len: 4 * QUARTER })
+
+  it('rises and falls between one plus and one minus the reflection magnitude', () => {
+    for (const ZL of [100, 25, [30, -40], 200]) {
+      const sw = standingWave(line, ZL, F0)
+      close(sw.vmax, 1 + sw.mag, 1e-9)
+      close(sw.vmin, 1 - sw.mag, 1e-9)
+      close(sw.vmax / sw.vmin, sw.swr, 1e-9)
+      for (const s of sw.samples) {
+        expect(s.v).toBeLessThanOrEqual(sw.vmax + 1e-9)
+        expect(s.v).toBeGreaterThanOrEqual(sw.vmin - 1e-9)
+      }
+    }
+  })
+
+  it('puts the maximum and the minimum a quarter wavelength apart', () => {
+    const sw = standingWave(line, 100, F0)
+    close(Math.abs(sw.dMin - sw.dMax), sw.quarter, 1e-9)
+    close(4 * sw.quarter, VP / F0, 1e-9)
+  })
+
+  it('puts the maximum at the load for a resistive load above the reference', () => {
+    // Gamma is real and positive there, so the reflected wave arrives in phase
+    // at the load itself.
+    close(standingWave(line, 100, F0).dMax, 0, 1e-12)
+    // A load below the reference reflects out of phase, so the minimum is there.
+    close(standingWave(line, 25, F0).dMin, 0, 1e-9)
+  })
+
+  it('is flat when the load matches, because there is no reflected wave', () => {
+    const sw = standingWave(line, Z0, F0)
+    close(sw.mag, 0, 1e-12)
+    for (const s of sw.samples) close(s.v, 1, 1e-12)
+  })
+
+  it('flattens towards the source when the line loses energy', () => {
+    // The reflected wave crosses the line twice before it is seen a distance d
+    // back, so a lossy line hides its load. The pattern's depth follows the
+    // local reflection magnitude, and that is what falls.
+    const alpha = 3
+    const lossy = uniformLine({ Z0, epsr: EPSR, len: 8 * QUARTER, alpha })
+    const sw = standingWave(lossy, 100, F0, { points: 257 })
+    close(sw.samples[0].g, sw.mag, 1e-12)
+    close(sw.samples[0].swr, sw.swr, 1e-12)
+    close(sw.samples.at(-1).g, sw.mag * Math.exp(-2 * alpha * sw.length), 1e-9)
+    expect(sw.samples.at(-1).g).toBeLessThan(sw.samples[0].g)
+    expect(sw.samples.at(-1).swr).toBeLessThan(sw.samples[0].swr)
+    // A lossless line hides nothing, so the depth does not move along it.
+    const clean = standingWave(uniformLine({ Z0, epsr: EPSR, len: 8 * QUARTER }), 100, F0)
+    for (const s of clean.samples) close(s.g, clean.mag, 1e-12)
+  })
+
+  it('carries the samples it was asked for, over the length it was given', () => {
+    const sw = standingWave(line, 100, F0, { points: 65, length: 0.02 })
+    expect(sw.samples.length).toBe(65)
+    close(sw.samples.at(-1).d, 0.02)
   })
 })

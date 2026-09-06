@@ -132,6 +132,7 @@ export {
   rationalAvailable,
   refuseRational,
   repeatFrequency,
+  standingWave,
   sweepLine,
   uniformLine,
 } from './src/line.js'
