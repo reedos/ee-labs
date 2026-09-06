@@ -40,6 +40,7 @@ import {
   VT,
 } from '@ee-labs/network'
 import { isDynamic } from './experiments.js'
+import { sharedStep, scaledAt } from './format.js'
 
 const T = (text) => ({ kind: 'text', text })
 const F = (tex, caption) => ({ kind: 'formula', tex, caption })
@@ -1342,6 +1343,14 @@ const ENTRIES = {
       const size = Math.max(r.re * r.re + r.im * r.im, (p.R1 / p.L1) * Math.hypot(r.re, r.im), 1 / (p.L1 * p.C1))
       return Math.hypot(re, im) / size
     })
+    // α, ω₀, the roots and their distances to the drive point are all the
+    // same s-plane geometry, in the same 'rad/s' dimension, meant to be
+    // compared to one another (the nearer root against the further one; α
+    // and ω₀ against the roots they build). One shared time unit, chosen
+    // once from the group, keeps that comparison a direct reading of the
+    // printed numbers — see the comment on `sharedStep`.
+    const step = sharedStep([alpha, w0, roots[0].re, roots[0].im, roots[1].re, roots[1].im, d[0], d[1]])
+    const sc = (v) => scaledAt(v, 'rad/s', step)
     return {
       blocks: [
         T(
@@ -1352,8 +1361,8 @@ const ENTRIES = {
             '\\qquad |H(j\\omega)| = \\frac{\\omega_0^2}{|j\\omega - s_1|\\;|j\\omega - s_2|}',
         ),
         C([
-          row('α = R/2L', p.R1 / (2 * p.L1), alpha, 'rad/s'),
-          row('ω₀ = 1/√(LC)', 1 / Math.sqrt(p.L1 * p.C1), w0, 'rad/s'),
+          { ...row('α = R/2L', sc(p.R1 / (2 * p.L1)).value, sc(alpha).value, sc(0).unit), scaled: true },
+          { ...row('ω₀ = 1/√(LC)', sc(1 / Math.sqrt(p.L1 * p.C1)).value, sc(w0).value, sc(0).unit), scaled: true },
           // Scaled by ω₀², which is the size of the constant term the two other
           // terms have to cancel.
           row('each root solves the characteristic equation', 0, Math.max(...atRoot), '', 0, 1e-9),
@@ -1364,10 +1373,10 @@ const ENTRIES = {
           ...steadyRows(x),
         ]),
         V([
-          { label: 'the roots, real part', value: roots[0].re, unit: 'rad/s', note: x.state.face },
-          { label: 'and imaginary part', value: Math.abs(roots[0].im), unit: 'rad/s', note: 'the other root is its mirror' },
-          { label: 'distance to the nearer root', value: Math.min(d[0], d[1]), unit: 'rad/s' },
-          { label: 'distance to the further root', value: Math.max(d[0], d[1]), unit: 'rad/s' },
+          { label: 'the roots, real part', ...sc(roots[0].re), note: x.state.face, scaled: true },
+          { label: 'and imaginary part', ...sc(Math.abs(roots[0].im)), note: 'the other root is its mirror', scaled: true },
+          { label: 'distance to the nearer root', ...sc(Math.min(d[0], d[1])), scaled: true },
+          { label: 'distance to the further root', ...sc(Math.max(d[0], d[1])), scaled: true },
           { label: '|H| at the drive', value: cx.cabs(H), unit: '' },
         ]),
       ],
@@ -1918,6 +1927,19 @@ function rlcEntry(p, x, { text, extra = [] }) {
   const tc = x.cursor
   const th = x.tEnd / 2
   const st = x.state
+  // α, ω₀, ω_d and the roots are shown together with ζ and Q stated as their
+  // ratios — one shared time unit, chosen once from the group (the roots
+  // included, since on the overdamped face THEY are the fastest and slowest
+  // members, not α or ω₀), so a reader can divide the printed α by the
+  // printed ω₀ and land on the printed ζ. `scaled: true` tells `forReading`
+  // to leave these rows exactly as built rather than re-picking a prefix
+  // from each one's own magnitude, which is what let α and ω₀ disagree by a
+  // stray factor of 1000 whenever one of them sat at a k/m boundary the
+  // other did not.
+  const step = sharedStep([q.alpha, q.w0, q.wd, ...st.roots.flatMap((r) => [r.re, r.im])])
+  const sc = (v, unit) => scaledAt(v, unit, step)
+  const rateUnit = sc(0, 's⁻¹').unit
+  const angUnit = sc(0, 'rad/s').unit
   const rows = [
     row('2α = R/L from det(sI − A)', p.R1 / p.L1, st.poly[1], '1/s'),
     row('ω₀² = 1/LC from det(sI − A)', q.w0 * q.w0, st.poly[2], '1/s²'),
@@ -1928,14 +1950,14 @@ function rlcEntry(p, x, { text, extra = [] }) {
   const marks = []
   const guides = []
   const values = [
-    { label: 'α = R/2L', value: q.alpha, unit: '1/s' },
-    { label: 'ω₀ = 1/√LC', value: q.w0, unit: 'rad/s' },
+    { label: 'α = R/2L', ...sc(q.alpha, 's⁻¹'), scaled: true },
+    { label: 'ω₀ = 1/√LC', ...sc(q.w0, 'rad/s'), scaled: true },
     { label: 'ζ = α/ω₀', value: q.zeta, unit: '', note: st.face },
   ]
   if (st.face === 'overdamped') {
     const beta = Math.sqrt(q.alpha * q.alpha - q.w0 * q.w0)
-    rows.push(row('slow root −ω₀²/(α+β)', -(q.w0 * q.w0) / (q.alpha + beta), st.roots[0].re, '1/s'))
-    rows.push(row('fast root −(α+β)', -(q.alpha + beta), st.roots[1].re, '1/s'))
+    rows.push({ ...row('slow root −ω₀²/(α+β)', sc(-(q.w0 * q.w0) / (q.alpha + beta), 's⁻¹').value, sc(st.roots[0].re, 's⁻¹').value, rateUnit), scaled: true })
+    rows.push({ ...row('fast root −(α+β)', sc(-(q.alpha + beta), 's⁻¹').value, sc(st.roots[1].re, 's⁻¹').value, rateUnit), scaled: true })
     const peaks = peakOf(x, 'volt', 'C1', sgn(p.E))
     rows.push(row('overshoot: none', 0, peaks ? Math.max(0, (peaks[0].y - p.E) / p.E) : 0, '', 0, 1e-9))
     values.push({ label: 'slow time constant', value: (q.alpha + beta) / (q.w0 * q.w0), unit: 's' })
@@ -1946,10 +1968,10 @@ function rlcEntry(p, x, { text, extra = [] }) {
       rows.push(row('i peak = V₁/(Lαe)', p.E / (p.L1 * q.alpha * Math.E), peaks[0].y, 'A', 1e-8))
       marks.push({ t: 1 / q.alpha, label: 'i peaks' })
     }
-    rows.push(row('repeated root −α', -q.alpha, st.roots[0].re, '1/s', 1e-6))
+    rows.push({ ...row('repeated root −α', sc(-q.alpha, 's⁻¹').value, sc(st.roots[0].re, 's⁻¹').value, rateUnit, 1e-6), scaled: true })
   } else {
     const os = overshootOf(q.zeta)
-    rows.push(row('ω_d = √(ω₀² − α²)', q.wd, st.wd, 'rad/s'))
+    rows.push({ ...row('ω_d = √(ω₀² − α²)', sc(q.wd, 'rad/s').value, sc(st.wd, 'rad/s').value, angUnit), scaled: true })
     const peaks = peakOf(x, 'volt', 'C1', sgn(p.E))
     if (peaks) {
       rows.push(row('first peak at π/ω_d', Math.PI / q.wd, peaks[0].t, 's', 1e-7))

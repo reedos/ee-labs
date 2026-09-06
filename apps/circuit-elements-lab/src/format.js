@@ -53,7 +53,7 @@ const withTimePrefix = (unit, pre) => (unit === 's⁻¹' ? `${pre}s⁻¹` : unit
  * Returns null when none does: a rate too slow for even the second itself to
  * read under 1 only gets slower with a smaller time unit, so nothing helps.
  */
-function pickTimeStep(magnitude, sig) {
+export function pickTimeStep(magnitude, sig) {
   for (const step of TIME_DENOMS) {
     const mag = Math.abs(Number((magnitude * step.mult).toPrecision(sig)))
     if (mag >= 1 && mag < 1000) return step
@@ -97,6 +97,48 @@ export function rate(v, unit = '', sig = 4, scale = 0) {
 const plainNum = (v, sig) => String(Number(v.toPrecision(sig)))
 
 /**
+ * The time-unit step a GROUP of related per-time quantities should share —
+ * chosen once, from the group's largest finite magnitude, rather than once
+ * per quantity. The State-equation pane prints α, ω₀, ω_d and the roots
+ * together and states ζ = α/ω₀, Q = ω₀/2α and ω_d = √(ω₀² − α²) between them;
+ * those only come out right when a reader divides the printed numbers if
+ * every one of them is read against the same time unit. Picking the step
+ * from whichever quantity is largest keeps the group's own biggest number in
+ * [1, 1000) with no prefix on it, the same rule `pickTimeStep` applies to a
+ * single quantity — the smaller members then print with a mantissa under 1,
+ * which is the price of a shared scale, not a display bug (see `rateAt`).
+ */
+export function sharedStep(values, sig = 4) {
+  const mags = values.filter((v) => Number.isFinite(v) && v !== 0).map(Math.abs)
+  return (mags.length && pickTimeStep(Math.max(...mags), sig)) || { mult: 1, pre: '' }
+}
+
+/**
+ * A per-time quantity ('s⁻¹', 'rad/s', 'V/s', 'A/s', …) formatted at an
+ * externally chosen time-unit step rather than one picked from its own
+ * magnitude — `rate`'s counterpart for a group that must share one scale
+ * (see `sharedStep`). Built like `rootRate` below, on `plainNum` rather than
+ * `fmt`: the shared step can leave an individual member's mantissa under 1
+ * (α next to a much faster ω₀), and `fmt` would then glue a SECOND, unrelated
+ * SI prefix onto a number that is meant to carry only the group's one.
+ */
+export function rateAt(v, unit, step, sig = 4) {
+  if (v === Infinity) return '∞'
+  if (v === -Infinity) return '−∞'
+  if (!Number.isFinite(v)) return '—'
+  return `${plainNum(v * step.mult, sig)} ${withTimePrefix(unit, step.pre)}`
+}
+
+/** A root, real or complex, in 's⁻¹' at an externally chosen shared step. */
+export function rootRateAt(re, im, step, sig = 4) {
+  const unit = withTimePrefix('s⁻¹', step.pre)
+  const reStr = plainNum(re * step.mult, sig)
+  if (!im) return `${reStr} ${unit}`
+  const imStr = plainNum(Math.abs(im) * step.mult, sig)
+  return `${reStr} ${im > 0 ? '+' : '−'} j${imStr} ${unit}`
+}
+
+/**
  * A root, real or complex, formatted in 's⁻¹' with one shared time-unit
  * prefix for both parts — a conjugate pair must read as one unit, not two
  * different prefixes glued to the same j. The shared scale is chosen from
@@ -104,12 +146,20 @@ const plainNum = (v, sig) => String(Number(v.toPrecision(sig)))
  * force a prefix too coarse for its own digits (or the reverse).
  */
 export function rootRate(re, im, sig = 4) {
-  const step = pickTimeStep(Math.max(Math.abs(re), Math.abs(im)), sig) || { mult: 1, pre: '' }
-  const unit = withTimePrefix('s⁻¹', step.pre)
-  const reStr = plainNum(re * step.mult, sig)
-  if (!im) return `${reStr} ${unit}`
-  const imStr = plainNum(Math.abs(im) * step.mult, sig)
-  return `${reStr} ${im > 0 ? '+' : '−'} j${imStr} ${unit}`
+  return rootRateAt(re, im, sharedStep([re, im], sig), sig)
+}
+
+/**
+ * The raw {value, unit} pair for a per-time quantity at an externally chosen
+ * shared step — `rateAt`'s counterpart for the math panel's rows, which need
+ * a number to keep checking against a tolerance, not a finished string. The
+ * unit that comes back (e.g. 'ms⁻¹', 'rad/ms') never matches a bare unit
+ * `prefixFor` recognises, so a caller that also marks the row `scaled: true`
+ * (see `readableCheck`/`readableValue`) gets exactly this pair on screen,
+ * with no further per-row rescaling undoing the shared choice.
+ */
+export function scaledAt(v, unit, step) {
+  return { value: v * step.mult, unit: withTimePrefix(unit, step.pre) }
 }
 
 // The math panel prints each row at four decimals and falls back to exponent
@@ -154,8 +204,16 @@ export function prefixFor(v, unit) {
   return [1, unit]
 }
 
-/** One theory/measured row, rescaled; a zero prediction met within its floor reads 0. */
+/**
+ * One theory/measured row, rescaled; a zero prediction met within its floor
+ * reads 0. A row built with `scaled: true` (math.js's shared-step rows —
+ * `scaledAt`, α beside ω₀) already carries the one prefix its whole group
+ * shares and is left exactly as built: re-running this row's OWN magnitude
+ * through `prefixFor` would give it a second, independent prefix and break
+ * the shared scale the group was built to keep.
+ */
 export function readableCheck(r) {
+  if (r.scaled) return r
   let { predicted, measured } = r
   // A prediction below the row's own floor is zero as far as the row can tell:
   // ½Cv² at the end of three whole cycles comes out as 2.7e-37 J from cos(6π).
@@ -170,8 +228,9 @@ export function readableCheck(r) {
   return { ...r, predicted: predicted / m, measured: measured / m, abs: (r.abs || 0) / m, unit }
 }
 
-/** One computed value row, rescaled. */
+/** One computed value row, rescaled; `scaled: true` opts out, as in `readableCheck`. */
 export function readableValue(r) {
+  if (r.scaled) return r
   const [m, unit] = prefixFor(r.value, r.unit)
   return m === 1 ? r : { ...r, value: r.value / m, unit }
 }

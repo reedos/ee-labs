@@ -2,7 +2,7 @@ import React from 'react'
 import { Formula, agrees } from '@ee-labs/explain'
 import { cellLatex, fmtCell } from '@ee-labs/network'
 import { acTable, powerLedger } from '../math.js'
-import { num, rate, rootRate, scaleOf } from '../format.js'
+import { num, rate, rateAt, rootRate, rootRateAt, sharedStep, scaleOf } from '../format.js'
 import { Term, DefCard } from './Prose.jsx'
 
 // The lower pane's views. Each takes the analysis from math.js `analyse` and
@@ -535,15 +535,25 @@ export function StatePane({ x }) {
     s.n === 1
       ? `\\det(sI - A) = s ${s.poly[1] >= 0 ? '+' : '-'} ${fmtCell(Math.abs(s.poly[1]))}`
       : `\\det(sI - A) = s^2 ${s.poly[1] >= 0 ? '+' : '-'} ${fmtCell(Math.abs(s.poly[1]))}\\,s ${s.poly[2] >= 0 ? '+' : '-'} ${fmtCell(Math.abs(s.poly[2]))}`
+  // ζ, Q and ω_d are stated as ratios or a difference of the roots, α and
+  // ω₀ — a reader has to be able to divide the printed numbers and land on
+  // the printed answer. That only works if every one of them reads against
+  // ONE shared time unit, chosen once from the whole group (the roots too:
+  // on the overdamped face they, not α or ω₀ alone, are the block's fastest
+  // and slowest members). Picking a prefix per quantity — the pre-existing
+  // behaviour — let α and ω₀ land on different prefixes whenever one of them
+  // sat right at a k/m boundary and the other did not, off by exactly the
+  // 1000 a stray prefix costs.
+  const step = s.n === 2 ? sharedStep([s.alpha, s.w0, s.wd, ...s.roots.flatMap((r) => [r.re, r.im])]) : null
   const rows =
     s.n === 1
       ? [['τ = −1/A₁₁', s.tau === Infinity ? '∞ (a pure integrator)' : num(s.tau, 's', 4)]]
       : [
-          ['α (neper frequency)', rate(s.alpha, 's⁻¹', 4)],
-          ['ω₀ (undamped natural)', num(s.w0, 'rad/s', 4)],
+          ['α (neper frequency)', rateAt(s.alpha, 's⁻¹', step, 4)],
+          ['ω₀ (undamped natural)', rateAt(s.w0, 'rad/s', step, 4)],
           ['ζ = α/ω₀', plain(s.zeta)],
           ['Q = ω₀/2α', plain(s.Q)],
-          ['ω_d = √(ω₀² − α²)', num(s.wd, 'rad/s', 4)],
+          ['ω_d = √(ω₀² − α²)', rateAt(s.wd, 'rad/s', step, 4)],
           ['face', FACE_WORDS[s.face] || s.face],
         ]
   return (
@@ -566,7 +576,7 @@ export function StatePane({ x }) {
                 <td>
                   root s{s.n > 1 ? <sub>{k + 1}</sub> : null}
                 </td>
-                <td className="num">{rootRate(r.re, r.im, 4)}</td>
+                <td className="num">{step ? rootRateAt(r.re, r.im, step, 4) : rootRate(r.re, r.im, 4)}</td>
               </tr>
             ))}
             {rows.map(([label, v]) => (
