@@ -104,11 +104,12 @@ body {
    a non-link in the accent colour so the row doubles as "you are here". */
 .labnav {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 10px;
+  gap: 4px 10px;
   margin: 0 0 10px;
   font-size: 11px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0;
 }
 .labnav a {
   color: var(--dim);
