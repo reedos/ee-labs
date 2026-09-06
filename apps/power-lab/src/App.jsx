@@ -7,7 +7,7 @@ import { experimentMath } from './math.js'
 import { termsFor } from './terms.js'
 import { reportSummary } from './report.js'
 import ScopeCanvas, { TRACE_COLORS } from './components/ScopeCanvas.jsx'
-import SweepCanvas from './components/SweepCanvas.jsx'
+import SweepCanvas, { IDEAL_NAMES } from './components/SweepCanvas.jsx'
 import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, FluxPane, ScrubPane, LedgerPane, MODE_WORDS } from './components/panes.jsx'
 import { fmtz, statScale } from './format.js'
 import { scopeMarks, sweepMarks } from './marks.js'
@@ -142,8 +142,11 @@ export function sweepFor(exp, params, x) {
   // η against D is a ratio sweep read for its η; the closed form it carries
   // is for M, and would be drawn against the wrong axis.
   if (s.x === 'D' && s.y === 'eta') return { points: sweepD(params, exp.kind, 61, opts).map(({ pred, ...q }) => q), at: params.D, atY, atY2 }
-  if (s.x === 'D') return { points: sweepD(params, exp.kind, 61, opts), at: params.D, atY, atY2 }
-  return { points: sweepR(params, exp.kind, 61, opts), at: params.R, atY, atY2 }
+  // The dashed line beside a ratio sweep is this topology's own closed
+  // form, so the legend names that one and not the buck's.
+  const ideal = IDEAL_NAMES[exp.kind] || ''
+  if (s.x === 'D') return { points: sweepD(params, exp.kind, 61, opts), at: params.D, atY, atY2, ideal }
+  return { points: sweepR(params, exp.kind, 61, opts), at: params.R, atY, atY2, ideal }
 }
 
 /**
@@ -703,6 +706,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                 marks={sweepMarkList}
                 label={sweep.label}
                 label2={sweep.label2}
+                ideal={sweep.ideal}
               />
             ) : null}
             {/* An experiment with no scope has one pane for everything, and

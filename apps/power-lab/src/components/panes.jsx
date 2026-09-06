@@ -19,15 +19,17 @@ export function MeasuresPane({ m, signals }) {
   // Only what this circuit has a part for, so every row is a row the schematic
   // can point at.
   const rows = ORDER.filter((k) => m.sig[k] && (!signals || signals.includes(k)))
-  const lineSide = m.mode === 'line' || m.mode === 'dimmer'
+  // The window the table measures over is the period the waveform repeats in,
+  // and that is not the switching period on every topology. An inverter
+  // switches sixty-three times inside the output cycle it repeats in, so the
+  // caption named a period the numbers were not taken over
+  // (REVIEW_PLAYBOOK.md class 1).
+  const over =
+    m.mode === 'line' || m.mode === 'dimmer' ? 'one line cycle' : m.mode === 'inverter' ? 'one output cycle' : 'one switching period'
   return (
     <div className="pane-grid">
       <table className="table">
-        <caption>
-          {lineSide
-            ? 'Over one line cycle, from the exact solution — averages in closed form, RMS by quadrature'
-            : 'Over one switching period, from the exact solution — averages in closed form, RMS by quadrature'}
-        </caption>
+        <caption>{`Over ${over}, from the exact solution — averages in closed form, RMS by quadrature`}</caption>
         <thead>
           <tr>
             <th>signal</th>

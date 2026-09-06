@@ -62,13 +62,43 @@ export function sweepRange(points, basePoints, key, ay, { withPred = false } = {
   })
 }
 
-/** What the legend beside the plot lists, in drawing order. */
-export function sweepLegend(points, sweep, label = '', label2 = '') {
+/**
+ * The name of the ideal ratio a topology's dashed line draws.
+ *
+ * The legend said "M = D" beside every ratio sweep, and the dashed curve is
+ * `conversionRatio(kind, D)` or `isolatedM(kind, D, n)` — which is D only for
+ * the buck. C1 to C4 drew a boost's and a buck-boost's ideal under a buck's
+ * name, and D3 and D4 drew a flyback's and a half-bridge's. A legend that
+ * names a formula must name the one it is drawing (REVIEW_PLAYBOOK.md class 1).
+ */
+export const IDEAL_NAMES = {
+  buck: 'M = D',
+  boost: 'M = 1 / (1 − D)',
+  buckboost: 'M = −D / (1 − D)',
+  flyback: 'M = n·D / (1 − D)',
+  halfbridge: 'M = n·D',
+}
+
+/**
+ * What the legend beside the plot lists, in drawing order.
+ *
+ * Only curves the plot actually draws. `drawSweep` skips a line whose values
+ * are all missing, and a prediction that lands exactly on the ideal draws
+ * over it: the half-bridge's textbook M is n·D whichever mode it is in, so
+ * "CCM/DCM formula" named a dotted line the reader could not find.
+ */
+export function sweepLegend(points, sweep, label = '', label2 = '', ideal = '') {
   const ay = SWEEP_Y[sweep.y]
   const ay2 = sweep.y2 ? SWEEP_Y[sweep.y2] : null
+  const has = (key) => points.some((q) => Number.isFinite(q[key]))
   const items = [{ color: COLORS.trace, text: label || `${ay.label} measured`, style: 'solid' }]
-  if (sweep.y === 'M') items.push({ color: COLORS.response, text: 'M = D', style: 'dashed' }, { color: COLORS.spectrum, text: 'CCM/DCM formula', style: 'dotted' })
-  else if (points.some((q) => Number.isFinite(q.pred))) items.push({ color: COLORS.spectrum, text: 'closed form', style: 'dashed' })
+  if (sweep.y === 'M') {
+    if (has('ideal')) items.push({ color: COLORS.response, text: ideal || IDEAL_NAMES.buck, style: 'dashed' })
+    const apart = points.some(
+      (q) => Number.isFinite(q.pred) && Number.isFinite(q.ideal) && Math.abs(q.pred - q.ideal) > 1e-9 * Math.max(1, Math.abs(q.ideal)),
+    )
+    if (has('pred') && (apart || !has('ideal'))) items.push({ color: COLORS.spectrum, text: 'CCM/DCM formula', style: 'dotted' })
+  } else if (has('pred')) items.push({ color: COLORS.spectrum, text: 'closed form', style: 'dashed' })
   if (ay2) items.push({ color: COLORS.response, text: label2 || (sweep.shared ? ay2.label : `${ay2.label} (right axis)`), style: 'solid' })
   if (points.some((q) => q.mode === 'DCM')) items.push({ color: COLORS.spectrumDim, text: 'discontinuous conduction', style: 'fill' })
   return items
@@ -380,12 +410,12 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, atY
   return { sx, sy, area: area2, xMin, xMax, X, Y }
 }
 
-export default function SweepCanvas({ points, basePoints = null, sweep, at, atY, atY2, marks = [], label = '', label2 = '' }) {
+export default function SweepCanvas({ points, basePoints = null, sweep, at, atY, atY2, marks = [], label = '', label2 = '', ideal = '' }) {
   const ref = useCanvas(
     (ctx, w, h) => drawSweep(ctx, w, h, { points, basePoints, sweep, at, atY, atY2, marks }),
     [points, basePoints, sweep, at, atY, atY2, marks],
   )
-  const legend = sweepLegend(points, sweep, label, label2)
+  const legend = sweepLegend(points, sweep, label, label2, ideal)
   return (
     <div className="plot-wrap">
       <canvas

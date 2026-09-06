@@ -13,7 +13,9 @@ import { sweepFor } from '../App.jsx'
 import { scopeMarks, sweepMarks } from '../marks.js'
 import { drawScope } from './ScopeCanvas.jsx'
 import { drawSweep, sweepLegend, atLabel, sweepRange, FRAME_SHARE } from './SweepCanvas.jsx'
-import { drawFlux, drawSpectrum } from './panes.jsx'
+import { drawFlux, drawSpectrum, MeasuresPane } from './panes.jsx'
+import { renderToStaticMarkup } from 'react-dom/server'
+import React from 'react'
 import { fakeCtx, texts, textBox, overlaps } from './fakeCanvas.js'
 
 const W = 850
@@ -535,5 +537,74 @@ describe('a sweep spends its frame on the curve', () => {
       return sweepRange(s2.points, b2.points, 'eta', SWEEP_Y.eta)
     })()
     expect(moved).toEqual(sweepRange(base.s.points, base.s.points, 'eta', SWEEP_Y.eta))
+  })
+})
+// REVIEW_PLAYBOOK.md class 1: every sentence near a control has to follow the
+// control. Two labels did not follow the topology.
+describe('a legend and a caption name what is on screen', () => {
+  it("names the ideal curve by the formula the topology's own dashed line draws", () => {
+    // conversionRatio is D for the buck alone, and isolatedM carries the turns
+    // ratio; the legend said "M = D" beside all six of the others.
+    const expected = {
+      a3: 'M = D',
+      b1: 'M = D',
+      b3: 'M = D',
+      b5: 'M = D',
+      c1: 'M = 1 / (1 − D)',
+      c2: 'M = 1 / (1 − D)',
+      c3: 'M = 1 / (1 − D)',
+      c4: 'M = −D / (1 − D)',
+      d3: 'M = n·D / (1 − D)',
+      d4: 'M = n·D',
+    }
+    for (const [id, text] of Object.entries(expected)) {
+      const { exp, p, x } = at(id)
+      const s = sweepFor(exp, p, x)
+      const legend = sweepLegend(s.points, exp.sweep, s.label, s.label2, s.ideal).map((q) => q.text)
+      expect(legend, id).toContain(text)
+      // And the curve under that name really is that formula, at the duty the
+      // experiment opens on.
+      // An R sweep holds the duty fixed; a D sweep varies it along x.
+      const q = exp.sweep.x === 'D' ? s.points.reduce((best, r) => (Math.abs(r.x - p.D) < Math.abs(best.x - p.D) ? r : best), s.points[0]) : s.points[0]
+      const n = 1 / (p.Np || 2)
+      const D = exp.sweep.x === 'D' ? q.x : p.D
+      const ideal =
+        exp.kind === 'buck' ? D
+        : exp.kind === 'boost' ? 1 / (1 - D)
+        : exp.kind === 'buckboost' ? -D / (1 - D)
+        : exp.kind === 'flyback' ? (n * D) / (1 - D)
+        : n * D
+      expect(q.ideal, `${id} at D = ${D}`).toBeCloseTo(ideal, 9)
+    }
+  })
+
+  it('lists no curve the plot does not draw', () => {
+    for (const e of EXPERIMENTS) {
+      if (!e.sweep) continue
+      const { exp, p, x } = at(e.id)
+      const s = sweepFor(exp, p, x)
+      const legend = sweepLegend(s.points, e.sweep, s.label, s.label2, s.ideal).map((q) => q.text)
+      // The half-bridge's textbook M is n·D in either mode, so its prediction
+      // lands on the ideal and nothing dotted is visible.
+      const apart = s.points.some(
+        (q) => Number.isFinite(q.pred) && Number.isFinite(q.ideal) && Math.abs(q.pred - q.ideal) > 1e-9 * Math.max(1, Math.abs(q.ideal)),
+      )
+      if (legend.includes('CCM/DCM formula')) expect(apart, `${e.id} lists a dotted curve drawn under the dashed one`).toBe(true)
+      if (e.id === 'd4') expect(legend, 'd4').not.toContain('CCM/DCM formula')
+    }
+  }, 60000)
+
+  it('names the period the measures table was taken over', () => {
+    // An inverter switches m_f times inside the output cycle it repeats in.
+    const { x } = at('f2')
+    expect(x.m.mode).toBe('inverter')
+    expect(x.conv.mf).toBeGreaterThan(10)
+    const h = renderToStaticMarkup(React.createElement(MeasuresPane, { m: x.m, signals: null }))
+    expect(h).toContain('Over one output cycle')
+    expect(h).not.toContain('switching period')
+    // The buck still measures over one switching period, and the line side
+    // over one line cycle.
+    expect(renderToStaticMarkup(React.createElement(MeasuresPane, { m: at('b3').x.m, signals: null }))).toContain('Over one switching period')
+    expect(renderToStaticMarkup(React.createElement(MeasuresPane, { m: at('e2').x.m, signals: null }))).toContain('Over one line cycle')
   })
 })
