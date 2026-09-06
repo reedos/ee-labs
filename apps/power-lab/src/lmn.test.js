@@ -25,7 +25,7 @@ import { analyse } from './analysis.js'
 import { experimentMath } from './math.js'
 import { sweepFor, outcomeOf } from './App.jsx'
 import { sweepMarks } from './marks.js'
-import { driveParams, LMN_KINDS } from './groups/lmn.js'
+import { driveParams, LMN_KINDS, LMN_HEADLINES } from './groups/lmn.js'
 
 // Every number Groups L, M and N put on the screen, pinned against the engine
 // that produced it.
@@ -151,6 +151,41 @@ describe('L2 · four quadrants', () => {
     expect(x.m.Iin * 1e3).toBeCloseTo(-310.7, 1)
     expect(x.m.Pin).toBeCloseTo(-14.91, 2)
     expect(x.m.regenerating).toBe(true)
+  })
+
+  it('reads the braking quadrant’s efficiency from the shaft, and says so in the top bar', () => {
+    // The rail is the load here, so what is delivered is the rail's 14.91 W
+    // out of the shaft's 16.78 W. Dividing the other way gives 112 % on the
+    // screen of the experiment whose whole subject is that the power can run
+    // backwards, which is the §11.0 class of defect.
+    const x = at('l2', { D: 0.3 })
+    expect(x.m.delivering).toBe('rail')
+    expect(pct(x.m.eta)).toBeCloseTo(88.90, 1)
+    expect(x.m.eta).toBeCloseTo(x.m.Pin / x.m.Pout, 12)
+    expect(outcomeOf(byId.l2, x)).toMatch(/η = 88\.9/)
+    expect(LMN_HEADLINES.drive(x.m).value).toMatch(/88\.9 %/)
+    // Motoring it is the other way round, and both are under one.
+    const m = at('l2').m
+    expect(m.delivering).toBe('shaft')
+    expect(m.eta).toBeCloseTo(m.Pout / m.Pin, 12)
+    for (const D of [0.02, 0.2, 0.3, 0.4, 0.6, 0.75, 0.98]) {
+      const q = at('l2', { D })
+      if (Number.isFinite(q.m.eta)) expect(q.m.eta, `D = ${D}`).toBeLessThanOrEqual(1)
+      else expect(q.m.delivering, `D = ${D}`).toBe('neither')
+      expect(outcomeOf(byId.l2, q), `D = ${D}`).not.toMatch(/NaN|η = -|η = 1\d\d/)
+    }
+  })
+
+  it('names the duty where neither side delivers, rather than dividing two losses', () => {
+    // At half duty the bridge commands zero volts and the load still turns
+    // the shaft backwards, so the rail and the shaft both feed the losses.
+    const x = at('l2', { D: 0.5 })
+    expect(x.m.Pin).toBeGreaterThan(0)
+    expect(x.m.Pout).toBeLessThan(0)
+    expect(x.m.delivering).toBe('neither')
+    expect(Number.isFinite(x.m.eta)).toBe(false)
+    expect(LMN_HEADLINES.drive(x.m).value).toBe('all of it loss')
+    expect(outcomeOf(byId.l2, x)).toMatch(/nothing delivered either way/)
   })
 
   it('ripples 300 mA bipolar and 100 mA unipolar, at twice the rate', () => {

@@ -419,7 +419,16 @@ export function driveMeasures(ss, { dense = 256 } = {}) {
     Ploss: Pcond,
     // P_in − P_shaft − Σ losses, which the physics makes zero.
     balance: Pin - Pshaft - Pcond,
-    eta: Pin !== 0 ? Pshaft / Pin : 0,
+    // Efficiency is what the load takes over what the source gives, and a
+    // four-quadrant drive swaps which is which. Motoring, the rail gives and
+    // the shaft takes. Braking, the shaft gives and the rail takes, so the
+    // ratio is P_in over P_shaft with both negative and it stays under one.
+    // Between the two the rail and the shaft both feed the losses and nothing
+    // is delivered at all, so there is no ratio to take: `eta` is NaN there,
+    // and a pane says that rather than printing a number.
+    eta: Pin > 0 && Pshaft > 0 ? Pshaft / Pin : Pin < 0 && Pshaft < 0 ? Pin / Pshaft : NaN,
+    // Which way the power is flowing, for the meter that has to name it.
+    delivering: Pin > 0 && Pshaft > 0 ? 'shaft' : Pin < 0 && Pshaft < 0 ? 'rail' : 'neither',
     mode: 'drive',
     omega,
     omegaRipple: sig.vemf.pp / mach.ke,

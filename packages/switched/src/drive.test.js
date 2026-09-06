@@ -18,7 +18,8 @@ import {
 //
 //   1. ⟨v_L⟩ = 0 over a period, per armature.
 //   2. ⟨T_e⟩ = the load torque, which is the shaft's own balance.
-//   3. P_in = P_shaft + Σ losses, as an identity rather than an estimate.
+//   3. P_in = P_shaft + Σ losses, as an identity rather than an estimate,
+//      and the efficiency that identity allows, in either quadrant.
 //   4. One more period returns the same state.
 //   5. The walk from rest lands on the solver's orbit.
 //   6. The averaged machine in @ee-labs/machines and the exact switched
@@ -80,6 +81,17 @@ describe('a drive is a converter with a shaft', () => {
       // 3. The power books.
       const pScale = Math.max(1e-12, Math.abs(m.Pin), Math.abs(m.Pout))
       expect(Math.abs(m.balance), `${where} P_in − P_shaft − Σ`).toBeLessThan(1e-7 * pScale)
+      // 3b. Efficiency, whichever way the power is flowing. What the load
+      //     takes cannot be more than what the source gives, in either
+      //     quadrant, and where neither side is delivering there is no ratio
+      //     to take rather than a large one.
+      if (Number.isFinite(m.eta)) {
+        expect(m.eta, `${where} η above zero`).toBeGreaterThan(0)
+        expect(m.eta, `${where} η at or under one`).toBeLessThanOrEqual(1 + 1e-9)
+        expect(m.delivering, `${where} names a side`).toBe(m.Pin > 0 ? 'shaft' : 'rail')
+      } else {
+        expect(m.delivering, `${where} η with nothing delivered`).toBe('neither')
+      }
       // 4. Steady state is steady.
       const again = drivePeriod(conv, ss.x0).xEnd
       expect(Math.abs(again[0] - ss.x0[0]), `${where} i returns`).toBeLessThan(1e-8 * scaleOf(m))
@@ -260,6 +272,29 @@ describe('four quadrants', () => {
     expect(braking.omega).toBeLessThan(0)
     // The rail takes back what the shaft gives up, and the books still close.
     expect(Math.abs(braking.balance)).toBeLessThan(1e-9 * Math.abs(braking.Pin))
+  })
+
+  it('measures the braking quadrant’s efficiency from the shaft, which is the source there', () => {
+    // Braking, the load drives the shaft and the rail receives, so what is
+    // delivered is the rail's and what is supplied is the shaft's. Reading
+    // the motoring ratio there gives a number above one, which is the
+    // §11.0 class of defect: a meter that contradicts its own quadrant.
+    const braking = driveMeasures(driveSteadyState(drive('hbridge', { D: 0.3 })))
+    expect(braking.delivering).toBe('rail')
+    expect(braking.eta).toBeCloseTo(braking.Pin / braking.Pout, 12)
+    expect(braking.eta).toBeGreaterThan(0)
+    expect(braking.eta).toBeLessThan(1)
+    // The losses are the whole of the difference, either way round.
+    expect(braking.eta).toBeCloseTo(1 + braking.Pcond / braking.Pout, 9)
+    // Between the quadrants the rail and the shaft both feed the losses. At
+    // half duty this bridge commands zero volts and the shaft still turns
+    // backwards under its load, so nothing is delivered and there is no
+    // ratio to report.
+    const between = driveMeasures(driveSteadyState(drive('hbridge', { D: 0.5 })))
+    expect(between.Pin).toBeGreaterThan(0)
+    expect(between.Pout).toBeLessThan(0)
+    expect(between.delivering).toBe('neither')
+    expect(Number.isFinite(between.eta)).toBe(false)
   })
 
   it('gives the bus current the duty’s own signed share of the armature current', () => {

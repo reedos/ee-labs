@@ -90,7 +90,17 @@ function driveEntry(exp, x) {
     { label: 'speed ripple', value: m.omegaRipple, unit: 'rad/s', note: `${(m.omegaRipple / Math.max(1e-12, Math.abs(m.omega))).toExponential(2)} of the speed` },
     { label: 'τ_e against τ_m', value: f.avg.separated, unit: '', note: `${fmt(f.avg.tauE, 's', 3)} and ${fmt(f.avg.tauM, 's', 3)}` },
     { label: 'from the rail', value: m.Iin, unit: 'A', note: m.regenerating ? 'negative: the shaft is driving the bridge' : 'positive: the rail is driving the shaft' },
-    { label: 'η', value: m.eta * 100, unit: '%' },
+    {
+      label: 'η',
+      value: m.eta * 100,
+      unit: '%',
+      note:
+        m.delivering === 'shaft'
+          ? 'the shaft’s power over the rail’s'
+          : m.delivering === 'rail'
+            ? 'braking: the rail’s power over the shaft’s'
+            : 'the rail and the shaft both feed the losses, so nothing is delivered',
+    },
   ]
   if (f.comm) {
     values.push(

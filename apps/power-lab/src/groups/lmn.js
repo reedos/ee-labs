@@ -156,6 +156,11 @@ export const LMN_SWEEP_Y = {
 
 /** The top bar's third meter, for the meters the built groups had no need of. */
 export const LMN_HEADLINES = {
+  // A drive's efficiency is still η, and it is read from whichever side is
+  // the source. Braking, that is the shaft. Between the quadrants neither
+  // side delivers anything, and the meter says so rather than dividing two
+  // numbers that are both loss.
+  drive: (m) => ({ label: 'η', value: Number.isFinite(m.eta) ? `${(m.eta * 100).toFixed(1)} %` : 'all of it loss' }),
   ripple: (m) => ({ label: 'line ripple', value: fmt(m.lineRipple, 'A', 3) }),
   ring: (m) => ({ label: 'ring', value: `${fmt(m.measured ? m.measured.f : m.ring.f0, 'Hz', 3)} at ${(m.overshoot * 100).toFixed(0)} %` }),
   tj: (m) => ({ label: 'T_j', value: `${m.thermal.Tj.toFixed(1)} °C` }),
@@ -597,7 +602,9 @@ export const LMN_OUTCOME = {
 }
 
 const driveOutcome = (x) =>
-  `${x.m.rpm.toFixed(0)} rev/min at ${fmt(x.m.torque, 'N·m', 3)}, η = ${(x.m.eta * 100).toFixed(2)} %`
+  `${x.m.rpm.toFixed(0)} rev/min at ${fmt(x.m.torque, 'N·m', 3)}, ${
+    Number.isFinite(x.m.eta) ? `η = ${(x.m.eta * 100).toFixed(2)} %` : 'nothing delivered either way'
+  }`
 
 /** The top bar's strip: mode, then the number the experiment is about. */
 export const LMN_FLOW = {
@@ -645,7 +652,7 @@ export const LMN_MODE_WORDS = {
 // and the Drive pane is where its value is read.
 const drv = (kind, over) => ({
   kind,
-  headline: 'eta',
+  headline: 'drive',
   traces: ['vout', 'iL'],
   allTraces: ['vout', 'vemf', 'vL', 'iL', 'iQ', 'iD', 'iin'],
   views: ['measures', 'drive', 'math', 'sweep', 'losses'],
