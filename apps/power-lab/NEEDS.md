@@ -90,15 +90,18 @@ what each contract is.
    rather than write a third. The shape is a clocked converter whose
    sub-intervals its own state chooses.
 7. **The 1366×768 fold needs about 25 px back, once, in the shell.**
-   `verify.mjs` §8 passes 30 of 40 in Chromium and 21 of 40 in Firefox, whose
-   range inputs are taller. Chromium's ten are B1, B2, B4, C1, C5, E1, E4, E6,
-   F2 and J1, over by 5 to 23 px. Firefox adds nine more of Groups A to G. All
-   but one open a group, which puts a 48 px intro above the note.
-8. **That fold is the shell's, not a group's.** The set was over before Groups
-   J and K existed, measured on the same build with them removed. This lane
-   gave back the 28 px it had added, and 18 px more out of J1's note. J1 is the
-   only one of these six left in either set, and the least over in both. One
-   change to the sidebar's chrome fixes them all. §8 is the test, and it fails.
+   `verify.mjs` §8 passes 31 of 40 in Chromium and 22 of 40 in Firefox, whose
+   range inputs are taller. Chromium's nine are B1, B2, B4, C1, C5, E1, E4, E6
+   and F2, over by 0 to 23 px. Firefox's eighteen are those nine plus A1, A3,
+   B3, B5, B6, B8, C2, C3 and C4, over by 0 to 53 px. Most of them open a
+   group, which puts a 48 px intro above the note.
+8. **That fold is the shell's, and none of it is these two groups'.** The same
+   nine are over with Groups J and K removed from the build, measured at 25 of
+   34 in Chromium on 2026-09-05. This lane gave back the 28 px it had added,
+   and the review took another 18 px out of J1's note, which was the one
+   experiment of these six over in either browser. All six are above the fold
+   in both browsers now. One change to the sidebar's chrome fixes the rest.
+   §8 is the test, and it still fails on the nine and the eighteen.
 
 ## Not needed
 

@@ -1246,12 +1246,15 @@ Deferred, with what reopens each:
   build, B1, B2, B4, C1, C5, E1, E4, E6 and F2 are over by 1 to 23 px. Eight
   open a group, which adds a 48 px intro above the note. §11.8 recorded this
   green, so the shell's chrome has moved since. Firefox is tighter and puts
-  nineteen of Groups A to G over.
-- **J1 is the one experiment of these six in either set.** It is 5 px over in
-  Chromium and 7 in Firefox, after this lane took 18 px out of its note. It is
-  the least over of the group-opening experiments in both browsers. One shell
-  change fixes the whole set, so it is in `NEEDS.md` for the director rather
-  than ten trimmed notes here.
+  eighteen of Groups A to G over. It is in `NEEDS.md` for the director: one
+  shell change fixes the whole set, where trimming the notes would cost
+  eighteen of them their content.
+- **J1 was the one experiment of these six in either set, and is not now.** It
+  was 5 px over in Chromium and 7 in Firefox, after this lane took 18 px out
+  of its note. The review took another line out of the same note. All six of
+  these experiments are above the fold in both browsers now. `verify.mjs` §8
+  reads 31 of 40 in Chromium and 22 of 40 in Firefox, and every failure left
+  is a Group A to G experiment.
 - **Everything else `verify.mjs` measures is green on all 40.** No overflow at
   four widths. The outcome chip whole at three. 390 px, the primary pane's
   share, the path, the marks, the accessible names, and no dust anywhere.
@@ -1270,6 +1273,32 @@ Deferred, with what reopens each:
   and the 480-sample fuzz reaches none. Reopens with a better Jacobian. The
   saltation matrix at each event gives the true monodromy matrix
   analytically, where this takes it by difference.
+
+What the adversarial review changed, on top of the fold above:
+
+- **The resonant converters reported a switch node the schematic said could
+  not exist.** `v_sw` was the tank's drive, ±V_in/2 about the divider
+  midpoint. The drawing probes the node between Q1 and Q2, with the ground
+  symbol on the rail below it. So the measures table read −24.0 V to 24.0 V
+  for a node that sits between 0 V and 48 V. `v_sw` is now that node, 0 to
+  V_in. The ±V_in/2 the gain formulas are written in is the node less the DC
+  the tank capacitor holds. Five pins moved with it, all to closed forms, and
+  P_in = ⟨v_sw·i_r⟩ became an exact identity.
+- **The first-harmonic guard had no test of its threshold.** It fires past
+  five per cent, and the panel's row then stops comparing and carries the
+  measured gap. `jk.test.js` now walks seven frequencies from 0.6 to 2.0
+  times resonance. The row's state has to follow the measured error across
+  the threshold, in both directions. The flux-walk form's own footnote is
+  held the same way.
+- **The plan's second measurement for K2 was not made.** §4 asks for the gain
+  against frequency at three loads, as well as the peak against the
+  inductance ratio. The curve is drawn at whatever load the knob is set to.
+  The order the three come in is now pinned. A lighter load gives a taller
+  peak, nearer the lower resonance, and the series tank never passes n/2 at
+  any of them.
+- **K2's note compared a voltage with a ratio.** "The output is 13.7 V, which
+  is 1.14 times n/2" reads as 13.7 V against 0.25. The ratio is what is 1.14
+  times n/2, and the note now says so in its own sentence.
 
 Two of the brief's numbers moved, and both are the engine's:
 

@@ -218,9 +218,9 @@ export const JK_EXPERIMENTS = [
     name: 'A buck through a transformer',
     params: [Dfw(0.4), Ratio(4), Vin(48), R(5), Lm(1e-3), L(), C(), Fs()],
     note:
-      'The secondary hands the filter n times the rail, so volt-second balance gives M = n·D. At ' +
-      'D = 40 % on a 4:1 transformer that is 4.80 V. The core returns its own volt-seconds through ' +
-      'a reset winding, in 4.00 µs. So the duty stops at one half and the switch blocks 96.0 V.',
+      'The secondary hands the filter n times the rail, so M = n·D. A 4:1 transformer at D = 40 % ' +
+      'gives 4.80 V. A reset winding returns the core’s volt-seconds in 4.00 µs. The duty stops at ' +
+      'half and the switch blocks 96.0 V.',
     terms: ['forward-converter', 'reset-winding', 'magnetising-current', 'volt-second', 'turns-ratio', 'isolation', 'duty'],
   }),
   forwardExp('pushpull', {
@@ -286,7 +286,7 @@ export const JK_EXPERIMENTS = [
     note:
       'Leave the magnetising inductance in and the tank has a second, slower resonance at 40.8 kHz. ' +
       'Between the two the gain can pass what a series tank can reach. At 80 kHz with L_m = 150 µH ' +
-      'the output is 13.7 V, which is 1.14 times n/2. The peak of the curve moves with the ' +
+      'the output is 13.7 V. That ratio is 1.14 times n/2. The peak of the curve moves with the ' +
       'inductance ratio, and at 60 µH it reaches 0.593.',
     terms: ['llc', 'resonant-tank', 'magnetising-current', 'zvs', 'first-harmonic'],
   }),
