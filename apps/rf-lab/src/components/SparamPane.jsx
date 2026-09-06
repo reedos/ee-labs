@@ -81,13 +81,16 @@ export function SparamPane({ exp, x, p, plane = 0 }) {
           <span key={e.key} className={`rf-chip ${COLOURS[e.key]}`} data-entry={e.label}>
             <em>{e.label}</em>
             {`${plain(e.mag)} ∠ ${e.deg.toFixed(2)}°`}
-            <i>{Number.isFinite(e.db) ? `${plain(e.db)} dB` : 'nothing gets through'}</i>
+            <i>{Number.isFinite(e.db) ? `${plain(e.db)} dB` : e.nothing}</i>
           </span>
         ))}
       </div>
       <p className="rf-legend" data-role="sparam-legend">
         {`${v.name}, ${x.trace.length} exact points, read at ${num(v.marker, 'Hz')}. `}
         {markerIn ? '' : `That frequency is outside the window drawn here, so the marker is off the plot. `}
+        {v.clipped.length
+          ? `${v.clipped.join(' and ')} ${v.clipped.length === 1 ? 'reaches' : 'reach'} below the ${plain(v.floor, 3)} dB floor and ${v.clipped.length === 1 ? 'is' : 'are'} drawn along it there. `
+          : ''}
         {v.plane
           ? `The reference plane has moved ${plain(v.plane, 4)}° towards the generator, so every angle is turned and no magnitude is.`
           : 'The reference plane is at the connector, so the angles are the ones the circuit itself produces.'}

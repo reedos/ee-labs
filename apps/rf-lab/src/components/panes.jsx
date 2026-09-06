@@ -93,6 +93,15 @@ export function SweepPane({ exp, x, p }) {
   // the edge would put it at a frequency the reader did not set. The legend
   // says where the marker went instead.
   const markerIn = v.marker >= v.from && v.marker <= v.to
+  // A band the response never leaves on one side has no width, and which side
+  // that is depends on the network. The legend names the side and the
+  // frequencies the crossing was looked for between, because "it never
+  // crosses" would claim more than the search measured.
+  const band = !v.band
+    ? ''
+    : v.band.bounded
+      ? `The band to a standing-wave ratio of ${plain(v.band.target, 5)} runs from ${num(v.band.lower, 'Hz')} to ${num(v.band.upper, 'Hz')}, which is ${plain(100 * v.band.fractional, 4)} per cent.`
+      : `No ${v.band.lower === null ? (v.band.upper === null ? 'edge either side' : 'lower edge') : 'upper edge'} at a standing-wave ratio of ${plain(v.band.target, 5)}, searched from ${num(v.band.from, 'Hz')} to ${num(v.band.to, 'Hz')}.`
 
   return (
     <div className="rf-plot rf-sweep">
@@ -127,9 +136,7 @@ export function SweepPane({ exp, x, p }) {
         {`${v.points.length} exact points, ${num((v.to - v.from) / (v.points.length - 1), 'Hz')} apart. `}
         {markerIn ? '' : `The frequency is set to ${num(v.marker, 'Hz')}, which is outside the window drawn here. `}
         {v.repeat ? `The response repeats every ${num(v.repeat, 'Hz')}, and the lines mark where. ` : 'A network of lumped elements has no repeat, so nothing here comes back. '}
-        {v.band && v.band.bounded
-          ? `The band to a standing-wave ratio of ${plain(v.band.target, 5)} runs from ${num(v.band.lower, 'Hz')} to ${num(v.band.upper, 'Hz')}, which is ${plain(100 * v.band.fractional, 4)} per cent.`
-          : ''}
+        {band}
       </p>
       {v.says ? (
         <p className="rf-declined" data-role="declined">

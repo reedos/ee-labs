@@ -160,6 +160,49 @@ describe('the S-parameter view, and the calibration plane the Instruments Lab ne
   })
 })
 
+describe('the S-parameter view says when a trace leaves the plot', () => {
+  const at = (id, over = {}) => {
+    const p = { ...defaultsOf(id), ...over }
+    return { exp: byId[id], p, x: analyse(byId[id], p) }
+  }
+
+  it('an entry below the decibel floor is named, because a flat line at the bottom reads as a measurement', () => {
+    // `REVIEW_PLAYBOOK.md` §10: where the cap truncates, the readout says so.
+    // Five pads of 30 dB put the transmission at −150 dB, and the axis stops at
+    // −60 dB, so the trace is drawn along the floor.
+    const deep = at('d4', { chain: 'pads', stages: 5, db: 30 })
+    const props = sparamPropsFor(deep.exp, deep.p, deep.x)
+    expect(props.clipped).toContain('S21')
+    expect(props.floor).toBe(-60)
+    const out = html(<SparamPane {...deep} />)
+    expect(out).toMatch(/below the -60 dB floor/)
+    // The chip still carries the true reading, which is the number the trace
+    // cannot show.
+    expect(out).toMatch(/-150/)
+  })
+
+  it('an entry that is exactly zero is named too, and its chip says which of the two it is', () => {
+    // A matched pad reflects nothing, so S11 has no decibels at all and its
+    // trace lies along the floor for its whole length. That is the same defect
+    // as a clipped trace: a line at the bottom of a plot reads as a reading.
+    const matched = at('d4')
+    const props = sparamPropsFor(matched.exp, matched.p, matched.x)
+    expect(props.clipped).toEqual(['S11', 'S22'])
+    const out = html(<SparamPane {...matched} />)
+    expect(out).toMatch(/S11 and S22 reach below/)
+    // Nothing comes back at a reflection, and nothing gets through at a
+    // transmission. The two are not the same sentence.
+    expect(out).toMatch(/nothing comes back/)
+    expect(out).not.toMatch(/nothing gets through/)
+  })
+
+  it('a two-port whose entries all sit inside the axis says nothing about a floor', () => {
+    const inside = at('d5')
+    expect(sparamPropsFor(inside.exp, inside.p, inside.x).clipped).toEqual([])
+    expect(html(<SparamPane {...inside} />)).not.toMatch(/floor/)
+  })
+})
+
 describe('the equations pane prints the closed form with its own numbers in it', () => {
   const at = (id, over = {}) => {
     const p = { ...defaultsOf(id), ...over }
@@ -196,6 +239,27 @@ describe('the equations pane prints the closed form with its own numbers in it',
     // A real load takes no such row, because there is nothing to distinguish.
     const plain = at('c5', { XL: 0 })
     expect(html(<NumbersPane exp={plain.exp} x={plain.x} p={plain.p} />)).not.toContain('data-row="The load holds this reactance"')
+  })
+
+  it('an entry the solve returns as noise prints as zero, because the note beside it says zero', () => {
+    // The pad's S11 comes back as 3.3e-16 from an exact solve, which is
+    // −309.5 dB. Printed as it stands, a reader takes it for a reflection 310
+    // decibels down while D2's note says S11 is zero. The scale is the largest
+    // entry of the same matrix, so this is not a fixed threshold in ohms.
+    const { exp, p, x } = at('d2')
+    expect(x.s[11].mag).toBeGreaterThan(0)
+    expect(x.s[11].mag).toBeLessThan(1e-12)
+    const out = html(<NumbersPane exp={exp} x={x} p={p} />)
+    const s11 = out.slice(out.indexOf('data-row="S11"'), out.indexOf('data-row="S12"'))
+    expect(s11).toMatch(/>0 ∠ 0.00°</)
+    expect(s11).not.toMatch(/e-/)
+    expect(s11).toMatch(/nothing comes back/)
+    // S21 is a real reading and keeps its decibels.
+    const s21 = out.slice(out.indexOf('data-row="S21"'), out.indexOf('data-row="S22"'))
+    expect(s21).toMatch(/-3 dB/)
+    // The rows that measure a difference are still exponential, because they
+    // are labelled as differences relative to the scale and read as one.
+    expect(out).toMatch(/data-row="Reciprocity"/)
   })
 
   it('the pi attenuator has all four descriptions and closes its round trip', () => {
@@ -242,6 +306,49 @@ describe('the sweep pane says whether the response repeats', () => {
       expect(x.bw.lower, `the lower edge at ${f} Hz`).toBeGreaterThan(x.sweepRange.from)
       expect(x.bw.upper, `the upper edge at ${f} Hz`).toBeLessThan(x.sweepRange.to)
     }
+  })
+
+  it('a band with no edge on one side names the side, and the two topologies differ', () => {
+    // `REVIEW_PLAYBOOK.md` §1: a sentence has to follow every control that can
+    // change its fact. At a standing-wave ratio of two the low-pass network has
+    // no lower edge and the high-pass one has no upper edge, and a label that
+    // named the same side for both would be wrong for one of them.
+    const low = at('c3', { target: 2, pick: 'lowpass' })
+    const high = at('c3', { target: 2, pick: 'highpass' })
+    expect(html(<SweepPane {...low} />)).toMatch(/No lower edge/)
+    expect(html(<SweepPane {...high} />)).toMatch(/No upper edge/)
+    expect(html(<NumbersPane {...low} />)).toMatch(/no lower edge/)
+    expect(html(<NumbersPane {...high} />)).toMatch(/no upper edge/)
+    // And the frequencies the crossing was looked for between are named, because
+    // a search that found nothing measured less than "it never crosses".
+    expect(html(<SweepPane {...low} />)).toMatch(/searched from/)
+  })
+
+  it('a ratio the section never reaches says so instead of showing a dash', () => {
+    // The quarter-wave section's worst reading is the load handed through, so a
+    // ratio above that one is never crossed. The row used to print a dash,
+    // which reads as a reading that failed rather than as the answer.
+    const none = at('c4', { target: 2.5 })
+    expect(none.x.bw.bounded).toBe(false)
+    const rows = html(<NumbersPane {...none} />)
+    expect(rows).toMatch(/never crosses that ratio/)
+    expect(rows).not.toMatch(/>—</)
+    expect(html(<EquationsPane {...none} />)).toMatch(/never crosses that ratio/)
+    // The comparison against the L network goes with it, because there is no
+    // width on one side to divide by.
+    expect(rows).toMatch(/one of the two has no band/)
+  })
+
+  it('the section holds a band whose lower edge a symmetric search would have missed', () => {
+    // The search below the design frequency is not the same width as the one
+    // above it. At a ratio of 1.8 the lower edge is under half the design
+    // frequency, and the pane reports a band rather than none.
+    const wide = at('c4', { target: 1.8 })
+    expect(wide.x.bw.bounded).toBe(true)
+    expect(wide.x.bw.lower).toBeLessThan(wide.p.f / 2)
+    const rows = html(<NumbersPane {...wide} />)
+    expect(rows).toContain('data-row="Fractional bandwidth to 1.8"')
+    expect(rows).not.toMatch(/no lower edge|never crosses/)
   })
 
   it('a frequency outside a fixed window loses its marker and says where it went', () => {

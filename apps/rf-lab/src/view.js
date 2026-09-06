@@ -160,7 +160,12 @@ export function sweepPropsFor(exp, p, x) {
     // Where the response crosses the standing-wave ratio the experiment reads
     // its bandwidth to, measured on the exact response rather than read off a
     // swept point.
-    band: x.bw ? { target: p.target ?? x.bw.vswr, lower: x.bw.lower, upper: x.bw.upper, fractional: x.bw.fractional, bounded: x.bw.bounded } : null,
+    // `from` and `to` are where the crossing was looked for, which is what the
+    // legend names when there is no edge on one side. Saying the response never
+    // crosses would claim more than the search measured.
+    band: x.bw
+      ? { target: p.target ?? x.bw.vswr, lower: x.bw.lower, upper: x.bw.upper, fractional: x.bw.fractional, bounded: x.bw.bounded, from: x.bw.from, to: x.bw.to }
+      : null,
     marker: p.f,
     says: x.handOver && !x.handOver.ok ? x.handOver.says : null,
   }
@@ -179,6 +184,26 @@ export function numberRowsFor(exp, p, x) {
 }
 
 const row = (label, value, formula) => ({ label, value, formula })
+
+/**
+ * A measured band, or the side that has no edge.
+ *
+ * A response can hold a ratio on one side of the design frequency and never
+ * reach it on the other, and which side that is follows the topology. The
+ * low-pass L network hands the load straight through below its design
+ * frequency, so at a standing-wave ratio of two it has no lower edge. The
+ * high-pass one does the same above it and has no upper edge. A label that
+ * named the same missing side in both cases would be wrong in one of them.
+ */
+export function bandText(bw) {
+  if (!bw) return '—'
+  if (bw.bounded) return pct(bw.fractional)
+  if (bw.lower === null && bw.upper === null) return 'never crosses that ratio'
+  return bw.lower === null ? 'no lower edge' : 'no upper edge'
+}
+
+/** Two bands compared, when both of them have a width to compare. */
+const bandRatio = (a, b) => (a.bounded && b.bounded ? plain(a.fractional / b.fractional) : 'one of the two has no band')
 
 function mismatchRows(x) {
   const m = x.m
@@ -243,6 +268,30 @@ export { labelOf }
 // ------------------------------------------------------ the S-parameter view
 
 /**
+ * The four entries of one S-matrix, with the ones that are the solve's own
+ * noise reported as zero rather than as a measurement.
+ *
+ * A matched pad's S11 comes back as 3.3e-16, which is −309.5 dB. Printed as a
+ * number that reads as a reflection 310 decibels down, and the note beside it
+ * says S11 is zero. The scale is the largest entry of the same matrix, so a
+ * two-port written in any units is treated the same way, and an entry below a
+ * billionth of it has no decibels to print.
+ */
+/** What an entry with no decibels says, which is not the same for the two kinds. */
+const nothingAt = (key) => (key === '11' || key === '22' ? 'nothing comes back' : 'nothing gets through')
+
+function entriesOf(s, keys) {
+  const scale = Math.max(...keys.map((k) => s[k].mag))
+  const out = {}
+  for (const k of keys) {
+    const zero = isNoise(s[k].mag, scale)
+    out[k] = { mag: zero ? 0 : s[k].mag, db: zero ? -Infinity : s[k].db, deg: s[k].deg, zero }
+  }
+  return out
+}
+
+
+/**
  * The four entries against frequency, in decibels, with their angles below and
  * a marker that reads all four at one frequency.
  *
@@ -258,23 +307,32 @@ export function sparamPropsFor(exp, p, x, plane = 0) {
   const keys = ['11', '21', '12', '22']
   const turns = { 11: 2, 22: 2, 21: 1, 12: 1 }
   const shift = (deg, key) => wrap(deg - turns[key] * plane)
+  const read = entriesOf(x.s, keys)
+  // The floor the decibel axis is drawn to. A trace that goes to nothing at
+  // all would take the axis with it, so the range is the deepest trace on
+  // screen or 60 dB, whichever is shallower.
+  const floor = Math.max(-60, Math.min(-6, ...x.trace.flatMap((q) => keys.map((k) => (Number.isFinite(q[k].db) ? q[k].db : 0)))))
+  const ceiling = Math.max(0, ...x.trace.flatMap((q) => keys.map((k) => (Number.isFinite(q[k].db) ? q[k].db : 0))))
   return {
+    ceiling,
     from: x.sweepRange.from,
     to: x.sweepRange.to,
     marker: p.f,
     plane,
     keys,
-    // The floor the decibel axis is drawn to. A trace that goes to nothing at
-    // all would take the axis with it, so the range is the deepest trace on
-    // screen or 60 dB, whichever is shallower.
-    floor: Math.max(-60, Math.min(-6, ...x.trace.flatMap((q) => keys.map((k) => (Number.isFinite(q[k].db) ? q[k].db : 0))))),
-    ceiling: Math.max(0, ...x.trace.flatMap((q) => keys.map((k) => (Number.isFinite(q[k].db) ? q[k].db : 0)))),
+    floor,
+    // An entry that goes below the floor is drawn along it, and a flat line at
+    // the bottom of a plot reads as a measurement. `REVIEW_PLAYBOOK.md` §10 is
+    // the class of defect: where the cap truncates, the readout says so. Five
+    // pads of 30 dB reach −150 dB, and an entry that is exactly zero has no
+    // decibels at all.
+    clipped: keys.filter((k) => x.trace.some((q) => !Number.isFinite(q[k].db) || q[k].db < floor)).map((k) => `S${k}`),
     traces: keys.map((key) => ({
       key,
       label: `S${key}`,
       points: x.trace.map((q) => ({ f: q.f, db: q[key].db, deg: shift(q[key].deg, key), mag: q[key].mag })),
     })),
-    at: keys.map((key) => ({ key, label: `S${key}`, mag: x.s[key].mag, db: x.s[key].db, deg: shift(x.s[key].deg, key) })),
+    at: keys.map((key) => ({ key, label: `S${key}`, mag: read[key].mag, db: read[key].db, deg: shift(x.s[key].deg, key), nothing: nothingAt(key) })),
     name: x.built.name,
   }
 }
@@ -343,7 +401,7 @@ function matchEquations(x, p) {
     rows: [
       eq('Z_in', '(A Z_L + B)/(C Z_L + D)', rectangular(x.at.Z)),
       eq('Γ', '(Z_in − R_S)/(Z_in + R_S)', plain(x.at.mag, 5)),
-      eq('Fractional bandwidth', `to a standing-wave ratio of ${plain(p.target ?? 1.5, 5)}`, x.bw.bounded ? pct(x.bw.fractional) : 'no upper and lower edge'),
+      eq('Fractional bandwidth', `to a standing-wave ratio of ${plain(p.target ?? 1.5, 5)}`, bandText(x.bw)),
     ],
     says: '',
   })
@@ -374,9 +432,9 @@ function qwaveEquations(x, p) {
     {
       title: 'Against the lumped network',
       rows: [
-        eq('Section bandwidth', `to a standing-wave ratio of ${plain(p.target, 5)}`, pct(x.bw.fractional)),
-        eq('L network bandwidth', 'the same transformation, two reactances', pct(x.lumpedBw.fractional)),
-        eq('Ratio', 'the section over the L network', plain(x.wider, 5)),
+        eq('Section bandwidth', `to a standing-wave ratio of ${plain(p.target, 5)}`, bandText(x.bw)),
+        eq('L network bandwidth', 'the same transformation, two reactances', bandText(x.lumpedBw)),
+        eq('Ratio', 'the section over the L network', bandRatio(x.bw, x.lumpedBw)),
       ],
       says: '',
     },
@@ -408,10 +466,12 @@ function waveEquations(x, p) {
 }
 
 function twoPortEquations(x, p) {
+  const keys = ['11', '12', '21', '22']
+  const read = entriesOf(x.s, keys)
   const blocks = [
     {
       title: `The S-matrix of ${x.built.name}`,
-      rows: ['11', '12', '21', '22'].map((k) => eq(`S${k}`, `${plain(x.s[k].re, 5)} + j${plain(x.s[k].im, 5)}`, `${plain(x.s[k].mag, 5)} ∠ ${x.s[k].deg.toFixed(2)}°`)),
+      rows: keys.map((k) => eq(`S${k}`, `${plain(x.s[k].re, 5)} + j${plain(x.s[k].im, 5)}`, `${plain(read[k].mag, 5)} ∠ ${read[k].deg.toFixed(2)}°`)),
       says: `Every entry is measured with the other port terminated in ${plain(p.z0, 4)} Ω.`,
     },
   ]
@@ -479,10 +539,12 @@ function waveRows(x, p) {
 }
 
 function twoPortRows(x, p) {
+  const keys = ['11', '12', '21', '22']
+  const read = entriesOf(x.s, keys)
   const rows = [
     row('Two-port', x.built.name, 'the knobs'),
     row('Reference impedance', num(p.z0, 'Ω'), 'Z_0, and every entry depends on it'),
-    ...['11', '12', '21', '22'].map((k) => row(`S${k}`, `${plain(x.s[k].mag)} ∠ ${x.s[k].deg.toFixed(2)}°`, `${Number.isFinite(x.s[k].db) ? plain(x.s[k].db) + ' dB' : 'nothing gets through'}`)),
+    ...keys.map((k) => row(`S${k}`, `${plain(read[k].mag)} ∠ ${read[k].deg.toFixed(2)}°`, Number.isFinite(read[k].db) ? `${plain(read[k].db)} dB` : nothingAt(k))),
     row('|S11|² + |S21|²', plain(x.power.sum, 12), 'what comes back plus what gets through'),
     // A lossless network dissipates nothing, and the solve returns that as a
     // number a few times 1e-16. Against a scale of one that is the
@@ -524,7 +586,7 @@ function matchRows(x, p) {
   rows.push(row('Reflection at the source', plain(x.at.mag), '(Z_in − R_S)/(Z_in + R_S)'))
   rows.push(row('Standing-wave ratio', plain(x.at.vswr), '(1 + |Γ|)/(1 − |Γ|)'))
   rows.push(row('Arrangements that match', String(x.count), 'of the four the enumeration holds'))
-  rows.push(row(`Fractional bandwidth to ${plain(p.target ?? 1.5, 5)}`, x.bw.bounded ? pct(x.bw.fractional) : 'no lower edge', 'measured on the exact response'))
+  rows.push(row(`Fractional bandwidth to ${plain(p.target ?? 1.5, 5)}`, bandText(x.bw), 'measured on the exact response'))
   return rows
 }
 
@@ -540,8 +602,8 @@ function qwaveRows(x, p) {
     row('Reflection at the source', plain(x.at.mag), '(Z_in − R_S)/(Z_in + R_S)'),
     row('Matches again at', x.repeats.map((f) => num(f, 'Hz')).join(', '), 'every odd multiple of the design frequency'),
     row('Response repeats every', num(x.repeat, 'Hz'), 'v_p / 2l'),
-    row(`Fractional bandwidth to ${plain(p.target, 5)}`, pct(x.bw.fractional), 'measured on the exact response'),
-    row('The L network, same transformation', pct(x.lumpedBw.fractional), 'two reactances instead of a section'),
-    row('The section over the L network', plain(x.wider), 'the ratio of the two bandwidths'),
+    row(`Fractional bandwidth to ${plain(p.target, 5)}`, bandText(x.bw), 'measured on the exact response'),
+    row('The L network, same transformation', bandText(x.lumpedBw), 'two reactances instead of a section'),
+    row('The section over the L network', bandRatio(x.bw, x.lumpedBw), 'the ratio of the two bandwidths'),
   ]
 }
