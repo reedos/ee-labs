@@ -442,6 +442,30 @@ describe('M3 · the switch node rings', () => {
     expect(Math.abs(extra / snub.formulas.Psn - 1)).toBeLessThan(0.15)
   })
 
+  it('footnotes the two ring forms where their own assumptions fail', () => {
+    // CORE_SCOPE rule 3: every approximation carries a threshold, and the
+    // threshold is exercised. The forms hold the loop's own parasitics and
+    // nothing else, so a snubber and hard damping each take a row out of the
+    // comparison rather than marking correct physics wrong.
+    const rows = (over) => {
+      const p = { ...defaultsOf('m3'), ...over }
+      return experimentMath(byId.m3, p, at('m3', over)).blocks.find((b) => b.kind === 'check').rows
+    }
+    const find = (rs, label) => rs.find((r) => r.label === label)
+    expect(find(rows({}), 'ζ from the decay').unchecked).toBeUndefined()
+    expect(find(rows({}), 'the overshoot').unchecked).toBeUndefined()
+    // Hard damping leaves the second peak a few per cent of the first.
+    expect(find(rows({ Rp: 5 }), 'ζ from the decay').unchecked).toBeTruthy()
+    // A snubber damps through a resistance the loop's own ζ does not carry,
+    // and it slows the decay past the interval it has to die in. Either
+    // reason takes both rows out of the comparison.
+    expect(find(rows({ snubber: 1 }), 'the overshoot').unchecked).toBeTruthy()
+    expect(find(rows({ snubber: 1 }), 'ζ from the decay').unchecked).toBeTruthy()
+    // With the ring given room to die away between edges, the snubber's own
+    // resistance is the reason left.
+    expect(find(rows({ snubber: 1, fs: 500e3, Csn: 470e-12 }), 'the overshoot').unchecked).toMatch(/snubber/)
+  })
+
   it('moves the ring with both parasitics, and the loss with the damping', () => {
     moves('m3', 'Lp', 4, (x) => x.formulas.f0, 0.4)
     moves('m3', 'Cp', 4, (x) => x.formulas.f0, 0.4)

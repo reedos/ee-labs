@@ -146,7 +146,7 @@ are bounded. C_p and C_sn start at 470 pF, R_sn at 5 Ω, f_s at 500 kHz.
 
 | Invariant | Where | Samples |
 | --- | --- | --- |
-| ⟨v_L⟩ = 0, ⟨T_e⟩ = the load torque, P_in = P_shaft + Σ losses, one more period returns | `drive.test.js` | 240 a kind, 720 in all |
+| ⟨v_L⟩ = 0, ⟨T_e⟩ = the load torque, P_in = P_shaft + Σ losses, 0 < η ≤ 1 in either quadrant, one more period returns | `drive.test.js` | 240 a kind, 720 in all |
 | the walk from rest lands on the solver's orbit | `drive.test.js` | 5 named cases |
 | the averaged machine and the exact waveform are one answer | `drive.test.js` | 200 a kind, 150 in range |
 | ⟨v_L⟩ = 0, ⟨i_Cin⟩ = 0, ⟨i_line⟩ = ⟨i_conv⟩, the power books, the state returns | `emi.test.js` | 200 |
@@ -176,7 +176,7 @@ Every figure below came out of `scripts/pins-lmn.mjs` run against the engine.
 | --- | --- | --- |
 | M1 | buck 24 V → 12 V, D = 50 %, f_s = 100 kHz, L = 100 µH, C = 100 µF, R = 6 Ω, stray L_f = 1 µH, C_in = 100 µF, R_f = 50 mΩ | V_out = 11.976 V, I_L = 1.9959 A. The input current averages 998.0 mA and swings 2.295 A. Harmonics 1.277 A, 95.3 mA, 423.8 mA, 254.2 mA, 181.5 mA at 100 to 700 kHz against 2·I·\|sin(kπD)\|/(kπ) = 1.271, 0, 423.6 m, 254.1 m, 181.5 m. The input capacitor takes 1.027 A rms against I√(D(1−D)) = 998.0 mA, 72.5 % of the pulse. It ripples 50.97 mV and the line 64.16 mA. The FFT reads the fundamental 1.27653 A against the integral's 1.27654 A. At C_in = 10 µF: 638.3 mV and 842.1 mA |
 | M2 | the same converter with C_in = 10 µF and L_f = 47 µH, R_d = 10 kΩ | f_0 = 7.341 kHz, Q = 43.4, the line's 100 kHz current is 184.5 times below the converter's (6.925 mA against 1.278 A), which is \|H\| exactly. Undamped the filter's output impedance peaks at 93.15 Ω against the converter's 24.02 Ω, a ratio of 3.877, and Middlebrook's criterion fails. At R_d = 1 Ω: 0.9897 Ω, a ratio of 0.0412, and the rejection falls to 6.3. At R_d = 10 Ω: 9.039 Ω, 0.376, and 59.2 |
-| M3 | switch node, V_in = 24 V, D = 50 %, f_s = 1 MHz, L_p = 100 nH, C_p = 1 nF, R_p = 50 Ω, snubber off, L = 10 µH, C = 10 µF, R = 6 Ω | the node rings at 15.915 MHz measured and 15.915 MHz from 1/(2π√(L_p C_p)), ζ = 0.1, Q = 5, and overshoots 72.84 % against e^{−ζπ/√(1−ζ²)} = 72.92 %, a peak of 41.48 V on a 24 V rail. 15.8 ring cycles fit a switching period and the loop dissipates 557.4 mW on 24 W delivered. At L_p = 400 nH: 7.958 MHz both ways, 53.58 % against 52.66 %. With a 2.2 nF snubber at 10 Ω: 38.88 % overshoot, a 33.33 V peak, and the node's loss rises 1.250 W against C_sn·V²·f_s = 1.267 W |
+| M3 | switch node, V_in = 24 V, D = 50 %, f_s = 1 MHz, L_p = 100 nH, C_p = 1 nF, R_p = 50 Ω, snubber off, L = 10 µH, C = 10 µF, R = 6 Ω | the node rings at 15.915 MHz measured and 15.915 MHz from 1/(2π√(L_p C_p)), ζ = 0.1, Q = 5, and overshoots 72.84 % against e^{−ζπ/√(1−ζ²)} = 72.92 %, a peak of 41.48 V on a 24 V rail. Each peak keeps 0.5303 of the one before it against the form's 0.5318, which is ζ = 0.1004 read back through the logarithmic decrement, and the envelope's own constant is 2·R_p·C = 100 ns. 15.8 ring cycles fit a switching period and the loop dissipates 557.4 mW on 24 W delivered. At L_p = 400 nH: 7.958 MHz both ways, 53.58 % against 52.66 %. With a 2.2 nF snubber at 10 Ω: 38.88 % overshoot, a 33.33 V peak, and the node's loss rises 1.250 W against C_sn·V²·f_s = 1.267 W |
 
 ### Group N
 

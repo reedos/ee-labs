@@ -1230,13 +1230,47 @@ by exact Fourier integral and through `@ee-labs/dsp`'s FFT. `thermal.js`
 builds a Foster or a Cauer network from one set of stages and steps it with
 the same propagator. A pulsed load is the periodic steady state it is.
 
-**The tests.** 2353 in `apps/power-lab` and `packages/switched`, all green,
+**The tests.** 2375 in `apps/power-lab` and `packages/switched`, all green,
 with Groups A to G untouched. The invariants are fuzzed at 240 seeded
 settings a drive kind, 200 for the input side, 60 for the switch node, 200
 networks a model and 120 pulses a model. `pins.test.js` walks all nine
 measures tables and finds every cell pinned to a form or named with the
 reason it has none. `lmn.test.js` pins every figure in every note and try
 line, and then turns the knob each depends on and requires it to follow.
+
+`transient.test.js` walks all nine from rest. Its coverage row names the
+twelve experiments another solver owns, so a later group cannot fall out of
+the list without saying so.
+
+**What the review found, and what was done.** Four things, each now a test
+that failed first.
+
+- **The four-quadrant experiment read η = 112.49 % at D = 30 %,** one of its
+  own chips and the case its note describes. Half duty read −5191 %. The
+  ratio was the shaft's power over the rail's whichever way the power ran,
+  and braking reverses which of the two is the source. It is now read from
+  the source. Where the rail and the shaft both feed the losses the meter
+  says so, rather than dividing two losses. The drives' fuzz gains the bound
+  the power identity allows, 0 < η ≤ 1 in either quadrant.
+- **The switch node's decay was shown but not measured.** §4 asks M3 for the
+  frequency and the decay against the parasitic values. The pane's ζ row
+  carried a bare peak ratio in one column and ζ in the other. The reading is
+  now ζ itself, through the logarithmic decrement, and the math panel checks
+  it with a footnote for the hard-damped corner. `ringOf`'s envelope time
+  constant was the series loop's 2·L_p/R_p, which is 25 times too short here
+  and moves the wrong way. The damping stands across the inductance, so the
+  constant is 2·R_p·C.
+- **The thermal pane contradicted itself at t_sw = 0,** a value the knob
+  offers. The frequency ceiling is infinite there, and the pane printed a
+  dash beside the words "where the whole budget is spent". Each of the three
+  cases has its own sentence now. The Z_th plot drew both networks with
+  nothing to tell them apart, and the note under it names which is solid.
+- **The walking tests skipped all nine.** `transient.test.js` and the
+  continuity walk filtered on `KINDS`, so the thermal three, which are
+  ordinary synchronous bucks, were never walked from rest, and the drives
+  were walked only with a lightened rotor. All nine now walk at their own
+  defaults, and the six sweeps keep the continuity-by-refinement rule the
+  built groups' M(D) and M(R) already keep.
 
 Deferred, with what reopens each:
 
