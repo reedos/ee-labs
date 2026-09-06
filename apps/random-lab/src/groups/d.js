@@ -56,6 +56,15 @@ export default [
         path: 'wk.worst',
         atMostValue: 1e-9,
       },
+      {
+        // The pane prints this pair, so the pair is pinned. The end panels are
+        // the whole of the difference between the two, which is why the
+        // integral is compared with them added back rather than without.
+        label: 'and the density integrates back to the mean square of the record',
+        path: 'wk.integralWithEnds',
+        against: 'wk.r0',
+        tol: 1e-9,
+      },
     ],
   },
   {

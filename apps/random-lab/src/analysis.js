@@ -220,6 +220,26 @@ export function analyse(params = {}) {
 
   const filter = memo(() => firstOrderLowpass(p.fc, p.sampleRate))
 
+  // What the one-run view draws, with the estimates of that same series beside
+  // it. The pane had no readouts at all, on the one experiment whose try line
+  // says to read the interval on the mean, and on the six others that offer the
+  // view as their second. An experiment that filters or scales the source draws
+  // its record rather than the bare draw, so the estimates are taken from
+  // whichever series is on screen and not from the other one.
+  const scope = memo(() => {
+    const usesRecord = p.filtered || p.noiseRms !== DEFAULTS.noiseRms
+    const series = usesRecord ? record().x.subarray(0, 2048) : draw()
+    return {
+      series,
+      usesRecord,
+      label: usesRecord ? 'Voltage' : 'Value',
+      units: usesRecord ? 'V' : '',
+      n: series.length,
+      mean: sampleMean(series, { level: p.level }),
+      variance: sampleVariance(series, { level: p.level }),
+    }
+  })
+
   const ens = memo(() => {
     const kind = p.ensembleKind
     const e = ensemble({
@@ -330,8 +350,15 @@ export function analyse(params = {}) {
     }
     let mw = 0
     for (const w of widths) mw += w
+    // The counted rate is itself an estimate, so it carries an interval like
+    // every other counted thing here. The pane prints this one, and the level
+    // it claims beside it.
+    const counted = proportion(inside, trials, { level: 0.95 })
     return {
       rate: inside / trials,
+      counted,
+      countedLo: counted.ci[0],
+      countedHi: counted.ci[1],
       claimed: p.level,
       trials,
       n: N,
@@ -607,6 +634,7 @@ export function analyse(params = {}) {
     est,
     tail,
     qmark,
+    scope,
     ens,
     ergSweep,
     wk,
@@ -682,6 +710,13 @@ export function resolve(a, path) {
     case 'est':
       v = at(a.est(), rest)
       break
+    case 'scope': {
+      const sc = a.scope()
+      if (rest[0] === 'mean') v = sc.mean.value
+      else if (rest[0] === 'variance') v = sc.variance.value
+      else v = at(sc, rest)
+      break
+    }
     case 'qmark': {
       const q = a.qmark()
       if (rest[0] === 'counted') v = q.counted.value

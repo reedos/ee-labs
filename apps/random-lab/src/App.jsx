@@ -236,6 +236,31 @@ export default function App() {
   )
 }
 
+/** The two routes to the density, and the gap between them. */
+function WienerKhinchin({ wk, n }) {
+  return (
+    <>
+      <Closed label="Record" value={n} sig={0} note="samples" />
+      <Closed label="Worst gap between the routes" value={wk.worst} note="relative, across every bin" />
+      <Against label="Integral against the record" measured={wk.integralWithEnds} predicted={wk.r0} />
+      <Closed label="End-panel gap" value={wk.endGap} note="the trapezoid takes half of each end bin" />
+    </>
+  )
+}
+
+/** What the coverage experiment counts: the level it claims against the rate. */
+function Coverage({ cov }) {
+  return (
+    <>
+      <Closed label="Claimed level" value={cov.claimed * 100} unit="%" />
+      <Estimate label="Counted coverage" est={cov.counted} scale={100} unit="%" />
+      <Against label="Mean interval width" measured={cov.meanWidth} predicted={cov.predictedWidth} />
+      <Closed label="Repeats" value={cov.trials} sig={0} />
+      <Closed label="Samples per repeat" value={cov.n} sig={0} />
+    </>
+  )
+}
+
 function Knob({ name, value, onChange }) {
   if (CHOICES[name]) {
     return (
@@ -275,8 +300,10 @@ function Knob({ name, value, onChange }) {
 
 function View({ view, a, p, highlight, onPickRun }) {
   switch (view) {
-    case 'scope':
-      return <ScopeCanvas data={a.params.filtered || a.params.noiseRms !== DEFAULTS.noiseRms ? a.record().x.subarray(0, 2048) : a.draw()} />
+    case 'scope': {
+      const s = a.scope()
+      return <ScopeCanvas data={s.series} label={s.label} units={s.units} />
+    }
     case 'histogram':
       return <HistogramCanvas hist={a.hist()} marker={p.qx == null ? null : a.qmark()} />
     case 'ensemble': {
@@ -359,6 +386,25 @@ function KtcTable({ a }) {
 
 function Readouts({ view, a, p }) {
   switch (view) {
+    case 'scope': {
+      // The one-run view printed nothing at all, and A2's try line says to read
+      // the interval on the mean.
+      const s = a.scope()
+      return (
+        <Pane title="What the run measures">
+          <Closed label="Seed" value={p.seed} sig={0} />
+          <Closed label="Samples drawn" value={s.n} sig={0} />
+          <Estimate label="Sample mean" est={s.mean} unit={s.units} />
+          <Estimate label="Sample variance" est={s.variance} unit={s.units ? 'V²' : ''} />
+          {s.usesRecord ? null : (
+            <>
+              <Closed label="Expectation" value={a.dist.mean} />
+              <Closed label="Variance" value={a.dist.variance} />
+            </>
+          )}
+        </Pane>
+      )
+    }
     case 'histogram': {
       const h = a.hist()
       const e = a.est()
@@ -413,6 +459,10 @@ function Readouts({ view, a, p }) {
             value={c.whiteBand}
             note="plus and minus, at 5 over the root of the record length"
           />
+          {/* D2's note quotes the gap between the two routes to the density and
+              says it is printed under the plot. It was not printed anywhere,
+              and the record knob that sets it moved nothing on screen. */}
+          {p.wkN ? <WienerKhinchin wk={a.wk()} n={p.wkN} /> : null}
         </Pane>
       )
     }
@@ -431,7 +481,11 @@ function Readouts({ view, a, p }) {
             value={e.ergodicity.gap}
             note="the two averages sum the same values, so this is rounding"
           />
-          {y ? <Estimate label="Yield" est={y} scale={100} /> : null}
+          {y ? <Estimate label="Yield" est={y} scale={100} unit="%" /> : null}
+          {/* The coverage experiment's own numbers. G2's note quotes 0.951
+              against a claimed 0.950 and neither was on screen anywhere, so
+              its level knob moved nothing a reader could see. */}
+          {p.covTrials ? <Coverage cov={a.coverage()} /> : null}
         </Pane>
       )
     }
