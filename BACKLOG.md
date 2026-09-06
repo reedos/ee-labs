@@ -803,6 +803,18 @@ Nothing is merged to master. The suite was last confirmed green at e1b7d0a,
 312 files and 9176 tests, before the pause. Nothing in the main tree changed
 after that commit.
 
+**Resumed later on 2026-09-05.** The teardown branch was a phantom. Two
+worktrees shared `lab/rf-lab`, and the first one's index was older than the
+branch, so its status showed the second one's commit as a deletion. It is
+deleted. The three real WIP branches are folded onto their lane branches as
+fast-forwards, so the resumed sittings find their own partial work where they
+left it. Origin's four original branches are kept under `lab/*-orig`, and
+this session's tips sit under `lab/*-2` until Reed replaces origin's `lab/*`
+with them. That is a force push, which the director's tools refuse. The
+setup line is fixed in the four scripts that were not mid-run. Both workflows
+were resumed from their journals, with the Power H and I lane and the RF and
+Photonics first sittings replayed from cache.
+
 ### Cut off at the session limit, 2026-09-05 19:50 UTC
 
 Every lane below ran as a workflow of Opus agents. Every agent fell to the
