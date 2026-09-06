@@ -76,10 +76,11 @@ describe('fitTitle', () => {
     }
   })
 
-  it('names a quantity and a unit in every wording it can pick', () => {
+  it('names its quantity in every wording, and its unit where there is one', () => {
     // The shortest option is the one a 390 px phone gets, so it carries the
-    // burden. "dB" is quantity and unit at once, and "amp" names the quantity
-    // of a linear axis whose numbers are the signal's own units.
+    // burden. "dB" is quantity and unit at once. The linear axis has no unit
+    // to lose, since its numbers are the signal's own, and "signal units" is
+    // the long way of saying dimensionless.
     expect(AMPLITUDE_TITLES.db.at(-1)).toBe('dB')
     expect(AMPLITUDE_TITLES.linear.at(-1)).toBe('amp')
     for (const v of AMPLITUDE_TITLES.db) expect(v).toMatch(/dB/)

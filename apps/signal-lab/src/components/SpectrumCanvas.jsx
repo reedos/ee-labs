@@ -34,7 +34,10 @@ export function axisMax(fFull, xMax = null) {
  * quantity and the unit.
  *
  * Playbook #4 wants every axis named and united, so the shortest wording in
- * every list below still carries a quantity and a unit. Nothing here shrinks
+ * every list below still names its quantity, and names its unit where the
+ * axis has one. The dB axis keeps "dB" at every length. The linear axis is
+ * dimensionless, and "signal units" is the long way of saying so, which is
+ * why "Amplitude" alone is a complete short form of it. Nothing here shrinks
  * the type: a 9 px axis title on a phone is its own defect.
  *
  * `measure` is the context's text width function, passed in so the choice can
