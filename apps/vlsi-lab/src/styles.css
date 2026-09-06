@@ -17,7 +17,7 @@
 .vlsi-app button:focus-visible, .vlsi-app select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .vlsi-app .topbar { justify-content: space-between; gap: 8px; font-size: 12px; }
 .vlsi-app .topbar strong { color: var(--accent); font-variant-numeric: tabular-nums; }
-.vlsi-app .views { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow-y: auto; }
+.vlsi-app .views { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow-y: auto; background: var(--bg); }
 .vlsi-app .views section { border-radius: 0; border: 0; background: none; min-width: 0; }
 .vlsi-app .schematic-view { border-bottom: 1px solid var(--line) !important; padding: 12px 20px; }
 .vlsi-app .analysis-view { padding: 12px 20px 24px; }
@@ -45,11 +45,11 @@
   .vlsi-app .controls { display: contents; }
   .vlsi-app .controls > header { grid-column: 1; grid-row: 1; padding: 12px 14px 0; }
   .vlsi-app .controls > .picker { grid-column: 1; grid-row: 2; padding: 8px 14px; }
-  .vlsi-app .controls > .knobs { grid-column: 1; grid-row: 5; padding: 12px 14px; }
+  .vlsi-app .controls > .knobs { grid-column: 1; grid-row: 4; padding: 12px 14px; }
   .vlsi-app .controls > .lesson { grid-column: 1; grid-row: 6; padding: 12px 14px; }
   .vlsi-app .controls > .report-issue { grid-column: 1; grid-row: 7; margin: 14px; }
   .vlsi-app .topbar { grid-column: 1; grid-row: 3; flex-wrap: wrap; padding: 10px 14px; }
-  .vlsi-app .views { grid-column: 1; grid-row: 4; overflow: visible; }
+  .vlsi-app .views { grid-column: 1; grid-row: 5; overflow: visible; }
   .vlsi-app .schematic-view, .vlsi-app .analysis-view { padding: 10px 12px; }
   .vlsi-app .schematic { height: auto; aspect-ratio: 2; }
   .vlsi-app button, .vlsi-app select, .vlsi-app summary { min-height: 44px; }

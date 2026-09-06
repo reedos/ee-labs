@@ -9,10 +9,8 @@
 .interfaces-app .controls section { margin: 0; padding: 16px 0; background: transparent; border: 0; border-bottom: 1px solid var(--line); }
 .interfaces-app .controls h2 { position: static; margin: 0 0 10px; padding: 0; background: none; border: 0; border-radius: 0; letter-spacing: 0; text-transform: none; }
 .interfaces-app summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
-.interfaces-app .presets { display: grid; gap: 5px; }
-.interfaces-app .preset { text-align: left; white-space: normal; min-height: 44px; padding: 9px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; color: var(--text); cursor: pointer; }
-.interfaces-app .preset b { color: var(--accent); margin-right: 5px; }
-.interfaces-app .preset.is-on { border-color: var(--accent); background: #17352e; }
+.interfaces-app .picker .lesson-nav { margin-bottom: 10px; }
+.interfaces-app, .interfaces-app * { letter-spacing: 0; }
 .interfaces-app .hint { font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
 .interfaces-app .model-label { display: grid; gap: 6px; margin-bottom: 18px; }
 .interfaces-app select { min-height: 44px; width: 100%; }
@@ -61,7 +59,7 @@
 @media (max-width: 900px) {
   html, body, #root { height: auto; overflow: auto; }
   .interfaces-app { display: flex; flex-direction: column; height: auto; overflow: visible; }
-  .interfaces-app .controls { order: 1; flex: 0 0 auto; max-height: 45vh; overflow-y: auto; border-right: none; padding: 18px; }
+  .interfaces-app .controls { order: 1; flex: 0 0 auto; max-height: 50vh; overflow-y: auto; border-right: none; padding: 14px 18px; }
   .interfaces-app .topbar { order: 2; position: sticky; top: 0; z-index: 2; gap: 10px 15px; }
   .interfaces-app .workspace { order: 3; overflow: visible; padding: 0 18px 25px; }
   .pin-content { grid-template-columns: minmax(0, 1fr); }

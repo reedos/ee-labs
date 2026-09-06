@@ -62,17 +62,25 @@ export default function App() {
         <ReportIssue lab="Interfaces Lab" version={pkg.version} state={{ id, params, view, direction, cursor }}
           summary={`${id.toUpperCase()}: ${exp.name}`} />
       </header>
-      <section className="lesson">
-        <h2>Experiment</h2>
+      <section className="picker">
+        <h2>A. The pin</h2>
         <LessonNav index={index} total={EXPERIMENTS.length} noun="experiment" dirty={dirty}
           onPrev={() => index > 0 && choose(EXPERIMENTS[index - 1].id)}
           onNext={() => index < EXPERIMENTS.length - 1 && choose(EXPERIMENTS[index + 1].id)} onReset={reset} />
-        <details className="preset-group" open>
-          <summary onClick={(event) => event.preventDefault()}>A. The pin</summary>
-          <div className="presets">{EXPERIMENTS.map((e) => <button type="button" key={e.id}
-            className={`preset${e.id === id ? ' is-on' : ''}`} aria-current={e.id === id ? 'step' : undefined}
-            onClick={() => choose(e.id)}><b>{e.id.toUpperCase()}</b> {e.name}</button>)}</div>
-        </details>
+        <select aria-label="Experiment" value={id} onChange={(event) => choose(event.target.value)}>
+          {EXPERIMENTS.map((e) => <option key={e.id} value={e.id}>{e.id.toUpperCase()}. {e.name}</option>)}
+        </select>
+      </section>
+      <section className="knobs">
+        <h2>Pin settings</h2>
+        {exp.knobs.map((key) => <NumField key={key} {...KNOBS[key]} value={params[key]} eng
+          onChange={(value) => setParam(key, value)} />)}
+        <label className="model-label">Model<select aria-label="Pin model" value={exp.model}
+          onChange={(event) => choose(EXPERIMENTS.find((e) => e.model === event.target.value).id)}>
+          {MODELS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select></label>
+      </section>
+      <section className="lesson">
         <h3>{exp.name}</h3>
         {x ? <p className="hint see" data-role="see">{lesson.see(x, params)}</p> : null}
         <details className="terms"><summary>Terms used here</summary>
@@ -81,15 +89,6 @@ export default function App() {
         <h4>Try</h4>
         {lesson.try.map((step, i) => <TryLine key={i} text={step.say} chips={[{ label: 'apply' }]}
           onChip={() => { setParams((previous) => ({ ...previous, ...step.set })); setCursor(0) }} />)}
-      </section>
-      <section className="knobs">
-        <h2>Pin model</h2>
-        <label className="model-label">Model<select aria-label="Pin model" value={exp.model}
-          onChange={(event) => choose(EXPERIMENTS.find((e) => e.model === event.target.value).id)}>
-          {MODELS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select></label>
-        {exp.knobs.map((key) => <NumField key={key} {...KNOBS[key]} value={params[key]} eng
-          onChange={(value) => setParam(key, value)} />)}
       </section>
       <section className="deeper">
         <details><summary>Why it works</summary><p className="hint why" data-role="why">{lesson.why}</p></details>

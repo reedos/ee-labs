@@ -28,7 +28,7 @@ let browser
 const results = []
 try {
   browser = await ({ chromium, firefox }[browserName]).launch({ headless: true })
-  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
     const page = await browser.newPage({ viewport })
     const errors = []
     page.on('pageerror', (e) => errors.push(e.message))
@@ -42,9 +42,13 @@ try {
         assert.equal(links.length, 5)
         for (const link of links) assert.equal((await page.request.get(link)).status(), 200, link)
       }
-      await page.waitForFunction((active) => document.querySelector('.preset[aria-current="step"] b')?.textContent === active.toUpperCase(), id)
-      assert.equal(await page.locator('.preset[aria-current="step"] b').innerText(), id.toUpperCase())
-      assert.equal(await page.locator('.preset').count(), 5)
+      await page.waitForFunction((active) => document.querySelector('select[aria-label="Experiment"]')?.value === active, id)
+      assert.equal(await page.getByLabel('Experiment', { exact: true }).inputValue(), id)
+      assert.equal(await page.locator('select[aria-label="Experiment"] option').count(), 5)
+      await page.evaluate(() => { window.scrollTo(0, 0); document.querySelector('.controls').scrollTop = 0 })
+      const firstControl = await page.getByRole('spinbutton').first().boundingBox()
+      const sidebar = await page.locator('.controls').boundingBox()
+      assert.ok(firstControl.y >= 0 && firstControl.y + firstControl.height <= Math.min(viewport.height, sidebar.y + sidebar.height), `${id}: first control is clipped`)
       assert.equal(await page.locator('.schematic').count(), 1)
       assert.equal(await page.locator('[role="alert"]').count(), 0)
       assert(await page.locator('[data-role="see"]').innerText())
@@ -104,11 +108,11 @@ try {
       results.push({ id, width: viewport.width, analogPixels: colors, controls: 'pass', screenshot: `${id}-${viewport.width}.png` })
     }
     await page.getByRole('combobox', { name: 'Pin model' }).selectOption('pin.od')
-    assert.equal(await page.locator('.preset[aria-current="step"] b').innerText(), 'A3')
+    assert.equal(await page.getByLabel('Experiment', { exact: true }).inputValue(), 'a3')
     await page.getByRole('button', { name: 'Next experiment' }).click()
-    assert.equal(await page.locator('.preset[aria-current="step"] b').innerText(), 'A4')
+    assert.equal(await page.getByLabel('Experiment', { exact: true }).inputValue(), 'a4')
     await page.getByRole('button', { name: 'Previous experiment' }).click()
-    assert.equal(await page.locator('.preset[aria-current="step"] b').innerText(), 'A3')
+    assert.equal(await page.getByLabel('Experiment', { exact: true }).inputValue(), 'a3')
     await page.getByRole('combobox', { name: 'Pin model' }).selectOption('pin.in')
     const supply = page.getByRole('spinbutton', { name: 'Supply VDD', exact: true })
     await supply.fill('1.8')

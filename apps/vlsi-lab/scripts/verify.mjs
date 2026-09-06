@@ -29,7 +29,7 @@ const evidence = { browser: browserName, navigation: process.env.APP_URL ? 'Asse
 try {
   browser = await ({ chromium, firefox }[browserName]).launch()
   evidence.browserVersion = browser.version()
-  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
     page.on('pageerror', (e) => evidence.errors.push(e.message))
     await page.goto(target)
@@ -44,6 +44,9 @@ try {
     }
     for (let i = 0; i < 5; i++) {
       await page.getByLabel('Experiment', { exact: true }).selectOption(String(i))
+      await page.evaluate(() => { window.scrollTo(0, 0); document.querySelector('.controls').scrollTop = 0 })
+      const firstControl = await page.getByRole('spinbutton').first().boundingBox()
+      assert.ok(firstControl.y >= 0 && firstControl.y + firstControl.height <= viewport.height, `A${i + 1}: first control below viewport`)
       await page.evaluate(() => document.fonts.ready)
       assert.match(await page.locator('[data-role="headline"]').textContent(), /\d/)
       assert.equal(await page.locator('.schematic [data-el]').count(), 5)
