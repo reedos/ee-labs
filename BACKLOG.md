@@ -1328,6 +1328,39 @@ only its own section. The director folds it into the shared ledger at merge.
   the solver as 1e-12 ohms makes the node equations singular rather than
   lossless. So a zero resistance is left out of the netlist instead of made tiny,
   and D5's lossless case is a network of two elements rather than three.
+- **A review pass over the two sittings found four readings that did not follow
+  their knobs.** Each was reached by turning a knob of Group C or Group D and
+  reading what came back, which is `REVIEW_PLAYBOOK.md` §11's method. All four
+  are fixed and each carries a test that fails without the fix.
+- **The band search was the same width either side of the design frequency.**
+  Above it the quarter-wave section's response repeats at twice the design
+  frequency, so the search has to stop short of the repeat. Below it nothing
+  repeats and the edge can sit under half the design frequency. At a
+  standing-wave ratio of 1.8 the section holds a band from 361 MHz to
+  1.639 GHz, and C4 reported no band at all. `bandwidthOf` now takes `down` and
+  `up`, and `quarterWaveMatch` sets both from the repeat it computes.
+- **A band with no edge on one side named the wrong side.** The low-pass L
+  network has no lower edge at a standing-wave ratio of two and the high-pass
+  one has no upper edge, and the pane said "no lower edge" for both. The
+  quarter-wave section printed a dash where it never crosses at all. The panes
+  now name the side, and the sweep legend adds the frequencies the crossing was
+  looked for between, because a search that found nothing measured less than
+  "it never crosses".
+- **A trace on the decibel floor read as a measurement.** Five pads of 30 dB put
+  the transmission 90 dB below an axis that stops at 60 dB down, and the trace
+  was drawn flat along the floor in silence. The legend now names the entries
+  that reach it.
+- **An entry the solve returns as its own noise printed as a measurement.** The
+  pi attenuator's S11 comes back as 3.3e-16, which the pane showed as
+  −309.5 dB. D2's note beside it says S11 is zero. An entry below a billionth of
+  the largest in its own matrix is now reported as zero with no decibels. The
+  chip says which of the two kinds of nothing it is. Nothing comes back at a
+  reflection, and nothing gets through at a transmission.
+- **The plan's 1.1437 at 900 MHz is computed and not pinned.** The plan's §5
+  quotes that standing-wave ratio for the 50 Ω to 100 Ω match. It is one point
+  inside the band C3 states by its two edges, so the lesson quotes the edges and
+  nothing quotes the point. `scripts/pins.mjs` still computes it, and
+  `apps/rf-lab/AGENT_BRIEF.md` §6 says so under its pin table.
 - **The non-goals of `RF_LAB_PLAN.md` §10 are all still non-goals.**
   Electromagnetic field solving. Microstrip synthesis from physical dimensions. A
   Padé model of the line. Distributed matching with stubs. Filter synthesis

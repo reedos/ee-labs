@@ -403,11 +403,16 @@ test, never a constant typed in.
 | --- | --- |
 | 4, Group A | Γ = 0.33333 at 100 Ω and −0.33333 at 25 Ω. VSWR 2.0000, return loss 9.5424 dB, mismatch loss 0.51153 dB. Γ = −j0.50000 at 30 − j40 Ω, VSWR 3.0000, return loss 6.0206 dB. v_p = 2.06876e8 m/s, 69.0066 % of c, λ = 20.6876 cm, a quarter of it 5.17191 cm. Z_in 25.000 Ω at 1.000 GHz, 40.000 − j30.000 Ω at 500 MHz, 100.00 Ω at 2.000 GHz. α = 0.050000 Np/m is 0.43429 dB/m, and moves the quarter wave to 25.097 Ω. The reflection at the source falls to 0.33161. The response repeats every 2.0000 GHz |
 | 4, Group B | The open at Γ = 1, the short at −1, the match at 0. r = 1 is centred at (0.50000, 0) with radius 0.50000, x = 1 at (1, 1.0000) with radius 1.0000, g = 1 at (−0.50000, 0) with radius 0.50000. The standing-wave circle's radius is 0.33333. β = 30.372 rad/m, so a quarter wave turns 180.00 degrees and a centimetre turns 34.803 degrees. With loss, \|Γ\| falls to 0.33161 over that quarter wave. y = 0.50000 for a 100 Ω load |
-| 5, Groups C and D | Q = 1.0000, X_s 50.00 Ω and X_p 100.0 Ω, so 7.9577 nH and 1.5915 pF, and one over Q is 1.0000. Q = 3.0000, 2.3873 nH and 9.5493 pF, one over Q 0.33333. The measured band of the 50 Ω to 100 Ω match is 60.58 % to a ratio of 1.500 and 28.72 % to 1.2222, from 650.1 MHz to 1.256 GHz. VSWR 1.1437 at 900 MHz. The section is 70.711 Ω, 5.172 cm, and 36.697 % to a ratio of 1.2222. The 3 dB pad is 17.61 Ω between two of 292.4 Ω, S21 −3.0000 dB and S11 zero, and two of them give −6.0000 dB. The transformer of ratio 2 gives S11 0.60000 and S21 0.80000 with two descriptions of four. \|S11\| 0.33333 and \|S21\| 0.94281, summing to 1.000000000000. An 8 nH and 1.6 pF network dissipates 0.021792 behind 1 Ω and 0.10080 behind 5 Ω |
+| 5, Groups C and D | Q = 1.0000, X_s 50.00 Ω and X_p 100.0 Ω, so 7.9577 nH and 1.5915 pF, and one over Q is 1.0000. Q = 3.0000, 2.3873 nH and 9.5493 pF, one over Q 0.33333. The measured band of the 50 Ω to 100 Ω match is 60.58 % to a ratio of 1.500 and 28.72 % to 1.2222, from 650.1 MHz to 1.256 GHz. The section is 70.711 Ω, 5.172 cm, and 36.697 % to a ratio of 1.2222. The 3 dB pad is 17.61 Ω between two of 292.4 Ω, S21 −3.0000 dB and S11 zero, and two of them give −6.0000 dB. The transformer of ratio 2 gives S11 0.60000 and S21 0.80000 with two descriptions of four. \|S11\| 0.33333 and \|S21\| 0.94281, summing to 1.000000000000. An 8 nH and 1.6 pF network dissipates 0.021792 behind 1 Ω and 0.10080 behind 5 Ω |
 | 6, Group E | K = 0.6071, \|Δ\| = 0.6964, μ = 0.8628, MSG 21.934 dB, the load circle at 0.9347 + j0.9914 with radius 0.4997. K = 1.4332, μ = 1.1314, MAG 11.667 dB. U = 0.10851, bounds −0.895 dB and +0.998 dB, measured +0.834 dB |
 | 7, Group F | kT₀ = −173.975 dBm/Hz, T_e = 119.64 K at 1.5 dB, NF 1.8618 dB with shares 77.07 %, 17.61 % and 5.32 %, and 4.8618 dB behind a 3.000 dB pad |
 | 8, Group G | −6.0206 dB and −3.9224 dB, an IF of 400.0 MHz and an image at 1.600 GHz, 31.485 dB of rejection. IIP3 +21.249 dBm, gaps 74.535 dB and 38.098 dB, errors −0.0024 dB and −0.159 dB |
 | 9, Group H | 2.5330 pF, 1256.6 Ω, 50.000 MHz. −89.59, −117.00 and −139.59 dBc/Hz, and 6.020 dB for a doubled Q_L. 50.0 %, 78.540 %, 94.038 % and 12.500 % |
+
+One number in the plan's §5 is not in the table above. The 50 Ω to 100 Ω match
+reads a standing-wave ratio of 1.1437 at 900 MHz, which is one point inside a
+band C3 states by its two edges. `scripts/pins.mjs` still computes it. No lesson
+quotes it, so nothing pins it, and `BACKLOG.md` records the swap.
 
 ## 7. Verify before every hand-back
 
