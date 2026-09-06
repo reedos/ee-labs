@@ -1,5 +1,20 @@
 # Handoff: continuing the EE Labs program from another session
 
+## Active director branch, 2026-09-06
+
+Reed approved bounded parallel implementation and director-owned integration.
+The active branch is `integration/program-director` in `.claude/worktrees/program-director`.
+Read that worktree's `HANDOFF.md`, `PROGRAM.md` section 8 and `BACKLOG.md` section 1 first.
+They supersede the scheduling and ledger status below.
+
+The director reconciled the app inventory and started three bounded assignments.
+VLSI Group A is on `lab/vlsi-lab`. Interfaces Group A is on `lab/interfaces-lab`.
+Circuit verification is on `verify/circuit-lab`.
+Their current results and acceptance gates belong in the director worktree's handoff.
+
+The main workspace's concurrent lab edits and splash experiment remain untouched.
+This pointer does not merge the director branch, push changes or release a lab.
+
 ## Local continuation, 2026-09-06
 
 This section supersedes the branch and verification status in the earlier
