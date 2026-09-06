@@ -34,9 +34,11 @@
 // ------------------------------------------------------- the switch node
 //
 // The loop from the rail through the switch to the node has inductance, and
-// the node has capacitance. Together they are a series RLC that the switch
-// steps twice a period, so the node rings at 1/(2π√(L_p C_p)) and its
-// envelope decays as e^{−R_p t/2L_p}. That is five states with the output
+// the node has capacitance. Together they are a resonant circuit that the
+// switch steps twice a period, so the node rings at 1/(2π√(L_p C_p)). What
+// damps it is R_p across the inductance rather than in series with it, which
+// is what a real loop carries, so the envelope decays as e^{−t/(2 R_p C_p)}
+// and a larger R_p rings longer. That is five states with the output
 // filter still hanging on the node,
 //
 //     x = [i_Lp, v_sw, i_L, v_C, v_Csn]
@@ -394,9 +396,13 @@ export function middlebrook(filter, { Vin, Pin }) {
 /**
  * The switch node's ring, in closed form.
  *
- * A series R_p–L_p–C_p stepped by V_in rings at ω_0√(1 − ζ²) with
- * ω_0 = 1/√(L_p C_p) and ζ = (R_p/2)√(C_p/L_p), and it overshoots its final
- * value by e^{−ζπ/√(1−ζ²)}. `Psn` is the snubber's own cost, which is
+ * The loop stepped by V_in rings at ω_0√(1 − ζ²) with ω_0 = 1/√(L_p C_p),
+ * and it overshoots its final value by e^{−ζπ/√(1−ζ²)}. The damping is a
+ * resistance across L_p rather than in series with it, which is where the
+ * state equations put it and what a real loop has, so the characteristic
+ * equation is s² + s/(R_p C) + 1/(L_p C) and ζ = (1/2R_p)√(L_p/C). The
+ * envelope decays as e^{−t/(2 R_p C)}, and `decay` is what is left of a peak
+ * one ring period later. `Psn` is the snubber's own cost, which is
  * C_sn·V_in²·f_s whatever R_sn is, because the capacitor is charged and
  * discharged once each period.
  */
@@ -415,7 +421,12 @@ export function ringOf({ Lp, Cp, Rp, Vin, fs, Csn = 0 }) {
     fr,
     zeta,
     Q: zeta > 0 ? 1 / (2 * zeta) : Infinity,
-    tau: Rp > 0 ? (2 * Lp) / Rp : Infinity,
+    // The envelope's own time constant, 1/ζω_0. With the damping across the
+    // inductance that is 2·R_p·C, not the series loop's 2·L_p/R_p.
+    tau: zeta > 0 ? 2 * Rp * Ct : Infinity,
+    // What is left of a peak one ring period later, which is the decay a
+    // reading off the waveform can measure directly.
+    decay: zeta > 0 && zeta < 1 ? Math.exp((-2 * Math.PI * zeta) / Math.sqrt(1 - zeta * zeta)) : 0,
     overshoot: over,
     peak: Vin * (1 + over),
     // How many ring cycles fit in one switching period.
@@ -537,7 +548,14 @@ export function ringPeriodOf(ss, { n = 4096 } = {}) {
   const period = peaks[1].t - peaks[0].t
   const a = peaks[0].v - rail
   const b = peaks[1].v - rail
-  return { period, f: 1 / period, peaks, decay: a !== 0 ? b / a : 0 }
+  const decay = a !== 0 ? b / a : 0
+  // The damping, read off the waveform rather than from R_p and C. The
+  // logarithmic decrement δ = ln(1/decay) over one ring period gives
+  // ζ = δ/√(4π² + δ²), so the reading and the closed form are the same
+  // number in the same units and the pane can put them side by side.
+  const delta = decay > 0 ? Math.log(1 / decay) : Infinity
+  const zeta = Number.isFinite(delta) ? delta / Math.sqrt(4 * Math.PI * Math.PI + delta * delta) : 1
+  return { period, f: 1 / period, peaks, decay, delta, zeta }
 }
 
 /** The fundamental of a signal, for a caller that wants one number. */

@@ -289,6 +289,37 @@ describe('the switch node', () => {
     expect(conv.ring.Q).toBeCloseTo(1 / (2 * conv.ring.zeta), 12)
   })
 
+  it('decays at the rate the damping sets, which is the second thing §4 asks to be measured', () => {
+    // The damping stands across L_p, so the envelope's time constant is
+    // 2·R_p·C and a larger R_p rings LONGER. The series loop's 2·L_p/R_p
+    // would have said the opposite, and it is 25 times smaller here.
+    const conv = ringConverter({})
+    const r = conv.ring
+    expect(r.tau).toBeCloseTo(2 * 50 * 1e-9, 15)
+    expect(r.tau).toBeCloseTo(1 / (r.zeta * 2 * Math.PI * r.f0), 12)
+    // One ring period of that envelope is the decay from peak to peak.
+    expect(r.decay).toBeCloseTo(Math.exp(-1 / (r.fr * r.tau)), 12)
+    // ...and that is what the waveform does, read off its own maxima.
+    const m = ringMeasures(emiSteadyState(conv))
+    expect(Math.abs(m.measured.decay / r.decay - 1)).toBeLessThan(0.01)
+    expect(Math.abs(m.measured.zeta / r.zeta - 1)).toBeLessThan(0.01)
+    // The logarithmic decrement is the reading's own definition.
+    expect(m.measured.delta).toBeCloseTo(Math.log(1 / m.measured.decay), 12)
+  })
+
+  it('rings longer when the loop is damped less, in the waveform as in the form', () => {
+    const softer = ringMeasures(emiSteadyState(ringConverter({ Rp: 200 })))
+    const harder = ringMeasures(emiSteadyState(ringConverter({ Rp: 25 })))
+    expect(softer.measured.decay).toBeGreaterThan(harder.measured.decay)
+    expect(softer.measured.zeta).toBeLessThan(harder.measured.zeta)
+    for (const Rp of [25, 50, 200]) {
+      const conv = ringConverter({ Rp })
+      const m = ringMeasures(emiSteadyState(conv))
+      expect(conv.ring.tau).toBeCloseTo(2 * Rp * 1e-9, 15)
+      expect(Math.abs(m.measured.zeta / conv.ring.zeta - 1), `R_p = ${Rp}`).toBeLessThan(0.05)
+    }
+  })
+
   it('rings twice as slowly when the loop inductance is four times as large', () => {
     const slow = ringMeasures(emiSteadyState(ringConverter({ Lp: 400e-9 })))
     const fast = ringMeasures(emiSteadyState(ringConverter({ Lp: 100e-9 })))

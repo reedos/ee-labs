@@ -391,6 +391,27 @@ describe('M3 · the switch node rings', () => {
     expect(x.m.sig.vsw.avg).toBeCloseTo(12, 6)
   })
 
+  it('decays 0.530 of a peak each cycle, which is ζ = 0.100 read back', () => {
+    // §4 asks M3 for the frequency AND the decay, each measured against the
+    // parasitic values. The decay is the ratio of one peak to the next, and
+    // the logarithmic decrement turns it back into the damping the loop's own
+    // R_p and C_p set.
+    const x = at('m3')
+    expect(x.m.measured.decay).toBeCloseTo(0.5303, 3)
+    expect(x.m.measured.zeta).toBeCloseTo(0.1004, 3)
+    expect(x.formulas.decay).toBeCloseTo(0.5318, 3)
+    expect(Math.abs(x.m.measured.zeta / x.formulas.zeta - 1)).toBeLessThan(0.01)
+    // The envelope's own time constant is 2·R_p·C, a hundred nanoseconds
+    // here, which is 1.6 ring cycles and not the loop's 2·L_p/R_p.
+    expect(x.formulas.tau * 1e9).toBeCloseTo(100, 6)
+    // Less damping, a slower decay: the sign the series form would reverse.
+    const soft = at('m3', { Rp: 200 })
+    expect(soft.m.measured.decay).toBeGreaterThan(x.m.measured.decay)
+    expect(soft.formulas.tau).toBeGreaterThan(x.formulas.tau)
+    moves('m3', 'Rp', 3, (q) => q.m.measured.zeta, 0.5)
+    moves('m3', 'Rp', 3, (q) => q.formulas.tau, 0.5)
+  })
+
   it('costs 557 mW of the 24 W it delivers', () => {
     const x = at('m3')
     expect(x.m.loss.parasitic * 1e3).toBeCloseTo(557.4, 0)

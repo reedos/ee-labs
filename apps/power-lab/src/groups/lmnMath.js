@@ -205,7 +205,7 @@ function ringEntry(exp, x) {
   // The peak finder needs two maxima inside the on interval, and the closed
   // form describes a ring that started from rest, so it needs the previous
   // interval to have been long enough for the last one to have died away.
-  const tau = 2 * p.Rp * f.Ctotal
+  const tau = f.tau
   const settled = Math.min(p.D, 1 - p.D) / p.fs > 4 * tau
   const cyclesOn = f.fr * (p.D / p.fs)
   const notFound = !meas ? 'The node does not complete two ring cycles inside the on interval at this setting, so there is no period to read off the waveform.' : null
@@ -225,6 +225,14 @@ function ringEntry(exp, x) {
       : f.snubbed
         ? 'The snubber damps the node through its own resistance, which this form does not carry: it has only the loop’s damping in it.'
         : null)
+  // Past a third of critical the ring is gone in two peaks, and the second
+  // one is a few per cent of the first. The load current charging C_p moves
+  // where that peak falls, so the decrement read from it runs high.
+  const dampWhy =
+    overWhy ||
+    (f.zeta > 0.3
+      ? `The loop is damped to ζ = ${f.zeta.toFixed(2)}, so the second peak is ${(100 * f.decay).toFixed(1)} % of the first. The load current through C_p moves where it falls, and the decrement read from it runs high.`
+      : null)
   const scaleV = Math.max(1e-9, p.Vin)
   const rows = [
     row('⟨v_sw⟩ = D·V_in', f.Vsw, m.sig.vsw.avg, 'V', 1e-6, 1e-9 * scaleV, null, '\\langle v_{sw} \\rangle = D V_{in}'),
@@ -234,12 +242,28 @@ function ringEntry(exp, x) {
     // the tolerance carries that term rather than a number chosen to pass.
     row('the ring frequency', f.f0, meas ? meas.f : NaN, 'Hz', 0.01 + 2 * f.zeta * f.zeta, 0, ringWhy, 'f_r = \\frac{1}{2\\pi\\sqrt{L_p C}}'),
     row('the overshoot', f.overshoot, m.overshoot, '', 0.05, 0.005, overWhy, '\\exp\\!\\left(\\frac{-\\zeta\\pi}{\\sqrt{1-\\zeta^2}}\\right)'),
+    // The damping, read off the waveform as the decay from one peak to the
+    // next and turned back into ζ by the logarithmic decrement. Hard damping
+    // leaves the second peak a few per cent of the first, and the load
+    // current through C_p moves where it falls, so the reading runs high
+    // there and the row says so.
+    row(
+      'ζ from the decay',
+      f.zeta,
+      meas ? meas.zeta : NaN,
+      '',
+      0.1,
+      0.002,
+      dampWhy,
+      '\\zeta = \\frac{\\delta}{\\sqrt{4\\pi^2 + \\delta^2}}, \\quad \\delta = \\ln\\frac{\\hat{v}_1}{\\hat{v}_2}',
+    ),
     row('P_in = P_out + Σ losses', m.Pout + m.Pcond, m.Pin, 'W', 1e-5, 0, null, 'P_{in} = P_{out} + \\sum \\text{losses}'),
   ]
   const values = [
     { label: 'on the node', value: f.Ctotal, unit: 'F', note: f.snubbed ? `C_p and the snubber's ${fmt(p.Csn, 'F', 3)}` : 'the diode’s own capacitance' },
     { label: 'ring frequency', value: f.f0, unit: 'Hz', note: meas ? `read off the waveform as ${fmt(meas.f, 'Hz', 5)}` : 'not resolved inside the interval' },
     { label: 'ζ', value: f.zeta, unit: '', note: `Q = ${Number.isFinite(f.Q) ? f.Q.toFixed(2) : '∞'}` },
+    { label: 'the envelope’s time constant', value: f.tau, unit: 's', note: `2·R_p·C, ${f.decay.toFixed(3)} of a peak left one cycle later` },
     { label: 'ring cycles a period', value: f.cycles, unit: '' },
     { label: 'peak on the node', value: m.peak, unit: 'V', note: `${(100 * m.overshoot).toFixed(1)} % over a ${fmt(p.Vin, 'V', 3)} rail` },
     { label: 'energy on the node', value: f.Ep, unit: 'J', note: '½C_p·V², spent at every edge' },

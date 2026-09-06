@@ -333,8 +333,17 @@ export function RingPane({ x }) {
           </tr>
           <tr>
             <td>ζ</td>
-            <td className="num">{m.measured ? `decay ${m.measured.decay.toFixed(3)} a cycle` : '—'}</td>
-            <td className="num">{f.zeta.toFixed(4)}, Q = {Number.isFinite(f.Q) ? f.Q.toFixed(2) : '∞'}</td>
+            <td className="num">
+              {m.measured ? `${m.measured.zeta.toFixed(4)}, from ${m.measured.decay.toFixed(3)} a cycle` : '—'}
+            </td>
+            <td className="num">
+              {f.zeta.toFixed(4)}, {f.decay.toFixed(3)} a cycle
+            </td>
+          </tr>
+          <tr>
+            <td>Q</td>
+            <td className="num">{m.measured && m.measured.zeta > 0 ? (1 / (2 * m.measured.zeta)).toFixed(2) : '—'}</td>
+            <td className="num">{Number.isFinite(f.Q) ? f.Q.toFixed(2) : '∞'}</td>
           </tr>
           <tr>
             <td>on the node</td>
@@ -349,9 +358,10 @@ export function RingPane({ x }) {
         </tbody>
       </table>
       <p className="hint">
-        The node is stepped twice a period, and each step starts the same ring. What a snubber buys is
-        damping, and what it costs is C_sn·V²·f_s, because its capacitor is charged and discharged once
-        each period whatever its resistance is.
+        The node is stepped twice a period, and each step starts the same ring. The damping is read off the
+        waveform as the decay from one peak to the next, which is ζ through the logarithmic decrement. What a
+        snubber buys is more of that damping, and what it costs is C_sn·V²·f_s, because its capacitor is
+        charged and discharged once each period whatever its resistance is.
       </p>
     </div>
   )
