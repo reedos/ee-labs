@@ -1,6 +1,7 @@
 import { describe, it } from 'vitest'
 import { EXPERIMENTS, VIEW_LABELS } from './experiments.js'
 import { TERMS } from './terms.js'
+import { COLUMNS, LEVEL_COLUMNS } from './view.js'
 import { expectPlain } from '@ee-labs/prose/testing'
 
 // The house style, measured (`STYLE.md`).
@@ -47,6 +48,16 @@ describe('the chrome reads plainly', () => {
         if (k.hint) expectPlain(k.hint, 'tooltip', `${e.id} ${k.key} hint`)
         for (const o of k.options || []) expectPlain(o.label, 'label', `${e.id} ${k.key} option ${o.value}`)
       }
+    }
+  })
+
+  it('every column a reader reads is named and hinted plainly', () => {
+    // A column header and the key beside a line are chrome, and `STYLE.md`
+    // applies to every word a reader can see. The header is a label and the
+    // hover text is a tooltip.
+    for (const c of [...COLUMNS, ...LEVEL_COLUMNS]) {
+      expectPlain(c.label, 'label', `column ${c.key} label`)
+      expectPlain(c.title, 'tooltip', `column ${c.key} title`)
     }
   })
 

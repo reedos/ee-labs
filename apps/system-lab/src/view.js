@@ -12,8 +12,22 @@ import { bandwidth, db, dbm, kelvin, mw, num, pct, plain } from './format.js'
 export const COLUMNS = [
   { key: 'gain', label: 'Gain', unit: 'dB', title: 'The cumulative gain up to and including this block' },
   { key: 'nf', label: 'Noise figure', unit: 'dB', title: 'The cumulative noise figure up to and including this block' },
-  { key: 'iip3', label: 'Input IP3', unit: 'dBm', title: 'The cumulative input IP3, with every stage’s product added as an aligned voltage: the worst case' },
+  { key: 'iip3', label: 'Input IP3', unit: 'dBm', title: 'The cumulative input IP3, adding every stage’s product as an aligned voltage' },
   { key: 'power', label: 'DC power', unit: 'mW', title: 'What this block draws from the supply' },
+]
+
+/**
+ * The three readings the levels view gives at every node.
+ *
+ * `trace` marks the two that are drawn as lines, and `dashed` says which of
+ * those two the plot draws broken. The pane reads its legend and its column
+ * headers from this one list, so the name over a column and the name beside a
+ * line are the same word.
+ */
+export const LEVEL_COLUMNS = [
+  { key: 'signal', label: 'Signal', unit: 'dBm', trace: true, dashed: false, title: 'The wanted signal, the input level plus the cumulative gain' },
+  { key: 'noise', label: 'Noise', unit: 'dBm', trace: true, dashed: true, title: 'The noise, the floor plus the cumulative gain and noise figure' },
+  { key: 'snr', label: 'Ratio', unit: 'dB', trace: false, title: 'The gap between the two lines, which is the signal-to-noise ratio' },
 ]
 
 /**
@@ -37,6 +51,13 @@ export function tablePropsFor(exp, p, x) {
     },
   }))
 
+  // The total under a column of shares is the sum of that column, which is
+  // 100 % wherever a share has a meaning. Invariant 3 of the plan's §2.9 is
+  // that the shares close, and this row is where a reader sees it close. The
+  // gain column shows each block's own gain in share mode, so its total stays
+  // the cumulative gain, which is the sum of the column above it.
+  const sum = (key) => x.c.blocks.reduce((t, b) => t + b[key], 0)
+
   return {
     columns: COLUMNS,
     rows,
@@ -45,6 +66,12 @@ export function tablePropsFor(exp, p, x) {
       nf: db(x.c.nfDb),
       iip3: dbm(x.c.iip3Dbm),
       power: mw(x.c.powerMw),
+    },
+    shareTotals: {
+      gain: db(x.c.gainDb),
+      nf: x.c.excess > 0 ? pct(sum('noiseShare')) : '—',
+      iip3: x.c.iip3Dbm === Infinity ? '—' : pct(sum('ip3Share')),
+      power: x.c.powerMw === null ? 'unknown' : x.c.powerMw > 0 ? pct(sum('powerShare')) : '—',
     },
     // A number without its bandwidth means nothing here, so the table prints
     // the one its levels were read at, whether or not this experiment turns it.
@@ -80,6 +107,8 @@ export function levelPropsFor(exp, p, x) {
   const pad = Math.max(4, 0.08 * (top - bottom))
   return {
     nodes,
+    columns: LEVEL_COLUMNS,
+    series: LEVEL_COLUMNS.filter((c) => c.trace),
     from: Math.floor((bottom - pad) / 10) * 10,
     to: Math.ceil((top + pad) / 10) * 10,
     floorDbm: x.v.floorDbm,

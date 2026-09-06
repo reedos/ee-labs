@@ -5,7 +5,9 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import App from './App.jsx'
-import { EXPERIMENTS } from './experiments.js'
+import { EXPERIMENTS, byId, defaultsOf } from './experiments.js'
+import { analyse } from './math.js'
+import { tablePropsFor } from './view.js'
 
 // A passing `vite build` proves only that the modules parse. This mounts the
 // real component tree, so a render-phase crash fails here rather than in the
@@ -65,6 +67,31 @@ describe('App', () => {
       }
     }
   }, 120000)
+
+  it('names both lines of the levels plot, and every column of numbers under it', () => {
+    // Two of the three readings are levels in dBm, so a reader cannot tell the
+    // signal from the noise by its unit. The key names the lines and the header
+    // row names the columns, and a colour alone would name neither.
+    for (const e of EXPERIMENTS.filter((x) => x.views.includes('levels'))) {
+      const h = html({ initialId: e.id, initialView: 'levels' })
+      expect(h, `${e.id} has no key over the levels`).toContain('data-role="level-keys"')
+      for (const key of ['signal', 'noise']) expect(h, `${e.id} key for ${key}`).toContain(`data-key="${key}"`)
+      for (const key of ['signal', 'noise', 'snr']) expect(h, `${e.id} header for ${key}`).toContain(`data-role="${key}-head"`)
+      const stripped = h.replace(/<[^>]*>/g, ' ')
+      for (const word of ['Signal, dBm', 'Noise, dBm', 'Ratio, dB']) expect(stripped, `${e.id} does not name ${word}`).toContain(word)
+    }
+  })
+
+  it('shows the shares closing at 100 % under the column they belong to', () => {
+    // The share mode's total row is where invariant 3 becomes something a
+    // reader sees. It must not go on printing the cumulative decibels while
+    // every cell above it is a percentage.
+    const props = tablePropsFor(null, null, analyse(byId.a2, defaultsOf('a2')))
+    expect(props.shareTotals.nf).toBe('100.0 %')
+    expect(props.shareTotals.iip3).toBe('100.0 %')
+    expect(props.shareTotals.power).toBe('100.0 %')
+    expect(props.totals.nf, 'the cumulative total is unchanged').toMatch(/dB$/)
+  })
 
   it('gives every table cell the label the phone layout draws in front of it', () => {
     // Below 900 px the table transposes into one card per block, and each cell

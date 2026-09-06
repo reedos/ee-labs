@@ -107,7 +107,7 @@ export function TablePane({ x }) {
               <th scope="row">Whole chain</th>
               {v.columns.map((c) => (
                 <td key={c.key} data-cell={`total-${c.key}`} data-label={c.label}>
-                  {v.totals[c.key]}
+                  {(mode === 'share' ? v.shareTotals : v.totals)[c.key]}
                 </td>
               ))}
             </tr>
@@ -133,6 +133,11 @@ export function TablePane({ x }) {
  * The gap between the two lines is the ratio, and it never widens. The numbers
  * are under the plot rather than in a tooltip, because A4 quotes them and a
  * reader checking a quote should not have to hover.
+ *
+ * Two of the three readings are levels in dBm, so the units cannot separate
+ * them. The key over the numbers names each line and the header row names each
+ * column, both out of `LEVEL_COLUMNS`, so the word beside a line and the word
+ * over its column are the same word.
  */
 export function LevelsPane({ x }) {
   const v = levelPropsFor(null, null, x)
@@ -184,19 +189,35 @@ export function LevelsPane({ x }) {
         </text>
       </svg>
 
+      <p className="sys-keys" data-role="level-keys">
+        {v.series.map((c) => (
+          <span className={`sys-key is-${c.key}${c.dashed ? ' is-dashed' : ''}`} key={c.key} data-key={c.key} title={c.title}>
+            {c.label}, {c.unit}
+          </span>
+        ))}
+      </p>
+
       <div className="sys-levels" data-role="level-rows">
+        <div className="sys-level-row is-head" data-level="head">
+          <span className="sys-level-name">Node</span>
+          {v.columns.map((c) => (
+            <span className="sys-level-value" key={c.key} data-role={`${c.key}-head`} title={c.title}>
+              {c.label}, {c.unit}
+            </span>
+          ))}
+        </div>
         {v.nodes.map((node) => (
           <div className="sys-level-row" key={node.index} data-level={node.id}>
             <span className="sys-level-name">
               {node.index}. {node.name}
             </span>
-            <span className="sys-level-value" data-role="signal">
+            <span className="sys-level-value" data-role="signal" data-label="Signal">
               {dbm(node.signalDbm)}
             </span>
-            <span className="sys-level-value" data-role="noise">
+            <span className="sys-level-value" data-role="noise" data-label="Noise">
               {dbm(node.noiseDbm)}
             </span>
-            <span className="sys-level-value" data-role="snr">
+            <span className="sys-level-value" data-role="snr" data-label="Ratio">
               {db(node.snrDb)}
             </span>
           </div>

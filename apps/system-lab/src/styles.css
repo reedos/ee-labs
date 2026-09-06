@@ -211,10 +211,24 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .sys-axis-tick,
 .sys-node-tick { fill: var(--dim); font-size: 9px; }
 
+/* Two lines on one axis need a key, or a reader has to guess which colour is
+   the signal. The swatch is drawn solid or broken to match the stroke. */
+.sys-keys { display: flex; flex-wrap: wrap; gap: 14px; margin: 0; font-size: 11px; color: var(--dim); }
+.sys-key { display: inline-flex; align-items: center; gap: 6px; }
+.sys-key::before { content: ''; width: 18px; height: 0; border-top: 2px solid currentColor; }
+.sys-key.is-signal { color: var(--accent); }
+.sys-key.is-noise { color: var(--amber); }
+.sys-key.is-dashed::before { border-top-style: dashed; }
+
 .sys-levels { display: flex; flex-direction: column; font-size: 11.5px; font-variant-numeric: tabular-nums; }
 .sys-level-row { display: flex; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--line); }
 .sys-level-name { flex: 1 1 auto; color: var(--dim); min-width: 0; }
 .sys-level-value { flex: 0 0 auto; color: var(--text); min-width: 76px; text-align: right; }
+/* Three numbers a row, two of them in dBm, so the column names carry the
+   difference between the signal and the noise. */
+.sys-level-row.is-head { border-bottom: 1px solid var(--line-bright); }
+.sys-level-row.is-head .sys-level-name,
+.sys-level-row.is-head .sys-level-value { color: var(--dim); font-size: 10px; font-weight: 600; white-space: normal; }
 
 /* ---------- the numbers pane ---------- */
 

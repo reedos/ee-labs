@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, VIEW_LABELS, byId, defaultsOf, groupOf, letterOf, viewLabel } from './experiments.js'
 import { readQuantity } from './lessons.js'
 import { analyse, ip3Guard, refusalOf } from './math.js'
-import { flowPropsFor, levelPropsFor, numberRowsFor, tablePropsFor } from './view.js'
+import { COLUMNS, LEVEL_COLUMNS, flowPropsFor, levelPropsFor, numberRowsFor, tablePropsFor } from './view.js'
 import { TERMS } from './terms.js'
 import { reportSummary } from './report.js'
 import { num } from './format.js'
@@ -151,6 +151,11 @@ describe('every experiment analyses, at its defaults and off them', () => {
         if (v === 'levels') {
           const props = levelPropsFor(e, p, x)
           expect(props.nodes.length, `${e.id} level nodes`).toBe(x.c.n + 1)
+          // Two of the three readings are levels in dBm, so nothing but a name
+          // separates them. The pane draws its key and its column headers out
+          // of this list, and both traces have to be in it.
+          expect(props.columns, `${e.id} level columns`).toBe(LEVEL_COLUMNS)
+          expect(props.series.map((c) => c.key), `${e.id} level key`).toEqual(['signal', 'noise'])
           expect(props.to, `${e.id} level axis ${props.from} to ${props.to}`).toBeGreaterThan(props.from)
           for (const n of props.nodes) {
             expect(n.signalDbm, `${e.id} node ${n.index} signal outside the axis`).toBeLessThanOrEqual(props.to)
@@ -235,6 +240,54 @@ describe('every experiment analyses, at its defaults and off them', () => {
     expect(refusalOf(x)).toBe(x.declined.says)
     expect(numberRowsFor(exp, {}, x), 'a declined analysis still offers rows').toEqual([])
     expect(ip3Guard(x), 'a declined analysis still offers a guard').toBeNull()
+  })
+})
+
+// -------------------------------------------- what names a column, and its total
+
+describe('every column a reader reads is named, with the unit it is in', () => {
+  it('the budget table names four budgets, each with a unit and a sentence', () => {
+    expect(COLUMNS.map((c) => c.key)).toEqual(['gain', 'nf', 'iip3', 'power'])
+    for (const c of [...COLUMNS, ...LEVEL_COLUMNS]) {
+      expect(c.label, `${c.key} label`).toBeTruthy()
+      expect(c.unit, `${c.key} unit`).toBeTruthy()
+      expect(c.title.length, `${c.key} title`).toBeGreaterThan(20)
+    }
+  })
+
+  it('the levels view names its two lines and its three columns with the same words', () => {
+    expect(LEVEL_COLUMNS.map((c) => c.key)).toEqual(['signal', 'noise', 'snr'])
+    // The plot draws one line solid and one broken, so the key has to say which
+    // is which rather than leaving the colour to carry it alone.
+    expect(LEVEL_COLUMNS.filter((c) => c.trace).map((c) => c.dashed)).toEqual([false, true])
+    expect(LEVEL_COLUMNS.filter((c) => c.trace).length, 'a third line with no key').toBe(2)
+  })
+
+  it('the total under a column of shares is the sum of that column, which closes at 100 %', () => {
+    // Invariant 3 of the plan's §2.9 is that every block's share sums to one.
+    // The share mode's total row is where a reader watches it close, so a
+    // column whose shares mean nothing says so rather than printing 0.000 %.
+    for (const e of EXPERIMENTS.filter((x) => x.views.includes('table'))) {
+      const { p, x } = at(e.id)
+      const props = tablePropsFor(e, p, x)
+      expect(props.shareTotals.gain, `${e.id} gain total`).toBe(props.totals.gain)
+      expect(props.shareTotals.nf, `${e.id} noise shares`).toBe(x.c.excess > 0 ? '100.0 %' : '—')
+      expect(props.shareTotals.iip3, `${e.id} IP3 shares`).toBe(x.c.iip3Dbm === Infinity ? '—' : '100.0 %')
+      const power = x.c.powerMw
+      expect(props.shareTotals.power, `${e.id} power shares`).toBe(power === null ? 'unknown' : power > 0 ? '100.0 %' : '—')
+    }
+  })
+
+  it('a chain with no third-order product and no power shows no share of either', () => {
+    // a3 is one passive filter: it makes no product and draws nothing, so two
+    // of its four share totals have no meaning and both say so.
+    const { exp, p, x } = at('a3')
+    const props = tablePropsFor(exp, p, x)
+    expect(x.c.iip3Dbm).toBe(Infinity)
+    expect(x.c.powerMw).toBe(0)
+    expect(props.shareTotals.iip3).toBe('—')
+    expect(props.shareTotals.power).toBe('—')
+    expect(props.shareTotals.nf).toBe('100.0 %')
   })
 })
 
