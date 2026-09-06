@@ -1,5 +1,6 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
+import { yStepFor } from '../axis.js'
 
 /**
  * Step response: what the circuit does to a sudden change.
@@ -65,6 +66,11 @@ export default function StepCanvas({ t, y, final, band = null, range = null, mar
       }
 
       const tMax = t[t.length - 1] || 1
+      // Two labelled ticks at least, whatever the pane's height: at 390 px the
+      // tank's ±330 Ω frame got one, the zero line, and the peak the readout
+      // prices at 308 Ω had nothing to be read against. See yStepFor.
+      const yStep = yStepFor(lo, hi, area.h / (area.k || 1))
+      ctx.canvas.dataset.yStep = yStep == null ? '' : String(yStep)
       const { sx, sy } = drawFrame(
         ctx,
         area,
@@ -74,7 +80,7 @@ export default function StepCanvas({ t, y, final, band = null, range = null, mar
         hi,
         (v) => fmt(v, '', 3),
         (v) => (Math.abs(hi - lo) > 20 ? v.toFixed(0) : v.toFixed(2)),
-        { zeroLine: true, xTitle: 'Time (seconds)', yTitle },
+        { zeroLine: true, xTitle: 'Time (seconds)', yTitle, yStep },
       )
 
       ctx.save()
@@ -188,6 +194,13 @@ export default function StepCanvas({ t, y, final, band = null, range = null, mar
       data-y-hi={range ? range.hi : ''}
       data-y-lo={range ? range.lo : ''}
       data-samples={sampled(t, y, 6)}
+      // The trace's first two points, which is what "this curve's slope at
+      // t = 0" is a claim about. `data-samples` is six points spread over the
+      // whole window, and its first pair is a secant across a SIXTH of the
+      // response: on the RC low-pass that secant reads 4634 /s against an
+      // h(0) of 10 000 /s, and a harness that used it was measuring the
+      // exponential's average, not its slope.
+      data-head={JSON.stringify(t.length > 1 ? [[t[0], y[0]], [t[1], y[1]]] : [])}
       data-y-title={yTitle}
     />
   )

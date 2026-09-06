@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import {
+  PHASE_PAD,
   SPAN_DECADES,
   axisFreqs,
   ensureSampled,
+  phaseFrame,
   stickyCentre,
   stickyDuration,
   stickyRange,
   stickySpan,
+  yStepFor,
 } from './axis.js'
 import { transferOf, defaultsOf } from './circuits.js'
 import { magnitudeAt } from '@ee-labs/systems'
+import { niceStep } from '@ee-labs/ui'
 
 // The behaviour Reed asked for by name: tuning a component should move the
 // CURVE across a fixed axis, not slide the axis labels under a fixed curve.
@@ -139,5 +143,77 @@ describe('stickyRange with hold', () => {
     expect(stickyRange(big, -5, 0)).not.toBe(big) // without hold: the old shrink rule
     const grown = stickyRange(big, -80, 0, false, { hold: true })
     expect(grown.lo).toBeLessThan(-80)
+  })
+})
+
+// An axis with one label has no scale. The browser pass found the tank's step
+// response at 390 px drawn against a single tick, the zero line, while the
+// readout beside it priced the peak at 308 Ω.
+describe('yStepFor', () => {
+  const ticks = (lo, hi, step) => Math.floor(hi / step + 1e-6) - Math.ceil(lo / step - 1e-6) + 1
+
+  it('is drawFrame’s own choice where the pane has room', () => {
+    // 1080p step pane: 360 px over 0..1 asks for seven labels at one per
+    // 46 px, and niceStep rounds that up to 0.2. Unchanged by this rule.
+    expect(yStepFor(0, 1, 360)).toBeCloseTo(niceStep(1, 7), 12)
+    expect(yStepFor(0, 1, 360)).toBeCloseTo(0.2, 12)
+    expect(ticks(0, 1, yStepFor(0, 1, 360))).toBeGreaterThanOrEqual(2)
+  })
+
+  it('shrinks the step until two labels land: the tank at 390 px', () => {
+    // The defect, to the pixel: ±330 Ω of impedance in 76 px of pane. niceStep
+    // returns 500, whose only tick inside the range is 0.
+    const lo = -330
+    const hi = 330
+    const step = yStepFor(lo, hi, 76)
+    expect(ticks(lo, hi, step)).toBeGreaterThanOrEqual(2)
+    expect(step).toBeLessThan(hi - lo)
+  })
+
+  it('never labels a step wider than the range, at any pane height', () => {
+    for (const h of [40, 60, 76, 120, 200, 400, 900]) {
+      for (const [lo, hi] of [
+        [-330, 330],
+        [-0.7, 0.7],
+        [0, 1],
+        [-75.6, 8.1],
+        [-1e6, 1e6],
+        [0, 2.4e-3],
+      ]) {
+        const step = yStepFor(lo, hi, h)
+        expect(ticks(lo, hi, step), `${lo}..${hi} at ${h} px`).toBeGreaterThanOrEqual(2)
+      }
+    }
+  })
+
+  it('declines an empty range rather than returning a step of zero', () => {
+    expect(yStepFor(0, 0, 100)).toBe(null)
+    expect(yStepFor(0, 1, 0)).toBe(null)
+  })
+})
+
+// A curve that holds an extreme — the integrator's +90° everywhere, a
+// two-pole low-pass's −180° — was drawn along the frame's own border.
+describe('phaseFrame', () => {
+  it('leaves headroom past the labelled bounds, symmetrically', () => {
+    const f = phaseFrame(-90, 90)
+    expect(f.lo).toBeCloseTo(-90 - 180 * PHASE_PAD, 12)
+    expect(f.hi).toBeCloseTo(90 + 180 * PHASE_PAD, 12)
+  })
+
+  it('puts an extreme inside the plot: +90° is off the top edge by pixels', () => {
+    const h = 300
+    const f = phaseFrame(-90, 90)
+    const y = (d) => h - ((d - f.lo) / (f.hi - f.lo)) * h
+    // Not the border, and far enough in to read as a line rather than a rule.
+    expect(y(90)).toBeGreaterThan(3)
+    expect(y(-90)).toBeLessThan(h - 3)
+    // The labels still sit on their true values, and 0° is still the middle.
+    expect(y(0)).toBeCloseTo(h / 2, 9)
+  })
+
+  it('scales the headroom with the range a two-pole circuit needs', () => {
+    const f = phaseFrame(-180, 90)
+    expect(f.hi - f.lo).toBeCloseTo(270 * (1 + 2 * PHASE_PAD), 9)
   })
 })

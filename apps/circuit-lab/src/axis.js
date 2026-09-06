@@ -1,3 +1,5 @@
+import { niceStep } from '@ee-labs/ui'
+
 // Where the frequency axis sits, and — more importantly — when it moves.
 //
 // The axis used to re-centre on the circuit's own f₀ at every change. That is
@@ -131,4 +133,54 @@ export const Y_TICK_PITCH = 30
 export function yTickBudget(area, k = 1) {
   const h = area && Number.isFinite(area.h) ? area.h : 0
   return Math.max(2, Math.floor(h / (Y_TICK_PITCH * (k || 1))))
+}
+
+/**
+ * The y step a plot of this height should label, over the range it draws.
+ *
+ * `drawFrame` asks `niceStep` for one label per 46 px and draws what it is
+ * given, and on a phone that comes back wider than the whole range: the tank's
+ * step response spans ±330 Ω in 76 px of pane, niceStep returns 500, and the
+ * only tick inside the range is 0. An axis carrying one label has no scale,
+ * and the peak the readout prices at 308 Ω then sits against nothing.
+ *
+ * So start where drawFrame starts and walk DOWN the 1-2-5 ladder until at
+ * least two labelled ticks land inside [lo, hi]. On a full-size pane the first
+ * candidate already carries two and nothing changes.
+ */
+export function yStepFor(lo, hi, height, pitch = 46) {
+  const range = hi - lo
+  if (!(range > 0) || !(height > 0)) return null
+  const ticks = (s) => Math.floor(hi / s + 1e-6) - Math.ceil(lo / s - 1e-6) + 1
+  // drawFrame's own first choice, so a pane with room labels exactly what it
+  // labelled before.
+  let s = niceStep(range, Math.max(2, Math.floor(height / pitch)))
+  for (let i = 0; i < 8 && ticks(s) < 2; i++) s = shrinkStep(s)
+  return s
+}
+
+/** The next rung down the 1-2-5 ladder: 5 to 2, 2 to 1, 1 to 0.5. */
+function shrinkStep(s) {
+  const mag = Math.pow(10, Math.floor(Math.log10(s) + 1e-9))
+  const lead = s / mag
+  if (lead >= 4.5) return 2 * mag
+  if (lead >= 1.5) return 1 * mag
+  return 0.5 * mag
+}
+
+/**
+ * The phase axis's drawn range, given the bounds its labels sit on.
+ *
+ * The labels are whole multiples of 90°, and a curve that holds exactly one of
+ * them was drawn along the frame's own border: the integrator sits at +90° at
+ * every frequency, a two-pole low-pass ends at −180°, and a dashed purple line
+ * on top of a grey rule is one picture, not two. A twenty-fifth of the range
+ * at each end lifts the extreme off the border and leaves every label on its
+ * true value.
+ */
+export const PHASE_PAD = 0.04
+
+export function phaseFrame(lo, hi) {
+  const pad = (hi - lo) * PHASE_PAD
+  return { lo: lo - pad, hi: hi + pad }
 }
