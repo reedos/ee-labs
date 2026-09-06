@@ -26,6 +26,10 @@ const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, de
 const consoleErrors = []
 page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`))
 page.on('console', (m) => {
+  // Section 10s reads plot pixels back with getImageData, and Chromium advises
+  // willReadFrequently for that. The app never calls it — this warning is the
+  // harness talking to itself, and listing it as the app's would be a lie.
+  if (/willReadFrequently/.test(m.text())) return
   if (m.type() === 'error' || m.type() === 'warning') consoleErrors.push(`${m.type()}: ${m.text()}`)
 })
 
@@ -1528,6 +1532,127 @@ console.log('\n10r. The flow strip\'s "sum" node carries a hover title, like Σ\
     }
   }
 }
+
+// -------- 10s. Phone 390x844: no axis title runs off its own canvas
+//
+// Playbook #4, found in a screenshot and by nothing in this file. A y-axis
+// title is drawn rotated, so the room it has is the plot's HEIGHT, and
+// drawFrame centres it and lets the canvas edge cut whatever hangs over. At
+// 390x844 the frequency pane is 76 px of plot while "Amplitude (dB, 1.0 =
+// 0 dB)" measures 139.5, so the reader was shown "Amplitude (dB, 1.0 = 0",
+// which states the opposite of the fact the title carries. The overlay's own
+// title lost both ends at once, arriving as "delay of the chain (sample".
+//
+// The measurement is the drawn pixels, not the wording. drawFrame centres a
+// y-title on the plot, so an uncut title's ink is centred there too, and a cut
+// one is not: the clipped dB title inked rows 4..121 of a 138 px canvas, a
+// centre of 62.5 against the plot's own 52. Reading the top and bottom rows
+// alone is NOT enough and was tried first — it passed on the broken build,
+// because the cut happened to land in the space between two characters.
+//
+// The left band is 34 px wide: the title's glyph box is x 12..24, and the
+// y-tick labels are right-aligned to 8 px short of the frame, at x 42 and
+// beyond. The right band is the last 14 px, which only an overlay title
+// reaches — the frame's own right border sits at 18 px in without one.
+console.log('\n10s. Phone 390x844: axis titles centred inside their own canvas\n')
+await page.setViewportSize({ width: 390, height: 844 })
+await page.waitForTimeout(400)
+
+/**
+ * The vertical extent of the ink in one of a canvas's side gutters.
+ *
+ * Returns the first and last inked row and the canvas's own plot centre, so
+ * the caller can ask both "does it touch the edge" and "is it still centred".
+ */
+const gutterInk = (which) =>
+  page.evaluate((side) => {
+    const c = document.querySelectorAll('.views canvas')[1]
+    const ctx = c.getContext('2d')
+    const w = c.width
+    const h = c.height
+    const x0 = side === 'left' ? 0 : Math.max(0, w - 14)
+    const x1 = side === 'left' ? Math.min(34, w) : w
+    let first = -1
+    let last = -1
+    for (let y = 0; y < h; y++) {
+      const d = ctx.getImageData(x0, y, x1 - x0, 1).data
+      let lit = false
+      for (let x = 0; x < x1 - x0; x++) if (d[x * 4 + 3] > 20) lit = true
+      if (lit) {
+        if (first < 0) first = y
+        last = y
+      }
+    }
+    // plotArea's own gutters: 14 px above the frame, 48 below, both scaled by
+    // plotScale. The frequency pane never asks for the caption inset the scope
+    // uses, so this is its plot centre exactly.
+    const k = Math.max(1, Math.min(2.2, w / 1150))
+    return { first, last, h, centre: (h + 14 * k - 48 * k) / 2 }
+  }, which)
+
+{
+  // Every wording of a frequency-pane y-title: the two amplitude scales, and
+  // the two right-hand overlays.
+  const CASES = [
+    ['Single tone', 'left', 'dB scale'],
+    ['Cut it off abruptly and it rings', 'left', 'linear scale'],
+    ['Everything arrives together', 'right', 'group-delay overlay'],
+    ['Phase is invisible here', 'right', 'phase overlay'],
+  ]
+  let measured = 0
+  for (const [name, side, what] of CASES) {
+    await loadPreset(name)
+    await settle()
+    const g = await gutterInk(side)
+    // Playbook #11: an empty gutter is a result to check, not a pass. A title
+    // that failed to draw at all would otherwise clear every test below.
+    if (g.first < 0) {
+      fail(`390x844 / ${name} (${what}): no axis title drawn in the ${side} gutter at all`)
+      continue
+    }
+    measured++
+    const inkCentre = (g.first + g.last) / 2
+    const off = Math.abs(inkCentre - g.centre)
+    if (g.first < 1 || g.last > g.h - 2) {
+      fail(
+        `390x844 / ${name} (${what}): the ${side} axis title reaches the canvas edge (rows ${g.first}..${g.last} of ${g.h})`,
+      )
+    } else if (off > 4) {
+      fail(
+        `390x844 / ${name} (${what}): the ${side} axis title is cut — its ink centres on row ${inkCentre.toFixed(1)}, the plot on ${g.centre.toFixed(1)}`,
+      )
+    } else {
+      console.log(
+        `   ${name.padEnd(32)} ${what.padEnd(21)} ${side} title rows ${String(g.first).padStart(3)}..${String(g.last).padStart(3)}, centred within ${off.toFixed(1)}px`,
+      )
+    }
+  }
+  if (measured < CASES.length) {
+    fail(`390x844: axis-title probe measured only ${measured} of ${CASES.length} titles`)
+  }
+}
+
+// The other half of the claim: a laptop keeps the FULL wording. A rule that
+// only ever shortened would pass every check above and quietly cost every
+// reader the sentence the title is for.
+console.log('\n10s2. 1440x900: the full wording is still what gets drawn\n')
+await page.setViewportSize({ width: 1440, height: 900 })
+await page.waitForTimeout(400)
+{
+  await loadPreset('Single tone')
+  await settle()
+  const g = await gutterInk('left')
+  const len = g.last - g.first
+  // "Amplitude (dB, 1.0 = 0 dB)" measures 139.5 px at 12 px; "Amplitude (dB)"
+  // is 79.6. Only the full wording can ink more than 120 rows.
+  if (len < 120) {
+    fail(`1440x900: the dB axis title inks only ${len} rows — the short wording, on a pane with room for the long one`)
+  } else {
+    console.log(`   dB axis title inks ${len} rows, the full "Amplitude (dB, 1.0 = 0 dB)"`)
+  }
+}
+await page.setViewportSize({ width: 390, height: 844 })
+await page.waitForTimeout(300)
 
 // -------------------------------------------------------------- 11. 4K fit
 

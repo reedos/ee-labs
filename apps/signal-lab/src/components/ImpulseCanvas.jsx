@@ -1,6 +1,7 @@
 import React from 'react'
 import { COLORS, drawFrame, plotArea, useCanvas } from '@ee-labs/ui'
 import { fmtNum } from '@ee-labs/ui'
+import { scopeYStep } from './ScopeCanvas.jsx'
 
 /**
  * The chain's impulse response, drawn as stems.
@@ -49,7 +50,17 @@ export default function ImpulseCanvas({ h, sampleRate, centre = null, exact = tr
         (v) => String(Math.round(v)),
         // h[n] is dimensionless — plain numbers, not engineering prefixes.
         (v) => fmtNum(v),
-        { zeroLine: true, xTitle: 'Sample  n', yTitle: 'h[n]' },
+        {
+          zeroLine: true,
+          xTitle: 'Sample  n',
+          yTitle: 'h[n]',
+          // The same rule the scope already follows. At 390 px this pane is
+          // about 100 px of plot for a ±0.09 kernel, drawFrame's round step
+          // for that is 0.2, and the axis drew one label: "0". A student
+          // reading "the 31 stems are the filter" had no scale to read their
+          // height against. Below three ticks, use the limit itself.
+          yStep: scopeYStep(yMax, area.h, k),
+        },
       )
 
       ctx.save()

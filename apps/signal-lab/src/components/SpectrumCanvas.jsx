@@ -21,6 +21,68 @@ export function axisMax(fFull, xMax = null) {
 }
 
 /**
+ * The longest of several wordings of one axis title that fits the space it is
+ * drawn in, or the shortest wording when none of them do.
+ *
+ * A y-axis title is drawn rotated, so the room it has is the plot's HEIGHT,
+ * and drawFrame centres it and lets the canvas edge cut whatever hangs over.
+ * At 390 px the spectrum pane is about 125 px of plot, and
+ * "Amplitude (dB, 1.0 = 0 dB)" is 145 px wide: the reader was shown
+ * "Amplitude (dB, 1.0 = 0", which states the opposite of the fact the title
+ * carries. The overlay's own title fared worse — "Group delay of the chain
+ * (samples)" arrived as "delay of the chain (sample", missing both the
+ * quantity and the unit.
+ *
+ * Playbook #4 wants every axis named and united, so the shortest wording in
+ * every list below still carries a quantity and a unit. Nothing here shrinks
+ * the type: a 9 px axis title on a phone is its own defect.
+ *
+ * `measure` is the context's text width function, passed in so the choice can
+ * be tested without a canvas.
+ */
+export function fitTitle(measure, variants, maxPx) {
+  for (const v of variants) {
+    if (measure(v) <= maxPx) return v
+  }
+  return variants[variants.length - 1]
+}
+
+/** Wordings of the magnitude axis, longest first. */
+export const AMPLITUDE_TITLES = {
+  db: ['Amplitude (dB, 1.0 = 0 dB)', 'Amplitude (dB)', 'dB'],
+  linear: ['Amplitude (signal units)', 'Amplitude', 'amp'],
+}
+
+/**
+ * The dB tick step, or null to let the frame choose.
+ *
+ * The ceiling already follows the chain — playbook #4's Q = 20 peak at +26 dB
+ * is inside the frame. It is not yet READABLE there: at Q = 10 the frame runs
+ * −100 to +30, drawFrame's round step for that range is 50, and the ticks come
+ * out −100, −50, 0. Every gridline the resonant peak could be measured against
+ * is below it, on the one lesson whose try line names the peak's height in dB.
+ *
+ * So whenever something actually rises above the 0 dB reference and no tick
+ * lands between there and the ceiling, step down the round-number ladder until
+ * one does, spending at most twice the frame's own tick budget to get it.
+ */
+export function spectrumYStep(yMin, yMax, peakDb, areaH, k = 1) {
+  const target = Math.max(2, Math.floor(areaH / (46 * k)))
+  const step = niceStep(yMax - yMin, target)
+  if (peakDb <= 0 || step <= yMax) return null
+  let mag = Math.pow(10, Math.ceil(Math.log10(step)))
+  for (let decade = 0; decade < 6; decade++) {
+    for (const m of [5, 2, 1]) {
+      const s = m * mag
+      if (s >= step) continue
+      if (s <= yMax && (yMax - yMin) / s <= target * 2) return s
+    }
+    mag /= 10
+  }
+  return null
+}
+
+/**
  * Range and tick spacing for the right-hand axis.
  *
  * Phase snaps to quarter turns, because 90 degrees is a quantity with meaning and
@@ -91,6 +153,9 @@ export default function SpectrumCanvas({
 
       let yMin
       let yMax
+      // The tallest thing drawn, in dB, so the tick step below can be asked
+      // whether anything actually stands above the 0 dB reference.
+      let peakSeenDb = 0
       if (db) {
         yMin = floor
         // The top of the axis follows the chain. It sat fixed at +10 dB, and a
@@ -107,6 +172,7 @@ export default function SpectrumCanvas({
           if (ghostAmps && ghostAmps[i] > pk) pk = ghostAmps[i]
         }
         const peakDb = pk > 0 ? 20 * Math.log10(pk) : 0
+        peakSeenDb = peakDb
         yMax = Math.max(10, Math.ceil((peakDb + 4) / 10) * 10)
       } else {
         // Same scan discipline as the dB branch above: only the visible span,
@@ -125,6 +191,18 @@ export default function SpectrumCanvas({
         yMax = Math.max(pk * 1.15, 1e-3)
       }
 
+      const k0 = area.k || 1
+      // Measured in the face drawFrame draws axis titles in, so the fit is the
+      // real one and not an estimate.
+      ctx.save()
+      ctx.font = `${Math.round(12 * k0)}px ui-sans-serif, system-ui, sans-serif`
+      const measure = (s) => ctx.measureText(s).width
+      const yTitle = fitTitle(measure, db ? AMPLITUDE_TITLES.db : AMPLITUDE_TITLES.linear, area.h)
+      const overlayTitle = overlay
+        ? fitTitle(measure, overlay.labels || [overlay.label], area.h)
+        : null
+      ctx.restore()
+
       const { sx, sy } = drawFrame(
         ctx,
         area,
@@ -136,7 +214,8 @@ export default function SpectrumCanvas({
         (v) => (db ? v.toFixed(0) : v.toFixed(2)),
         {
           xTitle: 'Frequency (Hz)',
-          yTitle: db ? 'Amplitude (dB, 1.0 = 0 dB)' : 'Amplitude (signal units)',
+          yTitle,
+          yStep: db ? spectrumYStep(yMin, yMax, peakSeenDb, area.h, k0) : null,
         },
       )
 
@@ -275,7 +354,7 @@ export default function SpectrumCanvas({
         ctx.rotate(Math.PI / 2)
         ctx.textAlign = 'center'
         ctx.font = `${Math.round(12 * k)}px ui-sans-serif, system-ui, sans-serif`
-        ctx.fillText(overlay.label, 0, 0)
+        ctx.fillText(overlayTitle, 0, 0)
         ctx.restore()
       }
     },

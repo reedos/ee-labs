@@ -213,7 +213,12 @@ export default function App() {
       return {
         kind: 'phase',
         values,
-        label: 'Phase of the chain',
+        // Longest first. SpectrumCanvas draws the longest that fits the pane's
+        // height, because a rotated title wider than the plot is cut by the
+        // canvas edge — see fitTitle. The shortest still names the quantity
+        // and its unit, and the unit is now written: the group-delay title
+        // carried "(samples)" while this one said only "Phase of the chain".
+        labels: ['Phase of the chain (degrees)', 'Phase (degrees)', 'Phase (°)'],
         tick: (v) => `${v}°`,
       }
     }
@@ -222,10 +227,15 @@ export default function App() {
     return {
       kind: 'delay',
       values: r.delay,
-      label: 'Group delay of the chain (samples)',
+      labels: [
+        'Group delay of the chain (samples)',
+        'Group delay (samples)',
+        'Delay (samples)',
+      ],
       tick: (v) => `${Number(v.toPrecision(3))}`,
     }
   }, [state.overlay, state.blocks, freqs, state.sampleRate])
+
 
   // The same chain said two more ways: as the kernel it convolves with, and as
   // the roots that kernel has. Both are cheap and neither is computed unless its
@@ -242,6 +252,7 @@ export default function App() {
     if (state.freqView !== 'zplane') return null
     return chainPolesZeros(state.blocks, state.sampleRate)
   }, [state.freqView, state.blocks, state.sampleRate])
+
 
   // Where a linear-phase kernel's centre of symmetry is, and so its delay.
   const impulseCentre = useMemo(
