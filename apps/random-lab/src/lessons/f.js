@@ -75,7 +75,7 @@ export default {
     try: [
       { say: 'Lower the corner to 100 Hz. The runs wander more slowly and further.', set: { fc: 100 } },
       { say: 'Raise it to 8000 Hz. The runs look like the white source again.', set: { fc: 8000 } },
-      { say: 'Switch to the ensemble view and watch the spread against time.', set: {} },
+      { say: 'Switch to the ensemble view. The spread narrows as the run goes on.', set: {}, view: 'ensemble' },
     ],
     why: [
       'The filter is the only source of memory here.',

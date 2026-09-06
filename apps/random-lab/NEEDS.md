@@ -4,6 +4,18 @@ Everything this lab needs that it does not own. `PROGRAM.md` §1 says two
 overseers who need the same thing write it here, and the director resolves it
 once. Nothing in this file has been changed outside this lab.
 
+## Bounded verification, 2026-09-06
+
+The saved branch recovers from the count-format crash and renders all 30
+experiments on desktop and phone in Chromium and Firefox. This is not full
+curriculum or release acceptance. See [VERIFICATION.md](VERIFICATION.md) for
+commands, counts, screenshots, and the remaining caption and F4 lesson findings.
+
+Browser evidence includes the director's path registry (`f4b2dda`) and navigation
+wrapping (`4bdc478`). Without the former, `cf90dda` hides Random's suite navigation
+even under its assembled path. No new shared implementation was authored here.
+The two shared formatter/axis hazards in section 7 still have app-local workarounds.
+
 ## 1. The deploy line
 
 One `cp` line in `.github/workflows/deploy.yml`, added by the director at
@@ -143,3 +155,35 @@ or a second periodogram.
   for a sampled filter should print it.
 
 The contracts are frozen in `apps/random-lab/AGENT_BRIEF.md` §3.5 and §3.6.
+
+## 7. Two hazards in `packages/ui`, found by running this lab in a browser
+
+Both are worked around inside this lab. Neither is fixed here, because
+`packages/ui` belongs to the director.
+
+### `fmtNum(v, 0)` throws
+
+`format.js`'s `fmtNum` calls `Number.prototype.toPrecision`, which accepts 1 to
+100 and throws a `RangeError` on 0. Nine readouts and eight axis tick
+formatters in this lab asked for zero significant figures, meaning a whole
+number, and the throw landed inside React's commit phase. The app rendered an
+empty page for all thirty experiments while 305 unit tests passed.
+
+This lab now formats counts with its own `src/format.js`. A guard in `fmtNum`
+itself would be better, either treating 0 as "a whole number" or throwing a
+message that names the caller. No other app passes a literal 0 to it today,
+checked by grep across `apps` and `packages`, so this is a hazard rather than a
+second live defect.
+
+### `niceStep` can leave one tick on an axis
+
+`plot.js`'s `niceStep` rounds the interval UP to the next round number and then
+caps it at the widest round number the range holds. For a range of 8.6 it asks
+for 2.15, rounds to 5, and caps at 5. The only multiple of 5 inside is zero, so
+the Kalman view's y-axis carried one label reading "0" and told a reader
+nothing about the scale.
+
+This lab now sizes its own ticks in `src/axis.js`, which takes the interval
+nearest the ideal on the same ladder and narrows only far enough to leave three
+ticks. That function is the candidate if the director wants it shared. Its own
+test walks four hundred ranges of every magnitude.

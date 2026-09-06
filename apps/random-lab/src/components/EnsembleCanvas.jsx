@@ -1,5 +1,6 @@
 import React from 'react'
 import { useCanvas, COLORS, plotArea, drawFrame, fmtNum } from '@ee-labs/ui'
+import { frameTicks } from '../axis.js'
 
 // The ensemble view: many realisations and their spread.
 //
@@ -106,8 +107,11 @@ export default function EnsembleCanvas({
         ctx.setLineDash([])
       }
 
-      drawFrame(ctx, area, xMin, xMax, lo, hi, (v) => fmtNum(v, 2), (v) => fmtNum(v, 3), {
+      const t = frameTicks(area, xMin, xMax, lo, hi)
+      drawFrame(ctx, area, xMin, xMax, lo, hi, t.fmtX, t.fmtY, {
         zeroLine: true,
+        xStep: t.xStep,
+        yStep: t.yStep,
         xTitle: x ? `${x.label}${x.units ? ` (${x.units})` : ''}` : 'Sample',
         yTitle: `${y.label}${y.units ? ` (${y.units})` : ''}`,
       })

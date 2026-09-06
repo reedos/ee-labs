@@ -52,6 +52,20 @@ export default [
         absolute: true,
       },
       {
+        // The view draws the observation, the signal and the estimate. These
+        // two claims are about that record rather than about the formula, so
+        // the picture on screen is measured and not only described.
+        label: 'the drawn estimate is the observation shrunk by the weight',
+        path: 'wiener.traceShrink',
+        formula: (p) => p.signalVariance / (p.signalVariance + p.wienerNoiseVariance),
+        tol: 1e-12,
+      },
+      {
+        label: 'and the error it leaves on that record is the closed form, inside three standard errors',
+        path: 'wiener.traceMse',
+        withinOf: { path: 'wiener.mmse', se: 'wiener.traceSe', k: 3 },
+      },
+      {
         label: 'sixteen taps beat one weight, because they see more than one sample',
         path: 'wiener.bestMmse',
         atMost: 'wiener.oneWeightMmse',

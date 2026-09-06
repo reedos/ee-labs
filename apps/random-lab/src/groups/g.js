@@ -19,8 +19,12 @@ export default [
       sweepMeanN: [10, 100, 1000, 10000],
       level: 0.95,
     },
-    view: 'outcome',
-    views: ['outcome', 'scope'],
+    // The one-run view, not the ensemble: N is this lesson's knob, and it moves
+    // the samples on screen and the standard error under them. The ensemble of
+    // outcomes does not read N at all, so opening on it left the featured knob
+    // moving nothing.
+    view: 'scope',
+    views: ['scope', 'outcome'],
     featured: { field: 'n' },
     claims: [
       {
@@ -86,6 +90,18 @@ export default [
         path: 'cov.meanWidth',
         against: 'cov.predictedWidth',
         tol: 0.02,
+      },
+      {
+        // The counted rate is printed as an estimate, so its own interval has
+        // to hold the level it is measuring.
+        label: 'and the counted rate carries an interval that holds the claimed level',
+        path: 'cov.countedLo',
+        atMost: 'cov.claimed',
+      },
+      {
+        label: 'from above as well',
+        path: 'cov.countedHi',
+        atLeast: 'cov.claimed',
       },
     ],
   },

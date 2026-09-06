@@ -9,8 +9,15 @@
 //   npx vite preview --outDir apps/random-lab/dist --port 4306 --strictPort &
 //   cd apps/random-lab && APP_URL=http://localhost:4306 node scripts/verify.mjs
 //
-// Written in this program and not run in it, because this environment has no
-// browser. It is the first thing to run in front of one.
+// It has now been run. The first run, against the built app, found the app
+// rendering an empty page: every count printed at zero significant figures and
+// `toPrecision(0)` threw inside React's commit phase. Nothing in the unit
+// suite could see it.
+//
+// REVIEW_PLAYBOOK section 11: a probe that finds no instances of a thing
+// reports no failures, which reads exactly like the thing being correct. Every
+// loop below counts what it walked and fails on a zero, and every measurement
+// is taken from the element a reader actually scrolls.
 //
 // Exits non-zero on the first category of failure, and prints everything.
 
@@ -50,6 +57,22 @@ const canvasHashes = () =>
     }),
   )
 
+/**
+ * Everything the main pane shows, canvases and text together.
+ *
+ * The canvas fingerprint alone is a proxy for "the screen changed". Six
+ * experiments answer a knob in their readouts rather than in their plot, and
+ * one of them draws a table and no canvas at all, so a check written against
+ * the canvases reported those as controls that did nothing.
+ */
+const paneFingerprint = async () => {
+  const hashes = await canvasHashes()
+  const text = await page.evaluate(
+    () => document.querySelector('.panes')?.textContent.replace(/\s+/g, ' ').trim() ?? '',
+  )
+  return `${hashes.join()}|${text}`
+}
+
 /** Every readout on screen, as label and value. */
 const readouts = () =>
   page.evaluate(() =>
@@ -88,6 +111,13 @@ const experimentCount = async () => {
 const total = await experimentCount()
 if (total !== 30) fail(`the picker lists ${total} experiments, the plan has 30`)
 
+// Counts, so that a loop finding nothing reads as a failure rather than as a
+// pass. Section 11 of the playbook is about exactly this.
+let readoutsSeen = 0
+let estimatesSeen = 0
+let viewsSeen = 0
+let chipsPressed = 0
+
 for (let i = 0; i < total; i++) {
   await openExperiment(i)
   const id = await page.locator('.picker button.on .id').textContent()
@@ -107,8 +137,12 @@ for (let i = 0; i < total; i++) {
   // Every readout of class `estimate` prints an interval, and none reads
   // "no interval", which is what the component renders when it is handed a
   // bare number.
-  for (const r of await readouts()) {
+  const rows = await readouts()
+  if (rows.length === 0) fail(`${id}: the pane printed no readouts at all`)
+  readoutsSeen += rows.length
+  for (const r of rows) {
     if (r.kind.includes('estimate')) {
+      estimatesSeen += 1
       if (r.value.includes('no interval')) fail(`${id}: "${r.label}" printed without an interval`)
       if (!r.value.includes('±')) fail(`${id}: "${r.label}" is an estimate with no ± on screen`)
       if (!/interval/.test(r.note)) fail(`${id}: "${r.label}" does not state its level`)
@@ -116,37 +150,75 @@ for (let i = 0; i < total; i++) {
     if (/NaN|Infinity|undefined/.test(r.value)) {
       fail(`${id}: "${r.label}" reads "${r.value}"`)
     }
+    // A decibel is a logarithm and a percentage is a ratio, so neither takes an
+    // engineering prefix. "911.2 mdB" and "510 m%" both shipped.
+    if (/\s[munpfkMG](dB|%)\b/.test(r.value)) {
+      fail(`${id}: "${r.label}" reads "${r.value}", which prefixes a unit that takes none`)
+    }
   }
 
-  // Every view the experiment offers must draw.
+  // Every view the experiment offers must draw, and must draw something the
+  // previous view did not. The comparison is against the view drawn before it,
+  // not against the state before the click: view 0 is already on screen when an
+  // experiment loads, so clicking it never changes a pixel and the old check
+  // reported that as a note against every experiment.
   const views = await page.locator('.view-switch button').count()
+  if (views === 0) fail(`${id}: no view switch`)
+  viewsSeen += views
+  let previous = null
   for (let v = 0; v < views; v++) {
-    const before = await canvasHashes()
     await page.locator('.view-switch button').nth(v).click()
     await settle()
     const after = await canvasHashes()
+    const label = await page.locator('.view-switch button').nth(v).textContent()
     if (after.length === 0 && !(await page.locator('.panes table').count())) {
-      const label = await page.locator('.view-switch button').nth(v).textContent()
       fail(`${id}: view "${label}" drew nothing`)
     }
-    if (before.length && after.length && before.join() === after.join() && views > 1) {
-      note(`${id}: view ${v} looks identical to the previous one`)
+    if (previous && after.length && previous === after.join()) {
+      note(`${id}: view "${label}" draws what the view before it drew`)
     }
+    previous = after.join()
+  }
+
+  // Every chip must apply something. A chip that changes no pixel is a control
+  // that reads as broken, and twenty-one steps carried one before the app
+  // stopped offering a chip for a step that only asks the reader to look.
+  //
+  // Each chip is pressed from the experiment's own starting point rather than
+  // on top of the chip before it. Pressed in sequence, D4's third step sets
+  // what its second step already set, and the check would have called a working
+  // control broken.
+  // A chip that returns the reader to the value the experiment opened on is a
+  // legitimate second half of a pair ("set the seed to 2", "set it back to 1"),
+  // and it moves nothing when pressed first. That is a note. A lesson whose
+  // chips ALL move nothing is the defect, and it is the shape section 11 warns
+  // about: a count of zero that reads like a pass.
+  const chips = await page.locator('.try-chips .chip').count()
+  let chipsThatMoved = 0
+  for (let c = 0; c < chips; c++) {
+    await openExperiment(i)
+    const label = await page.locator('.try-chips .chip').nth(c).textContent()
+    const before = await paneFingerprint()
+    await page.locator('.try-chips .chip').nth(c).click()
+    await settle()
+    chipsPressed += 1
+    const after = await paneFingerprint()
+    if (before === after) note(`${id}: try chip ${label} sets what the experiment already opened on`)
+    else chipsThatMoved += 1
+  }
+  if (chips > 0 && chipsThatMoved === 0) {
+    fail(`${id}: none of its ${chips} try chips changed anything on screen`)
   }
 }
 
-// ------------------------------------------------- 2. the knobs change things
+// The zeroes. Each of these loops would have reported nothing wrong had its
+// selector stopped matching, which is the way a probe lies.
+if (readoutsSeen === 0) fail('no readouts were measured at all')
+if (estimatesSeen === 0) fail('no estimate readout was measured, so the interval rule went unchecked')
+if (viewsSeen < total) fail(`${viewsSeen} view buttons across ${total} experiments`)
+if (chipsPressed === 0) fail('no try chip was pressed, so the one-click rule went unchecked')
 
-await openExperiment(0)
-for (const step of [1, 2, 3]) {
-  const before = await canvasHashes()
-  const chip = page.locator('.try-chips .chip').nth(step - 1)
-  if (!(await chip.count())) continue
-  await chip.click()
-  await settle()
-  const after = await canvasHashes()
-  if (before.join() === after.join()) fail(`A1: try chip ${step} changed nothing on screen`)
-}
+// ------------------------------------------------- 2. the knobs change things
 
 // The seed is the control this lab rests on. Moving it must move every pixel
 // and no claim.
@@ -176,7 +248,11 @@ if ((await canvasHashes()).join() === seedBefore.join()) {
 // the standard error rather than a bare percentage.
 await unfoldPicker()
 const g3 = page.locator('.picker button', { hasText: 'Monte Carlo' })
-if (await g3.count()) {
+// Not `if (await g3.count())`. A renamed experiment would have made this whole
+// section vanish, silently, and the section exists because another lab depends
+// on what it measures.
+if (!(await g3.count())) fail('G3: the Monte Carlo experiment is not in the picker')
+else {
   await g3.first().click()
   await settle()
   const found = (await readouts()).find((r) => r.label.toLowerCase().includes('yield'))
@@ -187,39 +263,86 @@ if (await g3.count()) {
 // --------------------------------------------------------------- 4. the fold
 
 // The featured knob has to be on screen without scrolling at a laptop fold,
-// which is what the cold walk measured for every other lab.
+// which is what the cold walk measured for every other lab. Every experiment,
+// not the first one: the note above the knob is a different length in each.
+let foldsMeasured = 0
 for (const viewport of [
   { width: 1280, height: 800 },
   { width: 1440, height: 900 },
 ]) {
   await page.setViewportSize(viewport)
-  await openExperiment(0)
-  const box = await page.locator('.featured').boundingBox()
-  if (box && box.y + box.height > viewport.height) {
-    fail(`the featured knob sits ${Math.round(box.y + box.height - viewport.height)} px below the fold at ${viewport.width}x${viewport.height}`)
+  for (let i = 0; i < total; i++) {
+    await openExperiment(i)
+    const id = await page.locator('.picker button.on .id').textContent()
+    const box = await page.locator('.featured').boundingBox()
+    if (!box) {
+      fail(`${id}: no featured knob at ${viewport.width}x${viewport.height}`)
+      continue
+    }
+    foldsMeasured += 1
+    if (box.y + box.height > viewport.height) {
+      fail(
+        `${id}: the featured knob sits ${Math.round(box.y + box.height - viewport.height)} px ` +
+          `below the fold at ${viewport.width}x${viewport.height}`,
+      )
+    }
   }
 }
+if (foldsMeasured < total * 2) fail(`the fold was measured ${foldsMeasured} times, wanted ${total * 2}`)
 
 // ----------------------------------------------------------------- 5. phone
 
 await page.setViewportSize({ width: 390, height: 844 })
 await openExperiment(0)
 await settle()
-const sideways = await page.evaluate(
-  () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-)
-if (sideways) fail('the page scrolls sideways at 390 px')
+
+// The shell gives html, body and #root `height: 100%` and hands the scrolling
+// to #root below 900 px, so `document.documentElement` reports the viewport and
+// never overflows. Measuring it was a probe that could not fail: three pixels
+// of sideways scroll inside #root read as clean. Measure whichever element is
+// actually the scroller.
+const overflow = await page.evaluate(() => {
+  const el = [document.getElementById('root'), document.documentElement].find(
+    (e) => e && e.scrollHeight > e.clientHeight + 1,
+  )
+  const scroller = el || document.documentElement
+  return {
+    who: scroller.id || scroller.tagName.toLowerCase(),
+    sideways: scroller.scrollWidth - scroller.clientWidth,
+    scrolls: scroller.scrollHeight - scroller.clientHeight,
+  }
+})
+if (overflow.sideways > 1) {
+  fail(`the page scrolls ${overflow.sideways} px sideways at 390 px, on ${overflow.who}`)
+}
+// A page that does not scroll at all at 390 px is not a short page. It is a
+// page whose foot cannot be reached, which is how the picker became
+// unreachable.
+if (overflow.scrolls <= 0) fail(`nothing scrolls at 390 px, so the foot of the page cannot be reached`)
 
 // The lesson comes first on a phone, as it does in every other lab.
 const lessonTop = (await page.locator('.lesson').boundingBox())?.y ?? 0
 const viewTop = (await page.locator('.panes').boundingBox())?.y ?? 0
 if (lessonTop > viewTop) fail('the lesson is below the views at 390 px')
 
+// And the note and the first knob are both on the first screen, which is the
+// rule every lab's cold walk measured.
+const seeBox = await page.locator('.lesson .see').boundingBox()
+const knobBox = await page.locator('.featured').boundingBox()
+if (!seeBox || !knobBox) fail('the note or the featured knob is missing at 390 px')
+else if (knobBox.y + knobBox.height > 844) {
+  fail(`the featured knob sits ${Math.round(knobBox.y + knobBox.height - 844)} px below the first screen at 390 px`)
+}
+
 // ---------------------------------------------------------------- 6. report
 
 for (const e of consoleErrors) fail(e)
 
 console.log(`\nRandom Signals Lab: ${total} experiments walked at ${URL}`)
+console.log(
+  `  counted  ${readoutsSeen} readouts, ${estimatesSeen} of them estimates · ` +
+    `${viewsSeen} views · ${chipsPressed} chips pressed · ${foldsMeasured} folds measured`,
+)
 for (const n of notes) console.log(`  note  ${n}`)
 if (failures.length) {
   console.log(`\n${failures.length} failures:`)

@@ -53,9 +53,9 @@ export default {
       'Every detection result later in this lab is a Q of something.',
     ].join(' '),
     try: [
-      { say: 'Move the marker to 2. The tail holds 2.2750 % of the mass.', set: {} },
-      { say: 'Move it to 4. The tail holds 3.17 × 10⁻⁵, and the shading is invisible.', set: { sigma: 1 } },
-      { say: 'Switch to the error rate view. The same function draws that curve.', set: {} },
+      { say: 'Move the marker to 2. The tail holds 2.2750 % of the mass.', set: { qx: 2 } },
+      { say: 'Move it to 4. The tail holds 3.1671 × 10⁻³ %, and the shading is invisible.', set: { qx: 4 } },
+      { say: 'Switch to the error rate view. The same function draws that curve.', set: {}, view: 'errorrate' },
     ],
     why: [
       'Q falls faster than any power of x, which is why a small change in a ratio moves an error rate so much.',
