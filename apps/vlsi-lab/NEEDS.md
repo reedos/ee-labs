@@ -1,5 +1,18 @@
 # Director integration
 
+## Student review rework
+
+The app now consumes the director's shared `usePlayback` and `PlaybackControls` exports.
+It also uses `MathBody` for permanently visible calculations and keeps the existing `panel.css` import.
+The sidebar inherits the shared title, font, section wells and responsive widths.
+Scope axes and event windows remain held across knob changes. Fit and reset are explicit actions.
+The comparison uses the selected edge with default width, load and stage count.
+
+The director corrected shared time-label clipping and phone label collisions after screenshot review.
+Labels align inward and retain an eight-pixel gap. Grid and event positions remain unchanged.
+The app uses native digital rows only. Its analog plots use the full-height app canvas with shared axes.
+The original A3 and A5 analog-chain omissions below remain open. This work does not close whole-group acceptance.
+
 ## Shared promotion request
 
 Promote `src/extract.js` to `packages/events/src/extract.js` after API review.

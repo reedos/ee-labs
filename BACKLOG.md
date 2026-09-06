@@ -42,9 +42,9 @@ The three original released labs have no `RELEASE_STATUS` file.
 | `control-lab-ii` | 32 | A to E, F1 and F2 | Dark; no browser harness | F3 to F5 remain; check Random Signals contracts | `CONTROL_LAB_II_PLAN.md` |
 | `machines-lab` | 35 | A to E | Dark; saved verification unmerged | Revalidate `fedb2c9`; Power F and L now exist for the deferred drives | `MACHINES_LAB_PLAN.md` |
 | `logic-lab` | 45 | A to H | Dark; no browser harness | Browser acceptance; Electronics D6 now exists | `LOGIC_LAB_PLAN.md` |
-| `vlsi-lab` | 5 | A1 to A5 | Dark; integrated, bounded checks pass | A3 analog-chain comparison, part of A5 and shared progression remain open | `VLSI_LAB_PLAN.md` |
+| `vlsi-lab` | 5 | A1 to A5 | Dark; first review rejected, usability rework | Revised first-group review, A3 analog-chain comparison, part of A5 and shared progression remain open | `VLSI_LAB_PLAN.md` |
 | `computer-lab` | 30 | A to G | Dark; no browser harness | Browser acceptance and shared timing contracts | `COMPUTER_LAB_PLAN.md` |
-| `interfaces-lab` | 5 | A1 to A5 | Dark; integrated, bounded checks pass | Shared progression and Groups B to G remain open | `INTERFACES_LAB_PLAN.md` |
+| `interfaces-lab` | 5 | A1 to A5 | Dark; first review rejected, usability rework | Revised first-group review, shared progression and Groups B to G remain open | `INTERFACES_LAB_PLAN.md` |
 | `fields-lab` | 36 | A to H | Dark; saved verification unmerged | Revalidate `7e5e640`; I to L remain, including System's antenna prerequisite | `FIELDS_LAB_PLAN.md` |
 | `photonics-lab` | 21 | A, C to F | Dark; harness exists, evidence review pending | B remains; Electronics O now exists, receiver contract check next | `PHOTONICS_LAB_PLAN.md` |
 | `power-lab` | 55 | A to N, except D5 | Dark; verification open on `fa6382c` | Desktop controls gate; D5 and recorded model deviations remain separate | `POWER_LAB_PLAN.md` |
@@ -55,6 +55,11 @@ The three original released labs have no `RELEASE_STATUS` file.
 | Signal Integrity | External | Private simulator | Outside this repository | No implementation assignment here | `EE_LABS_MAP.md` |
 
 ### Current assignments
+
+Reed rejected the first new-app review for inconsistent styling, missing playback,
+compressed plots, hidden parameter effects and insufficient visible explanation.
+The current task is to correct both first groups before extending them.
+The earlier delivery and verification records below do not mean user acceptance.
 
 The director owns `integration/program-director` in `.claude/worktrees/program-director`.
 Reed's dirty main workspace is not the integration baseline.

@@ -5,7 +5,8 @@ const volts = (v) => number(v, 'V')
 export const LESSONS = {
   a1: {
     see: (x) => `The pin rises from an initially discharged capacitor. Its time constant is ${ns(x.rise.segments[0].tau)}. The 10% to 90% rise takes ${ns(x.rise.tr)}.`,
-    try: [{ say: 'Set on resistance to 50 ohm. Read the rise time.', set: { ron: 50 } }],
+    try: [{ say: 'Set load capacitance to 200 pF. The slower edge falls behind the default reference.', set: { cload: 200e-12 } },
+      { say: 'Set on resistance to 50 ohm. Read the rise time.', set: { ron: 50 } }],
     why: 'A push-pull output connects one resistor to a rail at a time. The capacitor voltage stays continuous when the switch changes. The remaining voltage difference decays exponentially with time constant RC. The exact 10% to 90% rise time is ln(9) RC. The common factor 2.2 is a rounded value of ln(9).',
   },
   a2: {

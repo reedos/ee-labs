@@ -181,6 +181,21 @@ Do not change correctness tolerances or weaken checks to meet a runtime target.
 
 ### Acceptance gates
 
+Reed rejected the first VLSI and Interfaces review on 2026-09-06.
+Their passing checks missed established interaction and teaching requirements.
+Use Circuit, Signal, Control and Circuit Elements as the reference apps.
+Review `REVIEW_PLAYBOOK.md` against working behavior, not just source imports.
+
+- Inherit shared typography, section styling, numeric fields and navigation. Explain any necessary departure before extending it.
+- Change each featured parameter with the axes held. Verify that the lesson's feature moves visibly against a reference.
+- Keep time playback, pause, speed, rewind and replay consistent. Verify live plots and readings together.
+- Measure useful plot area, not just canvas presence. Review laptop, widescreen and phone screenshots at readable sizes.
+- Present the model, assumptions, worked substitutions and measured comparisons near the result. Use available space for the lesson.
+- Perform a student walkthrough before offering a group for acceptance. Passing automation does not establish teaching quality.
+
+Do not extend either new app's interface until its revised first group has been reviewed.
+The director owns these checks before requesting Reed's time.
+
 1. Check each assigned plan requirement against an experiment, model and visible result. Record missing requirements and deviations.
 2. Test physics against independent calculations, invariants and boundary cases. Test each approximation guard on both sides of its threshold.
 3. Pin lesson claims to the controls. Execute try steps in order without an implicit reset. Define terms on contact.

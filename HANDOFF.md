@@ -1,5 +1,21 @@
 # Handoff: continuing the EE Labs program from another session
 
+## First review rework
+
+Reed rejected the initial VLSI and Interfaces review. Their automated checks missed established usability and teaching requirements.
+This section supersedes the readiness statements in the earlier checkpoint.
+Work remains on `integration/program-director` in `.claude/worktrees/program-director`.
+
+Both first groups are being corrected before further expansion. The original four labs are the reference implementations.
+The corrections cover shared sidebar formatting, playback, held comparison axes, plot height and visible worked analysis.
+`PROGRAM.md` section 8 now requires these checks before another student review.
+The new labs remain dark. Their first-group acceptance remains open.
+
+The local preview remains `http://127.0.0.1:47630/`.
+Each app's `NEEDS.md` records its revised behavior and evidence locations.
+Reed's main-workspace changes and upstream notation commit remain outside this worktree.
+No changes have been pushed or released.
+
 ## First director wave checkpoint
 
 The wave is integrated locally on `integration/program-director`.

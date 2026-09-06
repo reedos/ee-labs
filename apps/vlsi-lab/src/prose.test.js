@@ -8,6 +8,7 @@ import { EVENT_GUARD, EXTRACTION_SCOPE } from './extract.js'
 const dc = transfer()
 for (const e of EXPERIMENTS) it(`${e.id} follows the prose budgets at defaults and every try step`, () => {
   expectPlain(e.name, 'title')
+  expectPlain(e.shortName, 'title')
   expectPlain(e.why, 'why')
   let p = { ...e.defaults }
   for (const step of [{ set: {} }, ...e.try]) {

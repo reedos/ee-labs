@@ -1,7 +1,7 @@
 import React from 'react'
 import { COLORS, drawFrame, plotArea, useCanvas } from '@ee-labs/ui'
 
-export default function Plot({ traces, xMax, yMax, xTitle, yTitle, marks = [], onCursor, label }) {
+export default function Plot({ traces, xMax, yMax, xTitle, yTitle, marks = [], cursor, point, onCursor, label }) {
   const ref = useCanvas((ctx, w, h) => {
     ctx.fillStyle = COLORS.bg
     ctx.fillRect(0, 0, w, h)
@@ -12,9 +12,9 @@ export default function Plot({ traces, xMax, yMax, xTitle, yTitle, marks = [], o
     ctx.beginPath()
     ctx.rect(area.x, area.y, area.w, area.h)
     ctx.clip()
-    for (const { points, color, dashed = false } of traces) {
+    for (const { points, color, dashed = false, width = 3 } of traces) {
       ctx.strokeStyle = color
-      ctx.lineWidth = dashed ? 1.5 : 3
+      ctx.lineWidth = width
       ctx.setLineDash(dashed ? [5, 5] : [])
       ctx.beginPath()
       let started = false
@@ -34,12 +34,29 @@ export default function Plot({ traces, xMax, yMax, xTitle, yTitle, marks = [], o
       if (y != null) { ctx.moveTo(area.x, sy(y)); ctx.lineTo(area.x + area.w, sy(y)) }
       ctx.stroke()
     }
+    ctx.setLineDash([])
+    if (cursor != null) {
+      ctx.strokeStyle = COLORS.textBright
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(sx(cursor), area.y)
+      ctx.lineTo(sx(cursor), area.y + area.h)
+      ctx.stroke()
+    }
+    if (point) {
+      ctx.fillStyle = COLORS.textBright
+      ctx.beginPath()
+      ctx.arc(sx(point[0]), sy(point[1]), 5, 0, Math.PI * 2)
+      ctx.fill()
+    }
     ctx.restore()
-  }, [traces, xMax, yMax, xTitle, yTitle, marks])
-  return <canvas className="xy-plot" ref={ref} role="img" aria-label={label} onPointerDown={(e) => {
+  }, [traces, xMax, yMax, xTitle, yTitle, marks, cursor, point])
+  const move = (e) => {
     if (!onCursor) return
     const box = e.currentTarget.getBoundingClientRect()
     const a = plotArea(box.width, box.height)
     onCursor(Math.max(0, Math.min(xMax, (e.clientX - box.left - a.x) / a.w * xMax)))
-  }} />
+  }
+  return <canvas className="xy-plot" ref={ref} role="img" aria-label={label} data-x-max={xMax} data-y-max={yMax} data-cursor={cursor}
+    onPointerDown={move} onPointerMove={(e) => e.buttons && move(e)} />
 }

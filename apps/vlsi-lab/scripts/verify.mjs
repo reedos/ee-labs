@@ -25,13 +25,62 @@ const server = createServer(async (req, res) => {
 await new Promise((done) => server.listen(0, '127.0.0.1', done))
 let browser
 const target = process.env.APP_URL || `http://127.0.0.1:${server.address().port}/vlsi-lab/`
-const evidence = { browser: browserName, navigation: process.env.APP_URL ? 'Assembled sibling paths' : 'App-only preview', views: [], errors: [] }
+const evidence = { browser: browserName, navigation: process.env.APP_URL ? 'Assembled sibling paths' : 'App-only preview', completed: false, views: [], errors: [] }
+const axisState = (page) => page.locator('[data-x-max]').evaluate((node) => ({ x: node.dataset.xMax, y: node.dataset.yMax || null }))
+const cursor = (page) => page.locator('[data-cursor]').evaluate((node) => Number(node.dataset.cursor))
+const pixels = (page) => page.locator('canvas').evaluate((canvas) => canvas.toDataURL())
+const axisPixels = (page) => page.locator('canvas').evaluate((canvas) => {
+  const ctx = canvas.getContext('2d')
+  return Array.from(ctx.getImageData(0, canvas.height - 24, canvas.width, 24).data).join(',')
+})
+async function playbackCheck(page, label) {
+  await page.getByRole('button', { name: 'Rewind', exact: true }).click()
+  assert.equal(await cursor(page), 0)
+  const before = await pixels(page)
+  const reading = await page.locator('[data-role="live-readings"]').textContent()
+  await page.getByLabel('Playback speed', { exact: true }).selectOption('1')
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await page.clock.runFor(600)
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+  await page.getByRole('button', { name: 'Play', exact: true }).waitFor()
+  const moved = await cursor(page)
+  assert.ok(moved > 0, `${label}: cursor must move`)
+  assert.notEqual(await pixels(page), before, `${label}: the rendered cursor must move`)
+  assert.notEqual(await page.locator('[data-role="live-readings"]').textContent(), reading, `${label}: live readings must change`)
+  await page.clock.runFor(300)
+  assert.equal(await cursor(page), moved, `${label}: pause must hold`)
+  await page.getByRole('button', { name: 'Rewind', exact: true }).click()
+  await page.getByLabel('Playback speed', { exact: true }).selectOption('4')
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await page.clock.runFor(600)
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+  await page.getByRole('button', { name: 'Play', exact: true }).waitFor()
+  const fast = await cursor(page)
+  assert.ok(fast > moved * 3.5 && fast < moved * 4.5, `${label}: speed must affect physical cursor movement`)
+  const slider = page.getByRole('slider', { name: label, exact: true })
+  await slider.fill('1000')
+  const end = await cursor(page)
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await page.clock.runFor(100)
+  assert.ok(await cursor(page) < end / 2, `${label}: play at end must replay`)
+  await slider.fill('999')
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await page.clock.runFor(100)
+  assert.equal(await cursor(page), end, `${label}: playback must stop at the end`)
+  assert.equal(await page.getByRole('button', { name: 'Play', exact: true }).count(), 1)
+  await page.getByRole('button', { name: 'Rewind', exact: true }).click()
+  await page.getByLabel('Playback speed', { exact: true }).selectOption('1')
+}
 try {
   browser = await ({ chromium, firefox }[browserName]).launch()
   evidence.browserVersion = browser.version()
-  for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 1000 }, { width: 1920, height: 1080 }, { width: 2560, height: 1440 }, { width: 390, height: 844 }]) {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
     page.on('pageerror', (e) => evidence.errors.push(e.message))
+    page.on('console', (e) => { if (e.type() === 'error') evidence.errors.push(e.text()) })
+    const clockStart = new Date()
+    await page.clock.install({ time: clockStart })
+    await page.clock.pauseAt(new Date(clockStart.getTime() + 1000))
     await page.goto(target)
     await page.locator('canvas').waitFor()
     evidence.labNavCount = await page.locator('.labnav').count()
@@ -47,6 +96,10 @@ try {
       await page.evaluate(() => { window.scrollTo(0, 0); document.querySelector('.controls').scrollTop = 0 })
       const firstControl = await page.getByRole('spinbutton').first().boundingBox()
       assert.ok(firstControl.y >= 0 && firstControl.y + firstControl.height <= viewport.height, `A${i + 1}: first control below viewport`)
+      if (viewport.width > 900 && (i === 2 || i === 3)) {
+        const featured = await page.getByRole('spinbutton', { name: i === 2 ? 'Stages' : 'Pull-up width', exact: true }).boundingBox()
+        assert.ok(featured.y >= 0 && featured.y + featured.height <= viewport.height, `A${i + 1}: lesson's featured knob must be discoverable`)
+      }
       await page.evaluate(() => document.fonts.ready)
       assert.match(await page.locator('[data-role="headline"]').textContent(), /\d/)
       assert.equal(await page.locator('.schematic [data-el]').count(), 5)
@@ -62,12 +115,32 @@ try {
         return colored
       })
       assert.ok(nonblank > 100, `blank plot A${i + 1}`)
+      const plotBox = await page.locator('canvas').boundingBox()
+      if (i !== 2) assert.ok(plotBox.height >= 350, 'Analog plots need useful height')
+      const mathBox = await page.locator('.worked-math').boundingBox()
+      if (viewport.width >= 1190) {
+        assert.ok(mathBox.x >= plotBox.x + plotBox.width, 'Worked explanation must sit beside the plot')
+        assert.ok(mathBox.y < viewport.height, 'Worked explanation must be visible on desktop')
+      } else {
+        const analysis = await page.locator('.analysis-view').boundingBox()
+        const explanation = await page.locator('.explanation-column').boundingBox()
+        assert.ok(explanation.y - analysis.y - analysis.height <= 2, 'Stacked explanations must follow the plot without an empty grid row')
+      }
+      const inherited = await page.locator('.controls').evaluate((node) => {
+        const title = getComputedStyle(node.querySelector('h1'))
+        const section = getComputedStyle(node.querySelector('section'))
+        return { title: title.fontSize, border: section.borderTopWidth, background: section.backgroundColor }
+      })
+      assert.equal(inherited.title, viewport.width >= 2400 ? '20px' : '15px')
+      if (viewport.width >= 2400) assert.equal((await page.locator('.controls').boundingBox()).width, viewport.width * 0.15)
+      assert.equal(inherited.border, '1px')
+      assert.equal(inherited.background, 'rgb(11, 15, 20)')
       await page.screenshot({ path: resolve(shots, `a${i + 1}-${viewport.width}.png`), fullPage: true })
       evidence.views.push({ lesson: `a${i + 1}`, width: viewport.width, coloredPixels: nonblank })
-      await page.getByRole('button', { name: 'The math', exact: false }).click()
-      assert.ok(await page.locator('.math-body').count() > 0)
+      assert.equal(await page.locator('.math-body').count(), 1)
+      assert.ok(await page.locator('.math-formula').count() >= 4)
       assert.equal(await page.locator('.katex-error').count(), 0)
-      await page.getByRole('button', { name: 'The math', exact: false }).click()
+      assert.equal(await page.locator('.math-check .disagree').count(), 0)
       const field = (name) => page.getByRole('spinbutton', { name, exact: true })
       if (i === 2 || i === 3) {
         await field('Fanout').fill('4')
@@ -100,10 +173,47 @@ try {
         if (i === 3) assert.equal(Number(await field('Pull-up width').inputValue()), 2)
       }
       if (i !== 1) {
+        const held = await axisState(page)
+        const ticks = await axisPixels(page)
+        const waveform = await pixels(page)
+        await field('Fanout').fill('8')
+        await field('Fanout').press('Enter')
+        assert.deepEqual(await axisState(page), held, 'Fanout must not autoscale the axes')
+        assert.equal(await axisPixels(page), ticks, 'Rendered axis labels must remain stable')
+        assert.notEqual(await pixels(page), waveform, 'Changing load must change the rendered curve or cursor')
+        if (i === 3) {
+          await field('Pull-up width').fill('1')
+          await field('Pull-up width').press('Enter')
+          assert.deepEqual(await axisState(page), held, 'Width must not autoscale the axes')
+        }
+        await page.getByRole('button', { name: 'Fit axes', exact: true }).click()
+        const fitted = await axisState(page)
+        assert.notDeepEqual(fitted, held, 'Fit must explicitly reframe the data')
+        await field('Fanout').fill('4')
+        await field('Fanout').press('Enter')
+        assert.deepEqual(await axisState(page), fitted, 'Fitted axes must also hold on knob changes')
+        await page.getByRole('button', { name: 'Reset axes', exact: true }).click()
+        assert.deepEqual(await axisState(page), held, 'Axis reset must restore the original physical range')
+        await page.screenshot({ path: resolve(shots, `a${i + 1}-${viewport.width}-changed.png`), fullPage: true })
         for (const name of ['Timing', 'Fanout', 'Scope']) {
           await page.getByRole('button', { name, exact: true }).click()
           assert.equal(await page.locator('canvas').count(), 1)
+          await page.screenshot({ path: resolve(shots, `a${i + 1}-${viewport.width}-${name.toLowerCase()}.png`), fullPage: true })
+          if (name !== 'Fanout') await playbackCheck(page, 'Time cursor')
+          else {
+            const selected = await field('Fanout').inputValue()
+            const schematic = await page.locator('.schematic-view .readings').textContent()
+            const held = await axisState(page)
+            await playbackCheck(page, 'Fanout sweep')
+            assert.equal(await field('Fanout').inputValue(), selected, 'Fanout probe must preserve the selected load')
+            assert.equal(await page.locator('.schematic-view .readings').textContent(), schematic, 'A load probe must not advance schematic time')
+            assert.deepEqual(await axisState(page), held, 'Fanout sweep must preserve both axes')
+          }
         }
+        await page.getByRole('button', { name: 'Rising', exact: true }).click()
+        assert.match(await page.locator('.legend').textContent(), /Default: fanout 1, width 2, rising/)
+        assert.match(await page.locator('[data-role="live-readings"]').textContent(), /Default 0\.000 V/)
+        await page.screenshot({ path: resolve(shots, `a${i + 1}-${viewport.width}-rising.png`), fullPage: true })
         const before = await page.locator('.schematic-view .readings').textContent()
         const canvas = page.locator('canvas')
         const box = await canvas.boundingBox()
@@ -114,14 +224,22 @@ try {
         await field.fill('0.45')
         await field.press('Enter')
         assert.match(await page.locator('.schematic-view .readings').textContent(), /ambiguous at threshold/)
+        const held = await axisState(page)
+        await playbackCheck(page, 'Input sweep')
+        assert.deepEqual(await axisState(page), held, 'Input sweep must preserve the voltage axes')
       }
+      await page.getByLabel('Default comparison', { exact: true }).uncheck()
+      assert.ok(!await page.getByLabel('Default comparison', { exact: true }).isChecked())
+      await page.getByLabel('Default comparison', { exact: true }).check()
     }
     await page.close()
   }
   assert.deepEqual(evidence.errors, [])
+  evidence.completed = true
   await writeFile(resolve(shots, 'verification.json'), JSON.stringify(evidence, null, 2))
   console.log(JSON.stringify(evidence, null, 2))
 } finally {
+  await writeFile(resolve(shots, 'verification.json'), JSON.stringify(evidence, null, 2))
   await browser?.close()
   await new Promise((done) => server.close(done))
 }

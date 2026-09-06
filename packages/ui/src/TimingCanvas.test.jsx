@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { simulate, hazardNet } from '@ee-labs/events'
-import TimingCanvas, { busAt, geometryOf, heightOf, rowsOf } from './TimingCanvas.jsx'
+import TimingCanvas, { busAt, geometryOf, heightOf, rowsOf, timeTickAlignment, timeTickLabel } from './TimingCanvas.jsx'
 
 // The timing diagram. Built by the Logic Lab (LOGIC_LAB_PLAN.md Decision 5),
 // promoted here once the Computer Lab claimed it too (PROGRAM.md §4).
@@ -24,6 +24,37 @@ const glitch = () => {
 }
 
 describe('the timing diagram', () => {
+  it('retains readable labels on a phone without changing tick positions', () => {
+    for (const width of [320, 390, 640, 1200]) {
+      const geo = geometryOf({ width, window: [0, 400000] })
+      let right = -Infinity
+      const shown = []
+      for (let t = 0; t <= 400000; t += 50000) {
+        const labelWidth = `${(t / 1000).toFixed(1)} ps`.length * 6.6
+        const label = timeTickLabel(geo.sx(t), width, labelWidth, right)
+        if (!label.visible) continue
+        expect(label.left).toBeGreaterThanOrEqual(right + 8)
+        expect(label.left).toBeGreaterThanOrEqual(geo.left)
+        expect(label.right).toBeLessThanOrEqual(width - geo.right)
+        right = label.right
+        shown.push(t)
+      }
+      expect(shown.length).toBeGreaterThanOrEqual(2)
+    }
+  })
+  it('keeps formatted time ticks inside both frame edges', () => {
+    for (const width of [320, 640, 1200]) {
+      const geo = geometryOf({ width, window: [0, 400000] })
+      const textWidth = 72
+      for (const t of [0, 200000, 400000]) {
+        const x = geo.sx(t)
+        const align = timeTickAlignment(x, width, textWidth)
+        const left = align === 'left' ? x : align === 'right' ? x - textWidth : x - textWidth / 2
+        expect(left).toBeGreaterThanOrEqual(geo.left)
+        expect(left + textWidth).toBeLessThanOrEqual(width - geo.right)
+      }
+    }
+  })
   const res = glitch()
   const signals = ['a', 'na', 'p', 'q', 'y']
 
