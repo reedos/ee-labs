@@ -74,6 +74,7 @@ jobs:
           cp -r apps/system-lab/dist _site/system-lab
           cp -r apps/photonics-lab/dist _site/photonics-lab
           cp -r apps/vlsi-lab/dist _site/vlsi-lab
+          cp -r apps/interfaces-lab/dist _site/interfaces-lab
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -23,4 +23,5 @@ export const DEPLOYED_APPS = [
   'system-lab',
   'photonics-lab',
   'vlsi-lab',
+  'interfaces-lab',
 ]
