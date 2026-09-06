@@ -105,6 +105,16 @@ Deferred, with what reopens each:
   to walk. The drawing puts the blocking capacitor in the primary loop, which
   is the part that does the forgiving. Reopens with the midpoint as a third
   state.
+- **The Balance pane is not offered on the drives, though they have one.**
+  `driveBalance` states a drive's period in two sums that both come to zero,
+  volt-seconds on the armature and torque-seconds on the inertia.
+  `drive.test.js` fuzzes both as invariants. The pane cannot draw them. Its
+  second column carries the capacitor's integral in the header and again in
+  the sentence above the table, so a drive's torque-seconds would appear as
+  charge. Reopens when `BalancePane` takes its two row labels from the
+  topology, which is one prop and a merge across three lanes. The input side
+  has no balance at all, for the reason `analyseEmi` gives in place.
+
 - **`verify.mjs` has not been run against the new groups.** This environment
   has no browser. The three new panes (flux, scrub, ledger), the two new
   sweeps and the four new drawings have been held as geometry and as rendered
@@ -1207,7 +1217,8 @@ it, L2 four quadrants with the rail taking current back, L3 six-step
 commutation and the torque it leaves. Group M: M1 the input current as a
 pulse train, M2 the input filter and what damping costs, M3 the switch node's
 ring. Group N: N1 loss as temperature, N2 the thermal RC from die to
-heatsink, N3 the switching frequency a package can afford.
+heatsink, N3 the switching frequency a package can afford, against the
+ripple the frequency buys.
 
 **What the engine gained.** `drive.js` carries the armature current and the
 shaft speed as one two-state system, so the speed's own ripple is solved
@@ -1251,7 +1262,7 @@ Deferred, with what reopens each:
   ladder is worth having. Reopens with a pane that draws a network's nodes.
 - **`verify.mjs` has not been run against the new groups.** This environment
   has no browser. The four new panes (drive, filter, ring, thermal), the six
-  new drawings and the seven new sweep axes are held as geometry and as
+  new drawings and the eight new sweep axes are held as geometry and as
   rendered markup by unit tests. The fold, the overflow and the phone layout
   are not. Reopens on a machine with Chromium and Firefox.
 - **The ring's knobs are bounded, and the bound is an affordability gate.**
@@ -1270,6 +1281,17 @@ keeps a dead interval's third shape out of the lesson about the input
 current's spectrum. Middlebrook's criterion is computed from the operating
 point and labelled a design rule. This lab runs its converters open loop,
 and no instability can be shown by a simulation with no loop in it.
+
+One thing the engine says that §4 does not. N3 asks for one curve with the
+whole tradeoff on it, so the ripple went on the sweep's right axis beside the
+heat. That made a shape visible.
+
+Below 38.07 kHz the ripple is 5.04 A on a
+5.85 A mean, and costs more in conduction than the edges save. The junction
+cools as the frequency rises there, so the title holds above that point and
+not below it. The note names it, at 53.47 °C, and the sweep marks it. The
+first test written for the curve required heat to rise at every step. It
+failed at 24.6 kHz, which is how the shape was found.
 
 **§8 phasing, for the plan.** Step 9 of `POWER_LAB_PLAN.md` §8 is done, and
 step 8's second half with it. L needed a slow mechanical state, and it got
