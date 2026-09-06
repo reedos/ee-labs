@@ -85,6 +85,47 @@ observations, none of them a request:
    page list in `packages/ui/src/analytics.test.js`. While dark the page carries
    no tag, so review visits do not count as traffic.
 
+## 5. What the browser pass found outside this lab
+
+Three defects the verification sitting found in shared code. Each is worked
+around inside `apps/instruments-lab/` and none of the workarounds belongs in
+the package.
+
+1. **`packages/ui` `fmt` prefixes a unit that cannot take one.** `fmt(0.5, '%')`
+   is `"500 m%"`, and `fmt(0.1, '')` is `"100 m"`. This lab's topbar carried
+   both until `src/format.js` stopped sending a ratio, a per cent, a multiple,
+   a degree and a decibel through it. `packages/ui/src/format.js` already
+   carries the note that names the fault, in `fmtNum`'s comment. Every lab that
+   prints a unitless quantity through `fmt` has it.
+
+2. **`Schematic` draws a driven source's resting value.** A source is written
+   `{ type: 'V', value: 0, wave: sine(p.A, p.f) }`, and `valueText` in
+   `schematicGeometry.js` prints `value`, so every sine source in this lab was
+   labelled "V₁ 0 V" beside an amplitude knob reading 1 V. `drawables` in
+   `src/experiments.js` now relabels the drawn copy with the wave's amplitude.
+   The proper fix is for `valueText` to read `wave`, which would also let the
+   symbol say that the source is driven. Signal, Circuit and Power all draw
+   wave sources.
+
+3. **`equations` prints "v = 0" for a driven source.** The `V` case in
+   `packages/network/src/equations.js` writes `0` when `eff.value === 0`, which
+   is true of every wave source, so the constraint row read `v_tip = 0` beside
+   a schematic reading `v_tip = 1 V`. This lab hands the pane a netlist whose
+   wave sources carry their instantaneous value, which turns the row into
+   `v_tip = E_1`. A source that carries a wave should print its own symbol.
+
+Two things this lab wants and has not asked any package for:
+
+- **The equations pane cannot show an AC solve.** `equations` renders the real
+  DC system, and its KCL rows treat a capacitor as an open. So the six
+  experiments that read their meters from the steady state (`analyse`'s `snap`)
+  show the system without live numbers. Rendering the phasor system would need
+  complex terms in `equations`, and this lab has not sized that work.
+- **A3 cannot become a dynamic experiment.** Two capacitors and an ideal source
+  in one loop have no state space, and `transient` declines it with the reason.
+  That is the plan's own decision (`AGENT_BRIEF.md` §8) and it is why A3 reads a
+  steady state rather than a cursor.
+
 ## Not needed
 
 - No changes to `packages/ui`, `packages/explain` or `packages/prose`. The lab
