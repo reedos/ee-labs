@@ -58,9 +58,21 @@ const oneTone = (p) => ({
 const FILTER = [Ind('L', 'Filter L', L0), Cap('C', 'Filter C', C0), chips(R('R', 'Filter R', R100), [R100, 10 * R100])]
 /** The same three knobs, with the two that set the width held: D3 and D4 vary the tuning only. */
 const HELD = FILTER.map((k) => (k.key === 'C' ? k : { ...k, fixed: true }))
+/**
+ * The sweep a resolution bandwidth can be read off.
+ *
+ * It used to run f₀/4 to f₀·4 on a log axis, which put the 100 Hz width this
+ * whole group is about across 2.6 pixels, under a peak that read as a needle.
+ * A span sized to the filter's own bandwidth, on a linear axis, draws the two
+ * −3 dB points about a tenth of the frame apart. The span still widens with
+ * the bandwidth when R is raised, and it always reaches far enough to hold
+ * every tone the experiment carries, so D3's two tones stay on screen.
+ */
 const around = (p) => {
-  const { f0 } = bandpass(p)
-  return { from: f0 / 4, to: f0 * 4, mode: 'bode', points: 801 }
+  const { f0, rbw } = bandpass(p)
+  const tones = [p.f, p.fa, p.fb].filter((f) => Number.isFinite(f))
+  const reach = Math.max(6 * rbw, ...tones.map((f) => 2.5 * Math.abs(f - f0)), 0.01 * f0)
+  return { from: Math.max(f0 / 1000, f0 - reach), to: f0 + reach, mode: 'bode', axis: 'linear', points: 801 }
 }
 
 export const GROUP_D = [

@@ -25,18 +25,24 @@ export default function FreqCanvas({ freq, mode, fDrive, at, corner, marks = [] 
       const series = mode === 'bode' ? freq.H : freq.Z
       const mag = series.map((z) => (mode === 'bode' ? 20 * Math.log10(cx.cabs(z)) : Math.log10(cx.cabs(z))))
       const ang = series.map((z) => (cx.carg(z) * 180) / Math.PI)
-      const lx = Float64Array.from(freq.f, (f) => Math.log10(f))
+      // The frequency axis is logarithmic, except where the sweep asks for
+      // frequency itself. The analyser's sweep does: a decade axis holds no
+      // tick across 9.4 to 10.6 kHz, and it draws the resolution bandwidth
+      // Group D exists to teach as two pixels under a needle.
+      const linear = freq.axis === 'linear'
+      const X = linear ? (f) => f : (f) => Math.log10(f)
+      const lx = Float64Array.from(freq.f, X)
       const x0 = lx[0]
       const x1 = lx[lx.length - 1]
 
       const { lo, hi, yStep } = freqSpan(mag, mode)
       const fmtY = mode === 'bode' ? (v) => `${v.toFixed(0)} dB` : (v) => fmt(10 ** v, 'Ω', yStep < 1 ? 2 : 1)
       const magLabel = mode === 'bode' ? '|H| = |V_out / V_s| (dB)' : '|Z| seen by the source (Ω)'
-      const { sx, sy } = drawFrame(ctx, area, x0, x1, lo, hi, (v) => fmt(10 ** v, 'Hz', 1), fmtY, {
-        xStep: 1,
+      const { sx, sy } = drawFrame(ctx, area, x0, x1, lo, hi, (v) => fmt(linear ? v : 10 ** v, 'Hz', linear ? 4 : 1), fmtY, {
+        xStep: linear ? null : 1,
         yStep,
         zeroLine: mode === 'bode',
-        xTitle: 'Frequency (log)',
+        xTitle: linear ? 'Frequency' : 'Frequency (log)',
         yTitle: magLabel,
       })
       // Phase on the right, in 45° steps, spanning the quadrants the data visits.
@@ -44,27 +50,49 @@ export default function FreqCanvas({ freq, mode, fDrive, at, corner, marks = [] 
       const pHi = Math.max(0, Math.ceil(Math.max(...ang) / 45) * 45)
       const syR = drawRightAxis(ctx, area, w, pLo === pHi ? pLo - 45 : pLo, pLo === pHi ? pHi + 45 : pHi, (v) => `${v.toFixed(0)}°`, mode === 'bode' ? '∠H (degrees)' : '∠Z (degrees)', 45)
 
+      // The 2, 3 and 5 lines inside each decade, and on a narrow sweep their
+      // labels as well.
+      //
+      // A sweep under about two decades otherwise gets a decade label and no
+      // more: D1 sweeps f₀/4 to f₀·4 and carried the single tick "10 kHz", so
+      // the 100 Hz bandwidth the group is about could not be read off the axis
+      // at all. The labels go on before the frame is clipped, since they sit
+      // under it.
+      const minors = []
+      if (!linear)
+        for (let d = Math.floor(x0); d <= Math.ceil(x1); d++) {
+          for (const m of [2, 3, 5]) {
+            const v = d + Math.log10(m)
+            if (v > x0 && v < x1) minors.push(v)
+          }
+        }
+      if (!linear && x1 - x0 < 2.5) {
+        ctx.fillStyle = COLORS.text
+        ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        for (const v of minors) ctx.fillText(fmt(10 ** v, 'Hz', 2), sx(v), area.y + area.h + 14 * k)
+      }
+
       ctx.save()
       ctx.beginPath()
       ctx.rect(area.x, area.y, area.w, area.h)
       ctx.clip()
-      // Minor decade lines (2, 3, 5), faint — a log axis without them reads as linear.
+      // A log axis without the minor lines reads as linear.
       ctx.strokeStyle = COLORS.grid
       ctx.lineWidth = 1
       ctx.globalAlpha = 0.5
-      for (let d = Math.floor(x0); d <= Math.ceil(x1); d++) {
-        for (const m of [2, 3, 5]) {
-          const v = d + Math.log10(m)
-          if (v <= x0 || v >= x1) continue
-          ctx.beginPath()
-          ctx.moveTo(Math.round(sx(v)) + 0.5, area.y)
-          ctx.lineTo(Math.round(sx(v)) + 0.5, area.y + area.h)
-          ctx.stroke()
-        }
+      for (const v of minors) {
+        ctx.beginPath()
+        ctx.moveTo(Math.round(sx(v)) + 0.5, area.y)
+        ctx.lineTo(Math.round(sx(v)) + 0.5, area.y + area.h)
+        ctx.stroke()
       }
       ctx.globalAlpha = 1
-      if (corner && corner.f > 10 ** x0 && corner.f < 10 ** x1) drawMark(ctx, area, sx(Math.log10(corner.f)), corner.label)
-      drawDataMarks(ctx, area, marks, { sx: (f) => sx(Math.log10(f)), sy, syR, yMap: mode === 'bode' ? (y) => y : (y) => Math.log10(y) })
+      const fLo = linear ? x0 : 10 ** x0
+      const fHi = linear ? x1 : 10 ** x1
+      if (corner && corner.f > fLo && corner.f < fHi) drawMark(ctx, area, sx(X(corner.f)), corner.label)
+      drawDataMarks(ctx, area, marks, { sx: (f) => sx(X(f)), sy, syR, yMap: mode === 'bode' ? (y) => y : (y) => Math.log10(y) })
 
       const line = (ys, map, color, dash = null) => {
         ctx.strokeStyle = color
@@ -83,9 +111,9 @@ export default function FreqCanvas({ freq, mode, fDrive, at, corner, marks = [] 
       line(mag, sy, HUE.voltage)
 
       // The drive: a marker line named at its foot, and a dot on each curve from the meters' solve.
-      if (fDrive >= 10 ** x0 && fDrive <= 10 ** x1 && at) {
+      if (fDrive >= fLo && fDrive <= fHi && at) {
         const z = mode === 'bode' ? at.H : at.Z
-        const mx = sx(Math.log10(fDrive))
+        const mx = sx(X(fDrive))
         ctx.strokeStyle = COLORS.marker
         ctx.lineWidth = 1.2 * k
         ctx.beginPath()

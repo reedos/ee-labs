@@ -96,9 +96,13 @@ export function freqSpan(mag, mode) {
   if (mode === 'bode') {
     const top = Math.max(mx, 0)
     const yStep = top - mn > 60 ? 20 : 10
-    const lo = Math.floor(mn / yStep) * yStep
+    let lo = Math.floor(mn / yStep) * yStep
     let hi = Math.ceil(top / yStep) * yStep
     if (hi === top) hi += yStep / 2 // headroom above a curve that touches 0 dB
+    // The same room below. A3's compensated probe is flat at exactly −20.00 dB,
+    // and a frame rounded out to −20 drew the one line the lesson exists to
+    // show along the bottom of its own frame, where it reads as the axis.
+    if (lo === mn) lo -= yStep / 2
     return { lo, hi, yStep }
   }
   const range = mx - mn
