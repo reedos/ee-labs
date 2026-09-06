@@ -1245,9 +1245,13 @@ Deferred, with what reopens each:
   lane did not put them there.** With Groups J and K removed from the same
   build, B1, B2, B4, C1, C5, E1, E4, E6 and F2 are over by 1 to 23 px. Eight
   open a group, which adds a 48 px intro above the note. §11.8 recorded this
-  green, so the shell's chrome has moved since. J1 is the tenth, 5 px over,
-  after this lane took 18 px out of its note. One shell change fixes all ten,
-  so it is in `NEEDS.md` for the director.
+  green, so the shell's chrome has moved since. Firefox is tighter and puts
+  nineteen of Groups A to G over.
+- **J1 is the one experiment of these six in either set.** It is 5 px over in
+  Chromium and 7 in Firefox, after this lane took 18 px out of its note. It is
+  the least over of the group-opening experiments in both browsers. One shell
+  change fixes the whole set, so it is in `NEEDS.md` for the director rather
+  than ten trimmed notes here.
 - **Everything else `verify.mjs` measures is green on all 40.** No overflow at
   four widths. The outcome chip whole at three. 390 px, the primary pane's
   share, the path, the marks, the accessible names, and no dust anywhere.
