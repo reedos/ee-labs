@@ -1,6 +1,6 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmtHz } from '@ee-labs/ui'
-import { yTickBudget } from '../axis.js'
+import { phaseFrame, yTickBudget } from '../axis.js'
 
 /**
  * Magnitude against frequency, on a log axis, with optional phase.
@@ -116,6 +116,44 @@ export default function BodeCanvas({
       }
       ctx.globalAlpha = 1
 
+      // Every caption this plot writes over its own picture gets a plate: a
+      // rectangle of the background painted behind the glyphs first. At
+      // 1080p there is room to place a caption clear of the trace and the
+      // gridlines; at 390 px the pane is 250 px wide and 40 px tall, and the
+      // divider's "H = 1/2 = −6.02 dB at every frequency" lands across the
+      // 0 dB rule, the frame's top edge and its own trace at once. Text over a
+      // line is not readable, and the caption is the only place the number
+      // appears on that plot.
+      const plated = (text, x, y, align, baseline = 'top') => {
+        // ...and it has to FIT. "H = 1/2 = −6.02 dB at every frequency" is 36
+        // monospace characters, which is 250 px at 11 px and exactly the width
+        // of the whole plot on a 390 px phone: right-aligned, its first
+        // character was drawn out in the y-axis gutter. Shrink the caption
+        // until it fits the frame, down to 8 px and no further.
+        const saved = ctx.font
+        const maxW = area.w - 10 * k
+        const floor = Math.round(8 * k)
+        let size = Math.round(11 * k)
+        ctx.font = `${size}px ${MONO}`
+        while (size > floor && ctx.measureText(text).width > maxW) {
+          size -= 1
+          ctx.font = `${size}px ${MONO}`
+        }
+        const w2 = ctx.measureText(text).width
+        const hh = Math.max(13 * k, size + 2)
+        const left = align === 'right' ? x - w2 : x
+        const top = baseline === 'middle' ? y - hh / 2 : y - 1 * k
+        ctx.save()
+        ctx.fillStyle = COLORS.bg
+        ctx.globalAlpha = 0.78
+        ctx.fillRect(left - 3 * k, top, w2 + 6 * k, hh)
+        ctx.restore()
+        ctx.textAlign = align
+        ctx.textBaseline = baseline
+        ctx.fillText(text, x, y)
+        ctx.font = saved
+      }
+
       // Frequencies worth naming — resonance, corners.
       for (const m of markers) {
         if (!(m.f > 0)) continue
@@ -132,9 +170,13 @@ export default function BodeCanvas({
         if (m.label) {
           ctx.fillStyle = COLORS.marker
           ctx.font = `${Math.round(11 * k)}px ${MONO}`
-          ctx.textAlign = 'left'
-          ctx.textBaseline = 'top'
-          ctx.fillText(m.label, x + 4 * k, area.y + 4 * k)
+          // Named with its value now, so the caption is wide enough to run off
+          // the right edge when the marked frequency sits near it: flip to the
+          // marker's other side rather than write half a number.
+          const wLabel = ctx.measureText(m.label).width
+          const room = area.x + area.w - (x + 4 * k) - 4 * k
+          if (wLabel <= room) plated(m.label, x + 4 * k, area.y + 4 * k, 'left')
+          else plated(m.label, x - 4 * k, area.y + 4 * k, 'right')
         }
       }
 
@@ -144,17 +186,24 @@ export default function BodeCanvas({
       // The y each landed on is written to the DOM for the harness.
       const lineH = 14 * k
       const placed = []
+      // Inside the frame, always. On a phone the divider's caption wants a row
+      // three pixels ABOVE the frame's top edge, where the plot's own border
+      // draws through it — and the y recorded for the harness has to be the y
+      // the glyphs actually landed on, so the clamp lives inside placeAt.
+      const inFrame = (top) => Math.max(area.y + 2 * k, Math.min(top, area.y + area.h - lineH))
       const placeAt = (top) => {
-        let y = top
-        let moved = true
-        while (moved) {
-          moved = false
-          for (const p of placed) {
-            if (y < p + lineH && y + lineH > p) {
-              y = p + lineH
-              moved = true
-            }
-          }
+        let y = inFrame(top)
+        // Bounded: each pass either steps clear of one caption or finds the
+        // clamp already holding it, and stops. (Stacking downward WHILE
+        // clamping to the frame can otherwise bounce a caption between the
+        // same two rows forever — a canvas that never returns, which is a
+        // frozen tab rather than a wrong picture.)
+        for (let guard = 0; guard <= placed.length; guard++) {
+          const hit = placed.find((p) => y < p + lineH && y + lineH > p)
+          if (hit === undefined) break
+          const next = inFrame(hit + lineH)
+          if (next === y) break
+          y = next
         }
         placed.push(y)
         return y
@@ -167,7 +216,7 @@ export default function BodeCanvas({
         ctx.fillStyle = COLORS.marker
         // Just above the magnitude trace: the caption's box is one line tall
         // ending 4 px over the line.
-        ctx.fillText(a.text, area.x + area.w - 8 * k, placeAt(sy(a.db) - 4 * k - lineH))
+        plated(a.text, area.x + area.w - 8 * k, placeAt(sy(a.db) - 4 * k - lineH), 'right')
       }
 
       // The 0 dB reference, where the output equals the input.
@@ -251,20 +300,40 @@ export default function BodeCanvas({
         ctx.fill()
         ctx.font = `${Math.round(11 * k)}px ${MONO}`
         ctx.textBaseline = 'top'
-        const above = y - 5 * k - lineH
-        const below = y + 5 * k
+        const above = inFrame(y - 5 * k - lineH)
+        const below = inFrame(y + 5 * k)
         const first = fallingRight ? above : below
         const mirror = fallingRight ? below : above
         let top
         let left = true
-        if (free(first)) top = first
-        else if (free(mirror)) {
+        if (free(first)) {
+          top = first
+          placed.push(top)
+        } else if (free(mirror)) {
           top = mirror
           left = false
+          placed.push(top)
         } else top = placeAt(first)
-        placed.push(top)
-        ctx.textAlign = left ? 'left' : 'right'
-        ctx.fillText(text, left ? x + 7 * k : x - 7 * k, top)
+        // ...and on the side there is ROOM for. The tank marks its peak at f₀,
+        // two thirds along the axis, and "peak = R = 10 kΩ = 80.0 dBΩ" ran
+        // off a 390 px plot's right edge and was clipped mid-number.
+        const wText = ctx.measureText(text).width
+        const fitsRight = x + 7 * k + wText <= area.x + area.w - 2 * k
+        const fitsLeft = x - 7 * k - wText >= area.x + 2 * k
+        if (left && !fitsRight && fitsLeft) left = false
+        else if (!left && !fitsLeft && fitsRight) left = true
+        let tx = left ? x + 7 * k : x - 7 * k
+        let align = left ? 'left' : 'right'
+        // Neither side has room for it: park it against the frame's right
+        // edge rather than let the clip take the end of the number. The dot
+        // still marks the point.
+        if (!fitsRight && !fitsLeft) {
+          align = 'right'
+          tx = area.x + area.w - 4 * k
+        }
+        // The dot sits ON the trace, so its label is over the trace whichever
+        // side it takes: plate it like every other caption here.
+        plated(text, tx, top, align)
       }
       // Marker captions own the plot's top line.
       if (markers.some((m) => m.f > 0 && m.label)) placed.push(area.y + 4 * k)
@@ -292,7 +361,12 @@ export default function BodeCanvas({
         }
         plo = Math.min(-90, Math.floor(plo / 90) * 90)
         phi = Math.max(90, Math.ceil(phi / 90) * 90)
-        const py = (d) => area.y + area.h - ((d - plo) / (phi - plo)) * area.h
+        // The labels stay on their whole 90° values; the FRAME runs a little
+        // past them, so a curve that holds an extreme — the integrator's +90°
+        // at every frequency, a two-pole low-pass's −180° — is drawn inside
+        // the plot instead of along its border.
+        const frame = phaseFrame(plo, phi)
+        const py = (d) => area.y + area.h - ((d - frame.lo) / (frame.hi - frame.lo)) * area.h
 
         if (band) {
           const pedge = (arr) => {
@@ -347,7 +421,7 @@ export default function BodeCanvas({
         for (const a of annotations) {
           if (!Number.isFinite(a.deg)) continue
           // Just under the phase trace — and below any caption already there.
-          ctx.fillText(a.text, area.x + area.w - 8 * k, placeAt(py(a.deg) + 4 * k))
+          plated(a.text, area.x + area.w - 8 * k, placeAt(py(a.deg) + 4 * k), 'right')
         }
         for (const p of points) {
           if (!(p.f > 0) || !Number.isFinite(p.deg)) continue
