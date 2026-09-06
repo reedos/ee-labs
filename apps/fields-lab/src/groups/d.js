@@ -80,11 +80,16 @@ export const D = [
     fourPoint: (p) => ({ spacing: p.s, voltage: p.V, current: p.I, thickness: p.t }),
     view: 'numbers',
     views: ['numbers', 'profile'],
-    headline: (x) => ({
-      value: x.fourPoint.regime === 'sheet' ? x.fourPoint.sheetResistance : x.fourPoint.resistivity,
-      unit: x.fourPoint.regime === 'sheet' ? 'Ω/□' : 'Ω·m',
-      label: x.fourPoint.regime === 'sheet' ? 'Sheet resistance' : 'Resistivity',
-    }),
+    // Between the two regimes the engine quotes no resistivity, so neither does
+    // the headline. What is left is the thing the instrument actually measured,
+    // the voltage over the current, and that is what the topbar shows. The
+    // guard beside it carries the sentence saying why nothing more is quoted.
+    headline: (x) => {
+      const f = x.fourPoint
+      if (f.regime === 'sheet') return { value: f.sheetResistance, unit: 'Ω/□', label: 'Sheet resistance' }
+      if (f.regime === 'block') return { value: f.bulkResistivity, unit: 'Ω·m', label: 'Resistivity' }
+      return { value: f.ratio, unit: 'Ω', label: 'What the probe reads, V over I' }
+    },
     domain: (p) => ({ width: 6 * p.s, height: 3 * p.s, centre: true }),
   },
 ]

@@ -376,7 +376,7 @@ export function guardOf(x) {
       says: x.grid.says,
     }
   }
-  for (const key of ['tube', 'eddy', 'circuit', 'q', 'friis', 'dipole', 'hertzian', 'L']) {
+  for (const key of ['tube', 'eddy', 'circuit', 'fourPoint', 'q', 'friis', 'dipole', 'hertzian', 'L']) {
     const holder = x[key]
     if (holder && holder.guard) return holder.guard
   }
