@@ -1,5 +1,5 @@
 import React from 'react'
-import { stickyRange } from '../stepAxis.js'
+import { stickyRange, STEP_X_TITLE } from '../stepAxis.js'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt, fmtNum } from '@ee-labs/ui'
 
 /**
@@ -77,7 +77,7 @@ export default function StepCanvas({
         // "200 ms", not a bare "200 m" under a title that promises seconds.
         (v) => fmt(v, 's', 3),
         (v) => (Math.abs(hi - lo) > 20 ? v.toFixed(0) : v.toFixed(2)),
-        { zeroLine: true, xTitle: 'Time (seconds)', yTitle: 'Output' },
+        { zeroLine: true, xTitle: STEP_X_TITLE, yTitle: 'Output' },
       )
 
       ctx.save()

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { ladderUp, stickyDuration, stickyRange } from './stepAxis.js'
+import { ladderUp, stickyDuration, stickyRange, STEP_X_TITLE } from './stepAxis.js'
+import { LESSONS, applyLesson } from './lessons.js'
+import { buildLoop } from './systems.js'
+import { polesZeros } from '@ee-labs/systems'
+import { fmt } from '@ee-labs/ui'
 
 // The behaviour Reed asked for by name, for the step plot: tuning gain or
 // tau moves the CURVE across a held frame. The first implementation failed
@@ -71,5 +75,41 @@ describe('stickyRange', () => {
 
   it('snaps on a system change', () => {
     expect(stickyRange({ lo: -4, hi: 4 }, nat(0, 1.1), true)).toEqual({ lo: 0, hi: 1.5 })
+  })
+})
+
+describe('the x-axis title names the quantity and leaves the unit to the ticks', () => {
+  // Read off a screenshot: "Time (seconds)" over ticks reading "100 ms" …
+  // "800 ms". The title cannot name one unit, because the course's own
+  // windows span three of them, and the ticks say which at every window.
+  it('carries no unit of its own', () => {
+    expect(STEP_X_TITLE).toBe('Time')
+    expect(STEP_X_TITLE).not.toMatch(/[()]/)
+    expect(STEP_X_TITLE).not.toMatch(/\bsec|\bms\b|\(s\)/i)
+  })
+
+  it('and one axis really does print two units at once', () => {
+    // Each lesson's own plot window, and the ticks drawn across it, through
+    // the same formatter the axis uses. The window is always some number of
+    // seconds; the TICKS inside it are not, which is the whole point — the
+    // shortest lesson's axis reads "200 ms" beside "1 s" on one line.
+    const unitOf = (v) => (fmt(v, 's', 3).match(/[a-zµ]+$/) || ['?'])[0]
+    const perLesson = LESSONS.map((l) => {
+      const s = applyLesson(l)
+      const { closed } = buildLoop(s.plantId, s.plantP, s.ctrlId, s.ctrlP)
+      const re = polesZeros(closed).poles.map(([r]) => Math.abs(r)).filter((r) => r > 1e-9)
+      const duration = stickyDuration(null, Math.min(12 / (re.length ? Math.min(...re) : 1), 400))
+      const ticks = Array.from({ length: 8 }, (_, i) => (duration * (i + 1)) / 8)
+      return { name: l.name, duration, units: new Set(ticks.map(unitOf)) }
+    })
+    const mixed = perLesson.filter((p) => p.units.size > 1)
+    // A count of zero here would mean the axis could safely name its unit
+    // and this assertion was defending nothing (playbook 11), so the count
+    // is what is asserted, not merely "some".
+    expect(
+      mixed.length,
+      perLesson.map((p) => `${p.name} @${p.duration}s: ${[...p.units].join('+')}`).join('\n'),
+    ).toBeGreaterThan(0)
+    for (const p of mixed) expect(p.units.has('ms'), p.name).toBe(true)
   })
 })

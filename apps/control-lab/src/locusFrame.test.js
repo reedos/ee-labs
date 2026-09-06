@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { locusExtent, stickyExtent } from './locusFrame.js'
+import { locusExtent, stickyExtent, LOCUS_UNIT, LOCUS_X_TITLE, LOCUS_Y_TITLE } from './locusFrame.js'
 import { polesZeros } from '@ee-labs/systems'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf, ctrlDefaultsFor } from './systems.js'
 
@@ -91,5 +91,24 @@ describe('stickyExtent', () => {
     const reframed = stickyExtent(NaN, 6.2)
     expect(reframed).toBeLessThan(heldFromAnotherPlant)
     expect(reframed).toBeGreaterThanOrEqual(6.2)
+  })
+})
+
+describe('the two axes of the s-plane carry one unit', () => {
+  // Read off a screenshot: the real axis said (1/s) and the imaginary axis
+  // said (rad/s), on one plane drawn at 1:1 where the distance from the
+  // origin is the natural frequency. Two units for one quantity.
+  it('both titles end in the same unit', () => {
+    const unit = (t) => (t.match(/\(([^)]+)\)$/) || [])[1]
+    expect(unit(LOCUS_X_TITLE)).toBe(LOCUS_UNIT)
+    expect(unit(LOCUS_Y_TITLE)).toBe(LOCUS_UNIT)
+    expect(unit(LOCUS_X_TITLE)).toBe(unit(LOCUS_Y_TITLE))
+  })
+
+  it('each still names its own half of s', () => {
+    expect(LOCUS_X_TITLE).toContain('Real')
+    expect(LOCUS_X_TITLE).toContain('σ')
+    expect(LOCUS_Y_TITLE).toContain('Imaginary')
+    expect(LOCUS_Y_TITLE).toContain('jω')
   })
 })

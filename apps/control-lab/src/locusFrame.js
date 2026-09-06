@@ -13,6 +13,23 @@ import { stickyDuration } from './stepAxis.js'
 // moves the pink crosses and not the axes.
 
 /**
+ * The two axis titles, which must carry the SAME unit.
+ *
+ * They did not: the real axis read "(1/s)" and the imaginary axis "(rad/s)"
+ * on one plane drawn at 1:1, so a reader measuring the distance from the
+ * origin — which is the natural frequency ωn, and is what the damping angle
+ * is read against — was combining two different units. s = σ + jω is one
+ * quantity with one unit, and the unit the rest of this lab uses for it is
+ * rad/s: the lead network's own pole and zero fields are in rad/s, and so is
+ * the crossover the Bode readout prints beside its hertz. σ is a decay rate
+ * rather than an angular frequency, which is the argument the split labels
+ * were making, and it is not worth two units on one square plane.
+ */
+export const LOCUS_UNIT = 'rad/s'
+export const LOCUS_X_TITLE = `Real  σ  (${LOCUS_UNIT})`
+export const LOCUS_Y_TITLE = `Imaginary  jω  (${LOCUS_UNIT})`
+
+/**
  * The half-extent the content needs: 1.35 × the farthest OPEN- or
  * CLOSED-loop POLE. A zero never sets the scale.
  *

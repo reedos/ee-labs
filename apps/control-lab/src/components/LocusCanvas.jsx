@@ -1,6 +1,7 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmtHz } from '@ee-labs/ui'
 import { findCancellations, findNearMerges } from '../locusCancel.js'
+import { LOCUS_X_TITLE, LOCUS_Y_TITLE } from '../locusFrame.js'
 
 /**
  * The root locus on the s-plane — this lab's own canvas, not the shared
@@ -36,7 +37,8 @@ export default function LocusCanvas({
       const yMax = extent * Math.max(1, 1 / aspect)
       const xMax = extent * Math.max(1, aspect)
 
-      // Real σ and imaginary jω both carry units (1/s, rad/s) — unlike the
+      // Real σ and imaginary jω both carry a unit, and the SAME one
+      // (locusFrame.js) — unlike the
       // Nyquist plot's dimensionless axes, a plain digit string here is not
       // a plain number, it is a mis-scaled one: "600000000" and "-0.003"
       // beside a Bode plot that formats the SAME kind of quantity as "600M"
@@ -50,7 +52,7 @@ export default function LocusCanvas({
         yMax,
         (v) => fmtHz(v),
         (v) => fmtHz(v),
-        { zeroLine: true, xTitle: 'Real  σ  (1/s)', yTitle: 'Imaginary  jω  (rad/s)' },
+        { zeroLine: true, xTitle: LOCUS_X_TITLE, yTitle: LOCUS_Y_TITLE },
       )
 
       ctx.save()

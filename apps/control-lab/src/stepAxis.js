@@ -12,6 +12,20 @@
 // curve moves, so motion is visible; crossing a band edge reframes once,
 // discretely. Axes move when they need to and only then.
 
+/**
+ * The step plot's x-axis title.
+ *
+ * It names the quantity and NOT a unit, because the ticks carry their own:
+ * the formatter prints "500 ms" rather than a bare "500 m", by the same rule
+ * that keeps a reader from having to infer a prefix. Titled "Time (seconds)",
+ * as it was, the axis claimed a unit its own numbers did not use — an 800 ms
+ * window read "800 ms" under a title promising seconds, and the two disagree
+ * at every window shorter than a second, which is most of the course. The
+ * watch pane already names its own axis "(time)" for the same reason, so the
+ * two panes now say one thing.
+ */
+export const STEP_X_TITLE = 'Time'
+
 const LADDER = [
   0.1, 0.15, 0.2, 0.3, 0.4, 0.6, 0.8, 1, 1.5, 2, 3, 4, 6, 8, 10, 15, 20, 30,
   40, 60, 80, 100, 150, 200, 300, 400,
