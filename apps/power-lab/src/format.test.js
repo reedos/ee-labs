@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nz, fmtz, statScale, axisFmt, scopeRange, niceBounds } from './format.js'
+import { nz, fmtz, statScale, axisFmt, scopeRange, niceBounds, tickStep, logTickStep, ticksIn } from './format.js'
 import { EXPERIMENTS, byId, defaultsOf } from './experiments.js'
 import { analyse } from './analysis.js'
 
@@ -126,5 +126,48 @@ describe('the scope axis', () => {
   it('snaps its bounds to round numbers', () => {
     expect(niceBounds(4.9925, 5.0075)).toEqual([4.99, 5.01])
     expect(niceBounds(-0.19, 0.19)).toEqual([-0.2, 0.2])
+  })
+})
+describe('the tick step', () => {
+  // The frame's own rule takes the step from how much room the plot has, and
+  // rounds it up to 1, 2 or 5 times a power of ten. On a short frame that step
+  // can be as wide as the range, and the axis ends with one label on it. These
+  // are the four real ranges the lab drew that way.
+  const cases = [
+    [-0.4, 0.4, 132, "D1's flux, +/-400 mT"],
+    [4.63, 4.69, 132, "G4's output, 60 mV of window"],
+    [33.485, 33.505, 132, "C3's output, 20 mV of window"],
+    [-60, 60, 132, "F4's bridge, +/-60 V"],
+  ]
+  it('puts at least three ticks inside every range the lab draws, however short the frame', () => {
+    for (const [lo, hi, room, what] of cases) {
+      const step = tickStep(lo, hi, room, 1)
+      expect(ticksIn(lo, hi, step), `${what}: step ${step}`).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('leaves a roomy frame the step it already had', () => {
+    // 0 to 12 V over 400 px: the frame's own rule gives 2 V, and so does this.
+    expect(tickStep(0, 12, 400, 1)).toBe(2)
+    expect(ticksIn(0, 12, 2)).toBe(7)
+  })
+
+  it('keeps the step a round number rather than an even division', () => {
+    for (const [lo, hi, room] of cases) {
+      const step = tickStep(lo, hi, room, 1)
+      const mag = Math.pow(10, Math.floor(Math.log10(step)))
+      expect([1, 2, 5], `${lo}..${hi} step ${step}`).toContain(Math.round(step / mag))
+    }
+  })
+
+  it('halves a decade when a log axis holds only one whole one', () => {
+    // F4's carrier: 300 Hz to 8 kHz is 1.43 decades and contains one integer,
+    // so a decade step labelled the axis "1 kHz" and nothing else.
+    const [lo, hi] = [Math.log10(300), Math.log10(8e3)]
+    expect(ticksIn(lo, hi, 1)).toBe(1)
+    expect(logTickStep(lo, hi)).toBe(0.5)
+    expect(ticksIn(lo, hi, 0.5)).toBeGreaterThanOrEqual(3)
+    // A wider log axis keeps whole decades: A1's load runs 0.5 Ohm to 1 kOhm.
+    expect(logTickStep(Math.log10(0.5), Math.log10(1e3))).toBe(1)
   })
 })

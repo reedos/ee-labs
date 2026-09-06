@@ -13,6 +13,7 @@ import { sweepFor } from '../App.jsx'
 import { scopeMarks, sweepMarks } from '../marks.js'
 import { drawScope } from './ScopeCanvas.jsx'
 import { drawSweep, sweepLegend } from './SweepCanvas.jsx'
+import { drawFlux } from './panes.jsx'
 import { fakeCtx, texts } from './fakeCanvas.js'
 
 const W = 850
@@ -36,6 +37,16 @@ const sweep = (id, over = {}) => {
   const marks = sweepMarks(exp, x, s)
   const g = drawSweep(ctx, W, H, { points: s.points, basePoints: b.points, sweep: exp.sweep, at: s.at, atY: s.atY, atY2: s.atY2, marks })
   return { exp, x, s, b, ctx, g, marks }
+}
+/** One sweep drawn at a given size, for the axis probes below. */
+const sweepAt = (id, W2, H2) => {
+  const { exp, p, x, base } = at(id)
+  const s = sweepFor(exp, p, x)
+  const b = sweepFor(exp, defaultsOf(id), base)
+  const ctx = fakeCtx()
+  const marks = sweepMarks(exp, x, s)
+  const g = drawSweep(ctx, W2, H2, { points: s.points, basePoints: b.points, sweep: exp.sweep, at: s.at, atY: s.atY, atY2: s.atY2, marks })
+  return { exp, x, s, ctx, g, marks }
 }
 const traceLabels = new Set(Object.values(TRACES).map((t) => t.label))
 
@@ -257,5 +268,98 @@ describe('the sweep', () => {
     expect(pt.y).toBeLessThanOrEqual(hi + 1e-12)
     const ring = ctx.calls.find((c) => c.name === 'arc' && Math.abs(c.args[0] - g.sx(Math.log10(pt.x))) < 1)
     expect(ring).toBeTruthy()
+  })
+})
+// REVIEW_PLAYBOOK.md class 4: an axis is a quantity, a unit and a range a
+// reader can read a value off. The third of those went missing across the
+// lab. `drawFrame` sizes its tick step from how much room the plot has, and
+// `niceStep` rounds that up to 1, 2 or 5 times a power of ten, so a short
+// frame can be handed a step as large as its own range. Forty of the lab's
+// scope strips came out with one or two labels on them: G4's output strip ran
+// 4.63 to 4.69 V and said "4.65 V", C3's ran 33.485 to 33.505 V and said
+// "33.5 V", D1's flux ran +/-400 mT and said "0 T", and F4's carrier sweep
+// spanned 300 Hz to 8 kHz and said "1 kHz". Every one of those is an axis a
+// student cannot measure anything against.
+describe('every axis carries a scale, not just a quantity and a unit', () => {
+  // A desktop pane, a squeezed one, and a phone. The steps are chosen from the
+  // frame's height and width, so all three have to hold.
+  const SIZES = [
+    [850, 360],
+    [850, 210],
+    [330, 300],
+  ]
+  const MIN = 3
+  /** The y tick labels drawn against one framed area: `drawFrame` puts them at x = area.x - 8k. */
+  const yTicksOf = (ctx, area) =>
+    texts(ctx).filter(
+      (t) => Math.abs(t.x - (area.x - 8 * (area.k || 1))) < 2 && t.y >= area.y - 2 && t.y <= area.y + area.h + 2,
+    )
+  /** The x tick labels: at y = area.y + area.h + 14k. */
+  const xTicksOf = (ctx, area) => texts(ctx).filter((t) => Math.abs(t.y - (area.y + area.h + 14 * (area.k || 1))) < 2)
+
+  it('gives every scope strip at least three tick labels, all different', () => {
+    for (const [W, H] of SIZES) {
+      for (const e of EXPERIMENTS) {
+        if (e.scope === false) continue
+        const { exp, x } = at(e.id)
+        const ctx = fakeCtx()
+        const g = drawScope(ctx, W, H, { wf: x.wf, baseWf: x.wf, traces: exp.traces, marks: scopeMarks(exp, x) })
+        for (const s of g.strips) {
+          const ticks = yTicksOf(ctx, s.area).map((t) => t.text)
+          expect(ticks.length, `${W}x${H} ${e.id} ${s.axis}: [${ticks.join(' | ')}] over ${s.lo}..${s.hi}`).toBeGreaterThanOrEqual(MIN)
+          expect(new Set(ticks).size, `${W}x${H} ${e.id} ${s.axis}: ${ticks.join(' | ')}`).toBe(ticks.length)
+        }
+      }
+    }
+  }, 120000)
+
+  it('gives every sweep at least three tick labels on each axis, all different', () => {
+    for (const [W, H] of SIZES) {
+      for (const e of EXPERIMENTS) {
+        if (!e.sweep) continue
+        const { s, ctx, g } = sweepAt(e.id, W, H)
+        expect(g, e.id).toBeTruthy()
+        expect(s.points.length).toBeGreaterThan(2)
+        for (const [which, ticks] of [
+          ['y', yTicksOf(ctx, g.area).map((t) => t.text)],
+          ['x', xTicksOf(ctx, g.area).map((t) => t.text)],
+        ]) {
+          expect(ticks.length, `${W}x${H} ${e.id} ${which}: [${ticks.join(' | ')}]`).toBeGreaterThanOrEqual(MIN)
+          expect(new Set(ticks).size, `${W}x${H} ${e.id} ${which}: ${ticks.join(' | ')}`).toBe(ticks.length)
+        }
+      }
+    }
+  }, 120000)
+
+  it("gives the flux plot a scale too, and spends its height on the polarity the flux has", () => {
+    for (const [W, H] of SIZES) {
+      for (const id of ['d1', 'd2']) {
+        const { x } = at(id)
+        const ctx = fakeCtx()
+        const g = drawFlux(ctx, W, H, { flux: x.flux, T: x.T })
+        const ticks = yTicksOf(ctx, g.area).map((t) => t.text)
+        expect(ticks.length, `${W}x${H} ${id}: [${ticks.join(' | ')}] over ${g.lo}..${g.hi}`).toBeGreaterThanOrEqual(MIN)
+        expect(new Set(ticks).size, `${W}x${H} ${id}: ${ticks.join(' | ')}`).toBe(ticks.length)
+        // Both cores carry their flux one way, so the frame starts at zero and
+        // draws the one ceiling the trace runs at.
+        expect(Math.min(...x.flux.B), id).toBeGreaterThanOrEqual(0)
+        expect(g.lo, id).toBe(0)
+        expect(g.levels, id).toEqual([x.flux.Bsat])
+        // The ceiling stays in frame whether the flux reaches it or not.
+        expect(g.hi, id).toBeGreaterThan(x.flux.Bsat)
+      }
+    }
+  })
+
+  it('doubles what the flux swing gets, now that no height goes to a sign the flux never has', () => {
+    const { x } = at('d1')
+    const ctx = fakeCtx()
+    const g = drawFlux(ctx, 850, 360, { flux: x.flux, T: x.T })
+    const B = x.flux.B
+    const px = Math.abs(g.sy(Math.min(...B)) - g.sy(Math.max(...B)))
+    // The old frame ran -400 to 400 mT; this one runs 0 to 400 mT, so the same
+    // 18.2 mT of swing covers twice the pixels it did.
+    const old = (Math.max(...B) - Math.min(...B)) / 0.8
+    expect(px / g.area.h).toBeCloseTo(2 * old, 3)
   })
 })

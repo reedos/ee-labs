@@ -1,7 +1,7 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt, anchoredRange } from '@ee-labs/ui'
 import { SWEEP_X, SWEEP_Y } from '../experiments.js'
-import { axisFmt, fitLeftAxis } from '../format.js'
+import { axisFmt, fitLeftAxis, tickStep, logTickStep } from '../format.js'
 import { markLabels } from '../marks.js'
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
@@ -97,19 +97,31 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, atY
         return [Math.min(lo1, lo2), Math.max(hi1, hi2)]
       })()
     : sweepRange(points, basePoints, sweep.y, ay, { withPred: true })
-  const fmtY = (a, lo, hi, log = false) => {
+  // Both steps carry at least three ticks, whatever the frame's size: a
+  // decade step on a range holding one whole decade, or a round step larger
+  // than half the range, leaves an axis with a quantity, a unit and no scale
+  // (format.js tickStep). The fitted frame changes x and w and never h, so
+  // the y step is settled here, before the fit, and the percentage formatter
+  // is told how fine it is.
+  const yStep = logY ? logTickStep(yLo, yHi) : tickStep(yLo, yHi, area.h, k)
+  const fmtY = (a, lo, hi, log = false, step = null) => {
     if (log) {
       const f = axisFmt(Math.pow(10, lo), Math.pow(10, hi), a.unit, { ticks: 1 })
       return (v) => f(Math.pow(10, v))
     }
-    if (a.percent) return (v) => `${Math.round(v * 100)} %`
+    // A percentage axis stepped finer than a whole point needs the decimal,
+    // or two neighbouring ticks round to the same label.
+    if (a.percent) {
+      const dp = step && step < 0.01 ? Math.min(3, Math.ceil(-Math.log10(step * 100))) : 0
+      return (v) => `${(v * 100).toFixed(dp)} %`
+    }
     if (a.unit) return axisFmt(lo, hi, a.unit)
     // Unitless axes (M, power factor) still need enough decimals to
     // separate their ticks.
     const dp = Math.max(2, Math.ceil(-Math.log10(Math.max(1e-12, (hi - lo) / 5))) + 1)
     return (v) => v.toFixed(Math.min(6, dp))
   }
-  const fmtYleft = fmtY(ay, yLo, yHi, logY)
+  const fmtYleft = fmtY(ay, yLo, yHi, logY, yStep)
   const framed = fitLeftAxis(ctx, area, [fmtYleft(yLo), fmtYleft(yHi), fmtYleft((yLo + yHi) / 2)], k)
   const yTitleText = shared ? `${ay.label}, ${ay2.label} (${ay.unit})` : ay.unit ? `${ay.label} (${ay.unit})` : ay.label
   // drawFrame always rotates its y-axis title — right for a worded label,
@@ -120,8 +132,8 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, atY
   // upright here instead, in the same spot drawFrame would have put it.
   const yTitleRotates = yTitleText.length > 2
   const { sx, sy } = drawFrame(ctx, framed, xMin, xMax, yLo, yHi, (v) => fmtX(logX ? Math.pow(10, v) : v), fmtYleft, {
-    xStep: logX ? 1 : unitAxis ? 0.1 : null,
-    yStep: logY ? 1 : sweep.y === 'eta' ? 0.2 : null,
+    xStep: logX ? logTickStep(xMin, xMax) : tickStep(xMin, xMax, framed.w, k, { spacing: 62 }),
+    yStep,
     xTitle: ax.unit ? `${ax.label} (${ax.unit})` : sweep.x === 'D' ? 'Duty D' : ax.label,
     yTitle: yTitleRotates ? yTitleText : null,
   })

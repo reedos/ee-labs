@@ -5,7 +5,7 @@ import { TRACES } from '../experiments.js'
 import { TRACE_COLORS } from './ScopeCanvas.jsx'
 import Schematic from './schematics.jsx'
 import { Formula } from '@ee-labs/explain'
-import { fmtz, nz, statScale, axisFmt, niceBounds } from '../format.js'
+import { fmtz, nz, statScale, axisFmt, niceBounds, tickStep } from '../format.js'
 
 /** An equation in a table cell, set like the math panel's formulas. */
 const Eq = ({ children }) => <Formula display={false}>{children}</Formula>
@@ -512,59 +512,74 @@ const SATURATION_NOTE =
   'The knee is a model of iron rather than a law. Below I_sat the inductance is L and above it L divided ' +
   'by the collapse ratio, and each piece is solved exactly.'
 
+/**
+ * The flux plot as a pure drawing, so its frame can be measured the way the
+ * scope's and the sweep's are. Returns the geometry it drew with: the range,
+ * the tick step, the ceilings it put in frame, and `sy`.
+ */
+export function drawFlux(ctx, w, h, { flux, T }) {
+  const area = plotArea(w, h, { topInset: 16 * plotArea(w, h).k })
+  const k = area.k
+  const n = flux.t.findIndex((t) => t > T * (1 + 1e-9))
+  const end = n < 0 ? flux.t.length : n
+  const ts = flux.t.slice(0, end).map((t) => t * 1e6)
+  const B = flux.B.slice(0, end)
+  // The ceiling is always in frame, and so is the trace. Only the ceiling the
+  // flux runs at, though: a buck on a core carries its flux one way, and a
+  // frame of ±B_sat around it spent half the height on a polarity the trace
+  // never visits, which halved what was left for the swing the note names.
+  // The frame keeps the sign the flux has, and both signs when it has both.
+  const top = Math.max(flux.Bsat * 1.15, ...B.map(Math.abs)) * 1.05
+  const [Blo, Bhi] = [Math.min(...B), Math.max(...B)]
+  const [lo, hi] = niceBounds(Blo < 0 ? -top : 0, Bhi > 0 ? top : 0)
+  // ±400 mT over a short pane took a 500 mT step from the frame's own rule,
+  // so the axis said "0 T" and nothing else.
+  const yStep = tickStep(lo, hi, area.h, k)
+  const { sx, sy } = drawFrame(ctx, area, 0, T * 1e6, lo, hi, (v) => fmt(v * 1e-6, 's', 3), axisFmt(lo, hi, 'T'), {
+    zeroLine: true,
+    yStep,
+    xTitle: 'Time, one period',
+    yTitle: 'Flux density (T)',
+  })
+  ctx.save()
+  // The ceiling, on every side the frame shows.
+  ctx.strokeStyle = COLORS.marker
+  ctx.setLineDash([6 * k, 4 * k])
+  ctx.lineWidth = 1.2 * k
+  const levels = [flux.Bsat, -flux.Bsat].filter((v) => v >= lo && v <= hi)
+  for (const level of levels) {
+    ctx.beginPath()
+    ctx.moveTo(area.x, sy(level) + 0.5)
+    ctx.lineTo(area.x + area.w, sy(level) + 0.5)
+    ctx.stroke()
+  }
+  ctx.setLineDash([])
+  ctx.font = `${Math.round(11 * k)}px ${MONO}`
+  ctx.fillStyle = COLORS.marker
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'bottom'
+  ctx.fillText(`B_sat ${fmt(flux.Bsat, 'T', 3)}`, area.x + area.w - 6 * k, sy(flux.Bsat) - 3 * k)
+  ctx.restore()
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(area.x, area.y, area.w, area.h)
+  ctx.clip()
+  ctx.strokeStyle = TRACE_COLORS.iL
+  ctx.lineWidth = 2 * k
+  ctx.beginPath()
+  for (let i = 0; i < ts.length; i++) {
+    if (i === 0) ctx.moveTo(sx(ts[i]), sy(B[i]))
+    else ctx.lineTo(sx(ts[i]), sy(B[i]))
+  }
+  ctx.stroke()
+  ctx.restore()
+  return { area, sx, sy, lo, hi, yStep, levels }
+}
+
 function FluxCanvas({ x }) {
   const { flux, T } = x
-  const ref = useCanvas(
-    (ctx, w, h) => {
-      const area = plotArea(w, h, { topInset: 16 * plotArea(w, h).k })
-      const k = area.k
-      const n = flux.t.findIndex((t) => t > T * (1 + 1e-9))
-      const end = n < 0 ? flux.t.length : n
-      const ts = flux.t.slice(0, end).map((t) => t * 1e6)
-      const B = flux.B.slice(0, end)
-      // The ceiling is always in frame, and so is the trace.
-      const top = Math.max(flux.Bsat * 1.15, ...B.map(Math.abs)) * 1.05
-      const [lo, hi] = niceBounds(-top, top)
-      const { sx, sy } = drawFrame(ctx, area, 0, T * 1e6, lo, hi, (v) => fmt(v * 1e-6, 's', 3), axisFmt(lo, hi, 'T'), {
-        zeroLine: true,
-        xTitle: 'Time, one period',
-        yTitle: 'Flux density (T)',
-      })
-      ctx.save()
-      // The ceiling, both ways.
-      ctx.strokeStyle = COLORS.marker
-      ctx.setLineDash([6 * k, 4 * k])
-      ctx.lineWidth = 1.2 * k
-      for (const level of [flux.Bsat, -flux.Bsat]) {
-        ctx.beginPath()
-        ctx.moveTo(area.x, sy(level) + 0.5)
-        ctx.lineTo(area.x + area.w, sy(level) + 0.5)
-        ctx.stroke()
-      }
-      ctx.setLineDash([])
-      ctx.font = `${Math.round(11 * k)}px ${MONO}`
-      ctx.fillStyle = COLORS.marker
-      ctx.textAlign = 'right'
-      ctx.textBaseline = 'bottom'
-      ctx.fillText(`B_sat ${fmt(flux.Bsat, 'T', 3)}`, area.x + area.w - 6 * k, sy(flux.Bsat) - 3 * k)
-      ctx.restore()
-
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(area.x, area.y, area.w, area.h)
-      ctx.clip()
-      ctx.strokeStyle = TRACE_COLORS.iL
-      ctx.lineWidth = 2 * k
-      ctx.beginPath()
-      for (let i = 0; i < ts.length; i++) {
-        if (i === 0) ctx.moveTo(sx(ts[i]), sy(B[i]))
-        else ctx.lineTo(sx(ts[i]), sy(B[i]))
-      }
-      ctx.stroke()
-      ctx.restore()
-    },
-    [flux, T],
-  )
+  const ref = useCanvas((ctx, w, h) => drawFlux(ctx, w, h, { flux, T }), [flux, T])
   return <canvas ref={ref} className="plot" role="img" aria-label="Flux density over one period, against the core's ceiling" />
 }
 

@@ -30,6 +30,48 @@ export function statScale(s) {
   return Math.max(Math.abs(s.max), Math.abs(s.min), Math.abs(s.avg), s.pp)
 }
 
+/** How many multiples of `step` fall inside [lo, hi]. */
+export const ticksIn = (lo, hi, step) =>
+  step > 0 ? Math.floor(hi / step + 1e-9) - Math.ceil(lo / step - 1e-9) + 1 : 0
+
+/**
+ * A tick step that puts at least `min` labelled ticks inside [lo, hi].
+ *
+ * `drawFrame` asks `niceStep` for a step, sized from how much room the plot
+ * has, and `niceStep` rounds UP to 1, 2 or 5 times a power of ten. On a short
+ * frame the step it returns can be as large as the range itself, and the axis
+ * comes out with one label or none. The scope splits its height between two
+ * strips, so each strip asked for two divisions and forty of them across the
+ * lab ended up with fewer than three ticks: G4's output ran 4.63 to 4.69 V and
+ * said "4.65 V" and nothing else, and D1's flux ran ±400 mT and said "0 T". An
+ * axis with one tick has a quantity and a unit and no scale.
+ *
+ * So ask for more divisions until at least `min` ticks land inside the range.
+ * The step stays a round number, because it is still `niceStep`'s.
+ */
+export function tickStep(lo, hi, room, k = 1, { min = 3, spacing = 46 } = {}) {
+  const span = Math.abs(hi - lo)
+  if (!(span > 0)) return null
+  const fits = Math.max(2, Math.floor(room / (spacing * k)))
+  for (let target = fits; target <= 24; target++) {
+    const step = niceStep(span, target)
+    if (ticksIn(lo, hi, step) >= min) return step
+  }
+  return span / min
+}
+
+/**
+ * The same rule for an axis plotted in decades, where the step is in decades
+ * too. A whole decade is the right step over two or more of them. F4 sweeps
+ * its carrier from 300 Hz to 8 kHz, which is 1.43 decades and holds exactly
+ * one whole one, so its axis carried the single label "1 kHz". Half a decade
+ * puts 320 Hz, 1 kHz and 3.2 kHz on it instead.
+ */
+export function logTickStep(lo, hi, min = 3) {
+  for (const step of [1, 0.5, 0.25, 0.2, 0.1]) if (ticksIn(lo, hi, step) >= min) return step
+  return Math.abs(hi - lo) / min
+}
+
 /**
  * A tick formatter with enough significant figures to tell the ticks apart.
  *

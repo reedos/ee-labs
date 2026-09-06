@@ -1,7 +1,7 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt, scopeRange } from '@ee-labs/ui'
 import { TRACES } from '../experiments.js'
-import { axisFmt, fitLeftAxis } from '../format.js'
+import { axisFmt, fitLeftAxis, tickStep } from '../format.js'
 import { markLabels } from '../marks.js'
 
 /** One colour per trace, kept apart from the axis chrome. */
@@ -78,6 +78,10 @@ export function drawScope(ctx, w, h, { wf, baseWf = null, traces, marks = [] }) 
     const last = i === kinds.length - 1
     const r = drawFrame(ctx, area, xMin, xMax, s.lo, s.hi, last ? fmtX : () => '', s.fmt, {
       zeroLine: s.lo < 0 && s.hi > 0,
+      // Two strips share the height, so each one is short enough that the
+      // frame's own step leaves it with a single tick. Ask for a step that
+      // carries a scale (format.js tickStep).
+      yStep: tickStep(s.lo, s.hi, area.h, k),
       xTitle: last ? 'Time' : null,
       yTitle: s.axis === 'V' ? 'Voltage (V)' : 'Current (A)',
     })
