@@ -1,6 +1,6 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmtHz } from '@ee-labs/ui'
-import { phaseFrame, labelSide } from '../bodeFrame.js'
+import { phaseFrame, placeLabel } from '../bodeFrame.js'
 
 /**
  * Magnitude against frequency, on a log axis, with optional phase.
@@ -135,18 +135,17 @@ export default function BodeCanvas({
       const named = [...markers]
       if (crossover) named.push({ f: crossover, label: 'gain = 1' })
       if (phaseCrossover) named.push({ f: phaseCrossover, label: 'phase = −180°' })
-      // Each label sits clear of every trace ACROSS THE SPAN IT COVERS: it
-      // used to sit fixed at the top, and on a loop whose phase trace runs
-      // near the top there too (L11, "The plant that needs feedback")
-      // "gain = 1" printed right over the phase curve. Asking at the
-      // marker's own frequency fixed that one and left the mirror of it:
-      // "phase = −180°" is drawn to the right of its line and runs a third
-      // of a decade, and on the three-lag loop (lessons 8, 9 and 13) the
-      // phase trace descends through the words after the point where the
-      // room was measured. Every sample inside the label's own x range
-      // counts now, ghost traces included, and the label goes on whichever
-      // side has the bigger gap. Two labels stack within their own side
-      // rather than sharing one row counter.
+      // Each label goes in the box no trace runs through. It used to sit
+      // fixed at the top, and on a loop whose phase trace runs near the top
+      // there too (L11, "The plant that needs feedback") "gain = 1" printed
+      // right over the phase curve. Asking at the marker's own frequency
+      // fixed that one and left the mirror of it: "phase = −180°" is drawn
+      // beside its line and runs a third of a decade, and on the three-lag
+      // loop (lessons 8, 9 and 13) the phase trace descends through the
+      // words after the point where the room was measured. Real boxes are
+      // scored now, right of the line and left of it, at whichever row the
+      // label would actually occupy — because two labels stack, and the
+      // second one's row is not where the first one's clearance was.
       let topRow = 0
       let botRow = 0
       for (const m of named) {
@@ -165,44 +164,62 @@ export default function BodeCanvas({
           ctx.fillStyle = COLORS.marker
           ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
           ctx.textAlign = 'left'
-          // The words run to the RIGHT of the marker's own line, so the side
-          // with the room has to be decided over the whole span they cover,
-          // not at the one frequency the marker names. See bodeFrame.js.
-          const x0 = x + 4 * k
-          const x1 = x0 + ctx.measureText(m.label).width
-          const traceYs = []
-          for (let j = 0; j < freqs.length; j++) {
-            const fx = sx(lx(freqs[j]))
-            if (fx < x0 - 1 || fx > x1 + 1) continue
-            traceYs.push(sy(db(mag[j])))
-            if (ghostMag) traceYs.push(sy(db(ghostMag[j])))
-            if (phaseScale) traceYs.push(phaseScale.py((phase[j] * 180) / Math.PI))
-            if (phaseScale && ghostPhase) traceYs.push(phaseScale.py((ghostPhase[j] * 180) / Math.PI))
-          }
-          // The marker's own frequency, whether or not a sample landed on it
-          // — the label is anchored there and the traces at that x still
-          // count against it.
-          let i = 0
-          let bd = Infinity
-          for (let j = 0; j < freqs.length; j++) {
-            const d = Math.abs(lx(freqs[j]) - lx(m.f))
-            if (d < bd) {
-              bd = d
-              i = j
+          // Four boxes the words could occupy — right of the marker's line
+          // and left of it, at the top row and at the bottom — each carrying
+          // the trace samples inside its OWN x range, and the one no trace
+          // enters wins (bodeFrame.js: placeLabel). Nothing here compares
+          // gaps at the marker's own frequency any more: the label is wide,
+          // the traces move across it, and a second label stacks a row in
+          // from the edge where the first one's clearance does not apply.
+          const textW = ctx.measureText(m.label).width
+          const textH = 12 * k
+          const marker = (() => {
+            let i = 0
+            let bd = Infinity
+            for (let j = 0; j < freqs.length; j++) {
+              const d = Math.abs(lx(freqs[j]) - lx(m.f))
+              if (d < bd) {
+                bd = d
+                i = j
+              }
             }
+            return i
+          })()
+          const sampleSpan = (x0, x1) => {
+            const ys = []
+            const push = (j) => {
+              ys.push(sy(db(mag[j])))
+              if (ghostMag) ys.push(sy(db(ghostMag[j])))
+              if (phaseScale) ys.push(phaseScale.py((phase[j] * 180) / Math.PI))
+              if (phaseScale && ghostPhase) ys.push(phaseScale.py((ghostPhase[j] * 180) / Math.PI))
+            }
+            for (let j = 0; j < freqs.length; j++) {
+              const fx = sx(lx(freqs[j]))
+              if (fx >= x0 - 1 && fx <= x1 + 1) push(j)
+            }
+            // The marker's own frequency always counts: the label is anchored
+            // to that line whichever side of it the words sit on.
+            push(marker)
+            return ys
           }
-          traceYs.push(sy(db(mag[i])))
-          if (phaseScale) traceYs.push(phaseScale.py((phase[i] * 180) / Math.PI))
-          const { side } = labelSide(traceYs, area.y, area.y + area.h)
-          if (side === 'top') {
-            ctx.textBaseline = 'top'
-            ctx.fillText(m.label, x + 4 * k, area.y + (4 + 14 * topRow) * k)
-            topRow++
-          } else {
-            ctx.textBaseline = 'bottom'
-            ctx.fillText(m.label, x + 4 * k, area.y + area.h - (4 + 14 * botRow) * k)
-            botRow++
+          const rightX = x + 4 * k
+          const leftX = x - 4 * k - textW
+          const sides = [{ key: 'right', x: rightX, ys: sampleSpan(rightX, rightX + textW) }]
+          // Left only where the words fit inside the plot: a label that has
+          // left the picture is worse than one a curve crosses.
+          if (leftX >= area.x + 2 * k) sides.push({ key: 'left', x: leftX, ys: sampleSpan(leftX, leftX + textW) })
+          const candidates = []
+          for (const s of sides) {
+            const topY = area.y + (4 + 14 * topRow) * k
+            const botY = area.y + area.h - (4 + 14 * botRow) * k
+            candidates.push({ ...s, row: 'top', y: topY, top: topY, bottom: topY + textH })
+            candidates.push({ ...s, row: 'bottom', y: botY, top: botY - textH, bottom: botY })
           }
+          const put = placeLabel(candidates)
+          ctx.textBaseline = put.row === 'top' ? 'top' : 'bottom'
+          ctx.fillText(m.label, put.x, put.y)
+          if (put.row === 'top') topRow++
+          else botRow++
         }
       }
 

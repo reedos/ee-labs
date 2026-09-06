@@ -40,34 +40,41 @@ export function phaseFrame(minDeg, maxDeg, areaY, areaH, k = 1) {
 }
 
 /**
- * Which side of the plot a marker's label goes on: above both traces, or
- * below them.
+ * Where a marker's label goes: the candidate box that no trace runs through.
  *
- * The rule was already "whichever side has the bigger gap", and it was asked
- * at one x — the marker's own frequency — while the label is drawn to the
- * RIGHT of that line and runs a good fraction of a decade across the plot.
- * On the three-lag loop that is the difference between a correct answer and
- * a wrong one: at the phase crossover the magnitude sits high and the phase
- * at −180°, so the room is below, and by the right-hand end of the words
- * "phase = −180°" the phase trace has descended through them. The label
- * printed the number it names across its own curve.
+ * The rule used to be "whichever side has the bigger gap", asked at one x —
+ * the marker's own frequency — while the label is drawn beside that line and
+ * runs a good fraction of a decade across the plot. On the three-lag loop
+ * that is the difference between a correct answer and a wrong one: at the
+ * phase crossover the magnitude sits high and the phase at −180°, so the
+ * room looks to be below, and by the right-hand end of the words
+ * "phase = −180°" the phase trace has descended through them.
  *
- * `samples` is every trace y inside the label's own x span, the marker's
- * frequency included. Returns the side and both gaps, so a caller can log
- * or assert the margin it actually got.
+ * Comparing gaps is not enough either. Two labels stack, so the second one
+ * sits a row in from the edge, and a gap that was big enough at the edge is
+ * not the gap the box it actually occupies gets. On a phone's short Bode
+ * pane that row is exactly where the phase trace runs.
+ *
+ * So a caller offers the real boxes — above and below, and left of the
+ * marker as well as right where there is room for it — each with the trace
+ * samples inside its own x range. The box no trace enters wins; among boxes
+ * that all fail, the one whose nearest trace is furthest away. `hits` and
+ * `clear` come back so a caller can say which it got.
  */
-export function labelSide(samples, areaTop, areaBottom) {
-  let min = Infinity
-  let max = -Infinity
-  for (const y of samples) {
-    if (!Number.isFinite(y)) continue
-    if (y < min) min = y
-    if (y > max) max = y
+export function placeLabel(candidates) {
+  let best = null
+  for (const c of candidates) {
+    let hits = 0
+    let clear = Infinity
+    for (const y of c.ys) {
+      if (!Number.isFinite(y)) continue
+      if (y >= c.top && y <= c.bottom) hits++
+      else clear = Math.min(clear, y < c.top ? c.top - y : y - c.bottom)
+    }
+    const scored = { ...c, hits, clear }
+    if (!best || scored.hits < best.hits || (scored.hits === best.hits && scored.clear > best.clear)) {
+      best = scored
+    }
   }
-  // No trace under the label at all: the top is where labels have always
-  // gone, and the whole box is the gap.
-  if (!Number.isFinite(min)) return { side: 'top', topGap: areaBottom - areaTop, botGap: areaBottom - areaTop }
-  const topGap = min - areaTop
-  const botGap = areaBottom - max
-  return { side: topGap >= botGap ? 'top' : 'bottom', topGap, botGap }
+  return best
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { phaseFrame, labelSide, PHASE_CLEAR } from './bodeFrame.js'
+import { phaseFrame, placeLabel, PHASE_CLEAR } from './bodeFrame.js'
 import { LESSONS, applyLesson } from './lessons.js'
 import { buildLoop } from './systems.js'
 import { bode, polesZeros } from '@ee-labs/systems'
@@ -51,41 +51,52 @@ describe('the phase overlay keeps clear of the frame', () => {
   })
 })
 
-describe('a marker label goes on the side that has room for it', () => {
-  const top = 0
-  const bottom = 200
+describe('a marker label goes in the box no trace runs through', () => {
+  // Boxes are {top, bottom} in pixels, with the trace samples that fall in
+  // each one's own x range.
+  const box = (key, top, ys) => ({ key, top, bottom: top + 12, ys })
 
-  it('picks the side with the bigger gap', () => {
-    expect(labelSide([150, 160], top, bottom).side).toBe('top')
-    expect(labelSide([20, 30], top, bottom).side).toBe('bottom')
+  it('picks the box with no trace in it', () => {
+    const chosen = placeLabel([box('right-top', 4, [60, 150]), box('right-bottom', 180, [60, 150])])
+    expect(chosen.key).toBe('right-top')
+    expect(chosen.hits).toBe(0)
   })
 
-  it('a descending trace inside the label\'s span moves the label off it', () => {
-    // The three-lag defect, in the smallest form that reproduces it. At the
-    // marker's own frequency the traces sit at 60 and 150: room below (50px)
-    // beats room above (60px)... it does not, and that is the point — the
-    // old code compared exactly these two numbers and chose the bottom
-    // because the phase trace was the lower of them. Add the samples the
-    // label's own width covers, where the phase has descended to 185, and
-    // the bottom gap collapses to 15px while the top keeps 60.
-    const atMarkerOnly = labelSide([60, 150], top, bottom)
-    expect(atMarkerOnly.topGap).toBe(60)
-    expect(atMarkerOnly.botGap).toBe(50)
-    expect(atMarkerOnly.side).toBe('top')
-
-    const acrossTheSpan = labelSide([60, 150, 70, 168, 80, 185], top, bottom)
-    expect(acrossTheSpan.botGap).toBe(15)
-    expect(acrossTheSpan.side).toBe('top')
+  it('a stacked second label does not inherit the clearance of the first', () => {
+    // The 390px reproduction: at the bottom EDGE (row 0, y 184-196) the
+    // phase trace at 205 is clear, and one row in (row 1, y 170-182) it is
+    // not. Comparing gaps at the edge said "bottom" for both labels and put
+    // the second one on the curve.
+    const edge = placeLabel([box('top', 18, [30, 205]), box('bottom-row0', 184, [30, 205])])
+    expect(edge.key).toBe('bottom-row0')
+    const stacked = placeLabel([box('top', 18, [30, 205]), box('bottom-row1', 170, [30, 176, 205])])
+    expect(stacked.key).toBe('top')
   })
 
-  it('an empty sample set is a top label and the whole box of room', () => {
-    const r = labelSide([], top, bottom)
-    expect(r.side).toBe('top')
-    expect(r.topGap).toBe(200)
+  it('a left-hand box wins when only the right-hand span is crossed', () => {
+    const chosen = placeLabel([
+      box('right-top', 4, [8, 150]),
+      box('right-bottom', 180, [8, 150]),
+      box('left-top', 4, [90, 150]),
+    ])
+    expect(chosen.key).toBe('left-top')
   })
 
-  it('non-finite samples are ignored rather than poisoning the gaps', () => {
-    expect(labelSide([NaN, 150, Infinity], top, bottom).side).toBe('top')
+  it('when every box is crossed it takes the one whose trace is furthest in', () => {
+    const chosen = placeLabel([box('a', 0, [6]), box('b', 100, [101])])
+    expect(chosen.hits).toBe(1)
+    expect(['a', 'b']).toContain(chosen.key)
+  })
+
+  it('an empty sample set is a clean box', () => {
+    const chosen = placeLabel([box('only', 40, [])])
+    expect(chosen.hits).toBe(0)
+    expect(chosen.clear).toBe(Infinity)
+  })
+
+  it('non-finite samples are ignored rather than counted as hits', () => {
+    const chosen = placeLabel([box('only', 40, [NaN, Infinity, 200])])
+    expect(chosen.hits).toBe(0)
   })
 })
 

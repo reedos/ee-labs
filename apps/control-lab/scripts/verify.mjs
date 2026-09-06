@@ -697,7 +697,7 @@ console.log('\n4b. The loop diagram: live parameters, and the step entry wired t
     'Ki 0.5',
     'r − y',
     // Reed's rule: the view says the name of the thing it enacts.
-    'transfer functions multiply — L = C·P',
+    'transfer functions multiply: L = C·P',
   ]) {
     if (!svgText.includes(want)) fail(`diagram: expected "${want}" in the drawing, not found`)
   }
