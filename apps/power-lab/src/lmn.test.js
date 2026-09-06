@@ -25,7 +25,16 @@ import { analyse } from './analysis.js'
 import { experimentMath } from './math.js'
 import { sweepFor, outcomeOf } from './App.jsx'
 import { sweepMarks } from './marks.js'
-import { driveParams, LMN_KINDS, LMN_HEADLINES } from './groups/lmn.js'
+import {
+  driveParams,
+  LMN_KINDS,
+  LMN_HEADLINES,
+  sweepDriveD,
+  sweepDriveFs,
+  sweepDamping,
+  sweepThermalR,
+  sweepThermalFs,
+} from './groups/lmn.js'
 
 // Every number Groups L, M and N put on the screen, pinned against the engine
 // that produced it.
@@ -655,6 +664,28 @@ describe('the thermal network is the same propagator with degrees on it', () => 
     for (const P of [0.5, 3.401, 20]) {
       const [rise] = stepRise(net, P, [60 * net.Rtotal * net.Ctotal])
       expect(Math.abs(rise / (P * net.Rtotal) - 1), `P = ${P}`).toBeLessThan(1e-9)
+    }
+  })
+
+  it('draws each of the six sweeps as a curve rather than a set of points', () => {
+    // §11.1.4's rule, for the curves these groups add: continuity by
+    // refinement. Four times the points and the largest step between
+    // neighbours at most halves. A jump would not care how fine the grid is.
+    const maxStep = (pts, y) => Math.max(...pts.slice(1).map((q, i) => Math.abs(q[y] - pts[i][y])))
+    const cases = [
+      ['l1', 'speed', (p, n) => sweepDriveD('dcdrive', p, n)],
+      ['l2', 'iin', (p, n) => sweepDriveD('hbridge', p, n)],
+      ['l3', 'ripple', (p, n) => sweepDriveFs('bldc', p, n)],
+      ['m2', 'att', (p, n) => sweepDamping(p, n)],
+      ['n1', 'Tj', (p, n) => sweepThermalR(p, n)],
+      ['n3', 'Tj', (p, n) => sweepThermalFs(p, n)],
+    ]
+    for (const [id, y, sweep] of cases) {
+      const p = defaultsOf(id)
+      const coarse = sweep(p, 41)
+      const fine = sweep(p, 161)
+      for (const q of fine) expect(Number.isFinite(q[y]), `${id} ${y} at ${q.x}`).toBe(true)
+      expect(maxStep(fine, y), `${id} ${y}`).toBeLessThanOrEqual(0.5 * maxStep(coarse, y))
     }
   })
 
