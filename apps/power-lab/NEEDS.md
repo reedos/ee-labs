@@ -76,11 +76,13 @@ says `dark`, and `src/release.test.js` fails if any of it is.
    number the card claims, so the card and the README row are written once,
    against the count on the day.
 3. **Three meters and four traces were added to the shell's own tables.**
-   `review.test.jsx` listed the four headline meters the lab had, and it now
-   lists seven: the line's ripple, the switch node's ring, and the junction
-   temperature. `ORDER` in `panes.jsx` gained the back EMF, the input
-   capacitor's voltage and current, and the line current. Both are appended
-   rows rather than edits, so a second lane's rows merge beside them.
+   The meters are the line's ripple, the switch node's ring, and the junction
+   temperature. Both tables read as a base list plus one appended row a lane,
+   so a second lane's row merges beside this one. `review.test.jsx` takes its
+   added meters from `LMN_HEADLINES`. A lane that declares a meter does not
+   also edit the test. `ORDER` in `panes.jsx` partitions the union by axis, so
+   the measures table still reads voltages before currents. No lane has to
+   place its own signals inside the base list.
 4. **The schematic kit is exported.** `schematics.jsx` now exports its
    symbols, so a group can draw a circuit in the lab's own idiom without
    copying one. `lmnSchematics.jsx` is the first user, and the six drawings it

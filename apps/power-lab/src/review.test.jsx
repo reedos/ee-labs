@@ -6,6 +6,7 @@ import { termsFor } from './terms.js'
 import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, byId, defaultsOf, offeredTraces } from './experiments.js'
 import { analyse } from './analysis.js'
 import { scopeRange } from './format.js'
+import { LMN_HEADLINES } from './groups/lmn.js'
 
 // The 2026-09-02 review's bar (POWER_LAB_PLAN.md §11), one test per complaint.
 // Each was written against the build the review looked at and watched fail
@@ -76,12 +77,15 @@ describe('the first screen shows the loss, not three flat lines (§11.4.2, §11.
 
 describe('no screen contradicts its note (§11.0 claim bugs)', () => {
   it('every experiment declares its headline meter, and A2’s is RMS against the mean, not η', () => {
-    // The meters the lab has: efficiency, power factor, the RMS against the
-    // mean (the chopper's), and total harmonic distortion (the inverters',
-    // whose efficiency is near one and says nothing). Groups L, M and N add
-    // three more, each the number its own group is about: the ripple the line
-    // carries, the switch node's ring, and the junction temperature.
-    for (const e of EXPERIMENTS) expect(['eta', 'pf', 'rms', 'thd', 'ripple', 'ring', 'tj'], e.id).toContain(e.headline)
+    // The meters the lab's first seven groups have: efficiency, power factor,
+    // the RMS against the mean (the chopper's), and total harmonic distortion
+    // (the inverters', whose efficiency is near one and says nothing). A later
+    // group appends its own meters as one row, so three lanes merge by union.
+    // Groups L, M and N add the line's ripple, the switch node's ring and the
+    // junction temperature, each the number its own group is about.
+    const METERS = ['eta', 'pf', 'rms', 'thd']
+    const added = [...Object.keys(LMN_HEADLINES)]
+    for (const e of EXPERIMENTS) expect([...METERS, ...added], e.id).toContain(e.headline)
     expect(byId.a2.headline).toBe('rms')
     const t = text(topbar(render('a2')))
     expect(t).toMatch(/7\.75/)
