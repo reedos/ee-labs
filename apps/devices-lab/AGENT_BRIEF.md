@@ -7,19 +7,18 @@ for your lane before writing a line. Reed reviews everything.
 
 ## Boundaries: read first
 
-- **One lane per agent, one clone per agent.** Clone the repo into a directory
-  named for your lane (`~/projects/ee-labs-devices-lane-3`), set the remote and
-  the author as the other briefs describe, and run `npm ci`. Never work in the
-  shared checkout.
+- **One lane per agent, one worktree per agent.** `PROGRAM.md` §2: the branch is
+  `lab/devices-lab`, the worktree gets its own `npm ci`, and nothing is pushed
+  by an overseer. Never clone a second copy into `~/projects/ee-labs-devices-lane-*`.
+  Never work in the shared checkout.
 - **Edit only the files your lane owns** (§1). Everything else is read-only. If
   you need a change outside your lane, write it into
   `apps/devices-lab/NEEDS.md` under your lane's heading, commit that, and carry
   on with what you can do. The owning lane picks it up.
 - **Stage by path.** Write `git add apps/devices-lab/src/groups/c.js`, never
   `git add -A` and never `commit -a`.
-- Work on `lab/devices-lab`. Run `git pull --rebase` before every push. Never
-  rewrite pushed history. The lab deploys dark at `/devices-lab/` once the
-  director adds the deploy line, so push only when the scoped suite is green.
+- Work on `lab/devices-lab`. Never push. The lab deploys dark at `/devices-lab/`
+  once the director adds the deploy line.
 - **Preview port.** Lane number plus 4320, so lane 3 previews on 4323. The
   other labs use 4176 to 4319.
 
