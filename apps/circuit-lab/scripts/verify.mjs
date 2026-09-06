@@ -1218,24 +1218,48 @@ console.log('\n14. The step axis names its unit, h(0) is printed, tolerance rows
   // must FOLLOW R: 1/(RC) is 10 000 s⁻¹ at 1 kΩ · 100 nF and ten times that
   // at 100 Ω. Measured against the drawn samples, not just read back.
   await pick('The impulse response, and why the step is its integral')
-  const s10k = await slope()
-  if (!/10\.0 ?k\/s/.test(s10k || '')) fail(`h(0) at R = 1 kΩ should read 10.0 k/s, got "${s10k}"`)
+  // The value, not a spelling of it. This was pinned as the literal string
+  // "10.0 k/s" and the app has never printed that: `fmt` trims a trailing
+  // zero, so three significant figures of 10 000 come out "10 k". Read the
+  // number back and compare it with 1/(RC) off the knobs, so the check
+  // measures h(0) instead of a rounding convention.
+  const slopeValue = async () => si(((await slope()) || '').replace(/^h\(0\)\s*/, ''))
+  // ...and the drawn curve's own slope, off the trace's FIRST TWO POINTS.
   const drawn = () =>
     page.evaluate(() => {
       const c = document.querySelectorAll('.views canvas')[1]
-      const s = JSON.parse(c.dataset.samples || '[]')
-      // The first sample pair off the drawn trace: rise over run.
-      return s.length > 1 ? (s[0][1] - 0) / (s[0][0] - 0) : NaN
+      const s = JSON.parse(c.dataset.head || '[]')
+      return s.length > 1 ? (s[1][1] - s[0][1]) / (s[1][0] - s[0][0]) : NaN
     })
+  // The knobs' true SI values, off aria-valuenow — the field DISPLAYS "1" in
+  // kΩ, and a harness that read the shown text would be a thousand times out.
+  const knob = async (label) =>
+    parseFloat(await page.getByRole('spinbutton', { name: label }).first().getAttribute('aria-valuenow'))
+  const rcSlope = async () => 1 / ((await knob('R')) * (await knob('C')))
+  const want10k = await rcSlope()
+  const s10k = await slope()
+  const v10k = await slopeValue()
+  if (!(Math.abs(v10k / want10k - 1) < 0.005)) {
+    fail(`h(0) at R = 1 kΩ should read 1/(RC) = ${want10k.toFixed(0)} /s, got "${s10k}"`)
+  }
   const d10k = await drawn()
-  if (!(Math.abs(d10k / 10000 - 1) < 0.35)) {
-    fail(`the drawn curve's own slope near t = 0 is ${d10k.toFixed(0)} /s, nowhere near the 10 000 /s h(0) claims`)
+  if (!(Math.abs(d10k / want10k - 1) < 0.02)) {
+    fail(`the drawn curve's own slope at t = 0 is ${d10k.toFixed(0)} /s, not the ${want10k.toFixed(0)} /s h(0) claims`)
   }
   await page.locator('.try-chips .chip', { hasText: 'R 100 Ω' }).click()
   await settle()
+  const want100k = await rcSlope()
   const s100 = await slope()
-  if (!/100 ?k\/s/.test(s100 || '')) fail(`h(0) at R = 100 Ω should read 100 k/s, got "${s100}"`)
-  console.log(`   impulse lesson: ${s10k} at 1 kΩ, ${s100} at 100 Ω; drawn slope ${(d10k / 1000).toFixed(1)} k/s`)
+  const v100 = await slopeValue()
+  if (!(Math.abs(v100 / want100k - 1) < 0.005)) {
+    fail(`h(0) at R = 100 Ω should read 1/(RC) = ${want100k.toFixed(0)} /s, got "${s100}"`)
+  }
+  if (!(Math.abs(v100 / v10k - 10) < 0.05)) {
+    fail(`ten times less R should give ten times the h(0): ${v10k} then ${v100}`)
+  }
+  console.log(
+    `   impulse lesson: ${s10k} at 1 kΩ (1/RC = ${(want10k / 1000).toFixed(1)} k/s, drawn ${(d10k / 1000).toFixed(2)} k/s), ${s100} at 100 Ω`,
+  )
 
   // A divider's output jumps at t = 0, so its step has no slope for h(0) to
   // equal — the row is absent rather than printing a zero that would read as
@@ -1255,6 +1279,123 @@ console.log('\n14. The step axis names its unit, h(0) is printed, tolerance rows
     fail(`the featured tolerance rows should read "${want.join('", "')}", got "${tags.join('", "')}"`)
   }
   console.log(`   featured tolerance rows: ${tags.join(', ')}`)
+}
+
+// ---------- 15. what the browser pass filed: the plots name their numbers
+
+console.log('\n15. Marked frequencies carry their value, the spread sits by the cloud, the empty plane says so\n')
+{
+  // A dashed line labelled "f₀" on an axis labelled by decades names the
+  // quantity and withholds the number. The first-order corner was fixed for
+  // exactly this and every resonant circuit kept the bare label.
+  const markerOf = () => page.locator('.views canvas').first().getAttribute('data-markers')
+  for (const [lesson, f0] of [
+    ['Q is how sharp, and R sets it', 5033],
+    ['The same R, the opposite effect', 5033],
+    ['A zero on the axis is silence', 1592],
+    ['Why active filters exist', 1073],
+  ]) {
+    await pick(lesson)
+    const label = (await markerOf()) || ''
+    const m = label.match(/f₀ = ([\d.]+\s*[pnµumkMG]?)Hz/)
+    if (!m) fail(`${lesson}: the f₀ marker should carry its value, got "${label}"`)
+    else {
+      const shown = si(m[1])
+      const top = si((await topbar())['f₀'])
+      if (!(Math.abs(shown / top - 1) < 0.005)) {
+        fail(`${lesson}: the marker says ${shown} Hz, the topbar says ${top} Hz`)
+      }
+      if (!(Math.abs(shown / f0 - 1) < 0.01)) fail(`${lesson}: f₀ marked at ${shown} Hz, expected ~${f0} Hz`)
+      console.log(`   ${lesson.padEnd(34)} marked "${label}"`)
+    }
+  }
+
+  // The wobble lessons promise a spread in the try line and used to answer it
+  // in the Components section, 776 px below the sidebar's first screen. The
+  // numbers belong beside the cloud they describe.
+  await pick('Blame the right part')
+  const pzSpread = (await page.locator('[data-role=pz-spread]').textContent().catch(() => '')) || ''
+  const sidebarSpread = (await page.locator('[data-role=tolerance-spread]').textContent()) || ''
+  const pct = (t) => (t.match(/±([\d.]+)%/g) || []).map((s) => parseFloat(s.slice(1)))
+  if (!pzSpread) fail('the poles view should print the spread beside the cloud')
+  else if (pct(pzSpread).join() !== pct(sidebarSpread).join()) {
+    fail(`the pane's spread and the sidebar's disagree: "${pzSpread}" vs "${sidebarSpread}"`)
+  } else console.log(`   poles pane, beside the cloud: ${pzSpread.replace(/\s+/g, ' ').trim()}`)
+  // R alone: f₀ pinned, Q taking the whole error — the lesson's own claim,
+  // now readable without leaving the plot.
+  if (pct(pzSpread)[0] !== 0) fail(`R-only tolerance should read f₀ ±0.0% in the pane, got "${pzSpread}"`)
+  // Exact parts, no spread to print.
+  await page.locator('[data-role=tol-all] button', { hasText: 'exact' }).first().click()
+  await settle()
+  if (await page.locator('[data-role=pz-spread]').count()) fail('exact parts should leave no spread in the pane')
+
+  // A divider has nothing to place, and the canvas fitted its span to no
+  // content at all: an empty grid running −2 to 2 s⁻¹, an axis calibrated in
+  // nothing.
+  await pick('A divider has no dynamics')
+  await page.getByRole('button', { name: 'Poles & zeros', exact: true }).click()
+  await settle()
+  const empty = await page.locator('[data-role=pz-empty]').count()
+  const canvases = await page.locator('.views canvas').count()
+  if (!empty) fail('a circuit with no poles and no zeros should say so, not draw an empty plane')
+  if (canvases !== 1) fail(`the divider's pole view should draw no canvas, ${canvases} are on the page`)
+  console.log(`   divider: "${(await page.locator('[data-role=pz-empty]').textContent()).trim()}"`)
+
+  // Two labelled ticks at least, whatever the pane's height: at 390 px the
+  // tank's ±330 Ω step axis carried one, the zero line, and the peak the
+  // readout prices at 308 Ω had nothing to be read against.
+  await page.setViewportSize({ width: 390, height: 844 })
+  for (const lesson of ['The same R, the opposite effect', 'Q is how sharp, and R sets it', 'Where the corner comes from']) {
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await pick(lesson)
+    await page.getByRole('button', { name: 'Step response', exact: true }).click()
+    await settle()
+    const ticks = await page.evaluate(() => {
+      const c = document.querySelectorAll('.views canvas')[1]
+      const s = parseFloat(c.dataset.yStep)
+      const lo = parseFloat(c.dataset.yLo)
+      const hi = parseFloat(c.dataset.yHi)
+      if (!(s > 0)) return { n: 0, s }
+      return { n: Math.floor(hi / s + 1e-6) - Math.ceil(lo / s - 1e-6) + 1, s, lo, hi }
+    })
+    if (!(ticks.n >= 2)) {
+      fail(`phone · ${lesson}: the step y-axis labels ${ticks.n} tick(s) (step ${ticks.s}) over [${ticks.lo}, ${ticks.hi}]`)
+    } else console.log(`   phone · ${lesson.padEnd(34)} step axis: ${ticks.n} labelled ticks, step ${ticks.s}`)
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'networkidle' })
+}
+
+// ------- 16. a lesson tap lands on its note, not on the list it was tapped in
+
+console.log('\n16. Tapping a lesson brings its note with it\n')
+{
+  // Every fold probe pins the sidebar's scroller to zero before measuring,
+  // which is right for "a student arrives" and wrong for "a student taps".
+  // The list sits below the note (it has to, or a phone's first screen is
+  // seventeen buttons), so a tap partway down it left the sidebar scrolled
+  // 315 px with the note 245 px above the visible box.
+  await page.setViewportSize({ width: 390, height: 844 })
+  for (const lesson of ['Q is how sharp, and R sets it', 'A pole exactly at the origin', 'This circuit is a biquad']) {
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await pick(lesson)
+    const side = await page.locator('.controls').boundingBox()
+    for (const [what, sel] of [
+      ['note title', '.lesson-body .note-title'],
+      ['try line', '.try-line'],
+    ]) {
+      const b = await page.locator(sel).first().boundingBox()
+      if (!b || b.y < side.y - 1 || b.y + b.height > side.y + side.height + 1) {
+        fail(
+          `tap · ${lesson} · ${what}: ${b ? `y ${b.y.toFixed(0)}–${(b.y + b.height).toFixed(0)}` : 'not rendered'} is outside the sidebar's visible ${side.y.toFixed(0)}–${(side.y + side.height).toFixed(0)} px`,
+        )
+      }
+    }
+    const top = await page.evaluate(() => document.querySelector('.controls').scrollTop)
+    console.log(`   ${lesson.padEnd(32)} sidebar scrollTop after the tap: ${top}`)
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'networkidle' })
 }
 
 // ------------------------------------------------ A11Y. names for everything
