@@ -23,7 +23,7 @@ import {
 } from '@ee-labs/switched'
 import { byId, defaultsOf } from './experiments.js'
 import { analyse, buckParams } from './analysis.js'
-import { threePhaseParams } from './groups/hiAnalysis.js'
+import { threePhaseParams, sweepMa3 } from './groups/hiAnalysis.js'
 import { experimentMath } from './math.js'
 
 // Every number Groups H and I put on the screen, pinned against the engine
@@ -358,6 +358,30 @@ describe('I2 · sine PWM in three phases', () => {
     expect(mag(x.ss, 'van', 3) / 48).toBeLessThan(1e-12)
     // Without it there is no third harmonic anywhere, below the ceiling.
     expect(mag(at('i2').ss, 'vao', 3) / 48).toBeLessThan(1e-12)
+  })
+
+  it('the sweep spans the knob it is drawn against, at both ends', () => {
+    // The operating point is marked at the nearest computed point, so a sweep
+    // narrower than its knob draws the dot in the wrong place and labels it
+    // with the knob's value. The frame has to hold every setting the knob has.
+    const knob = byId.i2.params.find((q) => q.key === 'ma')
+    const pts = sweepMa3(defaultsOf('i2'))
+    expect(pts[0].x).toBeCloseTo(knob.min, 12)
+    expect(pts[pts.length - 1].x).toBeCloseTo(knob.max, 12)
+    // ...and both curves are real numbers over the whole of it, including the
+    // overmodulated end where the plain sine has pulses missing.
+    for (const q of pts) {
+      expect(Number.isFinite(q.vll1), `m_a = ${q.x}`).toBe(true)
+      expect(Number.isFinite(q.vll1off), `m_a = ${q.x}`).toBe(true)
+      expect(q.vll1off).toBeGreaterThanOrEqual(q.vll1 - 1e-9)
+    }
+    // The plain sine parts from the line at m_a = 1 and the offset does not,
+    // each judged at the sampled point nearest the setting the note quotes.
+    const near = (ma) => pts.reduce((a, b) => (Math.abs(b.x - ma) < Math.abs(a.x - ma) ? b : a))
+    const rel = (q, key) => Math.abs(q[key] / q.pred - 1)
+    expect(rel(near(0.8), 'vll1')).toBeLessThan(1e-4)
+    expect(rel(near(1.1), 'vll1off')).toBeLessThan(1e-3)
+    expect(near(1.15).vll1).toBeLessThan(0.99 * near(1.15).pred)
   })
 
   it('every number moves with its knob, and the fundamental follows m_a below the ceiling', () => {

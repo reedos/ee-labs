@@ -149,12 +149,20 @@ export function analyseThreePhase(params, exp) {
  *
  * Both curves are drawn, because the lesson is where they part: the plain
  * sine leaves the line at m_a = 1 and the offset follows it to 2/√3.
+ *
+ * The axis is the m_a knob's own range. A sweep narrower than its knob puts
+ * the operating point outside the frame, and `drawSweep` then marks the
+ * nearest computed point and labels it with the knob's value: at m_a = 130 %
+ * the dot sat at 115 % under a label reading 1.30.
  */
-export function sweepMa3(params, n = 25) {
+export const MA_RANGE = [0.05, 1.4]
+
+export function sweepMa3(params, n = 29) {
   const base = threePhaseParams(params)
+  const [lo, hi] = MA_RANGE
   const out = []
   for (let i = 0; i < n; i++) {
-    const ma = 0.2 + (1.15 - 0.2) * (i / (n - 1))
+    const ma = lo + (hi - lo) * (i / (n - 1))
     const one = (inject) => {
       const conv = threePhase('spwm3', { ...base, ma, inject })
       return threePhaseMeasures(threePhaseSteadyState(conv), { harmonics: 1, dense: 8 }).Vll1 * Math.SQRT2
