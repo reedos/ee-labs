@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import { FOUNDATIONS, foundationFor, foundationSteps } from '../foundations.js'
 import { WorkedDerivation } from './WorkedDerivation.jsx'
 
@@ -13,9 +13,14 @@ export function FoundationSidebar({ exp }) {
 }
 
 export function FoundationsPane({ exp, x, onChoose }) {
+  const ref = useRef(null)
   const lesson = FOUNDATIONS[exp.id]
   const work = useMemo(() => foundationSteps(exp.id, x), [exp.id, x])
   const next = lesson.next === 'state' ? 'State equation' : 'Phasors'
+  useEffect(() => {
+    const body = ref.current?.closest('.view-body')
+    if (body) body.scrollTop = 0
+  }, [exp.id])
   const advance = (event, view) => {
     const body = event.currentTarget.closest('.view-body')
     onChoose(view)
@@ -24,7 +29,7 @@ export function FoundationsPane({ exp, x, onChoose }) {
       if (window.matchMedia('(max-width: 800px)').matches) body.closest('.view')?.scrollIntoView({ block: 'start' })
     }
   }
-  return <div className="foundations-pane">
+  return <div className="foundations-pane" ref={ref}>
     <p className="hint">Start here. The schematic, controls and cursor above supply the values in this lesson.</p>
     <WorkedDerivation role="foundations" title={lesson.title} intro={lesson.intro} steps={work.steps.map(s => ({ ...s, latex: s.latex.map(line => `&${line}`) }))} />
     <div className="foundation-actions">

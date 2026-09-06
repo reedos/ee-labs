@@ -23,8 +23,10 @@ for(const width of [1440,390]) {
   await page.locator(`[data-role="${next==='Phasors'?'worked-phasor':'worked-state'}"]`).waitFor()
   if(width===1440) assert.equal(await page.locator('.view-body').last().evaluate(e=>e.scrollTop),0)
   assert.equal(await page.locator('.foundation-link').count(),1)
+  if(width===1440) await page.locator('.view-body').last().evaluate(e=>{e.scrollTop=e.scrollHeight})
   await page.locator('.view-switch').getByRole('button',{name:'Start here',exact:true}).click()
   await page.locator('[data-role=foundations]').waitFor()
+  if(width===1440) assert.equal(await page.locator('.view-body').last().evaluate(e=>e.scrollTop),0)
  }
  // Existing deep links still go straight to the requested analysis, with a visible prerequisite link.
  await page.goto(`${base}#h8&view=state&v0=2`)
