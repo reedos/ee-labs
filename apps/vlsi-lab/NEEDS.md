@@ -13,7 +13,7 @@ The events engine accepts integer ticks in a rational unit of seconds.
 An RC crossing contains `ln(2)` and is not generally representable exactly on that grid.
 The app labels the chain as rounded to 1 fs and displays its accumulated error.
 Each stage contributes at most 0.5 fs of rounding error.
-An exact analog-chain comparison remains deferred. It also requires measuring threshold events under finite input slopes.
+A3's exact analog-chain comparison remains deferred. It also requires measuring threshold events under finite input slopes.
 A5 remains partial plan fulfillment. Its isolated fanout law has waveform pins, but no measured analog-chain comparison is included.
 The event quantization bound does not close that gap. No additional slope solver is part of this deliverable.
 
@@ -38,11 +38,12 @@ The schematic highlights conducting devices through its existing `lit` API.
 A dedicated open/closed MOS glyph overlay needs a shared schematic prop with a renderer test.
 VLSI and Interfaces would consume that prop.
 
-Add the app workspace to the lockfile during integration. No new dependency version is required.
-Add the dark deployment copy step for `apps/vlsi-lab/dist` and the assembly entry.
-Register IDs `a1` through `a5` in the progression test. Keep public navigation and release status dark.
-Mirror the bounded result and deferred work in the director's ledger.
+The director registered the workspace in the lockfile without new dependency versions.
+The dark deployment copy step and assembly entry are present.
+The executable inventory contains `a1` through `a5`. The wider curriculum and progression-test extension remain open.
+Public navigation is unchanged. Release status remains dark.
 
-The shared URL helpers currently hide LabNav at `/vlsi-lab/`.
-The director owns the path registry correction and will register this app during integration.
-App screenshots do not certify deployed navigation. The director's final deployed-path review remains pending.
+The shared URL registry now includes `/vlsi-lab/`.
+Deployed navigation and interaction checks passed in Chromium and Firefox on the director branch.
+The harness accepts `APP_URL` and `BROWSER` for repeated checks against the assembled site.
+The director owns full-suite evidence. The open plan requirements above prevent whole-group acceptance.

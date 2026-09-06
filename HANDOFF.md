@@ -1,5 +1,34 @@
 # Handoff: continuing the EE Labs program from another session
 
+## First director wave checkpoint
+
+The wave is integrated locally on `integration/program-director`.
+The source checkpoint is `e0c2e16`, with later evidence-only documentation commits.
+The worktree remains `.claude/worktrees/program-director`.
+`BACKLOG.md` section 1 contains the current ledger, results and next dependency queue.
+
+- VLSI has five initial experiments. A3's analog-chain comparison and part of A5 remain incomplete.
+- Interfaces has five initial pin experiments. Groups B to G remain unbuilt.
+- Random Signals' startup and rendering recovery is integrated. Its F4 instruction and two phone captions still need work.
+- Circuit revalidation ended at `582650e` with browser layout failures. It remains separate, as does Power's `fa6382c` checkpoint.
+- Shared URL recognition and local assembly now cover every app. Dark labs remain absent from released navigation.
+
+The integrated tree has 24 apps and 752 curriculum entries. Counts are not acceptance percentages.
+The full suite passes 11,077 tests in 370 files. All 24 apps build after a fresh offline installation.
+Both new apps pass Chromium and Firefox checks at laptop, desktop and phone sizes.
+The final LabNav browser review passes 46 checks. Evidence paths are in `BACKLOG.md`.
+Repository prose lint remains open with 330 inherited findings. Edited documents pass scoped lint.
+
+The director preview is `http://127.0.0.1:47630/`.
+Review the new apps at `/vlsi-lab/` and `/interfaces-lab/`, and the recovered app at `/random-lab/`.
+The hidden preview process is PID 22408. All worker and temporary verification servers from this wave stopped.
+Older Power and splash previews were left untouched.
+
+Before another wave, reconcile Reed's `e5e9200` commit from `origin/master`.
+It arrived during this wave and is not in this integration baseline or its evidence.
+The main workspace still contains Reed's corresponding changes and the splash experiment. Preserve them.
+The main handoff points here through `aec37e9`. No director code was merged into master, pushed or released.
+
 ## Director wave, 2026-09-06
 
 Reed approved the director operating model and bounded parallel work.

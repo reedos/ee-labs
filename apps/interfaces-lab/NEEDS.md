@@ -2,20 +2,22 @@
 
 ## Director integration
 
-Register `apps/interfaces-lab` in the root lockfile. All declared dependencies already exist in this checkout.
-The assigned worktree installed its dependencies with offline `npm ci`. No dependency versions or root files changed for this app.
+The director registered `apps/interfaces-lab` in the root lockfile.
+All declared dependency versions already existed in the checkout.
 
-Add the dark deployment copy and assembly entry. Keep the lab unlisted until Reed authorizes release.
+The dark deployment copy and assembly entry are present. The lab stays unlisted until Reed authorizes release.
 
 ```sh
 cp -r apps/interfaces-lab/dist _site/interfaces-lab
 ```
 
-Register Group A with five experiments, `a1` through `a5`, in the progression inventory.
+The executable inventory contains five experiments, `a1` through `a5`.
+The wider curriculum document and progression-test extension remain director work.
 Electronics prerequisites are `d5` and `d6`. Both exist in this worktree.
 
-The director reported that the shared URL registry excludes Interfaces Lab. Shared LabNav therefore remains absent at its deployed path.
-Add the path during integration and perform the deployed navigation review afterward. This app contains no local navigation workaround.
+The shared URL registry now includes Interfaces Lab.
+Deployed navigation and interaction checks passed in Chromium and Firefox on the director branch.
+The harness accepts `APP_URL` and `BROWSER` for repeated checks against the assembled site.
 
 ## Engine and scope
 
@@ -33,5 +35,5 @@ Its falling waveform uses the parallel resistance. Both initial conditions have 
 ## Deferred work
 
 Groups B through G are outside this assignment. Protocol implementation and events contracts remain for later waves.
-Full-suite testing, Firefox, student sittings and the final deployed navigation review remain integration or release work.
+The director owns full-suite evidence. Student sittings and release approval remain open.
 The release status remains dark.

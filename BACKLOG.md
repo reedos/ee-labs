@@ -36,15 +36,15 @@ The three original released labs have no `RELEASE_STATUS` file.
 | `rf-lab` | 19 | A to D | Dark; no browser harness | E to H remain; check existing capacitance, noise and oscillator contracts | `RF_LAB_PLAN.md` |
 | `system-lab` | 4 | A | Dark; harness exists, evidence review pending | B to F remain; source-noise checks, IP3 extraction, Fields L and RF H | `SYSTEM_LAB_PLAN.md` |
 | `dsp-lab` | 40 | A to F | Dark; no browser harness | Browser acceptance and plan-fidelity review | `DSP_LAB_PLAN.md` |
-| `random-lab` | 30 | A to I | Dark; saved recovery under review | Base crashes on cold load; revalidate `ff28ab7` before integration | `RANDOM_LAB_PLAN.md` |
+| `random-lab` | 30 | A to I | Dark; recovery integrated as `e0c2e16` | C3/I1 phone captions and F4 spread instruction remain open | `RANDOM_LAB_PLAN.md` |
 | `comms-lab` | 50 | A to H | Dark; no browser harness | Browser acceptance and reported plan-number differences | `COMMUNICATIONS_LAB_PLAN.md` |
 | `info-lab` | 25 | A to F | Dark; no browser harness | Browser acceptance and the recorded plan correction | `INFORMATION_LAB_PLAN.md` |
 | `control-lab-ii` | 32 | A to E, F1 and F2 | Dark; no browser harness | F3 to F5 remain; check Random Signals contracts | `CONTROL_LAB_II_PLAN.md` |
 | `machines-lab` | 35 | A to E | Dark; saved verification unmerged | Revalidate `fedb2c9`; Power F and L now exist for the deferred drives | `MACHINES_LAB_PLAN.md` |
 | `logic-lab` | 45 | A to H | Dark; no browser harness | Browser acceptance; Electronics D6 now exists | `LOGIC_LAB_PLAN.md` |
-| `vlsi-lab` | 5 | A1 to A5 | Dark; bounded implementation entering integration | A3 analog-chain comparison and part of A5 remain open; deployed browser gate next | `VLSI_LAB_PLAN.md` |
+| `vlsi-lab` | 5 | A1 to A5 | Dark; integrated, bounded checks pass | A3 analog-chain comparison, part of A5 and shared progression remain open | `VLSI_LAB_PLAN.md` |
 | `computer-lab` | 30 | A to G | Dark; no browser harness | Browser acceptance and shared timing contracts | `COMPUTER_LAB_PLAN.md` |
-| `interfaces-lab` | 5 | A1 to A5 | Dark; bounded implementation entering integration | Deployed browser gate next; later groups need protocol timing contracts | `INTERFACES_LAB_PLAN.md` |
+| `interfaces-lab` | 5 | A1 to A5 | Dark; integrated, bounded checks pass | Shared progression and Groups B to G remain open | `INTERFACES_LAB_PLAN.md` |
 | `fields-lab` | 36 | A to H | Dark; saved verification unmerged | Revalidate `7e5e640`; I to L remain, including System's antenna prerequisite | `FIELDS_LAB_PLAN.md` |
 | `photonics-lab` | 21 | A, C to F | Dark; harness exists, evidence review pending | B remains; Electronics O now exists, receiver contract check next | `PHOTONICS_LAB_PLAN.md` |
 | `power-lab` | 55 | A to N, except D5 | Dark; verification open on `fa6382c` | Desktop controls gate; D5 and recorded model deviations remain separate | `POWER_LAB_PLAN.md` |
@@ -63,12 +63,20 @@ Nothing is pushed or released by this wave.
 
 | Stream | Branch and worktree | Bounded deliverable | Acceptance |
 | --- | --- | --- | --- |
-| Director | `integration/program-director`, `program-director` | Current ledger, dependency queue, review and integration | Inventory checks, focused tests, full integration suite, recorded lint state |
-| Verification | `verify/random-lab`, `random-verification` | Recover cold load and check all thirty experiments render | Scoped tests, build, deployed-path browser checks and screenshot review |
-| VLSI | `lab/vlsi-lab`, `vlsi-wave-1` | Group A, or a justified supported subset | Engine invariants, lesson pins, usable app, build and browser evidence |
-| Interfaces | `lab/interfaces-lab`, `interfaces-wave-1` | Group A | Independent pin checks, lesson pins, usable app, build and browser evidence |
+| Director | `integration/program-director`, `program-director` | First wave integrated, evidence below | Full suite and builds pass; inherited prose gate remains open |
+| Verification | `verify/random-lab`, `random-verification` | Bounded recovery delivered at `f0191d8`, integrated | Both browsers render all thirty experiments; remaining findings recorded |
+| VLSI | `lab/vlsi-lab`, `vlsi-wave-1` | Bounded A1 to A5 delivered at `12e25e5`, integrated | Invariants, lesson pins and browser checks pass for the implemented scope |
+| Interfaces | `lab/interfaces-lab`, `interfaces-wave-1` | Group A delivered at `c85fda1`, integrated | Pin checks, lesson pins and browser checks pass for the implemented scope |
+
+All three workers finished and their temporary servers stopped.
+The director preview serves the integrated build on port 47630.
+No worker remains running between turns.
 
 ### Dependency queue
+
+Before the next wave, reconcile Reed's committed `e5e9200` notation work with this frozen integration baseline.
+It arrived on `origin/master` during this wave and is not included in the evidence below.
+The matching dirty main-workspace changes remain untouched.
 
 1. Accept each saved verification branch independently. Power and Elements do not block unrelated lab work.
 2. Review the first VLSI and Interfaces groups before extending their app patterns.
@@ -114,6 +122,40 @@ Its scoped numerical checks and builds pass. Both browsers complete without cons
 The layout gate remains open, so the branch stays separate.
 `apps/circuit-lab/VERIFICATION.md` in `circuit-verification` names the failures and evidence.
 The combined navigation changes require another browser run before acceptance.
+
+### Integrated checkpoint
+
+The first wave adds ten registry entries across two new dark apps.
+VLSI entered through `2676995`, Interfaces through `f4d2e3a`, and first-control layout corrections through `a28ba54`.
+Random's recovered branch entered through `e0c2e16` after the full suite passed.
+The only merge conflict was the duplicated shared path registry. Both new app paths were retained.
+
+`director-full-suite.log` records 370 files and 11,077 tests passing with eight workers.
+The run took 352.71 seconds and exited zero.
+A fresh offline `npm ci` passed afterward. All 24 apps build under `director-build-final.log`.
+No new dependency version was required. The lockfile also reconciles existing root version and switched-package dependency metadata.
+
+Both new apps pass their deployed-path harnesses in Chromium 151.0.7922.34 and Firefox 153.0.
+Each harness visits all five experiments at 1366 by 768, 1440 by 1000 and 390 by 844.
+The checks include controls, sequential Try state, Reset, equations, canvas pixels and live suite links.
+Both now check the first numeric control before any scrolling interaction.
+The Interfaces picker shows the selected experiment without requiring a long open list.
+Screenshots were inspected after the layout changes, including phone first controls and diagrams.
+
+The final shared-navigation review passes all 46 checks across 23 LabNav apps and two viewport sizes.
+Signal's separate navigation is outside that count.
+`navigation-review-final.log` and `tmp/navigation-review/results.json` hold the final results.
+The earlier Random cold-load failure is resolved on this tree.
+
+Random's worker evidence covers all thirty experiments and fifty offered views in both browsers.
+Those checks support startup and rendering acceptance, not complete teaching acceptance.
+The F4 spread instruction and the two clipped phone captions remain open in its `VERIFICATION.md`.
+VLSI's A3/A5 coverage gaps and both new apps' wider progression integration also remain open.
+Circuit and Power's incomplete verification branches were not merged into this wave.
+
+Repository prose lint still has 330 inherited findings, now across 87 scanned files.
+The edited director documents and both new apps' documents pass scoped prose lint.
+Nothing in this checkpoint was pushed or released.
 
 ## 2. Deferred items, by lab
 
