@@ -365,6 +365,75 @@ export function sweepQuarterWave(qw, { from, to, points = 161 } = {}) {
   return out
 }
 
+// ------------------------------------------------------------- the two arcs
+
+/**
+ * The path a matching network traces on the chart, one arc per element, from
+ * the load towards the source.
+ *
+ * A series element adds reactance and leaves resistance alone, so its arc runs
+ * along a circle of constant resistance. A shunt element adds susceptance and
+ * leaves conductance alone, so its arc runs along a circle of constant
+ * conductance. Each arc is drawn by ramping the element from nothing to its own
+ * value, which is why the ramp is in susceptance for a shunt element and in
+ * reactance for a series one: a shunt element of no susceptance is absent, and
+ * a shunt element of no reactance is a short.
+ */
+export function matchPath(sol, ZL, RS, { steps = 32 } = {}) {
+  positive(RS, 'R_S')
+  const arcs = []
+  let Z = ZL === Infinity ? Infinity : toComplex(ZL)
+  for (const el of [...sol.elements].reverse()) {
+    const points = []
+    const start = Z
+    for (let k = 0; k <= steps; k++) {
+      const t = k / steps
+      let here
+      if (el.place === 'series') {
+        here = cadd(Z, [0, el.X * t])
+      } else {
+        const B = -1 / el.X
+        const Y = cdiv([1, 0], Z)
+        here = cdiv([1, 0], cadd(Y, [0, B * t]))
+      }
+      const g = reflection(here, RS)
+      points.push([g[0], g[1]])
+      if (k === steps) Z = here
+    }
+    arcs.push({
+      place: el.place,
+      kind: el.place === 'series' ? 'series' : 'shunt',
+      label: `${el.place} ${el.kind === 'L' ? 'inductor' : 'capacitor'}`,
+      points,
+      from: start,
+      to: Z,
+    })
+  }
+  return arcs
+}
+
+/**
+ * The path a quarter-wave transformer traces on the chart, from the load at one
+ * end of the section to the source at the other.
+ *
+ * Each point is an exact solve of a shorter length of the same line, so the
+ * path is the impedance at that place on the section and not an interpolation
+ * between the two ends. At the design frequency it ends at the centre. At any
+ * other frequency it ends wherever the section leaves it, which is the whole of
+ * what the bandwidth measures.
+ */
+export function transformerPath(qw, f, { steps = 48 } = {}) {
+  positive(f, 'f')
+  const out = []
+  for (let k = 0; k <= steps; k++) {
+    const len = (qw.len * k) / steps
+    const Z = k === 0 ? qw.RL : inputImpedance(uniformLine({ Z0: qw.Z0, epsr: qw.epsr, len }), qw.RL, f).Z
+    const g = reflection(Z, qw.RS)
+    out.push([g[0], g[1]])
+  }
+  return out
+}
+
 /**
  * The netlist of a matching network with its load, for a solve that shares
  * nothing with the chain matrix above.

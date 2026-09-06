@@ -150,6 +150,7 @@ export {
   matchBandwidth,
   matchMag,
   matchNetlist,
+  matchPath,
   matchQ,
   networkAbcd,
   quarterWaveMatch,
@@ -157,4 +158,5 @@ export {
   reactanceOf,
   sweepMatch,
   sweepQuarterWave,
+  transformerPath,
 } from './src/match.js'

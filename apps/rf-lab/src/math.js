@@ -54,6 +54,8 @@ const KINDS = {
   mismatch: analyseMismatch,
   chart: analyseChart,
   line: analyseLine,
+  match: analyseMatch,
+  qwave: analyseQuarterWave,
 }
 
 /** The load a `mismatch` or a `line` experiment is terminated in. */

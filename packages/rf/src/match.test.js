@@ -14,12 +14,14 @@ import {
   matchBandwidth,
   matchMag,
   matchNetlist,
+  matchPath,
   matchQ,
   networkAbcd,
   quarterWaveMatch,
   quarterWaveRepeats,
   reactanceOf,
   sweepMatch,
+  transformerPath,
 } from './match.js'
 
 // The synthesis, against the closed form written out again.
@@ -239,6 +241,52 @@ describe('bandwidth is the price of the transformation', () => {
   })
 })
 
+describe('the path a network traces on the chart', () => {
+  it('one arc per element, starting at the load and ending on the match', () => {
+    for (const [RS, ZL] of [[50, 100], [50, 5], [50, [30, -40]], [75, [220, 90]]]) {
+      const m = lMatch({ RS, ZL, f: F0 })
+      const arcs = matchPath(m.chosen, ZL, RS)
+      expect(arcs.length, `${RS} to ${ZL}`).toBe(m.chosen.elements.length)
+      // The first arc starts where the load is.
+      const g0 = reflection(ZL, RS)
+      expect(Math.hypot(arcs[0].points[0][0] - g0[0], arcs[0].points[0][1] - g0[1])).toBeLessThan(1e-12)
+      // The last arc ends at the centre of the chart, which is the match.
+      const end = arcs[arcs.length - 1].points.at(-1)
+      expect(Math.hypot(end[0], end[1]), `${RS} to ${ZL}`).toBeLessThan(1e-12)
+      // And every arc joins the one before it.
+      for (let i = 1; i < arcs.length; i++) {
+        const a = arcs[i - 1].points.at(-1)
+        const b = arcs[i].points[0]
+        expect(Math.hypot(a[0] - b[0], a[1] - b[1]), `arc ${i}`).toBeLessThan(1e-12)
+      }
+    }
+  })
+
+  it('a series arc holds the resistance and a shunt arc holds the conductance', () => {
+    const RS = 50
+    const ZL = [30, -40]
+    const m = lMatch({ RS, ZL, f: F0 })
+    const arcs = matchPath(m.chosen, ZL, RS, { steps: 8 })
+    expect(arcs.map((a) => a.place)).toEqual(['series', 'shunt'])
+    for (const arc of arcs) {
+      for (const g of arc.points) {
+        // Read the impedance back off the chart, which is the map inverted.
+        const den = (1 - g[0]) ** 2 + g[1] ** 2
+        const zr = ((1 - g[0]) * (1 + g[0]) - g[1] * g[1]) / den
+        const zi = (2 * g[1]) / den
+        const Z = [zr * RS, zi * RS]
+        if (arc.place === 'series') {
+          expect(near(Z[0], arc.from[0], 1e-9), `series arc at ${g}`).toBe(true)
+        } else {
+          const G = Z[0] / (Z[0] * Z[0] + Z[1] * Z[1])
+          const G0 = arc.from[0] / (arc.from[0] * arc.from[0] + arc.from[1] * arc.from[1])
+          expect(near(G, G0, 1e-9), `shunt arc at ${g}`).toBe(true)
+        }
+      }
+    }
+  })
+})
+
 describe('the quarter-wave transformer', () => {
   const qw = quarterWaveMatch({ RS: 50, RL: 100, f0: F0, epsr: 2.1 })
 
@@ -274,6 +322,20 @@ describe('the quarter-wave transformer', () => {
     // symmetric about the quarter wave.
     const deg = (f) => (90 * f) / F0
     expect(near(deg(line.lower) + deg(line.upper), 180, 1e-6)).toBe(true)
+  })
+
+  it('its path along the section starts at the load and ends at the centre', () => {
+    const path = transformerPath(qw, F0, { steps: 12 })
+    expect(path.length).toBe(13)
+    const g0 = reflection(100, 50)
+    expect(Math.hypot(path[0][0] - g0[0], path[0][1] - g0[1])).toBeLessThan(1e-12)
+    expect(Math.hypot(...path.at(-1))).toBeLessThan(1e-11)
+    // Every point on the way is inside the disc, because a passive load is.
+    for (const g of path) expect(Math.hypot(g[0], g[1])).toBeLessThanOrEqual(1 + 1e-12)
+    // Off the design frequency it ends where the section leaves it, which is
+    // the reflection the sweep reads there.
+    const off = transformerPath(qw, 1.5 * F0, { steps: 12 })
+    expect(near(Math.hypot(...off.at(-1)), qw.at(1.5 * F0).mag, 1e-9)).toBe(true)
   })
 
   it('the transformer really is the line the engine says it is', () => {
