@@ -428,7 +428,9 @@ APP_URL=http://localhost:4181 node apps/photonics-lab/scripts/verify.mjs
 ```
 
 The harness catches what unit tests cannot: a prop not passed, a pane fed stale
-state, a plot that stopped redrawing. Extend it for every view you add.
+state, a plot that stopped redrawing. Extend it for every view you add. It has
+been run, and it passes: the review sitting of 2026-09-05 drove it against a
+served build and shot every view at both widths.
 Screenshot every view at 390 px and at 1280 × 900 and read the screenshots as a
 student would, per `/REVIEW_PLAYBOOK.md` §11.
 

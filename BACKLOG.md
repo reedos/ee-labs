@@ -812,12 +812,13 @@ Deferred, with what reopens each:
   sitting checked its threshold against the choice, as the brief's §3.3 told it
   to. Under the form in use the threshold is 13.389 mA. Under the other it is
   18.766 mA, and `rate.test.js` carries that number so the choice stays visible.
-- **`scripts/verify.mjs`.** Written, extended, and still never run. Neither
-  sitting's environment had a browser, so no view has been read as a picture and
-  `REVIEW_PLAYBOOK.md` §11 is unmet. Six drawings are new and none has been
-  seen: the link view, the waterfall, the spectrum, the equations pane, the
-  modulation pane and the step pane. A first run reviews the script as much as
-  the page.
+- **`scripts/verify.mjs` has now been run, and so has a screenshot pass.** The
+  review sitting of 2026-09-05 had a browser. The harness passes against a
+  served build on :4181, after three corrections to the script itself. Every
+  view was shot at 390 px and at 1280 × 900 and read as a student would. That
+  found the modulation axis, the spectrum's caption, both schematic crops, two
+  axis-label defects and the equations pane's missing centre line. All are
+  fixed. What is still open is Reed's own pass and the three student sittings.
 - **The step pane draws a solution in time, and that needs a person's eye.** The
   integration is drawn beside the prediction it measures, and never on its own.
   The resolution arithmetic `REVIEW_PLAYBOOK.md` §5 asks for is in
