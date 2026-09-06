@@ -220,6 +220,9 @@ function freqSweep(exp, p, net) {
     H: sw.value,
     Z: sw.value,
     mode: spec.mode || 'bode',
+    // A narrow sweep is drawn against frequency itself: a log axis carries no
+    // tick at all across 9.4 to 10.6 kHz, and the shape it draws is a needle.
+    axis: spec.axis || 'log',
   }
   FREQ_MEMO.clear()
   FREQ_MEMO.set(key, out)
@@ -233,7 +236,7 @@ function freqSweep(exp, p, net) {
  */
 export function analyse(exp, p, cursor) {
   const net = exp.net(p)
-  const x = { net, exp, p, sol: null, refusal: null, tr: null, ac: null, freq: null, samples: null }
+  const x = { net, exp, p, sol: null, refusal: null, tr: null, ac: null, freq: null, samples: null, snap: null, snapAt: null }
   const dyn = isDynamic(exp)
   const tEnd = dyn ? exp.window(p) : null
   if (dyn) {
@@ -265,6 +268,29 @@ export function analyse(exp, p, cursor) {
       if (!(err instanceof NetworkError)) throw err
     }
   }
+  // What the meters read on an experiment that has no time axis.
+  //
+  // `solveDC` evaluates a wave source at t = 0, and a sine is zero there. So
+  // A3, A5, B2, D1, D2 and F4 opened with every meter on the schematic, every
+  // node in the readout and every row of the reading table showing 0 V, beside
+  // an amplitude knob set to 1 V. The circuit was not dead; it was being read
+  // at the one instant in the cycle where nothing is happening.
+  //
+  // The steady state is exact here, so the meters read it at the instant the
+  // drive is at its peak. Every quantity is a signed instantaneous value, as it
+  // is for the experiments that do have a cursor, so the schematic's polarity
+  // marks and current arrows keep their meaning.
+  if (!dyn && x.ac && sine) {
+    const w = x.omega
+    const phase = sine.wave.phase || 0
+    // ωt + φ = π/2, brought into the first cycle.
+    const period = w > 0 ? TWO_PI / w : 0
+    const raw = w > 0 ? (Math.PI / 2 - phase) / w : 0
+    const at = period > 0 ? ((raw % period) + period) % period : 0
+    const snap = x.ac.at(at)
+    x.snap = { ...snap, pTotal: Object.values(snap.p).reduce((s, v) => s + v, 0) }
+    x.snapAt = at
+  }
   if (exp.sweep) {
     try {
       x.freq = freqSweep(exp, p, net)
@@ -275,7 +301,7 @@ export function analyse(exp, p, cursor) {
   // The sample dots: the exact solution read at t = k/f_s, never an
   // interpolation of the drawn trace (the plan's §2.2).
   if (exp.samples && x.tr) {
-    const { rate, of } = exp.samples(p)
+    const { rate, of, alias } = exp.samples(p)
     const read = of || ((sol) => sol.v.in)
     const t = []
     const y = []
@@ -284,6 +310,10 @@ export function analyse(exp, p, cursor) {
       y.push(read(x.tr.at(k / rate).sol))
     }
     x.samples = { rate, t: Float64Array.from(t), y: Float64Array.from(y) }
+    // The other tone the same dots belong to, when the experiment names one.
+    // It is drawn as a guide across the scope, so "from the dots alone the two
+    // cannot be told apart" is a thing the reader can check rather than read.
+    if (alias && x.ac) x.samples.alias = alias(x.ac)
   }
   // What the instrument's detector reads: a mean for a lock-in, an rms for an
   // analyser, both over the last whole period the experiment names.

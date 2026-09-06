@@ -18,6 +18,7 @@
 export * from './kit.js'
 // The view labels are re-exported above and read below, and `export *` makes no
 // local binding, so the name is imported as well as passed on.
+import { fmt } from '@ee-labs/ui'
 import { VIEW_LABELS } from './kit.js'
 import { LESSONS } from './lessons.js'
 import { GROUP_A } from './groups/a.js'
@@ -46,8 +47,27 @@ export function defaultsOf(id) {
   return Object.fromEntries(exp.params.map((k) => [k.key, k.default]))
 }
 
-/** The elements the schematic draws, in the order the netlist lists them. */
-export const drawables = (exp, p) => exp.net(p).elements
+/**
+ * The elements the schematic draws, in the order the netlist lists them.
+ *
+ * A driven source carries its waveform in `wave` and keeps `value` at zero, and
+ * the schematic's label is that value: every sine source in the lab was drawn
+ * as "V₁ 0 V" beside an amplitude knob reading 1 V. The label here is the
+ * amplitude the knob sets. Only the drawing is relabelled — every solver reads
+ * `exp.net(p)` itself, so the netlist is untouched.
+ */
+export const drawables = (exp, p) =>
+  exp.net(p).elements.map((e) => {
+    if (!e.wave || e.label) return e
+    const unit = e.type === 'I' ? 'A' : 'V'
+    const amp = e.wave.kind === 'sine' ? e.wave.amp : e.wave.kind === 'step' ? e.wave.to : e.wave.high ?? e.wave.amp
+    if (!Number.isFinite(amp)) return e
+    return { ...e, label: `${sub(e.id)} ${fmt(amp, unit, 3)}` }
+  })
+
+// V1 -> V₁, so a relabelled source reads as the others do.
+const DIGITS = '₀₁₂₃₄₅₆₇₈₉'
+const sub = (id) => id.replace(/\d/g, (d) => DIGITS[Number(d)])
 
 /** The label and hover text for a view. */
 export const viewLabel = (view) => VIEW_LABELS[view]

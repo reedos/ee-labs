@@ -49,12 +49,36 @@ describe('the shell', () => {
 
 describe('the panes', () => {
   it('the readings pane prints one row per element and every node voltage', () => {
-    for (const id of ['c1', 'f1', 'a1']) {
+    for (const id of ['c1', 'f1', 'a1', 'a3']) {
       const { x, exp, p } = solve(id)
       const els = drawables(exp, p)
-      const text = strip(html(<ReadingsPane x={x} elements={els} />))
+      const sol = x.snap || x.sol
+      const text = strip(html(<ReadingsPane sol={sol} elements={els} />))
       for (const e of els) expect(text, `${id} ${e.id}`).toContain(e.id)
-      for (const n of Object.keys(x.sol.v).filter((k) => k !== 'gnd')) expect(text, `${id} v_${n}`).toContain(n)
+      for (const n of Object.keys(sol.v).filter((k) => k !== 'gnd')) expect(text, `${id} v_${n}`).toContain(n)
+    }
+  })
+
+  it('a sine-driven experiment with no time axis reads a live circuit, not the zero at t = 0', () => {
+    // solveDC evaluates a wave source at t = 0, where a sine is zero, so these
+    // six opened with every meter and every reading row showing 0 V.
+    const still = EXPERIMENTS.filter((e) => solve(e.id).x.snap)
+    expect(still.map((e) => e.id)).toEqual(['a3', 'a5', 'b2', 'd1', 'd2', 'f4'])
+    for (const e of still) {
+      const { x, exp, p } = solve(e.id)
+      const scale = Math.max(...Object.values(x.snap.v).map(Math.abs))
+      expect(scale, `${e.id} node voltages`).toBeGreaterThan(0)
+      // The instant is inside the first cycle of the drive, at the drive's peak.
+      const period = (2 * Math.PI) / x.omega
+      expect(x.snapAt, `${e.id} instant`).toBeGreaterThanOrEqual(0)
+      expect(x.snapAt, `${e.id} instant`).toBeLessThan(period)
+      // The source it names is at its own amplitude there, to the last digit.
+      const wave = exp.net(p).elements.find((el) => el.wave && el.wave.kind === 'sine').wave
+      const amp = wave.amp
+      const at = amp * Math.sin(x.omega * x.snapAt + (wave.phase || 0))
+      expect(Math.abs(at - amp), `${e.id} at the peak`).toBeLessThan(1e-9 * Math.abs(amp))
+      // Every reading is finite, and the table has a row for each element.
+      for (const el of drawables(exp, p)) expect(Number.isFinite(x.snap.volt[el.id]), `${e.id} ${el.id}`).toBe(true)
     }
   })
 

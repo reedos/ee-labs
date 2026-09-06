@@ -107,9 +107,22 @@ export default function App() {
   // One analysis per setting, and every pane reads it.
   const x = useMemo(() => analyse(exp, params, cursor), [exp, params, cursor])
   const dynamic = isDynamic(exp)
+  // The equations, with their live numbers where the solve they came from is
+  // the one on screen. A sine-driven experiment with no time axis reads its
+  // meters from the steady state (math.js `snap`), and the DC system the
+  // equations describe is a different solve at a different instant, so the
+  // pane shows the system without pretending its zeros are the reading.
+  //
+  // Its source rows carry the instantaneous drive rather than the wave's
+  // resting `value`. A source written as {value: 0, wave: sine(1 V)} otherwise
+  // printed the constraint "v_tip = 0" beside a schematic reading v_tip = 1 V.
   const eq = useMemo(() => {
     try {
-      return x.sol ? equations(x.sol.norm, x.sol) : equations(normalize(x.net))
+      if (x.sol && !x.snap) return equations(x.sol.norm, x.sol)
+      const net = x.snap
+        ? { ...x.net, elements: x.net.elements.map((e) => (e.wave ? { ...e, value: x.snap.volt[e.id] ?? e.value, wave: undefined } : e)) }
+        : x.net
+      return equations(normalize(net))
     } catch {
       return null
     }
@@ -118,8 +131,15 @@ export default function App() {
   const readable = useMemo(() => forReading(math), [math])
   const elements = useMemo(() => drawables(exp, params), [exp, params])
   const layout = useMemo(() => layoutOf(exp, params), [exp, params])
-  const meters = useMemo(() => (x.sol ? snapNoise(x.sol) : null), [x])
+  // What the meters, the readout and the reading table all show: the transient
+  // at the cursor where there is one, the steady state at the drive's peak
+  // where the experiment has no time axis, and the DC solve otherwise.
+  const reading = x.snap || x.sol
+  const meters = useMemo(() => (reading ? snapNoise(reading) : null), [reading])
   const drive = useMemo(() => (x.ac && exp.sweep ? atDrive(exp, x) : null), [exp, x])
+  // The curves the scope draws beside its traces. B1's is the alias: the other
+  // tone that the same dots belong to, which is what makes the dots the lesson.
+  const guides = useMemo(() => (x.samples && x.samples.alias ? [{ f: x.samples.alias.of, label: x.samples.alias.label }] : []), [x])
   const lit = useMemo(() => {
     const nodes = new Set()
     const els = new Set()
@@ -130,9 +150,16 @@ export default function App() {
   // The topbar's numbers are the math entry's own value rows: the reading the
   // experiment is about, then the two that decide it. They are already computed
   // for the panel below, so the topbar cannot quote a different arithmetic.
+  //
+  // The rows come from the last block, not the first. An experiment's blocks
+  // are its `claim` keys in the order they build, so the last one is the claim
+  // the experiment is named for. F2 carries resolution and then accuracy, and
+  // taking the first three rows put F1's three numbers on F2's topbar: its
+  // first try step raised the counts term from 2 to 5 and not one number on
+  // the first screen moved.
   const headline = useMemo(() => {
-    const rows = math.blocks.filter((b) => b.kind === 'values').flatMap((b) => b.rows)
-    return rows.slice(0, 3)
+    const blocks = math.blocks.filter((b) => b.kind === 'values')
+    return (blocks[blocks.length - 1]?.rows || []).slice(0, 3)
   }, [math])
 
   // The play: from where the cursor is (or from 0, at the end) to the end of the
@@ -162,14 +189,24 @@ export default function App() {
     return () => cancelAnimationFrame(raf)
   }, [playing, tEnd])
   // A new experiment shows from its top, sidebar and page alike.
+  //
+  // The page itself never scrolls: base.css gives html, body and #root
+  // `overflow: hidden`, and on a phone it is #root alone that turns to
+  // `overflow: auto`. So window.scrollTo moved nothing there. Opening the
+  // picker and reaching down it for C5 scrolls #root, and the reader landed in
+  // the middle of C5 with its note and its first knob above the screen.
   useEffect(() => {
     const aside = document.querySelector('.controls')
     if (aside) aside.scrollTop = 0
+    const root = document.getElementById('root')
+    if (root) root.scrollTop = 0
     window.scrollTo(0, 0)
   }, [id])
 
   const nodeCount = x.sol ? x.sol.norm.n : normalize(x.net).n
-  const residual = x.sol ? num(x.sol.maxResidual, 'A', 2, scaleOf(x.sol.i)) : null
+  // The imbalance belongs to the solve the meters are reading, so a steady-state
+  // reading quotes the phasor solve's residual and not the DC one's.
+  const residual = reading ? num(x.snap ? x.ac.maxResidual : x.sol.maxResidual, 'A', 2, scaleOf(reading.i)) : null
   const outcome = x.sol ? `current in = current out at every node (KCL), largest imbalance ${residual}` : `refused: ${x.refusal.code}`
   const currentView = exp.views.includes(view) ? view : exp.view
   const viewOptions = VIEW_ORDER.filter((v) => exp.views.includes(v)).map((v) => ({ id: v, ...viewLabel(v) }))
@@ -402,10 +439,10 @@ export default function App() {
               <b>{num(x.cursor, 's', 3)}</b>
             </span>
           ) : null}
-          {x.sol && show === 'p' ? (
+          {reading && show === 'p' ? (
             <span className="topbar-field" data-role="net-power">
               <span>Σ power</span>
-              <b>{num(netPower(x.sol), 'W', 2, scaleOf(x.sol.p))}</b>
+              <b>{num(netPower(reading), 'W', 2, scaleOf(reading.p))}</b>
             </span>
           ) : null}
         </div>
@@ -444,6 +481,12 @@ export default function App() {
           <div className="view-body" data-show={show}>
             <Schematic className="big" elements={elements} layout={layout} meters={show === 'none' ? null : meters} show={show} lit={lit} />
             {x.refusal ? <Refusal err={x.refusal} /> : null}
+            {/* No cursor to move, so the instant is stated instead of scrubbed. */}
+            {x.snap ? (
+              <p className="cursor-row still" data-role="steady">
+                the meters read the circuit at <b>t = {num(x.snapAt, 's', 3)}</b>, where the {num(x.omega / (2 * Math.PI), 'Hz', 4)} drive is at its peak
+              </p>
+            ) : null}
             {dynamic && x.tr ? (
               <div className="cursor-row" data-role="cursor">
                 <div className="cursor-head">
@@ -557,9 +600,11 @@ export default function App() {
             </div>
           </div>
           <div className="view-body">
-            {currentView === 'reading' && x.sol ? <ReadingsPane x={x} elements={elements} /> : null}
-            {currentView === 'equations' && eq ? <EquationsPane eq={eq} solved={!!x.sol} fold={false} onHover={setHover} /> : null}
-            {currentView === 'scope' && x.tr ? <ScopeCanvas tr={x.tr} scope={exp.scope} cursor={x.cursor} onCursor={scrub} /> : null}
+            {currentView === 'reading' && reading ? <ReadingsPane sol={reading} elements={elements} /> : null}
+            {currentView === 'equations' && eq ? <EquationsPane eq={eq} solved={!!x.sol && !x.snap} fold={false} onHover={setHover} /> : null}
+            {currentView === 'scope' && x.tr ? (
+              <ScopeCanvas tr={x.tr} scope={exp.scope} cursor={x.cursor} onCursor={scrub} samples={x.samples} guides={guides} />
+            ) : null}
             {(currentView === 'impedance' || currentView === 'bode') && x.freq && drive ? (
               <FreqCanvas freq={x.freq} mode={currentView} fDrive={x.omega / (2 * Math.PI)} at={drive} corner={null} />
             ) : null}

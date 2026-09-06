@@ -80,8 +80,8 @@ export function EquationsPane({ eq, solved, fold = false, onHover = null }) {
         </summary>
       ) : null}
       <p className="eq-step">
-        <b>1 · The equations.</b> One KCL row per node; then one row for each element that fixes a voltage. The
-        amber numbers are the live values.
+        <b>1 · The equations.</b> One KCL row per node; then one row for each element that fixes a voltage.
+        {solved ? ' The amber numbers are the live values.' : ' The rows are the system, without its numbers.'}
       </p>
       {eq.rows.map((r, k) =>
         r.kind === 'kcl' ? (
@@ -248,8 +248,7 @@ export function Refusal({ err }) {
  * one of these columns at a time and this is all three, read from the same
  * solve, so a reading here and a reading there are the same number.
  */
-export function ReadingsPane({ x, elements, power = true }) {
-  const sol = x.sol
+export function ReadingsPane({ sol, elements, power = true }) {
   const nodes = Object.keys(sol.v).filter((n) => n !== 'gnd')
   // Each column's noise is judged against the largest reading in it, as the schematic's meters are.
   const scale = { volt: scaleOf(sol.volt), i: scaleOf(sol.i), p: scaleOf(sol.p), v: scaleOf(sol.v) }
