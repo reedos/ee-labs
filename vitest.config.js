@@ -9,7 +9,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   test: {
-    include: ['packages/*/src/**/*.test.{js,jsx}', 'apps/*/src/**/*.test.{js,jsx}'],
+    include: ['packages/*/src/**/*.test.{js,jsx}', 'apps/*/src/**/*.test.{js,jsx}', 'scripts/director/**/*.test.js'],
     // Vitest's default is five seconds, which is a bet on the machine. These
     // are numerical tests: solved steady states, fuzzed geometry, whole
     // spectra. Several run for seconds here and several times that on a

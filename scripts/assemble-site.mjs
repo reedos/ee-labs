@@ -51,11 +51,26 @@ export const LABS = [
   'signal-lab',
   'circuit-lab',
   'control-lab',
-  // Dark-launched: built and served at its URL, linked from nowhere until its
-  // own RELEASE_STATUS says `released`. It still has to BE at that URL, which
-  // is exactly why it is assembled here.
   'circuit-elements-lab',
+  // Dark apps are served for review without adding them to public navigation.
   'power-lab',
+  'machines-lab',
+  'random-lab',
+  'energy-lab',
+  'electronics-lab',
+  'logic-lab',
+  'comms-lab',
+  'info-lab',
+  'devices-lab',
+  'grid-lab',
+  'computer-lab',
+  'dsp-lab',
+  'control-lab-ii',
+  'instruments-lab',
+  'fields-lab',
+  'rf-lab',
+  'system-lab',
+  'photonics-lab',
 ]
 
 export async function assemble({ labs = LABS, quiet = false } = {}) {

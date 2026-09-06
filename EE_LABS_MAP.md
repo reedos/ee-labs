@@ -21,6 +21,10 @@ the order to build in. §5 is what is out, and why.
 
 ## 1. The map
 
+The status column below is the original curriculum map, not the implementation ledger.
+Use `BACKLOG.md` section 1 for current counts, verification states and assignments.
+The executable inventory checks that ledger against the app registries.
+
 Status. **Built** is on the deployed site. **Planned** has a plan file. **Mapped**
 has a section in `ANALOG_ROADMAP.md`. **Proposed** is named here for the first time.
 

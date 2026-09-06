@@ -1,5 +1,37 @@
 # Handoff: continuing the EE Labs program from another session
 
+## Director wave, 2026-09-06
+
+Reed approved the director operating model and bounded parallel work.
+`PROGRAM.md` section 8 defines ownership, evidence, acceptance and integration.
+`BACKLOG.md` section 1 is the current ledger and dependency queue.
+It supersedes the older sequential scheduling instructions below.
+
+The director branch is `integration/program-director`, based on `cf90dda`.
+Its worktree is `.claude/worktrees/program-director`.
+The base contains 22 apps and 742 curriculum entries, counted from executable registries.
+These entries are not an acceptance count. Five planned apps are absent from the base.
+The old ledger contained duplicate rows and obsolete whole-lab dependencies.
+
+Three bounded streams started from the committed base:
+
+- `lab/vlsi-lab`, worktree `vlsi-wave-1`, implements the first supported Group A experiments.
+- `lab/interfaces-lab`, worktree `interfaces-wave-1`, implements Group A's pin experiments.
+- `verify/circuit-lab`, worktree `circuit-verification`, revalidates the saved branch against the base.
+
+Workers own only their assigned app. Shared changes and integration belong to the director.
+The new apps remain dark. No push or release is authorized by this wave.
+Reed's uncommitted main-workspace changes remain outside the integration branch.
+
+The inventory command is `node scripts/director/inventory.mjs`.
+Its test checks ledger counts and requires local assembly to include every existing app.
+The local assembler previously listed five apps while deploy listed twenty-two.
+The director's assembler now includes the same twenty-two apps.
+
+Power's `fa6382c` checkpoint and the other saved verification branches remain separate.
+Power's desktop-control failures do not block unrelated lab implementation.
+Do not treat saved completion reports as current evidence without reviewing their commit and dependencies.
+
 ## Local continuation, 2026-09-06
 
 This section supersedes the branch and verification status in the earlier

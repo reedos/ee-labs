@@ -5,59 +5,94 @@ has a row. Every item deferred by an overseer has a line under its lab's heading
 with the dependency that unblocks it. When a dependency is built, the director walks
 this file and reopens what it unblocks. Nothing leaves this file by being forgotten.
 
-Status words. **Built** is on the site. **Building** has an overseer and a branch.
-**Planned** has a plan file and no overseer yet. **Waiting** has a plan or a map
-entry and a named blocker. **Mapped** has a map entry only.
+The current ledger below supersedes status statements in the historical reports.
+Those reports remain evidence of earlier work and decisions.
+An implemented experiment is a registry entry, not an accepted teaching claim.
+Verification, integration and release are separate states under `PROGRAM.md` section 8.
 
 ## 1. The ledger
 
-| Lab | Status | Branch | Blocked on | Plan |
-| --- | --- | --- | --- | --- |
-| Circuit Elements Lab | released 2026-09-05, v1.1 | | | `CIRCUIT_ELEMENTS_LAB_PLAN.md` |
-| Circuit Lab | built | | | |
-| Signal Lab | built | | | |
-| Control Lab | built | | | |
-| Power Lab | built in part, dark | merged, Groups A to N | D5, the leakage spike | `POWER_LAB_PLAN.md` |
-| The two seams and the progression test | built, merged | | | `CURRICULUM.md` §3, §6 |
-| Electronics Lab | built in part, dark | merged, Groups A and C to O | Group B, which is Elements I9 and I10 by Decision 3 | `ELECTRONICS_LAB_PLAN.md` |
-| Logic Lab | built, dark | merged | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
-| DSP Lab | built, dark | merged | | `DSP_LAB_PLAN.md` |
-| Random Signals Lab | built, dark | merged | Electronics O1 for one cross-reference | `RANDOM_LAB_PLAN.md` |
-| Control Lab II | built, dark | merged | | `CONTROL_LAB_II_PLAN.md` |
-| Random Signals Lab | building | `lab/random-lab` | Electronics O1 for one cross-reference | to write |
-| Control Lab II | building | `lab/control-lab-ii` | | `CONTROL_LAB_II_PLAN.md` |
-| Instruments Lab | built, dark | merged | RF Lab for the network analyser group | `INSTRUMENTS_LAB_PLAN.md` |
-| Instruments Lab | building | `lab/instruments-lab` | RF Lab for the network analyser group | `INSTRUMENTS_LAB_PLAN.md` |
-| Fields Lab | built, dark | merged | | `FIELDS_LAB_PLAN.md` |
-| Energy Lab | built, dark | merged | Machines Lab for the wind group | `ENERGY_LAB_PLAN.md` |
-| Machines Lab | built, dark | merged | Power Lab L for the drives group, F now merged | `MACHINES_LAB_PLAN.md` |
-| Communications Lab | built, dark | merged | | `COMMUNICATIONS_LAB_PLAN.md` |
-| Information Lab | built, dark | merged | | `INFORMATION_LAB_PLAN.md` |
-| Applied Analog Lab | waiting | | Electronics L, M | `APPLIED_ANALOG_LAB_PLAN.md` |
-| Analog IC Lab | waiting | | Electronics H to M | `ANALOG_IC_LAB_PLAN.md` |
-| Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | `MIXED_SIGNAL_LAB_PLAN.md` |
-| RF Lab | built in part, dark | merged, Groups A to D | Groups E and F on the Electronics Lab's small-signal capacitances and Group O, G and H unassigned | `RF_LAB_PLAN.md` |
-| System Lab | built in part, dark | merged, Group A | Phases 2 to 6 on the RF Lab's noise and linearity groups | `SYSTEM_LAB_PLAN.md` |
-| VLSI Lab | waiting | | Logic Lab, Analog IC Lab | `VLSI_LAB_PLAN.md` |
-| Computer Lab | built, dark | merged | | `COMPUTER_LAB_PLAN.md` |
-| Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | `INTERFACES_LAB_PLAN.md` |
-| Grid Lab | built, dark | merged | Power Lab I3 and D1 for two cross-references | `GRID_LAB_PLAN.md` |
-| Photonics Lab | built in part, dark | merged, Groups A, C, D, E and F | Group B on Electronics O | `PHOTONICS_LAB_PLAN.md` |
-| Devices Lab | built, dark | merged | | `DEVICES_LAB_PLAN.md` |
-| Fields Lab | building | `lab/fields-lab` | Groups I to L unbuilt | `FIELDS_LAB_PLAN.md` |
-| Energy Lab | building | `lab/energy-lab` | Machines Lab for the wind group | to write |
-| Machines Lab | building | `lab/machines-lab` | Power Lab F for the drives group | to write |
-| Communications Lab | waiting | | Random Signals Lab | to write |
-| Information Lab | waiting | | Communications Lab | to write |
-| Applied Analog Lab | waiting | | Electronics L, M | to write |
-| Analog IC Lab | waiting | | Electronics H to M | to write |
-| Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | to write |
-| VLSI Lab | waiting | | Logic Lab, Analog IC Lab | to write |
-| Computer Lab | waiting | | Logic Lab | to write |
-| Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | to write |
-| Grid Lab | waiting | | Machines Lab, Electronics companion Newton | to write |
-| Devices Lab | waiting | | Electronics C | to write |
-| Signal Integrity | out of this repo | | | |
+Snapshot: committed integration base `cf90dda`, 2026-09-06.
+The 22 app registries contain 742 experiments, lessons or presets.
+Four labs are released. Eighteen are dark. Five planned apps do not exist at this base.
+These counts exclude uncommitted work and unmerged branches.
+They are not a percentage of curriculum acceptance.
+
+Run `node scripts/director/inventory.mjs` to reproduce the app counts, ids,
+group names, release markers and browser-harness presence.
+The inventory test checks these counts against this table.
+The three original released labs have no `RELEASE_STATUS` file.
+
+| App | Implemented | Present groups | Delivery and verification | Next work or dependency | Plan |
+| --- | --- | --- | --- | --- | --- |
+| `circuit-elements-lab` | 58 | A to I | Released; verification WIP `0795f5b` | Reconcile saved verification with Reed's concurrent notation work | `CIRCUIT_ELEMENTS_LAB_PLAN.md` |
+| `circuit-lab` | 16 | Four lesson groups | Released; saved verification under review | Review `verify/circuit-lab` against the integration base | `CURRICULUM.md` |
+| `signal-lab` | 35 | Five preset groups | Released; saved verification unmerged | Revalidate `659be05` and its shared requests | `CURRICULUM.md` |
+| `control-lab` | 13 | Four lesson groups | Released; saved verification unmerged | Revalidate `bc20d8a` and its shared requests | `CURRICULUM.md` |
+| `electronics-lab` | 75 | A, C to O | Dark; no browser harness | Audit shape deviations and K5; B is covered by Elements I9 and I10 | `ELECTRONICS_LAB_PLAN.md` |
+| `applied-analog-lab` | 0 | None | Planned | Confirm phase 0 contracts, then the specification and method engine | `APPLIED_ANALOG_LAB_PLAN.md` |
+| `analog-ic-lab` | 0 | None | Planned | Confirm phase 0 contracts, then EKV and sizing; later groups need Applied Analog | `ANALOG_IC_LAB_PLAN.md` |
+| `mixed-signal-lab` | 0 | None | Planned | Charge-conservation events and group-specific Analog IC contracts | `MIXED_SIGNAL_LAB_PLAN.md` |
+| `rf-lab` | 19 | A to D | Dark; no browser harness | E to H remain; check existing capacitance, noise and oscillator contracts | `RF_LAB_PLAN.md` |
+| `system-lab` | 4 | A | Dark; harness exists, evidence review pending | B to F remain; source-noise checks, IP3 extraction, Fields L and RF H | `SYSTEM_LAB_PLAN.md` |
+| `dsp-lab` | 40 | A to F | Dark; no browser harness | Browser acceptance and plan-fidelity review | `DSP_LAB_PLAN.md` |
+| `random-lab` | 30 | A to I | Dark; saved verification unmerged | Revalidate `ff28ab7`; check hand-over contracts for Control II | `RANDOM_LAB_PLAN.md` |
+| `comms-lab` | 50 | A to H | Dark; no browser harness | Browser acceptance and reported plan-number differences | `COMMUNICATIONS_LAB_PLAN.md` |
+| `info-lab` | 25 | A to F | Dark; no browser harness | Browser acceptance and the recorded plan correction | `INFORMATION_LAB_PLAN.md` |
+| `control-lab-ii` | 32 | A to E, F1 and F2 | Dark; no browser harness | F3 to F5 remain; check Random Signals contracts | `CONTROL_LAB_II_PLAN.md` |
+| `machines-lab` | 35 | A to E | Dark; saved verification unmerged | Revalidate `fedb2c9`; Power F and L now exist for the deferred drives | `MACHINES_LAB_PLAN.md` |
+| `logic-lab` | 45 | A to H | Dark; no browser harness | Browser acceptance; Electronics D6 now exists | `LOGIC_LAB_PLAN.md` |
+| `vlsi-lab` | 0 | None | Group A assigned on `lab/vlsi-lab` | Check delay extraction against network; app-local bridge pending shared review | `VLSI_LAB_PLAN.md` |
+| `computer-lab` | 30 | A to G | Dark; no browser harness | Browser acceptance and shared timing contracts | `COMPUTER_LAB_PLAN.md` |
+| `interfaces-lab` | 0 | None | Group A assigned on `lab/interfaces-lab` | Verify pin model; later groups need protocol timing contracts | `INTERFACES_LAB_PLAN.md` |
+| `fields-lab` | 36 | A to H | Dark; saved verification unmerged | Revalidate `7e5e640`; I to L remain, including System's antenna prerequisite | `FIELDS_LAB_PLAN.md` |
+| `photonics-lab` | 21 | A, C to F | Dark; harness exists, evidence review pending | B remains; Electronics O now exists, receiver contract check next | `PHOTONICS_LAB_PLAN.md` |
+| `power-lab` | 55 | A to N, except D5 | Dark; verification open on `fa6382c` | Desktop controls gate; D5 and recorded model deviations remain separate | `POWER_LAB_PLAN.md` |
+| `grid-lab` | 42 | A to J | Dark; no browser harness | Browser acceptance; Power I3 and D1 references can be checked | `GRID_LAB_PLAN.md` |
+| `energy-lab` | 26 | A to E | Dark; no browser harness | Browser acceptance; wind extension needs generator contract and scope review | `ENERGY_LAB_PLAN.md` |
+| `devices-lab` | 30 | A to G | Dark; no browser harness | Browser acceptance and plan-fidelity review | `DEVICES_LAB_PLAN.md` |
+| `instruments-lab` | 25 | A to F | Dark; saved verification unmerged | Revalidate `dc2e599`; network-analyser extension needs RF contract and scope review | `INSTRUMENTS_LAB_PLAN.md` |
+| Signal Integrity | External | Private simulator | Outside this repository | No implementation assignment here | `EE_LABS_MAP.md` |
+
+### Current assignments
+
+The director owns `integration/program-director` in `.claude/worktrees/program-director`.
+Reed's dirty main workspace is not the integration baseline.
+Only reviewed, explicitly committed work enters this branch.
+Nothing is pushed or released by this wave.
+
+| Stream | Branch and worktree | Bounded deliverable | Acceptance |
+| --- | --- | --- | --- |
+| Director | `integration/program-director`, `program-director` | Current ledger, dependency queue, review and integration | Inventory checks, focused tests, full integration suite, recorded lint state |
+| Verification | `verify/circuit-lab`, `circuit-verification` | Revalidate the saved Circuit changes | Scoped tests, build, deployed-path browser checks and screenshot review |
+| VLSI | `lab/vlsi-lab`, `vlsi-wave-1` | Group A, or a justified supported subset | Engine invariants, lesson pins, usable app, build and browser evidence |
+| Interfaces | `lab/interfaces-lab`, `interfaces-wave-1` | Group A | Independent pin checks, lesson pins, usable app, build and browser evidence |
+
+### Dependency queue
+
+1. Accept each saved verification branch independently. Power and Elements do not block unrelated lab work.
+2. Review the first VLSI and Interfaces groups before extending their app patterns.
+3. Check Applied Analog and Analog IC phase 0 contracts against the committed Electronics implementation.
+4. Check RF E/F and Photonics B against the existing network capacitance and noise APIs.
+5. Schedule Fields I to L and RF's remaining groups with their downstream System groups named.
+6. Reopen Control II F3 to F5 and the Machines drives against their actual package contracts.
+7. Add missing browser harnesses in bounded lab assignments. Verify changed groups during development, not after all curricula finish.
+8. Build Mixed-Signal groups as charge-event and Analog IC prerequisites pass their gates.
+
+There are eleven existing `scripts/verify.mjs` files and eleven existing apps without one.
+The older ten-lab harness wave is not the complete current inventory.
+Harness presence alone says nothing about its last result.
+System and Photonics need evidence review outside the nine saved verification branches.
+
+Electronics D, F, K, L, M, N and O are present at this base.
+`smallSignal` supports capacitances. `transitFreq`, `noiseSources` and `noiseDensity` exist in `packages/network`.
+These observations remove obsolete whole-lab waits, not downstream contract tests.
+System B still needs a source-chain noise comparison, even though `cascadeNF` exists.
+System C still needs measured IP3 and its guard, even though `cascadeIIP3` exists.
+
+Detailed acceptance remains pending for the dark labs.
+An experiment id does not establish every promised model, view or teaching claim.
+The historical deviations below remain open unless a later reviewed entry closes them.
 
 ## 2. Deferred items, by lab
 
