@@ -141,13 +141,19 @@ export function quarterWaveZ0(Zin, ZL) {
  * The message names what is available instead, because a refusal that does not
  * say where to go is only half of one. The sweep is exact at every frequency,
  * point by point, and it is what the pane draws.
+ *
+ * Both numbers in the sentence are quoted to four significant figures. This
+ * message is on screen under A5's plot rather than in a log, so `STYLE.md` S12
+ * governs it: a length carries its unit and its figures. The reference line's
+ * length is computed from the phase velocity, so printing it raw put sixteen
+ * digits of it in front of a reader.
  */
 export function refuseRational(line, f) {
   const ln = describeLine(line)
   const at = lineAt(ln, f || 1e9)
   const delay = ln.len / at.vp
   throw new RfError(
-    `A line ${ln.len} m long has no rational transfer function. Its response carries the factor e^(-gamma l), a delay of ${(delay * 1e9).toPrecision(4)} ns at this phase velocity, and that factor has no finite poles and no finite zeros. A ratio of polynomials cannot equal it at any order, so there is nothing to hand to the pole-zero view. The frequency response of this same line is exact at every frequency, and the sweep computes it point by point.`,
+    `A line ${ln.len.toPrecision(4)} m long has no rational transfer function. Its response carries the factor e^(-gamma l), a delay of ${(delay * 1e9).toPrecision(4)} ns at this phase velocity, and that factor has no finite poles and no finite zeros. A ratio of polynomials cannot equal it at any order, so there is nothing to hand to the pole-zero view. The frequency response of this same line is exact at every frequency, and the sweep computes it point by point.`,
     { field: 'systems', kind: 'not-rational', delay, length: ln.len },
   )
 }

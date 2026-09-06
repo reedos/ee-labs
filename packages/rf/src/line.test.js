@@ -206,6 +206,21 @@ describe('the line has no transfer function, and the sweep is what there is inst
     }
   })
 
+  it('the refusal quotes its length to four significant figures, because it is on screen', () => {
+    // A5's pane prints this sentence under the plot, so `STYLE.md` S12 governs
+    // it. The reference line's length is computed from the phase velocity, and
+    // the raw value is 0.0517191125540973 m. A number that long in a sentence a
+    // reader is meant to read is a bug, not a measurement.
+    const said = rationalAvailable(lossless, F0)
+    const quoted = said.says.match(/^A line (\S+) m long/)
+    expect(quoted, `no length in "${said.says.slice(0, 40)}"`).toBeTruthy()
+    expect(quoted[1]).toBe(QUARTER.toPrecision(4))
+    // Both numbers in the sentence, and nothing longer than four figures.
+    for (const n of said.says.match(/\d+\.\d+/g) || []) {
+      expect(n.replace(/^0\.0*/, '').replace('.', '').length, `"${n}" in the refusal`).toBeLessThanOrEqual(4)
+    }
+  })
+
   it('the refusal carries the delay the length and the phase velocity give', () => {
     try {
       refuseRational(lossless, F0)
