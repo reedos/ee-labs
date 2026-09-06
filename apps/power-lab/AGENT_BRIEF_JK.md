@@ -205,7 +205,7 @@ measured by the test named beside it.
 
 ```js
 {
-  id: 'j2', group: 'Isolated converters', name: '…',   // ≤ 10 words
+  id: 'j2', group: 'Isolation', name: '…',   // ≤ 10 words
   about: 'mismatch', chips: [0.5, 0, 1],     // ≥ 2, in range, default among
                                              // them, each spelled in the note
                                              // or the try (path.test.js)
@@ -236,6 +236,11 @@ hard-switched line beside it.
    and finds it pinned or excused by name.
 5. `BACKLOG.md` and `NEEDS.md` say what is built, what is deferred and what
    the director has to merge.
+6. `node apps/power-lab/scripts/verify.mjs` against the built page, in
+   Chromium, with the six new experiments in it.
 
-No Playwright: this environment has no browser, and `verify.mjs` has not been
-run against the new groups. `BACKLOG.md` says so and names what reopens it.
+Item 6 was run, and it is the reason two of this lane's commits exist. It was
+first recorded as unrunnable here. That was wrong. Chromium and Firefox are
+installed, the harness drives the built page, and it found two defects the
+2795 unit tests did not. `BACKLOG.md` carries both, and the fold measurement
+the harness makes of the whole lab.

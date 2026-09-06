@@ -1224,12 +1224,33 @@ Deferred, with what reopens each:
   and unequal drive, and neither is modelled. The resistance mismatch is the
   one that has a closed form, which is why it is the knob. Reopens with a
   switching-time model that differs between the two halves.
-- **`verify.mjs` has not been run against the new groups.** This environment
-  has no browser. The one new pane (Family), the five new drawings and the
-  three new sweep axes are held as geometry and as rendered markup by
-  `schematics.test.jsx`, `panes.test.jsx` and `review.test.jsx`. That is what
-  a suite can hold without pixels. Reopens on a machine with Chromium and
-  Firefox, before the release gate's step 1.
+- **`verify.mjs` ran, and it found what the unit tests could not.** An earlier
+  sitting recorded this environment as having no browser. It has both, and the
+  harness drives the built page. It caught two defects behind 2795 green unit
+  tests, and both are now fixed with a probe that fails without the fix.
+  - **Two group names cost the whole lab 28 px of fold.** The sidebar's group
+    tab row wraps, and "Isolated converters" and "Resonant conversion" took it
+    from two rows to three. That pushed the first knob below the 768 fold on
+    fourteen experiments of Groups A to G, which is §11.3.2's promise broken by
+    a name. The groups are called **Isolation** and **Resonance**, single nouns
+    in the register of "Magnetics" and "Inverters", and the row is two rows
+    again. Measured: 82 px against 54.
+  - **The top bar printed a current that is not there.** A resonant tank's mean
+    current is zero by charge balance, and the shooting method leaves femtoamps
+    where the zero is. K1's chip read "i_L −9.15 fA ± 683 mA". The chip now
+    reads the average against the waveform's own scale, which is `format.js`'s
+    own `nz` and the lab's existing answer to §11.6.6. The same line cleared
+    the identical dust on F2, F3 and F4, which was there before this lane.
+- **Nine experiments of Groups A to G sit below the 1366×768 fold, and this
+  lane did not put them there.** With Groups J and K removed from the same
+  build, B1, B2, B4, C1, C5, E1, E4, E6 and F2 are over by 1 to 23 px. Eight
+  open a group, which adds a 48 px intro above the note. §11.8 recorded this
+  green, so the shell's chrome has moved since. J1 is the tenth, 5 px over,
+  after this lane took 18 px out of its note. One shell change fixes all ten,
+  so it is in `NEEDS.md` for the director.
+- **Everything else `verify.mjs` measures is green on all 40.** No overflow at
+  four widths. The outcome chip whole at three. 390 px, the primary pane's
+  share, the path, the marks, the accessible names, and no dust anywhere.
 - **Some cells of the resonant measures table are bounds rather than closed
   forms.** The tank current is a piece of a sine whose amplitude the whole
   tank sets. The first-harmonic form that would give it is the approximation

@@ -89,6 +89,13 @@ what each contract is.
    `resonant.js` imports it. A lane that needs the same shape should use it
    rather than write a third. The shape is a clocked converter whose
    sub-intervals its own state chooses.
+7. **The 1366×768 fold needs about 25 px back, once, in the shell.**
+   `verify.mjs` §8 passes 30 of 40 here. B1, B2, B4, C1, C5, E1, E4, E6, F2
+   and J1 are over by 5 to 23 px. Nine open a group, which adds a 48 px intro
+   above the note. Nine were over before Groups J and K existed, on the same
+   build with them removed. This lane gave back the 28 px it had added, and
+   18 px more out of J1's note. The rest is one change to the sidebar's chrome,
+   and it fixes all ten. §8 is the test, and it fails today.
 
 ## Not needed
 
