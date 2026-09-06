@@ -72,13 +72,13 @@ const Tsw = (def = 20e-9) => ({ key: 'tsw', label: 't_sw', unit: 's', min: 0, ma
 
 // ------------------------------------------------------------------ tables
 
-export const JK_GROUPS = ['Isolated converters', 'Resonant conversion']
+export const JK_GROUPS = ['Isolation', 'Resonance']
 
 export const JK_GROUP_INTROS = {
-  'Isolated converters':
+  Isolation:
     'A flyback stores each cycle\u2019s energy in its core and then dumps it. These three send it ' +
     'straight through the transformer instead, and they differ in what each switch must block.',
-  'Resonant conversion':
+  Resonance:
     'Every switch so far has opened on full current and closed on full voltage. A tank between the ' +
     'bridge and the rectifier changes what the switch meets at each edge.',
 }
@@ -214,14 +214,13 @@ export const JK_EXPERIMENTS = [
     about: 'D',
     chips: [0.4, 0.45],
     try: { knob: 'D', text: 'Set D to 45 %: the reset takes 4.50 µs and leaves 1.00 µs.' },
-    group: 'Isolated converters',
+    group: 'Isolation',
     name: 'A buck through a transformer',
     params: [Dfw(0.4), Ratio(4), Vin(48), R(5), Lm(1e-3), L(), C(), Fs()],
     note:
-      'The switch puts 48 V across the primary and the secondary hands the filter n times it, so ' +
-      'volt-second balance gives M = n·D. At D = 40 % on a 4:1 transformer that is 4.80 V. The core ' +
-      'has its own volt-seconds to return, through a reset winding, and that takes 4.00 µs. So the ' +
-      'duty stops at one half and the switch blocks 96.0 V.',
+      'The secondary hands the filter n times the rail, so volt-second balance gives M = n·D. At ' +
+      'D = 40 % on a 4:1 transformer that is 4.80 V. The core returns its own volt-seconds through ' +
+      'a reset winding, in 4.00 µs. So the duty stops at one half and the switch blocks 96.0 V.',
     terms: ['forward-converter', 'reset-winding', 'magnetising-current', 'volt-second', 'turns-ratio', 'isolation', 'duty'],
   }),
   forwardExp('pushpull', {
@@ -229,7 +228,7 @@ export const JK_EXPERIMENTS = [
     about: 'mismatch',
     chips: [0.5, 0, 1],
     try: { knob: 'mismatch', text: 'Set the mismatch to 100 %: the offset grows to 40.0 mA.' },
-    group: 'Isolated converters',
+    group: 'Isolation',
     name: 'The push-pull and the flux walk',
     params: [Mismatch(0.5), Ron(0.05), Ratio(8), Vin(48), Lm(4e-3), R(5), L(), C(), Fs()],
     traces: ['iM', 'iL', 'vsw'],
@@ -246,7 +245,7 @@ export const JK_EXPERIMENTS = [
     about: 'D',
     chips: [0.4, 0.45],
     try: { knob: 'D', text: 'Set D to 45 %: the output rises to 5.40 V on the same 48 V.' },
-    group: 'Isolated converters',
+    group: 'Isolation',
     name: 'Four switches, half the stress',
     params: [Dfw(0.4), Ratio(8), Vin(48), Ron(0.05), R(5), Lm(1e-3), L(), C(), Fs()],
     views: ['family', 'measures', 'math', 'sweep', 'losses'],
@@ -264,7 +263,7 @@ export const JK_EXPERIMENTS = [
     about: 'fs',
     chips: [120e3, 60e3],
     try: { knob: 'fs', text: 'Set f_s to 60 kHz: M holds at 0.250 while the formula says 0.222.' },
-    group: 'Resonant conversion',
+    group: 'Resonance',
     name: 'The series resonant tank',
     params: [FsK(120e3), Ratio(2), Vin(48), Rk(12), Lr(), Cr(), C(100e-6)],
     note:
@@ -279,7 +278,7 @@ export const JK_EXPERIMENTS = [
     about: 'Lm',
     chips: [150e-6, 60e-6],
     try: { knob: 'Lm', text: 'Set L_m to 60 µH: the peak gain rises to 0.593 at 66.3 kHz.' },
-    group: 'Resonant conversion',
+    group: 'Resonance',
     name: 'The LLC and its two resonances',
     traces: ['vsw', 'iL', 'iT'],
     allTraces: ['vsw', 'vout', 'vL', 'iL', 'iT', 'iM', 'iD', 'iC', 'iQ'],
@@ -296,7 +295,7 @@ export const JK_EXPERIMENTS = [
     about: 'tsw',
     chips: [20e-9, 100e-9],
     try: { knob: 'tsw', text: 'Set t_sw to 100 ns: the edges cost 439 mW and the bridge 1.04 W.' },
-    group: 'Resonant conversion',
+    group: 'Resonance',
     name: 'What the soft edge saves',
     params: [Tsw(20e-9), FsK(130e3), Rs(0.2), Rk(12), Vin(48), Ratio(2), LmK(150e-6), Lr(), Cr(), C(100e-6)],
     views: ['losses', 'measures', 'math', 'sweep'],

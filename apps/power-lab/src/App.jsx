@@ -9,7 +9,7 @@ import { reportSummary } from './report.js'
 import ScopeCanvas, { TRACE_COLORS } from './components/ScopeCanvas.jsx'
 import SweepCanvas from './components/SweepCanvas.jsx'
 import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, FluxPane, ScrubPane, LedgerPane, MODE_WORDS } from './components/panes.jsx'
-import { fmtz } from './format.js'
+import { fmtz, statScale } from './format.js'
 import { scopeMarks, sweepMarks } from './marks.js'
 import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/schematics.jsx'
 import { FamilyPane } from './components/jkPanes.jsx'
@@ -522,7 +522,11 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                     ripple <b>{fmt(m.sig.vout.pp, 'V', 3)}</b>
                   </span>
                   <span>
-                    i_L <b>{fmt(m.sig.iL.avg, 'A', 3)}</b>
+                    {/* A resonant tank's mean current is zero by charge balance,
+                        and the solver leaves femtoamps where the zero is. The
+                        chip reads them against the waveform's own scale, so a
+                        current that is not there prints as 0 A. */}
+                    i_L <b>{fmtz(m.sig.iL.avg, 'A', 3, statScale(m.sig.iL))}</b>
                     <em className="prov"> ± {fmt(m.sig.iL.pp / 2, 'A', 3)}</em>
                   </span>
                   {clocked && m.mode === 'DCM' ? (

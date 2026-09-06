@@ -1,4 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import { renderToString } from 'react-dom/server'
+import React from 'react'
+import App from './App.jsx'
+import { fmt } from '@ee-labs/ui'
 import { walkWindows, forwardM, fhaRatio, seriesResonance, lowerResonance } from '@ee-labs/switched'
 import { EXPERIMENTS, byId, defaultsOf, GROUPS } from './experiments.js'
 import { analyse } from './analysis.js'
@@ -28,7 +32,7 @@ const mW = (w) => w * 1e3
 
 describe('the two groups are on the list, in the plan’s order', () => {
   it('adds six experiments in two groups after the losses', () => {
-    expect(GROUPS.slice(-2)).toEqual(['Isolated converters', 'Resonant conversion'])
+    expect(GROUPS.slice(-2)).toEqual(['Isolation', 'Resonance'])
     const ids = EXPERIMENTS.slice(-6).map((e) => e.id)
     expect(ids).toEqual(['j1', 'j2', 'j3', 'k1', 'k2', 'k3'])
     expect(EXPERIMENTS.filter((e) => e.jk)).toHaveLength(6)
@@ -358,5 +362,30 @@ describe('the forward family’s parameters reach the engine as the engine names
     // The reset winding has the primary's own turns, which is what puts the
     // duty ceiling at one half and the switch stress at twice the rail.
     expect(forwardParams({}).nr).toBe(1)
+  })
+})
+
+describe('nothing on these six screens reads in femtoamps', () => {
+  // §11.6.6's dust probe, restated where it failed rather than as a proxy for
+  // it. A resonant tank's mean current is zero by charge balance, and the
+  // shooting method leaves a few femtoamps where the zero is. The top bar was
+  // printing them: k1 read "i_L −9.15 fA ± 683 mA", which tells a reader that
+  // 9 fA is a current the circuit has. The chip now reads the average against
+  // the waveform's own scale, so a current that is not there prints as 0 A.
+  const DUST = /\d(\.\d+)?\s?[fpa](V|A|W|s|C)\b/g
+  const strip = (h) => h.replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;|&#\d+;/g, ' ').replace(/\s+/g, ' ')
+  const screen = (id) => strip(renderToString(React.createElement(App, { initialId: id, initialView: null })))
+
+  it.each(EXPERIMENTS.filter((e) => e.jk).map((e) => [e.id]))('%s', (id) => {
+    const seen = screen(id).match(DUST)
+    expect(seen, `${id} shows ${seen && seen.join(', ')}`).toBe(null)
+  })
+
+  it('still prints a current that is really there', () => {
+    // The guard must not swallow the number it guards. The forward
+    // converter's mean inductor current is the load current, and it stays.
+    const iL = at('j1').m.sig.iL.avg
+    expect(iL).toBeGreaterThan(0.5)
+    expect(screen('j1')).toContain(`i_L ${fmt(iL, 'A', 3)}`)
   })
 })
