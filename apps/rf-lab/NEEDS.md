@@ -22,22 +22,22 @@ changes it.
 `packages/ui/src/progression.test.js` belongs to the seams overseer. These are
 this lab's ids and counts for it.
 
-The slug is `rf-lab`. Nine experiments exist today, in two groups. The plan's
-other six groups are later sittings' and their ids do not go into the
+The slug is `rf-lab`. Nineteen experiments exist today, in four groups. The
+plan's other four groups are later sittings' and their ids do not go into the
 progression test until they land.
 
 | Group | Ids | Count |
 | --- | --- | --- |
 | A The line at one frequency | a1 to a5 | 5 |
 | B The Smith chart | b1 to b4 | 4 |
+| C Matching networks | c1 to c5 | 5 |
+| D S-parameters | d1 to d5 | 5 |
 
 Not built. `RF_LAB_PLAN.md` §9 says which phase each of these waits for, and
 `BACKLOG.md` carries them under this lab's heading.
 
 | Group | Ids | Count | Waits for |
 | --- | --- | --- | --- |
-| C Matching networks | c1 to c5 | 5 | `packages/rf/src/match.js` |
-| D S-parameters | d1 to d5 | 5 | the S-parameter view |
 | E The transistor near f_T | e1 to e5 | 5 | the Electronics Lab's `smallSignal` |
 | F Noise | f1 to f4 | 4 | the Electronics Lab's Group O |
 | G Mixers and linearity | g1 to g4 | 4 | `packages/rf/src/linearity.js` |
@@ -58,8 +58,12 @@ Cross-references other labs will make into this one, once they are built:
 | From | To | What it needs |
 | --- | --- | --- |
 | Fields Lab | b1, b2 | the Smith chart, which its group I shares |
-| Instruments Lab | d1 to d5 | S-parameters, which are not built |
+| Instruments Lab | d1 to d5 | S-parameters, which are built |
 | System Lab | f3, g3 | the cascade budget, which is not built |
+
+The ledger row in `BACKLOG.md` §1 still reads "waiting" with no branch, and
+there are two of them. This lab is building on `lab/rf-lab`. That table is the
+director's, so the correction is named here rather than made.
 
 ## 3. The canvas promotion, recorded rather than argued
 
@@ -97,7 +101,21 @@ again.
 **What the Instruments Lab gets.** `rotate` moves the marks and leaves the chart
 under them alone, which is what a reference-plane offset does. The aria text
 says when the plane has moved, so a rotated point is never shown as the raw one.
-The S-parameter view that lab also needs is not built, and it is Group D's.
+
+**The S-parameter view, and where it lives.** It is built, and it is
+`apps/rf-lab/src/components/SparamPane.jsx`. `RF_LAB_PLAN.md` Decision 5 says it
+goes into `packages/ui` beside the Smith chart, with the Instruments Lab as its
+second user. `apps/rf-lab/AGENT_BRIEF.md` §1 gives the file to the app's lane.
+The two readings disagree, and this entry is the disagreement rather than a
+decision taken quietly.
+
+What holds either way is the prop that lab needs. `plane` is the
+calibration-plane offset in degrees towards the generator. It turns the angle of
+every entry and leaves every magnitude alone, by twice the offset on a
+reflection and once on a transmission. A test measures both halves of that, so
+a promotion into `packages/ui` is a move rather than a rewrite. The view carries
+no CSS of its own either, and the `.rf-strace`, `.rf-chip` and `.rf-marker-read`
+rules in `apps/rf-lab/src/styles.css` travel with it.
 
 **The styles.** The canvas carries no CSS of its own. The consuming app carries
 it, which is `OneLineCanvas`'s arrangement in this suite. A second lab needs the
@@ -152,6 +170,6 @@ commit, the way `rotate` is in the chart's.
 ## 5. Nothing else
 
 This lab needs no new element in `packages/network`, no change to any existing
-component in `packages/ui`, and no experiment from another lab for the nine that
-are built. `packages/rf` is new and this overseer owns it, which
+component in `packages/ui`, and no experiment from another lab for the nineteen
+that are built. `packages/rf` is new and this overseer owns it, which
 `EE_LABS_MAP.md` §3 records.

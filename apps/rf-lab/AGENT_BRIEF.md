@@ -50,7 +50,7 @@ Commit messages are narrative: what changed, why, and what fell out. Read
 | 2 | The chart canvas | `packages/ui/src/SmithCanvas.jsx` and its test, plus its line in `packages/ui/index.js` | done | the Fields Lab's and Instruments Lab's props are in from the first commit, and the test drives them |
 | 3 | The app shell | everything in `apps/rf-lab/` not owned by a group lane, `RELEASE_STATUS`, `release.test.js`, `scripts/pins.mjs` | done | the shell loads at 390 px with no horizontal scroll, and the release test passes dark |
 | 4 | Groups A and B | `src/groups/{a,b}.js`, `src/lessons/{a,b}.js`, `src/terms/{a,b}.js` | done | every A and B number pinned, A5's refusal on screen with its reason |
-| 5 | Matching, then Groups C and D | `packages/rf/src/match.js` and test, `src/groups/{c,d}.js`, `src/lessons/{c,d}.js`, `src/terms/{c,d}.js`, `src/components/SparamPane.jsx` | after lane 1 | invariant 4 green, C1's network solved to \|Γ\| under 1e-12 |
+| 5 | Matching, then Groups C and D | `packages/rf/src/match.js` and test, `src/groups/{c,d}.js`, `src/lessons/{c,d}.js`, `src/terms/{c,d}.js`, `src/components/SparamPane.jsx` | done | invariant 4 green, C1's network solved to \|Γ\| under 1e-12 |
 | 6 | The device, then Group E | `packages/rf/src/{stability,devices}.js` and tests, `src/groups/e.js`, `src/lessons/e.js`, `src/terms/e.js` | after the gate | invariants 8, 9, 10 green, E5's error inside its bound |
 | 7 | Noise, then Group F | `packages/rf/src/{noise,budget}.js` and tests, `src/groups/f.js`, `src/lessons/f.js`, `src/terms/f.js` | after the gate | invariant 11 green, F3's three shares pinned |
 | 8 | Linearity and the mixer, then Group G | `packages/rf/src/{linearity,mixer}.js` and tests, `src/groups/g.js`, `src/lessons/g.js`, `src/terms/g.js` | after lane 1 | invariant 12 green, the drive guard tested at both thresholds |
@@ -258,6 +258,32 @@ aspect ratio. The open sits at the right edge and the short at the left.
 `rotate` moves a point by the angle asked for and leaves its magnitude alone.
 Every mode draws the families it names.
 
+### 3.7 The S-parameter view (lane 5, `apps/rf-lab/src/components/SparamPane.jsx`)
+
+The plan's §4.2 second shared canvas. It lives in the app rather than in
+`packages/ui`, which is the lane table's reading of Decision 5. The Instruments
+Lab's need is in its props from the first commit. A promotion is then a move
+rather than a rewrite.
+
+```jsx
+<SparamPane exp={exp} x={x} p={p} plane={0} />
+```
+
+`plane` is the calibration-plane offset in degrees towards the generator. It
+turns the angle of every entry and leaves every magnitude alone, by twice the
+offset on a reflection and once on a transmission, because a reflected wave
+crosses the moved length twice. The legend says when the plane has moved.
+
+```js
+// The props, computed from the analysis, so a test can check them without a canvas.
+export function sparamPropsFor(exp, p, x, plane = 0)
+// -> { from, to, marker, plane, keys, floor, ceiling, traces[], at[], name }
+```
+
+Test (`panes.test.jsx`): all four entries are drawn twice, once in decibels and
+once as an angle, and all four are read at the marker. A plane of 30 degrees
+moves no magnitude and turns S11 by 60 degrees and S21 by 30.
+
 ## 4. The lesson schema, and the quantity paths
 
 The Fields Lab's three registers, unchanged. `see` (≤ 70 words), `try` (each
@@ -290,9 +316,31 @@ sweep.<points|spacing|worst|repeat>       the exact sweep, and what it repeats b
 handOver.<ok>                             whether the rational hand-over is offered
 ```
 
-The later groups need more paths (`s.<ij>.<mag|db|deg>`, `k`, `mu`, `mag`,
-`nf`, `iip3`, `pn`). Each is added by the lane that builds the group needing
-it.
+Groups C and D added these. Each reads off the analysis by its own path, rather
+than through a case in `readQuantity`.
+
+```
+design.<Q|Xs|Xp|R|RS|X|up|direct>        the synthesis, before any component
+element.<series|shunt>.<value|X|kind>    the components that reactance asks for
+cancel.<X|value|kind>                    what cancels a complex load's reactance
+chosen.<orientation|elements.length>     which arrangement is on screen
+count  oneOverQ  awayAt                  how many match, 1/Q, and where they part
+away.<n>.<here|twice|ok>                 each arrangement, at f0 and at 2 f0
+at.<mag|vswr|returnLossDb>               what the finished network reads
+bw.<lower|upper|width|fractional|bounded>  the band, by bisection on the exact response
+qw.<Z0|len|vp|RS|RL>                     the quarter-wave section
+lumpedBw.<fractional>  wider             the L network it is measured against
+solved  solvedMag  agree                 S11 by a solve, against the closed form
+waves.<a|b>                              the incident and the returning wave
+s.<11|12|21|22>.<re|im|mag|db|deg>       the four entries
+conv.<count|names|missing>               which descriptions this two-port has
+conv.roundTrip.<ok|error>                S to Z to ABCD to Y to S
+power.<sum|dissipated|reciprocity|unitarity|largest>
+built.<name|pad.series|pad.shunt>        the circuit the experiment built
+```
+
+The later groups need more (`k`, `mu`, `mag`, `nf`, `iip3`, `pn`). Each is added
+by the lane that builds the group needing it.
 
 ## 5. Library fixtures, with fixed names
 
@@ -320,6 +368,8 @@ uniformLine({ Z0: 50, epsr: 2.1, len: QUARTER, alpha: 0 })
 
 // The quarter-wave transformer, C4 and D4. Z0 = sqrt(50 × 100) = 70.7107 ohms,
 // |S11| = 0.333333 and |S21| = 0.942809, and the two squares sum to 1.000000000000.
+// Its fractional bandwidth measures 36.697 % at the knob's 1.2222 and 36.700 % at
+// the exact eleven ninths the closed form uses, so the pin follows the knob.
 uniformLine({ Z0: quarterWaveZ0(50, 100), epsr: 2.1, len: QUARTER })
 
 // The two device sets, lane 6, quoted the way a datasheet quotes them. Decision 4
@@ -342,7 +392,7 @@ test, never a constant typed in.
 | --- | --- |
 | 4, Group A | Γ = 0.33333 at 100 Ω and −0.33333 at 25 Ω. VSWR 2.0000, return loss 9.5424 dB, mismatch loss 0.51153 dB. Γ = −j0.50000 at 30 − j40 Ω, VSWR 3.0000, return loss 6.0206 dB. v_p = 2.06876e8 m/s, 69.0066 % of c, λ = 20.6876 cm, a quarter of it 5.17191 cm. Z_in 25.000 Ω at 1.000 GHz, 40.000 − j30.000 Ω at 500 MHz, 100.00 Ω at 2.000 GHz. α = 0.050000 Np/m is 0.43429 dB/m, and moves the quarter wave to 25.097 Ω. The reflection at the source falls to 0.33161. The response repeats every 2.0000 GHz |
 | 4, Group B | The open at Γ = 1, the short at −1, the match at 0. r = 1 is centred at (0.50000, 0) with radius 0.50000, x = 1 at (1, 1.0000) with radius 1.0000, g = 1 at (−0.50000, 0) with radius 0.50000. The standing-wave circle's radius is 0.33333. β = 30.372 rad/m, so a quarter wave turns 180.00 degrees and a centimetre turns 34.803 degrees. With loss, \|Γ\| falls to 0.33161 over that quarter wave. y = 0.50000 for a 100 Ω load |
-| 5, Groups C and D | Q = 1.0000, 7.9577 nH and 1.5915 pF, 100.00 % bandwidth. Q = 3.0000, 2.3873 nH and 9.5493 pF, 33.333 %. VSWR 1.1437 at 900 MHz. 70.711 Ω and 36.700 %. −3.0000 dB and −6.0000 dB, S11 zero. \|S11\| 0.33333 and \|S21\| 0.94281, summing to 1.000000000000 |
+| 5, Groups C and D | Q = 1.0000, X_s 50.00 Ω and X_p 100.0 Ω, so 7.9577 nH and 1.5915 pF, and one over Q is 1.0000. Q = 3.0000, 2.3873 nH and 9.5493 pF, one over Q 0.33333. The measured band of the 50 Ω to 100 Ω match is 60.58 % to a ratio of 1.500 and 28.72 % to 1.2222, from 650.1 MHz to 1.256 GHz. VSWR 1.1437 at 900 MHz. The section is 70.711 Ω, 5.172 cm, and 36.697 % to a ratio of 1.2222. The 3 dB pad is 17.61 Ω between two of 292.4 Ω, S21 −3.0000 dB and S11 zero, and two of them give −6.0000 dB. The transformer of ratio 2 gives S11 0.60000 and S21 0.80000 with two descriptions of four. \|S11\| 0.33333 and \|S21\| 0.94281, summing to 1.000000000000. An 8 nH and 1.6 pF network dissipates 0.021792 behind 1 Ω and 0.10080 behind 5 Ω |
 | 6, Group E | K = 0.6071, \|Δ\| = 0.6964, μ = 0.8628, MSG 21.934 dB, the load circle at 0.9347 + j0.9914 with radius 0.4997. K = 1.4332, μ = 1.1314, MAG 11.667 dB. U = 0.10851, bounds −0.895 dB and +0.998 dB, measured +0.834 dB |
 | 7, Group F | kT₀ = −173.975 dBm/Hz, T_e = 119.64 K at 1.5 dB, NF 1.8618 dB with shares 77.07 %, 17.61 % and 5.32 %, and 4.8618 dB behind a 3.000 dB pad |
 | 8, Group G | −6.0206 dB and −3.9224 dB, an IF of 400.0 MHz and an image at 1.600 GHz, 31.485 dB of rejection. IIP3 +21.249 dBm, gaps 74.535 dB and 38.098 dB, errors −0.0024 dB and −0.159 dB |
@@ -389,5 +439,12 @@ saying nothing about the lab while it does.
   horizontally at 390 px. The Smith chart is square, so it sets the pane's
   height from its width, and `min-height: 0` belongs on every flex parent above
   it.
+- **A resistance of zero is a wire, not a small resistor.** A 1e-12 ohm resistor
+  standing in for a short makes the node equations singular rather than
+  lossless, and `solveAC` declines the whole circuit. Leave the element out of
+  the netlist instead.
+- **A quantity with no unit takes no engineering prefix.** `fmt` printed a
+  reflection magnitude of 0.3333 as "333.3 m", which reads as millimetres. The
+  lab's `num` gives a plain figure when the unit is empty.
 - **A test that fails may be the test.** Decide which, and say which in the
   commit.
