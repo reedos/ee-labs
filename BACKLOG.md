@@ -932,6 +932,10 @@ sibling-path build passes. Desktop and phone screenshots cover 102 views.
 
 Power's browser layout gate remains open. The app's NEEDS file and the
 current section of HANDOFF.md locate the remaining findings and run logs.
+The final report is saved at `fa6382c`. Chromium has 58 first-knob
+visibility failures and Firefox has 60 across the two desktop sizes.
+All other browser checks pass, including all 55 experiments at phone width.
+
 The other eight verification branches have not changed or been integrated.
 The next milestone remains the nine-lab verification wave, before VLSI and
 Interfaces. No release status changed.

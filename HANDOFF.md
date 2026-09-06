@@ -14,6 +14,7 @@ Power verification resumed on `verify/power-lab` in
 saved fixes with Groups H through N. Its full suite passes 11,027 tests in
 359 files. The five-app sibling-path build passes. Screenshots cover 102
 views across eleven experiments at desktop and phone sizes.
+The branch tip is `fa6382c`, which adds the completed browser report.
 
 The checkpoint fixes motor sweep coordinates, speed predictions on current
 axes, logarithmic trace mapping, efficiency markers, and spectrum captions.
@@ -25,6 +26,13 @@ completed verification branch. The final-run logs are in its worktree:
 `verification-browser-final.log` and `verification-firefox-final.log`.
 Firefox needs execution outside the Windows sandbox to create pages here.
 `verification-final.log` records the passing full suite.
+
+Both browser runs finished. Chromium has 58 first-knob visibility failures
+and Firefox has 60, across the two desktop sizes. All other checks pass,
+including all 55 experiments at phone width. The largest overruns are 47 px
+and 49 px respectively. Fix the sidebar's vertical budget before accepting
+this branch. The test server on port 47612 was stopped after both runs.
+The review preview uses `http://127.0.0.1:47614/power-lab/`.
 
 The other eight branches are unchanged. Circuit Elements remains at WIP
 `0795f5b`. Circuit, Control, Signal, Machines, Random, Instruments and Fields
