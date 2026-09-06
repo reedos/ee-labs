@@ -370,6 +370,8 @@ none of them.
 | `machines` | equivalent circuits with mechanical states, the dq transform | Machines | exact for the model, saturation labelled |
 | `fields` | closed-form geometries, a relaxation solver with convergence, the lossless line on `events` | Fields | closed forms exact, grid guarded |
 | `grid` | per-unit, sequence networks, power flow on `network`'s Newton, the swing equation | Grid | exact at convergence, DC flow guarded |
+| `rf` | S-parameters, the Smith map, lines, matching, the link budgets | RF | exact, two refusals |
+| `photonics` | the photon, the fibre, the cavity, the rate equations | Photonics | exact for the model |
 | `rf` | S-parameters, the Smith chart, the line per frequency | RF | exact per frequency |
 | `photonics` | junction light sources and detectors, the laser rate equations, fibre and the cavity | Photonics | steady state exact, the linearisation guarded |
 | `switched` extended | charge conservation at a switch event, exact H(z) of an SC network | Mixed-Signal | exact |

@@ -98,7 +98,7 @@ into the app if only one will:
 | Constellation and eye diagram | Communications Lab | Mixed-Signal Lab |
 | Field map, a scalar or vector field over a geometry | Fields Lab | Devices Lab |
 | One-line diagram with power flow arrows | Grid Lab | Energy Lab |
-| Smith chart | RF Lab | Fields Lab, Instruments Lab |
+| Smith chart, in `packages/ui` since 2026-09-05 | RF Lab | Fields Lab, Instruments Lab |
 | Specification pane, a target and the margin against it | Applied Analog Lab | DSP Lab |
 | Ensemble view, many runs and their spread | Random Signals Lab | Applied Analog Lab (Monte Carlo) |
 | State machine diagram | Logic Lab | Computer Lab |

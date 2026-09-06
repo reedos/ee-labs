@@ -70,6 +70,9 @@ jobs:
           cp -r apps/control-lab-ii/dist _site/control-lab-ii
           cp -r apps/instruments-lab/dist _site/instruments-lab
           cp -r apps/fields-lab/dist _site/fields-lab
+          cp -r apps/rf-lab/dist _site/rf-lab
+          cp -r apps/system-lab/dist _site/system-lab
+          cp -r apps/photonics-lab/dist _site/photonics-lab
 
       - uses: actions/upload-pages-artifact@v3
         with:

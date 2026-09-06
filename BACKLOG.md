@@ -36,13 +36,13 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Applied Analog Lab | waiting | | Electronics L, M | `APPLIED_ANALOG_LAB_PLAN.md` |
 | Analog IC Lab | waiting | | Electronics H to M | `ANALOG_IC_LAB_PLAN.md` |
 | Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | `MIXED_SIGNAL_LAB_PLAN.md` |
-| RF Lab | waiting | | Analog IC Lab, Fields Lab's line | `RF_LAB_PLAN.md` |
-| System Lab | waiting | | RF Lab | `SYSTEM_LAB_PLAN.md` |
+| RF Lab | built in part, dark | merged, Groups A to D | Groups E and F on the Electronics Lab's small-signal capacitances and Group O, G and H unassigned | `RF_LAB_PLAN.md` |
+| System Lab | built in part, dark | merged, Group A | Phases 2 to 6 on the RF Lab's noise and linearity groups | `SYSTEM_LAB_PLAN.md` |
 | VLSI Lab | waiting | | Logic Lab, Analog IC Lab | `VLSI_LAB_PLAN.md` |
 | Computer Lab | built, dark | merged | | `COMPUTER_LAB_PLAN.md` |
 | Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | `INTERFACES_LAB_PLAN.md` |
 | Grid Lab | built, dark | merged | Power Lab I3 and D1 for two cross-references | `GRID_LAB_PLAN.md` |
-| Photonics Lab | built in part, dark | `lab/photonics-lab`, Groups A, C, D, E and F | Group B unbuilt, and it waits on Electronics O | `PHOTONICS_LAB_PLAN.md` |
+| Photonics Lab | built in part, dark | merged, Groups A, C, D, E and F | Group B on Electronics O | `PHOTONICS_LAB_PLAN.md` |
 | Devices Lab | built, dark | merged | | `DEVICES_LAB_PLAN.md` |
 | Fields Lab | building | `lab/fields-lab` | Groups I to L unbuilt | `FIELDS_LAB_PLAN.md` |
 | Energy Lab | building | `lab/energy-lab` | Machines Lab for the wind group | to write |
@@ -52,13 +52,10 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Applied Analog Lab | waiting | | Electronics L, M | to write |
 | Analog IC Lab | waiting | | Electronics H to M | to write |
 | Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | to write |
-| RF Lab | waiting | | Analog IC Lab, Fields Lab's line | to write |
-| System Lab | waiting | | RF Lab | to write |
 | VLSI Lab | waiting | | Logic Lab, Analog IC Lab | to write |
 | Computer Lab | waiting | | Logic Lab | to write |
 | Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | to write |
 | Grid Lab | waiting | | Machines Lab, Electronics companion Newton | to write |
-| Photonics Lab | building | `lab/photonics-lab` | Group B unbuilt | `PHOTONICS_LAB_PLAN.md` |
 | Devices Lab | waiting | | Electronics C | to write |
 | Signal Integrity | out of this repo | | | |
 
@@ -901,6 +898,16 @@ Items that cross labs and land at integration.
   exceed the 90 s timeout on a loaded four-core machine. Their owner chooses a
   longer timeout, a shorter sweep, or a split, before CI gates on one command.
 
+- The System Lab's noise floor. The plan's section 4.3 rounds kT_0 to −174 dBm/Hz and
+  its section 2.5 keeps the exact constant. The builder used the exact value, so
+  A4 quotes −120.965 dBm where the plan says −121. One of the two becomes the rule.
+- The Photonics Lab's step pane at 390 px. The two peaks sit about 4 px apart at
+  the default depth, and the separation is now printed as a number. Whether that
+  picture is enough on a phone is Reed's call.
+- The RF package's two floors. `reflection` measures its denominator against
+  1e-15 times the load's scale and `abcdToS` against 1e-14 times the matrix norm.
+  The reviewer asks for one rule, stated once, as the brief's section 9 wants.
+
 ### Paused at Reed's request, 2026-09-05, usage near its limit
 
 Two workflows were stopped mid-run: `power-h-to-n` (all three lanes had at
@@ -977,7 +984,7 @@ already exists, and tells the agent to read what is there first.
 | Electronics Groups D to I | `lab/electronics-de`, `-fg`, `-hi` | `electronics-lanes` with `["de","fg","hi"]` | merged 2026-09-05, 33 experiments, three lanes each reviewed |
 | Electronics Groups J to O | `lab/electronics-jk`, `-lm`, `-no` | `electronics-lanes` with `["jk","lm","no"]` | merged 2026-09-05, 32 experiments, three lanes each reviewed |
 | Power Lab Groups H to N | `lab/power-hi`, `-jk`, `-lmn` | `power-h-to-n` | untested `loop.js`, `threePhase.js`, `resonant.js`, and the three isolated siblings with a commit |
-| RF A to D, System A, Photonics A, C to F | `lab/rf-lab`, `lab/system-lab`, `lab/photonics-lab` | `rf-system-photonics` | the RF brief, `packages/rf`'s exact core, an untested Smith canvas; the Photonics brief, package and first app files |
+| RF A to D, System A, Photonics A, C to F | `lab/rf-lab`, `lab/system-lab`, `lab/photonics-lab` | `rf-system-photonics` | merged 2026-09-05, all three reviewed |
 | Harnesses, nine labs that have one | `verify/<slug>` | `verify-harnesses` | Elements: two fixes; Circuit Lab: fixes to the axis, the step readout and two canvases, untested |
 | VLSI and Interfaces | `lab/vlsi-lab`, `lab/interfaces-lab` | `vlsi-interfaces` | not started |
 | Harnesses, the ten labs without one | `verify/<slug>` | `harness-wave-2`, args a list of slugs, `electronics-lab` last | not started |
