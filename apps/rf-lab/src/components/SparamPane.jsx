@@ -31,6 +31,10 @@ export function SparamPane({ exp, x, p, plane = 0 }) {
   }
   const ay = (deg) => (mid + bottom) / 2 - ((bottom - mid) / 2) * (deg / 180)
   const trace = (points, y, key) => points.map((q, i) => `${i === 0 ? 'M' : 'L'}${fx(q.f).toFixed(2)} ${y(q[key]).toFixed(2)}`).join(' ')
+  // The marker reads a frequency the reader set, and the window is the one
+  // the experiment sweeps. When the two do not overlap there is no line to
+  // draw, and the legend says so rather than leaving the reading unplaced.
+  const markerIn = v.marker >= v.from && v.marker <= v.to
 
   return (
     <div className="rf-plot rf-sparam">
@@ -48,7 +52,7 @@ export function SparamPane({ exp, x, p, plane = 0 }) {
           <path key={`deg-${t.key}`} className={`rf-strace ${COLOURS[t.key]}`} data-angle={`S${t.key}`} d={trace(t.points, ay, 'deg')} />
         ))}
 
-        <line className="rf-marker" x1={fx(v.marker)} y1={top} x2={fx(v.marker)} y2={bottom} data-role="marker" />
+        {markerIn ? <line className="rf-marker" x1={fx(v.marker)} y1={top} x2={fx(v.marker)} y2={bottom} data-role="marker" /> : null}
 
         <text className="rf-axis-tick" x={left - 5} y={top + 8} textAnchor="end">
           {`${plain(v.ceiling, 3)}`}
@@ -83,6 +87,7 @@ export function SparamPane({ exp, x, p, plane = 0 }) {
       </div>
       <p className="rf-legend" data-role="sparam-legend">
         {`${v.name}, ${x.trace.length} exact points, read at ${num(v.marker, 'Hz')}. `}
+        {markerIn ? '' : `That frequency is outside the window drawn here, so the marker is off the plot. `}
         {v.plane
           ? `The reference plane has moved ${plain(v.plane, 4)}° towards the generator, so every angle is turned and no magnitude is.`
           : 'The reference plane is at the connector, so the angles are the ones the circuit itself produces.'}

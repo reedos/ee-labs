@@ -131,6 +131,18 @@ describe('the S-parameter view, and the calibration plane the Instruments Lab ne
     }
     expect(html(<SparamPane exp={exp} x={x} p={p} plane={30} />)).toMatch(/reference plane has moved/)
   })
+
+  it('a marker past the swept window is left off the plot and named in the legend', () => {
+    const inside = at('d2')
+    expect(html(<SparamPane {...inside} />)).toContain('data-role="marker"')
+    const outside = at('d2', { f: 1.2e10 })
+    const out = html(<SparamPane {...outside} />)
+    expect(out).not.toContain('data-role="marker"')
+    expect(out).toMatch(/outside the window drawn here/)
+    // The four readings are still there, because the entries exist at that
+    // frequency whether or not the plot reaches it.
+    for (const key of ['11', '12', '21', '22']) expect(out).toContain(`data-entry="S${key}"`)
+  })
 })
 
 describe('the equations pane prints the closed form with its own numbers in it', () => {
@@ -186,5 +198,37 @@ describe('the sweep pane says whether the response repeats', () => {
     const out = html(<SweepPane exp={exp} x={x} p={p} />)
     expect(out).toMatch(/repeats every/)
     expect(out).toContain('class="rf-repeat"')
+  })
+
+  it('the window of a synthesised network follows the frequency it is designed at', () => {
+    // `REVIEW_PLAYBOOK.md` §4: a fixed range let the content escape it. C3's
+    // network is synthesised again at whatever frequency is set, so the band
+    // moves with the knob. At 2.000 GHz the upper edge is at 2.512 GHz, which
+    // is outside the window written for 1.000 GHz, and both edges have to stay
+    // on the plot.
+    for (const f of [3e8, 1e9, 2e9]) {
+      const { exp, p, x } = at('c3', { f })
+      const out = html(<SweepPane exp={exp} x={x} p={p} />)
+      expect((out.match(/class="rf-edge"/g) || []).length, `both band edges at ${f} Hz`).toBe(2)
+      expect(out, `the marker at ${f} Hz`).toContain('data-role="marker"')
+      expect(x.bw.lower, `the lower edge at ${f} Hz`).toBeGreaterThan(x.sweepRange.from)
+      expect(x.bw.upper, `the upper edge at ${f} Hz`).toBeLessThan(x.sweepRange.to)
+    }
+  })
+
+  it('a frequency outside a fixed window loses its marker and says where it went', () => {
+    // A5's window is the line's own, and its content follows the length rather
+    // than the frequency. A frequency past the edge therefore has no line to
+    // stand on, and a line drawn at the edge would name a frequency the reader
+    // did not set.
+    const { exp, p, x } = at('a5', { f: 8e9 })
+    const out = html(<SweepPane exp={exp} x={x} p={p} />)
+    expect(out).not.toContain('data-role="marker"')
+    expect(out).toMatch(/outside the window drawn here/)
+    // And inside the window it is drawn, with nothing said about it.
+    const back = at('a5')
+    const shown = html(<SweepPane exp={back.exp} x={back.x} p={back.p} />)
+    expect(shown).toContain('data-role="marker"')
+    expect(shown).not.toMatch(/outside the window/)
   })
 })

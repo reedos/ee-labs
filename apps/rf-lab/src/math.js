@@ -67,6 +67,27 @@ const KINDS = {
 /** The load a `mismatch` or a `line` experiment is terminated in. */
 const loadOf = (p) => (p.RL === 0 && p.XL === 0 ? 0 : [p.RL, p.XL])
 
+/**
+ * The window a sweep is drawn over, for an experiment whose frequency knob is
+ * the frequency the circuit is designed at.
+ *
+ * The experiment states the window at its own default frequency, and the
+ * window follows the knob from there. A matching network is synthesised again
+ * at whatever frequency is set, so its whole response moves with the knob. A
+ * window that stayed where it was would carry the band off the plot: C3 set to
+ * 2.000 GHz has its upper edge at 2.512 GHz, and the window written for
+ * 1.000 GHz stops at 2.200 GHz. `REVIEW_PLAYBOOK.md` §4 asks a range to hold
+ * still while components are tuned and to re-frame on a circuit change, and
+ * the design frequency is a circuit change here.
+ */
+function designWindow(exp, p) {
+  if (!exp.sweep) return { from: p.f / 4, to: p.f * 4 }
+  const knob = exp.params.find((k) => k.key === 'f')
+  const f0 = knob ? knob.default : p.f
+  const scale = Number.isFinite(p.f) && f0 > 0 ? p.f / f0 : 1
+  return { from: exp.sweep.from * scale, to: exp.sweep.to * scale }
+}
+
 // ------------------------------------------------------------------ group A
 
 function analyseMismatch(exp, p) {
@@ -234,7 +255,7 @@ function analyseMatch(exp, p) {
   const at = design.at
   const m = R.mismatch(at.Z, p.RS)
   const bw = R.matchBandwidth(sol, ZL, p.RS, p.f, { vswr: p.target ?? 1.5 })
-  const sweepRange = exp.sweep || { from: p.f / 4, to: p.f * 4 }
+  const sweepRange = designWindow(exp, p)
   const sweep = R.sweepMatch(sol, ZL, p.RS, { from: sweepRange.from, to: sweepRange.to, points: p.points || 161 })
   return {
     z0: p.RS,
@@ -299,7 +320,7 @@ function analyseQuarterWave(exp, p) {
   const bw = R.bandwidthOf(qw.read, p.f, { vswr: target, span: 1.99 })
   const lumped = R.lMatch({ RS: p.RS, ZL: p.RL, f: p.f })
   const lumpedBw = R.matchBandwidth(lumped.chosen, p.RL, p.RS, p.f, { vswr: target })
-  const sweepRange = exp.sweep || { from: p.f / 20, to: p.f * 5 }
+  const sweepRange = designWindow(exp, p)
   const sweep = R.sweepQuarterWave(qw, { from: sweepRange.from, to: sweepRange.to, points: p.points || 201 })
   const el = R.electricalLength(qw.line, p.f)
   return {

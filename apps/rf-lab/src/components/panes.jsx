@@ -89,6 +89,10 @@ export function SweepPane({ exp, x, p }) {
   const repeats = []
   if (v.repeat) for (let f = v.from + v.repeat; f < v.to; f += v.repeat) repeats.push(f)
   const edges = v.band && v.band.bounded ? [v.band.lower, v.band.upper].filter((f) => f >= v.from && f <= v.to) : []
+  // A frequency outside the window has no line to stand on, and drawing one at
+  // the edge would put it at a frequency the reader did not set. The legend
+  // says where the marker went instead.
+  const markerIn = v.marker >= v.from && v.marker <= v.to
 
   return (
     <div className="rf-plot rf-sweep">
@@ -105,7 +109,7 @@ export function SweepPane({ exp, x, p }) {
         {edges.map((f) => (
           <line key={`edge-${f}`} className="rf-edge" x1={fx(f)} y1={top} x2={fx(f)} y2={bottom} data-edge={f} />
         ))}
-        <line className="rf-marker" x1={fx(v.marker)} y1={top} x2={fx(v.marker)} y2={bottom} data-role="marker" />
+        {markerIn ? <line className="rf-marker" x1={fx(v.marker)} y1={top} x2={fx(v.marker)} y2={bottom} data-role="marker" /> : null}
         <text className="rf-axis-label" x={(left + right) / 2} y={H - 8} textAnchor="middle">
           {`Frequency, ${num(v.from, 'Hz')} to ${num(v.to, 'Hz')}`}
         </text>
@@ -121,6 +125,7 @@ export function SweepPane({ exp, x, p }) {
       </svg>
       <p className="rf-legend" data-role="sweep-legend">
         {`${v.points.length} exact points, ${num((v.to - v.from) / (v.points.length - 1), 'Hz')} apart. `}
+        {markerIn ? '' : `The frequency is set to ${num(v.marker, 'Hz')}, which is outside the window drawn here. `}
         {v.repeat ? `The response repeats every ${num(v.repeat, 'Hz')}, and the lines mark where. ` : 'A network of lumped elements has no repeat, so nothing here comes back. '}
         {v.band && v.band.bounded
           ? `The band to a standing-wave ratio of ${plain(v.band.target, 5)} runs from ${num(v.band.lower, 'Hz')} to ${num(v.band.upper, 'Hz')}, which is ${plain(100 * v.band.fractional, 4)} per cent.`
