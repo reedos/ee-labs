@@ -1654,16 +1654,42 @@ await page.waitForTimeout(400)
 await page.setViewportSize({ width: 390, height: 844 })
 await page.waitForTimeout(300)
 
-// -------- 10t. The z-plane frame says what it left out
+// -------- 10t. Two refusals the reader can read
 //
-// A 31-tap blackman-windowed sinc puts a zero near |z| = 15. The frame grew
-// to hold it, and the unit circle — the frequency axis, the whole subject of
-// the view — collapsed to about 8 px across on a laptop and to nothing on a
-// phone. Playbook #10: what a frame hides it must say.
-console.log('\n10t. The z-plane frame says what it left out\n')
+// Both were silent. Pressing "phase" on "Single tone" turned the button on,
+// drew no curve, no right-hand axis and no title, and gave no reason, so the
+// pane looked broken rather than empty. And the z-plane frame drops roots
+// that sit too far out to draw. Playbook #10: what a frame hides it must say.
+console.log('\n10t. The overlay and the z-plane frame both say what they left out\n')
 await page.setViewportSize({ width: 1440, height: 900 })
 await page.waitForTimeout(400)
 {
+  await loadPreset('Single tone')
+  await page.locator('.views .segmented button', { hasText: 'phase' }).first().click()
+  await settle()
+  const flags = await page.$$eval('.views .readout .flag', (e) => e.map((x) => x.textContent.trim()))
+  const reason = flags.find((f) => /overlay needs a block/.test(f))
+  if (!reason) {
+    fail(`Single tone: the phase overlay draws nothing and gives no reason (flags: ${flags.join(' | ') || 'none'})`)
+  } else {
+    console.log(`   phase on an empty chain: "${reason}"`)
+  }
+
+  // The same control on a chain that HAS a block must not carry the excuse.
+  await loadPreset('Resonance is Q')
+  await page.locator('.views .segmented button', { hasText: 'phase' }).first().click()
+  await settle()
+  const after = await page.$$eval('.views .readout .flag', (e) => e.map((x) => x.textContent.trim()))
+  if (after.some((f) => /overlay needs a block/.test(f))) {
+    fail('Resonance is Q: the phase overlay reports no block, but the chain has one')
+  } else {
+    console.log('   phase on a chain with a filter: no excuse, the curve is drawn')
+  }
+}
+{
+  // A 31-tap blackman-windowed sinc puts a zero near |z| = 15. The frame used
+  // to grow to hold it, and the unit circle — the frequency axis, the whole
+  // subject of the view — collapsed to about 8 px across.
   await loadPreset('The kernel is the filter')
   await page.locator('.view-switch button', { hasText: 'z-plane' }).first().click()
   await settle()

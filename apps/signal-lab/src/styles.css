@@ -40,6 +40,19 @@ button.flow-node:hover {
   border-color: var(--line-bright);
 }
 
+/* The flow strip is a scroller, and at 1280x900 it overflows on twenty of the
+ * thirty-five lessons — by 193 px on "AM: the carrier returns". What the top
+ * bar cut was always the last node, the output, and it cut it mid-word:
+ * "scope + FFT" arrived as "scop", against a hard edge that reads as a
+ * rendering fault rather than as more chain to the right. The fade says the
+ * strip continues, which is true and is what a scroller owes its reader. The
+ * whole chain, unabbreviated, is one click away on the diagram button beside
+ * it. */
+.topbar .flow.is-clipped {
+  mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
+}
+
 
 
 

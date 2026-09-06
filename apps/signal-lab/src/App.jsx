@@ -238,6 +238,19 @@ export default function App() {
     }
   }, [state.overlay, state.blocks, freqs, state.sampleRate])
 
+  // Why the overlay button reads as pressed and nothing was drawn.
+  //
+  // Both overlays are properties of the CHAIN, so an empty chain has neither.
+  // Pressing "phase" on "Single tone" turned the button on, drew no curve, no
+  // right-hand axis and no title, and gave no reason — the pane looked broken
+  // rather than empty. CORE_SCOPE's rule 2: a refusal states why, and it is
+  // content, not a gap.
+  const overlayRefusal =
+    state.overlay !== 'none' && !overlay
+      ? state.blocks.length === 0
+        ? 'overlay needs a block — it measures the chain, not the signal'
+        : 'these blocks have no transfer function, so no phase to plot'
+      : null
 
   // The same chain said two more ways: as the kernel it convolves with, and as
   // the roots that kernel has. Both are cheap and neither is computed unless its
@@ -753,6 +766,7 @@ export default function App() {
                     <span className="flag">response covers linear blocks only</span>
                   ) : null}
                   {clamped ? <span className="flag warn">still ringing at frame start</span> : null}
+                  {overlayRefusal ? <span className="flag">{overlayRefusal}</span> : null}
                 </>
               ) : (
                 <>

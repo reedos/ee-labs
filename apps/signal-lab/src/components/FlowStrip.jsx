@@ -8,7 +8,35 @@ import { fmtHz } from '@ee-labs/ui'
  * they answer "what did that block actually do to the level" without needing a
  * third plot. Clicking a node scrolls its card into view.
  */
+/**
+ * Whether the strip has more chain than it can show.
+ *
+ * Pulled out so the rule can be read and tested without a layout: the strip is
+ * clipped when its content is wider than its box, with a pixel of slack for
+ * sub-pixel rounding.
+ */
+export function isClipped(scrollWidth, clientWidth) {
+  return scrollWidth > clientWidth + 1
+}
+
 export default function FlowStrip({ stages, sourceCount, sampleRate, onReveal }) {
+  // The strip is a horizontal scroller inside a 44 px bar, and at 1280x900 it
+  // overflows on twenty of the thirty-five lessons. The node it cuts is always
+  // the last one, the output, and it cut it mid-word: "scope + FFT" read
+  // "scop" against a hard edge, which looks like a rendering fault rather than
+  // like more chain to the right. A fade, applied only when the content really
+  // is wider than the box, says what the edge means.
+  const ref = React.useRef(null)
+  React.useEffect(() => {
+    const el = ref.current
+    if (!el || typeof ResizeObserver === 'undefined') return undefined
+    const sync = () => el.classList.toggle('is-clipped', isClipped(el.scrollWidth, el.clientWidth))
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(el)
+    return () => ro.disconnect()
+  })
+
   const node = (key, label, value, opts = {}) => (
     <React.Fragment key={key}>
       {opts.first ? null : (
@@ -45,7 +73,7 @@ export default function FlowStrip({ stages, sourceCount, sampleRate, onReveal })
   const rest = stages.slice(1)
 
   return (
-    <nav className="flow" aria-label="Signal chain">
+    <nav className="flow" aria-label="Signal chain" ref={ref}>
       {/* The bare Σ names how the sources combine, without a word next to it
           anywhere in the strip — a deliberate choice for this audience, not
           an oversight, so it still gets a hover title rather than nothing. */}
