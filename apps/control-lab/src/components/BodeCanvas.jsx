@@ -1,5 +1,6 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmtHz } from '@ee-labs/ui'
+import { phaseFrame, labelSide } from '../bodeFrame.js'
 
 /**
  * Magnitude against frequency, on a log axis, with optional phase.
@@ -103,11 +104,7 @@ export default function BodeCanvas({
             if (d > phi) phi = d
           }
         }
-        plo = Math.min(-90, Math.floor(plo / 90) * 90)
-        phi = Math.max(90, Math.ceil(phi / 90) * 90)
-        const padPx = 3 * k
-        const py = (d) => area.y + padPx + ((phi - d) / (phi - plo)) * (area.h - 2 * padPx)
-        phaseScale = { plo, phi, py }
+        phaseScale = phaseFrame(plo, phi, area.y, area.h, k)
       }
 
       ctx.save()
@@ -138,14 +135,18 @@ export default function BodeCanvas({
       const named = [...markers]
       if (crossover) named.push({ f: crossover, label: 'gain = 1' })
       if (phaseCrossover) named.push({ f: phaseCrossover, label: 'phase = −180°' })
-      // Each label sits clear of BOTH traces at its own frequency: it used to
-      // sit fixed at the top, and on a loop whose phase trace runs near the
-      // top there too (L11, "The plant that needs feedback") "gain = 1"
-      // printed right over the phase curve. Nearest-sample lookup on the
-      // shared freqs grid is exact enough at 900 points to say where each
-      // trace actually is, and the label goes on whichever side — above or
-      // below both traces — has the bigger gap; two labels stack within
-      // their own side rather than sharing one shared row counter.
+      // Each label sits clear of every trace ACROSS THE SPAN IT COVERS: it
+      // used to sit fixed at the top, and on a loop whose phase trace runs
+      // near the top there too (L11, "The plant that needs feedback")
+      // "gain = 1" printed right over the phase curve. Asking at the
+      // marker's own frequency fixed that one and left the mirror of it:
+      // "phase = −180°" is drawn to the right of its line and runs a third
+      // of a decade, and on the three-lag loop (lessons 8, 9 and 13) the
+      // phase trace descends through the words after the point where the
+      // room was measured. Every sample inside the label's own x range
+      // counts now, ghost traces included, and the label goes on whichever
+      // side has the bigger gap. Two labels stack within their own side
+      // rather than sharing one row counter.
       let topRow = 0
       let botRow = 0
       for (const m of named) {
@@ -161,6 +162,26 @@ export default function BodeCanvas({
         ctx.setLineDash([])
         ctx.globalAlpha = 1
         if (m.label) {
+          ctx.fillStyle = COLORS.marker
+          ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+          ctx.textAlign = 'left'
+          // The words run to the RIGHT of the marker's own line, so the side
+          // with the room has to be decided over the whole span they cover,
+          // not at the one frequency the marker names. See bodeFrame.js.
+          const x0 = x + 4 * k
+          const x1 = x0 + ctx.measureText(m.label).width
+          const traceYs = []
+          for (let j = 0; j < freqs.length; j++) {
+            const fx = sx(lx(freqs[j]))
+            if (fx < x0 - 1 || fx > x1 + 1) continue
+            traceYs.push(sy(db(mag[j])))
+            if (ghostMag) traceYs.push(sy(db(ghostMag[j])))
+            if (phaseScale) traceYs.push(phaseScale.py((phase[j] * 180) / Math.PI))
+            if (phaseScale && ghostPhase) traceYs.push(phaseScale.py((ghostPhase[j] * 180) / Math.PI))
+          }
+          // The marker's own frequency, whether or not a sample landed on it
+          // — the label is anchored there and the traces at that x still
+          // count against it.
           let i = 0
           let bd = Infinity
           for (let j = 0; j < freqs.length; j++) {
@@ -170,14 +191,10 @@ export default function BodeCanvas({
               i = j
             }
           }
-          const traceYs = [sy(db(mag[i]))]
+          traceYs.push(sy(db(mag[i])))
           if (phaseScale) traceYs.push(phaseScale.py((phase[i] * 180) / Math.PI))
-          const topGap = Math.min(...traceYs) - area.y
-          const botGap = area.y + area.h - Math.max(...traceYs)
-          ctx.fillStyle = COLORS.marker
-          ctx.font = `${Math.round(11 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
-          ctx.textAlign = 'left'
-          if (topGap >= botGap) {
+          const { side } = labelSide(traceYs, area.y, area.y + area.h)
+          if (side === 'top') {
             ctx.textBaseline = 'top'
             ctx.fillText(m.label, x + 4 * k, area.y + (4 + 14 * topRow) * k)
             topRow++

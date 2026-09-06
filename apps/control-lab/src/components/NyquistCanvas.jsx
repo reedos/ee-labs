@@ -1,5 +1,6 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmtNum } from '@ee-labs/ui'
+import { nyquistLabelX } from '../nyquistLabels.js'
 
 /**
  * The open loop plotted on the complex plane, against the point −1.
@@ -158,6 +159,20 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
       ctx.textBaseline = 'bottom'
       ctx.fillText('−1', px, py - 10 * k)
 
+      // Both margin readouts stack under the −1 marker and END just left of
+      // it, rather than centring on it.
+      //
+      // Centred, "PM 39.1°" ran its right half into the dashed phase-margin
+      // ray and the degree sign was drawn through: the three-lag loop at
+      // Kp = 4 (lessons 9 and 10) is the reproduction. Ending left of −1 is
+      // not a nudge that happens to clear it, it is the one region neither
+      // annotation can occupy. The phase ray runs from the origin out to
+      // radius 1, so every point on it has x ≥ −1. The gain-margin bracket
+      // is drawn along the real axis itself, at the labels' own y minus
+      // 8px and more, so its x never matters. See nyquistLabelX in
+      // nyquistLabels.js, which is where both claims are asserted.
+      const labelRight = (text) => nyquistLabelX(px, ctx.measureText(text).width, area.x, k)
+
       // Gain margin, drawn as what it is: the gap between where the curve
       // crosses the negative real axis and the point it has to avoid.
       if (gainMargin && Number.isFinite(gainMargin) && gainMargin > 0) {
@@ -171,12 +186,13 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
         if (!narrow) {
           ctx.fillStyle = COLORS.response
           ctx.font = `${Math.round(12 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
-          ctx.textAlign = 'center'
+          ctx.textAlign = 'right'
           ctx.textBaseline = 'top'
-          // Fixed under the −1 marker rather than at the connecting line's
+          // Fixed beside the −1 marker rather than at the connecting line's
           // own midpoint: at the boundary gain that midpoint IS −1, and the
           // label used to land right on top of the marker it is beside.
-          ctx.fillText(`GM ${gainMargin.toFixed(2)}×`, px, py + 8 * k)
+          const gmText = `GM ${gainMargin.toFixed(2)}×`
+          ctx.fillText(gmText, labelRight(gmText), py + 8 * k)
         }
       }
 
@@ -195,13 +211,14 @@ export default function NyquistCanvas({ re, im, gainMargin, phaseMargin }) {
         if (!narrow) {
           ctx.fillStyle = COLORS.phase
           ctx.font = `${Math.round(12 * k)}px ui-monospace, SFMono-Regular, Menlo, monospace`
-          ctx.textAlign = 'center'
+          ctx.textAlign = 'right'
           ctx.textBaseline = 'top'
           // Stacked BELOW the GM label rather than along the ray to the
           // crossing point: at PM near 0° that ray's own tip lands on the
           // −1 marker (and so on GM's label too) — the exact case ("−1",
           // "PM 0.0°", "GM 1.00×" all overprinting) this stack avoids.
-          ctx.fillText(`PM ${phaseMargin.toFixed(1)}°`, px, py + 8 * k + 16 * k)
+          const pmText = `PM ${phaseMargin.toFixed(1)}°`
+          ctx.fillText(pmText, labelRight(pmText), py + 8 * k + 16 * k)
         }
       }
 
