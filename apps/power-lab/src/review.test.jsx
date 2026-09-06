@@ -6,6 +6,7 @@ import { termsFor } from './terms.js'
 import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, byId, defaultsOf, offeredTraces } from './experiments.js'
 import { analyse } from './analysis.js'
 import { scopeRange } from './format.js'
+import { LMN_HEADLINES } from './groups/lmn.js'
 
 // The 2026-09-02 review's bar (POWER_LAB_PLAN.md §11), one test per complaint.
 // Each was written against the build the review looked at and watched fail
@@ -79,12 +80,16 @@ describe('the first screen leads with the lesson a knob can perform (§11.4.2, �
 
 describe('no screen contradicts its note (§11.0 claim bugs)', () => {
   it('every experiment declares its headline meter, and A2’s is RMS against the mean, not η', () => {
-    // The five the lab has a meter for: efficiency, power factor, the RMS
-    // against the mean (the chopper's), total harmonic distortion (the
-    // inverters', whose efficiency is near one and says nothing), and the
-    // averaged model's own frequency (the plant experiments', whose ideal
-    // synchronous converters are lossless).
-    for (const e of EXPERIMENTS) expect(['eta', 'pf', 'rms', 'thd', 'plant'], e.id).toContain(e.headline)
+    // The meters the lab's first seven groups have: efficiency, power factor,
+    // the RMS against the mean (the chopper's), and total harmonic distortion
+    // (the inverters', whose efficiency is near one and says nothing). Group H
+    // adds the averaged model's own frequency, since its ideal synchronous
+    // converters are lossless. A later group appends its own meters as one row,
+    // so three lanes merge by union. Groups L, M and N add the line's ripple,
+    // the switch node's ring and the junction temperature.
+    const METERS = ['eta', 'pf', 'rms', 'thd', 'plant']
+    const added = [...Object.keys(LMN_HEADLINES)]
+    for (const e of EXPERIMENTS) expect([...METERS, ...added], e.id).toContain(e.headline)
     expect(byId.a2.headline).toBe('rms')
     const t = text(topbar(render('a2')))
     expect(t).toMatch(/7\.75/)
@@ -359,7 +364,8 @@ describe('a path through the material (§11.5, §11.3.3–5)', () => {
   })
   it('the about knob carries its chips, labelled in the knob’s units (§11.5.5)', () => {
     for (const e of EXPERIMENTS) {
-      const s = sidebar(render(e.id)).slice(sidebar(render(e.id)).indexOf('<h2>Knobs</h2>'))
+      const sb = sidebar(render(e.id))
+      const s = sb.slice(sb.indexOf('<h2>Knobs</h2>'))
       const from = s.indexOf(`data-knob="${e.about}"`)
       const to = s.indexOf('data-knob=', from + 10)
       const first = s.slice(from, to < 0 ? undefined : to)

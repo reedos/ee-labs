@@ -9,6 +9,7 @@
 
 import { HI_TERMS } from './groups/hi.js'
 import { JK_TERMS } from './groups/jk.js'
+import { LMN_TERMS } from './groups/lmn.js'
 
 export const TERMS = {
   efficiency: {
@@ -320,6 +321,7 @@ export const TERMS = {
   },
   ...HI_TERMS,
   ...JK_TERMS,
+  ...LMN_TERMS,
 }
 
 export function termsFor(ids = []) {

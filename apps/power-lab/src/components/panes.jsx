@@ -7,12 +7,27 @@ import Schematic, { topologyOf } from './schematics.jsx'
 import { JK_CONDUCTING } from './schematicsJk.jsx'
 import { Formula } from '@ee-labs/explain'
 import { fmtz, nz, statScale, axisFmt, niceBounds } from '../format.js'
+import { LMN_MODE_WORDS, LMN_ORDER } from '../groups/lmn.js'
 
 /** An equation in a table cell, set like the math panel's formulas. */
 const Eq = ({ children }) => <Formula display={false}>{children}</Formula>
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
-export const ORDER = ['vin', 'vsw', 'vrect', 'vout', 'vL', 'vD', 'iL', 'iD', 'iC', 'iR', 'iQ', 'iin', 'vao', 'vab', 'van', 'ia', 'idc']
+
+// The measures table reads voltages first, then currents. A group appends its
+// own signals as one row rather than threading them into the base list, and
+// the partition by axis puts each where it belongs. So three lanes' rows merge
+// beside each other and no lane has to know where the others' signals sit.
+const BASE_ORDER = ['vin', 'vsw', 'vrect', 'vout', 'vL', 'vD', 'iL', 'iD', 'iC', 'iR', 'iQ', 'iin']
+const ADDED_ORDER = [
+  'vao', 'vab', 'van', 'ia', 'idc',
+  ...LMN_ORDER,
+]
+const ALL_ORDER = [...BASE_ORDER, ...ADDED_ORDER]
+export const ORDER = [
+  ...ALL_ORDER.filter((k) => TRACES[k].axis !== 'A'),
+  ...ALL_ORDER.filter((k) => TRACES[k].axis === 'A'),
+]
 
 /** Average, RMS and extremes of every waveform, and the power books. */
 export function MeasuresPane({ m, signals }) {
@@ -126,6 +141,7 @@ export const MODE_WORDS = {
   dimmer: 'phase-cut, resistive load',
   inverter: 'DC in, AC out',
   threephase: 'DC in, three-phase out',
+  ...LMN_MODE_WORDS,
 }
 
 /**

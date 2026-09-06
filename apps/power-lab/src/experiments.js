@@ -26,8 +26,17 @@
 // and the letters said nothing a name does not.
 
 import { HI_GROUPS, HI_GROUP_INTROS, HI_EXPERIMENTS, HI_TRACES, HI_VIEWS, HI_SWEEP_Y } from './groups/hi.js'
+import {
+  LMN_GROUPS,
+  LMN_GROUP_INTROS,
+  LMN_TRACES,
+  LMN_VIEWS,
+  LMN_SWEEP_X,
+  LMN_SWEEP_Y,
+  LMN_EXPERIMENTS,
+} from './groups/lmn.js'
 
-export const GROUPS = ['Why switch', 'The buck', 'Boost & buck-boost', 'Magnetics', 'AC in', 'Inverters', 'Losses', ...HI_GROUPS, ...JK_GROUPS]
+export const GROUPS = ['Why switch', 'The buck', 'Boost & buck-boost', 'Magnetics', 'AC in', 'Inverters', 'Losses', ...HI_GROUPS, ...JK_GROUPS, ...LMN_GROUPS]
 
 // What each group sets out to establish, read once at its boundary: the
 // sidebar shows it on the group's first experiment and while another group's
@@ -56,6 +65,7 @@ export const GROUP_INTROS = {
     'load, and against each other in a ledger that has to add up.',
   ...HI_GROUP_INTROS,
   ...JK_GROUP_INTROS,
+  ...LMN_GROUP_INTROS,
 }
 
 import {
@@ -130,6 +140,7 @@ export const TRACES = {
   iin: { label: 'i_in', axis: 'A', title: 'Current drawn from the source (phase a, for the three-phase bridge)' },
   ...HI_TRACES,
   ...JK_TRACES,
+  ...LMN_TRACES,
 }
 
 /** The trace pills the scope offers: the experiment's own list, else its opening traces. */
@@ -147,6 +158,7 @@ export const VIEWS = {
   ledger: { label: 'Ledger', title: 'Every loss mechanism, its formula, and the residual the identity leaves' },
   ...HI_VIEWS,
   ...JK_VIEWS,
+  ...LMN_VIEWS,
 }
 
 // What a sweep can put on its axes. `sweepFor` in App.jsx runs the matching
@@ -160,6 +172,7 @@ export const SWEEP_X = {
   ma: { label: 'm_a', unit: '', scale: 'linear', fmt: (v) => `${(v * 100).toFixed(0)} %` },
   fsw: { label: 'f_sw', unit: 'Hz', scale: 'log' },
   ...JK_SWEEP_X,
+  ...LMN_SWEEP_X,
 }
 // A sweep's `y2` goes on a right-hand axis of its own, unless the sweep says
 // `shared: true` — then both curves share the left axis (the chopper's ⟨v⟩
@@ -179,6 +192,7 @@ export const SWEEP_Y = {
   thd: { label: 'THD of v_out', unit: '', lo: 0, percent: true },
   ...HI_SWEEP_Y,
   ...JK_SWEEP_Y,
+  ...LMN_SWEEP_Y,
 }
 
 // The top bar's third meter is the experiment's own headline — η for a
@@ -980,6 +994,8 @@ export const EXPERIMENTS = [
   }),
   ...HI_EXPERIMENTS,
   ...JK_EXPERIMENTS,
+
+  ...LMN_EXPERIMENTS,
 ]
 
 // The knob an experiment is about (`about`) is the first in its list, so it

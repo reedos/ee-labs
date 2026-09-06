@@ -32,8 +32,10 @@ const mW = (w) => w * 1e3
 
 describe('the two groups are on the list, in the plan’s order', () => {
   it('adds six experiments in two groups after the losses', () => {
-    expect(GROUPS.slice(-2)).toEqual(['Isolation', 'Resonance'])
-    const ids = EXPERIMENTS.slice(-6).map((e) => e.id)
+    const at = GROUPS.indexOf('Isolation')
+    expect(at).toBeGreaterThan(GROUPS.indexOf('Losses'))
+    expect(GROUPS[at + 1]).toBe('Resonance')
+    const ids = EXPERIMENTS.filter((e) => e.jk).map((e) => e.id)
     expect(ids).toEqual(['j1', 'j2', 'j3', 'k1', 'k2', 'k3'])
     expect(EXPERIMENTS.filter((e) => e.jk)).toHaveLength(6)
   })

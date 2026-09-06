@@ -108,6 +108,16 @@ Deferred, with what reopens each:
   to walk. The drawing puts the blocking capacitor in the primary loop, which
   is the part that does the forgiving. Reopens with the midpoint as a third
   state.
+- **The Balance pane is not offered on the drives, though they have one.**
+  `driveBalance` states a drive's period in two sums that both come to zero,
+  volt-seconds on the armature and torque-seconds on the inertia.
+  `drive.test.js` fuzzes both as invariants. The pane cannot draw them. Its
+  second column carries the capacitor's integral in the header and again in
+  the sentence above the table, so a drive's torque-seconds would appear as
+  charge. Reopens when `BalancePane` takes its two row labels from the
+  topology, which is one prop and a merge across three lanes. The input side
+  has no balance at all, for the reason `analyseEmi` gives in place.
+
 - **`verify.mjs` has not been run against the new groups.** This environment
   has no browser. The three new panes (flux, scrub, ledger), the two new
   sweeps and the four new drawings have been held as geometry and as rendered
@@ -2021,3 +2031,138 @@ The §8 phasing note, for the plan:
 > rectifier exact. I and L, the other halves of those two phases, are not.
 > Next by the plan's list is **H**, closing the loop, which is still the first
 > thing that needs another lab.
+## Power Lab, Groups L, M and N
+
+Groups **L** (motor drives), **M** (interference) and **N** (thermal) are
+built on `lab/power-lmn`, nine experiments on top of the thirty-four the lab
+already carried. The lab runs A to G and then L, M, N, at forty-three
+experiments, and stays dark. `packages/switched` gained `drive.js`, `emi.js`
+and `thermal.js`, each fuzzed against the package's own invariants before any
+of it reached a screen. Every existing signature stands.
+`apps/power-lab/AGENT_BRIEF_LMN.md` is the contract, and
+`apps/power-lab/scripts/pins-lmn.mjs` computed every number in it before a
+word of the notes was written.
+
+**What is built.** Group L: L1 the armature as an inductor with a speed in
+it, L2 four quadrants with the rail taking current back, L3 six-step
+commutation and the torque it leaves. Group M: M1 the input current as a
+pulse train, M2 the input filter and what damping costs, M3 the switch node's
+ring. Group N: N1 loss as temperature, N2 the thermal RC from die to
+heatsink, N3 the switching frequency a package can afford, against the
+ripple the frequency buys.
+
+**What the engine gained.** `drive.js` carries the armature current and the
+shaft speed as one two-state system, so the speed's own ripple is solved
+rather than assumed. `@ee-labs/machines` supplies the machine and the
+averaged answer the exact waveform is held against. `emi.js` solves the
+converter with its input capacitor and line filter as four states, and the
+switch node with its parasitics as four or five. It reads a spectrum twice,
+by exact Fourier integral and through `@ee-labs/dsp`'s FFT. `thermal.js`
+builds a Foster or a Cauer network from one set of stages and steps it with
+the same propagator. A pulsed load is the periodic steady state it is.
+
+**The tests.** 2376 in `apps/power-lab` and `packages/switched`, all green,
+with Groups A to G untouched. The invariants are fuzzed at 240 seeded
+settings a drive kind, 200 for the input side, 60 for the switch node, 200
+networks a model and 120 pulses a model. `pins.test.js` walks all nine
+measures tables and finds every cell pinned to a form or named with the
+reason it has none. `lmn.test.js` pins every figure in every note and try
+line, and then turns the knob each depends on and requires it to follow.
+
+`transient.test.js` walks all nine from rest. Its coverage row names the
+twelve experiments another solver owns, so a later group cannot fall out of
+the list without saying so.
+
+**What the review found, and what was done.** Four things, each now a test
+that failed first.
+
+- **The four-quadrant experiment read η = 112.49 % at D = 30 %,** one of its
+  own chips and the case its note describes. Half duty read −5191 %. The
+  ratio was the shaft's power over the rail's whichever way the power ran,
+  and braking reverses which of the two is the source. It is now read from
+  the source. Where the rail and the shaft both feed the losses the meter
+  says so, rather than dividing two losses. The drives' fuzz gains the bound
+  the power identity allows, 0 < η ≤ 1 in either quadrant.
+- **The switch node's decay was shown but not measured.** §4 asks M3 for the
+  frequency and the decay against the parasitic values. The pane's ζ row
+  carried a bare peak ratio in one column and ζ in the other. The reading is
+  now ζ itself, through the logarithmic decrement, and the math panel checks
+  it with a footnote for the hard-damped corner. `ringOf`'s envelope time
+  constant was the series loop's 2·L_p/R_p, which is 25 times too short here
+  and moves the wrong way. The damping stands across the inductance, so the
+  constant is 2·R_p·C.
+- **The thermal pane contradicted itself at t_sw = 0,** a value the knob
+  offers. The frequency ceiling is infinite there, and the pane printed a
+  dash beside the words "where the whole budget is spent". Each of the three
+  cases has its own sentence now. The Z_th plot drew both networks with
+  nothing to tell them apart, and the note under it names which is solid.
+- **The walking tests skipped all nine.** `transient.test.js` and the
+  continuity walk filtered on `KINDS`, so the thermal three, which are
+  ordinary synchronous bucks, were never walked from rest, and the drives
+  were walked only with a lightened rotor. All nine now walk at their own
+  defaults, and the six sweeps keep the continuity-by-refinement rule the
+  built groups' M(D) and M(R) already keep.
+
+Deferred, with what reopens each:
+
+- **L3's commutation notch is not modelled.** The plan's §4 asks for the
+  torque ripple where the current commutates. The engine's brushless machine
+  has an ideal flat-topped trapezoid, so the line EMF is the same in every
+  sector and a commutation costs the loop nothing. The ripple L3 measures is
+  the chopper's, which is the larger of the two here. The notch needs the
+  outgoing phase's current as a third state, and an EMF that ramps inside a
+  sector. That is an affine drive the segment propagator does not carry, and
+  it reopens with a segment whose forcing is linear in time.
+- **M1 has no conducted-emission mask.** The plan's §4 says the spectrum is
+  E4's problem at 100 kHz, and this group measures the harmonics and the
+  filter that answers them. What it does not draw is a limit line to compare
+  them against. A limit line is a standard's numbers rather than physics, and
+  the suite has nowhere yet to say where they came from. Reopens with a
+  decision about quoting a published limit.
+- **N2's Cauer network is a curve, not a picture.** Both networks are built
+  from one set of stages and both are drawn on the Z_th plot, where the
+  ladder runs 3.84 % cooler at ten milliseconds and reaches the same
+  14 K/W. What the pane does not do is open the ladder up and show the die,
+  the case and the sink at their own temperatures, which is the reason a
+  ladder is worth having. Reopens with a pane that draws a network's nodes.
+- **`verify.mjs` has not been run against the new groups.** This environment
+  has no browser. The four new panes (drive, filter, ring, thermal), the six
+  new drawings and the eight new sweep axes are held as geometry and as
+  rendered markup by unit tests. The fold, the overflow and the phone layout
+  are not. Reopens on a machine with Chromium and Firefox.
+- **The ring's knobs are bounded, and the bound is an affordability gate.**
+  The quadrature cuts every segment into pieces short against the fastest
+  mode in it, so a snubber whose R·C is picoseconds inside a microsecond
+  period costs a million pieces. C_p and C_sn start at 470 pF, R_sn at 5 Ω
+  and f_s at 500 kHz, and the snubber is a switch rather than a resistance
+  turned up until its branch stops mattering. Reopens if `segment.js` ever
+  gains a stiff quadrature.
+
+**Deviations from the plan's numbers.** None. §4's L, M and N rows quote no
+figures, so every number these nine carry is the engine's own. Each was
+computed by `scripts/pins-lmn.mjs` and is pinned in `lmn.test.js`. Two model
+choices are worth the director's eye. The input side is synchronous. That
+keeps a dead interval's third shape out of the lesson about the input
+current's spectrum. Middlebrook's criterion is computed from the operating
+point and labelled a design rule. This lab runs its converters open loop,
+and no instability can be shown by a simulation with no loop in it.
+
+One thing the engine says that §4 does not. N3 asks for one curve with the
+whole tradeoff on it, so the ripple went on the sweep's right axis beside the
+heat. That made a shape visible.
+
+Below 38.07 kHz the ripple is 5.04 A on a
+5.85 A mean, and costs more in conduction than the edges save. The junction
+cools as the frequency rises there, so the title holds above that point and
+not below it. The note names it, at 53.47 °C, and the sweep marks it. The
+first test written for the curve required heat to rise at every step. It
+failed at 24.6 kHz, which is how the shape was found.
+
+**§8 phasing, for the plan.** Step 9 of `POWER_LAB_PLAN.md` §8 is done, and
+step 8's second half with it. L needed a slow mechanical state, and it got
+one by carrying the shaft as a second state in the same piecewise-LTI system
+rather than freezing it, so the quasi-static picture became a measurement.
+M needed spectra and filters, and both came from tools the suite already
+had. N's networks are Circuit Lab RCs with degrees on them, solved by the
+propagator. What is left before the release gate is Groups H, I, J and K,
+and then §8's step 10 in its own order.

@@ -4,6 +4,7 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmt, scopeRange } from '@ee-lab
 import { TRACES } from '../experiments.js'
 import { axisFmt, fitLeftAxis } from '../format.js'
 import { markLabels } from '../marks.js'
+import { LMN_TRACE_COLORS } from '../groups/lmn.js'
 
 /** One colour per trace, kept apart from the axis chrome. */
 export const TRACE_COLORS = {
@@ -25,6 +26,7 @@ export const TRACE_COLORS = {
   ia: COLORS.response,
   idc: COLORS.marker,
   ...JK_TRACE_COLORS,
+  ...LMN_TRACE_COLORS,
 }
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'

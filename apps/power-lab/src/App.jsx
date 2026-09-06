@@ -18,6 +18,8 @@ import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/s
 import BuckHandOver from './components/BuckHandOver.jsx'
 import { FamilyPane } from './components/jkPanes.jsx'
 import { exactJkY, jkFlow, jkOutcome, sweepJk } from './groups/jk.js'
+import LmnPane from './components/lmnPanes.jsx'
+import { LMN_VIEWS, LMN_SWEEPS, LMN_OUTCOME, LMN_FLOW, LMN_HEADLINES, exactLmnY } from './groups/lmn.js'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -76,6 +78,7 @@ function focusKnob(key) {
 
 /** The one-line result of an experiment, for the top bar and the report. */
 export function outcomeOf(exp, x) {
+  if (LMN_OUTCOME[exp.kind]) return LMN_OUTCOME[exp.kind](x)
   const m = x.m
   if (x.jk) return jkOutcome(exp, x)
   if (exp.kind === 'linreg') return `η = ${(m.eta * 100).toFixed(1)} %, ${fmt(m.Ploss, 'W', 3)} into the regulator`
@@ -136,6 +139,7 @@ export function sweepFor(exp, params, x) {
   const s = exp.sweep
   if (!s) return null
   if (exp.jk) return { ...sweepJk(exp, params), atY: exactJkY(s.y, x, params), atY2: s.y2 ? exactJkY(s.y2, x, params) : undefined }
+  if (LMN_SWEEPS[exp.kind]) return { ...LMN_SWEEPS[exp.kind](exp, params), atY: exactLmnY(s.y, x), atY2: s.y2 ? exactLmnY(s.y2, x) : undefined }
   const opts = sweepOpts(exp, params)
   const atY = exactSweepY(s.y, x)
   const atY2 = s.y2 ? exactSweepY(s.y2, x) : undefined
@@ -712,6 +716,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
             {currentView === 'plant' && x.plant ? <PlantPane x={x} exp={exp} /> : null}
             {currentView === 'power' && x.threePhase ? <PowerPane x={x} /> : null}
             {currentView === 'family' ? <FamilyPane x={x} /> : null}
+            {LMN_VIEWS[currentView] ? <LmnPane view={currentView} x={x} exp={exp} /> : null}
             {currentView === 'math' ? <MathBody entry={math} /> : null}
             {currentView === 'balance' && x.balance ? <BalancePane x={x} /> : null}
             {currentView === 'losses' ? <LossesPane x={x} /> : null}
@@ -770,6 +775,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
  */
 export const FLOW_BUDGET = { mid: 26, out: 34 }
 export function flowNodes(exp, params, x) {
+  if (LMN_FLOW[exp.kind]) return LMN_FLOW[exp.kind](exp, params, x)
   const m = x.m
   const saysK = (exp.symbols || []).includes('K')
   if (x.jk) return jkFlow(exp, params, x)
@@ -853,6 +859,16 @@ function Headline({ exp, m, x }) {
       </span>
     )
   }
+  // Groups L, M and N each carry a meter of their own: the line's ripple, the
+  // switch node's ring, the junction temperature.
+  const extra = LMN_HEADLINES[exp.headline] && LMN_HEADLINES[exp.headline](m)
+  if (extra)
+    return (
+      <span className="topbar-field">
+        <span>{extra.label}</span>
+        <b>{extra.value}</b>
+      </span>
+    )
   if (exp.headline === 'rms')
     return (
       <span className="topbar-field">

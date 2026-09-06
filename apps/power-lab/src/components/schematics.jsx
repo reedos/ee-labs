@@ -4,6 +4,7 @@ import { TRACES } from '../experiments.js'
 import { TRACE_COLORS } from './ScopeCanvas.jsx'
 import { LINREG_R_PASS } from '../analysis.js'
 import { jkDrawings, JK_FRAMES, JK_SIGNALS, JK_NAMES } from './schematicsJk.jsx'
+import { LMN_DRAW, LMN_FRAMES, LMN_TOPOLOGY_NAMES, LMN_TOPOLOGY_SIGNALS } from './lmnSchematics.jsx'
 
 // Schematics, drawn as SVG — the same kit and the same sidebar slot as Circuit
 // Lab's, so a reader moving between the labs meets one drawing style.
@@ -19,6 +20,10 @@ import { jkDrawings, JK_FRAMES, JK_SIGNALS, JK_NAMES } from './schematicsJk.jsx'
 // Colours follow Circuit Lab: resistors green, capacitors amber, inductors
 // blue, wires grey. Switches and diodes are new here and take the plain text
 // colour, so the passive parts keep the palette they have in the other lab.
+
+// The kit, exported so a group can add a drawing in this idiom without
+// copying a symbol: `lmnSchematics.jsx` builds Groups L, M and N's six on it.
+export { Wire, Dot, Tag, Res, Cap, Ind, Switch, Diode, Triac, SrcDC, SrcAC, Gnd, Part, Xfmr, Port, VAt, VAcross, IAt, Along, SideLabel, Probe }
 
 const FRAME = { w: 300, h: 150 }
 // Taller and wider frames for the bridges, which do not fit the standard box.
@@ -925,6 +930,7 @@ export const TOPOLOGY_SIGNALS = {
   sixstep: ['vao', 'vab', 'van', 'ia', 'idc'],
   spwm3: ['vao', 'vab', 'van', 'ia', 'idc'],
   ...JK_SIGNALS,
+  ...LMN_TOPOLOGY_SIGNALS,
 }
 
 /** The signals an experiment's circuit carries. */
@@ -950,6 +956,7 @@ export const TOPOLOGY_NAMES = {
   sixstep: 'Three-phase bridge, six-step',
   spwm3: 'Three-phase bridge, sine PWM',
   ...JK_NAMES,
+  ...LMN_TOPOLOGY_NAMES,
 }
 
 /** Which drawing an experiment gets: its converter, or which bridge it is. */
@@ -971,6 +978,9 @@ DRAW.sixstep = (p, live) => threeLeg(p, live, { caption: 'each leg once a cycle,
 DRAW.spwm3 = (p, live) => threeLeg(p, live, { caption: 'three references, one carrier' })
 
 Object.assign(DRAW, jkDrawings(KIT))
+
+Object.assign(DRAW, LMN_DRAW)
+Object.assign(FRAMES, LMN_FRAMES)
 
 export const TOPOLOGIES = Object.keys(DRAW)
 

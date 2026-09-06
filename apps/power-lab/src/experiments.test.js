@@ -141,7 +141,7 @@ describe('every sweep’s marker, not only A1’s', () => {
       // to the old nearest-sample marker, which is the bug this whole file
       // exists to keep out.
       expect(Number.isFinite(s.atY), `${e.id}: sweep.y ${e.sweep.y} has no exact marker value`).toBe(true)
-      const expected = { M: x.m.M, eta: x.m.eta, Pout: x.m.Pout, Vout: x.m.sig.vout.avg, vavg: x.m.sig.vout.avg, vrms: x.m.sig.vout.rms, angle: x.m.angle, iPeak: x.m.iPeak, share: x.m.share, pf: x.m.pf, v1: x.m.Vsw1 * Math.SQRT2, thd: x.m.thd, vll1: lineFundamentalPeaks(p).plain, Mn: x.m.M, iMdc: x.m.sig?.iM?.avg }[e.sweep.y]
+      const expected = { M: x.m.M, eta: x.m.eta, Pout: x.m.Pout, Vout: x.m.sig.vout.avg, vavg: x.m.sig.vout.avg, vrms: x.m.sig.vout.rms, angle: x.m.angle, iPeak: x.m.iPeak, share: x.m.share, pf: x.m.pf, v1: x.m.Vsw1 * Math.SQRT2, thd: x.m.thd, vll1: lineFundamentalPeaks(p).plain, Mn: x.m.M, iMdc: x.m.sig?.iM?.avg, speed: x.m.rpm, iin: x.m.Iin, ripple: x.m.ripple, att: x.m.attenuation, Tj: x.m.thermal?.Tj }[e.sweep.y]
       expect(s.atY, `${e.id}: sweep.y ${e.sweep.y}`).toBeCloseTo(expected, 9)
     }
   })

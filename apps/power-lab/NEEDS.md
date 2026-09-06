@@ -223,3 +223,33 @@ around it — small enough for whichever session next touches
    `V_out −53.29 fV`. Both are fixed in `App.jsx` by formatting against the
    signal's own scale. The change reaches Group F's screens, which is outside
    these groups' lane, so it is named here.
+## From the director, for Groups L, M and N
+
+1. **`packages/switched` now depends on `@ee-labs/machines` and
+   `@ee-labs/dsp`.** Both are listed in `packages/switched/package.json` and
+   both resolve inside a worktree that has run `npm ci`. Neither package was
+   edited. The drive module reads `dcOf`, `operating`, `timeConstants` and
+   `pmsmOf` so that one motor is described once, and the interference module
+   reads `fft` so a spectrum has a second reader. `package-lock.json` is the
+   director's file, and one `npm install` at integration records the two
+   edges.
+2. **The splash count moves to 43 at release.** §7 of the plan pins "54
+   experiments" as the number the card will carry when the whole curriculum is
+   built. The lab has forty-three. `release.test.js` will demand whatever
+   number the card claims, so the card and the README row are written once,
+   against the count on the day.
+3. **Three meters and four traces were added to the shell's own tables.**
+   The meters are the line's ripple, the switch node's ring, and the junction
+   temperature. Both tables read as a base list plus one appended row a lane,
+   so a second lane's row merges beside this one. `review.test.jsx` takes its
+   added meters from `LMN_HEADLINES`. A lane that declares a meter does not
+   also edit the test. `ORDER` in `panes.jsx` partitions the union by axis, so
+   the measures table still reads voltages before currents. No lane has to
+   place its own signals inside the base list.
+4. **The schematic kit is exported.** `schematics.jsx` now exports its
+   symbols, so a group can draw a circuit in the lab's own idiom without
+   copying one. `lmnSchematics.jsx` is the first user, and the six drawings it
+   holds are registered by one `Object.assign` each.
+5. **Nothing new is needed from `packages/ui` or `packages/explain`.** The
+   four new panes are built from `useCanvas`, `drawFrame`, `plotArea`,
+   `COLORS` and `fmt` as exported today.
