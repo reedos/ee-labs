@@ -39,6 +39,7 @@ import {
   regionLabel,
   VT,
 } from '@ee-labs/network'
+import { analysePhasors } from './branchedPhasor.js'
 import { isDynamic } from './experiments.js'
 import { sharedStep, scaledAt } from './format.js'
 
@@ -212,6 +213,11 @@ function peakOf(x, q, key, sign = 1) {
 const sgn = (v) => (v < 0 ? -1 : 1)
 
 const ENTRIES = {
+  h8(p,s,x) {
+    const a=analysePhasors('branched',{r:p.R1,r2:p.R2,l:p.L1,c:p.C1,v:p.A,f:p.f,phase:p.phi})
+    return {blocks:[T('Solve complex KCL at the branch node. The worked phasor route shows each substitution; the independent circuit solution checks every branch.'),
+      C(a.rows.flatMap(r=>[row(`|V(${r.id})|`,cx.cabs(r.voltage),cx.cabs(x.ac.volt[r.id]),'V'),row(`|I(${r.id})|`,cx.cabs(r.current),cx.cabs(x.ac.i[r.id]),'A')]))]}
+  },
   a1(p, s) {
     const i = p.E / p.R1
     return {

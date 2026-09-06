@@ -17,6 +17,8 @@
 // read at until the reader scrubs, and `scope` which waveforms the scope
 // draws on which axis. Everything else is as for the resistive groups.
 
+import { phasorLayout } from './branchedLayout.js'
+import { phasorCircuit } from './branchedPhasor.js'
 import { fmt } from '@ee-labs/ui'
 import { layoutExtent, placeCallout } from './layoutCheck.js'
 import { LESSONS } from './lessons.js'
@@ -1805,6 +1807,31 @@ export const EXPERIMENTS = [
     phasor: { volts: ['R1', 'L1', 'C1'], total: 'V1', current: 'R1' },
     circuitLab: rlcToCircuitLab,
     claim: { roots: true },
+  },
+  {
+    id: 'h8', group: GROUPS[7], name: 'Current division in a branched AC circuit',
+    terms: ['phasor', 'impedanceac', 'reactance'],
+    params: [Vs('A', 'Amplitude', 5), Deg('phi', 'Phase', 0),
+      { ...Freq('f', 'Frequency', 1000), min: 10, max: 10000 },
+      { ...R('R1', 'R₁', 100), min: 10, max: 1000 },
+      { ...R('R2', 'R₂', 150), min: 10, max: 1000 },
+      { ...Ind('L1', 'L', .01), min: .001, max: .1 },
+      { ...Cap('C1', 'C', 1e-6), min: 1e-7, max: 1e-5 }, Vs('v0', 'Initial capacitor voltage', 0), Is('i0', 'Initial inductor current', 0), Win('N', 'Window', 'cycles', 6)],
+    net: p => {
+      const net = phasorCircuit('branched', { r:p.R1, r2:p.R2, l:p.L1, c:p.C1, v:p.A })
+      net.elements.find(e=>e.id==='C1').x0 = p.v0
+      net.elements.find(e=>e.id==='L1').x0 = p.i0
+      net.elements[0].wave = { kind:'sine', amp:p.A, freq:p.f, phase:p.phi*Math.PI/180 }
+      return net
+    },
+    layout: phasorLayout('branched'), window: cyclesWindow, cursor: .85,
+    ghost: 'forced', ghostLabel: 'steady state (dashed)',
+    scope: { left: { unit:'V', traces:[{q:'volt',key:'C1',label:'v_C'}] },
+      right: { unit:'A', traces:[{q:'i',key:'R1',label:'i_R1'},{q:'i',key:'C1',label:'i_C'},{q:'i',key:'L1',label:'i_L'}] } },
+    out: {q:'volt',key:'C1',label:'v_C'}, show:'v', view:'phasor',
+    views:['equations','power','scope','state','phasor','acpower'],
+    phasor: {volts:['R1','C1'],total:'V1',current:'R1',branched:true},
+    claim: {branched:true},
   },
   // ============================================================== I
   {

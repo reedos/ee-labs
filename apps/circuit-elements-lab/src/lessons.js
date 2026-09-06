@@ -142,6 +142,16 @@ const overshootPct = (q, id, final) => (x, p) => (100 * (peak(q, id)(x) - final(
 const offGhost = (q, id) => (x, p) => Math.max(...x.tr.samples.map((s) => Math.abs(s.sol[q][id] - x.ghost.at(s.t).sol[q][id]))) / p.E
 
 export const LESSONS = {
+  h8: {
+    see: 'The current through the input resistor divides between the capacitor and the resistor and inductor branch. The two branch currents have different phases. Add their complex components to check KCL.',
+    seeReads: [],
+    try: [
+      {say:'Set the source amplitude to zero. Every steady-state branch voltage and current becomes zero.',set:{A:0},reads:[['mag.volt.C1',0]]},
+      {say:'Double the source amplitude. Each steady-state voltage and current doubles. The real and reactive powers grow by a factor of four.',set:{A:10},reads:[]},
+      {say:'Increase the branch resistance and compare the new current split in Phasors, then open State equation to follow startup.',set:{R2:300},reads:[]},
+    ],
+    why: 'At node n, the input current equals the capacitor current plus the inductor-branch current. Phasors solve that balance in sinusoidal steady state. The state route starts with capacitor voltage and inductor current, derives their coupled differential equations and includes the natural response. At the same time cursor, the Equations route uses those states to recover every node voltage and branch current. AC power uses the same phasors with the peak-amplitude factor of one half.',
+  },
   a1: {
     see:
       'Voltage is energy per unit of charge, how hard each coulomb is pushed. Current is charge passing per ' +

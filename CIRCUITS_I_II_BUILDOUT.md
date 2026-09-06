@@ -5,9 +5,11 @@
 Reed approved the curriculum expansion on 2026-09-06. This document starts the coverage and dependency plan.
 It does not mark new lessons as implemented or released.
 
-The recommended structure is two course paths across the existing apps.
-Reed accepted course paths across the existing apps.
-Circuit Lab is the principal home for the Circuits II expansion.
+Reed revised the architecture after reviewing the four-lesson rollout.
+One expanded Circuit Elements app owns the Circuits I and II sections.
+All new core lessons use its schematic, controls and analysis panes.
+Circuit Lab remains a frequency-response tool while its teaching material is integrated
+into the expanded course. Do not build another standalone Circuits II shell.
 Existing experiment identifiers and public links must remain valid.
 
 The agreed splash descriptions are Circuit Analysis Foundations for Circuit Elements Lab and Filters, Resonance & Circuit Dynamics for Circuit Lab.
@@ -50,17 +52,17 @@ The required course paths must not depend on those subjects.
 | Apply network theorems | Elements D4-D6, including short-circuit current in the equivalent pane | Explicit Norton construction and source transformations | Circuit Elements |
 | Analyze controlled sources and ideal op-amps | Elements E | Verify coverage of source types and test-source resistance with dependent sources | Circuit Elements |
 | Apply storage laws and initial conditions | Elements F and G | A complete switching procedure with pre-switch, post-switch and final circuits | Circuit Elements |
-| Distinguish natural, forced, zero-input and zero-state responses | Elements G, H1 and worked state derivations | Explicit comparison on the same initial state and input | Circuit Lab |
+| Distinguish natural, forced, zero-input and zero-state responses | Elements G, H1 and worked state derivations | Explicit comparison on the same initial state and input | Circuit Elements |
 | Solve sinusoidal networks | Elements H | Branched AC nodal/mesh problems and AC equivalents | Circuit Elements |
 | Calculate AC power | Elements H5 | RMS conventions, power-factor correction and conjugate matching | Circuit Elements |
-| Solve in the Laplace domain | Circuit Lab uses rational transfer functions | Transform rules, initial-condition sources, inversion and validity conditions | Circuit Lab |
-| Relate time and frequency responses | Elements H7 and Circuit Lab response lessons | Parameter-preserving cross-lab practice and a complete-response comparison | Circuit Lab |
+| Solve in the Laplace domain | Circuit Lab uses rational transfer functions | Transform rules, initial-condition sources, inversion and validity conditions | Circuit Elements |
+| Relate time and frequency responses | Elements H7 and Circuit Lab response lessons | Parameter-preserving cross-lab practice and a complete-response comparison | Circuit Elements |
 | Analyze periodic forcing with Fourier series | Signal Lab harmonics and Circuit Lab hand-over | Coefficients, per-harmonic analog response, reconstruction and truncation error | Circuit Lab and Signal Lab |
-| Design elementary filters | Circuit Lab passive and active circuits | Simple response targets, loading and component-selection exercises | Circuit Lab |
+| Design elementary filters | Circuit Lab passive and active circuits | Simple response targets, loading and component-selection exercises | Circuit Elements |
 | Analyze mutual inductance | Fields E includes inductance and magnetic coupling | Dot convention, signed circuit equations and coupled-winding energy | Circuit Elements with Fields reuse |
 | Analyze transformers | Machines B1-B6 are implemented, dark | Prerequisite-light access and circuit-method comparisons | Machines with a foundation entry |
 | Analyze three-phase circuits | Grid B1-B5 are implemented, dark | Direct unbalanced-load problems and accessible voltage/current examples | Grid with a foundation entry |
-| Derive and use two-port parameters | RF D includes S/Z/Y/ABCD and cascades, dark | Terminal-test derivations, hybrid parameters, loading and elementary interconnections | Circuit Lab with RF reuse |
+| Derive and use two-port parameters | RF D includes S/Z/Y/ABCD and cascades, dark | Terminal-test derivations, hybrid parameters, loading and elementary interconnections | Circuit Elements with RF reuse |
 | Solve unfamiliar combined problems | No course-wide acceptance evidence established | Capstones with independently entered equations and answers | Both course paths |
 
 An existing formula or solver output does not establish a taught method.
@@ -72,9 +74,10 @@ Reed confirmed the sequence after reviewing this initial plan.
 The order is phasor circuit analysis, time-domain and state equations, Laplace methods, then transfer functions and frequency response.
 The existing frequency-response lessons remain available throughout the rollout.
 
-The first release adds four phasor lessons in `apps/circuit-lab/src/phasorCourse.js`.
-They cover complex arithmetic, series RLC analysis, branched nodal analysis and AC power.
-Their calculations are checked against an independent complex nodal solve.
+The first separate phasor release is superseded by consolidation into Circuit Elements.
+RC and series RLC lessons reuse the existing experiments. The new branched circuit
+combines complex KCL, state equations and power in H8.
+Its calculations are checked against an independent complex nodal solve.
 The complete-course claim remains open. State-space, Laplace and the other coverage gaps remain implementation work.
 
 ## Circuits I implementation group
@@ -172,3 +175,12 @@ The course outcome list includes the topics in the University of Toledo's Electr
 Its scope includes Laplace methods, Fourier circuit analysis, magnetic coupling, three-phase circuits and two-port networks.
 
 [University of Toledo, Electric Circuits II](https://www.utoledo.edu/engineering/electrical-engineering-computer-science/current-students/syllabi/eecs-3220-electric-circuits-ii.html)
+
+## Consolidation acceptance
+
+The separate four-lesson phasor page is retired. RC and series RLC instruction reuse
+H2 and H3. H8 brings branched KCL and AC power into the existing Elements interface,
+including its coupled state equations and instantaneous circuit equations.
+This is consolidation, not completion of the Circuits II curriculum. The remaining
+coverage matrix and phasors, state equations, Laplace, frequency-response ordering
+still apply. Existing device, power, machines, grid and RF ownership stays intact.

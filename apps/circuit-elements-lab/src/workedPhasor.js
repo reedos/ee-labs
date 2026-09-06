@@ -1,8 +1,16 @@
+import { analysePhasors, phasorSteps } from './branchedPhasor.js'
 import { complex as cx } from '@ee-labs/network'
 import { n, par, sum, qty, rect, polar } from './derivationMath.js'
 
 /** The seven offered phasor examples are single-loop RC, RL or RLC circuits. */
 export function workedPhasor(exp, x) {
+  if (exp.phasor.branched) {
+    const e = Object.fromEntries(x.net.elements.map(e=>[e.id,e]))
+    const p = {r:e.R1.value,r2:e.R2.value,l:e.L1.value,c:e.C1.value,v:e.V1.wave.amp,f:x.omega/(2*Math.PI),phase:(e.V1.wave.phase||0)*180/Math.PI}
+    const a = analysePhasors('branched',p)
+    return {steps:phasorSteps('branched',p,a).map(s=>({title:s.title.replace(/^\d+\. /,''),text:s.text,latex:s.math})),
+      I:a.current,V:a.vs,Z:a.total,volts:exp.phasor.volts.map(id=>a.rows.find(r=>r.id===id).voltage),S:a.power}
+  }
   const w = x.omega, f = w / (2 * Math.PI)
   const source = x.net.elements.find((e) => e.id === exp.phasor.total)
   const amp = source.wave.amp, phase = source.wave.phase || 0

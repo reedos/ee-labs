@@ -35,6 +35,7 @@ export const opensGroup = (exp) => EXPERIMENTS.find((e) => e.group === exp.group
  * one leads to.
  */
 export const BUILDS = {
+  h8: ['h3', 'h5', 'g3'],
   a2: ['a1'],
   a3: ['a1'],
   a4: ['a1'],

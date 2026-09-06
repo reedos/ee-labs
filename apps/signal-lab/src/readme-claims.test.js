@@ -3,7 +3,6 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { PRESETS, PRESET_GROUPS } from './presets.js'
 import { LESSONS as CIRCUIT_LESSONS } from '../../circuit-lab/src/lessons.js'
-import { PHASOR_LESSONS } from '../../circuit-lab/src/phasorCourse.js'
 import { CIRCUITS, transferOf, defaultsOf } from '../../circuit-lab/src/circuits.js'
 import { asDigitalFilter, asControlPlant } from '../../circuit-lab/src/toSignalLab.js'
 import { LESSONS as CONTROL_LESSONS } from '../../control-lab/src/lessons.js'
@@ -28,7 +27,7 @@ describe('the README quotes the tree it describes', () => {
     // entry is a configured setup plus a question plus a tested note.
     expect(readme).toContain(`${PRESETS.length} experiments`)
     expect(readme).toContain(
-      `${PHASOR_LESSONS.length} phasor lessons, ${CIRCUIT_LESSONS.length} frequency-response lessons`,
+      `${CIRCUIT_LESSONS.length} frequency-response lessons`,
     )
     expect(readme).toContain(
       `${CONTROL_LESSONS.length} experiments, ${Object.keys(PLANTS).length} plants x ${Object.keys(CONTROLLERS).length} controllers`,
@@ -83,7 +82,7 @@ describe('the splash page quotes the tree it describes', () => {
   it('lab-card counts match the arrays that render them', () => {
     expect(splash).toContain(`${PRESETS.length} experiments`)
     expect(splash).toContain(
-      `${PHASOR_LESSONS.length} phasor lessons, ${CIRCUIT_LESSONS.length} frequency-response lessons`,
+      `${CIRCUIT_LESSONS.length} frequency-response lessons`,
     )
     expect(splash).toContain(
       `${CONTROL_LESSONS.length} experiments, ${Object.keys(PLANTS).length} plants`,

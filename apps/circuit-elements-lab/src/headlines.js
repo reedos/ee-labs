@@ -23,6 +23,7 @@ const mag = (z) => cx.cabs(z)
 const realPower = (V, I) => 0.5 * (V[0] * I[0] + V[1] * I[1])
 
 export const HEADLINES = {
+  h8: {label:'the capacitor branch voltage amplitude',tag:'|V_C|',unit:'V',where:null,value:x=>mag(x.ac.volt.C1)},
   a1: { label: 'the current the resistor lets through', tag: 'i', unit: 'A', where: 'R1', value: (x) => x.sol.i.R1 },
   a2: {
     label: 'the voltage the source has to make to keep its current',

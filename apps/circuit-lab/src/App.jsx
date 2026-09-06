@@ -686,7 +686,7 @@ export default function App() {
             A circuit, the transfer function it has, and the same thing seen in frequency, in
             time, and as poles. Explore the frequency-response lessons below.
           </p>
-          <a className="phasor-return" href="#phasors=complex">Start with phasor analysis</a>
+          <a className="phasor-return" href="../circuit-elements-lab/#h1">Circuits I & II in Circuit Elements</a>
           <ReportIssue
             lab="Circuit Lab"
             version={pkg.version}

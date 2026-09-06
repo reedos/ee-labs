@@ -23,8 +23,8 @@ order the nav will fold to (`ELECTRONICS_LAB_PLAN.md` Decision 5).
 
 | Step | Lab | Course it mirrors | Experiments | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Circuit Elements Lab | Circuits I | 58 | released |
-| 2 | Circuit Lab | Circuits II, phasors and frequency response | 20 | released |
+| 1 | Circuit Elements Lab | Circuits I and II foundations | 59 | released |
+| 2 | Circuit Lab | Filters and frequency response | 16 | released |
 | 3 | Electronics Lab | Electronics I and II | 75 of 77 | built in part, dark |
 | 4 | Signal Lab | Signals and Systems, DSP | 35 | released |
 | 5 | Control Lab | Control | 13 | released |
@@ -38,7 +38,7 @@ interleave.
 
 ## 2. The path, group by group
 
-### Step 1: Circuit Elements Lab (58, released)
+### Step 1: Circuit Elements Lab (59, released)
 
 | Group | Teaches | Count |
 | --- | --- | --- |
@@ -49,26 +49,24 @@ interleave.
 | E · Op-amps | the dependent source, the black box, the golden rules, the four circuits, the Schmitt trigger | 9 |
 | F · Elements that remember | C and L, the first-order equation, energy, the spark, the integrator | 7 |
 | G · Second order | the characteristic equation, three dampings, the LC | 7 |
-| H · Sinusoids and phasors | natural and forced, phasors, impedance, resonance, AC power, one sine at a time, the roots as poles | 7 |
+| H · Sinusoids and phasors | natural and forced, phasors, impedance, resonance, AC power, one sine at a time, the roots as poles, branched KCL and coupled states | 8 |
 | I · The diode | four models, the load line and Newton, assumed state, rectifiers, clipper, Zener, clamper, doubler | 10 |
 
 What it gives at the end: `H(jω)` read one sine at a time, and the Bode view of an RC.
 The same circuit hands over to Circuit Lab.
 
-### Step 2: Circuit Lab (20, released)
+### Step 2: Circuit Lab (16, released)
 
 | Group | Teaches | Count |
 | --- | --- | --- |
-| Phasor analysis | complex arithmetic, series KVL, branched KCL, AC power | 4 |
 | Reading a response | a divider has no dynamics, where the corner comes from, the high-pass, RL is RC, the impulse response | 5 |
 | Resonance | three filters from one RLC, Q, series against parallel, resonance in time, the notch, tolerance, which part | 7 |
 | Active circuits | why active filters exist, the inverting gain, the pole at the origin | 3 |
 | One object, two names | the RLC is a biquad, and the hand-over to Signal Lab and Control Lab | 1 |
 
-The new entry group assumes Kirchhoff's laws and the capacitor and inductor laws.
-It introduces peak-amplitude sine phasors before solving circuit equations.
-The existing frequency-response lessons remain available directly.
-The next rollout groups add state equations and Laplace methods before those lessons.
+Circuit Elements owns the Circuits I and II course sections. Phasor instruction uses
+its existing schematic and analysis panes. Circuit Lab remains the frequency-response
+tool while further state-space and Laplace instruction is developed in Circuit Elements.
 `CIRCUITS_I_II_BUILDOUT.md` records the remaining course scope and dependencies.
 
 ### Step 3: Electronics Lab (75 of 77)

@@ -38,12 +38,26 @@ describe('worked derivations across the full circuit elements course', () => {
       work.answer.forEach((s, i) => close(s, x.now.x[i], `${exp.id} state ${i}`))
     }
   })
+  it('checks the branched state slopes against capacitor KCL and inductor KVL', () => {
+    for (const t of [0, 0.0001, 0.001]) {
+      const p = {...defaultsOf('h8'), v0:2, i0:-0.01, phi:30}
+      const x = analyse(byId.h8, p, t)
+      const ci = x.dyn.states.findIndex(s=>s.id==='C1')
+      const li = x.dyn.states.findIndex(s=>s.id==='L1')
+      const vc=x.now.x[ci], il=x.now.x[li], u=x.now.u[0]
+      close(x.now.dxdt[ci], ((u-vc)/p.R1-il)/p.C1, 'capacitor KCL')
+      close(x.now.dxdt[li], (vc-p.R2*il)/p.L1, 'inductor KVL')
+      close(x.sol.i.R1, (u-vc)/p.R1, 'output reconstruction')
+      if(t===0) { close(vc,2,'initial capacitor voltage'); close(il,-0.01,'initial inductor current') }
+    }
+  })
   it('covers integrators, source corners, damping regimes, initial energy and sine phase changes', () => {
     for (const [id, over, t] of [
       ['f1', {}, 0], ['f1', {}, 0.0007], ['f2', {}, 0.001],
       ['f3', { v0: 4 }, 0.001], ['f7', {}, 0.002],
       ['g3', { R1: 800 }, 0.001], ['g3', { R1: 200 }, 0.001], ['g3', { R1: 50 }, 0.001],
       ['g4', {}, 0.001], ['g5', {}, 0.001],
+      ['h8', { v0: 2, i0: -0.01, phi: 30 }, 0.001],
       ['h1', { A: -5, phi: 45 }, 0.001], ['h3', { A: 0 }, 0],
     ]) {
       const x = at(byId[id], over, t), work = workedState(x)

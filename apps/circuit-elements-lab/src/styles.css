@@ -1219,3 +1219,17 @@ a.handover-copy:hover { filter: brightness(1.1); }
   .theorem figcaption, .equivalent figcaption { font-size: 13.5px; }
   .readings .hint { font-size: 14px; }
 }
+
+.course-sections { display:flex; gap:6px; margin-bottom:8px; }
+.course-sections button { flex:1; min-height:44px; }
+.course-sections button[aria-pressed="true"] { color:var(--text-bright); border-color:var(--accent); background:var(--panel); }
+.course-section-summary { font-size:12px; line-height:1.5; margin:6px 0 10px; }
+
+.course-outline { margin-bottom:10px; font-size:12px; line-height:1.6; }
+.course-outline ol { padding-left:20px; }
+.course-outline a { color:var(--accent); }
+
+/* The branched drawing is taller than the single-loop drawings. Keep its labels readable on phones. */
+@media (max-width: 600px) {
+  .app[data-experiment="h8"] .view .schematic.big { --sch-h: 250px; }
+}

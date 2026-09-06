@@ -1,46 +1,46 @@
 import { chromium, firefox } from 'playwright'
+import assert from 'node:assert/strict'
 import { mkdir } from 'node:fs/promises'
-await mkdir('shots/phasors', { recursive: true })
-const base = process.env.APP_URL || 'http://127.0.0.1:4190/'
+const base = process.env.APP_URL || 'http://127.0.0.1:4192/circuit-lab/'
 const browserName = process.env.BROWSER || 'chromium'
-if (!['chromium', 'firefox'].includes(browserName)) throw new Error(`Unsupported browser: ${browserName}`)
-const b = await ({ chromium, firefox })[browserName].launch()
-const page = await b.newPage()
-const failures = []
-page.on('pageerror', e => failures.push(e.message))
-for (const width of [1440, 390]) {
+const browser = await ({chromium,firefox})[browserName].launch()
+const context = await browser.newContext()
+const page = await context.newPage()
+const errors = []
+page.on('pageerror', e => errors.push(e.message))
+await mkdir('shots/consolidation', {recursive:true})
+for (const width of [1440,390]) {
   await page.setViewportSize({width,height:1000})
-  for (const id of ['complex','series','nodal','power']) {
-    await page.goto(`${base}#phasors=${id}`)
-    await page.locator(`[aria-current=step][href='#phasors=${id}']`).waitFor()
-    const bad = await page.evaluate(() => ({
-      overflow: document.querySelector('.phasor-course').scrollWidth > innerWidth + 1,
-      tex: document.querySelectorAll('.katex-error').length,
-      clipped: [...document.querySelectorAll('.phasor-course p,.phasor-course h2,.phasor-course h3')].filter(e => e.scrollWidth > e.clientWidth + 2).length,
-    }))
-    if(bad.overflow || bad.tex || bad.clipped) failures.push({width,id,...bad})
-    await page.getByRole('button',{name:'Reveal explanation',exact:true}).click()
-    await page.getByRole('button',{name:'Hide explanation',exact:true}).waitFor()
-    const field = page.getByRole('spinbutton',{name:'Source amplitude (V peak)',exact:true})
-    await field.fill('10'); await field.press('Enter')
-    if (await field.inputValue() !== '10') failures.push({width,id,field:'source amplitude failed'})
-    await page.getByRole('button',{name:'Reset values',exact:true}).click()
-    if(id==='nodal' && width===1440) {
-      await page.locator('.phasor-circuit').scrollIntoViewIfNeeded()
-      await page.screenshot({path:'shots/phasors/desktop.png'})
-    }
-    if(id==='complex' && width===390) {
-      await page.locator('.phasor-circuit').scrollIntoViewIfNeeded()
-      await page.screenshot({path:'shots/phasors/phone.png'})
-    }
+  for (const [old,id,view] of [['complex','h2','phasor'],['series','h3','phasor'],['nodal','h8','phasor'],['power','h8','acpower']]) {
+    await page.goto(`${base}#phasors=${old}`)
+    await page.waitForURL(url => url.pathname.includes('circuit-elements-lab') && url.hash.startsWith(`#${id}`))
+    await page.locator('.view-body').last().waitFor()
+    assert.equal(await page.locator('.katex-error').count(),0)
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth+1),false)
+    assert.equal(await page.getByRole('button',{name:'Circuits II',exact:true}).getAttribute('aria-pressed'),'true')
   }
-  await page.locator('.phasor-course-link').click()
-  await page.locator('.phasor-return').waitFor()
-  await page.locator('.phasor-return').click()
-  await page.locator('[data-role=phasor-course]').waitFor()
+  await page.goto(new URL('../circuit-elements-lab/#h8&v0=2&i0=0.01&view=state',base).href)
+  await page.locator('[data-role="worked-state"]').waitFor()
+  assert.equal(await page.locator('.katex-error').count(),0)
+  await page.screenshot({path:`shots/consolidation/${browserName}-${width}.png`})
+  await page.locator('.view-switch').getByRole('button',{name:'Equations',exact:true}).click()
+  await page.locator('.equations').waitFor()
+  if(width===1440) {
+    const result=await page.evaluate(()=>{
+      const body=document.querySelector('.view-body:not([data-show])');body.scrollTop=body.scrollHeight;
+      return {scrolled:body.scrollTop>0,visible:body.clientHeight>300}
+    })
+    assert.ok(result.scrolled && result.visible)
+  }
+  await page.getByRole('button',{name:'Circuits I',exact:true}).click()
+  assert.equal(await page.getByRole('button',{name:'Circuits I',exact:true}).getAttribute('aria-pressed'),'true')
 }
-await page.goto(base + '#circuit=rlcSeries:200:0.02:1e-7&out=l')
+await page.goto(base)
 await page.locator('.phasor-return').waitFor()
-await b.close()
-console.log(JSON.stringify({browser:browserName,viewports:2,lessons:4,failures}))
-if(failures.length)process.exitCode=1
+assert.equal(await page.locator('[data-role="phasor-course"]').count(),0)
+await page.goto(`${base}#circuit=rlcSeries:200:0.02:1e-7&out=l`)
+await page.locator('.phasor-return').waitFor()
+assert.ok(page.url().includes('rlcSeries:200:0.02:1e-7'))
+assert.deepEqual(errors,[])
+await browser.close()
+console.log(`${browserName}: consolidated routes, math panes, initial conditions and desktop/phone layouts passed`)

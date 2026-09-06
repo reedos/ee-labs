@@ -25,9 +25,9 @@ npm run dev              # Signal Lab, at http://localhost:1421
 
 | | covers | status |
 |---|---|---|
-| **[apps/circuit-elements-lab](apps/circuit-elements-lab/)** | circuit laws, network theorems, op-amps, diodes, transients, state equations, phasors | **[Live — 58 experiments](https://reedos.github.io/ee-labs/circuit-elements-lab/)** |
+| **[apps/circuit-elements-lab](apps/circuit-elements-lab/)** | circuit laws, network theorems, op-amps, diodes, transients, state equations, phasors | **[Live — 59 experiments](https://reedos.github.io/ee-labs/circuit-elements-lab/)** |
 | **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 35 experiments |
-| **[apps/circuit-lab](apps/circuit-lab/)** | phasor circuit analysis, impedance, resonance, active filters, tolerance | 4 phasor lessons, 16 frequency-response lessons |
+| **[apps/circuit-lab](apps/circuit-lab/)** | phasor circuit analysis, impedance, resonance, active filters, tolerance | 16 frequency-response lessons |
 | **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 13 experiments, 7 plants x 4 controllers |
 
 [**Open Circuit Elements Lab**](https://reedos.github.io/ee-labs/circuit-elements-lab/)
@@ -45,11 +45,13 @@ would take work that no reader of this repository would benefit from.
 
 ## The experiments
 
-Circuit Lab now starts with four worked phasor lessons: complex arithmetic, series
-RLC analysis, branched nodal analysis, and AC power. Each includes a prediction
-exercise and an independent numerical check. Existing circuit links retain their values.
-The Circuits II expansion will next add state equations and Laplace methods before
-the existing transfer-function and frequency-response lessons. Those additions are not released yet.
+Circuit Elements is the shared home for the Circuits I and II buildout. Both sections
+use the same schematic, controls and equation, state and phasor views. The branched
+AC experiment connects complex KCL, coupled states and AC power in one circuit.
+Circuit Lab remains the frequency-response tool. Its former phasor lesson links
+open the corresponding Circuit Elements experiments. Further state-space instruction,
+Laplace methods and the remaining course topics are planned in
+[CIRCUITS_I_II_BUILDOUT.md](CIRCUITS_I_II_BUILDOUT.md). The complete course is not yet built.
 
 Each tool opens with a grouped **Try this** list. An entry loads a setup and asks
 a question. Every claim its note makes is rendered on screen and measured by a

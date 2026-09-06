@@ -737,12 +737,12 @@ const STATEFUL = DYNAMIC.filter((e) => e.net(defaultsOf(e.id)).elements.some((q)
 const last = (arr) => arr[arr.length - 1]
 const peaks = (tr, q, key) => extrema(tr.t, tr.series(q, key), (t) => tr.at(t).sol[q][key])
 
-const SECOND_ORDER = new Set(['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'h3', 'h4', 'h7', 'i10'])
+const SECOND_ORDER = new Set(['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'h3', 'h4', 'h7', 'h8', 'i10'])
 
 describe('every dynamic experiment (F, G, H)', () => {
   it('has a transient, a state summary, a cursor solve, and the meters read that instant', () => {
-    expect(DYNAMIC.length).toBe(28)
-    expect(STATEFUL.length).toBe(24)
+    expect(DYNAMIC.length).toBe(29)
+    expect(STATEFUL.length).toBe(25)
     for (const e of DYNAMIC) {
       const { x } = at(e.id)
       expect(x.tr, e.id).toBeTruthy()
@@ -1601,7 +1601,7 @@ describe('what the student reads is what the solver did', () => {
 
   it('every sine experiment opens with the source well off its zero crossing; H2 and H6 at its peak', () => {
     const sines = EXPERIMENTS.filter((q) => q.net(defaultsOf(q.id)).elements.some((el) => el.wave && el.wave.kind === 'sine'))
-    expect(sines.map((q) => q.id)).toEqual(['e9', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'i4', 'i5', 'i6', 'i7', 'i9', 'i10'])
+    expect(sines.map((q) => q.id)).toEqual(['e9', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8', 'i4', 'i5', 'i6', 'i7', 'i9', 'i10'])
     for (const e of sines) {
       const { p, x } = at(e.id)
       // The source's own voltage, not a node called "in": the bridge's source
@@ -1912,6 +1912,10 @@ const par = (...rs) => 1 / rs.reduce((a, r) => a + 1 / r, 0)
 
 /** The headline of every experiment, from the knobs — the solver never consulted. */
 const HEADLINE_CLOSED = {
+  h8: p => {
+    const w=2*Math.PI*p.f, y=cx.cadd([0,w*p.C1],cx.cdiv([1,0],[p.R2,w*p.L1]))
+    return Math.abs(p.A)/cx.cabs(cx.cadd([1,0],cx.cscale(y,p.R1)))
+  },
   a1: (p) => p.E / p.R1,
   a2: (p) => p.I * p.R1,
   a3: (p) => (p.E * p.R1) / (p.R1 + p.R2),

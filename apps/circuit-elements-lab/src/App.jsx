@@ -423,12 +423,12 @@ export default function App() {
   }, [id, params, show, currentView, dynamic, x.cursor, playing])
 
   return (
-    <div className="app">
+    <div className="app" data-experiment={id}>
       <aside className="controls">
         <header>
           <LabNav current="circuit-elements-lab" currentLabel="Elements" />
           <h1>Circuit Elements Lab</h1>
-          <p className="sub">Circuits from KVL and KCL up to AC power and the diode.</p>
+          <p className="sub">Circuits I and II in one workspace: circuit laws, time response and AC analysis.</p>
           <ReportIssue
             lab="Circuit Elements Lab"
             version={pkg.version}
@@ -1224,6 +1224,23 @@ function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups, progress
   const finished = EXPERIMENTS.filter((e) => complete(e, progress[e.id])).length
   return (
     <nav className="picker" aria-label="Choose an experiment">
+      <div className="course-sections" aria-label="Course sections">
+        <button type="button" className="preset" aria-pressed={exp.group !== GROUPS[7]} onClick={() => choose('a1')}>Circuits I</button>
+        <button type="button" className="preset" aria-pressed={exp.group === GROUPS[7]} onClick={() => choose('h1')}>Circuits II</button>
+      </div>
+      <p className="course-section-summary">{exp.group === GROUPS[7]
+        ? 'Circuits II · Phasors, AC power and circuit dynamics'
+        : 'Circuits I · Circuit laws, methods, storage and devices'}</p>
+      {exp.group === GROUPS[7] ? <details className="group-intro course-outline">
+        <summary>Circuits II learning sequence</summary>
+        <ol>
+          <li><a href="#h2&view=phasor">Phasor arithmetic</a>, <a href="#h3&view=phasor">series circuits</a>, then <a href="#h8&view=phasor">branched KCL</a>.</li>
+          <li><a href="#h8&view=state">Coupled states and initial conditions</a>. Compare startup with sinusoidal steady state.</li>
+          <li>Laplace methods and transfer-function derivations are planned.</li>
+          <li><a href="#h6&view=bode">Frequency response</a> and <a href="../circuit-lab/">the existing filter tools</a>.</li>
+        </ol>
+        <p>Further buildout includes AC network theorems, coupled circuits, three-phase circuits, two-port networks and course practice.</p>
+      </details> : null}
       <div className="picker-row">
         <button
           type="button"
@@ -1270,7 +1287,7 @@ function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups, progress
             <FoldGroup
               key={g}
               sectionKey={g}
-              label={g}
+              label={`${g === GROUPS[7] ? 'II' : 'I'} · ${g}`}
               holdsActive={inGroup.some((e) => e.id === id)}
               intro={GROUP_INTRO[letterOf(g)]}
               arc={groupArc(inGroup, progress)}
