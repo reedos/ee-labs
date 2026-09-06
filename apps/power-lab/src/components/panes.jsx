@@ -231,41 +231,75 @@ export function SpectrumPane({ x }) {
   )
 }
 
+/**
+ * The spectrum as a pure drawing, so what lands on it can be measured.
+ * Returns the geometry and the labels it placed.
+ */
+export function drawSpectrum(ctx, w, h, { harmonics, I1, phases, unit = 'A' }) {
+  const area = plotArea(w, h)
+  const k = area.k
+  const kMax = harmonics.length ? harmonics[harmonics.length - 1].k : 25
+  const top = Math.max(1e-12, ...harmonics.map((q) => q.rms))
+  const { sx, sy } = drawFrame(ctx, area, 0, kMax + 1, 0, top * 1.1, (v) => `${v.toFixed(0)}`, axisFmt(0, top * 1.1, unit), {
+    xTitle: 'Harmonic order',
+    yTitle: unit === 'V' ? 'RMS voltage (V)' : 'RMS current (A)',
+  })
+  const bw = Math.max(2 * k, (sx(1) - sx(0)) * 0.6)
+  ctx.save()
+  for (const q of harmonics) {
+    ctx.fillStyle = q.k === 1 ? COLORS.trace : COLORS.spectrum
+    ctx.fillRect(sx(q.k) - bw / 2, sy(q.rms), bw, sy(0) - sy(q.rms))
+  }
+
+  ctx.font = `${Math.round(11 * k)}px ${MONO}`
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'top'
+  ctx.fillStyle = COLORS.text
+  // The caption sits in the top right corner and the fundamental's bar is the
+  // tallest on the plot, so on a phone the full wording ran the width of the
+  // frame and pushed "100 %" off it. The shortest wording that still says what
+  // the percentages are of wins where there is no room for the longer one.
+  const forms = phases === 3
+    ? ['phase a, as % of the fundamental', 'phase a, % of the fundamental', 'phase a, % of I₁', '% of I₁']
+    : ['as % of the fundamental', '% of the fundamental', unit === 'V' ? '% of V₁' : '% of I₁']
+  const caption = forms.find((t) => ctx.measureText(t).width <= area.w * 0.45) || forms[forms.length - 1]
+  const capW = ctx.measureText(caption).width
+  ctx.fillText(caption, area.x + area.w - 4 * k, area.y + 4 * k)
+
+  // The percentages, strongest bar first, and each one drawn only where its
+  // box clears every label already on the plot and the caption above them.
+  //
+  // A sine-PWM spectrum clusters its sidebands three and five to a carrier, a
+  // few pixels apart at m_f = 63, and every one of them cleared the 25 % bar
+  // that let a bar speak. Two "27 %" landed on each other and read "27 27 %";
+  // two "39 %" read "39%%". A number a reader cannot read is worse than no
+  // number, and the tallest bar of a cluster is the one that carries the
+  // lesson (REVIEW_PLAYBOOK.md class 6, occlusion).
+  ctx.font = `${Math.round(10 * k)}px ${MONO}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'bottom'
+  ctx.fillStyle = COLORS.textBright
+  const boxes = [{ x0: area.x + area.w - 4 * k - capW, x1: area.x + area.w, y0: area.y, y1: area.y + 18 * k }]
+  const clear = (b) => !boxes.some((o) => b.x0 < o.x1 + 3 * k && b.x1 > o.x0 - 3 * k && b.y0 < o.y1 + 2 * k && b.y1 > o.y0 - 2 * k)
+  const labelled = []
+  const wants = harmonics.filter((q) => q.k === 1 || (q.rms > 0.25 * I1 && q.k <= kMax))
+  for (const q of [...wants].sort((a, b) => b.rms - a.rms)) {
+    const text = `${((100 * q.rms) / I1).toFixed(0)} %`
+    const half = ctx.measureText(text).width / 2
+    const x = sx(q.k)
+    const y = sy(q.rms) - 2 * k
+    const box = { x0: x - half, x1: x + half, y0: y - 11 * k, y1: y }
+    if (!clear(box)) continue
+    boxes.push(box)
+    labelled.push({ k: q.k, text, x, y })
+    ctx.fillText(text, x, y)
+  }
+  ctx.restore()
+  return { area, sx, sy, kMax, labelled, wanted: wants.length }
+}
+
 function SpectrumCanvas({ harmonics, I1, phases, unit = 'A' }) {
-  const ref = useCanvas(
-    (ctx, w, h) => {
-      const area = plotArea(w, h)
-      const k = area.k
-      const kMax = harmonics.length ? harmonics[harmonics.length - 1].k : 25
-      const top = Math.max(1e-12, ...harmonics.map((q) => q.rms))
-      const { sx, sy } = drawFrame(ctx, area, 0, kMax + 1, 0, top * 1.1, (v) => `${v.toFixed(0)}`, axisFmt(0, top * 1.1, unit), {
-        xTitle: 'Harmonic order',
-        yTitle: unit === 'V' ? 'RMS voltage (V)' : 'RMS current (A)',
-      })
-      const bw = Math.max(2 * k, (sx(1) - sx(0)) * 0.6)
-      ctx.save()
-      ctx.font = `${Math.round(10 * k)}px ${MONO}`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'bottom'
-      for (const q of harmonics) {
-        const x = sx(q.k)
-        const y = sy(q.rms)
-        ctx.fillStyle = q.k === 1 ? COLORS.trace : COLORS.spectrum
-        ctx.fillRect(x - bw / 2, y, bw, sy(0) - y)
-        if (q.k === 1 || (q.rms > 0.25 * I1 && q.k <= kMax)) {
-          ctx.fillStyle = COLORS.textBright
-          ctx.fillText(`${((100 * q.rms) / I1).toFixed(0)} %`, x, y - 2 * k)
-        }
-      }
-      ctx.font = `${Math.round(11 * k)}px ${MONO}`
-      ctx.textAlign = 'right'
-      ctx.textBaseline = 'top'
-      ctx.fillStyle = COLORS.text
-      ctx.fillText(phases === 3 ? 'phase a, as % of the fundamental' : 'as % of the fundamental', area.x + area.w - 4 * k, area.y + 4 * k)
-      ctx.restore()
-    },
-    [harmonics, I1, phases, unit],
-  )
+  const ref = useCanvas((ctx, w, h) => drawSpectrum(ctx, w, h, { harmonics, I1, phases, unit }), [harmonics, I1, phases, unit])
   return <canvas ref={ref} className="plot" role="img" aria-label="Harmonic spectrum of the line current" />
 }
 

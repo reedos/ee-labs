@@ -12,9 +12,9 @@ import { analyse } from '../analysis.js'
 import { sweepFor } from '../App.jsx'
 import { scopeMarks, sweepMarks } from '../marks.js'
 import { drawScope } from './ScopeCanvas.jsx'
-import { drawSweep, sweepLegend } from './SweepCanvas.jsx'
-import { drawFlux } from './panes.jsx'
-import { fakeCtx, texts } from './fakeCanvas.js'
+import { drawSweep, sweepLegend, atLabel } from './SweepCanvas.jsx'
+import { drawFlux, drawSpectrum } from './panes.jsx'
+import { fakeCtx, texts, textBox, overlaps } from './fakeCanvas.js'
 
 const W = 850
 const H = 360
@@ -361,5 +361,105 @@ describe('every axis carries a scale, not just a quantity and a unit', () => {
     // 18.2 mT of swing covers twice the pixels it did.
     const old = (Math.max(...B) - Math.min(...B)) / 0.8
     expect(px / g.area.h).toBeCloseTo(2 * old, 3)
+  })
+})
+// REVIEW_PLAYBOOK.md class 6: when two things share coordinates, give them
+// different weights and check a screenshot. Three sets of labels shared them.
+// F2's spectrum clusters five sidebands around m_f = 63, a few pixels apart,
+// and every one cleared the bar that lets a bar speak: two "27 %" printed on
+// each other and read "27 27 %", two "39 %" read "39%%". B7 and B8 sweep an
+// efficiency along the top of the frame, so the marker's own reading was drawn
+// above the ceiling and clipped away, leaving a dot and no number. G2 put the
+// boundary's label, the R_crit point's and the knob marker's in one spot.
+describe('no label is drawn on top of another, or off the plot', () => {
+  const SIZES = [
+    [850, 360],
+    [850, 210],
+    [330, 300],
+  ]
+
+  it('draws every spectrum percentage clear of the others and of the caption', () => {
+    for (const [W2, H2] of SIZES) {
+      for (const e of EXPERIMENTS) {
+        if (!e.views.includes('spectrum')) continue
+        const { x } = at(e.id)
+        const sp = x.m.spectrum || { unit: 'A' }
+        const I1 = sp.unit === 'V' ? x.m.harmonics[0].rms : x.m.I1
+        const ctx = fakeCtx()
+        const g = drawSpectrum(ctx, W2, H2, { harmonics: x.m.harmonics, I1, phases: x.conv?.threePhase ? 3 : 1, unit: sp.unit })
+        const drawn = texts(ctx).filter((t) => /%$/.test(t.text) || /fundamental/.test(t.text))
+        for (let i = 0; i < drawn.length; i++)
+          for (let j = i + 1; j < drawn.length; j++)
+            expect(overlaps(drawn[i], drawn[j]), `${W2}x${H2} ${e.id}: "${drawn[i].text}" over "${drawn[j].text}"`).toBe(false)
+        // The fundamental keeps its label whatever the crowd, and so does the
+        // tallest bar of every cluster that got one.
+        expect(g.labelled.some((q) => q.k === 1), e.id).toBe(true)
+      }
+    }
+  }, 60000)
+
+  it('keeps the loudest bar of a cluster and drops the neighbour it would have sat on', () => {
+    // F2 at m_f = 63: the carrier and its sidebands all clear 25 % of the
+    // fundamental, and there is room for some of them, not all.
+    const { x } = at('f2')
+    const ctx = fakeCtx()
+    const g = drawSpectrum(ctx, 850, 360, { harmonics: x.m.harmonics, I1: x.m.harmonics[0].rms, phases: 1, unit: 'V' })
+    expect(g.wanted).toBeGreaterThan(g.labelled.length)
+    expect(g.labelled.map((q) => q.k)).toContain(x.m.carrier.k)
+  })
+
+  it('keeps every sweep label inside its frame and clear of the others', () => {
+    for (const [W2, H2] of SIZES) {
+      for (const e of EXPERIMENTS) {
+        if (!e.sweep) continue
+        const { ctx, g } = sweepAt(e.id, W2, H2)
+        const inFrame = texts(ctx).filter(
+          (t) => t.x > g.area.x - 1 && t.x < g.area.x + g.area.w + 1 && t.y > g.area.y - 1 && t.y < g.area.y + g.area.h + 1,
+        )
+        for (const t of inFrame) {
+          const b = textBox(t)
+          expect(b.y0, `${W2}x${H2} ${e.id}: "${t.text}" starts above the frame`).toBeGreaterThanOrEqual(g.area.y - 1)
+          expect(b.y1, `${W2}x${H2} ${e.id}: "${t.text}" runs below the frame`).toBeLessThanOrEqual(g.area.y + g.area.h + 1)
+        }
+        for (let i = 0; i < inFrame.length; i++)
+          for (let j = i + 1; j < inFrame.length; j++)
+            expect(overlaps(inFrame[i], inFrame[j]), `${W2}x${H2} ${e.id}: "${inFrame[i].text}" over "${inFrame[j].text}"`).toBe(false)
+      }
+    }
+  }, 120000)
+
+  it('never lands a label on the dot or ring it is naming', () => {
+    for (const [W2, H2] of SIZES) {
+      for (const e of EXPERIMENTS) {
+        if (!e.sweep) continue
+        const { ctx, g } = sweepAt(e.id, W2, H2)
+        // Every marker the sweep draws is an arc: x, y, radius.
+        const dots = ctx.calls.filter((c) => c.name === 'arc').map((c) => ({ cx: c.args[0], cy: c.args[1], r: c.args[2] }))
+        expect(dots.length, e.id).toBeGreaterThan(0)
+        const inFrame = texts(ctx).filter(
+          (t) => t.x > g.area.x - 1 && t.x < g.area.x + g.area.w + 1 && t.y > g.area.y - 1 && t.y < g.area.y + g.area.h + 1,
+        )
+        for (const t of inFrame) {
+          const b = textBox(t)
+          for (const d of dots)
+            expect(
+              b.x0 < d.cx + d.r && b.x1 > d.cx - d.r && b.y0 < d.cy + d.r && b.y1 > d.cy - d.r,
+              `${W2}x${H2} ${e.id}: "${t.text}" sits on the marker at ${Math.round(d.cx)},${Math.round(d.cy)}`,
+            ).toBe(false)
+        }
+      }
+    }
+  }, 120000)
+
+  it("draws B8's marker reading, which the frame's ceiling used to swallow", () => {
+    const { s, ctx, g } = sweepAt('b8', 850, 360)
+    // The efficiency at the defaults plots within a few pixels of the top of
+    // the frame, which is where the label used to be drawn and clipped.
+    expect(g.sy(s.atY) - g.area.y).toBeLessThan(0.03 * g.area.h)
+    const label = texts(ctx).find((t) => t.text === atLabel(byId.b8.sweep, s.at, s.atY))
+    expect(label, 'the marker carries its reading').toBeTruthy()
+    const b = textBox(label)
+    expect(b.y0).toBeGreaterThanOrEqual(g.area.y - 1)
+    expect(b.y1).toBeLessThanOrEqual(g.area.y + g.area.h + 1)
   })
 })

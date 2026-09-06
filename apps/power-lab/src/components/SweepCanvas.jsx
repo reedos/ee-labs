@@ -216,16 +216,68 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, atY
   line(sweep.y, COLORS.trace, [], sy, 2)
 
   ctx.font = `${Math.round(11 * k)}px ${MONO}`
+
+  // Where a label goes when the obvious place is taken or off the plot.
+  //
+  // B7 and B8 sweep an efficiency that rides the top of the frame, so the
+  // marker's own "5 Ω → 99.0 %" was drawn above a point two pixels under the
+  // ceiling and clipped away with the rest of the overflow: the reader got a
+  // dot and no number at all. G2 put three labels in one place — the
+  // boundary's own, the R_crit point's and the knob marker's — and they read
+  // as one smear. Each label keeps its side and its offset from the point,
+  // and takes the next line along until it clears the frame's edges and every
+  // label already drawn (REVIEW_PLAYBOOK.md class 6).
+  const placed = []
+  const LINE = 13 * k
+  /**
+   * The first line, at `want` or a step away from it, whose box is inside the
+   * frame and clear of everything already placed. `down` says which way to
+   * look first; the other way is tried after.
+   */
+  const lineFor = (box, want, down) => {
+    const free = (y0) => {
+      const b = box(y0)
+      if (b.y0 < area2.y || b.y1 > area2.y + area2.h) return false
+      return !placed.some((o) => b.x0 < o.x1 + 3 * k && b.x1 > o.x0 - 3 * k && b.y0 < o.y1 && b.y1 > o.y0)
+    }
+    const tries = []
+    for (let i = 0; i < 8; i++) tries.push(want + (down ? 1 : -1) * i * LINE)
+    for (let i = 1; i < 8; i++) tries.push(want + (down ? -1 : 1) * i * LINE)
+    return tries.find(free)
+  }
   const labelAt = (xv, yPx, text, color, above = true) => {
     const px = sx(xv)
+    const right = xv > (xMin + xMax) / 2
+    ctx.textAlign = right ? 'right' : 'left'
+    ctx.textBaseline = 'top'
+    const dx = right ? -7 * k : 7 * k
+    const wide = ctx.measureText(text).width
+    const x0 = right ? px + dx - wide : px + dx
+    const box = (y0) => ({ x0, x1: x0 + wide, y0, y1: y0 + LINE })
+    const first = above ? yPx - 5 * k - LINE : yPx + 5 * k
+    const y0 = lineFor(box, first, !above) ?? Math.min(Math.max(first, area2.y), area2.y + area2.h - LINE)
+    placed.push(box(y0))
     ctx.fillStyle = color
-    ctx.textAlign = xv > (xMin + xMax) / 2 ? 'right' : 'left'
-    ctx.textBaseline = above ? 'bottom' : 'top'
-    const dx = ctx.textAlign === 'right' ? -7 * k : 7 * k
-    ctx.fillText(text, px + dx, yPx + (above ? -5 * k : 5 * k))
+    ctx.fillText(text, px + dx, y0)
+  }
+  /** A left-anchored label that starts at a given x, stepping down until clear. */
+  const labelFrom = (x0, yWant, text, color) => {
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
+    const wide = ctx.measureText(text).width
+    const box = (y0) => ({ x0, x1: x0 + wide, y0, y1: y0 + LINE })
+    const y0 = lineFor(box, yWant, true) ?? yWant
+    placed.push(box(y0))
+    ctx.fillStyle = color
+    ctx.fillText(text, x0, y0)
   }
 
-  // The note's numbers, where they happen.
+  // The dots first, then the words. Every ring and every marker books the
+  // space it covers before a single label is placed, so a label never lands
+  // on a dot it is trying to name: G2's boundary ring sat on the "R" of
+  // "R_crit" and its knob marker sat on the "7.54".
+  const rings = []
+  const requests = []
   for (const mk of marks) {
     const xv = X(mk.x)
     if (mk.type === 'vline') {
@@ -240,10 +292,7 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, atY
       ctx.stroke()
       ctx.setLineDash([])
       ctx.globalAlpha = 1
-      ctx.fillStyle = COLORS.marker
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'top'
-      ctx.fillText(mk.label, x + 4 * k, area2.y + 4 * k)
+      requests.push({ kind: 'top', x: x + 4 * k, text: mk.label, color: COLORS.marker })
     } else if (mk.type === 'point') {
       const y = sy(Y(mk.y))
       ctx.strokeStyle = COLORS.marker
@@ -251,10 +300,8 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, atY
       ctx.beginPath()
       ctx.arc(sx(xv), y, 5 * k, 0, Math.PI * 2)
       ctx.stroke()
-      // Above the point; a step higher when the knob's own readout sits there
-      // too, so the two labels stack instead of overprinting.
-      const crowded = Number.isFinite(at) && Math.abs(sx(X(at)) - sx(xv)) < 12 * k
-      labelAt(xv, y - (crowded ? 14 * k : 0), mk.label, COLORS.marker, true)
+      rings.push({ cx: sx(xv), cy: y, r: 5 * k })
+      requests.push({ kind: 'beside', xv, y, text: mk.label, color: COLORS.marker, above: true })
     }
   }
 
@@ -275,15 +322,30 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, atY
     ctx.beginPath()
     ctx.arc(sx(lx), sy(Y(yVal)), 4 * k, 0, Math.PI * 2)
     ctx.fill()
-    labelAt(lx, sy(Y(yVal)), atLabel(sweep, at, yVal), COLORS.marker, true)
+    rings.push({ cx: sx(lx), cy: sy(Y(yVal)), r: 4 * k })
+    requests.push({ kind: 'beside', xv: lx, y: sy(Y(yVal)), text: atLabel(sweep, at, yVal), color: COLORS.marker, above: true })
     if (sy2) {
       const v2 = Number.isFinite(atY2) ? atY2 : points[best][sweep.y2]
       ctx.fillStyle = COLORS.response
       ctx.beginPath()
       ctx.arc(sx(lx), sy2(v2), 4 * k, 0, Math.PI * 2)
       ctx.fill()
-      labelAt(lx, sy2(v2), ay2.unit ? fmt(v2, ay2.unit, 4) : v2.toFixed(4), COLORS.response, false)
+      rings.push({ cx: sx(lx), cy: sy2(v2), r: 4 * k })
+      requests.push({
+        kind: 'beside',
+        xv: lx,
+        y: sy2(v2),
+        text: ay2.unit ? fmt(v2, ay2.unit, 4) : v2.toFixed(4),
+        color: COLORS.response,
+        above: false,
+      })
     }
+  }
+
+  for (const r of rings) placed.push({ x0: r.cx - r.r, x1: r.cx + r.r, y0: r.cy - r.r, y1: r.cy + r.r })
+  for (const q of requests) {
+    if (q.kind === 'top') labelFrom(q.x, area2.y + 4 * k, q.text, q.color)
+    else labelAt(q.xv, q.y, q.text, q.color, q.above)
   }
   ctx.restore()
 
