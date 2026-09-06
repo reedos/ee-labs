@@ -116,27 +116,27 @@ function scope(exp, x, params, marks) {
   const seg = marks.find((m) => m.kind === 'segment')
   switch (exp.id) {
     case 'f3':
-      return say(...head, '; v_C is heading for E = ', n(level.value, 'V'), ' (dashed); the ring at τ = ', n(seg.value, 's'), ' is 63.2 % of the way, ', n(point.value, 'V'), ', where the starting slope (slanted) would have arrived.')
+      return say(...head, '. The dashed line E = ', n(level.value, 'V'), ' is where v_C is heading. The ring at τ = ', n(seg.value, 's'), ' is 63.2 % of the way, ', n(point.value, 'V'), ', where the slanted starting slope would arrive.')
     case 'f4':
-      return say(...head, '; v_B settles at the dashed line V_th = ', n(level.value, 'V'), ' and v_A began at ', n(point.value, 'V'), ', where the resistors alone put it.')
+      return say(...head, '. The dashed line V_th = ', n(level.value, 'V'), ' is where v_B settles, and v_A began at ', n(point.value, 'V'), ', where the resistors alone put it.')
     case 'f6':
       if (!level) break
-      return say(...head, '; the ring at t = 0 is the spark, ', n(point.value, 'V'), ' across the opening switch, and the dashed line is the trickle ', n(level.value, 'A'), ' the current falls to.')
+      return say(...head, '. The ring at t = 0 is the spark, ', n(point.value, 'V'), ' across the opening switch, and the dashed line is the trickle ', n(level.value, 'A'), ' the current falls to.')
     case 'g4':
       if (!point) break
-      return say(...head, ', heading for E = ', n(level.value, 'V'), ' (dashed) — the ring is the first peak, ', n(point.value, 'V'), ', ', pct(point.value / level.value - 1), ' over.')
+      return say(...head, ', heading for E = ', n(level.value, 'V'), ' (dashed). The ring is the first peak, ', n(point.value, 'V'), ', ', pct(point.value / level.value - 1), ' over.')
     default:
       break
   }
-  if (level) return say(...head, '; the dashed line is ', level.label, ', ', n(level.value, level.unit), '.')
-  return say(...head, ' — the instant the schematic’s meters are reading.')
+  if (level) return say(...head, '. The dashed line is ', level.label, ', ', n(level.value, level.unit), '.')
+  return say(...head, ', the instant the schematic’s meters are reading.')
 }
 
 function energy(exp, x) {
   const q = energyAt(x.energy, x.cursor)
   // A negative supply is energy handed back: the fields emptying into the source.
   const gave = q.supplied < 0 ? [' the sources have taken back ', n(-q.supplied, 'J')] : [' the sources have supplied ', n(q.supplied, 'J')]
-  return say('By t = ', n(x.cursor, 's'), ...gave, '; ', n(q.stored, 'J'), ' is stored in the fields (gold bands) and ', n(q.dissipated, 'J'), ' has gone as heat in the resistors.')
+  return say('By t = ', n(x.cursor, 's'), ...gave, '. Of that, ', n(q.stored, 'J'), ' is stored in the fields (gold bands) and ', n(q.dissipated, 'J'), ' has gone as heat in the resistors.')
 }
 
 function phasor(exp, x) {
@@ -147,7 +147,7 @@ function phasor(exp, x) {
   return say(
     'The arrows have turned θ = ',
     { print: turnedLabel(x.omega, x.cursor), value: x.omega * x.cursor, unit: 'rad', kind: 'turned' },
-    '; ',
+    '. The arrow ',
     exp.out.label,
     ' has amplitude ',
     n(cx.cabs(X), unit),
@@ -162,7 +162,7 @@ function impedance(exp, x, params, drive) {
   const head = say('At the drive ', n(x.omega / (2 * Math.PI), 'Hz'), ' the source sees |Z| = ', n(cx.cabs(Z), 'Ω'), ' at ', deg(cx.carg(Z)), ', ', kind)
   if (exp.id === 'h4') {
     const f0 = 1 / (2 * Math.PI * Math.sqrt(params.L1 * params.C1))
-    return say(...head, '; at f₀ = ', n(f0, 'Hz'), ' the reactances cancel and |Z| falls to R = ', n(params.R1, 'Ω'), '.')
+    return say(...head, '. At f₀ = ', n(f0, 'Hz'), ' the reactances cancel and |Z| falls to R = ', n(params.R1, 'Ω'), '.')
   }
   return say(...head, '.')
 }
@@ -175,7 +175,7 @@ function bode(exp, x, params, drive) {
   const parts = head.flatMap(flat)
   if (exp.id === 'h6') {
     const fc = 1 / (2 * Math.PI * params.R1 * params.C1)
-    return say(...parts, '; the corner f_c = ', n(fc, 'Hz'), ' is where the gain has fallen 3 dB, half the power, and beyond it the curve drops 20 dB per decade.')
+    return say(...parts, '. The corner f_c = ', n(fc, 'Hz'), ' is where the gain has fallen 3 dB, half the power, and beyond it the curve drops 20 dB per decade.')
   }
   return say(...parts, '.')
 }
@@ -187,20 +187,20 @@ function sweep(exp, x, params, marks) {
   const head = say('With ', exp.sweepId, ' = ', n(R, 'Ω'), ' the load ', y === 'p' ? 'gets ' : 'sees ', n(q[y], y === 'p' ? 'W' : 'V'))
   if (exp.id === 'd6') {
     const [pmax, eff] = marks
-    return say(...head, ' at ', pct(q.efficiency), ' efficiency; the most it can get is ', n(pmax.value, 'W'), ' at R_L = R_s = ', n(pmax.x, 'Ω'), ', where only ', pct(eff.y), ' of the source’s power reaches it.')
+    return say(...head, ' at ', pct(q.efficiency), ' efficiency. The most it can get is ', n(pmax.value, 'W'), ' at R_L = R_s = ', n(pmax.x, 'Ω'), ', where only ', pct(eff.y), ' of the source’s power reaches it.')
   }
   if (exp.id === 'c3') {
     const [level] = marks
-    return say(...head, '; unloaded, the divider would give ', n(level.value, 'V'), ' (dashed), and the load pulls it down.')
+    return say(...head, '. Unloaded, the divider would give ', n(level.value, 'V'), ' (dashed), and the load pulls it down.')
   }
-  if (y === 'p') return say(...head, '; the peak of the curve is ', n(x.sweep.pMax, 'W'), ' near ', n(x.sweep.rOpt, 'Ω'), '.')
+  if (y === 'p') return say(...head, '. The peak of the curve is ', n(x.sweep.pMax, 'W'), ' near ', n(x.sweep.rOpt, 'Ω'), '.')
   return say(...head, '.')
 }
 
 function damping(exp, x, params) {
   const Rcrit = 2 * Math.sqrt(params.L1 / params.C1)
   const at = x.damping.at
-  if (!at) return say('R = ', n(params.R1, 'Ω'), ' is outside the sweep (', n(x.damping.lo, 'Ω'), ' to ', n(x.damping.hi, 'Ω'), '); critical damping is R_crit = ', n(Rcrit, 'Ω'), '.')
+  if (!at) return say('R = ', n(params.R1, 'Ω'), ' is outside the sweep (', n(x.damping.lo, 'Ω'), ' to ', n(x.damping.hi, 'Ω'), '). Critical damping is R_crit = ', n(Rcrit, 'Ω'), '.')
   return say(
     'With R = ',
     n(at.R, 'Ω'),
@@ -210,7 +210,7 @@ function damping(exp, x, params) {
     pct(at.overshoot),
     ' and settles within 2 % in ',
     n(at.settle, 's'),
-    '; the dashed line is critical damping, R_crit = ',
+    '. The dashed line is critical damping, R_crit = ',
     n(Rcrit, 'Ω'),
     ', and the quickest settling sits a little below it.',
   )

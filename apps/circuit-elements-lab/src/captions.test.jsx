@@ -8,6 +8,21 @@ import { captionFor, captionText, energyAt, sweepAt } from './captions.js'
 import PlotCaption from './components/PlotCaption.jsx'
 import { num } from './format.js'
 import { DASH_OF, SHADES, styleTraces, traceWord } from './palette.js'
+import { violations } from '@ee-labs/prose'
+
+// A plot caption is not the chrome caption STYLE.md budgets at twenty words.
+// It is the canvas read aloud: every trace the picture draws, with the number
+// the solver gave it, and it is what a screen reader and a phone too narrow
+// for the pinned values get instead of the picture. So it keeps the word cap
+// the view needs and every other rule of the house style, sentence length
+// included.
+// STYLE.md's own caption budget, twenty words, is for a chrome caption that
+// names a picture. It cannot hold a reading of three traces with their units,
+// so this one keeps the fifty-word cap the view needs and S2's hard limit of
+// thirty words in a sentence. The average-sentence rule is the one line of
+// STYLE.md that a data caption cannot meet without dropping a reading; that
+// question is in NEEDS.md for a budget of its own in packages/prose.
+const CAPTION = { maxWords: 50, maxSentenceWords: 30, fragments: false }
 
 // The sentence under every plot says what the plot shows, and every number in
 // it is the solver's (student review, Phase 7). For each experiment and each
@@ -88,7 +103,15 @@ function check(exp, view, p, where) {
   const words = text.split(/\s+/).filter(Boolean)
   expect(words.length, `${tag}: ${words.length} words — "${text}"`).toBeLessThanOrEqual(50)
   expect(text, `${tag}: ends the sentence`).toMatch(/\.$/)
-  expect(text, `${tag}: one sentence — "${text}"`).not.toMatch(/[A-Za-z%°)]\.\s/)
+  // The house style, on the one string under the plot that a reader reads as
+  // prose. It used to be held to one sentence, which is why twenty-six of them
+  // carried a semicolon: S5 asks for two sentences and the shape of the test
+  // asked for one. Three sentences is the room the longest exhibits need (F3
+  // names the line, the ring and the slope), and every other rule is the
+  // package's own measure.
+  expect(violations(text, CAPTION, tag), `${tag}: "${text}"`).toEqual([])
+  const stops = text.split(/(?<=[A-Za-z%°)])\.\s+/).length
+  expect(stops, `${tag}: ${stops} sentences — "${text}"`).toBeLessThanOrEqual(3)
   const numbers = parts.filter((q) => typeof q !== 'string')
   expect(numbers.length, `${tag}: has numbers`).toBeGreaterThan(0)
   for (const q of numbers) {
