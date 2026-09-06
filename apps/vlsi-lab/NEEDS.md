@@ -1,5 +1,21 @@
 # Director integration
 
+## Foundation update
+
+A1 through A5 now explain purpose, input, expected output, prediction, design tradeoffs and model limits before derivation.
+Inverter and CMOS definitions remain visible, with applications and the two-stage polarity rule.
+Parameter roles accompany the controls. Physical edge descriptions distinguish the input transition from its opposite output transition.
+Playback explanations separate viewing speed from circuit timing and distinguish static input and fanout sweeps.
+
+The phone section buttons match Interfaces labels and preserve the URL while moving keyboard focus.
+The browser harness adds 320-pixel coverage and checks section visibility below the sticky navigation.
+The scoped suite contains 32 tests, including foundation prose budgets and numerical prediction checks.
+The final combined suite passes 357 tests in 31 files. Both apps are rebuilt in the assembled director preview.
+Browser reports remain under `shots/chromium` and `shots/firefox`, with 30 experiment/viewport cases per browser.
+The director logs use the `vlsi-foundations-` prefix. Phone checks include both 320-pixel and 390-pixel widths.
+These checks do not replace physical-phone or iPhone Safari review.
+The A3 and A5 analog-chain requirements below remain open.
+
 ## Student review rework
 
 The app now consumes the director's shared `usePlayback` and `PlaybackControls` exports.

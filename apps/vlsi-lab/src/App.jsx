@@ -8,6 +8,7 @@ import { TERMS } from './terms.js'
 import { DEFAULT_AXES, fitAxis, logicReadings, scopePoints, timingComparison } from './presentation.js'
 import { workedMath } from './math.js'
 import Plot from './Plot.jsx'
+import { Foundations, playbackMeaning } from './Foundations.jsx'
 
 const VIEWS = { scope: 'Scope', timing: 'Timing', fanout: 'Fanout' }
 
@@ -46,6 +47,11 @@ export default function App() {
     setChip(null)
   }
   const changeView = (next) => { setView(next); playback.reset() }
+  const jump = (target) => {
+    const section = document.getElementById(target)
+    section?.scrollIntoView({ block: 'start' })
+    section?.focus({ preventScroll: true })
+  }
   const net = dc ? { elements: r.net.elements.map((e) => e.type === 'M' ? { ...e, model: 'square' }
     : e.id === 'Vin' ? { ...e, value: p.vin, wave: undefined } : e) } : r.net
   const math = workedMath(x, p, view)
@@ -83,8 +89,9 @@ export default function App() {
             setChip(s.say)
           }} />
       </section>
-      <section className="knobs">
-        <h2>Knobs</h2>
+      <section className="knobs" id="lesson-controls" tabIndex={-1}>
+        <h2>Physical parameters</h2>
+        <p className="boundary" data-role="parameter-roles">{exp.foundation.parameters}</p>
         {dc ? <NumField label="Input voltage" unit="V" value={p.vin} onChange={(v) => set('vin', v)}
           min={0} max={CARD.vdd} step={0.01} presets={[0, 0.45, 0.9, 1.35, 1.8]} /> : <>
           <NumField label="Fanout" value={p.fanout} onChange={(v) => set('fanout', v)} min={0} max={8} step={1} presets={[0, 1, 4, 8]} />
@@ -93,20 +100,29 @@ export default function App() {
           <div className="segmented" role="group" aria-label="Output edge">
             {['fall', 'rise'].map((edge) => <button key={edge} className={p.edge === edge ? 'on' : ''} aria-pressed={p.edge === edge} onClick={() => set('edge', edge)}>{edge === 'fall' ? 'Falling' : 'Rising'}</button>)}
           </div>
+          <p className="boundary" data-role="signal-edge">{p.edge === 'fall'
+            ? 'Input rises from 0 to 1.8 V. The output falls toward 0 V. Mn pulls down. Mp is off.'
+            : 'Input falls from 1.8 to 0 V. The output rises toward 1.8 V. Mp pulls up. Mn is off.'}
+            {view === 'timing' && ' Output edge refers to the first stage. Later stages alternate.'}</p>
         </>}
       </section>
-      <section className="terms"><h2>Terms used here</h2>
+      <section className="terms" id="lesson-terms" tabIndex={-1}><h2>Terms used here</h2>
         {exp.terms.map((key) => <details key={key}><summary>{TERMS[key].name}</summary><p>{TERMS[key].def}</p></details>)}
       </section>
     </aside>
+    <nav className="lesson-anchors" aria-label="Lesson sections">
+      {[['lesson-overview', 'Lesson'], ['lesson-controls', 'Settings'], ['lesson-circuit', 'Circuit'], ['lesson-plot', 'Plots'], ['lesson-math', 'Math']].map(([target, label]) =>
+        <button type="button" key={target} data-target={target} onClick={() => jump(target)}>{label}</button>)}
+    </nav>
     <div className="topbar"><strong data-role="headline">{dc ? `Output ${volts(sol.v.out)}` : `Delay ${ps(r.measured)}`}</strong>
       <span>{dc ? 'Square law / static' : 'Switch model / rail step'}</span></div>
     <main className="views">
-      <section className="analysis-view">
+      <section className="analysis-view" id="lesson-plot" tabIndex={-1}>
         <div className="view-head"><h2>{dc ? 'Transfer characteristic' : VIEWS[view]}</h2>
           {!dc && <div className="segmented" role="group" aria-label="View">{Object.entries(VIEWS).map(([key, label]) =>
             <button key={key} className={view === key ? 'on' : ''} aria-pressed={view === key} onClick={() => changeView(key)}>{label}</button>)}</div>}
         </div>
+        <p className="boundary" data-role="playback-meaning">{playbackMeaning(dc, view)}</p>
         <div className="plot-tools">
           <label className="check"><input type="checkbox" checked={compare} onChange={(e) => setCompare(e.target.checked)} />Default comparison</label>
           {!dc && <div className="axis-actions">
@@ -169,7 +185,8 @@ export default function App() {
         {clipped && <p className="boundary range-notice" role="status">{view === 'scope' ? 'The 6-tau settling interval extends beyond the held time range.' : 'The event run extends beyond the held time range.'}</p>}
       </section>
       <div className="explanation-column">
-        <section className="schematic-view">
+        <Foundations experiment={exp} />
+        <section className="schematic-view" id="lesson-circuit" tabIndex={-1}>
           <div className="view-head"><h2>{dc ? 'CMOS inverter' : 'Isolated inverter'}</h2><span>Supply {volts(CARD.vdd)}</span></div>
           <Schematic elements={net.elements.map((e) => ({ ...e, label: e.id }))} layout={LAYOUT} meters={meters} show="v"
             lit={{ elements: regions ? Object.keys(regions).filter((id) => regions[id] === 'on') : [], nodes: ['out'] }} />
@@ -178,7 +195,7 @@ export default function App() {
             : <><span>Mp {regions.Mp}</span><span>Mn {regions.Mn}</span><span>Output {volts(sol.v.out)}</span></>}</div>
           {view === 'timing' && <p className="boundary">The schematic shows an isolated rail step at t = 0. The chain input changes at 1 ps.</p>}
         </section>
-        <section className="worked-math"><h2>{exp.name}</h2><p>{exp.why}</p><h3>The math</h3><MathBody entry={math} /></section>
+        <section className="worked-math" id="lesson-math" tabIndex={-1}><h2>{exp.name}</h2><p>{exp.why}</p><h3>The math</h3><MathBody entry={math} /></section>
       </div>
     </main>
   </div>

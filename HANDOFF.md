@@ -1,5 +1,29 @@
 # Handoff: continuing the EE Labs program from another session
 
+## Teaching foundations and phone flow
+
+Reed approved explicit teaching foundations for the initial Interfaces and VLSI experiments.
+All ten now explain purpose, input, expected output, parameter roles, predictions, tradeoffs and model limits before derivation.
+Definitions cover the pin, CMOS receiver, output drivers and inverter. The receiver study is no longer labeled as an output type.
+The VLSI material explains inverter applications, polarity through a chain and the delay, area and energy costs of loading and sizing.
+
+Both apps retain the established theme, held axes, reference traces and shared playback.
+Phones use one page scroll and sticky Lesson, Settings, Circuit, Plots and Math navigation.
+A screenshot exposed an ancestor overflow rule that defeated sticky positioning. Both apps now avoid that extra scroll container.
+Browser checks require the navigation itself to remain visible after every jump.
+
+The source changes are app-local. `PROGRAM.md` records the teaching checks as acceptance requirements for later groups.
+The local preview remains `http://127.0.0.1:47630/`, with `/interfaces-lab/` and `/vlsi-lab/` rebuilt and assembled.
+No release or push is authorized. Student acceptance and the wider curriculum omissions remain open.
+
+`foundations-final-scoped.log` records 357 passing tests in 31 files after the final source changes.
+This covers both apps, shared UI, math rendering and director inventory. The full suite was not rerun for this app-local pass.
+The earlier full-suite result below remains the baseline, not evidence for this update.
+Browser logs use `interfaces-foundations-` and `vlsi-foundations-` prefixes with Chromium and Firefox suffixes.
+Interfaces covers 25 experiment/viewport cases per browser. VLSI covers 30, including all available views.
+Both include 320-pixel and 390-pixel phone widths. These are desktop browser checks, not physical-phone or iPhone Safari validation.
+The numerical prediction tests and browser reports remain app-local. The inherited prose-linter file marker remains untouched.
+
 ## First review rework
 
 Reed rejected the initial VLSI and Interfaces review. Their automated checks missed established usability and teaching requirements.

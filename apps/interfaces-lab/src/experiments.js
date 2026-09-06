@@ -3,7 +3,7 @@ import { DEFAULTS } from './pin.js'
 export const GROUPS = ['A. The pin']
 export const MODELS = [
   { id: 'pin.pp', name: 'Push-pull output', drive: 'push-pull' },
-  { id: 'pin.in', name: 'CMOS input', drive: 'push-pull' },
+  { id: 'pin.in', name: 'CMOS receiver limits', drive: 'push-pull' },
   { id: 'pin.od', name: 'Open-drain output', drive: 'open-drain' },
 ]
 export const KNOBS = {
@@ -20,8 +20,8 @@ export const KNOBS = {
 }
 
 export const EXPERIMENTS = [
-  { id: 'a1', name: 'The output is two switches', model: 'pin.pp', knobs: ['ron', 'cload', 'vdd'], terms: ['pushPull', 'timeConstant'], refs: ['d5'] },
-  { id: 'a2', name: 'The input has two thresholds', model: 'pin.in', knobs: ['vdd', 'vt', 'ron', 'cload'], terms: ['thresholds', 'timeConstant'], refs: ['d6'] },
+  { id: 'a1', name: 'The output is two switches', model: 'pin.pp', knobs: ['ron', 'cload', 'vdd'], terms: ['pin', 'pushPull', 'timeConstant'], refs: ['d5'] },
+  { id: 'a2', name: 'The input has two thresholds', model: 'pin.in', knobs: ['vdd', 'vt', 'ron', 'cload'], terms: ['cmosInput', 'inverter', 'thresholds', 'timeConstant'], refs: ['d6'] },
   { id: 'a3', name: 'The pull-up sets the rise', model: 'pin.od', knobs: ['rpu', 'ron', 'cload', 'vdd'], terms: ['openDrain', 'thresholds'], refs: ['d5', 'd6'] },
   { id: 'a4', name: 'Capacitance sets the rise time', model: 'pin.pp', knobs: ['cload', 'ron', 'riseBudget'], terms: ['riseTime', 'timeConstant'], refs: ['d5'] },
   { id: 'a5', name: 'Ground bounce consumes noise margin', model: 'pin.pp', knobs: ['loadCurrent', 'pins', 'edgeTime', 'inductance', 'ron', 'vdd'], terms: ['noiseMargin', 'groundBounce'], refs: ['d6'] },

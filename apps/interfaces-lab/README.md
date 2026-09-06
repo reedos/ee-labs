@@ -39,6 +39,11 @@ Short pulses can produce no valid input crossing. Missing transitions remain abs
 
 ## Verification
 
+The current foundation pass includes purpose, input/output, parameter roles, predictions and design tradeoffs for every Group A experiment.
+Its numerical tests check the stated RC, threshold, pull-up and current-ramp predictions against the model.
+Phone section links preserve experiment state and use one page scroll.
+See `NEEDS.md` for current evidence. The wave counts below describe the earlier baseline.
+
 Independent checks compare network waveforms with RC closed forms, current balance and power balance across deterministic parameter sweeps.
 They exercise continuity, short pulses, divider lows and both sides of the time and noise budgets.
 Lesson pins include Electronics D6 circuit slopes and a network inductor current-ramp check. Prose and dark-release checks are app-local.
@@ -47,3 +52,9 @@ The director runs the full suite.
 This wave passed 37 scoped tests across four files, the app build and prose lint on three documents.
 Chromium checked all five lessons at desktop and phone widths, including sequential Try steps, Reset and the model boundary.
 Thirty screenshots cover default views, falling transitions and equations. The browser report records nonblank analog traces and layout checks.
+
+## Teaching references
+
+- [TI: Logic output types](https://e2e.ti.com/support/logic-group/logic/f/logic-forum/968927/faq-what-s-the-difference-between-logic-output-types-push-pull-open-drain-3-state) distinguishes actively driven levels from open-drain release.
+- [TI: Choosing a pull-up resistor](https://www.ti.com/lit/an/slva485/slva485.pdf) explains the sink-current, logic-level and leakage constraints that bound practical resistor selection.
+- [TI: Slow or floating CMOS inputs](https://www.ti.com/lit/an/scba004e/scba004e.pdf) covers uncertain inputs and excess current. Those effects are boundaries of this lab, not simulated outputs.

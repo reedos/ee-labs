@@ -45,6 +45,13 @@
 .vlsi-app .math-body .math-formula { margin: 16px 0; }
 .vlsi-app .math-caption { margin-top: 8px; font-size: 12px; }
 .vlsi-app .math-check { font-size: 10px; }
+.vlsi-app .lesson-anchors { display: none; }
+.vlsi-app [id^="lesson-"] { scroll-margin-top: 12px; }
+.vlsi-app .foundations { padding-bottom: 16px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.vlsi-app .foundations p, .vlsi-app .foundations dl { font-size: 13px; line-height: 1.65; }
+.vlsi-app .foundations dt { font-weight: 600; color: var(--accent); margin-top: 12px; }
+.vlsi-app .foundations dd { margin: 4px 0 0; }
+.vlsi-app a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (min-width: 1700px) {
   .vlsi-app .views { grid-template-columns: minmax(0, 1.6fr) minmax(440px, 1fr); }
   .vlsi-app .explanation-column { padding: 12px 24px 24px; }
@@ -61,18 +68,28 @@
   .vlsi-app .explanation-column { border-left: 0; border-top: 1px solid var(--line); }
 }
 @media (max-width: 900px) {
-  html, body, #root { height: auto; min-height: 100%; overflow: auto; }
+  html { height: auto; min-height: 100%; overflow: auto; }
+  body, #root { height: auto; min-height: 100%; overflow: visible; }
   .vlsi-app { height: auto; min-height: 100dvh; overflow: visible; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
   .vlsi-app .controls { display: contents; }
   .vlsi-app .controls > header { grid-column: 1; grid-row: 1; padding: 12px 14px 0; }
   .vlsi-app .controls > .picker { grid-column: 1; grid-row: 2; margin: 10px 14px 0; }
-  .vlsi-app .controls > .knobs { grid-column: 1; grid-row: 4; margin: 10px 14px; }
-  .vlsi-app .controls > .terms { grid-column: 1; grid-row: 6; margin: 0 14px 14px; }
+  .vlsi-app .controls > .knobs { grid-column: 1; grid-row: 5; margin: 10px 14px; }
+  .vlsi-app .controls > .terms { grid-column: 1; grid-row: 7; margin: 0 14px 14px; }
   .vlsi-app .controls h2 { position: static; }
-  .vlsi-app .topbar { grid-column: 1; grid-row: 3; flex-wrap: wrap; padding: 10px 14px; margin-top: 10px; }
-  .vlsi-app .views { grid-column: 1; grid-row: 5; grid-template-columns: minmax(0, 1fr); overflow: visible; }
+  .vlsi-app .topbar { grid-column: 1; grid-row: 4; flex-wrap: wrap; padding: 10px 14px; margin-top: 10px; }
+  .vlsi-app .views { grid-column: 1; grid-row: 6; grid-template-columns: minmax(0, 1fr); overflow: visible; }
   .vlsi-app .analysis-view { position: static; padding: 10px 12px; }
   .vlsi-app .explanation-column { border-left: 0; border-top: 1px solid var(--line); padding: 10px 12px 20px; }
+  .vlsi-app .explanation-column { display: contents; }
+  .vlsi-app .foundations { grid-row: 1; padding: 14px; margin: 0; }
+  .vlsi-app .analysis-view { grid-row: 2; }
+  .vlsi-app .schematic-view, .vlsi-app .worked-math { padding: 14px; margin: 0; }
+  .vlsi-app .foundations p, .vlsi-app .foundations dl, .vlsi-app .worked-math > p { font-size: 14px; line-height: 1.7; }
+  .vlsi-app .lesson-anchors { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-column: 1; grid-row: 3; position: sticky; top: 0; z-index: 10; background: var(--panel); border-bottom: 1px solid var(--line); padding: 4px; }
+  .vlsi-app .lesson-anchors button { min-height: 44px; padding: 4px; font-size: 12px; border: 0; background: transparent; color: var(--accent); }
+  .vlsi-app [id^="lesson-"] { scroll-margin-top: 64px; }
+  .vlsi-app .readings span { white-space: normal; overflow-wrap: anywhere; }
   .vlsi-app .xy-plot { height: 350px; }
   .vlsi-app .timing-plot { max-height: none; }
   .vlsi-app .axis-actions button, .vlsi-app .terms summary { min-height: 44px; }

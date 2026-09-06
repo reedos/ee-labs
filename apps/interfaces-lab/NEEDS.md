@@ -1,5 +1,23 @@
 # Interfaces Lab integration needs
 
+## Student foundations
+
+Each Group A experiment now states its purpose, signal input, expected output, prediction, tradeoffs and model limits before the derivation.
+Control descriptions distinguish driver choices, external loads, device properties and requirements.
+The CMOS study identifies a receiver and shows the driving source with receiver limits. It no longer presents the receiver as an output type.
+Pin, CMOS input and inverter definitions are included in the term registry.
+
+Phones use one page scroll with sticky Lesson, Settings, Circuit, Plots and Math links.
+These links preserve the experiment hash. The plot remains at least 300 pixels tall.
+The existing fixed-axis, reference-trace and transport checks remain in place.
+
+The foundation pass has 54 passing tests in six files and a passing app build.
+Chromium and Firefox cover all five experiments at five viewport sizes, including 390x844 and 320x740.
+Phone checks require the section navigation to remain pinned after every jump, not just the destination to be visible.
+Logs use the `interfaces-foundations-` prefix. Browser evidence remains under `verification`.
+These are desktop browser phone-size checks, not physical-phone or iPhone Safari validation.
+Student acceptance remains open.
+
 ## First review correction
 
 Reed rejected the first review on 2026-09-06. Passing the original harness did not establish teaching quality.

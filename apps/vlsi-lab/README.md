@@ -20,6 +20,15 @@ The rounding bound is not evidence of agreement with an analog chain.
 
 ## Interaction
 
+Each lesson opens its explanation with purpose, input, expected output, prediction, design tradeoffs and model limits.
+Visible definitions explain CMOS and the inverter, including complementary signals and two-stage signal restoration.
+Parameter roles sit beside the controls. Edge text states the opposite input and output transitions.
+The energy discussion estimates `C VDD^2` per full charge-discharge cycle and states its limits.
+
+Phones show sticky Lesson, Settings, Circuit, Plots and Math buttons.
+These move focus and scroll without changing the URL. The introduction precedes the plot in the phone reading order.
+Playback text distinguishes static input sweeps, load probes and time inspection from physical circuit parameters.
+
 The sidebar inherits the suite's fonts, title sizes, section wells and responsive widths.
 Scope and Timing use the shared playback controls, including pause, rewind, speed and replay at the end.
 The transfer view sweeps static input voltage. The fanout view sweeps a separate load probe and shows its delay.
@@ -47,9 +56,12 @@ The focused tests compare network waveforms, measured crossings, DC slopes, char
 The browser harness serves the app build at `/vlsi-lab/` and writes screenshots under `shots`.
 The director runs the full suite and integrates the lockfile and deployment.
 
-The scoped run passes 25 tests in five files with two workers.
+The foundation update adds seven focused tests, bringing the scoped run to 32 tests in six files with two workers.
+Every foundation field and playback explanation passes the house prose budget.
 The Vite build passes with a bundle-size advisory.
-Chromium and Firefox cover all five experiments at 1366, 1440, 1920, 2560 and 390 pixels wide.
+The current harness covers all five experiments at 1366, 1440, 1920, 2560, 390 and 320 pixels wide.
+It checks visible teaching sections, parameter roles, sticky navigation, keyboard focus and unchanged URLs.
+The parent owns Firefox and combined-site verification for this foundation update.
 Each run preserves screenshots under `shots/<browser>` and its result in `verification.json` there.
 Firefox requires execution outside the Windows sandbox on this machine.
 
@@ -60,7 +72,7 @@ Try steps remain sequential. Existing checks still enforce unrelated knob preser
 LabNav renders at the sibling path. Setting `APP_URL` enables the additional assembled-site link checks.
 The director owns site assembly, shared changes and the full-suite gate. Student acceptance remains open.
 
-The final runs used `APP_URL=http://127.0.0.1:47630/vlsi-lab/` in Chromium 151.0.7922.34 and Firefox 153.0.
+Before the foundation update, integration runs used `APP_URL=http://127.0.0.1:47630/vlsi-lab/` in Chromium 151.0.7922.34 and Firefox 153.0.
 Both completed all 25 experiment-size combinations, including every alternate view and the fanout sweep.
 All sibling links responded successfully. Both error lists were empty.
 The final build includes the director's shared NumField focus guard.

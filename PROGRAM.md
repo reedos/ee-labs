@@ -192,6 +192,9 @@ Review `REVIEW_PLAYBOOK.md` against working behavior, not just source imports.
 - Measure useful plot area, not just canvas presence. Review laptop, widescreen and phone screenshots at readable sizes.
 - Present the model, assumptions, worked substitutions and measured comparisons near the result. Use available space for the lesson.
 - Perform a student walkthrough before offering a group for acceptance. Passing automation does not establish teaching quality.
+- Before derivation, identify the block's purpose, input and expected output. Define unfamiliar circuit terms on contact.
+- Distinguish design parameters, external loads, requirements and observation controls. Check each stated prediction against the model.
+- Include practical tradeoffs and model limits. Verify phone navigation between the lesson, settings, circuit, plots and math without nested page scrolling.
 
 Do not extend either new app's interface until its revised first group has been reviewed.
 The director owns these checks before requesting Reed's time.

@@ -56,7 +56,7 @@ async function playbackCheck(page, label) {
   await page.getByRole('button', { name: 'Pause', exact: true }).click()
   await page.getByRole('button', { name: 'Play', exact: true }).waitFor()
   const fast = await cursor(page)
-  assert.ok(fast > moved * 3.5 && fast < moved * 4.5, `${label}: speed must affect physical cursor movement`)
+  assert.ok(fast > moved * 3.5 && fast < moved * 4.5, `${label}: speed must affect cursor playback`)
   const slider = page.getByRole('slider', { name: label, exact: true })
   await slider.fill('1000')
   const end = await cursor(page)
@@ -74,7 +74,7 @@ async function playbackCheck(page, label) {
 try {
   browser = await ({ chromium, firefox }[browserName]).launch()
   evidence.browserVersion = browser.version()
-  for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 1000 }, { width: 1920, height: 1080 }, { width: 2560, height: 1440 }, { width: 390, height: 844 }]) {
+  for (const viewport of [{ width: 320, height: 740 }, { width: 390, height: 844 }, { width: 1366, height: 768 }, { width: 1440, height: 1000 }, { width: 1920, height: 1080 }, { width: 2560, height: 1440 }]) {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
     page.on('pageerror', (e) => evidence.errors.push(e.message))
     page.on('console', (e) => { if (e.type() === 'error') evidence.errors.push(e.text()) })
@@ -94,6 +94,28 @@ try {
     for (let i = 0; i < 5; i++) {
       await page.getByLabel('Experiment', { exact: true }).selectOption(String(i))
       await page.evaluate(() => { window.scrollTo(0, 0); document.querySelector('.controls').scrollTop = 0 })
+      const overview = page.locator('#lesson-overview')
+      assert.match(await overview.textContent(), /An inverter is a logic gate/)
+      assert.match(await overview.textContent(), /Inverters form complementary logic and control signals/)
+      assert.match(await overview.textContent(), /Two inverter stages preserve the original polarity/)
+      assert.match(await overview.textContent(), /CMOS means complementary metal-oxide-semiconductor/)
+      assert.deepEqual(await overview.locator('dt').allTextContents(), ['Purpose', 'Input', 'Expected output', 'Predict the change', 'Design tradeoffs', 'Model limits'])
+      assert.equal(await overview.locator('details').count(), 0)
+      assert.match(await page.locator('[data-role="playback-meaning"]').textContent(), /Playback speed/)
+      assert.ok((await page.locator('[data-role="parameter-roles"]').textContent()).length > 40)
+      if (viewport.width <= 900) for (const name of ['Lesson', 'Settings', 'Circuit', 'Plots', 'Math']) {
+        const button = page.getByRole('button', { name, exact: true })
+        const targetId = await button.getAttribute('data-target')
+        const beforeUrl = page.url()
+        await button.click()
+        const destination = await page.locator(`#${targetId}`).boundingBox()
+        const nav = await page.getByRole('navigation', { name: 'Lesson sections' }).boundingBox()
+        assert.ok(Math.abs(nav.y) <= 1, `${name}: sticky navigation must remain at the top of the viewport`)
+        assert.ok(destination.y >= nav.y + nav.height && destination.y < viewport.height, `${name}: section must enter viewport below sticky navigation`)
+        assert.equal(page.url(), beforeUrl, 'Section navigation must not alter the URL')
+        assert.equal(await page.evaluate(() => document.activeElement.id), targetId, `${name}: section button must move keyboard focus`)
+      }
+      await page.locator('#lesson-controls').evaluate((node) => node.scrollIntoView({ block: 'start' }))
       const firstControl = await page.getByRole('spinbutton').first().boundingBox()
       assert.ok(firstControl.y >= 0 && firstControl.y + firstControl.height <= viewport.height, `A${i + 1}: first control below viewport`)
       if (viewport.width > 900 && (i === 2 || i === 3)) {
@@ -116,15 +138,20 @@ try {
       })
       assert.ok(nonblank > 100, `blank plot A${i + 1}`)
       const plotBox = await page.locator('canvas').boundingBox()
-      if (i !== 2) assert.ok(plotBox.height >= 350, 'Analog plots need useful height')
+      // Firefox's page-relative rectangle subtraction can lose a fraction of a CSS pixel after scrolling.
+      if (i !== 2) assert.ok(plotBox.height >= 350 - 0.01, `Analog plot A${i + 1} at ${viewport.width}px needs 350px height, measured ${plotBox.height}px`)
       const mathBox = await page.locator('.worked-math').boundingBox()
       if (viewport.width >= 1190) {
         assert.ok(mathBox.x >= plotBox.x + plotBox.width, 'Worked explanation must sit beside the plot')
-        assert.ok(mathBox.y < viewport.height, 'Worked explanation must be visible on desktop')
+        assert.ok((await overview.boundingBox()).y < mathBox.y, 'Foundations must precede derivation')
       } else {
         const analysis = await page.locator('.analysis-view').boundingBox()
-        const explanation = await page.locator('.explanation-column').boundingBox()
-        assert.ok(explanation.y - analysis.y - analysis.height <= 2, 'Stacked explanations must follow the plot without an empty grid row')
+        const explanation = await page.locator('.schematic-view').boundingBox()
+        if (viewport.width <= 900) {
+          const intro = await overview.boundingBox()
+          assert.ok(intro.y + intro.height <= analysis.y + 2, 'Phone reading starts with foundations before the plot')
+          assert.ok(explanation.y - analysis.y - analysis.height <= 2, 'Schematic follows plot without an empty grid row')
+        }
       }
       const inherited = await page.locator('.controls').evaluate((node) => {
         const title = getComputedStyle(node.querySelector('h1'))
@@ -135,6 +162,7 @@ try {
       if (viewport.width >= 2400) assert.equal((await page.locator('.controls').boundingBox()).width, viewport.width * 0.15)
       assert.equal(inherited.border, '1px')
       assert.equal(inherited.background, 'rgb(11, 15, 20)')
+      await overview.evaluate((node) => node.scrollIntoView({ block: 'start' }))
       await page.screenshot({ path: resolve(shots, `a${i + 1}-${viewport.width}.png`), fullPage: true })
       evidence.views.push({ lesson: `a${i + 1}`, width: viewport.width, coloredPixels: nonblank })
       assert.equal(await page.locator('.math-body').count(), 1)
@@ -211,6 +239,7 @@ try {
           }
         }
         await page.getByRole('button', { name: 'Rising', exact: true }).click()
+        assert.match(await page.locator('[data-role="signal-edge"]').textContent(), /Input falls.*output rises/)
         assert.match(await page.locator('.legend').textContent(), /Default: fanout 1, width 2, rising/)
         assert.match(await page.locator('[data-role="live-readings"]').textContent(), /Default 0\.000 V/)
         await page.screenshot({ path: resolve(shots, `a${i + 1}-${viewport.width}-rising.png`), fullPage: true })

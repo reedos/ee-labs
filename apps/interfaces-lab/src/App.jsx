@@ -5,6 +5,7 @@ import { analyse } from './pin.js'
 import { EXPERIMENTS, KNOBS, MODELS, byId, defaultsOf, pinLayout } from './experiments.js'
 import { LESSONS, number } from './lessons.js'
 import { TERMS } from './terms.js'
+import { FOUNDATIONS, PARAMETER_ROLES, signalStory } from './foundations.js'
 import { mathEntry } from './math.js'
 import LoadCanvas from './components/LoadCanvas.jsx'
 import PinCanvas from './components/PinCanvas.jsx'
@@ -31,6 +32,9 @@ export default function App() {
   const [analog, setAnalog] = useState(true)
   const exp = byId[id]
   const lesson = LESSONS[id]
+  const foundation = FOUNDATIONS[id]
+  const signal = signalStory(id, direction)
+  const jump = (target) => document.getElementById(target)?.scrollIntoView({ block: 'start' })
   const index = EXPERIMENTS.indexOf(exp)
   const outcome = useMemo(() => {
     try { return { result: analyse(params) } }
@@ -96,17 +100,18 @@ export default function App() {
           {EXPERIMENTS.map((e) => <option key={e.id} value={e.id}>{e.id.toUpperCase()}. {shortNames[e.id]}</option>)}
         </select>
       </section>
-      <section className="knobs">
+      <section className="knobs" id="pin-settings">
         <h2>Pin settings</h2>
-        {exp.knobs.map((key) => <NumField key={key} {...KNOBS[key]} value={params[key]} eng
-          onChange={(value) => setParam(key, value)} />)}
-        <label className="model-label">Model<select aria-label="Pin model" value={exp.model}
+        {exp.knobs.map((key) => <div key={key}><NumField {...KNOBS[key]} value={params[key]} eng
+          onChange={(value) => setParam(key, value)} /><p className="parameter-role">{PARAMETER_ROLES[key]}</p></div>)}
+        <label className="model-label">Circuit study<select aria-label="Circuit study" value={exp.model}
           onChange={(event) => choose(EXPERIMENTS.find((e) => e.model === event.target.value).id)}>
           {MODELS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select></label>
       </section>
       <section className="lesson">
         <h2>{exp.name}</h2>
+        <p className="hint">{foundation.purpose}</p>
         {x ? <p className="hint see" data-role="see">{lesson.see(x, params)}</p> : null}
         <details className="terms"><summary>Terms used here</summary>
           {exp.terms.map((key) => <div key={key}><h4>{TERMS[key].name}</h4><p className="hint">{TERMS[key].def}</p></div>)}
@@ -116,6 +121,10 @@ export default function App() {
           onChip={() => setParams((previous) => ({ ...previous, ...step.set }))} />)}
       </section>
     </aside>
+    <nav className="phone-sections" aria-label="Experiment sections">
+      {[['pin-lesson', 'Lesson'], ['pin-settings', 'Settings'], ['pin-circuit', 'Circuit'], ['pin-plots', 'Plots'], ['pin-math', 'Math']].map(([target, label]) =>
+        <button key={target} type="button" onClick={() => jump(target)}>{label}</button>)}
+    </nav>
     <header className="topbar" aria-live="polite">
       <strong>{id.toUpperCase()}</strong>
       {x && <>
@@ -127,8 +136,8 @@ export default function App() {
     <main className="workspace">
       {outcome.error ? <div className="refusal" role="alert"><h2>Model boundary</h2><p>{outcome.error}</p><button onClick={reset}>Reset experiment</button></div> : <>
         <div className="instrument">
-        <section className="pin-section" aria-label="Analog pin">
-          <div className="section-heading"><h2>{MODELS.find((m) => m.id === exp.model).name}</h2>
+        <section className="pin-section" id="pin-circuit" aria-label="Analog pin">
+          <div className="section-heading"><h2>{id === 'a2' ? 'Push-pull source / CMOS receiver limits' : MODELS.find((m) => m.id === exp.model).name}</h2>
             <div className="segments" role="group" aria-label="Transition">{['rise', 'fall'].map((d) =>
               <button type="button" key={d} aria-pressed={direction === d} onClick={() => {
                 setDirection(d); playback.reset(); setTimeEnd(scopeWindow(defaultsOf(id), d))
@@ -147,7 +156,7 @@ export default function App() {
             </dl>
           </div>
         </section>
-        <section className="view-section">
+        <section className="view-section" id="pin-plots">
           <div className="view-tabs" role="tablist" aria-label="Pin views">{views.map((v) => <button key={v} role="tab" aria-selected={view === v}
             onClick={() => setView(v)}>{({ waveform: 'Waveform', sweep: 'Load sweep', margins: 'Noise budget', equations: 'Equations' })[v]}</button>)}</div>
           <div className="transport-row"><PlaybackControls playback={view === 'sweep' || view === 'margins' ? sweepPlayback : playback}
@@ -157,6 +166,7 @@ export default function App() {
               setTimeEnd(Math.max(scopeWindow(params, direction), scopeWindow(defaultsOf(id), direction))); playback.reset()
             }}>{'\u2922'}</button></>}
           </div>
+          <p className="caption">Playback speed changes the observation rate, not the circuit timing. {view === 'sweep' || view === 'margins' ? 'The moving probe does not change the selected circuit.' : 'Time and axis range are observation settings.'}</p>
           <div role="tabpanel" className="view-content">
             {view === 'waveform' && <>
               <div className="plot-legend"><span className="live-trace">Pin voltage</span><span className="reference-trace">Default reference</span>
@@ -176,12 +186,23 @@ export default function App() {
         </section>
         </div>
         <section className="analysis-notes" aria-label="Worked analysis">
+          <div className="foundation" id="pin-lesson" data-role="foundation">
+            <h2>Purpose</h2><p>{foundation.purpose}</p><p>{foundation.context}</p>
+            <h3>Input</h3><p data-role="signal-input">{signal.input}</p>
+            <h3>Expected output</h3><p data-role="signal-output">{signal.output}</p>
+            {id === 'a5' && <p>The noise budget compares static output levels and a separate current ramp. These budget parameters do not alter the RC trace above.</p>}
+            <h3>Predict the change</h3><p>{foundation.prediction}</p>
+            <h3>Design tradeoffs</h3><p>{foundation.tradeoff}</p>
+            <h3>Model limits</h3><p>{foundation.limits}</p>
+          </div>
+          <div className="analysis-body" id="pin-math">
           <h2>{exp.name}</h2>
           <p className="hint why" data-role="why">{lesson.why}</p>
           <h3>From the circuit to the numbers</h3>
           <MathBody entry={entry} />
           <h3>At the time cursor</h3>
           <MathBody entry={cursorEntry} />
+          </div>
         </section>
       </>}
     </main>

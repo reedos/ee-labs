@@ -30,7 +30,7 @@ const results = []
 const report = { results, browser: browserName, completed: false, url }
 try {
   browser = await ({ chromium, firefox }[browserName]).launch({ headless: true })
-  for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 1000 }, { width: 2560, height: 1440 }, { width: 390, height: 844 }]) {
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 1000 }, { width: 2560, height: 1440 }, { width: 390, height: 844 }, { width: 320, height: 740 }]) {
     const page = await browser.newPage({ viewport })
     activePage = page
     const errors = []
@@ -49,9 +49,27 @@ try {
       assert.equal(await page.getByLabel('Experiment', { exact: true }).inputValue(), id)
       assert.equal(await page.locator('select[aria-label="Experiment"] option').count(), 5)
       await page.evaluate(() => { window.scrollTo(0, 0); document.querySelector('.controls').scrollTop = 0 })
+      if (viewport.width <= 900) {
+        await page.getByRole('navigation', { name: 'Experiment sections' }).getByRole('button', { name: 'Settings', exact: true }).click()
+      }
       const firstControl = await page.getByRole('spinbutton').first().boundingBox()
       const sidebar = await page.locator('.controls').boundingBox()
-      assert.ok(firstControl.y >= 0 && firstControl.y + firstControl.height <= Math.min(viewport.height, sidebar.y + sidebar.height), `${id}: first control is clipped`)
+      assert.ok(firstControl.y >= 0 && firstControl.y + firstControl.height <= (viewport.width <= 900 ? viewport.height : Math.min(viewport.height, sidebar.y + sidebar.height)), `${id}: first control is clipped`)
+      assert.equal(await page.locator('[data-role="foundation"]').count(), 1)
+      for (const title of ['Purpose', 'Input', 'Expected output', 'Predict the change', 'Design tradeoffs', 'Model limits']) {
+        assert.equal(await page.locator('.foundation').getByRole('heading', { name: title, exact: true }).count(), 1)
+      }
+      if (viewport.width <= 900) {
+        assert.equal(await page.locator('.controls').evaluate((el) => getComputedStyle(el).display), 'contents')
+        for (const [label, target] of [['Lesson', 'pin-lesson'], ['Circuit', 'pin-circuit'], ['Plots', 'pin-plots'], ['Math', 'pin-math']]) {
+          await page.getByRole('navigation', { name: 'Experiment sections' }).getByRole('button', { name: label, exact: true }).click()
+          const box = await page.locator(`#${target}`).boundingBox()
+          assert.ok(box.y >= 44 && box.y < viewport.height, `${id}: ${label} target hidden`)
+          const nav = await page.getByRole('navigation', { name: 'Experiment sections' }).boundingBox()
+          assert.ok(Math.abs(nav.y) <= 1 && nav.height >= 44, `${id}: section navigation did not stay visible`)
+        }
+        await page.evaluate(() => window.scrollTo(0, 0))
+      }
       assert.equal(await page.locator('.schematic').count(), 1)
       assert.equal(await page.locator('[role="alert"]').count(), 0)
       assert(await page.locator('[data-role="see"]').innerText())
@@ -166,13 +184,13 @@ try {
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
       results.push({ id, width: viewport.width, analogPixels: colors, controls: 'pass', screenshot: `${id}-${viewport.width}.png` })
     }
-    await page.getByRole('combobox', { name: 'Pin model' }).selectOption('pin.od')
+    await page.getByRole('combobox', { name: 'Circuit study' }).selectOption('pin.od')
     assert.equal(await page.getByLabel('Experiment', { exact: true }).inputValue(), 'a3')
     await page.getByRole('button', { name: 'Next experiment' }).click()
     assert.equal(await page.getByLabel('Experiment', { exact: true }).inputValue(), 'a4')
     await page.getByRole('button', { name: 'Previous experiment' }).click()
     assert.equal(await page.getByLabel('Experiment', { exact: true }).inputValue(), 'a3')
-    await page.getByRole('combobox', { name: 'Pin model' }).selectOption('pin.in')
+    await page.getByRole('combobox', { name: 'Circuit study' }).selectOption('pin.in')
     const supply = page.getByRole('spinbutton', { name: 'Supply VDD', exact: true })
     const threshold = page.getByRole('spinbutton', { name: 'Device threshold Vt', exact: true })
     await supply.focus()

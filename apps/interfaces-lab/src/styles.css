@@ -1,4 +1,9 @@
 .interfaces-app, .interfaces-app * { letter-spacing: 0; }
+.interfaces-app .phone-sections { display: none; }
+.interfaces-app .parameter-role { font-size: 11px; color: var(--dim); line-height: 1.5; margin: -2px 0 14px; }
+.interfaces-app .foundation { font-size: 13px; line-height: 1.6; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+.interfaces-app .foundation p { margin: 8px 0; }
+.interfaces-app .analysis-body > .math-body { border-left: 0; padding-left: 0; }
 .interfaces-app .picker .lesson-nav { margin-bottom: 10px; }
 .interfaces-app .picker select { width: 100%; }
 .interfaces-app h3 { font-size: 14px; margin: 16px 0 8px; }
@@ -64,11 +69,22 @@
   .interfaces-app .analysis-notes { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
 }
 @media (max-width: 900px) {
-  html, body, #root { height: auto; overflow: auto; }
+  html { height: auto; overflow: auto; }
+  body, #root { height: auto; overflow: visible; }
   .interfaces-app { display: flex; flex-direction: column; height: auto; overflow: visible; }
-  .interfaces-app .controls { flex: 0 0 auto; max-height: 50vh; overflow-y: auto; border-right: none; padding: 12px 14px; }
-  .interfaces-app .topbar { position: sticky; top: 0; z-index: 3; min-height: 44px; padding: 8px 14px; }
-  .interfaces-app .workspace { overflow: visible; }
+  .interfaces-app .controls { display: contents; }
+  .interfaces-app .controls > header { order: -5; padding: 12px 14px; }
+  .interfaces-app .picker { order: -4; margin: 0 14px 10px; }
+  .interfaces-app .phone-sections { order: -3; position: sticky; top: 0; z-index: 5; display: flex; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .interfaces-app .phone-sections button { flex: 1; min-width: 0; min-height: 44px; border: 0; border-radius: 0; background: transparent; color: var(--accent); font: inherit; font-size: 12px; padding: 4px; }
+  .interfaces-app .controls > .lesson { order: -2; margin: 12px 14px; }
+  .interfaces-app .knobs { order: -1; margin: 0 14px 12px; }
+  .interfaces-app .topbar { min-height: 44px; padding: 8px 14px; }
+  .interfaces-app [id^="pin-"] { scroll-margin-top: 54px; }
+  .interfaces-app .workspace { overflow: visible; display: flex; flex-direction: column; }
+  .interfaces-app .analysis-notes { display: contents; }
+  .interfaces-app .foundation { order: -1; padding: 16px 14px; margin: 0; }
+  .interfaces-app .analysis-body { padding: 16px 14px; }
   .interfaces-app .pin-content { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .interfaces-app .schematic { height: 230px; }
   .interfaces-app .readings { font-size: 12px; }
