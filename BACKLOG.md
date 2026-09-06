@@ -1267,6 +1267,36 @@ Deferred, with what reopens each:
   should measure against the 1366×768 fold. Reopens with anyone who has a
   browser.
 
+What the adversarial review changed, on the same branch:
+
+- **Three meters were reading the arithmetic.** The femto probe in
+  `App.smoke.test.jsx` ended its pattern with a literal backspace where a word
+  boundary was meant, so it had never matched anything and had never run.
+  Repaired, it found the three-phase top bar showing the phase voltage's
+  average as `V_out −53.29 fV`, and Group F's scope strip showing `i_L
+  −10.2 fA`. Both read against the signal's own scale now. H2 and H3 also
+  carried η = 100.0 % at every setting of every knob they offer, which is the
+  reading A2's rebuild took off its own top bar. Each shows the frequency its
+  note leads with instead.
+- **The step walk stopped short of the level its own table named.** H3's row
+  said 26.667 V over a plot whose last period sat at 27.056 V, because two
+  hundred periods is one time constant of that boost. The walks run four
+  hundred and eight hundred periods, the plot draws the level it arrives at,
+  and a test holds the last cycle average within three per cent of the step.
+  No pinned number moved: the dip, the gap and the two levels are read off the
+  periodic states.
+- **I2's sweep was narrower than its own knob.** It ran 20 % to 115 % against a
+  knob that runs to 140 %. Above 115 % the operating point was marked at the
+  end of the curve, under a label reading the knob's own value.
+- **The hand-over promised more than the link carries.** Control Lab holds each
+  coefficient to 1e12, and a buck at L = 10 µH, C = 1 µF and f_s = 2 MHz sits
+  inside f_s/5 and needs 1.2e12. The pane declines there, with the number.
+- **The overmodulation footnote fired half a per cent early.** The panel then
+  declined to check the row I2's own try line is about.
+- **One engine check did not measure its claim.** The floating-neutral test
+  added v_ao times zero to v_an and asked whether the result was finite. It now
+  holds v_an, v_ao and v_ab against the leg potentials.
+
 Numbers that differ from the plan's own text, with the engine's value:
 
 - **The plan's §4 gives I2's headroom as 15 %.** The engine gives 15.47 %,

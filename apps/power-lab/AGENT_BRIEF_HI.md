@@ -175,7 +175,9 @@ measured by the test named beside it.
                                              // first, ≤ 20 a sentence
                                              // (notes.test.js, prose.test.js)
   terms: [...],                              // every term of art it uses
-  headline: 'eta' | 'pf' | 'rms' | 'thd',    // the top bar's third meter
+  headline: 'eta' | 'pf' | 'rms' | 'thd'     // the top bar's third meter
+        | 'plant',                          // H2 and H3 are lossless, so theirs
+                                             // is a frequency (review.test.jsx)
   traces: [...], allTraces: [...],           // every signal the note names is
                                              // in the opening set
   views: [...], view: '…', sweep: { x, y },  // the pane the lesson is in
