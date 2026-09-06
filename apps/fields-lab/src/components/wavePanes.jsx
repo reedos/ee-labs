@@ -5,6 +5,16 @@ import { profilePropsFor } from '../view.js'
 import { deg, num, pct } from '../format.js'
 
 /**
+ * A dB figure whose true value is exactly zero.
+ *
+ * A circle's two axes are equal, so its axial ratio is 1 and its ratio in
+ * decibels is 0. Floating point puts 1.929e-15 dB there instead, and a reader
+ * takes a printed number for a measurement. Anything below a billionth of a
+ * decibel is the arithmetic and not the polarisation.
+ */
+const ratioDb = (v) => (v === Infinity ? '∞' : num(v, 'dB', 4, 1))
+
+/**
  * The lower panes groups G and H draw.
  *
  * Neither draws a picture of its own where the field map already draws one. The
@@ -117,8 +127,9 @@ function PolarisationPane({ x }) {
       </div>
       <div className="fields-numbers">
         <Row label="Polarisation">{pol.kind}</Row>
-        <Row label="Axial ratio">{pol.axialRatio === Infinity ? '∞' : pol.axialRatio.toPrecision(4)} <em>{pol.axialRatioDb === Infinity ? '∞' : `${pol.axialRatioDb.toPrecision(4)} dB`}</em></Row>
-        <Row label="Tilt of the long axis">{deg(pol.tiltDeg)}</Row>
+        <Row label="Axial ratio">{pol.axialRatio === Infinity ? '∞' : pol.axialRatio.toPrecision(4)} <em>{ratioDb(pol.axialRatioDb)}</em></Row>
+        {/* A circle has no long axis, so it is not given a tilt. */}
+        <Row label="Tilt of the long axis">{pol.kind === 'circular' ? 'none, the two axes are equal' : deg(pol.tiltDeg)}</Row>
         <Row label="Sense">{pol.sense}</Row>
         <Row label="The two amplitudes">{pol.ax.toPrecision(4)} across, {pol.ay.toPrecision(4)} up</Row>
         <Row label="Phase between them">{deg(pol.phaseDeg)}</Row>

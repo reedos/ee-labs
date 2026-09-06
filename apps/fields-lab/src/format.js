@@ -22,12 +22,30 @@ const ABS = 1e-30
 /** Whether `v` is arithmetic noise against `scale`, the largest value of its kind on screen. */
 export const isNoise = (v, scale = 0) => Math.abs(v) < Math.max(REL * Math.abs(scale), ABS)
 
+/**
+ * A number with no unit takes no prefix.
+ *
+ * A coupling coefficient of 0.98 printed in engineering notation reads
+ * "980 m", which a reader takes for a length. A dimensionless quantity is
+ * written out instead, and only a figure outside the range a reader can hold
+ * falls back to an exponent.
+ */
+function plain(v, sig) {
+  const r = Number(v.toPrecision(sig))
+  if (r === 0) return '0'
+  const mag = Math.abs(r)
+  if (mag >= 1e-6 && mag < 1e6) return String(r)
+  return r.toExponential(Math.max(0, sig - 1))
+}
+
 /** A value with its unit in engineering notation. Noise snaps to 0, and infinity is spelled. */
 export function num(v, unit = '', sig = 4, scale = 0) {
   if (v === Infinity) return '∞'
   if (v === -Infinity) return '−∞'
   if (!Number.isFinite(v)) return '—'
-  return fmt(isNoise(v, scale) ? 0 : v, unit, sig)
+  const value = isNoise(v, scale) ? 0 : v
+  if (!unit) return plain(value, sig)
+  return fmt(value, unit, sig)
 }
 
 /**
