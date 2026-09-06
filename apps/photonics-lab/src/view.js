@@ -295,9 +295,9 @@ function rateRows(x, p) {
     row('Threshold density', num(x.nth, 'm⁻³'), 'N_th = N_tr + 1 / (Γ g₀ τ_p)'),
   ]
   for (const t of x.carriers) out.push(row('Carriers: ' + t.name.toLowerCase(), rate(t.value), t.formula))
-  out.push(row('Carriers: the sum', rate(x.carrierSum), 'zero, to the largest term’s own last bits'))
+  out.push(row('Carriers: the sum', zeroed(x.carrierSum, x.carrierFloor), 'zero, to the largest term’s own last bits'))
   for (const t of x.photons) out.push(row('Photons: ' + t.name.toLowerCase(), rate(t.value), t.formula))
-  out.push(row('Photons: the sum', rate(x.photonSum), 'zero, to the largest term’s own last bits'))
+  out.push(row('Photons: the sum', zeroed(x.photonSum, x.photonFloor), 'zero, to the largest term’s own last bits'))
   if (x.sm) {
     out.push(row('Relaxation frequency', num(x.sm.fr, 'Hz'), 'ω_r² is the Jacobian’s determinant, exactly'))
     out.push(row('The textbook form', num(x.sm.frText, 'Hz'), '√((I/I_th − 1)/(τ_p τ_c)), which drops N_tr'))
@@ -329,3 +329,13 @@ export const GUARD_DEPTHS = [0.01, 0.05, 0.1, 0.3, 0.6]
 
 /** A rate of density, per cubic metre a second, which is what every term of the pair is. */
 const rate = (v) => plain(v) + ' m⁻³ s⁻¹'
+
+/**
+ * A sum that is zero to the arithmetic's own floor, printed as zero.
+ *
+ * The equations pane already does this, and a numbers pane that printed the
+ * residual beside a formula reading "zero" would be showing one quantity two
+ * ways on two panes. The floor is the largest term in that equation times the
+ * machine epsilon, so it is the reading's own scale and not a chosen number.
+ */
+const zeroed = (v, floor) => (Math.abs(v) <= floor ? '0' : rate(v))

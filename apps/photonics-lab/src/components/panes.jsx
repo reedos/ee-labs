@@ -398,9 +398,11 @@ export function EquationsPane({ x }) {
  * D3. The magnitude of the linearised response, with the relaxation peak marked.
  *
  * The curve is drawn from the same `H(s)` the numbers pane prints, so the peak
- * on the picture and the peak in the readout are one number. The axis is fixed
- * to the response's own peak and its 3 dB point, which move only when a device
- * parameter moves and not when the reader moves the bias.
+ * on the picture and the peak in the readout are one number. The frequency axis
+ * is three hundred below the 3 dB point to three above it, so the peak sits in
+ * the same place on screen at every bias and the curve keeps its shape as the
+ * drive current moves it. The caption prints the two ends, because an axis that
+ * re-frames has to say what it re-framed to.
  */
 export function ModulationPane({ x }) {
   const sm = x.sm

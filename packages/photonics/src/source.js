@@ -155,8 +155,8 @@ export function ledOutput({ etaInt = 1, lambda, current }) {
  * The LED's modulation bandwidth, 1/(2 pi tau_c).
  *
  * One carrier lifetime gives one pole, which is the model MODEL.bandwidth
- * names. At 5.0 ns that is 31.831 MHz, at 1.0 ns it is 159.16 MHz and at
- * 20.0 ns it is 7.958 MHz. This is the number that sends a fibre link past a
+ * names. At 5.0 ns that is 31.831 MHz, at 1.0 ns it is 159.15 MHz and at
+ * 20.0 ns it is 7.9577 MHz. This is the number that sends a fibre link past a
  * hundred megabits to a laser.
  */
 export function ledBandwidth({ tauC }) {

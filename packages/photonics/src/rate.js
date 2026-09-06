@@ -61,7 +61,7 @@ import { facetReflectance, photonLifetime } from './cavity.js'
  * The convention matters and is stated where it is used. `mirrorLoss` is
  * PHOTONICS_LAB_PLAN.md §2.8's (1/2L) ln(1/R), where a single pass loses the
  * factor R. A text that spreads the same reflectance over a round trip quotes
- * twice the loss, halves this lifetime and reaches 18.771 mA instead of the
+ * twice the loss, halves this lifetime and reaches 18.766 mA instead of the
  * 13.389 mA below. The threshold current is a factor of two in the convention,
  * so the convention is named here.
  */

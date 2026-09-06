@@ -117,6 +117,8 @@ export const D = [
     // names are on the numbers pane instead, each measured.
     view: 'step',
     views: ['step', 'numbers'],
-    headline: (x) => ({ value: x.guard.error, unit: '', label: 'Error in the predicted overshoot' }),
+    // The headline is a percentage rather than a fraction, because the guard's
+    // own sentence and the numbers pane both read it that way.
+    headline: (x) => ({ value: 100 * x.guard.error, unit: '%', label: 'Error in the predicted overshoot' }),
   },
 ]

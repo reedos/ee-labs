@@ -139,6 +139,36 @@ describe('every experiment analyses, at its defaults and off them', () => {
     }
   })
 
+  it('no reading on screen ends in a prefix letter with no unit behind it', () => {
+    // An engineering prefix puts a letter where a unit goes. A numerical
+    // aperture of 0.12461 printed as "124.61 m" is a length to every reader,
+    // and a photon density of 4.9793e20 per cubic metre printed as
+    // "497930000 Tm⁻³" is nothing at all. Both shipped. The rule is measured
+    // over every headline and every row of every numbers pane.
+    const stray = /\d\s?[TGMkµmunpf]$/
+    for (const e of EXPERIMENTS) {
+      const { p, x } = at(e.id)
+      const head = num(x.headline.value, x.headline.unit)
+      expect(stray.test(head), `${e.id} headline reads "${head}"`).toBe(false)
+      for (const r of numbersFor(e, x, p)) {
+        expect(stray.test(String(r.value)), `${e.id} row "${r.label}" reads "${r.value}"`).toBe(false)
+        // Nothing a reader sees carries JavaScript's own exponent.
+        expect(String(r.value), `${e.id} row "${r.label}"`).not.toMatch(/e[+-]\d/)
+      }
+    }
+  })
+
+  it('a density past the prefix table is written as a mantissa and a power of ten', () => {
+    // Group D's prose writes 1.6713 × 10²⁴ m⁻³, and the panes write it the same
+    // way. One name and one notation for one quantity, per STYLE.md S11.
+    const { x } = at('d1')
+    expect(num(x.n, 'm⁻³')).toBe('1.6713 × 10²⁴ m⁻³')
+    expect(num(x.s, 'm⁻³')).toBe('4.9793 × 10²⁰ m⁻³')
+    // A value the table does reach keeps its prefix, because that is what a
+    // reader of a datasheet expects.
+    expect(num(x.ith, 'A')).toBe('13.389 mA')
+  })
+
   it('every view an experiment offers has something to draw', () => {
     for (const e of EXPERIMENTS) {
       const { p, x } = at(e.id)
