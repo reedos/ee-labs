@@ -7,18 +7,18 @@ your lane before writing a line. Reed reviews everything.
 
 ## Boundaries: read first
 
-- **One lane per agent, one clone per agent.** Clone the repo into a directory named
-  for your lane (`~/projects/ee-labs-lane-3`), set the remote and the author as the
-  other briefs describe, and `npm ci`. Never work in the shared checkout.
+- **One lane per agent, one worktree per agent.** `PROGRAM.md` §2: the branch is
+  `lab/electronics-lab`, the worktree gets its own `npm ci`, and nothing is
+  pushed by an overseer. Never clone a second copy into `~/projects/ee-labs-lane-*`.
+  Never work in the shared checkout.
 - **Edit only the files your lane owns** (§1). Everything else is read-only. If you
   need a change outside your lane, write it into `apps/electronics-lab/NEEDS.md`
   under your lane's heading, commit that, and continue with what you can do. The
   owning lane picks it up.
 - **Stage by path.** `git add packages/network/src/bjt.js`, never `git add -A` and
   never `commit -a`.
-- Work on `master`. `git pull --rebase` before every push. Never rewrite pushed
-  history. Every push deploys, and this lab deploys dark at `/electronics-lab/` from
-  lane 6's first commit, so push only when the whole suite is green.
+- The lab deploys dark at `/electronics-lab/`. The director merges and pushes;
+  overseers do not.
 - **Preview port.** Lane number plus 4310, so lane 3 previews on 4313. Other labs use
   4300 to 4305.
 

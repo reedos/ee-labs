@@ -17,6 +17,7 @@
 import { fmt } from '@ee-labs/ui'
 import { COLORS } from '@ee-labs/ui'
 import { LINREG_DESIGN_R } from './analysis.js'
+import { LMN_SWEEP_MARKS } from './groups/lmn.js'
 
 /** Marks for the scope of `exp` at the solve `x`. */
 export function scopeMarks(exp, x) {
@@ -40,6 +41,7 @@ export function scopeMarks(exp, x) {
 export function sweepMarks(exp, x, sweep) {
   const marks = []
   if (!exp.sweep || !sweep || !sweep.points.length) return marks
+  if (LMN_SWEEP_MARKS[exp.kind]) return LMN_SWEEP_MARKS[exp.kind](exp, x, sweep)
   const { points } = sweep
   const s = exp.sweep
   if (s.x === 'R' && Number.isFinite(x.formulas?.Rcrit) && x.formulas.Rcrit > 0) {

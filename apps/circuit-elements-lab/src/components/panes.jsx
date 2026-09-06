@@ -2,7 +2,7 @@ import React from 'react'
 import { Formula, agrees } from '@ee-labs/explain'
 import { cellLatex, fmtCell } from '@ee-labs/network'
 import { acTable, powerLedger } from '../math.js'
-import { num, scaleOf } from '../format.js'
+import { num, rate, rateAt, rootRate, rootRateAt, sharedStep, scaleOf } from '../format.js'
 import { Term, DefCard } from './Prose.jsx'
 
 // The lower pane's views. Each takes the analysis from math.js `analyse` and
@@ -535,16 +535,25 @@ export function StatePane({ x }) {
     s.n === 1
       ? `\\det(sI - A) = s ${s.poly[1] >= 0 ? '+' : '-'} ${fmtCell(Math.abs(s.poly[1]))}`
       : `\\det(sI - A) = s^2 ${s.poly[1] >= 0 ? '+' : '-'} ${fmtCell(Math.abs(s.poly[1]))}\\,s ${s.poly[2] >= 0 ? '+' : '-'} ${fmtCell(Math.abs(s.poly[2]))}`
-  const root = (r) => (r.im ? `${num(r.re, '', 4)} ${r.im > 0 ? '+' : '−'} j${num(Math.abs(r.im), '', 4)}` : num(r.re, '', 4))
+  // ζ, Q and ω_d are stated as ratios or a difference of the roots, α and
+  // ω₀ — a reader has to be able to divide the printed numbers and land on
+  // the printed answer. That only works if every one of them reads against
+  // ONE shared time unit, chosen once from the whole group (the roots too:
+  // on the overdamped face they, not α or ω₀ alone, are the block's fastest
+  // and slowest members). Picking a prefix per quantity — the pre-existing
+  // behaviour — let α and ω₀ land on different prefixes whenever one of them
+  // sat right at a k/m boundary and the other did not, off by exactly the
+  // 1000 a stray prefix costs.
+  const step = s.n === 2 ? sharedStep([s.alpha, s.w0, s.wd, ...s.roots.flatMap((r) => [r.re, r.im])]) : null
   const rows =
     s.n === 1
       ? [['τ = −1/A₁₁', s.tau === Infinity ? '∞ (a pure integrator)' : num(s.tau, 's', 4)]]
       : [
-          ['α (neper frequency)', num(s.alpha, 's⁻¹', 4)],
-          ['ω₀ (undamped natural)', num(s.w0, 'rad/s', 4)],
+          ['α (neper frequency)', rateAt(s.alpha, 's⁻¹', step, 4)],
+          ['ω₀ (undamped natural)', rateAt(s.w0, 'rad/s', step, 4)],
           ['ζ = α/ω₀', plain(s.zeta)],
           ['Q = ω₀/2α', plain(s.Q)],
-          ['ω_d = √(ω₀² − α²)', num(s.wd, 'rad/s', 4)],
+          ['ω_d = √(ω₀² − α²)', rateAt(s.wd, 'rad/s', step, 4)],
           ['face', FACE_WORDS[s.face] || s.face],
         ]
   return (
@@ -567,7 +576,7 @@ export function StatePane({ x }) {
                 <td>
                   root s{s.n > 1 ? <sub>{k + 1}</sub> : null}
                 </td>
-                <td className="num">{root(r)} s⁻¹</td>
+                <td className="num">{step ? rootRateAt(r.re, r.im, step, 4) : rootRate(r.re, r.im, 4)}</td>
               </tr>
             ))}
             {rows.map(([label, v]) => (
@@ -582,11 +591,17 @@ export function StatePane({ x }) {
           <caption>at the cursor, t = {num(x.cursor, 's', 3)}</caption>
           <thead>
             <tr>
+              {/* The numeric heads carry `num` so they right-align over their
+                  own column. Without it the general `.table th` rule leaves
+                  them left while `.table td.num` right-aligns the values, and
+                  the head sits visibly off its column — the wider the number,
+                  the further off. The CSS for `.table th.num` was already
+                  there; the heads just never asked for it. */}
               <th>state</th>
-              <th>x(0⁻)</th>
-              <th>x(t)</th>
-              <th>ẋ(t)</th>
-              <th>element law</th>
+              <th className="num">x(0⁻)</th>
+              <th className="num">x(t)</th>
+              <th className="num">ẋ(t)</th>
+              <th className="num">element law</th>
               <th aria-label="agreement" />
             </tr>
           </thead>
@@ -603,9 +618,9 @@ export function StatePane({ x }) {
                   </td>
                   <td className="num">{num(before.x0[k], isC ? 'V' : 'A', 4)}</td>
                   <td className="num">{num(now.x[k], isC ? 'V' : 'A', 4)}</td>
-                  <td className="num">{num(now.dxdt[k], isC ? 'V/s' : 'A/s', 4)}</td>
+                  <td className="num">{rate(now.dxdt[k], isC ? 'V/s' : 'A/s', 4)}</td>
                   <td className="num">
-                    {isC ? `i_${q.id}/C` : `v_${q.id}/L`} = {num(law, isC ? 'V/s' : 'A/s', 4)}
+                    {isC ? `i_${q.id}/C` : `v_${q.id}/L`} = {rate(law, isC ? 'V/s' : 'A/s', 4)}
                   </td>
                   <td className={ok ? 'agree' : 'disagree'}>{ok ? '✓' : '✗'}</td>
                 </tr>

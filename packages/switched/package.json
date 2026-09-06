@@ -9,6 +9,8 @@
     ".": "./index.js"
   },
   "dependencies": {
+    "@ee-labs/dsp": "*",
+    "@ee-labs/machines": "*",
     "@ee-labs/network": "*"
   }
 }

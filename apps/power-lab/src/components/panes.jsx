@@ -3,15 +3,31 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
 import { lossLedger, stateAtTime } from '@ee-labs/switched'
 import { TRACES } from '../experiments.js'
 import { TRACE_COLORS } from './ScopeCanvas.jsx'
-import Schematic from './schematics.jsx'
+import Schematic, { topologyOf } from './schematics.jsx'
+import { JK_CONDUCTING } from './schematicsJk.jsx'
 import { Formula } from '@ee-labs/explain'
 import { fmtz, nz, statScale, axisFmt, niceBounds } from '../format.js'
+import { LMN_MODE_WORDS, LMN_ORDER } from '../groups/lmn.js'
 
 /** An equation in a table cell, set like the math panel's formulas. */
 const Eq = ({ children }) => <Formula display={false}>{children}</Formula>
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
-export const ORDER = ['vin', 'vsw', 'vrect', 'vout', 'vL', 'vD', 'iL', 'iD', 'iC', 'iR', 'iQ', 'iin']
+
+// The measures table reads voltages first, then currents. A group appends its
+// own signals as one row rather than threading them into the base list, and
+// the partition by axis puts each where it belongs. So three lanes' rows merge
+// beside each other and no lane has to know where the others' signals sit.
+const BASE_ORDER = ['vin', 'vsw', 'vrect', 'vout', 'vL', 'vD', 'iL', 'iD', 'iC', 'iR', 'iQ', 'iin']
+const ADDED_ORDER = [
+  'vao', 'vab', 'van', 'ia', 'idc',
+  ...LMN_ORDER,
+]
+const ALL_ORDER = [...BASE_ORDER, ...ADDED_ORDER]
+export const ORDER = [
+  ...ALL_ORDER.filter((k) => TRACES[k].axis !== 'A'),
+  ...ALL_ORDER.filter((k) => TRACES[k].axis === 'A'),
+]
 
 /** Average, RMS and extremes of every waveform, and the power books. */
 export function MeasuresPane({ m, signals }) {
@@ -124,6 +140,8 @@ export const MODE_WORDS = {
   line: 'line-frequency, diode-steered',
   dimmer: 'phase-cut, resistive load',
   inverter: 'DC in, AC out',
+  threephase: 'DC in, three-phase out',
+  ...LMN_MODE_WORDS,
 }
 
 /**
@@ -584,7 +602,7 @@ export function ScrubPane({ x, exp, at, onScrub, signals }) {
   return (
     <div className="scrub">
       <div className="scrub-picture">
-        <Schematic exp={exp} x={x} live={{ state: seg.name, conducting: conductingIn(seg.name) }} />
+        <Schematic exp={exp} x={x} live={{ state: seg.name, conducting: conductingIn(seg.name, topologyOf(exp)) }} />
       </div>
       <div className="scrub-readout">
         <label className="scrub-slider">
@@ -637,9 +655,14 @@ export function ScrubPane({ x, exp, at, onScrub, signals }) {
   )
 }
 
+// A signal is a linear form in the whole state, and some converters carry
+// three components or four. Reading two of them drew a third-order
+// converter's every signal wrong by whatever the third one was worth.
 const evalAt = (seg, name, state) => {
   const f = seg.state.signals[name]
-  return f.c[0] * state[0] + f.c[1] * state[1] + f.d
+  let y = f.d
+  for (let i = 0; i < f.c.length; i++) y += f.c[i] * state[i]
+  return y
 }
 
 /**
@@ -647,8 +670,10 @@ const evalAt = (seg, name, state) => {
  * the engine's own states, so a topology that gains a state gains a row here
  * or lights nothing, and schematics.test.jsx holds the two together.
  */
-export function conductingIn(name) {
+export function conductingIn(name, topology = null) {
   const n = String(name)
+  const own = JK_CONDUCTING[topology]
+  if (own && own[n]) return own[n]
   if (n.startsWith('on')) return ['Q', 'L', 'C', 'R']
   if (n.startsWith('off')) return ['D', 'L', 'C', 'R']
   if (n.startsWith('Q1')) return ['Q1', 'T', 'D1', 'L', 'C', 'R']

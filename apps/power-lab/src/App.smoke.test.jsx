@@ -41,13 +41,19 @@ describe('App', () => {
         expect(h, `${e.id} ${v}`).not.toMatch(/undefined|NaN/)
       }
     }
-  }, 60000)
+  }, 180000)
 
   it('never shows the arithmetic’s residue as a measurement', () => {
     // An average that is zero comes back from exact integration as ~1e-16, and
     // fmt would render it "0.6776 fV" — a number that reads like a reading.
     // Nothing in this lab is legitimately femto-anything at its defaults.
-    const dust = /[\d.]\s*[fazy](V|A|W|C|Hz|s)/
+    //
+    // The word boundary at the end of this pattern was a literal
+    // backspace until Groups H and I were reviewed, so nothing could match
+    // it and the probe had never run. Repaired, it found two readings at
+    // once: the three-phase top bar's V_out, and the inverters' mean
+    // inductor current.
+    const dust = /[\d.]\s*[fazy](V|A|W|C|Hz|s)\b/
     for (const e of EXPERIMENTS) {
       for (const v of e.views) {
         const h = renderToString(React.createElement(App, { initialId: e.id, initialView: v }))
@@ -55,7 +61,7 @@ describe('App', () => {
         expect(hit && hit[0], `${e.id} ${v}`).toBeFalsy()
       }
     }
-  }, 60000)
+  }, 180000)
 
   it('has a one-line outcome for every experiment, with no undefined or NaN in it', () => {
     for (const e of EXPERIMENTS) {

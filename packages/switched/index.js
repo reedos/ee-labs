@@ -70,6 +70,8 @@ export {
 } from './src/inverter.js'
 export { lossLedger, activeMechanisms, LOSS_ROWS } from './src/ledger.js'
 export { walkPeriod, eventSteadyState, periodIntegral, signalAverage, signalStats } from './src/events.js'
+export { forward, pushPull, fullBridge, pushPullFamily, forwardFamily, forwardM, forwardMeasures, windowedSteadyState, walkWindows, resetCeiling, fluxWalk, FORWARD_KINDS, FORWARD_DEFAULTS } from './src/isolated.js'
+export { resonantConverter, resonantSteadyState, resonantMeasures, gainCurve, fhaGain, fhaRatio, seriesResonance, lowerResonance, tankImpedance, tankQ, acLoad, hardSwitchedEdgeLoss, RESONANT_KINDS, RESONANT_DEFAULTS } from './src/resonant.js'
 export {
   rectifier,
   rectifierSteadyState,
@@ -82,3 +84,57 @@ export {
   RECT_DEFAULTS,
   RECT_KINDS,
 } from './src/rectifier.js'
+export { averagedModel, gvd, gvdAt, gvdClosedForm, rhpZero, averagingGuard, AVERAGING_RATIO, switchedStep, averagedStep, stepAgreement, dcGainMeasured } from './src/loop.js'
+export { threePhase, threePhaseSteadyState, threePhaseMeasures, threePhaseWaveform, triplenRatio, referencePeak, legReference, legEdges, sixStepLineRms, sixStepLinePeak, sixStepPhaseRms, sixStepPhaseTotalRms, sixStepLineTotalRms, spwmLinePeak, spwmPhasePeak, injectionHeadroom, singlePhaseBusRipple, INJECTION, THREE_PHASE_KINDS, THREE_PHASE_DEFAULTS, THREE_PHASE_SIGNALS } from './src/threePhase.js'
+export {
+  DRIVE_KINDS,
+  DRIVE_SIGNALS,
+  DRIVE_DEFAULTS,
+  armatureOf,
+  drive,
+  driveSteadyState,
+  drivePeriod,
+  driveRunUp,
+  driveMeasures,
+  driveAveraged,
+  driveBalance,
+  armatureRipple,
+  commutation,
+} from './src/drive.js'
+export {
+  EMI_KINDS,
+  EMI_SIGNALS,
+  RING_SIGNALS,
+  EMI_DEFAULTS,
+  RING_DEFAULTS,
+  emiConverter,
+  ringConverter,
+  emiSteadyState,
+  emiMeasures,
+  ringMeasures,
+  emiHarmonics,
+  fftHarmonics,
+  sampleUniform,
+  pulseHarmonic,
+  inputFilter,
+  middlebrook,
+  ringOf,
+  ringPeriodOf,
+  fundamentalOf,
+} from './src/emi.js'
+export {
+  THERMAL_MODELS,
+  THERMAL_DEFAULTS,
+  stagesOf,
+  thermalNetwork,
+  junctionOf,
+  steadyRise,
+  stepRise,
+  zth,
+  fosterZth,
+  pulsedRise,
+  junctionTemp,
+  derating,
+  frequencyCeiling,
+  edgeCost,
+} from './src/thermal.js'

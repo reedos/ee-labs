@@ -1,8 +1,10 @@
 import React from 'react'
+import { JK_TRACE_COLORS } from '../groups/jk.js'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt, scopeRange } from '@ee-labs/ui'
 import { TRACES } from '../experiments.js'
 import { axisFmt, fitLeftAxis } from '../format.js'
 import { markLabels } from '../marks.js'
+import { LMN_TRACE_COLORS } from '../groups/lmn.js'
 
 /** One colour per trace, kept apart from the axis chrome. */
 export const TRACE_COLORS = {
@@ -18,6 +20,13 @@ export const TRACE_COLORS = {
   iQ: '#ffd166',
   iD: '#8ecae6',
   iin: COLORS.textBright,
+  vao: COLORS.spectrum,
+  vab: COLORS.phase,
+  van: COLORS.trace,
+  ia: COLORS.response,
+  idc: COLORS.marker,
+  ...JK_TRACE_COLORS,
+  ...LMN_TRACE_COLORS,
 }
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'

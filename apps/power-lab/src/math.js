@@ -8,6 +8,10 @@
 
 import { fmt } from '@ee-labs/ui'
 import { LINREG_R_PASS } from './analysis.js'
+import { loopEntry, threePhaseEntry } from './groups/hi.js'
+import { jkMath } from './groups/jk.js'
+import { LMN_KINDS } from './groups/lmn.js'
+import { lmnMath } from './groups/lmnMath.js'
 
 
 /**
@@ -66,11 +70,11 @@ const TEX = {
 /** Attach the TeX for a row's name, where there is one. */
 const addTex = (r) => (r.tex || !TEX[r.label] ? r : { ...r, tex: TEX[r.label] })
 
-const T = (text) => ({ kind: 'text', text })
-const F = (tex, caption) => ({ kind: 'formula', tex, caption })
-const C = (rows) => ({ kind: 'check', rows: rows.map(addTex) })
-const V = (rows) => ({ kind: 'values', rows: rows.map(addTex) })
-const row = (label, predicted, measured, unit = '', tol = 0.01, abs = 0, unchecked = null) => ({
+export const T = (text) => ({ kind: 'text', text })
+export const F = (tex, caption) => ({ kind: 'formula', tex, caption })
+export const C = (rows) => ({ kind: 'check', rows: rows.map(addTex) })
+export const V = (rows) => ({ kind: 'values', rows: rows.map(addTex) })
+export const row = (label, predicted, measured, unit = '', tol = 0.01, abs = 0, unchecked = null) => ({
   label,
   predicted,
   measured,
@@ -96,11 +100,15 @@ export function simpson(g, a, b, n = 400) {
 }
 
 export function experimentMath(exp, params, x) {
+  if (exp.jk) return jkMath(exp, params, x)
+  if (LMN_KINDS.includes(exp.kind)) return lmnMath(exp, params, x)
   if (exp.kind === 'linreg') return linearEntry(params, x)
   if (exp.kind === 'chopper') return chopperEntry(params, x)
   if (exp.kind === 'rectifier') return rectifierEntry(exp, params, x)
   if (exp.kind === 'dimmer') return dimmerEntry(exp, params, x)
   if (x.m.mode === 'inverter') return inverterEntry(exp, params, x)
+  if (x.threePhase) return threePhaseEntry(exp, params, x)
+  if (x.loop) return loopEntry(exp, params, x)
   if (x.isolated) return isolatedEntry(exp, params, x)
   if (x.saturating) return coreEntry(exp, params, x)
   return pwmEntry(exp, params, x)

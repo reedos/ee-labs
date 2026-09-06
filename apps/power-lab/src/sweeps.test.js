@@ -17,6 +17,11 @@ import { sweepD, sweepR, sweepC, sweepMa, sweepFsw, sweepOpts } from './analysis
 // app's own do) and the two isolated ones.
 const clocked = EXPERIMENTS.filter((e) => KINDS.includes(e.kind) || ISOLATED_KINDS.includes(e.kind))
 const maxStep = (pts, y) => Math.max(...pts.slice(1).map((q, i) => Math.abs(q[y] - pts[i][y])))
+// Refinement says nothing about a curve that does not move: a synchronous
+// converter with ideal parts has M(R) flat to the last bits, and both grids
+// then report the same rounding dust. The floor is the dust's own size, taken
+// from the curve's scale, so a real step still has to shrink.
+const flat = (pts, y) => 1e-12 * Math.max(...pts.map((q) => Math.abs(q[y])))
 const signChanges = (pts, y, eps) => {
   let last = 0
   let n = 0
@@ -51,7 +56,7 @@ describe('M(D) at each clocked experiment’s load', () => {
       expect(Number.isFinite(q.M)).toBe(true)
       expect(Number.isFinite(q.eta)).toBe(true)
     }
-    expect(maxStep(fine, 'M')).toBeLessThanOrEqual(0.5 * maxStep(coarse, 'M'))
+    expect(maxStep(fine, 'M')).toBeLessThanOrEqual(Math.max(0.5 * maxStep(coarse, 'M'), flat(fine, 'M')))
     kinksNotJumps(fine, 'M')
     // |M| rises with D — except a boost with a winding, which turns at
     // D′ = √r and comes back down (C2's lesson).
@@ -68,7 +73,7 @@ describe('M(R) at each clocked experiment’s duty', () => {
     const coarse = sweepR(p, e.kind, 61, o)
     const fine = sweepR(p, e.kind, 241, o)
     for (const q of fine) expect(Number.isFinite(q.M)).toBe(true)
-    expect(maxStep(fine, 'M')).toBeLessThanOrEqual(0.5 * maxStep(coarse, 'M'))
+    expect(maxStep(fine, 'M')).toBeLessThanOrEqual(Math.max(0.5 * maxStep(coarse, 'M'), flat(fine, 'M')))
     kinksNotJumps(fine, 'M')
     // A lighter load never lowers |M|: flat in CCM (rising a little with a
     // winding or a diode drop), rising in DCM.

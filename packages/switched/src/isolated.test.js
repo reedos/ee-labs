@@ -1,5 +1,22 @@
 import { describe, it, expect } from 'vitest'
-import { flyback, halfBridge, isolated, isolatedM, ISOLATED_KINDS } from './isolated.js'
+import {
+  flyback,
+  halfBridge,
+  isolated,
+  isolatedM,
+  ISOLATED_KINDS,
+  forward,
+  pushPull,
+  fullBridge,
+  pushPullFamily,
+  forwardFamily,
+  forwardM,
+  forwardMeasures,
+  windowedSteadyState,
+  walkWindows,
+  fluxWalk,
+  FORWARD_KINDS,
+} from './isolated.js'
 import { steadyState, measures, average, periodMap, waveforms } from './steady.js'
 import { endState, firstDownCrossing } from './segment.js'
 import { runPeriods } from './transient.js'
@@ -233,10 +250,306 @@ describe('the half-bridge’s own boundary', () => {
   })
 })
 
+// ------------------------------------------------- the forward family
+//
+// The half-bridge's three siblings, held to the same invariants and to the
+// three claims that separate them: the ratio, the voltage a switch stands
+// off, and what the magnetising current does. Every number here comes off a
+// solved waveform, and the formulas it is compared against are written down
+// in the module rather than measured out of it.
+
+describe('the forward converter', () => {
+  const p = { Vin: 48, D: 0.4, n: 0.25, L: 100e-6, C: 100e-6, R: 5, fs: 100e3, Lm: 1e-3 }
+  const conv = forward(p)
+  const ss = windowedSteadyState(conv)
+  const m = forwardMeasures(ss)
+
+  it('is a buck through a transformer: M = n·D', () => {
+    expect(forwardM('forward', 0.4, 0.25)).toBeCloseTo(0.1, 15)
+    expect(ss.mode).toBe('CCM')
+    expect(m.M).toBeCloseTo(0.1, 6)
+    expect(m.sig.vout.avg).toBeCloseTo(4.8, 5)
+    for (const D of [0.15, 0.3, 0.45]) {
+      const q = forwardMeasures(windowedSteadyState(forward({ ...p, D })))
+      expect(q.M, `D=${D}`).toBeCloseTo(0.25 * D, 6)
+    }
+  })
+
+  it('resets the core in n_r·D·T, which is why the duty stops at one half', () => {
+    const reset = ss.segments.find((s) => s.name === 'reset')
+    expect(reset.T).toBeCloseTo(p.D / p.fs, 12)
+    expect(conv.resetTime).toBeCloseTo(p.D / p.fs, 15)
+    expect(conv.maxDuty).toBeCloseTo(0.5, 15)
+    expect(conv.resets).toBe(true)
+    expect(forward({ ...p, D: 0.55 }).resets).toBe(false)
+    // A reset winding with fewer turns resets faster and lifts the ceiling,
+    // at the price of a higher voltage on the switch.
+    const fast = forward({ ...p, nr: 0.5 })
+    expect(fast.maxDuty).toBeCloseTo(2 / 3, 12)
+    const rf = windowedSteadyState(fast).segments.find((s) => s.name === 'reset')
+    expect(rf.T).toBeCloseTo((0.5 * p.D) / p.fs, 12)
+    expect(fast.blocking()).toBeCloseTo(3 * p.Vin, 9)
+  })
+
+  it('carries a magnetising current that starts and ends each period at zero', () => {
+    expect(ss.x0[2]).toBeCloseTo(0, 12)
+    expect(m.sig.iM.min).toBeCloseTo(0, 9)
+    // It ramps at V_in/L_m for the on interval and back down at V_in/n_r·L_m.
+    expect(m.sig.iM.max).toBeCloseTo((p.Vin * p.D) / (p.Lm * p.fs), 6)
+    // Its mean is the triangle's, over the share of the period it lasts.
+    expect(m.sig.iM.avg).toBeCloseTo((m.sig.iM.max / 2) * 2 * p.D, 6)
+  })
+
+  it('makes the switch stand off the rail twice over, with a reset winding of equal turns', () => {
+    expect(conv.blocking()).toBeCloseTo(2 * p.Vin, 12)
+    expect(conv.stress).toBeCloseTo(96, 12)
+  })
+
+  it('returns the magnetising energy to the source rather than losing it', () => {
+    // The rail takes current back during the reset, so i_in goes negative.
+    expect(m.sig.iin.min).toBeLessThan(0)
+    expect(m.sig.iin.min).toBeCloseTo(-m.sig.iM.max / conv.p.nr, 6)
+    // And the books still close: P_in is P_out with no loss anywhere.
+    expect(m.Pin).toBeCloseTo(m.Pout, 9)
+  })
+})
+
+describe('the push-pull and the full bridge', () => {
+  const p = { Vin: 48, D: 0.4, n: 0.125, L: 100e-6, C: 100e-6, R: 5, fs: 100e3, Lm: 1e-3 }
+
+  it('swings the primary both ways, so M = 2·n·D', () => {
+    for (const kind of ['pushpull', 'fullbridge']) {
+      const conv = pushPullFamily(kind, p)
+      const m = forwardMeasures(windowedSteadyState(conv))
+      expect(m.M, kind).toBeCloseTo(2 * p.n * p.D, 6)
+      expect(m.sig.vout.avg, kind).toBeCloseTo(4.8, 5)
+      for (const D of [0.15, 0.3, 0.45]) {
+        const q = forwardMeasures(windowedSteadyState(pushPullFamily(kind, { ...p, D })))
+        expect(q.M, `${kind} D=${D}`).toBeCloseTo(2 * p.n * D, 6)
+      }
+    }
+  })
+
+  it('feeds the filter twice a period, so the ripple runs at 2·f_s', () => {
+    const conv = pushPull(p)
+    const ss = windowedSteadyState(conv)
+    const m = forwardMeasures(ss)
+    const wf = waveforms(ss, { periods: 1, n: 400 })
+    let turns = 0
+    for (let i = 2; i < wf.sig.vout.length; i++) {
+      const a = wf.sig.vout[i - 1] - wf.sig.vout[i - 2]
+      const b = wf.sig.vout[i] - wf.sig.vout[i - 1]
+      if (a > 0 !== b > 0 && Math.abs(b) > 1e-12) turns++
+    }
+    expect(turns).toBeGreaterThanOrEqual(3)
+    // The buck's own ripple form, at the doubled rate the filter sees.
+    expect(m.sig.vout.pp).toBeCloseTo(m.sig.iL.pp / (8 * 2 * p.fs * p.C), 5)
+  })
+
+  it('costs the push-pull switch twice the rail and the bridge switch once', () => {
+    expect(pushPull(p).blocking()).toBeCloseTo(2 * p.Vin, 12)
+    expect(fullBridge(p).blocking()).toBeCloseTo(p.Vin, 12)
+    // The bridge pays for it in conduction: two switches in series each half.
+    const lossy = { ...p, Ron: 0.1 }
+    const pp = forwardMeasures(windowedSteadyState(pushPull(lossy)))
+    const fb = forwardMeasures(windowedSteadyState(fullBridge(lossy)))
+    expect(fb.loss.switch / pp.loss.switch).toBeCloseTo(2, 1)
+  })
+
+  it('keeps the magnetising current centred on zero while the two halves match', () => {
+    const m = forwardMeasures(windowedSteadyState(pushPull({ ...p, Ron: 0.05 })))
+    expect(Math.abs(m.sig.iM.avg)).toBeLessThan(1e-9 * m.sig.iM.pp)
+    expect(m.sig.iM.max).toBeCloseTo(-m.sig.iM.min, 6)
+    expect(m.sig.iM.pp).toBeCloseTo((p.Vin * p.D) / (p.Lm * p.fs), 2)
+  })
+
+  it('walks the flux to the offset the two resistances leave it at', () => {
+    for (const mismatch of [0.1, 0.2, 0.5, 2]) {
+      const conv = pushPull({ ...p, Ron: 0.05, mismatch })
+      const m = forwardMeasures(windowedSteadyState(conv))
+      const pred = fluxWalk({ n: p.n, Iout: m.Iout, Ron1: conv.Ron1, Ron2: conv.Ron2 })
+      expect(m.sig.iM.avg, `mismatch ${mismatch}`).toBeCloseTo(pred, 4)
+      expect(m.sig.iM.avg).toBeGreaterThan(0)
+      // However bad the mismatch, the offset stays under n·I_out.
+      expect(Math.abs(m.sig.iM.avg)).toBeLessThan(p.n * m.Iout)
+    }
+    // The offset grows with the mismatch and vanishes without it.
+    const at = (mm) => forwardMeasures(windowedSteadyState(pushPull({ ...p, Ron: 0.05, mismatch: mm }))).sig.iM.avg
+    expect(at(0.4)).toBeGreaterThan(at(0.2))
+    expect(Math.abs(at(0))).toBeLessThan(1e-9)
+  })
+
+  it('has no fixed point for the flux at all with no resistance in the primary', () => {
+    // Ideal switches put equal volt-seconds on the core whatever offset it
+    // carries, so every offset is periodic and the circuit prefers none. The
+    // solver says so rather than dividing by nothing.
+    const conv = pushPull(p)
+    expect(conv.driftFree).toBe(true)
+    expect(conv.pinned).toEqual([2])
+    expect(fluxWalk({ n: p.n, Iout: 1, Ron1: 0, Ron2: 0 })).toBe(0)
+    // What it holds instead is the core with no DC flux in it.
+    const m = forwardMeasures(windowedSteadyState(conv))
+    expect(Math.abs(m.sig.iM.avg)).toBeLessThan(1e-9 * m.sig.iM.pp)
+    expect(pushPull({ ...p, Ron: 0.05 }).driftFree).toBe(false)
+  })
+})
+
+describe('the three compared on one table', () => {
+  // J3's table, measured rather than quoted: the same rail, the same load,
+  // the same turns, and the three differ in exactly the places the theory
+  // says they do.
+  const base = { Vin: 48, D: 0.4, L: 100e-6, C: 100e-6, R: 5, fs: 100e3, Lm: 1e-3, Ron: 0.05 }
+  const rows = ['forward', 'pushpull', 'fullbridge'].map((kind) => {
+    const n = kind === 'forward' ? 0.25 : 0.125
+    const conv = forwardFamily(kind, { ...base, n })
+    const m = forwardMeasures(windowedSteadyState(conv))
+    return { kind, conv, m, n }
+  })
+  it('delivers the same output from the same rail', () => {
+    for (const r of rows) expect(r.m.sig.vout.avg, r.kind).toBeCloseTo(4.8, 2)
+  })
+  it('separates them on stress, and only on stress among the pair', () => {
+    const [fwd, pp, fb] = rows
+    expect(fwd.conv.blocking()).toBeCloseTo(96, 9)
+    expect(pp.conv.blocking()).toBeCloseTo(96, 9)
+    expect(fb.conv.blocking()).toBeCloseTo(48, 9)
+    // The forward's transformer is used one way round, so its output pulse
+    // arrives once a period where the other two arrive twice.
+    expect(fwd.m.sig.iL.pp / pp.m.sig.iL.pp).toBeGreaterThan(1.5)
+  })
+})
+
+describe('the forward family’s invariants, fuzzed', () => {
+  const cases = []
+  const r = rng(51037)
+  for (const kind of ['forward', 'pushpull', 'fullbridge']) {
+    for (let i = 0; i < 80; i++) {
+      const Ron = r() < 0.5 ? logU(r, 1e-3, 0.2) : 0
+      cases.push([
+        `${kind} #${i}`,
+        kind,
+        {
+          Vin: logU(r, 12, 400),
+          // Both families stop at one half: the forward needs the room to
+          // reset and the other two would put both switches on at once.
+          D: 0.03 + 0.44 * r(),
+          n: logU(r, 0.05, 1.5),
+          L: logU(r, 10e-6, 1e-3),
+          C: logU(r, 10e-6, 2.2e-3),
+          R: logU(r, 1, 500),
+          fs: logU(r, 30e3, 500e3),
+          Lm: logU(r, 100e-6, 10e-3),
+          Ron,
+          mismatch: Ron > 0 && r() < 0.5 ? 2 * r() : 0,
+          Vf: r() < 0.5 ? 0.2 + 0.6 * r() : 0,
+          rd: r() < 0.5 ? logU(r, 1e-3, 0.1) : 0,
+          RL: r() < 0.5 ? logU(r, 1e-3, 0.2) : 0,
+          ESR: r() < 0.5 ? logU(r, 1e-3, 0.5) : 0,
+        },
+      ])
+    }
+  }
+  let dcm = 0
+  it.each(cases)('%s', (_, kind, p) => {
+    const conv = forwardFamily(kind, p)
+    const ss = windowedSteadyState(conv)
+    expect(ss.converged, 'the shooting method converged').toBe(true)
+    const m = forwardMeasures(ss)
+    const live = ss.segments.filter((s) => s.T > 0)
+    const Is = Math.max(1e-9, Math.abs(m.sig.iL.max), Math.abs(m.sig.iL.min), Math.abs(m.sig.iM.max))
+    const Vs = Math.max(p.Vin, Math.abs(m.sig.vC.max))
+    if (ss.mode === 'DCM') dcm++
+    // 1 and 2: volt-second balance on the output inductor, charge balance on
+    // the capacitor.
+    expect(Math.abs(average(ss, 'vL'))).toBeLessThan(1e-8 * Vs)
+    expect(Math.abs(m.sig.iC.avg)).toBeLessThan(1e-8 * Is)
+    // And on the magnetising inductance, which is this family's own: the
+    // core ends the period with the flux it started with.
+    expect(Math.abs(m.sig.iM.max - m.sig.iM.min)).toBeLessThan(4 * ((p.Vin * p.D) / (p.Lm * p.fs)) + 1e-9)
+    // 4: the segments join.
+    for (let k = 1; k < live.length; k++) {
+      const xe = endState(live[k - 1])
+      for (let i = 0; i < 3; i++) {
+        const scale = i === 1 ? Vs : Is
+        expect(Math.abs(live[k].x0[i] - xe[i]), `segment ${k} component ${i}`).toBeLessThan(1e-8 * scale)
+      }
+    }
+    // 6: one more period returns the same state.
+    const xT = walkWindows(conv, ss.x0).xEnd
+    for (let i = 0; i < 3; i++) {
+      const scale = i === 1 ? Vs : Is
+      expect(Math.abs(xT[i] - ss.x0[i]), `period map component ${i}`).toBeLessThan(1e-8 * scale)
+    }
+    // 3: the ledger closes.
+    const led = lossLedger(m)
+    expect(Math.abs(led.residual)).toBeLessThan(1e-8 * Math.max(m.Pin, m.Pout, 1e-12))
+    expect(m.eta).toBeGreaterThan(0)
+    expect(m.eta).toBeLessThanOrEqual(1 + 1e-8)
+    for (const s of Object.values(m.sig)) for (const v of Object.values(s)) expect(Number.isFinite(v)).toBe(true)
+    // The ratio, where conduction stays continuous and the parts are ideal.
+    if (ss.mode === 'CCM' && !p.Ron && !p.Vf && !p.rd && !p.RL && !p.ESR) {
+      expect(m.M).toBeCloseTo(forwardM(kind, p.D, p.n), 6)
+    }
+    // And the mode agrees with the current: a dead interval means the
+    // inductor emptied.
+    if (ss.mode === 'DCM') expect(m.sig.iL.min).toBeLessThan(1e-9 * Is)
+    else expect(m.sig.iL.min).toBeGreaterThan(-1e-6 * Is - 1e-9)
+  })
+  it('visited both conduction modes', () => {
+    expect(dcm).toBeGreaterThan(20)
+    expect(dcm).toBeLessThan(cases.length - 20)
+  })
+})
+
+describe('the forward family’s walk from rest agrees with the solver', () => {
+  const cases = [
+    ['forward', 'forward', { R: 5 }],
+    ['forward light', 'forward', { R: 400 }],
+    ['pushpull', 'pushpull', { R: 5, n: 0.125 }],
+    ['pushpull mismatched', 'pushpull', { R: 5, n: 0.125, Ron: 0.05, mismatch: 0.4 }],
+    ['fullbridge', 'fullbridge', { R: 5, n: 0.125 }],
+    ['fullbridge light', 'fullbridge', { R: 400, n: 0.125 }],
+  ]
+  it.each(cases)('%s', (_, kind, over) => {
+    const p = { Vin: 48, D: 0.4, n: 0.25, L: 100e-6, C: 100e-6, R: 5, fs: 100e3, Lm: 1e-3, ...over }
+    const conv = forwardFamily(kind, p)
+    const ss = windowedSteadyState(conv)
+    const m = forwardMeasures(ss)
+    // The walker knows nothing of the solver's answer.
+    let x = new Array(conv.order).fill(0)
+    for (let k = 0; k < 20000; k++) x = walkWindows(conv, x).xEnd
+    const scale = [Math.max(1e-6, m.sig.iL.max), Math.max(1, m.sig.vC.avg), Math.max(1e-6, m.sig.iM.pp)]
+    // The output side is the circuit's own, and the walk lands on it.
+    for (let i = 0; i < 2; i++) {
+      expect(Math.abs(x[i] - ss.x0[i]) / scale[i], `component ${i}`).toBeLessThan(1e-5)
+    }
+    if (!conv.driftFree) {
+      expect(Math.abs(x[2] - ss.x0[2]) / scale[2], 'the magnetising current').toBeLessThan(1e-4)
+      return
+    }
+    // With no resistance in the primary the magnetising offset is history,
+    // and the two answers are allowed to differ by exactly that: the walk
+    // started the core empty, the solver holds its period mean at zero, and
+    // the gap between them is half the ripple.
+    expect(x[2]).toBeCloseTo(0, 9)
+    expect(ss.x0[2]).toBeCloseTo(-m.sig.iM.pp / 2, 6)
+  })
+})
+
 describe('the shapes the app leans on', () => {
   it('names both kinds and refuses anything else', () => {
     expect(ISOLATED_KINDS).toEqual(['flyback', 'halfbridge'])
     expect(() => isolated('forward', {})).toThrow(/unknown isolated converter/)
+    expect(FORWARD_KINDS).toEqual(['forward', 'pushpull', 'fullbridge'])
+    expect(() => forwardFamily('halfbridge', {})).toThrow(/unknown forward converter/)
+  })
+  it('carries every signal the forward family’s panes ask for, in every state', () => {
+    for (const kind of FORWARD_KINDS) {
+      const conv = forwardFamily(kind, {})
+      for (const [name, state] of Object.entries(conv.states)) {
+        for (const s of conv.signals) expect(state.signals[s], `${kind}.${name}.${s}`).toBeTruthy()
+      }
+    }
   })
   it('carries every signal the panes ask for, in every state', () => {
     for (const kind of ISOLATED_KINDS) {

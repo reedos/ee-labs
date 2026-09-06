@@ -35,8 +35,8 @@ export function kvlLoop(theorem, sol) {
 
 /**
  * D3: the two mesh equations with their live sides.
- *   mesh 1:  R₁·i₁ + R₂·(i₁ − i₂) = E₁
- *   mesh 2: −R₂·i₁ + (R₂ + R₃)·i₂ = −E₂
+ *   mesh 1:  R₁·i₁ + R₂·(i₁ − i₂) = V₁
+ *   mesh 2: −R₂·i₁ + (R₂ + R₃)·i₂ = −V₂
  */
 export function meshRows(p, sol) {
   const i1 = sol.i.R1
@@ -45,8 +45,8 @@ export function meshRows(p, sol) {
     i1,
     i2,
     rows: [
-      { latex: 'R_1 i_1 + R_2 (i_1 - i_2) = E_1', lhs: p.R1 * i1 + p.R2 * (i1 - i2), rhs: p.E1 },
-      { latex: '-R_2 i_1 + (R_2 + R_3)\\, i_2 = -E_2', lhs: -p.R2 * i1 + (p.R2 + p.R3) * i2, rhs: -p.E2 },
+      { latex: 'R_1 i_1 + R_2 (i_1 - i_2) = V_1', lhs: p.R1 * i1 + p.R2 * (i1 - i2), rhs: p.E1 },
+      { latex: '-R_2 i_1 + (R_2 + R_3)\\, i_2 = -V_2', lhs: -p.R2 * i1 + (p.R2 + p.R3) * i2, rhs: -p.E2 },
     ],
   }
 }

@@ -17,7 +17,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Circuit Lab | built | | | |
 | Signal Lab | built | | | |
 | Control Lab | built | | | |
-| Power Lab | built in part, dark | merged, Groups A to G | Groups H to N unassigned | `POWER_LAB_PLAN.md` |
+| Power Lab | built in part, dark | merged, Groups A to N | D5, the leakage spike | `POWER_LAB_PLAN.md` |
 | The two seams and the progression test | built, merged | | | `CURRICULUM.md` §3, §6 |
 | Electronics Lab | built in part, dark | merged, Groups A and C to O | Group B, which is Elements I9 and I10 by Decision 3 | `ELECTRONICS_LAB_PLAN.md` |
 | Logic Lab | built, dark | merged | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
@@ -108,6 +108,16 @@ Deferred, with what reopens each:
   to walk. The drawing puts the blocking capacitor in the primary loop, which
   is the part that does the forgiving. Reopens with the midpoint as a third
   state.
+- **The Balance pane is not offered on the drives, though they have one.**
+  `driveBalance` states a drive's period in two sums that both come to zero,
+  volt-seconds on the armature and torque-seconds on the inertia.
+  `drive.test.js` fuzzes both as invariants. The pane cannot draw them. Its
+  second column carries the capacitor's integral in the header and again in
+  the sentence above the table, so a drive's torque-seconds would appear as
+  charge. Reopens when `BalancePane` takes its two row labels from the
+  topology, which is one prop and a merge across three lanes. The input side
+  has no balance at all, for the reason `analyseEmi` gives in place.
+
 - **`verify.mjs` has not been run against the new groups.** This environment
   has no browser. The three new panes (flux, scrub, ledger), the two new
   sweeps and the four new drawings have been held as geometry and as rendered
@@ -908,6 +918,38 @@ Items that cross labs and land at integration.
   1e-15 times the load's scale and `abcdToS` against 1e-14 times the matrix norm.
   The reviewer asks for one rule, stated once, as the brief's section 9 wants.
 
+### Local verification continuation, 2026-09-06
+
+Power verification resumed from its saved WIP branch. Checkpoint `c6d891e`
+on `verify/power-lab` incorporates integration snapshot `88d4cfe`, including
+Groups H through N. It is local and unmerged. The main workspace's concurrent
+lab and splash changes were left untouched.
+
+The checkpoint corrects motor sweep coordinates, mismatched prediction
+quantities, logarithmic trace mapping, efficiency markers and spectrum
+captions. The full suite passes 11,027 tests in 359 files. Its five-app
+sibling-path build passes. Desktop and phone screenshots cover 102 views.
+
+Power's browser layout gate remains open. The app's NEEDS file and the
+current section of HANDOFF.md locate the remaining findings and run logs.
+The final report is saved at `fa6382c`. Chromium has 58 first-knob
+visibility failures and Firefox has 60 across the two desktop sizes.
+All other browser checks pass, including all 55 experiments at phone width.
+
+The other eight verification branches have not changed or been integrated.
+The next milestone remains the nine-lab verification wave, before VLSI and
+Interfaces. No release status changed.
+
+### Paused at the weekly usage limit, 2026-09-06
+
+`HANDOFF.md` is rewritten for the session that continues, and it names every
+branch and run id. In short. Power Groups H to N are merged and the lab is 55
+of 56. The RF, System and Photonics first sittings are merged, dark. The
+harness pass over the nine labs that have one was stopped with seven of nine
+finished on their `verify/*` branches, none merged, and two paused with a WIP
+commit at the tip. Resume that run from the repo root with the scripts'
+line endings stripped, then merge the nine.
+
 ### Paused at Reed's request, 2026-09-05, usage near its limit
 
 Two workflows were stopped mid-run: `power-h-to-n` (all three lanes had at
@@ -983,7 +1025,7 @@ already exists, and tells the agent to read what is there first.
 | --- | --- | --- | --- |
 | Electronics Groups D to I | `lab/electronics-de`, `-fg`, `-hi` | `electronics-lanes` with `["de","fg","hi"]` | merged 2026-09-05, 33 experiments, three lanes each reviewed |
 | Electronics Groups J to O | `lab/electronics-jk`, `-lm`, `-no` | `electronics-lanes` with `["jk","lm","no"]` | merged 2026-09-05, 32 experiments, three lanes each reviewed |
-| Power Lab Groups H to N | `lab/power-hi`, `-jk`, `-lmn` | `power-h-to-n` | untested `loop.js`, `threePhase.js`, `resonant.js`, and the three isolated siblings with a commit |
+| Power Lab Groups H to N | `lab/power-hi`, `-jk`, `-lmn` | `power-h-to-n` | merged 2026-09-06, all three reviewed |
 | RF A to D, System A, Photonics A, C to F | `lab/rf-lab`, `lab/system-lab`, `lab/photonics-lab` | `rf-system-photonics` | merged 2026-09-05, all three reviewed |
 | Harnesses, nine labs that have one | `verify/<slug>` | `verify-harnesses` | Elements: two fixes; Circuit Lab: fixes to the axis, the step readout and two canvases, untested |
 | VLSI and Interfaces | `lab/vlsi-lab`, `lab/interfaces-lab` | `vlsi-interfaces` | not started |
@@ -1750,3 +1792,409 @@ only its own section. The director folds it into the shared ledger at merge.
   Automatic gain control as a loop. Frequency planning and spur tables.
   Optimisation. Thermal, mechanical, cost and area budgets. Transmitters, and a
   free-form chain editor. None became cheaper to add while Group A was built.
+### Power Lab, Groups H and I
+
+Groups **H** (closing the loop) and **I** (three-phase out) are built on
+`lab/power-hi`, six experiments on top of the thirty-four the lab already
+carried. The lab now runs A to I at forty experiments and stays dark.
+
+`packages/switched` gained two modules and no changed signature. `loop.js`
+averages the switch states and reads the control-to-output transfer function
+off them, with the guard that ships with it. `threePhase.js` puts three of F's
+bridge legs on one carrier into a balanced wye. Three panes are new and belong
+to these groups alone, for the step overlay, the plant with its link, and the
+bus power against one phase's. `apps/power-lab/AGENT_BRIEF_HI.md` is the
+contract, and every number in it came out of `scripts/pins-hi.mjs` before the
+notes were written.
+
+What is built, with counts:
+
+- **H, three experiments.** H1 lays the averaged model over a load step on a
+  synchronous buck and measures the 5.14 µV it leaves against the 3.647 mV of
+  ripple it discards. H2 reads the plant off the same model as six exact
+  coefficients, checks its DC gain against dV_out/dD asked of the switched
+  solver, and hands it to Control Lab. H3 steps a boost's duty and measures the
+  391 mV the output falls before it rises, against the right-half-plane zero at
+  D′²R/L.
+- **I, three experiments.** I1 measures the six-step fundamental against
+  (√6/π)·V_dc, the ±V_dc/3 and ±2V_dc/3 staircase the floating neutral leaves,
+  and the absent triplens. I2 shows the plain sine running out at m_a = 1 and a
+  third harmonic common to all three references carrying the line to 2/√3 of it
+  without appearing on the line. In I3 one
+  phase swings by its own apparent power at twice the output frequency, and the
+  three add to a bus that carries none of it. What I3 measures is a Fourier
+  coefficient of a power rather than of a current.
+- **The engine, fuzzed.** `loop.test.js` holds the model from three sides at
+  240 seeded converters, and `threePhase.test.js` holds the bridge at 160.
+  `hi.test.js` pins every number in the six notes and every try line, moves the
+  knob each note names, and takes the triple agreement three ways.
+
+Deferred, with what reopens each:
+
+- **H2's round trip through Control Lab stops at the link.** The plan's §4 says
+  to close the loop there and come back to verify the closed-loop step against
+  the switched truth. This lab builds the exact plant and the link that carries
+  it, and Control Lab reads that fragment today. What is missing is the return
+  leg. That is a link back, and a Control Lab pane that knows its plant came
+  from a switched converter and shows the switched step beside its own. Reopens
+  with the hand-over decision in `apps/power-lab/NEEDS.md`.
+- **The hand-over is declined above f_s/5, and that refusal is content.**
+  `CORE_SCOPE.md` rule 3 asks an approximation to carry its threshold.
+  `averagingGuard` warns past half of f_s/5 and refuses past it. The plant pane
+  then declines the link rather than handing over a plant whose margins the
+  circuit does not have. Nothing reopens this. It is the feature.
+- **The loop experiments are synchronous, and the averaged model says why.**
+  Averaging over a fixed on/off pattern describes a converter in continuous
+  conduction. Turn the freewheel back into a diode and run the load light, and
+  every check row in H's math panel is footnoted with that reason rather than
+  crossed out. A discontinuous-conduction averaged model is a different model,
+  with a third interval whose length is part of the state. Reopens with anyone
+  adding it to `loop.js`.
+- **I1's phase voltage is measured on a load, not on a machine.** The plan's §4
+  ties six-step to commutation every 60° and to the torque ripple where it
+  happens. The load here is a balanced wye of R and L, which carries the
+  voltages and the currents exactly and has no torque. Reopens with Group L,
+  whose armature and back EMF the plan already names.
+- **The three-phase drawing names its ports rather than wiring them.** A
+  three-phase bridge into a wye load is K(3,3) with the source across it, so no
+  arrangement of it on paper is free of crossings. The three-phase rectifier
+  next door meets the same wall and answers it the same way. The legs carry
+  ports a, b and c and the load carries the matching names. Reopens with a
+  crossing idiom the suite's other drawings do not have.
+- **`verify.mjs` has not been run against these groups.** This environment has
+  no browser. The three new panes, the new sweep and the new drawing have been
+  held as geometry and as rendered markup rather than as pixels. Nobody has
+  read a screenshot of them as a student would (`REVIEW_PLAYBOOK.md` §11). The
+  group tab row is now nine wide, which is the first thing a browser pass
+  should measure against the 1366×768 fold. Reopens with anyone who has a
+  browser.
+
+What the adversarial review changed, on the same branch:
+
+- **Three meters were reading the arithmetic.** The femto probe in
+  `App.smoke.test.jsx` ended its pattern with a literal backspace where a word
+  boundary was meant, so it had never matched anything and had never run.
+  Repaired, it found the three-phase top bar showing the phase voltage's
+  average as `V_out −53.29 fV`, and Group F's scope strip showing `i_L
+  −10.2 fA`. Both read against the signal's own scale now. H2 and H3 also
+  carried η = 100.0 % at every setting of every knob they offer, which is the
+  reading A2's rebuild took off its own top bar. Each shows the frequency its
+  note leads with instead.
+- **The step walk stopped short of the level its own table named.** H3's row
+  said 26.667 V over a plot whose last period sat at 27.056 V, because two
+  hundred periods is one time constant of that boost. The walks run four
+  hundred and eight hundred periods, the plot draws the level it arrives at,
+  and a test holds the last cycle average within three per cent of the step.
+  No pinned number moved: the dip, the gap and the two levels are read off the
+  periodic states.
+- **I2's sweep was narrower than its own knob.** It ran 20 % to 115 % against a
+  knob that runs to 140 %. Above 115 % the operating point was marked at the
+  end of the curve, under a label reading the knob's own value.
+- **The hand-over promised more than the link carries.** Control Lab holds each
+  coefficient to 1e12, and a buck at L = 10 µH, C = 1 µF and f_s = 2 MHz sits
+  inside f_s/5 and needs 1.2e12. The pane declines there, with the number.
+- **The overmodulation footnote fired half a per cent early.** The panel then
+  declined to check the row I2's own try line is about.
+- **One engine check did not measure its claim.** The floating-neutral test
+  added v_ao times zero to v_an and asked whether the result was finite. It now
+  holds v_an, v_ao and v_ab against the leg potentials.
+
+Numbers that differ from the plan's own text, with the engine's value:
+
+- **The plan's §4 gives I2's headroom as 15 %.** The engine gives 15.47 %,
+  which is 2/√3 − 1 exactly, and the notes and the brief carry that.
+- **§1.5's G_vd forms are for ideal parts.** The engine builds the coefficients
+  from the averaged matrices, so a converter with R_on, R_L or an ESR in it
+  gets a corner and a damping the formula does not write down. H1 runs with
+  50 mΩ in each, so its DC gain is 11.76 V rather than V_in, and its math panel
+  footnotes the closed-form rows rather than crossing them out. H2 is ideal, and
+  there the two agree to the last bits.
+- **§4's H1 says "load step" and this one is read on the output.** An ideal
+  buck's output does not move with the load. H1 carries 50 mΩ of switch and
+  winding resistance to give the step something to sag. The sag is 94.3 mV of
+  4.902 V. The inductor current's own step from 0.980 A to 1.923 A is on the
+  same pane.
+
+The §8 phasing note for these groups, for the director to move into the plan:
+
+> **H and I landed together, on top of §11.** H brought the averaged model and
+> its guard, in `loop.js`. State-space averaging is one matrix sum and one
+> linear solve, so the transfer function is exact algebra rather than a fit,
+> and the closed forms of §1.5 fall out of it for all three basic converters
+> including the right-half-plane zero. What averaging discards is the ripple,
+> and `averagingGuard` states the threshold the plan's own CORE_SCOPE entry
+> asks for: the model is the converter below f_s/5, warns past half of that,
+> and refuses past it. The Control Lab hand-over needed no new link grammar.
+> I brought `threePhase.js`, three of F's legs on one carrier into a balanced
+> wye whose neutral floats. The pattern is fixed before the state is, so the
+> periodic state is the same linear solve F uses. Per-phase and rail power are
+> linear forms of the state, so a Fourier coefficient of a power costs no more
+> than one of a current, which is what makes I3 measurable rather than argued.
+> Next by this list is **J**, the isolated siblings, then K to N.
+### Power Lab, Groups J and K
+
+Groups **J** (isolated DC-DC) and **K** (resonant conversion) are built on
+`lab/power-jk`, six experiments on top of the thirty-four the lab already
+carried. The lab is at forty and stays dark. J is the forward, the push-pull
+and the full bridge, beside the half-bridge Group D built. K is the series
+resonant tank, the LLC, and what the soft edge saves against a hard-switched
+bridge on the same rail.
+
+`packages/switched` gained the forward family in `src/isolated.js` and the
+two tanks in `src/resonant.js`. Both are solved by one new method. The period
+is the clock's windows, the sub-intervals inside them are the state's, and
+periodicity is Newton on the walk itself.
+
+The affine map with the durations frozen does for every converter before this
+one and will not do here. An undamped tank's frozen map is a rotation, and
+the events are the whole of the damping. Fuzzed at 240 forward-family
+converters and 240 resonant ones, with the walk from rest as the independent
+witness in twelve named cases. Every existing signature stands,
+`ISOLATED_KINDS` is still two, and `isolated('forward')` still throws.
+
+Deferred, with what reopens each:
+
+- **D5, the leakage spike, is still not built.** It was worth asking whether
+  the forward converter's reset winding gave it for free, and it does not.
+  The reset is a second magnetising path with its own volt-second balance,
+  not a clamp across a leakage inductance, and the model that carries it is
+  three states rather than four. Reopens with a fourth state and a clamp, as
+  the plan's §4 already says.
+- **The push-pull's flux walk is the two switches' resistances and nothing
+  else.** A real converter's asymmetry also comes from unequal storage times
+  and unequal drive, and neither is modelled. The resistance mismatch is the
+  one that has a closed form, which is why it is the knob. Reopens with a
+  switching-time model that differs between the two halves.
+- **`verify.mjs` ran, and it found what the unit tests could not.** An earlier
+  sitting recorded this environment as having no browser. It has both, and the
+  harness drives the built page. It caught two defects behind 2795 green unit
+  tests, and both are now fixed with a probe that fails without the fix.
+  - **Two group names cost the whole lab 28 px of fold.** The sidebar's group
+    tab row wraps, and "Isolated converters" and "Resonant conversion" took it
+    from two rows to three. That pushed the first knob below the 768 fold on
+    fourteen experiments of Groups A to G, which is §11.3.2's promise broken by
+    a name. The groups are called **Isolation** and **Resonance**, single nouns
+    in the register of "Magnetics" and "Inverters", and the row is two rows
+    again. Measured: 82 px against 54.
+  - **The top bar printed a current that is not there.** A resonant tank's mean
+    current is zero by charge balance, and the shooting method leaves femtoamps
+    where the zero is. K1's chip read "i_L −9.15 fA ± 683 mA". The chip now
+    reads the average against the waveform's own scale, which is `format.js`'s
+    own `nz` and the lab's existing answer to §11.6.6. The same line cleared
+    the identical dust on F2, F3 and F4, which was there before this lane.
+- **Nine experiments of Groups A to G sit below the 1366×768 fold, and this
+  lane did not put them there.** With Groups J and K removed from the same
+  build, B1, B2, B4, C1, C5, E1, E4, E6 and F2 are over by 1 to 23 px. Eight
+  open a group, which adds a 48 px intro above the note. §11.8 recorded this
+  green, so the shell's chrome has moved since. Firefox is tighter and puts
+  eighteen of Groups A to G over. It is in `NEEDS.md` for the director: one
+  shell change fixes the whole set, where trimming the notes would cost
+  eighteen of them their content.
+- **J1 was the one experiment of these six in either set, and is not now.** It
+  was 5 px over in Chromium and 7 in Firefox, after this lane took 18 px out
+  of its note. The review took another line out of the same note. All six of
+  these experiments are above the fold in both browsers now. `verify.mjs` §8
+  reads 31 of 40 in Chromium and 22 of 40 in Firefox, and every failure left
+  is a Group A to G experiment.
+- **Everything else `verify.mjs` measures is green on all 40.** No overflow at
+  four widths. The outcome chip whole at three. 390 px, the primary pane's
+  share, the path, the marks, the accessible names, and no dust anywhere.
+- **Some cells of the resonant measures table are bounds rather than closed
+  forms.** The tank current is a piece of a sine whose amplitude the whole
+  tank sets. The first-harmonic form that would give it is the approximation
+  K1 exists to measure, so it cannot also be the pin. Seven of the thirty
+  cells are named in `unpinned` with that reason and the rest are pinned.
+  Reopens if a closed form for the arc's amplitude is worth the algebra.
+- **The shooting method has corners it does not settle in**, and the app says
+  so rather than drawing a waveform that is not the converter's. A tank run
+  at five times its own resonance into an output filter tens of thousands of
+  periods long is the shape of them. The gate names the load, the capacitor
+  and the frequency. The math panel stops comparing anything, and the top bar
+  reads "did not settle". None of the six experiments' defaults reaches one,
+  and the 480-sample fuzz reaches none. Reopens with a better Jacobian. The
+  saltation matrix at each event gives the true monodromy matrix
+  analytically, where this takes it by difference.
+
+What the adversarial review changed, on top of the fold above:
+
+- **The resonant converters reported a switch node the schematic said could
+  not exist.** `v_sw` was the tank's drive, ±V_in/2 about the divider
+  midpoint. The drawing probes the node between Q1 and Q2, with the ground
+  symbol on the rail below it. So the measures table read −24.0 V to 24.0 V
+  for a node that sits between 0 V and 48 V. `v_sw` is now that node, 0 to
+  V_in. The ±V_in/2 the gain formulas are written in is the node less the DC
+  the tank capacitor holds. Five pins moved with it, all to closed forms, and
+  P_in = ⟨v_sw·i_r⟩ became an exact identity.
+- **The first-harmonic guard had no test of its threshold.** It fires past
+  five per cent, and the panel's row then stops comparing and carries the
+  measured gap. `jk.test.js` now walks seven frequencies from 0.6 to 2.0
+  times resonance. The row's state has to follow the measured error across
+  the threshold, in both directions. The flux-walk form's own footnote is
+  held the same way.
+- **The plan's second measurement for K2 was not made.** §4 asks for the gain
+  against frequency at three loads, as well as the peak against the
+  inductance ratio. The curve is drawn at whatever load the knob is set to.
+  The order the three come in is now pinned. A lighter load gives a taller
+  peak, nearer the lower resonance, and the series tank never passes n/2 at
+  any of them.
+- **K2's note compared a voltage with a ratio.** "The output is 13.7 V, which
+  is 1.14 times n/2" reads as 13.7 V against 0.25. The ratio is what is 1.14
+  times n/2, and the note now says so in its own sentence.
+
+Two of the brief's numbers moved, and both are the engine's:
+
+- **J2's magnetising ripple is 48.0 mA rather than the 192 mA the same knobs
+  give at 1 mH.** L_m is 4 mH in this experiment, chosen so the 24.0 mA offset
+  the mismatch leaves is half the ripple rather than a twentieth of it. The
+  offset itself is what the closed form says to four figures.
+- **K3's hard-switched reference costs 1.04 W at t_sw = 100 ns, not 2.08 W.**
+  The first run of `pins-jk.mjs` built the reference from a half-bridge's own
+  parameter block, which carries the doubled frequency the solver runs it at,
+  and so charged the edges twice. The script now builds the reference from the
+  reader's own frequency at each point, and the note carries 1.04 W.
+
+The §8 phasing note, for the plan:
+
+> **Phase 7 and 8, in part.** J is built, and it needed the third state the
+> plan did not ask for: the magnetising current is the lesson in this family
+> rather than a passenger, so `isolated.js` carries [i_L, v_C, i_M] and a
+> solver for a clock with state events inside it. K is built on the same
+> solver, with the transformer's own current as the state that makes the
+> rectifier exact. I and L, the other halves of those two phases, are not.
+> Next by the plan's list is **H**, closing the loop, which is still the first
+> thing that needs another lab.
+## Power Lab, Groups L, M and N
+
+Groups **L** (motor drives), **M** (interference) and **N** (thermal) are
+built on `lab/power-lmn`, nine experiments on top of the thirty-four the lab
+already carried. The lab runs A to G and then L, M, N, at forty-three
+experiments, and stays dark. `packages/switched` gained `drive.js`, `emi.js`
+and `thermal.js`, each fuzzed against the package's own invariants before any
+of it reached a screen. Every existing signature stands.
+`apps/power-lab/AGENT_BRIEF_LMN.md` is the contract, and
+`apps/power-lab/scripts/pins-lmn.mjs` computed every number in it before a
+word of the notes was written.
+
+**What is built.** Group L: L1 the armature as an inductor with a speed in
+it, L2 four quadrants with the rail taking current back, L3 six-step
+commutation and the torque it leaves. Group M: M1 the input current as a
+pulse train, M2 the input filter and what damping costs, M3 the switch node's
+ring. Group N: N1 loss as temperature, N2 the thermal RC from die to
+heatsink, N3 the switching frequency a package can afford, against the
+ripple the frequency buys.
+
+**What the engine gained.** `drive.js` carries the armature current and the
+shaft speed as one two-state system, so the speed's own ripple is solved
+rather than assumed. `@ee-labs/machines` supplies the machine and the
+averaged answer the exact waveform is held against. `emi.js` solves the
+converter with its input capacitor and line filter as four states, and the
+switch node with its parasitics as four or five. It reads a spectrum twice,
+by exact Fourier integral and through `@ee-labs/dsp`'s FFT. `thermal.js`
+builds a Foster or a Cauer network from one set of stages and steps it with
+the same propagator. A pulsed load is the periodic steady state it is.
+
+**The tests.** 2376 in `apps/power-lab` and `packages/switched`, all green,
+with Groups A to G untouched. The invariants are fuzzed at 240 seeded
+settings a drive kind, 200 for the input side, 60 for the switch node, 200
+networks a model and 120 pulses a model. `pins.test.js` walks all nine
+measures tables and finds every cell pinned to a form or named with the
+reason it has none. `lmn.test.js` pins every figure in every note and try
+line, and then turns the knob each depends on and requires it to follow.
+
+`transient.test.js` walks all nine from rest. Its coverage row names the
+twelve experiments another solver owns, so a later group cannot fall out of
+the list without saying so.
+
+**What the review found, and what was done.** Four things, each now a test
+that failed first.
+
+- **The four-quadrant experiment read η = 112.49 % at D = 30 %,** one of its
+  own chips and the case its note describes. Half duty read −5191 %. The
+  ratio was the shaft's power over the rail's whichever way the power ran,
+  and braking reverses which of the two is the source. It is now read from
+  the source. Where the rail and the shaft both feed the losses the meter
+  says so, rather than dividing two losses. The drives' fuzz gains the bound
+  the power identity allows, 0 < η ≤ 1 in either quadrant.
+- **The switch node's decay was shown but not measured.** §4 asks M3 for the
+  frequency and the decay against the parasitic values. The pane's ζ row
+  carried a bare peak ratio in one column and ζ in the other. The reading is
+  now ζ itself, through the logarithmic decrement, and the math panel checks
+  it with a footnote for the hard-damped corner. `ringOf`'s envelope time
+  constant was the series loop's 2·L_p/R_p, which is 25 times too short here
+  and moves the wrong way. The damping stands across the inductance, so the
+  constant is 2·R_p·C.
+- **The thermal pane contradicted itself at t_sw = 0,** a value the knob
+  offers. The frequency ceiling is infinite there, and the pane printed a
+  dash beside the words "where the whole budget is spent". Each of the three
+  cases has its own sentence now. The Z_th plot drew both networks with
+  nothing to tell them apart, and the note under it names which is solid.
+- **The walking tests skipped all nine.** `transient.test.js` and the
+  continuity walk filtered on `KINDS`, so the thermal three, which are
+  ordinary synchronous bucks, were never walked from rest, and the drives
+  were walked only with a lightened rotor. All nine now walk at their own
+  defaults, and the six sweeps keep the continuity-by-refinement rule the
+  built groups' M(D) and M(R) already keep.
+
+Deferred, with what reopens each:
+
+- **L3's commutation notch is not modelled.** The plan's §4 asks for the
+  torque ripple where the current commutates. The engine's brushless machine
+  has an ideal flat-topped trapezoid, so the line EMF is the same in every
+  sector and a commutation costs the loop nothing. The ripple L3 measures is
+  the chopper's, which is the larger of the two here. The notch needs the
+  outgoing phase's current as a third state, and an EMF that ramps inside a
+  sector. That is an affine drive the segment propagator does not carry, and
+  it reopens with a segment whose forcing is linear in time.
+- **M1 has no conducted-emission mask.** The plan's §4 says the spectrum is
+  E4's problem at 100 kHz, and this group measures the harmonics and the
+  filter that answers them. What it does not draw is a limit line to compare
+  them against. A limit line is a standard's numbers rather than physics, and
+  the suite has nowhere yet to say where they came from. Reopens with a
+  decision about quoting a published limit.
+- **N2's Cauer network is a curve, not a picture.** Both networks are built
+  from one set of stages and both are drawn on the Z_th plot, where the
+  ladder runs 3.84 % cooler at ten milliseconds and reaches the same
+  14 K/W. What the pane does not do is open the ladder up and show the die,
+  the case and the sink at their own temperatures, which is the reason a
+  ladder is worth having. Reopens with a pane that draws a network's nodes.
+- **`verify.mjs` has not been run against the new groups.** This environment
+  has no browser. The four new panes (drive, filter, ring, thermal), the six
+  new drawings and the eight new sweep axes are held as geometry and as
+  rendered markup by unit tests. The fold, the overflow and the phone layout
+  are not. Reopens on a machine with Chromium and Firefox.
+- **The ring's knobs are bounded, and the bound is an affordability gate.**
+  The quadrature cuts every segment into pieces short against the fastest
+  mode in it, so a snubber whose R·C is picoseconds inside a microsecond
+  period costs a million pieces. C_p and C_sn start at 470 pF, R_sn at 5 Ω
+  and f_s at 500 kHz, and the snubber is a switch rather than a resistance
+  turned up until its branch stops mattering. Reopens if `segment.js` ever
+  gains a stiff quadrature.
+
+**Deviations from the plan's numbers.** None. §4's L, M and N rows quote no
+figures, so every number these nine carry is the engine's own. Each was
+computed by `scripts/pins-lmn.mjs` and is pinned in `lmn.test.js`. Two model
+choices are worth the director's eye. The input side is synchronous. That
+keeps a dead interval's third shape out of the lesson about the input
+current's spectrum. Middlebrook's criterion is computed from the operating
+point and labelled a design rule. This lab runs its converters open loop,
+and no instability can be shown by a simulation with no loop in it.
+
+One thing the engine says that §4 does not. N3 asks for one curve with the
+whole tradeoff on it, so the ripple went on the sweep's right axis beside the
+heat. That made a shape visible.
+
+Below 38.07 kHz the ripple is 5.04 A on a
+5.85 A mean, and costs more in conduction than the edges save. The junction
+cools as the frequency rises there, so the title holds above that point and
+not below it. The note names it, at 53.47 °C, and the sweep marks it. The
+first test written for the curve required heat to rise at every step. It
+failed at 24.6 kHz, which is how the shape was found.
+
+**§8 phasing, for the plan.** Step 9 of `POWER_LAB_PLAN.md` §8 is done, and
+step 8's second half with it. L needed a slow mechanical state, and it got
+one by carrying the shaft as a second state in the same piecewise-LTI system
+rather than freezing it, so the quasi-static picture became a measurement.
+M needed spectra and filters, and both came from tools the suite already
+had. N's networks are Circuit Lab RCs with degrees on them, solved by the
+propagator. What is left before the release gate is Groups H, I, J and K,
+and then §8's step 10 in its own order.

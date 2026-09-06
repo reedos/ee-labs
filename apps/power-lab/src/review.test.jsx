@@ -6,6 +6,7 @@ import { termsFor } from './terms.js'
 import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, byId, defaultsOf, offeredTraces } from './experiments.js'
 import { analyse } from './analysis.js'
 import { scopeRange } from './format.js'
+import { LMN_HEADLINES } from './groups/lmn.js'
 
 // The 2026-09-02 review's bar (POWER_LAB_PLAN.md §11), one test per complaint.
 // Each was written against the build the review looked at and watched fail
@@ -79,16 +80,52 @@ describe('the first screen leads with the lesson a knob can perform (§11.4.2, �
 
 describe('no screen contradicts its note (§11.0 claim bugs)', () => {
   it('every experiment declares its headline meter, and A2’s is RMS against the mean, not η', () => {
-    // The four the lab has a meter for: efficiency, power factor, the RMS
-    // against the mean (the chopper's), and total harmonic distortion (the
-    // inverters', whose efficiency is near one and says nothing).
-    for (const e of EXPERIMENTS) expect(['eta', 'pf', 'rms', 'thd'], e.id).toContain(e.headline)
+    // The meters the lab's first seven groups have: efficiency, power factor,
+    // the RMS against the mean (the chopper's), and total harmonic distortion
+    // (the inverters', whose efficiency is near one and says nothing). Group H
+    // adds the averaged model's own frequency, since its ideal synchronous
+    // converters are lossless. A later group appends its own meters as one row,
+    // so three lanes merge by union. Groups L, M and N add the line's ripple,
+    // the switch node's ring and the junction temperature.
+    const METERS = ['eta', 'pf', 'rms', 'thd', 'plant']
+    const added = [...Object.keys(LMN_HEADLINES)]
+    for (const e of EXPERIMENTS) expect([...METERS, ...added], e.id).toContain(e.headline)
     expect(byId.a2.headline).toBe('rms')
     const t = text(topbar(render('a2')))
     expect(t).toMatch(/7\.75/)
     expect(t).toMatch(/5\.00/)
     expect(t).not.toMatch(/100/)
     expect(t).not.toMatch(/η/)
+  })
+  it('the plant experiments show their own frequency, not the η = 100 % of a lossless converter', () => {
+    // Same complaint as A2's: H2 and H3 run ideal synchronous converters, so
+    // η is one at every setting of every knob they offer. What H2 is about is
+    // its corner and what H3 is about is its zero, and each note leads with it.
+    for (const id of ['h2', 'h3']) {
+      const x = analyse(byId[id], defaultsOf(id))
+      expect(x.m.eta, `${id} is lossless`).toBeCloseTo(1, 9)
+      expect(byId[id].headline, id).toBe('plant')
+      const t = text(topbar(render(id)))
+      expect(t, `${id} top bar`).not.toMatch(/η/)
+      expect(t, `${id} top bar`).not.toMatch(/100\.0 %/)
+    }
+    expect(text(topbar(render('h2')))).toMatch(/f_0\s+1\.592 kHz/)
+    expect(text(topbar(render('h3')))).toMatch(/f_z\s+397\.9 Hz/)
+    // H1's converter has 50 mΩ in each of two places, so its η is a reading.
+    expect(byId.h1.headline).toBe('eta')
+    expect(analyse(byId.h1, defaultsOf('h1')).m.eta).toBeLessThan(0.99)
+  })
+  it('an output that alternates about zero reads its RMS, never the average that is rounding dust', () => {
+    // The three-phase bridge's phase voltage averages zero by construction.
+    // The top bar read "V_out −53.29 fV" until the femto probe in
+    // App.smoke.test.jsx was repaired and ran for the first time.
+    for (const id of ['i1', 'i2', 'i3']) {
+      const t = text(topbar(render(id)))
+      expect(t, `${id} top bar`).toMatch(/V_rms/)
+      expect(t, `${id} top bar`).not.toMatch(/V_out/)
+      expect(t, `${id} top bar`).not.toMatch(/[\d.]\s*fV/)
+    }
+    expect(text(topbar(render('i1')))).toMatch(/22\.63 V/)
   })
   it('K and K_crit wait for the experiment that teaches them: not on A3, present from B4 on', () => {
     expect(text(topbar(render('a3')))).not.toMatch(/K\s*=/)
@@ -327,7 +364,8 @@ describe('a path through the material (§11.5, §11.3.3–5)', () => {
   })
   it('the about knob carries its chips, labelled in the knob’s units (§11.5.5)', () => {
     for (const e of EXPERIMENTS) {
-      const s = sidebar(render(e.id)).slice(sidebar(render(e.id)).indexOf('<h2>Knobs</h2>'))
+      const sb = sidebar(render(e.id))
+      const s = sb.slice(sb.indexOf('<h2>Knobs</h2>'))
       const from = s.indexOf(`data-knob="${e.about}"`)
       const to = s.indexOf('data-knob=', from + 10)
       const first = s.slice(from, to < 0 ? undefined : to)
