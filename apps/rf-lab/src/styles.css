@@ -1,0 +1,279 @@
+/* RF Lab's own furniture. The shell, controls and NumField come from
+ * @ee-labs/ui; the group tabs, presets, terms fold and path nav are the house
+ * idiom the other labs use, copied so every lab reads as one suite. The Smith
+ * chart's styles are here because the canvas lives in packages/ui and the
+ * consuming app carries its CSS, which is OneLineCanvas's arrangement. The
+ * block a second lab needs is written out in NEEDS.md. */
+
+/* ---------- the picker: group tabs, then that group's experiments ---------- */
+
+.group-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 0;
+}
+.controls h2.picker-cap {
+  padding: 0 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.group-tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 0 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.group-tab:hover { color: var(--text); }
+.group-tab.is-shown { color: var(--text); border-bottom-color: var(--accent); }
+.group-tab.is-here:not(.is-shown) { color: var(--accent); }
+
+.presets { display: flex; flex-wrap: wrap; gap: 5px; }
+.presets[hidden] { display: none; }
+.preset {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11.5px;
+  padding: 4px 8px;
+}
+.preset:hover { border-color: var(--accent); color: var(--accent); }
+.preset.is-on { border-color: var(--accent); color: var(--accent); background: rgba(56, 224, 176, 0.1); }
+
+.controls { padding-top: 8px; }
+.controls section { margin-top: 6px; padding-bottom: 10px; }
+.controls h2 { padding: 5px 12px 4px; margin-bottom: 6px; }
+.controls .hint { margin-top: 8px; }
+.controls .report-issue { margin-top: 14px; }
+
+/* ---------- the note, the try line, and why ---------- */
+
+.note-title { margin: 10px 0 2px; font-size: 12.5px; font-weight: 650; color: var(--text); }
+
+details.why-fold { margin: 6px 0; }
+details.why-fold > summary {
+  cursor: pointer;
+  font-size: 11.5px;
+  color: var(--dim);
+  list-style: none;
+}
+details.why-fold > summary::before { content: '\25B8  '; font-size: 9px; }
+details.why-fold[open] > summary::before { content: '\25BE  '; }
+details.why-fold p { margin-top: 6px; }
+
+details.terms { margin: 6px 0 2px; }
+details.terms > summary { cursor: pointer; font-size: 11px; color: var(--accent); list-style: none; }
+details.terms > summary::before { content: '\25B8  '; font-size: 9px; }
+details.terms[open] > summary::before { content: '\25BE  '; }
+details.terms > summary::-webkit-details-marker { display: none; }
+details.terms dl { margin: 6px 0 0; }
+details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
+details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+
+.more-knobs { margin-top: 8px; }
+.more-knobs > summary { cursor: pointer; font-size: 12px; color: var(--dim); padding: 4px 0; }
+.more-knobs[open] > summary { margin-bottom: 4px; }
+
+/* ---------- the top bar's path nav ---------- */
+
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 14px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+.topbar-nav .position {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+  font-size: 11px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 52px;
+}
+.topbar-nav .position em { font-style: normal; font-size: 10px; color: var(--dim); }
+.nav-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  padding: 0 0 2px;
+}
+.nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.nav-btn:disabled { opacity: 0.35; cursor: default; }
+
+.flow-node.is-off { color: var(--warn); border-color: rgba(255, 92, 122, 0.4); }
+
+.views.is-single { grid-template-rows: 1fr; }
+.view-head .segmented { flex: 0 0 auto; }
+.view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
+
+/* ---------- the panes ---------- */
+
+/* A grid item sizes from its content unless it is told not to, so every flex
+   parent above a canvas carries min-width and min-height of zero. One pane
+   otherwise sets the whole column's width and the phone scrolls sideways. */
+.rf-plot { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; min-height: 0; }
+.rf-plot svg { width: 100%; height: auto; display: block; }
+.rf-legend { font-size: 11px; color: var(--dim); margin: 0; line-height: 1.5; }
+
+/* The Smith chart. The canvas is square, so it takes its height from its own
+   width and never asks the pane for more room than the pane has. */
+.smith { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; min-width: 0; }
+.smith-svg { width: 100%; max-width: 420px; height: auto; display: block; }
+.smith-disc { fill: var(--panel); stroke: var(--line-bright); stroke-width: 1.5; }
+.smith-grid { fill: none; stroke: var(--line); stroke-width: 0.75; }
+.smith-grid.is-r { stroke: var(--line-bright); }
+.smith-grid.is-g, .smith-grid.is-b { stroke: rgba(240, 162, 60, 0.35); }
+.smith-axis { stroke: var(--line-bright); stroke-width: 1; }
+.smith-circle-line { fill: none; stroke: var(--accent); stroke-width: 1.4; }
+.smith-circle.is-stability .smith-circle-line { stroke: var(--warn); }
+.smith-circle.is-family .smith-circle-line { stroke: var(--amber); }
+.smith-shade { fill: rgba(255, 92, 122, 0.14); }
+.smith-circle-label { fill: var(--dim); font-size: 9px; }
+.smith-path { fill: none; stroke: var(--accent); stroke-width: 2; }
+.smith-path.is-line { stroke: var(--amber); }
+.smith-path.is-dashed { stroke-dasharray: 5 3; }
+.smith-point circle { fill: var(--accent); stroke: var(--bg); stroke-width: 1.2; }
+.smith-point.is-source circle { fill: var(--amber); }
+.smith-point.is-plain circle { fill: var(--dim); r: 3; }
+.smith-point text { fill: var(--text); font-size: 9.5px; }
+.smith-edge, .smith-ref { fill: var(--dim); font-size: 9.5px; }
+.smith-caption { font-size: 11px; color: var(--dim); margin: 0; }
+
+/* The line, drawn against the wavelength. */
+.rf-conductor { fill: var(--line-bright); }
+.rf-standing { fill: none; stroke: var(--accent); stroke-width: 1.8; }
+.rf-tick line { stroke: var(--line); stroke-width: 1; }
+.rf-tick.is-major line { stroke: var(--line-bright); stroke-width: 1.4; }
+.rf-tick text { fill: var(--dim); font-size: 9px; }
+.rf-end { fill: var(--text); font-size: 10px; }
+
+/* The sweep. */
+.rf-axis { stroke: var(--line-bright); stroke-width: 1; }
+.rf-trace { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.rf-dot { fill: var(--accent); }
+.rf-repeat { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
+.rf-marker { stroke: var(--amber); stroke-width: 1.2; }
+.rf-axis-label { fill: var(--dim); font-size: 10px; }
+.rf-axis-tick { fill: var(--dim); font-size: 9px; }
+
+/* A refusal is content, not an error state, so it reads as a note under the
+   plot rather than as a banner over it. */
+.rf-declined {
+  color: var(--warn);
+  font-size: 11.5px;
+  line-height: 1.55;
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+/* The numbers pane. */
+.rf-numbers { overflow: auto; min-height: 0; padding: 4px 2px; }
+.rf-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+.rf-row-label { color: var(--dim); min-width: 190px; }
+.rf-row-value { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; min-width: 0; overflow-wrap: anywhere; }
+.rf-row-formula { margin-left: auto; color: var(--dim); font-size: 11px; font-style: italic; }
+
+@media (max-width: 900px) {
+  .views { display: flex; flex-direction: column; gap: 0; }
+  .views .view { min-height: 60vh; flex: 0 0 auto; }
+  .rf-row-label { min-width: 0; flex: 1 1 100%; }
+  .rf-row-formula { margin-left: 0; flex: 1 1 100%; }
+}
+
+@media (min-width: 1200px) and (max-width: 2399px) {
+  .app { grid-template-columns: 360px 1fr; }
+}
+
+/* The S-parameter view. Four traces in decibels over four angles, and one
+   colour per entry in both halves so the eye carries an entry down the pane. */
+.rf-strace { fill: none; stroke-width: 1.5; }
+.rf-strace.is-s11 { stroke: var(--accent); }
+.rf-strace.is-s21 { stroke: var(--amber); }
+.rf-strace.is-s12 { stroke: var(--warn); stroke-dasharray: 4 3; }
+.rf-strace.is-s22 { stroke: var(--dim); }
+.rf-zero { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 3; }
+.rf-edge { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 3; }
+
+.rf-marker-read { display: flex; flex-wrap: wrap; gap: 6px; }
+.rf-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text);
+}
+.rf-chip em { font-style: normal; font-weight: 650; }
+.rf-chip i { font-style: normal; color: var(--dim); }
+.rf-chip.is-s11 em { color: var(--accent); }
+.rf-chip.is-s21 em { color: var(--amber); }
+.rf-chip.is-s12 em { color: var(--warn); }
+.rf-chip.is-s22 em { color: var(--dim); }
+
+/* The equations pane. One block per closed form, and the answer at the end of
+   the row where a reader's eye lands after the arithmetic. */
+.rf-equations { overflow: auto; min-height: 0; padding: 4px 2px; display: flex; flex-direction: column; gap: 12px; }
+.rf-eq-block h4 { margin: 0 0 5px; font-size: 11.5px; font-weight: 650; color: var(--dim); text-transform: none; }
+.rf-eq {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.rf-eq-lhs { color: var(--text); min-width: 150px; font-weight: 600; }
+.rf-eq-rhs { color: var(--dim); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; min-width: 0; overflow-wrap: anywhere; }
+.rf-eq-value { margin-left: auto; color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.rf-eq-says { margin: 6px 0 0; font-size: 11px; color: var(--dim); line-height: 1.55; }
+.rf-eq-says[data-role='declined'] { color: var(--warn); }
+
+@media (max-width: 900px) {
+  .rf-eq-lhs { min-width: 0; flex: 1 1 100%; }
+  .rf-eq-value { margin-left: 0; }
+}

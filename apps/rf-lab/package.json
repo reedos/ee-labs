@@ -1,0 +1,24 @@
+{
+  "name": "rf-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "The radio front end, where impedance is matched rather than driven: the line at one frequency and the reflection it sends back, the Smith chart as the map of that one number, matching networks in closed form, S-parameters, the transistor near f_T, noise, the mixer and the oscillator.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "pins": "node scripts/pins.mjs"
+  },
+  "dependencies": {
+    "@ee-labs/rf": "*",
+    "@ee-labs/ui": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}
