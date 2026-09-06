@@ -17,6 +17,37 @@ const Row = ({ label, children, formula }) => (
   </div>
 )
 
+/**
+ * Every analysis key the numbers pane draws a row for.
+ *
+ * The view switch calls this view "Numbers", so a reader who presses it is owed
+ * some. E5 and E6 shipped it with nothing in it: the pane had no row for a
+ * magnetic circuit, and the only thing inside the box was the guard sentence.
+ * `panes.test.jsx` holds this list against the rows themselves, so a group that
+ * adds an analysis without a row fails rather than rendering an empty box.
+ */
+const NUMBER_KEYS = [
+  'C', 'L', 'R', 'energy', 'peakField', 'rc', 'bar', 'fourPoint', 'magProbe', 'closed', 'solenoid',
+  'emf', 'moving', 'eddy', 'skin', 'wire', 'tube', 'gauss', 'force', 'atProbe', 'lineField',
+  'sheetField', 'ring', 'curve', 'displacement', 'wave', 'pol', 'refl', 'standing', 'oblique',
+  'grid', 'circuit', 'xfmr',
+]
+
+/** Whether the numbers pane has anything to put in front of a reader. */
+export const hasNumbers = (x) =>
+  NUMBER_KEYS.some((k) => x[k] != null) || (x.vAtProbe != null && Number.isFinite(x.vAtProbe))
+
+/** How far apart two numbers a pane shows as equal really are. */
+const apart = (a, b) => {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return '—'
+  const scale = Math.max(Math.abs(a), Math.abs(b))
+  if (scale === 0) return 'nothing, both are zero'
+  return pct(Math.abs(a - b) / scale)
+}
+
+/** The magnetic circuit an experiment has, whether directly or under a transformer. */
+const magCircuit = (x) => x.circuit || (x.xfmr && x.xfmr.circuit) || null
+
 const Guard = ({ g }) => {
   if (!g) return null
   return (
@@ -31,6 +62,7 @@ export function NumbersPane({ exp, x, p }) {
   const guard = guardOf(x)
   return (
     <div className="fields-numbers" data-role="numbers-pane">
+      {hasNumbers(x) ? null : <p className="hint">This experiment has no closed form to show.</p>}
       {x.C ? <Row label="Capacitance" formula={x.C.formula}>{num(x.C.value, 'F')}{x.C.perMetre != null ? <em> · {num(x.C.perMetre, 'F/m')} per metre</em> : null}</Row> : null}
       {x.L ? <Row label="Inductance" formula={undefined}>{num(x.L.value, 'H')}{x.L.perMetre != null ? <em> · {num(x.L.perMetre, 'H/m')} per metre</em> : null}</Row> : null}
       {x.R ? <Row label="Resistance">{num(x.R.value, 'Ω')}{x.R.perMetre != null ? <em> · {num(x.R.perMetre, 'Ω/m')} per metre</em> : null}</Row> : null}
@@ -55,6 +87,22 @@ export function NumbersPane({ exp, x, p }) {
       {x.magProbe != null ? <Row label="Flux density at the probe">{num(x.magProbe, 'T')}</Row> : null}
       {x.closed != null ? <Row label="Closed form at the same point">{num(x.closed, 'T')}</Row> : null}
       {x.solenoid ? <Row label="On the axis">{num(x.solenoid.B, 'T')} <em>{num(x.solenoid.fraction, '')} of the infinite solenoid</em></Row> : null}
+      {magCircuit(x) ? (
+        <>
+          <Row label="Core reluctance" formula="ℛ = l / (µ₀ µr A)">{num(magCircuit(x).reluctance.core, 'A/Wb')}</Row>
+          <Row label="Gap reluctance" formula="ℛ = g / (µ₀ A)">{num(magCircuit(x).reluctance.gap, 'A/Wb')}</Row>
+          <Row label="Total reluctance" formula="the two in series">{num(magCircuit(x).reluctance.total, 'A/Wb')}</Row>
+        </>
+      ) : null}
+      {x.circuit ? <Row label="Inductance" formula="L = N² / ℛ">{num(x.circuit.inductance, 'H')}</Row> : null}
+      {x.xfmr ? (
+        <>
+          <Row label="Magnetising inductance" formula="L = n₁² / ℛ">{num(x.xfmr.magnetising.primary, 'H')}</Row>
+          <Row label="Primary and secondary" formula="the magnetising part plus the leakage">{num(x.xfmr.L1, 'H')} <em>{num(x.xfmr.L2, 'H')}</em></Row>
+          <Row label="Mutual inductance" formula="M = n₁ n₂ / ℛ">{num(x.xfmr.M, 'H')}</Row>
+          <Row label="Coupling coefficient" formula="k = M / √(L₁ L₂)">{x.xfmr.k.toFixed(4)}</Row>
+        </>
+      ) : null}
       {x.emf ? <Row label="Induced emf, rms">{num(x.emf.rms, 'V')} <em>peak {num(x.emf.peak, 'V')}, coefficient {x.emf.coefficient.toFixed(5)}</em></Row> : null}
       {x.moving ? <Row label="Induced emf">{num(x.moving.emf, 'V')}</Row> : null}
       {x.eddy ? <Row label="Eddy-current loss">{num(x.eddy.P, 'W/m³')}</Row> : null}
@@ -129,13 +177,19 @@ export function MeshPane({ x }) {
           <tr>
             <th>Cells across</th>
             <th>Value</th>
+            <th>Change on the halving</th>
           </tr>
         </thead>
         <tbody>
-          {g.levels.map((l) => (
+          {/* The third column is the point of the table. Two rows quoted to
+              four figures read as the same number while the verdict below says
+              they differ by 0.007 per cent, so the difference is a column and
+              not something a reader has to subtract. */}
+          {g.levels.map((l, i) => (
             <tr key={l.n}>
               <td>{l.n}</td>
               <td>{num(l.value, x.headline?.unit)}</td>
+              <td>{i === 0 ? '—' : pct(Math.abs(l.value - g.levels[i - 1].value) / Math.abs(l.value || 1))}</td>
             </tr>
           ))}
         </tbody>
@@ -153,12 +207,23 @@ export function MeshPane({ x }) {
 
 /** The contour, the flux through it, and the charge it encloses. */
 export function FluxPane({ x }) {
+  // Two numbers shown as equal hide whatever makes them differ. Both of these
+  // panes exist to say that a flux and a charge agree, so both carry the size
+  // of the disagreement rather than leaving it under the rounding.
   if (x.flux) {
     return (
       <div className="fields-flux" data-role="flux-pane">
         <Row label="Flux through the contour">{num(x.flux.value, 'C/m')}</Row>
         <Row label="Charge inside, from the operator">{num(x.flux.inside, 'C/m')}</Row>
-        {x.compare ? <Row label={x.compare.name}>{num(x.compare.value, 'F/m')}</Row> : null}
+        <Row label="The two differ by" formula="the relaxation's own residual">{apart(x.flux.value, x.flux.inside)}</Row>
+        {x.compare ? (
+          <>
+            <Row label="The closed form puts there">{num(x.compare.value, 'C/m')} <em>the charge at one volt</em></Row>
+            <Row label="The grid differs from it by" formula="limited by the mesh, not by the residual">
+              {apart(x.flux.value, x.compare.value)}
+            </Row>
+          </>
+        ) : null}
       </div>
     )
   }
@@ -167,6 +232,9 @@ export function FluxPane({ x }) {
       <div className="fields-flux" data-role="flux-pane">
         <Row label="Flux implies a charge of">{num(x.gauss.impliedCharge, 'C')}</Row>
         <Row label="Charge actually enclosed">{num(x.gauss.enclosed, 'C')}</Row>
+        <Row label="The two differ by" formula="the surface integral's own error">
+          {apart(x.gauss.impliedCharge, x.gauss.enclosed)}
+        </Row>
       </div>
     )
   }
@@ -176,7 +244,7 @@ export function FluxPane({ x }) {
 /** The magnetic circuit, drawn as a circuit: reluctances in series. */
 export function CircuitPane({ x }) {
   // A transformer's own circuit is nested under it (E6); E5 has one directly.
-  const c = x.circuit || (x.xfmr && x.xfmr.circuit)
+  const c = magCircuit(x)
   if (!c) return <p className="hint">This experiment has no magnetic circuit to show.</p>
   return (
     <div className="fields-circuit" data-role="circuit-pane">

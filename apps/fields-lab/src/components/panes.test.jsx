@@ -5,7 +5,7 @@ import { EXPERIMENTS, byId, defaultsOf } from '../experiments.js'
 import { analyse } from '../math.js'
 import { mapPropsFor, profilePropsFor } from '../view.js'
 import FieldMapCanvas from './FieldMapCanvas.jsx'
-import { CircuitPane, FluxPane, MeshPane, NumbersPane } from './panes.jsx'
+import { CircuitPane, FluxPane, MeshPane, NumbersPane, hasNumbers } from './panes.jsx'
 import { InterfacePane, WavePane } from './wavePanes.jsx'
 import { BouncePane, LinePane, SmithPane, SweepPane } from './linePanes.jsx'
 import { GuidePane, PatternPane } from './guidePanes.jsx'
@@ -51,6 +51,11 @@ describe('every view an experiment offers renders', () => {
           out = html(<Pane exp={exp} x={x} p={p} />)
         }
         expect(out.length, `${exp.id} ${view} rendered ${out.length} characters`).toBeGreaterThan(120)
+        // A pane whose whole content is a guard sentence is 120 characters of
+        // nothing. Every view but the two canvases owes the reader a row.
+        if (view !== '2d' && view !== 'profile') {
+          expect(out, `${exp.id} ${view} draws no row, only chrome`).toMatch(/fields-row|fields-table|<canvas/)
+        }
         expect(out, `${exp.id} ${view} is still a stub`).not.toMatch(/not built yet/)
         expect(out, `${exp.id} ${view} shows a NaN`).not.toMatch(/NaN/)
         expect(out, `${exp.id} ${view} shows an undefined`).not.toMatch(/undefined/)
@@ -69,6 +74,23 @@ describe('a pane asked for something the experiment has not got says so', () => 
     it(`${view}`, () => {
       const out = html(<Pane exp={byId.a1} x={bare} p={{}} />)
       expect(typeof out).toBe('string')
+    })
+  }
+})
+
+describe('the numbers pane knows whether it has numbers', () => {
+  // The empty state and the rows are two lists, and they drift apart silently:
+  // E5 offered the numbers view for a month with an empty box behind it. This
+  // holds the one against the other for every experiment in the lab.
+  for (const exp of EXPERIMENTS) {
+    it(`${exp.id}`, () => {
+      const p = defaultsOf(exp.id)
+      const x = analyse(byId[exp.id], p)
+      const out = html(<NumbersPane exp={exp} x={x} p={p} />)
+      expect(hasNumbers(x), `${exp.id}: hasNumbers disagrees with what the pane drew`).toBe(out.includes('fields-row'))
+      if (exp.views.includes('numbers')) {
+        expect(hasNumbers(x), `${exp.id} offers the numbers view with no numbers in it`).toBe(true)
+      }
     })
   }
 })

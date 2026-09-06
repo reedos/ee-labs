@@ -32,7 +32,7 @@ export const VIEW_LABELS = {
   numbers: { label: 'Numbers', title: 'Every closed form for this geometry, with the formula it came from' },
   mesh: { label: 'Mesh', title: 'The three refinements, the change between the last two, and the guard’s verdict' },
   flux: { label: 'Flux', title: 'The contour, the flux through it, and the charge it encloses' },
-  circuit: { label: 'Circuit', title: 'The magnetic circuit as a circuit, with its reluctances in series' },
+  circuit: { label: 'Circuit', title: 'The reluctances in series, the flux they pass, and the gap’s share' },
   wave: { label: 'Wave', title: 'The plane wave in space, with its polarisation ellipse' },
   interface: { label: 'Interface', title: 'The incident, reflected and transmitted waves at a boundary' },
   bounce: { label: 'Bounce', title: 'The ladder diagram, with the load’s trace beside it' },
