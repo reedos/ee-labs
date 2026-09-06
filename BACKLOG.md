@@ -42,7 +42,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Computer Lab | built, dark | merged | | `COMPUTER_LAB_PLAN.md` |
 | Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | `INTERFACES_LAB_PLAN.md` |
 | Grid Lab | built, dark | merged | Power Lab I3 and D1 for two cross-references | `GRID_LAB_PLAN.md` |
-| Photonics Lab | waiting | | Electronics O, Applied Analog Lab | `PHOTONICS_LAB_PLAN.md` |
+| Photonics Lab | built in part, dark | `lab/photonics-lab`, Groups A, E and F | Groups B, C and D unbuilt; B waits on Electronics O | `PHOTONICS_LAB_PLAN.md` |
 | Devices Lab | built, dark | merged | | `DEVICES_LAB_PLAN.md` |
 | Fields Lab | building | `lab/fields-lab` | Groups I to L unbuilt | `FIELDS_LAB_PLAN.md` |
 | Energy Lab | building | `lab/energy-lab` | Machines Lab for the wind group | to write |
@@ -58,7 +58,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Computer Lab | waiting | | Logic Lab | to write |
 | Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | to write |
 | Grid Lab | waiting | | Machines Lab, Electronics companion Newton | to write |
-| Photonics Lab | waiting | | Electronics O, Applied Analog Lab | to write |
+| Photonics Lab | building | `lab/photonics-lab` | Groups B, C and D unbuilt | `PHOTONICS_LAB_PLAN.md` |
 | Devices Lab | waiting | | Electronics C | to write |
 | Signal Integrity | out of this repo | | | |
 
@@ -714,6 +714,87 @@ complete for the whole lab and not only for the built half. `FIELDS_LAB_PLAN.md`
 - **`scripts/verify.mjs`.** Written and not run. It needs a browser and a served
   build, and no Playwright ran in these sittings. A first run reviews the script
   as much as the page.
+
+### Photonics Lab
+
+Built in part and dark. **12 experiments** in Groups A, E and F, on a new
+package `packages/photonics`. `PHOTONICS_LAB_PLAN.md` §9 phases 1 and 2 are
+done, which are the two that depend on nothing unbuilt.
+
+What shipped. `packages/photonics` with `photon.js`, `fibre.js` and
+`cavity.js`, 72 tests, fuzzed across three wavelength bands, random fibres and
+random cavities. Invariants 1, 2, 9, 10, 11 and 12 of the plan's §2.11, each
+named beside the test that measures it. The app on the suite's shell, dark at
+`/photonics-lab/`, with the circuit view, a curve view, the pulse view, the link
+view's first form, the cavity view and the spectrum. 105 tests in the app.
+`AGENT_BRIEF.md` with six lanes and the contracts for the four that are left.
+`scripts/pins.mjs` computes every figure in the lessons.
+
+Two things worth naming, because they are decisions and not omissions.
+
+**The photodiode is a circuit and not a formula.** `photodiodeNet` builds four
+elements of `@ee-labs/network`, and `newtonDC` solves them. A2's flat current
+against reverse bias is a solve at four settings, not an assertion. That also
+brought the lab's one numerical trap. A microamp read across a kilohm from a
+twenty-volt supply is the difference of two voltages that agree to six figures.
+So `photodiode()` returns the reading's own arithmetic floor, and the invariant
+test uses it rather than a chosen epsilon.
+
+**The plan's numbers all held.** Every figure in §4.3 that Groups A, E and F use
+was recomputed by `scripts/pins.mjs` and matched, to the figures the plan
+quotes. Nothing in the plan needed correcting.
+
+Deferred, with what reopens each:
+
+- **Group B, the receiver, b1 to b4.** Not built. It needs the Electronics
+  Lab's Group O for the shot and thermal densities, per plan §9 phase 4.
+  `NEEDS.md` §4 lists exactly what it needs and gives the three figures the two
+  labs must agree on. Reopens when Electronics O is merged and its experiment
+  ids are confirmed.
+- **Group C, the LED and the laser, c1 to c5.** Not built, and nothing outside
+  this lab blocks it. `source.js` is contracted in the brief's §3.4 with the
+  numbers its test has to produce. It is a sitting's work.
+- **Group D, the rate equations, d1 to d4.** Not built, and nothing outside this
+  lab blocks it either. `rate.js` is contracted in the brief's §3.5. It follows
+  Group C in the same sitting, because the threshold current is Group D's and
+  Group C reads it.
+- **The transimpedance amplifier.** B2 and B3 will model the receiver as a
+  photodiode into a load resistance and name the amplifier in a term panel. It
+  belongs to the Applied Analog Lab's front-end group, which is mapped and not
+  started. This is a plan decision (§1) rather than a wait on this lab.
+- **The bit error rate.** B4 will stop at the Q factor. The error rate is the
+  Communications Lab's channel group's.
+- **`link.js` in `packages/rf`.** Plan §2.9 says the optical budget reuses it.
+  `packages/rf` does not exist, so the sum lives in
+  `packages/photonics/src/fibre.js` as `linkBudget`, `lossReach` and
+  `bindingLimit`, tested. Reopens when the RF Lab lands, and the director
+  decides which of the two is the one sum. `NEEDS.md` §7.
+- **The waterfall's promotion to `packages/ui`.** Drawn in the app, and built to
+  the System Lab's shape from the first commit. `NEEDS.md` §5 carries that
+  shape. It recommends promoting the component when the System Lab starts
+  rather than now, because a component with one real user and one guessed one
+  is designed against a guess.
+- **The photodiode, laser and fibre symbols in `Schematic.jsx`.** Plan §3 asks
+  for three. None was added, and none is needed for this sitting to be correct.
+  The photodiode is drawn as the diode and current source it actually is, inside
+  one dashed outline the shared renderer already supports. `NEEDS.md` §6 says
+  the request stands for the sitting that draws an LED beside a laser.
+- **`packages/photonics` needs a row in `EE_LABS_MAP.md` §3.** Director's queue,
+  `PROGRAM.md` §5. `NEEDS.md` §2.
+- **The mirror-loss convention.** `mirrorLoss` uses the plan §2.8 form,
+  `(1/2L) ln(1/R)`, which pins 19.593 per cm for the chip cavity. Some texts
+  spread the same reflectance over a round trip and quote twice this. Nothing in
+  this sitting depends on the choice, because the plan states the photon
+  lifetime as a parameter. The Group D sitting must check its threshold current
+  against the convention before pinning one, and the brief's §3.3 says so.
+- **`scripts/verify.mjs`.** Written and not run. This environment has no
+  browser, so no view has been read as a picture and
+  `REVIEW_PLAYBOOK.md` §11 is unmet. The link view, the waterfall and the
+  spectrum are new drawings and none has been seen. A first run reviews the
+  script as much as the page.
+- **The modulated high-speed link, the eye diagram and jitter** stay with the
+  private `waveform-simulator`, by the root README. This is a boundary rather
+  than a wait, and no dependency reopens it.
 
 ## 3. The director's queue
 
