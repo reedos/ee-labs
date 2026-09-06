@@ -12,7 +12,7 @@
 import { complex as cx } from '@ee-labs/network'
 import { num } from './format.js'
 import { turnedLabel } from './math.js'
-import { WORD, familyOf } from './palette.js'
+import { familyOf, traceWord } from './palette.js'
 
 /** A number part: the text shown and the value behind it. */
 const n = (value, unit, sig = 3) => ({ print: num(value, unit, sig), value, unit, kind: 'num' })
@@ -34,8 +34,30 @@ const say = (...parts) => parts.filter((p) => p !== '' && p != null)
 /** The unit a trace's quantity is read in. */
 const unitOf = (q) => (q.q === 'i' ? 'A' : q.q === 'p' ? 'W' : 'V')
 
-/** "v_C (blue)" the first time a colour word helps — every bright trace names its hue once. */
-const named = (q) => `${q.label} (${WORD[familyOf(q)]})`
+/**
+ * The bright traces of a scope, in the order they are drawn, each with the
+ * words for the colour it is drawn in. Each axis is styled on its own
+ * (ScopeCanvas calls styleTraces once per side), so the shades restart there
+ * and the caption counts them the same way.
+ */
+function brightTraces(scope) {
+  const out = []
+  for (const side of [scope.left, scope.right]) {
+    if (!side) continue
+    const seen = {}
+    for (const q of side.traces) {
+      if (q.dim) continue
+      const family = familyOf(q)
+      const n = seen[family] || 0
+      seen[family] = n + 1
+      out.push({ q, word: traceWord(q, n) })
+    }
+  }
+  return out
+}
+
+/** "v_C (pale blue, dashed)": the label with the colour and dash it is drawn in. */
+const named = (b) => `${b.q.label} (${b.word})`
 
 /** The sample of the energy bookkeeping nearest the cursor — the readout reads the same one. */
 export function energyAt(energy, t) {
@@ -82,11 +104,11 @@ export function captionFor(exp, view, x, params, marks = [], drive = null) {
 
 function scope(exp, x, params, marks) {
   const t = n(x.cursor, 's')
-  const bright = [...exp.scope.left.traces, ...(exp.scope.right ? exp.scope.right.traces : [])].filter((q) => !q.dim).slice(0, 3)
+  const bright = brightTraces(exp.scope).slice(0, 3)
   const readings = []
-  bright.forEach((q, i) => {
-    const v = x.sol[q.q][q.key]
-    readings.push(i === 0 ? '' : i === bright.length - 1 ? ' and ' : ', ', `${named(q)} reads `, n(v, unitOf(q)))
+  bright.forEach((b, i) => {
+    const v = x.sol[b.q.q][b.q.key]
+    readings.push(i === 0 ? '' : i === bright.length - 1 ? ' and ' : ', ', `${named(b)} reads `, n(v, unitOf(b.q)))
   })
   const head = say('At t = ', t, ' ', ...readings)
   const level = marks.find((m) => m.kind === 'level')

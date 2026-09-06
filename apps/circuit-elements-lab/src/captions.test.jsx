@@ -7,6 +7,7 @@ import { marksFor, timeMarks } from './marks.js'
 import { captionFor, captionText, energyAt, sweepAt } from './captions.js'
 import PlotCaption from './components/PlotCaption.jsx'
 import { num } from './format.js'
+import { DASH_OF, SHADES, styleTraces, traceWord } from './palette.js'
 
 // The sentence under every plot says what the plot shows, and every number in
 // it is the solver's (student review, Phase 7). For each experiment and each
@@ -174,6 +175,41 @@ describe('the sentence under the plot', () => {
       }
     })
   }
+
+  // A colour word is a name only if it names one trace. Six scopes draw two
+  // voltages and one drew two powers, and the caption called both "(blue)" or
+  // both "(green)": the reader was sent to the screen with a description that
+  // fits two curves. Every trace the caption reads out must be described by a
+  // phrase no other trace on that scope carries.
+  it('every trace a scope caption reads out is described uniquely', () => {
+    const scopes = EXPERIMENTS.filter((e) => e.views.includes('scope') && e.scope)
+    expect(scopes.length).toBeGreaterThan(20)
+    for (const exp of scopes) {
+      const p = defaultsOf(exp.id)
+      const { x, marks } = setting(exp, p)
+      if (!x.sol || !x.tr) continue
+      const text = captionText(captionFor(exp, 'scope', x, p, marks.scope, null))
+      const words = [...text.matchAll(/\(([a-z ,]+)\)/g)].map((m) => m[1]).filter((w) => /blue|orange|green|gold|purple/.test(w))
+      expect(words.length, `${exp.id}: the caption describes its traces — "${text}"`).toBeGreaterThan(0)
+      expect(new Set(words).size, `${exp.id}: ${words.join(' / ')} — "${text}"`).toBe(words.length)
+    }
+  })
+
+  // The words match the picture: the n-th bright trace of a family is drawn in
+  // the n-th shade with the n-th dash, and the caption says that shade and that
+  // dash.
+  it(`the caption’s colour phrase follows styleTraces`, () => {
+    const traces = [{ q: 'v', key: 'C1' }, { q: 'v', key: 'L1' }, { q: 'v', key: 'R1' }]
+    const styles = styleTraces(traces)
+    const words = traces.map((t, i) => traceWord(t, i))
+    expect(words).toEqual(['blue', 'pale blue, dashed', 'deep blue, dotted'])
+    expect(styles[0].dash).toBe(null)
+    expect(styles[1].dash).toEqual(DASH_OF[1])
+    expect(styles[2].dash).toEqual(DASH_OF[2])
+    expect(styles.map((s) => s.color)).toEqual(SHADES.voltage)
+    // A trace that asks for its own dash is dashed wherever it falls in the order.
+    expect(traceWord({ q: 'i', key: 'S1', dash: true }, 0)).toBe('orange, dashed')
+  })
 
   it('f3: the caption names the dashed line, the ring and τ with the marks’ own values', () => {
     const exp = EXPERIMENTS.find((e) => e.id === 'f3')

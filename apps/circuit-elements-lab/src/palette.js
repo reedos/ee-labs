@@ -29,6 +29,23 @@ export const SHADES = {
 /** The word a caption uses for each hue: "the blue trace is v_C". */
 export const WORD = { voltage: 'blue', current: 'orange', power: 'green', energy: 'gold', angle: 'purple' }
 
+/** The adjective for the second and third shade of a family, and for their dash. */
+const SHADE_WORD = ['', 'pale ', 'deep ']
+const DASH_WORD = ['', ', dashed', ', dotted']
+
+/**
+ * How a caption names the n-th bright trace of a family. The hue alone is not
+ * a name when two voltages share one scope: on H4 the caption called v_L and
+ * v_C both "(blue)" and neither could be found on the screen. The second and
+ * third take the shade and the dash styleTraces already draws them with, so
+ * the words tell the traces apart the same way the picture does.
+ */
+export function traceWord(trace, n) {
+  const i = Math.min(n, SHADE_WORD.length - 1)
+  const dash = trace && trace.dash ? ', dashed' : DASH_WORD[i]
+  return `${SHADE_WORD[i]}${WORD[familyOf(trace)]}${dash}`
+}
+
 /** The CSS custom property each family is published as (styles.css defines them). */
 export const CSS_VAR = { voltage: '--q-voltage', current: '--q-current', power: '--q-power', energy: '--q-energy', angle: '--q-angle' }
 
