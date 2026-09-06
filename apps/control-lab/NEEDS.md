@@ -1,5 +1,41 @@
 # Needs and findings for the other territories
 
+## FOR packages/ui: three shared rules that shipped a defect here, and will elsewhere
+
+Found by screenshot in this lab's verification sitting and worked around
+inside `apps/control-lab` so nothing here is blocked. All three live in
+`packages/ui` and every lab that draws a plot or a topbar has them.
+
+**1. `.flow` is squeezed to nothing between 901px and 1365px.** `.topbar`
+does not wrap above the phone breakpoint. `.topbar-controls` beside it is
+`flex-shrink: 0`, and `.flow` carries `min-width: 0`. Every pixel the row is
+short therefore comes out of the loop strip and out of nothing else.
+
+Measured here on the opening lesson, where the strip needs 419px. It was
+given 356px at 1280, where the verdict read "stable closed lo". It was given
+176px at 1100, and **0px at 901**, where the strip naming the controller, the
+plant and the verdict was not on screen at all. The strip is its own
+horizontal scrollbox on a page that never scrolls, so nothing reported it.
+This app's `styles.css` wraps `.topbar` in that band. The shared rule still
+has the trap for every other lab that uses the strip.
+
+**2. `.app`'s first grid row is a flat `44px`.** A wrapped topbar therefore
+clips instead of growing, which made the workaround above look like it had
+done nothing. Overridden to `auto 1fr` in the same media query here.
+
+**3. `niceStep` can leave an axis with zero as its only label.** `drawFrame`
+asks for `Math.max(2, Math.floor(px / (46 or 90) / k))` divisions. On a short
+pane two divisions over a symmetric range round to a step whose only in-frame
+multiple is zero.
+
+Measured on this lab's root locus at 390x844: one tick on each axis, both
+reading 0, on the view whose whole subject is where the poles are.
+`locusFrame.js` computes the step here now, in `locusTickStep`, and passes
+`xStep` and `yStep`. Its rule is never coarser than the short axis's own
+half-range. The floor belongs in `niceStep` itself, where every lab's short
+panes would get it. A step that places fewer than two labels inside the range
+is not a nice step.
+
 ## Heads-up: custom-plant arrivals now flow from Circuit Lab
 
 Circuit Lab's asControlPlant fallback landed: RLC across R/L and the
