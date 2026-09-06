@@ -12,7 +12,7 @@ import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, FluxPane, ScrubPan
 import { StepPane, PlantPane, PowerPane } from './components/hiPanes.jsx'
 import { threePhaseOutcome, threePhaseFlow } from './groups/hi.js'
 import { sweepMa3 } from './groups/hiAnalysis.js'
-import { fmtz } from './format.js'
+import { fmtz, statScale } from './format.js'
 import { scopeMarks, sweepMarks } from './marks.js'
 import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/schematics.jsx'
 import pkg from '../package.json'
@@ -221,6 +221,8 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
   const shown = [...traces].filter((t) => traceKeys.includes(t))
   const isBuck = exp.kind === 'buck'
   const clocked = isBuck || exp.kind === 'boost' || exp.kind === 'buckboost'
+  // Whose output alternates about zero, so its average carries no reading.
+  const acOutput = exp.kind === 'dimmer' || m.mode === 'inverter' || m.mode === 'threephase'
   const flow = flowNodes(exp, params, x)
   const twoPanes = exp.scope !== false
   const topShare = Math.round((primary === 'scope' ? share : 1 - share) * 100)
@@ -424,16 +426,18 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
         </nav>
         <div className="topbar-controls">
           <span className="topbar-field">
-            {/* An inverter's output averages zero by design, so what its
-                meter shows is the RMS the load actually sees. */}
-            <span>{exp.kind === 'dimmer' || m.mode === 'inverter' ? 'V_rms' : 'V_out'}</span>
-            <b>{exp.kind === 'dimmer' || m.mode === 'inverter' ? fmt(m.sig.vout.rms, 'V', 4) : fmt(m.sig.vout.avg, 'V', 4)}</b>
+            {/* An output that averages zero by design — every inverter's, and
+                the three-phase bridge's phase voltage — reads its RMS here.
+                The average of such a signal is the arithmetic's residue, and
+                the top bar showed it as −53.29 fV until this test caught it. */}
+            <span>{acOutput ? 'V_rms' : 'V_out'}</span>
+            <b>{acOutput ? fmt(m.sig.vout.rms, 'V', 4) : fmt(m.sig.vout.avg, 'V', 4)}</b>
           </span>
           <span className="topbar-field">
             <span>P_out</span>
             <b>{fmt(m.Pout, 'W', 3)}</b>
           </span>
-          <Headline exp={exp} m={m} />
+          <Headline exp={exp} m={m} x={x} />
         </div>
         {/* Where you are on the path, and the way forward and back. */}
         <nav className="topbar-nav" aria-label="Path through the experiments">
@@ -524,7 +528,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                     ripple <b>{fmt(m.sig.vout.pp, 'V', 3)}</b>
                   </span>
                   <span>
-                    i_L <b>{fmt(m.sig.iL.avg, 'A', 3)}</b>
+                    i_L <b>{fmtz(m.sig.iL.avg, 'A', 3, statScale(m.sig.iL))}</b>
                     <em className="prov"> ± {fmt(m.sig.iL.pp / 2, 'A', 3)}</em>
                   </span>
                   {clocked && m.mode === 'DCM' ? (
@@ -714,7 +718,20 @@ export function flowNodes(exp, params, x) {
  * definition and whose lesson is that 1 is not the point, the RMS against
  * the mean.
  */
-function Headline({ exp, m }) {
+function Headline({ exp, m, x }) {
+  // The plant experiments run on ideal synchronous converters, so their
+  // efficiency is one at every setting of every knob they offer — the same
+  // reading A2's rebuild took off its top bar. What each is about is a
+  // frequency: the corner the averaged model has, or the zero the boost has.
+  if (exp.headline === 'plant') {
+    const rhp = Number.isFinite(x.plant.wz)
+    return (
+      <span className="topbar-field">
+        <span>{rhp ? 'f_z' : 'f_0'}</span>
+        <b>{fmt((rhp ? x.plant.wz : x.plant.w0) / (2 * Math.PI), 'Hz', 4)}</b>
+      </span>
+    )
+  }
   if (exp.headline === 'rms')
     return (
       <span className="topbar-field">

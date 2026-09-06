@@ -133,6 +133,9 @@ export const HI_EXPERIMENTS = [
     try: { knob: 'fs', text: 'Set f_s to 10 kHz: the ceiling drops to 2.00 kHz and the panel warns.' },
     group: 'Closing the loop',
     name: 'The buck as a plant',
+    // An ideal synchronous buck is lossless, so η is 1 whatever the knobs do
+    // and says nothing. The corner is what this experiment is about.
+    headline: 'plant',
     params: [Fs(), Sync(1), Vin(), D(), L(), C_(), R(5)],
     views: ['plant', 'math', 'measures', 'balance'],
     view: 'plant',
@@ -151,6 +154,8 @@ export const HI_EXPERIMENTS = [
     try: { knob: 'D', text: 'Set D to 60 %: the zero falls to 255 Hz, the dip to 857 mV.' },
     group: 'Closing the loop',
     name: 'The zero in the wrong half',
+    // As H2: the boost here is lossless, and the number it is about is f_z.
+    headline: 'plant',
     params: [D(0.5), Dstep(0.05), Sync(1), Vin(), L(1e-3), C_(), R(10), Fs()],
     step: { param: 'D', by: 'dD', periods: 200, out: 'vout' },
     traces: ['vsw', 'vout', 'iL'],
