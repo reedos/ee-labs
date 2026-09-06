@@ -6,6 +6,8 @@
 // function, and the second says what a fibre's low-loss window is worth once
 // more than one colour is allowed down it.
 
+import { facetReflectance } from '@ee-labs/photonics'
+
 import { CavityLength, Freq, Index, Lambda, Reflectance, Width } from '../knobs.js'
 
 export const GROUP = 'F · The cavity, and many colours'
@@ -18,7 +20,9 @@ export const F_GROUP = [
     name: 'The cavity, and why it has no transfer function',
     terms: ['cavity', 'freespectralrange', 'finesse', 'linewidth'],
     params: [
-      Reflectance('r', 'Facet reflectance', 0.30864, 'A cleaved facet of index 3.5 gives 0.30864'),
+      // Computed from the index below rather than typed, so this cavity and
+      // the chip C5 turns are one object.
+      Reflectance('r', 'Facet reflectance', facetReflectance({ n1: 3.5 }), 'A cleaved facet of index 3.5 gives 0.30864'),
       CavityLength('L', 'Cavity length', 300e-6, 'Between the two mirrors'),
       Index('n', 'Index inside', 3.5, 'The semiconductor the light travels in'),
       Lambda('lambda', 'Wavelength', 1550e-9, 'Where the range is read in nanometres'),

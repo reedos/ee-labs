@@ -12,24 +12,24 @@ export const LESSONS_D = {
     see:
       'The pump delivers 1.6713 × 10³³ carriers a cubic metre a second. Recombination and stimulated emission ' +
       'take them all back, so the carrier sum is zero. The photon equation balances the same way, and the photon ' +
-      'density sits at 4.9792 × 10²⁰ m⁻³.',
+      'density sits at 4.9793 × 10²⁰ m⁻³.',
     seeReads: [
       ['carriers.0.value', 1.6713e33],
-      ['s', 4.97924e20],
+      ['s', 4.97932e20],
     ],
     try: [
       {
         say: 'Read the carrier equation. The pump adds 1.6713 × 10³³, recombination takes 8.3565 × 10³², and stimulated emission takes 8.3564 × 10³².',
         reads: [
           ['carriers.0.value', 1.6713e33],
-          ['carriers.1.value', -8.35649e32],
-          ['carriers.2.value', -8.3564e32],
+          ['carriers.1.value', -8.35646e32],
+          ['carriers.2.value', -8.35643e32],
         ],
       },
       {
         say: 'Read the photon equation. Stimulated emission adds 2.5069 × 10³², the cavity takes the same away, and the spontaneous term is zero at a coupling of zero.',
         reads: [
-          ['photons.0.value', 2.50692e32],
+          ['photons.0.value', 2.50693e32],
           ['photons.2.value', 0],
         ],
       },
@@ -37,7 +37,7 @@ export const LESSONS_D = {
         say: 'Set the drive current to 10 mA, which is under threshold. The carrier density falls to 1.2483 × 10²⁴ m⁻³ and the photon density is zero.',
         set: { current: 10e-3 },
         reads: [
-          ['n', 1.24829e24],
+          ['n', 1.2483e24],
           ['s', 0],
         ],
       },
@@ -56,22 +56,22 @@ export const LESSONS_D = {
     see:
       'The threshold current is 13.389 mA, and it follows from the six parameters with nothing approximated. ' +
       'Above threshold the carrier density is clamped at 1.6713 × 10²⁴ m⁻³ and the photon density rises in a ' +
-      'straight line. At 26.777 mA it is 4.9792 × 10²⁰ m⁻³.',
+      'straight line. At 26.777 mA it is 4.9793 × 10²⁰ m⁻³.',
     seeReads: [
       ['ith', 13.389e-3],
       ['nth', 1.67129e24],
-      ['s', 4.97924e20],
+      ['s', 4.97932e20],
     ],
     try: [
       {
-        say: 'Set the drive current to 40.166 mA. The photon density doubles to 9.9586 × 10²⁰ m⁻³, because it follows the current above threshold.',
+        say: 'Set the drive current to 40.166 mA. The photon density doubles to 9.9588 × 10²⁰ m⁻³, because it follows the current above threshold.',
         set: { current: 40.166e-3 },
-        reads: [['s', 9.9586e20]],
+        reads: [['s', 9.95883e20]],
       },
       {
-        say: 'Set the confinement factor to 0.5. The threshold falls to 11.238 mA, because more of the mode sits where the gain is.',
+        say: 'Set the confinement factor to 0.5. The threshold falls to 11.237 mA, because more of the mode sits where the gain is.',
         set: { gamma: 0.5 },
-        reads: [['ith', 11.238e-3]],
+        reads: [['ith', 11.237e-3]],
       },
       {
         say: 'Set the transparency density to 2 × 10²⁴ m⁻³. The threshold rises to 21.399 mA, because the material has further to go before it amplifies.',
@@ -144,13 +144,13 @@ export const LESSONS_D = {
 
   d4: {
     see:
-      'The step raises the drive current by 5 per cent. The pair overshoots to 5.9496 × 10²⁰ m⁻³ and the linear ' +
-      'prediction says 5.9234 × 10²⁰ m⁻³. The difference is 5.2639 per cent, which is inside what the pane draws ' +
+      'The step raises the drive current by 5 per cent. The pair overshoots to 5.9497 × 10²⁰ m⁻³ and the linear ' +
+      'prediction says 5.9235 × 10²⁰ m⁻³. The difference is 5.2638 per cent, which is inside what the pane draws ' +
       'without a flag.',
     seeReads: [
-      ['guard.measured', 5.94964e20],
-      ['guard.predicted', 5.92343e20],
-      ['guard.error', 0.052639],
+      ['guard.measured', 5.94973e20],
+      ['guard.predicted', 5.92352e20],
+      ['guard.error', 0.052638],
     ],
     try: [
       {
@@ -162,10 +162,10 @@ export const LESSONS_D = {
         ],
       },
       {
-        say: 'Set the modulation depth to 0.6. The error climbs to 45.597 per cent, and the prediction is not drawn at all.',
+        say: 'Set the modulation depth to 0.6. The error climbs to 45.596 per cent, and the prediction is not drawn at all.',
         set: { depth: 0.6 },
         reads: [
-          ['guard.error', 0.45597],
+          ['guard.error', 0.455964],
           ['guard.declined', true],
         ],
       },

@@ -290,7 +290,7 @@ export const TERMS = {
     name: 'Modulation depth',
     def:
       'How far a step moves the drive current, as a fraction of the bias. It is the knob the guard on the ' +
-      'linearisation is written in. At 5 per cent the linear prediction misses the overshoot by 5.2639 per cent ' +
+      'linearisation is written in. At 5 per cent the linear prediction misses the overshoot by 5.2638 per cent ' +
       'and at 30 per cent it misses by 26.760 per cent.',
   },
   overshoot: {

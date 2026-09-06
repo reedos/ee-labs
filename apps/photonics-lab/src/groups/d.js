@@ -13,11 +13,15 @@
 // modulation depth, and the number behind it is measured by integrating the
 // same pair and comparing the overshoot with what the linear answer predicted.
 
+import { LASER_DEFAULTS } from '@ee-labs/photonics'
+
 import { ActiveVolume, Coupling, Density, Depth, DiffGain, Drive, Fraction, Lifetime } from '../knobs.js'
 
 export const GROUP = 'D · The rate equations'
 
-const TAU_P = Lifetime('tauP', 'Photon lifetime', 1.9862e-12, 'How long a photon stays in the cavity', 1e-13, 1e-10)
+// Not typed. It is the chip's, so Group C's laser and this group's are one
+// device rather than two that round to the same five figures.
+const TAU_P = Lifetime('tauP', 'Photon lifetime', LASER_DEFAULTS.tauP, 'How long a photon stays in the cavity', 1e-13, 1e-10)
 const TAU_C = Lifetime('tauC', 'Carrier lifetime', 2e-9, 'How long a carrier lasts before it recombines', 1e-10, 1e-7)
 const GAIN = DiffGain('g0', 'Differential gain', 2.5e-12, 'How fast the gain grows with carrier density')
 const NTR = Density('ntr', 'Transparency density', 1e24, 'Below it the material absorbs rather than amplifies')

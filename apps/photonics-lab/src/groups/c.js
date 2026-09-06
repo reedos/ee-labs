@@ -11,6 +11,8 @@
 // `math.js` calls that, and C5 turns the cavity that sets it. That is the gate
 // in the brief's §1, kept.
 
+import { LASER_CHIP, LASER_DEFAULTS } from '@ee-labs/photonics'
+
 import {
   ActiveVolume,
   Amp,
@@ -39,7 +41,10 @@ const ETA_SP = Fraction('etaSp', 'Spontaneous efficiency', 0.002, 'What leaves t
 // The LED's own carrier lifetime. It is a different device from the laser
 // Groups C and D bias, so it carries its own default rather than the laser's.
 const TAU_LED = Lifetime('tauC', 'Carrier lifetime', 5e-9, 'How long a carrier lasts before it recombines', 1e-10, 1e-7)
-const TAU_P = Lifetime('tauP', 'Photon lifetime', 1.9862e-12, 'How long a photon stays in the cavity', 1e-13, 1e-10)
+// The photon lifetime is not typed. It is what the chip `rate.js` holds gives
+// under the plan's §2.8 mirror-loss convention, so C4's laser and D2's are one
+// device to the last bit rather than two that round to the same five figures.
+const TAU_P = Lifetime('tauP', 'Photon lifetime', LASER_DEFAULTS.tauP, 'How long a photon stays in the cavity', 1e-13, 1e-10)
 const TAU_C = Lifetime('tauC', 'Carrier lifetime', 2e-9, 'How long a carrier lasts before it recombines', 1e-10, 1e-7)
 const GAIN = DiffGain('g0', 'Differential gain', 2.5e-12, 'How fast the gain grows with carrier density')
 const NTR = Density('ntr', 'Transparency density', 1e24, 'Below it the material absorbs rather than amplifies')
@@ -162,7 +167,10 @@ export const C = [
     name: 'Threshold moves with the mirrors',
     terms: ['photonlifetime', 'mirrorloss', 'facet'],
     params: [
-      Reflectance('r', 'Facet reflectance', 0.30864198, 'A cleaved facet of index 3.5 gives 0.30864'),
+      // The same facet the chip behind TAU_P was cleaved with, computed from
+      // the index rather than typed, so C5 at its defaults reads the threshold
+      // C4 and D2 read.
+      Reflectance('r', 'Facet reflectance', LASER_CHIP.r, 'A cleaved facet of index 3.5 gives 0.30864'),
       CavityLength('cavityLength', 'Chip length', 100e-6, 'Between the two cleaved ends'),
       Index('n', 'Index inside', 3.5, 'The semiconductor the light travels in'),
       Drive('current', 'Drive current', 26.777e-3, 'Straight through the junction'),

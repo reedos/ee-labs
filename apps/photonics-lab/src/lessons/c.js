@@ -32,10 +32,10 @@ export const LESSONS_C = {
         ],
       },
       {
-        say: 'Read the two efficiencies at the default supply. The junction turns 13.080 per cent of its electrical power into light as an LED and 7.6011 per cent as a laser.',
+        say: 'Read the two efficiencies at the default supply. The junction turns 13.080 per cent of its electrical power into light as an LED and 7.6012 per cent as a laser.',
         reads: [
           ['wall.led', 0.1308],
-          ['wall.laser', 0.076011],
+          ['wall.laser', 0.0760116],
         ],
       },
     ],

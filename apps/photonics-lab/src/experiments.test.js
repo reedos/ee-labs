@@ -377,10 +377,21 @@ describe('every lesson is measured', () => {
     return out
   }
 
-  /** A quoted number stands for a value when it is that value rounded to the digits printed. */
+  /**
+   * A quoted number stands for a value when it is that value rounded to the
+   * digits printed.
+   *
+   * The band is half of the last digit printed, and nothing wider. A band of
+   * some fixed fraction instead would let a sentence quote five figures while
+   * the engine returned a different fifth one, which is the defect this lab
+   * shipped twice: a wall-plug efficiency written 7.6011 per cent against a
+   * measured 7.60116, and a guard error written 5.2639 against a measured
+   * 5.26384. `STYLE.md` S12 asks a number to keep its significant figures, and
+   * this is where that is measured. The 1e-9 floor is floating point's own.
+   */
   const stands = (q, v) => {
     const half = 0.5 * 10 ** -q.digits * q.scale
-    return Math.abs(q.value - Math.abs(v)) <= Math.max(0.006 * Math.abs(v), half * (1 + 1e-9))
+    return Math.abs(q.value - Math.abs(v)) <= Math.max(1e-9 * Math.abs(v), half * (1 + 1e-9))
   }
   const close = (got, want, tol) =>
     want === 0 || Math.abs(want) < 1e-30 ? Math.abs(got) <= (tol ?? 1e-12) : Math.abs(got - want) <= (tol ?? 0.006 * Math.abs(want))

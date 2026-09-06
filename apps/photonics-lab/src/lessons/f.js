@@ -6,12 +6,12 @@ export const LESSONS_F = {
   f1: {
     see:
       'The cavity is 300 µm of index 3.5 between two facets that reflect 0.30864. Its resonances stand 142.76 GHz ' +
-      'apart, which is 1.1440 nm at 1550 nm. The finesse is 2.5245 and each line is 56.550 GHz wide.',
+      'apart, which is 1.1440 nm at 1550 nm. The finesse is 2.5245 and each line is 56.549 GHz wide.',
     seeReads: [
       ['fsr', 142.76e9],
       ['fsrWavelength', 1.144e-9],
       ['finesse', 2.5245],
-      ['linewidth', 56.55e9],
+      ['linewidth', 56.549e9],
     ],
     try: [
       {
