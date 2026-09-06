@@ -35,9 +35,14 @@ export function chartPropsFor(exp, p, x) {
   }
 
   if (x.kind === 'chart') {
-    props.points.push({ gamma: x.gamma, label: `z = ${plain(p.r, 3)} + j${plain(p.x, 3)}`, kind: 'load' })
+    props.points.push({ gamma: x.gamma, label: `z = ${rectangular([p.r, p.x], '', 3)}`, kind: 'load' })
     props.circles.push({ ...x.circles.r, label: `r = ${plain(p.r, 3)}`, kind: 'family' })
-    props.circles.push({ ...x.circles.x, label: `x = ${plain(p.x, 3)}`, kind: 'family' })
+    // A reactance of zero is the real axis, which the canvas already draws.
+    // Handing it a circle of infinite radius would give the renderer a centre
+    // and a radius it cannot turn into pixels, so the caption names the family
+    // instead of the picture carrying a second copy of the axis.
+    if (x.straight) props.caption = 'A reactance of zero is the real axis, which is the one member of this family that is a straight line.'
+    else props.circles.push({ ...x.circles.x, label: `x = ${plain(p.x, 3)}`, kind: 'family' })
   }
 
   if (x.kind === 'wave') {
@@ -214,17 +219,17 @@ function mismatchRows(x) {
   const rows = [
     row('Load', labelOf(x.ZL), 'the knobs'),
     row('Reference impedance', num(x.z0, 'Ω'), 'Z_0'),
-    row('Normalised impedance', `${plain(x.place.z[0])} + j${plain(x.place.z[1])}`, 'z = Z_L / Z_0'),
-    row('Reflection coefficient', `${plain(m.gamma[0])} + j${plain(m.gamma[1])}`, '(Z_L − Z_0)/(Z_L + Z_0)'),
+    row('Normalised impedance', rectangular(x.place.z, '', 5), 'z = Z_L / Z_0'),
+    row('Reflection coefficient', rectangular(m.gamma, '', 5), '(Z_L − Z_0)/(Z_L + Z_0)'),
     row('Magnitude and angle', `${plain(m.mag)} ∠ ${m.deg.toFixed(2)}°`, '|Γ| ∠ arg Γ'),
     row('Standing-wave ratio', plain(m.vswr), '(1 + |Γ|)/(1 − |Γ|)'),
     row('Return loss', `${plain(m.returnLossDb)} dB`, '−20 log |Γ|'),
     row('Mismatch loss', `${plain(m.mismatchLossDb)} dB`, '−10 log (1 − |Γ|²)'),
     row('Power accepted', `${plain(100 * m.powerAccepted)} %`, '1 − |Γ|²'),
   ]
-  if (x.y !== Infinity) rows.push(row('Normalised admittance', `${plain(x.y[0])} + j${plain(x.y[1])}`, 'y = 1/z'))
+  if (x.y !== Infinity) rows.push(row('Normalised admittance', rectangular(x.y, '', 5), 'y = 1/z'))
   if (x.shunt) {
-    rows.push(row('After the shunt', `${plain(x.shunt.gamma[0])} + j${plain(x.shunt.gamma[1])}`, 'y + jb, then Γ = −Γ_y'))
+    rows.push(row('After the shunt', rectangular(x.shunt.gamma, '', 5), 'y + jb, then Γ = −Γ_y'))
     rows.push(row('Off its own circle by', x.offCircle.toExponential(2), 'relative to the radius'))
   }
   return rows
@@ -232,13 +237,17 @@ function mismatchRows(x) {
 
 function chartRows(x, p) {
   return [
-    row('Normalised impedance', `${plain(p.r)} + j${plain(p.x)}`, 'the knobs'),
-    row('Reflection coefficient', `${plain(x.gamma[0])} + j${plain(x.gamma[1])}`, '(z − 1)/(z + 1)'),
+    row('Normalised impedance', rectangular([p.r, p.x], '', 5), 'the knobs'),
+    row('Reflection coefficient', rectangular(x.gamma, '', 5), '(z − 1)/(z + 1)'),
     row('Constant-resistance circle', `centre ${plain(x.circles.r.cx)}, radius ${plain(x.circles.r.radius)}`, 'r/(1 + r), 1/(1 + r)'),
-    row('Constant-reactance arc', `centre (${plain(x.circles.x.cx)}, ${plain(x.circles.x.cy)}), radius ${plain(x.circles.x.radius)}`, '(1, 1/x), |1/x|'),
+    row(
+      'Constant-reactance arc',
+      x.straight ? 'the real axis, a straight line' : `centre (${plain(x.circles.x.cx)}, ${plain(x.circles.x.cy)}), radius ${plain(x.circles.x.radius)}`,
+      x.straight ? 'x = 0 sends the arc through infinity' : '(1, 1/x), |1/x|',
+    ),
     row('Constant-conductance circle', `centre ${plain(x.circles.g.cx)}, radius ${plain(x.circles.g.radius)}`, 'the same circle, turned half a turn'),
     row('The point is off the r circle by', x.onCircle.r.toExponential(2), 'relative to the radius'),
-    row('The point is off the x arc by', x.onCircle.x.toExponential(2), 'relative to the radius'),
+    row('The point is off the x arc by', x.onCircle.x.toExponential(2), x.straight ? 'the distance off the real axis, which is the imaginary part of Γ' : 'relative to the radius'),
   ]
 }
 
@@ -252,7 +261,7 @@ function lineRows(x, p) {
     row('One-way delay', num(x.delay, 's'), 'l / v_p'),
     row('Load', labelOf(x.ZL), 'the knobs'),
     row('Reflection at the load', `${plain(x.load.mag)} ∠ ${x.load.deg.toFixed(2)}°`, '(Z_L − Z_0)/(Z_L + Z_0)'),
-    row('Impedance looking in', `${plain(x.zin.Z[0])} + j${plain(x.zin.Z[1])} Ω`, 'Z_0 (Z_L + Z_0 tanh γl)/(Z_0 + Z_L tanh γl)'),
+    row('Impedance looking in', rectangular(x.zin.Z), 'Z_0 (Z_L + Z_0 tanh γl)/(Z_0 + Z_L tanh γl)'),
     row('Reflection at the source', `${plain(x.source.mag)} ∠ ${x.source.deg.toFixed(2)}°`, 'the same formula, at the input'),
     row('Standing-wave ratio', plain(x.load.vswr), '(1 + |Γ|)/(1 − |Γ|)'),
     row('Turn on the chart', `${plain(x.turn.deg, 6)}°`, '2 β l'),
@@ -475,7 +484,10 @@ function twoPortEquations(x, p) {
   const blocks = [
     {
       title: `The S-matrix of ${x.built.name}`,
-      rows: keys.map((k) => eq(`S${k}`, `${plain(x.s[k].re, 5)} + j${plain(x.s[k].im, 5)}`, `${plain(read[k].mag, 5)} ∠ ${read[k].deg.toFixed(2)}°`)),
+      // The rectangular form is the noise-suppressed entry, not the raw one.
+      // The pi attenuator's S11 solves to 2.2e-16, and printing that beside a
+      // magnitude of zero puts two contradictory readings on one row.
+      rows: keys.map((k) => eq(`S${k}`, rectangular(read[k].zero ? [0, 0] : [x.s[k].re, x.s[k].im], '', 5), `${plain(read[k].mag, 5)} ∠ ${read[k].deg.toFixed(2)}°`)),
       says: `Every entry is measured with the other port terminated in ${plain(p.z0, 4)} Ω.`,
     },
   ]
@@ -492,7 +504,7 @@ function twoPortEquations(x, p) {
     rows: [
       eq('Exists', conv.names.join(', '), `${conv.count} of 4`),
       ...(conv.z.ok ? [eq('Z', 'Z_0 (I + S)(I − S)⁻¹', `${rectangular(conv.z.M[0][0])} at port 1`)] : []),
-      ...(conv.abcd.ok ? [eq('ABCD', 'the chain matrix', `A = ${plain(conv.abcd.M[0][0][0], 5)} + j${plain(conv.abcd.M[0][0][1], 5)}`)] : []),
+      ...(conv.abcd.ok ? [eq('ABCD', 'the chain matrix', `A = ${rectangular(conv.abcd.M[0][0], '', 5)}`)] : []),
       ...(conv.roundTrip.ok ? [eq('S to Z to ABCD to Y to S', 'relative to the matrix scale', conv.roundTrip.error.toExponential(2))] : []),
     ],
     // A description this two-port does not have is a refusal with a reason,
@@ -518,8 +530,8 @@ function chartEquations(x, p) {
     {
       title: 'The map',
       rows: [
-        eq('z', 'Z_L / Z_0', `${plain(p.r ?? 0, 5)} + j${plain(p.x ?? 0, 5)}`),
-        eq('Γ', '(z − 1)/(z + 1)', `${plain((x.gamma || [0, 0])[0], 5)} + j${plain((x.gamma || [0, 0])[1], 5)}`),
+        eq('z', 'Z_L / Z_0', rectangular([p.r ?? 0, p.x ?? 0], '', 5)),
+        eq('Γ', '(z − 1)/(z + 1)', rectangular(x.gamma || [0, 0], '', 5)),
       ],
       says: '',
     },

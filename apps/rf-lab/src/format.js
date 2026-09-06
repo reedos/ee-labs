@@ -46,15 +46,24 @@ export const db = (v) => (v === Infinity ? '∞ dB' : Number.isFinite(v) ? `${Nu
 /** A dimensionless number, such as a reflection magnitude or a standing-wave ratio. */
 export const plain = (v, sig = 5) => (v === Infinity ? '∞' : Number.isFinite(v) ? Number(Number(v).toPrecision(sig)).toString() : '—')
 
-/** A complex impedance as "50.00 − j8.80 Ω", which is how this lab writes one. */
-export function rectangular(z, unit = 'Ω') {
+/**
+ * A complex impedance as "50.00 − j8.80 Ω", which is how this lab writes one.
+ *
+ * Every complex number a reader sees comes through here, and the two reasons
+ * are in the two lines below the scale. The sign belongs in front of the j, so
+ * that a negative reactance reads as a subtraction rather than as "+ j−8.80".
+ * And a part far below the scale of the pair is the arithmetic's noise: the
+ * quarter wave's input impedance solves to 25 − j2.3e-15 Ω, and A3's note beside
+ * it says the answer is exactly 25.000 Ω.
+ */
+export function rectangular(z, unit = 'Ω', sig = 4) {
   if (z === Infinity) return 'open'
-  if (!Array.isArray(z)) return num(z, unit)
+  if (!Array.isArray(z)) return num(z, unit, sig)
   const scale = Math.max(Math.abs(z[0]), Math.abs(z[1]))
   const re = isNoise(z[0], scale) ? 0 : z[0]
   const im = isNoise(z[1], scale) ? 0 : z[1]
   const sign = im < 0 ? '−' : '+'
-  return `${Number(re).toPrecision(4)} ${sign} j${Number(Math.abs(im)).toPrecision(4)}${unit ? ' ' + unit : ''}`
+  return `${Number(re).toPrecision(sig)} ${sign} j${Number(Math.abs(im)).toPrecision(sig)}${unit ? ' ' + unit : ''}`
 }
 
 /** A complex number as "0.3333 ∠ 0.00°", which is how a reflection coefficient is read. */

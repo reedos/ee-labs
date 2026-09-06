@@ -147,16 +147,24 @@ function analyseChart(exp, p) {
   }
   const z = [p.r, p.x]
   const gamma = R.zToGamma(z)
+  // A reactance of zero is the one member of its family that is a straight
+  // line. Its circle is centred at infinity with an infinite radius, which is
+  // the correct answer to a question the chart asks in circles, and the real
+  // axis is what a reader sees. The pane names that case rather than dividing
+  // by the radius and printing NaN, and the distance off it is the distance
+  // off the axis, which is the imaginary part of Γ.
+  const straight = !Number.isFinite(circles.x.radius)
   return {
     z0: p.z0,
     z,
     gamma,
     circles,
+    straight,
     // How far the point lands from each of the two circles it is supposed to
     // sit on. Both are zero, and the test is what says so.
     onCircle: {
       r: R.circleError(circles.r, gamma),
-      x: R.circleError(circles.x, gamma),
+      x: straight ? Math.abs(gamma[1]) : R.circleError(circles.x, gamma),
     },
     families: R.chartFamilies({ mode: 'impedance' }),
   }

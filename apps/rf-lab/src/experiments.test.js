@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, VIEW_LABELS, byId, defaultsOf, groupOf, letterOf, viewLabel } from './experiments.js'
 import { readQuantity } from './lessons.js'
 import { analyse, refusalOf } from './math.js'
-import { chartPropsFor, linePropsFor, numberRowsFor, sweepPropsFor } from './view.js'
+import { chartPropsFor, equationBlocksFor, linePropsFor, numberRowsFor, sweepPropsFor } from './view.js'
 import { TERMS } from './terms.js'
 import { reportSummary } from './report.js'
 import { num } from './format.js'
@@ -442,5 +442,97 @@ describe('the headline a reader sees is the number a test read', () => {
     expect(Math.abs(x.el.degrees - 90)).toBeLessThan(1e-9)
     expect(Math.abs(x.zin.Z[0] - 25)).toBeLessThan(1e-9)
     expect(Math.abs(x.zin.Z[1])).toBeLessThan(1e-12)
+  })
+})
+
+// ------------------------------------------------- what the panes actually print
+
+// `REVIEW_PLAYBOOK.md` §11: read the screen as a student would. The tests above
+// read the analysis, and a pane can still spoil an exact answer on the way to
+// the screen. Three ways it did.
+//
+// A3 says a quarter wave turns 100 ohms into exactly 25 ohms. The solve returns
+// 25 − j2.3e-15, and the row printed "25 + j-2.2962e-15 Ω", which is a
+// femto-ohm offered as a measurement beside a note that says "exactly".
+//
+// A minus sign belongs in front of the j. A row built as the real part, then
+// "+ j", then the imaginary part prints a capacitive load as "0.6 + j-0.8",
+// which reads as a sum of a positive and a negative rather than a subtraction.
+//
+// And a normalised reactance of zero is the one member of its family that is a
+// straight line, so its circle has an infinite radius. The pane divided by that
+// radius and printed NaN, and handed the canvas a centre it cannot place.
+describe('every pane prints a number a reader can read', () => {
+  /** The settings a reader types: the defaults, the ends of each knob, and the round numbers between. */
+  function settings(e) {
+    const d = defaultsOf(e.id)
+    const out = [d]
+    for (const k of e.params) {
+      const tries = k.kind === 'choice' ? k.options.map((o) => o.value) : k.kind === 'toggle' ? [0, 1] : [k.min, k.max, ...[0, 1, 50, 100].filter((v) => v >= k.min && v <= k.max)]
+      for (const v of tries) out.push({ ...d, [k.key]: v })
+    }
+    return out
+  }
+
+  const values = (e, p, x) => [
+    ...(e.views.includes('numbers') ? numberRowsFor(e, p, x).map((r) => [r.label, r.value]) : []),
+    ...(e.views.includes('equations') ? equationBlocksFor(e, p, x).flatMap((b) => b.rows.map((r) => [`${b.title} · ${r.lhs}`, `${r.rhs} = ${r.value}`])) : []),
+  ]
+
+  it('no row anywhere in the knobs reads NaN, an infinity it did not mean, or a minus sign after the j', () => {
+    for (const e of EXPERIMENTS) {
+      for (const p of settings(e)) {
+        const x = analyse(e, p)
+        if (x.declined) continue
+        for (const [label, value] of values(e, p, x)) {
+          const where = `${e.id} ${label} = "${value}" at ${JSON.stringify(p)}`
+          expect(String(value), where).not.toMatch(/NaN|undefined|Infinity/)
+          expect(String(value), where).not.toMatch(/j\s*-/)
+        }
+      }
+    }
+  })
+
+  it('the chart is handed a centre and a radius it can turn into pixels', () => {
+    for (const e of EXPERIMENTS.filter((q) => q.views.includes('chart'))) {
+      for (const p of settings(e)) {
+        const x = analyse(e, p)
+        if (x.declined) continue
+        const props = chartPropsFor(e, p, x)
+        for (const c of [...props.circles, ...props.grid]) {
+          const where = `${e.id} circle ${c.label ?? c.family} at ${JSON.stringify(p)}`
+          expect(Number.isFinite(c.cx) && Number.isFinite(c.cy) && Number.isFinite(c.radius), where).toBe(true)
+        }
+        for (const q of props.points) expect(Number.isFinite(q.gamma[0]) && Number.isFinite(q.gamma[1]), `${e.id} point ${q.label}`).toBe(true)
+      }
+    }
+  })
+
+  it('A3 prints 25 ohms with no femto-ohm beside it', () => {
+    const { exp, p, x } = at('a3')
+    const shown = numberRowsFor(exp, p, x).find((r) => r.label === 'Impedance looking in')
+    expect(shown.value).toBe('25.00 + j0.000 Ω')
+  })
+
+  it('the entry a solve returns as its own noise is zero in both columns of the equations pane', () => {
+    // D2's note says the pi attenuator's S11 is zero. The magnitude column read
+    // zero and the rectangular column read 2.2e-16 beside it.
+    const { exp, p, x } = at('d2')
+    const block = equationBlocksFor(exp, p, x).find((b) => b.title.startsWith('The S-matrix'))
+    const s11 = block.rows.find((r) => r.lhs === 'S11')
+    expect(s11.rhs).toBe('0.0000 + j0.0000')
+    expect(s11.value).toMatch(/^0 ∠/)
+  })
+
+  it('B2 at a reactance of zero names the real axis instead of a circle', () => {
+    // x = 0 is a setting the knob reaches and a reader types. Its arc is the
+    // one member of the family that is a straight line, and the app says so.
+    const exp = byId.b2
+    const p = { ...defaultsOf('b2'), x: 0 }
+    const x = analyse(exp, p)
+    const rows = numberRowsFor(exp, p, x)
+    expect(rows.find((r) => r.label === 'Constant-reactance arc').value).toBe('the real axis, a straight line')
+    expect(rows.find((r) => r.label === 'The point is off the x arc by').value).toBe('0.00e+0')
+    expect(chartPropsFor(exp, p, x).caption).toMatch(/real axis/)
   })
 })
