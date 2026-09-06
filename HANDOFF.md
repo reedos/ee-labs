@@ -1,5 +1,52 @@
 # Handoff: continuing the EE Labs program from another session
 
+## Local continuation, 2026-09-06
+
+This section supersedes the branch and verification status in the earlier
+snapshot below. No continuation changes have been pushed or released.
+
+The local integration snapshot was `88d4cfe`, shared by master and
+`claude/advanced-analog-labs-5eh3qd`. Its baseline passed 10,957 tests in
+358 files. The saved verification branches were fetched from origin.
+
+Power verification resumed on `verify/power-lab` in
+`.claude/worktrees/power-verification`. Checkpoint `c6d891e` reconciles the
+saved fixes with Groups H through N. Its full suite passes 11,027 tests in
+359 files. The five-app sibling-path build passes. Screenshots cover 102
+views across eleven experiments at desktop and phone sizes.
+
+The checkpoint fixes motor sweep coordinates, speed predictions on current
+axes, logarithmic trace mapping, efficiency markers, and spectrum captions.
+The browser harness now fails on missing browsers and preserves failures
+when another browser aborts. `apps/power-lab/NEEDS.md` has the detailed report.
+
+Power's browser layout gate remains open. Do not treat the checkpoint as a
+completed verification branch. The final-run logs are in its worktree:
+`verification-browser-final.log` and `verification-firefox-final.log`.
+Firefox needs execution outside the Windows sandbox to create pages here.
+`verification-final.log` records the passing full suite.
+
+The other eight branches are unchanged. Circuit Elements remains at WIP
+`0795f5b`. Circuit, Control, Signal, Machines, Random, Instruments and Fields
+still have their previously completed, unmerged verification branches.
+The saved run was recovered from Git rather than replayed through Workflow.
+
+Next, resolve Power's remaining browser findings and finish Elements.
+Review and integrate the nine verification branches before VLSI and
+Interfaces, then the second harness wave. Applied Analog, Analog IC and
+Mixed-Signal follow in the order recorded below.
+
+The main workspace contains concurrent lab edits and the splash experiment.
+Neither belongs to the Power checkpoint. Preserve them when integrating.
+`.claude/worktrees/lab-verification` holds the untouched baseline on
+`integration/lab-verification`, with its baseline test and prose logs.
+
+Repository prose lint had 330 findings before this continuation and 316
+afterward, across 80 files. Power's NEEDS file is clean. The remaining
+documentation findings are not a passing repository prose gate.
+
+## Earlier director snapshot
+
 Written 2026-09-06 by the director session that took over from the first handoff,
 paused at Reed's weekly usage limit. Everything below is on origin. Read this file,
 then `PROGRAM.md` in full, then `BACKLOG.md` §3 and §1.

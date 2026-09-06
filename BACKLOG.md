@@ -918,6 +918,24 @@ Items that cross labs and land at integration.
   1e-15 times the load's scale and `abcdToS` against 1e-14 times the matrix norm.
   The reviewer asks for one rule, stated once, as the brief's section 9 wants.
 
+### Local verification continuation, 2026-09-06
+
+Power verification resumed from its saved WIP branch. Checkpoint `c6d891e`
+on `verify/power-lab` incorporates integration snapshot `88d4cfe`, including
+Groups H through N. It is local and unmerged. The main workspace's concurrent
+lab and splash changes were left untouched.
+
+The checkpoint corrects motor sweep coordinates, mismatched prediction
+quantities, logarithmic trace mapping, efficiency markers and spectrum
+captions. The full suite passes 11,027 tests in 359 files. Its five-app
+sibling-path build passes. Desktop and phone screenshots cover 102 views.
+
+Power's browser layout gate remains open. The app's NEEDS file and the
+current section of HANDOFF.md locate the remaining findings and run logs.
+The other eight verification branches have not changed or been integrated.
+The next milestone remains the nine-lab verification wave, before VLSI and
+Interfaces. No release status changed.
+
 ### Paused at the weekly usage limit, 2026-09-06
 
 `HANDOFF.md` is rewritten for the session that continues, and it names every
