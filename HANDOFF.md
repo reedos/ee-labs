@@ -6,13 +6,23 @@ Reed rejected the initial VLSI and Interfaces review. Their automated checks mis
 This section supersedes the readiness statements in the earlier checkpoint.
 Work remains on `integration/program-director` in `.claude/worktrees/program-director`.
 
-Both first groups are being corrected before further expansion. The original four labs are the reference implementations.
+Both first groups have usability corrections at `e3afe13`. The original four labs are the reference implementations.
 The corrections cover shared sidebar formatting, playback, held comparison axes, plot height and visible worked analysis.
 `PROGRAM.md` section 8 now requires these checks before another student review.
 The new labs remain dark. Their first-group acceptance remains open.
 
 The local preview remains `http://127.0.0.1:47630/`.
 Each app's `NEEDS.md` records its revised behavior and evidence locations.
+The final browser logs are `interfaces-rework-chromium.log`, `interfaces-rework-firefox.log`,
+`vlsi-rework-chromium.log` and `vlsi-rework-firefox.log` in this worktree.
+All four runs pass against assembled sibling paths. The shared numeric-focus regression passes in the original four apps.
+
+`review-rework-final-scoped.log` records 342 passing tests in 29 files.
+`review-rework-build.log` records the passing all-app build.
+The full suite passes 11,096 tests in 373 files at the frozen source checkpoint.
+Its evidence is `review-rework-full-suite-final.log`, with a duration of 335.64 seconds.
+The earlier `review-rework-full-suite.log` was stopped because source files changed during the run.
+Global prose lint retains 330 inherited findings. All six edited documents pass their scoped check.
 Reed's main-workspace changes and upstream notation commit remain outside this worktree.
 No changes have been pushed or released.
 
