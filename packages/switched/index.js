@@ -70,6 +70,8 @@ export {
 } from './src/inverter.js'
 export { lossLedger, activeMechanisms, LOSS_ROWS } from './src/ledger.js'
 export { walkPeriod, eventSteadyState, periodIntegral, signalAverage, signalStats } from './src/events.js'
+export { forward, pushPull, fullBridge, pushPullFamily, forwardFamily, forwardM, forwardMeasures, windowedSteadyState, walkWindows, resetCeiling, fluxWalk, FORWARD_KINDS, FORWARD_DEFAULTS } from './src/isolated.js'
+export { resonantConverter, resonantSteadyState, resonantMeasures, gainCurve, fhaGain, fhaRatio, seriesResonance, lowerResonance, tankImpedance, tankQ, acLoad, hardSwitchedEdgeLoss, RESONANT_KINDS, RESONANT_DEFAULTS } from './src/resonant.js'
 export {
   rectifier,
   rectifierSteadyState,

@@ -58,6 +58,7 @@ import {
   peakEfficiencyLoad,
 } from '@ee-labs/switched'
 import { analyseThreePhase, loopFields, HI_KINDS } from './groups/hiAnalysis.js'
+import { analyseJk } from './groups/jk.js'
 
 // The knobs a buck experiment may omit take the plan's defaults.
 export const BUCK_DEFAULTS = {
@@ -106,6 +107,7 @@ export function coreParams(params) {
 }
 
 export function analyse(exp, params) {
+  if (exp.jk) return analyseJk(params, exp)
   if (exp.kind === 'linreg') return analyseLinear(params)
   if (exp.kind === 'chopper') return analyseChopper(params)
   if (exp.kind === 'rectifier') return analyseRectifier(params, exp)

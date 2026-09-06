@@ -17,13 +17,17 @@
 // G where the watts go. The control bridge and the groups after it are the
 // plan's later phases and are not here yet.
 //
+// Groups J and K live in their own file, `groups/jk.js`, and join every table
+// here by one line each at the end of it. Three lanes built groups at once,
+// and a union is a merge the director can do without reading either.
+//
 // The plan's letters live in the ids (a1 … g4) and nowhere the reader sees:
 // a list that runs A, B, C, E advertises the group that is not built yet,
 // and the letters said nothing a name does not.
 
 import { HI_GROUPS, HI_GROUP_INTROS, HI_EXPERIMENTS, HI_TRACES, HI_VIEWS, HI_SWEEP_Y } from './groups/hi.js'
 
-export const GROUPS = ['Why switch', 'The buck', 'Boost & buck-boost', 'Magnetics', 'AC in', 'Inverters', 'Losses', ...HI_GROUPS]
+export const GROUPS = ['Why switch', 'The buck', 'Boost & buck-boost', 'Magnetics', 'AC in', 'Inverters', 'Losses', ...HI_GROUPS, ...JK_GROUPS]
 
 // What each group sets out to establish, read once at its boundary: the
 // sidebar shows it on the group's first experiment and while another group's
@@ -51,7 +55,18 @@ export const GROUP_INTROS = {
     'Every loss so far has been one bar on a chart. This group prices them against frequency, against ' +
     'load, and against each other in a ledger that has to add up.',
   ...HI_GROUP_INTROS,
+  ...JK_GROUP_INTROS,
 }
+
+import {
+  JK_GROUPS,
+  JK_GROUP_INTROS,
+  JK_TRACES,
+  JK_VIEWS,
+  JK_SWEEP_X,
+  JK_SWEEP_Y,
+  JK_EXPERIMENTS,
+} from './groups/jk.js'
 
 // ------------------------------------------------------------ knobs
 const Vin = (def = 12) => ({ key: 'Vin', label: 'V_in', unit: 'V', min: 1, max: 48, scale: 'linear', step: 0.1, default: def, hint: 'Input voltage' })
@@ -114,6 +129,7 @@ export const TRACES = {
   iD: { label: 'i_D', axis: 'A', title: 'Current in the diode (or synchronous switch)' },
   iin: { label: 'i_in', axis: 'A', title: 'Current drawn from the source (phase a, for the three-phase bridge)' },
   ...HI_TRACES,
+  ...JK_TRACES,
 }
 
 /** The trace pills the scope offers: the experiment's own list, else its opening traces. */
@@ -130,6 +146,7 @@ export const VIEWS = {
   scrub: { label: 'Scrub', title: 'The conducting path at one instant, scrubbed through the period' },
   ledger: { label: 'Ledger', title: 'Every loss mechanism, its formula, and the residual the identity leaves' },
   ...HI_VIEWS,
+  ...JK_VIEWS,
 }
 
 // What a sweep can put on its axes. `sweepFor` in App.jsx runs the matching
@@ -142,6 +159,7 @@ export const SWEEP_X = {
   alpha: { label: 'α', unit: '°', scale: 'linear', fmt: (v) => `${v.toFixed(0)}°` },
   ma: { label: 'm_a', unit: '', scale: 'linear', fmt: (v) => `${(v * 100).toFixed(0)} %` },
   fsw: { label: 'f_sw', unit: 'Hz', scale: 'log' },
+  ...JK_SWEEP_X,
 }
 // A sweep's `y2` goes on a right-hand axis of its own, unless the sweep says
 // `shared: true` — then both curves share the left axis (the chopper's ⟨v⟩
@@ -160,6 +178,7 @@ export const SWEEP_Y = {
   v1: { label: 'fundamental, peak', unit: 'V', lo: 0 },
   thd: { label: 'THD of v_out', unit: '', lo: 0, percent: true },
   ...HI_SWEEP_Y,
+  ...JK_SWEEP_Y,
 }
 
 // The top bar's third meter is the experiment's own headline — η for a
@@ -960,6 +979,7 @@ export const EXPERIMENTS = [
     terms: ['efficiency', 'conduction-loss', 'switching-loss'],
   }),
   ...HI_EXPERIMENTS,
+  ...JK_EXPERIMENTS,
 ]
 
 // The knob an experiment is about (`about`) is the first in its list, so it

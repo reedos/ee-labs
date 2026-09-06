@@ -49,6 +49,60 @@ says `dark`, and `src/release.test.js` fails if any of it is.
    conduction scrub's dimming is two class names in this app's own
    stylesheet.
 
+## From the director, for Groups J and K
+
+Six experiments on top of the thirty-four, in two groups: the forward, the
+push-pull and the full bridge, then the series resonant tank, the LLC and
+what its soft edge saves. The lab is at forty. `packages/switched` gained the
+forward family and its solver in `src/isolated.js`, and `src/resonant.js`.
+Every existing signature stands, and `apps/power-lab/AGENT_BRIEF_JK.md` names
+what each contract is.
+
+1. **The splash count moves to 40 at release.** §7 of the plan pins "54
+   experiments" as the number the card will carry when the whole curriculum is
+   built, and `release.test.js` demands whatever number the card claims. The
+   card and the README row are written once, against the count on the day.
+2. **Six files outside this group's own were touched, each by one line per
+   table**, so three lanes building at once merge by union rather than by
+   reading each other. `experiments.js` takes `JK_GROUPS`, `JK_GROUP_INTROS`,
+   `JK_TRACES`, `JK_VIEWS`, `JK_SWEEP_X`, `JK_SWEEP_Y` and `JK_EXPERIMENTS` by
+   spread. `math.js`, `terms.js` and `analysis.js` take one entry each.
+   `App.jsx` takes three (the sweep, the flow chips and the outcome line) and
+   the Family pane. `ScopeCanvas.jsx` takes two trace colours.
+3. **Two shared surfaces of the app changed shape, and both are additive.**
+   `schematics.jsx` exports its drawing kit as `KIT` and hands it to
+   `jkDrawings(KIT)`, so a group's drawings live beside it rather than inside
+   it. `panes.jsx`'s `conductingIn(name, topology)` takes a second argument
+   with a default. A name's prefix is the right rule for two switches and the
+   wrong one for a resonant bridge, where Q1 and Q2 each meet all three
+   rectifier states. A lane that wants either can follow the same shape.
+4. **One fix in `panes.jsx` was not this group's.** The scrub read a signal
+   from the first two state components, so every signal of a converter with
+   three or four of them was wrong by whatever the rest were worth. Nothing
+   before this group had more than two, so nothing before it was affected.
+5. **Nothing new is needed from `packages/ui`, `packages/explain` or
+   `packages/network`.** The Family pane is a table in this app's own
+   stylesheet, and the two new sweeps use `SweepCanvas` as it stands, with a
+   `pred` line and a shared second axis it already draws.
+6. **`packages/switched/src/isolated.js` now carries a second solver.**
+   `windowedSteadyState` is the clock with state events inside it, and
+   `resonant.js` imports it. A lane that needs the same shape should use it
+   rather than write a third. The shape is a clocked converter whose
+   sub-intervals its own state chooses.
+7. **The 1366×768 fold needs about 25 px back, once, in the shell.**
+   `verify.mjs` §8 passes 31 of 40 in Chromium and 22 of 40 in Firefox, whose
+   range inputs are taller. Chromium's nine are B1, B2, B4, C1, C5, E1, E4, E6
+   and F2, over by 0 to 23 px. Firefox's eighteen are those nine plus A1, A3,
+   B3, B5, B6, B8, C2, C3 and C4, over by 0 to 53 px. Most of them open a
+   group, which puts a 48 px intro above the note.
+8. **That fold is the shell's, and none of it is these two groups'.** The same
+   nine are over with Groups J and K removed from the build, measured at 25 of
+   34 in Chromium on 2026-09-05. This lane gave back the 28 px it had added,
+   and the review took another 18 px out of J1's note, which was the one
+   experiment of these six over in either browser. All six are above the fold
+   in both browsers now. One change to the sidebar's chrome fixes the rest.
+   §8 is the test, and it still fails on the nine and the eighteen.
+
 ## Not needed
 
 - No changes to `packages/explain` or `packages/network`. The lab uses

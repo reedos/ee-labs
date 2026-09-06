@@ -8,6 +8,7 @@
 // wording: one claim a sentence, no dash for emphasis, no semicolons.
 
 import { HI_TERMS } from './groups/hi.js'
+import { JK_TERMS } from './groups/jk.js'
 
 export const TERMS = {
   efficiency: {
@@ -318,6 +319,7 @@ export const TERMS = {
       'empty. A faster carrier moves those clusters further above the filter’s corner.',
   },
   ...HI_TERMS,
+  ...JK_TERMS,
 }
 
 export function termsFor(ids = []) {

@@ -1889,3 +1889,135 @@ The §8 phasing note for these groups, for the director to move into the plan:
 > linear forms of the state, so a Fourier coefficient of a power costs no more
 > than one of a current, which is what makes I3 measurable rather than argued.
 > Next by this list is **J**, the isolated siblings, then K to N.
+### Power Lab, Groups J and K
+
+Groups **J** (isolated DC-DC) and **K** (resonant conversion) are built on
+`lab/power-jk`, six experiments on top of the thirty-four the lab already
+carried. The lab is at forty and stays dark. J is the forward, the push-pull
+and the full bridge, beside the half-bridge Group D built. K is the series
+resonant tank, the LLC, and what the soft edge saves against a hard-switched
+bridge on the same rail.
+
+`packages/switched` gained the forward family in `src/isolated.js` and the
+two tanks in `src/resonant.js`. Both are solved by one new method. The period
+is the clock's windows, the sub-intervals inside them are the state's, and
+periodicity is Newton on the walk itself.
+
+The affine map with the durations frozen does for every converter before this
+one and will not do here. An undamped tank's frozen map is a rotation, and
+the events are the whole of the damping. Fuzzed at 240 forward-family
+converters and 240 resonant ones, with the walk from rest as the independent
+witness in twelve named cases. Every existing signature stands,
+`ISOLATED_KINDS` is still two, and `isolated('forward')` still throws.
+
+Deferred, with what reopens each:
+
+- **D5, the leakage spike, is still not built.** It was worth asking whether
+  the forward converter's reset winding gave it for free, and it does not.
+  The reset is a second magnetising path with its own volt-second balance,
+  not a clamp across a leakage inductance, and the model that carries it is
+  three states rather than four. Reopens with a fourth state and a clamp, as
+  the plan's §4 already says.
+- **The push-pull's flux walk is the two switches' resistances and nothing
+  else.** A real converter's asymmetry also comes from unequal storage times
+  and unequal drive, and neither is modelled. The resistance mismatch is the
+  one that has a closed form, which is why it is the knob. Reopens with a
+  switching-time model that differs between the two halves.
+- **`verify.mjs` ran, and it found what the unit tests could not.** An earlier
+  sitting recorded this environment as having no browser. It has both, and the
+  harness drives the built page. It caught two defects behind 2795 green unit
+  tests, and both are now fixed with a probe that fails without the fix.
+  - **Two group names cost the whole lab 28 px of fold.** The sidebar's group
+    tab row wraps, and "Isolated converters" and "Resonant conversion" took it
+    from two rows to three. That pushed the first knob below the 768 fold on
+    fourteen experiments of Groups A to G, which is §11.3.2's promise broken by
+    a name. The groups are called **Isolation** and **Resonance**, single nouns
+    in the register of "Magnetics" and "Inverters", and the row is two rows
+    again. Measured: 82 px against 54.
+  - **The top bar printed a current that is not there.** A resonant tank's mean
+    current is zero by charge balance, and the shooting method leaves femtoamps
+    where the zero is. K1's chip read "i_L −9.15 fA ± 683 mA". The chip now
+    reads the average against the waveform's own scale, which is `format.js`'s
+    own `nz` and the lab's existing answer to §11.6.6. The same line cleared
+    the identical dust on F2, F3 and F4, which was there before this lane.
+- **Nine experiments of Groups A to G sit below the 1366×768 fold, and this
+  lane did not put them there.** With Groups J and K removed from the same
+  build, B1, B2, B4, C1, C5, E1, E4, E6 and F2 are over by 1 to 23 px. Eight
+  open a group, which adds a 48 px intro above the note. §11.8 recorded this
+  green, so the shell's chrome has moved since. Firefox is tighter and puts
+  eighteen of Groups A to G over. It is in `NEEDS.md` for the director: one
+  shell change fixes the whole set, where trimming the notes would cost
+  eighteen of them their content.
+- **J1 was the one experiment of these six in either set, and is not now.** It
+  was 5 px over in Chromium and 7 in Firefox, after this lane took 18 px out
+  of its note. The review took another line out of the same note. All six of
+  these experiments are above the fold in both browsers now. `verify.mjs` §8
+  reads 31 of 40 in Chromium and 22 of 40 in Firefox, and every failure left
+  is a Group A to G experiment.
+- **Everything else `verify.mjs` measures is green on all 40.** No overflow at
+  four widths. The outcome chip whole at three. 390 px, the primary pane's
+  share, the path, the marks, the accessible names, and no dust anywhere.
+- **Some cells of the resonant measures table are bounds rather than closed
+  forms.** The tank current is a piece of a sine whose amplitude the whole
+  tank sets. The first-harmonic form that would give it is the approximation
+  K1 exists to measure, so it cannot also be the pin. Seven of the thirty
+  cells are named in `unpinned` with that reason and the rest are pinned.
+  Reopens if a closed form for the arc's amplitude is worth the algebra.
+- **The shooting method has corners it does not settle in**, and the app says
+  so rather than drawing a waveform that is not the converter's. A tank run
+  at five times its own resonance into an output filter tens of thousands of
+  periods long is the shape of them. The gate names the load, the capacitor
+  and the frequency. The math panel stops comparing anything, and the top bar
+  reads "did not settle". None of the six experiments' defaults reaches one,
+  and the 480-sample fuzz reaches none. Reopens with a better Jacobian. The
+  saltation matrix at each event gives the true monodromy matrix
+  analytically, where this takes it by difference.
+
+What the adversarial review changed, on top of the fold above:
+
+- **The resonant converters reported a switch node the schematic said could
+  not exist.** `v_sw` was the tank's drive, ±V_in/2 about the divider
+  midpoint. The drawing probes the node between Q1 and Q2, with the ground
+  symbol on the rail below it. So the measures table read −24.0 V to 24.0 V
+  for a node that sits between 0 V and 48 V. `v_sw` is now that node, 0 to
+  V_in. The ±V_in/2 the gain formulas are written in is the node less the DC
+  the tank capacitor holds. Five pins moved with it, all to closed forms, and
+  P_in = ⟨v_sw·i_r⟩ became an exact identity.
+- **The first-harmonic guard had no test of its threshold.** It fires past
+  five per cent, and the panel's row then stops comparing and carries the
+  measured gap. `jk.test.js` now walks seven frequencies from 0.6 to 2.0
+  times resonance. The row's state has to follow the measured error across
+  the threshold, in both directions. The flux-walk form's own footnote is
+  held the same way.
+- **The plan's second measurement for K2 was not made.** §4 asks for the gain
+  against frequency at three loads, as well as the peak against the
+  inductance ratio. The curve is drawn at whatever load the knob is set to.
+  The order the three come in is now pinned. A lighter load gives a taller
+  peak, nearer the lower resonance, and the series tank never passes n/2 at
+  any of them.
+- **K2's note compared a voltage with a ratio.** "The output is 13.7 V, which
+  is 1.14 times n/2" reads as 13.7 V against 0.25. The ratio is what is 1.14
+  times n/2, and the note now says so in its own sentence.
+
+Two of the brief's numbers moved, and both are the engine's:
+
+- **J2's magnetising ripple is 48.0 mA rather than the 192 mA the same knobs
+  give at 1 mH.** L_m is 4 mH in this experiment, chosen so the 24.0 mA offset
+  the mismatch leaves is half the ripple rather than a twentieth of it. The
+  offset itself is what the closed form says to four figures.
+- **K3's hard-switched reference costs 1.04 W at t_sw = 100 ns, not 2.08 W.**
+  The first run of `pins-jk.mjs` built the reference from a half-bridge's own
+  parameter block, which carries the doubled frequency the solver runs it at,
+  and so charged the edges twice. The script now builds the reference from the
+  reader's own frequency at each point, and the note carries 1.04 W.
+
+The §8 phasing note, for the plan:
+
+> **Phase 7 and 8, in part.** J is built, and it needed the third state the
+> plan did not ask for: the magnetising current is the lesson in this family
+> rather than a passenger, so `isolated.js` carries [i_L, v_C, i_M] and a
+> solver for a clock with state events inside it. K is built on the same
+> solver, with the transformer's own current as the state that makes the
+> rectifier exact. I and L, the other halves of those two phases, are not.
+> Next by the plan's list is **H**, closing the loop, which is still the first
+> thing that needs another lab.

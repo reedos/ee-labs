@@ -16,6 +16,8 @@ import { fmtz, statScale } from './format.js'
 import { scopeMarks, sweepMarks } from './marks.js'
 import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/schematics.jsx'
 import BuckHandOver from './components/BuckHandOver.jsx'
+import { FamilyPane } from './components/jkPanes.jsx'
+import { exactJkY, jkFlow, jkOutcome, sweepJk } from './groups/jk.js'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -75,6 +77,7 @@ function focusKnob(key) {
 /** The one-line result of an experiment, for the top bar and the report. */
 export function outcomeOf(exp, x) {
   const m = x.m
+  if (x.jk) return jkOutcome(exp, x)
   if (exp.kind === 'linreg') return `η = ${(m.eta * 100).toFixed(1)} %, ${fmt(m.Ploss, 'W', 3)} into the regulator`
   if (exp.kind === 'chopper') return `⟨v⟩ = ${fmt(m.sig.vout.avg, 'V', 3)}, RMS ${fmt(m.sig.vout.rms, 'V', 3)}`
   if (exp.kind === 'rectifier')
@@ -132,6 +135,7 @@ function exactSweepY(key, x) {
 export function sweepFor(exp, params, x) {
   const s = exp.sweep
   if (!s) return null
+  if (exp.jk) return { ...sweepJk(exp, params), atY: exactJkY(s.y, x, params), atY2: s.y2 ? exactJkY(s.y2, x, params) : undefined }
   const opts = sweepOpts(exp, params)
   const atY = exactSweepY(s.y, x)
   const atY2 = s.y2 ? exactSweepY(s.y2, x) : undefined
@@ -635,6 +639,10 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                     ripple <b>{fmt(m.sig.vout.pp, 'V', 3)}</b>
                   </span>
                   <span>
+                    {/* A resonant tank's mean current is zero by charge balance,
+                        and the solver leaves femtoamps where the zero is. The
+                        chip reads them against the waveform's own scale, so a
+                        current that is not there prints as 0 A. */}
                     i_L <b>{fmtz(m.sig.iL.avg, 'A', 3, statScale(m.sig.iL))}</b>
                     <em className="prov"> ± {fmt(m.sig.iL.pp / 2, 'A', 3)}</em>
                   </span>
@@ -703,6 +711,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
             {currentView === 'step' && x.step ? <StepPane x={x} exp={exp} /> : null}
             {currentView === 'plant' && x.plant ? <PlantPane x={x} exp={exp} /> : null}
             {currentView === 'power' && x.threePhase ? <PowerPane x={x} /> : null}
+            {currentView === 'family' ? <FamilyPane x={x} /> : null}
             {currentView === 'math' ? <MathBody entry={math} /> : null}
             {currentView === 'balance' && x.balance ? <BalancePane x={x} /> : null}
             {currentView === 'losses' ? <LossesPane x={x} /> : null}
@@ -763,6 +772,7 @@ export const FLOW_BUDGET = { mid: 26, out: 34 }
 export function flowNodes(exp, params, x) {
   const m = x.m
   const saysK = (exp.symbols || []).includes('K')
+  if (x.jk) return jkFlow(exp, params, x)
   if (x.saturating) {
     return {
       mode: x.ss.mode === 'SAT' ? 'saturating' : MODE_WORDS[m.mode],

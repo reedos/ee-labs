@@ -41,7 +41,7 @@ describe('App', () => {
         expect(h, `${e.id} ${v}`).not.toMatch(/undefined|NaN/)
       }
     }
-  }, 60000)
+  }, 180000)
 
   it('never shows the arithmetic’s residue as a measurement', () => {
     // An average that is zero comes back from exact integration as ~1e-16, and
@@ -61,7 +61,7 @@ describe('App', () => {
         expect(hit && hit[0], `${e.id} ${v}`).toBeFalsy()
       }
     }
-  }, 60000)
+  }, 180000)
 
   it('has a one-line outcome for every experiment, with no undefined or NaN in it', () => {
     for (const e of EXPERIMENTS) {
