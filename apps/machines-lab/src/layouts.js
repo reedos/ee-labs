@@ -6,160 +6,202 @@
 // SUBSET of the solved netlist a reader should see. The sense branch of
 // `port.js` is not in any of them, because it has no voltage and no current of
 // its own. Its two elements are replaced by the wire they are equivalent to.
+//
+// Two rules these drawings had to learn.
+//
+// **A label belongs to the element, not to the layout item.** `valueText` in
+// `schematicGeometry.js` reads `e.label`, and ignores a `label` on the item
+// that places it. The item-level labels here were silently dropped, so every
+// AC source drew its DC value: the transformer's primary read "Vs 0 V" beside
+// a knob set to 240 V, and the induction machine's read "V₁ 0 V" beside 230.9.
+//
+// **Spacing is measured, not eyeballed.** `layout.test.js` runs
+// `layoutCheck.js` over every drawing at its defaults and at both ends of
+// every knob, and no text may touch anything or leave the frame. A vertical
+// element hangs its label to the right, so two of them need about 100 units
+// between their centres; a horizontal one centres its label underneath and
+// puts its reading above, so a caption on the same row as a reading collides
+// with it. The crop comes from `layoutExtent`, which sizes the frame to the
+// widest text the drawing can ever carry, so it does not breathe as knobs move.
+
+import { fmt } from '@ee-labs/ui'
+import { layoutExtent } from './layoutCheck.js'
 
 const pick = (net, ids) => ids.map((id) => net.elements.find((e) => e.id === id)).filter(Boolean)
+
+/** An element with a label of its own, which replaces the value text. */
+const named = (net, id, label) => {
+  const e = net.elements.find((q) => q.id === id)
+  return e ? { ...e, label } : null
+}
+
+/** The drawing, with the frame sized to what it holds. */
+const framed = (elements, layout) => ({ elements, layout: { ...layout, crop: layoutExtent(layout, elements) } })
+
+// The columns every drawing here uses: one wire along the top, one along the
+// bottom, and shunt elements hung between them.
+const TOP = 50
+const BOTTOM = 170
+const MID = 110
+const CAPTION = 196
+
+/** A shunt element between the two rails, with the wires that reach it. */
+const shunt = (el, x, extra = {}) => [
+  { wire: [x, TOP, x, MID - 20] },
+  { el, x, y: MID, dir: 'v', ...extra },
+  { wire: [x, MID + 20, x, BOTTOM] },
+]
 
 /** The DC machine's armature loop. The shaft is drawn beside it, not in it. */
 export function dcDraw(x) {
   const net = x.net
-  const elements = pick(net, ['Va', 'Ra', 'La', 'Eb']).map((e) =>
-    e.id === 'Eb' ? { ...e, label: 'E = k·ω' } : e,
-  )
-  return {
-    elements,
-    layout: {
-      w: 420,
-      h: 180,
-      crop: [10, 10, 410, 172],
-      items: [
-        { el: 'Va', x: 50, y: 90, dir: 'v', label: `Va ${x.spec.Va.toPrecision(3)} V` },
-        { wire: [50, 40, 50, 70] },
-        { wire: [50, 110, 50, 140] },
-        { wire: [50, 40, 120, 40] },
-        { el: 'Ra', x: 140, y: 40, dir: 'h' },
-        { wire: [160, 40, 210, 40] },
-        { el: 'La', x: 230, y: 40, dir: 'h' },
-        { wire: [250, 40, 340, 40] },
-        { wire: [340, 40, 340, 70] },
-        { el: 'Eb', x: 340, y: 90, dir: 'v' },
-        { wire: [340, 110, 340, 140] },
-        { wire: [50, 140, 340, 140] },
-        { gnd: [50, 140] },
-        { node: 'arm', x: 50, y: 40, side: 't' },
-        { node: 'n1', x: 185, y: 40, side: 't' },
-        { node: 'n2', x: 340, y: 40, side: 'r' },
-        { node: 'n3', x: 340, y: 140, side: 'r' },
-        { text: 'armature', x: 195, y: 22 },
-      ],
-    },
-  }
+  const elements = [
+    // The armature is driven from a step in the transient experiments, so the
+    // element's own value is zero there. The supply the reader set is what
+    // belongs on the drawing.
+    named(net, 'Va', `Va ${fmt(x.spec.Va, 'V', 3)}`),
+    ...pick(net, ['Ra', 'La']),
+    named(net, 'Eb', 'E = k·ω'),
+  ].filter(Boolean)
+  return framed(elements, {
+    w: 480,
+    h: 210,
+    items: [
+      ...shunt('Va', 60),
+      { wire: [60, TOP, 150, TOP] },
+      { el: 'Ra', x: 170, y: TOP, dir: 'h' },
+      { wire: [190, TOP, 260, TOP] },
+      { el: 'La', x: 280, y: TOP, dir: 'h' },
+      { wire: [300, TOP, 400, TOP] },
+      ...shunt('Eb', 400),
+      { wire: [60, BOTTOM, 400, BOTTOM] },
+      { gnd: [60, BOTTOM] },
+      { node: 'arm', x: 60, y: TOP, side: 't' },
+      { node: 'n1', x: 225, y: TOP, side: 't' },
+      { node: 'n2', x: 400, y: TOP, side: 'r' },
+      { node: 'n3', x: 400, y: BOTTOM, side: 'r' },
+      { text: 'armature, and the back-EMF the shaft makes', x: 230, y: CAPTION },
+    ],
+  })
 }
 
 /** The transformer, at whichever stage the experiment has reached. */
 export function transformerDraw(x) {
   const net = x.net
   const stage = x.spec.stage || 'full'
-  const ideal = { ...net.elements.find((e) => e.id === 'T1.Es'), label: `ideal ${x.spec.n}:1` }
-  const items = [
-    { el: 'Vs', x: 40, y: 105, dir: 'v', label: `Vs ${x.spec.Vp} V` },
-    { wire: [40, 50, 40, 85] },
-    { wire: [40, 125, 40, 160] },
-  ]
-  const elements = [net.elements.find((e) => e.id === 'Vs')]
-  let xEnd = 40
+  const elements = [named(net, 'Vs', `Vs ${fmt(x.spec.Vp, 'V', 3)}`)]
+  const items = [...shunt('Vs', 60)]
+  let at = 60
+
+  // A wire leaves the previous column's edge: a series element's body ends 20
+  // past its centre, a shunt's does not sit on the top rail at all.
+  let onRail = false
+  const series = (id, gap = 80) => {
+    items.push({ wire: [at + (onRail ? 20 : 0), TOP, at + gap - 20, TOP] }, { el: id, x: at + gap, y: TOP, dir: 'h' })
+    at += gap
+    onRail = true
+  }
+  const drop = (id, gap, extra) => {
+    items.push({ wire: [at + (onRail ? 20 : 0), TOP, at + gap, TOP] }, ...shunt(id, at + gap, extra))
+    at += gap
+    onRail = false
+  }
+
   if (stage !== 'ideal') {
     elements.push(...pick(net, ['R1', 'X1']))
-    items.push({ wire: [40, 50, 80, 50] }, { el: 'R1', x: 100, y: 50, dir: 'h' })
-    items.push({ wire: [120, 50, 160, 50] }, { el: 'X1', x: 180, y: 50, dir: 'h' })
-    xEnd = 200
+    series('R1', 90)
+    series('X1')
   }
   if (stage === 'full') {
     elements.push(...pick(net, ['Rc', 'Xm']))
-    items.push({ wire: [xEnd, 50, 240, 50] })
-    items.push({ wire: [240, 50, 240, 85] }, { el: 'Rc', x: 240, y: 105, dir: 'v' })
-    items.push({ wire: [240, 125, 240, 160] })
-    items.push({ wire: [240, 50, 290, 50] }, { wire: [290, 50, 290, 85] })
-    items.push({ el: 'Xm', x: 290, y: 105, dir: 'v' }, { wire: [290, 125, 290, 160] })
-    xEnd = 290
+    drop('Rc', stage === 'full' && at === 60 ? 90 : 90)
+    drop('Xm', 100)
   }
-  elements.push(ideal)
-  items.push({ wire: [xEnd, 50, 350, 50] }, { wire: [350, 50, 350, 85] })
-  items.push({ el: 'T1.Es', x: 350, y: 105, dir: 'v' }, { wire: [350, 125, 350, 160] })
-  items.push({ box: [326, 70, 374, 140] })
-  let out = 380
+  elements.push(named(net, 'T1.Es', `ideal ${x.spec.n}:1`))
+  drop('T1.Es', 110)
+  const core = at
+  // The dashed frame holds the ideal transformer's own label. A label that
+  // straddles the edge says nothing about what is inside it.
+  items.push({ box: [core - 34, MID - 36, core + 78, MID + 40] })
   if (stage !== 'ideal') {
     elements.push(...pick(net, ['R2', 'X2']))
-    items.push({ wire: [350, 50, 400, 50] }, { el: 'R2', x: 420, y: 50, dir: 'h' })
-    items.push({ wire: [440, 50, 470, 50] }, { el: 'X2', x: 490, y: 50, dir: 'h' })
-    out = 510
-  } else {
-    items.push({ wire: [350, 50, 510, 50] })
+    series('R2', 140)
+    series('X2')
   }
   elements.push(net.elements.find((e) => e.id === 'RL'))
-  items.push({ wire: [out, 50, 540, 50] }, { wire: [540, 50, 540, 85] })
-  items.push({ el: 'RL', x: 540, y: 105, dir: 'v' }, { wire: [540, 125, 540, 160] })
-  items.push({ wire: [40, 160, 540, 160] }, { gnd: [40, 160] })
-  items.push({ text: 'primary', x: 120, y: 26 }, { text: 'secondary', x: 460, y: 26 })
-  return { elements: elements.filter(Boolean), layout: { w: 580, h: 190, crop: [10, 14, 570, 178], items } }
+  drop('RL', stage === 'ideal' ? 150 : 100)
+
+  items.push({ wire: [60, BOTTOM, at, BOTTOM] }, { gnd: [60, BOTTOM] })
+  items.push({ text: 'primary', x: 150, y: CAPTION }, { text: 'secondary', x: at - 60, y: CAPTION })
+  return framed(elements.filter(Boolean), { w: at + 140, h: 210, items })
 }
 
 /** The induction machine's per-phase equivalent circuit. */
 export function perPhaseDraw(x) {
   const net = x.net
   const has = (id) => !!net.elements.find((e) => e.id === id)
-  const ids = ['V1', 'R1', 'X1', 'Xm', 'X2', 'R2s'].concat(has('Rc') ? ['Rc'] : [])
-  const elements = pick(net, ids).map((e) =>
-    e.id === 'R2s' ? { ...e, label: `R₂/s ${e.value.toPrecision(4)} Ω` } : e,
-  )
+  const elements = [
+    named(net, 'V1', `V₁ ${fmt(x.machine.V, 'V', 4)}`),
+    ...pick(net, ['R1', 'X1']),
+    ...(has('Rc') ? pick(net, ['Rc']) : []),
+    ...pick(net, ['Xm', 'X2']),
+    named(net, 'R2s', `R₂/s ${fmt(net.elements.find((e) => e.id === 'R2s').value, 'Ω', 4)}`),
+  ].filter(Boolean)
+
   const items = [
-    { el: 'V1', x: 40, y: 105, dir: 'v', label: 'V₁ per phase' },
-    { wire: [40, 50, 40, 85] },
-    { wire: [40, 125, 40, 160] },
-    { wire: [40, 50, 80, 50] },
-    { el: 'R1', x: 100, y: 50, dir: 'h' },
-    { wire: [120, 50, 160, 50] },
-    { el: 'X1', x: 180, y: 50, dir: 'h' },
-    { wire: [200, 50, 300, 50] },
-    { wire: [250, 50, 250, 85] },
-    { el: 'Xm', x: 250, y: 105, dir: 'v' },
-    { wire: [250, 125, 250, 160] },
-    { wire: [300, 50, 340, 50] },
-    { el: 'X2', x: 360, y: 50, dir: 'h' },
-    { wire: [380, 50, 430, 50] },
-    { wire: [430, 50, 430, 85] },
-    { el: 'R2s', x: 430, y: 105, dir: 'v' },
-    { wire: [430, 125, 430, 160] },
-    { wire: [40, 160, 430, 160] },
-    { gnd: [40, 160] },
-    { node: 'g', x: 300, y: 50, side: 't' },
-    { text: 'stator', x: 130, y: 26 },
-    { text: 'rotor, referred', x: 380, y: 26 },
+    ...shunt('V1', 60),
+    { wire: [60, TOP, 120, TOP] },
+    { el: 'R1', x: 140, y: TOP, dir: 'h' },
+    { wire: [160, TOP, 190, TOP] },
+    { el: 'X1', x: 210, y: TOP, dir: 'h' },
+    { wire: [230, TOP, 350, TOP] },
+    ...shunt('Xm', 350),
+    { wire: [350, TOP, 440, TOP] },
+    { el: 'X2', x: 460, y: TOP, dir: 'h' },
+    { wire: [480, TOP, 560, TOP] },
+    ...shunt('R2s', 560),
+    { wire: [60, BOTTOM, 560, BOTTOM] },
+    { gnd: [60, BOTTOM] },
+    { node: 'g', x: 300, y: TOP, side: 't' },
+    { text: 'stator, one phase of three', x: 150, y: CAPTION },
+    { text: 'rotor, referred to the stator', x: 470, y: CAPTION },
   ]
-  if (has('Rc')) {
-    items.splice(9, 0, { wire: [205, 50, 205, 85] }, { el: 'Rc', x: 205, y: 105, dir: 'v' }, { wire: [205, 125, 205, 160] })
-  }
-  return { elements, layout: { w: 470, h: 190, crop: [10, 14, 460, 178], items } }
+  if (has('Rc')) items.splice(6, 0, ...shunt('Rc', 250))
+  return framed(elements, { w: 700, h: 210, items })
 }
 
-/** The thermal model, which is an R and a C with the loss as a current. */
+/**
+ * The thermal model, which is an R and a C with the loss as a current.
+ *
+ * The analogy runs in thermal units, and this drawing says so. The Schematic
+ * prints a node voltage in volts and a branch current in amps, which is right
+ * for every other circuit in the suite and wrong for this one: the loss is
+ * 429 W and not 429 A, the rise is 72.9 K and not 72.9 V, and the capacity is
+ * 6 kJ/K and not 6 kF. So no meters are shown here, and each element carries
+ * its own value in the unit it is measured in.
+ */
 export function thermalDraw(x) {
-  return {
-    elements: x.net.elements.map((e) =>
-      e.id === 'Ploss' ? { ...e, label: `P_loss ${x.split.loss.toPrecision(4)} W` } : e,
-    ),
-    layout: {
-      w: 320,
-      h: 180,
-      crop: [10, 20, 310, 172],
-      items: [
-        { el: 'Ploss', x: 60, y: 90, dir: 'v' },
-        { wire: [60, 40, 60, 70] },
-        { wire: [60, 110, 60, 140] },
-        { wire: [60, 40, 160, 40] },
-        { wire: [160, 40, 160, 70] },
-        { el: 'Rth', x: 160, y: 90, dir: 'v' },
-        { wire: [160, 110, 160, 140] },
-        { wire: [160, 40, 250, 40] },
-        { wire: [250, 40, 250, 70] },
-        { el: 'Cth', x: 250, y: 90, dir: 'v' },
-        { wire: [250, 110, 250, 140] },
-        { wire: [60, 140, 250, 140] },
-        { gnd: [60, 140] },
-        { node: 'hot', x: 160, y: 40, side: 't' },
-        { text: 'rise in kelvins', x: 205, y: 26 },
-      ],
-    },
-  }
+  const net = x.net
+  const elements = [
+    named(net, 'Ploss', `P_loss ${fmt(x.split.loss, 'W', 4)}`),
+    named(net, 'Rth', `R_th ${fmt(x.machine.Rth, 'K/W', 3)}`),
+    named(net, 'Cth', `C_th ${fmt(x.machine.Cth, 'J/K', 3)}`),
+  ].filter(Boolean)
+  return framed(elements, {
+    w: 520,
+    h: 210,
+    meters: false,
+    items: [
+      ...shunt('Ploss', 60),
+      { wire: [60, TOP, 190, TOP] },
+      ...shunt('Rth', 190),
+      { wire: [190, TOP, 320, TOP] },
+      ...shunt('Cth', 320),
+      { wire: [60, BOTTOM, 320, BOTTOM] },
+      { gnd: [60, BOTTOM] },
+      { text: 'loss in watts, rise in kelvins, ambient at the bottom rail', x: 190, y: CAPTION },
+    ],
+  })
 }
 
 /** The drawing for one analysis, or null when the model has no circuit. */
@@ -167,6 +209,6 @@ export function drawOf(x) {
   if (x.kind === 'dc') return dcDraw(x)
   if (x.kind === 'transformer') return transformerDraw(x)
   if (x.kind === 'im') return perPhaseDraw(x)
-  if (x.kind === 'losses' && x.net) return thermalDraw(x)
+  if (x.kind === 'losses' && x.net) return { ...thermalDraw(x), meters: false }
   return null
 }
