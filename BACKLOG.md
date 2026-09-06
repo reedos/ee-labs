@@ -1750,3 +1750,142 @@ only its own section. The director folds it into the shared ledger at merge.
   Automatic gain control as a loop. Frequency planning and spur tables.
   Optimisation. Thermal, mechanical, cost and area budgets. Transmitters, and a
   free-form chain editor. None became cheaper to add while Group A was built.
+### Power Lab, Groups H and I
+
+Groups **H** (closing the loop) and **I** (three-phase out) are built on
+`lab/power-hi`, six experiments on top of the thirty-four the lab already
+carried. The lab now runs A to I at forty experiments and stays dark.
+
+`packages/switched` gained two modules and no changed signature. `loop.js`
+averages the switch states and reads the control-to-output transfer function
+off them, with the guard that ships with it. `threePhase.js` puts three of F's
+bridge legs on one carrier into a balanced wye. Three panes are new and belong
+to these groups alone, for the step overlay, the plant with its link, and the
+bus power against one phase's. `apps/power-lab/AGENT_BRIEF_HI.md` is the
+contract, and every number in it came out of `scripts/pins-hi.mjs` before the
+notes were written.
+
+What is built, with counts:
+
+- **H, three experiments.** H1 lays the averaged model over a load step on a
+  synchronous buck and measures the 5.14 µV it leaves against the 3.647 mV of
+  ripple it discards. H2 reads the plant off the same model as six exact
+  coefficients, checks its DC gain against dV_out/dD asked of the switched
+  solver, and hands it to Control Lab. H3 steps a boost's duty and measures the
+  391 mV the output falls before it rises, against the right-half-plane zero at
+  D′²R/L.
+- **I, three experiments.** I1 measures the six-step fundamental against
+  (√6/π)·V_dc, the ±V_dc/3 and ±2V_dc/3 staircase the floating neutral leaves,
+  and the absent triplens. I2 shows the plain sine running out at m_a = 1 and a
+  third harmonic common to all three references carrying the line to 2/√3 of it
+  without appearing on the line. In I3 one
+  phase swings by its own apparent power at twice the output frequency, and the
+  three add to a bus that carries none of it. What I3 measures is a Fourier
+  coefficient of a power rather than of a current.
+- **The engine, fuzzed.** `loop.test.js` holds the model from three sides at
+  240 seeded converters, and `threePhase.test.js` holds the bridge at 160.
+  `hi.test.js` pins every number in the six notes and every try line, moves the
+  knob each note names, and takes the triple agreement three ways.
+
+Deferred, with what reopens each:
+
+- **H2's round trip through Control Lab stops at the link.** The plan's §4 says
+  to close the loop there and come back to verify the closed-loop step against
+  the switched truth. This lab builds the exact plant and the link that carries
+  it, and Control Lab reads that fragment today. What is missing is the return
+  leg. That is a link back, and a Control Lab pane that knows its plant came
+  from a switched converter and shows the switched step beside its own. Reopens
+  with the hand-over decision in `apps/power-lab/NEEDS.md`.
+- **The hand-over is declined above f_s/5, and that refusal is content.**
+  `CORE_SCOPE.md` rule 3 asks an approximation to carry its threshold.
+  `averagingGuard` warns past half of f_s/5 and refuses past it. The plant pane
+  then declines the link rather than handing over a plant whose margins the
+  circuit does not have. Nothing reopens this. It is the feature.
+- **The loop experiments are synchronous, and the averaged model says why.**
+  Averaging over a fixed on/off pattern describes a converter in continuous
+  conduction. Turn the freewheel back into a diode and run the load light, and
+  every check row in H's math panel is footnoted with that reason rather than
+  crossed out. A discontinuous-conduction averaged model is a different model,
+  with a third interval whose length is part of the state. Reopens with anyone
+  adding it to `loop.js`.
+- **I1's phase voltage is measured on a load, not on a machine.** The plan's §4
+  ties six-step to commutation every 60° and to the torque ripple where it
+  happens. The load here is a balanced wye of R and L, which carries the
+  voltages and the currents exactly and has no torque. Reopens with Group L,
+  whose armature and back EMF the plan already names.
+- **The three-phase drawing names its ports rather than wiring them.** A
+  three-phase bridge into a wye load is K(3,3) with the source across it, so no
+  arrangement of it on paper is free of crossings. The three-phase rectifier
+  next door meets the same wall and answers it the same way. The legs carry
+  ports a, b and c and the load carries the matching names. Reopens with a
+  crossing idiom the suite's other drawings do not have.
+- **`verify.mjs` has not been run against these groups.** This environment has
+  no browser. The three new panes, the new sweep and the new drawing have been
+  held as geometry and as rendered markup rather than as pixels. Nobody has
+  read a screenshot of them as a student would (`REVIEW_PLAYBOOK.md` §11). The
+  group tab row is now nine wide, which is the first thing a browser pass
+  should measure against the 1366×768 fold. Reopens with anyone who has a
+  browser.
+
+What the adversarial review changed, on the same branch:
+
+- **Three meters were reading the arithmetic.** The femto probe in
+  `App.smoke.test.jsx` ended its pattern with a literal backspace where a word
+  boundary was meant, so it had never matched anything and had never run.
+  Repaired, it found the three-phase top bar showing the phase voltage's
+  average as `V_out −53.29 fV`, and Group F's scope strip showing `i_L
+  −10.2 fA`. Both read against the signal's own scale now. H2 and H3 also
+  carried η = 100.0 % at every setting of every knob they offer, which is the
+  reading A2's rebuild took off its own top bar. Each shows the frequency its
+  note leads with instead.
+- **The step walk stopped short of the level its own table named.** H3's row
+  said 26.667 V over a plot whose last period sat at 27.056 V, because two
+  hundred periods is one time constant of that boost. The walks run four
+  hundred and eight hundred periods, the plot draws the level it arrives at,
+  and a test holds the last cycle average within three per cent of the step.
+  No pinned number moved: the dip, the gap and the two levels are read off the
+  periodic states.
+- **I2's sweep was narrower than its own knob.** It ran 20 % to 115 % against a
+  knob that runs to 140 %. Above 115 % the operating point was marked at the
+  end of the curve, under a label reading the knob's own value.
+- **The hand-over promised more than the link carries.** Control Lab holds each
+  coefficient to 1e12, and a buck at L = 10 µH, C = 1 µF and f_s = 2 MHz sits
+  inside f_s/5 and needs 1.2e12. The pane declines there, with the number.
+- **The overmodulation footnote fired half a per cent early.** The panel then
+  declined to check the row I2's own try line is about.
+- **One engine check did not measure its claim.** The floating-neutral test
+  added v_ao times zero to v_an and asked whether the result was finite. It now
+  holds v_an, v_ao and v_ab against the leg potentials.
+
+Numbers that differ from the plan's own text, with the engine's value:
+
+- **The plan's §4 gives I2's headroom as 15 %.** The engine gives 15.47 %,
+  which is 2/√3 − 1 exactly, and the notes and the brief carry that.
+- **§1.5's G_vd forms are for ideal parts.** The engine builds the coefficients
+  from the averaged matrices, so a converter with R_on, R_L or an ESR in it
+  gets a corner and a damping the formula does not write down. H1 runs with
+  50 mΩ in each, so its DC gain is 11.76 V rather than V_in, and its math panel
+  footnotes the closed-form rows rather than crossing them out. H2 is ideal, and
+  there the two agree to the last bits.
+- **§4's H1 says "load step" and this one is read on the output.** An ideal
+  buck's output does not move with the load. H1 carries 50 mΩ of switch and
+  winding resistance to give the step something to sag. The sag is 94.3 mV of
+  4.902 V. The inductor current's own step from 0.980 A to 1.923 A is on the
+  same pane.
+
+The §8 phasing note for these groups, for the director to move into the plan:
+
+> **H and I landed together, on top of §11.** H brought the averaged model and
+> its guard, in `loop.js`. State-space averaging is one matrix sum and one
+> linear solve, so the transfer function is exact algebra rather than a fit,
+> and the closed forms of §1.5 fall out of it for all three basic converters
+> including the right-half-plane zero. What averaging discards is the ripple,
+> and `averagingGuard` states the threshold the plan's own CORE_SCOPE entry
+> asks for: the model is the converter below f_s/5, warns past half of that,
+> and refuses past it. The Control Lab hand-over needed no new link grammar.
+> I brought `threePhase.js`, three of F's legs on one carrier into a balanced
+> wye whose neutral floats. The pattern is fixed before the state is, so the
+> periodic state is the same linear solve F uses. Per-phase and rail power are
+> linear forms of the state, so a Fourier coefficient of a power costs no more
+> than one of a current, which is what makes I3 measurable rather than argued.
+> Next by this list is **J**, the isolated siblings, then K to N.

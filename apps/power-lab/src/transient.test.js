@@ -29,6 +29,7 @@ describe('the walk from rest lands on the fixed point each note is measured from
       'a3', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8',
       'c1', 'c2', 'c3', 'c4', 'c5',
       'g1', 'g2', 'g3', 'g4',
+      'h1', 'h2', 'h3',
     ])
     expect(cored.map((e) => e.id)).toEqual(['d1', 'd2'])
     expect(isolatedExps.map((e) => e.id)).toEqual(['d3', 'd4'])

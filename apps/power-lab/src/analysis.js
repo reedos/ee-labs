@@ -57,6 +57,7 @@ import {
   switchingCrossover,
   peakEfficiencyLoad,
 } from '@ee-labs/switched'
+import { analyseThreePhase, loopFields, HI_KINDS } from './groups/hiAnalysis.js'
 
 // The knobs a buck experiment may omit take the plan's defaults.
 export const BUCK_DEFAULTS = {
@@ -112,6 +113,8 @@ export function analyse(exp, params) {
   if (INVERTER_KINDS.includes(exp.kind)) return analyseInverter(params, exp)
   if (ISOLATED_KINDS.includes(exp.kind)) return analyseIsolated(params, exp)
   if (exp.core) return analyseCore(params, exp)
+  if (HI_KINDS.includes(exp.kind)) return analyseThreePhase(params, exp)
+  if (exp.loop) return loopFields(analysePwm(params, exp), exp, params)
   return analysePwm(params, exp)
 }
 
