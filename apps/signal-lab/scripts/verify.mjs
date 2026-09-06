@@ -1632,10 +1632,51 @@ const gutterInk = (which) =>
   }
 }
 
-// The other half of the claim: a laptop keeps the FULL wording. A rule that
-// only ever shortened would pass every check above and quietly cost every
-// reader the sentence the title is for.
-console.log('\n10s2. 1440x900: the full wording is still what gets drawn\n')
+// -------- 10s2. Phone 390x844: the resonant peak has a gridline to read
+//
+// The other half of playbook #4's axis rule, and the half a screenshot of the
+// DEPLOYED layout caught after the laptop was already fixed. "Resonance is Q"
+// stands its peak 20 dB above the passband and its try line names that number.
+// The frame runs -100 to +30, and the round step for a 77 px pane was 100, so
+// the axis drew two labels: "0" and "-100". Nothing to measure the peak
+// against, on the one lesson whose point is the peak's height.
+//
+// Counted as label bands in the tick gutter, which is x 36..70: the rotated
+// title sits at x 12..24, and tick labels are right-aligned 8 px short of the
+// frame at x 68.
+console.log('\n10s2. Phone 390x844: enough gridlines to read a resonant peak\n')
+{
+  await loadPreset('Resonance is Q')
+  await settle()
+  const bands = await page.evaluate(() => {
+    const c = document.querySelectorAll('.views canvas')[1]
+    const ctx = c.getContext('2d')
+    let count = 0
+    let inBand = false
+    for (let y = 0; y < c.height; y++) {
+      const d = ctx.getImageData(36, y, 34, 1).data
+      let lit = false
+      for (let x = 0; x < 34; x++) if (d[x * 4 + 3] > 20) lit = true
+      if (lit && !inBand) count++
+      inBand = lit
+    }
+    return count
+  })
+  // Two is what the defect drew. Three is an axis. Five is what the ceiling
+  // step gives on this pane, and more than five will not fit under 11 px type.
+  if (bands < 3) {
+    fail(`390x844 / Resonance is Q: the dB axis draws ${bands} tick labels, and the try line names a height in dB`)
+  } else {
+    console.log(`   Resonance is Q: ${bands} dB tick labels on a 77px pane, the peak has gridlines above 0`)
+  }
+}
+
+// -------- 10s3. The other half of the title claim
+//
+// A laptop keeps the FULL wording. A rule that only ever shortened would pass
+// every check above and quietly cost every reader the sentence the title is
+// for.
+console.log('\n10s3. 1440x900: the full wording is still what gets drawn\n')
 await page.setViewportSize({ width: 1440, height: 900 })
 await page.waitForTimeout(400)
 {

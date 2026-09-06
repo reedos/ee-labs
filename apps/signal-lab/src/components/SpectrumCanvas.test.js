@@ -126,10 +126,29 @@ describe('spectrumYStep', () => {
     expect(ticksOf(-100, 30, step).some((v) => v > 0.5)).toBe(true)
   })
 
-  it('holds the tick count to twice the frame budget', () => {
-    const step = spectrumYStep(-100, 30, 20.0, LAPTOP_H)
-    const target = Math.max(2, Math.floor(LAPTOP_H / 46))
-    expect(130 / step).toBeLessThanOrEqual(target * 2)
+  it('keeps 15 px between gridlines, since the labels are 11 px tall', () => {
+    for (const areaH of [77, 125, 200, LAPTOP_H, 700]) {
+      const step = spectrumYStep(-100, 30, 20.0, areaH)
+      if (step === null) continue
+      expect(areaH / (130 / step)).toBeGreaterThanOrEqual(15)
+    }
+  })
+
+  // Found on the deployed layout, at 390x844, after the laptop case was
+  // already fixed. The phone pane is 77 px of plot, which has room for five
+  // labels and not for seven, so every round step small enough to land a
+  // gridline above 0 dB was too crowded to use.
+  it('still reads the peak on a 77 px phone pane, using the ceiling itself', () => {
+    const step = spectrumYStep(-100, 30, 20.0, 77)
+    expect(step).toBe(30)
+    const ticks = ticksOf(-100, 30, step)
+    expect(ticks.some((v) => v > 0.5)).toBe(true)
+    expect(ticks).toContain(0)
+    expect(ticks.length).toBeLessThanOrEqual(5)
+  })
+
+  it('prefers a round step to the ceiling when the pane has room', () => {
+    expect(spectrumYStep(-100, 30, 20.0, LAPTOP_H)).toBe(20)
   })
 
   it('does not fight a frame that already has a tick above zero', () => {

@@ -63,23 +63,31 @@ export const AMPLITUDE_TITLES = {
  * is below it, on the one lesson whose try line names the peak's height in dB.
  *
  * So whenever something actually rises above the 0 dB reference and no tick
- * lands between there and the ceiling, step down the round-number ladder until
- * one does, spending at most twice the frame's own tick budget to get it.
+ * lands between there and the ceiling, take the widest step that puts one
+ * there. Round numbers are tried first, largest down, and the limit is space
+ * rather than a tick count: labels are 11 px tall, so gridlines closer than
+ * 15 px are a worse axis than the one they replaced.
+ *
+ * The ceiling itself is the last resort, and it is a good one. It divides the
+ * frame into whole steps from zero, so 0 dB stays a gridline and the top of
+ * the axis becomes one. That is what a 390 px phone gets, where 77 px of plot
+ * has room for five labels and not for seven.
  */
 export function spectrumYStep(yMin, yMax, peakDb, areaH, k = 1) {
+  const range = yMax - yMin
   const target = Math.max(2, Math.floor(areaH / (46 * k)))
-  const step = niceStep(yMax - yMin, target)
+  const step = niceStep(range, target)
   if (peakDb <= 0 || step <= yMax) return null
+  const roomy = (s) => s <= yMax && areaH / (range / s) >= 15 * k
   let mag = Math.pow(10, Math.ceil(Math.log10(step)))
   for (let decade = 0; decade < 6; decade++) {
     for (const m of [5, 2, 1]) {
       const s = m * mag
-      if (s >= step) continue
-      if (s <= yMax && (yMax - yMin) / s <= target * 2) return s
+      if (s < step && roomy(s)) return s
     }
     mag /= 10
   }
-  return null
+  return roomy(yMax) ? yMax : null
 }
 
 /**
