@@ -67,20 +67,34 @@ describe('the two-by-two arithmetic', () => {
   it('the refusal threshold is relative to the matrix, not a fixed epsilon', () => {
     // The same singular matrix written in milliohms rather than kilohms is the
     // same object, and both are refused. A fixed epsilon would pass one.
-    for (const scale of [1e-6, 1, 1e6]) {
+    for (const scale of [1e-9, 1e-6, 1, 1e6, 1e9]) {
       const M = [
         [C(scale), C(2 * scale)],
         [C(2 * scale), C(4 * scale)],
       ]
-      expect(() => minv(M)).toThrow(RfError)
+      expect(() => minv(M), `singular at scale ${scale}`).toThrow(RfError)
     }
-    // A matrix that is well conditioned at every scale is inverted at every scale.
-    for (const scale of [1e-6, 1, 1e6]) {
+    // A matrix that is well conditioned at every scale is inverted at every
+    // scale. The small end is the half a floor of 1e-14 would break: an
+    // admittance matrix in siemens has entries near 1e-9 and a determinant near
+    // 1e-18, and its inverse is exact.
+    for (const scale of [1e-9, 1e-6, 1, 1e6, 1e9]) {
       const M = [
         [C(scale), C(0)],
         [C(0), C(scale)],
       ]
-      expect(mnorm(msub(mmul(M, minv(M)), eye2()))).toBeLessThan(1e-12)
+      expect(mnorm(msub(mmul(M, minv(M)), eye2())), `well conditioned at scale ${scale}`).toBeLessThan(1e-12)
+    }
+    // The threshold itself, from both sides, at three scales. The ratio the
+    // guard reads is |det|/scale², and it is the same ratio whatever the units
+    // the matrix is written in.
+    for (const scale of [1e-9, 1, 1e9]) {
+      const nearly = (ratio) => [
+        [C(scale), C(scale)],
+        [C(scale), C(scale * (1 + ratio))],
+      ]
+      expect(() => minv(nearly(1e-11)), `refused at scale ${scale}`).toThrow(RfError)
+      expect(() => minv(nearly(1e-8)), `inverted at scale ${scale}`).not.toThrow()
     }
   })
 })

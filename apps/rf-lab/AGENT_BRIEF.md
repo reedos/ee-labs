@@ -149,7 +149,11 @@ export { eye2, madd, mdet, mdiff, minv, mmul, mnorm, msub, mdagger }
 `minv` throws `RfError` with `kind: 'singular'` and a message naming what has no
 inverse. **The threshold is relative to the matrix's own scale, never a fixed
 epsilon.** The same singular matrix written in milliohms and in kilohms is the
-same object, and both are refused.
+same object, and both are refused. The ratio the guard reads is the determinant
+over the square of the largest entry, and it is held above `1e-10`. That number
+is about digits. A two-by-two inverse keeps about that fraction of the sixteen
+digits it starts with, so `1e-10` leaves the eight this package's round trips
+are stated to.
 
 Test (`convert.test.js`): a series impedance has the chain matrix `[[1, Z], [0,
 1]]` and no Z-matrix. A shunt admittance has `[[1, 0], [Y, 1]]` and no Y-matrix.
@@ -421,9 +425,11 @@ saying nothing about the lab while it does.
 ## 9. Gotchas this suite has already paid for
 
 - **A tolerance is relative to the data's own scale.** The suite's recurring bug
-  class is an absolute epsilon on scale-free data. `minv` refuses against the
-  matrix norm and not against 1e-14, and every conversion test carries a
-  relative tolerance.
+  class is an absolute epsilon on scale-free data. `minv` refuses on the
+  determinant over the square of the matrix norm, and every conversion test
+  carries a relative tolerance. The first version of that guard held the ratio
+  against `1e-14` with a floor of one under the scale, which refused a well
+  conditioned Y-matrix in siemens and let an ill conditioned S-matrix through.
 - **A determinant that cancels loses eight digits.** The largest singular value
   of a lossless S-matrix came out as 1 + 5e-9 from the trace-and-determinant
   form, because the two terms are equal there. `largestSingular` uses the

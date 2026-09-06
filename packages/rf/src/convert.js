@@ -63,12 +63,26 @@ export const mnorm = (A) => Math.max(cabs(A[0][0]), cabs(A[0][1]), cabs(A[1][0])
  * The threshold is relative to the matrix's own scale, never a fixed epsilon: a
  * two-port written in ohms and one written in siemens differ by four decades of
  * determinant and are the same object.
+ *
+ * A determinant is quadratic in the entries, so the only scale it can be
+ * measured against is the square of the largest entry. A Y-matrix in siemens
+ * has entries near 1e-9 and a determinant near 1e-18, and its inverse is exact.
+ * Comparing that determinant against a floor of 1e-14 would refuse it, which is
+ * the absolute-epsilon-on-scale-free-data mistake this suite has paid for
+ * before.
+ *
+ * The number the ratio is held to is 1e-10, and it is a statement about digits
+ * rather than about existence. A two-by-two inverse returns about
+ * |det|/scale² of the sixteen digits it starts with, so at 1e-10 the inverse
+ * still carries the eight this package's round trips are stated to. Below it
+ * the description is reported as missing, because a number with fewer digits
+ * than the claim beside it is worse than no number.
  */
 export function minv(A, what = 'this matrix') {
   const det = mdet(A)
   const scale = mnorm(A)
   require_(
-    cabs(det) > 1e-14 * Math.max(1, scale * scale),
+    cabs(det) > 1e-10 * scale * scale,
     `The determinant of ${what} is ${cabs(det).toExponential(3)} against a scale of ${scale.toExponential(3)}, so it has no inverse. This description does not exist for this circuit, and another one does.`,
     { field: 'matrix', kind: 'singular' },
   )
