@@ -30,6 +30,8 @@
 // Anything unrecognised is dropped and reported rather than guessed at. A link
 // that silently loads as something else is worse than one that refuses.
 
+import { DEPLOYED_APPS as APPS } from './deployedApps.js'
+
 const NUM = /^-?\d*\.?\d+(?:e[-+]?\d+)?$/i
 
 /** Build a fragment from a patch. Omits anything empty. */
@@ -178,8 +180,6 @@ export function readLocationLink() {
  * RELEASED labs link back to a dark one is a separate decision, made in
  * LabNav's own `LABS` list, and adding a name here must not change that.
  */
-const APPS = ['signal-lab', 'circuit-lab', 'control-lab', 'circuit-elements-lab', 'power-lab']
-
 /**
  * The URL of a sibling app in the deployed suite, or null.
  *
