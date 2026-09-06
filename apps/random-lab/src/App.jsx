@@ -362,10 +362,19 @@ function Readouts({ view, a, p }) {
       const c = a.acf()
       return (
         <Pane title="What the correlation measures">
-          <Closed label="Zero lag" value={c.r0} />
-          <Closed label="1/e lag" value={c.lagAt1e} sig={0} />
+          <Closed
+            label="Mean square at zero lag"
+            value={c.r0}
+            unit="V²"
+            note="the plot divides by it, so the curve starts at 1"
+          />
+          <Closed label="1/e lag" value={c.lagAt1e} sig={0} note="samples" />
           <Closed label="Time constant" value={c.tauSamples} note="samples" />
-          <Closed label="White noise band" value={c.whiteBand} />
+          <Closed
+            label="White record band"
+            value={c.whiteBand}
+            note="plus and minus, at 5 over the root of the record length"
+          />
         </Pane>
       )
     }
@@ -379,7 +388,11 @@ function Readouts({ view, a, p }) {
           <Closed label="Run length" value={e.length} sig={0} />
           {e.statEstimate ? <Estimate label="Mean outcome" est={e.statEstimate} /> : null}
           <Closed label="Spread of time averages" value={e.ergodicity.spread} />
-          <Closed label="Ensemble and time gap" value={e.ergodicity.gap} />
+          <Closed
+            label="Ensemble and time gap"
+            value={e.ergodicity.gap}
+            note="the two averages sum the same values, so this is rounding"
+          />
           {y ? <Estimate label="Yield" est={y} scale={100} /> : null}
         </Pane>
       )
@@ -392,7 +405,7 @@ function Readouts({ view, a, p }) {
           <Closed label="In decibels" value={s.snrDb} unit="dB" />
           <Against label="2E/N0" measured={s.twoEOverN0} predicted={s.snr} />
           <Closed label="Pulse energy" value={s.energyDiscrete} />
-          <Closed label="Mismatched ratio" value={s.mismatch} />
+          <Closed label="Mismatched ratio" value={s.mismatch} unit="%" note="of the matched filter's ratio" />
           <Closed label="Mismatch loss" value={s.mismatchLossDb} unit="dB" />
         </Pane>
       )
@@ -441,7 +454,11 @@ function Readouts({ view, a, p }) {
           ) : (
             <>
               <Closed label="One-shot error" value={k.oneShotMmse} />
-              <Closed label="What memory is worth" value={k.memoryWorth} />
+              <Closed
+                label="What memory is worth"
+                value={k.memoryWorth}
+                note="the settled error as a fraction of the one-shot error"
+              />
             </>
           )}
         </Pane>

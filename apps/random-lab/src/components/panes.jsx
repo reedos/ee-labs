@@ -15,10 +15,17 @@ import { fmtInt } from '../format.js'
  * `sig = 0` means the quantity is a count, so it prints as a whole number.
  * A value that is not finite prints as an em rule rather than as "NaN", and the
  * caller states the reason in its note.
+ *
+ * The decibel is a logarithm, so it never takes an engineering prefix. Handed
+ * to the shared formatter, a mismatch loss of 0.9112 dB printed as "911.2 mdB"
+ * while the lesson beside it said 0.911 dB.
  */
+const LOGARITHMIC = new Set(['dB', 'dBm', 'dBc'])
+
 function show(value, unit, sig) {
   if (!Number.isFinite(value)) return '—'
   if (sig === 0) return fmtInt(value)
+  if (LOGARITHMIC.has(unit)) return `${fmtNum(value, sig)} ${unit}`
   return unit ? fmt(value, unit, sig) : fmtNum(value, sig)
 }
 

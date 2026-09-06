@@ -1,6 +1,7 @@
 import React from 'react'
 import { useCanvas, COLORS, plotArea, drawFrame, fmtNum, fmtHz, fmt } from '@ee-labs/ui'
 import { fmtInt } from '../format.js'
+import { frameTicks, tickStep, tickLabel } from '../axis.js'
 
 // The views other than the ensemble, which has its own file because it is a new
 // canvas the suite will promote.
@@ -37,8 +38,9 @@ export function ScopeCanvas({ data, label = 'Value', units = '', height = 260 })
       lo -= pad
       hi += pad
       const area = plotArea(w, h)
-      drawFrame(ctx, area, 0, n - 1, lo, hi, (v) => fmtInt(v), (v) => fmtNum(v, 3),
-        frameOpts('Sample', `${label}${units ? ` (${units})` : ''}`))
+      const t = frameTicks(area, 0, n - 1, lo, hi)
+      drawFrame(ctx, area, 0, n - 1, lo, hi, t.fmtX, t.fmtY,
+        frameOpts('Sample', `${label}${units ? ` (${units})` : ''}`, { xStep: t.xStep, yStep: t.yStep }))
       ctx.strokeStyle = COLORS.trace
       ctx.lineWidth = 1
       ctx.beginPath()
@@ -75,8 +77,9 @@ export function HistogramCanvas({ hist, height = 300 }) {
       const area = plotArea(w, h, { topInset: 18 })
       const sx = (v) => area.x + ((v - hist.lo) / (hist.hi - hist.lo)) * area.w
       const sy = (v) => area.y + area.h - (v / hi) * area.h
-      drawFrame(ctx, area, hist.lo, hist.hi, 0, hi, (v) => fmtNum(v, 1), (v) => fmtNum(v, 2),
-        frameOpts('Value', 'Density (1/value)'))
+      const t = frameTicks(area, hist.lo, hist.hi, 0, hi)
+      drawFrame(ctx, area, hist.lo, hist.hi, 0, hi, t.fmtX, t.fmtY,
+        frameOpts('Value', 'Density (1/value)', { xStep: t.xStep, yStep: t.yStep }))
 
       const bw = area.w / bins
       for (let k = 0; k < bins; k++) {
@@ -135,12 +138,14 @@ export function CorrelationCanvas({ acf, height = 280 }) {
       ctx.fillStyle = COLORS.bg
       ctx.fillRect(0, 0, w, h)
       if (!acf) return Empty({ ctx, w, h, text: 'No correlation' })
-      const maxLag = Math.min(acf.normalised.length - 1, 120)
+      const available = acf.normalised.length - 1
+      const maxLag = Math.min(available, 120)
       const area = plotArea(w, h, { topInset: 18 })
       const sx = (v) => area.x + (v / maxLag) * area.w
       const sy = (v) => area.y + area.h - ((v + 0.3) / 1.4) * area.h
-      drawFrame(ctx, area, 0, maxLag, -0.3, 1.1, (v) => fmtInt(v), (v) => fmtNum(v, 2),
-        frameOpts('Lag (samples)', 'Correlation, normalised'))
+      const t = frameTicks(area, 0, maxLag, -0.3, 1.1)
+      drawFrame(ctx, area, 0, maxLag, -0.3, 1.1, t.fmtX, t.fmtY,
+        frameOpts('Lag (samples)', 'Correlation, normalised', { xStep: t.xStep, yStep: t.yStep }))
 
       // The band a white record's lags stay inside, so "no correlation" has a
       // measured meaning rather than an eyeballed one.
@@ -177,7 +182,8 @@ export function CorrelationCanvas({ acf, height = 280 }) {
       ctx.fillStyle = COLORS.text
       ctx.textAlign = 'left'
       ctx.fillText(
-        `1/e after ${acf.lagAt1e} lags · filter time constant ${fmtNum(acf.tauSamples, 3)} samples`,
+        `1/e after ${acf.lagAt1e} lags · filter time constant ${fmtNum(acf.tauSamples, 3)} samples` +
+          (maxLag < available ? ` · ${maxLag} of ${available} lags drawn` : ''),
         area.x,
         area.y - 6 * area.k,
       )
@@ -217,8 +223,10 @@ export function DensityCanvas({ psd, height = 320 }) {
       const area = plotArea(w, h, { topInset: 18 })
       const sx = (f) => area.x + (f / fMax) * area.w
       const sy = (v) => area.y + area.h - ((v - lo) / (hi - lo)) * area.h
-      drawFrame(ctx, area, 0, fMax, lo, hi, (v) => fmtHz(v), (v) => fmtInt(v),
-        frameOpts('Frequency (Hz)', 'Density (dB, relative to the mean)'))
+      const xStep = tickStep(0, fMax, Math.max(2, Math.floor(area.w / (90 * area.k))))
+      const yStep = tickStep(lo, hi, Math.max(2, Math.floor(area.h / (46 * area.k))))
+      drawFrame(ctx, area, 0, fMax, lo, hi, (v) => fmtHz(v), tickLabel(yStep),
+        frameOpts('Frequency (Hz)', 'Density (dB, relative to the mean)', { xStep, yStep }))
 
       ctx.fillStyle = 'rgba(95, 168, 255, 0.18)'
       ctx.beginPath()
@@ -262,7 +270,7 @@ export function DensityCanvas({ psd, height = 320 }) {
       ctx.textAlign = 'right'
       ctx.fillStyle = COLORS.textBright
       ctx.fillText(
-        `∫ = ${fmt(psd.rmsFromIntegral, '', 4)} rms over 0 to ${fmtHz(fMax)}Hz`,
+        `∫ = ${fmt(psd.rmsFromIntegral, 'V', 4)} rms over 0 to ${fmtHz(fMax)}Hz`,
         area.x + area.w,
         area.y - 6 * area.k,
       )
@@ -309,8 +317,9 @@ export function OutcomeCanvas({ stats, band = null, count = null, height = 280 }
         ctx.fillStyle = 'rgba(95, 168, 255, 0.12)'
         ctx.fillRect(sx(band.lo), area.y, sx(band.hi) - sx(band.lo), area.h)
       }
-      drawFrame(ctx, area, lo, hi, 0, top, (v) => fmtNum(v, 2), (v) => fmtInt(v),
-        frameOpts('Outcome', 'Runs'))
+      const t = frameTicks(area, lo, hi, 0, top)
+      drawFrame(ctx, area, lo, hi, 0, top, t.fmtX, t.fmtY,
+        frameOpts('Outcome', 'Runs', { xStep: t.xStep, yStep: t.yStep }))
       const bw = area.w / bins
       for (let k = 0; k < bins; k++) {
         ctx.fillStyle = 'rgba(56, 224, 176, 0.35)'
@@ -354,8 +363,9 @@ export function MatchedCanvas({ snr, height = 260 }) {
       const area = plotArea(w, h, { topInset: 18 })
       const sx = (i) => area.x + (i / (y.length - 1)) * area.w
       const sy = (v) => area.y + area.h - ((v - lo + pad) / (hi - lo + 2 * pad)) * area.h
-      drawFrame(ctx, area, 0, y.length - 1, lo - pad, hi + pad, (v) => fmtInt(v), (v) => fmtNum(v, 2),
-        frameOpts('Lag (samples)', 'Correlator output'))
+      const t = frameTicks(area, 0, y.length - 1, lo - pad, hi + pad)
+      drawFrame(ctx, area, 0, y.length - 1, lo - pad, hi + pad, t.fmtX, t.fmtY,
+        frameOpts('Lag (samples)', 'Correlator output', { xStep: t.xStep, yStep: t.yStep }))
       ctx.strokeStyle = COLORS.trace
       ctx.lineWidth = 1.5
       ctx.beginPath()
@@ -404,8 +414,9 @@ export function ErrorRateCanvas({ ber, height = 300 }) {
         const l = Math.log10(Math.max(p, 1e-10))
         return area.y + area.h - ((l - loLog) / (hiLog - loLog)) * area.h
       }
-      drawFrame(ctx, area, loDb, hiDb, loLog, hiLog, (v) => fmtInt(v), (v) => `1e${fmtInt(v)}`,
-        { xTitle: 'Eb/N0 (dB)', yTitle: 'Error rate', yStep: 1 })
+      const xStep = tickStep(loDb, hiDb, Math.max(2, Math.floor(area.w / (90 * area.k))))
+      drawFrame(ctx, area, loDb, hiDb, loLog, hiLog, tickLabel(xStep), (v) => `1e${fmtInt(v)}`,
+        { xTitle: 'Eb/N0 (dB)', yTitle: 'Error rate', yStep: 1, xStep })
 
       const curve = (key, style, width) => {
         ctx.strokeStyle = style
@@ -485,8 +496,9 @@ export function KalmanCanvas({ kalman, height = 280 }) {
       const area = plotArea(w, h, { topInset: 18 })
       const sx = (i) => area.x + (i / (n - 1)) * area.w
       const sy = (v) => area.y + area.h - ((v - lo) / (hi - lo)) * area.h
-      drawFrame(ctx, area, 0, n - 1, lo, hi, (v) => fmtInt(v), (v) => fmtNum(v, 2),
-        frameOpts('Step', 'State'))
+      const t = frameTicks(area, 0, n - 1, lo, hi)
+      drawFrame(ctx, area, 0, n - 1, lo, hi, t.fmtX, t.fmtY,
+        frameOpts('Step', 'State', { xStep: t.xStep, yStep: t.yStep }))
       const line = (arr, style, width, dash) => {
         ctx.strokeStyle = style
         ctx.lineWidth = width
