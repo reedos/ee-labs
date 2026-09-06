@@ -9,7 +9,7 @@ import { reportSummary } from './report.js'
 import ScopeCanvas, { TRACE_COLORS } from './components/ScopeCanvas.jsx'
 import SweepCanvas from './components/SweepCanvas.jsx'
 import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, FluxPane, ScrubPane, LedgerPane, MODE_WORDS } from './components/panes.jsx'
-import { fmtz } from './format.js'
+import { fmtz, statScale } from './format.js'
 import { scopeMarks, sweepMarks } from './marks.js'
 import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/schematics.jsx'
 import BuckHandOver from './components/BuckHandOver.jsx'
@@ -611,7 +611,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                   </span>
                   <span>
                     i_D peak <b>{fmt(m.iPeak, 'A', 3)}</b>
-                    <em className="prov"> for ⟨i_D⟩ {fmt(m.sig.iD.avg, 'A', 3)}</em>
+                    <em className="prov"> for ⟨i_D⟩ {fmtz(m.sig.iD.avg, 'A', 3, statScale(m.sig.iD))}</em>
                   </span>
                   <span className="flag">
                     conducts {m.angle.toFixed(1)}° × {m.pulses}
@@ -623,7 +623,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                     ripple <b>{fmt(m.sig.vout.pp, 'V', 3)}</b>
                   </span>
                   <span>
-                    i_L <b>{fmt(m.sig.iL.avg, 'A', 3)}</b>
+                    i_L <b>{fmtz(m.sig.iL.avg, 'A', 3, statScale(m.sig.iL))}</b>
                     <em className="prov"> ± {fmt(m.sig.iL.pp / 2, 'A', 3)}</em>
                   </span>
                   {clocked && m.mode === 'DCM' ? (

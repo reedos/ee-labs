@@ -47,7 +47,12 @@ describe('App', () => {
     // An average that is zero comes back from exact integration as ~1e-16, and
     // fmt would render it "0.6776 fV" — a number that reads like a reading.
     // Nothing in this lab is legitimately femto-anything at its defaults.
-    const dust = /[\d.]\s*[fazy](V|A|W|C|Hz|s)/
+    // The boundary at the end is a word boundary, written \b. As a raw
+    // backspace (U+0008) it asked for a control character no page carries,
+    // so this probe matched nothing at all and passed over an empty set:
+    // the scope readout carried "-10.2 fA" on the three sine-PWM
+    // experiments the whole time (REVIEW_PLAYBOOK.md § 11).
+    const dust = /[\d.]\s*[fazy](V|A|W|C|Hz|s)\b/
     for (const e of EXPERIMENTS) {
       for (const v of e.views) {
         const h = renderToString(React.createElement(App, { initialId: e.id, initialView: v }))
