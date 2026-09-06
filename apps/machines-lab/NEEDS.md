@@ -146,3 +146,34 @@ integrate anything itself, so the Grid Lab keeps its own guard and its own step.
 Four experiments, specified in `MACHINES_LAB_PLAN.md` Decision 4 and recorded in
 `BACKLOG.md`. All four need Power Lab's Groups F and L, which have no overseer.
 No lesson in this lab references them.
+
+## 8. What the review sitting found outside this lab
+
+Three items the lab worked around rather than waited on. Each is a file this
+lab does not own, and in each case the lab's own copy is correct today.
+
+**`integrate().says` and `runUp().says` are not fit for a screen.**
+`packages/machines/src/integrate.js` builds "Richardson puts the error at
+1.05e-8, 6.88e-9 % of the range", and `induction.js` appends a clause joined by
+a semicolon. `STYLE.md` bans both an exponent and a semicolon in anything a
+reader sees, and this lab's harness now fails on either. The lab writes its own
+sentence from the fields beside `says` (`readout.js`, `runUpSays`), so nothing
+is blocked. Any other lab that prints `says` will ship the same two faults. The
+repair is one line in each package file, and the fields are already there.
+
+**`Schematic` has no way to name a meter's unit.** `packages/ui`'s Schematic
+prints a node voltage in volts and a branch current in amps. The thermal
+analogy of Group E is a circuit whose node voltage is a rise in kelvins and
+whose branch current is a loss in watts. Its drawing read "hot 72.4 V", "429 A"
+and "Cth 6 kF". This lab turns meters off for that one drawing and puts
+each value in the element's own label instead. That is correct, and it costs
+the live readings. A `units={{ v: 'K', i: 'W' }}` prop would give them back.
+The Energy Lab and the Devices Lab will both draw thermal networks.
+
+**`layoutCheck.js` is in four apps now.** Circuit Elements, Electronics,
+Instruments and, since this sitting, Machines each carry a byte-identical copy.
+`PROGRAM.md` §4 says a component a second lab needs goes into `packages/ui`.
+This is a checker rather than a component, and the argument is the same. On
+this lab's first run it found seventeen collisions and seven labels outside
+their frames, none of which any browser probe could see. Promoting it would
+put it in front of the labs that have not copied it.
