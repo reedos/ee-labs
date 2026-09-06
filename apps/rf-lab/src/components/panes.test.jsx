@@ -185,6 +185,19 @@ describe('the equations pane prints the closed form with its own numbers in it',
     expect(out).not.toContain('data-eq="S to Z to ABCD to Y to S"')
   })
 
+  it('a complex load says on the numbers pane that its reactance does not move', () => {
+    // C5's note claims the pane says which of the two is on the bench, so the
+    // pane has to say it. A real load is a component and its reactance moves
+    // with frequency, and this analysis holds an impedance instead.
+    const { exp, p, x } = at('c5')
+    const out = html(<NumbersPane exp={exp} x={x} p={p} />)
+    expect(out).toContain('data-row="The load holds this reactance"')
+    expect(out).toMatch(/at every frequency/)
+    // A real load takes no such row, because there is nothing to distinguish.
+    const plain = at('c5', { XL: 0 })
+    expect(html(<NumbersPane exp={plain.exp} x={plain.x} p={plain.p} />)).not.toContain('data-row="The load holds this reactance"')
+  })
+
   it('the pi attenuator has all four descriptions and closes its round trip', () => {
     const { exp, p, x } = at('d3')
     const out = html(<EquationsPane exp={exp} x={x} p={p} />)

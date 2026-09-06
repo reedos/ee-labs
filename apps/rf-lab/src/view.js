@@ -508,7 +508,15 @@ function matchRows(x, p) {
     row('Series reactance', `${plain(d.Xs)} Ω`, 'Q R_low'),
     row('Shunt reactance', `${plain(d.Xp)} Ω`, 'R_high / Q'),
   ]
-  if (d.cancel) rows.push(row('Load reactance cancelled by', `${plain(d.cancel.X)} Ω in series`, 'the opposite of the load’s own'))
+  if (d.cancel) {
+    rows.push(row('Load reactance cancelled by', `${plain(d.cancel.X)} Ω in series`, 'the opposite of the load’s own'))
+    // C5's note says the numbers pane names which of the two is on the bench,
+    // so the pane names it. The load is an impedance in this analysis and its
+    // reactance is the same at every frequency, while the elements beside it
+    // are components whose reactances move. That difference is what the sweep
+    // above draws, so it belongs in the list the sweep is read against.
+    rows.push(row('The load holds this reactance', `${plain(d.X)} Ω at every frequency`, 'an impedance, not a component whose reactance moves'))
+  }
   for (const el of x.chosen.elements) {
     rows.push(row(`${el.place === 'series' ? 'Series' : 'Shunt'} ${el.kind === 'L' ? 'inductor' : 'capacitor'}`, num(el.value, el.kind === 'L' ? 'H' : 'F'), `${plain(el.X)} Ω at ${num(p.f, 'Hz')}`))
   }
