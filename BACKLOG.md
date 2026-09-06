@@ -1230,7 +1230,7 @@ by exact Fourier integral and through `@ee-labs/dsp`'s FFT. `thermal.js`
 builds a Foster or a Cauer network from one set of stages and steps it with
 the same propagator. A pulsed load is the periodic steady state it is.
 
-**The tests.** 2375 in `apps/power-lab` and `packages/switched`, all green,
+**The tests.** 2376 in `apps/power-lab` and `packages/switched`, all green,
 with Groups A to G untouched. The invariants are fuzzed at 240 seeded
 settings a drive kind, 200 for the input side, 60 for the switch node, 200
 networks a model and 120 pulses a model. `pins.test.js` walks all nine
