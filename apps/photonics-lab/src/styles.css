@@ -1,7 +1,8 @@
 /* Photonics Lab's own furniture. The shell, controls and NumField come from
  * @ee-labs/ui; the group tabs, presets, terms fold and path nav are the house
  * idiom every other lab uses, copied so the suite reads as one thing. The
- * curve, pulse, link, cavity and spectrum panes are this lab's own. */
+ * curve, pulse, link, cavity, spectrum, equations, modulation and step
+ * panes are this lab's own. */
 
 /* ---------- the picker: group tabs, then that group's experiments ---------- */
 
@@ -229,11 +230,61 @@ canvas.plot { flex: 1; width: 100%; min-height: 240px; display: block; border-ra
 .chan { fill: rgba(56, 224, 176, 0.35); }
 .source { fill: var(--amber, #f0a23c); }
 
+/* ---------- the equations, the modulation response, the step ---------- */
+
+.equations { display: flex; flex-direction: column; gap: 12px; }
+.eqn-block h4 { margin: 0 0 2px; font-size: 12px; font-weight: 600; color: var(--text); }
+.eqn-line {
+  margin: 0 0 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--dim);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.eqn-terms { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+.eqn-terms th, .eqn-terms td { padding: 3px 8px 3px 0; border-bottom: 1px solid var(--line); text-align: left; }
+.eqn-terms tbody th { color: var(--dim); font-weight: 500; width: 32%; }
+.eqn-terms td.f { color: var(--dim); font-size: 11px; font-style: italic; width: 18%; white-space: nowrap; }
+.eqn-terms td.bar { width: 28%; position: relative; }
+.eqn-terms td.bar span { display: block; height: 8px; border-radius: 2px; min-width: 1px; }
+.eqn-terms td.bar span.is-in { background: var(--accent); }
+.eqn-terms td.bar span.is-out { background: var(--line-bright); }
+.eqn-terms td.v {
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: nowrap;
+  text-align: right;
+  width: 22%;
+}
+.eqn-terms tr.is-total th, .eqn-terms tr.is-total td.v { color: var(--text); font-weight: 600; }
+
+.modulation svg, .step svg { width: 100%; height: 190px; display: block; background: var(--panel); border-radius: 6px; }
+.mod-trace, .step-measured { fill: none; stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.mod-axis, .step-axis { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.mod-zero, .step-final { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }
+.mod-peak, .mod-corner { stroke: var(--line-bright); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.step-predicted {
+  fill: none;
+  stroke: var(--dim);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+.step-predicted.is-estimate { stroke: var(--amber, #f0a23c); }
+.step .flag, .modulation .flag { margin: 6px 2px 0; }
+
 @media (max-width: 900px) {
   .views { display: flex; flex-direction: column; gap: 0; }
   .views .view { min-height: 60vh; flex: 0 0 auto; }
   .link-strip { grid-template-columns: minmax(0, 1fr); }
   .waterfall td.bar { width: 40%; }
+  /* A phone has no room for a formula column beside three others, so the
+     equation table drops it and keeps the name, the bar and the value. */
+  .eqn-terms td.f { display: none; }
+  .eqn-terms tbody th { width: 42%; }
+  .eqn-terms td.bar { width: 26%; }
+  .eqn-terms td.v { width: 32%; font-size: 11px; }
 }
 
 @media (min-width: 1200px) and (max-width: 2399px) {

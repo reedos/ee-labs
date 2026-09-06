@@ -9,17 +9,22 @@
 // half done, which is why prose.test.js reads the lessons off EXPERIMENTS.
 
 import { A } from './groups/a.js'
+import { C } from './groups/c.js'
+import { D } from './groups/d.js'
 import { E } from './groups/e.js'
 import { F_GROUP } from './groups/f.js'
 import { LESSONS } from './lessons.js'
 
 /** Every view a lower pane can show, in the order the view switch lists them. */
-export const VIEW_ORDER = ['schematic', 'curve', 'pulse', 'link', 'cavity', 'spectrum', 'numbers']
+export const VIEW_ORDER = ['schematic', 'curve', 'equations', 'modulation', 'step', 'pulse', 'link', 'cavity', 'spectrum', 'numbers']
 
 /** What the view switch calls each view, and the hover text that says what it shows. */
 export const VIEW_LABELS = {
-  schematic: { label: 'Circuit', title: 'The photodiode, its bias and its load, with the solved voltages and currents on it' },
+  schematic: { label: 'Circuit', title: 'The junction, its supply and its load, with the solved voltages and currents on it' },
   curve: { label: 'Curve', title: 'The experiment’s quantity against the knob it depends on, with the setting marked' },
+  equations: { label: 'Equations', title: 'The two rate equations, with every term’s own value at the settings on screen' },
+  modulation: { label: 'Modulation', title: 'The laser’s response against modulation frequency, with the relaxation peak marked' },
+  step: { label: 'Step', title: 'The photon density after a step in current, integrated and as the linearisation predicted' },
   pulse: { label: 'Pulse', title: 'One pulse entering the fibre and the same pulse leaving it, with both widths printed' },
   link: { label: 'Link', title: 'The transmitter, the fibre and the receiver, with the budget drawn under them' },
   cavity: { label: 'Cavity', title: 'The transmission against frequency, with the range, the finesse and the linewidth marked' },
@@ -39,7 +44,7 @@ const ALL_GROUPS = [
   'F · The cavity, and many colours',
 ]
 
-const RAW = [...A, ...E, ...F_GROUP]
+const RAW = [...A, ...C, ...D, ...E, ...F_GROUP]
 
 /** The groups that have experiments in them, in plan order. */
 export const GROUPS = ALL_GROUPS.filter((g) => RAW.some((e) => e.group === g))

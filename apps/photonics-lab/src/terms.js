@@ -110,6 +110,204 @@ export const TERMS = {
       'all. It is the figure of merit a detector is chosen on.',
   },
 
+  // ---------------------------------------------------------------- Group C
+  forwardbias: {
+    name: 'Forward bias',
+    def:
+      'A voltage applied to a junction the way it does conduct. The current rises exponentially with it, so a ' +
+      'wide range of currents sits inside a narrow range of volts. An LED and a laser are both run this way, at ' +
+      'about 1.2 V for a 1550 nm device.',
+  },
+  shockley: {
+    name: 'Shockley’s law',
+    def:
+      'The exponential law a junction carries current by, I_S times e to the voltage over n times the thermal ' +
+      'voltage, less one. I_S and the ideality factor n are the two numbers that place the curve. It is the same ' +
+      'law every diode in the suite is solved by.',
+  },
+  led: {
+    name: 'Light-emitting diode',
+    def:
+      'A forward-biased junction whose recombining carriers leave as spontaneous light. Its power is linear in ' +
+      'current and its speed is set by one carrier lifetime. At a 5.0 ns lifetime it is 31.831 MHz wide, which is ' +
+      'why a fast fibre link uses a laser instead.',
+  },
+  laserdiode: {
+    name: 'Laser diode',
+    def:
+      'The same forward-biased junction inside a cavity, so that recombination is driven by the light already ' +
+      'there. Below threshold it behaves as an LED. Above it the carrier density stops rising and every extra ' +
+      'electron leaves as light in one mode.',
+  },
+  recombination: {
+    name: 'Recombination',
+    def:
+      'An electron and a hole meeting and disappearing, which is what a forward-biased junction does with its ' +
+      'current. Spontaneous recombination sends a photon in any direction. Stimulated recombination sends one ' +
+      'into the mode that provoked it, which is what makes a laser.',
+  },
+  internalefficiency: {
+    name: 'Internal efficiency',
+    def:
+      'The fraction of recombining carriers that leave as photons rather than as heat. It multiplies the volts ' +
+      'one photon costs to give the slope in milliwatts a milliamp. At 0.2 and 1550 nm that slope is ' +
+      '0.15998 mW/mA.',
+  },
+  voltsperphoton: {
+    name: 'Volts one photon costs',
+    def:
+      'The photon energy read as a voltage, hν over q, which is 0.79990 V at 1550 nm. An electron falling ' +
+      'through it carries exactly one photon’s worth of energy. Every optical power in this group is that ' +
+      'voltage times a current times an efficiency.',
+  },
+  carrierlifetime: {
+    name: 'Carrier lifetime',
+    def:
+      'How long a carrier lasts in the active region before it recombines, written τ_c. It stands for every ' +
+      'recombination path at once, which is the model. A 2.0 ns lifetime is typical of the material a 1550 nm ' +
+      'device is grown in.',
+  },
+  modulationbandwidth: {
+    name: 'Modulation bandwidth',
+    def:
+      'The frequency at which a device’s optical output is 3 dB below its low-frequency value. For an LED it is ' +
+      'one over two pi times the carrier lifetime. Above it the response falls at 20 dB a decade, which is ' +
+      '6.0206 dB an octave.',
+  },
+  threshold: {
+    name: 'Threshold current',
+    def:
+      'The current at which a laser’s gain first equals its cavity loss, written I_th. Below it the carrier ' +
+      'density is still rising and almost no light leaves. Above it the density is clamped and the output rises ' +
+      'at the slope efficiency.',
+  },
+  slopeefficiency: {
+    name: 'Slope efficiency',
+    def:
+      'How much optical power each extra milliamp above threshold buys, in milliwatts a milliamp. It is the ' +
+      'differential efficiency times the volts one photon costs. At 0.4 and 1550 nm it is 0.31996 mW/mA.',
+  },
+  stimulated: {
+    name: 'Stimulated emission',
+    def:
+      'A photon provoking a carrier to recombine and produce a second photon in the same mode. It is the term ' +
+      'that couples the two rate equations. Its rate is the gain times the photon density, so it grows as the ' +
+      'light in the cavity grows.',
+  },
+  gainclamp: {
+    name: 'Gain clamping',
+    def:
+      'The carrier density holding still above threshold, because any rise would make the gain exceed the loss. ' +
+      'It is why the kink at threshold is sharp. Every electron past threshold leaves as light rather than ' +
+      'raising the density.',
+  },
+  photonlifetime: {
+    name: 'Photon lifetime',
+    def:
+      'How long a photon stays in the cavity before it is lost, written τ_p. It is the index over the speed of ' +
+      'light times the total loss per metre. A 100 µm cleaved chip of index 3.5 holds a photon for 1.9862 ps.',
+  },
+  mirrorloss: {
+    name: 'Mirror loss',
+    def:
+      'The loss per metre that stands for light leaving through the two ends, one over twice the length times ' +
+      'the logarithm of one over the reflectance. A 100 µm chip with 0.30864 facets loses 58.779 per cm. Some ' +
+      'texts spread the same reflectance over a round trip and quote twice this.',
+  },
+  facet: {
+    name: 'Facet',
+    def:
+      'A cleaved end of a semiconductor chip, which reflects because the index steps from 3.5 to 1. That step ' +
+      'alone gives 0.30864, so a laser chip needs no mirror added. Coating a facet raises the reflectance and ' +
+      'lowers the threshold.',
+  },
+
+  // ---------------------------------------------------------------- Group D
+  rateequations: {
+    name: 'The rate equations',
+    def:
+      'Two coupled equations for a laser, one counting carriers and one counting photons in the mode. Every ' +
+      'term in them is a rate of density, per cubic metre a second. Setting both to zero gives the steady state, ' +
+      'and that is algebra rather than an integration.',
+  },
+  carrierdensity: {
+    name: 'Carrier density',
+    def:
+      'Electron-hole pairs for each cubic metre of the active region, written N. The pump raises it, ' +
+      'recombination and stimulated emission lower it. Above threshold it is clamped at 1.6713 × 10²⁴ m⁻³ and ' +
+      'stops responding to the drive.',
+  },
+  photondensity: {
+    name: 'Photon density',
+    def:
+      'Photons for each cubic metre of the mode, written S. It is zero below threshold when no spontaneous ' +
+      'light is coupled into the mode, and rises in a straight line above it. At twice threshold it is ' +
+      '4.9792 × 10²⁰ m⁻³.',
+  },
+  pump: {
+    name: 'The pump term',
+    def:
+      'The rate at which the drive current delivers carriers, I over q times the active volume. It is the only ' +
+      'term the reader controls directly. At 26.777 mA into 10⁻¹⁶ m³ it is 1.6713 × 10³³ carriers a cubic metre ' +
+      'a second.',
+  },
+  steadystate: {
+    name: 'Steady state',
+    def:
+      'The densities at which both rate equations are zero, so nothing is changing. It is the root of one ' +
+      'quadratic and is returned exactly at every current. Nothing about it is integrated, which is why this ' +
+      'lab states it without a hedge.',
+  },
+  thresholddensity: {
+    name: 'Threshold density',
+    def:
+      'The carrier density at which the gain equals one over the photon lifetime, written N_th. It is the ' +
+      'transparency density plus one over the confinement factor times the differential gain times the photon ' +
+      'lifetime. Here that is 1.6713 × 10²⁴ m⁻³.',
+  },
+  relaxation: {
+    name: 'Relaxation oscillation',
+    def:
+      'The ringing between carriers and photons after the drive current moves, at 3.9844 GHz at twice threshold ' +
+      'here. Carriers build the light, the light eats the carriers, and the pair overshoots. It is the fastest ' +
+      'thing a directly modulated laser does.',
+  },
+  dampingratio: {
+    name: 'Damping ratio',
+    def:
+      'How quickly a second-order response settles, written ζ. Below one over the square root of two the ' +
+      'magnitude peaks, and the smaller ζ is the taller that peak stands. A laser at twice threshold has ζ of ' +
+      '0.034848, so its peak is 23.141 dB high.',
+  },
+  linearisation: {
+    name: 'Linearisation',
+    def:
+      'Replacing a nonlinear pair by the straight-line behaviour of small departures from one steady state. It ' +
+      'produces an exactly rational second-order H(s), so it crosses to the rest of the suite without a hedge. ' +
+      'The steady state it was taken at is part of the answer.',
+  },
+  modulationdepth: {
+    name: 'Modulation depth',
+    def:
+      'How far a step moves the drive current, as a fraction of the bias. It is the knob the guard on the ' +
+      'linearisation is written in. At 5 per cent the linear prediction misses the overshoot by 5.2639 per cent ' +
+      'and at 30 per cent it misses by 26.760 per cent.',
+  },
+  overshoot: {
+    name: 'Overshoot',
+    def:
+      'How far past its final value a response goes before settling, as a fraction of the step. A second-order ' +
+      'response overshoots by e to minus pi ζ over the square root of one minus ζ squared. At ζ of 0.034848 ' +
+      'that is most of the step again.',
+  },
+  guard: {
+    name: 'Guard',
+    def:
+      'A stated threshold on an approximation, with what the pane does on each side of it. This lab draws the ' +
+      'linear prediction plainly to 5 per cent depth, as an estimate to 30 per cent, and not at all past that. ' +
+      'The two numbers come from the measured error, not from taste.',
+  },
+
   // ---------------------------------------------------------------- Group E
   attenuation: {
     name: 'Attenuation',
@@ -293,6 +491,34 @@ export const MATCH = {
   junctioncapacitance: /\bjunction capacitance\b/i,
   corner: /\bcorner\b/i,
   areabandwidth: /\barea bandwidth\b/i,
+  forwardbias: /\bforward(-| )bias(ed)?\b/i,
+  shockley: /\bShockley\b/,
+  led: /\bLED\b|\blight-emitting diode\b/,
+  laserdiode: /\blaser diode\b|\blasers?\b/i,
+  recombination: /\brecombin(ation|es?|ing|ed)\b/i,
+  internalefficiency: /\binternal efficiency\b/i,
+  voltsperphoton: /\bvolts one photon costs\b/i,
+  carrierlifetime: /\bcarrier lifetime\b/i,
+  modulationbandwidth: /\bmodulation bandwidth\b/i,
+  threshold: /\bthreshold\b/i,
+  slopeefficiency: /\bslope efficiency\b/i,
+  stimulated: /\bstimulated\b/i,
+  gainclamp: /\bclamp(s|ed|ing)?\b/i,
+  photonlifetime: /\bphoton lifetime\b/i,
+  mirrorloss: /\bmirror loss\b/i,
+  facet: /\bfacets?\b/i,
+  rateequations: /\brate equations\b/i,
+  carrierdensity: /\bcarrier density\b/i,
+  photondensity: /\bphoton density\b/i,
+  pump: /\bpump\b/i,
+  steadystate: /\bsteady state\b/i,
+  thresholddensity: /\bthreshold density\b/i,
+  relaxation: /\brelaxation\b/i,
+  dampingratio: /\bdamping ratio\b/i,
+  linearisation: /\blinearis(ation|ed|e)\b/i,
+  modulationdepth: /\bmodulation depth\b/i,
+  overshoot: /\bovershoot(s|ing)?\b/i,
+  guard: /\bguard\b/i,
   attenuation: /\battenuation\b/i,
   decibel: /\bdecibels?\b|\bdB\b/,
   dbm: /\bdBm\b/,

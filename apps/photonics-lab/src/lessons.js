@@ -22,6 +22,16 @@
  *   geo.<na|angle|delta|v|modes|single>    group E
  *   budget.<total|received|margin>         group E
  *   reach.<length|dispersion|binds|forFibre>   group E
+ *   j.<current|forward|across|iters>       group C
+ *   led.<power|slope|volts>                group C
+ *   band.<f3db|tauC|perDecade|perOctave>   group C
+ *   laser.<power|slope|spontaneousSlope|slopeRatio|stimulated|spontaneous|above>   group C
+ *   ith, nth, tauP, volts                  groups C and D
+ *   cavity.<tauP|mirror|mirrorPerCm|fsr|finesse>   group C
+ *   n, s, current, above                   group D
+ *   sm.<fr|frText|gamma|zeta|peakDb|peakHz|f3db|dc>   group D
+ *   textFactor                             group D
+ *   guard.<error|depth|warn|decline|measured|predicted|ratio>   group D
  *   fsr, fsrWavelength, finesse, linewidth, facet, mirrorLoss   group F
  *   contrast.<ratio|db>                    group F
  *   grid.width, band.<width|channels>, widthRatio   group F
@@ -32,11 +42,15 @@
  */
 
 import { LESSONS_A } from './lessons/a.js'
+import { LESSONS_C } from './lessons/c.js'
+import { LESSONS_D } from './lessons/d.js'
 import { LESSONS_E } from './lessons/e.js'
 import { LESSONS_F } from './lessons/f.js'
 
 export const LESSONS = {
   ...LESSONS_A,
+  ...LESSONS_C,
+  ...LESSONS_D,
   ...LESSONS_E,
   ...LESSONS_F,
 }

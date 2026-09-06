@@ -22,6 +22,7 @@ import { db, dbm, deg, nm, num, pct, plain, span } from './format.js'
  * symbol.
  */
 export function schematicFor(x) {
+  if (x.j) return junctionSchematic(x)
   if (!x.pd) return null
   const elements = x.pd.elements.map((e) =>
     e.id === 'RL' ? { ...e, label: 'R_L' } : e.id === 'Iph' ? { ...e, label: 'I_ph' } : e,
@@ -55,6 +56,40 @@ export function schematicFor(x) {
   return { elements, layout, meters }
 }
 
+/**
+ * The forward-biased junction Group C loads, as `Schematic.jsx` draws it.
+ *
+ * Three elements and two nodes, which is what `driveNet` gives the solver. No
+ * dashed outline here: an LED and a laser are one element each, and the pane's
+ * caption is where the two are told apart, because nothing in the circuit tells
+ * them apart. `NEEDS.md` §6 asks the director for the two symbols that would.
+ */
+function junctionSchematic(x) {
+  const elements = x.j.elements.map((e) => (e.id === 'Rs' ? { ...e, label: 'R_s' } : e))
+  const layout = {
+    w: 320,
+    h: 170,
+    crop: [16, 14, 306, 154],
+    items: [
+      { wire: [50, 40, 120, 40] },
+      { wire: [160, 40, 260, 40] },
+      { wire: [50, 40, 50, 65] },
+      { wire: [50, 105, 50, 130] },
+      { wire: [260, 40, 260, 65] },
+      { wire: [260, 105, 260, 130] },
+      { wire: [50, 130, 260, 130] },
+      { el: 'Vd', x: 50, y: 85, dir: 'v' },
+      { el: 'Rs', x: 140, y: 40, dir: 'h' },
+      { el: 'D1', x: 260, y: 85, dir: 'v' },
+      { gnd: [155, 130] },
+      { node: 'vd', x: 50, y: 40, side: 'l' },
+      { node: 'a', x: 260, y: 40, side: 'r' },
+      { text: 'LED or laser', x: 258, y: 148, className: 'sch-dim' },
+    ],
+  }
+  return { elements, layout, meters: { v: x.j.sol.v, i: x.j.sol.i, p: {} } }
+}
+
 // ------------------------------------------------------------- the numbers pane
 
 const row = (label, value, formula) => ({ label, value, formula })
@@ -79,6 +114,14 @@ export function numbersFor(exp, x, p) {
       return cavityRows(x, p)
     case 'channels':
       return channelRows(x, p)
+    case 'junction':
+      return junctionRows(x, p)
+    case 'led':
+      return ledRows(x, p)
+    case 'laser':
+      return laserRows(x, p)
+    case 'rate':
+      return rateRows(x, p)
     default:
       return []
   }
@@ -180,3 +223,109 @@ function channelRows(x, p) {
     row('Source width over channel width', plain(x.widthRatio), 'a source wider than one lands in its neighbour'),
   ]
 }
+
+// ------------------------------------------------------------ Groups C and D
+
+/** C1. One solved junction, and the two things a device can do with its current. */
+function junctionRows(x, p) {
+  return [
+    row('Supply', num(p.drive, 'V'), 'the knob'),
+    row('Series resistor', num(p.series, 'Ω'), 'the knob'),
+    row('Junction current', num(x.j.current, 'A'), 'solved, read across R_s'),
+    row('Forward voltage', num(x.j.forward, 'V'), 'V(a), from the same solve'),
+    row('Volts the resistor took', num(x.j.across, 'V'), 'the supply, less the forward voltage'),
+    row('Newton iterations', String(x.j.iters), 'the same walk every other diode in the suite takes'),
+    row('Volts one photon costs', num(x.volts, 'V'), 'hν/q, the photon energy read as a voltage'),
+    row('As an LED', num(x.led.power, 'W'), 'P = η_int (hν/q) I'),
+    row('As a laser', num(x.laser.power, 'W'), 'η_d (hν/q)(I − I_th), above threshold'),
+    row('Threshold current', num(x.ith, 'A'), 'from the rate equations, not from here'),
+    row('Wall-plug efficiency as an LED', pct(x.wall.led), 'light out over volts times amps in'),
+    row('Wall-plug efficiency as a laser', pct(x.wall.laser), 'the same ratio, for the same current'),
+  ]
+}
+
+/** C2 and C3. The LED's slope, and the one pole its carrier lifetime gives. */
+function ledRows(x, p) {
+  const out = [
+    row('Drive current', num(p.current, 'A'), 'the knob'),
+    row('Forward voltage', num(x.forward, 'V'), 'Shockley read backwards at this current'),
+    row('Volts one photon costs', num(x.volts, 'V'), 'hν/q, the photon energy read as a voltage'),
+    row('Slope', plain(x.led.slope) + ' mW/mA', 'η_int hν/q. A slope in W/A is the same number in mW/mA'),
+    row('Optical power', num(x.led.power, 'W'), 'P = η_int (hν/q) I'),
+    row('The model', 'linear in current', x.led.model),
+  ]
+  if (x.band) {
+    out.push(row('Carrier lifetime', num(x.band.tauC, 's'), 'the knob'))
+    out.push(row('Modulation bandwidth', num(x.band.f3db, 'Hz'), 'f = 1 / (2π τ_c)'))
+    out.push(row('Roll-off, per decade', db(x.band.perDecade), 'one pole falls 20 dB a decade, measured here'))
+    out.push(row('Roll-off, per octave', db(x.band.perOctave), 'the same pole, 6.0206 dB an octave'))
+    out.push(row('The model', 'one pole', x.band.model))
+  }
+  return out
+}
+
+/** C4 and C5. The threshold, both slopes, and the cavity behind the lifetime. */
+function laserRows(x, p) {
+  const out = [
+    row('Drive current', num(p.current, 'A'), 'the knob'),
+    row('Photon lifetime', num(x.tauP, 's'), x.cavity ? 'from the cavity, τ_p = n / (c α_m)' : 'the knob'),
+    row('Threshold density', num(x.nth, 'm⁻³'), 'N_th = N_tr + 1 / (Γ g₀ τ_p)'),
+    row('Threshold current', num(x.ith, 'A'), 'I_th = q V N_th / τ_c'),
+    row('Slope above threshold', plain(x.laser.slope) + ' mW/mA', 'η_d hν/q, in the unit a datasheet quotes'),
+    row('Slope below threshold', plain(x.laser.spontaneousSlope) + ' mW/mA', 'η_sp hν/q, the spontaneous path'),
+    row('Ratio of the two slopes', plain(x.laser.slopeRatio), 'how much steeper the device gets at threshold'),
+    row('Optical power', num(x.laser.power, 'W'), 'the two paths added'),
+    row('Above threshold', x.laser.above ? 'yes' : 'no', 'whether the drive current has passed I_th'),
+  ]
+  if (x.cavity) {
+    out.push(row('Mirror loss', plain(x.cavity.mirrorPerCm) + ' per cm', 'α_m = (1/2L) ln(1/R)'))
+    out.push(row('Free spectral range', num(x.cavity.fsr, 'Hz'), 'the same cavity F1 draws, Δν = c / (2 n L)'))
+    out.push(row('Finesse', plain(x.cavity.finesse), 'F = π √R / (1 − R)'))
+  }
+  return out
+}
+
+/** D1 to D4. The terms, the steady state, the linearisation, and the guard. */
+function rateRows(x, p) {
+  const out = [
+    row('Drive current', num(p.current, 'A'), 'the knob'),
+    row('Threshold current', num(x.ith, 'A'), 'I_th = q V N_th / τ_c'),
+    row('Carrier density', num(x.n, 'm⁻³'), 'the root of the steady state, exactly'),
+    row('Photon density', num(x.s, 'm⁻³'), 'S = Γ τ_p (I − I_th) / (qV) at zero coupling'),
+    row('Threshold density', num(x.nth, 'm⁻³'), 'N_th = N_tr + 1 / (Γ g₀ τ_p)'),
+  ]
+  for (const t of x.carriers) out.push(row('Carriers: ' + t.name.toLowerCase(), rate(t.value), t.formula))
+  out.push(row('Carriers: the sum', rate(x.carrierSum), 'zero, to the largest term’s own last bits'))
+  for (const t of x.photons) out.push(row('Photons: ' + t.name.toLowerCase(), rate(t.value), t.formula))
+  out.push(row('Photons: the sum', rate(x.photonSum), 'zero, to the largest term’s own last bits'))
+  if (x.sm) {
+    out.push(row('Relaxation frequency', num(x.sm.fr, 'Hz'), 'ω_r² is the Jacobian’s determinant, exactly'))
+    out.push(row('The textbook form', num(x.sm.frText, 'Hz'), '√((I/I_th − 1)/(τ_p τ_c)), which drops N_tr'))
+    out.push(row('Exact over textbook', plain(x.textFactor), '√(Γ g₀ N_th τ_p), the term the textbook form drops'))
+    out.push(row('Damping', plain(x.sm.gamma / 1e9) + ' per ns', 'γ = 1/τ_c + g₀ S'))
+    out.push(row('Damping ratio', plain(x.sm.zeta), 'ζ = γ / (2 ω_r)'))
+    out.push(row('Peak height', db(x.sm.peakDb), '1 / (2ζ√(1 − ζ²))'))
+    out.push(row('Peak at', num(x.sm.peakHz, 'Hz'), 'ω_r √(1 − 2ζ²), which is below ω_r'))
+    out.push(row('Modulation bandwidth', num(x.sm.f3db, 'Hz'), 'where |H| is 3 dB down'))
+  }
+  if (x.guard) {
+    const g = x.guard
+    out.push(row('Modulation depth', pct(g.depth), 'the knob'))
+    out.push(row('Overshoot the linear answer predicts', num(g.predicted, 'm⁻³'), 'the rise, times one plus the damping ratio’s overshoot'))
+    out.push(row('Overshoot the integrated pair reaches', num(g.measured, 'm⁻³'), 'the first maximum of a Runge-Kutta run'))
+    out.push(row('Error', pct(g.error), 'the difference, over the steady rise'))
+    for (const d of GUARD_DEPTHS) {
+      out.push(row('Error at ' + plain(100 * d) + ' per cent depth', pct(x.at({ depth: d }).guard.error), 'measured, one integration each'))
+    }
+    out.push(row('Drawn without a flag up to', pct(g.warn), 'the largest round depth whose measured error is under a tenth'))
+    out.push(row('Not drawn past', pct(g.decline), 'where the measured error has passed a quarter'))
+    out.push(row('The large-signal solution in time', 'declined', x.declineText))
+  }
+  return out
+}
+
+/** The five depths the plan names, which D4 measures the linearisation's error at. */
+export const GUARD_DEPTHS = [0.01, 0.05, 0.1, 0.3, 0.6]
+
+/** A rate of density, per cubic metre a second, which is what every term of the pair is. */
+const rate = (v) => plain(v) + ' m⁻³ s⁻¹'

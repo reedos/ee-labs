@@ -11,9 +11,10 @@
 //   npm run verify --workspace apps/photonics-lab
 //
 // `PHOTONICS_LAB_PLAN.md` §7 names this file. It was written in the sitting
-// that built Groups A, E and F and has not been run against a browser, because
-// this environment has none. Treat a first run as a review of this script as
-// much as of the page, and `BACKLOG.md` carries that as an open item.
+// that built Groups A, E and F, extended in the sitting that built C and D,
+// and has not been run against a browser, because neither environment had one.
+// Treat a first run as a review of this script as much as of the page, and
+// `BACKLOG.md` carries that as an open item.
 
 import { chromium } from 'playwright'
 import { EXPERIMENTS, GROUPS, VIEW_LABELS, byId } from '../src/experiments.js'
@@ -61,7 +62,7 @@ const scrollsX = () =>
 const clipped = () =>
   page.evaluate(() => {
     const w = document.documentElement.clientWidth + 1
-    return [...document.querySelectorAll('.view, .view-head, .view-head .segmented, .numbers, .waterfall, .link-strip, .schematic')]
+    return [...document.querySelectorAll('.view, .view-head, .view-head .segmented, .numbers, .waterfall, .link-strip, .schematic, .eqn-terms')]
       .filter((el) => el.getBoundingClientRect().right > w)
       .map((el) => `${el.tagName.toLowerCase()}.${(el.getAttribute('class') || '').split(' ')[0]}`)
   })
@@ -91,6 +92,9 @@ console.log(`Photonics Lab: ${EXPERIMENTS.length} experiments in ${GROUPS.length
 const VIEW_SHOWS = {
   schematic: '.sch-wrap svg.schematic [data-el="D1"]',
   curve: '.pane-fill canvas.plot',
+  equations: '[data-role=equations] .eqn-terms tbody tr',
+  modulation: '.modulation [data-role=modulation-readouts] dd',
+  step: '.step [data-role=step-readouts] dd',
   pulse: '.pulse [data-role=pulse-readouts] dd',
   link: '.link [data-role=waterfall] tbody tr',
   cavity: '.cavity [data-role=cavity-readouts] dd',
@@ -190,6 +194,72 @@ if (loose === tight) fail('f1: raising the reflectance moved nothing in the cavi
 const refusal = await text('[data-role=cavity-refusal]')
 if (!/transcendental/.test(refusal)) fail(`f1: the cavity pane's refusal reads "${refusal}"`)
 console.log('   the facet reflectance moves the finesse, and the refusal is on the pane')
+
+// ------------------------ one junction, one current, and two different lights
+
+await pick('c1')
+await openView('schematic')
+const both = await text('.sch-wrap .caption')
+if (!/As an LED/.test(both) || !/as a laser/.test(both)) fail(`c1: the caption names one device, reading "${both}"`)
+await setKnob('drive', 1.8)
+const dim = await text('[data-role=headline]')
+await setKnob('drive', 3.3)
+const bright = await text('[data-role=headline]')
+if (dim === bright) fail('c1: moving the supply did not move the junction current')
+console.log('   one junction carries one current, and the caption names both devices it could be')
+
+// --------------------------- the facet moves the threshold and the resonance
+
+await pick('c5')
+await openView('numbers')
+const threshold = async () => await text('[data-role=headline]')
+await setKnob('r', 0.1)
+const loosened = await threshold()
+await setKnob('r', 0.9)
+const tightened = await threshold()
+if (loosened === tightened) fail('c5: the facet reflectance did not move the threshold current')
+// The same cavity's free spectral range is on this pane, so one reflectance
+// moves a threshold here and a resonance spacing in F1. A pane that showed one
+// without the other would hide the link the two groups share.
+const rows = await text('[data-role=numbers]')
+if (!/Free spectral range/.test(rows)) fail('c5: the numbers pane does not carry the cavity’s free spectral range')
+console.log('   the facet reflectance moves the threshold, and the same cavity is on the pane')
+
+// -------------------------------- the guard, drawn, flagged, and then withdrawn
+
+await pick('d4')
+await openView('step')
+await setKnob('depth', 0.02)
+if ((await page.locator('.step-predicted').count()) === 0) fail('d4: at 2 per cent depth the prediction is not drawn')
+if ((await page.locator('.step-predicted.is-estimate').count()) !== 0) fail('d4: at 2 per cent depth the prediction is already flagged')
+await setKnob('depth', 0.2)
+if ((await page.locator('.step-predicted.is-estimate').count()) === 0) fail('d4: at 20 per cent depth the prediction is not flagged')
+await setKnob('depth', 0.5)
+if ((await page.locator('.step-predicted').count()) !== 0) fail('d4: at 50 per cent depth the prediction is still drawn')
+const says = await text('[data-role=guard-says]')
+if (!/stops drawing it/.test(says)) fail(`d4: past the decline threshold the guard reads "${says}"`)
+const refuses = await text('[data-role=large-signal-refusal]')
+if (!/cannot be told apart from physics/.test(refuses)) fail(`d4: the large-signal refusal reads "${refuses}"`)
+const flag = await text('[data-role=guard-flag]')
+if (!/guard/.test(flag)) fail(`d4: the topbar guard flag reads "${flag}"`)
+console.log('   the modulation guard draws, flags and then withdraws the linear prediction')
+
+// ------------------- the relaxation frequency follows the square root of I/I_th
+
+await pick('d3')
+await openView('modulation')
+const readout = await text('[data-role=modulation-readouts]')
+if (!/textbook/i.test(readout)) fail('d3: the modulation pane does not print the textbook form beside the exact one')
+const slow = await text('[data-role=headline]')
+await setKnob('current', '60m')
+const fast = await text('[data-role=headline]')
+if (slow === fast) fail('d3: raising the drive current did not move the relaxation frequency')
+// Below threshold there are no photons and no oscillation, and the pane says
+// so rather than drawing a frequency the cancellation made up.
+await setKnob('current', '5m')
+const nothing = await text('[data-role=declined]')
+if (!/no photons in the cavity/.test(nothing)) fail(`d3: below threshold the pane shows "${nothing}"`)
+console.log('   the relaxation frequency follows the drive, and below threshold the pane declines by name')
 
 // ------------------------------------------------------------- the narrow screen
 

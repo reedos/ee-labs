@@ -64,7 +64,13 @@ function declined(exp, p, err) {
 /** The refusal an experiment is showing, or null. */
 export const refusalOf = (x) => (x && x.declined ? x.declined.says : x && x.refusal ? x.refusal : null)
 
-/** The guard an experiment is showing, or null. Nothing in this sitting carries one. */
+/**
+ * The guard an experiment is showing, or null.
+ *
+ * D4 is the only experiment that carries one. Its guard is a modulation depth,
+ * and `depthGuard` measures the linearisation's error at the depth on screen
+ * rather than reporting a threshold it was given.
+ */
 export const guardOf = (x) => (x && x.guard) || null
 
 const KINDS = {
@@ -73,6 +79,28 @@ const KINDS = {
   link: analyseLink,
   cavity: analyseCavity,
   channels: analyseChannels,
+  junction: analyseJunction,
+  led: analyseLed,
+  laser: analyseLaser,
+  rate: analyseRate,
+}
+
+/**
+ * The rate parameters an experiment's knobs reach, with the package's defaults
+ * filled in for the ones it does not offer.
+ *
+ * Every group C and D experiment is the same laser. An experiment that offers
+ * no confinement-factor knob still runs at the confinement factor the chip has,
+ * so two panes that show the same device show the same threshold.
+ */
+const laserOf = (p) => {
+  const out = {}
+  for (const key of ['g0', 'ntr', 'gamma', 'tauC', 'tauP', 'V', 'beta']) if (p[key] !== undefined) out[key] = p[key]
+  // C5 turns a cavity rather than a lifetime. The lifetime it produces is the
+  // one the rate equations run at, so the mirrors and the threshold are one
+  // device and not two numbers that happen to agree.
+  if (p.r !== undefined && p.cavityLength !== undefined) out.tauP = P.photonLifetime({ n: p.n, L: p.cavityLength, r: p.r }).tauP
+  return out
 }
 
 // ------------------------------------------------------------------ detector
@@ -226,4 +254,121 @@ function analyseChannels(exp, p) {
     widthRatio: p.dLambda / grid.width,
     centres: Array.from({ length: Math.min(band.channels, 64) }, (_, k) => P.C0 / (P.C0 / p.to + k * p.spacing)),
   }
+}
+
+// ------------------------------------------------------------------ junction
+
+/**
+ * C1. The forward-biased junction both devices are, solved, with what each of
+ * them does with the current it carries.
+ *
+ * The two optical powers are on the same analysis on purpose. C1's claim is
+ * that the electrical port does not tell an LED from a laser, so the pane has
+ * to show one current and two lights.
+ */
+function analyseJunction(exp, p) {
+  const j = P.drive({ drive: p.drive, series: p.series, is: p.is, n: p.n })
+  const t = P.threshold(laserOf(p))
+  const lambda = p.lambda ?? 1550e-9
+  const led = P.ledOutput({ etaInt: p.etaInt, lambda, current: j.current })
+  const laser = P.laserOutput({ etaD: p.etaD, lambda, current: j.current, ith: t.ith, etaSp: p.etaSp })
+  return {
+    j,
+    ith: t.ith,
+    nth: t.nth,
+    led,
+    laser,
+    volts: P.voltsPerPhoton(lambda),
+    // What each device turns the supply into, which is the same current and
+    // two different answers.
+    wall: { led: P.wallPlug({ power: led.power, current: j.current, forward: j.forward }), laser: P.wallPlug({ power: laser.power, current: j.current, forward: j.forward }) },
+  }
+}
+
+// ----------------------------------------------------------------------- LED
+
+/** C2 and C3. The LED's linear output, and the one pole its carrier lifetime gives. */
+function analyseLed(exp, p) {
+  const lambda = p.lambda ?? 1550e-9
+  const out = { volts: P.voltsPerPhoton(lambda), led: P.ledOutput({ etaInt: p.etaInt, lambda, current: p.current }) }
+  if (p.tauC !== undefined) {
+    const band = P.ledBandwidth({ tauC: p.tauC })
+    out.band = {
+      ...band,
+      // The rule first, then this instance of it. One pole falls 20 dB in a
+      // decade and 6.0206 dB in an octave, whatever the corner is.
+      perDecade: 20 * Math.log10(P.ledResponse({ tauC: p.tauC, f: 100 * band.f3db }) / P.ledResponse({ tauC: p.tauC, f: 1000 * band.f3db })),
+      perOctave: 20 * Math.log10(P.ledResponse({ tauC: p.tauC, f: 100 * band.f3db }) / P.ledResponse({ tauC: p.tauC, f: 200 * band.f3db })),
+      // What the response actually is at the corner, so "3 dB down" is a
+      // reading rather than a definition repeated.
+      atCorner: 20 * Math.log10(P.ledResponse({ tauC: p.tauC, f: band.f3db })),
+      at: (f) => P.ledResponse({ tauC: p.tauC, f }),
+    }
+  }
+  out.forward = P.forwardVoltage({ current: p.current, is: p.is, n: p.n })
+  return out
+}
+
+// --------------------------------------------------------------------- laser
+
+/**
+ * C4 and C5. The L-I curve, and where the mirrors put its corner.
+ *
+ * The threshold is `rate.js`'s at every setting. C5 turns a facet reflectance,
+ * `laserOf` turns that into a photon lifetime, and the threshold moves.
+ */
+function analyseLaser(exp, p) {
+  const spec = laserOf(p)
+  const t = P.threshold(spec)
+  const lambda = p.lambda ?? 1550e-9
+  const laser = P.laserOutput({ etaD: p.etaD, lambda, current: p.current, ith: t.ith, etaSp: p.etaSp })
+  const out = { ith: t.ith, nth: t.nth, tauP: t.spec.tauP, laser, volts: P.voltsPerPhoton(lambda) }
+  if (p.r !== undefined && p.cavityLength !== undefined) {
+    const cav = { n: p.n, L: p.cavityLength, r: p.r }
+    const life = P.photonLifetime(cav)
+    out.cavity = {
+      ...life,
+      mirrorPerCm: life.mirror / 100,
+      // The same cavity Group F draws. One reflectance, two panes.
+      fsr: P.freeSpectralRange(cav, lambda).fsr,
+      finesse: P.finesse(cav).finesse,
+    }
+  }
+  return out
+}
+
+// ------------------------------------------------------------ rate equations
+
+/**
+ * Groups D1 to D4. The terms, the steady state, the linearisation and the
+ * guard, whichever the experiment's knobs reach.
+ *
+ * The linearisation is only defined where there are photons in the cavity, so
+ * an experiment biased below threshold at zero spontaneous coupling shows the
+ * refusal `rate.js` throws rather than a frequency the cancellation made up.
+ */
+function analyseRate(exp, p) {
+  const spec = laserOf(p)
+  const terms = P.rateTerms({ ...spec, current: p.current })
+  const out = { ...terms, tauP: terms.spec.tauP }
+  // D1 and D2 are about the steady state alone, and asking for a linearisation
+  // there would refuse below threshold on an experiment that has no business
+  // caring. `linearise` is the experiment's own flag.
+  if (exp.linearise) {
+    const sm = P.smallSignal(spec, p.current)
+    out.sm = sm
+    out.response = (f) => P.modulationAt(sm, f)
+    // The damping in the unit D3 quotes it in. A rate of 1.7448e9 per second
+    // is 1.7448 per nanosecond, and the second is the one a reader carries.
+    out.dampingPerNs = sm.gamma / 1e9
+    // The textbook form beside the exact one, with the factor between them.
+    out.textFactor = sm.frText > 0 ? sm.fr / sm.frText : Infinity
+  }
+  if (p.depth !== undefined) {
+    const g = P.depthGuard(spec, p.current, p.depth)
+    out.guard = g
+    out.step = g.step
+    out.declineText = P.largeSignalAvailable()
+  }
+  return out
 }

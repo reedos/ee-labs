@@ -167,6 +167,167 @@ for (const ghz of [50, 100, 200]) {
 line('C band width', sig(at('f2').band.width / 1e12), 'THz')
 line('source width over grid width', sig(at('f2').widthRatio), '')
 
+// ------------------------------------------------------------------- Group C
+
+head('C1 · Both are forward-biased junctions')
+{
+  const d = at('c1')
+  line('supply at the defaults', sig(d.p.drive), 'V')
+  line('junction current at the defaults', sig(d.j.current * 1e3), 'mA')
+  line('forward voltage', sig(d.j.forward), 'V')
+  line('volts the resistor took', sig(d.j.across), 'V')
+  line('Newton iterations', d.j.iters, '')
+  line('volts one photon costs at 1550 nm', sig(d.volts), 'V')
+  line('as an LED, eta_int 0.2', sig(d.led.power * 1e3), 'mW')
+  line('as a laser, eta_d 0.4', sig(d.laser.power * 1e3), 'mW')
+  line('threshold current', sig(d.ith * 1e3), 'mA')
+  line('wall plug as an LED', sig(100 * d.wall.led), 'per cent')
+  line('wall plug as a laser', sig(100 * d.wall.laser), 'per cent')
+  for (const drive of [1.8, 2.5, 3.3]) {
+    const y = at('c1', { drive })
+    line(`${drive} V: current`, sig(y.j.current * 1e3), 'mA')
+    line(`${drive} V: forward voltage`, sig(y.j.forward), 'V')
+    line(`${drive} V: as a laser`, sig(y.laser.power * 1e3), 'mW')
+  }
+  for (const series of [33, 150]) {
+    const y = at('c1', { series })
+    line(`${series} ohm: current`, sig(y.j.current * 1e3), 'mA')
+    line(`${series} ohm: forward voltage`, sig(y.j.forward), 'V')
+  }
+}
+
+head('C2 · The LED’s power is linear in current')
+{
+  const d = at('c2')
+  line('slope at eta_int 0.2, 1550 nm', sig(d.led.slope), 'mW/mA')
+  line('power at 20 mA', sig(d.led.power * 1e3), 'mW')
+  line('forward voltage at 20 mA', sig(d.forward), 'V')
+  for (const ma of [5, 10, 40]) line(`${ma} mA`, sig(at('c2', { current: ma * 1e-3 }).led.power * 1e3), 'mW')
+  for (const etaInt of [0.1, 0.5]) {
+    const y = at('c2', { etaInt })
+    line(`eta_int ${etaInt}: slope`, sig(y.led.slope), 'mW/mA')
+    line(`eta_int ${etaInt}: power at 20 mA`, sig(y.led.power * 1e3), 'mW')
+  }
+  for (const nm of [1310, 850]) line(`${nm} nm: slope`, sig(at('c2', { lambda: nm * 1e-9 }).led.slope), 'mW/mA')
+}
+
+head('C3 · The LED is slow')
+for (const ns of [1, 2, 5, 20]) {
+  const y = at('c3', { tauC: ns * 1e-9 })
+  line(`tau_c ${ns} ns: bandwidth`, sig(y.band.f3db / 1e6), 'MHz')
+}
+{
+  const d = at('c3')
+  line('roll-off per decade', sig(d.band.perDecade), 'dB')
+  line('roll-off per octave', sig(d.band.perOctave), 'dB')
+  line('response at the corner', sig(20 * Math.log10(d.band.at(d.band.f3db))), 'dB')
+}
+
+head('C4 · The laser has a threshold')
+{
+  const d = at('c4')
+  line('photon lifetime', sig(d.tauP * 1e12), 'ps')
+  line('threshold density', d.nth.toExponential(4), 'per m3')
+  line('threshold current', sig(d.ith * 1e3), 'mA')
+  line('slope above threshold, eta_d 0.4', sig(d.laser.slope), 'mW/mA')
+  line('slope below threshold, eta_sp 0.002', sig(d.laser.spontaneousSlope), 'mW/mA')
+  line('ratio of the two slopes', sig(d.laser.slopeRatio), '')
+  line('power at twice threshold', sig(d.laser.power * 1e3), 'mW')
+  for (const ma of [5, 20, 40]) line(`${ma} mA: power`, sig(at('c4', { current: ma * 1e-3 }).laser.power * 1e3), 'mW')
+  for (const etaD of [0.2, 0.6]) line(`eta_d ${etaD}: slope`, sig(at('c4', { etaD }).laser.slope), 'mW/mA')
+  for (const nm of [1310, 850]) line(`${nm} nm: slope`, sig(at('c4', { lambda: nm * 1e-9 }).laser.slope), 'mW/mA')
+}
+
+head('C5 · Threshold moves with the mirrors')
+{
+  const d = at('c5')
+  line('facet reflectance of an index 3.5 chip', sig(d.p.r, 8), '')
+  line('mirror loss', sig(d.cavity.mirrorPerCm), 'per cm')
+  line('photon lifetime', sig(d.cavity.tauP * 1e12), 'ps')
+  line('threshold current', sig(d.ith * 1e3), 'mA')
+  line('free spectral range of the same chip', sig(d.cavity.fsr / 1e9), 'GHz')
+  for (const r of [0.1, 0.5, 0.9]) {
+    const y = at('c5', { r })
+    line(`R = ${r}: mirror loss`, sig(y.cavity.mirrorPerCm), 'per cm')
+    line(`R = ${r}: photon lifetime`, sig(y.cavity.tauP * 1e12), 'ps')
+    line(`R = ${r}: threshold current`, sig(y.ith * 1e3), 'mA')
+  }
+  for (const um of [300, 500]) {
+    const y = at('c5', { cavityLength: um * 1e-6 })
+    line(`L = ${um} um: photon lifetime`, sig(y.cavity.tauP * 1e12), 'ps')
+    line(`L = ${um} um: threshold current`, sig(y.ith * 1e3), 'mA')
+    line(`L = ${um} um: free spectral range`, sig(y.cavity.fsr / 1e9), 'GHz')
+  }
+}
+
+// ------------------------------------------------------------------- Group D
+
+head('D1 · Two equations, and what each term is')
+{
+  const d = at('d1')
+  line('drive current', sig(d.current * 1e3), 'mA')
+  line('threshold current', sig(d.ith * 1e3), 'mA')
+  line('carrier density', d.n.toExponential(5), 'per m3')
+  line('photon density', d.s.toExponential(5), 'per m3')
+  for (const t of d.carriers) line(`  carriers: ${t.name}`, t.value.toExponential(5), 'per m3 s')
+  line('  carriers: the sum', d.carrierSum.toExponential(3), `(floor ${d.carrierFloor.toExponential(3)})`)
+  for (const t of d.photons) line(`  photons: ${t.name}`, t.value.toExponential(5), 'per m3 s')
+  line('  photons: the sum', d.photonSum.toExponential(3), `(floor ${d.photonFloor.toExponential(3)})`)
+  const half = at('d1', { current: 0.5 * d.ith })
+  line('at half threshold: carrier density', half.n.toExponential(5), 'per m3')
+  line('at half threshold: photon density', half.s.toExponential(5), 'per m3')
+}
+
+head('D2 · The steady state, exactly')
+{
+  const d = at('d2')
+  line('threshold density', d.nth.toExponential(5), 'per m3')
+  line('threshold current', sig(d.ith * 1e3), 'mA')
+  line('photon density at twice threshold', d.s.toExponential(5), 'per m3')
+  for (const k of [0.5, 1.5, 3]) {
+    const y = at('d2', { current: k * d.ith })
+    line(`${k} I_th: carrier density`, y.n.toExponential(5), 'per m3')
+    line(`${k} I_th: photon density`, y.s.toExponential(5), 'per m3')
+  }
+  for (const gamma of [0.2, 0.5]) line(`Gamma ${gamma}: threshold current`, sig(at('d2', { gamma }).ith * 1e3), 'mA')
+  for (const ntr of [5e23, 2e24]) line(`N_tr ${ntr.toExponential(1)}: threshold current`, sig(at('d2', { ntr }).ith * 1e3), 'mA')
+  line('beta 1e-4 at half threshold: photon density', at('d2', { current: 0.5 * d.ith, beta: 1e-4 }).s.toExponential(5), 'per m3')
+}
+
+head('D3 · The relaxation oscillation')
+{
+  const d = at('d3')
+  line('relaxation frequency at twice threshold', sig(d.sm.fr / 1e9), 'GHz')
+  line('the textbook form there', sig(d.sm.frText / 1e9), 'GHz')
+  line('exact over textbook', sig(d.textFactor), '')
+  line('damping', sig(d.sm.gamma / 1e9), 'per ns')
+  line('damping ratio', sig(d.sm.zeta), '')
+  line('peak height', sig(d.sm.peakDb), 'dB')
+  line('peak at', sig(d.sm.peakHz / 1e9), 'GHz')
+  line('modulation bandwidth', sig(d.sm.f3db / 1e9), 'GHz')
+  for (const k of [1.5, 3, 5]) {
+    const y = at('d3', { current: k * d.ith })
+    line(`${k} I_th: relaxation frequency`, sig(y.sm.fr / 1e9), 'GHz')
+    line(`${k} I_th: damping ratio`, sig(y.sm.zeta), '')
+    line(`${k} I_th: peak height`, sig(y.sm.peakDb), 'dB')
+    line(`${k} I_th: modulation bandwidth`, sig(y.sm.f3db / 1e9), 'GHz')
+  }
+}
+
+head('D4 · Where the linearisation stops')
+{
+  const d = at('d4')
+  for (const depth of [0.01, 0.05, 0.1, 0.3, 0.6]) {
+    const y = at('d4', { depth })
+    line(`depth ${100 * depth} per cent: error`, sig(100 * y.guard.error), 'per cent')
+    line(`  drawn`, y.guard.declined ? 'no' : y.guard.ok ? 'yes, unflagged' : 'yes, as an estimate', '')
+  }
+  line('warn threshold', sig(100 * d.guard.warn), 'per cent')
+  line('decline threshold', sig(100 * d.guard.decline), 'per cent')
+  line('overshoot predicted at 5 per cent', d.guard.predicted.toExponential(5), 'per m3')
+  line('overshoot measured at 5 per cent', d.guard.measured.toExponential(5), 'per m3')
+}
+
 // ---------------------------------------------------------------- the totals
 
 head('The set')

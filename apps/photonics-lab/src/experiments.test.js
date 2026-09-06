@@ -70,20 +70,25 @@ describe('the experiments, as a set', () => {
     }
   })
 
-  it('this sitting ships Groups A, E and F, and nothing references B, C or D', () => {
-    expect(GROUPS.map((g) => g.slice(0, 1))).toEqual(['A', 'E', 'F'])
-    expect(EXPERIMENTS.length).toBe(12)
-    expect(groupOf(GROUPS[0]).length).toBe(5)
-    expect(groupOf(GROUPS[1]).length).toBe(5)
-    expect(groupOf(GROUPS[2]).length).toBe(2)
+  it('this sitting ships Groups A, C, D, E and F, and nothing references B', () => {
+    expect(GROUPS.map((g) => g.slice(0, 1))).toEqual(['A', 'C', 'D', 'E', 'F'])
+    expect(EXPERIMENTS.length).toBe(21)
+    expect(GROUPS.map((g) => groupOf(g).length)).toEqual([5, 5, 4, 5, 2])
     // A lesson that pointed at an experiment this lab has not built would send
-    // a reader to a button that is not there. Groups B, C and D are named in
-    // the plan and in the backlog, and nowhere a reader can read.
+    // a reader to a button that is not there. Group B is named in the plan and
+    // in the backlog, and nowhere a reader can read.
     const prose = EXPERIMENTS.flatMap((e) => [e.name, e.see, e.why, ...e.try.map((t) => t.say)]).join(' ')
-    expect(prose).not.toMatch(/\b[bcd][1-9]\b/i)
-    // A cross-lab reference names the lab it points into. A bare "Group C"
-    // would read as this lab's, and this lab has no Group C yet.
-    expect(prose).not.toMatch(/(?<!Lab’s )Group [BCD]\b/)
+    expect(prose).not.toMatch(/\bb[1-9]\b/i)
+    // A cross-lab reference names the lab it points into. A bare "Group B"
+    // would read as this lab's, and this lab has no Group B yet.
+    expect(prose).not.toMatch(/(?<!Lab’s )Group B\b/)
+    // Every c or d id a lesson names is one that exists, because those two
+    // groups are built now and a signpost into them has somewhere to land.
+    const ids = new Set(EXPERIMENTS.map((e) => e.id))
+    for (const m of prose.matchAll(/\b([A-F][1-9])\b/g)) {
+      const id = m[1].toLowerCase()
+      if (id[0] === 'c' || id[0] === 'd') expect(ids.has(id), `a lesson names ${m[1]}`).toBe(true)
+    }
   })
 
   it('the sidebar order is the plan order, group by group', () => {
@@ -142,8 +147,12 @@ describe('every experiment analyses, at its defaults and off them', () => {
         if (v === 'schematic') {
           const s = schematicFor(x)
           expect(s, `${e.id} offers the circuit view with no circuit`).toBeTruthy()
-          expect(s.elements.length, `${e.id} circuit elements`).toBe(4)
-          expect(Number.isFinite(s.meters.v.c), `${e.id} node c has no meter`).toBe(true)
+          // The photodiode is four elements and three nodes, and the forward
+          // junction Group C loads is three and two. Both are what the netlist
+          // handed the solver, and the meter is read at the device's own node.
+          const node = x.pd ? 'c' : 'a'
+          expect(s.elements.length, `${e.id} circuit elements`).toBe(x.pd ? 4 : 3)
+          expect(Number.isFinite(s.meters.v[node]), `${e.id} node ${node} has no meter`).toBe(true)
         }
         if (v === 'curve') {
           const c = e.curve(x, p)
@@ -207,8 +216,16 @@ describe('every experiment analyses, at its defaults and off them', () => {
     expect(x.declined.field).toBe('n1')
   })
 
-  it('nothing in this sitting ships a guard, because nothing in it is an approximation', () => {
-    for (const e of EXPERIMENTS) expect(guardOf(at(e.id).x), `${e.id} carries a guard`).toBeNull()
+  it('one experiment ships a guard, and it is the one that ships an approximation', () => {
+    // Every other experiment in the lab states something exactly, so a guard on
+    // one of them would be a hedge on an exact mapping. D4 is the exception,
+    // and its guard carries the error it measured at the depth on screen.
+    const guarded = EXPERIMENTS.filter((e) => guardOf(at(e.id).x))
+    expect(guarded.map((e) => e.id)).toEqual(['d4'])
+    const g = guardOf(at('d4').x)
+    expect(g.error).toBeGreaterThan(0)
+    expect(g.says).toContain(`${(100 * g.error).toPrecision(4)} %`)
+    expect(g.warn).toBeLessThan(g.decline)
   })
 })
 
@@ -283,11 +300,14 @@ describe('every lesson is measured', () => {
   // The units this lab writes, longest first so "dB/km" is never read as "dB".
   // The prefix is stripped before the unit is matched, so "Gbit/s" is the "G"
   // prefix on the unit "bit/s" and does not appear here.
-  const UNIT = ['bit/s km', 'bit/s', 'ps/(nm·km)', 'dB/km', 'W/m²', 'A/W', 'dBm', 'dB', 'eV', 'Hz', 'Ω', 'V', 'A', 'W', 'F', 's', 'm', '%'].join('|')
+  const UNIT = ['bit/s km', 'bit/s', 'ps/(nm·km)', 'mW/mA', 'dB/km', 'W/m²', 'A/W', 'dBm', 'dB', 'eV', 'Hz', 'Ω', 'V', 'A', 'W', 'F', 's', 'm', '%'].join('|')
   // A unit whose own name carries a scale the prefix rule does not reach. A
   // bandwidth-distance product is quoted in bits a second times KILOMETRES,
   // against an engine that returns bit per second metres.
-  const UNIT_SCALE = { 'bit/s km': 1e3, '%': 1e-2 }
+  // A slope in milliwatts a milliamp is the same number as one in watts an
+  // amp, because both prefixes are milli and they cancel. So the scale is one,
+  // and the engine's W/A is what a lesson's mW/mA is compared against.
+  const UNIT_SCALE = { 'bit/s km': 1e3, '%': 1e-2, 'mW/mA': 1 }
   const UNITS = new RegExp(`(-?\\d+(?:\\.\\d+)?)\\s*([pnµumckMGT]?)(${UNIT})(?![A-Za-z·⁰¹²³⁴⁵⁶⁷⁸⁹⁻/])`, 'g')
   // A bare figure with two or more decimals is a measurement too, and this lab
   // quotes several that have no unit: a numerical aperture, a finesse, a
@@ -302,9 +322,37 @@ describe('every lesson is measured', () => {
   // a number followed by "per cent" is compared against the fraction.
   const percentAfter = (text, end) => /^\s*(?:per cent|%)/.test(text.slice(end))
 
+  // A carrier density of 1.6713 × 10²⁴ per cubic metre has no engineering
+  // prefix a reader would recognise, so Group D writes it in scientific
+  // notation. The mantissa and the exponent are read together, and the token is
+  // taken out of the sentence before the bare-figure rules run over it, so that
+  // "1.6713" is never compared against a value 24 orders of magnitude away.
+  const SCI = /(\d+(?:\.\d+)?)\s*×\s*10(⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g
+  const SUPER = { '⁰': 0, '¹': 1, '²': 2, '³': 3, '⁴': 4, '⁵': 5, '⁶': 6, '⁷': 7, '⁸': 8, '⁹': 9 }
+  const exponentOf = (s) => {
+    const sign = s.startsWith('⁻') ? -1 : 1
+    const digits = [...s.replace('⁻', '')].map((c) => SUPER[c])
+    return sign * Number(digits.join(''))
+  }
+
+  /** Every number written as a mantissa times a power of ten, as a value. */
+  const quotedSci = (text) =>
+    [...text.matchAll(SCI)].map((m) => {
+      const scale = Math.pow(10, exponentOf(m[2]))
+      return {
+        text: m[0],
+        digits: (m[1].split('.')[1] || '').length,
+        scale,
+        value: Math.abs(+m[1]) * scale,
+      }
+    })
+
+  /** The same sentence with its scientific-notation tokens removed. */
+  const withoutSci = (text) => text.replace(SCI, ' ')
+
   /** Every number-with-unit in a sentence, as a value in base units. */
   const quotedUnits = (text) =>
-    [...text.replace(/−/g, '-').matchAll(UNITS)].map((m) => ({
+    [...withoutSci(text.replace(/−/g, '-')).matchAll(UNITS)].map((m) => ({
       text: m[0].trim(),
       digits: (m[1].split('.')[1] || '').length,
       scale: PREFIX[m[2]] * (UNIT_SCALE[m[3]] ?? 1),
@@ -313,7 +361,7 @@ describe('every lesson is measured', () => {
 
   /** Every bare figure that carries a measurement, and a percentage as a fraction. */
   const quotedBare = (text) => {
-    const clean = text.replace(/−/g, '-')
+    const clean = withoutSci(text.replace(/−/g, '-'))
     const out = []
     for (const re of [BARE, COUNT]) {
       for (const m of clean.matchAll(re)) {
@@ -358,7 +406,7 @@ describe('every lesson is measured', () => {
 
   /** Every quoted number in `text` stands for one of `values`. */
   function justified(text, values, label) {
-    for (const q of [...quotedUnits(text), ...quotedBare(text)]) {
+    for (const q of [...quotedUnits(text), ...quotedBare(text), ...quotedSci(text)]) {
       const ok = values.some((v) => stands(q, v))
       expect(
         ok,
@@ -415,7 +463,7 @@ describe('every lesson is measured', () => {
         steps++
       })
     }
-    // Twelve experiments, three steps each.
+    // Twenty-one experiments, three steps each.
     expect(steps).toBe(3 * EXPERIMENTS.length)
   })
 

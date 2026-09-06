@@ -3,7 +3,7 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { EXPERIMENTS, byId, defaultsOf } from '../experiments.js'
 import { analyse } from '../math.js'
-import { CavityPane, CurvePane, LinkPane, NumbersPane, PulsePane, SchematicPane, SpectrumPane } from './panes.jsx'
+import { CavityPane, CurvePane, EquationsPane, LinkPane, ModulationPane, NumbersPane, PulsePane, SchematicPane, SpectrumPane, StepPane } from './panes.jsx'
 
 // Every view an experiment offers is rendered here, at that experiment's own
 // defaults, as markup.
@@ -22,6 +22,9 @@ import { CavityPane, CurvePane, LinkPane, NumbersPane, PulsePane, SchematicPane,
 const PANE_OF = {
   schematic: SchematicPane,
   curve: CurvePane,
+  equations: EquationsPane,
+  modulation: ModulationPane,
+  step: StepPane,
   pulse: PulsePane,
   link: LinkPane,
   cavity: CavityPane,
@@ -99,6 +102,78 @@ describe('what a pane puts on screen', () => {
     expect(out).toMatch(/Into the fibre/)
     expect(out).toMatch(/Out of the fibre/)
     expect(out).toMatch(/80\.000 km/)
+  })
+
+  it('the circuit pane names both devices, because the circuit does not tell them apart', () => {
+    const { exp, p, x } = at('c1')
+    const out = html(<SchematicPane exp={exp} x={x} p={p} />)
+    for (const id of ['Vd', 'Rs', 'D1']) expect(out, `the circuit omits ${id}`).toMatch(new RegExp(`data-el="${id}"`))
+    for (const node of ['vd', 'a']) expect(out, `the circuit omits node ${node}`).toMatch(new RegExp(`data-node="${node}"`))
+    // C1's whole claim is one current and two lights, so the caption carries
+    // both. A caption that named one of them would be the defect.
+    expect(out).toMatch(/As an LED/)
+    expect(out).toMatch(/as a laser/)
+  })
+
+  it('the equations pane prints every term of both equations with its own value', () => {
+    const { exp, p, x } = at('d1')
+    const out = html(<EquationsPane exp={exp} x={x} p={p} />)
+    expect(out).toMatch(/dN\/dt/)
+    expect(out).toMatch(/dS\/dt/)
+    for (const t of [...x.carriers, ...x.photons]) expect(out, `the pane omits ${t.name}`).toContain(t.name)
+    // Both sums are zero to their own floor, and the pane prints a bare zero
+    // rather than the last bits of the largest term.
+    expect((out.match(/>0</g) || []).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('the equations pane marks a drive current below threshold', () => {
+    const above = at('d1')
+    const below = at('d1', { current: 5e-3 })
+    expect(below.x.s).toBe(0)
+    expect(html(<EquationsPane exp={above.exp} x={above.x} p={above.p} />)).not.toMatch(/class="is-off"/)
+    expect(html(<EquationsPane exp={below.exp} x={below.x} p={below.p} />)).toMatch(/class="is-off"/)
+  })
+
+  it('the modulation pane prints both forms of the relaxation frequency', () => {
+    const { exp, p, x } = at('d3')
+    const out = html(<ModulationPane exp={exp} x={x} p={p} />)
+    expect(out).toMatch(/Relaxation frequency/)
+    expect(out).toMatch(/The textbook form/)
+    expect(out).toMatch(/modulation-readouts/)
+    // The peak and the 3 dB point are both marked, so the picture carries the
+    // two numbers the readouts carry.
+    expect(out).toMatch(/mod-peak/)
+    expect(out).toMatch(/mod-corner/)
+  })
+
+  it('the step pane draws the prediction, flags it, then stops drawing it', () => {
+    const plain = at('d4', { depth: 0.02 })
+    const estimate = at('d4', { depth: 0.2 })
+    const declined = at('d4', { depth: 0.5 })
+    const drawn = (s) => html(<StepPane exp={s.exp} x={s.x} p={s.p} />)
+
+    const a = drawn(plain)
+    expect(a).toMatch(/step-predicted/)
+    expect(a).not.toMatch(/is-estimate/)
+    expect(a).not.toMatch(/class="is-off"/)
+
+    const b = drawn(estimate)
+    expect(b).toMatch(/step-predicted is-estimate/)
+    expect(b).toMatch(/class="is-off"/)
+
+    // Past the decline threshold the dashed curve is gone, which is the guard
+    // on screen rather than in a sentence about the guard.
+    const c = drawn(declined)
+    expect(c).not.toMatch(/step-predicted/)
+    expect(c).toMatch(/stops drawing it/)
+  })
+
+  it('the step pane carries the large-signal refusal, because the refusal is content', () => {
+    const { exp, p, x } = at('d4')
+    const out = html(<StepPane exp={exp} x={x} p={p} />)
+    expect(out).toMatch(/large-signal-refusal/)
+    expect(out).toMatch(/cannot be told apart from physics/)
+    expect(out).toMatch(/step-error/)
   })
 
   it('a pane asked for something the experiment has not got says so rather than throwing', () => {

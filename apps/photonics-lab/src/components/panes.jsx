@@ -2,7 +2,7 @@ import React from 'react'
 import { Schematic } from '@ee-labs/ui'
 import CurveCanvas from './CurveCanvas.jsx'
 import { numbersFor, schematicFor } from '../view.js'
-import { db, dbm, nm, num, plain, span } from '../format.js'
+import { db, dbm, nm, num, pct, plain, span } from '../format.js'
 
 /** Every closed form the experiment used, with the formula it came from. */
 export function NumbersPane({ exp, x, p }) {
@@ -30,17 +30,25 @@ export function NumbersPane({ exp, x, p }) {
   )
 }
 
-/** The photodiode, its bias and its load, with the solved voltages and currents on it. */
+/** The circuit an experiment loads, with the solved voltages and currents on it. */
 export function SchematicPane({ x }) {
   const s = schematicFor(x)
   if (!s) return <p className="hint">This experiment has no circuit.</p>
   return (
     <div className="sch-wrap">
       <Schematic elements={s.elements} layout={s.layout} meters={s.meters} show="i" />
-      <p className="caption">
-        The junction and the photocurrent source inside the outline are one device. The current is read across{' '}
-        {num(x.p.load, 'Ω')}.
-      </p>
+      {x.j ? (
+        <p className="caption">
+          One junction, and the solver does not know which device it is. As an LED it makes{' '}
+          {num(x.led.power, 'W')} and as a laser it makes {num(x.laser.power, 'W')}, at the same{' '}
+          {num(x.j.current, 'A')}.
+        </p>
+      ) : (
+        <p className="caption">
+          The junction and the photocurrent source inside the outline are one device. The current is read across{' '}
+          {num(x.p.load, 'Ω')}.
+        </p>
+      )}
     </div>
   )
 }
@@ -308,6 +316,205 @@ export function SpectrumPane({ x, p }) {
           <dd>{plain(x.widthRatio)}</dd>
         </div>
       </dl>
+    </div>
+  )
+}
+
+/**
+ * D1 and D2. The two rate equations with the reader's own numbers under them.
+ *
+ * Each term is a rate of density, per cubic metre a second, and the bar beside
+ * it is that term against the largest term in its own equation. A term that
+ * takes carriers away is drawn to the left of the line and one that adds them
+ * to the right, so the sum being zero is a picture and not only a row.
+ */
+export function EquationsPane({ x }) {
+  const block = (title, formula, terms, sum, floor) => {
+    const scale = Math.max(...terms.map((t) => Math.abs(t.value)), Number.MIN_VALUE)
+    return (
+      <div className="eqn-block" key={title}>
+        <h4>{title}</h4>
+        <p className="eqn-line">{formula}</p>
+        <table className="eqn-terms">
+          <tbody>
+            {terms.map((t) => (
+              <tr key={t.name}>
+                <th scope="row">{t.name}</th>
+                <td className="f">{t.formula}</td>
+                <td className="bar">
+                  <span
+                    className={t.value < 0 ? 'is-out' : 'is-in'}
+                    style={{
+                      width: `${(50 * Math.abs(t.value)) / scale}%`,
+                      marginLeft: t.value < 0 ? `${50 - (50 * Math.abs(t.value)) / scale}%` : '50%',
+                    }}
+                  />
+                </td>
+                <td className="v">{plain(t.value)}</td>
+              </tr>
+            ))}
+            <tr className="is-total">
+              <th scope="row">The sum</th>
+              <td className="f">zero at the steady state</td>
+              <td className="bar" />
+              <td className="v">{Math.abs(sum) <= floor ? '0' : plain(sum)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+  return (
+    <div className="equations" data-role="equations">
+      {block('Carriers', 'dN/dt = I/(qV) − N/τ_c − G(N) S', x.carriers, x.carrierSum, x.carrierFloor)}
+      {block('Photons', 'dS/dt = Γ G(N) S − S/τ_p + Γ β N/τ_c', x.photons, x.photonSum, x.photonFloor)}
+      <dl className="readouts" data-role="equations-readouts">
+        <div>
+          <dt>Carrier density</dt>
+          <dd>{num(x.n, 'm⁻³')}</dd>
+        </div>
+        <div>
+          <dt>Photon density</dt>
+          <dd>{num(x.s, 'm⁻³')}</dd>
+        </div>
+        <div>
+          <dt>Threshold current</dt>
+          <dd>{num(x.ith, 'A')}</dd>
+        </div>
+        <div className={x.above ? '' : 'is-off'}>
+          <dt>Drive current</dt>
+          <dd>{num(x.current, 'A')}</dd>
+        </div>
+      </dl>
+      <p className="caption">
+        Every term is a rate of density, per cubic metre a second. A bar to the left takes carriers or photons away
+        and a bar to the right adds them, so each equation balances about the line.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * D3. The magnitude of the linearised response, with the relaxation peak marked.
+ *
+ * The curve is drawn from the same `H(s)` the numbers pane prints, so the peak
+ * on the picture and the peak in the readout are one number. The axis is fixed
+ * to the response's own peak and its 3 dB point, which move only when a device
+ * parameter moves and not when the reader moves the bias.
+ */
+export function ModulationPane({ x }) {
+  const sm = x.sm
+  const from = Math.log10(sm.f3db / 300)
+  const to = Math.log10(sm.f3db * 3)
+  const top = Math.max(6, sm.peakDb + 4)
+  const bottom = -24
+  const px = (f) => (100 * (Math.log10(f) - from)) / (to - from)
+  const py = (dbv) => 62 - (58 * (dbv - bottom)) / (top - bottom)
+  const pts = []
+  for (let k = 0; k <= 240; k++) {
+    const f = Math.pow(10, from + ((to - from) * k) / 240)
+    pts.push(`${px(f)},${py(20 * Math.log10(x.response(f)))}`)
+  }
+  return (
+    <div className="modulation">
+      <svg viewBox="0 0 100 70" preserveAspectRatio="none" role="img" aria-label="The laser's modulation response against frequency">
+        <line className="mod-zero" x1="0" y1={py(0)} x2="100" y2={py(0)} />
+        <line className="mod-peak" x1={px(sm.peakHz)} y1="0" x2={px(sm.peakHz)} y2="62" />
+        <line className="mod-corner" x1={px(sm.f3db)} y1="0" x2={px(sm.f3db)} y2="62" />
+        <polyline className="mod-trace" points={pts.join(' ')} />
+        <line className="mod-axis" x1="0" y1="62" x2="100" y2="62" />
+      </svg>
+      <p className="caption">
+        Response in decibels against modulation frequency, over {plain(to - from)} decades from{' '}
+        {num(Math.pow(10, from), 'Hz')} to {num(Math.pow(10, to), 'Hz')}. The first dashed line is the peak and the
+        second is where the response is 3 dB down.
+      </p>
+      <dl className="readouts" data-role="modulation-readouts">
+        <div>
+          <dt>Relaxation frequency</dt>
+          <dd>{num(sm.fr, 'Hz')}</dd>
+        </div>
+        <div>
+          <dt>The textbook form</dt>
+          <dd>{num(sm.frText, 'Hz')}</dd>
+        </div>
+        <div>
+          <dt>Damping ratio</dt>
+          <dd>{plain(sm.zeta)}</dd>
+        </div>
+        <div>
+          <dt>Peak height</dt>
+          <dd>{db(sm.peakDb)}</dd>
+        </div>
+        <div>
+          <dt>Modulation bandwidth</dt>
+          <dd>{num(sm.f3db, 'Hz')}</dd>
+        </div>
+      </dl>
+      <p className="caption">
+        The textbook form drops the transparency density, so it reads low by {plain(x.textFactor)} here. Both are
+        printed because the difference is the lesson.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * D4. The integrated step and the linear prediction on one axis.
+ *
+ * This is the one picture in the lab that draws a solution in time, and what
+ * makes it legitimate is that it draws two of them. The measured curve is the
+ * pair integrated and the dashed one is what the linearisation predicted, and
+ * the number under them is the difference. Past the decline threshold the
+ * dashed curve is not drawn at all, which is the guard on screen.
+ */
+export function StepPane({ x }) {
+  const g = x.guard
+  const step = x.step
+  const t1 = step.t[step.t.length - 1]
+  const lo = Math.min(step.start, ...step.trace)
+  const hi = Math.max(step.measured, g.predicted)
+  const span = Math.max(hi - lo, Number.MIN_VALUE)
+  const px = (t) => (100 * t) / t1
+  const py = (v) => 62 - (54 * (v - lo)) / span
+  const measured = step.t.map((t, k) => `${px(t)},${py(step.trace[k])}`).join(' ')
+  const predicted = step.t.map((t) => `${px(t)},${py(step.predict(t))}`).join(' ')
+  return (
+    <div className="step">
+      <svg viewBox="0 0 100 70" preserveAspectRatio="none" role="img" aria-label="The photon density after a step in current, integrated and predicted">
+        <line className="step-final" x1="0" y1={py(step.final)} x2="100" y2={py(step.final)} />
+        <polyline className="step-measured" points={measured} />
+        {g.declined ? null : <polyline className={`step-predicted${g.ok ? '' : ' is-estimate'}`} points={predicted} />}
+        <line className="step-axis" x1="0" y1="62" x2="100" y2="62" />
+      </svg>
+      <p className="caption">
+        Photon density against time, over {num(t1, 's')}, after the drive current steps up by {pct(g.depth)}. The
+        solid curve is the pair integrated and the dashed one is what the linearisation predicted.
+      </p>
+      <dl className="readouts" data-role="step-readouts">
+        <div>
+          <dt>Overshoot predicted</dt>
+          <dd>{num(g.predicted, 'm⁻³')}</dd>
+        </div>
+        <div>
+          <dt>Overshoot measured</dt>
+          <dd>{num(g.measured, 'm⁻³')}</dd>
+        </div>
+        <div className={g.ok ? '' : 'is-off'}>
+          <dt>Error</dt>
+          <dd data-role="step-error">{pct(g.error)}</dd>
+        </div>
+        <div>
+          <dt>Settles at</dt>
+          <dd>{num(step.final, 'm⁻³')}</dd>
+        </div>
+      </dl>
+      <p className={`flag${g.ok ? '' : ' warn'}`} data-role="guard-says">
+        {g.says}
+      </p>
+      <p className="flag warn" data-role="large-signal-refusal">
+        {x.declineText}
+      </p>
     </div>
   )
 }

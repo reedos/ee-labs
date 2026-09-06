@@ -84,3 +84,37 @@ export const Count = (key, label, def, hint, min = 0, max = 100) => ({ key, labe
 
 /** A two-position toggle. */
 export const Toggle = (key, label, def, on, off, hint) => ({ key, label, kind: 'toggle', default: def, on, off, hint })
+
+// ---------------------------------------------------------- Groups C and D
+
+/** A carrier or photon lifetime in seconds, read in nanoseconds or picoseconds. */
+export const Lifetime = (key, label, def, hint, min = 1e-13, max = 1e-7) => ({ key, label, unit: 's', min, max, scale: 'log', default: def, hint })
+
+/**
+ * A carrier density in inverse cubic metres.
+ *
+ * The unit is written `m⁻³` rather than `/m³` because that is what a
+ * semiconductor datasheet writes, and `NumField` puts an engineering prefix in
+ * front of it the same way it does for any other unit.
+ */
+export const Density = (key, label, def, hint) => ({ key, label, unit: 'm⁻³', min: 1e22, max: 1e25, scale: 'log', default: def, hint })
+
+/** An active volume in cubic metres. A quantum-well stripe is a tenth of a cubic micrometre. */
+export const ActiveVolume = (key, label, def, hint) => ({ key, label, unit: 'm³', min: 1e-18, max: 1e-14, scale: 'log', default: def, hint })
+
+/** The differential gain, cubic metres a second, which is how fast gain grows with density. */
+export const DiffGain = (key, label, def, hint) => ({ key, label, unit: 'm³/s', min: 1e-13, max: 1e-11, scale: 'log', default: def, hint })
+
+/** A drive current in amps, read in milliamps. Group C and D bias a device with it. */
+export const Drive = (key, label, def, hint) => ({ key, label, unit: 'A', min: 1e-4, max: 0.2, scale: 'log', default: def, hint })
+
+/**
+ * A modulation depth, as a fraction of the bias current.
+ *
+ * It stops short of one because a depth of one turns the laser off at the
+ * bottom of the swing, which is the large-signal question this lab declines.
+ */
+export const Depth = (key, label, def, hint) => ({ key, label, unit: '', min: 0.005, max: 0.9, scale: 'log', default: def, hint, eng: false })
+
+/** A spontaneous coupling: the fraction of spontaneous emission landing in the mode. */
+export const Coupling = (key, label, def, hint) => ({ key, label, unit: '', min: 0, max: 1e-2, scale: 'linear', default: def, hint })

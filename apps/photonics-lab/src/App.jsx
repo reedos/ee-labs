@@ -5,7 +5,7 @@ import { analyse, guardOf, refusalOf } from './math.js'
 import { termsFor } from './terms.js'
 import { num } from './format.js'
 import { reportSummary } from './report.js'
-import { CavityPane, CurvePane, LinkPane, NumbersPane, PulsePane, SchematicPane, SpectrumPane } from './components/panes.jsx'
+import { CavityPane, CurvePane, EquationsPane, LinkPane, ModulationPane, NumbersPane, PulsePane, SchematicPane, SpectrumPane, StepPane } from './components/panes.jsx'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -14,6 +14,9 @@ const FIRST = EXPERIMENTS[0].id
 const PANE_OF = {
   schematic: SchematicPane,
   curve: CurvePane,
+  equations: EquationsPane,
+  modulation: ModulationPane,
+  step: StepPane,
   pulse: PulsePane,
   link: LinkPane,
   cavity: CavityPane,
