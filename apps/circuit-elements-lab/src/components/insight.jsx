@@ -92,7 +92,7 @@ export function Readings({ x, elements, power }) {
             {k ? ', ' : ''}v_{n} <b>{cell('v', n, 'V')}</b>
           </React.Fragment>
         ))}
-        . The schematic shows one of these columns at a time; this is all of them.
+        . The schematic shows one of these columns at a time. This is all of them.
       </p>
     </div>
   )
@@ -150,8 +150,8 @@ function MeshRows({ p, sol }) {
   return (
     <div className="theorem mesh" data-role="mesh">
       <p className="eq-step">
-        <b>One KVL row per mesh</b>, each written clockwise. i₁ is R₁’s current, <b>{num(m.i1, 'A', 3)}</b>; i₂ is R₃’s,{' '}
-        <b>{num(m.i2, 'A', 3)}</b>; the shared R₂ carries their difference.
+        <b>One KVL row per mesh</b>, each written clockwise. i₁ is R₁’s current, <b>{num(m.i1, 'A', 3)}</b>, and i₂ is R₃’s,{' '}
+        <b>{num(m.i2, 'A', 3)}</b>. The shared R₂ carries their difference.
       </p>
       {m.rows.map((r, k) => (
         <div className="eq-row" key={k}>
@@ -194,7 +194,7 @@ function PartsFigures({ exp, x, elements, layout }) {
 function Contradiction({ rows }) {
   return (
     <p className="theorem contradiction" data-role="contradiction">
-      <b>Two rows fix the same node.</b> {rows[0]} holds the + input at its own voltage; the ideal {rows[1]} demands v₊ = v₋, and v₋
+      <b>Two rows fix the same node.</b> {rows[0]} holds the + input at its own voltage. The ideal {rows[1]} demands v₊ = v₋, and v₋
       is grounded. Both rows are highlighted in the equations — no set of values satisfies both, so the solver has nothing
       to return. A real op-amp saturates instead.
     </p>
@@ -297,7 +297,7 @@ export function EquivalentPane({ x, exp }) {
             </text>
           </svg>
           <figcaption>
-            the load line v = V_oc − R_th·i; the dots are five loads on the <em>original</em> circuit, and they lie on the equivalent’s line
+            the load line v = V_oc − R_th·i, with five loads on the <em>original</em> circuit as dots, and they lie on the equivalent’s line
           </figcaption>
         </figure>
       ) : null}

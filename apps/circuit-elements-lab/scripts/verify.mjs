@@ -198,6 +198,33 @@ const captionOn = () =>
     return { plot: canvas !== null, caption: cap ? cap.textContent.trim() : null, bold: cap ? cap.querySelectorAll('b').length : 0 }
   })
 
+// S5 of STYLE.md: no semicolons, use two sentences. prose.test.js measures a
+// lesson's see, why and try, and nothing measured the sentences the panes are
+// written in, so ten of them carried one and every experiment showed at least
+// two. This reads what a student sees without opening a fold. Text inside a
+// closed <details> is the folded working, and its budget is a NEEDS entry.
+//
+// One sentence on screen is not this lab's to fix. It is the engine's message
+// for a loop of voltage sources, in packages/network/src/mna.js, and NEEDS.md
+// asks the owner for it. It is named here, with its reason, so that the rest
+// of the rule stays a rule.
+const S5_NOT_OURS = ['there is no answer; if they do, the current between them is undefined']
+const semicolonsOnScreen = () =>
+  page.evaluate((allowed) => {
+    const root = document.querySelector('.views')
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+    const out = []
+    let n
+    while ((n = walk.nextNode())) {
+      const t = n.textContent
+      if (!t.includes(';')) continue
+      if (n.parentElement.closest('details:not([open])')) continue
+      if (allowed.some((a) => t.includes(a))) continue
+      out.push(t.replace(/\s+/g, ' ').trim().slice(0, 70))
+    }
+    return [...new Set(out)]
+  }, S5_NOT_OURS)
+
 /** Walk the plot views of the current experiment: every chart clear of overlapping text, every plot captioned. */
 async function checkPlots(label) {
   const views = await viewButtons()
@@ -279,6 +306,7 @@ for (const name of names) {
     }
     if (seen?.refused && seen.callout !== null) fail(`${name} / ${v}: refused, yet a callout is drawn: “${seen.callout}”`)
     for (const t of await noiseOnPage()) fail(`${name} / ${v}: arithmetic noise on screen: “${t}”`)
+    for (const t of await semicolonsOnScreen()) fail(`${name} / ${v}: a semicolon on screen (S5): “${t}”`)
     // A plot: its text clear of itself, a sentence under it with the numbers in bold.
     const cap = await captionOn()
     if (cap.plot) {

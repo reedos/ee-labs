@@ -196,7 +196,7 @@ export const VIEW_LEADS = {
   reading: 'Every meter on the circuit at once, the one that matters first.',
   iv: 'Here is the diode’s own curve, the line the rest of the circuit imposes, and where they meet.',
   assumed: 'Here is every assumption about the diodes, and what each one said when it was solved.',
-  equations: 'Here is how the solver arrived at it — the rows it wrote, and the matrix they make.',
+  equations: 'Here are the rows the solver wrote, and the matrix they make.',
   power: 'Here is where the power goes while it does.',
   thevenin: 'Here is the whole network folded into one source and one resistor.',
   equivalent: 'Here is that equivalent drawn out beside the original.',

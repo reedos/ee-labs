@@ -115,7 +115,7 @@ export function EquationsPane({ eq, solved, primer = false, fold = false, contra
         </summary>
       ) : null}
       <p className="eq-step">
-        <b>1 · The equations.</b> One KCL row per node; then one row for each element that fixes a voltage. The
+        <b>1 · The equations.</b> One KCL row per node, then one row for each element that fixes a voltage. The
         amber numbers are the live values.
       </p>
       {eq.rows.map((r, k) =>
@@ -159,7 +159,7 @@ export function EquationsPane({ eq, solved, primer = false, fold = false, contra
       )}
 
       <p className="eq-step">
-        <b>2 · The same rows as a matrix.</b> Each row is one equation above; each column is one unknown. A cell holds
+        <b>2 · The same rows as a matrix.</b> Each row is one equation above, and each column is one unknown. A cell holds
         whatever multiplies that unknown in that row — an unknown that does not appear gets a 0. The right-hand side
         holds what the sources set.
       </p>
@@ -308,7 +308,7 @@ export function PowerPane({ sol }) {
       <p className="eq-step">
         <b>p = v × i</b> for every element, with <i>v</i> measured from its + end to its − end and <i>i</i> the current
         flowing <em>in</em> at the + end (the passive sign convention). A positive product means the element takes
-        power in; a negative one means it gives power out.
+        power in. A negative one means it gives power out.
       </p>
       <table className="table power-table">
         <thead>
@@ -356,8 +356,8 @@ export function PowerPane({ sol }) {
       </div>
       <p className="power-total">
         Delivered <b>{num(ledger.delivered, 'W', 3)}</b> = absorbed <b>{num(ledger.absorbed, 'W', 3)}</b>
-        {ledger.net === 0 ? ' — the two bars are the same length.' : ` (net ${num(ledger.net, 'W', 2, ledger.delivered)}).`} Every watt a
-        source gives out is taken in somewhere else in the same circuit; that follows from KCL and KVL alone, with no
+        {ledger.net === 0 ? ', so the two bars are the same length.' : ` (net ${num(ledger.net, 'W', 2, ledger.delivered)}).`} Every watt a
+        source gives out is taken in somewhere else in the same circuit. That follows from KCL and KVL alone, with no
         element law needed (Tellegen’s theorem).
       </p>
     </div>
@@ -548,8 +548,8 @@ export function StatePane({ x }) {
       <div className="eq-matrix">
         <Formula>{eq}</Formula>
         <p className="hint">
-          {s.n} state{s.n === 1 ? '' : 's'}: {xSym.map((q) => q.replace(/[{}]/g, '')).join(', ')} — a voltage for each capacitor, a
-          current for each inductor. The resistive network in between gives A and B; the exact solution is x(t) = e^At x(0) plus the
+          {s.n} state{s.n === 1 ? '' : 's'}: {xSym.map((q) => q.replace(/[{}]/g, '')).join(', ')}, a voltage for each capacitor and a
+          current for each inductor. The resistive network in between gives A and B. The exact solution is x(t) = e^At x(0) plus the
           driven part.
         </p>
         <Formula>{charEq}</Formula>
@@ -613,8 +613,8 @@ export function StatePane({ x }) {
       <p className="hint">
         x(0⁻) is the DC picture before the step — switches in their <i>before</i> position, sources at their pre-step values,
         capacitors open and inductors shorted
-        {before.assumed.length ? `; ${before.assumed.join(', ')} had no DC path and is taken as uncharged` : ''}. A state cannot
-        jump, so x(0⁺) = x(0⁻); everything else may.
+        {before.assumed.length ? `. ${before.assumed.join(', ')} had no DC path and is taken as uncharged` : ''}. A state cannot
+        jump, so x(0⁺) = x(0⁻). Everything else may.
       </p>
     </div>
   )
@@ -682,9 +682,9 @@ export function AcPowerPane({ x }) {
       </table>
       </div>
       <p className="hint">
-        Peak values throughout; RMS is peak/√2 and P = V_rms·I_rms·cos φ is the same number. P is what a wattmeter averages,
+        Peak values throughout. RMS is peak/√2 and P = V_rms·I_rms·cos φ is the same number. P is what a wattmeter averages,
         Q the to-and-fro that heats nothing but still has to be carried, |S| = √(P² + Q²) what the wires see. A positive Q
-        (current lagging) is an inductor’s; a capacitor’s is negative.
+        (current lagging) is an inductor’s, and a capacitor’s is negative.
       </p>
     </div>
   )

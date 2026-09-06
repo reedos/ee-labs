@@ -47,7 +47,19 @@ here. This is a NEEDS entry instead because the same gap is in every app's
 shared helper that walks an app's chrome strings, or a named budget per kind
 as in 1.
 
-## 3. STYLE.md's replacement table is wider than banned.js
+## 3. One refusal message on screen carries a semicolon
+
+Owner: the Electronics overseer, in `packages/network/src/mna.js`.
+
+The message for a loop of voltage sources ends with a semicolon joining two
+clauses, one about the sources agreeing and one about the current between them
+being undefined. I3 shows it in the Assumed states pane. S5 asks for two
+sentences instead. The lab's
+browser check now names any semicolon a student can see without opening a
+fold, and this one string is listed there as not the lab's, with its reason.
+Removing the semicolon at the source lets the exception go.
+
+## 4. STYLE.md's replacement table is wider than banned.js
 
 Owner: the director, in `packages/prose/src/banned.js`.
 
