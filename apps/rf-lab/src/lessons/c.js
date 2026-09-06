@@ -140,15 +140,23 @@ export const LESSONS_C = {
           ['bw.fractional', 0.274771],
         ],
       },
+      {
+        say: 'Set the topology to series C, shunt L. The Q is the same 1.0000 and the measured band widens to 74.20 per cent, because the two arrangements agree only at the design frequency.',
+        set: { pick: 'highpass' },
+        reads: [
+          ['design.Q', 1],
+          ['bw.fractional', 0.741964],
+        ],
+      },
     ],
     why:
       'One over Q and the measured band are two numbers, and each measures something of its own. One over Q is ' +
       'the fractional bandwidth of a single resonance read at its half-power points. The band here is read at a ' +
       'standing-wave ratio the reader sets, and that ratio is not the half-power point. Both move the same way. A ' +
-      'larger transformation ratio needs a larger Q, and a larger Q makes the band narrower. Neither the topology ' +
-      'nor the design frequency changes that, and the edges either side of the design frequency are found by ' +
-      'bisection on the exact response rather than read off a swept point. So the answer does not depend on how ' +
-      'many points the sweep drew.',
+      'larger transformation ratio needs a larger Q, and a larger Q makes the band narrower. That holds for ' +
+      'either topology. The two do not measure the same band. The edges either side of the design frequency are ' +
+      'found by bisection on the exact response rather than read off a swept point. So the answer does not ' +
+      'depend on how many points the sweep drew.',
   },
 
   c4: {
