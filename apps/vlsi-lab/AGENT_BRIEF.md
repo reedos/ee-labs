@@ -33,6 +33,7 @@ It does not represent a transistor chain driven by analog edges.
 
 Each record carries `id`, `name`, `view`, `see`, `try`, `why` and `terms`.
 The `see` function reads the live analysis. Each try step has `say` and `set`.
+Try steps merge `set` into the current parameters. Only experiment selection and Reset restore all defaults.
 Quantity paths include `gate.tpHL`, `gate.tpLH`, `response.measured`, `dc.nml` and `chain.error`.
 Each lesson loads its defaults and resets the cursor. Only shipped lesson IDs enter navigation.
 

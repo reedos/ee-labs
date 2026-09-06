@@ -54,11 +54,37 @@ try {
       assert.ok(await page.locator('.math-body').count() > 0)
       assert.equal(await page.locator('.katex-error').count(), 0)
       await page.getByRole('button', { name: 'The math', exact: false }).click()
-      for (const step of await page.locator('.try-chips button').all()) {
+      const field = (name) => page.getByRole('spinbutton', { name, exact: true })
+      if (i === 2 || i === 3) {
+        await field('Fanout').fill('4')
+        await field('Fanout').press('Enter')
+      }
+      if (i === 3 || i === 4) await page.getByRole('button', { name: 'Rising', exact: true }).click()
+      const walks = [
+        [{ Fanout: 4, edge: 'Falling' }, { Fanout: 4, edge: 'Rising' }],
+        [{ 'Input voltage': 0 }, { 'Input voltage': 1.8 }],
+        [{ Fanout: 4, Stages: 5 }],
+        [{ Fanout: 4, 'Pull-up width': 1, edge: 'Rising' }, { Fanout: 4, 'Pull-up width': 4, edge: 'Rising' }],
+        [{ Fanout: 4, edge: 'Rising' }, { Fanout: 8, edge: 'Rising' }],
+      ]
+      const steps = await page.locator('.try-chips button').all()
+      assert.equal(steps.length, walks[i].length)
+      for (const [k, step] of steps.entries()) {
         await step.click()
+        for (const [name, value] of Object.entries(walks[i][k])) {
+          if (name === 'edge') assert.equal(await page.getByRole('button', { name: value, exact: true }).getAttribute('aria-pressed'), 'true')
+          else assert.equal(Number(await field(name).inputValue()), value, `A${i + 1} step ${k + 1} must preserve ${name}`)
+        }
         assert.doesNotMatch(await page.locator('.see').textContent(), /NaN|undefined/)
       }
       await page.getByRole('button', { name: "Reset to this experiment's defaults", exact: true }).click()
+      if (i === 1) assert.equal(Number(await field('Input voltage').inputValue()), 0.9)
+      else {
+        assert.equal(Number(await field('Fanout').inputValue()), 1)
+        assert.equal(await page.getByRole('button', { name: 'Falling', exact: true }).getAttribute('aria-pressed'), 'true')
+        if (i === 2) assert.equal(Number(await field('Stages').inputValue()), 3)
+        if (i === 3) assert.equal(Number(await field('Pull-up width').inputValue()), 2)
+      }
       if (i !== 1) {
         for (const name of ['Timing', 'Fanout', 'Scope']) {
           await page.getByRole('button', { name, exact: true }).click()

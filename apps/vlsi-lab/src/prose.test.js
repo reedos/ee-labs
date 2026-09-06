@@ -9,8 +9,9 @@ const dc = transfer()
 for (const e of EXPERIMENTS) it(`${e.id} follows the prose budgets at defaults and every try step`, () => {
   expectPlain(e.name, 'title')
   expectPlain(e.why, 'why')
+  let p = { ...e.defaults }
   for (const step of [{ set: {} }, ...e.try]) {
-    const p = { ...e.defaults, ...step.set }
+    p = { ...p, ...step.set }
     expectPlain(e.see(analyse(p, dc), p), 'see')
     if (step.say) expectPlain(step.say, 'try')
   }

@@ -34,8 +34,9 @@ The focused tests compare network waveforms, measured crossings, DC slopes, char
 The browser harness serves the app build at `/vlsi-lab/` and writes screenshots under `shots`.
 The director runs the full suite and integrates the lockfile and deployment.
 
-The scoped run passed 19 tests in four files with two workers. App markdown lint passed for three files.
+The scoped run passed 20 tests in four files with two workers. App markdown lint passed for three files.
 The Vite build passed with a bundle-size advisory. Chromium passed all five default views at 1440 px and 390 px.
 Ten screenshots and `shots/verification.json` record that pass. Plot pixel checks were nonempty and no horizontal overflow occurred.
 The harness exercised try steps, resets, view selectors, math panels, threshold ambiguity and cursor readings.
+Try steps run sequentially on the current settings. Browser assertions check that unrelated knobs persist and experiment Reset restores the defaults.
 The shared path registry currently hides LabNav here. Deployed navigation and the director's full-suite gate remain pending.

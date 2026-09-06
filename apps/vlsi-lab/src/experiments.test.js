@@ -89,14 +89,48 @@ describe('curriculum and prerequisites', () => {
       expect(byId[e.id]).toBe(e)
       expect(e.try.length).toBeGreaterThan(0)
       for (const term of e.terms) expect(TERMS[term]?.def.length).toBeGreaterThan(0)
+      let p = { ...e.defaults }
       for (const step of [{ set: {} }, ...e.try]) {
-        const p = { ...e.defaults, ...step.set }
+        p = { ...p, ...step.set }
         const x = analyse(p, e.id === 'a2' ? dc : null)
         expect(e.see(x, p)).not.toMatch(/NaN|undefined|Infinity/)
         expect(x.response.measured).toBeGreaterThan(0)
       }
     }
     expect(new Set(EXPERIMENTS.flatMap((e) => e.terms))).toEqual(new Set(Object.keys(TERMS)))
+  })
+
+  it('pins sequential try walks while keeping settings from preceding steps', () => {
+    for (const e of EXPERIMENTS) {
+      let p = { ...e.defaults }
+      const walk = [analyse(p, e.id === 'a2' ? dc : null)]
+      for (const step of e.try) {
+        p = { ...p, ...step.set }
+        const x = analyse(p, e.id === 'a2' ? dc : null)
+        near(x.response.measured, RU * (p.edge === 'rise' ? 2 / p.wp : 1) *
+          (1 + p.wp + 3 * p.fanout) * CU * Math.LN2)
+        walk.push(x)
+      }
+      if (e.id === 'a1') {
+        expect(p.fanout).toBe(4)
+        expect(p.edge).toBe('rise')
+        expect(walk[1].response.measured).toBeGreaterThan(walk[0].response.measured)
+        near(walk[2].response.measured, walk[1].response.measured)
+      }
+      if (e.id === 'a2') {
+        expect(walk[1].point.v.out).toBeCloseTo(CARD.vdd, 9)
+        expect(walk[2].point.v.out).toBeCloseTo(0, 9)
+      }
+      if (e.id === 'a3') expect(walk[1].chain.elapsed).toBeGreaterThan(walk[0].chain.elapsed)
+      if (e.id === 'a4') {
+        expect(walk[1].gate.tpLH).toBeGreaterThan(walk[1].gate.tpHL)
+        expect(walk[2].gate.tpLH).toBeLessThan(walk[2].gate.tpHL)
+      }
+      if (e.id === 'a5') {
+        expect(walk[1].response.measured).toBeGreaterThan(walk[0].response.measured)
+        expect(walk[2].response.measured).toBeGreaterThan(walk[1].response.measured)
+      }
+    }
   })
 
   it('verifies built Electronics D IDs and the same square-law law at its supply', () => {

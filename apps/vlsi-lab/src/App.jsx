@@ -74,7 +74,7 @@ export default function App() {
         <TryLine text={exp.try.find((s) => s.say === chip)?.say || exp.try[0].say}
           chips={exp.try.map((s, i) => ({ label: `Step ${i + 1}`, title: s.say, ...s }))}
           activeChip={exp.try.findIndex((s) => s.say === chip) >= 0 ? `Step ${exp.try.findIndex((s) => s.say === chip) + 1}` : null}
-          onChip={(s) => { setParams({ ...DEFAULTS, ...s.set }); setChip(s.say); setCursor(0) }} />
+          onChip={(s) => { setParams((prev) => ({ ...prev, ...s.set })); setChip(s.say); setCursor(0) }} />
         <details><summary>Why this happens</summary><p>{exp.why}</p></details>
         <details><summary>Terms used here</summary><dl>{exp.terms.map((key) => <React.Fragment key={key}>
           <dt>{TERMS[key].name}</dt><dd>{TERMS[key].def}</dd>
