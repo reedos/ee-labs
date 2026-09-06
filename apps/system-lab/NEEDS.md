@@ -132,16 +132,18 @@ its DC power reads as unknown, and a chain holding one has no power total.
 cascade is pinned equal on one chain in `packages/rf`. Two copies would drift,
 which is the whole of Decision 3.
 
-**One conflict the director will meet at merge.** This branch was cut from
-`lab/rf-lab` at the point where `packages/rf/index.js` re-exported twenty names
-from `./src/match.js`, and that file did not exist yet. Every import of
-`@ee-labs/rf` threw, so this lab could not run until the block was replaced.
-This sitting replaced it with the `budget.js` exports.
+**One conflict the director will meet at merge.** Both branches change
+`packages/rf/index.js`, and both changes are additions. This branch appends the
+`budget.js` export block at the end of the file and extends the EXACT paragraph
+of the header comment with the cascade, the level walk and the noise floor. The
+RF Lab appends its `match.js` export block at the same end of the same file and
+extends the same paragraph with the L network and the quarter-wave transformer.
 
-The RF Lab has since landed `src/match.js`. At merge the two branches change the
-same lines of `index.js` for two different reasons. **Both export blocks belong
-in the merged file.** No other file in `packages/rf` that the RF Lab wrote was
-touched here.
+So the two sides touch the same two places for two different reasons, and git
+will not resolve them. **Both export blocks and both sentences belong in the
+merged file**, and nothing on either side is meant to replace the other. The
+branch removes nothing from `index.js`, and no other file in `packages/rf` that
+the RF Lab wrote was touched here.
 
 ## 5. The budget table, if a second lab wants it
 
@@ -152,9 +154,13 @@ lab has claimed it. The plan's §4.2 names the Applied Analog Lab's
 specification pane as its nearest relative and names that claim as the trigger.
 
 The table already takes its props as data rather than reading the engine.
-`view.js`'s `tablePropsFor` returns `{ columns, rows, totals, caption }`, and
-the pane draws what it is given. Promotion is a file move and an export, not a
-rewrite.
+`view.js`'s `tablePropsFor` returns `{ columns, rows, totals, shareTotals,
+caption }`, and the pane draws what it is given. Each entry of `columns` carries
+a `unit` and a `title` for the cumulative mode, and a `shareUnit` and a
+`shareTitle` for the share mode. The switch changes the cells, the unit over
+them and the sentence that says what they hold, so all four travel together.
+`TABLE_MODES` is the switch itself. Promotion is a file move and an export,
+not a rewrite.
 
 ## 6. Nothing else
 

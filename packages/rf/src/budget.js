@@ -122,8 +122,9 @@ export const chainOf = (specs) => specs.map(blockOf)
  * A matched attenuator at temperature T has F = 1 + (L − 1) T/T_0, where L is
  * its loss as a power ratio at or above one. At the reference temperature that
  * is exactly L, so a 2.0 dB filter has a 2.0 dB noise figure. Cool the same
- * filter to 77 K and its noise figure falls to 0.6271 dB, because its output
- * noise is thermal at whatever temperature it is.
+ * filter to 77 K and its noise figure falls to 0.6269 dB, because its output
+ * noise is thermal at whatever temperature it is. `budget.test.js` pins both
+ * figures, so neither can drift out of this sentence.
  */
 export function passiveNf(lossDb, tempK = T0) {
   require_(Number.isFinite(lossDb) && lossDb >= 0, `A passive block's loss is a positive number of decibels, and it is ${lossDb}.`, { field: 'lossDb' })

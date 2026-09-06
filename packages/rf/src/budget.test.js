@@ -81,6 +81,15 @@ describe('the noise figure of a passive block', () => {
     }
   })
 
+  it('gives the two figures this module’s own comment quotes', () => {
+    // The comment over `passiveNf` names a 2 dB filter at 290 K and at 77 K,
+    // and it named 0.6271 dB for the cold one, which the function has never
+    // returned. A figure in a comment drifts like a figure in a note, so both
+    // are pinned here.
+    expect(Number(passiveNf(2, T0).toPrecision(5))).toBe(2)
+    expect(Number(passiveNf(2, 77).toPrecision(4))).toBe(0.6269)
+  })
+
   it('is zero for a lossless block at any temperature, because there is nothing to be thermal', () => {
     for (const tempK of [4, 77, 290, 400]) close(passiveNf(0, tempK), 0)
   })

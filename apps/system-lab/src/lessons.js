@@ -16,10 +16,10 @@
  *   cum.<k>.<gain|nf|iip3>         the running totals after block k, one-based
  *   block.<id>.<gainDb|nfDb|iip3Dbm|powerMw|tempK>
  *   share.<id>.<noise|ip3|power>   that block's share of one budget
- *   level.<k>.<signal|noise|snr>   the node after block k, with 0 the input
- *   floor.<dbm|kt0|bandwidth>      the noise floor, and what it is built from
+ *   level.<k>.<signal|noise|snr|drive>  the node after block k, 0 the input
+ *   floor.<dbm|bandwidth>          the noise floor, and the width it is counted over
  *   snr.<in|out>                   the ratio at the two ends
- *   limits.<backoffDb>             how far the nearest block is from its own IP3
+ *   limits.<backoffDb|id|name>     how far the nearest block is from its own IP3
  *   headline                       the one number the experiment is about
  *   p.<knob>                       a knob value, for a step that names one
  *
