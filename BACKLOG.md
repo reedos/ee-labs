@@ -268,6 +268,23 @@ append, rather than edited into a file this branch does not carry.
   phrasing, because D4 and H2 use the same words for other quantities.
 - **M1's drawing is 840 by 530.** At a phone width its labels scale to about 5
   px. It is the first thing to look at in a browser.
+- **The plan's section 5 now quotes the measured numbers**, 22 of them across
+  Groups E to O, each traced to a pin in the tests or a reads pair in the
+  lessons. Thirteen places differ from the plan in shape rather than number,
+  and each is Reed's to rule on. The plan's line stands until he does.
+  - D3 refuses below its own saturation voltage rather than disagreeing by 10 %.
+  - D7 turns the base current, not v_BE, because the three-region model cannot take both.
+  - E5 holds the gate with a source, not a divider. The gate draws no current, so the numbers agree.
+  - H2's second harmonic falls by the square of 1 + g_m R_E, a ratio of 20.8, not 4.87.
+  - K5 is the follower alone. The common-base half against H4 is not built.
+  - L2 measures desensitivity alone. The stage's distortion falling by 1 + T is not built.
+  - L4 presents the four topologies as prose, not as the plan's table.
+  - L5 shows poles and readings. Its closed-loop response peaks, so the Bode view has no corner to read.
+  - M1's open-loop gain is 3 240, not 100 000, because the second stage is resistor-loaded.
+  - M2 prints the measured unity-gain frequency beside the estimate, not the fold's error at ten times the pole.
+  - M6's largest drive is 9 V, supply-limited, and its distortion reads 4.61 % there against the plan's 4.3 % at 10 V.
+  - N1 measures the Wien network's own transfer, because the loop breaker declines an ideal op-amp.
+  - N4 draws the transistor as its tangent with a current limit, not as the three-region device.
 
 ### Random Signals Lab
 
