@@ -538,6 +538,36 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .lesson-body .try-line { margin-top: 4px; }
 }
 
+/* Between the phone breakpoint and 1366px the topbar is one row that never
+   wraps, and the margin fields beside it never shrink (packages/ui:
+   .topbar-controls is flex-shrink: 0), so every pixel the row is short comes
+   out of .flow — which has min-width: 0 and gives way silently. Measured on
+   the opening lesson, where the strip needs 419px: it was given 356px at
+   1280 ("stable closed lo"), 176px at 1100, and 0px at 901, where the loop
+   summary naming the controller, the plant and the verdict was not on screen
+   at all. The same defect the phone rule below fixes, one breakpoint up, and
+   invisible to every check: .flow is its own 14px-tall horizontal scrollbox,
+   the page never scrolls, and the harness measured only 390px and 1366px
+   upward.
+   Wrapping the topbar costs nothing at a width where both parts already fit,
+   because flex-wrap only breaks a line that does not — 1366 and up stay one
+   44px row, and the band below gives the plots about 26px for a strip a
+   reader can read. */
+@media (min-width: 901px) and (max-width: 1365px) {
+  /* The grid's first row is a flat 44px (packages/ui), so wrapping alone
+     would only move the margin fields under the clip instead of past the
+     right edge. The row takes its height from the bar in this band. */
+  .app {
+    grid-template-rows: auto 1fr;
+  }
+  .topbar {
+    flex-wrap: wrap;
+    row-gap: 4px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+}
+
 /* Phone: the flow strip's verdict sentence ("closed loop settles",
    "sustained oscillation — neither settles nor runs away") used to sit
    inside .flow's own horizontal scrollbox and clip to "stable closed loo" —
