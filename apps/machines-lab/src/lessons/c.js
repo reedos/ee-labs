@@ -9,9 +9,10 @@ const worstGap = (x) => {
 export const LESSONS = {
   c1: {
     see:
-      'Three windings, three currents a third of a cycle apart, and one arrow that turns. Its length does ' +
-      'not change as it turns. The amplitude is 1.5 times what one winding makes on its own, and the sum ' +
-      'of the three matches a single travelling wave at every angle.',
+      'Three windings, three currents a third of a cycle apart, and one wave that travels. Its height does ' +
+      'not change as it moves. The amplitude is 1.5 times what one winding makes on its own, and the sum ' +
+      'of the three matches a single travelling wave at every angle. Four poles draw two cycles of it ' +
+      'around the gap.',
     seeReads: [
       ['field.amplitude', 1.5],
       ['field.peak', 1.5],
@@ -19,7 +20,7 @@ export const LESSONS = {
     ],
     try: [
       {
-        say: 'Move time on a quarter period. The arrow has turned a quarter of the way round the gap, and its length is the same 1.5 it was.',
+        say: 'Move time on a quarter period. The peak has moved a quarter of the way round one pole pair, and its height is the same 1.5 it was.',
         set: { t: 0.25 },
         reads: [
           ['field.peak', 1.5],

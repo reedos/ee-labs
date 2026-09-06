@@ -252,8 +252,12 @@ export function FieldCanvas({ x }) {
         let best = 0
         for (let i = 1; i < p.length; i++) if (p[i] > p[best]) best = i
         ctx.fillStyle = CURVE[j + 1]
-        ctx.textAlign = 'center'
-        ctx.fillText(NAMES[j], sx(deg[best]), sy(p[best]) - 5 * k)
+        // A winding that peaks at angle zero puts its name over the y-axis
+        // ticks, so a label near either edge is anchored inward instead.
+        const px = sx(deg[best])
+        const near = 36 * k
+        ctx.textAlign = px < area.x + near ? 'left' : px > area.x + area.w - near ? 'right' : 'center'
+        ctx.fillText(NAMES[j], Math.min(Math.max(px, area.x + 3 * k), area.x + area.w - 3 * k), sy(p[best]) - 5 * k)
       })
       line(ctx, deg, x.total, sx, sy, CURVE[0], 2.4)
       // Where the peak sits now, which is what travels. The wave repeats once
