@@ -50,7 +50,10 @@ const scrollsX = () =>
 const clipped = () =>
   page.evaluate(() => {
     const w = document.documentElement.clientWidth + 1
-    const all = [...document.querySelectorAll('.view, .view-head, .segmented, .topbar, .machine, .knobs')]
+    // `.machine-scroll` rather than `.machine`: the drawing inside it is
+    // deliberately wider than a phone and reachable by scrolling that box.
+    // What must never exceed the viewport is the box.
+    const all = [...document.querySelectorAll('.view, .view-head, .segmented, .topbar, .machine-scroll, .knobs')]
     return {
       seen: all.length,
       over: all

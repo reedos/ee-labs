@@ -130,7 +130,15 @@ body {
   padding-left: 18px;
 }
 
+/*
+ * A block, not the button's default inline-block. An inline-block child takes
+ * the list item's baseline from its LAST line, so every step's number sat
+ * beside the bottom line of a three-line step and looked like it belonged to
+ * the step below.
+ */
 .try-line {
+  display: block;
+  width: 100%;
   background: none;
   border: 0;
   color: var(--ink);
@@ -169,13 +177,33 @@ body {
   font-size: 12px;
 }
 
-.machine {
+/*
+ * The schematic, and the box it scrolls in.
+ *
+ * A drawing is scaled to the pane, so a wide one shrinks until its labels are
+ * unreadable. The transformer's full equivalent circuit is 900 drawing units
+ * wide, which at a 390 px pane put its element labels at four pixels. The
+ * floor below is 0.9 screen pixels per drawing unit, which holds the 10-unit
+ * label font at nine pixels. Past that the BOX scrolls sideways and the page
+ * does not, which is the rule for every wide exhibit in the suite.
+ */
+.machine-scroll {
   width: 100%;
-  max-height: 34vh;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: var(--panel);
   border: 1px solid var(--edge);
   border-radius: 10px;
   padding: 6px;
+}
+
+.machine {
+  --sch-floor: 0.9;
+  display: block;
+  width: 100%;
+  min-width: calc(var(--crop-w, 420) * var(--sch-floor) * 1px);
+  max-height: 34vh;
 }
 
 .no-circuit {
