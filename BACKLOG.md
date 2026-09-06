@@ -42,7 +42,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Computer Lab | built, dark | merged | | `COMPUTER_LAB_PLAN.md` |
 | Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | `INTERFACES_LAB_PLAN.md` |
 | Grid Lab | built, dark | merged | Power Lab I3 and D1 for two cross-references | `GRID_LAB_PLAN.md` |
-| Photonics Lab | built in part, dark | `lab/photonics-lab`, Groups A, E and F | Groups B, C and D unbuilt; B waits on Electronics O | `PHOTONICS_LAB_PLAN.md` |
+| Photonics Lab | built in part, dark | `lab/photonics-lab`, Groups A, C, D, E and F | Group B unbuilt, and it waits on Electronics O | `PHOTONICS_LAB_PLAN.md` |
 | Devices Lab | built, dark | merged | | `DEVICES_LAB_PLAN.md` |
 | Fields Lab | building | `lab/fields-lab` | Groups I to L unbuilt | `FIELDS_LAB_PLAN.md` |
 | Energy Lab | building | `lab/energy-lab` | Machines Lab for the wind group | to write |
@@ -58,7 +58,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Computer Lab | waiting | | Logic Lab | to write |
 | Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | to write |
 | Grid Lab | waiting | | Machines Lab, Electronics companion Newton | to write |
-| Photonics Lab | building | `lab/photonics-lab` | Groups B, C and D unbuilt | `PHOTONICS_LAB_PLAN.md` |
+| Photonics Lab | building | `lab/photonics-lab` | Group B unbuilt | `PHOTONICS_LAB_PLAN.md` |
 | Devices Lab | waiting | | Electronics C | to write |
 | Signal Integrity | out of this repo | | | |
 
@@ -717,20 +717,30 @@ complete for the whole lab and not only for the built half. `FIELDS_LAB_PLAN.md`
 
 ### Photonics Lab
 
-Built in part and dark. **12 experiments** in Groups A, E and F, on a new
-package `packages/photonics`. `PHOTONICS_LAB_PLAN.md` §9 phases 1 and 2 are
-done, which are the two that depend on nothing unbuilt.
+Built in part and dark. **21 experiments** in Groups A, C, D, E and F, on a new
+package `packages/photonics`. `PHOTONICS_LAB_PLAN.md` §9 phases 1, 2 and 3 are
+done, which are all three that depend on nothing unbuilt. Group B is the only
+group left, and it waits on the Electronics Lab.
 
-What shipped. `packages/photonics` with `photon.js`, `fibre.js` and
-`cavity.js`, 72 tests, fuzzed across three wavelength bands, random fibres and
-random cavities. Invariants 1, 2, 9, 10, 11 and 12 of the plan's §2.11, each
-named beside the test that measures it. The app on the suite's shell, dark at
-`/photonics-lab/`, with the circuit view, a curve view, the pulse view, the link
-view's first form, the cavity view and the spectrum. 105 tests in the app.
-`AGENT_BRIEF.md` with six lanes and the contracts for the four that are left.
-`scripts/pins.mjs` computes every figure in the lessons.
+What shipped in the first sitting. `packages/photonics` with `photon.js`,
+`fibre.js` and `cavity.js`, 72 tests, fuzzed across three wavelength bands,
+random fibres and random cavities. Invariants 1, 2, 9, 10, 11 and 12 of the
+plan's §2.11, each named beside the test that measures it. The app on the
+suite's shell, dark at `/photonics-lab/`, with the circuit view, a curve view,
+the pulse view, the link view's first form, the cavity view and the spectrum.
+105 tests in the app. `AGENT_BRIEF.md` with six lanes and the contracts for the
+four that were left. `scripts/pins.mjs` computes every figure in the lessons.
 
-Two things worth naming, because they are decisions and not omissions.
+What shipped in the second sitting, 2026-09-05. `source.js` and `rate.js`, 72
+more tests, fuzzed over two hundred random lasers. Invariants 4 to 8, each named
+beside the test that measures it. Groups C and D, nine experiments, and three
+new views. The equations pane prints both rate equations with the reader's own
+numbers under every term. The modulation pane draws the linearised response with
+the peak and the bandwidth marked. The step pane draws the integrated pair
+against the linear prediction, and withdraws the prediction past the guard's
+decline threshold. 286 tests across the app and the package.
+
+Four things worth naming, because they are decisions and not omissions.
 
 **The photodiode is a circuit and not a formula.** `photodiodeNet` builds four
 elements of `@ee-labs/network`, and `newtonDC` solves them. A2's flat current
@@ -740,9 +750,28 @@ twenty-volt supply is the difference of two voltages that agree to six figures.
 So `photodiode()` returns the reading's own arithmetic floor, and the invariant
 test uses it rather than a chosen epsilon.
 
-**The plan's numbers all held.** Every figure in §4.3 that Groups A, E and F use
-was recomputed by `scripts/pins.mjs` and matched, to the figures the plan
-quotes. Nothing in the plan needed correcting.
+**The LED and the laser are one junction.** `driveNet` builds three elements and
+the same solver walks them. C1's claim is that nothing electrical tells the two
+apart, so the circuit is one plain diode and the caption names both devices with
+the power each would make at the current on screen. That settled the plan's ask
+for an LED symbol and a laser symbol the other way, and `NEEDS.md` §6 records
+why.
+
+**The plan's relaxation frequency was the textbook one, and it is wrong here.**
+§2.6 quoted `√((I/I_th − 1)/(τ_p τ_c))`, which drops the transparency density.
+At this lab's own parameters the dropped term is the larger of the two, so the
+exact linearisation gives 3.9844 GHz at twice threshold where the textbook form
+gives 2.5252 GHz. `rate.js` returns both, D3 prints both, and the ratio between
+them is pinned at `√(Γ g₀ N_th τ_p)`, which is 1.5779. The plan's §2.6, §4.3,
+§5 and §6 were corrected in this sitting.
+
+**Two more plan numbers moved with it.** The photon lifetime is no longer typed
+as 2.00 ps. It is what a 100 µm cleaved chip gives under §2.8's mirror-loss
+convention, which is 1.9862 ps. So the lab holds one laser, and C5's mirrors
+move D2's threshold. That puts the threshold at 13.389 mA rather than
+13.351 mA. The modulation guard's warn threshold moved from a depth of 10 % to
+5 % as well. §11's own rule says a threshold whose measured error passes 10 %
+has to move, and 10 % depth costs 10.152 %.
 
 Deferred, with what reopens each:
 
@@ -751,13 +780,6 @@ Deferred, with what reopens each:
   `NEEDS.md` §4 lists exactly what it needs and gives the three figures the two
   labs must agree on. Reopens when Electronics O is merged and its experiment
   ids are confirmed.
-- **Group C, the LED and the laser, c1 to c5.** Not built, and nothing outside
-  this lab blocks it. `source.js` is contracted in the brief's §3.4 with the
-  numbers its test has to produce. It is a sitting's work.
-- **Group D, the rate equations, d1 to d4.** Not built, and nothing outside this
-  lab blocks it either. `rate.js` is contracted in the brief's §3.5. It follows
-  Group C in the same sitting, because the threshold current is Group D's and
-  Group C reads it.
 - **The transimpedance amplifier.** B2 and B3 will model the receiver as a
   photodiode into a load resistance and name the amplifier in a term panel. It
   belongs to the Applied Analog Lab's front-end group, which is mapped and not
@@ -775,23 +797,40 @@ Deferred, with what reopens each:
   rather than now, because a component with one real user and one guessed one
   is designed against a guess.
 - **The photodiode, laser and fibre symbols in `Schematic.jsx`.** Plan §3 asks
-  for three. None was added, and none is needed for this sitting to be correct.
-  The photodiode is drawn as the diode and current source it actually is, inside
-  one dashed outline the shared renderer already supports. `NEEDS.md` §6 says
-  the request stands for the sitting that draws an LED beside a laser.
+  for three. None was added, and none is needed. The photodiode is drawn as the
+  diode and current source it actually is, inside one dashed outline the shared
+  renderer already supports. Group C settled the LED and laser symbols the other
+  way, because C1's lesson is that the circuit does not tell them apart. The
+  laser and fibre symbols would still be worth having on the link view's
+  transmitter block, where the device is a picture rather than a circuit.
+  `NEEDS.md` §6 carries the narrowed request.
 - **`packages/photonics` needs a row in `EE_LABS_MAP.md` §3.** Director's queue,
   `PROGRAM.md` §5. `NEEDS.md` §2.
-- **The mirror-loss convention.** `mirrorLoss` uses the plan §2.8 form,
-  `(1/2L) ln(1/R)`, which pins 19.593 per cm for the chip cavity. Some texts
-  spread the same reflectance over a round trip and quote twice this. Nothing in
-  this sitting depends on the choice, because the plan states the photon
-  lifetime as a parameter. The Group D sitting must check its threshold current
-  against the convention before pinning one, and the brief's §3.3 says so.
-- **`scripts/verify.mjs`.** Written and not run. This environment has no
-  browser, so no view has been read as a picture and
-  `REVIEW_PLAYBOOK.md` §11 is unmet. The link view, the waterfall and the
-  spectrum are new drawings and none has been seen. A first run reviews the
-  script as much as the page.
+- **The mirror-loss convention, settled.** `mirrorLoss` uses the plan §2.8 form,
+  `(1/2L) ln(1/R)`, where a single pass loses the reflectance. Some texts spread
+  the same reflectance over a round trip and quote twice this. The Group D
+  sitting checked its threshold against the choice, as the brief's §3.3 told it
+  to. Under the form in use the threshold is 13.389 mA. Under the other it is
+  18.766 mA, and `rate.test.js` carries that number so the choice stays visible.
+- **`scripts/verify.mjs`.** Written, extended, and still never run. Neither
+  sitting's environment had a browser, so no view has been read as a picture and
+  `REVIEW_PLAYBOOK.md` §11 is unmet. Six drawings are new and none has been
+  seen: the link view, the waterfall, the spectrum, the equations pane, the
+  modulation pane and the step pane. A first run reviews the script as much as
+  the page.
+- **The step pane draws a solution in time, and that needs a person's eye.** The
+  integration is legitimate because it is drawn beside the prediction it is
+  measuring, and never on its own. Whether the picture reads that way at 390 px
+  is a screenshot question, not a test question, and it is open.
+- **D4 has no curve of error against depth.** Each point on one is a
+  Runge-Kutta pass, and a hundred and sixty of them would be slower than a
+  reader's patience. The five depths the plan names are rows on the numbers pane
+  instead. Reopens if the guard's shape against depth turns out to be worth a
+  picture.
+- **The Control Lab hand-over is pinned on one side only.** `rate.test.js` pins
+  the damping ratio at 0.034848 here, and `smallSignal` returns the coefficients
+  in the order `@ee-labs/systems` takes. Where a test that reads both labs
+  belongs is the director's, and `NEEDS.md` §8 asks.
 - **The modulated high-speed link, the eye diagram and jitter** stay with the
   private `waveform-simulator`, by the root README. This is a boundary rather
   than a wait, and no dependency reopens it.

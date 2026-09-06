@@ -25,33 +25,37 @@ not own.
 `packages/photonics` is created by this lab, per `PROGRAM.md` §5's "a new
 package: the overseer whose lab creates it". It needs a row in
 `EE_LABS_MAP.md` §3. Its name is `@ee-labs/photonics`, it depends only on
-`@ee-labs/network`, and it holds `photon.js`, `fibre.js` and `cavity.js` today.
-`rate.js` and `receiver.js` arrive in later sittings, and
-`PHOTONICS_LAB_PLAN.md` §9 phases them.
+`@ee-labs/network`, and it holds `photon.js`, `fibre.js`, `cavity.js`,
+`source.js` and `rate.js` today. `receiver.js` is the last module, and
+`PHOTONICS_LAB_PLAN.md` §9 puts it in phase 4 behind the Electronics Lab's
+Group O.
 
 ## 3. The progression test
 
 `packages/ui/src/progression.test.js` belongs to the seams overseer. These are
 this lab's ids and counts for it.
 
-The slug is `photonics-lab`. Twelve experiments exist today, in three of the
-plan's six groups. Groups B, C and D are planned and not built. Their ids are
-listed apart, and they do not go into the progression test until they land.
+The slug is `photonics-lab`. Twenty-one experiments exist today, in five of
+the plan's six groups. Group B is planned and not built. Its ids are listed
+apart, and they do not go into the progression test until they land.
 
 | Group | Ids | Count |
 | --- | --- | --- |
 | A Light, and the photodiode | a1 to a5 | 5 |
+| C The LED and the laser | c1 to c5 | 5 |
+| D The rate equations | d1 to d4 | 4 |
 | E The fibre | e1 to e5 | 5 |
 | F The cavity, and many colours | f1, f2 | 2 |
 
-Not built. `PHOTONICS_LAB_PLAN.md` §9 says which phase each waits for, and
-`BACKLOG.md` carries them under this lab's heading.
+The sidebar order is the plan's, so Groups C and D sit between A and E. A
+progression test that walks the ids in order should expect that order.
+
+Not built. `PHOTONICS_LAB_PLAN.md` §9 says which phase it waits for, and
+`BACKLOG.md` carries it under this lab's heading.
 
 | Group | Ids | Count | Waits for |
 | --- | --- | --- | --- |
 | B The receiver | b1 to b4 | 4 | the Electronics Lab's Group O |
-| C The LED and the laser | c1 to c5 | 5 | `source.js`, this lab's next sitting |
-| D The rate equations | d1 to d4 | 4 | `rate.js`, this lab's next sitting |
 
 Cross-references this lab makes into other labs, which the progression test
 should hold once each target is confirmed built:
@@ -59,11 +63,13 @@ should hold once each target is confirmed built:
 | From | To | What it says |
 | --- | --- | --- |
 | a5 | Electronics Lab, junction group | the junction capacitance law, taken from `@ee-labs/network` |
+| c1 | Elements I1 | the exponential law both devices carry current by |
+| d3 | Control Lab, harder plants | a second-order plant at a damping ratio of 0.034848 |
 | e4 | Fields Lab, wave group | where the wave equation behind V and NA comes from |
 
-No experiment in this sitting names an experiment that does not exist.
-`experiments.test.js` asserts that no lesson mentions a b, c or d id, and that
-no lesson names a bare "Group B", "Group C" or "Group D" of this lab.
+Within this lab the lessons cross-reference C4, D1, D2, D3 and F1, and every
+one of those is built. `experiments.test.js` asserts that no lesson mentions a
+b id or a bare "Group B", and that every c or d id a lesson names exists.
 
 ## 4. What Group B needs from the Electronics Lab's Group O
 
@@ -137,24 +143,33 @@ The director decides whether that happens now or when the System Lab starts.
 The plan recommends the second, because a component with one real user and one
 guessed one is a component designed against a guess.
 
-## 6. The photodiode symbol
+## 6. The photodiode, laser and LED symbols
 
 `packages/ui/src/Schematic.jsx` belongs to the director. `PHOTONICS_LAB_PLAN.md`
 §3 asks for three new symbols: a photodiode with its two inward arrows, a laser
 diode with its two outward arrows, and a fibre drawn as a curve with its length
 printed.
 
-**None of the three is needed for this sitting to be correct**, and none has
-been added. The photodiode is drawn as what the solver is actually given. A
-diode and a current source sit inside one dashed outline, which is
-`{ box: [...] }` in the layout the shared renderer already supports. That
-drawing makes the model visible rather than hiding it in a symbol.
+**None of the three is needed for the lab to be correct**, and none has been
+added. The photodiode is drawn as what the solver is actually given. A diode
+and a current source sit inside one dashed outline, which is `{ box: [...] }`
+in the layout the shared renderer already supports. That drawing makes the
+model visible rather than hiding it in a symbol.
 
-The request stands for the sitting that builds Group C. A laser diode and an
-LED are drawn beside each other there, and the outline stops carrying the
-distinction between them. The contract would be one new `type` per symbol in
-the element switch, drawn along +x from −20 to +20 like every other symbol,
-with no change to the layout format.
+Group C is built now, and it settled the question the other way. C1's whole
+claim is that **nothing electrical tells an LED from a laser**, so drawing two
+different symbols there would contradict the lesson. The circuit is one plain
+diode, and the caption under it names both devices and the power each would
+make at the current on screen. A `verify.mjs` check holds the caption to
+naming both.
+
+So the request narrows to one symbol and it is not urgent. A laser diode with
+its two outward arrows would be worth having on the link view's transmitter
+block, where the device is a picture rather than a circuit. The contract would
+be one new `type` in the element switch, drawn along +x from −20 to +20 like
+every other symbol, with no change to the layout format. The fibre symbol is
+still wanted for the same block. The director decides, and nothing in the lab
+fails without them.
 
 ## 7. The link budget in `packages/rf`
 
@@ -168,8 +183,22 @@ items and it is fully tested. When `packages/rf` lands, the director decides
 which of the two is the one sum. Whichever survives has to keep the shape in §5
 above, because two labs draw from it.
 
-## 8. Nothing else
+## 8. The Control Lab hand-over, when that lab wants it
+
+D3 returns the laser's linearised response as an exactly rational second order,
+in `@ee-labs/systems`' own coefficient order. `smallSignal(spec, current).b` is
+the numerator and `.a` is the denominator, in descending powers of s, and
+`.zeta` is 0.034848 at twice threshold with the plan's parameters.
+
+`PHOTONICS_LAB_PLAN.md` §6 says the two labs' damping ratios are pinned equal.
+Nothing is needed from the Control Lab to build that. What is needed is the
+director's decision on where the pin lives, because a test that reads both
+labs belongs to neither. This lab's `rate.test.js` pins the number on this
+side.
+
+## 9. Nothing else
 
 This lab needs no new element in `packages/network`, no change to any existing
 `packages/ui` component, and no experiment from another lab that is not already
-built. `@ee-labs/network`'s `newtonDC` and `junctionCap` are used unchanged.
+built. `@ee-labs/network`'s `newtonDC`, `junctionCap` and `VT` are used
+unchanged.

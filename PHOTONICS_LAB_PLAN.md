@@ -251,17 +251,28 @@ lifetime, `τ_p` the photon lifetime and `β` the spontaneous coupling.
 `S = Γ τ_p (I − I_th)/(q V)`. Every one of those is algebra, and the solver returns
 them without approximation.
 
-**The linearisation is a labelled second-order H(s).** Perturbing about the steady
-state gives `H(s) = ω_r² / (s² + γ s + ω_r²)` with
-`ω_r = √((I/I_th − 1)/(τ_p τ_c))` and `γ = 1/τ_c + g_0 S`. That is exactly rational,
-so it is admitted to `@ee-labs/systems` in full, with the label stating the bias
-current it was taken at. This is `CORE_SCOPE.md`'s "linearized transistor stage" row
-applied to a laser.
+**The linearisation is a second-order H(s), and it is exact.** Perturbing about the
+steady state gives `H(s) = ω_r² / (s² + γ s + ω_r²)`. The damping is
+`γ = 1/τ_c + g_0 S`, and `ω_r²` is the determinant of the Jacobian, which at zero
+spontaneous coupling is `g_0 S / τ_p`. That is exactly rational, so it is admitted to
+`@ee-labs/systems` in full, with the label stating the bias current it was taken at.
+This is `CORE_SCOPE.md`'s "linearized transistor stage" row applied to a laser.
+
+**One correction to the draft, measured in the sitting that built Group D.** The
+first version of this section quoted the textbook form
+`ω_r = √((I/I_th − 1)/(τ_p τ_c))`. That form drops the transparency density, and it
+holds only when `Γ g_0 N_tr` is small beside `1/τ_p`. At §4.3's own parameters
+`Γ g_0 N_tr` is 7.5 × 10¹¹ per second and `1/τ_p` is 5.0347 × 10¹¹ per second, so the
+term it drops is the larger of the two. The exact form is high by
+`√(Γ g_0 N_th τ_p)`, which is 1.5779 here. `rate.js` returns both, D3 prints both,
+and `rate.test.js` pins the ratio.
 
 **The guard is a modulation depth.** The linear answer describes the overshoot of a
-current step to within 4.6 % at 5 % depth and 10.0 % at 10 % depth. At 30 % the error
-is 28.3 % and at 60 % it is 49.1 %. The pane warns past 10 % and declines to draw the
-small-signal prediction past 30 %, and §4.3 gives all five measured errors.
+current step to within 1.0853 % at 1 % depth, 5.2639 % at 5 % and 10.152 % at 10 %.
+At 30 % the error is 26.760 % and at 60 % it is 45.597 %. §11's rule says a warn
+threshold whose own measured error passes 10 % has to move. Ten per cent depth costs
+10.152 %, so the pane draws the prediction without a flag to 5 %. Past 30 % it stops
+drawing the prediction. §4.3 gives all five measured errors.
 
 **The large-signal solution in time is declined**, with the reason `diode.js` gives. A
 timestep solver's error cannot be told apart from physics in this suite. The steady
@@ -352,8 +363,9 @@ fibre lengths:
 7. **The relaxation frequency scales.** `f_r` is proportional to `√(I/I_th − 1)` to
    floating point across ten bias currents.
 8. **The guard is measured.** The overshoot error against a numerically integrated
-   step is under 5 % at 5 % modulation depth and over 25 % at 30 %, which are the
-   guard's two thresholds.
+   step is under 10 % at the warn threshold and over 25 % at the decline threshold.
+   The test measures the error at each threshold rather than asserting the threshold,
+   so a threshold that stops meeting §11's rule fails the suite.
 9. **Attenuation composes.** The loss of `L_1 + L_2` equals the sum of the two losses
    in decibels to floating point, and the power ratio equals the product.
 10. **Dispersion composes.** The spread over `L_1 + L_2` equals the sum of the two
@@ -465,22 +477,43 @@ every picture fits a phone. All were computed before they were written here.
   1.000 kΩ load over 1.000 GHz, and −34.617 dBm with 5.000 kΩ. The quantum limit at
   the same rate is −58.923 dBm, so the gap is 27.8 dB.
 - The LED: at a carrier lifetime of 5.0 ns the modulation bandwidth is 31.831 MHz. At
-  1.0 ns it is 159.16 MHz and at 20.0 ns it is 7.958 MHz.
+  1.0 ns it is 159.15 MHz and at 20.0 ns it is 7.9577 MHz. One pole falls 20 dB a
+  decade, and 6.0203 dB an octave when it is measured a hundred corners out.
 - Slope efficiency at 1550 nm, where `h ν / q = 0.79990 V`: 0.15998 mW/mA at
   `η_d = 0.2`, 0.31996 mW/mA at 0.4 and 0.47994 mW/mA at 0.6.
-- The laser's parameters: `τ_p = 2.00 ps`, `τ_c = 2.00 ns`, `Γ = 0.3`,
-  `g_0 = 2.500e-12 m³/s`, `N_tr = 1.000e24 m⁻³` and `V = 1.000e-16 m³`. So
-  `N_th = 1.6667e24 m⁻³` and `I_th = 13.351 mA`.
-- The relaxation oscillation at `I = 2 I_th`: the photon density is 5.0000e20 m⁻³.
-  The frequency is 2.5165 GHz, the damping is 1.7500 per ns and the damping ratio is
-  0.05534. The peak is 19.132 dB high at 2.5087 GHz and the 3 dB bandwidth is
-  3.9015 GHz.
-- The same at other currents: 1.7794 GHz at 1.5 `I_th`, 3.5588 GHz at 3 `I_th` and
-  5.0329 GHz at 5 `I_th`. The frequency follows `√(I/I_th − 1)` exactly.
+- The laser's parameters: `τ_c = 2.00 ns`, `Γ = 0.3`, `g_0 = 2.500e-12 m³/s`,
+  `N_tr = 1.000e24 m⁻³`, `V = 1.000e-16 m³` and `β = 0`. The photon lifetime is not
+  typed. It is what a 100 µm cleaved chip of index 3.5 gives under §2.8's mirror-loss
+  convention, which is `τ_p = 1.9862 ps`. So `N_th = 1.6713e24 m⁻³` and
+  `I_th = 13.389 mA`. That keeps the lab to one laser: C5 turns the same chip's facet
+  reflectance and reads the same threshold Group D pins.
+- The other mirror-loss convention, where a round trip loses the reflectance, halves
+  the photon lifetime and puts the threshold at 18.766 mA. `rate.test.js` carries that
+  number so the choice stays visible.
+- The relaxation oscillation at `I = 2 I_th`, which is 26.777 mA: the photon density
+  is 4.9792e20 m⁻³. The frequency is 3.9844 GHz, the damping is 1.7448 per ns and the
+  damping ratio is 0.034848. The peak is 23.141 dB high at 3.9795 GHz and the 3 dB
+  bandwidth is 6.1855 GHz.
+- The same at other currents: 2.8174 GHz at 1.5 `I_th`, 5.6348 GHz at 3 `I_th` and
+  7.9688 GHz at 5 `I_th`. The frequency follows `√(I/I_th − 1)` exactly.
+- The textbook form at the same four currents: 1.7856 GHz, 2.5252 GHz, 3.5711 GHz and
+  5.0503 GHz. The exact form is 1.5779 times each of them, at every current.
 - The linearisation's guard, measured against a numerically integrated step at
-  `2 I_th`. The overshoot error is 0.0 % at 1 % modulation depth, 4.606 % at 5 %,
-  9.995 % at 10 %, 28.304 % at 30 % and 49.069 % at 60 %. The warn threshold is 10 %
+  `2 I_th`. The overshoot error is 1.0853 % at 1 % modulation depth, 5.2639 % at 5 %,
+  10.152 % at 10 %, 26.760 % at 30 % and 45.597 % at 60 %. The warn threshold is 5 %
   and the decline threshold is 30 %.
+- The junction both devices are, at 2.5 V through 68 Ω with `I_S = 1 pA` and `n = 2`:
+  18.778 mA at a forward voltage of 1.2231 V. At 1.8 V it is 9.0396 mA and at 3.3 V it
+  is 30.182 mA. A factor of three in current costs a tenth of a volt.
+- The LED at `η_int = 0.2` and 1550 nm: a slope of 0.15998 mW/mA, so 20 mA makes
+  3.1996 mW. At 1310 nm the slope is 0.18929 mW/mA and at 850 nm it is 0.29173 mW/mA.
+- The laser's spontaneous path at `η_sp = 0.002`: a slope of 0.0015998 mW/mA. The two
+  slopes stand in a ratio of 200.00, so the kink at threshold is sharp.
+- C5's chip at three facet reflectances: 58.779 per cm and 1.9862 ps at 0.30864,
+  115.13 per cm and 1.0141 ps at 0.10, and 5.2680 per cm and 22.162 ps at 0.90. The
+  thresholds are 13.389 mA, 18.544 mA and 8.4929 mA. Stretching the same chip to
+  300 µm gives 5.9587 ps, a threshold of 9.8034 mA and the 142.76 GHz free spectral
+  range F1 draws.
 - The fibre: 0.20 dB/km at 1550 nm, 0.35 dB/km at 1310 nm and 2.0 dB/km at 850 nm.
   Over 80 km those are 16.000 dB, 28.000 dB and 160.00 dB, and the first is a power
   ratio of 0.025119.
@@ -569,47 +602,56 @@ comparison between shot and thermal noise, per Decision 5.
 ### Group C: The LED and the laser as junctions (5)
 
 - **C1 · Both are forward-biased junctions.** Elements I1's exponential law drives both.
-  An LED at 20 mA and a laser at 20 mA sit at nearly the same voltage, and the
-  difference between them is what happens to the recombination. Measured: the I-V curve
-  of each against the same Shockley law.
+  At 2.5 V through 68 Ω the junction carries 18.778 mA at 1.2231 V, and nothing in the
+  circuit tells an LED from a laser. That current makes 3.0041 mW as an LED and
+  1.7458 mW as a laser. Measured: the solved operating point at three supplies, and the
+  two optical powers at each.
 - **C2 · The LED's power is linear in current.** `P = η_int (h ν / q) I`, so at
-  1550 nm each milliamp buys `0.79990 η_int` milliwatts. Double the current and double
-  the light, up to the thermal limit. Measured: the power at four currents, and the
-  slope.
+  1550 nm each milliamp buys `0.79990 η_int` milliwatts. At `η_int = 0.2` the slope is
+  0.15998 mW/mA and 20 mA makes 3.1996 mW. Double the current and double the light.
+  Measured: the power at four currents, and the slope at three efficiencies and three
+  wavelengths.
 - **C3 · The LED is slow.** One carrier lifetime gives one pole at `1/(2π τ_c)`. At
-  5.0 ns that is 31.831 MHz, at 1.0 ns it is 159.16 MHz and at 20.0 ns it is
-  7.958 MHz. Measured: the corner at three lifetimes, and the roll-off's slope.
-- **C4 · The laser has a threshold.** Below 13.351 mA the output is spontaneous and
+  5.0 ns that is 31.831 MHz, at 1.0 ns it is 159.15 MHz and at 20.0 ns it is
+  7.9577 MHz. Measured: the corner at three lifetimes, and the roll-off's slope in both
+  unit systems.
+- **C4 · The laser has a threshold.** Below 13.389 mA the output is spontaneous and
   small. Above it the output rises at `η_d h ν / q`, which is 0.31996 mW/mA at
   `η_d = 0.4`. The kink is sharp because the gain is clamped. Measured: the threshold,
-  both slopes, and the ratio between them.
-- **C5 · Threshold moves with the mirrors and the temperature.** Lower the facet
-  reflectance and the photon lifetime falls, so the threshold rises. The same cavity
-  number sets the free spectral range in Group F. Measured: the threshold at three
-  reflectances, and the photon lifetime behind each.
+  both slopes, and the ratio of 200.00 between them.
+- **C5 · Threshold moves with the mirrors.** Lower the facet reflectance and the photon
+  lifetime falls, so the threshold rises. At 0.90 the lifetime is 22.162 ps and the
+  threshold is 8.4929 mA, and at 0.10 they are 1.0141 ps and 18.544 mA. The same cavity
+  sets the free spectral range in Group F. Measured: the threshold at three
+  reflectances, the photon lifetime behind each, and the 142.76 GHz a 300 µm chip
+  shares with F1.
 
 ### Group D: The rate equations (4)
 
 - **D1 · Two equations, and what each term is.** Carriers in from the current, out by
   recombination, out by stimulated emission. Photons in by stimulated emission, out by
-  the cavity. Every term has units and a rate, and the pane prints each with the
-  reader's numbers. Measured: each term's value at the steady state, and that the two
-  sums are zero.
+  the cavity. Every term is a rate of density, and the pane prints each with the
+  reader's numbers. At 26.777 mA the pump delivers 1.6713 × 10³³ per cubic metre a
+  second. Measured: each term's value at the steady state, and that each sum is zero to
+  its own largest term's last bits.
 - **D2 · The steady state, exactly.** Setting both derivatives to zero gives
-  `N_th = N_tr + 1/(Γ g_0 τ_p) = 1.6667e24 m⁻³` and `I_th = 13.351 mA`. Above
+  `N_th = N_tr + 1/(Γ g_0 τ_p) = 1.6713e24 m⁻³` and `I_th = 13.389 mA`. Above
   threshold the photon density is `Γ τ_p (I − I_th)/(q V)`, which at `2 I_th` is
-  5.0000e20 m⁻³. Nothing here is approximated. Measured: both densities and the
-  threshold, substituted back into the equations.
+  4.9792e20 m⁻³. Nothing here is approximated. Measured: both densities and the
+  threshold, substituted back into the equations, and the threshold at three
+  confinement factors and three transparency densities.
 - **D3 · The relaxation oscillation.** Linearise about the steady state and the pair
-  becomes `ω_r²/(s² + γ s + ω_r²)`. At `2 I_th` that is 2.5165 GHz with a damping ratio
-  of 0.05534, a 19.132 dB peak and a 3.9015 GHz bandwidth. The frequency follows
-  `√(I/I_th − 1)`. Measured: `f_r` at four currents, the peak height, and the
+  becomes `ω_r²/(s² + γ s + ω_r²)`. At `2 I_th` that is 3.9844 GHz with a damping ratio
+  of 0.034848, a 23.141 dB peak and a 6.1855 GHz bandwidth. The frequency follows
+  `√(I/I_th − 1)`. The textbook form gives 2.5252 GHz at the same bias, and the pane
+  prints both. Measured: `f_r` at four currents, both forms, the peak height, and the
   bandwidth.
 - **D4 · Where the linearisation stops.** Step the current and compare the measured
-  overshoot with the linear prediction. At 5 % modulation depth the error is 4.606 %,
-  at 10 % it is 9.995 % and at 30 % it is 28.304 %. The pane warns at 10 % and stops
-  drawing the prediction at 30 %. The large-signal solution in time is declined, with
-  the reason. Measured: the error at five depths, and the guard at both thresholds.
+  overshoot with the linear prediction. At 5 % modulation depth the error is 5.2639 %,
+  at 10 % it is 10.152 % and at 30 % it is 26.760 %. The pane draws the prediction
+  without a flag to 5 %, as an estimate to 30 %, and not at all past that. The
+  large-signal solution in time is declined, with the reason. Measured: the error at
+  five depths, and the guard at both thresholds.
 
 ### Group E: The fibre (5)
 
@@ -660,9 +702,10 @@ comparison between shot and thermal noise, per Decision 5.
   there. The laser's linearised response crosses as an exact rational H(s), presented
   without qualification per the CORE_SCOPE counter-rule.
 - **→ Control Lab** (D3). The relaxation oscillation is a lightly damped second-order
-  plant, with a damping ratio of 0.05534 at `2 I_th`. It is exactly the kind of plant
+  plant, with a damping ratio of 0.034848 at `2 I_th`. It is exactly the kind of plant
   Control Lab's "Harder plants" group teaches, and the two labs' damping ratios are
-  pinned equal.
+  pinned equal. `smallSignal` returns the numerator and the denominator in descending
+  powers of s, which is the shape `@ee-labs/systems` takes.
 - **→ System Lab** (E5, F2). The optical link budget is the System Lab's waterfall
   with optical units, and `link.js` is shared code rather than a copied sum. The
   waterfall component is shared with the System Lab named as its second user.
@@ -747,9 +790,10 @@ groups.
 2. **The cavity.** `cavity.js`, the cavity view, the link view's first form.
    **Group F** (2). Exit: invariants 11 and 12 green, and the refusal message checked
    against the RF Lab's.
-3. **The rate equations.** `rate.js`, the device curves, the modulation response view.
-   **Groups C and D** (9). Exit: invariants 4 to 8 green, the guard measured at five
-   depths, and the Control Lab hand-over pinned.
+3. **The rate equations.** `rate.js` and `source.js`, the device curves, the equations
+   pane, the modulation response view and the step view. **Groups C and D** (9).
+   Built 2026-09-05. Exit met: invariants 4 to 8 green, the guard measured at five
+   depths, and the linearised `H(s)` returned in the shape Control Lab takes.
 4. **The receiver.** `receiver.js`, the noise view, the sensitivity readout.
    **Group B** (4). Exit: invariant 3 green, and B3's two sensitivities pinned against
    the Electronics Lab's densities.
@@ -811,10 +855,12 @@ the director decides which.
   transparency density have no analogue in the rest of the suite. Mitigation: every
   parameter is a NumField with units and a chip, D1 shows each term's rate at the
   operating point, and the threshold current is derived from them rather than typed.
-- **The modulation guard set at the wrong depth.** Ten per cent is a choice.
+- **The modulation guard set at the wrong depth.** A depth is a choice.
   Mitigation: the threshold's number comes from the measured overshoot error in §4.3,
   invariant 8 pins that error at both thresholds, and the threshold moves if the
-  measured error at it exceeds 10 %.
+  measured error at it exceeds 10 %. That rule has already moved one. The draft put the
+  warn threshold at 10 % depth, the measured error there is 10.152 %, and the threshold
+  is now 5 % where the error is 5.2639 %.
 - **Two unbuilt dependencies.** The Electronics Lab's Group O and the Applied Analog
   Lab's front end both feed Group B. Mitigation: §9 puts Group B in phase 4, and
   Decision 5 keeps the group at four experiments that need only the densities.

@@ -5,10 +5,11 @@ You are one of up to six agents building this lab in parallel. The plan is
 without colliding with another. Read the plan's §2 (the engine) and §5 (the
 curriculum) for your lane before writing a line. Reed reviews everything.
 
-The first sitting is built. Groups **A**, **E** and **F** ship, twelve
-experiments, and `packages/photonics` holds `photon.js`, `fibre.js` and
-`cavity.js`. What follows names what is done, what is contracted, and what is
-left.
+Two sittings are built. Groups **A**, **C**, **D**, **E** and **F** ship,
+twenty-one experiments, and `packages/photonics` holds `photon.js`,
+`fibre.js`, `cavity.js`, `source.js` and `rate.js`. Group **B** is the only
+one left, and it waits on the Electronics Lab's Group O. What follows names
+what is done, what is contracted, and what is left.
 
 ## Boundaries: read first
 
@@ -44,15 +45,17 @@ model name in a commit or a file.
 | --- | --- | --- | --- | --- |
 | 1 | Photons and the fibre | `packages/photonics/src/{const,photon,fibre,fuzz}.js` and their tests, `src/groups/{a,e}.js`, `src/lessons/{a,e}.js` | **done** | invariants 1, 2, 9 and 10 green, every A and E number pinned |
 | 2 | The cavity and the shell | `packages/photonics/src/cavity.js` and its test, `src/groups/f.js`, `src/lessons/f.js`, everything else in `apps/photonics-lab/` | **done** | invariants 11 and 12 green, the shell loads at 390 px, the release test passes dark |
-| 3 | The sources | `packages/photonics/src/source.js` and test, `src/groups/c.js`, `src/lessons/c.js` | now | C1 to C5 pinned, the LED bandwidth and the laser slope from one junction |
-| 4 | The rate equations | `packages/photonics/src/rate.js` and test, `src/groups/d.js`, `src/lessons/d.js`, the modulation-response pane | after lane 3's `source.js` lands | invariants 4 to 8 green, the guard measured at five depths |
+| 3 | The sources | `packages/photonics/src/source.js` and test, `src/groups/c.js`, `src/lessons/c.js` | **done** | C1 to C5 pinned, the LED bandwidth and the laser slope from one junction |
+| 4 | The rate equations | `packages/photonics/src/rate.js` and test, `src/groups/d.js`, `src/lessons/d.js`, the equations, modulation and step panes | **done** | invariants 4 to 8 green, the guard measured at five depths |
 | 5 | The receiver | `packages/photonics/src/receiver.js` and test, `src/groups/b.js`, `src/lessons/b.js`, the noise pane | after the Electronics Lab's Group O merges | invariant 3 green, B3's two sensitivities pinned against that lab's densities |
 | 6 | The link, finished | the waterfall's promotion, the multiplexing view's second half | after the System Lab starts, or by the director's decision | the budget's sum equals the System Lab's for the same line items |
 
-**The gate.** Lanes 3 and 4 both write the laser. Lane 3 owns the junction and
-the light it makes. Lane 4 owns the two rate equations and the linearisation.
-The threshold current is lane 4's, because it comes out of the rate equations,
-and lane 3 reads it through `rate.js` rather than typing it.
+**The gate, kept.** Lanes 3 and 4 both write the laser. Lane 3 owns the
+junction and the light it makes. Lane 4 owns the two rate equations and the
+linearisation. The threshold current is lane 4's, and `source.js`'s
+`laserOutput` requires one rather than defaulting one, so a lane that tried to
+invent a threshold would fail its own test. `math.js` passes what
+`rate.threshold` returned, at every setting.
 
 **Shared seams, landed.** `packages/photonics/index.js` exports by module, and a
 new module adds a block to it. `apps/photonics-lab/src/experiments.js` carries
@@ -72,8 +75,8 @@ apps/photonics-lab/
   src/App.jsx  main.jsx  styles.css
   src/experiments.js      merges groups/*.js in plan order, no prose
   src/lessons.js          merges lessons/*.js, and readQuantity
-  src/groups/{a,e,f}.js   one file per group, owned by that group's lane
-  src/lessons/{a,e,f}.js  the see / try / why registers, same owner
+  src/groups/{a,c,d,e,f}.js   one file per group, owned by that group's lane
+  src/lessons/{a,c,d,e,f}.js  the see / try / why registers, same owner
   src/knobs.js            the knob shapes, in base SI units
   src/math.js             one analysis per kind, and `at(over)` on every one
   src/view.js             the schematic's layout, and the numbers rows
@@ -193,50 +196,86 @@ Test: `cavity.test.js`. Twenty cases, including invariant 11 (periodic in the
 round-trip phase, and the peaks one free spectral range apart) and invariant 12
 (the `systems` hand-over declined, and the message naming the factor).
 
-### 3.4 `source.js` (lane 3, contracted, not built)
+### 3.4 `source.js` (lane 3, built)
 
 ```js
-/**
- * The LED and the laser as one shape. Below threshold a laser is an LED.
- * @returns {{ power, slope, bandwidth, spectralWidth }}
- */
-export function ledOutput({ etaInt, lambda, current })     // P = eta (h nu / q) I
-export function ledBandwidth({ tauC })                     // 1 / (2 pi tau_c)
-export function laserOutput({ etaD, lambda, current, ith })  // eta_d (h nu / q)(I - I_th)
-export function slopeEfficiency({ etaD, lambda })          // W/A
+voltsPerPhoton(lambda)          // h nu / q, in volts. 0.79990 V at 1550 nm
+
+// The electrical port: a @ee-labs/network circuit, not a formula.
+driveNet(spec)                  // { elements: [Vd, Rs, D1], spec }
+drive(spec)                     // { current, forward, across, floor, sol, elements, iters }
+driveSweep(spec, drives)
+forwardVoltage({ current, is, n, vt })   // Shockley read backwards
+
+// The optical port: three stated models, each named in MODEL.
+ledOutput({ etaInt, lambda, current })   // { power, slope, volts, model }
+ledBandwidth({ tauC })                   // { f3db, tauC, model }
+ledResponse({ tauC, f })                 // |H| against its low-frequency value
+slopeEfficiency({ etaD, lambda })        // { slope, volts, etaD }, W/A
+laserOutput({ etaD, lambda, current, ith, etaSp })
+  // { power, stimulated, spontaneous, slope, spontaneousSlope, slopeRatio, above }
+wallPlug({ power, current, forward })
+widthInWavelength({ lambda, dNu })
+
+MODEL   // { led, bandwidth, laser }, the sentence each number is printed with
 ```
 
-Test: `source.test.js`. At `τ_c = 5.0 ns` the LED bandwidth is 31.831 MHz, at
-1.0 ns it is 159.16 MHz and at 20.0 ns it is 7.958 MHz. At 1550 nm the slope is
-0.15998 mW/mA at `η_d = 0.2` and 0.31996 mW/mA at 0.4. Each is recomputed from
-the parameters in the test, never typed.
+`laserOutput` requires `ith`. A source module that defaulted a threshold would
+let two panes disagree about one laser, so the threshold is always the one
+`rate.js` returned.
 
-### 3.5 `rate.js` (lane 4, contracted, not built)
+Test: `source.test.js`. Twenty-four cases. At `τ_c = 5.0 ns` the LED bandwidth
+is 31.831 MHz, at 1.0 ns it is 159.15 MHz and at 20.0 ns it is 7.9577 MHz. At
+1550 nm the slope is 0.15998 mW/mA at `η_d = 0.2` and 0.31996 mW/mA at 0.4.
+The junction's operating point is checked by Kirchhoff's law at its own node,
+against `drive().floor` rather than a chosen epsilon, over eighty random
+junctions. Invariant 5's second half lives here: the slope above threshold is
+measured off the curve rather than read off the return.
+
+### 3.5 `rate.js` (lane 4, built)
 
 ```js
-/** The steady state, exactly. Both derivatives are zero at what it returns. */
-export function steadyState({ g0, ntr, gamma, tauC, tauP, V, current })
-  // { nth, ith, n, s, above }
+LASER_CHIP        // { n: 3.5, L: 100e-6, r: facetReflectance({ n1: 3.5 }), loss: 0 }
+LASER_DEFAULTS    // the six parameters, with tauP from that chip
 
-/** The linearisation about that steady state, as an exact rational H(s). */
-export function smallSignal(spec, current)
-  // { wr, gamma: damping, zeta, peakDb, peakHz, f3db, b: [...], a: [...] }
+laserSpec(spec)                 // the defaults filled in, every field checked
+threshold(spec)                 // { spec, nth, gain, ith, gth }
+steadyState({ ...spec, current })
+  // { spec, nth, ith, gain, current, n, delta, s, above, sIdeal }
+rateTerms({ ...spec, current })
+  // adds { carriers[], photons[], carrierSum, photonSum, carrierFloor, photonFloor }
 
-/** The guard: a modulation depth, with the measured error at it. */
-export function depthGuard(spec, current, depth)
-  // { depth, warn: 0.10, decline: 0.30, ok, says }
+smallSignal(spec, current)
+  // { wr, fr, gamma, zeta, resonant, peak, peakDb, peakHz, f3db, dc,
+  //   overshoot, b: [...], a: [...], wrText, frText }
+modulationAt(sm, f)             // |H| against its low-frequency value
 
-/** Declined, with the reason diode.js gives. */
-export function refuseLargeSignal()
+DEPTH_WARN     // 0.05, and the measured error at it is 5.2639 %
+DEPTH_DECLINE  // 0.30, and the measured error at it is 26.760 %
+stepOvershoot(spec, current, depth)
+  // { error, predicted, measured, rise, t[], trace[], predict(t), dt, steps }
+linearStep(sm, time)
+depthGuard(spec, current, depth)   // { depth, warn, decline, ok, declined, error, says, step }
+
+refuseLargeSignal(what)   // throws; largeSignalAvailable() returns the sentence
 ```
 
-Test: `rate.test.js`. The plan's §4.3 parameters give `N_th = 1.6667e24 m⁻³` and
-`I_th = 13.351 mA`. At `2 I_th` the photon density is 5.0000e20 m⁻³, the
-relaxation frequency is 2.5165 GHz and the damping ratio is 0.05534. The peak is
-19.132 dB and the 3 dB bandwidth is 3.9015 GHz. Every one of those is recomputed
-from the six parameters in the test. Write invariant 6 first. The small-signal
-response at low frequency equals the slope of the steady-state curve at the bias
-point, to 1e-6 relative.
+The photon lifetime is not typed. It is `photonLifetime(LASER_CHIP).tauP`, so
+one facet reflectance moves C5's threshold and D2's, and the two agree because
+they are the same number. The spontaneous coupling is zero by default, which is
+what makes the plan's closed forms exact and `f_r` exactly proportional to
+`√(I/I_th − 1)`.
+
+`smallSignal` refuses below threshold at zero coupling. With no photons in the
+cavity the pair is uncoupled, and a frequency returned there would be the
+cancellation of two equal numbers rather than a measurement.
+
+Test: `rate.test.js`. Thirty-three cases. §4.3's parameters give
+`N_th = 1.6713e24 m⁻³` and `I_th = 13.389 mA`. At `2 I_th` the photon density is
+4.9792e20 m⁻³, the relaxation frequency is 3.9844 GHz and the damping ratio is
+0.034848. The peak is 23.141 dB and the 3 dB bandwidth is 6.1855 GHz. Every one
+is recomputed from the six parameters. Invariants 4, 6, 7 and 8 are each named
+beside the test that measures them, fuzzed over two hundred random lasers.
 
 ### 3.6 `receiver.js` (lane 5, contracted, not built)
 
@@ -304,6 +343,20 @@ fsr, fsrWavelength, finesse, linewidth              the cavity
 facet, mirrorLoss, roundTripTime                    the cavity's other numbers
 contrast.<ratio|db>                                 peak against valley
 grid.width, band.<width|channels>, widthRatio       the channel grid
+j.<current|forward|across|iters>                    the solved forward junction
+led.<power|slope|volts>                             the LED's linear output
+band.<f3db|tauC|perDecade|perOctave|atCorner>       its one pole
+laser.<power|stimulated|spontaneous|slope|          the laser's two slopes
+  spontaneousSlope|slopeRatio|above>
+ith, nth, tauP, volts                               the device, at this setting
+cavity.<tauP|mirror|mirrorPerCm|fsr|finesse>        the chip C5 turns
+wall.<led|laser>                                    what each device does with the supply
+n, s, current, above                                the steady state
+carriers.<0|1|2>.value, photons.<0|1|2>.value       one term of one equation
+carrierSum, photonSum                               each equation's own sum
+sm.<fr|frText|gamma|zeta|peakDb|peakHz|f3db|dc>     the linearisation
+dampingPerNs, textFactor                            the two numbers D3 quotes
+guard.<error|depth|warn|decline|measured|predicted|declined>   the guard
 headline                                            whatever the experiment is about
 ```
 
@@ -353,11 +406,11 @@ from the parameters, never constants typed in.
 | 1, Group A | 0.79990 eV, 0.94644 eV and 1.4586 eV. 7.8 × 10¹⁵ photons a second. 1.0011 µA flat at four biases, and 53.557 µA at −0.35574 V when the bias runs out. 1.0001 A/W, 0.54846 A/W, 0.64524 A/W, and 1107.0 nm. 1.0000 nA, 2.0001 nA, 0.99987 nW. 0.17455 pF, 911.80 MHz, 7.8540 nW, and 7.1613 m²/s at every diameter |
 | 1, Group E | 16.000 dB, 28.000 dB, 160.00 dB, 8.0000 dB and −16.000 dBm. 1360.0 ps, 136.00 ps, 680.00 ps, 160.00 ps and −21.683 ps²/km. 0.18382 Gbit/s, 1.8382 Gbit/s, 0.36765 Gbit/s and 14.706 Gbit/s km. 0.12461, 7.1582°, 9.5224 µm, 2.2731, 23.028 and 265 modes. 18.400 dB, −21.400 dBm, 6.600 dB, 98.000 km and 1.4706 km |
 | 2, Group F | 142.76 GHz, 1.1440 nm, 2.5245, 56.550 GHz, 29.804, 4.7899 GHz, 312.58, 45.977 dB and 42.827 GHz. 0.80139 nm, 4.3821 THz, 43 channels, 87 and 21 |
-| 3, Group C | 31.831 MHz, 159.16 MHz, 7.958 MHz. 0.31996 mW/mA. 13.351 mA, and the threshold at three reflectances |
-| 4, Group D | `N_th = 1.6667e24 m⁻³`, `I_th = 13.351 mA`, `S = 5.0000e20 m⁻³`. 2.5165 GHz, 0.05534, 19.132 dB, 3.9015 GHz. The error at 1, 5, 10, 30 and 60 per cent depth |
+| 3, Group C | 18.778 mA, 1.2231 V, 30.182 mA, 1.2476 V, 8.7749 mA, 13.080 % and 7.6011 %. 3.0041 mW, 1.7458 mW, 3.1996 mW, 6.3992 mW, 0.39995 mW/mA, 7.9990 mW and 0.29173 mW/mA. 31.831 MHz, 159.15 MHz, 7.9577 MHz, 20 dB, 6.0203 dB and −3.0103 dB. 13.389 mA, 0.31996 mW/mA, 4.3052 mW, 2.1368 mW, 0.0079990 mW, 0.47994 mW/mA, 0.0015998 mW/mA and 200.00. 58.779 per cm, 1.9862 ps, 22.162 ps, 8.4929 mA, 1.0141 ps, 18.544 mA, 9.8034 mA and 142.76 GHz |
+| 4, Group D | `N_th = 1.6713e24 m⁻³`, `I_th = 13.389 mA`, `S = 4.9792e20 m⁻³`. 1.6713e33, 8.3565e32, 8.3564e32, 2.5069e32 and 1.2483e24 as term values. 9.9586e20, 11.238 mA and 21.399 mA. 3.9844 GHz, 0.034848, 23.141 dB, 6.1855 GHz, 5.6348 GHz, 7.9688 GHz, 19.230 dB, 2.5252 GHz, 1.5779 and 1.7448 per ns. The error at 1, 5, 10, 30 and 60 per cent depth: 1.0853 %, 5.2639 %, 10.152 %, 26.760 % and 45.597 % |
 | 5, Group B | 0.5661 pA/√Hz, 4.0704 pA/√Hz, 51.704 µA. 575.64 nA, 128.72 nA, 40.704 nA. −31.122 dBm, −34.617 dBm, −58.923 dBm and the 27.8 dB gap |
 
-`scripts/pins.mjs` computes every figure in the first three rows and prints it
+`scripts/pins.mjs` computes every figure in the first five rows and prints it
 grouped by experiment. **Extend it before you write a lesson, not after.**
 
 ## 7. Verify before you hand back
@@ -391,7 +444,8 @@ A lane is done when all of these hold.
 5. Every view it adds is in `VIEW_ORDER`, `VIEW_LABELS`, `PANE_OF` and
    `panes.test.jsx`, and `verify.mjs` opens it.
 6. Nothing it wrote references an experiment that does not exist.
-   `experiments.test.js` asserts that directly for Groups B, C and D.
+   `experiments.test.js` asserts that directly for Group B, and checks every
+   C or D id a lesson names against the built set.
 
 ## 9. Gotchas the other labs paid for, and two of this one's
 
@@ -410,3 +464,17 @@ A lane is done when all of these hold.
   silently. Then remove the cause or print it.
 - The dark launch is enforced by a test. While `RELEASE_STATUS` says `dark`,
   nothing outside `apps/photonics-lab/` may mention the lab.
+- **A term is introduced where it first does work, and the group order decides
+  where that is.** Groups C and D sit before E and F, so `decibel` is
+  introduced at C3 and `cavity` at C4. A lane that adds a group in the middle
+  has to check `terms.test.js` for words its group now meets first.
+- **A word in a lesson is matched by a pattern, and a verb can trip one.** The
+  fibre group's `reach` matches "reaches", so Group D says "rises" and
+  "climbs" instead. Read the failure before widening a pattern.
+- **A density written as a mantissa times a power of ten is read as one
+  number.** `experiments.test.js` parses `1.6713 × 10²⁴` and removes it from
+  the sentence before the bare-figure rules run, so the mantissa is never
+  compared against a value twenty-four orders of magnitude away.
+- **An integration is not a curve sample.** `depthGuard` runs a Runge-Kutta
+  pass, so D4 has no curve view over depth. Its five depths are rows on the
+  numbers pane instead, one integration each.
