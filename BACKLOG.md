@@ -1367,6 +1367,17 @@ only its own section. The director folds it into the shared ledger at merge.
 - **The levels view had the same defect, found by reading the code.** Two of its
   three columns are in dBm, and nothing but a colour named which line was which.
   All four are fixed, and each carries a test and a check in the harness.
+- **The review pass found three more.** The topbar read the headline through
+  engineering notation, so every decibel below one printed with an SI prefix.
+  A3's first two steps put "626.94 mdB" and "34.896 mdB" beside sentences
+  saying 0.6269 dB and 0.03490 dB. A decibel is already a logarithm and takes
+  no prefix, so `format.js` now quotes a logarithmic unit at its figures.
+- **The other two the review pass found.** The budget table's header carried
+  the unit across the share switch and left the hover sentence behind, so three
+  columns hovered "cumulative" over a column of percentages. And `passiveNf`'s
+  own comment quoted 0.6271 dB for a 2 dB filter at 77 K, where the function
+  gives 0.6269 dB. Each fix carries a test, and two carry a check in the
+  harness.
 - **The block record is a record, and no block links to a circuit.** Plan
   Decision 4 gives every block a `fromCircuit` and a `linksTo`, and every block
   in this lab carries `null` in both. The RF Lab's groups E and F, the
@@ -1392,11 +1403,13 @@ only its own section. The director folds it into the shared ledger at merge.
   group of the six. `apps/circuit-elements-lab/SITTINGS.md` is the script when
   the curriculum is whole.
 - **`packages/rf/index.js` will conflict at merge, and both sides are wanted.**
-  This branch was cut from `lab/rf-lab` where `index.js` re-exported twenty
-  names from a `src/match.js` that did not exist, so every import of
-  `@ee-labs/rf` threw. This sitting replaced that block with the `budget.js`
-  exports. The RF Lab has since landed the file. Both export blocks belong in
-  the merged `index.js`, and `apps/system-lab/NEEDS.md` §4 says so.
+  Both branches add to the same two places in that file. This one appends the
+  `budget.js` export block at the end and extends the header's EXACT paragraph
+  with the cascade, the level walk and the noise floor. The RF Lab appends its
+  `match.js` block at the same end and extends the same paragraph with the L
+  network. Neither replaces the other, and this branch removes nothing from the
+  file. Both export blocks and both sentences belong in the merged `index.js`,
+  and `apps/system-lab/NEEDS.md` §4 says so.
 - **The non-goals of `SYSTEM_LAB_PLAN.md` §10 are all still non-goals.** Bit
   error rate and modulation. The converter as a circuit. Propagation models.
   Automatic gain control as a loop. Frequency planning and spur tables.

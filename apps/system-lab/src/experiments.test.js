@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, VIEW_LABELS, byId, defaultsOf, groupOf, letterOf, viewLabel } from './experiments.js'
 import { readQuantity } from './lessons.js'
 import { analyse, ip3Guard, refusalOf } from './math.js'
-import { CHAIN_ROWS, COLUMNS, LEVEL_COLUMNS, flowPropsFor, levelPropsFor, numberRowsFor, tablePropsFor } from './view.js'
+import { CHAIN_ROWS, COLUMNS, LEVEL_COLUMNS, TABLE_MODES, flowPropsFor, levelPropsFor, numberRowsFor, tablePropsFor } from './view.js'
 import { TERMS } from './terms.js'
 import { reportSummary } from './report.js'
 import { num } from './format.js'
@@ -260,6 +260,21 @@ describe('every column a reader reads is named, with the unit it is in', () => {
     }
   })
 
+  it('the sentence over a column follows the switch, and not only the unit', () => {
+    // `REVIEW_PLAYBOOK.md` §1 again, one line above the unit row. The header's
+    // hover text is the sentence that says what a cell holds, and it read
+    // "cumulative" over a column of shares. Each mode carries its own.
+    expect(TABLE_MODES.map((m) => m.key)).toEqual(['cumulative', 'share'])
+    for (const m of TABLE_MODES) expect(m.title.length, `${m.key} title`).toBeGreaterThan(20)
+    for (const c of COLUMNS) {
+      expect(c.shareTitle, `${c.key} has no share sentence`).toBeTruthy()
+      expect(c.shareTitle, `${c.key} says the same thing in both modes`).not.toBe(c.title)
+      expect(c.title, `${c.key} cumulative sentence`).toMatch(/cumulative|draws/i)
+      if (c.shareUnit === '%') expect(c.shareTitle, `${c.key} share sentence`).toMatch(/share/i)
+      else expect(c.shareTitle, `${c.key} has no share, so its sentence says whose number it is`).toMatch(/own/i)
+    }
+  })
+
   it('the unit over a column follows the switch that changes what the column holds', () => {
     // The share switch turns three of the four columns into percentages. A
     // header still saying decibels over them would be a label that does not
@@ -491,6 +506,50 @@ describe('every lesson is measured', () => {
     }
   })
 
+  it('every path the module comment offers resolves, so a later lane is not blocked by a wrong list', () => {
+    // The list at the top of `lessons.js` is the contract lanes B to F write
+    // their `reads` pairs against. It offered `floor.kt0`, which `readQuantity`
+    // throws on, and it left out `level.<k>.drive`, which it carries.
+    const { p, x } = at('a4')
+    const paths = [
+      'total.gainDb',
+      'total.gain',
+      'total.nfDb',
+      'total.f',
+      'total.excess',
+      'total.iip3Dbm',
+      'total.iip3PowerDbm',
+      'total.oip3Dbm',
+      'total.powerMw',
+      'total.n',
+      'cum.1.gain',
+      'cum.1.nf',
+      'cum.1.iip3',
+      'block.lna.gainDb',
+      'block.lna.nfDb',
+      'block.lna.iip3Dbm',
+      'block.lna.powerMw',
+      'block.lna.tempK',
+      'share.lna.noise',
+      'share.lna.ip3',
+      'share.lna.power',
+      'level.1.signal',
+      'level.1.noise',
+      'level.1.snr',
+      'level.1.drive',
+      'floor.dbm',
+      'floor.bandwidth',
+      'snr.in',
+      'snr.out',
+      'limits.backoffDb',
+      'limits.id',
+      'limits.name',
+      'headline',
+      'p.pinDbm',
+    ]
+    for (const path of paths) expect(() => readQuantity(x, p, path), `${path} is offered and throws`).not.toThrow()
+  })
+
   it('a path the analysis does not carry throws rather than reading undefined', () => {
     const { p, x } = at('a1')
     expect(() => readQuantity(x, p, 'total.nosuchthing')).toThrow(/No quantity at path/)
@@ -506,6 +565,34 @@ describe('the headline a reader sees is the number a test read', () => {
       const { x } = at(e.id)
       const shown = num(x.headline.value, x.headline.unit)
       expect(shown, `${e.id} headline formats as "${shown}"`).not.toBe('—')
+      expect(shown, `${e.id} headline formats as "${shown}"`).toContain(x.headline.value.toPrecision(5))
     }
+  })
+
+  it('a decibel keeps its own unit, at every setting a try step reaches', () => {
+    // A prefix scales the quantity in front of it and a decibel is already a
+    // logarithm, so there is no reading of 626.94 mdB. Engineering notation
+    // gave one to every decibel below 1, and A3's first two steps put one in
+    // the topbar beside a sentence saying 0.6269 dB. The unit a headline
+    // declares is the unit the reader has to see.
+    for (const e of EXPERIMENTS) {
+      const d = defaultsOf(e.id)
+      for (const set of [{}, ...e.try.map((t) => t.set || {})]) {
+        const x = analyse(e, { ...d, ...set })
+        const shown = num(x.headline.value, x.headline.unit)
+        expect(shown.endsWith(` ${x.headline.unit}`), `${e.id} headline reads "${shown}", not ${x.headline.unit}`).toBe(true)
+        expect(shown, `${e.id} headline reads "${shown}"`).toContain(x.headline.value.toPrecision(5))
+      }
+    }
+  })
+
+  it('gives no logarithmic unit an SI prefix, whatever the reading is worth', () => {
+    for (const unit of ['dB', 'dBm', 'dBm/Hz']) {
+      for (const v of [0.0348961, 0.626945, 38, -120.965, -0.5]) {
+        expect(num(v, unit), `${v} ${unit}`).toBe(`${Number(v).toPrecision(5)} ${unit}`)
+      }
+    }
+    // A hertz is a quantity rather than a logarithm, so it keeps its prefix.
+    expect(num(2e5, 'Hz', 4)).toBe('200 kHz')
   })
 })

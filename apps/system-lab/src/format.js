@@ -11,6 +11,18 @@ import { fmt } from '@ee-labs/ui'
 const REL = 1e-12
 const ABS = 1e-30
 
+/**
+ * The units that are already a logarithm, and so take no prefix.
+ *
+ * A prefix scales the quantity in front of it, and a decibel is the logarithm
+ * of a ratio. There is no such reading as 626.94 mdB. Engineering notation gave
+ * one to every decibel below 1, so a headline of 0.626945 dB printed as
+ * "626.94 mdB" beside a sentence saying 0.6269 dB. A logarithmic reading is
+ * quoted at its significant figures instead, which is what `db` and `dbm`
+ * already do for the panes.
+ */
+export const LOG_UNITS = ['dB', 'dBm', 'dBc', 'dBi', 'dBW', 'dB-Hz', 'dBm/Hz', 'dBc/Hz']
+
 /** Whether `v` is arithmetic noise against `scale`, the largest value of its kind on screen. */
 export const isNoise = (v, scale = 0) => Math.abs(v) < Math.max(REL * Math.abs(scale), ABS)
 
@@ -19,7 +31,9 @@ export function num(v, unit = '', sig = 5, scale = 0) {
   if (v === Infinity) return '∞'
   if (v === -Infinity) return '−∞'
   if (!Number.isFinite(v)) return '—'
-  return fmt(isNoise(v, scale) ? 0 : v, unit, sig)
+  const value = isNoise(v, scale) ? 0 : v
+  if (LOG_UNITS.includes(unit)) return `${Number(value).toPrecision(sig)} ${unit}`
+  return fmt(value, unit, sig)
 }
 
 /** A figure in decibels, to five significant figures, with infinity spelled. */

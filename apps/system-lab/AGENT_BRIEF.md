@@ -314,14 +314,22 @@ wrote.
 - **Four or five significant figures, and never more.** Everything here is a sum
   or a ratio in decibels. `format.js` snaps a value far below its own scale to
   zero, so a share of 4e-17 does not print as a measurement.
+- **A decibel takes no SI prefix.** A prefix scales the quantity in front of it
+  and a decibel is already a logarithm, so there is no reading of 626.94 mdB.
+  Engineering notation gave one to every decibel below 1 and the topbar printed
+  it. `format.js`'s `LOG_UNITS` lists the logarithmic units, and `num` quotes
+  those at their significant figures. A lane adding a unit such as dBc/Hz adds
+  it to that list.
 - **Two of a block's three strip readings are in decibels**, and two of the
   levels view's three columns are in dBm, so a unit cannot tell them apart. Every
   such reading carries a name: `CHAIN_ROWS` tags the strip, `LEVEL_COLUMNS`
   names both traces and all three columns. A hover title is not a name, because
   a phone has no hover.
-- **A header's unit follows the switch under it.** The share mode turns three of
-  the four table columns into percentages, so `COLUMNS` carries `shareUnit`
-  beside `unit` and the pane prints whichever the mode is in.
+- **A header's unit and its sentence both follow the switch under it.** The
+  share mode turns three of the four table columns into percentages, so
+  `COLUMNS` carries `shareUnit` beside `unit` and `shareTitle` beside `title`.
+  The pane prints whichever the mode is in. Fixing only the unit left three
+  headers hovering "cumulative" over a column of shares.
 - **A test that fails may be the test.** Decide which, and say which in the
   commit. Two of the harness's own claims were wrong before the page was.
 - **The dark launch is enforced by a test.** While `RELEASE_STATUS` says `dark`,
