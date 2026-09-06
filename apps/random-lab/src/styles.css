@@ -245,27 +245,60 @@ table.ktc th:first-child {
 }
 
 /* ---------- phone ----------
- * The lesson comes first at phone width, as the cold walk asked of every lab,
- * and nothing scrolls sideways. */
-@media (max-width: 860px) {
+ * One page, top to bottom: the lesson, the top bar, the views, then the knobs,
+ * the picker and the report link. The shell keeps the sidebar as a 45vh box
+ * that scrolls inside the page, which suits a lab whose sidebar is knobs. Here
+ * the sidebar dissolves (display: contents) so its parts become rows of the
+ * page grid, and the picker of thirty experiments sits below the plots rather
+ * than above them.
+ *
+ * The breakpoint is the shell's own 900 px. At 860 px the two disagreed
+ * between 861 and 900, where the shell had already gone to one column while
+ * this file still placed the views in column two.
+ *
+ * minmax(0, 1fr) on the column: a grid track's default minimum is its content,
+ * so one wide readout or one long term would push the whole page sideways. */
+@media (max-width: 900px) {
   .app {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto auto auto;
     height: auto;
+    min-height: 100dvh;
     overflow: visible;
   }
 
+  /* The sidebar's own box goes away, so its children carry the padding it had
+     and each one takes a row. Without min-width: 0 they would size from their
+     content and widen the page. */
   .controls {
+    display: contents;
+  }
+
+  .controls > * {
+    min-width: 0;
+  }
+
+  .controls > .labnav {
     grid-column: 1;
     grid-row: 1;
-    border-right: none;
-    border-bottom: 1px solid var(--line);
-    overflow: visible;
+    background: var(--panel);
+    margin: 0;
+    padding: 10px 12px 0;
+  }
+
+  .controls > .lesson {
+    grid-column: 1;
+    grid-row: 2;
+    background: var(--panel);
+    border-width: 0 0 1px;
+    border-radius: 0;
+    margin: 0;
+    padding: 10px 12px 12px;
   }
 
   .topbar {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 3;
     flex-wrap: wrap;
     gap: 8px;
     height: auto;
@@ -278,9 +311,31 @@ table.ktc th:first-child {
 
   .panes {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 4;
     overflow: visible;
     padding: 10px;
+  }
+
+  .controls > .knobs {
+    grid-column: 1;
+    grid-row: 5;
+    margin: 0 12px 14px;
+  }
+
+  .controls > .picker {
+    grid-column: 1;
+    grid-row: 6;
+    margin: 0 12px;
+  }
+
+  /* 16 px, not 12: the shell grows this link's hit area to 44 px with an
+     `inset: -15px` pseudo-element, and in the sidebar's own scroll box that
+     overhang is clipped. Here the link is a row of the page, so a 12 px margin
+     put its hit area 3 px past the right edge and the page scrolled sideways. */
+  .controls > .report-issue {
+    grid-column: 1;
+    grid-row: 7;
+    margin: 14px 16px 40px;
   }
 
   .readouts {
