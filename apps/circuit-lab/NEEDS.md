@@ -1,5 +1,46 @@
 # Needs and heads-ups for the other territories
 
+## Open (browser pass, 2026-09-05): PoleZeroCanvas labels its axes in raw integers
+
+The pole view's readout prints `× poles −2.68 k, −37.3 k s⁻¹`. The plot's own
+x axis, a hand's width below it, reads `−100000 −50000 0 50000 100000`. One
+quantity, two notations. At 390 px the same axis spends most of the plot's
+width on `−200000` and `200000`, and the y axis gets one label, `0`, because a
+six-digit tick leaves room for nothing else.
+
+`fmtNum(v)` is hard-coded as both tick formatters in
+`packages/ui/src/PoleZeroCanvas.jsx` (lines 48 and 49). Either fix works:
+
+- format ticks with `fmt(v, '', 3)`, so they read `−100 k`, `−50 k`, `0`. That
+  is what the readout beside this plot already does, and what every other axis
+  in the suite does.
+- or take `xTick` and `yTick` formatter props, the way `xTitle` and `yTitle`
+  are already taken.
+
+The prop is safer for Control Lab's root locus, which may want the plain form.
+Circuit Lab will pass it the day it exists.
+
+## Open (browser pass, 2026-09-05): the half-plane label lands on top of a pole
+
+`PoleZeroCanvas` writes `right half-plane: a pole here runs away` at
+`x0 + 6 px`, the top-left corner of the shaded region. A pole near the
+imaginary axis sits under it. The series RLC at Q = 15.8 puts its pair at
+σ = −1 k against a ±330 k span, two pixels off the axis. At 390 px the caption
+then reads `×runs away`, with the marker inside the word.
+
+Cheapest fix: draw the region label along the region's right edge, at
+`area.x + area.w − 6 px` with `textAlign = 'right'`. That corner is empty in
+every use the suite has. Plating the label also works, the way Circuit Lab's
+BodeCanvas now plates every caption it writes over its own picture.
+
+## Still open, restated after the browser pass
+
+Two requests further down this file are both unimplemented as of 2026-09-05.
+The first is `span`, for sticky pole axes. Circuit Lab passes it already, and
+it is harmlessly ignored. The second is a cloud a reader can see the shape of.
+At 390 px the 1.8 px dots at alpha 0.28 read as a smear, so the "Blame the
+right part" lesson still depends on parameters chosen to stretch the arc.
+
 ## Crossed (Reed direct, in the shared tree): usage counting: GoatCounter on every released entry page
 
 Reed asked to see whether the labs and the hand-overs get used. GitHub Pages
