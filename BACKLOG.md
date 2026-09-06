@@ -1367,6 +1367,51 @@ only its own section. The director folds it into the shared ledger at merge.
   inside the band C3 states by its two edges, so the lesson quotes the edges and
   nothing quotes the point. `scripts/pins.mjs` still computes it, and
   `apps/rf-lab/AGENT_BRIEF.md` §6 says so under its pin table.
+- **A second review pass found six more, and all six are fixed.** Five are what
+  a reader sees rather than what the engine computes, which is the half a
+  numeric suite cannot check by itself. Each fix carries a test that fails
+  without it.
+- **Three exact answers were spoiled between the analysis and the screen.**
+  Groups C and D print every complex number through one formatter, which puts
+  the minus sign in front of the j and drops a part far below the pair's own
+  scale. Groups A and B built theirs by hand. A3's note says a quarter wave
+  turns 100 Ω into exactly 25 Ω, and the row beside it read
+  "25 + j-2.2962e-15 Ω". A capacitive load read "0.6 + j-0.8". D2's equations
+  pane printed 2.2204e-16 for an S11 the column next to it called zero.
+- **A normalised reactance of zero printed NaN.** It is the one member of that
+  family which is a straight line, so its circle is centred at infinity with an
+  infinite radius, and B2 divided by that radius. The pane names the real axis
+  now, and the chart is not handed a centre it cannot place. The knob reaches
+  zero and a reader types it.
+- **The refusal printed sixteen digits of a length.** A5's pane carries the
+  engine's sentence under the plot, and the reference line's length is computed
+  rather than typed, so the message read "A line 0.0517191125540973 m long". The
+  delay beside it was already quoted to four figures and the length now is too.
+- **The standing wave was drawn on a scale the picture did not name.** The line
+  view divides the wave by its own largest voltage, and there was no axis at all
+  beside it. A ripple of a few per cent and one that reaches zero looked the
+  same. The axis runs from one to zero and says what the division is.
+- **B4 opened with two markers on the same pixel.** With no susceptance added
+  the moved point is the load itself, and both were drawn and labelled, with an
+  arc of no length between them. The moved point arrives when a susceptance
+  does, and the constant-conductance circle is drawn either way.
+- **Invariant 1 claimed three digits fewer than the plan promises.** The plan's
+  §2.13 says the conversion round trip returns the input to 1e-12 relative, and
+  the fuzzer held it to 1e-9. The engine was never the reason. Over the same
+  seeds the worst residual is 1.359e-13, so both bounds now read the plan's
+  number.
+- **Two guards use a scale this suite has already been bitten by, and neither
+  bites today.** `reflection` measures its denominator against
+  `max(1, |Z_L|)`, and `abcdToS` measures a dimensionless denominator against
+  the largest entry of a chain matrix, whose entries are in ohms and siemens.
+  Both are the floor-under-the-scale shape `AGENT_BRIEF.md` §9 names. Neither is
+  reachable at this lab's knob ranges, because a reference impedance is at least
+  5 Ω, so they are recorded rather than changed.
+- **No lab pins the numbers inside a term definition, and this one does not
+  either.** Group C and D definitions quote 17.61 Ω, 292.4 Ω, 0.10080 and
+  60.58 per cent, and each is a figure a lesson pins at the same defaults. The
+  definition itself is not measured. That is the suite's arrangement rather than
+  this lab's, and moving it belongs with the director.
 - **The non-goals of `RF_LAB_PLAN.md` §10 are all still non-goals.**
   Electromagnetic field solving. Microstrip synthesis from physical dimensions. A
   Padé model of the line. Distributed matching with stubs. Filter synthesis
