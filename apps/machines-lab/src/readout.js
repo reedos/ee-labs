@@ -23,7 +23,7 @@
 import { fmt } from '@ee-labs/ui'
 
 /** Units that never take an SI prefix. */
-export const PLAIN = new Set(['rev/min', '°', '°C', 'K', 'min', 'poles'])
+export const PLAIN = new Set(['rev/min', '°', '°C', 'K', 'K/W', 'J/K', 'min', 'poles'])
 
 /**
  * Below this, a reading is the LU solve's own rounding and not a quantity.
@@ -55,6 +55,8 @@ export function reading(v, unit = '', digits = 4) {
   if (!Number.isFinite(v)) return '—'
   if (unit === '%') return `${sig(v * 100, digits)} %`
   if (unit === '') return sig(v, digits)
+  // A degree sign closes up against its number, every other unit takes a space.
+  if (unit === '°') return `${sig(v, digits)}°`
   if (PLAIN.has(unit)) return `${sig(v, digits)} ${unit}`
   return fmt(v, unit, digits)
 }

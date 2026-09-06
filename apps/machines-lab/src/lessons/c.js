@@ -198,8 +198,8 @@ export const LESSONS = {
     see:
       'Sweep the slip from one to zero and the torque rises, peaks, then falls steeply to nothing. The ' +
       '20 N·m load crosses the steep part at 2.767 % slip and 1458 rev/min. Running the equation of motion ' +
-      'from standstill lands on the same speed, 152.7 rad/s, with an estimated error of seven parts in a ' +
-      'hundred billion.',
+      'from standstill lands on the same speed, 152.7 rad/s, with an estimated error of 68.8 parts in a ' +
+      'trillion. The readout above the plot says the same thing.',
     seeReads: [
       ['im.slip', 0.027671],
       [(x) => x.slip * 100, 2.76706],

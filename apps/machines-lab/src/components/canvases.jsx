@@ -25,14 +25,35 @@ const tick = (v) => {
   return v.toPrecision(2)
 }
 
-/** Axis chrome shared by every plot here. */
+/**
+ * Axis chrome shared by every plot here, and the band a plot's key sits in.
+ *
+ * `key` is the lines of text that name what is drawn. They go ABOVE the frame,
+ * in a band `plotArea` reserves for them, because a caption drawn inside the
+ * plot covers the trace it is describing however it is placed. Each entry is
+ * `[text, colour]`, and the colour is the curve it names.
+ */
 function frame(ctx, w, h, opts) {
-  const area = plotArea(w, h)
+  const key = opts.key || []
+  const scale = plotArea(w, h).k
+  const lead = 13 * scale
+  const area = plotArea(w, h, { rightAxis: opts.rightAxis, topInset: key.length * lead })
   const { sx, sy } = drawFrame(ctx, area, opts.x.min, opts.x.max, opts.y.min, opts.y.max, tick, tick, {
     xTitle: opts.xLabel,
     yTitle: opts.yLabel,
     zeroLine: true,
   })
+  if (key.length) {
+    ctx.save()
+    ctx.font = `${10 * scale}px ui-monospace, monospace`
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+    key.forEach(([text, colour], k) => {
+      ctx.fillStyle = colour || '#8b9bad'
+      ctx.fillText(text, area.x, area.y - key.length * lead + (k + 1) * lead - 4 * scale)
+    })
+    ctx.restore()
+  }
   return { area, sx, sy }
 }
 
@@ -82,14 +103,30 @@ export function TorqueSpeedCanvas({ x }) {
       const lines = rows.length ? rows : [{ ...x.line, point: x.op }]
       const topSpeed = Math.max(...lines.map((l) => l.noLoad)) * 1.05
       const topTorque = Math.max(...lines.map((l) => l.stall)) * 1.1
-      const { sx, sy } = frame(ctx, w, h, {
+      // The crossing is where the machine runs, and it is the number every
+      // Group A note quotes. On a frame whose torque axis is set by the stall
+      // torque, a 0.05 N·m load sits within a pixel of the speed axis, so the
+      // dot alone cannot be read. The reading is written out above the frame.
+      const here = lines.length === 1 ? lines[0].point : null
+      const { area, sx, sy } = frame(ctx, w, h, {
         x: { min: 0, max: radToRpm(topSpeed) },
         y: { min: 0, max: topTorque },
         xLabel: 'speed (rev/min)',
         yLabel: 'torque (N·m)',
+        key: here
+          ? [
+              [`running at ${Math.round(radToRpm(here.omega))} rev/min, ${here.torque.toPrecision(3)} N·m`, '#a0e8a0'],
+              [
+                `machine: stall ${x.line.stall.toPrecision(3)} N·m, no load ${Math.round(radToRpm(x.line.noLoad))} rev/min`,
+                CURVE[0],
+              ],
+              ['load, dashed', '#ff9a9a'],
+            ]
+          : [['one line per setting, each with its own crossing', '#8b9bad']],
       })
-      lines.forEach((l, k) => {
-        const colour = CURVE[k % CURVE.length]
+      const k = area.k
+      lines.forEach((l, j) => {
+        const colour = CURVE[j % CURVE.length]
         const speeds = [0, l.noLoad]
         line(ctx, speeds.map(radToRpm), speeds.map(l.torqueAt), sx, sy, colour, rows.length ? 1.4 : 2)
         if (l.point) dot(ctx, sx(radToRpm(l.point.omega)), sy(l.point.torque), colour)
@@ -98,8 +135,13 @@ export function TorqueSpeedCanvas({ x }) {
       const m = x.spec
       const load = (wm) => m.TL + (m.B + (m.loadB || 0)) * wm
       const ws = [0, topSpeed]
-      line(ctx, ws.map(radToRpm), ws.map(load), sx, sy, '#ff9a9a', 1.4)
-      tag(ctx, sx(radToRpm(topSpeed)) - 34, sy(load(topSpeed)) - 6, 'load', '#ff9a9a')
+      // Dashed, because a light load's line lies along the zero line and the
+      // two were drawn as one solid stroke.
+      ctx.save()
+      ctx.setLineDash([6 * k, 4 * k])
+      line(ctx, ws.map(radToRpm), ws.map(load), sx, sy, '#ff9a9a', 1.6)
+      ctx.restore()
+      tag(ctx, sx(radToRpm(topSpeed)) - 34 * k, sy(load(topSpeed)) - 6 * k, 'load', '#ff9a9a')
     },
     [x],
   )
@@ -180,17 +222,50 @@ export function FieldCanvas({ x }) {
     (ctx, w, h) => {
       const deg = x.theta.map((a) => (a * 180) / Math.PI)
       const amp = x.field.amplitude
-      const { sx, sy } = frame(ctx, w, h, {
+      const { area, sx, sy } = frame(ctx, w, h, {
         x: { min: 0, max: 360 },
-        y: { min: -amp * 1.1, max: amp * 1.1 },
+        y: { min: -amp * 1.15, max: amp * 1.15 },
         xLabel: 'angle around the gap (°)',
         yLabel: 'magnetomotive force (A-turns)',
+        // C2's lesson is the pole count and the speed it sets, and the field
+        // plot is its only view, so both belong on it.
+        key: [
+          [
+            `${x.field.poles} poles at ${x.field.omega / (2 * Math.PI)} Hz, synchronous speed ${Math.round(x.field.rpmSync)} rev/min`,
+            '#e6edf3',
+          ],
+          [
+            `${x.pairs} cycle${x.pairs === 1 ? '' : 's'} of the wave around the gap, one per pole pair`,
+            '#8b9bad',
+          ],
+        ],
       })
-      x.phase.forEach((p, k) => line(ctx, deg, p, sx, sy, CURVE[k + 1], 1.1))
+      const k = area.k
+      ctx.save()
+      ctx.font = `${10 * k}px ui-monospace, monospace`
+      // Four curves on one frame with no key. Each winding's own contribution
+      // is named at the angle where it peaks, and the sum is named where it
+      // does, so a reader can tell the three apart from the one.
+      const NAMES = ['phase a', 'phase b', 'phase c']
+      x.phase.forEach((p, j) => {
+        line(ctx, deg, p, sx, sy, CURVE[j + 1], 1.1)
+        let best = 0
+        for (let i = 1; i < p.length; i++) if (p[i] > p[best]) best = i
+        ctx.fillStyle = CURVE[j + 1]
+        ctx.textAlign = 'center'
+        ctx.fillText(NAMES[j], sx(deg[best]), sy(p[best]) - 5 * k)
+      })
       line(ctx, deg, x.total, sx, sy, CURVE[0], 2.4)
-      // Where the peak sits now, which is what travels.
-      const peakAngle = ((x.field.omega * x.t) % (2 * Math.PI)) * (180 / Math.PI)
-      dot(ctx, sx((peakAngle + 360) % 360), sy(amp), '#ffffff', 4)
+      // Where the peak sits now, which is what travels. The wave repeats once
+      // per pole pair around the gap, so the electrical angle of the peak is
+      // divided down to the mechanical angle the axis carries.
+      const peakElec = (((x.field.omega * x.t) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
+      const peakMech = ((peakElec / x.pairs) * 180) / Math.PI
+      dot(ctx, sx(peakMech), sy(amp), '#ffffff', 4)
+      ctx.fillStyle = CURVE[0]
+      ctx.textAlign = peakMech > 300 ? 'right' : 'left'
+      ctx.fillText('the sum of the three', sx(peakMech) + (peakMech > 300 ? -8 : 8) * k, sy(amp) - 6 * k)
+      ctx.restore()
     },
     [x],
   )
@@ -309,12 +384,43 @@ export function ScopeCanvas({ x }) {
         y: { min: 0, max: Math.max(...ia) * 1.1 },
         xLabel: 'time (ms)',
         yLabel: 'armature current (A)',
+        rightAxis: true,
       })
       const top = Math.max(...rpm) * 1.1 || 1
       const sy2 = (v) => area.y + area.h - (v / top) * area.h
       line(ctx, t, rpm, sx, sy2, CURVE[2], 1.4)
       line(ctx, t, ia, sx, sy, CURVE[0], 2)
-      tag(ctx, area.x + area.w - 116, area.y + 12, `speed to ${top.toPrecision(4)} rev/min`, CURVE[2])
+      // The speed trace had no axis of its own: no ticks, no unit, and a
+      // corner tag naming only its ceiling. A second quantity on a shared
+      // frame needs a second axis (playbook §4), so it gets one on the right,
+      // in its own colour so a reader knows which trace it belongs to.
+      ctx.save()
+      const k = area.k
+      ctx.strokeStyle = CURVE[2]
+      ctx.fillStyle = CURVE[2]
+      ctx.font = `${10 * k}px ui-monospace, monospace`
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      const right = area.x + area.w
+      ctx.beginPath()
+      ctx.moveTo(right, area.y)
+      ctx.lineTo(right, area.y + area.h)
+      ctx.stroke()
+      for (let j = 0; j <= 4; j++) {
+        const v = (top * j) / 4
+        const py = sy2(v)
+        ctx.beginPath()
+        ctx.moveTo(right, py)
+        ctx.lineTo(right + 4 * k, py)
+        ctx.stroke()
+        ctx.fillText(tick(v), right + 7 * k, py)
+      }
+      // Reading bottom-to-top, the same way the left axis title does.
+      ctx.translate(right + 52 * k, area.y + area.h / 2)
+      ctx.rotate(-Math.PI / 2)
+      ctx.textAlign = 'center'
+      ctx.fillText('speed (rev/min)', 0, 0)
+      ctx.restore()
       if (x.cursor !== undefined) {
         ctx.save()
         ctx.strokeStyle = '#ffffff66'
@@ -402,17 +508,34 @@ export function FluxCanvas({ x }) {
     (ctx, w, h) => {
       const c = x.curve
       const top = Math.max(...c.lambda.map(Math.abs)) * 1.3
-      const { sx, sy } = frame(ctx, w, h, {
+      // The straight line is the linear model, and past the knee it leaves the
+      // frame. E5's whole claim is the size of that difference, 1.32 Wb where
+      // the linear model said 3.60, so a silently clipped line hides the one
+      // number the lesson exists to show (playbook §10). It is drawn dashed,
+      // it is named, and the key says both values and where the line went.
+      const clipped = c.linear.map((v) => Math.max(-top, Math.min(top, v)))
+      const escapes = c.linear.some((v) => Math.abs(v) > top)
+      const linearHere = x.spec.L0 * x.i
+      const key = [
+        [x.model === 'linear' ? 'model: linear, exact' : `model: ${x.model}`, x.model === 'linear' ? '#a0e8a0' : '#ffcc66'],
+        [`dashed: the linear model, ${linearHere.toPrecision(3)} Wb at this current`, '#8b9bad'],
+        [`solid: this model, ${x.sat.lambda.toPrecision(3)} Wb at ${x.i.toPrecision(3)} A`, CURVE[0]],
+      ]
+      if (escapes) key.push([`the dashed line leaves the frame above ${top.toPrecision(3)} Wb`, '#ff9a9a'])
+      const { area, sx, sy } = frame(ctx, w, h, {
         x: { min: c.i[0], max: c.i[c.i.length - 1] },
         y: { min: -top, max: top },
         xLabel: 'magnetising current (A)',
         yLabel: 'flux linkage (Wb)',
+        key,
       })
-      const clipped = c.linear.map((v) => Math.max(-top, Math.min(top, v)))
-      line(ctx, c.i, clipped, sx, sy, '#5b6b7d', 1.2)
+      const k = area.k
+      ctx.save()
+      ctx.setLineDash([5 * k, 4 * k])
+      line(ctx, c.i, clipped, sx, sy, '#8b9bad', 1.4)
+      ctx.restore()
       line(ctx, c.i, c.lambda, sx, sy, CURVE[0], 2.2)
       dot(ctx, sx(x.i), sy(x.sat.lambda), '#ffffff', 4)
-      tag(ctx, 10, 16, x.model === 'linear' ? 'linear, exact' : `model: ${x.model}`, x.model === 'linear' ? '#a0e8a0' : '#ffcc66')
     },
     [x],
   )
@@ -421,39 +544,120 @@ export function FluxCanvas({ x }) {
 
 // -------------------------------------------------------------------- phasors
 
-/** Voltage and current phasors, drawn to scale on one plane. */
-export function PhasorCanvas({ arrows }) {
+/**
+ * A round magnification, so the caption that states it reads as a number a
+ * person would choose: 1, 2, 5, 10, 20, 50 and so on.
+ */
+export function roundFactor(want) {
+  if (!(want > 0) || !Number.isFinite(want)) return 1
+  const decade = 10 ** Math.floor(Math.log10(want))
+  for (const step of [1, 2, 5]) if (want < step * decade * Math.SQRT2) return step * decade
+  return 10 * decade
+}
+
+/**
+ * Voltage and current phasors on one named plane.
+ *
+ * Three defects lived in the old version of this view, and all three are the
+ * playbook's own examples.
+ *
+ * It had no axes at all: two grey lines through an unlabelled origin, no
+ * quantity, no unit and no scale (§4). It magnified the current by six in the
+ * transformer and by ten in the synchronous machine and said so nowhere, so a
+ * 19 A arrow and a 114 V arrow were drawn the same length (§6, mixed scales
+ * are stated). And its arrows shared coordinates: B5's whole lesson is the
+ * angle the load current puts between the no-load and loaded secondary, and
+ * the two voltages were drawn one on top of the other with their labels
+ * overlapping (§6, occlusion).
+ *
+ * So: the plane is the complex plane in volts, with both axes named. A
+ * current is drawn at a round magnification which the caption states, and
+ * every arrow's own magnitude and angle are printed beside it in its own
+ * unit. Labels are placed radially outward from each tip and pushed apart
+ * when two tips land close together.
+ */
+export function PhasorCanvas({ arrows, unit = 'V' }) {
   const ref = useDraw(
     (ctx, w, h) => {
-      const cx = w * 0.5
-      const cy = h * 0.55
-      const R = Math.min(w, h) * 0.4
-      const biggest = Math.max(...arrows.map((a) => Math.hypot(a.re, a.im)), 1e-9)
+      // Voltages set the plane. A current is magnified onto it by a round
+      // factor, chosen so the longest current reads about as long as the
+      // longest voltage.
+      const mag = (a) => Math.hypot(a.re, a.im)
+      const volts = arrows.filter((a) => !a.current)
+      const amps = arrows.filter((a) => a.current)
+      const topV = Math.max(...volts.map(mag), 1e-9)
+      const topI = Math.max(...amps.map(mag), 0)
+      const factor = topI > 0 ? roundFactor(topV / topI) : 1
+      const drawn = arrows.map((a) => ({ ...a, k: a.current ? factor : 1 }))
+
+      // Equal units per pixel on both axes, or the plane does not preserve
+      // angles. The old symmetric square was mapped onto a pane twice as wide
+      // as it is tall, which stretched the real axis and drew every phasor
+      // angle smaller than it is. On B5 the 5.4° the lesson is about was drawn
+      // as about 2°. The frame is fitted to the arrows and to the origin, then
+      // whichever axis is short is grown until the scales match.
+      const key = [['angles are true: both axes are the same number of volts per pixel', '#8b9bad']]
+      if (factor !== 1) key.push([`the current is drawn ${factor} times longer than its ${unit} would put it`, '#ffcc66'])
+      const inset = key.length * 13 * plotArea(w, h).k
+      const probe = plotArea(w, h, { topInset: inset })
+      const res = [0, ...drawn.map((a) => a.re * a.k)]
+      const ims = [0, ...drawn.map((a) => a.im * a.k)]
+      const pad = Math.max(...drawn.map((a) => mag(a) * a.k), 1e-9) * 0.18
+      let [x0, x1] = [Math.min(...res) - pad, Math.max(...res) + pad]
+      let [y0, y1] = [Math.min(...ims) - pad, Math.max(...ims) + pad]
+      const per = Math.max((x1 - x0) / probe.w, (y1 - y0) / probe.h)
+      const growX = (per * probe.w - (x1 - x0)) / 2
+      const growY = (per * probe.h - (y1 - y0)) / 2
+      x0 -= growX
+      x1 += growX
+      y0 -= growY
+      y1 += growY
+
+      const { area, sx, sy } = frame(ctx, w, h, {
+        x: { min: x0, max: x1 },
+        y: { min: y0, max: y1 },
+        xLabel: `real part (${unit})`,
+        yLabel: `imaginary part (${unit})`,
+        key,
+      })
+      const ox = sx(0)
+      const oy = sy(0)
       ctx.save()
-      ctx.strokeStyle = '#3a4653'
-      ctx.beginPath()
-      ctx.moveTo(cx - R * 1.15, cy)
-      ctx.lineTo(cx + R * 1.15, cy)
-      ctx.moveTo(cx, cy - R * 1.05)
-      ctx.lineTo(cx, cy + R * 1.05)
-      ctx.stroke()
       ctx.font = '10px ui-monospace, monospace'
-      arrows.forEach((a, k) => {
-        const s = (R / biggest) * (a.scale || 1)
-        const px = cx + s * a.re
-        const py = cy - s * a.im
+      const tips = []
+      drawn.forEach((a, k) => {
+        const px = sx(a.re * a.k)
+        const py = sy(a.im * a.k)
         ctx.strokeStyle = a.colour || CURVE[k % CURVE.length]
         ctx.fillStyle = ctx.strokeStyle
         ctx.lineWidth = 2
         ctx.beginPath()
-        ctx.moveTo(cx, cy)
+        ctx.moveTo(ox, oy)
         ctx.lineTo(px, py)
         ctx.stroke()
-        ctx.fillText(a.label, px + 4, py - 4)
+        // The head, so the direction is not read off the label alone.
+        const th = Math.atan2(py - oy, px - ox)
+        ctx.beginPath()
+        ctx.moveTo(px, py)
+        ctx.lineTo(px - 8 * Math.cos(th - 0.4), py - 8 * Math.sin(th - 0.4))
+        ctx.lineTo(px - 8 * Math.cos(th + 0.4), py - 8 * Math.sin(th + 0.4))
+        ctx.closePath()
+        ctx.fill()
+
+        const angle = (Math.atan2(a.im, a.re) * 180) / Math.PI
+        const text = `${a.label} ${mag(a).toPrecision(4)} ${a.unit || unit} ∠${angle.toFixed(1)}°`
+        // Hang the label off the tip, along the arrow, and step it away from
+        // any label already placed near the same point.
+        let lx = px + 10 * Math.cos(th)
+        let ly = py + 10 * Math.sin(th) + 4
+        while (tips.some((t) => Math.abs(t.x - lx) < 130 && Math.abs(t.y - ly) < 13)) ly += 13
+        tips.push({ x: lx, y: ly })
+        if (lx + text.length * 6 > area.x + area.w) lx = area.x + area.w - text.length * 6
+        ctx.fillText(text, Math.max(area.x + 2, lx), Math.min(area.y + area.h - 2, ly))
       })
       ctx.restore()
     },
-    [arrows],
+    [arrows, unit],
   )
   return <canvas ref={ref} className="plot" data-view="phasors" />
 }

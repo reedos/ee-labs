@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { EXPERIMENTS } from './experiments.js'
 import { analyse, defaultsOf } from './analysis.js'
 import { readQuantity } from './quantities.js'
-import { METERS, reading } from './readout.js'
+import { METERS, parts, reading, runUpSays } from './readout.js'
 
 // Every meter, in the unit its quantity is measured in.
 //
@@ -89,10 +89,45 @@ describe('the meters', () => {
     expect(reading(0.02767, '%')).toBe('2.767 %')
     expect(reading(0.8011, '')).toBe('0.8011')
     expect(reading(-0.05, '')).toBe('-0.05')
-    expect(reading(20, '°')).toBe('20 °')
+    expect(reading(20, '°')).toBe('20°')
     // A unit that does take a prefix still gets one.
     expect(reading(0.0025, 's')).toBe('2.5 ms')
     expect(reading(Number.NaN, 'V')).toBe('—')
+  })
+})
+
+describe('the run-up sentence', () => {
+  const c6 = EXPERIMENTS.find((e) => e.id === 'c6')
+  const x = analyse(c6, defaultsOf(c6))
+
+  it('says what the package says, without an exponent or a semicolon', () => {
+    const said = runUpSays(x.runUp)
+    expect(said).not.toMatch(/e[+-]?\d/)
+    expect(said).not.toContain(';')
+    expect(said).toContain(`${x.runUp.steps} steps`)
+    expect(said).toContain(x.runUp.guardMet ? 'the model holds' : 'the model does not hold')
+  })
+
+  it('states the error at the scale C6 states it', () => {
+    // The note and the readout naming one number at two scales is the reader
+    // doing arithmetic to check a claim. STYLE S11: one name per thing.
+    const said = runUpSays(x.runUp)
+    const scale = said.match(/parts in a (\w+)/)
+    expect(scale, said).toBeTruthy()
+    expect(c6.see).toContain(`parts in a ${scale[1]}`)
+    const count = Number.parseFloat(said.match(/([\d.]+) parts in a/)[1])
+    expect(c6.see).toContain(String(count))
+    // And the count is the relative error at that scale, computed, not typed.
+    const mult = { million: 1e6, billion: 1e9, trillion: 1e12, quadrillion: 1e15 }[scale[1]]
+    expect(Math.abs(count - x.runUp.relative * mult) / count).toBeLessThan(5e-3)
+  })
+
+  it('parts() keeps every scale readable', () => {
+    expect(parts(0.05)).toBe('5.00 %')
+    expect(parts(6.88e-11)).toBe('68.8 parts in a trillion')
+    expect(parts(2.5e-8)).toBe('25.0 parts in a billion')
+    expect(parts(0)).toBe('nothing measurable')
+    for (const r of [1, 1e-3, 1e-7, 1e-10, 1e-14, 1e-20]) expect(parts(r)).not.toMatch(/e[+-]?\d/)
   })
 })
 

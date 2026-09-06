@@ -165,18 +165,28 @@ function analyseField(exp, params, spec) {
   // The time knob is in periods, so the picture does the same thing whatever
   // the frequency is set to.
   const t = (params.t ?? 0) / hz
-  const points = 361
+  const points = 721
+  // `fieldAt` takes the ELECTRICAL angle. The plot's axis is the mechanical
+  // angle around the gap, which is what the reader is looking at, and the two
+  // differ by the number of pole pairs. Drawing the electrical angle under a
+  // label that said "angle around the gap" was wrong twice over: it named a
+  // quantity it was not showing, and it made the pole count invisible. C2's
+  // whole lesson is the pole count, and pressing its two-pole chip changed
+  // nothing on the screen. Now four poles draw two cycles around the gap and
+  // two poles draw one.
+  const pairs = f.poles / 2
   const theta = []
   const total = []
   const phase = [[], [], []]
   const TAU3 = (2 * Math.PI) / 3
   for (let k = 0; k < points; k++) {
-    const a = (2 * Math.PI * k) / (points - 1)
-    theta.push(a)
+    const mech = (2 * Math.PI * k) / (points - 1)
+    const a = pairs * mech
+    theta.push(mech)
     total.push(M.fieldAt(f, a, t))
     ;[0, -TAU3, TAU3].forEach((ph, j) => phase[j].push(f.turns * f.amp * Math.cos(f.omega * t + ph) * Math.cos(a - [0, TAU3, -TAU3][j])))
   }
-  return { field: f, t, theta, total, phase, exact: (a) => f.amplitude * Math.cos(f.omega * t - a) }
+  return { field: f, t, pairs, theta, total, phase, exact: (a) => f.amplitude * Math.cos(f.omega * t - pairs * a) }
 }
 
 // ------------------------------------------- the synchronous and PM machines

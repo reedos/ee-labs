@@ -25,6 +25,7 @@
 // widest text the drawing can ever carry, so it does not breathe as knobs move.
 
 import { fmt } from '@ee-labs/ui'
+import { reading } from './readout.js'
 import { layoutExtent } from './layoutCheck.js'
 
 const pick = (net, ids) => ids.map((id) => net.elements.find((e) => e.id === id)).filter(Boolean)
@@ -184,7 +185,7 @@ export function thermalDraw(x) {
   const net = x.net
   const elements = [
     named(net, 'Ploss', `P_loss ${fmt(x.split.loss, 'W', 4)}`),
-    named(net, 'Rth', `R_th ${fmt(x.machine.Rth, 'K/W', 3)}`),
+    named(net, 'Rth', `R_th ${reading(x.machine.Rth, 'K/W', 3)}`),
     named(net, 'Cth', `C_th ${fmt(x.machine.Cth, 'J/K', 3)}`),
   ].filter(Boolean)
   return framed(elements, {

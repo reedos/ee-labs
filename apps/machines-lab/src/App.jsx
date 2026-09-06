@@ -432,8 +432,24 @@ export default function App() {
           </span>
         </header>
 
+        {/*
+          The transformer's full equivalent circuit is nine elements in a row,
+          and the induction machine's is seven. Scaled to fit a 390 px pane
+          those drawings render their labels at four pixels, which is a
+          picture of a circuit rather than a circuit. The drawing keeps a
+          floor on its scale and the box around it scrolls sideways, so the
+          page never does.
+        */}
         {draw && (
-          <Schematic elements={draw.elements} layout={draw.layout} meters={meters} show={meters ? 'i' : 'none'} className="machine" />
+          <div className="machine-scroll">
+            <Schematic
+              elements={draw.elements}
+              layout={draw.layout}
+              meters={meters}
+              show={meters ? 'i' : 'none'}
+              className="machine"
+            />
+          </div>
         )}
         {!draw && !x.error && <div className="no-circuit">This model is a closed form, not a circuit.</div>}
 
