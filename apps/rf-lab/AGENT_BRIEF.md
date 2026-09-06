@@ -278,15 +278,22 @@ turns the angle of every entry and leaves every magnitude alone, by twice the
 offset on a reflection and once on a transmission, because a reflected wave
 crosses the moved length twice. The legend says when the plane has moved.
 
+The props are computed in `src/view.js` beside every other view's, and the
+component imports them. `src/math.js` is the only file that calls the engine.
+`src/view.js` is the only one that shapes a picture from it. A props function
+inside a component would break that arrangement.
+
 ```js
-// The props, computed from the analysis, so a test can check them without a canvas.
+// In src/view.js, so a test can check the props without a canvas.
 export function sparamPropsFor(exp, p, x, plane = 0)
 // -> { from, to, marker, plane, keys, floor, ceiling, traces[], at[], name }
 ```
 
 Test (`panes.test.jsx`): all four entries are drawn twice, once in decibels and
 once as an angle, and all four are read at the marker. A plane of 30 degrees
-moves no magnitude and turns S11 by 60 degrees and S21 by 30.
+moves no magnitude and turns S11 by 60 degrees and S21 by 30. A frequency
+outside the swept window draws no marker line and is named in the legend, and
+the four readings stay.
 
 ## 4. The lesson schema, and the quantity paths
 

@@ -30,6 +30,12 @@
  *   sweep.<points|spacing|first|last|worst>
  *   handOver.<ok>                         whether the rational hand-over is offered
  *
+ * The list above is the one `readQuantity` has a case for. Groups C and D read
+ * off the analysis by their own path through the default branch, so
+ * `design.Q`, `element.series.value`, `bw.fractional`, `s.21.db`, `conv.count`
+ * and `power.sum` need no case here. `apps/rf-lab/AGENT_BRIEF.md` §4 lists
+ * every one of them, beside the list above.
+ *
  * A path that names something the analysis does not carry throws, so a lesson
  * cannot quietly read undefined and pass.
  */
