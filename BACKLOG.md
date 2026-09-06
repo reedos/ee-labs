@@ -12,10 +12,10 @@ Verification, integration and release are separate states under `PROGRAM.md` sec
 
 ## 1. The ledger
 
-Snapshot: committed integration base `cf90dda`, 2026-09-06.
-The 22 app registries contain 742 experiments, lessons or presets.
-Four labs are released. Eighteen are dark. Five planned apps do not exist at this base.
-These counts exclude uncommitted work and unmerged branches.
+Snapshot: director integration wave from `cf90dda`, 2026-09-06.
+The 23 app registries contain 747 experiments, lessons or presets.
+Four labs are released. Nineteen are dark. Four planned apps do not exist in this tree.
+These counts exclude Reed's concurrent main-workspace changes and separate verification branches.
 They are not a percentage of curriculum acceptance.
 
 Run `node scripts/director/inventory.mjs` to reproduce the app counts, ids,
@@ -42,7 +42,7 @@ The three original released labs have no `RELEASE_STATUS` file.
 | `control-lab-ii` | 32 | A to E, F1 and F2 | Dark; no browser harness | F3 to F5 remain; check Random Signals contracts | `CONTROL_LAB_II_PLAN.md` |
 | `machines-lab` | 35 | A to E | Dark; saved verification unmerged | Revalidate `fedb2c9`; Power F and L now exist for the deferred drives | `MACHINES_LAB_PLAN.md` |
 | `logic-lab` | 45 | A to H | Dark; no browser harness | Browser acceptance; Electronics D6 now exists | `LOGIC_LAB_PLAN.md` |
-| `vlsi-lab` | 0 | None | Group A assigned on `lab/vlsi-lab` | Check delay extraction against network; app-local bridge pending shared review | `VLSI_LAB_PLAN.md` |
+| `vlsi-lab` | 5 | A1 to A5 | Dark; bounded implementation entering integration | A3 analog-chain comparison and part of A5 remain open; deployed browser gate next | `VLSI_LAB_PLAN.md` |
 | `computer-lab` | 30 | A to G | Dark; no browser harness | Browser acceptance and shared timing contracts | `COMPUTER_LAB_PLAN.md` |
 | `interfaces-lab` | 0 | None | Group A assigned on `lab/interfaces-lab` | Verify pin model; later groups need protocol timing contracts | `INTERFACES_LAB_PLAN.md` |
 | `fields-lab` | 36 | A to H | Dark; saved verification unmerged | Revalidate `7e5e640`; I to L remain, including System's antenna prerequisite | `FIELDS_LAB_PLAN.md` |
@@ -79,7 +79,7 @@ Nothing is pushed or released by this wave.
 7. Add missing browser harnesses in bounded lab assignments. Verify changed groups during development, not after all curricula finish.
 8. Build Mixed-Signal groups as charge-event and Analog IC prerequisites pass their gates.
 
-There are eleven existing `scripts/verify.mjs` files and eleven existing apps without one.
+There are twelve existing `scripts/verify.mjs` files and eleven existing apps without one.
 The older ten-lab harness wave is not the complete current inventory.
 Harness presence alone says nothing about its last result.
 System and Photonics need evidence review outside the nine saved verification branches.

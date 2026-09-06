@@ -1,0 +1,57 @@
+.vlsi-app { grid-template-columns: 350px minmax(0, 1fr); }
+.vlsi-app, .vlsi-app * { letter-spacing: 0; }
+.vlsi-app .controls header h1 { font-size: 24px; }
+.vlsi-app h2 { font-size: 14px; line-height: 1.4; text-transform: none; }
+.vlsi-app .controls section { border: 0; border-radius: 0; padding: 12px 0; margin: 0; border-bottom: 1px solid var(--line); background: none; }
+.vlsi-app .controls section > h2 { background: none; border-radius: 0; margin: 0 0 10px; padding: 0; border: 0; }
+.experiment-select { display: grid; gap: 6px; color: var(--dim); }
+.experiment-select select { min-width: 0; width: 100%; }
+.vlsi-app .lesson-nav { flex-wrap: wrap; }
+.vlsi-app .lesson p, .vlsi-app dd { font-size: 13px; line-height: 1.6; }
+.vlsi-app .lesson h2 { margin-bottom: 8px; color: var(--text); }
+.vlsi-app .lesson details { margin-top: 12px; }
+.vlsi-app summary { cursor: pointer; min-height: 36px; padding: 8px 0; }
+.vlsi-app dt { color: var(--accent); font-weight: 600; margin-top: 12px; }
+.vlsi-app dd { margin: 4px 0 12px; }
+.vlsi-app button, .vlsi-app select { min-height: 36px; }
+.vlsi-app button:focus-visible, .vlsi-app select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vlsi-app .topbar { justify-content: space-between; gap: 8px; font-size: 12px; }
+.vlsi-app .topbar strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+.vlsi-app .views { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow-y: auto; }
+.vlsi-app .views section { border-radius: 0; border: 0; background: none; min-width: 0; }
+.vlsi-app .schematic-view { border-bottom: 1px solid var(--line) !important; padding: 12px 20px; }
+.vlsi-app .analysis-view { padding: 12px 20px 24px; }
+.view-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 36px; }
+.view-head h2 { margin: 0; }
+.view-head > span { color: var(--dim); font-size: 12px; }
+.vlsi-app .schematic { display: block; width: min(100%, 650px); height: 260px; margin: 0 auto; overflow: visible; }
+.vlsi-app .schematic text { fill: var(--text); font-family: ui-monospace, monospace; font-size: 12px; }
+.vlsi-app .schematic .sch-meter { fill: var(--blue); }
+.vlsi-app .schematic .is-lit path, .vlsi-app .schematic .is-lit line { stroke: var(--accent); }
+.vlsi-app .schematic .is-lit .sch-dot { fill: var(--accent); }
+.vlsi-app .segmented { display: flex; gap: 2px; }
+.vlsi-app .segmented button { background: var(--panel-2); color: var(--dim); border: 1px solid var(--line); padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+.vlsi-app .segmented button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.xy-plot { width: 100%; height: 280px; display: block; }
+.vlsi-app .timing-canvas { width: 100%; display: block; }
+.readings, .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 8px 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.readings span { white-space: nowrap; }
+.green { color: var(--accent); }
+.amber { color: var(--amber); }
+.boundary { color: var(--dim); font-size: 12px; line-height: 1.5; max-width: 85ch; }
+@media (max-width: 900px) {
+  html, body, #root { height: auto; min-height: 100%; overflow: auto; }
+  .vlsi-app { height: auto; min-height: 100dvh; overflow: visible; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+  .vlsi-app .controls { display: contents; }
+  .vlsi-app .controls > header { grid-column: 1; grid-row: 1; padding: 12px 14px 0; }
+  .vlsi-app .controls > .picker { grid-column: 1; grid-row: 2; padding: 8px 14px; }
+  .vlsi-app .controls > .knobs { grid-column: 1; grid-row: 5; padding: 12px 14px; }
+  .vlsi-app .controls > .lesson { grid-column: 1; grid-row: 6; padding: 12px 14px; }
+  .vlsi-app .controls > .report-issue { grid-column: 1; grid-row: 7; margin: 14px; }
+  .vlsi-app .topbar { grid-column: 1; grid-row: 3; flex-wrap: wrap; padding: 10px 14px; }
+  .vlsi-app .views { grid-column: 1; grid-row: 4; overflow: visible; }
+  .vlsi-app .schematic-view, .vlsi-app .analysis-view { padding: 10px 12px; }
+  .vlsi-app .schematic { height: auto; aspect-ratio: 2; }
+  .vlsi-app button, .vlsi-app select, .vlsi-app summary { min-height: 44px; }
+  .xy-plot { height: 265px; }
+}
