@@ -308,6 +308,17 @@ describe('the sweep pane says whether the response repeats', () => {
     }
   })
 
+  it('a pair of equal resistances is joined by a wire, and the chart says so', () => {
+    // C2's third step sets the load to the source resistance. The network is
+    // one entry and it is a wire, so there is no element and no arc, and the
+    // caption said "0 elements, one arc each".
+    const wire = at('c2', { RL: 50 })
+    expect(wire.x.chosen.elements.length).toBe(0)
+    const out = html(<ChartPane {...wire} />)
+    expect(out).toMatch(/no element is needed and no arc is drawn/)
+    expect(out).not.toMatch(/0 elements/)
+  })
+
   it('a band with no edge on one side names the side, and the two topologies differ', () => {
     // `REVIEW_PLAYBOOK.md` §1: a sentence has to follow every control that can
     // change its fact. At a standing-wave ratio of two the low-pass network has

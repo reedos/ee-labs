@@ -56,7 +56,11 @@ export function chartPropsFor(exp, p, x) {
     props.points.push({ gamma: x.m.gamma, label: 'match', kind: 'match' })
     props.points.push({ gamma: R.reflection(x.ZL, x.z0), label: labelOf(x.ZL), kind: 'load' })
     for (const arc of x.arcs) props.paths.push({ points: arc.points, label: arc.label, kind: 'match' })
-    props.caption = `${x.chosen.elements.length} element${x.chosen.elements.length === 1 ? '' : 's'} from the load to the source, one arc each`
+    // Two resistances that are already equal are joined by a wire, so there is
+    // no element and no arc. The caption said "0 elements, one arc each",
+    // which is a sentence the picture does not support.
+    const n = x.chosen.elements.length
+    props.caption = n ? `${n} element${n === 1 ? '' : 's'} from the load to the source, one arc each` : 'The load already presents the source resistance, so no element is needed and no arc is drawn'
   }
 
   if (x.kind === 'qwave') {
