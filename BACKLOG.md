@@ -26,7 +26,7 @@ The three original released labs have no `RELEASE_STATUS` file.
 | App | Implemented | Present groups | Delivery and verification | Next work or dependency | Plan |
 | --- | --- | --- | --- | --- | --- |
 | `circuit-elements-lab` | 58 | A to I | Released; verification WIP `0795f5b` | Reconcile saved verification with Reed's concurrent notation work | `CIRCUIT_ELEMENTS_LAB_PLAN.md` |
-| `circuit-lab` | 16 | Four lesson groups | Released; saved verification under review | Review `verify/circuit-lab` against the integration base | `CURRICULUM.md` |
+| `circuit-lab` | 16 | Four lesson groups | Released; `582650e` revalidated, not accepted | Browser failures: 34 Chromium, 35 Firefox; phone plots and laptop lesson chips | `CURRICULUM.md` |
 | `signal-lab` | 35 | Five preset groups | Released; saved verification unmerged | Revalidate `659be05` and its shared requests | `CURRICULUM.md` |
 | `control-lab` | 13 | Four lesson groups | Released; saved verification unmerged | Revalidate `bc20d8a` and its shared requests | `CURRICULUM.md` |
 | `electronics-lab` | 75 | A, C to O | Dark; no browser harness | Audit shape deviations and K5; B is covered by Elements I9 and I10 | `ELECTRONICS_LAB_PLAN.md` |
@@ -36,7 +36,7 @@ The three original released labs have no `RELEASE_STATUS` file.
 | `rf-lab` | 19 | A to D | Dark; no browser harness | E to H remain; check existing capacitance, noise and oscillator contracts | `RF_LAB_PLAN.md` |
 | `system-lab` | 4 | A | Dark; harness exists, evidence review pending | B to F remain; source-noise checks, IP3 extraction, Fields L and RF H | `SYSTEM_LAB_PLAN.md` |
 | `dsp-lab` | 40 | A to F | Dark; no browser harness | Browser acceptance and plan-fidelity review | `DSP_LAB_PLAN.md` |
-| `random-lab` | 30 | A to I | Dark; saved verification unmerged | Revalidate `ff28ab7`; check hand-over contracts for Control II | `RANDOM_LAB_PLAN.md` |
+| `random-lab` | 30 | A to I | Dark; saved recovery under review | Base crashes on cold load; revalidate `ff28ab7` before integration | `RANDOM_LAB_PLAN.md` |
 | `comms-lab` | 50 | A to H | Dark; no browser harness | Browser acceptance and reported plan-number differences | `COMMUNICATIONS_LAB_PLAN.md` |
 | `info-lab` | 25 | A to F | Dark; no browser harness | Browser acceptance and the recorded plan correction | `INFORMATION_LAB_PLAN.md` |
 | `control-lab-ii` | 32 | A to E, F1 and F2 | Dark; no browser harness | F3 to F5 remain; check Random Signals contracts | `CONTROL_LAB_II_PLAN.md` |
@@ -64,7 +64,7 @@ Nothing is pushed or released by this wave.
 | Stream | Branch and worktree | Bounded deliverable | Acceptance |
 | --- | --- | --- | --- |
 | Director | `integration/program-director`, `program-director` | Current ledger, dependency queue, review and integration | Inventory checks, focused tests, full integration suite, recorded lint state |
-| Verification | `verify/circuit-lab`, `circuit-verification` | Revalidate the saved Circuit changes | Scoped tests, build, deployed-path browser checks and screenshot review |
+| Verification | `verify/random-lab`, `random-verification` | Recover cold load and check all thirty experiments render | Scoped tests, build, deployed-path browser checks and screenshot review |
 | VLSI | `lab/vlsi-lab`, `vlsi-wave-1` | Group A, or a justified supported subset | Engine invariants, lesson pins, usable app, build and browser evidence |
 | Interfaces | `lab/interfaces-lab`, `interfaces-wave-1` | Group A | Independent pin checks, lesson pins, usable app, build and browser evidence |
 
@@ -93,6 +93,27 @@ System C still needs measured IP3 and its guard, even though `cascadeIIP3` exist
 Detailed acceptance remains pending for the dark labs.
 An experiment id does not establish every promised model, view or teaching claim.
 The historical deviations below remain open unless a later reviewed entry closes them.
+
+### Wave evidence
+
+Director commits `62a3fe5`, `f4b2dda` and `4bdc478` establish the ledger and shared path corrections.
+The shared UI and inventory checks pass: 18 files and 264 tests.
+All 22 existing apps build on this snapshot.
+All four edited director documents pass scoped prose lint.
+Repository prose lint still reports 330 inherited findings in 80 files.
+
+The deployed-path navigation review uses Chromium 151.0.7922.34 at 1366 by 900 and 390 by 844.
+It checks rendered navigation, real sibling responses, the current label and horizontal containment.
+Forty of forty-two checks pass. Random Signals crashes on both cold loads with an invalid `toPrecision` argument.
+Signal Lab has separate navigation and is not included in this LabNav-specific browser count.
+This review does not certify every lab's plots, controls or curriculum.
+Logs and screenshots are in the director worktree's `tmp/navigation-review` and `navigation-review.log`.
+
+Circuit's saved branch was reconciled with `cf90dda` as `582650e`.
+Its scoped numerical checks and builds pass. Both browsers complete without console errors or warnings.
+The layout gate remains open, so the branch stays separate.
+`apps/circuit-lab/VERIFICATION.md` in `circuit-verification` names the failures and evidence.
+The combined navigation changes require another browser run before acceptance.
 
 ## 2. Deferred items, by lab
 
