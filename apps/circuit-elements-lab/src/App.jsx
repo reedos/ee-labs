@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { LabNav, NumField, ReportIssue, Schematic } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
+import { FoundationsPane, FoundationLink, FoundationSidebar } from './components/FoundationsPane.jsx'
 import { NotationGuide } from './components/NotationGuide.jsx'
 import { equations, normalize, complex as cx } from '@ee-labs/network'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic, viewLabel, VIEW_LABELS } from './experiments.js'
@@ -479,84 +480,86 @@ export default function App() {
             </details>
           ) : null}
           {/* The note with its numbers alive and its terms marked where they first do work. */}
-          <LiveNote
-            exp={exp}
-            x={x}
-            params={params}
-            pristine={pristine}
-            dfn={(s, i) => <Marked key={i} text={s.text} base={s.start} marks={uses.see} field="see" open={openTerm} onOpen={setOpenTerm} />}
-          >
-            {uses.unplaced.length ? <TermChips ids={uses.unplaced} field="see" open={openTerm} onOpen={setOpenTerm} /> : null}
-          </LiveNote>
-          <DefCard open={openTerm} field="see" exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
-          {steps.length ? (
-            // The Try list as a path: done steps ticked, the active step in full
-            // with its knob open and its readings lit, the steps ahead one line
-            // each. Tap a step to read it in full; tick a watch step by hand.
-            <ol className="try" data-role="try" aria-label="Try" data-active={active}>
-              {steps.map((t, i) => {
-                const state = done.has(i) ? 'done' : i === active ? 'active' : 'ahead'
-                const shown = i === active || i === focusStep
-                const posed = predict && predict.step === i
-                // The posed step shows its question while unanswered and open, and its reveal while the student keeps it open.
-                const asQuestion = posed && (predicted ? focusStep === i : shown)
-                return (
-                  <li
-                    key={i}
-                    data-step={i}
-                    data-state={state}
-                    data-shown={shown || undefined}
-                    data-predict={posed ? (predicted ? 'answered' : 'pending') : undefined}
-                    onClick={(ev) => {
-                      if (ev.target.closest('button, dfn, a')) return
-                      setFocusStep(i === focusStep ? null : i)
-                    }}
-                  >
-                    <span className="step-n" aria-hidden="true">
-                      {state === 'done' ? '✓' : i + 1}
-                    </span>
-                    <span className="step-body">
-                      {asQuestion ? (
-                        // This step is posed as a question first; its sentence appears once answered.
-                        <Predict q={predict} picked={predicted} onPick={pick} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
-                      ) : posed && !predicted ? (
-                        <span className="step-text">
-                          <span className="predict-tag">predict</span> {predict.ask}
-                        </span>
-                      ) : (
-                        <span className="step-text">
-                          <Marked text={t.say} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
-                        </span>
-                      )}
-                      {state === 'active' && !measurable(t) ? (
-                        <button type="button" className="step-seen" data-role="seen" onClick={() => seen(i)} title="Tick this step off">
-                          seen ✓
-                        </button>
-                      ) : null}
-                    </span>
-                  </li>
-                )
-              })}
-            </ol>
-          ) : null}
-          {openTerm && openTerm.field.startsWith('try.') ? (
-            <DefCard open={openTerm} field={openTerm.field} exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
-          ) : null}
-          {isComplete && nextUp(exp) ? (
-            <p className="next-up" data-role="next-up">
-              <span>All steps done.</span>
-              <button type="button" className="tag is-on" onClick={() => choose(nextUp(exp))} title={`${nextUp(exp).toUpperCase()} · ${byId[nextUp(exp)].name}`}>
-                next up: {nextUp(exp).toUpperCase()} →
-              </button>
-            </p>
-          ) : null}
+          {currentView === 'foundations' ? <FoundationSidebar exp={exp} /> : <>
+            <LiveNote
+              exp={exp}
+              x={x}
+              params={params}
+              pristine={pristine}
+              dfn={(s, i) => <Marked key={i} text={s.text} base={s.start} marks={uses.see} field="see" open={openTerm} onOpen={setOpenTerm} />}
+            >
+              {uses.unplaced.length ? <TermChips ids={uses.unplaced} field="see" open={openTerm} onOpen={setOpenTerm} /> : null}
+            </LiveNote>
+            <DefCard open={openTerm} field="see" exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
+            {steps.length ? (
+              // The Try list as a path: done steps ticked, the active step in full
+              // with its knob open and its readings lit, the steps ahead one line
+              // each. Tap a step to read it in full; tick a watch step by hand.
+              <ol className="try" data-role="try" aria-label="Try" data-active={active}>
+                {steps.map((t, i) => {
+                  const state = done.has(i) ? 'done' : i === active ? 'active' : 'ahead'
+                  const shown = i === active || i === focusStep
+                  const posed = predict && predict.step === i
+                  // The posed step shows its question while unanswered and open, and its reveal while the student keeps it open.
+                  const asQuestion = posed && (predicted ? focusStep === i : shown)
+                  return (
+                    <li
+                      key={i}
+                      data-step={i}
+                      data-state={state}
+                      data-shown={shown || undefined}
+                      data-predict={posed ? (predicted ? 'answered' : 'pending') : undefined}
+                      onClick={(ev) => {
+                        if (ev.target.closest('button, dfn, a')) return
+                        setFocusStep(i === focusStep ? null : i)
+                      }}
+                    >
+                      <span className="step-n" aria-hidden="true">
+                        {state === 'done' ? '✓' : i + 1}
+                      </span>
+                      <span className="step-body">
+                        {asQuestion ? (
+                          // This step is posed as a question first; its sentence appears once answered.
+                          <Predict q={predict} picked={predicted} onPick={pick} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
+                        ) : posed && !predicted ? (
+                          <span className="step-text">
+                            <span className="predict-tag">predict</span> {predict.ask}
+                          </span>
+                        ) : (
+                          <span className="step-text">
+                            <Marked text={t.say} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
+                          </span>
+                        )}
+                        {state === 'active' && !measurable(t) ? (
+                          <button type="button" className="step-seen" data-role="seen" onClick={() => seen(i)} title="Tick this step off">
+                            seen ✓
+                          </button>
+                        ) : null}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ol>
+            ) : null}
+            {openTerm && openTerm.field.startsWith('try.') ? (
+              <DefCard open={openTerm} field={openTerm.field} exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
+            ) : null}
+            {isComplete && nextUp(exp) ? (
+              <p className="next-up" data-role="next-up">
+                <span>All steps done.</span>
+                <button type="button" className="tag is-on" onClick={() => choose(nextUp(exp))} title={`${nextUp(exp).toUpperCase()} · ${byId[nextUp(exp)].name}`}>
+                  next up: {nextUp(exp).toUpperCase()} →
+                </button>
+              </p>
+            ) : null}
+          </>}
           <Thread id={id} choose={choose} />
         </section>
 
         <section className="knobs" id="knobs">
           <h2>
             Knobs
-            {activeKnobs.length ? <span className="h2-aside">step {active + 1} turns the lit one</span> : null}
+            {currentView !== 'foundations' && activeKnobs.length ? <span className="h2-aside">step {active + 1} turns the lit one</span> : null}
           </h2>
           <div className="knob-list">
             {exp.params
@@ -949,9 +952,12 @@ export default function App() {
             </div>
           </div>
           <div className="view-body">
-            <Headline exp={exp} x={x} params={params} />
-            <Bridge exp={exp} view={currentView} />
-            <SolutionRoutes exp={exp} x={x} view={currentView} onChoose={setView} />
+            {currentView === 'foundations' ? <FoundationsPane exp={exp} x={x} onChoose={setView} /> : <>
+              <FoundationLink exp={exp} view={currentView} />
+              <Headline exp={exp} x={x} params={params} />
+              <Bridge exp={exp} view={currentView} />
+              <SolutionRoutes exp={exp} x={x} view={currentView} onChoose={setView} />
+            </>}
             {theoremShows(exp, currentView) ? <TheoremBlock exp={exp} x={x} params={params} elements={elements} layout={plainLayout} /> : null}
             {currentView === 'reading' && x.sol ? <Readings x={x} elements={elements} power={showsNetPower} /> : null}
             {currentView === 'iv' && x.sol ? <IVCanvas exp={exp} x={x} p={params} /> : null}
@@ -1234,8 +1240,8 @@ function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups, progress
       {exp.group === GROUPS[7] ? <details className="group-intro course-outline">
         <summary>Circuits II learning sequence</summary>
         <ol>
-          <li><a href="#h2&view=phasor">Phasor arithmetic</a>, <a href="#h3&view=phasor">series circuits</a>, then <a href="#h8&view=phasor">branched KCL</a>.</li>
-          <li><a href="#h8&view=state">Coupled states and initial conditions</a>. Compare startup with sinusoidal steady state.</li>
+          <li><a href="#h1&view=foundations">Phasor foundations</a>, <a href="#h2&view=phasor">RC phasors</a>, <a href="#h3&view=phasor">series circuits</a>, then <a href="#h8&view=phasor">branched KCL</a>.</li>
+          <li><a href="#g1&view=foundations">State-vector foundations</a>, then <a href="#h8&view=state">coupled states and initial conditions</a>. Compare startup with sinusoidal steady state.</li>
           <li>Laplace methods and transfer-function derivations are planned.</li>
           <li><a href="#h6&view=bode">Frequency response</a> and <a href="../circuit-lab/">the existing filter tools</a>.</li>
         </ol>

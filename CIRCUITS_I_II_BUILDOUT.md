@@ -184,3 +184,26 @@ including its coupled state equations and instantaneous circuit equations.
 This is consolidation, not completion of the Circuits II curriculum. The remaining
 coverage matrix and phasors, state equations, Laplace, frequency-response ordering
 still apply. Existing device, power, machines, grid and RF ownership stays intact.
+
+## Foundations before first use
+
+The first encounter with each method now opens a guided **Start here** view in
+its existing Circuit Elements experiment. The sidebar presents the foundation
+steps before the later experiment discussion and prediction tasks.
+
+- F1 introduces states, initial values, derivatives, units and the time constant
+  before its state-equation walkthrough.
+- G1 introduces the state vector, row-by-row matrix multiplication and output
+  equations before coupled-state analysis.
+- H1 introduces sine parameters, complex arithmetic, peak/RMS conventions and
+  impedance before the first phasor calculation.
+
+These lessons use the current schematic, controls and time cursor. They share
+Elements' worked-math component, typography, scrolling and analysis tabs.
+Existing analysis deep links remain valid and offer a visible link back to the
+appropriate foundation. Advanced views are available without a completion lock.
+
+H8 now appears after H5 and before H6/H7 in the actual experiment registry and
+navigation, placing branched analysis ahead of the frequency-response lessons.
+Existing experiment IDs are unchanged. These entry lessons establish prerequisites
+and do not replace the remaining advanced state-space or Laplace buildout.

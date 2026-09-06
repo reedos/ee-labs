@@ -1233,3 +1233,9 @@ a.handover-copy:hover { filter: brightness(1.1); }
 @media (max-width: 600px) {
   .app[data-experiment="h8"] .view .schematic.big { --sch-h: 250px; }
 }
+
+.foundations-pane { flex-shrink:0; min-width:0; }
+.foundation-actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.foundation-actions button { min-height:44px; }
+.foundation-link { flex-shrink:0; margin:4px 0 12px; font-size:12px; line-height:1.6; }
+.foundation-link a { color:var(--accent); }

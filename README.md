@@ -45,6 +45,9 @@ would take work that no reader of this repository would benefit from.
 
 ## The experiments
 
+F1, G1 and H1 now open with guided **Start here** lessons before their state,
+vector/matrix and phasor calculations. These use the existing schematic and controls.
+
 Circuit Elements is the shared home for the Circuits I and II buildout. Both sections
 use the same schematic, controls and equation, state and phasor views. The branched
 AC experiment connects complex KCL, coupled states and AC power in one circuit.

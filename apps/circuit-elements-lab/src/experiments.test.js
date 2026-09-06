@@ -1601,7 +1601,7 @@ describe('what the student reads is what the solver did', () => {
 
   it('every sine experiment opens with the source well off its zero crossing; H2 and H6 at its peak', () => {
     const sines = EXPERIMENTS.filter((q) => q.net(defaultsOf(q.id)).elements.some((el) => el.wave && el.wave.kind === 'sine'))
-    expect(sines.map((q) => q.id)).toEqual(['e9', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8', 'i4', 'i5', 'i6', 'i7', 'i9', 'i10'])
+    expect(sines.map((q) => q.id)).toEqual(['e9', 'h1', 'h2', 'h3', 'h4', 'h5', 'h8', 'h6', 'h7', 'i4', 'i5', 'i6', 'i7', 'i9', 'i10'])
     for (const e of sines) {
       const { p, x } = at(e.id)
       // The source's own voltage, not a node called "in": the bridge's source
@@ -2187,13 +2187,13 @@ describe('the bridge and the default view', () => {
     expect(() => bridgeText(byId.a1, 'nonesuch')).toThrow(/no bridge lead/)
   })
 
-  it('no experiment before Group G opens on the equations; D5 opens on the equivalent, G1 on the scope', () => {
+  it('no experiment before Group G opens on the equations; D5 opens on the equivalent, G1 on foundations', () => {
     for (const exp of EXPERIMENTS) {
       expect(exp.views.includes(exp.view), exp.id).toBe(true)
       if (GROUPS.indexOf(exp.group) < 6) expect(exp.view, exp.id).not.toBe('equations')
     }
     expect(byId.d5.view).toBe('equivalent')
-    expect(byId.g1.view).toBe('scope')
+    expect(byId.g1.view).toBe('foundations')
     // Groups A–E all carry the reading view, first.
     for (const exp of EXPERIMENTS) if (GROUPS.indexOf(exp.group) < 5) expect(exp.views[0], exp.id).toBe('reading')
   })

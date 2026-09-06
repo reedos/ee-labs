@@ -29,10 +29,11 @@ import { THEOREMS } from './theorems.js'
 // the same order in every experiment, so a tab sits in the same place from one
 // to the next. The reading (every meter at once, the DC groups' opening view)
 // and the two universal views lead; the rest follow the curriculum.
-export const VIEW_ORDER = ['reading', 'iv', 'assumed', 'equations', 'power', 'thevenin', 'equivalent', 'superposition', 'sweep', 'scope', 'state', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
+export const VIEW_ORDER = ['foundations', 'reading', 'iv', 'assumed', 'equations', 'power', 'thevenin', 'equivalent', 'superposition', 'sweep', 'scope', 'state', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
 
 // What the view switch calls each view, and the hover text that says what it shows.
 export const VIEW_LABELS = {
+  foundations: { label: 'Start here', title: 'Learn the notation and method before solving this circuit' },
   reading: { label: 'Reading', title: 'The one number this experiment is about, and every meter on the circuit at once' },
   iv: { label: 'i–v plane', title: 'Current against voltage: the diode’s curve, the four models of it, the load line the rest of the circuit imposes, and where they meet' },
   assumed: { label: 'Assumed states', title: 'Every combination of diode states, each solved and then checked against its own answer — the three that contradict themselves, and the one that does not' },
@@ -1749,6 +1750,31 @@ export const EXPERIMENTS = [
     claim: { acpower: true },
   },
   {
+    id: 'h8', group: GROUPS[7], name: 'Current division in a branched AC circuit',
+    terms: ['phasor', 'impedanceac', 'reactance'],
+    params: [Vs('A', 'Amplitude', 5), Deg('phi', 'Phase', 0),
+      { ...Freq('f', 'Frequency', 1000), min: 10, max: 10000 },
+      { ...R('R1', 'R₁', 100), min: 10, max: 1000 },
+      { ...R('R2', 'R₂', 150), min: 10, max: 1000 },
+      { ...Ind('L1', 'L', .01), min: .001, max: .1 },
+      { ...Cap('C1', 'C', 1e-6), min: 1e-7, max: 1e-5 }, Vs('v0', 'Initial capacitor voltage', 0), Is('i0', 'Initial inductor current', 0), Win('N', 'Window', 'cycles', 6)],
+    net: p => {
+      const net = phasorCircuit('branched', { r:p.R1, r2:p.R2, l:p.L1, c:p.C1, v:p.A })
+      net.elements.find(e=>e.id==='C1').x0 = p.v0
+      net.elements.find(e=>e.id==='L1').x0 = p.i0
+      net.elements[0].wave = { kind:'sine', amp:p.A, freq:p.f, phase:p.phi*Math.PI/180 }
+      return net
+    },
+    layout: phasorLayout('branched'), window: cyclesWindow, cursor: .85,
+    ghost: 'forced', ghostLabel: 'steady state (dashed)',
+    scope: { left: { unit:'V', traces:[{q:'volt',key:'C1',label:'v_C'}] },
+      right: { unit:'A', traces:[{q:'i',key:'R1',label:'i_R1'},{q:'i',key:'C1',label:'i_C'},{q:'i',key:'L1',label:'i_L'}] } },
+    out: {q:'volt',key:'C1',label:'v_C'}, show:'v', view:'phasor',
+    views:['equations','power','scope','state','phasor','acpower'],
+    phasor: {volts:['R1','C1'],total:'V1',current:'R1',branched:true},
+    claim: {branched:true},
+  },
+  {
     id: 'h6',
     group: GROUPS[7],
     name: 'Frequency response: one sine at a time',
@@ -1807,31 +1833,6 @@ export const EXPERIMENTS = [
     phasor: { volts: ['R1', 'L1', 'C1'], total: 'V1', current: 'R1' },
     circuitLab: rlcToCircuitLab,
     claim: { roots: true },
-  },
-  {
-    id: 'h8', group: GROUPS[7], name: 'Current division in a branched AC circuit',
-    terms: ['phasor', 'impedanceac', 'reactance'],
-    params: [Vs('A', 'Amplitude', 5), Deg('phi', 'Phase', 0),
-      { ...Freq('f', 'Frequency', 1000), min: 10, max: 10000 },
-      { ...R('R1', 'R₁', 100), min: 10, max: 1000 },
-      { ...R('R2', 'R₂', 150), min: 10, max: 1000 },
-      { ...Ind('L1', 'L', .01), min: .001, max: .1 },
-      { ...Cap('C1', 'C', 1e-6), min: 1e-7, max: 1e-5 }, Vs('v0', 'Initial capacitor voltage', 0), Is('i0', 'Initial inductor current', 0), Win('N', 'Window', 'cycles', 6)],
-    net: p => {
-      const net = phasorCircuit('branched', { r:p.R1, r2:p.R2, l:p.L1, c:p.C1, v:p.A })
-      net.elements.find(e=>e.id==='C1').x0 = p.v0
-      net.elements.find(e=>e.id==='L1').x0 = p.i0
-      net.elements[0].wave = { kind:'sine', amp:p.A, freq:p.f, phase:p.phi*Math.PI/180 }
-      return net
-    },
-    layout: phasorLayout('branched'), window: cyclesWindow, cursor: .85,
-    ghost: 'forced', ghostLabel: 'steady state (dashed)',
-    scope: { left: { unit:'V', traces:[{q:'volt',key:'C1',label:'v_C'}] },
-      right: { unit:'A', traces:[{q:'i',key:'R1',label:'i_R1'},{q:'i',key:'C1',label:'i_C'},{q:'i',key:'L1',label:'i_L'}] } },
-    out: {q:'volt',key:'C1',label:'v_C'}, show:'v', view:'phasor',
-    views:['equations','power','scope','state','phasor','acpower'],
-    phasor: {volts:['R1','C1'],total:'V1',current:'R1',branched:true},
-    claim: {branched:true},
   },
   // ============================================================== I
   {
@@ -2145,6 +2146,14 @@ export const EXPERIMENTS = [
     claim: { doubler: true },
   },
 ]
+
+// The first exposure to each method opens its prerequisite lesson in the same pane.
+// Stable experiment IDs and all existing analysis views remain available.
+for (const id of ['f1', 'g1', 'h1']) {
+  const exp = EXPERIMENTS.find(e => e.id === id)
+  exp.views = ['foundations', ...exp.views]
+  exp.view = 'foundations'
+}
 
 // What the student reads lives in lessons.js: `see` (the picture at the
 // defaults), `try` (knob moves with their readings) and `why` (the reasoning).
