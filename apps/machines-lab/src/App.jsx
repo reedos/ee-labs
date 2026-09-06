@@ -10,11 +10,12 @@
 // so a number in a test and a number on screen cannot differ.
 
 import React, { useMemo, useState } from 'react'
-import { LabNav, NumField, ReportIssue, Schematic, fmt } from '@ee-labs/ui'
+import { LabNav, NumField, ReportIssue, Schematic } from '@ee-labs/ui'
 import { radToRpm } from '@ee-labs/machines'
 import { EXPERIMENTS, GROUPS, VIEW_LABELS, inGroup } from './experiments.js'
 import { analyse, defaultsOf } from './analysis.js'
 import { readQuantity } from './quantities.js'
+import { METERS, reading, runUpSays } from './readout.js'
 import { drawOf } from './layouts.js'
 import { TERMS } from './terms.js'
 import { summary } from './report.js'
@@ -32,91 +33,34 @@ import {
   TorqueSpeedCanvas,
 } from './components/canvases.jsx'
 
-const num = (v, unit, digits = 4) => (Number.isFinite(v) ? fmt(v, unit, digits) : '—')
+const num = (v, unit, digits = 4) => reading(v, unit, digits)
 
 /** The meters a reader wants for each model, in the units the quantity has. */
-function readings(x) {
+export function readings(x) {
   const rows = []
-  const add = (label, path, unit, digits = 4) => {
+  for (const [label, path, unit, digits] of METERS[x.kind] || []) {
     try {
-      rows.push({ label, value: num(readQuantity(x, path), unit, digits) })
+      rows.push({ label, value: reading(readQuantity(x, path), unit, digits) })
     } catch {
       // A path a model does not carry is simply not shown.
     }
   }
-  if (x.kind === 'dc') {
-    add('Speed', 'mech.rpm', 'rev/min')
-    add('Armature current', 'mech.ia', 'A')
-    add('Torque', 'mech.torque', 'N·m')
-    add('Back-EMF', 'mech.emf', 'V')
-    add('Stall torque', 'line.stall', 'N·m')
-    add('No-load speed', 'line.noLoadRpm', 'rev/min')
-    add('Electrical constant', 'tau.e', 's')
-    add('Mechanical constant', 'tau.m', 's')
-    add('Efficiency', 'op.efficiency', '')
-  } else if (x.kind === 'transformer') {
-    add('Primary voltage', 'xf.vp', 'V')
-    add('Load voltage', 'xf.vOut', 'V')
-    add('Load current', 'xf.iLoad', 'A')
-    add('Primary current', 'xf.iPrim', 'A')
-    add('Output power', 'xf.pOut', 'W')
-    add('Copper loss', 'xf.pCu', 'W')
-    add('Core loss', 'xf.pCore', 'W')
-    add('Efficiency', 'xf.efficiency', '')
-    add('Regulation', 'xf.regulation', '')
-  } else if (x.kind === 'im') {
-    add('Synchronous speed', 'im.rpmSync', 'rev/min')
-    add('Shaft speed', 'im.rpm', 'rev/min')
-    add('Slip', 'im.slip', '')
-    add('Rotor frequency', 'im.rotorHz', 'Hz')
-    add('Torque', 'im.torque', 'N·m')
-    add('Stator current', 'im.I1', 'A')
-    add('Rotor current', 'im.I2', 'A')
-    add('Power factor', 'im.pf', '')
-    add('Breakdown torque', 'im.tMax', 'N·m')
-    add('Breakdown slip', 'im.sMax', '')
-  } else if (x.kind === 'field') {
-    add('Wave amplitude', 'field.amplitude', 'A-turns')
-    add('Synchronous speed', 'field.rpmSync', 'rev/min')
-  } else if (x.kind === 'sync') {
-    add('Power angle', 'sync.delta', '°')
-    add('Power', 'sync.P', 'W')
-    add('Torque', 'sync.torque', 'N·m')
-    add('Current', 'sync.I', 'A')
-    add('Reactive power', 'sync.Q', 'var')
-    add('Power factor', 'sync.pf', '')
-    add('Pull-out power', 'sync.pullOut', 'W')
-    add('Stability margin', 'sync.margin', '')
-  } else if (x.kind === 'pmsm') {
-    add('Torque constant', 'pmsm.kT', 'N·m/A')
-    add('Torque', 'pmsm.torque', 'N·m')
-    add('Current loop constant', 'pmsm.tauElec', 's')
-    add('Speed loop constant', 'pmsm.tauMech', 's')
-    add('Loop separation', 'pmsm.separation', '')
-  } else if (x.kind === 'dq') {
-    add('d', 'dq.d', '')
-    add('q', 'dq.q', '')
-    add('Zero sequence', 'dq.zero', '')
-    add('Radius', 'dq.radius', '')
-    add('Power, three phase', 'dq.pAbc', 'W')
-    add('Power, dq frame', 'dq.pDq', 'W')
-  } else if (x.kind === 'losses') {
-    add('Output', 'loss.pOut', 'W')
-    add('Copper loss', 'loss.pCu', 'W')
-    add('Core loss', 'loss.pCore', 'W')
-    add('Friction and windage', 'loss.pFriction', 'W')
-    add('Total loss', 'loss.total', 'W')
-    add('Efficiency', 'loss.efficiency', '')
-    add('Temperature rise', 'heat.rise', 'K')
-    add('Final temperature', 'heat.final', '°C')
-    add('Headroom', 'heat.headroom', 'K')
-  } else if (x.kind === 'sat') {
-    add('Flux linkage', 'sat.lambda', 'Wb')
-    add('Incremental inductance', 'sat.L', 'H')
-    add('Knee current', 'sat.iKnee', 'A')
-    add('Linear model would give', 'sat.linear', 'Wb')
-  }
   return rows
+}
+
+/**
+ * The one reading the topbar carries.
+ *
+ * It is the model's first meter unless the experiment names another in
+ * `lead`. C2's lesson is the synchronous speed and its only view is the
+ * rotating field, so without a lead the one number it teaches appeared
+ * nowhere on its screen and none of its try lines changed anything.
+ */
+export function headline(exp, x) {
+  const rows = readings(x)
+  const led = exp.lead && rows.find((r) => r.label === exp.lead)
+  const row = led || rows[0]
+  return row ? `${row.label}: ${row.value}` : ''
 }
 
 /** Where the power goes, per model, as a table that adds up. */
@@ -182,6 +126,51 @@ function powerRows(x) {
   return null
 }
 
+/**
+ * The state equation, with its axes named.
+ *
+ * A matrix of bare numbers is a plot with no axes. The row header says which
+ * derivative the row is, the column header says which state the entry
+ * multiplies, and both carry their units: every entry of A is per second,
+ * because it turns a state into that state's rate. The affine column is the
+ * input term and is a rate, not a coefficient, so it is headed apart.
+ */
+function Matrix({ rows, states, affine, affineUnit }) {
+  return (
+    <table className="matrix">
+      <thead>
+        <tr>
+          <th>d/dt</th>
+          {states.map((s) => (
+            <th key={s}>{s}</th>
+          ))}
+          {affine && <th className="affine">input</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={i}>
+            <th>{states[i]}</th>
+            {row.map((v, j) => (
+              <td key={j}>{num(v, '', 5)}</td>
+            ))}
+            {affine && <td className="affine">{num(affine[i], '', 5)}</td>}
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th>units</th>
+          {states.map((s) => (
+            <td key={s}>per second</td>
+          ))}
+          {affine && <td className="affine">{affineUnit}</td>}
+        </tr>
+      </tfoot>
+    </table>
+  )
+}
+
 function StatePane({ x }) {
   if (x.kind === 'pmsm') {
     const s = x.state
@@ -190,19 +179,7 @@ function StatePane({ x }) {
         <p className="pane-note">
           The dq current equations at {num(x.machine.omegaE / (2 * Math.PI), 'Hz')} electrical. Linear, so exact.
         </p>
-        <table className="matrix">
-          <tbody>
-            {s.A.map((row, i) => (
-              <tr key={i}>
-                <th>{s.states[i]}</th>
-                {row.map((v, j) => (
-                  <td key={j}>{num(v, '', 5)}</td>
-                ))}
-                <td className="affine">{num(s.c[i], '', 5)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Matrix rows={s.A} states={s.states} affine={s.c} affineUnit="A per second" />
       </div>
     )
   }
@@ -214,18 +191,7 @@ function StatePane({ x }) {
       <p className="pane-note">
         Two states, read off one resistive solve. The second row is the rotor, in mechanical units.
       </p>
-      <table className="matrix">
-        <tbody>
-          {dyn.A.map((row, i) => (
-            <tr key={i}>
-              <th>{names[i]}</th>
-              {row.map((v, j) => (
-                <td key={j}>{num(v, '', 5)}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <Matrix rows={dyn.A} states={names} />
       <p className="pane-note">
         Roots at {num(x.tc.roots[0].re, '', 5)} and {num(x.tc.roots[1].re, '', 5)} per second.
       </p>
@@ -256,6 +222,17 @@ function PowerPane({ x }) {
   )
 }
 
+/**
+ * The phasor view.
+ *
+ * The transformer's used to draw the PRIMARY voltage beside the loaded
+ * secondary, on one plane, at one scale. Those are the two sides of a 2:1
+ * ratio, so the picture said the secondary had lost half its voltage. B5's
+ * note compares the secondary with no load against the secondary with one,
+ * 119.8 V against 113.6 V, and neither of those arrows was drawn. Both are
+ * drawn now, and the load current with them, because the current through the
+ * series branch is what turns and shortens the output.
+ */
 function Phasors({ x }) {
   if (x.kind === 'sync') {
     const p = x.phasor
@@ -264,19 +241,21 @@ function Phasors({ x }) {
         arrows={[
           { label: 'V', re: p.V[0], im: p.V[1] },
           { label: 'E', re: p.E[0], im: p.E[1] },
-          { label: 'I', re: p.I[0] * 10, im: p.I[1] * 10 },
+          { label: 'I', re: p.I[0], im: p.I[1], current: true, unit: 'A' },
         ]}
       />
     )
   }
-  const ac = x.ac
-  const pick = (id) => ac.v[id] || [0, 0]
+  // The solver's phasors are amplitudes. Every number the transformer's
+  // lessons quote is rms, so the arrows are drawn rms and the angles are
+  // unchanged by the scaling.
+  const at = (v) => (v || [0, 0]).map((c) => c / Math.SQRT2)
   return (
     <PhasorCanvas
       arrows={[
-        { label: 'V primary', re: pick('p')[0], im: pick('p')[1] },
-        { label: 'V load', re: (ac.v[x.net.outNode] || [0, 0])[0], im: (ac.v[x.net.outNode] || [0, 0])[1] },
-        { label: 'I load', re: ac.i.RL[0] * 6, im: ac.i.RL[1] * 6 },
+        { label: 'V no load', re: at(x.open.v[x.openNode])[0], im: at(x.open.v[x.openNode])[1] },
+        { label: 'V loaded', re: at(x.ac.v[x.net.outNode])[0], im: at(x.ac.v[x.net.outNode])[1] },
+        { label: 'I load', re: at(x.ac.i.RL)[0], im: at(x.ac.i.RL)[1], current: true, unit: 'A' },
       ]}
     />
   )
@@ -389,7 +368,10 @@ export default function App() {
   }, [exp, params])
 
   const draw = x.error ? null : drawOf(x)
-  const meters = x.error ? null : x.sol || null
+  // The thermal analogy declines meters: a branch current there is a loss in
+  // watts and a node voltage is a rise in kelvins, and the Schematic prints
+  // both in electrical units. Its elements carry their own values instead.
+  const meters = x.error || !draw || draw.meters === false ? null : x.sol || null
 
   return (
     <div className="shell">
@@ -446,12 +428,12 @@ export default function App() {
         <header className="topbar">
           <span className="group">{exp.group}</span>
           <span data-role="outcome" className="outcome">
-            {x.error ? x.error.message : readings(x)[0] ? `${readings(x)[0].label}: ${readings(x)[0].value}` : ''}
+            {x.error ? x.error.message : headline(exp, x)}
           </span>
         </header>
 
         {draw && (
-          <Schematic elements={draw.elements} layout={draw.layout} meters={meters} show="i" className="machine" />
+          <Schematic elements={draw.elements} layout={draw.layout} meters={meters} show={meters ? 'i' : 'none'} className="machine" />
         )}
         {!draw && !x.error && <div className="no-circuit">This model is a closed form, not a circuit.</div>}
 
@@ -471,7 +453,7 @@ export default function App() {
               ))}
             </div>
             {x.kind === 'sat' && <span className="readout">{x.label}</span>}
-            {x.runUp && <span className="readout">{x.runUp.says}</span>}
+            {x.runUp && <span className="readout">{runUpSays(x.runUp)}</span>}
           </div>
           {x.error ? <div className="pane error">{x.error.message}</div> : <View view={view} x={x} />}
         </div>

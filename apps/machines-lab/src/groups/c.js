@@ -53,6 +53,11 @@ export const EXPERIMENTS = [
     ],
     view: 'field',
     views: ['field'],
+    // The topbar carries the model's first meter, which for the rotating field
+    // is the wave amplitude. This lesson is the synchronous speed, and its
+    // only view is the field plot, so without this the number it teaches was
+    // nowhere on its screen.
+    lead: 'Synchronous speed',
     claim: { sync: true },
   },
   {
