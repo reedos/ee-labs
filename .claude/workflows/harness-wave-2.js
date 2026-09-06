@@ -32,7 +32,7 @@ const RESULT = {
 
 phase('Harness')
 const results = await pipeline(LABS, (lab) => agent(`You are a VERIFIER in the EE Labs program, assigned one lab that has no browser harness yet: apps/${lab.slug}. Chromium is installed for Playwright in its default browsers cache (never run "playwright install"; use the Chromium the installed @playwright/test resolves on its own).
-SETUP: you are in your own git worktree created from master, which is behind. First: (git checkout -b verify/${lab.slug} ${INTEGRATION} 2>/dev/null || git checkout verify/${lab.slug}) && npm ci --no-audit --no-fund. If the branch already existed it carries an earlier sitting's partial work, cut off part way: read git log ${INTEGRATION}..verify/${lab.slug} --stat and every file it added before you continue, and finish that work rather than restart it. Work only in this worktree.
+SETUP: you are in your own git worktree created from master, which is behind. First: (git checkout verify/${lab.slug} 2>/dev/null || git checkout -b verify/${lab.slug} ${INTEGRATION}) && npm ci --no-audit --no-fund. If the branch already existed it carries an earlier sitting's partial work, cut off part way: read git log ${INTEGRATION}..verify/${lab.slug} --stat and every file it added before you continue, and finish that work rather than restart it. Work only in this worktree.
 ${RULES}
 READ FIRST: apps/circuit-lab/scripts/verify.mjs and apps/power-lab/scripts/verify.mjs (the harness idiom: what they load, what they measure, how they report; probes must measure the claim, not a proxy), apps/${lab.slug}/AGENT_BRIEF.md, the lab's plan file at the root, apps/${lab.slug}/src in full (experiments or lessons, App.jsx, components, the tests), and REVIEW_PLAYBOOK.md in full.
 DO, in order:

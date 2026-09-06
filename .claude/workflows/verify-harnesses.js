@@ -44,7 +44,7 @@ const INTEGRATION = 'claude/advanced-analog-labs-5eh3qd'
 
 phase('Verify')
 const results = await pipeline(LABS, (lab) => agent(`You are a VERIFIER in the EE Labs program, assigned one lab: apps/${lab.slug}. Every overseer deferred this step believing there was no browser. There is: Chromium is installed for Playwright in its default browsers cache (never run "playwright install").
-SETUP: you are in your own git worktree created from master, which is behind. First: (git checkout -b verify/${lab.slug} ${INTEGRATION} 2>/dev/null || git checkout verify/${lab.slug}) && npm ci --no-audit --no-fund. If the branch already existed it carries an earlier sitting's partial work, cut off part way: read git log ${INTEGRATION}..verify/${lab.slug} --stat and every file it added before you continue, and finish that work rather than restart it.
+SETUP: you are in your own git worktree created from master, which is behind. First: (git checkout verify/${lab.slug} 2>/dev/null || git checkout -b verify/${lab.slug} ${INTEGRATION}) && npm ci --no-audit --no-fund. If the branch already existed it carries an earlier sitting's partial work, cut off part way: read git log ${INTEGRATION}..verify/${lab.slug} --stat and every file it added before you continue, and finish that work rather than restart it.
 ${RULES}
 READ FIRST: apps/${lab.slug}/scripts/verify.mjs (the harness: what it loads, what it checks, what it expects in APP_URL), apps/${lab.slug}/AGENT_BRIEF.md if present, the lab's plan file at the root if present, apps/${lab.slug}/src (experiments or presets or lessons, App.jsx, components), and REVIEW_PLAYBOOK.md in full.
 STEPS:
