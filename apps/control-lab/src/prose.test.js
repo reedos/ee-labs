@@ -2,6 +2,7 @@ import { describe, it } from 'vitest'
 import { LESSONS } from './lessons.js'
 import { TERMS } from './terms.js'
 import { PLANT_DEF, CONTROLLER_DEF } from './chrome.js'
+import { HEAD_TEXT, CAPTIONS } from './diagramProse.js'
 import { expectPlain } from '@ee-labs/prose/testing'
 
 // The house style, measured (STYLE.md).
@@ -32,4 +33,15 @@ describe('every term reads plainly', () => {
 describe('the section-header definitions read plainly', () => {
   it('plant', () => expectPlain(PLANT_DEF, 'note', 'PLANT_DEF'))
   it('controller', () => expectPlain(CONTROLLER_DEF, 'note', 'CONTROLLER_DEF'))
+})
+
+// The loop diagram's own sentences, which nothing measured until now. Its
+// subtitle had carried two semicolons since it was written (S5) and its
+// cascade caption an em dash (S3): STYLE.md asks for every chrome string,
+// and "every chrome string" had quietly meant "the two in chrome.js".
+describe('the loop diagram reads plainly', () => {
+  it('the subtitle', () => expectPlain(HEAD_TEXT, 'note', 'diagram subtitle'))
+  for (const c of CAPTIONS) {
+    it(`caption: ${c}`, () => expectPlain(c, 'caption', 'diagram caption'))
+  }
 })

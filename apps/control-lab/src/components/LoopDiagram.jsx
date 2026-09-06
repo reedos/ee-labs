@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { fmt, fmtNum } from '@ee-labs/ui'
 import { fromDisplayName } from '../fromLink.js'
+import { HEAD_PARTS, CASCADE, DRIVE, FED_BACK, STEP_ENTERS } from '../diagramProse.js'
 
 /**
  * The classic feedback loop as a block diagram, on demand.
@@ -81,7 +82,7 @@ const chunk = (parts) =>
     : [parts.join('  ·  ')]
 
 // CompactLoop's column is 250px, too narrow for the longer decorative notes
-// on one line ("in cascade: transfer functions multiply — L = C·P" runs
+// on one line (CASCADE, diagramProse.js, runs
 // about 260px at the notes' own 10px). Split at the midpoint word rather
 // than drop the sentence — the split is cosmetic, not a content cut.
 const twoLine = (text) => {
@@ -131,8 +132,7 @@ export default function LoopDiagram(props) {
         <div className="fd-head">
           <b>The loop</b>
           <span>
-            the error <em>r − y</em> drives C; a disturbance <em>d</em> adds at the plant&apos;s
-            input; click <em>r</em> or <em>d</em> to choose which step the plot answers
+            {HEAD_PARTS.map((p, i) => (p.em ? <em key={i}>{p.em}</em> : <React.Fragment key={i}>{p.t}</React.Fragment>))}
           </span>
           <button type="button" className="ghost" onClick={onClose} aria-label="Close diagram">
             ✕
@@ -238,7 +238,7 @@ function WideLoop({ plant, plantP, ctrl, ctrlP, ctrlId, from, stepInput, onInjec
         {wire(`M 22 ${midY} H ${sum1 - R - 2}`, 'wr', injectRef)}
         {injectRef ? (
           <text className="fd-note" x={2} y={midY - 32}>
-            the step enters here
+            {STEP_ENTERS}
           </text>
         ) : null}
       </g>
@@ -263,7 +263,7 @@ function WideLoop({ plant, plantP, ctrl, ctrlP, ctrlId, from, stepInput, onInjec
       {/* The view says the name of the thing it enacts (Reed's rule,
           from the convolution review): boxes in cascade MULTIPLY. */}
       <text className="fd-note" x={cX + 4} y={midY + BH / 2 + 12} textAnchor="start">
-        in cascade: transfer functions multiply — L = C·P
+        {CASCADE}
       </text>
 
       {/* The disturbance: what the world does to the plant, entering at
@@ -284,7 +284,7 @@ function WideLoop({ plant, plantP, ctrl, ctrlP, ctrlId, from, stepInput, onInjec
         {wire(`M ${sum2} 26 V ${midY - R - 2}`, 'wd', !injectRef)}
         {!injectRef ? (
           <text className="fd-note" x={sum2 + 12} y={20}>
-            the step enters here
+            {STEP_ENTERS}
           </text>
         ) : null}
       </g>
@@ -313,7 +313,7 @@ function WideLoop({ plant, plantP, ctrl, ctrlP, ctrlId, from, stepInput, onInjec
           explanation of the steady-state error. */}
       {ctrlId === 'p' ? (
         <text className="fd-note" x={pX + 4} y={midY + BH / 2 + 12} textAnchor="start">
-          driven by Kp·(r − y), not by r
+          {DRIVE}
         </text>
       ) : null}
 
@@ -335,7 +335,7 @@ function WideLoop({ plant, plantP, ctrl, ctrlP, ctrlId, from, stepInput, onInjec
         −
       </text>
       <text className="fd-note" x={(sum1 + tapX) / 2} y={railY + 14} textAnchor="middle">
-        the output, measured and fed back
+        {FED_BACK}
       </text>
     </svg>
   )
@@ -406,7 +406,7 @@ function CompactLoop({ plant, plantP, ctrl, ctrlP, ctrlId, from, stepInput, onIn
   )
 
   const injectRef = stepInput !== 'dist'
-  const cascade = twoLine('in cascade: transfer functions multiply — L = C·P')
+  const cascade = twoLine(CASCADE)
 
   return (
     <svg width={width} height={height} className="fd-svg is-compact" aria-hidden="false">
@@ -436,7 +436,7 @@ function CompactLoop({ plant, plantP, ctrl, ctrlP, ctrlId, from, stepInput, onIn
         {wire(`M ${CX} ${rY + 6} V ${sum1Y - R - 2}`, 'wr', injectRef)}
         {injectRef ? (
           <text className="fd-note" x={CX} y={rNoteY} textAnchor="middle">
-            the step enters here
+            {STEP_ENTERS}
           </text>
         ) : null}
       </g>
@@ -488,7 +488,7 @@ function CompactLoop({ plant, plantP, ctrl, ctrlP, ctrlId, from, stepInput, onIn
         {wire(`M 16 ${sum2Y} H ${CX - R - 2}`, 'wd', !injectRef)}
         {!injectRef ? (
           <text className="fd-note" x={4} y={sum2Y - 26}>
-            the step enters here
+            {STEP_ENTERS}
           </text>
         ) : null}
       </g>
@@ -516,7 +516,7 @@ function CompactLoop({ plant, plantP, ctrl, ctrlP, ctrlId, from, stepInput, onIn
           the steady-state error. Fits on one line at this column's width. */}
       {ctrlId === 'p' ? (
         <text className="fd-note" x={CX} y={pBoxBottom + 14} textAnchor="middle">
-          driven by Kp·(r − y), not by r
+          {DRIVE}
         </text>
       ) : null}
 
@@ -527,7 +527,7 @@ function CompactLoop({ plant, plantP, ctrl, ctrlP, ctrlId, from, stepInput, onIn
         y
       </text>
       <text className="fd-note" x={CX} y={outNoteY} textAnchor="middle">
-        the output, measured and fed back
+        {FED_BACK}
       </text>
 
       {/* Feedback: y carried back and SUBTRACTED, up the column's right

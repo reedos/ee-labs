@@ -8,6 +8,7 @@ import {
   dcGain,
   isStable,
   magnitudeAt,
+  polesZeros,
   margins,
   secondOrderMetrics,
   stepResponse,
@@ -262,6 +263,27 @@ describe('what each lesson claims', () => {
     // Raising the gain is what fixes it, the inverted failure mode's point.
     expect(at(5), 'Kp -> 5 stabilizes it').toBe(true)
     expect(at(20)).toBe(true)
+  })
+
+  it('and it runs away without bound rather than latching to a rail', () => {
+    // The note used to say the loop "latches to a rail" at this gain. There
+    // is no rail: this model is linear, the app's own glossary entry for the
+    // word says the lab has none, and the picture is an exponential still
+    // climbing when the plot ends. A latch would flatten; this does not.
+    const s = applyLesson(byName('The plant that needs feedback'))
+    const { closed } = buildLoop(s.plantId, s.plantP, 'p', { kp: s.ctrlP.kp })
+    const { t, y } = stepResponse(closed, { duration: 8, points: 2000 })
+    // Rising everywhere after the first instant, and rising FASTER at the
+    // end than in the middle — the signature of growth without a limit, and
+    // the opposite of settling against one.
+    const slope = (i) => (y[i + 1] - y[i]) / (t[i + 1] - t[i])
+    expect(slope(1000)).toBeGreaterThan(slope(500))
+    expect(slope(1900)).toBeGreaterThan(slope(1000))
+    // And it is far past the reference of 1 by the end, with nothing holding
+    // it: 0.5 of loop gain against a pole at +1 leaves a mode at +0.5.
+    expect(y[y.length - 1]).toBeGreaterThan(10)
+    const { poles } = polesZeros(closed)
+    expect(Math.max(...poles.map(([re]) => re))).toBeCloseTo(0.5, 9)
   })
 
   it('derivative action improves a resonant plant that P alone makes worse', () => {

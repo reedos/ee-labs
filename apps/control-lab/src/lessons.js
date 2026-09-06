@@ -346,16 +346,25 @@ export const LESSONS = [
     // that used to be the first thing to try — the note and the picture
     // agree, and the instability stays measured the same way it always was
     // (lessons.test.js: unstable at Kp 0.5 and 0.1).
+    // "latches to a rail" was this note's own picture of the failure, and it
+    // is not the picture on screen: the model has no rail, the app's own
+    // glossary entry for the word says so ("This lab has no rails, so its
+    // runaway simply keeps growing"), and the step plot shows an unbounded
+    // exponential climbing off the top of the frame. The claim the picture
+    // makes is that the CLOSED loop runs away too, at a gain this low, which
+    // is what the lesson exists to show. Both words stay in the terms list
+    // below, because "does it stop somewhere?" is the question this picture
+    // raises and the rail entry is where it is answered.
     note:
       'A pole in the right half plane: a positive-feedback stage, a maglev coil. Left alone it runs away ' +
-    'exponentially, and only feedback holds it. Loaded here at Kp = 0.5, the gain is too low, and the loop ' +
-    'already latches to a rail. Raising Kp is what fixes it, the opposite of every other lesson.',
+    'exponentially, and only feedback holds it. Loaded here at Kp = 0.5, the gain is too low, and the closed ' +
+    'loop still runs away. Raising Kp is what fixes it, the opposite of every other lesson.',
     try:
-      'Loaded at Kp → 0.5, already latched and running away. Kp → 5 stabilizes it, settling at 1.25. Kp → 20 ' +
+      'Loaded at Kp → 0.5, already running away. Kp → 5 stabilizes it, settling at 1.25. Kp → 20 ' +
     'tightens that to 1.05.',
     featured: ['kp'],
     chips: [
-      gain('kp', 0.5, 'Kp → 0.5 (latches)', 'Too little gain: the loop runs away to a rail'),
+      gain('kp', 0.5, 'Kp → 0.5 (runs away)', 'Too little gain: the closed loop runs away too'),
       gain('kp', 5),
       gain('kp', 20),
     ],
