@@ -28,7 +28,7 @@ order the nav will fold to (`ELECTRONICS_LAB_PLAN.md` Decision 5).
 | 3 | Electronics Lab | Electronics I and II | 75 of 77 | built in part, dark |
 | 4 | Signal Lab | Signals and Systems, DSP | 35 | released |
 | 5 | Control Lab | Control | 13 | released |
-| 6 | Power Lab | Power electronics | 34 of 56 | built in part, dark |
+| 6 | Power Lab | Power electronics | 55 of 56 | built in part, dark |
 
 Signal Lab's first group needs only sines, so it can be opened after step 1's Group H.
 §5 gives the earliest point each group can be opened, for a reader who wants to
@@ -117,7 +117,7 @@ What it assumes: a transfer function, its poles, and the Bode plot, all from Cir
 Lab. A first-order lag, from Elements F. What it gives back: margins and the root
 locus, which Electronics L5, M3 and N1 hand their loops to.
 
-### Step 6: Power Lab (34 of 56)
+### Step 6: Power Lab (55 of 56)
 
 | Group | Teaches | Count | Status |
 | --- | --- | --- | --- |
@@ -128,7 +128,14 @@ locus, which Electronics L5, M3 and N1 hand their loops to.
 | E · Rectifiers | half and full wave, the capacitor, the dimmer, six-pulse | 6 | built |
 | F · Inverters | the square wave, the comparator, the harmonic clusters, overmodulation | 4 | built |
 | G · Losses | the frequency crossover, peak efficiency, the capacitor's RMS, the ledger | 4 | built |
-| H to N, and the leakage spike | the loop, three-phase, isolated, resonant, drives, EMI, thermal, and the flux that links one winding only | 22 | planned |
+| H · Closing the loop | the averaged model, the buck as a plant, the zero in the wrong half | 3 | built |
+| I · Three-phase out | six-step, sine PWM, the floating neutral | 3 | built |
+| J · Isolation | the forward, push-pull and full-bridge converters | 3 | built |
+| K · Resonance | the series and LLC tanks, and soft switching | 3 | built |
+| L · Motor drives | the DC drive, the H-bridge, the brushless drive | 3 | built |
+| M · Interference | the input filter, the switch node ring, the emission mask | 3 | built |
+| N · Thermal | the junction against the load and the frequency, the coolest frequency | 3 | built |
+| D, the leakage spike | the flux that links one winding only | 1 | planned |
 
 What it assumes: C, L and the RLC from Elements F and G, and the diode from Elements
 I. The switch is Elements F6. Its Group H assumes Control Lab.
@@ -190,7 +197,7 @@ leave it out.
 | Subject | Course | Recommended home | Reason |
 | --- | --- | --- | --- |
 | The ideal transformer and coupled inductors | Circuits II | `packages/network` once, then Elements F8 (turns ratio, reflected impedance) and Power D (flux, saturation) | Power D assumes the turns ratio that no experiment introduces |
-| Three-phase from the circuits side (Y and Δ, line and phase) | Circuits II | Power I, as its first experiment, if a reader needs it | Power I3 already carries the payoff, constant power |
+| Three-phase from the circuits side (Y and Δ, line and phase) | Circuits II | Power I, as its first experiment, if a reader needs it | the Power Lab's three-phase group already carries the payoff, constant power |
 | Two-port matrices (h, y, z, g) | Circuits II | none | Electronics G measures every port by test source, and Blackman's form replaces the two-port feedback analysis |
 | Laplace transforms as a topic | Circuits II, Signals | none | declined by the Elements plan. Seam 1's experiment is the substitute, and H(s) is used from Circuit Lab on |
 | Continuous-time convolution | Signals | Circuit Lab, seam 2 | one experiment |

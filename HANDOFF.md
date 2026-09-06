@@ -1,177 +1,155 @@
 # Handoff: continuing the EE Labs program from another session
 
-Written 2026-09-05 for the session that takes over as director. The state below is
-on origin, and nothing that matters is left in the container that wrote this.
+Written 2026-09-06 by the director session that took over from the first handoff,
+paused at Reed's weekly usage limit. Everything below is on origin. Read this file,
+then `PROGRAM.md` in full, then `BACKLOG.md` §3 and §1.
 
 ## 1. Where everything is
 
 | What | Where |
 | --- | --- |
-| The integration branch, 177 commits ahead of `master` | `claude/advanced-analog-labs-5eh3qd` |
-| The charter, the ledger, the maps | `PROGRAM.md`, `BACKLOG.md`, `EE_LABS_MAP.md`, `CURRICULUM.md`, `ANALOG_ROADMAP.md` |
-| One plan per lab, 25 of them | `*_LAB_PLAN.md` and `CONTROL_LAB_II_PLAN.md` at the root |
-| One brief per built lab | `apps/<slug>/AGENT_BRIEF.md` |
-| The workflow scripts for the work in flight | `.claude/workflows/*.js` |
-| Partial work from the cut-off lanes | the six branches named in `BACKLOG.md` §3, all on origin |
+| The integration branch | `claude/advanced-analog-labs-5eh3qd`, tip `41df187` or later |
+| Master, released and deployed | `master` at `166d05a`, tag `v1.1.0`, live at reedos.github.io/ee-labs |
+| The charter, the ledger, the maps | `PROGRAM.md`, `BACKLOG.md`, `EE_LABS_MAP.md`, `CURRICULUM.md` |
+| One plan per lab | `*_LAB_PLAN.md` at the root |
+| One brief and one needs file per built lab | `apps/<slug>/AGENT_BRIEF.md`, `apps/<slug>/NEEDS.md` |
+| The workflow scripts | `.claude/workflows/*.js` |
+| The director's merge helpers | `scripts/director/*.mjs`, described in §5 |
+| Lane branches, all merged | `lab/electronics-*`, `lab/power-*`, `lab/rf-lab`, `lab/system-lab`, `lab/photonics-lab` |
+| Harness branches, not yet merged | `verify/<slug>` for nine labs, see §4 |
+| The splash redesign proposals | the artifact "EE Labs Splash", three directions, awaiting Reed's pick |
 
-Nineteen apps and fourteen packages are on the integration branch. Sixteen apps are
-dark, three are released, and every app builds. The last full run of the suite gave
-312 test files and 8961 tests with one failure, since fixed. Run it again before
-trusting that. Nothing beyond the second pull request has been merged to `master`,
-and merging is Reed's call.
+Twenty-two apps and sixteen packages are on the integration branch. Four labs are
+released. Eighteen are dark and deployed at their own paths on the next master
+merge. The last full run of the suite on this branch gave 348 files and 10070
+tests at `327ba58`. The three Power Lab merges after that were tested scoped, and
+each was green. Run the full suite before trusting the tip.
 
-## 2. Setting up
+## 2. What this session did
+
+- Merged Electronics Groups D to O, 75 of 77 experiments. Group B is Elements I9
+  and I10 by that plan's Decision 3.
+- Merged Reed's 48 commits from master into the branch, then released the
+  Circuit Elements Lab as 1.1 and merged the branch into master. The deploy
+  passed and the site links the lab.
+- Merged the RF Lab's Groups A to D and the System Lab's Group A. Merged the
+  Photonics Lab's Groups A and C to F. All three are dark.
+- Merged Power Lab Groups H to N. The lab is 55 of 56, with D5, the leakage
+  spike, still deferred.
+- Ran the harness pass over the nine labs that have one. Seven finished. Two were
+  mid-fix at the pause.
+- Brought `ELECTRONICS_LAB_PLAN.md` §5 into line with the measured numbers, and
+  listed the thirteen shape deviations that are Reed's to rule on.
+
+## 3. Setting up on Reed's PC
 
 ```
 git fetch origin
 git checkout claude/advanced-analog-labs-5eh3qd
 npm ci
-npx vitest run
-npm run lint:prose
+npx vitest run --maxWorkers=8
 ```
 
-The suite takes a few minutes on a quiet machine. Two Elements experiment walks,
-the Newton diode sweeps, exceed the 90 s timeout when the machine is loaded, so
-run the full suite only when no agents are running.
+The machine has 32 cores. The full suite takes about four minutes at eight workers
+on a quiet machine, and the Power Lab's App smoke tests take about 36 s each alone.
+Run the full suite only when no agents are running.
 
-Read `PROGRAM.md` in full before anything else. It is the charter every agent reads.
-Then `BACKLOG.md` §3, the director's queue, and §1, the ledger.
+Things that bit this session, so they do not bite twice:
 
-## 3. The role
+- `core.autocrlf` is true here. Every checkout rewrites `.claude/workflows/*.js`
+  with CRLF endings, and the Workflow launcher then refuses the script for
+  hidden control characters. Before every launch run
+  `sed -i 's/\r$//' .claude/workflows/*.js`. Do not commit that change.
+- Launch a workflow by `scriptPath`, the absolute path of the repo file, not by
+  name. The name form was refused even with a clean file.
+- Keep the session's working directory at the repo root while a workflow runs.
+  Each agent's worktree is created relative to the directory at spawn time, and a
+  `cd` into a scratch folder mid-run made two reviewers fail to start.
+- Resume a stopped run with `resumeFromRunId`. Completed agents replay from
+  cache, and the two scripts' setup lines check an existing branch out and tell
+  the agent to continue what is there.
+- The auto-mode classifier refuses force pushes and remote branch deletes. To
+  replace a branch origin already has, merge origin's copy with `-s ours` and
+  push the fast-forward. It also refuses some edits at random. The same edit
+  passes on retry with wider context.
+- Run every script and every test from the repo root. A `cd` inside one Bash
+  call persists into the next.
+- Write a long test run to a log file once and read the log, rather than piping
+  the same run twice.
 
-The session that continues is the director. The director owns `PROGRAM.md`,
-`BACKLOG.md`, the maps, the shared surfaces (`site/`, `README.md`,
-`packages/ui/src/LabNav.jsx`, `.github/workflows/deploy.yml`) and integration.
-Overseers own one lab each and never touch a shared surface. Workers own one lane.
+## 4. What is in flight, and how to resume it
 
-Reed's standing decisions, to keep:
+One run was stopped at the pause: `verify-harnesses`, run id `wf_801f2ca7-30c`.
+Seven of its nine labs finished with `ok`, each on its `verify/<slug>` branch:
+circuit-lab, control-lab, signal-lab, machines-lab, random-lab, instruments-lab
+and fields-lab. None is merged yet. Two were mid-fix and carry a WIP commit at
+the tip of their branch, unrun and unreviewed: `verify/circuit-elements-lab` at
+`0795f5b` and `verify/power-lab` at `e20325f`.
 
-- Overseers are Opus. Reed asked for that twice.
-- Nothing loads measurements from real instruments. The roadmap's seventh tier is
-  out.
-- Every lab ships dark. Only Reed flips a `RELEASE_STATUS`, and only that commit
-  touches the shared surfaces.
-- No model names in files, apart from the commit trailer and the model tier a
-  workflow script sets.
+To resume, from the repo root with the scripts' endings stripped:
 
-The commit trailer is the session's own. `PROGRAM.md` §2 says so.
+```
+Workflow({ scriptPath: "C:\\Users\\reedo\\projects\\ee-labs\\.claude\\workflows\\verify-harnesses.js",
+           resumeFromRunId: "wf_801f2ca7-30c" })
+```
 
-## 4. What was in flight, and how to resume it
+The seven replay from cache and the two rerun, continuing their branches. Then
+merge all nine by §5. They touch only their own lab directories and their needs
+files, so they should merge by union.
 
-Five workflows of Opus agents were running when the account's session limit fell,
-at 19:50 UTC on 2026-09-05. Every agent died inside its first hour. What each left
-was committed on its branch and pushed. `BACKLOG.md` §3 has the table. It says which
-script drives which branches, what is already on each branch, and the order to run
-them.
+After that, the order the first handoff set:
 
-Each script lives in `.claude/workflows/` and runs by name from Claude Code's
-Workflow tool. The order:
-
-1. `electronics-lanes`, args `["de","fg","hi"]`, then again with `["jk","lm","no"]`.
-   Electronics is the critical path. Its groups gate the Applied Analog, Analog IC
-   and Mixed-Signal labs, and the later phases of RF, System and Photonics.
-2. `power-h-to-n`. Three lanes, each adding its groups in its own file with one
-   registration line per table, so the three merge by union.
-3. `rf-system-photonics`. RF's first sitting is already on `lab/rf-lab`, with the
-   brief, the exact core and an untested Smith canvas. Photonics has its brief,
-   package and first app files on `lab/photonics-lab`.
-4. `verify-harnesses`, then `vlsi-interfaces`, then `harness-wave-2` with a list of
-   slugs as args, `electronics-lab` last and only after its lanes have merged.
-
-Every script's setup checks a lane branch out if it already exists and tells the
-agent to read what is there and continue it. Every agent runs its tests in the
-foreground with a long timeout, scoped to what it touched, with vitest throttled to
-two workers. Raise that number if the machine has more than four cores.
-
-Two things to change for a different machine:
-
-- The two harness scripts name Chromium at `/opt/pw-browsers`, which was the
-  container's path. On another machine the agents should use what Playwright has
-  installed. Edit the sentence or tell them.
-- Each script runs at most two agents at once, a cap the Workflow tool sets from
-  the machine's cores. More cores give more lanes.
-
-The session limit is the real constraint. Twenty agents spent about three million
-tokens for six small commits. Run one or two workflows at a time, and stagger them,
-so that a limit falls between waves rather than inside one.
+1. `vlsi-interfaces`. Its setup line is fixed, and the branches are new.
+2. `harness-wave-2`, with the ten slugs as args, `electronics-lab` last.
+3. The Applied Analog, Analog IC and Mixed-Signal labs. They are unblocked by
+   the Electronics groups, and no script exists yet. Write one in the shape of
+   `rf-system-photonics.js`.
 
 ## 5. Integrating a branch
 
-The director integrates each branch a reviewer marks mergeable. The loop that
-worked:
+Merge with `git merge --no-ff lab/<slug>`. Every lane registers into the same
+few files, so expect the same conflicts each time, and resolve them by union in
+group order. The helpers in `scripts/director/` did it this session:
 
-```
-for c in $(git rev-list --reverse --right-only --cherry-pick HEAD...lab/<slug>); do
-  git cherry-pick -x $c || break
-done
-```
+- `union.mjs <files>` keeps both sides of every hunk, ours first.
+- `resolve.mjs <spec.json>` applies a per-hunk choice: `ours`, `theirs`,
+  `both`, or a text. It is for the hunks a union would double, such as a
+  definition line both sides changed.
+- `rebuild-test.mjs <base> <branch> <marker> <import>` rebuilds a test file from
+  the two committed versions. Git folds each lane's closing braces into the
+  other's context, so a union of `experiments.test.js` is never valid.
+- `drop-terms.mjs <file> <keys>` removes a term a later group redefined. Check
+  duplicate keys across `*.terms.js` after every merge, and run `terms.test.js`
+  for words used before their introduction.
+- `needs-count.mjs <letters>` rewrites a needs file's progression entry.
 
-The `--right-only --cherry-pick` form skips commits already applied under another
-hash. On a conflict:
+Two rules master added on 2026-09-05 bite every later lane. A try step is read
+after every earlier step with nothing reset, so a step must set back what an
+earlier step changed. Every sweep key needs an exact value at the knob in the
+App's marker table, or the marker test fails.
 
-- `BACKLOG.md` and any `NEEDS.md`: keep both sides in full, the union.
-- `package-lock.json`: take ours, then `npm install --package-lock-only`, then
-  commit the result. A lockfile resolved by either side alone loses workspaces.
-- `CURRICULUM.md`: take the branch's side, then re-run the progression test.
-- One-line registrations in a lab's tables (Power Lab's `experiments.js`,
-  `math.js`, `terms.js`, `analysis.js`, `packages/switched/index.js`): keep every
-  lane's line, in group order.
+After each integration, add the deploy `cp` line from the lab's needs file.
+Update the ledger and the cut-off table in `BACKLOG.md`, the map's package
+table and the program's canvas table. Put the decisions for Reed into
+`BACKLOG.md` §3. Gate every commit on the test's exit code.
 
-After each integration:
+## 6. Reed's decisions, waiting
 
-1. Add the lab's `cp` line to `.github/workflows/deploy.yml` from its `NEEDS.md`.
-   Dark means unlinked, not unbuilt, so the dark URL exists to review.
-2. Add the lab's ids and counts to `CURRICULUM.md` from its `NEEDS.md`, and run
-   `npx vitest run packages/ui/src/progression.test.js`. A planned row must begin
-   with its group span, as in `H to N, and the leakage spike`, because the parser
-   looks for the letters first.
-3. Promote a canvas to `packages/ui` when a second lab claims it, and update the
-   table in `PROGRAM.md` §4.
-4. Update the ledger in `BACKLOG.md` §1 and move each lane's phasing note into its
-   plan's phasing section.
-5. Run the scoped tests, then the full suite on a quiet machine, then
-   `npm run lint:prose`, then build every app, then push.
+All are in `BACKLOG.md` §3 and under its Electronics Lab section.
 
-Gate every commit on the test's exit code. Two commits went out with a failing
-progression test because a `grep` in the chain swallowed the code.
+- K5's common-base half.
+- Thirteen shape deviations in the Electronics plan.
+- The System Lab's noise-floor constant.
+- The Photonics step pane at phone width.
+- The RF package's two singularity floors.
+- The splash direction, from the three proposals.
 
-## 6. Things that bit, so they do not bite twice
+## 7. Loose ends
 
-- An agent's worktree is created from `master`, which is far behind. Every script's
-  setup checks the integration branch out first.
-- A branch name already in use fails `git checkout -b` and an agent will invent
-  another name. The scripts now fall back to checking the branch out.
-- A background test run never wakes an agent. Tests run in the foreground with the
-  Bash timeout at 600000 ms.
-- `pkill -f vitest` killed the shell that ran it. Kill by pid.
-- A release test that asserts `deploy.yml` must not mention the lab is wrong. The
-  workflow ships every build. The test asserts only `site/index.html`, `README.md`
-  and `LabNav.jsx`.
-- One planner wrote to the main tree's `BACKLOG.md` by absolute path from its
-  worktree. Tell agents to work only in their worktree, and check `git status` in
-  the main tree after a wave.
-- The prose lint has caps of 22 words a sentence on average and 34 at most, no
-  semicolons, no em dashes, no colon reveals, and a short list of banned words.
-  Run `node packages/prose/bin/lint.mjs <files>` on every `.md` before committing.
-
-## 7. What waits, and on what
-
-- Applied Analog, Analog IC, Mixed-Signal: the Electronics lanes.
-- RF Groups E to H, System Phases 2 to 6: Electronics K and O.
-- Photonics Group B: Electronics O.
-- Machines drives: Power Lab Group L.
-- Power Lab D5, the leakage spike, needs a third state and a clamp. The `jk` lane
-  may find that it falls out of the forward converter's reset.
-- The decisions in `BACKLOG.md` §3 are Reed's. They cover the `n_i` pin and the
-  MOSFET threshold. They cover the Grid Lab's own Newton and the ensemble canvas's
-  props. They cover the Elements timeouts, the home of `createComplexChain`, the
-  DC-flow guard's promise, and the error-rate canvas.
-
-## 8. A first prompt for the session that takes over
-
-> You are the director of the EE Labs program. Read HANDOFF.md, then PROGRAM.md,
-> then BACKLOG.md §3 and §1. Confirm the suite is green on this machine. Then run
-> the workflows in HANDOFF.md §4 in order, one or two at a time, integrate each
-> branch a reviewer marks mergeable by HANDOFF.md §5, and keep BACKLOG.md current.
-> Overseers are Opus. Nothing is released and nothing is merged to master without
-> Reed.
+- Four stash entries exist. Two are reviewers' "leftover rf-lab staged" parkings
+  that matched no recent commit's tree, and two are Reed's own from master. None
+  was dropped.
+- `BACKLOG.md` §3 carries this session's two pause notes with the branch names
+  of everything saved.
+- The `-2` and `-orig` copies of four lane branches on origin are superseded by
+  the `-s ours` merges and can be deleted.

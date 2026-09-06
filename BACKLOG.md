@@ -17,7 +17,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Circuit Lab | built | | | |
 | Signal Lab | built | | | |
 | Control Lab | built | | | |
-| Power Lab | built in part, dark | merged, Groups A to G | Groups H to N unassigned | `POWER_LAB_PLAN.md` |
+| Power Lab | built in part, dark | merged, Groups A to N | D5, the leakage spike | `POWER_LAB_PLAN.md` |
 | The two seams and the progression test | built, merged | | | `CURRICULUM.md` §3, §6 |
 | Electronics Lab | built in part, dark | merged, Groups A and C to O | Group B, which is Elements I9 and I10 by Decision 3 | `ELECTRONICS_LAB_PLAN.md` |
 | Logic Lab | built, dark | merged | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
@@ -918,6 +918,16 @@ Items that cross labs and land at integration.
   1e-15 times the load's scale and `abcdToS` against 1e-14 times the matrix norm.
   The reviewer asks for one rule, stated once, as the brief's section 9 wants.
 
+### Paused at the weekly usage limit, 2026-09-06
+
+`HANDOFF.md` is rewritten for the session that continues, and it names every
+branch and run id. In short. Power Groups H to N are merged and the lab is 55
+of 56. The RF, System and Photonics first sittings are merged, dark. The
+harness pass over the nine labs that have one was stopped with seven of nine
+finished on their `verify/*` branches, none merged, and two paused with a WIP
+commit at the tip. Resume that run from the repo root with the scripts'
+line endings stripped, then merge the nine.
+
 ### Paused at Reed's request, 2026-09-05, usage near its limit
 
 Two workflows were stopped mid-run: `power-h-to-n` (all three lanes had at
@@ -993,7 +1003,7 @@ already exists, and tells the agent to read what is there first.
 | --- | --- | --- | --- |
 | Electronics Groups D to I | `lab/electronics-de`, `-fg`, `-hi` | `electronics-lanes` with `["de","fg","hi"]` | merged 2026-09-05, 33 experiments, three lanes each reviewed |
 | Electronics Groups J to O | `lab/electronics-jk`, `-lm`, `-no` | `electronics-lanes` with `["jk","lm","no"]` | merged 2026-09-05, 32 experiments, three lanes each reviewed |
-| Power Lab Groups H to N | `lab/power-hi`, `-jk`, `-lmn` | `power-h-to-n` | untested `loop.js`, `threePhase.js`, `resonant.js`, and the three isolated siblings with a commit |
+| Power Lab Groups H to N | `lab/power-hi`, `-jk`, `-lmn` | `power-h-to-n` | merged 2026-09-06, all three reviewed |
 | RF A to D, System A, Photonics A, C to F | `lab/rf-lab`, `lab/system-lab`, `lab/photonics-lab` | `rf-system-photonics` | merged 2026-09-05, all three reviewed |
 | Harnesses, nine labs that have one | `verify/<slug>` | `verify-harnesses` | Elements: two fixes; Circuit Lab: fixes to the axis, the step readout and two canvases, untested |
 | VLSI and Interfaces | `lab/vlsi-lab`, `lab/interfaces-lab` | `vlsi-interfaces` | not started |
