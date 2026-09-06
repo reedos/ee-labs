@@ -809,16 +809,18 @@ export function windowedSteadyState(conv, { iters = 80, tol = 1e-13, ...opts } =
   if (conv.guess) starts.push(new Array(n).fill(0))
   let run = shoot(pinValues, starts[0])
   for (let s = 1; s < starts.length && !run.converged; s++) run = shoot(pinValues, starts[s])
-  if (!run.converged) {
-    // Newton can circle a point without settling on it when a segment
-    // appears and disappears under the perturbation the Jacobian is taken
-    // with. Running the circuit forward has no such trouble — it is the
-    // converter itself, and it is unconditionally stable — so a few hundred
-    // periods of it give Newton a point to finish from.
-    let x = run.x0
+  // Newton can circle a point without settling on it when a segment appears
+  // and disappears under the perturbation the Jacobian is taken with.
+  // Running the circuit forward has no such trouble — it is the converter
+  // itself, and it is unconditionally stable — so blocks of it give Newton a
+  // point to finish from. Three blocks, because a converter whose output
+  // filter runs to tens of thousands of periods needs more than one.
+  let x = run.x0
+  for (let round = 0; round < 3 && !run.converged; round++) {
     for (let k = 0; k < 2500; k++) x = walkWindows(conv, x, opts).xEnd
     const again = shoot(pinValues, x)
     if (again.converged) run = again
+    else x = again.x0
   }
   if (pinned.length) {
     // A pinned component is one the period map leaves where it started, and

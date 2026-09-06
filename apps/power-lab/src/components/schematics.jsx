@@ -2,6 +2,7 @@ import React from 'react'
 import { fmt } from '@ee-labs/ui'
 import { TRACES } from '../experiments.js'
 import { TRACE_COLORS } from './ScopeCanvas.jsx'
+import { jkDrawings, JK_FRAMES, JK_SIGNALS, JK_NAMES } from './schematicsJk.jsx'
 
 // Schematics, drawn as SVG — the same kit and the same sidebar slot as Circuit
 // Lab's, so a reader moving between the labs meets one drawing style.
@@ -21,6 +22,7 @@ import { TRACE_COLORS } from './ScopeCanvas.jsx'
 const FRAME = { w: 300, h: 150 }
 // Taller and wider frames for the bridges, which do not fit the standard box.
 const FRAMES = {
+  ...JK_FRAMES,
   bridge: { w: 300, h: 185 },
   six: { w: 310, h: 190 },
   flyback: { w: 300, h: 205 },
@@ -319,6 +321,19 @@ const IAt = ({ sig, x, y, dir = 'right', ...rest }) => {
       <Probe sig={sig} x={x} y={y} {...rest} />
     </g>
   )
+}
+
+/**
+ * The kit, handed out so a group built in its own file draws in the same
+ * hand. It is passed to `jkDrawings` rather than imported by it, because a
+ * drawing that imports this module while this module is importing it would
+ * read the kit before it exists.
+ */
+export const KIT = {
+  Wire, Dot, Tag, SideLabel, Res, Cap, Ind, Along, Diode, Switch, Triac,
+  SrcDC, SrcAC, Gnd, Part, Xfmr, Port, Probe, VAt, VAcross, IAt,
+  ohms, farads, henries, volts, fmt,
+  TOP, BOT, MID, SRC,
 }
 
 // ------------------------------------------------------------ per topology
@@ -856,6 +871,7 @@ export const TOPOLOGY_SIGNALS = {
   bridge: ['vin', 'vrect', 'vout', 'vD', 'iD', 'iC', 'iR', 'iin'],
   six: ['vin', 'vrect', 'vout', 'vD', 'iD', 'iC', 'iR', 'iin'],
   dimmer: ['vin', 'vout', 'vD', 'iR', 'iin'],
+  ...JK_SIGNALS,
 }
 
 /** The signals an experiment's circuit carries. */
@@ -878,6 +894,7 @@ export const TOPOLOGY_NAMES = {
   bridge: 'Single-phase full-wave bridge rectifier',
   six: 'Three-phase six-pulse bridge rectifier',
   dimmer: 'Phase-cut dimmer, triac into a resistive load',
+  ...JK_NAMES,
 }
 
 /** Which drawing an experiment gets: its converter, or which bridge it is. */
@@ -891,6 +908,8 @@ const bridgeInv = DRAW.bridgeInv
 delete DRAW.bridgeInv
 DRAW.square = (p, live) => bridgeInv(p, live, { caption: 'one diagonal for half a cycle, then the other' })
 DRAW.spwm = (p, live) => bridgeInv(p, live, { caption: 'a sine against a triangle picks the diagonal' })
+
+Object.assign(DRAW, jkDrawings(KIT))
 
 export const TOPOLOGIES = Object.keys(DRAW)
 

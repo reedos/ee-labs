@@ -7,6 +7,7 @@
 // settings put outside a formula's assumptions is footnoted, not crossed.
 
 import { fmt } from '@ee-labs/ui'
+import { jkMath } from './groups/jk.js'
 
 
 /**
@@ -93,6 +94,7 @@ export function simpson(g, a, b, n = 400) {
 }
 
 export function experimentMath(exp, params, x) {
+  if (exp.jk) return jkMath(exp, params, x)
   if (exp.kind === 'linreg') return linearEntry(params, x)
   if (exp.kind === 'chopper') return chopperEntry(params, x)
   if (exp.kind === 'rectifier') return rectifierEntry(exp, params, x)

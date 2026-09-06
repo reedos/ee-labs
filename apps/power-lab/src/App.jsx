@@ -12,6 +12,8 @@ import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, FluxPane, ScrubPan
 import { fmtz } from './format.js'
 import { scopeMarks, sweepMarks } from './marks.js'
 import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/schematics.jsx'
+import { FamilyPane } from './components/jkPanes.jsx'
+import { jkFlow, jkOutcome, sweepJk } from './groups/jk.js'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -71,6 +73,7 @@ function focusKnob(key) {
 /** The one-line result of an experiment, for the top bar and the report. */
 export function outcomeOf(exp, x) {
   const m = x.m
+  if (x.jk) return jkOutcome(exp, x)
   if (exp.kind === 'linreg') return `η = ${(m.eta * 100).toFixed(1)} %, ${fmt(m.Ploss, 'W', 3)} into the regulator`
   if (exp.kind === 'chopper') return `⟨v⟩ = ${fmt(m.sig.vout.avg, 'V', 3)}, RMS ${fmt(m.sig.vout.rms, 'V', 3)}`
   if (exp.kind === 'rectifier')
@@ -85,6 +88,7 @@ export function outcomeOf(exp, x) {
 export function sweepFor(exp, params) {
   const s = exp.sweep
   if (!s) return null
+  if (exp.jk) return sweepJk(exp, params)
   const opts = sweepOpts(exp, params)
   if (exp.kind === 'linreg') return { points: sweepLinear(params), at: params.Vo / params.Vin, label: 'η = V_out / V_in' }
   if (exp.kind === 'chopper') return { points: sweepChopper(params), at: params.D, label: '⟨v⟩ = D·V_in', label2: 'V_rms = √D·V_in' }
@@ -583,6 +587,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
               <ScrubPane x={x} exp={exp} at={scrubAt} onScrub={setScrub} signals={signalsOf(exp)} />
             ) : null}
             {currentView === 'ledger' ? <LedgerPane x={x} /> : null}
+            {currentView === 'family' ? <FamilyPane x={x} /> : null}
             {currentView === 'math' ? <MathBody entry={math} /> : null}
             {currentView === 'balance' && x.balance ? <BalancePane x={x} /> : null}
             {currentView === 'losses' ? <LossesPane x={x} /> : null}
@@ -639,6 +644,7 @@ export const FLOW_BUDGET = { mid: 26, out: 34 }
 export function flowNodes(exp, params, x) {
   const m = x.m
   const saysK = (exp.symbols || []).includes('K')
+  if (x.jk) return jkFlow(exp, params, x)
   if (x.saturating) {
     return {
       mode: x.ss.mode === 'SAT' ? 'saturating' : MODE_WORDS[m.mode],

@@ -4,6 +4,7 @@ import { EXPERIMENTS, defaultsOf } from './experiments.js'
 import { analyse, buckParams } from './analysis.js'
 import { signalsOf, topologyOf } from './components/schematics.jsx'
 import { ORDER } from './components/panes.jsx'
+import { JK_PINNERS } from './groups/jkPins.js'
 
 // Every number the measures table shows — average, RMS, min, max and
 // peak-to-peak of every signal, for every experiment at its defaults — is
@@ -745,6 +746,7 @@ function pinsFor(exp, x, params) {
   if (['square', 'spwm'].includes(t)) return inverterPins(x)
   if (t === 'flyback') return flybackCCM(x, params)
   if (t === 'halfbridge') return halfBridgeCCM(x)
+  if (JK_PINNERS[t]) return JK_PINNERS[t](x, params, { ex, ap, zero, exs, same, scaled, dc, STATS, RIPPLE })
   return pwm(t, x, params)
 }
 

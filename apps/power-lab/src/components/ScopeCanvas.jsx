@@ -1,4 +1,5 @@
 import React from 'react'
+import { JK_TRACE_COLORS } from '../groups/jk.js'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt, scopeRange } from '@ee-labs/ui'
 import { TRACES } from '../experiments.js'
 import { axisFmt, fitLeftAxis } from '../format.js'
@@ -18,6 +19,7 @@ export const TRACE_COLORS = {
   iQ: '#ffd166',
   iD: '#8ecae6',
   iin: COLORS.textBright,
+  ...JK_TRACE_COLORS,
 }
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
