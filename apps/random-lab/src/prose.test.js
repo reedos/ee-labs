@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, VIEWS, GROUPS } from './experiments.js'
+import { KNOBS, CHOICES } from './App.jsx'
 import { LESSONS } from './lessons.js'
 import { TERMS } from './terms.js'
 import { expectPlain, expectAllPlain } from '@ee-labs/prose/testing'
@@ -41,6 +42,17 @@ describe('the chrome reads plainly', () => {
     for (const [id, label] of Object.entries(VIEWS)) expectPlain(label, 'label', `view ${id}`)
   })
 
+  it('every knob is labelled by its name, not by its parameter', () => {
+    // The four choice knobs offered "dist", "pulse", "window" and
+    // "ensembleKind" as their labels, which are identifiers rather than names.
+    for (const [id, k] of Object.entries(KNOBS)) expectPlain(k.label, 'label', `knob ${id}`)
+    for (const [id, c] of Object.entries(CHOICES)) {
+      expectPlain(c.label, 'label', `choice ${id}`)
+      expect(c.label, `choice ${id}`).not.toBe(id)
+      expect(c.options.length, `choice ${id}`).toBeGreaterThan(1)
+    }
+  })
+
   it('the group headers name what is under them', () => {
     for (const g of GROUPS) {
       // A group header is a title rather than a control label, so it takes the
@@ -64,6 +76,29 @@ describe('the lesson structure', () => {
     for (const e of EXPERIMENTS) {
       for (const step of LESSONS[e.id].try) {
         expect(typeof step.set, `${e.id}`).toBe('object')
+      }
+    }
+  })
+
+  it('names a view the experiment offers, when a step switches view', () => {
+    // A step that says "switch to the density view" is one click, and the
+    // click is the chip. A step naming a view the experiment does not carry
+    // would put a chip on screen that moves nothing.
+    for (const e of EXPERIMENTS) {
+      for (const step of LESSONS[e.id].try) {
+        if (!step.view) continue
+        expect(e.views, `${e.id} step switches to ${step.view}`).toContain(step.view)
+      }
+    }
+  })
+
+  it('says nothing about switching a view without carrying the switch', () => {
+    // The reverse: a sentence that tells the reader to switch views, with no
+    // view on the step, is an instruction the app does not answer.
+    for (const e of EXPERIMENTS) {
+      for (const step of LESSONS[e.id].try) {
+        if (!/switch to the .* view/i.test(step.say)) continue
+        expect(step.view, `${e.id}: "${step.say}"`).toBeTruthy()
       }
     }
   })

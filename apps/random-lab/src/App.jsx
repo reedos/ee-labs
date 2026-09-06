@@ -46,11 +46,25 @@ const KNOBS = {
   wkN: { label: 'Record', min: 256, max: 16384, step: 256, integer: true },
 }
 
+/**
+ * Whether a try step does anything when it is pressed.
+ *
+ * Twenty-one of the ninety steps only ask the reader to look at a number, and
+ * each of them still carried a chip. A control that does nothing when pressed
+ * reads as a broken one, so those steps keep their sentence and lose their
+ * chip.
+ */
+const applies = (step) => Boolean(step.view) || Object.keys(step.set || {}).length > 0
+
+// The knobs that choose between named things. Each carries the label a reader
+// sees, because the parameter's own name is not one: the sidebar offered
+// "dist", "pulse", "window" and "ensembleKind" as headings, which STYLE.md S9
+// and S11 both rule out.
 const CHOICES = {
-  dist: ['gaussian', 'uniform', 'exponential', 'bernoulli', 'rayleigh'],
-  pulse: ['rect', 'halfSine', 'ramp'],
-  ensembleKind: ['gaussian', 'filtered', 'constant', 'outcome'],
-  window: ['hann', 'hamming', 'blackman', 'none'],
+  dist: { label: 'Distribution', options: ['gaussian', 'uniform', 'exponential', 'bernoulli', 'rayleigh'] },
+  pulse: { label: 'Pulse shape', options: ['rect', 'halfSine', 'ramp'] },
+  ensembleKind: { label: 'Process', options: ['gaussian', 'filtered', 'constant', 'outcome'] },
+  window: { label: 'Window', options: ['hann', 'hamming', 'blackman', 'none'] },
 }
 
 export default function App() {
@@ -98,12 +112,29 @@ export default function App() {
 
           <TryLine
             text={lesson.try[0].say}
-            chips={lesson.try.map((t, i) => ({ label: `${i + 1}`, title: t.say }))}
+            chips={lesson.try
+              .map((t, i) => ({ t, label: `${i + 1}` }))
+              .filter(({ t }) => applies(t))
+              .map(({ t, label }) => ({ label, title: t.say }))}
             onChip={(chip) => {
               const step = lesson.try[Number(chip.label) - 1]
-              if (step && step.set) setParams((p) => ({ ...p, ...step.set }))
+              if (!step) return
+              if (step.set) setParams((p) => ({ ...p, ...step.set }))
+              if (step.view) setView(step.view)
             }}
           />
+
+          {/* The steps beyond the first, in full. They used to live only in a
+              chip's tooltip, so a reader on a phone could not reach them at
+              all, and the ones that only ask the reader to look at a number
+              had a chip that did nothing when pressed. */}
+          {lesson.try.length > 1 ? (
+            <ol className="try-steps" start={2}>
+              {lesson.try.slice(1).map((t) => (
+                <li key={t.say}>{t.say}</li>
+              ))}
+            </ol>
+          ) : null}
 
           {featured && (KNOBS[featured] || CHOICES[featured]) ? (
             <div className="featured">
@@ -209,9 +240,9 @@ function Knob({ name, value, onChange }) {
   if (CHOICES[name]) {
     return (
       <label className="knob">
-        <span>{name}</span>
+        <span>{CHOICES[name].label}</span>
         <select value={value} onChange={(e) => onChange(name, e.target.value)}>
-          {CHOICES[name].map((c) => (
+          {CHOICES[name].options.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>

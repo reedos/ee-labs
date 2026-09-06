@@ -55,7 +55,7 @@ export default {
     try: [
       { say: 'Move the marker to 2. The tail holds 2.2750 % of the mass.', set: { qx: 2 } },
       { say: 'Move it to 4. The tail holds 3.1671 × 10⁻³ %, and the shading is invisible.', set: { qx: 4 } },
-      { say: 'Switch to the error rate view. The same function draws that curve.', set: {} },
+      { say: 'Switch to the error rate view. The same function draws that curve.', set: {}, view: 'errorrate' },
     ],
     why: [
       'Q falls faster than any power of x, which is why a small change in a ratio moves an error rate so much.',

@@ -7,7 +7,7 @@ export default {
       'A rectangular filter on this half-sine pulse reaches 81.07 % of it.',
     ].join(' '),
     try: [
-      { say: 'Switch the filter to rectangular. The peak drops and the ratio falls 0.911 dB.', set: {} },
+      { say: 'Read the mismatched ratio. A rectangular filter reaches 81.07 % of this peak.', set: {} },
       { say: 'Switch the pulse to rectangular. The two now agree exactly.', set: { pulse: 'rect' } },
       { say: 'Raise the noise variance to 0.1. The peak stays and the noise around it grows.', set: { noiseVariance: 0.1 } },
     ],

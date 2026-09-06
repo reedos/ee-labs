@@ -31,7 +31,7 @@ export default {
     try: [
       { say: 'Read the gap printed under the plot. It is 5.8 × 10⁻¹¹.', set: {} },
       { say: 'Raise the record to 16384 samples. The gap stays at floating-point size.', set: { wkN: 16384 } },
-      { say: 'Switch to the density view. It is the same numbers on a frequency axis.', set: {} },
+      { say: 'Switch to the density view. It is the same numbers on a frequency axis.', set: {}, view: 'density' },
     ],
     why: [
       'Wiener-Khinchin is usually stated about a process, where it is a limit.',

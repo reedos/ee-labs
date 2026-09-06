@@ -43,6 +43,20 @@
   margin: 0 0 10px;
 }
 
+/* The steps after the first. They are the lesson's own sentences, so they read
+ * as instructions rather than as chrome, and they sit between the try line and
+ * the featured knob where the numbered chips are. */
+.try-steps {
+  color: var(--dim);
+  font-size: 12px;
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+.try-steps li {
+  margin-top: 3px;
+}
+
 /* The featured knob sits directly under the try line, so the control a lesson
  * names is on screen without scrolling at a laptop fold. */
 .featured {
