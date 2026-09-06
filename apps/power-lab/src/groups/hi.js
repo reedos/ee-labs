@@ -123,7 +123,7 @@ export const HI_EXPERIMENTS = [
       'A converter switches, so it is not one linear circuit. Average the two switch positions over a ' +
       'period and it becomes one. Step the load from 5 Ω to 2.5 Ω and the output sags 94.3 mV, from ' +
       '4.902 V to 4.808 V. The smooth curve is the averaged model. It follows the cycle averages to ' +
-      'within 325 µV, an eleventh of the 3.65 mV of ripple it left out.',
+      'within 5.14 µV, on 3.65 mV of ripple.',
     terms: ['averaged-model', 'average', 'ripple', 'synchronous'],
   }),
   loop('buck', {

@@ -146,7 +146,7 @@ Every figure below came out of `scripts/pins-hi.mjs` run against the engine.
 
 | Experiment | Defaults | Pinned |
 | --- | --- | --- |
-| H1 | synchronous buck 12 V, D = 5/12, L = 100 µH, C = 100 µF, R = 5 Ω, f_s = 100 kHz, R_on = 50 mΩ, R_L = 50 mΩ, stepping to 2.5 Ω | V_o 4.902 V with 3.647 mV of ripple, sagging 94.3 mV to 4.808 V. The averaged curve stays within 325 µV of the exact cycle average, 0.345 % of the step and eleven times under the ripple it discards. i_L 0.980 → 1.923 A. To 10 Ω the output rises 48.5 mV |
+| H1 | synchronous buck 12 V, D = 5/12, L = 100 µH, C = 100 µF, R = 5 Ω, f_s = 100 kHz, R_on = 50 mΩ, R_L = 50 mΩ, stepping to 2.5 Ω | V_o 4.902 V with 3.647 mV of ripple, sagging 94.3 mV to 4.808 V. The averaged curve stays within 5.14 µV of the exact cycle average, 0.00545 % of the step and seven hundred times under the 3.647 mV of ripple it discards. i_L 0.980 → 1.923 A. To 10 Ω the output rises 48.5 mV |
 | H2 | synchronous buck 12 V, D = 5/12, L = 100 µH, C = 100 µF, R = 5 Ω, f_s = 100 kHz | b = [0, 0, 1.2e9], a = [1, 2000, 1e8]. G(0) = 12.000 V by three routes: the model, V_in, and dV_o/dD on the switched engine. f₀ = 1591.55 Hz, Q = 5.000, no zeros. The ceiling f_s/5 = 20.00 kHz, 12.6 times the corner. At f_s = 10 kHz the ceiling is 2.000 kHz, 79.6 % of the way down to the corner, and the guard warns |
 | H3 | synchronous boost 12 V, D = 0.5, L = 1 mH, C = 100 µF, R = 10 Ω, f_s = 100 kHz, step +5 % | V_o 24.00 V, f_z = 397.887 Hz = D′²R/(2πL), f₀ = 251.6 Hz, Q = 1.581, G(0) = 48.00 V. A 5 % duty step ends at 26.667 V and dips to 23.609 V first, 391 mV below where it started, on an initial slope of −2400 V/s. At D = 60 %: f_z = 254.6 Hz, 30.00 → 34.286 V, dipping 857 mV |
 
