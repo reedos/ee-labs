@@ -3,7 +3,7 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { EXPERIMENTS, byId, defaultsOf } from '../experiments.js'
 import { analyse } from '../math.js'
-import { linePropsFor, sparamPropsFor } from '../view.js'
+import { chartPropsFor, linePropsFor, sparamPropsFor } from '../view.js'
 import App from '../App.jsx'
 import { ChartPane, EquationsPane, LinePane, NumbersPane, SweepPane } from './panes.jsx'
 import { SparamPane } from './SparamPane.jsx'
@@ -406,5 +406,44 @@ describe('the line view draws an axis for the wave above it', () => {
         expect(s.v, `a3 at ${RL} ohms draws ${s.v}`).toBeLessThanOrEqual(1 + 1e-12)
       }
     }
+  })
+})
+
+describe('the admittance chart at a susceptance of nothing', () => {
+  const at = (id, over = {}) => {
+    const p = { ...defaultsOf(id), ...over }
+    return { exp: byId[id], p, x: analyse(byId[id], p) }
+  }
+
+  it('marks one point rather than two on top of each other', () => {
+    // `REVIEW_PLAYBOOK.md` §6: when two things share coordinates, one of them
+    // has to go. B4 opens with no susceptance added, so the moved point is the
+    // load itself. The chart marked it twice and drew an arc of no length,
+    // with both labels printed at the same pixel.
+    const { exp, p, x } = at('b4')
+    expect(p.b).toBe(0)
+    // The two are the same point, which is why one of them is not drawn.
+    expect(x.shunt.gamma[0]).toBeCloseTo(x.place.gamma[0], 12)
+    expect(x.shunt.gamma[1]).toBeCloseTo(x.place.gamma[1], 12)
+    const props = chartPropsFor(exp, p, x)
+    expect(props.points.filter((q) => q.kind === 'match')).toEqual([])
+    expect(props.paths).toEqual([])
+    expect(props.caption).toMatch(/no arc to draw/)
+    // The circle the element would move along is still drawn, because that is
+    // what the experiment is about.
+    expect(props.circles.map((c) => c.kind)).toContain('conductance')
+    const out = html(<ChartPane exp={exp} x={x} p={p} />)
+    expect(out).not.toContain('data-point="b = 0"')
+  })
+
+  it('draws the moved point and its arc as soon as a susceptance is added', () => {
+    const { exp, p, x } = at('b4', { b: 0.5 })
+    const props = chartPropsFor(exp, p, x)
+    expect(props.points.filter((q) => q.kind === 'match').length).toBe(1)
+    expect(props.paths.length).toBe(1)
+    expect(props.caption).toBeFalsy()
+    const out = html(<ChartPane exp={exp} x={x} p={p} />)
+    expect(out).toContain('data-point="b = 0.5"')
+    expect(out).toContain('data-path="shunt susceptance"')
   })
 })

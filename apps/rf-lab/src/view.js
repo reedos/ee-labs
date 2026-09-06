@@ -25,9 +25,19 @@ export function chartPropsFor(exp, p, x) {
   if (x.kind === 'mismatch') {
     props.points.push({ gamma: x.place.gamma, label: labelOf(x.ZL), kind: 'load' })
     if (x.shunt) {
-      props.points.push({ gamma: x.shunt.gamma, label: `b = ${plain(p.b, 3)}`, kind: 'match' })
+      // The circle the shunt element moves along is drawn whatever is added,
+      // because it is where the load sits and B4's claim is about the family.
       props.circles.push({ ...x.gCircle, label: `g = ${plain(x.y[0], 3)}`, kind: 'conductance' })
-      props.paths.push({ points: shuntPath(x, p), label: 'shunt susceptance', kind: 'match' })
+      // A susceptance of zero is no shunt element. Its marker lands exactly on
+      // the load's, so the picture carried two labels over each other and an
+      // arc of no length, which `REVIEW_PLAYBOOK.md` §6 is about. There is one
+      // point there and the caption says why.
+      if (p.b) {
+        props.points.push({ gamma: x.shunt.gamma, label: `b = ${plain(p.b, 3)}`, kind: 'match' })
+        props.paths.push({ points: shuntPath(x, p), label: 'shunt susceptance', kind: 'match' })
+      } else {
+        props.caption = 'No susceptance is added yet, so the point is the load’s own and there is no arc to draw.'
+      }
     }
     if (x.landmarks) {
       for (const l of x.landmarks) props.points.push({ gamma: l.gamma, label: l.name, kind: 'plain' })
