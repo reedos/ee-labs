@@ -1,4 +1,6 @@
 export const TERMS = {
+  vih: { name: 'Lowest guaranteed high input voltage (VIH)', def: 'The lowest guaranteed high input voltage is VIH.' },
+  vil: { name: 'Highest guaranteed low input voltage (VIL)', def: 'The highest guaranteed low input voltage is VIL.' },
   inverter: { name: 'Inverter', def: 'An inverter is a logic gate whose output is the opposite of its input. Low input gives high output. High input gives low output.' },
   cmos: { name: 'CMOS', def: 'CMOS means complementary metal-oxide-semiconductor. It pairs a pMOS transistor that pulls the output toward the supply with an nMOS transistor that pulls it toward ground.' },
   switch: { name: 'Switch model', def: 'An on transistor is a resistor. An off transistor has no channel current. The gate threshold separates these states.' },

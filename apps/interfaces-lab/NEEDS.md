@@ -1,5 +1,21 @@
 # Interfaces Lab integration needs
 
+## Plot labels and physical context
+
+All three plots now key each semantic curve, guide, region and probe with a visible line, area or marker sample.
+The voltage plot labels VIL and VIH directly, with separate annotation space and a labeled time cursor.
+Input limits are defined in full at first use, in the result labels and before the signal story.
+Hiding the analog traces also removes their legend entries.
+
+The shared wafer-to-circuit introduction precedes the circuit foundation.
+Fabrication and material tradeoffs expand within the lesson, with source links and no material selector implied.
+`CURRICULUM.md` places this prerequisite after basic circuit elements and before semiconductor-device modules.
+
+The Interfaces and shared-primer tests pass 59 checks in eight files.
+The app build and 25 experiment/viewport cases per browser pass in Chromium and Firefox, including 320-pixel width.
+Logs use `labels-interfaces-` in the director worktree. Screenshots remain under `verification`.
+Physical-phone review and student acceptance remain open.
+
 ## Student foundations
 
 Each Group A experiment now states its purpose, signal input, expected output, prediction, tradeoffs and model limits before the derivation.

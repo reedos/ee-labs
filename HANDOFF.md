@@ -1,5 +1,27 @@
 # Handoff: continuing the EE Labs program from another session
 
+## Plot labels and wafer context
+
+The latest review requested names for every plot feature and definitions before threshold abbreviations.
+Interfaces now keys its voltage, load and noise plots, including the undefined-input band, guides, selected points and probes.
+The voltage canvas labels VIL, VIH and the time cursor directly, with reserved annotation space.
+VLSI labels Scope, Transfer, Timing and Fanout, including input/output limits, noise-margin brackets and switch-model gaps.
+Threshold definitions precede their first use. Labels distinguish input voltage limits from output voltage limits and device thresholds.
+
+`ChipContext` in `@ee-labs/explain` provides a shared, short wafer-to-circuit introduction before both labs' circuit foundations.
+It defines wafer, die and integrated circuit, and explains patterning, deposition, etching, doping, interconnects and packaging.
+An expandable note compares silicon, silicon-germanium, indium phosphide, silicon carbide and gallium nitride with source links.
+The substrate and active device material are distinguished. This context does not turn the introductory models into material sweeps.
+`CHIP_FOUNDATIONS.md` is the standalone prerequisite. `CURRICULUM.md` places it after basic circuit elements and before semiconductor-device modules.
+
+`labels-final-scoped.log` records 369 passing tests in 34 files. `labels-all-apps-build.log` records all 24 passing builds.
+The shared styles are scoped to the new note. The full numerical suite was not rerun for this presentation update.
+Final browser logs use `labels-interfaces-` and `labels-vlsi-` prefixes in the worktree root.
+Interfaces has 25 experiment/viewport cases per browser, and VLSI has 30 plus alternate views.
+Both cover Chromium and Firefox down to 320 pixels. Browser checks include keyed annotations, expanded material notes and retained playback behavior.
+Physical-phone and iPhone Safari review remain open. No publication or release is authorized.
+The updated local preview remains `http://127.0.0.1:47630/`.
+
 ## Teaching foundations and phone flow
 
 Reed approved explicit teaching foundations for the initial Interfaces and VLSI experiments.

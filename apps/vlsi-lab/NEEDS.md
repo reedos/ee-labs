@@ -1,5 +1,29 @@
 # Director integration
 
+## Plot labels and chip context
+
+The app imports shared `ChipContext` at the start of Foundations, before the inverter paragraphs.
+Overview browser checks use `:scope > dl > dt` so the primer's material list does not enter the lesson-field count.
+The inverter lesson remains visible without disclosure controls. The shared primer retains its optional fabrication details.
+The curriculum places this short context after basic circuit elements and before semiconductor-device work.
+
+Scope, Transfer, Timing and Fanout now explain all data traces, reference curves, cursor lines and dots, guides and aliases.
+Transfer defines VIH and VIL before use and labels output limits, noise margins, ambiguous switch points and undefined input logic.
+Legends wrap within the plot column. Direct labels have opaque backgrounds so cursors do not cross their text.
+The current topbar uses output and delay words without threshold abbreviations.
+Axes, playback and sticky section navigation keep their existing behavior.
+The desktop plot section scrolls normally so its complete legend, canvas and controls remain reachable on short screens.
+
+The scoped run passes 39 tests in seven files. The app build and numerical pins pass.
+Input-limit definitions and long plot captions have prose-budget tests and exact browser text checks.
+Chromium evidence remains under `shots/chromium`, including canvas-only screenshots and the source fingerprint in `verification.json`.
+The fingerprint covers app source, tests, scripts, package manifest and Vite config. Shared dependencies remain parent-owned.
+The browser gate includes 30 lesson/viewport cases plus alternate views and retains the existing interaction checks.
+
+The combined scoped suite passes 369 tests in 34 files. All 24 apps build and are assembled in the director preview.
+Final browser logs use `labels-vlsi-` prefixes in the worktree root. Physical-phone and Safari review remain open.
+The full numerical suite was not rerun for this presentation update.
+
 ## Foundation update
 
 A1 through A5 now explain purpose, input, expected output, prediction, design tradeoffs and model limits before derivation.

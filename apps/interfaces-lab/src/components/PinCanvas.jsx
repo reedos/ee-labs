@@ -1,12 +1,13 @@
 import React from 'react'
-import { COLORS, drawFrame, plotArea, useCanvas } from '@ee-labs/ui'
+import { COLORS, drawFrame, useCanvas } from '@ee-labs/ui'
+import { pinPlotArea } from '../plotLabels.js'
 
 export default function PinCanvas({ run, reference, thresholds, time, onTime, analog }) {
   const unit = run.tEnd >= 1e-6 ? { name: 'us', factor: 1e-6 } : { name: 'ns', factor: 1e-9 }
   const ref = useCanvas((ctx, w, h) => {
     ctx.fillStyle = COLORS.bg
     ctx.fillRect(0, 0, w, h)
-    const area = plotArea(w, h)
+    const area = pinPlotArea(w, h)
     const { sx, sy } = drawFrame(ctx, area, 0, run.tEnd / unit.factor, 0, 5.5,
       (n) => Number(n.toPrecision(3)).toString(), (n) => Number(n.toPrecision(2)).toString(),
       { xTitle: `Time (${unit.name})`, yTitle: 'Pin voltage (V)' })
@@ -50,20 +51,39 @@ export default function PinCanvas({ run, reference, thresholds, time, onTime, an
     ctx.lineTo(cx, area.y + area.h)
     ctx.stroke()
     if (analog) {
-      ctx.fillStyle = COLORS.trace
+      ctx.fillStyle = COLORS.textBright
       ctx.beginPath()
       ctx.arc(cx, sy(run.at(time).x[0]), 4, 0, Math.PI * 2)
       ctx.fill()
     }
     ctx.restore()
+    ctx.font = '11px system-ui, sans-serif'
+    ctx.textAlign = 'left'
+    const labelX = area.x + area.w + 5
+    const lowY = sy(thresholds.vil)
+    const highY = Math.min(sy(thresholds.vih), lowY - 15)
+    ctx.fillStyle = COLORS.spectrum
+    ctx.fillText('VIL', labelX, lowY + 4)
+    ctx.fillStyle = COLORS.response
+    ctx.fillText('VIH', labelX, highY + 4)
+    ctx.strokeStyle = COLORS.response
+    ctx.setLineDash([])
+    ctx.beginPath()
+    ctx.moveTo(area.x + area.w, sy(thresholds.vih))
+    ctx.lineTo(labelX - 2, highY)
+    ctx.stroke()
+    ctx.fillStyle = COLORS.textBright
+    const cursorLabel = 'Time cursor'
+    const labelWidth = ctx.measureText(cursorLabel).width
+    ctx.fillText(cursorLabel, Math.max(area.x, Math.min(cx - labelWidth / 2, area.x + area.w - labelWidth)), area.y - 9)
   }, [run, reference, thresholds, time, analog])
   const scrub = (event) => {
     const box = event.currentTarget.getBoundingClientRect()
-    const area = plotArea(box.width, box.height)
+    const area = pinPlotArea(box.width, box.height)
     onTime(Math.min(1, Math.max(0, (event.clientX - box.left - area.x) / area.w)) * run.tEnd)
   }
   return <canvas ref={ref} className="pin-canvas" role="img"
-    aria-label="Pin voltage and default reference against time"
+    aria-label="Pin voltage against time with labeled VIL and VIH input limits, shaded undefined logic band, and time cursor"
     data-time-end={run.tEnd} data-voltage-at-quarter={run.at(run.tEnd / 4).x[0]}
     onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); scrub(event) }}
     onPointerMove={(event) => { if (event.buttons) scrub(event) }} />

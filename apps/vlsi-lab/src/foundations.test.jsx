@@ -19,7 +19,8 @@ for (const experiment of EXPERIMENTS) it(`${experiment.id} exposes the complete 
   expect(html).toContain(INVERTER_USE)
   expectPlain(INVERTER_USE, 'why')
   expect(html).toContain('CMOS means complementary metal-oxide-semiconductor')
-  expect(html).not.toContain('<details')
+  expect(html.indexOf('data-role="chip-context"')).toBeLessThan(html.indexOf('An inverter is a logic gate'))
+  expect(html.slice(html.indexOf('<p>An inverter is a logic gate'))).not.toContain('<details')
 })
 
 it('distinguishes time inspection from static input and load sweeps', () => {

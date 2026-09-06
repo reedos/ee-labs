@@ -10,12 +10,12 @@ export const LESSONS = {
     why: 'A push-pull output connects one resistor to a rail at a time. The capacitor voltage stays continuous when the switch changes. The remaining voltage difference decays exponentially with time constant RC. The exact 10% to 90% rise time is ln(9) RC. The common factor 2.2 is a rounded value of ln(9).',
   },
   a2: {
-    see: (x) => `The low input limit VIL is ${volts(x.thresholds.vil)}. The high input limit VIH is ${volts(x.thresholds.vih)}. The rising pin reaches VIH after ${ns(x.rise.tpLH)}.`,
+    see: (x) => `The maximum guaranteed low input (VIL) is ${volts(x.thresholds.vil)}. The minimum guaranteed high input (VIH) is ${volts(x.thresholds.vih)}. The rising pin reaches VIH after ${ns(x.rise.tpLH)}.`,
     try: [{ say: 'Set supply VDD to 5 V. Read both input limits.', set: { vdd: 5 } }],
     why: 'Matched square-law CMOS devices define VIL and VIH where the inverter transfer slope is negative one. Between these limits, the input has no guaranteed logic level. VIL equals (3 VDD + 2 Vt)/8. VIH equals (5 VDD - 2 Vt)/8. These forms require VDD greater than twice Vt. The pin waveform crosses each voltage at a logarithmic delay.',
   },
   a3: {
-    see: (x, p) => `The pull-up charges an initially discharged capacitor to VIH in ${ns(x.rise.tpLH)}. This delay is ${(p.rpu / p.ron).toPrecision(4)} times the push-pull delay. The falling pin approaches ${volts(x.fall.segments[0].target)}.`,
+    see: (x, p) => `The pull-up reaches the minimum guaranteed high input (VIH) in ${ns(x.rise.tpLH)} from zero volts. This delay is ${(p.rpu / p.ron).toPrecision(4)} times the push-pull delay. The falling pin approaches ${volts(x.fall.segments[0].target)}.`,
     try: [{ say: 'Set pull-up resistance to 1 kohm. Read the crossing delay.', set: { rpu: 1000 } }],
     why: 'An open-drain output either connects its on resistance to ground or opens that path. The pull-up remains connected in both states. During release, its resistance sets the charging time constant. During pull-down, both resistances conduct. Their divider sets the low voltage. Their parallel resistance sets the falling time constant. A release from that low voltage crosses VIH earlier than a release from zero.',
   },

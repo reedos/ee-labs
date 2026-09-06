@@ -20,6 +20,21 @@ The rounding bound is not evidence of agreement with an analog chain.
 
 ## Interaction
 
+Scope, Transfer and Fanout legends use the same data as their traces, guides, bands and brackets.
+White cursor lines and operating-point dots have separate keys. Reference keys disappear with the comparison.
+Transfer defines VIH as the lowest guaranteed high input voltage and VIL as the highest guaranteed low input voltage before using either limit.
+It labels output limits, both noise-margin brackets, switch-model gaps and the shaded undefined-input band.
+The analog output remains defined inside that band. The math explains the underscored aliases.
+
+Timing identifies the input, each numbered stage, the default third-stage reference, logic levels and time cursor.
+Fanout identifies its reference as falling delay and explains coincident curves at width two.
+The topbar uses plain output and delay labels, with no unexplained input-limit abbreviations.
+The desktop plot section scrolls with its column so tall legends do not clip the canvas or controls.
+
+Foundations starts with the shared `ChipContext` from `@ee-labs/explain`.
+Its brief introduction is visible. Fabrication and material details remain in its optional disclosure.
+The inverter paragraphs and six lesson fields remain open. Shared context content and styling belong to the parent.
+
 Each lesson opens its explanation with purpose, input, expected output, prediction, design tradeoffs and model limits.
 Visible definitions explain CMOS and the inverter, including complementary signals and two-stage signal restoration.
 Parameter roles sit beside the controls. Edge text states the opposite input and output transitions.
@@ -41,6 +56,16 @@ The scope evaluates the final linear segment beyond its initial sampling window 
 That extension is valid for the accepted isolated rail step because no later input event or region change occurs.
 
 ## Verification
+
+The plot-label update passes 39 focused tests in seven files, the numerical pins and the app build.
+Chromium checks all five lessons at 320, 390, 1366, 1440, 1920 and 2560 pixels, including alternate plot views.
+Legend checks cover reference visibility, guide meanings, aliases, margin values and text containment.
+The visible input-limit definition and long plot captions have prose-budget tests and exact browser text checks.
+Canvas checks measure direct-label separation. Existing playback, held-axis and sticky-navigation checks remain active.
+
+Canvas-only screenshots supplement full-page screenshots in `shots/chromium`.
+The browser report records app source hashes and checks that those sources remain unchanged during the run.
+These hashes cover `src`, `scripts`, the app manifest and Vite config. Parent-owned shared files are outside that fingerprint.
 
 Run these commands from the worktree root.
 

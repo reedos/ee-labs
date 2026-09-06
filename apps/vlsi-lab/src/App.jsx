@@ -7,7 +7,8 @@ import { EXPERIMENTS, analyse, ps, volts } from './experiments.js'
 import { TERMS } from './terms.js'
 import { DEFAULT_AXES, fitAxis, logicReadings, scopePoints, timingComparison } from './presentation.js'
 import { workedMath } from './math.js'
-import Plot from './Plot.jsx'
+import Plot, { PlotLegend } from './Plot.jsx'
+import { PLOT_NOTES } from './plot-notes.js'
 import { Foundations, playbackMeaning } from './Foundations.jsx'
 
 const VIEWS = { scope: 'Scope', timing: 'Timing', fanout: 'Fanout' }
@@ -58,9 +59,9 @@ export default function App() {
   const meters = { ...sol, i: { ...sol.i, Mp: sol.i['Mp.ds'], Mn: sol.i['Mn.ds'] },
     volt: { ...sol.volt, Mp: sol.v.out - CARD.vdd, Mn: sol.v.out, CL: sol.v.out } }
   const scopeTraces = useMemo(() => [
-    ...(compare ? [{ color: COLORS.spectrum, dashed: true, width: 6, points: scopePoints(reference.response, axes.scope) }] : []),
-    { color: COLORS.trace, points: scopePoints(r, axes.scope) },
-  ], [r, reference, axes.scope, compare])
+    ...(compare ? [{ label: `Default: fanout 1, width 2, ${params.edge === 'fall' ? 'falling' : 'rising'} output`, color: COLORS.spectrum, dashed: true, width: 6, points: scopePoints(reference.response, axes.scope) }] : []),
+    { label: `Current ${params.edge === 'fall' ? 'falling' : 'rising'} output`, color: COLORS.trace, points: scopePoints(r, axes.scope) },
+  ], [r, reference, axes.scope, compare, params.edge])
   const timing = useMemo(() => timingComparison(x.chain, reference.chain, compare), [x.chain, reference, compare])
   const probeFanout = playback.position * 8
   const probeGate = extractGate(x.cell, probeFanout * 3 * CU)
@@ -131,17 +132,28 @@ export default function App() {
           </div>}
         </div>
         {dc ? <>
-          <div className="legend"><span className="green">Square law</span><span className="amber">Switch</span>{compare && <span className="blue">Default input 0.900 V</span>}</div>
+          <p className="boundary" data-role="input-limits">{PLOT_NOTES.inputLimits}</p>
           <Plot label="Output voltage against input voltage" xMax={CARD.vdd} yMax={CARD.vdd} xTitle="Input voltage (V)" yTitle="Output voltage (V)"
-            cursor={p.vin} traces={[{ color: COLORS.trace, points: dc.samples.map((s) => [s.vin, s.square]) }, { color: COLORS.spectrum, dashed: true, points: dc.samples.map((s) => [s.vin, s.switch]) }]}
-            marks={[{ x: dc.vil }, { x: dc.vih }, ...(compare ? [{ x: DEFAULTS.vin, y: CARD.vdd / 2, color: COLORS.response }] : [])]}
+            cursor={p.vin} cursorLabel="Vertical white line: selected input" pointLabel="White dot: square-law operating point"
+            traces={[{ label: 'Square-law output', color: COLORS.trace, points: dc.samples.map((s) => [s.vin, s.square]) }, { label: 'Switch output; gaps at 0.450 V and 1.350 V have no unique solution', color: COLORS.spectrum, dashed: true, points: dc.samples.map((s) => [s.vin, s.switch]) }]}
+            marks={[{ x: dc.vil, direct: 'VIL', label: `Vertical VIL: ${volts(dc.vil)}` }, { x: dc.vih, direct: 'VIH', label: `Vertical VIH: ${volts(dc.vih)}` },
+              { y: dc.vol, direct: 'VOL', color: COLORS.phase, label: `Horizontal VOL: ${volts(dc.vol)}` }, { y: dc.voh, direct: 'VOH', color: COLORS.phase, label: `Horizontal VOH: ${volts(dc.voh)}` },
+              ...(compare ? [{ x: DEFAULTS.vin, y: CARD.vdd / 2, color: COLORS.response, label: 'Default crosshair: input and output 0.900 V' }] : [])]}
+            regions={[{ from: dc.vil, to: dc.vih, color: COLORS.marker, label: 'Shaded band between VIL and VIH: undefined input logic level' }]}
+            spans={[{ from: dc.vol, to: dc.vil, y: 0.4, color: COLORS.phase, direct: 'NML', label: `Low noise margin NML = VIL - VOL: ${volts(dc.nml)} (horizontal bracket)` },
+              { from: dc.vih, to: dc.voh, y: 1.4, color: COLORS.phase, direct: 'NMH', label: `High noise margin NMH = VOH - VIH: ${volts(dc.nmh)} (horizontal bracket)` }]}
             point={[p.vin, sol.v.out]} onCursor={(vin) => set('vin', vin)} />
           <PlaybackControls playback={playback} label="Input sweep" />
           <div className="readings" data-role="live-readings"><span>Input {volts(p.vin)}</span><span>Output {volts(sol.v.out)}</span>
             {compare && <span>Output change {volts(sol.v.out - CARD.vdd / 2)}</span>}</div>
-          <p className="boundary">The square-law view is static. The switch curve has gaps at ambiguous threshold points.</p>
+          <p className="boundary" data-role="plot-note">{PLOT_NOTES.transfer}</p>
         </> : view === 'timing' ? <>
-          <div className="legend"><span className="green">Current stages</span>{compare && <span>Default q3: fanout 1, width 2, {p.edge === 'fall' ? 'falling' : 'rising'} first edge</span>}</div>
+          <PlotLegend items={[
+            { color: COLORS.trace, label: `in: chain input; q1 through q${p.stages}: outputs of stages 1 through ${p.stages}` },
+            ...(compare ? [{ color: COLORS.trace, label: `default q3: third-stage output, fanout 1, width 2, ${p.edge === 'fall' ? 'falling' : 'rising'} first edge` }] : []),
+            { color: COLORS.textBright, label: 'Vertical white line: time cursor' },
+          ]} />
+          <p className="boundary" data-role="plot-note">{PLOT_NOTES.timing}</p>
           <div className="timing-plot" data-x-max={axes.timing} data-cursor={playback.position * axes.timing}>
             <TimingCanvas res={timing} signals={timing.signals} window={[0, axes.timing]}
               cursor={playback.position * axes.timing} onCursor={(tick) => playback.setPosition(tick / axes.timing)}
@@ -155,25 +167,24 @@ export default function App() {
           <p className="boundary">{EVENT_GUARD}</p>
           <p className="boundary">This transport chain does not represent a transistor chain driven by analog edges.</p>
         </> : view === 'fanout' ? <>
-          <div className="legend"><span className="green">Falling</span><span className="amber">Rising (dashed)</span>{compare && <span className="blue">Default width 2</span>}</div>
           <Plot label="Propagation delay against fanout" xMax={8} yMax={axes.fanout} xTitle="Fanout (unit inputs)" yTitle="Delay (ps)"
-            cursor={probeFanout} point={[probeFanout, (p.edge === 'fall' ? probeGate.tpHL : probeGate.tpLH) * 1e12]}
-            marks={[{ x: p.fanout }, ...(compare ? [{ x: DEFAULTS.fanout, y: reference.gate.tpHL * 1e12, color: COLORS.response }] : [])]} onCursor={(v) => playback.setPosition(v / 8)}
-            traces={[...(compare ? [{ color: COLORS.response, dashed: true, width: 7, points: reference.fanouts.map((f) => [f.fanout, f.tpHL * 1e12]) }] : []),
-              { color: COLORS.trace, points: x.fanouts.map((f) => [f.fanout, f.tpHL * 1e12]) },
-              { color: COLORS.spectrum, dashed: true, points: x.fanouts.map((f) => [f.fanout, f.tpLH * 1e12]) }]} />
+            cursor={probeFanout} cursorLabel="Vertical white line: probe fanout" pointLabel={`White dot: probe ${p.edge === 'fall' ? 'falling' : 'rising'} delay`} point={[probeFanout, (p.edge === 'fall' ? probeGate.tpHL : probeGate.tpLH) * 1e12]}
+            marks={[{ x: p.fanout, label: `Vertical guide: selected fanout ${p.fanout}` }, ...(compare ? [{ x: DEFAULTS.fanout, y: reference.gate.tpHL * 1e12, color: COLORS.response, label: `Default crosshair: fanout 1, falling delay ${ps(reference.gate.tpHL)}` }] : [])]} onCursor={(v) => playback.setPosition(v / 8)}
+            traces={[...(compare ? [{ label: 'Default falling delay: width 2', color: COLORS.response, dashed: true, width: 7, points: reference.fanouts.map((f) => [f.fanout, f.tpHL * 1e12]) }] : []),
+              { label: 'Current falling output delay (tpHL)', color: COLORS.trace, points: x.fanouts.map((f) => [f.fanout, f.tpHL * 1e12]) },
+              { label: 'Current rising output delay (tpLH)', color: COLORS.spectrum, dashed: true, points: x.fanouts.map((f) => [f.fanout, f.tpLH * 1e12]) }]} />
           <PlaybackControls playback={playback} label="Fanout sweep" />
           <div className="readings" data-role="live-readings"><span>Probe fanout {probeFanout.toFixed(2)}</span>
             <span>Probe delay {ps(p.edge === 'fall' ? probeGate.tpHL : probeGate.tpLH)}</span></div>
           <div className="readings"><span>Selected fanout {p.fanout}</span><span>Falling {ps(x.gate.tpHL)}</span><span>Rising {ps(x.gate.tpLH)}</span>
             {compare && <span>Default delay {ps(reference.gate.tpHL)}</span>}</div>
           <p className="boundary">The probe coordinate is load in unit inverter inputs. The selected load remains at the marked fanout.</p>
-          <p className="boundary">Each load is one unit inverter input. These delays assume ideal rail steps.</p>
+          <p className="boundary" data-role="plot-note">{PLOT_NOTES.fanout}</p>
         </> : <>
-          <div className="legend"><span className="green">Current {p.edge === 'fall' ? 'falling' : 'rising'} edge</span>{compare && <span className="amber">Default: fanout 1, width 2, {p.edge === 'fall' ? 'falling' : 'rising'}</span>}</div>
           <Plot label="Output voltage against time after a rail step" xMax={axes.scope} yMax={CARD.vdd}
             xTitle="Time (ps)" yTitle="Output voltage (V)" traces={scopeTraces} cursor={timePs} point={[timePs, sol.v.out]}
-            marks={[{ x: r.measured * 1e12, y: CARD.vdd / 2 }]}
+            cursorLabel="Vertical white line: time cursor" pointLabel="White dot: current output at cursor"
+            marks={[{ x: r.measured * 1e12, label: `Vertical guide: propagation delay ${ps(r.measured)}` }, { y: CARD.vdd / 2, direct: '50%', label: 'Horizontal 50% guide: half-supply 0.900 V' }]}
             onCursor={(v) => playback.setPosition(v / axes.scope)} />
           <PlaybackControls playback={playback} label="Time cursor" />
           <div className="readings" data-role="live-readings"><span>Time {timePs.toFixed(2)} ps</span><span>Output {volts(sol.v.out)}</span>

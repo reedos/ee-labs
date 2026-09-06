@@ -1,11 +1,21 @@
 import { createServer } from 'node:http'
-import { readFile, mkdir, writeFile } from 'node:fs/promises'
+import { readFile, readdir, mkdir, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { dirname, extname, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { chromium, firefox } from 'playwright'
+import { PLOT_NOTES } from '../src/plot-notes.js'
 
 const app = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+async function sourceHashes() {
+  const paths = ['package.json', 'vite.config.js']
+  for (const dir of ['src', 'scripts']) for (const name of await readdir(resolve(app, dir))) paths.push(`${dir}/${name}`)
+  const hashes = {}
+  for (const path of paths.sort()) hashes[path] = createHash('sha256').update(await readFile(resolve(app, path))).digest('hex')
+  return hashes
+}
+const frozenSources = await sourceHashes()
 const dist = resolve(app, 'dist')
 const browserName = process.env.BROWSER || 'chromium'
 if (!['chromium', 'firefox'].includes(browserName)) throw new Error(`Unsupported browser: ${browserName}`)
@@ -25,7 +35,8 @@ const server = createServer(async (req, res) => {
 await new Promise((done) => server.listen(0, '127.0.0.1', done))
 let browser
 const target = process.env.APP_URL || `http://127.0.0.1:${server.address().port}/vlsi-lab/`
-const evidence = { browser: browserName, navigation: process.env.APP_URL ? 'Assembled sibling paths' : 'App-only preview', completed: false, views: [], errors: [] }
+const evidence = { browser: browserName, navigation: process.env.APP_URL ? 'Assembled sibling paths' : 'App-only preview', completed: false,
+  sourceDigest: createHash('sha256').update(JSON.stringify(frozenSources)).digest('hex'), sourceHashes: frozenSources, views: [], errors: [] }
 const axisState = (page) => page.locator('[data-x-max]').evaluate((node) => ({ x: node.dataset.xMax, y: node.dataset.yMax || null }))
 const cursor = (page) => page.locator('[data-cursor]').evaluate((node) => Number(node.dataset.cursor))
 const pixels = (page) => page.locator('canvas').evaluate((canvas) => canvas.toDataURL())
@@ -33,6 +44,52 @@ const axisPixels = (page) => page.locator('canvas').evaluate((canvas) => {
   const ctx = canvas.getContext('2d')
   return Array.from(ctx.getImageData(0, canvas.height - 24, canvas.width, 24).data).join(',')
 })
+async function labelsCheck(page) {
+  const legend = page.getByLabel('Plot legend', { exact: true })
+  const labels = await legend.locator('.legend-item > span').allTextContents()
+  assert.ok(labels.length >= 2 && labels.every((label) => label.trim().length > 0), 'Every drawn item needs a visible legend label')
+  const compared = await page.getByLabel('Default comparison', { exact: true }).isChecked()
+  assert.equal(labels.some((label) => /default/i.test(label)), compared, 'Reference labels must follow comparison visibility')
+  const title = await page.locator('.analysis-view h2').textContent()
+  const text = labels.join(' ')
+  assert.match(text, /Vertical white line/)
+  if (title === 'Transfer characteristic') {
+    assert.match(text, /VIL.*VIH.*VOL.*VOH/)
+    assert.match(text, /undefined input logic level/)
+    assert.match(text, /NML = VIL - VOL: 0\.675 V/)
+    assert.match(text, /NMH = VOH - VIH: 0\.675 V/)
+    assert.match(text, /gaps at 0\.450 V and 1\.350 V/)
+    const definitions = page.locator('[data-role="input-limits"]')
+    assert.equal(await definitions.textContent(), PLOT_NOTES.inputLimits)
+    assert.match(await definitions.textContent(), /lowest guaranteed high input voltage is VIH.*highest guaranteed low input voltage is VIL/)
+    assert.ok(await definitions.evaluate((node) => Boolean(node.compareDocumentPosition(document.querySelector('.legend')) & Node.DOCUMENT_POSITION_FOLLOWING)))
+  } else if (title === 'Timing') {
+    assert.match(text, /in: chain input; q1 through q\d: outputs of stages/)
+    assert.doesNotMatch(text, /White dot/)
+  } else {
+    assert.match(text, /White dot/)
+    if (title === 'Fanout') assert.match(text, /falling output delay.*rising output delay.*selected fanout/)
+    else assert.match(text, /propagation delay.*half-supply 0\.900 V/)
+  }
+  const note = { 'Transfer characteristic': 'transfer', Timing: 'timing', Fanout: 'fanout' }[title]
+  if (note) assert.equal(await page.locator('[data-role="plot-note"]').textContent(), PLOT_NOTES[note])
+  const layout = await legend.evaluate((node) => {
+    const bounds = node.getBoundingClientRect()
+    const boxes = [...node.querySelectorAll('.legend-item')].map((item) => {
+      const b = item.getBoundingClientRect()
+      return { left: b.left, right: b.right, top: b.top, bottom: b.bottom }
+    })
+    return { left: bounds.left, right: bounds.right, boxes }
+  })
+  for (const [i, a] of layout.boxes.entries()) {
+    assert.ok(a.left >= layout.left - 1 && a.right <= layout.right + 1, 'Legend text must fit its plot column')
+    for (const b of layout.boxes.slice(i + 1)) assert.ok(a.right <= b.left + 1 || b.right <= a.left + 1 || a.bottom <= b.top + 1 || b.bottom <= a.top + 1, 'Legend entries must not overlap')
+  }
+  const direct = await page.locator('canvas').evaluate((canvas) => Object.values(canvas.getContext('2d').plotLabels || {}))
+  for (const [i, a] of direct.entries()) for (const b of direct.slice(i + 1)) {
+    assert.ok(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top, 'Direct plot labels must not overlap')
+  }
+}
 async function playbackCheck(page, label) {
   await page.getByRole('button', { name: 'Rewind', exact: true }).click()
   assert.equal(await cursor(page), 0)
@@ -76,6 +133,18 @@ try {
   evidence.browserVersion = browser.version()
   for (const viewport of [{ width: 320, height: 740 }, { width: 390, height: 844 }, { width: 1366, height: 768 }, { width: 1440, height: 1000 }, { width: 1920, height: 1080 }, { width: 2560, height: 1440 }]) {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
+    await page.addInitScript(() => {
+      const original = CanvasRenderingContext2D.prototype.fillText
+      CanvasRenderingContext2D.prototype.fillText = function (text, x, y, ...rest) {
+        if (['VIL', 'VIH', 'VOL', 'VOH', 'NML', 'NMH', '50%'].includes(text)) {
+          const width = this.measureText(text).width
+          const left = x - (this.textAlign === 'center' ? width / 2 : this.textAlign === 'right' ? width : 0)
+          this.plotLabels ||= {}
+          this.plotLabels[text] = { left, right: left + width, top: y - 11, bottom: y + 2 }
+        }
+        return original.call(this, text, x, y, ...rest)
+      }
+    })
     page.on('pageerror', (e) => evidence.errors.push(e.message))
     page.on('console', (e) => { if (e.type() === 'error') evidence.errors.push(e.text()) })
     const clockStart = new Date()
@@ -99,8 +168,10 @@ try {
       assert.match(await overview.textContent(), /Inverters form complementary logic and control signals/)
       assert.match(await overview.textContent(), /Two inverter stages preserve the original polarity/)
       assert.match(await overview.textContent(), /CMOS means complementary metal-oxide-semiconductor/)
-      assert.deepEqual(await overview.locator('dt').allTextContents(), ['Purpose', 'Input', 'Expected output', 'Predict the change', 'Design tradeoffs', 'Model limits'])
-      assert.equal(await overview.locator('details').count(), 0)
+      assert.deepEqual(await overview.locator(':scope > dl > dt').allTextContents(), ['Purpose', 'Input', 'Expected output', 'Predict the change', 'Design tradeoffs', 'Model limits'])
+      assert.equal(await overview.locator(':scope > details, :scope > dl details').count(), 0)
+      assert.equal(await overview.locator('[data-role="chip-context"]').count(), 1)
+      assert.ok(await overview.evaluate((node) => Boolean(node.querySelector('[data-role="chip-context"]').compareDocumentPosition(node.querySelector(':scope > p')) & Node.DOCUMENT_POSITION_FOLLOWING)))
       assert.match(await page.locator('[data-role="playback-meaning"]').textContent(), /Playback speed/)
       assert.ok((await page.locator('[data-role="parameter-roles"]').textContent()).length > 40)
       if (viewport.width <= 900) for (const name of ['Lesson', 'Settings', 'Circuit', 'Plots', 'Math']) {
@@ -137,6 +208,7 @@ try {
         return colored
       })
       assert.ok(nonblank > 100, `blank plot A${i + 1}`)
+      await labelsCheck(page)
       const plotBox = await page.locator('canvas').boundingBox()
       // Firefox's page-relative rectangle subtraction can lose a fraction of a CSS pixel after scrolling.
       if (i !== 2) assert.ok(plotBox.height >= 350 - 0.01, `Analog plot A${i + 1} at ${viewport.width}px needs 350px height, measured ${plotBox.height}px`)
@@ -164,6 +236,15 @@ try {
       assert.equal(inherited.background, 'rgb(11, 15, 20)')
       await overview.evaluate((node) => node.scrollIntoView({ block: 'start' }))
       await page.screenshot({ path: resolve(shots, `a${i + 1}-${viewport.width}.png`), fullPage: true })
+      await page.locator('canvas').screenshot({ path: resolve(shots, `a${i + 1}-${viewport.width}-canvas.png`) })
+      if (viewport.width > 900) {
+        const canvasVisible = await page.locator('canvas').evaluate((node) => {
+          const plot = node.getBoundingClientRect()
+          const pane = document.querySelector('.views').getBoundingClientRect()
+          return plot.top >= pane.top - 1 && plot.bottom <= pane.bottom + 1
+        })
+        assert.ok(canvasVisible, 'The entire canvas must scroll into view without clipping its axes')
+      }
       evidence.views.push({ lesson: `a${i + 1}`, width: viewport.width, coloredPixels: nonblank })
       assert.equal(await page.locator('.math-body').count(), 1)
       assert.ok(await page.locator('.math-formula').count() >= 4)
@@ -226,6 +307,7 @@ try {
         for (const name of ['Timing', 'Fanout', 'Scope']) {
           await page.getByRole('button', { name, exact: true }).click()
           assert.equal(await page.locator('canvas').count(), 1)
+          await labelsCheck(page)
           await page.screenshot({ path: resolve(shots, `a${i + 1}-${viewport.width}-${name.toLowerCase()}.png`), fullPage: true })
           if (name !== 'Fanout') await playbackCheck(page, 'Time cursor')
           else {
@@ -259,11 +341,14 @@ try {
       }
       await page.getByLabel('Default comparison', { exact: true }).uncheck()
       assert.ok(!await page.getByLabel('Default comparison', { exact: true }).isChecked())
+      await labelsCheck(page)
       await page.getByLabel('Default comparison', { exact: true }).check()
+      await labelsCheck(page)
     }
     await page.close()
   }
   assert.deepEqual(evidence.errors, [])
+  assert.deepEqual(await sourceHashes(), frozenSources, 'App source must remain frozen throughout browser verification')
   evidence.completed = true
   await writeFile(resolve(shots, 'verification.json'), JSON.stringify(evidence, null, 2))
   console.log(JSON.stringify(evidence, null, 2))

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { LabNav, LessonNav, NumField, PlaybackControls, ReportIssue, Schematic, TryLine, usePlayback } from '@ee-labs/ui'
-import { MathBody } from '@ee-labs/explain'
+import { ChipContext, MathBody } from '@ee-labs/explain'
 import { analyse } from './pin.js'
 import { EXPERIMENTS, KNOBS, MODELS, byId, defaultsOf, pinLayout } from './experiments.js'
 import { LESSONS, number } from './lessons.js'
@@ -10,6 +10,8 @@ import { mathEntry } from './math.js'
 import LoadCanvas from './components/LoadCanvas.jsx'
 import PinCanvas from './components/PinCanvas.jsx'
 import BudgetCanvas from './components/BudgetCanvas.jsx'
+import PlotLegend from './components/PlotLegend.jsx'
+import { INPUT_LIMITS, waveformKey } from './plotLabels.js'
 import { scopeReading, scopeRun, scopeWindow } from './scope.js'
 import pkg from '../package.json'
 
@@ -130,7 +132,7 @@ export default function App() {
       {x && <>
         {slack !== null && <span className={slack < 0 ? 'failed' : 'passed'}>Remaining {id === 'a5' ? volts(slack) : ns(slack)}</span>}
         <span>Rise <b data-reading="rise">{ns(x.rise.tr)}</b></span>
-        <span>VIH <b>{volts(x.thresholds.vih)}</b></span>
+        <span>High input minimum (VIH) <b>{volts(x.thresholds.vih)}</b></span>
       </>}
     </header>
     <main className="workspace">
@@ -150,7 +152,7 @@ export default function App() {
               <dt>Capacitor current</dt><dd data-reading="current">{number(now.current, 'mA', 1e-3)}</dd>
               <dt>Stored energy</dt><dd>{number(now.energy, 'pJ', 1e-12)}</dd>
               <dt>Input level</dt><dd>{now.x[0] <= x.thresholds.vil ? 'Low' : now.x[0] >= x.thresholds.vih ? 'High' : 'Undefined'}</dd>
-              <dt>VIL</dt><dd>{volts(x.thresholds.vil)}</dd><dt>VIH</dt><dd>{volts(x.thresholds.vih)}</dd>
+              <dt>Low input maximum (VIL)</dt><dd>{volts(x.thresholds.vil)}</dd><dt>High input minimum (VIH)</dt><dd>{volts(x.thresholds.vih)}</dd>
               <dt>{direction === 'rise' ? 'Delay to VIH' : 'Delay to VIL'}</dt><dd>{ns(direction === 'rise' ? measured.tpLH : measured.tpHL)}</dd>
               <dt>{direction === 'rise' ? '10-90% rise' : '90-10% fall'}</dt><dd>{ns(direction === 'rise' ? measured.tr : measured.tf)}</dd>
             </dl>
@@ -169,8 +171,7 @@ export default function App() {
           <p className="caption">Playback speed changes the observation rate, not the circuit timing. {view === 'sweep' || view === 'margins' ? 'The moving probe does not change the selected circuit.' : 'Time and axis range are observation settings.'}</p>
           <div role="tabpanel" className="view-content">
             {view === 'waveform' && <>
-              <div className="plot-legend"><span className="live-trace">Pin voltage</span><span className="reference-trace">Default reference</span>
-                <span>VIL {volts(x.thresholds.vil)}</span><span>VIH {volts(x.thresholds.vih)}</span></div>
+              <PlotLegend items={waveformKey(analog)} />
               <label className="analog-toggle"><input type="checkbox" checked={analog} onChange={(event) => setAnalog(event.target.checked)} />Analog voltage</label>
               <PinCanvas run={run} reference={reference} thresholds={x.thresholds} time={t}
                 onTime={(time) => playback.setPosition(time / timeEnd)} analog={analog} />
@@ -179,7 +180,7 @@ export default function App() {
               {(direction === 'rise' ? run.tr : run.tf) === null && <p className="hint" role="status">The 10-90% transition extends beyond this time window.</p>}
               {x.budget.reason && <p className="hint" role="status">{x.budget.reason}</p>}
             </>}
-            {view === 'sweep' && <><LoadCanvas key={rangeReset} params={params} result={x} position={sweepPlayback.position} onFit={() => setRangeDirty(true)} /><p className="caption">Dashed: rise budget. Amber: current load. White: sweep probe.</p></>}
+            {view === 'sweep' && <LoadCanvas key={rangeReset} params={params} result={x} position={sweepPlayback.position} onFit={() => setRangeDirty(true)} />}
             {view === 'margins' && <><BudgetCanvas key={rangeReset} margins={x.margins} pins={params.pins} position={sweepPlayback.position} onFit={() => setRangeDirty(true)} /><NoiseBudget x={x} p={params} /></>}
             {view === 'equations' && <MathBody entry={entry} />}
           </div>
@@ -187,7 +188,9 @@ export default function App() {
         </div>
         <section className="analysis-notes" aria-label="Worked analysis">
           <div className="foundation" id="pin-lesson" data-role="foundation">
+            <ChipContext />
             <h2>Purpose</h2><p>{foundation.purpose}</p><p>{foundation.context}</p>
+            <h3>Input voltage limits</h3><p>{INPUT_LIMITS}</p>
             <h3>Input</h3><p data-role="signal-input">{signal.input}</p>
             <h3>Expected output</h3><p data-role="signal-output">{signal.output}</p>
             {id === 'a5' && <p>The noise budget compares static output levels and a separate current ramp. These budget parameters do not alter the RC trace above.</p>}

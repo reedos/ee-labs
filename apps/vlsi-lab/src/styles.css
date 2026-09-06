@@ -11,7 +11,7 @@
 .vlsi-app .topbar { justify-content: space-between; gap: 8px; font-size: 12px; }
 .vlsi-app .topbar strong { color: var(--accent); font-variant-numeric: tabular-nums; }
 .vlsi-app .views { grid-column: 2; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(340px, 1fr); grid-template-rows: auto; grid-auto-rows: max-content; align-items: start; align-content: start; min-width: 0; min-height: 0; overflow-y: auto; background: var(--bg); }
-.vlsi-app .analysis-view { position: sticky; top: 0; padding: 12px 16px 20px; min-width: 0; background: var(--bg); }
+.vlsi-app .analysis-view { position: relative; padding: 12px 16px 20px; min-width: 0; background: var(--bg); }
 .vlsi-app .explanation-column { min-width: 0; padding: 12px 16px 24px; border-left: 1px solid var(--line); background: var(--panel); }
 .vlsi-app .view-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 36px; }
 .vlsi-app .views h2 { font-size: 14px; line-height: 1.5; margin: 0; }
@@ -27,6 +27,13 @@
 .vlsi-app .timing-canvas { width: 100%; display: block; }
 .vlsi-app .readings, .vlsi-app .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 0; font-size: 12px; font-variant-numeric: tabular-nums; }
 .vlsi-app .legend { min-height: 48px; align-content: center; }
+.vlsi-app .legend-item { display: flex; align-items: baseline; gap: 7px; min-width: 0; max-width: 100%; line-height: 1.5; }
+.vlsi-app .legend-item > span { min-width: 0; overflow-wrap: anywhere; }
+.vlsi-app .plot-key { display: inline-block; flex: 0 0 22px; width: 22px; border-top: 2px solid var(--key-color); align-self: flex-start; margin-top: 8px; }
+.vlsi-app .plot-key.dashed { border-top-style: dashed; }
+.vlsi-app .plot-key.dot { flex-basis: 8px; width: 8px; height: 8px; margin: 5px 7px 0; border: 0; border-radius: 50%; background: var(--key-color); }
+.vlsi-app .plot-key.region { height: 10px; margin-top: 4px; border: 1px solid var(--key-color); background: color-mix(in srgb, var(--key-color) 12%, transparent); }
+.vlsi-app .plot-key.span { height: 8px; margin-top: 5px; border: 2px solid var(--key-color); border-top: 0; }
 .vlsi-app .readings span { white-space: nowrap; }
 .vlsi-app .green { color: var(--accent); }
 .vlsi-app .amber { color: var(--amber); }

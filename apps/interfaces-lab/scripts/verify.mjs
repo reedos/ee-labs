@@ -32,6 +32,14 @@ try {
   browser = await ({ chromium, firefox }[browserName]).launch({ headless: true })
   for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 1000 }, { width: 2560, height: 1440 }, { width: 390, height: 844 }, { width: 320, height: 740 }]) {
     const page = await browser.newPage({ viewport })
+    await page.addInitScript(() => {
+      const fillText = CanvasRenderingContext2D.prototype.fillText
+      CanvasRenderingContext2D.prototype.fillText = function (label, ...args) {
+        this.canvas.plotLabels ??= new Set()
+        this.canvas.plotLabels.add(String(label))
+        return fillText.call(this, label, ...args)
+      }
+    })
     activePage = page
     const errors = []
     page.on('pageerror', (e) => errors.push(e.message))
@@ -59,6 +67,14 @@ try {
       for (const title of ['Purpose', 'Input', 'Expected output', 'Predict the change', 'Design tradeoffs', 'Model limits']) {
         assert.equal(await page.locator('.foundation').getByRole('heading', { name: title, exact: true }).count(), 1)
       }
+      const chip = page.locator('[data-role="chip-context"]')
+      assert.match(await chip.textContent(), /integrated circuit \(IC\)/)
+      await chip.locator('summary').click()
+      for (const material of ['Silicon', 'Silicon-germanium', 'Indium phosphide', 'Silicon carbide / gallium nitride']) {
+        assert.ok((await chip.textContent()).includes(material))
+      }
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Expanded material context must fit')
+      await chip.locator('summary').click()
       if (viewport.width <= 900) {
         assert.equal(await page.locator('.controls').evaluate((el) => getComputedStyle(el).display), 'contents')
         for (const [label, target] of [['Lesson', 'pin-lesson'], ['Circuit', 'pin-circuit'], ['Plots', 'pin-plots'], ['Math', 'pin-math']]) {
@@ -83,6 +99,11 @@ try {
       assert(!overlaps, `${id}: sidebar overlaps instrument`)
       await page.screenshot({ path: resolve(evidence, `${id}-${viewport.width}.png`), fullPage: true })
       await page.getByRole('tab', { name: 'Waveform', exact: true }).click()
+      assert.equal(await page.locator('.plot-key li').count(), 6)
+      assert.match(await page.locator('.plot-key').textContent(), /Shaded band: undefined input logic/)
+      for (const label of await page.locator('.plot-key li').all()) {
+        assert.ok(await label.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), 'Plot key text must fit')
+      }
       const canvas = page.locator('canvas')
       assert.equal(await canvas.count(), 1)
       assert((await canvas.boundingBox()).height >= 300, `${id}: waveform is compressed`)
@@ -97,6 +118,9 @@ try {
         return trace
       })
       assert(colors > 50, `${id}: analog trace pixels`)
+      for (const label of ['VIL', 'VIH', 'Time cursor']) {
+        assert.ok(await canvas.evaluate((el, text) => el.plotLabels.has(text), label), `${id}: missing canvas label ${label}`)
+      }
       const slider = page.getByRole('slider', { name: 'Time cursor', exact: true })
       await page.getByRole('button', { name: 'Play', exact: true }).click()
       await page.waitForTimeout(180)
@@ -143,6 +167,7 @@ try {
       await page.screenshot({ path: resolve(evidence, `${id}-fall-${viewport.width}.png`), fullPage: true })
       await page.getByRole('button', { name: 'Rising', exact: true }).click()
       await page.getByRole('checkbox', { name: 'Analog voltage' }).uncheck()
+      assert.equal(await page.locator('.plot-key li').count(), 4)
       await page.getByRole('checkbox', { name: 'Analog voltage' }).check()
       await page.getByRole('tab', { name: 'Equations', exact: true }).click()
       assert((await page.locator('[role="tabpanel"] .katex').count()) >= 2)
@@ -169,6 +194,7 @@ try {
       assert.equal(await page.locator('[data-role="see"]').innerText(), before)
       if (id === 'a4' || id === 'a5') {
         await page.getByRole('tab', { name: id === 'a4' ? 'Load sweep' : 'Noise budget', exact: true }).click()
+        assert.equal(await page.locator('.plot-key li').count(), 4)
         const beforeSweep = await page.locator('[data-reading="sweep"]').innerText()
         await page.getByRole('button', { name: 'Play', exact: true }).click()
         await page.waitForTimeout(500)

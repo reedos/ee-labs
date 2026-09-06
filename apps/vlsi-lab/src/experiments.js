@@ -34,7 +34,7 @@ export const EXPERIMENTS = [
     why: 'A rail step turns one transistor on and the other off. The output then has one resistance and one capacitance. The remaining voltage difference decays exponentially. Its time constant is resistance times capacitance. The half-supply delay is that time constant times ln(2).',
   },
   {
-    id: 'a2', name: 'The transfer curve sets the noise margins', shortName: 'Noise margins', view: 'transfer', terms: ['square', 'margin', 'switch'],
+    id: 'a2', name: 'The transfer curve sets the noise margins', shortName: 'Noise margins', view: 'transfer', terms: ['vih', 'vil', 'square', 'margin', 'switch'],
     foundation: {
       purpose: 'Find how much voltage disturbance a logic level can tolerate before the next gate may misread it.',
       input: 'A held input voltage from 0 to 1.8 V, with a separate static solution at each value.',

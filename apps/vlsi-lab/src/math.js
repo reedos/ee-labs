@@ -8,13 +8,14 @@ export function workedMath(x, p, view) {
   if (x.dc) {
     const d = x.dc
     return { blocks: [
-      text('The input limits occur where the square-law transfer slope equals -1. These expressions use matched devices and zero channel-length modulation.'),
+      text('The lowest guaranteed high input voltage is VIH (V_IH). The highest guaranteed low input voltage is VIL (V_IL). These limits occur where the square-law transfer slope equals -1. These expressions use matched devices and zero channel-length modulation.'),
       formula('V_{IL}=\\frac{3V_{DD}+2V_t}{8}', `V_IL = (3 x ${CARD.vdd} + 2 x ${CARD.vt}) / 8 = ${n(d.vil)} V.`),
       formula('V_{IH}=\\frac{5V_{DD}-2V_t}{8}', `V_IH = (5 x ${CARD.vdd} - 2 x ${CARD.vt}) / 8 = ${n(d.vih)} V.`),
       { kind: 'check', rows: [
         { label: 'Low input limit', predicted: (3 * CARD.vdd + 2 * CARD.vt) / 8, measured: d.vil, unit: 'V', tol: 1e-6 },
         { label: 'High input limit', predicted: (5 * CARD.vdd - 2 * CARD.vt) / 8, measured: d.vih, unit: 'V', tol: 1e-6 },
       ] },
+      text('The highest guaranteed low output voltage is VOL (V_OL). The lowest guaranteed high output voltage is VOH (V_OH). NML (NM_L) and NMH (NM_H) are the low and high noise margins.'),
       formula('NM_L=V_{IL}-V_{OL}', `NM_L = ${n(d.vil)} - ${n(d.vol)} = ${n(d.nml)} V.`),
       formula('NM_H=V_{OH}-V_{IH}', `NM_H = ${n(d.voh)} - ${n(d.vih)} = ${n(d.nmh)} V.`),
       text('The output limits are measured at the unity-slope inputs. A static input sweep contains no transient delay information.'),

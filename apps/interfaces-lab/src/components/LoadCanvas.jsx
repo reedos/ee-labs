@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react'
 import { COLORS, drawFrame, plotArea, useCanvas } from '@ee-labs/ui'
 import { pinDrive } from '../pin.js'
+import PlotLegend from './PlotLegend.jsx'
+import { LOAD_KEY } from '../plotLabels.js'
 
 export function loadSweep(p) {
   return Array.from({ length: 26 }, (_, i) => {
@@ -56,6 +58,7 @@ export default function LoadCanvas({ params, result, position = 0, onFit }) {
     ctx.restore()
   }, [samples, params, result, yMax, probeCap, probeRise])
   return <>
+    <PlotLegend items={LOAD_KEY} />
     <p className="caption" data-reading="sweep">Probe: {(probeCap / 1e-12).toFixed(1)} pF; rise {(probeRise / 1e-9).toFixed(3)} ns</p>
     <canvas ref={ref} className="load-canvas" role="img" aria-label="Rise time against load capacitance" data-y-max={yMax} />
     <div className="section-heading"><span className="caption">{extent > yMax ? 'Part of the load curve or budget is beyond this range.' : 'Load range: 10 pF to 1 nF.'}</span>

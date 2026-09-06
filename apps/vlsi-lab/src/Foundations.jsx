@@ -1,4 +1,5 @@
 import React from 'react'
+import { ChipContext } from '@ee-labs/explain'
 import { TERMS } from './terms.js'
 
 export const INVERTER_USE = 'Inverters form complementary logic and control signals. Two inverter stages preserve the original polarity while restoring logic levels and driving a signal. Drive capability depends on device sizing and load.'
@@ -7,6 +8,7 @@ export function Foundations({ experiment }) {
   const lesson = experiment.foundation
   return <section className="foundations" id="lesson-overview" tabIndex={-1} aria-labelledby="overview-title">
     <h2 id="overview-title">{experiment.shortName}: before the math</h2>
+    <ChipContext />
     <p>{TERMS.inverter.def}</p>
     <p>{INVERTER_USE}</p>
     <p>{TERMS.cmos.def}</p>

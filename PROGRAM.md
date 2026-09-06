@@ -193,6 +193,8 @@ Review `REVIEW_PLAYBOOK.md` against working behavior, not just source imports.
 - Present the model, assumptions, worked substitutions and measured comparisons near the result. Use available space for the lesson.
 - Perform a student walkthrough before offering a group for acceptance. Passing automation does not establish teaching quality.
 - Before derivation, identify the block's purpose, input and expected output. Define unfamiliar circuit terms on contact.
+- Give every semantic plot trace, region, guide and marker a visible label or keyed legend. Define abbreviations before relying on them.
+- Use the short wafer-to-circuit prerequisite before device-level modules. Distinguish fabrication context from the assumptions of the actual simulation.
 - Distinguish design parameters, external loads, requirements and observation controls. Check each stated prediction against the model.
 - Include practical tradeoffs and model limits. Verify phone navigation between the lesson, settings, circuit, plots and math without nested page scrolling.
 

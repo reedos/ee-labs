@@ -1,5 +1,11 @@
 .interfaces-app, .interfaces-app * { letter-spacing: 0; }
 .interfaces-app .phone-sections { display: none; }
+.interfaces-app .plot-key { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 10px 0; padding: 0; font-size: 11px; color: var(--text); }
+.interfaces-app .plot-key li { display: flex; align-items: center; gap: 7px; min-width: 0; max-width: 100%; }
+.interfaces-app .plot-swatch { display: inline-block; flex: 0 0 20px; width: 20px; height: 0; border-top: 2px solid var(--key-color); }
+.interfaces-app .plot-swatch.dashed { border-top-style: dashed; }
+.interfaces-app .plot-swatch.region { height: 12px; border: 1px solid var(--amber); background: var(--key-color); }
+.interfaces-app .plot-swatch.dot { flex-basis: 8px; width: 8px; height: 8px; border: 0; border-radius: 50%; background: var(--key-color); margin: 0 6px; }
 .interfaces-app .parameter-role { font-size: 11px; color: var(--dim); line-height: 1.5; margin: -2px 0 14px; }
 .interfaces-app .foundation { font-size: 13px; line-height: 1.6; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
 .interfaces-app .foundation p { margin: 8px 0; }

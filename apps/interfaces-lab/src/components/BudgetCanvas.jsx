@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { COLORS, drawFrame, plotArea, useCanvas } from '@ee-labs/ui'
+import PlotLegend from './PlotLegend.jsx'
+import { BUDGET_KEY } from '../plotLabels.js'
 
 export default function BudgetCanvas({ margins, pins, position, onFit }) {
   const [limit, setLimit] = useState(12)
@@ -36,6 +38,7 @@ export default function BudgetCanvas({ margins, pins, position, onFit }) {
     ctx.restore()
   }, [margins, pins, position, limit, probe])
   return <>
+    <PlotLegend items={BUDGET_KEY} />
     <p className="caption" data-reading="sweep">Probe: {probe} pins; bounce {(probe * margins.perPin).toFixed(3)} V; remaining margin {(margins.margin - probe * margins.perPin).toFixed(3)} V</p>
     <canvas ref={ref} className="load-canvas" role="img" aria-label="Ground bounce against switching pin count" data-y-max={limit} />
     <div className="section-heading"><span className="caption">{margins.perPin * 32 > limit ? 'The bounce curve extends above this range.' : 'Dashed: available margin. Amber: current pin count.'}</span>
