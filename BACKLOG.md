@@ -754,6 +754,55 @@ Items that cross labs and land at integration.
   exceed the 90 s timeout on a loaded four-core machine. Their owner chooses a
   longer timeout, a shorter sweep, or a split, before CI gates on one command.
 
+### Paused at Reed's request, 2026-09-05, usage near its limit
+
+Two workflows were stopped mid-run: `power-h-to-n` (all three lanes had at
+least one commit) and `rf-system-photonics` (RF and Photonics each had a
+first sitting committed and a second sitting in flight). Nothing was lost.
+Every worktree's uncommitted state was found and dealt with before the
+worktrees were removed:
+
+- `lab/power-lmn` and `lab/system-lab` are new branches this session made,
+  pushed as committed, no uncommitted work at the pause.
+- `lab/power-hi`, `lab/power-jk`, `lab/rf-lab` and `lab/photonics-lab`
+  silently forked away from the branches of the same name already on
+  origin. Those already carried the original cut-off session's partial work
+  (`HANDOFF.md` §4 named it). The workflow scripts' setup line is
+  `git checkout -b <branch> <from> 2>/dev/null || git checkout <branch>`.
+  The `-b` half succeeds and creates a fresh branch whenever no *local*
+  branch of that name exists yet, even when a same-named branch already sits
+  on origin with different history. Four agents built on the integration
+  branch from scratch instead of continuing what was there.
+- Origin's original three branches are untouched, still at their
+  session-limit commits. This session's much larger body of work on the same
+  names is pushed under `lab/power-hi-2`, `lab/power-jk-2`, `lab/rf-lab-2`
+  and `lab/photonics-lab-2`. Before Wave 3 resumes, fix the setup line: check
+  `git ls-remote --exit-code --heads origin <branch>` and track it
+  explicitly, rather than relying on checkout's fallback. Then decide,
+  branch by branch, whether the original three commits or this session's
+  rebuild is the one to keep. They were not compared.
+- Two agents on `lab/rf-lab` were working against each other at the pause.
+  One had staged the deletion of `packages/rf/src/match.js` and its test.
+  The other had uncommitted additions to the same two files, plus a new
+  `apps/rf-lab/src/groups/c.js`. Both are saved, unreviewed, as
+  `wip/rf-lab-teardown-match` and `wip/rf-lab-extend-match`. They disagree on
+  match.js's fate and need reading side by side before either lands.
+- The System Lab's whole first-sitting app tree, untracked at the pause, is
+  saved as `wip/system-lab-first-sitting`.
+- The Photonics Lab's rate-equations module, untracked at the pause, is saved
+  as `wip/photonics-rate-equations`.
+- A scratch worktree from the Power Lab review held disposable probe scripts
+  and a `zzprobe.test.js`, per house rules against committing scratch. Left
+  on disk, not committed, not important.
+- One worktree directory would not delete under Windows, a locked handle,
+  likely a lingering node process. Harmless. `git worktree prune` already
+  dropped it from git's own bookkeeping. A manual `rm -rf
+  .claude/worktrees` once the lock clears is cosmetic only.
+
+Nothing is merged to master. The suite was last confirmed green at e1b7d0a,
+312 files and 9176 tests, before the pause. Nothing in the main tree changed
+after that commit.
+
 ### Cut off at the session limit, 2026-09-05 19:50 UTC
 
 Every lane below ran as a workflow of Opus agents. Every agent fell to the
