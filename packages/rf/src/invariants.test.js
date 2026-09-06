@@ -2,18 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { complex as cx } from '@ee-labs/network'
 import { RfError } from './const.js'
 import { abcdToS, mdiff, mnorm, sToAbcd, sToY, sToZ, yToS, zToS } from './convert.js'
-import { dissipated, entryOf, largestSingular, reciprocityError, reflection, sFromNetlist, sparam, sDiff, unitarityError, vswr } from './sparam.js'
+import { dissipated, entryOf, largestSingular, reciprocityError, reflection, s11FromNetlist, sFromNetlist, sparam, sDiff, unitarityError, vswr } from './sparam.js'
 import { abcdToSparam, cascadeS, chainAbcd, chainViaAbcd, elementAbcd } from './cascade.js'
 import { chartFamilies, circleError, circlePoints, conductanceCircle, gammaToZ, place, qArc, reactanceCircle, resistanceCircle, vswrCircle, zToGamma } from './smith.js'
 import { inputImpedance, lineAbcd, lineSparam, phaseVelocity, rationalAvailable, repeatFrequency, uniformLine } from './line.js'
+import { lSolutions, matchMag, matchNetlist, quarterWaveMatch } from './match.js'
 
 // The plan's invariants, fuzzed (`RF_LAB_PLAN.md` §2.13).
 //
 // Numbered as the plan numbers them, so a failure here names the promise it
-// broke. Invariants 1, 2, 3, 5, 6 and 7 are the ones this phase's modules can
-// state. Invariant 4 arrives with `match.js`, and 8 to 13 with the device, the
-// noise and the linearity modules. Each of those is named below with the module
-// it waits for, so a reader can see what is not yet checked.
+// broke. Invariants 1 to 7 are the ones this lab's modules can state today.
+// Invariants 8 to 13 arrive with the device, the noise and the linearity
+// modules, and each is named at the foot of this file with the module it waits
+// for, so a reader can see what is not yet checked.
 //
 // The hostile corners the plan lists are in the generator rather than in a
 // separate test: a lossless resonance between two mismatched ports, a load on
@@ -257,6 +258,89 @@ describe('invariant 3: passivity and reciprocity', () => {
   })
 })
 
+// -------------------------------------------------------------- invariant 4
+
+describe('invariant 4: a synthesised match is matched', () => {
+  it('every L network the enumeration offers reads under 1e-12 at its design frequency', () => {
+    // Solved by `solveAC` through a netlist, which is the plan's wording. The
+    // synthesis is written in chain matrices and the check is written in the
+    // MNA solver, so nothing that designed the network also grades it.
+    //
+    // The tolerance on the solved route carries the network's own spread, for
+    // the reason invariant 2 carries 1/|S21|. A 1.83 ohm load behind 783 ohms
+    // of reactance puts four hundred to one between the largest and smallest
+    // number in the matrix, and an MNA solve of it returns eleven digits rather
+    // than thirteen. The synthesis itself is exact at 1e-12 whatever the
+    // spread, and that is the claim made against a flat number.
+    const r = rng(1000004)
+    let checked = 0
+    let easy = 0
+    let complex = 0
+    for (let k = 0; k < SEEDS; k++) {
+      const f = logPick(r, 1e7, 1e10)
+      const RS = logPick(r, 1, 600)
+      const R = logPick(r, 0.5, 5000)
+      const X = r() < 0.5 ? 0 : (r() < 0.5 ? -1 : 1) * logPick(r, 0.1, 3000)
+      const ZL = X === 0 ? R : [R, X]
+      const all = lSolutions({ RS, ZL, f })
+      const ok = all.solutions.filter((s) => s.ok)
+      expect(ok.length, `seed ${k}: no orientation matches ${RS} to ${R}`).toBeGreaterThan(0)
+      for (const sol of ok) {
+        const where = `seed ${k}, ${sol.id}, ${RS} ohm to ${R} + j${X} ohm at ${f.toExponential(2)} Hz`
+        // The synthesis, by the arithmetic it is written in.
+        expect(matchMag(sol, ZL, RS, f), `${where}, by the chain matrix`).toBeLessThan(1e-12)
+        // The same network, solved.
+        const spread = Math.max(RS, R, Math.abs(X), ...sol.elements.map((e) => Math.abs(e.X))) / Math.min(RS, R)
+        const s11 = cabs(s11FromNetlist(matchNetlist(sol, ZL, f), 'p1', f, { z0: RS }))
+        expect(s11, `${where}, solved, spread ${spread.toExponential(2)}`).toBeLessThan(1e-12 * Math.max(1, spread))
+        if (spread < 50) {
+          expect(s11, `${where}, a well-conditioned network`).toBeLessThan(1e-12)
+          easy++
+        }
+        checked++
+      }
+      if (X !== 0) complex++
+    }
+    expect(checked).toBeGreaterThan(SEEDS)
+    expect(easy).toBeGreaterThan(SEEDS / 4)
+    expect(complex).toBeGreaterThan(SEEDS / 4)
+  })
+
+  it('the two entries the enumeration refuses are refused for the same reason every time', () => {
+    const r = rng(4444)
+    let refused = 0
+    for (let k = 0; k < 120; k++) {
+      const f = logPick(r, 1e8, 5e9)
+      const RS = logPick(r, 5, 300)
+      const R = RS * (r() < 0.5 ? logPick(r, 1.2, 100) : 1 / logPick(r, 1.2, 100))
+      const all = lSolutions({ RS, ZL: R, f })
+      const no = all.solutions.filter((s) => !s.ok)
+      expect(no.length, `seed ${k}`).toBe(2)
+      for (const sol of no) {
+        expect(sol.says).toMatch(/lowers the resistance/)
+        expect(sol.elements.length).toBe(0)
+        refused++
+      }
+    }
+    expect(refused).toBe(240)
+  })
+
+  it('a quarter-wave transformer is matched at its design frequency and at every odd multiple', () => {
+    const r = rng(70711)
+    for (let k = 0; k < 120; k++) {
+      const f0 = logPick(r, 1e8, 5e9)
+      const RS = logPick(r, 5, 300)
+      const RL = logPick(r, 5, 300)
+      const qw = quarterWaveMatch({ RS, RL, f0, epsr: 1 + r() * 3 })
+      for (const n of [1, 3, 5]) expect(qw.at(n * f0).mag, `seed ${k}, ${n} f0`).toBeLessThan(1e-11)
+      // At an even multiple the line is a whole number of half waves, so the
+      // load arrives unchanged and the reflection is the load's own.
+      const bare = cabs(reflection(RL, RS))
+      expect(Math.abs(qw.at(2 * f0).mag - bare), `seed ${k}`).toBeLessThan(1e-9)
+    }
+  })
+})
+
 // -------------------------------------------------------------- invariant 5
 
 describe('invariant 5: the chart is the algebra', () => {
@@ -420,7 +504,6 @@ describe('the invariants this phase cannot state yet', () => {
     // engine as its dependencies allow and names the rest, and this is that
     // list in the file where a reader looks for it.
     const waiting = {
-      4: 'a synthesised match is matched — match.js',
       8: 'stability is consistent — stability.js',
       9: 'gain closes — stability.js',
       10: 'the unilateral bound holds — stability.js',
@@ -428,7 +511,7 @@ describe('the invariants this phase cannot state yet', () => {
       12: 'IP3 closes — linearity.js',
       13: 'cross-lab — the Circuit Lab and Electronics Lab seams',
     }
-    expect(Object.keys(waiting).length).toBe(7)
+    expect(Object.keys(waiting).length).toBe(6)
     for (const text of Object.values(waiting)) expect(text).toMatch(/ — /)
   })
 })

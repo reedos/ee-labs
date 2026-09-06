@@ -13,7 +13,8 @@
 //     composition (cascade.js); the Smith chart's families, which are the
 //     images of lines and circles under a Möbius map (smith.js); the uniform
 //     line's chain matrix at a frequency, in complex hyperbolic functions
-//     (line.js).
+//     (line.js); the L network and the quarter-wave transformer, which are two
+//     equations in two unknowns solved in closed form (match.js).
 //
 //   APPROXIMATE, and never without a guard carrying a threshold:
 //     nothing yet. The unilateral approximation, the third-order
@@ -136,3 +137,24 @@ export {
   sweepLine,
   uniformLine,
 } from './src/line.js'
+
+export {
+  bandwidthOf,
+  elementAbcdOf,
+  elementFor,
+  inputZ,
+  lMatch,
+  lSolutions,
+  loadedQBandwidth,
+  matchAt,
+  matchBandwidth,
+  matchMag,
+  matchNetlist,
+  matchQ,
+  networkAbcd,
+  quarterWaveMatch,
+  quarterWaveRepeats,
+  reactanceOf,
+  sweepMatch,
+  sweepQuarterWave,
+} from './src/match.js'
