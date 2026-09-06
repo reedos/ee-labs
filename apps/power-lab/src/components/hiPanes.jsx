@@ -162,21 +162,28 @@ function StepCanvas({ step, unit, label }) {
         ctx.fill()
       }
       ctx.restore()
-      // The level it started from, so a dip below it is visible as a dip.
+      // The two levels the table names, drawn where they are: the one the
+      // walk started from, so a dip below it reads as a dip, and the one it
+      // relaxes onto, so "after the step" has a line on the plot rather than
+      // only a row in the table.
       ctx.save()
-      ctx.strokeStyle = COLORS.textDim || COLORS.text
-      ctx.setLineDash([5 * k, 4 * k])
-      ctx.lineWidth = 1 * k
-      ctx.beginPath()
-      ctx.moveTo(area.x, sy(step.from) + 0.5)
-      ctx.lineTo(area.x + area.w, sy(step.from) + 0.5)
-      ctx.stroke()
-      ctx.setLineDash([])
       ctx.font = `${Math.round(11 * k)}px ${MONO}`
-      ctx.fillStyle = COLORS.text
       ctx.textAlign = 'right'
       ctx.textBaseline = 'bottom'
-      ctx.fillText(`before ${fmt(step.from, unit, 4)}`, area.x + area.w - 6 * k, sy(step.from) - 3 * k)
+      const level = (v, name) => {
+        ctx.strokeStyle = COLORS.textDim || COLORS.text
+        ctx.setLineDash([5 * k, 4 * k])
+        ctx.lineWidth = 1 * k
+        ctx.beginPath()
+        ctx.moveTo(area.x, sy(v) + 0.5)
+        ctx.lineTo(area.x + area.w, sy(v) + 0.5)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.fillStyle = COLORS.text
+        ctx.fillText(`${name} ${fmt(v, unit, 4)}`, area.x + area.w - 6 * k, sy(v) - 3 * k)
+      }
+      level(step.from, 'before')
+      level(step.to, 'after')
       ctx.restore()
     },
     [step, unit, label],

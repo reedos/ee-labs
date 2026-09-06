@@ -118,7 +118,9 @@ export const HI_EXPERIMENTS = [
     group: 'Closing the loop',
     name: 'The averaged model',
     params: [Rstep(2.5), R(5), Ron(0.05), RL(0.05), Sync(1), Vin(), D(), L(), C_(), Fs()],
-    step: { param: 'R', to: 'Rstep', periods: 200, out: 'vout' },
+    // Long enough that the walk arrives: the buck's step decays with
+    // a1/2 = 2.5e3 per second, so 400 periods leaves 0.05 % of it.
+    step: { param: 'R', to: 'Rstep', periods: 400, out: 'vout' },
     note:
       'A converter switches, so it is not one linear circuit. Average the two switch positions over a ' +
       'period and it becomes one. Step the load from 5 Ω to 2.5 Ω and the output sags 94.3 mV, from ' +
@@ -157,7 +159,10 @@ export const HI_EXPERIMENTS = [
     // As H2: the boost here is lossless, and the number it is about is f_z.
     headline: 'plant',
     params: [D(0.5), Dstep(0.05), Sync(1), Vin(), L(1e-3), C_(), R(10), Fs()],
-    step: { param: 'D', by: 'dD', periods: 200, out: 'vout' },
+    // The boost's ring decays four times slower than the buck's, so it
+    // takes twice as many periods again to land on the 26.67 V the note
+    // and the pane's own table both name.
+    step: { param: 'D', by: 'dD', periods: 800, out: 'vout' },
     traces: ['vsw', 'vout', 'iL'],
     views: ['step', 'plant', 'math', 'measures', 'sweep'],
     view: 'step',

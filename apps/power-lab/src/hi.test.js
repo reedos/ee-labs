@@ -83,6 +83,19 @@ describe('H1 · the averaged model', () => {
     expect((x.step.to - x.step.from) * 1e3).toBeCloseTo(48.5, 1)
   })
 
+  it('the walk arrives at the level the pane names, rather than stopping short of it', () => {
+    // The Step pane's table says what v_out is "after it", and the plot draws
+    // that level. The walk has to reach it, or the picture and the row
+    // disagree: at 200 periods the boost's ended 14.6 % of the step above it.
+    for (const id of ['h1', 'h3']) {
+      const s = at(id).step
+      const cycles = s.pairs.map((q) => q.exact)
+      const last = cycles[cycles.length - 1]
+      const residual = Math.abs(last - s.to) / Math.abs(s.to - s.from)
+      expect(residual, `${id} is ${(residual * 100).toFixed(2)} % of the step short`).toBeLessThan(0.03)
+    }
+  })
+
   it('every number moves with its knob', () => {
     const base = at('h1')
     const softer = at('h1', { Rstep: 4 })
@@ -183,7 +196,10 @@ describe('H3 · the zero in the wrong half', () => {
     const x = at('h3')
     expect(x.step.to).toBeCloseTo(26.667, 2)
     expect((x.step.from - x.step.dip) * 1e3).toBeCloseTo(391, 0)
-    expect(x.plant.slope0 * x.p.D * 0 + x.plant.slope0 * 0.05).toBeCloseTo(-2400, 0)
+    // The note's slope is the model's own, times the step the knob asks for.
+    const dD = defaultsOf('h3').dD
+    expect(dD).toBeCloseTo(0.05, 12)
+    expect(x.plant.slope0 * dD).toBeCloseTo(-2400, 0)
     expect(x.step.dip).toBeLessThan(x.step.from)
   })
 
