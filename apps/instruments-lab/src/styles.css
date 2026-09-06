@@ -230,6 +230,17 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 .topbar .flow { overflow: hidden; }
 .topbar .flow [data-role='outcome'] { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .topbar .flow [data-role='outcome'] em { margin-left: 6px; }
+/* That ellipsis is enough room on a laptop and nowhere near it on a phone: at
+   390 px the instrument node alone is wider than the strip, so the node count
+   and the outcome were pushed out of a box with `overflow: hidden` and no
+   scroll. 572 px of row inside 366 px, and two thirds of it unreachable with
+   nothing on screen to say so. Squeezing the three instead collapses the
+   instrument's name to its first letter, so on a phone the strip wraps and
+   every node is read in full on the line it lands on. */
+@media (max-width: 900px) {
+  .topbar .flow { flex-wrap: wrap; row-gap: 2px; }
+  .topbar .flow [data-role='outcome'] { flex-basis: 100%; }
+}
 
 /* The screen as one composition: on a laptop the whole lesson and every knob
    are on screen at once, so the student never scrolls to turn a knob. A wider

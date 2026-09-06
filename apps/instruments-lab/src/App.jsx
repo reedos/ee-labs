@@ -50,6 +50,22 @@ const nextUp = (exp) => {
 }
 /** The knob open when nothing else is: the first that is not the window's. */
 const firstKnob = (exp) => (exp.params.find((p) => !(p.key === 'N' && exp.window)) || {}).key
+/**
+ * Back to the top of the page and of the sidebar.
+ *
+ * The page itself never scrolls: base.css gives html, body and #root
+ * `overflow: hidden`, and on a phone it is #root alone that turns to
+ * `overflow: auto`. So `window.scrollTo` moved nothing there, and opening the
+ * picker and reaching down it for C5 left the reader in the middle of C5 with
+ * its note and its first knob above the screen.
+ */
+const toTop = () => {
+  const aside = document.querySelector('.controls')
+  if (aside) aside.scrollTop = 0
+  const root = document.getElementById('root')
+  if (root) root.scrollTop = 0
+  window.scrollTo(0, 0)
+}
 const deg = (rad) => `${((rad * 180) / Math.PI).toFixed(1)}°`
 
 export default function App() {
@@ -74,6 +90,10 @@ export default function App() {
   const steps = exp.try || []
 
   const choose = (next) => {
+    // Also here, and not only in the effect below: picking the experiment that
+    // is already open changes no state, so the effect does not run, and the
+    // reader is left wherever reaching down the picker scrolled them to.
+    toTop()
     setId(next)
     setParams(defaultsOf(next))
     setShow(byId[next].show)
@@ -189,19 +209,7 @@ export default function App() {
     return () => cancelAnimationFrame(raf)
   }, [playing, tEnd])
   // A new experiment shows from its top, sidebar and page alike.
-  //
-  // The page itself never scrolls: base.css gives html, body and #root
-  // `overflow: hidden`, and on a phone it is #root alone that turns to
-  // `overflow: auto`. So window.scrollTo moved nothing there. Opening the
-  // picker and reaching down it for C5 scrolls #root, and the reader landed in
-  // the middle of C5 with its note and its first knob above the screen.
-  useEffect(() => {
-    const aside = document.querySelector('.controls')
-    if (aside) aside.scrollTop = 0
-    const root = document.getElementById('root')
-    if (root) root.scrollTop = 0
-    window.scrollTo(0, 0)
-  }, [id])
+  useEffect(toTop, [id])
 
   const nodeCount = x.sol ? x.sol.norm.n : normalize(x.net).n
   // The imbalance belongs to the solve the meters are reading, so a steady-state
@@ -614,6 +622,25 @@ export default function App() {
           </div>
         </section>
       </main>
+
+      {/* The phone's tab bar. styles.css has carried the whole component since
+          the shell was written — the fixed bar, its four columns, the active
+          colour, the scroll-margin the jump lands on, and 72 px of clearance
+          under Deeper for it — and nothing rendered it. On a phone the first
+          knob sits 1100 px down the page, so the reader had a scroll and no
+          way to jump. `display: none` off the phone keeps the desktop as it is. */}
+      <nav className="tabbar" aria-label="Parts of this page">
+        {[
+          ['Lesson', '.controls > .lesson'],
+          ['Circuit', '.views .view'],
+          ['Analysis', '.views .view:nth-of-type(2)'],
+          ['Knobs', '.controls > .knobs'],
+        ].map(([label, sel]) => (
+          <button key={label} type="button" onClick={() => document.querySelector(sel)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+            {label}
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }

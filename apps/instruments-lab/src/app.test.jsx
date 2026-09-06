@@ -39,6 +39,18 @@ describe('the shell', () => {
     expect(h).not.toMatch(/released/i)
   })
 
+  it('renders the phone tab bar its stylesheet has always described', () => {
+    // styles.css carries the whole component — the fixed bar, four columns, the
+    // active colour, the scroll-margin its jump lands on, and 72 px of
+    // clearance under Deeper for it — and nothing rendered it. At 390 px the
+    // first knob sits 1100 px down, so there was a scroll and no way to jump.
+    const h = html(<App />)
+    expect(h).toContain('class="tabbar"')
+    for (const part of ['Lesson', 'Circuit', 'Analysis', 'Knobs']) expect(strip(h), part).toContain(part)
+    // Every part it jumps to is a section the page actually has.
+    for (const cls of ['lesson', 'views', 'view', 'knobs']) expect(h, cls).toMatch(new RegExp(`class="[^"]*\\b${cls}\\b`))
+  })
+
   it('offers every view the first experiment declares, and only those', () => {
     const h = html(<App />)
     const labels = [...h.matchAll(/<button type="button" class="[^"]*" aria-pressed="(?:true|false)" title="([^"]*)"/g)].map((m) => m[1])
