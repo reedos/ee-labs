@@ -138,7 +138,8 @@ locus, which Electronics L5, M3 and N1 hand their loops to.
 | D, the leakage spike | the flux that links one winding only | 1 | planned |
 
 What it assumes: C, L and the RLC from Elements F and G, and the diode from Elements
-I. The switch is Elements F6. Its Group H assumes Control Lab.
+I. The switch is Elements F6. Its Group H assumes Control Lab, and Power H2 hands
+the buck to it as a plant.
 The plan's 54 became 56 when the buck grew from six experiments to eight.
 
 ---
