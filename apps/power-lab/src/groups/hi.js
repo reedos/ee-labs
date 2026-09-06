@@ -423,7 +423,11 @@ export function threePhaseEntry(exp, params, x) {
   // Two settings put the modulator outside the identity it is checked
   // against: a reference taller than the carrier, and a carrier so slow that
   // its lowest sideband lands on the fundamental.
-  const over = !six && p.ma > 0.995 * f.ceiling
+  // The reference leaves the carrier at m_a = the ceiling and not before, so
+  // that is the threshold. A margin under it footnotes a row that agrees:
+  // I2's own try line sets m_a = 115 % with the offset, where the ceiling is
+  // 115.47 % and the identity holds to six figures.
+  const over = !six && p.ma > f.ceiling
   const crowded = !six && f.mf < 9
   const modWhy = over
     ? `Past m_a = ${f.ceiling.toFixed(4)} the reference leaves the carrier, pulses go missing, and the fundamental stops following the line. It is ${((1 - (m.Vll1 * Math.SQRT2) / ((Math.sqrt(3) / 2) * p.ma * p.Vdc)) * 100).toFixed(1)} % short of it here.`

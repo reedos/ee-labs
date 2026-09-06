@@ -353,6 +353,30 @@ describe('I2 · sine PWM in three phases', () => {
     expect(pct(offset.formulas.ceiling - 1)).toBeCloseTo(15.47, 2)
   })
 
+  it('past the ceiling the panel footnotes the row instead of crossing it', () => {
+    // The modulator's identity is written for a reference the carrier
+    // contains. Above that the pulses go missing and the fundamental stops
+    // following m_a, so the row names the reason rather than showing a
+    // disagreement against correct physics.
+    const at115 = checkRows('i2', { ma: 1.15 })
+    const line = at115.find((r) => r.label === 'V_ll1, the line-to-line fundamental')
+    expect(line.unchecked).toMatch(/leaves the carrier/)
+    expect(at115.find((r) => r.label === 'V_ph1, the phase fundamental').unchecked).toMatch(/leaves the carrier/)
+    // The offset raises the ceiling to 115.47 %, so the same m_a is checked
+    // again rather than hedged: the try line lives at that setting.
+    const withOffset = checkRows('i2', { ma: 1.15, inject: 1 })
+    const offsetLine = withOffset.find((r) => r.label === 'V_ll1, the line-to-line fundamental')
+    expect(offsetLine.unchecked).toBeUndefined()
+    expect(Math.abs(offsetLine.measured / offsetLine.predicted - 1)).toBeLessThan(1e-5)
+    // Past its own ceiling the offset is footnoted too.
+    expect(checkRows('i2', { ma: 1.25, inject: 1 }).find((r) => r.label === 'V_ll1, the line-to-line fundamental').unchecked).toMatch(/leaves the carrier/)
+    // And below the ceiling nothing is footnoted.
+    expect(checkRows('i2').find((r) => r.label === 'V_ll1, the line-to-line fundamental').unchecked).toBeUndefined()
+    // A carrier too slow to be separated from the fundamental says so too.
+    const slow = checkRows('i2', { fsw: 300, f1: 400 })
+    expect(slow.find((r) => r.label === 'V_ll1, the line-to-line fundamental').unchecked).toMatch(/too near the fundamental/)
+  })
+
   it('the offset puts 3.20 V of third harmonic on each leg and none on the line', () => {
     const x = at('i2', { inject: 1 })
     expect(mag(x.ss, 'vao', 3)).toBeCloseTo((INJECTION * 0.8 * 48) / 2, 6)
@@ -377,6 +401,11 @@ describe('I2 · sine PWM in three phases', () => {
       expect(Number.isFinite(q.vll1), `m_a = ${q.x}`).toBe(true)
       expect(Number.isFinite(q.vll1off), `m_a = ${q.x}`).toBe(true)
       expect(q.vll1off).toBeGreaterThanOrEqual(q.vll1 - 1e-9)
+    }
+    // More modulation never buys less line voltage, on either curve.
+    for (let i = 1; i < pts.length; i++) {
+      expect(pts[i].vll1, `m_a = ${pts[i].x.toFixed(3)}`).toBeGreaterThan(pts[i - 1].vll1 * 0.999)
+      expect(pts[i].vll1off, `m_a = ${pts[i].x.toFixed(3)}`).toBeGreaterThan(pts[i - 1].vll1off * 0.999)
     }
     // The plain sine parts from the line at m_a = 1 and the offset does not,
     // each judged at the sampled point nearest the setting the note quotes.
