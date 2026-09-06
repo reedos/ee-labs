@@ -42,27 +42,52 @@
 // difference rather than hiding it.
 
 import { C0, H_PLANCK, PhotonicsError, Q_E, fraction, nonNegative, positive, require_ } from './const.js'
-import { photonLifetime } from './cavity.js'
+import { facetReflectance, photonLifetime } from './cavity.js'
 
 /**
- * The laser this lab loads, as one object.
+ * The chip the whole lab's laser is, as a cavity.
  *
- * The five rate parameters are PHOTONICS_LAB_PLAN.md §4.3's. The photon
- * lifetime is not typed: it is computed from a cleaved chip 100 micrometres
- * long, so that Group C's mirrors and Group D's lifetime are one device and
- * one threshold current. The chip is the same index and the same facet
- * reflectance Group F's cavity carries.
+ * A cleaved edge emitter 100 micrometres long in a semiconductor of index 3.5,
+ * with no coating on either facet. The reflectance is what that index gives
+ * against air, computed rather than typed, and the internal loss is zero so
+ * that the only loss is the light leaving through the ends.
+ *
+ * This exists so that the lab holds ONE laser. The photon lifetime is not a
+ * number typed beside the other five: it is what this cavity's mirror loss
+ * gives, in cavity.js's own convention. C5 turns the facet reflectance of this
+ * chip and reads the threshold move, and the threshold it reads at the default
+ * reflectance is the same number D2 pins, because it is the same device.
+ *
+ * The convention matters and is stated where it is used. `mirrorLoss` is
+ * PHOTONICS_LAB_PLAN.md §2.8's (1/2L) ln(1/R), where a single pass loses the
+ * factor R. A text that spreads the same reflectance over a round trip quotes
+ * twice the loss, halves this lifetime and reaches 18.771 mA instead of the
+ * 13.389 mA below. The threshold current is a factor of two in the convention,
+ * so the convention is named here.
  */
-export const LASER_CHIP = { n: 3.5, L: 100e-6, r: 0.30864, loss: 0 }
+export const LASER_CHIP = { n: 3.5, L: 100e-6, r: facetReflectance({ n1: 3.5 }), loss: 0 }
 
+/**
+ * The laser PHOTONICS_LAB_PLAN.md §4.3 quotes, as one object.
+ *
+ * Five device parameters plus the lifetime the chip above gives. Each of the
+ * five is a number a datasheet or a materials measurement supplies, and each is
+ * a knob in Groups C and D.
+ *
+ * The spontaneous coupling is zero by default. At zero the steady state is the
+ * pair of closed forms the plan writes, the threshold is a corner rather than a
+ * soft bend, and the relaxation frequency is exactly proportional to the square
+ * root of I/I_th - 1. Raising it is a knob, and `steadyState` solves the
+ * quadratic that any positive coupling leaves.
+ */
 export const LASER_DEFAULTS = {
   g0: 2.5e-12, // the differential gain, cubic metres a second
   ntr: 1.0e24, // the transparency carrier density, per cubic metre
   gamma: 0.3, // the confinement factor
   tauC: 2.0e-9, // the carrier lifetime, seconds
-  tauP: photonLifetime(LASER_CHIP).tauP, // the photon lifetime the chip gives
+  tauP: photonLifetime(LASER_CHIP).tauP, // the photon lifetime the chip's facets give
   V: 1.0e-16, // the active volume, cubic metres
-  beta: 1.0e-4, // the spontaneous emission coupled into the mode
+  beta: 0, // the spontaneous emission coupled into the lasing mode
 }
 
 /** Every parameter checked, with the defaults filled in for what a caller left out. */
@@ -235,6 +260,16 @@ export function smallSignal(spec = {}, current) {
   const gss = s.gamma * g - 1 / s.tauP
   const damping = -(fnn + gss)
   const det = fnn * gss - fns * gsn
+  // With no photons in the cavity the two equations are not coupled, so there
+  // is no second-order response to linearise. That happens below threshold at
+  // zero spontaneous coupling, and it is a real state rather than an error in
+  // the arithmetic: the photon density is zero and stays zero. Returning a
+  // frequency here would be reporting the cancellation of two equal numbers.
+  require_(
+    x.s > 0,
+    'Below threshold with no spontaneous emission coupled into the mode there are no photons in the cavity. The two equations are uncoupled there, so no relaxation oscillation is defined. Drive the laser above its threshold current, or raise the spontaneous coupling above zero.',
+    { field: 'current' },
+  )
   require_(
     det > 0 && damping > 0,
     'This steady state has no damped second-order response, so no relaxation oscillation is defined at it. Lower the drive or raise the confinement factor.',
@@ -285,10 +320,25 @@ export function modulationAt(sm, f) {
 
 // ------------------------------------------------------- the guard, and its measurement
 
-/** Past this modulation depth the pane warns, and the number came from `depthGuard`. */
-export const DEPTH_WARN = 0.1
+/**
+ * Past this modulation depth the pane draws the linear prediction as an
+ * estimate, and the number came from `stepOvershoot` rather than from taste.
+ *
+ * PHOTONICS_LAB_PLAN.md §11 sets the bar: a warn threshold whose own measured
+ * error passes a tenth has to move. At the plan's laser, biased at twice
+ * threshold, the measured overshoot error is 1.0853 per cent at 1 per cent
+ * depth, 5.2638 per cent at 5, 10.152 per cent at 10, 26.760 per cent at 30 and
+ * 45.596 per cent at 60. Ten per cent depth costs 10.152 per cent, which is
+ * over the bar, so the unflagged region stops at five.
+ */
+export const DEPTH_WARN = 0.05
 
-/** Past this modulation depth the pane stops drawing the linear prediction. */
+/**
+ * Past this modulation depth the pane stops drawing the linear prediction.
+ *
+ * The measured error at it is 26.760 per cent, which is over the quarter the
+ * plan's invariant 8 asks a decline threshold to have passed.
+ */
 export const DEPTH_DECLINE = 0.3
 
 /**

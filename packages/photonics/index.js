@@ -40,8 +40,18 @@
 //     fibre and not a closed form at its end. `refuseNonlinear` throws with that
 //     reason.
 //
-// The laser's rate equations are `rate.js`, and they are not built in this
-// sitting. `PHOTONICS_LAB_PLAN.md` §9 phases them into the third.
+//   THE SOURCES AND THE RATE EQUATIONS (source.js, rate.js), added in the
+//   second sitting. Each module's own header states its classes. In short:
+//   the forward junction both devices are is a @ee-labs/network circuit and is
+//   exact; the LED's linear output, its one-pole bandwidth and the laser's
+//   slope efficiency are exact for a stated model, and MODEL names each where
+//   it is printed; the threshold and the steady state of the rate equations
+//   are exact algebra; the linearisation about that steady state is an exactly
+//   rational H(s) and is admitted to @ee-labs/systems without a hedge; the
+//   linear answer USED AS A PREDICTION OF A LARGE STEP is guarded by a
+//   modulation depth whose thresholds are measured rather than chosen; and the
+//   rate equations solved in time as an answer are DECLINED, with the reason
+//   diode.js gives.
 //
 // See /CORE_SCOPE.md. A change that adds an object to this package states which
 // of the classes it is in, in its own comment, before it is written.
@@ -122,3 +132,39 @@ export {
   sweep,
   transmissionAt,
 } from './src/cavity.js'
+
+export {
+  DEPTH_DECLINE,
+  DEPTH_WARN,
+  LASER_CHIP,
+  LASER_DEFAULTS,
+  depthGuard,
+  largeSignalAvailable,
+  laserSpec,
+  linearStep,
+  modulationAt,
+  rateTerms,
+  refuseLargeSignal,
+  smallSignal,
+  steadyState,
+  stepOvershoot,
+  threshold,
+} from './src/rate.js'
+
+export {
+  MODEL,
+  SOURCE_DEFAULTS,
+  VT_ROOM,
+  drive,
+  driveNet,
+  driveSweep,
+  forwardVoltage,
+  laserOutput,
+  ledBandwidth,
+  ledOutput,
+  ledResponse,
+  slopeEfficiency,
+  voltsPerPhoton,
+  wallPlug,
+  widthInWavelength,
+} from './src/source.js'

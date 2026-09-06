@@ -58,3 +58,25 @@ export const randomCavity = (r) => ({
   r1: uniform(r, 0.05, 0.995),
   r2: uniform(r, 0.05, 0.995),
 })
+
+/**
+ * A laser a lesson would load: the six rate parameters, each inside the decade
+ * a real edge emitter sits in.
+ *
+ * The spontaneous coupling is left at zero on purpose. At zero the steady state
+ * is the pair of closed forms the plan writes, which is what invariants 4 to 7
+ * measure, and a fuzzer that also moved the coupling would be measuring the
+ * quadratic instead. `randomCoupledLaser` is the one that moves it.
+ */
+export const randomLaser = (r) => ({
+  g0: logUniform(r, 1e-12, 8e-12),
+  ntr: logUniform(r, 3e23, 3e24),
+  gamma: uniform(r, 0.1, 0.8),
+  tauC: logUniform(r, 0.5e-9, 5e-9),
+  tauP: logUniform(r, 0.8e-12, 1e-11),
+  V: logUniform(r, 3e-17, 3e-16),
+  beta: 0,
+})
+
+/** The same laser, with a spontaneous coupling, which is what a soft turn-on needs. */
+export const randomCoupledLaser = (r) => ({ ...randomLaser(r), beta: logUniform(r, 1e-6, 1e-3) })
