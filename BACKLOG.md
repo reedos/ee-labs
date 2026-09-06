@@ -1328,10 +1328,11 @@ only its own section. The director folds it into the shared ledger at merge.
   the solver as 1e-12 ohms makes the node equations singular rather than
   lossless. So a zero resistance is left out of the netlist instead of made tiny,
   and D5's lossless case is a network of two elements rather than three.
-- **A review pass over the two sittings found four readings that did not follow
-  their knobs.** Each was reached by turning a knob of Group C or Group D and
-  reading what came back, which is `REVIEW_PLAYBOOK.md` §11's method. All four
-  are fixed and each carries a test that fails without the fix.
+- **A review pass over the two sittings found five defects, and all five are
+  fixed.** Four are readings that did not follow the knob that changes them,
+  reached by turning the knobs of Groups C and D and reading what came back,
+  which is `REVIEW_PLAYBOOK.md` §11's method. The fifth is a pane Group C could
+  not reach. Each fix carries a test that fails without it.
 - **The band search was the same width either side of the design frequency.**
   Above it the quarter-wave section's response repeats at twice the design
   frequency, so the search has to stop short of the repeat. Below it nothing
@@ -1356,6 +1357,11 @@ only its own section. The director folds it into the shared ledger at merge.
   the largest in its own matrix is now reported as zero with no decibels. The
   chip says which of the two kinds of nothing it is. Nothing comes back at a
   reflection, and nothing gets through at a transmission.
+- **Group C could not reach the equations pane.** `RF_LAB_PLAN.md` §9.3 ships
+  that pane with matching and two-ports. `matchEquations` and `qwaveEquations`
+  were written and tested, and no experiment in Group C listed the view, so the
+  only way to see either was from a test. All five now offer it, and a test
+  holds every experiment of Groups C and D to offering it.
 - **The plan's 1.1437 at 900 MHz is computed and not pinned.** The plan's §5
   quotes that standing-wave ratio for the 50 Ω to 100 Ω match. It is one point
   inside the band C3 states by its two edges, so the lesson quotes the edges and
