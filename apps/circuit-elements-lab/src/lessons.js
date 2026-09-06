@@ -683,7 +683,7 @@ export const LESSONS = {
     why:
       'V₁ = R·i + L·di/dt + v_C with i = C·dv_C/dt, so LC·v_C″ + RC·v_C′ + v_C = V₁. The solver never writes it ' +
     'that way. It writes dx/dt = A·x + B·u, whose characteristic polynomial det(sI − A) = s² + (R/L)s + 1/LC ' +
-    'is the same equation. Overdamped, the roots are −1.27×10³ and −7.87×10⁴ s⁻¹. The natural response, what ' +
+    'is the same equation. Overdamped, the roots are −1.27 and −78.73 ms⁻¹. The natural response, what ' +
     'the circuit does on its own once V₁ is applied, is two decaying exponentials, and the slow one sets the ' +
     'pace.',
   },

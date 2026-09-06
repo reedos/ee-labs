@@ -1300,6 +1300,58 @@ console.log('\n45. Precision: the note quotes exactly what the live readout rend
   else console.log('   D5, F3 and F4’s own step 1 quote exactly what their live readouts render')
 }
 
+// ----------------------------- 46. a rate scales its time unit, not a numerator prefix
+//
+// Reed's defect: 20000 V/s printed as "20 kV/s" and a neper frequency of
+// -100000 as "-100 k s⁻¹" — arithmetically right, but a reader has to hold a
+// large SI prefix against a per-second denominator while the circuit right
+// beside it runs in microseconds. The fix (src/format.js: rate(), rateScale(),
+// rootRate()) scales the DENOMINATOR's time unit instead whenever that lands
+// the magnitude in [1, 1000): 20 V/ms, -100 ms⁻¹. A numerator prefix on one of
+// these three units — 's⁻¹', 'V/s', 'A/s' — is only ever correct for a
+// genuinely slow rate (10 mV/s), where the prefix is m, µ, n or p. k, M, G and
+// T must never appear glued to one of them: the rule guarantees a rate large
+// enough to need one of those instead gets a smaller time unit. This reads
+// the live DOM rather than recomputing an expected string, so a future edit
+// that reintroduces the numerator-prefix path fails here even if it still
+// passes a unit test built from the same formatter.
+console.log('\n46. Rates scale their time unit, not a numerator SI prefix\n')
+{
+  // The old code glued 'V/s'/'A/s' straight onto the prefix ("20 kV/s") but
+  // put a space before a bare 's⁻¹' ("40 k s⁻¹", since the unit passed to fmt
+  // was '' and the literal " s⁻¹" was appended outside it) — the optional
+  // space here catches either shape.
+  const BIG_PREFIX_RATE = /-?\d[\d.]*\s?[kMGT]\s?(?:V\/s|A\/s|s⁻¹)/
+  const scanFor = async (label) => {
+    const text = await page.locator('#root').innerText()
+    const m = text.match(BIG_PREFIX_RATE)
+    if (m) fail(`46/${label}: "${m[0]}" carries a numerator SI prefix; the denominator should have scaled instead`)
+  }
+
+  // G1 at its own default (R = 800 Ω), no knob turned: the State pane's α and
+  // its two roots were "40 k s⁻¹", "-1.27 k s⁻¹" and "-78.73 k s⁻¹" under the
+  // old code.
+  await pick('Series RLC: the differential equation')
+  await page.locator('.view-switch').getByRole('button', { name: 'State equation', exact: true }).click()
+  await settle()
+  const stateText = (await page.locator('[data-role=state]').innerText()).replace(/\s+/g, ' ')
+  if (!/40\s*ms⁻¹/.test(stateText)) fail(`46/G1: expected α to read "40 ms⁻¹"; the State pane shows: ${stateText.slice(0, 300)}`)
+  if (!/-1\.27\s*ms⁻¹/.test(stateText) || !/-78\.73\s*ms⁻¹/.test(stateText))
+    fail(`46/G1: expected the two roots to read "-1.27" and "-78.73 ms⁻¹"; the State pane shows: ${stateText.slice(0, 300)}`)
+  await scanFor('G1 state')
+
+  // F7 at its own default: slope A/RC = 1000 V/s, "1 kV/s" under the old code.
+  await pick('The op-amp integrator')
+  await openAllMath()
+  await settle()
+  const mathText = (await page.locator('.math-values').first().innerText().catch(() => '')).replace(/\s+/g, ' ')
+  if (!/\b1\s*V\/ms\b/.test(mathText)) fail(`46/F7: expected the slope row to read "1 V/ms"; it shows: ${mathText}`)
+  await scanFor('F7 math')
+
+  if (!failures.some((f) => f.startsWith('46/')))
+    console.log('   G1’s α and roots read in ms⁻¹, F7’s slope reads in V/ms; no rate on screen carries a numerator SI prefix')
+}
+
 // ------------------------------------------------------------------- report
 
 await browser.close()

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { forReading, isNoise, num, prefixFor, readableCheck, readableValue, scaleOf } from './format.js'
+import { forReading, isNoise, num, prefixFor, rate, rateScale, readableCheck, readableValue, rootRate, scaleOf } from './format.js'
 
 describe('num: the one formatter the student reads', () => {
   it('snaps the solver’s residue to 0 — 8.7e-19 A at a node carrying milliamps is not a reading', () => {
@@ -109,5 +109,73 @@ describe('readableCheck: a prediction under the row’s own floor is zero', () =
     expect(r.unit).toBe('J')
     // A real small prediction above its floor is kept and prefixed.
     expect(readableCheck({ predicted: 3e-13, measured: 3e-13, unit: 'J', abs: 1e-15 })).toMatchObject({ unit: 'fJ' })
+  })
+})
+
+describe('rate: a per-time reading scales its time unit before it prefixes its numerator', () => {
+  it('Reed’s worked examples: a fast rate moves to a smaller time unit, a slow one keeps the numerator prefix', () => {
+    expect(rate(-100000, 's⁻¹', 4)).toBe('-100 ms⁻¹')
+    expect(rate(20000, 'V/s', 4)).toBe('20 V/ms')
+    expect(rate(0.01, 'V/s', 4)).toBe('10 mV/s')
+  })
+
+  it('lands just inside [1, 1000) at the second itself: no time unit is substituted', () => {
+    expect(rateScale(1, 'V/s')).toEqual({ value: 1, unit: 'V/s' })
+    expect(rateScale(999.9, 'A/s')).toEqual({ value: 999.9, unit: 'A/s' })
+  })
+
+  it('just under 1 at the second: the second is already the largest time unit, so nothing helps — the fallback', () => {
+    expect(rateScale(0.9999, 'V/s')).toBeNull()
+    expect(rate(0.9999, 'V/s', 4)).toBe('999.9 mV/s')
+  })
+
+  it('at exactly 1000, the second’s own window is exclusive, so it rolls over to the millisecond', () => {
+    expect(rateScale(1000, 'V/s')).toEqual({ value: 1, unit: 'V/ms' })
+    expect(rate(1000, 'V/s', 4)).toBe('1 V/ms')
+  })
+
+  it('walks every window down to nanoseconds, milli then micro then nano', () => {
+    expect(rateScale(5000, 'A/s')).toEqual({ value: 5, unit: 'A/ms' })
+    expect(rateScale(5e6, 'A/s')).toEqual({ value: 5, unit: 'A/µs' })
+    expect(rateScale(5e9, 'A/s')).toEqual({ value: 5, unit: 'A/ns' })
+  })
+
+  it('a rate too fast even for nanoseconds finds no window and falls back to the numerator prefix', () => {
+    expect(rateScale(5e12, 'A/s')).toBeNull()
+    expect(rate(5e12, 'A/s', 4)).toBe('5 TA/s')
+  })
+
+  it('negatives scale the same way as their magnitude, sign kept', () => {
+    expect(rateScale(-20000, 'V/s')).toEqual({ value: -20, unit: 'V/ms' })
+    expect(rate(-20000, 'V/s', 4)).toBe('-20 V/ms')
+  })
+
+  it('zero and non-finite values are not rates to scale — rate() matches num()’s own spellings', () => {
+    expect(rateScale(0, 'V/s')).toBeNull()
+    expect(rate(0, 'V/s')).toBe('0 V/s')
+    expect(rate(Infinity, 'V/s')).toBe('∞')
+    expect(rate(-Infinity, 's⁻¹')).toBe('−∞')
+    expect(rate(NaN, 'A/s')).toBe('—')
+  })
+
+  it('a unit that has not opted in is left for the ordinary numerator prefix, not touched here', () => {
+    expect(rateScale(20000, 'rad/s')).toBeNull()
+    expect(rateScale(20000, 'Hz')).toBeNull()
+  })
+})
+
+describe('rootRate: a real or complex root shares one time-unit prefix between its parts', () => {
+  it('a real root formats exactly as rate() would for the same value in s⁻¹', () => {
+    expect(rootRate(-1270.166537925831, 0, 4)).toBe(`${rate(-1270.166537925831, 's⁻¹', 4)}`)
+    expect(rootRate(-78729.83346207417, 0, 4)).toBe(`${rate(-78729.83346207417, 's⁻¹', 4)}`)
+    expect(rootRate(-1270.166537925831, 0, 4)).toBe('-1.27 ms⁻¹')
+    expect(rootRate(-78729.83346207417, 0, 4)).toBe('-78.73 ms⁻¹')
+  })
+
+  it('a complex pair shares one prefix, picked from whichever part is larger', () => {
+    // |re| = 500, |im| = 99000: the pair scales on the imaginary part (µs would
+    // undersell the real part, but ms keeps both readable on one shared unit).
+    expect(rootRate(-500, 99000, 4)).toBe('-0.5 + j99 ms⁻¹')
+    expect(rootRate(-500, -99000, 4)).toBe('-0.5 − j99 ms⁻¹')
   })
 })

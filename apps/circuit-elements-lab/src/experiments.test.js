@@ -886,7 +886,7 @@ describe('the dynamic notes, sentence by sentence', () => {
     expect(fin.state.tau).toBeCloseTo(p.R1 * p.C1 * (p.G + 1), 6)
   })
 
-  it('G1: overdamped at 800 Ω — ω₀ = 10⁴, α = 4×10⁴, roots −1.27×10³ and −7.87×10⁴ s⁻¹, and v_C never passes E', () => {
+  it('G1: overdamped at 800 Ω — ω₀ = 10⁴, α = 4×10⁴, roots −1.27 and −78.73 ms⁻¹, and v_C never passes E', () => {
     const { p, x } = at('g1')
     expect(x.state.face).toBe('overdamped')
     expect(x.state.w0).toBeCloseTo(1 / Math.sqrt(p.L1 * p.C1), 9)
