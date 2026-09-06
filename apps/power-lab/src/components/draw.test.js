@@ -333,6 +333,26 @@ describe('every axis carries a scale, not just a quantity and a unit', () => {
     }
   }, 120000)
 
+  it('gives the spectrum a scale on both axes', () => {
+    for (const [W, H] of SIZES) {
+      for (const e of EXPERIMENTS) {
+        if (!e.views.includes('spectrum')) continue
+        const { x } = at(e.id)
+        const sp = x.m.spectrum || { unit: 'A' }
+        const I1 = sp.unit === 'V' ? x.m.harmonics[0].rms : x.m.I1
+        const ctx = fakeCtx()
+        const g = drawSpectrum(ctx, W, H, { harmonics: x.m.harmonics, I1, phases: x.conv?.threePhase ? 3 : 1, unit: sp.unit })
+        for (const [which, ticks] of [
+          ['y', yTicksOf(ctx, g.area).map((t) => t.text)],
+          ['x', xTicksOf(ctx, g.area).map((t) => t.text)],
+        ]) {
+          expect(ticks.length, `${W}x${H} ${e.id} ${which}: [${ticks.join(' | ')}]`).toBeGreaterThanOrEqual(MIN)
+          expect(new Set(ticks).size, `${W}x${H} ${e.id} ${which}: ${ticks.join(' | ')}`).toBe(ticks.length)
+        }
+      }
+    }
+  }, 60000)
+
   it("gives the flux plot a scale too, and spends its height on the polarity the flux has", () => {
     for (const [W, H] of SIZES) {
       for (const id of ['d1', 'd2']) {

@@ -243,6 +243,10 @@ export function drawSpectrum(ctx, w, h, { harmonics, I1, phases, unit = 'A' }) {
   const kMax = harmonics.length ? harmonics[harmonics.length - 1].k : 25
   const top = Math.max(1e-12, ...harmonics.map((q) => q.rms))
   const { sx, sy } = drawFrame(ctx, area, 0, kMax + 1, 0, top * 1.1, (v) => `${v.toFixed(0)}`, axisFmt(0, top * 1.1, unit), {
+    // On a phone the pane is short enough that the frame's own step left the
+    // amplitude axis with "0 V" and "20 V" and nothing between them.
+    yStep: tickStep(0, top * 1.1, area.h, k),
+    xStep: tickStep(0, kMax + 1, area.w, k, { spacing: 62 }),
     xTitle: 'Harmonic order',
     yTitle: unit === 'V' ? 'RMS voltage (V)' : 'RMS current (A)',
   })
