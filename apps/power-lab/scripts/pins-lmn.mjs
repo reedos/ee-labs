@@ -181,12 +181,37 @@ line('=== N2 · the thermal RC ===')
 line('=== N3 · faster is hotter ===')
 {
   for (const fs of [300e3, 1e6, 2e6]) {
-    const { led, P, k } = buckAt({ fs })
+    const { m, led, P, k } = buckAt({ fs })
     const d = derating(net, { Ta: THERM.Ta, Tjmax: THERM.Tjmax, P })
     const c = frequencyCeiling({ Rtotal: net.Rtotal, Ta: THERM.Ta, Tjmax: THERM.Tjmax, Pcond: led.conduction, kSw: k })
     line(
       ` fs=${s(fs / 1e3, 4)}kHz cond=${s(led.conduction, 4)}W sw=${s(led.switching, 4)}W P=${s(P, 4)}W` +
         ` Tj=${s(d.Tj, 5)}C eta=${s(100 * led.eta, 5)}% budget=${s(c.budget, 4)}W ceiling=${s(c.fs / 1e6, 4)}MHz kSw=${s(k * 1e6, 4)}uW/Hz`,
+    )
+    // The other half of the tradeoff: what the frequency buys. §4's N3 asks for
+    // the ripple beside the heat, on the one curve.
+    line(
+      `   ripple dIL=${s(m.sig.iL.pp * 1e3, 5)}mA against Vo(1-D)/(L fs)=${s((m.sig.vout.avg * (1 - 0.25) * 1e3) / (47e-6 * fs), 5)}mA`,
+    )
+  }
+  // The turning point. Below it the ripple costs more in conduction than the
+  // edges save, so the curve falls and "faster is hotter" does not yet hold.
+  // A ternary search on log f_s, the same one `coolestFrequency` runs.
+  {
+    let a = Math.log(20e3)
+    let b = Math.log(3e6)
+    const TjAt = (u) => THERM.Ta + buckAt({ fs: Math.exp(u) }).P * net.Rtotal
+    for (let i = 0; i < 20; i++) {
+      const c1 = a + (b - a) / 3
+      const d1 = b - (b - a) / 3
+      if (TjAt(c1) < TjAt(d1)) b = d1
+      else a = c1
+    }
+    const fs = Math.exp((a + b) / 2)
+    const { m, led, P } = buckAt({ fs })
+    line(
+      ` coolest fs=${s(fs / 1e3, 4)}kHz Tj=${s(THERM.Ta + P * net.Rtotal, 5)}C P=${s(P, 4)}W` +
+        ` cond=${s(led.conduction, 4)}W sw=${s(led.switching, 4)}W ripple=${s(m.sig.iL.pp * 1e3, 5)}mA`,
     )
   }
   const hot = buckAt({ R: 1 })

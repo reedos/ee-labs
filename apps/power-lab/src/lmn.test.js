@@ -24,6 +24,7 @@ import { byId, defaultsOf, EXPERIMENTS } from './experiments.js'
 import { analyse } from './analysis.js'
 import { experimentMath } from './math.js'
 import { sweepFor, outcomeOf } from './App.jsx'
+import { sweepMarks } from './marks.js'
 import { driveParams, LMN_KINDS } from './groups/lmn.js'
 
 // Every number Groups L, M and N put on the screen, pinned against the engine
@@ -498,6 +499,79 @@ describe('N3 · faster is hotter', () => {
     expect(x.m.thermal.switching).toBeCloseTo(5.62, 1)
     expect(x.m.thermal.Tj).toBeCloseTo(127.7, 0)
     expect(pct(x.m.ledger.eta)).toBeCloseTo(90.33, 1)
+  })
+
+  it('ripples 638 mA at 300 kHz and 191 mA at 1 MHz, which is why faster is wanted', () => {
+    const x = at('n3')
+    const p = x.p
+    expect(x.m.sig.iL.pp * 1e3).toBeCloseTo(638.3, 1)
+    // The ideal triangle is V_o(1−D)/(L f_s). The exact waveform runs 2.5 %
+    // above it, because the winding and the switch raise the on-state
+    // volt-second above V_o(1−D) by i·(R_on + R_L).
+    const ideal = (fs) => (x.m.sig.vout.avg * (1 - p.D)) / (p.L * fs)
+    expect(x.m.sig.iL.pp / ideal(p.fs)).toBeCloseTo(1, 1)
+    const fast = at('n3', { fs: 1e6 })
+    expect(fast.m.sig.iL.pp * 1e3).toBeCloseTo(191.5, 1)
+    // The whole tradeoff in one line: the ripple goes as 1/f_s while the
+    // edges go as f_s, so the same knob divides one and multiplies the other.
+    // The edges track f_s to a part in ten thousand rather than exactly, since
+    // the energy an edge costs is set by the current at the instant it opens,
+    // and a smaller ripple moves that current.
+    expect(x.m.sig.iL.pp / fast.m.sig.iL.pp).toBeCloseTo(1e6 / p.fs, 2)
+    expect(fast.m.thermal.switching / x.m.thermal.switching).toBeCloseTo(1e6 / p.fs, 3)
+    moves('n3', 'fs', 3, (x) => x.m.sig.iL.pp, 0.5)
+    moves('n3', 'L', 2, (x) => x.m.sig.iL.pp, 0.4)
+  })
+
+  it('runs coolest at 38 kHz, below which the ripple costs more than the edges save', () => {
+    const x = at('n3')
+    const c = x.m.thermal.coolest
+    expect(c.interior, 'the turning point is inside the swept range').toBe(true)
+    expect(c.x / 1e3).toBeCloseTo(38.07, 1)
+    expect(c.Tj).toBeCloseTo(53.47, 1)
+    // Almost all of it is conduction there: 1.82 W against 214 mW at the edges.
+    expect(c.P).toBeCloseTo(2.034, 2)
+    // It is a minimum: a decade either side of it is hotter.
+    for (const f of [c.x / 3, c.x * 3]) {
+      const q = at('n3', { fs: f })
+      expect(q.m.thermal.Tj, `${(f / 1e3).toFixed(1)} kHz`).toBeGreaterThan(c.Tj)
+    }
+    // A larger inductor makes the same ripple at a lower frequency, so the
+    // turning point moves down. The pin follows the knob it is about.
+    const big = at('n3', { L: 4 * defaultsOf('n3').L })
+    expect(big.m.thermal.coolest.x).toBeLessThan(0.75 * c.x)
+    moves('n3', 'Ron', 3, (x) => x.m.thermal.coolest.x, 0.05)
+  })
+
+  it('draws both halves of that tradeoff on the one sweep', () => {
+    const e = byId.n3
+    expect(e.sweep.y2, 'the ripple rides the right axis').toBe('dil')
+    const sw = sweepFor(e, defaultsOf('n3'))
+    expect(sw.points.length).toBeGreaterThan(10)
+    for (const q of sw.points) expect(Number.isFinite(q.dil), `ΔI_L at ${q.x}`).toBe(true)
+    // The ripple falls at every step of the sweep. The junction falls to the
+    // turning point and rises after it, which is the shape the note describes
+    // and the reason the group's title needs the word "above".
+    const cool = at('n3').m.thermal.coolest.x
+    for (let i = 1; i < sw.points.length; i++) {
+      const [a, b] = [sw.points[i - 1], sw.points[i]]
+      expect(b.dil, `ΔI_L at ${b.x} Hz`).toBeLessThan(a.dil)
+      if (a.x >= cool) expect(b.Tj, `T_j at ${b.x} Hz`).toBeGreaterThan(a.Tj)
+      if (b.x <= cool) expect(b.Tj, `T_j at ${b.x} Hz`).toBeLessThan(a.Tj)
+    }
+  })
+
+  it('marks the turning point and the ceiling where the note says they are', () => {
+    const e = byId.n3
+    const x = at('n3')
+    const sw = sweepFor(e, defaultsOf('n3'))
+    const marks = sweepMarks(e, x, sw)
+    const cool = marks.find((q) => q.type === 'point' && /coolest/.test(q.label))
+    expect(cool, 'the coolest point is drawn').toBeTruthy()
+    expect(cool.x).toBeCloseTo(x.m.thermal.coolest.x, 6)
+    expect(cool.y).toBeCloseTo(x.m.thermal.coolest.Tj, 6)
+    const ceiling = marks.find((q) => q.type === 'vline')
+    expect(ceiling.x).toBeCloseTo(x.m.thermal.ceiling.fs, 6)
   })
 
   it('can afford 1.28 MHz, where the whole 8.93 W budget is spent', () => {

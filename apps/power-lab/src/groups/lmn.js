@@ -151,6 +151,7 @@ export const LMN_SWEEP_Y = {
   att: { label: 'i_line / i_conv at f_s', unit: '', scale: 'log' },
   mb: { label: 'Z_out / Z_in', unit: '', scale: 'log' },
   Tj: { label: 'T_j', unit: '°C' },
+  dil: { label: 'ΔI_L', unit: 'A', lo: 0 },
 }
 
 /** The top bar's third meter, for the meters the built groups had no need of. */
@@ -435,6 +436,9 @@ function analyseThermal(exp, params) {
     zth: zth(net, times),
     zthOther: zth(other, times),
     fosterClosed: times.map((q) => fosterZth(stages, q)),
+    // Only the experiment that sweeps the frequency needs the turning point,
+    // and finding it costs forty solves.
+    coolest: exp.sweep && exp.sweep.x === 'fs' ? coolestFrequency(params) : null,
   }
   const m = { ...raw, thermal, ledger: led }
   return {
@@ -504,6 +508,37 @@ export function sweepThermalFs(params, n = 25) {
   return logSpace(20e3, 3e6, n).map((fs) => thermalAt({ ...params, fs }, fs))
 }
 
+/**
+ * The frequency the junction runs coolest at, and how cool that is.
+ *
+ * The two losses pull opposite ways. Every edge costs the same energy, so the
+ * switching loss rises with the frequency. The ripple falls as the frequency
+ * rises, and a smaller ripple carries a smaller RMS current, so the
+ * conduction loss falls with it. Their sum has a minimum, and above it the
+ * lab's own headline holds: faster is hotter. A ternary search on log f_s,
+ * because the sum is a single-minimum function of the frequency, and the
+ * sweep's own grid is too coarse to name the place to two figures.
+ */
+export function coolestFrequency(params, lo = 20e3, hi = 3e6, iters = 20) {
+  let a = Math.log(lo)
+  let b = Math.log(hi)
+  const Tj = (u) => {
+    const fs = Math.exp(u)
+    return thermalAt({ ...params, fs }, fs)
+  }
+  for (let i = 0; i < iters; i++) {
+    const c = a + (b - a) / 3
+    const d = b - (b - a) / 3
+    if (Tj(c).Tj < Tj(d).Tj) b = d
+    else a = c
+  }
+  const fs = Math.exp((a + b) / 2)
+  const q = thermalAt({ ...params, fs }, fs)
+  // At the ends the minimum is the end, and there is no turning point to name.
+  q.interior = fs > lo * 1.02 && fs < hi * 0.98
+  return q
+}
+
 function thermalAt(params, x) {
   const p = thermalBuckParams(params)
   const t = thermalParams(params)
@@ -511,7 +546,9 @@ function thermalAt(params, x) {
   const led = lossLedger(m)
   const net = thermalNetwork(params.model ? 'cauer' : 'foster', stagesOf(t))
   const P = led.conduction + led.switching
-  return { x, Tj: t.Ta + P * net.Rtotal, eta: led.eta, P, pred: t.Tjmax, mode: m.mode }
+  // The ripple rides on the right axis of N3's sweep, so the frequency's cost
+  // and what it buys are one curve (POWER_LAB_PLAN.md §4, N3).
+  return { x, Tj: t.Ta + P * net.Rtotal, dil: m.sig.iL.pp, eta: led.eta, P, pred: t.Tjmax, mode: m.mode }
 }
 
 /** Which sweep each of the nine draws, and where the knob sits on it. */
@@ -533,6 +570,11 @@ export const LMN_SWEEP_MARKS = {
     const marks = [{ type: 'hline', axis: 'V', value: t.Tjmax, label: `T_j,max = ${t.Tjmax.toFixed(0)} °C` }]
     if (exp.sweep.x === 'fs' && Number.isFinite(t.ceiling.fs) && t.ceiling.fs > 0) {
       marks.push({ type: 'vline', x: t.ceiling.fs, label: `${fmt(t.ceiling.fs, 'Hz', 3)} ceiling` })
+    }
+    // The turning point the note names. Left of it the ripple costs more than
+    // the edges save, so the curve falls and the group's title does not hold.
+    if (exp.sweep.x === 'fs' && t.coolest && t.coolest.interior) {
+      marks.push({ type: 'point', x: t.coolest.x, y: t.coolest.Tj, label: `coolest at ${fmt(t.coolest.x, 'Hz', 3)}` })
     }
     return marks
   },
@@ -799,13 +841,14 @@ export const LMN_EXPERIMENTS = [
     views: ['sweep', 'thermal', 'ledger', 'measures', 'math'],
     view: 'sweep',
     periods: 2,
-    sweep: { x: 'fs', y: 'Tj' },
+    sweep: { x: 'fs', y: 'Tj', y2: 'dil' },
     note:
-      'Each edge costs 5.62 µW per hertz of switching, and conduction costs 1.71 W whatever the ' +
-      'frequency. At 300 kHz the pair heat the junction to 72.6 °C. At 1 MHz the edges alone take ' +
-      '5.62 W and the junction reaches 128 °C. The 150 °C limit allows 8.93 W in all, so this ' +
-      'package can afford 1.28 MHz and no more.',
-    terms: ['switching-loss', 'conduction-loss', 'junction-temperature', 'thermal-resistance', 'derating'],
+      'Each edge costs 5.62 µW per hertz, and conduction costs 1.71 W whatever the frequency. ' +
+      'Ripple falls as the frequency rises, from 638 mA at 300 kHz to 191 mA at 1 MHz. Below ' +
+      '38 kHz the ripple costs more in conduction than the edges save. The junction is coolest ' +
+      'there, at 53.5 °C. Above it faster is hotter: 72.6 °C at 300 kHz, 128 °C at 1 MHz. The ' +
+      '150 °C limit allows 8.93 W, so this package can afford 1.28 MHz.',
+    terms: ['switching-loss', 'conduction-loss', 'ripple', 'junction-temperature', 'thermal-resistance', 'derating'],
   },
 ]
 

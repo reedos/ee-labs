@@ -184,7 +184,7 @@ Every figure below came out of `scripts/pins-lmn.mjs` run against the engine.
 | --- | --- | --- |
 | N1 | synchronous buck 48 V → 12 V, D = 25 %, L = 47 µH, C = 100 µF, R = 2 Ω, f_s = 300 kHz, R_on = 30 mΩ, R_L = 20 mΩ, t_sw = 20 ns. Network 0.6 K/W at 1 ms, 1.4 K/W at 100 ms, 12 K/W at 300 s, T_a = 25 °C, T_jmax = 150 °C | V_out = 11.707 V into 5.854 A, 68.53 W delivered. Conduction 1.715 W and edges 1.686 W, 3.401 W in all, η = 95.27 %. The junction sits 47.61 K above ambient at 72.61 °C, against a ceiling of 8.929 W and 77.4 K of headroom. At R = 1 Ω: 9.824 W and 162.5 °C, 12.5 K past the limit |
 | N2 | as N1, with the pulse period the knob at 1 s and half duty | Z_th is 58.50 mK/W at 100 µs, 393.2 mK/W at 1 ms, 733.6 mK/W at 10 ms, 1.489 K/W at 100 ms, 2.040 K/W at 1 s and 13.57 K/W at 1000 s, each against Σ R(1 − e^{−t/τ}). The ladder runs 3.84 % cooler at 10 ms and 0.03 % cooler at 1000 s. A 3.401 W load at half duty and a 1 s period peaks 27.19 K above ambient and falls to 20.42 K, a 6.772 K swing about a 23.81 K mean that is ⟨P⟩·ΣR exactly. At 1 ms the swing is 511.7 mK. At 100 s it is 10.19 K |
-| N3 | as N1, sweeping f_s | the edges cost 5.62 µW per hertz. At 300 kHz they take 1.686 W and the junction sits at 72.61 °C. At 1 MHz, 5.620 W and 127.66 °C. At 2 MHz, 11.24 W and 206.3 °C. The package can afford 1.284 MHz, where the whole 8.929 W budget is spent. At R = 1 Ω the ceiling falls to 218.4 kHz, and at a 60 °C ambient the budget falls from 8.929 W to 6.429 W |
+| N3 | as N1, sweeping f_s | the edges cost 5.62 µW per hertz. At 300 kHz they take 1.686 W and the junction sits at 72.61 °C. At 1 MHz, 5.620 W and 127.66 °C. At 2 MHz, 11.24 W and 206.3 °C. The ripple falls the other way, 638.3 mA at 300 kHz and 191.5 mA at 1 MHz, so the junction runs coolest at 38.07 kHz and 53.47 °C, where 1.819 W of the 2.034 W is conduction. The package can afford 1.284 MHz, where the whole 8.929 W budget is spent. At R = 1 Ω the ceiling falls to 218.4 kHz, and at a 60 °C ambient the budget falls from 8.929 W to 6.429 W |
 
 ## 5. The lesson schema, unchanged
 
@@ -212,7 +212,9 @@ by the test named beside it.
 New views: **Drive** (L1, L2, L3), **Filter** (M1, M2), **Ring** (M3),
 **Thermal** (N1, N2, N3). New headline meters: `ripple` for the line current, `ring` for
 the node, `tj` for the junction. New sweep axes: `speed`, `torque`, `iin`,
-`ripple`, `Tj` and `att`. New traces: `vemf`, `vcin`, `icin` and `iline`.
+`ripple`, `Tj`, `dil` and `att`. New traces: `vemf`, `vcin`, `icin` and
+`iline`. N3's sweep carries `dil` on a right axis, so the heat the frequency
+costs and the ripple it saves are one curve, as §4 asks.
 
 ## 6. The gate
 
