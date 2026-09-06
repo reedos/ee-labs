@@ -16,12 +16,58 @@ import { bandwidth, db, dbm, kelvin, mw, num, pct, plain } from './format.js'
  * over a column of percentages would be a label that does not follow its own
  * control. The gain column has no share, so its share mode shows each block's
  * own gain and its unit does not change.
+ *
+ * `title` and `shareTitle` follow the same switch, for the same reason. The
+ * hover text is the sentence that says what a cell holds, and one saying
+ * "cumulative" over a column of shares is the defect the unit row already
+ * fixed, one line further up.
  */
 export const COLUMNS = [
-  { key: 'gain', label: 'Gain', unit: 'dB', shareUnit: 'dB', title: 'The cumulative gain up to and including this block' },
-  { key: 'nf', label: 'Noise figure', unit: 'dB', shareUnit: '%', title: 'The cumulative noise figure up to and including this block' },
-  { key: 'iip3', label: 'Input IP3', unit: 'dBm', shareUnit: '%', title: 'The cumulative input IP3, adding every stage’s product as an aligned voltage' },
-  { key: 'power', label: 'DC power', unit: 'mW', shareUnit: '%', title: 'What this block draws from the supply' },
+  {
+    key: 'gain',
+    label: 'Gain',
+    unit: 'dB',
+    shareUnit: 'dB',
+    title: 'The cumulative gain up to and including this block',
+    shareTitle: 'This block’s own gain in decibels, which the cumulative column adds up',
+  },
+  {
+    key: 'nf',
+    label: 'Noise figure',
+    unit: 'dB',
+    shareUnit: '%',
+    title: 'The cumulative noise figure up to and including this block',
+    shareTitle: 'This block’s share of the chain’s excess noise, as a percentage',
+  },
+  {
+    key: 'iip3',
+    label: 'Input IP3',
+    unit: 'dBm',
+    shareUnit: '%',
+    title: 'The cumulative input IP3, adding every stage’s product as an aligned voltage',
+    shareTitle: 'This block’s share of the chain’s third-order product, as a percentage',
+  },
+  {
+    key: 'power',
+    label: 'DC power',
+    unit: 'mW',
+    shareUnit: '%',
+    title: 'What this block draws from the supply',
+    shareTitle: 'This block’s share of the chain’s DC power, as a percentage',
+  },
+]
+
+/**
+ * The two things a budget cell can hold, and the switch that chooses.
+ *
+ * The switch changes the cells, the unit over them and the sentence that says
+ * what they hold, so all three live beside each other here rather than inside
+ * the pane. Each label says what its own exceptions are: the gain column has no
+ * share, and the DC power column has no running total.
+ */
+export const TABLE_MODES = [
+  { key: 'cumulative', label: 'Cumulative', title: 'The running total to this block, or its own number where a budget has none' },
+  { key: 'share', label: 'Share', title: 'Each block’s share of the budget, or its own number where a share has none' },
 ]
 
 /**

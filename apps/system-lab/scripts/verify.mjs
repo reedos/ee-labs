@@ -18,6 +18,7 @@
 
 import { chromium } from 'playwright'
 import { EXPERIMENTS, GROUPS, VIEW_LABELS, byId } from '../src/experiments.js'
+import { COLUMNS } from '../src/view.js'
 
 // `vite preview` binds to localhost, which resolves to ::1 on Windows, so the
 // name is the address here rather than 127.0.0.1. Override with APP_URL.
@@ -218,11 +219,21 @@ if (!/dB$/.test(shares['total-gain'])) fail(`a4: the gain total reads "${shares[
 // it, or three of the four columns say decibels over a column of percentages.
 const shareUnits = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.sys-table thead em[data-role^=unit-]')].map((e) => [e.getAttribute('data-role'), e.textContent.trim()])))
 if (JSON.stringify(shareUnits) !== JSON.stringify({ 'unit-gain': 'dB', 'unit-nf': '%', 'unit-iip3': '%', 'unit-power': '%' })) fail(`a4: in share mode the units read ${JSON.stringify(shareUnits)}`)
+
+// And so does the sentence over the unit. A header still hovering "the
+// cumulative noise figure" over a column of percentages is the same defect one
+// line higher up.
+const titlesNow = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.sys-table thead th[data-col]')].map((e) => [e.getAttribute('data-col'), e.getAttribute('title')])))
+const shareTitles = await titlesNow()
+for (const c of COLUMNS) if (shareTitles[c.key] !== c.shareTitle) fail(`a4: in share mode the ${c.key} header says "${shareTitles[c.key]}"`)
+
 await page.locator('.sys-table-head .segmented').getByRole('button', { name: 'Cumulative', exact: true }).click()
 await settle()
+const cumTitles = await titlesNow()
+for (const c of COLUMNS) if (cumTitles[c.key] !== c.title) fail(`a4: in cumulative mode the ${c.key} header says "${cumTitles[c.key]}"`)
 const cumUnits = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.sys-table thead em[data-role^=unit-]')].map((e) => [e.getAttribute('data-role'), e.textContent.trim()])))
 if (JSON.stringify(cumUnits) !== JSON.stringify({ 'unit-gain': 'dB', 'unit-nf': 'dB', 'unit-iip3': 'dBm', 'unit-power': 'mW' })) fail(`a4: in cumulative mode the units read ${JSON.stringify(cumUnits)}`)
-console.log('   the share mode’s total row closes at 100 %, and the units follow the switch')
+console.log('   the share mode’s total row closes at 100 %, and the unit and the sentence follow the switch')
 
 // ------------------------------------ the levels view names both of its lines
 

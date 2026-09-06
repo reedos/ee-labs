@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { flowPropsFor, levelPropsFor, numberRowsFor, tablePropsFor } from '../view.js'
+import { TABLE_MODES, flowPropsFor, levelPropsFor, numberRowsFor, tablePropsFor } from '../view.js'
 import { ip3Guard } from '../math.js'
 import { db, dbm } from '../format.js'
 
@@ -73,12 +73,11 @@ export function TablePane({ x }) {
     <div className="sys-table-pane">
       <div className="sys-table-head">
         <div className="segmented sm" role="group" aria-label="What each cell shows">
-          <button type="button" className={mode === 'cumulative' ? 'on' : ''} aria-pressed={mode === 'cumulative'} onClick={() => setMode('cumulative')} title="The running total up to and including each block">
-            Cumulative
-          </button>
-          <button type="button" className={mode === 'share' ? 'on' : ''} aria-pressed={mode === 'share'} onClick={() => setMode('share')} title="Each block’s share of the budget, or its own number where a share has no meaning">
-            Share
-          </button>
+          {TABLE_MODES.map((m) => (
+            <button key={m.key} type="button" className={mode === m.key ? 'on' : ''} aria-pressed={mode === m.key} onClick={() => setMode(m.key)} title={m.title}>
+              {m.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -88,7 +87,7 @@ export function TablePane({ x }) {
             <tr>
               <th scope="col">Block</th>
               {v.columns.map((c) => (
-                <th scope="col" key={c.key} title={c.title} data-col={c.key}>
+                <th scope="col" key={c.key} title={mode === 'share' ? c.shareTitle : c.title} data-col={c.key}>
                   {c.label}
                   <em data-role={`unit-${c.key}`}>{mode === 'share' ? c.shareUnit : c.unit}</em>
                 </th>

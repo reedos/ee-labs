@@ -1,7 +1,8 @@
 import { describe, it } from 'vitest'
-import { EXPERIMENTS, VIEW_LABELS } from './experiments.js'
+import { EXPERIMENTS, VIEW_LABELS, defaultsOf } from './experiments.js'
 import { TERMS } from './terms.js'
-import { CHAIN_ROWS, COLUMNS, LEVEL_COLUMNS } from './view.js'
+import { CHAIN_ROWS, COLUMNS, LEVEL_COLUMNS, TABLE_MODES } from './view.js'
+import { analyse, ip3Guard } from './math.js'
 import { expectPlain } from '@ee-labs/prose/testing'
 
 // The house style, measured (`STYLE.md`).
@@ -58,8 +59,23 @@ describe('the chrome reads plainly', () => {
     for (const c of [...COLUMNS, ...LEVEL_COLUMNS]) {
       expectPlain(c.label, 'label', `column ${c.key} label`)
       expectPlain(c.title, 'tooltip', `column ${c.key} title`)
+      if (c.shareTitle) expectPlain(c.shareTitle, 'tooltip', `column ${c.key} share title`)
     }
     for (const r of CHAIN_ROWS) expectPlain(r.title, 'tooltip', `chain row ${r.key} title`)
+    for (const m of TABLE_MODES) {
+      expectPlain(m.label, 'label', `table mode ${m.key} label`)
+      expectPlain(m.title, 'tooltip', `table mode ${m.key} title`)
+    }
+  })
+
+  it('the sentence beside the input IP3 reads plainly, in each of its three cases', () => {
+    // The guard is the only paragraph in this lab that the code writes rather
+    // than the lesson, and `STYLE.md` covers every word a reader can see. Its
+    // three cases are no contributing stage, one, and several.
+    for (const id of ['a1', 'a2', 'a3']) {
+      const says = ip3Guard(analyse(EXPERIMENTS.find((e) => e.id === id), defaultsOf(id)))
+      if (says) expectPlain(says, 'see', `${id} input IP3 guard`)
+    }
   })
 
   it('every headline names its quantity plainly', () => {
