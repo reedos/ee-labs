@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest'
 import { EXPERIMENTS, VIEW_LABELS } from './experiments.js'
 import { TERMS } from './terms.js'
-import { COLUMNS, LEVEL_COLUMNS } from './view.js'
+import { CHAIN_ROWS, COLUMNS, LEVEL_COLUMNS } from './view.js'
 import { expectPlain } from '@ee-labs/prose/testing'
 
 // The house style, measured (`STYLE.md`).
@@ -58,6 +58,14 @@ describe('the chrome reads plainly', () => {
     for (const c of [...COLUMNS, ...LEVEL_COLUMNS]) {
       expectPlain(c.label, 'label', `column ${c.key} label`)
       expectPlain(c.title, 'tooltip', `column ${c.key} title`)
+    }
+    for (const r of CHAIN_ROWS) expectPlain(r.title, 'tooltip', `chain row ${r.key} title`)
+  })
+
+  it('every headline names its quantity plainly', () => {
+    for (const e of EXPERIMENTS) {
+      const p = Object.fromEntries(e.params.map((k) => [k.key, k.default]))
+      expectPlain(e.headline({ c: { gainDb: 0, nfDb: 0, iip3Dbm: 0, oip3Dbm: 0, powerMw: 0 }, v: { snrOutDb: 0 } }, p).label, 'title', `${e.id} headline label`)
     }
   })
 

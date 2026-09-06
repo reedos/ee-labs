@@ -70,7 +70,7 @@ export const A = [
       Gain('lnaGainDb', 'Amplifier gain', 15, 'The low-noise amplifier at the front'),
       Gain('ifGainDb', 'IF amplifier gain', 22, 'The amplifier at the back'),
       BYPASS,
-      Gain('mixerGainDb', 'Mixer conversion gain', 8, 'What the mixer gives between its input and its output'),
+      Gain('mixerGainDb', 'Conversion gain', 8, 'What the mixer gives between its input and its output'),
     ],
     chain: (p) => bypass(referenceChain(p), p.bypass),
     view: 'table',
@@ -108,6 +108,6 @@ export const A = [
     input: (p) => ({ pinDbm: p.pinDbm, bandwidthHz: p.bandwidthHz }),
     view: 'levels',
     views: ['levels', 'table', 'numbers'],
-    headline: (x) => ({ value: x.v.snrOutDb, unit: 'dB', label: 'Signal-to-noise ratio at the output' }),
+    headline: (x) => ({ value: x.v.snrOutDb, unit: 'dB', label: 'Ratio at the output' }),
   },
 ]

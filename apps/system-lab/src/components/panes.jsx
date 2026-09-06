@@ -30,9 +30,12 @@ export function FlowStrip({ x }) {
           </span>
           <span className={`chain-block${b.passive ? ' is-passive' : ''}`} data-block={b.id} title={`${b.name}: gain ${b.gain}, noise figure ${b.nf}, input IP3 ${b.iip3}, ${b.power}`}>
             <strong>{b.name}</strong>
-            <em data-role="block-gain">{b.gain}</em>
-            <em data-role="block-nf">{b.nf}</em>
-            <em data-role="block-signal">{b.signal}</em>
+            {v.rows.map((r) => (
+              <em key={r.key} data-role={`block-${r.key}`} title={r.title}>
+                <i>{r.tag}</i>
+                {b[r.key]}
+              </em>
+            ))}
           </span>
         </React.Fragment>
       ))}
@@ -87,7 +90,7 @@ export function TablePane({ x }) {
               {v.columns.map((c) => (
                 <th scope="col" key={c.key} title={c.title} data-col={c.key}>
                   {c.label}
-                  <em>{c.unit}</em>
+                  <em data-role={`unit-${c.key}`}>{mode === 'share' ? c.shareUnit : c.unit}</em>
                 </th>
               ))}
             </tr>

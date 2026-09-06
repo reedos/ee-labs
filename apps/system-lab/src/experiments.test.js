@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, VIEW_LABELS, byId, defaultsOf, groupOf, letterOf, viewLabel } from './experiments.js'
 import { readQuantity } from './lessons.js'
 import { analyse, ip3Guard, refusalOf } from './math.js'
-import { COLUMNS, LEVEL_COLUMNS, flowPropsFor, levelPropsFor, numberRowsFor, tablePropsFor } from './view.js'
+import { CHAIN_ROWS, COLUMNS, LEVEL_COLUMNS, flowPropsFor, levelPropsFor, numberRowsFor, tablePropsFor } from './view.js'
 import { TERMS } from './terms.js'
 import { reportSummary } from './report.js'
 import { num } from './format.js'
@@ -180,6 +180,11 @@ describe('every experiment analyses, at its defaults and off them', () => {
       const strip = flowPropsFor(e, p, x)
       expect(strip.blocks.map((b) => b.id), `${e.id} strip`).toEqual(x.c.blocks.map((b) => b.id))
       expect(strip.out.value, `${e.id} strip output`).toBe(strip.blocks[strip.blocks.length - 1].signal)
+      // Two of a block's three readings are decibels, so a tag has to name each
+      // one. The strip is the only place a phone reader meets them, and a
+      // phone has no hover to fall back on.
+      expect(strip.rows, `${e.id} strip rows`).toBe(CHAIN_ROWS)
+      for (const b of strip.blocks) for (const r of CHAIN_ROWS) expect(b[r.key], `${e.id} ${b.id} ${r.key}`).toBeTruthy()
     }
   })
 
@@ -253,6 +258,42 @@ describe('every column a reader reads is named, with the unit it is in', () => {
       expect(c.unit, `${c.key} unit`).toBeTruthy()
       expect(c.title.length, `${c.key} title`).toBeGreaterThan(20)
     }
+  })
+
+  it('the unit over a column follows the switch that changes what the column holds', () => {
+    // The share switch turns three of the four columns into percentages. A
+    // header still saying decibels over them would be a label that does not
+    // follow its control, which is `REVIEW_PLAYBOOK.md` §1.
+    expect(COLUMNS.map((c) => c.shareUnit)).toEqual(['dB', '%', '%', '%'])
+    for (const c of COLUMNS) {
+      const hasShare = c.shareUnit === '%'
+      const { p, x } = at('a2')
+      const props = tablePropsFor(byId.a2, p, x)
+      for (const row of props.rows) {
+        if (hasShare) expect(row.cells[c.key].share, `${c.key} share of ${row.id}`).not.toBeNull()
+        else expect(row.cells[c.key].share, `${c.key} claims a share`).toBeNull()
+      }
+    }
+  })
+
+  it('the flow strip tags each of a block’s three readings', () => {
+    expect(CHAIN_ROWS.map((r) => r.key)).toEqual(['gain', 'nf', 'signal'])
+    for (const r of CHAIN_ROWS) {
+      expect(r.tag.length, `${r.key} tag`).toBeLessThanOrEqual(3)
+      expect(r.title.length, `${r.key} title`).toBeGreaterThan(20)
+    }
+  })
+
+  it('one quantity carries one name, in the headline and in the pane that prints it', () => {
+    // `STYLE.md` S11. The output ratio is the same number in three places, and
+    // it was called two things: the topbar said one and the numbers pane said
+    // another.
+    const { exp, p, x } = at('a4')
+    expect(x.headline.label).toBe('Ratio at the output')
+    const rows = numberRowsFor(exp, p, x)
+    const row = rows.find((r) => r.label === x.headline.label)
+    expect(row, `no pane row is called "${x.headline.label}"`).toBeDefined()
+    expect(row.value).toContain(x.headline.value.toPrecision(5))
   })
 
   it('the levels view names its two lines and its three columns with the same words', () => {

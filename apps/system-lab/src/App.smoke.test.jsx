@@ -93,6 +93,12 @@ describe('App', () => {
     expect(props.totals.nf, 'the cumulative total is unchanged').toMatch(/dB$/)
   })
 
+  it('prints the unit each column is actually in, in the mode it is in', () => {
+    const h = html({ initialId: 'a2', initialView: 'table' })
+    expect(h, 'the cumulative header lost its units').toMatch(/data-role="unit-nf">dB</)
+    expect(h, 'the cumulative IP3 header').toMatch(/data-role="unit-iip3">dBm</)
+  })
+
   it('gives every table cell the label the phone layout draws in front of it', () => {
     // Below 900 px the table transposes into one card per block, and each cell
     // grows a `::before` carrying its column's name. A cell with no

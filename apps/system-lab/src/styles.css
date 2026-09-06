@@ -176,6 +176,10 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .chain-block strong { font-size: 10.5px; font-weight: 650; white-space: nowrap; }
 .chain-block em,
 .chain-end em { font-style: normal; color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Two of a block's three readings are in decibels, so the tag in front of each
+   is what separates the gain from the noise figure where there is no hover. */
+.chain-block em { display: flex; gap: 5px; }
+.chain-block em i { font-style: normal; flex: 0 0 18px; opacity: 0.62; }
 .chain-block.is-passive { border-style: dashed; }
 .chain-end { justify-content: center; color: var(--dim); }
 .chain-end.is-out { border-color: var(--accent); color: var(--accent); }

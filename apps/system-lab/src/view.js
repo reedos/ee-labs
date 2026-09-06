@@ -8,12 +8,20 @@
 import { KT0_DBM_HZ } from '@ee-labs/rf'
 import { bandwidth, db, dbm, kelvin, mw, num, pct, plain } from './format.js'
 
-/** The four budgets, in the order the table's columns run. */
+/**
+ * The four budgets, in the order the table's columns run.
+ *
+ * `unit` is what a cumulative cell is in and `shareUnit` what a share cell is
+ * in, because the switch changes both. A header that went on saying decibels
+ * over a column of percentages would be a label that does not follow its own
+ * control. The gain column has no share, so its share mode shows each block's
+ * own gain and its unit does not change.
+ */
 export const COLUMNS = [
-  { key: 'gain', label: 'Gain', unit: 'dB', title: 'The cumulative gain up to and including this block' },
-  { key: 'nf', label: 'Noise figure', unit: 'dB', title: 'The cumulative noise figure up to and including this block' },
-  { key: 'iip3', label: 'Input IP3', unit: 'dBm', title: 'The cumulative input IP3, adding every stage’s product as an aligned voltage' },
-  { key: 'power', label: 'DC power', unit: 'mW', title: 'What this block draws from the supply' },
+  { key: 'gain', label: 'Gain', unit: 'dB', shareUnit: 'dB', title: 'The cumulative gain up to and including this block' },
+  { key: 'nf', label: 'Noise figure', unit: 'dB', shareUnit: '%', title: 'The cumulative noise figure up to and including this block' },
+  { key: 'iip3', label: 'Input IP3', unit: 'dBm', shareUnit: '%', title: 'The cumulative input IP3, adding every stage’s product as an aligned voltage' },
+  { key: 'power', label: 'DC power', unit: 'mW', shareUnit: '%', title: 'What this block draws from the supply' },
 ]
 
 /**
@@ -163,6 +171,19 @@ export function numberRowsFor(exp, p, x) {
 }
 
 /**
+ * The three readings the flow strip shows under each block's name.
+ *
+ * Two of them are in decibels, so a tag carries the difference between the
+ * gain and the noise figure. The hover text says the same thing at length, and
+ * a phone has no hover, so the tag is what a reader on a phone reads.
+ */
+export const CHAIN_ROWS = [
+  { key: 'gain', tag: 'G', title: 'The block’s own gain in decibels' },
+  { key: 'nf', tag: 'NF', title: 'The block’s own noise figure in decibels' },
+  { key: 'signal', tag: 'Out', title: 'The signal level leaving this block' },
+]
+
+/**
  * The flow strip: the chain as a row of blocks, each with its four numbers.
  *
  * The strip is above every view rather than inside one, because the chain is
@@ -172,6 +193,7 @@ export function numberRowsFor(exp, p, x) {
 export function flowPropsFor(exp, p, x) {
   if (x.declined) return { blocks: [], input: null }
   return {
+    rows: CHAIN_ROWS,
     input: { label: 'In', value: dbm(x.v.pinDbm) },
     blocks: x.c.blocks.map((b, i) => ({
       id: b.id,
