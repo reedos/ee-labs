@@ -3,6 +3,7 @@ import { EXPERIMENTS, GROUPS, VIEW_ORDER, VIEW_LABELS, byId, defaultsOf, groupOf
 import { readQuantity } from './lessons.js'
 import { analyse, clearCache, guardOf, refusalOf } from './math.js'
 import { mapPropsFor, profilePropsFor } from './view.js'
+import { axisDomainOf, positionAt, rangeOf } from './components/FieldMapCanvas.jsx'
 import { TERMS } from './terms.js'
 import { reportSummary } from './report.js'
 import { gridNum, num } from './format.js'
@@ -25,9 +26,10 @@ import { figuresOf } from '@ee-labs/fields'
 
 // The experiments that ship an approximation, and so carry a guard. Groups A
 // and B are absent because a closed form is exact and is never hedged: the five
-// grid solves, the two magnetic circuits, the eddy-current sheet and the tube
-// formula are the whole list for the first half.
-const GUARDED = ['c1', 'c2', 'c3', 'c4', 'c5', 'e5', 'e6', 'f3', 'f4']
+// grid solves, the four-point probe's regime check, the two magnetic circuits,
+// the eddy-current sheet and the tube formula are the whole list for the first
+// half.
+const GUARDED = ['c1', 'c2', 'c3', 'c4', 'c5', 'd4', 'e5', 'e6', 'f3', 'f4']
 
 const at = (id, over = {}) => {
   const exp = byId[id]
@@ -220,13 +222,120 @@ describe('every experiment analyses, at its defaults and off them', () => {
     // Every approximation the first half ships carries one. Nothing in groups A
     // and B does, because a closed form is exact and is never hedged.
     expect(guarded).toBe(GUARDED.length)
+    // D4's guard is the one a reader steers into failing, so name it here as
+    // well: a list that silently lost it would still be a list of nine.
+    expect(GUARDED, 'the four-point probe has no guard on screen').toContain('d4')
     expect(EXPERIMENTS.filter((e) => guardOf(at(e.id).x)).map((e) => e.id)).toEqual(GUARDED)
+  })
+
+  it('between the two regimes the four-point probe quotes the reading, not a resistivity', () => {
+    const block = at('d4', { t: 5e-3 }).x
+    expect(block.fourPoint.regime).toBe('block')
+    expect(block.headline.label).toBe('Resistivity')
+
+    const between = at('d4', { t: 1e-3 }).x
+    expect(between.fourPoint.regime).toBe('between')
+    expect(between.fourPoint.resistivity, 'the engine quotes a resistivity it declined').toBeNull()
+    // The headline is still a number, and it is the one the instrument read.
+    expect(between.headline.value).toBeCloseTo(between.p.V / between.p.I, 12)
+    expect(between.headline.unit).toBe('Ω')
+    expect(Number.isFinite(between.headline.value), 'the topbar shows a dash where a number belongs').toBe(true)
+    // And the sentence saying why no resistivity is quoted is on screen.
+    expect(guardOf(between).ok).toBe(false)
+    expect(guardOf(between).says).toMatch(/quotes neither/)
+    // A report of that state is a sentence, not a crash inside the formatter.
+    const summary = reportSummary({ id: 'd4', params: between.p, view: 'numbers', x: between })
+    expect(summary.Headline).toContain('What the probe reads')
+  })
+
+  it('a number with no unit takes no engineering prefix', () => {
+    // E6's coupling coefficient is 0.98. In engineering notation the topbar
+    // read "980 m", which a reader takes for a length.
+    expect(num(0.98, '')).toBe('0.98')
+    expect(num(0.9800001, '')).toBe('0.98')
+    expect(num(1.0072, '')).toBe('1.007')
+    expect(num(6.96e-5, '')).toBe('0.0000696')
+    // A quantity that HAS a unit still gets its prefix.
+    expect(num(0.98, 'V')).toMatch(/m?V/)
+    const k = at('e6').x
+    expect(k.headline.unit).toBe('')
+    expect(num(k.headline.value, k.headline.unit)).toBe('0.98')
+  })
+
+  it('a headline the engine declined to quote reports as a refusal, not as a crash', () => {
+    const { x } = at('b2', { a: 2e-3, b: 1e-3 })
+    expect(Number.isFinite(x.headline.value)).toBe(false)
+    const summary = reportSummary({ id: 'b2', params: x.p, view: 'numbers', x })
+    expect(summary.Headline).toBe('Declined: not quoted')
   })
 
   it('nothing in the first half is a refusal, and the refusal channel is there for the second', () => {
     for (const e of EXPERIMENTS) {
       if (letterOf(e) > 'F') continue
       expect(refusalOf(at(e.id).x), `${e.id} declines at its defaults`).toBeNull()
+    }
+  })
+})
+
+describe('a profile draws a curve and not a spike over a flat line', () => {
+  // A1's cut ran along the line joining two point charges, straight through
+  // one of them. One over the square of the distance made the nearest sample
+  // 40 GV/m, the panel scaled to that, and every other sample sat on the floor:
+  // the lesson was a vertical line and nothing else. The measure is how far up
+  // the panel the ninetieth-percentile sample reaches. A curve uses its panel;
+  // a spike does not.
+  const FLOOR = 0.05
+
+  it('nine in ten samples are not pinned to the floor of the panel', () => {
+    let measured = 0
+    let worst = { id: null, reach: 1 }
+    for (const e of EXPERIMENTS) {
+      if (!e.views.some((v) => v === 'profile' || v === 'wave' || v === 'interface')) continue
+      const { p, x } = at(e.id)
+      const pr = profilePropsFor(e, p, x)
+      const { lo, hi } = axisDomainOf(pr)
+      const log = Boolean(pr.log) && lo > 0 && hi > 0
+      for (const panel of pr.stack && pr.stack.length ? pr.stack : [pr]) {
+        const r = rangeOf(panel.scalar.read, lo, hi, { log })
+        const values = []
+        for (let i = 0; i <= 160; i++) {
+          const t = positionAt(i / 160, lo, hi, log)
+          let v
+          try {
+            v = panel.scalar.read(t)
+          } catch {
+            v = NaN
+          }
+          if (Number.isFinite(v)) values.push(v)
+        }
+        expect(values.length, `${e.id} ${panel.scalar.label}: the cut reads nothing`).toBeGreaterThan(80)
+        values.sort((a, b) => a - b)
+        const p90 = values[Math.floor(0.9 * (values.length - 1))]
+        const reach = (p90 - r.min) / Math.max(1e-300, r.max - r.min)
+        measured++
+        if (reach < worst.reach) worst = { id: `${e.id} ${panel.scalar.label}`, reach }
+        expect(reach, `${e.id} ${panel.scalar.label}: nine in ten samples sit in the bottom ${(100 * reach).toPrecision(2)} % of the panel`).toBeGreaterThan(FLOOR)
+      }
+    }
+    // A count of zero is a result to check, not a pass.
+    expect(measured, 'no profile was measured at all').toBeGreaterThan(20)
+    expect(worst.id, 'the worst panel was not identified').toBeTruthy()
+  })
+
+  it('no cut passes through a point charge, where the field is one over zero', () => {
+    for (const id of ['a1', 'a2', 'a5']) {
+      const { p, x } = at(id)
+      const pr = profilePropsFor(byId[id], p, x)
+      const { lo, hi } = axisDomainOf(pr)
+      for (const c of x.charges) {
+        // The cut is a line in one coordinate at a fixed other; a charge is on
+        // it only if both agree.
+        const along = pr.axis === 'y' ? c.at[1] : c.at[0]
+        const across = pr.axis === 'y' ? c.at[0] : c.at[1]
+        const onTheLine = Math.abs(across - (pr.cut ?? 0)) < 1e-12
+        const inTheSpan = along > lo && along < hi
+        expect(onTheLine && inTheSpan, `${id}: the cut runs through the charge at ${c.at.join(', ')}`).toBe(false)
+      }
     }
   })
 })
