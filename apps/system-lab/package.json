@@ -1,0 +1,24 @@
+{
+  "name": "system-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "The whole chain from antenna or sensor to bits, and the budgets that decide whether it works: four numbers per block, the gain that adds, the noise the first stage sets, and the level at every node.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "pins": "node scripts/pins.mjs"
+  },
+  "dependencies": {
+    "@ee-labs/rf": "*",
+    "@ee-labs/ui": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}
