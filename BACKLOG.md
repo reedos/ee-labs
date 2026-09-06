@@ -1346,16 +1346,27 @@ only its own section. The director folds it into the shared ledger at merge.
   Either §4.3 is corrected, or the plan says that its link figures are quoted to
   the rounded constant. Every dynamic-range and reciprocal-mixing figure in §4.3
   does survive the script.
-- **`scripts/verify.mjs`, the Playwright harness, is not written.** The plan's
-  §7 asks for four checks. The hardest is that nothing scrolls sideways at
-  390 px on a table of six rows by four columns. What exists instead is
-  `src/App.smoke.test.jsx`, which server-renders every experiment in every one
-  of its views. It holds the two halves of the phone layout together. Every
-  table cell carries the `data-label` the card layout draws in front of it, and
-  only the chain strip and the table may scroll inside themselves.
-- **No screenshot pass has been made.** The smoke test catches a prop the shell
-  forgot to pass, and a rule that drifted from its markup. It does not catch a
-  pane that stopped redrawing.
+- **`scripts/verify.mjs` is written and green.** It drives the built page in
+  chromium at 1600 × 1000 and at 390 × 844 and makes all four of the plan's
+  §7 checks, with no browser console errors. It measures the page's width
+  against the screen rather than asserting that a `min-width: 0` rule exists,
+  which is as far as a unit test reaches.
+- **Two of the harness's own claims were wrong before the page was.** The first
+  was that the step nav's forward button is always clickable. It is disabled on
+  the last step. The second was that raising the amplifier's gain hands the
+  noise budget to the preselect filter. It does not. Raising it shrinks only the
+  shares behind the amplifier, so the amplifier keeps the budget and takes more
+  of it. The crossover runs the other way, between 8 dB and 15 dB, where the
+  mixer's noise figure stops being divided by enough gain.
+- **The screenshot pass found three defects the suite could not see.** The flow
+  strip printed a block's gain and its noise figure as two bare figures in
+  decibels, with a hover title and nothing else, which a phone cannot show. The
+  share switch turned three table columns into percentages and left the header
+  saying decibels over them. And the headline called the output ratio one thing
+  while the numbers pane called it another.
+- **The levels view had the same defect, found by reading the code.** Two of its
+  three columns are in dBm, and nothing but a colour named which line was which.
+  All four are fixed, and each carries a test and a check in the harness.
 - **The block record is a record, and no block links to a circuit.** Plan
   Decision 4 gives every block a `fromCircuit` and a `linksTo`, and every block
   in this lab carries `null` in both. The RF Lab's groups E and F, the
@@ -1376,6 +1387,16 @@ only its own section. The director folds it into the shared ledger at merge.
   and several. The knobs Group A offers cannot reach a refusal, and a test
   asserts that rather than leaving it unsaid. The refusal channel is driven
   instead by a chain the knobs cannot build.
+- **The three student sittings and Reed's own pass are not done.** The plan's
+  §9 puts them at the release gate with the full audit, and this lab has one
+  group of the six. `apps/circuit-elements-lab/SITTINGS.md` is the script when
+  the curriculum is whole.
+- **`packages/rf/index.js` will conflict at merge, and both sides are wanted.**
+  This branch was cut from `lab/rf-lab` where `index.js` re-exported twenty
+  names from a `src/match.js` that did not exist, so every import of
+  `@ee-labs/rf` threw. This sitting replaced that block with the `budget.js`
+  exports. The RF Lab has since landed the file. Both export blocks belong in
+  the merged `index.js`, and `apps/system-lab/NEEDS.md` §4 says so.
 - **The non-goals of `SYSTEM_LAB_PLAN.md` §10 are all still non-goals.** Bit
   error rate and modulation. The converter as a circuit. Propagation models.
   Automatic gain control as a loop. Frequency planning and spur tables.

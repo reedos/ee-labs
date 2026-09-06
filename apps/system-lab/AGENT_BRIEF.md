@@ -106,7 +106,7 @@ heading, so a reader never meets a tab with nothing under it, and
 ```
 apps/system-lab/
   index.html  package.json  vite.config.js  RELEASE_STATUS (dark)
-  AGENT_BRIEF.md  NEEDS.md  scripts/pins.mjs
+  AGENT_BRIEF.md  NEEDS.md  scripts/pins.mjs  scripts/verify.mjs
   src/App.jsx  main.jsx  styles.css
   src/experiments.js      merges groups/*.js in plan order, no prose
   src/lessons.js          merges lessons/*.js, and readQuantity's path list
@@ -274,10 +274,27 @@ npm run build --workspace apps/system-lab
 ```
 
 Run the scoped suite, not the whole monorepo, and always pass `--maxWorkers=4`,
-because up to a dozen agents share the machine. Screenshot every view at 390 px
-and at 1280 × 900 and read the screenshots as a student would, per
-`/REVIEW_PLAYBOOK.md` §11. The plan's §7 puts the Playwright harness at the
-release gate, and lane 1 did not write one.
+because up to a dozen agents share the machine.
+
+Then drive the page, which the suite cannot do:
+
+```
+npm run build --workspace apps/system-lab
+npm run preview --workspace apps/system-lab     (serves dist/ on :4182)
+npm run verify --workspace apps/system-lab      (in another shell)
+```
+
+`scripts/verify.mjs` makes all four of the plan's §7 checks in chromium at
+1600 × 1000 and again at 390 × 844. It measures the page's own width against
+the screen rather than asserting that a `min-width: 0` rule exists, which is
+what the unit tests can reach. `vite preview` binds to localhost, and on Windows
+that resolves to `::1`, so the script names the host rather than 127.0.0.1.
+A lane that adds a view adds its selector to `VIEW_SHOWS` in that file.
+
+Screenshot every view at 390 px and at 1280 × 900 as well, and read the
+screenshots as a student would, per `/REVIEW_PLAYBOOK.md` §11. The harness
+holds a claim that was written down. A picture is what finds the claim nobody
+wrote.
 
 ## 9. Gotchas this lab has already paid for
 
@@ -297,8 +314,16 @@ release gate, and lane 1 did not write one.
 - **Four or five significant figures, and never more.** Everything here is a sum
   or a ratio in decibels. `format.js` snaps a value far below its own scale to
   zero, so a share of 4e-17 does not print as a measurement.
+- **Two of a block's three strip readings are in decibels**, and two of the
+  levels view's three columns are in dBm, so a unit cannot tell them apart. Every
+  such reading carries a name: `CHAIN_ROWS` tags the strip, `LEVEL_COLUMNS`
+  names both traces and all three columns. A hover title is not a name, because
+  a phone has no hover.
+- **A header's unit follows the switch under it.** The share mode turns three of
+  the four table columns into percentages, so `COLUMNS` carries `shareUnit`
+  beside `unit` and the pane prints whichever the mode is in.
 - **A test that fails may be the test.** Decide which, and say which in the
-  commit.
+  commit. Two of the harness's own claims were wrong before the page was.
 - **The dark launch is enforced by a test.** While `RELEASE_STATUS` says `dark`,
   nothing outside `apps/system-lab/` may mention the lab. The `cp` line for
   `deploy.yml` is the director's to add, and it lives in `NEEDS.md`.

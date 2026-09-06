@@ -132,6 +132,17 @@ its DC power reads as unknown, and a chain holding one has no power total.
 cascade is pinned equal on one chain in `packages/rf`. Two copies would drift,
 which is the whole of Decision 3.
 
+**One conflict the director will meet at merge.** This branch was cut from
+`lab/rf-lab` at the point where `packages/rf/index.js` re-exported twenty names
+from `./src/match.js`, and that file did not exist yet. Every import of
+`@ee-labs/rf` threw, so this lab could not run until the block was replaced.
+This sitting replaced it with the `budget.js` exports.
+
+The RF Lab has since landed `src/match.js`. At merge the two branches change the
+same lines of `index.js` for two different reasons. **Both export blocks belong
+in the merged file.** No other file in `packages/rf` that the RF Lab wrote was
+touched here.
+
 ## 5. The budget table, if a second lab wants it
 
 `PROGRAM.md` §4 says a new canvas goes into `packages/ui` when a second lab
