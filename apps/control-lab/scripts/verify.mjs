@@ -1119,17 +1119,43 @@ console.log('\n6. Phone width\n')
   // is how Signal Lab's Window select shipped broken at 390px).
   await page.setViewportSize({ width: 390, height: 844 })
   await page.waitForTimeout(500)
-  const sideways = await page.evaluate(
-    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-  )
-  if (sideways) fail('390px: the page scrolls horizontally')
+  // The element that actually scrolls on a phone is #root, not the
+  // documentElement: below 900px base.css gives html, body AND #root
+  // height:100% with overflow:auto, so the page's own content box never
+  // grows and documentElement.scrollWidth is pinned to the viewport width
+  // whatever the content does. Measured on the opening lesson at 390x844:
+  // documentElement 390/390 wide and 844/844 TALL, while #root reads
+  // 390/390 wide and 1154/844 tall — the vertical figures prove which box
+  // the content is in. This probe read the documentElement for four rounds
+  // and could not have failed: a control clipped off the right edge would
+  // have overflowed #root and left the documentElement at 390. Playbook 11,
+  // a probe passing over an empty set. Every scroller that can hold the
+  // overflow is measured now, and the one that reports the widest overflow
+  // is the one named.
+  const sideways = () =>
+    page.evaluate(() => {
+      const boxes = [
+        ['documentElement', document.documentElement],
+        ['body', document.body],
+        ['#root', document.getElementById('root')],
+      ]
+      let worst = null
+      for (const [name, el] of boxes) {
+        if (!el) continue
+        const over = el.scrollWidth - el.clientWidth
+        if (!worst || over > worst.over) worst = { name, over, sw: el.scrollWidth, cw: el.clientWidth }
+      }
+      return worst
+    })
+  const s1 = await sideways()
+  if (s1.over > 1) fail(`390px: ${s1.name} scrolls horizontally (${s1.sw} > ${s1.cw})`)
   await clickBtn('Watch')
-  const sideways2 = await page.evaluate(
-    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-  )
-  if (sideways2) fail('390px / watch view: the page scrolls horizontally')
+  const s2 = await sideways()
+  if (s2.over > 1) fail(`390px / watch view: ${s2.name} scrolls horizontally (${s2.sw} > ${s2.cw})`)
   await clickBtn('Step')
-  console.log('   no horizontal scroll at 390px, watch view included')
+  console.log(
+    `   no horizontal scroll at 390px, watch view included (widest of documentElement/body/#root: step ${s1.over}px, watch ${s2.over}px)`,
+  )
 }
 
 // ------------------------------------------------- 6b. Reed's Math tab report
@@ -1695,59 +1721,94 @@ console.log('\n8. Overprinting captions and labels (items 24, 25, 26, 27)\n')
   console.log(`   390px flow strip: ${clipped.length ? clipped.length + ' CLIPPED nodes' : 'no node scrolls past its own width'}`)
 }
 
-// 27: the Bode "gain = 1" label must sit clear of both the magnitude and
-// phase traces — checked on L11 ("The plant that needs feedback", where it
-// used to overprint the phase trace, top right) at 1440x900 and on phone.
+// 27: EVERY Bode marker label must sit clear of every trace it is drawn
+// over — both labels, on every lesson whose plot carries them.
+//
+// The first cut of this probe checked one label ("gain = 1") on one lesson
+// (L11, "The plant that needs feedback", where it used to overprint the
+// phase trace) and passed for four rounds while its own sibling shipped
+// broken: "phase = −180°" is drawn to the RIGHT of its line and runs a
+// third of a decade, and on every three-lag loop the phase trace descends
+// through the words. Lessons 8, 9 and 13 all show it, and a screenshot
+// shows it plainly — "−180°" reads as "−1♦0°" with the curve through the
+// digits. The label chose its side by asking where the traces were at one
+// x, the marker's own, and the answer at the far end of the words is not
+// the answer at their start (BodeCanvas: labelSide, bodeFrame.js).
+//
 // The redraw is forced by toggling the phase overlay off then back ON — a
 // real prop change (showPhase), not a viewport nudge the canvas might not
 // actually resize for — landing on the same showPhase=true the bug needs.
 {
   const magColor = '#38e0b0' // COLORS.trace
   const phaseColor = '#b98cf0' // COLORS.phase
+  // Chosen for what each plot HAS. L11 is where the original overprint was
+  // filed and has only a gain crossover; the other three are loops whose
+  // phase reaches −180°, so they carry the second label as well, and L13
+  // draws a ghost pair of traces under it too.
+  const cases = [
+    { lesson: 'The plant that needs feedback', kp: 5 },
+    { lesson: 'Watch the poles cross' },
+    { lesson: 'Everything is about one point' },
+    { lesson: 'Lead does it without the noise' },
+  ]
+  let measured = 0
   for (const vp of [{ width: 1440, height: 900 }, PHONE_VIEWPORT]) {
-    await page.setViewportSize(vp)
-    await page.goto(URL, { waitUntil: 'networkidle' })
-    await page.waitForSelector('.views canvas')
-    await loadLesson('The plant that needs feedback')
-    // The lesson now LOADS at Kp = 0.5 (item 2, student review: the latch is
-    // the first picture, not a chip away) — and at that gain the open loop's
-    // DC magnitude is already 0.5, below 1 forever, so it genuinely has no
-    // gain crossover to label. Kp = 5 is the gain the original "gain = 1"
-    // overprint bug was filed against, so set it explicitly rather than
-    // leaning on whatever the lesson's own default happens to be.
-    await setField('Kp', 5)
-    const phaseGroup = page.locator('[aria-label="Phase overlay"]')
-    await phaseGroup.getByRole('button', { name: 'no phase', exact: true }).click()
-    await settle()
-    await installProbeHooks(page)
-    const { texts, lines } = await probeDraw(page, () =>
-      phaseGroup.getByRole('button', { name: 'phase', exact: true }).click(),
-    )
-    const bodeId = await page.evaluate(
-      () => document.querySelector('canvas[aria-label^="Open-loop Bode"]')?.dataset.probeId,
-    )
-    const label = dedupeTexts(texts).find((t) => t.canvas === bodeId && t.text === 'gain = 1')
-    if (!label) {
-      fail(`bode ${vp.width}x${vp.height} L11: "gain = 1" label not drawn`)
-      continue
+    for (const c of cases) {
+      await page.setViewportSize(vp)
+      await page.goto(URL, { waitUntil: 'networkidle' })
+      await page.waitForSelector('.views canvas')
+      await loadLesson(c.lesson)
+      // L11 loads at Kp = 0.5, where the open loop's DC magnitude is already
+      // 0.5 and below 1 forever, so it genuinely has no gain crossover to
+      // label. Kp = 5 is the gain the original bug was filed against.
+      if (c.kp) await setField('Kp', c.kp)
+      const phaseGroup = page.locator('[aria-label="Phase overlay"]')
+      await phaseGroup.getByRole('button', { name: 'no phase', exact: true }).click()
+      await settle()
+      await installProbeHooks(page)
+      const { texts, lines } = await probeDraw(page, () =>
+        phaseGroup.getByRole('button', { name: 'phase', exact: true }).click(),
+      )
+      const bodeId = await page.evaluate(
+        () => document.querySelector('canvas[aria-label^="Open-loop Bode"]')?.dataset.probeId,
+      )
+      const labels = dedupeTexts(texts).filter(
+        (t) => t.canvas === bodeId && /^(gain = 1|phase = )/.test(t.text),
+      )
+      if (!labels.length) {
+        fail(`bode ${vp.width}x${vp.height} "${c.lesson}": no marker label drawn at all`)
+        continue
+      }
+      const pad = 2
+      for (const label of labels) {
+        measured++
+        const clashing = lines.filter(
+          (l) =>
+            l.canvas === bodeId &&
+            (l.color === magColor || l.color === phaseColor) &&
+            l.x >= label.x - pad &&
+            l.x <= label.x + label.w + pad &&
+            l.y >= label.y - pad &&
+            l.y <= label.y + label.h + pad,
+        )
+        if (clashing.length) {
+          fail(
+            `bode ${vp.width}x${vp.height} "${c.lesson}": "${label.text}" overlaps a trace (${clashing.length} points)`,
+          )
+        }
+      }
+      console.log(
+        `   ${vp.width}x${vp.height} ${c.lesson.padEnd(30)} ${labels.map((l) => `"${l.text}"`).join(' + ')}: clear`,
+      )
     }
-    const pad = 2
-    const clashing = lines.filter(
-      (l) =>
-        l.canvas === bodeId &&
-        (l.color === magColor || l.color === phaseColor) &&
-        l.x >= label.x - pad &&
-        l.x <= label.x + label.w + pad &&
-        l.y >= label.y - pad &&
-        l.y <= label.y + label.h + pad,
-    )
-    if (clashing.length) {
-      fail(`bode ${vp.width}x${vp.height} L11: "gain = 1" label overlaps a trace (${clashing.length} points)`)
-    }
-    console.log(
-      `   ${vp.width}x${vp.height} L11 "gain = 1" label: ${clashing.length ? clashing.length + ' CLASHING trace points' : 'clear of both traces'}`,
-    )
   }
+  // Playbook 11: a probe that found no labels would print no failures and
+  // read exactly like a pass. Two viewports, four lessons, and at least one
+  // label each — with three of the four carrying two.
+  if (measured < 8) {
+    fail(`bode marker-label probe measured only ${measured} labels, expected at least 8`)
+  }
+  console.log(`   ${measured} marker labels measured against both traces`)
 }
 
 // ------------------------------------------- 28. terms reachable in the picker
@@ -3118,6 +3179,66 @@ console.log('\n48. The verdict strip never needs a sideways scroll, in every sta
   await page.goto(URL, { waitUntil: 'load' })
   await page.waitForSelector('.views canvas')
   await clickPreset('First order lag')
+}
+
+// ---------------------------------------------------------------------------
+// 49. The same strip, in the band between the phone rule and 1366px
+//
+// Item 48 above measures one viewport, 390x844, and item 7's fold probe
+// measures 1366x768 and 1440x900. Nothing measured what lies between them,
+// and that is where the strip was worst: .topbar is one non-wrapping row
+// there, .topbar-controls beside it is flex-shrink: 0 (packages/ui), and
+// .flow carries min-width: 0 — so every pixel the row was short came out of
+// the loop summary and out of nothing else. Measured on the opening lesson,
+// a strip needing 419px was given 356px at 1280 (the sentence read "stable
+// closed lo"), 176px at 1100, and 0px at 901: the row naming the controller,
+// the plant and the verdict was not on screen at all, inside its own 14px
+// scrollbox, on a page that never scrolls. Every existing probe passed.
+//
+// 1440 is included as the control. A fix that bought room in the band by
+// taking it from the widths that already fit would pass a probe that only
+// ever checked the band.
+console.log('\n49. The verdict strip needs no sideways scroll between 901px and 1440px either\n')
+{
+  const strip = async (label) => {
+    await page.waitForSelector('.flow-node')
+    await settle()
+    const { clientWidth, scrollWidth, text } = await page.evaluate(() => {
+      const flow = document.querySelector('.flow')
+      return { clientWidth: flow.clientWidth, scrollWidth: flow.scrollWidth, text: flow.textContent.trim() }
+    })
+    // A zero clientWidth is the state this section exists to catch, and it
+    // is NOT a pass: a strip squeezed out of existence has nothing to
+    // overflow. Say so in its own words rather than letting 0 >= 0 through.
+    if (clientWidth < 40) {
+      fail(`flow strip ${label}: clientWidth ${clientWidth} — the loop summary has been squeezed off the row`)
+    } else if (scrollWidth > clientWidth + 1) {
+      fail(`flow strip ${label}: scrollWidth ${scrollWidth} > clientWidth ${clientWidth} (${scrollWidth - clientWidth}px clipped)`)
+    } else {
+      console.log(`   ${label}: scrollWidth ${scrollWidth} <= clientWidth ${clientWidth}  "${text.slice(-28)}"`)
+    }
+  }
+
+  for (const vp of [
+    { width: 901, height: 900 },
+    { width: 1024, height: 768 },
+    { width: 1280, height: 900 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(vp)
+    await page.goto(URL, { waitUntil: 'load' })
+    await page.waitForSelector('.views canvas')
+    await strip(`${vp.width}x${vp.height}, stable`)
+    // The longest verdict a plant can reach, at the same width.
+    await page.goto(`${URL}#plant=threePole&ctrl=p:80`, { waitUntil: 'load' })
+    await strip(`${vp.width}x${vp.height}, UNSTABLE`)
+    // ...and the page must still not scroll with the bar on two rows.
+    if (await scrolls()) fail(`${vp.width}x${vp.height}: the page scrolls with the topbar wrapped`)
+  }
+
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
 }
 
 await browser.close()
