@@ -59,3 +59,37 @@ says `dark`, and `src/release.test.js` fails if any of it is.
   phases: control of the buck in Control Lab, and rectifier spectra in Signal
   Lab. Each will need `handOverEvent` entries and a `HANDOVERS` table, in the
   pattern the Circuit hand-overs set.
+
+## From the director, for Groups H and I
+
+1. **`packages/ui`, `packages/explain` and `packages/network` are unchanged.**
+   The three new panes are built from `useCanvas`, `drawFrame`, `plotArea`,
+   `COLORS`, `fmt` and `buildLink` as exported today. `buildLink` already
+   carries a `plant=custom` with six exact coefficients and a `from=`
+   provenance triple, which is the whole of the Power to Control hand-over the
+   plan's §5 asks for. No new link grammar was needed.
+2. **The hand-over is one-way until Control Lab answers it.** H2's plant pane
+   links out to Control Lab with `plant=custom`, `ctrl=p:1` and a `from=`
+   naming the experiment. Control Lab reads that fragment today, so the link
+   works. What it cannot do is send the closed-loop step back, so H2's own note
+   stops at the plant. The round trip needs a return link and a Control Lab
+   pane that knows the plant came from a switched converter. That is a
+   hand-over decision rather than machinery, and it belongs to the director.
+3. **The splash count moves to 40 at release.** §7 of the plan pins "54
+   experiments" as the number the card will carry when the whole curriculum is
+   built. The lab has forty. `release.test.js` will demand whatever number the
+   card claims, so the card and the README row are written once, against the
+   count on the day.
+4. **Every shared table in the app took one appended line per lane.**
+   `experiments.js` gains six spreads and `terms.js` one. `math.js` gains two
+   dispatch lines and five exported builders, and `analysis.js` two dispatch
+   lines. `panes.jsx` gains five names in `ORDER` and one mode word,
+   `schematics.jsx` a drawing and three table rows, and `ScopeCanvas.jsx` five
+   colours. `App.jsx` gains three view lines and three branches. Every one is
+   an addition at the end of its table, so a merge of three lanes is a union.
+5. **`sweeps.test.js` gained a floor on its refinement check.** A synchronous
+   converter with ideal parts has M(R) flat to the last bits, so refining the
+   grid compared one piece of rounding dust against another. The floor is a
+   millionth of a millionth of the curve's own scale, which no real step can
+   hide under. It is a shared test file, and the change is one helper and two
+   call sites.
