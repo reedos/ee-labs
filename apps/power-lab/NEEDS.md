@@ -59,3 +59,32 @@ says `dark`, and `src/release.test.js` fails if any of it is.
   phases: control of the buck in Control Lab, and rectifier spectra in Signal
   Lab. Each will need `handOverEvent` entries and a `HANDOVERS` table, in the
   pattern the Circuit hand-overs set.
+
+## From the director, for Groups L, M and N
+
+1. **`packages/switched` now depends on `@ee-labs/machines` and
+   `@ee-labs/dsp`.** Both are listed in `packages/switched/package.json` and
+   both resolve inside a worktree that has run `npm ci`. Neither package was
+   edited. The drive module reads `dcOf`, `operating`, `timeConstants` and
+   `pmsmOf` so that one motor is described once, and the interference module
+   reads `fft` so a spectrum has a second reader. `package-lock.json` is the
+   director's file, and one `npm install` at integration records the two
+   edges.
+2. **The splash count moves to 43 at release.** §7 of the plan pins "54
+   experiments" as the number the card will carry when the whole curriculum is
+   built. The lab has forty-three. `release.test.js` will demand whatever
+   number the card claims, so the card and the README row are written once,
+   against the count on the day.
+3. **Three meters and four traces were added to the shell's own tables.**
+   `review.test.jsx` listed the four headline meters the lab had, and it now
+   lists seven: the line's ripple, the switch node's ring, and the junction
+   temperature. `ORDER` in `panes.jsx` gained the back EMF, the input
+   capacitor's voltage and current, and the line current. Both are appended
+   rows rather than edits, so a second lane's rows merge beside them.
+4. **The schematic kit is exported.** `schematics.jsx` now exports its
+   symbols, so a group can draw a circuit in the lab's own idiom without
+   copying one. `lmnSchematics.jsx` is the first user, and the six drawings it
+   holds are registered by one `Object.assign` each.
+5. **Nothing new is needed from `packages/ui` or `packages/explain`.** The
+   four new panes are built from `useCanvas`, `drawFrame`, `plotArea`,
+   `COLORS` and `fmt` as exported today.

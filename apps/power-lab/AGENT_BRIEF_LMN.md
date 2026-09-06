@@ -33,7 +33,7 @@ reopens each. Groups H, I, J and K are not this brief's.
 | 1 · drive engine | `packages/switched/src/drive.js` and its test | `@ee-labs/machines` |
 | 2 · interference engine | `packages/switched/src/emi.js` and its test | `@ee-labs/dsp` |
 | 3 · thermal engine | `packages/switched/src/thermal.js` and its test | nothing |
-| 4 · the groups | `apps/power-lab/src/groups/lmn.js`, the three panes in `components/lmnPanes.jsx`, the six drawings in `components/lmnSchematics.jsx` | lanes 1 to 3 |
+| 4 · the groups | `apps/power-lab/src/groups/lmn.js`, the four panes in `components/lmnPanes.jsx`, the six drawings in `components/lmnSchematics.jsx` | lanes 1 to 3 |
 | 5 · the pins | `src/lmn.test.js`, `src/lmn.pins.js`, one appended row in each walking test | lane 4 |
 | 6 · the record | `AGENT_BRIEF_LMN.md`, `NEEDS.md`, `BACKLOG.md` | all |
 
@@ -209,8 +209,8 @@ by the test named beside it.
 }
 ```
 
-New views: **Drive** (L1, L3), **Filter** (M1, M2), **Ring** (M3), **Thermal**
-(N1, N2, N3). New headline meters: `ripple` for the line current, `ring` for
+New views: **Drive** (L1, L2, L3), **Filter** (M1, M2), **Ring** (M3),
+**Thermal** (N1, N2, N3). New headline meters: `ripple` for the line current, `ring` for
 the node, `tj` for the junction. New sweep axes: `speed`, `torque`, `iin`,
 `ripple`, `Tj` and `att`. New traces: `vemf`, `vcin`, `icin` and `iline`.
 
