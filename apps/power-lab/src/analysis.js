@@ -32,6 +32,30 @@ import {
   dimmer,
   dimmerWaveform,
   RECT_DEFAULTS,
+  saturatingConverter,
+  saturatingSteadyState,
+  saturationEvent,
+  saturationCurrent,
+  fluxDensity,
+  fluxSwing,
+  fluxTrace,
+  isolated,
+  isolatedM,
+  ISOLATED_KINDS,
+  inverter,
+  inverterSteadyState,
+  inverterMeasures,
+  inverterWaveform,
+  inverterDistortion,
+  squareFundamentalRms,
+  squareThd,
+  spwmFundamentalPeak,
+  lcMagnitude,
+  INVERTER_KINDS,
+  lossLedger,
+  capacitorRms,
+  switchingCrossover,
+  peakEfficiencyLoad,
 } from '@ee-labs/switched'
 
 // The knobs a buck experiment may omit take the plan's defaults.
@@ -73,11 +97,21 @@ export function buckParams(params) {
 
 const stat = (avg, rms, min, max) => ({ avg, rms, min, max, pp: max - min })
 
+/** The three numbers that decide when a core runs out of flux, from the knobs. */
+export function coreParams(params) {
+  const p = { N: 40, Ae: 40, Bsat: 0.3, hard: 20, ...params }
+  // The knob is in mm², which is the unit a core is sold in.
+  return { N: p.N, Ae: p.Ae * 1e-6, Bsat: p.Bsat, hard: p.hard }
+}
+
 export function analyse(exp, params) {
   if (exp.kind === 'linreg') return analyseLinear(params)
   if (exp.kind === 'chopper') return analyseChopper(params)
   if (exp.kind === 'rectifier') return analyseRectifier(params, exp)
   if (exp.kind === 'dimmer') return analyseDimmer(params, exp)
+  if (INVERTER_KINDS.includes(exp.kind)) return analyseInverter(params, exp)
+  if (ISOLATED_KINDS.includes(exp.kind)) return analyseIsolated(params, exp)
+  if (exp.core) return analyseCore(params, exp)
   return analysePwm(params, exp)
 }
 
@@ -239,6 +273,151 @@ function analysePwm(params, exp) {
   return { kind, T: ss.T, p, conv, ss, m, wf, formulas, inverted, sign: sgn, balance: balanceOf(ss) }
 }
 
+// ------------------------------------------------------------ magnetics
+
+/**
+ * A buck whose inductor is wound on a core (D1, D2).
+ *
+ * The converter is the same one Group B solves; what is added is the knee at
+ * |i_L| = I_sat, where the inductance collapses and the period grows two more
+ * segments. With the peak current under the knee the solver's answer is the
+ * two-interval one to the last bits, which `magnetics.test.js` holds.
+ */
+function analyseCore(params, exp) {
+  const p = buckParams(params)
+  const core = coreParams(params)
+  const conv = saturatingConverter('buck', { ...p, ...core })
+  const ss = saturatingSteadyState(conv)
+  const m = measures(ss)
+  const wf = waveforms(ss, { periods: exp.periods || 2, n: 240 })
+  const flux = fluxTrace(conv, wf)
+  const event = saturationEvent(ss)
+  const spec = { L: p.L, ...conv.core }
+  // The on interval's volt-seconds, which are the flux excursion times N·A_e.
+  const onVs = ss.segments.filter((s) => s.T > 0 && s.name.startsWith('on')).reduce((a, s) => a + signalIntegral(s, 'vL'), 0)
+  const k = K(p)
+  const formulas = {
+    M: conversionRatio('buck', p.D),
+    Mreal: ratioWithRL('buck', p.D, p.RL / p.R),
+    dI: inductorRipple('buck', p),
+    dV: outputRipple('buck', p),
+    K: k,
+    Kcrit: Kcrit('buck', p.D),
+    Rcrit: Rcrit('buck', p),
+    Mdcm: dcmRatio('buck', p.D, k),
+    Mpred: predictedRatio('buck', p),
+    IL: (p.Vin * p.D) / p.R,
+    fo: 1 / (2 * Math.PI * Math.sqrt(p.L * p.C)),
+    Epk: 0.5 * p.L * m.sig.iL.max ** 2,
+    Ecyc: 0.5 * p.L * m.sig.iL.max ** 2 * p.fs,
+    // The magnetics' own row.
+    Isat: conv.Isat,
+    Lsat: conv.Lsat,
+    Bsat: conv.core.Bsat,
+    coreArea: conv.core.N * conv.core.Ae,
+    onVs,
+    dB: fluxSwing(conv.core, onVs),
+    Bpk: fluxDensity(spec, m.sig.iL.max),
+    // The closed form beside it: (V_in − V_out)·D·T over N·A_e.
+    dBideal: ((p.Vin - m.sig.vout.avg) * p.D) / p.fs / (conv.core.N * conv.core.Ae),
+    satShare: ss.segments.filter((s) => s.T > 0 && s.name.endsWith('·sat')).reduce((a, s) => a + s.T, 0) / ss.T,
+    tSat: event ? event.t : null,
+    iSat: event ? event.i : null,
+  }
+  return { kind: 'buck', saturating: true, T: ss.T, p, core: conv.core, conv, ss, m, wf, flux, formulas, inverted: false, sign: 1, balance: balanceOf(ss) }
+}
+
+// ------------------------------------------------------------ isolated
+
+/**
+ * The flyback and the half-bridge (D3, D4).
+ *
+ * The knob is the turns ratio as a transformer is labelled, primary to
+ * secondary; the engine's n is its reciprocal. The half-bridge is solved over
+ * half a switching period at twice the duty, so `switching` carries the
+ * numbers the reader set and `p` carries the ones the solver ran with.
+ */
+function analyseIsolated(params, exp) {
+  const base = buckParams(params)
+  const n = 1 / (params.Np || 2)
+  const conv = isolated(exp.kind, { ...base, n })
+  const ss = steadyState(conv)
+  const m = measures(ss)
+  const wf = waveforms(ss, { periods: (exp.periods || 2) * (exp.kind === 'halfbridge' ? 2 : 1), n: 240 })
+  if (exp.kind === 'halfbridge') {
+    // The output side repeats every half period, so two of them are one
+    // switching period, and the second is the other switch's.
+    wf.edges = wf.edges.map((e, i) => ({ ...e, name: e.name === 'Q1 on' && i >= 2 ? 'Q2 on' : e.name }))
+  }
+  const p = conv.p
+  const fly = exp.kind === 'flyback'
+  // The duty and the frequency the reader set, which for the half-bridge are
+  // half of the ones the solver ran with.
+  const sw = conv.switching || { D: p.D, fs: p.fs, T: conv.T }
+  const M = isolatedM(exp.kind, sw.D, n)
+  const Vo = p.Vin * M
+  // The pulse the filter is fed, and the ripple it leaves. The flyback's
+  // capacitor is alone with the load for the D of each period; the
+  // half-bridge's carries the output inductor's triangle at twice f_s.
+  const vpulse = fly ? null : (n * p.Vin) / 2
+  const dI = fly ? (p.Vin * sw.D) / (base.L * sw.fs) : ((vpulse - Vo) * sw.D) / (base.L * sw.fs)
+  const dV = fly ? (Math.abs(M * p.Vin) / base.R) * (sw.D / (base.C * sw.fs)) : dI / (8 * (2 * sw.fs) * base.C)
+  const formulas = {
+    n,
+    Np: params.Np || 2,
+    M,
+    Vo,
+    K: K(p),
+    Kcrit: fly ? Kcrit('buckboost', p.D) : Kcrit('buck', p.D),
+    // The load at which conduction stops being continuous. The flyback's
+    // boundary is the buck-boost's with the load reflected through n².
+    Rcrit: fly ? (2 * base.L * sw.fs * n * n) / (1 - sw.D) ** 2 : Rcrit('buck', p),
+    dI,
+    dV,
+    fo: 1 / (2 * Math.PI * Math.sqrt(base.L * base.C)),
+    blocking: conv.blocking(m.sig.vout.avg),
+    rail: p.Vin,
+    vpulse,
+    switching: sw,
+    ripplePulses: fly ? 1 : 2,
+    // What the same filter would leave if it were fed once a period rather
+    // than twice: the half-bridge's saving, stated as a number.
+    dVatFs: fly ? null : dI / (8 * sw.fs * base.C),
+    headroom: conv.headroom,
+  }
+  return { kind: exp.kind, isolated: true, T: ss.T, p, base, conv, ss, m, wf, formulas, inverted: false, sign: 1, balance: balanceOf(ss) }
+}
+
+// ------------------------------------------------------------ inverters
+
+/** Inverter parameters from the knobs. */
+export function inverterParams(params) {
+  const p = { Vdc: 48, f1: 60, L: 1e-3, C: 10e-6, R: 10, ma: 0.8, fsw: 3780, Ron: 0, RL: 0, ESR: 0, ...params }
+  return { Vdc: p.Vdc, f1: p.f1, L: p.L, C: p.C, R: p.R, ma: p.ma, fsw: p.fsw, Ron: p.Ron, RL: p.RL, ESR: p.ESR }
+}
+
+function analyseInverter(params, exp) {
+  const p = inverterParams(params)
+  const conv = inverter(exp.kind, p)
+  const ss = inverterSteadyState(conv)
+  const m = inverterMeasures(ss)
+  const wf = inverterWaveform(ss, { periods: exp.periods || 1, n: 1200 })
+  const formulas = {
+    mf: conv.mf,
+    fsw: conv.fsw,
+    commanded: conv.commanded,
+    V1ideal: exp.kind === 'square' ? squareFundamentalRms(p.Vdc) : (Math.min(p.ma, 1) * p.Vdc) / Math.SQRT2,
+    thdIdeal: exp.kind === 'square' ? squareThd() : null,
+    peakIdeal: spwmFundamentalPeak(Math.min(p.ma, 1), p.Vdc),
+    fo: 1 / (2 * Math.PI * Math.sqrt(p.L * p.C)),
+    Q: p.R * Math.sqrt(p.C / p.L),
+    Hcarrier: exp.kind === 'spwm' ? lcMagnitude(p, conv.fsw) : null,
+    Hthird: lcMagnitude(p, 3 * p.f1),
+    Hfund: lcMagnitude(p, p.f1),
+  }
+  return { kind: exp.kind, inverterKind: exp.kind, T: ss.T, p, conv, ss, m, wf, formulas, inverted: false, sign: 1 }
+}
+
 // ------------------------------------------------------------ line frequency
 
 /** Rectifier parameters from the knobs; the plan's defaults fill what an experiment omits. */
@@ -389,20 +568,44 @@ const linSpace = (lo, hi, n) => Array.from({ length: n }, (_, i) => lo + ((hi - 
  * mode and the winding. Signed, so the buck-boost's curves sit below the axis
  * where its output does.
  */
-function ratioAt(kind, p, sgn) {
-  const ss = steadyState(converter(kind, p))
-  const m = measures(ss)
-  const r = p.RL / p.R
+/**
+ * The converter a sweep point runs, whichever engine it belongs to: the three
+ * bare ones, a saturating one, or an isolated one. `opts.core` carries the
+ * core's three numbers and `opts.n` the turns ratio.
+ */
+function convOf(kind, p, opts = {}) {
+  if (opts.core) return saturatingConverter(kind, { ...p, ...opts.core })
+  if (ISOLATED_KINDS.includes(kind)) return isolated(kind, { ...p, n: opts.n })
+  return converter(kind, p)
+}
+const solveOf = (conv) => (conv.saturating ? saturatingSteadyState(conv) : steadyState(conv))
+
+/** The ratio a textbook predicts at this point, for the curve drawn beside the measured one. */
+function predictedAt(kind, p, opts) {
+  if (ISOLATED_KINDS.includes(kind)) {
+    const n = opts.n
+    if (kind === 'halfbridge') return isolatedM(kind, p.D, n)
+    const k = (2 * p.L * p.fs * n * n) / p.R
+    return k >= (1 - p.D) ** 2 ? isolatedM(kind, p.D, n) : (n * p.D) / Math.sqrt(k)
+  }
   const k = K(p)
+  return k >= Kcrit(kind, p.D) ? ratioWithRL(kind, p.D, p.RL / p.R) : dcmRatio(kind, p.D, k)
+}
+
+function ratioAt(kind, p, sgn, opts = {}) {
+  const conv = convOf(kind, p, opts)
+  const ss = solveOf(conv)
+  const m = measures(ss)
   // predictedRatio's own choice of formula — the boundary the textbook draws,
   // not the mode the engine found, so b5's two curves still meet where the
   // books say they do — with the winding carried in the CCM branch, which at
   // R_L = 0 is the ideal formula unchanged.
-  const pred = k >= Kcrit(kind, p.D) ? ratioWithRL(kind, p.D, r) : dcmRatio(kind, p.D, k)
+  const pred = predictedAt(kind, p, opts)
+  const ideal = ISOLATED_KINDS.includes(kind) ? isolatedM(kind, p.D, opts.n) : conversionRatio(kind, p.D)
   return {
     M: sgn * (average(ss, 'vout') / p.Vin),
     mode: ss.mode,
-    ideal: sgn * conversionRatio(kind, p.D),
+    ideal: sgn * ideal,
     pred: sgn * pred,
     eta: m.eta,
     Pout: m.Pout,
@@ -412,18 +615,30 @@ function ratioAt(kind, p, sgn) {
 
 const sgnOf = (kind) => (kind === 'buckboost' ? -1 : 1)
 
-/** M against duty, at the current load. */
-export function sweepD(params, kind = 'buck', n = 61) {
+/** The knobs a sweep needs beyond the buck's: the core, or the turns ratio. */
+export function sweepOpts(exp, params) {
+  if (!exp) return {}
+  if (exp.core) return { core: coreParams(params) }
+  if (ISOLATED_KINDS.includes(exp.kind)) return { n: 1 / (params.Np || 2) }
+  return {}
+}
+
+/**
+ * M against duty, at the current load. A half-bridge's switches are on for at
+ * most half the period each, so its sweep stops where its knob does.
+ */
+export function sweepD(params, kind = 'buck', n = 61, opts = {}) {
   const base = buckParams(params)
   const sgn = sgnOf(kind)
-  return linSpace(0.02, 0.98, n).map((D) => ({ x: D, ...ratioAt(kind, { ...base, D }, sgn) }))
+  const hi = kind === 'halfbridge' ? 0.49 : 0.98
+  return linSpace(0.02, hi, n).map((D) => ({ x: D, ...ratioAt(kind, { ...base, D }, sgn, opts) }))
 }
 
 /** M against load resistance, across the CCM/DCM boundary. */
-export function sweepR(params, kind = 'buck', n = 61) {
+export function sweepR(params, kind = 'buck', n = 61, opts = {}) {
   const base = buckParams(params)
   const sgn = sgnOf(kind)
-  return logSpace(0.5, 1000, n).map((R) => ({ x: R, ...ratioAt(kind, { ...base, R }, sgn) }))
+  return logSpace(0.5, 1000, n).map((R) => ({ x: R, ...ratioAt(kind, { ...base, R }, sgn, opts) }))
 }
 
 /**
@@ -441,11 +656,11 @@ export function sweepLinear(params, n = 61) {
 }
 
 /** Efficiency against load, with the losses in the knobs. */
-export function sweepEta(params, kind = 'buck', n = 41) {
+export function sweepEta(params, kind = 'buck', n = 41, opts = {}) {
   const base = buckParams(params)
   return logSpace(0.5, 1000, n).map((R) => {
     const p = { ...base, R }
-    const ss = steadyState(converter(kind, p))
+    const ss = solveOf(convOf(kind, p, opts))
     const m = measures(ss)
     return { x: R, eta: m.eta, mode: ss.mode }
   })
@@ -456,11 +671,11 @@ export function sweepEta(params, kind = 'buck', n = 41) {
  * edges charge per cycle, so this is where t_sw shows (B8). Across the knob's
  * own range; at the slow end the converter may run dry, and the point says so.
  */
-export function sweepFs(params, kind = 'buck', n = 41) {
+export function sweepFs(params, kind = 'buck', n = 41, opts = {}) {
   const base = buckParams(params)
   return logSpace(10e3, 2e6, n).map((fs) => {
     const p = { ...base, fs }
-    const ss = steadyState(converter(kind, p))
+    const ss = solveOf(convOf(kind, p, opts))
     const m = measures(ss)
     return { x: fs, eta: m.eta, mode: ss.mode }
   })
@@ -476,6 +691,36 @@ export function sweepChopper(params, n = 61) {
   return linSpace(0.02, 0.98, n).map((D) => {
     const ch = chopper({ Vin, D, R })
     return { x: D, vavg: ch.avg, vrms: ch.rms, P: ch.P }
+  })
+}
+
+/**
+ * The sine-PWM bridge against its modulation index: the fundamental follows
+ * m_a·V_dc up to 1 and then falls behind it, which is F2's whole claim. The
+ * ideal line is drawn beside the measured one, so where they part is on the
+ * screen rather than in the note alone.
+ */
+export function sweepMa(params, n = 29) {
+  const base = inverterParams(params)
+  return linSpace(0.05, 1.4, n).map((ma) => {
+    const conv = inverter('spwm', { ...base, ma })
+    const m = inverterMeasures(inverterSteadyState(conv), { harmonics: 1, dense: 12 })
+    return { x: ma, v1: m.Vsw1 * Math.SQRT2, pred: spwmFundamentalPeak(Math.min(ma, 1), base.Vdc) }
+  })
+}
+
+/**
+ * The load voltage's distortion against the carrier frequency (F4). Every
+ * point is a solved fundamental period, and the carrier snaps to an odd
+ * multiple, so the curve is a staircase in m_f drawn against the frequency
+ * the knob asks for.
+ */
+export function sweepFsw(params, n = 21) {
+  const base = inverterParams(params)
+  return logSpace(300, 8e3, n).map((fsw) => {
+    const conv = inverter('spwm', { ...base, fsw })
+    const d = inverterDistortion(inverterSteadyState(conv))
+    return { x: fsw, thd: d.thd, mf: conv.mf, v1: d.V1 * Math.SQRT2 }
   })
 }
 

@@ -2,7 +2,8 @@
 
 **Live at [reedos.github.io/ee-labs](https://reedos.github.io/ee-labs/).** Nothing to install. MIT licensed.
 
-Interactive tools for the signals half of an electrical engineering curriculum.
+Interactive tools for an electrical engineering curriculum, from circuits built out of
+their elements to the signals half.
 Each one shows a signal, the parts it is made of, and what a circuit or a filter
 does to it. Beside every number it shows where that number came from.
 
@@ -25,7 +26,7 @@ npm run dev              # Signal Lab, at http://localhost:1421
 | | covers | status |
 |---|---|---|
 | **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 35 experiments |
-| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters, tolerance | 15 experiments, 10 circuits |
+| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters, tolerance | 16 experiments, 10 circuits |
 | **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 13 experiments, 7 plants x 4 controllers |
 
 A fourth tool, `waveform-simulator`, covers communications and high-speed optical
@@ -107,6 +108,14 @@ it. The shared core trades only in exact rational transfer functions. Every
 bridge either maps exactly, guards a stated approximation, or refuses with a
 tested reason. Per app, today:
 
+- **Circuit Elements Lab.** Admissible: every DC and AC network the schematic can
+  draw, solved by modified nodal analysis, and the first-order and second-order
+  transients, solved by the exact propagator rather than stepped. Guarded: the
+  diode's four models, each stating where it holds. Refused: the circuits a first
+  course calls ill-posed, with the reason on the panel. A loop of sources that
+  disagree, a cut-set of current sources, an ideal op-amp with no feedback, and the
+  exponential diode in the time domain. Live at
+  [circuit-elements-lab/](https://reedos.github.io/ee-labs/circuit-elements-lab/).
 - **Signal Lab.** Admissible: every block. Biquads, cascades, FIRs and combs are
   exact rational H(z), and the nonlinear blocks report that they have no H at
   all. Guarded: the sampled view of a continuous circuit. The bilinear transform

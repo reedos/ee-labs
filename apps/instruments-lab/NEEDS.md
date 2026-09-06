@@ -1,0 +1,100 @@
+# What the Instruments Lab needs from outside its own directory
+
+The lab lives entirely in `apps/instruments-lab/`. It owns no package. Nothing
+else in the repo has been changed to build it, and the four items below are what
+the director applies at integration. Everything under "at release" is
+deliberately not done while `RELEASE_STATUS` says `dark`, and
+`src/release.test.js` fails if any of it is done early.
+
+## 1. The deploy line (director, `.github/workflows/deploy.yml`)
+
+One line in the "Assemble the site" step, after the Power Lab's:
+
+```
+cp -r apps/instruments-lab/dist _site/instruments-lab
+```
+
+`src/release.test.js` accepts the line here in `NEEDS.md` until the workflow
+carries it, and then pins the workflow.
+
+## 2. The progression entry (seams overseer, `packages/ui/src/progression.test.js`)
+
+Twenty-five ids in six groups, in course order. The lab's own
+`src/course.test.js` already pins the counts and the thread.
+
+```
+instruments-lab: 25 experiments in 6 groups
+  A · The oscilloscope’s input   6   a1 a2 a3 a4 a5 a6
+  B · The sampling scope         2   b1 b2
+  C · The multimeter             5   c1 c2 c3 c4 c5
+  D · The spectrum analyser      4   d1 d2 d3 d4
+  E · The lock-in amplifier      4   e1 e2 e3 e4
+  F · Uncertainty                4   f1 f2 f3 f4
+```
+
+Hand-overs this lab names, for the seam table. Each is prose in a `why`, not a
+link, until the seams overseer lands `handOverEvent`:
+
+- Elements F4 → A2, the Thévenin time constant as a probe's bandwidth.
+- Elements E4/E5 → C2, the follower as a meter's input buffer.
+- Signal Lab's Sampling → B1 and B2, aliasing with a spectrum beside it.
+- Signal Lab's Resolution needs time → D3, the same trade in a frame length.
+- Circuit Lab's order group → B2, what a steeper anti-alias filter costs.
+
+## 3. Package contracts (`packages/network`, owned by the Electronics overseer)
+
+Nothing is missing. Every experiment is built from `R`, `C`, `L`, `V`, `I`,
+`OPAMP` and `VCCS` as exported today, with `solveDC`, `solveAC`, `sweepAC`,
+`transient`, `thevenin`, `meanRms`, `extrema`, `crossings` and `omegaOf`. Three
+observations, none of them a request:
+
+1. **`transient`'s floor at long horizons.** B1 reads the exact solution at the
+   sample instants and compares it against the analytic alias. At the defaults
+   the two agree to a part in 10¹⁴. Swept across every knob's range, with
+   windows of a few hundred drive cycles, the worst gap rises to 6 × 10⁻¹² of
+   the tone. The math row is judged at 10⁻¹⁰ of it and says why. If the solver
+   ever carries an error bound of its own, that row should read it instead of a
+   constant.
+2. **A multiplier element is not needed.** The lock-in's mixer is written as the
+   two sinusoids its product is, exactly (the plan's §2.4), so E1 to E4 are
+   ordinary linear circuits and `transient` solves them without a new element.
+   If a later lab wants a four-quadrant multiplier as a component, this lab's
+   `groups/e.js` is the second consumer to name in that contract.
+3. **`sweepAC` reads only sine sources.** A square- or step-driven experiment
+   sweeps as the phasor zero at every frequency, silently. This lab keeps a sine
+   in every experiment that declares a `sweep` (A4 is the square wave and has
+   none), and `experiments.test.js` would not have caught the mistake. A guard
+   in `sweepAC` would catch it for every lab at once, by refusing or warning
+   when the only source carries a wave that is not a sine.
+
+## 4. At release: flip `RELEASE_STATUS` to `released`, then `release.test.js` demands
+
+1. **Splash page** `site/index.html`: a lab card linking `instruments-lab/`, in
+   the style of the Signal/Circuit/Control cards.
+2. **README** `README.md`: a row in *The tools* table. The lab covers the scope
+   input and its probe, the sampling scope, and the multimeter's divider, shunt
+   and four-wire ohmmeter. It also covers the spectrum analyser as a swept
+   filter, the lock-in amplifier, and the error bar around a reading. Twenty-five
+   experiments in all.
+3. **Nav** `packages/ui/src/LabNav.jsx`: `{ id: 'instruments-lab', label:
+   'Instruments' }` in `LABS`. Until then the lab passes
+   `currentLabel="Instruments"` so its own nav names it without the released
+   labs listing it back.
+4. **Usage counter** `apps/instruments-lab/index.html`: the GoatCounter tag the
+   other labs carry, and `apps/instruments-lab/index.html` added to the pinned
+   page list in `packages/ui/src/analytics.test.js`. While dark the page carries
+   no tag, so review visits do not count as traffic.
+
+## Not needed
+
+- No changes to `packages/ui`, `packages/explain` or `packages/prose`. The lab
+  uses `NumField`, `Schematic`, `schematicGeometry`, `LabNav`, `ReportIssue`,
+  `LessonNav`, `TryLine`, `useCanvas`, `plot.js`, `anchor.js`, `format.js`,
+  `units.js` and `MathPanel` as exported today.
+- No new package. The two views this lab builds, the error bar and the
+  contributions bars, live in `src/components/` until a second lab claims them.
+  The Applied Analog Lab's specification pane is the error bar's second home,
+  and the plan's §8 says so.
+- Nothing from the RF Lab yet. The network-analyser group is not built. It
+  waits on the Smith chart and the line model, and `BACKLOG.md` carries the
+  entry.

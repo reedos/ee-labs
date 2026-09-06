@@ -1,0 +1,25 @@
+{
+  "name": "control-lab-ii",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "The state, the sampled loop, the phase plane, and the model fitted to a step.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee-labs/explain": "*",
+    "@ee-labs/systems": "*",
+    "@ee-labs/ui": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}

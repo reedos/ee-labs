@@ -15,7 +15,7 @@
 
 import { GROUND, NetworkError, normalize } from './netlist.js'
 import { SingularError, solveComplex } from './linalg.js'
-import { diagnose, effective } from './mna.js'
+import { diagnose, effective, stampsOf } from './mna.js'
 import { omegaOf, sourceAffine } from './waves.js'
 import { C, asComplex, cabs, carg, cadd, cmul, conj, cdiv, cscale, csub, instant, polar } from './complex.js'
 
@@ -42,9 +42,9 @@ export function sourcePhasor(e, omega, opts = {}) {
 
 /** The effective element for an AC stamp: reactive parts keep their type; everything else as at DC. */
 function effectiveAC(e, omega, opts) {
-  if (omega === 0) return effective(e, opts)
-  if (e.type === 'C' || e.type === 'L') return e
-  return effective(e, opts)
+  if (omega === 0) return stampsOf(e, opts)
+  if (e.type === 'C' || e.type === 'L') return [e]
+  return stampsOf(e, opts)
 }
 
 /**
@@ -52,7 +52,7 @@ function effectiveAC(e, omega, opts) {
  * `{ M, r, unknowns, currentIdx, effs, omega }`, M and r with [re, im] entries.
  */
 export function assembleAC(norm, omega, opts = {}) {
-  const effs = norm.elements.map((e) => effectiveAC(e, omega, opts))
+  const effs = norm.elements.flatMap((e) => effectiveAC(e, omega, opts))
   const currentIdx = new Map()
   let m = norm.n
   for (const eff of effs) if (needsCurrent(eff)) currentIdx.set(eff.id, m++)
@@ -143,6 +143,16 @@ export function assembleAC(norm, omega, opts = {}) {
         if (ib >= 0 && id >= 0) add(ib, id, C(g))
         break
       }
+      case 'CCCS': {
+        const row = currentIdx.get(eff.over)
+        if (row === undefined)
+          throw new NetworkError('ctrl', `${eff.id} reads the current of ${eff.over}, which carries no current unknown`)
+        const ia = ix(a)
+        const ib = ix(b)
+        if (ia >= 0) add(ia, row, C(eff.gain))
+        if (ib >= 0) add(ib, row, C(-eff.gain))
+        break
+      }
       case 'OPAMP': {
         const row = currentIdx.get(eff.id)
         const out = ix(a)
@@ -227,6 +237,9 @@ export function readoutAC(norm, sys, x) {
         break
       case 'VCCS':
         cur = cscale(csub(vAt(eff.ctrl[0]), vAt(eff.ctrl[1])), eff.gain)
+        break
+      case 'CCCS':
+        cur = cscale(x[sys.currentIdx.get(eff.over)], eff.gain)
         break
       default:
         cur = x[sys.currentIdx.get(eff.id)]

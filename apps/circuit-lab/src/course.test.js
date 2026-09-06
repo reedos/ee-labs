@@ -200,6 +200,14 @@ describe('the numbers the try lines quote', () => {
     }
   })
 
+  it('impulse: R 100 Ω moves τ to 10.0 µs and h(0) to 100 000', () => {
+    const l = byName('The impulse response, and why the step is its integral')
+    const s = after(l, 'R 100 Ω')
+    const tau = s.params.r * s.params.c
+    expect(tau * 1e6).toBeCloseTo(l.claim.tryTauUs, 6)
+    expect(1 / tau).toBeCloseTo(l.claim.tryH0, 6)
+  })
+
   it('three filters: the output chips give band-pass and high-pass at one 5.03 kHz resonance', () => {
     const l = byName('One circuit, three filters')
     const shapes = {}

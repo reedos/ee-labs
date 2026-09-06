@@ -45,7 +45,8 @@ describe('the course’s shape', () => {
       expect([...to].sort((a, b) => order.indexOf(a) - order.indexOf(b))).toEqual(to)
     }
     expect(leadsTo('a1')).toEqual(expect.arrayContaining(['a2', 'a3', 'a4', 'f1']))
-    expect(leadsTo('h6')).toEqual([])
+    expect(leadsTo('h6')).toEqual(['h7'])
+    expect(leadsTo('i10')).toEqual([])
   })
 
   test('the thread is connected: from A1 every experiment is reachable by following leads-to', () => {

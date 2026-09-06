@@ -1,0 +1,502 @@
+/* DSP Lab's own furniture: the experiment sidebar, the racks, the two panes and
+ * the specification pane. Everything shared with the other labs lives in
+ * @ee-labs/ui, so this sheet holds only what this lab adds. */
+
+.app {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 320px;
+  grid-template-areas:
+    'top top top'
+    'sidebar main rack';
+  gap: 14px;
+  padding: 12px;
+  min-height: 100vh;
+  align-items: start;
+}
+
+.top {
+  grid-area: top;
+}
+
+.top h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.tagline {
+  margin: 2px 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sidebar {
+  grid-area: sidebar;
+  min-width: 0;
+}
+
+main {
+  grid-area: main;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rack {
+  grid-area: rack;
+  min-width: 0;
+}
+
+/* ---------- the experiment list ---------- */
+
+.lesson-group h3 {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.lesson-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lesson-group li button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.lesson-group li button:hover {
+  border-color: var(--line);
+}
+
+.lesson-group li button.on {
+  background: var(--panel-2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- the lesson ---------- */
+
+.lesson h2 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+
+.see {
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+
+.why {
+  margin: 8px 0;
+}
+
+.why p {
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.terms {
+  margin: 6px 0;
+}
+
+.terms-toggle {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.terms dl {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.terms dt {
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.terms dd {
+  margin: 2px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ---------- the two views ---------- */
+
+.views {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pane {
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.pane h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.pane-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+canvas.plot {
+  display: block;
+  width: 100%;
+  height: 260px;
+}
+
+/* A refusal in a view, where the block that would fill it declines to. */
+.pane .refusal {
+  font-size: 12px;
+  line-height: 1.45;
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
+  margin: 12px 0;
+  color: var(--text);
+}
+
+/* ---------- the readout ---------- */
+
+.readout dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.readout dt {
+  color: var(--muted);
+}
+
+.readout dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ---------- the racks ---------- */
+
+.controls section {
+  margin-bottom: 14px;
+}
+
+.controls h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.card.bypassed {
+  opacity: 0.55;
+}
+
+.block-head {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.block-head .summary {
+  color: var(--muted);
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.block-body .hint,
+.block-body .refusal {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin: 6px 0;
+}
+
+/* A refusal is content, so it reads as a statement rather than as an error. */
+.block-body .refusal {
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
+  color: var(--text);
+}
+
+.field {
+  display: block;
+  margin: 6px 0;
+  font-size: 12px;
+}
+
+.field span {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.field small {
+  display: block;
+  color: var(--muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.field select,
+.field input[type='text'] {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 3px 6px;
+  font-size: 13px;
+}
+
+.field.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.field.check span {
+  display: inline;
+  margin: 0;
+  color: var(--text);
+}
+
+.add-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: baseline;
+}
+
+.add-group span {
+  font-size: 11px;
+  color: var(--muted);
+  width: 100%;
+}
+
+.add-group button,
+.row button {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* ---------- the specification pane ---------- */
+
+.spec-pane {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.spec-pane h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.spec-head {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.spec-head.met {
+  color: var(--accent);
+}
+
+.spec-head.missed {
+  color: #ff5c7a;
+}
+
+.spec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.spec-table th,
+.spec-table td {
+  text-align: left;
+  padding: 4px 8px 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.spec-table thead th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.spec-table .spec-value,
+.spec-table .spec-margin {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.spec-table tr.missed .spec-pass,
+.spec-table tr.missed .spec-margin {
+  color: #ff5c7a;
+}
+
+.spec-table tr.met .spec-pass {
+  color: var(--accent);
+}
+
+.spec-table tr.binds th {
+  border-left: 2px solid var(--accent);
+  padding-left: 6px;
+}
+
+.spec-range {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.spec-cmp {
+  color: var(--muted);
+}
+
+.spec-edit {
+  width: 84px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 2px 4px;
+}
+
+.spec-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.empty-state {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* The bar form, which is the phone layout. */
+.spec-bar {
+  position: relative;
+  height: 10px;
+  min-width: 90px;
+}
+
+.spec-bar-track {
+  position: absolute;
+  inset: 4px 0;
+  background: var(--panel-2);
+  border-radius: 2px;
+}
+
+.spec-bar-zero {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.spec-bar-fill {
+  position: absolute;
+  top: 3px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.spec-bar-fill.met {
+  background: var(--accent);
+}
+
+.spec-bar-fill.missed {
+  background: #ff5c7a;
+}
+
+/* ---------- phone ---------- */
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'top'
+      'sidebar'
+      'main'
+      'rack';
+  }
+
+  .views {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  canvas.plot {
+    height: 220px;
+  }
+
+  .spec-table thead {
+    display: none;
+  }
+}

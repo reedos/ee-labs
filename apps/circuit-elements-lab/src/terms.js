@@ -492,6 +492,34 @@ export const TERMS = {
     'factor-of-ten rolloff into a straight line. A single RC falls 20 dB per decade above its corner, where ' +
     '|H| = 1/√2 (−3 dB) and the phase is −45°.',
   },
+  pole: {
+    name: 'Pole',
+    def:
+      'A root of the denominator of H(s). The series RLC has two, the roots of s² + (R/L)s + 1/LC, and they ' +
+    'are the exponents of its natural response. |H| at a frequency is fixed by how far jω sits from them, so ' +
+    'a root close to the axis gives a tall peak there.',
+  },
+  splane: {
+    name: 'The s-plane',
+    def:
+      'The plane the complex frequency s is drawn on, with the real part across and the imaginary part up. ' +
+    'A real root sits on the horizontal axis, and a complex pair sits above and below it at equal heights. ' +
+    'The Bode plot is |H(s)| read along the vertical axis, where s = jω.',
+  },
+  clamper: {
+    name: 'Clamper',
+    def:
+      'A capacitor in series with the signal and a diode across the output. The capacitor charges until the ' +
+    'output’s lowest point sits at the diode’s drop below ground, and the whole waveform then rides on that ' +
+    'offset. The shape is unchanged and only the DC level moves.',
+  },
+  doubler: {
+    name: 'Voltage doubler',
+    def:
+      'A clamper feeding a peak rectifier. The clamper lifts the waveform until its peak reaches nearly twice ' +
+    'the source peak, and the rectifier holds that peak on a second capacitor. The output is 2V_p less one ' +
+    'diode drop in each stage.',
+  },
 }
 
 /** The definitions an experiment asks for, in the order it lists them. */
@@ -578,4 +606,10 @@ export const MATCH = {
   clipper: /\bclipper\b|\bclipped\b|\bclips\b/i,
   zener: /\bZener\b/,
   regulation: /regulat(?:e|es|ed|ion|ing)\b|out of regulation|drops? out/i,
+  // H7's two, and Group I's last two circuits. Each word is used nowhere
+  // earlier in the course, so the first experiment that lists it introduces it.
+  pole: /\bpoles?\b/i,
+  splane: /s-plane/i,
+  clamper: /\bclamper\b/i,
+  doubler: /\bdoubler\b/i,
 }

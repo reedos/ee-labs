@@ -1,0 +1,1024 @@
+/* Circuit Elements Lab's own furniture. The shell, controls and math panel come
+ * from @ee-labs/ui and @ee-labs/explain; the schematic renderer from @ee-labs/ui
+ * is styled here. */
+
+/* One hue per quantity family, everywhere a number appears: the meters on the
+   schematic, the readout strip, the traces and their end labels on the plots.
+   The hexes are palette.js's HUE, held equal by palette.test.js. */
+:root {
+  --q-voltage: #5fa8ff;
+  --q-current: #f0a23c;
+  --q-power: #38e0b0;
+  --q-energy: #e8c65a;
+  --q-angle: #b98cf0;
+}
+
+.preset-group { margin-bottom: 10px; }
+
+/* The lesson and circuit chips, styled as Signal Lab styles its presets —
+   Circuit Lab never defined these, so they fell through to default button
+   chrome and read as a different (worse) application. */
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preset {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11.5px;
+  padding: 5px 8px;
+}
+
+.preset:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.preset.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(56, 224, 176, 0.1);
+}
+
+/* Preset groups as fold-outs, same as Signal Lab: the summary row is the h3
+   it replaced, with its own marker so the browser's default triangle (which
+   ignores the typography) stays hidden. */
+details.preset-group > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+details.preset-group > summary::before {
+  content: '▸';
+  font-size: 9px;
+  transition: transform 0.12s;
+}
+
+details.preset-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.preset-group > summary::-webkit-details-marker { display: none; }
+
+details.preset-group > .presets { margin: 4px 0 8px; }
+
+/* Marks the folded-away-proof group: the one holding the active item. */
+.group-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+}
+
+/* Where the student has been (student review, Phase 8): a tick on each
+   experiment whose every step is done, the count on its group, and the course
+   total at the head of the list. */
+.preset[data-done] { border-style: dashed; }
+.preset[data-done]:not(.is-on) { color: var(--dim); }
+.preset-done { margin-left: 5px; color: var(--accent); font-weight: 600; }
+.group-arc { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--accent); font-variant-numeric: tabular-nums; }
+.picker-arc { margin: 0 0 8px; font-size: 11.5px; color: var(--dim); }
+.picker-arc b { color: var(--accent); }
+
+/* The picker: ◂ [A1 · name ▾] ▸ on one line, the tree folded under it. The
+   sidebar's job is the lesson and its knobs; the list of forty-six
+   experiments is furniture, and stays out of the way until asked for. */
+.picker { margin: 0 0 8px; }
+.picker-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 30px;
+  gap: 4px;
+  align-items: stretch;
+}
+.picker-step,
+.picker-current {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 5px 6px;
+}
+.picker-step { font-size: 12px; color: var(--dim); }
+.picker-step:disabled { opacity: 0.35; cursor: default; }
+.picker-step:not(:disabled):hover,
+.picker-current:hover { border-color: var(--accent); color: var(--accent); }
+.picker-current {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: baseline;
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.picker-current b { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.picker-current i { font-style: normal; font-size: 10px; color: var(--dim); }
+.picker-current[aria-expanded='true'] { border-color: var(--accent); }
+.picker-list { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.picker-list .preset-group:last-child { margin-bottom: 0; }
+
+/* "3 of 46" beside the section cap. */
+.h2-aside { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--dim); opacity: 0.8; }
+
+/* The lesson in three registers: See (what the meters show), Try (moves to
+   make, each with the reading it predicts) and, under Deeper, Why. */
+.hint.see { margin-top: 6px; color: var(--text); }
+
+/* The Try list as a path (student review, Phase 8). Done steps carry a tick
+   and dim; the active step is in the text colour, in full; the steps ahead are
+   one line each, cut with an ellipsis, and open in full on a tap. */
+.try { margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; line-height: 1.5; color: var(--dim); }
+.try li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 0 4px; margin: 3px 0; cursor: default; }
+.try li[data-state='ahead'] { cursor: pointer; }
+.try .step-n { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.try li[data-state='done'] { opacity: 0.55; }
+.try li[data-state='done'] .step-n { color: var(--accent); }
+.try li[data-state='active'] { color: var(--text); }
+.try li[data-state='active'] .step-n { color: var(--accent); }
+.try .step-body { min-width: 0; }
+.try li:not([data-shown]) .step-text { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.try li:not([data-shown]):hover .step-text { color: var(--text); }
+.try b { color: var(--text); }
+.try li[data-state='done'] b { color: inherit; }
+.step-seen {
+  margin: 4px 0 2px;
+  padding: 1px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.step-seen:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.next-up { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 12px; color: var(--text); }
+
+/* Deeper: one fold — why it works, the solver's working, the hand-over. */
+.deeper-fold > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--accent);
+  list-style: none;
+}
+.deeper-fold > summary::before { content: '\25B8  '; font-size: 9px; }
+.deeper-fold[open] > summary::before { content: '\25BE  '; }
+.deeper-fold > summary::-webkit-details-marker { display: none; }
+.deeper-fold .why .hint { margin-top: 8px; }
+
+/* The knobs, one column: the knob the active step turns is open — label, hint,
+   entry, slider, presets — and the rest are one row each, label and entry.
+   Tapping or focusing a closed knob opens it. */
+.knob-list { display: grid; gap: 2px; }
+.knob-slot { margin: 0 -8px; padding: 4px 8px; border-radius: 6px; border-left: 2px solid transparent; }
+.knob-slot[data-open='true'] { padding-top: 6px; padding-bottom: 6px; }
+.knob-slot[data-named] { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.knob-slot .num { margin-bottom: 0; }
+.knob-slot .num.is-compact { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.knob-slot .num.is-compact .num-head { margin: 0; min-width: 0; }
+.knob-slot .num.is-compact .num-hint { display: none; }
+.knob-slot .num.is-compact .num-label { color: var(--dim); }
+.knob-slot .num.is-compact .num-entry { flex: 0 0 auto; }
+.knob-slot .num:not(.is-compact) .num-head { display: block; }
+.knob-slot .num:not(.is-compact) .num-hint { display: block; text-align: left; font-family: inherit; font-size: 11px; line-height: 1.45; margin: 1px 0 5px; }
+.knob-slot .num:not(.is-compact) .num-label { color: var(--text); }
+.knob-slot .toggle-knob { margin: 0; }
+.knob-slot[data-open='false'] .toggle-knob { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.knob-slot[data-open='false'] .toggle-knob .segmented { justify-self: end; }
+
+/* The tab bar exists for the phone only; desktop has every part on screen. */
+.tabbar { display: none; }
+
+/* The topbar's flow: when the dynamic groups' t / ω / τ chips crowd it, the
+   outcome — the last, least urgent node — gives way with an ellipsis rather
+   than the strip growing a scrollbar. Its hover text carries the whole sentence. */
+.topbar .flow { overflow: hidden; }
+.topbar .flow [data-role='outcome'] { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.topbar .flow [data-role='outcome'] em { margin-left: 6px; }
+
+/* The screen as one composition: on a laptop the whole lesson and every knob
+   are on screen at once, so the student never scrolls to turn a knob. A wider
+   sidebar from 1200 px keeps the longer notes (Groups G, H) to fewer lines. */
+@media (min-width: 1200px) {
+  .app { grid-template-columns: 380px 1fr; }
+  .controls section { margin-top: 10px; }
+}
+
+@media (min-width: 1100px) {
+  .picker-current { font-size: 14px; }
+  .picker-current b { font-size: 13px; }
+  .picker-step { font-size: 14px; }
+  .hint.see, .try, .deeper-fold > summary, .next-up { font-size: 13px; }
+}
+
+/* Phone: one page, top to bottom — title, the lesson (picker, See, Try), the
+   topbar, the schematic and analysis, then the knobs and Deeper. The shell
+   keeps the sidebar as a 45vh box that scrolls inside the page (fine for the
+   other labs, whose sidebars are knobs); here the sidebar dissolves
+   (display: contents) so its sections become rows of the page grid, and the
+   knobs — which the plots need to be near — go under the plots. A fixed bar at
+   the foot names the four parts of the page and goes to each. */
+@media (max-width: 900px) {
+  /* minmax(0, 1fr): a grid track's default minimum is its content, and the
+     sections now sit in the track themselves — a knob hint or a formula that
+     will not break would widen the whole page past the screen. */
+  .app { grid-template-rows: auto auto auto auto auto auto; grid-template-columns: minmax(0, 1fr); }
+  .controls { display: contents; }
+  .controls > header, .controls > section { min-width: 0; }
+  .controls > header { grid-column: 1; grid-row: 1; padding: 12px 14px 0; background: var(--panel); }
+  .controls > .lesson { grid-column: 1; grid-row: 2; margin: 0; padding: 0 12px 12px; border-width: 0 0 1px; border-radius: 0; background: var(--panel); }
+  .controls > .lesson h2 { position: static; margin: 0 -12px 8px; background: var(--panel); border-radius: 0; border-bottom: 0; padding-bottom: 0; }
+  .topbar { grid-row: 3; }
+  .views { grid-row: 4; min-height: 0; }
+  .controls > .knobs { grid-column: 1; grid-row: 5; margin: 12px 12px 0; }
+  .controls > .deeper { grid-column: 1; grid-row: 6; margin: 12px 12px 72px; }
+  .controls > .knobs h2, .controls > .deeper h2 { position: static; }
+  /* Where the tab bar's scrollIntoView lands each part: a breath under the screen's top edge. */
+  .controls > .lesson, .views .view, .controls > .knobs { scroll-margin-top: 8px; }
+  /* The cursor row on one line at 390 px: the sentence drops its lead ("the meters read") and the
+     window knob its word — "− 40 cycles +" beside the slider it spans — so the plot's view switch
+     stays on the first screen for the fifteen experiments that carry a window knob. */
+  .cursor-row .cursor-lead, .cursor-row .cursor-head .num.is-compact .num-label { display: none; }
+  .tabbar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+  }
+  .tabbar button {
+    border: 0;
+    border-radius: 6px;
+    padding: 7px 4px;
+    background: none;
+    color: var(--dim);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tabbar button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+}
+
+/* Pane-header controls — the proximity rule from Signal Lab: a control that
+   governs one plot sits in that plot's header, sized to the header row so
+   moving it there costs almost no plot height. */
+.view-head .segmented { flex: 0 0 auto; }
+.view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
+
+/* Phone: pane-header control groups wrap under the title without crowding
+   the readouts off the edge. */
+@media (max-width: 900px) {
+  .view-head { row-gap: 6px; }
+  .view-head .readout { flex-basis: 100%; }
+  /* The two panes stack and the page scrolls, so each takes its own height:
+     with the shell's equal `1fr 1fr` rows a tall lower pane (the stacked phasor
+     view) would stretch the schematic pane to match and leave a blank half-
+     screen under the slider. */
+  .views { grid-template-rows: auto auto; }
+}
+
+/* Notes that are alive (student review, Phase 6). A number in the note that
+   re-reads the solution is a <b.live>; while the author's figure still stands
+   it looks like the rest of the sentence, and once a knob has moved it past
+   that figure it reprints and is marked, so the student sees exactly which
+   words changed. */
+.hint.see b.live { font-weight: inherit; color: inherit; border-radius: 3px; transition: background 0.4s, color 0.4s; }
+.hint.see b.live[data-changed='true'] {
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  padding: 0 3px;
+  margin: 0 -1px;
+}
+
+/* Terms where they first do work: a dotted word the student can tap. The
+   definition opens in a card under the paragraph that used it. */
+dfn.term {
+  font-style: normal;
+  color: inherit;
+  cursor: help;
+  border-bottom: 1px dotted var(--accent);
+  text-decoration: none;
+  padding-bottom: 1px;
+}
+dfn.term:hover, dfn.term:focus-visible { color: var(--accent); border-bottom-style: solid; outline: none; }
+dfn.term[aria-expanded='true'] { color: var(--accent); border-bottom-style: solid; background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.def-card {
+  margin: 8px 0 4px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+  border-radius: 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.def-card p { margin: 4px 0 0; }
+.def-head { display: flex; align-items: center; gap: 8px; }
+.def-head b { color: var(--text); font-size: 12px; }
+.def-close {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.def-close:hover { color: var(--text); }
+
+/* Chips: a term the prose never spells out, and the thread through the course. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--dim);
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1.5;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tag:hover, .tag:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.tag.is-on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.term-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
+.def-since { font-size: 10px; }
+.thread { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 0; font-size: 11px; color: var(--dim); }
+.thread-part { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.thread-label { margin-right: 2px; }
+.thread-chip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; }
+
+/* The group's one sentence: a folded line above the note of the experiment
+   that opens the group, and a blurb under each group in the picker. */
+details.group-intro { margin: 6px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+details.group-intro > summary { cursor: pointer; list-style: none; color: var(--amber); }
+details.group-intro > summary::before { content: '\25B8  '; font-size: 9px; }
+details.group-intro[open] > summary::before { content: '\25BE  '; }
+details.group-intro > summary::-webkit-details-marker { display: none; }
+details.group-intro > summary b { color: var(--amber); }
+details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px solid var(--amber); background: var(--panel-2); border-radius: 4px; }
+.group-blurb { margin: 2px 0 6px; font-size: 11px; line-height: 1.45; }
+
+/* Predict before you turn: the step is a question first, its answers a row of
+   readings, and its own sentence the reason once one is picked. */
+.predict { display: grid; gap: 5px; }
+.predict-ask { margin: 0; color: var(--text); }
+.predict-tag {
+  display: inline-block;
+  padding: 0 6px;
+  margin-right: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+.predict-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.predict-option {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.predict-option:not(:disabled):hover, .predict-option:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.predict-option:disabled { cursor: default; opacity: 0.5; }
+.predict-option.is-answer { opacity: 1; border-color: var(--accent); color: var(--accent); }
+.predict-option.is-picked:not(.is-answer) { opacity: 1; border-color: var(--amber); color: var(--amber); text-decoration: line-through; }
+.predict-mark { font-weight: 600; font-size: 11.5px; }
+.predict-mark.right { color: var(--accent); }
+.predict-mark.wrong { color: var(--amber); }
+.predict-reveal { margin: 0; }
+.predict-reveal em { color: var(--amber); font-style: normal; }
+.predict-reveal b { color: var(--text); }
+
+@media (min-width: 1100px) {
+  .def-card, details.group-intro { font-size: 12.5px; }
+  .predict-option { font-size: 12.5px; }
+  .thread { font-size: 11.5px; }
+}
+
+/* The schematic. Values are live, so the picture always matches the plots. */
+.schematic {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 2px 0 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+/* Labels and node names are set in the KaTeX faces the equations use, so the
+   R₁ under a resistor is, letter for letter, the R₁ in the matrix below it.
+   KaTeX_Math is the italic maths letter, KaTeX_Main the upright text. */
+.sch-label {
+  fill: var(--dim);
+  font-family: KaTeX_Main, 'Times New Roman', serif;
+  font-size: 9.5px;
+}
+.sch-label .sch-sym { fill: var(--text); font-family: KaTeX_Math, 'Times New Roman', serif; font-style: italic; font-size: 10.5px; }
+.sch-label .sch-sub { fill: var(--text); font-size: 7.5px; }
+.sch-label .sch-sub-it { font-family: KaTeX_Math, 'Times New Roman', serif; font-style: italic; }
+.sch-port {
+  fill: var(--text);
+  font-family: KaTeX_Math, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 10.5px;
+}
+.sch-sign {
+  fill: var(--dim);
+  font-family: KaTeX_Main, 'Times New Roman', serif;
+  font-size: 11px;
+}
+.sch-note {
+  fill: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 9px;
+  font-style: italic;
+}
+/* Live readings on the schematic: node voltages beside their dots, element
+   readings above their symbols. Each takes the hue of the quantity it reads
+   (palette.js: voltages blue, currents orange, powers green), so the meter,
+   the readout strip and the trace on the plot are one colour per quantity.
+   Node voltages are voltages whatever the element meters show. */
+.sch-meter {
+  fill: var(--q-voltage);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+}
+.view-body[data-show='i'] text.sch-meter { fill: var(--q-current); }
+.view-body[data-show='p'] text.sch-meter { fill: var(--q-power); }
+.view-body[data-show='v'] text.sch-meter { fill: var(--q-voltage); }
+/* The voltage marks: + in the accent colour, − in the text colour, both bold
+   enough to read at phone size. */
+.sch-plus, .sch-minus { font-weight: 700; }
+.sch-plus { fill: var(--accent); }
+.sch-minus { fill: var(--text); }
+
+/* The schematic answers back (student review, Phase 8). What the active step
+   says to read is lit — the node's dot and name, the element's symbol and
+   label — and so is whatever the pointer rests on in the Equations pane. A
+   node that takes the reference and a switch are tappable; the reference node
+   wears a ring, and ground steps aside while another node is the zero. */
+.sch-node.is-lit .sch-dot { fill: var(--accent); r: 3.6; }
+.sch-node.is-lit .sch-port { fill: var(--accent); }
+.sch-node.is-lit text.sch-meter { fill: var(--accent); }
+.sch-el.is-lit { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 70%, transparent)); }
+.sch-el.is-lit .sch-label .sch-sym, .sch-el.is-lit .sch-label .sch-sub { fill: var(--accent); }
+.sch-node.is-ref .sch-ref { stroke: var(--accent); }
+.sch-node.is-ref .sch-dot { fill: var(--accent); }
+.sch-gnd.is-aside { opacity: 0.35; }
+.is-tappable { cursor: pointer; }
+.is-tappable:hover .sch-dot, .is-tappable:focus-visible .sch-dot { fill: var(--accent); }
+.is-tappable:focus-visible { outline: none; }
+.is-tappable:focus-visible .sch-hit { stroke: var(--accent); stroke-dasharray: 3 2; }
+.sch-el.is-tappable:hover { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 50%, transparent)); }
+.sch-hint { margin: 2px 0 0; font-size: 11px; line-height: 1.45; color: var(--dim); }
+.sch-hint b { color: var(--accent); }
+.readout [data-lit] b { text-shadow: 0 0 8px color-mix(in srgb, currentColor 70%, transparent); }
+.readout [data-lit] { color: var(--text); }
+
+/* The big schematic is the upper pane. Every layout is drawn at one scale —
+   --sch-scale screen pixels per drawing unit — and the frame is cut to what
+   the layout actually draws (the Schematic publishes --crop-w and --ar from
+   its crop), so a one-element circuit gets a small frame and a six-element one
+   a wide frame, with the same size resistor in each. The width is the least
+   of: the pane, what the height budget --sch-h allows, and the drawing at
+   full scale; the height follows from the aspect ratio. Before this the
+   frame was the whole 420 × 180 canvas at up to 720 px, half the screen for
+   any circuit (Reed, 2026-09-01: "taking up too much real estate"). */
+.view .schematic.big {
+  --sch-scale: 1.7143; /* 720 px / 420 units, the scale the lab was drawn at */
+  --sch-h: clamp(190px, 30vh, 320px);
+  width: min(100%, calc(var(--sch-h) * var(--ar, 2.3333)), calc(var(--crop-w, 420) * var(--sch-scale) * 1px));
+  margin: 0 auto;
+  padding: 10px;
+}
+@media (max-width: 900px) {
+  /* The page scrolls on a phone, so the budget is a fixed slice of it: the
+     height the old full-canvas frame had at 390 px wide (342 px of 420 × 180
+     is 147 px tall), so a small, square-ish circuit does not grow to fill
+     the room it just freed — it is still drawn larger, since its frame is
+     narrower than the canvas was. Wide layouts are limited by the width. */
+  .view .schematic.big { --sch-h: 150px; }
+}
+@media (min-width: 1400px) {
+  .view .schematic.big { --sch-scale: 2; }
+}
+
+/* Desktop: the shell gives the two panes equal halves, but the schematic
+   needs only its frame and the Analysis pane has a screenful to say. The
+   upper pane takes its own height and the lower pane gets the rest. */
+@media (min-width: 901px) {
+  .views { grid-template-rows: auto minmax(0, 1fr); }
+  .views > .view:first-child { max-height: 60vh; }
+}
+
+/* Phone: a grid item's default min-width is its content, so a pane header
+   whose title and button group do not fit side by side widened the pane past
+   the screen and clipped the last buttons. Let the pane be as wide as the
+   screen and the header wrap; a view switch with many tabs wraps too. */
+@media (max-width: 900px) {
+  .views > .view { min-width: 0; }
+  .view-head .segmented { flex-wrap: wrap; max-width: 100%; }
+}
+
+/* Refusals: the solver declined, and the pane says why in the amber the rest
+   of the suite uses for "this is a limit, not an error". */
+.refusal {
+  border: 1px solid var(--amber);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 720px;
+  margin: 8px auto;
+}
+.refusal b { color: var(--amber); }
+
+/* The equations pane: one KCL row per node, then the constraints, then the
+   matrix. Each term shows its live value beneath so the row visibly sums to
+   zero. */
+/* minmax(0, 1fr): a wide equation row must not widen the track and push the
+   prose beside it off a phone screen — the row scrolls inside instead. */
+.equations { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 4px 0; overflow-x: auto; }
+.eq-row {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.eq-row .eq-at { color: var(--dim); font-size: 11.5px; padding-top: 4px; }
+.eq-row .eq-at b { color: var(--text); display: block; font-size: 12.5px; }
+.eq-row .eq-at small { display: block; font-size: 10.5px; line-height: 1.35; margin-top: 2px; max-width: 150px; }
+/* The primer and the numbered steps: plain prose, the width a paragraph wants. */
+.eq-primer { display: grid; gap: 6px; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--panel-2); border-radius: 4px; }
+.eq-primer p, .eq-step { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--dim); max-width: 760px; }
+.eq-primer b, .eq-step b { color: var(--text); }
+.eq-primer .tex, .eq-step .tex, .eq-grid .tex, .eq-legend .tex, .hint .tex { font-size: 1em; }
+.eq-step { padding: 6px 0 0; }
+/* The matrix as a labelled grid: rows are the equations, columns the unknowns,
+   each cell in letters with the number it stands for beneath. */
+.eq-grid { border-collapse: collapse; font-size: 12px; }
+.eq-grid th, .eq-grid td { padding: 6px 10px; border: 1px solid var(--line); text-align: center; vertical-align: middle; }
+.eq-grid thead th { color: var(--dim); font-weight: 600; font-size: 11px; background: var(--panel-2); }
+.eq-grid thead th .tex { font-size: 14px; color: var(--text); }
+.eq-grid tbody th { text-align: left; color: var(--dim); font-weight: 500; white-space: nowrap; background: var(--panel-2); font-size: 11.5px; }
+.eq-grid tbody th b { color: var(--text); }
+.eq-grid .eq-rhs { border-left: 3px double var(--line); }
+.eq-grid .eq-cell { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+.eq-grid .eq-cell .tex { font-size: 14px; }
+.eq-grid .eq-val, .eq-legend .eq-val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; color: var(--amber); white-space: nowrap; }
+/* The table scrolls sideways inside a plain wrapper. Not on .eq-matrix itself:
+   a scrolling grid item may shrink to its padding when the pane is height-bound. */
+.eq-scroll { overflow-x: auto; }
+.eq-grid .eq-val .tex { font-size: 11px; font-family: inherit; }
+.eq-grid .eq-zero { color: var(--dim); }
+/* The two compact matrices stack; side by side, a five-unknown system clips
+   its right-hand vector at 1280 px. Only a wide desktop gets two columns. */
+.eq-compact { display: grid; gap: 10px 24px; grid-template-columns: 1fr; margin-top: 12px; }
+@media (min-width: 1500px) { .eq-compact { grid-template-columns: 1fr 1fr; } }
+.eq-compact > div { overflow-x: auto; }
+.eq-caption { display: block; color: var(--dim); font-size: 11.5px; margin-bottom: 2px; }
+.eq-legend { list-style: none; margin: 0; padding: 0 8px; display: grid; gap: 4px; }
+.eq-legend li { display: grid; grid-template-columns: 56px 110px 1fr; gap: 10px; align-items: baseline; font-size: 12px; }
+.eq-legend li .tex { font-size: 14px; }
+.eq-legend .eq-what { color: var(--dim); }
+.eq-terms { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+.eq-term { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+.eq-term .tex { font-size: 14px; }
+.eq-term .eq-val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--amber);
+}
+.eq-sum { color: var(--dim); font-size: 11.5px; margin-left: 4px; white-space: nowrap; }
+.eq-sum b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.eq-matrix { padding: 8px; }
+.eq-matrix .tex { font-size: 13px; }
+
+/* Thévenin and superposition panes: small tables in the math-panel idiom. */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.table th, .table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.table th { color: var(--dim); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+/* `.num` is also the NumField wrapper in @ee-labs/ui (display: block, a
+   margin); a table cell has to win that back or the row falls into a stack. */
+.table td.num, .table th.num { display: table-cell; margin: 0; text-align: right; }
+.table td.num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.table td.agree { color: var(--accent); }
+.table td.disagree { color: var(--warn); }
+.table caption { text-align: left; color: var(--dim); font-size: 11px; padding: 4px 8px; }
+.pane-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 1100px) { .pane-grid.two { grid-template-columns: 1fr 1fr; } }
+
+/* The power pane: a ledger (v, i, p per element), then two bars of equal
+   length — what the sources deliver, what the rest absorbs — segment by element. */
+.power { display: grid; gap: 10px; padding: 4px 0; }
+/* The headers name v, i and p as the prose does: no uppercase, or p = v × i reads as P = V × I. */
+.power-table th { text-transform: none; letter-spacing: 0; font-size: 11.5px; }
+.power-table td.num { white-space: nowrap; }
+.power-table .role { color: var(--dim); }
+.power-table tr.is-delivers .role { color: var(--amber); }
+.power-table tr.is-absorbs .role { color: var(--accent); }
+.power-table tr.is-idle td { color: var(--dim); }
+.power-bars { display: grid; gap: 8px; padding: 4px 8px; }
+.power-bar { display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center; font-size: 12px; }
+.power-bar-label { color: var(--dim); }
+.power-bar-label b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+.power-bar .bar { display: flex; height: 18px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.power-bar .bar i { display: flex; align-items: center; justify-content: center; height: 100%; font-style: normal; font-size: 10.5px; color: var(--bg); overflow: hidden; border-right: 1px solid var(--bg); box-sizing: border-box; }
+.power-bar .bar i:last-child { border-right: 0; }
+.power-bar .bar i span { overflow: hidden; text-overflow: clip; white-space: nowrap; padding: 0 3px; }
+.power-bar .bar.is-absorbs i { background: var(--accent); }
+.power-bar .bar.is-delivers i { background: var(--amber); }
+.power-total { color: var(--dim); font-size: 11.5px; margin: 0 8px; line-height: 1.5; max-width: 760px; }
+.power-total b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+
+/* Desktop: the lower pane has a screenful of room and the phone-sized type
+   read as a squint at arm's length (Reed, 2026-09-01). Everything in it steps
+   up about a third; phones keep the sizes above, which suit them. */
+@media (min-width: 1100px) {
+  .eq-row { padding: 9px 12px; gap: 16px; }
+  .eq-row .eq-at { font-size: 14px; padding-top: 6px; }
+  .eq-row .eq-at b { font-size: 16px; }
+  .eq-terms { gap: 8px 20px; }
+  .eq-term .tex { font-size: 19px; }
+  .eq-term .eq-val { font-size: 13px; }
+  .eq-sum { font-size: 14px; }
+  .eq-matrix .tex { font-size: 18px; }
+  .eq-matrix .hint { font-size: 14px; }
+  .eq-row .eq-at small { font-size: 12px; max-width: 200px; }
+  .eq-primer p, .eq-step { font-size: 14.5px; }
+  .eq-grid { font-size: 14px; }
+  .eq-grid thead th { font-size: 12.5px; }
+  .eq-grid thead th .tex, .eq-grid .eq-cell .tex, .eq-legend li .tex { font-size: 17px; }
+  .eq-grid tbody th { font-size: 13.5px; }
+  .eq-grid .eq-val, .eq-legend .eq-val { font-size: 12.5px; }
+  .eq-grid .eq-val .tex { font-size: 13px; }
+  .eq-caption { font-size: 13.5px; }
+  .eq-legend li { font-size: 14px; grid-template-columns: 64px 130px 1fr; }
+  .table { font-size: 14px; }
+  .table th { font-size: 12.5px; }
+  .table caption { font-size: 13px; }
+  .power-bar { font-size: 14px; grid-template-columns: 190px 1fr; }
+  .power-bar .bar { height: 22px; }
+  .power-bar .bar i { font-size: 12px; }
+  .power-total { font-size: 13.5px; }
+  .refusal { font-size: 15px; max-width: 900px; }
+  .view-body > .hint { font-size: 14px; }
+}
+
+/* Pane bodies scroll inside the pane rather than growing it: the two panes
+   stay two panes whatever the equations list or the tables run to. */
+.view-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.view-body .plot { flex: 1; min-height: 160px; }
+/* The time-domain plots want more height than a load sweep: two axes, the
+   series named at their ends, and a cursor to grab. */
+.view-body .plot.scope, .view-body .plot.energy, .view-body .plot.damping { min-height: 220px; }
+
+/* The sentence under the plot (captions.js): what the picture says, its
+   numbers in bold and in the text colour. Measure ~65 characters wide. */
+.plot-caption {
+  margin: 6px 0 0;
+  padding: 0 8px;
+  max-width: 68ch;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--dim);
+}
+.plot-caption b { color: var(--text); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.95em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* The readout strip: each reading in the hue of its quantity family. */
+.readout [data-q='voltage'] b { color: var(--q-voltage); }
+.readout [data-q='current'] b { color: var(--q-current); }
+.readout [data-q='power'] b { color: var(--q-power); }
+.readout [data-q='energy'] b { color: var(--q-energy); }
+.readout [data-q='angle'] b { color: var(--q-angle); }
+
+/* The plot's mark list: one entry per mark the canvas draws — the glyph it is
+   drawn with, what it means, the number it stands for. */
+.plot-marks {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12px;
+  color: var(--dim);
+}
+.plot-marks li { display: inline-flex; align-items: baseline; gap: 6px; }
+.plot-marks .mark-glyph { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.plot-marks .mark-value { color: var(--text); font-weight: 500; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+@media (min-width: 1100px) {
+  .plot-marks { font-size: 13px; gap: 4px 18px; }
+}
+
+/* A two-position knob: the label in the NumField's idiom, then two buttons. */
+.toggle-knob { display: grid; gap: 4px; margin: 6px 0 10px; }
+.toggle-knob .toggle-label { font-size: 12px; color: var(--dim); }
+.toggle-knob .segmented { justify-self: start; }
+.toggle-knob .hint { margin: 0; }
+
+/* The cursor row under the schematic (dynamic groups): the instant the meters
+   are reading, and a slider to move it. The plot's own drag does the same. */
+.cursor-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  max-width: 720px;
+  margin: 4px auto 0;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--dim);
+}
+/* The instant never breaks across two lines: "t = 216" above "ms" reads as a
+   different number for the moment it takes to see the second line. */
+.cursor-row label b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
+.cursor-row .cursor-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cursor-row .cursor-head label { flex: 1 1 auto; min-width: 0; }
+/* The window knob beside the cursor it scales: label and entry on one line, small. */
+.cursor-row .cursor-head .num.is-compact { display: flex; align-items: center; gap: 6px; margin: 0; flex: none; }
+.cursor-row .cursor-head .num.is-compact .num-head { margin: 0; }
+.cursor-row .cursor-head .num.is-compact .num-hint { display: none; }
+.cursor-row .cursor-head .num.is-compact .num-label { font-size: 11px; color: var(--dim); }
+.cursor-row .cursor-head .num.is-compact .num-input { width: 40px; }
+/* ▶ play sweeps the cursor over the window; ■ stop while it runs. */
+.cursor-row .play {
+  flex: none;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11.5px;
+  line-height: 1;
+  padding: 5px 9px;
+  min-width: 64px;
+}
+.cursor-row .play:hover, .cursor-row .play:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.cursor-row .play.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.cursor-row .num-slider { width: 100%; margin: 0; }
+.cursor-row .cursor-ends { display: flex; justify-content: space-between; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; }
+
+/* The state pane: the state equation, then roots and the cursor table. */
+/* The i–v plane (Group I): the diode's curve, the models over it, and the
+   load line. Each curve is named where it leaves the frame, like every other
+   chart in the lab, so there is no legend to read back and forth from. */
+.plot.iv { display: grid; gap: 6px; }
+
+/* Assume, solve, check: every combination, the survivor marked and each
+   rejection carrying the contradiction that killed it. */
+.assumed { display: grid; gap: 8px; }
+.assumed > .hint { margin: 0 8px; }
+.assumed-list { display: grid; gap: 8px; margin: 0; padding: 0 8px; list-style: none; }
+.assumed-list > li { border: 1px solid var(--line); border-left-width: 3px; border-radius: 8px; padding: 8px 10px; background: var(--panel-2); }
+.assumed-list > li.is-answer { border-left-color: var(--accent); }
+.assumed-list > li.is-rejected { border-left-color: var(--line-bright); opacity: 0.82; }
+.assumed-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.assumed-state { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--text); }
+.assumed-verdict { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dim); }
+.assumed-list > li.is-answer .assumed-verdict { color: var(--accent); }
+.assumed-why { margin: 6px 0 0; font-size: 12.5px; color: var(--dim); }
+.assumed-checks { margin: 6px 0 0; padding-left: 16px; font-size: 12.5px; color: var(--dim); }
+.assumed-checks b { color: var(--accent); }
+@media (min-width: 1100px) {
+  .assumed-state { font-size: 14px; }
+  .assumed-why, .assumed-checks { font-size: 13.5px; }
+  .iv-key { font-size: 13px; }
+}
+
+.state { display: grid; gap: 8px; }
+.state .table td sub { font-size: 0.75em; }
+.state > .hint { margin: 0 8px; }
+.state .eq-matrix { overflow-x: auto; } /* .state does not shrink, so this item cannot collapse */
+@media (min-width: 1100px) {
+  .cursor-row { font-size: 14px; max-width: 900px; }
+  .cursor-row .cursor-ends { font-size: 12px; }
+  .cursor-row .play { font-size: 13px; padding: 6px 11px; }
+  .plot-caption { font-size: 14px; }
+  .state .tex { font-size: 17px; }
+  .state > .hint { font-size: 14px; }
+  .toggle-knob .toggle-label { font-size: 13px; }
+}
+@media (min-width: 1400px) {
+  .cursor-row { max-width: 900px; }
+}
+
+/* Group H. The phasor canvas holds a diagram AND the waveforms it draws — side
+   by side when wide, stacked on a phone, which needs the height. */
+.view-body .plot.phasor { min-height: 320px; }
+.view-body .plot.freq { min-height: 240px; }
+@media (max-width: 559px) {
+  .view-body .plot.phasor { min-height: 560px; }
+}
+
+/* The AC power table: eight columns, so it scrolls sideways on a phone rather
+   than folding — a table that wraps its numbers is not a table. */
+.acpower { display: grid; gap: 8px; }
+.acpower .table-scroll { overflow-x: auto; }
+.acpower .table { min-width: 560px; }
+.acpower > .hint { margin: 0 8px; }
+.acpower tfoot td { border-bottom: 0; font-weight: 600; }
+@media (min-width: 1100px) {
+  .acpower > .hint { font-size: 14px; }
+}
+
+/* The hand-over to Circuit Lab, under the math panel — Circuit Lab's own
+   hand-over furniture, copied so the two ends of the bridge look alike. */
+.handover { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.handover-dest {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.handover .hint b { color: var(--text); }
+.handover-copy { width: 100%; margin-top: 8px; }
+a.handover-copy {
+  display: block;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
+  background: var(--accent);
+  color: #05221b;
+  font-weight: 600;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-size: 11.5px;
+  padding: 5px 8px;
+}
+a.handover-copy:hover { filter: brightness(1.1); }
+
+/* The headline: the one number the experiment is about, first and large at
+   the top of Analysis in every view. The label says what it is in the
+   lesson's words; the value is a measurement of the circuit (headlines.js),
+   so it moves with the knobs. A refused circuit says "no value" and why. */
+.headline {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+}
+.headline-label { font-size: 11.5px; color: var(--dim); line-height: 1.4; }
+.headline-value { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.headline-tag { font-family: KaTeX_Math, 'Times New Roman', serif; font-style: italic; font-weight: 500; font-size: 20px; color: var(--text); }
+.headline-eq { color: var(--dim); font-size: 18px; }
+.headline-value strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 24px; font-weight: 600; color: var(--accent); letter-spacing: -0.01em; }
+.headline.is-refused .headline-value strong { color: var(--amber); font-size: 18px; }
+.headline-why { font-size: 11.5px; color: var(--amber); line-height: 1.4; }
+/* The bridge: one sentence from the lesson, so the pane never opens cold. */
+.bridge { margin: 0 8px 8px; font-size: 12.5px; line-height: 1.5; color: var(--dim); max-width: 760px; }
+@media (min-width: 1100px) {
+  .headline { padding: 8px 12px 10px; }
+  .headline-label { font-size: 13.5px; }
+  .headline-tag { font-size: 26px; }
+  .headline-eq { font-size: 22px; }
+  .headline-value strong { font-size: 32px; }
+  .headline.is-refused .headline-value strong { font-size: 22px; }
+  .headline-why { font-size: 13.5px; }
+  .bridge { font-size: 14.5px; margin: 0 12px 10px; }
+}
+
+/* The callout on the schematic: the headline's number beside the part it
+   belongs to — accent, upright, the note size. */
+.sch-callout { fill: var(--accent); font-style: normal; font-weight: 600; }
+
+/* Every meter at once (the Reading view). */
+.readings { display: grid; gap: 8px; padding: 0 8px; }
+.readings .table td.num { white-space: nowrap; }
+.readings .hint { margin: 0; }
+.readings .hint b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* Groups A–E fold the solver's working: the summary is the first line the
+   reader sees; the rows and matrix open on demand. */
+.eq-fold > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 8px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  color: var(--dim);
+  font-size: 12px;
+}
+.eq-fold > summary::-webkit-details-marker { display: none; }
+.eq-fold > summary::before { content: '\25B8  '; font-size: 9px; color: var(--accent); }
+.eq-fold[open] > summary::before { content: '\25BE  '; }
+.eq-fold > summary:hover { border-color: var(--accent); color: var(--text); }
+.eq-fold[open] > summary { margin-bottom: 10px; }
+.eq-fold > .eq-step, .eq-fold > .eq-row, .eq-fold > .eq-matrix, .eq-fold > .eq-legend { margin-top: 10px; }
+.eq-fold > .eq-step:first-of-type { margin-top: 0; }
+.eq-open { display: contents; }
+.eq-primer-line { display: block; }
+/* E3: the two rows that fix one node to two values. */
+.eq-row.is-contradiction { border-color: var(--amber); box-shadow: inset 3px 0 0 var(--amber); }
+
+/* The theorem drawings. */
+.theorem { margin: 0 8px 10px; }
+.theorem.kvl {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 6px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.theorem.kvl .eq-at { color: var(--dim); font-size: 11.5px; padding-top: 4px; }
+.theorem.kvl .eq-at b { color: var(--text); display: block; font-size: 12.5px; }
+.theorem.kvl .eq-at small { display: block; font-size: 10.5px; line-height: 1.35; margin-top: 2px; max-width: 150px; }
+.theorem.mesh { display: grid; gap: 8px; }
+.theorem.mesh .eq-step { padding: 0; }
+.theorem.contradiction {
+  margin: 0 8px 10px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--amber);
+  background: var(--panel-2);
+  border-radius: 4px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.theorem.contradiction b { color: var(--text); }
+.theorem.parts { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.theorem figure, .equivalent figure { margin: 0; display: grid; gap: 4px; }
+.theorem figcaption, .equivalent figcaption { font-size: 11.5px; color: var(--dim); line-height: 1.4; text-align: center; }
+.theorem figcaption b, .equivalent figcaption b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.theorem.parts .schematic { width: 100%; padding: 6px; }
+.theorem.parts .schematic .sch-meter { font-size: 10px; }
+.theorem.triangle { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.theorem.triangle svg, .equivalent svg:not(.schematic) { display: block; width: 100%; max-width: 340px; height: auto; margin: 0 auto; overflow: visible; }
+.tri-mean-label { fill: var(--accent); }
+.theorem.triangle .sch-note, .equivalent .sch-note { font-style: normal; fill: var(--text); }
+.tri-fill { fill: var(--accent); opacity: 0.12; }
+.tri-p { stroke: var(--accent); stroke-width: 2.5; }
+.tri-q { stroke: var(--amber); stroke-width: 2.5; }
+.tri-s { stroke: var(--text); stroke-width: 1.5; }
+.tri-axis { stroke: var(--line); stroke-width: 1; }
+.tri-mean { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.tri-trace { fill: none; stroke: var(--amber); stroke-width: 1.5; }
+.tri-dot { fill: var(--amber); stroke: none; }
+.equivalent { padding: 0 8px; }
+.equivalent .schematic.big { max-width: 360px; }
+@media (min-width: 1100px) {
+  .theorem.kvl { padding: 9px 12px; gap: 16px; }
+  .theorem.kvl .eq-at { font-size: 14px; padding-top: 6px; }
+  .theorem.kvl .eq-at b { font-size: 16px; }
+  .theorem.kvl .eq-at small { font-size: 12px; max-width: 200px; }
+  .theorem.contradiction { font-size: 14.5px; max-width: 760px; }
+  .theorem figcaption, .equivalent figcaption { font-size: 13.5px; }
+  .readings .hint { font-size: 14px; }
+}

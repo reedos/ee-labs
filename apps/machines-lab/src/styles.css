@@ -1,0 +1,351 @@
+/* Machines Lab, in the suite's dark palette.
+ *
+ * The layout is Circuit Elements Lab's: a fixed sidebar carrying the picker
+ * and the note, a main column carrying the circuit, the knobs and one lower
+ * pane. Below 900 px the two stack, sidebar first, because the note is what a
+ * reader on a phone came for.
+ */
+
+:root {
+  --bg: #0b0f14;
+  --panel: #121820;
+  --edge: #1e2733;
+  --ink: #c9d6e4;
+  --dim: #7d8b9c;
+  --accent: #7fd4ff;
+  --warm: #ffcc66;
+  --good: #a0e8a0;
+  --bad: #ff9a9a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
+  height: 100vh;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.topbar .group {
+  color: var(--dim);
+}
+
+.topbar .outcome {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.picker-current {
+  width: 100%;
+  text-align: left;
+  background: #17202b;
+  color: var(--ink);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.presets {
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 6px;
+  max-height: 42vh;
+  overflow-y: auto;
+}
+
+.preset-group > summary {
+  cursor: pointer;
+  color: var(--dim);
+  padding: 4px 2px;
+}
+
+.preset {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  padding: 4px 8px;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 6px;
+}
+
+.preset:hover {
+  background: #1b2531;
+}
+
+.note .see {
+  margin: 6px 0;
+}
+
+.note .try {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.try-line {
+  background: none;
+  border: 0;
+  color: var(--ink);
+  text-align: left;
+  padding: 2px 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.try-line:hover {
+  color: var(--accent);
+}
+
+.note summary {
+  cursor: pointer;
+  color: var(--dim);
+}
+
+.note .why {
+  color: var(--ink);
+}
+
+.terms dt {
+  color: var(--warm);
+  margin-top: 8px;
+}
+
+.terms dd {
+  margin: 2px 0 0;
+  color: var(--dim);
+}
+
+.report-issue {
+  margin-top: auto;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.machine {
+  width: 100%;
+  max-height: 34vh;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  padding: 6px;
+}
+
+.no-circuit {
+  color: var(--dim);
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.knobs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  padding: 10px;
+  max-height: 26vh;
+  overflow-y: auto;
+}
+
+.view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.view-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.view-head .readout {
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segmented button {
+  background: #151d27;
+  border: 0;
+  border-right: 1px solid var(--edge);
+  color: var(--dim);
+  padding: 5px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.segmented button:last-child {
+  border-right: 0;
+}
+
+.segmented button.on {
+  background: #1d2b3a;
+  color: var(--accent);
+}
+
+.toggle {
+  background: #151d27;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  color: var(--dim);
+  padding: 6px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.toggle.on {
+  color: var(--accent);
+}
+
+.choice-label {
+  display: block;
+  color: var(--dim);
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.plot {
+  flex: 1;
+  width: 100%;
+  min-height: 220px;
+}
+
+.pane {
+  flex: 1;
+  overflow: auto;
+}
+
+.pane.error {
+  color: var(--bad);
+}
+
+.pane-note {
+  color: var(--dim);
+  margin: 0 0 8px;
+}
+
+table.readout,
+table.power,
+table.matrix {
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+table.readout th,
+table.power th,
+table.matrix th {
+  text-align: left;
+  font-weight: 400;
+  color: var(--dim);
+  padding: 3px 18px 3px 0;
+}
+
+table.readout td,
+table.power td,
+table.matrix td {
+  text-align: right;
+  padding: 3px 0 3px 18px;
+  color: var(--ink);
+}
+
+table.power tr.gap th,
+table.power tr.gap td {
+  color: var(--good);
+  border-top: 1px solid var(--edge);
+  padding-top: 6px;
+}
+
+table.matrix td.affine {
+  color: var(--warm);
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    overflow: visible;
+  }
+
+  .sidebar {
+    overflow: visible;
+  }
+
+  .machine {
+    max-height: none;
+  }
+
+  .knobs {
+    max-height: none;
+  }
+
+  .plot {
+    min-height: 260px;
+  }
+}

@@ -1,0 +1,312 @@
+/* Control Lab II's own chrome.
+ *
+ * The layout, the sidebar, the controls, the plot frame and the lesson strip
+ * all come from packages/ui/base.css, which is why a reader who knows one lab
+ * in this suite knows this one. What is here is the four things this lab draws
+ * that no other lab has: the loop diagram with its extra blocks, the state
+ * pane's matrices, the guard strip in the top bar, and the folded groups in
+ * the experiment list.
+ */
+
+/* ---------------------------------------------------------- the top bar */
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--line-bright);
+}
+.badge.is-good {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.badge.is-warn {
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 45%, transparent);
+}
+.badge.is-bad {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 50%, transparent);
+}
+
+/* The guard. It sits in the top bar because it is on screen wherever an
+   approximation is, which is this lab's own rule. */
+.guard {
+  font-size: 11px;
+  color: var(--dim);
+  border-left: 1px solid var(--line);
+  padding-left: 12px;
+}
+.guard b {
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 500;
+}
+.guard .approx {
+  color: var(--amber);
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+}
+.guard.is-broken {
+  color: var(--warn);
+}
+.guard.is-broken b {
+  color: var(--warn);
+}
+.guard .aside,
+.readout .aside,
+.state-pane .aside {
+  color: var(--dim);
+  opacity: 0.8;
+}
+
+/* The reason, in full, under the views. A threshold crossed is content rather
+   than a warning to dismiss, so it is not a toast and it does not disappear. */
+.guard-banner {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--warn) 12%, var(--panel));
+  border-top: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ----------------------------------------------------- the loop diagram */
+
+.loop-diagram {
+  height: 74px;
+  max-width: 100%;
+  color: var(--line-bright);
+}
+.loop-wire line {
+  stroke: var(--line-bright);
+  stroke-width: 1.2;
+}
+.loop-sum {
+  fill: var(--panel-2);
+  stroke: var(--line-bright);
+  stroke-width: 1.2;
+}
+.loop-sum-text {
+  fill: var(--dim);
+  font-size: 13px;
+  text-anchor: middle;
+}
+.loop-block {
+  fill: var(--panel-2);
+  stroke: var(--line-bright);
+  stroke-width: 1.2;
+}
+.loop-block.is-sample {
+  stroke: var(--blue);
+}
+.loop-block.is-nl {
+  stroke: var(--amber);
+}
+.loop-label {
+  fill: var(--text);
+  font-size: 12px;
+  text-anchor: middle;
+}
+.loop-sub {
+  fill: var(--dim);
+  font-size: 10px;
+  text-anchor: middle;
+}
+
+/* ------------------------------------------------------ the state pane */
+
+.state-pane {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 2px 10px;
+  font-size: 12px;
+}
+.state-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 10px;
+  color: var(--dim);
+}
+.state-name b {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.state-name .unit {
+  opacity: 0.75;
+}
+.matrices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: flex-start;
+}
+.matrix {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.matrix-label {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+.matrix table {
+  border-collapse: collapse;
+  border-left: 1px solid var(--line-bright);
+  border-right: 1px solid var(--line-bright);
+}
+.matrix td {
+  padding: 2px 8px;
+  text-align: right;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+}
+.readouts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 14px;
+  margin: 14px 0 0;
+}
+.readouts dt {
+  color: var(--dim);
+}
+.readouts dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+}
+.declined {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-left: 2px solid var(--amber);
+  background: var(--panel);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ------------------------------------------- the folded experiment list */
+
+.group {
+  margin-bottom: 6px;
+}
+.group-head {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: var(--dim);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.group-head.is-static {
+  cursor: default;
+}
+.group-head:hover:not(.is-static) {
+  color: var(--text);
+}
+.group-count {
+  margin-left: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  opacity: 0.7;
+}
+.lesson-list {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+}
+.preset {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-left: 2px solid transparent;
+  padding: 4px 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.preset b {
+  color: var(--dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 500;
+  margin-right: 6px;
+}
+.preset:hover {
+  background: var(--panel-2);
+}
+.preset.is-on {
+  border-left-color: var(--accent);
+  background: var(--panel-2);
+}
+.preset.is-on b {
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------- the note block */
+
+.note h2 {
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+}
+.why,
+.terms {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.why summary,
+.terms summary {
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.why p {
+  margin: 6px 0 0;
+  line-height: 1.55;
+  color: var(--text);
+}
+.terms dl {
+  margin: 8px 0 0;
+}
+.terms dt {
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 8px;
+}
+.terms dd {
+  margin: 2px 0 0;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* A narrow screen stacks the panes, and the state pane scrolls inside
+   itself rather than making the page scroll sideways. */
+@media (max-width: 900px) {
+  .loop-diagram {
+    height: 60px;
+  }
+  .matrices {
+    gap: 12px;
+  }
+}

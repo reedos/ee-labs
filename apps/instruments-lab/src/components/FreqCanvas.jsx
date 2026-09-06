@@ -1,0 +1,129 @@
+import React from 'react'
+import { useCanvas, COLORS, drawFrame, fmt } from '@ee-labs/ui'
+import { complex as cx } from '@ee-labs/network'
+import { drawDataMarks, drawEndLabels, drawMark, drawRightAxis, frameArea, freqSpan, trackText } from './timePlot.js'
+import { HUE } from '../palette.js'
+
+/**
+ * The frequency response, two decades either side of the circuit's own
+ * frequency: `mode: 'impedance'` draws |Z| (log Ω) and ∠Z; `mode: 'bode'`
+ * draws |H| in dB and ∠H. Frequency is logarithmic. Both are read from
+ * `freq` (math.js freqSweep — one complex solve per point, source at 1∠0);
+ * the marker at the drive frequency is `at`, the same quantity from the
+ * solve the meters are showing, so it sits on the curve by construction.
+ * The magnitude is drawn in the voltage hue (|Z| is volts per ampere seen by
+ * the source, |H| a voltage ratio), the angle in the angle hue, dashed; each
+ * is named where it leaves the frame. `marks` are the data marks of marks.js,
+ * their x a frequency and their y in the magnitude scale's own unit (Ω or dB).
+ */
+export default function FreqCanvas({ freq, mode, fDrive, at, corner, marks = [] }) {
+  const ref = useCanvas(
+    (ctx, w, h) => {
+      trackText(ctx)
+      const area = frameArea(w, h, { rightAxis: true })
+      const k = area.k
+      const series = mode === 'bode' ? freq.H : freq.Z
+      const mag = series.map((z) => (mode === 'bode' ? 20 * Math.log10(cx.cabs(z)) : Math.log10(cx.cabs(z))))
+      const ang = series.map((z) => (cx.carg(z) * 180) / Math.PI)
+      const lx = Float64Array.from(freq.f, (f) => Math.log10(f))
+      const x0 = lx[0]
+      const x1 = lx[lx.length - 1]
+
+      const { lo, hi, yStep } = freqSpan(mag, mode)
+      const fmtY = mode === 'bode' ? (v) => `${v.toFixed(0)} dB` : (v) => fmt(10 ** v, 'Ω', yStep < 1 ? 2 : 1)
+      const magLabel = mode === 'bode' ? '|H| = |V_out / V_s| (dB)' : '|Z| seen by the source (Ω)'
+      const { sx, sy } = drawFrame(ctx, area, x0, x1, lo, hi, (v) => fmt(10 ** v, 'Hz', 1), fmtY, {
+        xStep: 1,
+        yStep,
+        zeroLine: mode === 'bode',
+        xTitle: 'Frequency (log)',
+        yTitle: magLabel,
+      })
+      // Phase on the right, in 45° steps, spanning the quadrants the data visits.
+      const pLo = Math.min(0, Math.floor(Math.min(...ang) / 45) * 45)
+      const pHi = Math.max(0, Math.ceil(Math.max(...ang) / 45) * 45)
+      const syR = drawRightAxis(ctx, area, w, pLo === pHi ? pLo - 45 : pLo, pLo === pHi ? pHi + 45 : pHi, (v) => `${v.toFixed(0)}°`, mode === 'bode' ? '∠H (degrees)' : '∠Z (degrees)', 45)
+
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(area.x, area.y, area.w, area.h)
+      ctx.clip()
+      // Minor decade lines (2, 3, 5), faint — a log axis without them reads as linear.
+      ctx.strokeStyle = COLORS.grid
+      ctx.lineWidth = 1
+      ctx.globalAlpha = 0.5
+      for (let d = Math.floor(x0); d <= Math.ceil(x1); d++) {
+        for (const m of [2, 3, 5]) {
+          const v = d + Math.log10(m)
+          if (v <= x0 || v >= x1) continue
+          ctx.beginPath()
+          ctx.moveTo(Math.round(sx(v)) + 0.5, area.y)
+          ctx.lineTo(Math.round(sx(v)) + 0.5, area.y + area.h)
+          ctx.stroke()
+        }
+      }
+      ctx.globalAlpha = 1
+      if (corner && corner.f > 10 ** x0 && corner.f < 10 ** x1) drawMark(ctx, area, sx(Math.log10(corner.f)), corner.label)
+      drawDataMarks(ctx, area, marks, { sx: (f) => sx(Math.log10(f)), sy, syR, yMap: mode === 'bode' ? (y) => y : (y) => Math.log10(y) })
+
+      const line = (ys, map, color, dash = null) => {
+        ctx.strokeStyle = color
+        ctx.lineWidth = 2 * k
+        ctx.setLineDash(dash ? dash.map((d) => d * k) : [])
+        ctx.beginPath()
+        for (let i = 0; i < lx.length; i++) {
+          if (!Number.isFinite(ys[i])) continue
+          if (i === 0) ctx.moveTo(sx(lx[i]), map(ys[i]))
+          else ctx.lineTo(sx(lx[i]), map(ys[i]))
+        }
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+      line(ang, syR, HUE.angle, [6, 4])
+      line(mag, sy, HUE.voltage)
+
+      // The drive: a marker line named at its foot, and a dot on each curve from the meters' solve.
+      if (fDrive >= 10 ** x0 && fDrive <= 10 ** x1 && at) {
+        const z = mode === 'bode' ? at.H : at.Z
+        const mx = sx(Math.log10(fDrive))
+        ctx.strokeStyle = COLORS.marker
+        ctx.lineWidth = 1.2 * k
+        ctx.beginPath()
+        ctx.moveTo(mx, area.y)
+        ctx.lineTo(mx, area.y + area.h)
+        ctx.stroke()
+        const dot = (y, color) => {
+          ctx.fillStyle = color
+          ctx.beginPath()
+          ctx.arc(mx, y, 4 * k, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        dot(sy(mode === 'bode' ? 20 * Math.log10(cx.cabs(z)) : Math.log10(cx.cabs(z))), HUE.voltage)
+        dot(syR((cx.carg(z) * 180) / Math.PI), HUE.angle)
+        ctx.fillStyle = COLORS.marker
+        ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
+        ctx.textBaseline = 'bottom'
+        const label = `drive ${fmt(fDrive, 'Hz', 3)}`
+        const fits = mx + 5 * k + ctx.measureText(label).width < area.x + area.w - 2 * k
+        ctx.textAlign = fits ? 'left' : 'right'
+        ctx.fillText(label, mx + (fits ? 5 : -5) * k, area.y + area.h - 3 * k)
+      }
+
+      const last = (ys) => ys[ys.length - 1]
+      drawEndLabels(ctx, area, [
+        { label: mode === 'bode' ? '|H|' : '|Z|', color: HUE.voltage, y: sy(last(mag)) },
+        { label: mode === 'bode' ? '∠H' : '∠Z', color: HUE.angle, y: syR(last(ang)) },
+      ])
+      ctx.restore()
+    },
+    [freq, mode, fDrive, at, corner, marks],
+  )
+  return (
+    <canvas
+      ref={ref}
+      className="plot freq"
+      role="img"
+      aria-label={mode === 'bode' ? 'Bode plot: gain in decibels and phase against log frequency' : 'Impedance against log frequency: magnitude and phase'}
+    />
+  )
+}

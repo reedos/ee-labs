@@ -552,10 +552,10 @@ that. Four closed forms, each with a picture.
   into saturation. Measured: `I_C` at each β, and the region at β = 200.
 - **E3 · Emitter degeneration holds it.** The four-resistor bias with `R_E = 1 kΩ`,
   `R_B = 10 kΩ`, `V_BB = 1.8 V`: `I_C = (V_BB − 0.7)/(R_E + R_B/(β + 1))`. The same β
-  range moves it from 0.92 mA to 1.05 mA. The rule `R_B ≤ 0.1 (β + 1) R_E` is stated
+  range moves it from 0.901 mA to 1.042 mA. The rule `R_B ≤ 0.1 (β + 1) R_E` is stated
   and tested. Measured: `I_C` at each β.
-- **E4 · Temperature.** C4's 1.66 mV/K over 50 K is 83 mV. The degenerated circuit
-  moves `I_C` by `ΔV_BE/(R_E + R_B/(β + 1)) = 75 µA`, 7.5 %, and fixed bias runs away.
+- **E4 · Temperature.** C4's 1.66 mV/K over 50 K is 89.1 mV. The degenerated circuit
+  moves `I_C` by `ΔV_BE/(R_E + R_B/(β + 1)) = 80.1 µA`, 7.5 %, and fixed bias runs away.
   Measured: both shifts.
 - **E5 · MOSFET bias and the threshold spread.** A divider and `R_S = 2.5 kΩ` set
   `I_D = 0.4 mA`. Toggle a +0.1 V threshold shift: `I_D` falls 9 % with `R_S` and 75 %
@@ -563,7 +563,8 @@ that. Four closed forms, each with a picture.
   shifts.
 - **E6 · Bias from a current source.** An ideal source in the emitter sets `I_E`, so
   `I_C = α I_E` whatever β or temperature does. This is what a mirror is for, and I1
-  builds one. Measured: `I_C` moves under 1 % over β 50 to 200 and 50 K.
+  builds one. Measured: `I_C` moves 1.4 % over β 50 to 200 and 8 parts per million
+  over 50 K.
 
 ### Group F: Small signals, the tangent at the point (6)
 
@@ -576,10 +577,10 @@ that. Four closed forms, each with a picture.
   allows the split. At 1 mV peak, `i_c` is `g_m × 1 mV = 38.7 µA` peak. Measured: the
   AC part of the quasi-static waveform against `g_m v_be`, within 1 %.
 - **F3 · Transconductance is the slope.** Double `I_C` and `g_m` doubles. The
-  MOSFET's `g_m = 2I_D/V_OV` is 4 mA/V at 0.4 mA, against the BJT's 15.5 mA/V at the
-  same current. Measured: `g_m` equals the finite-difference slope of the sweep to
+  MOSFET's `g_m = 2I_D/V_OV` is 4.400 mA/V at 440 µA, against the BJT's 17.02 mA/V at
+  the same current. Measured: `g_m` equals the finite-difference slope of the sweep to
   10⁻⁶ (invariant 2 on screen).
-- **F4 · The hybrid-π, printed.** `r_π = β/g_m = 2.59 kΩ`, `r_o = V_A/I_C = 100 kΩ`,
+- **F4 · The hybrid-π, printed.** `r_π = β/g_m = 2.714 kΩ`, `r_o = V_A/I_C = 105.0 kΩ`,
   `g_m v_be` as a VCCS, and every DC source a wire. The small-signal netlist appears in
   the equations view as elements. Measured: the printed netlist's gain equals the
   sweep's slope.
@@ -612,16 +613,16 @@ the method that works, and then the loading rule every cascade obeys.
 
 ### Group H: Single-stage amplifiers (7)
 
-- **H1 · Common emitter.** `A_v = −g_m (R_C ∥ r_o) = −184` (−193 without `r_o`). The
-  scope shows the inversion. `R_in = r_π = 2.59 kΩ`, `R_out = R_C ∥ r_o = 4.76 kΩ`,
+- **H1 · Common emitter.** `A_v = −g_m (R_C ∥ r_o) = −184.6` (−193 without `r_o`). The
+  scope shows the inversion. `R_in = r_π = 2.71 kΩ`, `R_out = R_C ∥ r_o = 4.77 kΩ`,
   each by G1's test source. Measured: all four.
 - **H2 · Emitter degeneration trades gain for linearity.** `R_E = 100 Ω`:
-  `A_v = −g_m R_C/(1 + g_m R_E) = −39.7`, `R_in = r_π + (β + 1) R_E = 12.7 kΩ`, and
+  `A_v = −g_m R_C/(1 + g_m R_E) = −39.0`, `R_in = r_π + (β + 1) R_E = 12.8 kΩ`, and
   HD2 falls by the same factor `1 + g_m R_E = 4.87`. This is feedback, and L4 names
   it. Measured: gain, `R_in`, and the HD2 ratio from the spectrum.
 - **H3 · The emitter follower.** Gain `R_L/(R_L + 1/g_m) = 0.975` into 1 kΩ. `R_out =
-  1/g_m + R_s/(β + 1) = 35.8 Ω` from `R_s = 1 kΩ`, `R_in = (β + 1)(1/g_m + R_L) =
-  104 kΩ`. Elements E8's buffer, built from one transistor. Measured: all three.
+  1/g_m + R_s/(β + 1) = 34.7 Ω` from `R_s = 1 kΩ`, `R_in = (β + 1)(1/g_m + R_L) =
+  112 kΩ`. Elements E8's buffer, built from one transistor. Measured: all three.
 - **H4 · Common base.** `R_in = 1/g_m = 25.9 Ω`, no inversion, gain `g_m R_C = 193`,
   current gain α. Useless alone from a 1 kΩ source, and K6 shows what it is for on top
   of a common emitter. Measured: `R_in`, gain, and the gain from 1 kΩ.
@@ -629,7 +630,7 @@ the method that works, and then the loading rule every cascade obeys.
   is infinite and the equations view shows why (no `r_π` row). Measured: gain and the
   zero input current.
 - **H6 · Source follower and common gate.** Follower gain `g_m R_L/(1 + g_m R_L) =
-  0.8` into 1 kΩ, `R_out = 1/g_m = 250 Ω`. Common gate `R_in = 250 Ω`. Ten times the
+  0.8` into 1 kΩ, `R_out = 1/g_m = 229 Ω`. Common gate `R_in = 229 Ω`. Ten times the
   BJT follower's output resistance at this current, and F6 said why. Measured: all
   three.
 - **H7 · Swing, and where it clips.** The point sets the limits: `V_CE = 5 V` can rise
@@ -647,32 +648,32 @@ the method that works, and then the loading rule every cascade obeys.
   10 µA = 11.9 kΩ`, and `R_out` raised to about `(1 + g_m R_E) r_o`. Measured: the
   current and `R_out`.
 - **I3 · The active load.** A PNP mirror replaces `R_C`: `A_v = −g_m (r_on ∥ r_op) =
-  −1934` with both Early voltages at 100 V. The intrinsic gain `g_m r_o = V_A/V_T =
-  3868` is the ceiling one stage has. The bias is a knife edge, and the panel shows
-  the output moving 1 V for a 1 % current mismatch. Measured: gain, ceiling, and the
-  sensitivity.
+  −2030` with both Early voltages at 100 V. The intrinsic gain `g_m r_o = V_A/V_T =
+  4108` is the ceiling one stage has. The bias is a knife edge, and the panel shows
+  the output moving 522 mV for a 1 % current mismatch. Measured: gain, ceiling, and
+  the sensitivity.
 - **I4 · The cascode.** A common base on top of a common emitter. `R_out` rises from
   `r_o` to about `β r_o = 10 MΩ`, and the gain with an active load goes with it.
   Measured: `R_out` by test source, and the gain.
 - **I5 · Two stages, and loading.** CE into CE, G2's rule in copper. The first stage's
-  `R_out = 4.76 kΩ` meets the second's `R_in = 2.59 kΩ`, so its loaded gain is −64.9,
-  not −184. Total 11,900 (81.5 dB). Measured: the direct solve, and the product of
+  `R_out = 4.77 kΩ` meets the second's `R_in = 2.58 kΩ`, so its loaded gain is −64.8,
+  not −184.6. Total 12,500 (81.9 dB). Measured: the direct solve, and the product of
   loaded gains agreeing with it.
 
 ### Group J: The differential pair (5)
 
-- **J1 · Steering.** `i_C1 = I/(1 + e^{−v_id/V_T})`. At `v_id = 4V_T = 103 mV`, 98.2 %
-  of the tail is in one side. The curve is linear within 7.6 % out to `±V_T`. Measured:
+- **J1 · Steering.** `i_C1 = I/(1 + e^{−v_id/V_T})`. At `v_id = 4V_T = 103 mV`, 98.12 %
+  of the tail is in one side. The curve is linear within 7.14 % out to `±V_T`. Measured:
   the sweep against the formula at every point, and both numbers.
 - **J2 · The half-circuit.** Each side is a common emitter at half the tail:
-  `g_m = 19.3 mA/V`. Differential gain `v_od/v_id = g_m R_C = 96.7`, single-ended
+  `g_m = 19.16 mA/V`. Differential gain `v_od/v_id = g_m R_C = 93.67`, single-ended
   `−g_m R_C/2`. Measured: both, and the emitter node's zero signal swing under
   differential drive.
 - **J3 · Common-mode rejection.** `A_cm = −R_C/(2R_EE)`. With a 100 kΩ tail source,
-  `A_cm = −0.025` and CMRR is 3868, 71.8 dB. An ideal tail source gives zero. The tail's
-  output resistance sets the rejection, and I1's mirror is the tail. A5's 90 dB is
-  what this becomes with an active load. Measured: both gains and the ratio.
-- **J4 · Mismatch and offset.** 1 % in `R_C` gives `V_OS = V_T × 0.01 = 0.26 mV`. 5 %
+  `A_cm = −0.0245` and CMRR is 3793, 71.58 dB. An ideal tail source gives zero. The
+  tail's output resistance sets the rejection, and I1's mirror is the tail. A5's 90 dB
+  is what this becomes with an active load. Measured: both gains and the ratio.
+- **J4 · Mismatch and offset.** 1 % in `R_C` gives `V_OS = V_T × 0.01 = 0.2572 mV`. 5 %
   in `I_S` gives `V_T ln(1.05) = 1.26 mV`. A1's battery, explained. Measured: the input
   voltage that nulls the output, against each formula.
 - **J5 · The active-loaded pair.** A mirror load converts differential to single-ended:
@@ -687,23 +688,24 @@ the method that works, and then the loading rule every cascade obeys.
   below it.
 - **K2 · The low end: coupling and bypass.** E1's capacitors, now as corners. Each
   makes a high-pass with the resistance it sees. The bypass capacitor sees the
-  smallest, `R_E ∥ (1/g_m + R_s/(β + 1)) = 34.6 Ω`, so at 47 µF it sets the dominant
-  corner near 98 Hz. Measured: each corner from the exact poles, and which one
+  smallest, `R_E ∥ (1/g_m + R_s/(β + 1)) = 33.87 Ω`, so at 47 µF it sets the dominant
+  corner near 100 Hz. Measured: each corner from the exact poles, and which one
   dominates.
-- **K3 · The Miller effect.** `C_in = C_π + C_μ(1 + g_m R_L') = 390 pF`, and the
-  estimate `f_H = 1/(2π R_in C_in) = 565 kHz`. The exact poles are 548 kHz and 337 MHz,
-  so the estimate is 3.2 % high, and the pane prints that error (Rule 3). The zero at
-  `g_m/C_μ = 3.08 GHz`. Measured: the exact poles, the estimate, and its error.
-- **K4 · Open-circuit time constants.** `Σ τ = 291 ns`, so 547 kHz, 0.16 % from the
-  exact dominant pole. The method is an approximation and the pane labels it, with
+- **K3 · The Miller effect.** `C_in = C_π + C_μ(1 + g_m R_L') = 391 pF`, and the
+  estimate `f_H = 1/(2π R_in C_in) = 557 kHz`. The exact poles are 539.5 kHz and
+  337 MHz, so the estimate is 3.17 % high, and the pane prints that error (Rule 3).
+  The zero at `g_m/C_μ = 3.08 GHz`. Measured: the exact poles, the estimate, and its
+  error.
+- **K4 · Open-circuit time constants.** `Σ τ = 295.5 ns`, so 538.7 kHz, 0.16 % from
+  the exact dominant pole. The method is an approximation and the pane labels it, with
   its error growing as the second pole approaches the first. Measured: the sum and the
   error at two spacings.
 - **K5 · No Miller effect: the follower and the common base.** The same transistor
   from the same source, without a gain across `C_μ`. Measured: the exact dominant
   poles of H3 and H4 at `R_s = 1 kΩ`, and their ratio to H1's.
 - **K6 · The cascode's bandwidth.** The common emitter's collector sees `1/g_m`, so the
-  Miller multiplier is 2 and `C_in = 24 pF`. `f_H` rises from 548 kHz to about 9.2 MHz,
-  seventeen times, at the same gain. Measured: both exact poles.
+  Miller multiplier is 2 and `C_in = 24 pF`. `f_H` rises from 539.5 kHz to about
+  7.712 MHz, 14.3 times, at the same gain. Measured: both exact poles.
 
 ### Group L: Feedback (6)
 
@@ -729,7 +731,7 @@ the method that works, and then the loading rule every cascade obeys.
   Control Lab's for the same link, and the step overshoot matches the second-order
   metric.
 - **L6 · The buffer from the inside.** Elements E8's follower has `R_out = 75 Ω`
-  before the loop and `75 Ω/(1 + T) = 7.5 mΩ` after it. Measured: by test source.
+  before the loop and `75 Ω/(1 + T) = 750 µΩ` after it. Measured: by test source.
 
 ### Group M: Inside the op-amp (6)
 
@@ -753,8 +755,8 @@ transistors and derives every one of those numbers.
   reproduced by the transistor circuit under the three-region model. Measured: the
   slope equals `I/C_c` to floating point.
 - **M5 · Offset and bias current, derived.** J4's mismatch is A1's battery. The input
-  transistors' base currents, `I_tail/(2β) = 75 nA`, are A2's sources. Measured: both,
-  and A's macro with these values matching the transistor circuit.
+  transistors' base currents, `I_tail/(2β) = 67.2 nA`, are A2's sources. Measured:
+  both, and A's macro with these values matching the transistor circuit.
 - **M6 · The output stage.** Class B: a 0.7 V dead band each side, THD 59 % at 1 V
   peak and 4.3 % at 10 V, exactly, from the three-region model. Two diode drops bias it
   to class AB and the dead band goes. Class A tops out at 25 % efficiency and class B
@@ -795,9 +797,9 @@ transistors and derives every one of those numbers.
   10 µA. Measured: both.
 - **O4 · The amplifier's noise, referred to the input.** The CE stage's output density
   as a stack: `R_s` thermal, base shot through `R_s`, collector shot divided by `g_m`.
-  The optimum source resistance is `√β/g_m = 259 Ω`, where the noise figure is
-  `1 + 1/√β = 1.1`, 0.41 dB. Measured: the stack's sum equals the direct total, the
-  minimum of the sweep over `R_s` sits at 259 Ω, and its value is 0.41 dB.
+  The optimum source resistance is `√β/g_m = 258.5 Ω`, where the noise figure is
+  `1 + 1/√β = 1.11`, 0.455 dB. Measured: the stack's sum equals the direct total, the
+  minimum of the sweep over `R_s` sits at 258.5 Ω, and its value is 0.455 dB.
 - **O5 · Signal-to-noise after gain.** A 1 mV signal in a 20 kHz band. The first
   stage sets the ratio and the second cannot recover it (Friis). Measured: the SNR at
   each stage's output.
@@ -883,6 +885,22 @@ The mechanism is the one Power Lab and the Elements lab share, unchanged:
 Each phase ships green and deployable dark. The bridges come first, because a reader
 arriving from the Elements lab meets them first. Two of them (the op-amp macro, the
 junction) are cheap, and the third (the transistor) is the engine's work.
+
+**What has shipped (2026-09-05).** Phases 1 and 2, and the app they need. The
+engine is complete and fuzzed: `Q` and `M`, the companion interface, `smallSignal`,
+`transferOf`, `returnRatio`, `macro.js`, `junction.js` and `noise.js`, with
+invariants 1 to 9 of §2.12 green. The app is dark, with **Groups A and C**, ten
+experiments, every number in every register measured against the solver, the terms
+defined where they first do work, and the drawings checked as geometry. Group B
+belongs to the Elements lab as I9 and I10 (Decision 3) and is the seams overseer's.
+
+**Groups D to O are not built, and what stops them is a drawing.** The engine they
+need is done. `packages/ui/src/Schematic.jsx` has no transistor symbol, a
+transistor is on screen in every experiment past Group C, and that file is a shared
+surface this lab's overseer does not own. The contract for the four glyphs is in
+`apps/electronics-lab/NEEDS.md` §4, with the two labs that need them next. The
+phases below are unchanged, and phase 3 resumes at Group D on the day the symbol
+lands.
 
 1. **The op-amp's limits and the last diodes.** The macro of §2.2, the current-limited
    VCCS, `junction.js`. App shell, schematic with both overlays, dark deploy and the

@@ -122,6 +122,18 @@ export function steadyState(conv) {
   return { mode: 'DCM', conv, T, tOn, tOff, td, x0: [0, v0], segments: run.segs }
 }
 
+/**
+ * The state at an instant inside the period, from the segment that holds it.
+ * The conduction scrub reads this, and so does any measure taken at a
+ * switching instant rather than at a segment boundary.
+ */
+export function stateAtPeriod(ss, t) {
+  const live = ss.segments.filter((s) => s.T > 0)
+  for (const seg of live) if (t >= seg.t0 - 1e-15 && t <= seg.t0 + seg.T + 1e-15) return stateAt(seg, Math.max(0, Math.min(seg.T, t - seg.t0)))
+  const last = live[live.length - 1]
+  return stateAt(last, last.T)
+}
+
 // x(T) from x0 through the steady-state segments; equals x0 when it is steady.
 export function periodMap(ss) {
   let x = ss.x0
@@ -219,7 +231,11 @@ export function measures(ss) {
   // magnitude, because a synchronous converter can commutate a negative
   // current and that still costs energy.
   const iTurnOn = ss.x0[0]
-  const iTurnOff = stateAt(ss.segments[0], ss.tOn)[0]
+  // The current the switch hands over at the end of the on interval. The on
+  // interval is one segment for the basic converters and two for one whose
+  // core saturates part-way through it, so it is found by walking to t_on
+  // rather than by extrapolating the first segment past its own end.
+  const iTurnOff = stateAtPeriod(ss, ss.tOn)[0]
   const Vblk = conv.blocking(out.vout.avg)
   loss.switching = 0.5 * Vblk * (Math.abs(iTurnOn) * p.tr + Math.abs(iTurnOff) * p.tf) * p.fs
   const Ploss = Pcond + loss.switching

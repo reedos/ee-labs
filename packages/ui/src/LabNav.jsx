@@ -13,6 +13,7 @@ import { homeUrl, siblingUrl } from './deeplink.js'
  * accent colour, so the row also answers "which lab am I in".
  */
 const LABS = [
+  { id: 'circuit-elements-lab', label: 'Elements' },
   { id: 'signal-lab', label: 'Signal' },
   { id: 'circuit-lab', label: 'Circuit' },
   { id: 'control-lab', label: 'Control' },

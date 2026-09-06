@@ -23,12 +23,12 @@ order the nav will fold to (`ELECTRONICS_LAB_PLAN.md` Decision 5).
 
 | Step | Lab | Course it mirrors | Experiments | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Circuit Elements Lab | Circuits I | 55 | built, dark |
-| 2 | Circuit Lab | Circuits II, the frequency-domain half | 15 | released |
-| 3 | Electronics Lab | Electronics I and II | 77 | planned |
+| 1 | Circuit Elements Lab | Circuits I | 58 | released |
+| 2 | Circuit Lab | Circuits II, the frequency-domain half | 16 | released |
+| 3 | Electronics Lab | Electronics I and II | 75 of 77 | built in part, dark |
 | 4 | Signal Lab | Signals and Systems, DSP | 35 | released |
 | 5 | Control Lab | Control | 13 | released |
-| 6 | Power Lab | Power electronics | 22 of 54 | built in part, dark |
+| 6 | Power Lab | Power electronics | 34 of 56 | built in part, dark |
 
 Signal Lab's first group needs only sines, so it can be opened after step 1's Group H.
 §5 gives the earliest point each group can be opened, for a reader who wants to
@@ -38,7 +38,7 @@ interleave.
 
 ## 2. The path, group by group
 
-### Step 1: Circuit Elements Lab (55, built)
+### Step 1: Circuit Elements Lab (58, released)
 
 | Group | Teaches | Count |
 | --- | --- | --- |
@@ -49,17 +49,17 @@ interleave.
 | E · Op-amps | the dependent source, the black box, the golden rules, the four circuits, the Schmitt trigger | 9 |
 | F · Elements that remember | C and L, the first-order equation, energy, the spark, the integrator | 7 |
 | G · Second order | the characteristic equation, three dampings, the LC | 7 |
-| H · Sinusoids and phasors | natural and forced, phasors, impedance, resonance, AC power, one sine at a time | 6 |
-| I · The diode | four models, the load line and Newton, assumed state, rectifiers, clipper, Zener | 8 |
+| H · Sinusoids and phasors | natural and forced, phasors, impedance, resonance, AC power, one sine at a time, the roots as poles | 7 |
+| I · The diode | four models, the load line and Newton, assumed state, rectifiers, clipper, Zener, clamper, doubler | 10 |
 
 What it gives at the end: `H(jω)` read one sine at a time, and the Bode view of an RC.
 The same circuit hands over to Circuit Lab.
 
-### Step 2: Circuit Lab (15, released)
+### Step 2: Circuit Lab (16, released)
 
 | Group | Teaches | Count |
 | --- | --- | --- |
-| Reading a response | a divider has no dynamics, where the corner comes from, the high-pass, RL is RC | 4 |
+| Reading a response | a divider has no dynamics, where the corner comes from, the high-pass, RL is RC, the impulse response | 5 |
 | Resonance | three filters from one RLC, Q, series against parallel, resonance in time, the notch, tolerance, which part | 7 |
 | Active circuits | why active filters exist, the inverting gain, the pole at the origin | 3 |
 | One object, two names | the RLC is a biquad, and the hand-over to Signal Lab and Control Lab | 1 |
@@ -68,28 +68,28 @@ What it assumes at the start: dB, impedance and phase, defined on contact. What 
 introduces without an experiment: the complex frequency s, poles and zeros, as term
 definitions (see §3, seam 1).
 
-### Step 3: Electronics Lab (77, planned)
+### Step 3: Electronics Lab (75 of 77)
 
 `ELECTRONICS_LAB_PLAN.md` §1 carries this lab's own map, row by row, against what is
 built. The groups, in order:
 
-| Group | Teaches | Count |
-| --- | --- | --- |
-| A · The op-amp as a user meets it | offset, bias current, gain-bandwidth, slew, CMRR, output limits, the precision rectifier | 6 |
-| B · Diode circuits, finished | the clamper, the doubler | 2 |
-| C · Inside the junction | where the exponential comes from, junction and diffusion capacitance, temperature | 4 |
-| D · The transistor as a controlled source | two junctions, the curves, three regions, the MOSFET, the switch, the CMOS inverter, the load line | 7 |
-| E · Signal and bias take different paths | the coupling capacitor, four bias schemes, temperature | 6 |
-| F · Small signals | the tangent again, DC plus AC, `g_m`, the hybrid-π, how small is small, the MOSFET | 6 |
-| G · Ports | the test source, the two-port and loading | 2 |
-| H · Single-stage amplifiers | CE, degeneration, CC, CB, CS, CD and CG, swing | 7 |
-| I · Mirrors and stacking | the mirror, Widlar, the active load, the cascode, loading | 5 |
-| J · The differential pair | steering, the half-circuit, CMRR, mismatch, the active load | 5 |
-| K · Frequency response | the device's capacitors, the low end, Miller, OCTC, no Miller, the cascode's bandwidth | 6 |
-| L · Feedback | the loop broken, desensitivity, gain-bandwidth, the ports, stability, the buffer | 6 |
-| M · Inside the op-amp | the two-stage op-amp, compensation, phase margin, slew, offset, the output stage | 6 |
-| N · Oscillators | Wien at the threshold, amplitude, relaxation, LC (stretch) | 4 |
-| O · Noise | a density, thermal, shot, referred to the input, SNR after gain | 5 |
+| Group | Teaches | Count | Status |
+| --- | --- | --- | --- |
+| A · The op-amp as a user meets it | offset, bias current, gain-bandwidth, slew, CMRR, output limits, the precision rectifier | 6 | built |
+| B · Diode circuits, finished | the clamper, the doubler | 2 | planned |
+| C · Inside the junction | where the exponential comes from, junction and diffusion capacitance, temperature | 4 | built |
+| D · The transistor as a controlled source | two junctions, the curves, three regions, the MOSFET, the switch, the CMOS inverter, the load line | 7 | built |
+| E · Signal and bias take different paths | the coupling capacitor, four bias schemes, temperature | 6 | built |
+| F · Small signals | the tangent again, DC plus AC, `g_m`, the hybrid-π, how small is small, the MOSFET | 6 | built |
+| G · Ports | the test source, the two-port and loading | 2 | built |
+| H · Single-stage amplifiers | CE, degeneration, CC, CB, CS, CD and CG, swing | 7 | built |
+| I · Mirrors and stacking | the mirror, Widlar, the active load, the cascode, loading | 5 | built |
+| J · The differential pair | steering, the half-circuit, CMRR, mismatch, the active load | 5 | built |
+| K · Frequency response | the device's capacitors, the low end, Miller, OCTC, no Miller, the cascode's bandwidth | 6 | built |
+| L · Feedback | the loop broken, desensitivity, gain-bandwidth, the ports, stability, the buffer | 6 | built |
+| M · Inside the op-amp | the two-stage op-amp, compensation, phase margin, slew, offset, the output stage | 6 | built |
+| N · Oscillators | Wien at the threshold, amplitude, relaxation, LC (stretch) | 4 | built |
+| O · Noise | a density, thermal, shot, referred to the input, SNR after gain | 5 | built |
 
 ### Step 4: Signal Lab (35, released)
 
@@ -117,19 +117,22 @@ What it assumes: a transfer function, its poles, and the Bode plot, all from Cir
 Lab. A first-order lag, from Elements F. What it gives back: margins and the root
 locus, which Electronics L5, M3 and N1 hand their loops to.
 
-### Step 6: Power Lab (22 of 54)
+### Step 6: Power Lab (34 of 56)
 
 | Group | Teaches | Count | Status |
 | --- | --- | --- | --- |
 | A · Why switching | the resistor's loss, the switch, the ideal converter | 3 | built |
 | B · The buck | volt-second balance, ripple, CCM and DCM, the boundary | 8 | built |
 | C · Boost and buck-boost | the two other topologies, the peak, the inverting output | 5 | built |
-| D · Magnetics | volt-seconds are flux, saturation, the flyback, the half-bridge, leakage | 5 | planned |
+| D · Magnetics | volt-seconds are flux, saturation, the flyback, the half-bridge | 4 | built |
 | E · Rectifiers | half and full wave, the capacitor, the dimmer, six-pulse | 6 | built |
-| F to N | inverters, losses, the loop, three-phase, isolated, resonant, drives, EMI, thermal | 27 | planned |
+| F · Inverters | the square wave, the comparator, the harmonic clusters, overmodulation | 4 | built |
+| G · Losses | the frequency crossover, peak efficiency, the capacitor's RMS, the ledger | 4 | built |
+| H to N, and the leakage spike | the loop, three-phase, isolated, resonant, drives, EMI, thermal, and the flux that links one winding only | 22 | planned |
 
 What it assumes: C, L and the RLC from Elements F and G, and the diode from Elements
 I. The switch is Elements F6. Its Group H assumes Control Lab.
+The plan's 54 became 56 when the buck grew from six experiments to eight.
 
 ---
 
@@ -193,7 +196,7 @@ leave it out.
 | Continuous-time convolution | Signals | Circuit Lab, seam 2 | one experiment |
 | Steady-state error constants, lag compensation, state space, discrete control | Control | Control Lab's own plan, when there is one | outside the analog path this document was written for |
 | PLLs, data converters, switched-capacitor circuits | Mixed-signal | a later lab, if any | Signal Lab's side of the boundary, and no plan names them |
-| Digital logic past the inverter | Digital | none | Electronics D6 is the door, and the room behind it is not the signals half of the curriculum |
+| Digital logic past the inverter | Digital | none | The Electronics Lab's CMOS inverter is the door, and the room behind it is not the signals half of the curriculum |
 | Transmission lines | Fields, high-speed | none | declined at the `systems` boundary by `CORE_SCOPE.md` |
 
 `ANALOG_ROADMAP.md` names the labs that would take the mixed-signal and high-frequency

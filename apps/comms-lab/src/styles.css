@@ -1,0 +1,321 @@
+/* Communications Lab's own furniture. Everything shared with the other labs
+ * lives in @ee-labs/ui. */
+
+.panes {
+  grid-column: 2;
+  grid-row: 2;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.canvas {
+  display: block;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+/* ---------- the lesson block ---------- */
+.lesson {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.lesson h2 {
+  font-size: 15px;
+  margin: 2px 0 8px;
+}
+
+.crumb {
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.see {
+  margin: 0 0 10px;
+}
+
+/* The featured knob sits directly under the try line, so the control a lesson
+ * names is on screen without scrolling at a laptop fold. */
+.featured {
+  margin: 8px 0 4px;
+}
+
+.why summary,
+.terms summary {
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.why p {
+  margin: 4px 0 8px;
+}
+
+.terms dl {
+  margin: 4px 0 8px;
+}
+
+.terms dt {
+  color: var(--accent);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.terms dd {
+  font-size: 12px;
+  margin: 2px 0 0;
+}
+
+/* ---------- knobs ---------- */
+.knobs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.knob {
+  align-items: center;
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.knob select {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 3px 6px;
+}
+
+/* ---------- the experiment picker ---------- */
+.picker details {
+  border-bottom: 1px solid var(--line);
+}
+
+.picker summary {
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  padding: 6px 0;
+}
+
+.picker ul {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+}
+
+.picker button {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  display: block;
+  font-size: 12px;
+  padding: 4px 6px;
+  text-align: left;
+  width: 100%;
+}
+
+.picker button:hover {
+  color: var(--accent);
+}
+
+.picker button.on {
+  background: rgba(56, 224, 176, 0.1);
+  border-radius: 5px;
+  color: var(--accent);
+}
+
+.picker .id {
+  color: var(--dim);
+  display: inline-block;
+  width: 26px;
+}
+
+/* ---------- readouts ----------
+ * A closed form and a counted rate are laid out differently on purpose. A count
+ * carries its interval on the same line and its error count below, so a reader
+ * can see at a glance which numbers on screen came from data. */
+.pane {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.pane h3 {
+  font-size: 12px;
+  color: var(--dim);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin: 0 0 8px;
+}
+
+.readouts {
+  display: grid;
+  gap: 8px 18px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.readout {
+  border-left: 2px solid var(--line);
+  padding-left: 8px;
+}
+
+/* A counted rate and a closed form are coloured apart, because keeping them
+ * apart is the whole discipline of this lab. */
+.readout.counted {
+  border-left-color: var(--accent);
+}
+
+.readout.counted.hollow {
+  border-left-color: #ff5c7a;
+}
+
+.readout.against {
+  border-left-color: #f0a23c;
+}
+
+.readout.bad {
+  border-left-color: #ff5c7a;
+}
+
+.readout .label {
+  color: var(--dim);
+  display: block;
+  font-size: 11px;
+}
+
+.readout .value {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.readout .pm {
+  color: var(--dim);
+}
+
+.readout .note {
+  color: var(--dim);
+  display: block;
+  font-size: 10.5px;
+}
+
+/* ---------- the link budget table ---------- */
+table.budget {
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  width: 100%;
+}
+
+table.budget caption {
+  color: var(--dim);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11.5px;
+  padding-bottom: 6px;
+  text-align: left;
+}
+
+table.budget th,
+table.budget td {
+  border-bottom: 1px solid var(--line);
+  padding: 5px 8px;
+  text-align: right;
+}
+
+table.budget th {
+  color: var(--dim);
+  font-weight: 500;
+}
+
+table.budget td:first-child,
+table.budget th:first-child {
+  text-align: left;
+}
+
+/* ---------- phone ----------
+ * The lesson comes first at phone width, as the cold walk asked of every lab,
+ * and nothing scrolls sideways. */
+@media (max-width: 860px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .controls {
+    grid-column: 1;
+    grid-row: 1;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    overflow: visible;
+  }
+
+  .topbar {
+    grid-column: 1;
+    grid-row: 2;
+    flex-wrap: wrap;
+    gap: 8px;
+    height: auto;
+    padding: 8px 12px;
+  }
+
+  .topbar-controls {
+    margin-left: 0;
+  }
+
+  .panes {
+    grid-column: 1;
+    grid-row: 3;
+    overflow: visible;
+    padding: 10px;
+  }
+
+  .readouts {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  table.budget {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+/* ---------- a model's assumptions ----------
+ * Printed with the numbers rather than beside them, because a labelled
+ * statistical model that loses its label is an unlabelled one. */
+.assumptions {
+  border-left: 2px solid #f0a23c;
+  padding-left: 8px;
+}
+
+.assumptions h4 {
+  color: var(--dim);
+  font-size: 11px;
+  font-weight: 500;
+  margin: 0 0 4px;
+}
+
+.assumptions ul {
+  font-size: 11.5px;
+  margin: 0;
+  padding-left: 16px;
+}

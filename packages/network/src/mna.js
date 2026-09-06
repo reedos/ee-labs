@@ -13,7 +13,8 @@
 
 import { GROUND, KINDS, NetworkError, connected, incident, normalize } from './netlist.js'
 import { SingularError, solve } from './linalg.js'
-import { regionEffective, regionsOf } from './diode.js'
+import { regionEffective, regionsOf, restingRegion } from './diode.js'
+import { companionElements } from './companion.js'
 
 /**
  * How a capacitor or inductor is treated in this solve.
@@ -45,16 +46,17 @@ export function effective(e, opts = {}) {
     if (closed) return e.ron > 0 ? { ...e, type: 'R', value: e.ron, from: 'SW' } : { ...e, type: 'V', value: 0, from: 'SW' }
     return Number.isFinite(e.roff) && e.roff > 0 ? { ...e, type: 'R', value: e.roff, from: 'SW' } : { ...e, type: 'OPEN', from: 'SW' }
   }
-  // A piecewise-linear device — a diode, or an op-amp that can hit a rail —
-  // is linear inside the region it has been assumed to be in, and that is the
-  // element stamped here. Which region is right is pwl.js's question; this
-  // file only ever solves one linear circuit.
-  if (e.type === 'D' || (e.type === 'OPAMP' && Number.isFinite(e.vsat))) {
+  // A piecewise-linear device — a diode, an op-amp that can hit a rail or its
+  // current limit, a controlled source that can hit its own — is linear inside
+  // the region it has been assumed to be in, and that is the element stamped
+  // here. Which region is right is pwl.js's question; this file only ever
+  // solves one linear circuit.
+  {
     const regions = regionsOf(e)
     if (regions) {
       const named = opts.regions && e.id in opts.regions ? opts.regions[e.id] : null
       if (named && !regions.includes(named)) throw new NetworkError('region', `${e.id}: unknown region "${named}"`)
-      const eff = regionEffective(e, named || (e.type === 'OPAMP' ? 'linear' : 'off'))
+      const eff = regionEffective(e, named || restingRegion(e))
       if (eff.type !== 'OPAMP') return eff
       // An op-amp in its linear region is the nullor below, rails or not.
     } else if (e.type === 'D') {
@@ -67,7 +69,18 @@ export function effective(e, opts = {}) {
           `${e.id} is an exponential diode, whose law is a curve rather than two straight pieces. That has an operating point, found by Newton's method, but no closed-form response in time — so this solve needs either a DC operating point or one of the piecewise models.`,
           { element: e.id },
         )
-      return { ...e, type: 'GI', g: c.g, i0: c.i0, from: 'D' }
+      return companionElements(e, c)
+    } else if (e.type === 'Q' || e.type === 'M') {
+      // A transistor whose model is a curve: Newton hands its tangent in
+      // through `opts.companions`, exactly as it does for the diode.
+      const c = opts.companions && opts.companions[e.id]
+      if (!c)
+        throw new NetworkError(
+          'nonlinear',
+          `${e.id} is a ${e.type === 'Q' ? 'transistor on its exponential model' : 'MOSFET on its square law'}, whose law is a curve rather than straight pieces. That has an operating point, found by Newton's method, but no closed-form response in time — so this solve needs either a DC operating point or the piecewise model.`,
+          { element: e.id },
+        )
+      return companionElements(e, c)
     }
   }
   const r = reactive(e, opts)
@@ -86,9 +99,21 @@ export function effective(e, opts = {}) {
 
 const needsCurrent = (eff) => eff.type === 'V' || eff.type === 'VCVS' || eff.type === 'OPAMP'
 
+/**
+ * The linear elements one netlist element stamps as. Almost every element is
+ * one; a transistor is several, because its tangent is a conductance, a
+ * transconductance and a current source at once, and there is no single stamp
+ * that is all three. Each carries `of`, the id of the element it came from, so
+ * a reading can be traced back to the device.
+ */
+export function stampsOf(e, opts = {}) {
+  const eff = effective(e, opts)
+  return Array.isArray(eff) ? eff : [eff]
+}
+
 /** Assemble M x = r for the normalised netlist. */
 export function assemble(norm, opts = {}) {
-  const effs = norm.elements.map((e) => effective(e, opts))
+  const effs = norm.elements.flatMap((e) => stampsOf(e, opts))
   const currentIdx = new Map()
   let m = norm.n
   for (const eff of effs) if (needsCurrent(eff)) currentIdx.set(eff.id, m++)
@@ -172,6 +197,19 @@ export function assemble(norm, opts = {}) {
         if (ib >= 0 && id >= 0) M[ib][id] += g
         break
       }
+      case 'CCCS': {
+        // A current-controlled source reads a branch current, which is already
+        // an unknown of the system, so it needs no node of its own: two
+        // entries in the column that unknown occupies.
+        const row = currentIdx.get(eff.over)
+        if (row === undefined)
+          throw new NetworkError('ctrl', `${eff.id} reads the current of ${eff.over}, which carries no current unknown`)
+        const ia = ix(a)
+        const ib = ix(b)
+        if (ia >= 0) M[ia][row] += eff.gain
+        if (ib >= 0) M[ib][row] -= eff.gain
+        break
+      }
       case 'OPAMP': {
         // The nullor: the output current is whatever it must be (an unknown
         // with a column at the output node), and the row it buys is the
@@ -209,10 +247,13 @@ function feedbackPath(norm, effs, amp, input) {
     if (!adj.has(a)) adj.set(a, [])
     adj.get(a).push(b)
   }
-  effs.forEach((eff, k) => {
-    const orig = norm.elements[k]
+  effs.forEach((eff) => {
     if (eff.id === amp.id) return
-    if (eff.type === 'R' || (eff.type === 'V' && orig.type !== 'V')) {
+    // A V that is really something else — a wire, a closed switch, an inductor
+    // at DC, a conducting diode — carries the signal. An independent source
+    // does not: a comparator's output "reaches" its input through ground and
+    // the source, and that is precisely not feedback.
+    if (eff.type === 'R' || (eff.type === 'V' && (eff.from || eff.wire))) {
       add(eff.nodes[0], eff.nodes[1])
       add(eff.nodes[1], eff.nodes[0])
     } else if (eff.type === 'OPAMP' || eff.type === 'VCVS' || eff.type === 'VCCS') {
@@ -239,8 +280,14 @@ function feedbackPath(norm, effs, amp, input) {
  * reason a person would give. Each returns a NetworkError or null.
  */
 export function diagnose(norm, opts = {}) {
-  const effs = norm.elements.map((e) => effective(e, opts))
-  const conducts = (e) => e.type !== 'OPEN' && e.type !== 'I' && e.type !== 'VCCS'
+  const effs = norm.elements.flatMap((e) => stampsOf(e, opts))
+  // Every structural question is asked of the stamps, not of the netlist. A
+  // transistor is three terminals and its stamps are two-terminal branches, so
+  // "is there a path to ground" has to be asked of the branches: a gate with
+  // nothing else on its node really is floating, and the collector of a cut-off
+  // transistor really is open.
+  const flat = { ...norm, elements: effs }
+  const conducts = (e) => e.type !== 'OPEN' && e.type !== 'I' && e.type !== 'VCCS' && e.type !== 'CCCS'
 
   // An ideal op-amp with no path from its output back to either input has no
   // solution: the row v₊ = v₋ cannot be satisfied by any output current.
@@ -258,16 +305,16 @@ export function diagnose(norm, opts = {}) {
   // A node whose every connection is a current source (or nothing) has
   // nowhere for the current to go.
   for (const node of norm.nodeNames) {
-    const inc = incident(norm, node).map((x) => effective(x, opts))
+    const inc = incident(flat, node)
     const real = inc.filter((x) => x.type !== 'OPEN')
-    if (real.length && real.every((x) => x.type === 'I' || x.type === 'VCCS'))
+    if (real.length && real.every((x) => x.type === 'I' || x.type === 'VCCS' || x.type === 'CCCS'))
       return new NetworkError(
         'current-cutset',
         `Node ${node} is fed only by current sources, so the current arriving there has nowhere to go. A current source needs a path to close its loop.`,
         { node },
       )
     // A node with no conducting path to ground has no defined voltage.
-    if (!connected(norm, node, GROUND, (x) => conducts(effective(x, opts))))
+    if (!connected(flat, node, GROUND, conducts))
       return new NetworkError(
         'floating',
         `Node ${node} has no path to ground, so its voltage is not defined — a voltage is a difference, and this one has nothing to differ from.`,
@@ -279,11 +326,8 @@ export function diagnose(norm, opts = {}) {
   const vs = effs.filter((e) => e.type === 'V')
   for (let k = 0; k < vs.length; k++) {
     const e = vs[k]
-    const others = (x) => {
-      const f = effective(x, opts)
-      return f.type === 'V' && x.id !== e.id
-    }
-    if (connected(norm, e.nodes[0], e.nodes[1], others))
+    const others = (x) => x.type === 'V' && x.id !== e.id
+    if (connected(flat, e.nodes[0], e.nodes[1], others))
       return new NetworkError(
         'source-loop',
         `${e.id} is in a loop with other voltage sources (or shorts), so two things are trying to set the same voltage. Unless they agree exactly, there is no answer; if they do, the current between them is undefined.`,
@@ -345,6 +389,9 @@ export function readout(norm, sys, x) {
         break
       case 'VCCS':
         cur = eff.gain * (vAt(eff.ctrl[0]) - vAt(eff.ctrl[1]))
+        break
+      case 'CCCS':
+        cur = eff.gain * x[sys.currentIdx.get(eff.over)]
         break
       default:
         cur = x[sys.currentIdx.get(eff.id)]

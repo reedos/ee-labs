@@ -130,6 +130,26 @@ export function drawScope(ctx, w, h, { wf, baseWf = null, traces, marks = [] }) 
     ctx.restore()
   }
 
+  // The conduction scrub's instant, through every strip: the schematic beside
+  // it lights the path that is conducting there, and the two have to be the
+  // same instant or neither means anything.
+  for (const mk of marks.filter((q) => q.type === 'cursor')) {
+    const cx = sx(mk.t * unit)
+    ctx.save()
+    ctx.strokeStyle = COLORS.marker
+    ctx.lineWidth = 1.6 * k
+    ctx.beginPath()
+    ctx.moveTo(cx + 0.5, yTop)
+    ctx.lineTo(cx + 0.5, yBottom)
+    ctx.stroke()
+    ctx.font = `${Math.round(11 * k)}px ${MONO}`
+    ctx.fillStyle = COLORS.marker
+    ctx.textAlign = cx > (top.x + top.w) / 2 ? 'right' : 'left'
+    ctx.textBaseline = 'top'
+    ctx.fillText(mk.label, cx + (cx > (top.x + top.w) / 2 ? -4 : 4) * k, yTop + 4 * k)
+    ctx.restore()
+  }
+
   for (const s of strips) {
     ctx.save()
     ctx.beginPath()

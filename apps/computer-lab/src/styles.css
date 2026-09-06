@@ -1,0 +1,220 @@
+/* Computer Lab's own furniture. The shell, controls and canvas plumbing come
+ * from @ee-labs/ui (base.css). This file is everything specific to the
+ * datapath, the schedule, the cache map and the tables that read them.
+ *
+ * The picker, the lesson block, the knob slots and the table panes are the
+ * Logic Lab's, copied so the two labs read the same way. */
+
+/* ---------- the experiment picker: groups folded, the active one open ---------- */
+.picker-groups { display: grid; gap: 2px; margin: 4px 0 0; }
+
+details.preset-group > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+details.preset-group > summary::before { content: '\25B8  '; font-size: 9px; }
+details.preset-group[open] > summary::before { content: '\25BE  '; }
+details.preset-group > summary::-webkit-details-marker { display: none; }
+details.preset-group > .presets { margin: 3px 0 8px; }
+
+.group-active-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+.presets { display: flex; flex-direction: column; gap: 3px; }
+.preset {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  padding: 5px 8px;
+}
+.preset b { color: var(--dim); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; }
+.preset:hover { border-color: var(--accent); color: var(--accent); }
+.preset:hover b { color: var(--accent); }
+.preset.is-on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.preset.is-on b { color: var(--accent); }
+
+.h2-aside { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--dim); opacity: 0.8; }
+
+/* ---------- the lesson: see, terms, try ---------- */
+.hint.see { margin-top: 8px; color: var(--text); font-size: 12.5px; }
+.hint.why { color: var(--text); }
+
+.terms { margin-top: 12px; }
+.terms h4, .try-list h4 {
+  margin: 0 0 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.term-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.def-card {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+  border-radius: 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.def-card p { margin: 4px 0 0; }
+.def-head { display: flex; align-items: center; gap: 8px; }
+.def-head b { color: var(--text); font-size: 12px; }
+.def-close {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.def-close:hover { color: var(--text); }
+
+.try-list { margin-top: 12px; display: grid; gap: 6px; }
+
+/* ---------- deeper: why it works, folded ---------- */
+.deeper-fold > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--accent);
+  list-style: none;
+}
+.deeper-fold > summary::before { content: '\25B8  '; font-size: 9px; }
+.deeper-fold[open] > summary::before { content: '\25BE  '; }
+.deeper-fold > summary::-webkit-details-marker { display: none; }
+.deeper-fold .hint { margin-top: 8px; }
+
+/* ---------- knobs: a two-position switch beside the numeric fields ---------- */
+.knob-list { display: grid; gap: 2px; }
+.knob-slot { margin: 0 -4px; padding: 2px 4px; }
+.toggle-knob { display: grid; gap: 4px; margin: 4px 0 10px; }
+.toggle-knob .toggle-label { font-size: 12px; color: var(--dim); }
+.toggle-knob .segmented { justify-self: start; }
+.toggle-knob .hint { margin: 2px 0 0; }
+
+/* ---------- the canvases: the datapath, the schedule, the cache and time ---------- */
+.datapath-canvas, .schedule-canvas, .cache-canvas, .timing-canvas, .state-canvas {
+  display: block;
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+/* The cursor row under the timing diagram: where the meters read, and a
+   slider to move it. */
+.cursor-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--dim);
+}
+.cursor-row label b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* ---------- panes that are tables: truth table, Karnaugh map, paths, events --------- */
+.pane-scroll { overflow-x: auto; }
+.pane-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+.pane-note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+/* A run that reported a setup or hold violation says so where the events are. */
+.pane-note.is-warn { color: var(--warn, #f0a23c); }
+.pane-empty { margin: 0; padding: 12px; border: 1px dashed var(--line); border-radius: 8px; color: var(--dim); font-size: 12.5px; }
+
+.truth, .kmap, .paths, .events {
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  min-width: 100%;
+}
+.truth th, .truth td,
+.kmap th, .kmap td,
+.paths th, .paths td,
+.events th, .events td {
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  text-align: center;
+  white-space: nowrap;
+}
+.paths th, .paths td, .events th, .events td { text-align: left; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.paths td.num, .events td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.truth thead th, .kmap thead th, .paths thead th, .events thead th {
+  color: var(--dim);
+  font-weight: 600;
+  font-size: 11px;
+  background: var(--panel-2);
+  white-space: normal;
+}
+.kmap .corner { font-size: 10px; color: var(--dim); }
+.truth td.in { color: var(--dim); }
+.truth td.is-one, .kmap td.is-one { color: var(--accent); font-weight: 600; }
+.truth tr.is-here { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.truth tr.is-here td { color: var(--text); }
+.paths tr.is-critical { background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.paths .path { white-space: normal; color: var(--dim); font-size: 11px; }
+.events td.is-one { color: var(--accent); }
+
+/* The Karnaugh map's loops: each cube in the cover gets its own hue, cycling
+   through four so that adjacent cubes in the cover are never confused. */
+.kmap td { position: relative; }
+.kmap td.loop-0 { box-shadow: inset 0 0 0 2px var(--accent); }
+.kmap td.loop-1 { box-shadow: inset 0 0 0 2px var(--blue); }
+.kmap td.loop-2 { box-shadow: inset 0 0 0 2px var(--amber); }
+.kmap td.loop-3 { box-shadow: inset 0 0 0 2px var(--warn); }
+
+/* ---------- the refusal: content, not a failure ---------- */
+.refusal {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--amber);
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.refusal-code { margin: 0 0 4px; color: var(--amber); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+@media (min-width: 1100px) {
+  .hint.see, .try-list, .term-chips { font-size: 13px; }
+  .def-card { font-size: 12.5px; }
+  .truth, .kmap, .paths, .events { font-size: 13px; }
+}
+
+/* The rate pane: the law, then its terms, then what it rests on. */
+.rate-law { margin: 0 0 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: var(--text); }
+.assumptions { margin: 8px 0 0; padding-left: 18px; font-size: 11.5px; line-height: 1.6; color: var(--dim); }
+.assumptions li { margin: 2px 0; }
+
+/* ---------- this lab's own panes ---------- */
+
+/* The register file under the program, as one wide row that scrolls. */
+.paths.regfile { margin-top: 10px; }
+.paths.regfile td.num { font-variant-numeric: tabular-nums; }
+
+/* The datapath is the widest thing in the lab, so it scrolls on its own and
+   the page never does. */
+.datapath-canvas { cursor: crosshair; }
+
+/* A pane that lists readings gives the path a lesson reads each one by, which
+   is how a reader checks a number against the lesson that quotes it. */
+.paths .path { font-size: 10.5px; }

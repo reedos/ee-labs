@@ -1,0 +1,27 @@
+{
+  "name": "grid-lab",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Power systems at 60 Hz: per unit, three phase, the line and the transformer, power flow by Newton, symmetrical components and the four faults, protection, the swing equation, and economic dispatch.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ee-labs/explain": "*",
+    "@ee-labs/grid": "*",
+    "@ee-labs/machines": "*",
+    "@ee-labs/network": "*",
+    "@ee-labs/ui": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}

@@ -80,6 +80,7 @@ export const BUILDS = {
   h4: ['h3', 'g1'],
   h5: ['h3', 'b3'],
   h6: ['h3'],
+  h7: ['h6', 'g1'],
   e9: ['e3', 'e4'],
   i1: ['a1', 'e3'],
   i2: ['i1', 'd5'],
@@ -89,6 +90,8 @@ export const BUILDS = {
   i6: ['i5', 'f3'],
   i7: ['i3', 'i4'],
   i8: ['i3', 'd6'],
+  i9: ['i7', 'i6'],
+  i10: ['i9', 'i6'],
 }
 
 /** The experiments this one builds on, in course order. */

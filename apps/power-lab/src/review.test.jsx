@@ -79,7 +79,10 @@ describe('the first screen leads with the lesson a knob can perform (§11.4.2, �
 
 describe('no screen contradicts its note (§11.0 claim bugs)', () => {
   it('every experiment declares its headline meter, and A2’s is RMS against the mean, not η', () => {
-    for (const e of EXPERIMENTS) expect(['eta', 'pf', 'rms'], e.id).toContain(e.headline)
+    // The four the lab has a meter for: efficiency, power factor, the RMS
+    // against the mean (the chopper's), and total harmonic distortion (the
+    // inverters', whose efficiency is near one and says nothing).
+    for (const e of EXPERIMENTS) expect(['eta', 'pf', 'rms', 'thd'], e.id).toContain(e.headline)
     expect(byId.a2.headline).toBe('rms')
     const t = text(topbar(render('a2')))
     expect(t).toMatch(/7\.75/)

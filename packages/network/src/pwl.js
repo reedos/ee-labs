@@ -21,7 +21,9 @@
 
 import { NetworkError, normalize } from './netlist.js'
 import { solveDC } from './mna.js'
-import { diodeOf, flipTo, regionDevices, regionLabel, regionMargins, regionsOf } from './diode.js'
+import { companion, guessFor, hasCompanion, operatingPoint, readControls } from './companion.js'
+import { vcrit } from './physics.js'
+import { diodeOf, flipTo, regionDevices, regionLabel, regionMargins, regionsOf, restingRegion } from './diode.js'
 import { transient, bisect } from './transient.js'
 import { initialConditions } from './dynamics.js'
 import { sourceValue } from './waves.js'
@@ -115,6 +117,10 @@ function noState(devices, tried) {
 const fmtMargin = (m, e, sol) => {
   const i = sol.i[e.id]
   const v = sol.volt[e.id]
+  // A transistor has no branch of its own: its guards are named for the
+  // terminal quantity they watch, and the margin is that quantity's own
+  // distance from its wall.
+  if (e.type === 'Q' || e.type === 'M') return `${m.says.split(' ')[0]} misses by ${sig(-m.margin)}`
   if (m.what === 'i') return `i_${e.id} = ${sig(i)} A`
   if (m.what === 'diff') return `v₊ − v₋ = ${sig(sol.v[e.ctrl[0]] - sol.v[e.ctrl[1]])} V`
   if (m.what === 'high' || m.what === 'low') return `v_out = ${sig(sol.v[e.nodes[0]])} V`
@@ -146,100 +152,115 @@ export function solvePWL(net, opts = {}) {
 
 // ------------------------------------------------------------ Newton
 
-/**
- * SPICE's junction limiting: an exponential rises so fast that an unguarded
- * Newton step overflows on the first iteration. This is the standard damping —
- * beyond the critical voltage the step is taken in the log, not in volts.
- */
-export function pnjlim(vnew, vold, vt, vcrit) {
-  if (vnew > vcrit && Math.abs(vnew - vold) > 2 * vt) {
-    if (vold > 0) {
-      const arg = 1 + (vnew - vold) / vt
-      return arg > 0 ? vold + vt * Math.log(arg) : vcrit
-    }
-    return vnew > 0 ? vt * Math.log(vnew / vt) : vnew
-  }
-  return vnew
-}
+export { pnjlim, GMIN } from './physics.js'
 
 /** The voltage above which the exponential is steeper than the limiter allows. */
-export const vcritOf = (d) => d.n * d.vt * Math.log((d.n * d.vt) / (Math.SQRT2 * d.is))
+export const vcritOf = (d) => vcrit(d.n * d.vt, d.is)
 
 /**
- * SPICE's GMIN: the smallest conductance a junction is allowed to have. Twenty
- * volts the wrong way round makes e^(v/nV_T) underflow to nothing, and a node
- * connected to the circuit by a conductance of exactly zero is not connected at
- * all — the matrix says so. A real junction leaks; a picosiemens is less than
- * any of them and enough to keep the node attached.
- */
-export const GMIN = 1e-12
-
-/**
- * The DC operating point of a circuit with exponential diodes, by
- * Newton–Raphson on the companion linearisation, every iteration kept.
+ * The DC operating point of a circuit with nonlinear elements, by
+ * Newton–Raphson on their companion linearisations, every iteration kept.
  *
- * Each iteration replaces the curve by its tangent at the current guess — a
- * conductance g = di/dv beside a current source — solves that linear circuit,
- * and reads the new voltage off the answer. Near the solution the error
- * squares each time, which is why five iterations is a lot and fifty is a
- * circuit that is not converging.
+ * Each iteration replaces every curve by its tangent at the current guess — a
+ * conductance, a transconductance and a current source beside them — solves
+ * that linear circuit, and reads the new controlling voltages off the answer.
+ * Near the solution the error squares each time, which is why five iterations
+ * is a lot and fifty is a circuit that is not converging.
+ *
+ * The loop knows nothing about diodes or transistors. It asks each element for
+ * `companion(v)` and for `limit(vNew, vOld)`, and companion.js says what those
+ * are (§2.5 of the plan). Adding a device adds no line here.
+ *
+ * When the direct solve will not settle — an active-loaded stage, an op-amp
+ * with its loop open — `sourceStepping` ramps every independent source from
+ * zero in ten steps and carries each answer into the next as the starting
+ * guess. `steps` records the ramp it took, so the pane can say it was needed.
  */
 export function newtonDC(net, opts = {}) {
   const norm = net.nodeNames ? net : normalize(net)
-  const diodes = norm.elements.filter((e) => e.type === 'D' && diodeOf(e).model === 'exp').map((e) => ({ e, d: diodeOf(e) }))
-  if (!diodes.length) return { sol: solveDC(norm, opts), iters: [], converged: true }
-  const { maxIter = 100, vtol = 1e-12, reltol = 1e-12 } = opts
+  const devices = norm.elements.filter(hasCompanion)
+  if (!devices.length) return { sol: solveDC(norm, opts), iters: [], converged: true, steps: [] }
+  const { sourceStepping = true } = opts
 
-  const v = new Map(diodes.map(({ e, d }) => [e.id, Math.min(0.5, vcritOf(d))]))
+  const direct = walk(norm, devices, opts, null, new Map(devices.map((e) => [e.id, guessFor(e)])))
+  if (direct.converged || !sourceStepping) {
+    if (!direct.converged) throw noConvergence(direct, opts)
+    return { ...direct, steps: [] }
+  }
+
+  // Source stepping. At zero drive every junction sits at zero and the answer
+  // is trivially the origin, so the ramp always has somewhere to start.
+  const sources = norm.elements.filter((e) => e.type === 'V' || e.type === 'I')
+  const base = {}
+  for (const e of sources) base[e.id] = opts.sources && e.id in opts.sources ? opts.sources[e.id] : sourceValue(e, 0)
+  const steps = []
+  let v = new Map(devices.map((e) => [e.id, guessFor(e)]))
+  let last = null
+  for (let k = 1; k <= 10; k++) {
+    const alpha = k / 10
+    const scaled = Object.fromEntries(Object.entries(base).map(([id, value]) => [id, alpha * value]))
+    last = walk(norm, devices, { ...opts, sources: scaled }, null, v)
+    steps.push({ alpha, iterations: last.iters.length, converged: last.converged })
+    if (!last.converged) throw noConvergence(last, opts, steps)
+    v = last.v
+  }
+  return { ...last, steps }
+}
+
+/** One Newton walk from a starting guess, with the sources as `opts` says. */
+function walk(norm, devices, opts, _unused, v0) {
+  const { maxIter = 100, vtol = 1e-12, reltol = 1e-12 } = opts
+  const v = new Map(v0)
   const iters = []
   let sol = null
   let converged = false
   for (let k = 0; k < maxIter && !converged; k++) {
     const companions = {}
     const before = {}
-    for (const { e, d } of diodes) {
-      const vk = v.get(e.id)
-      const ex = Math.exp(vk / (d.n * d.vt))
-      const i = d.is * (ex - 1)
-      const g = Math.max((d.is / (d.n * d.vt)) * ex, GMIN)
-      companions[e.id] = { g, i0: i - g * vk }
-      before[e.id] = { v: vk, i, g }
+    for (const e of devices) {
+      const c = companion(e, v.get(e.id))
+      companions[e.id] = c
+      before[e.id] = c.point
     }
-    sol = solveDC(norm, { ...opts, companions })
+    try {
+      sol = solveDC(norm, { ...opts, companions })
+    } catch (err) {
+      if (!(err instanceof NetworkError)) throw err
+      return { sol: null, iters, converged: false, v, error: err }
+    }
     let step = 0
+    let scale = 1e-3
     const after = {}
-    for (const { e, d } of diodes) {
-      const raw = sol.volt[e.id]
-      const limited = pnjlim(raw, before[e.id].v, d.n * d.vt, vcritOf(d))
-      step = Math.max(step, Math.abs(limited - before[e.id].v))
+    for (const e of devices) {
+      const old = v.get(e.id)
+      const raw = readControls(e, sol.v)
+      const limited = companions[e.id].limit(raw, old)
+      for (const key of Object.keys(limited)) {
+        step = Math.max(step, Math.abs(limited[key] - old[key]))
+        scale = Math.max(scale, Math.abs(limited[key]))
+      }
       after[e.id] = limited
       v.set(e.id, limited)
     }
-    const scale = Math.max(...diodes.map(({ e }) => Math.abs(after[e.id])), 1e-3)
-    iters.push({
-      k,
-      v: { ...before },
-      next: { ...after },
-      step,
-      residual: sol.maxResidual,
-    })
+    iters.push({ k, v: { ...before }, next: { ...after }, step, residual: sol.maxResidual })
     converged = step <= vtol + reltol * scale
   }
-  if (!converged)
-    throw new NetworkError(
-      'newton',
-      `Newton's method did not settle in ${maxIter} iterations. An exponential is a steep curve; if the circuit has no operating point (a diode driven backwards through a current source, say) there is nothing for it to settle on.`,
-      { iters },
-    )
+  if (!converged) return { sol, iters, converged: false, v }
   // One last solve at the converged voltages, so the readout matches the point.
   const companions = {}
-  for (const { e, d } of diodes) {
-    const vk = v.get(e.id)
-    const ex = Math.exp(vk / (d.n * d.vt))
-    const g = Math.max((d.is / (d.n * d.vt)) * ex, GMIN)
-    companions[e.id] = { g, i0: d.is * (ex - 1) - g * vk }
-  }
-  return { sol: solveDC(norm, { ...opts, companions }), iters, converged, v: Object.fromEntries(v) }
+  for (const e of devices) companions[e.id] = companion(e, v.get(e.id))
+  const final = solveDC(norm, { ...opts, companions })
+  return { sol: final, iters, converged: true, v, point: operatingPoint(norm, final) }
+}
+
+function noConvergence(run, opts, steps = null) {
+  if (run.error) return run.error
+  const n = opts.maxIter ?? 100
+  return new NetworkError(
+    'newton',
+    `Newton's method did not settle in ${n} iterations${steps ? `, even with the supplies ramped from zero in ${steps.length} steps` : ''}. An exponential is a steep curve; if the circuit has no operating point (a transistor driven backwards through a current source, say) there is nothing for it to settle on.`,
+    { iters: run.iters, steps },
+  )
 }
 
 // ------------------------------------------------------------ in time
@@ -323,7 +344,7 @@ function startRegions(norm, opts) {
     /* fall through to the default: everything off */
   }
   const out = {}
-  for (const d of regionDevices(norm)) out[d.id] = d.type === 'OPAMP' ? 'linear' : 'off'
+  for (const d of regionDevices(norm)) out[d.id] = restingRegion(d.element)
   return out
 }
 

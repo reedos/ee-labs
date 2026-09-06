@@ -67,6 +67,10 @@ export function valueText(e) {
       return `${e.id} ×${fmt(e.gain, '', 3)}`
     case 'VCCS':
       return `${e.id} ${fmt(e.gain, 'S', 3)}`
+    case 'Q':
+      return `${e.id} ${e.polarity === 'pnp' ? 'pnp' : 'npn'}`
+    case 'M':
+      return `${e.id} ${e.polarity === 'p' ? 'pmos' : 'nmos'}`
     default:
       return e.id
   }
@@ -209,3 +213,49 @@ export const opampBodyBox = ({ x, y }) => ({ x0: x, x1: x + 38, y0: y - 22, y1: 
 
 /** The ground symbol hanging below (x, y). */
 export const gndBox = ([x, y]) => ({ x0: x - 9, x1: x + 9, y0: y, y1: y + 16 })
+
+/**
+ * A three-terminal device — a BJT (`Q`) or a MOSFET (`M`) — shares one
+ * geometry: a control lead (base or gate) at the local −20 end and two output
+ * leads splayed to (12, −20) and (12, 20), collector or drain above and
+ * emitter or source below. `dir` and `flip` rotate and mirror it exactly as
+ * they do a two-terminal element, about the same centre (x, y). `hi` names
+ * the local (12, −20) pin (collector, drain) and `lo` the local (12, 20) pin
+ * (emitter, source), so the two device kinds share one function and one set
+ * of tests.
+ */
+export function transistorPinPlaces({ x, y, dir = 'h', flip = false }) {
+  if (dir === 'v') {
+    return flip
+      ? { ctrl: { x, y: y + 20 }, hi: { x: x - 20, y: y - 12 }, lo: { x: x + 20, y: y - 12 } }
+      : { ctrl: { x, y: y - 20 }, hi: { x: x + 20, y: y + 12 }, lo: { x: x - 20, y: y + 12 } }
+  }
+  return flip
+    ? { ctrl: { x: x + 20, y }, hi: { x: x - 12, y: y + 20 }, lo: { x: x - 12, y: y - 20 } }
+    : { ctrl: { x: x - 20, y }, hi: { x: x + 12, y: y - 20 }, lo: { x: x + 12, y: y + 20 } }
+}
+
+/**
+ * The transistor glyph's bounding box: the control lead's tip, the bar (BJT)
+ * or gated bar (MOSFET), and both output leads out to their pins, in canvas
+ * coordinates for the same four `dir`/`flip` cases as the pins above.
+ */
+export function transistorBodyBox({ x, y, dir = 'h', flip = false }) {
+  if (dir === 'v') {
+    return flip ? { x0: x - 20, x1: x + 20, y0: y - 12, y1: y + 20 } : { x0: x - 20, x1: x + 20, y0: y - 20, y1: y + 12 }
+  }
+  return flip ? { x0: x - 12, x1: x + 20, y0: y - 20, y1: y + 20 } : { x0: x - 20, x1: x + 12, y0: y - 20, y1: y + 20 }
+}
+
+/**
+ * Label and reading positions for a transistor at `item`: below and above a
+ * horizontal device, both to the right of a vertical one, reading over
+ * label — the same convention as `elementTextPlaces`, moved further off
+ * because the glyph itself spans the full ±20 on both axes instead of ±9
+ * across.
+ */
+export function transistorTextPlaces({ x, y, dir = 'h' }) {
+  return dir === 'v'
+    ? { label: { x: x + 30, y: y + 4, anchor: 'start' }, reading: { x: x + 30, y: y - 10, anchor: 'start' } }
+    : { label: { x, y: y + 34, anchor: 'middle' }, reading: { x, y: y - 34, anchor: 'middle' } }
+}

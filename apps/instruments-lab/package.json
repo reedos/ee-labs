@@ -1,0 +1,26 @@
+{
+  "name": "instruments-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "How instruments work, as circuits: the oscilloscope's input and its probe, the sampling scope, the multimeter's divider and shunt, the spectrum analyser as a swept filter, the lock-in amplifier, and the error bar around a reading.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@ee-labs/explain": "*",
+    "@ee-labs/network": "*",
+    "@ee-labs/ui": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}

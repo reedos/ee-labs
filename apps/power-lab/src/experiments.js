@@ -10,16 +10,18 @@
 // Groups follow POWER_LAB_PLAN.md: A is why a switch beats a resistor, B the
 // buck converter — volt-second balance, M = D, ripple, discontinuous
 // conduction, the boundary between the modes, and real parts; C the boost
-// and the buck-boost; E the line side — diode rectifiers into a capacitor,
-// what they ask of the grid, the phase-cut dimmer, and the three-phase
-// six-pulse bridge. The other groups (magnetics, inverters, control, …) are
-// the plan's later phases and are not here yet.
+// and the buck-boost; D the magnetics — flux, saturation, and the two
+// converters a transformer makes; E the line side — diode rectifiers into a
+// capacitor, what they ask of the grid, the phase-cut dimmer, and the
+// three-phase six-pulse bridge; F the inverters, square wave and sine PWM;
+// G where the watts go. The control bridge and the groups after it are the
+// plan's later phases and are not here yet.
 //
-// The plan's letters live in the ids (a1 … e6) and nowhere the reader sees:
+// The plan's letters live in the ids (a1 … g4) and nowhere the reader sees:
 // a list that runs A, B, C, E advertises the group that is not built yet,
 // and the letters said nothing a name does not.
 
-export const GROUPS = ['Why switch', 'The buck', 'Boost & buck-boost', 'AC in']
+export const GROUPS = ['Why switch', 'The buck', 'Boost & buck-boost', 'Magnetics', 'AC in', 'Inverters', 'Losses']
 
 // What each group sets out to establish, read once at its boundary: the
 // sidebar shows it on the group's first experiment and while another group's
@@ -37,6 +39,15 @@ export const GROUP_INTROS = {
   'AC in':
     'Before any converter there is a rectifier and a capacitor. This group measures what they deliver, ' +
     'what they ask of the line, and how a dimmer and a three-phase bridge compare.',
+  Magnetics:
+    'An inductance is a number until you ask what holds the flux. This group puts the inductor on a core, ' +
+    'finds the current past which the core holds no more flux, and gives it a second winding.',
+  Inverters:
+    'A bridge that rectifies AC into DC runs the other way round as well. This group turns a rail back ' +
+    'into a sine, first by switching twice a cycle and then by switching a hundred times a cycle.',
+  Losses:
+    'Every loss so far has been one bar on a chart. This group prices them against frequency, against ' +
+    'load, and against each other in a ledger that has to add up.',
 }
 
 // ------------------------------------------------------------ knobs
@@ -66,6 +77,25 @@ const Cf = (def = 1000e-6) => ({ key: 'C', label: 'C', unit: 'F', min: 10e-6, ma
 const Rl = (def = 100) => ({ key: 'R', label: 'R_load', unit: 'Ω', min: 5, max: 2000, scale: 'log', default: def, hint: 'Load resistance' })
 const Alpha = (def = 90) => ({ key: 'alphaDeg', label: 'α', unit: '°', min: 0, max: 180, scale: 'linear', step: 0.5, default: def, hint: 'Firing angle: how far into each half-cycle the triac turns on' })
 
+// Magnetics. The core is three numbers, and the saturation current follows
+// from them: I_sat = B_sat·N·A_e/L. The area is carried in mm², which is the
+// unit a core is sold in and the one an engineering prefix does not mangle.
+const Turns = (def = 40) => ({ key: 'N', label: 'N', unit: '', min: 5, max: 400, scale: 'log', default: def, hint: 'Turns of wire on the core' })
+const Area = (def = 40) => ({ key: 'Ae', label: 'A_e', unit: 'mm²', min: 5, max: 400, scale: 'log', default: def, hint: 'Cross-section of the core the flux runs through' })
+const Bsat = (def = 0.3) => ({ key: 'Bsat', label: 'B_sat', unit: 'T', min: 0.1, max: 1.5, scale: 'linear', step: 0.005, default: def, hint: 'Flux density past which the core holds no more' })
+// The turns ratio is written the way a transformer is labelled, primary to
+// secondary, so a step-down converter's knob reads 2 rather than 500 m.
+const Ratio = (def = 2) => ({ key: 'Np', label: 'N_p:N_s', unit: '', min: 1, max: 20, scale: 'log', default: def, hint: 'Turns ratio, primary to secondary' })
+// Each half-bridge switch is on for at most half the period; past that the
+// two would conduct at once.
+const Dhb = (def = 5 / 12) => ({ key: 'D', label: 'D', unit: '%', percent: true, min: 0.02, max: 0.49, scale: 'linear', step: 0.001, default: def, hint: 'Duty of each switch, at most one half of the period' })
+
+// Inverters.
+const Vdc = (def = 48) => ({ key: 'Vdc', label: 'V_dc', unit: 'V', min: 12, max: 400, scale: 'log', default: def, hint: 'The DC rail the bridge switches' })
+const Fund = (def = 60) => ({ key: 'f1', label: 'f₁', unit: 'Hz', min: 50, max: 400, scale: 'log', default: def, hint: 'Output frequency the modulator asks for' })
+const Ma = (def = 0.8) => ({ key: 'ma', label: 'm_a', unit: '%', percent: true, min: 0.05, max: 1.4, scale: 'linear', step: 0.005, default: def, hint: 'Modulation index: the reference’s height against the carrier’s' })
+const Fsw = (def = 3780) => ({ key: 'fsw', label: 'f_sw', unit: 'Hz', min: 300, max: 8e3, scale: 'log', default: def, hint: 'Carrier frequency, locked to an odd multiple of f₁' })
+
 // Scope traces: voltages on the left axis, currents on the right.
 export const TRACES = {
   vin: { label: 'v_in', axis: 'V', title: 'Source voltage (phase a, for the three-phase bridge)' },
@@ -91,7 +121,10 @@ export const VIEWS = {
   math: { label: 'Math', title: 'Every formula the note leans on, evaluated beside what the waveform measures' },
   sweep: { label: 'Sweep', title: 'One measure as one knob sweeps its range' },
   losses: { label: 'Losses', title: 'Where the input power goes' },
-  spectrum: { label: 'Spectrum', title: 'The harmonics of the current drawn from the line, and what they cost in power factor' },
+  spectrum: { label: 'Spectrum', title: 'The harmonics of the waveform, and what they cost in power factor or distortion' },
+  flux: { label: 'Flux', title: 'Flux density over one period, against the ceiling the core sets' },
+  scrub: { label: 'Scrub', title: 'The conducting path at one instant, scrubbed through the period' },
+  ledger: { label: 'Ledger', title: 'Every loss mechanism, its formula, and the residual the identity leaves' },
 }
 
 // What a sweep can put on its axes. `sweepFor` in App.jsx runs the matching
@@ -102,6 +135,8 @@ export const SWEEP_X = {
   C: { label: 'C', unit: 'F', scale: 'log' },
   fs: { label: 'f_s', unit: 'Hz', scale: 'log' },
   alpha: { label: 'α', unit: '°', scale: 'linear', fmt: (v) => `${v.toFixed(0)}°` },
+  ma: { label: 'm_a', unit: '', scale: 'linear', fmt: (v) => `${(v * 100).toFixed(0)} %` },
+  fsw: { label: 'f_sw', unit: 'Hz', scale: 'log' },
 }
 // A sweep's `y2` goes on a right-hand axis of its own, unless the sweep says
 // `shared: true` — then both curves share the left axis (the chopper's ⟨v⟩
@@ -117,6 +152,8 @@ export const SWEEP_Y = {
   iPeak: { label: 'i_D peak', unit: 'A', lo: 0 },
   share: { label: 'P / P_full', unit: '', lo: 0, hi: 1 },
   pf: { label: 'power factor', unit: '', lo: 0, hi: 1 },
+  v1: { label: 'fundamental, peak', unit: 'V', lo: 0 },
+  thd: { label: 'THD of v_out', unit: '', lo: 0, percent: true },
 }
 
 // The top bar's third meter is the experiment's own headline — η for a
@@ -166,6 +203,52 @@ const rect = (kind, over) => ({
   ...over,
 })
 
+// A buck whose inductor is wound on a core: the same converter, with the
+// three numbers that decide when the core runs out of flux.
+const core = (over) => ({
+  kind: 'buck',
+  core: true,
+  headline: 'eta',
+  traces: ['iL', 'vout'],
+  allTraces: ['vsw', 'vout', 'vL', 'iL', 'iQ', 'iD', 'iC', 'iin'],
+  views: ['flux', 'measures', 'math', 'balance', 'losses'],
+  view: 'flux',
+  periods: 2,
+  ...over,
+})
+
+// The two isolated converters. `Np` is the turns ratio as a transformer is
+// labelled, primary to secondary, and analysis.js inverts it into the
+// engine's n = N_s/N_p.
+const iso = (kind, over) => ({
+  kind,
+  headline: 'eta',
+  traces: ['vsw', 'vout', 'iL'],
+  allTraces: ['vsw', 'vout', 'vL', 'iL', 'iQ', 'iD', 'iC', 'iin'],
+  views: ['measures', 'scrub', 'math', 'sweep', 'losses'],
+  view: 'measures',
+  sweep: { x: 'D', y: 'M' },
+  periods: 2,
+  ...over,
+})
+
+// An inverter: the bridge, the LC and the load, over one fundamental cycle.
+const inv = (kind, over) => ({
+  kind,
+  headline: 'thd',
+  params: [Vdc(), Fund(), L(1e-3), C(10e-6), Rlb(10)],
+  traces: ['vsw', 'vout'],
+  allTraces: ['vsw', 'vout', 'vL', 'iL', 'iC', 'iR', 'iin'],
+  views: ['spectrum', 'measures', 'math'],
+  view: 'spectrum',
+  periods: 1,
+  ...over,
+})
+
+// The load at which a buck's efficiency peaks: √12·L·f_s/(1 − D), which is
+// √3 times the load at the CCM boundary and carries no V_out at all (G2).
+const G2_PEAK_LOAD = (Math.sqrt(12) * 22e-6 * 100e3) / (1 - 5 / 12)
+
 export const EXPERIMENTS = [
   // ---------------------------------------------------------- A · Why switch
   {
@@ -173,7 +256,7 @@ export const EXPERIMENTS = [
     about: 'R',
     chips: [5, 1],
     try: { knob: 'R', text: 'Set R_load to 1 Ω: output falls to 1.50 V, not 5 V.' },
-    group: GROUPS[0],
+    group: 'Why switch',
     name: 'The resistor divider',
     kind: 'linreg',
     headline: 'eta',
@@ -199,7 +282,7 @@ export const EXPERIMENTS = [
     about: 'D',
     chips: [5 / 12, 0.75],
     try: { knob: 'D', text: 'Set D to 75 %: average 9.00 V, RMS 10.4 V. Closer, still not equal.' },
-    group: GROUPS[0],
+    group: 'Why switch',
     name: 'Chop it',
     kind: 'chopper',
     headline: 'rms',
@@ -225,7 +308,7 @@ export const EXPERIMENTS = [
     about: 'C',
     chips: [100e-6, 10e-6],
     try: { knob: 'C', text: 'Set C to 10 \u00b5F, from 100 \u00b5F: tenfold ripple, 36.5 mV, average still 5.000 V.' },
-    group: GROUPS[0],
+    group: 'Why switch',
     name: 'Let the LC do the averaging',
     params: [Vin(), D(), L(), C(), R(), Fs()],
     // The output alone: 3.65 mV on 5 V is the claim, and it is invisible on
@@ -247,7 +330,7 @@ export const EXPERIMENTS = [
     about: 'L',
     chips: [100e-6, 22e-6],
     try: { knob: 'L', text: 'Set L to 22 \u00b5H, from 100 \u00b5H: ripple 1.33 A, balance still 29.2 V\u00b7\u00b5s.' },
-    group: GROUPS[1],
+    group: 'The buck',
     name: 'Volt-second balance',
     params: [Vin(), D(), L(), R()],
     traces: ['vL', 'iL'],
@@ -264,7 +347,7 @@ export const EXPERIMENTS = [
     about: 'D',
     chips: [5 / 12, 0.75, 0.25],
     try: { knob: 'D', text: 'Set D to 75 %: 9.000 V out, M = 0.750. At 25 %, 3.000 V.' },
-    group: GROUPS[1],
+    group: 'The buck',
     name: 'M = D',
     params: [D(), Vin(), R(), L(), Fs()],
     traces: ['vsw', 'vout'],
@@ -283,7 +366,7 @@ export const EXPERIMENTS = [
     about: 'fs',
     chips: [100e3, 400e3],
     try: { knob: 'fs', text: 'Set f_s to 400 kHz, from 100 kHz: 73 mA of current ripple, 0.23 mV out.' },
-    group: GROUPS[1],
+    group: 'The buck',
     name: 'Ripple',
     params: [L(), C(), Fs(), D(), Vin(), R()],
     traces: ['iL', 'vout'],
@@ -319,7 +402,7 @@ export const EXPERIMENTS = [
         say: 'Set R_load to 5 \u03a9: the heavier load keeps conduction continuous on its own, 5.00 V out.',
       },
     ],
-    group: GROUPS[1],
+    group: 'The buck',
     name: 'Light load: discontinuous conduction',
     symbols: ['K'],
     params: [R(200), Sync(), L(), Fs(), D(), Vin()],
@@ -358,7 +441,7 @@ export const EXPERIMENTS = [
         say: 'Set R_load to 10 \u03a9: conduction is continuous, M returns to D, 0.417.',
       },
     ],
-    group: GROUPS[1],
+    group: 'The buck',
     name: 'The boundary',
     symbols: ['K'],
     params: [R(34.2857142857), L(), Fs(), D(), Vin()],
@@ -377,7 +460,7 @@ export const EXPERIMENTS = [
     about: 'Vf',
     chips: [0.5, 1, 0],
     try: { knob: 'Vin', text: 'Set V_in to 48 V: the same rent on 19.7 V out, efficiency 98.5 %.' },
-    group: GROUPS[1],
+    group: 'The buck',
     name: 'The diode’s rent',
     symbols: ['K'],
     // One real part at a time (§11.2.2): the diode here, the resistances in
@@ -399,7 +482,7 @@ export const EXPERIMENTS = [
     about: 'ESR',
     chips: [0.05, 0.5, 0],
     try: { knob: 'ESR', text: 'Set ESR to 0.5 Ω: a 132 mV step. At 0 Ω, none.' },
-    group: GROUPS[1],
+    group: 'The buck',
     name: 'The resistances',
     symbols: ['K'],
     params: [ESR(0.05), Ron(0.05), RL(0.03), R(), D(), Vin()],
@@ -420,7 +503,7 @@ export const EXPERIMENTS = [
     about: 'tsw',
     chips: [20e-9, 5e-9, 100e-9],
     try: { knob: 'fs', text: 'Set f_s to 1 MHz: ripple 36.5 µV, a hundredth. The edges cost 240 mW.' },
-    group: GROUPS[1],
+    group: 'The buck',
     name: 'The edges',
     symbols: ['K'],
     params: [Tsw(20e-9), Fs(), Vin(), D(), R()],
@@ -445,7 +528,7 @@ export const EXPERIMENTS = [
     about: 'D',
     chips: [0.5, 0.75],
     try: { knob: 'D', text: 'Set D to 75 %: M = 4.00, 48.0 V out, 9.60 A in the inductor.' },
-    group: GROUPS[2],
+    group: 'Boost & buck-boost',
     name: 'Stacking on the source',
     // The claim is the formula M = 1/(1 − D), same as the buck's M = D
     // (b2): the sweep is the picture that formula draws, so it opens there
@@ -463,7 +546,7 @@ export const EXPERIMENTS = [
     about: 'D',
     chips: [0.9, 0.5, 0.95],
     try: { knob: 'D', text: 'Set D to 50 %: M = 1.92 against the ideal 2.00, at 96.1 % efficiency.' },
-    group: GROUPS[2],
+    group: 'Boost & buck-boost',
     name: 'The peak ideal theory misses',
     // The knob starts on the peak, so the screen at arrival is the one the
     // note is about — not a well-behaved boost at D = 0.5 with the story a
@@ -486,7 +569,7 @@ export const EXPERIMENTS = [
     about: 'R',
     chips: [400, 160, 40],
     try: { knob: 'R', text: 'Set R_load to 40 \u03a9: continuous again, M = 2.000 and 24.00 V out.' },
-    group: GROUPS[2],
+    group: 'Boost & buck-boost',
     name: 'The boost runs dry too',
     params: [Rlb(400), Vin(), D(0.5), L(), C(), Fs()],
     traces: ['vout', 'iL', 'iD'],
@@ -506,7 +589,7 @@ export const EXPERIMENTS = [
     about: 'D',
     chips: [0.5, 0.75],
     try: { knob: 'D', text: 'Set D to 75 %: M = \u22123.00, \u221236.0 V out, 7.20 A in the inductor.' },
-    group: GROUPS[2],
+    group: 'Boost & buck-boost',
     name: 'The inverting bucket',
     traces: ['vsw', 'vout', 'iL', 'iin'],
     note:
@@ -522,7 +605,7 @@ export const EXPERIMENTS = [
     about: 'R',
     chips: [200, 100, 500],
     try: { knob: 'R', text: 'Set R_load to 40 \u03a9: continuous conduction, 3.60 W. The budget no longer holds.' },
-    group: GROUPS[2],
+    group: 'Boost & buck-boost',
     name: 'All the energy through one part',
     params: [Rlb(200), Vin(), D(0.5), L(), C(), Fs()],
     traces: ['vout', 'iL'],
@@ -536,6 +619,72 @@ export const EXPERIMENTS = [
       'output climbs −13.42 → −18.97 → −30.00 V. Below R_crit = 80 Ω conduction is continuous and ' +
       'the rule stops.',
     terms: ['buck-boost', 'dcm', 'inductor-energy'],
+  }),
+
+  // -------------------------------------------------------- D · Magnetics
+  core({
+    id: 'd1',
+    about: 'fs',
+    chips: [100e3, 10e3],
+    try: { knob: 'fs', text: 'Set f_s to 10 kHz: 186 mT of flux swing, ten times as far.' },
+    group: 'Magnetics',
+    name: 'Volt-seconds are flux',
+    params: [Fs(), Turns(), Area(), Bsat(), L(), R(2), D(), Vin()],
+    note:
+      'An inductor’s flux is its volt-seconds spread over N turns and A_e of core area. At 100 kHz this ' +
+      'buck takes 29.2 V·µs each period on 40 turns of 40 mm², so the flux swings 18.2 mT and peaks at ' +
+      '165 mT. Drop f_s to 10 kHz and the same 5 V output costs ten times the volt-seconds.',
+    terms: ['flux-density', 'volt-second', 'buck'],
+  }),
+  core({
+    id: 'd2',
+    about: 'R',
+    chips: [1, 2],
+    try: { knob: 'R', text: 'Set R_load to 2 Ω: the peak falls to 2.65 A, under the knee.' },
+    group: 'Magnetics',
+    name: 'Saturation, as an event',
+    params: [R(1), Bsat(), Turns(), L(), Fs(), Vin(), D()],
+    traces: ['iL', 'vsw'],
+    views: ['flux', 'scrub', 'measures', 'math', 'balance'],
+    note:
+      'The core saturates at I_sat = B_sat·N·A_e/L = 4.80 A. At 1 Ω the load draws 5.00 A, so the ' +
+      'current crosses the knee 2.90 µs into the period and stays over it for 30 % of the period. Past ' +
+      'the knee the inductance is 5 µH rather than 100 µH, so the ripple grows from 0.292 A to 1.98 A ' +
+      'and the peak reaches 6.58 A. The flux reaches 306 mT and goes no further.',
+    terms: ['saturation', 'flux-density', 'ripple'],
+  }),
+  iso('flyback', {
+    id: 'd3',
+    about: 'D',
+    chips: [0.5, 0.75],
+    try: { knob: 'D', text: 'Set D to 75 %: M rises to 1.50 and the output to 36.0 V.' },
+    group: 'Magnetics',
+    name: 'The flyback',
+    params: [D(0.5), Ratio(2), Vin(24), Rlb(12), L(), Fs()],
+    traces: ['vsw', 'iL', 'iD'],
+    note:
+      'Give the buck-boost’s inductor a second winding, and the output crosses an isolation barrier. ' +
+      'The two intervals are unchanged, so volt-second balance still sets the ratio with the turns in ' +
+      'it. At D = 50 % on a 2:1 transformer, M = 0.500 and 24 V becomes 11.99 V. The isolation costs ' +
+      'the switch its rating. It blocks 48.0 V, the rail plus the output reflected back.',
+    terms: ['flyback', 'isolation', 'turns-ratio', 'buck-boost', 'volt-second'],
+  }),
+  iso('halfbridge', {
+    id: 'd4',
+    about: 'D',
+    chips: [5 / 12, 0.25],
+    try: { knob: 'D', text: 'Set D to 25 %: M falls to 0.0625 and the output to 3.00 V.' },
+    group: 'Magnetics',
+    name: 'The half-bridge',
+    params: [Dhb(5 / 12), Ratio(4), Vin(48), R(5), L(), Fs()],
+    view: 'scrub',
+    note:
+      'Two switches across a capacitor divider drive the primary with ±V_in/2, and the rectified ' +
+      'secondary feeds the filter twice per period. Nothing is stored in the core. The gearing is the ' +
+      'turns ratio alone, M = n·D, so 48 V at D = 41.7 % on a 4:1 transformer gives 5.000 V. The ripple ' +
+      'repeats at 200 kHz, so 41.7 mA in the inductor leaves 260 µV rather than 521 µV. Each switch ' +
+      'blocks 48 V, where the flyback’s blocks twice its rail.',
+    terms: ['half-bridge', 'flyback', 'turns-ratio', 'isolation', 'ripple'],
   }),
 
   // ---------------------------------------------------------- E · AC in
@@ -557,7 +706,7 @@ export const EXPERIMENTS = [
         say: 'Set C to 100 \u00b5F: the diode conducts for 87.8\u00b0, the output sags 12.4 V.',
       },
     ],
-    group: GROUPS[3],
+    group: 'AC in',
     name: 'Half-wave into a capacitor',
     note:
       'A 12.6 V RMS secondary peaks at 17.8 V. The diode conducts while the source exceeds the ' +
@@ -571,7 +720,7 @@ export const EXPERIMENTS = [
     about: 'C',
     chips: [1000e-6, 100e-6, 4700e-6],
     try: { knob: 'C', text: 'Set C to 4700 \u00b5F: ripple 0.23 V, 1.34 A peaks. At 100 \u00b5F, 6.9 V.' },
-    group: GROUPS[3],
+    group: 'AC in',
     name: 'The bridge',
     traces: ['vin', 'vrect', 'vout', 'iD'],
     note:
@@ -587,7 +736,7 @@ export const EXPERIMENTS = [
     about: 'C',
     chips: [1000e-6, 100e-6, 4700e-6],
     try: { knob: 'Rs', text: 'Set R_s to 0.25 \u03a9: the floor drops to 28.0\u00b0, the peak rises to 1.60 A.' },
-    group: GROUPS[3],
+    group: 'AC in',
     name: 'The price of a big capacitor',
     params: [Cf(), Rs(), Rl(), Vs(), Vfd(), F()],
     traces: ['vout', 'iD'],
@@ -607,7 +756,7 @@ export const EXPERIMENTS = [
     about: 'C',
     chips: [1000e-6, 100e-6, 4700e-6],
     try: { knob: 'C', text: 'Set C to 100 \u00b5F: THD 91 %, PF 0.650. At 4700 \u00b5F, 157 %, 0.537.' },
-    group: GROUPS[3],
+    group: 'AC in',
     name: 'What the grid sees',
     params: [Cf(), Rl(), Rs(), Vs(), Vfd(), F()],
     traces: ['vin', 'iin'],
@@ -625,7 +774,7 @@ export const EXPERIMENTS = [
     about: 'alphaDeg',
     chips: [90, 45, 135],
     try: { knob: 'alphaDeg', text: 'Set \u03b1 to 45\u00b0: 90.9 % of the power, power factor 0.95, THD 26 %.' },
-    group: GROUPS[3],
+    group: 'AC in',
     name: 'The dimmer',
     kind: 'dimmer',
     headline: 'pf',
@@ -648,7 +797,7 @@ export const EXPERIMENTS = [
     about: 'C',
     chips: [1000e-6, 100e-6],
     try: { knob: 'C', text: 'Set C to 100 \u00b5F: ripple 3.21 V on 28.1 V, against the bridge\u2019s 6.9 V.' },
-    group: GROUPS[3],
+    group: 'AC in',
     name: 'Three phases, six pulses',
     traces: ['vin', 'vrect', 'vout', 'iin'],
     note:
@@ -658,6 +807,151 @@ export const EXPERIMENTS = [
       'at 1000 µF. Bare, it would sit at 29.5 V, because six pulses are already smooth. The line current has ' +
       'no 3rd harmonic. The 5th, at 91 %, is the first that survives.',
     terms: ['six-pulse', 'harmonic', 'piv', 'ripple'],
+  }),
+
+  // -------------------------------------------------------- F · Inverters
+  inv('square', {
+    id: 'f1',
+    about: 'Vdc',
+    chips: [48, 24],
+    try: { knob: 'Vdc', text: 'Set V_dc to 24 V: 21.6 V of fundamental, and the same 48.3 % THD.' },
+    group: 'Inverters',
+    name: 'The square-wave inverter',
+    note:
+      'A full bridge swings ±48 V at 60 Hz. Its fundamental is (4/π)·V_dc, or 43.2 V RMS, and its THD ' +
+      'is √(π²/8 − 1) = 48.3 %. The filter’s corner is at 1.59 kHz while the third harmonic sits at ' +
+      '180 Hz, so the filter leaves it alone. The load still sees 48.2 %.',
+    terms: ['inverter', 'rms', 'thd', 'harmonic'],
+  }),
+  inv('spwm', {
+    id: 'f2',
+    about: 'ma',
+    chips: [0.8, 0.4, 1.2],
+    try: { knob: 'ma', text: 'Set m_a to 120 %: 53.0 V of fundamental, short of the 57.6 V commanded.' },
+    group: 'Inverters',
+    name: 'Sine PWM',
+    params: [Ma(0.8), Fsw(3780), Vdc(), Fund(), L(1e-3), C(10e-6), Rlb(10)],
+    views: ['sweep', 'spectrum', 'measures', 'math'],
+    view: 'sweep',
+    sweep: { x: 'ma', y: 'v1' },
+    note:
+      'Compare a sine reference against a triangular carrier, and the bridge takes the sign of the ' +
+      'difference. The pulse widths breathe with the sine, and the fundamental comes out at m_a·V_dc. ' +
+      'At 80 % of the carrier’s height that is 38.4 V peak, and the load’s THD is 21.2 %. At 40 % the ' +
+      'fundamental halves to 19.2 V. Past 100 % the reference outruns the carrier, and 120 % buys ' +
+      '53.0 V rather than 57.6 V.',
+    terms: ['inverter', 'modulation-index', 'carrier', 'thd'],
+  }),
+  inv('spwm', {
+    id: 'f3',
+    about: 'fsw',
+    chips: [3780, 1980],
+    try: { knob: 'fsw', text: 'Set f_sw to 1.98 kHz: the attenuation is 0.736 and the THD 81 %.' },
+    group: 'Inverters',
+    name: 'The spectrum has families',
+    params: [Fsw(3780), Ma(0.8), L(1e-3), C(10e-6), Rlb(10), Vdc(), Fund()],
+    note:
+      'The carrier puts no energy near the fundamental. It puts it in clusters around m_f and 2·m_f. At ' +
+      '3.78 kHz the cluster at the 63rd harmonic carries 102 % of the fundamental, and nothing below it ' +
+      'reaches 0.02 %. That gap is the filter’s opportunity. The LC attenuates the 63rd by 0.192, which ' +
+      'is |H| at 3.78 kHz, and the load’s THD is 21.2 %.',
+    terms: ['inverter', 'carrier', 'harmonic', 'thd'],
+  }),
+  inv('spwm', {
+    id: 'f4',
+    about: 'fsw',
+    chips: [3780, 900, 7740],
+    try: { knob: 'fsw', text: 'Set f_sw to 7.74 kHz: the THD falls to 4.8 %.' },
+    group: 'Inverters',
+    name: 'Distortion against effort',
+    params: [Fsw(3780), Ma(0.8), L(1e-3), C(10e-6), Rlb(10), Vdc(), Fund()],
+    traces: ['vout', 'iL'],
+    views: ['sweep', 'spectrum', 'measures', 'math'],
+    view: 'sweep',
+    sweep: { x: 'fsw', y: 'thd' },
+    note:
+      'Sweep the carrier and the THD of the load voltage falls, as the clusters retreat from the ' +
+      'filter’s corner. At 900 Hz the carrier sits below the 1.59 kHz corner and the THD is 135 %. At ' +
+      '1.98 kHz it is 81 %, at 3.78 kHz 21.2 %, and at 7.74 kHz 4.8 %. The next group prices the same ' +
+      'sweep in switching loss.',
+    terms: ['inverter', 'carrier', 'thd', 'switching-loss'],
+  }),
+
+  // ----------------------------------------------------------- G · Losses
+  buck({
+    id: 'g1',
+    about: 'fs',
+    chips: [488e3, 100e3, 2e6],
+    try: { knob: 'fs', text: 'Set f_s to 2 MHz: 469 mW in the edges, efficiency 89.1 %.' },
+    group: 'Losses',
+    name: 'Conduction against switching',
+    params: [Fs(488e3), Tsw(20e-9), Ron(0.12), Sync(1), R(), D(), Vin()],
+    traces: ['vsw', 'iL'],
+    views: ['sweep', 'ledger', 'measures', 'math'],
+    view: 'sweep',
+    sweep: { x: 'fs', y: 'eta' },
+    note:
+      'Conduction takes I²·R_on whatever the frequency. Each edge costs ½·V·I·t_sw and is charged twice ' +
+      'a period, so switching loss follows f_s. They cross at R_on·I/(V·t_sw) = 488 kHz, where each is ' +
+      '114 mW and efficiency is 95.4 %. At 100 kHz the edges cost 23 mW and efficiency is 97.2 %.',
+    terms: ['switching-loss', 'conduction-loss', 'efficiency'],
+  }),
+  buck({
+    id: 'g2',
+    about: 'R',
+    chips: [G2_PEAK_LOAD, 1, 1000],
+    try: { knob: 'R', text: 'Set R_load to 1 kΩ: efficiency 53.2 %, on 25.0 mW delivered.' },
+    group: 'Losses',
+    name: 'The efficiency curve',
+    params: [R(G2_PEAK_LOAD), L(22e-6), Ron(0.1), RL(0.05), Sync(1), D(), Vin(), Fs()],
+    traces: ['iL', 'vout'],
+    views: ['sweep', 'ledger', 'measures', 'math'],
+    view: 'sweep',
+    sweep: { x: 'R', y: 'eta' },
+    note:
+      'The winding and the switch carry the load current and the ripple current together, and only one ' +
+      'of those follows the load. Efficiency peaks where the two cost the same, which puts the load at ' +
+      '√12·L·f_s/(1 − D) = 13.1 Ω. That is √3 times the 7.54 Ω boundary, and it carries no V_out at ' +
+      'all. There the ripple costs 22.0 mW and the load 21.5 mW, at 97.7 %. At 1 Ω it is 86.9 %.',
+    terms: ['efficiency', 'conduction-loss', 'ripple'],
+  }),
+  pwm('boost', {
+    id: 'g3',
+    about: 'ESR',
+    chips: [0.05, 0.2, 0],
+    try: { knob: 'ESR', text: 'Set ESR to 200 mΩ: 196 mW of heat. At 0 Ω, none.' },
+    group: 'Losses',
+    name: 'The capacitor’s hidden heater',
+    params: [ESR(0.05), Rlb(24), Vin(), D(0.5), L(), C(220e-6), Fs()],
+    traces: ['iC', 'vout'],
+    views: ['measures', 'ledger', 'math', 'sweep'],
+    view: 'measures',
+    sweep: { x: 'R', y: 'eta' },
+    note:
+      'A buck’s output capacitor carries the inductor’s triangle and nothing else. A boost’s carries ' +
+      'the whole load current for the D of each period the diode is off. At 12 V into 24 V with 0.600 A ' +
+      'of inductor ripple that is 1.003 A RMS, against the 0.173 A a buck would give. Heat goes as the ' +
+      'square, so 50 mΩ of ESR makes 50.3 mW here and 1.5 mW there.',
+    terms: ['boost', 'buck', 'ripple', 'rms', 'conduction-loss'],
+  }),
+  buck({
+    id: 'g4',
+    about: 'Ron',
+    chips: [0.05, 0.2, 0],
+    try: { knob: 'Ron', text: 'Set R_on to 0 Ω: the switch’s row empties and efficiency reaches 93.1 %.' },
+    group: 'Losses',
+    name: 'Where the watts went',
+    params: [Ron(0.05), Vf(0.5), RL(0.03), ESR(0.05), Tsw(20e-9), R(), D(), Vin(), Fs()],
+    traces: ['vout', 'iL'],
+    views: ['ledger', 'measures', 'math', 'sweep', 'losses'],
+    view: 'ledger',
+    sweep: { x: 'R', y: 'eta' },
+    note:
+      'Every loss here is an integral of the same waveform, so the ledger closes exactly. At 50 mΩ the ' +
+      'switch takes 18.3 mW, the diode 272 mW, the winding 26.3 mW and the ESR 0.374 mW, with the edges ' +
+      'charged 23.3 mW on top. That leaves 4.345 W in the load out of 4.685 W drawn, at 92.7 % ' +
+      'efficiency. Turn R_on to 200 mΩ and the switch’s row grows to 71.3 mW.',
+    terms: ['efficiency', 'conduction-loss', 'switching-loss'],
   }),
 ]
 

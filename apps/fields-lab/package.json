@@ -1,0 +1,27 @@
+{
+  "name": "fields-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Electromagnetics from Coulomb's law up: charge and the field, capacitance in closed form and Laplace on a grid, current and resistance, Biot-Savart and the magnetic circuit, Faraday and the skin effect, then Maxwell's plane wave, reflection, transmission lines, waveguides and antennas.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "numbers": "node scripts/numbers.mjs",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@ee-labs/explain": "*",
+    "@ee-labs/fields": "*",
+    "@ee-labs/ui": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}

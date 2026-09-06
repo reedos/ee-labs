@@ -78,6 +78,15 @@ export function equations(norm, sol = null, opts = {}) {
             kind: 'dependent',
           })
           break
+        case 'CCCS':
+          terms.push({
+            sign,
+            latex: `\\beta${sub(eff.id)}\\,${iSym(eff.over)}`,
+            value: val(() => sign * sol.i[eff.id]),
+            id: eff.id,
+            kind: 'dependent',
+          })
+          break
         default:
           terms.push({ sign, latex: iSym(eff.id), value: val(() => sign * sol.i[eff.id]), id: eff.id, kind: 'unknown' })
       }
@@ -214,6 +223,13 @@ export function symbolicSystem(sys, norm) {
         const [c, d] = eff.ctrl
         if (ix(c) >= 0) put(row, ix(c), -1, A, eff.gain)
         if (ix(d) >= 0) put(row, ix(d), +1, A, eff.gain)
+        break
+      }
+      case 'CCCS': {
+        const beta = symbol(`\\beta${sub(eff.id)}`, eff.gain, eff, 'beta')
+        const row = sys.currentIdx.get(eff.over)
+        if (ix(a) >= 0) put(ix(a), row, +1, beta, eff.gain)
+        if (ix(b) >= 0) put(ix(b), row, -1, beta, eff.gain)
         break
       }
       case 'VCCS': {

@@ -8,10 +8,10 @@ import { alternating, analyse, acTable, atDrive, dampingSweep, experimentMath, i
 import { CROP_PAD, layoutExtent, layoutProblems, standInLabel } from './layoutCheck.js'
 import { agrees } from '@ee-labs/explain'
 import {
-  equations, extrema, normalize, solveAC, drivingPointZ, acPower, NetworkError, complex as cx,
+  equations, extrema, meanRms, normalize, solveAC, drivingPointZ, acPower, NetworkError, complex as cx,
 } from '@ee-labs/network'
 import { buildCircuitLink, fmt, parseCircuitLink, schematicGeometry } from '@ee-labs/ui'
-import { evalAtFreq } from '@ee-labs/systems'
+import { evalAtFreq, polesZeros } from '@ee-labs/systems'
 import { CIRCUITS, transferOf } from '../../circuit-lab/src/circuits.js'
 import { stateFromLink } from '../../circuit-lab/src/incoming.js'
 
@@ -138,13 +138,15 @@ describe('every experiment', () => {
         }
       }
     }
-    // 26 settings × 26 experiments, half of them exact transients with energy
-    // integrals: a few seconds alone, longer when the whole monorepo's workers
-    // share the machine.
-  // Group I walks every rectifier through its events at 26 settings each, and
-  // an event is a fresh exact solve: real work, and slower than the rest of
-  // the suite put together.
-  }, 180000)
+    // Twenty-six settings for each of 58 experiments, half of them exact
+    // transients with energy integrals, and Group I's rectifiers solve afresh
+    // at every event: real work, and slower than the rest of the suite put
+    // together. It runs in about 210 seconds alone on this four-core machine
+    // and longer again when the monorepo's own workers share it, which is why
+    // 180 seconds ran out. A budget in milliseconds is a claim about the
+    // machine and not about the code, so this one is three times the measured
+    // cost — still short enough that a hang is a failure and not a wait.
+  }, 600000)
 
   it('prints a system whose unknown count matches the topbar claim', () => {
     for (const e of EXPERIMENTS) {
@@ -263,7 +265,11 @@ describe('every experiment', () => {
       }
       expect(layoutProblems(e.layout, drawables(e.net(defaultsOf(e.id))), null, 'none'), `${e.id} bare`).toEqual([])
     }
-  })
+    // Sixteen settings for each of 58 experiments, drawn three ways, and the
+    // three new ones each solve a transient event by event. The ninety seconds
+    // the config allows every test ran out here first; this is the headroom the
+    // other two whole-experiment walks already take, for the same reason.
+  }, 240000)
 
   // The view switch reads the same left to right in every experiment (Reed,
   // 2026-09-01: "how come some examples show power first?"). The data keeps
@@ -731,12 +737,12 @@ const STATEFUL = DYNAMIC.filter((e) => e.net(defaultsOf(e.id)).elements.some((q)
 const last = (arr) => arr[arr.length - 1]
 const peaks = (tr, q, key) => extrema(tr.t, tr.series(q, key), (t) => tr.at(t).sol[q][key])
 
-const SECOND_ORDER = new Set(['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'h3', 'h4'])
+const SECOND_ORDER = new Set(['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'h3', 'h4', 'h7', 'i10'])
 
 describe('every dynamic experiment (F, G, H)', () => {
   it('has a transient, a state summary, a cursor solve, and the meters read that instant', () => {
-    expect(DYNAMIC.length).toBe(25)
-    expect(STATEFUL.length).toBe(21)
+    expect(DYNAMIC.length).toBe(28)
+    expect(STATEFUL.length).toBe(24)
     for (const e of DYNAMIC) {
       const { x } = at(e.id)
       expect(x.tr, e.id).toBeTruthy()
@@ -1004,7 +1010,7 @@ describe('the dynamic notes, sentence by sentence', () => {
 // random settings each); here it is held across whole windows, and the notes'
 // own numbers are measured.
 
-const H_IDS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+const H_IDS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7']
 const period = (x) => (2 * Math.PI) / x.omega
 
 describe('group H: phasor against time', () => {
@@ -1287,6 +1293,113 @@ describe('the H notes, sentence by sentence', () => {
   })
 })
 
+// ---------------------------------------------------------- the seams
+// CURRICULUM.md §3. Seam 1 is H7: the roots G1 finds by trying e^{st} are the
+// poles Circuit Lab computes from the same R, L and C, and the Bode magnitude
+// H4 and H6 read one sine at a time is the product of the distances from jω to
+// those roots. Group B of the Electronics plan is I9 and I10, which live here
+// because they are diodes and capacitors and nothing else.
+
+describe('H7: the roots are the poles', () => {
+  const byRe = (a, b) => a[0] - b[0] || a[1] - b[1]
+
+  it('the roots of s² + (R/L)s + 1/LC are the poles Circuit Lab computes for the same values', () => {
+    const exp = byId.h7
+    for (const seed of [0, 3, 9, 31]) {
+      const p = seed ? randomParams(exp, seed) : defaultsOf('h7')
+      const m = exp.circuitLab(p)
+      if (m.decline) continue
+      const x = analyse(exp, p)
+      const params = Object.fromEntries(CIRCUITS[m.id].params.map((k, i) => [k.key, m.values[i]]))
+      const poles = polesZeros(transferOf(m.id, params, m.output)).poles
+      expect(poles.length, `seed ${seed}`).toBe(2)
+      const ours = x.state.roots.map((r) => [r.re, r.im]).sort(byRe)
+      const them = poles.map(([re, im]) => [re, im]).sort(byRe)
+      them.forEach(([re, im], k) => {
+        const scale = Math.hypot(re, im)
+        expect(Math.hypot(re - ours[k][0], im - ours[k][1]), `seed ${seed} pole ${k}`).toBeLessThanOrEqual(1e-9 * scale)
+      })
+    }
+  })
+
+  it('|H| at three frequencies is ω₀² over the product of the distances from jω to the two roots, to 1e-9', () => {
+    const exp = byId.h7
+    for (const seed of [0, 3, 9, 31]) {
+      const p = seed ? randomParams(exp, seed) : defaultsOf('h7')
+      const x = analyse(exp, p)
+      const w0 = x.state.w0
+      for (const f of [p.f / 10, p.f, p.f * 10]) {
+        const w = 2 * Math.PI * f
+        const ac = solveAC(x.net, w, { anyFreq: true, sources: { V1: 1 } })
+        const H = cx.cdiv(ac.volt.C1, ac.volt.V1)
+        const d = x.state.roots.map((r) => Math.hypot(r.re, w - r.im))
+        const product = (w0 * w0) / (d[0] * d[1])
+        expect(Math.abs(cx.cabs(H) - product), `seed ${seed} at ${f} Hz`).toBeLessThanOrEqual(1e-9 * product)
+        // And the phase is the sum of the two angles, turned the other way.
+        const ang = x.state.roots.reduce((a, r) => a + Math.atan2(w - r.im, -r.re), 0)
+        expect(Math.abs(wrapA(cx.carg(H) + ang)), `phase seed ${seed} at ${f} Hz`).toBeLessThanOrEqual(1e-9)
+      }
+    }
+  })
+
+  it('the defaults put the pair at −2500 ± j9682 rad/s, and |H| = 2.00 at the drive', () => {
+    const { p, x } = at('h7')
+    expect(x.state.alpha).toBeCloseTo(p.R1 / (2 * p.L1), 9)
+    expect(x.state.w0).toBeCloseTo(1 / Math.sqrt(p.L1 * p.C1), 6)
+    expect(x.state.wd).toBeCloseTo(9682.46, 1)
+    expect(x.state.roots.map((r) => r.re)).toEqual([expect.closeTo(-2500, 6), expect.closeTo(-2500, 6)])
+    expect(cx.cabs(cx.cdiv(x.ac.volt.C1, x.ac.volt.V1))).toBeCloseTo(2.0001, 3)
+  })
+})
+
+describe('I9 and I10: the clamper and the doubler', () => {
+  it('I9: the trough is held at −0.700 V, the swing is the source’s own, and the mean is V_p − V_f less the droop', () => {
+    const { p, x } = at('i9')
+    const late = x.tr.samples.filter((s) => s.t > x.tEnd - 1 / p.f).map((s) => s.sol.v.out)
+    expect(Math.min(...late)).toBeCloseTo(-0.7, 9)
+    expect(Math.max(...late) - Math.min(...late)).toBeCloseTo(2 * p.A, 1)
+    const mean = meanRms(x.tr, (sol) => sol.v.out, x.tEnd - 1 / p.f, x.tEnd).mean
+    expect(mean).toBeCloseTo(9.2908, 3)
+    // V_p − V_f is the ideal the load never quite allows, and it is above the mean by under a fifth of a per cent.
+    const ideal = p.A - 0.7
+    expect(mean).toBeLessThan(ideal)
+    expect((ideal - mean) / ideal).toBeLessThan(0.002)
+  })
+
+  it('I9: exactly one conduction window per steady cycle, after the first', () => {
+    const { p, x } = at('i9')
+    const ons = x.events.filter((e) => e.to === 'on')
+    expect(ons.length).toBe(p.N)
+    for (let k = 1; k < p.N; k++) {
+      const inCycle = ons.filter((e) => e.t > k / p.f && e.t <= (k + 1) / p.f)
+      expect(inCycle.length, `cycle ${k + 1}`).toBe(1)
+    }
+    // And it is a window, not an instant: the diode conducts for a real span each time.
+    const runs = x.tr.runs.filter((r) => r.regions.D1 === 'on' && r.t1 > r.t0)
+    expect(runs.length).toBe(p.N)
+    for (const r of runs) expect(r.t1 - r.t0).toBeGreaterThan(0)
+  })
+
+  it('I10: node x is the clamper’s, the output settles under 2V_p − 2V_f, and it passes 99 % of it in the eighth cycle', () => {
+    const { p, x } = at('i10')
+    const ideal = 2 * (p.A - 0.7)
+    expect(ideal).toBeCloseTo(18.6, 9)
+    const xs = x.tr.samples.map((s) => s.sol.v.x)
+    expect(Math.min(...xs)).toBeCloseTo(-0.7, 9)
+    expect(Math.max(...xs)).toBeCloseTo(2 * p.A - 0.7, 0)
+    const peak = (k) => Math.max(...x.tr.samples.filter((s) => s.t > (k - 1) / p.f && s.t <= k / p.f).map((s) => s.sol.v.out))
+    // It climbs every cycle and never reaches the ideal, because the load takes a share of every cycle.
+    for (let k = 2; k <= p.N; k++) {
+      expect(peak(k), `cycle ${k}`).toBeGreaterThan(peak(k - 1))
+      expect(peak(k), `cycle ${k}`).toBeLessThan(ideal)
+    }
+    const cycles = Array.from({ length: p.N }, (_, i) => peak(i + 1))
+    expect(cycles.findIndex((v) => v >= 0.99 * ideal) + 1).toBe(8)
+    const mean = meanRms(x.tr, (sol) => sol.v.out, x.tEnd - 1 / p.f, x.tEnd).mean
+    expect(mean).toBeCloseTo(18.5188, 3)
+  })
+})
+
 // ---------------------------------------------------------- hand-over (H6)
 // Plan §5: an exact mapping to Circuit Lab, tested both ways — the circuit that
 // arrives has this circuit's transfer function at every sweep point, and what
@@ -1424,6 +1537,8 @@ describe('what the student reads is what the solver did', () => {
       'g6→G4': (t) => t.params.every((k) => !['v0', 'i0'].includes(k.key)), // "the response from rest (G4)": no initial-state knobs
       'h1→F3': (t, p) => hasPart(t, p, 'C') && !hasPart(t, p, 'L') && isRC(t, p), // "the same e^(−t/τ) as F3 with τ = RC"
       'h1→H2': (t) => t.view === 'phasor', // "the phasor views (H2 onward)"
+      // H7's seam: "the same series RLC as G1", and "G1's characteristic equation".
+      'h7→G1': (t, p) => t.terms.includes('characteristic') && analyse(t, p).state.n === 2,
     }
     const seen = []
     for (const e of EXPERIMENTS) {
@@ -1486,7 +1601,7 @@ describe('what the student reads is what the solver did', () => {
 
   it('every sine experiment opens with the source well off its zero crossing; H2 and H6 at its peak', () => {
     const sines = EXPERIMENTS.filter((q) => q.net(defaultsOf(q.id)).elements.some((el) => el.wave && el.wave.kind === 'sine'))
-    expect(sines.map((q) => q.id)).toEqual(['e9', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'i4', 'i5', 'i6', 'i7'])
+    expect(sines.map((q) => q.id)).toEqual(['e9', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'i4', 'i5', 'i6', 'i7', 'i9', 'i10'])
     for (const e of sines) {
       const { p, x } = at(e.id)
       // The source's own voltage, not a node called "in": the bridge's source
@@ -1867,6 +1982,21 @@ const HEADLINE_CLOSED = {
     return (0.5 * p.R1 * p.A ** 2) / (p.R1 ** 2 + (w * p.L1) ** 2)
   },
   h6: (p) => 20 * Math.log10(1 / Math.sqrt(1 + (2 * Math.PI * p.f * p.R1 * p.C1) ** 2)),
+  // H7's headline IS the claim: ω₀² over the product of the distances from the
+  // drive point to the two roots of s² + (R/L)s + 1/LC, both roots taken from
+  // the quadratic formula and not from the state equation the app solves.
+  h7: (p) => {
+    const w = 2 * Math.PI * p.f
+    const w0 = 1 / Math.sqrt(p.L1 * p.C1)
+    const a = p.R1 / (2 * p.L1)
+    const disc = a * a - w0 * w0
+    const roots =
+      disc >= 0
+        ? [{ re: -a + Math.sqrt(disc), im: 0 }, { re: -a - Math.sqrt(disc), im: 0 }]
+        : [{ re: -a, im: Math.sqrt(-disc) }, { re: -a, im: -Math.sqrt(-disc) }]
+    const d = roots.map((r) => Math.hypot(r.re, w - r.im))
+    return 20 * Math.log10((w0 * w0) / (d[0] * d[1]))
+  },
   // ---- the piecewise groups. V_f is the diode default, 0.7 V.
   e9: (p) => (p.Vsat * p.R1) / (p.R1 + p.R2),
   // A blocking diode passes nothing, so the node it feeds sits at the source.
@@ -1911,6 +2041,17 @@ const HEADLINE_CLOSED = {
     return top * (1 - Math.exp(-(last.t1 - last.t0) / (p.RL * p.C1)))
   },
   i7: (p) => Math.min(Math.abs(p.A), p.Vref + 0.7),
+  // The clamper holds its trough at one forward drop below ground, whatever
+  // the source, the capacitor and the load are doing.
+  i9: (p) => (p.model === 'ideal' ? 0 : -0.7),
+  // The doubler's peak, recovered from the trough by the law that governs the
+  // gap between humps: while D2 blocks, C2 sees only the load.
+  i10: (p, x) => {
+    const off = x.tr.runs.filter((r) => r.regions.D2 === 'off' && r.t1 > r.t0 && r.t1 < x.tEnd)
+    const gap = off[off.length - 1]
+    if (!gap) return Math.max(...x.tr.samples.map((s) => s.sol.v.out))
+    return x.tr.at(gap.t1, 'left').sol.v.out * Math.exp((gap.t1 - gap.t0) / (p.RL * p.C2))
+  },
   // Regulated at V_z while the divider would have gone above it; an ordinary
   // divider below the knee.
   i8: (p) => Math.max(-0.7, Math.min(p.Vz, (p.E * p.RL) / (p.RS + p.RL))),
@@ -1930,7 +2071,7 @@ describe('the headline number', () => {
       expect(HEADLINE_CLOSED[exp.id], `${exp.id} closed form`).toBeTypeOf('function')
       // i5's diodes leak by design; i6's ripple can be attovolts; i7 reads a
       // peak off the drawn samples. Each is right to a part in ten thousand.
-      const tol = ['i5', 'i6', 'i7'].includes(exp.id) ? 1e-4 : isDynamic(exp) ? 1e-6 : 1e-9
+      const tol = ['i5', 'i6', 'i7', 'i10'].includes(exp.id) ? 1e-4 : isDynamic(exp) ? 1e-6 : 1e-9
       const settings = [defaultsOf(exp.id), ...Array.from({ length: 25 }, (_, k) => randomParams(exp, k * 7919 + 17))]
       for (const p of settings) {
         const x = analyse(exp, p)
@@ -1955,7 +2096,10 @@ describe('the headline number', () => {
         } else expect(got).toBe(num(h.value(x, p), h.unit, 3))
       }
     }
-  })
+    // Twenty-six settings for each of 58 experiments, a third of them exact
+    // transients walked event by event: about 200 seconds alone. The same
+    // headroom the math-panel walk above takes, and for the same reason.
+  }, 600000)
 
   it('E3 refuses at the defaults and reads A·V₁ with finite gain; F6 reads I₀·R_off', () => {
     expect(headlineValue(byId.e3.headline, at('e3').x, at('e3').p)).toBeNull()
@@ -1993,7 +2137,7 @@ describe('the headline number', () => {
         expect(live.length, `${exp.id}: "${live}" wider than "${it.text}"`).toBeLessThanOrEqual(it.text.length)
       }
     }
-  })
+  }, 240000)
 
   it('D3’s mesh arrows carry the live currents, in a text no wider than their stand-in', () => {
     const d3 = byId.d3

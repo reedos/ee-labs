@@ -45,6 +45,23 @@ const lateOut = (x) => {
   const f = x.tr.norm.elements.find((e) => e.wave && e.wave.kind === 'sine').wave.freq
   return x.tr.samples.filter((s) => s.t > x.tEnd - 1 / f).map((s) => s.sol.v.out)
 }
+/** The largest v_out inside cycle k of the drive, counting from 1 — how far a reservoir has filled by then. */
+const cyclePeak = (x, p, k) =>
+  Math.max(...x.tr.samples.filter((s) => s.t > (k - 1) / p.f && s.t <= k / p.f).map((s) => s.sol.v.out))
+/** Every value a node takes across the whole window, for the extremes of a waveform that is still settling. */
+const allOf = (x, key) => x.tr.samples.map((s) => s.sol.v[key])
+
+/**
+ * |H| at the drive, built the way H7 draws it: ω₀² divided by the product of
+ * the distances from the drive point jω to the two roots of the characteristic
+ * equation. It never touches the phasor solve, so its agreement with |H| is a
+ * check of the claim and not a restatement of it.
+ */
+function distanceProduct(x) {
+  const w0sq = x.state.w0 * x.state.w0
+  const d = x.state.roots.map((r) => Math.hypot(r.re, x.omega - r.im))
+  return w0sq / (d[0] * d[1])
+}
 
 /** Linear interpolation of the energy ledger at time t. */
 function energyAt(x, t, key) {
@@ -883,6 +900,48 @@ export const LESSONS = {
       [(x, p, again, exp) => readQuantity(again({ f: 1e5 }), { ...p, f: 1e5 }, 'H.deg', exp), -89.91],
     ],
   },
+  h7: {
+    see:
+      'The same series RLC as G1, driven by a sine. Its characteristic equation s² + (R/L)s + 1/LC has two ' +
+    'roots, and the state view reads them as −2500 ± j9682 rad/s. Those roots are the poles of H(s) = ' +
+    'V_C/V_s. At any frequency |H| is ω₀² over the product of the two distances from jω to them, and 2.00 at ' +
+    'the drive.',
+    seeReads: [
+      [(x) => x.state.alpha, 2500],
+      [(x) => x.state.wd, 9682.46],
+      ['H.mag', 2.0001],
+      [distanceProduct, 2.0001],
+    ],
+    try: [
+      {
+        say: 'The 5.00 Ω chip: the roots move to −250 ± j9997 rad/s, a tenth as far from the axis, and the gain at the drive climbs to 20.0.',
+        set: { R1: 5 },
+        reads: [[(x) => x.state.alpha, 250], [(x) => x.state.wd, 9996.87], ['H.mag', 20.0], [distanceProduct, 20.0]],
+      },
+      {
+        say: 'The 800 Ω chip: the two roots become real, −1.27 and −78.7 krad/s, and with ζ = 4.00 the Bode curve has no peak left.',
+        set: { R1: 800 },
+        reads: [
+          [(x) => x.state.roots[0].re, -1270.17],
+          [(x) => x.state.roots[1].re, -78729.8],
+          [(x) => x.state.zeta, 4],
+        ],
+      },
+      {
+        say: 'R back at 50 Ω, the 15.9 kHz chip, a decade above the roots: both distances grow tenfold, so |H| falls a hundredfold to 0.0101.',
+        set: { f: 15915, R1: 50 },
+        reads: [['H.mag', 0.0100888], [distanceProduct, 0.0100888]],
+      },
+    ],
+    why:
+      'Substituting v = e^{st} into LC v″ + RC v′ + v = v_s turns the differential equation into s²LC + sRC + ' +
+    '1 = 0, which is G1’s characteristic equation. The same polynomial is the denominator of H(s) = ' +
+    '1/(s²LC + sRC + 1), so its roots are the poles. Written around them, H(s) = ω₀²/((s − s₁)(s − s₂)). Read ' +
+    'along the jω axis, the numerator is a constant and each factor is the distance from the drive point to ' +
+    'one root. That is why |H| is ω₀² divided by the product of two lengths. A root close to the axis makes ' +
+    'one of those lengths small at the frequency beside it, and that is resonance. Circuit Lab computes these ' +
+    'same two poles from the same R, L and C, and draws them on the s-plane. Its first group starts here.',
+  },
   e9: {
     see:
       'The output feeds back to the + input, so the threshold moves with the output. The output sits at 12 V ' +
@@ -1252,5 +1311,81 @@ export const LESSONS = {
     'here, it comes out of breakdown altogether and the circuit is an ordinary divider again. The sweep shows ' +
     'both regimes: flat while it regulates, and the divider’s own curve below the knee.',
     whyReads: [[(x, p) => (p.Vz * p.RS) / (p.E - p.Vz), 347.39]],
+  },
+  i9: {
+    see:
+      'A capacitor in series with the signal and a diode across the output make a clamper. The wave arrives ' +
+    'whole, and its lowest point is now held at −700 mV, one diode drop below ground. The mean has moved ' +
+    'from zero to 9.29 V, while the swing is still the source’s own 20.0 V.',
+    seeReads: [
+      [(x) => Math.min(...lateOut(x)), -0.7],
+      [(x, p) => meanOut(x, (sol) => sol.v.out, p.f), 9.2908],
+      [(x) => Math.max(...lateOut(x)) - Math.min(...lateOut(x)), 19.9885],
+    ],
+    try: [
+      {
+        say: 'Watch the scope: the diode conducts for a short window near each trough, four windows in four cycles, and the capacitor is alone with the load between them.',
+        reads: [[(x) => x.events.filter((e) => e.to === 'on').length, 4]],
+      },
+      {
+        say: 'Set the diode model to ideal: the clamp level rises to 0 V, and the mean rises with it to 9.99 V.',
+        set: { model: 'ideal' },
+        reads: [[(x) => Math.min(...lateOut(x)), 0, 1e-6], [(x, p) => meanOut(x, (sol) => sol.v.out, p.f), 9.9902]],
+      },
+      {
+        say: 'Back on the drop model, set R_L to 10 kΩ: with τ = R_L·C a hundred times shorter the output droops between windows, and the mean falls to 8.64 V.',
+        set: { RL: 10000, model: 'drop' },
+        reads: [['v.out', 18.5321], [(x, p) => meanOut(x, (sol) => sol.v.out, p.f), 8.6366]],
+      },
+    ],
+    why:
+      'A capacitor cannot change its voltage instantly, so the series capacitor passes the shape through ' +
+    'unchanged and adds whatever DC it holds. The diode sets what that DC is. Any time the output tries to go ' +
+    'below −V_f the diode conducts and tops the capacitor up, so the output’s lowest point cannot pass that ' +
+    'level. Once the capacitor holds V_p − V_f the trough lands exactly there, and the whole waveform rides ' +
+    'one full swing above it. The load takes some of that back. Between conduction windows the capacitor ' +
+    'discharges through R_L, so the level sags each cycle and the mean sits a little under V_p − V_f.',
+  },
+  i10: {
+    see:
+      'The clamper’s output feeds a peak rectifier, and the pair is a voltage doubler. Node x swings from ' +
+    '−700 mV to 19.24 V, nearly twice the source’s peak, and the second diode charges C₂ to the top of that ' +
+    'swing. Ten cycles in, the output holds 18.52 V, which is the ideal 18.6 V less the load’s droop.',
+    seeReads: [
+      [(x) => Math.min(...allOf(x, 'x')), -0.7],
+      [(x) => Math.max(...allOf(x, 'x')), 19.24],
+      [(x, p) => meanOut(x, (sol) => sol.v.out, p.f), 18.5188],
+      [(x, p) => 2 * (p.A - 0.7), 18.6],
+    ],
+    try: [
+      {
+        say: 'Drag the cursor to 66.7 ms, four cycles in: the output has only reached 16.81 V and is still climbing.',
+        at: 4 / 60,
+        reads: [['v.out', 16.8142]],
+      },
+      {
+        say: 'Read the eighth cycle’s peak, 18.46 V, which is 99.2 % of the ideal. The output is full after eight cycles.',
+        reads: [[(x, p) => cyclePeak(x, p, 8), 18.4593], [(x, p) => (100 * cyclePeak(x, p, 8)) / (2 * (p.A - 0.7)), 99.24]],
+      },
+      {
+        say: 'Set C₂ to 100 µF: ten times as much to fill, the same charge each cycle, so after ten cycles the output has only reached 10.98 V.',
+        set: { C2: 100e-6 },
+        reads: [[(x, p) => meanOut(x, (sol) => sol.v.out, p.f), 10.9787]],
+      },
+      {
+        say: 'With C₂ back at 10 µF, set R_L to 10 kΩ. The load takes more each cycle than the diodes replace, so the ripple grows to 2.10 V and the mean falls to 15.07 V.',
+        set: { RL: 10000, C2: 10e-6 },
+        reads: [
+          [(x) => Math.max(...lateOut(x)) - Math.min(...lateOut(x)), 2.1033],
+          [(x, p) => meanOut(x, (sol) => sol.v.out, p.f), 15.0689],
+        ],
+      },
+    ],
+    why:
+      'The first two elements are the clamper again, so node x carries the whole sine lifted until its trough ' +
+    'sits at −V_f. Its peak is then nearly twice V_p. The second diode and C₂ are the peak rectifier reading ' +
+    'that node, so C₂ charges to the peak of x less one more drop. Two drops in all, and the ideal output is ' +
+    'twice V_p less twice V_f. The doubling is not instant. Each cycle the diodes hand across only the charge ' +
+    'the load took, so the output climbs cycle by cycle and settles when the two are equal.',
   },
 }

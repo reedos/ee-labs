@@ -1,0 +1,123 @@
+// Group D: synchronous and permanent-magnet machines, and the dq frame.
+
+import { PM, SM } from '../machines.js'
+import { Amp, Choice, Deg, Freq, Henry, Ohm, Plain, Toggle, Volt, Wb, chips } from '../knobs.js'
+
+export const GROUP = 'D · Synchronous and permanent magnet'
+
+const sync = (salient = false) => [
+  Volt('V', 'Terminal voltage per phase', SM.V, 50, 500),
+  chips(Volt('E', 'Excitation EMF', SM.E, 20, 500), [180, 230.94, 260, 320]),
+  Ohm('Xs', 'Synchronous reactance', SM.Xs, 0.5, 60),
+  Ohm('Xd', 'Direct-axis reactance', SM.Xd, 0.5, 60),
+  Ohm('Xq', 'Quadrature reactance', SM.Xq, 0.5, 60),
+  Freq('f', 'Frequency', SM.f, 10, 200),
+  chips(Plain('poles', 'Poles', SM.poles, 2, 12), [2, 4, 6]),
+  chips(Deg('deltaDeg', 'Power angle', 20, 0, 179), [20, 45, 90]),
+  Toggle('salient', 'Rotor', salient, 'salient', 'round'),
+]
+
+export const EXPERIMENTS = [
+  {
+    id: 'd1',
+    group: GROUP,
+    kind: 'sync',
+    name: 'The phasor diagram',
+    terms: ['powerangle', 'synchronousreactance', 'excitation'],
+    params: sync(),
+    view: 'phasors',
+    views: ['phasors', 'reading', 'angle'],
+    claim: { phasor: true },
+  },
+  {
+    id: 'd2',
+    group: GROUP,
+    kind: 'sync',
+    name: 'Power angle and pull-out',
+    terms: ['powerangle', 'pullout'],
+    params: sync(),
+    view: 'angle',
+    views: ['angle', 'phasors', 'reading'],
+    claim: { pullout: true },
+  },
+  {
+    id: 'd3',
+    group: GROUP,
+    kind: 'sync',
+    name: 'Excitation, and the V curve',
+    terms: ['excitation', 'powerfactor', 'reactivepower'],
+    params: sync(),
+    excitations: [180, 230.94, 260, 320],
+    view: 'phasors',
+    views: ['phasors', 'reading', 'angle'],
+    claim: { excitation: true },
+  },
+  {
+    id: 'd4',
+    group: GROUP,
+    kind: 'sync',
+    name: 'Saliency and reluctance torque',
+    terms: ['saliency', 'reluctancetorque', 'powerangle'],
+    params: sync(true),
+    machine: { ...SM, salient: true },
+    view: 'angle',
+    views: ['angle', 'reading', 'phasors'],
+    claim: { saliency: true },
+  },
+  {
+    id: 'd5',
+    group: GROUP,
+    kind: 'dq',
+    name: 'The dq transform, a change of variables',
+    terms: ['dq', 'clarke', 'park', 'powerinvariant'],
+    params: [
+      Volt('amp', 'Peak phase voltage', 325, 10, 800),
+      Freq('f', 'Frequency', 50, 5, 200),
+      Plain('t', 'Time, in periods', 0.15, 0, 1),
+      Choice('convention', 'Convention', 'power-invariant', [
+        { value: 'power-invariant', label: 'power' },
+        { value: 'amplitude-invariant', label: 'amplitude' },
+      ]),
+    ],
+    view: 'dq',
+    views: ['dq'],
+    claim: { dq: true },
+  },
+  {
+    id: 'd6',
+    group: GROUP,
+    kind: 'pmsm',
+    name: 'The magnet machine in dq',
+    terms: ['dq', 'pmsm', 'state'],
+    params: [
+      Ohm('R', 'Phase resistance', PM.R, 0.05, 20),
+      Henry('Ld', 'Direct-axis inductance', PM.Ld, 1e-4, 0.1),
+      Henry('Lq', 'Quadrature inductance', PM.Lq, 1e-4, 0.1),
+      Wb('lambda', 'Magnet flux linkage', PM.lambda, 0.005, 2),
+      Plain('pairs', 'Pole pairs', PM.pairs, 1, 12),
+      Freq('fe', 'Electrical frequency', 100, 1, 1000),
+      Amp('iq', 'q-axis current', 10, -50, 50),
+      Amp('id_', 'd-axis current', 0, -50, 50),
+    ],
+    view: 'state',
+    views: ['state', 'reading'],
+    claim: { pmsm: true },
+  },
+  {
+    id: 'd7',
+    group: GROUP,
+    kind: 'pmsm',
+    name: 'Field-oriented control, and the hand-over',
+    terms: ['foc', 'torqueconstant', 'plant'],
+    params: [
+      Ohm('R', 'Phase resistance', PM.R, 0.05, 20),
+      Henry('Lq', 'Quadrature inductance', PM.Lq, 1e-4, 0.1),
+      Wb('lambda', 'Magnet flux linkage', PM.lambda, 0.005, 2),
+      Plain('pairs', 'Pole pairs', PM.pairs, 1, 12),
+      Amp('iq', 'q-axis current', 10, -50, 50),
+    ],
+    view: 'reading',
+    views: ['reading', 'state'],
+    claim: { foc: true },
+  },
+]

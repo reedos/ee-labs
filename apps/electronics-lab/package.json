@@ -1,0 +1,28 @@
+{
+  "name": "electronics-lab",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Analog electronics from the op-amp a user meets to the op-amp from the inside: the junction, the transistor, bias, small signals, ports, amplifiers, frequency response, feedback, oscillators and noise.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@ee-labs/explain": "*",
+    "@ee-labs/network": "*",
+    "@ee-labs/random": "*",
+    "@ee-labs/systems": "*",
+    "@ee-labs/ui": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
+}

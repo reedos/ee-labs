@@ -1,0 +1,253 @@
+/* Fields Lab's own furniture. The shell, controls and NumField come from
+ * @ee-labs/ui; the group tabs, presets, terms fold and path nav are the
+ * house idiom other labs already use, copied so every lab reads as one
+ * suite. The field map and its panes are this lab's own. */
+
+/* ---------- the picker: group tabs, then that group's experiments ---------- */
+
+.group-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 0;
+}
+.controls h2.picker-cap {
+  padding: 0 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.group-tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 0 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.group-tab:hover { color: var(--text); }
+.group-tab.is-shown { color: var(--text); border-bottom-color: var(--accent); }
+.group-tab.is-here:not(.is-shown) { color: var(--accent); }
+
+.presets { display: flex; flex-wrap: wrap; gap: 5px; }
+.presets[hidden] { display: none; }
+.preset {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11.5px;
+  padding: 4px 8px;
+}
+.preset:hover { border-color: var(--accent); color: var(--accent); }
+.preset.is-on { border-color: var(--accent); color: var(--accent); background: rgba(56, 224, 176, 0.1); }
+
+.controls { padding-top: 8px; }
+.controls section { margin-top: 6px; padding-bottom: 10px; }
+.controls h2 { padding: 5px 12px 4px; margin-bottom: 6px; }
+.controls .hint { margin-top: 8px; }
+.controls .report-issue { margin-top: 14px; }
+
+/* ---------- the note, the try line, and why ---------- */
+
+.note-title { margin: 10px 0 2px; font-size: 12.5px; font-weight: 650; color: var(--text); }
+
+details.why-fold { margin: 6px 0; }
+details.why-fold > summary {
+  cursor: pointer;
+  font-size: 11.5px;
+  color: var(--dim);
+  list-style: none;
+}
+details.why-fold > summary::before { content: '\25B8  '; font-size: 9px; }
+details.why-fold[open] > summary::before { content: '\25BE  '; }
+details.why-fold p { margin-top: 6px; }
+
+/* Definitions on contact, folded under the note. */
+details.terms { margin: 6px 0 2px; }
+details.terms > summary { cursor: pointer; font-size: 11px; color: var(--accent); list-style: none; }
+details.terms > summary::before { content: '\25B8  '; font-size: 9px; }
+details.terms[open] > summary::before { content: '\25BE  '; }
+details.terms > summary::-webkit-details-marker { display: none; }
+details.terms dl { margin: 6px 0 0; }
+details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
+details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+
+.more-knobs { margin-top: 8px; }
+.more-knobs > summary { cursor: pointer; font-size: 12px; color: var(--dim); padding: 4px 0; }
+.more-knobs[open] > summary { margin-bottom: 4px; }
+
+.toggle-field .segmented { display: inline-flex; margin-top: 2px; }
+
+/* ---------- the top bar's path nav ---------- */
+
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 14px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+.topbar-nav .position {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+  font-size: 11px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 52px;
+}
+.topbar-nav .position em { font-style: normal; font-size: 10px; color: var(--dim); }
+.nav-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  padding: 0 0 2px;
+}
+.nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.nav-btn:disabled { opacity: 0.35; cursor: default; }
+
+.flow-node.is-off { color: var(--warn); border-color: rgba(255, 92, 122, 0.4); }
+
+.views.is-single { grid-template-rows: 1fr; }
+.view-head .segmented { flex: 0 0 auto; }
+.view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
+
+/* ---------- the field map ---------- */
+
+.fieldmap { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 6px; }
+.fieldmap[data-mode='2d'] { position: relative; }
+.fieldmap-canvas { flex: 1; width: 100%; min-height: 220px; border-radius: 6px; }
+.fieldmap-legend {
+  display: flex;
+  gap: 8px;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.fieldmap-chip {
+  background: rgba(11, 15, 20, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 11px;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.fieldmap-unit { color: var(--dim); }
+
+.fieldmap[data-mode='profile'] { gap: 2px; }
+.fieldmap-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.fieldmap-panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--dim);
+  padding: 2px 2px 0;
+}
+.fieldmap-panel-label { color: var(--text); font-weight: 600; }
+.fieldmap-panel-label.is-secondary { color: var(--amber); margin-left: auto; }
+.fieldmap-panel-label em { font-style: normal; color: var(--dim); }
+.fieldmap-panel-unit { color: var(--dim); }
+.fieldmap-panel-body { position: relative; flex: 1; min-height: 60px; }
+.fieldmap-profile-canvas { width: 100%; height: 100%; }
+.fieldmap-regions { position: absolute; inset: 0; pointer-events: none; }
+.fieldmap-region {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed var(--line-bright);
+  border-right: 1px dashed var(--line-bright);
+  background: rgba(122, 140, 158, 0.06);
+}
+.fieldmap-region.is-edge { border-left-style: solid; border-right-style: solid; }
+.fieldmap-ticks { position: relative; height: 14px; }
+.fieldmap-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.fieldmap-ticks[data-labelled='false'] .fieldmap-tick {
+  top: -1px;
+  height: 4px;
+  border-left: 1px solid var(--line);
+}
+
+/* ---------- the numbers, mesh, flux and circuit panes ---------- */
+
+.fields-numbers, .fields-mesh, .fields-flux, .fields-circuit { overflow: auto; min-height: 0; padding: 4px 2px; }
+.fields-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+.fields-row-label { color: var(--dim); min-width: 190px; }
+.fields-row-value { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.fields-row-value em { font-style: normal; color: var(--dim); margin-left: 8px; }
+.fields-row-formula { margin-left: auto; color: var(--dim); font-size: 11px; font-style: italic; }
+
+.fields-guard { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+.fields-guard.is-loose { color: var(--warn); }
+
+/* A setting the engine declines: the geometry's own message, where the drawing
+   would be. It is content, not an error state, so it reads as a note. */
+.fields-declined { color: var(--warn); max-width: 52ch; margin: auto; text-align: center; }
+
+/* The shapes the second half's panes draw in. A pane that needs a picture puts
+   a canvas in .fields-plot, which sizes it to the pane and leaves room for the
+   legend under it. .fields-split is the two-column readout a wave or a line
+   uses: the picture on one side and its numbers on the other. */
+.fields-plot { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.fields-plot canvas { width: 100%; height: auto; display: block; border-radius: 4px; background: var(--panel); }
+.fields-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; align-items: start; }
+.fields-legend { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--dim); }
+.fields-chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+@media (max-width: 900px) {
+  .fields-split { grid-template-columns: minmax(0, 1fr); }
+}
+
+.fields-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 8px; }
+.fields-table th, .fields-table td { text-align: center; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.fields-table th { color: var(--dim); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+@media (max-width: 900px) {
+  .views { display: flex; flex-direction: column; gap: 0; }
+  .views .view { min-height: 60vh; flex: 0 0 auto; }
+}
+
+@media (min-width: 1200px) and (max-width: 2399px) {
+  .app { grid-template-columns: 360px 1fr; }
+}

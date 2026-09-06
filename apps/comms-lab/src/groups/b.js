@@ -1,0 +1,288 @@
+// Group B: digital modulation and the constellation.
+//
+// The constellation canvas arrives here, and every experiment in the rest of the
+// lab uses it. The chain becomes complex at B1, which is where a symbol stops
+// being one number and becomes two.
+
+export const GROUP_B = 'Digital modulation and constellations'
+
+export default [
+  {
+    id: 'B1',
+    group: GROUP_B,
+    name: 'BPSK is one bit on one axis',
+    terms: ['constellation', 'mindistance', 'gray'],
+    params: { scheme: 'bpsk', ebN0Db: 12, symbols: 2048, seed: 1 },
+    view: 'constellation',
+    views: ['constellation', 'iq'],
+    featured: { field: 'ebN0Db' },
+    claims: [
+      {
+        label: 'one bit a symbol, so two points',
+        path: 'map.size',
+        formula: (p) => 2 ** 1,
+        tol: 0,
+      },
+      {
+        label: 'the mean square is one, so power is comparable across schemes',
+        path: 'map.meanSquare',
+        formula: () => 1,
+        tol: 1e-12,
+      },
+      {
+        label: 'the two points are two apart',
+        path: 'map.minDistance',
+        formula: () => 2,
+        tol: 1e-12,
+      },
+      {
+        label: 'and Es over Eb is nothing, because a symbol is a bit',
+        path: 'map.esOverEbDb',
+        formula: () => 0,
+        tol: 1e-12,
+        absolute: true,
+      },
+    ],
+  },
+  {
+    id: 'B2',
+    group: GROUP_B,
+    name: 'QPSK is two BPSK signals at right angles',
+    terms: ['constellation', 'mindistance', 'gray', 'carrier', 'ber'],
+    params: { scheme: 'qpsk', ebN0Db: 12, symbols: 2048, seed: 1 },
+    view: 'constellation',
+    views: ['constellation', 'iq'],
+    featured: { field: 'ebN0Db' },
+    claims: [
+      {
+        label: 'two bits a symbol, so four points',
+        path: 'map.bits',
+        formula: () => 2,
+        tol: 0,
+      },
+      {
+        label: 'the mean square is still one',
+        path: 'map.meanSquare',
+        formula: () => 1,
+        tol: 1e-12,
+      },
+      {
+        label: 'the points are the root of two apart',
+        path: 'map.minDistance',
+        formula: () => Math.SQRT2,
+        tol: 1e-12,
+      },
+      {
+        label: 'and a symbol now carries 3.010 dB more energy than a bit',
+        path: 'map.esOverEbDb',
+        formula: () => 10 * Math.log10(2),
+        tol: 1e-12,
+      },
+    ],
+  },
+  {
+    id: 'B3',
+    group: GROUP_B,
+    name: 'Gray labelling costs nothing and saves a bit',
+    terms: ['gray', 'constellation', 'mindistance', 'ser', 'ber'],
+    params: { scheme: 'qpsk', ebN0Db: 8, symbols: 4096, seed: 1 },
+    view: 'constellation',
+    views: ['constellation'],
+    featured: { field: 'ebN0Db' },
+    claims: [
+      {
+        label: 'Gray labels leave neighbours one bit apart',
+        path: 'map.grayMax',
+        formula: () => 1,
+        tol: 0,
+      },
+      {
+        label: 'natural binary leaves them two apart',
+        path: 'map.naturalMax',
+        formula: () => 2,
+        tol: 0,
+      },
+      {
+        label: 'so one symbol error is one bit error, and the ratio to the bit rate is one',
+        path: 'ber.serRatio',
+        formula: () => 1,
+        tol: 1e-3,
+      },
+    ],
+  },
+  {
+    id: 'B4',
+    group: GROUP_B,
+    name: '8-PSK trades distance for rate',
+    terms: ['constellation', 'mindistance', 'symbol', 'papr'],
+    params: { scheme: 'psk8', ebN0Db: 14, symbols: 4096, seed: 1 },
+    view: 'constellation',
+    views: ['constellation'],
+    featured: { field: 'ebN0Db' },
+    claims: [
+      {
+        label: 'three bits a symbol, so eight points on the circle',
+        path: 'map.size',
+        formula: () => 8,
+        tol: 0,
+      },
+      {
+        label: 'the points are two sines of an eighth turn apart, which is 0.7654',
+        path: 'map.minDistance',
+        formula: () => 2 * Math.sin(Math.PI / 8),
+        tol: 1e-12,
+      },
+      {
+        label: 'which is 0.5412 of QPSK, at the same power',
+        path: 'map.minDistance',
+        againstScaled: { path: 'map.distances.qpsk', by: 2 * Math.sin(Math.PI / 8) / Math.SQRT2 },
+        tol: 1e-12,
+      },
+      {
+        label: 'every point sits on one circle, so the peak equals the mean',
+        path: 'map.paprDb',
+        formula: () => 0,
+        tol: 1e-9,
+        absolute: true,
+      },
+    ],
+  },
+  {
+    id: 'B5',
+    group: GROUP_B,
+    name: '16-QAM puts the points on a grid',
+    terms: ['constellation', 'mindistance', 'papr', 'gray', 'ofdm'],
+    params: { scheme: 'qam16', ebN0Db: 16, symbols: 4096, seed: 1 },
+    view: 'constellation',
+    views: ['constellation'],
+    featured: { field: 'ebN0Db' },
+    claims: [
+      {
+        label: 'four bits a symbol, so sixteen points',
+        path: 'map.size',
+        formula: () => 16,
+        tol: 0,
+      },
+      {
+        label: 'the grid spacing at unit mean square is the root of two fifths',
+        path: 'map.minDistance',
+        formula: () => Math.sqrt(2 / 5),
+        tol: 1e-12,
+      },
+      {
+        label: 'the corner points carry 2.553 dB more than the average',
+        path: 'map.paprDb',
+        formula: () => 10 * Math.log10(1.8),
+        tol: 1e-9,
+      },
+      {
+        label: 'and the labels are still Gray, per dimension',
+        path: 'map.grayMax',
+        formula: () => 1,
+        tol: 0,
+      },
+    ],
+  },
+  {
+    id: 'B6',
+    group: GROUP_B,
+    name: 'The constellation under noise',
+    terms: ['constellation', 'evm', 'ser', 'awgn'],
+    params: { scheme: 'qam16', ebN0Db: 10, symbols: 8192, seed: 3 },
+    view: 'constellation',
+    views: ['constellation', 'ber'],
+    featured: { field: 'ebN0Db' },
+    claims: [
+      {
+        label: 'the closed form puts seven symbols in a thousand outside their region',
+        path: 'ber.ser',
+        formula: () => 7.0043e-3,
+        tol: 1e-3,
+      },
+      {
+        label: 'and counting the points outside reaches the same figure',
+        path: 'ber.ser',
+        inside: { lo: 'cloud.ser.ci.0', hi: 'cloud.ser.ci.1' },
+      },
+      {
+        label: 'the error vector reads the noise the channel added',
+        path: 'cloud.evm.rms',
+        formula: (p) => Math.sqrt(1 / (4 * 10 ** (p.ebN0Db / 10))),
+        tol: 0.06,
+      },
+    ],
+  },
+  {
+    id: 'B7',
+    group: GROUP_B,
+    name: 'FSK is not a point in the plane',
+    terms: ['symbol', 'carrier', 'qfunction', 'ber'],
+    params: { scheme: 'fskCoherent', symbolRate: 1000, passbandCarrier: 2000, ebN0Db: 12 },
+    view: 'ber',
+    views: ['ber'],
+    featured: { field: 'ebN0Db' },
+    claims: [
+      {
+        label: 'two tones a quarter of the rate apart still correlate',
+        path: 'ber.toneCorrelation.0',
+        atLeastValue: 0.1,
+      },
+      {
+        label: 'at half the symbol rate they correlate to nothing',
+        path: 'ber.toneCorrelation.1',
+        formula: () => 0,
+        tol: 1e-12,
+        absolute: true,
+      },
+      {
+        label: 'and at the full symbol rate too',
+        path: 'ber.toneCorrelation.2',
+        formula: () => 0,
+        tol: 1e-12,
+        absolute: true,
+      },
+      {
+        label: 'orthogonal signalling costs 3.010 dB against antipodal',
+        path: 'ber.orthogonalPenaltyDb',
+        formula: () => 10 * Math.log10(2),
+        tol: 1e-3,
+      },
+    ],
+  },
+  {
+    id: 'B8',
+    group: GROUP_B,
+    name: 'The phase ambiguity, and differential encoding',
+    terms: ['constellation', 'ber', 'gray', 'carrier', 'qfunction'],
+    params: { scheme: 'dbpsk', ebN0Db: 10, target: 1e-5, symbols: 4096, seed: 1 },
+    view: 'ber',
+    views: ['ber', 'constellation'],
+    featured: { field: 'ebN0Db' },
+    claims: [
+      {
+        label: 'BPSK needs 9.588 dB for one error in a hundred thousand',
+        path: 'ber.threshold.bpsk',
+        formula: () => 9.5879,
+        tol: 1e-3,
+      },
+      {
+        label: 'differential detection needs 10.342 dB',
+        path: 'ber.threshold.dbpsk',
+        formula: () => 10.342,
+        tol: 1e-3,
+      },
+      {
+        label: 'which is 0.754 dB for a receiver that needs no phase reference',
+        path: 'ber.threshold.dbpsk',
+        againstScaled: { path: 'ber.threshold.bpsk', by: 10.342 / 9.5879 },
+        tol: 1e-3,
+      },
+      {
+        label: 'its rate at 10 dB is half an exponential of the ratio',
+        path: 'ber.closed',
+        formula: (p) => 0.5 * Math.exp(-(10 ** (p.ebN0Db / 10))),
+        tol: 1e-9,
+      },
+    ],
+  },
+]

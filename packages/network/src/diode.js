@@ -29,19 +29,11 @@
 // i > 0 and v = V_f, and a blocking one has i = 0 and v below V_f.
 
 import { GROUND, NetworkError } from './netlist.js'
+import { K_B, Q_E, T_ROOM, VT, thermalVoltage } from './physics.js'
+import { BJT_REGIONS, bjtFlipTo, bjtMargins, bjtOf, bjtRegionElements, bjtRegionLabel } from './bjt.js'
+import { MOSFET_SWITCH_REGIONS, mosfetFlipTo, mosfetMargins, mosfetOf, mosfetRegionElements, mosfetRegionLabel } from './mosfet.js'
 
-/** Boltzmann's constant and the elementary charge, SI. */
-export const K_B = 1.380649e-23
-export const Q_E = 1.602176634e-19
-/** Room temperature, the 300 K a textbook rounds to. */
-export const T_ROOM = 300
-
-/** The thermal voltage kT/q — 25.852 mV at 300 K, the number every diode rule of thumb is built on. */
-export function thermalVoltage(T = T_ROOM) {
-  return (K_B * T) / Q_E
-}
-
-export const VT = thermalVoltage()
+export { K_B, Q_E, T_ROOM, VT, thermalVoltage }
 
 /** What a diode is, with the defaults a small-signal silicon part would carry. */
 export const DIODE_DEFAULTS = { model: 'drop', vf: 0.7, rd: 10, is: 1e-14, n: 1, vt: VT, vz: null, roff: null }
@@ -121,6 +113,18 @@ export function regionsOf(e) {
     if (d.model === 'exp') return null // not piecewise: Newton's, at DC only
     return Number.isFinite(d.vz) && d.vz > 0 ? ['on', 'off', 'zener'] : ['on', 'off']
   }
+  // The three-region BJT is piecewise-linear the way the constant-drop diode
+  // is: three straight pieces with guards between them. The square-law MOSFET
+  // is not — it is a curve inside two of its regions, so it goes to Newton —
+  // but the switch model of the same device is two pieces again.
+  if (e.type === 'Q' && bjtOf(e).model === 'regions') return BJT_REGIONS
+  if (e.type === 'M' && mosfetOf(e).model === 'switch') return MOSFET_SWITCH_REGIONS
+  // A controlled source with a current limit is piecewise-linear in the same
+  // way a diode is: it is the source it claims to be until the current it
+  // would deliver reaches the limit, and a fixed current after that. That is
+  // what a slew rate is — the op-amp macro's transconductance stage cannot
+  // charge its compensation capacitor faster than I_max/C.
+  if (e.type === 'VCCS' && Number.isFinite(e.ilimit) && e.ilimit > 0) return ['ipos', 'ineg', 'linear']
   // Rails first, and the linear region last, because of what "consistent"
   // means for an op-amp with POSITIVE feedback: all three states can satisfy
   // their own guards at once (E9), and the linear one is the unstable
@@ -128,9 +132,18 @@ export function regionsOf(e) {
   // so when more than one state fits, the search should not offer it first.
   // With negative feedback nothing is lost: a rail contradicts itself unless
   // the amplifier really is against it.
-  if (e.type === 'OPAMP' && Number.isFinite(e.vsat)) return ['high', 'low', 'linear']
+  if (e.type === 'OPAMP') {
+    const rails = Number.isFinite(e.vsat)
+    const limit = Number.isFinite(e.imax) && e.imax > 0
+    if (rails && limit) return ['high', 'low', 'ipos', 'ineg', 'linear']
+    if (rails) return ['high', 'low', 'linear']
+    if (limit) return ['ipos', 'ineg', 'linear']
+  }
   return null
 }
+
+/** The region a device sits in when nothing else is said. */
+export const restingRegion = (e) => (e.type === 'OPAMP' || e.type === 'VCCS' ? 'linear' : e.type === 'Q' ? 'active' : 'off')
 
 /** Every element in the netlist that has regions, with them. */
 export function regionDevices(norm) {
@@ -145,7 +158,7 @@ export function regionDevices(norm) {
 /** The region each device starts in when nothing else is said: a diode off, an op-amp in its linear region. */
 export function defaultRegions(norm) {
   const out = {}
-  for (const d of regionDevices(norm)) out[d.id] = d.type === 'OPAMP' ? 'linear' : 'off'
+  for (const d of regionDevices(norm)) out[d.id] = restingRegion(d.element)
   return out
 }
 
@@ -156,6 +169,10 @@ export function defaultRegions(norm) {
  * both enter the matrix without needing an internal node.
  */
 export function regionEffective(e, region) {
+  // A transistor is several elements at once, so these two return a list and
+  // mna.js flattens it. Everything else returns the one element it becomes.
+  if (e.type === 'Q') return bjtRegionElements(e, region)
+  if (e.type === 'M') return mosfetRegionElements(e, region)
   if (e.type === 'D') {
     const d = diodeOf(e)
     switch (region) {
@@ -169,9 +186,22 @@ export function regionEffective(e, region) {
         return d.roff > 0 ? { ...e, type: 'R', value: d.roff, from: 'D' } : { ...e, type: 'OPEN', from: 'D' }
     }
   }
+  if (e.type === 'VCCS') {
+    // At the limit the source delivers ±I_max, in the direction its own
+    // current flows: in at nodes[0], out at nodes[1], the package's
+    // convention for every element.
+    if (region === 'ipos') return { ...e, type: 'I', value: e.ilimit, from: 'VCCS' }
+    if (region === 'ineg') return { ...e, type: 'I', value: -e.ilimit, from: 'VCCS' }
+    return e
+  }
   if (e.type === 'OPAMP') {
     if (region === 'high' || region === 'low')
       return { ...e, type: 'V', nodes: [e.nodes[0], GROUND], value: region === 'high' ? e.vsat : -e.vsat, from: 'OPAMP' }
+    // Against its output current limit the op-amp is a current source: the
+    // element's own current is the negative of what it delivers, so pushing
+    // +I_max into the load is a branch current of −I_max.
+    if (region === 'ipos') return { ...e, type: 'I', nodes: [e.nodes[0], GROUND], value: -e.imax, from: 'OPAMP' }
+    if (region === 'ineg') return { ...e, type: 'I', nodes: [e.nodes[0], GROUND], value: e.imax, from: 'OPAMP' }
     return e
   }
   return e
@@ -186,6 +216,8 @@ export function regionEffective(e, region) {
  * both rails), and the one that reaches zero first is the event.
  */
 export function regionMargins(e, region, sol) {
+  if (e.type === 'Q') return bjtMargins(e, region, sol)
+  if (e.type === 'M') return mosfetMargins(e, region, sol)
   const i = sol.i[e.id]
   const v = sol.volt[e.id]
   if (e.type === 'D') {
@@ -205,34 +237,87 @@ export function regionMargins(e, region, sol) {
       }
     }
   }
-  if (e.type === 'OPAMP') {
-    const vout = sol.v[e.nodes[0]]
-    const diff = sol.v[e.ctrl[0]] - sol.v[e.ctrl[1]]
+  if (e.type === 'VCCS') {
+    const want = e.gain * (sol.v[e.ctrl[0]] - sol.v[e.ctrl[1]])
     switch (region) {
-      case 'high':
-        return [{ what: 'diff', margin: diff, says: `v₊ − v₋ ≥ 0` }]
-      case 'low':
-        return [{ what: 'diff', margin: -diff, says: `v₊ − v₋ ≤ 0` }]
+      case 'ipos':
+        return [{ what: 'ipos', margin: want - e.ilimit, says: `g·v_c ≥ +I_max` }]
+      case 'ineg':
+        return [{ what: 'ineg', margin: -e.ilimit - want, says: `g·v_c ≤ −I_max` }]
       case 'linear':
       default:
         return [
-          { what: 'high', margin: e.vsat - vout, says: `v_out ≤ +V_sat` },
-          { what: 'low', margin: vout + e.vsat, says: `v_out ≥ −V_sat` },
+          { what: 'ipos', margin: e.ilimit - i, says: `i_${e.id} ≤ +I_max` },
+          { what: 'ineg', margin: i + e.ilimit, says: `i_${e.id} ≥ −I_max` },
         ]
     }
+  }
+  if (e.type === 'OPAMP') {
+    const vout = sol.v[e.nodes[0]]
+    const diff = sol.v[e.ctrl[0]] - sol.v[e.ctrl[1]]
+    // What the amplifier would put at its output if nothing stopped it. With
+    // an infinite gain that is a sign test, and with a finite one it is a
+    // voltage: A·(v₊ − v₋) against the rail.
+    const finite = Number.isFinite(e.gain)
+    const wants = finite ? e.gain * diff : diff
+    const rails = Number.isFinite(e.vsat)
+    const limit = Number.isFinite(e.imax) && e.imax > 0
+    const walls = []
+    switch (region) {
+      case 'high':
+        walls.push({ what: 'diff', margin: finite ? wants - e.vsat : diff, says: finite ? `A(v₊ − v₋) ≥ +V_sat` : `v₊ − v₋ ≥ 0` })
+        break
+      case 'low':
+        walls.push({ what: 'diff', margin: finite ? -e.vsat - wants : -diff, says: finite ? `A(v₊ − v₋) ≤ −V_sat` : `v₊ − v₋ ≤ 0` })
+        break
+      case 'ipos':
+        // Delivering all it can: the output it wants is still above the one
+        // the limited current produced.
+        walls.push({ what: 'ipos', margin: wants - vout, says: `A(v₊ − v₋) ≥ v_out` })
+        break
+      case 'ineg':
+        walls.push({ what: 'ineg', margin: vout - wants, says: `A(v₊ − v₋) ≤ v_out` })
+        break
+      case 'linear':
+      default:
+        if (rails) {
+          walls.push({ what: 'high', margin: e.vsat - vout, says: `v_out ≤ +V_sat` })
+          walls.push({ what: 'low', margin: vout + e.vsat, says: `v_out ≥ −V_sat` })
+        }
+        break
+    }
+    // The output current limit binds in every region but the two it names:
+    // the branch current is the negative of what the op-amp delivers.
+    if (limit && region !== 'ipos' && region !== 'ineg') {
+      walls.push({ what: 'ipos', margin: e.imax + i, says: `i_out ≤ +I_max` })
+      walls.push({ what: 'ineg', margin: e.imax - i, says: `i_out ≥ −I_max` })
+    }
+    // A limited output still cannot pass a rail.
+    if (rails && (region === 'ipos' || region === 'ineg')) {
+      walls.push({ what: 'high', margin: e.vsat - vout, says: `v_out ≤ +V_sat` })
+      walls.push({ what: 'low', margin: vout + e.vsat, says: `v_out ≥ −V_sat` })
+    }
+    return walls
   }
   return []
 }
 
 /** The region a violated margin sends the device to. */
 export function flipTo(e, region, what) {
+  if (e.type === 'Q') return bjtFlipTo(region, what)
+  if (e.type === 'M') return mosfetFlipTo(region)
   if (e.type === 'D') {
     if (region === 'on') return 'off'
     if (region === 'zener') return 'off'
     return what === 'vz' ? 'zener' : 'on'
   }
+  if (e.type === 'VCCS') {
+    if (region === 'linear') return what === 'ipos' ? 'ipos' : 'ineg'
+    return 'linear'
+  }
   if (e.type === 'OPAMP') {
-    if (region === 'linear') return what === 'high' ? 'high' : 'low'
+    if (region === 'linear') return what === 'high' ? 'high' : what === 'low' ? 'low' : what === 'ipos' ? 'ipos' : 'ineg'
+    if (region === 'high' || region === 'low') return what === 'ipos' ? 'ipos' : what === 'ineg' ? 'ineg' : 'linear'
     return 'linear'
   }
   return region
@@ -240,6 +325,10 @@ export function flipTo(e, region, what) {
 
 /** How a region reads in a sentence: "D1 on", "A1 against the + rail". */
 export function regionLabel(e, region) {
+  if (e.type === 'Q') return bjtRegionLabel(region)
+  if (e.type === 'M') return mosfetRegionLabel(region)
+  if (region === 'ipos' || region === 'ineg') return `at its ${region === 'ipos' ? '+' : '−'} current limit`
+  if (e.type === 'VCCS') return 'linear'
   if (e.type === 'OPAMP') return region === 'linear' ? 'in its linear region' : `against the ${region === 'high' ? '+' : '−'} rail`
   if (region === 'zener') return 'in breakdown'
   return region === 'on' ? 'conducting' : 'blocking'
