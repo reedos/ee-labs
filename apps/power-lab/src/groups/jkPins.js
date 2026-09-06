@@ -144,12 +144,13 @@ function resonantPins(x, params, H) {
   const unpinned = {}
   const iScale = Math.max(1e-6, Math.abs(sig.iL.max), Math.abs(sig.iL.min))
 
-  // The half bridge puts the tank across one rail half and then the other,
-  // for equal times, so the drive is an exact square about zero.
-  pins['vsw.avg'] = zero(half)
-  pins['vsw.rms'] = ex(half)
-  pins['vsw.min'] = ex(-half)
-  pins['vsw.max'] = ex(half)
+  // The half bridge holds the switch node at one rail and then the other,
+  // for equal times, so it is an exact square between 0 and V_in. Its mean is
+  // half the rail and its RMS the rail over √2.
+  pins['vsw.avg'] = ex(half)
+  pins['vsw.rms'] = ex(p.Vin / Math.SQRT2)
+  pins['vsw.min'] = zero(half)
+  pins['vsw.max'] = ex(p.Vin)
   pins['vsw.pp'] = ex(p.Vin)
 
   // Charge balance on the output capacitor: what the rectifier delivers is

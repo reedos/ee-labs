@@ -295,6 +295,24 @@ describe('the shapes the app leans on', () => {
       }
     }
   })
+  it('reports the switch node as the schematic probes it, between the two rails', () => {
+    // A half bridge's switch node sits between V_in and ground, so it is
+    // never negative. The ±V_in/2 the gain formulas are written in is that
+    // node less the DC the tank capacitor holds, and the drive's own AC
+    // amplitude is what the tank sees.
+    for (const kind of RESONANT_KINDS) {
+      const { m, conv } = solve(kind, { fs: 1.3 * FR })
+      expect(m.sig.vsw.min, kind).toBeCloseTo(0, 12)
+      expect(m.sig.vsw.max, kind).toBeCloseTo(conv.p.Vin, 12)
+      expect(m.sig.vsw.avg, kind).toBeCloseTo(conv.p.Vin / 2, 9)
+      expect(m.sig.vsw.rms, kind).toBeCloseTo(conv.p.Vin / Math.SQRT2, 9)
+      expect(m.sig.vsw.pp, kind).toBeCloseTo(conv.p.Vin, 12)
+      // And the source's power is that node times the tank current, exactly,
+      // because the node is the one the rail drives.
+      expect(m.meanProd('vsw', 'iL'), kind).toBeCloseTo(m.Pin, 9)
+    }
+  })
+
   it('runs the bridge at half the period each way, whatever the frequency knob says', () => {
     const conv = resonantConverter('llc', { fs: 137e3 })
     expect(conv.T).toBeCloseTo(1 / 137e3, 15)

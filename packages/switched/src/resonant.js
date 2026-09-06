@@ -31,9 +31,12 @@
 //
 // -------------------------------------------------------- what is modelled
 //
-// The bridge is a half bridge: the tank sees ±V_in/2 about the divider's
-// midpoint, so the rail supplies i_r for half the period and nothing for the
-// other half. The secondary is centre-tapped, so one diode drop reaches the
+// The bridge is a half bridge: the switch node steps between the two rails,
+// so the rail supplies i_r for half the period and nothing for the other
+// half. The tank capacitor carries half the rail as its own DC, so what the
+// tank inductor and the transformer see is ±V_in/2 about that. `v_sw` is the
+// switch node itself, the node the schematic probes, and its mean is V_in/2.
+// The secondary is centre-tapped, so one diode drop reaches the
 // output. `Rs` is the whole tank loop's series resistance — the winding, the
 // switches, the capacitor's own — and it is charged as the winding row of the
 // ledger, which is where a reader will look for it.
@@ -215,7 +218,11 @@ export function resonantConverter(kind, params = {}) {
         iL: form([[IR, 1]]),
         vC: form([[VC, 1]]),
         vout: form([[VO, 1]]),
-        vsw: form([], vsq),
+        // The switch node, measured where the schematic probes it: between
+        // the two rails, so it is 0 or V_in and never negative. The tank's
+        // own drive is this less the DC the tank capacitor holds, which is
+        // the ±V_in/2 the gain formulas are written in.
+        vsw: form([], vsq + Vin / 2),
         vL,
         iC,
         iQ,

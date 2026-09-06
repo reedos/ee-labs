@@ -169,6 +169,16 @@ describe('K1 · the series resonant tank', () => {
     expect(low.formulas.zvs).toBe(false)
     expect(low.formulas.zcs).toBe(true)
   })
+  it('shows the switch node the schematic probes, which sits between the two rails', () => {
+    // The drawing puts the v_sw probe on the node between Q1 and Q2, with the
+    // ground symbol on the rail below it. A node between two rails is never
+    // negative, and the reading has to say so. The ±V_in/2 the gain formulas
+    // are written in is that node less the DC the tank capacitor holds.
+    expect(x.m.sig.vsw.min).toBeCloseTo(0, 12)
+    expect(x.m.sig.vsw.max).toBeCloseTo(x.p.Vin, 12)
+    expect(x.m.sig.vsw.avg).toBeCloseTo(x.p.Vin / 2, 9)
+    expect(x.m.sig.vsw.pp).toBeCloseTo(x.p.Vin, 12)
+  })
   it('try: at 60 kHz M holds at 0.250 while the formula says 0.222', () => {
     const q = at('k1', { fs: 60e3 })
     expect(q.m.M).toBeCloseTo(0.25, 3)
@@ -193,6 +203,33 @@ describe('K2 · the LLC and its two resonances', () => {
     const src = analyse(byId.k1, { ...defaultsOf('k1'), fs: 80e3 })
     expect(src.m.M).toBeLessThanOrEqual(0.2501)
   })
+  it('gains more as the load lightens, measured on the gain curve at three loads', () => {
+    // The plan's second measurement for this experiment: the curve against
+    // frequency at three loads. R is a knob, so the reader draws each of
+    // these; what is claimed here is the order they come in.
+    const curves = [6, 12, 48].map((R) => {
+      const pts = sweepGain({ ...defaultsOf('k2'), R }, byId.k2, 15)
+      for (const q of pts) expect(Number.isFinite(q.Mn), `R = ${R} at ${q.x}`).toBe(true)
+      const peak = pts.reduce((a, q) => (q.Mn > a.Mn ? q : a))
+      return { R, pts, peak }
+    })
+    for (let i = 1; i < curves.length; i++) {
+      // A lighter load lowers the tank's Q, so the peak is taller and sits
+      // nearer the lower resonance.
+      expect(curves[i].peak.Mn, `R = ${curves[i].R}`).toBeGreaterThan(curves[i - 1].peak.Mn)
+      expect(curves[i].peak.x).toBeLessThanOrEqual(curves[i - 1].peak.x)
+      expect(curves[i].peak.x).toBeGreaterThanOrEqual(lowerResonance({ ...p, R: curves[i].R }))
+    }
+    // Every one of them falls away above the tank's own resonance, and the
+    // series tank at the same three loads never passes n/2.
+    for (const c of curves) {
+      const above = c.pts.filter((q) => q.x > 1.2 * seriesResonance(p))
+      for (let i = 1; i < above.length; i++) expect(above[i].Mn).toBeLessThanOrEqual(above[i - 1].Mn + 1e-9)
+      for (const R of [6, 12, 48]) {
+        expect(analyse(byId.k1, { ...defaultsOf('k1'), R, fs: c.peak.x }).m.M).toBeLessThanOrEqual(0.2501)
+      }
+    }
+  }, 120000)
   it('try: L_m = 60 µH lifts the peak to 0.593 at 66.3 kHz', () => {
     const peakOf = (Lm) => {
       let best = { M: -1, fs: 0 }
@@ -311,6 +348,51 @@ describe('the sweeps these groups draw', () => {
       expect(q.eta, `at ${(q.x / 1e3).toFixed(0)} kHz`).toBeGreaterThan(q.etaHard)
     }
   }, 60000)
+})
+
+describe('the first-harmonic gain carries its guard, and the guard has a threshold', () => {
+  // CORE_SCOPE rule 3: an approximation ships with an applicability check, a
+  // concrete threshold, and a change in what the panel shows when it is
+  // crossed. Here the threshold is five per cent, the row stops comparing
+  // past it, and the reason carries the measured gap.
+  const fhaRow = (id, over = {}) => {
+    const p = { ...defaultsOf(id), ...over }
+    const x = analyse(byId[id], p)
+    const rows = experimentMath(byId[id], p, x).blocks.find((b) => b.kind === 'check').rows
+    return { x, row: rows.find((r) => r.label === 'M against the first-harmonic gain') }
+  }
+  it('compares the row at resonance, where the tank current really is a sine', () => {
+    const { x, row } = fhaRow('k1', { fs: seriesResonance(resonantParams(defaultsOf('k1'))) })
+    expect(Math.abs(x.formulas.fhaError)).toBeLessThan(0.05)
+    expect(row.unchecked).toBeUndefined()
+    expect(row.measured).toBeCloseTo(row.predicted, 3)
+  })
+  it('stops comparing below resonance, and names the gap it measured', () => {
+    const { x, row } = fhaRow('k1', { fs: 60e3 })
+    expect(Math.abs(x.formulas.fhaError)).toBeGreaterThan(0.05)
+    expect(row.unchecked).toContain(`f/f_r = ${x.formulas.ratio.toFixed(3)}`)
+    expect(row.unchecked).toContain(`${(x.formulas.fhaError * 100).toFixed(1)} %`)
+  })
+  it('flips exactly at five per cent, above resonance as well as below', () => {
+    for (const fs of [60e3, 80e3, 90e3, 110e3, 130e3, 160e3, 200e3]) {
+      const { x, row } = fhaRow('k1', { fs })
+      const over = Math.abs(x.formulas.fhaError) > 0.05
+      expect(!!row.unchecked, `${(fs / 1e3).toFixed(0)} kHz at ${(x.formulas.fhaError * 100).toFixed(2)} %`).toBe(over)
+    }
+  }, 60000)
+  it('footnotes the flux-walk form where the load current is not flat, and compares it where it is', () => {
+    // The form balances volt-seconds over two intervals with one current in
+    // each, so a large output ripple puts the wrong number in it.
+    const tight = fhaLess('j2', {})
+    expect(tight.unchecked).toBeUndefined()
+    const loose = fhaLess('j2', { L: 2e-6, R: 200 })
+    expect(loose.unchecked).toMatch(/the load current as a flat/)
+  })
+  function fhaLess(id, over) {
+    const p = { ...defaultsOf(id), ...over }
+    const rows = experimentMath(byId[id], p, analyse(byId[id], p)).blocks.find((b) => b.kind === 'check').rows
+    return rows.find((r) => r.label.startsWith('⟨i_M⟩'))
+  }
 })
 
 describe('the gate, where the shooting method does not settle', () => {
