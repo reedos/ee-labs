@@ -17,8 +17,10 @@
 // table holds both of its orientations. Nothing scrolls sideways at 390 px.
 
 import { chromium } from 'playwright'
+// Only `experiments.js` is imported, and nothing this file imports may reach
+// `@ee-labs/ui`. Plain node cannot load that package's .jsx, so importing
+// `view.js` or `format.js` here stops the harness before the browser opens.
 import { EXPERIMENTS, GROUPS, VIEW_LABELS, byId } from '../src/experiments.js'
-import { COLUMNS } from '../src/view.js'
 
 // `vite preview` binds to localhost, which resolves to ::1 on Windows, so the
 // name is the address here rather than 127.0.0.1. Override with APP_URL.
@@ -97,6 +99,9 @@ const numberRows = () =>
     ),
   )
 
+/** A decibel carrying an SI prefix, which is not a reading anyone writes. */
+const PREFIXED_DB = /\d\s*[pnµumckMGT]dB/
+
 /** What each pane must have put on the page, beyond not throwing. */
 const VIEW_SHOWS = {
   table: '.sys-table[data-role=budget-table] tbody tr[data-row=total]',
@@ -143,7 +148,11 @@ for (const exp of EXPERIMENTS) {
   for (let i = 0; i < exp.try.length; i++) {
     await page.locator('.try-line .chip').first().click()
     await settle()
-    if ((await text('[data-role=headline]')) !== before) moved = true
+    const now = await text('[data-role=headline]')
+    if (now !== before) moved = true
+    // A decibel is already a logarithm, so no reading of it takes an SI prefix.
+    // A3's first two steps printed 626.94 mdB and 34.896 mdB here.
+    if (PREFIXED_DB.test(now)) fail(`${exp.id} step ${i + 1}: the headline reads "${now}"`)
     // The step nav disables its forward button on the last step, so a blind
     // click there waits for an element that never becomes clickable.
     const next = page.locator('.lesson-nav button[aria-label="Next step"]').first()
@@ -222,15 +231,22 @@ if (JSON.stringify(shareUnits) !== JSON.stringify({ 'unit-gain': 'dB', 'unit-nf'
 
 // And so does the sentence over the unit. A header still hovering "the
 // cumulative noise figure" over a column of percentages is the same defect one
-// line higher up.
-const titlesNow = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.sys-table thead th[data-col]')].map((e) => [e.getAttribute('data-col'), e.getAttribute('title')])))
+// line higher up. The words are checked rather than compared against the
+// module, because this file may not import `view.js`.
+const titlesNow = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.sys-table thead th[data-col]')].map((e) => [e.getAttribute('data-col'), e.getAttribute('title') || ''])))
 const shareTitles = await titlesNow()
-for (const c of COLUMNS) if (shareTitles[c.key] !== c.shareTitle) fail(`a4: in share mode the ${c.key} header says "${shareTitles[c.key]}"`)
+for (const col of ['nf', 'iip3', 'power']) if (!/share/i.test(shareTitles[col])) fail(`a4: in share mode the ${col} header says "${shareTitles[col]}"`)
+if (!/own/i.test(shareTitles.gain)) fail(`a4: in share mode the gain header says "${shareTitles.gain}"`)
+// Only the two columns whose cells stop being a running total. The gain
+// column's share sentence names the cumulative column on purpose, because the
+// numbers under it are what that column adds up.
+for (const col of ['nf', 'iip3']) if (/cumulative/i.test(shareTitles[col])) fail(`a4: in share mode the ${col} header still says cumulative`)
 
 await page.locator('.sys-table-head .segmented').getByRole('button', { name: 'Cumulative', exact: true }).click()
 await settle()
 const cumTitles = await titlesNow()
-for (const c of COLUMNS) if (cumTitles[c.key] !== c.title) fail(`a4: in cumulative mode the ${c.key} header says "${cumTitles[c.key]}"`)
+for (const col of ['gain', 'nf', 'iip3']) if (!/cumulative/i.test(cumTitles[col])) fail(`a4: in cumulative mode the ${col} header says "${cumTitles[col]}"`)
+for (const col of ['gain', 'nf', 'iip3', 'power']) if (cumTitles[col] === shareTitles[col]) fail(`a4: the ${col} header says the same thing in both modes`)
 const cumUnits = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.sys-table thead em[data-role^=unit-]')].map((e) => [e.getAttribute('data-role'), e.textContent.trim()])))
 if (JSON.stringify(cumUnits) !== JSON.stringify({ 'unit-gain': 'dB', 'unit-nf': 'dB', 'unit-iip3': 'dBm', 'unit-power': 'mW' })) fail(`a4: in cumulative mode the units read ${JSON.stringify(cumUnits)}`)
 console.log('   the share mode’s total row closes at 100 %, and the unit and the sentence follow the switch')
