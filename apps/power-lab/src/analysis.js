@@ -58,6 +58,7 @@ import {
   switchingCrossover,
   peakEfficiencyLoad,
 } from '@ee-labs/switched'
+import { LMN_KINDS, analyseLmn } from './groups/lmn.js'
 
 // The knobs a buck experiment may omit take the plan's defaults.
 export const BUCK_DEFAULTS = {
@@ -106,6 +107,7 @@ export function coreParams(params) {
 }
 
 export function analyse(exp, params) {
+  if (LMN_KINDS.includes(exp.kind)) return analyseLmn(exp, params)
   if (exp.kind === 'linreg') return analyseLinear(params)
   if (exp.kind === 'chopper') return analyseChopper(params)
   if (exp.kind === 'rectifier') return analyseRectifier(params, exp)

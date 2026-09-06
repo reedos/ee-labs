@@ -76,10 +76,12 @@ describe('the first screen shows the loss, not three flat lines (§11.4.2, §11.
 
 describe('no screen contradicts its note (§11.0 claim bugs)', () => {
   it('every experiment declares its headline meter, and A2’s is RMS against the mean, not η', () => {
-    // The four the lab has a meter for: efficiency, power factor, the RMS
-    // against the mean (the chopper's), and total harmonic distortion (the
-    // inverters', whose efficiency is near one and says nothing).
-    for (const e of EXPERIMENTS) expect(['eta', 'pf', 'rms', 'thd'], e.id).toContain(e.headline)
+    // The meters the lab has: efficiency, power factor, the RMS against the
+    // mean (the chopper's), and total harmonic distortion (the inverters',
+    // whose efficiency is near one and says nothing). Groups L, M and N add
+    // three more, each the number its own group is about: the ripple the line
+    // carries, the switch node's ring, and the junction temperature.
+    for (const e of EXPERIMENTS) expect(['eta', 'pf', 'rms', 'thd', 'ripple', 'ring', 'tj'], e.id).toContain(e.headline)
     expect(byId.a2.headline).toBe('rms')
     const t = text(topbar(render('a2')))
     expect(t).toMatch(/7\.75/)

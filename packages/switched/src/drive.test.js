@@ -71,7 +71,7 @@ describe('a drive is a converter with a shaft', () => {
       expect(Number.isFinite(m.omega), where).toBe(true)
       expect(Number.isFinite(m.torque), where).toBe(true)
       // 1. Volt-second balance on the armature.
-      const vScale = Math.max(conv.p.Vdc, Math.abs(m.sig.vsw.max))
+      const vScale = Math.max(conv.p.Vdc, Math.abs(m.sig.vout.max))
       expect(Math.abs(m.sig.vL.avg), `${where} ⟨v_L⟩`).toBeLessThan(1e-9 * vScale)
       // 2. The shaft's balance: the torque the machine makes is the torque
       //    the load takes, averaged over a period.

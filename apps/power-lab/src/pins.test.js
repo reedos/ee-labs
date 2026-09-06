@@ -4,6 +4,7 @@ import { EXPERIMENTS, defaultsOf } from './experiments.js'
 import { analyse, buckParams } from './analysis.js'
 import { signalsOf, topologyOf } from './components/schematics.jsx'
 import { ORDER } from './components/panes.jsx'
+import { LMN_PINS, thermalPinParams } from './lmn.pins.js'
 
 // Every number the measures table shows — average, RMS, min, max and
 // peak-to-peak of every signal, for every experiment at its defaults — is
@@ -738,6 +739,8 @@ function dimmer(x, p) {
 
 function pinsFor(exp, x, params) {
   const t = topologyOf(exp)
+  if (t === 'thermal') return pwm('buck', x, thermalPinParams(params))
+  if (LMN_PINS[t]) return LMN_PINS[t](x, params)
   if (t === 'linreg') return linreg(x, params)
   if (t === 'chopper') return chopper(x, params)
   if (t === 'dimmer') return dimmer(x, params)

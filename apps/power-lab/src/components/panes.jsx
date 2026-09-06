@@ -11,7 +11,9 @@ import { fmtz, nz, statScale, axisFmt, niceBounds } from '../format.js'
 const Eq = ({ children }) => <Formula display={false}>{children}</Formula>
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
-export const ORDER = ['vin', 'vsw', 'vrect', 'vout', 'vL', 'vD', 'iL', 'iD', 'iC', 'iR', 'iQ', 'iin']
+import { LMN_MODE_WORDS } from '../groups/lmn.js'
+
+export const ORDER = ['vin', 'vsw', 'vrect', 'vout', 'vemf', 'vcin', 'vL', 'vD', 'iL', 'iD', 'iC', 'iR', 'iQ', 'icin', 'iin', 'iline']
 
 /** Average, RMS and extremes of every waveform, and the power books. */
 export function MeasuresPane({ m, signals }) {
@@ -124,6 +126,7 @@ export const MODE_WORDS = {
   line: 'line-frequency, diode-steered',
   dimmer: 'phase-cut, resistive load',
   inverter: 'DC in, AC out',
+  ...LMN_MODE_WORDS,
 }
 
 /**

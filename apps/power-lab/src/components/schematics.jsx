@@ -2,6 +2,7 @@ import React from 'react'
 import { fmt } from '@ee-labs/ui'
 import { TRACES } from '../experiments.js'
 import { TRACE_COLORS } from './ScopeCanvas.jsx'
+import { LMN_DRAW, LMN_FRAMES, LMN_TOPOLOGY_NAMES, LMN_TOPOLOGY_SIGNALS } from './lmnSchematics.jsx'
 
 // Schematics, drawn as SVG — the same kit and the same sidebar slot as Circuit
 // Lab's, so a reader moving between the labs meets one drawing style.
@@ -17,6 +18,10 @@ import { TRACE_COLORS } from './ScopeCanvas.jsx'
 // Colours follow Circuit Lab: resistors green, capacitors amber, inductors
 // blue, wires grey. Switches and diodes are new here and take the plain text
 // colour, so the passive parts keep the palette they have in the other lab.
+
+// The kit, exported so a group can add a drawing in this idiom without
+// copying a symbol: `lmnSchematics.jsx` builds Groups L, M and N's six on it.
+export { Wire, Dot, Tag, Res, Cap, Ind, Switch, Diode, Triac, SrcDC, SrcAC, Gnd, Part, Xfmr, Port, VAt, VAcross, IAt, Along, SideLabel, Probe }
 
 const FRAME = { w: 300, h: 150 }
 // Taller and wider frames for the bridges, which do not fit the standard box.
@@ -856,6 +861,7 @@ export const TOPOLOGY_SIGNALS = {
   bridge: ['vin', 'vrect', 'vout', 'vD', 'iD', 'iC', 'iR', 'iin'],
   six: ['vin', 'vrect', 'vout', 'vD', 'iD', 'iC', 'iR', 'iin'],
   dimmer: ['vin', 'vout', 'vD', 'iR', 'iin'],
+  ...LMN_TOPOLOGY_SIGNALS,
 }
 
 /** The signals an experiment's circuit carries. */
@@ -878,6 +884,7 @@ export const TOPOLOGY_NAMES = {
   bridge: 'Single-phase full-wave bridge rectifier',
   six: 'Three-phase six-pulse bridge rectifier',
   dimmer: 'Phase-cut dimmer, triac into a resistive load',
+  ...LMN_TOPOLOGY_NAMES,
 }
 
 /** Which drawing an experiment gets: its converter, or which bridge it is. */
@@ -891,6 +898,9 @@ const bridgeInv = DRAW.bridgeInv
 delete DRAW.bridgeInv
 DRAW.square = (p, live) => bridgeInv(p, live, { caption: 'one diagonal for half a cycle, then the other' })
 DRAW.spwm = (p, live) => bridgeInv(p, live, { caption: 'a sine against a triangle picks the diagonal' })
+
+Object.assign(DRAW, LMN_DRAW)
+Object.assign(FRAMES, LMN_FRAMES)
 
 export const TOPOLOGIES = Object.keys(DRAW)
 

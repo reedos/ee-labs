@@ -5,6 +5,8 @@ import { axisFmt, fitLeftAxis } from '../format.js'
 import { markLabels } from '../marks.js'
 
 /** One colour per trace, kept apart from the axis chrome. */
+import { LMN_TRACE_COLORS } from '../groups/lmn.js'
+
 export const TRACE_COLORS = {
   vin: COLORS.spectrum,
   vsw: COLORS.spectrum,
@@ -18,6 +20,7 @@ export const TRACE_COLORS = {
   iQ: '#ffd166',
   iD: '#8ecae6',
   iin: COLORS.textBright,
+  ...LMN_TRACE_COLORS,
 }
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'

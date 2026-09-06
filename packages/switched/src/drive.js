@@ -53,7 +53,7 @@ import { signalIntegral } from './steady.js'
 export const DRIVE_KINDS = ['dcdrive', 'hbridge', 'bldc']
 
 /** Every signal a drive's panes may ask for, in the order they are read. */
-export const DRIVE_SIGNALS = ['vsw', 'vemf', 'vL', 'iL', 'iQ', 'iD', 'iin']
+export const DRIVE_SIGNALS = ['vout', 'vemf', 'vL', 'iL', 'iQ', 'iD', 'iin']
 
 export const DRIVE_DEFAULTS = {
   Vdc: 48,
@@ -124,12 +124,17 @@ function armatureState(name, mach, { v, r, vd = 0, bus = 0 }) {
     f: [src / mach.La, -mach.TL / mach.J],
     signals: {
       // What the armature terminals sit at, after the devices' own drops.
-      vsw: lin(-r, 0, src),
+      // This is the converter's output, which is why it is `vout` and not a
+      // switch node: the motor is the load, and this is what reaches it.
+      vout: lin(-r, 0, src),
       // The rotor's own voltage, which is where the mechanical power leaves.
       vemf: lin(0, mach.ke),
       vL: lin(-Rt, -mach.ke, src),
       iL: lin(1, 0),
-      iQ: lin(name === 'off' || name === 'zero' ? 0 : 1, 0),
+      // The device the duty names: the chopper's switch, or the full
+      // bridge's positive diagonal. The other diagonal carries the current
+      // for the rest of the period, and the conduction loss counts both.
+      iQ: lin(name === 'on' || name === 'pos' ? 1 : 0, 0),
       iD: lin(name === 'off' ? 1 : 0, 0),
       iin: lin(bus, 0),
     },
@@ -147,7 +152,9 @@ function deadState(mach) {
     ],
     f: [0, -mach.TL / mach.J],
     signals: {
-      vsw: lin(0, mach.ke),
+      // With the armature empty the terminals float at the rotor's own
+      // voltage, which is what a meter across a coasting motor reads.
+      vout: lin(0, mach.ke),
       vemf: lin(0, mach.ke),
       vL: lin(0, 0),
       iL: lin(1, 0),
@@ -428,7 +435,7 @@ export function driveMeasures(ss, { dense = 256 } = {}) {
     ripple: sig.iL.pp,
     // The ripple as the fraction of the torque it modulates.
     rippleShare: sig.iL.avg !== 0 ? sig.iL.pp / Math.abs(sig.iL.avg) : Infinity,
-    Vterm: sig.vsw.avg,
+    Vterm: sig.vout.avg,
     emf: sig.vemf.avg,
     regenerating: sig.iin.avg < 0,
     Iin: sig.iin.avg,

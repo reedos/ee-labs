@@ -7,6 +7,8 @@
 // settings put outside a formula's assumptions is footnoted, not crossed.
 
 import { fmt } from '@ee-labs/ui'
+import { LMN_KINDS } from './groups/lmn.js'
+import { lmnMath } from './groups/lmnMath.js'
 
 
 /**
@@ -93,6 +95,7 @@ export function simpson(g, a, b, n = 400) {
 }
 
 export function experimentMath(exp, params, x) {
+  if (LMN_KINDS.includes(exp.kind)) return lmnMath(exp, params, x)
   if (exp.kind === 'linreg') return linearEntry(params, x)
   if (exp.kind === 'chopper') return chopperEntry(params, x)
   if (exp.kind === 'rectifier') return rectifierEntry(exp, params, x)

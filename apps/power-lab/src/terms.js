@@ -7,6 +7,8 @@
 // term defined using an undefined term. STYLE.md and prose.test.js hold the
 // wording: one claim a sentence, no dash for emphasis, no semicolons.
 
+import { LMN_TERMS } from './groups/lmn.js'
+
 export const TERMS = {
   efficiency: {
     name: 'Efficiency',
@@ -314,6 +316,7 @@ export const TERMS = {
       'the switching energy lands: clusters around m_f and its multiples, with the band below them ' +
       'empty. A faster carrier moves those clusters further above the filter’s corner.',
   },
+  ...LMN_TERMS,
 }
 
 export function termsFor(ids = []) {

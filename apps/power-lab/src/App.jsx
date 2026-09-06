@@ -12,6 +12,8 @@ import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, FluxPane, ScrubPan
 import { fmtz } from './format.js'
 import { scopeMarks, sweepMarks } from './marks.js'
 import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/schematics.jsx'
+import LmnPane from './components/lmnPanes.jsx'
+import { LMN_VIEWS, LMN_SWEEPS, LMN_OUTCOME, LMN_FLOW, LMN_HEADLINES } from './groups/lmn.js'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -70,6 +72,7 @@ function focusKnob(key) {
 
 /** The one-line result of an experiment, for the top bar and the report. */
 export function outcomeOf(exp, x) {
+  if (LMN_OUTCOME[exp.kind]) return LMN_OUTCOME[exp.kind](x)
   const m = x.m
   if (exp.kind === 'linreg') return `η = ${(m.eta * 100).toFixed(1)} %, ${fmt(m.Ploss, 'W', 3)} into the regulator`
   if (exp.kind === 'chopper') return `⟨v⟩ = ${fmt(m.sig.vout.avg, 'V', 3)}, RMS ${fmt(m.sig.vout.rms, 'V', 3)}`
@@ -85,6 +88,7 @@ export function outcomeOf(exp, x) {
 export function sweepFor(exp, params) {
   const s = exp.sweep
   if (!s) return null
+  if (LMN_SWEEPS[exp.kind]) return LMN_SWEEPS[exp.kind](exp, params)
   const opts = sweepOpts(exp, params)
   if (exp.kind === 'linreg') return { points: sweepLinear(params), at: params.Vo / params.Vin, label: 'η = V_out / V_in' }
   if (exp.kind === 'chopper') return { points: sweepChopper(params), at: params.D, label: '⟨v⟩ = D·V_in', label2: 'V_rms = √D·V_in' }
@@ -583,6 +587,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
               <ScrubPane x={x} exp={exp} at={scrubAt} onScrub={setScrub} signals={signalsOf(exp)} />
             ) : null}
             {currentView === 'ledger' ? <LedgerPane x={x} /> : null}
+            {LMN_VIEWS[currentView] ? <LmnPane view={currentView} x={x} exp={exp} /> : null}
             {currentView === 'math' ? <MathBody entry={math} /> : null}
             {currentView === 'balance' && x.balance ? <BalancePane x={x} /> : null}
             {currentView === 'losses' ? <LossesPane x={x} /> : null}
@@ -637,6 +642,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
  */
 export const FLOW_BUDGET = { mid: 26, out: 34 }
 export function flowNodes(exp, params, x) {
+  if (LMN_FLOW[exp.kind]) return LMN_FLOW[exp.kind](exp, params, x)
   const m = x.m
   const saysK = (exp.symbols || []).includes('K')
   if (x.saturating) {
@@ -705,6 +711,14 @@ export function flowNodes(exp, params, x) {
  * the mean.
  */
 function Headline({ exp, m }) {
+  const extra = LMN_HEADLINES[exp.headline] && LMN_HEADLINES[exp.headline](m)
+  if (extra)
+    return (
+      <span className="topbar-field">
+        <span>{extra.label}</span>
+        <b>{extra.value}</b>
+      </span>
+    )
   if (exp.headline === 'rms')
     return (
       <span className="topbar-field">
