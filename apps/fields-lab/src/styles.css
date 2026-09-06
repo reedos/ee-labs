@@ -251,3 +251,90 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 @media (min-width: 1200px) and (max-width: 2399px) {
   .app { grid-template-columns: 360px 1fr; }
 }
+
+/* The pane the view switch fills. A plain block here left every plot at its
+   own minimum height with the rest of the pane empty below it, so the map and
+   the profile both drew at a third of the room they had. */
+.view-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+/* The map's two position axes are drawn inside the canvas, in the margin
+   fitBox leaves; this is the sentence under it that names them. */
+.fieldmap-axes { margin: 0; font-size: 11px; color: var(--dim); }
+
+/* ---------- the profile's axes ---------- */
+
+/* The row is the value axis, the curve, and (where a panel has a second
+   quantity) its own value axis on the right. */
+.fieldmap-panel-row { display: flex; align-items: stretch; flex: 1; min-height: 0; gap: 4px; }
+.fieldmap-vaxis {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  min-height: 60px;
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.fieldmap-vaxis.is-right { width: 44px; }
+.fieldmap-vtick { position: absolute; right: 4px; transform: translateY(50%); white-space: nowrap; }
+/* The top and bottom numbers hang inward, or half of each sits outside the
+   panel and the one at the top lands on the panel's own heading. */
+/* `bottom` places the label's bottom edge, so the topmost number must come
+   all the way down inside the panel and the bottom one must not move at all.
+   Getting these the wrong way round put the top number on the panel's own
+   heading and the bottom one over the sentence below it. */
+.fieldmap-vtick.is-top { transform: translateY(100%); }
+.fieldmap-vtick.is-bottom { transform: translateY(0); }
+.fieldmap-vaxis.is-right .fieldmap-vtick { right: auto; left: 4px; }
+.fieldmap-panel-scales { margin: 2px 0 0; font-size: 11px; color: var(--dim); }
+.fieldmap-axis-name { margin: 0; font-size: 11px; color: var(--dim); text-align: center; }
+.fieldmap-tick.is-first { transform: translateX(0); }
+.fieldmap-tick.is-last { transform: translateX(-100%); }
+.fieldmap-ticks[data-labelled='false'] .fieldmap-tick.is-first,
+.fieldmap-ticks[data-labelled='false'] .fieldmap-tick.is-last { transform: translateX(-50%); }
+
+/* ---------- the phone: one page, top to bottom ---------- */
+
+/* The shell keeps the sidebar as a 45vh box that scrolls a much taller column
+   inside the page, which put this lab's note, its try line and every knob
+   below the first screen. The sidebar dissolves here instead, so its sections
+   become rows of the page: title, the lesson, the topbar, the view, then the
+   knobs. `REVIEW_PLAYBOOK.md`'s 390 px rule, and the shape Circuit Elements
+   Lab already ships. */
+@media (max-width: 900px) {
+  /* minmax(0, 1fr): a grid track's minimum is its content, and a formula or a
+     knob hint that will not break would otherwise widen the whole page. */
+  .app { grid-template-rows: auto auto auto auto auto auto; grid-template-columns: minmax(0, 1fr); }
+  .controls { display: contents; }
+  .controls > header, .controls > section { min-width: 0; }
+  .controls > header { grid-column: 1; grid-row: 1; padding: 10px 12px 0; background: var(--panel); }
+  .controls > section:first-of-type {
+    grid-column: 1;
+    grid-row: 2;
+    margin: 0;
+    padding: 0 12px 10px;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    background: var(--panel);
+  }
+  .controls > section:first-of-type h2 { position: static; margin: 0 -12px 6px; background: var(--panel); border-radius: 0; }
+  .topbar { grid-column: 1; grid-row: 3; }
+  .views { grid-column: 1; grid-row: 4; min-height: 0; }
+  .controls > section:last-of-type { grid-column: 1; grid-row: 5; margin: 10px 12px 0; }
+  .controls > section:last-of-type h2 { position: static; }
+  .controls > .report-issue { grid-column: 1; grid-row: 6; margin: 10px 12px 24px; }
+  /* The picker is the tallest thing above the note. Its own list scrolls with
+     the page rather than inside a box of its own. */
+  .presets { max-height: none; gap: 4px; }
+  .controls .sub { display: none; }
+  /* E5's note is the longest in the lab, and its view switch landed three
+     pixels below the first screen. Nothing is removed, only the air. */
+  .controls .hint { line-height: 1.35; margin-top: 5px; }
+  .note-title { margin: 7px 0 1px; }
+  .controls section { padding-bottom: 8px; }
+  details.why-fold { margin: 4px 0; }
+  /* The topbar's strip scrolls sideways on a desktop, where a reader can see
+     the scrollbar. On a phone it hid the second half of every headline label,
+     so it wraps onto a second line instead. */
+  .flow { flex-wrap: wrap; overflow-x: visible; white-space: normal; }
+  .flow-node { white-space: normal; }
+}

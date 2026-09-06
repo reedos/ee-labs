@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import FieldMapCanvas, { axisDomainOf, colourFor, domainTicks, sampleGrid } from './FieldMapCanvas.jsx'
+import FieldMapCanvas, { axisDomainOf, colourFor, decadeTicks, domainTicks, fitBox, fractionAt, positionAt, rangeOf, sampleGrid, valueTicks } from './FieldMapCanvas.jsx'
 
 // The contract this component ships to a second lab, per AGENT_BRIEF.md §3.9:
 // `mode: '2d' | 'profile'` from the first commit, and a profile whose `stack`
@@ -112,5 +112,134 @@ describe('the exported helpers', () => {
   it('a value the field could not be sampled at (NaN, or off the scale) does not throw', () => {
     expect(colourFor(NaN, 1, true)).toBeTypeOf('string')
     expect(colourFor(5, 0, false)).toBeTypeOf('string')
+  })
+})
+
+describe('the axes a reader reads the picture off', () => {
+  const profile = {
+    axis: 'x',
+    cut: 0,
+    from: 0,
+    to: 1,
+    scalar: { read: (t) => 2 + t, label: 'Potential', unit: 'V' },
+    regions: [{ from: 0.2, to: 0.4, label: 'dielectric' }],
+  }
+
+  it('a profile carries numbers up its value axis, and names its position axis', () => {
+    const out = html(<FieldMapCanvas mode="profile" profile={profile} units={{ length: 'mm' }} />)
+    expect(out, 'no value axis').toMatch(/data-role="value-axis-left"/)
+    expect((out.match(/fieldmap-vtick/g) || []).length, 'no numbers on the value axis').toBeGreaterThan(1)
+    expect(out, 'the position axis is not named').toMatch(/data-role="axis-name"/)
+    expect(out).toMatch(/Position, across/)
+  })
+
+  it('a second quantity gets its own axis, and the panel says the two scales differ', () => {
+    const out = html(
+      <FieldMapCanvas
+        mode="profile"
+        profile={{ ...profile, secondary: { read: (t) => 1e5 * (1 + t), label: 'Field', unit: 'V/m' } }}
+        units={{}}
+      />,
+    )
+    expect(out).toMatch(/data-role="value-axis-right"/)
+    expect(out, 'two scales on one panel with nothing saying so').toMatch(/data-role="panel-scales"/)
+    expect(out).toMatch(/own scale/)
+  })
+
+  it('a sweep over frequency is named in hertz and not in metres', () => {
+    const out = html(
+      <FieldMapCanvas
+        mode="profile"
+        profile={{ axis: 'x', cut: 0, from: 1, to: 1e6, log: true, xLabel: 'Frequency', xUnit: 'Hz', scalar: { read: (f) => Math.sqrt(f), label: 'Resistance ratio', unit: '' } }}
+        units={{}}
+      />,
+    )
+    expect(out).toMatch(/Frequency \(Hz\)/)
+    expect(out).toMatch(/by decade/)
+    expect(out, 'a frequency axis labelled in metres').not.toMatch(/Hz[^]*?\d\s?mm/)
+    // Decade ticks, not six equal steps of 166 kHz.
+    const values = [...out.matchAll(/data-value="([^"]+)"/g)].map((m) => Number(m[1]))
+    expect(values).toContain(1000)
+    expect(values).toContain(100000)
+  })
+
+  it('the stated span wins over a region inside it', () => {
+    // E3 names two winding lengths so the field outside the coil is on screen,
+    // and marks the winding as a region. Reading the region first drew only
+    // the inside of the coil, which is the half the lesson is not about.
+    const span = axisDomainOf({ from: -0.2, to: 0.2, regions: [{ from: -0.05, to: 0.05 }] })
+    expect(span).toEqual({ lo: -0.2, hi: 0.2 })
+    // A profile with no span of its own still falls back to its regions.
+    expect(axisDomainOf({ regions: [{ from: 1, to: 2 }] })).toEqual({ lo: 1, hi: 2 })
+  })
+
+  it('a log axis maps by decade, and its ticks are the decades', () => {
+    expect(positionAt(0.5, 1, 1e4, true)).toBeCloseTo(100, 6)
+    expect(fractionAt(100, 1, 1e4, true)).toBeCloseTo(0.5, 12)
+    expect(fractionAt(100, 1, 1e4, false)).toBeCloseTo((100 - 1) / (1e4 - 1), 12)
+    expect(decadeTicks(1, 1e3)).toEqual([1, 10, 100, 1000])
+  })
+
+  it('a range that sits above zero is drawn from zero, and a flat one still has a span', () => {
+    // A curve that falls most of the way to nothing is drawn against nothing.
+    const falls = rangeOf((t) => 100 - 95 * t, 0, 1)
+    expect(falls.min).toBe(0)
+    // A curve that only ever varies a little is not: 10 to 11 against a floor
+    // of zero is a flat line, and the variation is the lesson.
+    const narrow = rangeOf((t) => 10 + t, 0, 1)
+    expect(narrow.min).toBeCloseTo(10, 6)
+    const flat = rangeOf(() => 5, 0, 1)
+    expect(flat.max).toBeGreaterThan(flat.min)
+    const ticks = valueTicks(0, 11)
+    expect(ticks.length).toBeGreaterThan(2)
+    expect(Math.max(...ticks)).toBeLessThanOrEqual(11)
+  })
+
+  it('two numbers equal to the last digit are drawn as one flat line, and the ticks end', () => {
+    // G1's conduction current and its displacement current are equal, and
+    // "equal" in floating point means they differ by one unit in the last
+    // place. Magnifying that span filled the panel with a step, and the tick
+    // loop then ran until the array would not hold another element.
+    const v = 8.8541878128e-7
+    const r = rangeOf((t) => (t > 0.5 ? v : v * (1 + Number.EPSILON)), 0, 1)
+    expect(r.max - r.min).toBeGreaterThan(v / 4)
+    const ticks = valueTicks(r.min, r.max)
+    expect(ticks.length).toBeGreaterThan(1)
+    expect(ticks.length).toBeLessThan(64)
+    // And directly: a span of one ulp asks for ticks and gets two, not four
+    // billion.
+    expect(valueTicks(v, v + Number.EPSILON * v).length).toBeLessThan(64)
+    expect(domainTicks(1e6, 1e6 + 1e-9).length).toBeLessThan(64)
+  })
+
+  it('a square domain draws square, whatever shape the canvas is', () => {
+    // A coaxial cable stretched to the pane's width is drawn as an ellipse,
+    // and the lesson is that the field is radial.
+    const wide = fitBox(900, 300, { width: 0.01, height: 0.01 })
+    expect(wide.w / wide.h).toBeCloseTo(1, 6)
+    const tall = fitBox(300, 900, { width: 0.01, height: 0.01 })
+    expect(tall.w / tall.h).toBeCloseTo(1, 6)
+    // A domain twice as wide as it is high keeps that ratio too.
+    const oblong = fitBox(900, 900, { width: 0.02, height: 0.01 })
+    expect(oblong.w / oblong.h).toBeCloseTo(2, 6)
+    // And it stays inside the canvas, with room for the axes.
+    expect(wide.x).toBeGreaterThanOrEqual(0)
+    expect(wide.x + wide.w).toBeLessThanOrEqual(900)
+    expect(tall.y + tall.h).toBeLessThanOrEqual(900)
+  })
+
+  it('the map says what its colour means and what its arrows do not mean', () => {
+    const out = html(
+      <FieldMapCanvas
+        mode="2d"
+        domain={{ width: 0.02, height: 0.02, centre: true }}
+        scalar={(x, y) => x + y}
+        vector={() => [1, 0]}
+        units={{ length: 'mm', scalar: 'V', vector: 'V/m' }}
+      />,
+    )
+    expect(out, 'the colour ramp carries no scale').toMatch(/data-role="colour-scale"/)
+    expect(out, 'the map does not name its axes').toMatch(/data-role="map-axes"/)
+    expect(out, 'unit-length arrows read as a magnitude').toMatch(/direction only/)
   })
 })

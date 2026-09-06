@@ -79,6 +79,17 @@ function conductorsFor(geometry, V) {
  */
 function radialPotential(geometry, V) {
   const { kind, a, b } = geometry
+  if (kind === 'parallelPlate') {
+    // The same idealisation the closed form is: the field is uniform between
+    // the plates and nothing is outside them. `capacitance().neglects` names
+    // the fringing this leaves out, and B1's note repeats it.
+    const gap = geometry.gap
+    return (x, y) => {
+      if (Math.abs(x) > Math.sqrt(geometry.area) / 2) return 0
+      const t = 0.5 - y / gap
+      return V * Math.min(1, Math.max(0, t))
+    }
+  }
   if (kind === 'coax') {
     return (x, y) => {
       const r = Math.hypot(x, y)
@@ -183,7 +194,10 @@ export function mapPropsFor(exp, p, x) {
       },
       vector: null,
       conductors: [],
-      probe: null,
+      // C1 and C2 are about the potential at one point, and the point was not
+      // drawn: the map showed a trough with nothing marking where 43.2 V was
+      // read. A grid experiment with a probe knob puts its cross on the map.
+      probe: Number.isFinite(p.px) && Number.isFinite(p.py) ? { x: p.px, y: p.py } : null,
       units,
     }
   }
@@ -232,11 +246,15 @@ const PROFILES = {
     secondary: { read: () => F.sheetChargeField(p.sigma), label: 'Sheet, field', unit: V_PER_M },
     regions: [],
   }),
+  // The cut runs between the charges and stops where the traced curve starts,
+  // short of both of them. A cut that crosses a point charge is one over zero
+  // at that point, and a panel scaled to that shows a spike and a flat line
+  // where the lesson is the fall either side of it.
   a5: (p, x) => ({
     axis: 'x',
     cut: 0,
-    from: -p.d,
-    to: p.d,
+    from: -p.d / 2 + p.start,
+    to: p.d / 2 - p.start,
     scalar: { read: (t) => safe(x.potential, [t, 0, 0]), label: 'Potential', unit: 'V' },
     regions: [],
   }),
@@ -253,11 +271,17 @@ const PROFILES = {
     scalar: { read: (t) => p.V * (1 - t / p.len), label: 'Potential along the bar', unit: 'V' },
     regions: [],
   }),
+  // The sweeps run over frequency, not over position. The axis says so, and it
+  // runs by decade: four decades drawn linearly put every interesting number in
+  // the first four pixels.
   f1: (p) => ({
     axis: 'x',
     cut: 0,
     from: 1,
     to: 1e4,
+    log: true,
+    xLabel: 'Frequency',
+    xUnit: 'Hz',
     scalar: { read: (f) => F.faradayEmf({ turns: p.N, area: p.area, Bpeak: p.B, f }).rms, label: 'Induced emf, rms', unit: 'V' },
     regions: [],
   }),
@@ -266,8 +290,9 @@ const PROFILES = {
     cut: 0,
     from: p.t * 0.25,
     to: p.t * 4,
+    xLabel: 'Lamination thickness',
     scalar: { read: (t) => F.eddyLossSheet({ thickness: t, Bpeak: p.B, f: p.f, rho: p.rho }).P, label: 'Eddy-current loss', unit: 'W/m³' },
-    regions: [{ from: 0, to: p.t, label: 'lamination' }],
+    regions: [{ from: p.t, to: p.t, label: 'this lamination', edge: true }],
   }),
   e3: (p, x) => ({
     axis: 'x',
@@ -285,6 +310,8 @@ const PROFILES = {
     from: 1,
     to: 1e7,
     log: true,
+    xLabel: 'Frequency',
+    xUnit: 'Hz',
     scalar: {
       read: (f) => F.wireImpedance(p.a, f, { sigma: p.sigma }).ratio,
       label: 'Resistance over its direct-current value',
@@ -294,13 +321,23 @@ const PROFILES = {
   }),
 }
 
+/**
+ * The cut up the perpendicular bisector, from the midpoint of the pair.
+ *
+ * It used to run along the line joining the charges, straight through one of
+ * them. A point charge's field is one over the square of the distance, so the
+ * sample nearest the charge came out at 40 GV/m and every other sample was a
+ * flat line on the floor of the panel. This line has no singularity on it, the
+ * probe of both A1 and A2 sits on it, and the shape it draws is the lesson:
+ * two like charges cancel at the midpoint, and a dipole does not.
+ */
 function radialCharges(p, x) {
   return {
-    axis: 'x',
+    axis: 'y',
     cut: 0,
-    from: p.d * 0.1,
-    to: p.d * 3,
-    scalar: { read: (t) => Math.hypot(...safe(x.field, [t, 0, 0])), label: 'Field magnitude', unit: V_PER_M },
+    from: 0,
+    to: p.d * 2,
+    scalar: { read: (t) => Math.hypot(...safe(x.field, [0, t, 0])), label: 'Field magnitude', unit: V_PER_M },
     regions: [],
   }
 }
