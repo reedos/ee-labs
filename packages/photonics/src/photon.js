@@ -174,6 +174,10 @@ export function photodiode(spec = {}) {
     across: vc - net.spec.bias, // volts across the load, negative by its own sign convention
     floor: (64 * Number.EPSILON * Math.max(net.spec.bias, Math.abs(vc))) / load,
     iters: r.iters.length,
+    // The solved network itself, so a schematic can put a meter on every node
+    // and every element without solving the circuit a second time.
+    sol: r.sol,
+    elements: net.elements,
   }
 }
 

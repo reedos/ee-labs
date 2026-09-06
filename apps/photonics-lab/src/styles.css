@@ -1,0 +1,241 @@
+/* Photonics Lab's own furniture. The shell, controls and NumField come from
+ * @ee-labs/ui; the group tabs, presets, terms fold and path nav are the house
+ * idiom every other lab uses, copied so the suite reads as one thing. The
+ * curve, pulse, link, cavity and spectrum panes are this lab's own. */
+
+/* ---------- the picker: group tabs, then that group's experiments ---------- */
+
+.group-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 0;
+}
+.controls h2.picker-cap {
+  padding: 0 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.group-tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 0 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.group-tab:hover { color: var(--text); }
+.group-tab.is-shown { color: var(--text); border-bottom-color: var(--accent); }
+.group-tab.is-here:not(.is-shown) { color: var(--accent); }
+
+.presets { display: flex; flex-wrap: wrap; gap: 5px; }
+.presets[hidden] { display: none; }
+.preset {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11.5px;
+  padding: 4px 8px;
+}
+.preset:hover { border-color: var(--accent); color: var(--accent); }
+.preset.is-on { border-color: var(--accent); color: var(--accent); background: rgba(56, 224, 176, 0.1); }
+
+.controls { padding-top: 8px; }
+.controls section { margin-top: 6px; padding-bottom: 10px; }
+.controls h2 { padding: 5px 12px 4px; margin-bottom: 6px; }
+.controls .hint { margin-top: 8px; }
+.controls .report-issue { margin-top: 14px; }
+
+/* ---------- the note, the try line, and why ---------- */
+
+.note-title { margin: 10px 0 2px; font-size: 12.5px; font-weight: 650; color: var(--text); }
+
+details.why-fold { margin: 6px 0; }
+details.why-fold > summary {
+  cursor: pointer;
+  font-size: 11.5px;
+  color: var(--dim);
+  list-style: none;
+}
+details.why-fold > summary::before { content: '\25B8  '; font-size: 9px; }
+details.why-fold[open] > summary::before { content: '\25BE  '; }
+details.why-fold p { margin-top: 6px; }
+
+details.terms { margin: 6px 0 2px; }
+details.terms > summary { cursor: pointer; font-size: 11px; color: var(--accent); list-style: none; }
+details.terms > summary::before { content: '\25B8  '; font-size: 9px; }
+details.terms[open] > summary::before { content: '\25BE  '; }
+details.terms > summary::-webkit-details-marker { display: none; }
+details.terms dl { margin: 6px 0 0; }
+details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
+details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+
+.more-knobs { margin-top: 8px; }
+.more-knobs > summary { cursor: pointer; font-size: 12px; color: var(--dim); padding: 4px 0; }
+.more-knobs[open] > summary { margin-bottom: 4px; }
+
+/* ---------- the top bar's path nav ---------- */
+
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 14px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+.topbar-nav .position {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+  font-size: 11px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 52px;
+}
+.topbar-nav .position em { font-style: normal; font-size: 10px; color: var(--dim); }
+.nav-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  padding: 0 0 2px;
+}
+.nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.nav-btn:disabled { opacity: 0.35; cursor: default; }
+
+.flow-node.is-off { color: var(--warn); border-color: rgba(255, 92, 122, 0.4); }
+
+.views.is-single { grid-template-rows: 1fr; }
+.view-head .segmented { flex: 0 0 auto; }
+.view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
+.view-body { overflow: auto; min-height: 0; }
+
+/* A setting the engine declines: the object's own message, where the drawing
+   would be. It is content, not an error state, so it reads as a note. */
+.declined { color: var(--warn); max-width: 52ch; margin: auto; text-align: center; }
+
+/* ---------- shapes every pane builds in ---------- */
+
+.pane-fill { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; }
+canvas.plot { flex: 1; width: 100%; min-height: 240px; display: block; border-radius: 6px; background: var(--panel); }
+
+.caption { font-size: 11px; color: var(--dim); margin: 6px 2px 0; line-height: 1.5; }
+
+.readouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+.readouts > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.readouts dt { color: var(--dim); font-size: 10.5px; letter-spacing: 0.03em; }
+.readouts dd {
+  margin: 0;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.readouts > div.is-off dd { color: var(--warn); }
+
+.flag { display: inline-block; font-size: 11px; line-height: 1.5; }
+.flag.warn { color: var(--warn); }
+
+/* ---------- the numbers pane ---------- */
+
+.numbers { width: 100%; border-collapse: collapse; font-size: 12px; }
+.numbers th, .numbers td { text-align: left; padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.numbers thead th {
+  color: var(--dim);
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.numbers tbody th { color: var(--dim); font-weight: 500; min-width: 130px; }
+.numbers td.v { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
+.numbers td.f { color: var(--dim); font-size: 11px; font-style: italic; }
+
+/* ---------- the schematic ---------- */
+
+.sch-wrap { display: flex; flex-direction: column; align-items: stretch; }
+.sch-wrap .schematic { width: 100%; max-width: 560px; height: auto; margin: 0 auto; }
+.sch-dim { fill: var(--dim); font-size: 8px; }
+
+/* ---------- the pulse, the link, the cavity, the spectrum ---------- */
+
+.pulse svg, .cavity svg, .spectrum svg { width: 100%; height: 190px; display: block; background: var(--panel); border-radius: 6px; }
+.pulse-in { fill: none; stroke: var(--dim); stroke-width: 0.6; vector-effect: non-scaling-stroke; }
+.pulse-out { fill: none; stroke: var(--accent); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+.pulse-axis, .cav-axis, .spec-axis { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+
+.link { display: flex; flex-direction: column; gap: 10px; }
+.link-strip { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(120px, 2.4fr) minmax(90px, 1fr); gap: 8px; align-items: stretch; }
+.link-block, .link-fibre {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.link-name { font-size: 11px; color: var(--dim); }
+.link-value { font-size: 12.5px; color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.link-fibre svg { width: 100%; height: 40px; display: block; }
+.link-fall { fill: none; stroke: var(--accent); stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+
+.waterfall { width: 100%; border-collapse: collapse; font-size: 12px; }
+.waterfall th, .waterfall td { padding: 3px 8px 3px 0; border-bottom: 1px solid var(--line); text-align: left; }
+.waterfall tbody th { color: var(--dim); font-weight: 500; white-space: nowrap; }
+.waterfall td.bar { width: 55%; }
+.waterfall td.bar span { display: block; height: 8px; border-radius: 2px; background: var(--accent); min-width: 1px; }
+.waterfall td.v { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; text-align: right; }
+.waterfall tr.is-zero th, .waterfall tr.is-zero td.v { color: var(--dim); }
+.waterfall tr.is-zero td.bar span { background: var(--line-bright); }
+.waterfall tr.is-total th, .waterfall tr.is-total td.v { color: var(--text); font-weight: 600; }
+
+.cav-trace { fill: none; stroke: var(--accent); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+.cav-peak { stroke: var(--line-bright); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+
+.chan { fill: rgba(56, 224, 176, 0.35); }
+.source { fill: var(--amber, #f0a23c); }
+
+@media (max-width: 900px) {
+  .views { display: flex; flex-direction: column; gap: 0; }
+  .views .view { min-height: 60vh; flex: 0 0 auto; }
+  .link-strip { grid-template-columns: minmax(0, 1fr); }
+  .waterfall td.bar { width: 40%; }
+}
+
+@media (min-width: 1200px) and (max-width: 2399px) {
+  .app { grid-template-columns: 360px 1fr; }
+}
