@@ -78,7 +78,10 @@ This entry records the promotion. `PROGRAM.md` is the director's file and this
 lab does not edit it.
 
 **The props, fixed from the first commit.** `RF_LAB_PLAN.md` §4.2 named five and
-the file ships six.
+the file ships the seven below, plus `caption`, `size`, `className` and
+`ariaLabel`.
+The plan's `normalise` is `z0` here, which is the name the brief's §3.6 contract
+fixed and the name the picture prints.
 
 | Prop | Whose | What it carries |
 | --- | --- | --- |

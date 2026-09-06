@@ -315,17 +315,26 @@ vswr  returnLoss  mismatchLoss  accepted  the same number in its other costumes
 zl.<re|im|mag|deg>                        the load
 zin.<re|im|mag|deg>                       looking into the line
 z.<re|im>  y.<re|im>                      normalised, and its reciprocal
-line.<lambda|degrees|wavelengths|beta|vp|Z0|length|delay|repeat>
+line.<lambda|degrees|wavelengths|beta|vp|Z0|length|delay|repeat|fraction>
 loss.<oneWay|roundTrip|alphaDb>           decibels, from alpha and the length
-source.<mag|vswr>                         the reflection seen back at the source
-turn.<deg|perMetre>                       the angle a length of line turns on the chart
+source.<mag|vswr|deg>                     the reflection seen back at the source
+turn.<deg|perMetre|shrink>                what a length of line does on the chart
 locus.<mag|deg>                           where the path ends
-circle.<r|x|g|b|vswr|q>.<cx|cy|radius>    the families, by name
+wave.<vmax|vmin|swr|dMax|dMin|quarter|firstG|lastG>   the standing wave along it
+circle.<r|x|g|b|vswr>.<cx|cy|radius>      the families, by name
 point.<name>.<re|im|mag|deg>              a named point on the chart
-onCircle.<name>                           how far a point is off the circle it should be on
-sweep.<points|spacing|worst|repeat>       the exact sweep, and what it repeats by
+shunt.<re|im|mag|deg>  shunt.y.<re|im>    where a shunt element moved the point
+onCircle.<r|x|g>                          how far a point is off the circle it should be on
+sweep.<points|spacing|first|last|spread>  the exact sweep, point by point
 handOver.<ok>                             whether the rational hand-over is offered
+headline                                  the one number the topbar shows
+p.<knob>                                  a knob value, for a `why` that names its own setting
 ```
+
+That list is the one `readQuantity` has a case for.
+`apps/rf-lab/src/lessons.js` carries the same list in its own comment. A path
+that names nothing throws rather than reading `undefined`, so a name which
+drifts out of this table fails a test rather than passing quietly.
 
 Groups C and D added these. Each reads off the analysis by its own path, rather
 than through a case in `readQuantity`.
