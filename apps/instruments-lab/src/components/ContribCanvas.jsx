@@ -1,5 +1,5 @@
 import React from 'react'
-import { COLORS, useCanvas } from '@ee-labs/ui'
+import { COLORS, niceStep, useCanvas } from '@ee-labs/ui'
 import { frameArea, trackText, SANS } from './timePlot.js'
 import { HUE } from '../palette.js'
 
@@ -24,7 +24,14 @@ export default function ContribCanvas({ sens }) {
       const rows = sens.rows
       const hi = Math.max(sens.worst, ...rows.map((r) => Math.abs(r.part))) * 1.25 || 1
       const sx = (v) => area.x + (Math.abs(v) / hi) * area.w
-      const band = area.h / (rows.length + 1.6)
+      // The foot of the frame is the axis and the two sums' names, and the bars
+      // have what is left. Both sums used to be written a quarter of a band
+      // apart, which at 390 px is ten pixels, so "in quadrature 0.707 %" and
+      // "worst case 1.00 %" were printed over each other.
+      const foot = 68 * k
+      const bars = Math.max(40 * k, area.h - foot)
+      const axisY = area.y + bars
+      const band = bars / (rows.length + 0.4)
       const barH = Math.min(26 * k, band * 0.55)
 
       ctx.font = `${Math.round(10 * k)}px ${SANS}`
@@ -55,22 +62,44 @@ export default function ContribCanvas({ sens }) {
         ctx.setLineDash(l.dash.map((d) => d * k))
         ctx.beginPath()
         ctx.moveTo(x, area.y)
-        ctx.lineTo(x, area.y + area.h - band * 0.4)
+        ctx.lineTo(x, axisY)
         ctx.stroke()
         ctx.setLineDash([])
+        // Each sum named under the axis, on its own row, at its own line. They
+        // used to sit inside the bars a quarter of a band apart, which at
+        // 390 px is ten pixels: "in quadrature 0.707 %" and "worst case
+        // 1.00 %" were printed over each other and over a bar's own value.
         ctx.fillStyle = l.color
         ctx.textBaseline = 'top'
-        ctx.textAlign = x > area.x + area.w * 0.6 ? 'right' : 'left'
-        ctx.fillText(l.label, x + (x > area.x + area.w * 0.6 ? -4 : 4) * k, area.y + area.h - band * (0.35 - 0.25 * i))
+        const back = x > area.x + area.w * 0.8
+        ctx.textAlign = back ? 'right' : 'left'
+        ctx.fillText(l.label, x + (back ? -4 : 4) * k, axisY + (22 + 14 * i) * k)
       })
 
-      // The axis the bars are measured on.
+      // The axis the bars are measured on: zero at the left, ticks across, and
+      // the quantity named. It carried no scale and no unit at all.
       ctx.strokeStyle = COLORS.grid
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(area.x + 0.5, area.y)
-      ctx.lineTo(area.x + 0.5, area.y + area.h)
+      ctx.lineTo(area.x + 0.5, axisY)
+      ctx.moveTo(area.x, Math.round(axisY) + 0.5)
+      ctx.lineTo(area.x + area.w, Math.round(axisY) + 0.5)
       ctx.stroke()
+      const step = niceStep(hi, 5)
+      ctx.fillStyle = COLORS.text
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+      for (let v = 0; v <= hi + step * 1e-6; v += step) {
+        const x = Math.round(sx(v)) + 0.5
+        ctx.strokeStyle = COLORS.grid
+        ctx.beginPath()
+        ctx.moveTo(x, axisY)
+        ctx.lineTo(x, axisY + 4 * k)
+        ctx.stroke()
+        ctx.fillText(`${Number(v.toPrecision(4))}`, x, axisY + 7 * k)
+      }
+      ctx.fillText('contribution to the reading (%)', area.x + area.w / 2, axisY + 52 * k)
     },
     [sens],
   )
