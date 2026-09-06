@@ -442,6 +442,22 @@ describe('M3 · the switch node rings', () => {
     expect(Math.abs(extra / snub.formulas.Psn - 1)).toBeLessThan(0.15)
   })
 
+  it('reports no ring where the node is overdamped, rather than a frequency nothing oscillates at', () => {
+    // 1/(2π√(L_p C_p)) is still a number past ζ = 1, and the knobs reach
+    // there. The node does not ring, so the meter, the strip and the outcome
+    // say that instead of naming a frequency.
+    const x = at('m3', { Rp: 5 })
+    expect(x.formulas.zeta).toBeGreaterThanOrEqual(1)
+    expect(x.formulas.fr).toBe(0)
+    expect(x.m.measured).toBeNull()
+    expect(LMN_HEADLINES.ring(x.m).value).toBe('none: overdamped')
+    expect(outcomeOf(byId.m3, x)).toMatch(/no ring/)
+    expect(outcomeOf(byId.m3, x)).not.toMatch(/15\.9/)
+    // Underdamped, the meter reads the waveform's own frequency.
+    const y = at('m3')
+    expect(LMN_HEADLINES.ring(y.m).value).toMatch(/15\.9 MHz at 73 %/)
+  })
+
   it('footnotes the two ring forms where their own assumptions fail', () => {
     // CORE_SCOPE rule 3: every approximation carries a threshold, and the
     // threshold is exercised. The forms hold the loop's own parasitics and

@@ -162,7 +162,18 @@ export const LMN_HEADLINES = {
   // numbers that are both loss.
   drive: (m) => ({ label: 'η', value: Number.isFinite(m.eta) ? `${(m.eta * 100).toFixed(1)} %` : 'all of it loss' }),
   ripple: (m) => ({ label: 'line ripple', value: fmt(m.lineRipple, 'A', 3) }),
-  ring: (m) => ({ label: 'ring', value: `${fmt(m.measured ? m.measured.f : m.ring.f0, 'Hz', 3)} at ${(m.overshoot * 100).toFixed(0)} %` }),
+  // Past ζ = 1 the node has no ring to report, and 1/(2π√(L_p C_p)) is still
+  // a number: printing it there would name a frequency nothing oscillates
+  // at. The meter says which case it is in.
+  ring: (m) => ({
+    label: 'ring',
+    value:
+      m.ring.zeta >= 1
+        ? 'none: overdamped'
+        : m.measured
+          ? `${fmt(m.measured.f, 'Hz', 3)} at ${(m.overshoot * 100).toFixed(0)} %`
+          : `${fmt(m.ring.fr, 'Hz', 3)}, not resolved`,
+  }),
   tj: (m) => ({ label: 'T_j', value: `${m.thermal.Tj.toFixed(1)} °C` }),
 }
 
@@ -597,7 +608,10 @@ export const LMN_OUTCOME = {
   hbridge: (x) => driveOutcome(x),
   bldc: (x) => driveOutcome(x),
   emi: (x) => `line ${fmt(x.m.line1, 'A', 3)} of the converter's ${fmt(x.m.conv1, 'A', 3)}, ${x.formulas.rejection.toFixed(1)}× down`,
-  ringing: (x) => `${fmt(x.m.measured ? x.m.measured.f : x.formulas.f0, 'Hz', 4)} ring, ${(x.m.overshoot * 100).toFixed(1)} % over, Q = ${x.formulas.Q.toFixed(2)}`,
+  ringing: (x) =>
+    x.formulas.zeta >= 1
+      ? `no ring: ζ = ${x.formulas.zeta.toFixed(2)}, the node is overdamped`
+      : `${fmt(x.m.measured ? x.m.measured.f : x.formulas.fr, 'Hz', 4)} ring, ${(x.m.overshoot * 100).toFixed(1)} % over, Q = ${x.formulas.Q.toFixed(2)}`,
   thermal: (x) => `T_j = ${x.m.thermal.Tj.toFixed(1)} °C on ${fmt(x.m.thermal.P, 'W', 3)}, ${x.m.thermal.headroom.toFixed(1)} K of headroom`,
 }
 
@@ -620,7 +634,7 @@ export const LMN_FLOW = {
   ringing: (exp, params, x) => ({
     mode: 'hard-switched node',
     mid: `${fmt(x.formulas.Ctotal, 'F', 3)} on the node`,
-    out: `${fmt(x.m.measured ? x.m.measured.f : x.formulas.f0, 'Hz', 3)} ring`,
+    out: x.formulas.zeta >= 1 ? 'no ring' : `${fmt(x.m.measured ? x.m.measured.f : x.formulas.fr, 'Hz', 3)} ring`,
     outSub: `peak ${fmt(x.m.peak, 'V', 3)}`,
   }),
   thermal: (exp, params, x) => ({
