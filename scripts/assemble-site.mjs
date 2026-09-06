@@ -41,22 +41,14 @@ import { cp, mkdir, readFile, rm } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { DEPLOYED_APPS } from '../packages/ui/src/deployedApps.js'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const SITE = join(ROOT, '_site')
 
 // The folder name each lab is served under. These are the paths in the
 // deployed URLs, so deeplink.js's own app list must agree with them.
-export const LABS = [
-  'signal-lab',
-  'circuit-lab',
-  'control-lab',
-  // Dark-launched: built and served at its URL, linked from nowhere until its
-  // own RELEASE_STATUS says `released`. It still has to BE at that URL, which
-  // is exactly why it is assembled here.
-  'circuit-elements-lab',
-  'power-lab',
-]
+export const LABS = DEPLOYED_APPS
 
 export async function assemble({ labs = LABS, quiet = false } = {}) {
   const missing = labs.filter((l) => !existsSync(join(ROOT, 'apps', l, 'dist', 'index.html')))

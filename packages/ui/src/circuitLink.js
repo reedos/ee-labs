@@ -16,6 +16,8 @@
 // six-figure value would be a different circuit by a part in a million.
 // Anything unrecognised is dropped and reported rather than guessed at.
 
+import { siblingUrl } from './deeplink.js'
+
 const NUM = /^-?\d*\.?\d+(?:e[-+]?\d+)?$/i
 const ID = /^[a-z][a-zA-Z0-9]*$/
 
@@ -103,10 +105,5 @@ export function readCircuitLink(loc = typeof window === 'undefined' ? null : win
  * a decision LabNav's own `LABS` array makes instead.)
  */
 export function labUrl(app, fragment, loc = typeof window === 'undefined' ? null : window.location) {
-  if (!loc) return null
-  const apps = ['signal-lab', 'circuit-lab', 'control-lab', 'circuit-elements-lab', 'power-lab']
-  if (!apps.includes(app)) return null
-  const m = loc.pathname.match(new RegExp(`^(.*/)(${apps.join('|')})(/[^/]*)?$`))
-  if (!m || m[2] === app) return null
-  return `${loc.origin}${m[1]}${app}/${fragment ? '#' + fragment : ''}`
+  return siblingUrl(app, fragment, loc)
 }
