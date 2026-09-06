@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { renderToString } from 'react-dom/server'
+import React from 'react'
 import {
   converter,
   steadyState,
@@ -25,6 +27,7 @@ import { byId, defaultsOf } from './experiments.js'
 import { analyse, buckParams } from './analysis.js'
 import { threePhaseParams, sweepMa3 } from './groups/hiAnalysis.js'
 import { experimentMath } from './math.js'
+import { PlantPane, LINK_COEFF_LIMIT, linkCarries } from './components/hiPanes.jsx'
 
 // Every number Groups H and I put on the screen, pinned against the engine
 // that produced it, and every one of them a function of a knob rather than a
@@ -465,6 +468,28 @@ describe('the panels these groups add', () => {
     expect(tf.b).toHaveLength(3)
     expect(tf.a).toHaveLength(3)
     expect(tf.a[0]).toBe(1)
+  })
+
+  it('the hand-over is declined when a coefficient is larger than the link can carry', () => {
+    // Control Lab's custom plant holds each of its six numbers to 1e12. The
+    // averaging guard does not cover this: a fast buck can sit well inside
+    // f_s/5 and still need a b0 the field would clamp, and a clamped
+    // coefficient is a different plant.
+    expect(LINK_COEFF_LIMIT).toBe(1e12)
+    const easy = at('h2')
+    expect(easy.guard.state).toBe('ok')
+    expect(linkCarries(easy.plant).ok).toBe(true)
+    const fast = at('h2', { L: 10e-6, C: 1e-6, fs: 2e6 })
+    expect(fast.guard.state, 'the averaging guard sees nothing wrong').toBe('ok')
+    expect(linkCarries(fast.plant).ok).toBe(false)
+    expect(linkCarries(fast.plant).worst).toBeGreaterThan(LINK_COEFF_LIMIT)
+    // The pane says so, rather than offering a link it cannot honour.
+    const html = renderToString(React.createElement(PlantPane, { x: fast, exp: byId.h2 }))
+    expect(html).toMatch(/declined at this setting/)
+    expect(html).not.toMatch(/Open this plant in Control Lab/)
+    expect(renderToString(React.createElement(PlantPane, { x: easy, exp: byId.h2 }))).toMatch(
+      /Open this plant in Control Lab/,
+    )
   })
 
   it('the three-phase measures name the units the spectrum pane draws', () => {

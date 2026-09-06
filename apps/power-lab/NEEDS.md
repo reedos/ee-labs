@@ -93,3 +93,21 @@ says `dark`, and `src/release.test.js` fails if any of it is.
    millionth of a millionth of the curve's own scale, which no real step can
    hide under. It is a shared test file, and the change is one helper and two
    call sites.
+
+6. **The plant link's own range is mirrored here, and nothing pins the two
+   together.** Control Lab's custom plant holds each of its six coefficients
+   to 1e12 (`apps/control-lab/src/systems.js`), and a link outside that range
+   arrives clamped. The averaging guard does not cover it: a buck at
+   L = 10 µH, C = 1 µF and f_s = 2 MHz sits well inside f_s/5 and still needs
+   b₀ = 1.2e12. `hiPanes.jsx` declines the hand-over there, with the reason,
+   and carries `LINK_COEFF_LIMIT = 1e12` as its own constant. Control Lab's
+   `fromLink.test.js` pins Circuit Lab's catalog names the same way, so the
+   director should add the matching pin when the two labs are merged.
+7. **Group F's inverters showed the same rounding dust the three-phase bridge
+   did.** `App.smoke.test.js`'s femto probe ended its pattern with a literal
+   backspace where a word boundary was meant, so it had never matched
+   anything. Repaired during the review of Groups H and I, it found F2, F3 and
+   F4 reading `i_L −10.2 fA` in the scope strip alongside the new groups' own
+   `V_out −53.29 fV`. Both are fixed in `App.jsx` by formatting against the
+   signal's own scale. The change reaches Group F's screens, which is outside
+   these groups' lane, so it is named here.

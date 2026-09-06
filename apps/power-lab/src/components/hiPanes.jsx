@@ -23,6 +23,23 @@ import { TRACE_COLORS } from './ScopeCanvas.jsx'
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 const Eq = ({ children }) => <Formula display={false}>{children}</Formula>
 
+/**
+ * The largest coefficient Control Lab's custom plant can hold.
+ *
+ * Its six fields run from -1e12 to 1e12 (`apps/control-lab/src/systems.js`),
+ * and a link outside that range arrives clamped, with a warning of its own.
+ * A buck at L = 10 uH, C = 1 uF and f_s = 2 MHz has b0 = 1.2e12 and is inside
+ * the averaging guard, so the guard alone does not keep the hand-over exact.
+ * CORE_SCOPE.md rule 2: a mapping that is not exact declines and says why.
+ */
+export const LINK_COEFF_LIMIT = 1e12
+
+/** Whether the six coefficients survive the link unchanged. */
+export function linkCarries(tf) {
+  const worst = Math.max(...[...tf.b, ...tf.a].map((c) => Math.abs(c)))
+  return { ok: worst <= LINK_COEFF_LIMIT, worst, limit: LINK_COEFF_LIMIT }
+}
+
 /** A polynomial written out for the panel, highest power first. */
 function poly([c2, c1, c0], v = 's') {
   const terms = []
@@ -207,6 +224,7 @@ export function PlantPane({ x, exp }) {
   const g = x.guard
   const f = x.formulas
   const boost = x.kind !== 'buck'
+  const carries = linkCarries(tf)
   const link = buildLink({
     plant: { type: 'custom', params: [...tf.b, ...tf.a] },
     ctrl: { type: 'p', params: [1] },
@@ -280,6 +298,12 @@ export function PlantPane({ x, exp }) {
         <p className="hint" data-role="plant-link">
           The hand-over is declined at this setting. A plant whose own corner sits above f_s/5 is not this
           converter, and a loop closed around it would have margins the circuit does not have.
+        </p>
+      ) : !carries.ok ? (
+        <p className="hint" data-role="plant-link">
+          The hand-over is declined at this setting. Control Lab holds a coefficient up to{' '}
+          {carries.limit.toPrecision(3)}, and this model needs {carries.worst.toPrecision(4)}. The link would
+          arrive with that number clamped, which is a different plant. Raise L or C to bring the corner down.
         </p>
       ) : (
         <p className="hint" data-role="plant-link">
