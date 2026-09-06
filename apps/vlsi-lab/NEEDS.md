@@ -14,6 +14,8 @@ An RC crossing contains `ln(2)` and is not generally representable exactly on th
 The app labels the chain as rounded to 1 fs and displays its accumulated error.
 Each stage contributes at most 0.5 fs of rounding error.
 An exact analog-chain comparison remains deferred. It also requires measuring threshold events under finite input slopes.
+A5 remains partial plan fulfillment. Its isolated fanout law has waveform pins, but no measured analog-chain comparison is included.
+The event quantization bound does not close that gap. No additional slope solver is part of this deliverable.
 
 ## Plan corrections
 

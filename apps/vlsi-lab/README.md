@@ -2,6 +2,7 @@
 
 Five bounded lessons cover A1 through A5 on the existing network and events engines.
 A3 includes extraction and a rounded event chain. The plan's exact chain comparison remains deferred.
+A5 is partial plan fulfillment. Its isolated fanout law is measured, but it includes no measured analog-chain comparison.
 The app remains dark. Later groups are outside this deliverable.
 
 ## Model boundaries
@@ -15,6 +16,7 @@ The square-law view consists of DC operating points. It carries no dynamic claim
 Its threshold boundaries can have multiple switch-model DC solutions, displayed as gaps.
 The event chain rounds each delay to 1 fs and displays a bound of 0.5 fs per stage.
 It does not simulate an analog transistor chain. Unsupported extraction topologies produce a stated error.
+The rounding bound is not evidence of agreement with an analog chain.
 
 ## Verification
 
