@@ -1,6 +1,6 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, fmt } from '@ee-labs/ui'
-import { drawCursor, drawDataMarks, drawEndLabels, drawRightAxis, fmtT, frameArea, labelsFit, rightSpan, scrubHandlers, spanOf, trackText } from './timePlot.js'
+import { clipToFrame, drawCursor, drawDataMarks, drawEndLabels, drawRightAxis, fmtT, frameArea, labelsFit, rightSpan, scrubHandlers, spanOf, trackText, unclip } from './timePlot.js'
 import { HUE, styleTraces } from '../palette.js'
 import { num } from '../format.js'
 
@@ -63,10 +63,7 @@ export default function ScopeCanvas({ tr, ghost = null, ghostLabel = 'from rest 
         ? drawRightAxis(ctx, area, w, rLo, rHi, (v) => fmt(v, scope.right.unit, 2), `${scope.right.traces.map((q) => q.label).join(', ')} (${scope.right.unit})`)
         : null
 
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(area.x, area.y, area.w, area.h)
-      ctx.clip()
+      clipToFrame(ctx, area)
 
       if (syR && !aligned && rLo < 0 && rHi > 0) {
         // The right scale's own zero, in its own colour, since it is not the frame's.
@@ -149,7 +146,7 @@ export default function ScopeCanvas({ tr, ghost = null, ghostLabel = 'from rest 
         ...(guides.some((g) => g.label) ? [{ label: guides.find((g) => g.label).label, color: COLORS.textBright, y: sy(last(guideYs[guides.findIndex((g) => g.label)])), dim: true }] : []),
       ]
       drawEndLabels(ctx, area, ends, pinned)
-      ctx.restore()
+      unclip(ctx)
     },
     [tr, ghost, ghostLabel, scope, cursor, marks, guides],
   )

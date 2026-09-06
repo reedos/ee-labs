@@ -1,7 +1,7 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
 import { complex as cx } from '@ee-labs/network'
-import { MONO, SANS, drawCursor, drawEndLabels, fmtT, labelsFit, overlapping, textBox, trackText } from './timePlot.js'
+import { MONO, SANS, clipToFrame, drawCursor, drawEndLabels, fmtT, labelsFit, overlapping, textBox, trackText, unclip } from './timePlot.js'
 import { DASH_OF, HUE, shade } from '../palette.js'
 import { turnedLabel } from '../math.js'
 import { num } from '../format.js'
@@ -61,10 +61,7 @@ export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
       })
       const rot = (X) => cx.cmul(X, cx.cexpj(theta))
 
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(frame.x, frame.y, frame.w, frame.h)
-      ctx.clip()
+      clipToFrame(ctx, frame)
       const wave = (X, scale, color, { width = 2, alpha = 1, dash = null } = {}) => {
         ctx.strokeStyle = color
         ctx.globalAlpha = alpha
@@ -111,7 +108,7 @@ export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
         ],
         pinned,
       )
-      ctx.restore()
+      unclip(ctx)
 
       // ---- the diagram
       const c = { x: dia.x + dia.s / 2, y: dia.y + dia.s / 2 }

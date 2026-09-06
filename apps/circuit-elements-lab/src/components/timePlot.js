@@ -137,6 +137,7 @@ export function trackText(ctx) {
   const canvas = ctx.canvas
   if (!canvas) return
   canvas.__texts = []
+  canvas.__clip = null
   try {
     const m = ctx.getTransform()
     canvas.__dpr = Math.hypot(m.a, m.b) || 1
@@ -150,8 +151,48 @@ export function trackText(ctx) {
     if (maxWidth === undefined) raw.call(this, text, x, y)
     else raw.call(this, text, x, y, maxWidth)
     const box = textBox(this, text, x, y)
-    if (box && this.canvas.__texts) this.canvas.__texts.push(box)
+    if (box && this.canvas.__texts) {
+      // What was clipping when the text was drawn. A label written past the
+      // frame is drawn cut, and a check that measures text against the canvas
+      // cannot see that: at 390 px G3's marker read "= 400 Ω, ζ = 2.00",
+      // because the "R " fell outside the frame the marks are clipped to.
+      if (this.canvas.__clip) box.clip = this.canvas.__clip
+      this.canvas.__texts.push(box)
+    }
   }
+}
+
+/** Clip a draw to the plot's frame, and remember the edge for the text boxes. */
+export function clipToFrame(ctx, area) {
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(area.x, area.y, area.w, area.h)
+  ctx.clip()
+  if (ctx.canvas) ctx.canvas.__clip = { x0: area.x, y0: area.y, x1: area.x + area.w, y1: area.y + area.h }
+}
+
+/** Undo it, and forget the edge, so the axes drawn outside are not held to it. */
+export function unclip(ctx) {
+  ctx.restore()
+  if (ctx.canvas) ctx.canvas.__clip = null
+}
+
+/**
+ * Where to write a label beside a point so that all of it stays inside the
+ * frame. To the right of the point when there is room, to the left when there
+ * is room there, and otherwise pushed in from whichever edge it ran past.
+ * DampingCanvas asked only about the right edge, so on a phone the marker's
+ * label was pushed left until the frame's clip took the first two characters
+ * off it. Returns the textAlign to set and the x to write at.
+ */
+export function labelInFrame(ctx, text, atX, area, gap) {
+  const w = ctx.measureText(text).width
+  const pad = 2 * (area.k || 1)
+  const lo = area.x + pad
+  const hi = area.x + area.w - pad
+  if (atX + gap + w <= hi) return { align: 'left', x: atX + gap }
+  if (atX - gap - w >= lo) return { align: 'right', x: atX - gap }
+  return { align: 'left', x: Math.max(lo, Math.min(atX + gap, hi - w)) }
 }
 
 /** The box a fillText covers, in CSS pixels: measured width, font-size height, the current transform applied. */

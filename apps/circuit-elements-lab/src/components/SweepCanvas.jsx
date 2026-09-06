@@ -1,6 +1,6 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, fmt } from '@ee-labs/ui'
-import { MONO, drawDataMarks, drawEndLabels, drawRightAxis, frameArea, sweepSpan, trackText } from './timePlot.js'
+import { MONO, clipToFrame, drawDataMarks, drawEndLabels, drawRightAxis, frameArea, labelInFrame, sweepSpan, trackText, unclip } from './timePlot.js'
 import { HUE } from '../palette.js'
 
 /**
@@ -52,10 +52,7 @@ export default function SweepCanvas({ points, y = 'p', at, rth = null, efficienc
       const syPct = efficiency ? drawRightAxis(ctx, area, w, 0, 100, (v) => `${v}%`, 'Efficiency (%)', 25) : null
       const syR = syPct ? (frac) => syPct(100 * frac) : null
 
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(area.x, area.y, area.w, area.h)
-      ctx.clip()
+      clipToFrame(ctx, area)
 
       // R_th first, underneath everything.
       if (Number.isFinite(rth) && rth > 0) {
@@ -136,18 +133,20 @@ export default function SweepCanvas({ points, y = 'p', at, rth = null, efficienc
         // A point mark on the dot has its own label beside it; this one goes under.
         const markHere = marks.some((m) => m.kind === 'point' && m.axis !== 'right' && Math.hypot(sx(Math.log10(m.x)) - px, sy(m.y) - py) < 6 * k)
         const under = rising || lineAbove || markHere
-        const wide = ctx.measureText(label).width
-        const left = px + 7 * k + wide > area.x + area.w
-        ctx.textAlign = left ? 'right' : 'left'
+        // Asking only about the right edge pushed the label off the left one on
+        // a phone, where the frame's clip took the front of it: E8's marker read
+        // "100 Ω → 6 V" with the first characters gone.
+        const put = labelInFrame(ctx, label, px, area, 7 * k)
+        ctx.textAlign = put.align
         ctx.textBaseline = under ? 'top' : 'bottom'
-        ctx.fillText(label, px + (left ? -7 : 7) * k, py + (under ? 6 : -6) * k)
+        ctx.fillText(label, put.x, py + (under ? 6 : -6) * k)
       }
 
       drawEndLabels(ctx, area, [
         { label: y === 'p' ? 'load power' : 'load voltage', color: hue, y: sy(ys[ys.length - 1]) },
         ...(syR ? [{ label: 'efficiency (right axis)', color: HUE.power, y: effEnd, dim: true }] : []),
       ])
-      ctx.restore()
+      unclip(ctx)
     },
     [points, y, at, rth, efficiency, marks],
   )

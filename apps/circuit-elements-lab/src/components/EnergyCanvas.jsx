@@ -1,6 +1,6 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, fmt } from '@ee-labs/ui'
-import { drawCursor, drawEndLabels, fmtT, frameArea, labelsFit, scrubHandlers, spanOf, trackText } from './timePlot.js'
+import { clipToFrame, drawCursor, drawEndLabels, fmtT, frameArea, labelsFit, scrubHandlers, spanOf, trackText, unclip } from './timePlot.js'
 import { shade } from '../palette.js'
 import { num } from '../format.js'
 
@@ -43,10 +43,7 @@ export default function EnergyCanvas({ energy, tEnd, cursor, onCursor }) {
         yTitle: 'Energy (J)',
       })
 
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(area.x, area.y, area.w, area.h)
-      ctx.clip()
+      clipToFrame(ctx, area)
 
       for (const band of stack) {
         ctx.fillStyle = band.color
@@ -99,7 +96,7 @@ export default function EnergyCanvas({ energy, tEnd, cursor, onCursor }) {
         [...stack.map((b) => ({ label: b.label, color: b.color, y: mid(b) })), { label: energy.stored0 ? 'supplied + stored₀' : 'supplied', color: COLORS.textBright, y: sy(supplied[n - 1]) }],
         pinned,
       )
-      ctx.restore()
+      unclip(ctx)
     },
     [energy, tEnd, cursor],
   )

@@ -179,6 +179,16 @@ const textOverlaps = () =>
       const cw = c.clientWidth || c.width
       const ch = c.clientHeight || c.height
       for (const p of boxes) if (p.x0 < -shrink || p.y0 < -shrink || p.x1 > cw + shrink || p.y1 > ch + shrink) out.push(`${c.className}: “${p.text}” runs off the canvas`)
+      // The canvas is not where the cut happens. Marks are drawn inside a clip
+      // on the plot's frame, so a label placed past the frame loses characters
+      // while sitting well inside the canvas: at 390 px G3's marker read
+      // "= 400 Ω, ζ = 2.00" and the check saw nothing. Each box records the
+      // clip that was in force when it was written.
+      for (const p of boxes) {
+        if (!p.clip) continue
+        if (p.x0 < p.clip.x0 - shrink || p.x1 > p.clip.x1 + shrink || p.y0 < p.clip.y0 - shrink || p.y1 > p.clip.y1 + shrink)
+          out.push(`${c.className}: “${p.text}” is cut by the frame it is drawn in`)
+      }
       for (let a = 0; a < boxes.length; a++)
         for (let b = a + 1; b < boxes.length; b++) {
           const p = boxes[a]

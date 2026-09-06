@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { useCanvas, COLORS, drawFrame, fmt } from '@ee-labs/ui'
-import { MONO, clearRow, drawEndLabels, drawRightAxis, frameArea, trackText } from './timePlot.js'
+import { MONO, clearRow, clipToFrame, drawEndLabels, drawRightAxis, frameArea, labelInFrame, trackText, unclip } from './timePlot.js'
 import { HUE } from '../palette.js'
 import { dampingSweep } from '../math.js'
 
@@ -43,10 +43,7 @@ export default function DampingCanvas({ exp, params, at }) {
       })
       const syR = drawRightAxis(ctx, area, w, 0, oHi, (v) => `${v.toFixed(0)} %`, 'Overshoot of v_C (%)')
 
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(area.x, area.y, area.w, area.h)
-      ctx.clip()
+      clipToFrame(ctx, area)
 
       // R_crit underneath.
       const xc = sx(Math.log10(sweep.Rcrit))
@@ -111,12 +108,14 @@ export default function DampingCanvas({ exp, params, at }) {
         ctx.fillStyle = COLORS.marker
         ctx.font = `${Math.round(11 * k)}px ${MONO}`
         ctx.textBaseline = 'bottom'
-        // At the foot of the frame, stepping up over the fastest point's name when the frame is short;
-        // written to whichever side of the dot has room for the whole of it (a phone frame is narrow).
+        // At the foot of the frame, stepping up over the fastest point's name when the frame is short.
+        // Written to whichever side of the dot has room for the whole of it. A phone frame has room on
+        // neither side, and asking only about the right edge pushed the label off the left one, where
+        // the clip took the first two characters: the marker read "= 400 Ω, ζ = 2.00".
         const label = `R = ${fmt(at.R, 'Ω', 3)}, ζ = ${at.zeta.toPrecision(3)}`
-        const wide = ctx.measureText(label).width + 7 * k
-        ctx.textAlign = sx(lx) + wide > area.x + area.w - 2 * k ? 'right' : 'left'
-        const x = sx(lx) + (ctx.textAlign === 'left' ? 7 : -7) * k
+        const put = labelInFrame(ctx, label, sx(lx), area, 7 * k)
+        ctx.textAlign = put.align
+        const x = put.x
         ctx.fillText(label, x, clearRow(ctx, label, x, area.y + area.h - 6 * k, area.y, area.y + area.h, k))
       }
 
@@ -125,7 +124,7 @@ export default function DampingCanvas({ exp, params, at }) {
         { label: 'settling time', color: HUE.power, y: sy(settle[last]) },
         { label: 'overshoot', color: HUE.angle, y: syR(over[last]) },
       ])
-      ctx.restore()
+      unclip(ctx)
     },
     [sweep, at],
   )

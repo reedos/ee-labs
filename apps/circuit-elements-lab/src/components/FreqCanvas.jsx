@@ -1,7 +1,7 @@
 import React from 'react'
 import { useCanvas, COLORS, drawFrame, fmt } from '@ee-labs/ui'
 import { complex as cx } from '@ee-labs/network'
-import { drawDataMarks, drawEndLabels, drawMark, drawRightAxis, frameArea, freqSpan, trackText } from './timePlot.js'
+import { clipToFrame, drawDataMarks, drawEndLabels, drawMark, drawRightAxis, frameArea, freqSpan, trackText, unclip } from './timePlot.js'
 import { HUE } from '../palette.js'
 
 /**
@@ -44,10 +44,7 @@ export default function FreqCanvas({ freq, mode, fDrive, at, corner, marks = [] 
       const pHi = Math.max(0, Math.ceil(Math.max(...ang) / 45) * 45)
       const syR = drawRightAxis(ctx, area, w, pLo === pHi ? pLo - 45 : pLo, pLo === pHi ? pHi + 45 : pHi, (v) => `${v.toFixed(0)}°`, mode === 'bode' ? '∠H (degrees)' : '∠Z (degrees)', 45)
 
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(area.x, area.y, area.w, area.h)
-      ctx.clip()
+      clipToFrame(ctx, area)
       // Minor decade lines (2, 3, 5), faint — a log axis without them reads as linear.
       ctx.strokeStyle = COLORS.grid
       ctx.lineWidth = 1
@@ -114,7 +111,7 @@ export default function FreqCanvas({ freq, mode, fDrive, at, corner, marks = [] 
         { label: mode === 'bode' ? '|H|' : '|Z|', color: HUE.voltage, y: sy(last(mag)) },
         { label: mode === 'bode' ? '∠H' : '∠Z', color: HUE.angle, y: syR(last(ang)) },
       ])
-      ctx.restore()
+      unclip(ctx)
     },
     [freq, mode, fDrive, at, corner, marks],
   )
