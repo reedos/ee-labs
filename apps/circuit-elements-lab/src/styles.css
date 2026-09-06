@@ -208,7 +208,9 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 
 /* The topbar's flow: when the dynamic groups' t / ω / τ chips crowd it, the
    outcome — the last, least urgent node — gives way with an ellipsis rather
-   than the strip growing a scrollbar. Its hover text carries the whole sentence. */
+   than the strip growing a scrollbar. Its hover text carries the whole sentence.
+   The outcome is the only node that may give way: it is the one with
+   min-width 0, so the flex row takes its shrink out of that node and no other. */
 .topbar .flow { overflow: hidden; }
 .topbar .flow [data-role='outcome'] { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .topbar .flow [data-role='outcome'] em { margin-left: 6px; }
@@ -246,6 +248,15 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   .controls > .lesson { grid-column: 1; grid-row: 2; margin: 0; padding: 0 12px 12px; border-width: 0 0 1px; border-radius: 0; background: var(--panel); }
   .controls > .lesson h2 { position: static; margin: 0 -12px 4px; background: var(--panel); border-radius: 0; border-bottom: 0; padding-bottom: 0; }
   .topbar { grid-row: 3; }
+  /* The summary strip on a 390 px screen. The first node carried the
+     experiment's name, which is the picker's own title two rows above, and
+     that name is 200 to 300 px of a 390 px screen. The node cannot shrink, so
+     the shrink fell past it on to the middle node, which has no ellipsis: on
+     42 of the 58 circuits the strip read "1 node 2 numbers to" and stopped,
+     and the outcome was off the screen entirely. Drop the name here. The id
+     is the picker's first word and the strip is then short enough that the
+     nodes fit and the outcome is the one that gives way, as designed. */
+  .topbar .flow > .flow-node:first-child em { display: none; }
   /* The live scalars are a row of "name value" pairs that does not shrink. On
      the four experiments that carry five of them — ζ with the word for what it
      means, and Σ power — the row ran 120 px past a 390 px screen and those two

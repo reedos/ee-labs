@@ -54,6 +54,29 @@ const clipped = () =>
       .filter((el) => el.getBoundingClientRect().right > w)
       .map((el) => `${el.tagName.toLowerCase()}.${(el.getAttribute('class') || '').split(' ')[0]} → ${Math.round(el.getBoundingClientRect().right)}px`)
   })
+// The topbar was outside that list, and the summary strip was cut by the same
+// kind of overflow on 42 of the 58 circuits at 390 px: the middle node read
+// "1 node 2 numbers to" and stopped, and the outcome sat past the edge with
+// nothing to say it was there. One node, the outcome, is allowed to give way,
+// and only with the ellipsis it is styled for. Every other node is whole.
+const stripCut = () =>
+  page.evaluate(() => {
+    const w = document.documentElement.clientWidth + 1
+    const out = []
+    for (const el of document.querySelectorAll('.topbar .flow .flow-node')) {
+      const r = el.getBoundingClientRect()
+      const short = el.scrollWidth > el.clientWidth + 1
+      const role = el.getAttribute('data-role')
+      const text = el.textContent.replace(/\s+/g, ' ').trim().slice(0, 44)
+      if (role === 'outcome') {
+        if (r.right > w) out.push(`outcome runs to ${Math.round(r.right)}px: “${text}”`)
+        else if (short && getComputedStyle(el).textOverflow !== 'ellipsis') out.push(`outcome is cut with no ellipsis: “${text}”`)
+      } else if (r.right > w || short) {
+        out.push(`${role || 'node'} cut at ${Math.round(r.right)}px: “${text}”`)
+      }
+    }
+    return out
+  })
 
 async function openAllMath() {
   // The working sits under the explanation fold (Phase 8). Open it first.
@@ -530,6 +553,8 @@ for (const name of names) {
   if (await scrollsX()) fail(`390px / ${name}: page scrolls sideways`)
   const over = await clipped()
   if (over.length) fail(`390px / ${name}: clipped at the right edge: ${over.join(', ')}`)
+  const cut = await stripCut()
+  if (cut.length) fail(`390px / ${name}: the summary strip is cut: ${cut.join(', ')}`)
   const first = await phoneFirstScreen()
   if (!(first.note < 844)) fail(`390px / ${name}: the note starts at ${Math.round(first.note)} px, below the first screen`)
   if (!(first.views < 844)) fail(`390px / ${name}: the Analysis view switch starts at ${Math.round(first.views)} px, below the first screen`)
@@ -537,6 +562,7 @@ for (const name of names) {
   phonePlots += await checkPlots(`390px / ${name}`)
 }
 console.log(`   no sideways scroll or clipped pane at 390 px across ${names.length} experiments`)
+console.log('   the summary strip is whole at 390 px; the outcome is the one node that gives way, with its ellipsis')
 console.log('   the note and the Analysis view switch are in the first screen; nothing scrolls inside the page')
 console.log(`   ${phonePlots} plot views at 390 px checked for overlapping text and a caption`)
 
