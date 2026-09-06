@@ -10,6 +10,7 @@ import { MARKS, PLOT_OF, marksFor, timeMarks } from './marks.js'
 import { analyse, atDrive, dampingSweep, experimentMath, settleAnalytic, turnedLabel } from './math.js'
 import { num } from './format.js'
 import PlotMarks from './components/PlotMarks.jsx'
+import { CYCLE_PX, layoutOf, phasorSpan } from './components/PhasorCanvas.jsx'
 import { alignZero, extentOf, freqSpan, rightSpan, spanOf, sweepSpan } from './components/timePlot.js'
 import { yTick } from './components/SweepCanvas.jsx'
 
@@ -166,7 +167,14 @@ describe('every mark is the engine’s number', () => {
         expect(typeof m.label).toBe('string')
         expect(m.label.length).toBeGreaterThan(3)
         expect(Number.isFinite(m.value), `${exp.id}: ${m.label}`).toBe(true)
-        if (m.kind === 'curve') expect(m.xs.length).toBe(m.ys.length)
+        if (m.kind === 'curve') {
+          expect(m.xs.length).toBe(m.ys.length)
+          // A curve's height is a fraction of the frame, not a reading on
+          // either axis: H4 drew |V_C|/|V_s| over an axis in ohms and a reader
+          // taking its peak off that axis got 60 kΩ. Say it is drawn to fit.
+          expect(m.label, `${exp.id}: a curve on no axis must say it is drawn to fit — "${m.label}"`).toContain('drawn to fit')
+          expect(Math.max(...m.ys)).toBeLessThanOrEqual(1)
+        }
         else if (m.kind !== 'level') expect(Number.isFinite(m.kind === 'segment' ? m.x0 + m.x1 : m.x)).toBe(true)
       }
     }
@@ -317,6 +325,39 @@ describe('the plot repairs', () => {
     expect(byId.h1.cursor * byId.h1.window(p)).toBeGreaterThan(p.R1 * p.C1)
     expect(src('./components/PhasorCanvas.jsx')).toContain('turnedLabel(omega, tc)')
     expect(turnedLabel(2 * Math.PI * 100, 0.0325)).toBe('3 cycles + 90.0°')
+  })
+
+  // The phasor panel shows the phase between the traces, and a cycle drawn
+  // narrower than about sixty pixels cannot be read as a wave. H4's window is
+  // forty cycles, for the build-up its scope has to show, and the panel drew
+  // all forty: thirteen pixels a cycle on a laptop, six on a phone, a band of
+  // aliased spray with no phase in it. The panel now draws whole cycles, as
+  // many as fit, and the block of them the cursor is in.
+  it('the phasor panel draws cycles wide enough to read, and says how many', () => {
+    const laptop = layoutOf(872, 320)
+    const phone = layoutOf(366, 560)
+    for (const id of EXPERIMENTS.filter((e) => e.views.includes('phasor')).map((e) => e.id)) {
+      const p = defaultsOf(id)
+      const x = analyse(byId[id], p)
+      for (const [where, L] of [['1280 px', laptop], ['390 px', phone]]) {
+        const s = phasorSpan(x.omega, x.tEnd, L.frame.w, L.k, x.cursor)
+        const T = (2 * Math.PI) / x.omega
+        const shown = (s.t1 - s.t0) / T
+        expect(L.frame.w / shown, `${id} at ${where}: ${shown.toFixed(1)} cycles across ${Math.round(L.frame.w)} px`).toBeGreaterThanOrEqual(CYCLE_PX - 1e-9)
+        // The slice holds the cursor, so the arrows and the dots agree.
+        expect(x.cursor, `${id} at ${where}: the cursor is in the slice drawn`).toBeGreaterThanOrEqual(s.t0 - 1e-12)
+        expect(x.cursor).toBeLessThanOrEqual(s.t1 + 1e-12)
+        // Whole cycles, so the two ends of the frame are the same phase.
+        if (!s.whole) expect(shown).toBeCloseTo(Math.round(shown), 9)
+        expect(s.t1).toBeLessThanOrEqual(x.tEnd * (1 + 1e-12))
+      }
+    }
+    // H4 is the one that had to give: forty cycles in the window, eight drawn.
+    const h4 = analyse(byId.h4, defaultsOf('h4'))
+    const s4 = phasorSpan(h4.omega, h4.tEnd, laptop.frame.w, laptop.k, h4.cursor)
+    expect(s4.whole).toBe(false)
+    expect(s4.cycles).toBe(8)
+    expect(Math.round(h4.tEnd / ((2 * Math.PI) / h4.omega))).toBe(40)
   })
 })
 

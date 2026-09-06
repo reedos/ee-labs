@@ -13,6 +13,12 @@
 // prints after the label — the number the mark stands for, so the caption
 // and the drawing cannot disagree. Every number here is a closed form of the
 // knobs, and the tests hold each one against the engine's own reading.
+//
+// A curve is the exception to "y belongs to a scale": its ys are a fraction of
+// the frame's height, so its height cannot be read off either axis beside it.
+// Its label says that in the words the suite uses for a magnified exhibit,
+// "drawn to fit", and `value` carries the one number worth reading off it, the
+// peak. marks.test.jsx holds every curve's label to the phrase.
 
 import { complex as cx } from '@ee-labs/network'
 
@@ -104,7 +110,7 @@ export const MARKS = {
         kind: 'curve',
         xs: x.freq.f,
         ys: Float64Array.from(mags, (m) => (0.9 * m) / top),
-        label: '|V_C|/|V_s|, peaking at Q at f₀',
+        label: '|V_C|/|V_s|, drawn to fit, peaking at Q at f₀',
         value: Q,
         unit: '×',
       })

@@ -53,9 +53,10 @@ export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
       const iScale = iMag > 0 ? (0.7 * vMax) / iMag : 0
 
       // ---- the waveform frame
-      const { sx, sy } = drawFrame(ctx, frame, 0, tEnd, -vMax, vMax, fmtT, (v) => fmt(v, 'V', 2), {
+      const span = phasorSpan(omega, tEnd, frame.w, k, tc)
+      const { sx, sy } = drawFrame(ctx, frame, span.t0, span.t1, -vMax, vMax, fmtT, (v) => fmt(v, 'V', 2), {
         zeroLine: true,
-        xTitle: 'Time from t = 0 (steady state)',
+        xTitle: span.whole ? 'Time from t = 0 (steady state)' : `Time (steady state, ${span.cycles} cycles of the window)`,
         yTitle: 'volts',
       })
       const rot = (X) => cx.cmul(X, cx.cexpj(theta))
@@ -72,7 +73,7 @@ export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
         ctx.beginPath()
         const n = Math.max(200, Math.floor(frame.w))
         for (let i = 0; i <= n; i++) {
-          const t = (tEnd * i) / n
+          const t = span.t0 + ((span.t1 - span.t0) * i) / n
           const y = sy(scale * cx.instant(X, omega, t))
           if (i === 0) ctx.moveTo(sx(t), y)
           else ctx.lineTo(sx(t), y)
@@ -99,7 +100,7 @@ export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
       dot(I, iScale, HUE.current)
       volts.forEach((v) => dot(v.X, 1, v.color, true))
       // Every waveform named where it leaves the frame.
-      const end = (X, scale) => sy(scale * cx.instant(X, omega, tEnd))
+      const end = (X, scale) => sy(scale * cx.instant(X, omega, span.t1))
       drawEndLabels(
         ctx,
         frame,
@@ -201,7 +202,7 @@ export default function PhasorCanvas({ exp, x, cursor, onCursor }) {
       className="plot phasor"
       role="img"
       aria-label="Phasor diagram: each steady-state voltage as an arrow, beside the waveform its tip's height traces; drag to turn"
-      {...scrub(onCursor, tEnd)}
+      {...scrub(onCursor, tEnd, omega, Math.min(tEnd, Math.max(0, cursor)))}
     />
   )
 }
@@ -215,6 +216,31 @@ function labelFor(net, id, q) {
 }
 
 const wrap2pi = (a) => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
+
+/** How wide a cycle has to be drawn before a reader can see the shape of it. */
+export const CYCLE_PX = 60
+
+/**
+ * The slice of the window the waveform panel draws, and whether that is all of
+ * it. The panel is there to show the phase between the traces, and a sine
+ * needs about sixty pixels of width per cycle before its shape can be read.
+ * H4's window is forty cycles, because its scope has to show the amplitude
+ * building over Q of them; in this panel that put four traces at thirteen
+ * pixels a cycle on a laptop and six on a phone, a solid band with no phase in
+ * it. So the panel draws whole cycles, as many as fit, and the block of them
+ * the cursor is in. The waveform here is steady state, so every block is the
+ * same picture and only the tick labels move as the cursor runs on.
+ */
+export function phasorSpan(omega, tEnd, frameW, k, cursor) {
+  const T = omega > 0 ? (2 * Math.PI) / omega : 0
+  const whole = { t0: 0, t1: tEnd, cycles: T > 0 ? tEnd / T : 0, whole: true }
+  if (!(T > 0) || !(tEnd > T)) return whole
+  const fits = Math.max(1, Math.floor(frameW / (CYCLE_PX * (k || 1))))
+  const span = fits * T
+  if (span >= tEnd) return whole
+  const t0 = Math.min(Math.floor(Math.max(0, cursor) / span) * span, tEnd - span)
+  return { t0, t1: t0 + span, cycles: fits, whole: false }
+}
 
 /**
  * Where the diagram and the frame go. Side by side when there is room, the
@@ -333,13 +359,15 @@ function tipLabel(ctx, k, c, [x1, y1], text, color) {
 }
 
 /** Drag anywhere on the canvas: the pointer's x over the waveform frame sets the cursor time. */
-function scrub(onCursor, tEnd) {
+function scrub(onCursor, tEnd, omega, cursor) {
   if (!onCursor) return {}
   const timeAt = (e) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    const { frame } = layoutOf(rect.width, rect.height)
+    const { frame, k } = layoutOf(rect.width, rect.height)
+    // The frame holds the same slice of the window the draw put in it.
+    const span = phasorSpan(omega, tEnd, frame.w, k, cursor)
     const f = (e.clientX - rect.left - frame.x) / frame.w
-    return Math.min(tEnd, Math.max(0, f * tEnd))
+    return Math.min(span.t1, Math.max(span.t0, span.t0 + f * (span.t1 - span.t0)))
   }
   return {
     style: { touchAction: 'pan-y', cursor: 'col-resize' },
