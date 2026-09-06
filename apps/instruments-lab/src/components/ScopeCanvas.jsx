@@ -25,8 +25,14 @@ import { num } from '../format.js'
  * hand-written curves (an envelope) drawn dashed on the left axis. Every
  * series is named where it leaves the frame, and on a frame wide enough the
  * cursor's dots carry their values.
+ *
+ * `samples` is `analyse`'s sampled sequence, {rate, t, y}: the exact solution
+ * read at t = k/f_s and never an interpolation of the drawn trace. It is drawn
+ * as dots, because on a sampling scope the dots are the reading and the trace
+ * behind them is what the instrument threw away. B1's note has said so since
+ * the group was written, and until now nothing drew them.
  */
-export default function ScopeCanvas({ tr, ghost = null, ghostLabel = 'from rest (dashed)', scope, cursor, onCursor, marks = [], guides = [] }) {
+export default function ScopeCanvas({ tr, ghost = null, ghostLabel = 'from rest (dashed)', scope, cursor, onCursor, marks = [], guides = [], samples = null }) {
   const tEnd = tr.tEnd
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -114,6 +120,25 @@ export default function ScopeCanvas({ tr, ghost = null, ghostLabel = 'from rest 
       left.forEach((ys, i) => line(ys, sy, lStyle[i].color, lStyle[i]))
       right.forEach((ys, i) => line(ys, syR, rStyle[i].color, rStyle[i]))
 
+      // The samples the instrument keeps, on the left axis, over the trace they
+      // were read from. The radius follows their spacing so a fast rate stays a
+      // row of dots rather than a bar.
+      if (samples && samples.t.length) {
+        const gap = samples.t.length > 1 ? area.w / (samples.t.length - 1) : area.w
+        const r = Math.max(1.6, Math.min(3.4, gap / 3)) * k
+        ctx.fillStyle = lStyle[0]?.color || COLORS.textBright
+        ctx.strokeStyle = COLORS.bg
+        ctx.lineWidth = 1 * k
+        for (let i = 0; i < samples.t.length; i++) {
+          const v = samples.y[i]
+          if (!Number.isFinite(v)) continue
+          ctx.beginPath()
+          ctx.arc(sx(samples.t[i]), sy(v), r, 0, Math.PI * 2)
+          ctx.fill()
+          if (r > 2.2 * k) ctx.stroke()
+        }
+      }
+
       // The cursor, its dots on each trace, and (on a wide frame) each bright dot's value.
       const pinned = []
       if (Number.isFinite(cursor)) {
@@ -151,7 +176,7 @@ export default function ScopeCanvas({ tr, ghost = null, ghostLabel = 'from rest 
       drawEndLabels(ctx, area, ends, pinned)
       ctx.restore()
     },
-    [tr, ghost, ghostLabel, scope, cursor, marks, guides],
+    [tr, ghost, ghostLabel, scope, cursor, marks, guides, samples],
   )
   return (
     <canvas

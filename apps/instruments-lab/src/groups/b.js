@@ -7,6 +7,8 @@
 // group is the full treatment of both experiments.
 
 import { complex as cx } from '@ee-labs/network'
+import { fmt } from '@ee-labs/ui'
+import { aliasOf } from '../math.js'
 import { Amp, BOT, Cap, Db, Freq, GROUPS, H, R, TOP, Win, chips, gnd, leg, node, rail, src, top } from '../kit.js'
 
 const sine = (amp, freq) => ({ kind: 'sine', amp, freq })
@@ -58,7 +60,26 @@ export const GROUP_B = [
     window: (p) => p.N * 1e-3,
     points: 2001,
     cursor: 0.5,
-    samples: (p) => ({ rate: p.fs, of: (sol) => sol.v.in }),
+    samples: (p) => ({
+      rate: p.fs,
+      of: (sol) => sol.v.in,
+      // The tone the same dots also belong to: |f − m·f_s|, and turned over
+      // when the fold is downward, since sin(2πmk − x) = −sin(x). Its
+      // amplitude and phase are the input's own phasor, so this is the curve
+      // the math panel's identity row measures the samples against. Drawing
+      // both is the whole of B1: two tones, one sequence of dots.
+      alias: (ac) => {
+        const a = aliasOf(p.f, p.fs)
+        const A = cx.cabs(ac.v.in)
+        const th = cx.carg(ac.v.in)
+        const sign = a.folded ? -1 : 1
+        return {
+          f: a.f,
+          label: `a tone at ${fmt(a.f, 'Hz', 3)} keeps the same dots`,
+          of: (t) => sign * A * Math.sin(2 * Math.PI * a.f * t + sign * th),
+        }
+      },
+    }),
     scope: { left: { unit: 'V', traces: [{ q: 'v', key: 'in', label: 'v_in' }] } },
     show: 'v',
     view: 'scope',
