@@ -10,16 +10,20 @@
 
 import { A } from './groups/a.js'
 import { B } from './groups/b.js'
+import { C } from './groups/c.js'
+import { D } from './groups/d.js'
 import { LESSONS } from './lessons.js'
 
 /** Every view a lower pane can show, in the order the view switch lists them. */
-export const VIEW_ORDER = ['chart', 'line', 'sweep', 'numbers']
+export const VIEW_ORDER = ['chart', 'line', 'sweep', 'sparam', 'equations', 'numbers']
 
 /** What the view switch calls each view, and the hover text that says what it shows. */
 export const VIEW_LABELS = {
   chart: { label: 'Chart', title: 'The Smith chart, with the load marked and the line’s path drawn on it' },
   line: { label: 'Line', title: 'The line drawn against the wavelength, with the standing wave above it' },
   sweep: { label: 'Sweep', title: 'One quantity against frequency, at exact points and nothing between them' },
+  sparam: { label: 'S-parameters', title: 'The four entries in decibels against frequency, with their angles below' },
+  equations: { label: 'Equations', title: 'The closed forms this experiment used, with the numbers put into them' },
   numbers: { label: 'Numbers', title: 'Every closed form this experiment used, with the formula it came from' },
 }
 
@@ -37,7 +41,7 @@ const ALL_GROUPS = [
   'H · Oscillators and power',
 ]
 
-const RAW = [...A, ...B]
+const RAW = [...A, ...B, ...C, ...D]
 
 /** The groups that have experiments in them, in plan order. */
 export const GROUPS = ALL_GROUPS.filter((g) => RAW.some((e) => e.group === g))

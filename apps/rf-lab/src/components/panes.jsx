@@ -1,10 +1,11 @@
 import React from 'react'
 import { SmithCanvas } from '@ee-labs/ui'
-import { chartPropsFor, linePropsFor, numberRowsFor, sweepPropsFor } from '../view.js'
+import { chartPropsFor, equationBlocksFor, linePropsFor, numberRowsFor, sweepPropsFor } from '../view.js'
 import { num, plain } from '../format.js'
 
-// The three panes beside the chart. Each draws what `view.js` hands it and
-// computes nothing of its own.
+// The panes beside the chart. Each draws what `view.js` hands it and computes
+// nothing of its own. The S-parameter view is its own file, because it is the
+// one the Instruments Lab will take.
 
 export function ChartPane({ exp, x, p }) {
   return (
@@ -83,8 +84,11 @@ export function SweepPane({ exp, x, p }) {
   const fx = (f) => left + ((right - left) * (f - v.from)) / Math.max(1e-12, v.to - v.from)
   const gy = (m) => bottom - (bottom - top) * Math.min(1, m)
   const path = v.points.map((q, i) => `${i === 0 ? 'M' : 'L'}${fx(q.f).toFixed(2)} ${gy(q.mag).toFixed(2)}`).join(' ')
+  // A length of line repeats and a lumped network does not, so the marks are
+  // drawn only where there is something that repeats.
   const repeats = []
-  for (let f = v.from + v.repeat; f < v.to; f += v.repeat) repeats.push(f)
+  if (v.repeat) for (let f = v.from + v.repeat; f < v.to; f += v.repeat) repeats.push(f)
+  const edges = v.band && v.band.bounded ? [v.band.lower, v.band.upper].filter((f) => f >= v.from && f <= v.to) : []
 
   return (
     <div className="rf-plot rf-sweep">
@@ -98,6 +102,9 @@ export function SweepPane({ exp, x, p }) {
         {v.points.length <= 121
           ? v.points.map((q) => <circle key={q.f} className="rf-dot" cx={fx(q.f)} cy={gy(q.mag)} r={1.6} />)
           : null}
+        {edges.map((f) => (
+          <line key={`edge-${f}`} className="rf-edge" x1={fx(f)} y1={top} x2={fx(f)} y2={bottom} data-edge={f} />
+        ))}
         <line className="rf-marker" x1={fx(v.marker)} y1={top} x2={fx(v.marker)} y2={bottom} data-role="marker" />
         <text className="rf-axis-label" x={(left + right) / 2} y={H - 8} textAnchor="middle">
           {`Frequency, ${num(v.from, 'Hz')} to ${num(v.to, 'Hz')}`}
@@ -112,8 +119,12 @@ export function SweepPane({ exp, x, p }) {
           0
         </text>
       </svg>
-      <p className="rf-legend">
-        {`${v.points.length} exact points, ${num((v.to - v.from) / (v.points.length - 1), 'Hz')} apart. The response repeats every ${num(v.repeat, 'Hz')}, and the lines mark where.`}
+      <p className="rf-legend" data-role="sweep-legend">
+        {`${v.points.length} exact points, ${num((v.to - v.from) / (v.points.length - 1), 'Hz')} apart. `}
+        {v.repeat ? `The response repeats every ${num(v.repeat, 'Hz')}, and the lines mark where. ` : 'A network of lumped elements has no repeat, so nothing here comes back. '}
+        {v.band && v.band.bounded
+          ? `The band to a standing-wave ratio of ${plain(v.band.target, 5)} runs from ${num(v.band.lower, 'Hz')} to ${num(v.band.upper, 'Hz')}, which is ${plain(100 * v.band.fractional, 4)} per cent.`
+          : ''}
       </p>
       {v.says ? (
         <p className="rf-declined" data-role="declined">
@@ -136,6 +147,43 @@ export function NumbersPane({ exp, x, p }) {
           <span className="rf-row-value">{r.value}</span>
           <span className="rf-row-formula">{r.formula}</span>
         </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Every closed form the experiment used, with its own numbers put into it.
+ *
+ * The Elements lab prints its MNA rows this way, and the reason is the same
+ * here. A reader who is told the loaded Q is 1.0000 has to take it on trust. A
+ * reader shown √(100/50 − 1) with 100 and 50 in it can check the step.
+ *
+ * A block whose title names a description the two-port does not have carries
+ * the engine's own refusal under it instead of a row, because that sentence is
+ * the content and not an error.
+ */
+export function EquationsPane({ exp, x, p }) {
+  const blocks = equationBlocksFor(exp, p, x)
+  if (!blocks.length) return <p className="hint">Nothing to compute at this setting.</p>
+  return (
+    <div className="rf-equations">
+      {blocks.map((b) => (
+        <section className="rf-eq-block" key={b.title} data-block={b.title}>
+          <h4>{b.title}</h4>
+          {b.rows.map((r) => (
+            <div className="rf-eq" key={r.lhs} data-eq={r.lhs}>
+              <span className="rf-eq-lhs">{r.lhs}</span>
+              <span className="rf-eq-rhs">{r.rhs}</span>
+              <span className="rf-eq-value">{r.value}</span>
+            </div>
+          ))}
+          {b.says ? (
+            <p className="rf-eq-says" data-role={b.declined ? 'declined' : 'eq-note'}>
+              {b.says}
+            </p>
+          ) : null}
+        </section>
       ))}
     </div>
   )

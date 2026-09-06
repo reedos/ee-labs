@@ -15,12 +15,23 @@ const ABS = 1e-30
 /** Whether `v` is arithmetic noise against `scale`, the largest value of its kind on screen. */
 export const isNoise = (v, scale = 0) => Math.abs(v) < Math.max(REL * Math.abs(scale), ABS)
 
-/** A value with its unit in engineering notation. Noise snaps to 0, and infinity is spelled. */
+/**
+ * A value with its unit in engineering notation. Noise snaps to 0, and
+ * infinity is spelled.
+ *
+ * A quantity with no unit takes no prefix. Engineering notation printed a
+ * reflection magnitude of 0.3333 as "333.3 m", which a reader takes for
+ * millimetres, and the two quantities this lab prints without a unit are a
+ * reflection magnitude and a standing-wave ratio. So an empty unit gets the
+ * plain figure at the same number of significant figures.
+ */
 export function num(v, unit = '', sig = 4, scale = 0) {
   if (v === Infinity) return '∞'
   if (v === -Infinity) return '−∞'
   if (!Number.isFinite(v)) return '—'
-  return fmt(isNoise(v, scale) ? 0 : v, unit, sig)
+  const value = isNoise(v, scale) ? 0 : v
+  if (!unit) return Number(Number(value).toPrecision(sig)).toString()
+  return fmt(value, unit, sig)
 }
 
 /** An angle in degrees, to two decimals, with its sign kept. */

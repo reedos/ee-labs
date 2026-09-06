@@ -12,8 +12,10 @@ export function reportSummary({ id, params, view, x }) {
   return {
     Experiment: exp ? `${exp.id.toUpperCase()} · ${exp.name}` : id,
     Group: exp?.group || '(unknown)',
+    // A knob is a number or the name of a position. `fmtNum` takes the first
+    // and throws on the second, so a choice knob is written out as its name.
     Settings: Object.entries(params || {})
-      .map(([k, v]) => `${k} = ${fmtNum(v)}`)
+      .map(([k, v]) => `${k} = ${typeof v === 'number' ? fmtNum(v) : String(v)}`)
       .join(', '),
     View: view,
     Headline: x?.headline ? `${x.headline.label}: ${fmtNum(x.headline.value)} ${x.headline.unit || ''}`.trim() : '',

@@ -75,14 +75,14 @@ describe('the experiments, as a set', () => {
     expect([...new Set(letters)]).toEqual(GROUPS.map((g) => g.slice(0, 1)))
   })
 
-  it('this sitting delivers groups A and B, and nothing later', () => {
-    // `RF_LAB_PLAN.md` §9.2: the app shell, the chart, and groups A and B, which
-    // is nine experiments. A lesson that named a later group's experiment would
-    // fail here as well as in the progression test.
-    expect(GROUPS).toEqual(['A · The line at one frequency', 'B · The Smith chart'])
-    expect(EXPERIMENTS.length).toBe(9)
-    expect(groupOf(GROUPS[0]).length).toBe(5)
-    expect(groupOf(GROUPS[1]).length).toBe(4)
+  it('these two sittings deliver groups A to D, and nothing later', () => {
+    // `RF_LAB_PLAN.md` §9.2 and §9.3: the shell and the chart with groups A and
+    // B, then matching and two-ports with groups C and D. Nineteen experiments.
+    // A lesson that named a later group's experiment would fail here as well as
+    // in the progression test.
+    expect(GROUPS).toEqual(['A · The line at one frequency', 'B · The Smith chart', 'C · Matching networks', 'D · S-parameters'])
+    expect(EXPERIMENTS.length).toBe(19)
+    expect(GROUPS.map((g) => groupOf(g).length)).toEqual([5, 4, 5, 5])
   })
 
   it('no lesson names an experiment this tree does not hold', () => {
@@ -167,7 +167,14 @@ describe('every experiment analyses, at its defaults and off them', () => {
         if (v === 'sweep') {
           const props = sweepPropsFor(e, p, x)
           expect(props.points.length, `${e.id} sweep points`).toBeGreaterThan(20)
-          expect(props.repeat, `${e.id} repeat spacing`).toBeGreaterThan(0)
+          // A length of line repeats and a network of lumped elements does not.
+          // The assertion here was written when only lines had a sweep, and it
+          // is the assertion that was wrong: C1's L network has no repeat
+          // frequency, and reporting one would be a claim about the physics
+          // that is false. So the spacing is a number or it is null, and the
+          // pane draws the marks only where there is something to mark.
+          if (props.repeat === null) expect(props.repeats, `${e.id} has no repeat and lists repeats`).toBeFalsy()
+          else expect(props.repeat, `${e.id} repeat spacing`).toBeGreaterThan(0)
           for (const q of props.points) expect(Number.isFinite(q.mag), `${e.id} sweep at ${q.f}`).toBe(true)
         }
         if (v === 'numbers') {
@@ -231,8 +238,8 @@ describe('every experiment analyses, at its defaults and off them', () => {
     }
   })
 
-  it('nothing in groups A and B is an approximation, so nothing carries a guard', () => {
-    // Every object these two groups touch is exact, and CORE_SCOPE's
+  it('nothing in groups A to D is an approximation, so nothing carries a guard', () => {
+    // Every object these four groups touch is exact, and CORE_SCOPE's
     // counter-rule says an exact mapping is never hedged. The first guard in
     // this lab arrives with the unilateral approximation in Group E.
     for (const e of EXPERIMENTS) {
@@ -252,12 +259,14 @@ describe('every experiment analyses, at its defaults and off them', () => {
 describe('every lesson is measured', () => {
   const PREFIX = { p: 1e-12, n: 1e-9, µ: 1e-6, u: 1e-6, m: 1e-3, c: 1e-2, k: 1e3, M: 1e6, G: 1e9, T: 1e12, '': 1 }
   // The units this lab writes, longest first so "dB/m" is never read as "dB".
-  const UNIT = ['Np/m', 'dB/m', 'dBm', 'dB', 'Hz', 'Ω', 'V', 'A', 'W', 's', 'm', '°', '%'].join('|')
+  // Longest first, so "dB/m" is never read as "dB" and "Hz" is never read as
+  // "H". Groups C and D quote henries and farads, which groups A and B did not.
+  const UNIT = ['Np/m', 'dB/m', 'dBm', 'dB', 'Hz', 'H', 'F', 'Ω', 'V', 'A', 'W', 's', 'm', '°', '%'].join('|')
   const UNIT_SCALE = { '%': 1e-2 }
   const UNITS = new RegExp(`(-?\\d+(?:\\.\\d+)?)\\s*([pnµumckMGT]?)(${UNIT})(?![A-Za-z·⁰¹²³⁴⁵⁶⁷⁸⁹⁻/])`, 'g')
   // A bare figure with two or more decimals is a measurement too, and this lab
   // quotes many that have no unit: a reflection magnitude, a ratio, a radius.
-  const BARE = /(?<![\d.,eE⁻×])(\d+\.\d{2,})(?![\d.,]*\s*(?:[pnµumckMGT]?(?:Np\/|dB|Hz|[ΩVAWsm°%])))/g
+  const BARE = /(?<![\d.,eE⁻×])(\d+\.\d{2,})(?![\d.,]*\s*(?:[pnµumckMGT]?(?:Np\/|dB|Hz|[ΩVAWsmHF°%])))/g
 
   // "88.89 per cent" is the reading 0.8889 written the way a reader reads a
   // fraction, so a number followed by "per cent" is compared against the

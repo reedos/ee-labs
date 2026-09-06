@@ -159,3 +159,140 @@ const qwS = R.lineSparam(qw, F0, { z0: Z0 })
 line('quarter-wave 70.711 ohm line, |S11|', sig(R.entryOf(qwS, 0, 0).mag))
 line('  |S21|', sig(R.entryOf(qwS, 1, 0).mag))
 line('  |S11| squared plus |S21| squared', sig(R.entryOf(qwS, 0, 0).mag ** 2 + R.entryOf(qwS, 1, 0).mag ** 2, 13))
+
+head('C1 and C2: the L network in closed form')
+for (const [RS, ZL] of [[50, 100], [5, 50], [50, 5], [50, [30, -40]]]) {
+  const m = R.lMatch({ RS, ZL, f: F0 })
+  line(`  ${RS} ohm to ${Array.isArray(ZL) ? rect(ZL) : ZL} ohm, Q`, sig(m.Q))
+  for (const sol of m.solutions) {
+    if (!sol.ok) {
+      line(`    ${sol.id.padEnd(18)}`, 'no solution in this orientation')
+      continue
+    }
+    const parts = sol.elements.map((el) => `${el.place} ${el.kind} ${sig(el.value)} ${el.kind === 'L' ? 'H' : 'F'} (X ${sig(el.X, 5)})`).join(', ')
+    line(`    ${sol.id.padEnd(18)}`, `${parts}   |G| ${R.matchMag(sol, ZL, RS, F0).toExponential(2)}   at 2f0 ${sig(R.matchMag(sol, ZL, RS, 2 * F0), 5)}`)
+  }
+}
+
+head('C3: bandwidth is the price')
+for (const [RS, ZL, target] of [[50, 100, 1.5], [5, 50, 1.5], [50, 100, 2], [50, 100, 1.2222]]) {
+  const sol = R.lMatch({ RS, ZL, f: F0 }).chosen
+  const bw = R.matchBandwidth(sol, ZL, RS, F0, { vswr: target })
+  line(`  ${RS} to ${ZL} ohm, to VSWR ${target}`, bw.bounded ? `${sig(bw.lower / 1e9, 5)} to ${sig(bw.upper / 1e9, 5)} GHz, ${sig(100 * bw.fractional, 5)} %` : 'no lower edge')
+}
+for (const f of [0.9e9, 1.5e9, 2e9]) {
+  const sol = R.lMatch({ RS: 50, ZL: 100, f: F0 }).chosen
+  line(`  50 to 100 ohm, VSWR at ${sig(f / 1e9, 4)} GHz`, sig(R.matchAt(sol, 100, 50, f).vswr, 5))
+}
+line('one over Q, for Q = 1', sig(R.loadedQBandwidth(1), 5))
+line('one over Q, for Q = 3', sig(R.loadedQBandwidth(3), 5))
+
+head('C4: the quarter-wave transformer')
+const qwc = R.quarterWaveMatch({ RS: 50, RL: 100, f0: F0, epsr: EPSR })
+line('its impedance', sig(qwc.Z0), 'ohm')
+line('its length', sig(qwc.len), 'm')
+for (const target of [1.2222, 1.5, 2]) {
+  const bw = R.bandwidthOf(qwc.read, F0, { vswr: target, span: 1.99 })
+  const lump = R.matchBandwidth(R.lMatch({ RS: 50, ZL: 100, f: F0 }).chosen, 100, 50, F0, { vswr: target })
+  line(`  to VSWR ${target}, the section`, `${sig(100 * bw.fractional, 5)} %   the L network ${lump.bounded ? sig(100 * lump.fractional, 5) + ' %' : 'no lower edge'}`)
+}
+line('it matches again at', R.quarterWaveRepeats(F0, 5.5e9).map((f) => `${sig(f / 1e9, 3)} GHz`).join(', '))
+line('the response repeats every', sig(R.repeatFrequency(qwc.line, F0) / 1e9, 5), 'GHz')
+for (const f of [0.5e9, 2e9, 3e9]) line(`  VSWR at ${sig(f / 1e9, 4)} GHz`, sig(qwc.at(f).vswr, 5))
+
+head('C5: a complex load, cancelled then transformed')
+const c5 = R.lMatch({ RS: 50, ZL: [30, -40], f: F0 })
+line('the load reactance', sig(c5.X, 5), 'ohm')
+line('  cancelled by', `${sig(c5.cancel.X, 5)} ohm in series, which is ${sig(c5.cancel.value)} H`)
+line('the residue', `${sig(c5.R, 5)} ohm against ${sig(c5.RS, 5)} ohm, Q ${sig(c5.Q)}`)
+line('the series element after folding', `${sig(c5.chosen.elements.find((e) => e.place === 'series').X, 5)} ohm`)
+line('elements in the network', c5.chosen.elements.length)
+line('|gamma| after both moves', c5.at.mag.toExponential(2))
+
+head('D1: what a wave is')
+for (const ZL of [100, 25, [30, -40]]) {
+  const closed = R.reflection(ZL, Z0)
+  const net = Array.isArray(ZL)
+    ? { elements: [{ type: 'R', id: 'RL', nodes: ['p1', 'nx'], value: ZL[0] }, { type: 'C', id: 'XL', nodes: ['nx', 'gnd'], value: 1 / (2 * Math.PI * F0 * -ZL[1]) }] }
+    : { elements: [{ type: 'R', id: 'RL', nodes: ['p1', 'gnd'], value: ZL }] }
+  const solved = R.s11FromNetlist(net, 'p1', F0, { z0: Z0 })
+  line(`  ${Array.isArray(ZL) ? rect(ZL) : ZL} ohm`, `closed ${rect(closed)}   solved ${rect(solved)}   apart by ${(Math.hypot(solved[0] - closed[0], solved[1] - closed[1]) / Math.hypot(closed[0], closed[1])).toExponential(2)}`)
+}
+line('the incident wave with 1 V through 50 ohm', sig(1 / (2 * Math.sqrt(Z0))))
+
+head('D2 and D4: the pi attenuator, and chains of it')
+for (const db of [1, 3, 6, 10, 20]) {
+  const K = Math.pow(10, db / 20)
+  const ser = (Z0 * (K * K - 1)) / (2 * K)
+  const sh = (Z0 * (K + 1)) / (K - 1)
+  const net = {
+    elements: [
+      { type: 'R', id: 'Rsh1', nodes: ['p1', 'gnd'], value: sh },
+      { type: 'R', id: 'Rser', nodes: ['p1', 'p2'], value: ser },
+      { type: 'R', id: 'Rsh2', nodes: ['p2', 'gnd'], value: sh },
+    ],
+  }
+  const sp = R.sFromNetlist(net, ['p1', 'p2'], F0, { z0: Z0 })
+  line(`  ${db} dB pad`, `series ${sig(ser)} ohm  shunt ${sig(sh)} ohm  S11 ${R.entryOf(sp, 0, 0).mag.toExponential(2)}  S21 ${sig(R.entryOf(sp, 1, 0).mag)} = ${sig(R.entryOf(sp, 1, 0).db, 5)} dB`)
+  if (db === 3) {
+    for (const n of [2, 3, 4]) {
+      const chain = R.chainS(Array.from({ length: n }, () => sp))
+      line(`    ${n} of them`, `S21 ${sig(R.entryOf(chain, 1, 0).db, 5)} dB  S11 ${R.entryOf(chain, 0, 0).mag.toExponential(2)}`)
+    }
+  }
+}
+
+head('D3: the descriptions a two-port has')
+const padSp = (() => {
+  const K = Math.pow(10, 3 / 20)
+  const ser = (Z0 * (K * K - 1)) / (2 * K)
+  const sh = (Z0 * (K + 1)) / (K - 1)
+  return R.sFromNetlist(
+    { elements: [{ type: 'R', id: 'a', nodes: ['p1', 'gnd'], value: sh }, { type: 'R', id: 'b', nodes: ['p1', 'p2'], value: ser }, { type: 'R', id: 'c', nodes: ['p2', 'gnd'], value: sh }] },
+    ['p1', 'p2'],
+    F0,
+    { z0: Z0 },
+  )
+})()
+const trafo = R.abcdToSparam(R.transformerAbcd(2), { f: F0, z0: Z0 })
+const blocked = R.sFromNetlist({ elements: [{ type: 'R', id: 'a', nodes: ['p1', 'gnd'], value: Z0 }, { type: 'R', id: 'b', nodes: ['p2', 'gnd'], value: Z0 }] }, ['p1', 'p2'], F0, { z0: Z0 })
+for (const [name, sp] of [['the pi pad', padSp], ['an ideal transformer, ratio 2', trafo], ['two resistors, no path', blocked]]) {
+  const have = []
+  for (const [what, fn] of [['Z', () => R.sToZ(sp.s, Z0)], ['Y', () => R.sToY(sp.s, Z0)], ['ABCD', () => R.sToAbcd(sp.s, Z0)]]) {
+    try {
+      fn()
+      have.push(what)
+    } catch {
+      /* the description does not exist, which is the reading */
+    }
+  }
+  line(`  ${name}`, `S11 ${sig(R.entryOf(sp, 0, 0).mag, 5)}  S21 ${sig(R.entryOf(sp, 1, 0).mag, 5)}  has S, ${have.join(', ') || 'and nothing else'}`)
+}
+const back = R.abcdToS(R.sToAbcd(R.zToS(R.sToZ(padSp.s, Z0), Z0), Z0), Z0)
+line('  the pad round-tripped S to Z to ABCD to S', R.mdiff(back, padSp.s).toExponential(2))
+
+head('D4: the quarter-wave section as a two-port')
+const sect = R.uniformLine({ Z0: R.quarterWaveZ0(Z0, 100), epsr: EPSR, len: R.phaseVelocity(EPSR) / (4 * F0) })
+const sectS = R.lineSparam(sect, F0, { z0: Z0 })
+const halves = [0, 1].map(() => R.lineSparam(sect, F0, { z0: Z0, atLength: sect.len / 2 }))
+const joined = R.chainS(halves)
+line('  |S11|', sig(R.entryOf(sectS, 0, 0).mag))
+line('  |S21|', sig(R.entryOf(sectS, 1, 0).mag))
+line('  the two squares', sig(R.entryOf(sectS, 0, 0).mag ** 2 + R.entryOf(sectS, 1, 0).mag ** 2, 13))
+line('  two halves cascaded, against the whole', R.sDiff(joined, sectS).toExponential(2))
+
+head('D5: reciprocity and loss')
+const Lh = 8e-9
+const Cf = 1.6e-12
+for (const Rs of [0, 1, 5, 25]) {
+  const els = [
+    ...(Rs > 0 ? [{ type: 'R', id: 'Rs', nodes: ['p1', 'nm'], value: Rs }] : []),
+    { type: 'L', id: 'L1', nodes: [Rs > 0 ? 'nm' : 'p1', 'p2'], value: Lh },
+    { type: 'C', id: 'C1', nodes: ['p2', 'gnd'], value: Cf },
+  ]
+  const sp = R.sFromNetlist({ elements: els }, ['p1', 'p2'], F0, { z0: Z0 })
+  line(
+    `  R_s ${Rs} ohm`,
+    `|S11| ${sig(R.entryOf(sp, 0, 0).mag)}  |S21| ${sig(R.entryOf(sp, 1, 0).mag)}  sum ${sig(R.entryOf(sp, 0, 0).mag ** 2 + R.entryOf(sp, 1, 0).mag ** 2, 12)}  dissipated ${sig(R.dissipated(sp), 5)}  S12−S21 ${R.reciprocityError(sp).toExponential(2)}  S†S−I ${R.unitarityError(sp).toExponential(2)}`,
+  )
+}

@@ -36,8 +36,10 @@
 
 import { LESSONS_A } from './lessons/a.js'
 import { LESSONS_B } from './lessons/b.js'
+import { LESSONS_C } from './lessons/c.js'
+import { LESSONS_D } from './lessons/d.js'
 
-export const LESSONS = { ...LESSONS_A, ...LESSONS_B }
+export const LESSONS = { ...LESSONS_A, ...LESSONS_B, ...LESSONS_C, ...LESSONS_D }
 
 /** Walk an object by a list of keys, stopping at the first thing that is not there. */
 const walk = (obj, keys) => keys.reduce((v, k) => (v == null ? undefined : v[k]), obj)

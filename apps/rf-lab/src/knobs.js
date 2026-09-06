@@ -33,6 +33,12 @@ export const Eps = (key, label, def, hint) => ({ key, label, unit: '', min: 1, m
 /** An attenuation in nepers per metre. Zero is a lossless line, and it is the default. */
 export const Alpha = (key, label, def, hint, max = 2) => ({ key, label, unit: 'Np/m', min: 0, max, scale: 'linear', default: def, hint })
 
+/** An inductance in henries, entered on a logarithmic slider. */
+export const Henry = (key, label, def, hint) => ({ key, label, unit: 'H', min: 1e-10, max: 1e-6, scale: 'log', default: def, hint })
+
+/** A capacitance in farads, on the same kind of slider. */
+export const Farad = (key, label, def, hint) => ({ key, label, unit: 'F', min: 1e-14, max: 1e-9, scale: 'log', default: def, hint })
+
 /** A count of points in a sweep. */
 export const Count = (key, label, def, hint, min = 21, max = 961) => ({ key, label, unit: '', min, max, scale: 'linear', default: def, hint, integer: true })
 

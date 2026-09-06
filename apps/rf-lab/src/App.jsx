@@ -5,7 +5,8 @@ import { analyse, refusalOf } from './math.js'
 import { termsFor } from './terms.js'
 import { num } from './format.js'
 import { reportSummary } from './report.js'
-import { ChartPane, LinePane, NumbersPane, SweepPane } from './components/panes.jsx'
+import { ChartPane, EquationsPane, LinePane, NumbersPane, SweepPane } from './components/panes.jsx'
+import { SparamPane } from './components/SparamPane.jsx'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -15,6 +16,8 @@ const PANE_OF = {
   chart: ChartPane,
   line: LinePane,
   sweep: SweepPane,
+  sparam: SparamPane,
+  equations: EquationsPane,
   numbers: NumbersPane,
 }
 
@@ -67,19 +70,44 @@ export default function App({ initialId = FIRST, initialView = null }) {
   const terms = termsFor(exp.terms)
   const moreKnobs = exp.params.slice(KNOBS_SHOWN)
 
+  // A knob is a number, a choice among named positions, or a two-position
+  // toggle. The first is a NumField and the other two are segmented buttons,
+  // which is how every other lab in the suite renders them.
   const knobField = (k) => (
     <div className="knob" data-knob={k.key} key={k.key}>
-      <NumField
-        label={k.label}
-        unit={k.unit}
-        value={params[k.key]}
-        onChange={(v) => setParam(k.key, v)}
-        min={k.min}
-        max={k.max}
-        scale={k.scale}
-        hint={k.hint}
-        eng={k.eng !== false}
-      />
+      {k.kind === 'choice' || k.kind === 'toggle' ? (
+        <div className="toggle-knob">
+          <span className="num-label" title={k.hint}>
+            {k.label}
+          </span>
+          <div className="segmented sm" role="group" aria-label={k.label}>
+            {(k.kind === 'choice' ? k.options : [{ value: 0, label: k.off }, { value: 1, label: k.on }]).map((o) => (
+              <button
+                key={String(o.value)}
+                type="button"
+                className={params[k.key] === o.value ? 'on' : ''}
+                aria-pressed={params[k.key] === o.value}
+                data-option={String(o.value)}
+                onClick={() => setParam(k.key, o.value)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <NumField
+          label={k.label}
+          unit={k.unit}
+          value={params[k.key]}
+          onChange={(v) => setParam(k.key, v)}
+          min={k.min}
+          max={k.max}
+          scale={k.scale}
+          hint={k.hint}
+          eng={k.eng !== false}
+        />
+      )}
     </div>
   )
 

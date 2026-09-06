@@ -211,7 +211,7 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   flex-wrap: wrap;
 }
 .rf-row-label { color: var(--dim); min-width: 190px; }
-.rf-row-value { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.rf-row-value { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; min-width: 0; overflow-wrap: anywhere; }
 .rf-row-formula { margin-left: auto; color: var(--dim); font-size: 11px; font-style: italic; }
 
 @media (max-width: 900px) {
@@ -223,4 +223,57 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 
 @media (min-width: 1200px) and (max-width: 2399px) {
   .app { grid-template-columns: 360px 1fr; }
+}
+
+/* The S-parameter view. Four traces in decibels over four angles, and one
+   colour per entry in both halves so the eye carries an entry down the pane. */
+.rf-strace { fill: none; stroke-width: 1.5; }
+.rf-strace.is-s11 { stroke: var(--accent); }
+.rf-strace.is-s21 { stroke: var(--amber); }
+.rf-strace.is-s12 { stroke: var(--warn); stroke-dasharray: 4 3; }
+.rf-strace.is-s22 { stroke: var(--dim); }
+.rf-zero { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 3; }
+.rf-edge { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 3; }
+
+.rf-marker-read { display: flex; flex-wrap: wrap; gap: 6px; }
+.rf-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text);
+}
+.rf-chip em { font-style: normal; font-weight: 650; }
+.rf-chip i { font-style: normal; color: var(--dim); }
+.rf-chip.is-s11 em { color: var(--accent); }
+.rf-chip.is-s21 em { color: var(--amber); }
+.rf-chip.is-s12 em { color: var(--warn); }
+.rf-chip.is-s22 em { color: var(--dim); }
+
+/* The equations pane. One block per closed form, and the answer at the end of
+   the row where a reader's eye lands after the arithmetic. */
+.rf-equations { overflow: auto; min-height: 0; padding: 4px 2px; display: flex; flex-direction: column; gap: 12px; }
+.rf-eq-block h4 { margin: 0 0 5px; font-size: 11.5px; font-weight: 650; color: var(--dim); text-transform: none; }
+.rf-eq {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.rf-eq-lhs { color: var(--text); min-width: 150px; font-weight: 600; }
+.rf-eq-rhs { color: var(--dim); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; min-width: 0; overflow-wrap: anywhere; }
+.rf-eq-value { margin-left: auto; color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.rf-eq-says { margin: 6px 0 0; font-size: 11px; color: var(--dim); line-height: 1.55; }
+.rf-eq-says[data-role='declined'] { color: var(--warn); }
+
+@media (max-width: 900px) {
+  .rf-eq-lhs { min-width: 0; flex: 1 1 100%; }
+  .rf-eq-value { margin-left: 0; }
 }

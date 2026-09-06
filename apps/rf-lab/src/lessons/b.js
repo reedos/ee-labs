@@ -138,6 +138,6 @@ export const LESSONS_B = {
       'circle of constant resistance for the same number, reflected through the origin, which puts its centre at ' +
       '−0.3333 for this load. That matters because a shunt element adds susceptance and leaves conductance alone, ' +
       'so its path is a constant-conductance circle. A series element adds reactance and leaves resistance alone. ' +
-      'A matching network is made of both, and both paths have to be visible at once.',
+      'Group C builds a matching network out of both, and both paths have to be visible at once.',
   },
 }

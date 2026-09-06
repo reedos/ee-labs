@@ -72,7 +72,72 @@ const PLAN = {
     ['b = 1', { b: 1 }, ['shunt.re', 'shunt.im', 'onCircle.g']],
     ['b = -0.5', { b: -0.5 }, ['shunt.re', 'shunt.im']],
   ],
+  c1: [
+    ['defaults', {}, ['design.Q', 'element.series.value', 'element.series.X', 'element.shunt.value', 'element.shunt.X', 'at.mag', 'zin.re', 'zin.im', 'design.Xs', 'design.Xp']],
+    ['high-pass pick', { pick: 'highpass' }, ['element.series.value', 'element.series.X', 'element.shunt.value', 'element.shunt.X', 'at.mag']],
+    ['5 to 50 ohm', { RS: 5, RL: 50 }, ['design.Q', 'element.series.value', 'element.shunt.value', 'at.mag']],
+    ['50 to 200 ohm', { RL: 200 }, ['design.Q', 'design.Xs', 'design.Xp', 'element.series.value', 'element.shunt.value']],
+    ['already matched', { RL: 50 }, ['design.Q', 'count', 'at.mag']],
+  ],
+  c2: [
+    ['defaults', {}, ['count', 'away.0.twice', 'away.1.twice', 'design.Q']],
+    ['high-pass pick', { pick: 'highpass' }, ['count', 'at.mag']],
+    ['load below the source', { RL: 5 }, ['count', 'design.Q', 'chosen.orientation']],
+    ['5 to 50 ohm', { RS: 5, RL: 50 }, ['count', 'design.Q']],
+  ],
+  c3: [
+    ['defaults', {}, ['design.Q', 'bw.fractional', 'bw.lower', 'bw.upper', 'oneOverQ']],
+    ['5 to 50 ohm', { RS: 5, RL: 50 }, ['design.Q', 'bw.fractional', 'oneOverQ']],
+    ['to a ratio of two', { target: 2 }, ['bw.bounded', 'bw.upper']],
+    ['to a ratio of 1.2222', { target: 1.2222 }, ['bw.fractional']],
+    ['50 to 200 ohm', { RL: 200 }, ['design.Q', 'bw.fractional', 'oneOverQ']],
+  ],
+  c4: [
+    ['defaults', {}, ['qw.Z0', 'qw.len', 'el.degrees', 'bw.fractional', 'lumpedBw.fractional', 'wider', 'repeat', 'line.lambda']],
+    ['to a ratio of 1.5', { target: 1.5 }, ['bw.fractional', 'lumpedBw.fractional', 'wider']],
+    ['50 to 200 ohm', { RL: 200 }, ['qw.Z0', 'bw.fractional', 'lumpedBw.fractional']],
+    ['air instead of PTFE', { epsr: 1 }, ['qw.len', 'qw.Z0', 'bw.fractional']],
+  ],
+  c5: [
+    ['defaults', {}, ['design.Q', 'design.X', 'cancel.X', 'cancel.value', 'element.series.X', 'element.series.value', 'element.shunt.value', 'element.shunt.X', 'at.mag', 'chosen.elements.length']],
+    ['no reactance', { XL: 0 }, ['design.Q', 'chosen.elements.length', 'at.mag']],
+    ['an inductive load', { XL: 40 }, ['cancel.X', 'element.series.X', 'chosen.elements.length']],
+    ['high-pass pick', { pick: 'highpass' }, ['element.series.X', 'element.shunt.X', 'chosen.elements.length']],
+  ],
+  d1: [
+    ['defaults', {}, ['gamma.re', 'gamma.mag', 'solvedMag', 'agree', 'waves.a', 'waves.b', 'vswr']],
+    ['25 ohm', { RL: 25 }, ['gamma.re', 'solvedMag', 'agree']],
+    ['30 - j40', { RL: 30, XL: -40 }, ['gamma.im', 'gamma.mag', 'solvedMag', 'agree']],
+    ['75 ohm reference', { z0: 75 }, ['gamma.mag', 'waves.a']],
+  ],
+  d2: [
+    ['defaults', {}, ['s.11.mag', 's.21.mag', 's.21.db', 's.12.db', 's.22.mag', 'agree', 'built.pad.series', 'built.pad.shunt']],
+    ['1 dB', { db: 1 }, ['built.pad.series', 'built.pad.shunt', 's.21.db', 's.11.mag']],
+    ['10 dB', { db: 10 }, ['built.pad.series', 'built.pad.shunt', 's.21.db', 's.21.mag']],
+    ['20 dB', { db: 20 }, ['built.pad.series', 'built.pad.shunt', 's.21.db']],
+    ['at 4 GHz', { f: 4e9 }, ['s.21.db', 's.11.mag']],
+  ],
+  d3: [
+    ['defaults', {}, ['conv.count', 'conv.roundTrip.error', 's.11.mag', 's.21.mag']],
+    ['the transformer', { object: 'transformer' }, ['conv.count', 's.11.mag', 's.21.mag', 's.11.re']],
+    ['a transformer of ratio 3', { object: 'transformer', n: 3 }, ['conv.count', 's.11.mag', 's.21.mag']],
+    ['no path through', { object: 'blocked' }, ['conv.count', 's.11.mag', 's.21.mag']],
+  ],
+  d4: [
+    ['defaults', {}, ['s.21.db', 's.11.mag', 'agree', 'power.sum']],
+    ['one pad', { stages: 1 }, ['s.21.db', 's.11.mag']],
+    ['four pads', { stages: 4 }, ['s.21.db', 's.11.mag']],
+    ['the section', { chain: 'section' }, ['s.11.mag', 's.21.mag', 'power.sum', 'agree']],
+    ['the section to 200 ohm', { chain: 'section', RL: 200 }, ['s.11.mag', 's.21.mag', 'power.sum']],
+  ],
+  d5: [
+    ['defaults', {}, ['s.11.mag', 's.21.mag', 'power.sum', 'power.dissipated', 'power.reciprocity', 'power.unitarity', 'power.largest']],
+    ['one ohm', { Rs: 1 }, ['power.sum', 'power.dissipated', 'power.unitarity', 'power.reciprocity']],
+    ['five ohms', { Rs: 5 }, ['power.sum', 'power.dissipated', 's.21.mag']],
+    ['twenty-five ohms', { Rs: 25 }, ['power.sum', 'power.dissipated', 's.21.db']],
+  ],
 }
+
 
 for (const e of EXPERIMENTS) {
   console.log(`\n=== ${e.id.toUpperCase()} · ${e.name} ===`)
