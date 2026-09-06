@@ -291,6 +291,22 @@ function ringEntry(exp, x) {
 
 // ------------------------------------------------------------ the thermal
 
+/**
+ * What to say about the frequency a package can afford.
+ *
+ * An edge costs ½·V·I·(t_r + t_f), so at t_sw = 0 it costs nothing and there
+ * is no frequency the thermal budget rules out. Where conduction alone
+ * already exceeds the budget there is no frequency at all. Both are the
+ * engine's own answers, reported rather than clamped, and each needs its own
+ * sentence: printing "—" beside "where the whole budget is spent" is a screen
+ * contradicting itself.
+ */
+export function ceilingWords(t) {
+  if (!t.ceiling.feasible) return { text: 'none', why: 'conduction alone already exceeds the budget' }
+  if (!Number.isFinite(t.ceiling.fs)) return { text: 'no limit', why: 'the edges cost nothing, so no frequency is out of reach' }
+  return { text: fmt(t.ceiling.fs, 'Hz', 4), why: 'where the whole budget is spent' }
+}
+
 const THERMAL_INTRO = {
   n1:
     'Every watt the ledger accounts for leaves as heat, and it leaves down a resistance measured in ' +
@@ -340,9 +356,9 @@ function thermalEntry(exp, x) {
     { label: 'the package’s budget', value: t.Pmax, unit: 'W', note: `(T_j,max − T_a)/R_th, ${(100 * t.margin).toFixed(0)} % of it spent` },
     {
       label: 'the frequency it can afford',
-      value: t.ceiling.feasible ? t.ceiling.fs : 0,
+      value: t.ceiling.feasible && Number.isFinite(t.ceiling.fs) ? t.ceiling.fs : NaN,
       unit: 'Hz',
-      note: t.ceiling.feasible ? 'where the whole budget is spent' : 'conduction alone already exceeds the budget',
+      note: ceilingWords(t).why,
     },
     { label: 'peak under the pulse', value: t.Ta + t.pulse.peak, unit: '°C', note: `swing ${fmt(t.pulse.swing, 'K', 3)} about ${fmt(t.pulse.mean, 'K', 3)}` },
   ]

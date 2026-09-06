@@ -3,6 +3,7 @@ import { useCanvas, COLORS, drawFrame, plotArea, fmt } from '@ee-labs/ui'
 import { Formula } from '@ee-labs/explain'
 import { TRACE_COLORS } from './ScopeCanvas.jsx'
 import { axisFmt, niceBounds } from '../format.js'
+import { ceilingWords } from '../groups/lmnMath.js'
 
 // The four panes Groups L, M and N add.
 //
@@ -492,10 +493,8 @@ export function ThermalPane({ x, exp }) {
           </tr>
           <tr>
             <td>the frequency it affords</td>
-            <td className="num">{t.ceiling.feasible ? fmt(t.ceiling.fs, 'Hz', 4) : 'none'}</td>
-            <td className="num">
-              {t.ceiling.feasible ? 'where the whole budget is spent' : 'conduction alone exceeds the budget'}
-            </td>
+            <td className="num">{ceilingWords(t).text}</td>
+            <td className="num">{ceilingWords(t).why}</td>
           </tr>
           <tr>
             <td>under a {fmt(t.pulse.period, 's', 3)} pulse</td>
@@ -506,15 +505,20 @@ export function ThermalPane({ x, exp }) {
           </tr>
         </tbody>
       </table>
-      <p className="hint">{NETWORK_NOTE}</p>
+      <p className="hint">{networkNote(t.model)}</p>
     </div>
   )
 }
 
-const NETWORK_NOTE =
+// Two curves share the Z_th plot and the frame carries no legend, so the
+// sentence under it names which is which. The network the knob selects is
+// the solid one, and it is the one every number in the table is read from.
+const networkNote = (model) =>
   'A datasheet fits Foster stages to a measured curve, and their internal temperatures are not the ' +
   'temperature of anything. A Cauer ladder is built from the geometry, so its nodes are the die, the case ' +
-  'and the sink. Both reach the same steady rise, and the plot shows where they part on the way there.'
+  'and the sink. Both reach the same steady rise, and the plot shows where they part on the way there. ' +
+  `The ${model === 'cauer' ? 'ladder' : 'stages'} the knob selects are drawn solid, the ` +
+  `${model === 'cauer' ? 'stages' : 'ladder'} dashed.`
 
 function ThermalCanvas({ x }) {
   const t = x.m.thermal
