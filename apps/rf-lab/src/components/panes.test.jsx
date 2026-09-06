@@ -3,7 +3,7 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { EXPERIMENTS, byId, defaultsOf } from '../experiments.js'
 import { analyse } from '../math.js'
-import { sparamPropsFor } from '../view.js'
+import { linePropsFor, sparamPropsFor } from '../view.js'
 import App from '../App.jsx'
 import { ChartPane, EquationsPane, LinePane, NumbersPane, SweepPane } from './panes.jsx'
 import { SparamPane } from './SparamPane.jsx'
@@ -376,5 +376,35 @@ describe('the sweep pane says whether the response repeats', () => {
     const shown = html(<SweepPane exp={back.exp} x={back.x} p={back.p} />)
     expect(shown).toContain('data-role="marker"')
     expect(shown).not.toMatch(/outside the window/)
+  })
+})
+
+describe('the line view draws an axis for the wave above it', () => {
+  it('names the quantity, its division and both ends of its range', () => {
+    // `REVIEW_PLAYBOOK.md` §4: a view with no axis at all, and §6: a curve on a
+    // magnified scale states the scale. The standing wave is drawn against its
+    // own largest voltage, because the drive is arbitrary, and the picture said
+    // so nowhere. A reader could not tell a ripple of a few per cent from one
+    // that reaches zero.
+    const p = defaultsOf('a3')
+    const out = html(<LinePane exp={byId.a3} x={analyse(byId.a3, p)} p={p} />)
+    expect(out).toMatch(/Voltage over its largest/)
+    expect(out).toMatch(/class="rf-axis"/)
+    expect(out).toMatch(/The wave is drawn over its own largest voltage/)
+  })
+
+  it('the curve stays inside the axis it is drawn against, at every load the knob reaches', () => {
+    // The samples are divided by the largest of themselves, so the trace runs
+    // from zero to one whatever the reflection is. A short reflects everything
+    // and doubles the largest voltage, which is where a fixed scale would have
+    // put the peak off the top of the picture.
+    for (const RL of [0.1, 1, 25, 50, 100, 5000]) {
+      const p = { ...defaultsOf('a3'), RL }
+      const v = linePropsFor(byId.a3, p, analyse(byId.a3, p))
+      for (const s of v.samples) {
+        expect(s.v, `a3 at ${RL} ohms draws ${s.v}`).toBeGreaterThanOrEqual(0)
+        expect(s.v, `a3 at ${RL} ohms draws ${s.v}`).toBeLessThanOrEqual(1 + 1e-12)
+      }
+    }
   })
 })

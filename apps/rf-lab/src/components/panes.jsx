@@ -20,25 +20,42 @@ export function ChartPane({ exp, x, p }) {
  *
  * The bar is the physical length and the marks are quarter wavelengths, so a
  * quarter-wave section shows one mark at its far end and shows four when the
- * frequency is quadrupled. Above it is the standing wave, normalised to its own
- * largest value, with the largest and the smallest marked.
+ * frequency is quadrupled. Above it is the standing wave.
+ *
+ * That wave is drawn against its own largest value, because the drive is
+ * arbitrary and the shape is the lesson. A curve on a magnified scale with no
+ * axis beside it is `REVIEW_PLAYBOOK.md` §4's first defect and §6's third, so
+ * the axis is drawn and it names the division. One at the top and zero at the
+ * bottom, and the largest over the smallest is the standing-wave ratio the
+ * legend prints.
  */
 export function LinePane({ exp, x, p }) {
   const v = linePropsFor(exp, p, x)
   const W = 420
   const H = 150
-  const left = 10
+  const left = 34
   const right = W - 10
   const span = right - left
   const at = (d) => left + (span * d) / Math.max(v.length, 1e-12)
   const baseline = H - 34
+  const height = 78
   const path = v.samples
-    .map((s, i) => `${i === 0 ? 'M' : 'L'}${at(s.d).toFixed(2)} ${(baseline - 78 * s.v).toFixed(2)}`)
+    .map((s, i) => `${i === 0 ? 'M' : 'L'}${at(s.d).toFixed(2)} ${(baseline - height * s.v).toFixed(2)}`)
     .join(' ')
 
   return (
     <div className="rf-plot rf-line">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`A line ${plain(v.degrees, 5)} degrees long, with its standing wave drawn above it`}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`A line ${plain(v.degrees, 5)} degrees long, with its standing wave drawn above it against its own largest voltage`}>
+        <line className="rf-axis" x1={left - 5} y1={baseline - height} x2={left - 5} y2={baseline} />
+        <text className="rf-axis-tick" x={left - 9} y={baseline - height + 4} textAnchor="end">
+          1
+        </text>
+        <text className="rf-axis-tick" x={left - 9} y={baseline} textAnchor="end">
+          0
+        </text>
+        <text className="rf-axis-label" x={10} y={baseline - height / 2} textAnchor="middle" transform={`rotate(-90 10 ${baseline - height / 2})`}>
+          Voltage over its largest
+        </text>
         <path className="rf-standing" d={path} data-role="standing" />
         <rect className="rf-conductor" x={left} y={baseline} width={span} height={9} />
         {v.ticks.marks.map((m) => (
@@ -51,16 +68,16 @@ export function LinePane({ exp, x, p }) {
             ) : null}
           </g>
         ))}
-        <text className="rf-end" x={left} y={baseline - 88} textAnchor="start" data-role="source-end">
+        <text className="rf-end" x={left} y={baseline - height - 10} textAnchor="start" data-role="source-end">
           source
         </text>
-        <text className="rf-end" x={right} y={baseline - 88} textAnchor="end" data-role="load-end">
+        <text className="rf-end" x={right} y={baseline - height - 10} textAnchor="end" data-role="load-end">
           {v.load}
         </text>
       </svg>
       <p className="rf-legend" data-role="line-legend">
         {`${num(v.length, 'm')} of line, ${plain(v.degrees, 5)}° at ${num(p.f, 'Hz')}. Wavelength ${num(v.lambda, 'm')}, marks every ${plain(v.ticks.every / 4, 3)} of one. `}
-        {`Standing-wave ratio ${plain(v.swr, 5)}, with the smallest voltage ${num(v.dMin, 'm')} from the load.`}
+        {`The wave is drawn over its own largest voltage. Standing-wave ratio ${plain(v.swr, 5)}, with the smallest voltage ${num(v.dMin, 'm')} from the load.`}
       </p>
     </div>
   )
