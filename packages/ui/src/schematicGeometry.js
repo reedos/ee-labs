@@ -94,10 +94,50 @@ export function labelParts(e) {
  * The + and − marks at a two-terminal element's ends when voltages are shown.
  * Local + is at −20; both marks sit just inside the terminals on the side away
  * from the label (above a horizontal element, left of a vertical one).
+ *
+ * The offsets clear the widest body a two-terminal element draws, which is the
+ * resistor's zigzag: it runs the full −20…+20 between the terminals and swings
+ * ±6 off the axis, ±6.8 counting its own 1.6 stroke. The capacitor's plates
+ * reach ±9 but only at x = ±4, the inductor's arcs ±5, and a round source's rim
+ * 11 — all inside what clearing the zigzag already buys.
+ *
+ * The HORIZONTAL marks used to land on that zigzag. They sat at y = −6, so a
+ * mark's baseline was 0.8px inside the zigzag's own envelope and its glyph ran
+ * up through the teeth. Measured in the browser at 1440×900, the + and − boxes
+ * overlapped the resistor's by 4.9×19.4 and 4.7×21.8 on one experiment and
+ * 14.6×5.0 on another. `SIGN_CLEAR` now pushes the baseline past the body's own
+ * half-extent with room to spare: 6.8 of body, then 4 of air. A glyph grows
+ * upward from its baseline, so hanging the baseline there puts the whole mark
+ * above the body.
+ *
+ * A VERTICAL element's marks were hitting the same zigzag turned on its side,
+ * and that is a distance in x rather than in y. The number has to account for
+ * the mark's BOX, not its ink: an 11px `<text>` measures 16px wide once font
+ * metrics and side bearings are counted, and it is centred on the anchor, so
+ * half of it reaches back toward the body. Measured on a2, whose resistor is
+ * vertical: body half 9.6 screen px, the mark's right edge at −4.6, biting 5px
+ * into the teeth. Clearing it needs the anchor at −17.6 screen px, and the
+ * drawing scales SVG to screen by 1.41, so −12.5 in these units. `SIGN_SIDE`
+ * takes that with a little to spare.
+ *
+ * It is deliberately no further out than that. An earlier pass used −13.8 and
+ * drove the + of a vertical capacitor into the callout on its left, which
+ * rendered as "f₀ = 1.59 kHz+" on h4. There is a label in that space, so the
+ * mark takes what it needs to clear the body and no more.
  */
+const BODY_HALF = 6.8
+const SIGN_CLEAR = BODY_HALF + 4
+const SIGN_SIDE = 13
+
 export function signPlaces({ x, y, dir = 'h', flip = false }) {
-  const plus = dir === 'v' ? { x: x - 8, y: y + (flip ? 17 : -11) } : { x: x + (flip ? 16 : -16), y: y - 6 }
-  const minus = dir === 'v' ? { x: x - 8, y: y + (flip ? -11 : 17) } : { x: x + (flip ? -16 : 16), y: y - 6 }
+  const plus =
+    dir === 'v'
+      ? { x: x - SIGN_SIDE, y: y + (flip ? 17 : -11) }
+      : { x: x + (flip ? 16 : -16), y: y - SIGN_CLEAR }
+  const minus =
+    dir === 'v'
+      ? { x: x - SIGN_SIDE, y: y + (flip ? -11 : 17) }
+      : { x: x + (flip ? -16 : 16), y: y - SIGN_CLEAR }
   return { plus: { ...plus, anchor: 'middle' }, minus: { ...minus, anchor: 'middle' } }
 }
 

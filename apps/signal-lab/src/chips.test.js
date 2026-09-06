@@ -77,6 +77,34 @@ describe('chipMatches / activeChip', () => {
     expect(chipMatches({ ...st, blocks: [] }, chips[0].patch)).toBe(false)
   })
 
+  it('prefers the chip actually clicked when two partial patches both still match', () => {
+    // "4 bits" preset's own shape: a bits chip and a dither chip, neither
+    // checking the other's field. Click "12 bits" then "dither" and the
+    // state satisfies BOTH — array order used to win, leaving "12 bits" lit
+    // after "dither" was the one just pressed (Reed's review).
+    const bitsChips = [
+      { label: '4 bits', patch: { blocks: [{ params: { bits: 4 } }] } },
+      { label: '12 bits', patch: { blocks: [{ params: { bits: 12 } }] } },
+      { label: 'dither', patch: { blocks: [{ params: { dither: true } }] } },
+    ]
+    const base = { ...st, blocks: [{ id: 1, type: 'quantize', bypass: false, params: { bits: 4, dither: false } }] }
+    let s = applyChip(base, bitsChips[1].patch) // "12 bits"
+    s = applyChip(s, bitsChips[2].patch) // "dither"
+    // Both "12 bits" and "dither" match the resulting state.
+    expect(chipMatches(s, bitsChips[1].patch)).toBe(true)
+    expect(chipMatches(s, bitsChips[2].patch)).toBe(true)
+    // Without a click hint, array order still wins (documented, unavoidable
+    // once two partial patches genuinely both match).
+    expect(activeChip(s, bitsChips)).toBe('12 bits')
+    // With the click hint, the chip actually pressed reads active.
+    expect(activeChip(s, bitsChips, 'dither')).toBe('dither')
+    // A stale hint that no longer matches (dither switched back off after
+    // being clicked) falls back to the normal search instead of lying.
+    const ditherOff = applyChip(s, { blocks: [{ params: { dither: false } }] })
+    expect(chipMatches(ditherOff, bitsChips[2].patch)).toBe(false)
+    expect(activeChip(ditherOff, bitsChips, 'dither')).toBe('12 bits')
+  })
+
   it('reads a typed 0.707 as pressing a chip stored as Math.SQRT1_2 (relative tolerance 1e-3)', () => {
     // The chip stores the exact irrational; a student types the four-digit
     // approximation the note prints. At 1e-9 this never lit — see the "same"

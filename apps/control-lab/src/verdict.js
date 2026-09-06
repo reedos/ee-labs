@@ -1,4 +1,5 @@
 import { polesZeros, isStable, dcGain } from '@ee-labs/systems'
+import { UNDEFINED_PLANT_REASON } from './systems.js'
 
 // The one-word judgement the top bar prints, and the numbers that must agree
 // with it.
@@ -10,6 +11,15 @@ import { polesZeros, isStable, dcGain } from '@ee-labs/systems'
 // review filed all four from one screen. A loop on the boundary is its own
 // state: a sustained oscillation that neither settles nor runs away, and
 // every pane should call it that.
+//
+// A fourth state sits beside those three, not among them: 'undefined'. A
+// closed-loop denominator that is identically zero has no characteristic
+// equation to have roots of, so it is not "unstable" — a claim about roots
+// in the right half plane — it is not a system at all. buildLoop's own
+// refusal (systems.js: an all-zero plant denominator) hands verdictOf
+// exactly this shape, and the check below is the same "degenerate
+// denominator" test isStable() already makes, read as its own verdict
+// instead of folded into "unstable".
 
 /** A pole this close to the axis, relative to its own scale, is on it. */
 export const MARGINAL_REL = 1e-6
@@ -21,7 +31,7 @@ export const MARGINAL_GM = 1e-3
  * second witness: a gain margin within 0.1% of 1× is the boundary too.
  */
 export function verdictOf(closed, marg = null) {
-  if (!closed.a.length || !closed.a.some((v) => v !== 0)) return 'unstable'
+  if (!closed.a.length || !closed.a.some((v) => v !== 0)) return 'undefined'
   const { poles } = polesZeros(closed)
   if (!poles.length) return isStable(closed) ? 'stable' : 'unstable'
   const scale = Math.max(...poles.map(([re, im]) => Math.hypot(re, im)), Number.MIN_VALUE)
@@ -36,6 +46,26 @@ export function verdictOf(closed, marg = null) {
   if (onAxis || gmAtOne) return 'marginal'
   if (strictlyRight) return 'unstable'
   return isStable(closed) ? 'stable' : 'unstable'
+}
+
+/**
+ * Does this PLANT alone, with the loop cut, already carry a pole in the
+ * right half plane?
+ *
+ * That one structural fact flips which direction of the gain margin is
+ * dangerous (TERMS.rhp). For an ordinary plant more gain is what eventually
+ * destabilises it, so a margin below 1x means the loop is already past the
+ * edge. For a plant like this, feedback is the only reason it holds at all,
+ * so LESS gain is the failure mode and a margin below 1x is the expected,
+ * safe reading — the round-three grading found exactly this plant (unstable,
+ * under PI or PID at Kp = 5) reading "past the boundary, 0.20x this gain"
+ * beside a badge saying stable, with nothing on screen resolving it.
+ * Checked on `loop.plant` alone, never `loop.open` or `loop.closed`: a
+ * controller cannot move the PLANT's own poles, only the loop's, so this
+ * stays true regardless of which controller or gain is dialled in.
+ */
+export function plantInverted(loop) {
+  return polesZeros(loop.plant).poles.some(([re]) => re > 1e-9)
 }
 
 /** The rad/s of the pole pair nearest the axis — the frequency a marginal loop sings at. */
@@ -90,6 +120,8 @@ export function verdictBadge(verdict) {
       full: 'sustained oscillation — neither settles nor runs away',
       short: 'oscillates',
     }
+  if (verdict === 'undefined')
+    return { badge: 'NOT A SYSTEM', full: UNDEFINED_PLANT_REASON, short: 'not a system' }
   return { badge: 'UNSTABLE', full: 'closed loop runs away', short: 'runs away' }
 }
 
@@ -111,19 +143,37 @@ export function joinParts(parts) {
  * one sentence that names the boundary from whichever side applies: a
  * marginal loop sitting AT it (gain margin exactly 0 dB), a loop whose phase
  * never reaches −180° so there is no boundary to measure, room to spare
- * above it, or already past it. `gainMargin` must be the RAW value from
+ * above it, or already past it, or — the fourth verdict, ahead of all of
+ * those — no loop to measure at all. `gainMargin` must be the RAW value from
  * margins() — presentMargins() only ever rewrites gainCrossover/phaseMargin,
  * never gainMargin, so the raw number is exactly what every caller (the
  * topbar's verdict aside) already reads. chrome.js calls this with the
  * picker's own default-state numbers, so "boundary" and "−180°" can never
  * appear on screen with no definition reachable — the defect was that this
  * sentence used to exist in ONE place (here) and get scanned in NONE.
+ *
+ * `inverted` (plantInverted, above) is the round-three fix: a gain margin
+ * below 1x reads as a warning ("past the boundary") for an ordinary plant,
+ * and as the SAFE reading for a plant whose own pole is already in the right
+ * half plane, where feedback is what holds it and too little gain is the
+ * failure mode. Same number either way — only the sentence around it changes.
  */
-export function bodeMarginNote(marginal, gainMargin) {
-  if (marginal) return { prov: true, parts: [{ t: 'gain margin 0 dB, this gain is the boundary' }] }
+export function bodeMarginNote(verdict, gainMargin, inverted = false) {
+  if (verdict === 'undefined') return { prov: true, parts: [{ t: UNDEFINED_PLANT_REASON }] }
+  if (verdict === 'marginal') return { prov: true, parts: [{ t: 'gain margin 0 dB, this gain is the boundary' }] }
   if (gainMargin == null) return { prov: true, parts: [{ t: 'phase never reaches −180°' }] }
   if (gainMargin >= 1) {
     return { prov: false, parts: [{ t: 'room for ' }, { b: `${gainMargin.toFixed(2)}×` }, { t: ' more gain' }] }
+  }
+  if (inverted) {
+    return {
+      prov: false,
+      parts: [
+        { t: 'safe here — this plant fails on too little gain, and the boundary sits at ' },
+        { b: `${gainMargin.toFixed(2)}×` },
+        { t: ' the current gain, not above it' },
+      ],
+    }
   }
   return {
     prov: false,
@@ -181,11 +231,21 @@ export function gainMarginWarn(gm) {
 /**
  * What the top bar's "steady error" field shows.
  *
- * e_ss = 1 − T(0): positive when the output falls short of the setpoint,
+ * Round four found the topbar reading the REFERENCE closed loop no matter
+ * which step the Step pane itself was showing: with Disturbance selected the
+ * pane's own "settles to" already switches to `stepTf` (loop.disturbance),
+ * so the topbar must read the SAME transfer function, not always
+ * `loop.closed` — otherwise the two numbers describe two different
+ * questions and only look like they disagree. `tf` is now whichever
+ * transfer function the caller (App.jsx's `stepTf`) is showing, and `mode`
+ * says which ideal it is being measured against: a reference step asks the
+ * output to reach 1, a disturbance step asks it to stay at 0.
+ *
+ * e_ss = target − G(0): positive when the output falls short of the ideal,
  * NEGATIVE when it sits above it (the unstable plant under P settles at
- * 1.25, so its error is −25%). A loop that never settles has no steady
- * state, and the field printed "200.0%", "1000.0%" and "−Infinity%" for
- * those before it learned to say so.
+ * 1.25 against a target of 1, so its error is −25%). A loop that never
+ * settles has no steady state, and the field printed "200.0%", "1000.0%"
+ * and "−Infinity%" for those before it learned to say so.
  *
  * The clause naming what a negative reading means used to say the output
  * "overshoots its destination and stays there" — but overshoot is a
@@ -194,7 +254,7 @@ export function gainMarginWarn(gm) {
  * sentence borrowed a defined term for a different idea instead of saying
  * the plain thing: it sits past the target and stays there.
  */
-export function steadyErrorOf(closed, verdict) {
+export function steadyErrorOf(tf, verdict, mode = 'ref') {
   if (verdict !== 'stable') {
     return {
       text: '—',
@@ -202,14 +262,33 @@ export function steadyErrorOf(closed, verdict) {
       title:
         verdict === 'marginal'
           ? 'does not settle — the loop oscillates forever at this gain, so it has no steady state'
-          : 'does not settle — the loop runs away, so it has no steady state',
+          : verdict === 'undefined'
+            ? UNDEFINED_PLANT_REASON
+            : 'does not settle — the loop runs away, so it has no steady state',
     }
   }
-  const err = 1 - dcGain(closed)
-  const sign = err > 0 ? 'the output falls short of what was asked' : 'the output settles ABOVE what was asked'
+  const dist = mode === 'dist'
+  const target = dist ? 0 : 1
+  const err = target - dcGain(tf)
   if (Math.abs(err) < 1e-9) {
-    return { text: 'none', value: 0, title: 'e_ss = 1 − T(0) = 0: an integrator in the loop erases the error exactly' }
+    return dist
+      ? {
+          text: 'none',
+          value: 0,
+          title: 'e_ss = 0 − Gd(0) = 0: an integrator in the loop erases the disturbance exactly',
+        }
+      : { text: 'none', value: 0, title: 'e_ss = 1 − T(0) = 0: an integrator in the loop erases the error exactly' }
   }
+  if (dist) {
+    const sign =
+      err > 0 ? 'the output settles below its undisturbed value' : 'the output settles ABOVE its undisturbed value'
+    return {
+      text: `${(err * 100).toFixed(1)}%`,
+      value: err,
+      title: `e_ss = 0 − Gd(0) = ${(err * 100).toFixed(1)}% of the disturbance step — ${sign}; a negative steady error means the output settles past its undisturbed value and stays there`,
+    }
+  }
+  const sign = err > 0 ? 'the output falls short of what was asked' : 'the output settles ABOVE what was asked'
   return {
     text: `${(err * 100).toFixed(1)}%`,
     value: err,

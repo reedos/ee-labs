@@ -17,9 +17,10 @@ export const TERMS = {
   'linear-regulator': {
     name: 'Linear regulator',
     def:
-      'A transistor in series with the load, driven so that the output holds at the wanted voltage. ' +
-      'It drops the excess across itself, so its loss is (V_in − V_out) times the load current. Its ' +
-      'efficiency can never exceed V_out/V_in.',
+      'A series pass element sits between source and load, carrying the load current and dropping the ' +
+      'rest of the voltage across itself. Feedback varies that drop to hold the output steady as the ' +
+      'load moves. Its loss is (V_in − V_out) times the load current, so efficiency can never exceed ' +
+      'V_out/V_in. Here a plain resistor stands in, because the waste is the same.',
   },
   duty: {
     name: 'Duty (D)',

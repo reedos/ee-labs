@@ -170,9 +170,20 @@ export function readLocationLink() {
 }
 
 /**
+ * Every folder the suite deploys side by side, deployed or not. This is the
+ * set of PATH SEGMENTS these two helpers recognise — which app names a URL
+ * is allowed to be standing on, not which labs link to which. A dark lab
+ * (circuit-elements-lab, power-lab) still deploys to its own folder and
+ * needs its own nav to resolve `home` and its siblings; whether the
+ * RELEASED labs link back to a dark one is a separate decision, made in
+ * LabNav's own `LABS` list, and adding a name here must not change that.
+ */
+const APPS = ['signal-lab', 'circuit-lab', 'control-lab', 'circuit-elements-lab', 'power-lab']
+
+/**
  * The URL of a sibling app in the deployed suite, or null.
  *
- * On the deployed site the three apps live side by side —
+ * On the deployed site the apps live side by side —
  * .../ee-labs/circuit-lab/, .../ee-labs/signal-lab/ — so a hand-over can be a
  * real link rather than a fragment to paste. The current app's own segment is
  * looked up in the path and swapped for the sibling's.
@@ -184,9 +195,8 @@ export function readLocationLink() {
  */
 export function siblingUrl(app, fragment, loc = typeof window === 'undefined' ? null : window.location) {
   if (!loc) return null
-  const apps = ['signal-lab', 'circuit-lab', 'control-lab']
-  if (!apps.includes(app)) return null
-  const m = loc.pathname.match(new RegExp(`^(.*/)(${apps.join('|')})(/[^/]*)?$`))
+  if (!APPS.includes(app)) return null
+  const m = loc.pathname.match(new RegExp(`^(.*/)(${APPS.join('|')})(/[^/]*)?$`))
   if (!m || m[2] === app) return null
   return `${loc.origin}${m[1]}${app}/${fragment ? '#' + fragment : ''}`
 }
@@ -198,7 +208,7 @@ export function siblingUrl(app, fragment, loc = typeof window === 'undefined' ? 
  */
 export function homeUrl(loc = typeof window === 'undefined' ? null : window.location) {
   if (!loc) return null
-  const m = loc.pathname.match(/^(.*\/)(signal-lab|circuit-lab|control-lab)(\/[^/]*)?$/)
+  const m = loc.pathname.match(new RegExp(`^(.*/)(${APPS.join('|')})(/[^/]*)?$`))
   if (!m) return null
   return `${loc.origin}${m[1]}`
 }

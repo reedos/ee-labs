@@ -2,6 +2,7 @@ import React from 'react'
 import { fmt } from '@ee-labs/ui'
 import { TRACES } from '../experiments.js'
 import { TRACE_COLORS } from './ScopeCanvas.jsx'
+import { LINREG_R_PASS } from '../analysis.js'
 
 // Schematics, drawn as SVG — the same kit and the same sidebar slot as Circuit
 // Lab's, so a reader moving between the labs meets one drawing style.
@@ -331,13 +332,11 @@ const DRAW = {
     <>
       <SrcDC x={SRC} y={MID} label={`V_in ${volts(p.Vin)}`} />
       <Wire x1={SRC} y1={TOP} x2={114} y2={TOP} />
-      {/* The pass element drawn as the resistor it behaves like. At any
-          operating point it is (V_in − V_out)/I of resistance, and the whole
-          lesson is that this resistance turns the drop into heat; a box
-          labelled "pass" said only that something unexplained sits here. Turn
-          V_out and the value moves — it is a resistor that adjusts itself to
-          hold the output, which is what a regulator is. */}
-      <Res x={134} y={TOP} label={`R_pass ${ohms((p.R * (p.Vin - p.Vo)) / p.Vo)}`} />
+      {/* The pass element is a plain, fixed resistor: R_pass never changes,
+          whatever the load does. Its drop follows Ohm's law from whatever
+          current the load happens to draw, so "drops X V" moves with the
+          load while the resistor's own value does not. */}
+      <Res x={134} y={TOP} label={`R_pass ${ohms(LINREG_R_PASS)}`} />
       <Tag x={134} y={62}>{`drops ${volts(p.Vin - p.Vo)}`}</Tag>
       <Wire x1={154} y1={TOP} x2={260} y2={TOP} />
       <Wire x1={260} y1={TOP} x2={260} y2={MID - 20} />
@@ -865,7 +864,7 @@ export function signalsOf(exp) {
 
 /** What the drawing is called, in the words a textbook would use. */
 export const TOPOLOGY_NAMES = {
-  linreg: 'Linear regulator',
+  linreg: 'Resistor divider',
   flyback: 'Flyback converter, isolated',
   halfbridge: 'Half-bridge converter, isolated',
   square: 'Full-bridge inverter, square wave',

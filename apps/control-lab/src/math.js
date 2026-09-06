@@ -19,6 +19,30 @@ const phaseDegAt = (phase, freqs, f) => {
   return ((phase[i - 1] + t * (phase[i] - phase[i - 1])) * 180) / Math.PI
 }
 
+/**
+ * PM = 180° + ∠L(jω_gc) — the ONE fold this app uses for that identity,
+ * shared by every reader of it in this file rather than each keeping its own
+ * copy.
+ *
+ * This is a regression fix: the topbar's phase margin (margins(), in
+ * packages/systems, out of this app's territory) already folds this
+ * correctly at its own binding crossover — phase.test.js pins it as "reads
+ * 78.5°, not 438.5°". This panel used to recompute the SAME identity from
+ * bode()'s continuously unwrapped, per-transfer-function-anchored phase
+ * curve instead of asking the loop directly, and an anchor can sit any
+ * multiple of 360° from the principal value the fold needs — the unstable
+ * plant's own row read 447.134° beside the topbar's 87.1°, 360° off, under
+ * every controller. phaseAt() (packages/systems) returns the ordinary atan2
+ * principal value, wrapped to (−180°, 180°] with no anchoring at all, so
+ * reading it fresh at the exact crossover margins() found — rather than
+ * interpolating a plotted, anchored curve — reproduces margins()'s own
+ * arithmetic exactly instead of drifting from it.
+ */
+const phaseMarginAt = (loop, atFreq, stable) => {
+  const angleDeg = (phaseAt(loop.open, atFreq) * 180) / Math.PI
+  return (stable ? 1 : -1) * (180 - Math.abs(angleDeg))
+}
+
 const T = (text) => ({ kind: 'text', text })
 const F = (tex, caption) => ({ kind: 'formula', tex, caption })
 const C = (rows) => ({ kind: 'check', rows })
@@ -58,12 +82,23 @@ function ruleOfThumbBlocker(marg, second, loop, integrators, pz) {
 
 export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
   try {
+    // buildLoop (systems.js) refuses before this pane ever sees a number:
+    // an all-zero plant denominator carries `reason` instead of a loop, and
+    // computing steady-state error or a DC gain from it would print a tick
+    // beside a division by zero rather than the check it claims to be.
+    if (loop.reason) return { blocks: [T(loop.reason)] }
     const plant = PLANTS[plantId]
     const ctrl = CONTROLLERS[ctrlId]
     const pz = polesZeros(loop.closed)
     const second = secondOrderMetrics(loop.closed)
     const stable = isStable(loop.closed)
     const closedDc = dcGain(loop.closed)
+    // Does the PLANT alone, feedback cut, already carry a right-half-plane
+    // pole? That flips which side of 1x the gain margin's danger sits on
+    // (verdict.js: plantInverted). Round-three grading found "past the
+    // boundary, 0.20x this gain" beside a badge saying stable and no
+    // sentence anywhere resolving it, for exactly this plant.
+    const plantRhp = polesZeros(loop.plant).poles.some(([re]) => re > 1e-9)
 
     // An integrator anywhere in the loop is what kills steady-state error, so
     // it is worth naming rather than leaving the reader to infer it. Counted
@@ -164,7 +199,20 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
           },
         ]),
       )
-    } else if (plant.circuitNote) {
+    }
+    // A bench circuit and a catalogue refusal are not mutually exclusive:
+    // integrator, motor and threePole each carry BOTH `circuit` (the real
+    // network above, verified against the plant) and `circuitNote` (why
+    // that network is still not anything Circuit Lab's catalogue holds).
+    // The original `if (plant.circuit) {...} else if (plant.circuitNote)`
+    // let the first branch win outright for all three, so the refusal was
+    // dead code across the six lessons (46% of the course) that use motor
+    // or three lags — the panel printed a fully verified circuit and three
+    // ticks and never said the catalogue has no match for it. This second,
+    // independent `if` runs regardless of whether the block above ran, so a
+    // plant with no bench circuit at all (unstable, custom) still gets the
+    // refusal alone, exactly as before, while one with both gets both.
+    if (plant.circuitNote) {
       blocks.push(T(plant.circuitNote))
     }
 
@@ -209,6 +257,21 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
       F('\\text{GM} = \\frac{1}{|L(j\\omega_{pc})|} \\quad\\text{where}\\quad \\angle L(j\\omega_{pc}) = -180^\\circ'),
     )
 
+    // The one plant in the catalogue where this reads backwards: a pole in
+    // the right half plane means feedback is the only reason the loop holds
+    // at all, so too LITTLE gain is what breaks it. A gain margin under 1x
+    // there is not a warning. It is the expected, safe reading, and the
+    // boundary sits below the current gain rather than above it.
+    if (plantRhp) {
+      blocks.push(
+        T(
+          'This plant carries a pole in the right half plane, so it fails on too little gain ' +
+            'rather than too much. A gain margin under 1× is the safe reading here: the boundary ' +
+            'sits below the current gain, and raising the gain moves away from it, not toward it.',
+        ),
+      )
+    }
+
     const marginRows = []
     if (marg.gainCrossover != null) {
       marginRows.push({
@@ -242,7 +305,12 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
           label: 'gain margin',
           value: marg.gainMargin ?? NaN,
           unit: '×',
-          note: marg.gainMargin == null ? 'phase never reaches −180°' : '',
+          note:
+            marg.gainMargin == null
+              ? 'phase never reaches −180°'
+              : plantRhp && marg.gainMargin < 1
+                ? 'safe: this plant fails on too little gain, not too much'
+                : '',
         },
         { label: 'crossover frequency', value: marg.gainCrossover ?? NaN, unit: 'Hz' },
         // Both unit systems, always: the suite plots hertz, the textbook
@@ -291,7 +359,13 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
         tol: 0.02,
         abs: 0.5,
       })
-      phaseShares = { phC, phP, phL }
+      // The phase MARGIN, not the raw accounting total: phL above is read
+      // off bode()'s unwrapped, anchored curve, fine for the check row it
+      // feeds (both sides share the same anchor and the offset cancels) but
+      // wrong to add 180° to directly. foldedPM reads the loop fresh, at
+      // this exact crossover, through the one fold (above) the topbar's own
+      // margin already uses.
+      phaseShares = { phC, phP, foldedPM: phaseMarginAt(loop, marg.gainCrossover, stable) }
     }
     if (ctrlId === 'pi' || ctrlId === 'pid') {
       // "A flat −90°" is a claim about the integrator term alone, and far
@@ -311,7 +385,7 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
         V([
           { label: "the controller's share ∠C", value: phaseShares.phC, unit: '°', note: phaseShares.phC > 0 ? 'adds phase' : '' },
           { label: "the plant's share ∠P", value: phaseShares.phP, unit: '°' },
-          { label: '180° + the total', value: 180 + phaseShares.phL, unit: '°', note: 'the phase margin' },
+          { label: '180° + ∠L at the crossover', value: phaseShares.foldedPM, unit: '°', note: 'the phase margin' },
         ]),
       )
     }

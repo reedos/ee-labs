@@ -221,6 +221,9 @@ body {
 .num {
   display: block;
   margin-bottom: 10px;
+  /* Anchors .num-echo, which is positioned out of flow on purpose — see its
+     own rule below. */
+  position: relative;
 }
 
 .num-head {
@@ -298,6 +301,41 @@ body {
   color: var(--dim);
   font-size: 11px;
   min-width: 16px;
+}
+
+/* The "what this will actually commit" line for engineering fields (see
+   NumField's engEcho use, units.js#engEcho). It only has something to say
+   while a bare number is mid-type into a field with an active prefix — a
+   milli-scale field reading a typed "1.0001" as 0.0010001 is the case this
+   exists to surface — and is empty the rest of the time. It stays
+   position:absolute and hidden-by-default REGARDLESS of content so it never
+   costs layout: every lab's fold probes require the try line and the
+   featured knob on screen at 1366x768, and this must not be able to push
+   either one down, whether it is empty, mid-fade, or showing three figures'
+   worth of correction. */
+.num-echo {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 5;
+  margin-top: 2px;
+  padding: 3px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.num-echo[data-visible] {
+  opacity: 1;
+  visibility: visible;
 }
 
 .num-slider {
@@ -494,6 +532,16 @@ body {
   flex-direction: column;
   background: var(--bg);
   min-height: 0;
+  /* A flex/grid item's default min-width is auto (its content's min-content
+     size), not 0 — without this, a wide row inside (the watch transport's
+     play button + speed chips, once the touch-target pass gave both a
+     little more padding) can force the WHOLE .view wider than the
+     viewport, and body/html allow horizontal scroll on a phone (below) to
+     let the sidebar's own overflow scroll independently. Circuit Lab
+     already carries this same fix for its Math pane; it belongs here so
+     every lab's plot pane gets it, not just the one that happened to hit
+     the bug first. */
+  min-width: 0;
   padding: 8px 14px 6px;
 }
 
@@ -810,4 +858,227 @@ select {
   flex-wrap: wrap;
   gap: 4px;
   margin-top: 6px;
+}
+
+/* ---------- phone touch targets (accessibility) ----------
+   Two student testers on phones, then measured objectively: every
+   interactive control in the suite ran under the 44x44 CSS-px touch-target
+   guideline (Apple HIG / Material), and most under the 24x24 floor WCAG 2.2
+   SC 2.5.8 sets as the legal AA minimum — prev/next at 41x19, the view tabs
+   at 20px tall, the one-click chips at 18px, control-lab's info mark at
+   12x10. tapTargetProbe.mjs (packages/ui/verify) walks every lab at
+   390x844 and fails anything visible under 44px, with a short, commented
+   allow-list still held to the 24px floor where 44 would cost more of the
+   phone layout budget than the suite can spare — see that file for the
+   exact reasoning.
+
+   Two techniques, chosen per control:
+   - A control that owns its own row, or wraps freely onto as many rows as
+     it needs (a preset, a num-field chip, a segmented tab, the num
+     spinner, an icon button, a checkbox's label) grows its REAL box here
+     via padding/min-height/min-width, and its flex `gap` grows with it so
+     a thumb cannot bridge two. None of these sit inside the sidebar's
+     gated first screen (every lab reorders its lesson PICKER to after the
+     lesson's own note on a phone), so growing them cannot push the note
+     or the try line past the fold.
+   - A control that sits inline in prose, or wedged tight against the note
+     and try line the fold probes hold on screen (the suite nav, "report
+     issue", the lesson nav's prev/next/reset, and — Control Lab only —
+     the inline "terms used here" link) keeps its visible glyph and gets an
+     invisible ::before/::after hit area instead: position:relative plus a
+     negative inset, so the layout — and the fold budget — do not move.
+     The try line's own chips split the difference: a moderate real bump
+     (well past the 24px floor) plus an invisible top/bottom-only area
+     reaches 44 without widening the row, since these are short, single-row
+     lists with no second row for the invisible area to bleed into. */
+
+@media (max-width: 900px) {
+  /* -- real growth -- */
+  .num-chips {
+    gap: 10px;
+  }
+  .num-chips .chip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 12px;
+  }
+
+  .num-entry {
+    gap: 8px;
+  }
+  .num-step {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+  }
+  .num-input {
+    height: 44px;
+  }
+
+  .segmented button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Real growth to 44, scoped to the SIDEBAR: a segmented control there
+     owns a row of its own, same as a chip or a preset. */
+  .controls .segmented button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  /* A segmented control inside a PLOT pane (a view switch, a phase/overlay
+     toggle, the Reference/Disturbance toggle in the readout) is the one
+     documented exception: its options touch with no real gap between them
+     (a genuine segmented control, not a row of separate chips), so an
+     invisible hit area would let a thumb bridge two — the fold probes
+     elsewhere in each verify.mjs hold the plot canvas inside the 390x844
+     viewport, and this is the plot's own header, so growing it to 44 for
+     real pushes the canvas off the bottom of a phone screen (measured: the
+     canvas's own bottom moved from 825px to 915px, past the 844px fold,
+     for exactly this reason). 24px is WCAG 2.2 SC 2.5.8's floor and the
+     one this suite falls back to here — tapTargetProbe.mjs's exceptionFloor
+     names this selector explicitly, so nothing else gets to be this small
+     silently. */
+  .views .segmented button {
+    min-height: 24px;
+    padding: 3px 10px;
+  }
+
+  .icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+  }
+
+  .ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 12px;
+  }
+  /* Same exception as the segmented control just above, same reason: a
+     transport button (play/pause) living in a plot pane, not the sidebar. */
+  .views .ghost {
+    min-height: 24px;
+    min-width: 24px;
+    padding: 3px 10px;
+  }
+
+  .check {
+    min-height: 44px;
+    gap: 10px;
+  }
+  /* The native box itself cannot grow to 44 without becoming a cartoon
+     checkbox — its real tap target is the label wrapping it (clicking
+     anywhere in a wrapping <label> activates the input it wraps), which
+     tapTargetProbe.mjs credits explicitly. A modest bump past the browser
+     default (~13px) still helps it read as a target at all. */
+  .check input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* The lesson picker (presets, groups) reorders to AFTER the active
+     lesson's note on every phone (each app's own styles.css) — free to
+     grow, it only ever adds sidebar-internal scroll, never fold height. */
+  .presets {
+    gap: 10px;
+  }
+  .preset {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 12px;
+  }
+  details.preset-group > summary {
+    min-height: 44px;
+    padding: 10px 0;
+  }
+
+  /* Definitions folded under the note: also after the try line in every
+     app that renders them as a <details> (Control Lab's own inline link
+     is the exception, handled in the invisible group below). */
+  details.terms > summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 0;
+  }
+
+  /* -- try-line chips: inside the gated box, so real growth is rationed -- */
+  .try-chips {
+    gap: 14px;
+    row-gap: 22px;
+  }
+  .try-chips .chip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    min-width: 44px;
+    padding: 6px 10px;
+  }
+  .try-chips .chip::before {
+    content: '';
+    position: absolute;
+    inset: -8px 0;
+  }
+
+  /* -- invisible hit areas only: the sidebar's clipped first screen cannot
+     afford to grow these for real -- */
+  .lesson-nav-step,
+  .lesson-nav-reset,
+  .terms-link {
+    position: relative;
+  }
+  .lesson-nav-step::before,
+  .lesson-nav-reset::before,
+  .terms-link::before {
+    content: '';
+    position: absolute;
+    inset: -14px;
+  }
+  /* The suite nav (home + the two sibling labs): a row of short links only
+     10px apart, so a uniform 44px hit area on each would overlap its
+     neighbour's — exactly the "thumb bridges two controls" failure mode
+     this whole pass exists to avoid. tapTargetProbe.mjs's exceptionFloor
+     holds this row to the 24px floor instead, so this only needs to reach
+     THAT, and only vertically: nothing else sits close above or below the
+     row (it is the sidebar's first line), so there is no neighbour for a
+     vertical area to bridge either. */
+  .labnav a {
+    position: relative;
+  }
+  .labnav a::before {
+    content: '';
+    position: absolute;
+    inset: -6px 0;
+  }
+  /* report-issue already owns ::before for its flag glyph — the hit area
+     rides ::after instead. Its real box is only ~16px tall (11px text,
+     almost no padding — it is a quiet, deliberately minor link), so the
+     inset here is bigger than the others to clear 44 from that shorter
+     start. */
+  .report-issue {
+    position: relative;
+  }
+  .report-issue::after {
+    content: '';
+    position: absolute;
+    inset: -15px;
+  }
 }

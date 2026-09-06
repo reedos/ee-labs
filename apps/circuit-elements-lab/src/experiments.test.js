@@ -1405,11 +1405,18 @@ describe('I9 and I10: the clamper and the doubler', () => {
 // arrives has this circuit's transfer function at every sweep point, and what
 // the link carries loads there without a warning and with the same values.
 
+// Every plain RC or series-RLC experiment outside H offers the same exact
+// hand-over: F3, F5 and G1–G4 share H's transfer function, component for
+// component, and the round-four review asked that the bridge reach them too.
+// F4's port sees a divider ahead of its RC, which scales the source by
+// R₂/(R₁+R₂) — Circuit Lab's RC template has no such knob, so F4 stays bare.
+const HANDOVER_IDS = ['f3', 'f5', 'g1', 'g2', 'g3', 'g4', ...H_IDS]
+
 describe('hand-over to Circuit Lab, both ways', () => {
   const withHandOver = EXPERIMENTS.filter((e) => e.circuitLab)
 
-  it('every H experiment offers one, and the mapping names a catalog circuit with the right count of values', () => {
-    expect(withHandOver.map((e) => e.id)).toEqual(H_IDS)
+  it('every eligible experiment offers one, and the mapping names a catalog circuit with the right count of values', () => {
+    expect(withHandOver.map((e) => e.id)).toEqual(HANDOVER_IDS)
     for (const e of withHandOver) {
       const m = e.circuitLab(defaultsOf(e.id))
       expect(m.decline, e.id).toBeUndefined()
@@ -1429,13 +1436,17 @@ describe('hand-over to Circuit Lab, both ways', () => {
         const { state } = stateFromLink(parseCircuitLink(buildCircuitLink(m)).patch)
         const tf = transferOf(m.id, state.params, state.output)
         // H5's output is the current i, which Circuit Lab's RL low-pass reads as the voltage across R: v_R = R·i.
-        const scale = e.out.q === 'i' ? p.R1 : 1
+        // Every other experiment's output is a plain element voltage — the one the mapping's own output key names
+        // (c → C1, r → R1, l → L1) when the experiment does not already say so with `out`.
+        const outQ = e.out ? e.out.q : 'volt'
+        const outKey = e.out ? e.out.key : { c: 'C1', r: 'R1', l: 'L1' }[m.output]
+        const scale = outQ === 'i' ? p.R1 : 1
         // The sweep the impedance/Bode views draw where the experiment has one; the same grid, solved here, where it does not.
         const wc = x.state.n === 1 ? 1 / x.state.tau : x.state.w0
         const omega = x.freq ? x.freq.omega : Array.from({ length: 241 }, (_, k) => wc * 10 ** (-2 + (4 * k) / 240))
         const H = x.freq ? x.freq.H : omega.map((w) => {
           const ac = solveAC(x.net, w, { anyFreq: true, sources: { V1: 1 } })
-          return cx.cdiv(ac[e.out.q][e.out.key], ac.volt.V1)
+          return cx.cdiv(ac[outQ][outKey], ac.volt.V1)
         })
         expect(omega.length).toBe(241)
         omega.forEach((w, k) => {
@@ -1511,6 +1522,8 @@ describe('what the student reads is what the solver did', () => {
   it('every cross-reference names an experiment that exists and holds what the sentence says it holds', () => {
     // What each reference leans on, checked against the referenced experiment itself.
     const holds = {
+      'c1→E2': (t) => t.params.some((k) => k.key === 'Rin') && t.params.some((k) => k.key === 'Rout'), // "the same ratio returns as E2's own input and output dividers"
+      'c2→D5': (t, p) => t.views.includes('thevenin') && t.net(p).elements.filter((el) => el.type === 'R').length === 3, // "the same sum returns as D5's Thévenin resistance"
       'c3→E8': (t) => t.params.some((k) => k.key === 'RL') && t.views.includes('sweep'), // "why, in E8, an op-amp…": the same load sweep, buffered
       'c4→B2': (t, p) => t.net(p).elements.filter((el) => el.type === 'R').length === 2 && t.net(p).elements.length === 3, // "B2’s loop — two resistors in series"
       'e1→E2': (t) => t.terms.includes('opamp') && t.params.some((k) => k.key === 'A'), // "exactly what an op-amp (E2) is": a dependent source with a gain knob
@@ -1520,6 +1533,7 @@ describe('what the student reads is what the solver did', () => {
       'f4→D5': (t) => t.views.includes('thevenin'), // "(D5)" for the Thévenin source
       'f7→E5': (t) => t.terms.includes('virtual'), // "The virtual ground (E5)"
       'g2→G3': (t) => t.views.includes('damping'), // "(G3 measures overshoot)"
+      'g4→H4': (t) => t.terms.includes('qualityfactor'), // "what H4 calls Q, the quality factor"
       'g6→G4': (t) => t.params.every((k) => !['v0', 'i0'].includes(k.key)), // "the response from rest (G4)": no initial-state knobs
       'h1→F3': (t, p) => hasPart(t, p, 'C') && !hasPart(t, p, 'L') && isRC(t, p), // "the same e^(−t/τ) as F3 with τ = RC"
       'h1→H2': (t) => t.view === 'phasor', // "the phasor views (H2 onward)"
@@ -1751,6 +1765,38 @@ describe('every lesson is measured', () => {
     }
     expect(steps).toBeGreaterThanOrEqual(2 * EXPERIMENTS.length)
     expect(refusals).toBe(2) // A2 open, F6 ideal
+  })
+
+  // The app never resets a knob between steps: App.jsx's `pick` merges each
+  // step's `set` into whatever `params` already holds, and the cursor only
+  // moves when a step names an `at`. So a step's claim is authored and tested
+  // above as "the defaults, plus this step's own set" — but a student reads it
+  // after doing every earlier step in the same try array, in order, with
+  // nothing reset. This test plays the try array the way a student does: it
+  // carries params and cursor forward from step to step, and requires each
+  // step's own claim to still hold under that accumulated state. A step whose
+  // reading depends on a knob (or the ideal/toggle state) an earlier step
+  // touched, without setting it back itself, fails here even though the
+  // isolated test above passes.
+  it("a step's claim survives doing the earlier steps first, not just the defaults", () => {
+    let checked = 0
+    for (const e of EXPERIMENTS) {
+      let p = defaultsOf(e.id)
+      let cursor
+      e.try.forEach((t, i) => {
+        p = { ...p, ...(t.set || {}) }
+        if (t.at != null) cursor = t.at
+        const label = `${e.id} try ${i + 1}, done in order from step 1 (knobs not reset)`
+        if (t.refuses) {
+          const x = analyse(e, p, cursor)
+          expect(x.sol, `${label}: the note says the solver refuses here`).toBeNull()
+        } else {
+          measure(e, p, t.reads || [], cursor, label)
+        }
+        checked++
+      })
+    }
+    expect(checked).toBeGreaterThanOrEqual(2 * EXPERIMENTS.length)
   })
 
   it('readQuantity reads every kind of path, and throws on a path it does not know', () => {

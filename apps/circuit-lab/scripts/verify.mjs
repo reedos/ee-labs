@@ -11,26 +11,42 @@
 //   npm run verify
 
 import { chromium } from 'playwright'
-import { foldProbe, phoneProbe } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { foldProbe, phoneProbe, PHONE_VIEWPORT } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { tapTargetProbe, FLOOR, HARD_FLOOR } from '@ee-labs/ui/verify/tapTargetProbe.mjs'
 import { LESSONS, START_LESSON } from '../src/lessons.js'
 
-const ORIGIN = (process.env.APP_URL || 'http://localhost:4175').replace(/\/$/, '')
-// The build is served at the origin's root, but the hand-over links only
-// resolve when the page sits beside its siblings at /<lab>/ (siblingUrl reads
-// the folder off the pathname). So the harness visits /circuit-lab/ and
-// rewrites every request under it back to the root — the deployed layout,
-// served by the preview.
+const rawAppUrl = (process.env.APP_URL || 'http://localhost:4175').replace(/\/$/, '')
+// Two shapes of APP_URL reach this script. A bare preview (`npm run preview`,
+// or this app's own vite preview on 47592) serves circuit-lab AT THE ORIGIN'S
+// ROOT, with no siblings beside it — so the harness visits a pretend
+// `/circuit-lab/` path and rewrites every request under it back to that root,
+// which is how siblingUrl()/homeUrl() (reading the folder off the pathname)
+// get exercised even though nothing else is deployed there. The deployed site
+// (`npm run site:serve`, playbook item 11) is the other shape: circuit-lab
+// really does live at `/circuit-lab/`, beside its siblings, and the SAME
+// rewrite would instead redirect the page's own navigation to `/` — the
+// suite splash page, not this app — because `/circuit-lab/`'s pathname
+// matches the rewrite pattern with nothing left over. Round-five grading
+// caught exactly that: `.views canvas` never appeared because the harness was
+// quietly verifying the splash page. So: when APP_URL already names
+// `/circuit-lab` as deployed, treat it as the site root plus that folder and
+// skip the rewrite entirely; only synthesize the pretend path for a bare
+// origin.
+const DEPLOYED = /\/circuit-lab$/.test(rawAppUrl)
+const ORIGIN = DEPLOYED ? rawAppUrl.replace(/\/circuit-lab$/, '') : rawAppUrl
 const URL = `${ORIGIN}/circuit-lab/`
 const failures = []
 const fail = (m) => failures.push(m)
 
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 })
-await page.route(`${ORIGIN}/circuit-lab/**`, (route) => {
-  const u = new globalThis.URL(route.request().url())
-  const rest = u.pathname.replace(/^\/circuit-lab\/?/, '')
-  route.continue({ url: `${ORIGIN}/${rest}${u.search}` })
-})
+if (!DEPLOYED) {
+  await page.route(`${ORIGIN}/circuit-lab/**`, (route) => {
+    const u = new globalThis.URL(route.request().url())
+    const rest = u.pathname.replace(/^\/circuit-lab\/?/, '')
+    route.continue({ url: `${ORIGIN}/${rest}${u.search}` })
+  })
+}
 
 const consoleErrors = []
 page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`))
@@ -42,7 +58,15 @@ await page.goto(URL, { waitUntil: 'load' })
 await page.waitForSelector('.views canvas')
 await page.waitForTimeout(400)
 
-const settle = () => page.waitForTimeout(220)
+// Waits out the animation frame AND lets web fonts finish loading. Text set
+// in a web font measures narrower/shorter before it swaps in — a box read
+// during that window is optimistic (Signal Lab's verify.mjs found the ~8 px
+// reproduction this comment is copied from). Every fold/tap measurement in
+// this file goes through this settle(), so none of them can be taken early.
+const settle = async () => {
+  await page.waitForTimeout(220)
+  await page.evaluate(() => document.fonts.ready)
+}
 
 const scrolls = () =>
   page.evaluate(
@@ -168,7 +192,13 @@ console.log('\n0. Fresh load: the lab opens on a lesson, not as a bare instrumen
   if (!/Start with Try this, top to bottom\./.test(sub)) fail('subhead should say where to start')
   const stale = await page.locator('[data-role=note-stale]').count()
   if (stale) fail('a freshly loaded lesson must not read as stale')
+  // Student-review item 3: "2 of 15" with no explanation reads as a bug. The
+  // corner stays the opening lesson (a better first picture); one line says
+  // what lesson 1 is instead.
+  const startHint = (await page.locator('[data-role=start-hint]').textContent().catch(() => '')).trim()
+  if (!/Lesson 1.*flat divider/.test(startHint)) fail(`fresh load should explain "${count}": got "${startHint}"`)
   console.log(`   lit: ${lit.trim()} · nav ${count} · group open · Circuits below · try line present`)
+  console.log(`   start hint: "${startHint}"`)
 }
 
 // --------------------------------------------- 1. every circuit, every panel
@@ -552,7 +582,11 @@ console.log('\n4d. Per-part tolerance: an R-only ±10% pins f₀ and frees Q\n')
   if ((await stateOf('R')) !== '±10%') fail('R control should read ±10%')
   if ((await stateOf('L')) !== 'exact') fail('L control should read exact')
   const withRBand = await canvasHashes()
-  // "Move the ±10% to C instead and the circle breaks": do as the note says.
+  // Move the ±10% to C instead: f₀ moves (checked below), even though round
+  // three found the pole plot itself stays a crisp cross at this move — the
+  // try line now says so and points at the number instead. The canvas still
+  // redraws (the cloud's radius really does shift), which is the one thing
+  // this section can check without a screenshot.
   await page.getByRole('group', { name: 'C tolerance' }).first().getByRole('button', { name: '±10%' }).click()
   await page.getByRole('group', { name: 'R tolerance' }).first().getByRole('button', { name: 'exact' }).click()
   await settle()
@@ -693,9 +727,11 @@ console.log('\n5c. Next / previous / reset, and the one-click chips\n')
   await settle()
   if ((await lit()) !== LESSONS[i0 + 1].name) fail(`next should load "${LESSONS[i0 + 1].name}", got "${await lit()}"`)
   if ((await count()) !== `${i0 + 2} of ${LESSONS.length}`) fail(`count after next: ${await count()}`)
+  if (await page.locator('[data-role=start-hint]').count()) fail('the start hint should not follow past the start lesson')
   await page.getByRole('button', { name: 'Previous lesson' }).click()
   await settle()
   if ((await lit()) !== START_LESSON) fail('previous should come back')
+  if (!(await page.locator('[data-role=start-hint]').count())) fail('the start hint should return with the start lesson')
   console.log(`   next → ${LESSONS[i0 + 1].name} (${i0 + 2} of ${LESSONS.length}) → previous → ${START_LESSON}`)
   // A chip is one click and a partial patch; the lesson stays lit but is
   // flagged, and the chip that matches the setup is the lit one.
@@ -824,8 +860,11 @@ console.log('\n10. The student walk: each filed defect, re-checked on the real p
   if (!/floor is the grid/.test(note9)) fail('the notch note should say the drawn floor is the grid’s')
 
   // L13: Cf is drawn, the try line's corner is marked at 135°, gain −100.
+  // .first(): the network strip (section 1x) put a second .schematic on
+  // screen, in the main column; both draw the same circuit, so the sidebar's
+  // is representative.
   await pick('Gain is a ratio, and negative')
-  const sch = await page.locator('.schematic').textContent()
+  const sch = await page.locator('.schematic').first().textContent()
   if (!/Cf/.test(sch)) fail('the inverting schematic should draw and label Cf')
   await page.locator('.try-chips .chip', { hasText: 'Rf 100 kΩ' }).click()
   await settle()
@@ -904,6 +943,24 @@ console.log('\n10. The student walk: each filed defect, re-checked on the real p
   const titles = await page.$$eval('.flow-node', (els) => els.map((e) => e.getAttribute('title') || ''))
   if (!titles.some((t) => /half plane/.test(t))) fail('the stable/unstable node should define the half plane on hover')
   if (!titles.some((t) => /Transfer function/.test(t))) fail('the H(s) node should define the transfer function on hover')
+
+  // Student-review item 4: compact Signal/Control links beside the network,
+  // on the deployed layout this harness already visits (siblingUrl resolves
+  // under /circuit-lab/). Round-three grading found these gated on second
+  // order alone, leaving the six first-order circuits a sidebar scroll away
+  // from a hand-over that is exactly as exact — HandOver.jsx's own order-1
+  // branch says so. The gate is now the same non-null crossing the full
+  // panel uses, so a first-order circuit gets the shortcut too.
+  await pick('Series RLC')
+  const compact = await page.locator('[data-role=network-handovers] a').allTextContents()
+  if (!compact.some((t) => /Signal Lab/.test(t))) fail('Series RLC (2nd order) should get a compact Signal Lab link')
+  if (!compact.some((t) => /Control Lab/.test(t))) fail('Series RLC (2nd order) should get a compact Control Lab link')
+  console.log(`   compact hand-overs on a 2nd-order circuit: ${compact.join(', ')}`)
+  await pick('RC low-pass')
+  const compact1 = await page.locator('[data-role=network-handovers] a').allTextContents()
+  if (!compact1.some((t) => /Signal Lab/.test(t))) fail('RC low-pass (1st order) should also get a compact Signal Lab link')
+  if (!compact1.some((t) => /Control Lab/.test(t))) fail('RC low-pass (1st order) should also get a compact Control Lab link')
+  console.log(`   compact hand-overs on a 1st-order circuit too: ${compact1.join(', ')}`)
 }
 
 // ------------------------------------- 11. the integrator really never settles
@@ -1007,6 +1064,23 @@ console.log('\n8. Real parts wobble: the pole cloud is a shape, not a smudge in 
   console.log(`   exact parts: the same ink is ${bare.n} px in a ${bare.box.join('×')} px box — the cross alone`)
   if (!(Math.max(...bare.box) <= 18)) fail(`with exact parts the upper-half ink should be one cross, got ${bare.box.join('×')} px`)
   if (!(ink.n > 1.5 * bare.n)) fail(`the cloud added too little ink: ${ink.n} px with the cloud vs ${bare.n} px for the cross alone`)
+
+  // "Blame the right part" gets the same cloudEmphasis prop and the same
+  // claim (the note says the poles slide along a visible arc) — measured the
+  // same way, still at 1366×768, still by trace-colour ink.
+  await pick('Blame the right part')
+  const armed = await inkBox()
+  console.log(
+    `   "Blame the right part": trace-green ink in the upper half-plane ${armed.n} px, ` +
+      `box ${armed.box[0]}×${armed.box[1]} px (one pole cross is 14×14)`,
+  )
+  if (!(Math.max(...armed.box) >= 21)) fail(`"Blame the right part" arc box ${armed.box.join('×')} px is not bigger than three marker radii`)
+  await page.locator('[data-role=featured] .field-tol').first().getByRole('button', { name: 'exact' }).click()
+  await settle()
+  const armedBare = await inkBox()
+  console.log(`   "Blame the right part" at R exact: the same ink is ${armedBare.n} px in a ${armedBare.box.join('×')} px box — the cross alone`)
+  if (!(armed.n > 1.5 * armedBare.n)) fail(`"Blame the right part" arc added too little ink: ${armed.n} px vs ${armedBare.n} px for the cross alone`)
+
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto(URL, { waitUntil: 'networkidle' })
 }
@@ -1031,8 +1105,17 @@ console.log('\n7. Fold probe at laptop sizes: try line, featured controls, lit c
       } else if (f === 'output') out.push('[data-role=featured] select')
       else if (f === 'handover') out.push('[data-role=featured] a.handover-copy')
       else {
+        // Round-five grading: NumField (packages/ui) renders TWO <input>s per
+        // field, a text box AND a range slider — `input` nth(i) here used to
+        // count across BOTH, so a lesson featuring two fields (c then r) had
+        // its "featured r" locator land on c's own slider (nth(1) of four
+        // inputs), one field short. That let "Where the corner comes from"'s
+        // R slider sit 71 px past the 768 fold while this exact probe logged
+        // "0 outside the fold" — a probe passing over the wrong element,
+        // not an empty set, but the same failure mode item 11 warns about.
+        // The try line always means the DRAG control, so count sliders only.
         const i = inputs++
-        const fn = (p) => p.locator('[data-role=featured] input').nth(i)
+        const fn = (p) => p.locator('[data-role=featured] input[type=range]').nth(i)
         fn.label = `featured ${f}`
         out.push(fn)
       }
@@ -1042,7 +1125,16 @@ console.log('\n7. Fold probe at laptop sizes: try line, featured controls, lit c
   const cases = LESSONS.map((l) => ({
     name: l.name,
     load: () => pick(l.name),
-    must: ['.try-line', ...featuredOf(l), '.presets .preset.is-on', '.lesson-nav'],
+    // Student-review item 1: the network (a compact schematic, pinned beside
+    // the plots) must be on screen at laptop sizes on every lesson, same as
+    // the try line and the featured knob — the same probe, one more locator.
+    must: [
+      '.try-line',
+      ...featuredOf(l),
+      '.presets .preset.is-on',
+      '.lesson-nav',
+      '[data-role=network-strip] .schematic',
+    ],
   }))
   const r = await foldProbe(page, { cases, url: URL })
   for (const f of r.failures) fail(`fold: ${f}`)
@@ -1061,6 +1153,11 @@ console.log('\n7. Fold probe at laptop sizes: try line, featured controls, lit c
   console.log(`   1440x900 · Q lesson · featured R bottom: ${at('1440x900', 'Q is how sharp, and R sets it', 'featured r')}`)
   console.log(`   1440x900 · biquad · Open in Signal Lab bottom: ${at('1440x900', 'This circuit is a biquad', '[data-role=featured] a.handover-copy')}`)
   console.log(`   1366x768 · wobble · every-part tolerance bottom: ${at('1366x768', 'Real parts wobble', '[data-role=featured] [data-role=tol-all]')}`)
+  // The two tallest schematics (twin-T's stacked tees, the inverting amp's
+  // extra Cf branch) are the worst case for the network row's fixed height.
+  console.log(`   1366x768 · twin-T · network schematic bottom: ${at('1366x768', 'A zero on the axis is silence', '[data-role=network-strip] .schematic')}`)
+  console.log(`   1440x900 · inverting amp · network schematic bottom: ${at('1440x900', 'Gain is a ratio, and negative', '[data-role=network-strip] .schematic')}`)
+  console.log(`   1366x768 · three filters · featured output probe bottom: ${at('1366x768', 'One circuit, three filters', '[data-role=featured] select')}`)
   for (const [k, v] of Object.entries(worst).sort((a, b) => b[1].bottom - a[1].bottom).slice(0, 4)) {
     console.log(`   lowest ${k}: ${v.bottom.toFixed(0)} px (${v.lesson})`)
   }
@@ -1139,6 +1236,285 @@ console.log('\n13. Phone 390×844: the lesson text, the response and the lesson 
   }))
   if (widths.doc > 390 || widths.views > 390) fail(`phone Math tab widens the page: document ${widths.doc} px, .views ${widths.views} px`)
   else console.log(`   Math tab on the RLC: document ${widths.doc} px wide, .views ${widths.views.toFixed(0)} px — no crop`)
+
+  // Reed measured this himself at 390×844: the .flow strip held 431 px of
+  // content in a 366 px box, no arrow, no fade, and the swiped-off part was
+  // the verdict — the one thing telling a student whether the circuit is
+  // okay. Sticky pins the verdict (always the LAST node) to the strip's own
+  // right edge regardless of scroll position, so this guards it can never
+  // regress back to being the part that gets cut.
+  for (const name of ['Where the corner comes from', 'This circuit is a biquad']) {
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await pick(name)
+    await settle()
+    const flowBox = await page.locator('.flow').boundingBox()
+    const verdict = page.locator('.flow-node').last()
+    const verdictBox = await verdict.boundingBox()
+    const pos = await verdict.evaluate((el) => getComputedStyle(el).position)
+    const overflowPx = await page.locator('.flow').evaluate((el) => el.scrollWidth - el.clientWidth)
+    if (pos !== 'sticky') {
+      fail(`phone · ${name}: the topbar verdict is not sticky (position: ${pos}) — it can be swiped off screen again`)
+    } else if (
+      !verdictBox ||
+      !flowBox ||
+      verdictBox.x < flowBox.x - 1 ||
+      verdictBox.x + verdictBox.width > flowBox.x + flowBox.width + 1
+    ) {
+      fail(`phone · ${name}: the verdict node "${await verdict.textContent()}" is not fully inside the flow strip's own box`)
+    } else {
+      console.log(
+        `   ${name.padEnd(32)} flow overflow ${overflowPx}px, verdict "${(await verdict.textContent()).trim()}" sticky and fully visible`,
+      )
+    }
+  }
+
+  // Item 3's second bug: on a bare dev port the hand-over falls back to a
+  // raw link fragment in a <code>, 599 px of it in a 338 px box.
+  await pick('Twin-T notch')
+  await settle()
+  const linkOverflow = await page.evaluate(() => {
+    const el = document.querySelector('.handover-link')
+    return el ? el.scrollWidth - el.clientWidth : null
+  })
+  if (linkOverflow != null && linkOverflow > 4) {
+    fail(`phone: .handover-link overflows by ${linkOverflow}px instead of wrapping`)
+  } else console.log(`   .handover-link (twin-T's raw fragment) wraps at 390 px (overflow ${linkOverflow ?? 'n/a'}px)`)
+
+  // Item 5: the pole–zero canvas was 144 px tall on every lesson, and "Real
+  // parts wobble" is the one whose entire claim is that the cloud gets
+  // visibly bigger there.
+  await pick('Real parts wobble')
+  await settle()
+  const pz = await page.locator('.view-lower .plot').boundingBox()
+  if (!pz || pz.height < 180) {
+    fail(`phone: the pole-zero view is only ${pz?.height ?? 'n/a'}px tall on "Real parts wobble", still the step view's 144px`)
+  } else console.log(`   "Real parts wobble" pole-zero canvas: ${pz.height}px tall at 390 px (the step view keeps 144px)`)
+
+  // Round-four grading: on the four lessons whose own view is the pole
+  // plot, that plot began entirely below the 844px fold on arrival — the
+  // picture the lesson is ABOUT, off screen, with nothing saying it was
+  // there. Not unreachable (scrollIntoView, the wheel and a manual scroll
+  // all worked — the earlier grading's severity call does not hold up), but
+  // the first-screen contract every other lesson gets (item 13, above) was
+  // missing for these four. styles.css now gives `.view-lower-pz` phone
+  // priority the way Control Lab's `order: -1` gives its own primary pane
+  // priority — checked here the same way item 13 checks the other three
+  // lessons: fresh load, sidebar pinned to the top, no scroll.
+  console.log('\n   4 pole-view lessons: the pole plot itself lands inside the first 844px on arrival\n')
+  for (const name of [
+    'A zero on the axis is silence',
+    'Real parts wobble',
+    'Blame the right part',
+    'Why active filters exist',
+  ]) {
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await pick(name)
+    await page.evaluate(() => {
+      document.querySelector('.controls').scrollTop = 0
+      document.querySelector('#root').scrollTop = 0
+      window.scrollTo(0, 0)
+    })
+    await page.waitForTimeout(80)
+    const pzCanvas = await page.locator('.view-lower .plot').boundingBox()
+    if (!pzCanvas) {
+      fail(`phone · ${name}: the pole plot did not render`)
+    } else if (pzCanvas.y < 0 || pzCanvas.y + pzCanvas.height > PHONE_VIEWPORT.height) {
+      fail(
+        `phone · ${name}: the pole plot sits at y ${pzCanvas.y.toFixed(0)}–${(pzCanvas.y + pzCanvas.height).toFixed(0)} px, outside the 844px fold`,
+      )
+    } else {
+      console.log(
+        `   ${name.padEnd(32)} pole plot y ${pzCanvas.y.toFixed(0)}–${(pzCanvas.y + pzCanvas.height).toFixed(0)} px (inside 844)`,
+      )
+    }
+  }
+
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'networkidle' })
+}
+
+// --------------------- 15. A term tapped in the note, and the hand-over pointer
+
+console.log("\n15. A term tapped in the note opens the fold's own definition, and a lesson always points at the hand-over\n")
+{
+  // Two skim readers scored Explanation low and said the glossary did not
+  // exist at all — it did, behind "Terms used here", a small link neither
+  // of them noticed. The fix is a word IN the note itself, tappable; this
+  // guards that the tap actually opens the same text the fold holds, closes
+  // on ×, and never survives a lesson change.
+  const mark = page.locator('[data-role=lesson-note] .term-mark').first()
+  const word = (await mark.textContent()).trim()
+  await mark.click()
+  await settle()
+  const card = (await page.locator('[data-role=term-card]').first().textContent().catch(() => '')) || ''
+  const foldDefs = await page.$$eval('details.terms dd', (els) => els.map((e) => e.textContent.trim()))
+  if (!card) fail(`tapping the note's first term ("${word}") opened no definition card`)
+  else if (!foldDefs.some((d) => card.includes(d))) fail(`tapped "${word}" card text does not match any fold definition — the two paths disagree`)
+  else console.log(`   tapped "${word}" in the note -> "${card.trim().slice(0, 60)}…" (matches the fold)`)
+  await page.locator('[data-role=term-card] button').click()
+  await settle()
+  if (await page.locator('[data-role=term-card]').count()) fail('the × on the term card did not close it')
+  await pick('Q is how sharp, and R sets it')
+  if (await page.locator('[data-role=term-card]').count()) fail('changing lesson left a stale term card open')
+  else console.log('   closes on ×, and clears on a lesson change')
+
+  // Round two of the review: the length filter that used to exclude any
+  // match under three characters is gone, and the mark is a `<dfn>`
+  // (App.jsx's Marked, Control Lab's NoteTerms.jsx pattern) rather than a
+  // `<button>` — so a bare "Q", "dB" or "ζ", the exact symbols a first-year
+  // reader is least likely to know, must be tappable too, keyboard
+  // reachable, and structurally outside the touch-target probe rather than
+  // merely clearing a smaller floor.
+  const shortMarks = [
+    { lesson: 'Q is how sharp, and R sets it', word: 'Q' },
+    { lesson: 'Where the corner comes from', word: 'dB' },
+    { lesson: 'Resonance, seen in time', word: 'ζ' },
+  ]
+  for (const { lesson, word } of shortMarks) {
+    await pick(lesson)
+    const marks = page.locator('[data-role=lesson-note] .term-mark')
+    const texts = await marks.allTextContents()
+    const idx = texts.findIndex((t) => t.trim() === word)
+    if (idx < 0) fail(`"${lesson}": no inline mark reads exactly "${word}" (marks found: ${texts.join(', ') || 'none'})`)
+    else {
+      const el = marks.nth(idx)
+      const tag = await el.evaluate((n) => n.tagName.toLowerCase())
+      if (tag !== 'dfn') fail(`"${lesson}": "${word}" mark is a <${tag}>, not a <dfn> — it would re-enter the touch-target probe`)
+      // Keyboard: focus it directly (no visible caret to Tab through) and
+      // open with Enter, same as a screen-reader or keyboard-only reader
+      // would, rather than only ever clicking it.
+      await el.focus()
+      await page.keyboard.press('Enter')
+      await settle()
+      const opened = ((await page.locator('[data-role=term-card]').first().textContent().catch(() => '')) || '').trim()
+      if (!opened) fail(`"${lesson}": pressing Enter on "${word}" opened no definition card`)
+      else console.log(`   "${lesson}": bare "${word}" is a <dfn>, Enter opens -> "${opened.slice(0, 50)}…"`)
+      await page.keyboard.press('Enter')
+      await settle()
+      if (await page.locator('[data-role=term-card]').count()) fail(`"${lesson}": pressing Enter again on "${word}" did not close it`)
+    }
+  }
+
+  // Round-four grading: "dB" (and every other term) was only ever marked
+  // where it appeared in the NOTE — so on the four lessons where it appears
+  // only in the try line, the point of use, there was no tap target there
+  // at all. TryLine's own `text` prop now takes a Marked pass the same as
+  // the note's, so the word is tappable wherever it actually shows up.
+  const dbOnlyInTry = [
+    'A divider has no dynamics',
+    'The same filter, read backwards',
+    'The same R, the opposite effect',
+    'Gain is a ratio, and negative',
+  ]
+  for (const lesson of dbOnlyInTry) {
+    await pick(lesson)
+    const noteText = await page.locator('[data-role=lesson-note]').textContent()
+    if (/dB/.test(noteText)) fail(`"${lesson}": expected to test the try-line-only case, but "dB" is in the note too`)
+    const tryMarks = page.locator('.try-line .term-mark')
+    const texts = await tryMarks.allTextContents()
+    const idx = texts.findIndex((t) => t.trim() === 'dB')
+    if (idx < 0) fail(`"${lesson}": no inline mark reads "dB" in the try line (marks found: ${texts.join(', ') || 'none'})`)
+    else {
+      await tryMarks.nth(idx).click()
+      await settle()
+      const opened = ((await page.locator('[data-role=term-card]').first().textContent().catch(() => '')) || '').trim()
+      if (!opened) fail(`"${lesson}": tapping "dB" in the try line opened no definition card`)
+      else console.log(`   "${lesson}": "dB" tappable in the try line -> "${opened.slice(0, 50)}…"`)
+      await page.locator('[data-role=term-card] button').click()
+      await settle()
+    }
+  }
+
+  // Student-review item 4: the hand-over is real but buried a scroll past
+  // Circuits, Schematic and Components, and nothing upstream said it
+  // existed for 14 of 15 lessons. One line, on every lesson, right after
+  // the terms a reader just read.
+  const pointer = ((await page.locator('[data-role=handover-pointer]').first().textContent().catch(() => '')) || '').trim()
+  if (!/Signal Lab/.test(pointer) || !/Control Lab/.test(pointer)) fail(`hand-over pointer missing or wrong: "${pointer}"`)
+  else console.log(`   hand-over pointer under the terms: "${pointer}"`)
+}
+
+// ------------ 16. round two: topbar term taps, TOL labels, the math scroll cue
+
+console.log('\n16. Round two follow-ups: topbar term taps, distinguishable TOL labels, the math scroll cue\n')
+{
+  // Item 3: H(s) and "stable" are the first jargon on screen, before any
+  // lesson note has loaded, and used to carry only a hover title with no
+  // click handler — no route to either definition on a phone at all.
+  const tfPill = page.locator('.flow-term').first()
+  const tfLabel = (await tfPill.textContent()).trim()
+  await tfPill.click()
+  await settle()
+  let card = ((await page.locator('[data-role=topbar-term-card]').first().textContent().catch(() => '')) || '').trim()
+  if (!card) fail(`tapping the topbar's "${tfLabel}" pill opened no definition`)
+  else console.log(`   tapped topbar "${tfLabel}" -> "${card.slice(0, 50)}…"`)
+  const stablePill = page.locator('.flow-term').nth(1)
+  const stableLabel = (await stablePill.textContent()).trim()
+  await stablePill.click()
+  await settle()
+  card = ((await page.locator('[data-role=topbar-term-card]').first().textContent().catch(() => '')) || '').trim()
+  if (!card) fail(`tapping the topbar's "${stableLabel}" pill opened no definition`)
+  else console.log(`   tapped topbar "${stableLabel}" -> "${card.slice(0, 50)}…"`)
+  await page.locator('.topbar-term-close').click()
+  await settle()
+  if (await page.locator('[data-role=topbar-term-card]').count()) fail('the topbar term card did not close on ×')
+
+  // Round-four grading: f₀, Q and ζ got exactly the same fix — plain spans
+  // with a hover title and no click handler, on screen from the first pixel
+  // of every 2nd-order lesson, before any note has loaded.
+  await pick('Q is how sharp, and R sets it')
+  for (const label of ['f₀', 'Q', 'ζ']) {
+    const pill = page.locator('.topbar-field.topbar-term', { hasText: label }).first()
+    const full = (await pill.textContent()).trim()
+    await pill.click()
+    await settle()
+    const opened = ((await page.locator('[data-role=topbar-term-card]').first().textContent().catch(() => '')) || '').trim()
+    if (!opened) fail(`tapping the topbar's "${full}" field opened no definition`)
+    else console.log(`   tapped topbar "${full}" -> "${opened.slice(0, 50)}…"`)
+    await page.locator('.topbar-term-close').click()
+    await settle()
+  }
+
+  // Item 4: "Blame the right part" moves the same ±10% from R to C, and both
+  // rows used to read only "TOL" on screen, told apart solely by an
+  // aria-label a sighted reader never hears.
+  await pick('Blame the right part')
+  const tolTags = await page.locator('[data-role=featured] .tol-tag').allTextContents()
+  const tolTrim = tolTags.map((t) => t.trim())
+  if (!tolTrim.some((t) => /^R\s+tol$/i.test(t))) fail(`"Blame the right part": no visible "R tol" tag (got: ${tolTrim.join(', ')})`)
+  if (!tolTrim.some((t) => /^C\s+tol$/i.test(t))) fail(`"Blame the right part": no visible "C tol" tag (got: ${tolTrim.join(', ')})`)
+  if (new Set(tolTrim).size !== tolTrim.length) fail(`"Blame the right part": two TOL rows still read identically on screen: ${tolTrim.join(', ')}`)
+  else console.log(`   "Blame the right part" TOL rows read: ${tolTrim.join(', ')}`)
+
+  // Item 5: the Math tab often runs two or three screens past the fold with
+  // no cue that a theory-versus-measured table continues below. A shorter
+  // viewport forces the overflow reliably; the cue must show while there is
+  // more below, and clear once the pane is scrolled to its own bottom.
+  await page.setViewportSize({ width: 1366, height: 650 })
+  let sawCue = false
+  for (const name of circuitNames) {
+    await pick(name)
+    await openAllMath()
+    await page.waitForTimeout(150)
+    const overflow = await page
+      .locator('[data-role=math-pane]')
+      .evaluate((el) => el.scrollHeight - el.clientHeight)
+    if (overflow > 20) {
+      sawCue = true
+      if (!(await page.locator('[data-role=math-scroll-cue]').count())) {
+        fail(`"${name}": the math pane overflows by ${overflow}px with no scroll cue shown`)
+      }
+      await page.locator('[data-role=math-pane]').evaluate((el) => {
+        el.scrollTop = el.scrollHeight
+      })
+      await page.waitForTimeout(150)
+      if (await page.locator('[data-role=math-scroll-cue]').count()) {
+        fail(`"${name}": the scroll cue is still shown after scrolling the math pane to its own bottom`)
+      } else console.log(`   "${name}": math pane overflows ${overflow}px, the cue shows and clears at the bottom`)
+      break
+    }
+  }
+  if (!sawCue) fail("no circuit's math pane overflowed at 1366x650 — the scroll cue was never exercised")
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto(URL, { waitUntil: 'networkidle' })
 }
@@ -1185,6 +1561,249 @@ for (const name of circuitNames) {
   if (await scrolls()) fail(`4K / ${name}: page scrolls`)
 }
 console.log(`   all ${circuitNames.length} circuits fit at 3840x2160`)
+
+// -------------------------------------------- 14. touch targets at 390x844
+//
+// Two student testers on phones found this ("it constantly asks the student
+// to pinpoint instead of tap", "the navigation buttons are too small and too
+// close together"), and a walk of the released labs measured it: every
+// interactive element here ran under 44x44 CSS px. FLOOR = 44 — the Apple
+// HIG / Material touch-target guideline, chosen over the bare 24px WCAG 2.2
+// SC 2.5.8 legal minimum because this is a dense, numbers-heavy tool meant
+// to be poked quickly and often. tapTargetProbe.mjs (packages/ui/verify)
+// walks the page, crediting an invisible ::before/::after hit area
+// (position:relative + a negative inset) where a control keeps its visible
+// glyph small on purpose, and a checkbox's wrapping <label> in place of its
+// own tiny native box.
+//
+// Two documented exceptions, both held to the 24px HARD_FLOOR instead of the
+// suite's 44px target:
+//   - a control inside a PLOT pane (.views — a view switch, the network
+//     strip's own controls). Its options often touch with no real gap (a
+//     true segmented control), so an invisible hit area would let a thumb
+//     bridge two, and growing it for real at 44 costs more of the
+//     response-and-lesson-view budget (item 13) than this lab can spare.
+//   - the "2 of 15" start hint (.start-hint — round two of the review, also:
+//     made into a real button so it loads lesson 1 in one click instead of
+//     only naming it). This walk of `.presets .preset` also catches the
+//     LESSON buttons visible on a fresh load, so it reaches this one too.
+//     A real 44px grew the box itself and pushed the try line past the
+//     sidebar's own first-screen budget (item 13); it sits one line under
+//     the sticky "Try this" nav strip, so a wider inset risks bridging into
+//     that strip's own prev/next/reset buttons. Same HARD_FLOOR answer.
+//
+// A term tapped INLINE in a note's own prose (student-review: two skim
+// readers said the glossary did not exist at all) used to be a third named
+// exception here — a `<button>` under three characters (bare "Q", "s")
+// could not clear even 24px without padding wide enough to read as a chip,
+// so notes silently dropped their mark on exactly the symbols (Q, dB, ζ)
+// a first-year reader is least likely to know. Round two of the review
+// fixed the cause instead of widening the exception: the mark is a `<dfn>`
+// now (App.jsx's Marked, Control Lab's NoteTerms.jsx pattern), which WCAG
+// 2.5.8 itself exempts as "Inline" and which sits outside tapTargetProbe's
+// own SELECTOR (button, a, summary, [role="button"], input[type=checkbox])
+// — so it is never walked by this probe at all, at any length.
+//
+// The topbar's H(s) and stable pills (.flow-term) were a third named
+// exception through round two, held to the 24px HARD_FLOOR because a real
+// 44px inset risked bridging into the arrow glyph and the next pill a few
+// px away in this dense, one-line strip (round two: they carried only a
+// hover title, no click handler, so a phone had no route to either
+// definition; both are real buttons now). Round three grew that same inset
+// further on a phone (styles.css, -14px top/bottom) rather than the pill
+// itself — item 13's own fold budget had only about 5px of slack left in
+// this row, nowhere near the ~20px a real 44px box would add, where an
+// inset costs the layout nothing at all. The pills now clear the suite's
+// real 44px target and the exception is gone rather than widened.
+//
+// Round-four grading: f₀, Q and ζ (.topbar-field.topbar-term) got the exact
+// same fix — plain spans with no title, no button, no handler — but this row
+// sits directly under .flow-term's own extended hit area (-14px top/bottom
+// on phone, styles.css), which already reaches to within a couple of px of
+// it. There is no room to grow these three to 44 without the two hit areas
+// overlapping, so they stay at the 24px HARD_FLOOR, the same place
+// .flow-term started from.
+console.log('\n14. Touch targets at 390x844 (button, link, summary, role=button, checkbox)\n')
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  const exceptionFloor = (el) =>
+    el.inViews || el.inLabNav || el.className.includes('start-hint') || el.className.includes('topbar-term')
+      ? HARD_FLOOR
+      : null
+
+  let checked = 0
+  for (const name of circuitNames) {
+    await pick(name)
+    const res = await tapTargetProbe(page, { exceptionFloor })
+    checked += res.checked
+    for (const f of res.failures) fail(`touch target · ${name}: ${f}`)
+  }
+  console.log(`   ${circuitNames.length} circuits: ${checked} interactive elements checked at 390x844, every one clears the ${FLOOR}px floor (the plot panes' own chrome held to the ${HARD_FLOOR}px floor instead)`)
+}
+
+// --------- 17. phone: the sidebar scroll resets when the lesson changes
+//
+// Round-three grading, SEVERE: `.controls` is its own scroller on a phone
+// (styles.css caps it at 43vh) and never reset its scroll position when the
+// active lesson changed. A grader scrolled to the bottom of "Real parts
+// wobble" (measured: scroll 2691 of 2729 px in a 362 px sidebar), tapped
+// next, and landed on "Blame the right part" with the scroll still at 734 —
+// the title and note both off screen, the title's own top at −620. Picking
+// a lesson straight from the list did the same (scroll 712, title at −598).
+//
+// Fixed the way Signal Lab's Controls.jsx fixed the same class of bug
+// earlier the same day (10k4 above): a ref on the lesson block, an effect
+// keyed on the active lesson that checks whether the try line's own box is
+// inside the sidebar's REAL visible box, and scrolls the lesson into view
+// only when it is not. Probed the same way too — no artificial scroll
+// reset before measuring, and BOTH broken paths covered: next, and picking
+// a lesson from the list, both after scrolling down in the lesson before.
+
+console.log('\n17. Phone 390x844: the sidebar scroll resets when the lesson changes\n')
+
+async function scrollToNearBottom() {
+  return page.evaluate(() => {
+    const el = document.querySelector('.controls')
+    // Not the true end — the grader's own reproduction stopped a little
+    // short of it (2691 of 2729), and the bug reproduces anywhere the
+    // lesson block is no longer inside the visible box, not only at the
+    // exact bottom.
+    el.scrollTop = Math.max(0, el.scrollHeight - el.clientHeight - 40)
+    return { scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }
+  })
+}
+
+async function checkLessonOnScreen(ctx, scrollBefore) {
+  const contBox = await page.locator('.controls').boundingBox()
+  const titleBox = await page.locator('.note-title').first().boundingBox().catch(() => null)
+  const tryBox = await page.locator('.try-line').boundingBox().catch(() => null)
+  const scrollAfter = await page.evaluate(() => document.querySelector('.controls').scrollTop)
+  const rel = (box) => (box ? box.y - contBox.y : null) // top relative to the sidebar's own box, negative means above it
+  console.log(
+    `   ${ctx}: scroll ${scrollBefore} -> ${scrollAfter}, title top ${titleBox ? rel(titleBox).toFixed(0) : 'n/a'} px ` +
+      `relative to the sidebar, try line top ${tryBox ? rel(tryBox).toFixed(0) : 'n/a'} px`,
+  )
+  for (const [label, box] of [['note title', titleBox], ['try line', tryBox]]) {
+    if (!box) {
+      fail(`scroll-reset / ${ctx}: ${label} not rendered`)
+      continue
+    }
+    if (box.y < contBox.y - 0.5 || box.y + box.height > contBox.y + contBox.height + 0.5) {
+      fail(
+        `scroll-reset / ${ctx}: ${label} outside the sidebar's visible box ` +
+          `[${contBox.y.toFixed(0)}, ${(contBox.y + contBox.height).toFixed(0)}], got top ${box.y.toFixed(0)}`,
+      )
+    }
+  }
+}
+
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  // Reproduction 1: scrolled to the bottom of "Real parts wobble", tap next
+  // — lands on "Blame the right part" per LESSONS' own order.
+  await pick('Real parts wobble')
+  const before1 = await scrollToNearBottom()
+  await page.waitForTimeout(60)
+  await page.getByRole('button', { name: 'Next lesson' }).click()
+  await settle()
+  await checkLessonOnScreen('next, from a bottom scroll', before1.scrollTop)
+
+  // Reproduction 2: scrolled down in one lesson, then a lesson picked
+  // straight from the list (not next/prev). `pick` opens the target's own
+  // group first if it is folded, then clicks it — same as a person's tap.
+  await pick('Why active filters exist')
+  const before2 = await scrollToNearBottom()
+  await page.waitForTimeout(60)
+  await pick('This circuit is a biquad')
+  await checkLessonOnScreen('picked from the list, from a bottom scroll', before2.scrollTop)
+
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+// --------- 17b. phone: the ONE lesson whose note + try line + two sliders
+// overflow the sidebar's own cap
+//
+// Round-four grading: reproductions 1 and 2 above both land on lessons whose
+// own content is short enough that the corrected scroll leaves everything
+// visible, so they never exercised the failure the grader actually filed.
+// "Where the corner comes from" (also START_LESSON — the course's own
+// opening lesson) is the one lesson whose note, try line and two stacked
+// featured sliders (C, R) run to 362 px, at or past the sidebar's own
+// visible height at 390x844. Checking only the try line's box (the fix this
+// section originally shipped) can read "visible" while the note's opening
+// sentence sits above the box and the R slider its try line names sits
+// below it — the exact defect the grader reproduced twice, from two
+// different starting scroll positions, only on the list-tap path (prev/next
+// never need to scroll, so they never trigger it). This checks BOTH edges a
+// reader actually needs: the note's own top, and the bottom of the featured
+// controls the try line points at — not just the try line's own box.
+console.log('\n17b. Phone 390x844: the corner lesson\'s note and featured sliders both survive a list-tap\n')
+
+async function checkNoteAndFeaturedOnScreen(ctx, scrollBefore) {
+  const contBox = await page.locator('.controls').boundingBox()
+  const titleBox = await page.locator('.note-title').first().boundingBox().catch(() => null)
+  const featuredBox = await page.locator('[data-role=featured]').first().boundingBox().catch(() => null)
+  const scrollAfter = await page.evaluate(() => document.querySelector('.controls').scrollTop)
+  const rel = (box) => (box ? box.y - contBox.y : null)
+  console.log(
+    `   ${ctx}: scroll ${scrollBefore} -> ${scrollAfter}, note top ${titleBox ? rel(titleBox).toFixed(0) : 'n/a'} px, ` +
+      `featured bottom ${featuredBox ? (featuredBox.y + featuredBox.height - contBox.y).toFixed(0) : 'n/a'} px ` +
+      `(sidebar is ${contBox.height.toFixed(0)} px tall)`,
+  )
+  if (!titleBox) fail(`scroll-reset / ${ctx}: note title not rendered`)
+  else if (titleBox.y < contBox.y - 0.5) {
+    fail(
+      `scroll-reset / ${ctx}: note title top ${titleBox.y.toFixed(0)} is above the sidebar's visible box ` +
+        `[${contBox.y.toFixed(0)}, ${(contBox.y + contBox.height).toFixed(0)}]`,
+    )
+  }
+  if (!featuredBox) fail(`scroll-reset / ${ctx}: featured controls not rendered`)
+  else if (featuredBox.y + featuredBox.height > contBox.y + contBox.height + 0.5) {
+    fail(
+      `scroll-reset / ${ctx}: featured controls bottom ${(featuredBox.y + featuredBox.height).toFixed(0)} is below ` +
+        `the sidebar's visible box [${contBox.y.toFixed(0)}, ${(contBox.y + contBox.height).toFixed(0)}]`,
+    )
+  }
+}
+
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  // Starting position 1: scrolled to near the bottom of the sidebar in a
+  // later lesson, then the corner lesson tapped straight from the list.
+  await pick('A pole exactly at the origin')
+  const before3 = await scrollToNearBottom()
+  await page.waitForTimeout(60)
+  await pick(START_LESSON)
+  await checkNoteAndFeaturedOnScreen('picked from the list (integrator -> corner), from a bottom scroll', before3.scrollTop)
+
+  // Starting position 2: a different starting scroll (mid-way, not the
+  // bottom) — the grader reproduced this from two different starting
+  // positions, and a fix keyed to "already at the bottom" would miss this one.
+  await pick('This circuit is a biquad')
+  const before4 = await page.evaluate(() => {
+    const el = document.querySelector('.controls')
+    el.scrollTop = Math.round((el.scrollHeight - el.clientHeight) * 0.5)
+    return { scrollTop: el.scrollTop }
+  })
+  await page.waitForTimeout(60)
+  await pick(START_LESSON)
+  await checkNoteAndFeaturedOnScreen('picked from the list (biquad -> corner), from a mid scroll', before4.scrollTop)
+
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
 
 // ------------------------------------------------------------------- report
 

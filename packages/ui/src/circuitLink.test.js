@@ -54,7 +54,11 @@ describe('circuit links', () => {
     expect(labUrl('circuit-lab', 'circuit=rcLow:1:2', loc)).toBe('https://reedos.github.io/ee-labs/circuit-lab/#circuit=rcLow:1:2')
     expect(labUrl('circuit-lab', 'x', { origin: 'http://localhost:5173', pathname: '/' })).toBeNull()
     expect(labUrl('circuit-lab', 'x', { origin: 'https://reedos.github.io', pathname: '/ee-labs/circuit-lab/' })).toBeNull()
-    expect(labUrl('power-lab', 'x', loc)).toBeNull()
+    // Every deployed folder is a recognised link SOURCE, dark labs included —
+    // that is independent of which labs LINK to which (LabNav's own `LABS`
+    // list decides that instead), so power-lab resolves here too.
+    expect(labUrl('power-lab', 'x', loc)).toBe('https://reedos.github.io/ee-labs/power-lab/#x')
+    expect(labUrl('mystery-lab', 'x', loc)).toBeNull()
     expect(labUrl('circuit-lab', 'x', null)).toBeNull()
   })
 })

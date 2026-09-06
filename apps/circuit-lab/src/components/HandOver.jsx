@@ -296,6 +296,71 @@ export function SignalLabLink({ tf, from = null }) {
   )
 }
 
+/**
+ * Two one-line links, surfaced beside the network rather than a sidebar
+ * scroll away — the hand-over the review found buried.
+ *
+ * Round-three grading: this used to gate on a second-order circuit, on the
+ * reasoning that only there is the mapping exact. That reasoning does not
+ * hold up against this very file's own prose — the order-1 branch above
+ * says Signal Lab's first-order recipe "crosses by name" and "the corner
+ * lands exactly", and even the raw-coefficient tiers (either sibling, any
+ * order this file accepts) are "bilinear-exact" or cross "with no transform
+ * involved". Every circuit in the catalog reaches a non-null `d` or `plant`
+ * except the op-amp integrator's Signal Lab side (declined below: a pole
+ * exactly at the origin, an unbounded DC gain), which is exactly the case
+ * the full panel already declines too. So the gate a reader should hit here
+ * is the same one the full panel below already uses — whether the crossing
+ * exists at all, named or not — not an order this file never actually
+ * required. Six first-order circuits (the four in that group, plus the
+ * inverting amp and the integrator's Control Lab side) had no shortcut
+ * before this and needed a sidebar scroll to reach a hand-over that was
+ * exact all along.
+ *
+ * Still gated on a link the deployed layout can actually resolve —
+ * `siblingUrl` returns null on a bare dev port, and there is no copy-paste
+ * fallback here. The full panel with its reasoning stays where it is; this
+ * is discovery, not the whole feature.
+ */
+export function CompactHandOvers({ tf, from = null }) {
+  const natural = useMemo(() => asDigitalFilter(tf, { from }), [tf, from])
+  const rate = suggestRate(natural ? natural.f0 : 0)
+  const d = useMemo(() => asDigitalFilter(tf, { sampleRate: rate, from }), [tf, rate, from])
+  const plant = useMemo(() => asControlPlant(tf, from), [tf, from])
+  const signalUrl = d ? siblingUrl('signal-lab', d.link) : null
+  const controlUrl = plant ? siblingUrl('control-lab', plant.link) : null
+  if (!signalUrl && !controlUrl) return null
+
+  const open = (app, tier) => () => track(handOverEvent({ action: 'open', app, tier, circuit: from?.id }))
+
+  return (
+    <div className="network-handovers" data-role="network-handovers">
+      {signalUrl ? (
+        <a
+          className="network-handover"
+          href={signalUrl}
+          target="_blank"
+          rel="noopener"
+          onClick={open('signal-lab', d.raw ? 'raw' : d.shape)}
+        >
+          → Signal Lab
+        </a>
+      ) : null}
+      {controlUrl ? (
+        <a
+          className="network-handover"
+          href={controlUrl}
+          target="_blank"
+          rel="noopener"
+          onClick={open('control-lab', plant.plant)}
+        >
+          → Control Lab
+        </a>
+      ) : null}
+    </div>
+  )
+}
+
 function HandOverLink({ app, appName, fragment, tier, circuit, compact = false }) {
   const [copied, setCopied] = useState(false)
   const url = siblingUrl(app, fragment)

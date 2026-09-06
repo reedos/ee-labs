@@ -93,6 +93,26 @@ describe('this plant, as the circuit it is', () => {
     }
   })
 
+  it('threePole, motor and integrator refuse structurally, not just at their defaults', () => {
+    // The check above pins this at the registry defaults. A refusal that
+    // only held there could still be a component-value accident (the way
+    // secondOrder's genuinely IS, out at wn = 6.283) rather than a real
+    // shape mismatch. Sweeping τ, gm and K shows no rescaling ever finds a
+    // catalog match: threePole is always three real poles (the catalog
+    // stops at two), motor is always a pole at the origin plus a second
+    // pole (the catalog's one pole-at-the-origin entry has no second pole),
+    // and integrator is always non-inverting (that same entry is inverting).
+    for (const t of [1e-6, 1e-3, 1, 100]) {
+      expect(circuitFor('threePole', { k: 1, t1: t, t2: t / 2, t3: t / 4 }), `threePole τ=${t}`).toBeNull()
+    }
+    for (const tau of [1e-6, 1e-3, 1, 100]) {
+      expect(circuitFor('motor', { k: 1, tau }), `motor τ=${tau}`).toBeNull()
+    }
+    for (const k of [0.001, 1, 1000, 1e6]) {
+      expect(circuitFor('integrator', { k }), `integrator K=${k}`).toBeNull()
+    }
+  })
+
   it('the link names this plant as its provenance', () => {
     const frag = circuitFragment('firstOrder', { k: 1, tau: 1 })
     const { patch } = parseCircuitLink(frag)
@@ -112,6 +132,37 @@ describe('this plant, as the circuit it is', () => {
     expect(
       circuitUrl('motor', defaultsOf(PLANTS.motor), { origin: 'https://x', pathname: '/ee-labs/control-lab/' }),
     ).toBeNull()
+  })
+
+  // CORE_SCOPE Rule 2: a refused mapping is content, not a bare null.
+  // Round-three grading found App.jsx's "This is also a circuit" spot
+  // rendered nothing at all for four of the five plants with no catalog
+  // circuit, indistinguishable from an oversight — App.jsx reads
+  // `plant.circuitNote` for exactly this spot whenever circuitFor() is null.
+  it('every plant with no catalog circuit, at every parameter, carries a reason', () => {
+    for (const id of ['integrator', 'motor', 'threePole', 'unstable', 'custom']) {
+      expect(circuitFor(id, defaultsOf(PLANTS[id])), id).toBeNull()
+      expect(typeof PLANTS[id].circuitNote, `${id}.circuitNote`).toBe('string')
+      expect(PLANTS[id].circuitNote.length, `${id}.circuitNote`).toBeGreaterThan(20)
+    }
+    // The two plants that CAN carry a catalog circuit have no need for the
+    // fallback, and should not carry one that could go stale against a real
+    // link silently taking priority over it. secondOrder's own registry
+    // default sits outside Circuit Lab's knobs (the hint test above already
+    // pins that), so it is checked at a buildable value instead.
+    expect(circuitFor('firstOrder', defaultsOf(PLANTS.firstOrder))).not.toBeNull()
+    expect(circuitFor('secondOrder', { k: 1, wn: 10000, zeta: 0.3 })).not.toBeNull()
+    for (const id of ['firstOrder', 'secondOrder']) {
+      expect(PLANTS[id].circuitNote, id).toBeUndefined()
+    }
+  })
+
+  it('each reason names the specific structural mismatch the catalog has', () => {
+    expect(PLANTS.integrator.circuitNote).toMatch(/inverts/)
+    expect(PLANTS.motor.circuitNote).toMatch(/second, finite pole/)
+    expect(PLANTS.threePole.circuitNote).toMatch(/second order/)
+    expect(PLANTS.custom.circuitNote).toMatch(/no fixed shape/)
+    expect(PLANTS.unstable.circuitNote).toMatch(/right half plane/)
   })
 
   it('the second-order plant\'s hint never promises a link circuitFor cannot build', () => {

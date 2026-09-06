@@ -3,6 +3,7 @@ import { Formula, agrees } from '@ee-labs/explain'
 import { cellLatex, fmtCell } from '@ee-labs/network'
 import { acTable, powerLedger } from '../math.js'
 import { num, scaleOf } from '../format.js'
+import { Term, DefCard } from './Prose.jsx'
 
 // The lower pane's views. Each takes the analysis from math.js `analyse` and
 // shows one thing about it. None of them computes physics: every number here
@@ -296,10 +297,11 @@ function Cell({ terms, value, unit = null }) {
  * Power, as a ledger. Each element's voltage (+ to −), the current flowing in
  * at its + end, and their product; the passive sign convention makes that
  * product positive for an element absorbing power and negative for one
- * delivering it. The two totals sit side by side and match — Tellegen's
- * theorem, seen rather than named.
+ * delivering it. The two totals sit side by side and match, and the theorem
+ * behind that is named and, on a tap, defined (student review: Tellegen's
+ * theorem used to be an aside with nowhere to go).
  */
-export function PowerPane({ sol }) {
+export function PowerPane({ sol, open = null, onOpen = () => {}, exp = null, choose = () => {} }) {
   const ledger = powerLedger(sol)
   const total = Math.max(ledger.delivered, ledger.absorbed, 1e-300)
   const WORD = { absorbs: 'absorbs', delivers: 'delivers', idle: '—' }
@@ -357,9 +359,11 @@ export function PowerPane({ sol }) {
       <p className="power-total">
         Delivered <b>{num(ledger.delivered, 'W', 3)}</b> = absorbed <b>{num(ledger.absorbed, 'W', 3)}</b>
         {ledger.net === 0 ? ' — the two bars are the same length.' : ` (net ${num(ledger.net, 'W', 2, ledger.delivered)}).`} Every watt a
-        source gives out is taken in somewhere else in the same circuit; that follows from KCL and KVL alone, with no
-        element law needed (Tellegen’s theorem).
+        source gives out is taken in somewhere else in the same circuit. That follows from KCL and KVL alone, with no
+        element law needed.{' '}
+        <Term id="tellegen" field="power" text="Tellegen’s theorem" open={open} onOpen={onOpen} /> is the name for it.
       </p>
+      <DefCard open={open} field="power" exp={exp} onClose={() => onOpen(null)} choose={choose} />
     </div>
   )
 }

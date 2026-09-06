@@ -17,6 +17,15 @@ export default function PoleZeroCanvas({
   branches = null,
   highlight = null,
   cloud = null,
+  // Opt-in, not a new default: Control Lab's root locus draws its own cloud
+  // (locusFrame.js) at today's 1.8px/0.28 dots and stays untouched unless it
+  // asks for this. Circuit Lab passes it only on the two lessons whose whole
+  // claim IS the scatter ("Real parts wobble", "Blame the right part") —
+  // NEEDS.md's own request. At the default size the 120-build cloud reads as
+  // two clean crosses at a laptop pane height; this makes the dots big and
+  // opaque enough to read as a cloud without hiding the nominal cross under
+  // them.
+  cloudEmphasis = false,
   xTitle = 'Real  σ  (1/s)',
   yTitle = 'Imaginary  jω  (rad/s)',
   ariaLabel = 'Poles and zeros on the s-plane; the right half is the unstable region',
@@ -112,10 +121,16 @@ export default function PoleZeroCanvas({
       // the cloud reads as its uncertainty.
       if (cloud) {
         ctx.fillStyle = COLORS.trace
-        ctx.globalAlpha = 0.28
+        // NEEDS.md's own request, on the two lessons where the cloud is the
+        // whole lesson: bigger, less transparent dots so 120 builds' worth of
+        // scatter reads as a cloud rather than vanishing under a 1.8px/0.28
+        // wash. Every other caller (Control Lab's root locus) keeps the old
+        // numbers untouched.
+        const dotR = (cloudEmphasis ? 2.5 : 1.8) * k
+        ctx.globalAlpha = cloudEmphasis ? 0.45 : 0.28
         for (const [re, im] of cloud) {
           ctx.beginPath()
-          ctx.arc(sx(re), sy(im), 1.8 * k, 0, Math.PI * 2)
+          ctx.arc(sx(re), sy(im), dotR, 0, Math.PI * 2)
           ctx.fill()
         }
         ctx.globalAlpha = 1
@@ -160,7 +175,7 @@ export default function PoleZeroCanvas({
       }
       ctx.restore()
     },
-    [poles, zeros, branches, highlight, cloud, xTitle, yTitle],
+    [poles, zeros, branches, highlight, cloud, cloudEmphasis, xTitle, yTitle],
   )
 
   return <canvas ref={ref} className="plot" role="img" aria-label={ariaLabel} />

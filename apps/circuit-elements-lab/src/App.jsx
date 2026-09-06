@@ -31,6 +31,7 @@ import { captionFor } from './captions.js'
 import { familyOf, familyOfLabel } from './palette.js'
 import { activeStep, advance, complete, groupArc, knobsOf, load, measurable, readsOf, save, tick, withPredicted, withSteps } from './progress.js'
 import { rereference, switchKnob } from './reference.js'
+import { buildHash, locationFor, readLocationHash } from './deeplink.js'
 import pkg from '../package.json'
 
 // The cursor's play: the whole window in this many milliseconds, whatever the
@@ -49,6 +50,17 @@ const FOLDED_GROUPS = GROUPS.slice(0, 5)
 // The topbar's Σ power chip appears from the experiment that introduces power.
 const POWER_FROM = EXPERIMENTS.findIndex((e) => e.id === 'b3')
 
+// The topbar's two chips explain themselves in words a mouse can read on
+// hover; a finger cannot. Both explanations are also a tap away (student
+// review: the node-count chip was unreachable on a phone from A1 on).
+const SIZE_EXPLAIN =
+  'Nodes are the junctions where elements meet, ground included. The numbers to find are the ' +
+  'solver’s unknowns: one voltage per node except ground, plus the current through each element ' +
+  'that fixes a voltage (a source, a capacitor, a wire).'
+const outcomeExplain = (residual) =>
+  `Solved: at every node the currents in add up to the currents out (KCL). The largest imbalance ` +
+  `left by the arithmetic, the residual, is ${residual}.`
+
 /** The cursor an experiment opens at: its own fraction of its window at the defaults. */
 const cursorFor = (exp, p) => (isDynamic(exp) ? exp.cursor * exp.window(p) : null)
 /** The browser's store for progress, or null where there is none (progress.js copes). */
@@ -59,8 +71,13 @@ const storage = () => {
     return null
   }
 }
-/** The experiment after this one on the path: the next in the list when it builds on this one, else the first that does, else the next. */
-const nextUp = (exp) => {
+/**
+ * The experiment after this one on the path: the next in the list when it
+ * builds on this one, else the first that does, else the next. Exported so
+ * course.test.js can walk it for all 55 experiments without a browser — the
+ * live app only exercises the one path a student actually clicks through.
+ */
+export const nextUp = (exp) => {
   const seq = EXPERIMENTS[EXPERIMENTS.indexOf(exp) + 1]
   const to = leadsTo(exp.id)
   if (seq && to.includes(seq.id)) return seq.id
@@ -69,15 +86,43 @@ const nextUp = (exp) => {
 /** The knob open when no step names one: the first in the Knobs section. */
 const firstKnob = (exp) => (exp.params.find((p) => !(p.key === 'N' && exp.window)) || {}).key
 
+/**
+ * The state to open on: the URL's own hash (`#a1`, `#h4&R1=5000`…) when it
+ * names an experiment this lab has, so a reload or a shared link lands back
+ * where it left off; the first experiment at its defaults otherwise. Read
+ * once, at mount — a link followed by hand-turned knobs must not keep
+ * snapping back to it.
+ */
+function initialState() {
+  const linked = readLocationHash()
+  const id = linked && byId[linked.id] ? linked.id : FIRST
+  const exp = byId[id]
+  const params = linked && linked.id === id ? linked.params : defaultsOf(id)
+  const show = linked && linked.show && ['i', 'v', 'p', 'none'].includes(linked.show) ? linked.show : exp.show
+  const view = linked && linked.view && exp.views.includes(linked.view) ? linked.view : exp.view
+  const cursor = linked && Number.isFinite(linked.cursor) ? linked.cursor : cursorFor(exp, params)
+  // parseHash drops anything it does not recognise rather than guessing, and
+  // names each drop here — read on arrival, and again on every hashchange
+  // below, so a mistyped or stale parameter is a line on screen rather than a
+  // silent no-op.
+  const warnings = (linked && linked.warnings) || []
+  return { id, params, show, view, cursor, warnings }
+}
+
 export default function App() {
-  const [id, setId] = useState(FIRST)
-  const [params, setParams] = useState(() => defaultsOf(FIRST))
-  const [show, setShow] = useState(byId[FIRST].show)
-  const [view, setView] = useState(byId[FIRST].view)
+  const [initial] = useState(initialState)
+  const [id, setId] = useState(initial.id)
+  const [params, setParams] = useState(initial.params)
+  const [show, setShow] = useState(initial.show)
+  const [view, setView] = useState(initial.view)
   // The instant the schematic shows, in seconds; null for the DC groups. The
   // analysis clamps it to the window, so a knob that shrinks the window pulls
   // the cursor back with it.
-  const [cursor, setCursor] = useState(() => cursorFor(byId[FIRST], defaultsOf(FIRST)))
+  const [cursor, setCursor] = useState(initial.cursor)
+  // What the URL's own hash named that this lab could not make sense of, on
+  // the most recent arrival (mount, or a later hashchange) — see the effect
+  // below.
+  const [linkWarnings, setLinkWarnings] = useState(initial.warnings)
   // Whether the note still describes what is on screen: any knob moved by hand
   // retires it, as in the other labs. The schematic/view toggles and the
   // cursor are exempt.
@@ -99,12 +144,42 @@ export default function App() {
   const [focusStep, setFocusStep] = useState(null)
   // The knob the student opened by hand; otherwise the active step's knob is open.
   const [openKnob, setOpenKnob] = useState(null)
+  // Whether a pointer (mouse or touch) is currently pressed down, anywhere.
+  // A knob-slot's own click opens it, which changes that slot from a compact
+  // row to a full one and reflows every slot after it. Opening on focus alone
+  // used to run that reflow between mousedown and mouseup — mousedown moves
+  // focus onto the control under the pointer, before the button is released —
+  // so a button that was not already in the open slot had its hit box move
+  // out from under the pointer and swallowed the click. Gating focus-driven
+  // opening on "no pointer is currently down" defers it to the click that
+  // follows mouseup, by which point the browser has already resolved that
+  // click against the still-stable layout. A keyboard Tab still opens the
+  // slot immediately, since no pointer is down while tabbing.
+  const pointerDownRef = useRef(false)
+  useEffect(() => {
+    const down = () => {
+      pointerDownRef.current = true
+    }
+    const up = () => {
+      pointerDownRef.current = false
+    }
+    window.addEventListener('pointerdown', down, true)
+    window.addEventListener('pointerup', up, true)
+    window.addEventListener('pointercancel', up, true)
+    return () => {
+      window.removeEventListener('pointerdown', down, true)
+      window.removeEventListener('pointerup', up, true)
+      window.removeEventListener('pointercancel', up, true)
+    }
+  }, [])
   // The node the student tapped to take as the zero of voltage (A3's lesson).
   const [refNode, setRefNode] = useState(null)
   // The node or element under the pointer in the equations pane, lit on the schematic.
   const [hover, setHover] = useState(null)
   // Whether Deeper is unfolded; a new experiment starts with it folded.
   const [deeperOpen, setDeeperOpen] = useState(false)
+  // Which topbar chip's explanation is open on a tap (null, 'size' or 'outcome').
+  const [chipOpen, setChipOpen] = useState(null)
 
   const exp = byId[id]
   const uses = useMemo(() => firstUses(exp), [exp])
@@ -144,7 +219,41 @@ export default function App() {
     setRefNode(null)
     setHover(null)
     setDeeperOpen(false)
+    setChipOpen(null)
   }
+  // Editing only the fragment of the address bar, or pasting one of this
+  // lab's own deep links into a tab where it is already open, is a
+  // same-document navigation: the URL changes but nothing remounts, so
+  // `initialState` (a useState callback, mount-time only) never runs again
+  // and the link silently does nothing. The browser still fires its own
+  // event for exactly this. Control Lab fixed the identical bug by listening
+  // for it and re-running its own boot logic, so this does the equivalent:
+  // call `initialState` again, on the hash the event finds, and apply what
+  // it says — not a second, hand-kept copy of the parse.
+  useEffect(() => {
+    const onHashChange = () => {
+      const next = initialState()
+      setId(next.id)
+      setParams(next.params)
+      setShow(next.show)
+      setView(next.view)
+      setCursor(next.cursor)
+      setLinkWarnings(next.warnings)
+      setPristine(true)
+      setPickerOpen(false)
+      setOpenTerm(null)
+      setPredicted(null)
+      setPlaying(false)
+      setFocusStep(null)
+      setOpenKnob(null)
+      setRefNode(null)
+      setHover(null)
+      setDeeperOpen(false)
+      setChipOpen(null)
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
   // A hand on the cursor stops the play.
   const scrub = (t) => {
     setPlaying(false)
@@ -295,6 +404,20 @@ export default function App() {
     const on = currentView === 'scope' ? marks.scope : currentView === 'sweep' ? marks.sweep : marks.freq
     return captionFor(exp, currentView, x, params, on, drive)
   }, [exp, currentView, x, params, marks, drive])
+  // The URL follows the experiment, its knobs, its pane and (once at rest)
+  // its cursor, so a refresh or a pasted link lands on the same picture — the
+  // reload above already trusts this on the way in. Replaced, never pushed,
+  // so the back button still means "the experiment before this one" rather
+  // than every knob turn. Skipped while the cursor is sweeping on its own
+  // (`playing`): the number is about to change again 60 times a second, and
+  // the URL only needs to hold the place the reader stopped at.
+  useEffect(() => {
+    if (playing || typeof window === 'undefined') return
+    // buildHash always returns at least the id (empty only for an id this lab
+    // does not have, which id never is), so the hash is never cleared to '' here.
+    const want = `#${buildHash({ id, params, show, view: currentView, cursor: dynamic ? x.cursor : null })}`
+    if (window.location.hash !== want) window.history.replaceState(null, '', want)
+  }, [id, params, show, currentView, dynamic, x.cursor, playing])
 
   return (
     <div className="app">
@@ -306,12 +429,27 @@ export default function App() {
           <ReportIssue
             lab="Circuit Elements Lab"
             version={pkg.version}
-            state={{ id, params, show, view: currentView, cursor }}
-            summary={reportSummary({ id, params, show, view: currentView, outcome, cursor: dynamic ? x.cursor : null })}
+            state={{ id, params, show, view: currentView, cursor, link: locationFor({ id, params, show, view: currentView, cursor: dynamic ? x.cursor : null }) }}
+            summary={reportSummary({
+              id,
+              params,
+              show,
+              view: currentView,
+              outcome,
+              cursor: dynamic ? x.cursor : null,
+              link: locationFor({ id, params, show, view: currentView, cursor: dynamic ? x.cursor : null }),
+            })}
           />
         </header>
 
         <section className="lesson">
+          {linkWarnings.length ? (
+            <ul className="link-warnings">
+              {linkWarnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          ) : null}
           <h2>
             Experiment
             <span className="h2-aside">
@@ -430,7 +568,11 @@ export default function App() {
                     data-key={p.key}
                     data-open={open}
                     data-named={activeKnobs.includes(p.key) || undefined}
-                    onFocus={() => setOpenKnob(p.key)}
+                    // Focus alone opens the slot, unless a pointer is mid-press: see
+                    // pointerDownRef above for why that case waits for the click.
+                    onFocus={() => {
+                      if (!pointerDownRef.current) setOpenKnob(p.key)
+                    }}
                     onClick={() => setOpenKnob(p.key)}
                   >
                     {p.kind === 'toggle' || p.kind === 'choice' ? (
@@ -479,10 +621,11 @@ export default function App() {
         </section>
 
         <section className="deeper">
-          <h2>Deeper</h2>
-          {/* One fold: why it works, the solver's working with its check tables, and the hand-over. */}
+          {/* One fold: why it works, the solver's working with its check tables, and the hand-over.
+              The summary carries the section's own name (Deeper), rather than a separate heading
+              above it repeating the same idea in a second row. */}
           <details className="deeper-fold" data-role="deeper" open={deeperOpen} onToggle={(e) => setDeeperOpen(e.target.open)}>
-            <summary>Explanation and working</summary>
+            <summary>Deeper: explanation and working</summary>
             {exp.why ? (
               <div className="why" data-role="why">
                 <p className="hint">
@@ -510,27 +653,43 @@ export default function App() {
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          {/* In the student's words (Phase 8): the solver's "unknowns" and "residual" stay in the hover text, where they are explained. */}
-          <span
+          {/* In the student's words (Phase 8): the solver's "unknowns" and "residual"
+              are explained on hover for a mouse and on tap for a finger — the same
+              chip a phone can reach, the way the note's terms already open on tap. */}
+          <button
+            type="button"
             className="flow-node"
             data-role="system-size"
-            title={`Nodes are the junctions where elements meet, ground included. The numbers to find are the solver's unknowns: one voltage per node except ground, plus the current through each element that fixes a voltage (a source, a capacitor, a wire).`}
+            title={SIZE_EXPLAIN}
+            aria-expanded={chipOpen === 'size'}
+            onClick={() => setChipOpen((c) => (c === 'size' ? null : 'size'))}
           >
             {nodeCount} node{nodeCount === 1 ? '' : 's'}
             <em>{eq ? `${eq.unknowns.length} number${eq.unknowns.length === 1 ? '' : 's'} to find` : 'nothing to solve'}</em>
-          </span>
+          </button>
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          <span
+          <button
+            type="button"
             className={`flow-node ${x.sol ? 'is-out' : 'is-off'}`}
             data-role="outcome"
-            title={x.sol ? `Solved: at every node the currents in add up to the currents out (KCL). The largest imbalance left by the arithmetic, the residual, is ${residual}.` : undefined}
+            title={x.sol ? outcomeExplain(residual) : undefined}
+            aria-expanded={chipOpen === 'outcome'}
+            onClick={() => x.sol && setChipOpen((c) => (c === 'outcome' ? null : 'outcome'))}
           >
             {x.sol ? 'every node balances' : 'no solution'}
             <em>{x.sol ? `current in = current out, to ${residual}` : refusalReason(x.refusal)}</em>
-          </span>
+          </button>
         </nav>
+        {chipOpen ? (
+          <p className="chip-pop" data-role="chip-pop" data-chip={chipOpen}>
+            {chipOpen === 'size' ? SIZE_EXPLAIN : outcomeExplain(residual)}
+            <button type="button" className="chip-pop-close" aria-label="Close the explanation" onClick={() => setChipOpen(null)}>
+              ×
+            </button>
+          </p>
+        ) : null}
         <div className="topbar-controls">
           {dynamic && x.tr ? (
             <>
@@ -837,7 +996,7 @@ export default function App() {
                 onHover={setHover}
               />
             ) : null}
-            {currentView === 'power' && x.sol ? <PowerPane sol={x.sol} /> : null}
+            {currentView === 'power' && x.sol ? <PowerPane sol={x.sol} open={openTerm} onOpen={setOpenTerm} exp={exp} choose={choose} /> : null}
             {currentView === 'thevenin' && x.thevenin ? <TheveninPane th={x.thevenin} port={exp.port} named={viewLabel('thevenin', exp) === VIEW_LABELS.thevenin} /> : null}
             {currentView === 'superposition' && x.superposition ? <SuperpositionPane sp={x.superposition} /> : null}
             {currentView === 'sweep' && x.sweep ? (

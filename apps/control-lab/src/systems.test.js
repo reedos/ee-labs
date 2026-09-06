@@ -8,6 +8,8 @@ import {
   settlesOnScreen,
   ctrlDefaultsFor,
   plantBandwidth,
+  isUndefinedTf,
+  UNDEFINED_PLANT_REASON,
 } from './systems.js'
 import {
   dcGain,
@@ -97,6 +99,34 @@ describe('the custom plant: exactness is the whole point', () => {
     expect(tf.a).toEqual([1, 1])
     expect(tf.b).toEqual([1])
     expect(polesZeros(tf).poles).toHaveLength(1)
+  })
+
+  // trimLeading() never shrinks a coefficient array below length 1, so an
+  // all-zero denominator (a2 = a1 = a0 = 0) hands back [0] rather than
+  // vanishing — indistinguishable, to a consumer that only checks length,
+  // from a valid constant-1 system that evaluates to zero. It is not: P(s)
+  // = 1/0 is undefined at every s. The shipped defect (#plant=custom:0:0:1:0:0:0&ctrl=p:1):
+  // closeLoop's own polyAdd took that [0] as the additive identity and built
+  // T(s) = 1/(1+0) = 1, a fully-formed "stable" unity loop out of a division
+  // by zero — a confident tick on a wrong number, this suite's worst
+  // failure. buildLoop must refuse HERE, at the one place every pane reads
+  // the loop from, rather than let each pane discover it separately.
+  it('an all-zero denominator refuses at buildLoop, the one place every pane reads from', () => {
+    const undefinedParams = { b2: 0, b1: 0, b0: 1, a2: 0, a1: 0, a0: 0 }
+    expect(isUndefinedTf(PLANTS.custom.tf(undefinedParams))).toBe(true)
+
+    const loop = buildLoop('custom', undefinedParams, 'p', { kp: 1 })
+    expect(loop.reason).toBe(UNDEFINED_PLANT_REASON)
+    // Never the manufactured T(s) = 1 the old code built from 1/(1+0).
+    expect(loop.closed.a.some((v) => v !== 0)).toBe(false)
+    expect(dcGain(loop.closed)).not.toBe(1)
+
+    // Every controller hits the same refusal — the plant is undefined
+    // regardless of what is wired in front of it.
+    for (const ctrlId of Object.keys(CONTROLLERS)) {
+      const l = buildLoop('custom', undefinedParams, ctrlId, defaultsOf(CONTROLLERS[ctrlId]))
+      expect(l.reason, ctrlId).toBe(UNDEFINED_PLANT_REASON)
+    }
   })
 })
 

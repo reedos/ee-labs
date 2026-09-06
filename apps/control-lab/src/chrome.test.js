@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { margins } from '@ee-labs/systems'
 import { PLANTS, CONTROLLERS, defaultsOf, ctrlDefaultsFor, buildLoop } from './systems.js'
-import { CUES, TOPBAR_TERMS } from './terms.js'
-import { chromeTermIds, chromeTerms, VIEW_CHROME, paneHeading } from './chrome.js'
+import { CUES, TOPBAR_TERMS, TERMS } from './terms.js'
+import { chromeTermIds, chromeTerms, VIEW_CHROME, paneHeading, PLANT_DEF, CONTROLLER_DEF, SECTION_TERMS } from './chrome.js'
 import { verdictOf } from './verdict.js'
 
 // Definitions on contact in the PICKER: a plant or controller click clears
@@ -283,6 +283,55 @@ describe('picker terms: reachable with no lesson active', () => {
     expect(CONTROLLERS.lead.hint).not.toMatch(/\bintegrators?\b/i)
     expect(verdictOfLoop(unstable)).not.toBe('stable')
     expect(chromeTermIds(unstable)).not.toContain('integrator')
+  })
+
+  it('the section-header definitions (item 3) are reachable on every state, no lesson loaded', () => {
+    // PLANT_DEF/CONTROLLER_DEF render unconditionally under App.jsx's
+    // #plant/#controller headers, so every one of their own cue words (and
+    // SECTION_TERMS itself) must resolve at every state — not just the ones
+    // where a plant or controller hint happens to repeat the same word.
+    for (const id of SECTION_TERMS) expect(TERMS[id], id).toBeTruthy()
+    for (const pid of plantIds) {
+      for (const cid of ctrlIds) {
+        for (const view of views) {
+          const ids = chromeTermIds(defaultState(pid, cid, view))
+          for (const id of SECTION_TERMS) {
+            expect(ids, `${pid} x ${cid} x ${view}: missing section term "${id}"`).toContain(id)
+          }
+        }
+      }
+    }
+    // And every cue PLANT_DEF/CONTROLLER_DEF themselves contain (drive,
+    // already a term before this) resolves too — the same "derives from the
+    // cue table" discipline the VIEW_CHROME test above holds this file to.
+    const text = `${PLANT_DEF} ${CONTROLLER_DEF}`
+    const ids = chromeTermIds(defaultState('firstOrder', 'p', 'step'))
+    for (const [id, re] of Object.entries(CUES)) {
+      if (re.test(text)) expect(ids, `section defs: "${id}" cue`).toContain(id)
+    }
+  })
+
+  it('the "This is also a circuit" spot: a refusal\'s cue words resolve exactly where App.jsx renders them', () => {
+    // App.jsx's own gate at that spot is `!circuit && plant.circuitNote`
+    // (round three: the four plants with no catalog match rendered nothing
+    // there at all). chromeTermIds must scan the SAME text — unconditional
+    // of view, the way App.jsx renders it — or a cue word in a refusal goes
+    // unscanned exactly the way the marginNote defect once did.
+    for (const pid of ['integrator', 'motor', 'threePole', 'unstable', 'custom']) {
+      const note = PLANTS[pid].circuitNote
+      expect(note, pid).toBeTruthy()
+      for (const view of views) {
+        const ids = chromeTermIds(defaultState(pid, 'p', view))
+        for (const [id, re] of Object.entries(CUES)) {
+          if (re.test(note)) expect(ids, `${pid} x ${view}: "${id}" cue in its own circuitNote`).toContain(id)
+        }
+      }
+    }
+    // The two plants that DO get a live link never carry a circuitNote, so
+    // there is nothing for this spot to scan beyond the ordinary hint text.
+    for (const pid of ['firstOrder', 'secondOrder']) {
+      expect(PLANTS[pid].circuitNote, pid).toBeUndefined()
+    }
   })
 
   it('paneHeading matches App.jsx verbatim for every view x stepInput', () => {

@@ -58,6 +58,26 @@ export function circuitFor(plantId, plantP) {
     }
     return null
   }
+  // threePole, motor and integrator each carry a `.circuit` block in
+  // systems.js — the SAME component maths the math panel renders and
+  // verifies against the plant (PLANTS[id].circuit.tf, PLANTS[id].circuit.text)
+  // — but none of the three is a SHAPE Circuit Lab's catalog holds, at any
+  // component values:
+  //   - threePole is three real poles. The catalog's deepest entries (the
+  //     series RLC, the twin-T, Sallen-Key) are all second order.
+  //   - motor is a pole at the origin PLUS a second, finite pole. The
+  //     catalog's only entry with a pole at the origin, its op-amp
+  //     integrator, has no second pole to be the lag.
+  //   - integrator is K/s with K > 0, never inverting. The catalog's only
+  //     pole-at-the-origin entry is that same op-amp integrator, and it IS
+  //     inverting, H(s) = -1/(sRC) — 180° apart from this plant at every
+  //     frequency, and the plant's gain has no negative range to meet it.
+  // All three refuse for their SHAPE, not a component value out of range —
+  // CORE_SCOPE Rule 2: a mapping that is not exact declines, with a reason,
+  // rather than shipping the nearest fit. toCircuitLab.test.js checks each
+  // of these holds across a spread of parameter values, not only the
+  // defaults, so the refusal is pinned as structural.
+  if (plantId === 'threePole' || plantId === 'motor' || plantId === 'integrator') return null
   return null
 }
 

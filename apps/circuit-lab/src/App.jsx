@@ -48,7 +48,7 @@ import {
   fmtPct,
   fmtHzRange,
 } from './tolerance.js'
-import { TERMS, termsFor } from './terms.js'
+import { TERMS, termsFor, markTerms } from './terms.js'
 import { dampingWord, stepReadout } from './stepReadout.js'
 import {
   axisFreqs,
@@ -63,7 +63,7 @@ import { reportSummary } from './report.js'
 import { asFraction } from './fraction.js'
 import pkg from '../package.json'
 import Schematic from './schematics.jsx'
-import HandOver, { SignalLabLink } from './components/HandOver.jsx'
+import HandOver, { SignalLabLink, CompactHandOvers } from './components/HandOver.jsx'
 import BodeCanvas from './components/BodeCanvas.jsx'
 import StepCanvas from './components/StepCanvas.jsx'
 
@@ -108,6 +108,21 @@ export default function App() {
   // describes. Picking a circuit from the Circuits list is the one move that
   // leaves the course.
   const [lesson, setLesson] = useState(start.lesson)
+  // Which term (if any) a reader tapped inline, in the note itself — the
+  // discoverable path Reed's review asked for. Two skim readers scored
+  // Explanation low and reported finding no glossary at all; the actual
+  // glossary was there, behind a small "Terms used here" link neither of
+  // them noticed. Tapping the word itself, right where it appears, needs no
+  // discovery. Cleared on every lesson change so a stale card never survives
+  // onto a note that never mentioned it.
+  const [openTerm, setOpenTerm] = useState(null)
+  // Which topbar pill (if any) is tapped open. Separate from openTerm: the
+  // strip is on every screen regardless of lesson, and H(s) / stable are the
+  // very first vocabulary a reader meets, before any note has loaded — a
+  // hover title alone did nothing on a phone (student-review: touch found no
+  // route to either definition). Not cleared on a lesson change; the strip
+  // itself does not change when the lesson does.
+  const [topbarTerm, setTopbarTerm] = useState(null)
   // The lesson a Circuits click left: the nav strip keeps counting from it
   // and offers the way back, so picking a circuit to poke at is a detour
   // rather than a silent exit from the course.
@@ -119,7 +134,127 @@ export default function App() {
   // circuits both fold. The active item's group is always open regardless, so
   // collapsing is never able to hide where you are — same pattern as Signal
   // Lab's preset groups.
-  const [openGroups, setOpenGroups] = useState(() => new Set())
+  //
+  // The Circuits groups start OPEN (student-review: two people who skipped
+  // the course and went straight to Circuits found "Second order" and
+  // "Active" folded shut — six real circuits, more than half the catalog —
+  // and one filed it as "circuits unclickable"). Chosen over a count badge
+  // or a louder chevron because it removes the obstacle outright: a picker
+  // meant for poking around should not hide most of what it holds behind a
+  // fold nobody arrives already knowing to open. The lesson list keeps
+  // folding by default, since a course is meant to be taken group by group.
+  // Folding still works either way — closing an inactive group is remembered
+  // for the session — this only changes what a fresh visitor sees first.
+  const [openGroups, setOpenGroups] = useState(
+    () => new Set(CIRCUIT_GROUPS.map((g) => `circuits:${g}`)),
+  )
+
+  // Round-three grading, phone only: `.controls` is its own scroller there
+  // (styles.css caps it at 43vh), and it never reset its scroll position
+  // when the active lesson changed. A grader scrolled to the bottom of
+  // "Real parts wobble" (2691 of 2729 px in a 362 px sidebar), tapped next,
+  // and landed on "Blame the right part" with the scroll still at 734 — the
+  // title and note both off screen, the title's own top measured at −620.
+  // Picking a lesson straight from the list did the same (scroll 712, title
+  // at −598), and by lesson 10 a next tap could land on a screen with no
+  // title, no note and no knob at all, just the tail of the lesson list.
+  //
+  // Signal Lab's Controls.jsx fixed this exact class earlier the same day:
+  // a ref on the lesson block, and an effect keyed on the active lesson
+  // (and the fold state, which can push the lesson block down the same way
+  // on a laptop) that checks whether the try line's own box is still inside
+  // the sidebar's REAL visible box and scrolls the lesson into view only
+  // when it is not. Copied rather than reinvented, so the two labs share one
+  // fix for one bug: `.lesson-body` here is Signal Lab's `.lesson`, and
+  // `.controls` is the same scroller-inside-a-scroller in both apps.
+  //
+  // Round-four grading found this first cut still wrong on one lesson: it
+  // checked only the try line's OWN box, which reads "already visible" even
+  // when the note above it is scrolled off, or the featured knob below it
+  // is cut off. On "Where the corner comes from" — note, try line and two
+  // stacked sliders (C, R) — correcting for the try line alone left the
+  // note's opening sentence above the box and the R slider below it, on the
+  // list-tap path, reproduced from two different starting scroll positions.
+  // Control Lab's own second pass (its App.jsx) fixes the identical class of
+  // bug by checking TWO edges instead of one — the lesson block's own top
+  // (where the note starts) and the far edge of the control the try line
+  // names — adopted here verbatim in spirit, adapted to this app's DOM: the
+  // featured knob sits inside `.lesson-body` itself, right after `.try-line`
+  // (Control Lab's own controller card is a separate section entirely), so
+  // the second edge checked here is the featured block's bottom rather than
+  // the try line's. `.featured` is present on every lesson but one (a bare
+  // hand-over card carries no slider to protect), so the try line stands in
+  // for it there.
+  //
+  // Deliberately conditional: on every already-correct path (a laptop with
+  // one group open, a phone that has not scrolled) both edges are already
+  // inside the visible box, so nothing scrolls — prev/next behave exactly as
+  // they did before. Skipped on the very first render, since a fresh load
+  // has nothing to correct.
+  const controlsRef = useRef(null)
+  const lessonRef = useRef(null)
+  const loadedOnce = useRef(false)
+  useEffect(() => {
+    if (!loadedOnce.current) {
+      loadedOnce.current = true
+      return
+    }
+    const el = lessonRef.current
+    const container = controlsRef.current
+    if (!el || !container) return
+    // base.css gives `.controls h2` `position: sticky`, so this section's own
+    // cap ("Try this", prev / n of N / next) stays pinned to the container's
+    // top edge and PAINTS OVER whatever scrolls beneath it. The container's
+    // top edge is therefore not the line content is safe to land on;
+    // `contBox.top + headerH` is.
+    //
+    // Round-six grading found the lesson title masked on every lesson change
+    // at 390x844: the title's box measured top -0.2 to 17.9 while the header's
+    // bottom sat at 34.9, so the name was entirely behind the cap and the
+    // note's own first line was cut to a 2-3px sliver. The check below used to
+    // compare `elBox.top` against `contBox.top` alone, which is satisfied with
+    // the title fully hidden, because "scrolled to the container's top" and
+    // "not painted over" are different claims and only the first was tested.
+    // Control Lab hit the same defect in round four and this is that fix,
+    // anchored on the lesson body's own section rather than an id, since this
+    // sidebar's sections carry none.
+    //
+    // Measured rather than assumed: the cap's height moves with the loaded
+    // font and the lesson nav's width. The +2px is clearance for rounding —
+    // scrollIntoView snaps to an integer scrollTop, and landing the title
+    // exactly on the header's bottom edge left a subpixel sliver behind it in
+    // Control's own measurement.
+    const section = el.closest('section')
+    const header = section ? section.querySelector(':scope > h2') : null
+    const headerH = header ? header.getBoundingClientRect().height + 2 : 0
+    const bottomTarget = el.querySelector('.featured') || el.querySelector('.try-line') || el
+    const elBox = el.getBoundingClientRect()
+    const bottomBox = bottomTarget.getBoundingClientRect()
+    const contBox = container.getBoundingClientRect()
+    const safeTop = contBox.top + headerH
+    const visible = elBox.top >= safeTop - 0.5 && bottomBox.bottom <= contBox.bottom + 0.5
+    if (!visible) {
+      // Scroll by hand rather than through scrollIntoView, because the two
+      // things this has to satisfy can conflict and the browser cannot know
+      // which to give up. Everything moves up by `s` when scrollTop grows by
+      // `s`, so:
+      //   sTitle      puts the title exactly on the header's bottom edge
+      //   sBottomMin  is the least scroll that pulls the featured knob in
+      // A first cut here set scroll-margin-top and let scrollIntoView do it,
+      // which pushed the block down by the cap's height unconditionally and
+      // sent the featured controls 3px out the bottom on two of the
+      // scroll-reset cases (verify caught it: "bottom 366 below [0, 363]").
+      // The lesson simply does not fit both ways there.
+      //
+      // When both fit, take sTitle: the title clears the cap and the knob is
+      // still in. When they cannot both hold, the knob wins. A note you can
+      // scroll up to read costs a gesture; a knob you cannot reach costs the
+      // lesson, and the fold probe holds that line for every lesson.
+      const sTitle = elBox.top - safeTop
+      const sBottomMin = bottomBox.bottom - contBox.bottom
+      container.scrollTop += sTitle >= sBottomMin ? sTitle : sBottomMin
+    }
+  }, [lesson, openGroups])
 
   const circuit = CIRCUITS[id]
 
@@ -153,9 +288,13 @@ export default function App() {
     setLower(next.view)
     setLesson(l.name)
     setLastLesson(null)
+    setOpenTerm(null)
   }
 
   const active = LESSONS.find((l) => l.name === lesson)
+  // Resolved once, reused by the note's inline marks, the tapped term card
+  // and the full "Terms used here" fold, so all three ever show the same set.
+  const activeTerms = useMemo(() => (active ? termsFor(active.terms) : []), [active])
   const lessonIndex = active ? LESSONS.indexOf(active) : -1
   const parked = !active && lastLesson ? LESSONS.find((l) => l.name === lastLesson) : null
   const parkedIndex = parked ? LESSONS.indexOf(parked) : -1
@@ -301,6 +440,26 @@ export default function App() {
 
   const math = useMemo(() => circuitMath(id, tf, params, output), [id, tf, params, output])
 
+  // Item 5, first bug: the Math tab often runs two or three screens past the
+  // fold — a theory-versus-measured table with no cue that more of it sits
+  // below the visible pane. Same discipline as the topbar's ⋯-before-the-
+  // sticky-node fix on a phone (styles.css): announce that a box scrolls
+  // instead of just letting it stop. `mathMore` is true only while the pane
+  // is genuinely NOT at its own bottom, so a circuit whose math already fits
+  // never shows a cue with nothing left to promise.
+  const mathPaneRef = useRef(null)
+  const [mathMore, setMathMore] = useState(false)
+  const checkMathScroll = () => {
+    const el = mathPaneRef.current
+    if (!el) return setMathMore(false)
+    setMathMore(el.scrollHeight - el.scrollTop - el.clientHeight > 4)
+  }
+  useEffect(() => {
+    if (lower !== 'math') return
+    const raf = requestAnimationFrame(checkMathScroll)
+    return () => cancelAnimationFrame(raf)
+  }, [lower, math])
+
   // The scatter from building this circuit 120 times with real parts — and
   // the same builds as an envelope on each plot: shaded regions for where the
   // response and the step could land, the pole cloud for where the poles do.
@@ -388,9 +547,14 @@ export default function App() {
       {tolRow(p)}
     </React.Fragment>
   )
+  // The tag itself carries the part's own label, not just "tol" — two
+  // tolerance rows featured together (the "Blame the right part" lesson
+  // moves the same ±10% from R to C) used to both read only "TOL" on
+  // screen, told apart solely by an aria-label a sighted reader never
+  // hears. "R tol" and "C tol" can be told apart by looking.
   const tolRow = (p) => (
     <div className="field-tol" role="group" aria-label={`${p.label} tolerance`} key={`tol:${p.key}`}>
-      <span className="tol-tag">tol</span>
+      <span className="tol-tag">{p.label} tol</span>
       <div className="segmented sm">
         {TOLERANCES.map((t) => (
           <button
@@ -436,6 +600,26 @@ export default function App() {
       </div>
     </div>
   )
+  // f₀, Q and ζ in the topbar, given the same route to a definition H(s) and
+  // the stability verdict already have. Round-four grading: these three sat
+  // as plain spans, on screen from the first pixel of nine of the fifteen
+  // lessons, with no title, no button and no handler — the exact gap the
+  // code comment above (H(s)/stable, "a phone had no route to them at all")
+  // already names for the two pills beside them. One helper, one topbarTerm
+  // state shared with those two, so only one card is ever open at a time.
+  const topbarTermField = (key, label, value) => (
+    <button
+      type="button"
+      className={`topbar-field topbar-term${topbarTerm === key ? ' is-open' : ''}`}
+      aria-expanded={topbarTerm === key}
+      title={`${TERMS[key].name}: ${TERMS[key].def}`}
+      onClick={() => setTopbarTerm(topbarTerm === key ? null : key)}
+    >
+      <span>{label}</span>
+      <b>{value}</b>
+    </button>
+  )
+
   const outputSelect =
     circuit.outputs.length > 1 ? (
       <label className="field" key="output">
@@ -494,7 +678,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <aside className="controls">
+      <aside className="controls" ref={controlsRef}>
         <header>
           <LabNav current="circuit-lab" />
           <h1>Circuit Lab</h1>
@@ -558,6 +742,24 @@ export default function App() {
               />
             ) : null}
           </h2>
+          {/* The course opens on the corner, not the divider — a better first
+              picture, but "2 of 15" with no explanation reads as a bug. One
+              line makes the starting position legible without turning the
+              corner's own note into two claims. A second review pass judged
+              a passive line a cost on its own (a first visit implying missed
+              material), so the line is now the way back: one click loads
+              lesson 1 rather than only naming it. */}
+          {active?.name === START_LESSON ? (
+            <button
+              type="button"
+              className="hint start-hint"
+              data-role="start-hint"
+              onClick={() => loadLesson(LESSONS[0])}
+            >
+              Lesson 1, the flat divider, is the baseline this corner builds on
+              <span className="start-hint-cta"> →</span>
+            </button>
+          ) : null}
           {parked ? (
             <button
               type="button"
@@ -604,7 +806,7 @@ export default function App() {
             })}
           </div>
           {active ? (
-            <div className="lesson-body" data-role="lesson-body">
+            <div className="lesson-body" data-role="lesson-body" ref={lessonRef}>
               <h3 className="note-title">
                 {active.name}
                 {dirty ? (
@@ -618,24 +820,69 @@ export default function App() {
                   still the lesson you are in) but says so, and the reset
                   above puts the described setup back. */}
               <p className={`hint note${dirty ? ' is-stale' : ''}`} data-role="lesson-note">
-                {active.note}
+                {/* Every word the lesson's own terms match is tappable right
+                    here, in place — the discoverable path (student-review:
+                    two skim readers reported "no glossary at all" because
+                    the fold below never caught their eye). The fold stays,
+                    for a reader who wants the whole list at once. */}
+                <Marked text={active.note} terms={activeTerms} open={openTerm} onOpen={setOpenTerm} />
               </p>
-              <TryLine text={active.try} chips={active.chips} onChip={onChip} activeChip={activeChip} />
+              {openTerm && activeTerms.some((t) => t.id === openTerm) ? (
+                <TermCard
+                  term={activeTerms.find((t) => t.id === openTerm)}
+                  onClose={() => setOpenTerm(null)}
+                />
+              ) : null}
+              {/* Round-four grading: "dB" (and every other term) was only
+                  ever marked where it appeared in the NOTE, so on the four
+                  lessons where it appears only in the try line — the point
+                  of use — there was no tap target there at all. TryLine's
+                  own `text` prop takes whatever `{text}` can render, so the
+                  same Marked pass used above runs over the try line too,
+                  sharing the one openTerm/TermCard pair rather than adding
+                  a second. */}
+              <TryLine
+                text={<Marked text={active.try} terms={activeTerms} open={openTerm} onOpen={setOpenTerm} />}
+                chips={active.chips}
+                onChip={onChip}
+                activeChip={activeChip}
+              />
               {featured.length ? (
                 <div className="featured" data-role="featured">
                   {featured}
                 </div>
               ) : null}
+              {/* The one concept everything past this lesson leans on, said
+                  once, in the open — not behind a fold, because a fold is
+                  exactly what two skim readers missed entirely. Every
+                  lesson from here on shows H(s), a pole or the jω axis in
+                  its topbar before a word of its own note loads; this is
+                  where a reader meets s and j, at the reading level of one
+                  circuits lecture (student-review, the beginner cliff —
+                  Reed's second reader confirmed it). Placed after the
+                  try line and its knob rather than above the note: the
+                  fold-probe budget (item 7) that keeps those two on screen
+                  at 1366×768 has no room left above them, and this reads
+                  fine a beat later — the topbar's vocabulary is on screen
+                  from the first pixel regardless of where in the sidebar
+                  this paragraph sits. */}
+              {active.name === START_LESSON ? (
+                <p className="hint complex-caption" data-role="complex-caption">
+                  {TERMS.complex.def}
+                </p>
+              ) : null}
               {/* The vocabulary this lesson leans on, defined where it is
                   used — Signal Lab's pattern. A student meeting "Q" or
                   "pole" mid-note should not need a second tab, and folded,
                   the definitions cost nothing to someone who already has
-                  them. */}
-              {termsFor(active.terms).length ? (
+                  them. Tapping the word above opens the same definition
+                  without opening this at all; this stays as the complete
+                  list, in one place, for a reader who wants that instead. */}
+              {activeTerms.length ? (
                 <details className="terms">
                   <summary>Terms used here</summary>
                   <dl>
-                    {termsFor(active.terms).map((t) => (
+                    {activeTerms.map((t) => (
                       <React.Fragment key={t.id}>
                         <dt>{t.name}</dt>
                         <dd>{t.def}</dd>
@@ -644,6 +891,16 @@ export default function App() {
                   </dl>
                 </details>
               ) : null}
+              {/* Student-review item 4: the hand-over is real and well
+                  written, but for 14 of 15 lessons nothing upstream of the
+                  full panel (below, past Circuits/Schematic/Components)
+                  says it exists. One line, right after the terms a reader
+                  just read — not inside the `.featured` slot, which the
+                  try line's own knob needs. */}
+              <p className="hint handover-pointer" data-role="handover-pointer">
+                This circuit’s hand-over to Signal Lab and Control Lab sits below the schematic. It
+                says whether the mapping is exact or refused.
+              </p>
             </div>
           ) : null}
         </section>
@@ -700,16 +957,12 @@ export default function App() {
           {/* One row to grade the whole drawer at once — it reads as "on"
               only when every part agrees with it. */}
           {tolAllRow('components')}
-          {wobble.any && f0Spread != null ? (
-            <p className="hint" data-role="tolerance-spread">
-              With these parts f₀ lands anywhere in {f0Range[0]} to{' '}
-              {f0Range[1]} (±{fmtPct(f0Spread)}%)
-              {qSpread != null
-                ? ` and Q in ${wobble.q.lo.toPrecision(3)} to ${wobble.q.hi.toPrecision(3)} (±${fmtPct(qSpread)}%). The square root halves L's and C's errors in both — what doubles Q's spread is R, which enters Q in full and f₀ not at all.`
-                : '.'}{' '}
-              The poles view shows the scatter.
-            </p>
-          ) : null}
+          {/* The reading itself — f₀'s and Q's spread across the 120 builds —
+              used to print here and nowhere else, a fold away from the poles
+              view a try line sends a reader to. It now lives beside the
+              cloud it describes (the Poles & zeros pane below), so the
+              student who did open every fold still found no percentage on
+              any chart or readout: see that render for the full text. */}
           {/* The math used to unfold here, and unfolding it grew the sidebar
               by nearly two thousand pixels — every knob below it gone. It is
               a view of the circuit now, a tab beside Step and Poles. */}
@@ -735,26 +988,58 @@ export default function App() {
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          {/* Defined on contact, on hover: the strip is on every screen and
-              "1 pole, 0 zeros" is the first jargon a student meets. */}
-          <span className="flow-node" title={`${TERMS.tf.name}: ${TERMS.tf.def}`}>
+          {/* Defined on contact — the strip is on every screen and "1 pole,
+              0 zeros" is the first jargon a student meets, before any note
+              has loaded. A hover title alone left a phone with no route to
+              it at all (student-review), so this is a real button: tap or
+              click opens the same definition below, keyboard-reachable, and
+              the title still answers a desktop hover instantly. */}
+          <button
+            type="button"
+            className={`flow-node flow-term${topbarTerm === 'tf' ? ' is-open' : ''}`}
+            aria-expanded={topbarTerm === 'tf'}
+            title={`${TERMS.tf.name}: ${TERMS.tf.def}`}
+            onClick={() => setTopbarTerm(topbarTerm === 'tf' ? null : 'tf')}
+          >
             H(s)
             <em>
               {pz.poles.length} pole{pz.poles.length === 1 ? '' : 's'}, {pz.zeros.length} zero
               {pz.zeros.length === 1 ? '' : 's'}
             </em>
-          </span>
+          </button>
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>
-          <span
-            className={`flow-node ${stable ? 'is-out' : 'is-off'}`}
+          <button
+            type="button"
+            className={`flow-node flow-term ${stable ? 'is-out' : 'is-off'}${topbarTerm === 'lhp' ? ' is-open' : ''}`}
+            aria-expanded={topbarTerm === 'lhp'}
             title={`${TERMS.lhp.name}: ${TERMS.lhp.def}`}
+            onClick={() => setTopbarTerm(topbarTerm === 'lhp' ? null : 'lhp')}
           >
             {stable ? 'stable' : 'not stable'}
             <em>{stable ? 'left half plane' : 'on or right of the axis'}</em>
-          </span>
+          </button>
         </nav>
+        {/* Outside .flow, deliberately: .flow scrolls its own overflow-x (the
+            item 3 fix above), and a descendant positioned inside an
+            overflow:auto ancestor clips to that ancestor's own box even when
+            its containing block is further up — the card would be cut off
+            mid-height on a narrow phone strip. Anchored to .topbar itself
+            instead. */}
+        {topbarTerm ? (
+          <div className="topbar-term-card" data-role="topbar-term-card" role="note">
+            <button
+              type="button"
+              className="topbar-term-close"
+              aria-label="Close definition"
+              onClick={() => setTopbarTerm(null)}
+            >
+              ×
+            </button>
+            <b>{TERMS[topbarTerm].name}.</b> {TERMS[topbarTerm].def}
+          </div>
+        ) : null}
         <div className="topbar-controls">
           <span className="topbar-field">
             {/* The tank's plot is an impedance, so its DC value is ohms — "DC
@@ -765,27 +1050,46 @@ export default function App() {
           </span>
           {metrics || second ? (
             <>
-              <span className="topbar-field">
-                <span>f₀</span>
-                <b>{fmtHz(metrics ? metrics.w0 / (2 * Math.PI) : second.f0)}Hz</b>
-              </span>
-              <span className="topbar-field">
-                <span>Q</span>
-                <b>{(metrics ? metrics.q : second.q).toFixed(3)}</b>
-              </span>
-              {second ? (
-                <span className="topbar-field">
-                  <span>ζ</span>
-                  <b>{second.zeta.toFixed(3)}</b>
-                </span>
-              ) : null}
+              {topbarTermField(
+                'omega0',
+                'f₀',
+                `${fmtHz(metrics ? metrics.w0 / (2 * Math.PI) : second.f0)}Hz`,
+              )}
+              {topbarTermField('q', 'Q', (metrics ? metrics.q : second.q).toFixed(3))}
+              {second ? topbarTermField('zeta', 'ζ', second.zeta.toFixed(3)) : null}
             </>
           ) : null}
         </div>
       </div>
 
       <main className="views">
-        <section className="view">
+        {/* The network, pinned beside the plots rather than a sidebar scroll
+            away (student-review item 1): a compact schematic, the output
+            probe when the circuit offers more than one, and the exact
+            second-order hand-overs — the third thing the Bode/step split was
+            missing. A fixed-height row so every circuit, tall schematics
+            (twin-T, the inverting amp) included, costs the two plot panes the
+            same handful of pixels. */}
+        {/* A class of its own, not "view" — that class (and "view-head" on
+            its header below) is how the rest of the harness counts and
+            indexes the frequency and step/poles panes; a third element
+            wearing the same class shifted every .nth(1)-style reference in
+            verify.mjs and the pane-header proximity check onto the wrong
+            pane. */}
+        <section className="network-strip" data-role="network-strip">
+          <div className="network-head">
+            <h2>Network</h2>
+          </div>
+          <div className="network-body">
+            <div className="network-schematic">
+              <Schematic id={id} params={params} output={output} />
+            </div>
+            {outputSelect ? <div className="network-output">{outputSelect}</div> : null}
+            <CompactHandOvers tf={tf} from={handOverFrom} />
+          </div>
+        </section>
+
+        <section className="view view-freq">
           <div className="view-head">
             <h2>Frequency response</h2>
             {/* Governs THIS plot, so it lives here — the sidebar's View
@@ -837,7 +1141,7 @@ export default function App() {
           />
         </section>
 
-        <section className="view">
+        <section className={`view view-lower view-lower-${lower}`} data-role="view-lower">
           <div className="view-head">
             <h2>Step response, poles, and derivation</h2>
             <ViewSwitch
@@ -883,6 +1187,25 @@ export default function App() {
                   <span className={stable ? '' : 'flag warn'}>
                     {stable ? 'all in the left half plane' : 'not all in the left half plane'}
                   </span>
+                  {/* The reading a tolerance try line promises, in the same
+                      readout as the pole values — not a fold away in the
+                      sidebar. A student who opened every fold still found no
+                      percentage on any chart or readout, because this used
+                      to live only under Components, a scroll below the
+                      note, try line and this very plot. */}
+                  {wobble.any && f0Spread != null ? (
+                    <span
+                      data-role="tolerance-spread"
+                      title={`f₀ lands anywhere in ${f0Range[0]} to ${f0Range[1]} over these 120 builds`}
+                    >
+                      f₀ spread <b>±{fmtPct(f0Spread)}%</b>
+                      {qSpread != null ? (
+                        <>
+                          {' '}Q spread <b>±{fmtPct(qSpread)}%</b>
+                        </>
+                      ) : null}
+                    </span>
+                  ) : null}
                 </>
               ) : (
                 <span>
@@ -909,15 +1232,39 @@ export default function App() {
               </p>
             )
           ) : lower === 'pz' ? (
-            <PoleZeroCanvas
-              poles={pz.poles}
-              zeros={pz.zeros}
-              cloud={wobble.any ? wobble.cloud : null}
-              span={pzSpan}
-            />
+            <>
+              {/* Student-review: the complex-plane view arrived with no
+                  explanation of what the plane is or why a dot's position
+                  matters — named the worst-received part of the walk once a
+                  reader hit it with no warning. One line, on every pz lesson
+                  rather than folded into a single note's word budget. */}
+              <p className="hint pz-caption" data-role="pz-caption">
+                Sideways is the real part, in s⁻¹: how fast a mode decays. Upward is jω, the
+                imaginary part: how fast it rings. A dot far from the origin moves fast either way.
+              </p>
+              <PoleZeroCanvas
+                poles={pz.poles}
+                zeros={pz.zeros}
+                cloud={wobble.any ? wobble.cloud : null}
+                cloudEmphasis={!!active?.cloudEmphasis}
+                span={pzSpan}
+              />
+            </>
           ) : (
-            <div className="math-pane" data-role="math-pane">
-              <MathBody entry={math} />
+            <div className="math-pane-shell">
+              <div
+                className="math-pane"
+                data-role="math-pane"
+                ref={mathPaneRef}
+                onScroll={checkMathScroll}
+              >
+                <MathBody entry={math} />
+              </div>
+              {mathMore ? (
+                <div className="math-scroll-cue" data-role="math-scroll-cue" aria-hidden="true">
+                  more below ↓
+                </div>
+              ) : null}
             </div>
           )}
         </section>
@@ -988,6 +1335,67 @@ function ViewSwitch({ value, onChange, options }) {
         </button>
       ))}
     </div>
+  )
+}
+
+/**
+ * The note, with its own terms tappable in place.
+ *
+ * markTerms splits the text once; a plain run renders as-is, and a term hit
+ * renders as a `<dfn>`, not a `<button>` — deliberately, matching Control
+ * Lab's NoteTerms.jsx. A marked word sits a few characters INSIDE a running
+ * sentence, and WCAG 2.5.8's own Target Size rule exempts exactly this case
+ * ("inline: the target ... is otherwise constrained by the line-height of
+ * non-target text"). A button role would also enrol it in this app's OWN
+ * touch-target probe (verify.mjs item 14, packages/ui's tapTargetProbe —
+ * SELECTOR is `button, a, summary, [role="button"], input[type="checkbox"]`,
+ * which a bare `<dfn>` never matches), which a two-letter word like "Q" or
+ * "dB" can never clear without padding wide enough to read as a chip rather
+ * than a word.
+ *
+ * The earlier version excluded any match under three characters for exactly
+ * that reason — but that silently dropped the inline mark from precisely the
+ * symbols a first-year reader is least likely to know: Q, dB, ζ, ω₀, on
+ * every Resonance lesson. Rendering as a `<dfn>` removes the tension outright
+ * instead of trading it away: every match is tappable regardless of length,
+ * `tabIndex` and the keydown handler below still make it keyboard reachable,
+ * and it never enters the probe it could never pass.
+ */
+function Marked({ text, terms, open, onOpen }) {
+  return markTerms(text, terms).map((seg, i) => {
+    if (!seg.term) return <React.Fragment key={i}>{seg.text}</React.Fragment>
+    const isOpen = open === seg.term
+    const toggle = () => onOpen(isOpen ? null : seg.term)
+    return (
+      <dfn
+        key={i}
+        className={`term-mark${isOpen ? ' is-open' : ''}`}
+        tabIndex={0}
+        aria-expanded={isOpen}
+        onClick={toggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            toggle()
+          }
+        }}
+      >
+        {seg.text}
+      </dfn>
+    )
+  })
+}
+
+/** The definition a tapped term reveals, right under the note that named it. */
+function TermCard({ term, onClose }) {
+  if (!term) return null
+  return (
+    <p className="term-card" data-role="term-card" role="note">
+      <button type="button" className="term-card-close" onClick={onClose} aria-label="Close definition">
+        ×
+      </button>
+      <b>{term.name}.</b> {term.def}
+    </p>
   )
 }
 

@@ -91,6 +91,14 @@ export const TERMS = {
       'Energy per second, in watts: p = v·i for any element. For a resistor it is also i²R and v²/R, always ' +
     'positive, a resistor only ever heats up. A source’s power is negative when it is doing the pushing.',
   },
+  tellegen: {
+    name: 'Tellegen’s theorem',
+    def:
+      'The sum of every element’s power in a circuit is zero, delivered matching absorbed exactly, whenever ' +
+    'KCL and KVL hold. No element law is required, not even Ohm’s law, only that voltage and current are ' +
+    'assigned consistently at each terminal. That is why a source’s watt always turns up again as heat or ' +
+    'storage somewhere else in the same circuit.',
+  },
   series: {
     name: 'Series',
     def:
@@ -208,6 +216,13 @@ export const TERMS = {
     'amplifier is the example. No current flows into it, yet its voltage is zero, so every input current is ' +
     'set by its own resistor alone and continues through the feedback resistor.',
   },
+  dB: {
+    name: 'Decibel (dB)',
+    def:
+      'A ratio written as 20 log₁₀ of itself, for voltages and currents. Adding decibels multiplies the ' +
+    'ratios: 0 dB is no change, +6 dB is roughly double, and −20 dB is a tenth. A power ratio uses ' +
+    '10 log₁₀ instead, because power runs as the square of voltage.',
+  },
   cmrr: {
     name: 'CMRR (common-mode rejection ratio)',
     def:
@@ -266,6 +281,13 @@ export const TERMS = {
     'how fast things decay, and ω₀ the undamped natural frequency, how fast they would ring with no loss. Its ' +
     'roots are the exponents of the natural response, whose real parts set the decay and imaginary parts the ' +
     'oscillation.',
+  },
+  j: {
+    name: 'The imaginary unit j',
+    def:
+      'A number whose square is −1, which no ordinary signed number is. Engineers write it j, not the ' +
+    'mathematician’s i, since i already means current. A root written α ± jω pairs a decay rate α with a ' +
+    'ringing frequency ω. Multiplying a phasor by j rotates it a quarter turn, 90°.',
   },
   damping: {
     name: 'Damping (ζ)',
@@ -326,6 +348,14 @@ export const TERMS = {
       'The frequency ω₀ = 1/√LC at which an inductor’s reactance equals a capacitor’s. In series their voltages ' +
     'cancel, the impedance drops to R alone, and the current peaks. Each reactive voltage is Q = (1/R)√(L/C) ' +
     'times the source. The half-power bandwidth is ω₀/Q, and it takes about Q/π cycles to build up.',
+  },
+  qualityfactor: {
+    name: 'Quality factor (Q)',
+    def:
+      'The quality factor Q says how many times larger the resonant reactive voltage is than the source, ' +
+    'Q = (1/R)√(L/C). It equals 1/(2ζ) too, the reciprocal of twice the damping ratio. A high Q rings for ' +
+    'many cycles and a low one barely rings at all. The half-power bandwidth is the resonant frequency ' +
+    'divided by Q.',
   },
   rms: {
     name: 'RMS value',
@@ -390,6 +420,13 @@ export const TERMS = {
       'How a simulator solves a curve. Replace it by its tangent at a guess, solve that linear circuit, and ' +
     'take the answer as the next guess. Close to the solution each error is about the square of the last, so ' +
     'the final digits arrive together.',
+  },
+  bisection: {
+    name: 'Bisection',
+    def:
+      'A way to find where a function crosses zero. Test the midpoint of a bracket known to hold the ' +
+    'crossing, keep whichever half still holds it, and repeat. Each round halves the uncertainty, so the ' +
+    'crossing is found to any precision, not read off a formula.',
   },
   assumedstate: {
     name: 'The assumed-state method',
@@ -510,6 +547,7 @@ export const MATCH = {
   node: /\bnodes?\b/i,
   passive: /sign convention|called \+|into its \+/i,
   power: /\bpower\b/i,
+  tellegen: /Tellegen/,
   series: /\bseries\b/i,
   parallel: /\bparallel\b/i,
   thevenin: /Th[eé]venin/i,
@@ -527,6 +565,7 @@ export const MATCH = {
   gain: /\bgain\b|\bA·|\bA times\b/i,
   feedback: /\bfeedback\b|back to (?:an|the) [−-]? ?input|back from the output/i,
   virtual: /\bvirtual ground\b/i,
+  dB: /\bdB\b/,
   cmrr: /\bCMRR\b|common[- ]mode|rejected/i,
   capacitor: /\bcapacitors?\b/i,
   inductor: /\binductors?\b/i,
@@ -535,6 +574,7 @@ export const MATCH = {
   initial: /initial conditions?|initial value/i,
   natural: /\bnatural\b/i,
   characteristic: /\bcharacteristic\b|second-order equation/i,
+  j: /jω/,
   damping: /damp|ζ|α|overshoot/i,
   duality: /\bdual\b|\bduality\b/i,
   energy: /energy (?:bookkeeping|stored)|half the energy|\bjoules?\b|\b[µm]J\b/i,
@@ -543,6 +583,9 @@ export const MATCH = {
   reactance: /\breactance\b|\boffers\b/i,
   impedanceac: /(?<!input |output |source |load )\bimpedances?\b|\|Z\|/i,
   resonance: /\bresonan(?:ce|t)\b/i,
+  // A bare, capital Q: never the lowercase inside "quality" or "equation",
+  // and never a subscripted Q₁ or similar (none exist in this lab).
+  qualityfactor: /\bQ\b/,
   rms: /\bRMS\b|[VI]_rms/,
   powerfactor: /power factor|cos ?φ/i,
   bode: /\bBode\b/,
@@ -553,6 +596,7 @@ export const MATCH = {
   loadline: /\bload line\b/i,
   operatingpoint: /operating point/i,
   newton: /\bNewton’s method\b|\bNewton\b/,
+  bisection: /\bbisection\b/i,
   assumedstate: /assumed? state|assume, solve/i,
   // "conductance" is C2's word and must not be caught by this one.
   clamp: /\bclamp(?:s|ed|ing)?\b/i,

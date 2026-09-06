@@ -244,6 +244,21 @@ describe('the claims each lesson makes', () => {
     expect(at(Math.SQRT1_2)).toBeCloseTo(0.043, 3)
   })
 
+  // Reed's review: the try line said "35%" for R = 200 Ω while the step
+  // pane's own readout — (overshoot * 100).toFixed(1) in App.jsx — prints
+  // "35.1%". Not wrong, but a first-year re-checks their own reading against
+  // a number the screen never shows. The try line must quote the READOUT's
+  // number, to the same one decimal, not a round figure nobody sees.
+  it('the try line at R = 200 Ω quotes the number the readout actually prints', () => {
+    const l = byName('Resonance, seen in time')
+    const printed = `${(l.claim.tryOvershoot[200] * 100).toFixed(1)}%`
+    expect(l.try).toContain(printed)
+    // ...and that printed figure really is what the running model measures.
+    const tf = transferOf('rlcSeries', { ...defaultsOf('rlcSeries'), r: 200 }, 'c')
+    const m = secondOrderMetrics(tf)
+    expect(`${(m.overshoot * 100).toFixed(1)}%`).toBe(printed)
+  })
+
   it('Sallen–Key has a complex pair and no inductor', () => {
     const l = byName('Why active filters exist')
     const { poles } = polesZeros(tfOf(l))
@@ -510,11 +525,35 @@ describe('lesson: Blame the right part', () => {
     expect(band.magHi[1] / band.magLo[1]).toBeGreaterThan(1.1)
   })
 
-  it('moving the tolerance to C breaks the circle, as the note promises', () => {
+  // Round-three grading: the try line used to say moving the tolerance to C
+  // "breaks the circle" on screen, and a grader found the pole plot stays a
+  // crisp cross there — the radius really does change (this assertion), but
+  // by too little of the plot's own scale to read as broken. The try line
+  // now names the number that moves rather than a picture that does not.
+  it('moving the tolerance to C moves the radius, even though the plot stays crisp', () => {
     const s = setup()
     const m = CIRCUITS[s.id].metrics(s.params)
     const { cloud } = toleranceCloud(s.id, s.params, 'c', { c: 0.1 })
     const radii = cloud.map(([re, im]) => Math.hypot(re, im) / m.w0)
     expect(Math.max(...radii) / Math.min(...radii)).toBeGreaterThan(1.05)
+  })
+
+  // Round-four grading, third revision of this try line: for a series RLC,
+  // s = −R/2L ± j√(1/LC − (R/2L)²) — the real part depends only on R and L,
+  // never on C. So C alone moves the pole along a dead-straight vertical
+  // line (re invariant to machine precision) while L alone moves BOTH the
+  // real part (L sets R/2L too) and the imaginary part — a genuinely
+  // diagonal path. This is what makes L's marker show a visible smear where
+  // C's stays a thin vertical line, at any pixel density.
+  it('C moves the pole only up and down the imaginary axis; L moves the real part too', () => {
+    const s = setup()
+    const m = CIRCUITS[s.id].metrics(s.params)
+    const reSpan = (tolKey) => {
+      const { cloud } = toleranceCloud(s.id, s.params, 'c', { [tolKey]: 0.1 })
+      const res = cloud.map(([re]) => re)
+      return (Math.max(...res) - Math.min(...res)) / m.w0
+    }
+    expect(reSpan('c')).toBeLessThan(1e-9)
+    expect(reSpan('l')).toBeGreaterThan(0.05)
   })
 })

@@ -14,6 +14,32 @@ button.flow-node:hover {
   color: var(--accent);
 }
 
+/* ---------- feedback link, moved off the header ----------
+ * It used to sit right above the "Try this" button list and the impatient
+ * student clicked it thinking it was an experiment. Down here it is the last
+ * thing in the sidebar rather than the first, and centred rather than
+ * left-aligned like every nav control above it — no top padding comes free
+ * without an h2 (see `.controls section` in base.css), so it is added here. */
+.controls .feedback {
+  padding-top: 12px;
+  text-align: center;
+}
+
+/* ---------- top bar: rate, FFT, window and overlay read as controls ----------
+ * The impatient student's own words: these "do not look clickable and were
+ * nearly missed". Their border shared the same dim colour as every plain
+ * divider in the top bar. A brighter border, already used for the flow
+ * diagram's own wires, says "click me" without moving or resizing anything
+ * the tap-target pass elsewhere owns. */
+.topbar-controls .num-input,
+.topbar-field select {
+  border-color: var(--line-bright);
+}
+
+.view-head .segmented {
+  border-color: var(--line-bright);
+}
+
 
 
 
@@ -68,6 +94,19 @@ button.flow-node:hover {
 
 .source-head select {
   flex: 1;
+}
+
+/* The enable checkbox has no visible label text (an icon-only toggle at the
+   head of the card) — wrapped in its own <label> so it has SOME clickable
+   area at all (a bare native checkbox is ~13x13 with nothing around it to
+   extend it, unlike every other checkbox in the suite, which already wraps
+   a text label). */
+.source-enable {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  cursor: pointer;
 }
 
 /* ---------- block cards ---------- */
@@ -296,6 +335,19 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   display: inline-block;
 }
 
+/* A group whose own lessons step up past the lab's stated background, named
+   in the header itself (GROUP_SIGNPOSTS in presets.js) rather than left for
+   a student to discover mid-lesson. Lowercase and unbolded against the
+   summary's own uppercase, bold label, so it reads as an aside, not a
+   second heading. */
+.group-signpost {
+  text-transform: none;
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--dim);
+  opacity: 0.8;
+}
+
 /* ---------- the signal-path diagram ---------- */
 .fd-open { white-space: nowrap; }
 
@@ -377,12 +429,33 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .view-head .segmented { flex: 0 0 auto; }
 .view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
 
+/* Touch target, but a narrower one than base.css's general 44x44: this
+   field lives in a plot pane's own header, sharing the spectrum pane's
+   view-head with two segmented rows already (amplitude scale, overlay) —
+   growing it to 44 tall pushed the spectrum canvas off the bottom of a
+   phone screen (measured: 888px, past the 844px fold; the two-canvases-
+   on-screen budget, item 10j, has no more to give). It stays at the
+   plot-pane exception's 24px floor, same as base.css's .views .segmented
+   button just below it in the cascade — only its WIDTH was ever actually
+   under that floor (22px), so only width grows. */
+@media (max-width: 900px) {
+  .view-head .num.is-compact .num-step {
+    width: 26px;
+  }
+}
+
 /* Phone: the topbar's global controls wrap instead of running off the right
    edge (the Window select was clipped at 390px), and pane-header control
    groups wrap under the title without crowding the readouts. */
 @media (max-width: 900px) {
   .topbar-controls { flex-wrap: wrap; row-gap: 6px; max-width: 100%; }
-  .view-head { row-gap: 6px; }
+  /* Tightened from 6px for the touch-target pass: the spectrum pane's
+     view-head now stacks FOUR wrapped rows (the view switch, amplitude
+     scale, overlay, the compact FFT field) once a segmented control's
+     options clear the plot pane's own 24px floor — a preset whose readout
+     also wraps to two lines (Aliasing's off-bin scalloping flag) needed
+     this back to keep its spectrum canvas on screen at 390x844. */
+  .view-head { row-gap: 1px; }
   .view-head .readout { flex-basis: 100%; }
 }
 
@@ -426,19 +499,270 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
     grid-template-rows: auto auto minmax(0, 1fr);
   }
   .controls {
-    max-height: 32vh;
+    max-height: 31vh;
+    padding-top: 6px;
+  }
+  /* "Order is a choice" is the one preset in the library that features two
+     knobs at once (both cascaded sections' Q, since the try line sets both).
+     A first fix grew the sidebar budget to 46vh so both knobs' full trio
+     (label, slider, chips) would fit stacked — and never checked what that
+     took from `.views` below: the spectrum canvas needs 120px plus its own
+     ~97px of header chrome regardless of how tall the sidebar is allowed to
+     be, and 46vh left it 887px, 43px past the 844px fold (Reed's review, and
+     the phone probe below now holds it). The fix is not a bigger budget, it
+     is a shorter one: side by side, both knobs together need barely more
+     height than any other preset's single knob, so the special case gets a
+     modest bump instead of a large one, and the spectrum canvas keeps the
+     same room the other 34 lessons already fit it in. */
+  .controls:has(.featured .featured-item ~ .featured-item) {
+    max-height: 33vh;
+  }
+  /* Two knobs side by side instead of stacked: the trio each one needs
+     (label, slider, chips) no longer costs a second row's worth of sidebar
+     height, which is what the fold budget above actually buys back. Gated on
+     the same two-item selector, so every other preset's single featured knob
+     is untouched. */
+  .controls:has(.featured .featured-item ~ .featured-item) .featured {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 10px;
+  }
+  .controls:has(.featured .featured-item ~ .featured-item) .featured-item + .featured-item {
+    margin-top: 0;
   }
   .views {
     min-height: 0;
   }
+  /* padding-top trimmed from 4px to 2px for the touch-target pass: the
+     spectrum pane's view-head now has to fit a segmented control's options
+     at the plot pane's own 24px floor (up from a bare 20px before), and
+     Aliasing's readout — the one preset whose flag wraps to two lines —
+     needed this back to keep its canvas inside the 390x844 fold. */
   .view {
-    padding: 4px 10px 4px;
+    padding: 2px 10px 2px;
+  }
+  /* The header above the lesson picker is chrome ahead of the one thing a
+     student must touch: the lab-nav (its full row costs more height than a
+     phone's featured-knob budget can spare — TopBar's compact `.suite-nav`
+     below carries the same three links instead, so hiding this row is no
+     longer a dead end), the app's own name (redundant with the lesson's own
+     title an inch below) and the folded reference to what the top bar's own
+     controls mean (reachable from the top bar itself, and rarely needed on
+     a first look). Together they cost the featured knob a lesson's try line
+     names — the thing "ahead of chrome" means here, same as the source
+     cards below — most of its own height. */
+  .controls header nav.labnav {
+    display: none;
+  }
+  .controls header h1 {
+    display: none;
+  }
+  .controls header details.chrome-terms {
+    display: none;
+  }
+  /* The section well's own top margin and the first knob's own top margin
+     are more chrome this budget cannot spare, now that the header above them
+     is mostly gone. */
+  .controls section:first-of-type {
+    margin-top: 0;
+  }
+  .lesson-nav {
+    margin-top: 1px;
+  }
+  .note-title {
+    margin-top: 2px;
+  }
+  /* The try line's own box: padding and top margin trimmed the same way the
+     short-laptop fold trim above already does for the fold probe there —
+     the phone budget is tighter still. */
+  .try-line {
+    margin-top: 2px;
+    padding: 4px 9px;
+  }
+  .featured {
+    margin-top: 2px;
+    padding-top: 3px;
+  }
+  /* The featured mirror's own slider and label rows, tightened the same
+     way — the block card below keeps the roomier spacing unchanged. */
+  .featured .num-head {
+    margin-bottom: 1px;
+  }
+  .featured .num-slider {
+    margin: 2px 0 0;
+  }
+  .featured-from {
+    margin: 0 0 1px;
+  }
+  /* The featured knob is the LAST thing before the note on every preset that
+     has one, and .num's own trailing margin (10px, needed to separate stacked
+     fields in a source or block card) has nothing to separate here — it was
+     pure dead space at the bottom of an already-flush box (round-six grading:
+     the featured knob's own bottom already sits within half a pixel of the
+     sidebar's clip). Removing it is free: the knob's label, entry and slider
+     keep every pixel they had. */
+  .featured .num {
+    margin-bottom: 0;
+  }
+  /* Round-six grading, Layout: the note ran entirely behind the sidebar's own
+     32vh-capped scroller on 34 of 35 presets — not merely clipped, but
+     starting below the visible box's own bottom edge, because the featured
+     knob above it already fills that box to its clipped edge on every preset
+     that has one (verify.mjs's 10k2 holds the knob there, at laptop AND phone
+     sizes, with no slack to spare). Growing the sidebar's own cap was
+     rejected: the spectrum canvas already sits within 2px of the 844px fold
+     at the existing budget (10j), so any growth taken from `.views` fails
+     that check instead. The fix is instead every dead pixel of margin between
+     the lesson nav and the note that this file's own earlier trims left
+     behind — none of it touches a touch target or the featured knob's own
+     content — recovered here and on `.lesson-note` below, enough to guarantee
+     the note's own first line inside the box rather than none of it. The
+     rest of the note still needs the scroll `.has-more`'s shadow already
+     announces; a full guarantee would cost the featured knob or the try line
+     their own place in the same box, which round-six explicitly asked not to
+     trade away. */
+  .lesson-note {
+    margin-top: 3px;
+  }
+}
+
+/* ---------- phone's way out: the compact suite nav in the top bar ----------
+ * TopBar.jsx's SuiteNavCompact — the suite home and both sibling labs, folded
+ * behind one button, so the sidebar's LabNav row can stay hidden on a phone
+ * (above) without sealing a student inside this lab. Desktop already has the
+ * full LabNav row, so this stays hidden there.
+ *
+ * Two things had to be undone to get here, both found by measuring against
+ * an assembled copy standing in for the deployed site (a standalone preview
+ * never renders this at all — homeUrl() resolves null off a bare dev port,
+ * same as LabNav). First: TopBar.jsx renders it as the LAST child of
+ * `.topbar-controls`, not a sibling of that whole group. `.topbar-controls`
+ * already fills its row edge to edge at 390px (Rate + FFT alone leave under
+ * 10px of slack), so a new item ANYWHERE before FFT evicts FFT onto Window's
+ * own short row, turning a 26px row into a 62px one — a cost that has
+ * nothing to do with the new item's own size. Tucked in after Window
+ * instead, it shares Window's existing row inside Window's own slack (239px
+ * of it), so `.topbar`'s measured height is unchanged to the pixel.
+ * Second: the trigger is a `.ghost`, and base.css's OWN phone rule grows
+ * every `.ghost` to a real 44x44, which — even sharing Window's row — still
+ * pushed both plot canvases past the 390x844 fold (item 10j/10k's own
+ * budget). `min-height`/`min-width`/`padding` are reset back down here, and
+ * the button gets the OTHER technique base.css documents for exactly this
+ * kind of control (the suite nav, "report issue", the lesson nav's
+ * prev/next/reset): keep the visible glyph small and add an invisible
+ * `::after` hit area instead — credited by tapTargetProbe's own pseudo-
+ * element reader, so it reaches the suite's 44px floor without moving or
+ * resizing anything on screen. */
+.suite-nav { display: none; }
+@media (max-width: 900px) {
+  .suite-nav {
+    display: inline-flex;
+    position: relative;
+  }
+  .suite-nav-open {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 0;
+    min-width: 0;
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  .suite-nav-open::after {
+    content: '';
+    position: absolute;
+    inset: -14px -6px;
+  }
+  .suite-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 7, 10, 0.55);
+    z-index: 40;
+  }
+  .suite-nav-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 41;
+    display: flex;
+    flex-direction: column;
+    min-width: 160px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    padding: 4px;
+  }
+  .suite-nav-panel a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .suite-nav-panel a:hover {
+    background: var(--panel-2);
+    color: var(--accent);
   }
 }
 
 /* The featured copy of a knob repeats its card's hint ("for a low-pass the
    peak height is exactly Q") — the try line above it just said so. */
 .featured .num-hint { display: none; }
+
+/* Phone: the featured knob's own quick-value chips (0.1, 0.2, 0.5 ...) cost
+   two rows of 44px touch targets — 98 px, more than a third of the control's
+   own height — duplicating a shortcut the try line's OWN chips already give
+   right above it. The card below keeps its full chips unchanged; only the
+   featured mirror drops them, and only on a phone, where that 98 px is the
+   difference between the knob fitting inside the sidebar's clipped box and
+   not (Reed's review: seven of its 226 px were visible). The slider and the
+   typed input still set any value; only the shortcut buttons go. */
+@media (max-width: 900px) {
+  .featured .num-chips { display: none; }
+}
+
+/* The sidebar's own scroll cap on a phone has no native scrollbar worth
+   trusting — a touch OS draws one only mid-gesture, so a still screen shows
+   none — and a fresh load used to look complete rather than clipped, the
+   source cards and the rest of the curriculum below the fold announcing
+   themselves to no one (Reed's review). Two parts, both gated on
+   `.has-more` (Controls.jsx measures whether the box actually has more
+   content below its own bottom edge, so neither renders once a reader has
+   scrolled to the true end):
+   - a scroll shadow painted INSIDE the box's own edge, costing no layout
+     height, so it never competes with the featured knob for room and can
+     safely sit over the last visible pixels of whatever is there;
+   - `.controls-more`, an ordinary block in the document flow rather than an
+     overlay, so it can only ever cover ground that was already about to
+     scroll past next (the top of the curriculum list below the lesson), and
+     is the first thing a small scroll reveals, labelling what the shadow
+     only implied.
+   Desktop's sidebar is not capped, so neither renders there regardless. */
+@media (max-width: 900px) {
+  .controls.has-more {
+    box-shadow: inset 0 -18px 12px -14px rgba(0, 0, 0, 0.65);
+  }
+}
+.controls-more { display: none; }
+@media (max-width: 900px) {
+  .controls-more {
+    display: block;
+    margin: 6px -14px 0;
+    padding: 3px 14px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--dim);
+    border-top: 1px dashed var(--line);
+  }
+}
 
 /* Short laptops (1366×768 AND 1440×900): the try line and the knob it names
    must sit inside the first screen with the sidebar at the top —
@@ -458,6 +782,37 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   /* The note now renders LAST (title → try → featured → note), so it is
      whichever of those it actually follows. */
   .lesson .hint { margin-top: 6px; }
+  /* "Order is a choice" is the one preset that features two knobs even on a
+     laptop sidebar (the phone rule above names the same fact). Two knobs at
+     the spacing above still ran the second one's own chip row past a
+     1366×768 fold once the suite nav row above the lesson picker is
+     counted — that row only renders once this lab is deployed beside its
+     two siblings, so a standalone dev build never shows the ~30 px it
+     costs, and the earlier trim was tuned against a build that could not
+     see it (Reed's review, measured 775.6 px against the 768 px fold).
+     Same fix as the phone rule: :has() reaches the two-knob case alone, so
+     the other 34 presets' single knob keeps its roomier spacing. Chips stay
+     visible — this only tightens margins, unlike the phone budget below
+     which drops them. */
+  .controls:has(.featured .featured-item ~ .featured-item) .featured {
+    margin-top: 3px;
+    padding-top: 4px;
+  }
+  .controls:has(.featured .featured-item ~ .featured-item) .featured-item + .featured-item {
+    margin-top: 1px;
+  }
+  .controls:has(.featured .featured-item ~ .featured-item) .featured-from {
+    margin: 0 0 1px;
+  }
+  .controls:has(.featured .featured-item ~ .featured-item) .featured .num {
+    margin-bottom: 3px;
+  }
+  .controls:has(.featured .featured-item ~ .featured-item) .featured .num-head {
+    margin-bottom: 1px;
+  }
+  .controls:has(.featured .featured-item ~ .featured-item) .featured .num-slider {
+    margin: 3px 0 2px;
+  }
 }
 
 /* ...and on that phone the plots get the pixels the chrome was taking: the
@@ -484,7 +839,7 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
      that narrow. The row GAP, not the items, is what a phone can afford to
      give up: tightened here, the second row cost the spectrum canvas its
      120 px floor by only a few px instead of ten-plus. */
-  .readout { row-gap: 2px; }
+  .readout { row-gap: 0; }
 }
 
 /* The sidebar's own scroller (.controls, capped at 32vh above) is a scroller
@@ -507,4 +862,48 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    flexed down to a sliver is worse than a shorter sidebar. */
 @media (max-width: 900px) {
   .plot { min-height: 120px; }
+}
+
+/* ---------- touch targets: this app's own overrides ----------
+   packages/ui/src/base.css carries the shared fix and its rationale.
+   Three things here escape it because this app redeclares their sizing
+   itself: the remove-source icon button (an "×" with no text, sized by its
+   glyph), @ee-labs/explain's math-toggle disclosure (a package this suite
+   does not own, so the fix has to live on this side of the import), and the
+   Circuit Lab hand-over link below. None sit in the sidebar's gated first
+   screen — the math toggle scrolls inside the math panel, the remove button
+   in a source card below the fold, the hand-over link at the end of the
+   lesson block — so all three are free to grow for real. */
+@media (max-width: 900px) {
+  .math-toggle {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .source-enable {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  /* The block card's own expand/collapse toggle (its title, doubling as a
+     disclosure button) — below the fold in the Blocks section, so free to
+     grow for real; .block-head's own min-height grows with it since it is
+     a flex row sized by its tallest child. */
+  .block-title {
+    min-height: 44px;
+    padding: 4px 0;
+  }
+  /* The suite's one exact cross-lab hand-over: "Open in Circuit Lab →", a
+     plain inline link at the tail of a sentence, measured at 115x16 — the
+     smallest tap target in the lab, on the one control that carries the
+     suite's single exact hand-over. inline-flex lets the padding actually
+     grow the link's own box instead of only widening the line of text
+     around it. Held to the suite's 44px floor, not the 24px plot-pane
+     exception below: this sits in the sidebar's `.lesson` block, not a
+     tight plot pane, so there is no budget it would compete with. */
+  .circuit-forward a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 4px 2px;
+  }
 }

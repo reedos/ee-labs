@@ -1,4 +1,5 @@
 import { errorLoop, polyMul, simulate, stepResponse } from '@ee-labs/systems'
+import { fmtHz, fmtNum } from '@ee-labs/ui'
 import { CONTROLLERS } from './systems.js'
 
 // The loop's internal signals over time, for watching.
@@ -105,6 +106,27 @@ export function watchPartLabels(ctrlId) {
   if (ctrlId === 'pi' || ctrlId === 'pid') labels.push('Ki·∫e')
   if (ctrlId === 'pid') labels.push('Kd·ė')
   return labels
+}
+
+/**
+ * The watch readout row's own number — Kp·e, Ki·∫e, Kd·ė and u, side by
+ * side, at whatever gain the sliders currently sit at.
+ *
+ * fmtNum reads well across the range this pane ordinarily shows, but past
+ * either end it falls through to JS's own Number.toString(): exponential
+ * below 1e-6, and a raw many-digit integer above 1e4 with nothing in
+ * between. A PID pushed to its extreme knobs put Ki·∫e in exponential
+ * notation right beside Kd·ė and u as 13-digit integers — one row, two
+ * conventions for the same kind of quantity. Past fmtNum's own comfortable
+ * range (the same ×10⁴ / ×10⁻³ threshold the math panel already draws its
+ * own line at) this switches to the suite's SI-prefixed form instead, the
+ * one the Bode and root-locus axes already use.
+ */
+export function fmtWatch(v) {
+  if (!Number.isFinite(v)) return '—'
+  const a = Math.abs(v)
+  if (a !== 0 && (a >= 1e4 || a < 1e-3)) return fmtHz(v)
+  return fmtNum(v, 3)
 }
 
 /**

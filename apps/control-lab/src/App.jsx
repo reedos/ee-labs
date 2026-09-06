@@ -36,12 +36,14 @@ import {
   crossingGain,
   locusHereNote,
   isDirty,
+  firstLessonFor,
+  beforeIntro,
 } from './lessons.js'
 import { initialState } from './boot.js'
 import { circuitFor, circuitUrl } from './toCircuitLab.js'
 import { stickyDuration } from './stepAxis.js'
 import { termsFor } from './terms.js'
-import { chromeTerms, paneHeading } from './chrome.js'
+import { chromeTerms, paneHeading, PLANT_DEF, CONTROLLER_DEF } from './chrome.js'
 import { reportSummary } from './report.js'
 import pkg from '../package.json'
 import { nextFrame } from './frame.js'
@@ -53,7 +55,7 @@ import NyquistCanvas from './components/NyquistCanvas.jsx'
 import LoopDiagram from './components/LoopDiagram.jsx'
 import LocusCanvas from './components/LocusCanvas.jsx'
 import WatchCanvas, { useWatchPosition, WATCH_SPEEDS } from './components/WatchCanvas.jsx'
-import { watchSignals } from './watch.js'
+import { watchSignals, fmtWatch } from './watch.js'
 import {
   verdictOf,
   oscillationOf,
@@ -63,11 +65,14 @@ import {
   verdictBadge,
   bodeMarginNote,
   arrivalErrorNote,
+  plantInverted,
 } from './verdict.js'
 import { leadPeak } from './lead.js'
 import { naturalWindow, settleTime, overshootOf } from './stepWindow.js'
 import { simBlockReason, simCost, STEP_BUDGET } from './affordable.js'
 import { locusExtent, stickyExtent } from './locusFrame.js'
+import { markTerms } from './noteMarks.js'
+import { MarkedNote, NoteDefCard } from './components/NoteTerms.jsx'
 
 const POINTS = 900
 // The watch view's time grid. Fixed, so the scrubber's range never shifts
@@ -86,7 +91,7 @@ const Prose = ({ parts }) =>
 
 export default function App() {
   // A loop handed over from another tool, read once at startup.
-  const [linked] = useState(() => {
+  const [linked, setLinked] = useState(() => {
     const { patch, warnings } = readLocationLink()
     const { state, warnings: more } = stateFromLink(patch)
     return { state, warnings: [...warnings, ...more] }
@@ -128,6 +133,10 @@ export default function App() {
   // watch transport.
   const [loads, setLoads] = useState(0)
   const [termsOpen, setTermsOpen] = useState(false)
+  // Which marked term in the note is open, or null — a fresh lesson load
+  // (or leaving the lesson entirely) closes whatever the previous one left
+  // open, the same rule termsOpen already follows in spirit.
+  const [openTerm, setOpenTerm] = useState(null)
   // The crossover field's rad/s twin, folded shut by default so it costs no
   // height on a screen that already has the title-attribute hover for it —
   // opened only on a tap, on the screens where a tap is the only way in.
@@ -143,6 +152,40 @@ export default function App() {
   // plant is still that arrival — tuning its params keeps the identity,
   // choosing a different plant sheds it.
   const [fromInfo, setFromInfo] = useState(linked.state?.from ?? null)
+
+  // Editing the address bar's hash, or pasting one of this app's own share
+  // links into a tab where the lab is ALREADY open, is a same-document
+  // navigation: the URL changes but nothing remounts, so the boot-state
+  // initializer above (a useState callback, mount-time only) never runs
+  // again and the link silently does nothing. The browser still fires its
+  // own event for exactly this, so listening for it and re-running the same
+  // parse/apply steps `boot` used is the fix — not a second, hand-kept copy
+  // of that logic, but `initialState` itself, called again.
+  useEffect(() => {
+    const onHashChange = () => {
+      const { patch, warnings } = readLocationLink()
+      const { state, warnings: more } = stateFromLink(patch)
+      if (!state) return
+      const next = initialState(state, window.location.hash)
+      setPlantId(next.plantId)
+      setPlantP(next.plantP)
+      setCtrlId(next.ctrlId)
+      setCtrlP(next.ctrlP)
+      setLower(next.view)
+      setStepInput(next.stepInput)
+      setLesson(next.lesson)
+      setLastLesson(null)
+      setFromInfo(state.from ?? null)
+      // A fresh arrival, the same way a lesson load counts as one: the watch
+      // transport keys off this so a link arriving mid-scrub restarts it.
+      setLoads((k) => k + 1)
+      setLinked({ state, warnings: [...warnings, ...more] })
+      track(arrivalEvent('control-lab', state.from))
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Scroll a sidebar card into view, for clicks on the diagram's boxes.
   const reveal = (id) => {
@@ -165,6 +208,10 @@ export default function App() {
   const clearLesson = () => {
     setLastLesson((prev) => lesson || prev)
     setLesson(null)
+    setOpenTerm(null)
+    // No lesson is active, so no group needs to stay open on its own
+    // account — see the note in loadLesson below.
+    setOpenGroups(new Set())
   }
   const choosePlant = (id) => {
     const newPlantP = defaultsOf(PLANTS[id])
@@ -198,13 +245,161 @@ export default function App() {
     setCtrlP(n.ctrlP)
     setLower(n.view)
     setStepInput(n.stepInput)
+    // Only a lesson that names its own showPhase ("...and what it costs")
+    // touches this — every other lesson leaves the overlay wherever the
+    // reader last set it, rather than resetting it on every single click.
+    if (n.showPhase !== undefined) setShowPhase(n.showPhase)
     setLesson(l.name)
     setLastLesson(null)
+    setOpenTerm(null)
     setLoads((k) => k + 1)
+    // Only the active lesson's group stays open (the comment on the
+    // <details> map below). A manual click to reach a lesson in a folded
+    // group used to ADD that group here and nothing ever took it back out,
+    // so walking the course top to bottom left every group a reader had
+    // opened along the way still expanded once the course reached "Harder
+    // plants" — three groups deep, the controller card pushed below the
+    // fold. holdsActive already keeps the NEW active group open on its own,
+    // so clearing the manually-opened set on every load is enough: nothing
+    // outlives the lesson that needed it open.
+    setOpenGroups(new Set())
   }
 
   const active = LESSONS.find((l) => l.name === lesson)
   const activeIndex = LESSONS.findIndex((l) => l.name === lesson)
+  // Where the active lesson's own listed terms first do work in its note —
+  // computed once per lesson, not per keystroke, since the note text and
+  // its term list are both fixed once a lesson is loaded.
+  const noteMarks = useMemo(() => (active ? markTerms(active.note, active.terms) : []), [active])
+  // 1-based course position of the active lesson, or null with none loaded —
+  // what beforeIntro (lessons.js) compares the Nyquist/root-locus tabs'
+  // OWN lesson number against, so those two tabs can say what they are
+  // before a reader has reached the lesson that reads them in full.
+  const activeNumber = active ? activeIndex + 1 : null
+  // The Nyquist and root-locus tabs are one click away from lesson 1
+  // onward, well before the lesson that reads either in full — a student
+  // review's single most annoying finding, not knowing whether a
+  // prerequisite was missing. One short line, only before that lesson is
+  // reached, says what the tab is and where the full reading comes from.
+  const viewIntro = (view) =>
+    beforeIntro(view, activeNumber) ? (
+      <span className="prov" data-role="view-intro">
+        This previews lesson {firstLessonFor(view)}. It reads this plot in full.
+      </span>
+    ) : null
+  // The sidebar is its own scroller on a phone with a lesson loaded
+  // (`.app.has-lesson .controls`, capped at 40vh in styles.css) — a scroller
+  // whose OWN scroll position loadLesson never touched. Walking the course by
+  // TAPPING THE LIST, the way a phone reader actually browses it, leaves that
+  // box scrolled to wherever the tapped button sat in `.lesson-list` (order 2
+  // on phone, styles.css), with the just-loaded note, terms link, try line
+  // and featured step toggle — `.lesson-body`, order 1, above the list — off
+  // the top of the visible box. Measured across all 13 lessons tapped from
+  // the list: the note's own top sat from −518px to −211px, only lessons 1,
+  // 5 and 7 landing in view by luck of how far down their button sat. The
+  // sticky prev/next arrows in the section cap never hit this, because they
+  // never move the reader's own tap position in the list.
+  //
+  // Fixed the way Signal Lab's Controls.jsx fixes the identical trap: after
+  // a lesson loads, check whether the lesson block's own box is inside the
+  // sidebar's REAL visible box, and if it is not, scroll the lesson block
+  // back to the top of that box. Conditional, so the arrows path (already
+  // correct) and desktop (no internal scroll at all) trigger nothing.
+  //
+  // The check reads TWO edges, not one: the BLOCK's own top (the note sits
+  // right at it) must not be above the container's top, and the try line's
+  // bottom must not be below the container's bottom. Checking the try
+  // line's box alone — Signal's own check, correct there — missed a real
+  // case here: a scroll position left over from the PREVIOUS lesson (a
+  // click on a button lower in the list, which Playwright's own auto-scroll
+  // and a real tap both leave the sidebar at) can sit the try line inside
+  // the box while the note above it, this lesson's own shorter or taller
+  // one, is scrolled off — try-line-only calls that "already visible" and
+  // does nothing, which is exactly how "What feedback buys"' own four
+  // lessons kept reading a note 56-80px above the box after this fix's
+  // first draft.
+  const lessonBodyRef = useRef(null)
+  const controlsRef = useRef(null)
+  const lessonLoadedOnce = useRef(false)
+  // Shared by the lesson-change effect below and the breakpoint-crossing
+  // listener further down: the same "is the try line actually inside the
+  // sidebar's visible box" check, applied wherever the sidebar's own layout
+  // can have just changed under it. A ref, not a useCallback, because it
+  // reads refs and the live DOM at call time and closes over nothing that
+  // changes per render — one function is correct for a mount effect, a
+  // lesson-change effect and a resize listener alike.
+  const syncLessonScroll = useRef(() => {
+    const el = lessonBodyRef.current
+    const container = controlsRef.current
+    if (!el || !container) return
+    // packages/ui's `.controls h2` is `position: sticky` — the Lessons
+    // section's own cap ("Try this", prev/n of N/next) stays pinned to the
+    // container's own top edge and PAINTS OVER whatever scrolls under it.
+    // The container's top edge is therefore not the line content is safe to
+    // land on; `contBox.top + headerH` is. Round four found the lesson
+    // title masked on every tap from the list: this check used to compare
+    // `elBox.top` against `contBox.top` alone, which is true even with the
+    // title entirely behind the opaque header, because "scrolled to the
+    // container's top" and "not painted over" are different claims and only
+    // the first one was tested. Measured, not assumed, since the header's
+    // own height depends on the loaded font and the lesson nav's width.
+    // +2px clearance past the header's own measured height: scrollIntoView
+    // snaps to an integer scrollTop, and landing the title EXACTLY on the
+    // header's own bottom edge measured a 0.3px sliver still behind it on a
+    // subpixel layout — a hairline, but "not painted over" should not ride
+    // on a rounding coin flip.
+    const header = container.querySelector('#lessons > h2')
+    const headerH = header ? header.getBoundingClientRect().height + 2 : 0
+    const tryLine = el.querySelector('.try-line') || el
+    const elBox = el.getBoundingClientRect()
+    const tryBox = tryLine.getBoundingClientRect()
+    const contBox = container.getBoundingClientRect()
+    const safeTop = contBox.top + headerH
+    const visible = elBox.top >= safeTop - 0.5 && tryBox.bottom <= contBox.bottom + 0.5
+    if (!visible) {
+      // scroll-margin-top makes scrollIntoView stop headerH short of the
+      // container's own top, landing the title just below the sticky cap
+      // instead of behind it.
+      el.style.scrollMarginTop = `${headerH}px`
+      el.scrollIntoView({ block: 'start' })
+    }
+  })
+  useEffect(() => {
+    if (!lessonLoadedOnce.current) {
+      lessonLoadedOnce.current = true
+      return
+    }
+    syncLessonScroll.current()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson, loads])
+
+  // The bug this effect exists for: none of the above reruns on a LIVE
+  // resize. `.app.has-lesson .controls` only clips to 40vh below 900px
+  // (styles.css), so a page that loaded wide (no cap, no correction needed)
+  // and is then narrowed past that breakpoint gets the cap applied to
+  // whatever scrollTop the sidebar already had — 0 on a page that never
+  // needed to scroll it, which is exactly the desktop default. The lesson
+  // body's try line then sits below the newly-clipped box with nothing
+  // having ever checked it, because [lesson, loads] did not change. A
+  // devtools device-toggle or a laptop window drag crosses this live; a
+  // fresh phone load never does, which is why no probe had caught it
+  // (`document.fonts.ready` is not the gap here — no probe here ever
+  // resizes without first navigating).
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)')
+    const onChange = (e) => {
+      if (!e.matches) return
+      // The resize and the CSS cap both apply synchronously with the
+      // viewport change; the container's own box is already correct by the
+      // time the 'change' event fires, so no extra frame wait is needed —
+      // but one is cheap insurance against a browser that reflows a tick
+      // later, and this runs at most once per breakpoint crossing.
+      requestAnimationFrame(() => syncLessonScroll.current())
+    }
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
   // The state a chip or a dirtiness check reads: the loop's setup, not its view.
   const state = { plantId, plantP, ctrlId, ctrlP, stepInput }
   const dirty = isDirty(active, state)
@@ -276,7 +471,11 @@ export default function App() {
   // both from verdict.js so chrome.js's picker-fold scan reads the exact
   // same text this render shows rather than a hand-kept stand-in for it.
   const badge = verdictBadge(verdict)
-  const marginNote = bodeMarginNote(marginal, marg.gainMargin)
+  // Whether the PLANT alone (feedback cut) already carries a right-half-plane
+  // pole — the one case where a gain margin under 1x is the safe reading
+  // rather than a warning (verdict.js: plantInverted, bodeMarginNote).
+  const inverted = useMemo(() => plantInverted(loop), [loop])
+  const marginNote = bodeMarginNote(verdict, marg.gainMargin, inverted)
   const second = useMemo(() => secondOrderMetrics(loop.closed), [loop])
 
   const nyq = useMemo(() => {
@@ -425,8 +624,12 @@ export default function App() {
   const err = 1 - dcGain(loop.closed)
   // The top bar's own field: '—' with a reason for a loop that never
   // settles, rather than "200%" or "−Infinity%" printed against physics
-  // that has nothing to report.
-  const errInfo = steadyErrorOf(loop.closed, verdict)
+  // that has nothing to report. Read off `stepTf`, the SAME transfer
+  // function the Step pane's own "settles to" already reads — not always
+  // `loop.closed` — so the two numbers can never name two different
+  // questions (round four: with Disturbance selected the pane settled at
+  // 0.1087 while this field kept reading the reference loop's 2.2%).
+  const errInfo = steadyErrorOf(stepTf, verdict, stepInput)
 
   const chips = useMemo(
     () => chipsFor(active, state, marg),
@@ -503,7 +706,7 @@ export default function App() {
 
   return (
     <div className={`app${active ? ' has-lesson' : ''}`}>
-      <aside className="controls">
+      <aside className="controls" ref={controlsRef}>
         <header>
           <LabNav current="control-lab" />
           <h1>Control Lab</h1>
@@ -639,14 +842,18 @@ export default function App() {
             })}
           </div>
           {active ? (
-            <div className="lesson-body">
+            <div className="lesson-body" ref={lessonBodyRef}>
               <h3 className="note-title">{active.name}</h3>
               <p className={`hint note${dirty ? ' is-dirty' : ''}`}>
-                {active.note}
-                {/* Definitions on contact, opened from the note's last line
-                    rather than a row of their own: the fold at 1366×768 has
-                    no 22 px to spare, and the terms cost nothing to someone
-                    who already has them. */}
+                {/* Definitions on contact (student review, item 3): the FIRST
+                    use of a listed term right in the note is a tappable word
+                    (MarkedNote, noteMarks.js), opening its definition in the
+                    card just below — not only through the "terms used here"
+                    link at the note's end, which a skim reader never
+                    noticed. A term the note never spells out, or a second
+                    use of one already marked, stays reachable from that same
+                    fold, unchanged. */}
+                <MarkedNote text={active.note} marks={noteMarks} open={openTerm} onOpen={setOpenTerm} />
                 {termsFor(active.terms).length ? (
                   <>
                     {' '}
@@ -661,6 +868,7 @@ export default function App() {
                   </>
                 ) : null}
               </p>
+              <NoteDefCard openId={openTerm} onClose={() => setOpenTerm(null)} />
               {termsOpen && termsFor(active.terms).length ? (
                 <dl className="terms-list">
                   {termsFor(active.terms).map((t) => (
@@ -681,9 +889,26 @@ export default function App() {
                   {circuit && circuitHref ? (
                     <a href={circuitHref}>Open Circuit Lab →</a>
                   ) : (
-                    <button type="button" className="lesson-link" onClick={() => loadLesson(LESSONS[0])}>
-                      ↩ back to lesson 1
-                    </button>
+                    <>
+                      {/* This lesson's plant (three lags) is one of the six
+                          the course closes on with no catalogue circuit —
+                          the exact moment a reader decides whether to leave
+                          is the wrong place to go silent about why there is
+                          no bridge to Circuit Lab. Four words, not even the
+                          one-line pointer used below (let alone the full
+                          two-sentence reason in systems.js): this exact
+                          paragraph is the tightest fold budget in the
+                          course (this lesson's own try line, chips and
+                          knobs already leave it 7px of slack at 1366×768),
+                          and the reason itself is no longer stranded on the
+                          Math tab now that it prints there for real — this
+                          only has to name that a reason exists and point at
+                          it, which four words already do. */}
+                      {plant.circuitNote ? 'No link — see Math. ' : ''}
+                      <button type="button" className="lesson-link" onClick={() => loadLesson(LESSONS[0])}>
+                        ↩ back to lesson 1
+                      </button>
+                    </>
                   )}
                 </p>
               ) : null}
@@ -727,16 +952,6 @@ export default function App() {
               ) : null}
             </div>
           )}
-          {/* The hand-over in reverse. Exact only: a plant with a gain, or
-              component values outside Circuit Lab's knobs, draws nothing. */}
-          {circuit && circuitHref ? (
-            <p className="hint circuit-back">
-              This is also a circuit — {circuit.sentence}.{' '}
-              <a href={circuitHref} title="The same transfer function, as the circuit it is">
-                Open in Circuit Lab →
-              </a>
-            </p>
-          ) : null}
         </section>
 
         {/* The section names carry the loop's symbols: the topbar strip, the
@@ -748,6 +963,16 @@ export default function App() {
             visible. The plant is what you are stuck with; it follows. */}
         <section id="controller">
           <h2>Controller — C(s)</h2>
+          {/* Definitions on contact, at the header — not only in a lesson's
+              own terms fold. NEEDS.md asked for this so an idly-exploring
+              reader meets the input/output identity (item 3, student
+              review); PLANT_DEF/CONTROLLER_DEF live in chrome.js so this
+              text and chromeTermIds' scan of it can never drift apart.
+              Gated the same way ctrl.hint below already is: a lesson's own
+              note is doing this teaching in context, and the tight fold
+              budget at 1366×768 (verify §7) has no spare line for a second,
+              generic one stacked on top of it. */}
+          {active ? null : <p className="hint section-def">{CONTROLLER_DEF}</p>}
           <div className="presets">
             {Object.entries(CONTROLLERS).map(([key, c]) => (
               <button
@@ -775,6 +1000,18 @@ export default function App() {
             // go quietly false). The picker's own range stands outside a
             // lesson.
             const lessonRange = active?.ranges?.[p.key]?.(ctrlP)
+            // A bare gain (no unit — Kp, Ki, Kd, Kc) has a floor above zero,
+            // and typing a negative number used to clamp there silently: the
+            // field commits 0.001 correctly (aria-valuenow confirms it) but
+            // DISPLAYS it in engineering notation as "1" beside a barely-there
+            // "m", which reads as "snapped to 1" to anyone not hunting for
+            // the prefix — round three's own finding. The fix decided here is
+            // to keep the clamp (it is the right floor, already applied) and
+            // make it legible before a reader ever needs it: a standing
+            // caption in the field's own hint slot, which costs no extra
+            // height (num-head is a row already, per @ee-labs/ui's base.css).
+            // A field with a real unit (the lead's zero/pole, rad/s) is
+            // unaffected — its own value never needs this floor called out.
             const field = (
               <NumField
                 key={p.key}
@@ -785,6 +1022,7 @@ export default function App() {
                 min={lessonRange?.min ?? p.min}
                 max={lessonRange?.max ?? p.max}
                 scale={p.scale}
+                hint={p.unit ? undefined : `floor ${fmtNum(p.min, 3)}, no negative gains`}
                 eng
               />
             )
@@ -800,6 +1038,7 @@ export default function App() {
 
         <section id="plant">
           <h2>Plant — P(s)</h2>
+          {active ? null : <p className="hint section-def">{PLANT_DEF}</p>}
           {PLANT_GROUPS.map((g) => {
             const inGroup = Object.entries(PLANTS).filter(([, p]) => p.group === g)
             if (!inGroup.length) return null
@@ -873,6 +1112,72 @@ export default function App() {
             </div>
           ) : null}
         </section>
+
+        {/* The hand-over in reverse. Exact only: a plant with a gain, or
+            component values outside Circuit Lab's knobs, draws nothing —
+            EXCEPT that "nothing" used to include the four plants with no
+            catalog match at all (Integrator, Motor, Three lags, Custom),
+            which rendered this whole block as blank, indistinguishable
+            from an oversight. CORE_SCOPE Rule 2: a refusal is content, so
+            a plant with no link but a reason (`circuitNote`, systems.js)
+            gets that reason right here, where the link would have sat —
+            the same fix Unstable's own circuitNote now reaches, no longer
+            stranded on the Math tab with nothing pointing at it.
+
+            Moved below the controller and plant cards, out of `#lessons`
+            (round five's fold fix): it is a "where next" pointer, not part
+            of the lesson, and sitting inside `#lessons` pushed every
+            featured knob down by its own height — the deployed fold probe
+            at 1366×768 measured "Watch the integrator take over" landing
+            its Ki knob at bottom 799, 31px past the 768px fold, with this
+            block and the deployed LabNav row (absent on a bare dev port,
+            present here) the only two things a bare-preview run never
+            priced in. CSS `order` cannot move an element out of its own
+            parent, so this moved in the DOM instead — a phone reader still
+            reaches it by scrolling the sidebar, now past both cards rather
+            than past the lesson list alone. */}
+        {circuit && circuitHref ? (
+          <p className="hint circuit-back">
+            This is also a circuit — {circuit.sentence}.{' '}
+            <a href={circuitHref} title="The same transfer function, as the circuit it is">
+              Open in Circuit Lab →
+            </a>
+          </p>
+        ) : // Round-four grading: the six lessons on motor or three lags
+        // print a fully verified bench circuit on the Math tab (math.js)
+        // and never say the catalogue has no match for it, and this is
+        // the ONLY other spot that reason could reach a lesson in
+        // progress — everywhere else it was gated on `!active`, so the
+        // one way to it was abandoning the lesson by clicking the plant,
+        // which also resets the gains. The reader's need for the reason
+        // is highest exactly during the lesson that hid it, so this now
+        // shows during one too — but as a one-line pointer to the Math
+        // tab, not the full reason: printing the full circuitNote
+        // unconditionally is the change that once pushed the featured
+        // knob 18-75px past the fold on these same plants (motor,
+        // unstable, three lags), which is why it was gated to `!active`
+        // in the first place. A pointer costs one short line instead of
+        // the reason's own two or three, and the reason itself is no
+        // longer stranded on the Math tab now that it prints there for
+        // real — this line's whole job is pointing at it, and
+        // chrome.js's cue scan already covers the words IN circuitNote
+        // unconditionally of `active`, so this shorter line introduces
+        // no cue word that scan does not already resolve.
+        //
+        // Suppressed on the LAST lesson specifically: its own "That is
+        // the course" paragraph (in `#lessons`, above) now carries the
+        // identical one-line pointer already — a second copy stacked
+        // right under it would say the same thing twice on one screen for
+        // nothing, and that screen is the tightest fold budget in the
+        // course (the try line, chips and knobs of the very last lesson),
+        // with no room to spend on a repeated sentence.
+        !circuit && plant.circuitNote && !(active && activeIndex === LESSONS.length - 1) ? (
+          <p className="hint circuit-back is-refusal">
+            {active
+              ? 'No catalogue circuit matches this plant — see Math for why.'
+              : plant.circuitNote}
+          </p>
+        ) : null}
 
         {/* No View section: the view controls live in the headers of the
             panes they govern, same proximity rule Reed asked of Signal Lab —
@@ -955,13 +1260,17 @@ export default function App() {
           />
         ) : null}
         <div className="topbar-controls">
-          <span className="topbar-field">
+          {/* "...and what it costs" tells the reader to look at the margin
+              with nothing on screen leading the eye there (student review).
+              `callout` names the field the active lesson is about; the ring
+              is the nudge, the number underneath is unchanged. */}
+          <span className={`topbar-field${active?.callout === 'phasemargin' ? ' is-callout' : ''}`}>
             <span>phase margin</span>
             <b className={marg.phaseMargin != null && marg.phaseMargin < 30 ? 'warn' : ''}>
               {marg.phaseMargin == null ? '—' : `${marg.phaseMargin.toFixed(1)}°`}
             </b>
           </span>
-          <span className="topbar-field">
+          <span className={`topbar-field${active?.callout === 'gainmargin' ? ' is-callout' : ''}`}>
             <span>gain margin</span>
             <b className={gainMarginWarn(marg.gainMargin) ? 'warn' : ''}>
               {marg.gainMargin == null ? '—' : `${marg.gainMarginDb.toFixed(1)} dB`}
@@ -1008,7 +1317,11 @@ export default function App() {
         </div>
       </div>
 
-      <main className={`views${weighted ? ' is-weighted' : ''}`}>
+      {/* data-view names the lesson's OWN view (primaryView, not necessarily
+          the live `lower` — a toggle away from it) so styles.css can bias a
+          short viewport toward Watch/Nyquist/Locus, which carry extra chrome
+          of their own the Bode pane does not (item 5, student review). */}
+      <main className={`views${weighted ? ' is-weighted' : ''}`} data-view={primaryView || undefined}>
         <section className="view">
           <div className="view-head">
             <h2>Open loop L(s) = C(s)·P(s)</h2>
@@ -1033,7 +1346,17 @@ export default function App() {
               </button>
             </div>
             <div className="readout">
-              {marg.phaseMargin == null ? (
+              {/* An undefined plant refuses here first — before the
+                  crossover fallback below, which would otherwise print
+                  "gain never reaches 1" against a P(s) that has no value at
+                  any frequency, and before bodeMarginNote's own sentence,
+                  which already says the same reason (verdict.js) but need
+                  not be repeated twice on one line. */}
+              {loop.reason ? (
+                <span className="prov" data-role="undefined-plant">
+                  {loop.reason}
+                </span>
+              ) : marg.phaseMargin == null ? (
                 <span className="prov">{marg.crossoverNote || 'gain never reaches 1 — no crossover to measure'}</span>
               ) : (
                 <span>
@@ -1050,14 +1373,16 @@ export default function App() {
                   margin is a debt, so that sentence has to point DOWN. Same
                   function chrome.js scans, so none of these four can print
                   "boundary" or "−180°" with no definition reachable. */}
-              <span className={marginNote.prov ? 'prov' : undefined}>
-                <Prose parts={marginNote.parts} />
-              </span>
+              {loop.reason ? null : (
+                <span className={marginNote.prov ? 'prov' : undefined}>
+                  <Prose parts={marginNote.parts} />
+                </span>
+              )}
               {/* The lead network's own number — the try line quotes it,
                   because the loop's phase margin is NOT monotone in the
                   pole (it dips, then rises, as the pole passes the zero),
                   while what the network itself adds is. */}
-              {ctrlId === 'lead'
+              {!loop.reason && ctrlId === 'lead'
                 ? (() => {
                     const lp = leadPeak(ctrlP.z, ctrlP.p)
                     if (!lp) return null
@@ -1071,17 +1396,38 @@ export default function App() {
                 : null}
             </div>
           </div>
-          <BodeCanvas
-            freqs={freqs}
-            mag={open.mag}
-            phase={open.phase}
-            showPhase={showPhase}
-            crossover={marg.gainCrossover}
-            phaseCrossover={marg.phaseCrossover}
-            ghostMag={ghost?.mag}
-            ghostPhase={ghost?.phase}
-            ghostLabel={ghost?.label}
-          />
+          {/* An undefined plant has no L(jw): evalAtFreq divides by the
+              all-zero denominator, and bode() hands back NaN magnitude at
+              every point (drawn as nothing, correctly — a canvas ignores a
+              NaN coordinate) but a PHASE of exactly 0 at every point, since
+              atan2 never ran and the array's own zero-fill stands in
+              unmarked. That drew a confident flat dashed line at 0° under a
+              readout already saying there is no system — refuse the same
+              way Nyquist, root locus, the Step/Watch panes and the Math tab
+              already do, rather than let this be the one surface that
+              still draws a picture of nothing. */}
+          {loop.reason ? (
+            <p className="hint" data-role="undefined-plant">
+              {loop.reason}
+            </p>
+          ) : (
+            <BodeCanvas
+              freqs={freqs}
+              mag={open.mag}
+              phase={open.phase}
+              showPhase={showPhase}
+              crossover={marg.gainCrossover}
+              phaseCrossover={marg.phaseCrossover}
+              ghostMag={ghost?.mag}
+              ghostPhase={ghost?.phase}
+              ghostLabel={ghost?.label}
+              // The Bode reading lesson (BodeCanvas.jsx), drawn once on each
+              // margin's own first lesson — the SAME `callout` that already
+              // rings the matching topbar field, so the ring and the picture
+              // can never point at two different things.
+              teach={active?.callout === 'phasemargin' || active?.callout === 'gainmargin' ? active.callout : null}
+            />
+          )}
         </section>
 
         <section className={`view${weighted ? ' is-primary' : ''}`}>
@@ -1135,22 +1481,31 @@ export default function App() {
               {lower === 'watch' && watch ? (
                 <>
                   <span>
-                    e now <b>{fmtNum(watch.e[Math.min(scrub.pos, watch.e.length - 1)], 3)}</b>
+                    e now <b>{fmtWatch(watch.e[Math.min(scrub.pos, watch.e.length - 1)])}</b>
                   </span>
                   {/* Each term at the cursor, in the DOM as well as on the
                       canvas — so "both parts still working" is a number a
-                      probe can read, not a picture it has to trust. */}
+                      probe can read, not a picture it has to trust.
+                      fmtWatch (watch.js): the same row's terms must share
+                      one convention at either extreme, not fall through to
+                      whichever of exponential or raw-digit notation JS's
+                      own Number.toString() happens to pick for THAT term's
+                      current magnitude. */}
                   {watch.parts.length > 1
                     ? watch.parts.map((p) => (
                         <span key={p.key} data-part={p.key}>
-                          {p.label} <b>{fmtNum(p.y[Math.min(scrub.pos, p.y.length - 1)], 3)}</b>
+                          {p.label} <b>{fmtWatch(p.y[Math.min(scrub.pos, p.y.length - 1)])}</b>
                         </span>
                       ))
                     : null}
                   <span>
-                    u now <b>{fmtNum(watch.u[Math.min(scrub.pos, watch.u.length - 1)], 3)}</b>
+                    u now <b>{fmtWatch(watch.u[Math.min(scrub.pos, watch.u.length - 1)])}</b>
                   </span>
-                  {!stable ? <span className="flag warn">never settles</span> : null}
+                  {/* An undefined plant does not "never settle": there is no
+                      simulation at all. verdictOf returns 'undefined' rather than
+                      'unstable' precisely so nothing borrows the runaway wording,
+                      and this row was reading !stable, which is true for both. */}
+                  {!stable && !loop.reason ? <span className="flag warn">never settles</span> : null}
                 </>
               ) : null}
               {lower === 'step' ? (
@@ -1201,14 +1556,29 @@ export default function App() {
                   {stepInput === 'dist' && Math.abs(dcGain(stepTf)) < 1e-9 ? (
                     <span className="flag">steady-state error 0, the integrator removes it</span>
                   ) : null}
-                  {!stable ? <span className="flag warn">never settles</span> : null}
+                  {/* An undefined plant does not "never settle": there is no
+                      simulation at all. verdictOf returns 'undefined' rather than
+                      'unstable' precisely so nothing borrows the runaway wording,
+                      and this row was reading !stable, which is true for both. */}
+                  {!stable && !loop.reason ? <span className="flag warn">never settles</span> : null}
                 </>
               ) : lower === 'nyquist' ? (
-                <span className="prov">
-                  stability is a statement about one point: 1 + L = 0
-                </span>
+                <>
+                  {viewIntro('nyquist')}
+                  <span className="prov">
+                    stability is a statement about one point: 1 + L = 0
+                  </span>
+                </>
+              ) : lower === 'locus' && loop.reason ? (
+                <>
+                  {viewIntro('locus')}
+                  <span className="prov" data-role="undefined-plant">
+                    {loop.reason}
+                  </span>
+                </>
               ) : lower === 'locus' ? (
                 <>
+                  {viewIntro('locus')}
                   {/* You are here, and where the branch meets the axis — the
                       crossing gain is the current gain times the gain
                       margin, and the test bisects the verdict to pin it.
@@ -1226,6 +1596,10 @@ export default function App() {
                   })()}
                   <span className="prov">crosses into the shaded half and the loop oscillates</span>
                 </>
+              ) : lower === 'math' && loop.reason ? (
+                <span className="prov" data-role="undefined-plant">
+                  {loop.reason}
+                </span>
               ) : lower === 'math' ? (
                 <span className="prov">a tick means the closed form and the live loop agree</span>
               ) : null}
@@ -1335,12 +1709,32 @@ export default function App() {
               <MathBody entry={math} />
             </div>
           ) : lower === 'nyquist' ? (
-            <NyquistCanvas
-              re={nyq.re}
-              im={nyq.im}
-              gainMargin={marg.gainMargin}
-              phaseMargin={marg.phaseMargin}
-            />
+            // An undefined plant has no L(jw) to plot: evalAtFreq divides by
+            // the all-zero denominator and hands the canvas NaN at every
+            // point, which used to draw as an unexplained blank frame next
+            // to a topbar still claiming "stable". Refuse in words instead,
+            // the same reason buildLoop (systems.js) already decided.
+            loop.reason ? (
+              <p className="hint" data-role="undefined-plant">
+                {loop.reason}
+              </p>
+            ) : (
+              <NyquistCanvas
+                re={nyq.re}
+                im={nyq.im}
+                gainMargin={marg.gainMargin}
+                phaseMargin={marg.phaseMargin}
+              />
+            )
+          ) : loop.reason ? (
+            // Root locus sweeps k over L = C·P: with P undefined the swept
+            // characteristic polynomial degenerates to a constant at every
+            // gain (no poles to root), and the frame that used to fit those
+            // empty branches autoscaled to whatever locusExtent's zero-point
+            // fallback produced — a nonsensical window under a blank plot.
+            <p className="hint" data-role="undefined-plant">
+              {loop.reason}
+            </p>
           ) : (
             <LocusCanvas
               poles={openPz.poles}

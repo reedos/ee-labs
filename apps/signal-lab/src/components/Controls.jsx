@@ -2,7 +2,7 @@ import React from 'react'
 import { LabNav, LessonNav, ReportIssue, TryLine } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
 import { sourceMath } from '../math-parts.js'
-import { PRESET_GROUPS } from '../presets.js'
+import { GROUP_SIGNPOSTS, PRESET_GROUPS } from '../presets.js'
 import BlockCard from './BlockCard.jsx'
 import { SourceField, featuredFields } from './fields.jsx'
 import { WAVEFORMS } from '@ee-labs/dsp'
@@ -21,12 +21,17 @@ function Source({ src, sampleRate, onChange, onRemove, canRemove, fftSize }) {
   return (
     <div className={`source${src.enabled ? '' : ' is-off'}`}>
       <div className="source-head">
-        <input
-          type="checkbox"
-          checked={src.enabled}
-          onChange={(e) => set('enabled', e.target.checked)}
-          aria-label="Enable source"
-        />
+        {/* Wrapped in its own label (bare before): a native checkbox's real
+            tap target is whatever label surrounds it, and this one had none —
+            the 13x13 native box was the whole target. */}
+        <label className="source-enable" title="Enable source">
+          <input
+            type="checkbox"
+            checked={src.enabled}
+            onChange={(e) => set('enabled', e.target.checked)}
+            aria-label="Enable source"
+          />
+        </label>
         <select value={src.type} onChange={(e) => set('type', e.target.value)}>
           {WAVEFORMS.map((t) => (
             <option key={t} value={t}>
@@ -65,6 +70,7 @@ export default function Controls({
   presets,
   onPreset,
   onChip,
+  lastChip = null,
   nav,
   openBlocks,
   setOpenBlocks,
@@ -74,6 +80,9 @@ export default function Controls({
   linkWarnings = [],
   cameFromLink = false,
   linkFrom = null,
+  onConvPlay,
+  convPlaying = false,
+  circuitHref = null,
 }) {
   const patch = (k, v) => setState((s) => ({ ...s, [k]: v }))
 
@@ -141,24 +150,94 @@ export default function Controls({
 
   const activePreset = presets.find((p) => p.name === state.presetName)
   const featured = activePreset
-    ? featuredFields(activePreset.featured, state, { setSource, setBlock })
+    ? featuredFields(activePreset.featured, state, { setSource, setBlock, patch })
     : []
   const terms = activePreset ? termsFor(activePreset.terms) : []
+  const handOverNames = presets.filter((p) => p.handOver).map((p) => p.name)
+
+  // The sidebar is its own scroller on a phone (capped in styles.css, so both
+  // plots keep the first screen) — a scroller inside a scroller. A phone's
+  // own scrollbar is transient (drawn only mid-gesture, on both iOS and
+  // Android), so `overflow-y: auto` alone announces nothing in a still
+  // screenshot — Reed's review found the source cards and the rest of the
+  // curriculum below the fold reading as "everything there is". `has-more`
+  // drives a CSS scroll-shadow (paint only, no layout height, so it never
+  // competes with the featured knob for room) and reveals a plain-language
+  // label at the point a small scroll would first uncover it. Measured
+  // rather than assumed, since whether there IS more depends on the preset,
+  // the open math panels and the block count, all of which resize this box.
+  const controlsRef = React.useRef(null)
+  const [moreBelow, setMoreBelow] = React.useState(false)
+
+  // The sidebar is a scroller inside a scroller (`.controls` on top of the
+  // page), and the ACTIVE lesson — `.lesson`, the title/try/featured block a
+  // student came to touch — can sit anywhere inside it depending on how many
+  // groups happen to be open and how far down the list its own preset lives.
+  // A tap on a preset several groups down leaves `.controls` scrolled to
+  // wherever that button was, with the lesson it just loaded off screen
+  // above the fold (Reed's review measured 495 px on a phone tapping Ring
+  // modulator). Opening a further group without tapping anything can do the
+  // same thing from the other side: on a laptop `.preset-list` sits ABOVE
+  // `.lesson` in the DOM, so every group left open by "browsing ahead"
+  // pushes the ALREADY active lesson further down the pane, with the scroll
+  // position never having moved (measured: the try line 413 px into a
+  // 2048 px tall pane with the window still at the top). Prev and next read
+  // as airtight only because a fresh load always leaves one group open —
+  // fold the same content into that little room and the same bug is there.
+  //
+  // Fixed by checking, not assuming: after a preset loads OR a group's own
+  // open/closed set changes, if `.lesson`'s own top edge is no longer inside
+  // `.controls`' visible box, scroll it back to the top of that box. The
+  // check is what keeps prev/next exactly as they were — on a normal single-
+  // group screen the lesson is already in view, so nothing moves; the two
+  // measured cases above are the ones where it actually fires. Skipped on
+  // the very first render, since the initial load has nothing to correct.
+  //
+  // The check reads the TRY LINE's own box, not `.lesson`'s: `.lesson` runs
+  // from the lesson nav down through the note and its terms, so its own top
+  // edge can still be inside the visible box while the try line and the
+  // featured knob a little further down it are not — exactly the case that
+  // slipped through an earlier version of this check.
+  const lessonRef = React.useRef(null)
+  const loadedOnce = React.useRef(false)
+  React.useEffect(() => {
+    if (!loadedOnce.current) {
+      loadedOnce.current = true
+      return
+    }
+    const el = lessonRef.current
+    const container = controlsRef.current
+    if (!el || !container) return
+    const target = el.querySelector('.try-line') || el
+    const targetBox = target.getBoundingClientRect()
+    const contBox = container.getBoundingClientRect()
+    const visible = targetBox.top >= contBox.top - 0.5 && targetBox.bottom <= contBox.bottom + 0.5
+    if (!visible) el.scrollIntoView({ block: 'start' })
+  }, [state.presetName, openGroups])
+  React.useLayoutEffect(() => {
+    const el = controlsRef.current
+    if (el) setMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 1)
+  })
+  React.useEffect(() => {
+    const el = controlsRef.current
+    if (!el) return
+    const check = () => setMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 1)
+    el.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('resize', check)
+    return () => {
+      el.removeEventListener('scroll', check)
+      window.removeEventListener('resize', check)
+    }
+  }, [])
 
   return (
-    <aside className="controls">
+    <aside className={`controls${moreBelow ? ' has-more' : ''}`} ref={controlsRef}>
       <header>
         <LabNav current="signal-lab" />
         <h1>Signal Lab</h1>
         <p className="sub">
           A signal, its frequency content, and what happens when you put things in the way.
         </p>
-        <ReportIssue
-          lab="Signal Lab"
-          version={pkg.version}
-          state={state}
-          summary={reportSummary(state)}
-        />
         {/* The words the top bar and every readout use on EVERY screen — FFT,
             bin, frame, window, the window names, RMS, crest, span — defined
             once here rather than in each preset's own terms list (CHROME_TERMS
@@ -231,6 +310,7 @@ export default function Controls({
                 }}
               >
                 {g}
+                {GROUP_SIGNPOSTS[g] ? <span className="group-signpost">{GROUP_SIGNPOSTS[g]}</span> : null}
                 {holdsActive ? <span className="group-active-dot" aria-hidden="true" /> : null}
               </summary>
               <div className="presets">
@@ -249,7 +329,7 @@ export default function Controls({
           )
         })}
         </div>
-        <div className="lesson">
+        <div className="lesson" ref={lessonRef}>
         {nav ? (
           <LessonNav
             index={nav.index}
@@ -271,7 +351,7 @@ export default function Controls({
               text={activePreset.try}
               chips={activePreset.chips || []}
               onChip={onChip}
-              activeChip={activeChip(state, activePreset.chips || [])}
+              activeChip={activeChip(state, activePreset.chips || [], lastChip)}
             />
             {/* The knob the try line names, right under it — the same
                 control as in its card below, so "drag Q" is not a scroll
@@ -281,7 +361,7 @@ export default function Controls({
                 by however long the note happens to run (six FIR/z-plane
                 presets' knobs still ran 40-100 px past a 1366×768 fold with
                 the note ahead of them). */}
-            {featured.length ? (
+            {featured.length || activePreset.playHint ? (
               <div className="featured">
                 {featured.map((f) => (
                   <div className="featured-item" key={f.key}>
@@ -289,9 +369,38 @@ export default function Controls({
                     {f.node}
                   </div>
                 ))}
+                {/* "Press play" names a canvas transport, not a source or a
+                    block field — the play button lives in the Time domain
+                    view, a full column away from this try line and easy to
+                    miss (the review's own complaint). Mirrored here rather
+                    than moved: the scrubber and speed chips stay on the
+                    canvas, where the animation they drive is visible. */}
+                {activePreset.playHint ? (
+                  <div className="featured-item" key="play">
+                    <p className="featured-from">Time domain</p>
+                    <button type="button" className="ghost try-play" onClick={onConvPlay}>
+                      {convPlaying ? '⏸ pause' : '▶ play'}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
-            <p className="hint">{activePreset.note}</p>
+            <p className="hint lesson-note">{activePreset.note}</p>
+            {activePreset.why ? <p className="hint lesson-why">{activePreset.why}</p> : null}
+            {/* The hand-over out, the reverse of Circuit Lab's own "Open in
+                Signal Lab →": a real link only where the two apps are
+                deployed side by side (null in dev, so this renders nothing
+                there) and only on the one preset CORE_SCOPE calls exact — a
+                series RLC read across its capacitor carries the same cutoff
+                and Q this block already has, not an approximation of them. */}
+            {activePreset.handOver && circuitHref ? (
+              <p className="hint circuit-forward">
+                This is also a circuit, a series RLC with the same cutoff and Q.{' '}
+                <a href={circuitHref} title="The same corner and Q, as the circuit they describe">
+                  Open in Circuit Lab →
+                </a>
+              </p>
+            ) : null}
           </>
         ) : null}
         {/* The vocabulary this lesson leans on, defined where it is used. A
@@ -313,7 +422,35 @@ export default function Controls({
             </dl>
           </details>
         ) : null}
+        {/* Said once, honestly: which experiments cross into another lab.
+            CORE_SCOPE's rule is deliberate — no link where the mapping is
+            not exact — so most experiments stand alone, and nothing said
+            so before now. Placed at the END of the lesson block (after the
+            note and its terms) rather than near the try line: anything
+            earlier here pushes the try line and the featured knob down,
+            and the fold probe holds both at 1366x768. Skipped on the one
+            preset that already carries its own "Open in Circuit Lab" line,
+            so nothing repeats itself. Computed from the data, not a
+            hand-written name, so a second exact hand-over stays covered
+            without a second edit here. */}
+        {activePreset && !activePreset.handOver && handOverNames.length ? (
+          <p className="hint transfer-note">
+            {handOverNames.join(', ')} carries an exact match into another lab. Every other experiment here stands alone.
+          </p>
+        ) : null}
         </div>
+        {/* Phone only (styles.css): announces that `.controls` is its own
+            scroller — a scroller inside the page's own scroller, with no
+            native scrollbar to say so, which read as "everything there is"
+            rather than "more below" (Reed's review). Flex `order` leaves it
+            at its default (0), so it lands right after `.lesson` (order -1)
+            and before `.preset-list` (order 1): the first thing a further
+            scroll reveals, never overlapping the featured knob above it. */}
+        {moreBelow ? (
+          <div className="controls-more" aria-hidden="true">
+            ▾ more below
+          </div>
+        ) : null}
       </section>
 
       <section id="sources">
@@ -425,6 +562,20 @@ export default function Controls({
           />
           Show filter start-up transient
         </label>
+      </section>
+
+      {/* Moved out of the header, where it sat right above the experiment
+          buttons and read as one more item in that list — the impatient
+          student clicked it thinking it was an experiment. Down here, past
+          everything a student came to touch, and set off by its own rule in
+          styles.css, it reads as what it is: a way out, not a way in. */}
+      <section className="feedback">
+        <ReportIssue
+          lab="Signal Lab"
+          version={pkg.version}
+          state={state}
+          summary={reportSummary(state)}
+        />
       </section>
     </aside>
   )

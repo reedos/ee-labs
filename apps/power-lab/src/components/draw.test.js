@@ -29,12 +29,12 @@ const scope = (id, over = {}, traces = null) => {
   return { exp, x, base, ctx, g }
 }
 const sweep = (id, over = {}) => {
-  const { exp, p, x } = at(id, over)
-  const s = sweepFor(exp, p)
-  const b = sweepFor(exp, defaultsOf(id))
+  const { exp, p, x, base } = at(id, over)
+  const s = sweepFor(exp, p, x)
+  const b = sweepFor(exp, defaultsOf(id), base)
   const ctx = fakeCtx()
   const marks = sweepMarks(exp, x, s)
-  const g = drawSweep(ctx, W, H, { points: s.points, basePoints: b.points, sweep: exp.sweep, at: s.at, marks })
+  const g = drawSweep(ctx, W, H, { points: s.points, basePoints: b.points, sweep: exp.sweep, at: s.at, atY: s.atY, atY2: s.atY2, marks })
   return { exp, x, s, b, ctx, g, marks }
 }
 const traceLabels = new Set(Object.values(TRACES).map((t) => t.label))
@@ -184,12 +184,48 @@ describe('the sweep', () => {
     expect(rotated(sweep('c5').ctx, 'V_out (V)')).toBe(true)
   })
 
-  it("marks the boost's peak on its curve, at the D it happens", () => {
-    const { ctx, g, marks, s } = sweep('c2')
+  // The same failure, on the other axis: B6, B7 and B8 sweep η with no y2,
+  // so the bare glyph is the LEFT axis's title — drawFrame's own, not
+  // SweepCanvas's y2 code, and drawFrame rotates every title it is given.
+  // C2's fix reached the right axis only; the left one kept rotating a lone
+  // η until this test (2026-09-03, the same review that found the giant
+  // empty A1 sweep).
+  it('the left axis keeps the same rule: B6, B7 and B8 also sweep η alone, and it stays upright there too', () => {
+    for (const id of ['b6', 'b7', 'b8']) expect(rotated(sweep(id).ctx, 'η'), id).toBe(false)
+  })
+
+  // Reed, 2026-09-03: A1's marker read "5 Ω → 4.935 V" — the nearest of the
+  // 61 sampled loads, not the 5 V every other pane on screen agreed on.
+  it("the \"at\" marker draws the exact analysed value, not the sweep's nearest sampled point", () => {
+    const { x, ctx, g, s } = sweep('a1')
+    // The default load, 5 Ω, is not one of the sweep's own 61 log-spaced
+    // samples, so a marker reading the nearest one would print something
+    // other than 5 V here.
+    expect(s.points.some((q) => Math.abs(q.x - 5) < 1e-9)).toBe(false)
+    expect(x.m.sig.vout.avg).toBeCloseTo(5, 9)
+    const text = texts(ctx).find((t) => /→/.test(t.text))
+    expect(text, 'the marker’s label is drawn').toBeTruthy()
+    expect(text.text).toBe('5 Ω → 5 V')
+    // The dot itself sits at the exact value, not a resampled one: its
+    // centre is at the cursor's own x (g.sx(g.X(5))) and at 5 V's y, not at
+    // whichever sample happens to be nearest 5 Ω.
+    const cx = g.sx(g.X(5))
+    const cy = g.sy(g.Y(5))
+    const ring = ctx.calls.find((c) => c.name === 'arc' && Math.abs(c.args[0] - cx) < 0.5 && Math.abs(c.args[1] - cy) < 0.5)
+    expect(ring, 'the dot is drawn at the exact cursor and value').toBeTruthy()
+  })
+
+  it("marks the boost's peak on its curve, at the exact D it happens — not the sweep grid's nearest sample to it", () => {
+    const { x, ctx, g, marks } = sweep('c2')
     const peak = marks.find((m) => m.type === 'point')
     expect(peak).toBeTruthy()
     expect(peak.label).toMatch(/^peak M = \d+\.\d\d at D = 0\.\d\d$/)
-    expect(peak.y).toBe(Math.max(...s.points.map((q) => q.M)))
+    // The same number the math panel's "the peak this R_L allows" row shows
+    // (x.formulas.Mpeak/Dpeak) — the exact analytic peak, which need not
+    // land on one of sweepD's 61 samples the way A1's design load did not
+    // land on its own sweep's samples (2026-09-03).
+    expect(peak.y).toBeCloseTo(x.formulas.Mpeak, 9)
+    expect(peak.x).toBeCloseTo(x.formulas.Dpeak, 9)
     const label = texts(ctx).find((t) => t.text === peak.label)
     expect(label).toBeTruthy()
     const k = g.area.k

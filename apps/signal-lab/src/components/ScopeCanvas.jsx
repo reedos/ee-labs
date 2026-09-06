@@ -14,6 +14,23 @@ export const CAPTION_AT_NYQUIST =
   'this sits exactly at Nyquist — two samples a cycle: they pin the frequency but not the height, so drag the phase and watch the same tone read anything from full scale to nothing'
 
 /**
+ * How many samples land in one pixel of the plot, at a given plot width.
+ *
+ * This is the zoom-dependent half of `reconstructed` below: whether the plot
+ * is narrow enough, relative to how many samples it must show, that the
+ * scope switches from a straight trace to sparse dots with a sinc curve
+ * through them. Pulled out of the draw loop so a preset's own default can be
+ * checked without a canvas — see presets.test.js's caption coverage, which
+ * checks every preset's terms list against what its captions actually say
+ * at both a phone and a laptop plot width.
+ */
+export function samplesPerPixel({ sampleRate, spanSeconds, divisionRate, areaWidthPx }) {
+  const perSecond = divisionRate || 1000
+  const xMax = Math.max(1e-9, spanSeconds * perSecond)
+  return (xMax / areaWidthPx / perSecond) * sampleRate
+}
+
+/**
  * Which captions the scope owes the reader, given what it drew and what the
  * signal is doing.
  *
@@ -156,7 +173,7 @@ export default function ScopeCanvas({
       )
       if (n < 2) return
 
-      const samplesPerPx = ((xMax / probe.w) / perSecond) * sampleRate
+      const samplesPerPx = samplesPerPixel({ sampleRate, spanSeconds, divisionRate, areaWidthPx: probe.w })
       const sparse = samplesPerPx < 0.5
       const marked = samplesPerPx < 1 / 9
       const drawable = traces.some((tr) => tr.buf && tr.buf.length >= 2)

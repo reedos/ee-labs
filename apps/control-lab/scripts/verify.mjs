@@ -7,7 +7,8 @@
 // gain up to just under it and just over it, and requires the app to agree.
 
 import { chromium } from 'playwright'
-import { foldProbe, phoneProbe, PHONE_VIEWPORT } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { foldProbe, phoneProbe, withLabNav, PHONE_VIEWPORT, LAPTOP_VIEWPORTS } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { tapTargetProbe, FLOOR, HARD_FLOOR } from '@ee-labs/ui/verify/tapTargetProbe.mjs'
 // Defect 2's own cue table, imported rather than re-typed: item 33 below
 // scans what is ACTUALLY on screen with the same CUES the app itself scans
 // lesson prose against, so a future cue word landing only inside a
@@ -33,7 +34,15 @@ await page.goto(URL, { waitUntil: 'load' })
 await page.waitForSelector('.views canvas')
 await page.waitForTimeout(400)
 
-const settle = () => page.waitForTimeout(240)
+// Waits out the animation frame AND lets web fonts finish loading. Text set
+// in a web font measures narrower/shorter before it swaps in — a box read
+// during that window is optimistic (Signal Lab's verify.mjs found the ~8 px
+// reproduction this comment is copied from). Every fold/tap measurement in
+// this file goes through this settle(), so none of them can be taken early.
+const settle = async () => {
+  await page.waitForTimeout(240)
+  await page.evaluate(() => document.fonts.ready)
+}
 
 // ------------------------------------------------- 0. what the page opens on
 
@@ -1004,11 +1013,47 @@ console.log('\n4e. Arrival from a circuit: named, oriented, the drive labelled\n
   console.log('   circuit named in banner and diagram; notice tracks the controller; identity sheds on plant change')
 
   // The reverse hand-over is exact-only AND deployed-only: on a bare dev
-  // port there is no Circuit Lab beside this page, so nothing is drawn.
-  // (The mapping itself is measured in toCircuitLab.test.js.)
+  // port there is no Circuit Lab beside this page, so `circuitUrl()`
+  // resolves null and nothing is drawn. (The mapping itself is measured in
+  // toCircuitLab.test.js.)
+  //
+  // This used to assert only that absence, and it was only ever run against
+  // `vite preview` on a bare port, where that absence is the whole story.
+  // Served under a real `/control-lab/` path the same page draws a real
+  // link, and nothing here had ever measured it — that is how this lab
+  // shipped a 115x16 px hand-over link on a phone while section 34 reported
+  // every element clearing the 44 px floor: the link was not in the DOM on
+  // the port that probe ran against. So the assertion now branches on which
+  // layout it is looking at, the way Signal Lab's own verify.mjs (section
+  // 10p) fixed the identical defect: on a bare port, no link, because there
+  // is no sibling to point at; on the deployed path, a link that resolves
+  // to Circuit Lab AND carries a 44px box, checked here rather than left to
+  // section 34, so this one cannot go back to being measured only when
+  // someone remembers to.
   await clickPreset('First order lag')
-  if (await page.locator('.circuit-back').count()) {
-    fail('the "Open in Circuit Lab" line should not render where the sibling URL resolves to null')
+  const deployed = /\/(signal|circuit|control|circuit-elements|power)-lab\/?$/.test(new global.URL(URL).pathname)
+  const backLink = page.locator('.circuit-back a').first()
+  const backCount = await backLink.count()
+
+  if (!deployed) {
+    if (backCount) fail('the "Open in Circuit Lab" line should not render where the sibling URL resolves to null')
+    else console.log('   bare port: no link, as designed (circuitUrl resolves null off the deployed path)')
+  } else if (!backCount) {
+    fail('First order lag: the hand-over drew NO link on the deployed path — circuitUrl should resolve a sibling there')
+  } else {
+    const href = await backLink.getAttribute('href')
+    if (!/circuit-lab\//.test(href || '')) fail(`First order lag: hand-over href does not point at Circuit Lab: ${href}`)
+
+    await page.setViewportSize(PHONE_VIEWPORT)
+    await settle()
+    const box = await backLink.boundingBox()
+    if (!box) fail('First order lag: the deployed hand-over link has no box to measure')
+    else if (box.height < FLOOR || box.width < FLOOR) {
+      fail(`First order lag: deployed hand-over link is ${Math.round(box.width)}x${Math.round(box.height)}px, under the ${FLOOR}px floor`)
+    } else {
+      console.log(`   deployed: link to ${href}, ${Math.round(box.width)}x${Math.round(box.height)}px at 390x844`)
+    }
+    await page.setViewportSize({ width: 1920, height: 1080 })
   }
 
   // A clean page for the sections after this one (blank first, same reason).
@@ -1247,6 +1292,13 @@ console.log('\n6b. Math tab on phone: no plot goes absurdly tall, and switching 
 
 // ------------------------------------ 7. the fold: every lesson's knob on screen
 
+// The deployed page carries the LabNav row above the title (26 px); a dev
+// port has no siblings so it hides. withLabNav (packages/ui/verify/foldProbe.mjs)
+// stands a placeholder in, so the fold measured here (7 and 7b both) is the
+// fold a student gets on the site. foldProbe() now applies it automatically
+// for every case below; 7b's continuous walk does not go through foldProbe,
+// so it still calls withLabNav directly.
+
 console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
 {
   // For every lesson: the try line, the featured knob(s), the controller
@@ -1264,20 +1316,10 @@ console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
       [...document.querySelectorAll('.featured')].map((f) => f.dataset.featured),
     )
   }
-  // The deployed page carries the LabNav row above the title (26 px); a dev
-  // port has no siblings so it hides. Stand a placeholder in, so the fold
-  // measured here is the fold a student gets on the site.
-  const withLabNav = (pg) =>
-    pg.evaluate(() => {
-      if (document.querySelector('.labnav, .labnav-stand-in')) return
-      const h = document.querySelector('.controls header')
-      if (h) h.insertAdjacentHTML('afterbegin', '<div class="labnav-stand-in" style="height:16px;margin:0 0 10px"></div>')
-    })
   const cases = lessonNames.map((name) => ({
     name,
     load: async (pg) => {
       await pg.waitForSelector('.views canvas')
-      await withLabNav(pg)
       await loadLesson(name)
     },
     must: [
@@ -1328,36 +1370,230 @@ console.log('\n7. Fold probe at 1366×768 and 1440×900\n')
   // bottom still reports a y comfortably inside 844 and would pass a plain
   // viewport check — which is exactly how "note at y 411, try line at y 488,
   // both past the 338px box" shipped unnoticed.
+  //
+  // Round three's own finding: the check above (three lessons, each from a
+  // FRESH page.goto, scroll forced to 0 before measuring) passed while a
+  // real phone reader hit the bug on 10 of 13 lessons. Two things hid it —
+  // walking only 3 of the 13 lessons, and manufacturing the one scroll
+  // position (zero) under which the note is always in view before ever
+  // measuring. Neither is honest. This walks all 13, from ONE session, by
+  // TAPPING THE LESSON LIST exactly as loadLesson() already does elsewhere
+  // in this file (not the sticky prev/next arrows, which never move the
+  // sidebar's own scroll and were never the case that broke) — the sidebar
+  // keeps whatever scroll position the previous tap left it at, the way a
+  // real reader's would, and nothing here ever sets .controls.scrollTop by
+  // hand before a measurement.
   await page.setViewportSize(PHONE_VIEWPORT)
-  for (const name of phoneLessons) {
-    await page.goto(URL, { waitUntil: 'networkidle' })
-    await page.waitForSelector('.views canvas')
+  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.views canvas')
+  const allLessonNames = await page.evaluate(() =>
+    [...document.querySelectorAll('#lessons details.preset-group .preset')].map((b) => b.textContent.trim()),
+  )
+  if (allLessonNames.length !== 13) fail(`phone walk: expected 13 lessons, found ${allLessonNames.length}`)
+  const results = []
+  for (const name of allLessonNames) {
     await loadLesson(name)
-    await page.evaluate(() => {
-      const el = document.querySelector('.controls')
-      if (el) el.scrollTop = 0
-      window.scrollTo(0, 0)
-    })
     await page.waitForTimeout(60)
     const sidebar = await page.locator('.controls').boundingBox()
+    // The Lessons section's own cap ("Try this", prev/n of N/next) is
+    // `position: sticky` (packages/ui) and PAINTS OVER whatever sits above
+    // its own bottom edge, opaque. Round four found "inside the sidebar's
+    // visible box" passing while the title sat entirely BEHIND this header
+    // — being scrolled to the container's top and being unpainted-over are
+    // different claims, and this probe used to check only the first one.
+    // safeTop is the lower of the sidebar's own top and the header's own
+    // bottom, so a state with no header rendered (none here) degrades to
+    // the old check exactly.
+    const header = await page.locator('#lessons > h2').boundingBox()
+    const safeTop = header ? Math.max(sidebar.y, header.y + header.height) : sidebar.y
     const title = await page.locator('.note-title').first().boundingBox()
     const tryLine = await page.locator('.try-line').first().boundingBox()
+    // The disturbance toggle (App.jsx's renderStepToggle) is the one
+    // "featured knob" that lives INSIDE the lesson block itself — present
+    // on the two lessons that feature it, absent (by design) elsewhere.
+    const featuredInBody = await page
+      .locator('.lesson-body [data-featured]')
+      .first()
+      .boundingBox()
+      .catch(() => null)
+    const within = (box) =>
+      !!box && box.y >= safeTop - 0.5 && box.y + box.height <= sidebar.y + sidebar.height + 0.5
     for (const [label, box] of [
       ['note title', title],
       ['try line', tryLine],
     ]) {
       if (!box) {
-        fail(`phone/${name}: ${label} not rendered`)
+        fail(`phone walk/${name}: ${label} not rendered`)
         continue
       }
-      if (box.y < sidebar.y - 0.5 || box.y + box.height > sidebar.y + sidebar.height + 0.5) {
+      if (!within(box)) {
         fail(
-          `phone/${name}: ${label} outside the sidebar's visible box (${box.y.toFixed(0)}–${(box.y + box.height).toFixed(0)} vs sidebar ${sidebar.y.toFixed(0)}–${(sidebar.y + sidebar.height).toFixed(0)})`,
+          `phone walk/${name}: ${label} outside the sidebar's visible box or under the sticky header (${box.y.toFixed(0)}–${(box.y + box.height).toFixed(0)} vs safe area ${safeTop.toFixed(0)}–${(sidebar.y + sidebar.height).toFixed(0)})`,
         )
       }
     }
-    console.log(`   390x844 ${name.padEnd(34)} note title + try line inside the sidebar's ${sidebar.height.toFixed(0)}px box`)
+    if (featuredInBody && !within(featuredInBody)) {
+      fail(`phone walk/${name}: the lesson's own featured control is outside the sidebar's visible box or under the sticky header`)
+    }
+    results.push({ name, note: within(title), tryLine: within(tryLine) })
   }
+  for (const r of results) {
+    console.log(`   390x844 ${r.name.padEnd(34)} note ${r.note ? 'in view' : 'OFF SCREEN'}, try line ${r.tryLine ? 'in view' : 'OFF SCREEN'} (tapped from the list, no scroll reset)`)
+  }
+}
+
+// --------------------------- 7b. the fold, walked continuously like a student
+
+// foldProbe (section 7, above) loads every lesson from ITS OWN fresh
+// navigation, so the sidebar's manually-opened group set is always empty
+// going in and never accumulates across lessons — the gap that let three
+// groups stack up unnoticed (only the active lesson's group is supposed to
+// stay open). A real student never reloads between lessons: walking the
+// course opens each new group as it is reached, on top of the page's
+// existing state. This repeats section 7's own checks in ONE continuous
+// session per viewport, calling the SAME loadLesson() (it already opens a
+// lesson's group only when the button is not yet visible, exactly the
+// manual click a reader makes) so the open-group set accumulates exactly as
+// it would for a person walking lesson 1 through 13 in order.
+console.log('\n7b. Fold probe walked continuously — open groups accumulate the way a student\'s do\n')
+{
+  const lessonNames = await page.evaluate(() =>
+    [...document.querySelectorAll('#lessons details.preset-group .preset')].map((b) => b.textContent.trim()),
+  )
+  for (const vp of LAPTOP_VIEWPORTS) {
+    await page.setViewportSize(vp)
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.views canvas')
+    await withLabNav(page)
+    for (const name of lessonNames) {
+      await loadLesson(name)
+      // A student arrives with the sidebar at the top for each new lesson —
+      // the same pin foldProbe applies per case, applied here per step of
+      // the walk instead.
+      await page.evaluate(() => {
+        const el = document.querySelector('.controls')
+        if (el) el.scrollTop = 0
+        window.scrollTo(0, 0)
+      })
+      await page.waitForTimeout(60)
+      const featured = await page.evaluate(() =>
+        [...document.querySelectorAll('.featured')].map((f) => f.dataset.featured),
+      )
+      const musts = [
+        '.try-line',
+        ...featured.map((k) => `.featured[data-featured="${k}"]`),
+        '#controller h2',
+        '#lessons .preset.is-on',
+      ]
+      const openCount = await page.evaluate(
+        () => document.querySelectorAll('#lessons details.preset-group[open]').length,
+      )
+      for (const sel of musts) {
+        const box = await page.locator(sel).first().boundingBox().catch(() => null)
+        if (!box) {
+          fail(`fold(walked) ${vp.width}x${vp.height} · ${name} · ${sel}: not rendered`)
+          continue
+        }
+        const bottom = box.y + box.height
+        if (box.y < 0 || bottom > vp.height) {
+          fail(
+            `fold(walked) ${vp.width}x${vp.height} · ${name} · ${sel}: bottom ${bottom.toFixed(0)} px > fold ${vp.height} (${openCount} group${openCount === 1 ? '' : 's'} open)`,
+          )
+        }
+      }
+      if (name === 'Derivative buys the phase back' || name === 'Lead does it without the noise') {
+        console.log(`   ${vp.width}x${vp.height} ${name.padEnd(34)} ${openCount} group${openCount === 1 ? '' : 's'} open`)
+      }
+    }
+    // Walking the whole course must never leave more than one group open —
+    // the active lesson's own — however many were opened manually along the
+    // way to reach it.
+    const finalOpen = await page.evaluate(
+      () => document.querySelectorAll('#lessons details.preset-group[open]').length,
+    )
+    if (finalOpen > 1) fail(`fold(walked) ${vp.width}x${vp.height}: ${finalOpen} groups still open after walking the whole course`)
+  }
+  console.log('   walked all 13 lessons in one session per viewport; every knob stayed inside the fold, never more than one group open')
+}
+
+// ---------------------- 7c. the fold across a LIVE breakpoint crossing
+
+// Item 11's own trap, found in this lab: every probe above (7 and 7b) calls
+// setViewportSize and THEN navigates, so every phone measurement in this
+// file — and in phoneProbe/foldProbe themselves (packages/ui) — is a fresh
+// load at a fixed size. None of them ever resizes a page that is already
+// open. A student narrowing a laptop window, or a devtools device toggle,
+// does exactly that: crosses from the desktop layout (`.controls` unclipped)
+// to the phone layout (`.app.has-lesson .controls`, capped at 40vh,
+// styles.css) without a reload in between. The effect that scrolls the
+// active lesson into view (App.jsx) used to run only on mount and on lesson
+// change — never on this resize — so a lesson loaded wide, where the sidebar
+// never needed correcting, kept scrollTop 0 after being narrowed, and the
+// try line's last chip landed below the newly-clipped fold with nothing
+// having ever checked it.
+//
+// This walks all 13 lessons, each from its own fresh load at a LAPTOP size
+// (no cap, so loading the lesson there needs no scroll correction and
+// leaves scrollTop at whatever it already was), then resizes LIVE to the
+// phone viewport — the one crossing no probe here had made before — and
+// requires the try line's last chip to end up inside the sidebar's own
+// visible box, the same "not scrolled past, not painted over by the sticky
+// header" test section 7's phone walk already applies.
+console.log('\n7c. Fold probe across a live desktop-to-phone resize (no reload)\n')
+{
+  const lessonNames = await page.evaluate(() =>
+    [...document.querySelectorAll('#lessons details.preset-group .preset')].map((b) => b.textContent.trim()),
+  )
+  if (lessonNames.length !== 13) fail(`live-resize walk: expected 13 lessons, found ${lessonNames.length}`)
+  let affected = 0
+  for (const name of lessonNames) {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(URL, { waitUntil: 'networkidle' })
+    await page.evaluate(() => document.fonts.ready)
+    await page.waitForSelector('.views canvas')
+    await loadLesson(name)
+    // The live crossing itself — no navigation, no forced scrollTop, so
+    // whatever the desktop load left the sidebar at is what the resize
+    // acts on.
+    await page.setViewportSize(PHONE_VIEWPORT)
+    await page.waitForTimeout(200)
+    await page.evaluate(() => document.fonts.ready)
+    const info = await page.evaluate(() => {
+      const container = document.querySelector('.controls')
+      const header = document.querySelector('#lessons > h2')
+      const chips = [...document.querySelectorAll('.try-line .chip')]
+      const chip = chips[chips.length - 1]
+      if (!container || !chip) return null
+      const cbox = container.getBoundingClientRect()
+      const hbox = header ? header.getBoundingClientRect() : null
+      // Same sticky-header allowance as section 7's phone walk: the header
+      // paints over whatever is scrolled under it, so "inside the box" means
+      // below the header's own bottom edge, not just below the box's top.
+      const safeTop = hbox ? Math.max(cbox.top, hbox.bottom) : cbox.top
+      const box = chip.getBoundingClientRect()
+      return {
+        scrollTop: container.scrollTop,
+        top: box.top,
+        bottom: box.bottom,
+        safeTop,
+        contBottom: cbox.bottom,
+        within: box.top >= safeTop - 0.5 && box.bottom <= cbox.bottom + 0.5,
+      }
+    })
+    if (!info) {
+      fail(`live-resize fold/${name}: try line's last chip or sidebar not rendered after the crossing`)
+      continue
+    }
+    if (!info.within) {
+      affected++
+      fail(
+        `live-resize fold/${name}: try line's last chip at ${info.top.toFixed(0)}-${info.bottom.toFixed(0)} outside the sidebar's visible box ${info.safeTop.toFixed(0)}-${info.contBottom.toFixed(0)} after a live resize left scrollTop ${info.scrollTop}`,
+      )
+    }
+  }
+  console.log(
+    `   ${affected === 0 ? 'all 13 lessons: last chip inside the sidebar box after a live desktop-to-phone resize' : affected + ' of 13 lessons left the last chip outside the sidebar box after a live resize'}`,
+  )
 }
 
 // ------------------------------------------------------- 8. text overprints
@@ -1473,6 +1709,13 @@ console.log('\n8. Overprinting captions and labels (items 24, 25, 26, 27)\n')
     await page.goto(URL, { waitUntil: 'networkidle' })
     await page.waitForSelector('.views canvas')
     await loadLesson('The plant that needs feedback')
+    // The lesson now LOADS at Kp = 0.5 (item 2, student review: the latch is
+    // the first picture, not a chip away) — and at that gain the open loop's
+    // DC magnitude is already 0.5, below 1 forever, so it genuinely has no
+    // gain crossover to label. Kp = 5 is the gain the original "gain = 1"
+    // overprint bug was filed against, so set it explicitly rather than
+    // leaning on whatever the lesson's own default happens to be.
+    await setField('Kp', 5)
     const phaseGroup = page.locator('[aria-label="Phase overlay"]')
     await phaseGroup.getByRole('button', { name: 'no phase', exact: true }).click()
     await settle()
@@ -2067,6 +2310,813 @@ console.log('\n33. Every cue word on screen resolves — every plant x controlle
       `whole ${cueIds.length}-id table, all defined`,
   )
   await clickBtn('Step')
+  await clickPreset('First order lag')
+}
+
+// -------------------------------------------- 34. touch targets at 390x844
+//
+// Two student testers on phones found this ("it constantly asks the student
+// to pinpoint instead of tap", "the navigation buttons are too small and too
+// close together"), and a walk of the released labs measured it: every
+// interactive element here ran under 44x44 CSS px, the worst (the info
+// mark) at 12x10. FLOOR = 44 — the Apple HIG / Material touch-target
+// guideline, chosen over the bare 24px WCAG 2.2 SC 2.5.8 legal minimum
+// because this is a dense, numbers-heavy tool meant to be poked quickly and
+// often. tapTargetProbe.mjs (packages/ui/verify) walks the page, crediting
+// an invisible ::before/::after hit area (position:relative + a negative
+// inset) where a control keeps its visible glyph small on purpose, and a
+// checkbox's wrapping <label> in place of its own tiny native box.
+//
+// One documented exception, held to the 24px HARD_FLOOR instead: a control
+// inside a PLOT pane (.views — a view switch, the Reference/Disturbance
+// toggle in the readout, the watch transport's play button). Its options
+// often touch with no real gap (a true segmented control), so an invisible
+// hit area would let a thumb bridge two, and growing it for real at 44
+// pushed the pane's own canvas off the bottom of a phone screen (measured:
+// 825px to 915px, past the 844px fold) — the fold probes elsewhere in this
+// file hold that canvas on screen, so the plot pane's chrome stays at
+// WCAG's legal floor rather than the suite's 44px target.
+console.log('\n34. Touch targets at 390x844 (button, link, summary, role=button, checkbox)\n')
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  const exceptionFloor = (el) => (el.inViews || el.inLabNav ? HARD_FLOOR : null)
+
+  const lessonNames = await page.evaluate(() =>
+    [...document.querySelectorAll('#lessons details.preset-group .preset')].map((b) => b.textContent.trim()),
+  )
+  let checked = 0
+  for (const name of lessonNames) {
+    await loadLesson(name)
+    const res = await tapTargetProbe(page, { exceptionFloor })
+    checked += res.checked
+    for (const f of res.failures) fail(`touch target · ${name}: ${f}`)
+  }
+  // The picker state (no lesson loaded) has its own controls — the plant
+  // and controller cards, the Nyquist/locus view tabs with nothing named.
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  const picker = await tapTargetProbe(page, { exceptionFloor })
+  checked += picker.checked
+  for (const f of picker.failures) fail(`touch target · picker: ${f}`)
+  console.log(`   ${lessonNames.length} lessons + the picker: ${checked} interactive elements checked at 390x844, every one clears the ${FLOOR}px floor (the plot panes' own chrome held to the ${HARD_FLOOR}px floor instead)`)
+}
+
+// ---------------------------- 35. the zero-denominator plant refuses everywhere
+//
+// The worst defect class this suite claims never to ship: a broken plant
+// declared solved, with a tick. Custom H(s) with b0 = 1 and a2 = a1 = a0 = 0
+// is P(s) = 1/0 — undefined at every s. buildLoop (systems.js) now refuses
+// there, once, and every pane reads that one refusal instead of computing
+// its own number from a division by zero. This loads the exact hash the
+// student's repro used and checks every surface: the badge, the steady
+// error field, the Math tab, Nyquist, and root locus.
+console.log('\n35. The zero-denominator plant: every pane refuses, none ticks a wrong number\n')
+{
+  await page.goto(`${URL}#plant=custom:0:0:1:0:0:0&ctrl=p:1`, { waitUntil: 'load' })
+  // Not '.views canvas': an undefined plant now refuses on the Bode pane too
+  // (item 2 of this review), so on THIS exact hash no canvas exists anywhere
+  // on the page at all — Bode refuses, and Step (the default view) already
+  // refused before this fix. The topbar badge is what every other wait in
+  // this file settles for once a canvas exists; it is what this section
+  // reads first anyway, so it is the honest ready-signal here.
+  await page.waitForSelector('.flow-node')
+  await settle()
+
+  const REASON = 'This H(s) has an all-zero denominator'
+
+  const bar = await topbar()
+  if (/\bstable\b/i.test(bar.verdict) || /settles/i.test(bar.verdict)) {
+    fail(`zero-denominator: topbar badge should not claim stable/settles, read "${bar.verdict}"`)
+  }
+  if (!bar.verdict.includes(REASON)) {
+    fail(`zero-denominator: topbar badge should give the reason, read "${bar.verdict}"`)
+  }
+  if (bar['steady error'] !== '—') {
+    fail(`zero-denominator: steady error should refuse ('—'), read "${bar['steady error']}"`)
+  }
+  if (bar['phase margin'] !== '—' || bar['gain margin'] !== '—') {
+    fail(`zero-denominator: phase/gain margin should both read '—', got ${JSON.stringify(bar)}`)
+  }
+  console.log(`   topbar: badge names the reason, steady error and margins all read "—"`)
+
+  // The Math tab: no check row (nothing to tick), no NaN, one sentence.
+  await openMath()
+  const checks = await readChecks()
+  if (checks.length) fail(`zero-denominator: Math tab should show no check rows, found ${checks.length}`)
+  const mathText = (await page.locator('.math-pane').textContent().catch(() => '')) || ''
+  if (!mathText.includes(REASON)) fail(`zero-denominator: Math tab should give the reason, read "${mathText.slice(0, 120)}"`)
+  console.log(`   Math tab: no check rows, refuses with the reason`)
+  await closeMath()
+
+  // Nyquist and root locus: words, not a blank canvas.
+  await clickBtn('Nyquist')
+  const nyqHint = (await page.locator('[data-role="undefined-plant"]').first().textContent().catch(() => '')) || ''
+  if (!nyqHint.includes(REASON)) fail(`zero-denominator: Nyquist pane should refuse with the reason, read "${nyqHint}"`)
+  await clickBtn('Root locus')
+  const locusHint = (await page.locator('[data-role="undefined-plant"]').first().textContent().catch(() => '')) || ''
+  if (!locusHint.includes(REASON)) fail(`zero-denominator: root locus pane should refuse with the reason, read "${locusHint}"`)
+  console.log(`   Nyquist and root locus: both refuse with the reason instead of a blank canvas`)
+
+  // Step and Watch already refused before this fix — pinned here so a
+  // regression on any ONE pane is caught the same way as the others.
+  await clickBtn('Step')
+  const stepHint = (await page.locator('[data-role="sim-too-stiff"]').first().textContent().catch(() => '')) || ''
+  if (!stepHint.includes(REASON)) fail(`zero-denominator: Step pane should still refuse with the reason, read "${stepHint}"`)
+  await clickBtn('Watch')
+  const watchHint = (await page.locator('[data-role="sim-too-stiff"]').first().textContent().catch(() => '')) || ''
+  if (!watchHint.includes(REASON)) fail(`zero-denominator: Watch pane should still refuse with the reason, read "${watchHint}"`)
+  console.log(`   Step and Watch: still refuse with the same reason`)
+
+  await clickBtn('Step')
+  await clickPreset('First order lag')
+}
+
+// --------------------------- 36. root locus axis matches Bode's own convention
+//
+// Defect 3: the locus axis printed raw digits (600000000, -0.003) while the
+// Bode plot beside it, on the same screen, formats the same kind of
+// quantity (a frequency in rad/s or 1/s) with SI prefixes. A first-order
+// lag with a very short time constant puts a pole at ~1e7 rad/s, which is
+// exactly the scale the shipped defect was filed against.
+console.log('\n36. Formatting: the root locus axis uses the suite\'s own SI-prefixed formatter\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await clickPreset('First order lag')
+  await clickBtn('Proportional')
+  await setField('Time constant τ', 1e-7)
+  await clickBtn('Root locus')
+  await settle()
+  await installProbeHooks(page)
+  const { texts } = await probeDraw(page, async () => {
+    await clickBtn('Nyquist')
+    await clickBtn('Root locus')
+  })
+  const locusId = await page.evaluate(() => document.querySelector('canvas[aria-label^="Root locus"]')?.dataset.probeId)
+  const dedup = dedupeTexts(texts).filter((t) => t.canvas === locusId)
+  const numeric = dedup.filter((t) => /^-?\d+(\.\d+)?[kMGTmµn]?$/.test(t.text))
+  const rawDigits = numeric.filter((t) => /^-?\d{4,}$/.test(t.text))
+  const prefixed = numeric.filter((t) => /[kMGTmµn]$/.test(t.text))
+  if (rawDigits.length) {
+    fail(`root locus axis: expected SI-prefixed ticks the way the Bode plot already reads, got raw digits: ${rawDigits.map((t) => t.text).join(', ')}`)
+  }
+  if (!prefixed.length) {
+    fail(`root locus axis: expected at least one SI-prefixed tick at this scale (a pole near 1e7 rad/s), got: ${numeric.map((t) => t.text).join(', ') || '(no numeric ticks read)'}`)
+  } else {
+    console.log(`   root locus axis ticks at τ = 1e-7 s: ${numeric.map((t) => t.text).join(', ')}`)
+  }
+  await setField('Time constant τ', 1)
+  await clickPreset('First order lag')
+}
+
+// ------------------------------ 37. the watch row's own formatting convention
+//
+// Defect 3's other half: Kp·e, Ki·∫e, Kd·ė and u are the same kind of
+// quantity read from the same row, and a knob at its extreme must not leave
+// one term in exponential notation beside another as a raw many-digit
+// integer. Swept across PID at its gain extremes, on a plant with poles
+// fast enough to make the effort huge and a scrub position late enough to
+// let it get there.
+console.log('\n37. Formatting: the watch row never mixes exponential and raw-digit notation\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  const extremes = [
+    { plant: 'Unstable plant', kp: 1000, ki: 1000, kd: 100 },
+    { plant: 'Motor position', kp: 0.001, ki: 0.001, kd: 0.0001 },
+    { plant: 'Three lags', kp: 1000, ki: 0.001, kd: 100 },
+  ]
+  let sawExponential = false
+  let sawRawDigits = false
+  for (const ex of extremes) {
+    await clickPreset(ex.plant)
+    await clickBtn('PID')
+    await setField('Kp', ex.kp)
+    await setField('Ki', ex.ki)
+    await setField('Kd', ex.kd)
+    await clickBtn('Watch')
+    const slider = page.getByRole('slider', { name: 'Moment in the response' })
+    for (const pos of [1, 60, 300, 598]) {
+      await slider.fill(String(pos))
+      await settle()
+      const values = await page.locator('.readout b').allTextContents()
+      for (const v of values) {
+        if (/e[+-]\d/.test(v)) sawExponential = true
+        if (/^-?\d{5,}$/.test(v.replace(/[,\s]/g, ''))) sawRawDigits = true
+        if (/e[+-]\d/.test(v) || /^-?\d{5,}$/.test(v.replace(/[,\s]/g, ''))) {
+          fail(`watch row formatting: "${v}" (plant ${ex.plant}, Kp=${ex.kp} Ki=${ex.ki} Kd=${ex.kd}, pos ${pos}) should read the suite's compact form, not raw JS Number.toString()`)
+        }
+      }
+    }
+  }
+  console.log(`   swept PID across ${extremes.length} plants at their gain extremes: no exponential notation, no raw 5+-digit integers (exponential seen pre-fix: ${sawExponential}, raw digits seen pre-fix: ${sawRawDigits})`)
+  await setField('Kp', 1)
+  await setField('Ki', 1)
+  await setField('Kd', 0.1)
+  await clickBtn('Step')
+  await clickPreset('First order lag')
+}
+
+// -------------------------------------- 38. a hash edited in an already-open tab
+//
+// Defect 4: editing the address bar's hash, or pasting the app's own share
+// link into a tab where the lab is already loaded, is a same-document
+// navigation — the mount-time boot state never runs again. App.jsx now
+// listens for the browser's own 'hashchange' event and applies it the same
+// way a fresh load would.
+console.log('\n38. A hash edited in an already-open tab is applied, not ignored\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await clickPreset('First order lag')
+  await clickBtn('Proportional')
+
+  // Same-document navigation: set the hash directly, the way editing the
+  // address bar (or a script) would, WITHOUT a fresh page.goto/reload.
+  await page.evaluate(() => {
+    window.location.hash = 'plant=motor:1&ctrl=pid:3:2:1'
+  })
+  await settle()
+  await page.waitForTimeout(200)
+
+  const flowNames = await page.locator('.flow-node em').allTextContents().catch(() => [])
+  const flowText = (await page.locator('.flow').textContent().catch(() => '')) || ''
+  if (!/Motor position/.test(flowText)) {
+    fail(`hashchange: expected the loop to switch to Motor position after an in-tab hash edit, flow reads "${flowText}"`)
+  }
+  if (!/PID/.test(flowText)) {
+    fail(`hashchange: expected the controller to switch to PID after an in-tab hash edit, flow reads "${flowText}"`)
+  }
+  console.log(`   editing window.location.hash in an already-open tab switched the loop: "${flowText.replace(/\s+/g, ' ').trim().slice(0, 80)}"`)
+  await clickPreset('First order lag')
+}
+
+// ------------------------------------- 39. the Bode plot's own reading lesson
+//
+// Item 2: a student review of this exact plot ("mostly noise", "never told
+// how to read it", "the margin is the distance from the phase curve to
+// −180° is the sentence nobody ever gave them") — taught once, in the
+// picture, on each margin's own first lesson (BodeCanvas.jsx: `teach`).
+console.log('\n39. The Bode plot marks the margin it is teaching, once per lesson\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await installProbeHooks(page)
+
+  const bodeTextsFor = async (name) => {
+    const { texts } = await probeDraw(page, () => loadLesson(name))
+    const id = await page.evaluate(() => document.querySelector('canvas[aria-label^="Open-loop Bode"]')?.dataset.probeId)
+    return dedupeTexts(texts).filter((t) => t.canvas === id).map((t) => t.text)
+  }
+
+  const phaseTexts = await bodeTextsFor('...and what it costs')
+  if (!phaseTexts.includes('phase margin')) fail(`Bode teaching: "...and what it costs" should mark "phase margin" on the plot, drew: ${phaseTexts.join(', ')}`)
+  if (!phaseTexts.some((t) => t === '−180°')) fail(`Bode teaching: "...and what it costs" should mark the −180° boundary, drew: ${phaseTexts.join(', ')}`)
+  console.log(`   "...and what it costs": phase margin bracket and −180° line both drawn`)
+
+  const gainTexts = await bodeTextsFor('The margin says exactly how far')
+  if (!gainTexts.includes('gain margin')) fail(`Bode teaching: "The margin says exactly how far" should mark "gain margin" on the plot, drew: ${gainTexts.join(', ')}`)
+  console.log(`   "The margin says exactly how far": gain margin bracket drawn`)
+
+  // Every OTHER lesson stays exactly as it was — the annotation is gated
+  // to these two, not a global change to the Bode plot.
+  const otherTexts = await bodeTextsFor('Turn it up until it sings')
+  if (otherTexts.includes('phase margin') || otherTexts.includes('gain margin')) {
+    fail(`Bode teaching: "Turn it up until it sings" should NOT carry the reading-lesson annotation, drew: ${otherTexts.join(', ')}`)
+  }
+  console.log(`   every other lesson's Bode plot is unchanged`)
+
+  await clickPreset('First order lag')
+}
+
+// ----------------------------- 40. the eng-field commit echo, and Reed's exact case
+
+console.log('\n40. The eng-field commit echo (silent thousand-fold reinterpretation)\n')
+{
+  // Reed's reproduction, verbatim: a proportional gain field sitting at 0.99
+  // displays "990" next to a milli prefix. Typing a bare "1.0001" (meaning a
+  // gain of about one) is read in that displayed prefix and would commit
+  // 1.0001 MILLI — 0.0010001, a thousand times too small — with nothing on
+  // screen saying so before Enter. NumField now shows what will actually
+  // land, live, before commit; this drives the field into exactly that state
+  // and requires the warning to already be on screen before Enter is pressed.
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await clickBtn('PI') // a second field (Ki) alongside Kp, for the blur checks below
+  await settle()
+
+  const kpField = page.locator('.num').filter({ has: page.getByRole('spinbutton', { name: 'Kp' }) }).first()
+  const kp = kpField.getByRole('spinbutton', { name: 'Kp' })
+  const echo = kpField.locator('.num-echo')
+  const ki = page.getByRole('spinbutton', { name: 'Ki' }).first()
+
+  await kp.fill('0.99')
+  await kp.press('Enter')
+  await settle()
+  const shownBefore = await kp.inputValue()
+  if (shownBefore !== '990') fail(`gain echo setup: expected the field to show "990" (0.99 with a milli prefix), got "${shownBefore}"`)
+
+  // Type the bare number WITHOUT committing yet.
+  await kp.fill('1.0001')
+  await page.waitForTimeout(80)
+  const stillOldValue = await kp.getAttribute('aria-valuenow')
+  if (stillOldValue !== '0.99') fail(`gain echo: typing alone should not commit — Kp read ${stillOldValue}, expected it to still read 0.99`)
+  const echoVisible = (await echo.getAttribute('data-visible')) !== null
+  if (!echoVisible) fail('gain echo: typing "1.0001" under a displayed milli prefix should show the commit echo before Enter, but nothing is visible')
+  const echoText = (await echo.textContent()) || ''
+  if (!echoText.includes('1.0001 m')) fail(`gain echo: expected the typed reading "1.0001 m" in the echo, got "${echoText}"`)
+  if (!echoText.includes('0.0010001')) fail(`gain echo: expected the full committed value "0.0010001" in the echo, got "${echoText}"`)
+  console.log(`   before Enter, echo reads: "${echoText}"`)
+
+  // Commit it, and the echo goes quiet again — it only speaks about a draft.
+  await kp.press('Enter')
+  await settle()
+  const committed = Number(await kp.getAttribute('aria-valuenow'))
+  if (!(Math.abs(committed - 0.001) < 1e-6)) fail(`gain echo: expected the reinterpreted commit to land near 0.001, got ${committed}`)
+  const echoAfterCommit = (await echo.textContent()) || ''
+  if (echoAfterCommit.trim() !== '') fail(`gain echo: should go quiet once committed, still showing "${echoAfterCommit}"`)
+  console.log(`   bare "1.0001" under a displayed milli prefix committed as ${committed} (the kept, documented rule) — and the echo warned first`)
+
+  // The interrupt this task also had to answer: does blurring an UNEDITED
+  // field ever rescale it again? Move focus off Kp with nothing further
+  // typed, twice, and require the value to hold exactly.
+  await ki.click()
+  await settle()
+  const afterFirstBlur = Number(await kp.getAttribute('aria-valuenow'))
+  await kp.click()
+  await ki.click()
+  await settle()
+  const afterSecondBlur = Number(await kp.getAttribute('aria-valuenow'))
+  if (afterFirstBlur !== committed) fail(`gain echo: blurring to another field with no edit moved Kp from ${committed} to ${afterFirstBlur}`)
+  if (afterSecondBlur !== afterFirstBlur) fail(`gain echo: a second blur with no edit moved Kp again, from ${afterFirstBlur} to ${afterSecondBlur} — re-commit is not idempotent`)
+  console.log(`   two further blurs with nothing retyped: Kp held at ${afterSecondBlur}, no repeated rescale`)
+
+  // An explicit prefix or a ratio entry has nothing to warn about — the echo
+  // stays quiet even while an active (non-unity) prefix is on display.
+  await kp.fill('5G')
+  await page.waitForTimeout(80)
+  if ((await echo.getAttribute('data-visible')) !== null) fail(`gain echo: an explicitly typed prefix ("5G") should not show the echo, saw "${await echo.textContent()}"`)
+  await kp.fill('*2')
+  await page.waitForTimeout(80)
+  if ((await echo.getAttribute('data-visible')) !== null) fail(`gain echo: a ratio entry ("*2") should not show the echo, saw "${await echo.textContent()}"`)
+  await kp.press('Escape')
+  await settle()
+  console.log('   explicit prefix and ratio entries stay quiet, as designed')
+}
+
+// ------------------------------------------- 41. the math panel's phase fold
+//
+// Regression of a bug already fixed once: phase.test.js pins "the unstable
+// plant under Kp 5 reads 78.5°, not 438.5°" for the TOPBAR's own phase
+// margin (margins(), folded at the source). The Math tab's own "phase
+// accounting" row computed the same identity, PM = 180° + ∠L at the
+// crossover, a SECOND way — reading it off bode()'s continuously unwrapped,
+// per-transfer-function-anchored curve instead of the loop's own
+// principal-value angle — and for the unstable plant under every controller
+// the panel's row sat exactly 360° off the topbar's own number (87.1° vs
+// 447.134° at Kp = 20). math.js now folds this once (phaseMarginAt) and
+// both readings come from it; this drives the actual repro in the browser.
+console.log('\n41. The math panel\'s phase-accounting row agrees with the topbar — the 360° regression\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await clickPreset('Unstable plant')
+  await clickBtn('Proportional')
+
+  const readMathValues = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('.math-values tr')].map((tr) => {
+        const c = [...tr.querySelectorAll('th,td')]
+        return {
+          label: c[0]?.textContent.trim(),
+          value: c[1]?.textContent.trim(),
+          unit: c[2]?.textContent.trim(),
+          note: c[3]?.textContent.trim(),
+        }
+      }),
+    )
+
+  for (const kp of [5, 20, 80]) {
+    await setField('Kp', kp)
+    const pmText = (await topbar())['phase margin']
+    await openMath()
+    const values = await readMathValues()
+    const panelRow = values.find((r) => r.note === 'the phase margin' && r.label !== 'phase margin')
+    await closeMath()
+    if (!panelRow) {
+      fail(`Kp ${kp}: expected the math panel's own phase-margin row ("the phase margin" note)`)
+      continue
+    }
+    const panelVal = parseFloat(panelRow.value)
+    const topbarVal = parseFloat(pmText)
+    console.log(`   Kp ${kp}: topbar ${pmText}, math panel "${panelRow.label}" = ${panelRow.value}°`)
+    if (Math.abs(panelVal) > 180.001) {
+      fail(`Kp ${kp}: math panel's phase-margin row reads ${panelRow.value}° — off the circle`)
+    }
+    if (Math.abs(panelVal - topbarVal) > 0.2) {
+      fail(`Kp ${kp}: math panel's phase-margin row (${panelRow.value}°) disagrees with the topbar (${pmText})`)
+    }
+  }
+  await clickPreset('First order lag')
+}
+
+// --------------------------------------- 42. the Bode pane on an undefined plant
+//
+// Defect: the magnitude trace correctly drew nothing for the zero-
+// denominator custom plant (bode() hands back NaN, and a canvas ignores a
+// NaN coordinate), but the phase trace drew a confident flat line at
+// exactly 0° — bode() never touches its phase array when |H| is undefined
+// at every frequency, and a Float64Array's own zero fill stood in as if it
+// were a measured value. The Bode pane now refuses the same way every
+// other pane already does (Nyquist, root locus, Step, Watch, the Math tab),
+// with the same reason, rather than drawing a picture of nothing.
+console.log('\n42. The Bode pane refuses on an undefined plant, rather than drawing a false phase line\n')
+{
+  await page.goto(`${URL}#plant=custom:0:0:1:0:0:0&ctrl=p:1`, { waitUntil: 'load' })
+  // Not '.views canvas': this is the exact state under test, where no
+  // canvas exists anywhere on the page (see item 35's own comment above,
+  // fixed the same way for the same reason).
+  await page.waitForSelector('.flow-node')
+  await settle()
+
+  const bodeCanvasCount = await page.locator('canvas[aria-label^="Open-loop Bode"]').count()
+  if (bodeCanvasCount !== 0) fail(`Bode pane: expected no canvas for an undefined plant, found ${bodeCanvasCount}`)
+
+  const bodeSection = page.locator('.views > .view').first()
+  const reasonCount = await bodeSection.locator('[data-role="undefined-plant"]').count()
+  if (!reasonCount) fail('Bode pane: expected the undefined-plant reason in place of the canvas')
+  console.log(`   Bode canvas: ${bodeCanvasCount === 0 ? 'absent' : 'STILL DRAWN'}; refusal text present: ${reasonCount > 0}`)
+
+  await clickPreset('First order lag')
+}
+
+// ------------------------------------------- 43. the loop diagram's own rounding
+//
+// Cosmetic: the diagram box rounded a gain to three significant figures
+// (11.3) while the sidebar field beside it, for the SAME live value, showed
+// four (11.25) — one number, two readings. summarize() (LoopDiagram.jsx)
+// now matches the sidebar field's own four-figure precision (packages/ui's
+// NumField, snap() — NEEDS.md).
+console.log('\n43. The loop diagram quotes a gain to the same precision as the sidebar field\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await clickPreset('Three lags')
+  await clickBtn('Proportional')
+  await setField('Kp', 11.25)
+  const fieldValue = await page.getByRole('spinbutton', { name: 'Kp' }).first().inputValue()
+  await page.getByRole('button', { name: '⧉ diagram' }).click()
+  await page.waitForTimeout(200)
+  const svgText = await page.locator('.fd-svg').textContent()
+  console.log(`   sidebar field reads "${fieldValue}", diagram box: ${svgText.includes('Kp 11.25') ? 'Kp 11.25' : 'MISMATCH'}`)
+  if (!svgText.includes('Kp 11.25')) {
+    fail(`diagram: expected "Kp 11.25" (matching the sidebar field "${fieldValue}"); the box read something else in "${svgText}"`)
+  }
+  if (svgText.includes('Kp 11.3')) fail('diagram: still rounding to three significant figures (Kp 11.3)')
+  await page.keyboard.press('Escape')
+  await settle()
+  await clickPreset('First order lag')
+}
+
+// -------------------------------------------- 44. Nyquist and root locus, introduced
+//
+// Defect: both tabs are one click away from lesson 1 onward, well before
+// their own lesson (9 and 8 respectively) ever loads — a student review's
+// single most annoying finding was not knowing whether a prerequisite was
+// missing. Each tab's pane now says what it is and where its own lesson
+// sits, until the reader has reached (or passed) it.
+console.log('\n44. Nyquist and root locus say what they are before their own lesson arrives\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  // The picker state, no lesson at all: both previews should show.
+  await clickBtn('Nyquist')
+  let intro = (await page.locator('[data-role="view-intro"]').textContent().catch(() => '')) || ''
+  if (!/lesson 9/.test(intro)) fail(`Nyquist, no lesson: expected a preview of lesson 9, read "${intro}"`)
+  console.log(`   Nyquist, no lesson: "${intro.trim()}"`)
+
+  await clickBtn('Root locus')
+  intro = (await page.locator('[data-role="view-intro"]').textContent().catch(() => '')) || ''
+  if (!/lesson 8/.test(intro)) fail(`Root locus, no lesson: expected a preview of lesson 8, read "${intro}"`)
+  console.log(`   Root locus, no lesson: "${intro.trim()}"`)
+
+  // Loaded straight to the dedicated lesson: no preview line, the lesson's
+  // own note is doing the introducing now.
+  await loadLesson('Watch the poles cross') // lesson 8, view locus
+  if (await page.locator('[data-role="view-intro"]').count()) {
+    fail('Root locus: the preview line should not show on its own lesson (8)')
+  }
+  await loadLesson('Everything is about one point') // lesson 9, view nyquist
+  if (await page.locator('[data-role="view-intro"]').count()) {
+    fail('Nyquist: the preview line should not show on its own lesson (9)')
+  }
+  console.log('   neither preview line shows once its own lesson has loaded')
+
+  // An EARLIER lesson, tab switched manually: still a preview (has not
+  // reached the dedicated lesson yet).
+  await loadLesson('Proportional cannot get there') // lesson 1
+  await clickBtn('Nyquist')
+  intro = (await page.locator('[data-role="view-intro"]').textContent().catch(() => '')) || ''
+  if (!/lesson 9/.test(intro)) fail(`Nyquist from lesson 1: expected the preview line, read "${intro}"`)
+  console.log(`   Nyquist from lesson 1 (before lesson 9): "${intro.trim()}"`)
+
+  // A LATER lesson, tab switched back: no preview (already past it).
+  await loadLesson('Lead does it without the noise') // lesson 13, the last
+  await clickBtn('Root locus')
+  if (await page.locator('[data-role="view-intro"]').count()) {
+    fail('Root locus from lesson 13: should not show the preview, already past lesson 8')
+  }
+  console.log('   no preview once a later lesson has been reached')
+
+  await clickBtn('Step')
+  await clickPreset('First order lag')
+}
+
+// ------------------------------------------------ 45. definitions on contact
+//
+// Defect, and it repeats across the suite: the terms fold sat only after
+// the WHOLE note, behind a small link a skim reader never noticed — the
+// same pattern that cost Circuit Lab two of two skim readers concluding it
+// has no glossary at all. The first use of a lesson's own listed term in
+// its note is now a tappable word (student review, item 3), the pattern
+// Circuit Elements Lab already ships (that lab's grader reported no
+// vocabulary problem under it). The "terms used here" fold stays, for
+// anything the note never spells out.
+console.log('\n45. Definitions on contact: a first-use term in the note is tappable\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  // "Everything is about one point": the note's own first sentence names
+  // the Nyquist view. A skim reader who never notices "terms used here"
+  // should still be able to tap the word itself.
+  await loadLesson('Everything is about one point')
+  const nyquistDfn = page.locator('.hint.note dfn.term[data-term="nyquistplot"]')
+  const nyquistCount = await nyquistDfn.count()
+  if (nyquistCount !== 1) {
+    fail(`terms on contact: expected exactly one marked "Nyquist" word in the note, found ${nyquistCount}`)
+  } else {
+    const before = await page.locator('[data-role="def"]').count()
+    if (before) fail('terms on contact: no definition card should be open before a tap')
+    await nyquistDfn.click()
+    await settle()
+    const card = page.locator('[data-role="def"][data-term="nyquistplot"]')
+    if ((await card.count()) !== 1) fail('terms on contact: tapping the marked word should open its definition card')
+    const cardText = (await card.textContent()) || ''
+    if (!/Nyquist plot/.test(cardText)) fail(`terms on contact: expected the Nyquist-plot definition, card read "${cardText}"`)
+    console.log(`   "Everything is about one point": tapping "Nyquist" opened its card ("${cardText.trim().slice(0, 50)}...")`)
+    // Tapping the same word again closes it.
+    await nyquistDfn.click()
+    await settle()
+    if (await card.count()) fail('terms on contact: tapping the same word again should close its card')
+    console.log('   tapping the same word again closes the card')
+  }
+  // The fold survives unchanged, for the terms the note never spells out.
+  if (!(await page.locator('.terms-link').count())) fail('terms on contact: the "terms used here" fold should still be offered')
+
+  // "The margin says exactly how far": the note's first sentence names the
+  // gain margin.
+  await loadLesson('The margin says exactly how far')
+  const gmDfn = page.locator('.hint.note dfn.term[data-term="gainmargin"]')
+  const gmCount = await gmDfn.count()
+  if (gmCount !== 1) {
+    fail(`terms on contact: expected a marked "gain margin" in the note, found ${gmCount}`)
+  } else {
+    await gmDfn.click()
+    await settle()
+    const card = page.locator('[data-role="def"][data-term="gainmargin"]')
+    if ((await card.count()) !== 1) fail('terms on contact: tapping "gain margin" should open its card')
+    console.log('   "The margin says exactly how far": tapping "gain margin" opened its card')
+  }
+
+  // Switching lessons closes whatever card the last one left open.
+  await loadLesson('A margin thin enough to feel')
+  if (await page.locator('[data-role="def"]').count()) {
+    fail("terms on contact: a fresh lesson load should not carry over the previous one's open card")
+  }
+  console.log('   loading a new lesson closes the previous one\'s open definition')
+
+  await clickPreset('First order lag')
+}
+
+// ---------------------------------------------------------------------------
+// 46. The catalogue refusal is no longer dead code under motor / three lags
+//
+// Round-four grading: `if (plant.circuit) {...} else if (plant.circuitNote)`
+// (math.js) let the bench-circuit branch win outright for the three plants
+// that carry BOTH fields (integrator, motor, threePole), so the refusal
+// never printed for any of the six lessons (46% of the course) that use
+// motor or three lags. This is the grader's own live check, reproduced: load
+// one of those six lessons, open the Math tab, and require the refusal text
+// to be there. Before the fix this found ZERO occurrences; the assertion
+// below is written to fail on that build and pass once math.js prints both
+// blocks — confirmed both ways before this file's edits were called done.
+console.log('\n46. The catalogue refusal prints beside the bench circuit under motor / three lags\n')
+{
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  const REFUSAL = 'No catalogue circuit matches this plant'
+
+  // "Turn it up until it sings" — three lags, one of the six silent lessons
+  // the grader named directly.
+  await loadLesson('Turn it up until it sings')
+  await openMath()
+  const mathText = (await page.locator('.math-pane').textContent().catch(() => '')) || ''
+  if (!mathText.includes(REFUSAL)) {
+    fail(`"Turn it up until it sings": Math tab should print the catalogue refusal, found none in "${mathText.slice(0, 160)}..."`)
+  } else if (!mathText.includes('Where a plant like this comes from on a bench')) {
+    fail('"Turn it up until it sings": Math tab should still print the bench circuit alongside the refusal')
+  } else {
+    console.log('   "Turn it up until it sings": Math tab prints the bench circuit AND "' + REFUSAL + '..."')
+  }
+  await closeMath()
+
+  // The sidebar's own refusal spot, reachable now WITHOUT abandoning the
+  // lesson (the gains stay put, unlike clicking the plant button): a short
+  // pointer during a lesson rather than the full reason, to protect the
+  // fold budget an earlier round already fought to win back.
+  const sidebarHint = (await page.locator('.circuit-back.is-refusal').textContent().catch(() => '')) || ''
+  if (!/see Math for why/.test(sidebarHint)) {
+    fail(`"Turn it up until it sings": sidebar should point at the Math tab mid-lesson, read "${sidebarHint}"`)
+  } else {
+    console.log(`   sidebar mid-lesson: "${sidebarHint.trim()}"`)
+  }
+
+  // A second of the six, a different plant (motor) — the defect was not
+  // specific to three lags.
+  await loadLesson('A margin thin enough to feel')
+  await openMath()
+  const motorMathText = (await page.locator('.math-pane').textContent().catch(() => '')) || ''
+  if (!motorMathText.includes(REFUSAL)) {
+    fail(`"A margin thin enough to feel" (motor): Math tab should print the catalogue refusal, found none`)
+  } else {
+    console.log('   "A margin thin enough to feel" (motor): Math tab prints the refusal too')
+  }
+  await closeMath()
+
+  // The course's last screen — "That is the course" — uses three lags too,
+  // so it is one of the six. It must now say a reason exists (four words:
+  // this exact screen is the tightest fold budget in the course, so it
+  // points at the Math tab rather than repeating the reason itself) instead
+  // of silently offering only "back to lesson 1".
+  await loadLesson('Lead does it without the noise')
+  const courseEnd = (await page.locator('.course-end').textContent().catch(() => '')) || ''
+  if (!/no link/i.test(courseEnd) || !/Math/.test(courseEnd)) {
+    fail(`course end: should say why there is no bridge to Circuit Lab, read "${courseEnd}"`)
+  } else if (!/back to lesson 1/.test(courseEnd)) {
+    fail(`course end: should still offer the way back, read "${courseEnd}"`)
+  } else {
+    console.log(`   course end: "${courseEnd.trim()}"`)
+  }
+  // And the reason it points at really is there, on the same lesson's own
+  // Math tab — not a pointer to nothing.
+  await openMath()
+  const finalMathText = (await page.locator('.math-pane').textContent().catch(() => '')) || ''
+  if (!finalMathText.includes(REFUSAL)) {
+    fail(`"Lead does it without the noise": Math tab should carry the reason the course-end pointer promises`)
+  }
+  await closeMath()
+
+  await clickPreset('First order lag')
+}
+
+// ---------------------------------------------------------------------------
+// 47. The loop diagram: the named blocks are actually ON SCREEN at phone
+// width, not merely present in the DOM
+//
+// Round-six grading (Layout, Seeing): the SVG carried a fixed 720px width,
+// independent of the viewport, inside a 358.8px dialog at 390x844 — `.fd-
+// scroll` measured clientWidth 329 against scrollWidth 720, so 54% of the
+// drawing (the P(s) box, the output y, the disturbance entry) sat past the
+// edge with no scrollbar, arrow or peek. A presence check (`.count()` or
+// `.textContent()`) passed on that exact build regardless: the elements were
+// IN THE DOM, just laid out past the edge of a scrollbox nobody thought to
+// scroll sideways (item 11's own lesson — a check that cannot see a zero
+// reads as a pass). This checks POSITION: every named block's own bounding
+// box must fall inside the dialog's visible box on arrival, page untouched.
+console.log('\n47. The loop diagram: every named block is inside the visible box on arrival (390x844)\n')
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await page.evaluate(() => document.fonts.ready)
+  await page.getByRole('button', { name: '⧉ diagram' }).click()
+  await page.waitForTimeout(200)
+
+  const visible = await page.locator('.fd-scroll').boundingBox()
+  if (!visible) fail('diagram: .fd-scroll did not render')
+
+  const portBox = (text) =>
+    page.evaluate((want) => {
+      const el = [...document.querySelectorAll('.fd-port')].find((t) => t.textContent.trim() === want)
+      if (!el) return null
+      const r = el.getBoundingClientRect()
+      return { x: r.x, y: r.y, width: r.width, height: r.height }
+    }, text)
+
+  const checkInside = (box, label) => {
+    if (!box) {
+      fail(`diagram at 390x844: ${label} not found`)
+      return
+    }
+    const clipped =
+      box.x < visible.x - 0.5 ||
+      box.y < visible.y - 0.5 ||
+      box.x + box.width > visible.x + visible.width + 0.5 ||
+      box.y + box.height > visible.y + visible.height + 0.5
+    if (clipped) {
+      fail(
+        `diagram at 390x844: ${label} is outside the visible box on arrival ` +
+          `(element ${box.x.toFixed(0)}–${(box.x + box.width).toFixed(0)} x ${box.y.toFixed(0)}–${(box.y + box.height).toFixed(0)}, ` +
+          `visible box ${visible.x.toFixed(0)}–${(visible.x + visible.width).toFixed(0)} x ${visible.y.toFixed(0)}–${(visible.y + visible.height).toFixed(0)})`,
+      )
+    }
+    return !clipped
+  }
+
+  const cBox = await page.locator('.fd-box[aria-label*="controller"]').boundingBox()
+  const pBox = await page.locator('.fd-box[aria-label*="plant"]').boundingBox()
+  const yPort = await portBox('y')
+  const dPort = await portBox('d')
+
+  const results = [
+    checkInside(cBox, 'the C(s) box'),
+    checkInside(pBox, 'the P(s) box'),
+    checkInside(yPort, 'the output y'),
+    checkInside(dPort, 'the disturbance entry (d)'),
+  ]
+  if (results.every(Boolean)) {
+    console.log('   C(s), P(s), the output y and the disturbance entry are all inside the visible box on arrival')
+  }
+  await page.keyboard.press('Escape')
+  await settle()
+}
+
+// ---------------------------------------------------------------------------
+// 48. The topbar verdict strip never needs a sideways scroll to be read, in
+// EVERY verdict a lesson or the picker can reach — not just the two common
+// ones
+//
+// Round-six grading (Layout, Seeing): lessons 8 and 9's own marginal Kp
+// state ("ON THE BOUNDARY" + "oscillates") measured .flow's scrollWidth at
+// 422px inside a 366px clientWidth, 56px over; the zero-denominator plant
+// from the picker ("NOT A SYSTEM" + "not a system") measured 418px, 52px
+// over — `.flow-note-full`'s computed display was already `none`, so this
+// was never the old full-sentence clip (item 26 above, which checks that no
+// .flow-node's OWN text runs past its own width) recurring. The two common
+// verdicts fit with 0-3px to spare and are included below as the control,
+// not skipped as redundant — a fix that widened the strip only for the rare
+// states and silently broke the common ones would pass a probe that only
+// ever checked the rare ones.
+console.log('\n48. The verdict strip never needs a sideways scroll, in every state (390x844)\n')
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+
+  const flowOverflow = async (label) => {
+    await page.waitForSelector('.flow-node')
+    await settle()
+    const { clientWidth, scrollWidth } = await page.evaluate(() => {
+      const flow = document.querySelector('.flow')
+      return { clientWidth: flow.clientWidth, scrollWidth: flow.scrollWidth }
+    })
+    if (scrollWidth > clientWidth + 1) {
+      fail(`flow strip at 390px, ${label}: scrollWidth ${scrollWidth} > clientWidth ${clientWidth} (${scrollWidth - clientWidth}px over)`)
+    } else {
+      console.log(`   ${label}: scrollWidth ${scrollWidth} <= clientWidth ${clientWidth}`)
+    }
+  }
+
+  // The two common verdicts, as the control: they already fit.
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await flowOverflow('stable ("stable" / "settles")')
+
+  await page.goto(`${URL}#plant=threePole&ctrl=p:80`, { waitUntil: 'load' })
+  await flowOverflow('UNSTABLE ("UNSTABLE" / "runs away")')
+
+  // The marginal state, lessons 8 and 9's own chip — the exact reproduction
+  // the grader gave.
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await loadLesson('Watch the poles cross')
+  await page.locator('.try-line .chip', { hasText: /on the axis/ }).click()
+  await flowOverflow('marginal, lesson 8 ("ON THE BOUNDARY" / "oscillates")')
+
+  await loadLesson('Everything is about one point')
+  await page.locator('.try-line .chip', { hasText: /on the axis/ }).click()
+  await flowOverflow('marginal, lesson 9 ("ON THE BOUNDARY" / "oscillates")')
+
+  // The zero-denominator plant, from the picker.
+  await page.goto(`${URL}#plant=custom:0:0:1:0:0:0&ctrl=p:1`, { waitUntil: 'load' })
+  await flowOverflow('zero-denominator ("NOT A SYSTEM" / "not a system")')
+
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
   await clickPreset('First order lag')
 }
 

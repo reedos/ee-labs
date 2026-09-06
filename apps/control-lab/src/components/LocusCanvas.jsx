@@ -1,5 +1,5 @@
 import React from 'react'
-import { useCanvas, COLORS, drawFrame, plotArea, fmtNum } from '@ee-labs/ui'
+import { useCanvas, COLORS, drawFrame, plotArea, fmtHz } from '@ee-labs/ui'
 import { findCancellations, findNearMerges } from '../locusCancel.js'
 
 /**
@@ -36,6 +36,11 @@ export default function LocusCanvas({
       const yMax = extent * Math.max(1, 1 / aspect)
       const xMax = extent * Math.max(1, aspect)
 
+      // Real σ and imaginary jω both carry units (1/s, rad/s) — unlike the
+      // Nyquist plot's dimensionless axes, a plain digit string here is not
+      // a plain number, it is a mis-scaled one: "600000000" and "-0.003"
+      // beside a Bode plot that formats the SAME kind of quantity as "600M"
+      // and "-3m". One formatter, everywhere a frequency-shaped axis prints.
       const { sx, sy } = drawFrame(
         ctx,
         area,
@@ -43,8 +48,8 @@ export default function LocusCanvas({
         xMax,
         -yMax,
         yMax,
-        (v) => fmtNum(v),
-        (v) => fmtNum(v),
+        (v) => fmtHz(v),
+        (v) => fmtHz(v),
         { zeroLine: true, xTitle: 'Real  σ  (1/s)', yTitle: 'Imaginary  jω  (rad/s)' },
       )
 
@@ -201,7 +206,7 @@ export default function LocusCanvas({
           ctx.font = `${Math.round(10 * k)}px ui-sans-serif, system-ui, sans-serif`
           ctx.textAlign = ex < 0 ? 'right' : 'left'
           ctx.textBaseline = ey < 0 ? 'bottom' : 'top'
-          ctx.fillText(`zero at ${fmtNum(re, 3)}${im ? ` ${im > 0 ? '+' : '−'}${fmtNum(Math.abs(im), 3)}j` : ''}`, x2 + (ex < 0 ? -4 * k : 4 * k), y2 + (ey < 0 ? -4 * k : 4 * k))
+          ctx.fillText(`zero at ${fmtHz(re)}${im ? ` ${im > 0 ? '+' : '−'}${fmtHz(Math.abs(im))}j` : ''}`, x2 + (ex < 0 ? -4 * k : 4 * k), y2 + (ey < 0 ? -4 * k : 4 * k))
         } else {
           circle(re, im, COLORS.response, 2 * k)
         }

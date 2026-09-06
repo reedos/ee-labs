@@ -52,7 +52,6 @@ export const GROUP_INTROS = {
 
 // ------------------------------------------------------------ knobs
 const Vin = (def = 12) => ({ key: 'Vin', label: 'V_in', unit: 'V', min: 1, max: 48, scale: 'linear', step: 0.1, default: def, hint: 'Input voltage' })
-const Vo = (def = 5) => ({ key: 'Vo', label: 'V_out', unit: 'V', min: 0.5, max: 48, scale: 'linear', step: 0.1, default: def, hint: 'The regulated output; must be below V_in' })
 const D = (def = 5 / 12) => ({ key: 'D', label: 'D', unit: '%', percent: true, min: 0.02, max: 0.98, scale: 'linear', step: 0.001, default: def, hint: 'Duty: the share of each period the switch is on' })
 const L = (def = 100e-6) => ({ key: 'L', label: 'L', unit: 'H', min: 1e-6, max: 10e-3, scale: 'log', default: def, hint: 'Inductance' })
 const C = (def = 100e-6) => ({ key: 'C', label: 'C', unit: 'F', min: 1e-6, max: 10e-3, scale: 'log', default: def, hint: 'Output capacitance' })
@@ -132,11 +131,6 @@ export const VIEWS = {
 // sweep; SweepCanvas reads the labels and scales from here.
 export const SWEEP_X = {
   D: { label: 'D', unit: '', scale: 'linear', fmt: (v) => v.toFixed(3) },
-  // The linear regulator has no switch and no duty. Its sweep runs over the
-  // conversion ratio it is set to, which is the same number on the axis and a
-  // different quantity entirely — and on the lab's opening screen, an axis
-  // labelled "Duty D" beside a circuit with no switch in it is simply wrong.
-  ratio: { label: 'V_out / V_in', unit: '', scale: 'linear', fmt: (v) => v.toFixed(3) },
   R: { label: 'R_load', unit: 'Ω', scale: 'log' },
   C: { label: 'C', unit: 'F', scale: 'log' },
   fs: { label: 'f_s', unit: 'Hz', scale: 'log' },
@@ -259,31 +253,28 @@ export const EXPERIMENTS = [
   // ---------------------------------------------------------- A · Why switch
   {
     id: 'a1',
-    about: 'Vo',
-    chips: [5, 9],
-    try: { knob: 'Vo', text: 'Set V_out to 9 V: efficiency 75.0 %, and 5.4 W still heats the regulator.' },
+    about: 'R',
+    chips: [5, 1],
+    try: { knob: 'R', text: 'Set R_load to 1 Ω: output falls to 1.50 V, not 5 V.' },
     group: 'Why switch',
-    name: 'The linear regulator',
+    name: 'The resistor divider',
     kind: 'linreg',
     headline: 'eta',
-    params: [Vin(), Vo(), R()],
+    params: [R(), Vin()],
     // A regulator has no time-domain story: its scope would be three flat
-    // lines, and §11.6.5 is right that the first screen should show the 7 W —
-    // the number the lab exists to beat. What it should NOT be is two bars
-    // blown up to fill a column, which is a poster where a reading belongs.
-    // So the bars are sized as information and the efficiency line sits under
-    // them in the same pane: the loss first, then the claim that no setting
-    // improves it.
+    // lines. The lesson is regulation before it is efficiency, and regulation
+    // is the one a reader watches happen by turning a knob, so the sweep of
+    // V_out against the load leads (real curvature, not the straight line an
+    // artificial ratio axis used to draw) and the loss bars sit one tab over.
     scope: false,
     traces: ['vsw', 'vout', 'iL'],
-    views: ['losses', 'measures', 'math', 'sweep'],
-    view: 'losses',
-    sweep: { x: 'ratio', y: 'eta' },
+    views: ['sweep', 'losses', 'measures', 'math'],
+    view: 'sweep',
+    sweep: { x: 'R', y: 'Vout' },
     note:
-      'A series pass element drops the difference and carries the load current, so it dissipates their ' +
-      'product. From 12 V to 5 V at 1 A, the load receives 5 W and the regulator dissipates 7 W. ' +
-      'Efficiency is 5/12 = 41.7 %, the ratio V_out/V_in at any current. No setting in the sweep ' +
-      'improves it. A linear regulator is as efficient as its voltage ratio.',
+      'Two resistors in series: 7 Ω into a 5 Ω load, so 1 A leaves 5 V of 12 V. Move the load and ' +
+      'the output moves with it. Nothing holds it steady. A linear regulator adds feedback that does, ' +
+      'but wastes the same 7 W for the 5 W delivered. Efficiency is V_out/V_in either way.',
     terms: ['efficiency', 'linear-regulator'],
   },
   {
@@ -391,7 +382,26 @@ export const EXPERIMENTS = [
     id: 'b4',
     about: 'R',
     chips: [200, 5],
-    try: { knob: 'R', text: 'Set R_load to 5 \u03a9: continuous conduction, output back at 5.00 V.' },
+    // A multi-step try (the Circuit Elements Lab pattern): the reader flips
+    // the synchronous switch and then the load, so discontinuous conduction
+    // is something they cause and watch end, not a number to take on faith.
+    try: [
+      {
+        knob: 'sync',
+        set: { sync: 1 },
+        say: 'Turn Freewheel to synchronous switch: i_L dips to \u2212121 mA, conduction turns continuous, 5.00 V out.',
+      },
+      {
+        knob: 'sync',
+        set: { sync: 0 },
+        say: 'Turn Freewheel back to diode: i_L touches zero again, the diode blocks, 8.52 V out.',
+      },
+      {
+        knob: 'R',
+        set: { R: 5, sync: 0 },
+        say: 'Set R_load to 5 \u03a9: the heavier load keeps conduction continuous on its own, 5.00 V out.',
+      },
+    ],
     group: 'The buck',
     name: 'Light load: discontinuous conduction',
     symbols: ['K'],
@@ -412,7 +422,25 @@ export const EXPERIMENTS = [
     id: 'b5',
     about: 'R',
     chips: [34.2857142857, 100, 10],
-    try: { knob: 'R', text: 'Set R_load to 100 \u03a9: M rises to 0.594, 7.13 V. At 10 \u03a9, 0.417.' },
+    // A multi-step try: the reader walks R across the boundary both ways and
+    // reads M on each side, rather than being told the two formulas agree.
+    try: [
+      {
+        knob: 'R',
+        set: { R: 34.2857142857 },
+        say: 'Set R_load to 34.3 \u03a9, its default: the current valley just touches zero, M sits on both formulas.',
+      },
+      {
+        knob: 'R',
+        set: { R: 100 },
+        say: 'Set R_load to 100 \u03a9: conduction turns discontinuous, M climbs to 0.594, 7.13 V out.',
+      },
+      {
+        knob: 'R',
+        set: { R: 10 },
+        say: 'Set R_load to 10 \u03a9: conduction is continuous, M returns to D, 0.417.',
+      },
+    ],
     group: 'The buck',
     name: 'The boundary',
     symbols: ['K'],
@@ -421,11 +449,10 @@ export const EXPERIMENTS = [
     view: 'sweep',
     sweep: { x: 'R', y: 'M' },
     note:
-      'Conduction is continuous while the average current exceeds half the ripple. In the dimensionless ' +
-      'form K = 2·L·f_s/R that is K > 1 − D. With 100 µH at 100 kHz and D = 0.417 the boundary is ' +
-      'R_crit = 34.3 Ω, and the knob starts there: the current valley just touches zero. The two ' +
-      'formulas for M agree at the boundary, so the curve has a kink, not a step. Nothing jumps when ' +
-      'the diode first blocks for an instant.',
+      'At the default 34.3 Ω the inductor current’s valley just touches zero. That is the edge ' +
+      'between the two conduction modes, where the average current equals half the ripple. Written as ' +
+      'K = 2·L·f_s/R, the boundary is K = 1 − D. The two formulas for M agree there, so the curve bends ' +
+      'without a jump when the diode first blocks for an instant.',
     terms: ['k-parameter', 'dcm', 'ccm', 'average', 'ripple'],
   }),
   buck({
@@ -503,6 +530,10 @@ export const EXPERIMENTS = [
     try: { knob: 'D', text: 'Set D to 75 %: M = 4.00, 48.0 V out, 9.60 A in the inductor.' },
     group: 'Boost & buck-boost',
     name: 'Stacking on the source',
+    // The claim is the formula M = 1/(1 − D), same as the buck's M = D
+    // (b2): the sweep is the picture that formula draws, so it opens there
+    // rather than on a scope reading a waveform this lesson is not about.
+    view: 'sweep',
     note:
       'Swap the switch and the inductor, and the inductor’s volt-seconds stack on V_in instead of ' +
       'subtracting. Volt-second balance gives M = 1/(1 − D): at D = 0.500, 24.00 V from 12 V, 60.0 mV ' +
@@ -661,7 +692,20 @@ export const EXPERIMENTS = [
     id: 'e1',
     about: 'C',
     chips: [1000e-6, 100e-6],
-    try: { knob: 'C', text: 'Set C to 100 \u00b5F: the diode conducts for 87.8\u00b0, the output sags 12.4 V.' },
+    // A multi-step try: the reader shrinks the reservoir and reads the wider
+    // conduction angle and the bigger sag themselves.
+    try: [
+      {
+        knob: 'C',
+        set: { C: 1000e-6 },
+        say: 'Set C to 1000 \u00b5F, its default: the diode conducts 42.9\u00b0, the output holds 15.6 V.',
+      },
+      {
+        knob: 'C',
+        set: { C: 100e-6 },
+        say: 'Set C to 100 \u00b5F: the diode conducts for 87.8\u00b0, the output sags 12.4 V.',
+      },
+    ],
     group: 'AC in',
     name: 'Half-wave into a capacitor',
     note:
@@ -719,11 +763,10 @@ export const EXPERIMENTS = [
     views: ['spectrum', 'measures', 'math', 'losses'],
     view: 'spectrum',
     note:
-      'The line current at 1000 µF is two spikes a cycle, not a sine. The fundamental is 219 mA RMS of ' +
-      'a 401 mA total. Distortion factor 0.545, THD 154 %, the 3rd harmonic at 94 % of the fundamental. That ' +
-      'fundamental lags the voltage by only 7.6°, a displacement factor of 0.991, so this is not a ' +
-      'phase-shift problem. Power factor is the product, 0.991 × 0.545 = 0.540: the line carries 1.85× ' +
-      'the RMS current that 2.73 W would need as a sine.',
+      'The line current at 1000 µF is two narrow spikes a cycle, not a sine. Its spectrum is odd ' +
+      'harmonics only, falling from the 3rd on down. That current lags the voltage by only a few ' +
+      'degrees, so the loss is distortion, not a phase shift. Power factor still falls to 0.540, the ' +
+      'line carrying far more RMS current than the power needs.',
     terms: ['power-factor', 'thd', 'displacement', 'harmonic', 'rms'],
   }),
   {

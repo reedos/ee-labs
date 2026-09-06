@@ -79,6 +79,29 @@ const trimLeading = (c) => {
   return out
 }
 
+/**
+ * A transfer function whose denominator is identically zero: P(s) = N(s)/0,
+ * undefined at every s rather than a system with a value of zero.
+ *
+ * trimLeading() above never shrinks a coefficient array below length 1, so a
+ * custom plant with a₂ = a₁ = a₀ = 0 hands back the denominator [0] instead
+ * of vanishing. A bare [0] denominator is indistinguishable, to any consumer
+ * that only checks its length, from a valid constant-1 system that happens
+ * to evaluate to zero — it is not: nothing downstream (closeLoop, margins,
+ * the step response) has a real system to analyse. Every pane checks THIS
+ * function, once, rather than re-deriving the same test at its own layer —
+ * closeLoop's own polyAdd once took a plant's all-zero denominator as the
+ * additive identity and built a fully-formed "stable" unity loop out of a
+ * division by zero, because nothing upstream had refused first.
+ */
+export function isUndefinedTf(tf) {
+  return !tf || !tf.a || !tf.a.length || !tf.a.some((v) => v !== 0)
+}
+
+/** The one sentence every pane shows for an undefined plant, in the house style. */
+export const UNDEFINED_PLANT_REASON =
+  'This H(s) has an all-zero denominator — not a system yet. Give a₂, a₁ or a₀ a value.'
+
 export const PLANTS = {
   firstOrder: {
     name: 'First order lag',
@@ -137,6 +160,16 @@ export const PLANTS = {
         return { b: [gm], a: [C, 0] }
       },
     },
+    // Why circuitFor (toCircuitLab.js) never finds a catalog match, even
+    // though the bench circuit above is real and verified: CORE_SCOPE Rule 2,
+    // a refused mapping is content, not a bare null. Round three found this
+    // plant renders NEITHER a link nor a reason where the link would sit —
+    // App.jsx reads this field for that spot, unrelated to `circuit` above,
+    // which only feeds the Math tab's "where this comes from on a bench" row.
+    circuitNote:
+      'No catalogue circuit matches this plant. The catalogue\'s only entry with a pole at the ' +
+      'origin, the op-amp integrator, inverts, H(s) = −1/(sRC), and this plant\'s gain is always ' +
+      'positive, so no value ever meets that sign flip.',
   },
 
   secondOrder: {
@@ -220,6 +253,12 @@ export const PLANTS = {
         return { b: [gm], a: polyMul([R * C, 1], [C2, 0]) }
       },
     },
+    // See the integrator's own comment above: this is the reason there is no
+    // catalog LINK, not a restatement of the bench circuit two lines up.
+    circuitNote:
+      'No catalogue circuit matches this plant. It pairs a pole at the origin with a second, ' +
+      'finite pole, and the catalogue\'s one pole-at-the-origin entry, the op-amp integrator, has ' +
+      'no second pole to be the lag.',
   },
 
   threePole: {
@@ -257,6 +296,10 @@ export const PLANTS = {
         return { b: [p.k], a: polyMul(polyMul(stage(p.t1), stage(p.t2)), stage(p.t3)) }
       },
     },
+    circuitNote:
+      'No catalogue circuit matches this plant. Three real poles need a third stage, and the ' +
+      'catalogue\'s deepest entries, the series RLC, the twin-T and the Sallen-Key, all stop at ' +
+      'second order.',
   },
 
   unstable: {
@@ -303,6 +346,9 @@ export const PLANTS = {
     ],
     tf: (p) => ({ b: trimLeading([p.b2, p.b1, p.b0]), a: trimLeading([p.a2, p.a1, p.a0]) }),
     tex: (p) => `P(s) = \\frac{${texPoly(p.b2, p.b1, p.b0)}}{${texPoly(p.a2, p.a1, p.a0)}}`,
+    circuitNote:
+      'A custom H(s) has no fixed shape to look up, so no catalogue circuit is offered. Match a ' +
+      'named plant\'s shape, such as the first- or second-order defaults, to see one.',
   },
 }
 
@@ -389,12 +435,22 @@ export function buildLoop(plantId, plantParams, ctrlId, ctrlParams) {
   }
   const P0 = PLANTS[plantId].tf(plantParams)
   const C0 = CONTROLLERS[ctrlId].tf(ctrlParams)
+  // The plant alone is undefined: refuse HERE, before series() and
+  // closeLoop() ever run, rather than let the loop get built from a
+  // division by zero and hand every pane a well-formed number to disagree
+  // about. `reason` is the one signal every surface (the verdict badge, the
+  // steady-error field, the Bode readout, Nyquist, root locus, the math
+  // panel) now checks instead of re-deriving whether this loop is real.
+  if (isUndefinedTf(P0)) {
+    const bad = { b: P0.b, a: [0] }
+    return { plant: P0, controller: C0, open: bad, closed: bad, disturbance: bad, reason: UNDEFINED_PLANT_REASON }
+  }
   const L = norm(series(C0, P0))
   const disturbance = norm({
     b: polyMul(P0.b, C0.a),
     a: polyAdd(polyMul(P0.a, C0.a), polyMul(P0.b, C0.b)),
   })
-  return { plant: P0, controller: C0, open: L, closed: closeLoop(L), disturbance }
+  return { plant: P0, controller: C0, open: L, closed: closeLoop(L), disturbance, reason: null }
 }
 
 /**

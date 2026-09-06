@@ -119,7 +119,7 @@ export const MODE_WORDS = {
   CCM: 'continuous conduction',
   DCM: 'discontinuous conduction',
   SAT: 'saturating part of the period',
-  linear: 'linear regulation',
+  linear: 'a resistive drop',
   chopped: 'chopped, no filter',
   line: 'line-frequency, diode-steered',
   dimmer: 'phase-cut, resistive load',

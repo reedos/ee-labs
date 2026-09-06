@@ -2,8 +2,9 @@ import { polesZeros, margins, stepResponse, dcGain } from '@ee-labs/systems'
 import { PLANTS, CONTROLLERS, buildLoop } from './systems.js'
 import { CUES, TOPBAR_TERMS, termsFor } from './terms.js'
 import { watchPartLabels } from './watch.js'
-import { verdictOf, verdictBadge, bodeMarginNote, joinParts, arrivalErrorNote } from './verdict.js'
+import { verdictOf, verdictBadge, bodeMarginNote, joinParts, arrivalErrorNote, plantInverted } from './verdict.js'
 import { crossingGain, locusHereNote } from './lessons.js'
+import { circuitFor } from './toCircuitLab.js'
 import { naturalWindow, overshootOf } from './stepWindow.js'
 import { ladderUp } from './stepAxis.js'
 import { simCost, simBlockReason, STEP_BUDGET } from './affordable.js'
@@ -192,6 +193,35 @@ function mathProseText(math) {
 const ALWAYS_ON_CHROME = 'Open loop L(s) = C(s)·P(s)'
 
 /**
+ * The section-header definitions (App.jsx's `#controller`/`#plant` cards):
+ * what a plant and a controller ARE, rendered unconditionally right under
+ * each `<h2>` regardless of lesson or view — NEEDS.md's own ask, and the
+ * load-bearing content is the input/output identity (u, y, r − y) that
+ * confused a reader arriving from a hand-over link. One string apiece, kept
+ * here rather than inline in App.jsx so this scan and the screen read the
+ * exact same words, the same reason ALWAYS_ON_CHROME above is not a literal
+ * repeated in two files.
+ */
+export const PLANT_DEF =
+  'The plant is the system you are stuck with, a motor, a tank, a circuit. Its input is the drive u, ' +
+  'whatever the controller sends, and its output is the measured y fed back to it.'
+export const CONTROLLER_DEF =
+  'The controller is the block you design. Its input is the error, the reference r minus the measured y, ' +
+  'and its output is the drive u sent to the plant.'
+
+/**
+ * The four ids these two definitions introduce (drive already had one:
+ * CUES.drive). Kept apart from TOPBAR_TERMS — which every LESSON also
+ * inherits via lessons.js's own `terms()` helper — because these belong to
+ * the picker's section headers specifically; folding them into TOPBAR_TERMS
+ * would widen every lesson's own "terms used here" fold by four entries no
+ * lesson asked for. chromeTermIds seeds its id set with both lists, so the
+ * picker's fold (the only one item 33's browser probe walks) offers all of
+ * them unconditionally, the same guarantee TOPBAR_TERMS gives its own four.
+ */
+export const SECTION_TERMS = ['plant', 'controller', 'error', 'reference']
+
+/**
  * The wide, 1600-point margin-measurement grid App.jsx's `wideFreqs` builds
  * (16 decades around the loop's own pole/zero geometric mean), reproduced
  * here from the open loop alone. App.jsx's version centres on
@@ -329,7 +359,10 @@ export function chromeTermIds({ plantId, plantP, ctrlId, ctrlP, view, stepInput,
   // On screen regardless of the lower view: the topbar badge and the Bode
   // pane's margin sentence directly below the crossover line.
   const badge = verdictBadge(verdict)
-  const marginNote = bodeMarginNote(marginal, marg.gainMargin)
+  // Same flag App.jsx computes (verdict.js: plantInverted) — kept in sync so
+  // the picker's glossary scan sees the exact sentence the live screen shows
+  // for a plant whose own pole sits in the right half plane.
+  const marginNote = bodeMarginNote(verdict, marg.gainMargin, plantInverted(loop))
 
   const watchLabels = view === 'watch' ? watchPartLabels(ctrlId) : []
   const watchText = watchLabels.length > 1 ? watchLabels.join(' ') : ''
@@ -378,10 +411,20 @@ export function chromeTermIds({ plantId, plantP, ctrlId, ctrlP, view, stepInput,
     badge.short,
     joinParts(marginNote.parts),
     ALWAYS_ON_CHROME,
+    PLANT_DEF,
+    CONTROLLER_DEF,
     arrivalText,
+    // The "This is also a circuit" spot (App.jsx, right after this section's
+    // terms fold) — on screen picker or lesson alike, whichever of the link
+    // or its refusal reason applies. circuitFor mirrors App.jsx's own gate
+    // exactly (`!circuit && plant.circuitNote`), so a cue word in a refusal
+    // (Integrator, Motor, Three lags, Custom, Unstable) is scanned the same
+    // way plantHint already is, not left to go stale the way this exact spot
+    // did before it had any text to scan at all.
+    !circuitFor(plantId, plantP) ? plant.circuitNote || '' : '',
   ].join(' ')
 
-  const ids = new Set(TOPBAR_TERMS)
+  const ids = new Set([...TOPBAR_TERMS, ...SECTION_TERMS])
   for (const [id, re] of Object.entries(CUES)) {
     if (re.test(text)) ids.add(id)
   }

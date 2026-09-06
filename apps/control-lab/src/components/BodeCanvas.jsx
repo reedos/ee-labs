@@ -30,6 +30,15 @@ export default function BodeCanvas({
   ghostMag = null,
   ghostPhase = null,
   ghostLabel = '',
+  // A one-time reading lesson: 'phasemargin' or 'gainmargin', matching
+  // App.jsx's `active?.callout` — the SAME field that already rings the
+  // topbar's own field for these two lessons, the first to name each
+  // margin. A student review of this exact plot: "mostly noise", "never
+  // told how to read it", and the margin trusted from the topbar number
+  // rather than seen — the missing sentence was "the margin is the
+  // distance from the phase curve to −180°". A picture answers that once;
+  // every other lesson's Bode plot is unchanged.
+  teach = null,
 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
@@ -225,6 +234,46 @@ export default function BodeCanvas({
       }
       ctx.stroke()
 
+      // The reading lesson's other half: gain margin, at the frequency
+      // where the phase has already reached −180°, is the vertical gap
+      // between the magnitude trace and 0 dB — how much louder the loop
+      // could sing before it does. Independent of the phase overlay
+      // toggle, since it never touches the phase trace at all.
+      if (teach === 'gainmargin' && phaseCrossover) {
+        let gi = 0
+        let gd = Infinity
+        for (let j = 0; j < freqs.length; j++) {
+          const d = Math.abs(lx(freqs[j]) - lx(phaseCrossover))
+          if (d < gd) {
+            gd = d
+            gi = j
+          }
+        }
+        const gx = sx(lx(phaseCrossover))
+        const magY = sy(db(mag[gi]))
+        const zeroY = sy(0)
+        const yLo = Math.min(magY, zeroY)
+        const yHi = Math.max(magY, zeroY)
+        if (yHi - yLo > 2) {
+          ctx.strokeStyle = COLORS.response
+          ctx.lineWidth = 2 * k
+          ctx.beginPath()
+          ctx.moveTo(gx, yLo)
+          ctx.lineTo(gx, yHi)
+          const cap = 5 * k
+          ctx.moveTo(gx - cap, yLo)
+          ctx.lineTo(gx + cap, yLo)
+          ctx.moveTo(gx - cap, yHi)
+          ctx.lineTo(gx + cap, yHi)
+          ctx.stroke()
+          ctx.fillStyle = COLORS.response
+          ctx.font = `${Math.round(11 * k)}px ui-sans-serif, system-ui, sans-serif`
+          ctx.textAlign = 'left'
+          ctx.textBaseline = 'middle'
+          ctx.fillText('gain margin', gx + cap + 4 * k, (yLo + yHi) / 2)
+        }
+      }
+
       if (showPhase && phase) {
         // plo/phi/py were computed above (phaseScale), before the crossover
         // markers, so their labels could already ask where this trace sits.
@@ -259,6 +308,62 @@ export default function BodeCanvas({
         }
         ctx.stroke()
         ctx.setLineDash([])
+
+        // The reading lesson: a solid line at the −180° boundary, and a
+        // dimension bracket at the gain crossover connecting the phase
+        // trace to it. The gap the bracket spans IS the phase margin —
+        // the number already in the topbar, now a distance you can see
+        // rather than a value you have to trust.
+        if (teach === 'phasemargin' && crossover) {
+          const boundaryY = py(-180)
+          ctx.strokeStyle = COLORS.marker
+          ctx.globalAlpha = 0.8
+          ctx.lineWidth = 1.6 * k
+          ctx.beginPath()
+          ctx.moveTo(area.x, boundaryY)
+          ctx.lineTo(area.x + area.w, boundaryY)
+          ctx.stroke()
+          ctx.globalAlpha = 1
+          ctx.fillStyle = COLORS.marker
+          ctx.font = `${Math.round(11 * k)}px ui-sans-serif, system-ui, sans-serif`
+          ctx.textAlign = 'left'
+          ctx.textBaseline = 'bottom'
+          ctx.fillText('−180°', area.x + 4 * k, boundaryY - 3 * k)
+
+          // Nearest sample to the crossover — the same lookup the marker
+          // labels above already use to place themselves.
+          let ci = 0
+          let cd = Infinity
+          for (let j = 0; j < freqs.length; j++) {
+            const d = Math.abs(lx(freqs[j]) - lx(crossover))
+            if (d < cd) {
+              cd = d
+              ci = j
+            }
+          }
+          const cx = sx(lx(crossover))
+          const phaseY = py((phase[ci] * 180) / Math.PI)
+          const yLo = Math.min(phaseY, boundaryY)
+          const yHi = Math.max(phaseY, boundaryY)
+          if (yHi - yLo > 2) {
+            ctx.strokeStyle = COLORS.response
+            ctx.lineWidth = 2 * k
+            ctx.beginPath()
+            ctx.moveTo(cx, yLo)
+            ctx.lineTo(cx, yHi)
+            const cap = 5 * k
+            ctx.moveTo(cx - cap, yLo)
+            ctx.lineTo(cx + cap, yLo)
+            ctx.moveTo(cx - cap, yHi)
+            ctx.lineTo(cx + cap, yHi)
+            ctx.stroke()
+            ctx.fillStyle = COLORS.response
+            ctx.textAlign = 'left'
+            ctx.textBaseline = 'middle'
+            ctx.fillText('phase margin', cx + cap + 4 * k, (yLo + yHi) / 2)
+          }
+        }
+
         ctx.restore()
 
         ctx.save()
@@ -279,7 +384,7 @@ export default function BodeCanvas({
       }
       ctx.restore()
     },
-    [freqs, mag, phase, showPhase, markers, crossover, phaseCrossover, yUnit, ghostMag, ghostPhase, ghostLabel],
+    [freqs, mag, phase, showPhase, markers, crossover, phaseCrossover, yUnit, ghostMag, ghostPhase, ghostLabel, teach],
   )
 
   return <canvas ref={ref} className="plot" role="img" aria-label="Open-loop Bode plot: magnitude and phase, with the stability margins marked" />

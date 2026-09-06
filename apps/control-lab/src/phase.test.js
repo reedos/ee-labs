@@ -142,7 +142,28 @@ describe("the math panel's phase accounting", () => {
     return loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, GRID)
   }
 
-  it('every check row agrees for every plant against every controller', () => {
+  // The regression checkFailures/valueRowsPretendingToCheck cannot see: both
+  // only ever inspect CHECK rows (a predicted-vs-measured pair). The math
+  // panel's own phase-accounting row is a plain VALUES row that quotes an
+  // angle and carries a note claiming to BE the phase margin — so a copy
+  // that drifts 360° from the topbar's own margin (the shipped defect: the
+  // unstable plant's row read 447.134° beside a topbar reading 87.1°, under
+  // every controller) ticks nothing and fails no existing check. Local to
+  // this app because the shared guards live in packages/explain/testing.js,
+  // out of this agent's territory — this closes the hole here instead of
+  // there.
+  function offCircleValueRows(entry, label = '') {
+    const out = []
+    for (const r of rowsOf(entry, 'values')) {
+      if (r.unit !== '°' || r.note !== 'the phase margin' || !Number.isFinite(r.value)) continue
+      if (Math.abs(r.value) > 180 + 1e-6) {
+        out.push(`${label} / ${r.label}: ${r.value}° is off the circle`)
+      }
+    }
+    return out
+  }
+
+  it('every check row agrees for every plant against every controller, and no value row claiming to be the phase margin sits off the circle', () => {
     for (const plantId of Object.keys(PLANTS)) {
       for (const ctrlId of Object.keys(CONTROLLERS)) {
         const label = `${plantId} + ${ctrlId}`
@@ -151,6 +172,33 @@ describe("the math panel's phase accounting", () => {
         expect(checkFailures(entry, label)).toEqual([])
         expect(texFailures(entry, label)).toEqual([])
         expect(valueRowsPretendingToCheck(entry, label)).toEqual([])
+        expect(offCircleValueRows(entry, label)).toEqual([])
+      }
+    }
+  })
+
+  it('the phase-accounting row folds the same way the topbar does, under every controller — the 360° regression', () => {
+    // The unstable plant's own repro (438.5° before margins() itself was
+    // fixed) reproduced one panel over: 180° + the raw accounting total read
+    // 447.134° while the topbar read 87.1° at Kp = 20. Swept across every
+    // controller and a spread of gains, both rows must now agree.
+    for (const ctrlId of Object.keys(CONTROLLERS)) {
+      for (const kpLike of [0.2, 5, 20, 80]) {
+        const over = ctrlId === 'lead' ? { k: kpLike } : { kp: kpLike }
+        const entry = entryFor('unstable', ctrlId, {}, over)
+        const label = `unstable + ${ctrlId} @ ${kpLike}`
+        expect(entry, label).toBeTruthy()
+        const values = rowsOf(entry, 'values')
+        const topbarPM = values.find((r) => r.label === 'phase margin')
+        const panelPM = values.find((r) => r.note === 'the phase margin' && r.label !== 'phase margin')
+        // The accounting row is offered exactly where a crossover exists —
+        // where the topbar's own phase-margin row carries a finite value.
+        const hasCrossover = Number.isFinite(topbarPM?.value)
+        expect(!!panelPM, `${label}: accounting row present iff a crossover exists`).toBe(hasCrossover)
+        if (hasCrossover) {
+          expect(panelPM.value, label).toBeCloseTo(topbarPM.value, 6)
+          expect(Math.abs(panelPM.value) <= 180, `${label}: ${panelPM.value}°`).toBe(true)
+        }
       }
     }
   })
@@ -217,6 +265,49 @@ describe("the math panel's phase accounting", () => {
     expect(has(entryFor('motor', 'p'))).toBe(true)
     // firstOrder at Kp 1 never reaches |L| = 1: no crossover, no price row.
     expect(has(entryFor('firstOrder', 'p'))).toBe(false)
+  })
+
+  // The shipped defect: Custom H(s) with b0 = 1 and a2 = a1 = a0 = 0 is
+  // P(s) = 1/0, undefined at every s. The old panel still printed "steady
+  // state error" theory 0.0000 against measured 0.0000 and marked it with a
+  // tick — a confident wrong number, because it never asked buildLoop
+  // whether it had a system to describe. It must refuse instead: no check
+  // row (nothing to tick), no value row (nothing measured), one sentence
+  // naming why.
+  it('an undefined plant refuses instead of ticking a division by zero', () => {
+    const entry = entryFor('custom', 'p', { b2: 0, b1: 0, b0: 1, a2: 0, a1: 0, a0: 0 })
+    expect(entry).toBeTruthy()
+    expect(rowsOf(entry, 'check')).toEqual([])
+    expect(rowsOf(entry, 'values')).toEqual([])
+    const texts = entry.blocks.filter((b) => b.kind === 'text').map((b) => b.text)
+    expect(texts).toEqual([
+      'This H(s) has an all-zero denominator — not a system yet. Give a₂, a₁ or a₀ a value.',
+    ])
+  })
+
+  // Round three: the unstable plant under PI/PID at Kp = 5 read "past the
+  // boundary, it sits at 0.20x this gain" beside a badge saying stable, with
+  // nothing on screen resolving the two. The Math tab now states the plant's
+  // own inverted failure mode plainly, and the gain-margin row's own note
+  // says the same thing right beside the number.
+  it("names the plant's inverted failure mode on the Math tab, and only there", () => {
+    const entry = entryFor('unstable', 'pi', {}, { kp: 5 })
+    const texts = entry.blocks.filter((b) => b.kind === 'text').map((b) => b.text).join(' ')
+    expect(texts).toMatch(/right half plane/)
+    expect(texts).toMatch(/too little gain/)
+    const gmRow = rowsOf(entry, 'values').find((r) => r.label === 'gain margin')
+    expect(gmRow).toBeTruthy()
+    expect(gmRow.value).toBeLessThan(1)
+    expect(gmRow.note).toMatch(/safe/)
+
+    // An ordinary plant never gets this paragraph or this row note, at any
+    // gain — the explanation is structural to the PLANT, not to a thin
+    // margin, and must not bleed into a loop that fails the ordinary way.
+    const ordinary = entryFor('motor', 'pi', {}, { kp: 5 })
+    const ordinaryTexts = ordinary.blocks.filter((b) => b.kind === 'text').map((b) => b.text).join(' ')
+    expect(ordinaryTexts).not.toMatch(/too little gain/)
+    const ordinaryGm = rowsOf(ordinary, 'values').find((r) => r.label === 'gain margin')
+    if (ordinaryGm) expect(ordinaryGm.note).not.toMatch(/safe/)
   })
 })
 

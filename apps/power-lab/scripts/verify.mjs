@@ -13,6 +13,7 @@
 //                                     BROWSERS=chromium,firefox to add Firefox)
 
 import { chromium, firefox } from 'playwright'
+import { withLabNav } from '@ee-labs/ui/verify/foldProbe.mjs'
 
 const URL = process.env.APP_URL || 'http://localhost:4500/'
 const BROWSERS = (process.env.BROWSERS || 'chromium').split(',').map((s) => s.trim()).filter(Boolean)
@@ -65,7 +66,16 @@ async function run(browser, tag) {
   await page.goto(URL, { waitUntil: 'load' })
   await page.waitForSelector('.views')
   await page.waitForTimeout(400)
-  const settle = (ms = 160) => page.waitForTimeout(ms)
+  // Waits out the animation frame AND lets web fonts finish loading. Text set
+  // in a web font measures narrower/shorter before it swaps in — a box read
+  // during that window is optimistic (Signal Lab's verify.mjs found the ~8 px
+  // reproduction this comment is copied from). Every fold/overflow
+  // measurement in this file goes through this settle(), so none of them
+  // can be taken early.
+  const settle = async (ms = 160) => {
+    await page.waitForTimeout(ms)
+    await page.evaluate(() => document.fonts.ready)
+  }
 
   // -------------------------------------------------------------- helpers
 
@@ -241,6 +251,125 @@ async function run(browser, tag) {
     }
   }
 
+  // ------------------------------ 3b. a big canvas carries more than a grid
+
+  /**
+   * How much of a canvas its own drawing covers, past the bare chrome every
+   * plot draws even empty: the untouched background (useCanvas clears to
+   * transparent, alpha 0 — the dark fill a reader sees is the pane behind
+   * it, not a canvas pixel) and the grid/axis lines (COLORS.grid #182029,
+   * gridMajor #243040, axis #3a4757 in packages/ui/src/plot.js). What is
+   * left — traces, filled regions, marker dots, tick and axis text — is the
+   * content a reader came for. A canvas above 300 px tall stretched over a
+   * pane it does not fill is exactly the "giant empty" Reed named on A1's
+   * sweep (2026-09-03): one thin line and five gridlines in a 605 px frame.
+   * This is the regression guard so that complaint cannot come back silently
+   * on any experiment.
+   */
+  const inkFraction = (sel) =>
+    page.evaluate((sel) => {
+      const near = (r, g, b, tr, tg, tb, tol) => Math.abs(r - tr) <= tol && Math.abs(g - tg) <= tol && Math.abs(b - tb) <= tol
+      const c = document.querySelector(sel)
+      if (!c) return null
+      const ctx = c.getContext('2d')
+      const { data, width, height } = ctx.getImageData(0, 0, c.width, c.height)
+      let ink = 0
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] === 0) continue // never drawn: the pane's own background shows through
+        const r = data[i]
+        const g = data[i + 1]
+        const b = data[i + 2]
+        const chrome =
+          near(r, g, b, 24, 32, 41, 6) || // grid
+          near(r, g, b, 36, 48, 64, 6) || // gridMajor
+          near(r, g, b, 58, 71, 87, 8) // axis
+        if (!chrome) ink++
+      }
+      return { ink, total: width * height, w: c.clientWidth, h: c.clientHeight }
+    }, sel)
+
+  console.log('\n3b. A canvas over 300 px tall carries more than a trivial fraction of ink\n')
+  {
+    // Calibrated against every plot canvas the lab draws (2026-09-03): the
+    // real range ran 1.1 % (A1's regulation sweep, the tallest single-pane
+    // canvas in the lab, at 600 px) to 6.0 % (E4's harmonic bars). The floor
+    // sits well under the lowest of those with room to spare, so a healthy
+    // plot never comes close to it — this exists to catch a canvas that
+    // renders its frame and nothing else: a crashed trace, an empty data set,
+    // a sizing bug, not to referee how much any one plot ought to show.
+    const MIN_FRACTION = 0.003
+    const TALL = 300
+    for (const vp of DESKTOP) {
+      await page.setViewportSize(vp)
+      await settle(200)
+      let checked = 0
+      let min = Infinity
+      for (const id of ids) {
+        await pick(id)
+        for (const v of await viewButtons()) {
+          await showView(v)
+          const canvases = await page.$$('.views canvas.plot')
+          for (let i = 0; i < canvases.length; i++) {
+            const sel = `.views canvas.plot:nth-of-type(${i + 1})`
+            const box = await canvases[i].boundingBox()
+            if (!box || box.height < TALL) continue
+            const m = await inkFraction(sel)
+            if (!m || !m.total) continue
+            checked++
+            const frac = m.ink / m.total
+            if (frac < min) min = frac
+            if (frac < MIN_FRACTION)
+              F(`${vp.width}×${vp.height} / ${id}/${v}: canvas #${i + 1} is ${Math.round(box.height)} px tall and only ${(frac * 100).toFixed(2)} % ink — mostly empty`)
+          }
+        }
+      }
+      console.log(`   ${vp.width}×${vp.height}: ${checked} canvases over ${TALL} px checked, lowest ${min === Infinity ? 'n/a' : (min * 100).toFixed(2) + ' %'} ink`)
+    }
+    await page.setViewportSize(DESKTOP[1])
+    await settle(200)
+  }
+
+  // ------------------------ 3c. the sweep marker agrees with the top bar
+
+  // A1's marker read "5 Ω → 4.935 V" against a top bar, a note and an exact
+  // 12·5/(5+7) that all read 5 V (Reed, 2026-09-03): the sweep's own 61
+  // log-spaced samples do not land on 5 Ω, so the marker was reading its
+  // nearest neighbour rather than the setting itself. Fixed by carrying the
+  // exact analysed value into the canvas's `data-at`, formatted the same way
+  // the top bar's own field is — so if the two ever drift apart again, the
+  // two strings stop being equal rather than merely close.
+  console.log('\n3c. The sweep marker and the top bar agree on screen, to the letter\n')
+  {
+    const dataAt = () =>
+      page.$$eval('.views canvas', (els) => els.map((c) => c.dataset.at || '').find((s) => s))
+    const topbarField = (label) =>
+      page.evaluate(
+        (label) => {
+          const f = [...document.querySelectorAll('.topbar-field')].find((f) => f.querySelector('span')?.textContent.trim() === label)
+          return f ? f.querySelector('b').textContent.trim() : null
+        },
+        label,
+      )
+    const agrees = async (id, label) => {
+      await pick(id)
+      await showView('Sweep')
+      const at = await dataAt()
+      const yPart = at ? at.split('→')[1]?.trim() : null
+      const top = await topbarField(label)
+      if (!yPart || !top) F(`${id}: could not read the marker (${at || 'none'}) or the top bar's ${label} (${top || 'none'}) to compare`)
+      else if (yPart !== top) F(`${id}: sweep marker "${at}" reads ${yPart}, the top bar's ${label} reads ${top} — they disagree`)
+      else console.log(`   ${id}: marker "${at}" agrees with the top bar's ${label} ${top}`)
+    }
+    // Sweeps whose y is the same V_out/V_rms quantity the top bar's own
+    // field already shows (a1's divider, a2's chopper mean).
+    await agrees('a1', 'V_out')
+    await agrees('a2', 'V_out')
+    // Sweeps of η alone (B6, B7, B8), against the top bar's η meter — the
+    // same bug independently on the other axis (§3's rotated glyph was; this
+    // is the marker's own number).
+    for (const id of ['b6', 'b7', 'b8']) await agrees(id, 'η')
+  }
+
   // ------------------------------------ 4. two strips, currents below volts
 
   console.log('\n4. Voltages above, currents below: the current colour never enters the voltage strip\n')
@@ -283,6 +412,7 @@ async function run(browser, tag) {
 
   {
     await pick('a1')
+    await showView('Losses') // A1 now opens on the regulation sweep; the loss bars are one tab over.
     const bar = await page.locator('.power-row .bar').first().boundingBox()
     const pane = await page.locator('.view').first().boundingBox()
     if (!bar) F('A1: no loss bar on screen')
@@ -406,12 +536,59 @@ async function run(browser, tag) {
     else console.log('   the try chip focuses the knob it names')
   }
 
+  // ------------------------------------- 7b. a multi-step try is performed
+
+  console.log("\n7b. B4's multi-step try: each chip advances to the next step and actually flips the mode\n")
+  {
+    await pick('b4')
+    // .innerText() reflects the CSS text-transform on .try-label, so "Try"
+    // renders "TRY" — match case-insensitively rather than the source string.
+    const tryText = () => page.locator('[data-role=try]').innerText()
+    // The mode node, not the whole flow strip: B4's own NAME is "Light load:
+    // discontinuous conduction", so a substring test against the full strip
+    // would always find "discontinuous" whatever the mode actually reads.
+    const modeText = () => page.locator('.flow-node:not(.is-name):not(.is-out)').innerText()
+    const t0 = await tryText()
+    if (!/try 1\/3/i.test(t0)) F(`B4 should open on step 1 of 3: "${t0.slice(0, 40)}"`)
+    // Step 1: synchronous switch on — CCM, the current goes negative.
+    await page.locator('.try .knob-chip').click()
+    await settle()
+    const t1 = await tryText()
+    if (!/try 2\/3/i.test(t1)) F(`B4's step 1 chip should advance to step 2 of 3: "${t1.slice(0, 40)}"`)
+    const syncOn = await page.evaluate(() => document.querySelector('[data-knob="sync"] button[aria-pressed="true"]')?.textContent.trim())
+    if (syncOn !== 'synchronous switch') F(`B4 step 1 should turn Freewheel to synchronous switch, reads "${syncOn}"`)
+    const mode1 = await modeText()
+    if (!mode1.startsWith('continuous conduction')) F(`B4 step 1 (synchronous switch) should read continuous conduction: "${mode1}"`)
+    // Step 2: back to diode — DCM returns, 8.52 V.
+    await page.locator('.try .knob-chip').click()
+    await settle()
+    const t2 = await tryText()
+    if (!/try 3\/3/i.test(t2)) F(`B4's step 2 chip should advance to step 3 of 3: "${t2.slice(0, 40)}"`)
+    const mode2 = await modeText()
+    if (!mode2.startsWith('discontinuous conduction')) F(`B4 step 2 (diode restored) should read discontinuous conduction: "${mode2}"`)
+    const topbarDcm = await topbar()
+    if (!/8\.51/.test(topbarDcm)) F(`B4 step 2 (diode restored) should read close to 8.52 V out: "${topbarDcm.slice(0, 120)}"`)
+    // Step 3: R = 5 Ω — continuous conduction on its own, 5.00 V.
+    await page.locator('.try .knob-chip').click()
+    await settle()
+    const rNow = await page.evaluate(() => document.querySelector('[data-knob="R"] input')?.value)
+    if (Math.abs(Number(rNow) - 5) > 0.01) F(`B4 step 3 should set R_load to 5 Ω, reads ${rNow}`)
+    const mode3 = await modeText()
+    if (!mode3.startsWith('continuous conduction')) F(`B4 step 3 (R = 5 Ω) should read continuous conduction: "${mode3}"`)
+    console.log('   B4: step 1/3 → 2/3 → 3/3, the switch and the load each flip the mode a click asks for')
+  }
+
   // ---------------------------------------------- 8. above the fold
 
   console.log('\n8. Above the fold: note, schematic, first knob and the Math button, without scrolling\n')
   for (const vp of DESKTOP) {
     await page.setViewportSize(vp)
     await settle(300)
+    // The deployed page carries the LabNav row above the title (~26 px);
+    // this bare preview has no siblings beside it, so the row never
+    // renders. Stand a placeholder in so the fold checked below matches
+    // what a student actually gets.
+    await withLabNav(page)
     let bad = 0
     for (const id of ids) {
       await pick(id)
@@ -551,6 +728,7 @@ async function run(browser, tag) {
       }
     }
     await pick('a1')
+    await showView('Losses')
     const bars = await page.locator('.power-row').count()
     if (!bars) {
       bad++

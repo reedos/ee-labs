@@ -70,8 +70,26 @@ export function chipMatches(state, patch) {
   return true
 }
 
-/** The label of the chip the state currently satisfies, or null. */
-export function activeChip(state, chips = []) {
+/**
+ * The label of the chip the state currently satisfies, or null.
+ *
+ * A chip patch is partial by design ("dither: true" says nothing about
+ * bits), so two chips can both match at once: click "12 bits" then "dither"
+ * and the state (bits: 12, dither: true) still satisfies the "12 bits" chip
+ * too, since its patch never checks dither. `find` then returned whichever
+ * chip happened to sit first in the array — "12 bits" stayed lit while
+ * "dither" was the one just clicked (Reed's review).
+ *
+ * `justClicked` names the chip the caller knows was actually pressed. When it
+ * still matches the state, it wins over array order; when a later drag moves
+ * a param away from it, it stops matching and the normal first-match search
+ * takes back over, same as before a click ever happened.
+ */
+export function activeChip(state, chips = [], justClicked = null) {
+  if (justClicked) {
+    const c = chips.find((x) => x.label === justClicked)
+    if (c && chipMatches(state, c.patch)) return c.label
+  }
   const hit = chips.find((c) => chipMatches(state, c.patch))
   return hit ? hit.label : null
 }

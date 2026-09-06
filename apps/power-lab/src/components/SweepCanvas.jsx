@@ -6,6 +6,22 @@ import { markLabels } from '../marks.js'
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
+/**
+ * The "at" marker's label — one function, called from the canvas draw and
+ * from the canvas's `data-at` attribute alike, so a screen-agreement probe
+ * (verify.mjs) reads the very string that was drawn rather than a second
+ * copy of the same formatting that could drift from it.
+ */
+export function atLabel(sweep, at, atY) {
+  if (!Number.isFinite(at) || !Number.isFinite(atY)) return ''
+  const ax = SWEEP_X[sweep.x]
+  const ay = SWEEP_Y[sweep.y]
+  const fmtX = (v) => (ax.fmt ? ax.fmt(v) : fmt(v, ax.unit, 2))
+  const xTxt = sweep.x === 'D' ? `D = ${at.toFixed(3)}` : fmtX(at)
+  const yTxt = ay.percent ? `${(atY * 100).toFixed(1)} %` : ay.unit ? fmt(atY, ay.unit, 4) : atY.toFixed(4)
+  return `${xTxt} → ${yTxt}`
+}
+
 /** The y-range for one swept quantity, anchored on the sweep at the defaults. */
 export function sweepRange(points, basePoints, key, ay, { withPred = false } = {}) {
   const pick = (qs) => (qs || []).map((q) => q[key])
@@ -50,7 +66,7 @@ export function sweepLegend(points, sweep, label = '', label2 = '') {
  * Returns the geometry, for tests: `sx`, `sy` (in axis units — log10 of the
  * value on a log axis), `area`, and the x range.
  */
-export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, marks = [] }) {
+export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, atY, atY2, marks = [] }) {
   if (!points.length) return null
   const ax = SWEEP_X[sweep.x]
   const ay = SWEEP_Y[sweep.y]
@@ -63,7 +79,7 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, mar
   const X = (v) => (logX ? Math.log10(v) : v)
   const xs = points.map((q) => X(q.x))
   const ys = points.map((q) => q[sweep.y])
-  const unitAxis = sweep.x === 'D' || sweep.x === 'ratio'
+  const unitAxis = sweep.x === 'D'
   const xMin = logX ? xs[0] : unitAxis ? 0 : xs[0]
   const xMax = logX ? xs[xs.length - 1] : unitAxis ? 1 : xs[xs.length - 1]
   const fmtX = (v) => (ax.fmt ? ax.fmt(v) : fmt(v, ax.unit, 2))
@@ -95,12 +111,29 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, mar
   }
   const fmtYleft = fmtY(ay, yLo, yHi, logY)
   const framed = fitLeftAxis(ctx, area, [fmtYleft(yLo), fmtYleft(yHi), fmtYleft((yLo + yHi) / 2)], k)
+  const yTitleText = shared ? `${ay.label}, ${ay2.label} (${ay.unit})` : ay.unit ? `${ay.label} (${ay.unit})` : ay.label
+  // drawFrame always rotates its y-axis title — right for a worded label,
+  // wrong for a lone glyph (η, the efficiency axis with no unit): rotated,
+  // its descender reads as a stray hook rather than as η. The right-hand
+  // axis already carries this same rule (below); the left one is
+  // packages/ui's drawFrame, so the title is withheld there and drawn
+  // upright here instead, in the same spot drawFrame would have put it.
+  const yTitleRotates = yTitleText.length > 2
   const { sx, sy } = drawFrame(ctx, framed, xMin, xMax, yLo, yHi, (v) => fmtX(logX ? Math.pow(10, v) : v), fmtYleft, {
     xStep: logX ? 1 : unitAxis ? 0.1 : null,
     yStep: logY ? 1 : sweep.y === 'eta' ? 0.2 : null,
     xTitle: ax.unit ? `${ax.label} (${ax.unit})` : sweep.x === 'D' ? 'Duty D' : ax.label,
-    yTitle: shared ? `${ay.label}, ${ay2.label} (${ay.unit})` : ay.unit ? `${ay.label} (${ay.unit})` : ay.label,
+    yTitle: yTitleRotates ? yTitleText : null,
   })
+  if (!yTitleRotates) {
+    ctx.save()
+    ctx.fillStyle = COLORS.text
+    ctx.font = `${Math.round(12 * k)}px ui-sans-serif, system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(yTitleText, 18 * k, framed.y + framed.h / 2)
+    ctx.restore()
+  }
 
   // Right axis for y2 — or the left one, shared.
   const area2 = framed
@@ -213,25 +246,31 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, mar
     }
   }
 
-  // Where the knob is now: the nearest computed point, so the dot sits on the curve.
+  // Where the knob is now: at the knob's own x, plotted at the value
+  // `analyse()` computed for these exact settings — not the sweep's nearest
+  // sampled point, which sits up to half a grid step away on a log axis and
+  // reads a different number from the top bar and the note beside it
+  // (Reed, 2026-09-03: A1's marker read 4.935 V against a 5.000 V default
+  // everywhere else on screen). `atY`/`atY2` are that exact value; the
+  // nearest point is still the fallback for a caller that has none (the
+  // draw function is exercised directly in a few tests without it).
   if (Number.isFinite(at)) {
     const lx = X(at)
     let best = 0
     for (let i = 1; i < xs.length; i++) if (Math.abs(xs[i] - lx) < Math.abs(xs[best] - lx)) best = i
+    const yVal = Number.isFinite(atY) ? atY : ys[best]
     ctx.fillStyle = COLORS.marker
     ctx.beginPath()
-    ctx.arc(sx(xs[best]), sy(Y(ys[best])), 4 * k, 0, Math.PI * 2)
+    ctx.arc(sx(lx), sy(Y(yVal)), 4 * k, 0, Math.PI * 2)
     ctx.fill()
-    const yTxt = ay.percent ? `${(ys[best] * 100).toFixed(1)} %` : ay.unit ? fmt(ys[best], ay.unit, 4) : ys[best].toFixed(4)
-    const xTxt = sweep.x === 'D' ? `D = ${at.toFixed(3)}` : fmtX(at)
-    labelAt(xs[best], sy(Y(ys[best])), `${xTxt} → ${yTxt}`, COLORS.marker, true)
+    labelAt(lx, sy(Y(yVal)), atLabel(sweep, at, yVal), COLORS.marker, true)
     if (sy2) {
-      const v2 = points[best][sweep.y2]
+      const v2 = Number.isFinite(atY2) ? atY2 : points[best][sweep.y2]
       ctx.fillStyle = COLORS.response
       ctx.beginPath()
-      ctx.arc(sx(xs[best]), sy2(v2), 4 * k, 0, Math.PI * 2)
+      ctx.arc(sx(lx), sy2(v2), 4 * k, 0, Math.PI * 2)
       ctx.fill()
-      labelAt(xs[best], sy2(v2), ay2.unit ? fmt(v2, ay2.unit, 4) : v2.toFixed(4), COLORS.response, false)
+      labelAt(lx, sy2(v2), ay2.unit ? fmt(v2, ay2.unit, 4) : v2.toFixed(4), COLORS.response, false)
     }
   }
   ctx.restore()
@@ -239,8 +278,11 @@ export function drawSweep(ctx, w, h, { points, basePoints = null, sweep, at, mar
   return { sx, sy, area: area2, xMin, xMax, X, Y }
 }
 
-export default function SweepCanvas({ points, basePoints = null, sweep, at, marks = [], label = '', label2 = '' }) {
-  const ref = useCanvas((ctx, w, h) => drawSweep(ctx, w, h, { points, basePoints, sweep, at, marks }), [points, basePoints, sweep, at, marks])
+export default function SweepCanvas({ points, basePoints = null, sweep, at, atY, atY2, marks = [], label = '', label2 = '' }) {
+  const ref = useCanvas(
+    (ctx, w, h) => drawSweep(ctx, w, h, { points, basePoints, sweep, at, atY, atY2, marks }),
+    [points, basePoints, sweep, at, atY, atY2, marks],
+  )
   const legend = sweepLegend(points, sweep, label, label2)
   return (
     <div className="plot-wrap">
@@ -250,6 +292,7 @@ export default function SweepCanvas({ points, basePoints = null, sweep, at, mark
         role="img"
         aria-label="Sweep: one quantity against one knob, each point a solved steady state"
         data-marks={markLabels(marks)}
+        data-at={atLabel(sweep, at, atY)}
       />
       <ul className="plot-legend" aria-label="Legend">
         {legend.map((it) => (

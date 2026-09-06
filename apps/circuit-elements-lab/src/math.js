@@ -1217,6 +1217,8 @@ const ENTRIES = {
         F('\\omega_0 = \\frac{1}{\\sqrt{LC}}, \\qquad Q = \\frac{1}{R}\\sqrt{\\frac{L}{C}} = \\frac{\\omega_0 L}{R}, \\qquad \\Delta\\omega = \\frac{\\omega_0}{Q} = \\frac{R}{L}'),
         C(rows),
         V([
+          { label: 'X_L = ωL', value: z.XL, unit: 'Ω' },
+          { label: 'X_C = 1/ωC', value: z.XC, unit: 'Ω' },
           { label: 'f₀', value: z.f0, unit: 'Hz' },
           { label: 'bandwidth f₀/Q', value: z.f0 / Q, unit: 'Hz' },
           { label: '|V_C| at f₀', value: Q * A, unit: 'V', note: `${Q.toPrecision(3)} × the source` },
@@ -1272,6 +1274,7 @@ const ENTRIES = {
           ...steadyRows(x),
         ]),
         V([
+          { label: 'X_L = ωL', value: XL, unit: 'Ω' },
           { label: 'V_rms', value: A / Math.SQRT2, unit: 'V' },
           { label: 'I_rms', value: Im / Math.SQRT2, unit: 'A' },
           { label: 'apparent V_rms·I_rms', value: src.apparent, unit: 'VA' },

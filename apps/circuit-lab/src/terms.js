@@ -17,13 +17,28 @@
 // being in the note.)
 
 export const TERMS = {
+  // The one everything else in this file leans on. Reed's review: three
+  // lessons' terms folds repeated "j is the imaginary unit, √−1" and moved
+  // straight on to poles, the jω axis and H(s) — naming j without ever
+  // teaching what it is or why it earns a second axis. Fixed at the source,
+  // once, here: tf/s/pole/zero/jw/lhp below now assume a reader met this
+  // first, rather than each re-deriving (or worse, not deriving) it.
+  complex: {
+    name: 'Complex numbers, and the s-plane',
+    match: /complex numbers?|imaginary unit|s-plane|square root of −?1/i,
+    def:
+      'j is a number whose square is −1, true of no real number. It keeps its own axis, at ' +
+      'right angles to the real numbers, instead of mixing into them. A decaying voltage sits ' +
+      'on the real axis, a swinging one on the imaginary axis. Most circuits do both at once, ' +
+      'so one point needs both, s = σ + jω.',
+  },
   tf: {
     name: 'Transfer function H(s)',
     match: /H\(s\)|transfer function/i,
     def:
-      'The ratio of output to input, written as a function of the complex frequency s. Put ' +
-      's = jω (a sinusoid at ω rad/s) and |H| is how much gets through while its angle is the ' +
-      'phase shift — one formula that answers every "what does this circuit do at f?" at once.',
+      'The ratio of output to input, written as a function of the complex frequency s. Put s = ' +
+      'jω (a sinusoid at ω rad/s) and |H| is how much gets through, while its angle is the ' +
+      'phase shift. One formula answers every "what does this circuit do at f?" at once.',
   },
   s: {
     name: 's, numerator and denominator',
@@ -87,6 +102,14 @@ export const TERMS = {
       'ohms, so 1 Ω is 0 dBΩ, 10 kΩ is 80 dBΩ and 100 kΩ is 100 dBΩ. The tank’s plot is ' +
       'impedance rather than gain, so its y-axis carries this unit and its peak reads R.',
   },
+  gain: {
+    name: 'Gain',
+    match: /\bgain\b/i,
+    def:
+      'How much bigger the output is than the input, as a plain ratio: a gain of 2 doubles the ' +
+      'signal, 0.5 halves it. A negative gain, like the inverting amplifier’s here, means an ' +
+      'upside-down output rather than a shrunken one.',
+  },
   corner: {
     name: 'Corner (cutoff) frequency',
     match: /\bcorner|cutoff/i,
@@ -96,6 +119,14 @@ export const TERMS = {
       'consequence: for an RC it lands at 1/(2πRC), and moving R or C moves it exactly that ' +
       'way. A resonant second-order circuit does something different at its equal-impedance ' +
       'frequency — the series RLC across C reads Q× there, not −3 dB.',
+  },
+  filter: {
+    name: 'Filter',
+    match: /\bfilters?\b/i,
+    def:
+      'A circuit built to treat some frequencies differently from others, passing some through ' +
+      'and holding others back. Every filter here does it with impedance: a resistor’s does not ' +
+      'change with frequency, a capacitor’s and an inductor’s do, so their tug-of-war shifts too.',
   },
   shapes: {
     name: 'Low-pass, band-pass, high-pass',
@@ -184,6 +215,14 @@ export const TERMS = {
       'tank, at the resonant frequency. Driven by a current, its impedance is the output, so ' +
       'the tank’s plot is Z(s) in ohms rather than a dimensionless gain.',
   },
+  magnitude: {
+    name: 'Magnitude',
+    match: /\bmagnitudes?\b/i,
+    def:
+      'The size of a response with its phase set aside: how many times bigger or smaller the ' +
+      'output is than the input, at one frequency. It is the number a Bode magnitude plot ' +
+      'draws, and dB is the same number on a log scale.',
+  },
   phase: {
     name: 'Phase',
     match: /\bphase\b/i,
@@ -220,7 +259,12 @@ export const TERMS = {
   },
   tolerance: {
     name: 'Part tolerance',
-    match: /tolerance|±\d/,
+    // `±\d` captured a single digit, so "±10%" underlined "±1" and left "0%"
+    // plain beside it — a term mark that stops mid-number. Round-six grading
+    // read it off the DOM as literally "±1". One digit was all the one-digit
+    // tolerances ever needed, which is why it survived until a lesson used
+    // ±10%. The percent sign is optional so a bare "±5" still marks.
+    match: /tolerance|±\d+%?/,
     def:
       'The ±% band a component is sold within: a "10 kΩ ±5%" resistor is anything from 9.5 ' +
       'to 10.5 kΩ, and which one you got decides where your corner really lands. Specs built ' +
@@ -348,6 +392,43 @@ export const HANDOVER_TERMS = {
 /** The definitions a lesson asked for, in the order it asked. */
 export function termsFor(ids = []) {
   return ids.map((id) => ({ id, ...TERMS[id] })).filter((t) => t.name)
+}
+
+/**
+ * Split a note into plain text and term hits, so a lesson's own prose can
+ * carry its definitions instead of only a fold at the end of it.
+ *
+ * Two skim readers scored Explanation low because "Terms used here" is a
+ * small, low-contrast link after the note — reachable, but only to a reader
+ * who already suspects it is there. This is the discoverable path: the exact
+ * words a term's `match` finds get wrapped inline, in the note itself, so the
+ * definition sits under the word a reader's eye is already on.
+ *
+ * Greedy left-to-right: at each step, of the terms not yet placed, whichever
+ * has the EARLIEST remaining match wins, and scanning resumes just past it —
+ * so a term is marked at most once (its first, most useful occurrence) and
+ * two terms' matches never overlap.
+ */
+export function markTerms(text, terms) {
+  const remaining = new Map(terms.filter((t) => t.match).map((t) => [t.id, t]))
+  const segments = []
+  let pos = 0
+  while (remaining.size && pos < text.length) {
+    let best = null
+    for (const [id, t] of remaining) {
+      const re = new RegExp(t.match.source, t.match.flags.replace(/[gy]/g, '') + 'g')
+      re.lastIndex = pos
+      const m = re.exec(text)
+      if (m && (!best || m.index < best.index)) best = { id, index: m.index, text: m[0] }
+    }
+    if (!best) break
+    if (best.index > pos) segments.push({ text: text.slice(pos, best.index) })
+    segments.push({ term: best.id, text: best.text })
+    remaining.delete(best.id)
+    pos = best.index + best.text.length
+  }
+  if (pos < text.length) segments.push({ text: text.slice(pos) })
+  return segments
 }
 
 /** The hand-over panel's definitions, in a stable order. */

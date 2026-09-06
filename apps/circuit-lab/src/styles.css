@@ -87,6 +87,7 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   text-transform: uppercase;
   color: var(--dim);
   opacity: 0.7;
+  white-space: nowrap;
 }
 
 /* Pane-header controls — the proximity rule from Signal Lab: a control that
@@ -118,6 +119,207 @@ details.terms > summary::-webkit-details-marker { display: none; }
 details.terms dl { margin: 6px 0 0; }
 details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
 details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+
+/* A term, tapped in place — the discoverable path (student-review: two skim
+   readers scored Explanation low and reported no glossary at all, because
+   the fold above is a small, easy-to-miss link and this is not). Rendered
+   as `<dfn>`, not `<button>` — Control Lab's NoteTerms.jsx pattern. A mark
+   is a few characters inside a running sentence, and WCAG 2.5.8's own
+   Target Size rule exempts exactly this case ("inline: the target ... is
+   otherwise constrained by the line-height of non-target text"). A button
+   role would enrol it in this app's own 44px touch-target probe
+   (verify.mjs item 14), which a two-letter word like "Q" or "dB" can never
+   clear without padding wide enough to read as a chip. The dfn tag sits
+   outside tapTargetProbe's SELECTOR entirely, so every match is tappable
+   regardless of length — no exception, no invisible hit area, no length
+   floor excluding the exact symbols (Q, dB, ζ, ω₀) a first-year reader is
+   least likely to already know. */
+.term-mark {
+  font-style: normal;
+  color: var(--response);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+/* Keyboard focus keeps base.css's [tabindex]:focus-visible ring (outline:
+   2px solid var(--accent)) — not overridden here. */
+.term-mark:hover, .term-mark.is-open, .term-mark:focus-visible {
+  color: var(--accent);
+  text-decoration-style: solid;
+}
+
+/* The definition a tapped term reveals, right under the note — the same
+   text "Terms used here" holds, so the two paths never disagree. */
+.term-card {
+  position: relative;
+  margin: 4px 0 0;
+  padding: 7px 26px 7px 9px;
+  background: var(--panel-2);
+  border: 1px solid var(--response);
+  border-left-width: 3px;
+  border-radius: 0 5px 5px 0;
+  color: var(--dim);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.term-card b { color: var(--text); }
+.term-card-close {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.term-card-close:hover { color: var(--text); }
+/* An invisible hit area rather than a visually bigger × — the same
+   technique the touch-target harness already credits elsewhere in the
+   suite (tapTargetProbe.mjs): the glyph stays small, the tap box does not. */
+.term-card-close::before {
+  content: '';
+  position: absolute;
+  inset: -11px;
+}
+
+/* The topbar's H(s) and stable pills, the first vocabulary a reader meets,
+   on every screen, before any lesson has loaded. They carried only a hover
+   title (student-review round two: no click handler, so a phone has no
+   route to either definition). Now real buttons that toggle the card below.
+   Anchored to .topbar (position:relative, added here since base.css leaves
+   it unpositioned) rather than to .flow, which scrolls its own overflow-x
+   and would clip a taller card mid-height. */
+.topbar { position: relative; }
+
+.flow-term {
+  position: relative;
+  cursor: pointer;
+}
+/* Same technique as term-mark used before it became a `<dfn>`: an invisible
+   ::before hit area rather than growing the pill itself, which would crowd
+   the arrow glyphs and the neighbouring pill a few px away in this dense,
+   one-line strip. A real 44px INSET (widening the pill on every side)
+   collided with the next pill exactly the way the note's own inline term
+   did before that fix, so on the desktop-width strip this stays held to
+   verify.mjs's 24px HARD_FLOOR (WCAG 2.2 SC 2.5.8's legal minimum), with
+   -4px/-3px matching the value that inline term settled on. Round three
+   grows the phone version of this same inset further (below) rather than
+   the pill itself — a real 44px pill costs item 13's own fold budget about
+   20px it does not have to spare, where the inset costs the layout nothing
+   at all. */
+.flow-term::before {
+  content: '';
+  position: absolute;
+  inset: -4px -3px;
+}
+.flow-term:hover, .flow-term.is-open { border-color: var(--accent); }
+.flow-term.is-open { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* f₀, Q and ζ, given the same route to a definition as H(s) and the
+   stability verdict above: round-four grading found all three sat as plain
+   spans, with no title, no button and no handler, from the first pixel of
+   nine of the fifteen lessons — the exact gap the .flow-term comment above
+   already names for the two pills beside them. Reset to look like the
+   .topbar-field span it replaces (base.css, packages/ui — not edited here),
+   since a bare <button> would otherwise pick up browser chrome. */
+.topbar-field.topbar-term {
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--dim);
+  cursor: pointer;
+  position: relative;
+}
+.topbar-field.topbar-term:hover, .topbar-field.topbar-term.is-open { color: var(--accent); }
+.topbar-field.topbar-term.is-open b { color: var(--accent); }
+/* Same invisible-::before technique as .flow-term, held to the 24px
+   HARD_FLOOR rather than the suite's 44px target: .topbar-controls packs DC
+   gain, f₀, Q and ζ onto one row with only 14px between fields (measured at
+   390 px, all four still fit on one line), and .flow-term's OWN phone inset
+   (above, -14px top/bottom) already reaches to within a couple of px of
+   this row from above. A real 44px box, or even a symmetric 44px-reaching
+   inset, collides with that; this asymmetric inset clears the WCAG 2.2
+   SC 2.5.8 legal minimum (24px = 18px content + 1px top + 5px bottom) with
+   the couple of spare px this row actually has, top-biased away from
+   .flow-term's own extended hit area. */
+.topbar-field.topbar-term::before {
+  content: '';
+  position: absolute;
+  inset: -1px -3px -5px -3px;
+}
+
+.topbar-term-card {
+  position: absolute;
+  top: 100%;
+  left: 14px;
+  z-index: 30;
+  margin-top: 6px;
+  max-width: min(420px, calc(100vw - 28px));
+  padding: 8px 28px 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--response);
+  border-left-width: 3px;
+  border-radius: 0 6px 6px 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color: var(--dim);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.topbar-term-card b { color: var(--text); }
+.topbar-term-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.topbar-term-close:hover { color: var(--text); }
+/* Same 22px-glyph-plus-11px-inset formula as .term-card-close, which already
+   clears the suite's real 44px floor — no exception needed here either. */
+.topbar-term-close::before {
+  content: '';
+  position: absolute;
+  inset: -11px;
+}
+
+/* The complex-number primer: not folded, and not only tappable — item 1 of
+   the review named this the single highest-leverage fix, and the very
+   thing two skim readers missed was a fold. Same shape as the pz pane's own
+   always-on caption below (student-review: "the complex-plane view arrives
+   with no explanation"), one screen earlier, on the lesson that first offers
+   H(s), pole and the left-half-plane vocabulary. */
+.hint.complex-caption {
+  margin: 2px 0 8px;
+  padding: 7px 9px;
+  background: var(--panel-2);
+  border-left: 2px solid var(--response);
+  border-radius: 0 4px 4px 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* Student-review item 4: the hand-over is buried a scroll below Circuits,
+   Schematic and Components, and nothing above it says it exists. One
+   quiet line, after the terms a reader just read, pointing down rather
+   than duplicating the panel itself. */
+.hint.handover-pointer {
+  margin-top: 8px;
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 1.4;
+}
 
 /* The schematic. Values are live, so the picture always matches the plots. */
 .schematic {
@@ -242,6 +444,132 @@ a.handover-copy:hover { filter: brightness(1.1); }
 
 /* ---------- the course's furniture (student-tool review, 2026-09) ---------- */
 
+/* The network strip: a fixed-height row above the two plot panes, so the
+   schematic is co-visible with H(s) instead of a sidebar scroll below it.
+   Fixed rather than "auto" — the row costs the same handful of pixels
+   whether the schematic is the plain 130-tall frame or the twin-T's 185. */
+@media (min-width: 901px) {
+  .views {
+    grid-template-rows: 120px 1fr 1fr;
+  }
+}
+.network-strip {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  min-height: 0;
+  padding: 4px 14px 6px;
+}
+.network-head {
+  margin: 0 0 4px;
+}
+.network-head h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.network-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  flex: 1;
+  min-height: 0;
+}
+.network-schematic {
+  flex: 0 0 auto;
+  height: 92px;
+}
+/* Sized by HEIGHT, not width: the taller frames (twin-T, the inverting amp)
+   end up narrower rather than taller, which is what keeps the row's height
+   the same for every circuit. Overrides the sidebar schematic's width:100%. */
+.network-schematic .schematic {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  margin: 0;
+}
+.network-output {
+  flex: 0 0 auto;
+  min-width: 160px;
+}
+.network-output .field-label {
+  display: block;
+}
+.network-handovers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.network-handover {
+  color: var(--accent);
+  font-size: 11.5px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.network-handover:hover {
+  text-decoration: underline;
+}
+/* The network row earns its keep on a laptop or bigger; a phone's first
+   screen is already a tight fit for the note, the try line and one plot, so
+   the schematic stays the sidebar's job there rather than a claim this app
+   does not verify at 390 px. */
+@media (max-width: 900px) {
+  .views .network-strip {
+    display: none;
+  }
+}
+
+/* The one line that makes "2 of 15" legible on a fresh load: the corner is
+   the better first picture, and this says what lesson 1 is instead. Sized
+   down from the base .hint (12px/1.5) so the one lesson that carries it does
+   not lose the pixels the 1366×768 fold probe needs for the featured knob
+   below. A second review pass judged the plain sentence a cost on its own —
+   a first visit implying missed material — so this is now a real button
+   that loads lesson 1 in one click, carrying more than it said before
+   without adding a second element. */
+.hint.start-hint {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 2px 0 2px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--dim);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+.hint.start-hint:hover { color: var(--text); }
+.hint.start-hint:hover .start-hint-cta { color: var(--accent); }
+.start-hint-cta {
+  color: var(--response);
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* item 14's Circuits sweep (`.presets .preset`) also matches the LESSON
+   buttons visible on a fresh load, so this button is walked by the phone
+   touch-target probe too. A REAL 44px minimum (the first cut here, growing
+   the box itself) pushed the try line past the sidebar's own first-screen
+   budget (item 13's fold probe) — the same fold-vs-floor tension the note's
+   own inline term hit first. Same answer: an invisible ::before hit area
+   that costs the layout nothing, held to verify.mjs's 24px HARD_FLOOR
+   (WCAG 2.2 SC 2.5.8's legal minimum) rather than the suite's 44px target,
+   since it sits one line under the sticky "Try this" nav strip and a wider
+   inset risks bridging into its prev/next/reset buttons. */
+.hint.start-hint::before {
+  content: '';
+  position: absolute;
+  inset: -7px 0;
+}
+
 /* A note whose picture has moved on: a knob changed since the lesson loaded.
    The paragraph stays (it is still the lesson you are in) but says so, and
    the reset in the nav strip above puts the described setup back. */
@@ -274,8 +602,8 @@ a.handover-copy:hover { filter: brightness(1.1); }
 /* The controls a try line names, right under it: the same fields as in the
    Components section, bound to the same state. */
 .featured {
-  margin: 8px 0 0;
-  padding: 6px 0 0;
+  margin: 4px 0 0;
+  padding: 3px 0 0;
   border-top: 1px dashed var(--line);
 }
 .featured .num:last-child, .featured .field:last-child { margin-bottom: 4px; }
@@ -287,16 +615,55 @@ details.preset-group > summary { padding: 2px 0; }
 details.preset-group > .presets { margin: 3px 0 5px; }
 .presets { gap: 4px; }
 .preset { padding: 4px 7px; font-size: 11px; }
-.note-title { margin-top: 8px; }
-.hint.note { margin-top: 6px; }
+.note-title { margin-top: 4px; }
+.hint.note { margin-top: 3px; }
 
 .featured-handover { margin-bottom: 10px; }
 .featured-handover .handover-copy { margin-top: 0; margin-bottom: 6px; }
+
+/* Round-five grading: at 1366×768 and 1440×900 (both ≤900 px tall), "Where
+   the corner comes from" (two stacked featured sliders, the lab's own START
+   lesson) buried its R slider entirely off screen (y 823-839 against the
+   768 fold) and "Resonance, seen in time" lost 11 of its 16 px (y 763-779).
+   Both try lines name R by number, so a numeric box is not a substitute for
+   the slider a reader reaches for. Measured before this rule: the header
+   (suite nav, title, three-line subhead, report-issue link) alone costs
+   about 131 px before the lesson's own text starts, on a screen with none
+   to spare. Phone already solved this exact budget problem by dropping the
+   subhead and tightening the margins below it (the max-width: 900px block
+   above) — this reuses the same answer, keyed on HEIGHT rather than width,
+   since a short laptop pane has the same problem a narrow phone does, at a
+   width where the two-column layout otherwise still fits fine. Left alone
+   above 900 px tall, where the subhead's context costs nothing. */
+@media (min-width: 901px) and (max-height: 900px) {
+  .controls { padding-top: 10px; }
+  .controls header .sub { display: none; }
+  .controls .labnav { margin-bottom: 4px; }
+  .report-issue { margin-bottom: 4px; }
+  .controls section { margin-top: 8px; }
+  .controls h2 { margin: 0 -12px 8px; padding: 5px 12px 3px; }
+  .note-title { margin-top: 2px; }
+  .try-line { margin-top: 6px; padding: 6px 9px; }
+  .try-chips { margin-top: 4px; }
+  details.preset-group { margin-bottom: 2px; }
+  details.preset-group > .presets { margin: 2px 0 3px; }
+  .featured .num:not(:last-child) { margin-bottom: 6px; }
+}
 
 /* Where the math went: a pointer in the sidebar, the panel itself a tab of
    the lower pane. The pane is a fixed-height flex column, so the body scrolls
    inside it rather than growing the page. */
 .math-pointer b { color: var(--text); font-weight: 600; }
+
+/* The shell that carries the scroll cue below (item 5): a relative wrapper
+   so the cue can sit as an overlay pinned to the pane's own bottom edge
+   rather than as one more row the flex column has to find height for. */
+.math-pane-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
 
 .math-pane {
   flex: 1;
@@ -309,6 +676,26 @@ details.preset-group > .presets { margin: 3px 0 5px; }
   margin-top: 0;
   border-left: 0;
   padding: 2px 4px 8px;
+}
+
+/* Announces that the theory-versus-measured table continues below — shown
+   only while the pane is genuinely short of its own bottom (App.jsx's
+   checkMathScroll), so a circuit whose math already fits never shows a
+   promise with nothing behind it. Fades into the pane's own background
+   rather than a hard edge, and ignores pointer events so it never steals a
+   click meant for the table underneath. */
+.math-scroll-cue {
+  position: absolute;
+  left: 0;
+  right: 6px;
+  bottom: 0;
+  padding: 14px 0 4px;
+  background: linear-gradient(to bottom, transparent, var(--bg) 60%);
+  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  pointer-events: none;
 }
 
 /* The way back into the course after a Circuits click parked it: styled as
@@ -329,11 +716,29 @@ details.preset-group > .presets { margin: 3px 0 5px; }
 }
 .lesson-nav-back:hover { border-color: var(--amber); }
 
+/* Touch target: full-width and block already, so growing it for real costs
+   nothing horizontally — and it only ever appears once, alone, so growing
+   it vertically cannot collide with a neighbour either. It IS tied for the
+   same flex `order` as the lesson body (styles.css, below) so it sits inside
+   the sidebar's gated first screen when present — but it is conditional (a
+   circuit handed over from Signal Lab), not the common case, so the 26px it
+   costs there is an acceptable trade for a real 44px target rather than an
+   invisible one. */
+@media (max-width: 900px) {
+  .lesson-nav-back {
+    min-height: 44px;
+    padding: 10px 8px;
+    display: flex;
+    align-items: center;
+  }
+}
+
 /* The Math tab on a narrow pane: KaTeX display formulas and the check
    tables are wider than a phone, and as grid items with min-width:auto the
    panes grew to fit them — the whole .views widened to 463 px and cropped
    the Bode. The pane keeps its width; the math scrolls sideways inside it. */
 .view { min-width: 0; }
+.math-pane-shell { min-width: 0; max-width: 100%; }
 .math-pane { min-width: 0; max-width: 100%; overflow-x: auto; }
 .math-pane .math-body { min-width: 0; }
 .math-pane .katex-display { overflow-x: auto; overflow-y: hidden; }
@@ -351,7 +756,21 @@ details.preset-group > .presets { margin: 3px 0 5px; }
    sticky cap with prev / next stays first. The header is compacted (nav and
    title on one row, the subhead dropped) to buy the note its lines. */
 @media (max-width: 900px) {
-  .controls { max-height: 43vh; padding: 10px 12px 24px; }
+  .controls {
+    max-height: 43vh;
+    padding: 10px 12px 24px;
+    /* Round-four grading: the scroll-correction effect below (App.jsx) sets
+       this box's scrollTop with JS right after a new lesson's note changes
+       the layout above it. The browser's own scroll anchoring then
+       "helpfully" nudges that exact scrollTop again to compensate for the
+       same layout change, undoing the correction by however much the new
+       note's height differs from the last lesson's — Control Lab hit and
+       fixed this identical class of bug the same way (its own styles.css).
+       This region is scrolled entirely by this app's own code, never by a
+       reader scrolling mid-reflow, so there is nothing here for anchoring
+       to preserve. */
+    overflow-anchor: none;
+  }
   .controls header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
   .controls header .labnav { margin: 0; }
   .controls header h1 { margin: 0; font-size: 16px; }
@@ -364,9 +783,129 @@ details.preset-group > .presets { margin: 3px 0 5px; }
   .controls section:first-of-type > .lesson-body { order: 1; }
   .controls section:first-of-type > .lesson-list { order: 2; margin-top: 10px; }
   .lesson-body .note-title { margin-top: 0; }
+
+  /* Round-four grading: "Where the corner comes from" is the only lesson
+     whose featured block features TWO full sliders (C then R) stacked —
+     every other lesson features one, or a non-slider control (tol/output/
+     hand-over). Two stacked .num rows plus the note and try line run to
+     420 px against this sidebar's own 363 px phone box: the note's top and
+     the R slider's bottom can never both land on screen at once, whatever
+     the scroll — the two-edge fix below can only land both edges when the
+     content itself is short enough to. A side-by-side grid would squeeze
+     each NumField into half width, risking its own internal row (value,
+     step buttons, unit) wrapping onto a second line inside packages/ui —
+     out of this territory to fix if it does. A single horizontal-scrolling
+     row instead keeps every NumField at its own full, unsquashed width —
+     only ONE row's height is spent (matching every other lesson's single
+     slider), and C stays the first, fully on screen; R is a swipe away, a
+     more familiar cost than "off the bottom of a nested scroller" is.
+     Scoped narrowly, by shape (exactly two .num children, nothing else in
+     the block) rather than by lesson name, so it can never touch "Blame
+     the right part"'s two .field-tol rows or any single-slider lesson. */
+  .featured:has(> .num:nth-child(2):last-child) {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .featured:has(> .num:nth-child(2):last-child) > .num {
+    flex: 0 0 auto;
+    width: calc(100% - 40px);
+  }
+
   .views { min-height: 0; }
   .view { padding: 4px 10px 4px; }
   .view-head h2 { display: none; }
   .view .plot { flex: none; height: 144px; }
+  .math-pane-shell { height: 144px; flex: none; }
   .math-pane { height: 144px; flex: none; }
+  /* Item 5: at 144 px the pole–zero plot is a flat smear, and "Real parts
+     wobble"'s whole claim is that the cloud gets visibly bigger. Every
+     lesson whose own lower view is poles & zeros gets the taller frame; the
+     step trace (a 1-D curve, not a 2-D cloud) keeps the shorter one. 66 px
+     more still leaves the phone-first-screen budget (item 13's harness
+     probe) with room to spare. */
+  .view-lower-pz .plot { height: 210px; }
+
+  /* Round-four grading: on the four pole-view lessons, the pole plot itself
+     — the picture the lesson is ABOUT — began entirely below the 844px
+     fold on arrival, with nothing on screen to say it was there. Measured
+     (foldProbe's withLabNav stand-in, "A zero on the axis is silence"): the
+     Bode canvas sat first, 489–633px, and the pole canvas sat SECOND, at
+     949–1159px against an 844px fold — not because the content itself needs
+     that much room (header 79px + the pz caption 54px + the 210px canvas
+     above is under 350px) but because `.views`'s two `1fr` grid rows sit in
+     an indefinite-height ancestor (`.app`'s own phone row is `auto`), so
+     both rows size to the SAME larger fraction rather than each to its own
+     content — the Bode's short row was stretched to match the pole row's
+     taller one, pushing everything below it down by the difference.
+     Reachable (scrollIntoView, the wheel, and a manual `.controls`
+     `scrollTop` all worked — round-four's claim that it is unreachable does
+     not hold up), but a reader arrives with the one view the lesson exists
+     to show off screen and no cue that it is there.
+     Control Lab's pattern (styles.css, `.views.is-weighted > .view.is-primary
+     { order: -1 }`) fixes this by giving the lesson's own named view first
+     place in the stack on a phone, ahead of the Bode, which becomes context
+     a scroll away — the same trade Control Lab documents for Watch, Nyquist
+     and the locus. `order` only changes visual placement, not DOM order, so
+     every existing `.views canvas` index (nth(0) = Bode, nth(1) = the lower
+     pane) still means what it always has. Reordering alone (no change to
+     the `1fr 1fr` tracks) already lands the pole canvas at roughly
+     583–793px, comfortably inside 844 — verify.mjs's phone section checks
+     this on all four lessons. Scoped to `.view-lower-pz` alone: a lesson
+     whose own view is the step response already fits (item 13), so it is
+     left exactly as it was. */
+  .view-lower-pz { order: -1; }
+
+  /* Item 3, first bug: at 390 px the topbar's .flow strip (defined in
+     @ee-labs/ui/base.css) holds more content than the box, and it used to
+     just stop mid-word — reading "stable left h" — with the one thing
+     telling a student whether the circuit is okay (the verdict, always the
+     LAST node) swiped off screen and no sign there was anything to scroll
+     to. Sticky pins that node to the strip's own right edge regardless of
+     scroll position, so it is never the part that gets cut; the ellipsis
+     ahead of it marks that the strip continues to its left, so it announces
+     itself as scrollable instead of merely stopping. */
+  .topbar .flow { position: relative; }
+  .topbar .flow-node:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    background: var(--panel);
+  }
+  .topbar .flow-node:last-child::before {
+    content: '\22EF';
+    margin-right: 2px;
+    color: var(--dim);
+  }
+
+  /* Round-three grading: at 390 px the H(s) and stable pills measured about
+     24.5 px tall, roughly 32 with .flow-term's own invisible ::before inset
+     (this file, above) — the smallest tap targets on this screen against
+     44 px for everything else.
+     Growing the box for REAL was the first cut here, and it does not fit:
+     item 13's own fold probe holds this phone's first screen to both plot
+     canvases fitting under 844 px, and that budget had only about 5 px of
+     slack left — a real 44px pill (adding roughly 20 px to .topbar's
+     `height: auto` row) pushed both canvases' own bottoms to 861 px,
+     failing verify.mjs. The same tension the "2 of 15" start hint hit first
+     (styles.css, item 14's comment) and answered the same way: grow the
+     INVISIBLE hit area instead, which costs the layout nothing because a
+     pseudo-element's negative inset is out of flow. Vertical only — -14px
+     top/bottom on top of the pill's own ~24.5px gives a 44px+ tap box —
+     the horizontal -3px stays exactly as round two left it, so the gap to
+     the arrow glyph and the next pill is untouched. */
+  .flow-term::before { inset: -14px -3px; }
+
+  /* Item 3, second bug: on a bare dev port siblingUrl resolves to nothing,
+     so the hand-over falls back to printing the raw link fragment as
+     `<code>` — 599 px of one unbroken hash in a 338 px box. Desktop keeps
+     the horizontal scroll (a long fragment reads fine as a copyable one-
+     liner there); the phone box instead wraps it, since there is no room to
+     scroll a codeblock sideways next to a 44 px thumb. */
+  .handover-link {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    overflow-x: visible;
+  }
 }

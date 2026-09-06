@@ -238,30 +238,44 @@ knobs. If raw coefficient hand-overs ever deserve better, the fix is the
 serializer's precision (perhaps only for biquad/custom params), not anything
 in the emitters.
 
-## Open: PoleZeroCanvas tolerance cloud is too faint to read as a shape
+## RESOLVED (round-five grading): the tolerance cloud's own faintness
 
-Circuit Lab now has per-part tolerances, and its "Blame the right part"
-lesson's whole payload is the SHAPE of the pole scatter, an arc of constant
-radius when only R wobbles. The cloud rendering in
-`packages/ui/src/PoleZeroCanvas.jsx` (1.8px dots at alpha 0.28, under the
-nominal marks) is right for "there is uncertainty" and too faint for "the
-uncertainty has this shape". A 240-dot arc reads as a smear inside the X
-marker. Circuit Lab worked around it by choosing lesson parameters that
-stretch the arc across ~24° of the circle, which helps but is subtler than
-it deserves.
+R = 560 Ω alone was not enough. Round-five grading looked at "Real parts
+wobble" and "Blame the right part" at 1366×768 and 390×844. Both still showed
+two clean, sharp crosses. The plot cannot show its own claim unless the
+rendering carries it, not only the component value.
 
-Request, low priority: bump the cloud to ~2.5px at ~0.45 alpha, or expose a
-`cloudEmphasis` prop an app can set when the cloud IS the lesson. Keep the
-nominal marks on top.
+The upstream ask landed as requested. `packages/ui/src/PoleZeroCanvas.jsx`
+takes an opt-in `cloudEmphasis` prop: 2.5px dots at 0.45 alpha, against the
+old 1.8px at 0.28. Nominal marks still draw on top. Circuit Lab sets the prop
+on the two lessons where the cloud IS the lesson (`lessons.js`,
+`cloudEmphasis: true`). Every other caller, including Control Lab's root
+locus, keeps the old default.
 
-## Open: PoleZeroCanvas needs a `span` prop for sticky axes
+Measured before and after in a live browser, at 1366×768, by trace-colour ink
+box (`verify.mjs` section 8, now covering both lessons). "Real parts wobble"
+went from a 16×23 px box to 16×25 px. Its ink count rose 24%, from 215 to
+266 px. "Blame the right part" (previously unmeasured here) now shows
+16×24 px against a 16×17 px bare cross.
+
+`course.test.js`'s pixel-spread tests were rewritten to match. The old
+assertion compared raw pole-sample positions against "three marker radii", a
+threshold with no rendering behind it. It now adds each cloud dot's own
+rendered radius to the position spread, the same "ink" verify.mjs
+photographs, computed instead of measured. That total is compared against
+the marker's own rendered footprint. A future regression in the dot size or
+alpha now fails the test, not only a change in component tolerance.
+
+## Open, confirmed still unaddressed: PoleZeroCanvas needs a `span` prop for sticky axes
 
 Reed's tuning rule (the curve moves, not the axis, already law for Circuit
 Lab's frequency and now its step axes) can't reach the pole-zero view: the
-canvas auto-fits its span from the content on every render, so tuning C
-re-labels the axes under poles that appear pinned in place.
+canvas auto-fits its span from the content on every render (confirmed again
+by reading the current `PoleZeroCanvas.jsx`: `span` is computed from
+`poles`/`zeros`/`cloud` alone, no prop read), so tuning C re-labels the axes
+under poles that appear pinned in place.
 
-Requested contract, and Circuit Lab already passes the prop (harmlessly
+Requested contract, and Circuit Lab still passes the prop (harmlessly
 ignored today, lights up when you land it):
 
 - `span` (optional number): the half-height of the view in rad/s. When given,
@@ -324,3 +338,48 @@ The selected lesson's name now renders as an h3.note-title above its note
 paragraph (and, in circuit-lab, the circuit's name above its hint) - Reed
 asked for it in every module, so all three landed together. Style is shared
 from packages/ui base.css. Amend freely.
+
+## PACKAGES BUG (found in the shared tree, not mine to fix): parseEngField + NumField's onBlur silently drop a typed prefix on the SECOND field you touch
+
+Working the Explanation/Transfer review, `npx vite preview` + verify.mjs
+against the CURRENT uncommitted `packages/ui/src/units.js` +
+`packages/ui/src/NumField.jsx` (parseEngField's new "a bare number always
+means canonical unit" rule) turned every RC/RLC/Sallen-Key/twin-T section of
+circuit-lab's own verify.mjs into a mismatch, off by exactly a power of ten
+matching the field's own displayed prefix. Not a circuit-lab bug and not
+touched here (packages/* is this territory's read-only), but it will fail
+this app's harness (and any other app's) until it lands, so it is worth
+flagging loudly:
+
+**Repro**: on ANY eng-mode NumField, type "2.2k" and press Enter (correctly
+commits 2200 - confirmed via aria-valuenow). Then touch a SECOND field on the
+same page (a real Tab, a click elsewhere, or - as `setField()` in every
+verify.mjs in the suite already does - fill a different field next). The
+first field's `onBlur` fires (focus left it) and calls `commit(e.target.value)`
+again, against whatever the box is NOW showing after the first commit's own
+round-trip reformat - "2.2", the bare mantissa, because the prefix ("k") lives
+in the separate `.num-unit` label, never in the input's own text. Under the
+OLD parseEng rule (bare number = current displayed prefix) that second,
+redundant commit was a harmless no-op: "2.2" bare still meant 2200. Under the
+NEW rule it means literally 2.2 - the field silently reverts to a value 1000x
+smaller than what was typed and confirmed, with nothing on screen to say so.
+
+**Confirmed via direct DOM read** (`aria-valuenow` before/after touching a
+second field), isolated with no lesson, note, or app code of mine involved -
+plain "RC low-pass" circuit, R then C. Every app's `setField()` helper types a
+value then moves to the next field, so this is not a corner case; it is the
+harness's (and a real user's) ordinary path.
+
+**The fix is almost certainly in NumField.jsx**, not in units.js: `onBlur`
+should not re-commit when `draft` is null (nothing has been typed since the
+last commit - the box is only showing its own already-correct round-trip
+text, and re-parsing that text as fresh user input is the bug). Something
+like `onBlur={(e) => { if (draft != null) commit(e.target.value) }}`.
+parseEngField's new rule is fine and is exactly what the unit tests near it
+ask for; it is the redundant onBlur commit that turns a correct value into a
+wrong one immediately after.
+
+This is not something circuit-lab's own verify.mjs run can paper over (the
+sections it breaks - 2, 4b, 4c, 4d - test real physics against real typed
+values), so until this lands, expect those sections to fail through no fault
+of the app underneath them. Flagged rather than silently worked around.

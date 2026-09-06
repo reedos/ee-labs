@@ -126,45 +126,54 @@ lag", which is true and anonymous. Three tiers, in order:
    back what you need). Do not block tiers 1-2 on this.
 
 
-## FROM REED: say why plant comes first, and define both terms at their headers
+## Section order: controller above plant now, not plant first — a traded call, Reed's to revisit
 
-Reed asked whether plant-above-controller is the right sidebar order. It is —
-but for a reason the UI keeps to itself, so state it. Two orders exist:
-signal-flow order (r → controller → plant → y, what the diagram draws) and
-DECISION order (the plant is given, the controller is chosen in response —
-what the sidebar walks). The sidebar rightly follows decision order. One line
-under each section header makes the choice legible instead of accidental.
+This entry used to argue that plant-above-controller is the right sidebar
+order, on the grounds that the sidebar follows DECISION order: the plant is
+given, the controller is chosen in response, while the diagram's own
+signal-flow order (r → controller → plant → y) reads the other way. That
+argument still holds and is recorded here rather than deleted.
+
+The lab now ships the reverse: the controller card sits above the plant
+card. The reason is reach, not a finding that decision order was wrong. A
+lesson saying "raise Kp" was landing the student on the plant's own Gain K,
+because the controller card sat below the fold behind it — a student-review
+finding, not a design preference. Controller-first puts the named knob on
+screen first, at the cost of the sidebar no longer reading as "the plant is
+given, the controller responds."
+
+Both arguments are real, and this agent is not the one who should settle
+between them. The call stays open, decided for now in favor of the knob a
+student can reach: **Reed's call whether it stands.**
 
 Definitions on contact, at the section headers (not only in lesson terms),
-each one or two sentences in the house style. The load-bearing content is the
-INPUT/OUTPUT identity, because it is exactly what confused Reed after the
-hand-over:
+now ship regardless of the order question — one or two sentences apiece in
+the house style, under both headers, naming the load-bearing INPUT/OUTPUT
+identity that confused Reed after the hand-over:
 
 - Plant: the system you are stuck with, a motor, a tank, a circuit. Its
-  input is the drive u, whatever the controller sends. Its output is the
-  measured y that gets fed back. When a circuit arrives from Circuit Lab,
-  the circuit IS the plant. Its input port becomes u, driven by the
-  controller, not by your reference, and its output node becomes y. (This
-  is the other half of the arrival-orientation notice already specced.)
-- CONTROLLER: the block you get to design. Its input is the error r − y;
-  its output is the drive u. It never sees the reference or the plant
-  directly, only how far apart they are.
+  input is the drive u, whatever the controller sends, and its output is
+  the measured y fed back to it.
+- Controller: the block you design. Its input is the error, the reference r
+  minus the measured y, and its output is the drive u sent to the plant.
 
-Add matching entries to the terms registry (plant, controller, drive u,
-error e = r−y, reference r) so lessons can reference them, with the usual
-tests: referenced ⇒ defined, defined ⇒ surfaced. Claims stay prose here —
-these are definitions, not measurements, but the u-not-r fact is the same
-one tier 2 of the diagram task annotates on the wire. Keep the wording
-consistent between the two.
+Matching entries joined the terms registry (plant, controller, error,
+reference — drive u already had one). They surface through the picker's own
+glossary fold (chrome.js's new `SECTION_TERMS`, seeded alongside
+`TOPBAR_TERMS` rather than folded into it, so no lesson's own "terms used
+here" list grew four entries it never asked for) rather than through every
+lesson's terms list, and the glossary scan (verify.mjs item 33, no lesson
+loaded) stays green under it.
 
-**Status (control-lab):** the arrival notice ships (names the live steady error,
-switches to "erased exactly" under an integrator. Shown only while the loop is
-stable). Tier 1 ships: `from=` provenance flows through stateFromLink, the
-banner and the P(s) box carry the circuit's label with the named plant as
-subtitle, and the identity sheds when a different plant is chosen. Tier 2
-ships: "driven by Kp·(r − y), not by r" under the plant box while P-control is
-active. Tier 3 (mini-schematic in the box) awaits the packages agent lifting a
-schematic renderer into packages/ui, not started, per the spec.
+**Status (control-lab), the loop-diagram tiers (unchanged by the above):**
+the arrival notice ships (names the live steady error, switches to "erased
+exactly" under an integrator. Shown only while the loop is stable). Tier 1
+ships: `from=` provenance flows through stateFromLink, the banner and the
+P(s) box carry the circuit's label with the named plant as subtitle, and the
+identity sheds when a different plant is chosen. Tier 2 ships: "driven by
+Kp·(r − y), not by r" under the plant box while P-control is active. Tier 3
+(mini-schematic in the box) awaits the packages agent lifting a schematic
+renderer into packages/ui, not started, per the spec.
 
 
 ## Landed by the packages/signal-lab agent (Reed testing live): sticky step axes

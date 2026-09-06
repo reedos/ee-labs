@@ -226,20 +226,36 @@ export const LESSONS = [
     // an UNSTABLE badge, and a step that rings forever under a note calmly
     // discussing margins. ki 2 leaves 19° — thin enough to feel, still a loop.
     terms: terms('margin', 'minus180', 'oscillates', 'integral', 'integrator', 'proportional', 'phasemargin', 'crossover'),
-    patch: { plant: 'motor', plantP: pp('motor'), ctrl: 'pi', ctrlP: cp('pi', { kp: 2, ki: 2 }), view: 'step' },
+    // The note says "look at the margin" with nothing on screen leading the
+    // eye there (student review). `callout` names the top-bar field App.jsx
+    // highlights while this lesson is active, and the patch forces the phase
+    // overlay on — a reader who had switched it off earlier would otherwise
+    // load straight past the one curve the lesson is about.
+    callout: 'phasemargin',
+    patch: {
+      plant: 'motor',
+      plantP: pp('motor'),
+      ctrl: 'pi',
+      ctrlP: cp('pi', { kp: 2, ki: 2 }),
+      view: 'step',
+      showPhase: true,
+    },
   },
 
   // --------------------------------------------------- Losing stability
   {
     group: 'Losing stability',
     name: 'Turn it up until it sings',
-    // Written to the loop on screen (Kp = 4, gain margin 9 dB), not to the
-    // one past Kp = 11.25 the first cut described: 0.36 and 2.81× are the
-    // measured gain at −180° and its reciprocal (lessons.test.js).
+    // The first cut led with three numbers (0.36, 2.81x, 42% ringing) before
+    // the eye had reached the plot — accurate, and a wall (student review).
+    // The claim a student can see is that it already rings; the gain figures
+    // now live on the Bode pane's own readout (bodeMarginNote, verdict.js:
+    // "room for 2.81× more gain" at this Kp), not the first sentence. 42%
+    // stays a measured fact (lessons.chips.test.js), just not printed here.
     note:
       'The plant is three lags, each costing up to 90° of phase, with 45° already spent at its corner. At Kp = ' +
-    '4 the loop gain where the phase reaches −180° is 0.36, so there is room for 2.81× more, and the loop ' +
-    'already rings 42%. Apply that 2.81× and it rings without dying away.',
+    '4 the loop already rings before it settles. The chips below walk the gain past the boundary the Bode ' +
+    'readout names, where that ringing stops dying away.',
     try:
       'Kp → 0.5 for the sluggish start, Kp → 8 for 71% overshoot, Kp → 12, past the 11.25 boundary, and it ' +
     'diverges.',
@@ -261,6 +277,12 @@ export const LESSONS = [
     featured: ['kp'],
     chips: (s, marg) => [...marginChips(s, marg), gain('kp', 1)],
     terms: terms('gainmargin', 'verdict', 'boundary', 'margin', 'db'),
+    // The Bode pane's own reading lesson for THIS margin (BodeCanvas.jsx):
+    // the gap between the magnitude trace and 0 dB, at the frequency where
+    // the phase has already reached −180°. Same field App.jsx already used
+    // to ring "phase margin" for its own first lesson — this is gain
+    // margin's turn.
+    callout: 'gainmargin',
     patch: { plant: 'threePole', plantP: pp('threePole'), ctrl: 'p', ctrlP: cp('p', { kp: 1 }), view: 'step' },
   },
   {
@@ -317,13 +339,20 @@ export const LESSONS = [
   {
     group: 'Harder plants',
     name: 'The plant that needs feedback',
+    // The first cut opened on the STABLE case (Kp = 5, a clean rise to
+    // 1.25) — a chip away from the inverted failure mode this lesson exists
+    // to teach, so a student who never clicks sees the tame picture instead
+    // (student review). This now loads latched, at the same Kp = 0.5 chip
+    // that used to be the first thing to try — the note and the picture
+    // agree, and the instability stays measured the same way it always was
+    // (lessons.test.js: unstable at Kp 0.5 and 0.1).
     note:
       'A pole in the right half plane: a positive-feedback stage, a maglev coil. Left alone it runs away ' +
-    'exponentially. Feedback is not an improvement here but the only reason it works, and the failure mode is ' +
-    'inverted: too little gain breaks it, not too much.',
+    'exponentially, and only feedback holds it. Loaded here at Kp = 0.5, the gain is too low, and the loop ' +
+    'already latches to a rail. Raising Kp is what fixes it, the opposite of every other lesson.',
     try:
-      'Kp → 0.5 and the loop latches, running away instead of settling. Kp → 5 and it sits at 1.25. Kp → 20 and ' +
-    'it sits at 1.05.',
+      'Loaded at Kp → 0.5, already latched and running away. Kp → 5 stabilizes it, settling at 1.25. Kp → 20 ' +
+    'tightens that to 1.05.',
     featured: ['kp'],
     chips: [
       gain('kp', 0.5, 'Kp → 0.5 (latches)', 'Too little gain: the loop runs away to a rail'),
@@ -331,7 +360,7 @@ export const LESSONS = [
       gain('kp', 20),
     ],
     terms: terms('positivefeedback', 'latches', 'rail', 'negativeerror', 'runsaway', 'rhp', 'pole'),
-    patch: { plant: 'unstable', plantP: pp('unstable'), ctrl: 'p', ctrlP: cp('p', { kp: 5 }), view: 'step' },
+    patch: { plant: 'unstable', plantP: pp('unstable'), ctrl: 'p', ctrlP: cp('p', { kp: 0.5 }), view: 'step' },
   },
   {
     group: 'Harder plants',
@@ -395,6 +424,27 @@ export const LESSONS = [
   },
 ]
 
+/**
+ * The course position (1-based) of the first lesson that opens on a given
+ * lower view, or null if none does — the pointer the Nyquist and root-locus
+ * tabs need before their OWN lesson ever loads. Both views are one click
+ * away from lesson 1 onward, and a student review found this the single
+ * most annoying part of the lab: two tabs "sit on screen taunting me" with
+ * no way to tell whether a prerequisite was missing. `beforeIntro` answers
+ * that: has the reader already reached (or passed) the lesson that reads
+ * this plot in full?
+ */
+export function firstLessonFor(view) {
+  const i = LESSONS.findIndex((l) => (l.patch.view || 'step') === view)
+  return i < 0 ? null : i + 1
+}
+
+/** Has the reader reached the lesson that introduces `view`, given the active lesson's course position (1-based, or null with none loaded)? */
+export function beforeIntro(view, activeNumber) {
+  const intro = firstLessonFor(view)
+  return intro != null && (activeNumber == null || activeNumber < intro)
+}
+
 /** Apply a lesson to the app's state shape. */
 export function applyLesson(l) {
   return {
@@ -404,6 +454,9 @@ export function applyLesson(l) {
     ctrlP: l.patch.ctrlP,
     view: l.patch.view || 'step',
     stepInput: l.patch.stepInput || 'ref',
+    // Only "...and what it costs" names this: every other lesson leaves the
+    // phase overlay wherever the reader last set it.
+    showPhase: l.patch.showPhase,
   }
 }
 

@@ -12,6 +12,7 @@ import { MeasuresPane, BalancePane, LossesPane, SpectrumPane, FluxPane, ScrubPan
 import { fmtz } from './format.js'
 import { scopeMarks, sweepMarks } from './marks.js'
 import Schematic, { TOPOLOGY_NAMES, topologyOf, signalsOf } from './components/schematics.jsx'
+import BuckHandOver from './components/BuckHandOver.jsx'
 import pkg from '../package.json'
 
 const FIRST = EXPERIMENTS[0].id
@@ -81,24 +82,68 @@ export function outcomeOf(exp, x) {
   return `${MODE_WORDS[m.mode]}, M = ${m.M.toFixed(4)}, η = ${(m.eta * 100).toFixed(2)} %`
 }
 
+/**
+ * The exact value of a sweep's y-quantity at the state `analyse()` already
+ * solved for the current knobs — not a value read back off the sweep's own
+ * grid, which can sit a knob's-width away from the setting it is meant to
+ * read. A1's marker read "5 Ω → 4.935 V" against a top bar, a note and an
+ * exact 12·5/(5+7) that all say 5.000 V (Reed, 2026-09-03): the sweep's 61
+ * log-spaced points do not land on 5 Ω, so the marker was reading its
+ * nearest neighbour instead of the setting itself. Every SWEEP_Y key maps to
+ * one field of the same `x` the top bar and the note already read, so this
+ * cannot drift from them again.
+ */
+function exactSweepY(key, x) {
+  const m = x.m
+  switch (key) {
+    case 'M':
+      return m.M
+    case 'eta':
+      return m.eta
+    case 'Pout':
+      return m.Pout
+    case 'Vout':
+    case 'vavg':
+      return m.sig.vout.avg
+    case 'vrms':
+      return m.sig.vout.rms
+    case 'angle':
+      return m.angle
+    case 'iPeak':
+      return m.iPeak
+    case 'share':
+      return m.share
+    case 'pf':
+      return m.pf
+    case 'v1':
+      return m.Vsw1 * Math.SQRT2
+    case 'thd':
+      return m.thd
+    default:
+      return undefined
+  }
+}
+
 /** Which sweep an experiment's lower pane draws, and where the knob sits on it. */
-export function sweepFor(exp, params) {
+export function sweepFor(exp, params, x) {
   const s = exp.sweep
   if (!s) return null
   const opts = sweepOpts(exp, params)
-  if (exp.kind === 'linreg') return { points: sweepLinear(params), at: params.Vo / params.Vin, label: 'η = V_out / V_in' }
-  if (exp.kind === 'chopper') return { points: sweepChopper(params), at: params.D, label: '⟨v⟩ = D·V_in', label2: 'V_rms = √D·V_in' }
-  if (s.x === 'ma') return { points: sweepMa(params), at: params.ma, label: 'peak of the bridge’s fundamental' }
-  if (s.x === 'fsw') return { points: sweepFsw(params), at: params.fsw, label: 'THD of the load voltage' }
-  if (s.x === 'C') return { points: sweepC(params, exp), at: params.C }
-  if (s.x === 'alpha') return { points: sweepAlpha(params), at: params.alphaDeg, label: 'P / P_full measured on the waveform' }
-  if (s.x === 'fs') return { points: sweepFs(params, exp.kind, 41, opts), at: params.fs }
-  if (s.y === 'eta' && s.x !== 'D') return { points: sweepEta(params, exp.kind, 41, opts), at: params.R }
+  const atY = exactSweepY(s.y, x)
+  const atY2 = s.y2 ? exactSweepY(s.y2, x) : undefined
+  if (exp.kind === 'linreg') return { points: sweepLinear(params), at: params.R, label: 'V_out = V_in · R_load / (R_load + R_pass)', atY, atY2 }
+  if (exp.kind === 'chopper') return { points: sweepChopper(params), at: params.D, label: '⟨v⟩ = D·V_in', label2: 'V_rms = √D·V_in', atY, atY2 }
+  if (s.x === 'ma') return { points: sweepMa(params), at: params.ma, label: 'peak of the bridge’s fundamental', atY, atY2 }
+  if (s.x === 'fsw') return { points: sweepFsw(params), at: params.fsw, label: 'THD of the load voltage', atY, atY2 }
+  if (s.x === 'C') return { points: sweepC(params, exp), at: params.C, atY, atY2 }
+  if (s.x === 'alpha') return { points: sweepAlpha(params), at: params.alphaDeg, label: 'P / P_full measured on the waveform', atY, atY2 }
+  if (s.x === 'fs') return { points: sweepFs(params, exp.kind, 41, opts), at: params.fs, atY, atY2 }
+  if (s.y === 'eta' && s.x !== 'D') return { points: sweepEta(params, exp.kind, 41, opts), at: params.R, atY, atY2 }
   // η against D is a ratio sweep read for its η; the closed form it carries
   // is for M, and would be drawn against the wrong axis.
-  if (s.x === 'D' && s.y === 'eta') return { points: sweepD(params, exp.kind, 61, opts).map(({ pred, ...q }) => q), at: params.D }
-  if (s.x === 'D') return { points: sweepD(params, exp.kind, 61, opts), at: params.D }
-  return { points: sweepR(params, exp.kind, 61, opts), at: params.R }
+  if (s.x === 'D' && s.y === 'eta') return { points: sweepD(params, exp.kind, 61, opts).map(({ pred, ...q }) => q), at: params.D, atY, atY2 }
+  if (s.x === 'D') return { points: sweepD(params, exp.kind, 61, opts), at: params.D, atY, atY2 }
+  return { points: sweepR(params, exp.kind, 61, opts), at: params.R, atY, atY2 }
 }
 
 /**
@@ -129,6 +174,12 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
   // Where the conduction scrub's cursor sits, as a fraction of one period.
   const [scrub, setScrub] = useState(0.25)
   const mainRef = useRef(null)
+  // A multi-step try's progress (B4, B5, E1): which step indices the reader
+  // has applied. Sticky, like Circuit Elements Lab's own steps — turning a
+  // later step's knob back through an earlier step's setting does not undo
+  // it, so two steps that toggle the same knob (B4's synchronous switch)
+  // still advance rather than trading places forever.
+  const [doneTrySteps, setDoneTrySteps] = useState(() => new Set())
 
   const exp = byId[id]
 
@@ -142,11 +193,13 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
     setPrimary(primaryOf(byId[next]))
     setBrowsing(null)
     setScrub(0.25)
+    setDoneTrySteps(new Set())
   }
   // The way back from a retired note: every knob to the experiment's defaults.
   const reset = () => {
     setParams(defaultsOf(id))
     setPristine(true)
+    setDoneTrySteps(new Set())
   }
   const swapPrimary = () => setPrimary((p) => (p === 'scope' ? 'analysis' : 'scope'))
   // Drag the split: the pointer's height in the column is the top pane's share.
@@ -192,11 +245,11 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
   // carries the sweep under it (the regulator).
   const wantsSweep = currentView === 'sweep' || (exp.scope === false && currentView === 'losses')
   const sweep = useMemo(
-    () => (wantsSweep ? sweepFor(exp, params) : null),
+    () => (wantsSweep ? sweepFor(exp, params, x) : null),
     [exp, params, x, wantsSweep],
   )
   // The same sweep at the defaults, which the sweep's axis is framed on.
-  const baseSweep = useMemo(() => (wantsSweep ? sweepFor(exp, defaultsOf(exp.id)) : null), [exp, wantsSweep])
+  const baseSweep = useMemo(() => (wantsSweep ? sweepFor(exp, defaultsOf(exp.id), base) : null), [exp, wantsSweep, base])
   // The note's numbers, drawn where they happen (marks.js).
   // The conduction scrub's cursor, as a fraction of one period, and the same
   // instant marked on the scope so the two panes read together.
@@ -252,7 +305,22 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
   // experiment, and while another group's tab is being browsed. Deeper in,
   // its lines are the note's.
   const showIntro = Boolean(browsing) || EXPERIMENTS.find((e) => e.group === exp.group).id === id
-  const tryKnob = exp.params.find((k) => k.key === exp.try.knob)
+  // Most experiments have one `try`, an object naming a knob. B4, B5 and E1
+  // have a multi-step try instead — an array, the Circuit Elements Lab
+  // pattern — so a student performs discontinuous conduction or the wider
+  // conduction angle rather than reading a single turned-and-believe number.
+  const trySteps = Array.isArray(exp.try) ? exp.try : null
+  const tryKnob = trySteps ? null : exp.params.find((k) => k.key === exp.try.knob)
+  const applyStep = (step, i) => {
+    setParams((p) => ({ ...p, ...step.set }))
+    setPristine(false)
+    focusKnob(step.knob)
+    setDoneTrySteps((s) => new Set(s).add(i))
+  }
+  // The step shown: the first not yet done, so applying one step's chip
+  // advances to the next. Once every step is done, the last stays shown.
+  const firstNotDone = trySteps ? trySteps.findIndex((_, i) => !doneTrySteps.has(i)) : -1
+  const activeTryStep = trySteps ? (firstNotDone === -1 ? trySteps.length - 1 : firstNotDone) : -1
   const next = nextOf(id)
   const prev = prevOf(id)
   const pos = positionOf(id)
@@ -335,12 +403,36 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
             )}
           </p>
           {/* One thing to try, with the knob it names as a chip that focuses
-              it, and where the note leads after that. */}
-          <p className="try" data-role="try">
-            <span className="try-label">Try</span> {exp.try.text}{' '}
-            <button type="button" className="knob-chip" data-knob={tryKnob.key} onClick={() => focusKnob(tryKnob.key)} title={`Go to the ${tryKnob.label} knob`}>
-              {tryKnob.label}
-            </button>
+              it, and where the note leads after that. A multi-step try (B4,
+              B5, E1) shows one step at a time — the first not yet done — so
+              the reader performs the sequence rather than reading three
+              readings at once; the same one-line footprint as every other
+              experiment's try, so the fold does not move. */}
+          <div className="try" data-role="try">
+            {trySteps ? (
+              <span className="try-step" data-role="try-step" data-step={activeTryStep + 1} data-of={trySteps.length}>
+                <span className="try-label">
+                  Try {activeTryStep + 1}/{trySteps.length}
+                </span>{' '}
+                {trySteps[activeTryStep].say}{' '}
+                <button
+                  type="button"
+                  className="knob-chip"
+                  data-knob={trySteps[activeTryStep].knob}
+                  onClick={() => applyStep(trySteps[activeTryStep], activeTryStep)}
+                  title={`Go to the ${exp.params.find((k) => k.key === trySteps[activeTryStep].knob).label} knob`}
+                >
+                  {exp.params.find((k) => k.key === trySteps[activeTryStep].knob).label}
+                </button>{' '}
+              </span>
+            ) : (
+              <>
+                <span className="try-label">Try</span> {exp.try.text}{' '}
+                <button type="button" className="knob-chip" data-knob={tryKnob.key} onClick={() => focusKnob(tryKnob.key)} title={`Go to the ${tryKnob.label} knob`}>
+                  {tryKnob.label}
+                </button>{' '}
+              </>
+            )}
             {next ? (
               <span className="next-line">
                 <button type="button" className="link" data-role="next-link" data-target={next} onClick={() => choose(next)}>
@@ -349,7 +441,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                 </button>
               </span>
             ) : null}
-          </p>
+          </div>
           {termsFor(exp.terms).length ? (
             <details className={`terms${termsFresh(seen.current, id) ? ' is-fresh' : ''}`} key={id}>
               <summary>
@@ -385,6 +477,19 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
             </details>
           ) : null}
         </section>
+
+        {isBuck ? (
+          <section>
+            {/* Closed by default: the hand-over costs nothing to the fold
+                budget the rest of the sidebar is held to (§11.3.2), the same
+                reason Circuit Elements Lab's own hand-over sits inside a
+                closed "Deeper" details rather than in the open flow. */}
+            <details className="handover-fold" data-role="handover-fold">
+              <summary>Hand over to Control Lab</summary>
+              <BuckHandOver x={x} />
+            </details>
+          </section>
+        ) : null}
 
         <ReportIssue
           lab="Power Lab"
@@ -593,6 +698,8 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                 basePoints={baseSweep ? baseSweep.points : null}
                 sweep={exp.sweep}
                 at={sweep.at}
+                atY={sweep.atY}
+                atY2={sweep.atY2}
                 marks={sweepMarkList}
                 label={sweep.label}
                 label2={sweep.label2}
@@ -611,6 +718,8 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
                   basePoints={baseSweep ? baseSweep.points : null}
                   sweep={exp.sweep}
                   at={sweep.at}
+                  atY={sweep.atY}
+                  atY2={sweep.atY2}
                   marks={sweepMarkList}
                   label={sweep.label}
                   label2={sweep.label2}

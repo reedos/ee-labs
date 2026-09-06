@@ -27,6 +27,7 @@ import { mathContext, mathFor } from './math.js'
 import { samplingState } from './sampling.js'
 import { INITIAL, presetState } from './state.js'
 import { applyChip } from './chips.js'
+import { circuitUrl } from './toCircuitLab.js'
 import { allTonal, fmtAmp, formatPeaks, isBroadband, offBin, spectralPeaks } from './peaks.js'
 
 /**
@@ -84,6 +85,12 @@ export default function App() {
   // Preset groups the student unfolded by hand. Cleared whenever an
   // experiment loads, so only the group holding it is open from then on.
   const [openGroups, setOpenGroups] = useState(() => new Set())
+  // Which try-line chip the student actually clicked last, so activeChip
+  // (chips.js) can prefer it over array order when a later chip's partial
+  // patch still happens to match too (clicking "12 bits" then "dither" left
+  // "12 bits" lit, since its patch never checks dither — Reed's review).
+  // Cleared on every preset load, same as the other per-lesson UI state above.
+  const [lastChip, setLastChip] = useState(null)
 
   const applyPreset = (p) => {
     const next = presetState(p)
@@ -91,6 +98,7 @@ export default function App() {
     setApplied(next)
     setOpenBlocks(new Set((p.patch.blocks || []).map((b) => b.id)))
     setOpenGroups(new Set())
+    setLastChip(null)
   }
 
   const dirty = useMemo(() => JSON.stringify(state) !== JSON.stringify(applied), [state, applied])
@@ -106,7 +114,10 @@ export default function App() {
     onReset: () => presetIndex >= 0 && applyPreset(PRESETS[presetIndex]),
   }
 
-  const onChip = (c) => setState((s) => applyChip(s, c.patch))
+  const onChip = (c) => {
+    setState((s) => applyChip(s, c.patch))
+    setLastChip(c.label)
+  }
 
   const patch = (k, v) => setState((s) => ({ ...s, [k]: v }))
 
@@ -357,6 +368,15 @@ export default function App() {
     [state, freqs, amps, ghostAmps, resp, stats.peakFreq],
   )
 
+  // The hand-over out: this block, as the circuit it is — null off the one
+  // preset it is exact for, and null in dev where Circuit Lab is not deployed
+  // beside this page. See toCircuitLab.js for why this is exact rather than
+  // approximate.
+  const circuitHref = useMemo(
+    () => circuitUrl(state.blocks[0], state.presetName),
+    [state.blocks, state.presetName],
+  )
+
   return (
     <div className="app">
       <Controls
@@ -369,11 +389,15 @@ export default function App() {
         math={math}
         onPreset={applyPreset}
         onChip={onChip}
+        lastChip={lastChip}
         nav={nav}
         openBlocks={openBlocks}
         setOpenBlocks={setOpenBlocks}
         openGroups={openGroups}
         setOpenGroups={setOpenGroups}
+        onConvPlay={scrub.play}
+        convPlaying={scrub.playing}
+        circuitHref={circuitHref}
       />
 
       <TopBar
@@ -551,13 +575,25 @@ export default function App() {
                 // Gated on exact: a nonlinear chain has no H, and the canvas
                 // label above already says so. Tested (linear vs circular
                 // convolution) in views.test.js before this sentence prints.
+                //
+                // Neither s nor z is defined algebraically right here, and s
+                // is Laplace analysis, past this lab's own background of
+                // sine waves, Fourier series and j² = −1. Marked as such,
+                // not cut: a stronger student gets the real cross-reference
+                // to Circuit Lab, and a first-year is told plainly that the
+                // check row above (not this sentence) is what to trust.
                 <p className="conv-theorem">
                   One theorem, two vocabularies: y = x ∗ h in time is{' '}
                   <b>
                     Y(z) = X(z)·H(z)
                   </b>{' '}
-                  here in the sampled domain — and Y(s) = X(s)·H(s) is its
-                  continuous twin, the form Circuit Lab reads.
+                  here in the sampled domain, and Y(s) = X(s)·H(s) is its
+                  continuous twin, the form Circuit Lab reads. Both s and z
+                  stand for complex frequency, sampled for z and continuous
+                  for s. Reading either equation is optional. The math
+                  panel's check row already confirms y = x ∗ h with plain
+                  numbers, and Laplace's s sits beyond this lab's own
+                  background.
                 </p>
               )}
               {/* What this view is NOT drawing, said once. The sum produces

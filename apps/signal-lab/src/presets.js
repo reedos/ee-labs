@@ -23,8 +23,18 @@ import { BLOCK_TYPES } from './dsp/blocks.js'
 //              to 1" is a click, not a search.
 //   featured — the control the try line names, rendered under it so it is on
 //              screen without scrolling (the fold probe in verify.mjs holds
-//              this for all 35 at laptop sizes). `{ source: id, field }` or
-//              `{ block: id, field }`.
+//              this for all 35 at laptop sizes). `{ source: id, field }`,
+//              `{ block: id, field }`, or `{ field }` alone for a chain-
+//              global setting (FFT size, sample rate, the window, the
+//              overlay) that lives in the top bar or a pane header rather
+//              than on a source or a block.
+//   playHint — true when the try line's verb is a canvas transport (only
+//              Convolution's "press play") rather than a field `featured`
+//              can mirror; Controls.jsx renders the play button itself
+//              under the try line instead of inventing a knob.
+//   handOver — true on the one preset (Resonance is Q) whose block crosses
+//              into Circuit Lab exactly, as a series RLC — see
+//              toCircuitLab.js and CORE_SCOPE.md's counter-rule.
 //   terms    — the vocabulary the note, try and chips lean on (terms.js).
 //              presets.test.js scans the text and refuses a word whose term
 //              is not listed.
@@ -63,6 +73,15 @@ export const PRESET_GROUPS = [
   'Nonlinearity',
 ]
 
+// A group whose own experiments step up past the lab's stated background,
+// named once in the group header so a student can see it before opening the
+// group — not hidden until the terms panel of its first lesson. Every term
+// this group leans on is still self-contained (terms.js), which is why this
+// is a signpost rather than a rewrite.
+export const GROUP_SIGNPOSTS = {
+  'FIR and the z-plane': 'goes further than the rest of this lab',
+}
+
 export const PRESETS = [
   // --------------------------------------------------- Signals and Fourier
   {
@@ -70,20 +89,39 @@ export const PRESETS = [
     name: 'Single tone',
     terms: ['db', 'rms', 'harmonic'],
     note: 'One sine wave gives one line in the spectrum. Every other experiment is read against this baseline.',
-    try: 'This is the baseline. Next: Square adds only odd harmonics.',
+    // A real micro-experiment, not pure navigation: dragging Amplitude to 0.5
+    // (half the default 1) drops the line 6.02 dB, measured in try.test.js.
+    // The pointer to Square survives as a trailing clause, not the only verb
+    // — the walk could stare at a correct sine and not know the course had
+    // started (the review's own complaint).
+    try: 'Drag Amplitude to 0.5, the line drops 6 dB. Next: Square.',
+    chips: [src1('0.5', { amp: 0.5 }, 'Half amplitude: 6 dB down'), src1('1', { amp: 1 }, 'Back to full scale')],
+    featured: [{ source: 1, field: 'amp' }],
     patch: { sources: [mk(1, 'sine', 250, 1)], sampleRate: 8000, timeSpanMs: 20, spanCycles: 5 },
   },
   {
     group: 'Signals and Fourier',
     name: 'Square = odd harmonics',
-    terms: ['harmonic', 'nyquist', 'fold'],
+    // 'aliasing' is listed here, not just at its own lesson (experiment 9):
+    // this preset's default state is a naive, full-bandwidth square, whose
+    // ripple past Nyquist trips the scope's own aliasing caption (see
+    // sampling.js and ScopeCanvas.jsx). The caption fires off the live math,
+    // not off which lesson is loaded, so its vocabulary has to be reachable
+    // wherever it can appear, the same treatment 'scalloping' already gets on
+    // presets ahead of "Spectral leakage".
+    terms: ['harmonic', 'aliasing'],
     // The markers are already on when this loads — the old note said "turn
     // on harmonic markers", which the walk read as a control it could not
-    // find.
+    // find. One claim only: odd lines falling as 1/k. What used to sit here
+    // too — the sampling correction, and the flattening above 2 kHz being
+    // harmonics past Nyquist folding back — is in the math panel now, and
+    // folding itself belongs to the Sampling group (the review's own split).
     note:
       'A square wave is a sum of odd harmonics falling as 1/k, 4A/(kπ), plus the small sampling correction the ' +
-    'math panel carries. The harmonic markers are on: count 1st, 3rd, 5th, and nothing between them. The ' +
-    'flattening above 2 kHz is harmonics past Nyquist folding back onto the ones below.',
+    'math panel carries. The harmonic markers are on: count 1st, 3rd, 5th, and nothing between them.',
+    why:
+      "EMI compliance testing checks a digital clock's own board at multiples of its clock frequency, exactly " +
+    "where a square wave's harmonics land.",
     try: 'Click 3, then 9, more odd lines appear, and nothing lands between them.',
     chips: [
       src1('3', { topHarmonic: 3 }, 'Two terms: the fundamental and the 3rd'),
@@ -102,7 +140,11 @@ export const PRESETS = [
   {
     group: 'Signals and Fourier',
     name: 'Corners make harmonics',
-    terms: ['harmonic'],
+    // 'aliasing' listed here too: the "square" and "sawtooth" chips below load
+    // a full-bandwidth wave, and that trips the scope's own aliasing caption
+    // (see the note on "Square = odd harmonics") before the term's own lesson,
+    // experiment 9.
+    terms: ['harmonic', 'aliasing'],
     // "close to a ninth (8.8 measured here)": the continuous law says 9; the
     // sampled triangle's own correction reads 8.77 at 32 samples per period,
     // and the walk caught the note claiming the round number.
@@ -116,6 +158,7 @@ export const PRESETS = [
       src1('square', { type: 'square' }),
       src1('sawtooth', { type: 'sawtooth' }),
     ],
+    featured: [{ source: 1, field: 'type' }],
     patch: {
       sources: [mk(1, 'triangle', 250, 1)],
       sampleRate: 8000,
@@ -135,6 +178,11 @@ export const PRESETS = [
       'Three odd harmonics at 1, 1/3 and 1/5 add up to a square of height π/4 = 0.785, already square-ish. The ' +
     'Gibbs overshoot at each corner is 9.4% of the jump with three terms, 9.1% with five, and 8.95% in the ' +
     'limit. It narrows as terms are added, and never shrinks away.',
+    // The try line's only verb is the chip itself — "add 7th and 9th" adds
+    // two whole sources at once, not one field of one existing source or
+    // block, so there is no single knob for `featured` to mirror. The chip
+    // already sits inline under the try line (TryLine renders it there),
+    // which is the whole of what "one click" promises here.
     try: 'Click add 7th and 9th, the edges steepen. The overshoot narrows toward 9% of the jump.',
     chips: [
       {
@@ -160,11 +208,15 @@ export const PRESETS = [
       'The chain carries two tones and nothing else. The scope shows their sample-by-sample sum, a shape ' +
     'neither has alone, while the spectrum shows two clean lines at each source’s own amplitude. ' +
     'Superposition means that adding signals adds spectra, line by line.',
+    why:
+      "A mixing console's summing bus adds every channel the same way. One channel's fader never touches any " +
+    "other channel's own level.",
     try: 'Untick source 2, the 300 Hz line does not move.',
     chips: [
       { label: 'source 2 off', patch: { sources: [{}, { enabled: false }] } },
       { label: 'both on', patch: { sources: [{ enabled: true }, { enabled: true }] } },
     ],
+    featured: [{ source: 2, field: 'enabled' }],
     patch: {
       sources: [mk(1, 'sine', 300, 0.7), mk(2, 'sine', 1800, 0.4)],
       sampleRate: 8000,
@@ -179,7 +231,11 @@ export const PRESETS = [
     // scope switches to sample dots and its (sin x)/x reconstruction — the
     // caption for that appears on the canvas, so the definition behind it
     // should be one click away here as it is in the sampling lessons.
-    terms: ['lti', 'superposition', 'sampled', 'phase', 'scalloping'],
+    // 'transfer' because the math panel below already writes |H(f)| and
+    // ∠H(f) to state the eigenfunction result — the term itself is not
+    // formally named until "Low-pass a square", experiment 15, so its
+    // definition is pulled forward to where the notation is first used.
+    terms: ['lti', 'superposition', 'sampled', 'phase', 'scalloping', 'transfer', 'sinc', 'reconstruction'],
     note:
       'This chain is linear, superposition plus scaling, and time-invariant, so shifting the input shifts the ' +
     'output identically. Any such system can do exactly one thing to a sine: scale it and shift it, never ' +
@@ -208,11 +264,13 @@ export const PRESETS = [
       'The chain carries two tones 5 Hz apart. The spectrum shows two lines because the frame is 8192 samples ' +
     'long (bins under 1 Hz) and the axis is zoomed to 500 Hz. The scope shows the same signal the other way, ' +
     'one tone whose envelope pulses at the 5 Hz difference.',
+    why: 'A piano tuner listens for exactly this pulse, slowing it toward zero to bring two strings into tune.',
     try: 'Set FFT to 2048 in the top bar, the two lines merge into one peak.',
     chips: [
       { label: 'FFT 2048', patch: { fftSize: 2048 }, title: '3.9 Hz bins: the pair is 1.3 bins apart' },
       { label: 'FFT 8192', patch: { fftSize: 8192 }, title: '0.98 Hz bins: the pair resolves' },
     ],
+    featured: [{ field: 'fftSize' }],
     patch: {
       sources: [mk(1, 'sine', 250, 0.5), mk(2, 'sine', 255, 0.5)],
       sampleRate: 8000,
@@ -249,11 +307,18 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Aliasing',
-    terms: ['sampled', 'aliasing', 'nyquist', 'fold', 'scalloping'],
+    terms: ['sampled', 'aliasing', 'nyquist', 'fold', 'scalloping', 'sinc', 'reconstruction'],
     note:
       'A 3.4 kHz tone at 8 kHz behaves. Past 4 kHz, dragged there, or by a chip, the peak turns around and ' +
     'walks back down. The signal is gone and an impostor took its place.',
-    try: 'Click 6000 Hz, the peak lands at 2000 Hz. Click 4600, 3400 Hz, where it started.',
+    why:
+      'An audio interface filters out everything above half its sample rate for exactly this reason, before ' +
+    'this fold can happen.',
+    // Rewritten from "Click 6000 Hz... Click 4600, 3400 Hz, where it started",
+    // which the impatient student read as ambiguous between an instruction
+    // and a description of the reading. Each sentence now names one chip to
+    // click and one number that follows from it, unmistakably.
+    try: 'Click 6000 Hz, the peak reads 2000 Hz. Click 4600 Hz, it reads 3400 Hz again.',
     // Whole-sample spans, as in Coarse: 40 samples every time (17 cycles of
     // 3400, 23 of 4600, 30 of 6000), so RMS reads 0.707 at every chip and
     // "indistinguishable from the start" holds for the readout too.
@@ -268,12 +333,15 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Turn the rate down',
-    terms: ['sampled', 'aliasing', 'nyquist', 'fold'],
+    terms: ['sampled', 'aliasing', 'nyquist', 'fold', 'sinc', 'reconstruction'],
     note:
       'This one moves the RATE, the knob you usually have. Three sines at 625, 1875 and 3125 Hz ' +
       'sampled at 16 kHz all sit well below Nyquist, so the dots describe exactly this signal. ' +
       'At 4 kHz the 3125 Hz component no longer fits and folds to 875 Hz, a line the signal ' +
       'never contained.',
+    why:
+      'Early digital telephone systems sampled voice at 8 kHz for this reason, enough to cover a 4 kHz voice ' +
+    'band without folding.',
     try: 'Set Rate to 4 kHz, the 3125 Hz line folds to 875 Hz.',
     chips: [
       { label: '16 kHz', patch: { sampleRate: 16000 } },
@@ -281,6 +349,7 @@ export const PRESETS = [
       { label: '4 kHz', patch: { sampleRate: 4000 }, title: '3125 folds to 875' },
       { label: '2 kHz', patch: { sampleRate: 2000 }, title: '1875 folds to 125 as well' },
     ],
+    featured: [{ field: 'sampleRate' }],
     patch: {
       // 625 Hz and its odd harmonics land on an FFT bin centre at 16, 8, 4 and
       // 2 kHz alike (fs/2048 divides 625 at every one), so the lines stay
@@ -296,7 +365,7 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'Exactly at Nyquist',
-    terms: ['sampled', 'nyquist', 'phase', 'sinc'],
+    terms: ['sampled', 'nyquist', 'phase', 'sinc', 'reconstruction'],
     // One claim. "A bound you approach, not one you sit on" and what the
     // reconstruction does at each phase moved to the math panel.
     note:
@@ -320,7 +389,7 @@ export const PRESETS = [
   {
     group: 'Sampling',
     name: 'A square that fits',
-    terms: ['sampled', 'nyquist', 'harmonic', 'aliasing', 'fold', 'bandlimited'],
+    terms: ['sampled', 'nyquist', 'harmonic', 'aliasing', 'fold', 'bandlimited', 'sinc', 'reconstruction'],
     // One claim. The 15th-harmonic fold and the ideal square's deceptively
     // clean trace moved to the math panel, where the numbers are live.
     note:
@@ -364,6 +433,7 @@ export const PRESETS = [
       { label: 'FFT 512', patch: { fftSize: 512 }, title: '15.6 Hz bins: one peak' },
       { label: 'FFT 2048', patch: { fftSize: 2048 }, title: '3.9 Hz bins: two' },
     ],
+    featured: [{ field: 'fftSize' }],
     patch: {
       sources: [mk(1, 'sine', 250, 0.5), mk(2, 'sine', 265, 0.5)],
       sampleRate: 8000,
@@ -379,15 +449,24 @@ export const PRESETS = [
     // The floor is dropped to −160 dB for this preset alone: the Hann floor
     // at 1 kHz sits near −147 dB, which the default −100 dB axis could not
     // show, so "below −140" was a number the student had to take on trust.
+    //
+    // The try line used to read "1 kHz's smear", which sends a student
+    // looking for a 1 kHz tone that is not on this screen — the source is
+    // 263 Hz, and 1 kHz is only the frequency where the leakage floor is
+    // read (Reed's review). Reworded to name the reading, not a signal.
     note:
-      'Window is set to "none". A tone that does not complete whole cycles in the frame smears across every ' +
-    'bin. With Hann it collapses back to a line, and the floor here is dropped to −160 dB so the collapse is ' +
-    'visible.',
-    try: 'Set Window to hann, 1 kHz’s smear drops from −56 dB to below −140 dB.',
+      'Window is set to "none". The 263 Hz tone does not complete whole cycles in the frame and smears across ' +
+    'every bin. With Hann it collapses back to a line, and the floor here is dropped to −160 dB so the ' +
+    'collapse is visible.',
+    why:
+      'Every FFT-based spectrum analyzer applies a window for this reason, or a pure tone would smear across ' +
+    'its display.',
+    try: 'Set Window to hann, the 1 kHz floor falls from −56 to below −140 dB.',
     chips: [
       { label: 'none', patch: { window: 'none' } },
       { label: 'hann', patch: { window: 'hann' } },
     ],
+    featured: [{ field: 'window' }],
     patch: {
       sources: [mk(1, 'sine', 263, 1)],
       sampleRate: 8000,
@@ -428,11 +507,14 @@ export const PRESETS = [
   {
     group: 'Filters',
     name: 'High-pass a square',
-    terms: ['harmonic', 'cutoff'],
+    terms: ['harmonic', 'cutoff', 'aliasing'],
     note:
       'Same square, same 700 Hz corner as Low-pass a square, and the opposite survivor list. The fundamental is ' +
     'cut and the upper harmonics pass. On the scope the flat tops sag toward zero, a plateau being low ' +
     'frequency, while each edge survives as a sharp spike.',
+    why:
+      'An oscilloscope left on AC coupling does exactly this to a square wave test signal, sagging its flat ' +
+    'tops toward zero.',
     try: 'Drag Cutoff to 2 kHz, the plateaus flatten to zero. Only the edge spikes remain.',
     chips: [blk1('700 Hz', { freq: 700 }), blk1('2 kHz', { freq: 2000 })],
     featured: [{ block: 1, field: 'freq' }],
@@ -461,6 +543,9 @@ export const PRESETS = [
       'The resonant peak at the cutoff has height exactly Q, not proportional to it but equal to it. At Q = 10 ' +
     'it stands 20 dB (×10) above the passband. The source is white noise, which holds every frequency ' +
     'equally, so the spectrum paints the whole filter shape at once.',
+    why:
+      "A radio tuner's selectivity is set by its Q, sharp enough to reject the next station without cutting " +
+    'the one you want.',
     try: 'Drag Q to 1, the peak flattens into the shoulder. At 20 it stands 26 dB.',
     chips: [
       blk1('0.707', { q: Math.SQRT1_2 }, 'Butterworth: −3 dB at the corner, no peak'),
@@ -469,6 +554,12 @@ export const PRESETS = [
       blk1('20', { q: 20 }, '+26 dB'),
     ],
     featured: [{ block: 1, field: 'q' }],
+    // The only outbound hand-over in the suite: this block is a series RLC
+    // read across its capacitor, exactly — same cutoff, same Q, the
+    // definition Circuit Lab's own resonance metric uses. CORE_SCOPE's
+    // counter-rule says an exact mapping is stated without a hedge, so this
+    // is the one preset that gets the link (toCircuitLab.js).
+    handOver: true,
     patch: {
       sources: [mk(1, 'noise', 100, 0.6)],
       blocks: [bk(1, 'lowpass', { freq: 800, q: 10 })],
@@ -484,11 +575,12 @@ export const PRESETS = [
       'An all-pass changes the scope waveform completely and leaves the spectrum untouched. |H| = 1 at every ' +
     'frequency, and the FFT throws phase away. The violet curve sweeps a full 360° while the magnitude never ' +
     'moves, and that sweep is the entire content of this block.',
-    try: 'Switch the overlay to delay, near 400 Hz the chain holds components up 26 samples.',
+    try: 'Switch the overlay to delay, near 380 Hz the chain holds components up 25.7764 samples.',
     chips: [
       { label: 'phase overlay', patch: { overlay: 'phase' } },
       { label: 'delay overlay', patch: { overlay: 'delay' } },
     ],
+    featured: [{ field: 'overlay' }],
     patch: {
       sources: [mk(1, 'sine', 250, 0.6), mk(2, 'sine', 750, 0.3), mk(3, 'sine', 1250, 0.2)],
       blocks: [bk(1, 'allpass', { freq: 400, q: 2 })],
@@ -506,11 +598,21 @@ export const PRESETS = [
       'Two identical low-passes in series. Cascading multiplies the magnitudes, so the second section squares ' +
     'the response and doubles the attenuation in dB at every frequency, bypass one and the curve halves its ' +
     'slope. Noise is the source because it probes every frequency at once.',
+    why:
+      'A receiver or a crossover cascades plain sections like these instead of one complicated filter, buying ' +
+    'steepness one stage at a time.',
     try: 'Bypass block 2, at 3200 Hz, −78 dB becomes −39 dB: exactly half.',
+    // Round-six grading (Doing): the try line's own words, "Bypass block 2",
+    // shared no word with either chip below ("one section" / "both
+    // sections"), the only preset in the library where that happens. The
+    // featured checkbox still does the work, but a student following the
+    // try line's own wording found no matching one-click chip. Renamed the
+    // chip that bypasses block 2 to say so directly.
     chips: [
-      { label: 'one section', patch: { blocks: [{}, { bypass: true }] } },
+      { label: 'bypass block 2', patch: { blocks: [{}, { bypass: true }] } },
       { label: 'both sections', patch: { blocks: [{ bypass: false }, { bypass: false }] } },
     ],
+    featured: [{ block: 2, field: 'bypass' }],
     patch: {
       sources: [mk(1, 'noise', 100, 0.6)],
       blocks: [
@@ -525,10 +627,13 @@ export const PRESETS = [
     group: 'Filters',
     name: 'Order is a choice',
     terms: ['order', 'q', 'butterworth', 'cascade', 'cutoff', 'db', 'octave'],
+    // One claim: the visible −3 dB versus −6 dB gap at the corner. The
+    // section Qs a true 4th-order Butterworth needs (0.541 and 1.307) moved
+    // to the math panel and the chip label — a first-year who has not met
+    // Butterworth yet does not need them to see the corner sag.
     note:
-      'These two cascaded sections make a real 4th-order Butterworth, with Qs of 0.541 and 1.307 rather than ' +
-    '0.707 twice. With both at 0.707 it is still 4th order with the same far slope, 24 dB/octave (80 ' +
-    'dB/decade). The corner sags from −3 dB to −6, because a Butterworth needs a particular Q per section.',
+      'Two cascaded second-order low-pass sections make a 4th-order filter. A true Butterworth needs a specific ' +
+    'Q pair, so its corner sits at −3 dB. With both sections at the same Q instead, the corner sags to −6 dB.',
     try: 'Set both Q to 0.707, the corner sags from −3 dB to −6 dB.',
     chips: [
       {
@@ -562,6 +667,9 @@ export const PRESETS = [
       'The input is one sample, then silence, so its spectrum is flat and any shape it has now came from the ' +
     'filter. The orange trace is the blue curve redrawn at the impulse’s own 2/N level, 60 dB down. The time ' +
     'view draws the impulse response itself, h(t) and H(f), one object from two sides.',
+    why:
+      "A reverb plugin starts by recording exactly this, a room's own impulse response, then applies it to " +
+    'any other recording.',
     try: 'Drag Q to 1, the ringing dies within one cycle and the peak drops 12 dB.',
     chips: [blk1('1', { q: 1 }), blk1('4', { q: 4 }), blk1('10', { q: 10 })],
     featured: [{ block: 1, field: 'q' }],
@@ -584,6 +692,9 @@ export const PRESETS = [
       'The input is a sudden jump, held. A gentle filter rounds the corner, and a resonant one overshoots and ' +
     'rings at its cutoff before settling. Overshoot stops at Q = 0.5, critical damping, not at 0.707, where ' +
     'the Butterworth is flattest in frequency and still overshoots (4.3% ideal, 4.4% here).',
+    why:
+      "A power supply's transient response spec is measured exactly this way, a sudden load step and a trace " +
+    'of the overshoot.',
     try: 'Drag Q to 0.5, the overshoot vanishes. At 0.707 it is still 4.4%.',
     chips: [
       blk1('0.5', { q: 0.5 }, 'Critical damping: no overshoot at all'),
@@ -609,6 +720,9 @@ export const PRESETS = [
       'makes its shape visible: deep nulls every 1000 Hz, the sample rate over 8. Summing a ' +
       'whole number of cycles of a sine gives exactly zero, so every frequency fitting whole ' +
       'cycles into the average is cancelled completely.',
+    why:
+      "A stock chart's moving average line runs the identical calculation, smoothing fast wiggles out of a " +
+    'noisy series.',
     try: 'Drag Taps N to 16, the nulls move in to every 500 Hz.',
     chips: [
       blk1('4', { taps: 4 }, 'Nulls every 2000 Hz'),
@@ -626,7 +740,7 @@ export const PRESETS = [
   {
     group: 'FIR and the z-plane',
     name: 'Everything arrives together',
-    terms: ['groupdelay', 'order', 'fir', 'taps', 'feedback', 'cutoff'],
+    terms: ['groupdelay', 'order', 'fir', 'taps', 'feedback', 'cutoff', 'sinc', 'reconstruction'],
     note:
       'A 61-tap FIR with the overlay on group delay: a flat line at exactly 30 samples. Every frequency is held ' +
     'up by the same amount, so the signal comes out late and otherwise unchanged. A biquad’s delay instead ' +
@@ -673,15 +787,27 @@ export const PRESETS = [
   {
     group: 'FIR and the z-plane',
     name: 'Cut it off abruptly and it rings',
-    terms: ['window', 'windownames', 'sinc', 'windowedsinc', 'brickwall', 'leakage', 'ripple', 'gibbs', 'taps', 'cutoff'],
+    terms: ['sinc', 'windowedsinc', 'brickwall', 'leakage', 'ripple', 'gibbs', 'taps', 'cutoff'],
     // Loads on the LINEAR amplitude scale: the 8% ripple is 0.7 dB — two
     // pixels on the dB axis — and the walk could not see the thing the
     // lesson exists to show.
+    //
+    // "Window" and "taper" here name this FIR block's OWN param, not the
+    // chain-global analysis window in the top bar — the two controls used
+    // to share the one word "Window", so a note reading "the window is set
+    // to none" left no way to tell which one it meant (Reed's review: the
+    // top bar plainly read hann while this block's own field said none).
+    // The block's field is relabelled "Taper" (dsp/blocks.js) and this
+    // preset's own text follows, so "window"/"windownames" no longer belong
+    // in its terms list — that pair describes the top bar's control.
     note:
-      'The same design with the window set to none, on a linear scale. The ideal filter is a sinc running to ' +
-    'infinity, so it is cut short, and cutting short IS a rectangular window, whose leakage puts 8% of ' +
+      'The same design with the taper set to none, on a linear scale. The ideal filter is a sinc running to ' +
+    'infinity, so it is cut short, and cutting short IS a rectangular taper, whose leakage puts 8% of ' +
     'overshoot beside the corner. More taps make the ripple narrower, never shorter: Gibbs again.',
-    try: 'Set Taps N to 201, the ripple narrows, not shorter. Set Window to hamming, gone.',
+    why:
+      'The ringing beside a hard edge in a compressed photograph is this same overshoot, one dimension ' +
+    'flattened into two.',
+    try: 'Set Taps N to 201, the ripple narrows, not shorter. Set Taper to hamming, gone.',
     chips: [
       blk1('101 taps', { taps: 101 }),
       blk1('201 taps', { taps: 201 }, 'Twice the taps: the same overshoot, half as wide'),
@@ -744,6 +870,9 @@ export const PRESETS = [
       'A delayed copy of the signal, added to itself, nearly cancels wherever the delay τ is an odd number of ' +
     'half-periods. That puts notches every 1/τ = 250 Hz for τ = 4 ms (D = 32 samples), dipping to 1−g. In ' +
     'feedback mode the same delay resonates instead, peaking midway between those notches.',
+    why:
+      'A flanger pedal is built from exactly this, a signal mixed with a slowly sweeping delayed copy of ' +
+    'itself.',
     try: 'Switch Type to feedback, the notches become peaks, midway between where they were.',
     chips: [
       blk1('feedforward', { mode: 'feedforward' }, 'Notches, dipping to 1−g'),
@@ -772,6 +901,11 @@ export const PRESETS = [
       blk1('4 taps', { taps: 4 }, 'Ramps 3 samples wide'),
       blk1('8 taps', { taps: 8 }, 'Ramps 7 samples wide'),
     ],
+    // "Press play" names the canvas transport, not a source or block field —
+    // there is no knob to feature. Controls.jsx mirrors the play button
+    // itself under the try line instead, so it is not a screen-width scroll
+    // away on the one control that lives on a canvas rather than a card.
+    playHint: true,
     patch: {
       sources: [mk(1, 'square', 250, 0.8)],
       blocks: [bk(1, 'movingavg', { taps: 8 })],
@@ -791,6 +925,9 @@ export const PRESETS = [
       'Hard-clip a pure sine and odd harmonics appear, approaching 4c/(kπ) in the deep-clip limit, falling away ' +
     'faster at a clip this gentle. No filter is involved: the nonlinearity manufactures them. The response ' +
     'curve goes dashed because no transfer function can describe this block.',
+    why:
+      'A guitar distortion pedal runs this experiment on purpose, clipping a clean sine into the harmonics ' +
+    'that give it an edge.',
     try: 'Drag Threshold to 1, the clip never bites and every harmonic vanishes.',
     chips: [
       blk1('0.1', { threshold: 0.1 }, 'Deep clip: nearly a square'),
@@ -833,17 +970,23 @@ export const PRESETS = [
     // The products named are the ones that are actually loudest. The old note
     // named 550, 900 and 50 Hz; the walk measured 100 Hz (−23.5 dB) and
     // 1050 Hz (−22.7 dB) as strong as those two and 50 Hz (−35.9 dB) as a
-    // fifth-order afterthought. try.test.js measures all four now.
+    // fifth-order afterthought. try.test.js measures all four now. Paced to
+    // one pair first — the review's own complaint that four products in one
+    // sentence is a wall — with the other two left to the math panel, where
+    // all four are still measured.
     note:
-      'A linear block can only change how much of a frequency there is, while a nonlinear one invents new ones. ' +
-    'Clipping 250 and 400 Hz together makes 100 Hz (2·250−400), 550 (2·400−250), 900 (2·250+400) and 1050 Hz ' +
-    '(2·400+250), the third-order intermodulation products. Avoiding them is most of why linearity is worth ' +
-    'paying for.',
+      'A linear block only changes how much of a frequency there is, while a nonlinear one invents new ones. ' +
+    'Clipping 250 and 400 Hz together makes 100 Hz (2·250−400) and 550 Hz (2·400−250) first, with two more in ' +
+    'the math panel. Avoiding them is most of why linearity is worth paying for.',
+    why:
+      'A two-tone test is the standard lab measurement of amplifier linearity, and these same products are ' +
+    'what it looks for.',
     try: 'Bypass the clipper, 100, 550, 900 and 1050 Hz all disappear.',
     chips: [
       { label: 'clipper bypassed', patch: { blocks: [{ bypass: true }] } },
       { label: 'clipper on', patch: { blocks: [{ bypass: false }] } },
     ],
+    featured: [{ block: 1, field: 'bypass' }],
     patch: {
       sources: [mk(1, 'sine', 250, 0.6), mk(2, 'sine', 400, 0.6)],
       blocks: [bk(1, 'clip', { threshold: 0.5 })],
@@ -859,6 +1002,9 @@ export const PRESETS = [
     note:
       'Multiply two signals and you get their sum and difference, 250 × 1000 gives 750 and 1250, and neither ' +
     'original frequency survives. Nothing was filtered. The frequencies were moved.',
+    why:
+      'A radio transmitter shifts a signal onto its carrier with this identical multiplication, only the ' +
+    'carrier frequency stays fixed.',
     try: 'Drag Carrier to 500 Hz, the lines move to 250 and 750 Hz.',
     chips: [blk1('500 Hz', { freq: 500 }, '250 and 750'), blk1('1000 Hz', { freq: 1000 }, '750 and 1250')],
     featured: [{ block: 1, field: 'freq' }],
@@ -898,6 +1044,9 @@ export const PRESETS = [
       'noise floor. At 12 bits they sink but stay discrete, because this tone divides the ' +
       'sample rate exactly and the error repeats with it. Only dither breaks that grip: the ' +
       'spurs become the flat floor 6.02N + 1.76 dB assumed.',
+    why:
+      'Mastering engineers dither a 24-bit mix down to a 16-bit CD for this reason, trading spurs like these ' +
+    'for a flat floor.',
     try: 'Drag Bits to 12, the spurs sink but stay discrete. Tick Dither, a flat floor.',
     chips: [
       blk1('4 bits', { bits: 4 }),

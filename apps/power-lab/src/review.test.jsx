@@ -54,23 +54,26 @@ describe('no visible surface shows a group letter (§11.5.1)', () => {
   }, 60000)
 })
 
-describe('the first screen shows the loss, not three flat lines (§11.4.2, §11.6.5)', () => {
+describe('the first screen leads with the lesson a knob can perform (§11.4.2, §11.6.5, revised 2026-09-03)', () => {
   it('A1 declares its scope silent and renders no scope; every other experiment renders one', () => {
     expect(byId.a1.scope).toBe(false)
     expect(render('a1')).not.toContain('aria-label="Scope')
     for (const e of EXPERIMENTS.filter((e) => e.id !== 'a1')) expect(render(e.id), e.id).toContain('aria-label="Scope')
   }, 60000)
-  it('A1 opens on its losses — at the size of a reading, with the claim under them', () => {
+  it('A1 opens on the regulation sweep — a curve with real structure, not a poster of two bars', () => {
+    // Reed, 2026-09-03: the resistor's regulation failure is the lesson a
+    // reader can watch happen by turning the load, so it leads; efficiency
+    // (the loss bars) is one tab over, still reachable, no longer blown up
+    // to fill the whole first screen on its own.
     const h = render('a1')
     expect(h).toContain('is-single')
+    expect(h).toContain('aria-label="Sweep: one quantity against one knob')
+    expect(byId.a1.view).toBe('sweep')
+  })
+  it('the Losses tab still carries the reading, with the same sweep under it', () => {
+    const h = render('a1', 'losses')
     expect(h).toContain('power-row')
-    // Two loss rows blown up to fill a whole column read as a poster rather
-    // than a reading (Reed, 2026-09-02: "just 2 power calculation losses
-    // taking up a massive space"). They keep the first screen — §11.6.5's 7 W
-    // is the number the lab exists to beat — and the sweep that says no
-    // setting improves it comes with them, so the column carries a picture.
     expect(h).toContain('single-companion')
-    expect(byId.a1.view).toBe('losses')
   })
 })
 
@@ -278,16 +281,49 @@ describe('a path through the material (§11.5, §11.3.3–5)', () => {
   it('the try line is its own element under the note, with the knob as a chip that names it (§11.3.5)', () => {
     for (const e of EXPERIMENTS) {
       const s = sidebar(render(e.id))
-      const tr = s.match(/<p class="try"[^>]*data-role="try"[^>]*>([\s\S]*?)<\/p>/)
+      const tr = s.match(/<div class="try"[^>]*data-role="try"[^>]*>([\s\S]*?)<\/div>/)
       expect(tr, `${e.id}: no try element`).toBeTruthy()
-      const knob = e.params.find((p) => p.key === e.try.knob)
-      expect(tr[1]).toMatch(new RegExp(`<button[^>]*class="knob-chip"[^>]*data-knob="${e.try.knob}"[^>]*>${knob.label.replace(/_/g, '_')}<`))
-      expect(text(tr[1])).toContain(e.try.text.slice(0, 20))
+      if (Array.isArray(e.try)) {
+        // Only the active step (the first, on a fresh render) is on screen —
+        // the whole point of showing one at a time (see the next test).
+        const step = e.try[0]
+        const knob = e.params.find((p) => p.key === step.knob)
+        expect(tr[1]).toMatch(new RegExp(`<button[^>]*class="knob-chip"[^>]*data-knob="${step.knob}"[^>]*>${knob.label.replace(/_/g, '_')}<`))
+        expect(text(tr[1])).toContain(step.say.slice(0, 20))
+        expect(text(tr[1])).toContain(`Try 1/${e.try.length}`)
+      } else {
+        const knob = e.params.find((p) => p.key === e.try.knob)
+        expect(tr[1]).toMatch(new RegExp(`<button[^>]*class="knob-chip"[^>]*data-knob="${e.try.knob}"[^>]*>${knob.label.replace(/_/g, '_')}<`))
+        expect(text(tr[1])).toContain(e.try.text.slice(0, 20))
+      }
       expect(s.indexOf('data-role="try"')).toBeGreaterThan(s.indexOf('data-role="note"'))
       expect(s.indexOf('data-role="try"')).toBeLessThan(s.indexOf('<h2>Schematic'))
       // Every knob is addressable, so the chip can focus it.
       for (const p of e.params) expect(s, `${e.id}: knob ${p.key}`).toContain(`data-knob="${p.key}"`)
     }
+  })
+  it('a multi-step try (B4, B5, E1) has more than one step, each an in-range setting on one of the experiment’s own knobs', () => {
+    // The click-driven advance to "Try 2/3" and "Try 3/3" is a browser
+    // behaviour (doneTrySteps state, applied only through a click) — proved
+    // in verify.mjs §7b, not here. This holds the data every step needs.
+    for (const id of ['b4', 'b5', 'e1']) {
+      const e = byId[id]
+      expect(Array.isArray(e.try), id).toBe(true)
+      expect(e.try.length, id).toBeGreaterThan(1)
+      for (const [i, step] of e.try.entries()) {
+        const knob = e.params.find((p) => p.key === step.knob)
+        expect(knob, `${id} step ${i}: no such knob ${step.knob}`).toBeTruthy()
+        for (const [k, v] of Object.entries(step.set)) {
+          const p = e.params.find((q) => q.key === k)
+          if (p && p.kind !== 'toggle' && typeof v === 'number') {
+            expect(v, `${id} step ${i}: ${k}=${v} below ${p.min}`).toBeGreaterThanOrEqual(p.min)
+            expect(v, `${id} step ${i}: ${k}=${v} above ${p.max}`).toBeLessThanOrEqual(p.max)
+          }
+        }
+      }
+    }
+    // The initial render (nothing done yet) always shows step 1.
+    for (const id of ['b4', 'b5', 'e1']) expect(text(sidebar(render(id)))).toContain('Try 1/')
   })
   it('the about knob carries its chips, labelled in the knob’s units (§11.5.5)', () => {
     for (const e of EXPERIMENTS) {

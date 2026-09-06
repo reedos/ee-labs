@@ -12,7 +12,7 @@ export { default as TimingCanvas, rowsOf, heightOf, geometryOf, busAt } from './
 export { default as StateCanvas, layoutOf, sceneOf } from './src/StateCanvas.jsx'
 export { COLORS, plotScale, plotArea, niceStep, drawFrame } from './src/plot.js'
 export { niceBounds, traceExtent, scopeRange, anchoredRange } from './src/anchor.js'
-export { POS_MAX, clamp, toPos, fromPos, snap, near } from './src/scale.js'
+export { POS_MAX, clamp, toPos, fromPos, snap, commitValue, near } from './src/scale.js'
 export { eng, fmt, parseEng, dbToLin, linToDb, dbToAmp, ampToDb } from './src/units.js'
 export { fmtHz, fmtDb, fmtNum } from './src/format.js'
 export { buildLink, parseLink, readLocationLink, siblingUrl, homeUrl } from './src/deeplink.js'

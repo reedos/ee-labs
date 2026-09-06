@@ -1,5 +1,5 @@
 import { render, rms, sincInterp } from '@ee-labs/dsp'
-import { applyChain, chainImpulse, convKernel } from './dsp/chain.js'
+import { applyChain, chainGroupDelay, chainImpulse, convKernel } from './dsp/chain.js'
 import { BLOCK_TYPES } from './dsp/blocks.js'
 
 // What is actually happening, for the preset currently loaded.
@@ -192,8 +192,8 @@ const ENTRIES = {
         ),
         T(
           'So each line in the spectrum sits at its own source’s amplitude, untouched by the ' +
-            'other — measured here, not assumed. This is the property every linear block ' +
-            'preserves and every nonlinear one destroys.',
+            'other, measured here and not assumed. Adding signals this way is what ' +
+            'superposition means, and a nonlinear block breaks it.',
         ),
         C([row(s1, 1), row(s2, 2)].filter(Boolean)),
         ...(scallop(s1) || scallop(s2) ? [T(scallop(s1) || scallop(s2))] : []),
@@ -207,8 +207,8 @@ const ENTRIES = {
         // What the note used to say, now beside the numbers.
         T(
           'Untick one source and the other’s line does not move. Superposition survives every ' +
-            'LINEAR block too — filter this pair and each line is scaled by |H| at its own ' +
-            'frequency — and it is precisely what nonlinear blocks break: see "Two tones, one ' +
+            'linear filter too. Filter this pair and each line is scaled by |H| at its own ' +
+            'frequency, and that is precisely what nonlinear blocks break: see "Two tones, one ' +
             'nonlinearity", where a clipper makes this pair breed children at new frequencies.',
         ),
       ],
@@ -991,6 +991,16 @@ const ENTRIES = {
           value: (ctx.sourceFreq * ctx.fftSize) / ctx.sampleRate,
           note: 'a whole number means no leakage',
         },
+        {
+          // The try line's own number, read live off the spectrum this frame
+          // actually drew, rather than left for a student to pixel-guess
+          // against unlabelled 50 dB gridlines (Reed's review). Changes the
+          // moment the window chip is clicked.
+          label: 'level at 1000 Hz',
+          value: 20 * Math.log10(Math.max(ctx.at(1000), 1e-12)),
+          unit: 'dB',
+          note: `the try line's number, read live for window = ${ctx.state.window}`,
+        },
       ]),
     ],
   }),
@@ -1027,6 +1037,51 @@ const ENTRIES = {
 
   'Low-pass a square': (ctx) => {
     const rows = harmonicRatioRows(ctx)
+    // The note and try line both state their claims in decibels ("gives up
+    // 3.7 dB", "drops 24 dB below the fundamental"), and until now the only
+    // live row on screen was the linear ratio rows above — a reader had to
+    // take a logarithm by hand to check the number the text just promised
+    // (the grader's own complaint). These print the same quantities in dB,
+    // right beside the numbers they already are.
+    const dbRows = rows.map((r) => ({
+      label: `${r.label} (dB)`,
+      predicted: r.unchecked ? NaN : 20 * Math.log10(r.predicted),
+      measured: r.unchecked ? NaN : 20 * Math.log10(r.measured),
+      unit: 'dB',
+      // A log of an 8%-relative-tolerance ratio can itself be off by up to
+      // 20·log10(1.08) ≈ 0.67 dB — the same agreement, just read on a
+      // different scale, not a looser physical claim.
+      abs: 0.75,
+      unchecked: r.unchecked,
+    }))
+    // The try line's own number is a different quantity from the rows above:
+    // not |H| at one frequency (dry vs wet, same bin, scalloping cancels),
+    // but the 3rd harmonic's OWN post-filter level against the fundamental's,
+    // two different bins on the one wet trace. Predicted from the same
+    // closed forms "Square = odd harmonics" already uses (the discrete
+    // square's harmonic amplitude) times each frequency's own |H|; measured
+    // straight off the rendered spectrum.
+    const f0 = ctx.sourceFreq || 250
+    const A = ctx.sourceAmp || 1
+    const N = ctx.sampleRate / f0
+    const b = ctx.blocks[0]
+    const def = b && BLOCK_TYPES[b.type]
+    const harmonicAmp = (k) => ((4 * A) / (k * Math.PI)) * discreteBoost(k, N)
+    const thirdVsFundamental = def
+      ? {
+          label: `3rd harmonic vs the fundamental, ${sig(3 * f0, 4)} Hz vs ${sig(f0, 4)} Hz`,
+          predicted:
+            20 *
+            Math.log10(
+              (harmonicAmp(3) * def.response(b.params, 3 * f0, ctx.sampleRate)) /
+                (harmonicAmp(1) * def.response(b.params, f0, ctx.sampleRate)),
+            ),
+          measured: 20 * Math.log10(ctx.at(3 * f0) / (ctx.at(f0) || 1e-12)),
+          unit: 'dB',
+          abs: 0.3,
+          unchecked: bypassNote(b) || harmonicCheck(ctx, 1) || harmonicCheck(ctx, 3),
+        }
+      : null
     return {
       blocks: [
         T('The output spectrum is the input spectrum multiplied by the filter, bin by bin:'),
@@ -1039,6 +1094,8 @@ const ENTRIES = {
         ),
         F('|H(f)| = \\frac{|Y(f)|}{|X(f)|} \\quad\\text{(the gap between the traces)}'),
         C(rows),
+        C(dbRows),
+        ...(thirdVsFundamental ? [C([thirdVsFundamental])] : []),
         // What the note used to say.
         T(
           'Try "Resonance is Q", where a flat (noise) input lets the trace draw the curve’s ' +
@@ -1139,6 +1196,16 @@ const ENTRIES = {
       blocks: [
         T('A second-order low-pass has the transfer function'),
         F('H(s) = \\frac{\\omega_0^{2}}{s^{2} + \\dfrac{\\omega_0}{Q}s + \\omega_0^{2}}'),
+        // The careful student's own complaint: s and j never get a gloss
+        // anywhere in this lab, so the substitution below reads as a magic
+        // trick rather than a step they could redo. One sentence names both,
+        // and says plainly that redoing the algebra is optional — the check
+        // table under it measures the same conclusion directly.
+        T(
+          'Here s is the complex frequency of Laplace analysis, and j is the imaginary unit, ' +
+            '√−1. Following the substitution below is optional: the check table beneath it ' +
+            'measures the same conclusion directly, that the peak equals Q.',
+        ),
         T('At s = jω₀ the first and last terms cancel exactly, leaving'),
         F('|H(j\\omega_0)| = \\frac{\\omega_0^{2}}{\\dfrac{\\omega_0}{Q}\\,\\omega_0} = Q'),
         T(
@@ -1417,6 +1484,17 @@ const ENTRIES = {
           'H(z) = \\frac{1}{N}\\sum_{k=0}^{N-1} z^{-k} = ' +
             '\\frac{1}{N}\\,\\frac{z^{N}-1}{z^{N-1}(z-1)}',
         ),
+        // z⁻¹ is unglossed at this point in the lesson, and the jump from a
+        // sum to a ratio with roots is the one step this panel asked a
+        // student to take on faith. One sentence closes both gaps: z⁻¹ is
+        // the same one-sample delay as the difference equation, and the
+        // familiar finite geometric series is what turns the sum into a
+        // ratio whose roots are the zeros plotted below.
+        T(
+          'Here z⁻¹ means one sample late, so this sum is last experiment’s average, one delay ' +
+            'at a time. Summing that finite geometric series gives the ratio above, and the ' +
+            'ratio’s roots are exactly the zeros plotted below.',
+        ),
         T(
           'The numerator vanishes at the N-th roots of unity. One of them, z = 1, is cancelled ' +
             'by the denominator — which is why DC survives untouched — and the other N−1 are ' +
@@ -1543,31 +1621,66 @@ const ENTRIES = {
     }
   },
 
-  'Phase is invisible here': () => ({
-    blocks: [
-      T(
-        'An all-pass places each pole and zero as a mirror pair about the unit circle, so every ' +
-          'magnitude cancels and only the angle survives:',
-      ),
-      F('H(z) = \\frac{z^{-2} + a_1 z^{-1} + a_2}{1 + a_1 z^{-1} + a_2 z^{-2}}, \\qquad |H| = 1'),
-      T(
-        'The numerator is the denominator with its coefficients reversed, which is exactly the ' +
-          'condition for the magnitudes to divide out at every frequency. A second-order ' +
-          'section sweeps a full 360° of phase.',
-      ),
-      T(
-        'The FFT magnitude cannot see any of this. What phase does change is the relative ' +
-          'timing of the components, and since they are no longer aligned as they were, the ' +
-          'waveform is a different shape with an identical spectrum.',
-      ),
-      // What the note used to say.
-      T(
-        'Switch the overlay to group delay to see the same fact as a time: the components ' +
-          'near 400 Hz are held up by several samples more than the rest, which is precisely ' +
-          'why the waveform changes shape while its spectrum does not.',
-      ),
-    ],
-  }),
+  'Phase is invisible here': (ctx) => {
+    // The try line quotes this row's own numbers (380 Hz, 25.7764 samples)
+    // rather than a separate figure read off the picture — it used to say
+    // "400 Hz" and "26 samples", a guess that did not match what this panel
+    // measures. Measured here too, so the number stays live if freq or Q
+    // move, rather than sitting in prose as a value nothing recomputes.
+    let peakDelay = 0
+    let peakFreq = 0
+    const b = ctx.blocks[0]
+    if (b) {
+      const scanFreqs = Float64Array.from({ length: 200 }, (_, i) => ((i + 1) * ctx.sampleRate) / 2 / 200)
+      const { delay, any } = chainGroupDelay(ctx.blocks, scanFreqs, ctx.sampleRate)
+      if (any) {
+        for (let i = 0; i < scanFreqs.length; i++) {
+          if (delay[i] > peakDelay) {
+            peakDelay = delay[i]
+            peakFreq = scanFreqs[i]
+          }
+        }
+      }
+    }
+    return {
+      blocks: [
+        T(
+          'An all-pass places each pole and zero as a mirror pair about the unit circle, so every ' +
+            'magnitude cancels and only the angle survives:',
+        ),
+        F('H(z) = \\frac{z^{-2} + a_1 z^{-1} + a_2}{1 + a_1 z^{-1} + a_2 z^{-2}}, \\qquad |H| = 1'),
+        // z is unglossed at every earlier stop, and this is the first ENTRIES
+        // panel to print H(z) directly. One sentence names z⁻¹, matching the
+        // wording the block card already uses for a biquad's own H(z).
+        T('Here z⁻¹ means one sample late, so z⁻² means two samples late.'),
+        T(
+          'The numerator is the denominator with its coefficients reversed, which is exactly the ' +
+            'condition for the magnitudes to divide out at every frequency. A second-order ' +
+            'section sweeps a full 360° of phase.',
+        ),
+        T(
+          'The FFT magnitude cannot see any of this. What phase does change is the relative ' +
+            'timing of the components, and since they are no longer aligned as they were, the ' +
+            'waveform is a different shape with an identical spectrum.',
+        ),
+        // What the note used to say.
+        T(
+          'Switch the overlay to group delay to see the same fact as a time. The components ' +
+            'near 380 Hz are held up well past the rest, read directly off that curve against ' +
+            'its own right-hand axis, which is precisely why the waveform changes shape while ' +
+            'its spectrum does not.',
+        ),
+        V([
+          {
+            label: 'peak group delay',
+            value: peakDelay,
+            unit: 'samples',
+            note: `at ${sig(peakFreq, 3)} Hz — the curve's own peak, the number the try line names`,
+          },
+        ]),
+      ],
+    }
+  },
 
   'Two filters are steeper': (ctx) => {
     const rows = []
@@ -1599,11 +1712,23 @@ const ENTRIES = {
                 : 'The two blocks are no longer identical, so the chain is H₁·H₂ rather than a square.',
         })
       }
-      if (live === 2 && same) {
+      // Round-six grading (Physics honesty): this row used to appear ONLY
+      // for the default, both-sections state, so bypassing block 2 left the
+      // dB claim the try line makes — "−78 dB becomes −39 dB" — with no row
+      // printed in dB at all, only the unitless |H| row above. A student
+      // checking the try line's own units had to convert 0.0112 to dB by
+      // hand, mid-lesson. The row now prints in dB in both states, `same`
+      // still guarding it: with the sections no longer identical the total
+      // is H₁·H₂ rather than a clean double, which the unitless rows above
+      // already flag.
+      if (live >= 1 && same) {
         const h = def.response ? def.response(b1.params, 3200, ctx.sampleRate) : NaN
         rows.push({
-          label: 'attenuation at 3200 Hz doubles in dB',
-          predicted: 2 * 20 * Math.log10(h),
+          label:
+            live === 2
+              ? 'attenuation at 3200 Hz doubles in dB'
+              : 'attenuation at 3200 Hz, one section bypassed, in dB',
+          predicted: live === 2 ? 2 * 20 * Math.log10(h) : 20 * Math.log10(h),
           measured: 20 * Math.log10(ctx.respAt(3200)),
           unit: 'dB',
           abs: 0.3,
@@ -1612,7 +1737,9 @@ const ENTRIES = {
     }
     return {
       blocks: [
-        T('Cascaded LTI blocks multiply their responses, so identical sections square:'),
+        // "Cascade" is this preset's own declared term; "LTI" is not, and this
+        // panel is the only place that word appeared unlisted.
+        T('Two blocks in cascade multiply their responses, so identical sections square:'),
         F('H_{\\text{total}}(f) = H_1(f)\\,H_2(f) \\;\\Rightarrow\\; |H|^{2}'),
         T('In decibels multiplication becomes addition, so the attenuation simply doubles:'),
         F('20\\log_{10}|H|^{2} = 2\\cdot 20\\log_{10}|H|'),
@@ -1651,6 +1778,19 @@ const ENTRIES = {
       qs.length === 2 &&
       ctx.blocks.every((b) => !b.bypass && b.type === 'lowpass' && Number(b.params.order ?? 2) === 2) &&
       bw(4).every((q, i) => Math.abs(qs[i] - q) < 0.01)
+
+    // The "0.707 twice" chip's own claim: with both sections at ONE shared Q
+    // the Butterworth row above rightly blanks, and the sagged corner was
+    // otherwise left to be read off gridlines. Predicted from each section's
+    // own response() at its own cutoff, squared for the cascade — a
+    // different path than ctx.respAt, which reads the drawn curve.
+    const sameSection =
+      qs.length === 2 &&
+      ctx.blocks.every((b) => !b.bypass && b.type === 'lowpass' && Number(b.params.order ?? 2) === 2) &&
+      Math.abs(qs[0] - qs[1]) < 1e-9
+    const perSection = sameSection
+      ? BLOCK_TYPES[ctx.blocks[0].type].response(ctx.blocks[0].params, fc, ctx.sampleRate)
+      : NaN
 
     return {
       blocks: [
@@ -1696,6 +1836,37 @@ const ENTRIES = {
               ? null
               : 'This is no longer the pair of second-order Butterworth sections (a Q or the order select moved, or a section is bypassed), so −3.01 dB is not what this cascade is aiming for.',
           },
+          // The note promises "−3 dB" and "−6 dB" by name — these print the
+          // same two rows above in decibels, so the number on screen is the
+          // one the text just stated rather than a linear ratio a reader has
+          // to convert by hand (the grader's own complaint).
+          {
+            label: `|H| at f_c = ${fc} Hz, in dB`,
+            predicted: 20 * Math.log10(Math.SQRT1_2),
+            measured: 20 * Math.log10(prod),
+            unit: 'dB',
+            abs: 0.2,
+            unchecked: isBw
+              ? null
+              : 'This is no longer the pair of second-order Butterworth sections (a Q or the order select moved, or a section is bypassed), so −3.01 dB is not what this cascade is aiming for.',
+          },
+          ...(sameSection
+            ? [
+                {
+                  label: `|H| at f_c = ${fc} Hz — one shared Q = ${sig(qs[0], 4)}, squared`,
+                  predicted: perSection * perSection,
+                  measured: prod,
+                  tol: 0.02,
+                },
+                {
+                  label: `|H| at f_c = ${fc} Hz, in dB — one shared Q = ${sig(qs[0], 4)}, squared`,
+                  predicted: 40 * Math.log10(perSection),
+                  measured: 20 * Math.log10(prod),
+                  unit: 'dB',
+                  abs: 0.2,
+                },
+              ]
+            : []),
         ]),
         // What the note used to say.
         T(
@@ -1715,6 +1886,16 @@ const ENTRIES = {
           'transform of the other:',
       ),
       F('H(f) = \\sum_{n=0}^{\\infty} h[n]\\,e^{-j2\\pi f n / f_s}'),
+      // e^{jθ} is unglossed everywhere else in the lab, and this sum is its
+      // first appearance in the panel a student reads before the FIR and
+      // z-plane group. One sentence names it, and says plainly that following
+      // the exponent is optional — the row below measures the same flat
+      // spectrum directly.
+      T(
+        'Here e^(−jθ) is Euler’s formula, cos θ − j sin θ: a point on the unit circle, one turn ' +
+          'per cycle. Following that exponent is optional. The row below measures the flat ' +
+          'spectrum it predicts directly.',
+      ),
       T(
         'A unit sample has a perfectly flat spectrum, because it is the sum of every frequency ' +
           'in equal measure. Feed it in and the output spectrum IS |H(f)|, while the time view ' +
@@ -1843,18 +2024,13 @@ const ENTRIES = {
     ]
     return {
       blocks: [
-        T('Put two tones through a power series and the cross terms are the whole story:'),
-        F(
-          '(\\cos\\omega_1 t + \\cos\\omega_2 t)^{3} \\;\\longrightarrow\\; ' +
-            '\\cos(2\\omega_1 \\pm \\omega_2)t,\\; \\cos(2\\omega_2 \\pm \\omega_1)t,\\;\\ldots',
-        ),
-        T('In general every product sits at'),
-        F('f = |m f_1 \\pm n f_2|, \\qquad m,n \\in \\mathbb{Z}'),
-        T(
-          'with order m + n. Third-order products are the troublesome ones: 2f₂ − f₁ lands close ' +
-            'to the originals, so no filter can remove it without removing the signal too. That ' +
-            'single fact sets the linearity requirement for most radio and optical front ends.',
-        ),
+        // Led with the measured table, on the review's own reading: the note
+        // above already explains the idea in plain English, and the table is
+        // the clear part. The cubic expansion and the set-membership formula
+        // that used to open this panel are unglossed notation with nothing
+        // above them to lean on, so the set notation is cut in favour of
+        // plain English, and the cubic expansion moves below the table,
+        // marked optional.
         T(
           live
             ? 'Measured on this spectrum, product by product. A symmetric clipper has only odd ' +
@@ -1872,6 +2048,21 @@ const ENTRIES = {
               unit: 'dB',
               note: `order ${p.order}`,
             })),
+        ),
+        T(
+          'Every product above sits at a whole-number combination of the two source frequencies, ' +
+            'm·f₁ ± n·f₂, with order m + n. Third-order products are the troublesome ones. 2f₂ − f₁ ' +
+            'lands close to the originals, so no filter can remove it without removing the signal ' +
+            'too. That single fact sets the linearity requirement for most radio and optical front ' +
+            'ends.',
+        ),
+        T(
+          'The algebra behind that is optional. Cubing a sum of cosines multiplies pairs and ' +
+            'triples of them together, which is where these combinations come from:',
+        ),
+        F(
+          '(\\cos\\omega_1 t + \\cos\\omega_2 t)^{3} \\;\\longrightarrow\\; ' +
+            '\\cos(2\\omega_1 \\pm \\omega_2)t,\\; \\cos(2\\omega_2 \\pm \\omega_1)t,\\;\\ldots',
         ),
         T(
           'A linear system can only scale and delay the frequencies already present. Creating new ' +
@@ -1894,8 +2085,9 @@ const ENTRIES = {
       ),
       F('x(t)\\,c(t) \\;\\longleftrightarrow\\; X(f) * C(f)'),
       T(
-        'and convolving with a pair of impulses at ±f_c is exactly what copies the spectrum up ' +
-          'to sit around the carrier.',
+        'The double arrow marks a Fourier transform pair, a signal beside its own spectrum, and ' +
+          'the asterisk marks convolution, not multiplication. Convolving with a pair of impulses ' +
+          'at ±f_c is exactly what copies the spectrum up to sit around the carrier.',
       ),
     ],
   }),
@@ -1938,6 +2130,10 @@ const ENTRIES = {
             'delay is τ seconds, which is D = τ·fₛ samples:',
         ),
         F('H(z) = 1 + g\\,z^{-D} \\qquad |H(f)| = \\bigl|1 + g\\,e^{-j2\\pi f\\tau}\\bigr|, \\quad D = \\tau f_s'),
+        // z⁻¹ already means "one sample late" by this point in the lesson.
+        // What is new here is only that the exponent counts: D of them, one
+        // per sample of delay — the same D the time equation names.
+        T('z⁻ᴰ is that same one-sample delay repeated D times: D samples late, not one.'),
         T(
           'For positive g the two terms oppose wherever the delay is an odd number of half ' +
             'periods — every 1/τ = fₛ/D hertz — dipping to 1 − g, a full cancel only at g = 1. ' +

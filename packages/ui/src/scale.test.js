@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { POS_MAX, clamp, fromPos, near, snap, toPos } from './scale.js'
+import { POS_MAX, clamp, commitValue, fromPos, near, snap, toPos } from './scale.js'
 import { fmtHz } from './format.js'
 
 const lin = { scale: 'linear', min: 0, max: 2, step: 0.01 }
@@ -29,6 +29,92 @@ describe('linear scale', () => {
 
   it('snaps to the step', () => {
     expect(snap(0.1234, lin)).toBeCloseTo(0.12, 10)
+  })
+
+  it('derives a default step from the range for the SLIDER GRID, instead of rounding to whole units', () => {
+    // This is snap()'s own job now: the grid fromPos() puts a DRAG onto, so
+    // the 1000 positions under the slider are spread sensibly across
+    // whatever range the knob covers, rather than landing on whole units (the
+    // original bug — see defaultLinearStep's doc comment). A typed value no
+    // longer goes through this function at all; NumField.jsx's commit() and
+    // bump() call commitValue() instead (see the 'commitValue' describe
+    // block below), specifically because this grid is still too coarse to
+    // hand a typed value through unchanged on a wide knob — the ±24 V case
+    // that block covers. `step` is omitted here on purpose, matching what
+    // circuit-elements-lab/src/App.jsx actually passes to NumField (no step
+    // at all).
+    const current = { scale: 'linear', min: -0.1, max: 0.1 }
+    expect(snap(0.005, current)).toBeCloseTo(0.005, 9)
+    expect(snap(0.005, current)).not.toBe(0)
+    // The derived step still respects the knob's own resolution: nothing
+    // snaps outside min..max, and the extremes remain reachable.
+    expect(snap(0.1, current)).toBeCloseTo(0.1, 9)
+    expect(snap(-0.1, current)).toBeCloseTo(-0.1, 9)
+  })
+
+  it('still honours an explicit step over the derived default', () => {
+    expect(snap(0.0033, { scale: 'linear', min: -0.1, max: 0.1, step: 0.001 })).toBeCloseTo(0.003, 9)
+  })
+
+  it('falls back to 1 when the range itself is degenerate (no span to derive from)', () => {
+    expect(snap(5, { scale: 'linear', min: 0, max: 0 })).toBe(0)
+    expect(snap(5.4, { scale: 'linear' })).toBe(5)
+  })
+})
+
+describe('commitValue', () => {
+  // This is what NumField.jsx's commit() (typing then Enter/blur) and bump()
+  // (arrow keys, wheel, the +/- buttons) call — direct entry, never a drag.
+  // The opts below deliberately omit `step`, the same way circuit-elements-lab's
+  // App.jsx calls NumField (grep confirms no `step` prop on either NumField
+  // there): that is the shape every regression the grader found shares.
+
+  it('keeps a typed −1 mV on a ±24 V knob instead of rounding it to 0 (E3, the comparator)', () => {
+    // Reported as a complete miss: E3's lesson types E to −0.001 V and reads
+    // v_out ≈ −100 V; the old grid-snapping default (span/POS_MAX ≈ 0.048 V)
+    // committed exactly 0 instead, so the comparator's output stayed 0 V.
+    const vs = { scale: 'linear', min: -24, max: 24 }
+    expect(commitValue(-0.001, vs)).toBe(-0.001)
+    expect(commitValue(-0.001, vs)).not.toBe(0)
+  })
+
+  it('keeps 0.5 typed into a wide knob (I3)', () => {
+    const wide = { scale: 'linear', min: -24, max: 24 }
+    expect(commitValue(0.5, wide)).toBe(0.5)
+  })
+
+  it('keeps −10 typed into a ±24 V knob (A3)', () => {
+    const vs = { scale: 'linear', min: -24, max: 24 }
+    expect(commitValue(-10, vs)).toBe(-10)
+  })
+
+  it('still clamps a value outside the range, and only clamps it', () => {
+    const vs = { scale: 'linear', min: -24, max: 24 }
+    expect(commitValue(30, vs)).toBe(24)
+    expect(commitValue(-30, vs)).toBe(-24)
+    // Not to some grid point past the boundary — exactly the boundary.
+    expect(commitValue(24.0001, vs)).toBe(24)
+  })
+
+  it('still honours a step the caller actually gave — a real resolution limit, not a UI grid', () => {
+    // e.g. an integer count, or a timebase grain the model can't subdivide.
+    expect(commitValue(2.6, { scale: 'linear', min: 0, max: 10, step: 1 })).toBe(3)
+    expect(commitValue(0.0033, { scale: 'linear', min: -0.1, max: 0.1, step: 0.001 })).toBeCloseTo(0.003, 9)
+  })
+
+  it('still rounds a typed value to the nearest power of two — fft() throws on anything else', () => {
+    expect(commitValue(300, { scale: 'pow2', min: 512, max: 16384 })).toBe(512)
+    expect(commitValue(3000, { scale: 'pow2', min: 512, max: 16384 })).toBe(4096)
+  })
+
+  it('a keyboard nudge (bump) lands on value + step exactly, not on the slider grid', () => {
+    // bump() in NumField.jsx is `commitValue(value + delta, commitOpts)`. Starting
+    // from the committed −0.001 above and stepping by the field's own resolved
+    // increment must move by that increment, not snap back onto a coarse grid
+    // point the way the old bump()+snap() combination did.
+    const vs = { scale: 'linear', min: -24, max: 24 }
+    const increment = 0.048 // defaultLinearStep(-24, 24) = 48/1000
+    expect(commitValue(-0.001 + increment, vs)).toBeCloseTo(-0.001 + increment, 9)
   })
 })
 

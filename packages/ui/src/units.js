@@ -106,6 +106,43 @@ export function parseEng(text, unit = '') {
   return { value: n, ratio: ratio || null, hadPrefix }
 }
 
+/**
+ * What a bare number actually commits, given the prefix an engineering field
+ * currently has on display for `value`.
+ *
+ * A bare number in an engineering field is read in the prefix already on
+ * screen (see the comment in NumField's parse()) — a field showing "224" next
+ * to "GBd" reads a typed "112" as 112 GBd, which is exactly the point: nobody
+ * wants to type "112G" into a field already showing gigahertz. But the same
+ * rule is silent about what it just did, and a field showing "990" with a
+ * milli prefix (i.e. 0.99) reads a typed "1.0001" as 1.0001 MILLI — 0.0010001,
+ * a thousand times smaller than the student meant, with nothing on screen
+ * saying so.
+ *
+ * This computes that reading ahead of commit, so a caller can show it while
+ * the student is still typing. Returns null whenever there is nothing to
+ * warn about: an unparseable draft, a ratio entry (`*2`), an explicit typed
+ * prefix (its own answer is right there in what was typed), or a field with
+ * no prefix on display (mult 1 — a bare number means exactly what it says).
+ */
+export function engEcho(text, value, unit = '') {
+  const parts = eng(value)
+  if (parts.mult === 1) return null // no active prefix; a bare number is read literally
+  const r = parseEng(text, unit)
+  if (!r || r.hadPrefix || r.ratio) return null
+  const full = r.value * parts.mult
+  if (!Number.isFinite(full)) return null
+  const fullStr = String(Number(full.toPrecision(6)))
+  const mantissaUnit = `${parts.prefix}${unit}`
+  return {
+    full,
+    // Plain words, not an arrow glyph: this is read aloud (aria-live), and
+    // "becomes" says the same thing an arrow would without asking a screen
+    // reader to sound out a symbol.
+    text: `${r.value} ${mantissaUnit} becomes ${fullStr}${unit ? ` ${unit}` : ''}`,
+  }
+}
+
 /** Symbol period for a baud rate, in seconds. 224e9 -> 4.464e-12 */
 
 /** Decibels to a linear power ratio, and back. */

@@ -10,11 +10,13 @@ import {
   sameSetup,
   matchingChip,
 } from './lessons.js'
+import { fmtHz } from '@ee-labs/ui'
 import { CIRCUITS, transferOf } from './circuits.js'
 import { asDigitalFilter } from './toSignalLab.js'
 import { toleranceCloud, spreadPct, tolsOf, fmtPct, fmtHzRange } from './tolerance.js'
 import { magnitudeAt, phaseAt, dcGain, polesZeros, secondOrderMetrics, stepResponse } from '@ee-labs/systems'
 import { dampingWord } from './stepReadout.js'
+import { stickySpan } from './axis.js'
 
 // The course, as opposed to the claims: the lab opens on a lesson, every
 // lesson has a try line with one-click chips, and every number a try line
@@ -149,6 +151,15 @@ describe('the course starts itself', () => {
     // The line the walk filed: it said "Tap R" beside chips reading "across R".
     expect(byName('One circuit, three filters').try).toMatch(/Tap across R/)
   })
+
+  // Student-review item 2: the try line names the output probe ("tap across
+  // R... across L"), and an empty featured list left the control it describes
+  // a scroll below in the Schematic section. The chips are a one-click
+  // version of the same control; the select itself must also be featured.
+  it('the output probe is featured on the one lesson whose try line names it', () => {
+    const l = byName('One circuit, three filters')
+    expect(l.featured).toContain('output')
+  })
 })
 
 describe('the numbers the try lines quote', () => {
@@ -275,12 +286,18 @@ describe('the numbers the try lines quote', () => {
     expect(dampingWord(z600)).toBe('underdamped')
   })
 
-  it('twin-T: R 47 kΩ moves the notch to 339 Hz and Q stays 0.250', () => {
+  it('twin-T: R 47 kΩ moves the notch to 338.6 Hz (fmtHz\'s own figure) and Q stays 0.250', () => {
+    // Round-four grading: the try line used to round to 339 Hz while the
+    // topbar's fmtHz printed 338.6 Hz for the same state — the same value,
+    // two roundings, both on screen at once. Checked here against fmtHz
+    // itself, not a separate ±0.5 Hz tolerance, so the two can never drift
+    // apart again.
     const l = byName('A zero on the axis is silence')
     const s = after(l, 'R 47 kΩ')
     const tf = tfOfState(s)
     const f0 = 1 / (2 * Math.PI * s.params.r * s.params.c)
-    expect(f0).toBeCloseTo(l.claim.tryNotch[47000], 0)
+    expect(fmtHz(f0)).toBe(String(l.claim.tryNotch[47000]))
+    expect(l.try).toContain(`${l.claim.tryNotch[47000]} Hz`)
     expect(magnitudeAt(tf, f0)).toBeLessThan(1e-12)
     expect(secondOrderMetrics(tf).q).toBeCloseTo(0.25, 9)
   })
@@ -330,6 +347,25 @@ describe('the numbers the try lines quote', () => {
     const onR = after(l, 'R ±10%')
     const r = toleranceCloud(onR.id, onR.params, onR.output, onR.tols)
     expect(spreadPct(r.f0, m.w0 / (2 * Math.PI))).toBeCloseTo(0, 6)
+  })
+
+  // Skeptic's note (student-review, minor): the L cloud reads small next to
+  // C's, at a glance inviting "L barely matters" — Q depends on √L and on
+  // 1/√C, equal exponents, so a shared ±10% moves f₀ by nearly the same
+  // amount either way. The try line quotes L's own number so the text says
+  // what the numbers say even where the picture alone might not — and round
+  // three found the picture says nothing for either part (see the pxSpread
+  // describe block below), so L's number is now the only place this fact
+  // is visible at all, not one of two.
+  it('blame: the ±10% on L alone moves f₀ almost exactly as far as C, not less', () => {
+    const l = byName('Blame the right part')
+    const onL = after(l, 'L ±10%')
+    const m = CIRCUITS[onL.id].metrics(onL.params)
+    const { f0 } = toleranceCloud(onL.id, onL.params, onL.output, onL.tols)
+    const f0Pct = spreadPct(f0, m.w0 / (2 * Math.PI))
+    expect(f0Pct).toBeCloseTo(l.claim.tryF0OnL, 1)
+    expect(f0Pct).toBeCloseTo(l.claim.tryF0OnC, 0) // same order as C, not a fraction of it
+    expect(l.try).toContain(`the same ±${l.claim.tryF0OnL}%`)
   })
 
   it('blame: the printed f₀ range never reads one endpoint coarser than the other', () => {
@@ -415,13 +451,30 @@ describe('the numbers the try lines quote', () => {
 // "Real parts wobble" is a picture: the whole payload is a SCATTER of poles.
 // The pole view auto-fits its axes to the content (1.4× the widest extent,
 // square pixels — PoleZeroCanvas), so the only way the scatter can be seen is
-// for the cloud to be large against the poles' own radius. This measures it
-// in the plot's pixels: at a laptop pane (plot area ~260 px tall at 1366×768)
-// the cloud must span at least three marker radii (3 × 7 px), or two X's
-// would look like one pair and the note would be describing nothing.
+// for the cloud's own INK — not just the raw pole positions — to read as a
+// shape distinct from the nominal cross.
+//
+// Round-five grading: this test used to compare raw position spread against
+// "3 marker radii", a threshold with no rendering behind it. It passed while
+// the cloud, at the default 1.8px/0.28-alpha dots, still looked like two
+// clean crosses on a laptop pane — position spread was real, but too small
+// and too faint to read as a cloud. The fix (packages/ui's PoleZeroCanvas,
+// `cloudEmphasis`) is a rendering change, so the test now measures rendering:
+// each cloud dot has its own radius, and the two outermost dots' own
+// footprints extend what a reader actually sees past where the bare pole
+// positions alone would put it. That is the same "ink", in the same sense
+// verify.mjs's section 8 measures it by real pixel colour in a live browser
+// — this is the computed twin of that photograph.
 describe('lesson: Real parts wobble is visible', () => {
   const PLOT_H = 260 // px: the 1366×768 lower pane's plot area (verify.mjs measures the real one)
   const MARKER_R = 7 // px: PoleZeroCanvas's pole cross half-size at k = 1
+  const MARKER_LINE_W = 2 // px: PoleZeroCanvas's pole-cross stroke width at k = 1
+  const MARKER_INK = 2 * MARKER_R + MARKER_LINE_W // px: the bare cross's own rendered footprint (verify.mjs measures this in a real browser as 16×17)
+  const DOT_R = 2.5 // px: PoleZeroCanvas's cloudEmphasis dot radius at k = 1 — must track that file
+  // A cloud only reads as a shape once it clears the bare cross by more than
+  // a couple of dot-widths — the marker's own ink, plus room for two more
+  // dot diameters, rather than a smudge that merely touches the cross.
+  const READABLE = MARKER_INK + 4 * DOT_R
 
   const pxSpread = (s) => {
     const tf = transferOf(s.id, s.params, s.output)
@@ -436,16 +489,18 @@ describe('lesson: Real parts wobble is visible', () => {
     const upper = cloud.filter(([, im]) => im >= 0)
     const res = upper.map(([re]) => re)
     const ims = upper.map(([, im]) => im)
+    // Ink, not just position: each dot's own diameter extends the cloud's
+    // visible extent past its two outermost sample positions.
     return {
-      w: (Math.max(...res) - Math.min(...res)) * pxPerUnit,
-      h: (Math.max(...ims) - Math.min(...ims)) * pxPerUnit,
+      w: (Math.max(...res) - Math.min(...res)) * pxPerUnit + 2 * DOT_R,
+      h: (Math.max(...ims) - Math.min(...ims)) * pxPerUnit + 2 * DOT_R,
     }
   }
 
-  it('the ±5% cloud spans more than three marker radii on a laptop pane', () => {
+  it('the ±5% cloud reads as a shape, not the bare cross, on a laptop pane', () => {
     const s = stateOf(byName('Real parts wobble'))
     const { w, h } = pxSpread(s)
-    expect(Math.max(w, h)).toBeGreaterThan(3 * MARKER_R)
+    expect(Math.max(w, h)).toBeGreaterThan(READABLE)
     // And it is still a complex pair for every build — an arc, not a smear
     // along the real axis.
     const { cloud } = toleranceCloud(s.id, s.params, s.output, s.tols)
@@ -455,11 +510,55 @@ describe('lesson: Real parts wobble is visible', () => {
   it('at the old defaults (R = 100 Ω) the same cloud hid inside the marker — the reason for R = 560', () => {
     const s = stateOf(byName('Real parts wobble'))
     const { w, h } = pxSpread({ ...s, params: { ...s.params, r: 100 } })
-    expect(Math.max(w, h)).toBeLessThan(2 * MARKER_R)
+    expect(Math.max(w, h)).toBeLessThan(MARKER_INK)
   })
 
   it('the blame lesson’s R-only arc clears the bar too', () => {
     const { w, h } = pxSpread(stateOf(byName('Blame the right part')))
-    expect(Math.max(w, h)).toBeGreaterThan(3 * MARKER_R)
+    expect(Math.max(w, h)).toBeGreaterThan(READABLE)
+  })
+
+  // Round-three grading: the try line used to promise the same break for a
+  // C or L tolerance, and a grader found the plot stays a crisp cross for
+  // both instead. The natural() span above is a fresh snapshot; the pole
+  // view's real axis is STICKY (axis.js's stickySpan, consumed as App.jsx's
+  // pzSpan) and does not reframe on a tolerance change alone — the try
+  // line's own move (R to C, or R to L, no circuit or output touched) HOLDS
+  // whatever span the lesson's R-loaded arc already set. Reproduced here the
+  // same way: reframe fresh for the lesson's own R-at-±10% load, then hold
+  // that span across the move, exactly as App.jsx's pzSpan key (circuit,
+  // output, frameNonce — none of which a tolerance change bumps) does.
+  const naturalOf = (s) => {
+    const tf = transferOf(s.id, s.params, s.output)
+    const { poles, zeros } = polesZeros(tf)
+    const { cloud } = toleranceCloud(s.id, s.params, s.output, s.tols)
+    let span = 1
+    for (const [re, im] of [...poles, ...zeros, ...cloud]) {
+      span = Math.max(span, Math.abs(re) * 1.4, Math.abs(im) * 1.4)
+    }
+    return { span, cloud }
+  }
+  const pxSpreadAtSpan = (cloud, span) => {
+    const pxPerUnit = PLOT_H / (2 * span)
+    const upper = cloud.filter(([, im]) => im >= 0)
+    const res = upper.map(([re]) => re)
+    const ims = upper.map(([, im]) => im)
+    return {
+      w: (Math.max(...res) - Math.min(...res)) * pxPerUnit + 2 * DOT_R,
+      h: (Math.max(...ims) - Math.min(...ims)) * pxPerUnit + 2 * DOT_R,
+    }
+  }
+
+  it('the blame lesson’s C-only and L-only shift, reached from R, stays under the bar R’s own arc clears', () => {
+    const l = byName('Blame the right part')
+    const { span: naturalR } = naturalOf(stateOf(l))
+    const heldSpan = stickySpan(0, naturalR) // the lesson's own fresh load, R at ±10%
+    for (const label of ['C ±10%', 'L ±10%']) {
+      const { span: natural, cloud } = naturalOf(after(l, label))
+      const span = stickySpan(heldSpan, natural) // held across the move, not reframed
+      expect(span).toBeCloseTo(heldSpan, 6) // confirms the hold actually applies here
+      const { w, h } = pxSpreadAtSpan(cloud, span)
+      expect(Math.max(w, h)).toBeLessThan(READABLE)
+    }
   })
 })

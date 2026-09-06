@@ -237,10 +237,15 @@ export function sourceMath(source, ctx) {
         {
           label: 'bins per period',
           value: f0 / binHz,
+          // Worded without the term "leakage" on purpose: this row prints for
+          // every periodic source in every preset (a shared math-panel row,
+          // not preset-authored text), and "leakage" is defined only in the
+          // dedicated Spectral leakage lesson. A reader who has not reached
+          // that lesson still gets the fact, just not its name.
           note:
             Math.abs(f0 / binHz - Math.round(f0 / binHz)) < 1e-6
-              ? 'a whole number, so no leakage'
-              : 'not a whole number, so this tone leaks',
+              ? 'a whole number of cycles fit, so nothing smears'
+              : 'not a whole number of cycles, so this tone smears',
         },
         // Counted only for waveforms that HAVE a harmonic series, and only
         // the harmonics their series contains: a sine got "15" here once —
@@ -379,9 +384,12 @@ export function sourceMath(source, ctx) {
           // it: the honest tolerance is the first folded coefficient, not a
           // pretence that the continuous value survives sampling untouched.
           abs: 1.5 * A * w.coeff(kFold),
+          // Worded without "leakage" for the same reason as the row above:
+          // this check runs for every square/triangle/sawtooth preset, most
+          // of which never declare that term.
           unchecked: centred
             ? null
-            : 'this tone leaks in the measuring frame, smearing the peak — retune to a bin centre to see the comparison',
+            : 'this tone does not sit on a bin centre here, so the peak reads low. Retune to a bin centre to see the comparison.',
         },
       ]),
     )
@@ -650,6 +658,7 @@ export function blockMath(block, ctx) {
             : 'H(s) = \\frac{1}{1 + s/\\omega_c} \\;\\longrightarrow\\; ' +
               'H(z) = \\frac{K + Kz^{-1}}{(K{+}1) + (K{-}1)z^{-1}}, \\quad K = \\tan(\\pi f_c/f_s)',
         ),
+        T('Here z⁻¹ still means one sample late, the same reading as every other H(z) in this rack.'),
         C([
           {
             label: `|H| at f_c = ${sig(p.freq, 5)} Hz`,
@@ -740,6 +749,11 @@ export function blockMath(block, ctx) {
         F(
           'H(z) = \\frac{b_0 + b_1 z^{-1} + b_2 z^{-2}}{1 + a_1 z^{-1} + a_2 z^{-2}}',
         ),
+        // z is unglossed everywhere else in this lab, and this is its first
+        // appearance (the "Low-pass a square" preset comes first among the
+        // biquad presets). One sentence names what z^-1 means, in terms the
+        // difference equation two lines down makes concrete either way.
+        T('Here z⁻¹ means "one sample late", so z⁻² means two samples late.'),
         T('With the current settings the coefficients are'),
         F(
           `H(z) = \\frac{${sig(co.b0)} ${signed(co.b1)}z^{-1} ${signed(co.b2)}z^{-2}}` +
@@ -753,7 +767,8 @@ export function blockMath(block, ctx) {
         T(
           'The poles sit at radius r from the origin. Inside the unit circle the filter is ' +
             'stable and its ringing dies away as rⁿ; at r = 1 it would ring forever, and beyond ' +
-            'it the output would grow without limit.',
+            'it the output would grow without limit. The preset "Zeros on the circle" draws this ' +
+            'circle, with poles and zeros marked on it.',
         ),
         V([
           { label: 'pole radius r', value: r, note: isStable(co) ? 'stable (r < 1)' : 'UNSTABLE' },
@@ -1130,6 +1145,9 @@ export function blockMath(block, ctx) {
             ? `H(z) = \\frac{1}{1 - g\\,z^{-D}}, \\qquad g = ${sig(p.g)}, \\quad D = ${D}`
             : `H(z) = 1 + g\\,z^{-D}, \\qquad g = ${sig(p.g)}, \\quad D = ${D}`,
         ),
+        // z⁻¹ means "one sample late" everywhere it appears in this lab; here
+        // the exponent D just counts how many times that delay repeats.
+        T(`z⁻ᴰ is D repeats of that one-sample delay — ${D} samples late here, not one.`),
         T(
           fb
             ? 'The delayed copy reinforces itself wherever the delay is a whole number of periods ' +

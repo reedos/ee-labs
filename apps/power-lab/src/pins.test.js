@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { conversionRatio, ratioWithRL, dcmRatio, K } from '@ee-labs/switched'
 import { EXPERIMENTS, defaultsOf } from './experiments.js'
-import { analyse, buckParams } from './analysis.js'
+import { analyse, buckParams, LINREG_R_PASS } from './analysis.js'
 import { signalsOf, topologyOf } from './components/schematics.jsx'
 import { ORDER } from './components/panes.jsx'
 
@@ -52,9 +52,12 @@ function dc(pins, k, v) {
 
 function linreg(x, p) {
   const pins = {}
-  const Io = p.Vo / p.R
+  // Ohm's law through the fixed R_pass, not a knob's own value: the divider
+  // has nothing else to give.
+  const Io = p.Vin / (LINREG_R_PASS + p.R)
+  const Vo = Io * p.R
   dc(pins, 'vsw', p.Vin)
-  dc(pins, 'vout', p.Vo)
+  dc(pins, 'vout', Vo)
   dc(pins, 'iL', Io)
   dc(pins, 'iQ', Io)
   dc(pins, 'iin', Io)

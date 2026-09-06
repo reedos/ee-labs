@@ -11,7 +11,8 @@
 // Exits non-zero on the first category of failure, and prints everything.
 
 import { chromium } from 'playwright'
-import { foldProbe, phoneProbe, LAPTOP_VIEWPORTS } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { foldProbe, phoneProbe, LAPTOP_VIEWPORTS, PHONE_VIEWPORT } from '@ee-labs/ui/verify/foldProbe.mjs'
+import { tapTargetProbe, FLOOR, HARD_FLOOR } from '@ee-labs/ui/verify/tapTargetProbe.mjs'
 
 const URL = process.env.APP_URL || 'http://localhost:4173'
 const failures = []
@@ -31,10 +32,20 @@ page.on('console', (m) => {
 await page.goto(URL, { waitUntil: 'load' })
 await page.waitForSelector('.views canvas')
 await page.waitForTimeout(400)
+await page.evaluate(() => document.fonts.ready)
 
 // ---------------------------------------------------------------- helpers
 
-const settle = () => page.waitForTimeout(220)
+// Waits out the animation frame AND lets web fonts finish loading. Text set
+// in a web font measures narrower/shorter before it swaps in — a box read
+// during that window is optimistic, and the gap is not theoretical: the
+// laptop fold probe below (10i) first reported "Order is a choice" fitting
+// at 1366x768, and only measuring after `document.fonts.ready` reproduced
+// the ~8 px overflow a real student's browser shows once its fonts settle.
+const settle = async () => {
+  await page.waitForTimeout(220)
+  await page.evaluate(() => document.fonts.ready)
+}
 
 /** Does the page scroll? Both plots must fit. */
 const scrolls = () =>
@@ -890,18 +901,24 @@ console.log(`\n10i. Fold probe: all ${presetNames.length} presets — try line, 
   // this script was written is still covered. `.chip` alone would also match
   // a NumField's own log-scale quick-value buttons (they share the class),
   // so every locator here is scoped under `.try-line`.
+  //
+  // `.featured-item` rather than `.featured .num`: a featured control used to
+  // be a NumField every time, but a source's Type, a block's Bypass, the
+  // chain's Window and its Overlay are a select, a checkbox and a segmented
+  // group — every one wrapped in `.featured-item` regardless of what it
+  // renders inside, which is the one thing every featured control shares.
   const cases = []
   for (const name of presetNames) {
     await page.waitForSelector('.views canvas')
     await loadPreset(name)
     const must = ['.preset.is-on', '.try-line']
-    const featuredCount = await page.locator('.featured .num').count()
+    const featuredCount = await page.locator('.featured .featured-item').count()
     const chipCount = await page.locator('.try-line .chip').count()
     if (featuredCount) {
-      must.push('.featured .num')
+      must.push('.featured .featured-item')
       if (featuredCount > 1) {
-        const lastFeatured = (p) => p.locator('.featured .num').nth(featuredCount - 1)
-        lastFeatured.label = `.featured .num[${featuredCount - 1}]`
+        const lastFeatured = (p) => p.locator('.featured .featured-item').nth(featuredCount - 1)
+        lastFeatured.label = `.featured .featured-item[${featuredCount - 1}]`
         must.push(lastFeatured)
       }
     }
@@ -940,6 +957,13 @@ console.log('\n10j. Phone 390x844: time AND spectrum canvases above the fold\n')
     cases: [
       { name: 'Single tone', load: fresh('Single tone'), must: [timeCanvas, specCanvas] },
       { name: 'Aliasing', load: fresh('Aliasing'), must: [timeCanvas, specCanvas] },
+      // The one preset with two featured knobs at once (see styles.css):
+      // its mobile sidebar budget grew to fit both stacked and never
+      // checked what that took from the spectrum canvas below — 887 px on
+      // an 844 px phone, 43 px permanently unreachable (Reed's review).
+      // Neither of the two cases above has a second featured item, so
+      // neither could ever have caught it.
+      { name: 'Order is a choice', load: fresh('Order is a choice'), must: [timeCanvas, specCanvas] },
     ],
   })
   for (const m of r.measured) {
@@ -1014,6 +1038,497 @@ console.log('\n10k. Phone 390x844: title + try line inside the sidebar box; both
   await page.waitForSelector('.views canvas')
 }
 
+// -------- 10k2. phone: EVERY preset's title, try line AND EVERY featured
+// control, fully inside the sidebar's own clipped box — not merely in the DOM
+//
+// 10k above checks three sample presets and only the title/try-line, which is
+// exactly the gap Reed's review named: the probe held the title and the try
+// line on screen and never checked the FEATURED KNOB the try line names — the
+// one control a lesson actually asks a student to touch. That let a knob
+// render 97% clipped (7 of 226 px visible, Single tone measured) while every
+// existing check stayed green. This one holds all three, for every preset the
+// sidebar can load, against `.controls`' own box exactly as 10k does.
+
+console.log(`\n10k2. Phone 390x844: all ${presetNames.length} presets — title, try line AND every featured control inside the sidebar box\n`)
+
+{
+  await page.setViewportSize({ width: 390, height: 844 })
+  const insideBox = (box, outer, label, ctx) => {
+    if (!box) { fail(`phone featured / ${ctx}: ${label} not rendered`); return false }
+    const bottom = box.y + box.height
+    const outerBottom = outer.y + outer.height
+    // Half a pixel of slack absorbs sub-pixel layout rounding, not a real miss.
+    if (box.y < outer.y - 0.5 || bottom > outerBottom + 0.5) {
+      fail(`phone featured / ${ctx}: ${label} bottom ${bottom.toFixed(1)} outside sidebar box [${outer.y.toFixed(1)}, ${outerBottom.toFixed(1)}]`)
+      return false
+    }
+    return true
+  }
+  let allOk = true
+  for (const name of presetNames) {
+    await page.goto(URL, { waitUntil: 'load' })
+    await page.waitForSelector('.views canvas')
+    await loadPreset(name)
+    await page.evaluate(() => {
+      const el = document.querySelector('.controls')
+      if (el) el.scrollTop = 0
+      window.scrollTo(0, 0)
+    })
+    await page.waitForTimeout(60)
+
+    const sidebarBox = await page.locator('.controls').boundingBox()
+    const titleBox = await page.locator('.note-title').boundingBox().catch(() => null)
+    const tryBox = await page.locator('.try-line').boundingBox().catch(() => null)
+    let ok = insideBox(titleBox, sidebarBox, 'title', name)
+    ok = insideBox(tryBox, sidebarBox, 'try-line', name) && ok
+
+    const items = page.locator('.featured .featured-item')
+    const n = await items.count()
+    for (let i = 0; i < n; i++) {
+      const box = await items.nth(i).boundingBox()
+      ok = insideBox(box, sidebarBox, `featured[${i}]`, name) && ok
+    }
+    if (!ok) allOk = false
+  }
+  if (allOk) {
+    console.log(
+      `   all ${presetNames.length} presets: title, try line and every featured control sit fully ` +
+        "inside the sidebar's clipped box — not merely present in the DOM",
+    )
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+// -------- 10k3. phone: the sidebar scroller announces itself
+//
+// `.controls` clips to keep both plots on the first screen (styles.css), and
+// on a touch OS a native scrollbar draws only mid-gesture — invisible in a
+// still screenshot, which is how the rest of the curriculum went unannounced
+// (Reed's review). Confirms the cue is actually there while content remains,
+// and actually gone once the scroller reaches its true end — not just present
+// unconditionally, which would be its own kind of lie.
+
+console.log('\n10k3. Phone 390x844: the sidebar scroller announces itself\n')
+
+{
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await loadPreset('Single tone')
+  await page.evaluate(() => {
+    document.querySelector('.controls').scrollTop = 0
+  })
+  await page.waitForTimeout(60)
+
+  const overflowing = await page.evaluate(() => {
+    const el = document.querySelector('.controls')
+    return el.scrollHeight - el.clientHeight > 1
+  })
+  if (!overflowing) fail('phone scroller: expected .controls to overflow on Single tone — cannot check the announcement')
+
+  if (!(await page.locator('.controls.has-more').count())) {
+    fail('phone scroller: .controls has more content below but carries no .has-more — nothing announces the scroller')
+  } else {
+    console.log('   .controls carries .has-more while content remains below the clip (drives the scroll shadow)')
+  }
+
+  await page.evaluate(() => {
+    const el = document.querySelector('.controls')
+    el.scrollTop = el.scrollHeight
+  })
+  await page.waitForTimeout(80)
+  if (await page.locator('.controls.has-more').count()) {
+    fail('phone scroller: .has-more is still present after scrolling to the true end')
+  } else {
+    console.log('   .has-more clears once the scroller reaches its true end')
+  }
+
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+// -------- 10k4. the sidebar returns to the lesson after a real tap, not
+// only after prev/next
+//
+// 10k/10k2/10k3 above all force `.controls.scrollTop = 0` before measuring —
+// which is exactly why the pane's own scroll position surviving a sidebar
+// tap went uncaught (Reed's review). A student does the opposite of that
+// reset: opens a folded group and taps a preset inside it, and Playwright's
+// own `.click()` scrolls the button into view first, precisely mirroring
+// where a person's tap would leave the pane. Nothing here re-homes the
+// scroll afterward — the app itself has to, on load. Two cases: a phone,
+// where the sidebar is its own short scroller, and a laptop with more than
+// one group left open by "browsing ahead", the review's other measured
+// case (1500+ px, no page scrollbar to hint at it).
+
+console.log('\n10k4. Tapping a lesson deep in the list lands the try line and every featured control on screen — no scroll reset first\n')
+
+async function checkLessonVisible(ctx) {
+  const sidebarBox = await page.locator('.controls').boundingBox()
+  const tryBox = await page.locator('.try-line').boundingBox().catch(() => null)
+  const items = page.locator('.featured .featured-item')
+  const n = await items.count()
+  const boxes = [{ label: 'try-line', box: tryBox }]
+  for (let i = 0; i < n; i++) boxes.push({ label: `featured[${i}]`, box: await items.nth(i).boundingBox() })
+  let ok = true
+  for (const { label, box } of boxes) {
+    if (!box) {
+      fail(`tap-nav / ${ctx}: ${label} not rendered`)
+      ok = false
+      continue
+    }
+    const bottom = box.y + box.height
+    const outerBottom = sidebarBox.y + sidebarBox.height
+    console.log(
+      `   ${ctx.padEnd(28)} ${label.padEnd(12)} top ${box.y.toFixed(0)} bottom ${bottom.toFixed(0)}` +
+        ` (sidebar [${sidebarBox.y.toFixed(0)}, ${outerBottom.toFixed(0)}])`,
+    )
+    if (box.y < sidebarBox.y - 0.5 || bottom > outerBottom + 0.5) {
+      fail(
+        `tap-nav / ${ctx}: ${label} outside the sidebar's visible box [${sidebarBox.y.toFixed(0)}, ` +
+          `${outerBottom.toFixed(0)}], got [${box.y.toFixed(0)}, ${bottom.toFixed(0)}]`,
+      )
+      ok = false
+    }
+  }
+  return ok
+}
+
+{
+  // Phone: open Nonlinearity by hand-scrolling the list, then tap Ring
+  // modulator — the review's own example (495 px above the fold before the
+  // fix).
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await loadPreset('Ring modulator')
+  await page.waitForTimeout(80)
+  if (await checkLessonVisible('phone / Ring modulator')) {
+    console.log('   phone: Ring modulator, tapped after opening Nonlinearity, lands inside the sidebar box')
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+{
+  // 1440x900: hand-open a second group ahead of the active one — "browsing
+  // ahead", which the review calls a normal way to use the sidebar — then
+  // tap a preset in a third, later group while the second is still open.
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await loadPreset('Single tone')
+  await page.evaluate(() => {
+    for (const d of document.querySelectorAll('details.preset-group')) {
+      if (d.querySelector('summary')?.childNodes[0]?.textContent.trim() === 'Filters' && !d.open) {
+        d.querySelector('summary').click()
+      }
+    }
+  })
+  await page.waitForTimeout(80)
+  const heightsBefore = await page.evaluate(() => {
+    const el = document.querySelector('.controls')
+    return { scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }
+  })
+  console.log(
+    `   1440x900: Signals-and-Fourier + Filters both open, .controls scrollHeight ${heightsBefore.scrollHeight}` +
+      ` vs clientHeight ${heightsBefore.clientHeight}`,
+  )
+  await loadPreset('Ring modulator')
+  await page.waitForTimeout(80)
+  if (await checkLessonVisible('1440x900 / Ring modulator')) {
+    console.log('   1440x900: Ring modulator, tapped with a second group already open, lands inside the sidebar box')
+  }
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+{
+  // 1440x900, no tap at all: Single tone stays loaded and every OTHER group
+  // gets opened by hand, one at a time — the review's "browsing ahead"
+  // case. `.preset-list` sits above `.lesson` in the DOM at this width, so
+  // this alone pushes the still-active lesson down the pane with the
+  // scroll position never moving (measured before the fix: the try line at
+  // 937-1011 px and the featured knob at 1024-1131 px, both below a 900 px
+  // sidebar box whose scrollHeight had grown to 2164).
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+  await loadPreset('Single tone')
+  await page.evaluate(() => {
+    for (const d of document.querySelectorAll('details.preset-group')) {
+      const label = d.querySelector('summary')?.childNodes[0]?.textContent.trim()
+      if (['Sampling', 'Filters', 'FIR and the z-plane', 'Nonlinearity'].includes(label) && !d.open) {
+        d.querySelector('summary').click()
+      }
+    }
+  })
+  await page.waitForTimeout(80)
+  const heights = await page.evaluate(() => {
+    const el = document.querySelector('.controls')
+    return { scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }
+  })
+  console.log(
+    `   1440x900: Single tone stays loaded, every other group hand-opened, .controls scrollHeight ` +
+      `${heights.scrollHeight} vs clientHeight ${heights.clientHeight}`,
+  )
+  if (await checkLessonVisible('1440x900 / Single tone, groups opened by hand')) {
+    console.log('   1440x900: Single tone stays fully visible while every other group is opened, no tap at all')
+  }
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+// ---------------- 10l. Single tone: Amplitude is a real micro-experiment now
+
+console.log('\n10l. Single tone: Amplitude is a real micro-experiment now, not just a baseline\n')
+{
+  await loadPreset('Single tone')
+  const ampField = page.locator('.featured').getByRole('spinbutton', { name: 'Amplitude' })
+  if ((await ampField.count()) === 0) {
+    fail('Single tone: no featured Amplitude control under the try line')
+  } else {
+    const ampOf = (r) => (r['Frequency domain'] || []).find((s) => s.startsWith('amp')) || ''
+    const numOf = (s) => Number((s.match(/[\d.]+/) || [])[0])
+    const before = numOf(ampOf(await readout()))
+    await setField('Amplitude', 0.5)
+    const after = numOf(ampOf(await readout()))
+    console.log(`   amp before ${before}, after dragging to 0.5: ${after}`)
+    if (!(before > 0) || Math.abs(after / before - 0.5) > 0.05) {
+      fail(`Single tone: dragging Amplitude to 0.5 did not halve the readout (before ${before}, after ${after})`)
+    } else {
+      console.log('   dragging Amplitude to 0.5 halves the line — 6.02 dB down, as the try line claims')
+    }
+  }
+}
+
+// ------------------ 10m. Convolution's mirrored play button actually plays
+
+console.log("\n10m. Convolution: the mirrored play button under the try line actually plays\n")
+{
+  await loadPreset('Convolution, watched')
+  const playBtn = page.locator('.featured .try-play')
+  if ((await playBtn.count()) === 0) {
+    fail('Convolution, watched: no mirrored play button under the try line')
+  } else {
+    const before = await canvasHashes()
+    await playBtn.click()
+    await page.waitForTimeout(350)
+    const after = await canvasHashes()
+    if (JSON.stringify(before) === JSON.stringify(after)) {
+      fail('Convolution, watched: clicking the mirrored play button did not advance the animation')
+    } else {
+      console.log('   the play button mirrored under the try line advances the same scrubber as the canvas transport')
+    }
+    await playBtn.click() // pause again, tidy
+  }
+}
+
+// ------------- 10n. Bypass, featured under the try line, IS the block's own switch
+
+console.log("\n10n. Bypass featured under the try line matches the block's own switch\n")
+{
+  for (const [name, blockIndex] of [['Two filters are steeper', 1], ['Two tones, one nonlinearity', 0]]) {
+    await loadPreset(name)
+    await expandBlocks()
+    const featChk = page.locator('.featured .check input[type="checkbox"]')
+    if ((await featChk.count()) === 0) {
+      fail(`${name}: no featured bypass checkbox under the try line`)
+      continue
+    }
+    const cardIcon = page.locator('.block').nth(blockIndex).locator('.block-head .icon')
+    const before = await cardIcon.getAttribute('aria-pressed')
+    await featChk.check()
+    await settle()
+    const after = await cardIcon.getAttribute('aria-pressed')
+    if (before === after) {
+      fail(`${name}: the featured bypass toggle did not flip the block card's own switch (stayed ${after})`)
+    } else {
+      console.log(`   ${name}: featured Bypass flips the block card's own ⏻ switch (${before} → ${after})`)
+    }
+  }
+}
+
+// -------- 10o. Chain-global featured controls: FFT, Rate, Window, Overlay
+
+console.log('\n10o. Chain-global controls (FFT, Rate, Window, Overlay) featured under their try lines\n')
+{
+  const cases = [
+    { name: 'Beating', kind: 'spin', label: 'FFT' },
+    { name: 'Turn the rate down', kind: 'spin', label: 'Rate' },
+    { name: 'Resolution needs time', kind: 'spin', label: 'FFT' },
+    { name: 'Spectral leakage', kind: 'select' },
+    { name: 'Phase is invisible here', kind: 'segmented' },
+  ]
+  for (const c of cases) {
+    await loadPreset(c.name)
+    const n =
+      c.kind === 'spin'
+        ? await page.locator('.featured').getByRole('spinbutton', { name: c.label }).count()
+        : c.kind === 'select'
+          ? await page.locator('.featured select').count()
+          : await page.locator('.featured .segmented button').count()
+    if (n === 0) fail(`${c.name}: no featured ${c.kind === 'spin' ? c.label : c.kind} control under the try line`)
+    else console.log(`   ${c.name}: featured ${c.kind === 'spin' ? c.label : c.kind} control is under the try line`)
+  }
+}
+
+// --------- 10p. The one hand-over out: a real link only when deployed beside
+//
+// This section used to assert one thing only — that no link is drawn — and it
+// was run only against `vite preview` on a bare port, where labUrl() resolves
+// null and there is nothing to draw. So it passed by describing the fallback
+// and never once looked at the link a student actually gets.
+//
+// That is how Signal Lab shipped a 115x16 px hand-over link on a phone while
+// section 12 below reported every element clearing the 44 px floor. Nothing
+// was on an exception list. The link was not in the DOM to be measured, and a
+// probe over an empty set passes. Served under a real `/signal-lab/` path the
+// same unmodified probe failed on its first run, and the deployed layout puts
+// 4111 interactive elements on the page against a bare port's 4075 — 36 that
+// no run had ever measured.
+//
+// So the assertion now depends on which layout it is looking at, and each
+// branch is a real claim. On a bare port: no link, because there is no sibling
+// to point at. On the deployed path: a link that resolves to the sibling AND
+// carries a thumb-sized box, checked here rather than left to section 12, so
+// this one cannot go back to being measured only when someone remembers to.
+//
+// Run it against the deployed layout with:
+//   node scripts/assemble-site.mjs --serve
+//   APP_URL=http://localhost:47600/signal-lab/ node apps/signal-lab/scripts/verify.mjs
+
+console.log('\n10p. Circuit Lab hand-over: absent on a bare port, thumb-sized when deployed\n')
+{
+  await loadPreset('Resonance is Q')
+  // The deployed site serves each lab from its own folder beside its
+  // siblings; `vite preview` serves one lab at the root of a bare port. That
+  // is exactly the condition deeplink.js keys on, so it is what we key on.
+  const deployed = /\/(signal|circuit|control|circuit-elements|power)-lab\/?$/.test(new global.URL(URL).pathname)
+  const link = page.locator('.circuit-forward a').first()
+  const count = await link.count()
+
+  if (!deployed) {
+    if (count) fail('Resonance is Q: the hand-over drew a link on a bare dev port — labUrl should resolve null there')
+    else console.log('   bare port: no link, as designed (labUrl resolves null off the deployed path)')
+  } else if (!count) {
+    fail('Resonance is Q: the hand-over drew NO link on the deployed path — labUrl should resolve a sibling there')
+  } else {
+    const href = await link.getAttribute('href')
+    if (!/circuit-lab\//.test(href || '')) fail(`Resonance is Q: hand-over href does not point at Circuit Lab: ${href}`)
+
+    await page.setViewportSize(PHONE_VIEWPORT)
+    await page.evaluate(() => document.fonts.ready)
+    const box = await link.boundingBox()
+    if (!box) fail('Resonance is Q: the deployed hand-over link has no box to measure')
+    else if (box.height < 44 || box.width < 44) {
+      fail(`Resonance is Q: deployed hand-over link is ${Math.round(box.width)}x${Math.round(box.height)}px, under the 44px floor`)
+    } else {
+      console.log(`   deployed: link to ${href}, ${Math.round(box.width)}x${Math.round(box.height)}px at 390x844`)
+    }
+    await page.setViewportSize({ width: 1280, height: 900 })
+  }
+}
+
+// -------- 10q. Phone 390x844: the note's own first line, guaranteed inside
+// the sidebar box — not merely present in the DOM
+//
+// Round-six grading (Layout): the note ran entirely behind `.controls`' own
+// 32vh-capped scroller on 34 of 35 presets on a fresh load, sidebar scrolled
+// to the top — not merely clipped, its own TOP already sat below the box's
+// visible bottom, because the featured knob above it already fills the box
+// to that same edge (10k2 holds the knob there with no slack to spare). A
+// probe that only checked the knob, as 10k2 does, would read this as clean —
+// exactly the empty-set trap item 11 of the review playbook warns about,
+// since nothing upstream of the note ever overflowed.
+//
+// The fix recovers dead margin between the lesson nav and the note
+// (styles.css) rather than growing the sidebar's own cap, which would have
+// cost the spectrum canvas its own fold (10j sits within 2px of 844 already
+// at the existing budget). That buys back the note's own FIRST LINE, not the
+// whole note — the rest still needs the scroll `.has-more`'s shadow already
+// announces, and 10k3 above already holds that cue honest. MIN_SLICE is set
+// under the achieved margin (about 18.6px, one 12px/1.5 line, on the tightest
+// presets) so the probe does not chase sub-pixel rendering noise.
+console.log(`\n10q. Phone 390x844: all ${presetNames.length} presets — the note's own first line inside the sidebar box on a fresh load\n`)
+{
+  const MIN_SLICE = 16
+  await page.setViewportSize({ width: 390, height: 844 })
+  let allOk = true
+  const measured = []
+  for (const name of presetNames) {
+    await page.goto(URL, { waitUntil: 'load' })
+    await page.waitForSelector('.views canvas')
+    await loadPreset(name)
+    await page.evaluate(() => {
+      const el = document.querySelector('.controls')
+      if (el) el.scrollTop = 0
+      window.scrollTo(0, 0)
+    })
+    await page.evaluate(() => document.fonts.ready)
+    await page.waitForTimeout(60)
+
+    const sidebarBox = await page.locator('.controls').boundingBox()
+    const noteBox = await page.locator('.lesson-note').boundingBox().catch(() => null)
+    if (!noteBox) {
+      fail(`phone note / ${name}: .lesson-note not rendered`)
+      allOk = false
+      continue
+    }
+    const sidebarBottom = sidebarBox.y + sidebarBox.height
+    const slice = sidebarBottom - noteBox.y
+    measured.push({ name, top: noteBox.y, sidebarBottom, slice })
+    if (slice < MIN_SLICE) {
+      fail(
+        `phone note / ${name}: only ${slice.toFixed(1)}px of the note's own top sits inside the sidebar box ` +
+          `[${sidebarBox.y.toFixed(0)}, ${sidebarBottom.toFixed(0)}] — under the ${MIN_SLICE}px guaranteed slice`,
+      )
+      allOk = false
+    }
+  }
+  if (allOk) {
+    const worst = measured.reduce((m, r) => (r.slice < m.slice ? r : m))
+    console.log(
+      `   all ${presetNames.length} presets: the note's own first line clears a ${MIN_SLICE}px guaranteed slice ` +
+        `inside the sidebar box (worst: "${worst.name}", ${worst.slice.toFixed(1)}px)`,
+    )
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+}
+
+// -------- 10r. The flow strip's "sum" node is defined on contact, like Σ
+//
+// Round-six grading (Explanation): the top flow-strip's live RMS reading sits
+// beside the bare word "sum" on the very first screen a cold student sees —
+// "Single tone" — with no hover title and no glossary entry, while its
+// neighbouring Σ node carries one ("Σ: the enabled sources add together
+// here"). That is the suite's own terms-on-contact rule (review playbook
+// item 8) broken on screen one. FlowStrip.jsx now gives "sum" the same
+// treatment: a hover title, not a terms.js registry entry, matching Σ's own
+// deliberate choice (see the comment beside it in FlowStrip.jsx).
+console.log('\n10r. The flow strip\'s "sum" node carries a hover title, like Σ\n')
+{
+  await loadPreset('Single tone')
+  const sumNode = page.locator('.flow .flow-node').nth(1)
+  const text = (await sumNode.innerText()).trim()
+  if (!/^sum/.test(text)) {
+    fail(`flow strip: expected the second node to be "sum", found "${text}"`)
+  } else {
+    const title = await sumNode.getAttribute('title')
+    if (!title || !title.trim()) {
+      fail('flow strip: the "sum" node has no hover title — the word is used with no definition on screen one')
+    } else {
+      console.log(`   "sum" node title: "${title}"`)
+    }
+  }
+}
+
 // -------------------------------------------------------------- 11. 4K fit
 
 console.log('\n11. Re-checking layout at 4K\n')
@@ -1024,6 +1539,47 @@ for (const name of presetNames) {
   if (await scrolls()) fail(`4K / ${name}: page scrolls`)
 }
 console.log(`   all ${presetNames.length} presets fit at 3840x2160`)
+
+// -------------------------------------------- 12. touch targets at 390x844
+//
+// Two student testers on phones found this ("it constantly asks the student
+// to pinpoint instead of tap", "the navigation buttons are too small and too
+// close together"), and a walk of the released labs measured it: every
+// interactive element here ran under 44x44 CSS px. FLOOR = 44 — the Apple
+// HIG / Material touch-target guideline, chosen over the bare 24px WCAG 2.2
+// SC 2.5.8 legal minimum because this is a dense, numbers-heavy tool meant
+// to be poked quickly and often. tapTargetProbe.mjs (packages/ui/verify)
+// walks the page, crediting an invisible ::before/::after hit area
+// (position:relative + a negative inset) where a control keeps its visible
+// glyph small on purpose, and a checkbox's wrapping <label> in place of its
+// own tiny native box (this lab wraps its "enable source" checkbox in one
+// for exactly this reason — it had no label at all before).
+//
+// One documented exception, held to the 24px HARD_FLOOR instead: a control
+// inside a PLOT pane (.views — the block-diagram opener, a view switch, the
+// convolution transport's play button and speed chips). Its options often
+// touch with no real gap (a true segmented control), so an invisible hit
+// area would let a thumb bridge two, and growing it for real at 44 costs
+// more of the two-plots-on-screen budget (both canvases ≥120px, item 10j)
+// than this lab can spare — so the plot pane's own chrome stays at WCAG's
+// legal floor rather than the suite's 44px target.
+console.log('\n12. Touch targets at 390x844 (button, link, summary, role=button, checkbox)\n')
+{
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(URL, { waitUntil: 'load' })
+  await page.waitForSelector('.views canvas')
+
+  const exceptionFloor = (el) => (el.inViews || el.inLabNav ? HARD_FLOOR : null)
+
+  let checked = 0
+  for (const name of presetNames) {
+    await loadPreset(name)
+    const res = await tapTargetProbe(page, { exceptionFloor })
+    checked += res.checked
+    for (const f of res.failures) fail(`touch target · ${name}: ${f}`)
+  }
+  console.log(`   ${presetNames.length} presets: ${checked} interactive elements checked at 390x844, every one clears the ${FLOOR}px floor (the plot panes' own chrome held to the ${HARD_FLOOR}px floor instead)`)
+}
 
 // ------------------------------------------------------------------ report
 

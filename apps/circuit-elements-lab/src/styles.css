@@ -13,6 +13,18 @@
   --q-angle: #b98cf0;
 }
 
+/* A deep link's fragment named something this lab does not have — a typo'd
+   knob, a stale key from an old link. parseHash drops it and keeps going;
+   this is where the drop stops being silent. Same class name and rule as
+   Control Lab's, which surfaces the same kind of warning the same way. */
+.link-warnings {
+  margin: 6px 0 10px;
+  padding-left: 18px;
+  color: var(--warn);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .preset-group { margin-bottom: 10px; }
 
 /* The lesson and circuit chips, styled as Signal Lab styles its presets —
@@ -95,10 +107,24 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 .picker-arc { margin: 0 0 8px; font-size: 11.5px; color: var(--dim); }
 .picker-arc b { color: var(--accent); }
 
+/* The deployed page carries a LabNav row (home + the two sibling labs) above
+   the title — ~26 px real on the deployed site, invisible on a standalone
+   preview (no siblings beside it to link to). App.jsx's own header comment
+   already counts "the suite nav" into the ~200–230 px budget for how close
+   to the top the note appears, but that budget was tuned against a preview
+   that never actually rendered the row — verify.mjs's withLabNav now stands
+   a placeholder in to measure the real thing, and a few longer experiment
+   names pushed past 230 px once it did. Trimmed back here, unconditionally
+   (every viewport, not just the short-height query below): the report-issue
+   link, the Experiment heading and the picker's own margin each give back a
+   few px that add up to the labnav's own height. */
+.controls header .report-issue { margin: 0 0 2px; }
+.controls .lesson > h2 { margin-bottom: 4px; padding-bottom: 2px; }
+
 /* The picker: ◂ [A1 · name ▾] ▸ on one line, the tree folded under it. The
    sidebar's job is the lesson and its knobs; the list of forty-six
    experiments is furniture, and stays out of the way until asked for. */
-.picker { margin: 0 0 8px; }
+.picker { margin: 0 0 4px; }
 .picker-row {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) 30px;
@@ -171,12 +197,23 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 .step-seen:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .next-up { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 12px; color: var(--text); }
 
-/* Deeper: one fold — why it works, the solver's working, the hand-over. */
+/* Deeper: one fold — why it works, the solver's working, the hand-over. The
+   summary is the section's only row when closed, so it carries the section's
+   name (a little heavier and larger than a plain link) instead of a heading
+   sitting above it and repeating the same word. It keeps the sticky-while-
+   scrolling behaviour @ee-labs/ui's section headings have, so the section
+   still names itself once the fold is open and its working scrolls past. */
 .deeper-fold > summary {
   cursor: pointer;
-  font-size: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
   color: var(--accent);
   list-style: none;
+  padding: 4px 0;
+  position: sticky;
+  top: -16px;
+  z-index: 2;
+  background: var(--bg);
 }
 .deeper-fold > summary::before { content: '\25B8  '; font-size: 9px; }
 .deeper-fold[open] > summary::before { content: '\25BE  '; }
@@ -213,12 +250,69 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 .topbar .flow [data-role='outcome'] { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .topbar .flow [data-role='outcome'] em { margin-left: 6px; }
 
+/* The size and outcome chips explain the solver's words ("nodes", "unknowns",
+   "residual") on hover for a mouse; a phone has no hover, so both are buttons
+   that open the same sentence in a card on tap (student review: the
+   node-count chip was unreachable on a touch screen from A1 on). */
+.topbar { position: relative; }
+button.flow-node { cursor: pointer; text-align: left; }
+button.flow-node[aria-expanded='true'] { border-color: var(--accent); color: var(--accent); }
+.chip-pop {
+  position: absolute;
+  top: 100%;
+  left: 14px;
+  z-index: 20;
+  margin: 6px 0 0;
+  padding: 8px 30px 8px 10px;
+  max-width: min(360px, calc(100vw - 28px));
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.chip-pop-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px;
+}
+.chip-pop-close:hover { color: var(--text); }
+
 /* The screen as one composition: on a laptop the whole lesson and every knob
    are on screen at once, so the student never scrolls to turn a knob. A wider
    sidebar from 1200 px keeps the longer notes (Groups G, H) to fewer lines. */
 @media (min-width: 1200px) {
   .app { grid-template-columns: 380px 1fr; }
-  .controls section { margin-top: 10px; }
+  .controls section { margin-top: 8px; }
+  /* G6 and I6's Deeper fold measured a few px past 900 at 1280×900 (round
+     five's Layout finding), and posing every experiment's first try step as
+     a predict question on cold open (predict.js) made the try list a little
+     taller wherever that question used to be buried later. Trimmed here:
+     every section's own top margin (above, 10 px to 8 px), the Knobs
+     heading's padding and bottom margin, Deeper's own heading (folded into
+     its summary above, one row instead of two when closed) and its
+     section's own margin and bottom padding, and the predict question's own
+     row gap and option padding. */
+  .controls > .knobs h2 { padding: 6px 12px 5px; margin-bottom: 7px; }
+  .controls > .deeper { margin-top: 2px; padding-bottom: 6px; }
+  .deeper-fold > summary { padding: 2px 0; }
+  .predict-ask { font-size: 12.5px; line-height: 1.3; }
+  .try { margin-top: 6px; }
+  .try li { margin: 2px 0; }
+  .hint.see { margin-top: 5px; }
+  .predict { gap: 3px; }
+  .predict-option { padding: 2px 10px; }
 }
 
 @media (min-width: 1100px) {
@@ -256,6 +350,32 @@ details.preset-group > .presets { margin: 4px 0 8px; }
      window knob its word — "− 40 cycles +" beside the slider it spans — so the plot's view switch
      stays on the first screen for the fifteen experiments that carry a window knob. */
   .cursor-row .cursor-lead, .cursor-row .cursor-head .num.is-compact .num-label { display: none; }
+  /* Bought back for the touch-target pass (packages/ui base.css grows every
+     phone control to a 44px sidebar floor or a 24px plot-pane floor): four
+     experiments no longer cleared the Analysis view switch above the fold.
+     The view-head's own row-gap is tightened further down in this file,
+     next to the rest of the view-head phone rules — this app's one that
+     opens a group (A capacitor's current is the slope of its voltage)
+     also carries the folded group-intro line on top of its note and Try
+     list, so those get a little of their own margin back too. Nothing here
+     shrinks a touch target; only the air between rows and sections goes. */
+  details.group-intro { margin-top: 1px; }
+  .hint.see { margin-top: 2px; }
+  .try { margin-top: 2px; }
+  .controls > .lesson h2 { margin-bottom: 2px; }
+  /* Posing every experiment's first try step as a predict question on cold
+     open (predict.js, round five) reopened this same gap for G6: its Analysis
+     view switch landed below the first screen, worse still on the deployed
+     path's own LabNav row (~26 px, not present on a bare preview). The
+     question's own row gap and option padding, the note and ahead-step line
+     height, and the one-line subtitle already dropped for a short desktop
+     window (below) buy it back the same way. */
+  .controls header .sub { display: none; }
+  .predict { gap: 3px; }
+  .predict-ask { line-height: 1.25; }
+  .predict-option { padding: 2px 10px; }
+  .hint.see { line-height: 1.3; }
+  .try { line-height: 1.35; }
   .tabbar {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -284,6 +404,39 @@ details.preset-group > .presets { margin: 4px 0 8px; }
   .tabbar button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 }
 
+/* A 1366×768 laptop (or any desktop shorter than 820 px) has 132 px less
+   height than the 900 px this sidebar was otherwise tuned for. Six knobs plus
+   a long note pushed the last knob of eight experiments (E2, F7, G6, H1, H4,
+   H6, I6, I7) past the fold, with G6's last knob fully off screen (student
+   review round: the fold probe). Nothing is removed, only the air around it —
+   tighter section caps, knob rows and the toggle knob reclaim the height so
+   every knob stays reachable without scrolling.
+   The deployed page also carries a LabNav row above the title (~26 px) that
+   this budget never accounted for — a standalone preview has no siblings
+   beside it, so the row never rendered there (verify.mjs's withLabNav stands
+   a placeholder in to measure the real thing). That 26 px reopened the same
+   gap for F7 and G6 with none of the trims above changed, so the one-line
+   subtitle under the title — chrome the fold budget can least afford — is
+   dropped here too rather than tightening every knob row a second time. */
+@media (min-width: 901px) and (max-height: 820px) {
+  .controls header .sub { display: none; }
+  .controls h2 { padding: 6px 12px 4px; margin-bottom: 6px; }
+  .controls section { margin-top: 8px; }
+  .knob-slot { padding: 2px 8px; }
+  .knob-slot[data-open='true'] { padding-top: 3px; padding-bottom: 3px; }
+  .knob-slot .num:not(.is-compact) .num-hint { margin: 1px 0 3px; }
+  .toggle-knob { margin: 4px 0 6px; }
+  /* Posing every experiment's first try step as a predict question on cold
+     open (predict.js, round five) made the try list taller wherever that
+     question used to be buried later, which reopened this same gap for G6
+     (seven knobs, the most of any experiment) at 1366×768. The note and the
+     ahead steps read at a tighter line height here only; the question and
+     its options already had the room clawed back above 1200 px wide. */
+  .hint.see { line-height: 1.32; }
+  .try { line-height: 1.32; }
+  .controls > .knobs h2 { padding: 6px 12px 4px; margin-bottom: 6px; }
+}
+
 /* Pane-header controls — the proximity rule from Signal Lab: a control that
    governs one plot sits in that plot's header, sized to the header row so
    moving it there costs almost no plot height. */
@@ -293,7 +446,14 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 /* Phone: pane-header control groups wrap under the title without crowding
    the readouts off the edge. */
 @media (max-width: 900px) {
-  .view-head { row-gap: 6px; }
+  /* Tightened from 6px for the touch-target pass (packages/ui base.css):
+     Resonance and AC power's Analysis pane offers six views, so the "sm"
+     segmented view switch — its buttons a few px taller now, to clear the
+     plot pane's own 24px floor — wraps onto two rows, and the row-gap
+     compounded on top of both wraps was enough on its own to push the
+     view switch past the phone fold (see styles.css's other row-gap trim,
+     below, for the four experiments this affected). */
+  .view-head { row-gap: 1px; }
   .view-head .readout { flex-basis: 100%; }
   /* The two panes stack and the page scrolls, so each takes its own height:
      with the shell's equal `1fr 1fr` rows a tall lower pane (the stacked phasor

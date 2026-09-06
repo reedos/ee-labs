@@ -190,6 +190,7 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .fd-head span em { color: var(--text); font-style: normal; font-weight: 600; }
 
 .fd-scroll { overflow-x: auto; }
+.fd-svg { display: block; }
 
 .fd-box rect {
   fill: var(--panel-2);
@@ -248,6 +249,13 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 
 .conv-bar .ghost { white-space: nowrap; }
 
+/* Bought back for the touch-target pass, same reason as .view-head's
+   row-gap above: the play button and the speed chips both grew a couple
+   of px to clear the plot pane's 24px floor. */
+@media (max-width: 900px) {
+  .conv-bar { padding: 0 0 2px; gap: 8px; }
+}
+
 .conv-speed { flex: 0 0 auto; }
 .conv-speed button { padding: 2px 9px; white-space: nowrap; }
 
@@ -272,7 +280,13 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    pane-header control groups wrap under the title without crowding. */
 @media (max-width: 900px) {
   .topbar-controls { flex-wrap: wrap; row-gap: 6px; max-width: 100%; }
-  .view-head { row-gap: 6px; }
+  /* Bought back for the touch-target pass: the view tabs and the readout's
+     own Reference/Disturbance toggle both grew a few px taller (packages/ui
+     base.css) to clear the plot pane's 24px floor, so this row-gap gives
+     some of it back — the watch view's transport row (conv-bar, below)
+     stacks on top of both and needed the room to keep its canvas on
+     screen at 390x844. */
+  .view-head { row-gap: 3px; }
   .view-head .readout { flex-basis: 100%; }
 }
 
@@ -294,11 +308,32 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 }
 .topbar-field-note { display: block; flex-basis: 100%; font-size: 10px; color: var(--dim); }
 @media (max-width: 900px) {
-  .topbar-info { display: inline; }
+  /* Touch target: the mark stays a small glyph (a bigger "i" would cost the
+     topbar row height every field on the bar shares) but its own tap area
+     reaches 44px via an invisible hit area — nothing else on the bar sits
+     within reach of it (it is the only button on the row; its neighbours
+     are plain text), so there is no adjacent control for a thumb to bridge. */
+  .topbar-info { display: inline; position: relative; }
+  .topbar-info::before {
+    content: '';
+    position: absolute;
+    inset: -17px -16px;
+  }
 }
 
 /* A margin that has run thin is worth seeing before you read the number. */
 .topbar-field b.warn { color: var(--warn); }
+
+/* "...and what it costs" tells the reader to look at the margin, with
+   nothing on screen leading the eye there (student review, item 4b). The
+   lesson marks this field `is-callout` (App.jsx's `active.callout`) so the
+   ring is the nudge and the number itself is unchanged. */
+.topbar-field.is-callout {
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
 
 /* The marginal verdict — a sustained oscillation, neither settled nor run
    away — gets its own look: not the muted "settled" style, not the dashed
@@ -326,6 +361,20 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   white-space: nowrap;
 }
 .lesson-link:hover { text-decoration: underline; }
+
+/* Touch target: an inline text link at the end of the course, alone on its
+   own line with nothing tappable near it — an invisible hit area reaches
+   44 with no visual change and no neighbour for a thumb to bridge. */
+@media (max-width: 900px) {
+  .lesson-link {
+    position: relative;
+  }
+  .lesson-link::before {
+    content: '';
+    position: absolute;
+    inset: -14px;
+  }
+}
 
 /* Arriving from another tool. */
 .hint.from-link {
@@ -358,12 +407,45 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 /* The hand-over in reverse. */
 .hint.circuit-back a { color: var(--accent); white-space: nowrap; }
 
+/* Touch target: the suite's one exact cross-lab hand-over out of this lab,
+   "Open in Circuit Lab →" — measured on the deployed site (a bare dev
+   preview draws no link at all: circuitUrl() resolves null with no sibling
+   beside it) at 115x16, the smallest tap target found here. Signal Lab hit
+   the identical defect on its own reverse-direction link and fixed it the
+   same way: inline-flex lets the padding grow the link's own box instead
+   of only widening the line of text around it. This sits below the plant
+   and controller cards now (App.jsx, round five's fold fix), not a tight
+   plot pane, so it is free to grow for real. */
+@media (max-width: 900px) {
+  .hint.circuit-back a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 4px 2px;
+  }
+}
+
 /* ---------- the weighted split ----------
    The pane a lesson names as its view is the lesson; the Bode is context.
    62 % to the named pane (Power Lab's rule, §11.4.1), and only on the wide
    layout — on a phone the panes stack and each takes its own height. */
 @media (min-width: 901px) {
   .views.is-weighted { grid-template-rows: minmax(0, 38fr) minmax(0, 62fr); }
+}
+
+/* On a short laptop fold (1366×768, the same shortest case the item-7 probe
+   already uses) the Bode's ordinary 38% is too much when the lesson's OWN
+   view (data-view, App.jsx's primaryView) is Watch, Nyquist or the locus —
+   each carries chrome of its own the Bode pane does not (the transport row,
+   the point −1, the branches), and Step does not need the extra room, so it
+   keeps the ordinary split (student review, item 5). The Bode gives way
+   further rather than sitting on top at full weight. */
+@media (max-height: 800px) and (min-width: 901px) {
+  .views.is-weighted[data-view='watch'],
+  .views.is-weighted[data-view='nyquist'],
+  .views.is-weighted[data-view='locus'] {
+    grid-template-rows: minmax(0, 22fr) minmax(0, 78fr);
+  }
 }
 
 /* The math as a pane, not a sidebar well: it scrolls inside its pane so the
@@ -436,13 +518,16 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    note in sight until the reader scrolled the sidebar itself. The sticky
    "Try this" cap (prev/n of N/next) stays first regardless: it is the h2,
    order 0 by default, and both from-link banners above it are order 0 too
-   so they keep their place ahead of it. */
+   so they keep their place ahead of it.
+   `.hint.circuit-back` used to be a fourth item here (order: 3) — it moved
+   out of `#lessons` entirely (App.jsx, round five's fold fix), to below the
+   controller and plant cards, so there is nothing left in this flow for it
+   to reorder. */
 @media (max-width: 900px) {
   #lessons { display: flex; flex-direction: column; }
   #lessons > h2 { order: 0; }
   #lessons > .lesson-body { order: 1; }
   #lessons > .lesson-list { order: 2; margin-top: 10px; }
-  #lessons > .hint.circuit-back { order: 3; }
   .lesson-body .note-title { margin-top: 0; }
   /* A few more px back from the same box: the longest note ("Watch the
      integrator take over", two featured knobs and a long paragraph) left
@@ -466,6 +551,25 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .flow-note-short { display: inline; }
 }
 
+/* Phone: the verdict PILL can still be wider than the strip has room for,
+   even with the short word above swapped in. Round six measured two states
+   past the edge: lessons 8 and 9's own marginal Kp ("ON THE BOUNDARY" +
+   "oscillates", 422px into a 366px .flow, 56px over) and the zero-
+   denominator plant from the picker ("NOT A SYSTEM" + "not a system", 418px,
+   52px over). Same root cause as the diagram dialog — overflow-x:auto sized
+   for the common case, with no visual cue that the rest scrolls — and
+   neither state is unreachable, just undiscoverable: nobody thought to
+   scroll a 14px-tall strip.
+   The two common verdicts ("stable" + "settles", "UNSTABLE" + "runs away")
+   are short enough to fit the strip with room to spare, so wrapping the
+   strip costs them nothing — flex-wrap only wraps a line that does not
+   already fit. Letting the LAST node drop to its own line, rather than
+   widening the whole topbar or shrinking the two other nodes, keeps the
+   C(s)/P(s) pills at their normal width and touches no other row's fold. */
+@media (max-width: 900px) {
+  .flow { flex-wrap: wrap; row-gap: 4px; }
+}
+
 /* On a short laptop screen with a lesson loaded, the subhead gives its
    52 px to the lesson: the fold probe at 1366×768 needs the try line, the
    featured knob and the controller header all inside the first screen,
@@ -478,7 +582,21 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
    watch pane — header, transport row and four strips — ends inside the first
    screen; the per-term readouts are on the canvas too, so they yield. */
 @media (max-width: 900px) {
-  .app.has-lesson .controls { max-height: 40vh; }
+  .app.has-lesson .controls {
+    max-height: 40vh;
+    /* The sidebar's own scroll correction (App.jsx: the effect that scrolls
+       .lesson-body back into view after a lesson loads) sets scrollTop with
+       JS, right after the new note's height changes the layout above it.
+       The browser's own scroll anchoring then "helpfully" nudges that exact
+       scrollTop again to compensate for the same layout change, undoing the
+       correction by however much the note's height differs from the last
+       lesson's — measured moving the note 56-80px back out of the box on
+       the very next lesson load. This region is scrolled entirely by this
+       app's own code, never by a reader scrolling mid-reflow, so there is
+       nothing for anchoring to preserve here.
+    */
+    overflow-anchor: none;
+  }
   .views.is-weighted > .view.is-primary .readout [data-part] { display: none; }
   /* Same squeeze as the short-desktop rule above, for the same reason: the
      subhead is the one line in the box that is not part of the lesson, and
@@ -527,6 +645,51 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
 .terms-list dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
 .terms-list dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
 
+/* Definitions on contact (student review, item 3): the first use of a term
+   in the note is a tappable word, not only a link after the whole note.
+   Pattern copied from Circuit Elements Lab, whose grader reported no
+   vocabulary problem under it. */
+dfn.term {
+  font-style: normal;
+  color: inherit;
+  cursor: help;
+  border-bottom: 1px dotted var(--accent);
+  text-decoration: none;
+  padding-bottom: 1px;
+}
+dfn.term:hover, dfn.term:focus-visible { color: var(--accent); border-bottom-style: solid; outline: none; }
+dfn.term[aria-expanded='true'] { color: var(--accent); border-bottom-style: solid; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.def-card {
+  margin: 6px 0 2px;
+  padding: 7px 9px;
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+  border-radius: 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.def-card p { margin: 4px 0 0; }
+.def-head { display: flex; align-items: center; gap: 8px; }
+.def-head b { color: var(--text); font-size: 12px; }
+.def-close {
+  position: relative;
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.def-close:hover { color: var(--text); }
+/* The glyph stays small (a bigger × would widen the def-head row); the tap
+   area reaches the suite's 44px target via an invisible hit area, the same
+   technique the topbar's ⓘ button already uses. */
+.def-close::before { content: ''; position: absolute; inset: -17px -16px; }
+
 /* A featured knob in the controller card: a quiet accent rule says "this one". */
 #controller .featured .num-label { color: var(--accent); }
 
@@ -545,4 +708,16 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .app.has-lesson .controls { padding-top: 10px; }
   .app.has-lesson .controls header .report-issue { display: none; }
   .app.has-lesson .controls-foot { display: block; }
+}
+
+/* Touch target: @ee-labs/explain's math-toggle disclosure, inside the Math
+   pane, is a package this suite does not own — the fix lives here instead.
+   It scrolls inside its own pane (.view-body.math-pane), not the sidebar's
+   gated first screen, so it is free to grow for real. */
+@media (max-width: 900px) {
+  .math-toggle {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }

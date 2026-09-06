@@ -177,11 +177,14 @@ function common(tf, p, id) {
     F('Y(s) = X(s)\\,H(s)'),
     T(
       'One multiplication is the whole story. Whatever comes in, its transform is multiplied ' +
-        'by H(s): the frequency pane draws that multiplier against jω, the step pane is the ' +
-        'same product with X = 1/s, and in the time domain the product is a convolution with ' +
-        'the impulse response — the flip-and-slide Signal Lab animates. Sines show it plainest: ' +
-        'a sine in comes out a sine, |H| times as large and ∠H shifted — measured below by ' +
-        'actually running this circuit in time, not by re-reading the formula.',
+        'by H(s). The frequency pane draws that multiplier against jω. The step pane draws the ' +
+        'same product with X = 1/s. In the time domain the same fact looks different. The ' +
+        'impulse response is what the circuit outputs when a single sharp spike drives it. ' +
+        'Convolution is the sum that weights the input’s recent history by that impulse ' +
+        'response, one shift at a time. Signal Lab’s Convolution, watched experiment animates ' +
+        'that sum sliding across the input. Sines show the frequency-domain story plainest. A ' +
+        'sine in comes out a sine, scaled by |H| and shifted by ∠H, measured below by actually ' +
+        'running this circuit in time rather than by re-reading the formula.',
     ),
     C([
       {
@@ -302,7 +305,7 @@ const ENTRIES = {
             'current. And since the two outputs share one current, they are complementary — ' +
             'their squared magnitudes sum to 1 at every frequency, and the phase LEADS by ' +
             'exactly +45° at the corner, the mirror of the low-pass’s lag, on its way from ' +
-            '+90° at DC to 0° far above.',
+            '+90° at low frequency to 0° far above.',
         ),
         F('|H_{LP}|^2 + |H_{HP}|^2 = 1'),
         C([
@@ -667,8 +670,8 @@ const ENTRIES = {
         T(
           'The gain is a ratio, so it depends on how well two resistors match rather than on ' +
             'any absolute value — which is exactly what an integrated process can do well. The ' +
-            'minus sign is a real 180° of phase, not a bookkeeping detail — but it is 180° at ' +
-            'DC only. The feedback pole then takes the 1st-order toll of 45° at its corner, ' +
+            'minus sign is 180° of phase, from DC through low frequency, not a bookkeeping ' +
+            'detail. The feedback pole then takes the 1st-order toll of 45° at its corner, ' +
             'leaving exactly 135° there and only the inversion’s last 90° far above.',
         ),
         C([

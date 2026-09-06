@@ -138,6 +138,27 @@ describe('siblingUrl', () => {
   it('does not match a segment that merely contains an app name', () => {
     expect(siblingUrl('signal-lab', 'x=1', at('/my-circuit-lab-notes/'))).toBeNull()
   })
+
+  it('resolves from and to every deployed folder, dark labs included — recognising a name as a link SOURCE is not the same as a released lab linking to it (LabNav.LABS decides that)', () => {
+    // From each of the five deployed folders, every OTHER deployed folder is
+    // a reachable sibling — Circuit Elements and Power are dark (not in
+    // LabNav's own LABS list) but still deploy side by side, and a lab that
+    // hands over a link (or renders its own nav) needs its sibling's URL to
+    // resolve regardless of who links back.
+    const folders = ['signal-lab', 'circuit-lab', 'control-lab', 'circuit-elements-lab', 'power-lab']
+    for (const from of folders) {
+      for (const to of folders) {
+        const url = siblingUrl(to, 'x=1', at(`/ee-labs/${from}/`))
+        if (from === to) expect(url, `${from} -> itself`).toBeNull()
+        else expect(url, `${from} -> ${to}`).toBe(`https://reedos.github.io/ee-labs/${to}/#x=1`)
+      }
+    }
+  })
+
+  it('still resolves to nothing for a folder the suite does not deploy', () => {
+    expect(siblingUrl('mystery-lab', 'x=1', at('/ee-labs/circuit-elements-lab/'))).toBeNull()
+    expect(siblingUrl('circuit-elements-lab', 'x=1', at('/ee-labs/mystery-lab/'))).toBeNull()
+  })
 })
 
 describe('homeUrl', () => {
@@ -153,6 +174,11 @@ describe('homeUrl', () => {
     expect(homeUrl(at('/', 'http://localhost:1422'))).toBeNull()
     expect(homeUrl(null)).toBeNull()
     expect(homeUrl(at('/my-circuit-lab-notes/'))).toBeNull()
+  })
+
+  it('resolves at both dark labs\' own deployed paths too, so their own LabNav can render at all', () => {
+    expect(homeUrl(at('/ee-labs/circuit-elements-lab/'))).toBe('https://reedos.github.io/ee-labs/')
+    expect(homeUrl(at('/ee-labs/power-lab/'))).toBe('https://reedos.github.io/ee-labs/')
   })
 })
 

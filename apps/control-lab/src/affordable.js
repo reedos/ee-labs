@@ -1,3 +1,5 @@
+import { isUndefinedTf, UNDEFINED_PLANT_REASON } from './systems.js'
+
 // The reasons a time simulation is declined, shared by the step and watch
 // panes and by the window sizing that runs a coarse simulation of its own.
 //
@@ -8,6 +10,10 @@
 // Degeneracy: a custom plant with an all-zero denominator is not a system,
 // and simulating it painted NaN strips. The frequency panes are exact
 // regardless; only the time simulations need declining, with the reason.
+// isUndefinedTf/UNDEFINED_PLANT_REASON (systems.js) are the one place that
+// reason is decided — buildLoop refuses the SAME way before this ever runs,
+// so this check and the badge/math/Nyquist/locus panes can never disagree
+// about what counts as undefined.
 
 export const STEP_BUDGET = 2.5e6
 
@@ -18,8 +24,8 @@ export function simCost(poles, duration, points = 900) {
 
 /** Null when the simulation can run; otherwise the sentence the pane shows instead. */
 export function simBlockReason(open, poles, duration, points = 900) {
-  if (!open.a.length || !open.a.some((v) => v !== 0)) {
-    return 'This H(s) has an all-zero denominator — not a system yet. Give a₂, a₁ or a₀ a value.'
+  if (isUndefinedTf(open)) {
+    return UNDEFINED_PLANT_REASON
   }
   if (simCost(poles, duration, points) > STEP_BUDGET) {
     return (
