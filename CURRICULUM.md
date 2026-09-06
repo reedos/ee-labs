@@ -23,7 +23,7 @@ order the nav will fold to (`ELECTRONICS_LAB_PLAN.md` Decision 5).
 
 | Step | Lab | Course it mirrors | Experiments | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Circuit Elements Lab | Circuits I | 58 | built, dark |
+| 1 | Circuit Elements Lab | Circuits I | 58 | released |
 | 2 | Circuit Lab | Circuits II, the frequency-domain half | 16 | released |
 | 3 | Electronics Lab | Electronics I and II | 75 of 77 | built in part, dark |
 | 4 | Signal Lab | Signals and Systems, DSP | 35 | released |
@@ -38,7 +38,7 @@ interleave.
 
 ## 2. The path, group by group
 
-### Step 1: Circuit Elements Lab (58, built)
+### Step 1: Circuit Elements Lab (58, released)
 
 | Group | Teaches | Count |
 | --- | --- | --- |

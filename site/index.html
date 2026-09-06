@@ -12,7 +12,7 @@
     <title>REED's Engineering Labs</title>
     <meta
       name="description"
-      content="Interactive labs for the signals half of an electrical engineering curriculum: signals and DSP, circuits, and control. One transfer function, read three ways, with every claim measured by a test."
+      content="Interactive labs for an electrical engineering curriculum: circuits from their elements, signals and DSP, the frequency domain, and control. One system read four ways, with every claim measured by a test."
     />
     <style>
       :root {
@@ -106,7 +106,7 @@
       /* ---------- cards ---------- */
       .labs {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
         gap: 16px;
         margin-top: 34px;
       }
@@ -136,6 +136,10 @@
       }
       .lab .go::after { content: '→'; transition: transform 0.15s; }
       .lab:hover .go::after { transform: translateX(4px); }
+      .lab .start {
+        font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+        color: var(--card);
+      }
       .lab.signal { --card: var(--amber); }
       .lab.circuit { --card: var(--accent); }
       .lab.control { --card: var(--blue); }
@@ -187,11 +191,11 @@
         <h1>R<span class="ee">EE</span>D’s Engineering Labs</h1>
         <p class="kicker"><span class="ee">E</span>lectrical <span class="ee">E</span>ngineering focused.</p>
         <p class="tagline">
-          Three interactive labs for undergraduate signals, circuits and control. Build a
-          signal and filter it, wire a circuit and read its poles, or close a loop and measure
-          its margins. All three represent a system as a transfer function, so a circuit built
-          in one lab opens in the others as the same system: as a filter in Signal Lab, as a
-          plant in Control Lab.
+          Four interactive labs for undergraduate circuits, signals and control. Wire a circuit
+          from its elements and read the meters, build a signal and filter it, read a circuit's
+          poles, or close a loop and measure its margins. A circuit built in one lab opens in the
+          others as the same system: an RLC wired in Circuit Elements Lab opens in Circuit Lab,
+          and from there as a filter in Signal Lab and a plant in Control Lab.
           <b>Every number and every statement on screen is checked by a test against what the
           page draws.</b>
         </p>
@@ -211,6 +215,20 @@
       </div>
 
       <nav class="labs">
+        <a class="lab circuit" href="circuit-elements-lab/">
+          <canvas data-mini="elements" aria-hidden="true"></canvas>
+          <div class="body">
+            <span class="start">Start here</span>
+            <h2><span class="glyph">⏚Ω</span>Circuit Elements Lab</h2>
+            <p>
+              Circuits I, on a schematic with live meters: the two laws, then the theorems, then
+              the differential equations, then phasors, and out into Circuit Lab. Every reading is
+              a solved node voltage, and each lesson asks you to predict the number before you
+              turn the knob.
+            </p>
+            <span class="go">58 experiments, 9 groups</span>
+          </div>
+        </a>
         <a class="lab signal" href="signal-lab/">
           <canvas data-mini="signal" aria-hidden="true"></canvas>
           <div class="body">
@@ -449,6 +467,37 @@
         axes(g, w, h, d)
         draw(g, w, h, d)
       }
+      // Elements: a diode's exponential against a load line, with the operating
+      // point solved where the two agree, the way the lab's Group I does it.
+      mini('elements', (g, w, h, d) => {
+        const Is = 1e-9, n = 1.8, Vt = 0.02585, E = 2.5, R = 25, Imax = E / R
+        const iD = (v) => Is * (Math.exp(v / (n * Vt)) - 1)
+        const px = (v) => v * w
+        const py = (i) => h * 0.92 - (Math.min(i, Imax) / Imax) * (h * 0.86)
+        g.setLineDash([4 * d, 3 * d])
+        g.strokeStyle = 'rgba(125,139,156,0.6)'
+        g.lineWidth = 1 * d
+        g.beginPath(); g.moveTo(px(0), py(E / R)); g.lineTo(px(E), py(0)); g.stroke()
+        g.setLineDash([])
+        g.strokeStyle = COL.accent
+        g.lineWidth = 2 * d
+        g.beginPath()
+        for (let k = 0; k <= 160; k++) {
+          const v = k / 160
+          if (iD(v) > Imax) break
+          k ? g.lineTo(px(v), py(iD(v))) : g.moveTo(px(v), py(iD(v)))
+        }
+        g.stroke()
+        let lo = 0, hi = E
+        for (let k = 0; k < 60; k++) {
+          const m = (lo + hi) / 2
+          if (E - m - R * iD(m) > 0) lo = m
+          else hi = m
+        }
+        const vq = (lo + hi) / 2
+        g.fillStyle = COL.amber
+        g.beginPath(); g.arc(px(vq), py(iD(vq)), 3.5 * d, 0, 2 * Math.PI); g.fill()
+      })
       // Signal: a spectrum — odd-harmonic comb under a response curve.
       mini('signal', (g, w, h, d) => {
         const co = lowpass(0.16, 1)

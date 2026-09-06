@@ -1,7 +1,7 @@
 {
   "name": "ee-labs",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
   "description": "Interactive tools for the signals half of an electrical engineering curriculum.",
   "workspaces": [

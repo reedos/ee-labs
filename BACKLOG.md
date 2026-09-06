@@ -13,7 +13,7 @@ entry and a named blocker. **Mapped** has a map entry only.
 
 | Lab | Status | Branch | Blocked on | Plan |
 | --- | --- | --- | --- | --- |
-| Circuit Elements Lab | built, dark | | | `CIRCUIT_ELEMENTS_LAB_PLAN.md` |
+| Circuit Elements Lab | released 2026-09-05, v1.1 | | | `CIRCUIT_ELEMENTS_LAB_PLAN.md` |
 | Circuit Lab | built | | | |
 | Signal Lab | built | | | |
 | Control Lab | built | | | |
