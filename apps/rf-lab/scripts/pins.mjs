@@ -15,6 +15,14 @@ const line = (label, value, unit = '') => console.log(`${label.padEnd(52)} ${val
 const sig = (x, n = 6) => (Number.isFinite(x) ? Number(x).toPrecision(n) : String(x))
 const head = (t) => console.log(`\n--- ${t} ---`)
 const rect = (z) => (z === Infinity ? 'open' : `${sig(z[0], 6)} ${z[1] < 0 ? '-' : '+'} j${sig(Math.abs(z[1]), 6)}`)
+// A band, or the side that has no edge. Which side it is follows the topology,
+// so naming one of them for every case would be wrong for the other.
+const band = (bw) =>
+  bw.bounded
+    ? `${sig(bw.lower / 1e9, 5)} to ${sig(bw.upper / 1e9, 5)} GHz, ${sig(100 * bw.fractional, 5)} %`
+    : bw.lower === null && bw.upper === null
+      ? `no edge either side, searched ${sig(bw.from / 1e9, 3)} to ${sig(bw.to / 1e9, 3)} GHz`
+      : `no ${bw.lower === null ? 'lower' : 'upper'} edge, searched ${sig(bw.from / 1e9, 3)} to ${sig(bw.to / 1e9, 3)} GHz`
 
 const Z0 = 50
 const EPSR = 2.1
@@ -178,7 +186,7 @@ head('C3: bandwidth is the price')
 for (const [RS, ZL, target] of [[50, 100, 1.5], [5, 50, 1.5], [50, 100, 2], [50, 100, 1.2222]]) {
   const sol = R.lMatch({ RS, ZL, f: F0 }).chosen
   const bw = R.matchBandwidth(sol, ZL, RS, F0, { vswr: target })
-  line(`  ${RS} to ${ZL} ohm, to VSWR ${target}`, bw.bounded ? `${sig(bw.lower / 1e9, 5)} to ${sig(bw.upper / 1e9, 5)} GHz, ${sig(100 * bw.fractional, 5)} %` : 'no lower edge')
+  line(`  ${RS} to ${ZL} ohm, to VSWR ${target}`, band(bw))
 }
 for (const f of [0.9e9, 1.5e9, 2e9]) {
   const sol = R.lMatch({ RS: 50, ZL: 100, f: F0 }).chosen
@@ -191,10 +199,13 @@ head('C4: the quarter-wave transformer')
 const qwc = R.quarterWaveMatch({ RS: 50, RL: 100, f0: F0, epsr: EPSR })
 line('its impedance', sig(qwc.Z0), 'ohm')
 line('its length', sig(qwc.len), 'm')
-for (const target of [1.2222, 1.5, 2]) {
-  const bw = R.bandwidthOf(qwc.read, F0, { vswr: target, span: 1.99 })
+// The section's own search limits, which are not the same either side of the
+// design frequency. A symmetric search stopped short of the lower edge, and a
+// number this script prints has to come from the same search the app reads.
+for (const target of [1.2222, 1.5, 1.8, 2]) {
+  const bw = qwc.band(target)
   const lump = R.matchBandwidth(R.lMatch({ RS: 50, ZL: 100, f: F0 }).chosen, 100, 50, F0, { vswr: target })
-  line(`  to VSWR ${target}, the section`, `${sig(100 * bw.fractional, 5)} %   the L network ${lump.bounded ? sig(100 * lump.fractional, 5) + ' %' : 'no lower edge'}`)
+  line(`  to VSWR ${target}, the section`, `${band(bw)}   the L network ${band(lump)}`)
 }
 line('it matches again at', R.quarterWaveRepeats(F0, 5.5e9).map((f) => `${sig(f / 1e9, 3)} GHz`).join(', '))
 line('the response repeats every', sig(R.repeatFrequency(qwc.line, F0) / 1e9, 5), 'GHz')
