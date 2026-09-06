@@ -69,6 +69,13 @@ export default function App({ initialId = FIRST, initialView = null }) {
   const prev = idx > 0 ? EXPERIMENTS[idx - 1] : null
   const terms = termsFor(exp.terms)
   const moreKnobs = exp.params.slice(KNOBS_SHOWN)
+  // `RF_LAB_PLAN.md` §4.1: the frequency first, then the headline, with the
+  // reference impedance beside it. Every reflection and every S entry is
+  // measured against that reference, so a headline shown without it is a
+  // number with no setting attached. An experiment that holds no frequency
+  // knob is one sine at no particular frequency, and it shows no frequency.
+  const freqKnob = exp.params.find((k) => k.key === 'f')
+  const refKnob = exp.params.find((k) => k.key === 'z0' || k.key === 'z0line' || k.key === 'RS')
 
   // A knob is a number, a choice among named positions, or a two-position
   // toggle. The first is a NumField and the other two are segmented buttons,
@@ -217,6 +224,18 @@ export default function App({ initialId = FIRST, initialView = null }) {
           <span className="flow-node is-name" title={exp.name}>
             {exp.name}
           </span>
+          {freqKnob ? (
+            <span className="flow-node" data-role="frequency">
+              {num(params[freqKnob.key], freqKnob.unit)}
+              <em>{freqKnob.label}</em>
+            </span>
+          ) : null}
+          {refKnob ? (
+            <span className="flow-node" data-role="reference">
+              {num(params[refKnob.key], refKnob.unit)}
+              <em>{refKnob.label}</em>
+            </span>
+          ) : null}
           <span className="flow-arrow" aria-hidden="true">
             →
           </span>

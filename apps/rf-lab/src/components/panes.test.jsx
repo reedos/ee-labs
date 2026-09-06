@@ -55,6 +55,21 @@ describe('the whole shell mounts, for every experiment in every one of its views
       }
     })
   }
+
+  it('the topbar carries the frequency and the reference the headline was read at', () => {
+    // `RF_LAB_PLAN.md` §4.1. Every experiment measures against a reference
+    // impedance, so every one of them shows which. An experiment with no
+    // frequency knob shows no frequency, because it has none to show.
+    for (const exp of EXPERIMENTS) {
+      const out = html(<App initialId={exp.id} />)
+      const hasF = exp.params.some((k) => k.key === 'f')
+      expect(out.includes('data-role="frequency"'), `${exp.id} frequency`).toBe(hasF)
+      expect(out, `${exp.id} shows no reference`).toContain('data-role="reference"')
+      const ref = exp.params.find((k) => k.key === 'z0' || k.key === 'z0line' || k.key === 'RS')
+      expect(ref, `${exp.id} has no reference knob`).toBeDefined()
+      expect(out, `${exp.id} names its reference`).toContain(ref.label)
+    }
+  })
 })
 
 describe('the line and the sweep say what they are drawing', () => {
