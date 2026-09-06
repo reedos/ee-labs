@@ -1,7 +1,7 @@
 import React from 'react'
 import { Schematic } from '@ee-labs/ui'
 import CurveCanvas from './CurveCanvas.jsx'
-import { numbersFor, schematicFor } from '../view.js'
+import { numbersFor, schematicFor, stepResolution } from '../view.js'
 import { db, dbm, nm, num, pct, plain, span } from '../format.js'
 
 /** Every closed form the experiment used, with the formula it came from. */
@@ -470,20 +470,19 @@ export function ModulationPane({ x }) {
  * the number under them is the difference. Past the decline threshold the
  * dashed curve is not drawn at all, which is the guard on screen.
  *
- * The resolution arithmetic REVIEW_PLAYBOOK.md §5 asks for. The two peaks
- * differ by the error over one plus the overshoot, so at the default depth of
- * five per cent that is 2.78 per cent of the drawn range, or about 4 px of the
- * 190 px the pane is tall. At thirty per cent it is 14 per cent of the range.
- * Four pixels is thin, which is why the difference is also a printed number in
- * the readouts below and not only a gap between two curves.
+ * The resolution arithmetic REVIEW_PLAYBOOK.md §5 asks for lives in
+ * `stepResolution`, which this pane draws from and `panes.test.jsx` measures.
+ * At the default depth of five per cent the two peaks stand 2.701 per cent of
+ * the drawn range apart, which is 3.96 px of the 190 px the pane is tall. At
+ * thirty per cent it is 12.37 per cent, or 18.1 px. Four pixels is thin, which
+ * is why the difference is also a printed number in the readouts below and not
+ * only a gap between two curves.
  */
 export function StepPane({ x }) {
   const g = x.guard
   const step = x.step
   const t1 = step.t[step.t.length - 1]
-  const lo = Math.min(step.start, ...step.trace)
-  const hi = Math.max(step.measured, g.predicted)
-  const span = Math.max(hi - lo, Number.MIN_VALUE)
+  const { lo, span } = stepResolution(x)
   const px = (t) => (100 * t) / t1
   const py = (v) => 62 - (54 * (v - lo)) / span
   const measured = step.t.map((t, k) => `${px(t)},${py(step.trace[k])}`).join(' ')

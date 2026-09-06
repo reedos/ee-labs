@@ -250,7 +250,7 @@ smallSignal(spec, current)
   //   overshoot, b: [...], a: [...], wrText, frText }
 modulationAt(sm, f)             // |H| against its low-frequency value
 
-DEPTH_WARN     // 0.05, and the measured error at it is 5.2639 %
+DEPTH_WARN     // 0.05, and the measured error at it is 5.2638 %
 DEPTH_DECLINE  // 0.30, and the measured error at it is 26.760 %
 stepOvershoot(spec, current, depth)
   // { error, predicted, measured, rise, t[], trace[], predict(t), dt, steps }
@@ -272,7 +272,7 @@ cancellation of two equal numbers rather than a measurement.
 
 Test: `rate.test.js`. Thirty-three cases. §4.3's parameters give
 `N_th = 1.6713e24 m⁻³` and `I_th = 13.389 mA`. At `2 I_th` the photon density is
-4.9792e20 m⁻³, the relaxation frequency is 3.9844 GHz and the damping ratio is
+4.9793e20 m⁻³, the relaxation frequency is 3.9844 GHz and the damping ratio is
 0.034848. The peak is 23.141 dB and the 3 dB bandwidth is 6.1855 GHz. Every one
 is recomputed from the six parameters. Invariants 4, 6, 7 and 8 are each named
 beside the test that measures them, fuzzed over two hundred random lasers.
@@ -405,9 +405,9 @@ from the parameters, never constants typed in.
 | --- | --- |
 | 1, Group A | 0.79990 eV, 0.94644 eV and 1.4586 eV. 7.8 × 10¹⁵ photons a second. 1.0011 µA flat at four biases, and 53.557 µA at −0.35574 V when the bias runs out. 1.0001 A/W, 0.54846 A/W, 0.64524 A/W, and 1107.0 nm. 1.0000 nA, 2.0001 nA, 0.99987 nW. 0.17455 pF, 911.80 MHz, 7.8540 nW, and 7.1613 m²/s at every diameter |
 | 1, Group E | 16.000 dB, 28.000 dB, 160.00 dB, 8.0000 dB and −16.000 dBm. 1360.0 ps, 136.00 ps, 680.00 ps, 160.00 ps and −21.683 ps²/km. 0.18382 Gbit/s, 1.8382 Gbit/s, 0.36765 Gbit/s and 14.706 Gbit/s km. 0.12461, 7.1582°, 9.5224 µm, 2.2731, 23.028 and 265 modes. 18.400 dB, −21.400 dBm, 6.600 dB, 98.000 km and 1.4706 km |
-| 2, Group F | 142.76 GHz, 1.1440 nm, 2.5245, 56.550 GHz, 29.804, 4.7899 GHz, 312.58, 45.977 dB and 42.827 GHz. 0.80139 nm, 4.3821 THz, 43 channels, 87 and 21 |
-| 3, Group C | 18.778 mA, 1.2231 V, 30.182 mA, 1.2476 V, 8.7749 mA, 13.080 % and 7.6011 %. 3.0041 mW, 1.7458 mW, 3.1996 mW, 6.3992 mW, 0.39995 mW/mA, 7.9990 mW and 0.29173 mW/mA. 31.831 MHz, 159.15 MHz, 7.9577 MHz, 20 dB, 6.0203 dB and −3.0103 dB. 13.389 mA, 0.31996 mW/mA, 4.3052 mW, 2.1368 mW, 0.0079990 mW, 0.47994 mW/mA, 0.0015998 mW/mA and 200.00. 58.779 per cm, 1.9862 ps, 22.162 ps, 8.4929 mA, 1.0141 ps, 18.544 mA, 9.8034 mA and 142.76 GHz |
-| 4, Group D | `N_th = 1.6713e24 m⁻³`, `I_th = 13.389 mA`, `S = 4.9792e20 m⁻³`. 1.6713e33, 8.3565e32, 8.3564e32, 2.5069e32 and 1.2483e24 as term values. 9.9586e20, 11.238 mA and 21.399 mA. 3.9844 GHz, 0.034848, 23.141 dB, 6.1855 GHz, 5.6348 GHz, 7.9688 GHz, 19.230 dB, 2.5252 GHz, 1.5779 and 1.7448 per ns. The error at 1, 5, 10, 30 and 60 per cent depth: 1.0853 %, 5.2639 %, 10.152 %, 26.760 % and 45.597 % |
+| 2, Group F | 142.76 GHz, 1.1440 nm, 2.5245, 56.549 GHz, 29.804, 4.7899 GHz, 312.58, 45.977 dB and 42.827 GHz. 0.80139 nm, 4.3821 THz, 43 channels, 87 and 21 |
+| 3, Group C | 18.778 mA, 1.2231 V, 30.182 mA, 1.2476 V, 8.7749 mA, 13.080 % and 7.6012 %. 3.0041 mW, 1.7458 mW, 3.1996 mW, 6.3992 mW, 0.39995 mW/mA, 7.9990 mW and 0.29173 mW/mA. 31.831 MHz, 159.15 MHz, 7.9577 MHz, 20 dB, 6.0203 dB and −3.0103 dB. 13.389 mA, 0.31996 mW/mA, 4.3052 mW, 2.1368 mW, 0.0079990 mW, 0.47994 mW/mA, 0.0015998 mW/mA and 200.00. 58.779 per cm, 1.9862 ps, 22.162 ps, 8.4929 mA, 1.0141 ps, 18.544 mA, 9.8034 mA and 142.76 GHz |
+| 4, Group D | `N_th = 1.6713e24 m⁻³`, `I_th = 13.389 mA`, `S = 4.9793e20 m⁻³`. 1.6713e33, 8.3565e32, 8.3564e32, 2.5069e32 and 1.2483e24 as term values. 9.9588e20, 11.237 mA and 21.399 mA. 3.9844 GHz, 0.034848, 23.141 dB, 6.1855 GHz, 5.6348 GHz, 7.9688 GHz, 19.230 dB, 2.5252 GHz, 1.5779 and 1.7448 per ns. The error at 1, 5, 10, 30 and 60 per cent depth: 1.0853 %, 5.2638 %, 10.152 %, 26.760 % and 45.596 % |
 | 5, Group B | 0.5661 pA/√Hz, 4.0704 pA/√Hz, 51.704 µA. 575.64 nA, 128.72 nA, 40.704 nA. −31.122 dBm, −34.617 dBm, −58.923 dBm and the 27.8 dB gap |
 
 `scripts/pins.mjs` computes every figure in the first five rows and prints it

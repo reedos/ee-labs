@@ -327,6 +327,24 @@ function rateRows(x, p) {
 /** The five depths the plan names, which D4 measures the linearisation's error at. */
 export const GUARD_DEPTHS = [0.01, 0.05, 0.1, 0.3, 0.6]
 
+/**
+ * The step pane's own resolution arithmetic, which `REVIEW_PLAYBOOK.md` §5 asks
+ * for behind every visual claim.
+ *
+ * The pane's whole message is the gap between the peak the pair reaches and the
+ * peak the linearisation predicted, so how large that gap is against the range
+ * the two curves are drawn over decides whether the picture carries it. The
+ * pane draws from this, and `panes.test.jsx` measures it, so the number in the
+ * comment cannot drift from the number on screen.
+ */
+export function stepResolution(x) {
+  const step = x.step
+  const lo = Math.min(step.start, ...step.trace)
+  const hi = Math.max(step.measured, x.guard.predicted)
+  const span = Math.max(hi - lo, Number.MIN_VALUE)
+  return { lo, hi, span, gap: Math.abs(step.measured - x.guard.predicted), fraction: Math.abs(step.measured - x.guard.predicted) / span }
+}
+
 /** A rate of density, per cubic metre a second, which is what every term of the pair is. */
 const rate = (v) => plain(v) + ' m⁻³ s⁻¹'
 

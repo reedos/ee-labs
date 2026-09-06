@@ -268,8 +268,8 @@ term it drops is the larger of the two. The exact form is high by
 and `rate.test.js` pins the ratio.
 
 **The guard is a modulation depth.** The linear answer describes the overshoot of a
-current step to within 1.0853 % at 1 % depth, 5.2639 % at 5 % and 10.152 % at 10 %.
-At 30 % the error is 26.760 % and at 60 % it is 45.597 %. §11's rule says a warn
+current step to within 1.0853 % at 1 % depth, 5.2638 % at 5 % and 10.152 % at 10 %.
+At 30 % the error is 26.760 % and at 60 % it is 45.596 %. §11's rule says a warn
 threshold whose own measured error passes 10 % has to move. Ten per cent depth costs
 10.152 %, so the pane draws the prediction without a flag to 5 %. Past 30 % it stops
 drawing the prediction. §4.3 gives all five measured errors.
@@ -491,7 +491,7 @@ every picture fits a phone. All were computed before they were written here.
   the photon lifetime and puts the threshold at 18.766 mA. `rate.test.js` carries that
   number so the choice stays visible.
 - The relaxation oscillation at `I = 2 I_th`, which is 26.777 mA: the photon density
-  is 4.9792e20 m⁻³. The frequency is 3.9844 GHz, the damping is 1.7448 per ns and the
+  is 4.9793e20 m⁻³. The frequency is 3.9844 GHz, the damping is 1.7448 per ns and the
   damping ratio is 0.034848. The peak is 23.141 dB high at 3.9795 GHz and the 3 dB
   bandwidth is 6.1855 GHz.
 - The same at other currents: 2.8174 GHz at 1.5 `I_th`, 5.6348 GHz at 3 `I_th` and
@@ -499,8 +499,8 @@ every picture fits a phone. All were computed before they were written here.
 - The textbook form at the same four currents: 1.7856 GHz, 2.5252 GHz, 3.5711 GHz and
   5.0503 GHz. The exact form is 1.5779 times each of them, at every current.
 - The linearisation's guard, measured against a numerically integrated step at
-  `2 I_th`. The overshoot error is 1.0853 % at 1 % modulation depth, 5.2639 % at 5 %,
-  10.152 % at 10 %, 26.760 % at 30 % and 45.597 % at 60 %. The warn threshold is 5 %
+  `2 I_th`. The overshoot error is 1.0853 % at 1 % modulation depth, 5.2638 % at 5 %,
+  10.152 % at 10 %, 26.760 % at 30 % and 45.596 % at 60 %. The warn threshold is 5 %
   and the decline threshold is 30 %.
 - The junction both devices are, at 2.5 V through 68 Ω with `I_S = 1 pA` and `n = 2`:
   18.778 mA at a forward voltage of 1.2231 V. At 1.8 V it is 9.0396 mA and at 3.3 V it
@@ -637,7 +637,7 @@ comparison between shot and thermal noise, per Decision 5.
 - **D2 · The steady state, exactly.** Setting both derivatives to zero gives
   `N_th = N_tr + 1/(Γ g_0 τ_p) = 1.6713e24 m⁻³` and `I_th = 13.389 mA`. Above
   threshold the photon density is `Γ τ_p (I − I_th)/(q V)`, which at `2 I_th` is
-  4.9792e20 m⁻³. Nothing here is approximated. Measured: both densities and the
+  4.9793e20 m⁻³. Nothing here is approximated. Measured: both densities and the
   threshold, substituted back into the equations, and the threshold at three
   confinement factors and three transparency densities.
 - **D3 · The relaxation oscillation.** Linearise about the steady state and the pair
@@ -647,7 +647,7 @@ comparison between shot and thermal noise, per Decision 5.
   prints both. Measured: `f_r` at four currents, both forms, the peak height, and the
   bandwidth.
 - **D4 · Where the linearisation stops.** Step the current and compare the measured
-  overshoot with the linear prediction. At 5 % modulation depth the error is 5.2639 %,
+  overshoot with the linear prediction. At 5 % modulation depth the error is 5.2638 %,
   at 10 % it is 10.152 % and at 30 % it is 26.760 %. The pane draws the prediction
   without a flag to 5 %, as an estimate to 30 %, and not at all past that. The
   large-signal solution in time is declined, with the reason. Measured: the error at
@@ -734,7 +734,7 @@ comparison between shot and thermal noise, per Decision 5.
   fibre with zero dispersion.
 - **Experiments**: every number in §5 pinned, as every other lab pins its notes. The
   detector pins are 0.79990 eV, 1.00013 A/W, 1107.0 nm, 0.5661 pA/√Hz and 51.704 µA.
-  The source pins are 31.831 MHz, 13.351 mA, 0.31996 mW/mA, 2.5165 GHz and 19.132 dB.
+  The source pins are 31.831 MHz, 13.389 mA, 0.31996 mW/mA, 3.9844 GHz and 23.141 dB.
   The fibre and cavity pins are 16.000 dB, 1360.0 ps, 14.706 Gbit/s km per nm,
   0.12461, 142.76 GHz and 6.600 dB.
 - **The map's promises**: a test walks every experiment's `why` and every
@@ -860,7 +860,7 @@ the director decides which.
   invariant 8 pins that error at both thresholds, and the threshold moves if the
   measured error at it exceeds 10 %. That rule has already moved one. The draft put the
   warn threshold at 10 % depth, the measured error there is 10.152 %, and the threshold
-  is now 5 % where the error is 5.2639 %.
+  is now 5 % where the error is 5.2638 %.
 - **Two unbuilt dependencies.** The Electronics Lab's Group O and the Applied Analog
   Lab's front end both feed Group B. Mitigation: §9 puts Group B in phase 4, and
   Decision 5 keeps the group at four experiments that need only the densities.

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { EXPERIMENTS, byId, defaultsOf } from '../experiments.js'
+import { stepResolution } from '../view.js'
 import { analyse } from '../math.js'
 import { CavityPane, CurvePane, EquationsPane, LinkPane, ModulationPane, NumbersPane, PulsePane, SchematicPane, SpectrumPane, StepPane } from './panes.jsx'
 
@@ -166,6 +167,22 @@ describe('what a pane puts on screen', () => {
     const c = drawn(declined)
     expect(c).not.toMatch(/step-predicted/)
     expect(c).toMatch(/stops drawing it/)
+  })
+
+  it('the two curves on the step pane stand far enough apart to be read', () => {
+    // REVIEW_PLAYBOOK.md §5. The pane exists to show one gap, so the gap is
+    // measured against the range it is drawn over rather than assumed visible.
+    // The pane is 190 px tall and the plot area is 54 of its 70 viewBox units.
+    const tall = (54 / 70) * 190
+    const shallow = stepResolution(at('d4', { depth: 0.05 }).x)
+    const deep = stepResolution(at('d4', { depth: 0.3 }).x)
+    expect(100 * shallow.fraction).toBeCloseTo(2.701, 2)
+    expect(100 * deep.fraction).toBeCloseTo(12.37, 1)
+    expect(tall * shallow.fraction).toBeCloseTo(3.96, 1)
+    expect(tall * deep.fraction).toBeCloseTo(18.1, 0)
+    // Four pixels is thin, so the difference is a printed number too.
+    const { exp, p, x } = at('d4')
+    expect(html(<StepPane exp={exp} x={x} p={p} />)).toMatch(/step-error/)
   })
 
   it('the step pane carries the large-signal refusal, because the refusal is content', () => {
