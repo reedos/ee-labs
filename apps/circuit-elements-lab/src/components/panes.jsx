@@ -4,6 +4,10 @@ import { cellLatex, fmtCell } from '@ee-labs/network'
 import { acTable, powerLedger } from '../math.js'
 import { num, rate, rateAt, rootRate, rootRateAt, sharedStep, scaleOf } from '../format.js'
 import { Term, DefCard } from './Prose.jsx'
+import { NotationGuide } from './NotationGuide.jsx'
+import { WorkedSolution } from './WorkedSolution.jsx'
+import { WorkedState } from './WorkedDynamics.jsx'
+import { WorkedRefusal } from './WorkedRefusal.jsx'
 
 // The lower pane's views. Each takes the analysis from math.js `analyse` and
 // shows one thing about it. None of them computes physics: every number here
@@ -96,7 +100,7 @@ const unknownLatex = (u) => (u.kind === 'v' ? `v_{${u.node}}` : `i_{${u.id}}`)
  * cell in letters and in numbers so it is plain where each entry came from;
  * and a legend tying each letter to a part on the schematic.
  */
-export function EquationsPane({ eq, solved, primer = false, fold = false, contradiction = [], onHover = null }) {
+export function EquationsPane({ eq, solved, sol = null, primer = false, fold = false, contradiction = [], onHover = null }) {
   const { symbolic } = eq
   // Pointing at a row lights the node or element it is about on the schematic.
   const hover = (what) => (onHover ? { onMouseEnter: () => onHover(what), onMouseLeave: () => onHover(null) } : {})
@@ -249,6 +253,8 @@ export function EquationsPane({ eq, solved, primer = false, fold = false, contra
           </ul>
         </>
       ) : null}
+      {solved && sol ? <WorkedSolution eq={eq} sol={sol} /> : null}
+      {!solved ? <WorkedRefusal eq={eq} /> : null}
       </Wrap>
     </div>
   )
@@ -389,7 +395,7 @@ export function TheveninPane({ th, port, named = true }) {
         <thead>
           <tr>
             <th>method</th>
-            <th>R_th</th>
+            <th className="num">R_th</th>
             <th aria-label="agreement" />
           </tr>
         </thead>
@@ -451,10 +457,10 @@ export function SuperpositionPane({ sp }) {
           <tr>
             <th>node</th>
             {cols.map((c) => (
-              <th key={c}>{c} alone</th>
+              <th className="num" key={c}>{c} alone</th>
             ))}
-            <th>sum</th>
-            <th>full</th>
+            <th className="num">sum</th>
+            <th className="num">full</th>
             <th aria-label="agreement" />
           </tr>
         </thead>
@@ -482,10 +488,10 @@ export function SuperpositionPane({ sp }) {
           <tr>
             <th>element</th>
             {cols.map((c) => (
-              <th key={c}>{c} alone</th>
+              <th className="num" key={c}>{c} alone</th>
             ))}
-            <th>sum of parts</th>
-            <th>full</th>
+            <th className="num">sum of parts</th>
+            <th className="num">full</th>
           </tr>
         </thead>
         <tbody>
@@ -558,6 +564,7 @@ export function StatePane({ x }) {
         ]
   return (
     <div className="state" data-role="state" data-face={s.face || (s.n === 1 ? 'first-order' : '')}>
+      <NotationGuide phasor={!!x.ac} />
       <div className="eq-matrix">
         <Formula>{eq}</Formula>
         <p className="hint">
@@ -635,6 +642,7 @@ export function StatePane({ x }) {
         {before.assumed.length ? `; ${before.assumed.join(', ')} had no DC path and is taken as uncharged` : ''}. A state cannot
         jump, so x(0⁺) = x(0⁻); everything else may.
       </p>
+      <WorkedState x={x} />
     </div>
   )
 }
@@ -663,13 +671,13 @@ export function AcPowerPane({ x }) {
         <thead>
           <tr>
             <th>element</th>
-            <th>|V|</th>
-            <th>|I|</th>
-            <th>φ = ∠V − ∠I</th>
-            <th>P</th>
-            <th>Q</th>
-            <th>|S|</th>
-            <th>pf</th>
+            <th className="num">|V|</th>
+            <th className="num">|I|</th>
+            <th className="num">φ = ∠V − ∠I</th>
+            <th className="num">P</th>
+            <th className="num">Q</th>
+            <th className="num">|S|</th>
+            <th className="num">pf</th>
           </tr>
         </thead>
         <tbody>

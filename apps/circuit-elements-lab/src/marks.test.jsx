@@ -85,7 +85,7 @@ describe('every mark is the engine’s number', () => {
       expect(peak.x).toBeCloseTo(first.t, 9)
       expect(peak.y).toBeCloseTo(first.y, 9)
       const pct = ((peak.y - p.E) / p.E) * 100
-      expect(peak.label).toBe(`first peak: ${pct.toFixed(1)} % over E`)
+      expect(peak.label).toBe(`first peak: ${pct.toFixed(1)} % over V₁`)
     }
     const heavy = at('g4', { R1: 500 })
     expect(marksFor(heavy.exp, heavy.p, heavy.x, 'scope').map((m) => m.kind)).toEqual(['level'])

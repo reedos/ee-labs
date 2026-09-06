@@ -42,7 +42,7 @@ export const LESSONS_L = {
       'one part in it.',
     seeReads: [
       ['v.out', 9.9990001],
-      [T('E1'), 10000],
+      [T('V2'), 10000],
     ],
     try: [
       {
@@ -50,7 +50,7 @@ export const LESSONS_L = {
         set: { A0: 1e3 },
         reads: [
           ['v.out', 9.9009901],
-          [T('E1'), 100],
+          [T('V2'), 100],
         ],
       },
       {
@@ -58,7 +58,7 @@ export const LESSONS_L = {
         set: { Rf: 90000 },
         reads: [
           ['v.out', 90.917265],
-          [T('E1'), 1098.9011],
+          [T('V2'), 1098.9011],
         ],
       },
       {
@@ -66,7 +66,7 @@ export const LESSONS_L = {
         set: { E: 0.5 },
         reads: [
           ['v.out', 4.9995],
-          [T('E1'), 10000],
+          [T('V2'), 10000],
         ],
       },
     ],
@@ -104,7 +104,7 @@ export const LESSONS_L = {
         set: { Rf: 1000 },
         reads: [
           ['v.out', 1.99996],
-          [T('E1'), 50000],
+          [T('V2'), 50000],
         ],
       },
       {
@@ -226,7 +226,7 @@ export const LESSONS_L = {
         set: { A0: 29 },
         reads: [
           ['pole.1.hz', 3898.5],
-          [pmOf('Efb'), 0, 0.02],
+          [pmOf('Vfb'), 0, 0.02],
         ],
       },
       {

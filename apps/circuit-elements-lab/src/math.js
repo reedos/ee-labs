@@ -562,10 +562,10 @@ const ENTRIES = {
     return {
       blocks: [
         T('The controlled source copies A times its control voltage to its output whatever is connected — and pays for it with power the symbol does not show.'),
-        F('v_{out} = A\\,v_{in}, \\qquad p_{E_1} = -\\frac{(A V_1)^2}{R_L}'),
+        F('v_{out} = A\\,v_{in}, \\qquad p_{V_2} = -\\frac{(A V_1)^2}{R_L}'),
         C([
           row('v_out', vout, s.v.out, 'V'),
-          row('p_E1 (delivered)', -(vout * vout) / p.RL, s.p.E1, 'W'),
+          row('p_V2 (delivered)', -(vout * vout) / p.RL, s.p.V2, 'W'),
           row('p_V1 (input source)', -(p.E * p.E) / p.Rin, s.p.V1, 'W'),
         ]),
         V([{ label: 'power gain', value: (vout * vout) / p.RL / ((p.E * p.E) / p.Rin), unit: '×' }]),

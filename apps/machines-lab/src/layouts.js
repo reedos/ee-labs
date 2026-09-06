@@ -12,8 +12,8 @@ const pick = (net, ids) => ids.map((id) => net.elements.find((e) => e.id === id)
 /** The DC machine's armature loop. The shaft is drawn beside it, not in it. */
 export function dcDraw(x) {
   const net = x.net
-  const elements = pick(net, ['Va', 'Ra', 'La', 'Eb']).map((e) =>
-    e.id === 'Eb' ? { ...e, label: 'E = k·ω' } : e,
+  const elements = pick(net, ['Va', 'Ra', 'La', 'Vemf']).map((e) =>
+    e.id === 'Vemf' ? { ...e, label: 'V_emf = k·ω' } : e,
   )
   return {
     elements,
@@ -31,7 +31,7 @@ export function dcDraw(x) {
         { el: 'La', x: 230, y: 40, dir: 'h' },
         { wire: [250, 40, 340, 40] },
         { wire: [340, 40, 340, 70] },
-        { el: 'Eb', x: 340, y: 90, dir: 'v' },
+        { el: 'Vemf', x: 340, y: 90, dir: 'v' },
         { wire: [340, 110, 340, 140] },
         { wire: [50, 140, 340, 140] },
         { gnd: [50, 140] },

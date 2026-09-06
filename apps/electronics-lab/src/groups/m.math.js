@@ -101,7 +101,7 @@ export const MATH_M = {
   },
 
   m3(p, x) {
-    const Ttf = loopTF(x, 'Efb')
+    const Ttf = loopTF(x, 'Vfb')
     const m = loopMargins(Ttf)
     const tp = polesOf(Ttf).sort((a, b) => a.hz - b.hz)
     const tz = zerosOf(Ttf).sort((a, b) => a.hz - b.hz)

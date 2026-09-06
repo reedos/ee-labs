@@ -181,7 +181,7 @@ const BOTR = 155
  * `extra` legs go between the amplifier and the divider, which is where the
  * pole of L3 and the ladder of L5 hang.
  */
-function ampFrame({ amp = 'E1', caption, divider = true, outAt = 430, tap = 'n', extras = [], captionY = 186 }) {
+function ampFrame({ amp = 'V2', caption, divider = true, outAt = 430, tap = 'n', extras = [], captionY = 186 }) {
   const items = [
     ...vleg('V1', 55, TOPR, BOTR),
     wire(55, TOPR, 120, TOPR),
@@ -211,7 +211,7 @@ function ampFrame({ amp = 'E1', caption, divider = true, outAt = 430, tap = 'n',
 const loopAmp = (p) => ({
   elements: [
     { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E, small: true },
-    { type: 'VCVS', id: 'E1', nodes: ['out', 'gnd'], ctrl: ['in', 'n'], gain: p.A0 },
+    { type: 'VCVS', id: 'V2', nodes: ['out', 'gnd'], ctrl: ['in', 'n'], gain: p.A0 },
     { type: 'R', id: 'Rf', nodes: ['out', 'n'], value: p.Rf },
     { type: 'R', id: 'Rg', nodes: ['n', 'gnd'], value: p.Rg },
   ],
@@ -227,7 +227,7 @@ const pacedAmp = (p) => {
       { type: 'VCCS', id: 'G1', nodes: ['gnd', 'x'], ctrl: ['in', 'n'], gain: g },
       { type: 'R', id: 'Rp', nodes: ['x', 'gnd'], value: rint },
       { type: 'C', id: 'Cp', nodes: ['x', 'gnd'], value: g / (2 * Math.PI * p.ft) },
-      { type: 'VCVS', id: 'E1', nodes: ['out', 'gnd'], ctrl: ['x', 'gnd'], gain: 1 },
+      { type: 'VCVS', id: 'V2', nodes: ['out', 'gnd'], ctrl: ['x', 'gnd'], gain: 1 },
       { type: 'R', id: 'Rf', nodes: ['out', 'n'], value: p.Rf },
       { type: 'R', id: 'Rg', nodes: ['n', 'gnd'], value: p.Rg },
     ],
@@ -239,7 +239,7 @@ const portAmp = (p) => ({
   elements: [
     { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E, small: true },
     { type: 'R', id: 'Ri', nodes: ['in', 'n'], value: p.Ri },
-    { type: 'VCVS', id: 'E1', nodes: ['x', 'gnd'], ctrl: ['in', 'n'], gain: p.A0 },
+    { type: 'VCVS', id: 'V2', nodes: ['x', 'gnd'], ctrl: ['in', 'n'], gain: p.A0 },
     { type: 'R', id: 'Ro', nodes: ['x', 'out'], value: p.Ro },
     { type: 'R', id: 'Rf', nodes: ['out', 'n'], value: p.Rf },
     { type: 'R', id: 'Rg', nodes: ['n', 'gnd'], value: p.Rg },
@@ -251,14 +251,14 @@ const portAmp = (p) => ({
 const ladder = (p) => ({
   elements: [
     { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: 0, wave: { kind: 'sine', amp: 0.01, freq: 100 }, small: true },
-    { type: 'VCVS', id: 'E1', nodes: ['a', 'gnd'], ctrl: ['in', 'n'], gain: p.A0 },
+    { type: 'VCVS', id: 'V2', nodes: ['a', 'gnd'], ctrl: ['in', 'n'], gain: p.A0 },
     { type: 'R', id: 'R1', nodes: ['a', 'b'], value: p.R },
     { type: 'C', id: 'C1', nodes: ['b', 'gnd'], value: p.C },
     { type: 'R', id: 'R2', nodes: ['b', 'c'], value: p.R },
     { type: 'C', id: 'C2', nodes: ['c', 'gnd'], value: p.C },
     { type: 'R', id: 'R3', nodes: ['c', 'out'], value: p.R },
     { type: 'C', id: 'C3', nodes: ['out', 'gnd'], value: p.C3 },
-    { type: 'VCVS', id: 'Efb', nodes: ['n', 'gnd'], ctrl: ['out', 'gnd'], gain: 1 },
+    { type: 'VCVS', id: 'Vfb', nodes: ['n', 'gnd'], ctrl: ['out', 'gnd'], gain: 1 },
   ],
 })
 
@@ -293,7 +293,7 @@ function pacedLayout() {
       ...vleg('Cp', 360, 45, 155),
       wire(170, 45, 360, 45),
       wire(170, 155, 460, 155),
-      ...vleg('E1', 460, 45, 155),
+      ...vleg('V2', 460, 45, 155),
       gnd(410, 155),
       wire(460, 45, 545, 45),
       node('out', 545, 45, 't'),
@@ -318,7 +318,7 @@ function portLayout() {
       ...hspan('Ri', 120, 45, 55, 185),
       node('n', 185, 45, 't'),
       wire(185, 45, 185, 225),
-      ...vleg('E1', 280, 45, 155),
+      ...vleg('V2', 280, 45, 155),
       node('x', 280, 45, 'l'),
       gnd(280, 155),
       { text: 'A₀ · (v_in − v_n)', x: 280, y: 186 },
@@ -346,7 +346,7 @@ function ladderLayout() {
       wire(55, 155, 110, 155),
       gnd(84, 155),
       node('in', 55, 45, 't'),
-      ...vleg('E1', 150, 45, 155),
+      ...vleg('V2', 150, 45, 155),
       wire(150, 155, 545, 155),
       { text: 'A₀ · (v_in − v_n)', x: 150, y: 186 },
       node('a', 150, 45, 't'),
@@ -359,7 +359,7 @@ function ladderLayout() {
       ...hspan('R3', 410, 45, 350, 450),
       node('out', 450, 45, 't'),
       ...vleg('C3', 450, 45, 155),
-      ...vleg('Efb', 545, 45, 155),
+      ...vleg('Vfb', 545, 45, 155),
       node('n', 545, 45, 't'),
       gnd(500, 155),
       { text: 'v_out, sent back', x: 545, y: 196 },

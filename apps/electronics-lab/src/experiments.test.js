@@ -1540,11 +1540,11 @@ describe('Group L: feedback', () => {
     for (const Rf of [1000, 9000, 90000]) {
       const { x, p } = at('l1', { Rf })
       const beta = p.Rg / (Rf + p.Rg)
-      expect(rel(loopT(x, 'E1'), p.A0 * beta)).toBeLessThan(1e-9)
+      expect(rel(loopT(x, 'V2'), p.A0 * beta)).toBeLessThan(1e-9)
       expect(x.sol.v.out).toBeCloseTo((p.A0 * p.E) / (1 + p.A0 * beta), 9)
       // A∞ is the divider read backwards, d is nothing at all, and those two
       // with T give the answer the solver gives.
-      const bl = blackman(tangent(x), 'E1', { input: 'V1', output: 'out' })
+      const bl = blackman(tangent(x), 'V2', { input: 'V1', output: 'out' })
       expect(rel(bl.Ainf[0], 1 + Rf / p.Rg)).toBeLessThan(1e-9)
       expect(Math.abs(bl.d[0])).toBeLessThan(1e-12)
       expect(bl.closed[0] * p.E).toBeCloseTo(x.sol.v.out, 9)
@@ -1589,7 +1589,7 @@ describe('Group L: feedback', () => {
     expect(rel(rOutOf(dead), 1 / (1 / p.Ro + 1 / (p.Rf + 1 / (1 / p.Rg + 1 / p.Ri))))).toBeLessThan(1e-9)
     for (const A0 of [1, 1e3, 1e5]) {
       const { x } = at('l4', { A0 })
-      const T = loopT(x, 'E1')
+      const T = loopT(x, 'V2')
       expect(rel(rInOf(x), rInOf(dead) * (1 + T))).toBeLessThan(1e-6)
       expect(rel(rOutOf(x), rOutOf(dead) / (1 + T))).toBeLessThan(1e-6)
     }
@@ -1605,7 +1605,7 @@ describe('Group L: feedback', () => {
     expect(pair.length).toBe(2)
     expect(rel(pair[0].hz, f0)).toBeLessThan(1e-6)
     expect(Math.abs(pair[0].re) / (2 * Math.PI * f0)).toBeLessThan(1e-6)
-    expect(Math.abs(loopMargins(loopTF(x, 'Efb')).pm)).toBeLessThan(0.02)
+    expect(Math.abs(loopMargins(loopTF(x, 'Vfb')).pm)).toBeLessThan(0.02)
     // Only the constant term of D(s) + A₀ carries the gain, so the three
     // poles keep the ladder's own sum however hard the loop is driven.
     const sum = (y) => y.poles.reduce((s, q) => s + q.re, 0)
@@ -1683,7 +1683,7 @@ describe('Group M: inside the op-amp', () => {
   it('M3: the margin is what the second pole and the zero leave at the crossover', () => {
     const deg = (r) => (Math.atan(r) * 180) / Math.PI
     const partsOf = (x) => {
-      const tf = loopTF(x, 'Efb')
+      const tf = loopTF(x, 'Vfb')
       const m = loopMargins(tf)
       const p2 = polesOf(tf).sort((a, b) => a.hz - b.hz)[1]
       const z1 = zerosOf(tf).sort((a, b) => a.hz - b.hz)[0]
@@ -1711,7 +1711,7 @@ describe('Group M: inside the op-amp', () => {
     expect(ringOf(at('m3', { cc: 10 * defaultsOf('m3').cc }).x.poles).zeta).toBeNull()
     // A heavier load brings the second pole down onto the crossover, and the
     // margin goes with it.
-    expect(loopMargins(loopTF(at('m3', { cl: 3.3 * defaultsOf('m3').cl }).x, 'Efb')).pm).toBeLessThan(partsOf(at('m3').x).m.pm)
+    expect(loopMargins(loopTF(at('m3', { cl: 3.3 * defaultsOf('m3').cl }).x, 'Vfb')).pm).toBeLessThan(partsOf(at('m3').x).m.pm)
   })
 
   it('M4: the ramp is the steered current into the capacitor, and nothing else', () => {

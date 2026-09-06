@@ -742,7 +742,31 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
    zero. */
 /* minmax(0, 1fr): a wide equation row must not widen the track and push the
    prose beside it off a phone screen — the row scrolls inside instead. */
-.equations { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 4px 0; overflow-x: auto; }
+/* Keep the full equation height in the shared view-body scroll area. Otherwise
+   overflow-x also enables vertical scrolling and flex can collapse this pane. */
+.equations { flex-shrink: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 4px 0; overflow-x: auto; }
+.solution-routes { flex-shrink: 0; margin: 10px 0; padding: 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; line-height: 1.55; }
+.solution-routes h3 { margin: 0 0 6px; font-size: 14px; }
+.solution-routes p { margin: 6px 0; }
+.solution-route-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.solution-route { min-width: 0; padding: 10px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; }
+.solution-route[data-current='true'] { border-color: var(--accent); }
+.solution-route h4 { font-size: 12px; margin: 0; }
+.solution-route button { cursor: pointer; font: inherit; color: var(--accent); background: none; border: 1px solid var(--line); padding: 5px 8px; border-radius: 4px; margin-top: 6px; }
+.solution-route button:hover, .solution-route button:focus-visible { border-color: var(--accent); }
+.route-unavailable { display: block; color: var(--dim); font-size: 11px; margin-top: 8px; }
+.solution-routes .route-connection { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 10px; }
+@media (max-width: 900px) { .solution-route-cards { grid-template-columns: minmax(0, 1fr); } }
+.worked-solution { min-width: 0; margin-top: 18px; padding: 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); font-size: 13px; line-height: 1.65; }
+.worked-solution h3 { font-size: 15px; margin: 0 0 12px; }
+.worked-solution h4 { font-size: 13px; margin: 0 0 8px; color: var(--accent); }
+.worked-solution p { max-width: 85ch; margin: 8px 0; }
+.worked-solution > .tex, .worked-steps .tex { display: block; overflow-x: auto; padding: 6px 0; }
+.worked-solution .tex { font-size: 15px; }
+.worked-solution .katex-display { margin: 8px 0; text-align: left; }
+.worked-solution .katex-display > .katex { text-align: left; }
+.worked-steps { list-style: none; padding: 0; margin: 16px 0; }
+.worked-steps li { border-top: 1px solid var(--line); padding: 16px 0; }
 .eq-row {
   display: grid;
   grid-template-columns: minmax(80px, auto) 1fr;
@@ -814,6 +838,19 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
    margin); a table cell has to win that back or the row falls into a stack. */
 .table td.num, .table th.num { display: table-cell; margin: 0; text-align: right; }
 .table td.num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.table td.num, .table th.num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.table { align-self: start; }
+.table tbody tr:nth-child(even), .math-check tbody tr:nth-child(even), .math-values tbody tr:nth-child(even) { background: var(--panel); }
+.math-check thead th:first-child { text-align: left; }
+.math-check th, .math-check td, .math-values th, .math-values td { padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.math-check tbody td, .math-values td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.math-body { overflow-x: auto; }
+.notation-guide { margin: 8px 0; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; line-height: 1.6; min-width: 0; }
+.notation-guide summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.notation-guide p { margin: 10px 0; }
+.notation-guide dt { font-weight: 600; margin-top: 10px; }
+.notation-guide dd { margin: 2px 0 10px; }
+.notation-guide > .tex { display: block; overflow-x: auto; }
 .table td.agree { color: var(--accent); }
 .table td.disagree { color: var(--warn); }
 .table caption { text-align: left; color: var(--dim); font-size: 11px; padding: 4px 8px; }

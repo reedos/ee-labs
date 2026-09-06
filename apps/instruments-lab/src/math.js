@@ -613,7 +613,7 @@ const CLAIMS = {
   ammeter: (exp, p, x) => {
     const truth = p.E / p.RL
     return [
-      F('i_{read} = \\frac{E}{R_L + R_{sh}}, \\qquad v_{burden} = i_{read}\\,R_{sh}', 'the shunt is in the circuit, so the circuit knows about it'),
+      F('i_{read} = \\frac{V_1}{R_L + R_{sh}}, \\qquad v_{burden} = i_{read}\\,R_{sh}', 'the shunt is in the circuit, so the circuit knows about it'),
       C([
         row('the true current', truth, p.E / p.RL, 'A'),
         row('the reading', p.E / (p.RL + p.Rsh), x.sol.i.RL, 'A', 1e-9),

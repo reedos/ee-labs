@@ -31,7 +31,7 @@ export function readQuantity(x, path) {
       if (key === 'rpm') return RAD_TO_RPM(x.sol ? x.sol.v.wm : x.op.omega)
       if (key === 'ia') return x.sol ? x.sol.i.Ra : x.op.ia
       if (key === 'torque') return x.spec.k * (x.sol ? x.sol.i.Ra : x.op.ia)
-      if (key === 'emf') return x.sol ? x.sol.volt.Eb : x.op.emf
+      if (key === 'emf') return x.sol ? x.sol.volt.Vemf : x.op.emf
       if (key === 'ra') return x.spec.Ra * (x.sol ? x.sol.i.Ra : x.op.ia)
       if (key === 'peak') return x.peak
       if (key === 'peakAt') return x.peakAt

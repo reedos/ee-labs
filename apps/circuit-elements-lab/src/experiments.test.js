@@ -161,7 +161,7 @@ describe('every experiment', () => {
 
   it('exposes drawables with the fields the schematic labels need', () => {
     const d = drawables(byId.e1.net(defaultsOf('e1')))
-    expect(d.find((q) => q.id === 'E1').gain).toBe(10)
+    expect(d.find((q) => q.id === 'V2').gain).toBe(10)
     expect(d.find((q) => q.id === 'RL').value).toBe(1000)
   })
 
@@ -629,8 +629,8 @@ describe('the notes, sentence by sentence', () => {
     const { p, x } = at('e1')
     expect(x.sol.v.out).toBeCloseTo(p.A * p.E, 12)
     expect(at('e1', { RL: 10 }).x.sol.v.out).toBeCloseTo(p.A * p.E, 12)
-    expect(x.sol.p.E1).toBeLessThan(0)
-    expect(-x.sol.p.E1).toBeGreaterThan(-x.sol.p.V1 * 100)
+    expect(x.sol.p.V2).toBeLessThan(0)
+    expect(-x.sol.p.V2).toBeGreaterThan(-x.sol.p.V1 * 100)
   })
 
   it('E2: the input divider and the output divider each cost a little; the ideal recovers at the limits; power gain a resistor network cannot reach', () => {
@@ -646,7 +646,7 @@ describe('the notes, sentence by sentence', () => {
     expect(Math.abs(ideal.v.out / (p.A * p.E) - 1)).toBeLessThan(0.01)
     // Far more power into the load than the source supplies.
     expect(x.sol.p.RL).toBeGreaterThan(-x.sol.p.V1 * 1000)
-    expect(x.sol.p.E1).toBeLessThan(0)
+    expect(x.sol.p.V2).toBeLessThan(0)
     // Every circuit in the lab made of resistors and one voltage source obeys the
     // limit the note names: no node above the source, no load power above what the
     // source puts in.

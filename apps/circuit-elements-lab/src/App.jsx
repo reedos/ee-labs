@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { LabNav, NumField, ReportIssue, Schematic } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
+import { NotationGuide } from './components/NotationGuide.jsx'
 import { equations, normalize, complex as cx } from '@ee-labs/network'
 import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic, viewLabel, VIEW_LABELS } from './experiments.js'
 import { analyse, atDrive, experimentMath, netPower, refusalReason, snapNoise, turnedLabel } from './math.js'
@@ -19,6 +20,8 @@ import ScopeCanvas from './components/ScopeCanvas.jsx'
 import EnergyCanvas from './components/EnergyCanvas.jsx'
 import DampingCanvas from './components/DampingCanvas.jsx'
 import PhasorCanvas from './components/PhasorCanvas.jsx'
+import { WorkedPhasor } from './components/WorkedDynamics.jsx'
+import { SolutionRoutes } from './components/SolutionRoutes.jsx'
 import FreqCanvas from './components/FreqCanvas.jsx'
 import HandOver from './components/HandOver.jsx'
 import PlotMarks from './components/PlotMarks.jsx'
@@ -634,6 +637,7 @@ export default function App() {
                 <DefCard open={openTerm} field="why" exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
               </div>
             ) : null}
+            {x.state ? <NotationGuide phasor={!!x.ac} /> : null}
             <MathPanel entry={readable} />
             {exp.circuitLab ? <HandOver exp={exp} params={params} /> : null}
           </details>
@@ -947,6 +951,7 @@ export default function App() {
           <div className="view-body">
             <Headline exp={exp} x={x} params={params} />
             <Bridge exp={exp} view={currentView} />
+            <SolutionRoutes exp={exp} x={x} view={currentView} onChoose={setView} />
             {theoremShows(exp, currentView) ? <TheoremBlock exp={exp} x={x} params={params} elements={elements} layout={plainLayout} /> : null}
             {currentView === 'reading' && x.sol ? <Readings x={x} elements={elements} power={showsNetPower} /> : null}
             {currentView === 'iv' && x.sol ? <IVCanvas exp={exp} x={x} p={params} /> : null}
@@ -969,6 +974,7 @@ export default function App() {
             {currentView === 'state' && x.tr ? <StatePane x={x} /> : null}
             {currentView === 'phasor' && x.ac ? <PhasorCanvas exp={exp} x={x} cursor={x.cursor} onCursor={scrub} /> : null}
             {currentView === 'phasor' && x.ac ? <PlotCaption parts={caption} /> : null}
+            {currentView === 'phasor' && x.ac ? <WorkedPhasor exp={exp} x={x} /> : null}
             {(currentView === 'impedance' || currentView === 'bode') && x.freq && drive ? (
               <FreqCanvas
                 freq={x.freq}
@@ -990,6 +996,7 @@ export default function App() {
               <EquationsPane
                 eq={eq}
                 solved={!!x.sol}
+                sol={x.sol}
                 primer={primerFor(exp)}
                 fold={FOLDED_GROUPS.includes(exp.group)}
                 contradiction={exp.theorem?.kind === 'contradiction' && !x.sol ? exp.theorem.rows : []}

@@ -13,8 +13,8 @@ const rIn = (x) => portResistance(tangent(x).elements, 'inp', ['Vin'])
 const rOut = (x) => portResistance(tangent(x).elements, 'out')
 
 /** The loop of the follower, and what it leaves at the crossover. */
-const fcOf = (x) => loopMargins(loopTF(x, 'Efb')).crossover
-const pmOf = (x) => loopMargins(loopTF(x, 'Efb')).pm
+const fcOf = (x) => loopMargins(loopTF(x, 'Vfb')).crossover
+const pmOf = (x) => loopMargins(loopTF(x, 'Vfb')).pm
 
 /**
  * How far the second pole and the right-half-plane zero, counted at the
@@ -23,7 +23,7 @@ const pmOf = (x) => loopMargins(loopTF(x, 'Efb')).pm
  * and what is left over is what the poles above them cost.
  */
 const pmGap = (x) => {
-  const tf = loopTF(x, 'Efb')
+  const tf = loopTF(x, 'Vfb')
   const m = loopMargins(tf)
   const p2 = polesOf(tf).sort((a, b) => a.hz - b.hz)[1]
   const z1 = zerosOf(tf).sort((a, b) => a.hz - b.hz)[0]

@@ -427,10 +427,10 @@ export const LESSONS = {
       'A dependent source’s value is set by a voltage somewhere else. This one produces v_out = A·v_in = 5 V ' +
     'whatever load it drives. It delivers 25 mW to the load while the input source works at 25 µW, a thousand ' +
     'times less.',
-    seeReads: [['volt.E1', 5], ['p.RL', 0.025], ['p.V1', -0.000025]],
+    seeReads: [['volt.V2', 5], ['p.RL', 0.025], ['p.V1', -0.000025]],
     try: [
-      { say: 'Turn A up to 100: 50 V out, 2.5 W into the load, from the same 25 µW of input.', set: { A: 100 }, reads: [['volt.E1', 50], ['p.RL', 2.5], ['p.V1', -0.000025]] },
-      { say: 'Set A back to 10 and load it with 10 Ω: still 5 V, now 2.5 W, the source holds its voltage into any load.', set: { A: 10, RL: 10 }, reads: [['volt.E1', 5], ['p.RL', 2.5]] },
+      { say: 'Turn A up to 100: 50 V out, 2.5 W into the load, from the same 25 µW of input.', set: { A: 100 }, reads: [['volt.V2', 50], ['p.RL', 2.5], ['p.V1', -0.000025]] },
+      { say: 'Set A back to 10 and load it with 10 Ω: still 5 V, now 2.5 W, the source holds its voltage into any load.', set: { A: 10, RL: 10 }, reads: [['volt.V2', 5], ['p.RL', 2.5]] },
     ],
     why:
       'This is a voltage-controlled voltage source, the first element here that can deliver more power than it ' +
