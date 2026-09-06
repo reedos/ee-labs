@@ -119,20 +119,40 @@ export function ScopeCanvas({ data, label = 'Value', units = '', height = 260 })
       const pad = (hi - lo) * 0.1 || 1
       lo -= pad
       hi += pad
-      const area = plotArea(w, h)
+      // Sparse samples are the signal, so they are drawn as dots and the line
+      // between them is a guide. Past about 48 points a thin line reads as the
+      // envelope it is, and the caption says how many of them are drawn: the
+      // view used to cap silently at 2048 of however many were asked for.
+      const sparse = n <= 48
+      const area = captionArea(
+        ctx,
+        w,
+        h,
+        (n < data.length ? `${n} of ${data.length} samples drawn` : `${n} samples`) +
+          (sparse ? ' · dots are the samples, the line is a guide' : ''),
+      )
       const t = frameTicks(area, 0, n - 1, lo, hi)
       drawFrame(ctx, area, 0, n - 1, lo, hi, t.fmtX, t.fmtY,
         frameOpts('Sample', `${label}${units ? ` (${units})` : ''}`, { xStep: t.xStep, yStep: t.yStep }))
+      const px = (i) => area.x + (i / (n - 1)) * area.w
+      const py = (i) => area.y + area.h - ((data[i] - lo) / (hi - lo)) * area.h
       ctx.strokeStyle = COLORS.trace
       ctx.lineWidth = 1
       ctx.beginPath()
       for (let i = 0; i < n; i++) {
-        const px = area.x + (i / (n - 1)) * area.w
-        const py = area.y + area.h - ((data[i] - lo) / (hi - lo)) * area.h
-        if (i === 0) ctx.moveTo(px, py)
-        else ctx.lineTo(px, py)
+        if (i === 0) ctx.moveTo(px(i), py(i))
+        else ctx.lineTo(px(i), py(i))
       }
       ctx.stroke()
+      if (sparse) {
+        ctx.fillStyle = COLORS.trace
+        for (let i = 0; i < n; i++) {
+          ctx.beginPath()
+          ctx.arc(px(i), py(i), 2.5, 0, 2 * Math.PI)
+          ctx.fill()
+        }
+      }
+      drawCaption(ctx, area)
     },
     [data, label, units],
   )
