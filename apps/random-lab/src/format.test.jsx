@@ -59,6 +59,17 @@ describe('the readouts', () => {
     expect(out).toMatch(/95 % interval/)
   })
 
+  it('never puts an engineering prefix on a decibel or a percentage', () => {
+    // 0.9112 dB printed as "911.2 mdB" beside a lesson that says 0.911 dB, and
+    // a counted tail's half width printed as "510 m%".
+    expect(html(<Closed label="Mismatch loss" value={0.9112255} unit="dB" />)).toContain('0.9112 dB')
+    expect(html(<Closed label="Mismatch loss" value={0.9112255} unit="dB" />)).not.toMatch(/mdB/)
+    const est = { value: 0.15955, ci: [0.1545, 0.1646], level: 0.95, n: 20000 }
+    const out = html(<Estimate label="Tail counted" est={est} unit="%" scale={100} />)
+    expect(out).not.toMatch(/m%/)
+    expect(out).toMatch(/15\.9\d* %/)
+  })
+
   it('and a comparison names the gap', () => {
     const out = html(<Against label="Measured spread" measured={0.104} predicted={0.1} />)
     expect(out).toMatch(/4\.00 % apart/)

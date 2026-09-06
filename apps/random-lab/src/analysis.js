@@ -50,6 +50,9 @@ export const DEFAULTS = {
   lo: -4,
   hi: 4,
   histRepeats: 20,
+  // Where the tail marker stands, in standard deviations from the mean. The
+  // histogram shades beyond it and prints the mass it holds.
+  qx: null,
 
   // The ensemble
   runs: 200,
@@ -194,6 +197,25 @@ export function analyse(params = {}) {
       const counted = proportion(inside, x.length, { level: p.level })
       return { k, counted, closed: 1 - 2 * qFunction(k) }
     })
+  })
+
+  // The tail beyond the marker, closed and counted. C3's note says the Q
+  // function is the shaded tail on the plot, and until this existed there was
+  // no marker and no shading to point at.
+  const qmark = memo(() => {
+    const x = p.qx == null ? 1 : p.qx
+    const m = p.cltTerms > 1 ? 0 : d.mean
+    const s = p.cltTerms > 1 ? 1 : d.sd
+    const threshold = m + x * s
+    const draws = draw()
+    let beyond = 0
+    for (let i = 0; i < draws.length; i++) if (draws[i] > threshold) beyond++
+    return {
+      x,
+      threshold,
+      closed: qFunction(x),
+      counted: proportion(beyond, draws.length, { level: p.level }),
+    }
   })
 
   const filter = memo(() => firstOrderLowpass(p.fc, p.sampleRate))
@@ -495,8 +517,39 @@ export function analyse(params = {}) {
       mmse: wienerFir({ x, d: clean, taps }).mmse,
     }))
     const best = sweep[sweep.length - 1]
+
+    // The scalar weight on a record, so a reader can see the shrink the weight
+    // is. The signal, the observation it is buried in, and w times that
+    // observation. Two hundred samples, which is enough to read and few enough
+    // to draw as lines rather than as spray.
+    const t = rng(runSeed(p.seed, 7))
+    const M = 200
+    const signal = new Float64Array(M)
+    const observed = new Float64Array(M)
+    const estimate = new Float64Array(M)
+    const sSignal = Math.sqrt(p.signalVariance)
+    const sNoise = Math.sqrt(p.wienerNoiseVariance)
+    let mse = 0
+    let estPower = 0
+    let obsPower = 0
+    for (let i = 0; i < M; i++) {
+      signal[i] = t.normal(0, sSignal)
+      observed[i] = signal[i] + t.normal(0, sNoise)
+      estimate[i] = scalar.w * observed[i]
+      mse += (estimate[i] - signal[i]) ** 2
+      estPower += estimate[i] * estimate[i]
+      obsPower += observed[i] * observed[i]
+    }
+
     return {
       ...scalar,
+      trace: { signal, observed, estimate },
+      // What the drawn record measures, so the picture and the closed form can
+      // be compared rather than asserted to agree. The relative standard error
+      // of a mean square over M samples is sqrt(2/M), which is 10 % here.
+      traceMse: mse / M,
+      traceShrink: Math.sqrt(estPower / obsPower),
+      traceSe: scalar.mmse * Math.sqrt(2 / M),
       signalPower: power,
       oneWeightMmse: one.mmse,
       sweep,
@@ -553,6 +606,7 @@ export function analyse(params = {}) {
     histSweep,
     est,
     tail,
+    qmark,
     ens,
     ergSweep,
     wk,
@@ -628,6 +682,15 @@ export function resolve(a, path) {
     case 'est':
       v = at(a.est(), rest)
       break
+    case 'qmark': {
+      const q = a.qmark()
+      if (rest[0] === 'counted') v = q.counted.value
+      else if (rest[0] === 'lo') v = q.counted.ci[0]
+      else if (rest[0] === 'hi') v = q.counted.ci[1]
+      else if (rest[0] === 'se') v = q.counted.se
+      else v = at(q, rest)
+      break
+    }
     case 'tail': {
       const row = a.tail()[Number(rest[0]) - 1]
       if (rest[1] === 'counted') v = row.counted.value

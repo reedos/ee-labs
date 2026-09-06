@@ -16,16 +16,17 @@ import { fmtInt } from '../format.js'
  * A value that is not finite prints as an em rule rather than as "NaN", and the
  * caller states the reason in its note.
  *
- * The decibel is a logarithm, so it never takes an engineering prefix. Handed
- * to the shared formatter, a mismatch loss of 0.9112 dB printed as "911.2 mdB"
- * while the lesson beside it said 0.911 dB.
+ * A decibel is a logarithm and a percentage is already a ratio, so neither
+ * takes an engineering prefix. Handed to the shared formatter, a mismatch loss
+ * of 0.9112 dB printed as "911.2 mdB" beside a lesson that says 0.911 dB, and
+ * a counted tail's half width printed as "510 m%".
  */
-const LOGARITHMIC = new Set(['dB', 'dBm', 'dBc'])
+const NO_PREFIX = new Set(['dB', 'dBm', 'dBc', '%'])
 
 function show(value, unit, sig) {
   if (!Number.isFinite(value)) return '—'
   if (sig === 0) return fmtInt(value)
-  if (LOGARITHMIC.has(unit)) return `${fmtNum(value, sig)} ${unit}`
+  if (NO_PREFIX.has(unit)) return `${fmtNum(value, sig)} ${unit}`
   return unit ? fmt(value, unit, sig) : fmtNum(value, sig)
 }
 

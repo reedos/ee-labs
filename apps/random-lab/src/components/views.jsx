@@ -13,6 +13,88 @@ import { frameTicks, tickStep, tickLabel } from '../axis.js'
 
 const frameOpts = (xTitle, yTitle, extra = {}) => ({ xTitle, yTitle, zeroLine: true, ...extra })
 
+// ---------------------------------------------------------------- captions
+//
+// Every plot writes a line over its frame saying what is drawn, and several
+// write a second on the right saying what it measured. At 390 px the two
+// overprinted: "2000 runs, one outcome each" and "1917 of 2000 in spec, 95.8 %"
+// landed on one baseline and neither could be read.
+//
+// `captionArea` measures them before the frame is placed and buys a line of
+// headroom for each one that does not fit beside its neighbour. The caption
+// band is above the frame, so a wrapped caption costs a little height and costs
+// the trace nothing.
+
+const CAP_LINE = 15
+const CAP_GAP = 16
+const CAP_SEP = ' · '
+
+const capFont = (k) => `${Math.round(11 * k)}px ui-monospace, monospace`
+
+/** Break a caption at its separators, greedily, so every line fits the plot. */
+function capWrap(ctx, text, width) {
+  const parts = text.split(CAP_SEP)
+  const lines = []
+  let line = ''
+  for (const part of parts) {
+    const next = line ? line + CAP_SEP + part : part
+    if (line && ctx.measureText(next).width > width) {
+      lines.push(line)
+      line = part
+    } else line = next
+  }
+  if (line) lines.push(line)
+  return lines
+}
+
+/** The caption block: its lines, and which line carries the right-hand one. */
+function capLayout(ctx, area, left, right) {
+  ctx.save()
+  ctx.font = capFont(area.k)
+  const inline =
+    right && ctx.measureText(left).width + ctx.measureText(right).width + CAP_GAP * area.k <= area.w
+  const lines = capWrap(ctx, left, area.w).map((text) => ({ text, right: null }))
+  if (right && inline) lines[lines.length - 1].right = right
+  else if (right) lines.push({ text: '', right })
+  ctx.restore()
+  return lines
+}
+
+/**
+ * The plot area, with room above it for the caption. Call it in place of
+ * `plotArea` wherever a caption is drawn, then hand the area to `drawCaption`.
+ */
+function captionArea(ctx, w, h, left, right = null, opts = {}) {
+  const first = plotArea(w, h, { ...opts, topInset: 18 })
+  const lines = capLayout(ctx, first, left, right)
+  const area =
+    lines.length > 1
+      ? plotArea(w, h, { ...opts, topInset: 18 + (lines.length - 1) * CAP_LINE * first.k })
+      : first
+  area.caption = lines
+  return area
+}
+
+/** Write the caption block `captionArea` measured. */
+function drawCaption(ctx, area) {
+  const lines = area.caption || []
+  ctx.font = capFont(area.k)
+  let y = area.y - 6 * area.k - (lines.length - 1) * CAP_LINE * area.k
+  for (const line of lines) {
+    if (line.text) {
+      ctx.fillStyle = COLORS.text
+      ctx.textAlign = 'left'
+      ctx.fillText(line.text, area.x, y)
+    }
+    if (line.right) {
+      ctx.fillStyle = COLORS.textBright
+      ctx.textAlign = 'right'
+      ctx.fillText(line.right, area.x + area.w, y)
+    }
+    y += CAP_LINE * area.k
+  }
+}
+
 function Empty({ ctx, w, h, text }) {
   ctx.fillStyle = COLORS.text
   ctx.font = '13px ui-monospace, monospace'
@@ -62,7 +144,7 @@ export function ScopeCanvas({ data, label = 'Value', units = '', height = 260 })
  * The whisker is the point: a bar is an estimate, and its gap to the curve is
  * expected rather than a defect.
  */
-export function HistogramCanvas({ hist, height = 300 }) {
+export function HistogramCanvas({ hist, marker = null, height = 300 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
       ctx.fillStyle = COLORS.bg
@@ -74,7 +156,18 @@ export function HistogramCanvas({ hist, height = 300 }) {
         hi = Math.max(hi, hist.ci[k][1], hist.truth.pdf(hist.centres[k]))
       }
       hi *= 1.12
-      const area = plotArea(w, h, { topInset: 18 })
+      const left =
+        `${hist.n} draws, ${bins} bins of ${fmtNum(hist.width, 3)} · bars are estimates with ${(hist.level * 100).toFixed(0)} % intervals` +
+        (marker
+          ? ` · shaded beyond ${fmtNum(marker.threshold, 3)}, which holds ${(marker.closed * 100).toPrecision(5)} % of the mass`
+          : '')
+      const area = captionArea(
+        ctx,
+        w,
+        h,
+        left,
+        hist.outside > 0 ? `${hist.outside} outside the range` : null,
+      )
       const sx = (v) => area.x + ((v - hist.lo) / (hist.hi - hist.lo)) * area.w
       const sy = (v) => area.y + area.h - (v / hi) * area.h
       const t = frameTicks(area, hist.lo, hist.hi, 0, hi)
@@ -113,20 +206,33 @@ export function HistogramCanvas({ hist, height = 300 }) {
       }
       ctx.stroke()
 
-      ctx.font = `${Math.round(11 * area.k)}px ui-monospace, monospace`
-      ctx.fillStyle = COLORS.text
-      ctx.textAlign = 'left'
-      ctx.fillText(
-        `${hist.n} draws, ${bins} bins of ${fmtNum(hist.width, 3)} · bars are estimates with ${(hist.level * 100).toFixed(0)} % intervals`,
-        area.x,
-        area.y - 6 * area.k,
-      )
-      if (hist.outside > 0) {
-        ctx.textAlign = 'right'
-        ctx.fillText(`${hist.outside} outside the range`, area.x + area.w, area.y - 6 * area.k)
+      // The tail beyond the marker, filled under the density curve. C3's note
+      // calls the Q function the shaded tail on the plot, and this is it.
+      if (marker && marker.threshold < hist.hi) {
+        const from = Math.max(marker.threshold, hist.lo)
+        ctx.fillStyle = 'rgba(240, 162, 60, 0.28)'
+        ctx.beginPath()
+        ctx.moveTo(sx(from), sy(0))
+        for (let i = 0; i <= 120; i++) {
+          const v = from + ((hist.hi - from) * i) / 120
+          ctx.lineTo(sx(v), sy(hist.truth.pdf(v)))
+        }
+        ctx.lineTo(sx(hist.hi), sy(0))
+        ctx.closePath()
+        ctx.fill()
+        ctx.strokeStyle = COLORS.marker
+        ctx.lineWidth = 1
+        ctx.setLineDash([3, 3])
+        ctx.beginPath()
+        ctx.moveTo(sx(from) + 0.5, area.y)
+        ctx.lineTo(sx(from) + 0.5, area.y + area.h)
+        ctx.stroke()
+        ctx.setLineDash([])
       }
+
+      drawCaption(ctx, area)
     },
-    [hist],
+    [hist, marker],
   )
   return <canvas ref={ref} className="canvas" style={{ width: '100%', height }} role="img" aria-label="Histogram against the density it estimates" />
 }
@@ -140,7 +246,13 @@ export function CorrelationCanvas({ acf, height = 280 }) {
       if (!acf) return Empty({ ctx, w, h, text: 'No correlation' })
       const available = acf.normalised.length - 1
       const maxLag = Math.min(available, 120)
-      const area = plotArea(w, h, { topInset: 18 })
+      const area = captionArea(
+        ctx,
+        w,
+        h,
+        `1/e after ${acf.lagAt1e} lags · filter time constant ${fmtNum(acf.tauSamples, 3)} samples` +
+          (maxLag < available ? ` · ${maxLag} of ${available} lags drawn` : ''),
+      )
       const sx = (v) => area.x + (v / maxLag) * area.w
       const sy = (v) => area.y + area.h - ((v + 0.3) / 1.4) * area.h
       const t = frameTicks(area, 0, maxLag, -0.3, 1.1)
@@ -178,15 +290,7 @@ export function CorrelationCanvas({ acf, height = 280 }) {
       }
       ctx.setLineDash([])
 
-      ctx.font = `${Math.round(11 * area.k)}px ui-monospace, monospace`
-      ctx.fillStyle = COLORS.text
-      ctx.textAlign = 'left'
-      ctx.fillText(
-        `1/e after ${acf.lagAt1e} lags · filter time constant ${fmtNum(acf.tauSamples, 3)} samples` +
-          (maxLag < available ? ` · ${maxLag} of ${available} lags drawn` : ''),
-        area.x,
-        area.y - 6 * area.k,
-      )
+      drawCaption(ctx, area)
     },
     [acf],
   )
@@ -220,7 +324,13 @@ export function DensityCanvas({ psd, height = 320 }) {
       }
       lo = Math.max(lo - 2, -40)
       hi += 2
-      const area = plotArea(w, h, { topInset: 18 })
+      const area = captionArea(
+        ctx,
+        w,
+        h,
+        `${psd.segments} averages · ${psd.dof.toFixed(0)} degrees of freedom${psd.dofExact ? '' : ' (effective)'} · ribbon is the ${(psd.level * 100).toFixed(0)} % interval`,
+        `∫ = ${fmt(psd.rmsFromIntegral, 'V', 4)} rms over 0 to ${fmtHz(fMax)}Hz`,
+      )
       const sx = (f) => area.x + (f / fMax) * area.w
       const sy = (v) => area.y + area.h - ((v - lo) / (hi - lo)) * area.h
       const xStep = tickStep(0, fMax, Math.max(2, Math.floor(area.w / (90 * area.k))))
@@ -259,21 +369,7 @@ export function DensityCanvas({ psd, height = 320 }) {
         ctx.stroke()
       }
 
-      ctx.font = `${Math.round(11 * area.k)}px ui-monospace, monospace`
-      ctx.fillStyle = COLORS.text
-      ctx.textAlign = 'left'
-      ctx.fillText(
-        `${psd.segments} averages · ${psd.dof.toFixed(0)} degrees of freedom${psd.dofExact ? '' : ' (effective)'} · ribbon is the ${(psd.level * 100).toFixed(0)} % interval`,
-        area.x,
-        area.y - 6 * area.k,
-      )
-      ctx.textAlign = 'right'
-      ctx.fillStyle = COLORS.textBright
-      ctx.fillText(
-        `∫ = ${fmt(psd.rmsFromIntegral, 'V', 4)} rms over 0 to ${fmtHz(fMax)}Hz`,
-        area.x + area.w,
-        area.y - 6 * area.k,
-      )
+      drawCaption(ctx, area)
     },
     [psd],
   )
@@ -310,7 +406,16 @@ export function OutcomeCanvas({ stats, band = null, count = null, height = 280 }
       let top = 0
       for (const c of counts) top = Math.max(top, c)
       top *= 1.15
-      const area = plotArea(w, h, { topInset: 18 })
+      const area = captionArea(
+        ctx,
+        w,
+        h,
+        `${stats.length} runs, one outcome each`,
+        count
+          ? `${count.pass} of ${count.n} in ${band && band.label ? band.label : 'band'}, ` +
+            `${((100 * count.pass) / count.n).toFixed(1)} % ± ${(100 * count.stderr).toFixed(1)} %`
+          : null,
+      )
       const sx = (v) => area.x + ((v - lo) / (hi - lo)) * area.w
       const sy = (v) => area.y + area.h - (v / top) * area.h
       if (band) {
@@ -325,20 +430,7 @@ export function OutcomeCanvas({ stats, band = null, count = null, height = 280 }
         ctx.fillStyle = 'rgba(56, 224, 176, 0.35)'
         ctx.fillRect(sx(lo + k * width) + 1, sy(counts[k]), Math.max(1, bw - 2), area.y + area.h - sy(counts[k]))
       }
-      ctx.font = `${Math.round(11 * area.k)}px ui-monospace, monospace`
-      ctx.fillStyle = COLORS.text
-      ctx.textAlign = 'left'
-      ctx.fillText(`${stats.length} runs, one outcome each`, area.x, area.y - 6 * area.k)
-      if (count) {
-        ctx.textAlign = 'right'
-        ctx.fillStyle = COLORS.textBright
-        ctx.fillText(
-          `${count.pass} of ${count.n} in ${band && band.label ? band.label : 'band'}  ` +
-            `${((100 * count.pass) / count.n).toFixed(1)} % ± ${(100 * count.stderr).toFixed(1)}`,
-          area.x + area.w,
-          area.y - 6 * area.k,
-        )
-      }
+      drawCaption(ctx, area)
     },
     [stats, band, count],
   )
@@ -360,7 +452,12 @@ export function MatchedCanvas({ snr, height = 260 }) {
         hi = Math.max(hi, v)
       }
       const pad = (hi - lo) * 0.12 || 1
-      const area = plotArea(w, h, { topInset: 18 })
+      const area = captionArea(
+        ctx,
+        w,
+        h,
+        `peak ${fmtNum(snr.peak, 3)} at lag ${snr.peakAt} · ratio ${fmtNum(snr.snrDb, 2)} dB`,
+      )
       const sx = (i) => area.x + (i / (y.length - 1)) * area.w
       const sy = (v) => area.y + area.h - ((v - lo + pad) / (hi - lo + 2 * pad)) * area.h
       const t = frameTicks(area, 0, y.length - 1, lo - pad, hi + pad)
@@ -383,14 +480,7 @@ export function MatchedCanvas({ snr, height = 260 }) {
       ctx.lineTo(sx(snr.peakAt) + 0.5, area.y + area.h)
       ctx.stroke()
       ctx.setLineDash([])
-      ctx.font = `${Math.round(11 * area.k)}px ui-monospace, monospace`
-      ctx.fillStyle = COLORS.text
-      ctx.textAlign = 'left'
-      ctx.fillText(
-        `peak ${fmtNum(snr.peak, 3)} at sample ${snr.peakAt} · ratio ${fmtNum(snr.snrDb, 2)} dB`,
-        area.x,
-        area.y - 6 * area.k,
-      )
+      drawCaption(ctx, area)
     },
     [snr],
   )
@@ -408,7 +498,16 @@ export function ErrorRateCanvas({ ber, height = 300 }) {
       const hiDb = 13
       const loLog = -9
       const hiLog = 0
-      const area = plotArea(w, h, { topInset: 18 })
+      // Two curves are drawn here and neither used to be named, so a reader met
+      // a plot with an unexplained second line on it. They are told apart by
+      // dash rather than by colour alone, and the caption says which is which.
+      const area = captionArea(
+        ctx,
+        w,
+        h,
+        'antipodal solid · on-off keying dashed · counted point bracketed',
+        `${ber.errors} errors in ${ber.symbols} symbols, closed form ${ber.predicted.toExponential(3)}`,
+      )
       const sx = (db) => area.x + ((db - loDb) / (hiDb - loDb)) * area.w
       const sy = (p) => {
         const l = Math.log10(Math.max(p, 1e-10))
@@ -418,9 +517,10 @@ export function ErrorRateCanvas({ ber, height = 300 }) {
       drawFrame(ctx, area, loDb, hiDb, loLog, hiLog, tickLabel(xStep), (v) => `1e${fmtInt(v)}`,
         { xTitle: 'Eb/N0 (dB)', yTitle: 'Error rate', yStep: 1, xStep })
 
-      const curve = (key, style, width) => {
+      const curve = (key, style, width, dash = []) => {
         ctx.strokeStyle = style
         ctx.lineWidth = width
+        ctx.setLineDash(dash)
         ctx.beginPath()
         let started = false
         for (const pt of ber.curve) {
@@ -433,8 +533,9 @@ export function ErrorRateCanvas({ ber, height = 300 }) {
           } else ctx.lineTo(px, py)
         }
         ctx.stroke()
+        ctx.setLineDash([])
       }
-      curve('orthogonal', COLORS.phase, 1.5)
+      curve('orthogonal', COLORS.phase, 1.5, [5, 4])
       curve('antipodal', COLORS.trace, 2)
 
       // The counted point, with its interval as a bracket. At zero errors the
@@ -460,70 +561,112 @@ export function ErrorRateCanvas({ ber, height = 300 }) {
         ctx.fill()
       }
 
-      ctx.font = `${Math.round(11 * area.k)}px ui-monospace, monospace`
-      ctx.fillStyle = COLORS.text
-      ctx.textAlign = 'left'
-      ctx.fillText(
-        `${ber.errors} errors in ${ber.symbols} symbols · closed form ${ber.predicted.toExponential(3)}`,
-        area.x,
-        area.y - 6 * area.k,
-      )
+      drawCaption(ctx, area)
     },
     [ber],
   )
   return <canvas ref={ref} className="canvas" style={{ width: '100%', height }} role="img" aria-label="Error rate against Eb over N0" />
 }
 
+/**
+ * An estimator's picture: what was measured, what it was estimating, and what
+ * came out. Faint, dashed and solid, so the three are told apart by weight
+ * rather than by colour alone.
+ *
+ * Both filter groups draw this. The Kalman run measures a state and the Wiener
+ * weight measures a signal, and in each the lesson is the estimate sitting
+ * between the observation and the truth.
+ */
+function drawEstimator(ctx, w, h, { observed, truth, estimate, caption, xTitle, yTitle }) {
+  ctx.fillStyle = COLORS.bg
+  ctx.fillRect(0, 0, w, h)
+  const n = estimate.length
+  let lo = Infinity
+  let hi = -Infinity
+  for (let i = 0; i < n; i++) {
+    for (const v of [truth[i], observed[i]]) {
+      if (v < lo) lo = v
+      if (v > hi) hi = v
+    }
+  }
+  const pad = (hi - lo) * 0.1 || 1
+  lo -= pad
+  hi += pad
+  const area = captionArea(ctx, w, h, caption)
+  const sx = (i) => area.x + (i / (n - 1)) * area.w
+  const sy = (v) => area.y + area.h - ((v - lo) / (hi - lo)) * area.h
+  const t = frameTicks(area, 0, n - 1, lo, hi)
+  drawFrame(ctx, area, 0, n - 1, lo, hi, t.fmtX, t.fmtY,
+    frameOpts(xTitle, yTitle, { xStep: t.xStep, yStep: t.yStep }))
+  const line = (arr, style, width, dash) => {
+    ctx.strokeStyle = style
+    ctx.lineWidth = width
+    ctx.setLineDash(dash || [])
+    ctx.beginPath()
+    for (let i = 0; i < n; i++) {
+      const px = sx(i)
+      const py = sy(arr[i])
+      if (i === 0) ctx.moveTo(px, py)
+      else ctx.lineTo(px, py)
+    }
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
+  line(observed, COLORS.traceDim, 1)
+  line(truth, COLORS.spectrum, 1.5, [4, 3])
+  line(estimate, COLORS.trace, 2)
+  drawCaption(ctx, area)
+}
+
+/**
+ * The scalar Wiener weight on a record. The observation, the signal it is an
+ * estimate of, and the estimate itself.
+ *
+ * The view used to draw one trace, the filter applied to an unrelated record,
+ * so the weight the lesson is about could not be seen at all.
+ */
+export function WienerCanvas({ wiener, height = 280 }) {
+  const ref = useCanvas(
+    (ctx, w, h) => {
+      if (!wiener || !wiener.trace) {
+        ctx.fillStyle = COLORS.bg
+        ctx.fillRect(0, 0, w, h)
+        return Empty({ ctx, w, h, text: 'No filter run' })
+      }
+      const { signal, observed, estimate } = wiener.trace
+      drawEstimator(ctx, w, h, {
+        observed,
+        truth: signal,
+        estimate,
+        caption:
+          `observation faint · signal dashed · estimate solid · ` +
+          `weight ${fmtNum(wiener.w, 3)}, so the estimate is shrunk toward zero`,
+        xTitle: 'Sample',
+        yTitle: 'Value',
+      })
+    },
+    [wiener],
+  )
+  return <canvas ref={ref} className="canvas" style={{ width: '100%', height }} role="img" aria-label="The Wiener estimate against the signal and the observation" />
+}
+
 /** The Kalman run: the truth, the measurements and the estimate. */
 export function KalmanCanvas({ kalman, height = 280 }) {
   const ref = useCanvas(
     (ctx, w, h) => {
-      ctx.fillStyle = COLORS.bg
-      ctx.fillRect(0, 0, w, h)
-      if (!kalman) return Empty({ ctx, w, h, text: 'No filter run' })
-      const n = kalman.x.length
-      let lo = Infinity
-      let hi = -Infinity
-      for (let i = 0; i < n; i++) {
-        for (const v of [kalman.truth[i], kalman.z[i]]) {
-          if (v < lo) lo = v
-          if (v > hi) hi = v
-        }
+      if (!kalman) {
+        ctx.fillStyle = COLORS.bg
+        ctx.fillRect(0, 0, w, h)
+        return Empty({ ctx, w, h, text: 'No filter run' })
       }
-      const pad = (hi - lo) * 0.1 || 1
-      lo -= pad
-      hi += pad
-      const area = plotArea(w, h, { topInset: 18 })
-      const sx = (i) => area.x + (i / (n - 1)) * area.w
-      const sy = (v) => area.y + area.h - ((v - lo) / (hi - lo)) * area.h
-      const t = frameTicks(area, 0, n - 1, lo, hi)
-      drawFrame(ctx, area, 0, n - 1, lo, hi, t.fmtX, t.fmtY,
-        frameOpts('Step', 'State', { xStep: t.xStep, yStep: t.yStep }))
-      const line = (arr, style, width, dash) => {
-        ctx.strokeStyle = style
-        ctx.lineWidth = width
-        ctx.setLineDash(dash || [])
-        ctx.beginPath()
-        for (let i = 0; i < n; i++) {
-          const px = sx(i)
-          const py = sy(arr[i])
-          if (i === 0) ctx.moveTo(px, py)
-          else ctx.lineTo(px, py)
-        }
-        ctx.stroke()
-        ctx.setLineDash([])
-      }
-      line(kalman.z, COLORS.traceDim, 1)
-      line(kalman.truth, COLORS.spectrum, 1.5, [4, 3])
-      line(kalman.x, COLORS.trace, 2)
-      ctx.font = `${Math.round(11 * area.k)}px ui-monospace, monospace`
-      ctx.fillStyle = COLORS.text
-      ctx.textAlign = 'left'
-      ctx.fillText(
-        `measurements faint · truth dashed · estimate solid · gain settles at step ${kalman.settledAt}`,
-        area.x,
-        area.y - 6 * area.k,
-      )
+      drawEstimator(ctx, w, h, {
+        observed: kalman.z,
+        truth: kalman.truth,
+        estimate: kalman.x,
+        caption: `measurements faint · truth dashed · estimate solid · gain settles at step ${kalman.settledAt}`,
+        xTitle: 'Step',
+        yTitle: 'State',
+      })
     },
     [kalman],
   )

@@ -8,7 +8,7 @@ import { reportSummary } from './report.js'
 import EnsembleCanvas from './components/EnsembleCanvas.jsx'
 import {
   ScopeCanvas, HistogramCanvas, CorrelationCanvas, DensityCanvas,
-  OutcomeCanvas, MatchedCanvas, ErrorRateCanvas, KalmanCanvas,
+  OutcomeCanvas, MatchedCanvas, ErrorRateCanvas, WienerCanvas, KalmanCanvas,
 } from './components/views.jsx'
 import { Closed, Estimate, Against, Pane, Terms } from './components/panes.jsx'
 
@@ -18,6 +18,7 @@ const KNOBS = {
   seed: { label: 'Seed', min: 1, max: 9999, step: 1, integer: true },
   n: { label: 'Samples', min: 100, max: 200000, step: 100, integer: true },
   bins: { label: 'Bins', min: 8, max: 100, step: 1, integer: true },
+  qx: { label: 'Tail marker', min: 0, max: 6, step: 0.1 },
   cltTerms: { label: 'Terms summed', min: 1, max: 24, step: 1, integer: true },
   level: { label: 'Level', min: 0.5, max: 0.999, step: 0.01 },
   runs: { label: 'Runs', min: 2, max: 2000, step: 1, integer: true },
@@ -246,7 +247,7 @@ function View({ view, a, p, highlight, onPickRun }) {
     case 'scope':
       return <ScopeCanvas data={a.params.filtered || a.params.noiseRms !== DEFAULTS.noiseRms ? a.record().x.subarray(0, 2048) : a.draw()} />
     case 'histogram':
-      return <HistogramCanvas hist={a.hist()} />
+      return <HistogramCanvas hist={a.hist()} marker={p.qx == null ? null : a.qmark()} />
     case 'ensemble': {
       const e = a.ens()
       const band = p.spec ? { lo: p.spec[0], hi: p.spec[1], label: 'spec' } : null
@@ -288,7 +289,7 @@ function View({ view, a, p, highlight, onPickRun }) {
     case 'kalman':
       return <KalmanCanvas kalman={a.kalman()} />
     case 'wiener':
-      return <ScopeCanvas data={a.wiener().fir.apply(a.draw())} label="Estimate" />
+      return <WienerCanvas wiener={a.wiener()} />
     case 'ktc':
       return <KtcTable a={a} />
     default:
@@ -339,6 +340,12 @@ function Readouts({ view, a, p }) {
           <Against label="Gap to the density" measured={h.error.rms} predicted={h.error.predicted} />
           <Closed label="Bin width" value={h.width} />
           <Closed label="Outside the range" value={h.outside} sig={0} />
+          {p.qx == null ? null : (
+            <>
+              <Closed label="Tail beyond the marker" value={a.qmark().closed * 100} unit="%" />
+              <Estimate label="Tail counted" est={a.qmark().counted} scale={100} unit="%" />
+            </>
+          )}
         </Pane>
       )
     }

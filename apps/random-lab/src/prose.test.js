@@ -88,5 +88,5 @@ const KNOWN = [
   'cltTerms', 'runs', 'length', 'ensembleKind', 'averages', 'segment', 'window',
   'fc', 'filtered', 'noiseRms', 'R', 'C', 'T', 'pulse', 'pulseLength',
   'noiseVariance', 'ebN0Db', 'symbols', 'taps', 'wienerNoiseVariance',
-  'signalVariance', 'q', 'r', 'kalmanA', 'x0', 'p0', 'maxLag', 'wkN', 'spec',
+  'signalVariance', 'q', 'r', 'kalmanA', 'x0', 'p0', 'maxLag', 'wkN', 'spec', 'qx',
 ]
