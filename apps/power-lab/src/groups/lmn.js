@@ -278,7 +278,7 @@ export const THERMAL_BUCK = {
   Ron: 0.03,
   Vf: 0,
   rd: 0,
-  RL: 0,
+  RL: 0.02,
   ESR: 0,
   sync: true,
   tr: 20e-9,
