@@ -189,6 +189,30 @@ describe('every experiment analyses, at its defaults and off them', () => {
     expect(drawn, 'no conductor or charge was measured at all').toBeGreaterThan(10)
   })
 
+  it('a surface an integral was taken over is drawn on the map', () => {
+    // A3's lesson is that the flux out of THIS surface counts the charge
+    // inside it, and C4's is that moving the contour changes nothing. Neither
+    // surface was on the picture.
+    for (const id of ['a3', 'c4']) {
+      const { p, x } = at(id)
+      const props = mapPropsFor(byId[id], p, x)
+      expect(props.contours.length, `${id}: the map draws no contour`).toBe(1)
+      const pts = props.contours[0].points
+      expect(pts.length, `${id}: the contour has ${pts.length} points`).toBeGreaterThan(3)
+      const d = props.domain
+      const x0 = d.centre ? -d.width / 2 : 0
+      const y0 = d.centre ? -d.height / 2 : 0
+      for (const [px, py] of pts) {
+        expect(px >= x0 - 1e-12 && px <= x0 + d.width + 1e-12, `${id}: the contour leaves the map at x = ${px}`).toBe(true)
+        expect(py >= y0 - 1e-12 && py <= y0 + d.height + 1e-12, `${id}: the contour leaves the map at y = ${py}`).toBe(true)
+      }
+    }
+    // A3's circle is the sphere the integral was taken over, at its radius.
+    const a3 = at('a3')
+    const radius = Math.hypot(...mapPropsFor(byId.a3, a3.p, a3.x).contours[0].points[0])
+    expect(radius, 'the circle drawn is not the sphere integrated over').toBeCloseTo(a3.p.r, 12)
+  })
+
   it('every map axis carries at least two numbers', () => {
     // B4's map spans 8.4 mm about the origin, the round step for four ticks is
     // 5 mm, and its whole vertical axis was the single label "0". One number on

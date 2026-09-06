@@ -250,14 +250,24 @@ export function fitBox(w, h, domain, margin = { left: 44, right: 8, top: 8, bott
   return { x: margin.left + (availW - bw) / 2, y: margin.top + (availH - bh) / 2, w: bw, h: bh }
 }
 
-export default function FieldMapCanvas({ mode = '2d', domain, scalar, vector, equipotentials = [], conductors = [], charges = [], probe = null, units = {}, profile = null }) {
+export default function FieldMapCanvas({ mode = '2d', domain, scalar, vector, equipotentials = [], conductors = [], charges = [], contours = [], probe = null, units = {}, profile = null }) {
   if (mode === 'profile' && profile) return <ProfilePane profile={profile} units={units} />
   return (
-    <MapPane domain={domain || { width: 1, height: 1 }} scalar={scalar} vector={vector} equipotentials={equipotentials} conductors={conductors} charges={charges} probe={probe} units={units} />
+    <MapPane
+      domain={domain || { width: 1, height: 1 }}
+      scalar={scalar}
+      vector={vector}
+      equipotentials={equipotentials}
+      conductors={conductors}
+      charges={charges}
+      contours={contours}
+      probe={probe}
+      units={units}
+    />
   )
 }
 
-function MapPane({ domain, scalar, vector, equipotentials, conductors, charges, probe, units }) {
+function MapPane({ domain, scalar, vector, equipotentials, conductors, charges, contours, probe, units }) {
   const grid = React.useMemo(() => (scalar ? sampleGrid(scalar, domain, 56) : null), [scalar, domain])
   const hasSign = grid ? grid.rows.some((row) => row.some((v) => Number.isFinite(v) && v < 0)) : false
   const ref = useCanvas(
@@ -359,6 +369,25 @@ function MapPane({ domain, scalar, vector, equipotentials, conductors, charges, 
         ctx.stroke()
       }
 
+      // A surface an integral was taken over is not an equipotential and not a
+      // conductor, so it is drawn as neither: a dashed outline with nothing
+      // inside it. A3's whole lesson is that the flux out of THIS surface
+      // counts the charge inside, and the surface was not on the picture.
+      for (const c of contours || []) {
+        if (!c.points || c.points.length < 2) continue
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)'
+        ctx.lineWidth = 1.25
+        ctx.setLineDash([5, 4])
+        ctx.beginPath()
+        c.points.forEach(([x, y], k) => {
+          const [px, py] = toPx(x, y)
+          if (k === 0) ctx.moveTo(px, py)
+          else ctx.lineTo(px, py)
+        })
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+
       for (const q of charges || []) {
         const [px, py] = toPx(q.at[0], q.at[1])
         ctx.fillStyle = q.q >= 0 ? '#f0a23c' : '#5fa8ff'
@@ -409,7 +438,7 @@ function MapPane({ domain, scalar, vector, equipotentials, conductors, charges, 
         ctx.fillText(fmtLen(t), box.x - 5, Math.min(Math.max(py, box.y + 6), box.y + box.h - 6))
       }
     },
-    [domain, scalar, vector, JSON.stringify(equipotentials), JSON.stringify(conductors), JSON.stringify(charges), probe],
+    [domain, scalar, vector, JSON.stringify(equipotentials), JSON.stringify(conductors), JSON.stringify(charges), JSON.stringify(contours), probe],
   )
 
   const scaleUnit = units.scalar || 'V'
@@ -427,10 +456,22 @@ function MapPane({ domain, scalar, vector, equipotentials, conductors, charges, 
             {hasSign ? `−${fmtValue(grid.scale, scaleUnit)}` : '0'} to {fmtValue(grid.scale, scaleUnit)} {scaleUnit}
           </span>
         ) : null}
+        {(contours || []).map((c, i) => (
+          <span key={`c${i}`} className="fieldmap-chip fieldmap-unit" data-role="contour-chip">
+            {c.label || 'the contour'}
+          </span>
+        ))}
         {vector ? <span className="fieldmap-chip fieldmap-unit">arrows: direction only</span> : null}
       </div>
       <p className="fieldmap-axes" data-role="map-axes">
-        Across and up in metres. Colour is {scaleUnit === 'V' ? 'potential' : 'the field'} in {scaleUnit}.
+        Across and up in metres.{' '}
+        {/* E2's map is arrows and no colour field, and the sentence claimed a
+            colour anyway. It follows what was drawn. */}
+        {grid && grid.scale > 0
+          ? `Colour is ${scaleUnit === 'V' ? 'potential' : 'the field'} in ${scaleUnit}.`
+          : vector
+            ? 'The arrows point along the field.'
+            : ''}
       </p>
     </div>
   )

@@ -282,5 +282,17 @@ describe('the axes a reader reads the picture off', () => {
     expect(out, 'the colour ramp carries no scale').toMatch(/data-role="colour-scale"/)
     expect(out, 'the map does not name its axes').toMatch(/data-role="map-axes"/)
     expect(out, 'unit-length arrows read as a magnitude').toMatch(/direction only/)
+    expect(out).toMatch(/Colour is potential in V/)
+  })
+
+  it('a map of arrows alone does not claim a colour', () => {
+    // E2 is a long straight wire, whose field is arrows and no colour field,
+    // and the sentence under it said "Colour is the field in T".
+    const out = html(
+      <FieldMapCanvas mode="2d" domain={{ width: 0.1, height: 0.1, centre: true }} vector={() => [0, 1]} units={{ scalar: 'T' }} />,
+    )
+    expect(out).toMatch(/data-role="map-axes"/)
+    expect(out, 'a colour named on a map with no colour field').not.toMatch(/Colour is/)
+    expect(out).toMatch(/arrows point along the field/)
   })
 })

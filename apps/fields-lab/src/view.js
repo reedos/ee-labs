@@ -143,6 +143,9 @@ export function mapPropsFor(exp, p, x) {
       },
       charges: (x.charges || []).map((c) => ({ q: c.q, at: [c.at[0], c.at[1]] })),
       equipotentials: x.curve ? [{ level: x.curve.level, points: x.curve.points.map((pt) => [pt[0], pt[1]]) }] : [],
+      // The Gauss surface, where there is one: a sphere cut by the plane the
+      // map draws, which is a circle of the same radius.
+      contours: exp.gauss ? [{ points: circleOutline(0, 0, exp.gauss(p).r), label: 'the Gauss surface' }] : [],
       probe: x.probe ? { x: x.probe[0], y: x.probe[1] } : null,
       units,
     }
@@ -197,6 +200,9 @@ export function mapPropsFor(exp, p, x) {
       },
       vector: null,
       conductors: [],
+      // C4's contour is given in grid indices; the map is in metres, and the
+      // solve's own cell size is what turns one into the other.
+      contours: exp.contour ? [contourRect(exp.contour(x.sol, p), x.sol)] : [],
       // C1 and C2 are about the potential at one point, and the point was not
       // drawn: the map showed a trough with nothing marking where 43.2 V was
       // read. A grid experiment with a probe knob puts its cross on the map.
@@ -205,6 +211,25 @@ export function mapPropsFor(exp, p, x) {
     }
   }
   return { mode: '2d', domain, scalar: null, vector: null, conductors: [], probe: null, units }
+}
+
+/** A rectangular contour given in grid indices, as a path in metres. */
+function contourRect(c, sol) {
+  const h = sol.h
+  const x0 = c.i0 * h
+  const y0 = c.j0 * h
+  const x1 = c.i1 * h
+  const y1 = c.j1 * h
+  return {
+    points: [
+      [x0, y0],
+      [x1, y0],
+      [x1, y1],
+      [x0, y1],
+      [x0, y0],
+    ],
+    label: 'the contour',
+  }
 }
 
 function safe(fn, at) {
