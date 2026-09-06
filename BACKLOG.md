@@ -69,6 +69,12 @@ dependency or decision that reopens it.
 
 ### Circuit Elements Lab
 
+- **Released 2026-09-05 as v1.1.0.** It is the first card on the splash page, with
+  the "Start here" kicker the plan decided, first in every lab's nav, and in the
+  README. The master merge behind it brought Reed's in-order try-step test and
+  the rule that every experiment poses a quiz. H7's third step and I10's fourth
+  now set back what an earlier step changed. I9's load step reads the output at
+  the cursor on the drop model it restores.
 - I9 the clamper and I10 the doubler: assigned to the seams overseer.
 - H7 "the roots are the poles": assigned to the seams overseer.
 - The GBW toggle: superseded by the Electronics Lab's op-amp macro, which Elements
