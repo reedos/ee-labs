@@ -140,11 +140,19 @@ describe('the load the three legs share', () => {
           const sum =
             evalSignal(seg.state, 'ia', x) + evalSignal(seg.state, 'ib', x) + evalSignal(seg.state, 'ic', x)
           expect(Math.abs(sum), `${kind} #${i}`).toBeLessThan(1e-9 * Math.max(1e-6, scale))
-          // ...and the phase voltages do too, because the neutral floats.
-          const vs =
-            evalSignal(seg.state, 'van', x) +
-            evalSignal(seg.state, 'vao', x) * 0
-          expect(Number.isFinite(vs)).toBe(true)
+          // ...and the phase voltage is the leg voltage less the neutral's
+          // own potential, which is what a floating neutral means. The three
+          // leg voltages are the state's name, one sign a leg, so the
+          // identity is checked against the signs rather than against itself.
+          const legs = [...seg.state.name].map((c) => (c === '+' ? 1 : -1) * (conv.p.Vdc / 2))
+          const vno = (legs[0] + legs[1] + legs[2]) / 3
+          expect(evalSignal(seg.state, 'van', x), `${kind} #${i} v_an`).toBeCloseTo(legs[0] - vno, 9)
+          expect(evalSignal(seg.state, 'vao', x), `${kind} #${i} v_ao`).toBeCloseTo(legs[0], 9)
+          expect(evalSignal(seg.state, 'vab', x), `${kind} #${i} v_ab`).toBeCloseTo(legs[0] - legs[1], 9)
+          // The three phase voltages sum to zero, so nothing common to the
+          // legs reaches a winding: that is the line the whole group rests on.
+          const van = legs.map((v) => v - vno)
+          expect(Math.abs(van[0] + van[1] + van[2]), `${kind} #${i}`).toBeLessThan(1e-9 * conv.p.Vdc)
         }
       }
     }

@@ -767,7 +767,9 @@ function threePhasePins(x, params) {
   pins['vab.min'] = ex(-Vdc)
   pins['vab.max'] = ex(Vdc)
   pins['vab.pp'] = ex(2 * Vdc)
-  // Phase: the floating neutral leaves five levels, 0 and ±V_dc/3, ±2V_dc/3.
+  // Phase: the floating neutral leaves ±V_dc/3 and ±2V_dc/3, and, wherever
+  // all three legs sit on one rail, zero. Six-step never visits that state,
+  // so its staircase has four levels and sine PWM's has five.
   pins['van.avg'] = zero(Vdc)
   pins['van.min'] = ex((-2 * Vdc) / 3)
   pins['van.max'] = ex((2 * Vdc) / 3)

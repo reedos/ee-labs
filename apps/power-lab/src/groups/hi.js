@@ -163,7 +163,9 @@ export const HI_EXPERIMENTS = [
     // takes twice as many periods again to land on the 26.67 V the note
     // and the pane's own table both name.
     step: { param: 'D', by: 'dD', periods: 800, out: 'vout' },
-    traces: ['vsw', 'vout', 'iL'],
+    // v_out alone on the voltage strip, so its own 120 mV is the whole of it:
+    // v_sw swings the full 24 V and flattened it. The note names the output
+    // and the inductor current, and the trace bar still offers the rest.
     views: ['step', 'plant', 'math', 'measures', 'sweep'],
     view: 'step',
     sweep: { x: 'D', y: 'M' },
