@@ -146,6 +146,47 @@ describe('the axes a reader reads the picture off', () => {
     expect(out).toMatch(/own scale/)
   })
 
+  it('two curves in one unit share one scale, and two in different units do not', () => {
+    // A4 draws a line of charge and a sheet of charge, both in volts a metre.
+    // Drawn to separate ranges the two looked alike, and the lesson is that one
+    // falls off and the other does not.
+    const same = html(
+      <FieldMapCanvas
+        mode="profile"
+        profile={{
+          ...profile,
+          scalar: { read: (t) => 1 / (t + 0.1), label: 'Line, field', unit: 'V/m' },
+          secondary: { read: () => 2, label: 'Sheet, field', unit: 'V/m' },
+        }}
+        units={{}}
+      />,
+    )
+    expect(same, 'one unit, and still two axes').not.toMatch(/data-role="value-axis-right"/)
+    expect(same, 'one scale described as two').not.toMatch(/data-role="panel-scales"/)
+
+    const different = html(
+      <FieldMapCanvas
+        mode="profile"
+        profile={{ ...profile, secondary: { read: (t) => 1e5 * (1 + t), label: 'Field', unit: 'V/m' } }}
+        units={{}}
+      />,
+    )
+    expect(different).toMatch(/data-role="value-axis-right"/)
+  })
+
+  it('an axis with no unit shows a fraction and not a prefix', () => {
+    // A reflected fraction of a half is 0.5. It read "500m".
+    const out = html(
+      <FieldMapCanvas
+        mode="profile"
+        profile={{ axis: 'x', cut: 0, from: 0, to: 1, scalar: { read: (t) => t, label: 'Reflected fraction', unit: '' } }}
+        units={{}}
+      />,
+    )
+    expect(out, 'a bare fraction given an SI prefix').not.toMatch(/>500m</)
+    expect(out).toMatch(/>0\.5</)
+  })
+
   it('a sweep over frequency is named in hertz and not in metres', () => {
     const out = html(
       <FieldMapCanvas

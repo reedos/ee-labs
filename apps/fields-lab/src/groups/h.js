@@ -97,6 +97,8 @@ export const H_GROUP = [
       cut: 0,
       from: 0,
       to: 89.9,
+      xLabel: 'Angle from the normal',
+      xUnit: '°',
       scalar: { read: (t) => angleSweep(p, t).parallel, label: 'Parallel, reflected fraction', unit: '' },
       secondary: { read: (t) => angleSweep(p, t).perpendicular, label: 'Perpendicular, reflected fraction', unit: '' },
       regions: markedAngles(x),

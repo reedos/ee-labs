@@ -3,7 +3,7 @@ import { EXPERIMENTS, GROUPS, VIEW_ORDER, VIEW_LABELS, byId, defaultsOf, groupOf
 import { readQuantity } from './lessons.js'
 import { analyse, clearCache, guardOf, refusalOf } from './math.js'
 import { mapPropsFor, profilePropsFor } from './view.js'
-import { axisDomainOf, positionAt, rangeOf } from './components/FieldMapCanvas.jsx'
+import { axisDomainOf, domainTicks, positionAt, rangeOf } from './components/FieldMapCanvas.jsx'
 import { TERMS } from './terms.js'
 import { reportSummary } from './report.js'
 import { gridNum, num } from './format.js'
@@ -187,6 +187,33 @@ describe('every experiment analyses, at its defaults and off them', () => {
       }
     }
     expect(drawn, 'no conductor or charge was measured at all').toBeGreaterThan(10)
+  })
+
+  it('every map axis carries at least two numbers', () => {
+    // B4's map spans 8.4 mm about the origin, the round step for four ticks is
+    // 5 mm, and its whole vertical axis was the single label "0". One number on
+    // an axis is no scale at all.
+    let axes = 0
+    for (const e of EXPERIMENTS) {
+      if (!e.views.includes('2d')) continue
+      const { p, x } = at(e.id)
+      const d = mapPropsFor(e, p, x).domain
+      const x0 = d.centre ? -d.width / 2 : 0
+      const y0 = d.centre ? -d.height / 2 : 0
+      for (const [name, lo, hi] of [
+        ['across', x0, x0 + d.width],
+        ['up', y0, y0 + d.height],
+      ]) {
+        const ticks = domainTicks(lo, hi, 4)
+        axes++
+        expect(ticks.length, `${e.id}: the ${name} axis carries ${ticks.length} numbers`).toBeGreaterThan(1)
+        for (const t of ticks) {
+          expect(t, `${e.id}: a ${name} tick at ${t} is outside ${lo} to ${hi}`).toBeGreaterThanOrEqual(lo - 1e-12)
+          expect(t).toBeLessThanOrEqual(hi + 1e-12)
+        }
+      }
+    }
+    expect(axes, 'no map axis was measured at all').toBeGreaterThan(20)
   })
 
   it('the plate map and the plate profile agree about which plate is at V', () => {

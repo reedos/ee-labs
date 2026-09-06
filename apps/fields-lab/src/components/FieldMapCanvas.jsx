@@ -94,13 +94,20 @@ export function domainTicks(lo, hi, target = 5) {
  */
 function ticksBetween(lo, hi, target, figures) {
   if (!Number.isFinite(lo) || !Number.isFinite(hi) || !(hi > lo)) return [lo]
-  const step = niceStep(hi - lo, target)
-  if (!(step > 0)) return [lo, hi]
-  const start = Math.ceil(lo / step) * step
-  if (start + step === start) return [lo, hi]
-  const ticks = []
-  for (let v = start; v <= hi + step * 1e-6 && ticks.length < 64; v += step) ticks.push(Number(v.toPrecision(figures)))
-  return ticks
+  // One round number can be the only one that fits: B4's map spans 8.4 mm
+  // about the origin and the round step for four ticks is 5 mm, so its whole
+  // vertical axis was the single label "0". An axis with one number on it
+  // gives a reader no scale, so a finer step is tried until two fit.
+  for (const t of [target, target * 2, target * 4]) {
+    const step = niceStep(hi - lo, t)
+    if (!(step > 0)) continue
+    const start = Math.ceil(lo / step) * step
+    if (start + step === start) continue
+    const ticks = []
+    for (let v = start; v <= hi + step * 1e-6 && ticks.length < 64; v += step) ticks.push(Number(v.toPrecision(figures)))
+    if (ticks.length >= 2) return ticks
+  }
+  return [Number(lo.toPrecision(figures)), Number(hi.toPrecision(figures))]
 }
 
 /**
@@ -200,10 +207,16 @@ const fmtLen = (v) => {
   return `${v.toPrecision(3)} m`
 }
 
-/** A bare axis number with its engineering prefix. The unit is on the axis, not on every tick. */
-export const fmtValue = (v) => {
+/**
+ * A bare axis number. The unit is named on the axis, not on every tick.
+ *
+ * A quantity with no unit takes no prefix, the same rule `format.js` holds the
+ * rest of the lab to: a reflected fraction of a half is 0.5 and not "500m".
+ */
+export const fmtValue = (v, unit = '') => {
   if (!Number.isFinite(v)) return ''
   if (v === 0) return '0'
+  if (!unit) return String(Number(v.toPrecision(3)))
   const e = eng(v, 3)
   return `${e.num}${e.prefix}`
 }
@@ -411,7 +424,7 @@ function MapPane({ domain, scalar, vector, equipotentials, conductors, charges, 
         ))}
         {grid && grid.scale > 0 ? (
           <span className="fieldmap-chip fieldmap-scale" data-role="colour-scale">
-            {hasSign ? `−${fmtValue(grid.scale)}` : '0'} to {fmtValue(grid.scale)} {scaleUnit}
+            {hasSign ? `−${fmtValue(grid.scale, scaleUnit)}` : '0'} to {fmtValue(grid.scale, scaleUnit)} {scaleUnit}
           </span>
         ) : null}
         {vector ? <span className="fieldmap-chip fieldmap-unit">arrows: direction only</span> : null}
@@ -527,7 +540,7 @@ function ValueAxis({ range, unit, side, colour }) {
         const edge = f > 0.92 ? ' is-top' : f < 0.08 ? ' is-bottom' : ''
         return (
           <span key={i} className={`fieldmap-vtick${edge}`} data-value={v} style={{ bottom: `${100 * f}%`, color: colour }}>
-            {fmtValue(v)}
+            {fmtValue(v, unit)}
           </span>
         )
       })}
@@ -566,7 +579,15 @@ function ProfilePane({ profile, units }) {
     <div className="fieldmap" data-mode="profile" data-panels={panels.length}>
       {panels.map((panel, i) => {
         const range = rangeOf(panel.scalar.read, lo, hi, { log })
-        const range2 = panel.secondary ? rangeOf(panel.secondary.read, lo, hi, { log }) : null
+        const second = panel.secondary ? rangeOf(panel.secondary.read, lo, hi, { log }) : null
+        // Two curves in the SAME unit are comparable, and putting each on its
+        // own scale destroys the comparison: A4's whole lesson is that a line
+        // of charge falls off and a sheet does not, and the two were drawn to
+        // separate ranges so both looked flat. Same unit, one scale, one axis.
+        // Different units, two axes and a sentence saying so.
+        const shared = Boolean(second) && (panel.secondary.unit || '') === (panel.scalar.unit || '')
+        const both = shared ? { min: Math.min(range.min, second.min), max: Math.max(range.max, second.max) } : range
+        const range2 = shared ? null : second
         return (
           <div className="fieldmap-panel" data-role="profile-panel" key={i}>
             <div className="fieldmap-panel-head">
@@ -579,7 +600,7 @@ function ProfilePane({ profile, units }) {
               ) : null}
             </div>
             <div className="fieldmap-panel-row">
-              <ValueAxis range={range} unit={panel.scalar.unit} side="left" colour="var(--accent)" />
+              <ValueAxis range={both} unit={panel.scalar.unit} side="left" colour={shared ? 'var(--dim)' : 'var(--accent)'} />
               <div className="fieldmap-panel-body">
                 <ProfileCurve
                   axis={profile.axis}
@@ -589,8 +610,8 @@ function ProfilePane({ profile, units }) {
                   lo={lo}
                   hi={hi}
                   log={log}
-                  range={range}
-                  range2={range2}
+                  range={both}
+                  range2={shared ? both : range2}
                 />
                 <RegionMarks regions={panel.regions} lo={lo} hi={hi} log={log} />
                 {/* Every panel carries the same tick positions, so a vertical line
