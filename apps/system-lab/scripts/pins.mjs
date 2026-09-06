@@ -137,3 +137,68 @@ line('  its input IP3', sig(raised.iip3Dbm), 'dBm')
 line('  worse by', sig(c.iip3Dbm - raised.iip3Dbm, 4), 'dB')
 line('sensitivity at 10 dB over 200 kHz', sig(noiseFloorDbm(NARROW, c.nfDb) + 10), 'dBm')
 line('sensitivity at 10 dB over 20.00 MHz', sig(noiseFloorDbm(WIDE, c.nfDb) + 10), 'dBm')
+
+// ---------------------------------------------------------------------------
+// What phases 4, 5 and 6 will pin.
+//
+// Their engine is not written. `dynamicRange` waits on the RF Lab's 1 dB
+// compression point and `link.js` waits on the Fields Lab's antenna gain, per
+// `apps/system-lab/NEEDS.md` §3. The closed forms are stated here so that the
+// brief's figures are computed rather than copied, and so that the lane which
+// writes the engine has a number to land on. Each line names the form it used.
+// When the engine lands, these lines move onto it and the values must not move.
+
+head('Phase 4: dynamic range, from the two slopes and the floor')
+// The cubic model's own offset, and a property of that model rather than a
+// convention. With v_out = a_1 v + a_3 v³ the fundamental grows as
+// a_1 A − (3/4)|a_3| A³, so the third-order intercept sits at
+// A² = 4a_1/(3|a_3|) and the 1 dB compression point at (1 − 10^(−1/20)) of it.
+// The ratio of the two is a power ratio, so ten times its logarithm.
+const P1DB_BELOW_IIP3 = 10 * Math.log10(1 - Math.pow(10, -0.05))
+line('the cubic model puts the 1 dB compression point below IIP3 by', sig(-P1DB_BELOW_IIP3), 'dB')
+const p1db = c.iip3Dbm + P1DB_BELOW_IIP3
+line('so the chain’s input 1 dB compression point is', sig(p1db), 'dBm')
+for (const [name, B] of [
+  ['200 kHz', NARROW],
+  ['20.00 MHz', WIDE],
+]) {
+  const floor = noiseFloorDbm(B, c.nfDb)
+  line(`  over ${name}, the floor`, sig(floor), 'dBm')
+  line('    spurious-free dynamic range, (2/3)(IIP3 − floor)', sig((2 / 3) * (c.iip3Dbm - floor)), 'dB')
+  line('    linear dynamic range, P1dB − floor', sig(p1db - floor), 'dB')
+}
+line('widening 200 kHz to 20.00 MHz costs the floor', sig(noiseFloorDbm(WIDE, c.nfDb) - noiseFloorDbm(NARROW, c.nfDb)), 'dB')
+line('  and the spurious-free range two thirds of that', sig((2 / 3) * (noiseFloorDbm(NARROW, c.nfDb) - noiseFloorDbm(WIDE, c.nfDb))), 'dB')
+
+head('Phase 5: the link, from 20 log(4π d / λ)')
+const C0_MS = 299792458
+const fsl = (dM, fHz) => 20 * Math.log10((4 * Math.PI * dM * fHz) / C0_MS)
+const linkOf = ({ ptDbm, gtDbi, grDbi, dM, fHz, nfDb, bHz, reqDb }) => {
+  const loss = fsl(dM, fHz)
+  const prx = ptDbm + gtDbi + grDbi - loss
+  const floor = noiseFloorDbm(bHz, nfDb)
+  return { loss, prx, floor, snr: prx - floor, margin: prx - floor - reqDb, cn0: prx - (KT0_DBM_HZ + nfDb) }
+}
+const LINKS = [
+  ['2.400 GHz over 100 m ', { ptDbm: 20, gtDbi: 2, grDbi: 2, dM: 100, fHz: 2.4e9, nfDb: 6, bHz: WIDE, reqDb: 20 }],
+  ['the same at 1.000 km ', { ptDbm: 20, gtDbi: 2, grDbi: 2, dM: 1000, fHz: 2.4e9, nfDb: 6, bHz: WIDE, reqDb: 20 }],
+  ['900 MHz over 10.00 km', { ptDbm: 30, gtDbi: 8, grDbi: 2, dM: 1e4, fHz: 9e8, nfDb: 8, bHz: NARROW, reqDb: 12 }],
+  ['12.00 GHz, 35786 km  ', { ptDbm: 50, gtDbi: 34, grDbi: 41, dM: 3.5786e7, fHz: 1.2e10, nfDb: 2, bHz: 2.7e7, reqDb: 10 }],
+]
+for (const [name, spec] of LINKS) {
+  const l = linkOf(spec)
+  line(`  ${name}`, `loss ${sig(l.loss)} dB  received ${sig(l.prx)} dBm  floor ${sig(l.floor)} dBm  ratio ${sig(l.snr)} dB  margin ${sig(l.margin)} dB`)
+}
+line('the wavelength at 2.400 GHz', sig(C0_MS / 2.4e9, 4), 'm')
+line('ten times the distance costs', sig(fsl(1000, 2.4e9) - fsl(100, 2.4e9)), 'dB')
+line('twice the distance costs', sig(fsl(200, 2.4e9) - fsl(100, 2.4e9)), 'dB')
+const first = linkOf(LINKS[0][1])
+line('C/N_0 for the 100 m link', sig(first.cn0), 'dB-Hz')
+for (const rb of [1e6, 1e7, 5.4e7]) line(`  E_b/N_0 at ${sig(rb, 4)} bit/s`, sig(first.cn0 - 10 * Math.log10(rb)), 'dB')
+
+head('Phase 6: reciprocal mixing, against the floor the chain already has')
+const PHASE_NOISE_DBC_HZ = -117
+const leaked = PHASE_NOISE_DBC_HZ + 10 * Math.log10(NARROW)
+line('a local oscillator at -117.0 dBc/Hz over 200 kHz', sig(leaked), 'dBc')
+line('  so a blocker at -30 dBm leaves', `${sig(-30 + leaked)} dBm in the channel`)
+line('  which is above the chain’s floor by', sig(-30 + leaked - noiseFloorDbm(NARROW, c.nfDb)), 'dB')
