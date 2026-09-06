@@ -295,7 +295,7 @@ export const JK_EXPERIMENTS = [
     id: 'k3',
     about: 'tsw',
     chips: [20e-9, 100e-9],
-    try: { knob: 'tsw', text: 'Set t_sw to 100 ns: the edges cost 439 mW and the bridge 2.08 W.' },
+    try: { knob: 'tsw', text: 'Set t_sw to 100 ns: the edges cost 439 mW and the bridge 1.04 W.' },
     group: 'Resonant conversion',
     name: 'What the soft edge saves',
     params: [Tsw(20e-9), FsK(130e3), Rs(0.2), Rk(12), Vin(48), Ratio(2), LmK(150e-6), Lr(), Cr(), C(100e-6)],

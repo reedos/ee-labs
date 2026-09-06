@@ -1189,3 +1189,82 @@ only its own section. The director folds it into the shared ledger at merge.
   The affine projection algorithm, multitaper estimation, radix-4 and
   split-radix. Fixed point on the whole chain, and a free-form design tool.
   None became cheaper to add while the six groups were built.
+
+### Power Lab, Groups J and K
+
+Groups **J** (isolated DC-DC) and **K** (resonant conversion) are built on
+`lab/power-jk`, six experiments on top of the thirty-four the lab already
+carried. The lab is at forty and stays dark. J is the forward, the push-pull
+and the full bridge, beside the half-bridge Group D built. K is the series
+resonant tank, the LLC, and what the soft edge saves against a hard-switched
+bridge on the same rail.
+
+`packages/switched` gained the forward family in `src/isolated.js` and the
+two tanks in `src/resonant.js`. Both are solved by one new method. The period
+is the clock's windows, the sub-intervals inside them are the state's, and
+periodicity is Newton on the walk itself.
+
+The affine map with the durations frozen does for every converter before this
+one and will not do here. An undamped tank's frozen map is a rotation, and
+the events are the whole of the damping. Fuzzed at 240 forward-family
+converters and 240 resonant ones, with the walk from rest as the independent
+witness in twelve named cases. Every existing signature stands,
+`ISOLATED_KINDS` is still two, and `isolated('forward')` still throws.
+
+Deferred, with what reopens each:
+
+- **D5, the leakage spike, is still not built.** It was worth asking whether
+  the forward converter's reset winding gave it for free, and it does not.
+  The reset is a second magnetising path with its own volt-second balance,
+  not a clamp across a leakage inductance, and the model that carries it is
+  three states rather than four. Reopens with a fourth state and a clamp, as
+  the plan's §4 already says.
+- **The push-pull's flux walk is the two switches' resistances and nothing
+  else.** A real converter's asymmetry also comes from unequal storage times
+  and unequal drive, and neither is modelled. The resistance mismatch is the
+  one that has a closed form, which is why it is the knob. Reopens with a
+  switching-time model that differs between the two halves.
+- **`verify.mjs` has not been run against the new groups.** This environment
+  has no browser. The one new pane (Family), the five new drawings and the
+  three new sweep axes are held as geometry and as rendered markup by
+  `schematics.test.jsx`, `panes.test.jsx` and `review.test.jsx`. That is what
+  a suite can hold without pixels. Reopens on a machine with Chromium and
+  Firefox, before the release gate's step 1.
+- **Some cells of the resonant measures table are bounds rather than closed
+  forms.** The tank current is a piece of a sine whose amplitude the whole
+  tank sets. The first-harmonic form that would give it is the approximation
+  K1 exists to measure, so it cannot also be the pin. Seven of the thirty
+  cells are named in `unpinned` with that reason and the rest are pinned.
+  Reopens if a closed form for the arc's amplitude is worth the algebra.
+- **The shooting method has corners it does not settle in**, and the app says
+  so rather than drawing a waveform that is not the converter's. A tank run
+  at five times its own resonance into an output filter tens of thousands of
+  periods long is the shape of them. The gate names the load, the capacitor
+  and the frequency. The math panel stops comparing anything, and the top bar
+  reads "did not settle". None of the six experiments' defaults reaches one,
+  and the 480-sample fuzz reaches none. Reopens with a better Jacobian. The
+  saltation matrix at each event gives the true monodromy matrix
+  analytically, where this takes it by difference.
+
+Two of the brief's numbers moved, and both are the engine's:
+
+- **J2's magnetising ripple is 48.0 mA rather than the 192 mA the same knobs
+  give at 1 mH.** L_m is 4 mH in this experiment, chosen so the 24.0 mA offset
+  the mismatch leaves is half the ripple rather than a twentieth of it. The
+  offset itself is what the closed form says to four figures.
+- **K3's hard-switched reference costs 1.04 W at t_sw = 100 ns, not 2.08 W.**
+  The first run of `pins-jk.mjs` built the reference from a half-bridge's own
+  parameter block, which carries the doubled frequency the solver runs it at,
+  and so charged the edges twice. The script now builds the reference from the
+  reader's own frequency at each point, and the note carries 1.04 W.
+
+The §8 phasing note, for the plan:
+
+> **Phase 7 and 8, in part.** J is built, and it needed the third state the
+> plan did not ask for: the magnetising current is the lesson in this family
+> rather than a passenger, so `isolated.js` carries [i_L, v_C, i_M] and a
+> solver for a clock with state events inside it. K is built on the same
+> solver, with the transformer's own current as the state that makes the
+> rectifier exact. I and L, the other halves of those two phases, are not.
+> Next by the plan's list is **H**, closing the loop, which is still the first
+> thing that needs another lab.

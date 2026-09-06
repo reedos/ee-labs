@@ -230,6 +230,8 @@ head('K3 · why resonant')
   // same rail with the same devices.
   const Vo = m.sig.vout.avg
   const hbN = 0.5
+  const hardAt = (tsw) =>
+    measures(steadyState(halfBridge({ Vin: K3.Vin, n: hbN, D: Vo / (hbN * K3.Vin), L: 100e-6, C: 100e-6, R: K3.R, fs: K3.fs, RL: K3.Rs, tr: tsw, tf: tsw })))
   const hb = halfBridge({ Vin: K3.Vin, n: hbN, D: Vo / (hbN * K3.Vin), L: 100e-6, C: 100e-6, R: K3.R, fs: K3.fs, RL: K3.Rs, tr: K3.tr, tf: K3.tf })
   const hm = measures(steadyState(hb))
   console.log('hard-switched : V_out', f(hm.sig.vout.avg, 5), 'D', f(hb.p.D / 2, 4), 'i_on', f(hm.iTurnOn, 5), 'i_off', f(hm.iTurnOff, 5))
@@ -238,7 +240,7 @@ head('K3 · why resonant')
   console.log('  closed form ', mW(hardSwitchedEdgeLoss({ Vin: K3.Vin, Iout: hm.Iout, tr: K3.tr, tf: K3.tf, fs: K3.fs })))
   for (const tsw of [100e-9, 0]) {
     const q = at({ tr: tsw, tf: tsw })
-    const h = measures(steadyState(halfBridge({ ...hb.p, D: hb.p.D / 2, tr: tsw, tf: tsw })))
+    const h = hardAt(tsw)
     console.log(`  t_sw = ${(tsw * 1e9).toFixed(0)} ns:`, 'LLC edges', mW(q.m.loss.switching), 'η', pc(q.m.eta), '| hard', mW(h.loss.switching), 'η', pc(h.eta))
   }
 }
