@@ -1,5 +1,6 @@
 import React from 'react'
 import { fmt, fmtNum } from '@ee-labs/ui'
+import { fmtInt } from '../format.js'
 
 // The readouts.
 //
@@ -8,12 +9,25 @@ import { fmt, fmtNum } from '@ee-labs/ui'
 // is no way to render an estimate without one. That is what keeps the guard on
 // the screen rather than in a comment.
 
+/**
+ * One number, formatted for what it is.
+ *
+ * `sig = 0` means the quantity is a count, so it prints as a whole number.
+ * A value that is not finite prints as an em rule rather than as "NaN", and the
+ * caller states the reason in its note.
+ */
+function show(value, unit, sig) {
+  if (!Number.isFinite(value)) return '—'
+  if (sig === 0) return fmtInt(value)
+  return unit ? fmt(value, unit, sig) : fmtNum(value, sig)
+}
+
 /** A closed form. No interval, no hedge (CORE_SCOPE counter-rule). */
 export function Closed({ label, value, unit = '', sig = 4, note = null }) {
   return (
     <div className="readout closed">
       <span className="label">{label}</span>
-      <span className="value">{unit ? fmt(value, unit, sig) : fmtNum(value, sig)}</span>
+      <span className="value">{show(value, unit, sig)}</span>
       {note ? <span className="note">{note}</span> : null}
     </div>
   )
@@ -37,8 +51,8 @@ export function Estimate({ label, est, unit = '', sig = 4, scale = 1 }) {
     <div className="readout estimate">
       <span className="label">{label}</span>
       <span className="value">
-        {unit ? fmt(est.value * scale, unit, sig) : fmtNum(est.value * scale, sig)}
-        <span className="pm"> ± {unit ? fmt(half, unit, 2) : fmtNum(half, 2)}</span>
+        {show(est.value * scale, unit, sig)}
+        <span className="pm"> ± {show(half, unit, 2)}</span>
       </span>
       <span className="note">
         {(est.level * 100).toFixed(0)} % interval, n = {est.n}
@@ -54,8 +68,8 @@ export function Against({ label, measured, predicted, sig = 4, unit = '' }) {
     <div className="readout against">
       <span className="label">{label}</span>
       <span className="value">
-        {unit ? fmt(measured, unit, sig) : fmtNum(measured, sig)}
-        <span className="pm"> against {unit ? fmt(predicted, unit, sig) : fmtNum(predicted, sig)}</span>
+        {show(measured, unit, sig)}
+        <span className="pm"> against {show(predicted, unit, sig)}</span>
       </span>
       <span className="note">{Number.isFinite(ratio) ? `${((ratio - 1) * 100).toFixed(2)} % apart` : 'no comparison'}</span>
     </div>
