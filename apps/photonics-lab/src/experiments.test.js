@@ -292,6 +292,52 @@ describe('a number that depends on a stated choice carries the choice', () => {
     expect(row.value).toMatch(/estimate/)
   })
 
+  it('a number exact only for a stated model carries that model on its pane', () => {
+    // CORE_SCOPE.md. The LED's linear output and the laser's two fixed
+    // efficiencies are each exact for a model and not for a device, so the
+    // sentence naming the model is a row beside the number, in both groups.
+    for (const id of ['c2', 'c3']) {
+      const { exp, p, x } = at(id)
+      const rows = numbersFor(exp, x, p).filter((r) => r.label === 'The model')
+      expect(rows.length, `${id} names no model`).toBeGreaterThan(0)
+      for (const r of rows) expect(r.formula.length, `${id} model sentence`).toBeGreaterThan(30)
+    }
+    for (const id of ['c4', 'c5']) {
+      const { exp, p, x } = at(id)
+      const row = numbersFor(exp, x, p).find((r) => r.label === 'The model')
+      expect(row, `${id} names no model`).toBeTruthy()
+      expect(row.formula).toBe(x.laser.model)
+    }
+  })
+
+  it('a response is described by its phase as well as its magnitude', () => {
+    // REVIEW_PLAYBOOK.md §3. One pole lags exactly 45 degrees at its corner and
+    // a second order lags exactly 90 at its natural frequency, whatever the
+    // damping. Both are read off the same H the magnitude came from.
+    const led = at('c3')
+    expect(led.x.band.phaseAtCorner).toBeCloseTo(-45, 12)
+    const ledRow = numbersFor(led.exp, led.x, led.p).find((r) => r.label === 'Phase at the corner')
+    expect(ledRow.value).toBe('-45.00°')
+    const laser = at('d3')
+    expect(laser.x.phaseAtFr).toBeCloseTo(-90, 11)
+    const row = numbersFor(laser.exp, laser.x, laser.p).find((r) => r.label === 'Phase at the relaxation frequency')
+    expect(row.value).toBe('-90.00°')
+    // The peak sits below the natural frequency, so it lags a little less.
+    expect(laser.x.phaseAtPeak).toBeGreaterThan(-90)
+    expect(laser.x.phaseAt3db).toBeLessThan(-90)
+  })
+
+  it('a budget the fixed items have already spent declines a reach, and says why', () => {
+    // CORE_SCOPE.md Rule 2. The zero is not the answer, the reason is, so the
+    // sentence is on the pane rather than only in the analysis.
+    const { exp, p, x } = at('e5', { connectors: 20, splices: 20 })
+    expect(x.reach.length).toBe(0)
+    expect(x.refusal).toMatch(/no length of fibre reaches/)
+    const row = numbersFor(exp, x, p).find((r) => r.label === 'Loss-limited reach, declined')
+    expect(row.value).toBe('declined')
+    expect(row.formula).toBe(x.refusal)
+  })
+
   it('the cavity declines the hand-over to systems, and the message names the factor', () => {
     const { exp, p, x } = at('f1')
     expect(x.refusal).toMatch(/transcendental/)

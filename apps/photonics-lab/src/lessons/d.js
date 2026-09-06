@@ -133,12 +133,14 @@ export const LESSONS_D = {
       'is one over the carrier lifetime plus the differential gain times the photon density, which is 1.7448 per ' +
       'nanosecond here. That leaves a damping ratio of 0.034848, so the response peaks hard. The familiar ' +
       'textbook form drops the transparency density, and it reads low by a factor of 1.5779 at this laser’s own ' +
-      'parameters. Both forms are printed, because the difference is the lesson. The linearisation is an exact ' +
-      'ratio of polynomials in s, so it crosses to the rest of the suite with no qualification attached to it.',
+      'parameters. Both forms are printed, because the difference is the lesson. The phase lags 90.000 degrees at ' +
+      'the relaxation frequency, whatever the damping ratio is. The linearisation is an exact ratio of ' +
+      'polynomials in s, so it crosses to the rest of the suite with no qualification attached to it.',
     whyReads: [
       ['dampingPerNs', 1.7448],
       ['sm.zeta', 0.034848],
       ['textFactor', 1.5779],
+      ['phaseAtFr', -90],
     ],
   },
 

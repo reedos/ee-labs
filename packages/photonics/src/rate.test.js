@@ -9,6 +9,7 @@ import {
   laserSpec,
   linearStep,
   modulationAt,
+  modulationPhase,
   rateTerms,
   refuseLargeSignal,
   smallSignal,
@@ -247,6 +248,32 @@ describe('invariant 6: the linearisation is the derivative', () => {
     let best = 0
     for (let k = -2000; k <= 2000; k++) best = Math.max(best, modulationAt(sm, sm.peakHz * (1 + k * 1e-5)))
     expect(relative(best, sm.peak)).toBeLessThan(1e-9)
+  })
+
+  it('the phase comes with the magnitude, and it is 90 degrees at omega_r', () => {
+    // REVIEW_PLAYBOOK.md §3. The natural frequency is where the phase crosses
+    // ninety degrees, whatever the damping is, and that is what makes it
+    // readable off the response when the magnitude's own peak has moved.
+    const r = rng(0x1a4c)
+    for (let k = 0; k < 80; k++) {
+      const spec = randomLaser(r)
+      const t = threshold(spec)
+      const sm = smallSignal(spec, t.ith * logUniform(r, 1.2, 12))
+      expect(modulationPhase(sm, 0)).toBe(-0)
+      expect(modulationPhase(sm, sm.fr)).toBeCloseTo(-90, 11)
+      // Below omega_r the lag is under ninety and above it over, and it never
+      // passes a hundred and eighty.
+      expect(modulationPhase(sm, 0.5 * sm.fr)).toBeGreaterThan(-90)
+      expect(modulationPhase(sm, 2 * sm.fr)).toBeLessThan(-90)
+      expect(modulationPhase(sm, 1e6 * sm.fr)).toBeGreaterThan(-180)
+      // One H(s), read two ways: the magnitude and the phase are the modulus
+      // and the argument of the same denominator.
+      const f = sm.fr * logUniform(r, 0.05, 40)
+      const w = 2 * Math.PI * f
+      const phi = (modulationPhase(sm, f) * Math.PI) / 180
+      const re = (sm.wr * sm.wr - w * w) * modulationAt(sm, f)
+      expect(relative(re / (sm.wr * sm.wr), Math.cos(phi))).toBeLessThan(1e-12)
+    }
   })
 
   it('with no photons in the cavity there is no oscillation to linearise, and it says so', () => {

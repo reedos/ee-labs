@@ -318,6 +318,22 @@ export function modulationAt(sm, f) {
   return (sm.wr * sm.wr) / Math.hypot(re, sm.gamma * w)
 }
 
+/**
+ * The phase of that same H(s) at a frequency, in degrees.
+ *
+ * `REVIEW_PLAYBOOK.md` §3: a magnitude with no phase beside it is half a
+ * description. The pair is a second-order low pass, so the phase runs from zero
+ * to minus one hundred and eighty degrees, and it is exactly minus ninety at
+ * the natural frequency whatever the damping is. That last fact is what makes
+ * omega_r readable off a phase curve when a lightly damped peak has moved the
+ * magnitude's own maximum below it.
+ */
+export function modulationPhase(sm, f) {
+  const w = 2 * Math.PI * nonNegative(f, 'f')
+  const re = sm.wr * sm.wr - w * w
+  return (-Math.atan2(sm.gamma * w, re) * 180) / Math.PI
+}
+
 // ------------------------------------------------------- the guard, and its measurement
 
 /**

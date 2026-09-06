@@ -82,6 +82,17 @@ describe('what a pane puts on screen', () => {
     expect(html(<LinkPane exp={fails.exp} x={fails.x} p={fails.p} />)).toMatch(/class="is-off"/)
   })
 
+  it('the link pane carries the refusal when no length of fibre reaches', () => {
+    const spent = at('e5', { connectors: 20, splices: 20 })
+    const out = html(<LinkPane exp={spent.exp} x={spent.x} p={spent.p} />)
+    expect(out).toMatch(/link-refusal/)
+    expect(out).toMatch(/no length of fibre reaches/)
+    // And it is absent when the budget closes, because a flag that is always
+    // there is not a flag.
+    const closes = at('e5')
+    expect(html(<LinkPane exp={closes.exp} x={closes.x} p={closes.p} />)).not.toMatch(/link-refusal/)
+  })
+
   it('the cavity pane carries the refusal, because the refusal is content', () => {
     const { exp, p, x } = at('f1')
     const out = html(<CavityPane exp={exp} x={x} p={p} />)
@@ -145,6 +156,9 @@ describe('what a pane puts on screen', () => {
     // two numbers the readouts carry.
     expect(out).toMatch(/mod-peak/)
     expect(out).toMatch(/mod-corner/)
+    // And the phase beside the magnitude, per REVIEW_PLAYBOOK.md §3.
+    expect(out).toMatch(/Phase there/)
+    expect(out).toMatch(/-90\.00°/)
   })
 
   it('the step pane draws the prediction, flags it, then stops drawing it', () => {

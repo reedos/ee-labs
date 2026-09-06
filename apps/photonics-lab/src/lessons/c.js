@@ -126,12 +126,14 @@ export const LESSONS_C = {
       'before it does. That lifetime is a single pole in the response. The corner is one over two pi times the ' +
       'lifetime, so a 5.0 ns lifetime puts it at 31.831 MHz. Above the corner the output falls at 6.0203 dB an ' +
       'octave and 20 dB a decade, which is the first-order rule applied to this one pole. A shorter lifetime buys ' +
-      'bandwidth and costs light, because a carrier that recombines sooner has less chance to be caught. C4 shows ' +
-      'how a laser escapes that trade, and D3 measures how much faster it is.',
+      'bandwidth and costs light, because a carrier that recombines sooner has less chance to be caught. The phase ' +
+      'falls with the magnitude, and it lags 45.000 degrees at the corner itself. C4 shows how a laser escapes ' +
+      'that trade, and D3 measures how much faster it is.',
     whyReads: [
       ['band.f3db', 31.831e6],
       ['band.perOctave', 6.0203],
       ['band.perDecade', 20.0],
+      ['band.phaseAtCorner', -45],
     ],
   },
 

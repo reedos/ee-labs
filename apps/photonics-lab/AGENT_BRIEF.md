@@ -211,6 +211,7 @@ forwardVoltage({ current, is, n, vt })   // Shockley read backwards
 ledOutput({ etaInt, lambda, current })   // { power, slope, volts, model }
 ledBandwidth({ tauC })                   // { f3db, tauC, model }
 ledResponse({ tauC, f })                 // |H| against its low-frequency value
+ledPhase({ tauC, f })                    // degrees, exactly −45 at the corner
 slopeEfficiency({ etaD, lambda })        // { slope, volts, etaD }, W/A
 laserOutput({ etaD, lambda, current, ith, etaSp })
   // { power, stimulated, spontaneous, slope, spontaneousSlope, slopeRatio, above }
@@ -249,6 +250,7 @@ smallSignal(spec, current)
   // { wr, fr, gamma, zeta, resonant, peak, peakDb, peakHz, f3db, dc,
   //   overshoot, b: [...], a: [...], wrText, frText }
 modulationAt(sm, f)             // |H| against its low-frequency value
+modulationPhase(sm, f)          // degrees, exactly −90 at omega_r
 
 DEPTH_WARN     // 0.05, and the measured error at it is 5.2638 %
 DEPTH_DECLINE  // 0.30, and the measured error at it is 26.760 %
@@ -345,7 +347,8 @@ contrast.<ratio|db>                                 peak against valley
 grid.width, band.<width|channels>, widthRatio       the channel grid
 j.<current|forward|across|iters>                    the solved forward junction
 led.<power|slope|volts>                             the LED's linear output
-band.<f3db|tauC|perDecade|perOctave|atCorner>       its one pole
+band.<f3db|tauC|perDecade|perOctave|atCorner|       its one pole
+  phaseAtCorner|phaseDecadeUp>                      and its phase
 laser.<power|stimulated|spontaneous|slope|          the laser's two slopes
   spontaneousSlope|slopeRatio|above>
 ith, nth, tauP, volts                               the device, at this setting
@@ -355,6 +358,7 @@ n, s, current, above                                the steady state
 carriers.<0|1|2>.value, photons.<0|1|2>.value       one term of one equation
 carrierSum, photonSum                               each equation's own sum
 sm.<fr|frText|gamma|zeta|peakDb|peakHz|f3db|dc>     the linearisation
+phaseAtFr, phaseAtPeak, phaseAt3db                  its phase, in degrees
 dampingPerNs, textFactor                            the two numbers D3 quotes
 guard.<error|depth|warn|decline|measured|predicted|declined>   the guard
 headline                                            whatever the experiment is about
@@ -478,3 +482,13 @@ A lane is done when all of these hold.
 - **An integration is not a curve sample.** `depthGuard` runs a Runge-Kutta
   pass, so D4 has no curve view over depth. Its five depths are rows on the
   numbers pane instead, one integration each.
+- **A knob default that is a rounding of a derived number makes a second
+  device.** The photon lifetime was typed into the knobs at five figures where
+  `rate.js` computes it from the chip. C4 and Group D then ran a laser the
+  engine's own tests do not, and every figure downstream of it moved in the
+  fifth digit. A default that something else derives is imported, never typed.
+- **A prefix letter with no unit behind it is read as a unit.** A numerical
+  aperture of 0.12461 came out as "124.61 m". `num` in `format.js` prints a
+  unitless reading in plain digits, and anything past the prefix table as a
+  mantissa and a power of ten. `experiments.test.js` measures that over every
+  headline and every numbers row.

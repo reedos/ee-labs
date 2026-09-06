@@ -195,6 +195,9 @@ function linkRows(x, p) {
   out.push(row('Loss-limited reach', span(x.reach.length), 'what is left of the budget, divided by α'))
   out.push(row('Dispersion-limited reach', span(x.reach.dispersion), 'L = criterion / (B D Δλ)'))
   out.push(row('Which limit binds', x.reach.binds, 'the shorter of the two reaches'))
+  // A budget the fixed items have already spent has no reach, and the reason is
+  // the content rather than the zero. CORE_SCOPE.md Rule 2.
+  if (x.refusal) out.push(row('Loss-limited reach, declined', 'declined', x.refusal))
   return out
 }
 
@@ -259,6 +262,8 @@ function ledRows(x, p) {
     out.push(row('Modulation bandwidth', num(x.band.f3db, 'Hz'), 'f = 1 / (2π τ_c)'))
     out.push(row('Roll-off, per decade', db(x.band.perDecade), 'one pole falls 20 dB a decade, measured here'))
     out.push(row('Roll-off, per octave', db(x.band.perOctave), 'the same pole, 6.0206 dB an octave'))
+    out.push(row('Phase at the corner', deg(x.band.phaseAtCorner), 'one pole lags 45 degrees at its own corner, exactly'))
+    out.push(row('Phase a decade above', deg(x.band.phaseDecadeUp), 'the same pole, on its way to 90 degrees'))
     out.push(row('The model', 'one pole', x.band.model))
   }
   return out
@@ -276,6 +281,10 @@ function laserRows(x, p) {
     row('Ratio of the two slopes', plain(x.laser.slopeRatio), 'how much steeper the device gets at threshold'),
     row('Optical power', num(x.laser.power, 'W'), 'the two paths added'),
     row('Above threshold', x.laser.above ? 'yes' : 'no', 'whether the drive current has passed I_th'),
+    // The model the two slopes are, named where its numbers are printed. The
+    // LED's rows do the same, and CORE_SCOPE.md asks for nothing less on a
+    // number that is exact only for a stated model.
+    row('The model', 'two fixed efficiencies', x.laser.model),
   ]
   if (x.cavity) {
     out.push(row('Mirror loss', plain(x.cavity.mirrorPerCm) + ' per cm', 'α_m = (1/2L) ln(1/R)'))
@@ -307,6 +316,9 @@ function rateRows(x, p) {
     out.push(row('Peak height', db(x.sm.peakDb), '1 / (2ζ√(1 − ζ²))'))
     out.push(row('Peak at', num(x.sm.peakHz, 'Hz'), 'ω_r √(1 − 2ζ²), which is below ω_r'))
     out.push(row('Modulation bandwidth', num(x.sm.f3db, 'Hz'), 'where |H| is 3 dB down'))
+    out.push(row('Phase at the relaxation frequency', deg(x.phaseAtFr), 'a second order lags 90 degrees at ω_r, whatever ζ is'))
+    out.push(row('Phase at the peak', deg(x.phaseAtPeak), 'the same H(s), read where |H| is largest'))
+    out.push(row('Phase at the bandwidth', deg(x.phaseAt3db), 'the same H(s), read where |H| is 3 dB down'))
   }
   if (x.guard) {
     const g = x.guard

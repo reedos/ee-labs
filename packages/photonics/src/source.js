@@ -170,6 +170,20 @@ export function ledResponse({ tauC, f }) {
   return 1 / Math.hypot(1, nonNegative(f, 'f') / f3db)
 }
 
+/**
+ * The phase of that same pole, in degrees.
+ *
+ * A magnitude with no phase beside it is half a description, which is
+ * `REVIEW_PLAYBOOK.md` §3. One pole lags by the arctangent of the frequency over
+ * the corner, so it is exactly −45° at the corner and approaches −90° above it.
+ * The corner value is exact rather than a limit, and the pane prints it as
+ * such.
+ */
+export function ledPhase({ tauC, f }) {
+  const { f3db } = ledBandwidth({ tauC })
+  return (-Math.atan(nonNegative(f, 'f') / f3db) * 180) / Math.PI
+}
+
 // ----------------------------------------------------------------- the laser
 
 /**

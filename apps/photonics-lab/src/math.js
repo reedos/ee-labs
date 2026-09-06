@@ -302,7 +302,12 @@ function analyseLed(exp, p) {
       // What the response actually is at the corner, so "3 dB down" is a
       // reading rather than a definition repeated.
       atCorner: 20 * Math.log10(P.ledResponse({ tauC: p.tauC, f: band.f3db })),
+      // The phase beside the magnitude, which REVIEW_PLAYBOOK.md §3 asks for.
+      // One pole lags 45 degrees at its corner and approaches 90 above it.
+      phaseAtCorner: P.ledPhase({ tauC: p.tauC, f: band.f3db }),
+      phaseDecadeUp: P.ledPhase({ tauC: p.tauC, f: 10 * band.f3db }),
       at: (f) => P.ledResponse({ tauC: p.tauC, f }),
+      phaseAt: (f) => P.ledPhase({ tauC: p.tauC, f }),
     }
   }
   out.forward = P.forwardVoltage({ current: p.current, is: p.is, n: p.n })
@@ -358,6 +363,13 @@ function analyseRate(exp, p) {
     const sm = P.smallSignal(spec, p.current)
     out.sm = sm
     out.response = (f) => P.modulationAt(sm, f)
+    out.phase = (f) => P.modulationPhase(sm, f)
+    // The phase beside the magnitude, per REVIEW_PLAYBOOK.md §3. A second-order
+    // low pass lags exactly ninety degrees at its natural frequency, whatever
+    // the damping, and approaches a hundred and eighty above it.
+    out.phaseAtFr = P.modulationPhase(sm, sm.fr)
+    out.phaseAtPeak = P.modulationPhase(sm, sm.peakHz)
+    out.phaseAt3db = P.modulationPhase(sm, sm.f3db)
     // The damping in the unit D3 quotes it in. A rate of 1.7448e9 per second
     // is 1.7448 per nanosecond, and the second is the one a reader carries.
     out.dampingPerNs = sm.gamma / 1e9

@@ -10,6 +10,7 @@ import {
   laserOutput,
   ledBandwidth,
   ledOutput,
+  ledPhase,
   ledResponse,
   slopeEfficiency,
   voltsPerPhoton,
@@ -196,6 +197,25 @@ describe('the LED is slow, and one carrier lifetime says how slow', () => {
       const octave = 20 * Math.log10(ledResponse({ tauC, f: 100 * f3db }) / ledResponse({ tauC, f: 200 * f3db }))
       expect(decade).toBeCloseTo(20, 2)
       expect(octave).toBeCloseTo(6.0206, 2)
+    }
+  })
+
+  it('the phase comes with the magnitude, and it is 45 degrees at the corner', () => {
+    // REVIEW_PLAYBOOK.md §3. A magnitude with no phase beside it is half a
+    // description, and the corner value is exact rather than an asymptote.
+    const r = rng(0x62b4)
+    for (let k = 0; k < 60; k++) {
+      const tauC = logUniform(r, 0.2e-9, 50e-9)
+      const { f3db } = ledBandwidth({ tauC })
+      expect(ledPhase({ tauC, f: 0 })).toBe(-0)
+      expect(ledPhase({ tauC, f: f3db })).toBeCloseTo(-45, 12)
+      expect(ledPhase({ tauC, f: 10 * f3db })).toBeCloseTo(-84.289, 3)
+      expect(ledPhase({ tauC, f: 1e6 * f3db })).toBeGreaterThan(-90)
+      // The magnitude and the phase describe one pole, so the tangent of the
+      // phase is the ratio the magnitude is built from.
+      const f = f3db * logUniform(r, 0.01, 100)
+      const mag = ledResponse({ tauC, f })
+      expect(relative(-Math.tan((ledPhase({ tauC, f }) * Math.PI) / 180), Math.sqrt(1 / (mag * mag) - 1))).toBeLessThan(1e-9)
     }
   })
 

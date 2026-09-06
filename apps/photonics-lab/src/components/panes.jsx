@@ -2,7 +2,7 @@ import React from 'react'
 import { Schematic } from '@ee-labs/ui'
 import CurveCanvas from './CurveCanvas.jsx'
 import { numbersFor, schematicFor, stepResolution } from '../view.js'
-import { db, dbm, nm, num, pct, plain, span } from '../format.js'
+import { db, dbm, deg, nm, num, pct, plain, span } from '../format.js'
 
 /** Every closed form the experiment used, with the formula it came from. */
 export function NumbersPane({ exp, x, p }) {
@@ -227,6 +227,11 @@ export function LinkPane({ x, p }) {
       <p className="caption">
         A zero-height bar is a loss this model does not include, named so the omission is a decision.
       </p>
+      {x.refusal ? (
+        <p className="flag warn" data-role="link-refusal">
+          {x.refusal}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -435,6 +440,10 @@ export function ModulationPane({ x }) {
         <div>
           <dt>Relaxation frequency</dt>
           <dd>{num(sm.fr, 'Hz')}</dd>
+        </div>
+        <div>
+          <dt>Phase there</dt>
+          <dd>{deg(x.phaseAtFr)}</dd>
         </div>
         <div>
           <dt>The textbook form</dt>
