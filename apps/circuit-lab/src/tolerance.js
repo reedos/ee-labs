@@ -47,7 +47,9 @@ export const TOLERANCES = [
   { value: 0.1, label: '±10%' },
 ]
 
-const SAMPLES = 120
+/** How many builds every cloud, band and spread is drawn from. Exported so
+ *  the pane that says "the cloud is 120 builds" says the number it drew. */
+export const SAMPLES = 120
 
 /**
  * Per-part tolerances for a circuit, from a spec that may be lazy.

@@ -39,6 +39,7 @@ import {
   sameSetup,
 } from './lessons.js'
 import {
+  SAMPLES,
   TOLERANCES,
   responseBand,
   stepBand,
@@ -153,6 +154,14 @@ export default function App() {
     setLower(next.view)
     setLesson(l.name)
     setLastLesson(null)
+    // The sidebar goes back to the top with it. The lesson list sits BELOW the
+    // note (it has to, or a phone's first screen is seventeen buttons), so a
+    // tap partway down the list left the sidebar scrolled 315 px and the note
+    // the tap asked for 245 px above the visible box. Every fold probe pins
+    // the scroller to zero before measuring, which is why this survived: the
+    // student who taps is the one case nothing measured.
+    const box = document.querySelector('.controls')
+    if (box) box.scrollTop = 0
   }
 
   const active = LESSONS.find((l) => l.name === lesson)
@@ -240,8 +249,13 @@ export default function App() {
 
   const markers = useMemo(() => {
     const out = []
-    if (metrics) out.push({ f: metrics.w0 / (2 * Math.PI), label: 'f₀' })
-    else if (second) out.push({ f: second.f0, label: 'f₀' })
+    // With its value. The frequency axis is labelled by decades, so a line
+    // marked "f₀" on a plot whose nearest labels are 1k and 10k names the
+    // quantity and withholds the number — the same defect the first-order
+    // corner was fixed for, left standing on every resonant circuit.
+    const named = (f) => ({ f, label: `f₀ = ${fmtHz(f)}Hz` })
+    if (metrics) out.push(named(metrics.w0 / (2 * Math.PI)))
+    else if (second) out.push(named(second.f0))
     else {
       // A first-order corner, named as the note names it — the cutoff, with
       // its value — rather than as the pole it also is.
@@ -888,6 +902,23 @@ export default function App() {
                   <span className={stable ? '' : 'flag warn'}>
                     {stable ? 'all in the left half plane' : 'not all in the left half plane'}
                   </span>
+                  {/* What the cloud under the marks spans, beside the marks.
+                      The same two numbers are spelled out in Components, and
+                      that section sits 776 px below the sidebar's first
+                      screen: the wobble lessons promise "f₀ ±0.0%, Q ±10.6%"
+                      in the try line and then answer it off screen. */}
+                  {wobble.any && f0Spread != null ? (
+                    <span data-role="pz-spread">
+                      with these parts <b>f₀ ±{fmtPct(f0Spread)}%</b>
+                      {qSpread != null ? (
+                        <>
+                          {' · '}
+                          <b>Q ±{fmtPct(qSpread)}%</b>
+                        </>
+                      ) : null}
+                      <em className="prov"> · the cloud is {SAMPLES} builds</em>
+                    </span>
+                  ) : null}
                 </>
               ) : (
                 <span>
@@ -915,18 +946,29 @@ export default function App() {
               </p>
             )
           ) : lower === 'pz' ? (
-            <PoleZeroCanvas
-              poles={pz.poles}
-              zeros={pz.zeros}
-              cloud={wobble.any ? wobble.cloud : null}
-              span={pzSpan}
-              // σ and jω are the two parts of one number, and the readout
-              // beside the plot prints that number in s⁻¹. The canvas's own
-              // defaults named the same quantity three ways — "1/s" across
-              // the bottom, "rad/s" up the side, "s⁻¹" in the legend.
-              xTitle="Real  σ  (s⁻¹)"
-              yTitle="Imaginary  jω  (s⁻¹)"
-            />
+            pz.poles.length || pz.zeros.length ? (
+              <PoleZeroCanvas
+                poles={pz.poles}
+                zeros={pz.zeros}
+                cloud={wobble.any ? wobble.cloud : null}
+                span={pzSpan}
+                // σ and jω are the two parts of one number, and the readout
+                // beside the plot prints that number in s⁻¹. The canvas's own
+                // defaults named the same quantity three ways — "1/s" across
+                // the bottom, "rad/s" up the side, "s⁻¹" in the legend.
+                xTitle="Real  σ  (s⁻¹)"
+                yTitle="Imaginary  jω  (s⁻¹)"
+              />
+            ) : (
+              // A resistive divider has nothing to place, and the canvas fits
+              // its span to the content: with no content it invented one and
+              // drew an empty grid running −2 to 2 s⁻¹, an axis calibrated in
+              // nothing. Say what the view holds instead.
+              <p className="hint" data-role="pz-empty">
+                This circuit has no poles and no zeros. Resistors store no energy, so
+                nothing here can depend on frequency.
+              </p>
+            )
           ) : (
             <div className="math-pane" data-role="math-pane">
               <MathBody entry={math} />
