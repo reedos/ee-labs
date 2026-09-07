@@ -866,6 +866,12 @@ export default function App() {
             <ViewSwitch value={currentView} onChange={setView} options={viewOptions} />
           </div>
           <div className="view-body">
+            {currentView === 'foundations' ? <FoundationsPane exp={exp} x={x} onChoose={setView} /> : <>
+              <FoundationLink exp={exp} view={currentView} />
+              <Headline exp={exp} x={x} params={params} />
+              <Bridge exp={exp} view={currentView} />
+              <SolutionRoutes exp={exp} x={x} view={currentView} onChoose={setView} />
+            </>}
             <div className="readout">
               {currentView === 'thevenin' && x.thevenin ? (
                 <>
@@ -952,12 +958,6 @@ export default function App() {
                 )
               ) : null}
             </div>
-            {currentView === 'foundations' ? <FoundationsPane exp={exp} x={x} onChoose={setView} /> : <>
-              <FoundationLink exp={exp} view={currentView} />
-              <Headline exp={exp} x={x} params={params} />
-              <Bridge exp={exp} view={currentView} />
-              <SolutionRoutes exp={exp} x={x} view={currentView} onChoose={setView} />
-            </>}
             {theoremShows(exp, currentView) ? <TheoremBlock exp={exp} x={x} params={params} elements={elements} layout={plainLayout} /> : null}
             {currentView === 'reading' && x.sol ? <Readings x={x} elements={elements} power={showsNetPower} /> : null}
             {currentView === 'iv' && x.sol ? <IVCanvas exp={exp} x={x} p={params} /> : null}
