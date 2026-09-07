@@ -443,6 +443,22 @@ button.flow-node[aria-expanded='true'] { border-color: var(--accent); color: var
 .view-head .segmented { flex: 0 0 auto; }
 .view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
 
+/* Keep navigation independent of the selected view's readouts and content.
+   A constant weight also prevents the active label from resizing its row. */
+.view-head.analysis-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  flex-shrink: 0;
+}
+.analysis-head .view-switch { justify-self: start; flex-wrap: wrap; max-width: 100%; }
+.analysis-head .view-switch button { font-weight: 600; }
+.analysis-head + .view-body > .readout { flex-shrink: 0; margin-bottom: 6px; }
+.analysis-head + .view-body > .readout:empty { display: none; }
+@media (max-width: 600px) {
+  .view-head.analysis-head { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Phone: pane-header control groups wrap under the title without crowding
    the readouts off the edge. */
 @media (max-width: 900px) {

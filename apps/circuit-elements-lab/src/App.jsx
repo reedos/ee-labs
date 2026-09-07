@@ -861,9 +861,11 @@ export default function App() {
         </section>
 
         <section className="view">
-          <div className="view-head">
+          <div className="view-head analysis-head">
             <h2>Analysis</h2>
             <ViewSwitch value={currentView} onChange={setView} options={viewOptions} />
+          </div>
+          <div className="view-body">
             <div className="readout">
               {currentView === 'thevenin' && x.thevenin ? (
                 <>
@@ -950,8 +952,6 @@ export default function App() {
                 )
               ) : null}
             </div>
-          </div>
-          <div className="view-body">
             {currentView === 'foundations' ? <FoundationsPane exp={exp} x={x} onChoose={setView} /> : <>
               <FoundationLink exp={exp} view={currentView} />
               <Headline exp={exp} x={x} params={params} />
