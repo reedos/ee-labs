@@ -161,7 +161,7 @@ try {
       for (const url of links) assert.equal((await page.request.get(url)).status(), 200, url)
     }
     for (let i = 0; i < 5; i++) {
-      await page.getByLabel('Experiment', { exact: true }).selectOption(String(i))
+      await page.getByLabel('Experiment', { exact: true }).selectOption(`a${i + 1}`)
       await page.evaluate(() => { window.scrollTo(0, 0); document.querySelector('.controls').scrollTop = 0 })
       const overview = page.locator('#lesson-overview')
       assert.match(await overview.textContent(), /An inverter is a logic gate/)

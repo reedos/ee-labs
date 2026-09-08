@@ -1,4 +1,4 @@
-# Test, build, and publish all three labs to GitHub Pages.
+# Test, build, and publish the lab suite to GitHub Pages.
 #
 # The published site is public — that is how Pages works short of an Enterprise
 # plan, and it matches the point of the suite: the labs are meant to be handed
@@ -72,6 +72,12 @@ jobs:
           cp -r apps/fields-lab/dist _site/fields-lab
           cp -r apps/interfaces-lab/dist _site/interfaces-lab
           cp -r apps/vlsi-lab/dist _site/vlsi-lab
+          cp -r apps/rf-lab/dist _site/rf-lab
+          cp -r apps/system-lab/dist _site/system-lab
+          cp -r apps/photonics-lab/dist _site/photonics-lab
+          cp -r apps/applied-analog-lab/dist _site/applied-analog-lab
+          cp -r apps/analog-ic-lab/dist _site/analog-ic-lab
+          cp -r apps/mixed-signal-lab/dist _site/mixed-signal-lab
 
       - uses: actions/upload-pages-artifact@v3
         with:

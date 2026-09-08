@@ -51,8 +51,8 @@ const VIEWS_FOR = {
   filter: ['state', 'poles'],
 }
 
-export default function App() {
-  const [index, setIndex] = useState(0)
+export default function App({initialId=EXPERIMENTS[0].id,catalog=EXPERIMENTS,onNavigate}) {
+  const [index, setIndex] = useState(()=>Math.max(0,EXPERIMENTS.findIndex(e=>e.id===initialId)))
   const [loads, setLoads] = useState(0)
   const experiment = EXPERIMENTS[index] ?? null
   const [state, setState] = useState(() => (experiment ? applyExperiment(experiment) : null))
@@ -73,11 +73,14 @@ export default function App() {
 
   const load = (i) => {
     const next = EXPERIMENTS[i]
+    history.replaceState(null, '', `#${next.id}`)
     setIndex(i)
     setState(applyExperiment(next))
     setLoads((n) => n + 1)
     setOpenGroups((s) => new Set([...s, next.group]))
   }
+  const catalogIndex=catalog.findIndex(e=>e.id===experiment?.id)
+  const navigate=id=>{const i=EXPERIMENTS.findIndex(e=>e.id===id);if(i<0)onNavigate?.(id);else load(i)}
   const reset = () => {
     setState(applyExperiment(experiment))
     setLoads((n) => n + 1)
@@ -106,6 +109,7 @@ export default function App() {
         <LabNav current="control-lab-ii" currentLabel="Control II" />
         <header>
           <h1>Control Lab II ⟳</h1>
+          <label className="lesson-select">Experiment<select aria-label="Experiment" value={experiment.id} onChange={e=>navigate(e.target.value)}>{catalog.map(e=><option key={e.id} value={e.id}>{e.id}. {e.name}</option>)}</select></label>
           <p className="sub">
             The state, the computer in the loop, the actuator that runs out, and the plant nobody wrote down.
           </p>
@@ -152,10 +156,10 @@ export default function App() {
             )
           })}
           <LessonNav
-            index={index}
-            total={EXPERIMENTS.length}
-            onPrev={() => load(Math.max(0, index - 1))}
-            onNext={() => load(Math.min(EXPERIMENTS.length - 1, index + 1))}
+            index={catalogIndex}
+            total={catalog.length}
+            onPrev={() => navigate(catalog[Math.max(0, catalogIndex - 1)].id)}
+            onNext={() => navigate(catalog[Math.min(catalog.length - 1, catalogIndex + 1)].id)}
             onReset={reset}
             dirty={dirty}
             noun="experiment"

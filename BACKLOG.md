@@ -5,6 +5,9 @@ has a row. Every item deferred by an overseer has a line under its lab's heading
 with the dependency that unblocks it. When a dependency is built, the director walks
 this file and reopens what it unblocks. Nothing leaves this file by being forgotten.
 
+The 2026-09-08 rollout rows explicitly say **local** until merged/deployed.
+`LAB_BUILDOUT_PROGRESS.md` is the acceptance record for that work.
+
 Status words. **Built** is on the site. **Building** has an overseer and a branch.
 **Planned** has a plan file and no overseer yet. **Waiting** has a plan or a map
 entry and a named blocker. **Mapped** has a map entry only.
@@ -23,42 +26,32 @@ entry and a named blocker. **Mapped** has a map entry only.
 | Logic Lab | built, dark | merged | Electronics D6 for one cross-reference | `LOGIC_LAB_PLAN.md` |
 | DSP Lab | built, dark | merged | | `DSP_LAB_PLAN.md` |
 | Random Signals Lab | built, dark | merged | Electronics O1 for one cross-reference | `RANDOM_LAB_PLAN.md` |
-| Control Lab II | built, dark | merged | | `CONTROL_LAB_II_PLAN.md` |
+| Control Lab II | requested groups complete locally, dark | `feature/circuits-ii-rollout` | Public release pending | `CONTROL_LAB_II_PLAN.md` |
 | Random Signals Lab | building | `lab/random-lab` | Electronics O1 for one cross-reference | to write |
-| Control Lab II | building | `lab/control-lab-ii` | | `CONTROL_LAB_II_PLAN.md` |
 | Instruments Lab | built, dark | merged | RF Lab for the network analyser group | `INSTRUMENTS_LAB_PLAN.md` |
 | Instruments Lab | building | `lab/instruments-lab` | RF Lab for the network analyser group | `INSTRUMENTS_LAB_PLAN.md` |
-| Fields Lab | built, dark | merged | | `FIELDS_LAB_PLAN.md` |
+| Fields Lab | requested groups complete locally, dark | `feature/circuits-ii-rollout` | Public release pending | `FIELDS_LAB_PLAN.md` |
 | Energy Lab | built, dark | merged | Machines Lab for the wind group | `ENERGY_LAB_PLAN.md` |
 | Machines Lab | built, dark | merged | Power Lab L for the drives group, F now merged | `MACHINES_LAB_PLAN.md` |
 | Communications Lab | built, dark | merged | | `COMMUNICATIONS_LAB_PLAN.md` |
 | Information Lab | built, dark | merged | | `INFORMATION_LAB_PLAN.md` |
-| Applied Analog Lab | waiting | | Electronics L, M | `APPLIED_ANALOG_LAB_PLAN.md` |
-| Analog IC Lab | waiting | | Electronics H to M | `ANALOG_IC_LAB_PLAN.md` |
-| Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | `MIXED_SIGNAL_LAB_PLAN.md` |
-| RF Lab | waiting | | Analog IC Lab, Fields Lab's line | `RF_LAB_PLAN.md` |
-| System Lab | waiting | | RF Lab | `SYSTEM_LAB_PLAN.md` |
-| VLSI Lab | waiting | | Logic Lab, Analog IC Lab | `VLSI_LAB_PLAN.md` |
+| Applied Analog Lab | Group A local, dark | `feature/circuits-ii-rollout` | Later curriculum groups remain planned | `APPLIED_ANALOG_LAB_PLAN.md` |
+| Analog IC Lab | Group A local, dark | `feature/circuits-ii-rollout` | Later curriculum groups remain planned | `ANALOG_IC_LAB_PLAN.md` |
+| Mixed-Signal Lab | Group A local, dark | `feature/circuits-ii-rollout` | Later curriculum groups remain planned | `MIXED_SIGNAL_LAB_PLAN.md` |
+| RF Lab | requested groups complete locally, dark | `feature/circuits-ii-rollout` | Public release pending | `RF_LAB_PLAN.md` |
+| System Lab | requested groups complete locally, dark | `feature/circuits-ii-rollout` | Public release pending | `SYSTEM_LAB_PLAN.md` |
+| VLSI Lab | requested groups complete locally, dark | `feature/circuits-ii-rollout` | Public release pending | `VLSI_LAB_PLAN.md` |
 | Computer Lab | built, dark | merged | | `COMPUTER_LAB_PLAN.md` |
-| Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | `INTERFACES_LAB_PLAN.md` |
+| Interfaces Lab | requested groups complete locally, dark | `feature/circuits-ii-rollout` | Public release pending | `INTERFACES_LAB_PLAN.md` |
 | Grid Lab | built, dark | merged | Power Lab I3 and D1 for two cross-references | `GRID_LAB_PLAN.md` |
-| Photonics Lab | waiting | | Electronics O, Applied Analog Lab | `PHOTONICS_LAB_PLAN.md` |
+| Photonics Lab | requested groups complete locally, dark | `feature/circuits-ii-rollout` | Public release pending | `PHOTONICS_LAB_PLAN.md` |
 | Devices Lab | built, dark | merged | | `DEVICES_LAB_PLAN.md` |
-| Fields Lab | building | `lab/fields-lab` | Groups I to L unbuilt | `FIELDS_LAB_PLAN.md` |
 | Energy Lab | building | `lab/energy-lab` | Machines Lab for the wind group | to write |
 | Machines Lab | building | `lab/machines-lab` | Power Lab F for the drives group | to write |
 | Communications Lab | waiting | | Random Signals Lab | to write |
 | Information Lab | waiting | | Communications Lab | to write |
-| Applied Analog Lab | waiting | | Electronics L, M | to write |
-| Analog IC Lab | waiting | | Electronics H to M | to write |
-| Mixed-Signal Lab | waiting | | Analog IC Lab, `switched` charge conservation | to write |
-| RF Lab | waiting | | Analog IC Lab, Fields Lab's line | to write |
-| System Lab | waiting | | RF Lab | to write |
-| VLSI Lab | waiting | | Logic Lab, Analog IC Lab | to write |
 | Computer Lab | waiting | | Logic Lab | to write |
-| Interfaces Lab | waiting | | Logic Lab, Electronics D, Mixed-Signal Lab | to write |
 | Grid Lab | waiting | | Machines Lab, Electronics companion Newton | to write |
-| Photonics Lab | waiting | | Electronics O, Applied Analog Lab | to write |
 | Devices Lab | waiting | | Electronics C | to write |
 | Signal Integrity | out of this repo | | | |
 
@@ -670,17 +663,11 @@ The two seams of `CURRICULUM.md` §3 and the progression test of its §6.
 
 ### Control Lab II
 
-Thirty-two of the plan's thirty-five experiments are built, dark, on
-`lab/control-lab-ii`. Groups A to F, with F at two of five. What is not built:
+All 35 experiments are implemented locally, including F3–F5. The Random
+Signals dependency is available and now supplies reproducible ensembles and
+confidence intervals. See `apps/control-lab-ii/src/covariance.js` and its
+independent covariance/ensemble tests. The app remains dark.
 
-- **F3, F4 and F5, the Kalman filter's statistical half.** The covariance
-  recursion, the steady state it settles to, and the ensemble that shows the
-  spread landing on the covariance the recursion predicted. Each needs a noise
-  model with a variance and a way to run many realisations, which is the Random
-  Signals Lab's `random` package. Decision 4 of the plan split the group for
-  this reason, and F1 and F2 are the deterministic half and stand on their own.
-  **Reopens when `random` lands.** No text in this lab names that lab until it
-  does, so nothing has to be unsaid when it arrives.
 - **The Kalman and Random Signals cross-reference.** The same dependency read
   the other way. Once both labs are built, F1's note should point at the
   ensemble that makes the covariance visible, and the Random Signals Lab's
@@ -703,6 +690,8 @@ Thirty-two of the plan's thirty-five experiments are built, dark, on
   copies one, or when Machines Lab starts.**
 
 ### Fields Lab
+
+**2026-09-08 local update:** I–L complete locally in the combined catalog. See the app README and `LAB_BUILDOUT_PROGRESS.md` for current acceptance; earlier dependency notes below are historical where superseded.
 
 Built and dark. 36 experiments in groups A to H, on `packages/fields`, which is
 complete for the whole lab and not only for the built half. `FIELDS_LAB_PLAN.md`

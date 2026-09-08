@@ -1,0 +1,44 @@
+.lesson-workbench{display:grid;grid-template-columns:310px minmax(0,1fr);height:100dvh;overflow:hidden;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+.lesson-workbench *{box-sizing:border-box;letter-spacing:normal}
+.lesson-controls{padding:18px;overflow:auto;border-right:1px solid var(--line);background:var(--panel);min-width:0}
+.lesson-workbench h1{font-size:23px}.lesson-workbench h2{font-size:19px}.lesson-workbench h3{font-size:16px;margin:20px 0 8px}
+.lesson-select{display:grid;gap:6px;margin:14px 0}.lesson-select select{width:100%;min-width:0;padding:9px}
+.lesson-main{display:grid;grid-template-rows:auto auto minmax(0,1fr);min-width:0;min-height:0}.lesson-heading{padding:12px 24px;display:flex;align-items:center;gap:15px;min-height:83px}.lesson-heading h2{margin:0}
+.lesson-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-block:1px solid var(--line);background:var(--panel);padding:0 18px;gap:4px}.lesson-workbench button{font:inherit;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:5px;padding:8px 12px}.lesson-tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;min-height:52px;padding:8px 3px}.lesson-tabs button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+.lesson-body{overflow:auto;padding:22px 28px;min-width:0;scrollbar-gutter:stable}.lesson-body>p,.lesson-body>section{max-width:1000px}.lesson-question{font-size:20px}.lesson-flow{display:flex;gap:14px;flex-wrap:wrap;padding:0;list-style-position:inside}.lesson-flow li{background:var(--panel);padding:12px;border:1px solid var(--line);border-radius:7px;flex:1;min-width:150px}.lesson-definitions{display:grid;grid-template-columns:minmax(85px,140px) minmax(0,1fr);margin:10px 0}.lesson-definitions dt,.lesson-definitions dd{padding:9px;border-bottom:1px solid var(--line);margin:0;min-width:0}.lesson-definitions .math-formula{margin:0}.lesson-step{border-bottom:1px solid var(--line);padding-bottom:14px}.lesson-workbench .math-formula{max-width:100%;overflow-x:auto;padding:8px 0}.lesson-results{display:flex;flex-wrap:wrap;gap:14px;margin-top:24px;border-top:1px solid var(--line);padding-top:16px}.lesson-results>div{display:grid;min-width:140px}.lesson-results span{color:var(--dim);font-size:12px}.lesson-results strong{font-variant-numeric:tabular-nums}.lesson-plot{margin:18px 0;max-width:1000px;min-width:0}.lesson-plot svg{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px}.lesson-plot text{fill:var(--dim);font-size:11px}.lesson-table-wrap{overflow:auto}.lesson-workbench table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}.lesson-workbench th,.lesson-workbench td{text-align:right;padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}.lesson-workbench th:first-child,.lesson-workbench td:first-child{text-align:left}.lesson-practice form{display:flex;align-items:end;flex-wrap:wrap;gap:12px}.lesson-practice label{display:grid;gap:6px}.lesson-practice input{padding:10px;font:inherit;width:200px}.lesson-workbench summary{cursor:pointer}.lesson-check{padding:14px;background:var(--panel)}
+@media(max-width:760px){.lesson-workbench{height:auto;min-height:100dvh;overflow:visible;grid-template-columns:minmax(0,1fr)}.lesson-controls{overflow:visible;border:0;border-bottom:1px solid var(--line)}.lesson-main{min-height:650px;grid-template-rows:auto 54px minmax(0,1fr)}.lesson-heading{padding:12px 16px;min-height:92px}.lesson-tabs{position:sticky;top:0;z-index:5;padding:0 6px;font-size:12px}.lesson-body{overflow:visible;padding:16px;scrollbar-gutter:auto}.lesson-workbench .labnav{display:flex;flex-wrap:wrap}.lesson-flow{display:grid}.lesson-definitions{grid-template-columns:90px minmax(0,1fr)}}
+
+.lesson-polar{max-width:460px}
+.lesson-schematic{margin:0 0 20px;max-width:900px;min-width:0}.lesson-schematic .schematic{width:100%;height:240px;min-height:0}.lesson-schematic figcaption{font-size:12px;color:var(--dim)}
+.lesson-knob-group{margin:12px 0;border-top:1px solid var(--line);padding-top:10px}.lesson-knob-group summary{font-weight:600;padding:5px 0}
+@media(max-width:760px){html:has(.lesson-workbench){height:auto;overflow:auto}body:has(.lesson-workbench),#root:has(.lesson-workbench){height:auto;overflow:visible}}
+.lesson-workbench .smith { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; min-width: 0; }
+.lesson-workbench .smith-svg { width: 100%; max-width: 420px; height: auto; display: block; }
+.lesson-workbench .smith-disc { fill: var(--panel); stroke: var(--line-bright); stroke-width: 1.5; }
+.lesson-workbench .smith-grid { fill: none; stroke: var(--line); stroke-width: 0.75; }
+.lesson-workbench .smith-grid.is-r { stroke: var(--line-bright); }
+.lesson-workbench .smith-grid.is-g, .smith-grid.is-b { stroke: rgba(240, 162, 60, 0.35); }
+.lesson-workbench .smith-axis { stroke: var(--line-bright); stroke-width: 1; }
+.lesson-workbench .smith-circle-line { fill: none; stroke: var(--accent); stroke-width: 1.4; }
+.lesson-workbench .smith-circle.is-stability .smith-circle-line { stroke: var(--warn); }
+.lesson-workbench .smith-circle.is-family .smith-circle-line { stroke: var(--amber); }
+.lesson-workbench .smith-shade { fill: rgba(255, 92, 122, 0.14); }
+.lesson-workbench .smith-circle-label { fill: var(--dim); font-size: 9px; }
+.lesson-workbench .smith-path { fill: none; stroke: var(--accent); stroke-width: 2; }
+.lesson-workbench .smith-path.is-line { stroke: var(--amber); }
+.lesson-workbench .smith-path.is-dashed { stroke-dasharray: 5 3; }
+.lesson-workbench .smith-point circle { fill: var(--accent); stroke: var(--bg); stroke-width: 1.2; }
+.lesson-workbench .smith-point.is-source circle { fill: var(--amber); }
+.lesson-workbench .smith-point.is-plain circle { fill: var(--dim); r: 3; }
+.lesson-workbench .smith-point text { fill: var(--text); font-size: 9.5px; }
+.lesson-workbench .smith-edge, .smith-ref { fill: var(--dim); font-size: 9.5px; }
+.lesson-workbench .smith-caption { font-size: 11px; color: var(--dim); margin: 0; }
+.lesson-workbench .smith-circle.is-gain .smith-circle-line { stroke: var(--amber); stroke-dasharray: 5 3; }
+
+.lesson-handover a {display:inline-flex;align-items:center;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:8px}
+
+.lesson-choice{display:grid;gap:8px;margin:14px 0;font-size:13px;color:var(--dim)}.lesson-choice select{width:100%;min-height:44px;padding:8px;font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.lesson-schematic text{fill:var(--text);font-family:KaTeX_Main,serif;font-size:10px}.lesson-schematic .sch-label{fill:var(--dim);font-size:9.5px}.lesson-schematic .sch-sym,.lesson-schematic .sch-port{fill:var(--text);font-family:KaTeX_Math,serif;font-style:italic;font-size:10.5px}.lesson-schematic .sch-sub{fill:var(--text);font-size:7.5px}.lesson-schematic .sch-sign{fill:var(--dim);font-size:11px}
+.lesson-schematic>button{margin-top:10px;min-height:44px}.lesson-drawing-dialog{width:min(95vw,1100px);max-height:90dvh;box-sizing:border-box;padding:18px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:12px}.lesson-drawing-dialog::backdrop{background:#000a}.lesson-drawing-dialog>button{min-height:44px}.lesson-drawing-scroll{overflow:auto;margin:16px 0}.lesson-drawing-scroll .schematic{min-width:680px;width:100%;height:450px}
+
+.lesson-waterfall-scroll{overflow:auto}.lesson-waterfall-scroll svg{min-width:650px}

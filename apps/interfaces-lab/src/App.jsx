@@ -21,7 +21,7 @@ const initialId = () => byId[window.location.hash.slice(1)] ? window.location.ha
 const initialView = (id) => id === 'a4' ? 'sweep' : id === 'a5' ? 'margins' : 'waveform'
 const shortNames = { a1: 'Output switches', a2: 'Input thresholds', a3: 'Pull-up and rise', a4: 'Load and rise time', a5: 'Ground bounce' }
 
-export default function App() {
+export default function App({catalog = EXPERIMENTS, onNavigate} = {}) {
   const [id, setId] = useState(initialId)
   const [params, setParams] = useState(() => defaultsOf(initialId()))
   const [view, setView] = useState(() => initialView(initialId()))
@@ -37,7 +37,7 @@ export default function App() {
   const foundation = FOUNDATIONS[id]
   const signal = signalStory(id, direction)
   const jump = (target) => document.getElementById(target)?.scrollIntoView({ block: 'start' })
-  const index = EXPERIMENTS.indexOf(exp)
+  const index = catalog.findIndex(e => e.id === id)
   const outcome = useMemo(() => {
     try { return { result: analyse(params) } }
     catch (error) { return { error: error.message } }
@@ -54,6 +54,7 @@ export default function App() {
     setRangeReset((value) => value + 1)
   }
   const choose = (next) => {
+    if (!byId[next]) { onNavigate?.(next); return }
     setId(next)
     setParams(defaultsOf(next))
     setView(initialView(next))
@@ -66,7 +67,7 @@ export default function App() {
     window.history.replaceState(null, '', `#${next}`)
   }
   useEffect(() => {
-    const onHash = () => choose(initialId())
+    const onHash = () => { const next = window.location.hash.slice(1); if (byId[next]) choose(next) }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -95,11 +96,11 @@ export default function App() {
       </header>
       <section className="picker">
         <h2>A. The pin</h2>
-        <LessonNav index={index} total={EXPERIMENTS.length} noun="experiment" dirty={dirty}
-          onPrev={() => index > 0 && choose(EXPERIMENTS[index - 1].id)}
-          onNext={() => index < EXPERIMENTS.length - 1 && choose(EXPERIMENTS[index + 1].id)} onReset={reset} />
+        <LessonNav index={index} total={catalog.length} noun="experiment" dirty={dirty}
+          onPrev={() => index > 0 && choose(catalog[index - 1].id)}
+          onNext={() => index < catalog.length - 1 && choose(catalog[index + 1].id)} onReset={reset} />
         <select aria-label="Experiment" value={id} onChange={(event) => choose(event.target.value)}>
-          {EXPERIMENTS.map((e) => <option key={e.id} value={e.id}>{e.id.toUpperCase()}. {shortNames[e.id]}</option>)}
+          {catalog.map((e) => <option key={e.id} value={e.id}>{e.id.toUpperCase()}. {shortNames[e.id] || e.name}</option>)}
         </select>
       </section>
       <section className="knobs" id="pin-settings">

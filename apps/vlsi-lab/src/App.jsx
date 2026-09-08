@@ -14,8 +14,8 @@ import { Foundations, playbackMeaning } from './Foundations.jsx'
 
 const VIEWS = { scope: 'Scope', timing: 'Timing', fanout: 'Fanout' }
 
-export default function App() {
-  const [index, setIndex] = useState(0)
+export default function App({initialLesson, catalog=EXPERIMENTS, onNavigate} = {}) {
+  const [index, setIndex] = useState(() => Math.max(0, EXPERIMENTS.findIndex(e => e.id === initialLesson)))
   const exp = EXPERIMENTS[index]
   const [params, setParams] = useState({ ...DEFAULTS })
   const [view, setView] = useState(exp.view)
@@ -41,7 +41,9 @@ export default function App() {
   const regions = dc ? null : r.walk.regionsAt(t)
   const dirty = Object.keys(DEFAULTS).some((k) => typeof p[k] === 'number' ? Math.abs(p[k] - DEFAULTS[k]) > 1e-9 : p[k] !== DEFAULTS[k])
   const choose = (i) => {
-    if (i < 0 || i >= EXPERIMENTS.length) return
+    if (i < 0 || i >= catalog.length) return
+    if (i >= EXPERIMENTS.length) { onNavigate?.(catalog[i].id); return }
+    window.history.replaceState(null, "", `#${EXPERIMENTS[i].id}`)
     setIndex(i); setParams({ ...DEFAULTS }); setView(EXPERIMENTS[i].view)
     setAxes({ ...DEFAULT_AXES }); setCompare(true); setChip(null); setResetKey((k) => k + 1)
   }
@@ -81,11 +83,11 @@ export default function App() {
       </header>
       <section className="picker">
         <h2>Try this</h2>
-        <LessonNav index={index} total={EXPERIMENTS.length} onPrev={() => choose(index - 1)}
+        <LessonNav index={index} total={catalog.length} onPrev={() => choose(index - 1)}
           onNext={() => choose(index + 1)} onReset={() => choose(index)} dirty={dirty} noun="experiment" />
         <label className="experiment-select"><span>A. The inverter</span>
-          <select aria-label="Experiment" value={index} onChange={(e) => choose(Number(e.target.value))}>
-            {EXPERIMENTS.map((e, i) => <option key={e.id} value={i}>{e.id.toUpperCase()}. {e.shortName}</option>)}
+          <select aria-label="Experiment" value={exp.id} onChange={(e) => choose(catalog.findIndex(item => item.id === e.target.value))}>
+            {catalog.map((e, i) => <option key={e.id} value={e.id}>{e.id.toUpperCase()}. {e.shortName || e.name}</option>)}
           </select>
         </label>
         <p className="see" data-role="note">{exp.see(x, p)}</p>

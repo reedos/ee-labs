@@ -60,6 +60,8 @@ export const LABS = [
   'logic-lab', 'comms-lab', 'info-lab', 'devices-lab', 'grid-lab',
   'computer-lab', 'dsp-lab', 'control-lab-ii', 'instruments-lab', 'fields-lab',
   'interfaces-lab', 'vlsi-lab',
+  'rf-lab', 'system-lab', 'photonics-lab',
+  'applied-analog-lab', 'analog-ic-lab', 'mixed-signal-lab',
 ]
 
 export async function assemble({ labs = LABS, quiet = false } = {}) {

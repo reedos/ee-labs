@@ -16,7 +16,10 @@
     "@ee-labs/explain": "*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "katex": "^0.18.4"
+    "katex": "^0.18.4",
+    "@ee-labs/lessons": "*"
   },
-  "devDependencies": { "@ee-labs/prose": "*" }
+  "devDependencies": {
+    "@ee-labs/prose": "*"
+  }
 }

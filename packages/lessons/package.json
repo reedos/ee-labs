@@ -1,0 +1,1 @@
+{"name":"@ee-labs/lessons","version":"0.1.0","private":true,"type":"module","exports":{".":"./src/Workbench.jsx","./model":"./src/model.js","./style.css":"./src/style.css"},"dependencies":{"@ee-labs/ui":"*","@ee-labs/explain":"*","react":"^18.3.1"}}

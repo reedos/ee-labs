@@ -1,0 +1,312 @@
+/* System Lab's own furniture. The shell, controls and NumField come from
+ * @ee-labs/ui; the group tabs, presets, terms fold and path nav are the house
+ * idiom the other labs use, copied so every lab reads as one suite. The chain
+ * strip and the budget table are this lab's own, and NEEDS.md records that
+ * neither is promoted to packages/ui until a second lab claims it. */
+
+/* ---------- the picker: group tabs, then that group's experiments ---------- */
+
+.group-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 0;
+}
+.controls h2.picker-cap {
+  padding: 0 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.group-tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 0 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.group-tab:hover { color: var(--text); }
+.group-tab.is-shown { color: var(--text); border-bottom-color: var(--accent); }
+.group-tab.is-here:not(.is-shown) { color: var(--accent); }
+
+.presets { display: flex; flex-wrap: wrap; gap: 5px; }
+.presets[hidden] { display: none; }
+.preset {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11.5px;
+  padding: 4px 8px;
+}
+.preset:hover { border-color: var(--accent); color: var(--accent); }
+.preset.is-on { border-color: var(--accent); color: var(--accent); background: rgba(56, 224, 176, 0.1); }
+
+.controls { padding-top: 8px; }
+.controls section { margin-top: 6px; padding-bottom: 10px; }
+.controls h2 { padding: 5px 12px 4px; margin-bottom: 6px; }
+.controls .hint { margin-top: 8px; }
+.controls .report-issue { margin-top: 14px; }
+
+/* ---------- the note, the try line, and why ---------- */
+
+.note-title { margin: 10px 0 2px; font-size: 12.5px; font-weight: 650; color: var(--text); }
+
+details.why-fold { margin: 6px 0; }
+details.why-fold > summary {
+  cursor: pointer;
+  font-size: 11.5px;
+  color: var(--dim);
+  list-style: none;
+}
+details.why-fold > summary::before { content: '\25B8  '; font-size: 9px; }
+details.why-fold[open] > summary::before { content: '\25BE  '; }
+details.why-fold p { margin-top: 6px; }
+
+details.terms { margin: 6px 0 2px; }
+details.terms > summary { cursor: pointer; font-size: 11px; color: var(--accent); list-style: none; }
+details.terms > summary::before { content: '\25B8  '; font-size: 9px; }
+details.terms[open] > summary::before { content: '\25BE  '; }
+details.terms > summary::-webkit-details-marker { display: none; }
+details.terms dl { margin: 6px 0 0; }
+details.terms dt { font-size: 11.5px; font-weight: 600; color: var(--text); margin-top: 7px; }
+details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+
+.more-knobs { margin-top: 8px; }
+.more-knobs > summary { cursor: pointer; font-size: 12px; color: var(--dim); padding: 4px 0; }
+.more-knobs[open] > summary { margin-bottom: 4px; }
+
+.toggle-knob { display: flex; flex-direction: column; gap: 4px; }
+.toggle-knob .num-label { font-size: 11.5px; color: var(--dim); }
+.toggle-knob .segmented { flex-wrap: wrap; }
+
+/* ---------- the top bar's path nav ---------- */
+
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 14px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+.topbar-nav .position {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+  font-size: 11px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 52px;
+}
+.topbar-nav .position em { font-style: normal; font-size: 10px; color: var(--dim); }
+.nav-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  padding: 0 0 2px;
+}
+.nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.nav-btn:disabled { opacity: 0.35; cursor: default; }
+
+.flow-node.is-off { color: var(--warn); border-color: rgba(255, 92, 122, 0.4); }
+
+.views.is-single { grid-template-rows: 1fr; }
+.view-head { flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.view-head .segmented { flex: 0 0 auto; }
+.view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
+
+/* ---------- the chain strip, above every view ---------- */
+
+/* The chain is longer than a phone and a reader expects to slide along it, so
+   this one row scrolls inside itself. Nothing else in the lab does, and
+   `min-width: 0` on the row's parents is what keeps the page from widening. */
+.chain {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px 0 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+}
+.chain-arrow { color: var(--dim); align-self: center; font-size: 11px; flex: 0 0 auto; }
+.chain-block,
+.chain-end {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 0 0 auto;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 7px;
+  font-size: 10.5px;
+  color: var(--text);
+  min-width: 74px;
+}
+.chain-block strong { font-size: 10.5px; font-weight: 650; white-space: nowrap; }
+.chain-block em,
+.chain-end em { font-style: normal; color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Two of a block's three readings are in decibels, so the tag in front of each
+   is what separates the gain from the noise figure where there is no hover. */
+.chain-block em { display: flex; gap: 5px; }
+.chain-block em i { font-style: normal; flex: 0 0 18px; opacity: 0.62; }
+.chain-block.is-passive { border-style: dashed; }
+.chain-end { justify-content: center; color: var(--dim); }
+.chain-end.is-out { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- the budget table ---------- */
+
+.sys-table-pane { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; min-height: 0; }
+.sys-table-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sys-table-scroll { width: 100%; min-width: 0; overflow-x: auto; }
+.sys-table { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+.sys-table th,
+.sys-table td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.sys-table thead th { color: var(--dim); font-weight: 600; font-size: 11px; }
+.sys-table thead th em { display: block; font-style: normal; font-size: 9.5px; color: var(--dim); }
+.sys-table th[scope='row'] { text-align: left; color: var(--text); font-weight: 500; }
+.sys-table tbody tr.is-passive th[scope='row'] { color: var(--dim); }
+.sys-table tbody tr.is-total th,
+.sys-table tbody tr.is-total td { border-top: 1px solid var(--line-bright); border-bottom: 0; color: var(--accent); font-weight: 600; }
+
+/* ---------- the levels plot ---------- */
+
+.sys-plot { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; min-height: 0; }
+.sys-plot svg { width: 100%; height: auto; display: block; }
+.sys-axis { stroke: var(--line-bright); stroke-width: 1; }
+.sys-grid { stroke: var(--line); stroke-width: 0.75; stroke-dasharray: 3 4; }
+.sys-gap { stroke: var(--line-bright); stroke-width: 6; opacity: 0.18; }
+.sys-trace { fill: none; stroke-width: 1.8; }
+.sys-trace.is-signal { stroke: var(--accent); }
+.sys-trace.is-noise { stroke: var(--amber); stroke-dasharray: 5 3; }
+.sys-dot.is-signal { fill: var(--accent); }
+.sys-dot.is-noise { fill: var(--amber); }
+.sys-axis-label { fill: var(--dim); font-size: 10px; }
+.sys-axis-tick,
+.sys-node-tick { fill: var(--dim); font-size: 9px; }
+
+/* Two lines on one axis need a key, or a reader has to guess which colour is
+   the signal. The swatch is drawn solid or broken to match the stroke. */
+.sys-keys { display: flex; flex-wrap: wrap; gap: 14px; margin: 0; font-size: 11px; color: var(--dim); }
+.sys-key { display: inline-flex; align-items: center; gap: 6px; }
+.sys-key::before { content: ''; width: 18px; height: 0; border-top: 2px solid currentColor; }
+.sys-key.is-signal { color: var(--accent); }
+.sys-key.is-noise { color: var(--amber); }
+.sys-key.is-dashed::before { border-top-style: dashed; }
+
+.sys-levels { display: flex; flex-direction: column; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.sys-level-row { display: flex; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--line); }
+.sys-level-name { flex: 1 1 auto; color: var(--dim); min-width: 0; }
+.sys-level-value { flex: 0 0 auto; color: var(--text); min-width: 76px; text-align: right; }
+/* Three numbers a row, two of them in dBm, so the column names carry the
+   difference between the signal and the noise. */
+.sys-level-row.is-head { border-bottom: 1px solid var(--line-bright); }
+.sys-level-row.is-head .sys-level-name,
+.sys-level-row.is-head .sys-level-value { color: var(--dim); font-size: 10px; font-weight: 600; white-space: normal; }
+
+/* ---------- the numbers pane ---------- */
+
+.sys-numbers { overflow: auto; min-height: 0; padding: 4px 2px; }
+.sys-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+.sys-row-label { color: var(--dim); min-width: 200px; }
+.sys-row-value { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.sys-row-formula { margin-left: auto; color: var(--dim); font-size: 11px; font-style: italic; }
+
+.sys-legend { font-size: 11px; color: var(--dim); margin: 0; line-height: 1.5; }
+
+/* A guard is content, not an error state, so it reads as a note under the table
+   rather than as a banner over it. */
+.sys-guard {
+  color: var(--amber);
+  font-size: 11.5px;
+  line-height: 1.55;
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.sys-declined {
+  color: var(--warn);
+  font-size: 11.5px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* The table transposes below this width: six columns do not fit a phone, and a
+   sideways scroll on the lab's signature view would be the first thing a reader
+   hits. One card per block, with its budgets stacked. */
+@media (max-width: 900px) {
+  .views { display: flex; flex-direction: column; gap: 0; }
+  .views .view { min-height: 60vh; flex: 0 0 auto; }
+  .sys-row-label { min-width: 0; flex: 1 1 100%; }
+  .sys-row-formula { margin-left: 0; flex: 1 1 100%; }
+
+  .sys-table-scroll { overflow-x: visible; }
+  .sys-table,
+  .sys-table tbody,
+  .sys-table tr,
+  .sys-table td { display: block; width: 100%; }
+  .sys-table thead { display: none; }
+  .sys-table tbody tr {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    padding: 4px 6px;
+  }
+  .sys-table th[scope='row'] { display: block; border-bottom: 1px solid var(--line); padding: 4px 2px; }
+  .sys-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 0;
+    padding: 3px 2px;
+    white-space: normal;
+  }
+  .sys-table td::before {
+    content: attr(data-label);
+    color: var(--dim);
+    font-size: 11px;
+  }
+  .sys-level-value { min-width: 62px; }
+}
+
+@media (min-width: 1200px) and (max-width: 2399px) {
+  .app { grid-template-columns: 360px 1fr; }
+}

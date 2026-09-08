@@ -1,5 +1,7 @@
 # VLSI Lab: the plan
 
+> Local implementation checkpoint, 2026-09-08: A–G is implemented locally (30 lessons), with a connected two-latch switch-model flip-flop and measured timing. The declared circuit models, not illustrative plan pins, determine results. See the app README for numerical model differences and remaining physical effects outside this teaching scope.
+
 A lab for **digital integrated circuit design**, the course that follows digital
 logic. It starts where the Logic Lab stops, at a gate with a propagation delay
 that arrives as a number, and it asks where that number comes from. The answer is

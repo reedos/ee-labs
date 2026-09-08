@@ -1,5 +1,7 @@
 # Analog IC Lab: the plan
 
+> Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented as design calculations using one consistent charge-based long-channel law, plus a separately labeled short-channel comparison. The general EKV network companion and later circuit groups remain planned. The original log-squared current interpolation was inconsistent with its quoted charge-based gm/ID expression; the corrected voltage-charge relation below governs A1–A5.
+
 Tier 3 of `ANALOG_ROADMAP.md`. The same circuits as the Electronics Lab, made from
 matched devices on one die, where a resistor costs area, a capacitor is small, and
 every current comes from a mirror. Splash glyph `⊟`, directory `apps/analog-ic-lab`,
@@ -59,7 +61,7 @@ g_m/I_D = (1/(n V_T)) · 2/(1 + √(1 + 4·IC)),   IC = I_D / (2 n µ C_ox V_T²
 
 Its two limits are pinned in the lab: 25.79 V⁻¹ as `IC → 0`, which is `1/(n V_T)`,
 and the square law's `2/V_OV` as `IC → ∞`. At `V_OV = 200 mV` the square law gives
-10.00 V⁻¹ and EKV gives 8.247 V⁻¹, a 21.3 % disagreement that A2 shows. The model is
+10.00 V⁻¹ and EKV gives 8.0905 V⁻¹, a 23.6 % disagreement that A2 shows. The model is
 labelled everywhere it is used, as `CORE_SCOPE.md` Rule 3 requires.
 
 ### Decision 4: whether mismatch is a parameter or a run mode
@@ -152,8 +154,11 @@ defines, so `newtonDC`, `smallSignal` and the iteration view work unchanged.
 
 ```js
 /**
- * The EKV interpolation, in its simplest one-equation form.
- *   I_D = 2 n mu C_ox V_T^2 (W/L) · ln^2(1 + exp((V_GS - V_TH - n V_SB)/(2 n V_T)))
+ * Planned network companion: use one consistent voltage-charge law.
+ *   IC = q_s(q_s + 1), V_OV = n U_T (2 q_s + ln q_s)
+ *   I_D = 2 n mu C_ox U_T^2 (W/L) IC
+ *   gm/ID = 1/[n U_T (1 + q_s)]
+ * Body-bias and finite-VDS extensions require their own consistent derivatives.
  * @returns {{ id: number, ic: number, gm: number, gmb: number, go: number,
  *             region: 'weak' | 'moderate' | 'strong' }}
  */
@@ -177,7 +182,7 @@ its limit is 25.79 V⁻¹, `IC = 1` gives 15.94 V⁻¹, `IC = 10` gives 6.967 V�
 
 CORE_SCOPE: the EKV interpolation is a **labelled model**, admitted under Rule 3 with
 its guard. The guard is the disagreement with the square law, printed whenever the
-square law is also on screen. It is 21.3 % at `V_OV = 200 mV`, and it falls below 5 %
+square law is also on screen. It is 23.6 % at `V_OV = 200 mV`, and it falls below 5 %
 above `IC = 40`. The small-signal netlist taken at an EKV operating point is exactly
 rational. It is admitted in full, with the operating point in its label, exactly as
 the square-law tangent is.
@@ -500,7 +505,7 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
 - **A2 · `g_m/I_D` is bounded, and the square law does not know it.** The efficiency
   cannot exceed `1/(n V_T) = 25.79 V⁻¹` however little current flows. At `IC = 1` it is
   15.94 V⁻¹, at `IC = 10` it is 6.967 V⁻¹. At `V_OV = 200 mV` the square law says
-  10.00 V⁻¹ and EKV says 8.247 V⁻¹, a 21.3 % disagreement the pane prints. Measured:
+  10.00 V⁻¹ and EKV says 8.0905 V⁻¹, a 23.6 % disagreement the pane prints. Measured:
   the ceiling, three values, and the disagreement at three overdrives.
 - **A3 · Everything a device buys, from one knob.** Fix `g_m = 500 µS` and
   `L = 1 µm`, then move `g_m/I_D` from 5 to 20. The current drops from 100.0 µA to
@@ -509,7 +514,7 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
   points, each against `sizeFor`.
 - **A4 · Matching is an area.** `σ(ΔV_TH) = A_VT/√(WL)`. At 1 µm² it is 4.00 mV, at
   2.5 µm² it is 2.530 mV, at 100 µm² it is 0.400 mV. A pair at `g_m/I_D = 10` and
-  2.5 µm² has an input offset sigma of 2.608 mV, and 16.0 µm² is needed for 1.00 mV.
+  2.5 µm² has an input offset sigma of 2.608 mV, and 17.0 µm² is needed for 1.00 mV.
   Measured: the sigma at four areas, the pair offset, and the area for a target.
 - **A5 · A mirror's error grows with its efficiency.** A mirror's fractional current
   error is `(g_m/I_D)·σ_VTH` in quadrature with `σ_β`. At 2.5 µm², `g_m/I_D = 10` gives
@@ -779,7 +784,7 @@ and under 200 µW. The architecture table is the answer sheet.
   are included. An asymmetric netlist handed to `decompose`, a device at
   `IC = 10⁻⁴`, a cascode whose top device leaves saturation, and a latch started
   exactly at its metastable point.
-- **Experiments**: every number in §5 pinned. Among them are 25.79 V⁻¹, 21.3 %,
+- **Experiments**: every number in §5 pinned. Among them are 25.79 V⁻¹, 23.6 %,
   0.4010 µA, 89.29 mV/decade and 2.608 mV. Also 5.099 %, 103.5 mV, 2.50 µA, 1.2836 V
   and 17.69 ppm/K. Also 81.02 dB, 36.03°, 90.01°, 50.0 ps, 311 ps and 6.74 × 10⁻³.
   Also 40.0 µA, −3.922 dB, 56.4 mV, 12.87 nV/√Hz, 20.98 kHz, 113.7 MHz and 144 µV.

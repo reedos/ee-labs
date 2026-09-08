@@ -1,0 +1,25 @@
+{
+  "name": "mixed-signal-lab",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Mixed-Signal Lab guided foundations; later curriculum groups remain planned.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "verify": "node ../../scripts/verify-extended.mjs mixed-signal-lab"
+  },
+  "dependencies": {
+    "@ee-labs/lessons": "*",
+    "@ee-labs/network": "*",
+    "@ee-labs/random": "*",
+    "@ee-labs/ui": "*",
+    "@ee-labs/explain": "*",
+    "katex": "^0.18.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

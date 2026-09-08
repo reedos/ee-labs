@@ -12,6 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ee-labs/lessons": "*",
+    "@ee-labs/random": "*",
     "@ee-labs/explain": "*",
     "@ee-labs/systems": "*",
     "@ee-labs/ui": "*",

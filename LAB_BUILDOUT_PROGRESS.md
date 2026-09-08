@@ -7,9 +7,9 @@ main-checkout changes.
 | Priority | Scope | Status |
 | --- | --- | --- |
 | 2 | Prepare Electronics' 75 entries for release: coverage, explanations, browser review | Local preparation complete; remains dark |
-| 3 | Review the first five Interfaces and five VLSI experiments, then extend their planned groups | Foundation review and fixes implemented; B–G extensions pending |
-| 4 | RF E–H, Fields I–L, System B–F, Photonics B, Control II F3–F5 | Pending |
-| 5 | Implement Applied Analog, Analog IC and Mixed-Signal from their plans | Pending |
+| 3 | Review the first five Interfaces and five VLSI experiments, then extend their planned groups | Complete locally: 25 Interfaces and 25 VLSI extensions, with final model, browser and integration checks |
+| 4 | RF E–H, Fields I–L, System B–F, Photonics B, Control II F3–F5 | Complete locally: RF 16, Fields 17, System 21, Photonics 4 and Control II 3 extensions |
+| 5 | Start Applied Analog, Analog IC and Mixed-Signal from their plans | Complete locally: six functional Group A lessons in each app; later groups remain planned |
 
 ## Standards carried forward from Circuit Elements
 
@@ -106,7 +106,142 @@ context components. The director and main checkouts are untouched.
   `electronics-lab/`, `interfaces-lab/` and `vlsi-lab/` while the server is running.
   These follow-up changes have not been pushed or verified live.
 
-Remaining priority 3 work is Interfaces B–G and VLSI B–G, in the existing lesson
-shells. Interfaces B begins asynchronous framing and receiver sampling; VLSI B
-begins transistor gate networks. Their later groups must retain explicit model
-limits and independent circuit checks. Priorities 4 and 5 have not been started.
+## Earlier extension checkpoint, 2026-09-08 (historical)
+
+The implementation now has 25 Interfaces B–G lessons, 25 VLSI B–G lessons,
+16 RF E–H lessons and 17 Fields I–L lessons. Each uses a shared learning workbench
+with definitions, analysis-route guidance, stepwise LaTeX, parameter-linked plots,
+aligned result tables, and entered-answer practice. Original foundation screens
+remain available through a common sequential catalog.
+
+- Interfaces: native pin-voltage UART sampling, SPI phase tables, arbitration,
+  acquisition and timing budgets, exact periodic PWM ripple, and event-based
+  bounce/debounce. Six tests and all 25 lessons × four views at 1440/390/320 px
+  passed. Remaining scope review includes the complete CAN oscillator bounds and
+  the planned Signal Lab handover.
+- VLSI: native RC networks, current-balanced SRAM curves, and a connected
+  two-latch switch-model flip-flop with measured setup and clock-to-Q timing.
+  Seven model tests passed. The latest F2/F3 timing defaults and shared plot changes are included in the final browser verification below.
+- RF: native hybrid-pi two-port, stability and matching circles, noise budgets,
+  coherent two-tone FFT, guarded IP3 extrapolation, and oscillator models.
+  Seven active-model tests and all 16 lessons × four views at 1440/390/320 px
+  passed. The transistor unity-current-gain frequency is distinguished from
+  the 50 Ω S21 response.
+- Fields: native distributed-line, waveguide and antenna engines; reflected
+  arrival ladder, Smith chart, polar power patterns, loss/dispersion comparison,
+  and guarded cavity/Friis estimates. Five new tests cover all default and knob
+  endpoints, renderable math, physical identities and refusals. All 17 lessons ×
+  four views at 1440/390/320 px passed again after the shared mobile scroll correction, including a new check against nested mobile page scrolling. The plan now corrects load-arrival times and array
+  phase convention and removes the unsupported global wire-directivity maximum.
+
+RF, System and Photonics foundations and their absent engine packages were
+integrated selectively from director commit cbe424a. The other checkouts were
+not changed. System B–F, Control II F3–F5 and the three analog app
+foundations still require implementation. Shared changes, full-suite verification,
+app registration in site assembly/deployment and final documentation review remain.
+No push or live deployment of these extensions has occurred.
+
+### Photonics receiver checkpoint
+
+B1–B4 now fill the gap between photodiode foundations A and light-source group C.
+The models distinguish one-sided current noise density, rectangular noise bandwidth,
+RC-filtered noise, thermal-only sensitivity, shot-inclusive sensitivity, and the
+Poisson photon-counting limit. Five new model/catalog tests passed, including an
+independent RC noise integral and substitution into the unequal-noise OOK criterion.
+All four lessons × four views passed Chromium at 1440/390/320 px. The application
+build passed. The plan now states the sensitivity assumptions and the actual error
+probability of the rounded 20-photon example. These changes remain local.
+
+### Integration verification
+
+The affected apps and shared packages passed 1,595 tests in 80 files. The complete
+workspace build passed 23 apps and caught one VLSI failure: two Windows-encoded
+apostrophes in the new timing lesson. Those bytes were repaired to UTF-8; the VLSI
+production build then passed, completing all 24 app builds. A strict UTF-8 scan
+of repository source, styles, JSON, HTML, YAML and Markdown found no remaining
+encoding errors. The shared mobile layout now uses a single document scroll,
+with a browser assertion against nested root scrolling. Fields and Photonics
+passed all new lessons at 1440/390/320 px after that correction.
+
+Final Interfaces (25), VLSI (25), and RF (16) browser reruns also passed every
+new lesson and all four views at 1440/390/320 px. Together with Fields (17) and
+Photonics (4), that is 87 added lessons checked at all three widths. This records
+UI and model verification; it does not mark pending scope items or deployment
+as complete.
+
+## Final requested-scope acceptance, 2026-09-08
+
+The requested buildout is complete locally. This supersedes the pending items in
+the earlier checkpoints above. There are **129 added lessons**, plus the existing
+foundations, in the ten affected apps. These apps remain dark; no merge to master,
+push or live deployment of this buildout is claimed.
+
+| App | Added scope | Added lessons | Combined catalog |
+| --- | --- | ---: | ---: |
+| Interfaces | B–G | 25 | 30 |
+| VLSI | B–G | 25 | 30 |
+| RF | E–H | 16 | 35 |
+| Fields | I–L | 17 | 53 |
+| System | B–F | 21 | 25 |
+| Photonics | B | 4 | 25 |
+| Control II | F3–F5 | 3 | 35 |
+| Applied Analog | A foundations | 6 | 6 |
+| Analog IC | A foundations | 6 | 6 |
+| Mixed-Signal | A foundations | 6 | 6 |
+
+### Learning and model review
+
+- Start here defines symbols, units, reference directions, prerequisites and model
+  limits. Worked math follows the governing law through substitution to a result.
+  Explore and entered-answer Practice use the same current parameter values.
+- Shared tabs have constant geometry across views. Tables and long equations
+  scroll internally. Mobile pages have one document scroll. Native circuit drawings
+  have readable labels and an enlarged dialog with keyboard close/focus behavior.
+- Interfaces now includes both classical CAN oscillator constraints. Its sampling
+  handover carries the folded tone into Signal Lab's accepted Nyquist-band source
+  controls, states the sine/cosine phase difference, and preserves sample rate.
+- System uses the native cascade engine, a separately evaluated cascaded cubic
+  waveform/FFT, random-phase ensembles with uncertainty, a link-budget waterfall,
+  and a capstone with editable LNA, mixer and IF specifications. A compressed
+  operating point does not expose an accepted small-signal IP3 estimate.
+- Control II uses a two-state covariance model, Joseph updates, converged steady
+  gain and independently checked Gaussian ensembles. A deliberately wrong sensor
+  variance exposes estimator overconfidence.
+- Applied Analog separates illustrative class parameters from guaranteed
+  manufacturer specifications. Native AC and transient models check bandwidth,
+  active-filter response and slew calculations.
+- Analog IC uses one consistent charge-based current/derivative law. The plan's
+  mixed interpolation and pair-area arithmetic were corrected. Short-channel
+  corrections are explicitly a separate comparison model.
+- Mixed-Signal conserves charge across ideal events and checks the answer with a
+  finite-R native transient. Clock injection, bottom-plate sign, thermal-noise
+  bandwidth and seeded aperture jitter have explicit assumptions.
+- The analog apps are the requested **start**: all six planned foundation topics
+  per app are working. Later groups, full converter/PLL apps, general switched-cap
+  synthesis, a general EKV netlist companion, and general analog yield/sensitivity
+  tools remain future work. They are not claimed complete by this checkpoint.
+
+### Recorded verification
+
+- Full repository suite: **10,388 tests passed in 391 files**.
+- After the final model/content updates: **1,244 affected tests passed in 71 files**,
+  including the added RF catalog and CAN-bound coverage. The full-suite count is
+  reported as actually run, rather than inferred by adding later test counts.
+- All **27 app production builds** passed. The last Applied Analog drawing-only
+  adjustment was rebuilt and checked again in the assembled site.
+- All **129 new lessons × four views × 1440/390/320 px** passed Chromium checks:
+  finite default results, rendered LaTeX, invariant tab geometry, practice feedback,
+  page overflow, mobile scroll behavior and applicable drawing dialogs.
+- `scripts/verify-rollout.mjs` passed at all three widths on the assembled site:
+  every app route returns 200; local/deployment catalogs agree; mobile suite links,
+  class selections, switch phases, editable/reset capstone values, drawing contrast
+  and label separation, waterfall rendering and the Signal handover work.
+- Strict UTF-8 decoding passed for 1,608 source/document files, preventing the
+  earlier encoding issue from recurring. `git diff --check` passed.
+- The assembled 27-app site is **35.72 MiB**. Screenshots are ignored development
+  artifacts under each app's `.shots` directory, not committed site assets.
+
+Reproduce with `npm test`, `npm run build`, `npm run site`, then
+`node scripts/verify-rollout.mjs` and `node scripts/verify-extended.mjs <app>`.
+The work uses the isolated `feature/circuits-ii-rollout` checkout. Concurrent
+checkouts and the unrelated prose-linter/debug changes are preserved.

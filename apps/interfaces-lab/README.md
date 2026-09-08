@@ -1,7 +1,9 @@
 # Interfaces Lab
 
+Local rollout, 2026-09-08: **30 experiments across A–G**. The original five foundations and 25 new lessons share one sequential catalog. B–G adds Start here, Worked math, Explore and Practice with explicit symbols, model limits and numeric substitutions. Run `node scripts/verify-extended.mjs interfaces-lab` after building to check all extension views at desktop and phone widths. The app remains dark.
+
 Group A contains five experiments about analog pins. They cover push-pull switching, CMOS input limits, open-drain charging, capacitive loading and noise margin.
-The app remains dark. The director owns lockfile registration and deployed navigation.
+The app remains dark. The rollout includes lockfile registration and deployment assembly.
 
 ## Running the app
 
@@ -16,7 +18,7 @@ node apps/interfaces-lab/scripts/verify.mjs
 ```
 
 The browser harness serves the built app at `/interfaces-lab/` on a temporary local port.
-It saves screenshots and a report in the ignored `verification` directory. Deployed navigation remains pending the director's URL registry update.
+It saves screenshots and a report in the ignored `verification` directory. The rollout includes the shared URL registry; the assembled-site check exercises sibling navigation.
 
 ## Model boundaries
 

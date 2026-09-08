@@ -1,9 +1,11 @@
 # VLSI Lab
 
+Local rollout, 2026-09-08: **30 experiments across A–G**. The original five foundations and 25 new lessons share one sequential catalog. B–G adds Start here, Worked math, Explore and Practice with explicit symbols, model limits and numeric substitutions. Run `node scripts/verify-extended.mjs vlsi-lab` after building to check all extension views at desktop and phone widths. The app remains dark.
+
 Five bounded lessons cover A1 through A5 on the existing network and events engines.
 A3 includes extraction, a rounded event chain and a separately connected analog switch-model chain.
 A5 measures the isolated fanout law; switching to Timing compares connected stages at that load.
-The app remains dark. Groups B–G are still pending.
+The app remains dark. Groups B–G are implemented locally.
 
 ## Model boundaries
 
@@ -109,3 +111,7 @@ Both completed all 25 experiment-size combinations, including every alternate vi
 All sibling links responded successfully. Both error lists were empty.
 The final build includes the director's shared NumField focus guard.
 The harness freezes its clock and waits for the paused state before checking exact cursor stability.
+
+## Extension model notes
+
+The repeated-wire lesson optimizes the stated Elmore first-moment model: its default is nine segments and size 22 (1141.857 ps), not the plan’s old 12-stage/974.9 ps pin. The distributed-line half crossing uses approximately 0.379 RC. Short-circuit current follows the actual square-law convention (default 60.75 μA peak). SRAM hold/read SNM comes from the plotted current-balanced butterfly; it is not forced to the plan’s former 0.9/0.55 V values. The write-trip threshold is the selected nonlinear cell model’s result. Setup and clock-to-Q come from the connected two-latch waveform, with an explicit 10% degradation criterion. These are model differences, not foundry characterizations.

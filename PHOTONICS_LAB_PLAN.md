@@ -549,17 +549,17 @@ comparison between shot and thermal noise, per Decision 5.
 
 - **B1 · Two noise sources, and which one wins.** Shot noise at 1.000 µA is
   0.5661 pA/√Hz. Thermal noise of 1.000 kΩ at 300 K is 4.0704 pA/√Hz. They are equal
-  at 51.704 µA, so a fibre receiver is almost always thermally limited. Measured: both
+  at 51.704 µA for this resistor and temperature; dominance depends on operating current and receiver design. Measured: both
   densities at four currents, and the crossover.
 - **B2 · The load resistance is the whole trade.** Over 1.000 GHz the thermal noise is
   575.64 nA into 50 Ω, 128.72 nA into 1.000 kΩ and 40.704 nA into 10.00 kΩ. A larger
   resistance is quieter and slower. The Applied Analog Lab's transimpedance amplifier
   is the way out, and the term panel names it. Measured: the noise and the bandwidth
   at three resistances.
-- **B3 · Sensitivity.** For `Q = 6`, which is a bit error rate of 9.87e-10, a 1.000 kΩ
+- **B3 · Sensitivity.** The following powers are the thermal-only Gaussian OOK estimate, with equal bit probabilities, zero light in a zero, and responsivity 1 A/W. The lesson also solves the signal-dependent shot-noise correction. For `Q = 6`, which is a bit error rate of 9.87e-10, a 1.000 kΩ
   receiver over 1.000 GHz hears −31.122 dBm. Raise the resistance to 5.000 kΩ and it
   hears −34.617 dBm. Measured: the sensitivity at two resistances and two bandwidths.
-- **B4 · The quantum limit, and the 27.8 dB gap.** An ideal receiver needs 20 photons
+- **B4 · The quantum limit, and the 27.8 dB gap.** An ideal, unity-efficiency Poisson photon counter with no dark counts and equally likely OOK bits has BER = exp(−n1)/2. The rounded n1 = 20 gives 1.031e-9, close to the Q = 6 Gaussian estimate. With 20 photons
   in a one bit, averaging 10 per bit, which at 1550 nm and 1.000 Gbit/s is
   −58.923 dBm. The thermally limited receiver of B3 sits 27.8 dB above it. The
   Communications Lab's channel group is where the Q factor becomes a bit error rate,
