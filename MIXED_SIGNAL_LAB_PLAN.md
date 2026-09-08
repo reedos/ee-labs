@@ -687,39 +687,50 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
   84.04 dB. Measured: the required jitter at three inputs, and the ratio from a seeded
   run against the closed form.
 
-### Group B: Switched-capacitor circuits (6)
+### Group B: Switched-capacitor circuits (6) — implemented
 
-- **B1 · The switched-capacitor resistor.** A 1.00 pF capacitor switched at 1.00 MHz
-  carries `C V f_s` of average current, so `R_eq = 1/(C_S f_s) = 1.00 MΩ`. Its value
-  comes from a capacitor and a clock, so it is good to 0.1 % where a diffused resistor
-  is good to 20 %. It occupies half the area. Measured: the average current, the
-  equivalent resistance, and its tolerance from a Monte Carlo run.
-- **B2 · The integrator, and its exact H(z).** Charge conservation on the summing node
-  gives `v_o(n) = v_o(n − 1) + (C₁/C₂) v_in(n − 1)`, so
-  `H(z) = (C₁/C₂)/(z − 1)`. With `C₁/C₂ = 0.1` and `f_s = 1.00 MHz` the unity-gain
-  frequency is 15.92 kHz, which is also `1/(2π R_eq C₂)`. Measured: the difference
-  equation from the run, the two coefficients, and the unity-gain frequency both ways.
-- **B3 · Where the continuous model stops.** The ratio of the exact `|H(z)|` to the
-  `R_eq` model is `(ωT/2)/sin(ωT/2)`. At 20 samples per cycle it is 0.412 % and the
-  phase is 9.00° behind, at 10 samples 1.664 % and 18.0°, at 5 samples 6.896 % and
-  36.0°. The suite already refuses a sampled-filter link below 20 samples per cycle,
-  and this pane uses the same threshold. Measured: the ratio at five rates against the
-  formula, and the guard firing at both sides of 20.
-- **B4 · Parasitic-insensitive, as a testable claim.** Add a capacitance from either
-  plate of `C₁` to ground and the coefficients of `H(z)` move by less than 10⁻¹²,
-  because both plates are driven to a known potential in each phase. The
-  parasitic-sensitive arrangement moves the gain by the parasitic ratio. Measured: the
-  coefficients with 0.1 pF of parasitic on each node, for both arrangements.
-- **B5 · The biquad, designed in z.** Matching `z² − 1.76405 z + 0.854636` gives
-  `K₆ = 0.170089` and `K₄K₅ = 0.105994`, so `f₀ = 50.0 kHz` and `Q = 2` exactly. The
-  textbook equations give 0.157080 and 0.098696, which realise 48.374 kHz and 2.0832,
-  3.253 % and 4.161 % away. Measured: both designs read back through `hzOf`, and the
-  two errors.
-- **B6 · Finite op-amp gain leaks the integrator.** A gain of `A₀` moves the pole from
-  `z = 1` to `1 − (1 + C₁/C₂)/A₀`. At `A₀ = 100` the DC gain is 9.091 and the gain
-  error at the unity-gain frequency is 1.10 %, at `A₀ = 1000` it is 90.91 and 0.110 %,
-  at `A₀ = 10 000` it is 909.1 and 0.0110 %. Measured: the pole, the DC gain and the
-  error at three gains, each against the formula.
+- **B1 · SC resistor.** Iavg=Cs ΔV fs and Req=1/(Cs fs). Absolute Req depends on
+  absolute Cs and clock accuracy; capacitor **matching** does not confer 0.1%
+  accuracy on an absolute resistance. A seeded bounded-parameter ensemble reports
+  mean uncertainty and ±1% yield with its Wilson interval. No process-independent
+  area advantage is claimed.
+- **B2 · Exact integrator.** The displayed reverse-plate topology keeps Cf in
+  feedback through sampling and transfer. Charge conservation gives
+  y[n]=y[n−1]+r u[n−1], H(z)=r/(z−1). Unity frequency is
+  fs asin(r/2)/π; rfs/(2π) is the close continuous estimate, not an identity.
+  Initial output is an explicit independent control.
+- **B3 · Continuous-model boundary.** Magnitude ratio is (Ω/2)/sin(Ω/2),
+  extra lag Ω/2. Continuous-model handover is enabled only at ≥20 samples/cycle
+  at the inspected frequency; the exact sampled model remains available.
+- **B4 · Parasitics and topology.** The shared charge solver includes each
+  capacitor plate explicitly. Reversing the sampled plates gives b=+Cs/Cf and
+  rejects ideal plate-to-ground parasitics. Transferring the sampled positive
+  plate instead gives b=−(Cs+CpTop)/Cf. The drawings and phase table show why
+  the sign and participating charge differ. Insensitivity assumes ideal virtual
+  ground and fully settled phases.
+- **B5 · Exact two-state biquad.** The ordered updates are
+  x1[n]=x1[n−1]+K4(u[n−1]−x2[n−1]) and
+  x2[n]=(x2[n−1]+K5 x1[n])/(1+K6). Match its denominator to exp(sTs)
+  pole targets; K6=1/a2−1 and K4K5=(1+a1+a2)/a2. The native z-plane view,
+  state samples and exact H(z) show the same model. The continuous coefficient
+  estimate is a selectable comparison. Pole frequency is not labeled a −3 dB
+  corner. A general topology-to-H(z) synthesizer remains future work.
+- **B6 · Finite gain for the displayed topology.** Preserve the **initial** Cf
+  charge −Cf(1+1/A0)y[n−1] as well as the final charge. The result is
+  a=(A0+1)/(A0+1+r), b=rA0/(A0+1+r), H(z)=b/(z−a), and DC gain=A0.
+  The earlier a≈1−(1+r)/A0 and DC=A0r/(1+r) sketch does not describe this
+  continuously connected feedback capacitor. The native charge projection and
+  the explicit finite-gain constraint independently recover the shown coefficients.
+
+`@ee-labs/switched/chargeStep` is the reusable ideal event projection. Floating
+conductors conserve charge; driven nodes and declared amplifier actuators can
+supply charge. Linear voltage constraints permit ideal or finite-gain settled
+feedback. This extends the package without changing converter event behavior.
+Signal Lab handovers preserve exact z coefficients. Above its 192 kHz accepted
+sample rate they clearly label a **time-scaled copy**, including clock and source
+frequency scaling; they do not silently claim the same physical frequency.
+Groups C onward, converter/PLL implementations and general SC synthesis remain
+planned. Finite phase settling is separate from this ideal-event model.
 
 ### Group C: Converters, the static errors (6)
 

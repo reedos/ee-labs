@@ -1,14 +1,16 @@
 # Analog IC Lab
 
-6 working experiments in the local rollout. The app remains **dark**: a successful deployment serves its direct URL without adding a public splash-page card. This checkpoint does not claim the changes are already live.
+11 working experiments across Groups A and B. The app remains **dark** (direct URL, no public splash-page card). Group A was introduced in merge 067c9c7; Group B extends that release. See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 continuous inversion law; A2 gm/ID ceiling; A3 sizing tradeoffs; A4 pair matching; A5 mirror mismatch; A6 short-channel corrections.
+
+B1 correlated process variation; B2 beta-multiplier bias; B3 bandgap slope and curvature; B4 startup root enumeration; B5 current-reference drift.
 
 New lessons follow the Circuit Elements learning structure: Start here with symbols and assumptions, Worked math with substitutions, Explore with parameter-linked plots/tables, and Practice with entered answers. Navigation stays anchored; equations and tables scroll internally on narrow screens. Circuit drawings can be enlarged where supplied.
 
 ## Model scope
 
-One consistent normalized-charge law determines current, overdrive and gm/ID. Matching coefficients describe pair mismatch. Cgs/fT are named approximations. Later groups and a general EKV network companion remain planned; this is not a PDK.
+Group A uses one consistent charge-based device law. Group B explicitly uses a square-law beta-multiplier and an analytic junction-temperature reference. Startup is DC root enumeration, not a transistor-level startup transient. Parameter ensembles use the shared random package and report uncertainty. Groups C onward and a general EKV network companion remain planned.
 
 ## Run and check
 

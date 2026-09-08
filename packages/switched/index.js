@@ -82,3 +82,5 @@ export {
   RECT_DEFAULTS,
   RECT_KINDS,
 } from './src/rectifier.js'
+
+export {chargeStep} from './src/charge.js'

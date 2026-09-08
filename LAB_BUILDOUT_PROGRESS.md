@@ -7,9 +7,9 @@ main-checkout changes.
 | Priority | Scope | Status |
 | --- | --- | --- |
 | 2 | Prepare Electronics' 75 entries for release: coverage, explanations, browser review | Local preparation complete; remains dark |
-| 3 | Review the first five Interfaces and five VLSI experiments, then extend their planned groups | Complete locally: 25 Interfaces and 25 VLSI extensions, with final model, browser and integration checks |
-| 4 | RF E–H, Fields I–L, System B–F, Photonics B, Control II F3–F5 | Complete locally: RF 16, Fields 17, System 21, Photonics 4 and Control II 3 extensions |
-| 5 | Start Applied Analog, Analog IC and Mixed-Signal from their plans | Complete locally: six functional Group A lessons in each app; later groups remain planned |
+| 3 | Review the first five Interfaces and five VLSI experiments, then extend their planned groups | Deployed in 067c9c7: 25 Interfaces and 25 VLSI extensions, with final model, browser and integration checks |
+| 4 | RF E–H, Fields I–L, System B–F, Photonics B, Control II F3–F5 | Deployed in 067c9c7: RF 16, Fields 17, System 21, Photonics 4 and Control II 3 extensions |
+| 5 | Start Applied Analog, Analog IC and Mixed-Signal from their plans | Group A deployed in 067c9c7; Group B adds 5 Applied Analog, 5 Analog IC and 6 Mixed-Signal lessons |
 
 ## Standards carried forward from Circuit Elements
 
@@ -245,3 +245,55 @@ Reproduce with `npm test`, `npm run build`, `npm run site`, then
 `node scripts/verify-rollout.mjs` and `node scripts/verify-extended.mjs <app>`.
 The work uses the isolated `feature/circuits-ii-rollout` checkout. Concurrent
 checkouts and the unrelated prose-linter/debug changes are preserved.
+
+
+## Follow-on release: analog Groups B — 2026-09-08
+
+The previous checkpoint was merged through PR #3 as `067c9c7`. GitHub deployment
+run 34275209946 succeeded. Live browser checks confirmed all 27 app routes and
+Signal's on-screen mobile suite navigation at 390 and 320 px. The three analog
+apps remain dark/unlisted.
+
+The follow-on implements the next three groups in order: Applied Analog B1–B5,
+Analog IC B1–B5 and Mixed-Signal B1–B6. Totals are **11, 11 and 12** respectively.
+All use the existing Start here / Worked math / Explore / Practice workbench,
+anchored tabs, defined notation, substitutions, responsive tables and drawings.
+
+Two reusable engines support the lessons: `parameterEnsemble` in the random
+package retains correlations and estimator intervals; `chargeStep` in switched
+projects capacitor charge under explicit driven/floating/feedback constraints.
+Neither claims a general analog synthesis system. Mixed-Signal uses the existing
+native z-plane canvas and clearly names frequency scaling in Signal handovers.
+
+The three plans' Group B sections now document validated equations and corrections:
+separate crossover/bandwidth, loaded isolation margin, the bandgap's ln N slope,
+resistor contributions to reference-current drift, and topology-dependent
+finite-gain SC leakage. Startup enumerates DC roots and checks native MOS currents;
+a transistor-level startup/shutoff transient is not claimed.
+
+### Follow-on checks
+
+- 23 targeted tests passed across eight files before the final diagram and z-plane
+  integration. These include native AC/loop comparisons, exact state response,
+  MOS current/KCL checks, charge projection versus a finite-R transient,
+  parameter uncertainty, approximation guards and the actual Signal link consumer.
+- Catalog/default/control-endpoint checks render all displayed LaTeX and require
+  finite numeric results. Browser checks cover all 34 analog lessons and all four
+  views at 1440, 390 and 320 px.
+- Full repository suite: **10,403 tests passed in 397 files**, 281.82 seconds.
+- All 27 production app builds passed. Final UI-only changes are rebuilt and
+  browser-checked again; no model assertion was relaxed.
+- Assembled integration checks passed at 1440/390/320 px: drawing label separation,
+  editable switch phases, the 20-samples/cycle guard, z-plane redraw after Q changes,
+  exact-coefficient Signal handover and existing rollout navigation/capstones.
+- Dimensionless controls now display plain decimal numbers (0.1 rather than
+  100 m), while physical quantities retain engineering units.
+- Final affected tests: **1,998 passed in 29 files** after the last model/control
+  updates. Strict UTF-8 decoding passed for 1,623 source/document files.
+- Final shared-control regression: **145 guided lessons × four views × three widths** passed across ten apps, including return to existing foundation views.
+- Final assembled site: **35.83 MiB** for 27 apps.
+
+Groups C onward remain planned. The next natural sequence is Applied Analog
+precision, Analog IC amplifier architectures, then Mixed-Signal static converter
+errors; each needs its own model and presentation review rather than placeholder
+lesson entries.

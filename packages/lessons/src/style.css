@@ -42,3 +42,5 @@
 .lesson-schematic>button{margin-top:10px;min-height:44px}.lesson-drawing-dialog{width:min(95vw,1100px);max-height:90dvh;box-sizing:border-box;padding:18px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:12px}.lesson-drawing-dialog::backdrop{background:#000a}.lesson-drawing-dialog>button{min-height:44px}.lesson-drawing-scroll{overflow:auto;margin:16px 0}.lesson-drawing-scroll .schematic{min-width:680px;width:100%;height:450px}
 
 .lesson-waterfall-scroll{overflow:auto}.lesson-waterfall-scroll svg{min-width:650px}
+
+.lesson-zplane{height:340px;width:100%;max-width:650px}.lesson-zplane canvas{display:block;width:100%;height:100%}

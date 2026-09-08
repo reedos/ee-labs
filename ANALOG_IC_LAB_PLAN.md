@@ -526,33 +526,39 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
   at `V_SB = 0.5 V` raises the threshold by 103.5 mV and gives `g_mb/g_m = 0.1826`.
   Measured: each toggle's number at three lengths.
 
-### Group B: Bias (5)
+### Group B: Bias (5) — implemented
 
-- **B1 · A ratio is worth two hundred times an absolute value.** A poly resistor is
-  good to 20 % and a resistor ratio to 0.1 %. Every circuit in this lab is built from
-  ratios for that reason. Measured: the spread of a divider built from an absolute
-  value and from a ratio, over the same Monte Carlo run.
-- **B2 · The beta-multiplier sets a current from a resistor.** `g_m1 R = 2(1 − 1/√K)`,
-  so `K = 4` and `R = 10.0 kΩ` give `g_m = 100 µS`. With `W/L = 10` the current is
-  `g_m²/(2 µ C_ox (W/L)) = 2.50 µA`, and it does not move with the supply to first
-  order. Measured: `g_m`, the current, and the current's change over a 1.6 to 2.0 V
-  supply.
-- **B3 · The bandgap, PTAT plus CTAT.** `V_BE` falls at −2.112 mV/K and `V_T ln 8`
-  rises at 86.17 µV/K per unit of multiplier, so `M = 11.79` flattens the sum.
-  `V_ref = 1.2836 V`, and over −40 to 125 °C it moves 3.746 mV, which is 17.69 ppm/K.
-  The curvature is second order and is what the spread measures. Measured: the two
-  slopes, `M`, the reference, the spread, and the equality with Applied Analog D1.
-- **B4 · The start-up circuit, and the state without one.** The beta-multiplier has two
-  consistent operating points, and zero current is one of them. `solvePWL` reports both
-  and declines to pick, with the message the suite already gives for a circuit whose
-  answer depends on its history. A start-up device removes the zero-current state, and
-  the pane then shows one solution. Measured: both operating points, the refusal, and
-  the single point after start-up.
-- **B5 · A current is only as good as its reference.** The resistor's 1000 ppm/K
-  tempco moves the beta-multiplier's current by −0.2 %/K, and its 20 % absolute
-  tolerance moves it by 44 %. A bandgap-referenced current source replaces both with
-  the reference's own 17.69 ppm/K. Measured: both drifts, and the tolerance spread from
-  Monte Carlo.
+- **B1 · Ratios and process variation.** A shared `parameterEnsemble` utility in
+  `@ee-labs/random` samples explicitly correlated or independent resistor errors.
+  Absolute ±20% and matched ±0.1% are illustrative uniform bounds, not universal
+  process guarantees or Gaussian sigmas. Mean and yield carry confidence intervals.
+- **B2 · Beta-multiplier.** The strong-inversion law gives
+  gm1=2(1−1/√K)/R and I=gm1²/(2β1). K=4, R=10 kΩ and W/L=10 give 100 μS
+  and 2.50 μA. Native MOS current laws independently check both branches.
+  Supply invariance is conditional on ideal mirrors and saturation; no real mirror
+  headroom claim is made.
+- **B3 · Bandgap.** VG0=1.206 V, VBE0=0.650 V at 300 K. Saturation-current
+  exponent 4 and PTAT bias exponent 1 give an effective logarithmic exponent 3.
+  CTAT slope is −2.11185 mV/K; for N=8 the PTAT slope is **(k/q)ln8 =
+  179.192 μV/K**, not k/q alone. M=11.7854 gives 1.283556 V and zero first
+  derivative at 300 K. Endpoints and any interior stationary point determine the
+  exact box drift; the temperature curve retains curvature. Applied Analog D1
+  is still planned, so no working cross-lab comparison is claimed yet.
+- **B4 · Startup.** Enumerate the zero and positive scalar DC roots before any
+  division by √I. An auxiliary current injected into M1 gives I1=I+Is and I2=I;
+  solve √[2(I+Is)/β1]−√[2I/(Kβ1)]−IR=0. Positive injection removes the zero
+  root and shifts the positive bias. These are checked against native device
+  currents. This is explicit root enumeration, not a claim that solvePWL handles
+  nonlinear MOS multiple roots or that startup/shutoff transients are simulated.
+- **B5 · Current drift.** Ibeta∝R⁻² and Iref=Vref/R. A 1000 ppm/K resistor gives
+  −2000 ppm/K local beta-current drift at 300 K; it still contributes about
+  −1000 ppm/K to the bandgap-derived current. ±20% resistance gives beta-current
+  factors 1/1.2²=0.694444 and 1/0.8²=1.5625, not a symmetric 44% spread.
+  The bandgap does not eliminate the current-setting resistor's errors.
+
+Groups C onward, a general EKV netlist companion and transistor-level startup
+remain planned. The foundation charge law and the explicitly separate square-law
+bias comparison are not mixed into one supposed foundry model.
 
 ### Group C: Op-amp architectures (6)
 

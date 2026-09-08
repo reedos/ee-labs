@@ -1,10 +1,11 @@
 import React, {useEffect,useMemo,useState,useRef} from 'react'
-import {LabNav,LessonNav,NumField,SmithCanvas,Schematic,buildLink,siblingUrl} from '@ee-labs/ui'
+import {LabNav,LessonNav,NumField,ZPlaneCanvas,SmithCanvas,Schematic,buildLink,siblingUrl} from '@ee-labs/ui'
 import {Formula} from '@ee-labs/explain'
 import {defaults,evaluate,fmt,grade} from './model.js'
 import './style.css'
 
 function Plot({data}) {
+  if(data.kind==='zplane') return <figure className="lesson-plot"><figcaption>{data.label}</figcaption><div className="lesson-zplane"><ZPlaneCanvas {...data}/></div><p>Crosses are poles; circles are zeros. Poles strictly inside the unit circle give a decaying zero-input response.</p></figure>
   if(data.kind==='waterfall') return <WaterfallPlot data={data}/>
   if(data.polar) return <PolarPlot data={data}/>
   const traces=(data.traces??[{label:data.label,points:data.points}]).map(t=>({...t,points:t.points.filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&(!data.logX||p.x>0))}))
@@ -59,7 +60,7 @@ export default function Workbench({lab,title,lesson,catalog,navigate}) {
   const outcome=useMemo(()=>{try{return {result:evaluate(lesson,p)}}catch(e){return {error:e.message}}},[lesson,p])
   const r=outcome.result,index=catalog.findIndex(e=>e.id===lesson.id)
   const reset=()=>setP(defaults(lesson))
-  const knobField=k=>k.options?<label className="lesson-choice" key={k.key}>{k.label}<select aria-label={k.label} value={p[k.key]} onChange={e=>setP({...p,[k.key]:Number(e.target.value)})}>{k.options.map((name,i)=><option key={i} value={i}>{name}</option>)}</select></label>:<div key={k.key}><NumField {...k} value={p[k.key]} eng onChange={v=>setP({...p,[k.key]:v})}/></div>
+  const knobField=k=>k.options?<label className="lesson-choice" key={k.key}>{k.label}<select aria-label={k.label} value={p[k.key]} onChange={e=>setP({...p,[k.key]:Number(e.target.value)})}>{k.options.map((name,i)=><option key={i} value={i}>{name}</option>)}</select></label>:<div key={k.key}><NumField {...k} value={p[k.key]} eng={k.eng??Boolean(k.unit)} format={k.format??(!k.unit?(v=>v.toLocaleString('en-US',{useGrouping:false,maximumSignificantDigits:6})):undefined)} onChange={v=>setP({...p,[k.key]:v})}/></div>
   const knobGroups=[...new Set(lesson.knobs.map(k=>k.group).filter(Boolean))]
   return <div className="lesson-workbench">
     <aside className="lesson-controls"><LabNav current={lab} currentLabel={title.replace(' Lab','')}/><h1>{title}</h1><p>{lesson.group}</p>

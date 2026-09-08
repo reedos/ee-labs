@@ -534,31 +534,36 @@ returns to it.
   Measured: both drops, and the resonance. **Design task:** choose a part for a
   1 mV rms preamp with a 100 kΩ source and a 20 kHz band, and read the margin.
 
-### Group B: Stability on a board (5)
+### Group B: Stability on a board (5) — implemented
 
-- **B1 · A capacitive load moves a pole into the loop.** A 10 MHz part with
-  `r_o = 50 Ω` into 1 nF puts a pole at 3.183 MHz. The loop crosses at 5.212 MHz, so
-  the phase margin is 31.41°, and the step rings. Measured: the crossover, the margin
-  and the overshoot, with the loop gain crossing to Control Lab.
-- **B2 · The isolation resistor buys the margin back.** `R_iso` in series with the
-  load, feedback taken at the amplifier's own output. At 22 Ω the margin is 58.44°, at
-  50 Ω it is 76.15°, at 100 Ω it is 85.68°. The price is a divider: 50 Ω into a 1 kΩ
-  load loses 4.762 % of the output. Measured: the margin and the droop at three
-  values.
-- **B3 · The photodiode puts a pole in the feedback.** `R_f = 1 MΩ` with 25 pF at the
-  input makes a noise-gain zero at 6.366 kHz. The loop crosses where that rising gain
-  meets the amplifier's falling gain, at √(GBW/(2π `R_f` `C_in`)) = 252.3 kHz, and the
-  phase margin is 1.446°. Measured: the zero, the crossover and the margin.
-- **B4 · The feedback capacitor restores it.** `C_f = √(2C_in/(2π R_f · GBW)) =
-  0.892 pF` gives a Butterworth pair. The margin rises to 65.80°, the crossover moves
-  to 380.5 kHz, and the closed-loop corner is 178.4 kHz from `1/(2π R_f C_f)`.
-  Measured: all four, and the transimpedance of 1.00 V/µA at DC.
-- **B5 · The composite amplifier.** A second amplifier inside the loop multiplies the
-  gain available. Two 1 MHz parts at an outer gain of 100 reach 78.62 kHz with a 51.83°
-  margin when the inner one is closed at 10, against 10.00 kHz for one part alone.
-  Raise the inner gain to 30 and the margin falls to 18.92°. Measured: the crossover
-  and the margin at four inner gains. **Design task:** hit 100 kHz at a gain of 100
-  with at least 45° of margin.
+All five use finite DC gain A0=100,000 and a single dominant amplifier pole.
+Native nodal AC and independently broken-loop return ratios check the displayed
+transfer functions. Native state propagation checks the small-step response.
+
+- **B1 · Capacitive loading.** At GBW=10 MHz, Ro=50 Ω and CL=1 nF,
+  fx=5.21206 MHz, PM=31.4143°, output bandwidth=8.26761 MHz and first-peak
+  overshoot=39.702%. The load pole is 3.18310 MHz.
+- **B2 · Isolation and load accuracy.** The same model includes both Riso and RL.
+  Riso=50 Ω with RL=1 kΩ gives PM=76.4740° and a 4.76190% divider loss from
+  the sensed amplifier output to the load. Earlier unloaded-margin numbers are
+  not used as if they included the 1 kΩ load.
+- **B3 · Uncompensated TIA.** Rf=1 MΩ and Cin=25 pF give a 6.36620 kHz noise-gain
+  zero. Exact finite-A0 crossover is 252.273 kHz and PM=1.46828°. The square-root
+  crossover estimate is labeled asymptotic.
+- **B4 · Compensated TIA.** The approximate Cf sizing gives 0.892062 pF,
+  fx=380.479 kHz and PM=65.8180°. The **feedback RC pole is 178.412 kHz**, while
+  the **actual closed-loop −3 dB bandwidth is 247.822 kHz**. The earlier draft
+  conflated them. Cf voltage depends on the summing-node and output states;
+  the two independent state equations are shown and propagated with native expm.
+- **B5 · Composite loop.** Two GBW=1 MHz stages, inner gain 10 and outer gain
+  100 give crossover=78.6116 kHz, PM=51.8386° and bandwidth=127.200 kHz.
+  The design target is explicitly **100 kHz loop crossover and 45° PM**;
+  GBW=1.5 MHz with inner gain 10 meets both in the stated linear model.
+
+Loop handovers send exact return-ratio coefficients to Control Lab. That app's
+T/(1+T) response is distinguished from the load-voltage transfer where necessary.
+Large-signal clipping/slew, device extra poles and board parasitics remain outside
+these models. Group C onward remains planned.
 
 ### Group C: Precision (5)
 
