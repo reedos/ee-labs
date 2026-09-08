@@ -11,8 +11,9 @@ an idea that no earlier experiment teaches.** The Elements lab already tests thi
 inside itself, every cross-reference in a note must name an experiment that exists.
 §6 extends that test across the seams.
 
-Status as of 2026-09-05. Built means on the deployed site, dark or released. Planned
-means in a plan file with the experiment specified. Nowhere means no plan names it.
+Circuit Elements implementation is updated as of 2026-09-08; its expansion awaits publication.
+Other rows retain the 2026-09-05 program baseline. Built in those rows means on the deployed
+site, dark or released. Planned means specified in a plan file. Nowhere means no plan names it.
 
 ---
 
@@ -23,7 +24,7 @@ order the nav will fold to (`ELECTRONICS_LAB_PLAN.md` Decision 5).
 
 | Step | Lab | Course it mirrors | Experiments | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Circuit Elements Lab | Circuits I and II foundations | 59 | released |
+| 1 | Circuit Elements Lab | Circuits I and II foundations | 89 | implemented, expansion release pending |
 | 2 | Circuit Lab | Filters and frequency response | 16 | released |
 | 3 | Electronics Lab | Electronics I and II | 75 of 77 | built in part, dark |
 | 4 | Signal Lab | Signals and Systems, DSP | 35 | released |
@@ -38,26 +39,31 @@ interleave.
 
 ## 2. The path, group by group
 
-### Step 1: Circuit Elements Lab (59, released)
+### Step 1: Circuit Elements Lab (89, implemented, expansion release pending)
 
 | Group | Teaches | Count |
 | --- | --- | --- |
 | A · Elements and signs | a source holds its value, ground is a choice, the sign convention | 4 |
 | B · Two laws | KCL, KVL, power and its sign | 4 |
 | C · Series and parallel | one current or one voltage, the loaded divider, the bridge | 4 |
-| D · Analysis and theorems | nodal, supernode, mesh, superposition, Thévenin three ways, maximum power | 6 |
-| E · Op-amps | the dependent source, the black box, the golden rules, the four circuits, the Schmitt trigger | 9 |
-| F · Elements that remember | C and L, the first-order equation, energy, the spark, the integrator | 7 |
-| G · Second order | the characteristic equation, three dampings, the LC | 7 |
-| H · Sinusoids and phasors | natural and forced, phasors, impedance, resonance, AC power, one sine at a time, the roots as poles, branched KCL and coupled states | 8 |
-| I · The diode | four models, the load line and Newton, assumed state, rectifiers, clipper, Zener, clamper, doubler | 10 |
+| D · Analysis and theorems | nodal and mesh equations, superposition, source transformations, Norton, supermesh and delta-wye | 10 |
+| E · Op-amps | controlled sources, amplifier circuits, the Schmitt trigger and dependent-source resistance tests | 10 |
+| F · Elements that remember | storage laws, first-order equations, pre/post-switch states and zero-input/zero-state responses | 9 |
+| G · Second order | characteristic roots, damping, initial energy, parallel RLC and the Circuits I capstone | 8 |
+| H · Sinusoids and phasors | phasors, impedance, resonance, branched KCL, AC equivalents, conjugate matching and power-factor correction | 9 |
+| J · Complete responses and Laplace | transform definitions, stored initial conditions, inversion, theorem conditions and state-to-transfer derivation | 7 |
+| K · Filters and Fourier signals | frequency response, poles, component targets, loading, harmonic reconstruction and convolution | 6 |
+| L · Coupled circuits and three phases | mutual winding laws, ideal transformer relations, balanced line/phase quantities and the floating neutral | 4 |
+| M · Two-port networks | open/short terminal tests, Z/Y/h conversion, ABCD cascades and loading | 3 |
+| N · Circuits II capstone | reconcile complete time, state, Laplace and phasor solutions with independent practice | 1 |
+| I · The diode | optional extension with diode models, rectifiers, regulation, clipping, clamping and doubling | 10 |
 
 Circuit Elements F1, G1 and H1 introduce the necessary notation and arithmetic in their opening
-Start here views. H8 precedes H6/H7, so branched circuit analysis comes before
-frequency response.
+Start here views. The Laplace group follows the phasor and state foundations.
+Frequency-response lessons retain their public identifiers but now follow Laplace in the filters group.
 
-What it gives at the end: `H(jω)` read one sine at a time, and the Bode view of an RC.
-The same circuit hands over to Circuit Lab.
+The course concludes with an integrated circuit-analysis capstone. Its filter circuits
+also hand over to Circuit Lab for further frequency-response exploration.
 
 ### Step 2: Circuit Lab (16, released)
 
@@ -70,8 +76,8 @@ The same circuit hands over to Circuit Lab.
 
 Circuit Elements owns the Circuits I and II course sections. Phasor instruction uses
 its existing schematic and analysis panes. Circuit Lab remains the frequency-response
-tool while further state-space and Laplace instruction is developed in Circuit Elements.
-`CIRCUITS_I_II_BUILDOUT.md` records the remaining course scope and dependencies.
+tool. Circuit Elements now implements the expanded state-space and Laplace progression.
+`CIRCUITS_COMPLETION_PROGRESS.md` records its acceptance evidence and pending publication.
 
 ### Step 3: Electronics Lab (75 of 77)
 
@@ -143,31 +149,22 @@ The plan's 54 became 56 when the buck grew from six experiments to eight.
 
 ## 3. The seams
 
-Each seam is the last thing one lab gives and the first thing the next assumes. Five
-seams, three of them thin.
+Each seam is the last thing one lab gives and the first thing the next assumes. The descriptions distinguish implemented foundations from later planned applications.
 
-**Seam 1, Elements to Circuit Lab: from jω to s.** *Thin.* Elements G1 finds the
-roots of the characteristic equation by trying `e^{st}`. Elements H6 reads `H(jω)` one
-sine at a time. Circuit Lab then speaks of poles, zeros and the complex frequency s
-from its first group, and defines them in term panels rather than in an experiment.
-The step a course takes here has no experiment: G1's roots are H6's poles, and the
-Bode plot is H(s) read along the jω axis.
-
-Recommended: **Elements H7, "The roots are the poles"**. The series RLC's
-`s² + (R/L)s + 1/LC` from G1, its two roots on the plane, and the Bode magnitude of H4
-drawn as the distance from jω to those roots. One experiment, no engine work, and
-Circuit Lab's first term panel then has something to point at.
+**Seam 1, Elements to Circuit Lab: from j? to s.** *Implemented; expansion publication pending.*
+Elements G1 derives characteristic roots. Elements J1 defines the Laplace variable and
+transform, Elements J7 derives the transfer function from the state matrix, and Elements
+H7 connects roots with poles. Elements H6 then reads the response along the j? axis.
+Circuit Lab can build on that derivation rather than introducing a new meaning of s
+only in a definition panel.
 
 **Seam 2, Circuit Lab to Signal Lab: the impulse response in continuous time.**
-*Thin.* Circuit Lab shows the step response of the RLC. Signal Lab shows the impulse
-response of a digital biquad and convolution as a sum of taps. Nowhere does a student
-see that the step response is the integral of the impulse response, or that a
-continuous circuit's output is the convolution of its input with `h(t)`.
-
-Recommended: **Circuit Lab, one experiment in "Reading a response"**, "The impulse
-response, and why the step is its integral". The RC's `h(t) = (1/τ)e^{−t/τ}`, the
-step as its running integral, and a square wave as a sum of shifted steps, all on the
-step view that exists. The RK4 machinery Circuit Lab has is enough.
+*Implemented in the shared foundation; publication pending.* Elements K4 derives the
+causal RC impulse response, integrates it for the step response, defines continuous
+convolution and predicts a finite pulse using two shifted steps. Elements K3 separately
+connects Fourier harmonics to the analog transfer function and includes startup and a
+finite-series error bound. These foundations prepare the reader for Signal Lab's
+discrete convolution without requiring another core Circuit Lab lesson.
 
 **Seam 3, Circuit Lab to Electronics Lab.** *Closed by the Electronics plan.* Its §1
 map lists eight gaps and the bridging groups that close them. They are the op-amp's
@@ -184,6 +181,10 @@ built groups need only Elements F, G and I. Its Group H, closing the loop, needs
 Control Lab and hands its averaged model there with the `f_s/5` guard the Power plan
 already states.
 
+Elements L1 and L2 now supply mutual-inductance and transformer foundations before
+the magnetics applications in Power D1. Elements L3 and L4 supply the balanced and
+unbalanced three-phase foundations; converter switching remains in Power Lab.
+
 ---
 
 ## 4. Subjects with no home
@@ -194,11 +195,6 @@ leave it out.
 
 | Subject | Course | Recommended home | Reason |
 | --- | --- | --- | --- |
-| The ideal transformer and coupled inductors | Circuits II | `packages/network` once, then Elements F8 (turns ratio, reflected impedance) and Power D (flux, saturation) | Power D assumes the turns ratio that no experiment introduces |
-| Three-phase from the circuits side (Y and Δ, line and phase) | Circuits II | Power I, as its first experiment, if a reader needs it | Power I3 already carries the payoff, constant power |
-| Two-port matrices (h, y, z, g) | Circuits II | none | Electronics G measures every port by test source, and Blackman's form replaces the two-port feedback analysis |
-| Laplace transforms as a topic | Circuits II, Signals | none | declined by the Elements plan. Seam 1's experiment is the substitute, and H(s) is used from Circuit Lab on |
-| Continuous-time convolution | Signals | Circuit Lab, seam 2 | one experiment |
 | Steady-state error constants, lag compensation, state space, discrete control | Control | Control Lab's own plan, when there is one | outside the analog path this document was written for |
 | PLLs, data converters, switched-capacitor circuits | Mixed-signal | a later lab, if any | Signal Lab's side of the boundary, and no plan names them |
 | Digital logic past the inverter | Digital | none | The Electronics Lab's CMOS inverter is the door, and the room behind it is not the signals half of the curriculum |
@@ -213,9 +209,9 @@ rows. They are tiers 4 and 5 of the path to industry-level analog.
 
 For a reader walking the whole path:
 
-1. Elements A to I, in order.
-2. Elements H7 (seam 1), then Circuit Lab in order, with the convolution experiment
-   (seam 2) in its first group.
+1. Elements follows its course picker through Circuits I, phasors, Laplace, filters,
+   coupled/polyphase circuits, two-ports and the Circuits II capstone. Diodes are an optional extension.
+2. Elements H7 (seam 1) and Elements K4 (seam 2), then Circuit Lab in order.
 3. Signal Lab's Signals and Fourier and Sampling groups. They need nothing past
    Elements H, so they can be read here or after step 2.
 4. Electronics A to J. Signal Lab's Nonlinearity group beside Electronics F5.

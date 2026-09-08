@@ -46,6 +46,12 @@ or proof that a student has mastered every institutional Circuits I–II syllabu
 - The Elements test suite covers 670 tests. Its final remaining randomized drawing
   collision was corrected and the full geometry sweep passed on rerun.
 - All 312 shared network tests passed, including the new mutual-inductance tests.
+- The repository-wide run covered 9,474 tests: 9,471 passed and three curriculum-map
+  assertions identified the old 59-lesson count and now-implemented topics. After
+  updating only the relevant Elements coverage and prerequisite seams in `CURRICULUM.md`,
+  all 30 progression tests passed. No solver or application regression failed.
+- The final opening-note and glossary review passed all 170 targeted editorial,
+  glossary and new-drawing/state-table checks.
 - Chromium checked all 89 experiments at 1440, 1024, 768 and 390 px. All 1,472 view
   selections preserved every analysis tab's position and size, with no page overflow.
 - The completion browser walkthrough checked all 30 additions at desktop and phone
@@ -53,7 +59,7 @@ or proof that a student has mastered every institutional Circuits I–II syllabu
   the coupled state table and keyboard/focus behavior of the enlarged drawing.
 - Screenshots were inspected for the dense magnetic/three-phase/cascade drawings and
   the capstone at desktop and phone sizes. They remain in the ignored app `shots/` folder.
-- The production app build passed. The assembled local preview is served at
+- All 19 application production builds completed with exit code 0. The assembled local preview is served at
   `http://127.0.0.1:4192/circuit-elements-lab/` while the local server is running.
 - Firefox could not create a Playwright page in this environment. No Firefox acceptance
   is claimed for this expansion. The scripts support a repeat with `BROWSER=firefox`.
@@ -61,8 +67,9 @@ or proof that a student has mastered every institutional Circuits I–II syllabu
 ## Publication handoff
 
 GitHub HTTPS access failed in this session. The expansion has not been pushed or
-verified live. The full repository test run is recorded separately before the handoff
-is finalized. Preserve any newer director/master work when integrating this branch;
+verified live. The implementation is committed on `feature/circuits-ii-rollout`
+as `ef5763b`, followed by the curriculum-map and final acceptance documentation update.
+Preserve any newer director/master work when integrating this branch;
 the shared network change adds signed mutual inductance without replacing other labs'
 transformer or two-port implementations.
 
