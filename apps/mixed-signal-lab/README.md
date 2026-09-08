@@ -1,6 +1,6 @@
 # Mixed-Signal Lab
 
-12 working experiments across Groups A and B. The app remains **dark** (direct URL, no public splash-page card). Group A was introduced in merge 067c9c7; Group B extends that release. See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+18 working experiments across Groups A, B and C. The app remains **dark** (direct URL, no public splash-page card). Group A was introduced in merge 067c9c7; Group B extends that release. See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 acquisition; A2 charge sharing; A3 signed injection and feedthrough; A4 kT/C; A5 bottom-plate phase order; A6 aperture jitter.
 
@@ -24,3 +24,5 @@ node scripts/verify-extended.mjs mixed-signal-lab
 ```
 
 The browser check serves the built app under its actual lab path, walks every new lesson and all four views at 1440, 390 and 320 px, and checks math, tab geometry, page overflow, answer feedback and applicable drawing dialogs. `npm run site` assembles the full set of sibling apps for cross-lab link checks.
+
+C1 charge-redistribution DACs; C2 SAR decisions; C3 capacitor mismatch and endpoint errors; C4 flash bubbles and encoder policies; C5 redundant pipeline correction; C6 measured-weight voltage estimates. The one-dummy split DAC includes its bridge in the physical capacitance total.

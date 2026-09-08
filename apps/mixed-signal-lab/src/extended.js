@@ -1,3 +1,4 @@
+import {CONVERTER_LESSONS} from './converterLessons.js'
 import {SC_LESSONS} from './scLessons.js'
 import {knob as k,step as s,reading as r,curve,samples,texnum as N} from '@ee-labs/lessons/model'
 import {K,COX,acquisition,chargeShare,injection,thermal,bottomPlate,jitter,rcSchematic,shareSchematic,bottomSchematic} from './models.js'
@@ -51,5 +52,5 @@ s('Average error power over sine phase','The mean squared cosine is 1/2. Signal 
 s('Measure a seeded time record','The simulation evaluates the displaced sine directly, not the derivative approximation. Its 8192 squared errors provide a mean-power estimate and an approximate normal confidence interval.',String.raw`\widehat P_e=\frac1M\sum_{n=0}^{M-1}e_v[n]^2,\quad\widehat{SNR}=10\log_{10}(0.5/\widehat P_e)`,String.raw`\widehat{SNR}=${N(x.measured)}\,\mathrm{dB},\quad95\%\ CI\simeq[${N(x.ci[0])},${N(x.ci[1])}]\,\mathrm{dB}`),
 s('Solve the jitter allowance for a resolution target','Use the ideal full-scale-sine quantization SNR as a comparison target. Assigning it all to jitter leaves no margin for other noise.',String.raw`\sigma_{t,max}=\frac{10^{-(6.02N+1.76)/20}}{2\pi f}`,String.raw`\sigma_{t,max}=${N(x.required*1e12)}\,\mathrm{ps}`)
 ],[r('Analytic jitter SNR',x.snr,'dB'),r('Measured SNR',x.measured,'dB'),r('Jitter allowance',x.required*1e12,'ps')],[curve('First 128 timing-induced errors','Sample index','Voltage error (μV)',x.record)], 'The analytic curve describes the ensemble; the finite record fluctuates with seed. Clock phase-noise correlation, signal-independent ADC noise and quantization are omitted here.',x.required*1e12,'ps','Calculate the maximum rms jitter for the selected resolution target.','Convert the target dB ratio to an amplitude ratio and divide by 2πf.')},{symbols:[...symbols,[String.raw`f,\omega,t_n,\delta t_n,\sigma_t`,'Input frequency (Hz), angular frequency 2πf (rad/s), intended sample time (s), random time error (s) and its rms value (s).'],[String.raw`e_v[n],M,\widehat P_e`,'Voltage error at sample n (V), record length 8192, and estimated mean-square error (V²).']]}),
-...SC_LESSONS
+...SC_LESSONS,...CONVERTER_LESSONS
 ]

@@ -729,39 +729,41 @@ feedback. This extends the package without changing converter event behavior.
 Signal Lab handovers preserve exact z coefficients. Above its 192 kHz accepted
 sample rate they clearly label a **time-scaled copy**, including clock and source
 frequency scaling; they do not silently claim the same physical frequency.
-Groups C onward, converter/PLL implementations and general SC synthesis remain
+Group C converters are implemented below. Groups D onward, PLL implementations and general SC synthesis remain
 planned. Finite phase settling is separate from this ideal-event model.
 
-### Group C: Converters, the static errors (6)
+### Group C: Converters, the static errors (6) — implemented
 
-- **C1 · The charge-redistribution DAC.** A binary-weighted array of 20.0 fF units
-  totals 81.92 pF for 12 bits, which is why a split array with an attenuation capacitor
-  is used instead and totals 2.56 pF. Each conversion is one charge event of §2.2.
-  Measured: both totals, the output for three codes, and the charge conserved at each
-  step.
-- **C2 · The SAR, one decision per clock.** Twelve bits plus acquisition is fourteen
-  clocks, so a 20.0 MHz clock gives 1.429 MSPS. Each decision halves the remaining
-  range, and the comparator sees an input that falls by a factor of two per step.
-  Measured: the code sequence for a given input, the number of clocks, and the residue
-  after each decision.
-- **C3 · Mismatch becomes INL and DNL.** With a 0.316 % unit sigma the DNL sigma at the
-  mid-scale transition is `σ_u√(2^N − 1) = 0.202 LSB` and the worst-code INL sigma is
-  0.101 LSB. Three sigma of DNL is 0.607 LSB, which misses a half-LSB target, so the
-  unit needs `σ_u < 0.260 %` and 1.47 times the area. Measured: both sigmas, the
-  three-sigma DNL, and the area a half-LSB target needs.
-- **C4 · The flash converter.** Six bits needs 63 comparators and a 64-tap ladder,
-  eight bits needs 255. Each comparator's offset appears directly as an INL
-  contribution, so the offset budget is one LSB. Measured: the comparator count, the
-  INL from a seeded offset draw, and the code errors it produces.
-- **C5 · The pipeline stage and its residue.** A 1.5-bit stage decides against
-  `±V_ref/4`, subtracts and multiplies by two, so a comparator offset up to
-  `V_ref/4` is corrected by the redundancy downstream. Twelve bits needs eleven stages.
-  Measured: the residue against the input over a full range, the correction of a
-  deliberate comparator offset, and the code the pipeline produces.
-- **C6 · Calibration moves the error into memory.** Measuring each capacitor's weight
-  once and correcting in the digital domain removes the mismatch INL and leaves the
-  measurement's own noise. Measured: INL before and after calibration, and the residual
-  set by the measurement resolution.
+- **C1:** Native charge projection for binary and split arrays, with reset/code
+  phases and every bit capacitor drawn. A 12-bit binary array includes one dummy
+  and totals 81.92 pF for 20 fF units. The implemented 6+6 split has its sole dummy
+  on the low bank, no high-bank dummy, and bridge 64/63 Cu. Its physical total is
+  (63+64+64/63)Cu = **2.56031746 pF**. Adding a second dummy would change the
+  transfer; neither the old rounded 2.56 pF nor a two-dummy total defines this circuit.
+- **C2:** N actual trial decisions plus two explicitly allocated acquisition clocks.
+  Native split-array charge checks each tested trial voltage. Trial weights halve;
+  signed comparator differences do not necessarily halve. The table separates
+  trial code, trial difference, keep/clear decision, accepted code and residue.
+- **C3:** Independent Gaussian unit mismatch, aggregated to weighted capacitors.
+  Endpoint-fit DAC INL and DNL are defined before plotting all codes. A 2048-array
+  ensemble computes normalized major-carry DNL with mean, spread and yield
+  intervals. The sigma estimate and relative area target are explicitly approximate
+  major-carry criteria, not an all-code manufacturing guarantee.
+- **C4:** Physical comparator identities and threshold order are preserved.
+  Count-of-ones and highest-physical-index encoders are both available. Exact bin
+  integration gives encoder-dependent DNL, transition INL and missing codes;
+  sorting integration breakpoints does not silently repair thermometer bubbles.
+- **C5:** S redundant one-bit-effective stages plus a two-bit backend give S+2
+  resolution bits. Ten stages plus that backend yield 12 bits. The actual signed
+  decisions and weighted carry sum are displayed. Full-range threshold tolerance
+  is |offset| <= Vref/4; out-of-range residues expose failed correction.
+- **C6:** Store noisy measured physical weights and compare their predicted code
+  voltage with the actual DAC voltage. Independent averaging gives 1/sqrt(M)
+  error scaling and a pointwise uncertainty interval. The output is a calibrated
+  voltage estimate, not repaired physical DAC INL or restored missing ADC data.
+
+All use the current four-view workbench, defined notation, numeric substitutions,
+practice, and parameter-driven plots/tables. Group D onward remains planned.
 
 ### Group D: Converters, the dynamic errors (5)
 

@@ -29,9 +29,9 @@ has a section in `ANALOG_ROADMAP.md`. **Proposed** is named here for the first t
 | A · Circuits and analog | Circuit Elements Lab | Circuits I | 55 | netlist, schematic, meters | built |
 | A | Circuit Lab | Circuits II, frequency domain | 15 | circuit to H(s) | built |
 | A | Electronics Lab | Electronics I and II | 77 | netlist, operating point, small signal | planned |
-| A | Applied Analog Lab | board-level design | 11 built; later groups planned | guided math, circuit and loop views | dark, Groups A–B implemented |
-| A | Analog IC Lab | analog IC design | 11 built; later groups planned | device, bias and uncertainty views | dark, Groups A–B implemented |
-| A | Mixed-Signal Lab | sampled circuits, converters, clocks | 12 built; later groups planned | charge phases, sampled output and z plane | dark, Groups A–B implemented |
+| A | Applied Analog Lab | board-level design | 16 built; later groups planned | guided math, circuit and loop views | dark, Groups A–C implemented |
+| A | Analog IC Lab | analog IC design | 17 built; later groups planned | device, bias and uncertainty views | dark, Groups A–C implemented |
+| A | Mixed-Signal Lab | sampled circuits, converters, clocks | 18 built; later groups planned | charge phases, sampled output and z plane | dark, Groups A–C implemented |
 | A | RF Lab | the radio front end | ~35 | Smith chart, S-parameters | mapped |
 | A | System Lab | the signal chain and its budgets | ~25 | Signal Lab's chain | mapped |
 | B · Signals and information | Signal Lab | Signals and Systems, DSP | 35 | sources, chain, time and spectrum | built |
