@@ -49,3 +49,9 @@ it('finds both unity crossings when the low and high frequency gains are below o
  expect(x.crossings).toHaveLength(2);expect(x.crossings.map(c=>c.direction)).toEqual(['Rising','Falling'])
  for(const c of x.crossings)expect(cabs(tfAt(tf,c.crossover))).toBeCloseTo(1,10)
 })
+
+it('does not wrap an unstable Miller phase into a falsely positive margin',()=>{
+ const x=miller({gm1:500e-6,gm2:250e-6,cl:10e-12,cc:.5e-12})
+ expect(x.tf.a[1]+x.tf.b[0]).toBeLessThan(0)
+ expect(x.pm).toBeLessThan(0)
+})

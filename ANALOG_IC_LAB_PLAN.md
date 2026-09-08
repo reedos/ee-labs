@@ -556,7 +556,7 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
   factors 1/1.2²=0.694444 and 1/0.8²=1.5625, not a symmetric 44% spread.
   The bandgap does not eliminate the current-setting resistor's errors.
 
-Groups C onward, a general EKV netlist companion and transistor-level startup
+Group C is implemented below. Groups D onward, a general EKV netlist companion and transistor-level startup
 remain planned. The foundation charge law and the explicitly separate square-law
 bias comparison are not mixed into one supposed foundry model.
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import {chromium} from 'playwright'
 import {LABS} from './assemble-site.mjs'
-const totals=(process.argv.find(a=>a.startsWith('--counts='))?.slice(9)??'16,17,12').split(',').map(Number)
+const totals=(process.argv.find(a=>a.startsWith('--counts='))?.slice(9)??'16,17,18').split(',').map(Number)
 const base='https://reedos.github.io/ee-labs',foundation=process.argv.includes('--foundation'),browser=await chromium.launch({headless:true})
 try{
  for(const lab of LABS){const response=await fetch(`${base}/${lab}/`);assert.equal(response.status,200,lab)}
@@ -12,7 +12,7 @@ try{
   const box=await elements.boundingBox();assert(box.y>=0&&box.y<844,'Mobile navigation is on screen')
   await elements.click();await page.waitForURL('**/circuit-elements-lab/**')
   for(const [lab,total] of ['applied-analog-lab','analog-ic-lab','mixed-signal-lab'].map((lab,i)=>[lab,totals[i]])){
-   await page.goto(`${base}/${lab}/#${foundation?'a1':'b1'}`)
+   await page.goto(`${base}/${lab}/#${foundation?'a1':(process.argv.find(a=>a.startsWith('--lesson='))?.slice(9)??'c1')}`)
    assert.equal(await page.getByLabel('Experiment',{exact:true}).locator('option').count(),foundation?6:total,`${lab} published catalog`)
    await page.getByRole('button',{name:'Worked math',exact:true}).click();assert(await page.locator('.katex').count()>2)
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${lab} live mobile overflow`)

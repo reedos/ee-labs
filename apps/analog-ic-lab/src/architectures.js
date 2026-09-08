@@ -1,4 +1,4 @@
-import {complex,solveAC,marginsOf,mosfetOf,mosfetCurrent} from '@ee-labs/network'
+import {complex,solveAC,mosfetOf,mosfetCurrent} from '@ee-labs/network'
 const {cadd,csub,cmul,cdiv,cabs}=complex
 const R=(id,a,b,value)=>({type:'R',id,nodes:[a,b],value}),C=(id,a,b,value)=>({type:'C',id,nodes:[a,b],value})
 const G=(id,a,b,plus,minus,gain)=>({type:'VCCS',id,nodes:[a,b],ctrl:[plus,minus],gain})
@@ -39,7 +39,7 @@ export function miller({gm1=200e-6,gm2=500e-6,cc=1e-12,cl=2e-12,vdd=1.8,feedback
  const c1=.1e-12,r1=100/gm1,r2=50/gm2,g1=1/r1,g2=1/r2
  const net={elements:[V,G('G1','a','gnd','in',feedback?'out':'gnd',gm1),G('G2','out','gnd','a','gnd',gm2),R('R1','a','gnd',r1),R('R2','out','gnd',r2),C('C1','a','gnd',c1),C('CL','out','gnd',cl),C('Cc','a','out',cc)]}
  const tf={b:[-gm1*cc,gm1*gm2],a:[c1*cl+c1*cc+cl*cc,g1*(cl+cc)+g2*(c1+cc)+gm2*cc,g1*g2]},at=f=>tfAt(tf,f),dc=gm1*gm2/(g1*g2)
- return{net,tf,at,dc,...marginsOf(at),gm1,gm2,cc,cl,c1,g1,g2,r1,r2,estimate:gm1/(2*Math.PI*cc),zero:gm2/(2*Math.PI*cc),power:vdd*(gm1/10+gm2/10),swing:vdd-.4,slew:gm1/(10*cc)}
+ return{net,tf,at,dc,...loopCrossings(at),gm1,gm2,cc,cl,c1,g1,g2,r1,r2,estimate:gm1/(2*Math.PI*cc),zero:gm2/(2*Math.PI*cc),power:vdd*(gm1/10+gm2/10),swing:vdd-.4,slew:gm1/(10*cc)}
 }
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),device=kn=>mosfetOf({type:'M',id:'M',kn,vt:.45,lambda:0})
 export function outputStage({iq=20e-6,vdd=1.8,drive=.3,fraction=.5,follower=0}={}){

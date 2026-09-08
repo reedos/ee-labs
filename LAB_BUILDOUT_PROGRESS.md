@@ -9,7 +9,7 @@ main-checkout changes.
 | 2 | Prepare Electronics' 75 entries for release: coverage, explanations, browser review | Local preparation complete; remains dark |
 | 3 | Review the first five Interfaces and five VLSI experiments, then extend their planned groups | Deployed in 067c9c7: 25 Interfaces and 25 VLSI extensions, with final model, browser and integration checks |
 | 4 | RF E–H, Fields I–L, System B–F, Photonics B, Control II F3–F5 | Deployed in 067c9c7: RF 16, Fields 17, System 21, Photonics 4 and Control II 3 extensions |
-| 5 | Start Applied Analog, Analog IC and Mixed-Signal from their plans | Group A deployed in 067c9c7; Group B adds 5 Applied Analog, 5 Analog IC and 6 Mixed-Signal lessons |
+| 5 | Start Applied Analog, Analog IC and Mixed-Signal from their plans | Groups A–B deployed; Group C adds 5 Applied Analog, 6 Analog IC and 6 Mixed-Signal lessons, for totals 16 / 17 / 18 (publication checks below) |
 
 ## Standards carried forward from Circuit Elements
 
@@ -293,7 +293,7 @@ a transistor-level startup/shutoff transient is not claimed.
 - Final shared-control regression: **145 guided lessons × four views × three widths** passed across ten apps, including return to existing foundation views.
 - Final assembled site: **35.83 MiB** for 27 apps.
 
-Groups C onward remain planned. The next natural sequence is Applied Analog
+At the Group B checkpoint, Groups C onward were planned. The subsequent implemented sequence is Applied Analog
 precision, Analog IC amplifier architectures, then Mixed-Signal static converter
 errors; each needs its own model and presentation review rather than placeholder
 lesson entries.
@@ -323,3 +323,41 @@ inferred from a gm/C estimate. The app remains unlisted.
 Architecture validation: 11 tests across three files; 17 lessons × four views ×
 1440/390/320 px. Additional browser checks cover Miller drawing label separation
 and complementary-pair cutoff on changing common mode.
+
+
+## Mixed-Signal static converters — Group C
+
+Six converter lessons extend Mixed-Signal to 18 entries. The current totals are
+**Applied Analog 16, Analog IC 17, Mixed-Signal 18**. All three apps remain dark.
+Native charge projection verifies the binary/split DAC and SAR trial sequence;
+all 4097 endpoint-grid inputs verify pipeline correction at five offset settings
+inside the redundancy bound. Flash code bins retain explicit encoder semantics;
+Monte Carlo spread/yield and calibrated weight uncertainty remain distinct.
+
+Final targeted checks: **50 tests in 10 files**, including all three analog apps
+and the transformer invariant file. Browser checks cover all 51 analog lessons,
+four views and 1440/390/320 px, with extra switch-phase, drawing-label, input-pair
+cutoff, pipeline-failure and plain-number table checks. Final Miller phase uses
+unwrapped phase and catches an unstable parameter combination as a negative
+margin instead of wrapping it into a misleading positive value.
+
+The repository-wide run exposed an existing unseeded transformer assertion at
+near-open-circuit loading. A reproduced corner loses relative precision when
+subtracting nearly equal source voltages. The exact primary-port current ratio
+remains checked; the separate source-resistor KCL check now includes an explicit
+floating-point subtraction bound. A fixed regression compares both currents with
+the independent circuit closed form. No circuit implementation was changed.
+
+Full-suite, production-build and live results follow after completion.
+
+All 27 production builds and assembled integration checks passed. Final assembled
+site size is 35.93 MiB. Final browser verification and deployment status below.
+
+Applied Analog C was merged as 7b30636 and deployed successfully in Actions run
+34281387686. Live checks verified the 16/11/12 catalogs, all 27 routes and Signal
+mobile navigation at 390 and 320 px before the remaining Group C publication.
+
+Repository-wide verification completed with 10,417 passing tests and only the
+reproduced transformer precision assertion failing (400 files, 278.20 s). The
+corrected invariant and all final analog changes then passed the 50-test targeted
+run. A clean full-suite run and GitHub deployment gate verify the final commit.
