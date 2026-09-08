@@ -302,7 +302,7 @@ export const LESSONS_D = {
         reads: [['v.out', 4.55]],
       },
       {
-        say: 'Raise the threshold to 0.900 V. Both noise margins move inward, to 2.100 V and 2.900 V, so the gate has less room on either side.',
+        say: 'Raise the threshold to 0.900 V. The input limits move inward to 2.100 V and 2.900 V, narrowing the undefined input interval.',
         set: { vt: 0.9 },
         reads: [
           [(x, p) => inverterMargins(p).vil, 2.0999975],
@@ -311,13 +311,15 @@ export const LESSONS_D = {
       },
     ],
     why:
-      'The two noise margins are the inputs where the transfer curve’s slope is exactly −1. Inside them the ' +
+      'The two input limits are the inputs where the transfer curve’s slope is exactly −1. Between them the ' +
       'pair amplifies, so a small error at the input comes out larger. Outside them it attenuates, so an ' +
       'error comes out smaller and a long chain of gates cleans itself up rather than drifting. Matched ' +
-      'devices put the switching threshold at half the supply and the margins symmetrically about it, at ' +
+      'devices put the switching threshold at half the supply and the input limits symmetrically about it, at ' +
       '(3V_DD + 2V_t)/8 and (5V_DD − 2V_t)/8. Neither number carries k_n, because the two devices divide it ' +
-      'out between them. At either end of the sweep one device is cut off, so the supply current is exactly ' +
-      'zero and the only power a gate spends is spent switching. That is the door from this lab to Logic Lab.',
+      'out between them. Noise margins are voltage differences, NM_L = V_IL − V_OL and NM_H = V_OH − V_IH. ' +
+      'The output limits V_OL and V_OH come from the opposite input limits on the transfer curve. ' +
+      'At either rail one device is cut off, so this model draws zero static supply current. ' +
+      'Real devices also have leakage. That is the door from this lab to Logic Lab.',
   },
 
   d7: {

@@ -7,7 +7,7 @@ main-checkout changes.
 | Priority | Scope | Status |
 | --- | --- | --- |
 | 2 | Prepare Electronics' 75 entries for release: coverage, explanations, browser review | Local preparation complete; remains dark |
-| 3 | Review the first five Interfaces and five VLSI experiments, then extend their planned groups | Next |
+| 3 | Review the first five Interfaces and five VLSI experiments, then extend their planned groups | Foundation review and fixes implemented; B–G extensions pending |
 | 4 | RF E–H, Fields I–L, System B–F, Photonics B, Control II F3–F5 | Pending |
 | 5 | Implement Applied Analog, Analog IC and Mixed-Signal from their plans | Pending |
 
@@ -66,3 +66,47 @@ claims that implementation or review has finished.
   mathematical scrolling and settings. Screenshots are in the app's ignored shots.
 - This is local release preparation. No Electronics public release or live
   deployment is claimed. See its app README for coverage and model boundaries.
+
+## Priority 3 foundation work
+
+Integrated the existing Interfaces and VLSI app sources from director commit
+`cbe424a` into this isolated worktree, together with their shared playback and chip
+context components. The director and main checkouts are untouched.
+
+- Interfaces' five existing lessons passed Chromium checks at 1366, 1440, 2560,
+  390 and 320 px. Removed duplicate worked math when Equations is selected and
+  aligned the noise-budget value header with its numeric column.
+- VLSI now compares the ideal event chain with a separately connected continuous
+  switch-model chain. Each later gate sees its preceding node's analog voltage.
+  Timing shows the final analog trace, per-stage crossings, and model difference
+  separately from event rounding. Loads smaller than the next gate's input
+  capacitance are explicitly excluded from the connected comparison.
+- The new chain tests cover both edges, several lengths and fanouts, first-stage
+  agreement with isolated extraction, rail bounds and sample-count independence.
+  Eight further second-stage checks agree with the independent symmetric-chain
+  result `t2 = tau * ln(40/9)` at fanouts 1, 2, 4 and 8, for both edges.
+- The independent result follows from the preceding exponential crossing
+  `3 VDD/4` at `tau ln(4/3)` and `VDD/4` at `tau ln(4)`. During that interval both
+  second-stage switches conduct, giving an equilibrium of `VDD/2` and time constant
+  `tau/2`. The second output reaches `4 VDD/9` when the lower switch opens; the
+  remaining rise to half supply takes `tau ln(10/9)`.
+- Corrected the VLSI plan's assumption of exact analog/event-chain agreement,
+  its width/self-capacitance example and the missing ln(2) fanout coefficients.
+- Corrected Electronics D6's input-limit/noise-margin terminology and model-only
+  zero-leakage claim while reviewing the cross-lab prerequisite.
+- The combined affected-lab/shared-UI run passed 601 tests in 38 files. All 21
+  application builds passed. Local assembly now includes the same 21 apps as the
+  deployment workflow; both new apps remain dark.
+- Final VLSI Chromium checks passed all five lessons at 320, 390, 1366, 1440,
+  1920 and 2560 px, including the analog comparison, playback, held axes and
+  anchored view selectors. The analog curve's legend matches its purple trace;
+  waveform samples are cached independently of cursor animation. The final
+  Interfaces rerun also passed after removing duplicate math and aligning headers.
+- Local previews are available under `http://127.0.0.1:4192/` at
+  `electronics-lab/`, `interfaces-lab/` and `vlsi-lab/` while the server is running.
+  These follow-up changes have not been pushed or verified live.
+
+Remaining priority 3 work is Interfaces B–G and VLSI B–G, in the existing lesson
+shells. Interfaces B begins asynchronous framing and receiver sampling; VLSI B
+begins transistor gate networks. Their later groups must retain explicit model
+limits and independent circuit checks. Priorities 4 and 5 have not been started.

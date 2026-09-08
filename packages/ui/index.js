@@ -25,3 +25,5 @@ export { default as ReportIssue, reportUrl, issueBody } from './src/ReportIssue.
 export { track, handOverEvent, arrivalEvent, GOATCOUNTER_ENDPOINT } from './src/analytics.js'
 export { default as LessonNav } from './src/LessonNav.jsx'
 export { default as TryLine } from './src/TryLine.jsx'
+export { usePlayback, PLAYBACK_SPEEDS } from './src/usePlayback.js'
+export { default as PlaybackControls } from './src/PlaybackControls.jsx'

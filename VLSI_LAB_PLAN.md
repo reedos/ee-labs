@@ -422,18 +422,22 @@ test computed from the model card, never a constant. Each experiment ships with
   current at each rail.
 - **A3 · The delay, extracted.** `extractGate` reads the two-transistor netlist and
   returns 22.6 ps falling and 22.6 ps rising for the matched inverter. The event
-  simulator then runs a chain of them and its timing diagram matches the analog
-  waveform's crossings. Measured: the extraction against `pwlTransient`, to floating
-  point, and the chain's total against the sum.
+  simulator then runs a chain using these isolated delays. A separately connected
+  switch-model chain measures the effect of finite interstage slopes and overlap
+  conduction; its crossings need not match the ideal event chain. Measure isolated
+  extraction against `pwlTransient`, the event total against the rounded sum, and
+  the connected chain against its own half-supply voltage crossings. Keep model
+  difference separate from the event grid's rounding bound.
 - **A4 · Sizing the pull-up.** The pMOS carries half the current per width, so
-  width 2 matches the two edges. Set it to width 1 and the rising delay doubles to
-  45.2 ps while the falling delay stays at 22.6 ps. Measured: both edges at three
+  width 2 matches the two edges. Width also changes self-capacitance. At width 1,
+  the rising delay is 37.64 ps and the falling delay is 18.82 ps. Measured: both edges at three
   width ratios, and the ratio that equalises them.
 - **A5 · Fanout.** Delay against the number of identical inverters driven, which is
   a straight line. One load gives 22.6 ps, four give 56.5 ps, eight give 101.7 ps.
-  The slope is the drive resistance times the input capacitance, and the intercept is
-  the self-load. Measured: the line's slope and intercept against `R_u · 3C_u` and
-  `R_u · 3C_u`.
+  The slope is the drive resistance times the unit input capacitance times `ln(2)`;
+  the intercept uses self-capacitance instead. At matched width both are
+  `R_u · 3C_u ln(2)`. Timing provides the separate connected-chain comparison as
+  fanout changes; it does not turn the isolated-delay line into an exact chain law.
 
 ### Group B: Gates as transistor networks (4)
 
