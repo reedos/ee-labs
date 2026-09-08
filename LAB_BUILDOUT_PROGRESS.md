@@ -297,3 +297,14 @@ Groups C onward remain planned. The next natural sequence is Applied Analog
 precision, Analog IC amplifier architectures, then Mixed-Signal static converter
 errors; each needs its own model and presentation review rather than placeholder
 lesson entries.
+
+
+## Applied Analog precision — Group C
+
+Five precision lessons are implemented, bringing Applied Analog to 16 lessons.
+Analog IC remains at 11 and Mixed-Signal at 12 pending their Group C work.
+The applications remain dark/unlisted. Native nodal and transient checks cover
+resistor matching, three-amplifier instrumentation and chopped periodic state;
+independent error-envelope checks cover calibration. All 10 Applied Analog tests
+pass; all 16 lessons pass four-view browser checks at 1440, 390 and 320 px.
+Publication verification is recorded after deployment.

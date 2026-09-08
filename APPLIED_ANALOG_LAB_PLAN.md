@@ -563,35 +563,35 @@ transfer functions. Native state propagation checks the small-step response.
 Loop handovers send exact return-ratio coefficients to Control Lab. That app's
 T/(1+T) response is distinguished from the load-voltage transfer where necessary.
 Large-signal clipping/slew, device extra poles and board parasitics remain outside
-these models. Group C onward remains planned.
+these models. Group C is implemented below; Group D onward remains planned.
 
-### Group C: Precision (5)
+### Group C: Precision (5) — implemented
 
-- **C1 · CMRR comes from resistor matching.** The rejection of a difference amplifier
-  at gain 1 is `(1 + G)/(4t)`. With 1 % resistors it is 33.98 dB, with 0.1 % it is
-  53.98 dB, and with 0.01 % it is 73.98 dB. A 12 V common-mode input through the 0.1 %
-  version appears as 24.0 mV. Measured: the rejection at three tolerances, and the
-  error voltage.
-- **C2 · The instrumentation amplifier puts the gain first.** `R_G = 1 kΩ` with
-  `R = 24.9 kΩ` gives a first stage of 50.8, whose common-mode gain is one. Total
-  rejection with a 0.1 % difference stage is 88.10 dB, and with 0.01 % it is
-  108.1 dB. Measured: the first-stage gain, and the rejection with both difference
-  stages.
-- **C3 · Offset and its drift.** At a gain of 1000 the general part's 1 mV offset
-  makes 1.000 V at the output, and its 3 µV/K drift over 60 K adds 180 mV. The
-  precision part's 60 µV and 0.5 µV/K make 60.0 mV and 30.0 mV. Measured: both
-  contributions for both parts, and the drift slope.
-- **C4 · The chopper, as a labelled model.** Chopping at 100 kHz moves the offset to
-  the chop frequency and leaves 5 µV. The averaged model is the approximation, and its
-  guard is the ratio of signal bandwidth to chop frequency, set at 10. Below that the
-  pane warns and prints the ripple, `(4/π)·V_OS·A·(f_c/f_chop)` = 12.73 mV at a 1 kHz
-  corner. The exact switched form is Mixed-Signal Lab Group G. Measured: the residual
-  offset, the ripple, and the guard firing at both sides of 10.
-- **C5 · Trimming and calibration.** A two-point calibration over 0 to 10 V removes
-  the offset and the gain error exactly and leaves the nonlinearity. At 0.01 % of full
-  scale that residual is 1.00 mV. Measured: the three error terms before and after,
-  and that the residual is unchanged by the calibration. **Design task:** reach 0.05 %
-  total error over 60 K on a 10 mV bridge signal.
+- **C1:** Four independently adjustable resistor errors. Exact finite-open-loop-gain
+  nodal solve, differential/common-mode decomposition and signed output error.
+  Opposing 0.1% errors give 53.9794 dB CMRR; perfect ratios give exact common-mode
+  cancellation within this model, not a fabricated finite CMRR.
+- **C2:** Native three-op-amp solve. R=24.9 kΩ and RG=1 kΩ give ideal first-stage
+  differential gain 50.8. Finite gain corrections apply separately to common and
+  differential modes. All three outputs receive an explicit headroom check.
+- **C3:** Offset follows noise gain; input referral uses absolute signal gain.
+  The general bipolar class consistently uses Group A's 10 µV/K drift, so gain
+  1000 over 60 K adds 600 mV to its 1 V initial offset (superseding 180 mV).
+- **C4:** An ideal ±1 chopper and first-order RC filter have an exact periodic
+  state checked against the native transient solver. Peak ripple is
+  A tanh(T/(4τ)); the fundamental amplitude is (4A/π)/sqrt(1+(fchop/fc)^2).
+  The familiar 12.73 mV default approximation is the fundamental, not total peak
+  ripple. A separately specified residual offset remains; the approximation is
+  accepted only at fchop/fc >= 10.
+- **C5:** Two endpoint measurements calibrate a declared synthetic 10 mV bridge
+  channel mapped to 10 V output. Initial offset/gain errors cancel at those
+  endpoints. Drift and curvature remain, divided by the calibration gain.
+  An analytic worst-error search includes any interior stationary point and
+  checks the 0.05% full-scale target over the chosen temperature change.
+
+Each lesson includes symbol definitions, worked substitutions, adjustable
+parameters, practice, and a plot/table using the existing learning workbench.
+These are declared circuit/error models rather than fabricated bench measurements.
 
 ### Group D: References and regulators (5)
 

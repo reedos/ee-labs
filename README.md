@@ -49,8 +49,8 @@ Three additional apps are served at direct URLs while remaining unlisted on the
 public splash page. Their foundations and first follow-on groups use the same
 anchored learning views as Circuit Elements:
 
-- [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 11 lessons,
-  amplifier foundations and board-level stability.
+- [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 16 lessons,
+  amplifier foundations, board-level stability, precision and calibration.
 - [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 11 lessons,
   device foundations, bias, startup and reference drift.
 - [Mixed-Signal](https://reedos.github.io/ee-labs/mixed-signal-lab/): 12 lessons,

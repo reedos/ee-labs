@@ -1,3 +1,4 @@
+import {PRECISION_LESSONS} from './precisionLessons.js'
 import {STABILITY_LESSONS} from './stabilityLessons.js'
 import {knob as k,step as s,reading as r,curve,samples,texnum as N} from '@ee-labs/lessons/model'
 import {PARTS,amplifier,ampSchematic,slewTrace,filter,filterSchematic,inputNoise,offset,supply} from './models.js'
@@ -51,5 +52,6 @@ s('Calculate charge droop and resistive drop separately','A rectangular current 
 s('Identify the ideal LC resonance','These separate estimates are not a simulated simultaneous supply waveform. Damping and interconnection determine the actual transient.',String.raw`f_{LC}=1/(2\pi\sqrt{LC})`,String.raw`f_{LC}=${N(x.resonance/1e6)}\,\mathrm{MHz}`),
 s('Check the amplifier against this signal task','Use 40 dB SNR, at least 20 kHz small-signal bandwidth and enough slew for the gain-11 sine peak. DC error and supply coupling still need review.',String.raw`SNR\ge40\,\mathrm{dB},\quad f_c\ge20\,\mathrm{kHz},\quad SR\ge2\pi(20000)(11\sqrt2\times10^{-3})`,String.raw`SNR=${N(noise.snr)}\,\mathrm{dB},\quad f_c=${N(a.fc/1000)}\,\mathrm{kHz},\quad SR_{required}=${N(required/1e6)}\,\mathrm{V/\mu s}`)
 ],[r('Inductive demand',x.inductive,'V'),r('Charge droop estimate',x.capacitive,'V'),r('LC resonance',x.resonance/1e6,'MHz'),r('Preamplifier SNR',noise.snr,'dB')],[{...curve('Faster edges demand more inductive voltage','Edge duration (s)','Inductive voltage (V)',Array.from({length:161},(_,i)=>{const rise=10**(-9+3*i/160);return{x:rise,y:supply({...p,rise}).inductive}})),logX:true}],noise.snr>=40&&a.fc>=2e4&&a.sr>=required?'This class clears the three stated signal checks. A real release also needs DC-error, output/load and supply-coupling checks.':'This class misses at least one stated signal check. Supply decoupling cannot repair an unsuitable input-noise or bandwidth choice.',x.inductive,'V','Calculate the voltage needed across the supply-loop inductance.','Multiply L by current change divided by edge duration.',{table:table()})},{symbols:[...symbols,['L,C,R_{ESR}','Supply-loop inductance (H), bypass capacitance (F), and 0.05 Ω series resistance.'],[String.raw`\Delta I,t_r,f_{LC}`,'Current change (A), edge duration (s), and ideal LC resonant frequency (Hz).']]}),
-...STABILITY_LESSONS
+...STABILITY_LESSONS,
+...PRECISION_LESSONS
 ]
