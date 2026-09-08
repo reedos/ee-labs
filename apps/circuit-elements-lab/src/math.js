@@ -2452,6 +2452,10 @@ export function sweepKnob(exp, p, n = 241) {
 
 /** The math panel for an experiment, or null if it has none. */
 export function experimentMath(exp, p, x) {
+  if (exp.study && x.sol) {
+    const study = exp.study(exp.id, p, x)
+    return {blocks: [T(study.intro), C(study.checks)]}
+  }
   const fn = ENTRIES[exp.id]
   if (!fn) return null
   try {

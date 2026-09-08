@@ -2,7 +2,7 @@ import React from 'react'
 import { Formula } from '@ee-labs/explain'
 
 /** Keep the symbol key beside both the worked lesson and the live state equation. */
-export function NotationGuide({ phasor = false }) {
+export function NotationGuide({ phasor = false, coupled = false }) {
   return (
     <details className="notation-guide">
       <summary>Reading the symbols: states, derivatives{phasor ? ' and phasors' : ''}</summary>
@@ -15,7 +15,7 @@ export function NotationGuide({ phasor = false }) {
         <dt>τ (tau)</dt><dd>A stable first-order circuit's time constant in seconds: RC for a simple series RC circuit, L/R for a simple series RL circuit. After one τ, the difference from the final value is about 37% of its starting difference; after five τ, less than 1% remains.</dd>
       </dl>
       <Formula>{String.raw`\dot{x}(t)=A x(t)+B u(t)`}</Formula>
-      <p>This equation gives the slope from the present state and input. The initial value x(0⁺) supplies the starting point; solving the equation gives x(t). Each capacitor row also obeys dv/dt = i/C; each inductor row obeys di/dt = v/L. The “element law” column checks the same slope this second way.</p>
+      <p>This equation gives the slope from the present state and input. The initial value x(0⁺) supplies the starting point; solving the equation gives x(t). Each capacitor row also obeys dv/dt = i/C. {coupled ? 'For coupled windings, subtract the mutual voltage M times the other winding’s current slope before dividing by self-inductance: di₁/dt = (v₁ − M di₂/dt)/L₁. The signed M follows the dots and current references.' : 'Each uncoupled inductor row obeys di/dt = v/L.'} The “element law” column checks the same slope this second way.</p>
       <p>For example, a series resistor R charging a capacitor C from a constant voltage V₁ has x = capacitor voltage, u = V₁, A = −1/(RC), B = 1/(RC), and τ = RC:</p>
       <Formula>{String.raw`\dot{x}(t)=\frac{V_1-x(t)}{\tau},\qquad x(t)=V_1+[x(0^+)-V_1]e^{-t/\tau}`}</Formula>
       <p>With V₁ = 5 V, x(0⁺) = 0 V and τ = 1 ms, the starting slope is 5,000 V/s. At t = τ, x(t) ≈ 3.16 V and the slope is about 1,840 V/s. The voltage rises while its slope shrinks. This exponential formula assumes a constant input and one stable state; two-state circuits can ring and need their coupled equations.</p>

@@ -441,6 +441,29 @@ button.flow-node[aria-expanded='true'] { border-color: var(--accent); color: var
    governs one plot sits in that plot's header, sized to the header row so
    moving it there costs almost no plot height. */
 .view-head .segmented { flex: 0 0 auto; }
+.worked-method { flex-shrink: 0; min-width: 0; }
+.method-routes { flex-shrink: 0; }
+.drawing-enlarge { min-height: 30px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); color: var(--text); padding: 4px 9px; cursor: pointer; }
+.drawing-dialog { width: min(1100px, 96vw); max-width: 96vw; max-height: 94vh; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); }
+.drawing-dialog::backdrop { background: rgb(0 0 0 / .75); }
+.drawing-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.drawing-dialog h2 { font-size: 16px; line-height: 1.5; }
+.drawing-dialog button { min-height: 44px; padding: 8px 12px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
+.drawing-dialog p { font-size: 13px; line-height: 1.6; }
+.drawing-scroll { overflow: auto; }
+.drawing-scroll .schematic { display: block; width: max(100%, calc(var(--crop-w, 500) * 1.5px)); max-width: none; height: auto; }
+.response-comparison svg { display: block; width: 100%; min-width: 480px; }
+.response-comparison { overflow-x: auto; }
+.comparison-legend { display: flex; flex-wrap: wrap; gap: 12px; }
+.method-practice form { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.method-practice label { display: grid; gap: 6px; }
+.method-practice input { min-height: 44px; width: 180px; max-width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px; font: inherit; }
+.method-practice button { min-height: 44px; padding: 8px 14px; }
+.method-check-scroll { overflow-x: auto; }
+.method-checks { width: 100%; border-collapse: collapse; }
+.method-checks caption { text-align: left; margin-bottom: 8px; }
+.method-checks th, .method-checks td { padding: 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.method-checks th:first-child { text-align: left; white-space: normal; }
 .view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
 
 /* Keep navigation independent of the selected view's readouts and content.

@@ -5,10 +5,15 @@
  * experiment but the first building on something earlier, and every pointer
  * aimed at an experiment that exists.
  */
-import { EXPERIMENTS, GROUPS } from './experiments.js'
+import { EXPERIMENTS, COURSE_GROUPS } from './experiments.js'
 
 /** One sentence per group, keyed by its letter: what the group is for, in the student's words. */
 export const GROUP_INTRO = {
+  K: 'Derive filter behavior from circuit laws, choose components for a target, account for loading, and reconstruct periodic responses from harmonics before adding startup.',
+  M: 'Define port voltages and entering currents, derive terminal parameters from open and short tests, then connect networks without losing their loading effects.',
+  N: 'Choose a method, retain the initial state, and reconcile the time response with its state, Laplace and phasor representations. Check your own calculations before revealing answers.',
+  L: 'Use magnetic coupling, turns ratios and three-phase connections to predict terminal voltages, currents and power, with reference directions and model limits stated first.',
+  J: 'Transform the circuit equations without losing their initial conditions. Factor and invert the result, check the theorem conditions, and compare with the state and time-domain solutions.',
   A: 'Four elements and a sign rule. A source decides a voltage or a current; a resistor turns one into the other; every number needs a + to be written.',
   B: 'Two laws are the whole of circuit analysis: current in equals current out at every junction, and voltages round any loop add to zero. Power follows.',
   C: 'The two laws applied to the two ways elements can sit together — one current shared, or one voltage shared — give the divider, the bridge and the loading problem.',
@@ -96,10 +101,10 @@ export const BUILDS = {
 }
 
 /** The experiments this one builds on, in course order. */
-export const buildsOn = (id) => BUILDS[id] || []
+export const buildsOn = (id) => EXPERIMENTS.find(e => e.id === id)?.prerequisites || BUILDS[id] || []
 
 /** The experiments that build on this one, in course order. */
 export const leadsTo = (id) => EXPERIMENTS.filter((e) => buildsOn(e.id).includes(id)).map((e) => e.id)
 
 /** The eight group letters, in order. */
-export const LETTERS = GROUPS.map(letterOf)
+export const LETTERS = COURSE_GROUPS.map(letterOf)

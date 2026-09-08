@@ -741,15 +741,15 @@ const SECOND_ORDER = new Set(['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'h3', 'h
 
 describe('every dynamic experiment (F, G, H)', () => {
   it('has a transient, a state summary, a cursor solve, and the meters read that instant', () => {
-    expect(DYNAMIC.length).toBe(29)
-    expect(STATEFUL.length).toBe(25)
+    expect(DYNAMIC.length).toBe(51)
+    expect(STATEFUL.length).toBe(45)
     for (const e of DYNAMIC) {
       const { x } = at(e.id)
       expect(x.tr, e.id).toBeTruthy()
       expect(x.sol, e.id).toBeTruthy()
       expect(x.cursor).toBeCloseTo(e.cursor * x.tEnd, 12)
       expect(x.sol.maxResidual, e.id).toBeLessThan(1e-9)
-      expect(x.state.n, e.id).toBe(STATEFUL.includes(e) ? (SECOND_ORDER.has(e.id) ? 2 : 1) : 0)
+      expect(x.state.n, e.id).toBe(e.net(defaultsOf(e.id)).elements.filter(q=>q.type==='C'||q.type==='L').length)
       if (x.state.n === 2) expect(['overdamped', 'critical', 'underdamped', 'undamped']).toContain(x.state.face)
       // The scope's traces are all readable from the cursor solve.
       for (const q of [...e.scope.left.traces, ...(e.scope.right?.traces || [])]) expect(Number.isFinite(x.sol[q.q][q.key]), `${e.id} ${q.label}`).toBe(true)
@@ -761,7 +761,8 @@ describe('every dynamic experiment (F, G, H)', () => {
       for (const frac of [0, 0.1, 0.37, 0.8, 1]) {
         const x = analyse(e, defaultsOf(e.id), frac * e.window(defaultsOf(e.id)))
         x.state.states.forEach((q, k) => {
-          const law = q.type === 'C' ? x.now.sol.i[q.id] / q.value : x.now.sol.volt[q.id] / q.value
+          const mutualVoltage=x.net.elements.filter(e=>e.coupledTo&&(e.id===q.id||e.coupledTo===q.id)).reduce((sum,e)=>sum+e.mutual*x.now.dxdt[x.state.states.findIndex(s=>s.id===(e.id===q.id?e.coupledTo:e.id))],0)
+          const law = q.type === 'C' ? x.now.sol.i[q.id] / q.value : (x.now.sol.volt[q.id]-mutualVoltage) / q.value
           expect(agrees({ predicted: law, measured: x.now.dxdt[k], tol: 1e-9, abs: 1e-12 }), `${e.id} ${q.id} at ${frac}`).toBe(true)
         })
       }
@@ -1601,7 +1602,7 @@ describe('what the student reads is what the solver did', () => {
 
   it('every sine experiment opens with the source well off its zero crossing; H2 and H6 at its peak', () => {
     const sines = EXPERIMENTS.filter((q) => q.net(defaultsOf(q.id)).elements.some((el) => el.wave && el.wave.kind === 'sine'))
-    expect(sines.map((q) => q.id)).toEqual(['e9', 'h1', 'h2', 'h3', 'h4', 'h5', 'h8', 'h6', 'h7', 'i4', 'i5', 'i6', 'i7', 'i9', 'i10'])
+    expect(sines.map((q) => q.id)).toEqual(['e9', 'h1', 'h2', 'h3', 'h4', 'h5', 'h8', 'h9', 'h10', 'h11', 'h6', 'h7', 'k1', 'k2', 'l1', 'l2', 'l3', 'l4', 'n1', 'i4', 'i5', 'i6', 'i7', 'i9', 'i10'])
     for (const e of sines) {
       const { p, x } = at(e.id)
       // The source's own voltage, not a node called "in": the bridge's source
@@ -1912,6 +1913,10 @@ const par = (...rs) => 1 / rs.reduce((a, r) => a + 1 / r, 0)
 
 /** The headline of every experiment, from the knobs — the solver never consulted. */
 const HEADLINE_CLOSED = {
+  d7: p => p.V1 * p.RL / (p.R1 + p.RL),
+  d8: p => (p.V1 / p.R1) / (1 / p.R1 + 1 / p.R2 + 1 / p.RL),
+  d9: p => (p.V1 / p.R1 + p.V2 / p.R3 - p.I1) / (1 / p.R1 + 1 / p.R3),
+  d10: p => (p.V1 - p.V2) / p.R1 + p.V1 / p.R3,
   h8: p => {
     const w=2*Math.PI*p.f, y=cx.cadd([0,w*p.C1],cx.cdiv([1,0],[p.R2,w*p.L1]))
     return Math.abs(p.A)/cx.cabs(cx.cadd([1,0],cx.cscale(y,p.R1)))
@@ -2072,14 +2077,15 @@ describe('the headline number', () => {
       const h = exp.headline
       expect(h, exp.id).toBeTruthy()
       expect(h.label.length, `${exp.id} label`).toBeGreaterThan(8)
-      expect(HEADLINE_CLOSED[exp.id], `${exp.id} closed form`).toBeTypeOf('function')
+      const closed = HEADLINE_CLOSED[exp.id] || exp.closedHeadline
+      expect(closed, `${exp.id} closed form`).toBeTypeOf('function')
       // i5's diodes leak by design; i6's ripple can be attovolts; i7 reads a
       // peak off the drawn samples. Each is right to a part in ten thousand.
       const tol = ['i5', 'i6', 'i7', 'i10'].includes(exp.id) ? 1e-4 : isDynamic(exp) ? 1e-6 : 1e-9
       const settings = [defaultsOf(exp.id), ...Array.from({ length: 25 }, (_, k) => randomParams(exp, k * 7919 + 17))]
       for (const p of settings) {
         const x = analyse(exp, p)
-        const want = HEADLINE_CLOSED[exp.id](p, x)
+        const want = closed(p, x)
         const got = headlineValue(h, x, p)
         if (want === null) {
           expect(got, `${exp.id} refuses`).toBeNull()
@@ -2187,10 +2193,11 @@ describe('the bridge and the default view', () => {
     expect(() => bridgeText(byId.a1, 'nonesuch')).toThrow(/no bridge lead/)
   })
 
-  it('no experiment before Group G opens on the equations; D5 opens on the equivalent, G1 on foundations', () => {
+  it('early experiments open on readings or a guided method; D5 opens on the equivalent, G1 on foundations', () => {
     for (const exp of EXPERIMENTS) {
       expect(exp.views.includes(exp.view), exp.id).toBe(true)
-      if (GROUPS.indexOf(exp.group) < 6) expect(exp.view, exp.id).not.toBe('equations')
+      // A method lesson puts its worked derivation before the solver matrix.
+      if (GROUPS.indexOf(exp.group) < 6 && !exp.study) expect(exp.view, exp.id).not.toBe('equations')
     }
     expect(byId.d5.view).toBe('equivalent')
     expect(byId.g1.view).toBe('foundations')

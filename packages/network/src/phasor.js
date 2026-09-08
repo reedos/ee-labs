@@ -14,6 +14,7 @@
 // natural response has decayed and agrees with Im{X e^{jωt}} to floating point.
 
 import { GROUND, NetworkError, normalize } from './netlist.js'
+import { inductanceMatrix } from './coupling.js'
 import { SingularError, solveComplex } from './linalg.js'
 import { diagnose, effective, stampsOf } from './mna.js'
 import { omegaOf, sourceAffine } from './waves.js'
@@ -165,6 +166,10 @@ export function assembleAC(norm, omega, opts = {}) {
       default:
         throw new NetworkError('kind', `Cannot stamp ${eff.type}`)
     }
+  }
+  for (const pair of inductanceMatrix(norm.elements).pairs) {
+    add(currentIdx.get(pair.a), currentIdx.get(pair.b), C(0, -omega * pair.mutual))
+    add(currentIdx.get(pair.b), currentIdx.get(pair.a), C(0, -omega * pair.mutual))
   }
   const unknowns = [
     ...norm.nodeNames.map((node) => ({ kind: 'v', node })),

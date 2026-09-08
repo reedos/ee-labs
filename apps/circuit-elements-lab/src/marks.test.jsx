@@ -383,6 +383,10 @@ describe('the features fill the frame', () => {
         'i5 left: the drive is the tall one',
         'i6 left: the drive is the tall one',
         'i7 left: the drive is the tall one',
+        'k1 left: the drive is the tall one',
+        'k2 left: the drive is the tall one',
+        'l1 left: the drive is the tall one',
+        'n1 left: the drive is the tall one',
       ]
         .sort()
         .join('\n'),

@@ -62,7 +62,7 @@ describe('the worked matrix solution', () => {
   })
 
   it('rebuilds the substitutions for changed resistance, initial voltage and cursor time', () => {
-    const exp = EXPERIMENTS[41]
+    const exp = EXPERIMENTS.find(e => e.id === 'h1')
     expect(exp.id).toBe('h1')
     const results = []
     for (const [resistance, time] of [[1000, 0.002], [2000, 0.003], [100, 0]]) {

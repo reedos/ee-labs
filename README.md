@@ -52,9 +52,18 @@ Circuit Elements is the shared home for the Circuits I and II buildout. Both sec
 use the same schematic, controls and equation, state and phasor views. The branched
 AC experiment connects complex KCL, coupled states and AC power in one circuit.
 Circuit Lab remains the frequency-response tool. Its former phasor lesson links
-open the corresponding Circuit Elements experiments. Further state-space instruction,
-Laplace methods and the remaining course topics are planned in
-[CIRCUITS_I_II_BUILDOUT.md](CIRCUITS_I_II_BUILDOUT.md). The complete course is not yet built.
+open the corresponding Circuit Elements experiments.
+
+The current implementation contains **89 experiments**, including 30 additions for the
+agreed Circuits I?II buildout. They cover missing network methods, complete switching
+responses, Laplace inversion, AC equivalents and matching, loaded filter design,
+Fourier reconstruction and convolution, magnetic coupling, three-phase circuits,
+two-port networks and two capstones. The existing interface now includes independent
+answer entry and an enlarged drawing view for dense schematics.
+
+See the [course coverage and model boundaries](apps/circuit-elements-lab/README.md)
+and [completion/release evidence](CIRCUITS_COMPLETION_PROGRESS.md). Publication of this
+expansion is pending; the live link may still show the previous catalog.
 
 Each tool opens with a grouped **Try this** list. An entry loads a setup and asks
 a question. Every claim its note makes is rendered on screen and measured by a

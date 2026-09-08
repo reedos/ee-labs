@@ -194,6 +194,7 @@ export function calloutText(h, x, p) {
  * the experiment's own first sentence (from `see`) follows it.
  */
 export const VIEW_LEADS = {
+  laplace: 'Transform the physical equations, retain the initial state and return to the time response.',
   foundations: 'Start with the meaning of the symbols and the circuit laws.',
   reading: 'Every meter on the circuit at once, the one that matters first.',
   iv: 'Here is the diode’s own curve, the line the rest of the circuit imposes, and where they meet.',

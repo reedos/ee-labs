@@ -24,15 +24,26 @@ import { layoutExtent, placeCallout } from './layoutCheck.js'
 import { LESSONS } from './lessons.js'
 import { HEADLINES, calloutStandIn } from './headlines.js'
 import { THEOREMS } from './theorems.js'
+import { completionMethods } from './completionMethods.js'
+import { completionDynamics } from './completionDynamics.js'
+import { completionAC } from './completionAC.js'
+import { completionCoupled } from './completionCoupled.js'
+import { completionFilters } from './completionFilters.js'
+import { completionPorts } from './completionPorts.js'
+import { completionCapstones } from './completionCapstones.js'
+import { completionDependent } from './completionDependent.js'
+import { MATCH } from './terms.js'
+import { COMPLETION_NOTES } from './completionNotes.js'
 
 // Every view a lower pane can show, in the order the view switch lists them —
 // the same order in every experiment, so a tab sits in the same place from one
 // to the next. The reading (every meter at once, the DC groups' opening view)
 // and the two universal views lead; the rest follow the curriculum.
-export const VIEW_ORDER = ['foundations', 'reading', 'iv', 'assumed', 'equations', 'power', 'thevenin', 'equivalent', 'superposition', 'sweep', 'scope', 'state', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
+export const VIEW_ORDER = ['foundations', 'reading', 'iv', 'assumed', 'equations', 'power', 'thevenin', 'equivalent', 'superposition', 'sweep', 'scope', 'state', 'laplace', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
 
 // What the view switch calls each view, and the hover text that says what it shows.
 export const VIEW_LABELS = {
+  laplace: {label: 'Laplace', title: 'Transform the circuit equations, retain initial conditions and invert the result'},
   foundations: { label: 'Start here', title: 'Learn the notation and method before solving this circuit' },
   reading: { label: 'Reading', title: 'The one number this experiment is about, and every meter on the circuit at once' },
   iv: { label: 'i–v plane', title: 'Current against voltage: the diode’s curve, the four models of it, the load line the rest of the circuit imposes, and where they meet' },
@@ -73,6 +84,11 @@ export const GROUPS = [
   'G · Second order',
   'H · Sinusoids and phasors',
   'I · The diode',
+  'J · Complete responses and Laplace',
+  'L · Coupled circuits and three phases',
+  'K · Filters and Fourier signals',
+  'M · Two-port networks',
+  'N · Circuits II capstone',
 ]
 
 // ------------------------------------------------------------ knobs
@@ -2148,6 +2164,28 @@ export const EXPERIMENTS = [
 ]
 
 // The first exposure to each method opens its prerequisite lesson in the same pane.
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'e1'), 0, ...completionMethods(EXPERIMENTS, GROUPS))
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'f1'), 0, completionDependent(EXPERIMENTS, GROUPS))
+const dynamicCompletion = completionDynamics(EXPERIMENTS, GROUPS)
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'h6'), 0, ...completionAC(EXPERIMENTS))
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'g1'), 0, ...dynamicCompletion.filter(e => e.id[0] === 'f'))
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'h6'), 0, ...dynamicCompletion.filter(e => e.id[0] === 'j'))
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'i1'), 0, ...completionFilters(EXPERIMENTS, GROUPS), ...completionCoupled(GROUPS))
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'i1'), 0, ...completionPorts(EXPERIMENTS, GROUPS))
+const capstones = completionCapstones(EXPERIMENTS, GROUPS)
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'h1'), 0, capstones[0])
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'i1'), 0, capstones[1])
+// Keep public IDs stable while placing frequency-response lessons after Laplace.
+for (const id of ['h6', 'h7']) EXPERIMENTS.find(e => e.id === id).group = GROUPS[11]
+export const COURSE_GROUPS = [...new Set(EXPERIMENTS.map(e => e.group))]
+export const courseSection = exp => exp.group === GROUPS[8] ? 'Extension' : EXPERIMENTS.indexOf(exp) < EXPERIMENTS.findIndex(e => e.id === 'h1') ? 'I' : 'II'
+// A cloned topology must not inherit glossary chips for concepts its lesson does not use.
+for (const exp of EXPERIMENTS.filter(e => e.study)) {
+  if (COMPLETION_NOTES[exp.id]) exp.lesson = {...exp.lesson, see: COMPLETION_NOTES[exp.id]}
+  const prose = [exp.lesson.see, exp.lesson.why, ...exp.lesson.try.map(t => t.say)].join(' ')
+  exp.terms = Object.keys(MATCH).filter(id => MATCH[id].test(prose))
+  exp.views = VIEW_ORDER.filter(view => exp.views.includes(view))
+}
 // Stable experiment IDs and all existing analysis views remain available.
 for (const id of ['f1', 'g1', 'h1']) {
   const exp = EXPERIMENTS.find(e => e.id === id)
@@ -2160,7 +2198,7 @@ for (const id of ['f1', 'g1', 'h1']) {
 // `note` is the two prose registers run together, for the places that quote a
 // single paragraph per experiment (the hand-over card, the tests' word counts).
 for (const e of EXPERIMENTS) {
-  const lesson = LESSONS[e.id]
+  const lesson = e.lesson || LESSONS[e.id]
   if (!lesson) throw new Error(`no lesson for ${e.id}`)
   Object.assign(e, lesson)
   e.note = `${lesson.see} ${lesson.why}`
@@ -2520,7 +2558,7 @@ export function defaultsOf(id) {
 // at load, not in a screenshot. The experiments that are about a theorem
 // carry its drawing instructions (theorems.js) as `theorem`.
 for (const e of EXPERIMENTS) {
-  const headline = HEADLINES[e.id]
+  const headline = e.headline || HEADLINES[e.id]
   if (!headline) throw new Error(`no headline for ${e.id}`)
   e.headline = headline
   if (THEOREMS[e.id]) e.theorem = THEOREMS[e.id]

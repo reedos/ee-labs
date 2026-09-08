@@ -32,6 +32,7 @@ describe('worked derivations across the full circuit elements course', () => {
   it('derives the states and slopes in every state-equation example', () => {
     for (const exp of EXPERIMENTS.filter((e) => e.views.includes('state'))) {
       const x = at(exp)
+      if (exp.studyOwnState) { render(exp.study(exp.id,defaultsOf(exp.id),x),exp.id); continue }
       const work = workedState(x)
       render(work, exp.id)
       work.slopes.forEach((s, i) => close(s, x.now.dxdt[i], `${exp.id} slope ${i}`))
@@ -69,7 +70,14 @@ describe('worked derivations across the full circuit elements course', () => {
   it('derives every phasor example, including zero and negative source amplitudes', () => {
     for (const exp of EXPERIMENTS.filter((e) => e.views.includes('phasor'))) {
       for (const over of [{}, { A: 0 }, { A: -3, phi: 67 }]) {
-        const x = at(exp, over), work = workedPhasor(exp, x)
+        const x = at(exp, over)
+        if (exp.studyOwnPhasor) {
+          const study=exp.study(exp.id,{...defaultsOf(exp.id),...over},x)
+          render(study,exp.id)
+          study.checks.forEach(c=>close(c.predicted,c.measured,`${exp.id} ${c.label}`))
+          continue
+        }
+        const work = workedPhasor(exp, x)
         render(work, exp.id)
         close(cx.cabs(cx.csub(work.I, x.ac.i[exp.phasor.current])), 0, exp.id)
         work.volts.forEach((v, i) => close(cx.cabs(cx.csub(v, x.ac.volt[exp.phasor.volts[i]])), 0, exp.id))

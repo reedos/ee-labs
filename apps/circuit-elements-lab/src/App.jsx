@@ -4,7 +4,7 @@ import { MathPanel } from '@ee-labs/explain'
 import { FoundationsPane, FoundationLink, FoundationSidebar } from './components/FoundationsPane.jsx'
 import { NotationGuide } from './components/NotationGuide.jsx'
 import { equations, normalize, complex as cx } from '@ee-labs/network'
-import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic, viewLabel, VIEW_LABELS } from './experiments.js'
+import { EXPERIMENTS, GROUPS, COURSE_GROUPS, courseSection, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic, viewLabel, VIEW_LABELS } from './experiments.js'
 import { analyse, atDrive, experimentMath, netPower, refusalReason, snapNoise, turnedLabel } from './math.js'
 import { firstUses } from './glossary.js'
 import { predictFor } from './predict.js'
@@ -23,6 +23,7 @@ import DampingCanvas from './components/DampingCanvas.jsx'
 import PhasorCanvas from './components/PhasorCanvas.jsx'
 import { WorkedPhasor } from './components/WorkedDynamics.jsx'
 import { SolutionRoutes } from './components/SolutionRoutes.jsx'
+import { WorkedMethod } from './components/WorkedMethod.jsx'
 import FreqCanvas from './components/FreqCanvas.jsx'
 import HandOver from './components/HandOver.jsx'
 import PlotMarks from './components/PlotMarks.jsx'
@@ -83,9 +84,7 @@ const storage = () => {
  */
 export const nextUp = (exp) => {
   const seq = EXPERIMENTS[EXPERIMENTS.indexOf(exp) + 1]
-  const to = leadsTo(exp.id)
-  if (seq && to.includes(seq.id)) return seq.id
-  return to[0] || (seq ? seq.id : null)
+  return seq?.id || null
 }
 /** The knob open when no step names one: the first in the Knobs section. */
 const firstKnob = (exp) => (exp.params.find((p) => !(p.key === 'N' && exp.window)) || {}).key
@@ -119,6 +118,8 @@ export default function App() {
   const [params, setParams] = useState(initial.params)
   const [show, setShow] = useState(initial.show)
   const [view, setView] = useState(initial.view)
+  const drawingDialog = useRef(null)
+  const [drawingOpen, setDrawingOpen] = useState(false)
   // The instant the schematic shows, in seconds; null for the DC groups. The
   // analysis clamps it to the window, so a knob that shrinks the window pulls
   // the cursor back with it.
@@ -309,7 +310,7 @@ export default function App() {
   // tapping a switch throws it — by its knob if one throws it, else by replaying t = 0.
   const takesReference = !!(exp.claim && exp.claim.reference)
   const onNode = takesReference ? (name) => setRefNode((r) => (r === name ? null : name)) : null
-  const hasSwitch = x.net.elements.some((e) => e.type === 'SW')
+  const hasSwitch = !exp.fixedSwitches && x.net.elements.some((e) => e.type === 'SW')
   const onElement = hasSwitch
     ? (elId) => {
         const key = switchKnob(exp, params, elId)
@@ -375,6 +376,7 @@ export default function App() {
   // solution quantity. The frame was sized with the widest text, so nothing moves.
   const layout = useMemo(() => {
     const items = exp.layout.items.flatMap((it) => {
+      if (it.when && params[it.when.key] !== it.when.value) return []
       if (it.callout) {
         const text = calloutText(exp.headline, x, params)
         return text === null ? [] : [{ ...it, text }]
@@ -744,6 +746,7 @@ export default function App() {
         <section className="view">
           <div className="view-head">
             <h2>Schematic, with meters</h2>
+            <button type="button" className="drawing-enlarge" onClick={() => {setPlaying(false); setDrawingOpen(true); drawingDialog.current.showModal()}}>Enlarge drawing</button>
             <div className="segmented sm" role="group" aria-label="What the meters read">
               {[
                 ['i', 'currents', 'Current through each element, arrow in the direction it flows'],
@@ -779,6 +782,11 @@ export default function App() {
             </div>
           </div>
           {/* data-show lets the stylesheet give the meters the hue of what they read (palette.js). */}
+          <dialog ref={drawingDialog} className="drawing-dialog" aria-labelledby="drawing-title" onClose={() => setDrawingOpen(false)}>
+            <div className="drawing-dialog-head"><h2 id="drawing-title">{exp.id.toUpperCase()} · {exp.name}</h2><button type="button" autoFocus onClick={() => drawingDialog.current.close()}>Close drawing</button></div>
+            <p>Voltage signs and current arrows use the same references as the lesson. On a small screen, scroll the drawing sideways to inspect its labels.</p>
+            {drawingOpen ? <div className="drawing-scroll" data-show={show}><Schematic elements={elements} layout={layout} meters={show === 'none' ? null : meters} show={show} reference={refNode} /></div> : null}
+          </dialog>
           <div className="view-body" data-show={show}>
             {/* "none" promises just the circuit, so it drops the node voltages too. */}
             <Schematic
@@ -870,7 +878,7 @@ export default function App() {
               <FoundationLink exp={exp} view={currentView} />
               <Headline exp={exp} x={x} params={params} />
               <Bridge exp={exp} view={currentView} />
-              <SolutionRoutes exp={exp} x={x} view={currentView} onChoose={setView} />
+              {exp.study ? <details className="group-intro method-routes"><summary>Compare solution methods and their tradeoffs</summary><SolutionRoutes exp={exp} x={x} view={currentView} onChoose={setView} /></details> : <SolutionRoutes exp={exp} x={x} view={currentView} onChoose={setView} />}
             </>}
             <div className="readout">
               {currentView === 'thevenin' && x.thevenin ? (
@@ -959,6 +967,7 @@ export default function App() {
               ) : null}
             </div>
             {theoremShows(exp, currentView) ? <TheoremBlock exp={exp} x={x} params={params} elements={elements} layout={plainLayout} /> : null}
+            {exp.study && ['equations', 'laplace', ...(exp.studyViews || [])].includes(currentView) ? <WorkedMethod key={exp.id} exp={exp} params={params} x={x} onApply={settings => Object.entries(settings).forEach(([key, value]) => setParam(key, value))} /> : null}
             {currentView === 'reading' && x.sol ? <Readings x={x} elements={elements} power={showsNetPower} /> : null}
             {currentView === 'iv' && x.sol ? <IVCanvas exp={exp} x={x} p={params} /> : null}
             {currentView === 'assumed' && x.assumed ? <AssumedPane tried={x.assumed} devices={x.devices} regions={x.regions} /> : null}
@@ -977,10 +986,10 @@ export default function App() {
             ) : null}
             {currentView === 'scope' && x.tr ? <PlotCaption parts={caption} /> : null}
             {currentView === 'scope' && x.tr ? <PlotMarks marks={marks.scope} /> : null}
-            {currentView === 'state' && x.tr ? <StatePane x={x} /> : null}
+            {currentView === 'state' && x.tr ? <StatePane x={x} worked={!exp.studyOwnState} /> : null}
             {currentView === 'phasor' && x.ac ? <PhasorCanvas exp={exp} x={x} cursor={x.cursor} onCursor={scrub} /> : null}
             {currentView === 'phasor' && x.ac ? <PlotCaption parts={caption} /> : null}
-            {currentView === 'phasor' && x.ac ? <WorkedPhasor exp={exp} x={x} /> : null}
+            {currentView === 'phasor' && x.ac && !exp.studyOwnPhasor ? <WorkedPhasor exp={exp} x={x} /> : null}
             {(currentView === 'impedance' || currentView === 'bode') && x.freq && drive ? (
               <FreqCanvas
                 freq={x.freq}
@@ -1224,6 +1233,7 @@ function ViewSwitch({ value, onChange, options }) {
 function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups, progress }) {
   const idx = EXPERIMENTS.findIndex((e) => e.id === id)
   const exp = EXPERIMENTS[idx]
+  const section = courseSection(exp), circuitsII = section === 'II'
   const prev = EXPERIMENTS[idx - 1]
   const next = EXPERIMENTS[idx + 1]
   const title = (e) => `${e.id.toUpperCase()} · ${e.name}`
@@ -1231,21 +1241,25 @@ function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups, progress
   return (
     <nav className="picker" aria-label="Choose an experiment">
       <div className="course-sections" aria-label="Course sections">
-        <button type="button" className="preset" aria-pressed={exp.group !== GROUPS[7]} onClick={() => choose('a1')}>Circuits I</button>
-        <button type="button" className="preset" aria-pressed={exp.group === GROUPS[7]} onClick={() => choose('h1')}>Circuits II</button>
+        <button type="button" className="preset" aria-pressed={section === 'I'} onClick={() => choose('a1')}>Circuits I</button>
+        <button type="button" className="preset" aria-pressed={circuitsII} onClick={() => choose('h1')}>Circuits II</button>
+        <button type="button" className="preset" aria-pressed={section === 'Extension'} onClick={() => choose('i1')}>Diodes</button>
       </div>
-      <p className="course-section-summary">{exp.group === GROUPS[7]
-        ? 'Circuits II · Phasors, AC power and circuit dynamics'
-        : 'Circuits I · Circuit laws, methods, storage and devices'}</p>
-      {exp.group === GROUPS[7] ? <details className="group-intro course-outline">
+      <p className="course-section-summary">{circuitsII
+        ? 'Circuits II · Phasors, transforms, filters and network models'
+        : section === 'Extension' ? 'Optional extension · Diodes and nonlinear circuits' : 'Circuits I · Circuit laws, methods, storage and coupled states'}</p>
+      {circuitsII ? <details className="group-intro course-outline">
         <summary>Circuits II learning sequence</summary>
         <ol>
           <li><a href="#h1&view=foundations">Phasor foundations</a>, <a href="#h2&view=phasor">RC phasors</a>, <a href="#h3&view=phasor">series circuits</a>, then <a href="#h8&view=phasor">branched KCL</a>.</li>
           <li><a href="#g1&view=foundations">State-vector foundations</a>, then <a href="#h8&view=state">coupled states and initial conditions</a>. Compare startup with sinusoidal steady state.</li>
-          <li>Laplace methods and transfer-function derivations are planned.</li>
-          <li><a href="#h6&view=bode">Frequency response</a> and <a href="../circuit-lab/">the existing filter tools</a>.</li>
+          <li><a href="#j1&view=laplace">Laplace foundations</a>, <a href="#j2&view=laplace">initial conditions</a>, <a href="#j3&view=laplace">inversion</a>, then <a href="#j7&view=laplace">state matrices and transfer functions</a>.</li>
+          <li><a href="#h9&view=phasor">AC equivalents</a>, <a href="#h10">conjugate matching</a> and <a href="#h11">power-factor correction</a>.</li>
+          <li><a href="#h6&view=bode">Frequency response</a>, <a href="#k1">filter design</a>, <a href="#k3">Fourier reconstruction</a> and <a href="#k4">convolution</a>.</li>
+          <li><a href="#l1">Coupled coils</a>, <a href="#l2">transformers</a>, then <a href="#l3">balanced</a> and <a href="#l4">unbalanced three-phase circuits</a>.</li>
+          <li><a href="#m1">Two-port tests</a>, <a href="#m2">parameter conversions</a> and <a href="#m3">cascades</a>, then the <a href="#n1">Circuits II capstone</a>.</li>
         </ol>
-        <p>Further buildout includes AC network theorems, coupled circuits, three-phase circuits, two-port networks and course practice.</p>
+        <p>The numbered lesson IDs preserve existing links. Use the next arrow to follow the teaching order. <a href="../circuit-lab/">Circuit Lab</a> provides further filter and resonance exploration.</p>
       </details> : null}
       <div className="picker-row">
         <button
@@ -1287,13 +1301,13 @@ function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups, progress
             <b>{finished}</b> of {EXPERIMENTS.length} experiments complete
           </p>
         ) : null}
-        {GROUPS.map((g) => {
+        {COURSE_GROUPS.map((g) => {
           const inGroup = EXPERIMENTS.filter((e) => e.group === g)
           return (
             <FoldGroup
               key={g}
               sectionKey={g}
-              label={`${g === GROUPS[7] ? 'II' : 'I'} · ${g}`}
+              label={`${courseSection(inGroup[0])} · ${g}`}
               holdsActive={inGroup.some((e) => e.id === id)}
               intro={GROUP_INTRO[letterOf(g)]}
               arc={groupArc(inGroup, progress)}

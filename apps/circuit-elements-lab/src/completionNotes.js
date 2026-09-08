@@ -1,0 +1,22 @@
+// The opening note names the particular problem before the detailed derivation.
+export const COMPLETION_NOTES = {
+  f9: 'The capacitor begins charged and the source applies a step. Separate what the initial voltage causes from what the source causes, then add both responses and compare with the complete waveform.',
+  j1: 'Lowercase x(t) is a voltage waveform. X(s) is its Laplace transform. Begin with the RC differential equation, retain its initial voltage and turn the transformed equation into a time-domain answer.',
+  j2: 'The capacitor starts with stored voltage. Its Laplace equation therefore contains an initial-condition term as well as sC times voltage. Keep both terms and check that the recovered waveform starts at the specified voltage.',
+  j3: 'An overdamped circuit has two distinct real poles. Factor the transformed denominator, find the coefficient of each exponential and use both coefficients to satisfy the initial voltage and current.',
+  j4: 'A conjugate pair of poles produces a real damped oscillation. Complete the square, identify the decaying sine and cosine terms and use the initial state to determine their coefficients.',
+  j5: 'At critical damping the two poles coincide. The second independent response is time multiplied by a decaying exponential. Use that repeated-pole term to satisfy both initial conditions.',
+  j6: 'The ideal LC circuit keeps oscillating. Check the poles before applying the final-value theorem, and compare its tempting algebraic limit with a waveform that never settles.',
+  j7: 'The state matrix and transfer function describe the same circuit. Transform both state equations, separate the initial-state contribution and use the matrix inverse to find the zero-state voltage ratio.',
+  h9: 'View the capacitor and source resistor as a source network feeding the RL branch. Find its complex open-circuit voltage and terminal impedance, then reconnect the load and compare currents.',
+  h10: 'The RL load can cancel the source network’s capacitive reactance. Calculate the conjugate match, apply the component values and compare actual load power with the predicted maximum.',
+  h11: 'The inductive branch draws reactive current. Calculate the shunt capacitance that cancels this reactive demand at the chosen frequency, then apply it and check the source power factor.',
+  k1: 'Choose a desired corner frequency and a capacitor value. Derive the RC transfer function, solve for the required resistor and apply the design to check its magnitude and phase.',
+  k2: 'The output resistor draws current from the RC filter. Include that current in KCL and discover why loading changes both the passband gain and the corner frequency.',
+  k3: 'A square wave contains odd sinusoidal harmonics. Pass each harmonic through the RC transfer function, reconstruct the filtered periodic waveform and keep the separate startup correction and truncation error visible.',
+  k4: 'The impulse response records how the RC circuit responds to one unit-area input. Integrate it to recover the step response, then use two shifted steps to predict the response to a finite pulse.',
+  l1: 'Changing current in one coil induces voltage in the other. Use the dots to choose the sign of mutual inductance, solve both winding equations together and see how the secondary load affects the primary.',
+  l2: 'An ideal transformer changes voltage and current by reciprocal ratios. The displayed controlled-source equivalent preserves those terminal relations. Reflect the load to the primary and check that input and output powers agree.',
+  l3: 'Three equal RL branches receive sinusoidal voltages separated by 120 degrees. Solve one phase, recover the other two by rotation and distinguish line quantities from the voltages and currents of a star or delta branch.',
+  l4: 'Unequal phase resistors share a load neutral. Connect or disconnect that neutral and calculate its voltage from KCL before finding the actual voltage and current in each branch.',
+}

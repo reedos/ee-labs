@@ -14,7 +14,7 @@ it('explains all three methods in every experiment and links only to offered vie
   for (const exp of EXPERIMENTS) {
     const x = { net: exp.net(defaultsOf(exp.id)), sol: {} }
     const model = solutionRoutes(exp, x)
-    expect(model.routes.map((r) => r.id)).toEqual(['equations', 'state', 'phasor'])
+    expect(model.routes.map((r) => r.id)).toEqual(['equations', 'state', 'phasor', ...(exp.views.includes('laplace') ? ['laplace'] : [])])
     for (const route of model.routes) {
       if (route.view) expect(exp.views, exp.id).toContain(route.view)
       expect(route.description.length, exp.id).toBeGreaterThan(60)

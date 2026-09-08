@@ -529,8 +529,9 @@ const FACE_WORDS = {
  * inductor's voltage) — the differential equation being true at this instant,
  * not being asserted.
  */
-export function StatePane({ x }) {
+export function StatePane({ x, worked = true }) {
   const { state: s, before, now, dyn } = x
+  const couplings = x.net.elements.filter(e => e.coupledTo)
   const xSym = s.states.map((q) => (q.type === 'C' ? `v_{${q.id}}` : `i_{${q.id}}`))
   const uSym = s.inputs.map((id) => (dyn.norm.elements.find((e) => e.id === id)?.type === 'I' ? `I_{${id}}` : `V_{${id}}`))
   const col = (items) => `\\begin{bmatrix} ${items.join(' \\\\ ')} \\end{bmatrix}`
@@ -564,7 +565,7 @@ export function StatePane({ x }) {
         ]
   return (
     <div className="state" data-role="state" data-face={s.face || (s.n === 1 ? 'first-order' : '')}>
-      <NotationGuide phasor={!!x.ac} />
+      <NotationGuide phasor={!!x.ac} coupled={couplings.length > 0} />
       <div className="eq-matrix">
         <Formula>{eq}</Formula>
         <p className="hint">
@@ -615,7 +616,12 @@ export function StatePane({ x }) {
           <tbody>
             {s.states.map((q, k) => {
               const isC = q.type === 'C'
-              const law = isC ? now.sol.i[q.id] / q.value : now.sol.volt[q.id] / q.value
+                const links = couplings.filter(e => e.id === q.id || e.coupledTo === q.id)
+                const mutualVoltage = links.reduce((sum,e) => {
+                  const other=e.id===q.id?e.coupledTo:e.id
+                  return sum+e.mutual*now.dxdt[s.states.findIndex(q=>q.id===other)]
+                },0)
+                const law = isC ? now.sol.i[q.id] / q.value : (now.sol.volt[q.id] - mutualVoltage) / q.value
               const ok = agrees({ predicted: law, measured: now.dxdt[k], tol: 1e-6, abs: 1e-12 })
               return (
                 <tr key={q.id}>
@@ -627,7 +633,7 @@ export function StatePane({ x }) {
                   <td className="num">{num(now.x[k], isC ? 'V' : 'A', 4)}</td>
                   <td className="num">{rate(now.dxdt[k], isC ? 'V/s' : 'A/s', 4)}</td>
                   <td className="num">
-                    {isC ? `i_${q.id}/C` : `v_${q.id}/L`} = {rate(law, isC ? 'V/s' : 'A/s', 4)}
+                      {isC ? `i_${q.id}/C` : links.length ? `(v_${q.id} − mutual voltage)/L` : `v_${q.id}/L`} = {rate(law, isC ? 'V/s' : 'A/s', 4)}
                   </td>
                   <td className={ok ? 'agree' : 'disagree'}>{ok ? '✓' : '✗'}</td>
                 </tr>
@@ -642,7 +648,7 @@ export function StatePane({ x }) {
         {before.assumed.length ? `; ${before.assumed.join(', ')} had no DC path and is taken as uncharged` : ''}. A state cannot
         jump, so x(0⁺) = x(0⁻); everything else may.
       </p>
-      <WorkedState x={x} />
+      {worked ? <WorkedState x={x} /> : null}
     </div>
   )
 }

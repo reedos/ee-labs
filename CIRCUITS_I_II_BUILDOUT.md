@@ -2,8 +2,11 @@
 
 ## Status and architecture
 
-Reed approved the curriculum expansion on 2026-09-06. This document starts the coverage and dependency plan.
-It does not mark new lessons as implemented or released.
+Reed approved the curriculum expansion on 2026-09-06. This document records the original coverage and dependency plan.
+The local completion now contains 89 experiments, including 30 additions. See
+[implemented coverage](apps/circuit-elements-lab/README.md) and
+[acceptance and publication status](CIRCUITS_COMPLETION_PROGRESS.md).
+Publication of this expansion is pending. The evidence and proposed work below preserve the original planning baseline.
 
 Reed revised the architecture after reviewing the four-lesson rollout.
 One expanded Circuit Elements app owns the Circuits I and II sections.

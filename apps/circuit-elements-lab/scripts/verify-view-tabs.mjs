@@ -1,18 +1,19 @@
 import {chromium, firefox} from 'playwright'
-import {readFile} from 'node:fs/promises'
 import assert from 'node:assert/strict'
 
 const base = process.env.APP_URL || 'http://127.0.0.1:4192/circuit-elements-lab/'
 const name = process.env.BROWSER || 'chromium'
-const source = await readFile(new URL('../src/experiments.js', import.meta.url), 'utf8')
-const ids = [...new Set([...source.matchAll(/id: '([a-i]\d+)'/g)].map(m => m[1]))]
-assert.equal(ids.length, 59, 'Cover the complete experiment catalog')
 const browser = await ({chromium, firefox})[name].launch()
 const page = await browser.newPage()
 const errors = [], failures = []
 page.on('pageerror', e => errors.push(e.message))
 let transitions = 0
 try {
+  await page.goto(base)
+  await page.locator('.picker-current').waitFor()
+  const ids = await page.locator('#picker-list .presets button[title]').evaluateAll(buttons => buttons.map(b => b.title.match(/^([A-Z]\d+) ·/)[1].toLowerCase()))
+  assert.equal(new Set(ids).size, ids.length, 'The displayed catalog has unique IDs')
+  assert.ok(ids.includes('n1') && ids.includes('i10'), 'Include the capstone and the final extension')
   for (const width of [1440, 1024, 768, 390]) {
     await page.setViewportSize({width, height: 1000})
     for (const id of ids) {

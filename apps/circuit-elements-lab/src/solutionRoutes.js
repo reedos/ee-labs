@@ -60,6 +60,10 @@ export function solutionRoutes(exp, x) {
             : 'This experiment does not ask for a sinusoidal steady-state response. Use the DC circuit equations here; there is no separate phasor solution to compare.',
     },
   ]
+  if (exp.views.includes('laplace')) routes.push({id:'laplace',label:'Laplace',view:'laplace',
+    description:'Transform the differential equations, including their initial values, into algebra in s. Solve for the transformed output and invert it to recover the complete time response.',
+    bestFor:'Steps, stored initial energy, poles and explicit transient formulas in a linear circuit.',
+    tradeoff:'Requires transform pairs and inversion. The transfer function is only the zero-state part; theorem conditions and the initial-state contribution must be checked.'})
   const connection = phasorView
     ? 'How they meet: the state solution includes forced + natural response. Phasors give the forced steady sinusoid. If the natural response decays, the two waveforms approach one another. At any chosen instant, use the corresponding states in the circuit equations; those voltages and currents must agree.'
     : dynamic
@@ -69,7 +73,7 @@ export function solutionRoutes(exp, x) {
   const guidance = !x.sol
     ? 'At these settings the circuit has no reported solution. Start with Circuit equations to inspect the constraints; changing methods cannot make contradictory ideal assumptions consistent.'
     : phasorView
-      ? 'Choose State equations for startup, Phasors for the steady sinusoid, or Circuit equations for a snapshot with known states.'
+      ? stateView ? 'Choose State equations for startup, Phasors for the steady sinusoid, or Circuit equations for a snapshot with known states.' : 'Choose Phasors for steady sinusoidal quantities, Scope for the time response, or Circuit equations to check one instant.'
       : dynamic ? 'Start with the time-domain route for a waveform, or Circuit equations to work through the current snapshot.'
         : 'Start with Circuit equations to work through this operating point.'
   return { intro, routes, connection, guidance }
