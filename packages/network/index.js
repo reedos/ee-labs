@@ -155,4 +155,5 @@ export {
 
 // Frequency domain: the same stamps at s = jω, phasors as [re, im].
 export * as complex from './src/complex.js'
+export { mathNumber, workedSolve } from './src/workedSolve.js'
 export { assembleAC, solveAC, readoutAC, sourcePhasor, phasorMeasures, acPower, drivingPointZ, sweepAC } from './src/phasor.js'

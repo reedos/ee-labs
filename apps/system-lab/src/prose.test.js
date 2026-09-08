@@ -1,0 +1,91 @@
+import { describe, it } from 'vitest'
+import { EXPERIMENTS, VIEW_LABELS, defaultsOf } from './experiments.js'
+import { TERMS } from './terms.js'
+import { CHAIN_ROWS, COLUMNS, LEVEL_COLUMNS, TABLE_MODES } from './view.js'
+import { analyse, ip3Guard } from './math.js'
+import { expectPlain } from '@ee-labs/prose/testing'
+
+// The house style, measured (`STYLE.md`).
+//
+// `experiments.test.js` measures what a lesson CLAIMS: every number in see, try
+// and why is a value the engine produces at the settings the step names. This
+// file measures how the claim is written. One claim a sentence, no dash for
+// emphasis, no colon reveal, no personified engine, so that this lab reads in
+// the same voice as the eight beside it.
+//
+// The lessons are read off EXPERIMENTS rather than off LESSONS, because
+// `experiments.js` merges each lesson onto its experiment at load and importing
+// `lessons.js` first would leave that merge half done.
+
+describe('every lesson reads plainly', () => {
+  for (const e of EXPERIMENTS) {
+    it(`${e.id} ${e.name}`, () => {
+      expectPlain(e.name, 'title', `${e.id} name`)
+      if (e.see) expectPlain(e.see, 'see', `${e.id} see`)
+      if (e.why) expectPlain(e.why, 'why', `${e.id} why`)
+      ;(e.try || []).forEach((t, i) => expectPlain(t.say, 'try', `${e.id} try[${i}]`))
+    })
+  }
+})
+
+describe('every term reads plainly', () => {
+  for (const [id, t] of Object.entries(TERMS)) {
+    it(id, () => expectPlain(t.def, 'term', `${id} def`))
+  }
+})
+
+describe('the chrome reads plainly', () => {
+  it('every view switch carries a label and a sentence saying what it shows', () => {
+    for (const [view, meta] of Object.entries(VIEW_LABELS)) {
+      expectPlain(meta.label, 'label', `${view} label`)
+      expectPlain(meta.title, 'tooltip', `${view} title`)
+    }
+  })
+
+  it('every knob is named and hinted plainly', () => {
+    for (const e of EXPERIMENTS) {
+      for (const k of e.params) {
+        expectPlain(k.label, 'label', `${e.id} ${k.key} label`)
+        if (k.hint) expectPlain(k.hint, 'tooltip', `${e.id} ${k.key} hint`)
+        for (const o of k.options || []) expectPlain(o.label, 'label', `${e.id} ${k.key} option ${o.value}`)
+      }
+    }
+  })
+
+  it('every column a reader reads is named and hinted plainly', () => {
+    // A column header and the key beside a line are chrome, and `STYLE.md`
+    // applies to every word a reader can see. The header is a label and the
+    // hover text is a tooltip.
+    for (const c of [...COLUMNS, ...LEVEL_COLUMNS]) {
+      expectPlain(c.label, 'label', `column ${c.key} label`)
+      expectPlain(c.title, 'tooltip', `column ${c.key} title`)
+      if (c.shareTitle) expectPlain(c.shareTitle, 'tooltip', `column ${c.key} share title`)
+    }
+    for (const r of CHAIN_ROWS) expectPlain(r.title, 'tooltip', `chain row ${r.key} title`)
+    for (const m of TABLE_MODES) {
+      expectPlain(m.label, 'label', `table mode ${m.key} label`)
+      expectPlain(m.title, 'tooltip', `table mode ${m.key} title`)
+    }
+  })
+
+  it('the sentence beside the input IP3 reads plainly, in each of its three cases', () => {
+    // The guard is the only paragraph in this lab that the code writes rather
+    // than the lesson, and `STYLE.md` covers every word a reader can see. Its
+    // three cases are no contributing stage, one, and several.
+    for (const id of ['a1', 'a2', 'a3']) {
+      const says = ip3Guard(analyse(EXPERIMENTS.find((e) => e.id === id), defaultsOf(id)))
+      if (says) expectPlain(says, 'see', `${id} input IP3 guard`)
+    }
+  })
+
+  it('every headline names its quantity plainly', () => {
+    for (const e of EXPERIMENTS) {
+      const p = Object.fromEntries(e.params.map((k) => [k.key, k.default]))
+      expectPlain(e.headline({ c: { gainDb: 0, nfDb: 0, iip3Dbm: 0, oip3Dbm: 0, powerMw: 0 }, v: { snrOutDb: 0 } }, p).label, 'title', `${e.id} headline label`)
+    }
+  })
+
+  it('the group headings name their content', () => {
+    for (const g of new Set(EXPERIMENTS.map((e) => e.group))) expectPlain(g.slice(4), 'title', `group ${g}`)
+  })
+})

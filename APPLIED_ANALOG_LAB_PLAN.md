@@ -1,5 +1,7 @@
 # Applied Analog Lab: the plan
 
+> Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented. The six device classes are explicitly illustrative curriculum models, not current manufacturer specifications. A1/A2 compare closed forms with native nodal AC solves; A3 uses the native limited op-amp transient; A4–A6 teach stated noise, error and supply budgets. Later groups, datasheet-specific model libraries, general sensitivity/Monte Carlo tools and design synthesis remain future work.
+
 Tier 2 of `ANALOG_ROADMAP.md`, and the first lab in the suite where the reader is
 asked for values rather than for a reading. Its subject is board-level analog design.
 The op-amp chosen from a datasheet, the loop that a capacitive load turns unstable,

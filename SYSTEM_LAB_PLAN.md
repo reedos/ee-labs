@@ -1,5 +1,7 @@
 # System Lab: the plan
 
+> Local implementation checkpoint, 2026-09-08: A–F now has 25 working lessons. B–F uses the shared learning workbench, native RF cascade calculations, cascaded cubic time records/FFTs, and seeded random-phase ensembles. Noise uses exact kBT at 290 K throughout. The corrections below replace inconsistent reference numbers. These changes are local; no live-release claim.
+
 Tier 6 of `ANALOG_ROADMAP.md`, and the last lab of track A in `EE_LABS_MAP.md`. The
 whole chain from antenna or sensor to bits, and the budgets that decide whether it
 works. Splash glyph `⇥`, directory `apps/system-lab`, engine as `budget.js` in
@@ -285,8 +287,10 @@ IP3s and powers:
 6. **The IP3 budget agrees with the two tones.** The cascaded input IP3 equals what
    `linearity.js` reads from the FFT at the chain's output, within the aligned-phase
    assumption's stated bound, for chains of cubic blocks with matched phase.
-7. **The three addition rules bracket.** The power-addition total lies between the
-   random-phase total and the aligned-phase total, for every chain.
+7. **Check the phase ensemble.** Aligned distortion amplitudes give the worst
+   case. Independent uniform phases have mean distortion power equal to the sum
+   of stage powers. Individual realizations can lie on either side of that power
+   sum; report an interval instead of claiming a universal ordering.
 8. **Dynamic range closes.** `SFDR = (2/3)(IIP3 − floor)` equals the drive level at
    which the simulated third-order product reaches the simulated noise floor, to
    0.1 dB.
@@ -411,10 +415,10 @@ every picture fits a phone. All were computed before they were written here.
   and 78.618 dB.
 - The link at 2.400 GHz over 100 m: wavelength 12.491 cm, free-space loss 80.052 dB.
   From +20 dBm and two 2 dBi antennas the received power is −56.052 dBm. The floor
-  over 20.00 MHz at 6 dB noise figure is −94.990 dBm. The signal-to-noise ratio is
-  38.938 dB, and the margin over a required 20 dB is 18.938 dB.
+  over 20.00 MHz at 6 dB noise figure is −94.965 dBm. The signal-to-noise ratio is
+  38.913 dB, and the margin over a required 20 dB is 18.913 dB.
 - The same link at 1.000 km: free-space loss 100.052 dB, received power −76.052 dBm,
-  signal-to-noise ratio 18.938 dB, and a margin of −1.062 dB. Ten times the distance
+  signal-to-noise ratio 18.913 dB, and a margin of −1.087 dB. Ten times the distance
   costs exactly 20.000 dB.
 - A 900 MHz link over 10.00 km with +30 dBm, 8 dBi and 2 dBi: free-space loss
   111.533 dB. The received power is −71.533 dBm. The margin is 29.457 dB over 200 kHz
@@ -422,9 +426,9 @@ every picture fits a phone. All were computed before they were written here.
 - A 12.00 GHz downlink from 35786 km with +50 dBm, 34 dBi and 41 dBi: free-space loss
   205.106 dB. The received power is −80.106 dBm. Against a required 10 dB over
   27.00 MHz at 2 dB noise figure the margin is 7.581 dB.
-- `E_b/N_0` from the 100 m link: `C/N_0` is 111.950 dB-Hz. That is 51.950 dB at
+- `E_b/N_0` from the 100 m link: `C/N_0` is 111.923 dB-Hz. That is 51.923 dB at
   1.000 Mbit/s, 41.950 dB at 10.00 Mbit/s and 34.626 dB at 54.00 Mbit/s. Shannon's
-  limit at that signal-to-noise ratio over 20.00 MHz is 258.72 Mbit/s.
+  limit at that signal-to-noise ratio over 20.00 MHz is 258.535 Mbit/s.
 - The converter: 8 bits give 49.920 dB and 10 bits give 61.960 dB. 12 bits give
   74.000 dB and 14 bits give 86.040 dB over the Nyquist band. At 100.0 MHz sampling
   with a 20.00 MHz band the oversampling ratio is 2.5000 and the processing gain is
@@ -505,9 +509,10 @@ numbers to each block and one table below the strip, and nothing else.
   passive blocks contribute nothing. Measured: the total, the three shares, and their
   sum.
 - **C4 · Three ways to add the products.** Aligned phase gives −8.0444 dBm, power
-  addition gives a higher number, and random phase gives higher still. The budget
-  quotes the worst case, and the pane shows all three. Measured: all three totals, and
-  that the power sum lies between the other two.
+  addition gives a higher equivalent intercept. Random-phase intercepts have a
+  distribution; individual draws are not ordered above the power-addition result.
+  Measure the mean distortion power with its confidence interval, then show the
+  median and percentile range of inferred intercepts.
 - **C5 · Compression, and where the budget stops.** The chain's input 1 dB compression
   point is −17.680 dBm under the cubic model, 9.636 dB below its input IP3. Drive
   harder and the extrapolation stops describing the chain. The guard warns 10 dB below
@@ -539,17 +544,17 @@ numbers to each block and one table below the strip, and nothing else.
   80.052 dB. Ten times the distance costs 20.000 dB more, and twice the distance costs
   6.0206 dB. Measured: the loss at four distances, and the two ratios.
 - **E2 · The whole link, as a sum.** +20 dBm, two 2 dBi antennas and 80.052 dB of loss
-  give −56.052 dBm at the receiver. Against a −94.990 dBm floor the signal-to-noise
-  ratio is 38.938 dB, and the margin over a required 20 dB is 18.938 dB. Measured:
+  give −56.052 dBm at the receiver. Against a −94.965 dBm floor the signal-to-noise
+  ratio is 38.913 dB, and the margin over a required 20 dB is 18.913 dB. Measured:
   every line item, and the sum.
 - **E3 · The link that does not close.** Move the same link to 1.000 km. The received
-  power is −76.052 dBm, the signal-to-noise ratio is 18.938 dB, and the margin is
-  −1.062 dB. Turn the transmitted power, the antenna gain or the bandwidth until it
+  power is −76.052 dBm, the signal-to-noise ratio is 18.913 dB, and the margin is
+  −1.087 dB. Turn the transmitted power, the antenna gain or the bandwidth until it
   closes, and read which is cheapest. Measured: the margin, and the three ways to
   recover it.
-- **E4 · From power to bits.** `C/N_0` is 111.950 dB-Hz for the 100 m link. At
-  1.000 Mbit/s that is 51.950 dB of `E_b/N_0`, and at 54.00 Mbit/s it is 34.626 dB.
-  Shannon's limit over the same 20.00 MHz is 258.72 Mbit/s. The bit error rate is the
+- **E4 · From power to bits.** `C/N_0` is 111.923 dB-Hz for the 100 m link. At
+  1.000 Mbit/s that is 51.923 dB of `E_b/N_0`, and at 54.00 Mbit/s it is 34.626 dB.
+  Shannon's limit over the same 20.00 MHz is 258.535 Mbit/s. The bit error rate is the
   Communications Lab's, and the term panel says so. Measured: `C/N_0`, three
   `E_b/N_0` values and the capacity.
 
@@ -609,8 +614,8 @@ numbers to each block and one table below the strip, and nothing else.
 - **Experiments**: every number in §5 pinned, as every other lab pins its notes. The
   cascade pins are 38.000 dB, 4.6663 dB, −8.0444 dBm, 30.33 %, 33.91 % and 62.45 %.
   The dynamic-range pins are −173.975 dBm/Hz, −116.299 dBm, −106.299 dBm, 72.170 dB
-  and 98.618 dB. The link pins are 80.052 dB, −56.052 dBm, 18.938 dB, 205.106 dB and
-  111.950 dB-Hz.
+  and 98.618 dB. The link pins are 80.052 dB, −56.052 dBm, 18.913 dB, 205.106 dB and
+  111.923 dB-Hz.
 - **Budget against simulation**: every experiment in Groups B, C and D that quotes a
   budget also runs the same chain through `runChain` and compares. The agreement is
   invariants 5, 6 and 8, and the experiment fails when they disagree beyond the stated

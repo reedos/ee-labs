@@ -1,5 +1,7 @@
 # Interfaces Lab: the plan
 
+> Local implementation checkpoint, 2026-09-08: A–G is implemented locally (30 lessons), including both classical CAN oscillator bounds and a working Signal Lab handover of the folded tone and sample rate. Models state their protocol/electrical limits; these are instructional experiments, not complete protocol-controller implementations.
+
 A lab for **embedded interfaces and buses**, the course where a microcontroller
 meets the analog world. It starts at the pin, which is Electronics D5's switch
 driving a load and D6's inverter reading one. Above the pin it puts four protocols

@@ -161,7 +161,10 @@ export default function NumField({
       case 'Enter':
         e.preventDefault()
         commit(e.currentTarget.value)
-        requestAnimationFrame(() => inputRef.current?.select())
+        requestAnimationFrame(() => {
+          // A fast tab or click may already have moved to the next field.
+          if (document.activeElement === inputRef.current) inputRef.current?.select()
+        })
         break
       case 'Escape':
         e.preventDefault()

@@ -1,5 +1,7 @@
 # Mixed-Signal Lab: the plan
 
+> Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented: acquisition, ideal charge projection checked against a finite-R native transient, signed charge injection, kT/C, phase-controlled bottom-plate sampling, and seeded aperture jitter. The general switched-capacitor topology engine and complete converters/PLLs in later groups remain planned. Sampling phase and differential-voltage sign are explicit in the worked math.
+
 Tier 4 of `ANALOG_ROADMAP.md`. Circuits with a clock, where the answer is a sequence
 rather than a waveform. The interaction model changes: a schematic whose switches
 move with the phase, a scrub through one clock period, and an output that is a
@@ -649,8 +651,9 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
 
 - **A1 · A sample is an RC that ran out of time.** The switch's `R_on = 1.00 kΩ` into
   `C_S = 1.00 pF` gives `τ = 1.00 ns` and a 159.2 MHz bandwidth. Half an LSB needs
-  `ln(2^(B+1))` time constants, so 7.625 ns at 10 bits and 9.011 ns at 12 bits. Cut the
-  acquisition short by one time constant and the error is 36.8 % of what remained.
+  `ln(2^(B+1))` time constants, so 7.625 ns at 10 bits and 9.011 ns at 12 bits. Extend the
+  acquisition by one time constant and the error is 36.8 % of what remained.
+  Shortening it by one time constant instead increases the error by a factor of e.
   Measured: the time constant, the settling time at four resolutions, and the error
   against `e^{−t/τ}`.
 - **A2 · Two capacitors and a switch, with no resistance between them.** Ideal
@@ -662,9 +665,11 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
   time constants.
 - **A3 · Charge injection is a device size.** `Q_ch = W L C_ox V_ov = 2.097 fC` for a
   1.00 × 0.18 µm switch at 1.35 V of overdrive. Half of it lands on `C_S` and makes
-  1.049 mV, which is 4.29 LSB of a 12-bit 1 V converter. A dummy switch halves it, and
-  its own mismatch leaves about a tenth. Clock feedthrough through `C_ov = 0.20 fF`
-  adds 0.360 mV. Measured: the charge, the step, the LSB count, and the residual after
+  1.049 mV, which is 4.29 LSB of a 12-bit 1 V converter. An ideal half-width dummy cancels the assumed half-channel contribution;
+  a 10% charge mismatch leaves 10% of that channel step. It does not cancel
+  clock feedthrough. Clock feedthrough through `C_ov = 0.20 fF`
+  adds a −0.360 mV step for a falling 1.8 V clock. NMOS top-plate injection is
+  also negative; bottom-plate injection has the opposite sign in Vtop−Vbottom. Measured: the charge, the step, the LSB count, and the residual after
   a dummy switch.
 - **A4 · `kT/C` sets the floor, and R is not in it.** The sampled noise is
   `√(kT/C)`, 64.36 µV rms on 1.00 pF and 203.5 µV rms on 0.1 pF, whatever `R_on` is.
