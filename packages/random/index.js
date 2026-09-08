@@ -95,3 +95,5 @@ export {
 } from './src/wiener.js'
 
 export { kalmanSteadyState, kalmanRun, stationaryVariance } from './src/kalman.js'
+
+export {parameterEnsemble} from './src/parameterEnsemble.js'
