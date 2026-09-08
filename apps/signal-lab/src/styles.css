@@ -541,18 +541,12 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
   .view {
     padding: 2px 10px 2px;
   }
-  /* The header above the lesson picker is chrome ahead of the one thing a
-     student must touch: the lab-nav (its full row costs more height than a
-     phone's featured-knob budget can spare — TopBar's compact `.suite-nav`
-     below carries the same three links instead, so hiding this row is no
-     longer a dead end), the app's own name (redundant with the lesson's own
-     title an inch below) and the folded reference to what the top bar's own
-     controls mean (reachable from the top bar itself, and rarely needed on
-     a first look). Together they cost the featured knob a lesson's try line
-     names — the thing "ahead of chrome" means here, same as the source
-     cards below — most of its own height. */
+  /* Keep the shared suite navigation visible on phones, as in the other labs.
+     Wrap on narrow screens so every destination stays reachable. */
   .controls header nav.labnav {
-    display: none;
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: 8px;
   }
   .controls header h1 {
     display: none;
@@ -623,90 +617,6 @@ details.terms dd { margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: 
      trade away. */
   .lesson-note {
     margin-top: 3px;
-  }
-}
-
-/* ---------- phone's way out: the compact suite nav in the top bar ----------
- * TopBar.jsx's SuiteNavCompact — the suite home and both sibling labs, folded
- * behind one button, so the sidebar's LabNav row can stay hidden on a phone
- * (above) without sealing a student inside this lab. Desktop already has the
- * full LabNav row, so this stays hidden there.
- *
- * Two things had to be undone to get here, both found by measuring against
- * an assembled copy standing in for the deployed site (a standalone preview
- * never renders this at all — homeUrl() resolves null off a bare dev port,
- * same as LabNav). First: TopBar.jsx renders it as the LAST child of
- * `.topbar-controls`, not a sibling of that whole group. `.topbar-controls`
- * already fills its row edge to edge at 390px (Rate + FFT alone leave under
- * 10px of slack), so a new item ANYWHERE before FFT evicts FFT onto Window's
- * own short row, turning a 26px row into a 62px one — a cost that has
- * nothing to do with the new item's own size. Tucked in after Window
- * instead, it shares Window's existing row inside Window's own slack (239px
- * of it), so `.topbar`'s measured height is unchanged to the pixel.
- * Second: the trigger is a `.ghost`, and base.css's OWN phone rule grows
- * every `.ghost` to a real 44x44, which — even sharing Window's row — still
- * pushed both plot canvases past the 390x844 fold (item 10j/10k's own
- * budget). `min-height`/`min-width`/`padding` are reset back down here, and
- * the button gets the OTHER technique base.css documents for exactly this
- * kind of control (the suite nav, "report issue", the lesson nav's
- * prev/next/reset): keep the visible glyph small and add an invisible
- * `::after` hit area instead — credited by tapTargetProbe's own pseudo-
- * element reader, so it reaches the suite's 44px floor without moving or
- * resizing anything on screen. */
-.suite-nav { display: none; }
-@media (max-width: 900px) {
-  .suite-nav {
-    display: inline-flex;
-    position: relative;
-  }
-  .suite-nav-open {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    min-height: 0;
-    min-width: 0;
-    padding: 3px 8px;
-    font-size: 11px;
-  }
-  .suite-nav-open::after {
-    content: '';
-    position: absolute;
-    inset: -14px -6px;
-  }
-  .suite-nav-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(4, 7, 10, 0.55);
-    z-index: 40;
-  }
-  .suite-nav-panel {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    z-index: 41;
-    display: flex;
-    flex-direction: column;
-    min-width: 160px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-    padding: 4px;
-  }
-  .suite-nav-panel a {
-    display: flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    color: var(--text);
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .suite-nav-panel a:hover {
-    background: var(--panel-2);
-    color: var(--accent);
   }
 }
 
