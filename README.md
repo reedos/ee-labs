@@ -51,8 +51,8 @@ anchored learning views as Circuit Elements:
 
 - [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 16 lessons,
   amplifier foundations, board-level stability, precision and calibration.
-- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 11 lessons,
-  device foundations, bias, startup and reference drift.
+- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 17 lessons,
+  device foundations, bias, references and amplifier architectures.
 - [Mixed-Signal](https://reedos.github.io/ee-labs/mixed-signal-lab/): 12 lessons,
   sampling foundations and switched-capacitor circuits.
 

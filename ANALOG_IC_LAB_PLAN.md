@@ -560,38 +560,42 @@ Groups C onward, a general EKV netlist companion and transistor-level startup
 remain planned. The foundation charge law and the explicitly separate square-law
 bias comparison are not mixed into one supposed foundry model.
 
-### Group C: Op-amp architectures (6)
+### Group C: Op-amp architectures (6) — implemented
 
-Every experiment in this group answers the same specification: 60 dB of gain, a
-20 MHz unity-gain frequency into 2.00 pF, at least 1.0 V of differential output swing,
-and under 200 µW. The architecture table is the answer sheet.
+The comparable amplifier targets are 60 dB gain, 20 MHz actual unity crossover
+at the selected load (default 2 pF), 1 V **single-ended peak-to-peak** output
+window, at most 200 µW, and at least 45° phase margin. C2 compares four declared
+models at the selected supply/load. C5 and C6 isolate output/input stages and do
+not pretend that a partial stage establishes all complete-amplifier metrics.
 
-- **C1 · The telescopic cascode.** Four devices stacked, `g_m = 300 µS`, cascoded
-  output resistance 150 MΩ. Gain 81.02 dB, unity gain 23.87 MHz on 40 µA, so 72.0 µW.
-  Output swing 1.2 V single-ended, and the input common-mode range is narrow because
-  the tail and the cascode share the rail. Measured: gain, unity gain, swing, power,
-  and the input range.
-- **C2 · The folded cascode.** The same gain and the same unity gain, with the input
-  common-mode range reaching a rail and 1.2 V of swing, at twice the current, 144 µW.
-  Measured: the same five, and the current the fold costs.
-- **C3 · The two-stage Miller amplifier.** `g_m1 = 200 µS` into `g_m2 = 500 µS`, gain
-  73.98 dB, `f_t = 31.83 MHz` with `C_c = 1.00 pF`, swing 1.5 V, 126 µW, and
-  `SR = 20.0 V/µs`. Lower gain than the cascodes and more swing than either. Measured:
-  all five, and the slew rate as `I_tail/C_c`.
-- **C4 · Gain boosting.** An auxiliary amplifier of gain 40 around each cascode raises
-  the output resistance by that factor and the gain to 113.1 dB, at 60 µA. The price is
-  two more loops, each with its own margin, and D3 reads them. Measured: the gain, the
-  output resistance, and the two auxiliary loops' margins.
-- **C5 · The class AB output stage.** A follower output limits the swing to a threshold
-  and a saturation voltage from each rail, and it wastes quiescent current. A class AB
-  common-source pair swings to 1.5 V single-ended and delivers more than its quiescent
-  current. Measured: the swing, the quiescent current, and the peak output current for
-  both.
-- **C6 · Rail-to-rail input.** Two pairs, one NMOS and one PMOS, hand over as the
-  common mode crosses. `g_m` doubles in the overlap unless the tail currents are
-  steered, and the unity-gain frequency doubles with it. Measured: `g_m` against the
-  input common mode, with and without steering, and the resulting unity-gain frequency
-  spread.
+- **C1:** Native two-branch cascode model, including 20 fF internal capacitors.
+  Each branch has 2ro+gm ro²; their parallel combination is 38 MΩ at default
+  gm=300 µS and ro=500 kΩ, giving 11,400 V/V (81.138 dB). This corrects the
+  earlier inconsistent 150 MΩ/81 dB pair. Input-drain bias 0.30 V, threshold
+  0.45 V and tail compliance 0.10 V explicitly define the headroom calculation.
+- **C2:** PMOS input/folded headroom with the same output small-signal model,
+  explicitly allocating twice the tail current. The input range can reach
+  ground within this declared bias model; no extra folded-node pole or complete
+  transistor operating-point solution is claimed.
+- **C3:** Native two-node Miller circuit retains capacitor feedforward and its
+  right-half-plane zero. Actual crossover and phase margin use the full transfer;
+  gm1/(2πCc) is labeled an estimate. IT/Cc is a slew estimate, not a clipped
+  transient. Stage Early voltage is 5 V with separately stated current allocation.
+- **C4:** Two finite-bandwidth auxiliary amplifiers control actual cascode gates.
+  Native broken-source tests independently verify both local return ratios with
+  the other local loop retained. Frequency scans find rising/falling unity
+  crossings even when both endpoint gains are below one. All crossings are shown;
+  absence of a crossing means undefined phase margin. Multiple crossings call
+  for a complete Nyquist/pole assessment, not a stability claim from one number.
+- **C5:** Complementary source-follower and common-source current capability use
+  native square-law cutoff/triode/saturation regions and rail-clamped gate drive.
+  A selected output voltage is a static imposed load-test point. Idle compliance
+  window and driven current capability are separate quantities.
+- **C6:** Solve NMOS/PMOS tail current against available source-node headroom.
+  Sum gm from those currents. Ideal bias control solves the common current
+  command; square-law overlap requires quarter-current tails for constant gm.
+  A separately declared one-pole output converts gm to bandwidth. The bias
+  controller is a target model, not a transistor steering circuit.
 
 ### Group D: Fully differential (4)
 

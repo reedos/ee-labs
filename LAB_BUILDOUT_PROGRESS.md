@@ -308,3 +308,18 @@ resistor matching, three-amplifier instrumentation and chopped periodic state;
 independent error-envelope checks cover calibration. All 10 Applied Analog tests
 pass; all 16 lessons pass four-view browser checks at 1440, 390 and 320 px.
 Publication verification is recorded after deployment.
+
+
+## Analog IC architectures — Group C
+
+Six architecture lessons extend Analog IC to 17 entries. All retain the existing
+learning layout. Native AC and broken-loop checks verify cascodes, Miller
+feedforward, overall feedback, and each auxiliary booster. Static output stages
+and complementary input tails use the native square-law device law. Limits of
+the folded headroom model, ideal gm steering and one-pole bandwidth comparison
+are stated in the lessons. No full foundry design or stage-level stability is
+inferred from a gm/C estimate. The app remains unlisted.
+
+Architecture validation: 11 tests across three files; 17 lessons × four views ×
+1440/390/320 px. Additional browser checks cover Miller drawing label separation
+and complementary-pair cutoff on changing common mode.
