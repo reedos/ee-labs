@@ -178,7 +178,7 @@ export function readLocationLink() {
  * RELEASED labs link back to a dark one is a separate decision, made in
  * LabNav's own `LABS` list, and adding a name here must not change that.
  */
-const APPS = ['signal-lab', 'circuit-lab', 'control-lab', 'circuit-elements-lab', 'power-lab']
+const APPS = ['signal-lab', 'circuit-lab', 'control-lab', 'circuit-elements-lab', 'power-lab', 'electronics-lab']
 
 /**
  * The URL of a sibling app in the deployed suite, or null.
