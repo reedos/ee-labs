@@ -1,5 +1,6 @@
 # Mixed-Signal Lab: the plan
 
+> Current Group E checkpoint, 2026-09-08: Groups A–E are implemented in the app. The Group E section below records the actual models and corrections to the original numerical examples; Group F onward remains planned. Earlier checkpoints below are historical.
 > Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented: acquisition, ideal charge projection checked against a finite-R native transient, signed charge injection, kT/C, phase-controlled bottom-plate sampling, and seeded aperture jitter. The general switched-capacitor topology engine and complete converters/PLLs in later groups remain planned. Sampling phase and differential-voltage sign are explicit in the worked math.
 
 Tier 4 of `ANALOG_ROADMAP.md`. Circuits with a clock, where the answer is a sequence
@@ -396,13 +397,7 @@ export function quantiser({ levels, step, mode: 'mid-tread' | 'mid-riser' })
 export function modulator(spec)
 ```
 
-`exact` is a switched simulation with the quantiser's decision at each clock, and it
-is exact. `linear` is a **different object**, labelled, in which the quantiser is
-replaced by an additive white source. CORE_SCOPE Rule 1 forbids substituting one for
-the other, so the pane draws both and E1 is where they part. The guard is the input
-amplitude against the modulator's stable input range, 0.7 of full scale for a
-second-order loop with a one-bit quantiser. Above it the pane says the loop has
-overloaded and the linear model no longer describes it.
+The Group E implementation runs the declared nonlinear sampled-data recurrence, including the quantizer decision at every sample. It is an exact implementation of that behavioral recurrence, not a transistor-level switched-capacitor simulation. The independent uniform-error model is a separate object. The state guard stops at a declared observed magnitude; a universal 0.7-full-scale cutoff is not used. Bounded finite records can still depart substantially from white-noise predictions because their quantizer error is correlated or nonuniform.
 
 ### 2.6 The PLL in the phase domain
 
@@ -472,12 +467,8 @@ Across random capacitor values, clock rates and switch models:
    testable form of the phrase "parasitic-insensitive".
 9. **The approximation's error is the formula.** The ratio of `hzOf`'s magnitude to
    the `R_eq` model's equals `(ωT/2)/sin(ωT/2)` at every frequency, to 10⁻¹².
-10. **The modulator's two models are separate.** `exact` and `linear` are never
-    equal by construction, and the guard flag is true above 0.7 of full scale for the
-    second-order one-bit loop.
-11. **Noise shaping is the loop.** The measured in-band noise power of the exact run
-    equals the linear model's prediction within 1 dB below the overload limit, and
-    diverges above it, which is what the guard reports.
+10. **The modulator's two models are separate.** Nonlinear output and independent white-error records are generated separately. Overload is detected from the actual state trajectory, with its threshold and observation length disclosed.
+11. **Noise shaping follows the recurrence.** Check the exact sample identity y−u=(1−z⁻¹)^L e independently of any distributional assumption. Check white-model spectral power statistically; do not require every deterministic nonlinear record to agree within 1 dB. Periodogram windowing and finite-band integration are part of the measurement contract.
 12. **The PLL's model is rational.** `open` evaluated at jω equals a direct
     phase-domain simulation at 241 points, to 10⁻⁹ relative, inside the guard.
 13. **Cross-lab.** An SC biquad's `{b, a}` sent to Signal Lab gives the same `f₀` and Q
@@ -763,7 +754,7 @@ planned. Finite phase settling is separate from this ideal-event model.
   voltage estimate, not repaired physical DAC INL or restored missing ADC data.
 
 All use the current four-view workbench, defined notation, numeric substitutions,
-practice, and parameter-driven plots/tables. Group D is implemented below; Group E onward remains planned.
+practice, and parameter-driven plots/tables. Groups D and E are implemented below; Group F onward remains planned.
 
 ### Group D: Converters, the dynamic errors (5) — implemented
 
@@ -800,37 +791,16 @@ practice, and parameter-driven plots/tables. Group D is implemented below; Group
   or 17,478,638 total, versus about 1111 per code for one standard deviation.
   Simultaneous confidence is not equated with the pointwise planning estimate.
 
-### Group E: Noise shaping (6)
+### Group E: Noise shaping (6) — implemented
 
-- **E1 · The quantiser is nonlinear, and the linear model is a different object.** With
-  a slow ramp the quantisation error is a sawtooth, not white noise, and its spectrum
-  is a comb. With a busy input it looks white. The pane draws the exact run and the
-  linear model together, and E1 is where they part. Measured: the error's spectrum for
-  both inputs, and the two models' predicted noise power.
-- **E2 · Oversampling buys bits, slowly.** Spreading the same quantisation power over a
-  wider band leaves less in the signal band. Every doubling of the oversampling ratio
-  buys 3.01 dB, which is half a bit. Measured: the in-band noise at four ratios against
-  `Δ²/(12·OSR)`.
-- **E3 · A loop shapes it.** A first-order modulator's noise transfer function is
-  `1 − z⁻¹`, which is zero at DC. At `OSR = 64` with a one-bit quantiser at levels ±1
-  and a full-scale input, the ratio is 50.77 dB, which is 8.14 effective bits. Every
-  doubling of the ratio now buys 9.03 dB. Measured: the noise transfer function from
-  the loop, the in-band power at three ratios, and the 9.03 dB slope.
-- **E4 · Second order, and the price of it.** `(1 − z⁻¹)²` at `OSR = 64` with a half
-  full-scale input gives 73.15 dB, which is 11.86 bits, and every doubling buys
-  15.05 dB. The loop is stable only below about 0.7 of full scale with a one-bit
-  quantiser, and that is the guard. Measured: the ratio at three oversampling ratios,
-  the 15.05 dB slope, and the guard firing above the stable input range.
-- **E5 · Overload is a different circuit.** Above the stable input the integrator
-  states grow without bound and the output becomes a long run of one symbol. The linear
-  model predicts nothing about it, and the pane says so rather than drawing it.
-  Measured: the state trajectory at 0.6, 0.7 and 0.8 of full scale, and the flag the
-  guard sets.
-- **E6 · Decimation, and its droop.** A `sinc³` filter with `N = 64` follows a
-  second-order modulator, because an `L`th-order loop needs an `L + 1` order comb. At
-  the band edge `f_s/128` its droop is 11.76 dB, which one corrector stage removes.
-  Measured: the response at the band edge and at half of it, the first null at
-  15.63 kHz, and the corrected passband.
+- **E1 · Nonlinear quantization versus a noise approximation.** Slow-ramp and seeded busy records run through an explicit midrise quantizer. Actual error, power, lag-one correlation and spectrum are compared with a separate independent uniform-error record.
+- **E2 · Oversampling.** The white model gives Δ²/(12·OSR), 3.0103 dB and half a bit per doubling. Actual error bins are integrated independently, so correlated error need not follow that curve.
+- **E3 · First order.** x1[n]=x1[n−1]+u[n]−y[n−1], followed by y=Q(x1), produces STF=1 and NTF=1−z⁻¹. Levels are ±1 V. The full-scale-sine white-error model is about 50.78 dB at OSR 64; an actual finite-record ratio is also measured without forcing agreement.
+- **E4 · Second order.** Update x1, then x2[n]=x2[n−1]+x1[n]−y[n−1], then y=Q(x2). The additive-error identity gives NTF=(1−z⁻¹)² and the large-OSR 15.0515 dB/doubling slope. Exact-sine integration predicts 73.1543 dB at 0.5 V peak and OSR 64 under the white-error assumption. Nonlinear state excursions and measured error remain separate evidence.
+- **E5 · Overload.** Zero-state DC/sine runs stop at the first state magnitude above a declared 100 V behavioral guard. No universal 0.7-full-scale boundary is imposed: 0.6/0.7/0.8 V DC remain below the guard in the default finite run; 1.1 V DC crosses it. A constant input above the ±1 V DAC range has an algebraic unbounded-state proof. A finite no-crossing observation is not a general stability guarantee.
+- **E6 · Decimation.** Actual second-order output passes through three normalized moving-average FIRs before downsampling. The sinc³ Nyquist droop is measured (11.7646 dB at R=64). A three-tap output-rate corrector matches DC and the chosen edge, leaving measured interior ripple and added delay. Neither a universal sinc-order rule nor perfect one-stage flattening is claimed.
+
+Noise-shaping spectra use a power-normalized Hann window to limit endpoint leakage from large out-of-band noise. E1/E2 retain rectangular-window Parseval accounting. Record length, coherent tone, warm-up, state timing, DC treatment and frequency normalization are explicit. General transistor-level converters, finite-word-length CIC implementations and PLL groups remain planned.
 
 ### Group F: Clocks (6)
 

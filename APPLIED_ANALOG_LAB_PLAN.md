@@ -1,5 +1,6 @@
 # Applied Analog Lab: the plan
 
+> Current Group E checkpoint, 2026-09-08: Groups A–E are implemented in the app. The Group E section below records the actual models and corrections to the original numerical examples; Group F onward remains planned. Earlier checkpoints below are historical.
 > Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented. The six device classes are explicitly illustrative curriculum models, not current manufacturer specifications. A1/A2 compare closed forms with native nodal AC solves; A3 uses the native limited op-amp transient; A4–A6 teach stated noise, error and supply budgets. Later groups, datasheet-specific model libraries, general sensitivity/Monte Carlo tools and design synthesis remain future work.
 
 Tier 2 of `ANALOG_ROADMAP.md`, and the first lab in the suite where the reader is
@@ -563,7 +564,7 @@ transfer functions. Native state propagation checks the small-step response.
 Loop handovers send exact return-ratio coefficients to Control Lab. That app's
 T/(1+T) response is distinguished from the load-voltage transfer where necessary.
 Large-signal clipping/slew, device extra poles and board parasitics remain outside
-these models. Groups C and D are implemented below; Group E onward remains planned.
+these models. Groups C–E are implemented below; Group F onward remains planned.
 
 ### Group C: Precision (5) — implemented
 
@@ -639,31 +640,15 @@ a conditional DC/steady thermal budget and an architecture comparison. They
 do not claim a complete transistor-level reference, nonlinear LDO startup,
 modern-part ESR specification, or a finished switching-regulator design.
 
-### Group E: Front ends (5)
+### Group E: Front ends (5) — implemented
 
-- **E1 · High-side current sensing.** A 100 mΩ shunt at 1 A gives 100 mV and
-  dissipates 0.100 W. Through a 0.1 % difference amplifier, a 12 V common mode adds
-  24.0 mV, which is 24.0 % of the reading. A part with 100 dB of rejection adds 120 µV,
-  which is 0.120 %. Measured: the shunt voltage, and both errors as fractions.
-- **E2 · Low-side sensing moves the problem to the ground.** No common mode, and a
-  10 mΩ ground trace at 1 A shifts the load's return by 10.0 mV. Measured: the sense
-  voltage, and the ground shift seen by the rest of the board.
-- **E3 · The RTD and its self-heating.** A Pt100 changes 0.3851 Ω/K, and 1 mA of
-  excitation makes 385.1 µV/K. That current dissipates 100 µW, which at 0.5 K/mW is
-  0.0500 K of self-heating error. A 1 Ω lead resistance in a two-wire connection reads
-  as 2.597 K. Measured: the slope, the self-heating, and the two-wire error against
-  four-wire.
-- **E4 · The thermocouple and its cold junction.** A type K junction gives 41 µV/K, so
-  a 0 to 1000 K span needs a gain of 243.9 to reach 10 V. A 1 mV amplifier offset
-  reads as 24.39 K, and 1 K of cold-junction error reads as 1 K. Measured: the gain,
-  the offset referred to temperature, and the cold-junction correction.
-- **E5 · The anti-aliasing filter, designed.** A 12-bit converter has a 74.0 dB
-  ceiling. At 1 MSPS with a 100 kHz band the first alias arrives at 900 kHz, nine
-  times the corner. A Butterworth filter therefore needs order 3.877, which rounds to
-  4. That order gives 76.34 dB there and costs 3.010 dB at the corner. Oversampling
-  four times drops the order to 2.325. Measured: the required order, the attenuation
-  at 900 kHz for orders 3 and 4, and the passband droop. **Design task:** meet 74 dB
-  of alias rejection with a passband flat to 0.1 dB at 100 kHz.
+- **E1 · High-side current sensing.** Exact difference-amplifier KCL with a declared four-resistor tolerance corner. Differential-gain error and common-mode leakage are separately input-referred. At G=1, t=0.001 and 12 V common mode, the exact common-mode term is −24.024 mV; 24 mV is its first-order estimate. A separately specified 100 dB CMRR produces 120 µV input error.
+- **E2 · Low-side sensing and grounding.** Kelvin sensing excludes the shared trace from the readout. The load return still rises by I(Rs+Rt), not just I·Rt. The extra trace drop and total return rise are separate readings.
+- **E3 · RTD excitation and self-heating.** Explicit local linear Pt100 law, slope 0.3851 Ω/K, with exact electrothermal equilibrium and one thermal state. A per-lead resistance is counted twice. Four-wire sensing removes lead error, not self-heating. This is not the full IEC CVD calibration.
+- **E4 · Thermocouple and cold junction.** Nonlinear ITS-90 type K direct function and bounded numerical inverse, with cold-junction compensation on the voltage scale. Local hot/cold sensitivity explains offset and cold-sensor error. The constant 41 µV/K shortcut is compared rather than used over a 1000 °C span.
+- **E5 · Anti-aliasing design.** Both Butterworth inequalities determine the allowed corner interval and minimum integer order. At 1 MSPS, 100 kHz band, 74 dB rejection and 0.1 dB passband loss, order 5 is required; the earlier order-4 example admitted 3 dB passband loss. The selected order and corner each receive pass/fail checks.
+
+These are explicit teaching models, not a datasheet-qualified sensor interface or automatically synthesized hardware.
 
 ### Group F: Filters to a specification (5)
 

@@ -1,6 +1,6 @@
 # Mixed-Signal Lab
 
-23 working experiments across Groups A–D. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+29 working experiments across Groups A–E. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 acquisition; A2 charge sharing; A3 signed injection and feedthrough; A4 kT/C; A5 bottom-plate phase order; A6 aperture jitter.
 
@@ -10,7 +10,7 @@ New lessons follow the Circuit Elements learning structure: Start here with symb
 
 ## Model scope
 
-A shared ideal-switch charge projection conserves floating-conductor charge while allowing driven nodes and ideal amplifier outputs to supply charge. Finite-gain coefficients come from the displayed phase topology. Sampled-filter handovers preserve z coefficients and explicitly label time scaling above Signal Lab’s 192 kHz limit. Groups C and D now cover static and dynamic converter errors. Noise-shaping, PLL and later groups remain planned.
+A shared ideal-switch charge projection conserves floating-conductor charge while allowing driven nodes and ideal amplifier outputs to supply charge. Finite-gain coefficients come from the displayed phase topology. Sampled-filter handovers preserve z coefficients and explicitly label time scaling above Signal Lab’s 192 kHz limit. Groups C and D now cover static and dynamic converter errors. Group E adds behavioral noise shaping and decimation. PLL and later groups remain planned.
 
 ## Run and check
 
@@ -41,3 +41,10 @@ directly. Histogram planning resolution is separate from the measured six-bit AD
 node scripts/verify-dynamic.mjs
 node scripts/verify-dynamic.mjs --live
 ```
+
+
+## Group E — Noise shaping
+
+E1 actual quantization error versus independent noise; E2 unshaped oversampling; E3/E4 explicit first/second-order one-bit recurrences; E5 observed overload and its limits; E6 actual sinc-cubed filtering, decimation and a finite three-tap droop corrector.
+
+All lessons retain defined symbols, worked numerical LaTeX, parameter-driven plots, aligned tables and answer-entry practice. Run `node scripts/verify-group-e.mjs` against an assembled site, or add `--live` after publication.
