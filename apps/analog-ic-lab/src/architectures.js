@@ -1,4 +1,4 @@
-import {complex,solveAC,mosfetOf,mosfetCurrent} from '@ee-labs/network'
+import {complex,loopCrossings,solveAC,mosfetOf,mosfetCurrent} from '@ee-labs/network'
 const {cadd,csub,cmul,cdiv,cabs}=complex
 const R=(id,a,b,value)=>({type:'R',id,nodes:[a,b],value}),C=(id,a,b,value)=>({type:'C',id,nodes:[a,b],value})
 const G=(id,a,b,plus,minus,gain)=>({type:'VCCS',id,nodes:[a,b],ctrl:[plus,minus],gain})
@@ -6,18 +6,7 @@ const V={type:'V',id:'V1',nodes:['in','gnd'],value:1}
 export const logPoints=(fn,lo=1e3,hi=1e9)=>Array.from({length:161},(_,i)=>{const x=lo*(hi/lo)**(i/160);return{x,y:fn(x)}})
 export function tfAt({b,a},f){const s=[0,2*Math.PI*f],poly=cs=>cs.reduce((z,c)=>cadd(cmul(z,s),[c,0]),[0,0]);return cdiv(poly(b),poly(a))}
 export const nativeAt=(net,f)=>solveAC(net,2*Math.PI*f,{sources:{V1:[1,0]},anyFreq:true}).v.out
-export function loopCrossings(at){
- const grid=Array.from({length:601},(_,i)=>10**(-3+15*i/600)),crossings=[]
- let previousPhase=0,unwrapped=0
- const points=grid.map(f=>{const z=at(f),phase=Math.atan2(z[1],z[0])*180/Math.PI;let delta=phase-previousPhase;while(delta>180)delta-=360;while(delta< -180)delta+=360;unwrapped+=delta;previousPhase=phase;return{f,mag:cabs(z),phase:unwrapped}})
- for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i];if((a.mag-1)*(b.mag-1)>0)continue;let lo=a.f,hi=b.f
-  for(let j=0;j<60;j++){const mid=Math.sqrt(lo*hi);if((a.mag-1)*(cabs(at(mid))-1)<=0)hi=mid;else lo=mid}
-  const crossover=Math.sqrt(lo*hi),z=at(crossover);let phase=Math.atan2(z[1],z[0])*180/Math.PI;while(phase-a.phase>180)phase-=360;while(phase-a.phase< -180)phase+=360
-  crossings.push({crossover,pm:180+phase,direction:b.mag<a.mag?'Falling':'Rising'})
- }
- const critical=crossings.reduce((a,b)=>!a||b.pm<a.pm?b:a,null)
- return{crossings,crossover:critical?.crossover??null,pm:critical?.pm??null}
-}
+export {loopCrossings} from '@ee-labs/network'
 export function cascode({tail=40e-6,gmid=15,cl=2e-12,vdd=1.8,vcm=.7,folded=0,boost=0,auxGBW=200e6,feedback=false}={}){
  const branch=tail/2,gm=branch*gmid,ro=10/branch,g=1/ro,cs=20e-15,vov=2/gmid,tau=boost/(2*Math.PI*auxGBW)
  const elements=[V,G('Ginput','gnd','out','in',feedback?'out':'gnd',gm),C('CL','out','gnd',cl)]

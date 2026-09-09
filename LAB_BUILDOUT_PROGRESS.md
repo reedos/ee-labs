@@ -9,7 +9,7 @@ main-checkout changes.
 | 2 | Prepare Electronics' 75 entries for release: coverage, explanations, browser review | Local preparation complete; remains dark |
 | 3 | Review the first five Interfaces and five VLSI experiments, then extend their planned groups | Deployed in 067c9c7: 25 Interfaces and 25 VLSI extensions, with final model, browser and integration checks |
 | 4 | RF E–H, Fields I–L, System B–F, Photonics B, Control II F3–F5 | Deployed in 067c9c7: RF 16, Fields 17, System 21, Photonics 4 and Control II 3 extensions |
-| 5 | Start Applied Analog, Analog IC and Mixed-Signal from their plans | Groups A–B deployed; Group C adds 5 Applied Analog, 6 Analog IC and 6 Mixed-Signal lessons, for totals 16 / 17 / 18 (publication checks below) |
+| 5 | Start Applied Analog, Analog IC and Mixed-Signal from their plans | Groups A–C deployed; Applied Analog D adds references/regulators for totals 21 / 17 / 18 (publication checks below) |
 
 ## Standards carried forward from Circuit Elements
 
@@ -361,3 +361,40 @@ Repository-wide verification completed with 10,417 passing tests and only the
 reproduced transformer precision assertion failing (400 files, 278.20 s). The
 corrected invariant and all final analog changes then passed the 50-test targeted
 run. A clean full-suite run and GitHub deployment gate verify the final commit.
+
+
+## Applied Analog references and regulators — Group D
+
+Five lessons extend Applied Analog to **21** entries. Analog IC stays at 17 and
+Mixed-Signal at 18; those apps’ Group D lessons are the next separate buildout.
+All three remain unlisted on the public splash page.
+
+The reference uses the shared Analog IC temperature law. The LDO uses native
+controlled-source circuit checks, explicitly derived two-state propagation and
+exact return-ratio handover. Supply rejection includes pass, reference and
+amplifier paths. Thermal calculations include quiescent loss and refuse to call
+an infeasible dropout target a predicted operating point. The selection task
+separates integrated white noise, switching ripple, ADC aliasing and assumed buck
+efficiency; Power Lab receives a validated editable ideal converter setup.
+
+Validation and publication results are recorded below after completion.
+
+Visual review also exposed a shared numeric-entry bug: scientific notation was
+multiplied by the displayed engineering prefix. Explicit scientific notation or
+base-unit suffixes now keep their own scale, while bare numbers still use the
+visible prefix. Regression checks cover 1e-7, 100n and bare 100 in a nanovolt field.
+
+The ideal buck handover automatically increases inductance at light load/low
+switching frequency to retain continuous conduction. Native Power Lab solutions
+check the 3.3 V average and ideal efficiency across the input/load/clock corners;
+the assumed 90% budget is never substituted for that ideal model result.
+
+Release checks: all 27 production builds pass. All 21 Applied Analog lessons pass
+four-view checks at 1440, 390 and 320 px. Extra browser checks cover diagram label
+separation, zero ESR, dropout refusal, scientific/prefixed numeric entry, plain
+number tables, both handovers and invalid incoming links. Assembled site checks
+pass for all 27 routes. The first full run passed 10,427 tests in 401 files; the
+final 78-test focused run includes the numeric-entry fix and native buck corners.
+A second full run passed 10,428 tests in 401 files (272.33 s); the final buck
+corner and lesson changes also pass the 78 focused tests. GitHub Pages runs the
+full suite again before deployment.
