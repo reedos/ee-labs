@@ -395,4 +395,6 @@ separation, zero ESR, dropout refusal, scientific/prefixed numeric entry, plain
 number tables, both handovers and invalid incoming links. Assembled site checks
 pass for all 27 routes. The first full run passed 10,427 tests in 401 files; the
 final 78-test focused run includes the numeric-entry fix and native buck corners.
-The final full-suite and GitHub Pages gate are checked during publication.
+A second full run passed 10,428 tests in 401 files (272.33 s); the final buck
+corner and lesson changes also pass the 78 focused tests. GitHub Pages runs the
+full suite again before deployment.
