@@ -1,6 +1,6 @@
 # Analog IC Lab: the plan
 
-> Current Group E checkpoint, 2026-09-08: Groups A–E are implemented in the app. The Group E section below records the actual models and corrections to the original numerical examples; Group F onward remains planned. Earlier checkpoints below are historical.
+> Current Group F checkpoint, 2026-09-08: Groups A–F are implemented in the app. The Group F section below records the actual models and corrections to the original numerical examples; Group G onward remains planned. Earlier checkpoints below are historical.
 > Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented as design calculations using one consistent charge-based long-channel law, plus a separately labeled short-channel comparison. The general EKV network companion and later circuit groups remain planned. The original log-squared current interpolation was inconsistent with its quoted charge-based gm/ID expression; the corrected voltage-charge relation below governs A1–A5.
 
 Tier 3 of `ANALOG_ROADMAP.md`. The same circuits as the Electronics Lab, made from
@@ -636,26 +636,12 @@ The UI does not claim a universal exact feedforward cancellation. Third-order mo
 
 ### Group F: Comparators (4)
 
-- **F1 · A preamplifier before a latch.** The preamplifier's gain divides the latch's
-  offset and its own input-referred noise sets the resolution. Gain 10 costs one
-  bandwidth and buys a factor of ten on both. Measured: the input-referred offset and
-  noise with and without the preamplifier.
-- **F2 · Regeneration is an exponential with an exact time constant.** The cross-coupled
-  pair is positive feedback in a region model, so `v(t) = V₀ e^{t/τ}` with
-  `τ = C/g_m`. At `g_m = 1.00 mS` and `C = 50.0 fF`, `τ = 50.0 ps`, and a 1.00 mV input
-  reaches 500 mV in 311 ps. From 1.00 µV it takes 656 ps. Measured: the time constant,
-  three resolution times, and the waveform against the exponential to 10⁻⁹.
-- **F3 · Hysteresis by design.** A fraction of the output fed back to the input makes
-  two consistent states, which `solvePWL` reports as hysteresis rather than as an
-  error. A ratio of 1/10 on a 1.00 V swing gives 100 mV of hysteresis. Measured: the
-  two thresholds, their difference, and the refusal message when the operating point is
-  asked for without a history.
-- **F4 · Metastability is a rate.** With `τ = 20.0 ps`, 100 ps of decision time
-  resolves 3.37 mV and leaves a failure probability of 6.74 × 10⁻³ over a 1 V range.
-  At 200 ps it is 22.7 µV and 4.54 × 10⁻⁵, and at 400 ps it is 1.03 pV and
-  2.06 × 10⁻⁹. At 5 GS/s those are a failure every 29.7 ns, every 4.41 µs and every
-  97.0 ms. A preamplifier of gain 10 buys 46.1 ps. Measured: the resolution and the
-  rate at four times.
+Implemented Group F model record (2026-09-08); this supersedes the earlier draft numerical promises.
+
+- **F1:** One-pole preamplifier, finite acquisition from zero, Aeff=Ap(1−exp(−t/τp)); offset referred through Aeff and independent sampled noise powers combined. Settled gain is not assumed available instantly.
+- **F2:** Effective differential C·dvd/dt=gm·vd, explicit initial difference and 0.5 V decision threshold. 1 mV with C=50 fF and gm=1 mS resolves in 310.730405 ps. Exponential stops at the threshold; no rail waveform is fabricated.
+- **F3:** Inverting Schmitt with symmetric ±Vrail rails and divider β. Native solvePWL/assumedState enumerate rail and balanced linear regions; history selects a consistent rail. Width is 2βVrail, so ±0.5 V with β=0.1 gives 100 mV.
+- **F4:** Uniform input over a full 1 V interval, independent decisions, settled noiseless gain, probability min(1,2VD exp(−T/τ)/(Ap W)). At 400 ps and τ=20 ps, threshold **1.03058 nV**, correcting the former pV typo. At 5 GHz the mean unresolved-event interval is 97.033 ms. This is not automatically system error rate or synchronizer MTBF.
 
 ### Group G: Translinear circuits and multipliers (4)
 

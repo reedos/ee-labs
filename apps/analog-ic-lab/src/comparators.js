@@ -1,0 +1,13 @@
+import {solvePWL,assumedState} from '@ee-labs/network'
+export function preamp({gain=10,gbw=1e9,time=2e-9,offset=.005,noise=.001,preNoise=50e-6}={}){const bw=gbw/gain,tau=1/(2*Math.PI*bw),effective=gain*(-Math.expm1(-time/tau));return {bw,tau,effective,offset:offset/effective,noise:Math.hypot(preNoise,noise/effective),at:t=>gain*(-Math.expm1(-t/tau)),dcOffset:offset/gain}}
+export function regeneration({gm=.001,cap=50e-15,initial=.001,threshold=.5}={}){const tau=cap/gm,time=tau*Math.log(threshold/initial);return {tau,time,at:t=>initial*Math.exp(t/tau)}}
+export function schmittNet({beta=.1,rail=.5,input=0}={}){return {elements:[{type:'V',id:'V1',nodes:['in','gnd'],value:input},{type:'OPAMP',id:'A1',nodes:['out'],ctrl:['p','in'],vsat:rail},{type:'R',id:'Rg',nodes:['p','gnd'],value:1e4},{type:'R',id:'Rf',nodes:['out','p'],value:1e4*(1-beta)/beta}]}}
+export function schmitt({beta=.1,rail=.5,input=0,history=0}={}){
+ const net=schmittNet({beta,rail,input}),states=assumedState(net).consistent.map(c=>({region:c.regions.A1,output:c.sol.v.out}));let refusal='The operating point is unique outside the hysteresis interval.'
+ try{solvePWL(net)}catch(e){if(e.code!=='multi-state')throw e;refusal=e.message}
+ const preferred=history?'low':'high';let sol;try{sol=solvePWL(net,{prefer:{A1:preferred}})}catch(e){if(e.code!=='multi-state')throw e;sol={sol:{v:{out:states.find(s=>s.region!=='linear').output}}}}
+ const threshold=beta*rail,sweep=direction=>{let out=direction===1?rail:-rail;return Array.from({length:401},(_,i)=>{const x=direction*(i/400*4*threshold-2*threshold);if(x>threshold)out=-rail;if(x< -threshold)out=rail;return{x,y:out}})}
+ return {threshold,width:2*threshold,states,refusal,output:sol.sol.v.out,rise:sweep(1),fall:sweep(-1)}
+}
+export function metastability({tau=20e-12,time=400e-12,gain=1,clock=5e9,range=1,threshold=.5}={}){const resolution=threshold*Math.exp(-time/tau)/gain,probability=Math.min(1,2*resolution/range),rate=clock*probability;return {resolution,probability,rate,interval:1/rate,credit:tau*Math.log(gain)}}
+export function schmittDrawing(p){const net=schmittNet(p),wire=(...v)=>({wire:v});return {elements:net.elements,caption:'Inverting Schmitt comparator. The output divider drives the + input; V1 drives the − input. Symmetric output rails ±Vrail are specified in the controls.',layout:{w:460,h:240,items:[{el:'V1',x:40,y:160,dir:'v'},{gnd:[40,180]},wire(40,140,40,110),wire(40,110,250,110),{el:'A1',x:250,y:122,invertTop:true},wire(288,122,405,122),{node:'out',x:405,y:122,labelPos:'r'},wire(405,122,405,40),wire(405,40,305,40),{el:'Rf',x:285,y:40,dir:'h'},wire(265,40,170,40),wire(170,40,170,134),wire(170,134,250,134),{node:'p',x:170,y:134,labelPos:'l'},wire(170,134,170,165),{el:'Rg',x:170,y:185,dir:'v'},{gnd:[170,205]}]}}}
