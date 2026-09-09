@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import {chromium} from 'playwright'
 import {LABS} from './assemble-site.mjs'
-const totals=(process.argv.find(a=>a.startsWith('--counts='))?.slice(9)??'35,33,40').split(',').map(Number)
+const totals=(process.argv.find(a=>a.startsWith('--counts='))?.slice(9)??'40,37,40').split(',').map(Number)
 const base='https://reedos.github.io/ee-labs',foundation=process.argv.includes('--foundation'),browser=await chromium.launch({headless:true})
 try{
  for(const lab of LABS){const response=await fetch(`${base}/${lab}/`);assert.equal(response.status,200,lab)}

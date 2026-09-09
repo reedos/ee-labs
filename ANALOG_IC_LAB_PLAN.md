@@ -1,6 +1,6 @@
 # Analog IC Lab: the plan
 
-> Current Group G checkpoint, 2026-09-09: Groups A–G are implemented in the app. The Group G section records the actual models and corrections to draft examples. Groups H onward remain planned. Earlier checkpoints below are historical.
+> Current Group H checkpoint, 2026-09-09: Groups A–H are implemented. The Group H record describes actual models and corrections to draft examples. Groups I onward and broader engine/product features remain planned. Earlier checkpoints are historical.
 > Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented as design calculations using one consistent charge-based long-channel law, plus a separately labeled short-channel comparison. The general EKV network companion and later circuit groups remain planned. The original log-squared current interpolation was inconsistent with its quoted charge-based gm/ID expression; the corrected voltage-charge relation below governs A1–A5.
 
 Tier 3 of `ANALOG_ROADMAP.md`. The same circuits as the Electronics Lab, made from
@@ -652,25 +652,14 @@ Implemented Group G model record (2026-09-09); this replaces the draft numerical
 - **G3:** A nonlinear signal pair and finite-tanh or hard-switched LO generate coherent sidebands and explicit tail-current-imbalance feedthrough. The 2/π factor is normalized to the signal-pair tangent gain, not total voltage gain. Signal Lab opens a clearly labeled ideal sine-multiplier comparison; it does not impersonate the nonlinear/hard-switched cell.
 - **G4:** A translinear current-ratio cell gives gain Ic/Ir and exponential voltage control, linear in decibels before limiting. Available control current explicitly clips the requested gain. A single bounded differential-pair steering fraction is not used as an unbounded current-gain law.
 
-### Group H: Integrated filters (4)
+### Group H: Integrated filters and tuning (4) — implemented
 
-- **H1 · The `g_m`-C integrator.** A transconductor into a capacitor integrates with a
-  unity-gain frequency of `g_m/(2πC) = 1.592 MHz` at 100 µS and 10.0 pF. Finite output
-  resistance makes it leaky, with a DC gain of `g_m r_o = 150`. Measured: the unity-gain
-  frequency, the DC gain, and the phase at the unity-gain frequency against 90°.
-- **H2 · The `g_m`-C biquad.** Two integrators in a loop. `f_0 = √(g_m1 g_m2/(C1 C2))/2π`
-  and `Q = √(g_m1 C2/(g_m2 C1))`, so equal parts give `f_0 = 1.592 MHz` and `Q = 1`.
-  The integrators' finite DC gain raises Q, by 3.45 % at a design Q of 5. Measured:
-  `f_0` and Q from `transferOf`, and the Q error against the leak.
-- **H3 · Tuning against process spread.** A 20 % capacitor spread moves `f_0` by 20 %,
-  and an active-RC biquad moves by 28.3 % because its resistor spreads too. A tuning
-  loop that locks `g_m/C` to a reference clock removes both. Measured: the spread with
-  and without tuning, over a Monte Carlo run.
-- **H4 · The ladder, simulated by integrators.** A doubly terminated LC ladder has the
-  lowest sensitivity of any realisation, because at the passband maxima the power
-  delivered is stationary. Replacing each state with an integrator keeps that property.
-  Measured: the sensitivity of `f_0` and of the passband ripple to each element, for the
-  ladder and for a cascade of biquads with the same response.
+Implemented Group H model record (2026-09-09); this supersedes draft universal leakage and sensitivity claims.
+
+- **H1:** Native gm source, parallel Ro and capacitor. KCL gives finite DC gain gmRo=150, leakage pole, the exact unity crossing √(gm²−Ro⁻²)/(2πC), phase and zero-initial-state step. The ideal 1.591549 MHz crossing is a high-gain approximation.
+- **H2:** Two explicit capacitor states, damping gd=gm2/q and output leakage at both nodes. Native AC, extracted transfer and state solution agree. Leakage changes both denominator coefficients: nominal and high-Q examples lose Q, while some low-Q cases gain Q as natural frequency moves. No universal sign is asserted. The complete second-order transfer crosses to Signal Lab after stated 1000× time scaling and bilinear frequency mapping.
+- **H3:** A 512-member seeded ensemble uses explicitly bounded uniform common gm/C/R factors and separate slave mismatch. A 128-step bounded master calibration loop targets ug/c=1. Tuning-range clipping and unobserved slave mismatch remain as residual error. Exact reciprocal laws replace linearized spread claims; mean, sample SD and RMS target error are reported separately.
+- **H4:** A fourth-order doubly terminated Butterworth LC ladder is converted into four normalized integrator states. Native LC AC verifies the state realization. A nominally identical two-biquad cascade is compared under separately declared component-error models. Local half-power-frequency and 0.5f0 gain sensitivities are distinguished from finite-perturbation passband error on a stated grid. No claim of universally lowest ladder sensitivity is made. Both pole pairs of the perturbed ladder are preserved through the scaled bilinear handover.
 
 ### Group I: Noise and mismatch, designed (4)
 
