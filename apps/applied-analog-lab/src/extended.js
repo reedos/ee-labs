@@ -1,3 +1,4 @@
+import {PROTECTION_LESSONS} from './protectionLessons.js'
 import {FILTER_LESSONS} from './filterLessons.js'
 import {FRONTEND_LESSONS} from './frontendLessons.js'
 import {REGULATOR_LESSONS} from './regulatorLessons.js'
@@ -58,4 +59,5 @@ s('Check the amplifier against this signal task','Use 40 dB SNR, at least 20 kHz
 ...STABILITY_LESSONS,
 ...PRECISION_LESSONS,
 ...REGULATOR_LESSONS,...FRONTEND_LESSONS,...FILTER_LESSONS
+,...PROTECTION_LESSONS
 ]

@@ -1,6 +1,6 @@
 # Analog IC Lab: the plan
 
-> Current Group F checkpoint, 2026-09-08: Groups A–F are implemented in the app. The Group F section below records the actual models and corrections to the original numerical examples; Group G onward remains planned. Earlier checkpoints below are historical.
+> Current Group G checkpoint, 2026-09-09: Groups A–G are implemented in the app. The Group G section records the actual models and corrections to draft examples. Groups H onward remain planned. Earlier checkpoints below are historical.
 > Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented as design calculations using one consistent charge-based long-channel law, plus a separately labeled short-channel comparison. The general EKV network companion and later circuit groups remain planned. The original log-squared current interpolation was inconsistent with its quoted charge-based gm/ID expression; the corrected voltage-charge relation below governs A1–A5.
 
 Tier 3 of `ANALOG_ROADMAP.md`. The same circuits as the Electronics Lab, made from
@@ -643,27 +643,14 @@ Implemented Group F model record (2026-09-08); this supersedes the earlier draft
 - **F3:** Inverting Schmitt with symmetric ±Vrail rails and divider β. Native solvePWL/assumedState enumerate rail and balanced linear regions; history selects a consistent rail. Width is 2βVrail, so ±0.5 V with β=0.1 gives 100 mV.
 - **F4:** Uniform input over a full 1 V interval, independent decisions, settled noiseless gain, probability min(1,2VD exp(−T/τ)/(Ap W)). At 400 ps and τ=20 ps, threshold **1.03058 nV**, correcting the former pV typo. At 5 GHz the mean unresolved-event interval is 97.033 ms. This is not automatically system error rate or synchronizer MTBF.
 
-### Group G: Translinear circuits and multipliers (4)
+### Group G: Translinear circuits and multipliers (4) — implemented
 
-- **G1 · The translinear principle.** Around a loop of an even number of junctions,
-  half clockwise and half anticlockwise, the products of the currents are equal. It
-  follows from `V_BE = V_T ln(I/I_S)` and KVL, with no approximation. A loop with
-  `I₁ = 100 µA`, `I₂ = 50.0 µA` and `I₃ = 20.0 µA` gives `I₄ = 40.0 µA`. Measured: the
-  loop's fourth current against the product law, over three decades of current.
-- **G2 · The pair as a multiplier, and where it stops being one.** The bipolar pair's
-  `tanh` law departs from a straight line by 1 % at 9.01 mV and 5 % at 20.7 mV. A MOS
-  pair at `V_OV = 200 mV` departs by 1 % at 56.4 mV, six times further, and steers
-  fully at 283 mV. Measured: both departures, both full-steering points, and the ratio.
-- **G3 · The Gilbert cell.** Two pairs cross-coupled under a third make a four-quadrant
-  multiplier. With a square-wave carrier the conversion gain is `2/π`, which is
-  −3.922 dB. Its output spectrum crosses to Signal Lab's ring-modulation preset.
-  Measured: the conversion gain, the two output tones, and the carrier feedthrough from
-  a 1 % mismatch.
-- **G4 · The variable-gain amplifier.** Steering the tail current between two paths
-  gives a gain that follows a current ratio, and a 10:1 ratio is 20.00 dB of range.
-  Exponential control comes from a translinear loop, so the gain is linear in decibels.
-  Measured: the gain against the control current over the range, and its departure from
-  a straight line in decibels.
+Implemented Group G model record (2026-09-09); this replaces the draft numerical promises.
+
+- **G1:** Explicit orientation VBE1+VBE3=VBE2+VBE4 gives I4=I1·I3/I2 for matched forward-active exponential junctions. Defaults give 40 µA. Saturation-current mismatch is retained in the product ratio and checked by the voltage-KVL residual. Base current, headroom and the diode-law minus-one term are omitted explicitly.
+- **G2:** Bipolar tanh and long-channel MOS square-law steering are compared with their respective tangents at selectable compression. MOS full steering occurs at √2 VOV; bipolar full steering is asymptotic, so its reported reference is 99% steering.
+- **G3:** A nonlinear signal pair and finite-tanh or hard-switched LO generate coherent sidebands and explicit tail-current-imbalance feedthrough. The 2/π factor is normalized to the signal-pair tangent gain, not total voltage gain. Signal Lab opens a clearly labeled ideal sine-multiplier comparison; it does not impersonate the nonlinear/hard-switched cell.
+- **G4:** A translinear current-ratio cell gives gain Ic/Ir and exponential voltage control, linear in decibels before limiting. Available control current explicitly clips the requested gain. A single bounded differential-pair steering fraction is not used as an unbounded current-gain law.
 
 ### Group H: Integrated filters (4)
 

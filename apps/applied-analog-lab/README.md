@@ -1,6 +1,6 @@
 # Applied Analog Lab
 
-31 working experiments across Groups A–F. The app remains **dark** (direct URL, no public splash-page card). Group A was introduced in merge 067c9c7; Group B extends that release. See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+35 working experiments across Groups A–G. The app remains **dark** (direct URL, no public splash-page card). Group A was introduced in merge 067c9c7; Group B extends that release. See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 amplifier classes; A2 active-filter GBW; A3 slew; A4 noise; A5 bias and temperature; A6 decoupling and a preamplifier budget.
 
@@ -10,7 +10,7 @@ New lessons follow the Circuit Elements learning structure: Start here with symb
 
 ## Model scope
 
-Native nodal AC, broken-loop return ratios and state propagation check the stability models. TIA transient analysis eliminates the dependent Cf state explicitly. Crossover, feedback RC corner and closed-loop bandwidth are separate quantities. General sensitivity/synthesis tools and Groups G onward remain planned.
+Native nodal AC, broken-loop return ratios and state propagation check the stability models. TIA transient analysis eliminates the dependent Cf state explicitly. Crossover, feedback RC corner and closed-loop bandwidth are separate quantities. General sensitivity/synthesis tools and Groups H onward remain planned.
 
 ## Run and check
 
@@ -55,3 +55,10 @@ All lessons retain defined symbols, worked numerical LaTeX, parameter-driven plo
 F1 Butterworth order from both mask edges; F2 Chebyshev ripple; F3 equal-half-power Bessel/Butterworth delay and state response; F4 Sallen–Key sensitivities and seeded independent-uniform tolerances; F5 exact finite-bandwidth SK/MFB nodal responses and a retuned fourth-order mask exercise.
 
 Run `node scripts/verify-group-f.mjs` against an assembled site, or add `--live` after publication. The same shared learning shell retains worked LaTeX, defined quantities, aligned tables, stable tabs, keyboard practice and enlarged circuit drawings.
+
+## Group G
+
+- **G1:** Constant-drop clamps to ±12 V with VF=0.3 V. At +100 V, 1 kΩ carries 87.7 mA; 8.77 kΩ meets the exercise's 10 mA limit. Native PWL verifies both polarities and zero-current boundaries. Rectangular pulse energy, 20 kHz resistor noise and 100 nA bias error are separate quantities.
+- **G2:** ±5 V rails, 0.65 V junction drops and a separately declared ±4.5 V signal range. The 5.2 V case has no clamp current but is outside the signal range. No latch-up or phase-reversal behavior is claimed.
+- **G3:** 100 mA through 10 mΩ gives 1 mV remote-ground lift. A 100 dB differential receiver has 10 nV incremental error from that lift; the baseline signal common-mode contribution is calibrated out.
+- **G4:** Cc=CL=100 pF/m, source resistance, amplifier A(s)=ωt/s and output resistance define the full driven-shield circuit. Both KCL equations retain source bootstrapping. Closed cubic poles and Routh's criterion determine stability; unstable settings do not report operating bandwidth. The fixed 0.99 tracking example is hypothetical. Control Lab receives the exact third-order return ratio, distinct from the source-to-signal transfer.

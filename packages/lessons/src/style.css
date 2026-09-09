@@ -39,7 +39,9 @@
 
 .lesson-choice{display:grid;gap:8px;margin:14px 0;font-size:13px;color:var(--dim)}.lesson-choice select{width:100%;min-height:44px;padding:8px;font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:6px}
 .lesson-schematic text{fill:var(--text);font-family:KaTeX_Main,serif;font-size:10px}.lesson-schematic .sch-label{fill:var(--dim);font-size:9.5px}.lesson-schematic .sch-sym,.lesson-schematic .sch-port{fill:var(--text);font-family:KaTeX_Math,serif;font-style:italic;font-size:10.5px}.lesson-schematic .sch-sub{fill:var(--text);font-size:7.5px}.lesson-schematic .sch-sign{fill:var(--dim);font-size:11px}
-.lesson-schematic>button{margin-top:10px;min-height:44px}.lesson-drawing-dialog{width:min(95vw,1100px);max-height:90dvh;box-sizing:border-box;padding:18px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:12px}.lesson-drawing-dialog::backdrop{background:#000a}.lesson-drawing-dialog>button{min-height:44px}.lesson-drawing-scroll{overflow:auto;margin:16px 0}.lesson-drawing-scroll .schematic{min-width:680px;width:100%;height:450px}
+.lesson-schematic>button{margin-top:10px;min-height:44px}.lesson-drawing-dialog{width:min(95vw,1100px);max-height:90dvh;box-sizing:border-box;padding:18px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:12px}.lesson-drawing-dialog::backdrop{background:#000a}.lesson-drawing-dialog>button{min-height:44px}.lesson-drawing-scroll{overflow:auto;margin:16px 0}.lesson-drawing-scroll .schematic{min-width:680px;width:100%;height:auto;aspect-ratio:var(--ar)}
+.lesson-drawing-hint{font-size:12px;color:var(--dim)}
+@media(min-width:760px){.lesson-drawing-hint{display:none}}
 
 .lesson-waterfall-scroll{overflow:auto}.lesson-waterfall-scroll svg{min-width:650px}
 
