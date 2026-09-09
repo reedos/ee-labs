@@ -1,3 +1,4 @@
+import {FRONTEND_LESSONS} from './frontendLessons.js'
 import {REGULATOR_LESSONS} from './regulatorLessons.js'
 import {PRECISION_LESSONS} from './precisionLessons.js'
 import {STABILITY_LESSONS} from './stabilityLessons.js'
@@ -55,5 +56,5 @@ s('Check the amplifier against this signal task','Use 40 dB SNR, at least 20 kHz
 ],[r('Inductive demand',x.inductive,'V'),r('Charge droop estimate',x.capacitive,'V'),r('LC resonance',x.resonance/1e6,'MHz'),r('Preamplifier SNR',noise.snr,'dB')],[{...curve('Faster edges demand more inductive voltage','Edge duration (s)','Inductive voltage (V)',Array.from({length:161},(_,i)=>{const rise=10**(-9+3*i/160);return{x:rise,y:supply({...p,rise}).inductive}})),logX:true}],noise.snr>=40&&a.fc>=2e4&&a.sr>=required?'This class clears the three stated signal checks. A real release also needs DC-error, output/load and supply-coupling checks.':'This class misses at least one stated signal check. Supply decoupling cannot repair an unsuitable input-noise or bandwidth choice.',x.inductive,'V','Calculate the voltage needed across the supply-loop inductance.','Multiply L by current change divided by edge duration.',{table:table()})},{symbols:[...symbols,['L,C,R_{ESR}','Supply-loop inductance (H), bypass capacitance (F), and 0.05 Ω series resistance.'],[String.raw`\Delta I,t_r,f_{LC}`,'Current change (A), edge duration (s), and ideal LC resonant frequency (Hz).']]}),
 ...STABILITY_LESSONS,
 ...PRECISION_LESSONS,
-...REGULATOR_LESSONS
+...REGULATOR_LESSONS,...FRONTEND_LESSONS
 ]

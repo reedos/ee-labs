@@ -1,6 +1,6 @@
 # Applied Analog Lab
 
-21 working experiments across Groups A–D. The app remains **dark** (direct URL, no public splash-page card). Group A was introduced in merge 067c9c7; Group B extends that release. See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+26 working experiments across Groups A–E. The app remains **dark** (direct URL, no public splash-page card). Group A was introduced in merge 067c9c7; Group B extends that release. See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 amplifier classes; A2 active-filter GBW; A3 slew; A4 noise; A5 bias and temperature; A6 decoupling and a preamplifier budget.
 
@@ -10,7 +10,7 @@ New lessons follow the Circuit Elements learning structure: Start here with symb
 
 ## Model scope
 
-Native nodal AC, broken-loop return ratios and state propagation check the stability models. TIA transient analysis eliminates the dependent Cf state explicitly. Crossover, feedback RC corner and closed-loop bandwidth are separate quantities. General sensitivity/synthesis tools and Groups E onward remain planned.
+Native nodal AC, broken-loop return ratios and state propagation check the stability models. TIA transient analysis eliminates the dependent Cf state explicitly. Crossover, feedback RC corner and closed-loop bandwidth are separate quantities. General sensitivity/synthesis tools and Groups F onward remain planned.
 
 ## Run and check
 
@@ -42,3 +42,10 @@ node scripts/verify-regulators.mjs
 
 Run after `npm run build` and `npm run site`. This checks diagrams, model
 boundaries and both cross-lab handovers at desktop and mobile widths.
+
+
+## Group E — Sensor front ends
+
+E1 high-side resistor-ratio leakage versus specified CMRR; E2 Kelvin sensing versus physical return lift; E3 RTD lead error and electrothermal warm-up; E4 nonlinear type K cold-junction correction; E5 Butterworth passband/stopband design.
+
+All lessons retain defined symbols, worked numerical LaTeX, parameter-driven plots, aligned tables and answer-entry practice. Run `node scripts/verify-group-e.mjs` against an assembled site, or add `--live` after publication.

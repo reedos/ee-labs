@@ -1,6 +1,6 @@
 # Analog IC Lab
 
-21 working experiments across Groups A–D. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+25 working experiments across Groups A–E. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 continuous inversion law; A2 gm/ID ceiling; A3 sizing tradeoffs; A4 pair matching; A5 mirror mismatch; A6 short-channel corrections.
 
@@ -10,7 +10,7 @@ New lessons follow the Circuit Elements learning structure: Start here with symb
 
 ## Model scope
 
-Group A uses one consistent charge-based device law. Group B explicitly uses a square-law beta-multiplier and an analytic junction-temperature reference. Startup is DC root enumeration, not a transistor-level startup transient. Parameter ensembles use the shared random package and report uncertainty. Groups E onward and a general EKV network companion remain planned.
+Group A uses one consistent charge-based device law. Group B explicitly uses a square-law beta-multiplier and an analytic junction-temperature reference. Startup is DC root enumeration, not a transistor-level startup transient. Parameter ensembles use the shared random package and report uncertainty. Groups F onward and a general EKV network companion remain planned.
 
 ## Run and check
 
@@ -33,3 +33,10 @@ D1 differential feedback and common-mode bias drift; D2 exact differential/commo
 node scripts/verify-differential.mjs
 node scripts/verify-differential.mjs --live
 ```
+
+
+## Group E — Compensation
+
+E1 exact Miller poles and right-half-plane zero; E2 series nulling resistance and its extra state; E3 bandwidth/margin/current-budget tradeoffs; E4 three-stage nested Miller versus feedforward, with exact global poles and a conditional inner-loop diagnostic.
+
+All lessons retain defined symbols, worked numerical LaTeX, parameter-driven plots, aligned tables and answer-entry practice. Run `node scripts/verify-group-e.mjs` against an assembled site, or add `--live` after publication.

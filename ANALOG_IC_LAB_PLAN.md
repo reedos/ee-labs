@@ -1,5 +1,6 @@
 # Analog IC Lab: the plan
 
+> Current Group E checkpoint, 2026-09-08: Groups A–E are implemented in the app. The Group E section below records the actual models and corrections to the original numerical examples; Group F onward remains planned. Earlier checkpoints below are historical.
 > Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented as design calculations using one consistent charge-based long-channel law, plus a separately labeled short-channel comparison. The general EKV network companion and later circuit groups remain planned. The original log-squared current interpolation was inconsistent with its quoted charge-based gm/ID expression; the corrected voltage-charge relation below governs A1–A5.
 
 Tier 3 of `ANALOG_ROADMAP.md`. The same circuits as the Electronics Lab, made from
@@ -624,25 +625,14 @@ not pretend that a partial stage establishes all complete-amplifier metrics.
   average current. Held and cycle-average voltages remain distinct. Incomplete
   acquisition uses the exact phase result; 1/(Cs fs) is an approximation.
 
-### Group E: Compensation (4)
+### Group E: Compensation (4) — implemented
 
-- **E1 · Miller compensation, and the zero it brings.** `C_c = 1.00 pF` puts `f_t` at
-  31.83 MHz, the second pole at 39.79 MHz and a right-half-plane zero at 79.58 MHz. The
-  zero's phase lag is what makes the margin 36.03° rather than 51°. Measured: the two
-  poles, the zero, the crossover at 27.67 MHz and the margin.
-- **E2 · The nulling resistor moves the zero.** `R_z = 1/g_m2 = 2.00 kΩ` sends the zero
-  to infinity and the margin rises to 56.35°. `R_z = (1/g_m2)(1 + C_L/C_c) = 6.00 kΩ`
-  puts a left-half-plane zero exactly on the second pole at 39.79 MHz, and the margin
-  becomes 90.01°. Measured: the zero's position and the margin at four resistances.
-- **E3 · Compensation is bandwidth traded for margin.** Raising `C_c` from 1.00 pF to
-  5.00 pF drops `f_t` from 31.83 MHz to 6.366 MHz, raises the margin from 36.03° to
-  57.06°, and drops the slew rate from 20.0 V/µs to 4.00 V/µs. Measured: all three at
-  four capacitances, and the step response at each.
-- **E4 · Nested Miller and feedforward.** A third stage needs a second compensation
-  capacitor, and the inner loop's own margin becomes a constraint. A feedforward path
-  puts a left-half-plane zero where the second pole sits without a resistor. Measured:
-  the three-stage loop's margins with each scheme, and the pole and zero positions from
-  `transferOf`.
+- **E1 · Miller compensation and the zero it brings.** Exact two-node KCL retains 0.1 pF first-node capacitance and finite output conductances. Default crossover is 26.1606 MHz with 35.6348° margin; the right-half-plane zero is 79.5775 MHz. These replace the earlier pole-splitting-only numeric expectations.
+- **E2 · Nulling resistor.** Series resistance changes the numerator and introduces a third independent state. At default gm2, 2 kΩ removes the finite zero. The 6 kΩ textbook setting is an approximate cancellation, not an exact cancellation of the full-model pole; the measured margin is about 84.06° rather than a promised 90°.
+- **E3 · Compensation tradeoffs.** Four Cc choices compare actual crossover, margin and small-signal matrix-exponential responses. The separate 20 µA/Cc slew estimate is explicitly a charging budget, not a current clamp in the plotted linear transient.
+- **E4 · Nested Miller and feedforward.** A concrete three-node transconductance circuit compares outer/inner capacitors with an outer capacitor plus a feedforward gm path. Pole/zero extraction uses transferOf on a normalized-time equivalent state realization, checked against the original nodal AC circuit. Global closed-loop poles determine follower stability. The conditional inner-loop diagnostic holds the first-stage node at AC ground and retains outer-capacitor output loading; all its crossings are listed.
+
+The UI does not claim a universal exact feedforward cancellation. Third-order models are analyzed in the lesson; the current Control Lab custom link accepts only second-order coefficients, so no truncated third-order transfer is handed over.
 
 ### Group F: Comparators (4)
 
@@ -801,7 +791,7 @@ not pretend that a partial stage establishes all complete-amplifier metrics.
   exactly at its metastable point.
 - **Experiments**: every number in §5 pinned. Among them are 25.79 V⁻¹, 23.6 %,
   0.4010 µA, 89.29 mV/decade and 2.608 mV. Also 5.099 %, 103.5 mV, 2.50 µA, 1.2836 V
-  and 17.69 ppm/K. Also 81.02 dB, 36.03°, 90.01°, 50.0 ps, 311 ps and 6.74 × 10⁻³.
+  and 17.69 ppm/K. Also 81.02 dB, the full-model 35.6348° and 84.0635° compensation margins, 50.0 ps, 311 ps and 6.74 × 10⁻³.
   Also 40.0 µA, −3.922 dB, 56.4 mV, 12.87 nV/√Hz, 20.98 kHz, 113.7 MHz and 144 µV.
 - **The map's promises**: a test walks every `why` and every cross-reference in it. It
   requires the referenced experiment to exist in the named lab. A reference to an
@@ -858,7 +848,7 @@ Each phase ships green and deployable dark. Phase 0 is a gate rather than work.
    for four architectures pinned, and each against one specification.
 5. **Differential circuits and compensation.** `decompose`, the halves view, the second
    loop trace. **Groups D, E** (8). Exit: D2's 1.26 % error pinned, D3's margin agrees
-   with Control Lab's, and E2's 90.01° reached with the right resistor.
+   with Control Lab's, and E2's removed zero and full-model poles agree with the native nodal solve.
 6. **Comparators and translinear circuits.** **Groups F, G** (8). Exit: F2's
    exponential matches `pwlTransient` to 10⁻⁹, and G1's product law holds over three
    decades.

@@ -49,12 +49,12 @@ Three additional apps are served at direct URLs while remaining unlisted on the
 public splash page. Their foundations and first follow-on groups use the same
 anchored learning views as Circuit Elements:
 
-- [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 21 lessons,
-  amplifier foundations, board-level stability, precision, references and regulators.
-- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 21 lessons,
-  device foundations, bias, references, amplifier architectures and fully differential analysis.
-- [Mixed-Signal](https://reedos.github.io/ee-labs/mixed-signal-lab/): 23 lessons,
-  sampling, switched-capacitor circuits, static converters and dynamic error measurements.
+- [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 26 lessons,
+  amplifier foundations, board-level stability, precision, references, regulators and sensor front ends.
+- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 25 lessons,
+  device foundations, bias, references, amplifier architectures, fully differential analysis and compensation.
+- [Mixed-Signal](https://reedos.github.io/ee-labs/mixed-signal-lab/): 29 lessons,
+  sampling, switched-capacitor circuits, static converters, dynamic error measurements, noise shaping and decimation.
 
 Later analog groups remain planned. [Buildout progress](LAB_BUILDOUT_PROGRESS.md)
 records the implemented scope, model limitations and deployment checks.

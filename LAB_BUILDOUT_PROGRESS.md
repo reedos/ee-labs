@@ -470,3 +470,18 @@ browser suite after the shared plot update. Assembled site size is 36.05 MiB.
 Repository-wide verification passed **10,445 tests in 403 files** (263.97 s).
 The final targeted run passed all 23 Mixed-Signal tests after the explanatory
 clarifications; the final browser run includes those same built assets.
+
+
+## Analog Group E — 15-lesson implementation
+
+Applied Analog E1–E5, Analog IC E1–E4 and Mixed-Signal E1–E6 extend the catalogs to **26 / 25 / 29**. All three apps retain their existing four-view layout and remain unlisted on the public splash page.
+
+The sensor lessons distinguish exact resistor-ratio leakage, shared-return lift, electrothermal RTD heating, nonlinear type K compensation and simultaneous filter requirements. Compensation uses actual nodal/state models rather than substituting approximate pole locations; nested and feedforward models expose both global closed poles and a carefully defined inner-loop diagnostic. Noise shaping separates nonlinear quantizer runs, exact additive-error identities, statistical white-error assumptions and finite-record measurements. It implements actual filtering before decimation and finite, imperfect droop correction.
+
+Corrections to the plans include the exact 24.024 mV resistor-corner error, fifth-order anti-alias requirement with 0.1 dB passband loss, full-model Miller margins, and removal of a universal 0.7-full-scale overload threshold and perfect sinc correction claim. Later group plans remain future scope.
+
+Focused validation passed 76 tests across the three analog apps. The new tests independently check KCL, electrothermal balance, ITS-90 reference points and inverse conversion, filter inequalities, native circuit AC/state transfer agreement, inner-loop source breaking, sample timing, Parseval, NTF integrals, stochastic model power, overload and FIR convolution/gain/delay.
+
+All 15 new lessons passed four-view browser checks at 1440, 390 and 320 px, including practice answers, tab anchoring, table column counts, math rendering, boundary settings, circuit enlargement and reset. Final repository-wide, assembled and publication verification will be recorded with this release.
+
+Final local verification: **10,461 tests in 406 files passed** (295.41 s). All 27 production builds passed. All **80 analog lessons** passed all four views at 1440/390/320 px. Group E boundary checks and both exact second-order Control Lab handovers passed. The assembled 27-route integration check passed; site size is **36.13 MiB**. Source/reference-only refinements retain the verified model and layout behavior.
