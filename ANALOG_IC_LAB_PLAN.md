@@ -668,30 +668,16 @@ Implemented Group H model record (2026-09-09); this supersedes draft universal l
 - **I3:** One device's gate-referred spectrum is 4kTγ/gm + Kf/(CoxWLf), with generic Kf=10^-25 V²F and Cox=8.63 fF/µm². The 10×1 µm corner is approximately 20.982 kHz; 40×2 µm lowers it by eight to approximately 2.62275 kHz. Eightfold area is 0.90309 decade, not one decade. White and flicker powers integrate over explicit positive frequency limits and agree with independent numerical integration.
 - **I4:** The thermal target determines gm, then the same Group A charge law determines current and geometry. The pair mismatch model checks an independently editable offset-sigma target and reports pass/miss. Input lengths 1–5 µm keep all permitted combinations within the declared mismatch area floor. The noise-temperature knob changes noise temperature; the sizing process remains explicitly fixed at 300 K. First-stage thermal noise excludes later stages, flicker and external resistors.
 
-Group J remains planned. These lessons do not claim foundry extraction, layout matching, generic engine completion or a public-release gate.
+Group J is implemented below. These lessons do not claim foundry extraction, layout matching, generic engine completion or a public-release gate.
 
-### Group J: The extra element theorem, and trimming (4)
+### Group J: The extra-element theorem and trimming (4) — implemented
 
-- **J1 · One element added to a known circuit.** Middlebrook's theorem gives the exact
-  answer without redoing the analysis. For a common-source stage with `g_m = 200 µS`,
-  `R_D = 20.0 kΩ` and `R_s = 10.0 kΩ`, adding `C_gd = 20.0 fF` puts a pole at
-  `1/(2π C_gd (R_s(1 + g_m R_D) + R_D)) = 113.7 MHz` and a right-half-plane zero at
-  `g_m/(2π C_gd) = 1.592 GHz`. The direct solve gives 114.3 MHz. Measured: both, and
-  the theorem's pole against the solve.
-- **J2 · The theorem against the Miller estimate.** The Miller estimate for the same
-  circuit gives 159.2 MHz, which is 40.0 % high, because it drops the `R_D` term the
-  theorem keeps. The pane prints that error beside both. Measured: the estimate, the
-  theorem, the exact pole, and the error.
-- **J3 · The offset that trimming leaves.** A pair at 2.5 µm² has `σ_VOS = 2.608 mV`
-  and a three-sigma spread of 7.823 mV. A 5-bit trim over ±8.00 mV has a 0.500 mV step
-  and leaves 144 µV rms. A 6-bit trim leaves 72.2 µV. About 0.21 % of parts fall
-  outside the range. Measured: the sigma, the residual at two trim resolutions, and the
-  fraction out of range.
-- **J4 · Calibration moves the cost to the digital side.** A digitally stored trim code
-  removes the offset at one temperature and leaves the drift. The trim's own tempco is
-  the new limit, and the Mixed-Signal Lab's converter calibration is the same idea one
-  tier up. Measured: the offset before and after, the residual drift over 60 K, and the
-  cross-reference to the Mixed-Signal Lab's calibration group.
+- **J1:** Remove Cgd, then compute H0=−gmRD, ZD=RS+RD+gmRSRD and ZN=−1/gm with dependent sources active. The restored transfer is H0(1−sCgd/gm)/(1+sCgdZD). Exact extra-element, native nodal, sinusoidal and capacitor-state routes agree. Defaults give a 113.682102 MHz pole and positive-real zero scale 1591.549431 MHz; the draft 114.3 MHz direct-solve discrepancy is removed. The initially uncharged capacitor state remains continuous while both node voltages jump, producing an inverse initial response.
+- **J2:** The input-only Miller pole drops the RD time-constant contribution. Its overestimate is RD/[RS(1+gmRD)], exactly 40% at defaults. A 10% pole-error check changes the guidance. Magnitude and continuous phase plots retain the omitted zero; a passing pole estimate is not a full-response guarantee. The actual half-power crossing is calculated separately and is absent when fz≤√2fp.
+- **J3:** The trim DAC uses explicitly symmetric midrise codes: L=2^b, Δ=2R/L, ck=−R+(k+1/2)Δ. The ±R endpoints are bin edges; an even code count has no zero level. Exact Gaussian code-cell moments include saturation tails. At 2.5 µm² and gm/ID=10, sigma=2.607681 mV and outside-range probability is 0.215598% for R=8 mV. Five bits give approximately 144.336 µV conditional in-range RMS but 154.418 µV total RMS; six bits give 88.102 µV total RMS. The draft 144/72 µV values describe a quantization approximation, not total population residual. A 5% check compares Δ/√12 with the conditional integrated result. The plot enlarges central bins so code steps remain visible.
+- **J4:** One code is selected from actual offset plus a fixed measurement error at 25°C, then held unchanged. With additive offset drift α and fractional correction gain coefficient β, e(T)=u0−c0+(α−c0β)(T−25°C). Rounding, range overload, measurement error and drift remain distinct. Defaults store code 21 and give 133.5 µV residual at 85°C, 4.725 µV/K slope and 457.125 µV worst error over −40 to 125°C. The ±500 µV task has reachable pass/miss cases. A related-lesson link opens Mixed-Signal C6 at its own defaults; no circuit or trim-code mapping is claimed.
+
+All ten planned Analog IC curriculum groups now have lessons (45 total). Broader reusable engine APIs, full release audits, reader sittings and public-release gates remain separate work. Direct-URL/unlisted status is retained.
 
 ---
 

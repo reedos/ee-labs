@@ -1,3 +1,4 @@
+import {EXTRA_ELEMENT_LESSONS} from './extraElementLessons.js'
 import {NOISE_DESIGN_LESSONS} from './noiseDesignLessons.js'
 import {INTEGRATED_FILTER_LESSONS} from './integratedFilterLessons.js'
 import {TRANSLINEAR_LESSONS} from './translinearLessons.js'
@@ -62,4 +63,5 @@ s('Differentiate the corrected current','The gm correction is not the same as th
 ,...TRANSLINEAR_LESSONS
 ,...INTEGRATED_FILTER_LESSONS
 ,...NOISE_DESIGN_LESSONS
+,...EXTRA_ELEMENT_LESSONS
 ]

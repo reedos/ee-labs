@@ -9,7 +9,7 @@ try {for(const width of [1440,390,320]){
  const page=await browser.newPage({viewport:{width,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message))
  const set=async(label,value)=>{const el=page.getByRole('spinbutton',{name:label,exact:true});await el.fill(String(value));await el.press('Enter')}
  const clean=async()=>{assert.equal(await page.getByRole('alert').count(),0);assert.equal(await page.locator('.katex-error').count(),0);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert(!await page.locator('.lesson-plot path').evaluateAll(els=>els.some(e=>/NaN|Infinity/.test(e.getAttribute('d')??''))))}
- for(const [lab,total] of [['applied-analog-lab',45],['analog-ic-lab',41]]){
+ for(const [lab,total] of [['applied-analog-lab',45],['analog-ic-lab',45]]){
   const {EXTENDED}=await import(`../apps/${lab}/src/extended.js`),shots=`apps/${lab}/.shots`;await mkdir(shots,{recursive:true})
   for(const lesson of EXTENDED.filter(l=>l.id.startsWith('h'))){
    await page.goto(`${base}/${lab}/#${lesson.id}`);assert.equal(await page.getByLabel('Experiment',{exact:true}).locator('option').count(),total)
