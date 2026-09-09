@@ -491,3 +491,17 @@ Final local verification: **10,461 tests in 406 files passed** (295.41 s). All 2
 All 15 Group F lessons are implemented, bringing Applied Analog / Analog IC / Mixed-Signal to 31 / 29 / 35 lessons. The app READMEs and plan Group F records specify corrected mathematics and model limits. Control Lab now accepts an exact third-order custom transfer for the PLL handover.
 
 Focused acceptance: 659 tests in 47 files passed. All 27 production builds pass. Browser coverage passes for all 95 analog lessons × four views × 1440/390/320 px, plus all 15 new lessons with entered-answer checks, boundary controls, anchored tabs, aligned tables, diagram dialogs and both exact PLL handovers. The assembled site is 36.21 MiB. Full-suite and publication evidence is recorded separately after completion. Existing unrelated prose-linter and debug-log changes are excluded.
+
+## Group G implementation and release checks, 2026-09-09
+
+All **13 Group G lessons** are implemented: Applied Analog G1–G4, Analog IC G1–G4 and Mixed-Signal G1–G5. Catalog totals are now **35 / 33 / 40**. They retain Circuit Elements' four anchored learning views, defined symbols, worked substitutions, parameter-driven plots, aligned tables and entered-answer practice. Enlarged diagrams keep their natural proportions and provide a mobile scrolling hint and keyboard-accessible scroll area.
+
+The model records in the three plans supersede draft promises: rail voltage is included in fault-current calculations; clamp thresholds and valid common-mode operation are distinct; driven-shield stability retains source bootstrapping; bipolar full steering is asymptotic; multiplier conversion is normalized explicitly; charge-injection jumps differ from cycle-average offset; noise folding is a stated path comparison, not a blanket product claim. Chopper and auto-zero lessons specify initial states and phase transitions. CDS includes covariance and wanted-signal attenuation.
+
+Handovers preserve the complete third-order shield return ratio and exact one/two-sample difference filters. Third-order URL coefficients now retain full precision. The Gilbert lesson's Signal Lab link is explicitly an ideal sine-multiplier comparison, with its differences named before opening it.
+
+Focused acceptance: **134 tests in 22 files passed**. All **27 production builds** passed. All **108 analog lessons × four views × 1440/390/320 px** passed browser checks. All 13 new lessons also passed practice-answer, boundary, table, diagram, math, tab-position and cross-lab checks. The assembled site is **36.27 MiB**. Final repository-wide and publication evidence is recorded with the release. Unrelated prose-linter and debug-log changes remain excluded.
+
+Mixed-Signal now implements all seven planned curriculum groups; generic engine and product features elsewhere in its plan remain separate future scope. Applied Analog H–I and Analog IC H–J remain planned. The three analog apps remain directly accessible and unlisted on the public splash page.
+
+Final repository-wide verification: **10,493 tests in 412 files passed** (245.96 s). The final focused suite and browser runs include the glossary and enlarged-diagram refinements. Publication and live-page checks follow on the release PR.

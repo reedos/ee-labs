@@ -1,6 +1,6 @@
 # Mixed-Signal Lab: the plan
 
-> Current Group F checkpoint, 2026-09-08: Groups A–F are implemented in the app. The Group F section below records the actual models and corrections to the original numerical examples; Group G onward remains planned. Earlier checkpoints below are historical.
+> Current Group G checkpoint, 2026-09-09: Groups A–G are implemented in the app. The Group G section records the actual models and corrections to draft examples. All seven curriculum groups are implemented; broader engine and product capabilities in the plan remain separate future work. Earlier checkpoints below are historical.
 > Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented: acquisition, ideal charge projection checked against a finite-R native transient, signed charge injection, kT/C, phase-controlled bottom-plate sampling, and seeded aperture jitter. The general switched-capacitor topology engine and complete converters/PLLs in later groups remain planned. Sampling phase and differential-voltage sign are explicit in the worked math.
 
 Tier 4 of `ANALOG_ROADMAP.md`. Circuits with a clock, where the answer is a sequence
@@ -754,7 +754,7 @@ planned. Finite phase settling is separate from this ideal-event model.
   voltage estimate, not repaired physical DAC INL or restored missing ADC data.
 
 All use the current four-view workbench, defined notation, numeric substitutions,
-practice, and parameter-driven plots/tables. Groups D and E are implemented below; Group G onward remains planned.
+practice, and parameter-driven plots/tables. Groups D–G are implemented below.
 
 ### Group D: Converters, the dynamic errors (5) — implemented
 
@@ -813,31 +813,15 @@ Implemented Group F model record (2026-09-08); this supersedes the earlier draft
 - **F5:** Exact 1/f² SSB integration over 10 kHz–10 MHz gives **1.998e−4 rad²**, not 1.9998e−4; 100 MHz carrier gives about 22.496651 ps RMS. Band, carrier and sideband factor are explicit.
 - **F6:** Independent reference and VCO phase-noise powers shaped by N·T/(1+T) and 1/(1+T), integrated on log frequency with its Jacobian. Jitter-only sine SNR and equivalent-bit ceiling are distinguished from measured converter ENOB. Natural frequency sweeps hold ζ=1/√2 and the 100 MHz carrier fixed.
 
-### Group G: The chopper and the auto-zero amplifier, exactly (5)
+### Group G: Chopping, auto-zero and correlated sampling (5) — implemented
 
-- **G1 · The chopper, as the switched circuit it is.** The Applied Analog Lab's C4
-  ships an averaged model with a bandwidth guard. Here the same circuit is solved with
-  its switches. A 1.00 mV offset at a gain of 1000 becomes a 1.00 V square wave at
-  100 kHz, and a first-order 1.00 kHz low-pass leaves 12.73 mV of fundamental ripple.
-  Measured: the square wave, the ripple against `(4/π)V_OS A (f_c/f_chop)`, and the
-  residual offset at zero.
-- **G2 · What is left after chopping.** Switch charge injection that does not match
-  between the two choppers leaves a residual. One femtocoulomb of mismatch on 1.00 pF
-  is 1.00 mV at the chopper's output, which at a gain of 1000 is 1.00 µV referred to
-  the input. Measured: the residual against the injected mismatch, and the input-
-  referred offset.
-- **G3 · The auto-zero amplifier samples its own offset.** Storing the offset on a
-  capacitor and subtracting it removes it at DC and leaves `kT/C` from the storage
-  capacitor. Measured: the residual offset, and the added noise against `√(kT/C)`.
-- **G4 · Auto-zeroing folds the noise, and chopping does not.** Sampling a 1 MHz-wide
-  white noise at 100 kHz folds `2B/f_s = 20` times the power into the band, which is a
-  factor of 4.47 in voltage, or 13.01 dB. Chopping modulates rather than samples, so it
-  costs nothing. Measured: the output noise density for both techniques over the same
-  band, and the folding factor.
-- **G5 · Correlated double sampling is a high-pass.** Subtracting two samples gives
-  `1 − z⁻¹`, whose magnitude is 0.0628 at `f_s/100` and 2 at `f_s/2`. It removes
-  flicker noise and offset, and multiplies white noise by `√2`. Measured: the transfer
-  at four frequencies against `2|sin(πf/f_s)|`, and the white-noise penalty.
+Implemented Group G model record (2026-09-09); this replaces the draft numerical promises.
+
+- **G1:** Two ideal synchronized polarity reversals surround an instantaneous offset amplifier. Exact RC propagation resolves each half-period, capacitor-state continuity, uncharged startup and the periodic orbit. Default fundamental ripple is 12.7318 mV; it is distinct from the waveform peak. This is a phase-resolved behavioral circuit, not a transistor switch simulation.
+- **G2:** One net charge impulse per cycle, storage capacitance and a finite recovery resistor define a periodic error. Q/C is the edge jump; mean error is Q R fs. Defaults give 1 mV output jump but 100 µV output mean, or 1 µV and 0.1 µV respectively at the input for gain 1000.
+- **G3:** Acquire a 1 mV offset through 1 kΩ from zero initial storage, then hold and subtract it. Finite acquisition leaves settling error and thermal variance (kT/C)(1−exp(−2ta/RC)); leakage causes deterministic droop. Seeded independent calibration trials are compared with the predicted mean and standard deviation.
+- **G4:** Explicit band-limited white-noise paths compare sample-and-hold alias sums with square-wave harmonic translation. B/fs=10 gives 20 aliases at an interior baseband frequency; the hold sinc envelope is retained. Chopper weights approach a total of one as source bandwidth grows. This does not claim free noise performance or model a complete auto-zero amplifier's direct and correlated noise paths.
+- **G5:** H(z)=1−z^−d for d=1 or 2 rejects constant offset and wanted DC. Stationary correlated input noise gives σout=σ√[2(1−ρ^d)], checked against seeded difference records. Exact FIR coefficients cross to Signal Lab at the same rate; initial delay-line history and noise ensemble assumptions are stated.
 
 ---
 

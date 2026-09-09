@@ -1,6 +1,6 @@
 # Analog IC Lab
 
-29 working experiments across Groups A–F. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+33 working experiments across Groups A–G. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 continuous inversion law; A2 gm/ID ceiling; A3 sizing tradeoffs; A4 pair matching; A5 mirror mismatch; A6 short-channel corrections.
 
@@ -10,7 +10,7 @@ New lessons follow the Circuit Elements learning structure: Start here with symb
 
 ## Model scope
 
-Group A uses one consistent charge-based device law. Group B explicitly uses a square-law beta-multiplier and an analytic junction-temperature reference. Startup is DC root enumeration, not a transistor-level startup transient. Parameter ensembles use the shared random package and report uncertainty. Groups G onward and a general EKV network companion remain planned.
+Group A uses one consistent charge-based device law. Group B explicitly uses a square-law beta-multiplier and an analytic junction-temperature reference. Startup is DC root enumeration, not a transistor-level startup transient. Parameter ensembles use the shared random package and report uncertainty. Groups H onward and a general EKV network companion remain planned.
 
 ## Run and check
 
@@ -46,3 +46,10 @@ All lessons retain defined symbols, worked numerical LaTeX, parameter-driven plo
 F1 finite-acquisition preamplifier gain and input-referred errors; F2 regeneration with explicit initial state; F3 native PWL Schmitt regions and output history; F4 unresolved probability and event rate, with corrected nanovolt units.
 
 Run `node scripts/verify-group-f.mjs` against an assembled site, or add `--live` after publication. The same shared learning shell retains worked LaTeX, defined quantities, aligned tables, stable tabs, keyboard practice and enlarged circuit drawings.
+
+## Group G
+
+- **G1:** Explicit orientation VBE1+VBE3=VBE2+VBE4 gives I4=I1·I3/I2 for matched forward-active exponential junctions. Defaults give 40 µA. Saturation-current mismatch is retained in the product ratio and checked by the voltage-KVL residual. Base current, headroom and the diode-law minus-one term are omitted explicitly.
+- **G2:** Bipolar tanh and long-channel MOS square-law steering are compared with their respective tangents at selectable compression. MOS full steering occurs at √2 VOV; bipolar full steering is asymptotic, so its reported reference is 99% steering.
+- **G3:** A nonlinear signal pair and finite-tanh or hard-switched LO generate coherent sidebands and explicit tail-current-imbalance feedthrough. The 2/π factor is normalized to the signal-pair tangent gain, not total voltage gain. Signal Lab opens a clearly labeled ideal sine-multiplier comparison; it does not impersonate the nonlinear/hard-switched cell.
+- **G4:** A translinear current-ratio cell gives gain Ic/Ir and exponential voltage control, linear in decibels before limiting. Available control current explicitly clips the requested gain. A single bounded differential-pair steering fraction is not used as an unbounded current-gain law.

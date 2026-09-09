@@ -49,7 +49,7 @@ export function buildLink(patch = {}) {
     parts.push(`b=${[b.type, ...(b.params || []).map(t)].join(':')}`)
   }
   if (patch.plant) {
-    const t = patch.plant.type === 'custom' ? trimExact : trim
+    const t = ['custom','custom3'].includes(patch.plant.type) ? trimExact : trim
     parts.push(`plant=${[patch.plant.type, ...(patch.plant.params || []).map(t)].join(':')}`)
   }
   if (patch.ctrl) parts.push(`ctrl=${[patch.ctrl.type, ...(patch.ctrl.params || []).map(trim)].join(':')}`)

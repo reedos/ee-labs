@@ -46,17 +46,17 @@ would take work that no reader of this repository would benefit from.
 ## Analog labs in review
 
 Three additional apps are served at direct URLs while remaining unlisted on the
-public splash page. Their foundations and first follow-on groups use the same
+public splash page. Their lessons use the same
 anchored learning views as Circuit Elements:
 
-- [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 31 lessons,
-  amplifier foundations, board-level stability, precision, references, regulators, sensor front ends and practical filter design.
-- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 29 lessons,
-  device foundations, bias, references, amplifier architectures, fully differential analysis, compensation and comparators.
-- [Mixed-Signal](https://reedos.github.io/ee-labs/mixed-signal-lab/): 35 lessons,
-  sampling, switched-capacitor circuits, static converters, dynamic error measurements, noise shaping, decimation, PLLs and clock jitter.
+- [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 35 lessons,
+  amplifier foundations, board-level stability, precision, references, regulators, sensor front ends, practical filters, protection and cabling.
+- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 33 lessons,
+  device foundations, bias, references, amplifier architectures, fully differential analysis, compensation, comparators, translinear circuits and multipliers.
+- [Mixed-Signal](https://reedos.github.io/ee-labs/mixed-signal-lab/): 40 lessons,
+  sampling, switched-capacitor circuits, static converters, dynamic error measurements, noise shaping, decimation, PLLs, clock jitter, chopping, auto-zeroing and correlated sampling.
 
-Later analog groups remain planned. [Buildout progress](LAB_BUILDOUT_PROGRESS.md)
+Applied Analog and Analog IC have later groups planned. Mixed-Signal now implements all seven planned curriculum groups; broader engine features remain future scope. [Buildout progress](LAB_BUILDOUT_PROGRESS.md)
 records the implemented scope, model limitations and deployment checks.
 
 ## The experiments

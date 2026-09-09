@@ -1,6 +1,6 @@
 # Applied Analog Lab: the plan
 
-> Current Group F checkpoint, 2026-09-08: Groups A–F are implemented in the app. The Group F section below records the actual models and corrections to the original numerical examples; Group G onward remains planned. Earlier checkpoints below are historical.
+> Current Group G checkpoint, 2026-09-09: Groups A–G are implemented in the app. The Group G section records the actual models and corrections to draft examples. Groups H onward remain planned. Earlier checkpoints below are historical.
 > Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented. The six device classes are explicitly illustrative curriculum models, not current manufacturer specifications. A1/A2 compare closed forms with native nodal AC solves; A3 uses the native limited op-amp transient; A4–A6 teach stated noise, error and supply budgets. Later groups, datasheet-specific model libraries, general sensitivity/Monte Carlo tools and design synthesis remain future work.
 
 Tier 2 of `ANALOG_ROADMAP.md`, and the first lab in the suite where the reader is
@@ -564,7 +564,7 @@ transfer functions. Native state propagation checks the small-step response.
 Loop handovers send exact return-ratio coefficients to Control Lab. That app's
 T/(1+T) response is distinguished from the load-voltage transfer where necessary.
 Large-signal clipping/slew, device extra poles and board parasitics remain outside
-these models. Groups C–E are implemented below; Group G onward remains planned.
+these models. Groups C–E are implemented below; Groups H onward remain planned.
 
 ### Group C: Precision (5) — implemented
 
@@ -660,27 +660,14 @@ Implemented Group F model record (2026-09-08); this supersedes the earlier draft
 - **F4:** Unity follower, R1=R2=1 kΩ, Cf=2 nF, Cg=1 nF. Four independent uniform ±t part errors give first-order σf/f=t/√3 and σQ/Q=t/√6. Numerical sensitivities and 2000 seeded builds check these predictions; the old tolerance-to-spread numbers are superseded.
 - **F5:** Explicit SK and equal-resistor MFB topology, solved by complex KCL with A(s)=2πGBW/s. No empirical GBW error constant. The two fourth-order pole pairs can be retuned with frequency and Q multipliers. At 3 MHz GBW, SK with corner ×1.1 and Q ×0.95 meets the default sampled mask; MFB with corner ×1.2 and Q ×0.95 also meets it. This is a retuned mask-compliant response, not an exact ideal Butterworth prototype.
 
-### Group G: Protection and the real world (4)
+### Group G: Protection and the real world (4) — implemented
 
-- **G1 · Clamping an overvoltage.** A series resistor and two clamp diodes to the
-  rails. From a 100 V transient, 1 kΩ limits the diode current to 100 mA, and 8.8 kΩ
-  holds it to 10 mA. The resistor's noise and its bias-current drop are the price.
-  Measured: the clamp current, the added noise, and the offset the resistor adds
-  through the part's bias current.
-- **G2 · The input stage's own limits.** Beyond the rails an input transistor's
-  junction conducts, and the part latches or draws current. The three-region model
-  shows the path. Measured: the input current against the applied voltage, and the
-  voltage at which it leaves the linear region.
-- **G3 · Ground loops, and the differential input as the cure.** A 100 mA return
-  current in 10 mΩ of ground makes 1.00 mV of difference between two boards. A
-  single-ended input adds all of it to the signal. A differential input with 100 dB
-  of rejection adds 10.0 nV. Measured: the ground voltage, and the error through both
-  input types.
-- **G4 · Cable capacitance and the driven shield.** One metre of coaxial cable at
-  100 pF/m from a 10 kΩ source rolls off at 159.2 kHz. Driving the shield from a
-  buffer leaves about 1 % of the capacitance, so the corner rises to 15.92 MHz.
-  Measured: both corners, and the buffer's own loop margin with the shield as its
-  load.
+Implemented Group G model record (2026-09-09); this replaces the draft numerical promises.
+
+- **G1:** Constant-drop clamps to ±12 V with VF=0.3 V. At +100 V, 1 kΩ carries 87.7 mA; 8.77 kΩ meets the exercise's 10 mA limit. Native PWL verifies both polarities and zero-current boundaries. Rectangular pulse energy, 20 kHz resistor noise and 100 nA bias error are separate quantities.
+- **G2:** ±5 V rails, 0.65 V junction drops and a separately declared ±4.5 V signal range. The 5.2 V case has no clamp current but is outside the signal range. No latch-up or phase-reversal behavior is claimed.
+- **G3:** 100 mA through 10 mΩ gives 1 mV remote-ground lift. A 100 dB differential receiver has 10 nV incremental error from that lift; the baseline signal common-mode contribution is calibrated out.
+- **G4:** Cc=CL=100 pF/m, source resistance, amplifier A(s)=ωt/s and output resistance define the full driven-shield circuit. Both KCL equations retain source bootstrapping. Closed cubic poles and Routh's criterion determine stability; unstable settings do not report operating bandwidth. The fixed 0.99 tracking example is hypothetical. Control Lab receives the exact third-order return ratio, distinct from the source-to-signal transfer.
 
 ### Group H: Timers, the lock-in, and the audio output (5)
 

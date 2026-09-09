@@ -212,3 +212,10 @@ it('zoom rides the link and bad zooms warn', () => {
   expect(parseLink(link).patch.zoom).toBe(12732)
   expect(parseLink('#rate=8000&zoom=wat').warnings.some((w) => w.includes('zoom'))).toBe(true)
 })
+
+it('preserves exact third-order plant coefficients through a URL round trip',()=>{
+ const params=[0,0,0,2*Math.PI*1e7,5e-15,1.01e-6,1,0]
+ const {patch,warnings}=parseLink(buildLink({plant:{type:'custom3',params}}))
+ expect(warnings).toEqual([])
+ expect(patch.plant.params).toEqual(params)
+})

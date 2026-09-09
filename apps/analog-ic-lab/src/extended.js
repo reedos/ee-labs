@@ -1,3 +1,4 @@
+import {TRANSLINEAR_LESSONS} from './translinearLessons.js'
 import {COMPARATOR_LESSONS} from './comparatorLessons.js'
 import {COMPENSATION_LESSONS} from './compensationLessons.js'
 import {ARCHITECTURE_LESSONS} from './architectureLessons.js'
@@ -56,4 +57,5 @@ s('Apply the declared velocity-saturation correction','Use Esat = 5 V/μm. Turni
 s('Differentiate the corrected current','The gm correction is not the same as the current correction. Channel-length modulation multiplies both here by 1 + VDS/VA, with VDS fixed at 1 V.',String.raw`\frac{g_m}{g_{m,long}}=\frac{1+z/2}{(1+z)^2},\quad g_{mb}/g_m=\gamma/(2\sqrt{2\phi_F+V_{SB}})`,String.raw`g_m/g_{m,long}=${N(x.gmRatio)},\quad g_{mb}/g_m=${N(x.gmbRatio)},\quad CLM\ factor=${N(x.clmFactor)}`)
 ],[r('Threshold shift',x.shift*1000,'mV'),r('Velocity current factor',x.ratio),r('gm factor',x.gmRatio),r('Body transconductance ratio',x.gmbRatio)],[curve('Length and velocity correction','Length (μm)','Current / long-channel current',samples(L=>shortChannel({...p,length:L*1e-6}).ratio,.18,2))],'The toggles isolate assumptions. The long-channel charge model in A1–A5 and this illustrative corrected square law must not be mixed as if they were one fitted process model.',x.ratio,'','Calculate the velocity-saturation current factor.','Use 1/(1 + effective overdrive divided by Esat L).') },{limits:'Illustrative strong-inversion corrections, W/L = 1, VDS = 1 V, Esat = 5 V/μm, γ = 0.4 √V, 2φF = 0.6 V and VA = 10 V per μm. No DIBL, mobility degradation or short-channel PDK extraction is claimed.'}),
 ...BIAS_LESSONS,...ARCHITECTURE_LESSONS,...DIFFERENTIAL_LESSONS,...COMPENSATION_LESSONS,...COMPARATOR_LESSONS
+,...TRANSLINEAR_LESSONS
 ]

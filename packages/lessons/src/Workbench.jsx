@@ -41,7 +41,7 @@ function PolarPlot({data}) {
 }
 function CircuitFigure({data}) {
  const dialog=useRef(null)
- return <figure className="lesson-schematic"><Schematic elements={data.elements} layout={data.layout}/><figcaption>{data.caption}</figcaption><button onClick={()=>dialog.current.showModal()}>Enlarge circuit</button><dialog ref={dialog} className="lesson-drawing-dialog" aria-label="Enlarged circuit"><button autoFocus onClick={()=>dialog.current.close()}>Close circuit</button><div className="lesson-drawing-scroll"><Schematic elements={data.elements} layout={data.layout}/></div><p>{data.caption}</p></dialog></figure>
+ return <figure className="lesson-schematic"><Schematic elements={data.elements} layout={data.layout}/><figcaption>{data.caption}</figcaption><button onClick={()=>dialog.current.showModal()}>Enlarge circuit</button><dialog ref={dialog} className="lesson-drawing-dialog" aria-label="Enlarged circuit"><button autoFocus onClick={()=>dialog.current.close()}>Close circuit</button><p className="lesson-drawing-hint">Scroll sideways to inspect the enlarged diagram.</p><div className="lesson-drawing-scroll" tabIndex={0} role="region" aria-label="Scrollable enlarged diagram"><Schematic elements={data.elements} layout={data.layout}/></div><p>{data.caption}</p></dialog></figure>
 }
 function Practice({problem}) {
   const [answer,setAnswer]=useState(''),[feedback,setFeedback]=useState(''),[reveal,setReveal]=useState(false)

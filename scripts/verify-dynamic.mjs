@@ -13,7 +13,7 @@ try{for(const width of [1440,390,320]){
  const clean=async()=>{assert.equal(await page.getByRole('alert').count(),0);assert.equal(await page.locator('.katex-error').count(),0);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert(!await page.locator('.lesson-plot path').evaluateAll(els=>els.some(el=>/NaN|Infinity/.test(el.getAttribute('d')??''))))}
  for(const lesson of DYNAMIC_LESSONS){
   await page.goto(`${base}/mixed-signal-lab/#${lesson.id}`)
-  assert.equal(await page.getByLabel('Experiment',{exact:true}).locator('option').count(),35)
+  assert.equal(await page.getByLabel('Experiment',{exact:true}).locator('option').count(),40)
   let geometry
   for(const view of ['Start here','Worked math','Explore','Practice']){
    await page.getByRole('button',{name:view,exact:true}).click();await clean()
