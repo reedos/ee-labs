@@ -51,6 +51,8 @@ try{for(const width of [1440,390,320]){
   await page.getByRole('button',{name:'Worked math',exact:true}).click();await clean();assert(await page.locator('.lesson-step').count()>=4)
   await page.getByRole('button',{name:'Explore',exact:true}).click();await clean()
  }
+ await page.getByRole('combobox',{name:'Sensor to inspect',exact:true}).selectOption('1');await set('Unloaded output difference','0.4e0');assert(await page.getByText('The lower output is below follower compliance.',{exact:false}).isVisible());await clean()
+ await page.getByRole('combobox',{name:'Sensor to inspect',exact:true}).selectOption('2');await set('Unloaded output difference','0.1e0')
  await set('Sampling frequency','20e6');await set('Each sampling or sensor capacitance','1e-12')
  assert(await page.getByText('Incomplete acquisition:',{exact:false}).isVisible());await clean()
  await page.screenshot({path:`${shots}/${live?'live-':''}d4-sampler-${width}.png`,fullPage:true})
