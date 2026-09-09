@@ -505,3 +505,15 @@ Focused acceptance: **134 tests in 22 files passed**. All **27 production builds
 Mixed-Signal now implements all seven planned curriculum groups; generic engine and product features elsewhere in its plan remain separate future scope. Applied Analog H–I and Analog IC H–J remain planned. The three analog apps remain directly accessible and unlisted on the public splash page.
 
 Final repository-wide verification: **10,493 tests in 412 files passed** (245.96 s). The final focused suite and browser runs include the glossary and enlarged-diagram refinements. Publication and live-page checks follow on the release PR.
+
+## Group H implementation and release checks, 2026-09-09
+
+All nine Group H lessons are implemented: Applied Analog H1–H5 and Analog IC H1–H4. Catalog totals are now **40 / 37 / 40** across the three analog apps. Mixed-Signal is unchanged. The established four-view layout, anchored tabs, defined quantities, numeric LaTeX substitutions, plots/tables and entered-answer practice are retained.
+
+Applied Analog adds exact ideal 555 threshold events, startup and nonzero initial charge, RMS-calibrated lock-in detection with finite-band noise integration, bias-temperature tracking with emitter degeneration and a local thermal-feedback criterion, and class-B average/instantaneous power checks with an achievable 20 W design task. The class-B correction is explicit: worst device heating occurs at 50% efficiency; 40.53% is its output-power fraction.
+
+Analog IC adds native gm-C integrators/biquads, a bounded master tuning iteration with seeded process/slave mismatch ensembles, and a fourth-order LC ladder converted to normalized integrator states. Native circuit, state and transfer routes agree. Both denominator coefficients are retained when interpreting leakage-induced Q changes. Ladder/cascade sensitivity comparisons name their component models and measured quantities; no universal sensitivity ranking is claimed. Complete second- and fourth-order filter handovers retain all poles and state their 1000× time scaling and bilinear frequency mapping.
+
+Focused acceptance: **117 tests in 23 files passed**. All **27 production builds** passed. All **77 lessons in the updated apps × four views × 1440/390/320 px** passed browser checks. All nine new lessons additionally passed entered-answer, boundary, table, math, diagram, anchored-tab and receiving-app checks. Visual review corrected crowded biquad labels. The assembled site is **36.32 MiB**. Final full-suite and publication evidence follows with the release. Unrelated prose-linter and debug-log changes remain excluded.
+
+Final repository-wide verification: **10,503 tests in 414 files passed** (232.37 s). Final focused and browser checks include the diagram-label and reference-convention refinements. Publication evidence is recorded on the release PR after deployment.

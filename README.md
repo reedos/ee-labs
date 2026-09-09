@@ -49,10 +49,10 @@ Three additional apps are served at direct URLs while remaining unlisted on the
 public splash page. Their lessons use the same
 anchored learning views as Circuit Elements:
 
-- [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 35 lessons,
-  amplifier foundations, board-level stability, precision, references, regulators, sensor front ends, practical filters, protection and cabling.
-- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 33 lessons,
-  device foundations, bias, references, amplifier architectures, fully differential analysis, compensation, comparators, translinear circuits and multipliers.
+- [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 40 lessons,
+  amplifier foundations, board-level stability, precision, references, regulators, sensor front ends, practical filters, protection, cabling, timers, lock-in detection and audio output.
+- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 37 lessons,
+  device foundations, bias, references, amplifier architectures, fully differential analysis, compensation, comparators, translinear circuits, multipliers, integrated filters and tuning.
 - [Mixed-Signal](https://reedos.github.io/ee-labs/mixed-signal-lab/): 40 lessons,
   sampling, switched-capacitor circuits, static converters, dynamic error measurements, noise shaping, decimation, PLLs, clock jitter, chopping, auto-zeroing and correlated sampling.
 

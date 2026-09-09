@@ -1,6 +1,6 @@
 # Applied Analog Lab: the plan
 
-> Current Group G checkpoint, 2026-09-09: Groups A–G are implemented in the app. The Group G section records the actual models and corrections to draft examples. Groups H onward remain planned. Earlier checkpoints below are historical.
+> Current Group H checkpoint, 2026-09-09: Groups A–H are implemented. The Group H record describes actual models and corrections to draft examples. Groups I onward and broader engine/product features remain planned. Earlier checkpoints are historical.
 > Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented. The six device classes are explicitly illustrative curriculum models, not current manufacturer specifications. A1/A2 compare closed forms with native nodal AC solves; A3 uses the native limited op-amp transient; A4–A6 teach stated noise, error and supply budgets. Later groups, datasheet-specific model libraries, general sensitivity/Monte Carlo tools and design synthesis remain future work.
 
 Tier 2 of `ANALOG_ROADMAP.md`, and the first lab in the suite where the reader is
@@ -564,7 +564,7 @@ transfer functions. Native state propagation checks the small-step response.
 Loop handovers send exact return-ratio coefficients to Control Lab. That app's
 T/(1+T) response is distinguished from the load-voltage transfer where necessary.
 Large-signal clipping/slew, device extra poles and board parasitics remain outside
-these models. Groups C–E are implemented below; Groups H onward remain planned.
+these models. Groups C–E are implemented below; Groups I onward remain planned.
 
 ### Group C: Precision (5) — implemented
 
@@ -669,35 +669,15 @@ Implemented Group G model record (2026-09-09); this replaces the draft numerical
 - **G3:** 100 mA through 10 mΩ gives 1 mV remote-ground lift. A 100 dB differential receiver has 10 nV incremental error from that lift; the baseline signal common-mode contribution is calibrated out.
 - **G4:** Cc=CL=100 pF/m, source resistance, amplifier A(s)=ωt/s and output resistance define the full driven-shield circuit. Both KCL equations retain source bootstrapping. Closed cubic poles and Routh's criterion determine stability; unstable settings do not report operating bandwidth. The fixed 0.99 tracking example is hypothetical. Control Lab receives the exact third-order return ratio, distinct from the source-to-signal transfer.
 
-### Group H: Timers, the lock-in, and the audio output (5)
+### Group H: Timers, synchronous detection and audio output (5) — implemented
 
-- **H1 · The 555 astable.** Two comparators, a flip-flop and an RC. With
-  `R_A = R_B = 10 kΩ` and `C = 10 nF` the high time is `ln 2 (R_A + R_B) C =
-  138.6 µs`, the low time is `ln 2 R_B C = 69.31 µs`, the period is 207.9 µs, the
-  frequency is 4.809 kHz and the duty cycle is 66.67 %. Every edge is an event, so the
-  period is exact. Measured: both times, the frequency, the duty cycle, and the count
-  of events per period.
-- **H2 · The 555 monostable.** One trigger, one exponential to two thirds of the
-  supply. `T = ln 3 · RC = 1.0986 ms` with 100 kΩ and 10 nF, and the datasheet's
-  1.1 RC is that logarithm rounded. Measured: the period, the exponential between the
-  edges, and the difference between `ln 3` and 1.1.
-- **H3 · The lock-in amplifier.** A 1 µV signal under 10 nV/√Hz of noise in a 100 kHz
-  band has a signal-to-noise ratio of −10.00 dB. Multiplying by a reference at the
-  signal frequency and low-passing to 1 Hz leaves 10.0 nV of noise, so the ratio
-  becomes 40.00 dB. The improvement is `√(B_in/B_out) = 316.2`, which is 50.00 dB.
-  Measured: both ratios, the improvement, and the recovered amplitude within 1 %.
-- **H4 · Thermal runaway, and the `V_BE` multiplier.** At fixed `V_BE` a bipolar
-  collector current rises 8.043 % per kelvin, so a class AB stage biased by a fixed
-  voltage runs away. A `V_BE` multiplier at `R₂/R₁ = 1` gives `2 V_BE` with a
-  −4.00 mV/K tempco, which tracks the two output junctions. Measured: the current rise
-  per kelvin, the multiplier's voltage and tempco, and the quiescent current over 60 K
-  with and without it.
-- **H5 · The safe operating area.** A class B pair on ±20 V rails into 8 Ω delivers
-  25.0 W at 78.54 % efficiency, and its worst-case device dissipation is
-  `V_cc²/(π² R_L) = 5.066 W` at 40.53 % efficiency, not at full power. At 2 K/W that is
-  10.13 K of junction rise. Measured: the output power, the worst-case dissipation and
-  the efficiency at which it occurs, and the junction temperature. **Design task:**
-  reach 20 W into 8 Ω with the junction under 125 °C in a 45 °C enclosure.
+Implemented Group H model record (2026-09-09); this supersedes draft timing, noise and thermal claims.
+
+- **H1:** Ideal 555 latch/threshold events, exact RC propagation and capacitor continuity. Defaults give recurring high/low times 138.629/69.315 µs, 4.808983 kHz and 66.667% duty. Uncharged startup has a different first high pulse, ln3·(RA+RB)C. Comparator delays and finite discharge resistance are omitted.
+- **H2:** Brief trigger, released before timeout, and a stated initial capacitor voltage. Pulse width is RC·ln[(VCC−v0)/(VCC/3)]. At v0=0, ln3·RC=1.098612 ms; 1.1RC is a rounded approximation. Post-timeout discharge and held-trigger/retrigger behavior are not modeled.
+- **H3:** RMS sine amplitude and a unit-RMS √2 cosine reference make the in-phase DC output Vs·cosφ. A first-order low-pass has ENBW=1/(4τ), not its −3 dB corner. Finite input-band edges are retained in the noise integral. Defaults give approximately −10 dB input and 40 dB aligned output SNR. Startup baseband settling, residual 2f ripple and a seeded stationary noise draw are separated; no guaranteed per-draw 1% recovery is claimed.
+- **H4:** An explicit local VBE(I,T) law with −2 mV/K fixed-current coefficient, matched two-junction bias, sensor tracking and emitter degeneration. The reference fixed-bias, zero-degeneration logarithmic current slope is approximately 7.736%/K at 300 K. KVL gives current; differentiation gives the local thermal-loop criterion. Increasing current under an imposed temperature is not by itself a runaway simulation.
+- **H5:** Exact sine-cycle class-B load/supply/device power. Worst average device heating is VCC²/(π²RL)=5.066059 W at Vm=2VCC/π and **50% efficiency**. The 40.53% figure is output power relative to full scale. The 20 W design task checks worst-amplitude temperature plus a declared illustrative 3 A / 60 V / 15 W instantaneous envelope. Real transistor SOA, reactive loading, thermal lag and shared heatsinks remain outside this model.
 
 ### Group I: Corners, sensitivity, Monte Carlo and the canon (5)
 
@@ -776,7 +756,7 @@ Implemented Group G model record (2026-09-09); this replaces the draft numerical
 - **Experiments**: every number in §5 pinned, the way every other lab pins its notes.
   Among them are 90.92 kHz, 1.68 %, 7.958 kHz, 41.6 mV, 31.41°, 0.892 pF and 53.98 dB.
   Also 88.10 dB, 1.2836 V, 17.7544 ppm/K, 68.93°, 24.0 %, 385.1 µV/K and 3.877. Also
-  3.515, 8.03 %, 138.6 µs, 316.2, 8.043 %/K, 5.066 W, 99.730 % and 0.0139 %.
+  3.515, 8.03 %, 138.6 µs, 316.2, 7.736 %/K, 5.066 W, 99.730 % and 0.0139 %.
 - **The map's promises**: a test walks every `why` and every cross-reference in it. It
   requires the referenced experiment to exist in the named lab. A reference to an
   Electronics Lab experiment that is not built fails the suite. That is what makes §1
