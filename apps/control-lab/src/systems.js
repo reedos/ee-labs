@@ -350,6 +350,16 @@ export const PLANTS = {
       'A custom H(s) has no fixed shape to look up, so no catalogue circuit is offered. Match a ' +
       'named plant\'s shape, such as the first- or second-order defaults, to see one.',
   },
+  custom3: {
+    name: 'Custom third-order H(s)',
+    group: 'Any transfer function',
+    hint: 'Eight coefficients, highest power first. Retains a third-order loop filter exactly when it arrives from Mixed-Signal Lab. Set leading coefficients to zero for a lower order.',
+    params: ['b3','b2','b1','b0','a3','a2','a1','a0'].map(key=>({key,label:key.replace('3','₃').replace('2','₂').replace('1','₁').replace('0','₀'),value:({b0:1,a3:1,a2:3,a1:3,a0:1})[key]??0,min:-1e12,max:1e12,unit:'',scale:'linear',step:1e-12,compact:true})),
+    tf: p=>({b:trimLeading([p.b3,p.b2,p.b1,p.b0]),a:trimLeading([p.a3,p.a2,p.a1,p.a0])}),
+    tex: p=>`P(s) = \\frac{${p.b3?texNum(p.b3)+'\\,s^3 + ':''}${texPoly(p.b2,p.b1,p.b0)}}{${p.a3?texNum(p.a3)+'\\,s^3 + ':''}${texPoly(p.a2,p.a1,p.a0)}}`,
+    circuitNote: 'These are the exact supplied polynomials. The originating lesson defines the physical loop and the validity of its phase-domain model.',
+  },
+
 }
 
 export const CONTROLLERS = {

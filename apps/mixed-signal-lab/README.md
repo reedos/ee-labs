@@ -1,6 +1,6 @@
 # Mixed-Signal Lab
 
-29 working experiments across Groups A–E. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+35 working experiments across Groups A–F. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 acquisition; A2 charge sharing; A3 signed injection and feedthrough; A4 kT/C; A5 bottom-plate phase order; A6 aperture jitter.
 
@@ -10,7 +10,7 @@ New lessons follow the Circuit Elements learning structure: Start here with symb
 
 ## Model scope
 
-A shared ideal-switch charge projection conserves floating-conductor charge while allowing driven nodes and ideal amplifier outputs to supply charge. Finite-gain coefficients come from the displayed phase topology. Sampled-filter handovers preserve z coefficients and explicitly label time scaling above Signal Lab’s 192 kHz limit. Groups C and D now cover static and dynamic converter errors. Group E adds behavioral noise shaping and decimation. PLL and later groups remain planned.
+A shared ideal-switch charge projection conserves floating-conductor charge while allowing driven nodes and ideal amplifier outputs to supply charge. Finite-gain coefficients come from the displayed phase topology. Sampled-filter handovers preserve z coefficients and explicitly label time scaling above Signal Lab’s 192 kHz limit. Groups C and D now cover static and dynamic converter errors. Group E adds behavioral noise shaping and decimation. Group F adds PLLs and jitter; Groups G onward remain planned.
 
 ## Run and check
 
@@ -48,3 +48,9 @@ node scripts/verify-dynamic.mjs --live
 E1 actual quantization error versus independent noise; E2 unshaped oversampling; E3/E4 explicit first/second-order one-bit recurrences; E5 observed overload and its limits; E6 actual sinc-cubed filtering, decimation and a finite three-tap droop corrector.
 
 All lessons retain defined symbols, worked numerical LaTeX, parameter-driven plots, aligned tables and answer-entry practice. Run `node scripts/verify-group-e.mjs` against an assembled site, or add `--live` after publication.
+
+## Group F
+
+F1 detector pulse charge and the selected phase branch; F2 loop states and the closed-loop zero; F3 exact third-order filter and Control Lab handover; F4 event-driven PFD acquisition and whole-cycle slips; F5 phase-noise integration; F6 reference/VCO noise shaping and a jitter-only converter ceiling.
+
+Run `node scripts/verify-group-f.mjs` against an assembled site, or add `--live` after publication. The same shared learning shell retains worked LaTeX, defined quantities, aligned tables, stable tabs, keyboard practice and enlarged circuit drawings.

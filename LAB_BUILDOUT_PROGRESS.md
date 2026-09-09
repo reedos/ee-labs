@@ -485,3 +485,9 @@ Focused validation passed 76 tests across the three analog apps. The new tests i
 All 15 new lessons passed four-view browser checks at 1440, 390 and 320 px, including practice answers, tab anchoring, table column counts, math rendering, boundary settings, circuit enlargement and reset. Final repository-wide, assembled and publication verification will be recorded with this release.
 
 Final local verification: **10,461 tests in 406 files passed** (295.41 s). All 27 production builds passed. All **80 analog lessons** passed all four views at 1440/390/320 px. Group E boundary checks and both exact second-order Control Lab handovers passed. The assembled 27-route integration check passed; site size is **36.13 MiB**. Source/reference-only refinements retain the verified model and layout behavior.
+
+## Group F implementation and release checks, 2026-09-08
+
+All 15 Group F lessons are implemented, bringing Applied Analog / Analog IC / Mixed-Signal to 31 / 29 / 35 lessons. The app READMEs and plan Group F records specify corrected mathematics and model limits. Control Lab now accepts an exact third-order custom transfer for the PLL handover.
+
+Focused acceptance: 659 tests in 47 files passed. All 27 production builds pass. Browser coverage passes for all 95 analog lessons × four views × 1440/390/320 px, plus all 15 new lessons with entered-answer checks, boundary controls, anchored tabs, aligned tables, diagram dialogs and both exact PLL handovers. The assembled site is 36.21 MiB. Full-suite and publication evidence is recorded separately after completion. Existing unrelated prose-linter and debug-log changes are excluded.

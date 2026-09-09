@@ -1,6 +1,6 @@
 # Mixed-Signal Lab: the plan
 
-> Current Group E checkpoint, 2026-09-08: Groups A–E are implemented in the app. The Group E section below records the actual models and corrections to the original numerical examples; Group F onward remains planned. Earlier checkpoints below are historical.
+> Current Group F checkpoint, 2026-09-08: Groups A–F are implemented in the app. The Group F section below records the actual models and corrections to the original numerical examples; Group G onward remains planned. Earlier checkpoints below are historical.
 > Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented: acquisition, ideal charge projection checked against a finite-R native transient, signed charge injection, kT/C, phase-controlled bottom-plate sampling, and seeded aperture jitter. The general switched-capacitor topology engine and complete converters/PLLs in later groups remain planned. Sampling phase and differential-voltage sign are explicit in the worked math.
 
 Tier 4 of `ANALOG_ROADMAP.md`. Circuits with a clock, where the answer is a sequence
@@ -754,7 +754,7 @@ planned. Finite phase settling is separate from this ideal-event model.
   voltage estimate, not repaired physical DAC INL or restored missing ADC data.
 
 All use the current four-view workbench, defined notation, numeric substitutions,
-practice, and parameter-driven plots/tables. Groups D and E are implemented below; Group F onward remains planned.
+practice, and parameter-driven plots/tables. Groups D and E are implemented below; Group G onward remains planned.
 
 ### Group D: Converters, the dynamic errors (5) — implemented
 
@@ -804,34 +804,14 @@ Noise-shaping spectra use a power-normalized Hann window to limit endpoint leaka
 
 ### Group F: Clocks (6)
 
-- **F1 · The phase detector is nonlinear, and the model is not.** A phase-frequency
-  detector is linear only while the phase error stays inside `±2π`. The phase-domain
-  model is admitted as a rational function, and its guard is that range. Measured: the
-  detector's characteristic over three cycles of error, and the range the linear model
-  covers.
-- **F2 · The charge pump and the loop filter.** With `I_cp = 100 µA`,
-  `K_vco = 100 MHz/V`, `N = 100` and `C₁ = 1.00 nF`, `ω_n = 3.162 × 10⁵ rad/s`, so
-  `f_n = 50.33 kHz`. `R = 6.325 kΩ` gives `ζ = 1`, and `R = 3.162 kΩ` gives `ζ = 0.5`.
-  Measured: `ω_n` and `ζ` from `pllPhase`, and the step response's overshoot at three
-  dampings.
-- **F3 · The loop is a Control Lab loop.** T(s) crosses as `plant=custom` with
-  `ctrl=p:1`, and its margins are read there. `C₂ = C₁/10` adds a pole at 252 kHz that
-  the margin has to pay for. Measured: the phase margin here and in Control Lab, and
-  the margin lost to `C₂`.
-- **F4 · The lock range is the guard.** For a reference frequency step and `ζ = 1` the
-  peak phase error is `0.368 Δω/ω_n`. The error stays inside `2π` up to a 136.8 kHz
-  step at the reference, which is 13.68 MHz at the output. Past it the loop slews and
-  the phase-domain model is withdrawn. Measured: the peak error against the step, the
-  step at which the guard fires, and the slewing behaviour past it.
-- **F5 · Jitter from phase noise.** A VCO at −120 dBc/Hz at 1 MHz offset with a
-  `1/f²` skirt integrates to 1.9998 × 10⁻⁴ rad² over 10 kHz to 10 MHz, which is
-  0.01414 rad rms, or 0.810°. At a 100 MHz carrier that is 22.50 ps rms. Measured: the
-  integral, the rms phase, and the jitter.
-- **F6 · What the clock costs the converter.** That 22.50 ps caps a converter at
-  76.99 dB with a 1 MHz input and 56.99 dB with a 10 MHz input, which is 9.18 effective
-  bits. The loop shapes VCO noise above `f_n` and reference noise below it, so the
-  bandwidth is a choice about which noise to keep. Measured: both ratios, the effective
-  bits, and the in-band jitter against the loop bandwidth.
+Implemented Group F model record (2026-09-08); this supersedes the earlier draft numerical promises.
+
+- **F1:** Local equal-frequency cycle-branch pulse-charge derivation. Outside ±2π the single-pulse model is withdrawn; phase alone does not define a stateful PFD output. No globally clipped detector is substituted for edge history.
+- **F2:** K=Icp·kv/N, ωn=√(K/C1), ζ=R√(KC1)/2. Explicit capacitor-voltage and phase-error states. Closed response retains the resistor zero: critical denominator damping still gives 13.5335% output-step overshoot.
+- **F3:** Exact Z=(1+sRC1)/[s(C1+C2)+s²RC1C2]. At the defaults C2/C1=0.1, extra pole 276.810667 kHz and margin 56.360673°. Both second- and third-order loops transfer without truncation to Control Lab; its new custom3 receiver preserves the full polynomials.
+- **F4:** Ideal edge-driven UP/DOWN detector, instantaneous reset, constant pump-current segments, linear capacitor voltage and quadratic VCO phase. Next edge times are solved from phase. The critical-damping **2π** phase guard is Δfr=exp(1)ωn=859.596 kHz, correcting the former 136.8 kHz unit error. This is an approximation guard, not a physical lock range. Whole-cycle slips and modulo-2π final alignment are distinguished.
+- **F5:** Exact 1/f² SSB integration over 10 kHz–10 MHz gives **1.998e−4 rad²**, not 1.9998e−4; 100 MHz carrier gives about 22.496651 ps RMS. Band, carrier and sideband factor are explicit.
+- **F6:** Independent reference and VCO phase-noise powers shaped by N·T/(1+T) and 1/(1+T), integrated on log frequency with its Jacobian. Jitter-only sine SNR and equivalent-bit ceiling are distinguished from measured converter ENOB. Natural frequency sweeps hold ζ=1/√2 and the 100 MHz carrier fixed.
 
 ### Group G: The chopper and the auto-zero amplifier, exactly (5)
 

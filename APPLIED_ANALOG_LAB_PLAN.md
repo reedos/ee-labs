@@ -1,6 +1,6 @@
 # Applied Analog Lab: the plan
 
-> Current Group E checkpoint, 2026-09-08: Groups A–E are implemented in the app. The Group E section below records the actual models and corrections to the original numerical examples; Group F onward remains planned. Earlier checkpoints below are historical.
+> Current Group F checkpoint, 2026-09-08: Groups A–F are implemented in the app. The Group F section below records the actual models and corrections to the original numerical examples; Group G onward remains planned. Earlier checkpoints below are historical.
 > Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented. The six device classes are explicitly illustrative curriculum models, not current manufacturer specifications. A1/A2 compare closed forms with native nodal AC solves; A3 uses the native limited op-amp transient; A4–A6 teach stated noise, error and supply budgets. Later groups, datasheet-specific model libraries, general sensitivity/Monte Carlo tools and design synthesis remain future work.
 
 Tier 2 of `ANALOG_ROADMAP.md`, and the first lab in the suite where the reader is
@@ -564,7 +564,7 @@ transfer functions. Native state propagation checks the small-step response.
 Loop handovers send exact return-ratio coefficients to Control Lab. That app's
 T/(1+T) response is distinguished from the load-voltage transfer where necessary.
 Large-signal clipping/slew, device extra poles and board parasitics remain outside
-these models. Groups C–E are implemented below; Group F onward remains planned.
+these models. Groups C–E are implemented below; Group G onward remains planned.
 
 ### Group C: Precision (5) — implemented
 
@@ -652,30 +652,13 @@ These are explicit teaching models, not a datasheet-qualified sensor interface o
 
 ### Group F: Filters to a specification (5)
 
-- **F1 · The specification sets the order.** For 0.5 dB at 100 kHz and 40 dB at
-  500 kHz, `n ≥ log₁₀((10⁴ − 1)/ε²)/(2 log₁₀ 5)` gives 3.515, so a Butterworth filter
-  needs order 4. It then reaches 55.92 dB at 500 kHz, 15.92 dB more than asked.
-  Measured: the exact order, the realised attenuation, and the 130.1 kHz corner that
-  puts 0.5 dB at 100 kHz.
-- **F2 · Chebyshev buys order with ripple.** The same specification needs order 2.770,
-  which rounds to 3, and the realised attenuation is 44.58 dB. One section fewer, at
-  the price of 0.5 dB of ripple across the passband. Measured: the order, the ripple,
-  and the attenuation.
-- **F3 · Bessel buys group delay with order.** A fourth-order Bessel filter holds its
-  group delay to 0.0078 % at the corner and 1.26 % at twice the corner, where a
-  fourth-order Butterworth filter changes by 41.4 % at the corner. Its magnitude is
-  0.630 dB down at the delay-normalised corner. Measured: both group delays at three
-  frequencies, and the step response overshoot of each.
-- **F4 · Sallen–Key, and where its sensitivity sits.** `f_0` has a sensitivity of
-  −1/2 to each of the four parts and Q has ±1/2 to the two capacitors, so 1 % parts
-  give 0.333 % on `f_0` and 0.236 % on Q. Measured: the sensitivities from
-  `sensitivity`, each against a finite difference, and the spread from Monte Carlo.
-- **F5 · Multiple feedback, and the gain-bandwidth error.** The same corner and Q
-  inverting. With a 1 MHz part the corner falls to 91.97 kHz, 8.03 % low, against the
-  Sallen–Key section's 1.68 % at the same part, because the inverting topology's noise
-  gain is higher. At 10 MHz the error is 0.723 %. Measured: the corner error for both
-  topologies at three parts. **Design task:** meet F1's mask with parts no faster than
-  3 MHz, and say which topology and which order.
+Implemented Group F model record (2026-09-08); this supersedes the earlier draft numerical promises.
+
+- **F1:** Butterworth order 3.51484 rounds to 4 for the default mask; corner 130.075891 kHz and achieved stopband attenuation **46.781947 dB**, correcting the former 55.92 dB claim.
+- **F2:** Chebyshev I order 2.770009 rounds to 3, giving 44.579241 dB. Ripple-edge normalization and odd/even DC behavior are explicit.
+- **F3:** Reverse Bessel polynomial [1,10,45,105,105], then both fourth-order prototypes scaled to the same −3 dB frequency. Bessel q3=2.113917675. At 100 kHz its DC delay is 3.364404 µs and sampled step overshoot about 0.834%; Butterworth overshoot is about 10.830%. Analytic group delay and zero-state companion dynamics describe the same transfer.
+- **F4:** Unity follower, R1=R2=1 kΩ, Cf=2 nF, Cg=1 nF. Four independent uniform ±t part errors give first-order σf/f=t/√3 and σQ/Q=t/√6. Numerical sensitivities and 2000 seeded builds check these predictions; the old tolerance-to-spread numbers are superseded.
+- **F5:** Explicit SK and equal-resistor MFB topology, solved by complex KCL with A(s)=2πGBW/s. No empirical GBW error constant. The two fourth-order pole pairs can be retuned with frequency and Q multipliers. At 3 MHz GBW, SK with corner ×1.1 and Q ×0.95 meets the default sampled mask; MFB with corner ×1.2 and Q ×0.95 also meets it. This is a retuned mask-compliant response, not an exact ideal Butterworth prototype.
 
 ### Group G: Protection and the real world (4)
 
