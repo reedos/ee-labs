@@ -44,7 +44,8 @@ export function buildLink(patch = {}) {
     // plant the coefficients ARE the object (six figures priced a twin-T's
     // notch floor at -100 dB instead of -inf). Named params (a cutoff, a Q)
     // stay at six - they are knobs, and the links stay readable.
-    const t = b.type === 'biquad' ? trimExact : trim
+    // Buck handovers also preserve the exact duty and physical operating point.
+    const t = b.type === 'biquad' || b.type === 'buck' ? trimExact : trim
     parts.push(`b=${[b.type, ...(b.params || []).map(t)].join(':')}`)
   }
   if (patch.plant) {

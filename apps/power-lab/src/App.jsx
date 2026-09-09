@@ -152,7 +152,7 @@ export function sweepFor(exp, params, x) {
  * fault in a pane that the first experiment does not use gets caught here
  * rather than in the browser. Nothing in the app passes them.
  */
-export default function App({ initialId = FIRST, initialView = null, initialParams = null }) {
+export default function App({ initialId = FIRST, initialView = null, initialParams = null, incomingMessage = null, incomingError = false }) {
   const start = byId[initialId] ? initialId : FIRST
   const [id, setId] = useState(start)
   const [params, setParams] = useState(() => ({ ...defaultsOf(start), ...(initialParams || {}) }))
@@ -332,6 +332,7 @@ export default function App({ initialId = FIRST, initialView = null, initialPara
           <LabNav current="power-lab" currentLabel="Power" />
           <h1>Power Lab</h1>
           <p className="sub">Each experiment loads a converter, names one knob, and states the number to read.</p>
+          {incomingMessage&&<p className="hint" role={incomingError?'alert':'status'}>{incomingMessage}</p>}
         </header>
 
         <section>

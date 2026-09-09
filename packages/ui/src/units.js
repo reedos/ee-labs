@@ -78,9 +78,11 @@ export function parseEng(text, unit = '') {
   const units = [unit, 'Hz', 'Bd', 'baud', 'bps', 'b/s', 's']
     .filter(Boolean)
     .sort((a, b) => b.length - a.length)
+  let explicitUnit = false
   for (const u of units) {
     if (u && t.toLowerCase().endsWith(u.toLowerCase())) {
       t = t.slice(0, -u.length)
+      explicitUnit = true
       break
     }
   }
@@ -103,7 +105,9 @@ export function parseEng(text, unit = '') {
     if (mult == null) return null
     n *= mult
   }
-  return { value: n, ratio: ratio || null, hadPrefix }
+  // Scientific notation or an explicit base unit already fixes the scale.
+  // In a field displaying nV/√Hz, 1e-7 means 100 nV/√Hz, not 1e-7 nV/√Hz.
+  return { value: n, ratio: ratio || null, hadPrefix, ...(explicitUnit || /[eE]/.test(numStr) ? {absolute:true} : {}) }
 }
 
 /**
@@ -129,7 +133,7 @@ export function engEcho(text, value, unit = '') {
   const parts = eng(value)
   if (parts.mult === 1) return null // no active prefix; a bare number is read literally
   const r = parseEng(text, unit)
-  if (!r || r.hadPrefix || r.ratio) return null
+  if (!r || r.hadPrefix || r.absolute || r.ratio) return null
   const full = r.value * parts.mult
   if (!Number.isFinite(full)) return null
   const fullStr = String(Number(full.toPrecision(6)))

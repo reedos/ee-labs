@@ -63,7 +63,7 @@ export { limitTo, vcrit } from './src/physics.js'
 // Linearisation is a netlist, and a linear netlist has exact polynomials.
 export { AMPLITUDE_GUARD, amplitudeCheck, hd2Estimate, isSignal, labelOf, pointsOf, smallSignal } from './src/smallSignal.js'
 export { CHECK_BAND, CHECK_POINTS, CHECK_TOL, compare, corners, evalTF, polesOf, readOutput, readOutputAC, rootsOf, transferOf, zerosOf } from './src/transfer.js'
-export { blackman, marginsOf, returnRatio, returnRatioAt } from './src/loop.js'
+export { blackman, loopCrossings, marginsOf, returnRatio, returnRatioAt } from './src/loop.js'
 
 // Macros: one element that stands for several. The op-amp with a speed, a slew
 // rate, an offset, a bias current and an output current limit expands into
@@ -157,3 +157,5 @@ export {
 export * as complex from './src/complex.js'
 export { mathNumber, workedSolve } from './src/workedSolve.js'
 export { assembleAC, solveAC, readoutAC, sourcePhasor, phasorMeasures, acPower, drivingPointZ, sweepAC } from './src/phasor.js'
+
+export { BG, bandgap } from './src/bandgap.js'

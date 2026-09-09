@@ -563,7 +563,7 @@ transfer functions. Native state propagation checks the small-step response.
 Loop handovers send exact return-ratio coefficients to Control Lab. That app's
 T/(1+T) response is distinguished from the load-voltage transfer where necessary.
 Large-signal clipping/slew, device extra poles and board parasitics remain outside
-these models. Group C is implemented below; Group D onward remains planned.
+these models. Groups C and D are implemented below; Group E onward remains planned.
 
 ### Group C: Precision (5) — implemented
 
@@ -593,33 +593,51 @@ Each lesson includes symbol definitions, worked substitutions, adjustable
 parameters, practice, and a plot/table using the existing learning workbench.
 These are declared circuit/error models rather than fabricated bench measurements.
 
-### Group D: References and regulators (5)
+### Group D: References and regulators (5) — implemented
 
-- **D1 · The bandgap, summed to first order.** `V_BE` falls at −2.112 mV/K and
-  `V_T ln 8` rises at 86.17 µV/K per unit of multiplier, so `M = 11.79` flattens the
-  sum. `V_ref = 1.2836 V`, and over −40 to 125 °C it moves 3.746 mV, which is
-  17.69 ppm/K. Measured: the two slopes, `M`, the reference and the curvature.
-- **D2 · The LDO's loop, and the ESR zero.** DC loop gain 81.94 dB. At 100 mA the
-  output pole sits at 481 Hz and the loop crosses at 24.66 kHz. With a 0.1 Ω ESR the
-  zero is at 159.2 kHz and the margin is 10.16°. With 1 Ω the zero is at 15.92 kHz,
-  the crossover moves to 39.62 kHz and the margin is 68.93°. Measured: the pole, the
-  zero, the crossover and the margin at three ESR values, with the loop crossing to
-  Control Lab.
-- **D3 · PSRR against frequency.** Supply rejection is the loop gain. It is 81.94 dB
-  at DC, 78.73 dB at 100 Hz, 54.44 dB at 1 kHz, 15.73 dB at 10 kHz and 0.110 dB at
-  100 kHz. A 100 mV ripple at 100 Hz therefore reaches the output as 11.6 µV, and at
-  100 kHz as 98.7 mV. Measured: the rejection at five frequencies against `|1 + T|`.
-- **D4 · Dropout, dissipation and the load pole.** A 3.30 V output from 12 V is 27.5 %
-  efficient and dissipates 870 mW at 100 mA, which is 43.5 K of rise at 50 K/W. From
-  5 V the efficiency is 66.0 %. At 1 mA the output pole falls to 4.82 Hz and the loop
-  is a different loop. Measured: efficiency, dissipation, junction rise, and both
-  poles.
-- **D5 · Where the switching regulator takes over.** The same 3.30 V at 1 A from 12 V
-  dissipates 8.70 W as a linear regulator. Power Lab's buck at 90 % delivers it with
-  0.37 W. The hand-over states the noise the reader trades for it. Measured: both
-  dissipations, and the cross-lab link to Power Lab's buck at the same operating
-  point. **Design task:** supply 3.3 V at 200 mA from a 5 V rail with under 100 µV rms
-  of output noise in a 100 kHz band, and name which regulator meets it.
+All five lessons retain the four-view learning workbench, defined symbols,
+worked substitutions, interactive plots, aligned tables and practice answers.
+The draft numerical targets are superseded by the actual model checks below.
+
+- **D1 · Reference temperature compensation.** Shared with Analog IC B3: at
+  300 K and N=8, PTAT slope is **179.1924 µV/K**, including ln N. CTAT slope
+  is −2.111853 mV/K, M*=11.785395 and Vref=1.283556 V. With fixed optimal
+  weight, exact endpoint/interior extrema give 3.760148 mV variation over
+  −40 to 125 °C and 17.754407 ppm/K box coefficient. A local zero derivative
+  does not remove curvature. Fractional trim moves the stationary temperature.
+- **D2 · LDO stability and ESR.** Declared A0=10,000, amplifier pole=100 Hz,
+  gm=0.1 S, Rp=10 kΩ, β=1.25/3.3, IL=100 mA and Cout=10 µF. With ESR=0.1 Ω,
+  the actual parallel-load pole is 482.4126 Hz, zero=159.1549 kHz,
+  crossover=24.6593 kHz and PM=10.1604°. ESR=1 Ω gives crossover=39.6142 kHz
+  and PM=68.9354°. ESR=0 has no finite zero. Native loop breaking, native
+  closed-loop AC and independent capacitor-state propagation verify the
+  derived rational transfer and two-state step. All unity crossings use
+  unwrapped phase. The exact return ratio hands over to Control Lab.
+- **D3 · Supply rejection.** Rp connects to the driven supply. The actual
+  supply transfer is Zo[gds + gm A(s)ρ + gm α/(1+sτa)]/(1+T).
+  Reference coupling ρ and amplifier-drive coupling α are explicit controls;
+  complex paths are added before computing magnitude. PSRR is −20 log|Hs|,
+  **not generally 20 log|1+T|**. Native supply excitation checks every path.
+- **D4 · Dropout, heat and load pole.** The declared Ron headroom test rejects
+  infeasible targets without claiming a nonlinear dropped-out voltage.
+  Loss includes Vin IQ. At 12 V/100 mA with zero IQ the original 0.87 W,
+  27.5% and 43.5 K rise remain valid; the default 50 µA IQ adds 0.6 mW.
+  Temperature uses the same loss and named θJA. The load-dependent pole
+  retains pass output resistance; it is conditional on regulation.
+- **D5 · Regulator selection.** At 5 V/200 mA, 100 nV/√Hz linear white noise
+  integrates to 31.6228 µV RMS in 0–100 kHz; 500 nV/√Hz buck noise gives
+  158.1139 µV RMS. One sinusoidal ripple tone is counted separately when in
+  band, and its unfiltered ADC alias is shown. The 90% buck efficiency is
+  an explicit scenario assumption, not a simulated result. At 12 V/1 A,
+  zero-IQ linear loss is 8.7 W and assumed buck loss is 0.366667 W. The
+  Power Lab B3 link transfers an editable ideal buck operating point with
+  the same Vin, desired duty, load and switching frequency; it does not
+  transfer or certify efficiency/noise assumptions. Incoming links are validated.
+
+These lessons use a reference-core temperature law, a linear incremental LDO,
+a conditional DC/steady thermal budget and an architecture comparison. They
+do not claim a complete transistor-level reference, nonlinear LDO startup,
+modern-part ESR specification, or a finished switching-regulator design.
 
 ### Group E: Front ends (5)
 
@@ -802,7 +820,7 @@ These are declared circuit/error models rather than fabricated bench measurement
   measured value matches its target.
 - **Experiments**: every number in §5 pinned, the way every other lab pins its notes.
   Among them are 90.92 kHz, 1.68 %, 7.958 kHz, 41.6 mV, 31.41°, 0.892 pF and 53.98 dB.
-  Also 88.10 dB, 1.2836 V, 17.69 ppm/K, 68.93°, 24.0 %, 385.1 µV/K and 3.877. Also
+  Also 88.10 dB, 1.2836 V, 17.7544 ppm/K, 68.93°, 24.0 %, 385.1 µV/K and 3.877. Also
   3.515, 8.03 %, 138.6 µs, 316.2, 8.043 %/K, 5.066 W, 99.730 % and 0.0139 %.
 - **The map's promises**: a test walks every `why` and every cross-reference in it. It
   requires the referenced experiment to exist in the named lab. A reference to an
@@ -858,7 +876,7 @@ Each phase ships green and deployable dark. Phase 0 is a gate rather than work.
    Exit: B1's margin agrees with Control Lab's, and C4's guard is tested at both sides
    of 10.
 4. **Supplies and sensors.** The thermal view. **Groups D, E** (10). Exit: D1's
-   17.69 ppm/K and D2's three margins pinned, and D5's link to Power Lab tested.
+   17.7544 ppm/K and D2's three margins pinned, and D5's link to Power Lab tested.
 5. **Filters and protection.** The spec mask on the Bode view. **Groups F, G** (9).
    Exit: F1's order 4 and F5's 8.03 % pinned, and the Signal Lab link tested both
    ways.

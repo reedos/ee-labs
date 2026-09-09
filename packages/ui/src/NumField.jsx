@@ -100,7 +100,7 @@ export default function NumField({
       let n = r.value
       // A bare number is read in the prefix currently on display, so typing
       // "112" into a field showing "224 GBd" means 112 GBd, not 112 baud.
-      if (!r.hadPrefix && !r.ratio) n *= engParts.mult
+      if (!r.hadPrefix && !r.absolute && !r.ratio) n *= engParts.mult
       if (r.ratio === '*') n = value * r.value
       else if (r.ratio === '/') n = r.value === 0 ? NaN : value / r.value
       return Number.isFinite(n) ? n : null
