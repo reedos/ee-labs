@@ -661,27 +661,14 @@ Implemented Group H model record (2026-09-09); this supersedes draft universal l
 - **H3:** A 512-member seeded ensemble uses explicitly bounded uniform common gm/C/R factors and separate slave mismatch. A 128-step bounded master calibration loop targets ug/c=1. Tuning-range clipping and unobserved slave mismatch remain as residual error. Exact reciprocal laws replace linearized spread claims; mean, sample SD and RMS target error are reported separately.
 - **H4:** A fourth-order doubly terminated Butterworth LC ladder is converted into four normalized integrator states. Native LC AC verifies the state realization. A nominally identical two-biquad cascade is compared under separately declared component-error models. Local half-power-frequency and 0.5f0 gain sensitivities are distinguished from finite-perturbation passband error on a stated grid. No claim of universally lowest ladder sensitivity is made. Both pole pairs of the perturbed ladder are preserved through the scaled bilinear handover.
 
-### Group I: Noise and mismatch, designed (4)
+### Group I: Noise and mismatch, designed (4) — implemented
 
-- **I1 · Where the noise comes from, by device.** The input-referred noise of a loaded
-  pair is `√((8kTγ/g_m1)(1 + g_m3/g_m1))`. At `g_m1 = 200 µS` and `g_m3 = 100 µS` it is
-  12.87 nV/√Hz, of which the input pair is 66.67 % of the power and the loads are
-  33.33 %. The second stage divided by the first stage's gain of 100 contributes
-  0.0040 %. Measured: the total, each share, and the sum equalling the direct solve.
-- **I2 · Halving the noise costs four times the current.** Raising `g_m1` from 200 µS
-  to 800 µS at a fixed load ratio drops the noise from 12.87 nV/√Hz to 5.574 nV/√Hz.
-  Lowering `g_m3` from 100 µS to 50.0 µS at `g_m1 = 800 µS` gets 5.417 nV/√Hz for
-  nothing but the loads' own swing. Measured: the noise at four combinations, and the
-  current each costs.
-- **I3 · Flicker noise has a corner, and the corner is an area.** With
-  `K_f = 1.0 × 10⁻²⁵ V²F`, a 10 × 1 µm device at `g_m = 200 µS` has a corner at
-  20.98 kHz. Growing it to 40 × 2 µm moves the corner to 2.623 kHz, and eight times the
-  area moves it one decade. Measured: the corner at two sizes, and the total noise over
-  a 1 Hz to 1 MHz band at each.
-- **I4 · The pair sized from the budget.** Given a 5.00 nV/√Hz target with
-  `g_m3/g_m1 = 0.5`, the pair needs `g_m1 = 1.325 mS`, which is 66.27 µA at
-  `g_m/I_D = 20` and 132.5 µA at `g_m/I_D = 10`. Over a 1 MHz band that is 5.00 µV rms.
-  Measured: the required transconductance, both currents, and the integrated noise.
+- **I1:** A differential small-signal equivalent refers four independent physical channel-noise sources to the input. The loaded pair has power density 8kTγ(1+r)/gm; defaults give 12.871592 nV/√Hz before the explicitly referred second-stage term. Per-source powers agree with the native nodal noise solver. The second-stage equivalent uses gm2=500 µS and divides its power by first-stage gain squared; its share is calculated, not fixed to the draft percentage.
+- **I2:** Four times gm halves first-stage noise at fixed load ratio. This costs four times current only at fixed gm/ID with resized geometry; a fixed-geometry strong-inversion comparison costs sixteen times current. Defaults at 800 µS and r=0.5 give 6.435796 nV/√Hz, correcting the draft 5.574 value. Per-device current, pair tail current and total-amplifier current are distinguished.
+- **I3:** One device's gate-referred spectrum is 4kTγ/gm + Kf/(CoxWLf), with generic Kf=10^-25 V²F and Cox=8.63 fF/µm². The 10×1 µm corner is approximately 20.982 kHz; 40×2 µm lowers it by eight to approximately 2.62275 kHz. Eightfold area is 0.90309 decade, not one decade. White and flicker powers integrate over explicit positive frequency limits and agree with independent numerical integration.
+- **I4:** The thermal target determines gm, then the same Group A charge law determines current and geometry. The pair mismatch model checks an independently editable offset-sigma target and reports pass/miss. Input lengths 1–5 µm keep all permitted combinations within the declared mismatch area floor. The noise-temperature knob changes noise temperature; the sizing process remains explicitly fixed at 300 K. First-stage thermal noise excludes later stages, flicker and external resistors.
+
+Group J remains planned. These lessons do not claim foundry extraction, layout matching, generic engine completion or a public-release gate.
 
 ### Group J: The extra element theorem, and trimming (4)
 
