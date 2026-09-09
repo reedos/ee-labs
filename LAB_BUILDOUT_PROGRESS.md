@@ -435,3 +435,38 @@ The final boundary review also checks follower compliance at the selected output
 difference: a 0.4 V difference places the lower output at 0.7 V, below the 0.75 V
 limit. The lesson marks that operating point invalid and displays signed headroom,
 while retaining the explicitly assumed incremental model for comparison.
+
+
+## Mixed-Signal dynamic converter errors — Group D
+
+Five lessons extend Mixed-Signal to **23** entries, alongside Applied Analog 21
+and Analog IC 21. This completes the requested 14-lesson Group D sequence.
+All three apps remain unlisted on the public splash page.
+
+The existing four-view structure now covers settling budgets, continuous
+slew/settling, regenerative decisions, measured converter spectra and histogram
+inference. Worked equations define initial states and substitute the selected
+values. Logarithmic acquisition-error plots keep half-LSB limits visible; this
+backward-compatible plotting option leaves other lessons' linear axes unchanged.
+
+The spectrum reuses the exact slew propagator and shared periodogram, retaining
+explicit DC/fundamental/aliased-harmonic/noise bin accounting. The code-density
+lesson reuses Group C's flash transfer and separates six-bit measured records
+from higher-resolution sample-count planning. Uniform pointwise Wilson intervals
+and sine-CDF simultaneous DKW bands carry distinct coverage statements.
+
+Initial verification passes 23 Mixed-Signal tests, including independent native
+RC/regeneration solves, numerical slew integration, Parseval, known spectra,
+aliased harmonics, seeded reproducibility and interval coverage. Final build,
+browser, repository-wide and publication evidence follows below.
+
+All 27 production builds and assembled integration checks pass. All 23 Mixed-Signal
+lessons pass four-view checks at 1440, 390 and 320 px. Extra D1–D5 browser checks
+cover correct practice answers, logarithmic curve geometry, zero/falling steps,
+the unresolved zero comparator state, all spectrum modes, zero-hit code intervals,
+sine inference, table columns and reset. Analog IC D1–D4 also passes its existing
+browser suite after the shared plot update. Assembled site size is 36.05 MiB.
+
+Repository-wide verification passed **10,445 tests in 403 files** (263.97 s).
+The final targeted run passed all 23 Mixed-Signal tests after the explanatory
+clarifications; the final browser run includes those same built assets.

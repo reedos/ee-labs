@@ -8,16 +8,17 @@ function Plot({data}) {
   if(data.kind==='zplane') return <figure className="lesson-plot"><figcaption>{data.label}</figcaption><div className="lesson-zplane"><ZPlaneCanvas {...data}/></div><p>Crosses are poles; circles are zeros. Poles strictly inside the unit circle give a decaying zero-input response.</p></figure>
   if(data.kind==='waterfall') return <WaterfallPlot data={data}/>
   if(data.polar) return <PolarPlot data={data}/>
-  const traces=(data.traces??[{label:data.label,points:data.points}]).map(t=>({...t,points:t.points.filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&(!data.logX||p.x>0))}))
+  const traces=(data.traces??[{label:data.label,points:data.points}]).map(t=>({...t,points:t.points.filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&(!data.logX||p.x>0)&&(!data.logY||p.y>0))}))
   const points=traces.flatMap(t=>t.points)
   if(!points.length) return <p>No finite values in this range.</p>
   const xValue=x=>data.logX?Math.log10(x):x
-  const xs=points.map(p=>xValue(p.x)),ys=points.map(p=>p.y),x0=Math.min(...xs),x1=Math.max(...xs),low=Math.min(...ys),high=Math.max(...ys),pad=high===low?Math.max(Math.abs(high)*.05,.01):0,y0=low-pad,y1=high+pad
-  const px=x=>65+590*(xValue(x)-x0)/(x1-x0||1),py=y=>230-195*(y-y0)/(y1-y0||1)
+  const yValue=y=>data.logY?Math.log10(y):y
+  const xs=points.map(p=>xValue(p.x)),ys=points.map(p=>yValue(p.y)),x0=Math.min(...xs),x1=Math.max(...xs),low=Math.min(...ys),high=Math.max(...ys),pad=high===low?Math.max(Math.abs(high)*.05,.01):0,y0=low-pad,y1=high+pad
+  const px=x=>65+590*(xValue(x)-x0)/(x1-x0||1),py=y=>230-195*(yValue(y)-y0)/(y1-y0||1)
   const colors=['var(--accent)','var(--blue)','#cc8fff','#e7b95f']
   return <figure className="lesson-plot"><figcaption>{data.label}</figcaption><svg viewBox="0 0 700 290" role="img" aria-label={`${data.label}; horizontal axis ${data.xLabel}; vertical axis ${data.yLabel}`}>
-    {[0,.25,.5,.75,1].map(t=><g key={t}><path d={`M65 ${35+195*t}H655`} stroke="var(--line)"/><text x="60" y={39+195*t} textAnchor="end">{Number((y1-(y1-y0)*t).toPrecision(4))}</text><text x={65+590*t} y="248" textAnchor="middle">{Number((data.logX?10**(x0+(x1-x0)*t):x0+(x1-x0)*t).toPrecision(4))}</text></g>)}
-    {data.stems?traces.map((trace,i)=><g key={i}>{trace.points.map((p,j)=><g key={j}><path d={`M${px(p.x)},${py(y0)}V${py(p.y)}`} stroke={colors[i%colors.length]} strokeWidth="2"/><circle cx={px(p.x)} cy={py(p.y)} r="3" fill={colors[i%colors.length]}/></g>)}</g>):traces.map((trace,i)=><path key={i} d={`M${trace.points.map(p=>`${px(p.x)},${py(p.y)}`).join('L')}`} fill="none" stroke={colors[i%colors.length]} strokeWidth="2.5" strokeDasharray={trace.dashed?'6 4':undefined}/>)}
+    {[0,.25,.5,.75,1].map(t=><g key={t}><path d={`M65 ${35+195*t}H655`} stroke="var(--line)"/><text x="60" y={39+195*t} textAnchor="end">{Number((data.logY?10**(y1-(y1-y0)*t):y1-(y1-y0)*t).toPrecision(4))}</text><text x={65+590*t} y="248" textAnchor="middle">{Number((data.logX?10**(x0+(x1-x0)*t):x0+(x1-x0)*t).toPrecision(4))}</text></g>)}
+    {data.stems?traces.map((trace,i)=><g key={i}>{trace.points.map((p,j)=><g key={j}><path d={`M${px(p.x)},230V${py(p.y)}`} stroke={colors[i%colors.length]} strokeWidth="2"/><circle cx={px(p.x)} cy={py(p.y)} r="3" fill={colors[i%colors.length]}/></g>)}</g>):traces.map((trace,i)=><path key={i} d={`M${trace.points.map(p=>`${px(p.x)},${py(p.y)}`).join('L')}`} fill="none" stroke={colors[i%colors.length]} strokeWidth="2.5" strokeDasharray={trace.dashed?'6 4':undefined}/>)}
     <text x="360" y="277" textAnchor="middle">{data.xLabel}</text><text x="65" y="18">{data.yLabel}</text>
   </svg>{traces.length>1&&<ul className="lesson-plot-key">{traces.map((trace,i)=><li key={i} style={{color:colors[i%colors.length]}}>{trace.label}</li>)}</ul>}</figure>
 }

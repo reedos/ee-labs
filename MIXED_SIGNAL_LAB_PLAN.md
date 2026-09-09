@@ -763,34 +763,42 @@ planned. Finite phase settling is separate from this ideal-event model.
   voltage estimate, not repaired physical DAC INL or restored missing ADC data.
 
 All use the current four-view workbench, defined notation, numeric substitutions,
-practice, and parameter-driven plots/tables. Group D onward remains planned.
+practice, and parameter-driven plots/tables. Group D is implemented below; Group E onward remains planned.
 
-### Group D: Converters, the dynamic errors (5)
+### Group D: Converters, the dynamic errors (5) — implemented
 
-- **D1 · Settling is a dynamic error in bits.** Half a clock at 20.0 MHz is 25.0 ns.
-  Twelve bits needs 9.011 time constants, so `τ = 2.774 ns` and a closed-loop
-  bandwidth of 57.37 MHz, which is an amplifier unity-gain frequency of 114.7 MHz at a
-  feedback factor of one half. Ten bits needs 97.08 MHz and fourteen needs 132.4 MHz.
-  Measured: the time constants, the required bandwidth at three resolutions, and the
-  error left by one time constant short.
-- **D2 · Slewing comes first, and it is not settling.** A 1 V step at 100 V/µs takes
-  10.0 ns before the exponential begins, which is 40 % of the available 25.0 ns. The
-  small-signal settling model applies only after it. Measured: the slew interval, the
-  exponential after it, and the total against the small-signal prediction alone.
-- **D3 · The comparator's decision has a distribution.** With `τ = 20.0 ps`, 100 ps of
-  decision time resolves 3.37 mV and fails once every 29.7 ns at 5 GS/s. At 200 ps it
-  resolves 22.7 µV and fails every 4.41 µs, at 400 ps every 97.0 ms. Measured: the
-  resolution and the failure rate at three times, and the exponential from the region
-  model.
-- **D4 · SNDR and the effective number of bits.** The output spectrum separates into
-  the signal, its harmonics and the noise floor, and `ENOB = (SNDR − 1.76)/6.02`. A
-  12-bit converter's 74.0 dB ceiling falls with any of jitter, settling error or
-  distortion. Measured: SNDR from the FFT, the three contributions separated, and the
-  effective bits.
-- **D5 · The code-density test.** Feeding a ramp or a sine and counting the codes gives
-  DNL from the histogram. A 3 % DNL resolution needs 1111 samples per code, so 4.55
-  million samples for 12 bits. Measured: the DNL from a histogram against the DNL from
-  the model, and the count needed for a stated resolution.
+- **D1 · Settling budget.** A full-scale step must reach half-LSB tolerance
+  within half a clock period. At 12 bits / 20 MHz, this requires 9.010913 time
+  constants, τmax=2.774414 ns, and closed-loop bandwidth 57.365256 MHz. The
+  114.730512 MHz amplifier GBW at β=.5 is explicitly a dominant-pole estimate.
+  Native RC state and AC solves check the declared one-pole model.
+- **D2 · Continuous slew and settling.** The state obeys
+  dv/dt=sign(U−v) min(SR,abs(U−v)/τ). Transition error is SRτ; a 1 V step at
+  100 V/μs with the D1 default τ slews for 7.225586 ns and reaches half an LSB
+  in 28.668384 ns. The old 10 ns delay plus a restarted full-step exponential
+  double-counted part of the response. Falling, zero, no-slew and loose-tolerance
+  cases are checked along with independent numerical integration.
+- **D3 · Regeneration and conditional probability.** Exponential capacitor growth
+  stops at a 0.5 V decision target. Event rates assume independent initial
+  differential inputs uniformly spread over 1 V and a named decision rate.
+  At τ=20 ps / T=400 ps, the resolvable initial magnitude is 1.030577 nV;
+  at 5 GS/s the conditional mean unresolved-event interval is 97.033039 ms.
+  The exact noiseless zero state is explicitly unresolved indefinitely.
+- **D4 · Measure a record.** An 8192-sample coherent full-scale sine record uses
+  997 cycles, optional seeded Gaussian timing jitter, a declared third harmonic,
+  D2's acquisition propagator and an ideal quantizer. A one-sided periodogram
+  measures SNDR, SNR with harmonics 2–10 removed, THD and full-scale-referenced
+  ENOB. Parseval, known harmonics, aliases and linear-filter gain are checked.
+  Tracking gain/phase error remains distinct from distortion; isolated effect
+  powers are never assumed independent or added to invent the combined metric.
+- **D5 · Histogram inference.** Group C's six-bit flash transfer is measured with
+  independent uniform or sine-distributed inputs. Uniform code probabilities
+  use nominal pointwise 95% Wilson intervals, including zero hits. Sine counts
+  are corrected by inverse-CDF boundary estimates with conservative simultaneous
+  95% DKW intervals. Planning resolution is a separate control: at 12 bits,
+  ±0.03 LSB pointwise 95% normal planning needs about 4267.25 samples per code,
+  or 17,478,638 total, versus about 1111 per code for one standard deviation.
+  Simultaneous confidence is not equated with the pointwise planning estimate.
 
 ### Group E: Noise shaping (6)
 
