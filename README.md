@@ -51,12 +51,12 @@ anchored learning views as Circuit Elements:
 
 - [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 45 lessons,
   amplifier foundations, board-level stability, precision, references, regulators, sensor front ends, practical filters, protection, cabling, timers, lock-in detection, audio output, sensitivity, corners, Monte Carlo, yield and datasheet calculations.
-- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 41 lessons,
-  device foundations, bias, references, amplifier architectures, fully differential analysis, compensation, comparators, translinear circuits, multipliers, integrated filters, tuning, noise budgets and mismatch-aware sizing.
+- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 45 lessons,
+  device foundations, bias, references, amplifier architectures, fully differential analysis, compensation, comparators, translinear circuits, multipliers, integrated filters, tuning, noise budgets, mismatch-aware sizing, extra-element analysis and stored trim.
 - [Mixed-Signal](https://reedos.github.io/ee-labs/mixed-signal-lab/): 40 lessons,
   sampling, switched-capacitor circuits, static converters, dynamic error measurements, noise shaping, decimation, PLLs, clock jitter, chopping, auto-zeroing and correlated sampling.
 
-Applied Analog and Mixed-Signal now implement all their planned curriculum groups. Analog IC Group J remains planned. Broader engine features, earlier design-task expansion and public-release review remain future scope. [Buildout progress](LAB_BUILDOUT_PROGRESS.md)
+All three analog apps now have lessons for all their planned curriculum groups. Broader engine features, earlier design-task expansion and public-release review remain future scope. [Buildout progress](LAB_BUILDOUT_PROGRESS.md)
 records the implemented scope, model limitations and deployment checks.
 
 ## The experiments

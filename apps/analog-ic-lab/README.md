@@ -1,6 +1,6 @@
 # Analog IC Lab
 
-41 working experiments across Groups A–I. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+45 working experiments across Groups A–J. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 continuous inversion law; A2 gm/ID ceiling; A3 sizing tradeoffs; A4 pair matching; A5 mirror mismatch; A6 short-channel corrections.
 
@@ -68,4 +68,13 @@ Run `node scripts/verify-group-f.mjs` against an assembled site, or add `--live`
 - **I3:** One device's gate-referred spectrum is 4kTγ/gm + Kf/(CoxWLf), with generic Kf=10^-25 V²F and Cox=8.63 fF/µm². The 10×1 µm corner is approximately 20.982 kHz; 40×2 µm lowers it by eight to approximately 2.62275 kHz. Eightfold area is 0.90309 decade, not one decade. White and flicker powers integrate over explicit positive frequency limits and agree with independent numerical integration.
 - **I4:** The thermal target determines gm, then the same Group A charge law determines current and geometry. The pair mismatch model checks an independently editable offset-sigma target and reports pass/miss. Input lengths 1–5 µm keep all permitted combinations within the declared mismatch area floor. The noise-temperature knob changes noise temperature; the sizing process remains explicitly fixed at 300 K. First-stage thermal noise excludes later stages, flicker and external resistors.
 
-Group J remains planned. These lessons do not claim foundry extraction, layout matching, generic engine completion or a public-release gate.
+Group J is implemented below. These lessons do not claim foundry extraction, layout matching, generic engine completion or a public-release gate.
+
+## Group J
+
+- **J1:** Remove Cgd, then compute H0=−gmRD, ZD=RS+RD+gmRSRD and ZN=−1/gm with dependent sources active. The restored transfer is H0(1−sCgd/gm)/(1+sCgdZD). Exact extra-element, native nodal, sinusoidal and capacitor-state routes agree. Defaults give a 113.682102 MHz pole and positive-real zero scale 1591.549431 MHz; the draft 114.3 MHz direct-solve discrepancy is removed. The initially uncharged capacitor state remains continuous while both node voltages jump, producing an inverse initial response.
+- **J2:** The input-only Miller pole drops the RD time-constant contribution. Its overestimate is RD/[RS(1+gmRD)], exactly 40% at defaults. A 10% pole-error check changes the guidance. Magnitude and continuous phase plots retain the omitted zero; a passing pole estimate is not a full-response guarantee. The actual half-power crossing is calculated separately and is absent when fz≤√2fp.
+- **J3:** The trim DAC uses explicitly symmetric midrise codes: L=2^b, Δ=2R/L, ck=−R+(k+1/2)Δ. The ±R endpoints are bin edges; an even code count has no zero level. Exact Gaussian code-cell moments include saturation tails. At 2.5 µm² and gm/ID=10, sigma=2.607681 mV and outside-range probability is 0.215598% for R=8 mV. Five bits give approximately 144.336 µV conditional in-range RMS but 154.418 µV total RMS; six bits give 88.102 µV total RMS. The draft 144/72 µV values describe a quantization approximation, not total population residual. A 5% check compares Δ/√12 with the conditional integrated result. The plot enlarges central bins so code steps remain visible.
+- **J4:** One code is selected from actual offset plus a fixed measurement error at 25°C, then held unchanged. With additive offset drift α and fractional correction gain coefficient β, e(T)=u0−c0+(α−c0β)(T−25°C). Rounding, range overload, measurement error and drift remain distinct. Defaults store code 21 and give 133.5 µV residual at 85°C, 4.725 µV/K slope and 457.125 µV worst error over −40 to 125°C. The ±500 µV task has reachable pass/miss cases. A related-lesson link opens Mixed-Signal C6 at its own defaults; no circuit or trim-code mapping is claimed.
+
+All ten planned Analog IC curriculum groups now have lessons (45 total). Broader reusable engine APIs, full release audits, reader sittings and public-release gates remain separate work. Direct-URL/unlisted status is retained.
