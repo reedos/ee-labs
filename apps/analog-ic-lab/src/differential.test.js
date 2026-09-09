@@ -61,7 +61,9 @@ it('reconstructs both physical capacitor waveforms from the two modal state pair
   expect(x.state(10*x.tEnd).c).toBeCloseTo(x.cm.steady[0],10)
  }
 })
-it('checks resistive loading and follower transfer with native sensor networks',()=>{
+it('checks resistive loading, follower transfer and selected output compliance',()=>{
+ expect(sensors().follower.margin).toBeCloseTo(.1,12);expect(sensors({ud:.4}).follower.margin).toBeCloseTo(-.05,12)
+ const l=DIFFERENTIAL_LESSONS[3];expect(evaluate(l,{...defaults(l),sensor:1,ud:.4}).conclusion).toContain('below follower compliance')
  for(const rs of [10e3,100e3,1e6])for(const cs of [20e-15,1e-12]){
   const x=sensors({rs,cs}),base=[{type:'V',id:'Vp',nodes:['up','gnd'],value:x.up},{type:'V',id:'Vn',nodes:['un','gnd'],value:x.un},...['p','n'].map(side=>({type:'R',id:'Ro'+side,nodes:['u'+side,side],value:x.rout}))]
   const net={elements:[...base,...['p','n'].map(side=>({type:'R',id:'Rs'+side,nodes:[side,'sense'],value:rs})),{type:'C',id:'Cs',nodes:['sense','gnd'],value:cs}]},v=solveDC(net).v

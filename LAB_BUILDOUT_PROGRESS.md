@@ -430,3 +430,8 @@ Repository-wide verification passed **10,436 tests in 402 files** (261.26 s).
 The final 20-test Analog IC run includes the expanded controller-pole corners
 and numerical state-matrix example. Existing Applied Analog single-link handovers
 also pass browser checks after the shared multi-link workbench update.
+
+The final boundary review also checks follower compliance at the selected output
+difference: a 0.4 V difference places the lower output at 0.7 V, below the 0.75 V
+limit. The lesson marks that operating point invalid and displays signed headroom,
+while retaining the explicitly assumed incremental model for comparison.

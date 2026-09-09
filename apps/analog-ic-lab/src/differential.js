@@ -61,6 +61,7 @@ export function sensors({rs=100e3,cs=100e-15,fs=100e3,ud=.1}={}){
  const resistive={gain:ad/(1+rout/rs),difference:ud/(1+rout/rs),sensorTau:rs*cs/2}
  resistive.power=resistive.difference**2/(2*rs)
  const follower={gm:100e-6,go:2e-6,cgate:50e-15,low:.75,high:1.6,gain:ad,power:2*1.8*10e-6}
+ follower.margin=Math.min(up-follower.low,un-follower.low,follower.high-up,follower.high-un)
  follower.sensorGain=follower.gm/(follower.gm+follower.go);follower.pole=(follower.gm+follower.go)/(2*Math.PI*cs)
  const sc={half,tauOn,tauOff,a,r,r0,before,kick,sample,mean,approx,held,chargeKick,wave,gain:ad*mean,power:fs*cs*sample*(up*up+un*un),current:cs*fs*bias*sample,settled:half/tauOn>=7,error:Math.abs(approx/mean-1)}
  return{rs,cs,fs,ud,rout,cl,bias,ad,up,un,resistive,follower,sc}
