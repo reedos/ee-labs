@@ -1,3 +1,4 @@
+import {NOISE_DESIGN_LESSONS} from './noiseDesignLessons.js'
 import {INTEGRATED_FILTER_LESSONS} from './integratedFilterLessons.js'
 import {TRANSLINEAR_LESSONS} from './translinearLessons.js'
 import {COMPARATOR_LESSONS} from './comparatorLessons.js'
@@ -60,4 +61,5 @@ s('Differentiate the corrected current','The gm correction is not the same as th
 ...BIAS_LESSONS,...ARCHITECTURE_LESSONS,...DIFFERENTIAL_LESSONS,...COMPENSATION_LESSONS,...COMPARATOR_LESSONS
 ,...TRANSLINEAR_LESSONS
 ,...INTEGRATED_FILTER_LESSONS
+,...NOISE_DESIGN_LESSONS
 ]

@@ -1,6 +1,6 @@
 # Analog IC Lab
 
-37 working experiments across Groups A–H. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+41 working experiments across Groups A–I. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 continuous inversion law; A2 gm/ID ceiling; A3 sizing tradeoffs; A4 pair matching; A5 mirror mismatch; A6 short-channel corrections.
 
@@ -60,3 +60,12 @@ Run `node scripts/verify-group-f.mjs` against an assembled site, or add `--live`
 - **H2:** Two explicit capacitor states, damping gd=gm2/q and output leakage at both nodes. Native AC, extracted transfer and state solution agree. Leakage changes both denominator coefficients: nominal and high-Q examples lose Q, while some low-Q cases gain Q as natural frequency moves. No universal sign is asserted. The complete second-order transfer crosses to Signal Lab after stated 1000× time scaling and bilinear frequency mapping.
 - **H3:** A 512-member seeded ensemble uses explicitly bounded uniform common gm/C/R factors and separate slave mismatch. A 128-step bounded master calibration loop targets ug/c=1. Tuning-range clipping and unobserved slave mismatch remain as residual error. Exact reciprocal laws replace linearized spread claims; mean, sample SD and RMS target error are reported separately.
 - **H4:** A fourth-order doubly terminated Butterworth LC ladder is converted into four normalized integrator states. Native LC AC verifies the state realization. A nominally identical two-biquad cascade is compared under separately declared component-error models. Local half-power-frequency and 0.5f0 gain sensitivities are distinguished from finite-perturbation passband error on a stated grid. No claim of universally lowest ladder sensitivity is made. Both pole pairs of the perturbed ladder are preserved through the scaled bilinear handover.
+
+## Group I
+
+- **I1:** A differential small-signal equivalent refers four independent physical channel-noise sources to the input. The loaded pair has power density 8kTγ(1+r)/gm; defaults give 12.871592 nV/√Hz before the explicitly referred second-stage term. Per-source powers agree with the native nodal noise solver. The second-stage equivalent uses gm2=500 µS and divides its power by first-stage gain squared; its share is calculated, not fixed to the draft percentage.
+- **I2:** Four times gm halves first-stage noise at fixed load ratio. This costs four times current only at fixed gm/ID with resized geometry; a fixed-geometry strong-inversion comparison costs sixteen times current. Defaults at 800 µS and r=0.5 give 6.435796 nV/√Hz, correcting the draft 5.574 value. Per-device current, pair tail current and total-amplifier current are distinguished.
+- **I3:** One device's gate-referred spectrum is 4kTγ/gm + Kf/(CoxWLf), with generic Kf=10^-25 V²F and Cox=8.63 fF/µm². The 10×1 µm corner is approximately 20.982 kHz; 40×2 µm lowers it by eight to approximately 2.62275 kHz. Eightfold area is 0.90309 decade, not one decade. White and flicker powers integrate over explicit positive frequency limits and agree with independent numerical integration.
+- **I4:** The thermal target determines gm, then the same Group A charge law determines current and geometry. The pair mismatch model checks an independently editable offset-sigma target and reports pass/miss. Input lengths 1–5 µm keep all permitted combinations within the declared mismatch area floor. The noise-temperature knob changes noise temperature; the sizing process remains explicitly fixed at 300 K. First-stage thermal noise excludes later stages, flicker and external resistors.
+
+Group J remains planned. These lessons do not claim foundry extraction, layout matching, generic engine completion or a public-release gate.

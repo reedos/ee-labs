@@ -1,3 +1,4 @@
+import {DESIGN_METHOD_LESSONS} from './designMethodLessons.js'
 import {TIMING_AUDIO_LESSONS} from './timingAudioLessons.js'
 import {PROTECTION_LESSONS} from './protectionLessons.js'
 import {FILTER_LESSONS} from './filterLessons.js'
@@ -62,4 +63,5 @@ s('Check the amplifier against this signal task','Use 40 dB SNR, at least 20 kHz
 ...REGULATOR_LESSONS,...FRONTEND_LESSONS,...FILTER_LESSONS
 ,...PROTECTION_LESSONS
 ,...TIMING_AUDIO_LESSONS
+,...DESIGN_METHOD_LESSONS
 ]

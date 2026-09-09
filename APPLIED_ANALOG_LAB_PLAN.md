@@ -679,35 +679,16 @@ Implemented Group H model record (2026-09-09); this supersedes draft timing, noi
 - **H4:** An explicit local VBE(I,T) law with −2 mV/K fixed-current coefficient, matched two-junction bias, sensor tracking and emitter degeneration. The reference fixed-bias, zero-degeneration logarithmic current slope is approximately 7.736%/K at 300 K. KVL gives current; differentiation gives the local thermal-loop criterion. Increasing current under an imposed temperature is not by itself a runaway simulation.
 - **H5:** Exact sine-cycle class-B load/supply/device power. Worst average device heating is VCC²/(π²RL)=5.066059 W at Vm=2VCC/π and **50% efficiency**. The 40.53% figure is output power relative to full scale. The 20 W design task checks worst-amplitude temperature plus a declared illustrative 3 A / 60 V / 15 W instantaneous envelope. Real transistor SOA, reactive loading, thermal lag and shared heatsinks remain outside this model.
 
-### Group I: Corners, sensitivity, Monte Carlo and the canon (5)
+### Group I: Corners, sensitivity, Monte Carlo and the canon (5) — implemented
 
-- **I1 · Sensitivity names the part to tighten.** For the non-inverting amplifier at
-  gain 11, `S` to `R_f` is 10/11 and to `R_g` is −10/11, so a 1 % error on either
-  moves the gain 0.909 %. For the Sallen–Key section, `f_0` has `S = −1/2` on four
-  parts and Q has `S = ±1/2` on two. Measured: every sensitivity against a finite
-  difference to 10⁻⁶, and the ranked list matching Circuit Lab's "Blame the right
-  part".
-- **I2 · Corners are the vertices of a box.** Four parameters give sixteen vertices.
-  With the part's gain-bandwidth spread from 0.5 to 1.5 MHz, the Sallen–Key corner
-  runs from 94.52 kHz to 99.20 kHz. The pane names the worst vertex and states the
-  monotonicity it assumed. Measured: every vertex, the worst case, and the face check
-  of §2.3 firing on a deliberately non-monotone output.
-- **I3 · Monte Carlo is a different question.** With 1 % parts read as three sigma,
-  `σ = 0.3333 %`, `f_0` has `σ = 0.3333 %` and Q has `σ = 0.2357 %`. Over two million
-  runs the measured sigmas are 0.3335 % and 0.2358 %. The worst-case corner of 2 % is a
-  six-sigma point that no sample of this size contains. Measured: both sigmas, the
-  corner, and the probability of all four parts at three sigma, 3.32 × 10⁻¹².
-- **I4 · Yield is a number with an error bar.** For `f_0` within 1 %, the measured
-  yield is 99.730 % and the closed form gives 99.730 %. For Q within 0.5 % it is
-  96.593 % against 96.611 %. Both together give 96.33 %, which equals the product,
-  because the two are independent here. The standard error at two million runs is
-  0.0139 %. Measured: all three yields, both closed forms, and the standard error.
-- **I5 · The canon, reproduced.** Four real parts, each as a parameter set, each
-  reproducing its datasheet's headline numbers. The 741's 1 MHz and 0.5 V/µs give a
-  90.91 kHz corner at gain 11. The 555 gives H1's 4.809 kHz. The LM317 with 240 Ω and
-  720 Ω gives 5.00 V, and its 50 µA adjust current adds 36.0 mV. The NE5532's
-  9 V/µs reaches full power to 143.2 kHz at 10 V peak, and its 5 nV/√Hz gives
-  0.7071 µV rms over 20 kHz. Measured: each headline number against the model.
+- **I1:** Normalized sensitivities are derived from the ideal non-inverting gain and unity-follower Sallen–Key denominator, with numeric substitutions and finite-change comparisons. Natural-frequency sensitivities are −1/2 for all four passives. At matched resistors, Q sensitivities are 0, 0, +1/2, −1/2 in R1/R2/C1/C2 order.
+- **I2:** All sixteen passive-box vertices are evaluated at the selected GBW. Ideal f0 bounds follow from a monotonicity proof; finite-follower cutoff uses the full cubic and is described as a vertex search, not a certified global bound. A Q face check demonstrates an interior maximum at R1=R2. Native nodal solves verify the cubic at every vertex, including 0.5–1.5 MHz GBW.
+- **I3:** Seeded Gaussian component ensembles (200–10,000 circuits, default 2,000) compare exact ideal-circuit outputs with linearized errors. Three-sigma spread t gives sigma_f=t/3 and sigma_Q=t/(3√2). Empirical quantiles, estimator uncertainty and a measured linearization-residual check accompany the estimates. A residual above 1% of predicted sigma changes the conclusion. A Gaussian has no hard box; exact corner events have zero probability. The draft two-million-run and corner-probability claims are not live measurements and are superseded.
+- **I4:** Frequency, Q and joint pass counts include pointwise 95% Wilson intervals, including zero-failure cases. The analytic product is justified only for independent, equal-variance Gaussian component errors propagated to first order. Default analytic yields are 99.7300204%, 96.6105146% and 96.3496860%; exact nonlinear joint yield is measured directly. A sample count and seed accompany every estimate.
+- **I5:** Separate 741, 555, LM317 and NE5532 calculations identify source fields and approximations. TI's LM741 product table supplies typical 1 MHz GBW (90.9091 kHz ideal gain-11 estimate); ideal timer thresholds give 4.808983 kHz. LM317 typical 50 µA adjust current raises 5.000 V to 5.036 V. TI NE5532 SLOS075K specifies typical 5 V/µs, giving 79.5775 kHz at 10 V peak; extending its 5 nV/√Hz white density over 20 kHz gives 0.707107 µV rms. The draft 9 V/µs value is not attributed to this revision.
+
+All nine curriculum groups now have lessons. Generic reusable method-engine APIs, expanding every earlier design exercise into an editable specification, the full release audit and reader sittings remain separate planned work; this implementation does not claim those gates are complete.
+
 
 ---
 

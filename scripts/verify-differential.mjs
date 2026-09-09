@@ -12,7 +12,7 @@ try{for(const width of [1440,390,320]){
  const clean=async()=>{assert.equal(await page.getByRole('alert').count(),0);assert.equal(await page.locator('.katex-error').count(),0);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Page overflow')}
  for(const id of ['d1','d2','d3','d4']){
   await page.goto(`${base}/analog-ic-lab/#${id}`)
-  assert.equal(await page.getByLabel('Experiment',{exact:true}).locator('option').count(),37)
+  assert.equal(await page.getByLabel('Experiment',{exact:true}).locator('option').count(),41)
   let geometry
   for(const view of ['Start here','Worked math','Explore','Practice']){
    await page.getByRole('button',{name:view,exact:true}).click();await clean()
