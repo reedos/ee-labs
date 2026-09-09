@@ -398,3 +398,35 @@ final 78-test focused run includes the numeric-entry fix and native buck corners
 A second full run passed 10,428 tests in 401 files (272.33 s); the final buck
 corner and lesson changes also pass the 78 focused tests. GitHub Pages runs the
 full suite again before deployment.
+
+
+## Analog IC fully differential amplifiers — Group D
+
+Four lessons extend Analog IC to **21** entries, alongside Applied Analog 21 and
+Mixed-Signal 18. All three remain unlisted on the public splash page. Mixed-Signal
+D1–D5 is the next separate buildout.
+
+D1 checks output-mean drift with linear nodal equations and nonlinear MOS regions.
+D2 compares the full differential pair with both exact half-circuits and clearly
+separates the large-tail shortcut and single-ended CMRR convention. D3 retains
+four states and two controller poles, checks both physical return ratios, and
+hands both loops independently to Control Lab. D4 includes real sensor loading,
+follower headroom, switching charge, periodic recovery and incomplete acquisition.
+
+The shared lesson workbench now supports multiple related handovers while
+preserving existing single-link lessons. All math, definitions, plots, comparison
+tables and practice remain in the existing four-view structure. Verification and
+publication results are recorded below after completion.
+
+Release checks so far: 20 Analog IC tests pass, including independent nonlinear
+DC solves, full/half AC comparisons, both physical loop breaks, native transient
+waveforms, charge conservation and the actual Control Lab receiver. All 21 lessons
+pass all four views at 1440, 390 and 320 px. Additional browser checks cover region
+transitions, sensor options, incomplete acquisition, aligned table columns,
+schematic labels/dialogs and both mode links. All 27 production builds and
+assembled integration checks pass; the assembled site is 36.01 MiB.
+
+Repository-wide verification passed **10,436 tests in 402 files** (261.26 s).
+The final 20-test Analog IC run includes the expanded controller-pole corners
+and numerical state-matrix example. Existing Applied Analog single-link handovers
+also pass browser checks after the shared multi-link workbench update.
