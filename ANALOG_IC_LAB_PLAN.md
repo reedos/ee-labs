@@ -233,16 +233,17 @@ there. The sigma itself is exact arithmetic given the constants.
 export function decompose(net, ports)
 ```
 
-The decomposition is exact when the circuit is symmetric and the tail is a two-port
-that splits. It is an approximation when the common-mode half-circuit doubles the tail
-resistance, which is the usual textbook step. The pane prints both. For the pair of
-§4.5 the exact differential gain is −3.84615 and the half-circuit gives −3.84615, so
-that half is exact. The exact common-mode gain is −0.0098756 and the textbook
-`−R_D/(2R_tail)` gives −0.0100, which is 1.26 % high, and the pane prints that error.
+For a symmetric pair with a shared incremental tail resistance, both reductions
+are exact: the differential half grounds the source and the common half uses
+**2Rtail**. The approximation is dropping denominator terms to obtain
+−RD/(2Rtail). D2 compares native full and half circuits over frequency. At the
+default, AD=−3.84615 and AC=−0.00987557; the shortcut −0.0100 is 1.26% high.
+Single-ended CMRR uses (AD/2)/AC and is 45.7887 dB. Ideal differential-output
+common-mode cancellation is a separate symmetry result.
 
-CORE_SCOPE: the exact solve is admitted with no hedge. The half-circuit is a view over
-it, and the common-mode approximation is guarded by the printed error, with a warning
-above 5 %.
+The proposed generic decompose API above remains a future extension; Group D
+implements and verifies the declared symmetric pair directly. The exact result
+remains available when the displayed shortcut error exceeds 5%.
 
 ### 2.5 From a specification to a size
 
@@ -597,27 +598,31 @@ not pretend that a partial stage establishes all complete-amplifier metrics.
   A separately declared one-pole output converts gm to bandwidth. The bias
   controller is a target model, not a transistor steering circuit.
 
-### Group D: Fully differential (4)
+### Group D: Fully differential (4) — implemented
 
-- **D1 · A differential output has no common-mode path.** With no common-mode
-  feedback, a 1 % current mismatch moves the output common mode by `r_o·ΔI = 0.100 V`,
-  and 5 % pushes a device out of saturation. Measured: the common-mode shift against
-  the mismatch, and the mismatch at which the region word changes.
-- **D2 · The half-circuits, and where each is exact.** The differential half-circuit
-  gives −3.84615 and the exact solve gives −3.84615, so that half is exact. The
-  common-mode half-circuit's `−R_D/(2R_tail) = −0.0100` against the exact −0.0098756 is
-  1.26 % high. CMRR is 45.79 dB. Measured: both gains both ways, the error, and the
-  CMRR.
-- **D3 · The common-mode loop is a loop.** The common-mode feedback amplifier at 100 µS
-  into 500 kΩ has 33.98 dB of loop gain and crosses at 7.958 MHz into 2.00 pF, against
-  the differential loop's 23.87 MHz on the same node. Its margin is read the same way
-  and crosses to Control Lab. Measured: the loop gain, the crossover, the margin, and
-  the common-mode step's settling.
-- **D4 · Which common-mode sensor, and what it costs.** A resistive sensor loads the
-  output and lowers the differential gain. A source-follower sensor limits the swing. A
-  switched-capacitor sensor loads nothing and is the Mixed-Signal Lab's, and its note
-  names that lab. Measured: the differential gain and the swing with each sensor, and
-  the loading each one adds.
+- **D1 · Differential feedback cannot set the output mean.** Finite output
+  resistance provides a DC path. Equal current injection shifts both outputs;
+  differential correction cancels from the mean equation. The square-law MOS
+  operating point checks the saturation/triode boundary. At 1.8 V, 1% mismatch
+  gives 0.1 V drift, 5% remains saturated, and 10% enters triode without CMFB.
+  Both devices are recalibrated at each supply to 20 μA and 1 MΩ each, giving
+  500 kΩ aggregate output resistance. Ideal 100 μS common correction reduces drift.
+- **D2 · Exact half-circuits.** Full pair, grounded-source differential half,
+  and 2Rtail common half agree over frequency. The large-tail shortcut is
+  separately labeled and its error displayed. CMRR uses an explicit single-ended
+  convention; no finite mismatch-limited differential CMRR is invented.
+- **D3 · Two loops, four states.** The symmetric output network has 500 kΩ and
+  2 pF per output, 100 μS common correction and 300 μS differential correction.
+  Finite controller poles default to 10 and 30 MHz. The earlier 7.958/23.87 MHz
+  numbers are one-pole estimates, not the actual two-pole crossings. State
+  propagation, native transients and separate physical loop breaks agree.
+  Both exact return ratios transfer independently to Control Lab.
+- **D4 · Sensor costs.** Reuses D2’s 20 kΩ || 500 kΩ output equivalent.
+  Resistors load the differential output; followers add input capacitance,
+  bias power and headroom cost. A declared reset-to-ground switched-capacitor
+  sensor conserves charge, solves periodic track/hold recovery, and draws real
+  average current. Held and cycle-average voltages remain distinct. Incomplete
+  acquisition uses the exact phase result; 1/(Cs fs) is an approximation.
 
 ### Group E: Compensation (4)
 
