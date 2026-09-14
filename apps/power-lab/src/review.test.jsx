@@ -52,7 +52,7 @@ describe('no visible surface shows a group letter (§11.5.1)', () => {
       const hit = t.match(/\b[A-N]\d\b/)
       expect(hit && hit[0], `${e.id}: "${hit && hit[0]}"`).toBeFalsy()
     }
-  }, 60000)
+  }, 240000) // renders every experiment: 40 s here, 82 s on the runner
 })
 
 describe('the first screen leads with the lesson a knob can perform (§11.4.2, §11.6.5, revised 2026-09-03)', () => {
@@ -60,7 +60,7 @@ describe('the first screen leads with the lesson a knob can perform (§11.4.2, �
     expect(byId.a1.scope).toBe(false)
     expect(render('a1')).not.toContain('aria-label="Scope')
     for (const e of EXPERIMENTS.filter((e) => e.id !== 'a1')) expect(render(e.id), e.id).toContain('aria-label="Scope')
-  }, 60000)
+  }, 240000) // renders every experiment: 80 s on the runner
   it('A1 opens on the regulation sweep — a curve with real structure, not a poster of two bars', () => {
     // Reed, 2026-09-03: the resistor's regulation failure is the lesson a
     // reader can watch happen by turning the load, so it leads; efficiency

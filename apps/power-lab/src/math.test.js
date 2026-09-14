@@ -46,7 +46,7 @@ describe('the math panel', () => {
       }
     }
     expect(fails).toEqual([])
-  }, 120000) // twenty experiments at 24 settings each: ~9 s here, and a CI runner is several times slower
+  }, 360000) // 55 experiments at 24 settings each: 77 s here in a parallel run, and the runner is two to three times slower
 
   it('typesets every formula', () => {
     const fails = []

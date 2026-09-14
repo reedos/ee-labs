@@ -309,7 +309,7 @@ describe('the agreement §6 asks for, at every experiment’s defaults', () => {
     if (x.resonant && Math.abs(x.formulas.fhaError) < 0.05) {
       expect(x.m.M / x.formulas.Mfha, `${id} first-harmonic`).toBeCloseTo(1, 1)
     }
-  }, 60000)
+  }, 150000) // 20000 windows per experiment: 23 s here, 80 s on the runner
 })
 
 describe('the sweeps these groups draw', () => {
