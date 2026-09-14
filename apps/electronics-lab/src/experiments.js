@@ -32,9 +32,11 @@ import { GROUP_O } from './groups/o.js'
 // Every view a lower pane can show, in the order the view switch lists them —
 // the same order in every experiment, so a tab sits in the same place from one
 // to the next.
-export const VIEW_ORDER = ['reading', 'scope', 'curves', 'transfer', 'bode', 'pz', 'spectrum', 'noise', 'junction', 'equations']
+export const VIEW_ORDER = ['start', 'worked', 'reading', 'scope', 'curves', 'transfer', 'bode', 'pz', 'spectrum', 'noise', 'junction', 'equations']
 
 export const VIEW_LABELS = {
+  start: { label: 'Start here', title: 'The question, guided investigation and explanation' },
+  worked: { label: 'Worked math', title: 'The lesson equations and live predicted-versus-measured checks' },
   reading: { label: 'Reading', title: 'The operating point, every meter on the circuit at once, and the headline number' },
   scope: { label: 'Scope', title: 'Voltages against time, exact inside every region, with the small-signal prediction as a ghost' },
   curves: { label: 'Device curves', title: 'The collector or drain current against its own voltage, the load line, and the point where they meet' },

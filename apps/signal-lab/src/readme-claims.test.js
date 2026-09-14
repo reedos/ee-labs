@@ -27,7 +27,7 @@ describe('the README quotes the tree it describes', () => {
     // entry is a configured setup plus a question plus a tested note.
     expect(readme).toContain(`${PRESETS.length} experiments`)
     expect(readme).toContain(
-      `${CIRCUIT_LESSONS.length} experiments, ${Object.keys(CIRCUITS).length} circuits`,
+      `${CIRCUIT_LESSONS.length} frequency-response lessons`,
     )
     expect(readme).toContain(
       `${CONTROL_LESSONS.length} experiments, ${Object.keys(PLANTS).length} plants x ${Object.keys(CONTROLLERS).length} controllers`,
@@ -82,7 +82,7 @@ describe('the splash page quotes the tree it describes', () => {
   it('lab-card counts match the arrays that render them', () => {
     expect(splash).toContain(`${PRESETS.length} experiments`)
     expect(splash).toContain(
-      `${CIRCUIT_LESSONS.length} experiments, ${Object.keys(CIRCUITS).length} circuits`,
+      `${CIRCUIT_LESSONS.length} frequency-response lessons`,
     )
     expect(splash).toContain(
       `${CONTROL_LESSONS.length} experiments, ${Object.keys(PLANTS).length} plants`,

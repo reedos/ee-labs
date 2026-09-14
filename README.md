@@ -17,7 +17,7 @@ the same object.
 
 ```
 npm install
-npm test                 # every package and every app, one run (500+ tests)
+npm test                 # every package and every app, one run
 npm run dev              # Signal Lab, at http://localhost:1421
 ```
 
@@ -25,16 +25,61 @@ npm run dev              # Signal Lab, at http://localhost:1421
 
 | | covers | status |
 |---|---|---|
+| **[apps/circuit-elements-lab](apps/circuit-elements-lab/)** | circuit laws, network theorems, op-amps, diodes, transients, state equations, phasors | **[Live — 59 experiments](https://reedos.github.io/ee-labs/circuit-elements-lab/)** |
 | **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 35 experiments |
-| **[apps/circuit-lab](apps/circuit-lab/)** | circuits, impedance, resonance, active filters, tolerance | 16 experiments, 10 circuits |
-| **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 13 experiments, 7 plants x 4 controllers |
+| **[apps/circuit-lab](apps/circuit-lab/)** | phasor circuit analysis, impedance, resonance, active filters, tolerance | 16 frequency-response lessons |
+| **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 13 experiments, 8 plants x 4 controllers |
 
-A fourth tool, `waveform-simulator`, covers communications and high-speed optical
+[**Open Circuit Elements Lab**](https://reedos.github.io/ee-labs/circuit-elements-lab/)
+to work from Kirchhoff's laws through RC, RL and RLC circuits. Each experiment
+explains which solution routes apply, with advantages and tradeoffs. Worked
+LaTeX derivations show the substitutions and steps for circuit equations, state
+equations and phasors wherever supported. Notation guides define the symbols;
+the route notes distinguish an instantaneous circuit solution, time evolution
+with initial conditions, and sinusoidal steady state.
+
+A separate tool, `waveform-simulator`, covers communications and high-speed optical
 links. It is in a separate private repository. It serves practising engineers
 rather than students, it is already mature, and porting it onto these packages
 would take work that no reader of this repository would benefit from.
 
+## Analog labs in review
+
+Three additional apps are served at direct URLs while remaining unlisted on the
+public splash page. Their lessons use the same
+anchored learning views as Circuit Elements:
+
+- [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 45 lessons,
+  amplifier foundations, board-level stability, precision, references, regulators, sensor front ends, practical filters, protection, cabling, timers, lock-in detection, audio output, sensitivity, corners, Monte Carlo, yield and datasheet calculations.
+- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 45 lessons,
+  device foundations, bias, references, amplifier architectures, fully differential analysis, compensation, comparators, translinear circuits, multipliers, integrated filters, tuning, noise budgets, mismatch-aware sizing, extra-element analysis and stored trim.
+- [Mixed-Signal](https://reedos.github.io/ee-labs/mixed-signal-lab/): 40 lessons,
+  sampling, switched-capacitor circuits, static converters, dynamic error measurements, noise shaping, decimation, PLLs, clock jitter, chopping, auto-zeroing and correlated sampling.
+
+All three analog apps now have lessons for all their planned curriculum groups. Broader engine features, earlier design-task expansion and public-release review remain future scope. [Buildout progress](LAB_BUILDOUT_PROGRESS.md)
+records the implemented scope, model limitations and deployment checks.
+
 ## The experiments
+
+F1, G1 and H1 now open with guided **Start here** lessons before their state,
+vector/matrix and phasor calculations. These use the existing schematic and controls.
+
+Circuit Elements is the shared home for the Circuits I and II buildout. Both sections
+use the same schematic, controls and equation, state and phasor views. The branched
+AC experiment connects complex KCL, coupled states and AC power in one circuit.
+Circuit Lab remains the frequency-response tool. Its former phasor lesson links
+open the corresponding Circuit Elements experiments.
+
+The current implementation contains **89 experiments**, including 30 additions for the
+agreed Circuits I?II buildout. They cover missing network methods, complete switching
+responses, Laplace inversion, AC equivalents and matching, loaded filter design,
+Fourier reconstruction and convolution, magnetic coupling, three-phase circuits,
+two-port networks and two capstones. The existing interface now includes independent
+answer entry and an enlarged drawing view for dense schematics.
+
+See the [course coverage and model boundaries](apps/circuit-elements-lab/README.md)
+and [completion/release evidence](CIRCUITS_COMPLETION_PROGRESS.md). Publication of this
+expansion is pending; the live link may still show the previous catalog.
 
 Each tool opens with a grouped **Try this** list. An entry loads a setup and asks
 a question. Every claim its note makes is rendered on screen and measured by a

@@ -42,8 +42,8 @@ function verdictOfLoop({ plantId, plantP, ctrlId, ctrlP }) {
 }
 
 describe('picker terms: reachable with no lesson active', () => {
-  it('every one of the 7 x 4 x 5 = 140 default states resolves every id it offers, and always offers the top bar', () => {
-    expect(plantIds.length).toBe(7)
+  it('every one of the 8 x 4 x 5 = 160 default states resolves every id it offers, and always offers the top bar', () => {
+    expect(plantIds.length).toBe(8)
     expect(ctrlIds.length).toBe(4)
     expect(views.length).toBe(5)
     let states = 0
@@ -62,7 +62,7 @@ describe('picker terms: reachable with no lesson active', () => {
         }
       }
     }
-    expect(states).toBe(140)
+    expect(states).toBe(160)
   })
 
   it('the specific defects Reed hit: no path to a definition once the lesson unloads', () => {

@@ -28,14 +28,14 @@ function rlc(p) {
 
 export const MARKS = {
   // The time constant's three readings off one curve: where v_C is heading,
-  // how far it has got at τ, and the tangent at the start that reaches E at τ.
+  // how far it has got at τ, and the tangent at the start that reaches V₁ at τ.
   f3(p) {
     const tau = p.R1 * p.C1
     const vTau = p.v0 + (p.E - p.v0) * ONE_TAU
     return [
-      { kind: 'level', axis: 'left', y: p.E, label: 'heading for E', value: p.E, unit: 'V' },
+      { kind: 'level', axis: 'left', y: p.E, label: 'heading for V₁', value: p.E, unit: 'V' },
       { kind: 'point', axis: 'left', x: tau, y: vTau, label: '63.2 % of the way at τ', value: vTau, unit: 'V' },
-      { kind: 'segment', axis: 'left', x0: 0, y0: p.v0, x1: tau, y1: p.E, label: 'the starting slope reaches E at τ', value: tau, unit: 's' },
+      { kind: 'segment', axis: 'left', x0: 0, y0: p.v0, x1: tau, y1: p.E, label: 'the starting slope reaches V₁ at τ', value: tau, unit: 's' },
     ]
   },
 
@@ -57,26 +57,26 @@ export const MARKS = {
     const Iinf = p.E / (p.R1 + p.Roff)
     return [
       { kind: 'point', axis: 'right', x: 0, y: I0 * p.Roff, label: 'the spark: v_switch(0⁺) = I₀·R_off', value: I0 * p.Roff, unit: 'V' },
-      { kind: 'level', axis: 'left', y: Iinf, label: 'the trickle E/(R + R_off)', value: Iinf, unit: 'A' },
+      { kind: 'level', axis: 'left', y: Iinf, label: 'the trickle V₁/(R + R_off)', value: Iinf, unit: 'A' },
     ]
   },
 
   // Ringing: the first peak, as a percentage of the step above E.
   g4(p) {
     const q = rlc(p)
-    if (!(q.zeta < 1)) return [{ kind: 'level', axis: 'left', y: p.E, label: 'heading for E', value: p.E, unit: 'V' }]
+    if (!(q.zeta < 1)) return [{ kind: 'level', axis: 'left', y: p.E, label: 'heading for V₁', value: p.E, unit: 'V' }]
     const over = Math.exp((-Math.PI * q.zeta) / Math.sqrt(1 - q.zeta * q.zeta))
     const tp = Math.PI / q.wd
     return [
-      { kind: 'level', axis: 'left', y: p.E, label: 'heading for E', value: p.E, unit: 'V' },
-      { kind: 'point', axis: 'left', x: tp, y: p.E * (1 + over), label: `first peak: ${(100 * over).toFixed(1)} % over E`, value: p.E * (1 + over), unit: 'V' },
+      { kind: 'level', axis: 'left', y: p.E, label: 'heading for V₁', value: p.E, unit: 'V' },
+      { kind: 'point', axis: 'left', x: tp, y: p.E * (1 + over), label: `first peak: ${(100 * over).toFixed(1)} % over V₁`, value: p.E * (1 + over), unit: 'V' },
     ]
   },
 
   // The unloaded divider: what v_A would be with nothing across it.
   c3(p) {
     const v = (p.E * p.R2) / (p.R1 + p.R2)
-    return [{ kind: 'level', axis: 'left', y: v, label: 'unloaded: E·R₂/(R₁ + R₂)', value: v, unit: 'V' }]
+    return [{ kind: 'level', axis: 'left', y: v, label: 'unloaded: V₁·R₂/(R₁ + R₂)', value: v, unit: 'V' }]
   },
 
   // Maximum power at the match, and only half the source's power gets there.

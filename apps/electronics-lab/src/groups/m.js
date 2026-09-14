@@ -57,7 +57,7 @@ export const twoStage = (p) => ({
     { type: 'R', id: 'RC', nodes: ['vcc', 'out'], value: p.rc },
     { type: 'C', id: 'Cc', nodes: ['c2', 'out'], value: p.cc },
     { type: 'C', id: 'CL', nodes: ['out', 'gnd'], value: p.cl },
-    { type: 'VCVS', id: 'Efb', nodes: ['inn', 'gnd'], ctrl: ['out', 'gnd'], gain: p.fb },
+    { type: 'VCVS', id: 'Vfb', nodes: ['inn', 'gnd'], ctrl: ['out', 'gnd'], gain: p.fb },
   ],
 })
 
@@ -166,7 +166,7 @@ function twoStageLayout() {
       node('vee', 260, 410, 'b'),
       ...vleg('VEE', 200, 410, 490),
       gnd(200, 490),
-      ...vleg('Efb', 120, 240, 330),
+      ...vleg('Vfb', 120, 240, 330),
       node('inn', 120, 240, 't'),
       gnd(120, 330),
       { text: 'β · v_out', x: 120, y: 366 },

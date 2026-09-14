@@ -28,7 +28,7 @@ const KNOBS_SHOWN = 4
  * experiment in every one of its views, which catches a prop the shell forgot
  * to pass. Nothing in the app itself passes them.
  */
-export default function App({ initialId = FIRST, initialView = null }) {
+export default function App({ initialId = FIRST, initialView = null, catalog = EXPERIMENTS, onNavigate }) {
   const start = byId[initialId] ? initialId : FIRST
   const [id, setId] = useState(start)
   const [params, setParams] = useState(() => defaultsOf(start))
@@ -41,6 +41,8 @@ export default function App({ initialId = FIRST, initialView = null }) {
   const exp = byId[id]
 
   const choose = (next) => {
+    if (!byId[next]) { onNavigate?.(next); return }
+    history.replaceState(null, "", `#${next}`)
     setId(next)
     setParams(defaultsOf(next))
     setView(byId[next].view)
@@ -64,9 +66,9 @@ export default function App({ initialId = FIRST, initialView = null }) {
   const currentView = exp.views.includes(view) ? view : exp.view
   const refusal = refusalOf(x)
   const shownGroup = browsing || exp.group
-  const idx = EXPERIMENTS.findIndex((e) => e.id === id)
-  const next = idx < EXPERIMENTS.length - 1 ? EXPERIMENTS[idx + 1] : null
-  const prev = idx > 0 ? EXPERIMENTS[idx - 1] : null
+  const idx = catalog.findIndex((e) => e.id === id)
+  const next = idx < catalog.length - 1 ? catalog[idx + 1] : null
+  const prev = idx > 0 ? catalog[idx - 1] : null
   const terms = termsFor(exp.terms)
   const moreKnobs = exp.params.slice(KNOBS_SHOWN)
   // `RF_LAB_PLAN.md` §4.1: the frequency first, then the headline, with the
@@ -126,6 +128,7 @@ export default function App({ initialId = FIRST, initialView = null }) {
         <header>
           <LabNav current="rf-lab" currentLabel="RF" />
           <h1>RF Lab</h1>
+          <label>Experiment<select aria-label="Experiment" value={id} onChange={e=>choose(e.target.value)} style={{width:"100%"}}>{catalog.map(e=><option key={e.id} value={e.id}>{e.id.toUpperCase()}. {e.name}</option>)}</select></label>
           <p className="sub">Every experiment loads one circuit at one frequency, names one knob, and states what comes back.</p>
         </header>
 

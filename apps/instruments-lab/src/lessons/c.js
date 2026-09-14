@@ -139,7 +139,7 @@ export const LESSONS_C = {
       },
     ],
     why:
-      'The shunt is in series with the load, so the current is E/(R_L + R_sh) rather than E/R_L, and the ' +
+      'The shunt is in series with the load, so the current is V₁/(R_L + R_sh) rather than V₁/R_L, and the ' +
       'error is R_sh/(R_L + R_sh). The voltage the meter reads is that current times the shunt, and it ' +
       'is subtracted from whatever the circuit had. A meter’s range fixes the shunt: 100 mV of full ' +
       'scale for 10 A needs 10 mΩ. That turns 1 W into heat at full scale. Smaller shunts disturb the ' +

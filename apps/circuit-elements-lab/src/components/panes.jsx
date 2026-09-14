@@ -4,6 +4,10 @@ import { cellLatex, fmtCell } from '@ee-labs/network'
 import { acTable, powerLedger } from '../math.js'
 import { num, rate, rateAt, rootRate, rootRateAt, sharedStep, scaleOf } from '../format.js'
 import { Term, DefCard } from './Prose.jsx'
+import { NotationGuide } from './NotationGuide.jsx'
+import { WorkedSolution } from './WorkedSolution.jsx'
+import { WorkedState } from './WorkedDynamics.jsx'
+import { WorkedRefusal } from './WorkedRefusal.jsx'
 
 // The lower pane's views. Each takes the analysis from math.js `analyse` and
 // shows one thing about it. None of them computes physics: every number here
@@ -96,7 +100,7 @@ const unknownLatex = (u) => (u.kind === 'v' ? `v_{${u.node}}` : `i_{${u.id}}`)
  * cell in letters and in numbers so it is plain where each entry came from;
  * and a legend tying each letter to a part on the schematic.
  */
-export function EquationsPane({ eq, solved, primer = false, fold = false, contradiction = [], onHover = null }) {
+export function EquationsPane({ eq, solved, sol = null, primer = false, fold = false, contradiction = [], onHover = null }) {
   const { symbolic } = eq
   // Pointing at a row lights the node or element it is about on the schematic.
   const hover = (what) => (onHover ? { onMouseEnter: () => onHover(what), onMouseLeave: () => onHover(null) } : {})
@@ -249,6 +253,8 @@ export function EquationsPane({ eq, solved, primer = false, fold = false, contra
           </ul>
         </>
       ) : null}
+      {solved && sol ? <WorkedSolution eq={eq} sol={sol} /> : null}
+      {!solved ? <WorkedRefusal eq={eq} /> : null}
       </Wrap>
     </div>
   )
@@ -389,7 +395,7 @@ export function TheveninPane({ th, port, named = true }) {
         <thead>
           <tr>
             <th>method</th>
-            <th>R_th</th>
+            <th className="num">R_th</th>
             <th aria-label="agreement" />
           </tr>
         </thead>
@@ -451,10 +457,10 @@ export function SuperpositionPane({ sp }) {
           <tr>
             <th>node</th>
             {cols.map((c) => (
-              <th key={c}>{c} alone</th>
+              <th className="num" key={c}>{c} alone</th>
             ))}
-            <th>sum</th>
-            <th>full</th>
+            <th className="num">sum</th>
+            <th className="num">full</th>
             <th aria-label="agreement" />
           </tr>
         </thead>
@@ -482,10 +488,10 @@ export function SuperpositionPane({ sp }) {
           <tr>
             <th>element</th>
             {cols.map((c) => (
-              <th key={c}>{c} alone</th>
+              <th className="num" key={c}>{c} alone</th>
             ))}
-            <th>sum of parts</th>
-            <th>full</th>
+            <th className="num">sum of parts</th>
+            <th className="num">full</th>
           </tr>
         </thead>
         <tbody>
@@ -523,8 +529,9 @@ const FACE_WORDS = {
  * inductor's voltage) — the differential equation being true at this instant,
  * not being asserted.
  */
-export function StatePane({ x }) {
+export function StatePane({ x, worked = true }) {
   const { state: s, before, now, dyn } = x
+  const couplings = x.net.elements.filter(e => e.coupledTo)
   const xSym = s.states.map((q) => (q.type === 'C' ? `v_{${q.id}}` : `i_{${q.id}}`))
   const uSym = s.inputs.map((id) => (dyn.norm.elements.find((e) => e.id === id)?.type === 'I' ? `I_{${id}}` : `V_{${id}}`))
   const col = (items) => `\\begin{bmatrix} ${items.join(' \\\\ ')} \\end{bmatrix}`
@@ -558,6 +565,7 @@ export function StatePane({ x }) {
         ]
   return (
     <div className="state" data-role="state" data-face={s.face || (s.n === 1 ? 'first-order' : '')}>
+      <NotationGuide phasor={!!x.ac} coupled={couplings.length > 0} />
       <div className="eq-matrix">
         <Formula>{eq}</Formula>
         <p className="hint">
@@ -608,7 +616,12 @@ export function StatePane({ x }) {
           <tbody>
             {s.states.map((q, k) => {
               const isC = q.type === 'C'
-              const law = isC ? now.sol.i[q.id] / q.value : now.sol.volt[q.id] / q.value
+                const links = couplings.filter(e => e.id === q.id || e.coupledTo === q.id)
+                const mutualVoltage = links.reduce((sum,e) => {
+                  const other=e.id===q.id?e.coupledTo:e.id
+                  return sum+e.mutual*now.dxdt[s.states.findIndex(q=>q.id===other)]
+                },0)
+                const law = isC ? now.sol.i[q.id] / q.value : (now.sol.volt[q.id] - mutualVoltage) / q.value
               const ok = agrees({ predicted: law, measured: now.dxdt[k], tol: 1e-6, abs: 1e-12 })
               return (
                 <tr key={q.id}>
@@ -620,7 +633,7 @@ export function StatePane({ x }) {
                   <td className="num">{num(now.x[k], isC ? 'V' : 'A', 4)}</td>
                   <td className="num">{rate(now.dxdt[k], isC ? 'V/s' : 'A/s', 4)}</td>
                   <td className="num">
-                    {isC ? `i_${q.id}/C` : `v_${q.id}/L`} = {rate(law, isC ? 'V/s' : 'A/s', 4)}
+                      {isC ? `i_${q.id}/C` : links.length ? `(v_${q.id} − mutual voltage)/L` : `v_${q.id}/L`} = {rate(law, isC ? 'V/s' : 'A/s', 4)}
                   </td>
                   <td className={ok ? 'agree' : 'disagree'}>{ok ? '✓' : '✗'}</td>
                 </tr>
@@ -635,6 +648,7 @@ export function StatePane({ x }) {
         {before.assumed.length ? `; ${before.assumed.join(', ')} had no DC path and is taken as uncharged` : ''}. A state cannot
         jump, so x(0⁺) = x(0⁻); everything else may.
       </p>
+      {worked ? <WorkedState x={x} /> : null}
     </div>
   )
 }
@@ -663,13 +677,13 @@ export function AcPowerPane({ x }) {
         <thead>
           <tr>
             <th>element</th>
-            <th>|V|</th>
-            <th>|I|</th>
-            <th>φ = ∠V − ∠I</th>
-            <th>P</th>
-            <th>Q</th>
-            <th>|S|</th>
-            <th>pf</th>
+            <th className="num">|V|</th>
+            <th className="num">|I|</th>
+            <th className="num">φ = ∠V − ∠I</th>
+            <th className="num">P</th>
+            <th className="num">Q</th>
+            <th className="num">|S|</th>
+            <th className="num">pf</th>
           </tr>
         </thead>
         <tbody>

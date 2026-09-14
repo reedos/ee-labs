@@ -39,6 +39,7 @@ import {
   regionLabel,
   VT,
 } from '@ee-labs/network'
+import { analysePhasors } from './branchedPhasor.js'
 import { isDynamic } from './experiments.js'
 import { sharedStep, scaledAt } from './format.js'
 
@@ -212,6 +213,11 @@ function peakOf(x, q, key, sign = 1) {
 const sgn = (v) => (v < 0 ? -1 : 1)
 
 const ENTRIES = {
+  h8(p,s,x) {
+    const a=analysePhasors('branched',{r:p.R1,r2:p.R2,l:p.L1,c:p.C1,v:p.A,f:p.f,phase:p.phi})
+    return {blocks:[T('Solve complex KCL at the branch node. The worked phasor route shows each substitution; the independent circuit solution checks every branch.'),
+      C(a.rows.flatMap(r=>[row(`|V(${r.id})|`,cx.cabs(r.voltage),cx.cabs(x.ac.volt[r.id]),'V'),row(`|I(${r.id})|`,cx.cabs(r.current),cx.cabs(x.ac.i[r.id]),'A')]))]}
+  },
   a1(p, s) {
     const i = p.E / p.R1
     return {
@@ -562,10 +568,10 @@ const ENTRIES = {
     return {
       blocks: [
         T('The controlled source copies A times its control voltage to its output whatever is connected — and pays for it with power the symbol does not show.'),
-        F('v_{out} = A\\,v_{in}, \\qquad p_{E_1} = -\\frac{(A V_1)^2}{R_L}'),
+        F('v_{out} = A\\,v_{in}, \\qquad p_{V_2} = -\\frac{(A V_1)^2}{R_L}'),
         C([
           row('v_out', vout, s.v.out, 'V'),
-          row('p_E1 (delivered)', -(vout * vout) / p.RL, s.p.E1, 'W'),
+          row('p_V2 (delivered)', -(vout * vout) / p.RL, s.p.V2, 'W'),
           row('p_V1 (input source)', -(p.E * p.E) / p.Rin, s.p.V1, 'W'),
         ]),
         V([{ label: 'power gain', value: (vout * vout) / p.RL / ((p.E * p.E) / p.Rin), unit: '×' }]),
@@ -2446,6 +2452,10 @@ export function sweepKnob(exp, p, n = 241) {
 
 /** The math panel for an experiment, or null if it has none. */
 export function experimentMath(exp, p, x) {
+  if (exp.study && x.sol) {
+    const study = exp.study(exp.id, p, x)
+    return {blocks: [T(study.intro), C(study.checks)]}
+  }
   const fn = ENTRIES[exp.id]
   if (!fn) return null
   try {

@@ -49,6 +49,18 @@ const RIGHT = 16
 const TOP = 26
 const BOTTOM = 34
 
+export function timeTickAlignment(x, width, textWidth) {
+  if (x - textWidth / 2 < LEFT) return 'left'
+  if (x + textWidth / 2 > width - RIGHT) return 'right'
+  return 'center'
+}
+
+export function timeTickLabel(x, width, textWidth, previousRight = -Infinity) {
+  const align = timeTickAlignment(x, width, textWidth)
+  const left = align === 'left' ? x : align === 'right' ? x - textWidth : x - textWidth / 2
+  return { align, left, right: left + textWidth, visible: left >= previousRight + 8 }
+}
+
 /** Every row this diagram draws, in order, as `{ kind, label, ... }`. */
 export function rowsOf({ res, signals = [], busses = [], analog = [] }) {
   const inBus = new Set(busses.flatMap((b) => b.signals))
@@ -154,9 +166,16 @@ export default function TimingCanvas({
       ctx.fillStyle = COLORS.text
       ctx.textAlign = 'center'
       const step = niceTime(t1 - t0)
+      let labelRight = -Infinity
       for (let t = Math.ceil(t0 / step) * step; t <= t1; t += step) {
         const x = sx(t)
-        ctx.fillText(fmtTime(t), x, TOP - 13)
+        const label = fmtTime(t)
+        const placement = timeTickLabel(x, w, ctx.measureText(label).width, labelRight)
+        if (placement.visible) {
+          ctx.textAlign = placement.align
+          ctx.fillText(label, x, TOP - 13)
+          labelRight = placement.right
+        }
         ctx.strokeStyle = COLORS.grid
         ctx.beginPath()
         ctx.moveTo(x, TOP - 6)

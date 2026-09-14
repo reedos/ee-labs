@@ -59,12 +59,12 @@ export function equations(norm, sol = null, opts = {}) {
           // a constant — the same two terms a resistor and a source would.
           terms.push({
             sign: +1,
-            latex: `\frac{${diffSym(node, other)}}{r_{${sub(eff.id)}}}`,
+            latex: `\\frac{${diffSym(node, other)}}{r_{${eff.id}}}`,
             value: val(() => eff.g * (v[node] - v[other])),
             id: eff.id,
             kind: 'ohm',
           })
-          terms.push({ sign, latex: `I_{${sub(eff.id)}}`, value: val(() => sign * eff.i0), id: eff.id, kind: 'source' })
+          terms.push({ sign, latex: `I_{${eff.id}}`, value: val(() => sign * eff.i0), id: eff.id, kind: 'source' })
           break
         case 'I':
           terms.push({ sign, latex: jSym(eff), value: val(() => sign * eff.value), id: eff.id, kind: 'source' })
@@ -136,7 +136,7 @@ export function equations(norm, sol = null, opts = {}) {
 }
 
 const rSym = (eff) => (eff.from === 'SW' ? `R${sub(eff.id)}` : `R${sub(eff.id.replace(/^R/, '') || eff.id)}`)
-const eSym = (eff) => (eff.from === 'C' ? `v${sub(eff.id)}` : `E${sub(eff.id.replace(/^V/, '') || eff.id)}`)
+const eSym = (eff) => (eff.from === 'C' ? `v${sub(eff.id)}` : `V${sub(eff.id.replace(/^V/, '') || eff.id)}`)
 const jSym = (eff) => (eff.from === 'L' ? `i${sub(eff.id)}` : `I${sub(eff.id.replace(/^I/, '') || eff.id)}`)
 
 /**
@@ -177,7 +177,7 @@ export function symbolicSystem(sys, norm) {
     const [a, b] = eff.nodes
     switch (eff.type) {
       case 'GI': {
-        const g = `\frac{1}{${symbol(`r_{${sub(eff.id)}}`, 1 / eff.g, eff, 'R')}}`
+        const g = `\\frac{1}{${symbol(`r_{${eff.id}}`, 1 / eff.g, eff, 'R')}}`
         const ia = ix(a)
         const ib = ix(b)
         if (ia >= 0) put(ia, ia, +1, g, eff.g)
@@ -186,8 +186,8 @@ export function symbolicSystem(sys, norm) {
           put(ia, ib, -1, g, eff.g)
           put(ib, ia, -1, g, eff.g)
         }
-        if (ia >= 0) putR(ia, -1, `I_{${sub(eff.id)}}`, eff.i0)
-        if (ib >= 0) putR(ib, +1, `I_{${sub(eff.id)}}`, eff.i0)
+        if (ia >= 0) putR(ia, -1, `I_{${eff.id}}`, eff.i0)
+        if (ib >= 0) putR(ib, +1, `I_{${eff.id}}`, eff.i0)
         break
       }
       case 'R': {

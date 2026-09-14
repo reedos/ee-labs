@@ -340,7 +340,7 @@ describe('equations are what was solved', () => {
     expect(rowA.latex).toContain('\\frac{(v_A - v_{in})}{R_1}')
     expect(rowA.latex).toContain('\\frac{v_A}{R_2}')
     const con = eq.rows.find((r) => r.kind === 'constraint')
-    expect(con.latex).toBe('v_{in} = E_1')
+    expect(con.latex).toBe('v_{in} = V_1')
     close(con.lhs, 12)
     expect(eq.matrixLatex).toMatch(/^\\begin\{bmatrix\}/)
   })
@@ -372,14 +372,14 @@ describe('equations are what was solved', () => {
     expect(cellLatex(cells[0][0])).toBe('\\frac{1}{R_1}+\\frac{1}{R_2}+\\frac{1}{R_3}')
     expect(cellLatex(cells[0][1])).toBe('-\\frac{1}{R_1}')
     expect(cellLatex(cells[0][2])).toBe('0')
-    // The source row v_in = E_1, and a 1 in the source current's column at node in.
+    // The source row v_in = V_1, and a 1 in the source current's column at node in.
     expect(cellLatex(cells[2][1])).toBe('1')
     expect(cellLatex(cells[1][2])).toBe('1')
-    expect(cellLatex(rhs[2])).toBe('E_1')
+    expect(cellLatex(rhs[2])).toBe('V_1')
     expect(cellLatex(rhs[0])).toBe('0')
     expect(eq.symbolicLatex).toMatch(/^\\begin\{bmatrix\} \\frac\{1\}\{R_1\}/)
     expect(symbols.map((s) => [s.latex, s.value, s.what])).toEqual([
-      ['E_1', 12, 'E'],
+      ['V_1', 12, 'E'],
       ['R_1', 1000, 'R'],
       ['R_2', 2000, 'R'],
       ['R_3', 3000, 'R'],
@@ -402,7 +402,7 @@ describe('equations are what was solved', () => {
     const sol = solveDC(norm, { states: { C1: 3, L1: 0.02 } })
     const { symbols, rows } = symbolicMatches(norm, sol)
     expect(symbols.map((s) => `${s.what}:${s.latex}`).sort()).toEqual(
-      ['E:E_1', 'switchR:R_{S1}', 'vC:v_{C1}', 'iL:i_{L1}', 'R:R_1', 'R:R_2', 'g:g_{G1}', 'A:A_{U1}'].sort(),
+      ['E:V_1', 'switchR:R_{S1}', 'vC:v_{C1}', 'iL:i_{L1}', 'R:R_1', 'R:R_2', 'g:g_{G1}', 'A:A_{U1}'].sort(),
     )
     expect(symbols.find((s) => s.what === 'vC').value).toBe(3)
     expect(symbols.find((s) => s.what === 'iL').value).toBe(0.02)

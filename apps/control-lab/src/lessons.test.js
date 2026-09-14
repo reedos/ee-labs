@@ -40,11 +40,11 @@ describe('the lesson list itself', () => {
     }
   })
 
-  it('exercises every plant and every controller across the set', () => {
+  it('covers the teaching plants and every controller; custom forms are exercised by handovers', () => {
     const plants = new Set(LESSONS.map((l) => l.patch.plant))
     const ctrls = new Set(LESSONS.map((l) => l.patch.ctrl))
     expect(ctrls.size).toBe(Object.keys(CONTROLLERS).length)
-    expect(plants.size).toBeGreaterThanOrEqual(Object.keys(PLANTS).length - 2)
+    expect(Object.keys(PLANTS).filter(id=>!plants.has(id)).sort()).toEqual(['custom','custom3','integrator'])
   })
 
   it('every lesson composes a loop that can actually be analysed', () => {

@@ -657,7 +657,7 @@ what `experiments.test.js` measures.
 - **I3 The reflection coefficient.** 100 ohms on a 50 ohm line gives +0.3333, 25
   ohms gives −0.3333, and an open gives exactly 1.000.
 - **I4 The bounce diagram.** 5 V behind 25 ohms into 150 ohms. The first wave is
-  3.3333 V, the load reads 5.0000 V after one delay and 4.1667 V after two, and
+  3.3333 V, the load reads 5.0000 V at T and 4.1667 V at 3T (the second load arrival), and
   the arrivals settle to 4.28571 V. That is exactly the divider 5 times 150 over
   175 with the line taken away.
 - **I5 Input impedance against length.** A quarter wave of 50 turns 100 into
@@ -705,10 +705,12 @@ what `experiments.test.js` measures.
 - **L3 Directivity, gain and efficiency.** Gain is efficiency times directivity.
   A half-wave dipole at 90 per cent efficiency gives 1.6933 dBi, which is 0.4576
   dB below its directivity. A full-wave dipole reaches 2.41100 and a 1.25
-  wavelength one 3.28248, which is the maximum for a straight wire.
+  wavelength one 3.28248. The lesson's length range ends at 1.25 wavelengths;
+  this is not a global maximum claim for every straight-wire length.
 - **L4 The array factor.** Four elements at half a wavelength give a directivity
   of 4.00000 and a beamwidth of 26.323 degrees. Eight give 8.00000 and 12.803
-  degrees. Ninety degrees of progressive phase steers the beam to 60.000 degrees.
+  degrees. With the convention ψ = 2π(d/λ)cosθ + β, −90 degrees of progressive
+  phase steers to 60.000 degrees; +90 degrees steers to 120.000 degrees.
   At 1.5 wavelengths of spacing two grating lobes appear.
 - **L5 Friis, and the link budget.** 100 mW at 2.4 GHz over 1 km between 12 and
   2 dBi antennas delivers −66.052 dBm. The free-space loss is 100.05 dB and the

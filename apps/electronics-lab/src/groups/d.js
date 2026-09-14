@@ -438,7 +438,7 @@ const switchCurves = (p, x) => {
 const loadLineD7 = (p, x) => loadLineCurves(loaded, p, x, [0.25, 0.5, 1, 2, 3].map((k) => ({ ib: k * p.ib, lit: k === 1 })))
 
 /**
- * The inverter's noise margins: the two inputs where the transfer curve's
+ * The inverter's input limits (the historical helper name is preserved): the two inputs where the transfer curve's
  * slope is exactly −1. Bisected on the slope of the solved curve rather than
  * read off a grid, so the answer does not depend on how many points are drawn.
  */

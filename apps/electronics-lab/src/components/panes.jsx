@@ -1,6 +1,8 @@
 import React from 'react'
 import { COLORS, drawFrame, plotArea, useCanvas, fmt } from '@ee-labs/ui'
 import { equations } from '@ee-labs/network'
+import { Formula } from '@ee-labs/explain'
+import { WorkedSolution } from '@ee-labs/explain/circuit'
 import { bodePoints } from '../math.js'
 import NoiseCanvas from './NoiseCanvas.jsx'
 import { num } from '../format.js'
@@ -469,6 +471,10 @@ export function EquationsPane({ x }) {
         </>
       ) : null}
       <h3>{eq.unknowns.length} unknowns, {eq.rows.length} rows</h3>
+      <p>These equations describe the solved operating point. For nonlinear devices, the linearized rows are local to that bias; they do not describe a large signal moving through different operating regions.</p>
+      <Formula>{eq.symbolicLatex}</Formula>
+      <Formula>{eq.matrixLatex}</Formula>
+      <WorkedSolution eq={eq} sol={x.sol} />
       <ul className="pane-list">
         {eq.unknowns.map((u) => (
           <li key={u.kind === 'v' ? `v${u.node}` : `i${u.id}`}>{u.kind === 'v' ? `v(${u.node})` : `i(${u.id})`}</li>

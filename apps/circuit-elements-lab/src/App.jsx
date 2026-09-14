@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { LabNav, NumField, ReportIssue, Schematic } from '@ee-labs/ui'
 import { MathPanel } from '@ee-labs/explain'
+import { FoundationsPane, FoundationLink, FoundationSidebar } from './components/FoundationsPane.jsx'
+import { NotationGuide } from './components/NotationGuide.jsx'
 import { equations, normalize, complex as cx } from '@ee-labs/network'
-import { EXPERIMENTS, GROUPS, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic, viewLabel, VIEW_LABELS } from './experiments.js'
+import { EXPERIMENTS, GROUPS, COURSE_GROUPS, courseSection, VIEW_ORDER, byId, defaultsOf, drawables, isDynamic, viewLabel, VIEW_LABELS } from './experiments.js'
 import { analyse, atDrive, experimentMath, netPower, refusalReason, snapNoise, turnedLabel } from './math.js'
 import { firstUses } from './glossary.js'
 import { predictFor } from './predict.js'
@@ -19,6 +21,9 @@ import ScopeCanvas from './components/ScopeCanvas.jsx'
 import EnergyCanvas from './components/EnergyCanvas.jsx'
 import DampingCanvas from './components/DampingCanvas.jsx'
 import PhasorCanvas from './components/PhasorCanvas.jsx'
+import { WorkedPhasor } from './components/WorkedDynamics.jsx'
+import { SolutionRoutes } from './components/SolutionRoutes.jsx'
+import { WorkedMethod } from './components/WorkedMethod.jsx'
 import FreqCanvas from './components/FreqCanvas.jsx'
 import HandOver from './components/HandOver.jsx'
 import PlotMarks from './components/PlotMarks.jsx'
@@ -79,9 +84,7 @@ const storage = () => {
  */
 export const nextUp = (exp) => {
   const seq = EXPERIMENTS[EXPERIMENTS.indexOf(exp) + 1]
-  const to = leadsTo(exp.id)
-  if (seq && to.includes(seq.id)) return seq.id
-  return to[0] || (seq ? seq.id : null)
+  return seq?.id || null
 }
 /** The knob open when no step names one: the first in the Knobs section. */
 const firstKnob = (exp) => (exp.params.find((p) => !(p.key === 'N' && exp.window)) || {}).key
@@ -115,6 +118,8 @@ export default function App() {
   const [params, setParams] = useState(initial.params)
   const [show, setShow] = useState(initial.show)
   const [view, setView] = useState(initial.view)
+  const drawingDialog = useRef(null)
+  const [drawingOpen, setDrawingOpen] = useState(false)
   // The instant the schematic shows, in seconds; null for the DC groups. The
   // analysis clamps it to the window, so a knob that shrinks the window pulls
   // the cursor back with it.
@@ -305,7 +310,7 @@ export default function App() {
   // tapping a switch throws it — by its knob if one throws it, else by replaying t = 0.
   const takesReference = !!(exp.claim && exp.claim.reference)
   const onNode = takesReference ? (name) => setRefNode((r) => (r === name ? null : name)) : null
-  const hasSwitch = x.net.elements.some((e) => e.type === 'SW')
+  const hasSwitch = !exp.fixedSwitches && x.net.elements.some((e) => e.type === 'SW')
   const onElement = hasSwitch
     ? (elId) => {
         const key = switchKnob(exp, params, elId)
@@ -371,6 +376,7 @@ export default function App() {
   // solution quantity. The frame was sized with the widest text, so nothing moves.
   const layout = useMemo(() => {
     const items = exp.layout.items.flatMap((it) => {
+      if (it.when && params[it.when.key] !== it.when.value) return []
       if (it.callout) {
         const text = calloutText(exp.headline, x, params)
         return text === null ? [] : [{ ...it, text }]
@@ -420,12 +426,12 @@ export default function App() {
   }, [id, params, show, currentView, dynamic, x.cursor, playing])
 
   return (
-    <div className="app">
+    <div className="app" data-experiment={id}>
       <aside className="controls">
         <header>
           <LabNav current="circuit-elements-lab" currentLabel="Elements" />
           <h1>Circuit Elements Lab</h1>
-          <p className="sub">Circuits from KVL and KCL up to AC power and the diode.</p>
+          <p className="sub">Circuits I and II in one workspace: circuit laws, time response and AC analysis.</p>
           <ReportIssue
             lab="Circuit Elements Lab"
             version={pkg.version}
@@ -476,84 +482,86 @@ export default function App() {
             </details>
           ) : null}
           {/* The note with its numbers alive and its terms marked where they first do work. */}
-          <LiveNote
-            exp={exp}
-            x={x}
-            params={params}
-            pristine={pristine}
-            dfn={(s, i) => <Marked key={i} text={s.text} base={s.start} marks={uses.see} field="see" open={openTerm} onOpen={setOpenTerm} />}
-          >
-            {uses.unplaced.length ? <TermChips ids={uses.unplaced} field="see" open={openTerm} onOpen={setOpenTerm} /> : null}
-          </LiveNote>
-          <DefCard open={openTerm} field="see" exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
-          {steps.length ? (
-            // The Try list as a path: done steps ticked, the active step in full
-            // with its knob open and its readings lit, the steps ahead one line
-            // each. Tap a step to read it in full; tick a watch step by hand.
-            <ol className="try" data-role="try" aria-label="Try" data-active={active}>
-              {steps.map((t, i) => {
-                const state = done.has(i) ? 'done' : i === active ? 'active' : 'ahead'
-                const shown = i === active || i === focusStep
-                const posed = predict && predict.step === i
-                // The posed step shows its question while unanswered and open, and its reveal while the student keeps it open.
-                const asQuestion = posed && (predicted ? focusStep === i : shown)
-                return (
-                  <li
-                    key={i}
-                    data-step={i}
-                    data-state={state}
-                    data-shown={shown || undefined}
-                    data-predict={posed ? (predicted ? 'answered' : 'pending') : undefined}
-                    onClick={(ev) => {
-                      if (ev.target.closest('button, dfn, a')) return
-                      setFocusStep(i === focusStep ? null : i)
-                    }}
-                  >
-                    <span className="step-n" aria-hidden="true">
-                      {state === 'done' ? '✓' : i + 1}
-                    </span>
-                    <span className="step-body">
-                      {asQuestion ? (
-                        // This step is posed as a question first; its sentence appears once answered.
-                        <Predict q={predict} picked={predicted} onPick={pick} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
-                      ) : posed && !predicted ? (
-                        <span className="step-text">
-                          <span className="predict-tag">predict</span> {predict.ask}
-                        </span>
-                      ) : (
-                        <span className="step-text">
-                          <Marked text={t.say} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
-                        </span>
-                      )}
-                      {state === 'active' && !measurable(t) ? (
-                        <button type="button" className="step-seen" data-role="seen" onClick={() => seen(i)} title="Tick this step off">
-                          seen ✓
-                        </button>
-                      ) : null}
-                    </span>
-                  </li>
-                )
-              })}
-            </ol>
-          ) : null}
-          {openTerm && openTerm.field.startsWith('try.') ? (
-            <DefCard open={openTerm} field={openTerm.field} exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
-          ) : null}
-          {isComplete && nextUp(exp) ? (
-            <p className="next-up" data-role="next-up">
-              <span>All steps done.</span>
-              <button type="button" className="tag is-on" onClick={() => choose(nextUp(exp))} title={`${nextUp(exp).toUpperCase()} · ${byId[nextUp(exp)].name}`}>
-                next up: {nextUp(exp).toUpperCase()} →
-              </button>
-            </p>
-          ) : null}
+          {currentView === 'foundations' ? <FoundationSidebar exp={exp} /> : <>
+            <LiveNote
+              exp={exp}
+              x={x}
+              params={params}
+              pristine={pristine}
+              dfn={(s, i) => <Marked key={i} text={s.text} base={s.start} marks={uses.see} field="see" open={openTerm} onOpen={setOpenTerm} />}
+            >
+              {uses.unplaced.length ? <TermChips ids={uses.unplaced} field="see" open={openTerm} onOpen={setOpenTerm} /> : null}
+            </LiveNote>
+            <DefCard open={openTerm} field="see" exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
+            {steps.length ? (
+              // The Try list as a path: done steps ticked, the active step in full
+              // with its knob open and its readings lit, the steps ahead one line
+              // each. Tap a step to read it in full; tick a watch step by hand.
+              <ol className="try" data-role="try" aria-label="Try" data-active={active}>
+                {steps.map((t, i) => {
+                  const state = done.has(i) ? 'done' : i === active ? 'active' : 'ahead'
+                  const shown = i === active || i === focusStep
+                  const posed = predict && predict.step === i
+                  // The posed step shows its question while unanswered and open, and its reveal while the student keeps it open.
+                  const asQuestion = posed && (predicted ? focusStep === i : shown)
+                  return (
+                    <li
+                      key={i}
+                      data-step={i}
+                      data-state={state}
+                      data-shown={shown || undefined}
+                      data-predict={posed ? (predicted ? 'answered' : 'pending') : undefined}
+                      onClick={(ev) => {
+                        if (ev.target.closest('button, dfn, a')) return
+                        setFocusStep(i === focusStep ? null : i)
+                      }}
+                    >
+                      <span className="step-n" aria-hidden="true">
+                        {state === 'done' ? '✓' : i + 1}
+                      </span>
+                      <span className="step-body">
+                        {asQuestion ? (
+                          // This step is posed as a question first; its sentence appears once answered.
+                          <Predict q={predict} picked={predicted} onPick={pick} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
+                        ) : posed && !predicted ? (
+                          <span className="step-text">
+                            <span className="predict-tag">predict</span> {predict.ask}
+                          </span>
+                        ) : (
+                          <span className="step-text">
+                            <Marked text={t.say} marks={uses[`try.${i}`]} field={`try.${i}`} open={openTerm} onOpen={setOpenTerm} />
+                          </span>
+                        )}
+                        {state === 'active' && !measurable(t) ? (
+                          <button type="button" className="step-seen" data-role="seen" onClick={() => seen(i)} title="Tick this step off">
+                            seen ✓
+                          </button>
+                        ) : null}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ol>
+            ) : null}
+            {openTerm && openTerm.field.startsWith('try.') ? (
+              <DefCard open={openTerm} field={openTerm.field} exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
+            ) : null}
+            {isComplete && nextUp(exp) ? (
+              <p className="next-up" data-role="next-up">
+                <span>All steps done.</span>
+                <button type="button" className="tag is-on" onClick={() => choose(nextUp(exp))} title={`${nextUp(exp).toUpperCase()} · ${byId[nextUp(exp)].name}`}>
+                  next up: {nextUp(exp).toUpperCase()} →
+                </button>
+              </p>
+            ) : null}
+          </>}
           <Thread id={id} choose={choose} />
         </section>
 
         <section className="knobs" id="knobs">
           <h2>
             Knobs
-            {activeKnobs.length ? <span className="h2-aside">step {active + 1} turns the lit one</span> : null}
+            {currentView !== 'foundations' && activeKnobs.length ? <span className="h2-aside">step {active + 1} turns the lit one</span> : null}
           </h2>
           <div className="knob-list">
             {exp.params
@@ -634,6 +642,7 @@ export default function App() {
                 <DefCard open={openTerm} field="why" exp={exp} onClose={() => setOpenTerm(null)} choose={choose} />
               </div>
             ) : null}
+            {x.state ? <NotationGuide phasor={!!x.ac} /> : null}
             <MathPanel entry={readable} />
             {exp.circuitLab ? <HandOver exp={exp} params={params} /> : null}
           </details>
@@ -737,6 +746,7 @@ export default function App() {
         <section className="view">
           <div className="view-head">
             <h2>Schematic, with meters</h2>
+            <button type="button" className="drawing-enlarge" onClick={() => {setPlaying(false); setDrawingOpen(true); drawingDialog.current.showModal()}}>Enlarge drawing</button>
             <div className="segmented sm" role="group" aria-label="What the meters read">
               {[
                 ['i', 'currents', 'Current through each element, arrow in the direction it flows'],
@@ -772,6 +782,11 @@ export default function App() {
             </div>
           </div>
           {/* data-show lets the stylesheet give the meters the hue of what they read (palette.js). */}
+          <dialog ref={drawingDialog} className="drawing-dialog" aria-labelledby="drawing-title" onClose={() => setDrawingOpen(false)}>
+            <div className="drawing-dialog-head"><h2 id="drawing-title">{exp.id.toUpperCase()} · {exp.name}</h2><button type="button" autoFocus onClick={() => drawingDialog.current.close()}>Close drawing</button></div>
+            <p>Voltage signs and current arrows use the same references as the lesson. On a small screen, scroll the drawing sideways to inspect its labels.</p>
+            {drawingOpen ? <div className="drawing-scroll" data-show={show}><Schematic elements={elements} layout={layout} meters={show === 'none' ? null : meters} show={show} reference={refNode} /></div> : null}
+          </dialog>
           <div className="view-body" data-show={show}>
             {/* "none" promises just the circuit, so it drops the node voltages too. */}
             <Schematic
@@ -854,9 +869,17 @@ export default function App() {
         </section>
 
         <section className="view">
-          <div className="view-head">
+          <div className="view-head analysis-head">
             <h2>Analysis</h2>
             <ViewSwitch value={currentView} onChange={setView} options={viewOptions} />
+          </div>
+          <div className="view-body">
+            {currentView === 'foundations' ? <FoundationsPane exp={exp} x={x} onChoose={setView} /> : <>
+              <FoundationLink exp={exp} view={currentView} />
+              <Headline exp={exp} x={x} params={params} />
+              <Bridge exp={exp} view={currentView} />
+              {exp.study ? <details className="group-intro method-routes"><summary>Compare solution methods and their tradeoffs</summary><SolutionRoutes exp={exp} x={x} view={currentView} onChoose={setView} /></details> : <SolutionRoutes exp={exp} x={x} view={currentView} onChoose={setView} />}
+            </>}
             <div className="readout">
               {currentView === 'thevenin' && x.thevenin ? (
                 <>
@@ -943,11 +966,8 @@ export default function App() {
                 )
               ) : null}
             </div>
-          </div>
-          <div className="view-body">
-            <Headline exp={exp} x={x} params={params} />
-            <Bridge exp={exp} view={currentView} />
             {theoremShows(exp, currentView) ? <TheoremBlock exp={exp} x={x} params={params} elements={elements} layout={plainLayout} /> : null}
+            {exp.study && ['equations', 'laplace', ...(exp.studyViews || [])].includes(currentView) ? <WorkedMethod key={exp.id} exp={exp} params={params} x={x} onApply={settings => Object.entries(settings).forEach(([key, value]) => setParam(key, value))} /> : null}
             {currentView === 'reading' && x.sol ? <Readings x={x} elements={elements} power={showsNetPower} /> : null}
             {currentView === 'iv' && x.sol ? <IVCanvas exp={exp} x={x} p={params} /> : null}
             {currentView === 'assumed' && x.assumed ? <AssumedPane tried={x.assumed} devices={x.devices} regions={x.regions} /> : null}
@@ -966,9 +986,10 @@ export default function App() {
             ) : null}
             {currentView === 'scope' && x.tr ? <PlotCaption parts={caption} /> : null}
             {currentView === 'scope' && x.tr ? <PlotMarks marks={marks.scope} /> : null}
-            {currentView === 'state' && x.tr ? <StatePane x={x} /> : null}
+            {currentView === 'state' && x.tr ? <StatePane x={x} worked={!exp.studyOwnState} /> : null}
             {currentView === 'phasor' && x.ac ? <PhasorCanvas exp={exp} x={x} cursor={x.cursor} onCursor={scrub} /> : null}
             {currentView === 'phasor' && x.ac ? <PlotCaption parts={caption} /> : null}
+            {currentView === 'phasor' && x.ac && !exp.studyOwnPhasor ? <WorkedPhasor exp={exp} x={x} /> : null}
             {(currentView === 'impedance' || currentView === 'bode') && x.freq && drive ? (
               <FreqCanvas
                 freq={x.freq}
@@ -990,6 +1011,7 @@ export default function App() {
               <EquationsPane
                 eq={eq}
                 solved={!!x.sol}
+                sol={x.sol}
                 primer={primerFor(exp)}
                 fold={FOLDED_GROUPS.includes(exp.group)}
                 contradiction={exp.theorem?.kind === 'contradiction' && !x.sol ? exp.theorem.rows : []}
@@ -1211,12 +1233,34 @@ function ViewSwitch({ value, onChange, options }) {
 function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups, progress }) {
   const idx = EXPERIMENTS.findIndex((e) => e.id === id)
   const exp = EXPERIMENTS[idx]
+  const section = courseSection(exp), circuitsII = section === 'II'
   const prev = EXPERIMENTS[idx - 1]
   const next = EXPERIMENTS[idx + 1]
   const title = (e) => `${e.id.toUpperCase()} · ${e.name}`
   const finished = EXPERIMENTS.filter((e) => complete(e, progress[e.id])).length
   return (
     <nav className="picker" aria-label="Choose an experiment">
+      <div className="course-sections" aria-label="Course sections">
+        <button type="button" className="preset" aria-pressed={section === 'I'} onClick={() => choose('a1')}>Circuits I</button>
+        <button type="button" className="preset" aria-pressed={circuitsII} onClick={() => choose('h1')}>Circuits II</button>
+        <button type="button" className="preset" aria-pressed={section === 'Extension'} onClick={() => choose('i1')}>Diodes</button>
+      </div>
+      <p className="course-section-summary">{circuitsII
+        ? 'Circuits II · Phasors, transforms, filters and network models'
+        : section === 'Extension' ? 'Optional extension · Diodes and nonlinear circuits' : 'Circuits I · Circuit laws, methods, storage and coupled states'}</p>
+      {circuitsII ? <details className="group-intro course-outline">
+        <summary>Circuits II learning sequence</summary>
+        <ol>
+          <li><a href="#h1&view=foundations">Phasor foundations</a>, <a href="#h2&view=phasor">RC phasors</a>, <a href="#h3&view=phasor">series circuits</a>, then <a href="#h8&view=phasor">branched KCL</a>.</li>
+          <li><a href="#g1&view=foundations">State-vector foundations</a>, then <a href="#h8&view=state">coupled states and initial conditions</a>. Compare startup with sinusoidal steady state.</li>
+          <li><a href="#j1&view=laplace">Laplace foundations</a>, <a href="#j2&view=laplace">initial conditions</a>, <a href="#j3&view=laplace">inversion</a>, then <a href="#j7&view=laplace">state matrices and transfer functions</a>.</li>
+          <li><a href="#h9&view=phasor">AC equivalents</a>, <a href="#h10">conjugate matching</a> and <a href="#h11">power-factor correction</a>.</li>
+          <li><a href="#h6&view=bode">Frequency response</a>, <a href="#k1">filter design</a>, <a href="#k3">Fourier reconstruction</a> and <a href="#k4">convolution</a>.</li>
+          <li><a href="#l1">Coupled coils</a>, <a href="#l2">transformers</a>, then <a href="#l3">balanced</a> and <a href="#l4">unbalanced three-phase circuits</a>.</li>
+          <li><a href="#m1">Two-port tests</a>, <a href="#m2">parameter conversions</a> and <a href="#m3">cascades</a>, then the <a href="#n1">Circuits II capstone</a>.</li>
+        </ol>
+        <p>The numbered lesson IDs preserve existing links. Use the next arrow to follow the teaching order. <a href="../circuit-lab/">Circuit Lab</a> provides further filter and resonance exploration.</p>
+      </details> : null}
       <div className="picker-row">
         <button
           type="button"
@@ -1257,13 +1301,13 @@ function Picker({ id, choose, open, setOpen, openGroups, setOpenGroups, progress
             <b>{finished}</b> of {EXPERIMENTS.length} experiments complete
           </p>
         ) : null}
-        {GROUPS.map((g) => {
+        {COURSE_GROUPS.map((g) => {
           const inGroup = EXPERIMENTS.filter((e) => e.group === g)
           return (
             <FoldGroup
               key={g}
               sectionKey={g}
-              label={g}
+              label={`${courseSection(inGroup[0])} · ${g}`}
               holdsActive={inGroup.some((e) => e.id === id)}
               intro={GROUP_INTRO[letterOf(g)]}
               arc={groupArc(inGroup, progress)}

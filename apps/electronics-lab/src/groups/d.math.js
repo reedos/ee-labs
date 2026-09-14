@@ -160,15 +160,17 @@ export const ENTRIES_D = {
     const tooHigh = p.vt >= vdd / 2 ? 'With a threshold this high the two devices are never both on, and the curve has no gain region to measure a margin in.' : null
     return {
       blocks: [
-        T('Two switches on one gate, one of which is on whenever the other is off. Matched, the curve is symmetric about half the supply, and the margins are set by the threshold alone.'),
-        F('V_M = \\frac{V_{DD}}{2}, \\qquad V_{IL} = \\frac{3V_{DD} + 2V_t}{8}, \\qquad V_{IH} = \\frac{5V_{DD} - 2V_t}{8}'),
+          T('At either input rail one device is off. Both can conduct during the transition. For matched devices, the curve is symmetric about half the supply; the input limits depend on the supply and device threshold.'),
+          F('V_M = \\frac{V_{DD}}{2}, \\qquad V_{IL} = \\frac{3V_{DD} + 2V_t}{8}, \\qquad V_{IH} = \\frac{5V_{DD} - 2V_t}{8}'),
+          T('V_IL is the largest guaranteed low input; V_IH is the smallest guaranteed high input. V_OL is the output at V_IH, and V_OH is the output at V_IL. Subtract output and input limits to find the noise margins; the input limits themselves are not margins.'),
+          F('NM_L=V_{IL}-V_{OL},\\qquad NM_H=V_{OH}-V_{IH}'),
         C([
           row('switching threshold V_M', vdd / 2, m.vm, 'V', 1e-6, { unchecked: tooHigh }),
           row('V_IL, where the slope first reaches −1', (3 * vdd + 2 * p.vt) / 8, m.vil, 'V', 1e-3, { unchecked: tooHigh }),
           row('V_IH, where it comes back through −1', (5 * vdd - 2 * p.vt) / 8, m.vih, 'V', 1e-3, { unchecked: tooHigh }),
           row('supply current with the input low', 0, ends ? Math.abs(ends.sol.i.VDD) : NaN, 'A', 1e-6, { abs: 1e-12 }),
         ]),
-        V([{ label: 'peak supply current, at V_M', value: 0.5 * p.kn * (vdd / 2 - p.vt) ** 2, unit: 'A', note: 'the one input where both devices conduct at once' }]),
+          V([{ label: 'peak supply current, at V_M', value: 0.5 * p.kn * (vdd / 2 - p.vt) ** 2, unit: 'A', note: 'both devices conduct in the transition region' }]),
       ],
     }
   },

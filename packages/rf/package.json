@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ee-labs/fields": "*",
-    "@ee-labs/network": "*"
+    "@ee-labs/network": "*",
+    "@ee-labs/dsp": "*"
   }
 }

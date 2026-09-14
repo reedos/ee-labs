@@ -44,11 +44,12 @@ export function buildLink(patch = {}) {
     // plant the coefficients ARE the object (six figures priced a twin-T's
     // notch floor at -100 dB instead of -inf). Named params (a cutoff, a Q)
     // stay at six - they are knobs, and the links stay readable.
-    const t = b.type === 'biquad' ? trimExact : trim
+    // Buck handovers also preserve the exact duty and physical operating point.
+    const t = b.type === 'biquad' || b.type === 'buck' ? trimExact : trim
     parts.push(`b=${[b.type, ...(b.params || []).map(t)].join(':')}`)
   }
   if (patch.plant) {
-    const t = patch.plant.type === 'custom' ? trimExact : trim
+    const t = ['custom','custom3'].includes(patch.plant.type) ? trimExact : trim
     parts.push(`plant=${[patch.plant.type, ...(patch.plant.params || []).map(t)].join(':')}`)
   }
   if (patch.ctrl) parts.push(`ctrl=${[patch.ctrl.type, ...(patch.ctrl.params || []).map(trim)].join(':')}`)
@@ -178,7 +179,7 @@ export function readLocationLink() {
  * RELEASED labs link back to a dark one is a separate decision, made in
  * LabNav's own `LABS` list, and adding a name here must not change that.
  */
-const APPS = ['signal-lab', 'circuit-lab', 'control-lab', 'circuit-elements-lab', 'power-lab']
+const APPS = ['signal-lab', 'circuit-lab', 'control-lab', 'circuit-elements-lab', 'power-lab', 'electronics-lab', 'interfaces-lab', 'vlsi-lab', 'rf-lab', 'system-lab', 'photonics-lab', 'fields-lab', 'control-lab-ii', 'applied-analog-lab', 'analog-ic-lab', 'mixed-signal-lab']
 
 /**
  * The URL of a sibling app in the deployed suite, or null.

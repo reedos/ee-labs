@@ -138,10 +138,24 @@ describe('invariant 4: the ideal transformer is exact, and Tellegen holds across
       // The sense resistance goes with the branch it senses, per port.js.
       const ac = solveAC(bare(n, RL, RL), 2 * Math.PI * 50)
       expect(Math.abs((rms(ac.v.s) * n) / rms(ac.v.q) - 1)).toBeLessThan(1e-9)
-      expect(Math.abs((rms(ac.i.Rsrc) * n) / rms(ac.i.RL) - 1)).toBeLessThan(1e-9)
+      // The controlled primary-port current tests the transformer ratio without
+      // subtracting nearly equal source voltages. Check Rsrc's KCL separately:
+      // its (Vp−Vq)/0.5 current loses relative digits near open circuit.
+      expect(Math.abs((rms(ac.i['T1.Gp']) * n) / rms(ac.i.RL) - 1)).toBeLessThan(1e-9)
+      const roundoff = 16 * Number.EPSILON * Math.max(cx.cabs(ac.v.p), cx.cabs(ac.v.q)) / 0.5
+      expect(cx.cabs(cx.csub(ac.i.Rsrc, ac.i['T1.Gp']))).toBeLessThan(1e-10 * cx.cabs(ac.i['T1.Gp']) + roundoff)
       const S = ['T1.Es', 'T1.sen.rs', 'T1.sen.e', 'T1.Gp'].reduce((acc, id) => cx.cadd(acc, ac.s[id]), cx.C(0))
       expect(cx.cabs(S) / cx.cabs(ac.s.RL)).toBeLessThan(1e-10)
     }
+  })
+
+  it('retains current balance when source-resistor voltage subtraction loses relative digits', () => {
+    const n = 18.244508850070698, RL = 10000
+    const ac = solveAC(bare(n, RL, RL), 2 * Math.PI * 50)
+    const expected = 340 / (0.5 + n * n * RL)
+    expect(Math.abs(cx.cabs(ac.i['T1.Gp']) / expected - 1)).toBeLessThan(1e-10)
+    expect(Math.abs(cx.cabs(ac.i.Rsrc) - expected)).toBeLessThan(16 * Number.EPSILON * 340 / 0.5)
+    expect(Math.abs(cx.cabs(ac.i.RL) / (n * expected) - 1)).toBeLessThan(1e-10)
   })
 })
 

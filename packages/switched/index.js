@@ -138,3 +138,5 @@ export {
   frequencyCeiling,
   edgeCost,
 } from './src/thermal.js'
+
+export {chargeStep} from './src/charge.js'

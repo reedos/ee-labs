@@ -10,3 +10,6 @@ shots/
 .DS_Store
 Thumbs.db
 _site/
+
+# Local browser evidence
+.shots/

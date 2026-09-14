@@ -1,17 +1,9 @@
 import { defaultsOf, PLANTS } from '../systems.js'
 
-// Group F: the Kalman filter, deterministic half.
-//
-// The observer of Group A chose its gain by placing poles. This one chooses it
-// from how much the model and the measurement are each worth. Decision 4 of
-// the plan splits the group: the steady-state gain is the dual of the LQR and
-// needs no new package, so it ships now. The covariance recursion and the
-// ensemble need a noise model with a variance, which is the Random Signals
-// Lab's, and they wait in `BACKLOG.md`.
-//
-// No text in this file names that lab, per the plan's Decision 4, because a
-// lesson pointing at something a reader cannot open is worse than a lesson
-// that stops.
+// Group F's deterministic foundations. F3–F5 now follow these lessons in the
+// combined catalog, using covariance.js and the Random Signals package for
+// covariance recursion, steady gain and reproducible statistical ensembles.
+// The original observer/LQR examples remain independent of the new example.
 
 const pp = (id, over = {}) => ({ ...defaultsOf(PLANTS[id]), ...over })
 

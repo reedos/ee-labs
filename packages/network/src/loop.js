@@ -158,3 +158,17 @@ export function marginsOf(Tat, { lo = 1e-3, hi = 1e12 } = {}) {
   const pm = fc == null ? null : 180 + phase(fc)
   return { crossover: fc, pm }
 }
+
+// Scan every unity crossing in the declared 1 mHz–1 THz range.
+export function loopCrossings(at){
+ const grid=Array.from({length:601},(_,i)=>10**(-3+15*i/600)),crossings=[]
+ let previousPhase=0,unwrapped=0
+ const points=grid.map(f=>{const z=at(f),phase=Math.atan2(z[1],z[0])*180/Math.PI;let delta=phase-previousPhase;while(delta>180)delta-=360;while(delta< -180)delta+=360;unwrapped+=delta;previousPhase=phase;return{f,mag:cabs(z),phase:unwrapped}})
+ for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i];if((a.mag-1)*(b.mag-1)>0)continue;let lo=a.f,hi=b.f
+  for(let j=0;j<60;j++){const mid=Math.sqrt(lo*hi);if((a.mag-1)*(cabs(at(mid))-1)<=0)hi=mid;else lo=mid}
+  const crossover=Math.sqrt(lo*hi),z=at(crossover);let phase=Math.atan2(z[1],z[0])*180/Math.PI;while(phase-a.phase>180)phase-=360;while(phase-a.phase< -180)phase+=360
+  crossings.push({crossover,pm:180+phase,direction:b.mag<a.mag?'Falling':'Rising'})
+ }
+ const critical=crossings.reduce((a,b)=>!a||b.pm<a.pm?b:a,null)
+ return{crossings,crossover:critical?.crossover??null,pm:critical?.pm??null}
+}

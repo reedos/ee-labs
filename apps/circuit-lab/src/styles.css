@@ -1,6 +1,8 @@
 /* Circuit Lab's own furniture. The shell, controls and math panel come from
  * @ee-labs/ui and @ee-labs/explain. */
 
+.phasor-return { color:var(--accent); display:inline-flex; align-items:center; min-height:44px; font-size:12px; }
+
 .preset-group { margin-bottom: 10px; }
 
 /* The lesson and circuit chips, styled as Signal Lab styles its presets —

@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { LabNav, NumField, ReportIssue, Schematic, fmt } from '@ee-labs/ui'
-import { MathPanel } from '@ee-labs/explain'
+import { MathBody } from '@ee-labs/explain'
 import { EXPERIMENTS, GROUPS, byId, defaultsOf, drawables, isDynamic, viewLabel } from './experiments.js'
 import { readQuantity } from './lessons.js'
 import { analyse, experimentMath, refusalReason } from './math.js'
@@ -9,6 +9,7 @@ import { firstUses } from './glossary.js'
 import { DefCard, Marked, TermChips } from './components/Prose.jsx'
 import Pane from './components/panes.jsx'
 import { reportSummary } from './report.js'
+import Practice from './components/Practice.jsx'
 
 /**
  * The lab, assembled.
@@ -38,11 +39,15 @@ export default function App() {
   const [id, setId] = useState(EXPERIMENTS[0].id)
   const exp = byId[id]
   const [params, setParams] = useState(() => defaultsOf(EXPERIMENTS[0].id))
-  const [view, setView] = useState(exp.view)
+  const [view, setView] = useState('start')
   const [cursor, setCursor] = useState(null)
   const [step, setStep] = useState(0)
   const [open, setOpen] = useState(null)
   const [overlayMode, setOverlayMode] = useState(exp.show)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const drawing = useRef(null)
+  const [drawingOpen, setDrawingOpen] = useState(false)
+  const index = EXPERIMENTS.indexOf(exp)
 
   const x = useMemo(() => analyse(exp, params, cursor ?? undefined), [exp, params, cursor])
   const math = useMemo(() => experimentMath(exp, params, x), [exp, params, x])
@@ -53,18 +58,19 @@ export default function App() {
     const next = byId[nextId]
     setId(nextId)
     setParams(defaultsOf(nextId))
-    setView(next.view)
+    setView('start')
     setOverlayMode(next.show)
     setCursor(null)
     setStep(0)
     setOpen(null)
+    setPickerOpen(false)
   }
   const set = (key, value) => setParams((p) => ({ ...p, [key]: value }))
   /** A try step: its settings, and the cursor it asks for. */
   const doStep = (k) => {
     const t = exp.try[k]
     setParams({ ...defaultsOf(id), ...(t.set || {}) })
-    if (t.at != null) setCursor(t.at)
+    setCursor(t.at ?? null)
     setStep(k + 1)
   }
 
@@ -89,6 +95,15 @@ export default function App() {
         </header>
 
         <section className="picker">
+          <div className="picker-row">
+            <button className="picker-step" aria-label="Previous experiment" disabled={index === 0} onClick={() => choose(EXPERIMENTS[index - 1].id)}>◂</button>
+            <button className="picker-current" aria-expanded={pickerOpen} aria-controls="experiment-catalog" onClick={() => setPickerOpen(!pickerOpen)}>
+              <b>{id.toUpperCase()}</b><span>{exp.name}</span><i>▾</i>
+            </button>
+            <button className="picker-step" aria-label="Next experiment" disabled={index === EXPERIMENTS.length - 1} onClick={() => choose(EXPERIMENTS[index + 1].id)}>▸</button>
+          </div>
+          <p className="picker-arc">Experiment {index + 1} of {EXPERIMENTS.length}</p>
+          <div id="experiment-catalog" className="picker-list" hidden={!pickerOpen}>
           {GROUPS.map((g) => (
             <div className="preset-group" key={g}>
               <h2>{g}</h2>
@@ -108,10 +123,12 @@ export default function App() {
               </div>
             </div>
           ))}
+          </div>
         </section>
 
         <section className="lesson" data-role="note">
           <h2>{exp.name}</h2>
+          <p className="hint">At the starting settings:</p>
           <p className="hint see">
             <Marked text={exp.see} marks={marks.see || []} field="see" open={open} onOpen={setOpen} />
           </p>
@@ -138,7 +155,6 @@ export default function App() {
               <DefCard open={open} field="why" exp={exp} onClose={() => setOpen(null)} choose={choose} />
             </div>
           </details>
-          <MathPanel entry={math} />
         </section>
 
         <section className="knobs" id="knobs">
@@ -169,6 +185,7 @@ export default function App() {
         <section className="view">
           <div className="view-head">
             <h2>Schematic, with meters</h2>
+            <button className="drawing-enlarge" onClick={() => { setDrawingOpen(true); drawing.current.showModal() }}>Enlarge drawing</button>
             <div className="segmented sm" role="group" aria-label="Which circuit the meters read">
               {[
                 ['dc', 'DC', 'The operating point: what a meter reads with no signal applied'],
@@ -194,13 +211,17 @@ export default function App() {
           <div className="view-body" data-show="v">
             <Schematic className="big" elements={drawables(exp, params)} layout={exp.layout} meters={x.sol} show="v" overlay={overlay} />
           </div>
+          <dialog ref={drawing} className="drawing-dialog" aria-labelledby="drawing-title" onClose={() => setDrawingOpen(false)}>
+            <div className="drawing-dialog-head"><h2 id="drawing-title">{id.toUpperCase()} · {exp.name}</h2><button autoFocus onClick={() => drawing.current.close()}>Close drawing</button></div>
+            <p>Scroll horizontally to inspect the circuit labels and meters.</p>
+            {drawingOpen && <div className="drawing-scroll"><Schematic elements={drawables(exp, params)} layout={exp.layout} meters={x.sol} show="v" overlay={overlay} /></div>}
+          </dialog>
         </section>
 
-        <section className="view">
-          <div className="view-head">
-            <h2>{viewLabel(view).label}</h2>
+        <section className="view analysis-view">
+          <div className="view-head analysis-head">
             <div className="segmented sm" role="group" aria-label="Which view the pane shows">
-              {exp.views.map((v) => (
+              {['start', 'worked', ...exp.views].map((v) => (
                 <button key={v} type="button" className={view === v ? 'on' : ''} aria-pressed={view === v} title={viewLabel(v).title} onClick={() => setView(v)}>
                   {viewLabel(v).label}
                 </button>
@@ -222,8 +243,27 @@ export default function App() {
               </label>
             ) : null}
           </div>
-          <div className="view-body">
-            <Pane view={view} x={x} />
+          <div className={`view-body${['start', 'worked'].includes(view) ? ' lesson-body' : ''}`}>
+            {view === 'start' ? <section className="opening-lesson">
+              <h2>{exp.name}</h2>
+              <p className="hint">At the starting settings:</p>
+              <p>{exp.see}</p>
+              <Practice key={`${id}:${JSON.stringify(params)}:${cursor}`} entry={math} />
+              <h3>Investigate</h3>
+              <p>Predict the change before applying each setting. Compare the meters and the selected analysis view, then explain the result using the worked math.</p>
+              <ol>{exp.try.map((t, k) => <li key={k}><p>{t.say}</p><button className="step-seen" onClick={() => doStep(k)}>Apply step {k + 1}</button></li>)}</ol>
+              <h3>Why it happens</h3><p>{exp.why}</p>
+              <p>Preparation: Circuit Elements teaches circuit laws, storage and phasors. Its diode extension includes <a href="../circuit-elements-lab/#i9">clamping</a> and <a href="../circuit-elements-lab/#i10">voltage doubling</a>.</p>
+            </section> : view === 'worked' ? <>
+              <h2>Worked math · {exp.name}</h2>
+              <details className="route-guide"><summary>Choose an analysis route and read its limits</summary>
+                <p><b>Bias first.</b> Reading and Equations find the operating point: node voltages and branch currents with the selected DC sources. KCL and source constraints support the algebraic route. For nonlinear devices, a numerical operating-point search is needed before solving the local linear equations.</p>
+                {exp.signal && <p><b>Small-signal route.</b> Linearize around the bias to obtain gain, poles and frequency response. This makes loading and bandwidth easier to calculate, but only for perturbations that stay near that operating point. It does not predict clipping or large-signal transitions.</p>}
+                {exp.window && <p><b>Time route.</b> Scope follows the implemented transient model and its initial conditions. It reveals changing voltages and modelled limits that a steady-state gain cannot show. Check the model label before treating the waveform as a transistor-level transient prediction.</p>}
+                <p><b>Compare like quantities.</b> A DC voltage, a signal amplitude and a total waveform answer different questions. Use the same source, reference direction, units and model when checking one route against another.</p>
+              </details>
+              {math ? <MathBody entry={math} /> : <p>The current model has no worked result at these settings. Check the model limits and readings before interpreting the equations.</p>}
+            </> : <Pane view={view} x={x} />}
           </div>
         </section>
       </main>

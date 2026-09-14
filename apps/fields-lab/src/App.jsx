@@ -38,7 +38,7 @@ const KNOBS_SHOWN = 4
  * experiment in every one of its views, which catches a prop the shell forgot
  * to pass. Nothing in the app itself passes them.
  */
-export default function App({ initialId = FIRST, initialView = null }) {
+export default function App({ initialId = FIRST, initialView = null, catalog = EXPERIMENTS, onNavigate }) {
   const start = byId[initialId] ? initialId : FIRST
   const [id, setId] = useState(start)
   const [params, setParams] = useState(() => defaultsOf(start))
@@ -51,6 +51,8 @@ export default function App({ initialId = FIRST, initialView = null }) {
   const exp = byId[id]
 
   const choose = (next) => {
+    if (!byId[next]) { onNavigate?.(next); return }
+    history.replaceState(null, '', `#${next}`)
     setId(next)
     setParams(defaultsOf(next))
     setView(byId[next].view)
@@ -75,9 +77,9 @@ export default function App({ initialId = FIRST, initialView = null }) {
   const guard = guardOf(x)
   const refusal = refusalOf(x)
   const shownGroup = browsing || exp.group
-  const idx = EXPERIMENTS.findIndex((e) => e.id === id)
-  const next = idx < EXPERIMENTS.length - 1 ? EXPERIMENTS[idx + 1] : null
-  const prev = idx > 0 ? EXPERIMENTS[idx - 1] : null
+  const idx = catalog.findIndex((e) => e.id === id)
+  const next = idx < catalog.length - 1 ? catalog[idx + 1] : null
+  const prev = idx > 0 ? catalog[idx - 1] : null
   const terms = termsFor(exp.terms)
   const moreKnobs = exp.params.slice(KNOBS_SHOWN)
 
@@ -110,6 +112,7 @@ export default function App({ initialId = FIRST, initialView = null }) {
           <LabNav current="fields-lab" currentLabel="Fields" />
           <h1>Fields Lab</h1>
           <p className="sub">Every experiment loads a geometry, names one knob, and states the field it makes.</p>
+          <label className="lesson-select">Experiment<select aria-label="Experiment" value={id} onChange={e=>choose(e.target.value)}>{catalog.map(e=><option key={e.id} value={e.id}>{e.id.toUpperCase()}. {e.name}</option>)}</select></label>
         </header>
 
         <section>
@@ -225,7 +228,7 @@ export default function App({ initialId = FIRST, initialView = null }) {
             ‹
           </button>
           <span className="position" data-role="position">
-            {`${idx + 1} of ${EXPERIMENTS.length}`}
+            {`${idx + 1} of ${catalog.length}`}
             <em>{exp.group}</em>
           </span>
           <button type="button" className="nav-btn" data-role="next" disabled={!next} onClick={() => next && choose(next.id)}>

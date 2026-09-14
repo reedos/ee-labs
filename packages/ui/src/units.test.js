@@ -47,6 +47,17 @@ describe('parseEng', () => {
 })
 
 describe('engEcho', () => {
+  it('does not apply the displayed prefix twice to scientific notation or an explicit unit', () => {
+    for (const text of ['1e-7','100n','0.0000001 V/√Hz']) {
+      const parsed=parseEng(text,'V/√Hz')
+      const committed=parsed.value*(parsed.hadPrefix||parsed.absolute?1:eng(500e-9).mult)
+      expect(committed).toBeCloseTo(100e-9,20)
+      expect(engEcho(text,500e-9,'V/√Hz')).toBeNull()
+    }
+    expect(parseEng('1e0','V').absolute).toBe(true)
+    expect(parseEng('*1e2','V').ratio).toBe('*')
+    expect(engEcho('100',500e-9,'V/√Hz').full).toBeCloseTo(100e-9,20)
+  })
   // Reed's reproduction: a proportional gain field sitting at 0.99 displays
   // "990" with a milli prefix. Typing a bare "1.0001" — meaning a gain of
   // about one — is read in that displayed prefix and commits 1.0001 MILLI,

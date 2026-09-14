@@ -1,5 +1,8 @@
 # Analog IC Lab: the plan
 
+> Current Group H checkpoint, 2026-09-09: Groups A–H are implemented. The Group H record describes actual models and corrections to draft examples. Groups I onward and broader engine/product features remain planned. Earlier checkpoints are historical.
+> Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented as design calculations using one consistent charge-based long-channel law, plus a separately labeled short-channel comparison. The general EKV network companion and later circuit groups remain planned. The original log-squared current interpolation was inconsistent with its quoted charge-based gm/ID expression; the corrected voltage-charge relation below governs A1–A5.
+
 Tier 3 of `ANALOG_ROADMAP.md`. The same circuits as the Electronics Lab, made from
 matched devices on one die, where a resistor costs area, a capacitor is small, and
 every current comes from a mirror. Splash glyph `⊟`, directory `apps/analog-ic-lab`,
@@ -59,7 +62,7 @@ g_m/I_D = (1/(n V_T)) · 2/(1 + √(1 + 4·IC)),   IC = I_D / (2 n µ C_ox V_T²
 
 Its two limits are pinned in the lab: 25.79 V⁻¹ as `IC → 0`, which is `1/(n V_T)`,
 and the square law's `2/V_OV` as `IC → ∞`. At `V_OV = 200 mV` the square law gives
-10.00 V⁻¹ and EKV gives 8.247 V⁻¹, a 21.3 % disagreement that A2 shows. The model is
+10.00 V⁻¹ and EKV gives 8.0905 V⁻¹, a 23.6 % disagreement that A2 shows. The model is
 labelled everywhere it is used, as `CORE_SCOPE.md` Rule 3 requires.
 
 ### Decision 4: whether mismatch is a parameter or a run mode
@@ -152,8 +155,11 @@ defines, so `newtonDC`, `smallSignal` and the iteration view work unchanged.
 
 ```js
 /**
- * The EKV interpolation, in its simplest one-equation form.
- *   I_D = 2 n mu C_ox V_T^2 (W/L) · ln^2(1 + exp((V_GS - V_TH - n V_SB)/(2 n V_T)))
+ * Planned network companion: use one consistent voltage-charge law.
+ *   IC = q_s(q_s + 1), V_OV = n U_T (2 q_s + ln q_s)
+ *   I_D = 2 n mu C_ox U_T^2 (W/L) IC
+ *   gm/ID = 1/[n U_T (1 + q_s)]
+ * Body-bias and finite-VDS extensions require their own consistent derivatives.
  * @returns {{ id: number, ic: number, gm: number, gmb: number, go: number,
  *             region: 'weak' | 'moderate' | 'strong' }}
  */
@@ -177,7 +183,7 @@ its limit is 25.79 V⁻¹, `IC = 1` gives 15.94 V⁻¹, `IC = 10` gives 6.967 V�
 
 CORE_SCOPE: the EKV interpolation is a **labelled model**, admitted under Rule 3 with
 its guard. The guard is the disagreement with the square law, printed whenever the
-square law is also on screen. It is 21.3 % at `V_OV = 200 mV`, and it falls below 5 %
+square law is also on screen. It is 23.6 % at `V_OV = 200 mV`, and it falls below 5 %
 above `IC = 40`. The small-signal netlist taken at an EKV operating point is exactly
 rational. It is admitted in full, with the operating point in its label, exactly as
 the square-law tangent is.
@@ -228,16 +234,17 @@ there. The sigma itself is exact arithmetic given the constants.
 export function decompose(net, ports)
 ```
 
-The decomposition is exact when the circuit is symmetric and the tail is a two-port
-that splits. It is an approximation when the common-mode half-circuit doubles the tail
-resistance, which is the usual textbook step. The pane prints both. For the pair of
-§4.5 the exact differential gain is −3.84615 and the half-circuit gives −3.84615, so
-that half is exact. The exact common-mode gain is −0.0098756 and the textbook
-`−R_D/(2R_tail)` gives −0.0100, which is 1.26 % high, and the pane prints that error.
+For a symmetric pair with a shared incremental tail resistance, both reductions
+are exact: the differential half grounds the source and the common half uses
+**2Rtail**. The approximation is dropping denominator terms to obtain
+−RD/(2Rtail). D2 compares native full and half circuits over frequency. At the
+default, AD=−3.84615 and AC=−0.00987557; the shortcut −0.0100 is 1.26% high.
+Single-ended CMRR uses (AD/2)/AC and is 45.7887 dB. Ideal differential-output
+common-mode cancellation is a separate symmetry result.
 
-CORE_SCOPE: the exact solve is admitted with no hedge. The half-circuit is a view over
-it, and the common-mode approximation is guarded by the printed error, with a warning
-above 5 %.
+The proposed generic decompose API above remains a future extension; Group D
+implements and verifies the declared symmetric pair directly. The exact result
+remains available when the displayed shortcut error exceeds 5%.
 
 ### 2.5 From a specification to a size
 
@@ -500,7 +507,7 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
 - **A2 · `g_m/I_D` is bounded, and the square law does not know it.** The efficiency
   cannot exceed `1/(n V_T) = 25.79 V⁻¹` however little current flows. At `IC = 1` it is
   15.94 V⁻¹, at `IC = 10` it is 6.967 V⁻¹. At `V_OV = 200 mV` the square law says
-  10.00 V⁻¹ and EKV says 8.247 V⁻¹, a 21.3 % disagreement the pane prints. Measured:
+  10.00 V⁻¹ and EKV says 8.0905 V⁻¹, a 23.6 % disagreement the pane prints. Measured:
   the ceiling, three values, and the disagreement at three overdrives.
 - **A3 · Everything a device buys, from one knob.** Fix `g_m = 500 µS` and
   `L = 1 µm`, then move `g_m/I_D` from 5 to 20. The current drops from 100.0 µA to
@@ -509,7 +516,7 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
   points, each against `sizeFor`.
 - **A4 · Matching is an area.** `σ(ΔV_TH) = A_VT/√(WL)`. At 1 µm² it is 4.00 mV, at
   2.5 µm² it is 2.530 mV, at 100 µm² it is 0.400 mV. A pair at `g_m/I_D = 10` and
-  2.5 µm² has an input offset sigma of 2.608 mV, and 16.0 µm² is needed for 1.00 mV.
+  2.5 µm² has an input offset sigma of 2.608 mV, and 17.0 µm² is needed for 1.00 mV.
   Measured: the sigma at four areas, the pair offset, and the area for a target.
 - **A5 · A mirror's error grows with its efficiency.** A mirror's fractional current
   error is `(g_m/I_D)·σ_VTH` in quadrature with `σ_β`. At 2.5 µm², `g_m/I_D = 10` gives
@@ -521,218 +528,156 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
   at `V_SB = 0.5 V` raises the threshold by 103.5 mV and gives `g_mb/g_m = 0.1826`.
   Measured: each toggle's number at three lengths.
 
-### Group B: Bias (5)
+### Group B: Bias (5) — implemented
 
-- **B1 · A ratio is worth two hundred times an absolute value.** A poly resistor is
-  good to 20 % and a resistor ratio to 0.1 %. Every circuit in this lab is built from
-  ratios for that reason. Measured: the spread of a divider built from an absolute
-  value and from a ratio, over the same Monte Carlo run.
-- **B2 · The beta-multiplier sets a current from a resistor.** `g_m1 R = 2(1 − 1/√K)`,
-  so `K = 4` and `R = 10.0 kΩ` give `g_m = 100 µS`. With `W/L = 10` the current is
-  `g_m²/(2 µ C_ox (W/L)) = 2.50 µA`, and it does not move with the supply to first
-  order. Measured: `g_m`, the current, and the current's change over a 1.6 to 2.0 V
-  supply.
-- **B3 · The bandgap, PTAT plus CTAT.** `V_BE` falls at −2.112 mV/K and `V_T ln 8`
-  rises at 86.17 µV/K per unit of multiplier, so `M = 11.79` flattens the sum.
-  `V_ref = 1.2836 V`, and over −40 to 125 °C it moves 3.746 mV, which is 17.69 ppm/K.
-  The curvature is second order and is what the spread measures. Measured: the two
-  slopes, `M`, the reference, the spread, and the equality with Applied Analog D1.
-- **B4 · The start-up circuit, and the state without one.** The beta-multiplier has two
-  consistent operating points, and zero current is one of them. `solvePWL` reports both
-  and declines to pick, with the message the suite already gives for a circuit whose
-  answer depends on its history. A start-up device removes the zero-current state, and
-  the pane then shows one solution. Measured: both operating points, the refusal, and
-  the single point after start-up.
-- **B5 · A current is only as good as its reference.** The resistor's 1000 ppm/K
-  tempco moves the beta-multiplier's current by −0.2 %/K, and its 20 % absolute
-  tolerance moves it by 44 %. A bandgap-referenced current source replaces both with
-  the reference's own 17.69 ppm/K. Measured: both drifts, and the tolerance spread from
-  Monte Carlo.
+- **B1 · Ratios and process variation.** A shared `parameterEnsemble` utility in
+  `@ee-labs/random` samples explicitly correlated or independent resistor errors.
+  Absolute ±20% and matched ±0.1% are illustrative uniform bounds, not universal
+  process guarantees or Gaussian sigmas. Mean and yield carry confidence intervals.
+- **B2 · Beta-multiplier.** The strong-inversion law gives
+  gm1=2(1−1/√K)/R and I=gm1²/(2β1). K=4, R=10 kΩ and W/L=10 give 100 μS
+  and 2.50 μA. Native MOS current laws independently check both branches.
+  Supply invariance is conditional on ideal mirrors and saturation; no real mirror
+  headroom claim is made.
+- **B3 · Bandgap.** VG0=1.206 V, VBE0=0.650 V at 300 K. Saturation-current
+  exponent 4 and PTAT bias exponent 1 give an effective logarithmic exponent 3.
+  CTAT slope is −2.11185 mV/K; for N=8 the PTAT slope is **(k/q)ln8 =
+  179.192 μV/K**, not k/q alone. M=11.7854 gives 1.283556 V and zero first
+  derivative at 300 K. Endpoints and any interior stationary point determine the
+  exact box drift; the temperature curve retains curvature. Applied Analog D1
+  is still planned, so no working cross-lab comparison is claimed yet.
+- **B4 · Startup.** Enumerate the zero and positive scalar DC roots before any
+  division by √I. An auxiliary current injected into M1 gives I1=I+Is and I2=I;
+  solve √[2(I+Is)/β1]−√[2I/(Kβ1)]−IR=0. Positive injection removes the zero
+  root and shifts the positive bias. These are checked against native device
+  currents. This is explicit root enumeration, not a claim that solvePWL handles
+  nonlinear MOS multiple roots or that startup/shutoff transients are simulated.
+- **B5 · Current drift.** Ibeta∝R⁻² and Iref=Vref/R. A 1000 ppm/K resistor gives
+  −2000 ppm/K local beta-current drift at 300 K; it still contributes about
+  −1000 ppm/K to the bandgap-derived current. ±20% resistance gives beta-current
+  factors 1/1.2²=0.694444 and 1/0.8²=1.5625, not a symmetric 44% spread.
+  The bandgap does not eliminate the current-setting resistor's errors.
 
-### Group C: Op-amp architectures (6)
+Group C is implemented below. Groups D onward, a general EKV netlist companion and transistor-level startup
+remain planned. The foundation charge law and the explicitly separate square-law
+bias comparison are not mixed into one supposed foundry model.
 
-Every experiment in this group answers the same specification: 60 dB of gain, a
-20 MHz unity-gain frequency into 2.00 pF, at least 1.0 V of differential output swing,
-and under 200 µW. The architecture table is the answer sheet.
+### Group C: Op-amp architectures (6) — implemented
 
-- **C1 · The telescopic cascode.** Four devices stacked, `g_m = 300 µS`, cascoded
-  output resistance 150 MΩ. Gain 81.02 dB, unity gain 23.87 MHz on 40 µA, so 72.0 µW.
-  Output swing 1.2 V single-ended, and the input common-mode range is narrow because
-  the tail and the cascode share the rail. Measured: gain, unity gain, swing, power,
-  and the input range.
-- **C2 · The folded cascode.** The same gain and the same unity gain, with the input
-  common-mode range reaching a rail and 1.2 V of swing, at twice the current, 144 µW.
-  Measured: the same five, and the current the fold costs.
-- **C3 · The two-stage Miller amplifier.** `g_m1 = 200 µS` into `g_m2 = 500 µS`, gain
-  73.98 dB, `f_t = 31.83 MHz` with `C_c = 1.00 pF`, swing 1.5 V, 126 µW, and
-  `SR = 20.0 V/µs`. Lower gain than the cascodes and more swing than either. Measured:
-  all five, and the slew rate as `I_tail/C_c`.
-- **C4 · Gain boosting.** An auxiliary amplifier of gain 40 around each cascode raises
-  the output resistance by that factor and the gain to 113.1 dB, at 60 µA. The price is
-  two more loops, each with its own margin, and D3 reads them. Measured: the gain, the
-  output resistance, and the two auxiliary loops' margins.
-- **C5 · The class AB output stage.** A follower output limits the swing to a threshold
-  and a saturation voltage from each rail, and it wastes quiescent current. A class AB
-  common-source pair swings to 1.5 V single-ended and delivers more than its quiescent
-  current. Measured: the swing, the quiescent current, and the peak output current for
-  both.
-- **C6 · Rail-to-rail input.** Two pairs, one NMOS and one PMOS, hand over as the
-  common mode crosses. `g_m` doubles in the overlap unless the tail currents are
-  steered, and the unity-gain frequency doubles with it. Measured: `g_m` against the
-  input common mode, with and without steering, and the resulting unity-gain frequency
-  spread.
+The comparable amplifier targets are 60 dB gain, 20 MHz actual unity crossover
+at the selected load (default 2 pF), 1 V **single-ended peak-to-peak** output
+window, at most 200 µW, and at least 45° phase margin. C2 compares four declared
+models at the selected supply/load. C5 and C6 isolate output/input stages and do
+not pretend that a partial stage establishes all complete-amplifier metrics.
 
-### Group D: Fully differential (4)
+- **C1:** Native two-branch cascode model, including 20 fF internal capacitors.
+  Each branch has 2ro+gm ro²; their parallel combination is 38 MΩ at default
+  gm=300 µS and ro=500 kΩ, giving 11,400 V/V (81.138 dB). This corrects the
+  earlier inconsistent 150 MΩ/81 dB pair. Input-drain bias 0.30 V, threshold
+  0.45 V and tail compliance 0.10 V explicitly define the headroom calculation.
+- **C2:** PMOS input/folded headroom with the same output small-signal model,
+  explicitly allocating twice the tail current. The input range can reach
+  ground within this declared bias model; no extra folded-node pole or complete
+  transistor operating-point solution is claimed.
+- **C3:** Native two-node Miller circuit retains capacitor feedforward and its
+  right-half-plane zero. Actual crossover and phase margin use the full transfer;
+  gm1/(2πCc) is labeled an estimate. IT/Cc is a slew estimate, not a clipped
+  transient. Stage Early voltage is 5 V with separately stated current allocation.
+- **C4:** Two finite-bandwidth auxiliary amplifiers control actual cascode gates.
+  Native broken-source tests independently verify both local return ratios with
+  the other local loop retained. Frequency scans find rising/falling unity
+  crossings even when both endpoint gains are below one. All crossings are shown;
+  absence of a crossing means undefined phase margin. Multiple crossings call
+  for a complete Nyquist/pole assessment, not a stability claim from one number.
+- **C5:** Complementary source-follower and common-source current capability use
+  native square-law cutoff/triode/saturation regions and rail-clamped gate drive.
+  A selected output voltage is a static imposed load-test point. Idle compliance
+  window and driven current capability are separate quantities.
+- **C6:** Solve NMOS/PMOS tail current against available source-node headroom.
+  Sum gm from those currents. Ideal bias control solves the common current
+  command; square-law overlap requires quarter-current tails for constant gm.
+  A separately declared one-pole output converts gm to bandwidth. The bias
+  controller is a target model, not a transistor steering circuit.
 
-- **D1 · A differential output has no common-mode path.** With no common-mode
-  feedback, a 1 % current mismatch moves the output common mode by `r_o·ΔI = 0.100 V`,
-  and 5 % pushes a device out of saturation. Measured: the common-mode shift against
-  the mismatch, and the mismatch at which the region word changes.
-- **D2 · The half-circuits, and where each is exact.** The differential half-circuit
-  gives −3.84615 and the exact solve gives −3.84615, so that half is exact. The
-  common-mode half-circuit's `−R_D/(2R_tail) = −0.0100` against the exact −0.0098756 is
-  1.26 % high. CMRR is 45.79 dB. Measured: both gains both ways, the error, and the
-  CMRR.
-- **D3 · The common-mode loop is a loop.** The common-mode feedback amplifier at 100 µS
-  into 500 kΩ has 33.98 dB of loop gain and crosses at 7.958 MHz into 2.00 pF, against
-  the differential loop's 23.87 MHz on the same node. Its margin is read the same way
-  and crosses to Control Lab. Measured: the loop gain, the crossover, the margin, and
-  the common-mode step's settling.
-- **D4 · Which common-mode sensor, and what it costs.** A resistive sensor loads the
-  output and lowers the differential gain. A source-follower sensor limits the swing. A
-  switched-capacitor sensor loads nothing and is the Mixed-Signal Lab's, and its note
-  names that lab. Measured: the differential gain and the swing with each sensor, and
-  the loading each one adds.
+### Group D: Fully differential (4) — implemented
 
-### Group E: Compensation (4)
+- **D1 · Differential feedback cannot set the output mean.** Finite output
+  resistance provides a DC path. Equal current injection shifts both outputs;
+  differential correction cancels from the mean equation. The square-law MOS
+  operating point checks the saturation/triode boundary. At 1.8 V, 1% mismatch
+  gives 0.1 V drift, 5% remains saturated, and 10% enters triode without CMFB.
+  Both devices are recalibrated at each supply to 20 μA and 1 MΩ each, giving
+  500 kΩ aggregate output resistance. Ideal 100 μS common correction reduces drift.
+- **D2 · Exact half-circuits.** Full pair, grounded-source differential half,
+  and 2Rtail common half agree over frequency. The large-tail shortcut is
+  separately labeled and its error displayed. CMRR uses an explicit single-ended
+  convention; no finite mismatch-limited differential CMRR is invented.
+- **D3 · Two loops, four states.** The symmetric output network has 500 kΩ and
+  2 pF per output, 100 μS common correction and 300 μS differential correction.
+  Finite controller poles default to 10 and 30 MHz. The earlier 7.958/23.87 MHz
+  numbers are one-pole estimates, not the actual two-pole crossings. State
+  propagation, native transients and separate physical loop breaks agree.
+  Both exact return ratios transfer independently to Control Lab.
+- **D4 · Sensor costs.** Reuses D2’s 20 kΩ || 500 kΩ output equivalent.
+  Resistors load the differential output; followers add input capacitance,
+  bias power and headroom cost. A declared reset-to-ground switched-capacitor
+  sensor conserves charge, solves periodic track/hold recovery, and draws real
+  average current. Held and cycle-average voltages remain distinct. Incomplete
+  acquisition uses the exact phase result; 1/(Cs fs) is an approximation.
 
-- **E1 · Miller compensation, and the zero it brings.** `C_c = 1.00 pF` puts `f_t` at
-  31.83 MHz, the second pole at 39.79 MHz and a right-half-plane zero at 79.58 MHz. The
-  zero's phase lag is what makes the margin 36.03° rather than 51°. Measured: the two
-  poles, the zero, the crossover at 27.67 MHz and the margin.
-- **E2 · The nulling resistor moves the zero.** `R_z = 1/g_m2 = 2.00 kΩ` sends the zero
-  to infinity and the margin rises to 56.35°. `R_z = (1/g_m2)(1 + C_L/C_c) = 6.00 kΩ`
-  puts a left-half-plane zero exactly on the second pole at 39.79 MHz, and the margin
-  becomes 90.01°. Measured: the zero's position and the margin at four resistances.
-- **E3 · Compensation is bandwidth traded for margin.** Raising `C_c` from 1.00 pF to
-  5.00 pF drops `f_t` from 31.83 MHz to 6.366 MHz, raises the margin from 36.03° to
-  57.06°, and drops the slew rate from 20.0 V/µs to 4.00 V/µs. Measured: all three at
-  four capacitances, and the step response at each.
-- **E4 · Nested Miller and feedforward.** A third stage needs a second compensation
-  capacitor, and the inner loop's own margin becomes a constraint. A feedforward path
-  puts a left-half-plane zero where the second pole sits without a resistor. Measured:
-  the three-stage loop's margins with each scheme, and the pole and zero positions from
-  `transferOf`.
+### Group E: Compensation (4) — implemented
+
+- **E1 · Miller compensation and the zero it brings.** Exact two-node KCL retains 0.1 pF first-node capacitance and finite output conductances. Default crossover is 26.1606 MHz with 35.6348° margin; the right-half-plane zero is 79.5775 MHz. These replace the earlier pole-splitting-only numeric expectations.
+- **E2 · Nulling resistor.** Series resistance changes the numerator and introduces a third independent state. At default gm2, 2 kΩ removes the finite zero. The 6 kΩ textbook setting is an approximate cancellation, not an exact cancellation of the full-model pole; the measured margin is about 84.06° rather than a promised 90°.
+- **E3 · Compensation tradeoffs.** Four Cc choices compare actual crossover, margin and small-signal matrix-exponential responses. The separate 20 µA/Cc slew estimate is explicitly a charging budget, not a current clamp in the plotted linear transient.
+- **E4 · Nested Miller and feedforward.** A concrete three-node transconductance circuit compares outer/inner capacitors with an outer capacitor plus a feedforward gm path. Pole/zero extraction uses transferOf on a normalized-time equivalent state realization, checked against the original nodal AC circuit. Global closed-loop poles determine follower stability. The conditional inner-loop diagnostic holds the first-stage node at AC ground and retains outer-capacitor output loading; all its crossings are listed.
+
+The UI does not claim a universal exact feedforward cancellation. Third-order models are analyzed in the lesson; the current Control Lab custom link accepts only second-order coefficients, so no truncated third-order transfer is handed over.
 
 ### Group F: Comparators (4)
 
-- **F1 · A preamplifier before a latch.** The preamplifier's gain divides the latch's
-  offset and its own input-referred noise sets the resolution. Gain 10 costs one
-  bandwidth and buys a factor of ten on both. Measured: the input-referred offset and
-  noise with and without the preamplifier.
-- **F2 · Regeneration is an exponential with an exact time constant.** The cross-coupled
-  pair is positive feedback in a region model, so `v(t) = V₀ e^{t/τ}` with
-  `τ = C/g_m`. At `g_m = 1.00 mS` and `C = 50.0 fF`, `τ = 50.0 ps`, and a 1.00 mV input
-  reaches 500 mV in 311 ps. From 1.00 µV it takes 656 ps. Measured: the time constant,
-  three resolution times, and the waveform against the exponential to 10⁻⁹.
-- **F3 · Hysteresis by design.** A fraction of the output fed back to the input makes
-  two consistent states, which `solvePWL` reports as hysteresis rather than as an
-  error. A ratio of 1/10 on a 1.00 V swing gives 100 mV of hysteresis. Measured: the
-  two thresholds, their difference, and the refusal message when the operating point is
-  asked for without a history.
-- **F4 · Metastability is a rate.** With `τ = 20.0 ps`, 100 ps of decision time
-  resolves 3.37 mV and leaves a failure probability of 6.74 × 10⁻³ over a 1 V range.
-  At 200 ps it is 22.7 µV and 4.54 × 10⁻⁵, and at 400 ps it is 1.03 pV and
-  2.06 × 10⁻⁹. At 5 GS/s those are a failure every 29.7 ns, every 4.41 µs and every
-  97.0 ms. A preamplifier of gain 10 buys 46.1 ps. Measured: the resolution and the
-  rate at four times.
+Implemented Group F model record (2026-09-08); this supersedes the earlier draft numerical promises.
 
-### Group G: Translinear circuits and multipliers (4)
+- **F1:** One-pole preamplifier, finite acquisition from zero, Aeff=Ap(1−exp(−t/τp)); offset referred through Aeff and independent sampled noise powers combined. Settled gain is not assumed available instantly.
+- **F2:** Effective differential C·dvd/dt=gm·vd, explicit initial difference and 0.5 V decision threshold. 1 mV with C=50 fF and gm=1 mS resolves in 310.730405 ps. Exponential stops at the threshold; no rail waveform is fabricated.
+- **F3:** Inverting Schmitt with symmetric ±Vrail rails and divider β. Native solvePWL/assumedState enumerate rail and balanced linear regions; history selects a consistent rail. Width is 2βVrail, so ±0.5 V with β=0.1 gives 100 mV.
+- **F4:** Uniform input over a full 1 V interval, independent decisions, settled noiseless gain, probability min(1,2VD exp(−T/τ)/(Ap W)). At 400 ps and τ=20 ps, threshold **1.03058 nV**, correcting the former pV typo. At 5 GHz the mean unresolved-event interval is 97.033 ms. This is not automatically system error rate or synchronizer MTBF.
 
-- **G1 · The translinear principle.** Around a loop of an even number of junctions,
-  half clockwise and half anticlockwise, the products of the currents are equal. It
-  follows from `V_BE = V_T ln(I/I_S)` and KVL, with no approximation. A loop with
-  `I₁ = 100 µA`, `I₂ = 50.0 µA` and `I₃ = 20.0 µA` gives `I₄ = 40.0 µA`. Measured: the
-  loop's fourth current against the product law, over three decades of current.
-- **G2 · The pair as a multiplier, and where it stops being one.** The bipolar pair's
-  `tanh` law departs from a straight line by 1 % at 9.01 mV and 5 % at 20.7 mV. A MOS
-  pair at `V_OV = 200 mV` departs by 1 % at 56.4 mV, six times further, and steers
-  fully at 283 mV. Measured: both departures, both full-steering points, and the ratio.
-- **G3 · The Gilbert cell.** Two pairs cross-coupled under a third make a four-quadrant
-  multiplier. With a square-wave carrier the conversion gain is `2/π`, which is
-  −3.922 dB. Its output spectrum crosses to Signal Lab's ring-modulation preset.
-  Measured: the conversion gain, the two output tones, and the carrier feedthrough from
-  a 1 % mismatch.
-- **G4 · The variable-gain amplifier.** Steering the tail current between two paths
-  gives a gain that follows a current ratio, and a 10:1 ratio is 20.00 dB of range.
-  Exponential control comes from a translinear loop, so the gain is linear in decibels.
-  Measured: the gain against the control current over the range, and its departure from
-  a straight line in decibels.
+### Group G: Translinear circuits and multipliers (4) — implemented
 
-### Group H: Integrated filters (4)
+Implemented Group G model record (2026-09-09); this replaces the draft numerical promises.
 
-- **H1 · The `g_m`-C integrator.** A transconductor into a capacitor integrates with a
-  unity-gain frequency of `g_m/(2πC) = 1.592 MHz` at 100 µS and 10.0 pF. Finite output
-  resistance makes it leaky, with a DC gain of `g_m r_o = 150`. Measured: the unity-gain
-  frequency, the DC gain, and the phase at the unity-gain frequency against 90°.
-- **H2 · The `g_m`-C biquad.** Two integrators in a loop. `f_0 = √(g_m1 g_m2/(C1 C2))/2π`
-  and `Q = √(g_m1 C2/(g_m2 C1))`, so equal parts give `f_0 = 1.592 MHz` and `Q = 1`.
-  The integrators' finite DC gain raises Q, by 3.45 % at a design Q of 5. Measured:
-  `f_0` and Q from `transferOf`, and the Q error against the leak.
-- **H3 · Tuning against process spread.** A 20 % capacitor spread moves `f_0` by 20 %,
-  and an active-RC biquad moves by 28.3 % because its resistor spreads too. A tuning
-  loop that locks `g_m/C` to a reference clock removes both. Measured: the spread with
-  and without tuning, over a Monte Carlo run.
-- **H4 · The ladder, simulated by integrators.** A doubly terminated LC ladder has the
-  lowest sensitivity of any realisation, because at the passband maxima the power
-  delivered is stationary. Replacing each state with an integrator keeps that property.
-  Measured: the sensitivity of `f_0` and of the passband ripple to each element, for the
-  ladder and for a cascade of biquads with the same response.
+- **G1:** Explicit orientation VBE1+VBE3=VBE2+VBE4 gives I4=I1·I3/I2 for matched forward-active exponential junctions. Defaults give 40 µA. Saturation-current mismatch is retained in the product ratio and checked by the voltage-KVL residual. Base current, headroom and the diode-law minus-one term are omitted explicitly.
+- **G2:** Bipolar tanh and long-channel MOS square-law steering are compared with their respective tangents at selectable compression. MOS full steering occurs at √2 VOV; bipolar full steering is asymptotic, so its reported reference is 99% steering.
+- **G3:** A nonlinear signal pair and finite-tanh or hard-switched LO generate coherent sidebands and explicit tail-current-imbalance feedthrough. The 2/π factor is normalized to the signal-pair tangent gain, not total voltage gain. Signal Lab opens a clearly labeled ideal sine-multiplier comparison; it does not impersonate the nonlinear/hard-switched cell.
+- **G4:** A translinear current-ratio cell gives gain Ic/Ir and exponential voltage control, linear in decibels before limiting. Available control current explicitly clips the requested gain. A single bounded differential-pair steering fraction is not used as an unbounded current-gain law.
 
-### Group I: Noise and mismatch, designed (4)
+### Group H: Integrated filters and tuning (4) — implemented
 
-- **I1 · Where the noise comes from, by device.** The input-referred noise of a loaded
-  pair is `√((8kTγ/g_m1)(1 + g_m3/g_m1))`. At `g_m1 = 200 µS` and `g_m3 = 100 µS` it is
-  12.87 nV/√Hz, of which the input pair is 66.67 % of the power and the loads are
-  33.33 %. The second stage divided by the first stage's gain of 100 contributes
-  0.0040 %. Measured: the total, each share, and the sum equalling the direct solve.
-- **I2 · Halving the noise costs four times the current.** Raising `g_m1` from 200 µS
-  to 800 µS at a fixed load ratio drops the noise from 12.87 nV/√Hz to 5.574 nV/√Hz.
-  Lowering `g_m3` from 100 µS to 50.0 µS at `g_m1 = 800 µS` gets 5.417 nV/√Hz for
-  nothing but the loads' own swing. Measured: the noise at four combinations, and the
-  current each costs.
-- **I3 · Flicker noise has a corner, and the corner is an area.** With
-  `K_f = 1.0 × 10⁻²⁵ V²F`, a 10 × 1 µm device at `g_m = 200 µS` has a corner at
-  20.98 kHz. Growing it to 40 × 2 µm moves the corner to 2.623 kHz, and eight times the
-  area moves it one decade. Measured: the corner at two sizes, and the total noise over
-  a 1 Hz to 1 MHz band at each.
-- **I4 · The pair sized from the budget.** Given a 5.00 nV/√Hz target with
-  `g_m3/g_m1 = 0.5`, the pair needs `g_m1 = 1.325 mS`, which is 66.27 µA at
-  `g_m/I_D = 20` and 132.5 µA at `g_m/I_D = 10`. Over a 1 MHz band that is 5.00 µV rms.
-  Measured: the required transconductance, both currents, and the integrated noise.
+Implemented Group H model record (2026-09-09); this supersedes draft universal leakage and sensitivity claims.
 
-### Group J: The extra element theorem, and trimming (4)
+- **H1:** Native gm source, parallel Ro and capacitor. KCL gives finite DC gain gmRo=150, leakage pole, the exact unity crossing √(gm²−Ro⁻²)/(2πC), phase and zero-initial-state step. The ideal 1.591549 MHz crossing is a high-gain approximation.
+- **H2:** Two explicit capacitor states, damping gd=gm2/q and output leakage at both nodes. Native AC, extracted transfer and state solution agree. Leakage changes both denominator coefficients: nominal and high-Q examples lose Q, while some low-Q cases gain Q as natural frequency moves. No universal sign is asserted. The complete second-order transfer crosses to Signal Lab after stated 1000× time scaling and bilinear frequency mapping.
+- **H3:** A 512-member seeded ensemble uses explicitly bounded uniform common gm/C/R factors and separate slave mismatch. A 128-step bounded master calibration loop targets ug/c=1. Tuning-range clipping and unobserved slave mismatch remain as residual error. Exact reciprocal laws replace linearized spread claims; mean, sample SD and RMS target error are reported separately.
+- **H4:** A fourth-order doubly terminated Butterworth LC ladder is converted into four normalized integrator states. Native LC AC verifies the state realization. A nominally identical two-biquad cascade is compared under separately declared component-error models. Local half-power-frequency and 0.5f0 gain sensitivities are distinguished from finite-perturbation passband error on a stated grid. No claim of universally lowest ladder sensitivity is made. Both pole pairs of the perturbed ladder are preserved through the scaled bilinear handover.
 
-- **J1 · One element added to a known circuit.** Middlebrook's theorem gives the exact
-  answer without redoing the analysis. For a common-source stage with `g_m = 200 µS`,
-  `R_D = 20.0 kΩ` and `R_s = 10.0 kΩ`, adding `C_gd = 20.0 fF` puts a pole at
-  `1/(2π C_gd (R_s(1 + g_m R_D) + R_D)) = 113.7 MHz` and a right-half-plane zero at
-  `g_m/(2π C_gd) = 1.592 GHz`. The direct solve gives 114.3 MHz. Measured: both, and
-  the theorem's pole against the solve.
-- **J2 · The theorem against the Miller estimate.** The Miller estimate for the same
-  circuit gives 159.2 MHz, which is 40.0 % high, because it drops the `R_D` term the
-  theorem keeps. The pane prints that error beside both. Measured: the estimate, the
-  theorem, the exact pole, and the error.
-- **J3 · The offset that trimming leaves.** A pair at 2.5 µm² has `σ_VOS = 2.608 mV`
-  and a three-sigma spread of 7.823 mV. A 5-bit trim over ±8.00 mV has a 0.500 mV step
-  and leaves 144 µV rms. A 6-bit trim leaves 72.2 µV. About 0.21 % of parts fall
-  outside the range. Measured: the sigma, the residual at two trim resolutions, and the
-  fraction out of range.
-- **J4 · Calibration moves the cost to the digital side.** A digitally stored trim code
-  removes the offset at one temperature and leaves the drift. The trim's own tempco is
-  the new limit, and the Mixed-Signal Lab's converter calibration is the same idea one
-  tier up. Measured: the offset before and after, the residual drift over 60 K, and the
-  cross-reference to the Mixed-Signal Lab's calibration group.
+### Group I: Noise and mismatch, designed (4) — implemented
+
+- **I1:** A differential small-signal equivalent refers four independent physical channel-noise sources to the input. The loaded pair has power density 8kTγ(1+r)/gm; defaults give 12.871592 nV/√Hz before the explicitly referred second-stage term. Per-source powers agree with the native nodal noise solver. The second-stage equivalent uses gm2=500 µS and divides its power by first-stage gain squared; its share is calculated, not fixed to the draft percentage.
+- **I2:** Four times gm halves first-stage noise at fixed load ratio. This costs four times current only at fixed gm/ID with resized geometry; a fixed-geometry strong-inversion comparison costs sixteen times current. Defaults at 800 µS and r=0.5 give 6.435796 nV/√Hz, correcting the draft 5.574 value. Per-device current, pair tail current and total-amplifier current are distinguished.
+- **I3:** One device's gate-referred spectrum is 4kTγ/gm + Kf/(CoxWLf), with generic Kf=10^-25 V²F and Cox=8.63 fF/µm². The 10×1 µm corner is approximately 20.982 kHz; 40×2 µm lowers it by eight to approximately 2.62275 kHz. Eightfold area is 0.90309 decade, not one decade. White and flicker powers integrate over explicit positive frequency limits and agree with independent numerical integration.
+- **I4:** The thermal target determines gm, then the same Group A charge law determines current and geometry. The pair mismatch model checks an independently editable offset-sigma target and reports pass/miss. Input lengths 1–5 µm keep all permitted combinations within the declared mismatch area floor. The noise-temperature knob changes noise temperature; the sizing process remains explicitly fixed at 300 K. First-stage thermal noise excludes later stages, flicker and external resistors.
+
+Group J is implemented below. These lessons do not claim foundry extraction, layout matching, generic engine completion or a public-release gate.
+
+### Group J: The extra-element theorem and trimming (4) — implemented
+
+- **J1:** Remove Cgd, then compute H0=−gmRD, ZD=RS+RD+gmRSRD and ZN=−1/gm with dependent sources active. The restored transfer is H0(1−sCgd/gm)/(1+sCgdZD). Exact extra-element, native nodal, sinusoidal and capacitor-state routes agree. Defaults give a 113.682102 MHz pole and positive-real zero scale 1591.549431 MHz; the draft 114.3 MHz direct-solve discrepancy is removed. The initially uncharged capacitor state remains continuous while both node voltages jump, producing an inverse initial response.
+- **J2:** The input-only Miller pole drops the RD time-constant contribution. Its overestimate is RD/[RS(1+gmRD)], exactly 40% at defaults. A 10% pole-error check changes the guidance. Magnitude and continuous phase plots retain the omitted zero; a passing pole estimate is not a full-response guarantee. The actual half-power crossing is calculated separately and is absent when fz≤√2fp.
+- **J3:** The trim DAC uses explicitly symmetric midrise codes: L=2^b, Δ=2R/L, ck=−R+(k+1/2)Δ. The ±R endpoints are bin edges; an even code count has no zero level. Exact Gaussian code-cell moments include saturation tails. At 2.5 µm² and gm/ID=10, sigma=2.607681 mV and outside-range probability is 0.215598% for R=8 mV. Five bits give approximately 144.336 µV conditional in-range RMS but 154.418 µV total RMS; six bits give 88.102 µV total RMS. The draft 144/72 µV values describe a quantization approximation, not total population residual. A 5% check compares Δ/√12 with the conditional integrated result. The plot enlarges central bins so code steps remain visible.
+- **J4:** One code is selected from actual offset plus a fixed measurement error at 25°C, then held unchanged. With additive offset drift α and fractional correction gain coefficient β, e(T)=u0−c0+(α−c0β)(T−25°C). Rounding, range overload, measurement error and drift remain distinct. Defaults store code 21 and give 133.5 µV residual at 85°C, 4.725 µV/K slope and 457.125 µV worst error over −40 to 125°C. The ±500 µV task has reachable pass/miss cases. A related-lesson link opens Mixed-Signal C6 at its own defaults; no circuit or trim-code mapping is claimed.
+
+All ten planned Analog IC curriculum groups now have lessons (45 total). Broader reusable engine APIs, full release audits, reader sittings and public-release gates remain separate work. Direct-URL/unlisted status is retained.
 
 ---
 
@@ -779,9 +724,9 @@ and under 200 µW. The architecture table is the answer sheet.
   are included. An asymmetric netlist handed to `decompose`, a device at
   `IC = 10⁻⁴`, a cascode whose top device leaves saturation, and a latch started
   exactly at its metastable point.
-- **Experiments**: every number in §5 pinned. Among them are 25.79 V⁻¹, 21.3 %,
+- **Experiments**: every number in §5 pinned. Among them are 25.79 V⁻¹, 23.6 %,
   0.4010 µA, 89.29 mV/decade and 2.608 mV. Also 5.099 %, 103.5 mV, 2.50 µA, 1.2836 V
-  and 17.69 ppm/K. Also 81.02 dB, 36.03°, 90.01°, 50.0 ps, 311 ps and 6.74 × 10⁻³.
+  and 17.69 ppm/K. Also 81.02 dB, the full-model 35.6348° and 84.0635° compensation margins, 50.0 ps, 311 ps and 6.74 × 10⁻³.
   Also 40.0 µA, −3.922 dB, 56.4 mV, 12.87 nV/√Hz, 20.98 kHz, 113.7 MHz and 144 µV.
 - **The map's promises**: a test walks every `why` and every cross-reference in it. It
   requires the referenced experiment to exist in the named lab. A reference to an
@@ -838,7 +783,7 @@ Each phase ships green and deployable dark. Phase 0 is a gate rather than work.
    for four architectures pinned, and each against one specification.
 5. **Differential circuits and compensation.** `decompose`, the halves view, the second
    loop trace. **Groups D, E** (8). Exit: D2's 1.26 % error pinned, D3's margin agrees
-   with Control Lab's, and E2's 90.01° reached with the right resistor.
+   with Control Lab's, and E2's removed zero and full-model poles agree with the native nodal solve.
 6. **Comparators and translinear circuits.** **Groups F, G** (8). Exit: F2's
    exponential matches `pwlTransient` to 10⁻⁹, and G1's product law holds over three
    decades.

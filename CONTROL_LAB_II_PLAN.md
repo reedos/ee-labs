@@ -1,5 +1,7 @@
 # Control Lab II: the plan
 
+> Local implementation checkpoint, 2026-09-08: F3–F5 are implemented using the available random package. The new two-state constant-velocity example teaches covariance prediction, Joseph update, steady gain and seeded ensemble variance with confidence intervals, including a sensor-noise mismatch. F1/F2 remain the original deterministic examples. The old waiting notes below describe the original dependency split, now resolved locally.
+
 The second control course, and track C's other half. Control Lab covers the
 classical one: a plant, a controller, a loop, and the margins that say whether it
 holds. This lab covers what the second course adds. The state as the loop's memory.
@@ -91,8 +93,8 @@ experiment exists today.
 | A random variable, its variance, and an ensemble | F2, F3, F5 | nowhere yet | **gap, Random Signals Lab** |
 | The switched converter as a piecewise-linear system | C, D3 | Power Lab Groups A and B | built |
 
-One row is a gap, and it is the only one. Group F's statistical half waits on the
-Random Signals Lab, and Decision 4 says what ships without it. Nothing in any other
+The original gap was Group F's statistical half. It is now implemented locally
+using the Random Signals package; Decision 4 records the earlier split. Nothing in any other
 group leans on an experiment that is not built.
 
 The order of the groups follows the map. A reader walks Control Lab, then Signal
@@ -584,7 +586,7 @@ Shipping now:
   computations side by side. Measured: `L` from the filter equals `Kᵀ` from the
   regulator on the transposed system, to floating point.
 
-Waiting on the Random Signals Lab, per Decision 4 and `BACKLOG.md`:
+Implemented locally after the Random Signals dependency became available:
 
 - **F3 · The covariance recursion.** How the estimate's uncertainty grows between
   measurements and shrinks at each one.
@@ -682,7 +684,7 @@ Each phase ships green and deployable dark.
 5. **Group E.** The fit view. **Done.** E1 to E5 pinned, the residual on screen for
    every dataset. The ensemble and the design were added to `analysis.js` for E4 and
    E5, which the earlier phases had not needed.
-6. **Group F's first half.** **Done.** F1 and F2 pinned, F3 to F5 in `BACKLOG.md`.
+6. **Group F's first half.** **Done locally.** F1/F2 plus F3–F5 covariance and ensemble lessons.
 7. **The release gate.** The full audit, the harness, the sittings, Reed's own pass
    against the dark deployment. Then the flip. **Outstanding**, and the only phase
    that is. It needs the deploy line from the director (`NEEDS.md` §1), a browser for

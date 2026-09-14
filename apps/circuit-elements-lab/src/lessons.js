@@ -142,6 +142,16 @@ const overshootPct = (q, id, final) => (x, p) => (100 * (peak(q, id)(x) - final(
 const offGhost = (q, id) => (x, p) => Math.max(...x.tr.samples.map((s) => Math.abs(s.sol[q][id] - x.ghost.at(s.t).sol[q][id]))) / p.E
 
 export const LESSONS = {
+  h8: {
+    see: 'The current through the input resistor divides between the capacitor and the resistor and inductor branch. The two branch currents have different phases. Add their complex components to check KCL.',
+    seeReads: [],
+    try: [
+      {say:'Set the source amplitude to zero. Every steady-state branch voltage and current becomes zero.',set:{A:0},reads:[['mag.volt.C1',0]]},
+      {say:'Double the source amplitude. Each steady-state voltage and current doubles. The real and reactive powers grow by a factor of four.',set:{A:10},reads:[]},
+      {say:'Increase the branch resistance and compare the new current split in Phasors, then open State equation to follow startup.',set:{R2:300},reads:[]},
+    ],
+    why: 'At node n, the input current equals the capacitor current plus the inductor-branch current. Phasors solve that balance in sinusoidal steady state. The state route starts with capacitor voltage and inductor current, derives their coupled differential equations and includes the natural response. At the same time cursor, the Equations route uses those states to recover every node voltage and branch current. AC power uses the same phasors with the peak-amplitude factor of one half.',
+  },
   a1: {
     see:
       'Voltage is energy per unit of charge, how hard each coulomb is pushed. Current is charge passing per ' +
@@ -427,10 +437,10 @@ export const LESSONS = {
       'A dependent source’s value is set by a voltage somewhere else. This one produces v_out = A·v_in = 5 V ' +
     'whatever load it drives. It delivers 25 mW to the load while the input source works at 25 µW, a thousand ' +
     'times less.',
-    seeReads: [['volt.E1', 5], ['p.RL', 0.025], ['p.V1', -0.000025]],
+    seeReads: [['volt.V2', 5], ['p.RL', 0.025], ['p.V1', -0.000025]],
     try: [
-      { say: 'Turn A up to 100: 50 V out, 2.5 W into the load, from the same 25 µW of input.', set: { A: 100 }, reads: [['volt.E1', 50], ['p.RL', 2.5], ['p.V1', -0.000025]] },
-      { say: 'Set A back to 10 and load it with 10 Ω: still 5 V, now 2.5 W, the source holds its voltage into any load.', set: { A: 10, RL: 10 }, reads: [['volt.E1', 5], ['p.RL', 2.5]] },
+      { say: 'Turn A up to 100: 50 V out, 2.5 W into the load, from the same 25 µW of input.', set: { A: 100 }, reads: [['volt.V2', 50], ['p.RL', 2.5], ['p.V1', -0.000025]] },
+      { say: 'Set A back to 10 and load it with 10 Ω: still 5 V, now 2.5 W, the source holds its voltage into any load.', set: { A: 10, RL: 10 }, reads: [['volt.V2', 5], ['p.RL', 2.5]] },
     ],
     why:
       'This is a voltage-controlled voltage source, the first element here that can deliver more power than it ' +

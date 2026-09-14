@@ -23,6 +23,7 @@ const mag = (z) => cx.cabs(z)
 const realPower = (V, I) => 0.5 * (V[0] * I[0] + V[1] * I[1])
 
 export const HEADLINES = {
+  h8: {label:'the capacitor branch voltage amplitude',tag:'|V_C|',unit:'V',where:null,value:x=>mag(x.ac.volt.C1)},
   a1: { label: 'the current the resistor lets through', tag: 'i', unit: 'A', where: 'R1', value: (x) => x.sol.i.R1 },
   a2: {
     label: 'the voltage the source has to make to keep its current',
@@ -193,6 +194,8 @@ export function calloutText(h, x, p) {
  * the experiment's own first sentence (from `see`) follows it.
  */
 export const VIEW_LEADS = {
+  laplace: 'Transform the physical equations, retain the initial state and return to the time response.',
+  foundations: 'Start with the meaning of the symbols and the circuit laws.',
   reading: 'Every meter on the circuit at once, the one that matters first.',
   iv: 'Here is the diode’s own curve, the line the rest of the circuit imposes, and where they meet.',
   assumed: 'Here is every assumption about the diodes, and what each one said when it was solved.',

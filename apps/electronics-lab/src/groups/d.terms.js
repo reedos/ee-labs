@@ -71,12 +71,11 @@ export const TERMS_D = {
       'a switch down at 0.2 V. Here 0.43 mA of base current carries 9.80 mA of load, a forced β of 22.8.',
   },
   noisemargin: {
-    name: 'Noise margins, V_IL and V_IH',
+    name: 'Noise margins, NM_L and NM_H',
     def:
-      'The two input voltages where a logic gate’s transfer curve has a slope of exactly −1. Between them the ' +
-      'gate amplifies, and outside them it restores. A matched inverter on 5 V with V_t = 0.7 V has ' +
-      'V_IL = 2.05 V and V_IH = 2.95 V. Either input then has about 2 V of room before the gate stops ' +
-      'cleaning its input up.',
+      'The voltage differences between guaranteed output and accepted input levels, NM_L = V_IL − V_OL and ' +
+      'NM_H = V_OH − V_IH. The input limits V_IL and V_IH occur where the transfer curve has slope −1. ' +
+      'The output limits are the curve values at the opposite input limits.',
   },
   loadline: {
     name: 'The load line',

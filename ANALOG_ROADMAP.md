@@ -29,9 +29,9 @@ approximates silently and this suite will not.
 | --- | --- | --- | --- | --- | --- |
 | 0 | Circuit Elements Lab, Circuit Lab | Circuits I and II | 55 + 15, plus two seam experiments | `network`, `systems` | built |
 | 1 | Electronics Lab | Electronics I and II | 77 | `network` extended (§4) | planned, `ELECTRONICS_LAB_PLAN.md` |
-| 2 | Applied Analog Lab | the board-level analog a working engineer designs | about 45 | tier 1's, plus corners and yield | outlined here |
-| 3 | Analog IC Lab | analog integrated circuit design | about 45 | tier 1's, plus a subthreshold model, matching, differential analysis | outlined here |
-| 4 | Mixed-Signal Lab | sampled circuits, converters, clocks | about 40 | `switched` and `dsp` together, plus charge conservation | outlined here |
+| 2 | Applied Analog Lab | the board-level analog a working engineer designs | about 45 | tier 1's, plus corners and yield | Groups A–C implemented (16 lessons), later groups planned |
+| 3 | Analog IC Lab | analog integrated circuit design | about 45 | tier 1's, plus a subthreshold model, matching, differential analysis | Groups A–C implemented (17 lessons), later groups planned |
+| 4 | Mixed-Signal Lab | sampled circuits, converters, clocks | about 40 | `switched` and `dsp` together, plus charge conservation | Groups A–C implemented (18 lessons), later groups planned |
 | 5 | RF Lab | the radio front end | about 35 | a frequency-domain package, `rf`, at the `systems` boundary | outlined here |
 
 The order is a dependency order. Tier 2 needs tier 1's op-amp, feedback and noise

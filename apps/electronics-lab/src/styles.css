@@ -1097,6 +1097,11 @@ a.handover-copy:hover { filter: brightness(1.1); }
 
 .pane-equations { overflow-y: auto; min-height: 0; font-size: 12px; }
 .pane-equations h3 { margin: 6px 0 4px; font-size: 12px; color: var(--dim); font-weight: 600; }
+.pane-equations > .tex, .worked-solution .tex { display: block; overflow-x: auto; max-width: 100%; padding: 6px 0; }
+.worked-solution { line-height: 1.65; font-size: 13px; border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; }
+.worked-solution h4 { color: var(--accent); }
+.worked-steps { list-style: none; padding: 0; }
+.worked-steps li { border-top: 1px solid var(--line); padding: 12px 0; }
 
 /* The cursor, beside the view it moves. */
 .cursor-knob { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dim); }
@@ -1107,3 +1112,46 @@ a.handover-copy:hover { filter: brightness(1.1); }
    are told apart by hue as well as by wording. */
 text.sch-meter.is-ac { fill: var(--q-current); }
 .view-body[data-show='v'] text.sch-meter.is-ac { fill: var(--q-current); }
+
+/* Navigation occupies its own row, independent of the active pane's heading. */
+.analysis-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 5px; flex: 0 0 auto; }
+.analysis-head > .segmented { justify-self: start; max-width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+.analysis-head > .segmented button { flex: 0 0 auto; white-space: nowrap; font-weight: 600; }
+.lesson-body { overflow: auto; display: block; min-height: 0; }
+.lesson-body h2 { font-size: 16px; margin: 8px 0; }
+.opening-lesson { max-width: 80ch; font-size: 14px; line-height: 1.6; }
+.opening-lesson h3 { font-size: 14px; margin-bottom: 4px; }
+.opening-lesson a { color: var(--accent); }
+.lesson-practice { border: 1px solid var(--line); border-radius: 6px; padding: 12px; margin: 12px 0; }
+.lesson-practice form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.lesson-practice label { display: grid; gap: 5px; min-width: 0; }
+.lesson-practice input { width: 100%; box-sizing: border-box; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); padding: 8px; }
+.lesson-practice button { background: var(--panel-2); color: var(--accent); border: 1px solid var(--line); border-radius: 5px; padding: 8px; cursor: pointer; }
+.lesson-practice [role='status']:empty { display: none; }
+.lesson-body .math-panel { max-width: 100%; }
+.picker-list[hidden] { display: none; }
+.labnav { flex-wrap: wrap; row-gap: 10px; }
+.labnav .labnav-home { flex-basis: 100%; border-right: 0; }
+.route-guide { padding: 10px; border: 1px solid var(--line); border-radius: 5px; font-size: 13px; line-height: 1.6; }
+.route-guide summary { cursor: pointer; color: var(--accent); }
+.drawing-enlarge, .drawing-dialog button { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 7px; cursor: pointer; }
+.drawing-dialog { width: min(1100px, 96vw); max-width: 96vw; max-height: 90dvh; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+.drawing-dialog::backdrop { background: #000b; }
+.drawing-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.drawing-dialog-head h2 { font-size: 16px; }
+.drawing-scroll { overflow: auto; }
+.drawing-scroll .schematic { width: 100%; min-width: 800px; max-width: none; }
+.pane-table th, .pane-table td { vertical-align: top; white-space: nowrap; }
+@media (max-width: 900px) {
+  .analysis-view { min-height: 420px; }
+  .analysis-view .lesson-body { max-height: 65dvh; }
+  html, body, #root { height: auto; min-height: 100%; overflow: visible; }
+  .app { height: auto; overflow: visible; grid-template-rows: repeat(7, auto); }
+  .controls > .picker { grid-column: 1; grid-row: 2; margin: 0; padding: 10px 12px; background: var(--panel); }
+  .controls > .lesson { grid-row: 3; }
+  .topbar { grid-row: 4; }
+  .views { grid-row: 5; }
+  .controls > .knobs { grid-row: 6; }
+  .controls > .report-issue { grid-column: 1; grid-row: 7; margin: 20px; }
+  .analysis-view .pane-equations { max-height: 65dvh; }
+}

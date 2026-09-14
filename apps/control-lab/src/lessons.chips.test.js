@@ -391,8 +391,8 @@ describe('what each try line and chip claims, measured', () => {
 })
 
 describe('the plants stay a toolbox, not a course', () => {
-  it('still seven plants and four controllers, thirteen lessons', () => {
-    expect(Object.keys(PLANTS).length).toBe(7)
+  it('eight plants including third-order handover and four controllers, thirteen lessons', () => {
+    expect(Object.keys(PLANTS).length).toBe(8)
     expect(Object.keys(CONTROLLERS).length).toBe(4)
     expect(LESSONS.length).toBe(13)
     expect(defaultsOf(PLANTS.motor)).toEqual({ k: 1, tau: 0.5 })

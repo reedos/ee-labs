@@ -17,20 +17,34 @@
 // read at until the reader scrubs, and `scope` which waveforms the scope
 // draws on which axis. Everything else is as for the resistive groups.
 
+import { phasorLayout } from './branchedLayout.js'
+import { phasorCircuit } from './branchedPhasor.js'
 import { fmt } from '@ee-labs/ui'
 import { layoutExtent, placeCallout } from './layoutCheck.js'
 import { LESSONS } from './lessons.js'
 import { HEADLINES, calloutStandIn } from './headlines.js'
 import { THEOREMS } from './theorems.js'
+import { completionMethods } from './completionMethods.js'
+import { completionDynamics } from './completionDynamics.js'
+import { completionAC } from './completionAC.js'
+import { completionCoupled } from './completionCoupled.js'
+import { completionFilters } from './completionFilters.js'
+import { completionPorts } from './completionPorts.js'
+import { completionCapstones } from './completionCapstones.js'
+import { completionDependent } from './completionDependent.js'
+import { MATCH } from './terms.js'
+import { COMPLETION_NOTES } from './completionNotes.js'
 
 // Every view a lower pane can show, in the order the view switch lists them —
 // the same order in every experiment, so a tab sits in the same place from one
 // to the next. The reading (every meter at once, the DC groups' opening view)
 // and the two universal views lead; the rest follow the curriculum.
-export const VIEW_ORDER = ['reading', 'iv', 'assumed', 'equations', 'power', 'thevenin', 'equivalent', 'superposition', 'sweep', 'scope', 'state', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
+export const VIEW_ORDER = ['foundations', 'reading', 'iv', 'assumed', 'equations', 'power', 'thevenin', 'equivalent', 'superposition', 'sweep', 'scope', 'state', 'laplace', 'energy', 'damping', 'phasor', 'impedance', 'bode', 'acpower']
 
 // What the view switch calls each view, and the hover text that says what it shows.
 export const VIEW_LABELS = {
+  laplace: {label: 'Laplace', title: 'Transform the circuit equations, retain initial conditions and invert the result'},
+  foundations: { label: 'Start here', title: 'Learn the notation and method before solving this circuit' },
   reading: { label: 'Reading', title: 'The one number this experiment is about, and every meter on the circuit at once' },
   iv: { label: 'i–v plane', title: 'Current against voltage: the diode’s curve, the four models of it, the load line the rest of the circuit imposes, and where they meet' },
   assumed: { label: 'Assumed states', title: 'Every combination of diode states, each solved and then checked against its own answer — the three that contradict themselves, and the one that does not' },
@@ -70,6 +84,11 @@ export const GROUPS = [
   'G · Second order',
   'H · Sinusoids and phasors',
   'I · The diode',
+  'J · Complete responses and Laplace',
+  'L · Coupled circuits and three phases',
+  'K · Filters and Fourier signals',
+  'M · Two-port networks',
+  'N · Circuits II capstone',
 ]
 
 // ------------------------------------------------------------ knobs
@@ -926,7 +945,7 @@ export const EXPERIMENTS = [
     },
     show: 'p',
     view: 'sweep',
-    views: ['reading', 'power', 'thevenin', 'sweep'],
+    views: ['reading', 'equations', 'power', 'thevenin', 'sweep'],
     port: ['A', 'gnd'],
     sweepId: 'RL',
     sweepY: 'p',
@@ -945,7 +964,7 @@ export const EXPERIMENTS = [
       elements: [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
         { type: 'R', id: 'Rin', nodes: ['in', 'gnd'], value: p.Rin },
-        { type: 'VCVS', id: 'E1', nodes: ['out', 'gnd'], ctrl: ['in', 'gnd'], gain: p.A },
+        { type: 'VCVS', id: 'V2', nodes: ['out', 'gnd'], ctrl: ['in', 'gnd'], gain: p.A },
         { type: 'R', id: 'RL', nodes: ['out', 'gnd'], value: p.RL },
       ],
     }),
@@ -959,7 +978,7 @@ export const EXPERIMENTS = [
         rail(50, 140, BOT),
         gnd(95),
         node('in', 50, TOP, 't'),
-        ...leg('E1', 240),
+        ...leg('V2', 240),
         ...leg('RL', 340),
         rail(240, 340, TOP),
         rail(240, 340, BOT),
@@ -991,7 +1010,7 @@ export const EXPERIMENTS = [
         { type: 'V', id: 'V1', nodes: ['in', 'gnd'], value: p.E },
         { type: 'R', id: 'Rs', nodes: ['in', 'p'], value: p.Rs },
         { type: 'R', id: 'Rin', nodes: ['p', 'gnd'], value: p.Rin },
-        { type: 'VCVS', id: 'E1', nodes: ['o', 'gnd'], ctrl: ['p', 'gnd'], gain: p.A },
+        { type: 'VCVS', id: 'V2', nodes: ['o', 'gnd'], ctrl: ['p', 'gnd'], gain: p.A },
         { type: 'R', id: 'Rout', nodes: ['o', 'out'], value: p.Rout },
         { type: 'R', id: 'RL', nodes: ['out', 'gnd'], value: p.RL },
       ],
@@ -1013,7 +1032,7 @@ export const EXPERIMENTS = [
         ...leg('Rin', 140),
         node('in', 40, TOP, 't'),
         node('p', 140, TOP, 'r'),
-        ...leg('E1', 234),
+        ...leg('V2', 234),
         rail(234, 262, TOP),
         ...top('Rout', 282),
         rail(302, 350, TOP),
@@ -1374,7 +1393,7 @@ export const EXPERIMENTS = [
     },
     show: 'p',
     view: 'energy',
-    views: ['power', 'scope', 'state', 'energy'],
+    views: ['equations', 'power', 'scope', 'state', 'energy'],
     circuitLab: rcToCircuitLab,
     claim: { half: true },
   },
@@ -1745,6 +1764,31 @@ export const EXPERIMENTS = [
     phasor: { volts: ['R1', 'L1'], total: 'V1', current: 'R1' },
     circuitLab: (p) => (p.L1 <= 1 ? { id: 'rlLow', values: [p.R1, p.L1], output: 'r' } : { decline: `Circuit Lab’s inductor knob stops at 1 H; L = ${fmt(p.L1, 'H', 3)} does not fit.` }),
     claim: { acpower: true },
+  },
+  {
+    id: 'h8', group: GROUPS[7], name: 'Current division in a branched AC circuit',
+    terms: ['phasor', 'impedanceac', 'reactance'],
+    params: [Vs('A', 'Amplitude', 5), Deg('phi', 'Phase', 0),
+      { ...Freq('f', 'Frequency', 1000), min: 10, max: 10000 },
+      { ...R('R1', 'R₁', 100), min: 10, max: 1000 },
+      { ...R('R2', 'R₂', 150), min: 10, max: 1000 },
+      { ...Ind('L1', 'L', .01), min: .001, max: .1 },
+      { ...Cap('C1', 'C', 1e-6), min: 1e-7, max: 1e-5 }, Vs('v0', 'Initial capacitor voltage', 0), Is('i0', 'Initial inductor current', 0), Win('N', 'Window', 'cycles', 6)],
+    net: p => {
+      const net = phasorCircuit('branched', { r:p.R1, r2:p.R2, l:p.L1, c:p.C1, v:p.A })
+      net.elements.find(e=>e.id==='C1').x0 = p.v0
+      net.elements.find(e=>e.id==='L1').x0 = p.i0
+      net.elements[0].wave = { kind:'sine', amp:p.A, freq:p.f, phase:p.phi*Math.PI/180 }
+      return net
+    },
+    layout: phasorLayout('branched'), window: cyclesWindow, cursor: .85,
+    ghost: 'forced', ghostLabel: 'steady state (dashed)',
+    scope: { left: { unit:'V', traces:[{q:'volt',key:'C1',label:'v_C'}] },
+      right: { unit:'A', traces:[{q:'i',key:'R1',label:'i_R1'},{q:'i',key:'C1',label:'i_C'},{q:'i',key:'L1',label:'i_L'}] } },
+    out: {q:'volt',key:'C1',label:'v_C'}, show:'v', view:'phasor',
+    views:['equations','power','scope','state','phasor','acpower'],
+    phasor: {volts:['R1','C1'],total:'V1',current:'R1',branched:true},
+    claim: {branched:true},
   },
   {
     id: 'h6',
@@ -2119,12 +2163,42 @@ export const EXPERIMENTS = [
   },
 ]
 
+// The first exposure to each method opens its prerequisite lesson in the same pane.
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'e1'), 0, ...completionMethods(EXPERIMENTS, GROUPS))
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'f1'), 0, completionDependent(EXPERIMENTS, GROUPS))
+const dynamicCompletion = completionDynamics(EXPERIMENTS, GROUPS)
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'h6'), 0, ...completionAC(EXPERIMENTS))
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'g1'), 0, ...dynamicCompletion.filter(e => e.id[0] === 'f'))
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'h6'), 0, ...dynamicCompletion.filter(e => e.id[0] === 'j'))
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'i1'), 0, ...completionFilters(EXPERIMENTS, GROUPS), ...completionCoupled(GROUPS))
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'i1'), 0, ...completionPorts(EXPERIMENTS, GROUPS))
+const capstones = completionCapstones(EXPERIMENTS, GROUPS)
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'h1'), 0, capstones[0])
+EXPERIMENTS.splice(EXPERIMENTS.findIndex(e => e.id === 'i1'), 0, capstones[1])
+// Keep public IDs stable while placing frequency-response lessons after Laplace.
+for (const id of ['h6', 'h7']) EXPERIMENTS.find(e => e.id === id).group = GROUPS[11]
+export const COURSE_GROUPS = [...new Set(EXPERIMENTS.map(e => e.group))]
+export const courseSection = exp => exp.group === GROUPS[8] ? 'Extension' : EXPERIMENTS.indexOf(exp) < EXPERIMENTS.findIndex(e => e.id === 'h1') ? 'I' : 'II'
+// A cloned topology must not inherit glossary chips for concepts its lesson does not use.
+for (const exp of EXPERIMENTS.filter(e => e.study)) {
+  if (COMPLETION_NOTES[exp.id]) exp.lesson = {...exp.lesson, see: COMPLETION_NOTES[exp.id]}
+  const prose = [exp.lesson.see, exp.lesson.why, ...exp.lesson.try.map(t => t.say)].join(' ')
+  exp.terms = Object.keys(MATCH).filter(id => MATCH[id].test(prose))
+  exp.views = VIEW_ORDER.filter(view => exp.views.includes(view))
+}
+// Stable experiment IDs and all existing analysis views remain available.
+for (const id of ['f1', 'g1', 'h1']) {
+  const exp = EXPERIMENTS.find(e => e.id === id)
+  exp.views = ['foundations', ...exp.views]
+  exp.view = 'foundations'
+}
+
 // What the student reads lives in lessons.js: `see` (the picture at the
 // defaults), `try` (knob moves with their readings) and `why` (the reasoning).
 // `note` is the two prose registers run together, for the places that quote a
 // single paragraph per experiment (the hand-over card, the tests' word counts).
 for (const e of EXPERIMENTS) {
-  const lesson = LESSONS[e.id]
+  const lesson = e.lesson || LESSONS[e.id]
   if (!lesson) throw new Error(`no lesson for ${e.id}`)
   Object.assign(e, lesson)
   e.note = `${lesson.see} ${lesson.why}`
@@ -2484,7 +2558,7 @@ export function defaultsOf(id) {
 // at load, not in a screenshot. The experiments that are about a theorem
 // carry its drawing instructions (theorems.js) as `theorem`.
 for (const e of EXPERIMENTS) {
-  const headline = HEADLINES[e.id]
+  const headline = e.headline || HEADLINES[e.id]
   if (!headline) throw new Error(`no headline for ${e.id}`)
   e.headline = headline
   if (THEOREMS[e.id]) e.theorem = THEOREMS[e.id]

@@ -441,7 +441,46 @@ button.flow-node[aria-expanded='true'] { border-color: var(--accent); color: var
    governs one plot sits in that plot's header, sized to the header row so
    moving it there costs almost no plot height. */
 .view-head .segmented { flex: 0 0 auto; }
+.worked-method { flex-shrink: 0; min-width: 0; }
+.method-routes { flex-shrink: 0; }
+.drawing-enlarge { min-height: 30px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); color: var(--text); padding: 4px 9px; cursor: pointer; }
+.drawing-dialog { width: min(1100px, 96vw); max-width: 96vw; max-height: 94vh; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); }
+.drawing-dialog::backdrop { background: rgb(0 0 0 / .75); }
+.drawing-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.drawing-dialog h2 { font-size: 16px; line-height: 1.5; }
+.drawing-dialog button { min-height: 44px; padding: 8px 12px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
+.drawing-dialog p { font-size: 13px; line-height: 1.6; }
+.drawing-scroll { overflow: auto; }
+.drawing-scroll .schematic { display: block; width: max(100%, calc(var(--crop-w, 500) * 1.5px)); max-width: none; height: auto; }
+.response-comparison svg { display: block; width: 100%; min-width: 480px; }
+.response-comparison { overflow-x: auto; }
+.comparison-legend { display: flex; flex-wrap: wrap; gap: 12px; }
+.method-practice form { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.method-practice label { display: grid; gap: 6px; }
+.method-practice input { min-height: 44px; width: 180px; max-width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px; font: inherit; }
+.method-practice button { min-height: 44px; padding: 8px 14px; }
+.method-check-scroll { overflow-x: auto; }
+.method-checks { width: 100%; border-collapse: collapse; }
+.method-checks caption { text-align: left; margin-bottom: 8px; }
+.method-checks th, .method-checks td { padding: 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.method-checks th:first-child { text-align: left; white-space: normal; }
 .view-head .segmented button { padding: 2px 9px; white-space: nowrap; }
+
+/* Keep navigation independent of the selected view's readouts and content.
+   A constant weight also prevents the active label from resizing its row. */
+.view-head.analysis-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  flex-shrink: 0;
+}
+.analysis-head .view-switch { justify-self: start; flex-wrap: wrap; max-width: 100%; }
+.analysis-head .view-switch button { font-weight: 600; }
+.analysis-head + .view-body > .readout { flex-shrink: 0; margin-bottom: 6px; }
+.analysis-head + .view-body > .readout:empty { display: none; }
+@media (max-width: 600px) {
+  .view-head.analysis-head { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* Phone: pane-header control groups wrap under the title without crowding
    the readouts off the edge. */
@@ -742,7 +781,31 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
    zero. */
 /* minmax(0, 1fr): a wide equation row must not widen the track and push the
    prose beside it off a phone screen — the row scrolls inside instead. */
-.equations { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 4px 0; overflow-x: auto; }
+/* Keep the full equation height in the shared view-body scroll area. Otherwise
+   overflow-x also enables vertical scrolling and flex can collapse this pane. */
+.equations { flex-shrink: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 4px 0; overflow-x: auto; }
+.solution-routes { flex-shrink: 0; margin: 10px 0; padding: 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; line-height: 1.55; }
+.solution-routes h3 { margin: 0 0 6px; font-size: 14px; }
+.solution-routes p { margin: 6px 0; }
+.solution-route-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.solution-route { min-width: 0; padding: 10px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; }
+.solution-route[data-current='true'] { border-color: var(--accent); }
+.solution-route h4 { font-size: 12px; margin: 0; }
+.solution-route button { cursor: pointer; font: inherit; color: var(--accent); background: none; border: 1px solid var(--line); padding: 5px 8px; border-radius: 4px; margin-top: 6px; }
+.solution-route button:hover, .solution-route button:focus-visible { border-color: var(--accent); }
+.route-unavailable { display: block; color: var(--dim); font-size: 11px; margin-top: 8px; }
+.solution-routes .route-connection { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 10px; }
+@media (max-width: 900px) { .solution-route-cards { grid-template-columns: minmax(0, 1fr); } }
+.worked-solution { min-width: 0; margin-top: 18px; padding: 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); font-size: 13px; line-height: 1.65; }
+.worked-solution h3 { font-size: 15px; margin: 0 0 12px; }
+.worked-solution h4 { font-size: 13px; margin: 0 0 8px; color: var(--accent); }
+.worked-solution p { max-width: 85ch; margin: 8px 0; }
+.worked-solution > .tex, .worked-steps .tex { display: block; overflow-x: auto; padding: 6px 0; }
+.worked-solution .tex { font-size: 15px; }
+.worked-solution .katex-display { margin: 8px 0; text-align: left; }
+.worked-solution .katex-display > .katex { text-align: left; }
+.worked-steps { list-style: none; padding: 0; margin: 16px 0; }
+.worked-steps li { border-top: 1px solid var(--line); padding: 16px 0; }
 .eq-row {
   display: grid;
   grid-template-columns: minmax(80px, auto) 1fr;
@@ -814,6 +877,19 @@ details.group-intro > p { margin: 4px 0 0; padding: 6px 10px; border-left: 3px s
    margin); a table cell has to win that back or the row falls into a stack. */
 .table td.num, .table th.num { display: table-cell; margin: 0; text-align: right; }
 .table td.num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.table td.num, .table th.num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.table { align-self: start; }
+.table tbody tr:nth-child(even), .math-check tbody tr:nth-child(even), .math-values tbody tr:nth-child(even) { background: var(--panel); }
+.math-check thead th:first-child { text-align: left; }
+.math-check th, .math-check td, .math-values th, .math-values td { padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.math-check tbody td, .math-values td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.math-body { overflow-x: auto; }
+.notation-guide { margin: 8px 0; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; line-height: 1.6; min-width: 0; }
+.notation-guide summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.notation-guide p { margin: 10px 0; }
+.notation-guide dt { font-weight: 600; margin-top: 10px; }
+.notation-guide dd { margin: 2px 0 10px; }
+.notation-guide > .tex { display: block; overflow-x: auto; }
 .table td.agree { color: var(--accent); }
 .table td.disagree { color: var(--warn); }
 .table caption { text-align: left; color: var(--dim); font-size: 11px; padding: 4px 8px; }
@@ -1182,3 +1258,23 @@ a.handover-copy:hover { filter: brightness(1.1); }
   .theorem figcaption, .equivalent figcaption { font-size: 13.5px; }
   .readings .hint { font-size: 14px; }
 }
+
+.course-sections { display:flex; gap:6px; margin-bottom:8px; }
+.course-sections button { flex:1; min-height:44px; }
+.course-sections button[aria-pressed="true"] { color:var(--text-bright); border-color:var(--accent); background:var(--panel); }
+.course-section-summary { font-size:12px; line-height:1.5; margin:6px 0 10px; }
+
+.course-outline { margin-bottom:10px; font-size:12px; line-height:1.6; }
+.course-outline ol { padding-left:20px; }
+.course-outline a { color:var(--accent); }
+
+/* The branched drawing is taller than the single-loop drawings. Keep its labels readable on phones. */
+@media (max-width: 600px) {
+  .app[data-experiment="h8"] .view .schematic.big { --sch-h: 250px; }
+}
+
+.foundations-pane { flex-shrink:0; min-width:0; }
+.foundation-actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.foundation-actions button { min-height:44px; }
+.foundation-link { flex-shrink:0; margin:4px 0 12px; font-size:12px; line-height:1.6; }
+.foundation-link a { color:var(--accent); }

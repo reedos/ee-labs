@@ -8,6 +8,7 @@
   "exports": {
     ".": "./index.js",
     "./testing": "./testing.js",
+    "./circuit": "./src/WorkedSolution.jsx",
     "./panel.css": "./src/panel.css"
   },
   "peerDependencies": {

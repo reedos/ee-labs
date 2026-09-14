@@ -49,9 +49,13 @@ export const ENTRIES = {
     return {
       blocks: [
         T('The offset is a battery in series with one input. The amplifier cannot tell it from a signal, so it multiplies it by the closed-loop gain.'),
-        F('v_{out} = \\frac{A_0 V_{OS}}{1 + A_0\\beta}, \\qquad \\beta = \\frac{R_g}{R_f + R_g}'),
+        T('Define v_out as the output voltage relative to ground, V_in as the applied input voltage, V_OS as the input offset voltage, A_0 as the dimensionless open-loop gain, and beta as the feedback fraction. R_f runs from output to the minus input; R_g runs from that input to ground. All voltages below are in volts and resistances in ohms.'),
+        F('v_- = \\beta v_{out},\\quad \\beta = \\frac{R_g}{R_f+R_g},\\quad v_{out}=A_0(V_{in}+V_{OS}-v_-)'),
+        T('Substitute the feedback voltage, collect the output terms on the left, then divide by the feedback factor.'),
+        F('\\begin{aligned}v_{out}+A_0\\beta v_{out}&=A_0(V_{in}+V_{OS})\\\\v_{out}&=\\frac{A_0(V_{in}+V_{OS})}{1+A_0\\beta}\\end{aligned}'),
+        F(`\\beta=\\frac{${p.Rg}}{${p.Rf}+${p.Rg}}=${beta.toPrecision(6)},\\quad v_{out}=\\frac{${A0}(${p.E}+${p.vos})}{1+${A0}(${beta.toPrecision(6)})}\\;\\mathrm{V}`),
+        T('This linear result applies while the output stays between its rails. The measured column below comes from the circuit solve, which includes the output limit.'),
         C([
-          row('closed-loop gain 1 + R_f/R_g', closedGain(p), closedGain(p), '', 1e-9, { unchecked: null }),
           row('v_out, the input and the offset together', (A0 * (p.E + p.vos)) / (1 + A0 * beta), x.sol.v.out, 'V', 1e-3, {
             unchecked:
               Math.abs((A0 * (p.E + p.vos)) / (1 + A0 * beta)) > 12
@@ -59,7 +63,7 @@ export const ENTRIES = {
                 : null,
           }),
         ]),
-        V([{ label: 'input-referred offset', value: p.vos, unit: 'V', note: 'the same battery, wherever the gain is set' }]),
+        V([{ label: 'ideal closed-loop gain 1 + R_f/R_g', value: closedGain(p), unit: '', note: 'derived from the resistor ratio' }, { label: 'input-referred offset', value: p.vos, unit: 'V', note: 'the same battery, wherever the gain is set' }]),
       ],
     }
   },

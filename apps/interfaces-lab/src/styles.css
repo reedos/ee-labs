@@ -1,0 +1,103 @@
+.interfaces-app, .interfaces-app * { letter-spacing: 0; }
+.interfaces-app .phone-sections { display: none; }
+.interfaces-app .plot-key { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 10px 0; padding: 0; font-size: 11px; color: var(--text); }
+.interfaces-app .plot-key li { display: flex; align-items: center; gap: 7px; min-width: 0; max-width: 100%; }
+.interfaces-app .plot-swatch { display: inline-block; flex: 0 0 20px; width: 20px; height: 0; border-top: 2px solid var(--key-color); }
+.interfaces-app .plot-swatch.dashed { border-top-style: dashed; }
+.interfaces-app .plot-swatch.region { height: 12px; border: 1px solid var(--amber); background: var(--key-color); }
+.interfaces-app .plot-swatch.dot { flex-basis: 8px; width: 8px; height: 8px; border: 0; border-radius: 50%; background: var(--key-color); margin: 0 6px; }
+.interfaces-app .parameter-role { font-size: 11px; color: var(--dim); line-height: 1.5; margin: -2px 0 14px; }
+.interfaces-app .foundation { font-size: 13px; line-height: 1.6; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+.interfaces-app .foundation p { margin: 8px 0; }
+.interfaces-app .analysis-body > .math-body { border-left: 0; padding-left: 0; }
+.interfaces-app .picker .lesson-nav { margin-bottom: 10px; }
+.interfaces-app .picker select { width: 100%; }
+.interfaces-app h3 { font-size: 14px; margin: 16px 0 8px; }
+.interfaces-app h4 { font-size: 12px; margin: 12px 0 5px; }
+.interfaces-app .model-label { display: grid; gap: 6px; color: var(--dim); font-size: 12px; }
+.interfaces-app summary { cursor: pointer; padding: 8px 0; font-size: 12px; }
+.interfaces-app .topbar { flex-wrap: wrap; gap: 8px 16px; font-size: 12px; }
+.interfaces-app .workspace { grid-column: 2; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr) 330px; min-height: 0; min-width: 0; overflow-y: auto; }
+.interfaces-app .instrument { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.interfaces-app .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.interfaces-app .section-heading h2 { font-size: 12px; margin: 0; color: var(--dim); }
+.interfaces-app .pin-section { padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.interfaces-app .pin-content { display: grid; grid-template-columns: minmax(0, 1fr) 225px; gap: 12px; align-items: center; }
+.interfaces-app .schematic { display: block; width: 100%; height: 200px; }
+.interfaces-app .sch-label { fill: var(--text); font-size: 10px; }
+.interfaces-app .sch-sub { font-size: 7px; }
+.interfaces-app .sch-port, .interfaces-app .sch-note { fill: var(--dim); font-size: 10px; }
+.interfaces-app .sch-meter { fill: var(--blue); font-size: 10px; }
+.interfaces-app .sch-sign { fill: var(--text); font-size: 11px; }
+.interfaces-app .readings { display: grid; grid-template-columns: 1fr auto; gap: 5px 10px; font-size: 11px; margin: 10px 0; }
+.interfaces-app .readings dt { color: var(--dim); }
+.interfaces-app .readings dd { margin: 0; font-variant-numeric: tabular-nums; }
+.interfaces-app .segments { display: flex; }
+.interfaces-app .segments button { background: var(--panel-2); color: var(--dim); border: 1px solid var(--line); padding: 5px 10px; cursor: pointer; font: inherit; font-size: 12px; }
+.interfaces-app .segments button[aria-pressed=true] { border-color: var(--accent); color: var(--accent); }
+.interfaces-app .view-section { display: flex; flex-direction: column; flex: 1; min-height: 460px; padding: 0 16px 12px; }
+.interfaces-app .view-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.interfaces-app .view-tabs button { background: transparent; color: var(--dim); border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 10px 8px; cursor: pointer; font: inherit; font-size: 12px; }
+.interfaces-app .view-tabs button[aria-selected=true] { color: var(--accent); border-bottom-color: var(--accent); }
+.interfaces-app .transport-row { display: flex; align-items: center; gap: 8px; padding-top: 6px; flex-wrap: wrap; }
+.interfaces-app .playback-controls { flex: 1; min-width: 220px; }
+.interfaces-app .time-window { color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+.interfaces-app .fit-range { width: 44px; height: 44px; padding: 0; font-size: 18px; flex: 0 0 44px; }
+.interfaces-app .view-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.interfaces-app .plot-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--dim); font-size: 11px; padding-top: 6px; }
+.interfaces-app .live-trace { color: var(--accent); }
+.interfaces-app .reference-trace { color: var(--amber); }
+.interfaces-app .analog-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; min-height: 28px; color: var(--dim); }
+.interfaces-app .pin-canvas, .interfaces-app .load-canvas { display: block; width: 100%; height: 340px; min-height: 300px; flex: 1; touch-action: pan-y; }
+.interfaces-app .caption { margin: 6px 0; color: var(--dim); font-size: 11px; }
+.interfaces-app .analysis-notes { min-width: 0; overflow-y: auto; border-left: 1px solid var(--line); padding: 14px 18px; background: var(--panel); }
+.interfaces-app .analysis-notes h2 { font-size: 14px; margin: 0; }
+.interfaces-app .analysis-notes .hint { margin: 10px 0; }
+.interfaces-app .math-body { min-width: 0; max-width: 100%; font-size: 12px; }
+.interfaces-app .analysis-notes > .math-body { border-left: 0; padding-left: 0; }
+.interfaces-app .math-formula { max-width: 100%; overflow-x: auto; }
+.interfaces-app .math-values, .interfaces-app .math-check { font-size: 11px; }
+.interfaces-app .budget-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.interfaces-app .budget-table th, .interfaces-app .budget-table td { border-bottom: 1px solid var(--line); padding: 9px 8px; text-align: left; }
+.interfaces-app .budget-table td { text-align: right; font-variant-numeric: tabular-nums; }
+.interfaces-app .budget-table thead th:last-child { text-align: right; }
+.interfaces-app .passed { color: var(--accent); }
+.interfaces-app .failed, .interfaces-app .refusal { color: var(--warn); }
+.interfaces-app .refusal { padding: 24px; }
+@media (min-width: 1800px) {
+  .interfaces-app .workspace { grid-template-columns: minmax(0, 1fr) 400px; }
+  .interfaces-app .schematic { height: 240px; }
+  .interfaces-app .pin-content { grid-template-columns: minmax(0, 1fr) 280px; }
+  .interfaces-app .readings { font-size: 13px; gap: 7px 12px; }
+  .interfaces-app .analysis-notes .math-body, .interfaces-app .analysis-notes .hint { font-size: 13px; }
+}
+@media (max-width: 1250px) {
+  .interfaces-app .workspace { display: block; }
+  .interfaces-app .analysis-notes { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+}
+@media (max-width: 900px) {
+  html { height: auto; overflow: auto; }
+  body, #root { height: auto; overflow: visible; }
+  .interfaces-app { display: flex; flex-direction: column; height: auto; overflow: visible; }
+  .interfaces-app .controls { display: contents; }
+  .interfaces-app .controls > header { order: -5; padding: 12px 14px; }
+  .interfaces-app .picker { order: -4; margin: 0 14px 10px; }
+  .interfaces-app .phone-sections { order: -3; position: sticky; top: 0; z-index: 5; display: flex; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .interfaces-app .phone-sections button { flex: 1; min-width: 0; min-height: 44px; border: 0; border-radius: 0; background: transparent; color: var(--accent); font: inherit; font-size: 12px; padding: 4px; }
+  .interfaces-app .controls > .lesson { order: -2; margin: 12px 14px; }
+  .interfaces-app .knobs { order: -1; margin: 0 14px 12px; }
+  .interfaces-app .topbar { min-height: 44px; padding: 8px 14px; }
+  .interfaces-app [id^="pin-"] { scroll-margin-top: 54px; }
+  .interfaces-app .workspace { overflow: visible; display: flex; flex-direction: column; }
+  .interfaces-app .analysis-notes { display: contents; }
+  .interfaces-app .foundation { order: -1; padding: 16px 14px; margin: 0; }
+  .interfaces-app .analysis-body { padding: 16px 14px; }
+  .interfaces-app .pin-content { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .interfaces-app .schematic { height: 230px; }
+  .interfaces-app .readings { font-size: 12px; }
+  .interfaces-app .pin-section, .interfaces-app .view-section { padding-left: 12px; padding-right: 12px; }
+  .interfaces-app .pin-canvas, .interfaces-app .load-canvas { height: 320px; flex: none; }
+  .interfaces-app .controls button, .interfaces-app select, .interfaces-app .segments button, .interfaces-app .view-tabs button { min-height: 44px; }
+  .interfaces-app .transport-row > button { min-height: 44px; }
+  .interfaces-app .playback-controls { flex-basis: 100%; }
+}

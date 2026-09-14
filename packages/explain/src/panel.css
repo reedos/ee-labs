@@ -8,6 +8,16 @@
    being collapsed until asked for. */
 .math { margin-top: 10px; }
 
+.chip-context { margin: 0 0 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 1.6; }
+.chip-context h3 { margin: 0 0 8px; font-size: 14px; }
+.chip-context p { margin: 8px 0; }
+.chip-context summary { cursor: pointer; color: var(--accent); padding: 8px 0; }
+.chip-context dt { margin-top: 12px; font-weight: 600; }
+.chip-context dd { margin: 4px 0 0; }
+.chip-context a { color: var(--accent); overflow-wrap: anywhere; }
+.chip-context .chip-sources { font-size: 11px; }
+@media (max-width: 900px) { .chip-context summary { min-height: 44px; display: list-item; align-content: center; } }
+
 .math-toggle {
   width: 100%;
   padding: 5px 0;

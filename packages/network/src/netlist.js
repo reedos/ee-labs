@@ -20,6 +20,7 @@
 //   Ground is the node named 'gnd' (or '0'). Exactly one is required.
 
 import { expandMacros } from './macro.js'
+import { inductanceMatrix } from './coupling.js'
 
 export const GROUND = 'gnd'
 
@@ -83,6 +84,7 @@ export function normalize(net) {
     return { ...e, id, nodes, ctrl }
   })
 
+  if (elements.some(e => e.coupledTo !== undefined || e.mutual !== undefined)) inductanceMatrix(elements)
   const names = new Set()
   for (const e of elements) for (const n of [...e.nodes, ...e.ctrl]) if (n !== GROUND) names.add(n)
   const hasGround = elements.some((e) => [...e.nodes, ...e.ctrl].includes(GROUND))

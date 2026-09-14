@@ -148,7 +148,8 @@ function faultBlocks(exp, p, x) {
   const measured = { '3ph': s.phaseMag[0], slg: s.phaseMag[0], ll: s.phaseMag[1], dlg: s.phaseMag[1] }[s.kind]
   return [
     T(s.connection),
-    F('I_f^{3\\phi} = \\dfrac{E}{Z_1},\\quad I_f^{LG} = \\dfrac{3E}{Z_0+Z_1+Z_2},\\quad I_f^{LL} = \\dfrac{\\sqrt{3}E}{Z_1+Z_2}'),
+    T('V_pre is the phase voltage before the fault, in per unit.'),
+    F('I_f^{3\\phi} = \\dfrac{V_{pre}}{Z_1},\\quad I_f^{LG} = \\dfrac{3V_{pre}}{Z_0+Z_1+Z_2},\\quad I_f^{LL} = \\dfrac{\\sqrt{3}V_{pre}}{Z_1+Z_2}'),
     C([
       row('Fault current, closed form against the sequence solve', Number.isFinite(closed) ? closed * (x.spec.prefault ?? 1) : measured, measured, 'pu', 0, 1e-9, Number.isFinite(closed) ? null : 'The double line to ground has no one-line closed form, because the split between the negative and zero networks depends on both.'),
       row('Ground current against three times the zero sequence', 3 * s.seqMag[0], s.groundMag, 'pu', 0, 1e-12),

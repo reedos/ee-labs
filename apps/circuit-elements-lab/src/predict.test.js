@@ -103,8 +103,16 @@ describe('predict before you turn', () => {
   })
 
   test('every experiment poses a question — round four gave the last ten (A3, D2, D4, E3, E6, G3, G5, H2, H3, I5) a step the reader can predict', () => {
-    const none = EXPERIMENTS.filter((e) => !predictFor(e)).map((e) => e.id)
+    const none = EXPERIMENTS.filter((e) => !predictFor(e) && !e.study).map((e) => e.id)
     expect(none).toEqual([])
+    for (const e of EXPERIMENTS.filter(e => e.study)) {
+      const p=defaultsOf(e.id), practice=e.study(e.id,p,analyse(e,p)).practice
+      for(const q of Array.isArray(practice)?practice:[practice]) {
+        expect(q.prompt.length,e.id).toBeGreaterThan(30)
+        expect(Number.isFinite(q.target),e.id).toBe(true)
+        expect(q.hint.length,e.id).toBeGreaterThan(20)
+      }
+    }
   })
 
   test('the ten experiments round four fixed now open with the quiz already posed, not buried after a watch step', () => {

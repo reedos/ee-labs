@@ -6,6 +6,7 @@ import { fmt } from '@ee-labs/ui'
 import { EquationsPane, PowerPane, StatePane } from './panes.jsx'
 import { EXPERIMENTS, byId, defaultsOf } from '../experiments.js'
 import { analyse, powerLedger } from '../math.js'
+import { num, scaleOf } from '../format.js'
 
 // The panes print numbers next to letters. These tests read the printed
 // numbers back out of the markup, so a sign or a unit that is wrong on the
@@ -35,7 +36,7 @@ describe('the equations pane', () => {
       expect(rows.length, exp.id).toBe(eq.rows.length)
       kcl.forEach((r, k) => {
         const shown = amber(rows[k])
-        expect(shown, `${exp.id} KCL at ${r.node}`).toEqual(r.terms.map((t) => fmt(t.value, 'A', 3)))
+        expect(shown, `${exp.id} KCL at ${r.node}`).toEqual(r.terms.map((t) => num(t.value, 'A', 3, scaleOf(r.terms.map(t=>t.value)))))
         // A term drawn with a minus sign shows the value it adds, not a forced negative.
         for (const t of r.terms) if (t.sign < 0 && t.value > 0) expect(shown).toContain(fmt(t.value, 'A', 3))
       })

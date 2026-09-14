@@ -34,13 +34,13 @@ const rOut = (x, over = {}) => solveDC(normalize(x.exp.net({ ...x.p, ...over }))
 export const MATH_L = {
   l1(p, x) {
     const b = beta(p)
-    const T0 = loopT(x, 'E1')
+    const T0 = loopT(x, 'V2')
     const closed = (p.A0 * p.E) / (1 + p.A0 * b)
-    const bl = blackman(tangent(x), 'E1', { input: 'V1', output: 'out' })
+    const bl = blackman(tangent(x), 'V2', { input: 'V1', output: 'out' })
     return {
       blocks: [
         T('Drive the controlled source with one unit of its own controlling signal, and read what comes back to its input. That is the return ratio, and every other number here is written in it.'),
-        F('T = A_0\\beta, \\qquad v_{out} = E\\,\\frac{A_0}{1 + T}, \\qquad \\beta = \\frac{R_g}{R_f + R_g}'),
+        F('T = A_0\\beta, \\qquad v_{out} = V_1\\,\\frac{A_0}{1 + T}, \\qquad \\beta = \\frac{R_g}{R_f + R_g}'),
         C([
           row('the return ratio, from the broken loop', p.A0 * b, T0, '', 1e-6),
           row('the output, from the closed form', closed, x.sol.v.out, 'V', 1e-6, { abs: 1e-9 }),
@@ -57,7 +57,7 @@ export const MATH_L = {
 
   l2(p, x) {
     const b = beta(p)
-    const T0 = loopT(x, 'E1')
+    const T0 = loopT(x, 'V2')
     const up = solveAt(x, { A0: p.A0 * 1.01 })
     // The exact change, not the first-order one: a hundredth more forward gain
     // gives a closed-loop gain of 1.01A/(1 + 1.01Aβ), and the ratio of that to
@@ -114,7 +114,7 @@ export const MATH_L = {
   },
 
   l4(p, x) {
-    const T0 = loopT(x, 'E1')
+    const T0 = loopT(x, 'V2')
     const rInNow = rIn(x)
     const rOutNow = rOut(x)
     // The same ports with the controlled source dead. Blackman's impedance
@@ -143,7 +143,7 @@ export const MATH_L = {
   },
 
   l5(p, x) {
-    const Ttf = loopTF(x, 'Efb')
+    const Ttf = loopTF(x, 'Vfb')
     const m = loopMargins(Ttf)
     const ring = ringOf(x.poles)
     // Three lag sections give the closed-loop denominator D(s) + A₀, and only
@@ -163,7 +163,7 @@ export const MATH_L = {
         T('Each section costs the loop phase, and the gain decides where the closed-loop poles land. Two sections keep them left of the axis at any gain. Three carry them across it.'),
         F('L(s) = \\frac{A_0}{D(s)}, \\qquad 1 + L(s) = 0 \\;\\Rightarrow\\; D(s) + A_0 = 0'),
         C([
-          row('the loop gain at DC', p.A0, loopT(x, 'Efb'), '', 1e-6),
+          row('the loop gain at DC', p.A0, loopT(x, 'Vfb'), '', 1e-6),
           row('the closed-loop gain, A₀/(1 + A₀)', p.A0 / (1 + p.A0), dcGain, '', 1e-9, { abs: 1e-12 }),
           row('the polynomials at DC, against the direct solve', dcGain, x.gain, '', 1e-6, { abs: 1e-12, unchecked: spread }),
           row('the sum of the three poles, gain or no gain', sumLadder, sumNow, 'rad/s', 1e-6),
@@ -186,7 +186,7 @@ export const MATH_L = {
     return {
       blocks: [
         T('A follower feeds all of its output back, so its return ratio is the whole open-loop gain. The output resistance the load sees is what the amplifier has, divided by one plus that.'),
-        F('R_{out} = \\frac{R_{out}^{(0)}}{1 + A_0}, \\qquad v_{out} = E\\,\\frac{A_0}{1 + A_0} + I_t\\,R_{out}'),
+        F('R_{out} = \\frac{R_{out}^{(0)}}{1 + A_0}, \\qquad v_{out} = V_1\\,\\frac{A_0}{1 + A_0} + I_t\\,R_{out}'),
         C([
           row('the output resistance, by test source', p.rout / (1 + p.A0), closedOut, 'Ω', 1e-6),
           row('the output, source and test current together', p.E * gV + p.It * gI, x.sol.v.out, 'V', 1e-6, { abs: 1e-9 }),

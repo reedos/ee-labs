@@ -263,7 +263,7 @@ function Phasors({ x }) {
       <PhasorCanvas
         arrows={[
           { label: 'V', re: p.V[0], im: p.V[1] },
-          { label: 'E', re: p.E[0], im: p.E[1] },
+          { label: 'V_emf', re: p.E[0], im: p.E[1] },
           { label: 'I', re: p.I[0] * 10, im: p.I[1] * 10 },
         ]}
       />

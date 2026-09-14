@@ -196,3 +196,5 @@ export {
   toDbPower,
   toDbm,
 } from './src/budget.js'
+
+export { DEVICE_SETS, stability, transducerGain, conjugateMatch, unilateral, hybridPi, noiseFactor, noiseCircle, sourceGainCircle, cubicTone, leeson } from './src/active.js'

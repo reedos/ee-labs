@@ -1,5 +1,8 @@
 # Applied Analog Lab: the plan
 
+> Current Group H checkpoint, 2026-09-09: Groups A–H are implemented. The Group H record describes actual models and corrections to draft examples. Groups I onward and broader engine/product features remain planned. Earlier checkpoints are historical.
+> Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented. The six device classes are explicitly illustrative curriculum models, not current manufacturer specifications. A1/A2 compare closed forms with native nodal AC solves; A3 uses the native limited op-amp transient; A4–A6 teach stated noise, error and supply budgets. Later groups, datasheet-specific model libraries, general sensitivity/Monte Carlo tools and design synthesis remain future work.
+
 Tier 2 of `ANALOG_ROADMAP.md`, and the first lab in the suite where the reader is
 asked for values rather than for a reading. Its subject is board-level analog design.
 The op-amp chosen from a datasheet, the loop that a capacitive load turns unstable,
@@ -532,222 +535,160 @@ returns to it.
   Measured: both drops, and the resonance. **Design task:** choose a part for a
   1 mV rms preamp with a 100 kΩ source and a 20 kHz band, and read the margin.
 
-### Group B: Stability on a board (5)
+### Group B: Stability on a board (5) — implemented
 
-- **B1 · A capacitive load moves a pole into the loop.** A 10 MHz part with
-  `r_o = 50 Ω` into 1 nF puts a pole at 3.183 MHz. The loop crosses at 5.212 MHz, so
-  the phase margin is 31.41°, and the step rings. Measured: the crossover, the margin
-  and the overshoot, with the loop gain crossing to Control Lab.
-- **B2 · The isolation resistor buys the margin back.** `R_iso` in series with the
-  load, feedback taken at the amplifier's own output. At 22 Ω the margin is 58.44°, at
-  50 Ω it is 76.15°, at 100 Ω it is 85.68°. The price is a divider: 50 Ω into a 1 kΩ
-  load loses 4.762 % of the output. Measured: the margin and the droop at three
-  values.
-- **B3 · The photodiode puts a pole in the feedback.** `R_f = 1 MΩ` with 25 pF at the
-  input makes a noise-gain zero at 6.366 kHz. The loop crosses where that rising gain
-  meets the amplifier's falling gain, at √(GBW/(2π `R_f` `C_in`)) = 252.3 kHz, and the
-  phase margin is 1.446°. Measured: the zero, the crossover and the margin.
-- **B4 · The feedback capacitor restores it.** `C_f = √(2C_in/(2π R_f · GBW)) =
-  0.892 pF` gives a Butterworth pair. The margin rises to 65.80°, the crossover moves
-  to 380.5 kHz, and the closed-loop corner is 178.4 kHz from `1/(2π R_f C_f)`.
-  Measured: all four, and the transimpedance of 1.00 V/µA at DC.
-- **B5 · The composite amplifier.** A second amplifier inside the loop multiplies the
-  gain available. Two 1 MHz parts at an outer gain of 100 reach 78.62 kHz with a 51.83°
-  margin when the inner one is closed at 10, against 10.00 kHz for one part alone.
-  Raise the inner gain to 30 and the margin falls to 18.92°. Measured: the crossover
-  and the margin at four inner gains. **Design task:** hit 100 kHz at a gain of 100
-  with at least 45° of margin.
+All five use finite DC gain A0=100,000 and a single dominant amplifier pole.
+Native nodal AC and independently broken-loop return ratios check the displayed
+transfer functions. Native state propagation checks the small-step response.
 
-### Group C: Precision (5)
+- **B1 · Capacitive loading.** At GBW=10 MHz, Ro=50 Ω and CL=1 nF,
+  fx=5.21206 MHz, PM=31.4143°, output bandwidth=8.26761 MHz and first-peak
+  overshoot=39.702%. The load pole is 3.18310 MHz.
+- **B2 · Isolation and load accuracy.** The same model includes both Riso and RL.
+  Riso=50 Ω with RL=1 kΩ gives PM=76.4740° and a 4.76190% divider loss from
+  the sensed amplifier output to the load. Earlier unloaded-margin numbers are
+  not used as if they included the 1 kΩ load.
+- **B3 · Uncompensated TIA.** Rf=1 MΩ and Cin=25 pF give a 6.36620 kHz noise-gain
+  zero. Exact finite-A0 crossover is 252.273 kHz and PM=1.46828°. The square-root
+  crossover estimate is labeled asymptotic.
+- **B4 · Compensated TIA.** The approximate Cf sizing gives 0.892062 pF,
+  fx=380.479 kHz and PM=65.8180°. The **feedback RC pole is 178.412 kHz**, while
+  the **actual closed-loop −3 dB bandwidth is 247.822 kHz**. The earlier draft
+  conflated them. Cf voltage depends on the summing-node and output states;
+  the two independent state equations are shown and propagated with native expm.
+- **B5 · Composite loop.** Two GBW=1 MHz stages, inner gain 10 and outer gain
+  100 give crossover=78.6116 kHz, PM=51.8386° and bandwidth=127.200 kHz.
+  The design target is explicitly **100 kHz loop crossover and 45° PM**;
+  GBW=1.5 MHz with inner gain 10 meets both in the stated linear model.
 
-- **C1 · CMRR comes from resistor matching.** The rejection of a difference amplifier
-  at gain 1 is `(1 + G)/(4t)`. With 1 % resistors it is 33.98 dB, with 0.1 % it is
-  53.98 dB, and with 0.01 % it is 73.98 dB. A 12 V common-mode input through the 0.1 %
-  version appears as 24.0 mV. Measured: the rejection at three tolerances, and the
-  error voltage.
-- **C2 · The instrumentation amplifier puts the gain first.** `R_G = 1 kΩ` with
-  `R = 24.9 kΩ` gives a first stage of 50.8, whose common-mode gain is one. Total
-  rejection with a 0.1 % difference stage is 88.10 dB, and with 0.01 % it is
-  108.1 dB. Measured: the first-stage gain, and the rejection with both difference
-  stages.
-- **C3 · Offset and its drift.** At a gain of 1000 the general part's 1 mV offset
-  makes 1.000 V at the output, and its 3 µV/K drift over 60 K adds 180 mV. The
-  precision part's 60 µV and 0.5 µV/K make 60.0 mV and 30.0 mV. Measured: both
-  contributions for both parts, and the drift slope.
-- **C4 · The chopper, as a labelled model.** Chopping at 100 kHz moves the offset to
-  the chop frequency and leaves 5 µV. The averaged model is the approximation, and its
-  guard is the ratio of signal bandwidth to chop frequency, set at 10. Below that the
-  pane warns and prints the ripple, `(4/π)·V_OS·A·(f_c/f_chop)` = 12.73 mV at a 1 kHz
-  corner. The exact switched form is Mixed-Signal Lab Group G. Measured: the residual
-  offset, the ripple, and the guard firing at both sides of 10.
-- **C5 · Trimming and calibration.** A two-point calibration over 0 to 10 V removes
-  the offset and the gain error exactly and leaves the nonlinearity. At 0.01 % of full
-  scale that residual is 1.00 mV. Measured: the three error terms before and after,
-  and that the residual is unchanged by the calibration. **Design task:** reach 0.05 %
-  total error over 60 K on a 10 mV bridge signal.
+Loop handovers send exact return-ratio coefficients to Control Lab. That app's
+T/(1+T) response is distinguished from the load-voltage transfer where necessary.
+Large-signal clipping/slew, device extra poles and board parasitics remain outside
+these models. Groups C–E are implemented below; Groups I onward remain planned.
 
-### Group D: References and regulators (5)
+### Group C: Precision (5) — implemented
 
-- **D1 · The bandgap, summed to first order.** `V_BE` falls at −2.112 mV/K and
-  `V_T ln 8` rises at 86.17 µV/K per unit of multiplier, so `M = 11.79` flattens the
-  sum. `V_ref = 1.2836 V`, and over −40 to 125 °C it moves 3.746 mV, which is
-  17.69 ppm/K. Measured: the two slopes, `M`, the reference and the curvature.
-- **D2 · The LDO's loop, and the ESR zero.** DC loop gain 81.94 dB. At 100 mA the
-  output pole sits at 481 Hz and the loop crosses at 24.66 kHz. With a 0.1 Ω ESR the
-  zero is at 159.2 kHz and the margin is 10.16°. With 1 Ω the zero is at 15.92 kHz,
-  the crossover moves to 39.62 kHz and the margin is 68.93°. Measured: the pole, the
-  zero, the crossover and the margin at three ESR values, with the loop crossing to
-  Control Lab.
-- **D3 · PSRR against frequency.** Supply rejection is the loop gain. It is 81.94 dB
-  at DC, 78.73 dB at 100 Hz, 54.44 dB at 1 kHz, 15.73 dB at 10 kHz and 0.110 dB at
-  100 kHz. A 100 mV ripple at 100 Hz therefore reaches the output as 11.6 µV, and at
-  100 kHz as 98.7 mV. Measured: the rejection at five frequencies against `|1 + T|`.
-- **D4 · Dropout, dissipation and the load pole.** A 3.30 V output from 12 V is 27.5 %
-  efficient and dissipates 870 mW at 100 mA, which is 43.5 K of rise at 50 K/W. From
-  5 V the efficiency is 66.0 %. At 1 mA the output pole falls to 4.82 Hz and the loop
-  is a different loop. Measured: efficiency, dissipation, junction rise, and both
-  poles.
-- **D5 · Where the switching regulator takes over.** The same 3.30 V at 1 A from 12 V
-  dissipates 8.70 W as a linear regulator. Power Lab's buck at 90 % delivers it with
-  0.37 W. The hand-over states the noise the reader trades for it. Measured: both
-  dissipations, and the cross-lab link to Power Lab's buck at the same operating
-  point. **Design task:** supply 3.3 V at 200 mA from a 5 V rail with under 100 µV rms
-  of output noise in a 100 kHz band, and name which regulator meets it.
+- **C1:** Four independently adjustable resistor errors. Exact finite-open-loop-gain
+  nodal solve, differential/common-mode decomposition and signed output error.
+  Opposing 0.1% errors give 53.9794 dB CMRR; perfect ratios give exact common-mode
+  cancellation within this model, not a fabricated finite CMRR.
+- **C2:** Native three-op-amp solve. R=24.9 kΩ and RG=1 kΩ give ideal first-stage
+  differential gain 50.8. Finite gain corrections apply separately to common and
+  differential modes. All three outputs receive an explicit headroom check.
+- **C3:** Offset follows noise gain; input referral uses absolute signal gain.
+  The general bipolar class consistently uses Group A's 10 µV/K drift, so gain
+  1000 over 60 K adds 600 mV to its 1 V initial offset (superseding 180 mV).
+- **C4:** An ideal ±1 chopper and first-order RC filter have an exact periodic
+  state checked against the native transient solver. Peak ripple is
+  A tanh(T/(4τ)); the fundamental amplitude is (4A/π)/sqrt(1+(fchop/fc)^2).
+  The familiar 12.73 mV default approximation is the fundamental, not total peak
+  ripple. A separately specified residual offset remains; the approximation is
+  accepted only at fchop/fc >= 10.
+- **C5:** Two endpoint measurements calibrate a declared synthetic 10 mV bridge
+  channel mapped to 10 V output. Initial offset/gain errors cancel at those
+  endpoints. Drift and curvature remain, divided by the calibration gain.
+  An analytic worst-error search includes any interior stationary point and
+  checks the 0.05% full-scale target over the chosen temperature change.
 
-### Group E: Front ends (5)
+Each lesson includes symbol definitions, worked substitutions, adjustable
+parameters, practice, and a plot/table using the existing learning workbench.
+These are declared circuit/error models rather than fabricated bench measurements.
 
-- **E1 · High-side current sensing.** A 100 mΩ shunt at 1 A gives 100 mV and
-  dissipates 0.100 W. Through a 0.1 % difference amplifier, a 12 V common mode adds
-  24.0 mV, which is 24.0 % of the reading. A part with 100 dB of rejection adds 120 µV,
-  which is 0.120 %. Measured: the shunt voltage, and both errors as fractions.
-- **E2 · Low-side sensing moves the problem to the ground.** No common mode, and a
-  10 mΩ ground trace at 1 A shifts the load's return by 10.0 mV. Measured: the sense
-  voltage, and the ground shift seen by the rest of the board.
-- **E3 · The RTD and its self-heating.** A Pt100 changes 0.3851 Ω/K, and 1 mA of
-  excitation makes 385.1 µV/K. That current dissipates 100 µW, which at 0.5 K/mW is
-  0.0500 K of self-heating error. A 1 Ω lead resistance in a two-wire connection reads
-  as 2.597 K. Measured: the slope, the self-heating, and the two-wire error against
-  four-wire.
-- **E4 · The thermocouple and its cold junction.** A type K junction gives 41 µV/K, so
-  a 0 to 1000 K span needs a gain of 243.9 to reach 10 V. A 1 mV amplifier offset
-  reads as 24.39 K, and 1 K of cold-junction error reads as 1 K. Measured: the gain,
-  the offset referred to temperature, and the cold-junction correction.
-- **E5 · The anti-aliasing filter, designed.** A 12-bit converter has a 74.0 dB
-  ceiling. At 1 MSPS with a 100 kHz band the first alias arrives at 900 kHz, nine
-  times the corner. A Butterworth filter therefore needs order 3.877, which rounds to
-  4. That order gives 76.34 dB there and costs 3.010 dB at the corner. Oversampling
-  four times drops the order to 2.325. Measured: the required order, the attenuation
-  at 900 kHz for orders 3 and 4, and the passband droop. **Design task:** meet 74 dB
-  of alias rejection with a passband flat to 0.1 dB at 100 kHz.
+### Group D: References and regulators (5) — implemented
+
+All five lessons retain the four-view learning workbench, defined symbols,
+worked substitutions, interactive plots, aligned tables and practice answers.
+The draft numerical targets are superseded by the actual model checks below.
+
+- **D1 · Reference temperature compensation.** Shared with Analog IC B3: at
+  300 K and N=8, PTAT slope is **179.1924 µV/K**, including ln N. CTAT slope
+  is −2.111853 mV/K, M*=11.785395 and Vref=1.283556 V. With fixed optimal
+  weight, exact endpoint/interior extrema give 3.760148 mV variation over
+  −40 to 125 °C and 17.754407 ppm/K box coefficient. A local zero derivative
+  does not remove curvature. Fractional trim moves the stationary temperature.
+- **D2 · LDO stability and ESR.** Declared A0=10,000, amplifier pole=100 Hz,
+  gm=0.1 S, Rp=10 kΩ, β=1.25/3.3, IL=100 mA and Cout=10 µF. With ESR=0.1 Ω,
+  the actual parallel-load pole is 482.4126 Hz, zero=159.1549 kHz,
+  crossover=24.6593 kHz and PM=10.1604°. ESR=1 Ω gives crossover=39.6142 kHz
+  and PM=68.9354°. ESR=0 has no finite zero. Native loop breaking, native
+  closed-loop AC and independent capacitor-state propagation verify the
+  derived rational transfer and two-state step. All unity crossings use
+  unwrapped phase. The exact return ratio hands over to Control Lab.
+- **D3 · Supply rejection.** Rp connects to the driven supply. The actual
+  supply transfer is Zo[gds + gm A(s)ρ + gm α/(1+sτa)]/(1+T).
+  Reference coupling ρ and amplifier-drive coupling α are explicit controls;
+  complex paths are added before computing magnitude. PSRR is −20 log|Hs|,
+  **not generally 20 log|1+T|**. Native supply excitation checks every path.
+- **D4 · Dropout, heat and load pole.** The declared Ron headroom test rejects
+  infeasible targets without claiming a nonlinear dropped-out voltage.
+  Loss includes Vin IQ. At 12 V/100 mA with zero IQ the original 0.87 W,
+  27.5% and 43.5 K rise remain valid; the default 50 µA IQ adds 0.6 mW.
+  Temperature uses the same loss and named θJA. The load-dependent pole
+  retains pass output resistance; it is conditional on regulation.
+- **D5 · Regulator selection.** At 5 V/200 mA, 100 nV/√Hz linear white noise
+  integrates to 31.6228 µV RMS in 0–100 kHz; 500 nV/√Hz buck noise gives
+  158.1139 µV RMS. One sinusoidal ripple tone is counted separately when in
+  band, and its unfiltered ADC alias is shown. The 90% buck efficiency is
+  an explicit scenario assumption, not a simulated result. At 12 V/1 A,
+  zero-IQ linear loss is 8.7 W and assumed buck loss is 0.366667 W. The
+  Power Lab B3 link transfers an editable ideal buck operating point with
+  the same Vin, desired duty, load and switching frequency; it does not
+  transfer or certify efficiency/noise assumptions. Incoming links are validated.
+
+These lessons use a reference-core temperature law, a linear incremental LDO,
+a conditional DC/steady thermal budget and an architecture comparison. They
+do not claim a complete transistor-level reference, nonlinear LDO startup,
+modern-part ESR specification, or a finished switching-regulator design.
+
+### Group E: Front ends (5) — implemented
+
+- **E1 · High-side current sensing.** Exact difference-amplifier KCL with a declared four-resistor tolerance corner. Differential-gain error and common-mode leakage are separately input-referred. At G=1, t=0.001 and 12 V common mode, the exact common-mode term is −24.024 mV; 24 mV is its first-order estimate. A separately specified 100 dB CMRR produces 120 µV input error.
+- **E2 · Low-side sensing and grounding.** Kelvin sensing excludes the shared trace from the readout. The load return still rises by I(Rs+Rt), not just I·Rt. The extra trace drop and total return rise are separate readings.
+- **E3 · RTD excitation and self-heating.** Explicit local linear Pt100 law, slope 0.3851 Ω/K, with exact electrothermal equilibrium and one thermal state. A per-lead resistance is counted twice. Four-wire sensing removes lead error, not self-heating. This is not the full IEC CVD calibration.
+- **E4 · Thermocouple and cold junction.** Nonlinear ITS-90 type K direct function and bounded numerical inverse, with cold-junction compensation on the voltage scale. Local hot/cold sensitivity explains offset and cold-sensor error. The constant 41 µV/K shortcut is compared rather than used over a 1000 °C span.
+- **E5 · Anti-aliasing design.** Both Butterworth inequalities determine the allowed corner interval and minimum integer order. At 1 MSPS, 100 kHz band, 74 dB rejection and 0.1 dB passband loss, order 5 is required; the earlier order-4 example admitted 3 dB passband loss. The selected order and corner each receive pass/fail checks.
+
+These are explicit teaching models, not a datasheet-qualified sensor interface or automatically synthesized hardware.
 
 ### Group F: Filters to a specification (5)
 
-- **F1 · The specification sets the order.** For 0.5 dB at 100 kHz and 40 dB at
-  500 kHz, `n ≥ log₁₀((10⁴ − 1)/ε²)/(2 log₁₀ 5)` gives 3.515, so a Butterworth filter
-  needs order 4. It then reaches 55.92 dB at 500 kHz, 15.92 dB more than asked.
-  Measured: the exact order, the realised attenuation, and the 130.1 kHz corner that
-  puts 0.5 dB at 100 kHz.
-- **F2 · Chebyshev buys order with ripple.** The same specification needs order 2.770,
-  which rounds to 3, and the realised attenuation is 44.58 dB. One section fewer, at
-  the price of 0.5 dB of ripple across the passband. Measured: the order, the ripple,
-  and the attenuation.
-- **F3 · Bessel buys group delay with order.** A fourth-order Bessel filter holds its
-  group delay to 0.0078 % at the corner and 1.26 % at twice the corner, where a
-  fourth-order Butterworth filter changes by 41.4 % at the corner. Its magnitude is
-  0.630 dB down at the delay-normalised corner. Measured: both group delays at three
-  frequencies, and the step response overshoot of each.
-- **F4 · Sallen–Key, and where its sensitivity sits.** `f_0` has a sensitivity of
-  −1/2 to each of the four parts and Q has ±1/2 to the two capacitors, so 1 % parts
-  give 0.333 % on `f_0` and 0.236 % on Q. Measured: the sensitivities from
-  `sensitivity`, each against a finite difference, and the spread from Monte Carlo.
-- **F5 · Multiple feedback, and the gain-bandwidth error.** The same corner and Q
-  inverting. With a 1 MHz part the corner falls to 91.97 kHz, 8.03 % low, against the
-  Sallen–Key section's 1.68 % at the same part, because the inverting topology's noise
-  gain is higher. At 10 MHz the error is 0.723 %. Measured: the corner error for both
-  topologies at three parts. **Design task:** meet F1's mask with parts no faster than
-  3 MHz, and say which topology and which order.
+Implemented Group F model record (2026-09-08); this supersedes the earlier draft numerical promises.
 
-### Group G: Protection and the real world (4)
+- **F1:** Butterworth order 3.51484 rounds to 4 for the default mask; corner 130.075891 kHz and achieved stopband attenuation **46.781947 dB**, correcting the former 55.92 dB claim.
+- **F2:** Chebyshev I order 2.770009 rounds to 3, giving 44.579241 dB. Ripple-edge normalization and odd/even DC behavior are explicit.
+- **F3:** Reverse Bessel polynomial [1,10,45,105,105], then both fourth-order prototypes scaled to the same −3 dB frequency. Bessel q3=2.113917675. At 100 kHz its DC delay is 3.364404 µs and sampled step overshoot about 0.834%; Butterworth overshoot is about 10.830%. Analytic group delay and zero-state companion dynamics describe the same transfer.
+- **F4:** Unity follower, R1=R2=1 kΩ, Cf=2 nF, Cg=1 nF. Four independent uniform ±t part errors give first-order σf/f=t/√3 and σQ/Q=t/√6. Numerical sensitivities and 2000 seeded builds check these predictions; the old tolerance-to-spread numbers are superseded.
+- **F5:** Explicit SK and equal-resistor MFB topology, solved by complex KCL with A(s)=2πGBW/s. No empirical GBW error constant. The two fourth-order pole pairs can be retuned with frequency and Q multipliers. At 3 MHz GBW, SK with corner ×1.1 and Q ×0.95 meets the default sampled mask; MFB with corner ×1.2 and Q ×0.95 also meets it. This is a retuned mask-compliant response, not an exact ideal Butterworth prototype.
 
-- **G1 · Clamping an overvoltage.** A series resistor and two clamp diodes to the
-  rails. From a 100 V transient, 1 kΩ limits the diode current to 100 mA, and 8.8 kΩ
-  holds it to 10 mA. The resistor's noise and its bias-current drop are the price.
-  Measured: the clamp current, the added noise, and the offset the resistor adds
-  through the part's bias current.
-- **G2 · The input stage's own limits.** Beyond the rails an input transistor's
-  junction conducts, and the part latches or draws current. The three-region model
-  shows the path. Measured: the input current against the applied voltage, and the
-  voltage at which it leaves the linear region.
-- **G3 · Ground loops, and the differential input as the cure.** A 100 mA return
-  current in 10 mΩ of ground makes 1.00 mV of difference between two boards. A
-  single-ended input adds all of it to the signal. A differential input with 100 dB
-  of rejection adds 10.0 nV. Measured: the ground voltage, and the error through both
-  input types.
-- **G4 · Cable capacitance and the driven shield.** One metre of coaxial cable at
-  100 pF/m from a 10 kΩ source rolls off at 159.2 kHz. Driving the shield from a
-  buffer leaves about 1 % of the capacitance, so the corner rises to 15.92 MHz.
-  Measured: both corners, and the buffer's own loop margin with the shield as its
-  load.
+### Group G: Protection and the real world (4) — implemented
 
-### Group H: Timers, the lock-in, and the audio output (5)
+Implemented Group G model record (2026-09-09); this replaces the draft numerical promises.
 
-- **H1 · The 555 astable.** Two comparators, a flip-flop and an RC. With
-  `R_A = R_B = 10 kΩ` and `C = 10 nF` the high time is `ln 2 (R_A + R_B) C =
-  138.6 µs`, the low time is `ln 2 R_B C = 69.31 µs`, the period is 207.9 µs, the
-  frequency is 4.809 kHz and the duty cycle is 66.67 %. Every edge is an event, so the
-  period is exact. Measured: both times, the frequency, the duty cycle, and the count
-  of events per period.
-- **H2 · The 555 monostable.** One trigger, one exponential to two thirds of the
-  supply. `T = ln 3 · RC = 1.0986 ms` with 100 kΩ and 10 nF, and the datasheet's
-  1.1 RC is that logarithm rounded. Measured: the period, the exponential between the
-  edges, and the difference between `ln 3` and 1.1.
-- **H3 · The lock-in amplifier.** A 1 µV signal under 10 nV/√Hz of noise in a 100 kHz
-  band has a signal-to-noise ratio of −10.00 dB. Multiplying by a reference at the
-  signal frequency and low-passing to 1 Hz leaves 10.0 nV of noise, so the ratio
-  becomes 40.00 dB. The improvement is `√(B_in/B_out) = 316.2`, which is 50.00 dB.
-  Measured: both ratios, the improvement, and the recovered amplitude within 1 %.
-- **H4 · Thermal runaway, and the `V_BE` multiplier.** At fixed `V_BE` a bipolar
-  collector current rises 8.043 % per kelvin, so a class AB stage biased by a fixed
-  voltage runs away. A `V_BE` multiplier at `R₂/R₁ = 1` gives `2 V_BE` with a
-  −4.00 mV/K tempco, which tracks the two output junctions. Measured: the current rise
-  per kelvin, the multiplier's voltage and tempco, and the quiescent current over 60 K
-  with and without it.
-- **H5 · The safe operating area.** A class B pair on ±20 V rails into 8 Ω delivers
-  25.0 W at 78.54 % efficiency, and its worst-case device dissipation is
-  `V_cc²/(π² R_L) = 5.066 W` at 40.53 % efficiency, not at full power. At 2 K/W that is
-  10.13 K of junction rise. Measured: the output power, the worst-case dissipation and
-  the efficiency at which it occurs, and the junction temperature. **Design task:**
-  reach 20 W into 8 Ω with the junction under 125 °C in a 45 °C enclosure.
+- **G1:** Constant-drop clamps to ±12 V with VF=0.3 V. At +100 V, 1 kΩ carries 87.7 mA; 8.77 kΩ meets the exercise's 10 mA limit. Native PWL verifies both polarities and zero-current boundaries. Rectangular pulse energy, 20 kHz resistor noise and 100 nA bias error are separate quantities.
+- **G2:** ±5 V rails, 0.65 V junction drops and a separately declared ±4.5 V signal range. The 5.2 V case has no clamp current but is outside the signal range. No latch-up or phase-reversal behavior is claimed.
+- **G3:** 100 mA through 10 mΩ gives 1 mV remote-ground lift. A 100 dB differential receiver has 10 nV incremental error from that lift; the baseline signal common-mode contribution is calibrated out.
+- **G4:** Cc=CL=100 pF/m, source resistance, amplifier A(s)=ωt/s and output resistance define the full driven-shield circuit. Both KCL equations retain source bootstrapping. Closed cubic poles and Routh's criterion determine stability; unstable settings do not report operating bandwidth. The fixed 0.99 tracking example is hypothetical. Control Lab receives the exact third-order return ratio, distinct from the source-to-signal transfer.
 
-### Group I: Corners, sensitivity, Monte Carlo and the canon (5)
+### Group H: Timers, synchronous detection and audio output (5) — implemented
 
-- **I1 · Sensitivity names the part to tighten.** For the non-inverting amplifier at
-  gain 11, `S` to `R_f` is 10/11 and to `R_g` is −10/11, so a 1 % error on either
-  moves the gain 0.909 %. For the Sallen–Key section, `f_0` has `S = −1/2` on four
-  parts and Q has `S = ±1/2` on two. Measured: every sensitivity against a finite
-  difference to 10⁻⁶, and the ranked list matching Circuit Lab's "Blame the right
-  part".
-- **I2 · Corners are the vertices of a box.** Four parameters give sixteen vertices.
-  With the part's gain-bandwidth spread from 0.5 to 1.5 MHz, the Sallen–Key corner
-  runs from 94.52 kHz to 99.20 kHz. The pane names the worst vertex and states the
-  monotonicity it assumed. Measured: every vertex, the worst case, and the face check
-  of §2.3 firing on a deliberately non-monotone output.
-- **I3 · Monte Carlo is a different question.** With 1 % parts read as three sigma,
-  `σ = 0.3333 %`, `f_0` has `σ = 0.3333 %` and Q has `σ = 0.2357 %`. Over two million
-  runs the measured sigmas are 0.3335 % and 0.2358 %. The worst-case corner of 2 % is a
-  six-sigma point that no sample of this size contains. Measured: both sigmas, the
-  corner, and the probability of all four parts at three sigma, 3.32 × 10⁻¹².
-- **I4 · Yield is a number with an error bar.** For `f_0` within 1 %, the measured
-  yield is 99.730 % and the closed form gives 99.730 %. For Q within 0.5 % it is
-  96.593 % against 96.611 %. Both together give 96.33 %, which equals the product,
-  because the two are independent here. The standard error at two million runs is
-  0.0139 %. Measured: all three yields, both closed forms, and the standard error.
-- **I5 · The canon, reproduced.** Four real parts, each as a parameter set, each
-  reproducing its datasheet's headline numbers. The 741's 1 MHz and 0.5 V/µs give a
-  90.91 kHz corner at gain 11. The 555 gives H1's 4.809 kHz. The LM317 with 240 Ω and
-  720 Ω gives 5.00 V, and its 50 µA adjust current adds 36.0 mV. The NE5532's
-  9 V/µs reaches full power to 143.2 kHz at 10 V peak, and its 5 nV/√Hz gives
-  0.7071 µV rms over 20 kHz. Measured: each headline number against the model.
+Implemented Group H model record (2026-09-09); this supersedes draft timing, noise and thermal claims.
+
+- **H1:** Ideal 555 latch/threshold events, exact RC propagation and capacitor continuity. Defaults give recurring high/low times 138.629/69.315 µs, 4.808983 kHz and 66.667% duty. Uncharged startup has a different first high pulse, ln3·(RA+RB)C. Comparator delays and finite discharge resistance are omitted.
+- **H2:** Brief trigger, released before timeout, and a stated initial capacitor voltage. Pulse width is RC·ln[(VCC−v0)/(VCC/3)]. At v0=0, ln3·RC=1.098612 ms; 1.1RC is a rounded approximation. Post-timeout discharge and held-trigger/retrigger behavior are not modeled.
+- **H3:** RMS sine amplitude and a unit-RMS √2 cosine reference make the in-phase DC output Vs·cosφ. A first-order low-pass has ENBW=1/(4τ), not its −3 dB corner. Finite input-band edges are retained in the noise integral. Defaults give approximately −10 dB input and 40 dB aligned output SNR. Startup baseband settling, residual 2f ripple and a seeded stationary noise draw are separated; no guaranteed per-draw 1% recovery is claimed.
+- **H4:** An explicit local VBE(I,T) law with −2 mV/K fixed-current coefficient, matched two-junction bias, sensor tracking and emitter degeneration. The reference fixed-bias, zero-degeneration logarithmic current slope is approximately 7.736%/K at 300 K. KVL gives current; differentiation gives the local thermal-loop criterion. Increasing current under an imposed temperature is not by itself a runaway simulation.
+- **H5:** Exact sine-cycle class-B load/supply/device power. Worst average device heating is VCC²/(π²RL)=5.066059 W at Vm=2VCC/π and **50% efficiency**. The 40.53% figure is output power relative to full scale. The 20 W design task checks worst-amplitude temperature plus a declared illustrative 3 A / 60 V / 15 W instantaneous envelope. Real transistor SOA, reactive loading, thermal lag and shared heatsinks remain outside this model.
+
+### Group I: Corners, sensitivity, Monte Carlo and the canon (5) — implemented
+
+- **I1:** Normalized sensitivities are derived from the ideal non-inverting gain and unity-follower Sallen–Key denominator, with numeric substitutions and finite-change comparisons. Natural-frequency sensitivities are −1/2 for all four passives. At matched resistors, Q sensitivities are 0, 0, +1/2, −1/2 in R1/R2/C1/C2 order.
+- **I2:** All sixteen passive-box vertices are evaluated at the selected GBW. Ideal f0 bounds follow from a monotonicity proof; finite-follower cutoff uses the full cubic and is described as a vertex search, not a certified global bound. A Q face check demonstrates an interior maximum at R1=R2. Native nodal solves verify the cubic at every vertex, including 0.5–1.5 MHz GBW.
+- **I3:** Seeded Gaussian component ensembles (200–10,000 circuits, default 2,000) compare exact ideal-circuit outputs with linearized errors. Three-sigma spread t gives sigma_f=t/3 and sigma_Q=t/(3√2). Empirical quantiles, estimator uncertainty and a measured linearization-residual check accompany the estimates. A residual above 1% of predicted sigma changes the conclusion. A Gaussian has no hard box; exact corner events have zero probability. The draft two-million-run and corner-probability claims are not live measurements and are superseded.
+- **I4:** Frequency, Q and joint pass counts include pointwise 95% Wilson intervals, including zero-failure cases. The analytic product is justified only for independent, equal-variance Gaussian component errors propagated to first order. Default analytic yields are 99.7300204%, 96.6105146% and 96.3496860%; exact nonlinear joint yield is measured directly. A sample count and seed accompany every estimate.
+- **I5:** Separate 741, 555, LM317 and NE5532 calculations identify source fields and approximations. TI's LM741 product table supplies typical 1 MHz GBW (90.9091 kHz ideal gain-11 estimate); ideal timer thresholds give 4.808983 kHz. LM317 typical 50 µA adjust current raises 5.000 V to 5.036 V. TI NE5532 SLOS075K specifies typical 5 V/µs, giving 79.5775 kHz at 10 V peak; extending its 5 nV/√Hz white density over 20 kHz gives 0.707107 µV rms. The draft 9 V/µs value is not attributed to this revision.
+
+All nine curriculum groups now have lessons. Generic reusable method-engine APIs, expanding every earlier design exercise into an editable specification, the full release audit and reader sittings remain separate planned work; this implementation does not claim those gates are complete.
+
 
 ---
 
@@ -795,8 +736,8 @@ returns to it.
   measured value matches its target.
 - **Experiments**: every number in §5 pinned, the way every other lab pins its notes.
   Among them are 90.92 kHz, 1.68 %, 7.958 kHz, 41.6 mV, 31.41°, 0.892 pF and 53.98 dB.
-  Also 88.10 dB, 1.2836 V, 17.69 ppm/K, 68.93°, 24.0 %, 385.1 µV/K and 3.877. Also
-  3.515, 8.03 %, 138.6 µs, 316.2, 8.043 %/K, 5.066 W, 99.730 % and 0.0139 %.
+  Also 88.10 dB, 1.2836 V, 17.7544 ppm/K, 68.93°, 24.0 %, 385.1 µV/K and 3.877. Also
+  3.515, 8.03 %, 138.6 µs, 316.2, 7.736 %/K, 5.066 W, 99.730 % and 0.0139 %.
 - **The map's promises**: a test walks every `why` and every cross-reference in it. It
   requires the referenced experiment to exist in the named lab. A reference to an
   Electronics Lab experiment that is not built fails the suite. That is what makes §1
@@ -851,7 +792,7 @@ Each phase ships green and deployable dark. Phase 0 is a gate rather than work.
    Exit: B1's margin agrees with Control Lab's, and C4's guard is tested at both sides
    of 10.
 4. **Supplies and sensors.** The thermal view. **Groups D, E** (10). Exit: D1's
-   17.69 ppm/K and D2's three margins pinned, and D5's link to Power Lab tested.
+   17.7544 ppm/K and D2's three margins pinned, and D5's link to Power Lab tested.
 5. **Filters and protection.** The spec mask on the Bode view. **Groups F, G** (9).
    Exit: F1's order 4 and F5's 8.03 % pinned, and the Signal Lab link tested both
    ways.

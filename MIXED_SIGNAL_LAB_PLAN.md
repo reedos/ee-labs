@@ -1,5 +1,8 @@
 # Mixed-Signal Lab: the plan
 
+> Current Group G checkpoint, 2026-09-09: Groups A–G are implemented in the app. The Group G section records the actual models and corrections to draft examples. All seven curriculum groups are implemented; broader engine and product capabilities in the plan remain separate future work. Earlier checkpoints below are historical.
+> Local implementation checkpoint, 2026-09-08: Group A (six lessons) is implemented: acquisition, ideal charge projection checked against a finite-R native transient, signed charge injection, kT/C, phase-controlled bottom-plate sampling, and seeded aperture jitter. The general switched-capacitor topology engine and complete converters/PLLs in later groups remain planned. Sampling phase and differential-voltage sign are explicit in the worked math.
+
 Tier 4 of `ANALOG_ROADMAP.md`. Circuits with a clock, where the answer is a sequence
 rather than a waveform. The interaction model changes: a schematic whose switches
 move with the phase, a scrub through one clock period, and an output that is a
@@ -394,13 +397,7 @@ export function quantiser({ levels, step, mode: 'mid-tread' | 'mid-riser' })
 export function modulator(spec)
 ```
 
-`exact` is a switched simulation with the quantiser's decision at each clock, and it
-is exact. `linear` is a **different object**, labelled, in which the quantiser is
-replaced by an additive white source. CORE_SCOPE Rule 1 forbids substituting one for
-the other, so the pane draws both and E1 is where they part. The guard is the input
-amplitude against the modulator's stable input range, 0.7 of full scale for a
-second-order loop with a one-bit quantiser. Above it the pane says the loop has
-overloaded and the linear model no longer describes it.
+The Group E implementation runs the declared nonlinear sampled-data recurrence, including the quantizer decision at every sample. It is an exact implementation of that behavioral recurrence, not a transistor-level switched-capacitor simulation. The independent uniform-error model is a separate object. The state guard stops at a declared observed magnitude; a universal 0.7-full-scale cutoff is not used. Bounded finite records can still depart substantially from white-noise predictions because their quantizer error is correlated or nonuniform.
 
 ### 2.6 The PLL in the phase domain
 
@@ -470,12 +467,8 @@ Across random capacitor values, clock rates and switch models:
    testable form of the phrase "parasitic-insensitive".
 9. **The approximation's error is the formula.** The ratio of `hzOf`'s magnitude to
    the `R_eq` model's equals `(ωT/2)/sin(ωT/2)` at every frequency, to 10⁻¹².
-10. **The modulator's two models are separate.** `exact` and `linear` are never
-    equal by construction, and the guard flag is true above 0.7 of full scale for the
-    second-order one-bit loop.
-11. **Noise shaping is the loop.** The measured in-band noise power of the exact run
-    equals the linear model's prediction within 1 dB below the overload limit, and
-    diverges above it, which is what the guard reports.
+10. **The modulator's two models are separate.** Nonlinear output and independent white-error records are generated separately. Overload is detected from the actual state trajectory, with its threshold and observation length disclosed.
+11. **Noise shaping follows the recurrence.** Check the exact sample identity y−u=(1−z⁻¹)^L e independently of any distributional assumption. Check white-model spectral power statistically; do not require every deterministic nonlinear record to agree within 1 dB. Periodogram windowing and finite-band integration are part of the measurement contract.
 12. **The PLL's model is rational.** `open` evaluated at jω equals a direct
     phase-domain simulation at 241 points, to 10⁻⁹ relative, inside the guard.
 13. **Cross-lab.** An SC biquad's `{b, a}` sent to Signal Lab gives the same `f₀` and Q
@@ -649,8 +642,9 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
 
 - **A1 · A sample is an RC that ran out of time.** The switch's `R_on = 1.00 kΩ` into
   `C_S = 1.00 pF` gives `τ = 1.00 ns` and a 159.2 MHz bandwidth. Half an LSB needs
-  `ln(2^(B+1))` time constants, so 7.625 ns at 10 bits and 9.011 ns at 12 bits. Cut the
-  acquisition short by one time constant and the error is 36.8 % of what remained.
+  `ln(2^(B+1))` time constants, so 7.625 ns at 10 bits and 9.011 ns at 12 bits. Extend the
+  acquisition by one time constant and the error is 36.8 % of what remained.
+  Shortening it by one time constant instead increases the error by a factor of e.
   Measured: the time constant, the settling time at four resolutions, and the error
   against `e^{−t/τ}`.
 - **A2 · Two capacitors and a switch, with no resistance between them.** Ideal
@@ -662,9 +656,11 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
   time constants.
 - **A3 · Charge injection is a device size.** `Q_ch = W L C_ox V_ov = 2.097 fC` for a
   1.00 × 0.18 µm switch at 1.35 V of overdrive. Half of it lands on `C_S` and makes
-  1.049 mV, which is 4.29 LSB of a 12-bit 1 V converter. A dummy switch halves it, and
-  its own mismatch leaves about a tenth. Clock feedthrough through `C_ov = 0.20 fF`
-  adds 0.360 mV. Measured: the charge, the step, the LSB count, and the residual after
+  1.049 mV, which is 4.29 LSB of a 12-bit 1 V converter. An ideal half-width dummy cancels the assumed half-channel contribution;
+  a 10% charge mismatch leaves 10% of that channel step. It does not cancel
+  clock feedthrough. Clock feedthrough through `C_ov = 0.20 fF`
+  adds a −0.360 mV step for a falling 1.8 V clock. NMOS top-plate injection is
+  also negative; bottom-plate injection has the opposite sign in Vtop−Vbottom. Measured: the charge, the step, the LSB count, and the residual after
   a dummy switch.
 - **A4 · `kT/C` sets the floor, and R is not in it.** The sampled noise is
   `√(kT/C)`, 64.36 µV rms on 1.00 pF and 203.5 µV rms on 0.1 pF, whatever `R_on` is.
@@ -682,186 +678,150 @@ test. Each experiment ships `see`, `try` and `why` in the three registers, withi
   84.04 dB. Measured: the required jitter at three inputs, and the ratio from a seeded
   run against the closed form.
 
-### Group B: Switched-capacitor circuits (6)
+### Group B: Switched-capacitor circuits (6) — implemented
 
-- **B1 · The switched-capacitor resistor.** A 1.00 pF capacitor switched at 1.00 MHz
-  carries `C V f_s` of average current, so `R_eq = 1/(C_S f_s) = 1.00 MΩ`. Its value
-  comes from a capacitor and a clock, so it is good to 0.1 % where a diffused resistor
-  is good to 20 %. It occupies half the area. Measured: the average current, the
-  equivalent resistance, and its tolerance from a Monte Carlo run.
-- **B2 · The integrator, and its exact H(z).** Charge conservation on the summing node
-  gives `v_o(n) = v_o(n − 1) + (C₁/C₂) v_in(n − 1)`, so
-  `H(z) = (C₁/C₂)/(z − 1)`. With `C₁/C₂ = 0.1` and `f_s = 1.00 MHz` the unity-gain
-  frequency is 15.92 kHz, which is also `1/(2π R_eq C₂)`. Measured: the difference
-  equation from the run, the two coefficients, and the unity-gain frequency both ways.
-- **B3 · Where the continuous model stops.** The ratio of the exact `|H(z)|` to the
-  `R_eq` model is `(ωT/2)/sin(ωT/2)`. At 20 samples per cycle it is 0.412 % and the
-  phase is 9.00° behind, at 10 samples 1.664 % and 18.0°, at 5 samples 6.896 % and
-  36.0°. The suite already refuses a sampled-filter link below 20 samples per cycle,
-  and this pane uses the same threshold. Measured: the ratio at five rates against the
-  formula, and the guard firing at both sides of 20.
-- **B4 · Parasitic-insensitive, as a testable claim.** Add a capacitance from either
-  plate of `C₁` to ground and the coefficients of `H(z)` move by less than 10⁻¹²,
-  because both plates are driven to a known potential in each phase. The
-  parasitic-sensitive arrangement moves the gain by the parasitic ratio. Measured: the
-  coefficients with 0.1 pF of parasitic on each node, for both arrangements.
-- **B5 · The biquad, designed in z.** Matching `z² − 1.76405 z + 0.854636` gives
-  `K₆ = 0.170089` and `K₄K₅ = 0.105994`, so `f₀ = 50.0 kHz` and `Q = 2` exactly. The
-  textbook equations give 0.157080 and 0.098696, which realise 48.374 kHz and 2.0832,
-  3.253 % and 4.161 % away. Measured: both designs read back through `hzOf`, and the
-  two errors.
-- **B6 · Finite op-amp gain leaks the integrator.** A gain of `A₀` moves the pole from
-  `z = 1` to `1 − (1 + C₁/C₂)/A₀`. At `A₀ = 100` the DC gain is 9.091 and the gain
-  error at the unity-gain frequency is 1.10 %, at `A₀ = 1000` it is 90.91 and 0.110 %,
-  at `A₀ = 10 000` it is 909.1 and 0.0110 %. Measured: the pole, the DC gain and the
-  error at three gains, each against the formula.
+- **B1 · SC resistor.** Iavg=Cs ΔV fs and Req=1/(Cs fs). Absolute Req depends on
+  absolute Cs and clock accuracy; capacitor **matching** does not confer 0.1%
+  accuracy on an absolute resistance. A seeded bounded-parameter ensemble reports
+  mean uncertainty and ±1% yield with its Wilson interval. No process-independent
+  area advantage is claimed.
+- **B2 · Exact integrator.** The displayed reverse-plate topology keeps Cf in
+  feedback through sampling and transfer. Charge conservation gives
+  y[n]=y[n−1]+r u[n−1], H(z)=r/(z−1). Unity frequency is
+  fs asin(r/2)/π; rfs/(2π) is the close continuous estimate, not an identity.
+  Initial output is an explicit independent control.
+- **B3 · Continuous-model boundary.** Magnitude ratio is (Ω/2)/sin(Ω/2),
+  extra lag Ω/2. Continuous-model handover is enabled only at ≥20 samples/cycle
+  at the inspected frequency; the exact sampled model remains available.
+- **B4 · Parasitics and topology.** The shared charge solver includes each
+  capacitor plate explicitly. Reversing the sampled plates gives b=+Cs/Cf and
+  rejects ideal plate-to-ground parasitics. Transferring the sampled positive
+  plate instead gives b=−(Cs+CpTop)/Cf. The drawings and phase table show why
+  the sign and participating charge differ. Insensitivity assumes ideal virtual
+  ground and fully settled phases.
+- **B5 · Exact two-state biquad.** The ordered updates are
+  x1[n]=x1[n−1]+K4(u[n−1]−x2[n−1]) and
+  x2[n]=(x2[n−1]+K5 x1[n])/(1+K6). Match its denominator to exp(sTs)
+  pole targets; K6=1/a2−1 and K4K5=(1+a1+a2)/a2. The native z-plane view,
+  state samples and exact H(z) show the same model. The continuous coefficient
+  estimate is a selectable comparison. Pole frequency is not labeled a −3 dB
+  corner. A general topology-to-H(z) synthesizer remains future work.
+- **B6 · Finite gain for the displayed topology.** Preserve the **initial** Cf
+  charge −Cf(1+1/A0)y[n−1] as well as the final charge. The result is
+  a=(A0+1)/(A0+1+r), b=rA0/(A0+1+r), H(z)=b/(z−a), and DC gain=A0.
+  The earlier a≈1−(1+r)/A0 and DC=A0r/(1+r) sketch does not describe this
+  continuously connected feedback capacitor. The native charge projection and
+  the explicit finite-gain constraint independently recover the shown coefficients.
 
-### Group C: Converters, the static errors (6)
+`@ee-labs/switched/chargeStep` is the reusable ideal event projection. Floating
+conductors conserve charge; driven nodes and declared amplifier actuators can
+supply charge. Linear voltage constraints permit ideal or finite-gain settled
+feedback. This extends the package without changing converter event behavior.
+Signal Lab handovers preserve exact z coefficients. Above its 192 kHz accepted
+sample rate they clearly label a **time-scaled copy**, including clock and source
+frequency scaling; they do not silently claim the same physical frequency.
+Group C converters are implemented below. Groups D onward, PLL implementations and general SC synthesis remain
+planned. Finite phase settling is separate from this ideal-event model.
 
-- **C1 · The charge-redistribution DAC.** A binary-weighted array of 20.0 fF units
-  totals 81.92 pF for 12 bits, which is why a split array with an attenuation capacitor
-  is used instead and totals 2.56 pF. Each conversion is one charge event of §2.2.
-  Measured: both totals, the output for three codes, and the charge conserved at each
-  step.
-- **C2 · The SAR, one decision per clock.** Twelve bits plus acquisition is fourteen
-  clocks, so a 20.0 MHz clock gives 1.429 MSPS. Each decision halves the remaining
-  range, and the comparator sees an input that falls by a factor of two per step.
-  Measured: the code sequence for a given input, the number of clocks, and the residue
-  after each decision.
-- **C3 · Mismatch becomes INL and DNL.** With a 0.316 % unit sigma the DNL sigma at the
-  mid-scale transition is `σ_u√(2^N − 1) = 0.202 LSB` and the worst-code INL sigma is
-  0.101 LSB. Three sigma of DNL is 0.607 LSB, which misses a half-LSB target, so the
-  unit needs `σ_u < 0.260 %` and 1.47 times the area. Measured: both sigmas, the
-  three-sigma DNL, and the area a half-LSB target needs.
-- **C4 · The flash converter.** Six bits needs 63 comparators and a 64-tap ladder,
-  eight bits needs 255. Each comparator's offset appears directly as an INL
-  contribution, so the offset budget is one LSB. Measured: the comparator count, the
-  INL from a seeded offset draw, and the code errors it produces.
-- **C5 · The pipeline stage and its residue.** A 1.5-bit stage decides against
-  `±V_ref/4`, subtracts and multiplies by two, so a comparator offset up to
-  `V_ref/4` is corrected by the redundancy downstream. Twelve bits needs eleven stages.
-  Measured: the residue against the input over a full range, the correction of a
-  deliberate comparator offset, and the code the pipeline produces.
-- **C6 · Calibration moves the error into memory.** Measuring each capacitor's weight
-  once and correcting in the digital domain removes the mismatch INL and leaves the
-  measurement's own noise. Measured: INL before and after calibration, and the residual
-  set by the measurement resolution.
+### Group C: Converters, the static errors (6) — implemented
 
-### Group D: Converters, the dynamic errors (5)
+- **C1:** Native charge projection for binary and split arrays, with reset/code
+  phases and every bit capacitor drawn. A 12-bit binary array includes one dummy
+  and totals 81.92 pF for 20 fF units. The implemented 6+6 split has its sole dummy
+  on the low bank, no high-bank dummy, and bridge 64/63 Cu. Its physical total is
+  (63+64+64/63)Cu = **2.56031746 pF**. Adding a second dummy would change the
+  transfer; neither the old rounded 2.56 pF nor a two-dummy total defines this circuit.
+- **C2:** N actual trial decisions plus two explicitly allocated acquisition clocks.
+  Native split-array charge checks each tested trial voltage. Trial weights halve;
+  signed comparator differences do not necessarily halve. The table separates
+  trial code, trial difference, keep/clear decision, accepted code and residue.
+- **C3:** Independent Gaussian unit mismatch, aggregated to weighted capacitors.
+  Endpoint-fit DAC INL and DNL are defined before plotting all codes. A 2048-array
+  ensemble computes normalized major-carry DNL with mean, spread and yield
+  intervals. The sigma estimate and relative area target are explicitly approximate
+  major-carry criteria, not an all-code manufacturing guarantee.
+- **C4:** Physical comparator identities and threshold order are preserved.
+  Count-of-ones and highest-physical-index encoders are both available. Exact bin
+  integration gives encoder-dependent DNL, transition INL and missing codes;
+  sorting integration breakpoints does not silently repair thermometer bubbles.
+- **C5:** S redundant one-bit-effective stages plus a two-bit backend give S+2
+  resolution bits. Ten stages plus that backend yield 12 bits. The actual signed
+  decisions and weighted carry sum are displayed. Full-range threshold tolerance
+  is |offset| <= Vref/4; out-of-range residues expose failed correction.
+- **C6:** Store noisy measured physical weights and compare their predicted code
+  voltage with the actual DAC voltage. Independent averaging gives 1/sqrt(M)
+  error scaling and a pointwise uncertainty interval. The output is a calibrated
+  voltage estimate, not repaired physical DAC INL or restored missing ADC data.
 
-- **D1 · Settling is a dynamic error in bits.** Half a clock at 20.0 MHz is 25.0 ns.
-  Twelve bits needs 9.011 time constants, so `τ = 2.774 ns` and a closed-loop
-  bandwidth of 57.37 MHz, which is an amplifier unity-gain frequency of 114.7 MHz at a
-  feedback factor of one half. Ten bits needs 97.08 MHz and fourteen needs 132.4 MHz.
-  Measured: the time constants, the required bandwidth at three resolutions, and the
-  error left by one time constant short.
-- **D2 · Slewing comes first, and it is not settling.** A 1 V step at 100 V/µs takes
-  10.0 ns before the exponential begins, which is 40 % of the available 25.0 ns. The
-  small-signal settling model applies only after it. Measured: the slew interval, the
-  exponential after it, and the total against the small-signal prediction alone.
-- **D3 · The comparator's decision has a distribution.** With `τ = 20.0 ps`, 100 ps of
-  decision time resolves 3.37 mV and fails once every 29.7 ns at 5 GS/s. At 200 ps it
-  resolves 22.7 µV and fails every 4.41 µs, at 400 ps every 97.0 ms. Measured: the
-  resolution and the failure rate at three times, and the exponential from the region
-  model.
-- **D4 · SNDR and the effective number of bits.** The output spectrum separates into
-  the signal, its harmonics and the noise floor, and `ENOB = (SNDR − 1.76)/6.02`. A
-  12-bit converter's 74.0 dB ceiling falls with any of jitter, settling error or
-  distortion. Measured: SNDR from the FFT, the three contributions separated, and the
-  effective bits.
-- **D5 · The code-density test.** Feeding a ramp or a sine and counting the codes gives
-  DNL from the histogram. A 3 % DNL resolution needs 1111 samples per code, so 4.55
-  million samples for 12 bits. Measured: the DNL from a histogram against the DNL from
-  the model, and the count needed for a stated resolution.
+All use the current four-view workbench, defined notation, numeric substitutions,
+practice, and parameter-driven plots/tables. Groups D–G are implemented below.
 
-### Group E: Noise shaping (6)
+### Group D: Converters, the dynamic errors (5) — implemented
 
-- **E1 · The quantiser is nonlinear, and the linear model is a different object.** With
-  a slow ramp the quantisation error is a sawtooth, not white noise, and its spectrum
-  is a comb. With a busy input it looks white. The pane draws the exact run and the
-  linear model together, and E1 is where they part. Measured: the error's spectrum for
-  both inputs, and the two models' predicted noise power.
-- **E2 · Oversampling buys bits, slowly.** Spreading the same quantisation power over a
-  wider band leaves less in the signal band. Every doubling of the oversampling ratio
-  buys 3.01 dB, which is half a bit. Measured: the in-band noise at four ratios against
-  `Δ²/(12·OSR)`.
-- **E3 · A loop shapes it.** A first-order modulator's noise transfer function is
-  `1 − z⁻¹`, which is zero at DC. At `OSR = 64` with a one-bit quantiser at levels ±1
-  and a full-scale input, the ratio is 50.77 dB, which is 8.14 effective bits. Every
-  doubling of the ratio now buys 9.03 dB. Measured: the noise transfer function from
-  the loop, the in-band power at three ratios, and the 9.03 dB slope.
-- **E4 · Second order, and the price of it.** `(1 − z⁻¹)²` at `OSR = 64` with a half
-  full-scale input gives 73.15 dB, which is 11.86 bits, and every doubling buys
-  15.05 dB. The loop is stable only below about 0.7 of full scale with a one-bit
-  quantiser, and that is the guard. Measured: the ratio at three oversampling ratios,
-  the 15.05 dB slope, and the guard firing above the stable input range.
-- **E5 · Overload is a different circuit.** Above the stable input the integrator
-  states grow without bound and the output becomes a long run of one symbol. The linear
-  model predicts nothing about it, and the pane says so rather than drawing it.
-  Measured: the state trajectory at 0.6, 0.7 and 0.8 of full scale, and the flag the
-  guard sets.
-- **E6 · Decimation, and its droop.** A `sinc³` filter with `N = 64` follows a
-  second-order modulator, because an `L`th-order loop needs an `L + 1` order comb. At
-  the band edge `f_s/128` its droop is 11.76 dB, which one corrector stage removes.
-  Measured: the response at the band edge and at half of it, the first null at
-  15.63 kHz, and the corrected passband.
+- **D1 · Settling budget.** A full-scale step must reach half-LSB tolerance
+  within half a clock period. At 12 bits / 20 MHz, this requires 9.010913 time
+  constants, τmax=2.774414 ns, and closed-loop bandwidth 57.365256 MHz. The
+  114.730512 MHz amplifier GBW at β=.5 is explicitly a dominant-pole estimate.
+  Native RC state and AC solves check the declared one-pole model.
+- **D2 · Continuous slew and settling.** The state obeys
+  dv/dt=sign(U−v) min(SR,abs(U−v)/τ). Transition error is SRτ; a 1 V step at
+  100 V/μs with the D1 default τ slews for 7.225586 ns and reaches half an LSB
+  in 28.668384 ns. The old 10 ns delay plus a restarted full-step exponential
+  double-counted part of the response. Falling, zero, no-slew and loose-tolerance
+  cases are checked along with independent numerical integration.
+- **D3 · Regeneration and conditional probability.** Exponential capacitor growth
+  stops at a 0.5 V decision target. Event rates assume independent initial
+  differential inputs uniformly spread over 1 V and a named decision rate.
+  At τ=20 ps / T=400 ps, the resolvable initial magnitude is 1.030577 nV;
+  at 5 GS/s the conditional mean unresolved-event interval is 97.033039 ms.
+  The exact noiseless zero state is explicitly unresolved indefinitely.
+- **D4 · Measure a record.** An 8192-sample coherent full-scale sine record uses
+  997 cycles, optional seeded Gaussian timing jitter, a declared third harmonic,
+  D2's acquisition propagator and an ideal quantizer. A one-sided periodogram
+  measures SNDR, SNR with harmonics 2–10 removed, THD and full-scale-referenced
+  ENOB. Parseval, known harmonics, aliases and linear-filter gain are checked.
+  Tracking gain/phase error remains distinct from distortion; isolated effect
+  powers are never assumed independent or added to invent the combined metric.
+- **D5 · Histogram inference.** Group C's six-bit flash transfer is measured with
+  independent uniform or sine-distributed inputs. Uniform code probabilities
+  use nominal pointwise 95% Wilson intervals, including zero hits. Sine counts
+  are corrected by inverse-CDF boundary estimates with conservative simultaneous
+  95% DKW intervals. Planning resolution is a separate control: at 12 bits,
+  ±0.03 LSB pointwise 95% normal planning needs about 4267.25 samples per code,
+  or 17,478,638 total, versus about 1111 per code for one standard deviation.
+  Simultaneous confidence is not equated with the pointwise planning estimate.
+
+### Group E: Noise shaping (6) — implemented
+
+- **E1 · Nonlinear quantization versus a noise approximation.** Slow-ramp and seeded busy records run through an explicit midrise quantizer. Actual error, power, lag-one correlation and spectrum are compared with a separate independent uniform-error record.
+- **E2 · Oversampling.** The white model gives Δ²/(12·OSR), 3.0103 dB and half a bit per doubling. Actual error bins are integrated independently, so correlated error need not follow that curve.
+- **E3 · First order.** x1[n]=x1[n−1]+u[n]−y[n−1], followed by y=Q(x1), produces STF=1 and NTF=1−z⁻¹. Levels are ±1 V. The full-scale-sine white-error model is about 50.78 dB at OSR 64; an actual finite-record ratio is also measured without forcing agreement.
+- **E4 · Second order.** Update x1, then x2[n]=x2[n−1]+x1[n]−y[n−1], then y=Q(x2). The additive-error identity gives NTF=(1−z⁻¹)² and the large-OSR 15.0515 dB/doubling slope. Exact-sine integration predicts 73.1543 dB at 0.5 V peak and OSR 64 under the white-error assumption. Nonlinear state excursions and measured error remain separate evidence.
+- **E5 · Overload.** Zero-state DC/sine runs stop at the first state magnitude above a declared 100 V behavioral guard. No universal 0.7-full-scale boundary is imposed: 0.6/0.7/0.8 V DC remain below the guard in the default finite run; 1.1 V DC crosses it. A constant input above the ±1 V DAC range has an algebraic unbounded-state proof. A finite no-crossing observation is not a general stability guarantee.
+- **E6 · Decimation.** Actual second-order output passes through three normalized moving-average FIRs before downsampling. The sinc³ Nyquist droop is measured (11.7646 dB at R=64). A three-tap output-rate corrector matches DC and the chosen edge, leaving measured interior ripple and added delay. Neither a universal sinc-order rule nor perfect one-stage flattening is claimed.
+
+Noise-shaping spectra use a power-normalized Hann window to limit endpoint leakage from large out-of-band noise. E1/E2 retain rectangular-window Parseval accounting. Record length, coherent tone, warm-up, state timing, DC treatment and frequency normalization are explicit. General transistor-level converters, finite-word-length CIC implementations and PLL groups remain planned.
 
 ### Group F: Clocks (6)
 
-- **F1 · The phase detector is nonlinear, and the model is not.** A phase-frequency
-  detector is linear only while the phase error stays inside `±2π`. The phase-domain
-  model is admitted as a rational function, and its guard is that range. Measured: the
-  detector's characteristic over three cycles of error, and the range the linear model
-  covers.
-- **F2 · The charge pump and the loop filter.** With `I_cp = 100 µA`,
-  `K_vco = 100 MHz/V`, `N = 100` and `C₁ = 1.00 nF`, `ω_n = 3.162 × 10⁵ rad/s`, so
-  `f_n = 50.33 kHz`. `R = 6.325 kΩ` gives `ζ = 1`, and `R = 3.162 kΩ` gives `ζ = 0.5`.
-  Measured: `ω_n` and `ζ` from `pllPhase`, and the step response's overshoot at three
-  dampings.
-- **F3 · The loop is a Control Lab loop.** T(s) crosses as `plant=custom` with
-  `ctrl=p:1`, and its margins are read there. `C₂ = C₁/10` adds a pole at 252 kHz that
-  the margin has to pay for. Measured: the phase margin here and in Control Lab, and
-  the margin lost to `C₂`.
-- **F4 · The lock range is the guard.** For a reference frequency step and `ζ = 1` the
-  peak phase error is `0.368 Δω/ω_n`. The error stays inside `2π` up to a 136.8 kHz
-  step at the reference, which is 13.68 MHz at the output. Past it the loop slews and
-  the phase-domain model is withdrawn. Measured: the peak error against the step, the
-  step at which the guard fires, and the slewing behaviour past it.
-- **F5 · Jitter from phase noise.** A VCO at −120 dBc/Hz at 1 MHz offset with a
-  `1/f²` skirt integrates to 1.9998 × 10⁻⁴ rad² over 10 kHz to 10 MHz, which is
-  0.01414 rad rms, or 0.810°. At a 100 MHz carrier that is 22.50 ps rms. Measured: the
-  integral, the rms phase, and the jitter.
-- **F6 · What the clock costs the converter.** That 22.50 ps caps a converter at
-  76.99 dB with a 1 MHz input and 56.99 dB with a 10 MHz input, which is 9.18 effective
-  bits. The loop shapes VCO noise above `f_n` and reference noise below it, so the
-  bandwidth is a choice about which noise to keep. Measured: both ratios, the effective
-  bits, and the in-band jitter against the loop bandwidth.
+Implemented Group F model record (2026-09-08); this supersedes the earlier draft numerical promises.
 
-### Group G: The chopper and the auto-zero amplifier, exactly (5)
+- **F1:** Local equal-frequency cycle-branch pulse-charge derivation. Outside ±2π the single-pulse model is withdrawn; phase alone does not define a stateful PFD output. No globally clipped detector is substituted for edge history.
+- **F2:** K=Icp·kv/N, ωn=√(K/C1), ζ=R√(KC1)/2. Explicit capacitor-voltage and phase-error states. Closed response retains the resistor zero: critical denominator damping still gives 13.5335% output-step overshoot.
+- **F3:** Exact Z=(1+sRC1)/[s(C1+C2)+s²RC1C2]. At the defaults C2/C1=0.1, extra pole 276.810667 kHz and margin 56.360673°. Both second- and third-order loops transfer without truncation to Control Lab; its new custom3 receiver preserves the full polynomials.
+- **F4:** Ideal edge-driven UP/DOWN detector, instantaneous reset, constant pump-current segments, linear capacitor voltage and quadratic VCO phase. Next edge times are solved from phase. The critical-damping **2π** phase guard is Δfr=exp(1)ωn=859.596 kHz, correcting the former 136.8 kHz unit error. This is an approximation guard, not a physical lock range. Whole-cycle slips and modulo-2π final alignment are distinguished.
+- **F5:** Exact 1/f² SSB integration over 10 kHz–10 MHz gives **1.998e−4 rad²**, not 1.9998e−4; 100 MHz carrier gives about 22.496651 ps RMS. Band, carrier and sideband factor are explicit.
+- **F6:** Independent reference and VCO phase-noise powers shaped by N·T/(1+T) and 1/(1+T), integrated on log frequency with its Jacobian. Jitter-only sine SNR and equivalent-bit ceiling are distinguished from measured converter ENOB. Natural frequency sweeps hold ζ=1/√2 and the 100 MHz carrier fixed.
 
-- **G1 · The chopper, as the switched circuit it is.** The Applied Analog Lab's C4
-  ships an averaged model with a bandwidth guard. Here the same circuit is solved with
-  its switches. A 1.00 mV offset at a gain of 1000 becomes a 1.00 V square wave at
-  100 kHz, and a first-order 1.00 kHz low-pass leaves 12.73 mV of fundamental ripple.
-  Measured: the square wave, the ripple against `(4/π)V_OS A (f_c/f_chop)`, and the
-  residual offset at zero.
-- **G2 · What is left after chopping.** Switch charge injection that does not match
-  between the two choppers leaves a residual. One femtocoulomb of mismatch on 1.00 pF
-  is 1.00 mV at the chopper's output, which at a gain of 1000 is 1.00 µV referred to
-  the input. Measured: the residual against the injected mismatch, and the input-
-  referred offset.
-- **G3 · The auto-zero amplifier samples its own offset.** Storing the offset on a
-  capacitor and subtracting it removes it at DC and leaves `kT/C` from the storage
-  capacitor. Measured: the residual offset, and the added noise against `√(kT/C)`.
-- **G4 · Auto-zeroing folds the noise, and chopping does not.** Sampling a 1 MHz-wide
-  white noise at 100 kHz folds `2B/f_s = 20` times the power into the band, which is a
-  factor of 4.47 in voltage, or 13.01 dB. Chopping modulates rather than samples, so it
-  costs nothing. Measured: the output noise density for both techniques over the same
-  band, and the folding factor.
-- **G5 · Correlated double sampling is a high-pass.** Subtracting two samples gives
-  `1 − z⁻¹`, whose magnitude is 0.0628 at `f_s/100` and 2 at `f_s/2`. It removes
-  flicker noise and offset, and multiplies white noise by `√2`. Measured: the transfer
-  at four frequencies against `2|sin(πf/f_s)|`, and the white-noise penalty.
+### Group G: Chopping, auto-zero and correlated sampling (5) — implemented
+
+Implemented Group G model record (2026-09-09); this replaces the draft numerical promises.
+
+- **G1:** Two ideal synchronized polarity reversals surround an instantaneous offset amplifier. Exact RC propagation resolves each half-period, capacitor-state continuity, uncharged startup and the periodic orbit. Default fundamental ripple is 12.7318 mV; it is distinct from the waveform peak. This is a phase-resolved behavioral circuit, not a transistor switch simulation.
+- **G2:** One net charge impulse per cycle, storage capacitance and a finite recovery resistor define a periodic error. Q/C is the edge jump; mean error is Q R fs. Defaults give 1 mV output jump but 100 µV output mean, or 1 µV and 0.1 µV respectively at the input for gain 1000.
+- **G3:** Acquire a 1 mV offset through 1 kΩ from zero initial storage, then hold and subtract it. Finite acquisition leaves settling error and thermal variance (kT/C)(1−exp(−2ta/RC)); leakage causes deterministic droop. Seeded independent calibration trials are compared with the predicted mean and standard deviation.
+- **G4:** Explicit band-limited white-noise paths compare sample-and-hold alias sums with square-wave harmonic translation. B/fs=10 gives 20 aliases at an interior baseband frequency; the hold sinc envelope is retained. Chopper weights approach a total of one as source bandwidth grows. This does not claim free noise performance or model a complete auto-zero amplifier's direct and correlated noise paths.
+- **G5:** H(z)=1−z^−d for d=1 or 2 rejects constant offset and wanted DC. Stationary correlated input noise gives σout=σ√[2(1−ρ^d)], checked against seeded difference records. Exact FIR coefficients cross to Signal Lab at the same rate; initial delay-line history and noise ensemble assumptions are stated.
 
 ---
 

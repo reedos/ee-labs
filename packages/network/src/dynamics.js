@@ -17,6 +17,7 @@ import { NetworkError, connected, incident, normalize } from './netlist.js'
 import { assemble, diagnose, readout, solveDC } from './mna.js'
 import { SingularError, solve } from './linalg.js'
 import { zeros } from './expm.js'
+import { inductanceMatrix } from './coupling.js'
 import { sourceBefore as sourceBeforeOf } from './waves.js'
 
 const isState = (e) => e.type === 'C' || e.type === 'L'
@@ -100,7 +101,13 @@ export function dynamics(net, opts = {}) {
     return readout(norm, sys, solve(sys.M, sys.r))
   }
   /** dx/dt read from a solve: i_C / C and v_L / L, passive sign convention. */
-  const derivOf = (sol) => states.map((s) => (s.type === 'C' ? sol.i[s.id] / s.value : sol.volt[s.id] / s.value))
+  const magnetic = inductanceMatrix(norm.elements)
+  const derivOf = (sol) => {
+    if (!magnetic.pairs.length) return states.map(s => s.type === 'C' ? sol.i[s.id] / s.value : sol.volt[s.id] / s.value)
+    const slopes = solve(magnetic.matrix, magnetic.inductors.map(e => sol.volt[e.id]))
+    const byId = new Map(magnetic.inductors.map((e, i) => [e.id, slopes[i]]))
+    return states.map(s => s.type === 'C' ? sol.i[s.id] / s.value : byId.get(s.id))
+  }
 
   const A = zeros(n, n)
   const B = zeros(n, m)
@@ -126,7 +133,17 @@ export function dynamics(net, opts = {}) {
   }
 
   /** Energy stored in the reactive elements at state x: ½Cv² and ½Li². */
-  const stored = (x) => states.map((s, k) => 0.5 * s.value * x[k] * x[k])
+  const stored = (x) => {
+    const values = states.map((s, k) => 0.5 * s.value * x[k] * x[k])
+    for (const pair of magnetic.pairs) {
+      const i = states.findIndex(s => s.id === pair.a), j = states.findIndex(s => s.id === pair.b)
+      // Split shared energy evenly for the per-state ledger; only the total
+      // is a physically unique partition of coupled magnetic energy.
+      const shared = .5 * pair.mutual * x[i] * x[j]
+      values[i] += shared; values[j] += shared
+    }
+    return values
+  }
 
   return { norm, states, inputs, n, m, A, B, c, solveAt, derivOf, stored, opts }
 }

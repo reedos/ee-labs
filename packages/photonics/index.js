@@ -1,3 +1,4 @@
+export {receiverNoise,ookSensitivity,photonCountingLimit} from './src/receiver.js'
 // @ee-labs/photonics — the optical engine.
 //
 // CORE_SCOPE.md's admission test, restated where the work happens (its §"Where

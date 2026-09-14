@@ -76,7 +76,7 @@ export function dcNetlist(spec = {}) {
     { type: 'R', id: 'Ra', nodes: ['arm', 'n1'], value: m.Ra },
     { type: 'L', id: 'La', nodes: ['n1', 'n2'], value: m.La },
     // The back-EMF: a voltage the shaft sets, opposing the current.
-    { type: 'VCVS', id: 'Eb', nodes: ['n2', 'n3'], ctrl: ['wm', GROUND], gain: m.ke, coupling: 'emf' },
+    { type: 'VCVS', id: 'Vemf', nodes: ['n2', 'n3'], ctrl: ['wm', GROUND], gain: m.ke, coupling: 'emf' },
     ...sen.elements,
     // The torque: a current the armature sets, pushed into the shaft node.
     { type: 'VCCS', id: 'Te', nodes: [GROUND, 'wm'], ctrl: sen.sense, gain: sen.gain(m.km), coupling: 'torque' },
@@ -217,7 +217,7 @@ export function powerAudit(sol, spec = {}) {
   const sense = sol.p['sen.rs'] + sol.p['sen.e']
   const friction = sol.p['shaft.B'] ?? 0
   const load = sol.p['shaft.TL'] ?? 0
-  const coupled = sol.p.Eb + sol.p.Te
+  const coupled = sol.p.Vemf + sol.p.Te
   const dStored = sol.p.La + sol.p['shaft.J']
   return {
     supplied,
