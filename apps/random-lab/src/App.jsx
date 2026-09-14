@@ -8,7 +8,7 @@ import { reportSummary } from './report.js'
 import EnsembleCanvas from './components/EnsembleCanvas.jsx'
 import {
   ScopeCanvas, HistogramCanvas, CorrelationCanvas, DensityCanvas,
-  OutcomeCanvas, MatchedCanvas, ErrorRateCanvas, KalmanCanvas,
+  OutcomeCanvas, MatchedCanvas, ErrorRateCanvas, WienerCanvas, KalmanCanvas,
 } from './components/views.jsx'
 import { Closed, Estimate, Against, Pane, Terms } from './components/panes.jsx'
 
@@ -18,6 +18,7 @@ const KNOBS = {
   seed: { label: 'Seed', min: 1, max: 9999, step: 1, integer: true },
   n: { label: 'Samples', min: 100, max: 200000, step: 100, integer: true },
   bins: { label: 'Bins', min: 8, max: 100, step: 1, integer: true },
+  qx: { label: 'Tail marker', min: 0, max: 6, step: 0.1 },
   cltTerms: { label: 'Terms summed', min: 1, max: 24, step: 1, integer: true },
   level: { label: 'Level', min: 0.5, max: 0.999, step: 0.01 },
   runs: { label: 'Runs', min: 2, max: 2000, step: 1, integer: true },
@@ -45,11 +46,25 @@ const KNOBS = {
   wkN: { label: 'Record', min: 256, max: 16384, step: 256, integer: true },
 }
 
+/**
+ * Whether a try step does anything when it is pressed.
+ *
+ * Twenty-one of the ninety steps only ask the reader to look at a number, and
+ * each of them still carried a chip. A control that does nothing when pressed
+ * reads as a broken one, so those steps keep their sentence and lose their
+ * chip.
+ */
+const applies = (step) => Boolean(step.view) || Object.keys(step.set || {}).length > 0
+
+// The knobs that choose between named things. Each carries the label a reader
+// sees, because the parameter's own name is not one: the sidebar offered
+// "dist", "pulse", "window" and "ensembleKind" as headings, which STYLE.md S9
+// and S11 both rule out.
 const CHOICES = {
-  dist: ['gaussian', 'uniform', 'exponential', 'bernoulli', 'rayleigh'],
-  pulse: ['rect', 'halfSine', 'ramp'],
-  ensembleKind: ['gaussian', 'filtered', 'constant', 'outcome'],
-  window: ['hann', 'hamming', 'blackman', 'none'],
+  dist: { label: 'Distribution', options: ['gaussian', 'uniform', 'exponential', 'bernoulli', 'rayleigh'] },
+  pulse: { label: 'Pulse shape', options: ['rect', 'halfSine', 'ramp'] },
+  ensembleKind: { label: 'Process', options: ['gaussian', 'filtered', 'constant', 'outcome'] },
+  window: { label: 'Window', options: ['hann', 'hamming', 'blackman', 'none'] },
 }
 
 export default function App() {
@@ -97,12 +112,29 @@ export default function App() {
 
           <TryLine
             text={lesson.try[0].say}
-            chips={lesson.try.map((t, i) => ({ label: `${i + 1}`, title: t.say }))}
+            chips={lesson.try
+              .map((t, i) => ({ t, label: `${i + 1}` }))
+              .filter(({ t }) => applies(t))
+              .map(({ t, label }) => ({ label, title: t.say }))}
             onChip={(chip) => {
               const step = lesson.try[Number(chip.label) - 1]
-              if (step && step.set) setParams((p) => ({ ...p, ...step.set }))
+              if (!step) return
+              if (step.set) setParams((p) => ({ ...p, ...step.set }))
+              if (step.view) setView(step.view)
             }}
           />
+
+          {/* The steps beyond the first, in full. They used to live only in a
+              chip's tooltip, so a reader on a phone could not reach them at
+              all, and the ones that only ask the reader to look at a number
+              had a chip that did nothing when pressed. */}
+          {lesson.try.length > 1 ? (
+            <ol className="try-steps" start={2}>
+              {lesson.try.slice(1).map((t) => (
+                <li key={t.say}>{t.say}</li>
+              ))}
+            </ol>
+          ) : null}
 
           {featured && (KNOBS[featured] || CHOICES[featured]) ? (
             <div className="featured">
@@ -204,13 +236,38 @@ export default function App() {
   )
 }
 
+/** The two routes to the density, and the gap between them. */
+function WienerKhinchin({ wk, n }) {
+  return (
+    <>
+      <Closed label="Record" value={n} sig={0} note="samples" />
+      <Closed label="Worst gap between the routes" value={wk.worst} note="relative, across every bin" />
+      <Against label="Integral against the record" measured={wk.integralWithEnds} predicted={wk.r0} />
+      <Closed label="End-panel gap" value={wk.endGap} note="the trapezoid takes half of each end bin" />
+    </>
+  )
+}
+
+/** What the coverage experiment counts: the level it claims against the rate. */
+function Coverage({ cov }) {
+  return (
+    <>
+      <Closed label="Claimed level" value={cov.claimed * 100} unit="%" />
+      <Estimate label="Counted coverage" est={cov.counted} scale={100} unit="%" />
+      <Against label="Mean interval width" measured={cov.meanWidth} predicted={cov.predictedWidth} />
+      <Closed label="Repeats" value={cov.trials} sig={0} />
+      <Closed label="Samples per repeat" value={cov.n} sig={0} />
+    </>
+  )
+}
+
 function Knob({ name, value, onChange }) {
   if (CHOICES[name]) {
     return (
       <label className="knob">
-        <span>{name}</span>
+        <span>{CHOICES[name].label}</span>
         <select value={value} onChange={(e) => onChange(name, e.target.value)}>
-          {CHOICES[name].map((c) => (
+          {CHOICES[name].options.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
@@ -243,10 +300,12 @@ function Knob({ name, value, onChange }) {
 
 function View({ view, a, p, highlight, onPickRun }) {
   switch (view) {
-    case 'scope':
-      return <ScopeCanvas data={a.params.filtered || a.params.noiseRms !== DEFAULTS.noiseRms ? a.record().x.subarray(0, 2048) : a.draw()} />
+    case 'scope': {
+      const s = a.scope()
+      return <ScopeCanvas data={s.series} label={s.label} units={s.units} />
+    }
     case 'histogram':
-      return <HistogramCanvas hist={a.hist()} />
+      return <HistogramCanvas hist={a.hist()} marker={p.qx == null ? null : a.qmark()} />
     case 'ensemble': {
       const e = a.ens()
       const band = p.spec ? { lo: p.spec[0], hi: p.spec[1], label: 'spec' } : null
@@ -288,7 +347,7 @@ function View({ view, a, p, highlight, onPickRun }) {
     case 'kalman':
       return <KalmanCanvas kalman={a.kalman()} />
     case 'wiener':
-      return <ScopeCanvas data={a.wiener().fir.apply(a.draw())} label="Estimate" />
+      return <WienerCanvas wiener={a.wiener()} />
     case 'ktc':
       return <KtcTable a={a} />
     default:
@@ -327,6 +386,25 @@ function KtcTable({ a }) {
 
 function Readouts({ view, a, p }) {
   switch (view) {
+    case 'scope': {
+      // The one-run view printed nothing at all, and A2's try line says to read
+      // the interval on the mean.
+      const s = a.scope()
+      return (
+        <Pane title="What the run measures">
+          <Closed label="Seed" value={p.seed} sig={0} />
+          <Closed label="Samples drawn" value={s.n} sig={0} />
+          <Estimate label="Sample mean" est={s.mean} unit={s.units} />
+          <Estimate label="Sample variance" est={s.variance} unit={s.units ? 'V²' : ''} />
+          {s.usesRecord ? null : (
+            <>
+              <Closed label="Expectation" value={a.dist.mean} />
+              <Closed label="Variance" value={a.dist.variance} />
+            </>
+          )}
+        </Pane>
+      )
+    }
     case 'histogram': {
       const h = a.hist()
       const e = a.est()
@@ -339,6 +417,12 @@ function Readouts({ view, a, p }) {
           <Against label="Gap to the density" measured={h.error.rms} predicted={h.error.predicted} />
           <Closed label="Bin width" value={h.width} />
           <Closed label="Outside the range" value={h.outside} sig={0} />
+          {p.qx == null ? null : (
+            <>
+              <Closed label="Tail beyond the marker" value={a.qmark().closed * 100} unit="%" />
+              <Estimate label="Tail counted" est={a.qmark().counted} scale={100} unit="%" />
+            </>
+          )}
         </Pane>
       )
     }
@@ -362,10 +446,23 @@ function Readouts({ view, a, p }) {
       const c = a.acf()
       return (
         <Pane title="What the correlation measures">
-          <Closed label="Zero lag" value={c.r0} />
-          <Closed label="1/e lag" value={c.lagAt1e} sig={0} />
+          <Closed
+            label="Mean square at zero lag"
+            value={c.r0}
+            unit="V²"
+            note="the plot divides by it, so the curve starts at 1"
+          />
+          <Closed label="1/e lag" value={c.lagAt1e} sig={0} note="samples" />
           <Closed label="Time constant" value={c.tauSamples} note="samples" />
-          <Closed label="White noise band" value={c.whiteBand} />
+          <Closed
+            label="White record band"
+            value={c.whiteBand}
+            note="plus and minus, at 5 over the root of the record length"
+          />
+          {/* D2's note quotes the gap between the two routes to the density and
+              says it is printed under the plot. It was not printed anywhere,
+              and the record knob that sets it moved nothing on screen. */}
+          {p.wkN ? <WienerKhinchin wk={a.wk()} n={p.wkN} /> : null}
         </Pane>
       )
     }
@@ -379,8 +476,16 @@ function Readouts({ view, a, p }) {
           <Closed label="Run length" value={e.length} sig={0} />
           {e.statEstimate ? <Estimate label="Mean outcome" est={e.statEstimate} /> : null}
           <Closed label="Spread of time averages" value={e.ergodicity.spread} />
-          <Closed label="Ensemble and time gap" value={e.ergodicity.gap} />
-          {y ? <Estimate label="Yield" est={y} scale={100} /> : null}
+          <Closed
+            label="Ensemble and time gap"
+            value={e.ergodicity.gap}
+            note="the two averages sum the same values, so this is rounding"
+          />
+          {y ? <Estimate label="Yield" est={y} scale={100} unit="%" /> : null}
+          {/* The coverage experiment's own numbers. G2's note quotes 0.951
+              against a claimed 0.950 and neither was on screen anywhere, so
+              its level knob moved nothing a reader could see. */}
+          {p.covTrials ? <Coverage cov={a.coverage()} /> : null}
         </Pane>
       )
     }
@@ -392,7 +497,7 @@ function Readouts({ view, a, p }) {
           <Closed label="In decibels" value={s.snrDb} unit="dB" />
           <Against label="2E/N0" measured={s.twoEOverN0} predicted={s.snr} />
           <Closed label="Pulse energy" value={s.energyDiscrete} />
-          <Closed label="Mismatched ratio" value={s.mismatch} />
+          <Closed label="Mismatched ratio" value={s.mismatch} unit="%" note="of the matched filter's ratio" />
           <Closed label="Mismatch loss" value={s.mismatchLossDb} unit="dB" />
         </Pane>
       )
@@ -441,7 +546,11 @@ function Readouts({ view, a, p }) {
           ) : (
             <>
               <Closed label="One-shot error" value={k.oneShotMmse} />
-              <Closed label="What memory is worth" value={k.memoryWorth} />
+              <Closed
+                label="What memory is worth"
+                value={k.memoryWorth}
+                note="the settled error as a fraction of the one-shot error"
+              />
             </>
           )}
         </Pane>

@@ -17,6 +17,17 @@ site, dark or released. Planned means specified in a plan file. Nowhere means no
 
 ---
 
+## 0. From components to chips
+
+After Circuit Elements introduces resistors, capacitors and diodes, read [From wafer to circuit](CHIP_FOUNDATIONS.md).
+This short prerequisite belongs before the semiconductor-device work in Electronics and Devices, and before VLSI and Interfaces.
+It connects schematic symbols to fabricated devices, metal wiring and package connections.
+It also introduces silicon, silicon-germanium, indium phosphide and wide-bandgap power materials with their practical tradeoffs.
+
+The shared `ChipContext` note makes the introduction available within VLSI and Interfaces before their circuit explanations.
+It adds context, not a new experiment or a required manufacturing course. Detailed device physics stays in Devices Lab.
+The six-lab path below remains the historical path described by this document. The current program inventory is in `BACKLOG.md`.
+
 ## 1. The order
 
 The course order is the order a curriculum teaches these subjects. It is also the

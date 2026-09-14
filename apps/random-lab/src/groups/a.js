@@ -80,6 +80,15 @@ export default [
         formula: (p) => p.sigma / Math.sqrt(p.n),
         tol: 0.1,
       },
+      {
+        // The run view's pane measures the series the run view draws, which is
+        // the point of the pane: A2's try line says to read the interval on
+        // the mean, and until now there was no readout on that view at all.
+        label: 'the run view measures the samples it draws',
+        path: 'scope.mean',
+        against: 'est.mean.value',
+        tol: 1e-12,
+      },
     ],
   },
   {

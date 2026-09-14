@@ -52,7 +52,7 @@ export default {
       'The Gaussian gives 95.45 % for the same band.',
     ].join(' '),
     try: [
-      { say: 'Tighten the band to 9.5 and 10.5. The yield falls to 66.9 %.', set: {} },
+      { say: 'Tighten the band to 9.5 and 10.5. The yield falls to 66.9 %.', set: { spec: [9.5, 10.5] } },
       { say: 'Set the spread to 0.25. The yield at the tight band rises above 95 %.', set: { sigma: 0.25 } },
       { say: 'Set the runs to 200. The count moves little and its interval widens tenfold.', set: { runs: 200 } },
     ],

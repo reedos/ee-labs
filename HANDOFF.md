@@ -1,19 +1,144 @@
 # Handoff: continuing the EE Labs program from another session
 
-## Active director branch, 2026-09-06
+## Reconciliation, 2026-09-13
 
-Reed approved bounded parallel implementation and director-owned integration.
-The active branch is `integration/program-director` in `.claude/worktrees/program-director`.
-Read that worktree's `HANDOFF.md`, `PROGRAM.md` section 8 and `BACKLOG.md` section 1 first.
-They supersede the scheduling and ledger status below.
+Three lines had diverged since 2026-09-06. GitHub master carried the Circuits II consolidation, the Applied Analog, Analog IC and Mixed-Signal labs, and copies of the RF, System, Photonics, VLSI and Interfaces labs with extended lessons. Local master carried the integration line with Power H to N and the dark RF, System and Photonics groups. The director branch carried the VLSI and Interfaces first groups and the Random recovery.
 
-The director reconciled the app inventory and started three bounded assignments.
-VLSI Group A is on `lab/vlsi-lab`. Interfaces Group A is on `lab/interfaces-lab`.
-Circuit verification is on `verify/circuit-lab`.
-Their current results and acceptance gates belong in the director worktree's handoff.
+Branch `integration/reconcile` merges all three. GitHub master came first, then the director branch. The copied labs conflicted as add/add because their history was not shared. Their copies on GitHub contain the same files plus the curriculum wrapper, so the GitHub side was kept for every copied lab file. The director's shared deployed-app list, deep-link module, assembler, ledger and this handoff were kept, and the three new apps were added to that list and to the inventory as lesson-only registries.
 
-The main workspace's concurrent lab edits and splash experiment remain untouched.
-This pointer does not merge the director branch, push changes or release a lab.
+Two defects came from clean merges. A duplicated export in the shared UI index broke every build. The curriculum table quoted Power at 34 of 56. Both are fixed on the branch. Nothing here merges to master or releases a lab. The splash and README still quote 59 Elements experiments while the registry holds 89.
+## Plot labels and wafer context
+
+The latest review requested names for every plot feature and definitions before threshold abbreviations.
+Interfaces now keys its voltage, load and noise plots, including the undefined-input band, guides, selected points and probes.
+The voltage canvas labels VIL, VIH and the time cursor directly, with reserved annotation space.
+VLSI labels Scope, Transfer, Timing and Fanout, including input/output limits, noise-margin brackets and switch-model gaps.
+Threshold definitions precede their first use. Labels distinguish input voltage limits from output voltage limits and device thresholds.
+
+`ChipContext` in `@ee-labs/explain` provides a shared, short wafer-to-circuit introduction before both labs' circuit foundations.
+It defines wafer, die and integrated circuit, and explains patterning, deposition, etching, doping, interconnects and packaging.
+An expandable note compares silicon, silicon-germanium, indium phosphide, silicon carbide and gallium nitride with source links.
+The substrate and active device material are distinguished. This context does not turn the introductory models into material sweeps.
+`CHIP_FOUNDATIONS.md` is the standalone prerequisite. `CURRICULUM.md` places it after basic circuit elements and before semiconductor-device modules.
+
+`labels-final-scoped.log` records 369 passing tests in 34 files. `labels-all-apps-build.log` records all 24 passing builds.
+The shared styles are scoped to the new note. The full numerical suite was not rerun for this presentation update.
+Final browser logs use `labels-interfaces-` and `labels-vlsi-` prefixes in the worktree root.
+Interfaces has 25 experiment/viewport cases per browser, and VLSI has 30 plus alternate views.
+Both cover Chromium and Firefox down to 320 pixels. Browser checks include keyed annotations, expanded material notes and retained playback behavior.
+Physical-phone and iPhone Safari review remain open. No publication or release is authorized.
+The updated local preview remains `http://127.0.0.1:47630/`.
+
+## Teaching foundations and phone flow
+
+Reed approved explicit teaching foundations for the initial Interfaces and VLSI experiments.
+All ten now explain purpose, input, expected output, parameter roles, predictions, tradeoffs and model limits before derivation.
+Definitions cover the pin, CMOS receiver, output drivers and inverter. The receiver study is no longer labeled as an output type.
+The VLSI material explains inverter applications, polarity through a chain and the delay, area and energy costs of loading and sizing.
+
+Both apps retain the established theme, held axes, reference traces and shared playback.
+Phones use one page scroll and sticky Lesson, Settings, Circuit, Plots and Math navigation.
+A screenshot exposed an ancestor overflow rule that defeated sticky positioning. Both apps now avoid that extra scroll container.
+Browser checks require the navigation itself to remain visible after every jump.
+
+The source changes are app-local. `PROGRAM.md` records the teaching checks as acceptance requirements for later groups.
+The local preview remains `http://127.0.0.1:47630/`, with `/interfaces-lab/` and `/vlsi-lab/` rebuilt and assembled.
+No release or push is authorized. Student acceptance and the wider curriculum omissions remain open.
+
+`foundations-final-scoped.log` records 357 passing tests in 31 files after the final source changes.
+This covers both apps, shared UI, math rendering and director inventory. The full suite was not rerun for this app-local pass.
+The earlier full-suite result below remains the baseline, not evidence for this update.
+Browser logs use `interfaces-foundations-` and `vlsi-foundations-` prefixes with Chromium and Firefox suffixes.
+Interfaces covers 25 experiment/viewport cases per browser. VLSI covers 30, including all available views.
+Both include 320-pixel and 390-pixel phone widths. These are desktop browser checks, not physical-phone or iPhone Safari validation.
+The numerical prediction tests and browser reports remain app-local. The inherited prose-linter file marker remains untouched.
+
+## First review rework
+
+Reed rejected the initial VLSI and Interfaces review. Their automated checks missed established usability and teaching requirements.
+This section supersedes the readiness statements in the earlier checkpoint.
+Work remains on `integration/program-director` in `.claude/worktrees/program-director`.
+
+Both first groups have usability corrections at `e3afe13`. The original four labs are the reference implementations.
+The corrections cover shared sidebar formatting, playback, held comparison axes, plot height and visible worked analysis.
+`PROGRAM.md` section 8 now requires these checks before another student review.
+The new labs remain dark. Their first-group acceptance remains open.
+
+The local preview remains `http://127.0.0.1:47630/`.
+Each app's `NEEDS.md` records its revised behavior and evidence locations.
+The final browser logs are `interfaces-rework-chromium.log`, `interfaces-rework-firefox.log`,
+`vlsi-rework-chromium.log` and `vlsi-rework-firefox.log` in this worktree.
+All four runs pass against assembled sibling paths. The shared numeric-focus regression passes in the original four apps.
+
+`review-rework-final-scoped.log` records 342 passing tests in 29 files.
+`review-rework-build.log` records the passing all-app build.
+The full suite passes 11,096 tests in 373 files at the frozen source checkpoint.
+Its evidence is `review-rework-full-suite-final.log`, with a duration of 335.64 seconds.
+The earlier `review-rework-full-suite.log` was stopped because source files changed during the run.
+Global prose lint retains 330 inherited findings. All six edited documents pass their scoped check.
+Reed's main-workspace changes and upstream notation commit remain outside this worktree.
+No changes have been pushed or released.
+
+## First director wave checkpoint
+
+The wave is integrated locally on `integration/program-director`.
+The source checkpoint is `e0c2e16`, with later evidence-only documentation commits.
+The worktree remains `.claude/worktrees/program-director`.
+`BACKLOG.md` section 1 contains the current ledger, results and next dependency queue.
+
+- VLSI has five initial experiments. A3's analog-chain comparison and part of A5 remain incomplete.
+- Interfaces has five initial pin experiments. Groups B to G remain unbuilt.
+- Random Signals' startup and rendering recovery is integrated. Its F4 instruction and two phone captions still need work.
+- Circuit revalidation ended at `582650e` with browser layout failures. It remains separate, as does Power's `fa6382c` checkpoint.
+- Shared URL recognition and local assembly now cover every app. Dark labs remain absent from released navigation.
+
+The integrated tree has 24 apps and 752 curriculum entries. Counts are not acceptance percentages.
+The full suite passes 11,077 tests in 370 files. All 24 apps build after a fresh offline installation.
+Both new apps pass Chromium and Firefox checks at laptop, desktop and phone sizes.
+The final LabNav browser review passes 46 checks. Evidence paths are in `BACKLOG.md`.
+Repository prose lint remains open with 330 inherited findings. Edited documents pass scoped lint.
+
+The director preview is `http://127.0.0.1:47630/`.
+Review the new apps at `/vlsi-lab/` and `/interfaces-lab/`, and the recovered app at `/random-lab/`.
+The hidden preview process is PID 22408. All worker and temporary verification servers from this wave stopped.
+Older Power and splash previews were left untouched.
+
+Before another wave, reconcile Reed's `e5e9200` commit from `origin/master`.
+It arrived during this wave and is not in this integration baseline or its evidence.
+The main workspace still contains Reed's corresponding changes and the splash experiment. Preserve them.
+The main handoff points here through `aec37e9`. No director code was merged into master, pushed or released.
+
+## Director wave, 2026-09-06
+
+Reed approved the director operating model and bounded parallel work.
+`PROGRAM.md` section 8 defines ownership, evidence, acceptance and integration.
+`BACKLOG.md` section 1 is the current ledger and dependency queue.
+It supersedes the older sequential scheduling instructions below.
+
+The director branch is `integration/program-director`, based on `cf90dda`.
+Its worktree is `.claude/worktrees/program-director`.
+The base contains 22 apps and 742 curriculum entries, counted from executable registries.
+These entries are not an acceptance count. Five planned apps are absent from the base.
+The old ledger contained duplicate rows and obsolete whole-lab dependencies.
+
+Three bounded streams started from the committed base:
+
+- `lab/vlsi-lab`, worktree `vlsi-wave-1`, implements the first supported Group A experiments.
+- `lab/interfaces-lab`, worktree `interfaces-wave-1`, implements Group A's pin experiments.
+- `verify/circuit-lab`, worktree `circuit-verification`, revalidates the saved branch against the base.
+
+Workers own only their assigned app. Shared changes and integration belong to the director.
+The new apps remain dark. No push or release is authorized by this wave.
+Reed's uncommitted main-workspace changes remain outside the integration branch.
+
+The inventory command is `node scripts/director/inventory.mjs`.
+Its test checks ledger counts and requires local assembly to include every existing app.
+The local assembler previously listed five apps while deploy listed twenty-two.
+The director's assembler now includes the same twenty-two apps.
+
+Power's `fa6382c` checkpoint and the other saved verification branches remain separate.
+Power's desktop-control failures do not block unrelated lab implementation.
+Do not treat saved completion reports as current evidence without reviewing their commit and dependencies.
 
 ## Local continuation, 2026-09-06
 

@@ -86,10 +86,10 @@ export default [
     group: GROUP_C,
     name: 'The Q function is the tail',
     terms: ['qfunction', 'gaussian', 'ber'],
-    params: { seed: 3, n: 20000, dist: 'gaussian', bins: 40, lo: -4, hi: 4 },
+    params: { seed: 3, n: 20000, dist: 'gaussian', bins: 40, lo: -4, hi: 4, qx: 1 },
     view: 'histogram',
     views: ['histogram', 'errorrate'],
-    featured: { field: 'sigma' },
+    featured: { field: 'qx' },
     claims: [
       // The textbook values of Q, reached through the mass identity so that the
       // number checked is the one the pane prints.
@@ -97,6 +97,16 @@ export default [
       { label: 'Q(2) is 0.0227501', path: 'closed.insideTwoSigma', formula: () => 1 - 2 * gaussianTail(2), tol: 1e-9 },
       { label: 'Q(3) is 0.00134990', path: 'closed.insideThreeSigma', formula: () => 1 - 2 * gaussianTail(3), tol: 1e-9 },
       { label: 'and the counted tail beyond two sigma agrees', path: 'tail.2.counted', against: 'tail.2.closed', tol: 0.01 },
+      // The marker the view shades from, so the shaded area on screen is the
+      // number the note quotes rather than a picture beside it.
+      // 1e-9, as the three Q values above: the engine's Q and secondRoute's
+      // quadrature are two routes to the same number and agree to 1.3e-12.
+      { label: 'the marker shades Q of where it stands', path: 'qmark.closed', formula: (p) => gaussianTail(p.qx), tol: 1e-9 },
+      {
+        label: 'and the draws beyond it are that fraction, inside three standard errors',
+        path: 'qmark.counted',
+        withinOf: { path: 'qmark.closed', se: 'qmark.se', k: 3 },
+      },
     ],
   },
 ]

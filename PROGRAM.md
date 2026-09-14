@@ -136,3 +136,96 @@ An overseer's final report has seven parts, in this order. The branch and its
 commits. The plan and brief paths. What is built, as groups and counts. The test
 and lint state. What is deferred and why, mirrored in `BACKLOG.md`. What is needed
 from elsewhere, mirrored in `NEEDS.md`. Anything the director should decide.
+
+## 8. Director execution, 2026-09-06
+
+Reed approved bounded parallel implementation with director-owned integration.
+This section governs scheduling and evidence for that continuation.
+The ownership and physics rules above still apply. Reed alone releases labs.
+
+### The ledger and states
+
+`BACKLOG.md` section 1 is the current completion ledger.
+Historical reports remain available but do not override that section.
+Every lab has one row. Counts come from its executable curriculum registry.
+`scripts/director/inventory.mjs` produces those counts without claiming acceptance.
+
+- **Implemented:** the assigned model, app and curriculum exist on a named commit.
+- **Verified:** the assigned scope passed the gates below on that commit.
+- **Integrated:** reviewed changes are merged and the integration checks are recorded.
+- **Accepted:** the agreed scope has passed all gates, with no material open defect.
+- **Released:** Reed approved public navigation and the release marker changed.
+
+State the scope beside every status. Accepting Group A does not accept the whole lab.
+A dark app can be integrated while its acceptance remains open.
+A tested refusal is complete behavior, not missing implementation.
+An unimplemented plan requirement remains open unless Reed approves its exclusion.
+
+### Assignment and capacity
+
+Start with at most three worker streams and reserve director capacity for review.
+Use one verification stream and two independent implementation streams initially.
+Each assignment names its branch, worktree, owned files, dependencies and exit checks.
+The usual deliverable is one complete experiment group.
+Review the first usable group before extending its interface across the lab.
+
+Keep urgent shared-contract decisions with the director.
+Do not assign two workers to edit the same shared package files.
+Promote shared components when the second consumer's tested contract is known.
+Workers record requests in their lab's `NEEDS.md`, not another lab's files.
+
+Run worker tests with at most two workers during this wave.
+Reserve full-suite runs for integration, with at most eight workers on a quiet machine.
+Reduce concurrent jobs when resource contention affects the evidence.
+Do not change correctness tolerances or weaken checks to meet a runtime target.
+
+### Acceptance gates
+
+Reed rejected the first VLSI and Interfaces review on 2026-09-06.
+Their passing checks missed established interaction and teaching requirements.
+Use Circuit, Signal, Control and Circuit Elements as the reference apps.
+Review `REVIEW_PLAYBOOK.md` against working behavior, not just source imports.
+
+- Inherit shared typography, section styling, numeric fields and navigation. Explain any necessary departure before extending it.
+- Change each featured parameter with the axes held. Verify that the lesson's feature moves visibly against a reference.
+- Keep time playback, pause, speed, rewind and replay consistent. Verify live plots and readings together.
+- Measure useful plot area, not just canvas presence. Review laptop, widescreen and phone screenshots at readable sizes.
+- Present the model, assumptions, worked substitutions and measured comparisons near the result. Use available space for the lesson.
+- Perform a student walkthrough before offering a group for acceptance. Passing automation does not establish teaching quality.
+- Before derivation, identify the block's purpose, input and expected output. Define unfamiliar circuit terms on contact.
+- Give every semantic plot trace, region, guide and marker a visible label or keyed legend. Define abbreviations before relying on them.
+- Use the short wafer-to-circuit prerequisite before device-level modules. Distinguish fabrication context from the assumptions of the actual simulation.
+- Distinguish design parameters, external loads, requirements and observation controls. Check each stated prediction against the model.
+- Include practical tradeoffs and model limits. Verify phone navigation between the lesson, settings, circuit, plots and math without nested page scrolling.
+
+Do not extend either new app's interface until its revised first group has been reviewed.
+The director owns these checks before requesting Reed's time.
+
+1. Check each assigned plan requirement against an experiment, model and visible result. Record missing requirements and deviations.
+2. Test physics against independent calculations, invariants and boundary cases. Test each approximation guard on both sides of its threshold.
+3. Pin lesson claims to the controls. Execute try steps in order without an implicit reset. Define terms on contact.
+4. Exercise controls and views in the deployed sibling-path layout. Check phone and desktop sizes, accessibility, console output and readable screenshots.
+5. Verify affected package contracts, curriculum references and cross-lab hand-overs. A selector or registry containing zero items must not pass vacuously.
+6. Run scoped tests and builds before a worker commit. Run the full suite and prose lint at integration.
+
+Record the commit, commands, exit codes, browser versions, viewports and evidence paths.
+Tie inherited evidence to its original commit and tested dependencies.
+Changed dependencies invalidate the affected evidence until it is rerun.
+Report an unavailable browser as incomplete verification, never as a passing browser run.
+Separate environment failures from application defects without hiding either.
+
+Existing repository prose findings remain an open gate.
+Report their baseline separately from new findings. Do not describe a failing lint run as clean.
+Edited documents and lesson prose must pass their scoped checks.
+
+### Integration and progress
+
+Review and integrate independent branches individually. One lab's defect does not block another lab's work.
+Use a clean director worktree. Preserve Reed's concurrent changes in the main workspace.
+Stage only owned paths, merge explicitly, and do not push or release this wave.
+For each integration, record verified scope and remaining acceptance findings.
+
+Report accepted or integrated groups, resolved dependencies and the next bounded deliverable.
+Do not use test counts, commit counts or screenshot counts as curriculum completion measures.
+Escalate curriculum changes, exclusions and release decisions to Reed.
+Resolve routine engineering choices within the plans without adding approval delays.
