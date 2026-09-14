@@ -25,7 +25,7 @@ npm run dev              # Signal Lab, at http://localhost:1421
 
 | | covers | status |
 |---|---|---|
-| **[apps/circuit-elements-lab](apps/circuit-elements-lab/)** | circuit laws, network theorems, op-amps, diodes, transients, state equations, phasors | **[Live — 59 experiments](https://reedos.github.io/ee-labs/circuit-elements-lab/)** |
+| **[apps/circuit-elements-lab](apps/circuit-elements-lab/)** | circuit laws, network theorems, op-amps, diodes, transients, state equations, phasors | **[Live — 89 experiments](https://reedos.github.io/ee-labs/circuit-elements-lab/)** |
 | **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 35 experiments |
 | **[apps/circuit-lab](apps/circuit-lab/)** | phasor circuit analysis, impedance, resonance, active filters, tolerance | 16 frequency-response lessons |
 | **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 13 experiments, 8 plants x 4 controllers |
@@ -43,22 +43,6 @@ links. It is in a separate private repository. It serves practising engineers
 rather than students, it is already mature, and porting it onto these packages
 would take work that no reader of this repository would benefit from.
 
-## Analog labs in review
-
-Three additional apps are served at direct URLs while remaining unlisted on the
-public splash page. Their lessons use the same
-anchored learning views as Circuit Elements:
-
-- [Applied Analog](https://reedos.github.io/ee-labs/applied-analog-lab/): 45 lessons,
-  amplifier foundations, board-level stability, precision, references, regulators, sensor front ends, practical filters, protection, cabling, timers, lock-in detection, audio output, sensitivity, corners, Monte Carlo, yield and datasheet calculations.
-- [Analog IC](https://reedos.github.io/ee-labs/analog-ic-lab/): 45 lessons,
-  device foundations, bias, references, amplifier architectures, fully differential analysis, compensation, comparators, translinear circuits, multipliers, integrated filters, tuning, noise budgets, mismatch-aware sizing, extra-element analysis and stored trim.
-- [Mixed-Signal](https://reedos.github.io/ee-labs/mixed-signal-lab/): 40 lessons,
-  sampling, switched-capacitor circuits, static converters, dynamic error measurements, noise shaping, decimation, PLLs, clock jitter, chopping, auto-zeroing and correlated sampling.
-
-All three analog apps now have lessons for all their planned curriculum groups. Broader engine features, earlier design-task expansion and public-release review remain future scope. [Buildout progress](LAB_BUILDOUT_PROGRESS.md)
-records the implemented scope, model limitations and deployment checks.
-
 ## The experiments
 
 F1, G1 and H1 now open with guided **Start here** lessons before their state,
@@ -71,7 +55,7 @@ Circuit Lab remains the frequency-response tool. Its former phasor lesson links
 open the corresponding Circuit Elements experiments.
 
 The current implementation contains **89 experiments**, including 30 additions for the
-agreed Circuits I?II buildout. They cover missing network methods, complete switching
+agreed Circuits I and II buildout. They cover missing network methods, complete switching
 responses, Laplace inversion, AC equivalents and matching, loaded filter design,
 Fourier reconstruction and convolution, magnetic coupling, three-phase circuits,
 two-port networks and two capstones. The existing interface now includes independent
