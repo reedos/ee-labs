@@ -62,8 +62,8 @@ has no row there, and the Ledger column says which document holds it instead.
 | G | Instruments Lab | measurement | the instrument as a circuit | `instruments-lab` |
 
 Twenty-eight labs. Twenty-seven have an app directory and a row in the ledger, and
-Signal Integrity lives elsewhere. What each app holds today is in `BACKLOG.md`
-section 1. Around 900 experiments when the map is complete.
+Signal Integrity lives elsewhere. How many experiments each app holds today, and
+what state it is in, are in `BACKLOG.md` section 1.
 
 ---
 
@@ -71,7 +71,8 @@ section 1. Around 900 experiments when the map is complete.
 
 Each lab below has the same four lines. **Covers** is the syllabus. **Engine** is
 what runs it. **Scope** is where CORE_SCOPE admits, guards or declines. **Opens
-after** is the seam.
+after** is the seam. None of the four is a status, and none is a count.
+`BACKLOG.md` section 1 holds both.
 
 ### Track A: Circuits and analog
 
@@ -86,7 +87,7 @@ Four seams join it to the other tracks:
 
 ### Track B: Signals and information
 
-**Signal Lab** is built and is the root of the track. Its chain model, sources into a
+**Signal Lab** is the root of the track. Its chain model, sources into a
 cascade of blocks into time and spectrum views, carries three of the four labs below
 without a new interaction model.
 
@@ -120,7 +121,8 @@ laboratory.
   exact and pinned. Every estimate carries its confidence interval as the guard.
 - Opens after: Electronics O1 (a density, not a spectrum) and Signal Lab's filters.
 
-**Communications Lab.** The largest proposed lab, and the one most students ask for.
+**Communications Lab.** The largest lab in this track, and the one most students
+ask for.
 
 - Covers: analog modulation (AM, DSB, SSB, FM, PM), from Signal Lab's AM preset.
   Digital modulation (ASK, PSK, FSK, QAM), the constellation, Gray mapping. The
@@ -153,7 +155,7 @@ laboratory.
 
 ### Track C: Control and machines
 
-**Control Lab** is built and covers the classical course.
+**Control Lab** covers the classical course.
 
 **Control Lab II.** The second control course.
 
@@ -292,7 +294,7 @@ records the seam and does not reopen it.
 
 ### Track F: Energy and power
 
-**Power Lab** is built in part and planned in full.
+**Power Lab** is planned in full in `POWER_LAB_PLAN.md`, and not repeated here.
 
 **Grid Lab.** Power systems, a different subject from power electronics.
 
@@ -393,15 +395,19 @@ map. Every waveform it produces is exact, because a delay is exact.
 
 Ordered by what each lab unlocks, what it leans on, and how much of the engine
 already exists. Each step ships dark and is released on Reed's word, as today.
+The order was written before the program in `PROGRAM.md` built these labs in
+parallel, so no step below states where its lab now stands. `BACKLOG.md` section 1
+states that, and `BACKLOG.md` section 2 holds the order they are offered for review.
 
-1. **Electronics Lab** (planned, brief written). The root of track A, and the
+1. **Electronics Lab**. The root of track A, and the
    companion Newton that the Grid Lab reuses.
 2. **The two seams and the progression test**, from `CURRICULUM.md`. Small, and they
    make every later cross-reference checkable.
-3. **Logic Lab**, on the new `events` package. The largest audience of any proposed
-   lab, the simplest engine, and the root of track D.
+3. **Logic Lab**, on the `events` package. The largest audience of any lab in the
+   map, the simplest engine, and the root of track D.
 4. **Random Signals Lab**, then **Communications Lab**. Track B's second half, on the
-   chain that exists. Communications is the most requested lab and the largest.
+   chain that exists. Communications is the most requested lab, and the largest of
+   the four in track B.
 5. **Applied Analog Lab** and **Analog IC Lab**, once Electronics L and M are built.
 6. **Control Lab II** and **Machines Lab**. Track C's second half.
 7. **Fields Lab**. A new solver and a two-semester course. Its transmission-line

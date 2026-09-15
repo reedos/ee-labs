@@ -140,6 +140,7 @@ Three lines had diverged since 2026-09-06. GitHub master carried the Circuits II
 Branch `integration/reconcile` merges all three. GitHub master came first, then the director branch. The copied labs conflicted as add/add because their history was not shared. Their copies on GitHub contain the same files plus the curriculum wrapper, so the GitHub side was kept for every copied lab file. The director's shared deployed-app list, deep-link module, assembler, ledger and this handoff were kept, and the three new apps were added to that list and to the inventory as lesson-only registries.
 
 Two defects came from clean merges. A duplicated export in the shared UI index broke every build. The curriculum table quoted Power at 34 of 56. Both are fixed on the branch. Nothing here merges to master or releases a lab. The splash and README still quote 59 Elements experiments while the registry holds 89.
+
 ### Plot labels and wafer context
 
 The latest review requested names for every plot feature and definitions before threshold abbreviations.

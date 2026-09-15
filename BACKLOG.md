@@ -17,6 +17,11 @@ hold 913 experiments, lessons or presets. Four labs are released and twenty-thre
 dark. Fourteen apps carry a browser harness at `apps/<slug>/scripts/verify.mjs` and
 thirteen do not.
 
+The evidence behind every `Integrated` row below is the pair of merges `d9b12ba` and
+`b3f1ee1`, which brought the three diverged lines onto one, and the release cut from
+that line as `deb5780`, tag `v1.2.0`. Its scope is the whole app directory as merged,
+not any group inside it. A row that names a further commit names it in the row.
+
 Run `node scripts/director/inventory.mjs` to reproduce every count, id, group name,
 release marker and harness flag in this table. `scripts/director/inventory.test.js`
 checks each row's count against the app's registry and each row's plan file against
@@ -107,7 +112,7 @@ experiment shape, and that model is still under review.
 | 6 | Power Lab | 55 experiments, a harness, and one open desktop gate. |
 | 7 | Logic Lab | The root of track D, and `packages/events` carries four labs. |
 | 8 | Random Signals Lab | 30 experiments, a harness, and three named open defects. |
-| 9 | Communications Lab | The largest proposed lab, and it follows Random Signals. |
+| 9 | Communications Lab | The largest lab in track B at 50, and it follows Random Signals. |
 | 10 | Control Lab II | Track C's second half, on Random Signals' contracts. |
 | 11 | Machines Lab | Its drives waited on Power F and L, which now exist. |
 | 12 | Fields Lab | Groups I to L gate the RF Lab and the System Lab. |
@@ -1093,7 +1098,7 @@ Photonics first sittings replayed from cache.
 
 #### Cut off at the session limit, 2026-09-05 19:50 UTC
 
-Every lane below ran as a workflow of Opus agents. Every agent fell to the
+Every lane below ran as a workflow of agents. Every agent fell to the
 account's session limit within its first hour. What each left is committed on its
 branch, so a fresh sitting continues it rather than restarts it. The workflow
 scripts are in `.claude/workflows/`. Each one's setup checks the branch out if it
