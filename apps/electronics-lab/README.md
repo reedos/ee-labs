@@ -75,5 +75,5 @@ to the ignored `shots` directory.
 The 2026-09-08 numerical/editorial suite passed 279 tests. The existing Circuit
 Elements worked-solve tests and shared URL tests also passed after extracting the
 common renderer. Browser review and publication status are tracked in
-`LAB_BUILDOUT_PROGRESS.md` at the repository root. A built catalog is not evidence
+`docs/history/LAB_BUILDOUT_PROGRESS.md`. A built catalog is not evidence
 that every student has mastered all institutional Electronics I–II syllabi.

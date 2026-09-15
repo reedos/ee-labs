@@ -1,6 +1,6 @@
 # Analog IC Lab
 
-45 working experiments across Groups A–J. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+45 working experiments across Groups A–J. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../docs/history/LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 continuous inversion law; A2 gm/ID ceiling; A3 sizing tradeoffs; A4 pair matching; A5 mirror mismatch; A6 short-channel corrections.
 

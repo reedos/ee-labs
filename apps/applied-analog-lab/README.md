@@ -1,6 +1,6 @@
 # Applied Analog Lab
 
-45 working experiments across Groups A–I. The app remains **dark** (direct URL, no public splash-page card). Group A was introduced in merge 067c9c7; Group B extends that release. See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+45 working experiments across Groups A–I. The app remains **dark** (direct URL, no public splash-page card). Group A was introduced in merge 067c9c7; Group B extends that release. See [buildout progress](../../docs/history/LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 amplifier classes; A2 active-filter GBW; A3 slew; A4 noise; A5 bias and temperature; A6 decoupling and a preamplifier budget.
 

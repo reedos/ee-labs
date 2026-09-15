@@ -1,6 +1,6 @@
 # Mixed-Signal Lab
 
-40 working experiments across Groups A–G. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../LAB_BUILDOUT_PROGRESS.md) for deployment verification.
+40 working experiments across Groups A–G. The app remains **dark** (direct URL, no public splash-page card). See [buildout progress](../../docs/history/LAB_BUILDOUT_PROGRESS.md) for deployment verification.
 
 A1 acquisition; A2 charge sharing; A3 signed injection and feedthrough; A4 kT/C; A5 bottom-plate phase order; A6 aperture jitter.
 

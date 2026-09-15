@@ -18,4 +18,4 @@ initial conditions are adjustable. Phasors describe steady state. The state
 route includes initial energy and startup.
 
 The remaining Circuits I and II scope is tracked in
-`../../CIRCUITS_I_II_BUILDOUT.md`. Consolidation does not complete that scope.
+`../../docs/history/CIRCUITS_I_II_BUILDOUT.md`. Consolidation does not complete that scope.
