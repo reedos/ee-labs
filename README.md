@@ -62,8 +62,9 @@ two-port networks and two capstones. The existing interface now includes indepen
 answer entry and an enlarged drawing view for dense schematics.
 
 See the [course coverage and model boundaries](apps/circuit-elements-lab/README.md)
-and [completion/release evidence](CIRCUITS_COMPLETION_PROGRESS.md). Publication of this
-expansion is pending; the live link may still show the previous catalog.
+and the [2026-09-08 completion record](docs/history/CIRCUITS_COMPLETION_PROGRESS.md).
+Release 1.2 corrected the public count to 89. `BACKLOG.md` section 1 carries the
+current state of this lab and of every other.
 
 Each tool opens with a grouped **Try this** list. An entry loads a setup and asks
 a question. Every claim its note makes is rendered on screen and measured by a

@@ -1,5 +1,14 @@
 # Circuit Elements completion
 
+This is a historical record. It was written on the branch
+`feature/circuits-ii-rollout` on 2026-09-08, and it is kept as evidence of what that
+branch built and checked.
+
+Its words "accepted" and "released" mean that this branch's own release checks
+passed. They do not mean the accepted or released states of `PROGRAM.md` section 8,
+which require Reed's review and his flip of `RELEASE_STATUS`. The current state of
+every lab is `BACKLOG.md` section 1, and it overrides every count and status below.
+
 The user authorized completing the Circuits I–II course on 2026-09-07.
 Use the existing Circuit Elements shell, schematic, controls, anchored analysis tabs,
 worked LaTeX and scrolling behavior. Preserve public experiment identifiers.
@@ -28,7 +37,7 @@ Concurrent director and main-workspace work must be preserved.
 ## Local acceptance, 2026-09-08
 
 The catalog has 89 experiments, including 30 additions. The implemented sequence and
-its model boundaries are recorded in [the app README](apps/circuit-elements-lab/README.md).
+its model boundaries are recorded in [the app README](../../apps/circuit-elements-lab/README.md).
 This is completion of the agreed repository course outcomes, not an accreditation claim
 or proof that a student has mastered every institutional Circuits I–II syllabus.
 
@@ -55,8 +64,9 @@ or proof that a student has mastered every institutional Circuits I–II syllabu
 - Chromium checked all 89 experiments at 1440, 1024, 768 and 390 px. All 1,472 view
   selections preserved every analysis tab's position and size, with no page overflow.
 - The completion browser walkthrough checked all 30 additions at desktop and phone
-  sizes, rendered math, answer feedback/reset, calculated component application,
-  the coupled state table and keyboard/focus behavior of the enlarged drawing.
+  sizes. It checked rendered math, answer feedback and reset, and calculated
+  component application. It also checked the coupled state table and the keyboard
+  and focus behavior of the enlarged drawing.
 - Screenshots were inspected for the dense magnetic/three-phase/cascade drawings and
   the capstone at desktop and phone sizes. They remain in the ignored app `shots/` folder.
 - All 19 application production builds completed with exit code 0. The assembled local preview is served at

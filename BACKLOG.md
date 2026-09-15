@@ -70,6 +70,12 @@ branch. `.claude/workflows/wave-3.js` holds the lanes, their ports and their bri
 This records lane is `w3/records`, and it owns `BACKLOG.md`, `EE_LABS_MAP.md`,
 `ANALOG_ROADMAP.md`, `CURRICULUM.md`, `HANDOFF.md` and `README.md`.
 
+Three progress documents moved to `docs/history/` in this wave. Five documents under
+`apps/` still point at their old root paths, and each is its own lane to correct:
+`analog-ic-lab/README.md`, `applied-analog-lab/README.md`,
+`mixed-signal-lab/README.md`, `electronics-lab/README.md` and
+`circuit-lab/PHASOR_ROLLOUT.md`. The records lane does not edit files under `apps/`.
+
 A lane brings its lab to the shape of Signal Lab, Circuit Lab, Control Lab and
 Circuit Elements Groups A to I. That shape is the try line with chips, the featured
 knob under it, lesson navigation, terms on contact and measured claims. It also
