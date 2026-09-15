@@ -1,13 +1,146 @@
 # Handoff: continuing the EE Labs program from another session
 
-## Reconciliation, 2026-09-13
+Read this, then `PROGRAM.md` in full, then `BACKLOG.md` sections 1 and 2. Those two
+sections are the current record. Everything under the History heading at the foot of
+this file is an earlier session's note, kept as evidence and superseded by what is
+above it.
+
+Written 2026-09-14 by the records lane of wave 3.
+
+## 1. Where everything is
+
+| What | Where |
+| --- | --- |
+| The integration branch | `integration/reconcile`, worktree `.claude/worktrees/reconcile` |
+| Master, released and deployed | `origin/master` at `deb5780`, tag `v1.2.0`, live at reedos.github.io/ee-labs |
+| The charter | `PROGRAM.md`, and section 8 for the five states |
+| The ledger and the release queue | `BACKLOG.md` sections 1 and 2 |
+| The maps | `EE_LABS_MAP.md`, `ANALOG_ROADMAP.md`, `CURRICULUM.md` |
+| One plan per lab | `*_LAB_PLAN.md` at the root |
+| One brief and one needs file per lab | `apps/<slug>/AGENT_BRIEF.md`, `apps/<slug>/NEEDS.md` |
+| The prose rules and the review classes | `STYLE.md`, `REVIEW_PLAYBOOK.md`, `CORE_SCOPE.md` |
+| The inventory | `node scripts/director/inventory.mjs` |
+| The workflow scripts | `.claude/workflows/*.js` |
+| Earlier sessions' reports | `docs/history/`, and `BACKLOG.md` section 3 |
+
+`integration/reconcile` is `origin/master` plus the wave 3 workflow scripts. Nothing
+in wave 3 has been merged into it yet, and nothing has been pushed.
+
+## 2. The state, per the ledger
+
+Twenty-seven apps hold 913 experiments, lessons or presets between them. Four labs
+are released and twenty-three are dark. Fourteen apps carry a browser harness and
+thirteen do not. `BACKLOG.md` section 1 has the row for each one, and that row is the
+only current statement of its state.
+
+No lab is in the accepted state. Every dark lab is integrated, which means its work is
+merged and the integration checks are recorded. It does not mean any group has passed
+the section 8 gates. A registry entry is an implemented experiment, not an accepted
+teaching claim.
+
+Do not read a count as a completion percentage. Do not read a passing test file as
+acceptance. Reports under `docs/history/` use "accepted" and "released" for their own
+branch's release checks, and each now says so in its first paragraph.
+
+## 3. Wave 3, in flight
+
+Wave 3 brings every lab to the shape of the three original modules and Circuit
+Elements Groups A to I. `.claude/workflows/wave-3.js` runs one overseer lane per lab
+on a branch `w3/<slug>`, each in its own worktree cut from `integration/reconcile`,
+each followed by an adversarial reviewer on the same branch. Twenty-seven lanes exist,
+one per app, with ports 4601 to 4627.
+
+A lane verifies its lab and merges the saved `verify/<slug>` branch where one exists.
+It builds the groups its plan still names. It writes or extends `scripts/verify.mjs`
+with the fold, phone and tap-target probes. It runs a screenshot pass read as a
+first-year student and records the walk in its `NEEDS.md`. A lane commits by path on
+its own branch. A lane never pushes, never releases, and never edits a shared surface.
+
+`.claude/workflows/records-w3.js` runs this records lane on `w3/records`. It owns
+`BACKLOG.md`, `EE_LABS_MAP.md`, `ANALOG_ROADMAP.md`, `CURRICULUM.md`, `HANDOFF.md`
+and `README.md`, which no lab lane may touch.
+
+To pick the wave up, run `git worktree list` and `git branch --list 'w3/*'`. A branch
+ahead of `integration/reconcile` carries a lane's work. Read its commits and its
+lab's `NEEDS.md` before continuing it, and finish what is there rather than
+restarting it.
+
+## 4. What is Reed's
+
+Reed owns the repository. He reviews the labs and he alone releases one.
+
+- The release decision. A lab is offered to him one per sitting, in the accepted
+  state, with its cold walks and harness evidence recorded. He alone flips
+  `RELEASE_STATUS`, and the shared-surface change goes in the same commit.
+- The curriculum decisions each lane records in its lab's `NEEDS.md`. Those include
+  K5's common-base half and the thirteen shape deviations in the Electronics plan.
+- Any exclusion of a plan requirement. An unimplemented plan requirement stays open
+  until he approves leaving it out.
+- The splash direction, from the three proposals in `BACKLOG.md` section 3.
+- The teaching model of the three analog apps, which are a lesson tier rather than
+  the suite's experiment shape.
+
+Reed's main workspace at `C:/Users/reedo/projects/ee-labs` may hold his own changes.
+Preserve them. It is not the integration baseline.
+
+## 5. The setup on this machine
+
+```
+git fetch origin
+git checkout integration/reconcile
+npm ci --no-audit --no-fund
+npx vitest run --maxWorkers=8
+```
+
+The machine has 32 cores. The full suite takes about five minutes at eight workers on
+a quiet machine, and the Power Lab's whole-lab tests take tens of seconds each. Run
+the full suite only when no agents are running. A scoped run under an agent uses
+`--maxWorkers=2`, because up to sixteen agents share the machine.
+
+Things that bit earlier sessions, so they do not bite again:
+
+- `core.autocrlf` is true here. Every checkout rewrites `.claude/workflows/*.js` with
+  CRLF endings, and the workflow launcher then refuses the script for hidden control
+  characters. Run `sed -i 's/\r$//' .claude/workflows/*.js` before every launch, and
+  do not commit that change.
+- Launch a workflow by `scriptPath`, the absolute path of the repo file, not by name.
+- Keep the session's working directory at the repo root while a workflow runs. Each
+  agent's worktree is created relative to the directory at spawn time.
+- Resume a stopped run with `resumeFromRunId`. Completed agents replay from cache.
+- Files on disk are CRLF, so a string-replacement pattern needs `\r?\n`.
+- Node cannot see Git Bash's `/tmp`. Scratch files live inside the worktree with a
+  leading underscore and `.tmp` in the name, and are deleted before the last commit.
+- Python is not installed. Do not write a helper script that needs it.
+- The auto-mode classifier refuses force pushes and remote branch deletes, and it
+  refuses some edits at random. The same edit passes on retry with wider context.
+- Run every script and every test from the repo root. A `cd` inside one Bash call
+  persists into the next.
+- Write a long test run to a log file once and read the log, rather than running it
+  twice.
+
+Harnesses run against the assembled site, not a bare preview port. `npm run
+site:serve` assembles `_site` and serves it on 47600, and
+`APP_URL=http://localhost:47600/<slug>/ node apps/<slug>/scripts/verify.mjs` is the
+form. `REVIEW_PLAYBOOK.md` section 11 says why the bare port hides defects.
+
+The repository prose gate is open. `node packages/prose/bin/lint.mjs` reports
+inherited findings across the tree. Report that baseline separately from your own
+findings, and never call a failing run clean. Every document you edit must pass.
+
+## History
+
+Everything below was written by an earlier session. It is kept as evidence of what
+those sessions did and decided. Where it disagrees with the sections above or with
+`BACKLOG.md` section 1, those are current.
+
+### Reconciliation, 2026-09-13
 
 Three lines had diverged since 2026-09-06. GitHub master carried the Circuits II consolidation, the Applied Analog, Analog IC and Mixed-Signal labs, and copies of the RF, System, Photonics, VLSI and Interfaces labs with extended lessons. Local master carried the integration line with Power H to N and the dark RF, System and Photonics groups. The director branch carried the VLSI and Interfaces first groups and the Random recovery.
 
 Branch `integration/reconcile` merges all three. GitHub master came first, then the director branch. The copied labs conflicted as add/add because their history was not shared. Their copies on GitHub contain the same files plus the curriculum wrapper, so the GitHub side was kept for every copied lab file. The director's shared deployed-app list, deep-link module, assembler, ledger and this handoff were kept, and the three new apps were added to that list and to the inventory as lesson-only registries.
 
 Two defects came from clean merges. A duplicated export in the shared UI index broke every build. The curriculum table quoted Power at 34 of 56. Both are fixed on the branch. Nothing here merges to master or releases a lab. The splash and README still quote 59 Elements experiments while the registry holds 89.
-## Plot labels and wafer context
+### Plot labels and wafer context
 
 The latest review requested names for every plot feature and definitions before threshold abbreviations.
 Interfaces now keys its voltage, load and noise plots, including the undefined-input band, guides, selected points and probes.
@@ -29,7 +162,7 @@ Both cover Chromium and Firefox down to 320 pixels. Browser checks include keyed
 Physical-phone and iPhone Safari review remain open. No publication or release is authorized.
 The updated local preview remains `http://127.0.0.1:47630/`.
 
-## Teaching foundations and phone flow
+### Teaching foundations and phone flow
 
 Reed approved explicit teaching foundations for the initial Interfaces and VLSI experiments.
 All ten now explain purpose, input, expected output, parameter roles, predictions, tradeoffs and model limits before derivation.
@@ -53,7 +186,7 @@ Interfaces covers 25 experiment/viewport cases per browser. VLSI covers 30, incl
 Both include 320-pixel and 390-pixel phone widths. These are desktop browser checks, not physical-phone or iPhone Safari validation.
 The numerical prediction tests and browser reports remain app-local. The inherited prose-linter file marker remains untouched.
 
-## First review rework
+### First review rework
 
 Reed rejected the initial VLSI and Interfaces review. Their automated checks missed established usability and teaching requirements.
 This section supersedes the readiness statements in the earlier checkpoint.
@@ -79,7 +212,7 @@ Global prose lint retains 330 inherited findings. All six edited documents pass 
 Reed's main-workspace changes and upstream notation commit remain outside this worktree.
 No changes have been pushed or released.
 
-## First director wave checkpoint
+### First director wave checkpoint
 
 The wave is integrated locally on `integration/program-director`.
 The source checkpoint is `e0c2e16`, with later evidence-only documentation commits.
@@ -108,7 +241,7 @@ It arrived during this wave and is not in this integration baseline or its evide
 The main workspace still contains Reed's corresponding changes and the splash experiment. Preserve them.
 The main handoff points here through `aec37e9`. No director code was merged into master, pushed or released.
 
-## Director wave, 2026-09-06
+### Director wave, 2026-09-06
 
 Reed approved the director operating model and bounded parallel work.
 `PROGRAM.md` section 8 defines ownership, evidence, acceptance and integration.
@@ -140,7 +273,7 @@ Power's `fa6382c` checkpoint and the other saved verification branches remain se
 Power's desktop-control failures do not block unrelated lab implementation.
 Do not treat saved completion reports as current evidence without reviewing their commit and dependencies.
 
-## Local continuation, 2026-09-06
+### Local continuation, 2026-09-06
 
 This section supersedes the branch and verification status in the earlier
 snapshot below. No continuation changes have been pushed or released.
@@ -193,13 +326,13 @@ Repository prose lint had 330 findings before this continuation and 316
 afterward, across 80 files. Power's NEEDS file is clean. The remaining
 documentation findings are not a passing repository prose gate.
 
-## Earlier director snapshot
+### Earlier director snapshot
 
 Written 2026-09-06 by the director session that took over from the first handoff,
 paused at Reed's weekly usage limit. Everything below is on origin. Read this file,
 then `PROGRAM.md` in full, then `BACKLOG.md` §3 and §1.
 
-## 1. Where everything is
+### Where everything is
 
 | What | Where |
 | --- | --- |
@@ -220,7 +353,7 @@ merge. The last full run of the suite on this branch gave 348 files and 10070
 tests at `327ba58`. The three Power Lab merges after that were tested scoped, and
 each was green. Run the full suite before trusting the tip.
 
-## 2. What this session did
+### What this session did
 
 - Merged Electronics Groups D to O, 75 of 77 experiments. Group B is Elements I9
   and I10 by that plan's Decision 3.
@@ -236,7 +369,7 @@ each was green. Run the full suite before trusting the tip.
 - Brought `ELECTRONICS_LAB_PLAN.md` §5 into line with the measured numbers, and
   listed the thirteen shape deviations that are Reed's to rule on.
 
-## 3. Setting up on Reed's PC
+### Setting up on Reed's PC
 
 ```
 git fetch origin
@@ -272,7 +405,7 @@ Things that bit this session, so they do not bite twice:
 - Write a long test run to a log file once and read the log, rather than piping
   the same run twice.
 
-## 4. What is in flight, and how to resume it
+### What is in flight, and how to resume it
 
 One run was stopped at the pause: `verify-harnesses`, run id `wf_801f2ca7-30c`.
 Seven of its nine labs finished with `ok`, each on its `verify/<slug>` branch:
@@ -300,7 +433,7 @@ After that, the order the first handoff set:
    the Electronics groups, and no script exists yet. Write one in the shape of
    `rf-system-photonics.js`.
 
-## 5. Integrating a branch
+### Integrating a branch
 
 Merge with `git merge --no-ff lab/<slug>`. Every lane registers into the same
 few files, so expect the same conflicts each time, and resolve them by union in
@@ -328,7 +461,7 @@ Update the ledger and the cut-off table in `BACKLOG.md`, the map's package
 table and the program's canvas table. Put the decisions for Reed into
 `BACKLOG.md` §3. Gate every commit on the test's exit code.
 
-## 6. Reed's decisions, waiting
+### Reed's decisions, waiting
 
 All are in `BACKLOG.md` §3 and under its Electronics Lab section.
 
@@ -339,7 +472,7 @@ All are in `BACKLOG.md` §3 and under its Electronics Lab section.
 - The RF package's two singularity floors.
 - The splash direction, from the three proposals.
 
-## 7. Loose ends
+### Loose ends
 
 - Four stash entries exist. Two are reviewers' "leftover rf-lab staged" parkings
   that matched no recent commit's tree, and two are Reed's own from master. None
