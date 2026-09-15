@@ -11,9 +11,11 @@ an idea that no earlier experiment teaches.** The Elements lab already tests thi
 inside itself, every cross-reference in a note must name an experiment that exists.
 §6 extends that test across the seams.
 
-Circuit Elements implementation is updated as of 2026-09-08; its expansion awaits publication.
-Other rows retain the 2026-09-05 program baseline. Built in those rows means on the deployed
-site, dark or released. Planned means specified in a plan file. Nowhere means no plan names it.
+This document is the six-lab walk, and its Status column describes that walk. It is
+not the program ledger. `BACKLOG.md` section 1 is the current record for all 27 apps,
+and it overrides any status here. Built in a row below means on the deployed site,
+dark or released. Planned means specified in a plan file. Nowhere means no plan names
+it.
 
 ---
 
@@ -26,7 +28,7 @@ It also introduces silicon, silicon-germanium, indium phosphide and wide-bandgap
 
 The shared `ChipContext` note makes the introduction available within VLSI and Interfaces before their circuit explanations.
 It adds context, not a new experiment or a required manufacturing course. Detailed device physics stays in Devices Lab.
-The six-lab path below remains the historical path described by this document. The current program inventory is in `BACKLOG.md`.
+The six-lab path below remains the historical path described by this document. The current program inventory is in `BACKLOG.md` section 1.
 
 ## 1. The order
 
@@ -35,7 +37,7 @@ order the nav will fold to (`ELECTRONICS_LAB_PLAN.md` Decision 5).
 
 | Step | Lab | Course it mirrors | Experiments | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Circuit Elements Lab | Circuits I and II foundations | 89 | implemented, expansion release pending |
+| 1 | Circuit Elements Lab | Circuits I and II foundations | 89 | released |
 | 2 | Circuit Lab | Filters and frequency response | 16 | released |
 | 3 | Electronics Lab | Electronics I and II | 75 of 77 | built in part, dark |
 | 4 | Signal Lab | Signals and Systems, DSP | 35 | released |
@@ -50,7 +52,7 @@ interleave.
 
 ## 2. The path, group by group
 
-### Step 1: Circuit Elements Lab (89, implemented, expansion release pending)
+### Step 1: Circuit Elements Lab (89, released)
 
 | Group | Teaches | Count |
 | --- | --- | --- |
@@ -88,7 +90,8 @@ also hand over to Circuit Lab for further frequency-response exploration.
 Circuit Elements owns the Circuits I and II course sections. Phasor instruction uses
 its existing schematic and analysis panes. Circuit Lab remains the frequency-response
 tool. Circuit Elements now implements the expanded state-space and Laplace progression.
-`CIRCUITS_COMPLETION_PROGRESS.md` records its acceptance evidence and pending publication.
+`docs/history/CIRCUITS_COMPLETION_PROGRESS.md` records the evidence that branch
+gathered on 2026-09-08. `BACKLOG.md` section 1 carries the lab's current state.
 
 ### Step 3: Electronics Lab (75 of 77)
 
@@ -170,15 +173,15 @@ The plan's 54 became 56 when the buck grew from six experiments to eight.
 
 Each seam is the last thing one lab gives and the first thing the next assumes. The descriptions distinguish implemented foundations from later planned applications.
 
-**Seam 1, Elements to Circuit Lab: from j? to s.** *Implemented; expansion publication pending.*
+**Seam 1, Elements to Circuit Lab: from jω to s.** *Implemented.*
 Elements G1 derives characteristic roots. Elements J1 defines the Laplace variable and
 transform, Elements J7 derives the transfer function from the state matrix, and Elements
-H7 connects roots with poles. Elements H6 then reads the response along the j? axis.
+H7 connects roots with poles. Elements H6 then reads the response along the jω axis.
 Circuit Lab can build on that derivation rather than introducing a new meaning of s
 only in a definition panel.
 
 **Seam 2, Circuit Lab to Signal Lab: the impulse response in continuous time.**
-*Implemented in the shared foundation; publication pending.* Elements K4 derives the
+*Implemented in the shared foundation.* Elements K4 derives the
 causal RC impulse response, integrates it for the step response, defines continuous
 convolution and predicts a finite pulse using two shifted steps. Elements K3 separately
 connects Fourier harmonics to the analog transfer function and includes startup and a
@@ -202,7 +205,7 @@ already states.
 
 Elements L1 and L2 now supply mutual-inductance and transformer foundations before
 the magnetics applications in Power D1. Elements L3 and L4 supply the balanced and
-unbalanced three-phase foundations; converter switching remains in Power Lab.
+unbalanced three-phase foundations. Converter switching remains in Power Lab.
 
 ---
 

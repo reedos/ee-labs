@@ -1,10 +1,19 @@
 # Circuits I and II buildout
 
+This is a historical record. It was written on the branch
+`feature/circuits-ii-rollout` between 2026-09-06 and 2026-09-08, and it is kept as
+evidence of the plan that branch worked to.
+
+Its words "accepted" and "released" mean that this branch's own release checks
+passed. They do not mean the accepted or released states of `PROGRAM.md` section 8,
+which require Reed's review and his flip of `RELEASE_STATUS`. The current state of
+every lab is `BACKLOG.md` section 1, and it overrides every count and status below.
+
 ## Status and architecture
 
 Reed approved the curriculum expansion on 2026-09-06. This document records the original coverage and dependency plan.
 The local completion now contains 89 experiments, including 30 additions. See
-[implemented coverage](apps/circuit-elements-lab/README.md) and
+[implemented coverage](../../apps/circuit-elements-lab/README.md) and
 [acceptance and publication status](CIRCUITS_COMPLETION_PROGRESS.md).
 Publication of this expansion is pending. The evidence and proposed work below preserve the original planning baseline.
 

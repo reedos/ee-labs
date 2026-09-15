@@ -21,47 +21,49 @@ the order to build in. §5 is what is out, and why.
 
 ## 1. The map
 
-The status column below is the original curriculum map, not the implementation ledger.
-Use `BACKLOG.md` section 1 for current counts, verification states and assignments.
-The executable inventory checks that ledger against the app registries.
+This table is the curriculum map. It says what each lab covers and how a reader
+works it, and it carries no status and no size of its own. Both of those live in
+`BACKLOG.md` section 1, which is written from the app registries and checked against
+them by `scripts/director/inventory.test.js`.
 
-Status. **Built** is on the deployed site. **Planned** has a plan file. **Mapped**
-has a section in `ANALOG_ROADMAP.md`. **Proposed** is named here for the first time.
+The Ledger column names the app directory whose row in that section carries the
+count, the present groups, the state and the next work. A lab with no app directory
+has no row there, and the Ledger column says which document holds it instead.
 
-| Track | Lab | Mirrors | Size | Interaction model | Status |
-| --- | --- | --- | --- | --- | --- |
-| A · Circuits and analog | Circuit Elements Lab | Circuits I | 55 | netlist, schematic, meters | built |
-| A | Circuit Lab | Circuits II, frequency domain | 15 | circuit to H(s) | built |
-| A | Electronics Lab | Electronics I and II | 77 | netlist, operating point, small signal | planned |
-| A | Applied Analog Lab | board-level design | 16 built; later groups planned | guided math, circuit and loop views | dark, Groups A–C implemented |
-| A | Analog IC Lab | analog IC design | 17 built; later groups planned | device, bias and uncertainty views | dark, Groups A–C implemented |
-| A | Mixed-Signal Lab | sampled circuits, converters, clocks | 18 built; later groups planned | charge phases, sampled output and z plane | dark, Groups A–C implemented |
-| A | RF Lab | the radio front end | ~35 | Smith chart, S-parameters | mapped |
-| A | System Lab | the signal chain and its budgets | ~25 | Signal Lab's chain | mapped |
-| B · Signals and information | Signal Lab | Signals and Systems, DSP | 35 | sources, chain, time and spectrum | built |
-| B | DSP Lab | DSP II: multirate, adaptive, fixed point, design | ~40 | Signal Lab's chain | proposed |
-| B | Random Signals Lab | probability and random processes for EE | ~30 | ensembles and estimators over the chain | proposed |
-| B | Communications Lab | analog and digital communications | ~50 | chain, constellation, eye, BER | proposed |
-| B | Information Lab | information theory and coding | ~25 | source, code, channel, decoder | proposed |
-| C · Control and machines | Control Lab | Control I | 13 | plant and controller, loop views | built |
-| C | Control Lab II | state space, digital, nonlinear, identification | ~35 | Control Lab's, plus state and phase plane | proposed |
-| C | Machines Lab | electric machines and drives | ~35 | the machine as a circuit and a rotor | proposed |
-| D · Digital and computers | Logic Lab | digital logic | ~45 | gates, timing diagram, state machine | proposed |
-| D | VLSI Lab | digital IC design | ~30 | gates as transistors, delay, power | proposed |
-| D | Computer Lab | computer organisation | ~30 | datapath, pipeline, memory hierarchy | proposed |
-| D | Interfaces Lab | embedded interfaces and buses | ~30 | timing diagram, protocol, the pin | proposed |
-| E · Fields and waves | Fields Lab | electromagnetics I and II | ~50 | geometry, field map, the line | proposed |
-| E | Photonics Lab | fibre, lasers, detectors | ~25 | the optical link | proposed |
-| E | Signal Integrity | high-speed digital and optical links | private | the private waveform simulator | out of this repo |
-| F · Energy and power | Power Lab | power electronics | 22 of 54 | switch states, scrub, steady state | built in part |
-| F | Grid Lab | power systems | ~40 | one-line diagram, power flow | proposed |
-| F | Energy Lab | photovoltaics, batteries, wind, the microgrid | ~25 | source models into Power Lab's converters | proposed |
-| G · Devices and instruments | Devices Lab | semiconductor devices | ~30 | the one-dimensional structure and its curves | proposed |
-| G | Instruments Lab | measurement | ~25 | the instrument as a circuit | proposed |
+| Track | Lab | Mirrors | Interaction model | Ledger |
+| --- | --- | --- | --- | --- |
+| A · Circuits and analog | Circuit Elements Lab | Circuits I | netlist, schematic, meters | `circuit-elements-lab` |
+| A | Circuit Lab | Circuits II, frequency domain | circuit to H(s) | `circuit-lab` |
+| A | Electronics Lab | Electronics I and II | netlist, operating point, small signal | `electronics-lab` |
+| A | Applied Analog Lab | board-level design | guided math, circuit and loop views | `applied-analog-lab` |
+| A | Analog IC Lab | analog IC design | device, bias and uncertainty views | `analog-ic-lab` |
+| A | Mixed-Signal Lab | sampled circuits, converters, clocks | charge phases, sampled output and z plane | `mixed-signal-lab` |
+| A | RF Lab | the radio front end | Smith chart, S-parameters | `rf-lab` |
+| A | System Lab | the signal chain and its budgets | Signal Lab's chain | `system-lab` |
+| B · Signals and information | Signal Lab | Signals and Systems, DSP | sources, chain, time and spectrum | `signal-lab` |
+| B | DSP Lab | DSP II: multirate, adaptive, fixed point, design | Signal Lab's chain | `dsp-lab` |
+| B | Random Signals Lab | probability and random processes for EE | ensembles and estimators over the chain | `random-lab` |
+| B | Communications Lab | analog and digital communications | chain, constellation, eye, BER | `comms-lab` |
+| B | Information Lab | information theory and coding | source, code, channel, decoder | `info-lab` |
+| C · Control and machines | Control Lab | Control I | plant and controller, loop views | `control-lab` |
+| C | Control Lab II | state space, digital, nonlinear, identification | Control Lab's, plus state and phase plane | `control-lab-ii` |
+| C | Machines Lab | electric machines and drives | the machine as a circuit and a rotor | `machines-lab` |
+| D · Digital and computers | Logic Lab | digital logic | gates, timing diagram, state machine | `logic-lab` |
+| D | VLSI Lab | digital IC design | gates as transistors, delay, power | `vlsi-lab` |
+| D | Computer Lab | computer organisation | datapath, pipeline, memory hierarchy | `computer-lab` |
+| D | Interfaces Lab | embedded interfaces and buses | timing diagram, protocol, the pin | `interfaces-lab` |
+| E · Fields and waves | Fields Lab | electromagnetics I and II | geometry, field map, the line | `fields-lab` |
+| E | Photonics Lab | fibre, lasers, detectors | the optical link | `photonics-lab` |
+| E | Signal Integrity | high-speed digital and optical links | the private waveform simulator | none, see §5 |
+| F · Energy and power | Power Lab | power electronics | switch states, scrub, steady state | `power-lab` |
+| F | Grid Lab | power systems | one-line diagram, power flow | `grid-lab` |
+| F | Energy Lab | photovoltaics, batteries, wind, the microgrid | source models into Power Lab's converters | `energy-lab` |
+| G · Devices and instruments | Devices Lab | semiconductor devices | the one-dimensional structure and its curves | `devices-lab` |
+| G | Instruments Lab | measurement | the instrument as a circuit | `instruments-lab` |
 
-Twenty-eight labs. Six are built or partly built, one is planned, six are mapped,
-fourteen are proposed here, and one lives elsewhere. Around 900 experiments when
-complete.
+Twenty-eight labs. Twenty-seven have an app directory and a row in the ledger, and
+Signal Integrity lives elsewhere. How many experiments each app holds today, and
+what state it is in, are in `BACKLOG.md` section 1.
 
 ---
 
@@ -69,7 +71,8 @@ complete.
 
 Each lab below has the same four lines. **Covers** is the syllabus. **Engine** is
 what runs it. **Scope** is where CORE_SCOPE admits, guards or declines. **Opens
-after** is the seam.
+after** is the seam. None of the four is a status, and none is a count.
+`BACKLOG.md` section 1 holds both.
 
 ### Track A: Circuits and analog
 
@@ -84,7 +87,7 @@ Four seams join it to the other tracks:
 
 ### Track B: Signals and information
 
-**Signal Lab** is built and is the root of the track. Its chain model, sources into a
+**Signal Lab** is the root of the track. Its chain model, sources into a
 cascade of blocks into time and spectrum views, carries three of the four labs below
 without a new interaction model.
 
@@ -118,7 +121,8 @@ laboratory.
   exact and pinned. Every estimate carries its confidence interval as the guard.
 - Opens after: Electronics O1 (a density, not a spectrum) and Signal Lab's filters.
 
-**Communications Lab.** The largest proposed lab, and the one most students ask for.
+**Communications Lab.** The largest lab in this track, and the one most students
+ask for.
 
 - Covers: analog modulation (AM, DSB, SSB, FM, PM), from Signal Lab's AM preset.
   Digital modulation (ASK, PSK, FSK, QAM), the constellation, Gray mapping. The
@@ -151,7 +155,7 @@ laboratory.
 
 ### Track C: Control and machines
 
-**Control Lab** is built and covers the classical course.
+**Control Lab** covers the classical course.
 
 **Control Lab II.** The second control course.
 
@@ -290,7 +294,7 @@ records the seam and does not reopen it.
 
 ### Track F: Energy and power
 
-**Power Lab** is built in part and planned in full.
+**Power Lab** is planned in full in `POWER_LAB_PLAN.md`, and not repeated here.
 
 **Grid Lab.** Power systems, a different subject from power electronics.
 
@@ -361,8 +365,9 @@ approximation gives.
 
 ## 3. The engine roadmap
 
-The suite has six packages today. The map needs eight more, and most labs need
-none of them.
+The suite has seventeen packages under `packages/`. The table below records the
+contract each one owes the lab that first needed it, and `PROGRAM.md` section 5 names
+who may change it. Most labs need no package of their own.
 
 | Package | Provides | First lab | CORE_SCOPE stance |
 | --- | --- | --- | --- |
@@ -374,9 +379,7 @@ none of them.
 | `machines` | equivalent circuits with mechanical states, the dq transform | Machines | exact for the model, saturation labelled |
 | `fields` | closed-form geometries, a relaxation solver with convergence, the lossless line on `events` | Fields | closed forms exact, grid guarded |
 | `grid` | per-unit, sequence networks, power flow on `network`'s Newton, the swing equation | Grid | exact at convergence, DC flow guarded |
-| `rf` | S-parameters, the Smith map, lines, matching, the link budgets | RF | exact, two refusals |
-| `photonics` | the photon, the fibre, the cavity, the rate equations | Photonics | exact for the model |
-| `rf` | S-parameters, the Smith chart, the line per frequency | RF | exact per frequency |
+| `rf` | S-parameters, the Smith chart, the line per frequency, matching, the link budgets | RF | exact per frequency, the rational form declined |
 | `photonics` | junction light sources and detectors, the laser rate equations, fibre and the cavity | Photonics | steady state exact, the linearisation guarded |
 | `switched` extended | charge conservation at a switch event, exact H(z) of an SC network | Mixed-Signal | exact |
 | `systems` extended | state space, the discrete loop, the describing function | Control Lab II | exact, describing function guarded |
@@ -392,15 +395,19 @@ map. Every waveform it produces is exact, because a delay is exact.
 
 Ordered by what each lab unlocks, what it leans on, and how much of the engine
 already exists. Each step ships dark and is released on Reed's word, as today.
+The order was written before the program in `PROGRAM.md` built these labs in
+parallel, so no step below states where its lab now stands. `BACKLOG.md` section 1
+states that, and `BACKLOG.md` section 2 holds the order they are offered for review.
 
-1. **Electronics Lab** (planned, brief written). The root of track A, and the
+1. **Electronics Lab**. The root of track A, and the
    companion Newton that the Grid Lab reuses.
 2. **The two seams and the progression test**, from `CURRICULUM.md`. Small, and they
    make every later cross-reference checkable.
-3. **Logic Lab**, on the new `events` package. The largest audience of any proposed
-   lab, the simplest engine, and the root of track D.
+3. **Logic Lab**, on the `events` package. The largest audience of any lab in the
+   map, the simplest engine, and the root of track D.
 4. **Random Signals Lab**, then **Communications Lab**. Track B's second half, on the
-   chain that exists. Communications is the most requested lab and the largest.
+   chain that exists. Communications is the most requested lab, and the largest of
+   the four in track B.
 5. **Applied Analog Lab** and **Analog IC Lab**, once Electronics L and M are built.
 6. **Control Lab II** and **Machines Lab**. Track C's second half.
 7. **Fields Lab**. A new solver and a two-semester course. Its transmission-line

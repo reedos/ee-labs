@@ -1,183 +1,153 @@
 # The backlog: what is not built yet, and what it waits for
 
-The director's ledger for the program in `PROGRAM.md`. Every lab in `EE_LABS_MAP.md`
-has a row. Every item deferred by an overseer has a line under its lab's heading,
-with the dependency that unblocks it. When a dependency is built, the director walks
-this file and reopens what it unblocks. Nothing leaves this file by being forgotten.
+The director's ledger for the program in `PROGRAM.md`. Section 1 is the one current
+record of where each lab stands. Section 2 is the order the labs are offered to Reed
+for review. Section 3 holds the reports of earlier sessions as evidence.
 
-The current ledger below supersedes status statements in the historical reports.
-Those reports remain evidence of earlier work and decisions.
-An implemented experiment is a registry entry, not an accepted teaching claim.
-Verification, integration and release are separate states under `PROGRAM.md` section 8.
+A row in section 1 overrides any statement in section 3, in a lab's plan, in a lab's
+`NEEDS.md`, or in the moved documents under `docs/history/`. An implemented experiment
+is a registry entry, not an accepted teaching claim. Implementation, verification,
+integration, acceptance and release are five separate states, defined in `PROGRAM.md`
+section 8.
 
 ## 1. The ledger
 
-Snapshot: director integration wave from `cf90dda`, 2026-09-06.
-The 24 app registries contain 752 experiments, lessons or presets.
-Four labs are released. Twenty are dark. Three planned apps do not exist in this tree.
-These counts exclude Reed's concurrent main-workspace changes and separate verification branches.
-They are not a percentage of curriculum acceptance.
+Snapshot: `integration/reconcile` at version 1.2.0, 2026-09-14. The 27 app registries
+hold 913 experiments, lessons or presets. Four labs are released and twenty-three are
+dark. Fourteen apps carry a browser harness at `apps/<slug>/scripts/verify.mjs` and
+thirteen do not.
 
-Run `node scripts/director/inventory.mjs` to reproduce the app counts, ids,
-group names, release markers and browser-harness presence.
-The inventory test checks these counts against this table.
-The three original released labs have no `RELEASE_STATUS` file.
+The evidence behind every `Integrated` row below is the pair of merges `d9b12ba` and
+`b3f1ee1`, which brought the three diverged lines onto one, and the release cut from
+that line as `deb5780`, tag `v1.2.0`. Its scope is the whole app directory as merged,
+not any group inside it. A row that names a further commit names it in the row.
 
-| App | Implemented | Present groups | Delivery and verification | Next work or dependency | Plan |
+Run `node scripts/director/inventory.mjs` to reproduce every count, id, group name,
+release marker and harness flag in this table. `scripts/director/inventory.test.js`
+checks each row's count against the app's registry and each row's plan file against
+the tree. The three original released labs have no `RELEASE_STATUS` file, so the
+inventory reports them as `legacy`.
+
+The state column names the state from `PROGRAM.md` section 8 and the scope it covers.
+A dark lab is never accepted or released. No lab on this line has an accepted group,
+because none has yet passed the section 8 gates with its cold walks and its harness
+evidence recorded.
+
+| App | Experiments | Present groups | State and scope | Next work | Plan |
 | --- | --- | --- | --- | --- | --- |
-| `circuit-elements-lab` | 89 | A to N | Released; Circuits I and II consolidated here on origin/master; verification WIP `0795f5b` | Reconcile saved verification with the consolidated lab; the splash still quotes 59 | `CIRCUIT_ELEMENTS_LAB_PLAN.md` |
-| `circuit-lab` | 16 | Four lesson groups | Released; `582650e` revalidated, not accepted | Browser failures: 34 Chromium, 35 Firefox; phone plots and laptop lesson chips | `CURRICULUM.md` |
-| `signal-lab` | 35 | Five preset groups | Released; saved verification unmerged | Revalidate `659be05` and its shared requests | `CURRICULUM.md` |
-| `control-lab` | 13 | Four lesson groups | Released; saved verification unmerged | Revalidate `bc20d8a` and its shared requests | `CURRICULUM.md` |
-| `electronics-lab` | 75 | A, C to O | Dark; no browser harness | Audit shape deviations and K5; B is covered by Elements I9 and I10 | `ELECTRONICS_LAB_PLAN.md` |
-| `applied-analog-lab` | 45 | A to I | Dark; lessons only, no browser harness; built on origin/master 2026-09-08 | Browser acceptance and plan-fidelity review; check phase 0 contracts against Electronics | `APPLIED_ANALOG_LAB_PLAN.md` |
-| `analog-ic-lab` | 45 | A to J | Dark; lessons only, no browser harness; built on origin/master 2026-09-08 | Browser acceptance and plan-fidelity review; later groups depend on Applied Analog | `ANALOG_IC_LAB_PLAN.md` |
-| `mixed-signal-lab` | 40 | A to G | Dark; lessons only, no browser harness; built on origin/master 2026-09-08 | Browser acceptance and plan-fidelity review; charge-conservation events remain to check | `MIXED_SIGNAL_LAB_PLAN.md` |
-| `rf-lab` | 19 | A to D | Dark; no browser harness | E to H remain; check existing capacitance, noise and oscillator contracts | `RF_LAB_PLAN.md` |
-| `system-lab` | 4 | A | Dark; harness exists, evidence review pending | B to F remain; source-noise checks, IP3 extraction, Fields L and RF H | `SYSTEM_LAB_PLAN.md` |
-| `dsp-lab` | 40 | A to F | Dark; no browser harness | Browser acceptance and plan-fidelity review | `DSP_LAB_PLAN.md` |
-| `random-lab` | 30 | A to I | Dark; recovery integrated as `e0c2e16` | C3/I1 phone captions and F4 spread instruction remain open | `RANDOM_LAB_PLAN.md` |
-| `comms-lab` | 50 | A to H | Dark; no browser harness | Browser acceptance and reported plan-number differences | `COMMUNICATIONS_LAB_PLAN.md` |
-| `info-lab` | 25 | A to F | Dark; no browser harness | Browser acceptance and the recorded plan correction | `INFORMATION_LAB_PLAN.md` |
-| `control-lab-ii` | 32 | A to E, F1 and F2 | Dark; no browser harness | F3 to F5 remain; check Random Signals contracts | `CONTROL_LAB_II_PLAN.md` |
-| `machines-lab` | 35 | A to E | Dark; saved verification unmerged | Revalidate `fedb2c9`; Power F and L now exist for the deferred drives | `MACHINES_LAB_PLAN.md` |
-| `logic-lab` | 45 | A to H | Dark; no browser harness | Browser acceptance; Electronics D6 now exists | `LOGIC_LAB_PLAN.md` |
-| `vlsi-lab` | 5 | A1 to A5 | Dark; reworked at `e3afe13`, review open | Revised first-group review, A3 analog-chain comparison, part of A5 and shared progression remain open | `VLSI_LAB_PLAN.md` |
-| `computer-lab` | 30 | A to G | Dark; no browser harness | Browser acceptance and shared timing contracts | `COMPUTER_LAB_PLAN.md` |
-| `interfaces-lab` | 5 | A1 to A5 | Dark; reworked at `e3afe13`, review open | Revised first-group review, shared progression and Groups B to G remain open | `INTERFACES_LAB_PLAN.md` |
-| `fields-lab` | 36 | A to H | Dark; saved verification unmerged | Revalidate `7e5e640`; I to L remain, including System's antenna prerequisite | `FIELDS_LAB_PLAN.md` |
-| `photonics-lab` | 21 | A, C to F | Dark; harness exists, evidence review pending | B remains; Electronics O now exists, receiver contract check next | `PHOTONICS_LAB_PLAN.md` |
-| `power-lab` | 55 | A to N, except D5 | Dark; verification open on `fa6382c` | Desktop controls gate; D5 and recorded model deviations remain separate | `POWER_LAB_PLAN.md` |
-| `grid-lab` | 42 | A to J | Dark; no browser harness | Browser acceptance; Power I3 and D1 references can be checked | `GRID_LAB_PLAN.md` |
-| `energy-lab` | 26 | A to E | Dark; no browser harness | Browser acceptance; wind extension needs generator contract and scope review | `ENERGY_LAB_PLAN.md` |
-| `devices-lab` | 30 | A to G | Dark; no browser harness | Browser acceptance and plan-fidelity review | `DEVICES_LAB_PLAN.md` |
-| `instruments-lab` | 25 | A to F | Dark; saved verification unmerged | Revalidate `dc2e599`; network-analyser extension needs RF contract and scope review | `INSTRUMENTS_LAB_PLAN.md` |
-| Signal Integrity | External | Private simulator | Outside this repository | No implementation assignment here | `EE_LABS_MAP.md` |
+| `circuit-elements-lab` | 89 | A to N | Released. `RELEASE_STATUS` reads released and the splash quotes 89 in 14 groups. Groups J to N arrived from the 2026-09-06 to 2026-09-09 branch, and no group is accepted. | Merge `origin/verify/circuit-elements-lab`, audit Groups H and J to N for pinned numbers, extend the harness, two cold walks. Lane `w3/circuit-elements-lab`. | `CIRCUIT_ELEMENTS_LAB_PLAN.md` |
+| `circuit-lab` | 16 | Four named lesson groups | Released. No `RELEASE_STATUS` file, public since 1.0. Verified at `582650e` for its numbers alone. The saved browser pass is unmerged and recorded 34 Chromium and 35 Firefox failures. | Merge `origin/verify/circuit-lab`, fix the browser failures, confirm the phasor redirects into Elements, harness and a cold walk. Lane `w3/circuit-lab`. | `CURRICULUM.md` |
+| `signal-lab` | 35 | Five named preset groups | Released. No `RELEASE_STATUS` file, public since 1.0. Its saved verification branch is unmerged. | Merge `origin/verify/signal-lab`, check the navigation probe against the mobile-nav commit, harness, gold-standard pass, cold walk. Lane `w3/signal-lab`. | `CURRICULUM.md` |
+| `control-lab` | 13 | Four named lesson groups | Released. No `RELEASE_STATUS` file, public since 1.0. Its saved verification branch is unmerged. | Merge `origin/verify/control-lab`, run the harness, gold-standard pass, cold walk. Lane `w3/control-lab`. | `CURRICULUM.md` |
+| `electronics-lab` | 75 | A, C to O | Integrated on `integration/reconcile`, dark. 75 of the plan's 77, with Group B covered by Elements I9 and I10 under Decision 3. Harness present. No group accepted. | Plan-fidelity audit, K5's common-base half, the thirteen shape deviations for Reed, audit of `c8d8981`, gold-standard pass. Lane `w3/electronics-lab`. | `ELECTRONICS_LAB_PLAN.md` |
+| `power-lab` | 55 | A to N | Integrated on `integration/reconcile`, dark. Harness present. The saved pass at `fa6382c` is unmerged, and its desktop gate is open at 58 first-knob failures. | Merge `origin/verify/power-lab`, fix the sidebar's vertical budget, build D5 the leakage spike, gold-standard pass. Lane `w3/power-lab`. | `POWER_LAB_PLAN.md` |
+| `logic-lab` | 45 | A to H | Integrated on `integration/reconcile`, dark. No browser harness. No group accepted. | Plan-fidelity audit, point the note that waited at Electronics D6, write `scripts/verify.mjs`, gold-standard pass. Lane `w3/logic-lab`. | `LOGIC_LAB_PLAN.md` |
+| `random-lab` | 30 | A to I | Integrated on `integration/reconcile`, dark. The startup and rendering recovery merged as `e0c2e16`, which covers rendering and not teaching. Harness present. | Fix the C3 and I1 phone captions and F4's spread instruction with tests, then the gold-standard pass and a cold walk. Lane `w3/random-lab`. | `RANDOM_LAB_PLAN.md` |
+| `comms-lab` | 50 | A to H | Integrated on `integration/reconcile`, dark. No browser harness. No group accepted. | Resolve the reported plan-number differences from the engine, write `scripts/verify.mjs`, gold-standard pass. Lane `w3/comms-lab`. | `COMMUNICATIONS_LAB_PLAN.md` |
+| `control-lab-ii` | 32 | A to E, F1 and F2 | Integrated on `integration/reconcile`, dark. No browser harness. No group accepted. | Build F3 to F5 on the `packages/random` contracts, write `scripts/verify.mjs`, gold-standard pass. Lane `w3/control-lab-ii`. | `CONTROL_LAB_II_PLAN.md` |
+| `machines-lab` | 35 | A to E | Integrated on `integration/reconcile`, dark. Harness present. Its saved verification branch is unmerged. The drives group is unbuilt. | Merge `origin/verify/machines-lab`, build the drives group on `packages/switched`, gold-standard pass. Lane `w3/machines-lab`. | `MACHINES_LAB_PLAN.md` |
+| `fields-lab` | 36 | A to H | Integrated on `integration/reconcile`, dark. Harness present. Its saved verification branch is unmerged. Groups I to L are unbuilt. | Merge `origin/verify/fields-lab`, build I to L including the antenna group the System Lab needs, gold-standard pass. Lane `w3/fields-lab`. | `FIELDS_LAB_PLAN.md` |
+| `grid-lab` | 42 | A to J | Integrated on `integration/reconcile`, dark. No browser harness. No group accepted. | Plan-fidelity audit, point the two cross-references at Power I3 and D1, write `scripts/verify.mjs`. Lane `w3/grid-lab`. | `GRID_LAB_PLAN.md` |
+| `energy-lab` | 26 | A to E | Integrated on `integration/reconcile`, dark. No browser harness. The wind extension is unbuilt. | Build the wind extension on the `packages/machines` generator contract or refuse it with a test, write `scripts/verify.mjs`. Lane `w3/energy-lab`. | `ENERGY_LAB_PLAN.md` |
+| `mixed-signal-lab` | 40 | A to G | Integrated on `integration/reconcile`, dark. Lessons only, under the shared `CurriculumApp`, built on the 2026-09-08 branch. No browser harness. | Review the lesson teaching model against the gold standard, then the charge-conservation checks, the harness and a cold walk. Lane `w3/mixed-signal-lab`. | `MIXED_SIGNAL_LAB_PLAN.md` |
+| `vlsi-lab` | 5 | A | Integrated on `integration/reconcile`, dark. Group A reworked at `e3afe13` after Reed rejected the first review. A3's analog-chain comparison and part of A5 are open. Harness present. | Finish A3 and A5, build Groups B to G, gold-standard pass against the section 8 gates. Lane `w3/vlsi-lab`. | `VLSI_LAB_PLAN.md` |
+| `interfaces-lab` | 5 | A | Integrated on `integration/reconcile`, dark. Group A reworked at `e3afe13` after Reed rejected the first review. Harness present. Groups B to G are unbuilt. | Audit the added lesson tier, build Groups B to G on `packages/events`, gold-standard pass against the section 8 gates. Lane `w3/interfaces-lab`. | `INTERFACES_LAB_PLAN.md` |
+| `computer-lab` | 30 | A to G | Integrated on `integration/reconcile`, dark. No browser harness. No group accepted. | Plan-fidelity audit, record the shared timing contracts with Logic and Interfaces, write `scripts/verify.mjs`. Lane `w3/computer-lab`. | `COMPUTER_LAB_PLAN.md` |
+| `rf-lab` | 19 | A to D | Integrated on `integration/reconcile`, dark. No browser harness. It carries a separate lesson tier from the 2026-09-08 branch. Groups E to H are unbuilt. | Audit the lesson tier, build Groups E to H on `packages/rf`, write `scripts/verify.mjs`. Lane `w3/rf-lab`. | `RF_LAB_PLAN.md` |
+| `photonics-lab` | 21 | A, C to F | Integrated on `integration/reconcile`, dark. Harness present, evidence unreviewed. It carries a separate lesson tier from the 2026-09-08 branch. Group B is unbuilt. | Audit the lesson tier, build Group B on the Electronics O receiver contract, gold-standard pass. Lane `w3/photonics-lab`. | `PHOTONICS_LAB_PLAN.md` |
+| `system-lab` | 4 | A | Integrated on `integration/reconcile`, dark. Harness present, evidence unreviewed. It carries a separate lesson tier from the 2026-09-08 branch. Groups B to F are unbuilt. | Audit the lesson tier, build B and C on the `packages/rf` noise and linearity contracts, then D to F as their prerequisites land. Lane `w3/system-lab`. | `SYSTEM_LAB_PLAN.md` |
+| `dsp-lab` | 40 | A to F | Integrated on `integration/reconcile`, dark. No browser harness. No group accepted. | Plan-fidelity audit with every typed number re-pinned, write `scripts/verify.mjs`, gold-standard pass. Lane `w3/dsp-lab`. | `DSP_LAB_PLAN.md` |
+| `info-lab` | 25 | A to F | Integrated on `integration/reconcile`, dark. No browser harness. No group accepted. | Confirm the recorded plan correction against the code, write `scripts/verify.mjs`, gold-standard pass. Lane `w3/info-lab`. | `INFORMATION_LAB_PLAN.md` |
+| `devices-lab` | 30 | A to G | Integrated on `integration/reconcile`, dark. No browser harness. No group accepted. | Plan-fidelity audit with every typed number re-pinned, write `scripts/verify.mjs`, gold-standard pass. Lane `w3/devices-lab`. | `DEVICES_LAB_PLAN.md` |
+| `instruments-lab` | 25 | A to F | Integrated on `integration/reconcile`, dark. Harness present. Its saved verification branch is unmerged. The network-analyser group is unbuilt. | Merge `origin/verify/instruments-lab`, build the network-analyser group on `packages/rf`, gold-standard pass. Lane `w3/instruments-lab`. | `INSTRUMENTS_LAB_PLAN.md` |
+| `applied-analog-lab` | 45 | A to I | Integrated on `integration/reconcile`, dark. Lessons only, under the shared `CurriculumApp`, built on the 2026-09-08 branch. No browser harness. | Review the lesson teaching model against the gold standard, then the harness, the screenshot pass and a cold walk. Lane `w3/applied-analog-lab`. | `APPLIED_ANALOG_LAB_PLAN.md` |
+| `analog-ic-lab` | 45 | A to J | Integrated on `integration/reconcile`, dark. Lessons only, under the shared `CurriculumApp`, built on the 2026-09-08 branch. No browser harness. | Review the lesson teaching model against the gold standard, then the harness, the screenshot pass and a cold walk. Lane `w3/analog-ic-lab`. | `ANALOG_IC_LAB_PLAN.md` |
+
+Signal Integrity has no row. It is the private `waveform-simulator`, outside this
+repository by `EE_LABS_MAP.md` section 5, and it carries no implementation assignment
+here.
 
 ### Current assignments
 
-Reed rejected the first new-app review for inconsistent styling, missing playback,
-compressed plots, hidden parameter effects and insufficient visible explanation.
-The corrections are committed at `e3afe13`. Both first groups need student review before further expansion.
-The earlier delivery and verification records below do not mean user acceptance.
+Wave 3 runs one overseer lane per lab on a branch named `w3/<slug>`, each in its own
+worktree from `integration/reconcile`, followed by an adversarial reviewer on the same
+branch. `.claude/workflows/wave-3.js` holds the lanes, their ports and their briefs.
+This records lane is `w3/records`, and it owns `BACKLOG.md`, `EE_LABS_MAP.md`,
+`ANALOG_ROADMAP.md`, `CURRICULUM.md`, `HANDOFF.md` and `README.md`.
 
-The revised apps inherit shared styling and transport behavior. Their comparison axes stay fixed during parameter edits.
-They have larger plots, live readings and visible worked analysis. Shared fixes cover numeric-field focus and timing-label collisions.
+Three progress documents moved to `docs/history/` in this wave. Five documents under
+`apps/` still point at their old root paths, and each is its own lane to correct:
+`analog-ic-lab/README.md`, `applied-analog-lab/README.md`,
+`mixed-signal-lab/README.md`, `electronics-lab/README.md` and
+`circuit-lab/PHASOR_ROLLOUT.md`. The records lane does not edit files under `apps/`.
 
-Interfaces passes twenty experiment/viewport cases per browser. VLSI passes twenty-five per browser.
-Both use Chromium 151.0.7922.34 and Firefox 153.0 at deployed sibling paths.
-The original four apps pass the shared focus regression at phone and desktop widths.
-The final scoped run passes 342 tests in 29 files. The full suite passes 11,096 tests in 373 files.
-All 24 apps build. Global prose lint retains 330 inherited findings, with edited documents clean.
-Evidence paths and the full-suite checkpoint are in `HANDOFF.md`.
+A lane brings its lab to the shape of Signal Lab, Circuit Lab, Control Lab and
+Circuit Elements Groups A to I. That shape is the try line with chips, the featured
+knob under it, lesson navigation, terms on contact and measured claims. It also
+requires a harness with the fold, phone and tap-target probes. The last part is a
+screenshot pass read as a first-year student. Nothing is pushed by a lane, and
+nothing is released by a lane.
 
-The director owns `integration/program-director` in `.claude/worktrees/program-director`.
-Reed's dirty main workspace is not the integration baseline.
-Only reviewed, explicitly committed work enters this branch.
-Nothing is pushed or released by this wave.
+## 2. Release order and review budget
 
-| Stream | Branch and worktree | Bounded deliverable | Acceptance |
-| --- | --- | --- | --- |
-| Director | `integration/program-director`, `program-director` | First wave integrated, evidence below | Full suite and builds pass; inherited prose gate remains open |
-| Verification | `verify/random-lab`, `random-verification` | Bounded recovery delivered at `f0191d8`, integrated | Both browsers render all thirty experiments; remaining findings recorded |
-| VLSI | `lab/vlsi-lab`, `vlsi-wave-1` | Bounded A1 to A5 delivered at `12e25e5`, integrated | Invariants, lesson pins and browser checks pass for the implemented scope |
-| Interfaces | `lab/interfaces-lab`, `interfaces-wave-1` | Group A delivered at `c85fda1`, integrated | Pin checks, lesson pins and browser checks pass for the implemented scope |
+Reed's review time is the scarce resource, so the labs queue for it. One lab is
+offered per sitting of Reed's time. A lab is offered only in the accepted state under
+`PROGRAM.md` section 8, with its two cold walks written up and its harness evidence
+recorded against a named commit. Reed alone flips `RELEASE_STATUS`, and the director
+makes the shared-surface change in the same release commit.
 
-All three workers finished and their temporary servers stopped.
-The director preview serves the integrated build on port 47630.
-No worker remains running between turns.
+The four released labs come first. A released lab that has drifted misleads a reader
+who is already there, and the other twenty-three are dark. The dark labs then follow
+`EE_LABS_MAP.md` section 4, which orders by what each lab unlocks. The three analog
+apps are last, because their teaching model is a lesson tier rather than the suite's
+experiment shape, and that model is still under review.
 
-### Dependency queue
+| Sitting | Lab | Why it sits here |
+| --- | --- | --- |
+| 1 | Circuit Elements Lab | Released and public. Groups J to N are public and unaccepted. |
+| 2 | Circuit Lab | Released and public, with 69 recorded browser failures open. |
+| 3 | Signal Lab | Released and public, with an unmerged verification branch. |
+| 4 | Control Lab | Released and public, with an unmerged verification branch. |
+| 5 | Electronics Lab | The root of track A, and the largest dark lab at 75. |
+| 6 | Power Lab | 55 experiments, a harness, and one open desktop gate. |
+| 7 | Logic Lab | The root of track D, and `packages/events` carries four labs. |
+| 8 | Random Signals Lab | 30 experiments, a harness, and three named open defects. |
+| 9 | Communications Lab | The largest lab in track B at 50, and it follows Random Signals. |
+| 10 | Control Lab II | Track C's second half, on Random Signals' contracts. |
+| 11 | Machines Lab | Its drives waited on Power F and L, which now exist. |
+| 12 | Fields Lab | Groups I to L gate the RF Lab and the System Lab. |
+| 13 | Grid Lab | Track F, on Power Lab and the Machines Lab. |
+| 14 | Energy Lab | Track F, on the Machines Lab's generator contract. |
+| 15 | Mixed-Signal Lab | Joins tracks A and D, and feeds the Communications Lab. |
+| 16 | VLSI Lab | Rejected once, on `packages/events` and the device model. |
+| 17 | Interfaces Lab | Rejected once, on `packages/events` and the pin. |
+| 18 | Computer Lab | On the Logic Lab's events engine. |
+| 19 | RF Lab | The top of track A, after the Fields Lab's line group. |
+| 20 | Photonics Lab | Group B waits on the Electronics O receiver. |
+| 21 | System Lab | Budgets over RF and Fields, so it goes after both. |
+| 22 | DSP Lab | Gates no other lab, and it can move earlier on request. |
+| 23 | Information Lab | On the Communications Lab's channel group. |
+| 24 | Devices Lab | Gates no other lab, and it reads well beside Electronics D. |
+| 25 | Instruments Lab | Gates no other lab, and it needs the RF contract. |
+| 26 | Applied Analog Lab | Teaching model under review. |
+| 27 | Analog IC Lab | Teaching model under review, and it follows Applied Analog. |
 
-Before the next wave, reconcile Reed's committed `e5e9200` notation work with this frozen integration baseline.
-It arrived on `origin/master` during this wave and is not included in the evidence below.
-The matching dirty main-workspace changes remain untouched.
+The order is a queue, not a schedule. A lab that is not accepted when its turn comes
+loses its place to the next accepted lab, and the director records that in the wave
+report. A lab moves earlier when Reed asks for it.
 
-1. Accept each saved verification branch independently. Power and Elements do not block unrelated lab work.
-2. Review the first VLSI and Interfaces groups before extending their app patterns.
-3. Check Applied Analog and Analog IC phase 0 contracts against the committed Electronics implementation.
-4. Check RF E/F and Photonics B against the existing network capacitance and noise APIs.
-5. Schedule Fields I to L and RF's remaining groups with their downstream System groups named.
-6. Reopen Control II F3 to F5 and the Machines drives against their actual package contracts.
-7. Add missing browser harnesses in bounded lab assignments. Verify changed groups during development, not after all curricula finish.
-8. Build Mixed-Signal groups as charge-event and Analog IC prerequisites pass their gates.
+## 3. History
 
-There are thirteen existing `scripts/verify.mjs` files and eleven existing apps without one.
-The older ten-lab harness wave is not the complete current inventory.
-Harness presence alone says nothing about its last result.
-System and Photonics need evidence review outside the nine saved verification branches.
+The sections below are the reports of earlier sessions, kept as evidence of the
+decisions they made and the checks they ran. They do not override section 1, which is
+current wherever a count or a status below disagrees with it.
 
-Electronics D, F, K, L, M, N and O are present at this base.
-`smallSignal` supports capacitances. `transitFreq`, `noiseSources` and `noiseDensity` exist in `packages/network`.
-These observations remove obsolete whole-lab waits, not downstream contract tests.
-System B still needs a source-chain noise comparison, even though `cascadeNF` exists.
-System C still needs measured IP3 and its guard, even though `cascadeIIP3` exists.
-
-Detailed acceptance remains pending for the dark labs.
-An experiment id does not establish every promised model, view or teaching claim.
-The historical deviations below remain open unless a later reviewed entry closes them.
-
-### Wave evidence
-
-Director commits `62a3fe5`, `f4b2dda` and `4bdc478` establish the ledger and shared path corrections.
-The shared UI and inventory checks pass: 18 files and 264 tests.
-All 22 existing apps build on this snapshot.
-All four edited director documents pass scoped prose lint.
-Repository prose lint still reports 330 inherited findings in 80 files.
-
-The deployed-path navigation review uses Chromium 151.0.7922.34 at 1366 by 900 and 390 by 844.
-It checks rendered navigation, real sibling responses, the current label and horizontal containment.
-Forty of forty-two checks pass. Random Signals crashes on both cold loads with an invalid `toPrecision` argument.
-Signal Lab has separate navigation and is not included in this LabNav-specific browser count.
-This review does not certify every lab's plots, controls or curriculum.
-Logs and screenshots are in the director worktree's `tmp/navigation-review` and `navigation-review.log`.
-
-Circuit's saved branch was reconciled with `cf90dda` as `582650e`.
-Its scoped numerical checks and builds pass. Both browsers complete without console errors or warnings.
-The layout gate remains open, so the branch stays separate.
-`apps/circuit-lab/VERIFICATION.md` in `circuit-verification` names the failures and evidence.
-The combined navigation changes require another browser run before acceptance.
-
-### Integrated checkpoint
-
-The first wave adds ten registry entries across two new dark apps.
-VLSI entered through `2676995`, Interfaces through `f4d2e3a`, and first-control layout corrections through `a28ba54`.
-Random's recovered branch entered through `e0c2e16` after the full suite passed.
-The only merge conflict was the duplicated shared path registry. Both new app paths were retained.
-
-`director-full-suite.log` records 370 files and 11,077 tests passing with eight workers.
-The run took 352.71 seconds and exited zero.
-A fresh offline `npm ci` passed afterward. All 24 apps build under `director-build-final.log`.
-No new dependency version was required. The lockfile also reconciles existing root version and switched-package dependency metadata.
-
-Both new apps pass their deployed-path harnesses in Chromium 151.0.7922.34 and Firefox 153.0.
-Each harness visits all five experiments at 1366 by 768, 1440 by 1000 and 390 by 844.
-The checks include controls, sequential Try state, Reset, equations, canvas pixels and live suite links.
-Both now check the first numeric control before any scrolling interaction.
-The Interfaces picker shows the selected experiment without requiring a long open list.
-Screenshots were inspected after the layout changes, including phone first controls and diagrams.
-
-The final shared-navigation review passes all 46 checks across 23 LabNav apps and two viewport sizes.
-Signal's separate navigation is outside that count.
-`navigation-review-final.log` and `tmp/navigation-review/results.json` hold the final results.
-The earlier Random cold-load failure is resolved on this tree.
-
-Random's worker evidence covers all thirty experiments and fifty offered views in both browsers.
-Those checks support startup and rendering acceptance, not complete teaching acceptance.
-The F4 spread instruction and the two clipped phone captions remain open in its `VERIFICATION.md`.
-VLSI's A3/A5 coverage gaps and both new apps' wider progression integration also remain open.
-Circuit and Power's incomplete verification branches were not merged into this wave.
-
-Repository prose lint still has 330 inherited findings, now across 87 scanned files.
-The edited director documents and both new apps' documents pass scoped prose lint.
-Nothing in this checkpoint was pushed or released.
-
-## 2. Deferred items, by lab
+### Deferred items, by lab
 
 Each overseer appends here. One line per item: what, why deferred, and the
 dependency or decision that reopens it.
 
-### Circuit Elements Lab
+#### Circuit Elements Lab
 
 - **Released 2026-09-05 as v1.1.0.** It is the first card on the splash page, with
   the "Start here" kicker the plan decided, first in every lab's nav, and in the
@@ -190,13 +160,13 @@ dependency or decision that reopens it.
 - The GBW toggle: superseded by the Electronics Lab's op-amp macro, which Elements
   may import once it lands.
 
-### Circuit Lab
+#### Circuit Lab
 
 - The impulse-response experiment (`CURRICULUM.md` seam 2): assigned to the seams
   overseer.
 - A gain-bandwidth knob on the op-amp circuits: waits for the Electronics macro.
 
-### Power Lab
+#### Power Lab
 
 Groups **D** (magnetics), **F** (inverters) and **G** (losses) are built on
 `lab/power-lab-dfg`, twelve experiments on top of the twenty-two the lab
@@ -257,7 +227,7 @@ Deferred, with what reopens each:
   lock file was not touched. Reopens at integration, where the director's
   `npm install` regenerates it.
 
-### Instruments Lab
+#### Instruments Lab
 
 - **The network-analyser group.** Four experiments the plan names and does not build.
   A reflection coefficient read on a mismatched line, a one-port measured against a
@@ -282,7 +252,7 @@ Deferred, with what reopens each:
   written as the two sinusoids its product is, exactly. Group E is the second consumer
   to name if another lab asks for the element itself.
 
-### Electronics Lab
+#### Electronics Lab
 
 `BACKLOG.md` is not on this branch. Its text is here for the director to
 append, rather than edited into a file this branch does not carry.
@@ -412,7 +382,7 @@ append, rather than edited into a file this branch does not carry.
   - N1 measures the Wien network's own transfer, because the loop breaker declines an ideal op-amp.
   - N4 draws the transistor as its tangent with a current limit, not as the three-region device.
 
-### Random Signals Lab
+#### Random Signals Lab
 
 Built on `lab/random-lab`. Thirty experiments in nine groups, all pinned. The
 engine is `packages/random`, fuzzed green against the plan's §3 before any user
@@ -454,7 +424,7 @@ Needed from elsewhere, mirrored in `apps/random-lab/NEEDS.md`:
   owns the file decides whether to lengthen the timeout, shorten the sweep or
   split the three walks.
 
-### Machines Lab
+#### Machines Lab
 
 **Built.** `packages/machines`, and `apps/machines-lab` dark with 35 experiments
 in five groups. A the DC machine (8), B the transformer (6), C the rotating
@@ -491,13 +461,13 @@ synchronous-machine contract, which is met rather than deferred.
   make unnecessary, a current-controlled current source and a coupled
   inductor, are offered to `packages/network`, both named in `NEEDS.md`.
 
-### Energy Lab"
+#### Energy Lab"
 
 `BACKLOG.md` is not on this branch. The entry is written here for the director
 to paste at integration, rather than added to a file this branch does not
 carry.
 
-### Energy Lab
+#### Energy Lab
 
 - **The wind group.** Not started. A turbine's electrical half is a machine,
   and no lab in the suite teaches machines yet, so it waits on the Machines
@@ -520,7 +490,7 @@ carry.
   a breakdown region would be a new element in `packages/network`, and no
   experiment here needs the exact volts.
 
-### Logic Lab
+#### Logic Lab
 
 All eight groups are built, 45 experiments, and the app is dark. What is left
 is Reed's release gate (`LOGIC_LAB_PLAN.md` §9, phase 6) and the four items
@@ -555,7 +525,7 @@ below.
   law rests on. The Analog IC Lab's latch replaces them when it exists, and
   nothing in Group H changes but two numbers.
 
-### Communications Lab
+#### Communications Lab
 
 Built on `lab/comms-lab`. All eight groups, 50 experiments, all pinned. The
 engine is `packages/comms`, fuzzed green against the plan's §2.11 before any
@@ -617,7 +587,7 @@ rather than rounded away and each for the director:
   leaves 3.66e-4. The app defaults to 41 and the lesson quotes both.
 - **H1's cascaded noise figure.** Friis over the two stages the plan names gives
   1.784 dB and 4.071 dB, against the plan's 1.944 and 4.166.
-### Devices Lab
+#### Devices Lab
 
 All seven groups are built, 30 experiments, and the app is dark. The engine
 landed whole, so nothing after Group A waited on anything, and the plan's
@@ -654,7 +624,7 @@ phasing is updated to say so. What is left is Reed's release gate
 - **`npm ci` does not run on this branch.** `package-lock.json` is out of sync
   with six workspaces that are not this lab's. The director regenerates it once
   at integration.
-### Grid Lab
+#### Grid Lab
 
 All ten groups are built, 42 experiments, and the app is dark. Group I ships
 with the rest, because the Machines Lab's synchronous machine is merged and
@@ -703,7 +673,7 @@ below.
   omission. The two most likely to be asked for are a dispatch with a loss
   formula and a second machine for multi-machine stability, and both are named
   there with the reason.
-### Computer Lab
+#### Computer Lab
 
 All seven groups are built, 30 experiments, and the app is dark. The engine, the
 app and the two documents are on `lab/computer-lab`. What is left is Reed's
@@ -748,7 +718,7 @@ release gate (`COMPUTER_LAB_PLAN.md` §9, phase 7) and the items below.
   gate delays and no experiment in §5 measures it. Group A builds the ripple
   carry and the two-level lookahead, which are the two A1 and A2 need.
 
-### Seams
+#### Seams
 
 The two seams of `CURRICULUM.md` §3 and the progression test of its §6.
 
@@ -771,7 +741,7 @@ The two seams of `CURRICULUM.md` §3 and the progression test of its §6.
   that the two agree. Reopens if the director gives every planned lab's section the same
   sentence.
 
-### Seams
+#### Seams
 
 The two seams of `CURRICULUM.md` §3 and the progression test of its §6.
 
@@ -794,7 +764,7 @@ The two seams of `CURRICULUM.md` §3 and the progression test of its §6.
   that the two agree. Reopens if the director gives every planned lab's section the same
   sentence.
 
-### Control Lab II
+#### Control Lab II
 
 Thirty-two of the plan's thirty-five experiments are built, dark, on
 `lab/control-lab-ii`. Groups A to F, with F at two of five. What is not built:
@@ -828,7 +798,7 @@ Thirty-two of the plan's thirty-five experiments are built, dark, on
   Lab claims it, with no change to its interface. **Reopens when a third lab
   copies one, or when Machines Lab starts.**
 
-### Fields Lab
+#### Fields Lab
 
 Built and dark. 36 experiments in groups A to H, on `packages/fields`, which is
 complete for the whole lab and not only for the built half. `FIELDS_LAB_PLAN.md`
@@ -858,7 +828,7 @@ complete for the whole lab and not only for the built half. `FIELDS_LAB_PLAN.md`
   build, and no Playwright ran in these sittings. A first run reviews the script
   as much as the page.
 
-### Photonics Lab
+#### Photonics Lab
 
 Built in part and dark. **21 experiments** in Groups A, C, D, E and F, on a new
 package `packages/photonics`. `PHOTONICS_LAB_PLAN.md` §9 phases 1, 2 and 3 are
@@ -982,7 +952,7 @@ Deferred, with what reopens each:
   private `waveform-simulator`, by the root README. This is a boundary rather
   than a wait, and no dependency reopens it.
 
-## 3. The director's queue
+### The director's queue
 
 Items that cross labs and land at integration.
 
@@ -1031,7 +1001,7 @@ Items that cross labs and land at integration.
   1e-15 times the load's scale and `abcdToS` against 1e-14 times the matrix norm.
   The reviewer asks for one rule, stated once, as the brief's section 9 wants.
 
-### Local verification continuation, 2026-09-06
+#### Local verification continuation, 2026-09-06
 
 Power verification resumed from its saved WIP branch. Checkpoint `c6d891e`
 on `verify/power-lab` incorporates integration snapshot `88d4cfe`, including
@@ -1053,7 +1023,7 @@ The other eight verification branches have not changed or been integrated.
 The next milestone remains the nine-lab verification wave, before VLSI and
 Interfaces. No release status changed.
 
-### Paused at the weekly usage limit, 2026-09-06
+#### Paused at the weekly usage limit, 2026-09-06
 
 `HANDOFF.md` is rewritten for the session that continues, and it names every
 branch and run id. In short. Power Groups H to N are merged and the lab is 55
@@ -1063,7 +1033,7 @@ finished on their `verify/*` branches, none merged, and two paused with a WIP
 commit at the tip. Resume that run from the repo root with the scripts'
 line endings stripped, then merge the nine.
 
-### Paused at Reed's request, 2026-09-05, usage near its limit
+#### Paused at Reed's request, 2026-09-05, usage near its limit
 
 Two workflows were stopped mid-run: `power-h-to-n` (all three lanes had at
 least one commit) and `rf-system-photonics` (RF and Photonics each had a
@@ -1126,9 +1096,9 @@ line is fixed in the four scripts that were not mid-run. Both workflows were
 resumed from their journals, with the Power H and I lane and the RF and
 Photonics first sittings replayed from cache.
 
-### Cut off at the session limit, 2026-09-05 19:50 UTC
+#### Cut off at the session limit, 2026-09-05 19:50 UTC
 
-Every lane below ran as a workflow of Opus agents. Every agent fell to the
+Every lane below ran as a workflow of agents. Every agent fell to the
 account's session limit within its first hour. What each left is committed on its
 branch, so a fresh sitting continues it rather than restarts it. The workflow
 scripts are in `.claude/workflows/`. Each one's setup checks the branch out if it
@@ -1155,9 +1125,9 @@ Waiting behind those, with what each waits on:
 - Photonics Group B, on Electronics O, merged;
 - the Machines Lab's drives, on Power Lab Group L, in flight since 2026-09-05.
 
-## 4. Planner entries
+### Planner entries
 
-### Planner: Grid, Devices
+#### Planner: Grid, Devices
 
 Two plans, written together on `plan/grid-devices`. `GRID_LAB_PLAN.md` is 42
 experiments in ten groups. `DEVICES_LAB_PLAN.md` is 30 experiments in seven groups.
@@ -1211,7 +1181,7 @@ Each line below is a dependency, what it blocks, and what unblocks it.
 - `deploy.yml` and `progression.test.js` entries for `/devices-lab/`: through
   `NEEDS.md`, as every dark lab.
 
-### Planner: Communications, Information
+#### Planner: Communications, Information
 
 Two plans, written together on `plan/comms-info`. `COMMUNICATIONS_LAB_PLAN.md` is 50
 experiments in eight groups. `INFORMATION_LAB_PLAN.md` is 25 experiments in six
@@ -1287,7 +1257,7 @@ groups. Each line below is a dependency, what it blocks, and what unblocks it.
   as every dark lab. No other shared surface changes, which is the smallest
   integration footprint in the map.
 
-### Planner: VLSI, Computer, Interfaces
+#### Planner: VLSI, Computer, Interfaces
 
 Three plans written on branch `plan/digital-upper`, from `PROGRAM.md` §3 item 1.
 `VLSI_LAB_PLAN.md`, `COMPUTER_LAB_PLAN.md` and `INTERFACES_LAB_PLAN.md`, thirty
@@ -1349,7 +1319,7 @@ Deferred inside the three plans.
 - Every plan's §10 lists what it declines rather than defers. Those lines are
   decisions and are not backlog items.
 
-### Planner: RF, System, Photonics
+#### Planner: RF, System, Photonics
 
 Three plan files landed on `plan/rf-system-photonics` for labs whose dependencies are
 not all built. `RF_LAB_PLAN.md`, `SYSTEM_LAB_PLAN.md` and `PHOTONICS_LAB_PLAN.md`.
@@ -1413,7 +1383,7 @@ waits, with the plan's own section named beside each.
   `waveform-simulator`. This is a boundary rather than a wait, and no dependency
   reopens it.
 
-### Planner: analog upper
+#### Planner: analog upper
 
 The three upper-tier analog plans are written, and none of the three labs can be
 built yet. One line per plan, with the dependency that reopens it. The ledger rows
@@ -1453,7 +1423,7 @@ that edit.
   canvas and has no plan file. The experiment ships with the sampled-output view
   alone until then.
 
-### Information Lab
+#### Information Lab
 
 Built on `lab/info-lab`: `packages/codes`, `apps/info-lab` dark, and 21 of the 25
 experiments in five of the six groups (`INFORMATION_LAB_PLAN.md` §9, phases 1 to 5).
@@ -1501,7 +1471,7 @@ The lines below are what is not built, and what reopens each one.
   diagram prop shape. Both compute their picture as data before drawing it, so a
   promotion to `packages/ui` is a move that carries its own tests.
 
-### Information Lab, closed
+#### Information Lab, closed
 
 The Communications Lab merged, and the four experiments that waited on it are
 built. `packages/codes` gains `gain.js`, the app gains B4 and Group F, and the
@@ -1545,9 +1515,9 @@ defers gets a line under its lab's heading, with the dependency that reopens it.
 This file does not exist yet on `lab/dsp-lab`, so this overseer starts it with
 only its own section. The director folds it into the shared ledger at merge.
 
-## Deferred items, by lab
+### Deferred items, by lab
 
-### DSP Lab
+#### DSP Lab
 
 - **All six groups are built, and the report is 40 experiments.** `A` 7, `B` 8,
   `C` 7, `D` 7, `E` 6, `F` 5, in `DSP_LAB_PLAN.md` §5's order. Nothing from §5
@@ -1599,7 +1569,7 @@ only its own section. The director folds it into the shared ledger at merge.
   split-radix. Fixed point on the whole chain, and a free-form design tool.
   None became cheaper to add while the six groups were built.
 
-### RF Lab
+#### RF Lab
 
 - **Two sittings are built, and they are nineteen experiments of thirty-five.**
   `A` 5, `B` 4, `C` 5 and `D` 5, in `RF_LAB_PLAN.md` §5's order, which is that
@@ -1794,7 +1764,7 @@ only its own section. The director folds it into the shared ledger at merge.
   layout editor. None became cheaper to add while the first two groups were
   built.
 
-### System Lab
+#### System Lab
 
 - **The first sitting is built, and it is four experiments.** `A` 4, in
   `SYSTEM_LAB_PLAN.md` §5's order, which is that plan's phase 1 in full. The
@@ -1905,7 +1875,7 @@ only its own section. The director folds it into the shared ledger at merge.
   Automatic gain control as a loop. Frequency planning and spur tables.
   Optimisation. Thermal, mechanical, cost and area budgets. Transmitters, and a
   free-form chain editor. None became cheaper to add while Group A was built.
-### Power Lab, Groups H and I
+#### Power Lab, Groups H and I
 
 Groups **H** (closing the loop) and **I** (three-phase out) are built on
 `lab/power-hi`, six experiments on top of the thirty-four the lab already
@@ -2044,7 +2014,7 @@ The §8 phasing note for these groups, for the director to move into the plan:
 > linear forms of the state, so a Fourier coefficient of a power costs no more
 > than one of a current, which is what makes I3 measurable rather than argued.
 > Next by this list is **J**, the isolated siblings, then K to N.
-### Power Lab, Groups J and K
+#### Power Lab, Groups J and K
 
 Groups **J** (isolated DC-DC) and **K** (resonant conversion) are built on
 `lab/power-jk`, six experiments on top of the thirty-four the lab already
@@ -2176,7 +2146,7 @@ The §8 phasing note, for the plan:
 > rectifier exact. I and L, the other halves of those two phases, are not.
 > Next by the plan's list is **H**, closing the loop, which is still the first
 > thing that needs another lab.
-## Power Lab, Groups L, M and N
+### Power Lab, Groups L, M and N
 
 Groups **L** (motor drives), **M** (interference) and **N** (thermal) are
 built on `lab/power-lmn`, nine experiments on top of the thirty-four the lab

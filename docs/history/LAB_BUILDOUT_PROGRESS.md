@@ -1,7 +1,16 @@
 # Ordered lab buildout
 
+This is a historical record. It was written on the branch
+`feature/circuits-ii-rollout` between 2026-09-08 and 2026-09-09, and it is kept as
+evidence of what that branch built and checked.
+
+Its words "accepted" and "released" mean that this branch's own release checks
+passed. They do not mean the accepted or released states of `PROGRAM.md` section 8,
+which require Reed's review and his flip of `RELEASE_STATUS`. The current state of
+every lab is `BACKLOG.md` section 1, and it overrides every count and status below.
+
 User-approved order, 2026-09-08. Complete and review each priority before extending
-the next. Work in the isolated rollout worktree; preserve concurrent director and
+the next. Work in the isolated rollout worktree. Preserve concurrent director and
 main-checkout changes.
 
 | Priority | Scope | Status |
@@ -26,7 +35,7 @@ main-checkout changes.
 - Keep mathematics in a usable scrolling area, tables aligned and dense drawings
   readable on phones. Preserve keyboard operation and shared lab navigation.
 - Give learners a prediction or independently entered answer, explanatory
-  feedback and optional hints; clear stale feedback when the problem changes.
+  feedback and optional hints. Clear stale feedback when the problem changes.
 - Review actual rendered content and interactions across every experiment and
   offered view, on desktop and phone. Check mathematics and model boundaries,
   not just catalog counts or successful builds.
@@ -34,7 +43,7 @@ main-checkout changes.
 ## Priority 2 findings
 
 - The catalog contains 75 entries in 14 groups. Group B's two diode topics are
-  already covered by Circuit Elements I9 and I10; make that prerequisite explicit.
+  already covered by Circuit Elements I9 and I10. Make that prerequisite explicit.
 - The package advertises a browser verification script that is absent.
 - The picker renders all 75 buttons above the lesson and settings.
 - The analysis heading shares a wrapping row with the view buttons, allowing
@@ -42,7 +51,7 @@ main-checkout changes.
 - Worked mathematics currently sits in the narrow sidebar, separate from the
   equations view. Audit its coverage before treating all entries as release ready.
 
-Release and completion claims require recorded checks; pending rows are not
+Release and completion claims require recorded checks. Pending rows are not
 claims that implementation or review has finished.
 
 ## Priority 2 acceptance, 2026-09-08
@@ -88,7 +97,7 @@ context components. The director and main checkouts are untouched.
 - The independent result follows from the preceding exponential crossing
   `3 VDD/4` at `tau ln(4/3)` and `VDD/4` at `tau ln(4)`. During that interval both
   second-stage switches conduct, giving an equilibrium of `VDD/2` and time constant
-  `tau/2`. The second output reaches `4 VDD/9` when the lower switch opens; the
+  `tau/2`. The second output reaches `4 VDD/9` when the lower switch opens. The
   remaining rise to half supply takes `tau ln(10/9)`.
 - Corrected the VLSI plan's assumption of exact analog/event-chain agreement,
   its width/self-capacitance example and the missing ln(2) fanout coefficients.
@@ -96,11 +105,11 @@ context components. The director and main checkouts are untouched.
   zero-leakage claim while reviewing the cross-lab prerequisite.
 - The combined affected-lab/shared-UI run passed 601 tests in 38 files. All 21
   application builds passed. Local assembly now includes the same 21 apps as the
-  deployment workflow; both new apps remain dark.
+  deployment workflow. Both new apps remain dark.
 - Final VLSI Chromium checks passed all five lessons at 320, 390, 1366, 1440,
   1920 and 2560 px, including the analog comparison, playback, held axes and
-  anchored view selectors. The analog curve's legend matches its purple trace;
-  waveform samples are cached independently of cursor animation. The final
+  anchored view selectors. The analog curve's legend matches its purple trace.
+  Waveform samples are cached independently of cursor animation. The final
   Interfaces rerun also passed after removing duplicate math and aligning headers.
 - Local previews are available under `http://127.0.0.1:4192/` at
   `electronics-lab/`, `interfaces-lab/` and `vlsi-lab/` while the server is running.
@@ -127,7 +136,7 @@ remain available through a common sequential catalog.
   Seven active-model tests and all 16 lessons × four views at 1440/390/320 px
   passed. The transistor unity-current-gain frequency is distinguished from
   the 50 Ω S21 response.
-- Fields: native distributed-line, waveguide and antenna engines; reflected
+- Fields: native distributed-line, waveguide and antenna engines. Reflected
   arrival ladder, Smith chart, polar power patterns, loss/dispersion comparison,
   and guarded cavity/Friis estimates. Five new tests cover all default and knob
   endpoints, renderable math, physical identities and refusals. All 17 lessons ×
@@ -156,7 +165,7 @@ probability of the rounded 20-photon example. These changes remain local.
 
 The affected apps and shared packages passed 1,595 tests in 80 files. The complete
 workspace build passed 23 apps and caught one VLSI failure: two Windows-encoded
-apostrophes in the new timing lesson. Those bytes were repaired to UTF-8; the VLSI
+apostrophes in the new timing lesson. Those bytes were repaired to UTF-8. The VLSI
 production build then passed, completing all 24 app builds. A strict UTF-8 scan
 of repository source, styles, JSON, HTML, YAML and Markdown found no remaining
 encoding errors. The shared mobile layout now uses a single document scroll,
@@ -166,14 +175,14 @@ passed all new lessons at 1440/390/320 px after that correction.
 Final Interfaces (25), VLSI (25), and RF (16) browser reruns also passed every
 new lesson and all four views at 1440/390/320 px. Together with Fields (17) and
 Photonics (4), that is 87 added lessons checked at all three widths. This records
-UI and model verification; it does not mark pending scope items or deployment
+UI and model verification. It does not mark pending scope items or deployment
 as complete.
 
 ## Final requested-scope acceptance, 2026-09-08
 
 The requested buildout is complete locally. This supersedes the pending items in
 the earlier checkpoints above. There are **129 added lessons**, plus the existing
-foundations, in the ten affected apps. These apps remain dark; no merge to master,
+foundations, in the ten affected apps. These apps remain dark. No merge to master,
 push or live deployment of this buildout is claimed.
 
 | App | Added scope | Added lessons | Combined catalog |
@@ -216,7 +225,7 @@ push or live deployment of this buildout is claimed.
 - Mixed-Signal conserves charge across ideal events and checks the answer with a
   finite-R native transient. Clock injection, bottom-plate sign, thermal-noise
   bandwidth and seeded aperture jitter have explicit assumptions.
-- The analog apps are the requested **start**: all six planned foundation topics
+- The analog apps are the requested **start**. All six planned foundation topics
   per app are working. Later groups, full converter/PLL apps, general switched-cap
   synthesis, a general EKV netlist companion, and general analog yield/sensitivity
   tools remain future work. They are not claimed complete by this checkpoint.
@@ -229,11 +238,12 @@ push or live deployment of this buildout is claimed.
   reported as actually run, rather than inferred by adding later test counts.
 - All **27 app production builds** passed. The last Applied Analog drawing-only
   adjustment was rebuilt and checked again in the assembled site.
-- All **129 new lessons × four views × 1440/390/320 px** passed Chromium checks:
-  finite default results, rendered LaTeX, invariant tab geometry, practice feedback,
-  page overflow, mobile scroll behavior and applicable drawing dialogs.
+- All **129 new lessons × four views × 1440/390/320 px** passed Chromium checks.
+  The checks were finite default results, rendered LaTeX and invariant tab geometry.
+  They also covered practice feedback, page overflow, mobile scroll behavior and
+  applicable drawing dialogs.
 - `scripts/verify-rollout.mjs` passed at all three widths on the assembled site:
-  every app route returns 200; local/deployment catalogs agree; mobile suite links,
+  every app route returns 200. Local/deployment catalogs agree. Mobile suite links,
   class selections, switch phases, editable/reset capstone values, drawing contrast
   and label separation, waterfall rendering and the Signal handover work.
 - Strict UTF-8 decoding passed for 1,608 source/document files, preventing the
@@ -247,7 +257,7 @@ The work uses the isolated `feature/circuits-ii-rollout` checkout. Concurrent
 checkouts and the unrelated prose-linter/debug changes are preserved.
 
 
-## Follow-on release: analog Groups B — 2026-09-08
+## Follow-on release: analog Groups B, 2026-09-08
 
 The previous checkpoint was merged through PR #3 as `067c9c7`. GitHub deployment
 run 34275209946 succeeded. Live browser checks confirmed all 27 app routes and
@@ -260,7 +270,7 @@ All use the existing Start here / Worked math / Explore / Practice workbench,
 anchored tabs, defined notation, substitutions, responsive tables and drawings.
 
 Two reusable engines support the lessons: `parameterEnsemble` in the random
-package retains correlations and estimator intervals; `chargeStep` in switched
+package retains correlations and estimator intervals. `chargeStep` in switched
 projects capacitor charge under explicit driven/floating/feedback constraints.
 Neither claims a general analog synthesis system. Mixed-Signal uses the existing
 native z-plane canvas and clearly names frequency scaling in Signal handovers.
@@ -268,8 +278,8 @@ native z-plane canvas and clearly names frequency scaling in Signal handovers.
 The three plans' Group B sections now document validated equations and corrections:
 separate crossover/bandwidth, loaded isolation margin, the bandgap's ln N slope,
 resistor contributions to reference-current drift, and topology-dependent
-finite-gain SC leakage. Startup enumerates DC roots and checks native MOS currents;
-a transistor-level startup/shutoff transient is not claimed.
+finite-gain SC leakage. Startup enumerates DC roots and checks native MOS currents.
+A transistor-level startup/shutoff transient is not claimed.
 
 ### Follow-on checks
 
@@ -282,10 +292,11 @@ a transistor-level startup/shutoff transient is not claimed.
   views at 1440, 390 and 320 px.
 - Full repository suite: **10,403 tests passed in 397 files**, 281.82 seconds.
 - All 27 production app builds passed. Final UI-only changes are rebuilt and
-  browser-checked again; no model assertion was relaxed.
-- Assembled integration checks passed at 1440/390/320 px: drawing label separation,
-  editable switch phases, the 20-samples/cycle guard, z-plane redraw after Q changes,
-  exact-coefficient Signal handover and existing rollout navigation/capstones.
+  browser-checked again. No model assertion was relaxed.
+- Assembled integration checks passed at 1440/390/320 px. They covered drawing
+  label separation, editable switch phases and the 20-samples/cycle guard. They also
+  covered z-plane redraw after Q changes, the exact-coefficient Signal handover and
+  the existing rollout navigation and capstones.
 - Dimensionless controls now display plain decimal numbers (0.1 rather than
   100 m), while physical quantities retain engineering units.
 - Final affected tests: **1,998 passed in 29 files** after the last model/control
@@ -295,22 +306,22 @@ a transistor-level startup/shutoff transient is not claimed.
 
 At the Group B checkpoint, Groups C onward were planned. The subsequent implemented sequence is Applied Analog
 precision, Analog IC amplifier architectures, then Mixed-Signal static converter
-errors; each needs its own model and presentation review rather than placeholder
+errors. Each needs its own model and presentation review rather than placeholder
 lesson entries.
 
 
-## Applied Analog precision — Group C
+## Applied Analog precision, Group C
 
 Five precision lessons are implemented, bringing Applied Analog to 16 lessons.
 Analog IC remains at 11 and Mixed-Signal at 12 pending their Group C work.
 The applications remain dark/unlisted. Native nodal and transient checks cover
-resistor matching, three-amplifier instrumentation and chopped periodic state;
-independent error-envelope checks cover calibration. All 10 Applied Analog tests
-pass; all 16 lessons pass four-view browser checks at 1440, 390 and 320 px.
+resistor matching, three-amplifier instrumentation and chopped periodic state.
+Independent error-envelope checks cover calibration. All 10 Applied Analog tests
+pass. All 16 lessons pass four-view browser checks at 1440, 390 and 320 px.
 Publication verification is recorded after deployment.
 
 
-## Analog IC architectures — Group C
+## Analog IC architectures, Group C
 
 Six architecture lessons extend Analog IC to 17 entries. All retain the existing
 learning layout. Native AC and broken-loop checks verify cascodes, Miller
@@ -320,18 +331,18 @@ the folded headroom model, ideal gm steering and one-pole bandwidth comparison
 are stated in the lessons. No full foundry design or stage-level stability is
 inferred from a gm/C estimate. The app remains unlisted.
 
-Architecture validation: 11 tests across three files; 17 lessons × four views ×
-1440/390/320 px. Additional browser checks cover Miller drawing label separation
+Architecture validation: 11 tests across three files. Browser coverage is 17
+lessons × four views × 1440/390/320 px. Additional browser checks cover Miller drawing label separation
 and complementary-pair cutoff on changing common mode.
 
 
-## Mixed-Signal static converters — Group C
+## Mixed-Signal static converters, Group C
 
 Six converter lessons extend Mixed-Signal to 18 entries. The current totals are
 **Applied Analog 16, Analog IC 17, Mixed-Signal 18**. All three apps remain dark.
-Native charge projection verifies the binary/split DAC and SAR trial sequence;
-all 4097 endpoint-grid inputs verify pipeline correction at five offset settings
-inside the redundancy bound. Flash code bins retain explicit encoder semantics;
+Native charge projection verifies the binary/split DAC and SAR trial sequence.
+All 4097 endpoint-grid inputs verify pipeline correction at five offset settings
+inside the redundancy bound. Flash code bins retain explicit encoder semantics.
 Monte Carlo spread/yield and calibrated weight uncertainty remain distinct.
 
 Final targeted checks: **50 tests in 10 files**, including all three analog apps
@@ -344,7 +355,7 @@ margin instead of wrapping it into a misleading positive value.
 The repository-wide run exposed an existing unseeded transformer assertion at
 near-open-circuit loading. A reproduced corner loses relative precision when
 subtracting nearly equal source voltages. The exact primary-port current ratio
-remains checked; the separate source-resistor KCL check now includes an explicit
+remains checked. The separate source-resistor KCL check now includes an explicit
 floating-point subtraction bound. A fixed regression compares both currents with
 the independent circuit closed form. No circuit implementation was changed.
 
@@ -354,8 +365,9 @@ All 27 production builds and assembled integration checks passed. Final assemble
 site size is 35.93 MiB. Final browser verification and deployment status below.
 
 Applied Analog C was merged as 7b30636 and deployed successfully in Actions run
-34281387686. Live checks verified the 16/11/12 catalogs, all 27 routes and Signal
-mobile navigation at 390 and 320 px before the remaining Group C publication.
+34281387686. Live checks verified the 16/11/12 catalogs and all 27 routes. They
+also verified Signal's mobile navigation at 390 and 320 px. Both ran before the
+remaining Group C publication.
 
 Repository-wide verification completed with 10,417 passing tests and only the
 reproduced transformer precision assertion failing (400 files, 278.20 s). The
@@ -363,10 +375,10 @@ corrected invariant and all final analog changes then passed the 50-test targete
 run. A clean full-suite run and GitHub deployment gate verify the final commit.
 
 
-## Applied Analog references and regulators — Group D
+## Applied Analog references and regulators, Group D
 
 Five lessons extend Applied Analog to **21** entries. Analog IC stays at 17 and
-Mixed-Signal at 18; those apps’ Group D lessons are the next separate buildout.
+Mixed-Signal at 18. Those apps’ Group D lessons are the next separate buildout.
 All three remain unlisted on the public splash page.
 
 The reference uses the shared Analog IC temperature law. The LDO uses native
@@ -375,7 +387,7 @@ exact return-ratio handover. Supply rejection includes pass, reference and
 amplifier paths. Thermal calculations include quiescent loss and refuse to call
 an infeasible dropout target a predicted operating point. The selection task
 separates integrated white noise, switching ripple, ADC aliasing and assumed buck
-efficiency; Power Lab receives a validated editable ideal converter setup.
+efficiency. Power Lab receives a validated editable ideal converter setup.
 
 Validation and publication results are recorded below after completion.
 
@@ -386,21 +398,21 @@ visible prefix. Regression checks cover 1e-7, 100n and bare 100 in a nanovolt fi
 
 The ideal buck handover automatically increases inductance at light load/low
 switching frequency to retain continuous conduction. Native Power Lab solutions
-check the 3.3 V average and ideal efficiency across the input/load/clock corners;
-the assumed 90% budget is never substituted for that ideal model result.
+check the 3.3 V average and ideal efficiency across the input/load/clock corners.
+The assumed 90% budget is never substituted for that ideal model result.
 
 Release checks: all 27 production builds pass. All 21 Applied Analog lessons pass
 four-view checks at 1440, 390 and 320 px. Extra browser checks cover diagram label
 separation, zero ESR, dropout refusal, scientific/prefixed numeric entry, plain
 number tables, both handovers and invalid incoming links. Assembled site checks
-pass for all 27 routes. The first full run passed 10,427 tests in 401 files; the
+pass for all 27 routes. The first full run passed 10,427 tests in 401 files. The
 final 78-test focused run includes the numeric-entry fix and native buck corners.
-A second full run passed 10,428 tests in 401 files (272.33 s); the final buck
+A second full run passed 10,428 tests in 401 files (272.33 s). The final buck
 corner and lesson changes also pass the 78 focused tests. GitHub Pages runs the
 full suite again before deployment.
 
 
-## Analog IC fully differential amplifiers — Group D
+## Analog IC fully differential amplifiers, Group D
 
 Four lessons extend Analog IC to **21** entries, alongside Applied Analog 21 and
 Mixed-Signal 18. All three remain unlisted on the public splash page. Mixed-Signal
@@ -424,7 +436,7 @@ waveforms, charge conservation and the actual Control Lab receiver. All 21 lesso
 pass all four views at 1440, 390 and 320 px. Additional browser checks cover region
 transitions, sensor options, incomplete acquisition, aligned table columns,
 schematic labels/dialogs and both mode links. All 27 production builds and
-assembled integration checks pass; the assembled site is 36.01 MiB.
+assembled integration checks pass. The assembled site is 36.01 MiB.
 
 Repository-wide verification passed **10,436 tests in 402 files** (261.26 s).
 The final 20-test Analog IC run includes the expanded controller-pole corners
@@ -432,12 +444,12 @@ and numerical state-matrix example. Existing Applied Analog single-link handover
 also pass browser checks after the shared multi-link workbench update.
 
 The final boundary review also checks follower compliance at the selected output
-difference: a 0.4 V difference places the lower output at 0.7 V, below the 0.75 V
-limit. The lesson marks that operating point invalid and displays signed headroom,
-while retaining the explicitly assumed incremental model for comparison.
+difference. A 0.4 V difference places the lower output at 0.7 V, below the 0.75 V
+limit. The lesson marks that operating point invalid and displays signed headroom.
+It retains the explicitly assumed incremental model for comparison.
 
 
-## Mixed-Signal dynamic converter errors — Group D
+## Mixed-Signal dynamic converter errors, Group D
 
 Five lessons extend Mixed-Signal to **23** entries, alongside Applied Analog 21
 and Analog IC 21. This completes the requested 14-lesson Group D sequence.
@@ -446,7 +458,7 @@ All three apps remain unlisted on the public splash page.
 The existing four-view structure now covers settling budgets, continuous
 slew/settling, regenerative decisions, measured converter spectra and histogram
 inference. Worked equations define initial states and substitute the selected
-values. Logarithmic acquisition-error plots keep half-LSB limits visible; this
+values. Logarithmic acquisition-error plots keep half-LSB limits visible. This
 backward-compatible plotting option leaves other lessons' linear axes unchanged.
 
 The spectrum reuses the exact slew propagator and shared periodogram, retaining
@@ -469,40 +481,40 @@ browser suite after the shared plot update. Assembled site size is 36.05 MiB.
 
 Repository-wide verification passed **10,445 tests in 403 files** (263.97 s).
 The final targeted run passed all 23 Mixed-Signal tests after the explanatory
-clarifications; the final browser run includes those same built assets.
+clarifications. The final browser run includes those same built assets.
 
 
-## Analog Group E — 15-lesson implementation
+## Analog Group E, 15-lesson implementation
 
 Applied Analog E1–E5, Analog IC E1–E4 and Mixed-Signal E1–E6 extend the catalogs to **26 / 25 / 29**. All three apps retain their existing four-view layout and remain unlisted on the public splash page.
 
-The sensor lessons distinguish exact resistor-ratio leakage, shared-return lift, electrothermal RTD heating, nonlinear type K compensation and simultaneous filter requirements. Compensation uses actual nodal/state models rather than substituting approximate pole locations; nested and feedforward models expose both global closed poles and a carefully defined inner-loop diagnostic. Noise shaping separates nonlinear quantizer runs, exact additive-error identities, statistical white-error assumptions and finite-record measurements. It implements actual filtering before decimation and finite, imperfect droop correction.
+The sensor lessons distinguish exact resistor-ratio leakage, shared-return lift, electrothermal RTD heating, nonlinear type K compensation and simultaneous filter requirements. Compensation uses actual nodal/state models rather than substituting approximate pole locations. Nested and feedforward models expose both global closed poles and a carefully defined inner-loop diagnostic. Noise shaping separates nonlinear quantizer runs, exact additive-error identities, statistical white-error assumptions and finite-record measurements. It implements actual filtering before decimation and finite, imperfect droop correction.
 
-Corrections to the plans include the exact 24.024 mV resistor-corner error, fifth-order anti-alias requirement with 0.1 dB passband loss, full-model Miller margins, and removal of a universal 0.7-full-scale overload threshold and perfect sinc correction claim. Later group plans remain future scope.
+Corrections to the plans include the exact 24.024 mV resistor-corner error and the fifth-order anti-alias requirement with 0.1 dB passband loss. They also include full-model Miller margins. A universal 0.7-full-scale overload threshold and a perfect sinc correction claim were both removed. Later group plans remain future scope.
 
-Focused validation passed 76 tests across the three analog apps. The new tests independently check KCL, electrothermal balance, ITS-90 reference points and inverse conversion, filter inequalities, native circuit AC/state transfer agreement, inner-loop source breaking, sample timing, Parseval, NTF integrals, stochastic model power, overload and FIR convolution/gain/delay.
+Focused validation passed 76 tests across the three analog apps. The new tests independently check KCL, electrothermal balance, ITS-90 reference points and inverse conversion. They also check filter inequalities, native circuit AC and state transfer agreement, inner-loop source breaking and sample timing. The last group is Parseval, NTF integrals, stochastic model power, overload and FIR convolution, gain and delay.
 
 All 15 new lessons passed four-view browser checks at 1440, 390 and 320 px, including practice answers, tab anchoring, table column counts, math rendering, boundary settings, circuit enlargement and reset. Final repository-wide, assembled and publication verification will be recorded with this release.
 
-Final local verification: **10,461 tests in 406 files passed** (295.41 s). All 27 production builds passed. All **80 analog lessons** passed all four views at 1440/390/320 px. Group E boundary checks and both exact second-order Control Lab handovers passed. The assembled 27-route integration check passed; site size is **36.13 MiB**. Source/reference-only refinements retain the verified model and layout behavior.
+Final local verification: **10,461 tests in 406 files passed** (295.41 s). All 27 production builds passed. All **80 analog lessons** passed all four views at 1440/390/320 px. Group E boundary checks and both exact second-order Control Lab handovers passed. The assembled 27-route integration check passed. Site size is **36.13 MiB**. Source/reference-only refinements retain the verified model and layout behavior.
 
 ## Group F implementation and release checks, 2026-09-08
 
 All 15 Group F lessons are implemented, bringing Applied Analog / Analog IC / Mixed-Signal to 31 / 29 / 35 lessons. The app READMEs and plan Group F records specify corrected mathematics and model limits. Control Lab now accepts an exact third-order custom transfer for the PLL handover.
 
-Focused acceptance: 659 tests in 47 files passed. All 27 production builds pass. Browser coverage passes for all 95 analog lessons × four views × 1440/390/320 px, plus all 15 new lessons with entered-answer checks, boundary controls, anchored tabs, aligned tables, diagram dialogs and both exact PLL handovers. The assembled site is 36.21 MiB. Full-suite and publication evidence is recorded separately after completion. Existing unrelated prose-linter and debug-log changes are excluded.
+Focused acceptance: 659 tests in 47 files passed. All 27 production builds pass. Browser coverage passes for all 95 analog lessons × four views × 1440/390/320 px. It also covers all 15 new lessons with entered-answer checks and boundary controls. The remaining checks are anchored tabs, aligned tables, diagram dialogs and both exact PLL handovers. The assembled site is 36.21 MiB. Full-suite and publication evidence is recorded separately after completion. Existing unrelated prose-linter and debug-log changes are excluded.
 
 ## Group G implementation and release checks, 2026-09-09
 
 All **13 Group G lessons** are implemented: Applied Analog G1–G4, Analog IC G1–G4 and Mixed-Signal G1–G5. Catalog totals are now **35 / 33 / 40**. They retain Circuit Elements' four anchored learning views, defined symbols, worked substitutions, parameter-driven plots, aligned tables and entered-answer practice. Enlarged diagrams keep their natural proportions and provide a mobile scrolling hint and keyboard-accessible scroll area.
 
-The model records in the three plans supersede draft promises: rail voltage is included in fault-current calculations; clamp thresholds and valid common-mode operation are distinct; driven-shield stability retains source bootstrapping; bipolar full steering is asymptotic; multiplier conversion is normalized explicitly; charge-injection jumps differ from cycle-average offset; noise folding is a stated path comparison, not a blanket product claim. Chopper and auto-zero lessons specify initial states and phase transitions. CDS includes covariance and wanted-signal attenuation.
+The model records in the three plans supersede draft promises: rail voltage is included in fault-current calculations. Clamp thresholds and valid common-mode operation are distinct. Driven-shield stability retains source bootstrapping. Bipolar full steering is asymptotic. Multiplier conversion is normalized explicitly. Charge-injection jumps differ from cycle-average offset. Noise folding is a stated path comparison, not a blanket product claim. Chopper and auto-zero lessons specify initial states and phase transitions. CDS includes covariance and wanted-signal attenuation.
 
 Handovers preserve the complete third-order shield return ratio and exact one/two-sample difference filters. Third-order URL coefficients now retain full precision. The Gilbert lesson's Signal Lab link is explicitly an ideal sine-multiplier comparison, with its differences named before opening it.
 
 Focused acceptance: **134 tests in 22 files passed**. All **27 production builds** passed. All **108 analog lessons × four views × 1440/390/320 px** passed browser checks. All 13 new lessons also passed practice-answer, boundary, table, diagram, math, tab-position and cross-lab checks. The assembled site is **36.27 MiB**. Final repository-wide and publication evidence is recorded with the release. Unrelated prose-linter and debug-log changes remain excluded.
 
-Mixed-Signal now implements all seven planned curriculum groups; generic engine and product features elsewhere in its plan remain separate future scope. Applied Analog H–I and Analog IC H–J remain planned. The three analog apps remain directly accessible and unlisted on the public splash page.
+Mixed-Signal now implements all seven planned curriculum groups. Generic engine and product features elsewhere in its plan remain separate future scope. Applied Analog H–I and Analog IC H–J remain planned. The three analog apps remain directly accessible and unlisted on the public splash page.
 
 Final repository-wide verification: **10,493 tests in 412 files passed** (245.96 s). The final focused suite and browser runs include the glossary and enlarged-diagram refinements. Publication and live-page checks follow on the release PR.
 
@@ -510,9 +522,9 @@ Final repository-wide verification: **10,493 tests in 412 files passed** (245.96
 
 All nine Group H lessons are implemented: Applied Analog H1–H5 and Analog IC H1–H4. Catalog totals are now **40 / 37 / 40** across the three analog apps. Mixed-Signal is unchanged. The established four-view layout, anchored tabs, defined quantities, numeric LaTeX substitutions, plots/tables and entered-answer practice are retained.
 
-Applied Analog adds exact ideal 555 threshold events, startup and nonzero initial charge, RMS-calibrated lock-in detection with finite-band noise integration, bias-temperature tracking with emitter degeneration and a local thermal-feedback criterion, and class-B average/instantaneous power checks with an achievable 20 W design task. The class-B correction is explicit: worst device heating occurs at 50% efficiency; 40.53% is its output-power fraction.
+Applied Analog adds exact ideal 555 threshold events with startup and nonzero initial charge. It adds RMS-calibrated lock-in detection with finite-band noise integration. It adds bias-temperature tracking with emitter degeneration and a local thermal-feedback criterion. It adds class-B average and instantaneous power checks with an achievable 20 W design task. The class-B correction is explicit: worst device heating occurs at 50% efficiency. That point is 40.53% of the output power.
 
-Analog IC adds native gm-C integrators/biquads, a bounded master tuning iteration with seeded process/slave mismatch ensembles, and a fourth-order LC ladder converted to normalized integrator states. Native circuit, state and transfer routes agree. Both denominator coefficients are retained when interpreting leakage-induced Q changes. Ladder/cascade sensitivity comparisons name their component models and measured quantities; no universal sensitivity ranking is claimed. Complete second- and fourth-order filter handovers retain all poles and state their 1000× time scaling and bilinear frequency mapping.
+Analog IC adds native gm-C integrators/biquads, a bounded master tuning iteration with seeded process/slave mismatch ensembles, and a fourth-order LC ladder converted to normalized integrator states. Native circuit, state and transfer routes agree. Both denominator coefficients are retained when interpreting leakage-induced Q changes. Ladder/cascade sensitivity comparisons name their component models and measured quantities. No universal sensitivity ranking is claimed. Complete second- and fourth-order filter handovers retain all poles and state their 1000× time scaling and bilinear frequency mapping.
 
 Focused acceptance: **117 tests in 23 files passed**. All **27 production builds** passed. All **77 lessons in the updated apps × four views × 1440/390/320 px** passed browser checks. All nine new lessons additionally passed entered-answer, boundary, table, math, diagram, anchored-tab and receiving-app checks. Visual review corrected crowded biquad labels. The assembled site is **36.32 MiB**. Final full-suite and publication evidence follows with the release. Unrelated prose-linter and debug-log changes remain excluded.
 
@@ -520,7 +532,7 @@ Final repository-wide verification: **10,503 tests in 414 files passed** (232.37
 
 ## Group I implementation and release checks, 2026-09-09
 
-All nine Group I lessons are implemented: Applied Analog I1–I5 and Analog IC I1–I4. Catalog totals are **45 / 41 / 40**, or 126 lessons across the three analog apps. Applied Analog and Mixed-Signal now have lessons for all planned curriculum groups; Analog IC J remains planned. Broader engine APIs, earlier design-task expansion and public-release gates remain separate work. The apps retain direct-URL/unlisted status.
+All nine Group I lessons are implemented: Applied Analog I1–I5 and Analog IC I1–I4. Catalog totals are **45 / 41 / 40**, or 126 lessons across the three analog apps. Applied Analog and Mixed-Signal now have lessons for all planned curriculum groups. Analog IC J remains planned. Broader engine APIs, earlier design-task expansion and public-release gates remain separate work. The apps retain direct-URL/unlisted status.
 
 Applied Analog teaches normalized sensitivities, a sixteen-vertex passive box with a proven ideal-frequency bound and a nonmonotone Q face, full finite-follower cutoff calculations, seeded Gaussian ensembles, exact-versus-linear comparison and pointwise Wilson yield intervals. A measured linearization residual above 1% of predicted sigma changes the guidance. The analytic joint-yield product is limited to the first-order independent Gaussian model. Datasheet calculations identify fields and revisions, including the current TI NE5532 5 V/µs typical slew value and the LM317 adjust-current term.
 
@@ -528,13 +540,13 @@ Analog IC adds device-by-device differential noise referral checked by the nativ
 
 All nine new lessons use the established four-view layout, at least five worked steps, defined quantities, parameter-driven plots, aligned tables and entered-answer practice. Shared results tables are keyboard-focusable and show a narrow-screen scrolling cue. Visual review corrected the first current-source arrow in the differential equivalent.
 
-Local repository-wide verification passed **10,513 tests in 416 files** (280.33 s). A subsequent approximation-guard test and final presentation refinements passed the final focused run: **137 tests in 26 files**, covering all three analog apps and schematic rendering. All **27 production builds** passed; assembled site size is **36.37 MiB**. Final browser and publication evidence is recorded on the release PR. Unrelated prose-linter and debug-log changes remain excluded.
+Local repository-wide verification passed **10,513 tests in 416 files** (280.33 s). A subsequent approximation-guard test and final presentation refinements passed the final focused run: **137 tests in 26 files**, covering all three analog apps and schematic rendering. All **27 production builds** passed. Assembled site size is **36.37 MiB**. Final browser and publication evidence is recorded on the release PR. Unrelated prose-linter and debug-log changes remain excluded.
 
 Final assembled browser verification passed all **126 analog lessons × four views × 1440/390/320 px**. All nine new lessons additionally passed correct-answer entry, tab anchoring, table/header alignment, accessible table regions, mobile scrolling cues, rendered mathematics, enlarged diagrams and boundary checks. The Monte Carlo approximation flag, all-pass Wilson interval and both mismatch-design outcomes were exercised through the UI. Visual inspection included the corrected differential circuit, flicker plot and mobile yield table.
 
 ## Group J implementation and release checks, 2026-09-09
 
-Analog IC J1–J4 implements extra-element analysis, an explicitly checked input-only Miller approximation, Gaussian trim quantization and stored calibration with temperature drift. Catalog totals are **45 / 45 / 40** across Applied Analog, Analog IC and Mixed-Signal. All planned curriculum groups in these three apps now have lessons; broader engine features and public-release gates remain separate work. The apps retain direct-URL/unlisted status.
+Analog IC J1–J4 implements extra-element analysis, an explicitly checked input-only Miller approximation, Gaussian trim quantization and stored calibration with temperature drift. Catalog totals are **45 / 45 / 40** across Applied Analog, Analog IC and Mixed-Signal. All planned curriculum groups in these three apps now have lessons. Broader engine features and public-release gates remain separate work. The apps retain direct-URL/unlisted status.
 
 J1 connects the extra-element theorem, native nodal equations, a continuous capacitor state and sinusoidal phasors for the same circuit. Independent solver checks verify both port resistances, frequency response and startup. J2 checks the Miller pole estimate against a 10% criterion and distinguishes a pole, a right-half-plane zero and a half-power crossing that may not exist. The corrected default pole is 113.682 MHz.
 
@@ -542,4 +554,4 @@ J3 specifies symmetric midrise code levels and integrates Gaussian residual mome
 
 Focused acceptance passed **144 tests in 27 files**. All **27 production builds** passed. All **130 analog lessons × four views × 1440/390/320 px** passed browser checks. The four new lessons additionally passed entered-answer, approximation pass/miss, range-overload, drift, table alignment, tab anchoring, equation rendering, enlarged-diagram and receiving-lesson checks. Final presentation checks include stacked mobile equations and corrected node-label placement. The assembled site is **36.40 MiB**. Repository-wide and publication evidence follows with the release. Unrelated prose-linter and debug-log changes remain excluded.
 
-Final repository-wide verification passed **10,521 tests in 417 files** (269.55 s). The first full run had one failure in the existing seeded-jitter SNR assertion; that unchanged test passed in isolation, the focused suite and the second full run. Its cause was not reproduced or identified, and neither its model nor assertion was changed. Publication and live-page evidence is recorded on the release PR after deployment.
+Final repository-wide verification passed **10,521 tests in 417 files** (269.55 s). The first full run had one failure in the existing seeded-jitter SNR assertion. That unchanged test passed in isolation, the focused suite and the second full run. Its cause was not reproduced or identified, and neither its model nor assertion was changed. Publication and live-page evidence is recorded on the release PR after deployment.

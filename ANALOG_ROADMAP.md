@@ -25,14 +25,18 @@ approximates silently and this suite will not.
 
 ## 1. The tiers
 
-| Tier | Lab | Mirrors | Size | Engine | Status |
+Planned size is what this outline asks each tier for. What each app holds today, and
+the state it is in, are in `BACKLOG.md` section 1, which is written from the app
+registries. The Ledger column names the app directory to look up there.
+
+| Tier | Lab | Mirrors | Planned size | Engine | Ledger |
 | --- | --- | --- | --- | --- | --- |
-| 0 | Circuit Elements Lab, Circuit Lab | Circuits I and II | 55 + 15, plus two seam experiments | `network`, `systems` | built |
-| 1 | Electronics Lab | Electronics I and II | 77 | `network` extended (§4) | planned, `ELECTRONICS_LAB_PLAN.md` |
-| 2 | Applied Analog Lab | the board-level analog a working engineer designs | about 45 | tier 1's, plus corners and yield | Groups A–C implemented (16 lessons), later groups planned |
-| 3 | Analog IC Lab | analog integrated circuit design | about 45 | tier 1's, plus a subthreshold model, matching, differential analysis | Groups A–C implemented (17 lessons), later groups planned |
-| 4 | Mixed-Signal Lab | sampled circuits, converters, clocks | about 40 | `switched` and `dsp` together, plus charge conservation | Groups A–C implemented (18 lessons), later groups planned |
-| 5 | RF Lab | the radio front end | about 35 | a frequency-domain package, `rf`, at the `systems` boundary | outlined here |
+| 0 | Circuit Elements Lab, Circuit Lab | Circuits I and II | 55 + 15, plus two seam experiments | `network`, `systems` | `circuit-elements-lab`, `circuit-lab` |
+| 1 | Electronics Lab | Electronics I and II | 77 | `network` extended (§4) | `electronics-lab`, plan `ELECTRONICS_LAB_PLAN.md` |
+| 2 | Applied Analog Lab | the board-level analog a working engineer designs | about 45 | tier 1's, plus corners and yield | `applied-analog-lab` |
+| 3 | Analog IC Lab | analog integrated circuit design | about 45 | tier 1's, plus a subthreshold model, matching, differential analysis | `analog-ic-lab` |
+| 4 | Mixed-Signal Lab | sampled circuits, converters, clocks | about 40 | `switched` and `dsp` together, plus charge conservation | `mixed-signal-lab` |
+| 5 | RF Lab | the radio front end | about 35 | a frequency-domain package, `rf`, at the `systems` boundary | `rf-lab` |
 
 The order is a dependency order. Tier 2 needs tier 1's op-amp, feedback and noise
 groups. Tier 3 needs tier 1's amplifiers through its op-amp. Tier 4 needs tier 3's
@@ -52,14 +56,14 @@ rule itself.
 
 ## 2. Tier by tier
 
-### Tier 0: built, with two seams to close
+### Tier 0: Circuit Elements Lab and Circuit Lab
 
 Circuits I and II are built as Circuit Elements Lab and Circuit Lab. `CURRICULUM.md`
 names two thin seams, from jω to s and the impulse response in continuous time, each
-one experiment with no engine work. They are the first things to build, because
-every tier above leans on H(s) and on the step as the integral of the impulse.
+one experiment with no engine work. `CURRICULUM.md` section 3 records where both seams
+stand. Every tier above leans on H(s) and on the step as the integral of the impulse.
 
-### Tier 1: Electronics Lab (planned)
+### Tier 1: Electronics Lab
 
 The plan is written. It runs from the op-amp's limits and the junction through the
 transistor, the amplifiers, the differential pair, frequency response, feedback, the
@@ -301,6 +305,10 @@ boundary is.
 5. Prototype the design-to-specification pane in tier 2's first group before it is
    promised anywhere else.
 6. Tiers 4 and 5 get their plans after tier 3 is dark, in that order.
+
+Steps 1 to 5 were overtaken by the program in `PROGRAM.md`, which built tiers 1 to 5
+in parallel rather than in this order. `BACKLOG.md` section 1 records where each of
+them now stands. This section is kept for the dependency reasoning it states.
 
 Each plan, when written, takes the shape of the existing ones. That shape is the
 engine, the models, the app, the curriculum with every number computed, the
