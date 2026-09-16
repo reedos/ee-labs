@@ -65,6 +65,29 @@ ahead of `integration/reconcile` carries a lane's work. Read its commits and its
 lab's `NEEDS.md` before continuing it, and finish what is there rather than
 restarting it.
 
+### The pause of 2026-09-15
+
+The wave stopped part way when the weekly usage limit was reached. Nineteen of its
+forty-six agents finished. Twenty-seven were cut off mid-sentence: eight first
+sittings, sixteen second sittings and three reviewers. No adversarial review
+finished, so no lane has a verdict and none of this work is merged.
+
+Every lane had committed as it went, so nothing was lost. What each agent still had
+in its working tree was committed for it as a WIP commit at the tip of its branch,
+with the scratch files left out. A branch whose tip message begins WIP stopped mid
+task. Read that commit first and finish what it started.
+
+Three branches had two worktrees each, because a lane and its successor shared one.
+Where the second worktree held older content, its work is on a branch named
+`w3-wip/<slug>-alt`, to be read alongside the lane branch. Two branches had been
+advanced by a stale worktree whose commit undid newer work. Both were reset to the
+commit that holds the real content, `w3/signal-lab` to its WIP commit and
+`w3/records` to its review commit.
+
+The records lane finished and is merged. Its five commits and its reviewer are in
+`integration/reconcile`, which is pushed. Every preview server the lanes left
+listening was stopped.
+
 ## 4. What is Reed's
 
 Reed owns the repository. He reviews the labs and he alone releases one.
