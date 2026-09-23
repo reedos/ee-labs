@@ -103,7 +103,7 @@ Reed owns the repository. He reviews the labs and he alone releases one.
 - The teaching model of the three analog apps, which are a lesson tier rather than
   the suite's experiment shape.
 
-Reed's main workspace at `C:/Users/reedo/projects/ee-labs` may hold his own changes.
+Reed's main workspace at `~/projects/ee-labs` may hold his own changes.
 Preserve them. It is not the integration baseline.
 
 ## 5. The setup on this machine
@@ -441,7 +441,7 @@ the tip of their branch, unrun and unreviewed: `verify/circuit-elements-lab` at
 To resume, from the repo root with the scripts' endings stripped:
 
 ```
-Workflow({ scriptPath: "C:\\Users\\reedo\\projects\\ee-labs\\.claude\\workflows\\verify-harnesses.js",
+Workflow({ scriptPath: "<repo root>\\.claude\\workflows\\verify-harnesses.js",
            resumeFromRunId: "wf_801f2ca7-30c" })
 ```
 
