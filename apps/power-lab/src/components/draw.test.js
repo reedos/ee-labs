@@ -149,7 +149,7 @@ describe("the scope's marks", () => {
 })
 
 describe('the sweep', () => {
-  it('writes no legend over the curves: the legend is a list under the plot', () => {
+  it('writes no legend over the curves: the legend is a list under the plot', { timeout: 240000 }, () => {   // ~48 s locally, over 90 s on CI runners
     for (const e of EXPERIMENTS) {
       if (!e.sweep) continue
       const { ctx, s } = sweep(e.id)
