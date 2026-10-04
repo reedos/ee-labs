@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Released labs only. A dark-launched lab joins this list when its RELEASE_STATUS says `released`. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://reedos.dev/ee-labs/</loc></url>
+  <url><loc>https://reedos.dev/ee-labs/signal-lab/</loc></url>
+  <url><loc>https://reedos.dev/ee-labs/circuit-lab/</loc></url>
+  <url><loc>https://reedos.dev/ee-labs/control-lab/</loc></url>
+  <url><loc>https://reedos.dev/ee-labs/circuit-elements-lab/</loc></url>
+</urlset>
