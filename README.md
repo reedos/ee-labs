@@ -1,6 +1,6 @@
 # REED's Engineering Labs
 
-**Live at [reedos.github.io/ee-labs](https://reedos.github.io/ee-labs/).** Nothing to install. MIT licensed.
+**Live at [reedos.github.io/ee-labs](https://reedos.dev/ee-labs/).** Nothing to install. MIT licensed.
 
 Interactive tools for an electrical engineering curriculum, from circuits built out of
 their elements to the signals half.
@@ -25,12 +25,12 @@ npm run dev              # Signal Lab, at http://localhost:1421
 
 | | covers | status |
 |---|---|---|
-| **[apps/circuit-elements-lab](apps/circuit-elements-lab/)** | circuit laws, network theorems, op-amps, diodes, transients, state equations, phasors | **[Live — 89 experiments](https://reedos.github.io/ee-labs/circuit-elements-lab/)** |
+| **[apps/circuit-elements-lab](apps/circuit-elements-lab/)** | circuit laws, network theorems, op-amps, diodes, transients, state equations, phasors | **[Live — 89 experiments](https://reedos.dev/ee-labs/circuit-elements-lab/)** |
 | **[apps/signal-lab](apps/signal-lab/)** | Signals & Systems, DSP, mixed-signal | 35 experiments |
 | **[apps/circuit-lab](apps/circuit-lab/)** | phasor circuit analysis, impedance, resonance, active filters, tolerance | 16 frequency-response lessons |
 | **[apps/control-lab](apps/control-lab/)** | feedback, margins, transient response, disturbance rejection | 13 experiments, 8 plants x 4 controllers |
 
-[**Open Circuit Elements Lab**](https://reedos.github.io/ee-labs/circuit-elements-lab/)
+[**Open Circuit Elements Lab**](https://reedos.dev/ee-labs/circuit-elements-lab/)
 to work from Kirchhoff's laws through RC, RL and RLC circuits. Each experiment
 explains which solution routes apply, with advantages and tradeoffs. Worked
 LaTeX derivations show the substitutions and steps for circuit equations, state
@@ -145,7 +145,7 @@ tested reason. Per app, today:
   course calls ill-posed, with the reason on the panel. A loop of sources that
   disagree, a cut-set of current sources, an ideal op-amp with no feedback, and the
   exponential diode in the time domain. Live at
-  [circuit-elements-lab/](https://reedos.github.io/ee-labs/circuit-elements-lab/).
+  [circuit-elements-lab/](https://reedos.dev/ee-labs/circuit-elements-lab/).
 - **Signal Lab.** Admissible: every block. Biquads, cascades, FIRs and combs are
   exact rational H(z), and the nonlinear blocks report that they have no H at
   all. Guarded: the sampled view of a continuous circuit. The bilinear transform
