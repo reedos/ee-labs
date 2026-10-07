@@ -21,8 +21,8 @@ also traced the comparison defects below back to their producers.
 | Systems state space | Small supplied complex poles became real, and unmatched pairs could be accepted. | Scale pair checks by pole magnitude. Tests retain conjugate pairs and reject mismatches across scales. |
 | Systems Bode plot | A small coefficient multiplier changed the plotted phase by 360 degrees. | Only exact trailing zeros count as origin poles. The plotted phase must survive coefficient scaling. |
 | Control Lab | A slow finite pole was described as an integrator with zero step error. | Count exact trailing zeros. `math.test.js` checks the claim against an integrated step in normalized time. |
-| Control Lab | Slow positive poles lost the unstable-plant explanation. Slow oscillations read zero frequency. | Use pole signs and the complex roots already classified by the shared solver. Tests vary the time scale. |
-| Network theorems | Small nonzero sources made a finite resistance read as an undefined ratio. | Judge cancellation against solved voltage and current scales. Seven cases compare three resistance methods, including balanced bridges and small sources. |
+| Control Lab | Slow positive poles lost the unstable-plant explanation. Slow oscillations read zero frequency. | Allow root roundoff relative to each pole's magnitude. Tests retain weak growth and reject imaginary-axis roundoff across time scales. |
+| Network theorems | Small nonzero sources made a finite resistance read as an undefined ratio. | Bound cancellation using port voltages and the shorted port's KCL terms. Tests compare three resistance methods, balanced bridges, and large auxiliary sources. |
 | Shared axes | Fixed unit floors distorted the height of tiny signals. | Use the signal's own extent. Tests compare normalized trace and curve bounds across amplitudes, including an explicit zero case. |
 | Electronics Lab | A1 checked its resistor-derived gain against the same expression. | Display the gain as a value. Keep the output comparison connected to the circuit solve. |
 | Energy Lab | Battery voltage checked itself. Fill factor reconstructed the power used to define it. | Display both as values. Tests cover battery entries and the array's maximum power. |
@@ -65,9 +65,18 @@ Paths below are relative to each lab's `src/` directory.
 
 ## Gates
 
-`npx vitest run --maxWorkers=2` passed all 10,989 tests in 366 files, exit code 0.
-The run took 977.66 seconds. Two workers limited load during the sprint.
-The first full run exposed four balanced-port failures, repaired before this final run.
+Independent review of the first commit found two more defects. A large auxiliary
+source contaminated the network cancellation scale. Exact imaginary poles could
+be called unstable because of root roundoff. Nine new cases reproduced these
+defects and check weakly connected sources and weakly growing oscillations too.
+The focused follow-up run passed 94 tests in five files, exit code 0.
+The review also found one changed terminal semicolon in a passing prose unit.
+That punctuation is restored.
+
+`npx vitest run --maxWorkers=2` passed all 10,998 tests in 366 files, exit code 0.
+The follow-up run took 1091.93 seconds. Two workers limited load during the sprint.
+The first commit had passed 10,989 tests before review supplied the new counterexamples.
+An earlier full run exposed four balanced-port failures, repaired before either passing run.
 `npm run lint:prose` passed across 81 files. `git diff --cached --check` passed.
 
 The initial prose gate found 330 issues across nine documents in 80 scanned files.

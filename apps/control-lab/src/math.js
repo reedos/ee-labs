@@ -1,4 +1,5 @@
 import { PLANTS, CONTROLLERS } from './systems.js'
+import { plantInverted } from './verdict.js'
 import { bode, dcGain, errorLoop, phaseAt, polesZeros, secondOrderMetrics, isStable, magnitudeAt } from '@ee-labs/systems'
 
 // The math for the loop currently on screen.
@@ -98,7 +99,7 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
     // (verdict.js: plantInverted). Round-three grading found "past the
     // boundary, 0.20x this gain" beside a badge saying stable and no
     // sentence anywhere resolving it, for exactly this plant.
-    const plantRhp = polesZeros(loop.plant).poles.some(([re]) => re > 0)
+    const plantRhp = plantInverted(loop)
 
     // An integrator anywhere in the loop is what kills steady-state error, so
     // it is worth naming rather than leaving the reader to infer it. Counted

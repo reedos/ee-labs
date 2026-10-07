@@ -591,7 +591,7 @@ which is a new state variable rather than a new lesson. Next by this list is
    Lab's existing tools. Thermal networks are Circuit Lab RCs with °C on them.
 10. **The release gate**, in order, each blocking the next:
    1. The full-suite audit used for the other three labs. Check every option, preset and claim, with fuzzing and both browsers. Use pixel checks that measure the claim. Apply §11, which turns the 09/02/2026 review's scores into tests.
-   2. Reed's own hands-on pass against the dark deployment.
+   2. Reed's own hands-on pass against the dark deployment;
    3. Reed flips `RELEASE_STATUS` to `released`. The test then requires the splash card, README row and LabNav entries. Only that commit touches shared surfaces.
 
 ## 9. Non-goals (v1, stated so they are decisions rather than omissions)

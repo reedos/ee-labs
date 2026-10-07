@@ -65,7 +65,10 @@ export function verdictOf(closed, marg = null) {
  * stays true regardless of which controller or gain is dialled in.
  */
 export function plantInverted(loop) {
-  return polesZeros(loop.plant).poles.some(([re]) => re > 0)
+  // Complex roots on the imaginary axis carry solver roundoff in re. Scale
+  // that uncertainty by each pole, so a genuinely slow real RHP pole survives.
+  const roundoff = 64 * Number.EPSILON
+  return polesZeros(loop.plant).poles.some(([re, im]) => re > roundoff * Math.hypot(re, im))
 }
 
 /** The rad/s of the pole pair nearest the axis — the frequency a marginal loop sings at. */

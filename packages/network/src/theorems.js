@@ -69,10 +69,15 @@ export function thevenin(net, a, b = GROUND, opts = {}) {
 
   // 0/0 is not infinity: with no source reaching the port, the ratio method
   // has nothing to say, and NaN says so. Cancellation roundoff is judged
-  // against the solved network, not a fixed voltage or current in SI units.
+  // against the port voltage subtraction and the short's two KCL equations.
+  // Sum magnitudes before cancellation: near-equal node voltages can leave
+  // tiny branch currents even though their floating-point uncertainty is larger.
   const roundoff = 32 * Number.EPSILON
-  const vScale = Math.max(...Object.values(open.v).map(Math.abs))
-  const iScale = Math.max(...Object.values(shorted.i).map(Math.abs))
+  const vScale = Math.max(Math.abs(open.v[a]), Math.abs(open.v[b]))
+  const kclScales = [a, b].map(node => shorted.norm.index.get(node)).filter(k => k >= 0)
+    .map(k => Math.abs(shorted.sys.r[k]) + shorted.sys.M[k]
+      .reduce((sum, coefficient, j) => sum + Math.abs(coefficient * shorted.x[j]), 0))
+  const iScale = Math.max(Math.abs(isc), ...kclScales)
   const undriven = Math.abs(voc) <= roundoff * vScale && Math.abs(isc) <= roundoff * iScale
   const ratio = undriven ? NaN : isc === 0 ? Infinity : voc / isc
 
