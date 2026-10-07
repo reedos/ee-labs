@@ -1082,3 +1082,47 @@ select {
     inset: -15px;
   }
 }
+/* Phone controls introduced by the later labs use the same target budget as
+   the original three. Keep grid children shrinkable and long lesson buttons
+   inside their own scrolling pane. */
+@media (max-width: 900px) {
+  .app > *, .shell > * { min-width: 0; min-height: 0; }
+  body :is(.controls, .sidebar) :is(.group-tab, .group-head, .nav-btn, .picker-step, .picker-current, .thread-chip, .step-text, .step-seen),
+  body :is(.controls, .sidebar) :is(.term-chips, .terms, .picker, .try-steps) button,
+  body :is(.controls, .sidebar) summary {
+    min-height: 44px;
+    min-width: 44px;
+    max-width: 100%;
+  }
+  body :is(.controls, .sidebar) .step-text,
+  body :is(.controls, .sidebar) .step-seen {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+  body :is(.controls, .sidebar) .picker-current { min-width: 0; flex: 1 1 0; }
+  body :is(.controls, .sidebar) .picker-step { flex: 0 0 44px; }
+  body :is(.controls, .sidebar) .term-chips { gap: 8px; }
+  /* Inline definitions stay part of their sentence. Give them the same
+     24px compact target used by plot chrome, without a hit area over a neighbour. */
+  body :is(.controls, .sidebar) dfn[role="button"] {
+    display: inline-block;
+    min-width: 24px;
+    min-height: 24px;
+    max-width: 100%;
+    line-height: 24px;
+  }
+  body .controls .start-hint { min-height: 44px; }
+}
+@media (max-width: 900px) {
+  body :is(.controls, .sidebar) :is(.predict-option, .math-toggle, .knob-chip, .link),
+  body .sidebar .lesson-group button,
+  body .math-toggle, body .nav-btn, body .phone-nav button, body button.flow-node {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  body .views button.play { min-height: 24px; }
+}
+@media (max-width: 900px) {
+  body .tabbar button { min-height: 44px; min-width: 44px; }
+}

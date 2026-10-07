@@ -24,5 +24,7 @@ export function fmtDb(v) {
  * since "m" is a prefix for a unit the axis does not have.
  */
 export function fmtNum(v, digits = 2) {
-  return Number(v.toPrecision(digits)).toString()
+  // Several count and axis callers request an integer with zero digits.
+  // toPrecision(0) throws before the first canvas can be painted.
+  return Number(digits === 0 ? v.toFixed(0) : v.toPrecision(digits)).toString()
 }

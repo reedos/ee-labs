@@ -319,3 +319,12 @@ table.budget th:first-child {
   margin: 0;
   padding-left: 16px;
 }
+/* The shared phone shell caps the sidebar at 45vh. Visible overflow painted
+   the remaining knobs over the topbar and plots instead of making them reachable. */
+@media (max-width: 860px) {
+  .controls { min-height: 0; overflow-y: auto; overflow-x: hidden; }
+  .panes, .pane { min-width: 0; }
+}
+@media (max-width: 860px) {
+  .topbar .view-switch button { min-height: 44px; min-width: 44px; }
+}

@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "pins": "node scripts/pins.mjs"
+    "pins": "node scripts/pins.mjs",
+    "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
     "@ee-labs/rf": "*",
