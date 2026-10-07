@@ -1,6 +1,6 @@
 # REED's Engineering Labs
 
-**Live at [reedos.github.io/ee-labs](https://reedos.dev/ee-labs/).** Nothing to install. MIT licensed.
+**Live at [reedos.dev/ee-labs](https://reedos.dev/ee-labs/).** Nothing to install. MIT licensed.
 
 Interactive tools for an electrical engineering curriculum, from circuits built out of
 their elements to the signals half.
