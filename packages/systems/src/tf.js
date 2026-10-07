@@ -121,7 +121,7 @@ function expectedLowFrequencyPhase(tf) {
   const strip = (c) => {
     const out = [...c]
     let atOrigin = 0
-    while (out.length > 1 && Math.abs(out[out.length - 1]) < 1e-18) {
+    while (out.length > 1 && out[out.length - 1] === 0) {
       out.pop()
       atOrigin++
     }
@@ -206,7 +206,7 @@ export function roots(coeffs) {
   // so a critically damped pole PAIR — (s+1)², the textbook case — came back
   // ±6.7e-9 off the axis, drawn as a complex pair that was not even conjugate.
   // No genuine pair here is that flat: im/re = 1/(2Q) puts even Q = 40 at 0.0125.
-  const out = z.map(([re, im]) => (Math.abs(im) < 1e-6 * Math.max(1, Math.abs(re)) ? [re, 0] : [re, im]))
+  const out = z.map(([re, im]) => (Math.abs(im) < 1e-6 * Math.hypot(re, im) ? [re, 0] : [re, im]))
   for (let i = 0; i < atOrigin; i++) out.push([0, 0])
   return out
 }

@@ -65,7 +65,7 @@ export function verdictOf(closed, marg = null) {
  * stays true regardless of which controller or gain is dialled in.
  */
 export function plantInverted(loop) {
-  return polesZeros(loop.plant).poles.some(([re]) => re > 1e-9)
+  return polesZeros(loop.plant).poles.some(([re]) => re > 0)
 }
 
 /** The rad/s of the pole pair nearest the axis — the frequency a marginal loop sings at. */
@@ -73,7 +73,7 @@ export function oscillationOf(closed) {
   const { poles } = polesZeros(closed)
   let best = null
   for (const [re, im] of poles) {
-    if (Math.abs(im) < 1e-12) continue
+    if (im === 0) continue
     if (!best || Math.abs(re) < Math.abs(best[0])) best = [re, im]
   }
   return best ? Math.abs(best[1]) : 0

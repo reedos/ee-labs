@@ -34,7 +34,7 @@ export function traceExtent(source, keys) {
       if (v > hi) hi = v
     }
   if (!Number.isFinite(lo)) return [0, 1]
-  if (hi - lo < 1e-12 * Math.max(1, Math.abs(hi))) {
+  if (hi === lo || hi - lo < 1e-12 * Math.max(Math.abs(lo), Math.abs(hi))) {
     // A flat trace: give it a band a tenth of its value tall (or ±1 at zero) so
     // it draws as a line across the middle rather than filling the axis with
     // rounding.
@@ -82,7 +82,7 @@ export function anchoredRange(values, baseValues = [], { lo: dLo = null, hi: dHi
   if (log) return [Math.log10(dataLo) - 0.15, Math.log10(dataHi) + 0.15]
   // Padding is added outward, in units of the span, so a negative axis grows
   // the way a positive one does.
-  const span = Math.max(dataHi - dataLo, Math.abs(dataHi) * 0.1, 1e-12)
+  const span = Math.max(dataHi - dataLo, Math.abs(dataHi) * 0.1, Math.abs(dataLo) * 0.1) || 1
   let lo = Number.isFinite(dLo) && dataLo >= dLo ? dLo : dataLo - span * 0.06
   let hi = Number.isFinite(dHi) && dataHi <= dHi ? dHi : dataHi + span * 0.06
   // A reference level the curve is read against (M's unity line) stays on the chart.

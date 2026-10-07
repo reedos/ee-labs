@@ -68,8 +68,13 @@ export function thevenin(net, a, b = GROUND, opts = {}) {
   }
 
   // 0/0 is not infinity: with no source reaching the port, the ratio method
-  // has nothing to say, and NaN says so.
-  const ratio = Math.abs(isc) < 1e-15 ? (Math.abs(voc) < 1e-12 ? NaN : Infinity) : voc / isc
+  // has nothing to say, and NaN says so. Cancellation roundoff is judged
+  // against the solved network, not a fixed voltage or current in SI units.
+  const roundoff = 32 * Number.EPSILON
+  const vScale = Math.max(...Object.values(open.v).map(Math.abs))
+  const iScale = Math.max(...Object.values(shorted.i).map(Math.abs))
+  const undriven = Math.abs(voc) <= roundoff * vScale && Math.abs(isc) <= roundoff * iScale
+  const ratio = undriven ? NaN : isc === 0 ? Infinity : voc / isc
 
   // Load sweep: v = V_oc − R_th·i for any linear network. Least squares over
   // loads spread around |R_th| so the line is well conditioned.

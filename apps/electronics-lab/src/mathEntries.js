@@ -51,7 +51,6 @@ export const ENTRIES = {
         T('The offset is a battery in series with one input. The amplifier cannot tell it from a signal, so it multiplies it by the closed-loop gain.'),
         F('v_{out} = \\frac{A_0 V_{OS}}{1 + A_0\\beta}, \\qquad \\beta = \\frac{R_g}{R_f + R_g}'),
         C([
-          row('closed-loop gain 1 + R_f/R_g', closedGain(p), closedGain(p), '', 1e-9, { unchecked: null }),
           row('v_out, the input and the offset together', (A0 * (p.E + p.vos)) / (1 + A0 * beta), x.sol.v.out, 'V', 1e-3, {
             unchecked:
               Math.abs((A0 * (p.E + p.vos)) / (1 + A0 * beta)) > 12
@@ -59,7 +58,10 @@ export const ENTRIES = {
                 : null,
           }),
         ]),
-        V([{ label: 'input-referred offset', value: p.vos, unit: 'V', note: 'the same battery, wherever the gain is set' }]),
+        V([
+          { label: 'closed-loop gain 1 + R_f/R_g', value: closedGain(p), unit: '' },
+          { label: 'input-referred offset', value: p.vos, unit: 'V', note: 'the same battery, wherever the gain is set' },
+        ]),
       ],
     }
   },

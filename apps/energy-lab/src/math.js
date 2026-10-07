@@ -33,9 +33,9 @@ function arrayBlocks(exp, p, x) {
     F('i = I_{ph} - I_s\\left(e^{v_j/nV_T} - 1\\right) - v_j/R_{sh},\\qquad v = v_j - i R_s'),
     C([
       row('V_oc', vocFormula(c), x.fig.voc, 'V', 0, 1e-5, c.Rsh < 1e3 ? SHUNT_NOTE : null),
-      row('P_mpp = FF·V_oc·I_sc', x.fig.ff * x.fig.voc * x.fig.isc, x.fig.pmpp, 'W', 0, 1e-9),
     ]),
     V([
+      val('P_mpp', x.fig.pmpp, 'W'),
       val('I_ph at this irradiance', x.formulas.iph, 'A'),
       val('I_s at this temperature', x.formulas.is, 'A'),
       val('Thermal voltage V_T', x.formulas.vt, 'V'),
@@ -69,8 +69,8 @@ function batteryBlocks(exp, p, x) {
   const blocks = [
     T('Over the band where the open-circuit voltage rises linearly with the state of charge, the charge store is a capacitor.'),
     F('\\mathrm{OCV}(z) = V_0 + k z,\\qquad z = q/Q,\\qquad C_q = Q/k'),
-    C([row('Terminal at the cursor, from the exact solve', x.at.v, x.at.v, 'V', 0, 1e-9)]),
     V([
+      val('Terminal at the cursor, from the exact solve', x.at.v, 'V'),
       val('C_q = Q/k', x.cq, 'F'),
       val('R₀ + R₁ + R₂', x.rdc, 'Ω'),
       val('τ₁ = R₁C₁', x.tau1, 's'),
