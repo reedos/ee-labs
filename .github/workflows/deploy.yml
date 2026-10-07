@@ -79,7 +79,7 @@ jobs:
           cp -r apps/analog-ic-lab/dist _site/analog-ic-lab
           cp -r apps/mixed-signal-lab/dist _site/mixed-signal-lab
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
