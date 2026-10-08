@@ -22,11 +22,16 @@ for (const lab of labs) {
    await page.waitForTimeout(250)
    const layout = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > innerWidth + 1,
-    spilling: [...document.querySelectorAll('.controls,.sidebar')].filter(e=>getComputedStyle(e).overflowY==='visible' && e.scrollHeight>e.clientHeight+1).map(e=>e.className),
+    // A sidebar that does not scroll must contain its children: a child whose box ends below the sidebar's own box is drawn over whatever follows.
+    spilling: [...document.querySelectorAll('.controls,.sidebar')].filter(e=>{if(getComputedStyle(e).overflowY!=='visible')return false;const bottom=e.getBoundingClientRect().bottom;return [...e.querySelectorAll('*')].some(c=>{const r=c.getBoundingClientRect();return r.height>0&&r.bottom>bottom+1&&!(c.closest('details:not([open])')&&!c.closest('summary'))})}).map(e=>e.className),
     clipped: [...document.querySelectorAll('.app,.shell,.controls,.sidebar,.topbar,.views,.panes')].filter(e => {const r=e.getBoundingClientRect();return r.width && (r.left < -1 || r.right > innerWidth+1)}).map(e=>e.className),
     canvases: [...document.querySelectorAll('canvas')].map(c => {const r=c.getBoundingClientRect();const ctx=c.getContext('2d');let ink=0,colours=new Set();if(ctx){const d=ctx.getImageData(0,0,c.width,c.height).data;for(let i=0;i<d.length;i+=64){if(d[i+3])ink++;colours.add(`${d[i]>>4},${d[i+1]>>4},${d[i+2]>>4}`)}}return {width:r.width,height:r.height,ink,colours:colours.size}}),
    }))
-   const targets = await tapTargetProbe(page, { exceptionFloor: e => e.inViews || e.inLabNav || e.selector.startsWith('dfn.term') ? HARD_FLOOR : null })
+   // circuit-lab and circuit-elements-lab declare data-tap-budget: their own verify.mjs holds a hand-tuned phone fold
+   // with named 24 px exceptions, and 44 px there pushes the lesson view off the first screen, so these two labs are
+   // held to the 24 px WCAG 2.5.8 floor (invisible hit areas where the glyph must stay small).
+   const budget = await page.evaluate(() => document.body.hasAttribute('data-tap-budget'))
+   const targets = await tapTargetProbe(page, { exceptionFloor: e => budget ? HARD_FLOOR : (e.inViews || e.inLabNav || e.selector.startsWith('dfn.term') ? HARD_FLOOR : null) })
    await page.screenshot({ path: path.join(out, `${lab}-${width}-top.png`) })
    const plot = page.locator('canvas').first()
    if (await plot.count()) { await plot.scrollIntoViewIfNeeded(); await page.screenshot({ path: path.join(out, `${lab}-${width}-plot.png`) }) }

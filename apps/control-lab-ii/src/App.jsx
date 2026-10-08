@@ -406,22 +406,6 @@ export default function App() {
 
 /** The numbers beside a pane's own heading. */
 function readoutFor(view, a) {
-  if (view === 'state' && a.filter) {
-    // The filter's own pane: the same matrices, with L in place of K and the
-    // residual of the equation it solved beside it.
-    return (
-      <StatePane
-        ss={a.filter.ss}
-        states={plant.states}
-        ctrl={{ rank: a.filter.ss.n, n: a.filter.ss.n, condition: 1 }}
-        obs={{ rank: a.filter.ss.n, n: a.filter.ss.n, condition: 1 }}
-        place={null}
-        lqr={null}
-        observer={{ L: a.filter.L }}
-        declined={null}
-      />
-    )
-  }
   if (view === 'state' && a.state_) {
     return (
       <>
@@ -520,6 +504,22 @@ function readoutFor(view, a) {
 
 /** One pane. */
 function Pane({ view, a, plant }) {
+  if (view === 'state' && a.filter) {
+    // The filter's own pane: the same matrices, with L in place of K and the
+    // residual of the equation it solved beside it.
+    return (
+      <StatePane
+        ss={a.filter.ss}
+        states={plant.states}
+        ctrl={{ rank: a.filter.ss.n, n: a.filter.ss.n, condition: 1 }}
+        obs={{ rank: a.filter.ss.n, n: a.filter.ss.n, condition: 1 }}
+        place={null}
+        lqr={null}
+        observer={{ L: a.filter.L }}
+        declined={null}
+      />
+    )
+  }
   if (view === 'state' && a.state_) {
     return (
       <StatePane

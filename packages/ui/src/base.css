@@ -1083,46 +1083,72 @@ select {
   }
 }
 /* Phone controls introduced by the later labs use the same target budget as
-   the original three. Keep grid children shrinkable and long lesson buttons
+   the original three. A lab whose <body> carries data-tap-budget keeps its own
+   hand-tuned phone budget (its verify.mjs holds the fold), so this block
+   leaves it alone. Keep grid children shrinkable and long lesson buttons
    inside their own scrolling pane. */
 @media (max-width: 900px) {
   .app > *, .shell > * { min-width: 0; min-height: 0; }
-  body :is(.controls, .sidebar) :is(.group-tab, .group-head, .nav-btn, .picker-step, .picker-current, .thread-chip, .step-text, .step-seen),
-  body :is(.controls, .sidebar) :is(.term-chips, .terms, .picker, .try-steps) button,
-  body :is(.controls, .sidebar) summary {
+  body:not([data-tap-budget]) :is(.controls, .sidebar) :is(.group-tab, .group-head, .nav-btn, .picker-step, .picker-current, .thread-chip, .step-text, .step-seen),
+  body:not([data-tap-budget]) :is(.controls, .sidebar) :is(.term-chips, .terms, .picker, .try-steps) button,
+  body:not([data-tap-budget]) :is(.controls, .sidebar) summary {
     min-height: 44px;
     min-width: 44px;
     max-width: 100%;
   }
-  body :is(.controls, .sidebar) .step-text,
-  body :is(.controls, .sidebar) .step-seen {
+  body:not([data-tap-budget]) :is(.controls, .sidebar) .step-text,
+  body:not([data-tap-budget]) :is(.controls, .sidebar) .step-seen {
     white-space: normal;
     overflow-wrap: anywhere;
     text-align: left;
   }
-  body :is(.controls, .sidebar) .picker-current { min-width: 0; flex: 1 1 0; }
-  body :is(.controls, .sidebar) .picker-step { flex: 0 0 44px; }
-  body :is(.controls, .sidebar) .term-chips { gap: 8px; }
+  body:not([data-tap-budget]) :is(.controls, .sidebar) .picker-current { min-width: 0; flex: 1 1 0; }
+  body:not([data-tap-budget]) :is(.controls, .sidebar) .picker-step { flex: 0 0 44px; }
+  body:not([data-tap-budget]) :is(.controls, .sidebar) .term-chips { gap: 8px; }
   /* Inline definitions stay part of their sentence. Give them the same
      24px compact target used by plot chrome, without a hit area over a neighbour. */
-  body :is(.controls, .sidebar) dfn[role="button"] {
+  body:not([data-tap-budget]) :is(.controls, .sidebar) dfn[role="button"] {
     display: inline-block;
     min-width: 24px;
     min-height: 24px;
     max-width: 100%;
     line-height: 24px;
   }
-  body .controls .start-hint { min-height: 44px; }
+  body:not([data-tap-budget]) .controls .start-hint { min-height: 44px; }
 }
 @media (max-width: 900px) {
-  body :is(.controls, .sidebar) :is(.predict-option, .math-toggle, .knob-chip, .link),
-  body .sidebar .lesson-group button,
-  body .math-toggle, body .nav-btn, body .phone-nav button, body button.flow-node {
+  body:not([data-tap-budget]) :is(.controls, .sidebar) :is(.predict-option, .math-toggle, .knob-chip, .link),
+  body:not([data-tap-budget]) .sidebar .lesson-group button,
+  body:not([data-tap-budget]) .math-toggle, body:not([data-tap-budget]) .nav-btn, body:not([data-tap-budget]) .phone-nav button, body:not([data-tap-budget]) button.flow-node {
     min-height: 44px;
     min-width: 44px;
   }
-  body .views button.play { min-height: 24px; }
+  body:not([data-tap-budget]) .views button.play { min-height: 24px; }
 }
 @media (max-width: 900px) {
-  body .tabbar button { min-height: 44px; min-width: 44px; }
+  body:not([data-tap-budget]) .tabbar button { min-height: 44px; min-width: 44px; }
+  /* The base segmented button has no side padding, so two view names touched. */
+  body:not([data-tap-budget]) .topbar .view-switch button { padding-left: 10px; padding-right: 10px; }
+}
+/* A lab with data-tap-budget holds a hand-tuned phone fold, so its small controls
+   reach the 24px WCAG 2.5.8 floor with the least added height: a real 24px box
+   for the buttons, and an invisible hit area only for the inline definition terms
+   (which sit inside a sentence, so the area covers no other control). */
+@media (max-width: 900px) {
+  body[data-tap-budget] :is(.controls, .sidebar) :is(summary, .term-chip, .thread-chip),
+  body[data-tap-budget] button.flow-node {
+    min-height: 24px;
+    min-width: 24px;
+  }
+  body[data-tap-budget] :is(.controls, .sidebar) dfn[role="button"] {
+    position: relative;
+  }
+  body[data-tap-budget] :is(.controls, .sidebar) dfn[role="button"]::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    left: 0;
+    right: 0;
+  }
 }

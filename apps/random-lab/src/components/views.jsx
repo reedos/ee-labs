@@ -213,7 +213,9 @@ export function DensityCanvas({ psd, height = 320 }) {
       }
       lo = Math.max(lo - 2, -40)
       hi += 2
-      const area = plotArea(w, h, { topInset: 18 })
+      // The caption is one line on a laptop and three on a phone, where the pieces do not fit side by side.
+      const stacked = w < 640
+      const area = plotArea(w, h, { topInset: stacked ? 46 : 18 })
       const sx = (f) => area.x + (f / fMax) * area.w
       const sy = (v) => area.y + area.h - ((v - lo) / (hi - lo)) * area.h
       drawFrame(ctx, area, 0, fMax, lo, hi, (v) => fmtHz(v), (v) => fmtNum(v, 0),
@@ -251,20 +253,24 @@ export function DensityCanvas({ psd, height = 320 }) {
       }
 
       ctx.font = `${Math.round(11 * area.k)}px ui-monospace, monospace`
-      ctx.fillStyle = COLORS.text
+      const counts = `${psd.segments} averages · ${psd.dof.toFixed(0)} degrees of freedom${psd.dofExact ? '' : ' (effective)'}`
+      const ribbon = `ribbon is the ${(psd.level * 100).toFixed(0)} % interval`
+      const integral = `∫ = ${fmt(psd.rmsFromIntegral, '', 4)} rms over 0 to ${fmtHz(fMax)}Hz`
+      const line = 14 * area.k
       ctx.textAlign = 'left'
-      ctx.fillText(
-        `${psd.segments} averages · ${psd.dof.toFixed(0)} degrees of freedom${psd.dofExact ? '' : ' (effective)'} · ribbon is the ${(psd.level * 100).toFixed(0)} % interval`,
-        area.x,
-        area.y - 6 * area.k,
-      )
-      ctx.textAlign = 'right'
-      ctx.fillStyle = COLORS.textBright
-      ctx.fillText(
-        `∫ = ${fmt(psd.rmsFromIntegral, '', 4)} rms over 0 to ${fmtHz(fMax)}Hz`,
-        area.x + area.w,
-        area.y - 6 * area.k,
-      )
+      if (stacked) {
+        ctx.fillStyle = COLORS.textBright
+        ctx.fillText(integral, area.x, area.y - 6 * area.k)
+        ctx.fillStyle = COLORS.text
+        ctx.fillText(ribbon, area.x, area.y - 6 * area.k - line)
+        ctx.fillText(counts, area.x, area.y - 6 * area.k - 2 * line)
+      } else {
+        ctx.fillStyle = COLORS.text
+        ctx.fillText(`${counts} · ${ribbon}`, area.x, area.y - 6 * area.k)
+        ctx.textAlign = 'right'
+        ctx.fillStyle = COLORS.textBright
+        ctx.fillText(integral, area.x + area.w, area.y - 6 * area.k)
+      }
     },
     [psd],
   )

@@ -260,7 +260,9 @@ table.ktc th:first-child {
     grid-row: 1;
     border-right: none;
     border-bottom: 1px solid var(--line);
-    overflow: visible;
+    /* The shared phone rule caps the sidebar at 45vh, so it scrolls inside that box
+       instead of spilling over the plots below it. */
+    overflow-y: auto;
   }
 
   .topbar {
@@ -285,6 +287,11 @@ table.ktc th:first-child {
 
   .readouts {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .view-switch button {
+    min-width: 44px;
+    min-height: 44px;
   }
 
   table.ktc {

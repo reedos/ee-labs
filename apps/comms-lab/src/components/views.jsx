@@ -138,8 +138,15 @@ export function SpectrumCanvas({ freqs, amps, markers = [], floorDb = -90, heigh
       }
       ctx.stroke()
       ctx.font = `${Math.round(10 * area.k)}px ui-monospace, monospace`
-      for (const m of markers) {
+      // Labels of markers closer together than a label is wide (AM sidebands
+      // on a phone) step down a row instead of printing over each other.
+      const rowEnds = []
+      for (const m of [...markers].sort((a, b) => a.hz - b.hz)) {
         if (m.hz < loF || m.hz > hiF) continue
+        const left = sx(m.hz) + 3
+        let row = rowEnds.findIndex((end) => left > end + 4)
+        if (row < 0) row = rowEnds.length
+        rowEnds[row] = left + ctx.measureText(m.label).width
         ctx.strokeStyle = COLORS.marker
         ctx.lineWidth = 1
         ctx.setLineDash([3, 3])
@@ -150,7 +157,7 @@ export function SpectrumCanvas({ freqs, amps, markers = [], floorDb = -90, heigh
         ctx.setLineDash([])
         ctx.fillStyle = COLORS.marker
         ctx.textAlign = 'left'
-        ctx.fillText(m.label, sx(m.hz) + 3, area.y + 11 * area.k)
+        ctx.fillText(m.label, left, area.y + (11 + 11 * row) * area.k)
       }
     },
     [freqs, amps, markers, floorDb, xMax],

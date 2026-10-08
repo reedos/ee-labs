@@ -280,8 +280,9 @@ function Pane({ view, x, step }) {
     const g = x.ldpc
     if (!g) return <p className="pane-empty">This experiment has no graph.</p>
     const it = g.bp && g.bp.iterations.length ? g.bp.iterations[Math.max(0, Math.min(step, g.bp.iterations.length) - 1)] : null
-    const bits = it ? it.bits : g.received
-    return <TannerCanvas graph={g.graph} beliefs={it ? it.toVar : null} bits={bits} failing={failingOf(g, bits)} />
+    // E3 draws the big code's graph with no word sent over it, so there are no bits to colour yet.
+    const bits = it ? it.bits : g.received || null
+    return <TannerCanvas graph={g.graph} beliefs={it ? it.toVar : null} bits={bits} failing={bits ? failingOf(g, bits) : null} />
   }
   return null
 }

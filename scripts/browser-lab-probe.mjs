@@ -6,7 +6,7 @@ import path from 'node:path'
 const CASES = {
  'comms-lab': {label:'Modulation index', value:'0.8'},
  'computer-lab': {label:'Adder width', value:'8'},
- 'control-lab-ii': {label:'Time constant τ', value:'0.2', lesson:1},
+ 'control-lab-ii': {label:'Time constant τ', value:'0.2', lesson:7},
  'devices-lab': {label:'Donors N_D', value:'20000000000'},
  'dsp-lab': {label:'Frequency', value:'8000'},
  'electronics-lab': {label:'Input V₁', value:'1'},
@@ -47,7 +47,7 @@ async function snapshot(page) {
    return {hash:h,ink,colours:colours.size,width:c.width,height:c.height}
   })
   const svgs=[...document.querySelectorAll('main svg,.views svg,.panes svg')].filter(visible).map(s=>s.outerHTML)
-  const readouts=[...document.querySelectorAll('.topbar-field,.flow-node.is-out,.readout,[data-role="headline"],[data-role="outcome"],.headline-value,.meters,.view table,.panes table')].filter(visible).map(e=>e.textContent.trim()).join('|')
+  const readouts=[...document.querySelectorAll('.topbar-field,.flow-node.is-out,.flow-node[data-role],.readout,[data-role="headline"],[data-role="outcome"],.headline-value,.meters,.view table,.panes table')].filter(visible).map(e=>e.textContent.trim()).join('|')
   return {canvases,svgs,readouts,mainText:[...document.querySelectorAll('main,.views,.panes')].filter(visible).map(e=>e.innerText).join('|')}
  })
 }

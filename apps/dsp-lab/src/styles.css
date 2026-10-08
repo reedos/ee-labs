@@ -499,4 +499,17 @@ canvas.plot {
   .spec-table thead {
     display: none;
   }
+
+
+  /* Tap targets: the sidebar and the rack are thumb territory. */
+  .sidebar summary,
+  .why summary,
+  .sidebar button,
+  .rack button,
+  .terms-toggle,
+  .block-head {
+    min-height: 44px;
+    min-width: 44px;
+    align-items: center;
+  }
 }
