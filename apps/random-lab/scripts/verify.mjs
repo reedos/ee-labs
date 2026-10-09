@@ -15,6 +15,7 @@
 // Exits non-zero on the first category of failure, and prints everything.
 
 import { chromium } from 'playwright'
+import { LESSONS } from '../src/lessons.js'
 
 const URL = process.env.APP_URL || 'http://localhost:4306'
 const failures = []
@@ -137,15 +138,27 @@ for (let i = 0; i < total; i++) {
 
 // ------------------------------------------------- 2. the knobs change things
 
+// Each chip applies its step's own `set`, read from the lesson. A step that
+// sets something must change the picture; a step with an empty `set` (A1's
+// third, "read the integral in the corner") is a reading and must leave the
+// picture exactly where it was, so a chip that moves a read-only step is
+// caught too.
 await openExperiment(0)
-for (const step of [1, 2, 3]) {
+const a1Steps = LESSONS.A1.try
+for (let step = 1; step <= a1Steps.length; step++) {
   const before = await canvasHashes()
   const chip = page.locator('.try-chips .chip').nth(step - 1)
-  if (!(await chip.count())) continue
+  if (!(await chip.count())) {
+    fail(`A1: try chip ${step} is missing`)
+    continue
+  }
   await chip.click()
   await settle()
   const after = await canvasHashes()
-  if (before.join() === after.join()) fail(`A1: try chip ${step} changed nothing on screen`)
+  const sets = Object.keys(a1Steps[step - 1].set || {}).length > 0
+  const same = before.join() === after.join()
+  if (sets && same) fail(`A1: try chip ${step} changed nothing on screen`)
+  if (!sets && !same) fail(`A1: try chip ${step} is a reading step but it changed the picture`)
 }
 
 // The seed is the control this lab rests on. Moving it must move every pixel

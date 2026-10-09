@@ -648,6 +648,9 @@ details.preset-group > .presets { margin: 3px 0 5px; }
   details.preset-group { margin-bottom: 2px; }
   details.preset-group > .presets { margin: 2px 0 3px; }
   .featured .num:not(:last-child) { margin-bottom: 6px; }
+  /* The open lesson group grew to five rows (one name wraps): 3 px of chip
+     padding instead of 4 buys back 10 px so the R slider stays above 768. */
+  .preset { padding: 3px 7px; }
 }
 
 /* Where the math went: a pointer in the sidebar, the panel itself a tab of

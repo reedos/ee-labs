@@ -8,7 +8,7 @@
 .group-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 10px;
+  gap: 0 8px;
   margin: 0;
 }
 /* The tabs are the experiments section's cap (the h2), so they take the
@@ -37,7 +37,7 @@
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
-  padding: 6px 0 5px;
+  padding: 4px 0 3px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -98,11 +98,21 @@
    so those 26 px pushed the first knob of b1, b2, b4, c1, c5 and e1 (the
    longer notes) below the fold outright. Trimmed back here, at short
    viewports only — 1440×900 and taller already had the room. */
+/* Fourteen groups now wrap the tab row to four lines, and the lessons grew
+   with them: at 1440x900 the first knob of the longer notes (b1, e6, i1) sat
+   up to 47 px under the fold. The subtitle goes at 900 px tall and under, the
+   same call the 820 px block below already made. */
+@media (max-height: 900px) and (min-width: 901px) {
+  .controls header .sub { display: none; }
+}
 @media (max-height: 820px) and (min-width: 901px) {
   .controls header .sub { display: none; }
   .controls section { margin-top: 4px; padding-bottom: 6px; }
   .controls h2 { padding: 3px 12px 2px; margin-bottom: 4px; }
   .controls .hint { margin-top: 5px; }
+  /* Fourteen tab names in three lines instead of four. */
+  .group-tabs { gap: 0 6px; }
+  .group-tab { font-size: 11px; }
 }
 .controls .report-issue { margin-top: 14px; }
 .controls h2 .sch-name {

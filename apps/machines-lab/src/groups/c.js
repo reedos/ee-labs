@@ -52,7 +52,9 @@ export const EXPERIMENTS = [
       Plain('t', 'Time, in periods', 0, 0, 1),
     ],
     view: 'field',
-    views: ['field'],
+    // The plot is the field against electrical angle, so doubling the poles leaves
+    // it looking the same; the speed the lesson is about is in the readings.
+    views: ['field', 'reading'],
     claim: { sync: true },
   },
   {
