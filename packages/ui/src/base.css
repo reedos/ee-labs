@@ -1085,7 +1085,7 @@ select {
 /* Phone controls introduced by the later labs use the same target budget as
    the original three. A lab whose <body> carries data-tap-budget keeps its own
    hand-tuned phone budget (its verify.mjs holds the fold), so this block
-   leaves it alone. Keep grid children shrinkable and long lesson buttons
+   leaves it alone. The value "own" adds nothing; "floor" adds the 24px floor below. Keep grid children shrinkable and long lesson buttons
    inside their own scrolling pane. */
 @media (max-width: 900px) {
   .app > *, .shell > * { min-width: 0; min-height: 0; }
@@ -1130,20 +1130,20 @@ select {
   /* The base segmented button has no side padding, so two view names touched. */
   body:not([data-tap-budget]) .topbar .view-switch button { padding-left: 10px; padding-right: 10px; }
 }
-/* A lab with data-tap-budget holds a hand-tuned phone fold, so its small controls
+/* A lab with data-tap-budget="floor" holds a hand-tuned phone fold, so its small controls
    reach the 24px WCAG 2.5.8 floor with the least added height: a real 24px box
    for the buttons, and an invisible hit area only for the inline definition terms
    (which sit inside a sentence, so the area covers no other control). */
 @media (max-width: 900px) {
-  body[data-tap-budget] :is(.controls, .sidebar) :is(summary, .term-chip, .thread-chip),
-  body[data-tap-budget] button.flow-node {
+  body[data-tap-budget="floor"] :is(.controls, .sidebar) :is(summary, .term-chip, .thread-chip),
+  body[data-tap-budget="floor"] button.flow-node {
     min-height: 24px;
     min-width: 24px;
   }
-  body[data-tap-budget] :is(.controls, .sidebar) dfn[role="button"] {
+  body[data-tap-budget="floor"] :is(.controls, .sidebar) dfn[role="button"] {
     position: relative;
   }
-  body[data-tap-budget] :is(.controls, .sidebar) dfn[role="button"]::before {
+  body[data-tap-budget="floor"] :is(.controls, .sidebar) dfn[role="button"]::before {
     content: '';
     position: absolute;
     top: -3px;
