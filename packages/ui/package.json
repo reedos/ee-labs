@@ -12,7 +12,7 @@
     "./verify/tapTargetProbe.mjs": "./verify/tapTargetProbe.mjs"
   },
   "peerDependencies": {
-    "react": "^18"
+    "react": "^19.3.0"
   },
   "devDependencies": {
     "@ee-labs/events": "*"
