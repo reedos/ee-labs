@@ -112,6 +112,8 @@ export function NumbersPane({ exp, x, p }) {
           <Row label="Critical angle">{x.oblique.criticalDeg == null ? 'none going this way' : deg(x.oblique.criticalDeg)}</Row>
         </>
       ) : null}
+      {x.circuit ? <Row label="Inductance">{num(x.circuit.inductance, 'H')}</Row> : null}
+      {x.xfmr ? (<><Row label="Coupling coefficient">{x.xfmr.k.toFixed(4)}</Row><Row label="Mutual inductance">{num(x.xfmr.M, 'H')}</Row><Row label="Turns ratio">{x.xfmr.turnsRatio.toFixed(4)}</Row></>) : null}
       {x.grid ? <Row label="The grid's answer">{gridNum(x.grid, x.grid.value, x.headline?.unit)}</Row> : null}
       <Guard g={guard} />
     </div>

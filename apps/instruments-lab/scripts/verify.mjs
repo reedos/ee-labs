@@ -82,9 +82,11 @@ const canvasesPainted = () =>
       const { width, height } = c
       if (!width || !height) return { cls: c.className, painted: false }
       const d = ctx.getImageData(0, 0, width, height).data
+      // Every pixel, not a sample: the error-bar plot is a few hairlines and a
+      // sparse sample misses them, while a canvas nothing drew on has no ink at all.
       let ink = 0
-      for (let i = 3; i < d.length; i += 4 * 97) if (d[i] > 8) ink++
-      return { cls: c.className, painted: ink > 20 }
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 8) ink++
+      return { cls: c.className, painted: ink > 200 }
     }),
   )
 
@@ -104,17 +106,34 @@ async function choose(id) {
   await settle()
 }
 
-const ids = await page.evaluate(() => {
-  // The picker holds every experiment, so the list comes from the page itself.
+// The picker holds every experiment, so the list comes from the page itself.
+// React flushes a click's state change after the handler returns, so each step
+// waits a frame before it reads the DOM.
+const ids = await page.evaluate(async () => {
+  const frame = () => new Promise((r) => requestAnimationFrame(() => r()))
   document.querySelector('.picker-current').click()
-  const open = () => [...document.querySelectorAll('.picker-row[aria-expanded="false"]')].forEach((b) => b.click())
-  open()
-  open()
+  await frame()
+  for (let pass = 0; pass < 8; pass++) {
+    const closed = [...document.querySelectorAll('.picker-row[aria-expanded="false"]')]
+    if (!closed.length) break
+    closed.forEach((b) => b.click())
+    await frame()
+  }
   const out = [...document.querySelectorAll('.preset b')].map((b) => b.textContent.trim().toLowerCase())
   document.querySelector('.picker-current').click()
+  await frame()
   return out
 })
-if (ids.length !== 25) fail(`the picker lists ${ids.length} experiments, expected 25`)
+// The lesson header counts the experiments the app ships ("1 of 25"); the
+// picker has to list exactly that many, each once, so a row that drops out is
+// named and adding an experiment needs no edit here. (experiments.js pulls in
+// the UI's JSX, which plain node cannot import, so the count is read off the page.)
+const shipped = Number(/of\s+(\d+)/.exec(await page.locator('.lesson .h2-aside').first().textContent())?.[1])
+const dupes = ids.filter((id, i) => ids.indexOf(id) !== i)
+if (!(shipped > 0)) fail('the lesson header gave no "n of N" count to compare the picker with')
+else if (ids.length !== shipped || dupes.length) {
+  fail(`the picker lists ${ids.length} experiments, the lesson header counts ${shipped}${dupes.length ? `; listed twice: ${dupes.join(', ')}` : ''}`)
+}
 
 for (const id of ids) {
   await choose(id)
@@ -149,11 +168,27 @@ for (const id of ids) {
   // 4. A try step turns its knobs and the meters follow.
   const stepCount = await page.locator('[data-role=try-step]').count()
   if (stepCount < 2) fail(`${id}: ${stepCount} try steps, expected at least two`)
-  const before = (await meters()).join('|')
+  // What the knobs reach: the meters on the schematic, the opened math panel's
+  // numbers, and what the plots draw. A sine source starts at t = 0 with every
+  // meter at 0 V, and a probe trimmer changes a ratio far from the drive
+  // frequency, so the meters alone cannot see every step land.
+  const plotInk = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('canvas.plot')]
+        .map((c) => {
+          const u = c.toDataURL()
+          let h = 0
+          for (let i = 0; i < u.length; i++) h = (h * 31 + u.charCodeAt(i)) | 0
+          return h
+        })
+        .join(','),
+    )
+  const observed = async () => `${(await meters()).join('|')}#${await page.locator('[data-role=deeper]').innerText()}#${await plotInk()}`
+  const before = await observed()
   await page.locator('[data-role=try-step]').first().click()
   await settle()
-  const after = (await meters()).join('|')
-  if (before === after) fail(`${id}: the first try step moved nothing on the schematic`)
+  const after = await observed()
+  if (before === after) fail(`${id}: the first try step moved nothing on the schematic, in the math panel or on the plots`)
   if (!/balances/.test(await page.locator('[data-role=outcome]').textContent())) fail(`${id}: the first try step left the circuit unsolvable`)
 
   await page.screenshot({ path: `${SHOTS}/${id}-wide.png`, fullPage: true })

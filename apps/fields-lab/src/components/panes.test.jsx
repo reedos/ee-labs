@@ -51,6 +51,7 @@ describe('every view an experiment offers renders', () => {
           out = html(<Pane exp={exp} x={x} p={p} />)
         }
         expect(out.length, `${exp.id} ${view} rendered ${out.length} characters`).toBeGreaterThan(120)
+        if (view === 'numbers') expect(out, `${exp.id} offers Numbers but it shows no number`).toMatch(/fields-row/)
         expect(out, `${exp.id} ${view} is still a stub`).not.toMatch(/not built yet/)
         expect(out, `${exp.id} ${view} shows a NaN`).not.toMatch(/NaN/)
         expect(out, `${exp.id} ${view} shows an undefined`).not.toMatch(/undefined/)

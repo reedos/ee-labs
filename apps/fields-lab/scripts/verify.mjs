@@ -16,6 +16,7 @@
 
 import { chromium } from 'playwright'
 import { EXPERIMENTS, GROUPS, byId } from '../src/experiments.js'
+import { LESSONS } from '../src/lessons.js'
 
 const URL = process.env.APP_URL || 'http://localhost:4180'
 const failures = []
@@ -38,8 +39,10 @@ const settle = () => page.waitForTimeout(180)
 const text = async (sel) => ((await page.locator(sel).count()) ? (await page.locator(sel).first().textContent()).trim() : '')
 
 /** Choose an experiment by id: open its group's tab, then its row. */
+let currentId = null
 async function pick(id) {
   const exp = byId[id]
+  currentId = id
   await page.locator(`.group-tab[data-group="${exp.group}"]`).click()
   await settle()
   await page.locator(`.preset[data-id="${id}"]`).click()
@@ -77,7 +80,14 @@ async function setKnob(key, value) {
     await settle()
   }
   const field = page.locator(`.knob[data-knob="${key}"] input`).first()
-  await field.fill(String(value))
+  // An engineering field reads a bare number in the prefix it is showing (a
+  // shield radius shown in mm takes "1.5" as 1.5 mm), so type the SI value
+  // divided by that prefix, as a reader looking at the field would.
+  const unitText = (await page.locator(`.knob[data-knob="${key}"] .num-unit`).first().textContent().catch(() => '')).trim()
+  const baseUnit = (byId[currentId]?.params.find((k) => k.key === key)?.unit) || ''
+  const prefix = unitText.endsWith(baseUnit) ? unitText.slice(0, unitText.length - baseUnit.length) : ''
+  const mult = { T: 1e12, G: 1e9, M: 1e6, k: 1e3, '': 1, m: 1e-3, µ: 1e-6, n: 1e-9, p: 1e-12, f: 1e-15 }[prefix] ?? 1
+  await field.fill(String(Number((value / mult).toPrecision(10))))
   await field.press('Enter')
   await settle()
 }
@@ -136,18 +146,38 @@ for (const exp of EXPERIMENTS) {
   // Every try step, applied through the chip the reader clicks, with the
   // headline read back after each. A step whose knobs do not reach the page
   // leaves the headline where it was.
-  const before = await text('[data-role=headline]')
+  // "Reaches the page" means the headline or the open view's own readings
+  // changed. One kind of step cannot do that by design: the lesson's own
+  // `reads` for it are the same quantities, to the same values, as its opening
+  // `seeReads` (c4: move the Gauss contour and the flux stays put). For those
+  // the check is that the knob it names shows the new value, and at least one
+  // other step, if there is one, still has to move the readings.
+  const shown = async () => `${await text('[data-role=headline]')}|${await text('.view')}`
+  const knobsShown = () => page.locator('.knob input').evaluateAll((els) => els.map((e) => e.value).join(','))
+  const lesson = LESSONS[exp.id] || {}
+  const invariant = (t) =>
+    Object.keys(t.set || {}).length > 0 &&
+    (t.reads || []).length > 0 &&
+    t.reads.every(([path, v]) => (lesson.seeReads || []).some(([p0, v0]) => p0 === path && v0 === v))
+  const before = await shown()
+  const knobsBefore = await knobsShown()
   let moved = false
+  let knobMoved = false
   for (let i = 0; i < exp.try.length; i++) {
     await page.locator('.try-line button, .try-line .chip').first().click()
     await page.waitForTimeout(exp.kind === 'grid' ? 900 : 200)
-    if ((await text('[data-role=headline]')) !== before) moved = true
+    if ((await shown()) !== before) moved = true
+    if (invariant(exp.try[i]) && (await knobsShown()) !== knobsBefore) knobMoved = true
     const next = page.locator('[data-role=lesson-next], .lesson-nav button[aria-label="Next step"]').first()
-    if (await next.count()) await next.click()
+    // The last step has no next; it was applied by the chip above.
+    if (i < exp.try.length - 1) await next.click()
     await settle()
   }
-  if (!moved && exp.try.some((t) => Object.keys(t.set || {}).length)) {
-    fail(`${exp.id}: no try step moved the headline off "${before}"`)
+  const moving = exp.try.filter((t) => Object.keys(t.set || {}).length && !invariant(t))
+  if (!moved && moving.length) {
+    fail(`${exp.id}: no try step moved the headline or the open view off "${before.split('|')[0]}"`)
+  } else if (!moved && exp.try.some(invariant) && !knobMoved) {
+    fail(`${exp.id}: the invariance step did not move the knob it names`)
   }
 }
 console.log('   every experiment loads, and every view it offers draws something')

@@ -356,6 +356,11 @@ table.ktc th:first-child {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 
+  .view-switch button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   table.ktc {
     display: block;
     overflow-x: auto;

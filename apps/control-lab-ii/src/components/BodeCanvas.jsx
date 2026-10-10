@@ -15,7 +15,7 @@ export default function BodeCanvas({ tf, freqs, crossover = null, phaseCrossover
     (ctx, w, h) => {
       const half = Math.floor(h / 2)
       const curves = bode(tf, freqs)
-      const dB = Array.from(curves.magnitude, (m) => ampToDb(m))
+      const dB = Array.from(curves.mag, (m) => ampToDb(m))
       const deg = Array.from(curves.phase, (p) => (p * 180) / Math.PI)
       const fMin = freqs[0]
       const fMax = freqs[freqs.length - 1]

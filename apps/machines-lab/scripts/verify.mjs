@@ -99,11 +99,39 @@ const canvasIsBlank = (selector) =>
   page.evaluate((sel) => {
     const c = document.querySelector(sel)
     if (!c) return 'missing'
-    const ctx = c.getContext('2d')
+    // Read a copy, made with willReadFrequently, so the harness's own readback
+    // does not raise the browser's "multiple readback operations" warning.
+    const copy = document.createElement('canvas')
+    copy.width = c.width
+    copy.height = c.height
+    const ctx = copy.getContext('2d', { willReadFrequently: true })
+    ctx.drawImage(c, 0, 0)
     const d = ctx.getImageData(0, 0, c.width, c.height).data
     for (let k = 3; k < d.length; k += 4) if (d[k] !== 0) return false
     return true
   }, selector)
+
+/**
+ * Everything on the page that is an output of the knobs, not an echo of them:
+ * the topbar's first reading (which is only one of the readings, so a line
+ * that moves the armature resistance can leave it where it was), the meters on
+ * the schematic, the open pane's table or text, and the drawing in the open
+ * view. The knob row is left out, because it changes whenever a line is
+ * applied and would pass a line whose settings never reached the model.
+ */
+const observed = () =>
+  page.evaluate(() => {
+    const text = (sel) => [...document.querySelectorAll(sel)].map((e) => e.textContent.trim()).join('|')
+    const c = document.querySelector('.view canvas')
+    let ink = ''
+    if (c) {
+      const u = c.toDataURL()
+      let h = 0
+      for (let i = 0; i < u.length; i++) h = (h * 31 + u.charCodeAt(i)) | 0
+      ink = String(h)
+    }
+    return [text('[data-role=outcome]'), text('.machine .sch-meter'), text('.view .pane'), text('.view-head .readout'), ink].join('#')
+  })
 
 const all = await names()
 if (all.length !== 35) fail(`the picker lists ${all.length} experiments, expected 35`)
@@ -131,16 +159,27 @@ for (const name of all) {
     }
   }
 
-  // Back to the first view, then walk every try line and confirm the readout
-  // changes. A line that changes nothing is a line the app did not apply.
-  await page.getByRole('button', { name: views[0], exact: true }).click()
-  await settle()
+  // Walk every try line and confirm the output changes. A line that changes
+  // nothing is a line the app did not apply. The topbar carries only the first
+  // reading, and a step can show in one view and not another (the dq frequency
+  // moves the state matrix and none of the meters; the rotating-field plot
+  // looks the same at two poles and at four), so each line is read in every view
+  // the experiment offers.
+  const observedAcrossViews = async () => {
+    const seen = []
+    for (const v of views) {
+      await page.getByRole('button', { name: v, exact: true }).click()
+      await settle()
+      seen.push(await observed())
+    }
+    return seen.join('@@')
+  }
   const lines = await page.$$('.try-line')
   for (let k = 0; k < lines.length; k++) {
-    const before = await outcome()
+    const before = await observedAcrossViews()
     await lines[k].click()
     await settle()
-    const after = await outcome()
+    const after = await observedAcrossViews()
     if (before === after) fail(`${name}: try line ${k + 1} changed no reading`)
   }
 

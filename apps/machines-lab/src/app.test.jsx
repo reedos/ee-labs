@@ -81,4 +81,12 @@ describe('the view switch', () => {
       expect(Number.isFinite(readQuantity(x, first)), `${exp.id} ${first}`).toBe(true)
     }
   })
+})
+
+describe('the quantity a try line moves is on screen', () => {
+  it('c2 offers the readings, because the rotating-field plot looks the same at two poles and at four', () => {
+    const c2 = EXPERIMENTS.find((e) => e.id === 'c2')
+    expect(c2.views).toContain('reading')
+    expect(c2.try.some((t) => (t.reads || []).some(([path]) => path === 'field.rpmSync'))).toBe(true)
+  })
 })

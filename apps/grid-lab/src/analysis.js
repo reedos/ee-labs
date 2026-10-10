@@ -328,8 +328,12 @@ function analyseFault(exp, p) {
   const study = faultStudy(spec, { kind, Zf: p.Zf ?? 0 })
   const table = faultTable(spec, { Zf: p.Zf ?? 0 })
   const cross = memo(`cross:${p.Xg ?? 0.15}:${p.Xt ?? 0.1}:${p.Xl ?? 0.2}`, () => crossoverRatio(spec))
+  // The Phasors view draws these: the three fault currents in amperes and the sets they resolve into.
+  const abc = study.phase.map((z) => [z[0] * b.Ibase, z[1] * b.Ibase])
   return {
     kind: 'fault',
+    abc,
+    sets: sets(abc),
     spec,
     b,
     study,

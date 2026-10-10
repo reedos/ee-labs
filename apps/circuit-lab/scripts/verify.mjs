@@ -909,7 +909,8 @@ console.log('\n10. The student walk: each filed defect, re-checked on the real p
   await pick('Twin-T notch')
   const cnt = (await page.locator('.lesson-nav-count').textContent().catch(() => '')).trim()
   const back = page.locator('[data-role=lesson-back]')
-  if (cnt !== '6 of 15') fail(`after a circuit click the nav should still read "6 of 15", got "${cnt}"`)
+  const parked = `${LESSONS.findIndex((l) => l.name === 'Q is how sharp, and R sets it') + 1} of ${LESSONS.length}`
+  if (cnt !== parked) fail(`after a circuit click the nav should still read "${parked}", got "${cnt}"`)
   if (!(await back.count())) fail('after a circuit click there should be a "back to lesson" action')
   else {
     await back.click()

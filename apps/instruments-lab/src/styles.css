@@ -153,7 +153,7 @@ details.preset-group > .presets { margin: 4px 0 8px; }
 .try li[data-state='active'] { color: var(--text); }
 .try li[data-state='active'] .step-n { color: var(--accent); }
 .try .step-body { min-width: 0; }
-.try li:not([data-shown]) .step-text { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.try li:not([data-shown]) .step-text { display: block; width: 100%; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .try li:not([data-shown]):hover .step-text { color: var(--text); }
 .try b { color: var(--text); }
 .try li[data-state='done'] b { color: inherit; }

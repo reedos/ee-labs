@@ -213,8 +213,8 @@ export default function App() {
       </header>
 
       <main className="panes">
-        <View view={view} a={a} p={merged} />
-        <Readouts view={view} a={a} p={merged} />
+        <View view={view} a={a} p={merged} fm={Object.hasOwn(experiment.params, 'deviation')} />
+        <Readouts view={view} a={a} p={merged} isFm={Object.hasOwn(experiment.params, 'deviation')} />
       </main>
     </div>
   )
@@ -240,7 +240,7 @@ function headline(experiment, a, p) {
       return `margin ${a.budget().margin.toFixed(2)} dB`
     case 'spectrum':
     case 'scope':
-      return `index ${fmtNum(p.deviation / p.message, 3)}`
+      return `index ${fmtNum(Object.hasOwn(experiment.params, 'deviation') ? p.deviation / p.message : p.m, 3)}`
     default:
       return `${p.symbolRate} symbols a second`
   }
@@ -288,7 +288,7 @@ function Knob({ name, value, onChange }) {
   )
 }
 
-function View({ view, a, p }) {
+export function View({ view, a, p, fm }) {
   switch (view) {
     case 'constellation': {
       const c = a.cloud()
@@ -315,7 +315,7 @@ function View({ view, a, p }) {
         />
       )
     case 'spectrum': {
-      const which = p.deviation && p.view !== 'am' ? a.fm() : a.am()
+      const which = fm ? a.fm() : a.am()
       const s = which.spectrum
       return (
         <SpectrumCanvas
@@ -331,7 +331,7 @@ function View({ view, a, p }) {
       )
     }
     case 'scope':
-      return <TraceCanvas data={a.am().buf.subarray(2048, 2048 + 512)} xLabel="Sample" label="Amplitude" />
+      return <TraceCanvas data={(fm ? a.fm() : a.am()).buf.subarray(2048, 2048 + 512)} xLabel="Sample" label="Amplitude" />
     case 'iq':
       return <IqCanvas buffer={a.wave().shaped} sampleRate={p.sampleRate} />
     case 'channel':
@@ -358,7 +358,7 @@ function View({ view, a, p }) {
   }
 }
 
-function Readouts({ view, a, p }) {
+export function Readouts({ view, a, p, isFm }) {
   switch (view) {
     case 'constellation': {
       const m = a.map()
@@ -414,9 +414,9 @@ function Readouts({ view, a, p }) {
           <Closed label="Sideband level" value={am.sidebandDb} unit="dB" />
           <Against label="Measured sideband" measured={am.measuredSidebandDb} predicted={am.sidebandDb} />
           <Closed label="Power in the sidebands" value={am.sidebandPower * 100} note="per cent" />
-          <Closed label="Modulation index" value={fm.beta} />
-          <Closed label="Carson bandwidth" value={fm.carsonBandwidth} unit="Hz" />
-          <Closed label="Power inside it" value={fm.carson * 100} note="per cent" />
+          <Closed label="Modulation index" value={isFm ? fm.beta : p.m} />
+          {isFm && <Closed label="Carson bandwidth" value={fm.carsonBandwidth} unit="Hz" />}
+          {isFm && <Closed label="Power inside it" value={fm.carson * 100} note="per cent" />}
           <Closed label="Distortion" value={am.thd * 100} note="per cent" />
         </Pane>
       )
