@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import React from 'react'
 import App, { termsFresh, flowNodes, FLOW_BUDGET } from './App.jsx'
@@ -7,6 +7,10 @@ import { EXPERIMENTS, GROUPS, GROUP_INTROS, TRACES, VIEWS, byId, defaultsOf, off
 import { analyse } from './analysis.js'
 import { scopeRange } from './format.js'
 import { LMN_HEADLINES } from './groups/lmn.js'
+
+// Most tests here render all twenty experiments: 30-40 s locally, 80-95 s on the CI runner,
+// so the 90 s default fails at random (10/10/2026 deploy). Give the whole file room.
+vi.setConfig({ testTimeout: 240000 })
 
 // The 2026-09-02 review's bar (POWER_LAB_PLAN.md §11), one test per complaint.
 // Each was written against the build the review looked at and watched fail
