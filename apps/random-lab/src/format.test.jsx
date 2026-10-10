@@ -25,8 +25,8 @@ describe('fmtInt, the formatter counts use', () => {
     expect(fmtInt(Infinity)).toBe('—')
   })
 
-  it('is needed because the shared formatter cannot take zero digits', () => {
-    expect(() => fmtNum(1234, 0)).toThrow(RangeError)
+  it('takes zero digits in the shared formatter too', () => {
+    expect(fmtNum(1234, 0)).toBe('1234')
     expect(fmtNum(1234, 2)).toBe('1200')
   })
 })

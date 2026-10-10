@@ -94,6 +94,13 @@
       .scopeframe .dot.signal.is-on { background: var(--amber); }
       .scopeframe .dot.circuit.is-on { background: var(--accent); }
       .scopeframe .dot.control.is-on { background: var(--blue); }
+      /* Phone: the 11 px dots keep their look but get a 24 px hit area (WCAG 2.5.8),
+         and the gap grows so neighbouring areas do not overlap. */
+      @media (max-width: 700px) {
+        .scopeframe .lights { gap: 14px; }
+        .scopeframe .dot { position: relative; }
+        .scopeframe .dot::before { content: ''; position: absolute; inset: -7px; }
+      }
       #hero { width: 100%; height: 150px; display: block; }
       .scopecap {
         display: flex; justify-content: space-between; align-items: baseline;

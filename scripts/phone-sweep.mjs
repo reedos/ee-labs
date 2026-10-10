@@ -15,7 +15,7 @@ for (const lab of labs) {
    const page = await browser.newPage({ viewport: { width, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true })
    const errors = []
    page.on('pageerror', e => errors.push(e.message))
-   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()) })
+   page.on('console', m => { if (m.type() === 'error' && !/cloudflareinsights/.test(m.text() + (m.location().url || ''))) errors.push(m.text()) })
    await page.goto(server.url)
    try { await page.waitForSelector('.app,.shell', { timeout: 10000 }) } catch (e) { throw new Error(`${lab}: startup failed: ${errors.join('; ') || e.message}`) }
    await page.evaluate(() => document.fonts.ready)

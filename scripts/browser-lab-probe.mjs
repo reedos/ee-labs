@@ -63,7 +63,7 @@ export async function verifyLab(lab) {
  fs.mkdirSync(out,{recursive:true})
  try {
   const page=await browser.newPage({viewport:{width:1440,height:1000}})
-  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())})
+  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!/cloudflareinsights/.test(m.text()+(m.location().url||'')))errors.push(m.text())})
   if(process.env.VERIFY_BREAK_INPUT==='1') await page.addInitScript(()=>{for(const type of ['input','change','keydown'])document.addEventListener(type,e=>{if(e.target.matches('input'))e.stopImmediatePropagation()},true)})
   await page.goto(process.env.APP_URL);await page.waitForSelector('.app');await settle(page)
   const c=CASES[lab];assert(c,`No wiring case for ${lab}`)

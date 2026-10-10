@@ -1155,3 +1155,9 @@ text.sch-meter.is-ac { fill: var(--q-current); }
   .controls > .report-issue { grid-column: 1; grid-row: 7; margin: 20px; }
   .analysis-view .pane-equations { max-height: 65dvh; }
 }
+
+/* Phone: step buttons and in-sentence links reach the 24px floor (WCAG 2.5.8). */
+@media (max-width: 900px) {
+  .step-seen { min-height: 24px; }
+  .lesson-prep a { display: inline-block; min-height: 24px; line-height: 24px; }
+}

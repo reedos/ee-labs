@@ -253,7 +253,7 @@ export default function App() {
               <p>Predict the change before applying each setting. Compare the meters and the selected analysis view, then explain the result using the worked math.</p>
               <ol>{exp.try.map((t, k) => <li key={k}><p>{t.say}</p><button className="step-seen" onClick={() => doStep(k)}>Apply step {k + 1}</button></li>)}</ol>
               <h3>Why it happens</h3><p>{exp.why}</p>
-              <p>Preparation: Circuit Elements teaches circuit laws, storage and phasors. Its diode extension includes <a href="../circuit-elements-lab/#i9">clamping</a> and <a href="../circuit-elements-lab/#i10">voltage doubling</a>.</p>
+              <p className="lesson-prep">Preparation: Circuit Elements teaches circuit laws, storage and phasors. Its diode extension includes <a href="../circuit-elements-lab/#i9">clamping</a> and <a href="../circuit-elements-lab/#i10">voltage doubling</a>.</p>
             </section> : view === 'worked' ? <>
               <h2>Worked math · {exp.name}</h2>
               <details className="route-guide"><summary>Choose an analysis route and read its limits</summary>

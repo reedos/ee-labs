@@ -17,6 +17,8 @@
 .chip-context a { color: var(--accent); overflow-wrap: anywhere; }
 .chip-context .chip-sources { font-size: 11px; }
 @media (max-width: 900px) { .chip-context summary { min-height: 44px; display: list-item; align-content: center; } }
+/* Source links inside a sentence: a 24px box on phones (WCAG 2.5.8) without changing how they look. */
+@media (max-width: 900px) { .chip-sources a { display: inline-block; min-height: 24px; line-height: 24px; } }
 
 .math-toggle {
   width: 100%;
