@@ -16,7 +16,7 @@
   "dependencies": {
     "@ee-labs/photonics": "*",
     "@ee-labs/ui": "*",
-    "react": "^18.3.1",
+    "react": "^19.3.0",
     "react-dom": "^18.3.1",
     "@ee-labs/lessons": "*",
     "@ee-labs/explain": "*",
