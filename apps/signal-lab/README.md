@@ -7,10 +7,7 @@ the plots sits a chain of blocks you can add, reorder and bypass. Change anythin
 both views answer at once. That pairing is the whole idea. Most things that are hard to
 picture in one domain are obvious in the other.
 
-Built for someone who knows some math but has not done much signal processing. No
-install beyond `npm`, nothing to configure, and every preset is a question with a
-visible answer, plus, under each one, the math that predicts it, checked against what
-the tool just measured.
+Built for someone who knows some math but has not done much signal processing. Only `npm` is needed, with nothing to configure. Each preset asks a question with a visible answer. Its math panel compares predictions with measurements.
 
 ## Running it
 
@@ -23,11 +20,7 @@ npm run preview    # then, against that server:
 npm run verify     # drives the real UI in a browser
 ```
 
-`npm test` exercises the DSP and the math directly. `npm run verify` is the one that
-catches wiring: it drives the actual page in a real browser, loads every preset, opens
-every math panel, changes parameters, and checks that the numbers on screen and the
-pixels in the canvases both follow, the class of mistake a unit test cannot see, like a
-prop that stopped being passed or a panel reading stale state.
+`npm test` exercises the DSP and the math directly. `npm run verify` drives the page in a browser. It loads every preset, opens every math panel, and changes parameters. It checks that displayed numbers and canvas pixels follow those changes. This catches wiring defects that unit tests miss, such as missing props or stale panel state.
 
 ## Where to start
 
@@ -36,6 +29,7 @@ what to look at, and offers a collapsible **The math** panel. Then change it and
 what breaks.
 
 **Signals and Fourier**, what a spectrum is
+
 | | |
 |---|---|
 | Single tone | What does one frequency look like in each view? |
@@ -47,6 +41,7 @@ what breaks.
 | Beating | Two close tones: one waveform, two lines. Which is "true"? |
 
 **Sampling**, what discrete time costs you
+
 | | |
 |---|---|
 | Coarse, not undersampled | 2.35 samples per cycle looks mangled, and nothing was lost. |
@@ -58,6 +53,7 @@ what breaks.
 | Spectral leakage | Why a clean tone smears, and what a window buys. |
 
 **Filters**, linear, time-invariant
+
 | | |
 |---|---|
 | Low-pass a square | What exactly does a filter remove? |
@@ -70,6 +66,7 @@ what breaks.
 | Step response and ringing | What Q feels like in time: overshoot and settling. |
 
 **FIR and the z-plane**, filters with no feedback, and the plane they are read in
+
 | | |
 |---|---|
 | A moving average is a filter | Average 8 samples: a low-pass whose nulls you can work out in your head. |
@@ -103,8 +100,7 @@ sources → sum → [ordered block chain] → scope + FFT
   runs at negative indices and the chain is provably at rest before the event arrives.
 - **`src/dsp/biquad.js`**, RBJ cookbook filters, Direct Form I, one section. Written so
   the code reads as the difference equation on the page.
-- **`src/dsp/chain.js`**, `make()` returns a fresh processor on every call, so applying
-  the chain is a pure function and the two views can never contaminate each other. Blocks
+- **`src/dsp/chain.js`**: `make()` returns a fresh processor on every call. Applying the chain is a pure function, and the views cannot contaminate each other. Blocks
   are handed absolute time, so a modulator's phase does not depend on how much pre-roll
   an unrelated filter happened to ask for.
 - **`src/dsp/blocks.js`**, the block registry, as data. One card component renders every
@@ -146,30 +142,19 @@ Every biquad block here is a second-order section. That is what this tool
 ships, not a fact about filters. Order is set by how many sections you put in series, and
 each order adds roughly 6 dB per octave of rolloff, approached as an asymptote from above.
 
-Cascading is not the whole story, though, and the block panel says so. Two identical
-Q = 0.707 sections *is* a fourth-order filter with the right far-field slope, but it is
-not a fourth-order **Butterworth**, that needs Q = 0.541 and 1.307, and only the
-second-order case is 0.707. The giveaway is at the cutoff. Every true Butterworth passes
+Cascading is not the whole story, though, and the block panel says so. Two identical Q = 0.707 sections form a fourth-order filter with the right far-field slope. A fourth-order **Butterworth** instead needs Q = 0.541 and 1.307. Only the second-order Butterworth uses 0.707. The giveaway is at the cutoff. Every true Butterworth passes
 exactly −3.01 dB there whatever its order, while two identical sections give −6.02 dB and
 sag well before the corner. The "Order is a choice" preset puts both side by side.
 
 ### Phase, group delay, and what is deliberately not offered
 
-The spectrum can overlay the **chain's** phase or its **group delay** on a right-hand
-axis, one at a time, since they are the same information differentiated and two dashed
-curves over one magnitude plot is a worse view than either alone. Phase is what makes the
-all-pass legible: |H| is 1.0000 at every frequency while the phase sweeps a full 360°, so
-on the magnitude plot alone the block appears to do nothing at all. Group delay says the
-same thing as a time, in samples, which is usually the more useful reading, a flat line
-means the shape survives.
+The spectrum can overlay the **chain's** phase or its **group delay** on a right-hand axis, one at a time. Group delay is derived from phase, and showing both dashed curves would crowd the magnitude plot.
 
-Group delay comes back **undefined across a null**, and the trace breaks rather than
-joining up. Two separate things go wrong at a null, and a delay differenced through
-either one is not a delay: the phase steps by π there because the real amplitude behind
-it changed sign, and a sign is not a shift. And at the null itself there is no angle at
-all, so the curve is filled in from a neighbour to stay continuous, differencing a
-value that was copied rather than measured. There is also nothing at a null to be
-delayed, so undefined is the honest answer rather than merely a convenient one.
+The all-pass has |H| = 1.0000 at every frequency while its phase sweeps a full 360°. The magnitude plot alone therefore shows no change. Group delay expresses the phase behavior as time in samples. A flat group delay preserves the waveform's shape.
+
+Group delay is **undefined across a null**, so the trace breaks there. The real amplitude changes sign at a null, causing a π phase step. That sign change is not a time shift.
+
+At the null itself, there is no angle. The phase curve uses a neighboring value for continuity, which cannot support a measured derivative. There is also no signal at the null to delay.
 
 The measured phase *of the signal* is not offered, and that is a decision rather than an
 omission. It depends on where the frame happens to start, shift the window one sample
@@ -183,11 +168,7 @@ FFT bin. So the chain renders pre-roll first, the same signal continued backward
 zero pad and not a repeat of the frame, and discards it. A checkbox shows the transient
 once you know it is there.
 
-That scheme depends on the pre-roll being genuinely the same signal, which is why the
-generators take time from the absolute sample index rather than from an offset. Compute
-it from a local index instead and the two differ in the last bit, invisible on a sine,
-but enough to move a square's transition samples across the decision threshold, so the
-filtered square is compared against a *different* unfiltered square.
+The pre-roll must contain the same signal. Generators therefore take time from the absolute sample index, not an offset. Local indexing can change the last bit. This is invisible on a sine but can move a square-wave transition across its decision threshold. The filtered and unfiltered squares would then differ at the input.
 
 ### The other views
 
@@ -209,55 +190,30 @@ y[n] = Σ h[k]·x[n−k]
 
 The top strip is the input with the kernel drawn **flipped** and slid to the current
 position, h[n−m] against m. That flip is the detail everyone trips on, and no amount of
-prose fixes it the way watching the kernel ride backwards does. The flip is forced by the
-arithmetic: x[n−k] walks backwards as k walks forwards, so without it the sum would weight
-the newest input by the oldest tap. The shaded bars are the products being summed, and the
+prose fixes it the way watching the kernel ride backwards does. The flip follows from the arithmetic. As k increases, x[n−k] moves backward. Without the flip, the sum would weight the newest input by the oldest tap. The shaded bars are the products being summed, and the
 bottom strip is the output built so far, ending on the sample those bars just made.
 
-Why this is *the* description of filtering, rather than one of several. Any input is a
-train of scaled, shifted impulses. If the system is linear, the responses to them add. If
-it is time-invariant, a shifted impulse gives a shifted copy of the same response. Put
-those two together and the output must be the sum of scaled, shifted impulse responses —
-which is the sum above. LTI is the hypothesis, and the view shows what happens without
-it: put a clipper in the chain and the label changes to say the two disagree, because
-they genuinely do. The scrubber's readout is computed twice on purpose, once by the
-chain's stateful processors, once as this dot product against the measured kernel, and
-for a linear chain the two agree to rounding.
+Convolution describes any LTI filter. Every input is a train of scaled, shifted impulses. Linearity makes their responses add. Time invariance makes a shifted impulse produce a shifted copy of the same response. The output is therefore the sum of scaled, shifted impulse responses shown above.
 
-The first N samples ramp rather than starting at full value. That is not a rendering
-artifact, it is filter warm-up seen for what it is: the kernel still hangs off the left
-edge of the signal, so the sum runs over a partial overlap.
+A clipper breaks the LTI assumption. Adding one changes the label to report disagreement between the two calculations. The scrubber computes its reading through both the stateful chain and the dot product against the measured kernel. For a linear chain, the two agree to rounding.
 
-Everything in this view is a **sample**: one product bar per sample, one tap per sample,
-one dot per completed sum. The line joining the dots is drawn to make the shape legible
-and is not a claim about what happens between them, that question belongs to the Signal
-view, where the same numbers are drawn as the (sin x)/x curve they describe.
-Reconstruction is a separate step *after* this arithmetic, not part of it, and the two
-views agree exactly where it counts: they are drawing the same samples, from the same
-chain.
+The first N samples ramp rather than starting at full value. This is filter warm-up. The kernel extends past the signal's left edge, so the sum includes only the overlapping samples.
 
-**z-plane** replaces the spectrum with poles and zeros. The thing to notice is that for a
-sampled filter the frequency axis is not a line, it is the unit circle: DC at z = 1,
-running anticlockwise to Nyquist at z = −1, and that circle is the entire spectrum. The
-response at a frequency is the product of the distances from that point to the zeros over
-the distances to the poles, so a pole near the rim makes a peak and a zero on the rim
-makes an exact null. Q, which the spectrum shows as peak height, is here how close the
-poles crowd the circle. Stability inverts from the s-plane, inside is stable, which is
-why the outside is what gets shaded.
+Everything in this view is a **sample**: one product bar per sample, one tap per sample, and one dot per completed sum. Lines connect the dots for legibility. They do not describe the signal between samples.
 
-A moving average is the clearest case: its N−1 zeros sit exactly on the rim at evenly
-spaced angles, and those angles are exactly the frequencies of the nulls in its spectrum.
-One fact, drawn twice.
+The Signal view draws the same numbers as their (sin x)/x reconstruction. Reconstruction follows convolution as a separate step. Both views use the same samples from the same chain.
+
+**z-plane** replaces the spectrum with poles and zeros. For a sampled filter, the frequency axis follows the unit circle counterclockwise from DC at z = 1 to Nyquist at z = −1.
+
+At each frequency, the response is the product of distances to the zeros divided by the product of distances to the poles. A pole near the circle makes a peak. A zero on the circle makes an exact null. Q corresponds to how closely the poles approach the circle. Stability requires poles inside it, so the outside region is shaded.
+
+A moving average has N−1 zeros evenly spaced on the circle. Their angles are the frequencies of its spectral nulls. Both views show the same relationship.
 
 ## The math is attached to what you built
 
-Every preset carries a collapsible **The math** panel, but so does every **source** and
-every **block**, because the presets go quiet the moment you build a chain of your own,
-which is exactly when an explanation is most wanted.
+Every preset carries a collapsible **The math** panel. Each **source** and **block** has one too, so explanations remain available when building a custom chain.
 
-A source panel gives its waveform's series, its RMS and crest factor as a closed form
-checked against the samples the generator actually produced, and how the current
-frequency lands on the sample grid and the FFT bins.
+A source panel gives its waveform's series and closed forms for RMS and crest factor. It checks them against generated samples. It also shows how the current frequency aligns with the sample grid and FFT bins.
 
 A block panel prints the transfer function **with its own coefficients substituted**, and
 the difference equation the code really runs:
@@ -277,60 +233,36 @@ was retyped consistently.
 
 ## What "theory vs measured" is worth
 
-A fair question, since both numbers come out of the same program. The comparison is
-only worth something when the two sides come from genuinely different places: the theory
-side is a closed form, and the measured side has to be *read off something the app is
-really showing you*, the FFT trace, the pre-chain ghost, the response curve. The FFT
-knows nothing about Fourier series, so when they agree, the implementation matches the
-formula.
+Both numbers come from the same program, so the comparison needs independent paths. Theory uses a closed form. Measurements read the displayed FFT trace, pre-chain ghost, or response curve. The FFT does not use the Fourier series. Agreement therefore checks the implementation against the formula.
 
 It does not prove the physics is right. It is an internal consistency check between two
 of my own code paths, not a measurement against reality, and it cannot catch a mistake
 that is present in both the formula and the model.
 
-A row that prints the same expression in both columns, `predicted: beat, measured: beat`
-— cannot disagree, so it is not a check at all. Those are rendered as plain derived
-values under "from these settings", with no tick, because marking 1 = 1 correct is worse
-than saying nothing: it teaches you to trust a ✓ that means nothing.
+A row such as `predicted: beat, measured: beat` cannot disagree with itself. It is not an independent check. These quantities appear as derived values under "from these settings", without a verification tick.
 
-A test enforces the distinction. It perturbs everything a panel could be measuring from
-— scaling and tilting the spectrum, the ghost and the response curve, and requires every
-check row's measured value to move. A row that does not move is not reading anything, and
-fails.
+A test enforces the distinction. It scales and tilts the spectrum, ghost, and response curve. Every comparison row must change its measured value in response. A row that stays fixed fails because it does not read those measurements.
 
 ## The explanations are tested
 
-Each preset's note makes a claim about physics, and each math panel prints a predicted
-value beside the measured one. Both are verified: `src/presets.test.js` renders every
-preset and measures its claim, and `src/math.test.js` checks that every formula
-typesets and that **every predicted number the panel prints agrees with the measurement**
-— using the same predicate the panel itself uses to draw its tick or cross, so the test
-and the page cannot disagree about what "agrees" means.
+Each preset note makes a physics claim, and each math panel compares a prediction with a measurement. `src/presets.test.js` renders every preset and measures its claim. `src/math.test.js` checks formula rendering and agreement for every printed prediction. The test and panel use the same agreement predicate.
 
 ### When a claim stops being checkable
 
 The panel reads live state, so one slider can invalidate a comparison that held when
-the preset loaded. Raise a 250 Hz square to 1 kHz and its 5th harmonic is above Nyquist —
-there is no line left to measure. Move it to 400 Hz and the harmonics no longer land on
+the preset loaded. Raise a 250 Hz square to 1 kHz and its 5th harmonic is above Nyquist. There is no line left to measure. Move it to 400 Hz and the harmonics no longer land on
 bin centres, so the window reads their peaks up to 1.4 dB low. Neither case means the
 formula is wrong.
 
-So each comparison states its own preconditions, below Nyquist, a whole number of
-samples per period, centered on a bin, and when one fails the row is footnoted with the
-reason instead of marked with a cross. `math.test.js` sweeps frequency, sample rate and
-FFT size across those presets and requires every row to be either correct or explicitly
-unmeasurable, and separately requires that the escape hatch is not being used everywhere:
-a panel that checked nothing would pass the first test and teach nothing.
+Each comparison states its preconditions, including Nyquist limits, whole samples per period, and bin alignment. When a precondition fails, a footnote explains why the row is unmeasurable.
 
-The tests are the point. An explanation that is wrong but sounds right is worse here
-than a missing feature, because someone building intuition from it has no way to catch
-it. The claims that are
-easiest to get wrong are the ones that sound obviously right, that each surviving
-harmonic of a filtered square sits *on* the response curve (it does not: the square's own
-4/kπ envelope is already there, and what equals the curve is the gap between the two
-traces), or that a Q of 10 always means a peak ten times taller (true of a low-pass,
-false of a band-pass, where |H(f₀)| is pinned at 1 and Q sets the width instead). So the
-claims are measured rather than trusted.
+`math.test.js` sweeps frequency, sample rate, and FFT size. Every row must be correct or explicitly unmeasurable. A separate check requires actual measurements to remain, so a panel cannot pass by footnoting everything.
+
+Incorrect explanations can mislead someone building intuition. The tests therefore measure claims that might otherwise sound plausible.
+
+A filtered square's surviving harmonics do not sit on the response curve. Their amplitudes already include the square's 4/kπ envelope. The gap between the input and output traces matches the response.
+
+A Q of 10 gives a peak about ten times taller for a low-pass. In a band-pass, |H(f₀)| remains 1 and Q sets the width. The tests measure these distinctions.
 
 ## Relation to waveform-simulator
 

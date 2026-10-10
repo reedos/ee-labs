@@ -68,8 +68,18 @@ export function thevenin(net, a, b = GROUND, opts = {}) {
   }
 
   // 0/0 is not infinity: with no source reaching the port, the ratio method
-  // has nothing to say, and NaN says so.
-  const ratio = Math.abs(isc) < 1e-15 ? (Math.abs(voc) < 1e-12 ? NaN : Infinity) : voc / isc
+  // has nothing to say, and NaN says so. Cancellation roundoff is judged
+  // against the port voltage subtraction and the short's two KCL equations.
+  // Sum magnitudes before cancellation: near-equal node voltages can leave
+  // tiny branch currents even though their floating-point uncertainty is larger.
+  const roundoff = 32 * Number.EPSILON
+  const vScale = Math.max(Math.abs(open.v[a]), Math.abs(open.v[b]))
+  const kclScales = [a, b].map(node => shorted.norm.index.get(node)).filter(k => k >= 0)
+    .map(k => Math.abs(shorted.sys.r[k]) + shorted.sys.M[k]
+      .reduce((sum, coefficient, j) => sum + Math.abs(coefficient * shorted.x[j]), 0))
+  const iScale = Math.max(Math.abs(isc), ...kclScales)
+  const undriven = Math.abs(voc) <= roundoff * vScale && Math.abs(isc) <= roundoff * iScale
+  const ratio = undriven ? NaN : isc === 0 ? Infinity : voc / isc
 
   // Load sweep: v = V_oc − R_th·i for any linear network. Least squares over
   // loads spread around |R_th| so the line is well conditioned.

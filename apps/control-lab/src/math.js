@@ -1,4 +1,5 @@
 import { PLANTS, CONTROLLERS } from './systems.js'
+import { plantInverted } from './verdict.js'
 import { bode, dcGain, errorLoop, phaseAt, polesZeros, secondOrderMetrics, isStable, magnitudeAt } from '@ee-labs/systems'
 
 // The math for the loop currently on screen.
@@ -98,19 +99,18 @@ export function loopMath(plantId, plantP, ctrlId, ctrlP, loop, marg, freqs) {
     // (verdict.js: plantInverted). Round-three grading found "past the
     // boundary, 0.20x this gain" beside a badge saying stable and no
     // sentence anywhere resolving it, for exactly this plant.
-    const plantRhp = polesZeros(loop.plant).poles.some(([re]) => re > 1e-9)
+    const plantRhp = plantInverted(loop)
 
     // An integrator anywhere in the loop is what kills steady-state error, so
     // it is worth naming rather than leaving the reader to infer it. Counted
-    // from the denominator's trailing coefficients RELATIVE to its own scale:
+    // from the denominator's exact trailing zeros:
     // an absolute pole test (|re| < 1e-9) once called a custom plant's
     // −1e-12 rad/s pole an integrator and printed "steady-state error is
     // exactly zero" beside its own measurement of 0.5. A genuine integrator
     // has a constant term of exactly zero, not merely a slow pole.
     const openA = loop.open.a
-    const aScale = Math.max(...openA.map(Math.abs), 1e-300)
     let integrators = 0
-    for (let i = openA.length - 1; i > 0 && Math.abs(openA[i]) < 1e-12 * aScale; i--) integrators++
+    for (let i = openA.length - 1; i > 0 && openA[i] === 0; i--) integrators++
 
     const blocks = [
       T(

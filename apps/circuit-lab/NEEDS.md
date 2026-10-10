@@ -11,13 +11,11 @@ What changed, by territory, amend freely:
 
 - **packages/ui** new `src/analytics.js`, exported from `index.js`:
   `track(path)` counts an event (queued until count.js lands, `off` where no
-  tag is on the page, never throws); `handOverEvent({action, app, tier,
-  circuit})` and `arrivalEvent(lab, from)` are the two event names, kept in
-  one place so the sender and the receivers agree. Tests in
+  tag is on the page, never throws). `handOverEvent({action, app, tier,
+  circuit})` and `arrivalEvent(lab, from)` are the two event names. They share one definition so senders and receivers agree. Tests in
   `analytics.test.js` pin the behaviour AND that the four released entry
-  pages carry the tag (dark-launched labs are deliberately not listed —
-  add yours to the list when it releases, plus the tag in its `index.html`).
-- **apps/signal-lab** `index.html` tag; `App.jsx` counts
+  pages carry the tag (dark-launched labs are not listed). At release, add your lab to the list and put the tag in its `index.html`.
+- **apps/signal-lab** adds the `index.html` tag. `App.jsx` counts
   `arrive/signal-lab/<from app|link>/<circuit id>` once on mount when the
   page loaded from a link. Two lines and one import.
 - **apps/control-lab** `index.html` tag only, no source touched. The
@@ -41,8 +39,7 @@ Reed asked for full parameter direct translation on the circuit → signal
 hand-over and directed the cross-territory work himself. What changed, by
 territory, amend freely:
 
-- **packages/dsp** `Q_MAX` 40 → 100 (the design clamp now equals the knob;
-  a knob past the design clamp silently rebuilt a different filter).
+- **packages/dsp** raises `Q_MAX` from 40 to 100. The design clamp now matches the knob. Previously, settings past the clamp silently built a different filter.
 - **packages/ui deeplink** `trimExact` now serializes raw carriers
   bit-exactly (shortest round-trip decimal, `String(x)`). Twelve figures
   broke a component-extreme tank: at Q ≈ 3×10⁴ the pole pair's distance
@@ -50,27 +47,18 @@ territory, amend freely:
   (your links get MORE exact. The round-trip test pins it).
 - **signal-lab blocks** Q knob 20 → 100 (tracks Q_MAX, agreement pinned by
   test). Gain block ±126 dB (was −60/+24) so it can carry a hand-over's
-  in-band gain up to the component box's ×10⁶. fromLink clamps source
-  frequency to [1 Hz, Nyquist], a sub-hertz source made the cycle-counted
-  scope allocate hours of buffer (tab-killing. The emitter also never sends
-  one now).
-- **circuit-lab emitter** (`toSignalLab.js`): named tiers now carry a
-  non-unity in-band gain as `b=gain:<dB>` beside the filter (the tank
-  crosses whole: band-pass, Q 31.6 on the knob, +80 dB, it used to arrive
-  Q-clamped and normalized to peak 1). Named tier gates every knob against
+  in-band gain up to the component box's ×10⁶. fromLink clamps source frequency to [1 Hz, Nyquist]. A sub-hertz source made the scope allocate hours of buffer and crash the tab. The emitter no longer sends one.
+- **circuit-lab emitter** (`toSignalLab.js`): named tiers carry non-unity gain as `b=gain:<dB>` beside the filter. The band-pass tank arrives with Q 31.6 and +80 dB. Previously, Q was clamped and the peak normalized to 1. Named tier gates every knob against
   the receiving ranges (mirrored in RECEIVER, cross-checked by the
   component-box sweep test). Anything outside crosses raw, with the reason
   named on the panel. Raw coefficients that would clip are factored
-  (largest tap → 1, scale → gain block) instead of flagged. Pre-warp is
-  skipped at/above Nyquist (negative warp constant made an UNSTABLE copy of
+  (largest tap → 1, scale → gain block) instead of flagged.
+
+  Pre-warp is skipped at/above Nyquist (negative warp constant made an UNSTABLE copy of
   a stable circuit). Two Rule-3 guards: `gainOver` (scale past ±126 dB,
   synthetic-only) and `uncertifiable` (corner so many decades below the
-  rate that float64 can no longer certify the carried poles stable —
-  remedy: LOWER the rate, the mirror of clipped's raise-it).
-- The emitter-contract sweep (`toSignalLab.test.js`) runs every circuit's
-  full component box at three rates: every link parses with zero receiver
-  warnings, carried knobs inside range, carried filter certifiably stable
-  or pre-flagged, response exact at the anchor.
+  rate that float64 can no longer certify the carried poles stable). Lower the rate to remedy this (clipped coefficients instead require a higher rate).
+- The emitter-contract sweep (`toSignalLab.test.js`) runs every circuit's full component box at three rates. Every link parses without receiver warnings, and every carried knob stays in range. Each filter is certifiably stable or flagged in advance. Its response is exact at the anchor.
 
 Follow-up welcome: the Playwright harnesses were not extended for the new
 panel branches (they are covered by a renderToString smoke test,
@@ -81,10 +69,7 @@ panel branches (they are covered by a renderToString smoke test,
 No control-lab files changed. Your receiver was the spec. What the
 circuit-lab emitter (`asControlPlant`) now does differently, and why:
 
-- **Two sign bugs fixed.** The op-amp integrator crossed as +K/s via
-  `Math.abs`, closing negative feedback around what is really an INVERTING
-  integrator is positive feedback, so your loop showed stable margins in
-  exactly the case the real one has none. And the inverting amplifier
+- **Two sign bugs fixed.** The op-amp integrator crossed as +K/s via `Math.abs`. Negative feedback around the actual inverting integrator becomes positive feedback. The displayed loop therefore showed stable margins where the real loop had none. And the inverting amplifier
   crossed as `firstOrder` with k = −10, which your k knob (floor 0.001)
   clamped into a completely different plant. Both now cross as `custom`
   with the sign in the coefficients. The old integrator test pinned the
@@ -94,27 +79,18 @@ circuit-lab emitter (`asControlPlant`) now does differently, and why:
   CTRL_RECEIVER, cross-checked by a component-box sweep). Circuits your
   knobs cannot hold (ζ from 1.6e-4 to 1.6e7 is reachable!) fall to
   `custom` instead of arriving clamped. The panel names the reason.
-- **`custom` coefficients are scaled into your ±1e12 fields when needed**
- , by a power of two, which is exact in binary floating point (a twin-T
-  at τ = 1 ns otherwise arrives with 1/τ² = 1e24). The sweep asserts
+- **`custom` coefficients are scaled into your ±1e12 fields when needed.** A power of two makes this exact in binary floating point. A twin-T at τ = 1 ns otherwise arrives with 1/τ² = 1e24. The sweep asserts
   nothing lands within reach of your 1e-30 trimLeading epsilon either.
 - An order-2 denominator with a pole at the origin (motor-shaped, infinite
   DC gain) used to hit an early `return null`. It now falls through to
   `custom` exactly. No catalog circuit produces it today.
-- Verified end-to-end against your ACTUAL `stateFromLink` + `buildLoop`
-  (temporary cross-app test, since removed): 270 component-box combos,
-  zero warnings, plant magnitude exact on a 1e-4…1e6 Hz grid, DC-gain sign
-  preserved, provenance intact.
+- The end-to-end check used `stateFromLink` and `buildLoop` in a temporary cross-app test, since removed. All 270 component-box combinations produced zero warnings. Plant magnitude was exact on a 1e-4…1e6 Hz grid. DC-gain sign and provenance were preserved.
 
 ## Done for you: the asControlPlant custom fallback (your queued task)
 
 Reed asked live, so I landed your queued tier: circuits with numerator
 zeros (RLC across R/L, twin-T) now cross as `plant=custom:b2:b1:b0:a2:a1:a0`
-- exact polynomials, no transform. Serializer upgraded to 12 significant
-figures for raw-coefficient carriers only (b=biquad and plant=custom;
-named knobs stay at 6), which also deepened your twin-T linked notch floor
-from ~-100 dB to below -140 dB - the exact serializer change your test
-comment asked for. That comment and the decline pins were rewritten.
+- exact polynomials, no transform. The serializer uses 12 significant figures for raw-coefficient carriers (b=biquad and plant=custom). Named knobs stay at 6. This deepened the linked twin-T notch floor from about -100 dB to below -140 dB. The change matches the serializer request in the test comment. That comment and the decline pins were rewritten.
 AsPlant's refusal now only fires for order > 2. Amend freely.
 
 ## Crossed (deep, Reed live): first-order named tier + explicit hand-over sections
@@ -125,10 +101,7 @@ Reed's asks, implemented in your territory, amend freely:
   new in fromLink.js). Exactness pinned: bilinear of the circuit ==
   designFirstOrder to 1e-12 (it IS the pre-warped bilinear of the unity-gain
   prototype). Your two raw-tier pins flipped as designed and were rewritten.
-- `HandOver.jsx`: explicit destination headers ("→ Signal Lab · as a digital
-  filter" / "→ Control Lab · as a plant", `.handover-dest` in styles.css);
-  AsPlant no longer VANISHES when asControlPlant is null, it states the
-  refusal reason (numerator zeros / order > 2), per CORE_SCOPE rule 2.
+- `HandOver.jsx` adds destination headers using `.handover-dest` in styles.css. They read "→ Signal Lab · as a digital filter" and "→ Control Lab · as a plant". When asControlPlant is null, AsPlant now states the refusal reason: numerator zeros or order > 2. This follows CORE_SCOPE rule 2.
 - App.jsx h2: "The same filter, sampled" → "Hand it to the other labs".
 - UNBLOCKED: control-lab's `custom` plant exists (systems.js), your queued
   `asControlPlant` fallback (`plant=custom:...`) can land now. The AsPlant
@@ -167,9 +140,7 @@ flipped and slid to n" is exactly h[n−m] against m, keep it. Two additions:
 
 1. **Say that the action IS convolution, where it happens.** The pane is
    titled Convolution but no on-canvas label ties the flip-slide-multiply-sum
-   to the word. Definitions-on-contact applies to the view's own name too —
-   e.g. extend the top label or caption with: "…— this flip, slide, multiply
-   and sum is convolution: y = x ∗ h."
+   to the word. Definitions-on-contact applies to the view's name too. For example, extend its label or caption with "This flip, slide, multiply and sum is convolution, y = x ∗ h."
 
 2. **Print the theorem the view enacts, in both vocabularies.** Reed asked
    for y = x∗h alongside Y(s) = X(s)H(s). One precision flag before printing:
@@ -184,10 +155,7 @@ measurable claim. Test it as FFT(x ∗ h) = FFT(x)·FFT(h) with zero-padding
 
 ## RESOLVED (0da675d): control-lab says the names and prints the multiplication
 
-Loop diagram states "in cascade: transfer functions multiply, L = C·P",
-the root locus names whose poles it draws, and their math panel prints the
-theorem in all three dialects with a measured |C|·|P| vs |L| row at the
-crossover. All three labs now print their vocabulary of the one theorem.
+The loop diagram states "in cascade: transfer functions multiply, L = C·P". The root locus names whose poles it draws. Their math panel prints the theorem in all three dialects. A row compares measured |C|·|P| with |L| at the crossover. All three labs now print their vocabulary of the one theorem.
 Original request kept below for the record.
 
 ## FROM REED, generalized: for control-lab too (and done in circuit-lab)
@@ -202,14 +170,9 @@ The same review generalizes to two rules worth auditing your app against:
 2. **Print the load-bearing theorem in the local vocabulary, cross-referenced
    to the siblings, and measure it before printing.** The theorem here is one
    multiplication: Signal Lab's y = x∗h ⇔ Y(z) = X(z)H(z). Circuit Lab's
-   Y(s) = X(s)·H(s). Yours is the same fact composing the loop —
-   L = C·G and Y/R = L/(1+L).
+   Y(s) = X(s)·H(s). For the loop, L = C·G and Y/R = L/(1+L).
 
-Circuit Lab's implementation, for the pattern: every math panel now carries
-Y(s) = X(s)·H(s) with a MEASURED eigenfunction row, a sine actually run
-through the circuit in RK4 and quadrature-demodulated over whole periods
-(sineResponse in apps/circuit-lab/src/math.js), landing on |H| and ∠H from
-the polynomial path to ~1e-3. Simulation vs algebra: two paths, one claim.
+Every Circuit Lab math panel carries Y(s) = X(s)·H(s) with a measured eigenfunction row. `sineResponse` in `apps/circuit-lab/src/math.js` runs a sine through the circuit using RK4. It demodulates the result over whole periods. The measured |H| and ∠H agree with the polynomial path to about 1e-3. This compares simulation with algebra.
 
 ## Full-fidelity hand-overs: Circuit Lab's Signal-Lab half is DONE
 
@@ -218,18 +181,13 @@ migrates exactly, not only the ones that fit a named block. Status:
 
 - **Signal Lab receiver (DONE, 45b509a):** raw-coefficient `biquad` block,
   `b=biquad:b0:b1:b2:a1:a2`.
-- **Circuit Lab emitter (DONE):** `asDigitalFilter` now has two tiers —
-  named shape when exact (preferred. The knobs mean something), raw
-  coefficients otherwise for any order ≤ 2, first-order and flat circuits
-  padded into the five slots. The twin-T is the showcase. The harness (4c)
+- **Circuit Lab emitter (DONE):** `asDigitalFilter` now has two tiers. It prefers a named shape when exact, so the knobs retain their meaning. Otherwise, any order ≤ 2 uses raw coefficients. First-order and flat circuits are padded into the five slots. The twin-T is the showcase. The harness (4c)
   drives it. The op-amp integrator keeps its reasoned refusal (pole at the
   origin, unbounded DC gain). Out-of-range coefficients (they grow as the
   rate drops toward the corner) are flagged with a raise-the-rate warning
   BEFORE the link is copied, complementing your clamp-with-warning on
   arrival.
-- **Control Lab tier (WAITING on you):** the moment the `custom` plant
-  lands, Circuit Lab will add the `asControlPlant` fallback
-  (`plant=custom:...`), exact, no bilinear.
+- **Control Lab tier (WAITING on you):** When the `custom` plant lands, Circuit Lab will add the `asControlPlant` fallback (`plant=custom:...`). It will be exact, without a bilinear transform.
 
 One observation for you, low priority: `deeplink.js` serializes every number
 at six significant figures, which prices a linked twin-T's notch floor at
@@ -268,12 +226,7 @@ alpha now fails the test, not only a change in component tolerance.
 
 ## Open, confirmed still unaddressed: PoleZeroCanvas needs a `span` prop for sticky axes
 
-Reed's tuning rule (the curve moves, not the axis, already law for Circuit
-Lab's frequency and now its step axes) can't reach the pole-zero view: the
-canvas auto-fits its span from the content on every render (confirmed again
-by reading the current `PoleZeroCanvas.jsx`: `span` is computed from
-`poles`/`zeros`/`cloud` alone, no prop read), so tuning C re-labels the axes
-under poles that appear pinned in place.
+Reed's tuning rule keeps the axes fixed while the curve moves. Circuit Lab's frequency and step axes follow it, but the pole-zero view does not. `PoleZeroCanvas.jsx` recomputes `span` from `poles`, `zeros`, and `cloud` on every render, without reading a prop. Tuning C therefore relabels the axes while the poles appear stationary.
 
 Requested contract, and Circuit Lab still passes the prop (harmlessly
 ignored today, lights up when you land it):
@@ -288,34 +241,22 @@ The caller owns stickiness (Circuit Lab holds it in `stickySpan`, axis.js),
 so the canvas stays stateless. Control Lab's root-locus use is unaffected
 unless it opts in.
 
-
 ## Provenance on hand-over links: DONE
 
 Both emitted link kinds now carry `from=circuit:<id>:<label>` (Signal Lab
 filter links and Control Lab plant links alike), round-trip tested through
 parseLink. Greet away.
 
-
 ## FROM REED: the hand-over arrives unrecognizable - two emit-side fixes
 
-Reed built the RC low-pass, crossed to Signal Lab, and reported "the cutoff
-clearly does not match and the order is off." The coefficients you emit are
-EXACT (verified: |H| = 0.7071 at 1591.5 Hz on the emitted link) - the failure
-is presentation, and the receiving fixes are live. Two changes to the links
+Reed reported a cutoff and order mismatch after sending an RC low-pass to Signal Lab. The emitted coefficients are exact: |H| = 0.7071 at 1591.5 Hz on the link. The failure is in presentation. The receiver fixes are live. Two changes to the links
 you emit, both tiers (named and raw):
 
 1. `zoom=<hz>` (grammar live in packages/ui, tested; Signal Lab maps it to
-   its spectrum span on arrival). Emit roughly 8x the corner: the hand-over
-   picks 192 kHz for warp headroom, Signal Lab's axis is linear to Nyquist,
-   and without the zoom a 1.6 kHz corner occupies 1.7% of the plot - the
-   exact mapping looks like a wrong one. Skip it when there is no corner
+   its spectrum span on arrival). Emit roughly 8x the corner. The hand-over picks 192 kHz for warp headroom, and Signal Lab uses a linear axis to Nyquist. Without zoom, a 1.6 kHz corner occupies 1.7% of the plot. That makes an exact mapping appear wrong. Skip it when there is no corner
    (the divider).
 
-2. Reed's directive on the default source, which is not noise: "we'd be better
-   served with something like a square or sine." Emit a square at about a
-   fifth of the corner (rounded to something clean, amp ~0.8): its harmonic
-   comb probes the curve at discrete, checkable points and gives the scope a
-   story (corners rounding / plateaus dying), where noise gave a shimmer.
+2. Reed requested a square or sine as the default source instead of noise. Emit a square at about a fifth of the corner, rounded to a simple frequency, with amplitude about 0.8. Its harmonics probe discrete points on the curve. The scope shows rounded corners or decaying plateaus more clearly than with noise.
    For the no-corner case a square at any audio-ish frequency is fine.
 
 Also fixed on the receiving side (was mine): the raw-biquad panel printed
@@ -323,63 +264,31 @@ Also fixed on the receiving side (was mine): the raw-biquad panel printed
 reads order 1 off its trailing zeros. That was the "order is off" half of
 Reed's report.
 
-
 ### Update: both emit items landed by the packages/signal-lab agent
 
-Reed was testing the flow live, so the territory rules gave way to a working
-product: src=square at ~fRef/5 (amp 0.8) and zoom=8 corners now ride every
-asDigitalFilter link, with an emit test pinning both. Review welcome - amend
+Reed was testing the flow live, so the territory rules were waived for these changes. Every asDigitalFilter link now carries src=square at about fRef/5, amplitude 0.8, and zoom=8 corners. An emitter test checks both. Review welcome - amend
 freely, it is your file.
-
 
 ## Small crossing: lesson titles above their notes (Reed, uniform across apps)
 
-The selected lesson's name now renders as an h3.note-title above its note
-paragraph (and, in circuit-lab, the circuit's name above its hint) - Reed
-asked for it in every module, so all three landed together. Style is shared
+The selected lesson's name now renders as h3.note-title above its note paragraph. Circuit Lab also shows the circuit's name above its hint. Reed requested this in every module, so all three changes landed together. Style is shared
 from packages/ui base.css. Amend freely.
 
 ## PACKAGES BUG (found in the shared tree, not mine to fix): parseEngField + NumField's onBlur silently drop a typed prefix on the SECOND field you touch
 
-Working the Explanation/Transfer review, `npx vite preview` + verify.mjs
-against the CURRENT uncommitted `packages/ui/src/units.js` +
-`packages/ui/src/NumField.jsx` (parseEngField's new "a bare number always
-means canonical unit" rule) turned every RC/RLC/Sallen-Key/twin-T section of
-circuit-lab's own verify.mjs into a mismatch, off by exactly a power of ten
-matching the field's own displayed prefix. Not a circuit-lab bug and not
-touched here (packages/* is this territory's read-only), but it will fail
-this app's harness (and any other app's) until it lands, so it is worth
-flagging loudly:
+The Explanation/Transfer review ran `npx vite preview` and verify.mjs against uncommitted `packages/ui/src/units.js` and `packages/ui/src/NumField.jsx`. Their new parseEngField rule reads bare numbers in canonical units. Every RC, RLC, Sallen-Key, and twin-T section then failed. Each mismatch was a power of ten matching the field's displayed prefix. The defect is outside Circuit Lab and remains unchanged here because packages/* is read-only for this lane. It affects this app's harness and other apps' harnesses.
 
-**Repro**: on ANY eng-mode NumField, type "2.2k" and press Enter (correctly
-commits 2200 - confirmed via aria-valuenow). Then touch a SECOND field on the
-same page (a real Tab, a click elsewhere, or - as `setField()` in every
-verify.mjs in the suite already does - fill a different field next). The
-first field's `onBlur` fires (focus left it) and calls `commit(e.target.value)`
-again, against whatever the box is NOW showing after the first commit's own
-round-trip reformat - "2.2", the bare mantissa, because the prefix ("k") lives
-in the separate `.num-unit` label, never in the input's own text. Under the
-OLD parseEng rule (bare number = current displayed prefix) that second,
-redundant commit was a harmless no-op: "2.2" bare still meant 2200. Under the
-NEW rule it means literally 2.2 - the field silently reverts to a value 1000x
-smaller than what was typed and confirmed, with nothing on screen to say so.
+**Repro**: type "2.2k" in an eng-mode NumField and press Enter. `aria-valuenow` confirms that this commits 2200. Then focus a second field by Tab or click, or fill another field as the harness's `setField()` does.
 
-**Confirmed via direct DOM read** (`aria-valuenow` before/after touching a
-second field), isolated with no lesson, note, or app code of mine involved -
-plain "RC low-pass" circuit, R then C. Every app's `setField()` helper types a
-value then moves to the next field, so this is not a corner case; it is the
-harness's (and a real user's) ordinary path.
+The first field's `onBlur` then calls `commit(e.target.value)` again. The input now shows "2.2" after reformatting. Its "k" prefix is in the separate `.num-unit` label.
 
-**The fix is almost certainly in NumField.jsx**, not in units.js: `onBlur`
-should not re-commit when `draft` is null (nothing has been typed since the
-last commit - the box is only showing its own already-correct round-trip
-text, and re-parsing that text as fresh user input is the bug). Something
+Under the old parseEng rule, the displayed prefix made bare "2.2" mean 2200. The redundant commit changed nothing. Under the new rule, it means 2.2. The confirmed value silently becomes 1000x smaller.
+
+**Confirmed via direct DOM read** of `aria-valuenow` before and after focusing a second field. The reproduction used a plain RC low-pass circuit, R then C, without my lesson, note, or app code. Every app's `setField()` helper types a
+value then moves to the next field, which follows the harness's and a user's ordinary path.
+
+**The likely fix is in NumField.jsx.** `onBlur` should not commit again when `draft` is null. Nothing has been typed since the last commit. The box displays its correctly formatted text, which must not be parsed as fresh input. Something
 like `onBlur={(e) => { if (draft != null) commit(e.target.value) }}`.
-parseEngField's new rule is fine and is exactly what the unit tests near it
-ask for; it is the redundant onBlur commit that turns a correct value into a
-wrong one immediately after.
+The new parseEngField rule matches its unit tests. The redundant onBlur commit corrupts the value immediately afterward.
 
-This is not something circuit-lab's own verify.mjs run can paper over (the
-sections it breaks - 2, 4b, 4c, 4d - test real physics against real typed
-values), so until this lands, expect those sections to fail through no fault
-of the app underneath them. Flagged rather than silently worked around.
+Circuit Lab's verify.mjs cannot work around this defect. Sections 2, 4b, 4c, and 4d check physics against typed values. Those sections will fail until the shared-field fix lands. Flagged rather than silently worked around.

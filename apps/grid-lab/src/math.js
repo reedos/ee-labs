@@ -30,13 +30,13 @@ function baseBlocks(exp, p, x) {
     T('Two bases are chosen and the rest follow. Nothing here is approximated, so every row is an identity.'),
     F('Z_b = \\dfrac{V_b^2}{S_b},\\qquad I_b = \\dfrac{S_b}{\\sqrt{3}\\,V_b},\\qquad V_{LN} = \\dfrac{V_b}{\\sqrt{3}}'),
     C([
-      row('Z_b', (x.b.Vbase * x.b.Vbase) / x.b.Sbase, x.b.Zbase, 'Ω', 0, 1e-9),
-      row('I_b', x.b.Sbase / (Math.sqrt(3) * x.b.Vbase), x.b.Ibase, 'A', 0, 1e-9),
       row('Impedance seen from the two sides', x.puFromHigh, x.puFromLow, 'pu', 0, 1e-12),
     ]),
     T('An impedance quoted on a device rating moves to the system base by one formula.'),
     F('Z_{new} = Z_{old}\\,\\dfrac{S_{new}}{S_{old}}\\left(\\dfrac{V_{old}}{V_{new}}\\right)^2'),
     V([
+      val('Z_b', x.b.Zbase, 'Ω'),
+      val('I_b', x.b.Ibase, 'A'),
       val('Generator on the system base', x.gen, 'pu'),
       val('Transformer on the system base', x.tx, 'pu'),
       val('Low-side impedance base', x.low.Zbase, 'Ω'),
@@ -51,8 +51,8 @@ function phaseBlocks(exp, p, x) {
     F('P_{3\\phi} = 3\\,V_{LN} I \\cos\\varphi = \\sqrt{3}\\,V_{LL} I_L \\cos\\varphi'),
     C([
       row('Three-phase power, both forms', x.load.Pline, x.load.P, 'W', 1e-12),
-      row('Line to neutral', x.load.Vll / Math.sqrt(3), x.load.Vln, 'V', 0, 1e-9),
     ]),
+    V([val('Line to neutral', x.load.Vln, 'V')]),
     T('One phase pulses at twice the supply frequency. Three balanced phases do not pulse at all.'),
     F('p_a(t) = V I\\cos\\varphi - V I\\cos(2\\omega t - \\varphi)'),
     C([
@@ -71,8 +71,8 @@ function lineBlocks(exp, p, x) {
     F('\\dfrac{V_r}{V_s}\\bigg|_{exact} = \\dfrac{1}{\\cosh\\gamma l},\\qquad \\dfrac{V_r}{V_s}\\bigg|_{\\pi} = \\dfrac{1}{1 + ZY/2}'),
     C([
       row('Open-end rise', x.rise.exact, x.rise.nominal, '', x.model.long ? 0.05 : 0.001, 0, x.model.long ? 'Past 250 km the lumped model is replaced by the exact form, and the gap here is why.' : null),
-      row('Surge impedance', Math.sqrt(x.spec.x / x.spec.b), x.surge.Zc, 'Ω', 0, 1e-9),
     ]),
+    V([val('Surge impedance', x.surge.Zc, 'Ω')]),
     T('At the surge impedance loading a line absorbs exactly as much reactive power as it produces.'),
     F('Z_c = \\sqrt{L/C},\\qquad P_{SIL} = \\dfrac{V^2}{Z_c}'),
     C([row('Reactive balance at this loading', 0, x.balance.net, 'var', 0, 1e-6 * x.balance.produced, p.loading !== 1 ? 'The balance closes only at the surge impedance loading, and this knob is off it.' : null)]),

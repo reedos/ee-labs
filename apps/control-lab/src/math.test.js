@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { margins } from '@ee-labs/systems'
+import { margins, stepResponse } from '@ee-labs/systems'
 import { checkFailures, rowsOf } from '@ee-labs/explain/testing'
 import { PLANTS, CONTROLLERS, buildLoop, defaultsOf } from './systems.js'
 import { circuitFor } from './toCircuitLab.js'
@@ -30,6 +30,22 @@ const entryFor = (plantId, ctrlId = 'p', plantOver = {}, ctrlOver = {}) => {
 }
 
 const textOf = (entry) => entry.blocks.filter((b) => b.kind === 'text').map((b) => b.text).join(' ')
+
+describe('slow poles retain finite DC error', () => {
+  it('explains a slow right-half-plane plant after feedback stabilizes it', () => {
+    const rate = 1e-13
+    const entry = entryFor('custom', 'p', { b2: 0, b1: 0, b0: 2 * rate, a2: 0, a1: 1, a0: -rate })
+    expect(textOf(entry)).toContain('This plant carries a pole in the right half plane')
+  })
+  it.each([1e-13, 1e-10, 1])('does not call a pole at -%s an integrator', (rate) => {
+    const entry = entryFor('custom', 'p', { b2: 0, b1: 0, b0: rate, a2: 0, a1: 1, a0: rate })
+    expect(textOf(entry)).toContain('There is no integrator')
+    const row = rowsOf(entry, 'check').find(r => r.label === 'steady-state error')
+    // The rendered step's integration path in normalized time, not DC algebra.
+    const response = stepResponse({ b: [1], a: [1, 2] }, { duration: 10, points: 501 })
+    expect(row.predicted).toBeCloseTo(1 - response.y.at(-1), 6)
+  })
+})
 
 describe('the Math tab prints the catalogue refusal beside a bench circuit that still has no link', () => {
   it.each(['integrator', 'motor', 'threePole'])(

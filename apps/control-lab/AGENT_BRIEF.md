@@ -9,8 +9,7 @@ You are one of three agents working this repo in parallel. **Your territory is
 - Edit only inside `apps/control-lab/`. Treat `packages/*` and the other two
   apps as **read-only**: read them for patterns as much as you like, change
   nothing. If you genuinely need a package change, write the need into
-  `apps/control-lab/NEEDS.md`, commit it, and continue with what you can do —
-  the packages agent will pick it up.
+  `apps/control-lab/NEEDS.md`, commit it, and continue with what you can do. The packages agent will pick it up.
 - **One lane per agent, one worktree per agent.** `PROGRAM.md` §2: the branch is
   `lab/control-lab`, the worktree gets its own `npm ci`, and nothing is pushed
   by an overseer. Never clone a second copy into `~/projects/ee-labs-control-lab`.
@@ -84,21 +83,13 @@ can the feature be SEEN. Rendering honesty) apply to you verbatim.
    the harness, folded buttons aren't clickable, so lesson clicks must unfold
    first (see signal-lab's `loadPreset`).
 
-2. **The loop as a diagram.** Build the classic feedback block diagram as an
-   on-demand overlay, modeled on
-   `apps/signal-lab/src/components/FlowDiagram.jsx` (SVG, backdrop, Escape
-   closes, boxes clickable to reveal sidebar cards): r → ⊕(+/−) → C(s) → ⊕
-   (disturbance d enters HERE, at the plant input) → P(s) → y, with the
-   feedback wire from y back to the first junction carrying the minus sign.
-   Show C and P with their current parameter summaries. This picture is the
-   subject's central diagram and the app doesn't draw it yet. Wire the
+2. **The loop as a diagram.** Build the classic feedback block diagram as an on-demand overlay. Model it on `apps/signal-lab/src/components/FlowDiagram.jsx`: SVG, backdrop, Escape to close, and clickable boxes that reveal sidebar cards. The path is r → ⊕(+/−) → C(s) → ⊕
+   (disturbance d enters HERE, at the plant input) → P(s) → y. The feedback wire returns from y to the first junction with the minus sign.
+   Show C and P with their current parameter summaries. The app does not yet draw this central diagram. Wire the
    disturbance entry point to the existing Reference/Disturbance step toggle
    so the diagram explains what that toggle injects and where.
 
-3. **Phase language audit.** Wherever margins or controller hints discuss
-   gain, make the phase story explicit and led-by-the-rule: each pole costs up
-   to 90° of lag (45° at its corner), an integrator is a flat −90°, derivative
-   and lead ADD phase. Prove every printed number with a test via
+3. **Phase language audit.** Explain phase wherever margins or controller hints discuss gain. Each pole adds up to 90° of lag, with 45° at its corner. An integrator adds a constant −90°. Derivative and lead add phase. Prove every printed number with a test via
    `bode()`/`margins()` before printing it.
 
 4. **Adversarial audit of all lessons.** Load each lesson in the browser,
@@ -106,10 +97,7 @@ can the feature be SEEN. Rendering honesty) apply to you verbatim.
    the screen. Fix what's wrong. Each fix gets a test that would have caught
    it.
 
-5. **(Stretch) Sensitivity.** S = 1/(1+L) and T = L/(1+L) with S + T = 1 —
-   a math-panel treatment (or a plot if it fits the layout budget) of why the
-   loop cannot reject disturbances and follow references arbitrarily well at
-   the same frequency. `errorLoop`/`closeLoop` in `@ee-labs/systems` already
+5. **(Stretch) Sensitivity.** Show S = 1/(1+L), T = L/(1+L), and S + T = 1 in the math panel. Add a plot if it fits the layout budget. Explain why the loop cannot reject disturbances and follow references arbitrarily well at the same frequency. `errorLoop`/`closeLoop` in `@ee-labs/systems` already
    compute both. Claims measured, as always.
 
 Do not start item 5 unless 1–4 are green and pushed.

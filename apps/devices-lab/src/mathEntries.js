@@ -468,7 +468,6 @@ export const ENTRIES = {
         F('\\frac{dP}{dV} = 0, \\qquad FF = \\frac{P_{max}}{V_{oc}I_{sc}}'),
         C([
           row('the slope at the maximum power point', 0, c.slope(c.vmp), 'A', 1e-9, { abs: 1e-9 * c.isc + 1e-18 }),
-          row('the power there, against the fill factor', c.ff * c.voc * c.isc, c.pmax, 'W', 1e-9),
           row('the empirical fill factor', c.ff, c.ffEmpirical, '', 5e-3, {
             unchecked:
               c.voc / c.vt > 10
@@ -477,6 +476,7 @@ export const ENTRIES = {
           }),
         ]),
         V([
+          { label: 'maximum power', value: c.pmax, unit: 'W' },
           { label: 'the empirical form’s error', value: c.ffError, unit: '', note: 'printed rather than hidden inside a tick' },
           { label: 'efficiency', value: c.efficiency, unit: '', note: 'against the light falling on the area' },
         ]),

@@ -152,7 +152,8 @@ export function polyFromRoots(desired) {
   for (let i = 0; i < pts.length; i++) {
     if (used[i]) continue
     const [re, im] = pts[i]
-    if (Math.abs(im) < 1e-12 * Math.max(1, Math.abs(re))) {
+    const scale = Math.hypot(re, im)
+    if (im === 0 || Math.abs(im) < 1e-12 * scale) {
       used[i] = true
       poly = polyMul(poly, [1, -re])
       continue
@@ -160,7 +161,7 @@ export function polyFromRoots(desired) {
     let mate = -1
     for (let j = i + 1; j < pts.length; j++) {
       if (used[j]) continue
-      if (Math.abs(pts[j][0] - re) < 1e-9 * Math.max(1, Math.abs(re)) && Math.abs(pts[j][1] + im) < 1e-9 * Math.max(1, Math.abs(im))) {
+      if (Math.abs(pts[j][0] - re) < 1e-9 * scale && Math.abs(pts[j][1] + im) < 1e-9 * scale) {
         mate = j
         break
       }

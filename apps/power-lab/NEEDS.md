@@ -114,35 +114,20 @@ what each contract is.
 
 The buck's averaged small-signal plant hands over to Control Lab (a
 `plant=custom:…` link, `src/handover.js` and `src/components/BuckHandOver.jsx`,
-2026-09-03). `packages/ui/src/deeplink.js`'s `siblingUrl` (and, separately,
-`homeUrl`) and `circuitLink.js`'s `labUrl` used to hard-code which app names
-they recognise as a link's SOURCE — `signal-lab`/`circuit-lab`/`control-lab`
-for the first two, those plus `circuit-elements-lab` for the third — so a
-call made from power-lab's own pathname returned null unconditionally, dev or
-deployed. That was a routing gap, not a Power-Lab-specific rule, and it hit
-Circuit Elements Lab's own LabNav the same way (it rendered no nav row at
-all, RELEASE_STATUS aside) — so it has now been fixed in `packages/ui`
-itself: `deeplink.js` and `circuitLink.js` both recognise every folder the
-suite deploys as a possible link source, `circuit-elements-lab` and
-`power-lab` included. Recognising a name as a link SOURCE is independent of
-which labs LINK to it — LabNav's own `LABS` array is what the released labs'
-nav rows are built from, and it still lists only the three released labs, so
-neither dark lab is added to their nav. Each dark lab still names itself in
+2026-09-03). In `packages/ui/src/deeplink.js`, `siblingUrl` and `homeUrl` recognized three link sources: `signal-lab`, `circuit-lab`, and `control-lab`. The `labUrl` helper in `circuitLink.js` also recognized `circuit-elements-lab`. Calls from power-lab's pathname returned null in development and deployed builds.
+
+This routing gap also left Circuit Elements Lab's LabNav without a navigation row, independently of RELEASE_STATUS. The shared `deeplink.js` and `circuitLink.js` now recognize every deployed folder as a link source, including `circuit-elements-lab` and `power-lab`.
+
+Recognizing a source does not add it to navigation. LabNav builds released navigation rows from its `LABS` array, which still lists only the three released labs. Neither unreleased lab was added. Each dark lab still names itself in
 its own row via `currentLabel`, unchanged.
 
 `src/handover.js` used to carry a local `powerSiblingUrl`, a copy of
 `siblingUrl`'s exact algorithm with `'power-lab'` added to its recognised
-set, because editing the shared file was out of this territory. Now that
-`packages/ui/src/deeplink.js`'s `siblingUrl` itself recognises `'power-lab'`,
-that copy bought nothing the shared helper doesn't already do — it has been
-deleted, and `handover.js` imports `siblingUrl` from `@ee-labs/ui` directly.
-`handover.test.js`'s dedicated `powerSiblingUrl` test went with it; the
-resolver itself is pinned in `packages/ui/src/deeplink.test.js`, and
-`handover.test.js` still checks that `buckHandOverLink` resolves a URL on the
-deployed layout. Control Lab itself needed no change: `fromAppName` falls
-back to "another tool" for the unrecognised `power` app, and
-`fromDisplayName` prefers the link's own `label` regardless, so the plant
-still arrives named correctly, only the sending app's name is generic.
+set, because editing the shared file was out of this territory. The shared `packages/ui/src/deeplink.js` helper now recognizes 'power-lab'. The duplicate was deleted. `handover.js` imports `siblingUrl` directly from `@ee-labs/ui`.
+
+The dedicated `powerSiblingUrl` test was also removed. `packages/ui/src/deeplink.test.js` checks the resolver. `handover.test.js` still checks that `buckHandOverLink` resolves a deployed URL.
+
+Control Lab needed no change. `fromAppName` uses "another tool" for the unrecognized `power` app. `fromDisplayName` prefers the link's `label`, so the plant retains its correct name. Only the sending app's name is generic.
 
 - No hand-over yet for rectifier spectra into Signal Lab (the plan's other
   later-phase bridge). It would need the same `handOverEvent` / `HANDOVERS`
@@ -151,18 +136,11 @@ still arrives named correctly, only the sending app's name is generic.
 ## A second gap in `packages/ui`, worked around locally
 
 `drawFrame` (`packages/ui/src/plot.js`) always rotates a sweep's left-axis
-title 90°. Right for a worded title; wrong for a lone glyph — rotated, η's
-descender reads as a stray hook, not as η (Reed, 2026-09-02, on A1's sweep;
-the same bug independently on B6, B7 and B8, whose sweeps put η alone on
-that axis with no unit to go with it). `SweepCanvas.jsx`'s own right-hand
-axis already carried the fix (a title of two characters or fewer stays
-upright); `drawSweep` now applies the same rule to the left axis by
-withholding `yTitle` from `drawFrame` when the title is that short and
-drawing it upright itself, at the same position `drawFrame` would have
-used. The real fix is one `title.length > 2` guard inside `drawFrame`
-itself, so every lab's sweep gets it rather than only this one working
-around it — small enough for whichever session next touches
-`packages/ui/src/plot.js`, out of this territory today.
+title 90°. This works for words but makes a lone η resemble a hook. Reed reported it on A1's sweep on 09/02/2026. B6, B7, and B8 independently showed the same defect, with η alone on the axis.
+
+The right-hand axis in `SweepCanvas.jsx` already keeps titles of two characters or fewer upright. `drawSweep` now applies that rule to the left axis. It withholds short `yTitle` values from `drawFrame` and draws them upright at the same position.
+
+A shared fix would add a `title.length > 2` guard inside `drawFrame` so every lab benefits. This remains outside the current lane's territory. The next session editing `packages/ui/src/plot.js` can address it.
 - No changes to `packages/ui`, `packages/explain` or `packages/network`. The lab
   uses `NumField`, `useCanvas`, `drawFrame`, `plotArea`, `COLORS`, `fmt`,
   `LabNav`, `ReportIssue` and `MathPanel` as exported today, and does not import

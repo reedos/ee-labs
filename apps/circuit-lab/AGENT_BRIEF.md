@@ -9,8 +9,7 @@ You are one of three agents working this repo in parallel. **Your territory is
 - Edit only inside `apps/circuit-lab/`. Treat `packages/*` and the other two
   apps as **read-only**: read them for patterns as much as you like, change
   nothing. If you genuinely need a package change, write the need into
-  `apps/circuit-lab/NEEDS.md`, commit it, and continue with what you can do —
-  the packages agent will pick it up.
+  `apps/circuit-lab/NEEDS.md`, commit it, and continue with what you can do. The packages agent will pick it up.
 - **One lane per agent, one worktree per agent.** `PROGRAM.md` §2: the branch is
   `lab/circuit-lab`, the worktree gets its own `npm ci`, and nothing is pushed
   by an overseer. Never clone a second copy into `~/projects/ee-labs-circuit-lab`.
@@ -34,10 +33,7 @@ about physics, and a test must measure it**, never restate the formula that
 produced it. Where a claim is unmeasurable at the current settings, the row
 footnotes the reason. It never shows ✗ against correct physics. Predictions
 must **follow the controls the user can reach**: if a select or slider changes
-the fact, the sentence and the check change with it. Nine explanations that were
-wrong but sounded right have been caught by this discipline so far. When one of your
-tests fails, first decide whether the app or the test is wrong, several times it was
-the test, and saying so plainly in the commit matters.
+the fact, the sentence and the check change with it. This discipline has caught nine incorrect explanations. When a test fails, decide whether the app or the test is wrong. Record that decision in the commit.
 
 Commit messages here are narrative: what changed, why, and what bugs fell out.
 Read `git log` for the register.
@@ -98,14 +94,11 @@ can the feature be SEEN. Rendering honesty) apply to you verbatim.
    circuit's actual order, and state BOTH units.
 
 4. **Adversarial audit of all lessons.** Load every lesson in the browser the
-   way Reed does: change the components it points at, check every sentence of
+   way Reed does. Change the components it points at, check every sentence of
    every note against what the screen then shows. File and fix anything wrong;
    each fix gets a test that would have caught it.
 
 5. **(Stretch) One new circuit**, done completely: twin-T notch or an RC
-   band-pass (two corners). Complete = schematic drawn, H(s) derived in the
-   panel with the derivation note, metrics, tests for the pole/zero positions,
-   a lesson, harness coverage, and hand-over behaviour decided on the evidence
-   (decline if Signal Lab / Control Lab cannot express it exactly).
+   band-pass (two corners). Draw the schematic. Derive H(s) in the panel and add its derivation note. Add metrics, pole/zero tests, a lesson, and harness coverage. Decide hand-over behavior from the evidence. Decline when Signal Lab or Control Lab cannot express it exactly.
 
 Do not start item 5 unless 1–4 are green and pushed.
