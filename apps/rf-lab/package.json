@@ -20,7 +20,7 @@
     "react-dom": "^18.3.1",
     "@ee-labs/lessons": "*",
     "@ee-labs/explain": "*",
-    "katex": "^0.18.4"
+    "katex": "^0.19.0"
   },
   "devDependencies": {
     "@ee-labs/prose": "*"
