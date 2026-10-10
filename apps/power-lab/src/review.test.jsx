@@ -242,7 +242,7 @@ describe('the layout gives the lesson the room (§11.4)', () => {
       expect(rows, e.id).toContain(scopeFirst ? 'minmax(0,62fr) 6px minmax(0,38fr)' : 'minmax(0,38fr) 6px minmax(0,62fr)')
       expect(main, e.id).toContain('class="pane-split"')
     }
-  })
+  }, 240000) // renders every experiment: 34 s here, 92 s on the runner
   it('keeps the sidebar in reading order: experiments, note, schematic, knobs (§11.4.5)', () => {
     const s = sidebar(render('b3'))
     const at = (t) => s.indexOf(t)
