@@ -19,7 +19,7 @@
     "@ee-labs/explain": "*",
     "katex": "^0.18.4",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^19.3.0"
   },
   "description": "An educational sandbox for time-domain waveforms, their frequency content, and the blocks that modify them.",
   "devDependencies": {
