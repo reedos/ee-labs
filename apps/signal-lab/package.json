@@ -17,7 +17,7 @@
     "@ee-labs/dsp": "*",
     "@ee-labs/ui": "*",
     "@ee-labs/explain": "*",
-    "katex": "^0.18.4",
+    "katex": "^0.19.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
