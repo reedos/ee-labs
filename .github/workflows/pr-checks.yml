@@ -1,0 +1,34 @@
+# Run the same tests and build as deploy.yml on every pull request into master,
+# so a PR is known green before it merges and triggers a deploy.
+#
+# Keep the Node version, install, test, and build steps in step with deploy.yml.
+
+name: pr-checks
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx vitest run
+
+      - run: npm run build
