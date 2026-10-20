@@ -6,6 +6,9 @@ updates:
       interval: weekly
     open-pull-requests-limit: 3
     groups:
+      # react and react-dom must move in lockstep; split PRs each break alone.
+      react:
+        patterns: ["react", "react-dom"]
       compatible-updates:
         update-types: [minor, patch]
   - package-ecosystem: "github-actions"
